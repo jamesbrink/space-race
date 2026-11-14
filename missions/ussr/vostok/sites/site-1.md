@@ -107,7 +107,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | Erector | erector.py | the erector on the centre track, with `Erector_Boom` (the platforms, the stair's landing) and `Erector_Lift` | yes: its form estimated |
 | TankCars | tank_cars.py | the railway fillers beside the rocket: `TankCar_Oxygen` (8G117) on the north track and `TankCar_Kerosene` (8G119) on the south, each with `..._Wheel_1..8` | yes: one of each; their form estimated |
 | (the land) | src/viewer/tyuratam.ts | the steppe, the tracks and the roads painted on it, the pit cut out of it | yes |
-| Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 130 m, the others' last 70 m | yes (the place) |
+| Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 140 m, the others' last 80 m; flush in the apron's slabs as far as 90 m west | yes (the place) |
 | CommandBunker | bunker.py | the mound over the firing room, its four periscopes, three corner vents, the entrance, the smoking place | yes (the place); the rooms below are not |
 | StorageBunker | storage.py | three concrete bays with earth between, their gates, roof vents and aprons | yes (the place); gates shut |
 | PropellantShed | buildings.py | the shed over the northern spur's end, open to the north on six supports | yes (the place) |
@@ -461,6 +461,7 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | Plants | eight species as designed forms ("The ground and what grows") | documented (the species); estimated (shares, colours) | below |
 | Made ground | the apron on the platform's landward side (70 m), the tracks' beds, a margin round the rim: graded, nothing growing; inside the outer fence the ground worn in patches, and turned round the spoil heap's foot (35 m) | estimated | the 1957 photograph shows bare ground round the pad and pit |
 | The apron | concrete slabs from the abutment's west face to 90 m west of the axis, 21 m south and 20 m north of the centre track; each 1.5 m along the tracks by 3 m across, in rows along them, a shade apart, darker in the middle than at the margins, the joints pale with sand; a pale band along each track with the rails flush in it and a flangeway inside each rail; the outer slabs under drifted dust, then bare trodden earth with wheel tracks | documented (slabs, rails flush, the bands, the stains, earth beyond: the film, 43:26 to 43:29, from the erector's head); derived (the south edge, 4 to 5 m beyond the bus's side, the bus's 2.5 m for a scale); estimated (the slabs' size, the west end, the north edge, which the frame does not reach) | tyuratam.ts `SLABS`. The CIA's photographs are too coarse to show it |
+| The rails over the apron | their heads 9 mm over the painted slabs, the rest of each rail under the land; no sleepers, no ballast. From the abutment's west face each comes down 0.12 m in 3 m (the land lies that far under the deck); the centre track's keep the deck's level to 31 m west, under the erector's wagon, whose last axle stands 30.4 m west until 08:37, and come down from there. At the apron's west end the centre track's climb 0.12 m in 3 m onto the painted sleepers, where they stand as before to 160 m west (the erector is left on them); the three spurs' stay at the land's level to where the paint takes over, 110 m west. The gantry tracks' two rails come down as the others do and end flush, 11 ft out from the abutment | documented (flush in the slabs, with a flangeway inside each rail: the film); estimated (the 9 mm: as on the deck, what keeps a head and the surface it lies in apart in depth; the 3 m: the real apron was level with the deck, and no rail came down to it or climbed off it) | site1/deck.py `land_rails` (`APRON_WEST`, `DIP`, `CENTRE_HELD`). The flangeway is the land's paint: nothing is cut |
 | Ruts | bands of braided wheel ruts in pale dust beside the road in from the south-west (70 m each side, fading) and along the centre track to the west (35 m) | documented (that the builders' trucks ground the crust to dust and "the dusty roads ... got to be two to three kilometers wide": Chertok, *Rockets and People* vol. II p. 314, of 1955 to 1957); estimated (that they were still worn in 1961, their lines and breadths) | `RUTS` in tyuratam.ts |
 | Tracks | the centre track from the west (its last 2.6 km) and the four spurs beside it, onto the platform; ballast, sleepers 0.55 m apart, two rails at the Soviet gauge (1,524 mm in 1961) | documented (their lines: OpenStreetMap ways 37547653, 172441851, 172441854, 172441876, 172441879; HTA/JR-4/58 counts five spurs in 1957; the gauge); estimated (the bed's width, the sleepers); near the platform the centre track is put on the axis and the three beside it brought to the CIA's plan ("The site's frame", "The platform") | painted on the land; where they come up to the platform the rails are modelled (`Tracks`) |
 | Roads | the road in from the south-west (its last 2 km), the road round the pit and back past the command bunker, the road from the storage bunker to the propellant shed, and short drives to the storage bays, the check-out shop's gate and the gas receivers; concrete in slabs, 6 m wide | documented (the three roads' lines: PIC/JR-2/60 Figure 5 and OpenStreetMap ways 54570611, 172571827, 172441909); estimated (the drives, the surface, the width; that the way round the pit's east end was a made road and not only the track beside its ditch) | painted on the land, not modelled: they lay flush with it |
@@ -949,10 +950,16 @@ rocket can leave the erector out by its date.
   that is ours. The saloon car is `tools/blender/vehicles.py`'s kind and can be got into and driven; the bus and
   the truck cannot.
 - **The apron is painted on the land** ("The apron", above), flat at the land's level, 12 cm under the deck's. Its
-  slabs' size, its west and north ends and the stain of each slab are estimated. **The modelled rails over it stand
-  on it, not in it**: `Tracks` (site1/deck.py `land_rails`) lays them on painted sleepers, the head some 15 cm over
-  the land, where the film has them flush. Over the apron (from the abutment to 90 m west, every track) their heads
-  belong at the land's level: a model change, not yet made.
+  slabs' size, its west and north ends and the stain of each slab are estimated. The rails lie flush in it ("The
+  rails over the apron"), and so have to come down 12 cm from the deck west of the abutment, in 3 m, where the real
+  ones ran level; the centre track's do it 3 m further west than the others, clear of the erector's wagon. A
+  flangeway is paint, not a groove.
+- **What rolls off over the apron rolls 12 cm above its rails.** The erector and the two fillers move level, at the
+  deck's height (a `slide` and a `drive` have no height: types.ts), so from where the rails come down (31 to 34 m
+  west) to the apron's west end their wheels are 12 cm over the heads: the fillers from 08:08 to 08:15, and on over
+  the paint as before; the erector between 08:37 and 08:45, until it is back on the standing rails past 93 m west,
+  where it is left. Nothing stands so: at rest every wheel is on a rail. It wants the viewer to set each axle on the
+  rail under it (a height along the route, and the wagon pitched between its bogies), which is not built.
 - **The film's frame from the erector does not agree with the clock.** Its shadows lie some 40° clockwise of the
   rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
   at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
@@ -979,9 +986,11 @@ rocket can leave the erector out by its date.
   embankment's south side west of the spurs. A building on the fall stands on its own level plot or is set down
   by the land's height at its middle, so the ground meets its walls a little high on one side and low on the
   other (under 0.3 m everywhere but the pump house, which has a plot).
-- The tracks are paint on the land, flat, beyond 160 m (the centre track) and 100 m (the others)
-  from the axis; nearer, real rails stand on painted sleepers and ballast, and at those distances
-  their heads come down to the paint over 10 m, which no rail did. The centre track is moved 3 m
+- The tracks are paint on the land, flat, beyond 170 m (the centre track) and 110 m (the others)
+  from the axis. Nearer, the centre track's rails are real ones standing on painted sleepers and ballast from
+  the apron's west end, where they climb onto them in 3 m, to 160 m, and their heads come down to the paint over
+  the last 10 m: no rail did either. The three spurs' rails keep the land's level from the apron to the paint, their
+  heads all that shows, over ballast and sleepers that are painted there. The centre track is moved 3 m
   from where the map has it, and the three beside it by up to 4 m ("The site's frame").
 - **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
