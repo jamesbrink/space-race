@@ -143,7 +143,7 @@ async function picture(page, name) {
   if (!shots) return;
   const hide = await page.addStyleTag({ content: '#gallery > :not(.loading) { visibility: hidden !important }' });
   await page.waitForTimeout(250);
-  await page.screenshot({ path: join(shots, `${name}.png`) });
+  await page.screenshot({ path: join(shots, `${name}.jpg`), type: 'jpeg', quality: 85 });
   await hide.evaluate((el) => el.remove());
 }
 
@@ -292,7 +292,7 @@ for (const flight of flights) {
     await page.click('#gallery [data-sit]');
     await page.waitForTimeout(HANDOVER);
     seated(await read(page), flight, 0, 'the control at 390');
-    if (shots) await page.screenshot({ path: join(shots, `${slug}-seat0-390-ui.png`) });
+    if (shots) await page.screenshot({ path: join(shots, `${slug}-seat0-390-ui.jpg`), type: 'jpeg', quality: 85 });
     const box = await page.evaluate(() => {
       const r = document.querySelector('#gallery > .lookouts').getBoundingClientRect();
       return [r.left, r.top, r.right, r.bottom];
