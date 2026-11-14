@@ -162,18 +162,19 @@ const lookouts = () =>
   ui.setLookouts(
     stage.lookouts().map((l) => l.name),
     stage.leaning,
-    stage.cabin?.lighting ?? null,
+    stage.cabin?.switched ?? [],
   );
-// The cabin's own lights: the switch on its console (a click from the seat) and the button under the lookouts throw
-// the one switch (viewer/cabin.ts `light`). It has no key: the flight deck has taken every letter a pilot's hands are near.
-const cabinLights = (): void => {
-  const said = stage.cabin?.light();
-  const lighting = stage.cabin?.lighting;
-  if (!said || !lighting) return;
-  ui.say(lighting.name, said);
+// The cabin's switches (its own lights, a globe's mode, any thrown control): the switch on its console (a click from the
+// seat) and its button under the lookouts throw it (viewer/cabin.ts `throwSwitch`); one that is a command of the flight
+// deck's asks the deck for it. They have no keys: the flight deck has taken every letter a pilot's hands are near.
+const throwSwitch = (index: number): void => {
+  const thrown = stage.cabin?.throwSwitch(index);
+  if (!thrown) return;
+  if (thrown.does) cockpit.ask(thrown.does);
+  ui.say(thrown.name, thrown.says);
   lookouts();
 };
-ui.onCabinLights = cabinLights;
+ui.onSwitch = throwSwitch;
 const leanTo = (n: number | null) => {
   const said = stage.leanTo(n);
   if (said && n !== null) ui.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
@@ -190,7 +191,7 @@ window.addEventListener('keydown', (e) => {
   e.preventDefault();
 });
 stage.onCabin = (thing) => {
-  if (thing.lights) cabinLights();
+  if (thing.thrown !== undefined) throwSwitch(thing.thrown);
   else if (thing.works) {
     // a mechanism's own control: in a flight flown by hand it works it (the deck says where it is sent); otherwise it says why not
     stage.cabin?.work(thing.object);

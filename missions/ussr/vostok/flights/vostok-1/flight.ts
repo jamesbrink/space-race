@@ -1,5 +1,6 @@
 import type { CabinDef, ChuteDef, Command, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
+import { DUTY } from '../../vehicles/cabin.ts';
 import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
@@ -726,7 +727,7 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
 // The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
 const GLOBUS =
   'The ship’s place over the Earth: “it turns all the time, following the ship’s motion over the Earth, and the fixed cross in its ring shows over which point of the globe the ship is now” (Ponomareva). Set before launch with the orbit’s period as a three-figure number in its correction window and turned by its two knobs in the planes of the equator and of the orbit, it started at the separation (“the Globus stopped about the middle of the Mediterranean”, Gagarin) and was good to some 300 km (his report). ' +
-  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its landing-place mode (a tumbler on the control panel threw the globe on to where a burn now would land) is not simulated: the tumbler is there to be read about. Its map is the globe’s own, in two tones.';
+  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its two modes are the instrument’s (Tyapchenko, fig. 16; Ponomareva: «“переброс” “Глобуса”, и перекрестие указывает, куда ты сядешь, если включишь сейчас двигатель»): with the tumbler on the control panel at МЕСТО ПОСАДКИ the globe turns to where a burn fired now would bring the ship down. The real instrument did that by advancing the globe a fixed arc, set on the ground; here the arc is worked out, by the simulator flying that descent from the instant (a burn against the way the ship goes, a second from now; once the ship is coming down, the descent under way), and carried round with the ship between one working and the next. Its «Посадка» lamp is not in the model and does not light. Its map is the globe’s own, in two tones.';
 // The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
 // ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
 // degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
@@ -901,22 +902,34 @@ vehicle.cabin = {
       // (orbitdeck.ts: `manual` says whether it is on; it stands as the deck's hands are, `free`)
       does: 'manual',
       holds: 'free',
+      says: ['Off', 'On'],
     },
-    { node: 'Ctl_Descent3', name: 'Descent III', about: 'Under the clear cover: the descent cycle begun by the pilot. Not simulated.' },
+    {
+      node: 'Ctl_Descent3',
+      name: 'Descent III',
+      about: 'Under the clear cover: the descent cycle begun by the pilot. It throws and stays thrown; what it set going is not simulated.',
+      says: ['Off', 'On'],
+    },
     {
       node: 'Ctl_RetroFire',
       name: 'Start the braking engine',
       about: 'Red, under the clear cover: the pilot’s own command to the TDU, for a ship he has turned by the Vzor.',
       does: 'retro',
     },
-    { node: 'Ctl_Oxygen', name: 'Oxygen', about: 'Under the clear cover. What it switched is not in anything read. Not simulated.' },
+    {
+      node: 'Ctl_Oxygen',
+      name: 'Oxygen',
+      about:
+        'Under the clear cover. What it switched is not in anything read: it throws and stays thrown, and nothing follows. Not simulated.',
+      says: ['Off', 'On'],
+    },
     { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
     {
-      // (its two positions are in its `throw` extras, vehicles/vostok_cabin.py; no command of the deck's throws the globe yet)
+      // (its two positions are in its `throw` extras, vehicles/vostok_cabin.py; it is the globe's `control`, below)
       node: 'Ctl_GlobusMode',
       name: 'Globus: present place or landing place',
       about:
-        'ГЛОБУС, on the control panel’s face: МЕСТО ПОЛОЖЕНИЯ, where the ship is, or МЕСТО ПОСАДКИ, where it would come down if the braking engine were started now (Tyapchenko; the instruction of January 1961 has the pilot throw it over and back as a check after reaching orbit). It stands at the present place, as it flew. The landing-place mode is not simulated.',
+        'ГЛОБУС, on the control panel’s face: МЕСТО ПОЛОЖЕНИЯ, where the ship is, or МЕСТО ПОСАДКИ, where it would come down if the braking engine were started now (Tyapchenko, fig. 16; the instruction of January 1961 has the pilot throw it over and back as a check after reaching orbit). Built at the present place, as it flew. Thrown, the globe turns to the landing place the simulator works out for a burn fired now: the real instrument advanced the globe by a fixed arc set on the ground.',
     },
     {
       node: 'Ctl_HandController',
@@ -931,10 +944,12 @@ vehicle.cabin = {
   lighting: {
     control: 'Ctl_Lighting',
     name: 'Cabin lighting',
-    about: 'One tumbler on the control panel: working, duty, off.',
+    about:
+      'One tumbler on the control panel: working, duty, off. The duty light is the left hand lamp at a quarter of its strength: that it was dimmer is in Titov’s report (too dim to write by), how dim is ours.',
+    // (the duty light: which lamp, and how dim, estimated)
     ways: [
       { says: 'Working', lit: [0, 1] },
-      { says: 'Duty', lit: [0] },
+      { says: 'Duty', lit: [{ light: 0, level: DUTY }] },
       { says: 'Off', lit: [] },
     ],
     fittings: ['Lamp_1', 'Lamp_2'],
@@ -948,10 +963,18 @@ vehicle.cabin = {
   // The node's own axes: +Y up the stalk, +X along the grip. That it had two axes is the maker's history (Tyapchenko);
   // which two, how the third was commanded and how far it tipped are estimated
   stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
+  // its two modes on the one tumbler (Tyapchenko, fig. 16's caption: documented); the landing place is the simulator's
+  // (derived: the real instrument advanced the globe by a fixed arc set on the ground). The «Посадка» lamp that lit with
+  // the second is not in the model (vehicles/vostok_cabin.py: the window over the globe is a plain block), so no `lamp`
   globe: {
     node: 'Globus_Globe',
     name: 'Globus',
     about: GLOBUS,
+    control: 'Ctl_GlobusMode',
+    modes: [
+      { says: 'Present place', shows: 'place' },
+      { says: 'Landing place', shows: 'landing' },
+    ],
   },
   periscope: VZOR,
 };

@@ -190,20 +190,73 @@ for (const flight of flights) {
         fail(`${flight.id}: Esc did not bring him back from the ${lookouts[i]} into the seat`);
       else if (far(back.eye, back.seatEye) > 2e-3) fail(`${flight.id}: back from the ${lookouts[i]}, the eye is not at the seat`);
     }
-    // the lights
-    if (s.lighting) {
-      const ways = flight.cabin.lighting.ways;
-      for (let k = 1; k <= ways.length; k++) {
-        await page.click('#gallery > .lookouts [data-cabin-lights]');
-        await page.waitForTimeout(150);
-        const l = await read(page);
-        const way = ways[k % ways.length];
-        if (l.lighting.way !== k % ways.length) fail(`${flight.id}: the lights' switch is at ${l.lighting.way}, not ${k % ways.length}`);
-        const goals = l.lightGoals.map((g, i) => (way.lit.includes(i) ? 1 : 0) === g);
-        if (!goals.every(Boolean)) fail(`${flight.id}: at "${way.says}" the lamps are ${l.lightGoals}`);
-        if (shots && way.lit.length === 0) await picture(page, `${slug}-seat0-lights-off`);
+    // every switch: each thrown through all its positions and round, by a click on it where it stands on the console (the
+    // stage's own handler for a click on a thing of the cabin) and, for one that switches something, by its button in the
+    // bar; its lever goes over and stays, and what it switches follows (the lamps lit, out or coloured; the globe's mode)
+    const switches = await page.evaluate(() =>
+      window.sr.gallery.stage.cabin.switches.map((sw) => ({
+        name: sw.name,
+        n: sw.says.length,
+        sets: sw.sets ?? null,
+        node: sw.node?.name ?? null,
+      })),
+    );
+    const thrown = flight.cabin?.controls?.filter((c) => switches.some((sw) => sw.node === c.node)).length ?? 0;
+    for (const [i, sw] of switches.entries()) {
+      for (let k = 1; k <= sw.n; k++) {
+        const by = sw.sets && k % 2 ? 'bar' : sw.node ? 'console' : 'bar';
+        if (by === 'bar') await page.click(`#gallery > .lookouts [data-switch="${i}"]`);
+        else
+          await page.evaluate((name) => {
+            const st = window.sr.gallery.stage;
+            const node = st.staged[st.current].full.getObjectByName(name);
+            st.onCabin(st.cabin.thingAt(node.getWorldPosition(node.position.clone())));
+          }, sw.node);
+        await page.waitForTimeout(250);
+        const got = await page.evaluate((i) => {
+          const st = window.sr.gallery.stage;
+          const c = st.cabin;
+          const x = c.switches[i];
+          const lever = x.node ? 2 * Math.acos(Math.min(1, Math.abs(x.home.dot(x.node.quaternion)))) : null;
+          return {
+            at: x.at,
+            lever,
+            goal: x.node ? Math.abs(x.throws[x.at] ?? 0) : null,
+            lights: c.lights.map((l) => ({ goal: l.goal, colour: l.light.color.getHex() })),
+            globe: c.globeMode,
+            bar: document.querySelector(`#gallery > .lookouts [data-switch="${i}"] span`)?.textContent ?? null,
+            says: x.says[x.at],
+          };
+        }, i);
+        const want = k % sw.n;
+        const tag = `${flight.id}: ${sw.name} thrown ${k} time(s) by the ${by}`;
+        if (got.at !== want) fail(`${tag}: it is at ${got.at}, not ${want}`);
+        if (got.lever !== null && Math.abs(got.lever - got.goal) > 0.02)
+          fail(`${tag}: its lever is over ${got.lever.toFixed(3)} rad, not ${got.goal.toFixed(3)}`);
+        if (sw.sets && got.bar !== `${sw.name} · ${got.says}`) fail(`${tag}: the bar says "${got.bar}"`);
+        if (sw.sets === 'lighting') {
+          const way = flight.cabin.lighting.ways[want];
+          const lamps = got.lights.map((l, li) => {
+            const lamp = way.lit.map((x) => (typeof x === 'number' ? { light: x } : x)).find((x) => x.light === li);
+            const level = lamp ? (lamp.level ?? 1) : 0;
+            const colour = lamp?.colour ?? null;
+            return Math.abs(l.goal - level) < 1e-9 && (colour === null || l.colour === colour);
+          });
+          if (!lamps.every(Boolean)) fail(`${tag}: at "${way.says}" the lamps are ${JSON.stringify(got.lights)}`);
+          if (shots && (way.lit.length === 0 || way.lit.some((x) => typeof x !== 'number')))
+            await picture(page, `${slug}-seat0-lights-${way.says.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+        }
+        if (sw.sets === 'globe' && got.globe?.mode !== want) fail(`${tag}: the globe's mode is ${got.globe?.mode}`);
       }
     }
+    console.log(
+      `  ${switches.length} switch(es) thrown round (${thrown} of the controls listed; ${
+        switches
+          .filter((x) => x.sets)
+          .map((x) => x.sets)
+          .join(', ') || 'none'
+      } switched)`,
+    );
     // the cel look, from the seat
     if (shots) {
       await page.evaluate(() => window.sr.gallery.setCel(true));

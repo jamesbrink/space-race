@@ -39,8 +39,13 @@ result at the vertices in a colour attribute named `Shade`, the only one `srlib.
 multiplies the surface by. It is two figures in one colour: red, green and blue with the cabin's own lamps on, alpha
 with them off (how open the point is, and how much of what lets light in it sees). A viewer that knows no cabin
 multiplies by the first, which is right for anything not seen through; `Cabin.shadeBy` patches the materials of the
-meshes that carry four parts to mix the two by `uCabinLit`, which the lights' switch moves (`CabinDef.lighting`), so
-switching the lamps is two uniforms and the lamps' strength: no light is added or taken away, and no shader is built.
+meshes that carry four parts to mix the two by `uCabinLit` (the share of the lamps' strength that is lit), which the
+lights' switch moves (`CabinDef.lighting`), and to take the indirect light (the sky's tenth left indoors, what metal
+mirrors) toward the lit lamps' colour by `uCabinTint` (white for lamps lit as built), so switching the lamps, to red or
+to a dim duty light, is uniforms and the lamps' strength and colour: no light is added or taken away, and no shader is
+built. The shade has one lamps-on figure for all the lamps together: a way that lights some of them, or another bulb
+in the same fitting, is shaded as if all were lit and dimmed by their share. To be right for one lamp alone a model
+would bake a shade per lamp (a colour attribute each), which nothing does yet.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
 indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray

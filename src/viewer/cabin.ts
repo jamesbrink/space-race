@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
+import { orbitPredictor } from '../sim/orbitpath.ts';
+import { elements } from '../sim/predict.ts';
+import { byHand } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { CabinDef, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
-import { siteFrame } from '../world/frames.ts';
+import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
+import { siteFrame, type Vec3 } from '../world/frames.ts';
+import { greenwichSiderealTime, julianDate } from '../world/time.ts';
 import { orbitalEvents, orbitalFlown, orbitalRecord } from './ascent.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
@@ -46,6 +50,8 @@ export interface CabinHost {
   earth?(): THREE.Texture | null;
   /** What is drawn over the flight and is no part of it (the predicted path): not seen through a periscope. */
   overlays?(): readonly THREE.Object3D[];
+  /** Where a descent begun at an instant would come down (`LandingFinder`): for a globe's landing-place mode. Left out: the simulator's own (`burnNow`). */
+  landing?: LandingFinder | null;
   /** Something on screen has changed. */
   redraw(): void;
   /** What casts a shadow has changed: the shadow maps are to be drawn again. */
@@ -61,8 +67,8 @@ export interface CabinThing {
   does?: string;
   /** The mechanism of the model it works by hand (CabinDef.controls[].works), if it is the control of one. */
   works?: string;
-  /** It is the switch of the cabin's own lights (CabinDef.lighting): worked, it goes to its next position (`Cabin.light`). */
-  lights?: boolean;
+  /** It is a switch (a thrown control, or the lights'): worked, it goes to its next position (`Cabin.throwSwitch`, by this index). */
+  thrown?: number;
   /** It is something to look out through: a window's pane or the periscope's screen. */
   lookout?: 'pane' | 'screen';
   /** For a pane: where on it, and the way it faces (toward whoever looks). */
@@ -95,7 +101,89 @@ interface Lamp {
   until?: string;
   colour: THREE.Color;
   lit: number;
+  /** Lit while the globe is in this mode (CabinDef.globe.modes[].lamp). */
+  mode?: number;
 }
+
+/**
+ * A switch: a thrown control of the model (a node with `throw` in its extras: CabinDef.controls), or the cabin's lights'
+ * when the model has none built for them (`node` null: thrown from the page alone). One mechanism for all of them.
+ */
+interface Switch {
+  name: string;
+  about: string;
+  node: THREE.Object3D | null;
+  /** Its lever as built, and the turn about its own X for each of its positions. */
+  home: THREE.Quaternion;
+  throws: number[];
+  /** What each of its positions reads. */
+  says: string[];
+  /** Where a hand last threw it, and the turn its lever stands at now. */
+  at: number;
+  now: number;
+  /** What of the cabin it switches, if anything: the lights' ways, the globe's modes. */
+  sets?: 'lighting' | 'globe';
+  /** The flight deck's command it gives when thrown, and the deck's state it stands as while flown (CabinDef.controls). */
+  does?: string;
+  holds?: string;
+}
+
+/** What a switch says when it has been thrown: its name, the position it is now at and what that reads, and the deck's command it gives. */
+export interface Thrown {
+  name: string;
+  at: number;
+  says: string;
+  does?: string;
+}
+
+/**
+ * Where a descent begun at `start` (an instant of the flight, in fly.ts's frame that does not turn) would come down: the
+ * instant, place and velocity where it reaches the ground (or the height at which the pilot leaves), or null if it would
+ * not come down. The globe's landing-place mode (CabinDef.globe.modes) asks it.
+ */
+export type LandingFinder = (start: { t: number; r: Vec3; v: Vec3 }) => Landing | null;
+/** Where a descent comes down (`LandingFinder`); `begun`, the descent was under way already, and its place does not move on with the clock. */
+export interface Landing {
+  t: number;
+  r: Vec3;
+  v: Vec3;
+  begun?: boolean;
+}
+
+/**
+ * The simulator's answer for "fire the braking engine now" on a flight into orbit (`Flight.orbital` with `manual`, the
+ * burn a hand can fire): the record's flight with its burn moved to a second from `start`, the engine pushing straight
+ * against the way the spacecraft goes (as it was turned to fire), flown on from `start` by the one coast the record and
+ * the predicted path are flown by (sim/orbitpath.ts `orbitPredictor`, sim/staged.ts `byHand`). Where the orbit already
+ * reaches down into the air (a burn under way or done, the climb before orbit) the descent is begun already: it is flown
+ * on as it is, with no burn added. Null for a flight with no such record.
+ */
+export function burnNow(flight: Flight): LandingFinder | null {
+  const o = flight.orbital;
+  const site = flight.site;
+  if (!o?.manual || !site) return null;
+  const jd = julianDate(flight.launch);
+  const gast0 = greenwichSiderealTime(jd);
+  const frame = siteFrame(site);
+  const never = structuredClone(o);
+  never.retro.on.value = never.retro.off.value = never.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  return (start) => {
+    const el = elements(start.r, start.v, o.orbit.radius.value);
+    const down = !(el.periapsisHeight > LANDING_AIR);
+    let plan = never;
+    if (!down) {
+      // (against the way it goes, from fly.ts's frame into the inertial frame of date the coast flies in)
+      const n = Math.hypot(...start.v);
+      const [x, y, z] = [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n];
+      plan = byHand(o, start.t + 1, [Math.cos(gast0) * x - Math.sin(gast0) * y, Math.sin(gast0) * x + Math.cos(gast0) * y, z]);
+    }
+    const p = orbitPredictor(plan, frame, jd, site.seaLevel.value, start).result;
+    const end = p.outcome === 'impact' ? p.points[p.points.length - 1] : undefined;
+    return end ? { t: end.t, r: end.r, v: end.v, ...(down ? { begun: true } : {}) } : null;
+  };
+}
+/** Below this perigee, m, the orbit reaches into the air: a descent is under way and no burn is added (`burnNow`). */
+const LANDING_AIR = 100_000;
 
 /**
  * What a flight deck that flies no vehicle of sim/vehicle.ts (orbitdeck.ts) tells the cabin with each sample, beyond
@@ -177,6 +265,8 @@ const AXIS_X = new THREE.Vector3(1, 0, 0);
 const q = new THREE.Quaternion();
 const v = new THREE.Vector3();
 const m4 = new THREE.Matrix4();
+const TINT = new THREE.Color();
+const TINT_TO = new THREE.Color();
 
 export class Cabin {
   private readonly def: CabinDef;
@@ -188,22 +278,39 @@ export class Cabin {
   private readonly needles: Needle[] = [];
   private readonly lamps: Lamp[] = [];
   private readonly things: { thing: CabinThing; reach: number; at: THREE.Vector3 }[] = [];
-  /** The cabin's own lamps: each light, its strength as the flight's data gives it, and how far it is lit (0 to 1, eased to `goal`). */
-  private readonly lights: { light: THREE.PointLight; base: number; lit: number; goal: number }[];
-  /** What glows with each lamp (its tube): its materials, and how brightly each glowed as built. */
-  private readonly fittings: { of: number; material: THREE.MeshStandardMaterial; glow: number }[] = [];
-  /** The lights' switch: its lever as built, the turn about its own X for each position, where it stands (`now`) and where it is going. */
-  private lever: { node: THREE.Object3D; home: THREE.Quaternion; throws: number[]; at: number; now: number } | null = null;
+  /**
+   * The cabin's own lamps: each light, its strength and colour as the flight's data gives them, how far it is lit (a
+   * share of its strength, eased to `goal`), and the colour its position of the switch lights it in.
+   */
+  private readonly lights: { light: THREE.PointLight; base: number; colour: THREE.Color; lit: number; goal: number; tint: THREE.Color }[];
+  /** What glows with each lamp (its tube): its materials, how brightly each glowed as built, and in what colour. */
+  private readonly fittings: { of: number; material: THREE.MeshStandardMaterial; glow: number; colour: THREE.Color }[] = [];
+  /** Every switch of the cabin (`Switch`), and which of them is the lights' and which the globe's mode's. */
+  private readonly switches: Switch[] = [];
+  private lightsSwitch: Switch | null = null;
+  private globeSwitch: Switch | null = null;
   /**
    * How much of the cabin's own light there is, 0 to 1, as every surface the build shaded reads it: the shade baked at
-   * its vertices is one figure with the lamps on and another with them off (`shadeBy`).
+   * its vertices is one figure with the lamps on and another with them off (`shadeBy`); and the colour of what is lit.
    */
   private readonly lit = { value: 1 };
+  private readonly tint = { value: new THREE.Color(1, 1, 1) };
   private stick: { node: THREE.Object3D; home: THREE.Quaternion; now: THREE.Vector3 } | null = null;
-  /** Controls that stand where a state of the flight deck has them (CabinDef.controls[].holds): the turn about their own X for each of their positions. */
-  private readonly holders: { node: THREE.Object3D; home: THREE.Quaternion; throws: number[]; holds: string; now: number }[] = [];
-  /** The globe that shows where the spacecraft is (CabinDef.globe): its node as built, and the turn it was last given. */
-  private globe: { node: THREE.Object3D; home: THREE.Quaternion; turn: THREE.Quaternion } | null = null;
+  /**
+   * The globe (CabinDef.globe): its node as built, the turn it was last given, its modes, and (in its landing-place mode)
+   * the last answer of where a descent begun would come down: the instant it was asked for, and its answer.
+   */
+  private globe: {
+    node: THREE.Object3D;
+    home: THREE.Quaternion;
+    turn: THREE.Quaternion;
+    modes: NonNullable<NonNullable<CabinDef['globe']>['modes']>;
+    lands: { from: { t: number; r: Vec3; v: Vec3 }; to: Landing | null; wall: number } | null;
+  } | null = null;
+  /** The globe's landing-place mode's answer (CabinHost.landing, or the simulator's: `burnNow`), made when first wanted. */
+  private landing: LandingFinder | null | undefined;
+  /** Seconds of the page's time since the cabin was made: how often the landing place is worked out again is in these. */
+  private wall = 0;
   /** The globe's map of land and sea, shared by the cabin's globe (CabinHost.earth). */
   private readonly earth: { value: THREE.Texture | null } = { value: null };
   /** On a flight into orbit flown on its deck: when each event of the run on show happens, and which of the deck's states hold. */
@@ -251,7 +358,14 @@ export class Cabin {
     this.group = group;
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
-    this.lights = lights.map((light) => ({ light, base: light.intensity, lit: 1, goal: 1 }));
+    this.lights = lights.map((light) => ({
+      light,
+      base: light.intensity,
+      colour: light.color.clone(),
+      lit: 1,
+      goal: 1,
+      tint: light.color.clone(),
+    }));
     // What comes in at each window, and off the periscope's screen: a light apiece, there from the start (a light
     // added later would have every shader in the scene built again) and dark until someone is aboard to see by it.
     const glow = (from: THREE.Vector3, out: THREE.Vector3, across: number, lamp: THREE.Vector3, screen = false): void => {
@@ -309,44 +423,64 @@ export class Cabin {
       if (!node) continue;
       const meshes: THREE.Mesh[] = [];
       node.traverse((o) => (o as THREE.Mesh).isMesh && meshes.push(o as THREE.Mesh));
+      const mode = this.def.globe?.modes?.findIndex((m) => m.lamp === l.node) ?? -1;
       this.lamps.push({
         meshes,
         colour: new THREE.Color(l.colour ?? 0x7dff9a),
         lit: -1,
         ...(l.shows ? { shows: l.shows } : {}),
         ...(l.until ? { until: l.until } : {}),
+        ...(mode >= 0 ? { mode } : {}),
       });
       name(node, l.name, l.about);
+    }
+    // The switches: every thrown control (a node with `throw` in its extras), each told to what it switches by what names
+    // it its control (the lights, the globe's mode); and the lights' switch thrown from the page where the model has none.
+    const lighting = this.def.lighting;
+    const g = this.def.globe;
+    const modes = g?.modes?.length ? g.modes : [];
+    const switchOf = (node: THREE.Object3D | null, name: string, about: string): Switch => {
+      const throws = node && Array.isArray(node.userData.throw) ? (node.userData.throw as number[]) : [0];
+      const s: Switch = { name, about, node, home: node?.quaternion.clone() ?? new THREE.Quaternion(), throws, says: [], at: 0, now: 0 };
+      this.switches.push(s);
+      return s;
+    };
+    const lever = lighting?.control ? find(lighting.control) : null;
+    if (lighting?.ways.length && (lever || !lighting.control)) {
+      this.lightsSwitch = switchOf(lever, lighting.name, lighting.about);
+      Object.assign(this.lightsSwitch, { sets: 'lighting', says: lighting.ways.map((w) => w.says) });
+    }
+    const tumbler = g?.control && modes.length ? find(g.control) : null;
+    if (g && tumbler && Array.isArray(tumbler.userData.throw)) {
+      this.globeSwitch = switchOf(tumbler, `${g.name}: mode`, g.about);
+      Object.assign(this.globeSwitch, { sets: 'globe', says: modes.map((m) => m.says) });
     }
     for (const c of this.def.controls ?? []) {
       const node = find(c.node);
       if (!node) continue;
-      name(node, c.name, c.about, c.does ? { does: c.does } : c.works ? { works: c.works } : {});
-      const throws = node.userData.throw;
-      if (c.holds && Array.isArray(throws)) this.holders.push({ node, home: node.quaternion.clone(), throws, holds: c.holds, now: 0 });
+      // (a control the lights or the globe name as theirs is their switch: this says what it is called and what more it does)
+      const theirs = this.switches.find((s) => s.node === node);
+      const s = theirs ?? (Array.isArray(node.userData.throw) ? switchOf(node, c.name, c.about) : null);
+      if (s) {
+        Object.assign(s, { name: c.name, about: c.about, ...(c.does ? { does: c.does } : {}), ...(c.holds ? { holds: c.holds } : {}) });
+        if (!theirs) s.says = c.says ?? s.throws.map((_, i) => `${i + 1} of ${s.throws.length}`);
+      } else name(node, c.name, c.about, c.does ? { does: c.does } : c.works ? { works: c.works } : {});
     }
-    const globe = this.def.globe && find(this.def.globe.node);
-    if (this.def.globe && globe) {
-      this.globe = { node: globe, home: globe.quaternion.clone(), turn: new THREE.Quaternion() };
-      name(globe, this.def.globe.name, this.def.globe.about);
+    for (const [i, s] of this.switches.entries()) if (s.node) name(s.node, s.name, s.about, { thrown: i });
+    const globe = g && find(g.node);
+    if (g && globe) {
+      this.globe = { node: globe, home: globe.quaternion.clone(), turn: new THREE.Quaternion(), modes, lands: null };
+      name(globe, g.name, g.about);
       if ((globe as THREE.Mesh).isMesh) this.paint(globe as THREE.Mesh);
     }
-    // The cabin's own lights and their switch: a control like the others to the pointer, but what it does is the cabin's.
-    // (a model with no switch built for them yet has its lights thrown from the page alone: `Cabin.light`)
-    const lighting = this.def.lighting;
-    const lever = lighting?.control ? find(lighting.control) : null;
-    if (lighting && lever) {
-      const throws = Array.isArray(lever.userData.throw) ? (lever.userData.throw as number[]) : [0];
-      this.lever = { node: lever, home: lever.quaternion.clone(), throws, at: 0, now: 0 };
-      name(lever, lighting.name, lighting.about, { lights: true });
-    }
-    if (lighting && (lever || !lighting.control)) {
-      (lighting.fittings ?? []).forEach((fitting, of) => {
+    if (this.lightsSwitch) {
+      (lighting?.fittings ?? []).forEach((fitting, of) => {
         find(fitting)?.traverse((o) => {
           const mesh = o as THREE.Mesh;
           if (!mesh.isMesh) return;
           for (const material of new Set([mesh.userData.real, mesh.material] as (THREE.MeshStandardMaterial | undefined)[]))
-            if (material?.emissive) this.fittings.push({ of, material, glow: material.emissiveIntensity });
+            if (material?.emissive)
+              this.fittings.push({ of, material, glow: material.emissiveIntensity, colour: material.emissive.clone() });
         });
       });
     }
@@ -572,14 +706,23 @@ export class Cabin {
     material.onBeforeCompile = (shader, renderer) => {
       prior.call(material, shader, renderer);
       shader.uniforms.uCabinLit = this.lit;
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uCabinLit;').replace(
-        '#include <color_fragment>',
-        /* glsl */ `#if defined( USE_COLOR_ALPHA )
+      shader.uniforms.uCabinTint = this.tint;
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uCabinLit;\nuniform vec3 uCabinTint;')
+        .replace(
+          '#include <color_fragment>',
+          /* glsl */ `#if defined( USE_COLOR_ALPHA )
           diffuseColor.rgb *= mix( vColor.a, vColor.r, uCabinLit );
         #elif defined( USE_COLOR )
           diffuseColor.rgb *= vColor;
         #endif`,
-      );
+        )
+        // (the fill: the little of the sky's light left indoors, and what metal mirrors in place of a cabin it cannot see,
+        // takes the colour of the cabin's own lamps as far as they are lit: `tint`)
+        .replace(
+          '#include <aomap_fragment>',
+          '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= uCabinTint;\nreflectedLight.indirectSpecular *= uCabinTint;',
+        );
     };
     material.customProgramCacheKey = () => `${key}|cabin-shade`;
     material.needsUpdate = true;
@@ -590,24 +733,70 @@ export class Cabin {
    * the rest put out. Says what the switch now reads, or null if the cabin has no such switch.
    */
   light(to?: number): string | null {
-    const lighting = this.def.lighting;
-    if (!lighting?.ways.length) return null;
-    this.way = (to ?? this.way + 1) % lighting.ways.length;
-    const way = lighting.ways[this.way]!;
-    this.lights.forEach((l, i) => {
-      l.goal = way.lit.includes(i) ? 1 : 0;
-    });
-    if (this.lever) this.lever.at = this.lever.throws[this.way] ?? 0;
-    this.host.redraw();
-    return way.says;
+    const s = this.lightsSwitch;
+    return s ? (this.throwSwitch(this.switches.indexOf(s), to)?.says ?? null) : null;
   }
-  /** Which of its positions the lights' switch is in (CabinDef.lighting.ways): the first is as the model was built. */
-  private way = 0;
   /** The lights' switch as it stands: which position, and what that position is called. Null: the cabin has none. */
   get lighting(): { way: number; says: string; name: string; built: boolean } | null {
-    const lighting = this.def.lighting;
-    const way = lighting?.ways[this.way];
-    return lighting && way ? { way: this.way, says: way.says, name: lighting.name, built: this.lever !== null } : null;
+    const s = this.lightsSwitch;
+    return s ? { way: s.at, says: s.says[s.at] ?? '', name: s.name, built: s.node !== null } : null;
+  }
+
+  /**
+   * A switch is thrown (`CabinThing.thrown`): to its next position, round to the first after the last, or to `to`; and
+   * what it switches is told. One that stands as the flight deck's state has it, while the flight is flown by hand, is
+   * left to the deck, which its command (`does`) asks. Says what it now reads.
+   */
+  throwSwitch(i: number, to?: number): Thrown | null {
+    const s = this.switches[i];
+    if (!s) return null;
+    const n = Math.max(1, s.says.length);
+    if (!(s.holds && this.live)) s.at = (((to ?? s.at + 1) % n) + n) % n;
+    if (s.sets === 'lighting') this.lightWay(s.at);
+    if (s.sets === 'globe' && this.globe) this.globe.lands = null;
+    this.host.redraw();
+    const at = this.standing(s);
+    // (one the deck holds goes over when the deck says so: what it is for is said meanwhile)
+    const says = s.holds && this.live ? s.about : (s.says[at] ?? '');
+    return { name: s.name, at, says, ...(s.does ? { does: s.does } : {}) };
+  }
+
+  /** Every switch that switches something of the cabin's, as the seat's bar shows it: its index (`throwSwitch`), name, position and what it reads, and whether it is in the model to be clicked. */
+  get switched(): { index: number; name: string; at: number; says: string; built: boolean }[] {
+    return this.switches.flatMap((s, index) =>
+      s.sets ? [{ index, name: s.name, at: this.standing(s), says: s.says[this.standing(s)] ?? '', built: s.node !== null }] : [],
+    );
+  }
+
+  /** The globe's mode as it stands (CabinDef.globe.modes): which, what it reads, and what it shows. Null: no globe of modes. */
+  get globeMode(): { mode: number; says: string; shows: 'place' | 'landing' } | null {
+    const gl = this.globe;
+    const mode = this.globeSwitch?.at ?? 0;
+    const m = gl?.modes[mode];
+    return m ? { mode, says: m.says, shows: m.shows } : null;
+  }
+
+  /** Where a switch's lever stands: the deck's state, for one that holds it while the flight is flown; where the hand put it, otherwise. */
+  private standing(s: Switch): number {
+    return s.holds && this.live ? (this.holding.has(s.holds) ? 1 : 0) : s.at;
+  }
+
+  /** The lamps a position of the lights' switch names (CabinDef.lighting.ways) are lit, in their colours and as brightly; the rest put out. */
+  private lightWay(way: number): void {
+    const lit = this.def.lighting?.ways[way]?.lit ?? [];
+    const of = (l: CabinLamp) => (typeof l === 'number' ? { light: l } : l);
+    this.lights.forEach((l, i) => {
+      const lamp = lit.map(of).find((x) => x.light === i);
+      l.goal = lamp ? (lamp.level ?? 1) : 0;
+      if (lamp?.colour !== undefined) l.tint.setHex(lamp.colour);
+      else l.tint.copy(l.colour);
+      l.light.color.copy(l.tint);
+    });
+    // (the tubes glow in their lamp's colour: their own as built, or the colour asked for)
+    for (const f of this.fittings) {
+      const lamp = lit.map(of).find((x) => x.light === f.of);
+      f.material.emissive.copy(lamp?.colour !== undefined ? new THREE.Color(lamp.colour) : f.colour);
+    }
   }
 
   /** The periscope's screen, for whoever wants to look into it: its middle and the way it faces, in the scene. */
@@ -888,17 +1077,22 @@ export class Cabin {
       else if (n.slide) n.node.position.copy(n.at).add(v.set(n.now - scaleAt(n.slide, n.rest), 0, 0).applyQuaternion(n.home));
     }
     const happened = (id: string | undefined): boolean => id !== undefined && at >= (events[id] ?? Infinity);
+    // (a lamp of the globe's mode is lit while its mode is on, if the instrument is powered: an exhibit's is not)
+    const mode = this.globeSwitch?.at ?? 0;
     for (const lamp of this.lamps) {
       // (a lamp that shows nothing simulated stays dark)
-      const lit = !lamp.shows
-        ? 0
-        : lamp.shows.startsWith('event:')
-          ? happened(lamp.shows.slice(6)) && !happened(lamp.until)
-            ? 1
-            : 0
-          : this.signals[lamp.shows as Signal]
-            ? 1
-            : 0;
+      const lit =
+        lamp.mode !== undefined && site && lamp.mode === mode
+          ? 1
+          : !lamp.shows
+            ? 0
+            : lamp.shows.startsWith('event:')
+              ? happened(lamp.shows.slice(6)) && !happened(lamp.until)
+                ? 1
+                : 0
+              : this.signals[lamp.shows as Signal]
+                ? 1
+                : 0;
       if (lit === lamp.lit) continue;
       lamp.lit = lit;
       moved = true;
@@ -927,19 +1121,24 @@ export class Cabin {
         moved = true;
       }
     }
-    // the controls that stand as the flight deck's state has them (the manual orientation's switch thrown once the hands are free)
-    for (const h of this.holders) {
-      const goal = h.throws[this.live && this.holding.has(h.holds) ? 1 : 0] ?? 0;
-      if (Math.abs(goal - h.now) < 1e-4) continue;
-      h.now += (goal - h.now) * (dt > 0 ? 1 - Math.exp(-dt / SWITCH_TAU) : 1);
-      if (Math.abs(goal - h.now) < 1e-3) h.now = goal;
-      h.node.quaternion.copy(h.home).multiply(q.setFromAxisAngle(AXIS_X, h.now));
+    // the switches' levers go over to where each stands: where a hand threw it, or as the flight deck's state has it (the
+    // manual orientation's switch thrown once the hands are free)
+    for (const s of this.switches) {
+      if (!s.node) continue;
+      const goal = s.throws[this.standing(s)] ?? 0;
+      if (Math.abs(goal - s.now) < 1e-4) continue;
+      s.now += (goal - s.now) * (dt > 0 ? 1 - Math.exp(-dt / SWITCH_TAU) : 1);
+      if (Math.abs(goal - s.now) < 1e-3) s.now = goal;
+      s.node.quaternion.copy(s.home).multiply(q.setFromAxisAngle(AXIS_X, s.now));
       moved = true;
     }
-    // the globe: the point under the spacecraft under its cross, the way it is going up the board (gauges.ts globeTurn)
+    // the globe: the point its mode shows under its cross, the way the spacecraft goes over it up the board (gauges.ts
+    // globeTurn): the point under it now, or where a descent begun now would bring it down (`landed`)
+    this.wall += dt;
     const gl = this.globe;
     if (gl && sample) {
-      const turn = globeTurn(sample.r, sample.v, sample.t);
+      const shown = gl.modes[mode]?.shows === 'landing' ? (this.landed(sample) ?? sample) : sample;
+      const turn = globeTurn(shown.r, shown.v, shown.t);
       if (turn) {
         q.set(...turn);
         if (1 - Math.abs(q.dot(gl.turn)) > 1e-12) {
@@ -967,7 +1166,10 @@ export class Cabin {
     const held = THREE.MathUtils.clamp(DAY_EXPOSURE / Math.max(exposure, 1e-3), 0.15, 8);
     // (a tube strikes and dies in a few hundredths of a second: quick, and still no step)
     const strike = dt > 0 ? 1 - Math.exp(-dt / LAMP_TAU) : 1;
+    // (how much of the lamps' strength is lit, and in what colour, as the shaded surfaces read it: `shadeBy`)
     let all = 0;
+    let power = 0;
+    v.set(0, 0, 0);
     for (const l of this.lights) {
       if (l.lit !== l.goal) {
         l.lit += (l.goal - l.lit) * strike;
@@ -975,20 +1177,23 @@ export class Cabin {
         moved = true;
       }
       l.light.intensity = l.base * held * l.lit;
-      all += l.lit;
+      all += l.base * l.lit;
+      power += l.base;
+      // (as a change from the lamp's own colour: lamps lit as built tint nothing)
+      v.x += (l.base * l.lit * l.tint.r) / Math.max(l.colour.r, 1e-3);
+      v.y += (l.base * l.lit * l.tint.g) / Math.max(l.colour.g, 1e-3);
+      v.z += (l.base * l.lit * l.tint.b) / Math.max(l.colour.b, 1e-3);
     }
-    const lit = this.lights.length ? all / this.lights.length : 1;
-    if (lit !== this.lit.value) {
+    const lit = power > 0 ? all / power : 1;
+    // the lit lamps' colour, brightest channel at one, taken as far toward it as they are lit; white with none lit
+    const brightest = Math.max(v.x, v.y, v.z, 1e-9);
+    const tint = TINT.setRGB(1, 1, 1);
+    if (all > 0) tint.lerp(TINT_TO.setRGB(v.x / brightest, v.y / brightest, v.z / brightest), lit);
+    if (lit !== this.lit.value || !tint.equals(this.tint.value)) {
       this.lit.value = lit;
+      this.tint.value.copy(tint);
       for (const m of this.inside) m.aoMapIntensity = shaded(m, this.open, lit);
       for (const f of this.fittings) f.material.emissiveIntensity = f.glow * (this.lights[f.of]?.lit ?? lit);
-    }
-    const lever = this.lever;
-    if (lever && lever.now !== lever.at) {
-      lever.now += (lever.at - lever.now) * (dt > 0 ? 1 - Math.exp(-dt / SWITCH_TAU) : 1);
-      if (Math.abs(lever.at - lever.now) < 1e-3) lever.now = lever.at;
-      lever.node.quaternion.copy(lever.home).multiply(q.setFromAxisAngle(AXIS_X, lever.now));
-      moved = true;
     }
     // The periscope shows the outside as far as its objective is out: nothing until the lens is clear of its door,
     // all of it from a little before it stands out. Drawn in, the objective looks at the dark behind its door.
@@ -1024,6 +1229,36 @@ export class Cabin {
       }
     }
     if (moved) this.host.redraw();
+  }
+
+  /**
+   * Where a descent begun at the sample's instant would come down (`LandingFinder`), for the globe's landing-place mode.
+   * Working it out is a flight flown down (some 20 ms), so it is done again only every `LAND_EVERY` seconds of the flight
+   * and at most every `LAND_WAIT` of the page's (at once when the clock jumps); between, the last answer is carried round
+   * by the arc the spacecraft has flown since it was asked for, and later by as long: what the instrument itself did, by a
+   * fixed arc, all the time. Null: nothing to show (no finder, or it would not come down).
+   */
+  private landed(s: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } | null {
+    const gl = this.globe!;
+    if (this.landing === undefined) this.landing = this.host.landing !== undefined ? this.host.landing : burnNow(this.flight);
+    if (!this.landing) return null;
+    let c = gl.lands;
+    const since = c ? s.t - c.from.t : Infinity;
+    const due = !c || since < 0 || since > LAND_EVERY;
+    if (due && (!c || Math.abs(since) > LAND_JUMP || this.wall - c.wall > LAND_WAIT)) {
+      const from = { t: s.t, r: [...s.r] as Vec3, v: [...s.v] as Vec3 };
+      c = gl.lands = { from, to: this.landing(from), wall: this.wall };
+    }
+    const to = c?.to;
+    if (!c || !to) return null;
+    if (to.begun) return to;
+    // the arc flown since: about the orbit's pole, from where it was asked for to where it is
+    const r0 = v.set(...c.from.r);
+    const pole = new THREE.Vector3(...c.from.v).cross(r0).negate().normalize();
+    const r1 = new THREE.Vector3(...s.r);
+    const arc = Math.atan2(r0.clone().cross(r1).dot(pole), r0.dot(r1));
+    const turned = (p: Vec3): Vec3 => new THREE.Vector3(...p).applyAxisAngle(pole, arc).toArray() as Vec3;
+    return { t: to.t + (s.t - c.from.t), r: turned(to.r), v: turned(to.v) };
   }
 
   /** The three angles and their rates, read off the model as the scene has it. */
@@ -1275,6 +1510,13 @@ const LAMP_TAU = 0.035;
 const SWITCH_TAU = 0.03;
 /** How long a worked control takes to go out and come back, seconds. */
 const WORK_SECONDS = 0.45;
+/**
+ * The globe's landing place (`Cabin.landed`) is worked out again after this many seconds of the flight, waiting at least
+ * this many of the page's between one and the next, unless the clock has jumped by more than the last, seconds.
+ */
+const LAND_EVERY = 30;
+const LAND_WAIT = 0.5;
+const LAND_JUMP = 600;
 
 /** Whether `o` is still under `root`. */
 function within(o: THREE.Object3D, root: THREE.Object3D): boolean {

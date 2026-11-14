@@ -147,9 +147,10 @@ A vehicle whose data gives it `seats` can be sat in where it stands (the gallery
   head) is not drawn, and the man beside him is.
 - **From the seat**, as on board at a site: drag and the arrows turn the head within `CabinDef.head`, the wheel and R F
   change the lens, the digits (and the bar on the right) lean to each window and the periscope, 0 looks ahead, a click
-  works what is clicked (a control says what it is for: nothing is flown here), and the cabin's lights' switch is on its
-  console and in the bar. A cabin with no switch built for them says so (`lighting.control` left out) and they are thrown
-  from the bar alone. The cabin stands as built (`Cabin` with no site: needles at rest, telelights dark: an exhibit is not
+  works what is clicked (a control says what it is for: nothing is flown here; a switch is thrown and stays thrown),
+  and each of the cabin's switches that switches something (its lights, the Globus's mode) is on its console and in the
+  bar. A cabin with no switch built for its lights says so (`lighting.control` left out) and they are thrown from the bar
+  alone. The cabin stands as built (`Cabin` with no site: needles at rest, telelights dark: an exhibit is not
   powered). What is seen through the windows and the periscope is the studio, as it is: there is no sky to invent.
 - **Several seats**: C goes into the first, then each of the others (the eye carried across: `Cameras.reseat`), then
   out; the bar has a switch for each.
