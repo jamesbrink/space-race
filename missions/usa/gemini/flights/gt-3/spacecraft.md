@@ -66,8 +66,13 @@ Shoulders of Titans*, pp. 235 and 236).
 | At launch | 7,111 lb | documented (*Chronology*, Appendix 1, Table A). The press kit: "approximately 7,000 pounds" |
 | Re-entry module at landing | "about 4,700 pounds" | documented as the plan (press kit, p. 39) |
 | OAMS propellant | "approximately 300 pounds" | documented as the plan (press kit, p. 8) |
-| Oxygen | primary 15.3 lb, secondary 13 lb | documented as the plan (the same page) |
+| OAMS propellant as flown, by the cabin's gauge | 84 per cent before the first burn and 65 after it; 66 and 61 round the second ("I'm not real sure of that before"); 50 before the third and 22 after it | documented, as called (the voice transcript, at 1:27:55, 1:35:05, 2:21:09, 4:21:17 and 4:24:18). A gauge's reading, not a weight |
+| Oxygen | primary 15.3 lb, secondary 13 lb | documented as the plan (press kit, p. 8) |
 | Centre of gravity offset in the entry | 1.43 in | documented (GIV, p. 5-4) |
+
+The weights as flown (at liftoff by item, at retrofire, at landing) are in the mission report,
+which has not been found. No other source read gives one: the 7,111 lb is the programme's table,
+and the rest are the press kit's round figures from a week before.
 
 ## What is assumed, and what is not known
 
