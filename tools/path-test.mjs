@@ -511,28 +511,37 @@ const jumps = () =>
     sr.clock.setRate(1);
     sr.clock.play(true);
     let last = null;
+    let then = 0;
     const moves = [];
+    const rates = [];
     for (let i = 0; i < 40; i++) {
-      await new Promise((r) => requestAnimationFrame(r));
+      const now = await new Promise((r) => requestAnimationFrame(r));
       const end = p.line().t.at(-1);
       if (!(end > T)) continue;
       const w = p.where(T);
       const d = Math.hypot(w[0] - cam.position.x, w[1] - cam.position.y, w[2] - cam.position.z);
       const pxPerRad = innerHeight / 2 / (Math.tan((cam.fov * Math.PI) / 360) / cam.zoom);
-      if (last) moves.push((Math.hypot(w[0] - last[0], w[1] - last[1], w[2] - last[2]) / d) * pxPerRad);
+      if (last) {
+        const move = (Math.hypot(w[0] - last[0], w[1] - last[1], w[2] - last[2]) / d) * pxPerRad;
+        moves.push(move);
+        rates.push(move / Math.max(now - then, 1));
+      }
       last = w;
+      then = now;
     }
     sr.clock.pause();
-    // a leap: a frame that moves it more than JUMP_PX and three times as far as the frames round it do (under power the
-    // future itself moves, eased, frame by frame: that is motion, not a jump)
+    // a leap: a frame that moves it more than JUMP_PX and three times as fast as the frames round it do. As fast, not as
+    // far: the clock and the line's ease both go by the wall's time, so a frame that takes three times as long moves it
+    // three times as far, and on a loaded machine a long frame is not a leap of the line's (under power the future itself
+    // moves, eased, frame by frame: that is motion, not a jump)
     let worst = 0;
-    for (let i = 0; i < moves.length; i++) {
-      const round = moves
+    for (let i = 0; i < rates.length; i++) {
+      const round = rates
         .slice(Math.max(0, i - 4), i + 5)
         .filter((_, k) => k !== Math.min(i, 4))
         .sort((a, b) => a - b);
       const usual = round.length ? round[Math.floor(round.length / 2)] : 0;
-      if (moves[i] > 3 * usual) worst = Math.max(worst, moves[i]);
+      if (rates[i] > 3 * usual) worst = Math.max(worst, moves[i]);
     }
     return { worst, usual: moves.length ? [...moves].sort((a, b) => a - b)[Math.floor(moves.length / 2)] : 0 };
   });
