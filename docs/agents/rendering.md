@@ -778,4 +778,7 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   one array texture, each in its layer's corner (`packLayer`: the region's near, wide and relief maps are layers 0 to
   2 of `uGlobeFlat`). They are copied in on the GPU texel for texel as they arrive, so what is read is the file's own
   bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
+- A site whose ground reads a table of its own bakes the land's cover maps in pairs (`LandSpec.paired`: A and B side
+  by side in one texture, each read half a texel inside its own half), so the land reads two maps where it would read
+  four. Tyuratam does, for its one table of heights and ways (`uWorks`, tyuratamworks.ts): 12 units. The Cape reads 13.
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.
