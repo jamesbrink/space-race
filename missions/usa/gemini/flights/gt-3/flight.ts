@@ -76,19 +76,23 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Re-entry control system section',
-    summary: 'Sixteen small thrusters in two rings: what steers the ship once the adapter has gone.',
+    summary: 'Sixteen small thrusters in four clusters, none of them pointing straight out.',
     detail:
       'Eighteen inches of cylinder between the cabin and the forward section. Everything that steers the ship in ' +
       'orbit is in the adapter, and the adapter is thrown away before the ship comes home; from then to the ' +
-      'parachute it is steered by this. There are two rings of eight thrust chambers, each ring with its own fuel, ' +
-      'oxidiser and pressurant, so that either alone is enough. Gemini’s heat shield is set off-centre on purpose: ' +
-      'the ship flies a little nose-up and makes lift, and by rolling with these thrusters the crew can point that ' +
-      'lift and steer toward the ship that is waiting. On this flight the lift turned out much smaller than the ' +
-      'wind tunnels had said.',
+      'parachute it is steered by this. There are two rings of eight thrust chambers of 25 lbf, each ring with its ' +
+      'own fuel, oxidiser and nitrogen, so that either alone is enough. They stand in four clusters on the ' +
+      'diagonals, and each fires along one of the ship’s own axes, up, down, left or right, rather than out ' +
+      'along a radius: so the ports are ovals, and the bells are cut off flush with the skin. Gemini’s heat ' +
+      'shield is set off-centre on purpose: the ship flies a little nose-up and makes lift, and by rolling with ' +
+      'these thrusters the crew can point that lift and steer toward the ship that is waiting. On this flight the ' +
+      'lift turned out much smaller than the wind tunnels had said. Which chamber fires which way is McDonnell’s ' +
+      'drawing; where the clusters stand is read off a photograph of this ship on the morning it flew.',
     facts: [
       ['Length', '18.00 in (0.46 m)'],
       ['Diameter', '38.66 in (0.98 m)'],
-      ['Thrust chambers', '16, in two rings of 8'],
+      ['Thrust chambers', '16 × 25 lbf, in two rings of 8'],
+      ['Clusters', '4, at 34° and 55° from the top and the bottom'],
       ['Skin', '8 beryllium shingles'],
     ],
     explode: [0, 7.2, 0],
@@ -98,19 +102,26 @@ const parts: Part[] = [
     node: 'Hatches',
     group: 'Spacecraft',
     name: 'Hatches',
-    summary: 'Two doors, one over each man, hinged outboard. No hand-holds outside: nobody was going out.',
+    summary: 'Two doors, one over each man, each with a window set like a windscreen at its forward end.',
     detail:
-      'Each man has a hatch over him, hinged along its outboard edge and latched by hand, with a window in it: an ' +
-      'outer pane and two inner ones, all of 96 per cent silica glass, the right-hand window’s optically ' +
-      'ground. In an emergency on the pad or low in the air the hatches are blown open and the seats fired ' +
-      'out through them. On this flight they carried the experiments: a canister of sea urchin eggs on the inside ' +
-      'of the left one, a box of human blood and a radioactive source on the right. They stayed shut in orbit; the ' +
-      'first man out of one was Edward White, ten weeks later. After the landing Grissom, who had lost a ship to a ' +
-      'blown hatch four years before, would not open his until swimmers had a collar round the spacecraft. Where ' +
-      'the hatches lie on the cone and the size of the windows are read off photographs of this ship.',
+      'Each man has a hatch over him, hinged along its outboard edge and held down by twelve latches, skinned in the ' +
+      'same beaded shingles as the cabin. The window is at its forward end and is not in the skin: the outer pane ' +
+      'stands at about 35° to the hatch, its aft edge at the surface and its forward edge sunk five inches, so that ' +
+      'it faces forward; and ahead of it a trough is cut into the cone, running out toward the neck, for the pilot to ' +
+      'look along. There are three panes of 96 per cent silica glass, one in a gold-coloured outer frame and two in ' +
+      'a frame bolted on inside; the right-hand window’s are optically ground. In an emergency on the pad or ' +
+      'low in the air the hatches are blown open and the seats fired out through them. On this flight they ' +
+      'carried the experiments: a canister of sea urchin eggs on the inside of the left one, a box of human blood ' +
+      'and a radioactive source on the right. They stayed shut in orbit; the first man out of one was Edward ' +
+      'White, ten weeks later. After the landing Grissom, who had lost a ship to a blown hatch four years before, ' +
+      'would not open his until swimmers had a collar round the spacecraft. The pane’s angle is McDonnell’s ' +
+      'drawing; where the windows and the hatches’ edges lie is read off photographs of this ship, to about ' +
+      'two inches.',
     facts: [
       ['Number', '2, hinged on the outboard side'],
-      ['Windows', 'an outer pane and two inner, Vycor'],
+      ['Latches', '12 to a hatch'],
+      ['Windows', 'an outer pane and two inner, Vycor, at 35° to the hatch'],
+      ['Window opening', 'about 14.8 in across and 8.5 in fore and aft'],
       ['On the left hatch', 'the sea urchin egg experiment'],
       ['On the right hatch', 'the blood irradiation experiment'],
       ['Opened in flight', 'no'],
@@ -122,16 +133,19 @@ const parts: Part[] = [
     node: 'ScannerFairing',
     group: 'Spacecraft',
     name: 'Horizon scanner fairing',
-    summary: 'A cover over the infrared eyes that find the horizon. It goes with the nose fairing.',
+    summary: 'A bronze-coloured cover over the infrared eyes that find the horizon. It goes once the ship is in orbit.',
     detail:
-      'On the cabin’s left side, just behind the neck, two infrared scanners look out for the edge of the Earth and ' +
-      'tell the ship which way is down. They would not survive the climb through the air uncovered, so a fairing ' +
-      'sits over them and is thrown off with the nose fairing. The scanners themselves are thrown off too, much ' +
-      'later, when the adapter goes: both this crew and the next saw something drift past the window just after ' +
-      'retrofire, and it was decided that it had been the scanner head. That there is a fairing here is SEDR 300’s; ' +
-      'its shape and exact place are estimated.',
+      'On the ship’s left side at the neck, two infrared scanners look out for the edge of the Earth and tell the ' +
+      'ship which way is down. They would not survive the climb through the air uncovered, so a fairing sits over ' +
+      'them and is thrown off with the nose fairing. The scanners themselves are thrown off too, much later, when ' +
+      'the adapter goes: both this crew and the next saw something drift past the window just after retrofire, ' +
+      'and it was decided that it had been the scanner head. In the colour photograph taken on the morning of the ' +
+      'launch a long flat-faced box the colour of bronze, riveted along its edges, lies here from the cabin’s ' +
+      'forward end up over the re-entry control section; that is taken to be this fairing, and its size and place ' +
+      'are read off that photograph.',
     facts: [
       ['Covers', 'the horizon scanners, on the left side'],
+      ['Lies', 'from Z166.5 to Z190.5, about two feet'],
       ['Thrown off', 'with the nose fairing'],
     ],
     explode: along(LEFT_AZ, 4.2, 1.5),
@@ -144,19 +158,23 @@ const parts: Part[] = [
     summary: 'Beaded shingles of René 41 over a titanium frame; UNITED STATES and the flag on each side.',
     detail:
       'A cone 70.53 in long at 20° to its axis, 90 in across the heat shield and 38.66 in across the neck. The skin ' +
-      'is shingles of René 41, a nickel alloy, pressed into rows of short beads that stiffen them and let them ' +
-      'grow when hot, and black outside so that they radiate. They are not the pressure vessel: that is a welded ' +
-      'titanium box inside, and the room between its flat sides and the cone is equipment bays, reached through ' +
-      'doors under the shingles. Behind the right-hand landing gear door (there is no landing gear: the door is ' +
-      'left from the plan to land Gemini on skids under a paraglider) was this flight’s third experiment, 85 lb of ' +
-      'water and plumbing that sprayed into the glowing air round the ship on the way down, to see whether radio ' +
-      'could be got through it. It could. There is no name on the ship. Grissom called it Molly Brown, after the ' +
-      'musical about a woman who would not sink, his last spacecraft having sunk; NASA did not care for it, ' +
-      'accepted it when told the alternative was Titanic, and gave no later Gemini a name.',
+      'is shingles of René 41, a nickel alloy, pressed into short beads that lie round the cone one after another, ' +
+      'in cells between rows of fasteners: they stiffen the sheet and let it grow when hot, and it is black outside ' +
+      'so that it radiates. The shingles are not the pressure vessel: that is a welded titanium box inside, and the ' +
+      'room between its flat sides and the cone is equipment bays, reached through doors that are themselves ' +
+      'shingles. Along the top, between the hatches, runs a white cover over the parachute’s cables, and ahead of ' +
+      'each window a trough is cut into the cone. On the right-hand landing gear door (there is no landing gear: ' +
+      'the door is left from the plan to land Gemini on skids under a paraglider) is a plate with three nozzles: ' +
+      'this flight’s third experiment, 85 lb of water and plumbing that sprayed into the glowing air round the ' +
+      'ship on the way down, to see whether radio could be got through it. It could. There is no name on the ' +
+      'ship. Grissom called it Molly Brown, after the musical about a woman who would not sink, his last ' +
+      'spacecraft having sunk; NASA did not care for it, accepted it when told the alternative was Titanic, and ' +
+      'gave no later Gemini a name.',
     facts: [
       ['Length', '70.53 in (1.79 m)'],
       ['Half-angle', '20°'],
       ['Skin', 'beaded René 41 shingles, black'],
+      ['Beads', 'round the cone, about 1.15 in apart'],
       ['Paint', 'UNITED STATES and the flag, each side'],
       ['Name', 'none painted: "Molly Brown" by radio only'],
     ],
@@ -544,11 +562,27 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
-      label: 'Window, middle above the heat shield’s rim',
-      value: (149.15 - 103.44) * IN,
+      label: 'Window, aft edge above the heat shield’s rim',
+      value: (141.3 - 103.44) * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: 'Z149.15 is a station of Figure 2-4 that the figure does not name; it is taken as the windows’ because it falls on them in the photograph of this ship (NASA S65-13395). The opening’s size, 13 in by 10 in narrowing to 6.5 in, is read off the same photograph',
+      note: 'Z141.3, where the outer pane meets the skin, 41° round from the top; the opening about 14.8 in across and 8.5 in fore and aft. Read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a camera fitted to the photograph: good to about two inches. SEDR 300’s Figure 2-10 marks Z136.50 at the pane’s sunk end, which the photographs do not bear out',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Window pane to the hatch’s skin',
+      value: 35,
+      unit: 'deg',
+      confidence: 'estimated',
+      note: 'the outer pane stands at about 35° to the hatch, its forward edge sunk: SEDR 300, Figure 2-10, as drawn (38° measured on the page); the figure gives no angle',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Hatch, forward edge above the heat shield’s rim',
+      value: (151.62 - 103.44) * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Z151.62 is a station of Project Gemini: A Technical Summary (NASA CR-1106), Figure 1, drawn at the hatch’s forward edge; that it is that edge is read off the drawing',
     },
     {
       group: 'Spacecraft',
@@ -718,8 +752,8 @@ export const flight: Flight = {
       count: 16,
       thrustN: 25 * LBF,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
-      confidence: 'estimated',
-      note: `sixteen thrust chamber assemblies in two rings (${GIV}, Figure 3-12): documented. Their 25 lb is general knowledge of the type: the part of SEDR 300 that describes them is a separate supplement, not read`,
+      confidence: 'documented',
+      note: `sixteen thrust chamber assemblies of 25 lb in two rings, burning monomethylhydrazine and nitrogen tetroxide (SEDR 300, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12)`,
     },
   ],
   models: [vehicle],

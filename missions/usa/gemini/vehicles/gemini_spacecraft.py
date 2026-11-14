@@ -26,43 +26,80 @@ import bpy
 from mathutils import Matrix, Vector
 
 import srlib
+from gemini_shell import (
+    ADAPTER,
+    BASE_R,
+    CABIN,
+    CABIN_A,
+    CELL,
+    HATCH_OUT,
+    LENGTH,
+    NECK,
+    NECK_R,
+    NOSE,
+    RCS_AT,
+    RCS_ROWS,
+    RCS_SPLAY,
+    RINGS,
+    SHIELD_R,
+    SHIELD_SPHERE,
+    WALL,
+    WINDOW_AFT,
+    WINDOW_L,
+    WINDOWS,
+    Z0,
+    Z_BASE,
+    Z_HATCH_AFT,
+    Z_HATCH_FWD,
+    Z_NOSE,
+    Z_RCS,
+    Z_RR,
+    Z_RR_TAPER,
+    Z_RR_TOP,
+    Z_SHIELD_APEX,
+    Z_SILL,
+    band,
+    chamber,
+    depth,
+    hatch_in,
+    hatch_margin,
+    holes,
+    radial,
+    sheet,
+    shingle,
+    skin,
+    tidy,
+    zz,
+)
+from mercury_capsule import chamfered
 from srlib import IN, TAU, MeshBuilder, Surf, bore, deg, frame, group, interior, lettering, material, prof
 
-# ------------------------------------------------------------------ stations and sizes (in)
+# What the ship's stations and surfaces are, and what its skins are made of, is in gemini_shell.py.
 
-Z0 = 103.44  # the re-entry module / adapter mating line: the model's origin
-Z_BASE = 13.44  # the spacecraft / launch vehicle mating line
 Z_EQUIP_TOP = 66.74  # the head of the equipment section's skin
 Z_RETRO_FOOT = 70.0  # the foot of the retrograde section's: the ring between the two is where the adapter is cut
-Z_SHIELD_APEX = 94.4  # the heat shield's crown, inside the retrograde section
-Z_SILL = 108.0  # the large pressure bulkhead, and the hatches' aft sills
-Z_DOORS = 132.5  # where the equipment bay doors divide
-Z_WINDOW = 149.15  # the middle of the windows
-Z_SMALL = 160.2  # the small pressure bulkhead, and the hatches' forward sills
-Z_RCS = 173.97  # cabin / re-entry control system section
-Z_RR = 191.97  # re-entry control system section / rendezvous and recovery section
-Z_RR_TAPER = 201.47  # where the rendezvous and recovery section begins to taper
-Z_RR_TOP = 233.97  # its forward face
-Z_NOSE = 239.28  # the tip of the nose fairing
-LENGTH = Z_NOSE - Z_BASE  # 225.84: the launch configuration
-
-BASE_R = 60.0  # 120.00 in across the adapter's base
-ADAPTER_TOP_R = 44.15  # 88.30 in across its head
-SHIELD_R = 45.0  # 90.00 in across the heat shield
-SHIELD_SPHERE = 144.0  # the heat shield's spherical radius
-NECK_R = 19.33  # 38.66 in across the re-entry control system section
-CABIN_A = deg(20)
-ADAPTER_A = math.atan((BASE_R - ADAPTER_TOP_R) / (Z0 - Z_BASE))  # 10 degrees
-RR_A = deg(7)
-
-HATCH = (deg(5), deg(62))  # a hatch round the cabin, from the beam between the two out to its hinge: read off photographs
-WINDOW_AT = deg(33)  # the middle of a window from the top
-WINDOW = (13.0, 10.0, 6.5)  # a window's opening: its length along the cone, its width aft and its width forward
-WALL = 2.4  # outer mould line to inner, through a hatch
-BEAD = (1.4, 0.18)  # the cabin's shingles: from one bead to the next round the cone, and how proud a bead stands
 RETRO = (6.5, 19.5, 84.0)  # a retrograde rocket: its case's radius, how far its axis is from the ship's, its middle's station
 SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward
-RCS_PLACES = tuple(deg(a) for a in (-12, 12, 65, 115, 168, 192, 245, 295))  # where the re-entry control chambers stand round the section
+
+# What is read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a fitted camera, but the lettering:
+# estimated.
+COVER = (2.0, 0.35)  # the white strip along the top: its width, and how proud it stands (the second a guess)
+COVER_FOOT = (3.4, 6.0, 116.0)  # its aft end: how wide it is there, over what length it widens, and its station
+COVER_TOP = 190.4  # the station of its forward end, on the re-entry control section
+WHITE_DISC = (deg(-17.5), 165.3, 3.6)  # a white disc forward of the left hatch: round from the top, its station, across
+SOCKET = 145.5  # the station of the socket for the outside handle, inboard of each window (and SEDR 300, Figure 2-8)
+LETTERS = (137.5, 131.5, 118.0)  # the stations of UNITED, of STATES, and of the flag under them: read off the colour photograph of the liftoff
+SCANNER_AT = deg(-84)  # the scanner fairing's middle, round from the top
+SCANNER_Z = (166.5, 190.5)  # its ends
+SCANNER_HALF = (4.3, 3.0)  # half the width of its face, aft and forward
+SCANNER_PROUD = 3.4  # its face from the re-entry control section's skin
+# The doors round the cabin below the hatches, by the angles of their edges from the top: the strip under a hatch's
+# hinge, the two equipment bay doors, the main landing gear door (SEDR 300, Figure 2-7; Technical Summary, Figure 1;
+# S64-04925 for the gear door's taper, which is a sector of about 31 degrees). All estimated.
+DOORS = (deg(66), deg(112), deg(143))
+# The three fairings over the retaining straps: one is beside a hatch's aft outboard corner in S65-13395; the rest follow
+STRAPS = (deg(180), deg(68), deg(-68))
+NOZZLE_PLATE = (157.0, 5.2, 7.6)  # the fluid injection nozzles' plate on the right gear door: its station, width, length
 
 
 @dataclass
@@ -77,16 +114,6 @@ class Fit:
     names: tuple[str, str] = ("", "")  # the command pilot and the pilot, for what their seats say
 
 
-def zz(station: float) -> float:
-    """A station as a height in the model."""
-    return station - Z0
-
-
-CABIN = Surf(SHIELD_R, 0.0, CABIN_A)
-ADAPTER = Surf(BASE_R, zz(Z_BASE), ADAPTER_A)
-NECK = Surf(NECK_R, zz(Z_RCS), 0.0)
-NOSE = Surf(NECK_R, zz(Z_RR_TAPER), RR_A)
-
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
     "NoseFairing_Shell",
@@ -95,17 +122,20 @@ SHELLS = (
     "RR_Structure",
     "RCS_Shingles",
     "RCS_Fasteners",
+    "RCS_CableCover",
     "RCS_Structure",
     "RCS_Liner",
     "Cabin_Shingles",
     "Cabin_Plain",
+    "Cabin_HingePlates",
+    "Cabin_CableCover",
+    "Cabin_WhiteDisc",
     "Cabin_Fasteners",
     "Cabin_Structure",
     "Cabin_Lettering",
     "Cabin_Flag",
     "Cabin_StrapFairings",
     "Hatches_Skin",
-    "Hatches_Sills",
     "Hatches_Fasteners",
     "Hatches_Structure",
     "CrewStation_PressureVessel",
@@ -155,6 +185,14 @@ def materials() -> dict:
         "battery": m("battery-case", (0.62, 0.60, 0.50), 0.2, 0.6),
         "case": m("titanium-motor-case", (0.42, 0.41, 0.40), 1.0, 0.45),
         "yellow": m("paint-handle-yellow", (0.75, 0.56, 0.05), 0.0, 0.5),
+        # the window's outer frame is gold-coloured in the colour photograph of the morning of the launch (S65-21090)
+        "frame": m("window-frame-gold", (0.58, 0.42, 0.17), 1.0, 0.38),
+        "well": m("window-well", (0.05, 0.05, 0.055), 0.2, 0.6),
+        # and the fairing over the horizon scanners is the colour of bronze
+        "bronze": m("fairing-bronze", (0.30, 0.15, 0.07), 0.85, 0.45),
+        # and so are the plain plates under each hatch's hinge
+        "plate": m("plate-bronze", (0.20, 0.10, 0.055), 0.8, 0.5),
+        "cover": m("paint-cover-white", (0.86, 0.86, 0.83), 0.0, 0.6),
     }
 
 
@@ -181,10 +219,6 @@ def P(right: float, top: float, station: float) -> Vector:
     return Vector((top, right, zz(station))) * IN
 
 
-def radial(a: float) -> Vector:
-    return Vector((math.cos(a), math.sin(a), 0.0))
-
-
 def hoop(r0: float, r1: float, z0: float, z1: float) -> list[tuple[float, float]]:
     """A ring of rectangular section as a closed profile, faces outward: radii r0 to r1, heights z0 to z1."""
     return prof([(r0, z0), (r1, z0), (r1, z1), (r0, z1), (r0, z0)])
@@ -200,51 +234,6 @@ def sphere(mb: MeshBuilder, centre: Vector, r: float, segs: int = 24) -> None:
 
 
 # ------------------------------------------------------------------ skins
-
-
-def beaded(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: float, t0: float, t1: float, count: int, ranks: int = 2) -> None:
-    """One ring of the cabin's shingles from angle t0 round to t1, `count` of them: each a flat fastened margin round
-    `ranks` ranks of short beads, pressed in to stiffen it, that run along the cone."""
-    arc = (t1 - t0) / count
-    gap = 0.05
-    rmid = surf.r((z0 + z1) / 2)
-    beads = max(3, round(arc * rmid / BEAD[0]) - 1) if srlib.DETAIL >= 0.5 else 0
-    per = 4 if srlib.DETAIL >= 1.0 else 2
-    margin = 0.9 / (arc * rmid)
-    if beads:
-        ss = [0.0, margin * 0.55] + [margin + (1 - 2 * margin) * i / (beads * per) for i in range(beads * per + 1)] + [1 - margin * 0.55, 1.0]
-    else:
-        ss = [i / 4 for i in range(5)]
-    span = (z1 - z0 - 2 * 1.3) / ranks
-    rows = [(z0 + gap, 0.0), (z0 + 0.9, 0.0)]
-    for k in range(ranks):
-        a = z0 + 1.3 + span * k
-        rows += [(a + 0.25, 0.0), (a + 0.8, 1.0), (a + span - 0.8, 1.0), (a + span - 0.25, 0.0)]
-    rows += [(z1 - 0.9, 0.0), (z1 - gap, 0.0)]
-
-    def height(s: float) -> float:
-        if not beads or s <= margin or s >= 1 - margin:
-            return 0.0
-        return BEAD[1] * math.sin(math.pi * (((s - margin) / (1 - 2 * margin) * beads) % 1.0)) ** 2
-
-    for k in range(count):
-        a0 = t0 + k * arc
-        theta = lambda s, z, a0=a0: a0 + gap / surf.r(z) + (arc - 2 * gap / surf.r(z)) * s  # noqa: E731
-        panels.grid(
-            lambda s, j, theta=theta: surf.p(theta(s, rows[j][0]), rows[j][0], height(s) * rows[j][1]),
-            ss,
-            range(len(rows)),
-            uv=lambda s, j, a0=a0: ((a0 + arc * s) * rmid * IN, rows[j][0] * IN),
-        )
-        n = max(2, int((z1 - z0) / 2.2))
-        for i in range(n):  # up the seam on this shingle's leading edge; its neighbour supplies the other
-            z = z0 + 0.9 + (z1 - z0 - 1.8) * i / (n - 1)
-            bolts.disc(surf.p(a0, z), surf.n(a0), 0.2 * IN, 0.07 * IN)
-        across = max(3, round(arc * rmid / 2.4))
-        for z in (z0 + 0.45, z1 - 0.45):
-            for i in range(1, across):
-                t = theta(i / across, z)
-                bolts.disc(surf.p(t, z), surf.n(t), 0.2 * IN, 0.07 * IN)
 
 
 def plates(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: float, t0: float, t1: float, count: int, lift: float = 0.0) -> None:
@@ -268,64 +257,6 @@ def plates(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, z1: f
             for i in range(1, across):
                 t = theta(i / across, z)
                 bolts.disc(surf.p(t, z, lift), surf.n(t), 0.2 * IN, 0.07 * IN)
-
-
-class Opening:
-    """A window's opening in a hatch: a rounded shape laid on the cone, wider aft than forward."""
-
-    def __init__(self, theta: float) -> None:
-        self.t, self.z = theta, zz(Z_WINDOW)
-
-    def width(self, x: float) -> float:
-        length, aft, fwd = WINDOW
-        return aft + (fwd - aft) * (x / length + 0.5)
-
-    def flat(self, theta: float, z: float) -> tuple[float, float]:
-        """A point of the cone as inches along it and across it from the opening's middle."""
-        return (z - self.z) / math.cos(CABIN_A), (theta - self.t) * CABIN.r(z)
-
-    def inside(self, theta: float, z: float, grow: float = 0.0) -> bool:
-        x, y = self.flat(theta, z)
-        half = WINDOW[0] / 2 + grow
-        if abs(x) >= half:
-            return False
-        return abs(x / half) ** 3.2 + abs(y / (self.width(x) / 2 + grow)) ** 3.2 < 1.0
-
-    def edge(self, n: int, grow: float = 0.0) -> list[tuple[float, float]]:
-        """The opening's edge, grown by `grow` inches, as (angle, height) points round it."""
-        out = []
-        half = WINDOW[0] / 2 + grow
-        for i in range(n):
-            a = TAU * i / n
-            c, s = math.cos(a), math.sin(a)
-            x = half * math.copysign(abs(c) ** (2 / 3.2), c)
-            y = (self.width(max(-WINDOW[0] / 2, min(WINDOW[0] / 2, x))) / 2 + grow) * math.copysign(abs(s) ** (2 / 3.2), s)
-            z = self.z + x * math.cos(CABIN_A)
-            out.append((self.t + y / CABIN.r(z), z))
-        return out
-
-
-def patch(mb: MeshBuilder, surf: Surf, t0: float, t1: float, z0: float, z1: float, off: float, cell: float, hole=None, flip: bool = False) -> None:
-    """A piece of a skin from angle t0 to t1 and height z0 to z1, `off` inches off the surface, cut into cells about
-    `cell` inches across; where `hole(theta, z)` is true there is none."""
-    nz = max(2, round((z1 - z0) / cell))
-    nt = max(2, round(abs(t1 - t0) * surf.r((z0 + z1) / 2) / cell))
-    ts = [t0 + (t1 - t0) * i / nt for i in range(nt + 1)]
-    zs = [z0 + (z1 - z0) * j / nz for j in range(nz + 1)]
-    verts = [tuple(surf.p(t, z, off)) for z in zs for t in ts]
-    faces = []
-    for j in range(nz):
-        for i in range(nt):
-            if hole and hole((ts[i] + ts[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2):
-                continue
-            a, b, c, d = j * (nt + 1) + i, j * (nt + 1) + i + 1, (j + 1) * (nt + 1) + i + 1, (j + 1) * (nt + 1) + i
-            faces.append((a, d, c, b) if flip else (a, b, c, d))
-    mb.add(verts, faces)
-
-
-def holes() -> bool:
-    """Whether ports are cut through the skins at this level of detail: below it a skin is too coarse to cut cleanly."""
-    return srlib.DETAIL >= 0.5
 
 
 def port(names, matrix: Matrix, radius: float, depth: float) -> None:
@@ -420,49 +351,90 @@ def build_rendezvous_recovery(M, fit: Fit) -> None:
     )
 
 
+def cable_cover(mb: MeshBuilder, surf: Surf, s0: float, s1: float, foot: bool = False) -> None:
+    """The cover over the parachute's control cables: a strip along the top of the ship, from station s0 to s1. With
+    `foot` it widens at its aft end, as the photograph has it."""
+    wide, proud = COVER
+    n = max(2, round((s1 - s0) / 3.0))
+    rows = []
+    for i in range(n + 1):
+        s = s0 + (s1 - s0) * i / n
+        hw = wide / 2
+        if foot and s - s0 < COVER_FOOT[1]:
+            hw += (COVER_FOOT[0] - wide) / 2 * 0.5 * (1.0 + math.cos(math.pi * (s - s0) / COVER_FOOT[1]))
+        r = surf.r(zz(s))
+        rows.append([surf.p(y / r, zz(s), o) for y, o in ((-hw, -0.15), (-hw, proud), (hw, proud), (hw, -0.15))])
+    mb.grid(lambda i, j: rows[j][i], range(4), range(n + 1))
+    mb.add([tuple(p) for p in rows[0]], [(3, 2, 1, 0)])
+    mb.add([tuple(p) for p in rows[-1]], [(0, 1, 2, 3)])
+
+
 def build_reentry_control(M) -> None:
     """The short cylinder between the cabin and the forward section: sixteen thrust chambers of 25 lbf in two rings of
     eight, and their tanks. It steers the ship from retrofire to the parachute."""
     g = group("ReentryControl")
-    shingles, bolts, inner, noz, cup = (MeshBuilder() for _ in range(5))
+    shingles, bolts, inner, noz, cup, cover = (MeshBuilder() for _ in range(6))
     z0, z1 = zz(Z_RCS), zz(Z_RR)
     plates(shingles, bolts, NECK, z0, z1, 0.0, TAU, 8)
     liner = MeshBuilder()  # its inner cylinder: seen from inside only, so the chambers' ports are not shut by it
     liner.lathe(prof([(NECK_R - 0.8, z0), (NECK_R - 0.8, z1)]), 64, flip=True)
     liner.build("RCS_Liner", M["liner"], g, sharp_angle=None)
     inner.lathe(prof([(NECK_R - 0.8, z1 - 0.05), (0.0, z1 - 0.05)]), 64)  # its forward face, the main parachute's adapter on it
-    skin = shingles.build("RCS_Shingles", M["beryllium"], g, sharp_angle=30)
+    skin_obj = shingles.build("RCS_Shingles", M["beryllium"], g, sharp_angle=30)
     bolts.build("RCS_Fasteners", M["bolt"], g)
     inner.build("RCS_Structure", M["titanium"], g, sharp_angle=30)
     bpy.context.view_layer.update()
-    # the sixteen chambers: one of the A ring and one of the B ring at each of eight places round the section, two
-    # places at the top, two at the bottom and two on each side (the Gemini IV report's Figure 3-12 and its inset;
-    # the angles are read off that inset and the photograph of this ship)
-    for mid in RCS_PLACES:
-        for dz in (5.0, 11.0):
-            at = NECK.p(mid, zz(Z_RCS + dz))
-            port((skin.name,), frame(at, NECK.n(mid)), 1.75 * IN, 2.0 * IN)
-            thruster(noz, cup, at, NECK.n(mid), 1.25, 1.75)
+    # The sixteen chambers: four clusters, on the diagonals. In each a chamber that pitches the ship and one that yaws
+    # it stand side by side, and each is there twice, once for the A ring and once for the B ring, one behind the
+    # other. A chamber fires along one of the ship's axes, not out along a radius (SEDR 300, Figure 8-84): so its port
+    # is an oval and its bell is cut off at the skin.
+    for top in (1, -1):
+        for side in (1, -1):
+            for k, a in enumerate(RCS_AT):
+                theta = side * a if top > 0 else side * (math.pi - a)
+                up, across = Vector((top, 0.0, 0.0)), Vector((0.0, side, 0.0))
+                out = (up if k == 0 else across) * math.cos(RCS_SPLAY) + (across if k == 0 else up) * math.sin(RCS_SPLAY)
+                for station in RCS_ROWS:
+                    chamber(noz, cup, (skin_obj.name,), NECK, theta, zz(station), out, 1.25, 1.9, lip=0.32)
+    tidy((skin_obj.name,), NECK)
     say(
         noz.build("RCS_ThrustChambers", M["nozzle"], g, sharp_angle=35),
         "Re-entry control thrusters",
-        "Sixteen chambers, two complete rings of eight, each ring with its own tanks: either can bring the ship home. They "
-        "burn the same two liquids as the thrusters in the adapter, which ignite on meeting. That there are sixteen, at eight "
-        "places round the section (two at the top, two at the bottom, two on each side), is documented; their 25 lbf is "
-        "general knowledge of the type, and the angles are read off a small drawing and one photograph.",
+        "Sixteen chambers of 25 lbf in four clusters of four, two complete rings of eight with their own tanks: either "
+        "ring can bring the ship home. None of them points straight out. In each cluster one pair fires along the "
+        "ship's top-to-bottom line, to pitch it, and the other sideways, to yaw it; fired in opposite corners they roll "
+        "it. That is why the ports are ovals. Which chamber fires which way is SEDR 300's drawing; where the clusters "
+        "stand is read off a photograph of this ship on the morning it flew, and how far each is turned from its axis "
+        "is estimated.",
     )
     cup.build("RCS_Ports", M["titanium"], g, sharp_angle=35)
+    cable_cover(cover, NECK, Z_RCS + 0.05, COVER_TOP)
+    say(
+        cover.build("RCS_CableCover", M["cover"], g, sharp_angle=35),
+        "Parachute cable cover",
+        "The white strip along the top of the ship. It is in the photograph taken on the morning of the launch, running "
+        "from near the heat shield up over this section. SEDR 300 lists a cover over the parachute's control cables "
+        "here, and that is what it is taken to be; its width is read off the photograph.",
+    )
     if interior():
         tanks = MeshBuilder()
-        for k in range(6):
-            a = TAU * (k + 0.5) / 6
-            c = radial(a) * 11.0
-            tanks.tube((c + Vector((0, 0, z0 + 2.0))) * IN, (c + Vector((0, 0, z1 - 3.0))) * IN, 3.2 * IN, 16)
+        # each ring's own: a ball of nitrogen 7.25 in across, a fuel tank 5.10 in across and 30.7 long and an oxidiser
+        # tank 5.10 by 25.2 (SEDR 300, section VIII). The section is 18 in long, so the tanks cannot stand along it:
+        # they are laid across, and how is estimated.
+        for ring, x in ((0, 5.5), (1, -5.5)):
+            up = Vector((x, 0.0, 0.0))
+            for length, dz in ((30.7, 4.2), (25.2, 10.8)):
+                half = length / 2
+                c = up + Vector((0.0, 0.0, z0 + dz))
+                tanks.tube((c - Vector((0.0, half, 0.0))) * IN, (c + Vector((0.0, half, 0.0))) * IN, 2.55 * IN, 16)
+            sphere(tanks, (Vector((0.0, (1 - 2 * ring) * 9.0, z0 + 14.0))) * IN, 3.625 * IN)
         say(
             tanks.build("RCS_Tanks", M["tank"], g, sharp_angle=35),
             "Re-entry control tanks",
-            "Each of the two sets has a fuel tank, an oxidiser tank and a bottle of nitrogen to push them. Six in all, standing "
-            "round the section. Their sizes and places here are estimated.",
+            "Each of the two rings has its own fuel tank, oxidiser tank and ball of nitrogen to push them: six vessels. The "
+            "nitrogen balls are 7.25 in across, the fuel tanks 5.10 in across and 30.7 in long and the oxidiser tanks 5.10 by "
+            "25.2, which is documented. The tanks are longer than the section, so they must lie across it; how they are "
+            "arranged in it is estimated.",
         )
 
 
@@ -484,99 +456,140 @@ def build_heat_shield(M) -> None:
     back.build("HeatShield_Structure", M["titanium"], g, sharp_angle=40)
 
 
+def _mirror(side: int, fa, fb):
+    """Two edges of something on the crew's right as functions of height, or their mirror images on the left."""
+    return (fa, fb) if side > 0 else (lambda z: -fb(z), lambda z: -fa(z))
+
+
 def build_hatches(M, fit: Fit) -> list[dict]:
-    """The two hatches, each hinged along its outboard edge, each with a window. Returns where each window is."""
+    """The two hatches, each hinged along its outboard edge, each with a window at its forward end. Returns where each
+    window is."""
     g = group("Hatches")
-    skin, bolts, structure, frames, hinges, sills = (MeshBuilder() for _ in range(6))
-    z0, z1 = zz(Z_SILL), zz(Z_SMALL)
-    windows = []
+    skin_, bolts, structure, frames, studs, hinges, wells, latches = (MeshBuilder() for _ in range(8))
+    z0, z1 = zz(Z_HATCH_AFT) + 0.06, zz(Z_HATCH_FWD) - 0.06
     whole = interior()
-    cell = 1.0 if srlib.DETAIL >= 1.0 else 2.2
+    fine = srlib.DETAIL >= 1.0
+    cell = 0.45 if holes() else 0.9
+    proud = 0.26 if holes() else 0.55  # how far the window's frame stands off its plate: more where the plate is coarse
+    zone = zz(WINDOW_AFT) - 2.2  # where the plate the window is let into begins
+    rings = [z0, zz(118.0), zz(129.0), zone, z1]
+    windows = []
+    inb = lambda z: hatch_in(z) + 0.06 / CABIN.r(z)  # noqa: E731
+    outb = lambda z: HATCH_OUT - 0.06 / CABIN.r(z)  # noqa: E731
     for side, name in ((-1, "Left"), (1, "Right")):
-        t0, t1 = sorted((side * HATCH[0], side * HATCH[1]))
-        opening = Opening(side * WINDOW_AT)
-        hole = (lambda t, z, opening=opening: opening.inside(t, z)) if whole else None
-        patch(skin, CABIN, t0 + 0.05 / 30, t1 - 0.05 / 30, z0 + 0.05, z1 - 0.05, 0.0, cell, hole)
-        patch(
+        win = WINDOWS[side]
+        low = "al" if side > 0 else "ah"
+        for i in range(3):  # three rings of beaded cells aft of the window
+            band(skin_, bolts, rings[i], rings[i + 1], *_mirror(side, hatch_margin, outb), 5, rivets=low)
+            shingle(skin_, bolts, rings[i], rings[i + 1], *_mirror(side, inb, hatch_margin), rivets=low)
+        # beside the window the plate along the inboard edge is plain: the socket for the outside handle is in it
+        shingle(skin_, bolts, zone, z1, *_mirror(side, inb, hatch_margin), beads=False, rivets=low + "f")
+        # the window's plate: smooth, let down round the opening and before it to the trough's floor
+        sheet(skin_, *_mirror(side, hatch_margin, outb), zone, z1, 0.0, cell, lambda t, z, win=win: win.covers(t, z, 0.3))
+        if holes():
+            ta, tb = _mirror(side, hatch_margin, outb)
+            n = max(4, round((tb(zone) - ta(zone)) * CABIN.r(zone) / 2.2))
+            for i in range(n):  # the plate's aft edge, fastened
+                t = ta(zone) + (tb(zone) - ta(zone)) * (i + 0.5) / n
+                bolts.disc(skin(t, zone + 0.35, -0.02), CABIN.n(t), 0.19 * IN, 0.09 * IN)
+        # the window: a bolted frame round the opening, lying on the pane's plane and over its aft edge onto the skin
+        n = 72 if fine else 36
+        rim_out, rim_mid, rim_in, rim = win.outline(n, 0.8), win.outline(n, 0.25), win.outline(n, -0.3), win.outline(n)
+        m = len(rim)
+        rows = [
+            [win.lay(u, w, -0.12) for u, w in rim_out],
+            [win.lay(u, w, proud) for u, w in rim_out],
+            [win.lay(u, w, proud) for u, w in rim_mid],
+            [win.lay(u, w, proud) for u, w in rim_in],
+            [win.lay(u, w, -0.42) for u, w in rim_in],
+        ]
+        frames.grid(lambda i, j, rows=rows: rows[j][i], range(m), range(5), closed_u=True, flip=side < 0)
+        for u, w in rim_mid[:: n // 24]:
+            studs.disc(win.lay(u, w, 0.24), win.np, 0.13 * IN, 0.14 * IN)
+
+        def fan(mb: MeshBuilder, lift: float, grow: float, out: bool, win=win) -> None:
+            edge_ = win.outline(n, grow)
+            cu, cw = sum(p[0] for p in edge_) / len(edge_), sum(p[1] for p in edge_) / len(edge_)
+            pts = [tuple(win.at(cu, cw, lift) * IN)] + [tuple(win.at(u, w, lift) * IN) for u, w in edge_]
+            k = len(edge_)
+            ccw = (win.side > 0) == out
+            mb.add(pts, [(0, 1 + i, 1 + (i + 1) % k) if ccw else (0, 1 + (i + 1) % k, 1 + i) for i in range(k)])
+
+        pane = MeshBuilder()
+        fan(pane, -0.3, 0.1, True)
+        pane.build(f"Hatch{name}_WindowOuter", M["glass" if whole else "void"], g, sharp_angle=None)
+        windows.append({"side": side, "centre": win.at(-1.5, WINDOW_L / 2, -2.4) * IN, "normal": win.np.copy()})
+        # three hinges along the outboard edge, and the socket a handle goes into from outside
+        th = side * HATCH_OUT
+        for z in (z0 + 6.0, (z0 + z1) / 2, z1 - 6.0):
+            hinges.tube(CABIN.p(th, z - 2.2, 0.35), CABIN.p(th, z + 2.2, 0.35), 0.6 * IN, 10)
+        ts = side * (hatch_in(zz(SOCKET)) + 2.6 / CABIN.r(zz(SOCKET)))
+        hinges.lathe(hoop(0.5, 1.05, -0.3, 0.24), 16, matrix=frame(skin(ts, zz(SOCKET)), CABIN.n(ts)))
+        if not whole:
+            continue
+        # inside: the hatch's inner skin, let down under the trough; the well between the panes; the two inner panes
+        # in their frame, which is bolted on from inside with 35 bolts (SEDR 300, Figure 2-10)
+        sheet(
             structure,
-            CABIN,
-            t0,
-            t1,
+            *_mirror(side, inb, outb),
             z0,
             z1,
-            -WALL,
-            cell * 1.5,
-            (lambda t, z, opening=opening: opening.inside(t, z, 0.3)) if whole else None,
+            0.0,
+            1.5,
+            lambda t, z, win=win: win.covers(t, z, 1.5),
             flip=True,
+            drop=lambda t, z: max(WALL, depth(t, z) + 0.9),
         )
-        # the frame round its edge, standing a little proud, and a row of screws inside it
-        edge = 0.9
-        da = lambda z: edge / CABIN.r(z)  # noqa: E731
-        for ta, tb in ((t0, t0 + da(z0)), (t1 - da(z0), t1)):
-            patch(sills, CABIN, ta + 0.002, tb - 0.002, z0 + 0.1, z1 - 0.1, 0.16, cell)
-        for za, zb in ((z0 + 0.1, z0 + edge), (z1 - edge, z1 - 0.1)):
-            patch(sills, CABIN, t0 + da(z0) + 0.004, t1 - da(z0) - 0.004, za, zb, 0.16, cell)
-        for k in (1, 2, 3):  # the seams between the plates that skin it
-            z = z0 + (z1 - z0) * k / 4
-            if abs(z - opening.z) < WINDOW[0] / 2 + 2.5:
-                continue
-            n = max(6, round((t1 - t0) * CABIN.r(z) / 2.2))
-            for i in range(1, n):
-                t = t0 + (t1 - t0) * i / n
-                for dz in (-0.45, 0.45):
-                    bolts.disc(CABIN.p(t, z + dz), CABIN.n(t), 0.2 * IN, 0.07 * IN)
-        for t in (t0, t1):
-            n = 24
-            for i in range(n):
-                z = z0 + 1.0 + (z1 - z0 - 2.0) * i / (n - 1)
-                bolts.disc(CABIN.p(t + (1.6 / CABIN.r(z)) * (1 if t == t0 else -1), z), CABIN.n(t), 0.2 * IN, 0.07 * IN)
-        for z in (z0 + 1.6, z1 - 1.6):
-            n = max(6, round((t1 - t0) * CABIN.r(z) / 2.2))
-            for i in range(1, n):
-                t = t0 + (t1 - t0) * i / n
-                bolts.disc(CABIN.p(t, z), CABIN.n(t), 0.2 * IN, 0.07 * IN)
-        # the window: a frame standing just proud of the skin, the well under it, and a pane at each end of the well
-        edge_n = 40 if srlib.DETAIL >= 1.0 else 20
-        rows = (
-            ((1.5, -0.06), (1.2, 0.22), (-0.45, 0.22), (-0.45, -WALL - 0.1)) if whole else ((1.5, -0.06), (1.2, 0.22), (-0.45, 0.22), (-0.45, 0.02))
-        )
-        rings = [opening.edge(edge_n, grow) for grow, _ in rows]
-        frames.grid(
-            lambda i, j, rings=rings, rows=rows: CABIN.p(rings[j][i][0], rings[j][i][1], rows[j][1]),
-            range(edge_n),
-            range(len(rows)),
-            closed_u=True,
-        )
-        centre = (opening.t, opening.z)
-        if not whole:  # at a distance nothing is behind it: a dark pane on the skin, under the frame
-            pane = MeshBuilder()
-            lo, hi = opening.z - WINDOW[0] / 2 - 1.5, opening.z + WINDOW[0] / 2 + 1.5
-            wide = (WINDOW[1] / 2 + 1.5) / CABIN.r(lo)
-            patch(pane, CABIN, opening.t - wide, opening.t + wide, lo, hi, 0.08, 0.7, lambda t, z, opening=opening: not opening.inside(t, z, 0.6))
-            pane.build(f"Hatch{name}_WindowOuter", M["void"], g, sharp_angle=None)
-        for level, mesh, mat in ((-0.3, "Outer", "glass"), (-WALL + 0.25, "Inner", "glass")) if whole else ():
-            pane = MeshBuilder()
-            rim = opening.edge(edge_n, -0.4)
-            pts = [tuple(CABIN.p(*centre, level))] + [tuple(CABIN.p(t, z, level)) for t, z in rim]
-            tris = [(0, 1 + (i + 1) % edge_n, 1 + i) if side * math.cos(CABIN_A) > 0 else (0, 1 + i, 1 + (i + 1) % edge_n) for i in range(edge_n)]
-            pane.add(pts, tris)
-            pane.build(f"Hatch{name}_Window{mesh}", M[mat], g, sharp_angle=None)
-        windows.append({"side": side, "centre": CABIN.p(*centre, -WALL), "normal": CABIN.n(opening.t)})
-        # three hinges along the outboard edge, and the socket a handle goes into from outside
-        th = side * HATCH[1]
-        for z in (z0 + 7.0, (z0 + z1) / 2, z1 - 7.0):
-            a = CABIN.p(th, z - 2.2, 0.35)
-            b = CABIN.p(th, z + 2.2, 0.35)
-            hinges.tube(a, b, 0.6 * IN, 10)
-        sock = CABIN.p(side * (HATCH[0] + deg(9)), z0 + 9.0, 0.0)
-        hinges.lathe(hoop(0.9, 1.7, -0.3, 0.3), 16, matrix=frame(sock, CABIN.n(side * (HATCH[0] + deg(9)))))
-    skin.build("Hatches_Skin", M["shingle"], g, sharp_angle=30)
-    sills.build("Hatches_Sills", M["shingle"], g, sharp_angle=30)
+        wall = [[win.at(u, w, lift) * IN for u, w in rim] for lift in (-0.42, -2.3)]
+        wells.grid(lambda i, j, wall=wall: wall[j][i], range(m), range(2), closed_u=True, flip=side < 0)
+        inner = MeshBuilder()
+        fan(inner, -1.75, 0.1, True)
+        fan(inner, -2.1, 0.1, True)
+        inner.build(f"Hatch{name}_WindowInner", M["glass"], g, sharp_angle=None)
+        ring_in, ring_out = win.outline(n, -0.25), win.outline(n, 1.35)
+        rows = [
+            [win.at(u, w, -2.32) * IN for u, w in ring_in],
+            [win.at(u, w, -2.32) * IN for u, w in ring_out],
+            [win.at(u, w, -0.5) * IN for u, w in ring_out],
+        ]
+        structure.grid(lambda i, j, rows=rows: rows[j][i], range(m), range(3), closed_u=True, flip=side < 0)
+        for u, w in win.outline(35, 0.55):
+            studs.disc(win.at(u, w, -2.3) * IN, -win.np, 0.15 * IN, 0.1 * IN)
+        # twelve latches on the sill (Figure 2-8: "typical 12 places"): the hatch is hinged outboard, so they are put
+        # along its other three edges, and how many to an edge is estimated
+        places = [(inb(z) + 1.6 / CABIN.r(z), z) for z in (z0 + 3.5 + (z1 - z0 - 12.0) * i / 6 for i in range(7))]
+        places += [(deg(a), z0 + 1.6) for a in (20, 35, 50)] + [(deg(14.5), z1 - 1.6), (deg(58.5), z1 - 1.6)]
+        for a, z in places:
+            t = side * a
+            down = max(WALL, depth(t, z) + 0.9)
+            at = (radial(t) * (CABIN.r(z) - down - 0.55) + Vector((0.0, 0.0, z))) * IN
+            f = frame(at, -radial(t))
+            chamfered(latches, (1.3, 2.2, 1.1), f, 0.12)
+            latches.tube(f @ (Vector((0.0, 0.0, 0.5)) * IN), f @ (Vector((0.0, 0.0, 1.5)) * IN), 0.3 * IN, 8)
+    skin_.build("Hatches_Skin", M["shingle"], g, sharp_angle=None)
     bolts.build("Hatches_Fasteners", M["bolt"], g)
-    structure.build("Hatches_Structure", M["titanium"], g, sharp_angle=30)
-    frames.build("Hatches_WindowFrames", M["titanium"], g, sharp_angle=35)
+    say(
+        frames.build("Hatches_WindowFrames", M["frame"], g, sharp_angle=35),
+        "Window",
+        "The window is not in the skin. Its outer pane is set at about 35 degrees to the hatch, its aft edge at the skin and "
+        "its forward edge sunk, so that it faces forward like a windscreen; and forward of it a trough is cut into the "
+        "cone for the pilot to look along. There are three panes of 96 per cent silica glass, one in this outer frame and "
+        "two in a frame bolted on inside with 35 bolts; the right-hand window's are optically ground. The 35 degrees is "
+        "SEDR 300's section as drawn; where the window is, its outline and the trough's are read off the photograph of "
+        "this ship on the morning of the launch.",
+    )
+    studs.build("Hatches_WindowBolts", M["bolt"], g)
     hinges.build("Hatches_Hinges", M["steel"], g, sharp_angle=35)
     if whole:
+        structure.build("Hatches_Structure", M["liner"], g, sharp_angle=30)
+        wells.build("Hatches_WindowWells", M["well"], g, sharp_angle=35)
+        say(
+            latches.build("Hatches_Latches", M["steel"], g, sharp_angle=35),
+            "Hatch latches",
+            "Twelve latches hold each hatch down on its sill, all worked together by one handle inside; in an ejection "
+            "pyrotechnic actuators throw them and push the hatch open. Their number is SEDR 300's; where each is, and "
+            "its form, are estimated.",
+        )
         build_experiments_on_hatches(M, g, fit)
     return windows
 
@@ -585,9 +598,9 @@ def build_experiments_on_hatches(M, g, fit: Fit) -> None:
     """What rode on the inside of the hatches on a flight that carried it."""
     if "sea-urchin" in fit.experiments:
         mb = MeshBuilder()
-        t = -(HATCH[0] + deg(16))
-        a = CABIN.p(t, zz(126.0), -WALL - 2.0)
-        b = CABIN.p(t, zz(126.0 + 6.75 * math.cos(CABIN_A)), -WALL - 2.0)
+        t = -deg(32)
+        a = CABIN.p(t, zz(124.0), -WALL - 2.0)
+        b = CABIN.p(t, zz(124.0 + 6.75 * math.cos(CABIN_A)), -WALL - 2.0)
         mb.tube(a, b, 1.625 * IN, 20)
         mb.tube(b, b + (b - a).normalized() * 1.4 * IN, 0.5 * IN, 10)  # the handle that is turned
         say(
@@ -600,11 +613,11 @@ def build_experiments_on_hatches(M, g, fit: Fit) -> None:
         )
     if "blood" in fit.experiments:
         mb = MeshBuilder()
-        t = HATCH[0] + deg(16)
-        mb.box((3.7 * IN, 3.8 * IN, 1.3 * IN), frame(CABIN.p(t, zz(128.0), -WALL - 1.1), -CABIN.n(t)))
-        mb.tube(CABIN.p(t, zz(130.3), -WALL - 1.1), CABIN.p(t, zz(131.5), -WALL - 1.1), 0.45 * IN, 10)
+        t = deg(32)
+        chamfered(mb, (3.7, 3.8, 1.3), frame(CABIN.p(t, zz(126.0), -WALL - 1.1), -CABIN.n(t)), 0.1)
+        mb.tube(CABIN.p(t, zz(128.3), -WALL - 1.1), CABIN.p(t, zz(129.5), -WALL - 1.1), 0.45 * IN, 10)
         for dz in (-1.2, 1.2):  # its two feet on the hatch
-            mb.tube(CABIN.p(t, zz(128.0 + dz), -WALL + 0.2), CABIN.p(t, zz(128.0 + dz), -WALL - 0.6), 0.4 * IN, 8)
+            mb.tube(CABIN.p(t, zz(126.0 + dz), -WALL + 0.2), CABIN.p(t, zz(126.0 + dz), -WALL - 0.6), 0.4 * IN, 8)
         say(
             mb.build("Experiment_BloodIrradiation", M["aluminium"], g, sharp_angle=35),
             "Blood irradiation experiment",
@@ -618,34 +631,92 @@ def build_experiments_on_hatches(M, g, fit: Fit) -> None:
 def build_cabin(M, fit: Fit, font, flag) -> None:
     """The cone round the crew: beaded Rene 41 shingles over a titanium frame, with the equipment bays between the two."""
     g = group("Cabin")
-    panels, plain, bolts, under = (MeshBuilder() for _ in range(4))
-    aft, fwd = zz(Z_SILL), zz(Z_SMALL)
-    # the ring at the heat shield's rim, then four rings beside the hatches, then one forward of them
-    plates(plain, bolts, CABIN, 1.5, aft, 0.0, TAU, 16)
-    rings = [aft + (fwd - aft) * i / 4 for i in range(5)]
-    for i, count in enumerate((12, 12, 10, 10)):
-        beaded(panels, bolts, CABIN, rings[i], rings[i + 1], HATCH[1], TAU - HATCH[1], count)
-        plates(plain, bolts, CABIN, rings[i], rings[i + 1], -HATCH[0], HATCH[0], 1)  # the beam between the hatches
-    beaded(panels, bolts, CABIN, fwd, zz(Z_RCS) - 0.4, deg(15), TAU + deg(15), 10)
-    under.lathe(prof([(CABIN.r(0.0) - 1.6, 0.0), (CABIN.r(aft) - 1.6, aft)]), 96, flip=True)
-    under.lathe(prof([(CABIN.r(aft) - 1.6, aft), (CABIN.r(fwd) - 1.6, fwd)]), 96, arc=(HATCH[1], TAU - HATCH[1]), flip=True)
-    under.lathe(prof([(CABIN.r(fwd) - 1.6, fwd), (CABIN.r(zz(Z_RCS)) - 1.6, zz(Z_RCS))]), 96, flip=True)
+    panels, plain, bolts, under, cover, strips = (MeshBuilder() for _ in range(6))
+    aft, fwd, neck = zz(Z_HATCH_AFT), zz(Z_HATCH_FWD), zz(RINGS[-1])
+    rings = [zz(s) for s in RINGS]
+    # the ring the heat shield is bolted to, plain
+    sheet(plain, 0.0, TAU, 1.5, aft - 0.05, 0.0, 2.2)
+    for i in range(128):
+        t = TAU * (i + 0.5) / 128
+        bolts.disc(CABIN.p(t, (1.5 + aft) / 2), CABIN.n(t), 0.2 * IN, 0.08 * IN)
+    # the beam between the hatches: a plain strip under the cables' cover, and a column of short beads either side of
+    # it (S65-13244), cut where the hatches' own rings are
+    strip = lambda z: 1.3 / CABIN.r(z)  # noqa: E731
+    beam = [aft + 0.06, zz(118.0), zz(129.0), zz(WINDOW_AFT) - 2.2, fwd]
+    for za, zb in zip(beam, beam[1:]):
+        shingle(plain, bolts, za, zb, lambda z: -strip(z), strip, beads=False, rivets="")
+        shingle(panels, bolts, za, zb, strip, lambda z: hatch_in(z) - 0.06 / CABIN.r(z), rivets="a")
+        shingle(panels, bolts, za, zb, lambda z: -hatch_in(z) + 0.06 / CABIN.r(z), lambda z: -strip(z), rivets="a")
+    # under each hinge a strip of plain plates (S65-13395)
+    for side in (1, -1):
+        for za, zb in zip(beam, beam[1:]):
+            shingle(strips, bolts, za, zb, *_mirror(side, lambda z: HATCH_OUT + 0.06 / CABIN.r(z), lambda z: DOORS[0]), beads=False, rivets="alh")
+    # forward of the hatches, over the top: two rings, the troughs running out across them, their beads following
+    for za, zb, access in ((fwd, rings[4], False), (rings[4], neck, True)):
+        shingle(plain, bolts, za, zb, lambda z: -strip(z), strip, beads=False, rivets="")
+        for side in (1, -1):
+            edges = [strip, lambda z: deg(22), lambda z: deg(52), lambda z: DOORS[0]]
+            for k in range(3):
+                # (the plates either side of the cover on the last ring are plain: a white disc sits on the left one)
+                into = plain if access and k == 0 else panels
+                shingle(into, bolts, za, zb, *_mirror(side, edges[k], edges[k + 1]), beads=into is panels, rivets="al" if side > 0 else "ah")
+    # the sides and the bottom: the doors over the equipment bays, the landing gear doors, the doors underneath
+    # (SEDR 300, Figure 2-7; the Technical Summary's Figure 1), each a set of cells
+    spans = [
+        (DOORS[0], DOORS[1]),
+        (DOORS[1], DOORS[2]),
+        (DOORS[2], TAU - DOORS[2]),
+        (TAU - DOORS[2], TAU - DOORS[1]),
+        (TAU - DOORS[1], TAU - DOORS[0]),
+    ]
+    for i in range(5):
+        za, zb = rings[i], rings[i + 1]
+        r = CABIN.r((za + zb) / 2)
+        if i == 4:  # the ring of "Z160.20 equipment access" shingles, all the way round below the top
+            band(panels, bolts, za, zb, DOORS[0], TAU - DOORS[0], max(3, round((TAU - 2 * DOORS[0]) * r / CELL)), rivets="al")
+            continue
+        for t0, t1 in spans:
+            band(panels, bolts, za, zb, t0, t1, max(1, round((t1 - t0) * r / CELL)), rivets="al")
+    if interior():  # the frame under the shingles: seen only with the ship cut open
+        under.lathe(prof([(CABIN.r(0.0) - 1.6, 0.0), (CABIN.r(aft) - 1.6, aft)]), 96, flip=True)
+        under.lathe(prof([(CABIN.r(aft) - 1.6, aft), (CABIN.r(zz(Z_RCS)) - 1.6, zz(Z_RCS))]), 96, arc=(HATCH_OUT, TAU - HATCH_OUT), flip=True)
+        sheet(under, -HATCH_OUT, HATCH_OUT, fwd, zz(Z_RCS), -1.6, 2.4, flip=True)
+        sheet(under, lambda z: -hatch_in(z), hatch_in, aft, fwd, -1.6, 2.4, flip=True)
     under.lathe(hoop(SHIELD_R - 1.2, SHIELD_R + 0.25, 0.1, 1.5), 144)  # the ring the heat shield is bolted to
     under.lathe(hoop(NECK_R - 2.4, NECK_R + 0.2, zz(Z_RCS) - 0.4, zz(Z_RCS)), 96)
     panels.build("Cabin_Shingles", M["shingle"], g, sharp_angle=None)
     plain.build("Cabin_Plain", M["shingle"], g, sharp_angle=30)
+    strips.build("Cabin_HingePlates", M["plate"], g, sharp_angle=30)
     bolts.build("Cabin_Fasteners", M["bolt"], g)
     under.build("Cabin_Structure", M["titanium"], g, sharp_angle=30)
+    cable_cover(cover, CABIN, COVER_FOOT[2], Z_RCS - 0.05, foot=True)
+    say(
+        cover.build("Cabin_CableCover", M["cover"], g, sharp_angle=35),
+        "Parachute cable cover",
+        "The white strip along the top of the ship, between the hatches. It is in the photograph taken on the morning of "
+        "the launch. SEDR 300 lists a cover over the parachute's control cables here, and that is what it is taken to be: "
+        "the ship comes down hanging level from two points, and the lines to the forward one must run along the outside "
+        "until they are pulled free. Its width and where it ends are read off the photograph.",
+    )
+    disc = MeshBuilder()
+    t, z = WHITE_DISC[0], zz(WHITE_DISC[1])
+    disc.lathe(prof([(WHITE_DISC[2] / 2, -0.1), (WHITE_DISC[2] / 2, 0.14), (0.0, 0.14)]), 28, matrix=frame(CABIN.p(t, z), CABIN.n(t)))
+    say(
+        disc.build("Cabin_WhiteDisc", M["cover"], g, sharp_angle=35),
+        "White disc",
+        "A white disc a few inches across, on the top of the ship just left of the middle, forward of the left hatch. It is "
+        "in two photographs of this spacecraft, in January and on the morning of the launch. What it is has not been found.",
+    )
     # paint: UNITED STATES in two lines and the flag under it, on each side below the hatch's hinge
     paint, flags = MeshBuilder(), MeshBuilder()
     fw, fh = 15.0, 15.0 / 1.9
     for side in (-1, 1):
         t = side * deg(92)
-        for body, station in (("UNITED", 137.5), ("STATES", 131.5)):
+        for body, station in (("UNITED", LETTERS[0]), ("STATES", LETTERS[1])):
             lettering(paint, CABIN, body, 26.0, t, zz(station), False, font)
         nx, ny = 10, 5
         flags.grid(
-            lambda i, j, t=t: CABIN.wrap(t, zz(118.0), (i / nx - 0.5) * fw, (j / ny - 0.5) * fh, 0.3),
+            lambda i, j, t=t: CABIN.wrap(t, zz(LETTERS[2]), (i / nx - 0.5) * fw, (j / ny - 0.5) * fh, 0.3),
             range(nx + 1),
             range(ny + 1),
             uv=lambda i, j: (i / nx, j / ny),
@@ -656,7 +727,7 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
     fair = MeshBuilder()
     us = [math.pi * k / 8 for k in range(9)]
     vs = [math.pi * k / 10 for k in range(11)]
-    for a in (deg(180), deg(60), deg(-60)):
+    for a in STRAPS:
         f = frame(CABIN.p(a, 4.6, 0.0), CABIN.n(a))  # (a blister: across the cone, along it, and proud of it)
         fair.grid(
             lambda u, v: Vector((2.6 * IN * math.sin(v) * math.cos(u), -5.0 * IN * math.cos(v), 1.9 * IN * math.sin(v) * math.sin(u) - 0.25 * IN)),
@@ -673,17 +744,28 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
         "the adapter is pushed away. The fairings are counted in SEDR 300; where round the ship they stand is estimated.",
     )
     if "reentry-communications" in fit.experiments:
-        port = MeshBuilder()
-        t = deg(128)
-        port.lathe(prof([(1.3, 0.0), (1.3, 0.3), (0.5, 0.3), (0.5, 0.18), (0.0, 0.18)]), 16, matrix=frame(CABIN.p(t, zz(118.0)), CABIN.n(t)))
+        # on the right landing gear door, near its forward end: a plate with three nozzles in it, and an arming
+        # receptacle half way along the door (NASA S64-04925)
+        plate, noz = MeshBuilder(), MeshBuilder()
+        t = (DOORS[1] + DOORS[2]) / 2
+        F = frame(CABIN.p(t, zz(NOZZLE_PLATE[0]), 0.0), CABIN.n(t)) @ Matrix.Rotation(math.pi, 4, "Z")
+        wide, tall = NOZZLE_PLATE[1], NOZZLE_PLATE[2]
+        chamfered(plate, (wide, tall, 0.9), F, 0.14)
+        chamfered(plate, (1.7, 1.3, 0.8), frame(CABIN.p(t - deg(4), zz(138.0), 0.0), CABIN.n(t)), 0.1)
+        for x, y, a, b in ((-1.1, 1.3, 1.0, 1.55), (1.25, 1.5, 0.8, 1.25), (0.5, -1.6, 0.65, 1.05)):
+            # (No. 3, No. 2 and No. 1 of the figure: each an oval mouth, the nozzle's own holes in a face set down inside it)
+            m = F @ Matrix.Translation(Vector((x, y, 0.0)) * IN) @ Matrix.Diagonal((a, b, 1.0, 1.0))
+            noz.lathe(prof([(1.12, 0.3), (1.12, 0.62), (1.0, 0.62), (1.0, 0.52), (0.0, 0.52)]), 20, matrix=m)
         say(
-            port.build("Experiment_WaterNozzle", M["steel"], g, sharp_angle=35),
+            plate.build("Experiment_NozzlePlate", M["steel"], g, sharp_angle=35),
             "Re-entry communications experiment",
             "Coming home, a ship is wrapped in air so hot that it stops radio: for some minutes nothing gets in or out. Here, on "
-            "the inside of the right landing gear door, was 85 lb of equipment to try a cure: a tank of water and a timer that "
-            "squirted it into the hot air in short pulses for about two and a half minutes. With the water on, stations on the "
-            "ground did hear the ship. That it was on this door is the press kit's; the nozzle's place on it is estimated.",
+            "the right landing gear door, is the outside of 85 lb of equipment that tried a cure: three nozzles in a plate, "
+            "through which a timer squirted water into the hot air in short pulses for about two and a half minutes. With the "
+            "water on, stations on the ground did hear the ship. The plate, its three nozzles and its place near the door's "
+            "forward end are NASA's own drawing of it (S64-04925), which has no dimensions: its size here is estimated.",
         )
+        noz.build("Experiment_Nozzles", M["nozzle"], g, sharp_angle=35)
         if interior():
             tank = MeshBuilder()
             c = CABIN.p(t, zz(140.0), -6.5)
@@ -692,21 +774,35 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
 
 
 def build_scanner_fairing(M) -> None:
-    """The horizon scanners look out of the cabin's left side, just aft of the neck; a fairing covers them on the way up."""
+    """The horizon scanners look out of the ship's left side at the neck; a fairing covers them on the way up. In the
+    photograph of the morning of the launch it is a long flat-faced box the colour of bronze, riveted along its edges,
+    lying from the cabin's forward end up over the re-entry control section."""
     g = group("ScannerFairing")
-    mb = MeshBuilder()
-    t = deg(-90)
-    f = frame(CABIN.p(t, zz(165.0), 0.0), CABIN.n(t))
-    us = [math.pi * k / 10 for k in range(11)]
-    vs = [math.pi * k / 12 for k in range(13)]
-    mb.grid(
-        lambda u, v: Vector((3.6 * IN * math.sin(v) * math.cos(u), -7.5 * IN * math.cos(v), 2.6 * IN * math.sin(v) * math.sin(u) - 0.3 * IN)),
-        us,
-        vs,
-        matrix=f,
-        flip=True,
-    )
-    mb.build("ScannerFairing_Shell", M["fairing"], g, sharp_angle=35)
+    mb, rivets = MeshBuilder(), MeshBuilder()
+    t = SCANNER_AT
+    s0, s1 = SCANNER_Z
+    rad, tan = radial(t), Vector((-math.sin(t), math.cos(t), 0.0))
+    face = NECK_R + SCANNER_PROUD
+    body = lambda s: CABIN.r(zz(s)) if s < Z_RCS else NECK_R  # noqa: E731
+    stations = [s0, s0 + 4.6, s0 + 9.0, s1 - 2.4, s1]
+    rows = []
+    for k, s in enumerate(stations):
+        ht = SCANNER_HALF[0] + (SCANNER_HALF[1] - SCANNER_HALF[0]) * (s - s0) / (s1 - s0)
+        hb = ht + 0.9
+        top = body(s) - 3.0 if k in (0, len(stations) - 1) else face
+        low = math.sqrt(body(s) ** 2 - hb**2) - (3.3 if k in (0, len(stations) - 1) else 0.4)
+        rows.append([(rad * rho + tan * y + Vector((0.0, 0.0, zz(s)))) * IN for y, rho in ((-hb, low), (-ht, top), (ht, top), (hb, low))])
+        if 0 < k < len(stations) - 1 and k + 1 < len(stations) - 1:
+            s2 = stations[k + 1]
+            n = max(2, round((s2 - s) / 1.7))
+            for i in range(n + 1):
+                sz = s + (s2 - s) * i / n
+                h = SCANNER_HALF[0] + (SCANNER_HALF[1] - SCANNER_HALF[0]) * (sz - s0) / (s1 - s0)
+                for y in (-h + 0.4, h - 0.4):
+                    rivets.disc((rad * face + tan * y + Vector((0.0, 0.0, zz(sz)))) * IN, rad, 0.13 * IN, 0.06 * IN)
+    mb.grid(lambda i, j: rows[j][i], range(4), range(len(rows)))
+    mb.build("ScannerFairing_Shell", M["bronze"], g, sharp_angle=30)
+    rivets.build("ScannerFairing_Rivets", M["aluminium"], g)
 
 
 def seat(M, g, name: str, side: int, pilot: str) -> None:
@@ -773,13 +869,13 @@ def build_crew_station(M, fit: Fit) -> None:
     sided, with the hatches for its roof; the space between its sides and the cone is the equipment bays."""
     g = group("CrewStation")
     v = MeshBuilder()
-    za, zb = Z_SILL, Z_SMALL
+    za, zb = Z_SILL, Z_HATCH_FWD - 0.8
 
-    def section(station: float, n: int = 16) -> list[Vector]:
+    def section(station: float, n: int = 48) -> list[Vector]:
         """The vessel's outline at a station: the roof's arc under the hatches, then down one side, across the floor and up."""
-        k = (station - za) / (zb - za)
-        r = CABIN.r(zz(station)) - WALL
-        arc = [P(r * math.sin(a), r * math.cos(a), station) for a in (-HATCH[1] + 2 * HATCH[1] * i / n for i in range(n + 1))]
+        k = (station - za) / (160.2 - za)
+        rr = lambda a: CABIN.r(zz(station)) - max(WALL, depth(a, zz(station)) + 0.9) - 0.1  # noqa: E731
+        arc = [P(rr(a) * math.sin(a), rr(a) * math.cos(a), station) for a in (-HATCH_OUT + 2 * HATCH_OUT * i / n for i in range(n + 1))]
         half, floor = 26.0 - 13.0 * k, -17.5 + 3.0 * k
         return [*arc, P(half, floor, station), P(-half, floor, station)]
 
@@ -788,7 +884,7 @@ def build_crew_station(M, fit: Fit) -> None:
     rows = 8
     for i in range(n):  # the sides and the floor (the roof is the hatches and the beam between them)
         j = (i + 1) % n
-        if j <= 16 and i < 16:
+        if j <= 48 and i < 48:
             continue
         quad = [a[i].lerp(b[i], t / rows) for t in range(rows + 1)] + [a[j].lerp(b[j], t / rows) for t in range(rows + 1)]
         v.add([tuple(p) for p in quad], [(t, t + 1, rows + 2 + t, rows + 1 + t) for t in range(rows)])
@@ -799,7 +895,8 @@ def build_crew_station(M, fit: Fit) -> None:
         )
     # the beam between the hatches, inside
     r_of = lambda s: CABIN.r(zz(s)) - WALL  # noqa: E731
-    v.grid(lambda t, s: P(r_of(s) * math.sin(t), r_of(s) * math.cos(t), s), [-HATCH[0], 0.0, HATCH[0]], [za + (zb - za) * i / 8 for i in range(9)])
+    beam = lambda k, s: k * hatch_in(zz(s))  # noqa: E731
+    v.grid(lambda k, s: P(r_of(s) * math.sin(beam(k, s)), r_of(s) * math.cos(beam(k, s)), s), [-1, 0, 1], [za + (zb - za) * i / 8 for i in range(9)])
     v.build("CrewStation_PressureVessel", M["titanium"], g, sharp_angle=30)
     if not interior():
         return
