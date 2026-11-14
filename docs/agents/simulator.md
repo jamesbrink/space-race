@@ -243,7 +243,14 @@ never adjusted to bring a check in.
   above the air): about 10 microseconds a tick each. The cockpit steps them beside the vehicle
   (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
   new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic
-  code names no part. Every drag area in them today is `estimated`, and says so.
+  code names no part. Every drag area in them today is `estimated`, and says so. Several bodies let go at one event
+  each have their own `on`, the event's and a name after a slash (`boosters/B`: the strap-on B at the `boosters`
+  event). A body that stood beside the stack and not on its axis says how it left (`ShedBody.apart`, shed.ts `apart`):
+  a strap-on starts on its own axis, its +Z away from the stack, with the turn and the speed its swing about the ball
+  at its tip gave it (the stage's tail-off, or what it burned at if it was let go burning, through a few degrees); a
+  motor with a `station` turns it (the strap-on's oxidizer vent, back and out at 45 degrees from under its cone). So the
+  four strap-ons fall back as a cross, each tumbling under the air on its own track, and the core flies exactly as it
+  did: what leaves takes only its own mass, as before.
 - **The air moves.** `trajectory.winds` (types.ts: `Winds`) is the day's sounding over the pad,
   each level's speed and bearing a `Measure`; `blowOf` (forces.ts) turns it into the air's motion
   east and north at a height, straight lines between levels in those parts (so a swing through

@@ -2487,7 +2487,8 @@ export const flight: Flight = {
       { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro', burns: 'amine-nitric' },
     ],
     drops: [
-      { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
+      // each strap-on a body of its own (orbital.ts `ascent.sheds`: 'boosters/' and its letter), leaving at the stage's separation
+      ...BOOSTERS.map(([letter]) => ({ at: 119.5, nodes: [`Booster_${letter}`], on: `boosters/${letter}` })),
       { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
       { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
       { at: orbital.events.find((e) => e.id === 'separation')!.at.value, nodes: ['BlockE'], on: 'separation' },

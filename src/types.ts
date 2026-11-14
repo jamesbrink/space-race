@@ -1078,11 +1078,29 @@ export interface ShedBody {
   push?: Measure;
   /** The rockets of its own that light as it leaves, all at once: their thrusts add. */
   motors?: ShedMotor[];
+  /**
+   * A strap-on, standing beside the stack rather than on its axis, and how it leaves (sim/shed.ts `apart`): its lower ties
+   * let go, what thrust its engine still gives swings its tail outward about the ball joint at its tip until the ball
+   * leaves its socket, and it flies from there with the turn and the outward speed the swing gave it. A vent on its
+   * oxidizer tank is one of its `motors` (with a `station`, so it turns it).
+   */
+  apart?: {
+    /** Where it stands round the stack, degrees about the long axis from the way down range (the body's -Z) toward the stack's left (+Y). */
+    bearing: number;
+    /** Its own axis's distance from the stack's, m: its centre of mass is on it. */
+    across: Measure;
+    /** The ball joint at its tip, which it swings about: its station, m from the base, and its distance from the stack's axis, m. */
+    pivot: { station: Measure; across: Measure };
+    /** The thrust its engine still gives as it swings, once the stage has been cut (N): the tail-off. */
+    tailOff: Measure;
+    /** How far it swings, degrees, before its ball leaves the socket. */
+    swing: Measure;
+  };
 }
 
 /**
  * A rocket a shed body carries and lights as it leaves: its thrust, N, for `burn` seconds, along the body's +X turned
- * `cant` degrees toward its +Z (through the centre of mass: it does not turn it). What is left of `impulse` (N s) after
+ * `cant` degrees toward its +Z (through the centre of mass, where it does not turn it, unless a `station` is given). What is left of `impulse` (N s) after
  * that is spent falling evenly to nothing, as `Body.escape`'s is.
  */
 export interface ShedMotor {
@@ -1093,6 +1111,8 @@ export interface ShedMotor {
   cant?: Measure;
   /** 'abort': this is the rocket an abort burns (`Body.escape`), so a body let go after one (`Release.aborted`) does not light it again. */
   unless?: 'abort';
+  /** Where along the body its thrust acts, m from the base: off the centre of mass and canted, it turns the body. Left out: through the centre of mass. */
+  station?: Measure;
 }
 
 /** What a vehicle can take before something gives (src/sim/loads.ts). Each is a figure with its confidence like any other. */

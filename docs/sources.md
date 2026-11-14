@@ -781,6 +781,19 @@ Read for [viewer/flames.ts](../src/viewer/flames.ts) and trail.ts `pitBlast` (re
 | Photographs of the launch of 12 April 1961 from across the pit (RussianSpaceWeb, Vostok 1); the newsreel *Pervyi reis k zvezdam* (1961) | RussianSpaceWeb's Vostok 1 pages | The R-7's five fires white at the nozzles and opaque, the cloud out of the pit | That the newsreel's launch footage is Vostok 1's, or in colour, is not shown. No colour film of Vostok 1 or of Freedom 7 was found by title and archive: the colour look is judged also on colour film of later launches from the same pads |
 | Soyuz CSG User's Manual, Issue 2 (Arianespace, March 2012), §A5.1.2 | [copy](https://courses.edx.org/asset-v1:DelftX+AEASM1x+1T2023+type@asset+block/Soyuz-Users-Manual-March-2012.pdf) | That the RD-107's turbine runs on steam from hydrogen peroxide (so no dark, sooty turbine exhaust) | Where that steam is vented is not said: it is not drawn |
 
+### The strap-ons' separation
+
+Read for orbital.ts's four strap-ons and sim/shed.ts `apart`. The sequence is documented in kind; no figure for the
+tail-off, the swing, the vent or the timing between them was found.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Siddiqi, *Challenge to Apollo*, NASA SP-2000-4408, p. ~130 (the R-7's design) | [history.nasa.gov](https://history.nasa.gov/SP-4408pt1.pdf) | The strap-ons "still firing, albeit at much lower thrust", rotating away from the base until "at a certain angle" the apex mountings release; the tension bands loosened by pyrotechnics; a gentle push to move them away | No figures; the R-7 of 1957, not the 8K72K of 1961 |
+| Chertok, *Rockets and People*, vol. 2, NASA SP-2006-4110, "Seven Problems of the R-7", pp. 294-295 | [nasa.gov](https://www.nasa.gov/pdf/635963main_RocketsPeopleVolume2-ebook.pdf) | The core carried on the strap-ons' spherical heads: the thrust passes there | |
+| Soyuz CSG User's Manual, issue 2 (Arianespace, 2012), §A5.1.2 and Fig. 1.5.1a, §2.3.1 | as above | Ball joint at the cone's top and two rear struts; pyronuts, pushers and a reaction nozzle; Soyuz-2's intermediate thrust at 112 s, separation at 118.1 s | Soyuz-2, not the 8K72K |
+| Roscosmos's MS-10 commission findings (November 2018) as RussianSpaceWeb (A. Zak, Soyuz MS-10) and Habr 428530 give them; *Modelist-Konstruktor*, "Raketa, podnyavshaya v kosmos Yu. Gagarina" | web pages | The sensor on the ball freed as it leaves its socket opens the oxidizer tank's pull-away nozzle, on the cone's inner side, its jet at 45° to the axis and forward; pneumatic locks on the lower ties (Modelist-Konstruktor) where Siddiqi has pyrotechnics | Secondary; the vent's thrust and duration are in none of them |
+| Interfax on Progress MS-06's strap-ons (2017), about 50 km west of Zhezkazgan | press | The 51.6-degree drop zone: about 350 km from Site 1 (derived, great circle) | Not Vostok's azimuth: its zone was further north-east; RussianSpaceWeb's downrange page names the zones without distances |
+
 ### Known, not yet read
 
 | Source | Why it matters |

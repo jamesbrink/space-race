@@ -10,6 +10,14 @@
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
 import type { Confidence, Measure } from '../../../../../src/types';
 
+/** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
+const BOOSTERS: [letter: string, block: string, az: number][] = [
+  ['B', 'Б', 0],
+  ['V', 'В', 90],
+  ['G', 'Г', 180],
+  ['D', 'Д', 270],
+];
+
 const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
 const doc = (value: number, source: string): Measure => m(value, 'documented', source);
 const derived = (value: number, source: string): Measure => m(value, 'derived', source);
@@ -381,29 +389,63 @@ export const orbital: OrbitalFlight = {
       'the spacecraft’s centre of mass above its station 0 (the braking nozzle): about the instrument module’s top and the ball’s bottom, from the stations of vostok-3ka.md',
     ),
     sheds: [
-      {
-        on: 'boosters',
-        name: 'The four strap-ons',
+      // The four strap-ons, each a body of its own leaving from where it stood: its lower ties let go, the thrust left
+      // in its engine swings its tail out about the ball at its tip until the ball leaves its socket, and the vent on
+      // its oxidizer tank, opened as the ball comes free, pushes its nose away: the four fall back as a cross (sim/shed.ts
+      // `apart`). How it goes is documented in kind (Siddiqi, Challenge to Apollo, p. 130; the Soyuz CSG User's Manual,
+      // issue 2, A5.1.2; the MS-10 commission's findings as RussianSpaceWeb gives them); its figures are not, and are
+      // estimated. B stands down range, V on the stack's left, G up range, D on its right (vehicle.py, as the launch ring
+      // turned it: each strap-on's box on the pad, the stack's frame at liftoff).
+      ...BOOSTERS.map(([letter, block, az]) => ({
+        on: `boosters/${letter}`,
+        name: `Strap-on Block ${block} (${letter})`,
         from: doc(0, 'the main nozzles’ exits (vostok-8k72k.md)'),
         to: doc(19.8, `${ZAK}; Brügge: 19.8 m with the nozzles`),
-        radius: derived(
-          4.12,
-          'the four as one body: each 2.68 m across (Minakov), its axis 2.78 m out at the base (vostok-8k72k.md): 2.78 + 1.34',
-        ),
-        mass: derived(
-          21_130,
-          '4 × (3,750 kg dry (Minakov) + the 1,533 kg the ascent flown leaves in each): flown as one body, which they were not',
-        ),
+        radius: doc(1.34, `${MINAKOV}: 2.68 m across`),
+        mass: derived(5_283, '3,750 kg dry (Minakov; Astronautix 3,710) and the 1,533 kg the ascent flown leaves in each'),
         centre: guess(8, 'about two fifths up a strap-on, empty: its engine and tail are the heaviest part'),
-        gyration: { roll: guess(2.9, 'four blocks 2.8 m out'), across: guess(6, 'a 19.8 m block, its mass low') },
-        ahead: guess(18, 'four tips, 5.6 m² each, at 0.8'),
-        astern: guess(22, 'four tails, 5.6 m² each, at 1.0'),
+        gyration: {
+          roll: guess(0.9, 'a shell 1.34 m in radius with its engine on the axis'),
+          across: guess(6, 'a 19.8 m block, its mass low'),
+        },
+        ahead: guess(4.5, 'its tip, 5.6 m², at 0.8'),
+        astern: guess(5.6, 'its tail, 5.6 m², at 1.0'),
         side: {
-          dragArea: guess(140, '4 × 19.8 m × 2 m on average, at 0.9'),
+          dragArea: guess(35, '19.8 m × 2 m on average, at 0.9'),
           from: doc(0, 'the body’s own stretch, as above'),
           to: doc(19.8, 'the body’s own stretch, as above'),
         },
-      },
+        // the vent: on the inner side of the cone, its jet at 45° to the axis and forward, so its push is back and away
+        // from the core (Zak, RussianSpaceWeb, Soyuz MS-10; Modelist-Konstruktor); opened as the ball leaves its socket
+        motors: [
+          {
+            name: 'oxidizer tank vent',
+            thrust: guess(
+              3_000,
+              'N: NOT FOUND. The tank’s ullage gas, a few bar, through a nozzle of the order of 10 cm: some kilonewtons, falling as the tank empties (taken as steady)',
+            ),
+            burn: guess(6, 's: NOT FOUND: until the tank’s pressure has gone'),
+            cant: derived(
+              135,
+              'degrees from the strap-on’s +X toward its outward +Z: the jet at 45° to the axis and forward (Zak), so its push is 45° back of outward',
+            ),
+            station: guess(16, 'the oxidizer tank’s top, under the cone (vostok-8k72k.md has the tank above the fuel’s)'),
+          },
+        ],
+        apart: {
+          bearing: az,
+          across: derived(2.78, 'its axis at the base, from the stack’s (vostok-8k72k.md)'),
+          pivot: {
+            station: guess(19.5, 'the ball at its tip, a little under the cone’s point (the model: 19.9 m with the nozzles)'),
+            across: guess(1.3, 'the ball in its socket on the core’s skin, under the core’s upper tank (the model)'),
+          },
+          tailOff: guess(
+            100_000,
+            'N: NOT FOUND. The RD-107 was cut from its last throttle level as the ties went; what was left as it swung, a tenth of its rated thrust, is taken',
+          ),
+          swing: guess(3, 'degrees: NOT FOUND: how far the tail swings before the ball rolls out of its socket'),
+        },
+      })),
       {
         on: 'fairing',
         name: 'The fairing',
