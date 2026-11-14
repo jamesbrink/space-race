@@ -245,7 +245,7 @@ has 8 and 2.
 
 **Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
 `fitWalkShadows`) is fine and spent where it is looked at: the section's model, 52 m of ground
-round the walker, or, from an exhibit's seat in the gallery, the cabin and a metre round it. The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
+round the walker, or in the gallery what is looked at closely (below). The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
 the place, coarsely, and is fitted once, so it never shifts under a walker; the shader's
 directional light reads the fine map and, over its outer part and beyond, the far one, mixed
 across the band. (Before, nothing past the fine map's edge had a shadow, and on foot that edge
@@ -255,6 +255,25 @@ that gives no light; it is drawn only when something it would show asked for the
 (`FarShadow.nearOnly`), and on foot in a frame of its own with that figure's shadow off, or it
 would keep his shadow where he had been. Two directional lights with shadows mean exactly this
 pair to the shader: a third would need the patch widened.
+
+**In the gallery the fine map goes where the eye is close** (`Stage.focusWanted`, `steerFocus`). The far map holds the
+whole exhibit (as far apart as the slider goes, while it is taken apart): a centimetre a texel for a 34 m Gemini-Titan,
+the grain one map over the whole vehicle had, which stepped across a cabin's walls in blocks when it was cut open and
+looked at from a few metres. The fine map is spent on a square round the camera's pivot wide enough to hold all that is
+in view at the pivot's distance (inside the band where the far map takes over), in steps of a root of two down from the
+section's reach, or, from a seat, on the cabin: so the floor keeps the whole vehicle's shadow from the far map while the
+cabin's are as fine as the view (cut open on Gemini 3's crew station from 5 m, 2.1 mm a texel for 8.4, a pixel there being
+4 mm). It never moves in a cut: it fades out (`uShadowFade`, shadows.ts: the far map read in its place everywhere, the
+grain the gallery had before), waits until the camera is at rest and the wish has held still, is fitted again and fades
+back in; a frozen stage moves it at once. Its depth still runs back over the whole section, so what stands between a part
+and the Sun casts into it. The floor reads the two maps as the lit surfaces do (`CASCADED_MASK`), not three's product of
+every map, which counted a shadow twice and would draw the fine map's square on the floor. No map is added: the gallery's
+stage always had the far map and drew it over the same vehicle. At a site the fine map stays on the section, since there
+the far map is 16 cm a texel and what stands round a part looked at closely (the gantry, the pad) is in view.
+`tools/seat-test.mjs` holds it, cut open on each seat's part: the map's texel at the pivot no coarser than a pixel there,
+and on Gemini 3's cabin the shadow's own grain (its departure from its 3 x 3 mean where the shadowless picture is smooth:
+stepped edges, blotches, acne) at most 7 (8.8 with one map over the vehicle, 5.5 now). What is left of the grain in a cut
+cabin is the sky's map over what is under a roof (`skyOpen`), 3 cm a texel over a Gemini-Titan, which this does not touch.
 
 **A shadow's depth bias is a length** (`depthBias` in shadows.ts: 2.5 texels of its map, at least
 2 cm), never a share of the shadow camera's depth: as a share it came to 29 cm on foot and 60 cm
