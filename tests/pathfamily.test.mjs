@@ -1,7 +1,7 @@
 // The predicted path on states that vary, not on a flight's list: a seeded family of states (lobs of many ranges and
 // angles, climbs straight up and falls, circular and elliptical orbits low and high, prograde, polar and retrograde, a
-// state just short of orbit and just past it, one past escape), each predicted by both predictors there are (predict.ts,
-// the ballistic deck's; orbitpath.ts, the orbital deck's: one interface, one result), and each held to the same
+// state just short of orbit and just past it, one past escape), each predicted by the one propagator (predict.ts) for both
+// kinds of vehicle that coast there (sim/fliers.ts: the ballistic flight's and the orbital flight's spacecraft), each held to the same
 // invariants: the path starts at the state; its marks are where the propagation says (an apsis where the radial speed
 // changes sign and nowhere else, alternating; the end on the ground when it comes down; once round when it goes round);
 // and, drawn from eyes placed at random (beside the vehicle, beside the path, far out), no chord strays more than the
@@ -10,11 +10,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
-import { orbitPredictor } from '../src/sim/orbitpath.ts';
-import { apsides, predict } from '../src/sim/predict.ts';
+import { spacecraft } from '../src/sim/fliers.ts';
+import { flyOrbit } from '../src/sim/orbital.ts';
+import { apsides, between, predict, propagate } from '../src/sim/predict.ts';
+import { fromAxes } from '../src/sim/rigid.ts';
+import { HANDS_OFF, vehicle } from '../src/sim/vehicle.ts';
 import { curveAt, curveOf, ERROR_PX, sample } from '../src/viewer/pathline.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { julianDate } from '../src/world/time.ts';
+import { greenwichSiderealTime, julianDate } from '../src/world/time.ts';
 
 /** A seeded generator (mulberry32), so the family is the same every run. */
 function seeded(seed) {
@@ -167,9 +170,123 @@ test('the orbital deck`s predictor on the same family: one result, the same inva
     // (the orbital deck's coast flies from above the air: a lob from low down is the ballistic deck's)
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const p = orbitPredictor(plan, site, jd, vostok1.site.seaLevel.value, start);
+    const p = propagate(spacecraft(plan, jd, site, vostok1.site.seaLevel.value, start), start, {
+      site,
+      seaLevel: vostok1.site.seaLevel.value,
+    });
     p.run();
-    const curve = holds(`orbitpath.ts, ${name}`, start, p.result);
-    if (curve) drawn(`orbitpath.ts, ${name}`, curve, rand);
+    const curve = holds(`spacecraft, ${name}`, start, p.result);
+    if (curve) drawn(`spacecraft, ${name}`, curve, rand);
   }
 });
+
+// Prediction against outcome: each state of the family that comes down or goes round predicted by the one propagator and
+// then flown by the simulator from the same state, and where the path said it would end held against where the flight
+// does. The ballistic flight's spacecraft alone is flown by its live simulator (vehicle.ts: a rigid body that finds its own
+// attitude in the air, where the path holds it heat shield first), with no hand and no sequencer; the orbital spacecraft by
+// its coast (orbital.ts flyOrbit, fixed steps). The table is printed; the bounds are stated with each.
+const R_E = 6_371_008.8;
+const ecef = (r, t) => {
+  const w = 7.292115e-5 * t;
+  return [r[0] * Math.cos(w) + r[1] * Math.sin(w), -r[0] * Math.sin(w) + r[1] * Math.cos(w), r[2]];
+};
+const apartKm = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) / 1000;
+const table = [];
+
+test('prediction against outcome: the ballistic flight`s spacecraft, predicted, then flown live from the same state', () => {
+  const site = siteFrame(freedom7.site);
+  const sea = freedom7.site.seaLevel.value;
+  const tr = freedom7.trajectory;
+  const V = vehicle(tr, site, sea);
+  for (const [name, s] of family(1961)) {
+    const h = Math.hypot(...s.r) - R;
+    if (h > 130e3 && !name.startsWith('lob') && name !== 'falling') continue;
+    const start = { t: 1000, r: s.r, v: s.v, mass: tr.retropack.mass.value, phase: 'capsule' };
+    // (alone, the spacecraft lets its parachutes out at their heights by itself, in the live simulator and in the path)
+    const p = predict(tr, site, sea, start);
+    if (p.outcome !== 'impact') continue;
+    // the capsule alone, heat shield first into the wind, not turning, nothing to do
+    const wind = s.v.map((x, k) => x - [-7.292115e-5 * s.r[1], 7.292115e-5 * s.r[0], 0][k]);
+    const x = unit(wind.map((w) => -w));
+    const y = unit(cross(x, Math.abs(x[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]));
+    let state = {
+      ...V.start(),
+      t: 1000,
+      ticks: Math.round(1000 / 0.01),
+      r: s.r,
+      v: s.v,
+      q: fromAxes(x, y, cross(x, y)),
+      w: [0, 0, 0],
+      mass: tr.retropack.mass.value,
+      ignited: true,
+      cutoff: true,
+      held: false,
+      shed: { tower: true, booster: true, retropack: true },
+    };
+    while (!state.landing && state.t < 1000 + 3 * 3600) {
+      const next = V.tick(state, HANDS_OFF);
+      if (next.ticks === state.ticks) break;
+      state = next;
+    }
+    assert.ok(state.landing, `${name}: the live flight came down`);
+    const flown = V.sample(state);
+    const miss = apartKm(ecef(p.impact.r, p.impact.t), ecef(flown.centre ?? flown.r, state.landing.t));
+    const way = (angleOf(s.r, 1000, p.impact.r, p.impact.t) * R_E) / 1000;
+    table.push([`ballistic, ${name}`, `${way.toFixed(0)} km, down at T+${p.impact.t.toFixed(0)}`, `T+${state.landing.t.toFixed(0)}`, miss]);
+    // (the live capsule finds its own attitude, and its parachutes open as its own barometric switches have them: a few
+    // metres apart over hundreds of kilometres on 14 November 2026; a hundred is the bound)
+    assert.ok(miss < 0.1, `${name}: predicted ${miss.toFixed(3)} km from where it came down, over ${way.toFixed(0)} km`);
+  }
+});
+
+test('prediction against outcome: the orbital spacecraft, predicted, then flown by its coast from the same state', () => {
+  const plan = structuredClone(vostok1.orbital);
+  plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  const site = siteFrame(vostok1.site);
+  const sea = vostok1.site.seaLevel.value;
+  const jd = julianDate(vostok1.launch);
+  const g = greenwichSiderealTime(jd);
+  const turn = (v, a) => [Math.cos(a) * v[0] - Math.sin(a) * v[1], Math.sin(a) * v[0] + Math.cos(a) * v[1], v[2]];
+  for (const [name, s] of family(1961)) {
+    if (Math.hypot(...s.r) - R < 100e3) continue;
+    const start = { t: 1000, r: s.r, v: s.v };
+    const job = propagate(spacecraft(plan, jd, site, sea, start), start, { site, seaLevel: sea });
+    job.run();
+    const p = job.result;
+    const run = flyOrbit(plan, site, jd, sea, 10, { t: 1000, r: turn(s.r, g), v: turn(s.v, g) });
+    let miss;
+    let flownAt;
+    let end;
+    if (p.outcome === 'impact') {
+      // (down to the height the pilot leaves at, both)
+      const e = run.samples.at(-1);
+      flownAt = e.t;
+      miss = apartKm(ecef(p.impact.r, p.impact.t), ecef(turn(e.r, -g), e.t));
+      end = `down at T+${p.impact.t.toFixed(0)}`;
+    } else {
+      // (once round: where the coast is at the instant the path ends)
+      const last = p.points.at(-1);
+      const i = run.samples.findIndex((x) => x.t > last.t);
+      if (i < 1) continue;
+      const [a, b] = [run.samples[i - 1], run.samples[i]];
+      const r = between(a.t, a.r, a.v, b.t, b.r, b.v, last.t).r;
+      flownAt = last.t;
+      miss = apartKm(last.r, turn(r, -g));
+      end = `round at T+${last.t.toFixed(0)}`;
+    }
+    table.push([`spacecraft, ${name}`, end, `T+${flownAt.toFixed(0)}`, miss]);
+    // (the same forces, an error-controlled step against fixed ones: a metre or less once round and down through the air on
+    // 14 November 2026; ten metres round, fifty down, are the bounds)
+    assert.ok(miss < (p.outcome === 'impact' ? 0.05 : 0.01), `${name}: ${miss.toFixed(3)} km from the coast flown`);
+  }
+  console.log(
+    ['  # case | predicted | flown | apart, km', ...table.map((r) => `  # ${r[0]} | ${r[1]} | ${r[2]} | ${r[3].toFixed(3)}`)].join('\n'),
+  );
+});
+
+/** The angle about the Earth's centre between two places, each at its instant (the Earth turned under them). */
+function angleOf(r0, t0, r1, t1) {
+  const a = unit(ecef(r0, t0));
+  const b = unit(ecef(r1, t1));
+  return Math.acos(Math.min(1, Math.max(-1, dot(a, b))));
+}

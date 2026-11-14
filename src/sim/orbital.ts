@@ -753,6 +753,36 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: numbe
 }
 
 /**
+ * What pushes the spacecraft on its own, but gravity, m/s^2 (the coast's forces: flyOrbit's, and the predicted path's,
+ * sim/fliers.ts): the air on `entry`'s body (the whole ship's mass until the modules part, the entry body's after), at an
+ * instant, its motion through the air `wind` (m/s, in any frame: the push comes back in the same one) and its height above
+ * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
+ */
+export function shipPush(o: OrbitalFlight, at: number, wind: Vec3, altitude: number, aim: Vec3 | null): Vec3 {
+  const air = atmosphere(altitude);
+  const airspeed = length(wind);
+  const mach = airspeed / air.soundSpeed;
+  const q = 0.5 * air.density * airspeed * airspeed;
+  const mass = at >= o.entry.separation.value ? o.entry.mass.value : o.mass.value;
+  const drag: Vec3 = airspeed > 0 ? scale(wind, (-q * o.entry.area.value * along(o.entry.drag, mach)) / (airspeed * mass)) : [0, 0, 0];
+  // (the braking engine is on the instrument module: parted, it pushes no more)
+  return aim ? add(drag, scale(aim, o.retro.deltaV.value / (o.retro.off.value - o.retro.on.value))) : drag;
+}
+
+/**
+ * The line the braking engine pushes along as it lights, from the spacecraft's place and velocity then (and the Sun's
+ * place, asked for only when the aim is at the Sun), all in frames.ts's inertial frame of date: flyOrbit's, and the
+ * predicted path's, which gives them in its own frame and turns a `fixed` aim into it.
+ */
+export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3, fixed?: (aim: Vec3) => Vec3): Vec3 {
+  const a = o.retro.aim;
+  return scale(
+    unit(a.along === 'fixed' && a.vector ? (fixed ? fixed(a.vector) : a.vector) : a.along === 'sun' ? sub(sun(), r) : v),
+    a.sense,
+  );
+}
+
+/**
  * Fly the coast: from the published orbit round to the braking burn, and down through the air to
  * the height the pilot left at. `site` is where it was launched from and `launchJd` when (a Julian
  * date in UT), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
@@ -782,20 +812,13 @@ export function flyOrbit(
   const gastAt = (t: number): number => gast0 + EARTH_ROTATION_RATE * t;
   const sunAt = (t: number): Vec3 => sunPosition(terrestrialTime(launchJd + t / 86_400));
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
-  const braking = o.retro.deltaV.value / (off - on);
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : o.injection.at.value;
   let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, launchJd);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 =>
-    scale(
-      unit(
-        o.retro.aim.along === 'fixed' && o.retro.aim.vector ? o.retro.aim.vector : o.retro.aim.along === 'sun' ? sub(sunAt(at), s.r) : s.v,
-      ),
-      o.retro.aim.sense,
-    );
+  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at));
 
   const airAt = (s: State, at: number) => {
     const altitude = subpoint(s.r, gastAt(at)).height - seaLevel;
@@ -809,11 +832,7 @@ export function flyOrbit(
   /** Everything but gravity, m/s^2. */
   const push = (s: State, at: number): Vec3 => {
     const air = airAt(s, at);
-    const mass = at >= parted ? o.entry.mass.value : o.mass.value;
-    const drag: Vec3 =
-      air.airspeed > 0 ? scale(air.wind, (-air.q * o.entry.area.value * along(o.entry.drag, air.mach)) / (air.airspeed * mass)) : [0, 0, 0];
-    // (the braking engine is on the instrument module: parted, it pushes no more)
-    return at >= on && at < off && at < parted ? add(drag, scale(aim, braking)) : drag;
+    return shipPush(o, at, air.wind, air.altitude, at >= on && at < off && at < parted ? aim : null);
   };
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= 0.05 ? 'entry' : 'descent';
