@@ -24,7 +24,7 @@ Grissom stands on the hardstand where NASA's photograph 61-MR4-83 has him, walki
 his ventilator in his right hand, in the suit of that morning
 ([mark-iv-suit.md](../../crew/mark-iv-suit.md), "5 May and 21 July 1961": the wrist rings, the chest
 mirror, the parachute harness, the new microphones, and his own legs), and can be walked as. The
-flight itself is not built: see "What is not built" below.
+flight is flown by the simulator from the record: "The flight as flown", below.
 
 ## What happened
 
@@ -149,11 +149,52 @@ differs from Freedom 7's morning and how sure each difference is). What it still
   the cherry picker's side and bearing 235° true (lc-5.md, "Which way round the vehicle stood"). The
   blast screens and their tanks are probably on the wrong side of the pad (the same section).
 
-**The flight.** To be flown it needs what Freedom 7 has in `flight.ts`: the booster's measured
-thrust and cutoff for MR-8, the tilt programme on 100°, the capsule's weights at each stage (the
-MR-4 postlaunch memorandum report has them; it has not been found), and `flies` for what is shed
-and when. The rate command system would be a new control mode for the flight deck. After landing,
-the simulator would have to let the capsule fill and sink.
+**The flight** is flown on the stack's own hardware, as Freedom 7's is: see "The flight as flown" below.
+
+## The flight as flown
+
+`src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts), which is this
+flight's own day and figures on the Mercury-Redstone's hardware
+([mercury-redstone.ts](../../vehicles/mercury-redstone.ts): the A-7's nozzle, the tilt programme's
+curve, the drag curves, the escape rocket, the jets, the parachutes, how the weight lies along the
+stack, each with its confidence and source, the same for Freedom 7). Nothing is fitted;
+`tests/sim.test.mjs` holds the run to `checks`, which were set from the record before anything was
+flown, and keeps each miss with its cause in `src/sim/misses.ts`.
+
+What is MR-4's own: the winds aloft of the 07:00 balloon (IGRA, 21 July 1961 12Z, fourteen levels to
+31.4 km: light, southerly low down, easterly high up); the 100° azimuth; MR-8's 79,220 lbf, 217.4 s
+and 65,976 lb at liftoff (TM X-53107, Table 8-1); cutoff and the tower at 02:23, separation at 02:33,
+retrofire by the pilot at 05:10 and five seconds apart, held at 34°, the retropack at 06:07, the drogue
+at 21,000 ft and the main at 12,300 ft (*This New Ocean*, p. 372). **What the record read does not give**:
+No. 11's weights (in its Postlaunch Memorandum Report, not found), taken as No. 7's less the 46 lb its
+hatch saved, `estimated`; the posigrades' push, Freedom 7's 30 ft/s, `estimated`; the conditions at
+separation (height, climb, heading).
+
+| Check (*Results*, Table 2-I and p. 6) | Record | Flown whole | From the record's speed at separation |
+| --- | --- | --- | --- |
+| Greatest height | 102.8 nmi | +11.7 % | +5.8 % |
+| Its time | 05:16 | 05:21.6, holds | 05:16.0, holds |
+| Range | 262.5 nmi | +16.0 % | +7.9 % |
+| Space-fixed speed at separation | 7,580 ft/s | +4.3 % | (input) |
+| Earth-fixed speed at separation | 6,618 ft/s | +4.5 % | (input) |
+| Greatest pressure going up | 605.5 lb/sq ft | −6.7 % | |
+| Greatest load going up | 6.3 g | 6.39 g, holds | |
+| Greatest load coming down | 11.1 g | +11.5 % | +5.1 % |
+| Drogue | 09:41 | +23 s | +8 s, holds |
+| Main | 10:14 | +19 s | +5 s, holds |
+| Landing | 15:37 | +74 s | +59 s |
+
+The powered flight ends 4 % too fast, as Freedom 7's does and for the same reason: off the pad at
+1.20 g, one per cent in thrust or weight is three or four in speed, and the engine is two figures
+from a summary table held steady from liftoff to cutoff. Everything after follows from it. The load
+going up holds here, where on Freedom 7 it cannot be a check (the A-7's nozzle is derived from
+MR-3's 6.3 g). The greatest pressure going up is low by 6.7 %: the run gives the two flights nearly
+the same, the record has MR-4's 3 % above MR-3's, and why is not in anything read (the tilt
+programme's curve is the likeliest input). The landing is a minute late for a reason of its own:
+the history has the main out at 12,300 ft, and from there the record's 5 min 23 s to the sea is
+11.6 m/s on the average, where the canopy (derived on Freedom 7) gives 8.8 and Grissom read 30 to 32
+ft/s. Flown from the record's speed at separation the capsule comes to its top on the record's
+second; it is still high, because the height and climb it starts from are the run's own.
 
 ## Where sources disagree
 

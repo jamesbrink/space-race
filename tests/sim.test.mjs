@@ -1,5 +1,5 @@
 // src/sim: the air, gravity and the integrator against what is known in closed form, and then
-// Mercury-Redstone 3 flown from flight.ts's `trajectory` against flight.ts's `checks`.
+// every ballistic flight (tests/ballistic.mjs: Mercury-Redstone 3 and 4) flown from its flight.ts's `trajectory` against its `checks`.
 //
 // No input is fitted. Where the run misses a documented result by more than its tolerance, the
 // miss is written down in src/sim/misses.ts (the debrief reads it too) with the input most likely responsible, and the test holds
@@ -7,10 +7,9 @@
 // has quietly gone away or grown, so the list cannot drift from the truth either way.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { MISSES as RECORDED } from '../src/sim/misses.ts';
 import { along, coast, fly, G0, gravity, J2, sampleAt } from '../src/sim/fly.ts';
+import { MISSES as RECORDED } from '../src/sim/misses.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../src/world/bodies.ts';
 import {
   add,
@@ -21,11 +20,14 @@ import {
   enuToEcefDirection,
   fromHorizontal,
   geodeticToEcef,
+  inertialToEcef,
   length,
   scale,
   siteFrame,
+  sub,
   unit,
 } from '../src/world/frames.ts';
+import { BALLISTIC } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -109,159 +111,203 @@ test('the Earth’s flattening turns an orbit’s plane at the textbook rate', (
   near((expected * 86400) / DEG, -5.0, 0.1, 'which is five degrees a day');
 });
 
-/** A rocket with no air to push through and no nozzle to gain from: Freedom 7's numbers, simplified. */
-function plain() {
+const FREEDOM_7 = 'usa/mercury/mr-3-freedom-7';
+assert.ok(
+  BALLISTIC.some((f) => f.id === FREEDOM_7),
+  'Freedom 7 is among the ballistic flights',
+);
+
+/** A rocket with no air to push through and no nozzle to gain from: the flight's numbers, simplified. */
+function plain(flight) {
   const tr = structuredClone(flight.trajectory);
   tr.engine.exitArea.value = 0;
   tr.ascentDrag.points = [[0, 0]];
   return tr;
 }
-const SITE = siteFrame(flight.site);
-const SEA = flight.site.seaLevel.value;
+const siteOf = (flight) => ({ SITE: siteFrame(flight.site), SEA: flight.site.seaLevel.value });
 
-test('the rocket equation: what the accelerometer adds up to is exhaust speed times the log of the mass ratio', () => {
-  const tr = plain();
-  const { samples } = fly(tr, SITE, SEA, 0.05, 0.05);
-  const cutoff = tr.engine.cutoff.value;
-  const burn = samples.filter((s) => s.t <= cutoff && s.phase === 'powered');
-  let felt = 0;
-  for (let i = 1; i < burn.length; i++) felt += ((burn[i].g + burn[i - 1].g) / 2) * G0 * (burn[i].t - burn[i - 1].t);
-  const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
-  const left = tr.liftoffMass.value - flow * cutoff;
-  const ideal = G0 * tr.engine.isp.value * Math.log(tr.liftoffMass.value / left);
-  near(felt / ideal, 1, 2e-3, 'felt velocity against Tsiolkovsky');
-  near(sampleAt(samples, cutoff - 0.1).mass, left, flow * 0.2, 'and the mass at cutoff is what the flow leaves');
-  near(samples[0].g, tr.engine.thrust.value / (tr.liftoffMass.value * G0), 1e-9, 'off the pad at thrust over weight: 1.19 g');
-});
-
-test('standing on the pad it has the ground’s speed, and the same inputs give the same flight', () => {
-  const a = fly(flight.trajectory, SITE, SEA);
-  const b = fly(flight.trajectory, SITE, SEA);
-  near(a.samples[0].speed, EARTH_ROTATION_RATE * Math.hypot(...geodeticToEcef(SITE).slice(0, 2)), 1e-9, '409 m/s eastward');
-  assert.equal(a.samples[0].groundSpeed, 0);
-  assert.deepEqual(a.results, b.results);
-  assert.equal(a.samples.at(-1).phase, 'landed');
-  near(along(flight.trajectory.tilt, 0), 0, 0, 'upright at liftoff');
-  near(along(flight.trajectory.tilt, 200), 41, 1e-9, 'and held at 41 degrees after the arrest');
-});
-
-const MISSES = RECORDED[flight.id];
-
-function hold(results, misses, skip, t) {
+function hold(flight, results, misses, skip, t) {
   for (const c of flight.checks) {
     if (skip.includes(c.id)) continue;
     const got = results[c.id];
-    assert.ok(Number.isFinite(got), `${c.id}: the run has no such result`);
+    assert.ok(Number.isFinite(got), `${flight.callsign}, ${c.id}: the run has no such result`);
     const off = got - c.value;
     const line = `${c.label}: ${got.toPrecision(6)} ${c.unit} against ${c.value.toPrecision(6)} (${off >= 0 ? '+' : ''}${((off / c.value) * 100).toFixed(1)} %)`;
     const miss = misses[c.id];
     if (Math.abs(off) <= c.tolerance) {
-      assert.ok(!miss, `${c.id} is now within its tolerance: take it off the list of misses. ${line}`);
+      assert.ok(!miss, `${flight.callsign}, ${c.id} is now within its tolerance: take it off the list of misses. ${line}`);
       t.diagnostic(`ok    ${line}`);
       continue;
     }
-    assert.ok(miss, `${c.id} misses and no reason is recorded. ${line}`);
+    assert.ok(miss, `${flight.callsign}, ${c.id} misses and no reason is recorded. ${line}`);
     const measured = miss.absolute ? off : off / c.value;
     assert.ok(
       Math.abs(measured - miss.by) <= miss.slack,
-      `${c.id}: the miss has moved from the ${miss.by} recorded to ${measured.toFixed(3)}. ${line}`,
+      `${flight.callsign}, ${c.id}: the miss has moved from the ${miss.by} recorded to ${measured.toFixed(3)}. ${line}`,
     );
     t.diagnostic(`MISS  ${line}: ${miss.why}`);
   }
 }
 
-test('Mercury-Redstone 3, flown whole from its inputs, against the Postlaunch Report', (t) => {
-  const { results, samples } = fly(flight.trajectory, SITE, SEA);
-  hold(results, MISSES.whole, [], t);
-  // what the run gets right going up is the shape: the climb angles at separation, and the two loads
-  near(results.separationGroundClimb, 46.47, 1, 'Earth-fixed climb angle at separation');
-  near(results.separationClimb, 39.01, 1, 'space-fixed climb angle at separation');
-  near(sampleAt(samples, 80).g, 2.05, 0.15, 'about 2 g at 01:20, as the report’s Figure 4.2-5 draws it');
-  near(sampleAt(samples, 120).g, 4.0, 0.2, 'and 4 g at 02:00');
-});
+for (const flight of BALLISTIC) {
+  const { SITE, SEA } = siteOf(flight);
+  const MISSES = RECORDED[flight.id] ?? {};
+  const name = `${flight.designation} (${flight.callsign})`;
 
-test('the capsule’s half, flown from the separation the report gives', (t) => {
-  // height, Earth-fixed speed, climb and heading at 02:32.3 are the report's; where over the sea it was then is the run's own
-  const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
-  const tr = flight.trajectory;
-  const at = sampleAt(fly(tr, SITE, SEA).samples, tr.separation.at.value);
-  const turn = EARTH_ROTATION_RATE * tr.separation.at.value;
-  const place = { latitude: at.latitude, longitude: at.longitude, height: want.separationAltitude + SEA };
-  const heading = 105.23; // Postlaunch Report, section 4.2: Earth-fixed heading angle at separation
-  const moving = scale(
-    enuToEcefDirection(place, fromHorizontal(heading * DEG, want.separationGroundClimb * DEG)),
-    want.separationGroundSpeed,
-  );
-  const r = ecefToInertial(geodeticToEcef(place), turn);
-  const v = add(ecefToInertial(moving, turn), cross([0, 0, EARTH_ROTATION_RATE], r));
-  const { results } = fly(tr, SITE, SEA, 0.05, 0.5, { r, v });
-  // the space-fixed figures follow from the Earth-fixed ones, which is a check on the report and on the frames
-  near(results.separationSpeed, want.separationSpeed, 1, 'space-fixed speed from Earth-fixed');
-  near(results.separationClimb, want.separationClimb, 0.1, 'space-fixed climb angle from Earth-fixed');
-  hold(results, MISSES.capsule, ['exitQ', 'exitG'], t);
-  near(results.landingSpeed, 29 * 0.3048, 0.3, 'onto the sea at 29 ft/s');
-  near(dot(unit(r), unit(v)), Math.sin(want.separationClimb * DEG), 0.002, 'climbing at 39 degrees in the frame that does not turn');
-});
+  test(`${name}: the rocket equation: what the accelerometer adds up to is exhaust speed times the log of the mass ratio`, () => {
+    const tr = plain(flight);
+    const { samples } = fly(tr, SITE, SEA, 0.05, 0.05);
+    const cutoff = tr.engine.cutoff.value;
+    const burn = samples.filter((s) => s.t <= cutoff && s.phase === 'powered');
+    let felt = 0;
+    for (let i = 1; i < burn.length; i++) felt += ((burn[i].g + burn[i - 1].g) / 2) * G0 * (burn[i].t - burn[i - 1].t);
+    const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
+    const left = tr.liftoffMass.value - flow * cutoff;
+    const ideal = G0 * tr.engine.isp.value * Math.log(tr.liftoffMass.value / left);
+    near(felt / ideal, 1, 2e-3, 'felt velocity against Tsiolkovsky');
+    near(sampleAt(samples, cutoff - 0.1).mass, left, flow * 0.2, 'and the mass at cutoff is what the flow leaves');
+    near(samples[0].g, tr.engine.thrust.value / (tr.liftoffMass.value * G0), 1e-9, 'off the pad at thrust over weight');
+  });
 
-test('which inputs are not documented, and how far each moves the results', (t) => {
-  const tr0 = flight.trajectory;
-  const base = fly(tr0, SITE, SEA).results;
-  const inputs = [
-    ['ascentDrag (estimated)', (tr) => tr.ascentDrag.points.forEach((p) => (p[1] *= 1.05)), tr0.ascentDrag.confidence],
-    ['tilt programme (estimated)', (tr) => tr.tilt.points.forEach((p) => (p[1] *= 1.05)), tr0.tilt.confidence],
-    ['engine.exitArea (derived)', (tr) => (tr.engine.exitArea.value *= 1.05), tr0.engine.exitArea.confidence],
-    ['separation.boosterMass (derived)', (tr) => (tr.separation.boosterMass.value *= 1.05), tr0.separation.boosterMass.confidence],
-    ['retro.pitch (derived)', (tr) => (tr.retro.pitch.value *= 1.05), tr0.retro.pitch.confidence],
-    ['drogue.dragArea (estimated)', (tr) => (tr.drogue.dragArea.value *= 1.05), tr0.drogue.dragArea.confidence],
-    ['main.dragArea (derived)', (tr) => (tr.main.dragArea.value *= 1.05), tr0.main.dragArea.confidence],
-    ['area (derived)', (tr) => (tr.area.value *= 1.05), tr0.area.confidence],
-    ['drogue.fills (estimated)', (tr) => (tr.drogue.fills.value *= 1.05), tr0.drogue.fills.confidence],
-    ['main.fills (estimated)', (tr) => (tr.main.fills.value *= 1.05), tr0.main.fills.confidence],
-    ['engine.thrust (documented)', (tr) => (tr.engine.thrust.value *= 1.05), tr0.engine.thrust.confidence],
-    ['engine.isp (documented)', (tr) => (tr.engine.isp.value *= 1.05), tr0.engine.isp.confidence],
-    ['liftoffMass (documented)', (tr) => (tr.liftoffMass.value *= 1.05), tr0.liftoffMass.confidence],
-    ['winds (documented)', (tr) => tr.winds.levels.forEach((l) => (l.speed.value *= 1.05)), tr0.winds.levels[0].speed.confidence],
-    ['winds.calmAbove (estimated)', (tr) => (tr.winds.calmAbove.value *= 1.05), tr0.winds.calmAbove.confidence],
-  ];
-  const shown = ['separationSpeed', 'apogee', 'range', 'entryG', 'duration'];
-  t.diagnostic(`a 5 % rise in each input moves, in per cent: ${shown.join(', ')}`);
-  const moved = {};
-  for (const [name, change, confidence] of inputs) {
-    assert.ok(name.includes(confidence), `${name}: flight.ts now says ${confidence}`);
-    const tr = structuredClone(tr0);
-    change(tr);
-    const r = fly(tr, SITE, SEA).results;
-    moved[name] = shown.map((id) => (r[id] / base[id] - 1) * 100);
-    t.diagnostic(`${name.padEnd(34)} ${moved[name].map((x) => `${x >= 0 ? '+' : ''}${x.toFixed(1)}`.padStart(7)).join('')}`);
-  }
-  // the two estimated inputs that matter are the ones the misses are laid to
-  assert.ok(moved['ascentDrag (estimated)'][0] < -0.3, 'more drag, less speed');
-  assert.ok(Math.abs(moved['drogue.dragArea (estimated)'][1]) < 0.01, 'the drogue has no say in the apogee');
-  assert.ok(moved['main.dragArea (derived)'][4] > 0.5, 'a bigger main parachute, a longer flight');
-  // where the wind is taken to die away above the sounding is past mattering: the air there is a hundredth of the surface's
-  assert.ok(
-    moved['winds.calmAbove (estimated)'].every((x) => Math.abs(x) < 0.01),
-    'the calm above the sounding has no say',
-  );
-  // nothing in the trajectory is marked documented that the record calls a guess
-  const estimated = [];
-  const walk = (o, path) => {
-    if (o && typeof o === 'object') {
-      if (o.confidence && o.confidence !== 'documented') estimated.push(`${path} (${o.confidence})`);
-      // `body` is the live simulator's (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
-      // `heating` is sim/heating.ts's: fly() does not read it either, and tests/heating.test.mjs holds every figure in it to a confidence and weighs the judgements
-      for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body' && k !== 'heating') walk(v, path ? `${path}.${k}` : k);
+  test(`${name}: standing on the pad it has the ground’s speed, and the same inputs give the same flight`, () => {
+    const a = fly(flight.trajectory, SITE, SEA);
+    const b = fly(flight.trajectory, SITE, SEA);
+    near(a.samples[0].speed, EARTH_ROTATION_RATE * Math.hypot(...geodeticToEcef(SITE).slice(0, 2)), 1e-9, '409 m/s eastward');
+    assert.equal(a.samples[0].groundSpeed, 0);
+    assert.deepEqual(a.results, b.results);
+    assert.equal(a.samples.at(-1).phase, 'landed');
+    near(along(flight.trajectory.tilt, 0), 0, 0, 'upright at liftoff');
+    near(along(flight.trajectory.tilt, 200), 41, 1e-9, 'and held at 41 degrees after the arrest');
+  });
+
+  test(`${name}, flown whole from its inputs, against the record`, (t) => {
+    const { results, samples } = fly(flight.trajectory, SITE, SEA);
+    hold(flight, results, MISSES.whole ?? {}, [], t);
+    // what the run gets right going up is the shape: the climb angles at separation, and the two loads (Freedom 7's report has the figures)
+    if (flight.id !== FREEDOM_7) return;
+    near(results.separationGroundClimb, 46.47, 1, 'Earth-fixed climb angle at separation');
+    near(results.separationClimb, 39.01, 1, 'space-fixed climb angle at separation');
+    near(sampleAt(samples, 80).g, 2.05, 0.15, 'about 2 g at 01:20, as the report’s Figure 4.2-5 draws it');
+    near(sampleAt(samples, 120).g, 4.0, 0.2, 'and 4 g at 02:00');
+  });
+
+  test(`${name}: the capsule’s half, flown from the separation the record gives`, (t) => {
+    // the Earth-fixed speed at the instant is the record's, and so are the height, climb and heading where it gives them;
+    // what it does not give (and where over the sea it was then) is the run's own, and the diagnostics say which
+    const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
+    const tr = flight.trajectory;
+    const run = fly(tr, SITE, SEA).results;
+    const at = sampleAt(fly(tr, SITE, SEA).samples, tr.separation.at.value);
+    const own = [];
+    const record = (id) => {
+      if (want[id] !== undefined) return want[id];
+      own.push(id);
+      return run[id];
+    };
+    const turn = EARTH_ROTATION_RATE * tr.separation.at.value;
+    const place = { latitude: at.latitude, longitude: at.longitude, height: record('separationAltitude') + SEA };
+    if (!tr.separation.heading) own.push('heading');
+    const heading = tr.separation.heading?.value ?? headingOf(at);
+    const climb = record('separationGroundClimb');
+    const moving = scale(enuToEcefDirection(place, fromHorizontal(heading * DEG, climb * DEG)), want.separationGroundSpeed);
+    const r = ecefToInertial(geodeticToEcef(place), turn);
+    const v = add(ecefToInertial(moving, turn), cross([0, 0, EARTH_ROTATION_RATE], r));
+    if (own.length) t.diagnostic(`the record gives no ${own.join(', ')} at separation: the run’s own are taken`);
+    const { results } = fly(tr, SITE, SEA, 0.05, 0.5, { r, v });
+    // the space-fixed figures follow from the Earth-fixed ones, which is a check on the record and on the frames
+    if (want.separationClimb !== undefined) {
+      near(results.separationSpeed, want.separationSpeed, 1, 'space-fixed speed from Earth-fixed');
+      near(results.separationClimb, want.separationClimb, 0.1, 'space-fixed climb angle from Earth-fixed');
     }
-  };
-  walk(tr0, '');
-  t.diagnostic(`not documented: ${estimated.join(', ')}`);
-  // every one of them is weighed above (but the engine's run-dry time, which only the live simulator reads)
-  const weighed = new Set(inputs.map(([name]) => name.split(' (')[0].replace('tilt programme', 'tilt')));
-  for (const e of estimated) {
-    const name = e.split(' ')[0];
-    assert.ok(weighed.has(name) || name === 'engine.depletion', `${name} is not documented and is not weighed`);
-  }
-  assert.deepEqual(estimated.map((e) => e.split(' ')[0]).sort(), [
+    hold(
+      flight,
+      results,
+      MISSES.capsule ?? {},
+      ['exitQ', 'exitG', ...(want.separationAltitude === undefined ? ['separationSpeed'] : [])],
+      t,
+    );
+    near(results.landingSpeed, 29 * 0.3048, 0.3, 'onto the sea at 29 ft/s');
+    if (want.separationClimb !== undefined)
+      near(
+        dot(unit(r), unit(v)),
+        Math.sin(want.separationClimb * DEG),
+        0.002,
+        'climbing as the record has it in the frame that does not turn',
+      );
+  });
+
+  test(`${name}: which inputs are not documented, and how far each moves the results`, (t) => {
+    const tr0 = flight.trajectory;
+    const base = fly(tr0, SITE, SEA).results;
+    const c = (m) => m.confidence;
+    const inputs = [
+      ['ascentDrag', (tr) => tr.ascentDrag.points.forEach((p) => (p[1] *= 1.05)), c(tr0.ascentDrag)],
+      ['tilt', (tr) => tr.tilt.points.forEach((p) => (p[1] *= 1.05)), c(tr0.tilt)],
+      ['engine.exitArea', (tr) => (tr.engine.exitArea.value *= 1.05), c(tr0.engine.exitArea)],
+      ['separation.mass', (tr) => (tr.separation.mass.value *= 1.05), c(tr0.separation.mass)],
+      ['separation.boosterMass', (tr) => (tr.separation.boosterMass.value *= 1.05), c(tr0.separation.boosterMass)],
+      ['separation.speed', (tr) => (tr.separation.speed.value *= 1.05), c(tr0.separation.speed)],
+      ['retro.fires', (tr) => tr.retro.fires.forEach((f) => (f.value *= 1.05)), c(tr0.retro.fires.at(-1))],
+      ['retro.pitch', (tr) => (tr.retro.pitch.value *= 1.05), c(tr0.retro.pitch)],
+      ['retropack.mass', (tr) => (tr.retropack.mass.value *= 1.05), c(tr0.retropack.mass)],
+      ['drogue.dragArea', (tr) => (tr.drogue.dragArea.value *= 1.05), c(tr0.drogue.dragArea)],
+      ['main.dragArea', (tr) => (tr.main.dragArea.value *= 1.05), c(tr0.main.dragArea)],
+      ['area', (tr) => (tr.area.value *= 1.05), c(tr0.area)],
+      ['drogue.fills', (tr) => (tr.drogue.fills.value *= 1.05), c(tr0.drogue.fills)],
+      ['main.fills', (tr) => (tr.main.fills.value *= 1.05), c(tr0.main.fills)],
+      ['engine.thrust', (tr) => (tr.engine.thrust.value *= 1.05), c(tr0.engine.thrust)],
+      ['engine.isp', (tr) => (tr.engine.isp.value *= 1.05), c(tr0.engine.isp)],
+      ['liftoffMass', (tr) => (tr.liftoffMass.value *= 1.05), c(tr0.liftoffMass)],
+      ['winds', (tr) => tr.winds.levels.forEach((l) => (l.speed.value *= 1.05)), c(tr0.winds.levels[0].speed)],
+      ['winds.calmAbove', (tr) => (tr.winds.calmAbove.value *= 1.05), c(tr0.winds.calmAbove)],
+    ];
+    const shown = ['separationSpeed', 'apogee', 'range', 'entryG', 'duration'];
+    t.diagnostic(`a 5 % rise in each input moves, in per cent: ${shown.join(', ')}`);
+    const moved = {};
+    for (const [name, change, confidence] of inputs) {
+      const tr = structuredClone(tr0);
+      change(tr);
+      const r = fly(tr, SITE, SEA).results;
+      moved[name] = shown.map((id) => (r[id] / base[id] - 1) * 100);
+      t.diagnostic(
+        `${`${name} (${confidence})`.padEnd(34)} ${moved[name].map((x) => `${x >= 0 ? '+' : ''}${x.toFixed(1)}`.padStart(7)).join('')}`,
+      );
+    }
+    // the two estimated inputs that matter are the ones the misses are laid to
+    assert.ok(moved.ascentDrag[0] < -0.3, 'more drag, less speed');
+    assert.ok(Math.abs(moved['drogue.dragArea'][1]) < 0.01, 'the drogue has no say in the apogee');
+    assert.ok(moved['main.dragArea'][4] > 0.5, 'a bigger main parachute, a longer flight');
+    // where the wind is taken to die away above the sounding is past mattering: the air there is a hundredth of the surface's or
+    // less (a twentieth more height to die away in moves MR-4's entry load, under 24 m/s at 31 km, by 0.03 per cent)
+    assert.ok(
+      moved['winds.calmAbove'].every((x) => Math.abs(x) < 0.1),
+      'the calm above the sounding has no say',
+    );
+    // nothing in the trajectory is marked documented that the record calls a guess
+    const estimated = [];
+    const walk = (o, path) => {
+      if (o && typeof o === 'object') {
+        if (o.confidence && o.confidence !== 'documented') estimated.push(`${path} (${o.confidence})`);
+        // `body` is the live simulator's (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
+        // `heating` is sim/heating.ts's: fly() does not read it either, and tests/heating.test.mjs holds every figure in it to a confidence and weighs the judgements
+        for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body' && k !== 'heating') walk(v, path ? `${path}.${k}` : k);
+      }
+    };
+    walk(tr0, '');
+    t.diagnostic(`not documented: ${estimated.join(', ')}`);
+    // every one of them is weighed above (but the engine's run-dry time, which only the live simulator reads); a retrorocket's
+    // time is weighed with the others
+    const weighed = new Set(inputs.map(([name]) => name));
+    const names = [...new Set(estimated.map((e) => e.split(' ')[0].replace(/^retro\.fires\.\d+$/, 'retro.fires')))].sort();
+    for (const name of names)
+      assert.ok(weighed.has(name) || name === 'engine.depletion', `${flight.callsign}: ${name} is not documented and is not weighed`);
+    assert.deepEqual(names, NOT_DOCUMENTED[flight.id], `${flight.callsign}: the inputs that are not documented`);
+  });
+}
+
+/** What each flight's record does not give, input by input: a change here is a change in what the simulator stands on, and is to be argued. */
+const NOT_DOCUMENTED = {
+  [FREEDOM_7]: [
     'area',
     'ascentDrag',
     'drogue.dragArea',
@@ -274,5 +320,35 @@ test('which inputs are not documented, and how far each moves the results', (t) 
     'separation.boosterMass',
     'tilt',
     'winds.calmAbove',
-  ]);
-});
+  ],
+  // No. 11's weights are not in anything read (its Postlaunch Memorandum Report), nor the posigrades' push on MR-4
+  'usa/mercury/mr-4-liberty-bell-7': [
+    'area',
+    'ascentDrag',
+    'drogue.dragArea',
+    'drogue.fills',
+    'engine.depletion',
+    'engine.exitArea',
+    'main.dragArea',
+    'main.fills',
+    'retro.fires',
+    'retropack.mass',
+    'separation.boosterMass',
+    'separation.mass',
+    'separation.speed',
+    'tilt',
+    'winds.calmAbove',
+  ],
+};
+
+/** The heading over the ground of a sample's motion, degrees true. */
+function headingOf(s) {
+  const place = { latitude: s.latitude, longitude: s.longitude, height: 0 };
+  const east = enuToEcefDirection(place, fromHorizontal(90 * DEG, 0));
+  const north = enuToEcefDirection(place, fromHorizontal(0, 0));
+  const turn = EARTH_ROTATION_RATE * s.t;
+  // the sample's velocity over the ground, in the Earth's axes
+  const wind = sub(s.v, cross([0, 0, EARTH_ROTATION_RATE], s.r));
+  const g = inertialToEcef(wind, turn);
+  return (((Math.atan2(dot(g, east), dot(g, north)) / DEG) % 360) + 360) % 360;
+}

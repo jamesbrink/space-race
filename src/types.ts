@@ -861,6 +861,11 @@ export interface Trajectory {
     boosterMass: Measure;
     /** How fast the two part, m/s, shared between them by their masses. */
     speed: Measure;
+    /**
+     * The Earth-fixed heading at separation, degrees true, where the record gives one. Neither simulator reads it:
+     * tests/sim.test.mjs starts the capsule's half from the record's separation, and takes the run's own heading where this is missing.
+     */
+    heading?: Measure;
   };
   retro: {
     /** When each retrorocket lights, seconds from liftoff. */
