@@ -189,6 +189,27 @@ So the deck's lock (`manual.code`, orbital.ts) is 1-4-5, `documented` from the d
 named beside it wherever the code is shown. The cabin's keys (`Ctl_Code1` to `6`) are wired to
 their own digits and do not change with the code.
 
+### The manual system's gas
+
+The cabin's gauge of the manual orientation's nitrogen (`Gauge_ManualGas`) follows Gagarin's readings, which the
+prints do not all agree on before launch.
+
+| When (Moscow) | Read | Source |
+| --- | --- | --- |
+| 07:29, on the pad | **175** | «Звёздный рейс Юрия Гагарина», *Izvestiya TsK KPSS* 1991 No. 5 (the transcript), and «Первый пилотируемый полёт» (2011), book 1, p. 440: the archive's record, both prints, «давление в системе ручной ориентации 175» |
+| 07:29, on the pad | 155 | Kommersant's print of the same report (kommersant.ru/doc/253987): «В системе ручной ориентации — 155 атмосфер» |
+| after the separation | 155 | the onboard tape (the same 1991 and 2011 prints) |
+| 09:48 | 150 | the transcript |
+| 10:04 | 155 | the onboard tape |
+| 10:23 | 150 | the onboard tape |
+
+The gauge follows the archive's prints: 175 before launch, then 155, 150, 155, 150, straight between his readings and
+held after the last (`documented`; straight between them is ours). The newspaper's 155 is not kept: the same print
+differs from the archive's in three other places in that one report, and where one of them can be checked (the
+separation's time, against the onboard tape) the newspaper's is the one in error (spacecraft.md, "The correction
+window's figure"). Why the pressure should read 20 atm less after the separation, with the system never used, is not said:
+175 may be a mishearing on the ground, or the bottles cooler in orbit. Until November 2026 the gauge stood at 155.
+
 ## 2. What the simulator needs, and the order to build it
 
 Each step lands by itself with tests against published values. **Done** marks what is in this

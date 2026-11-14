@@ -39,8 +39,13 @@ result at the vertices in a colour attribute named `Shade`, the only one `srlib.
 multiplies the surface by. It is two figures in one colour: red, green and blue with the cabin's own lamps on, alpha
 with them off (how open the point is, and how much of what lets light in it sees). A viewer that knows no cabin
 multiplies by the first, which is right for anything not seen through; `Cabin.shadeBy` patches the materials of the
-meshes that carry four parts to mix the two by `uCabinLit`, which the lights' switch moves (`CabinDef.lighting`), so
-switching the lamps is two uniforms and the lamps' strength: no light is added or taken away, and no shader is built.
+meshes that carry four parts to mix the two by `uCabinLit` (the share of the lamps' strength that is lit), which the
+lights' switch moves (`CabinDef.lighting`), and to take the indirect light (the sky's tenth left indoors, what metal
+mirrors) toward the lit lamps' colour by `uCabinTint` (white for lamps lit as built), so switching the lamps, to red or
+to a dim duty light, is uniforms and the lamps' strength and colour: no light is added or taken away, and no shader is
+built. The shade has one lamps-on figure for all the lamps together: a way that lights some of them, or another bulb
+in the same fitting, is shaded as if all were lit and dimmed by their share. To be right for one lamp alone a model
+would bake a shade per lamp (a colour attribute each), which nothing does yet.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
 indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray
@@ -244,7 +249,10 @@ there is (`fitDetail`: the canvas's real height and the camera's field of view, 
 or a dense screen keeps the fine level further). A model that is cut open is always drawn in full. The place round the pad (`Flight.surroundings`)
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
-level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it.
+level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it. What stands round
+a place beyond its own model (`SiteDef.around`, the Cape's neighbouring complexes) is chosen by the same `Scenery`
+(viewer/around.ts `Around`: each thing a piece, its meshes joined a material a level, its coarser levels `ghost`s the
+walker does not stand on), and the stage asks every `Levelled` alike: the place's, and the setting's `levels`.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
 script and a threshold to `LOD_ABOVE` (the choosing takes any number); do not hand-edit geometry for them.
 

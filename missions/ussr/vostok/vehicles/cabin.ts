@@ -24,6 +24,13 @@ export function vostokLights(): NonNullable<ModelDef['lights']> {
   ];
 }
 
+/**
+ * The duty light: the left hand lamp (the first of `vostokLights()`) at this share of its strength. That the duty light
+ * was dimmer than the working one is Titov's (too dim to write his log by in the Earth's shadow); which lamp, and how
+ * dim, is ours: estimated.
+ */
+export const DUTY = 0.25;
+
 /** The meshes of the seated figure's helmet and head (crew/sk_1.py), each `Pilot_Helmet_<name>`: in front of the eyes from the seat. */
 const HELMET = [
   'Shell',
@@ -75,10 +82,10 @@ export function vostokCabin(): CabinDef {
       control: 'Ctl_Lighting',
       name: 'Cabin lighting',
       about:
-        'The cabin’s lamps, by a tumbler on the control panel: working, duty, off. On Vostok 2 Titov wrote his log by the working light and found the duty one too dim to write by in the Earth’s shadow. The tumbler and the two fittings here are Vostok 1’s, carried over to this ship: estimated.',
+        'The cabin’s lamps, by a tumbler on the control panel: working, duty, off. On Vostok 2 Titov wrote his log by the working light and found the duty one too dim to write by in the Earth’s shadow: here the left hand lamp at a quarter of its strength (how dim is ours). The tumbler and the two fittings here are Vostok 1’s, carried over to this ship: estimated.',
       ways: [
         { says: 'Working', lit: [0, 1] },
-        { says: 'Duty', lit: [0] },
+        { says: 'Duty', lit: [{ light: 0, level: DUTY }] },
         { says: 'Off', lit: [] },
       ],
       fittings: ['Lamp_1', 'Lamp_2'],

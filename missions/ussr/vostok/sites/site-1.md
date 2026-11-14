@@ -635,13 +635,13 @@ the morning's clock ("The morning at the pad"); clocked motions (`clocked`) are 
 | `Support_3` | `LaunchRing` | the same, at 277.5° (south): (1.083, -8.229, 1.6) | 277.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Support_4` | `LaunchRing` | the same, at 7.5° (east): (8.229, 1.083, 1.6) | 7.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Guide_1..4` | `LaunchRing` | each on its foot on the turning cage, 7.66 out, 5.45 under the deck, at its support's bearing (97.5°, 187.5°, 277.5°, 7.5°) | its support's bearing | -25°: its tip goes down and back from the tail | T+0.3 s | 2.0 s | `clocked` on the part `LaunchRing` | that they go back under their own weight once the rocket has left them, in 2.5 s at most: documented for the later system. The angle: estimated |
-| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive`: its east bogie on the track's line, the car turned to it) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
+| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive` with `bogies`: both bogies on the track's line, each wheel set on its rails, the model's where they are modelled and the land beyond: `runs`) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
 | `TankCar_Kerosene` (and its eight wheels) | `TankCars` | the same: (4.8, -12.375, 0.009) | follows the south track west, onto the centre track and out through the fence | 525 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | as the oxygen filler |
 | `UpperCableMast` | (top level) | its hinge line on the ring: 8.75 out, 0.7 up, at 7.5° (east): (8.675, 1.142, 0.7) | 7.5° | +40° | 09:06:00 (T-59.7 s) | 10 s | `moves`: slider 0.82 to 0.874 | the minute: documented (the transcript). That it went the whole way then: read off the two photographs. The angle and the ten seconds: estimated |
 | `ServiceTruss_North` | `ServiceTrusses` | its hinge line on the ring: 8.6 out, 0.9 up, at 97.5° | 97.5° | +98° | 08:40 | to about 08:44 | `moves`: slider 0.505 to 0.703 | that they were lowered and when it began: documented. The angle, the order and how long: estimated |
 | `ServiceTruss_South` | `ServiceTrusses` | the same, at 277.5° | 277.5° | +98° | a little after the north one | to 08:45 | `moves`: slider 0.559 to 0.775 | as the north one |
 | `Erector_Boom` | `Erector` | its trunnion on the wagon's nose, 11.3 m west of the axis, 3.0 up, its axis across the track | 180° (it goes down to the west) | +20°, then +84° (104° in all) | 08:35; then 08:37 | 2 min; then to 08:42 | `moves`: slider 0.19 to 0.37, then to 0.595 | the two minutes and that it "leaned over little by little and laid itself down": documented. The angles and how long the second took: estimated |
-| `Erector` (and `Erector_Wheel_1..6`, each about its axle) | (top level) | | slides west (-X) | 30 m, then on to 120 m | 08:37; then 08:42 | to 08:42; to 08:45 | `moves`: slider 0.37 to 0.595, then to 0.775 | that it rode away along the rails and was drawn off by a locomotive: documented. How far and how fast: estimated |
+| `Erector` (and `Erector_Wheel_1..6`, each about its axle) | (top level) | | slides west (-X) on the model's rails (`runs`: DeckRails, Tracks), its wheels rolling and each axle on its rails | 30 m, then on to 120 m | 08:37; then 08:42 | to 08:42; to 08:45 | `moves`: slider 0.37 to 0.595, then to 0.775 | that it rode away along the rails and was drawn off by a locomotive: documented. How far and how fast: estimated |
 | `Erector_Lift` | `Erector_Boom` | the car's floor, at the stair's landing (on the wagon's south side) | a lift: stops 19.60 and 23.12 m up the boom, each 0.2493 of its height nearer the rocket | | by hand | 0.3 m/s | an `action` of the part, not the slider | the stops' places estimated |
 | `Bus_In` (wheels `Bus_In_Wheel_1..2`, `Bus_In_SteerWheel_1..2`) | `Bus` | the ground under the middle of its rear axle, where the model first has it on the road: Blender (-230.0, -23.35, -0.12) | a `drive`: in along the road and onto the apron, 179 m, to (-51.39, -15.2) facing east | | 06:49 | to 06:50 | `clocked` on the part `Bus` | that it came by the concrete road and stopped there at about 06:50: documented (the film; Kamanin's diary). Its line on the road and the minute it takes: estimated |
 | `Bus_Back` (wheels `Bus_Back_Wheel_n`, `Bus_Back_SteerWheel_n`) | `Bus_In` | the same axle | a `drive`, backing: west and round into the road round the pit, 43 m, to (-84, -42) facing north | | 08:37 | 45 s | `clocked` | estimated: that the bus took the cosmonauts off at thirty minutes' readiness (the roster has them leave then for the measuring point), and how it turned |
@@ -886,7 +886,12 @@ rocket can leave the erector out by its date.
   the rocket"). Not modelled on it: the rams that raised the boom, the cradles the rocket lay in,
   its jacks, whatever folded the platforms before it left (they go down with the boom as they
   stood), the locomotive that drew it off. Its wheels run on the rails' heads all the way: in the deck's
-  flangeways on the slab, and on the modelled rails of the centre track to where it is left.
+  flangeways on the slab, and on the modelled rails of the centre track to where it is left, down the 12 cm into the
+  apron and up again at its west end, pitched between its axles (its `runs`: src/viewer/runs.ts).
+- The fillers are drawn off with both bogies on their tracks (`bogies`), the body on the line between them, each wheel
+  set put on its rails across and turned to them (src/viewer/runs.ts): the tracks' corners are kinks of a polyline,
+  where a real track curves. Over the apron each wheel's flange hangs some 19 mm into the land, whose flangeways are
+  paint; beyond the modelled rails they run on the land the track is painted on, the flanges on it.
 - The erector is drawn with its stair, landing and lift to the north and mirrored to the south, where the film has
   them: everything else of it that was not symmetrical (the ladder to its deck, the gaps in its rails) went over
   with them. The lift's car has its two door leaves built open, folded back inside it against its ends, which is
@@ -966,14 +971,13 @@ rocket can leave the erector out by its date.
 - Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
   mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
   the rest of its spur are not drawn. The building's distance from the pad is ours.
-- **The assembly and test building of Site 2 is drawn at one level of detail.** Its three levels are built and
+- **The assembly and test building of Site 2 has the viewer's own thresholds.** Its three levels are built and
   measured ("On the horizon"; `tyuratam/model/1961-04.lod.json`: at 2.5 px a metre, the largest size measured that is
   under its own whole, 112 pixels differ between the first two and 419 between the last two, so its thresholds are
-  the viewer's own, 8 and 2 px a metre), and its GLB carries them; but what stands round a site is fetched as one
-  file and joined into a mesh a material (viewer/around.ts), so the full one is drawn at any distance. From the pad
-  it is 0.5 px a metre: the coarsest level is the one that belongs there. They were measured by putting each level's
-  geometry into those meshes in the page, since `lod-thresholds.mjs --measure` knows only models and the place's
-  pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
+  the viewer's own, 8 and 2 px a metre), and its GLB carries them; it is drawn at the level its size on screen calls
+  for and changes level by the place's own fade (viewer/around.ts). From the pad it is 0.5 px a metre: the coarsest.
+  They were measured by putting each level's geometry into the page by hand, since `lod-thresholds.mjs --measure`
+  knows only models and the place's pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
   round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's
@@ -989,8 +993,9 @@ rocket can leave the erector out by its date.
   last, at five minutes, for the gate, the ambulance that left at thirty minutes for the bend of the road, the
   doctors' field car that came at dawn, the rail tractor that drew the erector and the fillers off, the evacuation
   trains. The film crews' places (the upper platform, "a hillock", "a dugout") are named and not located.
-- The bus, the car and the truck drive on the flat: the land under the apron is level in the model. They cross no
-  modelled rail (the truck crosses two tracks where they are paint on the land), and when they have gone they
+- The bus, the car and the truck run on the land (their `runs`: the roads and the apron are painted on it), each
+  wheel on it at every instant and the body pitched and rolled between them (src/viewer/runs.ts), and on a modelled
+  rail where a tyre is over one (the truck crosses two tracks where they are paint on the land), and when they have gone they
   stand on the road just outside the west gate, 510 to 540 m from the pad, for as long as the clock runs (no further, so that the place's coarse shadow map stays over the pad): they went to
   the measuring point and to 20 km, beyond what is modelled. The bus's three drives are a way of turning it round
   that is ours. The saloon car is `tools/blender/vehicles.py`'s kind and can be got into and driven; the bus and

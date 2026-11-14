@@ -734,7 +734,7 @@ export class Gallery {
       if (!b || !this.ready) return;
       if (b.dataset.lookout !== undefined) this.leanTo(Number(b.dataset.lookout));
       else if (b.dataset.seat !== undefined) this.sitIn(Number(b.dataset.seat));
-      else if (b.hasAttribute('data-cabin-lights')) this.cabinLights();
+      else if (b.dataset.switch !== undefined) this.throwSwitch(Number(b.dataset.switch));
       else if (b.hasAttribute('data-unseat')) this.sitIn(null);
     });
     this.q('.steps').addEventListener('click', (e) => {
@@ -883,7 +883,7 @@ export class Gallery {
       if (this.seat !== null) this.tip(thing?.label ? [thing.label, thing.about ?? ''] : null);
     };
     stage.onCabin = (thing) => {
-      if (thing.lights) this.cabinLights();
+      if (thing.thrown !== undefined) this.throwSwitch(thing.thrown);
       else if (thing.lookout) {
         const said = stage.lookOut(thing);
         if (said) this.say(thing.label || 'Looking out', said);
@@ -1490,13 +1490,11 @@ export class Gallery {
     if (said && n !== null) this.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
   }
 
-  /** The cabin's own lights' switch, to its next position: from its console (a click from the seat) or the bar. */
-  private cabinLights(): void {
-    const stage = this.made?.stage;
-    const said = stage?.cabin?.light();
-    const lighting = stage?.cabin?.lighting;
-    if (!said || !lighting) return;
-    this.say(lighting.name, said);
+  /** A switch of the cabin (its own lights, a globe's mode), to its next position: from its console (a click from the seat) or the bar. Nothing is flown here: no command goes to a deck. */
+  private throwSwitch(index: number): void {
+    const thrown = this.made?.stage?.cabin?.throwSwitch(index);
+    if (!thrown) return;
+    this.say(thrown.name, thrown.says);
     this.seated();
   }
 
@@ -1516,7 +1514,7 @@ export class Gallery {
       this.q('.lookouts'),
       at === null ? [] : stage.lookouts().map((l) => l.name),
       stage.leaning,
-      at === null ? null : (stage.cabin?.lighting ?? null),
+      at === null ? [] : (stage.cabin?.switched ?? []),
       at === null ? null : { labels: stage.seatLabels, at },
     );
     if (at === null) this.tip(null);

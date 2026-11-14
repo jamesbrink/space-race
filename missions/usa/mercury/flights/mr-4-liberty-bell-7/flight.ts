@@ -7,6 +7,7 @@ import {
   launcherSpec,
   launcherTurn,
   lc5Parts,
+  ON_ROAD,
   type PadNode,
   type PadStops,
   type PartWords,
@@ -710,6 +711,7 @@ const vanLeaves = (from: number, to: number): Move[] => [
     wheels: 'GroundEquipment_VanTractor_Wheel',
     steered: 'GroundEquipment_VanTractor_SteerWheel',
     axle: 'z',
+    runs: ON_ROAD,
   },
   {
     kind: 'drive',
@@ -729,6 +731,7 @@ const vanLeaves = (from: number, to: number): Move[] => [
     wheels: 'GroundEquipment_TransferVan_Wheel',
     steered: 'GroundEquipment_TransferVan_NoSteer',
     axle: 'x',
+    runs: ON_ROAD,
   },
 ];
 
@@ -761,8 +764,8 @@ const padParts: Part[] = lc5Parts({
     // T-85: the shower, disconnected, is wheeled from the structure's base to the pad's north edge, clear of the
     // cameras: along the blockhouse side, then along the edge. When is documented; where to is where May's photographs
     // have it stowed (estimated)
-    { kind: 'slide', node: 'GroundEquipment_Shower', by: [0, 0, 26.67], from: T.platforms, to: T.platforms + 0.03 },
-    { kind: 'slide', node: 'GroundEquipment_Shower', by: [-23.165, 0, 0], from: T.platforms + 0.03, to: T.platforms + 0.06 },
+    { kind: 'slide', node: 'GroundEquipment_Shower', by: [0, 0, 26.67], from: T.platforms, to: T.platforms + 0.03, runs: ON_ROAD },
+    { kind: 'slide', node: 'GroundEquipment_Shower', by: [-23.165, 0, 0], from: T.platforms + 0.03, to: T.platforms + 0.06, runs: ON_ROAD },
     // T-80: the door steps of the spare parts trailer and of the transfer van fold up, and both are taken away: the
     // trailer north off the pad past the cherry picker, the van straight ahead along the track's side. That they
     // moved then is the count's; how and where to is estimated throughout

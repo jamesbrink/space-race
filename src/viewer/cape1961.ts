@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { grain } from './surface';
+import { Around } from './around';
+import type { Levelled } from './lod';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
@@ -531,83 +530,26 @@ const WORN_BY_NEIGHBOURS = [
 /** How far above the terrain a model's zero stands: the pad's surface over the ground round it (backdrops.ts: GROUND_Y; sites/lc5/site.py: GROUND). */
 const PAD_OVER_GROUND = 0.12;
 
-/** The near complexes: a mesh for each material, filled when the model has arrived. `arrived()` is true once, when it has. */
-function neighbours(groundAt: (x: number, z: number) => number): { meshes: THREE.Mesh[]; arrived: () => boolean } {
-  const meshes = new Map<string, THREE.Mesh>();
-  for (const name of WORN_BY_NEIGHBOURS) {
-    const material = new THREE.MeshStandardMaterial({ name, color: 0x808080, roughness: 0.8 });
-    material.shadowSide = THREE.DoubleSide; // as every model's surfaces cast (stage.ts: dress)
-    grain(material);
-    // nothing yet: one point underground, so that it is a mesh with a place to whoever lists the scene's meshes
-    const nothing = new THREE.BufferGeometry().setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute([0, -1e3, 0, 0, -1e3, 0, 0, -1e3, 0], 3),
-    );
-    const mesh = new THREE.Mesh(nothing, material);
-    mesh.name = `Neighbours_${name}`;
-    mesh.castShadow = mesh.receiveShadow = true;
-    meshes.set(name, mesh);
-  }
-  let news = false;
-  // (no page: a test builds the Cape without its neighbours)
-  if (typeof document !== 'undefined') {
-    // (a decoder of its own, for this one model: its workers are let go when the model has arrived, or has not)
-    const draco = new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
-    const loader = new GLTFLoader().setDRACOLoader(draco);
-    loader
-      .loadAsync(import.meta.env.BASE_URL + NEIGHBOURS)
-      .then((gltf) => {
-        const lists = new Map<string, THREE.BufferGeometry[]>();
-        for (const c of COMPLEXES) {
-          const node = c.node && gltf.scene.getObjectByName(c.node);
-          if (!node) continue;
-          const [x, z] = fromPad5(c.lat, c.lon);
-          node.rotation.y = -THREE.MathUtils.degToRad(c.heading);
-          node.position.set(x, groundAt(x, z) + PAD_OVER_GROUND, z);
-          node.updateWorldMatrix(false, true);
-          node.traverse((o) => {
-            const part = o as THREE.Mesh;
-            if (!part.isMesh) return;
-            const from = part.material as THREE.MeshStandardMaterial;
-            const to = meshes.get(from.name);
-            if (!to) {
-              console.warn(`cape1961.ts: the neighbours' model wears "${from.name}", which is not in WORN_BY_NEIGHBOURS: not drawn`);
-              return;
-            }
-            // the material is the model's: its colour and finish are taken from it, here and on the twin a look may have made
-            const real = (to.userData.real ?? to.material) as THREE.MeshStandardMaterial;
-            real.color.copy(from.color);
-            real.roughness = from.roughness;
-            real.metalness = from.metalness;
-            if (to.material !== real) (to.material as THREE.MeshToonMaterial).color.copy(from.color);
-            const g = new THREE.BufferGeometry();
-            g.setAttribute('position', part.geometry.getAttribute('position').clone());
-            g.setAttribute('normal', part.geometry.getAttribute('normal').clone());
-            g.setIndex(part.geometry.getIndex()!.clone());
-            g.applyMatrix4(part.matrixWorld);
-            lists.set(from.name, [...(lists.get(from.name) ?? []), g]);
-          });
-        }
-        for (const [name, list] of lists) {
-          const mesh = meshes.get(name)!;
-          mesh.geometry.dispose();
-          mesh.geometry = mergeGeometries(list);
-          mesh.geometry.computeBoundingBox();
-          mesh.geometry.computeBoundingSphere();
-        }
-        news = true;
-      })
-      .catch((e) => console.warn('the neighbouring complexes did not arrive, and are done without:', e))
-      .finally(() => draco.dispose());
-  }
-  return {
-    meshes: [...meshes.values()],
-    arrived: () => {
-      const was = news;
-      news = false;
-      return was;
-    },
-  };
+/**
+ * The near complexes, each where it stood on its own ground and at the level of detail its size on screen calls for
+ * (around.ts: the same scenery as what stands round any place). `arrived()` is true once, when something of it has.
+ */
+function neighbours(groundAt: (x: number, z: number) => number): Around {
+  const things = COMPLEXES.flatMap((c) =>
+    c.node
+      ? [
+          {
+            node: c.node,
+            place: (node: THREE.Object3D) => {
+              const [x, z] = fromPad5(c.lat, c.lon);
+              node.rotation.y = -THREE.MathUtils.degToRad(c.heading);
+              node.position.set(x, groundAt(x, z) + PAD_OVER_GROUND, z);
+            },
+          },
+        ]
+      : [],
+  );
+  return new Around(NEIGHBOURS, things, WORN_BY_NEIGHBOURS, 'cape1961.ts');
 }
 
 /**
@@ -616,7 +558,11 @@ function neighbours(groundAt: (x: number, z: number) => number): { meshes: THREE
  * sunk well below that; a near one stands as the pad does, its zero 12 cm over the ground, which is level round it
  * (cape.ts: the clearings). `changed()` is true once when something of it has arrived late.
  */
-export function buildCape1961(groundAt: (x: number, z: number) => number): { scenery: THREE.Object3D[]; changed: () => boolean } {
+export function buildCape1961(groundAt: (x: number, z: number) => number): {
+  scenery: THREE.Object3D[];
+  levels: Levelled[];
+  changed: () => boolean;
+} {
   const k = new Kit();
   const stands = (x: number, z: number, reach: number) =>
     Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => groundAt(x + ((i % 3) - 1) * reach, z + (Math.floor(i / 3) - 1) * reach)));
@@ -639,5 +585,5 @@ export function buildCape1961(groundAt: (x: number, z: number) => number): { sce
     .drum('black', 1.9, 0.2, 2.2, 0, tower + 3.6, 0, 12);
   k.box('red', 4, 3, 6, 9, 0, 0).box('dark', 4.4, 0.5, 6.4, 9, 3, 0); // the oil house
   const near = neighbours(groundAt);
-  return { scenery: [...k.meshes(), ...near.meshes], changed: near.arrived };
+  return { scenery: [...k.meshes(), near.group], levels: [near], changed: () => near.arrived() };
 }

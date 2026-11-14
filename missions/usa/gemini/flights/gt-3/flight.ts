@@ -516,6 +516,8 @@ const vehicle: ModelDef = {
  * where it was built and every lamp is dark, and each says so. What this gives is the cabin lit as indoors by its own
  * three floodlights, its instruments and controls named, and its two windows to look out of.
  */
+/** The floodlights' red bulbs (SEDR 300, p. 3-20: each fixture had one): the colour is estimated, a red that keeps the eyes dark-adapted. */
+const RED_LIGHT = 0xff3018;
 const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
 const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
 const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
@@ -594,17 +596,19 @@ vehicle.cabin = {
   // have: CENTER LIGHT, at the head of the overhead panel's forward row, RED over OFF over WHT (SEDR 300, p. 3-20 and
   // Figure 3-5 sheet 2, S/C 3: documented). It was the centre lamp's alone: each side lamp had a WHITE-OFF-RED selector
   // and a rheostat of its own on its fixture (p. 3-20), which the model's fittings do not have, so here the one switch
-  // throws all three (a simplification). Built at WHT. The lamps' red bulbs are not drawn: at RED the lever goes over
-  // and the cabin is as dark as at OFF, and says so.
+  // throws all three (a simplification). Built at WHT. At RED each lamp lights from its own fitting in red at a third of
+  // its white strength: that each fixture had a red bulb is documented; the red's colour and how bright, estimated (a
+  // red for the dark, by eye). The build's shade is the white bulbs' (one figure for the lamps on): the red is shaded as
+  // the white is, mixed by its share of their strength (viewer/cabin.ts).
   lighting: {
     control: 'Ctl_CabinLights',
     name: 'Cabin lights',
     about:
-      'CENTER LIGHT, on the overhead panel: RED, OFF, WHT (SEDR 300, p. 3-20; Figure 3-5 sheet 2). Three floodlights, one each side and one at the centre, each with a white bulb and a red one. On the ship this switch was the centre lamp’s and each side lamp had its own on its fixture; here it throws all three, and the red bulbs are not drawn.',
+      'CENTER LIGHT, on the overhead panel: RED, OFF, WHT (SEDR 300, p. 3-20; Figure 3-5 sheet 2). Three floodlights, one each side and one at the centre, each with a white bulb and a red one. On the ship this switch was the centre lamp’s and each side lamp had its own on its fixture; here it throws all three. The red’s colour and brightness are estimated.',
     ways: [
       { says: 'White', lit: [0, 1, 2] },
       { says: 'Off', lit: [] },
-      { says: 'Red (dark)', lit: [] },
+      { says: 'Red', lit: [0, 1, 2].map((light) => ({ light, colour: RED_LIGHT, level: 1 / 3 })) },
     ],
     fittings: ['Lamp_Left', 'Lamp_Right', 'Lamp_Centre'],
   },

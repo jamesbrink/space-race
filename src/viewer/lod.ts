@@ -3,6 +3,7 @@ import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vect
 import type { Part } from '../types';
 import { markDriven } from './drive.ts';
 import { Exploder } from './explode.ts';
+import type { Surfaces } from './runs.ts';
 
 /**
  * Pixels per metre above which each level of detail is worth drawing. Level 0 is the model as
@@ -247,6 +248,19 @@ export class Crossfade {
   }
 }
 
+/**
+ * Something drawn at its levels of detail that chooses them for itself as the eye moves (`Scenery`; around.ts's
+ * `Around`, scenery beyond the place): what the stage asks of each every frame, when it warms, and when the look changes.
+ */
+export interface Levelled {
+  /** Each thing at the level its size on screen calls for (`Scenery.choose`). True if what is drawn changed, or is changing. */
+  choose(eye: Vector3, scale: number, dt?: number): boolean;
+  /** Every level drawn at once, the fade's shaders too if `fading` (Stage.warm); or back to what suits. */
+  everyLevel(on: boolean, fading?: boolean): void;
+  /** The look has changed (`Scenery.relook`). */
+  relook(): void;
+}
+
 /** One piece of the place round the pad: a top-level node, at each of its levels. */
 interface Piece {
   name: string;
@@ -281,7 +295,7 @@ function partsOf(node: THREE.Object3D): Box3[] {
  * walked on, lit, worked: a hidden node still answers a ray); the coarser levels are only drawn. A
  * piece that is driven (it carries a `vehicle`) is always drawn from level 0, which is the one that moves.
  */
-export class Scenery {
+export class Scenery implements Levelled {
   private readonly levels: (THREE.Object3D | undefined)[] = [];
   private readonly pieces: Piece[] = [];
   private every = false;
@@ -443,8 +457,12 @@ export class Staged {
   /** Its own thresholds (`thresholdsOf`). */
   above: readonly number[];
 
-  constructor(full: THREE.Object3D, parts: Part[]) {
+  /** Where what runs on something is stood (Move `runs`: viewer/runs.ts), the same for every level. */
+  private readonly surfaces: Surfaces | null;
+
+  constructor(full: THREE.Object3D, parts: Part[], surfaces: Surfaces | null = null) {
     this.parts = parts;
+    this.surfaces = surfaces;
     this.above = thresholdsOf(full.userData.lod_above);
     this.add(0, full);
   }
@@ -463,7 +481,7 @@ export class Staged {
     this.levels[level] = object;
     this.group.add(object);
     markDriven(object, this.parts);
-    const exploder = new Exploder(object, this.parts);
+    const exploder = new Exploder(object, this.parts, this.surfaces);
     for (const [node, reading] of this.held) exploder.hold(node, reading);
     for (const [node, instant] of this.worked) exploder.work(node, instant);
     for (const node of this.loose) exploder.loosen(node, true);
@@ -482,6 +500,14 @@ export class Staged {
   explode(t: number): void {
     this.t = t;
     for (const e of this.exploders) e.set(t);
+  }
+
+  /** What there is to run on has changed (the place round the pad has arrived): every level is posed again on it. */
+  resurface(): void {
+    for (const e of this.exploders) {
+      e.set(this.t);
+      if (this.clockT !== null) e.clock(this.clockT);
+    }
   }
 
   /** Has it parts that move on the clock (Part.clocked)? */
