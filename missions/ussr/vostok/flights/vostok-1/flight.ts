@@ -1900,7 +1900,7 @@ export const flight: Flight = {
     drops: [
       { at: 119.5, nodes: BOOSTERS.map(([letter]) => `Booster_${letter}`), on: 'boosters' },
       { at: 154.6, nodes: ['Fairing'], on: 'fairing' },
-      { at: 300, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
+      { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
       { at: orbital.events.find((e) => e.id === 'separation')!.at.value, nodes: ['BlockE'], on: 'separation' },
       {
         at: orbital.entry.separation.value,

@@ -28,6 +28,10 @@ const MINAKOV = 'Minakov, «Ракета, поднявшая в космос Ю.
 const ASTRONAUTIX = 'Encyclopedia Astronautica, Vostok 8K72K stage data: secondary';
 const PPP =
   '«Первый пилотируемый полёт», book 2 (Davydov, ed., 2011), as quoted by page in Gammal and Tuchin, «Реконструкция траектории полёта КА «Восток-1»», Keldysh Institute preprint 2025 No. 15';
+const NK =
+  'Lissov and Afanasyev, «106 минут Гагарина в свете рассекреченных документов», Novosti Kosmonavtiki 2011 No. 6, pp. 2–11, written page by page from «Первый пилотируемый полёт» (2011): the flight task (book 1, pp. 429–430), the launch cyclogram (book 1, p. 431) and NIIP-5’s operational report of 13 May 1961 (book 2, pp. 54–69): secondary';
+const TASK =
+  'Gagarin’s flight task, its three sheets (ЦА РКВ, ф. 19, оп. 114сс, д. 15, лл. 126–128), as the Ministry of Defence published them in 2021 («Покорители космоса», 60cosmonauts.mil.ru)';
 const BATURIN =
   'Baturin (co-editor of the 2011 documents), «Подлинная история полета Гагарина», Novaya Gazeta, 12 April 2021: secondary, no footnotes';
 const SOYUZ =
@@ -43,7 +47,7 @@ const TDU = MSK(10, 25, 4.2);
 export const orbital: OrbitalFlight = {
   liftoffMass: doc(
     287_000,
-    'RKK Energia 1946–1996, of this flight: «со стартовой массой 287 т»; Minakov; Siddiqi. Also in print: 290.5 t (Zak), 291.15 t (Brügge), 281.4 t (Astronautix)',
+    `RKK Energia 1946–1996, of this flight: «со стартовой массой 287 т»; Minakov; Siddiqi. ${NK}, p. 9: «Масса заправленного изделия 8К72 с кораблем 3КА №3 составила 291 619 кг»: not flown yet, being 4.9 t more than the blocks' figures add to (mission.md, "The 2011 documents"). Also in print: 290.5 t (Zak), 291.15 t (Brügge), 281.4 t (Astronautix)`,
   ),
   stages: [
     {
@@ -106,7 +110,8 @@ export const orbital: OrbitalFlight = {
         '100.4 t fuelled less 6.8 t dry (both Astronautix, of the 8K72K’s core): all that is not structure, peroxide and nitrogen with the kerosene and oxygen, drawn at the engine’s whole flow (see the strap-ons). ' +
           'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
       ),
-      // the RD-108's main chambers stop and it runs on its steering chambers alone for its last seconds: the final stage of thrust
+      // the RD-108's main chambers stop at the preliminary command and it runs on its steering chambers alone until the main
+      // command: the final stage of thrust. Its instants are the cyclogram's, as late as the day had them; its level is estimated
       throttle: {
         points: [
           [0, 1],
@@ -116,8 +121,10 @@ export const orbital: OrbitalFlight = {
         ],
         confidence: 'estimated',
         source:
+          `When: the cyclogram's «Предварительная» to switch the core off at 305.74 s and «Главная» at 312.74 s, 7.00 s of final stage, and on the day the preliminary command carried out 0.51 s late (${NK}, p. 4): 306.25 s, derived. ` +
+          'The main command and the separation were not recorded; the main is taken as late as the preliminary (313.25 s: estimated). ' +
           '«За несколько секунд до выключения двигателя РД-108 переводится на конечную ступень тяги, на которой работают только рулевые КС, и при том – на пониженном режиме» ' +
-          '(lpre.de); 10 s of it on the 8D75 and 22 s on the 8D75K (the same), the 8D75 being the 8K72K’s. Gagarin felt 10 to 15 s of weightlessness before the third stage lit. ' +
+          '(lpre.de). Gagarin felt 10 to 15 s of weightlessness before the third stage lit, which the third stage’s ignition at 321.42 s explains. ' +
           'The level is not found: the four steering chambers at their rated 2.5 tf each (RKK Energia 1946–1996), 10 tf of the engine’s 96.4 in vacuum, 10.4 per cent, is the most it can be (“at a reduced setting”), and is taken; thrust and flow fall together here, which the steering chambers’ own lower impulse does not quite do',
       },
       thrust: {
@@ -129,13 +136,14 @@ export const orbital: OrbitalFlight = {
         vacuum: doc(3089 / G0, `${ENERGOMASH}: 3,089 N·s/kg (315 s)`),
       },
       ignition: guess(0, 'lit on the pad with the strap-ons, as theirs'),
-      cutoff: doc(
+      cutoff: guess(
         300,
-        `${SIDDIQI}, p. 277: T+300 s. ${ZAK}: 299 s, and half a second or so later than commanded (the radio guidance’s fault), which is one of the two explanations in print of the high apogee`,
+        `the main command, which put out the steering chambers: planned at 312.74 s (the cyclogram, ${NK}, p. 4) and not recorded on the day; taken as late as the preliminary command was (0.51 s). ` +
+          `«300 s» (${SIDDIQI}, p. 277) and 299 s (${ZAK}) are not the documents’ figures. The core reached 22.0 m/s over its design (NIIP-5’s report, ibid.): a result here, not an input`,
       ),
       separation: doc(
         300,
-        `${SIDDIQI}; ${ZAK}: the third stage lights through the lattice and the core is cut loose. No separate instant is given`,
+        `the third stage’s «Зажигание» at T+321.42 s (NIIP-5’s report, ${NK}, p. 4), whose fire through the lattice cuts the core loose: the separation itself was not recorded. The plan had the third stage started at 311.74 s, before the core’s main command; the 9.7 s between plan and record is not explained in anything read`,
       ),
     },
     {
@@ -143,18 +151,22 @@ export const orbital: OrbitalFlight = {
       count: 1,
       engine: 'RD-0109 (8D719)',
       nodes: ['BlockE'],
-      mass: doc(7_984, `${MINAKOV}: 7,984 kg, of the 8K72’s stage. Astronautix 7,775 kg; RKK Energia “8 t”; Brügge 8.36 t`),
-      dry: doc(1_472, `${MINAKOV}: 1,472 kg burnt out. Astronautix 1,440 kg; Zak 1.34 t dry`),
-      propellant: derived(6_512, 'Minakov’s two figures, 7,984 less 1,472 kg. Brügge has 6.93 t'),
+      // (NK's figures from the 2011 documents, 1,210 kg dry and 6,576 kg of propellant, are not flown yet: mission.md, "The 2011 documents")
+      mass: doc(
+        7_984,
+        `${MINAKOV}: 7,984 kg, of the 8K72’s stage. ${NK}, p. 10, note 31: 7,786 kg (1,210 dry, 4,482 + 2,088 + 6 kg filled), not flown yet. Astronautix 7,775 kg; RKK Energia “8 t”; Brügge 8.36 t`,
+      ),
+      dry: doc(1_472, `${MINAKOV}: 1,472 kg burnt out. ${NK}: 1,210 kg dry, not flown yet. Astronautix 1,440 kg; Zak 1.34 t dry`),
+      propellant: derived(6_512, 'Minakov’s two figures, 7,984 less 1,472 kg. Brügge has 6.93 t; NK 6,576 kg'),
       thrust: { vacuum: doc(54_500, 'Brügge: 54.5 kN; Astronautix 54.52 kN: secondary') },
       isp: { vacuum: doc(3172 / G0, 'Brügge: 3,172 N·s/kg (323.5 s); Astronautix 324 s: secondary') },
       ignition: doc(
         300,
-        `${SIDDIQI}; ${ZAK}: “about 300 s”, lit while the core still burned (hot staging: Minakov; RKK Energia). Gagarin felt 10 to 15 s of weightlessness between the two (${GAGARIN}), which that does not explain: not reconciled`,
+        `NIIP-5’s report: «Запуск “головной двигательной установки” 3-й ступени произошел в T+321.42 сек (команда “Зажигание”)» (${NK}, p. 4). The cyclogram had its start command at 311.74 s. Gagarin felt 10 to 15 s of weightlessness between the core and the third stage (${GAGARIN}), which this explains; “about 300 s” (${SIDDIQI}; ${ZAK}) is not the documents’ figure`,
       ),
       cutoff: doc(
-        676,
-        `${SIDDIQI}, p. 277: T+676 s. It burned long: a valve assembled wrongly (Siddiqi 2015, from the documents published in 2011). 376 s of burning at 54.5 kN and 323.5 s would use 6,460 kg, all but 50 kg of Minakov’s load`,
+        677.08,
+        `NIIP-5’s report: shut down «через 677.08 сек после старта вместо 674.68 сек по циклограмме по команде от интегратора КИ22-8В-2 при наборе кажущейся скорости 2285.55 м/с и уровне перегрузки 0.92» (${NK}, p. 4). ${SIDDIQI}, p. 277: T+676 s. It burned long: a valve assembled wrongly (Siddiqi 2015)`,
       ),
       separation: doc(
         MSK(9, 18, 28),
@@ -166,8 +178,8 @@ export const orbital: OrbitalFlight = {
         apparent: true,
         speed: doc(
           2_283.52,
-          '«Установочное значение кажущейся скорости в момент выдачи главной команды на выключение двигателя III ступени ... 2283,52 м/сек»: Gagarin’s flight task, page 1, section VI ' +
-            '(ЦА РКВ, ф. 19, оп. 114сс, д. 15), as pictured in Kommersant Nauka No. 9, 14 April 2021, read off a 1,200-pixel image: the third numeral could be a 6 (2,263.52). ' +
+          `«Установочное значение кажущейся скорости в момент выдачи главной команды на выключение двигателя III ступени ... 2283,52 м/сек»: ${TASK}, sheet 126, section VI, read off the 800 × 1,200 scan: 2,283.52 and not 2,263.52. ` +
+            `On the day it cut at 2,285.55 m/s, 2.03 over its setting (NIIP-5’s report, ${NK}, p. 4): that is a result here. ` +
             'The apparent velocity is the sensed acceleration summed over Block E’s burn, taken from its ignition (from when is not on the page): not a speed in any frame. ' +
             'Baturin’s 25.43 m/s over the design (the core 0.46 s late, Block E 2.4 s long) is what the day made of it, a result here and not an input',
         ),
@@ -190,14 +202,25 @@ export const orbital: OrbitalFlight = {
     },
     {
       id: 'core',
-      label: 'Core cut off; third stage alight',
-      at: doc(300, `${SIDDIQI}, p. 277`),
-      also: '299 s (Zak). The telemetry recorded no instant for it (PPP p. 60, as Keldysh quotes it). Cut 0.46 s late by the autonomous system’s time mark, the radio command having failed: 22.0 m/s over the design (Baturin); Chertok, vol. 3, p. 291: “shut down by a command from the autonomous system integrator, which had been set for a velocity exceeding the design velocity for the radio system”',
+      label: 'Core’s main chambers off: its steering chambers alone',
+      at: derived(
+        306.25,
+        `the preliminary command, planned at 305.74 s and carried out 0.51 s late: the «Наддув» command that starts the staging came from the integrator at 305.20 s, 0.46 s late, the radio system’s antennas having had no proper power since 156 s (a converter failed at 117 s): NIIP-5’s report (${NK}, p. 4)`,
+      ),
+      also: '300 s (Siddiqi, p. 277) and 299 s (Zak) are not the documents’ figures. The main command and the separation were not recorded; the core ended 22.0 m/s over its design. Chertok, vol. 3, p. 291: “shut down by a command from the autonomous system integrator, which had been set for a velocity exceeding the design velocity for the radio system”',
+    },
+    {
+      id: 'third',
+      label: 'Third stage alight; the core cut loose',
+      at: doc(321.42, `NIIP-5’s report: «команда “Зажигание”» at T+321.42 s (${NK}, p. 4). The cyclogram had it started at 311.74 s`),
     },
     {
       id: 'orbit',
       label: 'Third stage cut off: in orbit',
-      at: doc(676, `${SIDDIQI}, p. 277`),
+      at: doc(
+        677.08,
+        `NIIP-5’s report: 677.08 s, by its integrator, where the cyclogram had 674.68 s (${NK}, p. 4). ${SIDDIQI}, p. 277: 676 s`,
+      ),
       also: 'It burned 2.4 s longer than calculated (Baturin); the whole over-speed was 25.43 m/s, and the apogee 327 km for 230',
     },
     {
@@ -312,7 +335,7 @@ export const orbital: OrbitalFlight = {
         },
       },
       {
-        until: doc(676, `${SIDDIQI}, p. 277: to the last cutoff`),
+        until: doc(677.08, `NIIP-5’s report (${NK}, p. 4): to the last cutoff`),
         area: derived(6.835, 'the core seen end on, 2.95 m (Minakov): Block E and the fairing are narrower'),
         curve: {
           points: [
@@ -333,7 +356,10 @@ export const orbital: OrbitalFlight = {
       {
         id: 'fairing',
         at: doc(154.6, `${PPP}: 09:09:34.3`),
-        mass: doc(800, `${ZAK}: 0.8 t. Brügge 0.64 t: secondary`),
+        mass: doc(
+          800,
+          `${ZAK}: 0.8 t. Brügge 0.64 t: secondary. ${NK}, p. 10, note 31: «Масса головного обтекателя составляла 582 кг», not flown yet (mission.md, "The 2011 documents")`,
+        ),
       },
     ],
     // For the scene: where the spacecraft's centre of mass is, and what leaves as a body of its own (sim/shed.ts). Stations
@@ -479,11 +505,11 @@ export const orbital: OrbitalFlight = {
       {
         id: 'cutoffAt',
         label: 'Third stage cut off',
-        value: 676,
+        value: 677.08,
         unit: 's',
         tolerance: 3,
         confidence: 'documented',
-        source: `${SIDDIQI}, p. 277: T+676 s. Added with the cut on velocity, before it was flown: 3 s is the record’s second and Baturin’s 2.4 s of over-burn`,
+        source: `NIIP-5’s report: 677.08 s (${NK}, p. 4); ${SIDDIQI}, p. 277: T+676 s, which this check had until November 2026. The tolerance was set with the cut on velocity, before it was flown: 3 s is the record’s second and Baturin’s 2.4 s of over-burn`,
       },
       {
         id: 'apogee',
@@ -532,8 +558,8 @@ export const orbital: OrbitalFlight = {
   },
   injection: {
     at: doc(
-      676,
-      `${SIDDIQI}, p. 277: third stage cutoff at T+676 s. The orbit is taken to begin here; the push of separation twelve seconds later is not known and is left out`,
+      677.08,
+      `NIIP-5’s report: third stage cutoff at T+677.08 s (${NK}, p. 4); ${SIDDIQI}, p. 277: 676 s. The orbit is taken to begin here; the push of separation twelve seconds later is not known and is left out`,
     ),
     heading: 'north',
     arc: guess(
