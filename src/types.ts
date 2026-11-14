@@ -13,6 +13,9 @@ import type { OrbitalFlight } from './sim/orbital.ts';
  */
 export type Confidence = 'documented' | 'derived' | 'estimated';
 
+/** What an engine burns, for its fire's look (viewer/flames.ts: each one's colours, light and opacity, with their sources). */
+export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
+
 export interface Spec {
   /** Which thing the figure describes: 'Spacecraft', 'Launch vehicle', 'Launch pad', 'Pressure suit'. */
   group: string;
@@ -593,6 +596,14 @@ export interface SiteDef {
   quiet?: { wind: number; surf: number; hum: number; sea: number };
   /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
   around?: SiteAround;
+  /**
+   * Where a rocket's exhaust goes at liftoff (viewer/trail.ts `blast`). Left out, it strikes a deflector under the stand
+   * and is thrown out over the concrete all round (LC-5's). `pit`: down through an opening in the deck into a flame pit
+   * and along its floor to its open side, where the cloud rises: `toward` that side's bearing, degrees true; the pit's
+   * `depth` under the deck; how far from the rocket's axis the gas comes along the floor (`out`) before it can rise; and
+   * the width of the slot it is held in, metres.
+   */
+  exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
 }
 
 /**
@@ -1067,11 +1078,29 @@ export interface ShedBody {
   push?: Measure;
   /** The rockets of its own that light as it leaves, all at once: their thrusts add. */
   motors?: ShedMotor[];
+  /**
+   * A strap-on, standing beside the stack rather than on its axis, and how it leaves (sim/shed.ts `apart`): its lower ties
+   * let go, what thrust its engine still gives swings its tail outward about the ball joint at its tip until the ball
+   * leaves its socket, and it flies from there with the turn and the outward speed the swing gave it. A vent on its
+   * oxidizer tank is one of its `motors` (with a `station`, so it turns it).
+   */
+  apart?: {
+    /** Where it stands round the stack, degrees about the long axis from the way down range (the body's -Z) toward the stack's left (+Y). */
+    bearing: number;
+    /** Its own axis's distance from the stack's, m: its centre of mass is on it. */
+    across: Measure;
+    /** The ball joint at its tip, which it swings about: its station, m from the base, and its distance from the stack's axis, m. */
+    pivot: { station: Measure; across: Measure };
+    /** The thrust its engine still gives as it swings, once the stage has been cut (N): the tail-off. */
+    tailOff: Measure;
+    /** How far it swings, degrees, before its ball leaves the socket. */
+    swing: Measure;
+  };
 }
 
 /**
  * A rocket a shed body carries and lights as it leaves: its thrust, N, for `burn` seconds, along the body's +X turned
- * `cant` degrees toward its +Z (through the centre of mass: it does not turn it). What is left of `impulse` (N s) after
+ * `cant` degrees toward its +Z (through the centre of mass, where it does not turn it, unless a `station` is given). What is left of `impulse` (N s) after
  * that is spent falling evenly to nothing, as `Body.escape`'s is.
  */
 export interface ShedMotor {
@@ -1082,6 +1111,8 @@ export interface ShedMotor {
   cant?: Measure;
   /** 'abort': this is the rocket an abort burns (`Body.escape`), so a body let go after one (`Release.aborted`) does not light it again. */
   unless?: 'abort';
+  /** Where along the body its thrust acts, m from the base: off the centre of mass and canted, it turns the body. Left out: through the centre of mass. */
+  station?: Measure;
 }
 
 /** What a vehicle can take before something gives (src/sim/loads.ts). Each is a figure with its confidence like any other. */
@@ -1184,6 +1215,13 @@ export interface Flight {
    */
   site?: SiteDef;
   /**
+   * How its launch site first shows: at the instant `at`, seconds from liftoff (negative before it), on the section
+   * `model` framed by its view `view` (both of the flight's own; left out, the first model and its home view). An
+   * address that names a section opens on that section, at `at`. Left out, liftoff, on the first model. Flying it
+   * starts at liftoff whatever this says (cockpit.ts): there is no countdown to fly. src/address.ts `openingFor`.
+   */
+  opens?: { at: number; model?: string; view?: string };
+  /**
    * The weather it stood under at liftoff, as recorded (DayWeather): its launch site's sky is drawn from it. Left out,
    * the site's own (`SiteDef.weather`), which is an estimate; with neither, a clear sky, which is one too.
    */
@@ -1248,9 +1286,12 @@ export interface Flight {
      * instants it burns between where the run has them (an orbital flight's: `stage:<index>` for a stage, at its
      * throttle, or `retro` for the braking burn). `node`: with `radius` (the exit's, m), a node whose lowest point is
      * one round exit; without, a node holding only the engine's nozzles (its bells), whose every chamber, main or
-     * steering, is found in the model's geometry and drawn from its own exit.
+     * steering, is found in the model's geometry and drawn from its own exit. `burns`: what it burns, which gives the
+     * fire its colours, its light and how much of what is behind it it hides (viewer/flames.ts); left out, alcohol and oxygen.
      */
-    fires?: { node: string; radius?: number; on: string }[];
+    fires?: { node: string; radius?: number; on: string; burns?: Burns }[];
+    /** What `engine`'s fire burns: its colours, light and how much it hides (viewer/flames.ts). Left out, alcohol and oxygen. */
+    burns?: Burns;
     /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
     chutes?: ChuteDef[];
     /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */

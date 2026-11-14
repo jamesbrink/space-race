@@ -1,15 +1,27 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { flights } from '../missions';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
-import { flightFor, formatAddress, namesNothing, onMoved, opensIn, type Place, parseAddress, settle, where, write } from './address';
+import {
+  flightFor,
+  formatAddress,
+  namesNothing,
+  onMoved,
+  openingFor,
+  opensIn,
+  type Place,
+  parseAddress,
+  settle,
+  where,
+  write,
+} from './address';
 import { Callout } from './callout';
 import { Cockpit } from './cockpit';
-import { OrbitDeck } from './orbitdeck';
 import { follow } from './curtain';
 import { Demo } from './demo';
 import { Flown } from './flown';
 import { crumbs, Gallery, markPlace, placesNav } from './gallery';
 import { goHome } from './home';
+import { OrbitDeck } from './orbitdeck';
 import './navball.css';
 import { Navball } from './navball';
 import { prefs } from './prefs';
@@ -17,8 +29,8 @@ import { programmeAxis } from './sim/predict';
 import { Sound } from './sound';
 import { TimeBar } from './timebar';
 import type { SitedFlight } from './types';
-import type { DeckNews } from './viewer/cabin';
 import { Ui } from './ui';
+import type { DeckNews } from './viewer/cabin';
 import { Effects } from './viewer/effects';
 import { uOrigin } from './viewer/origin';
 import { FlightPath } from './viewer/path';
@@ -285,8 +297,14 @@ function show(id: string, snap = false, asItStands = false): void {
 }
 
 /** Fetch the flight's models and open on a section. */
-async function start(id: string): Promise<void> {
+async function start(id: string, fly = false): Promise<void> {
   started = true;
+  // the instant and the view it first shows (Flight.opens): put before anything is built, so the scene is warmed as it will be seen
+  const opening = openingFor(flight, { fly, named: id, clockAt: clock.t, running: clock.running });
+  if (opening) {
+    clock.seek(opening.at);
+    id = opening.model;
+  }
   ui.loading(flight.callsign);
   stage.veiled = true; // nothing is picked or hovered behind the curtain
   // What the curtain says, as it happens (curtain.ts): each model by its bytes, then what the stage does before the scene can be shown.
@@ -305,6 +323,7 @@ async function start(id: string): Promise<void> {
     await stage.load(flight, (f, parts) => said.arrive(f, parts));
     said.arrive(1);
     show(id, true);
+    if (opening?.view) stage.view(opening.view, true);
     // The scene is kept dark until it can move smoothly (stage.warm): shown sooner, it would
     // stutter as the rest arrived and then jump.
     await stage.warm(undefined, (step, f) => said.step(step, f));
@@ -783,7 +802,7 @@ function toSite(model = '', fly = false): void {
   placed(fly ? 'fly' : 'site', false);
   if (started) return;
   prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
-  void start(model).then(() => {
+  void start(model, fly).then(() => {
     const to = bound;
     bound = null;
     to?.();

@@ -211,6 +211,23 @@ for (const [w, h, touch] of SIZES) {
       fail(where, `the step's button is cut off: ${JSON.stringify(next)}`);
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     console.log(`  ${where}: offered when heard, B off, Space parted the modules and ejected him; next "${await label()}"`);
+    // down at the run's end: the navball's speed agrees with the deck's nought, in both of its frames, and shows no way it is going
+    await seek(1e6);
+    for (const frame of ['Surface', 'Orbit']) {
+      const down = await page.evaluate(() => ({
+        frame: document.querySelector('.navball [data-cell=mode]').textContent,
+        ball: document.querySelector('.navball [data-cell=speed]').textContent,
+        deck: document.querySelector('.deck-main [data-cell=speed]')?.textContent ?? '0',
+        marks: [...document.querySelectorAll('.navball [data-mark]')].filter((m) => !m.hidden && m.dataset.mark !== 'target').length,
+      }));
+      if (down.ball !== '0' || down.deck !== '0' || down.marks)
+        fail(where, `down, the navball (${down.frame}) reads ${down.ball} m/s with ${down.marks} markers, the deck ${down.deck}`);
+      if (frame === 'Surface') {
+        await page.keyboard.press('KeyO');
+        await page.waitForTimeout(300);
+      }
+    }
+    await page.keyboard.press('KeyO');
     await ctx.close();
   }
   // the same panels in the same corners on both flights

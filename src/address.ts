@@ -137,6 +137,23 @@ export function opensIn(flight: Placed, asked: Place | null = null): Place {
   return has.gallery ? 'gallery' : 'site';
 }
 
+/**
+ * How the launch site first shows, as it is first gone to (`Flight.opens`): the instant to put the clock at, the section
+ * and the view. Null where it opens as it always has (liftoff, the section asked for or the first, its home view): a
+ * flight that says nothing, the flight deck (which starts at liftoff: cockpit.ts), or a clock that has been run or moved
+ * already, which is the visitor's. `named`: the section the address names ('' for none), which wins over the flight's.
+ */
+export function openingFor(
+  flight: Pick<Flight, 'opens' | 'models'>,
+  how: { fly: boolean; named: string; clockAt: number; running: boolean },
+): { at: number; model: string; view: string | null } | null {
+  const o = flight.opens;
+  if (!o || how.fly || how.running || how.clockAt !== 0) return null;
+  const own = !how.named || how.named === (o.model ?? flight.models[0]?.id);
+  const model = how.named || (o.model ?? flight.models[0]?.id ?? '');
+  return { at: o.at, model, view: own ? (o.view ?? null) : null };
+}
+
 /** One choice of what stands in the gallery: all of the vehicle, or the parts under one heading of its parts list. */
 export interface Plinth {
   id: string;

@@ -579,6 +579,8 @@ only Lednev's and the 1930 specimen are from the right bank, where the pad is.
 | Krechetov P.P., Koroleva T.V., Chernitsova O.V., "Почвенный покров космодрома Байконур и его устойчивость к техногенному воздействию", *Vestnik MGU, ser. 5 Geografiya*, 2015 no. 3, pp. 12-24 | cyberleninka.ru (PDF) | Fig. 1 (p. 17), the cosmodrome's soil map at 1:300 000, no graticule (placed to about a kilometre): clay takyrs over the hollow 4 to 7 km north of Site 1, takyr-like saline loams to its south-east, sandy soils on the square's west edge; no solonchak or desert-sand unit within 8 km | Read. The sandy unit is a soil, not bare sand: not drawn |
 | General Staff 1:100 000 sheet L-41-79 (state of 1974, printed December 1976); 1:200 000 sheet L-41-XXII (year not read) | satmaps.info; maps.vlasenko.net | Takyrs by tint and sign, the name Такырсай, three gullies round Site 1; no solonchak or sand sign within 8 km. The cosmodrome itself is left off. Fitted on their own kilometre grids (30 m), SK-42 to WGS 84 by GOST R 51794-2008 (78 m here) | Read: the `documented` pans and channels in tyuratam-ground.ts |
 | CORONA KH-2, mission 9013, 7 December 1960, frame DS009013038DV129; KH-4, mission 9035, 30 May 1962, frame DS009035033AA014 | USGS declassified scans, the copies on Wikimedia Commons | The pans white on both, four months before and thirteen after the flight; registered to 14 m and 10 m. The KH-3 frame of September 1961 (DS009022023DV149) was not had | Read: every pan's outline; the spoil heap's ground (paler and mottled at 4 m a pixel: no face, no gully) |
+| The same two frames, warped again onto the site's frame at 2 m a pixel from the same fits, 6 km each way | as above | **The worked ground** (tyuratam-works.ts): the areas pale on both frames by more than a set margin over the steppe's own tone (a worn level and a bare one, outlines smoothed to some 20 m); the main line, the spur to Site 51 and Site 2's yard, and the roads from Site 2 south-east, to Site 51 and from the station, each seen on both frames and drawn on today's line (OpenStreetMap ways 37547653, 172441857, 172441864, 172441871, 172441872, 54569454, 172441909, 173082916); eight dirt tracks and an L of bare ground traced by eye, good to some 50 m; the places the tracks over the worked ground fan out from | Read. What a pale area was (ground worked over, or graded) is a reading; the station road is plain on the 1962 frame and faint on the 1960 one; nothing on the 1962 frame alone is drawn |
+| NASA, *Shuttle Radar Topography Mission* 1 arc-second, tile N45E063 (February 2000), from the Terrain Tiles on AWS (`skadi/N45/N45E063.hgt.gz`) | [registry.opendata.aws/terrain-tiles](https://registry.opendata.aws/terrain-tiles/) | **The lie of the land past 1 km** (tyuratam-heights.ts): resampled on the site's frame, bumps and pits under some 120 m across and compact mounds 5 m high taken out as made, smoothed over 35 m, every 80 m. Kilinshek comes out 131.8 m against the sheet's 132.6 | Public domain (NASA). Of 2000, not 1961; good to some 2 m |
 | ESRI World Imagery (date not stated); Sentinel-2 cloudless 2020 (EOX) | | Today's ground: 79 % of the pans drawn are still pale, their edges the same to some 30 m | Cross-check |
 
 ### The launch vehicle (8K72K)
@@ -769,6 +771,31 @@ Yazdovsky's memoirs; «Второй групповой космический п
 Kosmonavtiki*; the press conference of 25 June in Russian; part 2 of Siddiqi's *Spaceflight*
 article; zvezda-npp.ru; Encyclopedia Astronautica's suit pages; the Russian edition of Abramov and
 Skoog (2005); *Flight International* for June and July 1963; epizodsspace's own hosts.
+
+### Fires by what they burn, and where the exhaust goes at Site 1
+
+Read for [viewer/flames.ts](../src/viewer/flames.ts) and trail.ts `pitBlast` (rendering.md, "A fire looks as what it burns").
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Huzel and Huang, *Design of Liquid Propellant Rocket Engines*, NASA SP-125 (1967), tables 1-7 to 1-9, pp. 25-27 | [rrs.org copy](https://rrs.org/wp-content/uploads/2014/01/Huzel-Huang-sp125.pdf) | Chamber flame temperatures at 1,000 psia: oxygen and RP-1 at 2.56, 6,150 °F (3,672 K); oxygen and 95 % alcohol at 1.73, 5,640 °F; nitrogen tetroxide and Aerozine 50 at 2.00, 5,590 °F; IRFNA and UDMH, 3,222 K | Not the engines' own mixtures or pressures: the A-7's (75 % alcohol), the RD-107's and the braking engine's are equilibrium calculations of ours (Cantera, NASA thermodynamic data), checked against these cases to 6 to 20 K, and are `derived` |
+| J. D. Clark, *Ignition!* (1972; Rutgers 2017 ed.), p. 96, as quoted at sindark.com (2018) | the quotation only was read | That kerosene burns luminous with free carbon and that the hydrazines and nitrogen tetroxide burn nearly invisible, the shock diamonds showing | Read at second hand |
+| NASA film *Gemini: The Twins* (1965), Gemini 3's launch; Periscope Film stock listing xd17414 | [listing](https://stock.periscopefilm.com/xd17414-gemini-the-twins-1965-nasa-film-preparation-and-achievements-of-gemini-3-gemini-4) | The Titan II's flame: peach, seen through | The listing and stills only were seen, not the film frame by frame |
+| Photographs of the launch of 12 April 1961 from across the pit (RussianSpaceWeb, Vostok 1); the newsreel *Pervyi reis k zvezdam* (1961) | RussianSpaceWeb's Vostok 1 pages | The R-7's five fires white at the nozzles and opaque, the cloud out of the pit | That the newsreel's launch footage is Vostok 1's, or in colour, is not shown. No colour film of Vostok 1 or of Freedom 7 was found by title and archive: the colour look is judged also on colour film of later launches from the same pads |
+| Soyuz CSG User's Manual, Issue 2 (Arianespace, March 2012), §A5.1.2 | [copy](https://courses.edx.org/asset-v1:DelftX+AEASM1x+1T2023+type@asset+block/Soyuz-Users-Manual-March-2012.pdf) | That the RD-107's turbine runs on steam from hydrogen peroxide (so no dark, sooty turbine exhaust) | Where that steam is vented is not said: it is not drawn |
+
+### The strap-ons' separation
+
+Read for orbital.ts's four strap-ons and sim/shed.ts `apart`. The sequence is documented in kind; no figure for the
+tail-off, the swing, the vent or the timing between them was found.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Siddiqi, *Challenge to Apollo*, NASA SP-2000-4408, p. ~130 (the R-7's design) | [history.nasa.gov](https://history.nasa.gov/SP-4408pt1.pdf) | The strap-ons "still firing, albeit at much lower thrust", rotating away from the base until "at a certain angle" the apex mountings release; the tension bands loosened by pyrotechnics; a gentle push to move them away | No figures; the R-7 of 1957, not the 8K72K of 1961 |
+| Chertok, *Rockets and People*, vol. 2, NASA SP-2006-4110, "Seven Problems of the R-7", pp. 294-295 | [nasa.gov](https://www.nasa.gov/pdf/635963main_RocketsPeopleVolume2-ebook.pdf) | The core carried on the strap-ons' spherical heads: the thrust passes there | |
+| Soyuz CSG User's Manual, issue 2 (Arianespace, 2012), §A5.1.2 and Fig. 1.5.1a, §2.3.1 | as above | Ball joint at the cone's top and two rear struts; pyronuts, pushers and a reaction nozzle; Soyuz-2's intermediate thrust at 112 s, separation at 118.1 s | Soyuz-2, not the 8K72K |
+| Roscosmos's MS-10 commission findings (November 2018) as RussianSpaceWeb (A. Zak, Soyuz MS-10) and Habr 428530 give them; *Modelist-Konstruktor*, "Raketa, podnyavshaya v kosmos Yu. Gagarina" | web pages | The sensor on the ball freed as it leaves its socket opens the oxidizer tank's pull-away nozzle, on the cone's inner side, its jet at 45° to the axis and forward; pneumatic locks on the lower ties (Modelist-Konstruktor) where Siddiqi has pyrotechnics | Secondary; the vent's thrust and duration are in none of them |
+| Interfax on Progress MS-06's strap-ons (2017), about 50 km west of Zhezkazgan | press | The 51.6-degree drop zone: about 350 km from Site 1 (derived, great circle) | Not Vostok's azimuth: its zone was further north-east; RussianSpaceWeb's downrange page names the zones without distances |
 
 ### Known, not yet read
 

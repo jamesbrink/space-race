@@ -75,6 +75,8 @@ const Y: Vec3 = [0, 1, 0];
 const Z: Vec3 = [0, 0, 1];
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 const flip = (v: OnBall | null): OnBall | null => (v ? scale(v, -1) : null);
+/** What the ball reads of a vehicle that is down: nought, going nowhere. */
+const STILL = { speed: 0, prograde: null, retrograde: null } as const;
 
 /**
  * The ball for a state: position and velocity in the frame that does not turn, the attitude (body
@@ -162,6 +164,8 @@ export interface NavSample {
   attitude: Quat;
   centre?: Vec3;
   phase?: string;
+  /** At the run's end, on the ground or in the sea: standing still on the turning Earth, in no orbit (the orbital deck says so; a ballistic sample's phase is 'landed'). */
+  down?: boolean;
 }
 
 const SVG = (body: string, box = '0 0 24 24'): string =>
@@ -314,7 +318,10 @@ export class Navball {
     const s = this.last;
     if (!s || this.tucked || !this.source.active) return;
     const ball = ballOf(s.centre ?? s.r, s.v, s.attitude, s.t, this.target(s));
-    const side = this.mode === 'orbit' ? ball.orbit : ball.surface;
+    // down (the run's end: on the ground, or in the sea), standing still on the turning Earth and in no orbit, as the deck's
+    // figures say: no speed in either frame and no way it is going, whatever the last moment of the descent's motion was
+    const down = Boolean(s.down) || s.phase === 'landed';
+    const side = down ? STILL : this.mode === 'orbit' ? ball.orbit : ball.surface;
     const set = (id: string, text: string) => {
       const el = this.cells.get(id)!;
       if (el.textContent !== text) el.textContent = text;
@@ -337,7 +344,7 @@ export class Navball {
       el.style.transform = `translate(${(R + at[0] * k).toFixed(1)}px, ${(R - at[1] * k).toFixed(1)}px)`;
       el.style.opacity = Math.min(1, 0.35 + at[2] * 2).toFixed(2);
     };
-    const orbit = this.mode === 'orbit';
+    const orbit = this.mode === 'orbit' && !down;
     place('prograde', side.prograde);
     place('retrograde', side.retrograde);
     place('radialOut', orbit ? ball.orbit.radialOut : null);

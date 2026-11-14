@@ -3,7 +3,8 @@ import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } f
 import { orbitPredictor } from './sim/orbitpath.ts';
 import type { Predictor } from './sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
-import { Sheds } from './sim/shed.ts';
+import { along } from './sim/fly.ts';
+import { apart, Sheds } from './sim/shed.ts';
 import {
   type Ascended,
   byHand,
@@ -34,10 +35,10 @@ import type { SitedFlight } from './types';
 import type { Run } from './viewer/ascent';
 import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from './viewer/ascent';
 import type { DeckNews } from './viewer/cabin';
+import { EARTH_ROTATION_RATE } from './world/bodies.ts';
 import type { Clock } from './world/clock.ts';
 import { sunPosition } from './world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from './world/frames.ts';
-import { EARTH_ROTATION_RATE } from './world/bodies.ts';
 import { elementsOf, subpoint } from './world/orbit.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from './world/time.ts';
 
@@ -609,8 +610,10 @@ export class OrbitDeck extends Deck {
     const record = this.record!;
     this.flight.flies!.drops.forEach((d, i) => {
       if (Number.isFinite(run.dropped[i]!)) return;
-      const drop = o.ascent!.drops.find((x) => x.id === d.on);
-      const event = o.events.find((e) => e.id === d.on);
+      // (several bodies may leave on one event: 'boosters/B' is the strap-on B, let go at the 'boosters' event)
+      const on = d.on?.split('/')[0];
+      const drop = o.ascent!.drops.find((x) => x.id === on);
+      const event = o.events.find((e) => e.id === on);
       const stage = event ? o.stages.findIndex((st) => st.separation && Math.abs(st.separation.value - event.at.value) < 1e-6) : -1;
       // (the record's, for what left before the flight was taken over)
       const at = drop ? (s.drops[drop.id] ?? Infinity) : stage >= 0 ? s.stages[stage]!.gone : Infinity;
@@ -622,18 +625,27 @@ export class OrbitDeck extends Deck {
       if (!def?.mass || !def.centre || !def.gyration || !(when >= from)) return;
       const x = this.sampleAt(when);
       const m = def.mass.value;
-      run.sheds?.add({
-        on: def.on,
-        t: when,
-        r: add(x.r, scale(x.axis, def.centre.value)),
-        v: pushedOff(def, x.v, x.axis, o.mass.value),
-        q: x.attitude,
-        w: [0, 0, 0],
-        mass: m,
-        roll: m * def.gyration.roll.value ** 2,
-        across: m * def.gyration.across.value ** 2,
-        centre: def.centre.value,
-      });
+      // a strap-on let go while its stage still burns swings out on what it was burning at, not on the tail-off
+      const burning = stage >= 0 && s.stages[stage]!.to > when ? o.stages[stage]! : null;
+      const unit = burning ? burning.thrust.vacuum.value * (burning.throttle ? along(burning.throttle, when) : 1) : undefined;
+      run.sheds?.add(
+        apart(
+          def,
+          {
+            on: def.on,
+            t: when,
+            r: add(x.r, scale(x.axis, def.centre.value)),
+            v: pushedOff(def, x.v, x.axis, o.mass.value),
+            q: x.attitude,
+            w: [0, 0, 0],
+            mass: m,
+            roll: m * def.gyration.roll.value ** 2,
+            across: m * def.gyration.across.value ** 2,
+            centre: def.centre.value,
+          },
+          unit,
+        ),
+      );
     });
   }
 
@@ -1201,7 +1213,9 @@ export class OrbitDeck extends Deck {
     const hands = this.free || (this.mine !== null && !this.ascended);
     const pushed = hands && this.fired === null ? this.push() : { pitch: 0, yaw: 0, roll: 0 };
     const news: DeckNews = { times: this.times, hand: pushed, holds: hands ? FREE : NONE };
-    for (const fn of this.watchers) fn(s, null, news);
+    // (down at the run's end, whatever the descent's last moment of motion: the navball reads nought as the figures do)
+    const shown = t >= this.run.duration ? Object.assign({}, s, { down: true }) : s;
+    for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const jd = julianDate(this.flight.launch);
     const gast0 = greenwichSiderealTime(jd);
