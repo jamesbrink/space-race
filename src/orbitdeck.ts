@@ -1209,14 +1209,17 @@ export class OrbitDeck extends Deck {
     const into = (v: Vec3): Vec3 => [c * v[0] - sn * v[1], sn * v[0] + c * v[1], v[2]];
     const el = elementsOf(into(s.r), into(s.v));
     const ball = o.orbit.radius.value;
-    const alone = t > this.parting;
+    // down: what it rode is on the ground (the run's end), standing still on it, in no orbit; the figures say so, as
+    // the ballistic deck's do, and not the space-fixed speed and orbit of a point on the turning Earth
+    const down = t >= this.run.duration;
+    const alone = t > this.parting && !down;
     const orbit = el.e < 1;
     this.figures(alone ? ORBITING : RISING);
-    set('altitude', (Math.max(0, s.altitude) / KM).toFixed(s.altitude < 99_950 ? 2 : 1));
-    set('speed', (alone ? s.speed : t > 0 ? s.groundSpeed : 0).toFixed(0));
-    set('climb', (t > 0 ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0).toFixed(0));
-    set('g', t > 0 ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system: one g)
-    set('mach', s.mach.toFixed(2));
+    set('altitude', down ? '0.00' : (Math.max(0, s.altitude) / KM).toFixed(s.altitude < 99_950 ? 2 : 1));
+    set('speed', (alone ? s.speed : t > 0 && !down ? s.groundSpeed : 0).toFixed(0));
+    set('climb', (t > 0 && !down ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0).toFixed(0));
+    set('g', t > 0 && !down ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system, and on the ground: one g)
+    set('mach', down ? '0.00' : s.mach.toFixed(2));
     set('apogee', orbit ? ((el.a * (1 + el.e) - ball) / KM).toFixed(0) : '—');
     set('perigee', orbit ? ((el.a * (1 - el.e) - ball) / KM).toFixed(0) : '—');
     set('period', orbit && el.a > ball ? ((2 * Math.PI * Math.sqrt(el.a ** 3 / 3.986004418e14)) / 60).toFixed(1) : '—');
