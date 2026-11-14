@@ -22,7 +22,25 @@ from srlib import FT, material
 MM = 0.001
 sitelib.use(1.0)  # the scene's lengths are metres; a figure in feet or millimetres is multiplied where it is quoted
 
-__all__ = ["FT", "MM", "P", "Parts", "beam", "box", "fine", "handrail", "lattice", "materials", "obox", "plate", "prism", "profile", "stood", "truss"]
+__all__ = [
+    "FT",
+    "MM",
+    "P",
+    "Parts",
+    "Welded",
+    "beam",
+    "box",
+    "fine",
+    "handrail",
+    "lattice",
+    "materials",
+    "obox",
+    "plate",
+    "prism",
+    "profile",
+    "stood",
+    "truss",
+]
 
 # --------------------------------------------------------------------------- the site
 
@@ -70,6 +88,26 @@ TIP_Z = TAIL_Z + 19.759
 # spacecraft's hatch (the vehicle's 135 degrees) 7.5 degrees south of due west, toward the erector on the centre track.
 AZIMUTH = 37.5
 TURN = math.radians(90.0 - AZIMUTH)  # the rocket's own +X from the site's +X, anticlockwise from above
+
+
+class Welded:
+    """A surface worked out on a grid, added a cell at a time: each grid point is one vertex of it, shared by the cells
+    that meet there. (A cell added with four vertices of its own shares none with its neighbours, and a mesh shaded
+    smooth then has nothing to average: every cell is lit as a facet.)"""
+
+    def __init__(self, mb) -> None:
+        self.mb, self.at = mb, {}
+
+    def add(self, keys, points, faces) -> None:
+        """A cell: its corners' names on the grid, where each is, and its faces as indices into those."""
+        index = []
+        for key, point in zip(keys, points):
+            if key not in self.at:
+                self.at[key] = len(self.mb.verts)
+                self.mb.verts.append(tuple(point))
+                self.mb.uvs.append((0.0, 0.0))
+            index.append(self.at[key])
+        self.mb.faces.extend(tuple(index[k] for k in face) for face in faces)
 
 
 def about(az: float, r: float, z: float = 0.0) -> tuple[float, float, float]:

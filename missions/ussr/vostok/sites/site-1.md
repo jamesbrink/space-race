@@ -382,8 +382,13 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | h | "a long linear bunker ... southeast of the launching structure": 41 m long on the drawing | documented; the length scaled | HTA/JR-4/58; Figure 5 |
 | Their forms | concrete, slits toward the structure, earth over the roof and against the ends, a steel door behind | estimated | |
 | Spoil heap | "a large pile some 800 feet to the northeast" | documented | HTA/JR-4/58; "spoil bank" on Figure 5; stands today |
-| Its outline | Figure 5's, fitted to its extent on today's imagery: 181 to 381 m east, 72 to 292 m north | derived | |
-| Its height | 9 m | estimated | SRTM (2000) reads 114 m at its top against 105 to 107 m round it; a 30 m grid rounds a top off |
+| Its outline | Figure 5's, fitted to its extent on today's imagery: 181 to 381 m east, 72 to 292 m north; its corners rounded | derived | the U-2's photograph of July 1959 (NPIC/B-24/61 Figure 1, some 2.7 px a metre as scanned) agrees: a rounded white mass from 200 to 384 m east and 45 to 313 m north, between two lines (ditches or tracks) that meet south of it |
+| Its height | 9 m at its middle | estimated | SRTM (2000) reads 114 m at its top against 105 to 107 m round it; a 30 m grid rounds a top off |
+| Its edge | fourteen lobes, 29 to 67 m broad, the bays between them bitten back 3.5 to 8.5 m on the west side and 1 to 2.5 m on the east | documented (that the west side is scalloped, some five bays in 230 m, and the east side nearly straight along its ditch: the U-2's photograph, where a dark band 30 to 40 m broad with a scalloped inner edge lies along the west side); estimated (each lobe's place and breadth, the bays' depths, the lobes on the north and south sides) | the print cannot place a single lobe: its scallops are a few pixels each |
+| Its face | 1 in 1.5 at its steepest, its foot eased over 3 m and its brow rounded over 4 m: 14.9 m from edge to brow | estimated | earth tipped from trucks lies at its angle of repose (30 to 37°). The U-2's print is burnt out to white all over the heap and the CORONA frames of 7 December 1960 and 30 May 1962 are 4 m a pixel as kept: neither shows a face. Whether the dark band along the west side is the face in shadow, its shadow on the ground or stained ground cannot be told |
+| Its gullies | one down each bay, 1 m deep and 5 m across at the face's middle; a rill 0.5 m deep down each flank of a lobe | estimated | what rain cuts in a bare clay bank in four years. None can be seen on anything read |
+| Its top | nearly level: a swell of 0.35 m either way, falling 1.2 m from the middle to the brow over the last 40 m | estimated | where the trucks ran and tipped from |
+| How it is built | a mesh that follows its form: a station every 2.5 m round the edge and a line from each up the face and over the top to the middle, every station one vertex (site1/rim.py `heap`); the inner fence's north side, which crosses it, rides it | | 9,800 triangles (2,660 at the coarsest level, a station every 5 m and no rills). `rim.heap_height` is the same surface for whatever stands on it |
 | Cable conduit | built between 1957 and 1959: out of the pit's edge, two turns, to the structure "about 60 feet below the top of the launching platform", "supported by several small vertical pillars" | documented | PIC/JR-2/60 |
 | Its line | (8, 84), (8, 67), (-5, 58), then south to the structure | derived | Figure 5; today's concrete channel on the same slope follows it within a few metres |
 | Its section; where it arrives | 2.0 by 2.2 m; it leaves the land at the north rim 10 m under the deck's level and its middle arrives 12.5 m under the deck, not the CIA's 18.3 m (60 ft) | estimated | the diameter is redacted; the pit model's terraces (estimated) stand higher there than the CIA's level |
@@ -952,12 +957,18 @@ rocket can leave the erector out by its date.
   rails, as a Sun at azimuth 130° would throw them: that is about 08:15 Moscow time, not 06:55, when the Sun stood
   at 108°. Either the frame was shot later that morning (the pilot's suit in it argues not) or the rails in it run
   some 20° off east and west, which no map has. Not resolved; the bus is placed by the rails, not by the shadows.
-- The spoil heap is a mound of one tone: its gullies and the ditches round it are not drawn,
-  and the steppe's cover does not grow on it. **It and the pit's earth and lining show every cell as a facet**: each
-  cell of their grids is added as a quad of its own (`MeshBuilder.add` in site1/rim.py `_heap`'s loop and
-  site1/platform.py's pit loop), so its corners are not shared with its neighbours' and shading them smooth has nothing
-  to average. Welding the cells (one vertex per grid point, or a merge by distance before `shade_smooth`) fixes it:
-  a model change, not yet made.
+- The spoil heap is one tone: the ditches round it are not drawn, and the steppe's cover does not grow on it. Its
+  lobes, its face's slope, its gullies and its level top are a tipped heap's as we suppose one, drawn clean ("The
+  place round the pad": its edge, its face, its gullies, its top): only its outline, its height and the scallops of
+  its west side are from anything read. Its lobes are as regular as their rule; a real heap's are not. Both CORONA
+  frames and today's imagery have a bright mound some 60 by 110 m on the pit's north-east rim, from 110 to 185 m east
+  and 25 to 150 m north, which casts a shadow in 1960 and 1962 and is bare red earth today: it is not built, and what
+  it is has not been worked out.
+- The pit's earth, its lining and the heap are shaded smooth (each grid point one vertex: `site.Welded`), with an edge
+  kept wherever two faces meet at more than 30°: the slot's walls, the trenches, a bay of the heap. A break the grid
+  does not run along (the foot of the pit's sides where they meet its floor, the rim's lip under the land's edge,
+  each terrace's eased edge) is a band a cell or two broad (2 m; 4 m at the coarsest level) and not a line. Where
+  the lining ends and the clay begins (70 m east) the two are two meshes, each shaded to its own edge.
 - The fall's rills, its darker toe and the way worn along its brow are drawn on the land (tyuratam.ts `fall`,
   `RUTS`): estimated, as wear a bare clay earthwork four springs old has. No photograph close enough to show them
   has been read; the U-2 photograph of July 1959 (NPIC/B-24/61 Figure 1) shows wheel tracks all over the bare ground
