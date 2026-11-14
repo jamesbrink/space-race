@@ -425,7 +425,12 @@ def seated_key_points() -> dict:
     rig = seated_rig()
     pts = fl.posed_points(_seated_points, seated_rig, build_figure)
     helmet = [p for name, ps in pts.items() if name.startswith("Helmet_Shell") for p in ps]
-    return {**fl.body_key_points(rig, pts), "head_top": tuple(rig.carry(HELMET_AT + fl.UP * HELMET_R)), "helmet_back_z": min(p.z for p in helmet)}
+    return {
+        **fl.body_key_points(rig, pts),
+        **fl.head_view(rig),  # his eyes and the way his own head is turned: where his couch's view is from
+        "head_top": tuple(rig.carry(HELMET_AT + fl.UP * HELMET_R)),
+        "helmet_back_z": min(p.z for p in helmet),
+    }
 
 
 def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str, who: Wearer) -> dict:

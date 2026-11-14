@@ -340,7 +340,12 @@ def seated_key_points() -> dict:
     """Where the couch has to be: key points of the seated figure in figurelib's seat frame, centimetres."""
     rig = seated_rig()
     pts = fl.posed_points(_seated_points, seated_rig, build_figure)
-    return {**fl.body_key_points(rig, pts), "head_top": tuple(rig.carry(B.head + fl.UP * CAP[2])), "head_back_z": min(p.z for p in pts["Helmet_Cap"])}
+    return {
+        **fl.body_key_points(rig, pts),
+        **fl.head_view(rig),  # his eyes and the way his own head is turned: where his couch's view is from
+        "head_top": tuple(rig.carry(B.head + fl.UP * CAP[2])),
+        "head_back_z": min(p.z for p in pts["Helmet_Cap"]),
+    }
 
 
 def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str, who: Wearer) -> dict:
