@@ -79,7 +79,7 @@ export const orbital: OrbitalFlight = {
         source:
           'The RD-107 goes from its main to its first intermediate stage of thrust before the strap-ons part, and the 8D74K shut down through it (lpre.de; RKK Energia 1946–1996; Minakov: «маршевые двигатели переводились на режим малой тяги»). ' +
           'Neither its level nor its length on the 8K72K was found. The level is the 8K71’s and 8A91’s, 60 per cent (590.0 of 972.3 kN: Energomash’s table as Brügge copies it, secondary); the length is Sputnik’s, ' +
-          '6.4 s (the command at 109.94 s, separation at 116.38 s: ${SPUTNIK}), put before the 8K72K’s 119.5 s',
+          `6.4 s (the command at 109.94 s, separation at 116.38 s: ${SPUTNIK}), put before the 8K72K’s 119.5 s`,
       },
       thrust: {
         seaLevel: doc(815_900, `${ENERGOMASH}: 815.9 kN. Minakov’s table: 82 tf (804 kN)`),

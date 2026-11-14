@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
-import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
+import { along, axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
@@ -26,6 +26,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
+import { fireLevel } from './fires.ts';
 
 /**
  * The vehicle off the pad: where the simulator (sim/fly.ts) has it at an instant, in the scene's
@@ -209,6 +210,36 @@ export class Ascent {
     const { r } = between(this.flown().samples, t);
     const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
     return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25, fire };
+  }
+
+  /**
+   * How every fire of the flight burns at `t`, in the order stage.ts hangs them: `flies.engine`'s first if it names one
+   * (lit from liftoff to the cutoff, as `burn` has it), then each of `flies.fires` between the instants the run has it
+   * burn (`Run.fires`), at its stage's throttle where it is a stage's (`stage:<index>`: StageRecord.throttle). Each
+   * fire's `steeringShare` is its steering chambers' share of its thrust, which the model knows (fires.ts `clusterOf`):
+   * a stage throttled to that or less runs on them alone (fires.ts `fireLevel`). `vacuum` as `burn` has it.
+   */
+  fireLevels(t: number, steeringShare: readonly number[] = []): { vacuum: number; levels: { main: number; steering: number }[] } {
+    const flies = this.flight.flies;
+    const count = (flies?.engine ? 1 : 0) + (flies?.fires?.length ?? 0);
+    const out = (vacuum: number, levels: { main: number; steering: number }[] = []) => ({
+      vacuum,
+      levels: levels.length ? levels : Array.from({ length: count }, () => ({ main: 0, steering: 0 })),
+    });
+    if (!this.flying(t)) return out(0);
+    const { cutoff, fires = [] } = this.flown();
+    const levels: { main: number; steering: number }[] = [];
+    if (flies?.engine) levels.push(fireLevel(t, 0, cutoff));
+    (flies?.fires ?? []).forEach((f, k) => {
+      const when = fires[k];
+      const stage = f.on.startsWith('stage:') ? this.flight.orbital?.stages[Number(f.on.slice(6))] : undefined;
+      const throttle = stage?.throttle ? along(stage.throttle, t) : 1;
+      levels.push(when ? fireLevel(t, when.from, when.to, throttle, steeringShare[levels.length] ?? 0) : { main: 0, steering: 0 });
+    });
+    if (!levels.some((l) => l.main > 0 || l.steering > 0)) return out(1, levels);
+    const { r } = between(this.flown().samples, t);
+    const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
+    return out(1 - (atmosphere(height).pressure / 101_325) ** 0.25, levels);
   }
 
   /** The parts that have left the vehicle by `t`. */

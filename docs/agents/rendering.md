@@ -125,6 +125,24 @@ a hemisphere light's direction). So:
 - `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
   fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 
+## The predicted path
+
+The path (`viewer/path.ts`, its numbers in `viewer/pathline.ts`) is an instrument's line drawn over the scene, and its
+rules are the screen's, the same for every path, never tuned to a flight:
+
+- **Sampled for the eye.** The prediction is a curve (points with velocities, the cubic between them); each time the eye,
+  the instant or the prediction moves it is cut into chords until none strays more than `ERROR_PX` (0.35 px) from the
+  curve as seen from the eye, starting from multiples of a power of two seconds so the chords stay put as the clock runs.
+- **A width on the screen that never thins**: each chord is a quad pushed out across its own direction as projected
+  (never a direction in the world, which near the eye projects to anything) and mitred to the next; a line under a
+  pixel wide breaks into dots, so it is faded, never thinned.
+- **Never at the eye**: each chord is cut at a plane just past the near plane in the vertex shader, and fades in over the
+  next doubling of the distance; nothing behind the eye is ever a vertex.
+- **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
+  frame, worked out in doubles, so the line ends at the limb however long its chords.
+- `tools/path-test.mjs` (`pnpm test:path`) holds it in the page: from the vehicle, no chord over 1 px off, no dots or
+  fragments, no sheet, nothing jumping between frames, chips off the panels and pointing at their places.
+
 ## Drawing only what changed
 
 `Stage.frame` skips the draw when nothing has changed: the camera has not moved and nothing set
@@ -163,6 +181,27 @@ ever made is kept.
 `Stage.root` holds the flight's models, and with them what a flight leaves in the air (what it
 shed, in its holders; the glow of entry; the ice). Only the models are measured (`modelsBox`): the
 place's bounds, and so the depth range and how far a view pulls back, are theirs.
+
+## Every engine its own fire
+
+Every engine that burns draws its fire (`viewer/fires.ts` decides which and how hard, `viewer/plume.ts` holds each,
+`viewer/exhaust.ts` marches them), so a flight lists each engine in `flies.fires`, never one standing for a cluster. An
+engine of several chambers names a node holding only its bells; its chambers are found in that geometry (each bell a
+piece apart from the others seen from below, its exit its lowest ring; a bell under 0.6 of the largest's radius is a
+steering chamber), so the nozzles are measured once, in the model script. The march takes up to six fires (`JETS`)
+and 32 chambers among them in one loop along each ray: a step works only the jets it lies in, and clear air between
+jets is crossed in strides, so a pixel that sees one jet costs what it did when there was one. A cluster is one jet
+(its main chambers' summed area) whose own chambers are drawn at its exit, each with its white core, merging into it
+over the stretch where their jets have widened to touch (`mergeOf`: a metre down at sea level, at once in vacuum); its
+steering chambers are small jets of their own beside it, and alone when its stage is throttled to their share (the
+RD-108's final stage). Drawing every chamber as a jet of its own was not chosen: twenty overlapping volumes near the
+exit cost several times the march for what reads, from the pad camera and the chase, as the five broad flames of the
+films with the steering chambers' thin jets beside them. The uniforms (five vectors a fire, two chambers a vector) keep
+the march under the 224 fragment uniform vectors WebGL 2 promises. The fires share one light at their middle (each
+light would be another shader variant for everything lit), as strong as one fire as large as all of them by the
+square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
+as broad as they are spread. The pad's cloud is still the one read off LC-5's photographs (trail.ts `blast`), drawn
+at Site 1 too: the flame pit, which takes an R-7's exhaust down and out of its open side, is not modelled.
 
 ## Levels of detail
 

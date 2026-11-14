@@ -65,6 +65,7 @@
 /* the glyph fades by its class; the label is faded by path.ts (crossFade), so that it and its chip are never at two places */
 .path-mark { position: absolute; left: 0; top: 0; }
 .path-mark.gone > i { opacity: 0; }
+.path-mark.behind { opacity: 0.55; }
 .path-marks.aboard > .path-mark { display: none; }
 .path-mark > i { position: absolute; left: -4.5px; top: -4.5px; width: 9px; height: 9px; rotate: 45deg; background: var(--ink); border: 1.5px solid rgba(10, 11, 14, 0.9); box-sizing: border-box; transition: opacity 0.18s; }
 .path-apogee > i, .path-perigee > i { background: var(--amber); }
