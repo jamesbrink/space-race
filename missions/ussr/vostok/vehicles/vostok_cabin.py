@@ -77,9 +77,11 @@ LAMPS_AT = ((235.0, -150.0, 850.0), (-235.0, -150.0, 850.0))
 # flew, and as it is built), duty, off.
 LIGHTING_THROW = (24.0, 0.0, -24.0)
 # Where that tumbler stands on the plain control panel of a ship whose cabin is not fitted (vostok_3ka.build_cabin), from
-# the middle of its face: toward the instrument board, and toward the pilot's head. It is in the row the panel's two rows
-# of knobs leave free, at the end toward the board, as PU-1-3KA has ОСВЕЩЕНИЕ at the right of its fourth row. Estimated.
-PLAIN_LIGHTING_AT = (100.0, 0.0)
+# the middle of its face: toward the instrument board, and toward the pilot's head. It is at the face's edge toward the
+# board, above the knobs: the plain panel lies behind the pilot's left arm, and from his eyes that strip is all of its
+# face that he can see (a ray from the seat's eye point to each place of the face, in Vostok 2 and in Vostok 6: the
+# strip is the last 20 mm or so), so a tumbler anywhere else could be neither seen nor worked from the seat. Estimated.
+PLAIN_LIGHTING_AT = (134.0, 100.0)
 # What the Globus's correction window read on the pad: the orbit's period as a three-figure code (spacecraft.md, "Globus").
 GLOBUS_CORRECTION = "710"
 RADIO_AT = (-455.0, -455.0, 470.0)
