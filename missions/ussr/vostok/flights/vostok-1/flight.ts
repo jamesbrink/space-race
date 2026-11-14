@@ -192,7 +192,7 @@ const parts: Part[] = [
       ['Regeneration', 'alkali metal superoxide'],
       ['Supplies', '10 days'],
       ['Instrument board', 'PD-1-3KA: Globus, clock, three gauges, 24 signal lamps'],
-      ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
+      ['He read before launch', '1.0 atm, 65 %, 19 °C; 175, 320 and 155 atm of gas'],
       ['Globus correction window', '710'],
       ['Vzor field of view', '7°'],
       ['Manual control code', '1-4-5, on six keys (Kamanin; 1-2-5 in later memoirs)'],
@@ -876,15 +876,25 @@ vehicle.cabin = {
       ],
     },
   ],
-  lamps: SIGNALS.flatMap(([block, lamps, says]) =>
-    Array.from({ length: lamps }, (_, i) => {
-      const node = `Tele_${block}_${i + 1}`;
-      const known = LIT[node];
-      return known
-        ? { ...known, node }
-        : { node, name: 'Signal lamp', about: `${says} Which lens says which is not established. Not simulated: it stays dark.` };
-    }),
-  ),
+  lamps: [
+    ...SIGNALS.flatMap(([block, lamps, says]) =>
+      Array.from({ length: lamps }, (_, i) => {
+        const node = `Tele_${block}_${i + 1}`;
+        const known = LIT[node];
+        return known
+          ? { ...known, node }
+          : { node, name: 'Signal lamp', about: `${says} Which lens says which is not established. Not simulated: it stays dark.` };
+      }),
+    ),
+    // the signaller over the Globus: lit by the globe's second mode (`globe.modes`, below), not by a signal of the flight
+    {
+      node: 'Tele_Landing',
+      name: '«Посадка»: landing',
+      about:
+        'Over the globe. It comes on when the tumbler ГЛОБУС is thrown to МЕСТО ПОСАДКИ, so that the place under the cross is not taken for where the ship is (Tyapchenko, fig. 16: “the «Посадка» signaller: switched on once the Globus tumbler on the panel is put to landing place”). It shows the tumbler, not an event of the flight: flown as Gagarin flew it, with the tumbler at the present place, it stays dark. Its colour is estimated.',
+      colour: 0xffb340,
+    },
+  ],
   controls: [
     ...[1, 2, 3, 4, 5, 6].map((key) => ({
       node: `Ctl_Code${key}`,
@@ -964,8 +974,8 @@ vehicle.cabin = {
   // which two, how the third was commanded and how far it tipped are estimated
   stick: { node: 'Ctl_HandController', throw: 0.2, pitch: [1, 0, 0], roll: [0, 0, 1], yaw: [0, 1, 0] },
   // its two modes on the one tumbler (Tyapchenko, fig. 16's caption: documented); the landing place is the simulator's
-  // (derived: the real instrument advanced the globe by a fixed arc set on the ground). The «Посадка» lamp that lit with
-  // the second is not in the model (vehicles/vostok_cabin.py: the window over the globe is a plain block), so no `lamp`
+  // (derived: the real instrument advanced the globe by a fixed arc set on the ground). The «Посадка» signaller over the
+  // globe lit with the second (documented, the same caption): `Tele_Landing` (vehicles/vostok_cabin.py), one of `lamps`
   globe: {
     node: 'Globus_Globe',
     name: 'Globus',
@@ -973,7 +983,7 @@ vehicle.cabin = {
     control: 'Ctl_GlobusMode',
     modes: [
       { says: 'Present place', shows: 'place' },
-      { says: 'Landing place', shows: 'landing' },
+      { says: 'Landing place', shows: 'landing', lamp: 'Tele_Landing' },
     ],
   },
   periscope: VZOR,
