@@ -265,6 +265,9 @@ export function spacecraft(
     aimOf(o, r, v, () => flat(sunPosition(terrestrialTime(launchJd + t / 86_400))), flat);
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? aimAt(start.t, start.r, start.v) : null;
+  // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
+  // there and not at a step's own instants, the last of which is the parting itself)
+  let since = start.t;
   return {
     kind: 'coast',
     cutoff: null,
@@ -273,11 +276,12 @@ export function spacecraft(
     radius: o.orbit.radius.value,
     ground: floorOf(site, seaLevel),
     burning: () => burning,
-    push: (at, p, u, altitude) => shipPush(o, at, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+    push: (_at, p, u, altitude) => shipPush(o, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
     next: (t) => after(marks, t),
     below: () => o.ejection.altitude.value,
     arrive(t, r, v, _altitude, by): Arrival {
       if (by === 'height') return { end: true };
+      since = t;
       const events: EventKind[] = [];
       if (t === on && t < parted) {
         aim = aimAt(t, r, v);

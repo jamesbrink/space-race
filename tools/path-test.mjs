@@ -855,8 +855,9 @@ if (!quick && !at) {
               await page.evaluate(() => window.sr.clock.seek(window.sr.path.prediction.impact.t));
               await runTo((await page.evaluate(() => window.sr.clock.t)) + 0.1, 1);
             },
-            // (the deck's run is flyOrbit's, whose step ending on a burn's cutoff takes its last stage unpushed: tests/staged.test.mjs)
-            (way) => 3000 + 0.005 * way,
+            // (the deck's run is flyOrbit's, the path the propagator's, on the same forces: tests/staged.test.mjs holds the two
+            // to a millisecond and a metre at the ejection height; the rest is the clock's last tick and the seek's)
+            (way) => 2000 + 0.001 * way,
           );
         else console.log(`  v1 burn ${turnFor ? 'back' : 'forward'}: ${p?.outcome ?? 'no prediction'} (stays up: no end to hold it to)`);
       }

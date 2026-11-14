@@ -7,7 +7,10 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
 `Measure` with its confidence and source, in SI with the source's own units in `source`.
 `fly(trajectory, site, seaLevel)` integrates it (RK4 at 0.05 s, every step cut to end on the next
-event, so one input gives one flight to the last bit) in an Earth-centred frame that does not turn,
+event, so one input gives one flight to the last bit; within a step what burns and what is attached are as they are
+from the step's start, so a burn that ends on a step's end is pushed through all of it and one that lights there is
+not felt in it: every integrator here, batch, live and predicting, keeps that rule, and a live tick that holds a burn's
+end inside it is flown in two there) in an Earth-centred frame that does not turn,
 under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
 returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
 shield first coming down. `from` starts it at separation from a given state, so the capsule's half

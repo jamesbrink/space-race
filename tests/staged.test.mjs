@@ -58,31 +58,31 @@ const MISSES = {
         why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 346 km, not 327: the same miss as the coast from the published orbit in tests/orbital.test.mjs (345 km), which is how the published elements are read`,
       },
       separationAltitude: {
-        by: -16_774,
+        by: -16_923,
         slack: 1_500,
         why: `${PUBLISHED}. At 10:36 it is at 138 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170 (reckonings). The burn is aimed along the line from the Sun, 30 degrees below level, which brings it down early: \`retro.aim\`, as in the coast’s own misses`,
       },
       ejectionAt: {
-        by: 220.6,
+        by: 219.2,
         slack: 10,
-        why: `${PUBLISHED}. It reaches 7 km at 10:45:40, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 465 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
+        why: `${PUBLISHED}. It reaches 7 km at 10:45:39, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 454 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
       },
       alongTrack: {
-        by: 464_810,
+        by: 453_800,
         slack: 10_000,
         why:
-          `${PUBLISHED}. It comes down 465 km beyond the record’s landing along the track and 13 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
-          'The place on the orbit is now the ascent’s (27.84 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 453 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 302 km shorter)',
+          `${PUBLISHED}. It comes down 454 km beyond the record’s landing along the track and 14 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
+          'The place on the orbit is now the ascent’s (27.84 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 450 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 301 km shorter)',
       },
     },
     descent: {
       'module.at': {
-        by: 148.8,
+        by: 141.3,
         slack: 10,
         why: 'Late by its late arrival at 7 km (see the coast’s ejectionAt): from 7 km the module takes 6 min 10 s, the record’s clocks at most 6',
       },
       'pilot.at': {
-        by: 364.3,
+        by: 363.3,
         slack: 10,
         why:
           'Late by the late arrival at 7 km, and from 7 km he takes 13 min 23 s where R and Z’s clocks have 11 (10:42 to 10:53) and Baturin’s 4 (10:49). ' +
@@ -334,21 +334,23 @@ for (const f of flown) {
     job.run();
     const p = job.result;
     assert.equal(p.outcome, 'impact');
-    // The one propagator from the same state, by the same forces, against flyOrbit's fixed steps. Round the orbit they agree
-    // to centimetres. flyOrbit's step that ends on the burn's cutoff takes its last stage with the engine off (`at < off`),
-    // so the run is given a sixth of a second's push (half a metre a second) less than the burn: from there the two part,
-    // and the air widens it to a second and a half and 11 km at the ejection height. With that stage given its push (tried,
-    // 14 November 2026) flyOrbit comes down at T+5919.449 s, 54.43130 N, the prediction at T+5919.449 s, 54.43130 N. The
-    // record's run is left as it is (its figures are the record's checks'); the bounds are that difference's.
+    // The one propagator from the same state, by the same forces, against flyOrbit's fixed steps: round the orbit, through
+    // the burn and down through the air they agree to centimetres and milliseconds. (Until November 2026 flyOrbit's step that
+    // ended on the burn's cutoff took its last stage with the engine already off, so its burn was half a metre a second
+    // short, and from there the two parted by a second and a half and 11 km at the ejection height. Both now hold the ship as
+    // it is from a step's start through the step: orbital.ts `pushAs`, predict.ts's `Flier`.)
     const at = shown.coast.results;
-    assert.ok(Math.abs(p.impact.t - at.ejectionAt) < 2, `down within two seconds of the run: ${(p.impact.t - at.ejectionAt).toFixed(3)} s`);
+    assert.ok(
+      Math.abs(p.impact.t - at.ejectionAt) < 0.01,
+      `down within a hundredth of a second of the run: ${(p.impact.t - at.ejectionAt).toFixed(4)} s`,
+    );
     const apart =
       111.2 *
       Math.hypot(
         p.impact.latitude - at.ejectionLatitude,
         (p.impact.longitude - at.ejectionLongitude) * Math.cos(at.ejectionLatitude * DEG),
       );
-    assert.ok(apart < 15, `and ${apart.toFixed(1)} km from its place`);
+    assert.ok(apart < 0.01, `and ${(apart * 1000).toFixed(1)} m from its place`);
     const before = shown.coast.samples.find((x) => x.t >= o.retro.on.value - 30);
     const i = p.points.findIndex((x) => x.t > before.t);
     const [a, b] = [p.points[i - 1], p.points[i]];
@@ -361,7 +363,7 @@ for (const f of flown) {
       'and the burn on the way',
     );
     console.log(
-      `  #   predicted from separation: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(2)} s, ${apart.toFixed(1)} km from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
+      `  #   predicted from separation: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
     );
   });
 

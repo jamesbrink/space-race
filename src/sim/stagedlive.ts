@@ -216,12 +216,15 @@ export function stagedVehicle(
     const angle = length(phi);
     return angle > 1e-15 ? normalize(multiply(q, aboutAxis(scale(phi, 1 / angle), angle))) : q;
   };
-  /** Every force but gravity over the mass, at a state, an instant and an axis. */
-  const accel = (st: State, at: number, s: StagedState, axis: Vec3, gone: number) => {
+  /**
+   * Every force but gravity over the mass, at a state, an instant and an axis, with what burns as it is from instant `as`
+   * (a step's start: a step ends on every instant something stops, so within it what burns is fixed).
+   */
+  const accel = (st: State, at: number, s: StagedState, axis: Vec3, gone: number, as = at) => {
     const here = air(st, at);
     let thrust = 0;
     o.stages.forEach((_, i) => {
-      if (burning(s, i, at)) thrust += stack.thrust(i, at, here.air.pressure);
+      if (burning(s, i, as)) thrust += stack.thrust(i, at, here.air.pressure);
     });
     const dragArea = stack.dragArea(gone, here.mach);
     let f = scale(axis, thrust);
@@ -308,9 +311,20 @@ export function stagedVehicle(
       q = normalize(multiply(turnE, q));
     } else {
       const along = c.prescribed ?? ((_: State, at: number) => turn(turned(s.q, s.w, alpha, at - s.t), X));
-      const next = step({ r, v }, s.t, h, (st, at) => accel(st, at, s, along(st, at), gone).accel);
-      r = next.r;
-      v = next.v;
+      // (a stage that runs dry within the tick: the tick is flown in two, to the instant it does and on from there, so
+      // its burn is all of its propellant and no more)
+      const dries = o.stages
+        .map((_, i) => (burning(s, i, s.t) ? stop(s, i) : Infinity))
+        .filter((x) => x > s.t + 1e-9 && x < t - 1e-9)
+        .sort((p, q) => p - q);
+      let at0 = s.t;
+      for (const to of [...dries, t]) {
+        const from = at0;
+        const next = step({ r, v }, from, to - from, (st, at) => accel(st, at, s, along(st, at), gone, from).accel);
+        r = next.r;
+        v = next.v;
+        at0 = to;
+      }
       q = c.prescribed ? along1(c.prescribed({ r, v }, t), law.n) : turned(s.q, s.w, alpha, h);
       w = [s.w[0] + alpha[0] * h, s.w[1] + alpha[1] * h, s.w[2] + alpha[2] * h];
     }

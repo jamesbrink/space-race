@@ -502,34 +502,34 @@ set in orbital.ts before the simulator was written.
 | Out of it | 10:09:30 | before the burn; orientation complete after it (G) | | not held |
 | Burn begins over | 12.0° S, 9.3° E (off Angola) | "over Africa" (G) | | not held; agrees |
 | Push off retrograde | 54° | | | see section 1 |
-| Perigee after the burn | -37 km | | | no figure in the record |
+| Perigee after the burn | -38 km | | | no figure in the record |
 | Height at 10:36 | 137 km | 150 to 160 (L); 150 to 170 (S15) | 15 km about 155 | **misses by -18 km** |
 | Through 100 km | 10:39:02, 7,683 m/s through the air, 1.48° below level | | | no figure in the record |
-| Greatest load | 8.55 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
+| Greatest load | 8.56 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
 | Greatest dynamic pressure | 54 kPa | | | |
-| At 7 km | 10:45:45, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +225 s** |
+| At 7 km | 10:45:43, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +224 s** |
 | Place, across the track | 69 km left | 51°16′ N 45°59′ E (R) | 25 km | **misses** |
-| Place, along the track | 467 km beyond (54.82° N, 49.85° E) | the same | 100 km | **misses** |
+| Place, along the track | 448 km beyond (54.70° N, 49.64° E) | the same | 100 km | **misses** |
 
 What the misses say, in order of what is learned:
 
 1. **Across the track is the burn's aim.** All 69 km is the sideways part of a push along the Sun's
-   line. With the same impulse straight against the motion the miss across is 9 km (and along, 14 km,
-   which the uncertain injection point makes no proof of anything). The plane derived from the
+   line. With the same impulse straight against the motion the miss across is 9 km (and along, 2 km
+   short, which the uncertain injection point makes no proof of anything). The plane derived from the
    inclination and the pad is therefore good to about 10 km at the landing, and the record's "TDU
    directed to the Sun" is not the whole of the geometry.
 2. **The apogee is how the orbit is read.** The published heights are not osculating at cutoff.
 3. **Along the track has three owners**, each worth hundreds of kilometres: the injection point
    (129 km a degree, estimated to 3°), the aim, and the reading of the orbit (both heights 9 km lower:
-   302 km shorter). It is not to be tuned; the ascent flown replaces the first.
-4. **The time at 7 km** is late partly because the place is long (467 km is a minute) and partly
+   301 km shorter). It is not to be tuned; the ascent flown replaces the first.
+4. **The time at 7 km** is late partly because the place is long (448 km is a minute) and partly
    because the descent is slower than the flight's was, which is the aim again.
 5. **The load does not depend on any of this**: 8.4 to 9.1 g across every variation tried. Gagarin's
    "beyond 10" is a sensation; "about 8", in print without a source, is what a ballistic sphere gives.
 
-What each input moves (from the same test): `retro.deltaV` +4 m/s (as programmed): 157 km shorter;
-+5 %: 254 km shorter. `orbit.radius` at the equatorial 6,378 km: 241 km further. `injection.anomaly`
-+30°: 310 km shorter. The sphere's drag or mass ±5 %: 14 km. The module separation a minute earlier
+What each input moves (from the same test): `retro.deltaV` +4 m/s (as programmed): 156 km shorter;
++5 %: 253 km shorter. `orbit.radius` at the equatorial 6,378 km: 240 km further. `injection.anomaly`
++30°: 313 km shorter. The sphere's drag or mass ±5 %: 14 km. The module separation a minute earlier
 (G's 10:35): nothing.
 
 Not verified: the shadow against any published case (geometry only); the Sun-aimed push against
@@ -641,8 +641,10 @@ stage as the sources give them do not agree with one another; which is wrong is 
 **What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
-ascent puts it at 27.84°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:40 at
-7 km, landing 465 km long and 13 km across (holds), module 10:50:28, pilot 10:59:04.
+ascent puts it at 27.84°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:39 at
+7 km, landing 454 km long and 14 km across (holds), module 10:50:21, pilot 10:59:03. (Until November 2026 the braking
+burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
+10:59:04. orbital.ts `flyOrbit`, `pushAs`.)
 
 ### The 2011 documents: the whole flight task, the cyclogram and NIIP-5's report (November 2026)
 

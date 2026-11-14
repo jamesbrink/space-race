@@ -115,6 +115,8 @@ import {
 
 /** The integration step, s. */
 export const TICK = 0.01;
+/** Seconds: an instant within this of a tick is on it (a sum of the record's figures misses the tick by its rounding). */
+const ON_TICK = 1e-6;
 
 /** What the pilot, or an autopilot, asks of the vehicle. Steering is -1 to 1 about each body axis. */
 export interface Controls {
@@ -467,11 +469,26 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (!range) return 1;
     return u < range[0] - 1e-12 ? 0 : Math.min(u, range[1]);
   };
+  /**
+   * How many retrorockets burn at `at`. Each lights and burns out on an instant that is the first's plus its offset and
+   * burn, which in the record's figures fall on the ticks but for the rounding of a sum: one within `ON_TICK` of an
+   * instant is at it, and a tick that holds one more truly inside it is flown in two there (`tick`).
+   */
   const retros = (s: VehicleState, at: number): number =>
-    s.retroAt === null || s.shed.retropack ? 0 : retroOffsets.filter((o) => at >= s.retroAt! + o && at < s.retroAt! + o + retroBurn).length;
+    s.retroAt === null || s.shed.retropack
+      ? 0
+      : retroOffsets.filter((o) => at + ON_TICK >= s.retroAt! + o && at + ON_TICK < s.retroAt! + o + retroBurn).length;
+  /** The instants within (from, to) at which a retrorocket lights or burns out. */
+  const retroMarks = (s: VehicleState, from: number, to: number): number[] =>
+    s.retroAt === null || s.shed.retropack
+      ? []
+      : retroOffsets.flatMap((o) => [s.retroAt! + o, s.retroAt! + o + retroBurn]).filter((x) => x > from + ON_TICK && x < to - ON_TICK);
 
-  /** Every force but gravity (N, in the frame) and the torque about the centre of mass (N m, in the body), with what the air is doing. */
-  const forces = (d: Dyn, at: number, s: VehicleState) => {
+  /**
+   * Every force but gravity (N, in the frame) and the torque about the centre of mass (N m, in the body), with what the air
+   * is doing, at `at`; the retrorockets lit as they are from instant `as` (a step's start: within a step what burns is fixed).
+   */
+  const forces = (d: Dyn, at: number, s: VehicleState, as = at) => {
     const props = massNow(s, d.mass);
     const { altitude, air, wind, airspeed, mach, q, ground } = windAt(d.r, d.v, at, seaLevel);
     const riding = !s.shed.booster;
@@ -538,7 +555,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       } else if (s.mainAt === null && capsule.jets) {
         torque = add(torque, [capsule.jets.roll.value * c.roll, capsule.jets.pitch.value * c.pitch, capsule.jets.yaw.value * c.yaw]);
       }
-      const lit = retros(s, at);
+      const lit = retros(s, as);
       if (lit > 0) push([lit * tr.retro.thrust.value, 0, 0], 0);
     }
     if (escaping) {
@@ -552,8 +569,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     return { force, torque, q, mach, altitude, wind, airspeed, ground, props };
   };
 
-  const rate = (d: Dyn, at: number, s: VehicleState): Dyn => {
-    const f = forces(d, at, s);
+  const rate = (d: Dyn, at: number, s: VehicleState, as = at): Dyn => {
+    const f = forces(d, at, s, as);
     return {
       r: d.v,
       v: add(gravity(d.r), scale(f.force, 1 / d.mass)),
@@ -573,10 +590,10 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     mass: d.mass + k.mass * h,
   });
   const rk4 = (d: Dyn, at: number, h: number, s: VehicleState): Dyn => {
-    const k1 = rate(d, at, s);
-    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, s);
-    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, s);
-    const k4 = rate(nudge(d, k3, h), at + h, s);
+    const k1 = rate(d, at, s, at);
+    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, s, at);
+    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, s, at);
+    const k4 = rate(nudge(d, k3, h), at + h, s, at);
     const sum = (a: Vec3, b: Vec3, c: Vec3, e: Vec3): Vec3 => scale(add(add(a, scale(b, 2)), add(scale(c, 2), e)), 1 / 6);
     const next = nudge(
       d,
@@ -924,7 +941,24 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       else return { ...s, ...standing(s, t, burning(s) ? s.mass - flow * s.throttle * h : s.mass), t, ticks };
     }
     const before: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass };
-    const after = rk4(before, s.t, h, s);
+    // A burn that ends within the tick ends there: the tick is flown in pieces, each from the instant before to the next
+    // at which something stops or lights (the engine running dry, a retrorocket), so a burn is all of its impulse and no
+    // more. (The engine cut by a hand or the sequencer, and the events, are at the ticks they are asked on.)
+    let dries = Number.POSITIVE_INFINITY;
+    if (burning(s) && s.throttle > 0) {
+      const burned = (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass;
+      const at = s.t + (tr.liftoffMass.value - dryOut - burned) / (flow * s.throttle);
+      if (at > s.t + ON_TICK && at < t - ON_TICK) dries = at;
+    }
+    const dry: VehicleState = Number.isFinite(dries) ? { ...s, cutoff: true, throttle: 0 } : s;
+    const ends = [...(Number.isFinite(dries) ? [dries] : []), ...retroMarks(s, s.t, t)].sort((a, b) => a - b);
+    let after = before;
+    let from = s.t;
+    for (const to of [...ends, t]) {
+      after = rk4(after, from, to - from, from < dries ? s : dry);
+      from = to;
+    }
+    if (dry !== s) s = dry;
     const was = heightOf(foot(s, before), s.t);
     const now = heightOf(foot(s, after), t);
     const up = upOver(now, t);

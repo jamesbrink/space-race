@@ -471,7 +471,9 @@ export function flyDown(
     let filling: { area: number; at: number; fills: number; name: string } | null = null;
     const kept = new Map<string, number>(); // (each parachute in `base`, by name, with its area: for `instead`)
     const out = new Set<number>();
-    const massAt = (at: number) => mass + (entry && at < parted ? joined : 0);
+    // (the instrument module hangs on until the modules part: a step ends there, and within a step it is as at its start)
+    let as = t0;
+    const massAt = (_at: number) => mass + (entry && as < parted ? joined : 0);
     const areaAt = (at: number, h: number, mach: number) =>
       (entry && h > floor + 1 ? o.entry.area.value * along(o.entry.drag, mach) - body.dragArea.value : 0) +
       base +
@@ -583,8 +585,10 @@ export function flyDown(
       const most_step = h > 150_000 ? 10 : h > 100_000 ? 1 : 0.05;
       const cut = cuts.find((c) => c > t + 1e-9);
       const dt = cut !== undefined && cut - t < most_step ? cut - t : most_step;
+      as = t;
       s = step(s, t, dt, push);
       t = cut !== undefined && Math.abs(t + dt - cut) < 1e-9 ? cut : t + dt;
+      as = t;
       h = heightOf(s, t);
       if (h <= ground) {
         const part = (was.h - ground) / (was.h - h);
@@ -829,11 +833,18 @@ export function flyOrbit(
     const q = 0.5 * air.density * airspeed * airspeed;
     return { altitude, wind, airspeed, mach, q };
   };
-  /** Everything but gravity, m/s^2. */
-  const push = (s: State, at: number): Vec3 => {
+  /**
+   * Everything but gravity, m/s^2, with the ship as it is from instant `as` (the engine lit or not, the modules joined or
+   * not) at a state at `at`. A step ends on every instant the ship changes at, so within a step it is as it was at the
+   * step's start: the burn's last step is pushed to its end, and the step before the modules part carries the whole ship.
+   * (Read at each stage's own instant, the stage that ends a step on the cutoff had the engine off, and the burn came out
+   * a sixth of a step short: 0.5 m/s of Vostok 1's 136.)
+   */
+  const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airAt(s, at);
-    return shipPush(o, at, air.wind, air.altitude, at >= on && at < off && at < parted ? aim : null);
+    return shipPush(o, as, air.wind, air.altitude, as >= on && as < off && as < parted ? aim : null);
   };
+  const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= 0.05 ? 'entry' : 'descent';
 
@@ -919,7 +930,8 @@ export function flyOrbit(
     const most = before.altitude > THIN ? (burning ? 1 : 10) : before.altitude > THICK ? 1 : 0.05;
     const h = Math.min(most, mark === undefined ? most : mark - t);
     const last = state;
-    state = step(state, t, h, push);
+    const as = t;
+    state = step(state, t, h, (s, at) => pushAs(s, at, as));
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     arrive();
     let now = sample();
