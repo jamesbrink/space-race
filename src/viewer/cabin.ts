@@ -83,6 +83,7 @@ interface Needle {
   reads?: string;
   per: number;
   value?: number;
+  history?: { at: number; from?: string; value: number }[];
   /** Where it is, in its scale's own units of position, and where it is going. */
   now: number;
   goal: number;
@@ -136,6 +137,29 @@ const RING = /* glsl */ `
     colour *= 1.0 - 0.3 * (1.0 - 4.0 * k * (1.0 - k)); // each port darkens toward its rims
     gl_FragColor = vec4(colour + vec3(0.004, 0.005, 0.006), 1.0);
   }`;
+
+/**
+ * A reading the record gives at instants (CabinDef.instruments[].history) at `t`: each reading's instant from liftoff or
+ * after its event (`events`, by id; one not yet come is never), straight between them in order of time, held beyond.
+ */
+export function historyAt(
+  history: readonly { at: number; from?: string; value: number }[],
+  events: Readonly<Record<string, number>>,
+  t: number,
+): number {
+  const points = history
+    .map((h) => [h.from === undefined ? h.at : (events[h.from] ?? Infinity) + h.at, h.value] as const)
+    .filter(([at]) => Number.isFinite(at))
+    .sort((a, b) => a[0] - b[0]);
+  if (!points.length) return history[0]?.value ?? 0;
+  if (t <= points[0]![0]) return points[0]![1];
+  for (let i = 1; i < points.length; i++) {
+    const [t1, v1] = points[i]!;
+    const [t0, v0] = points[i - 1]!;
+    if (t <= t1) return t1 > t0 ? v0 + ((v1 - v0) * (t - t0)) / (t1 - t0) : v1;
+  }
+  return points[points.length - 1]![1];
+}
 
 /**
  * The globe's surface for a globe in the cabin (CabinDef.globe): its own colour for the sea and a buff for the land, read
@@ -281,6 +305,7 @@ export class Cabin {
         ...(u.drum ? { drum: u.drum } : {}),
         ...(i.reads ? { reads: i.reads } : {}),
         ...(i.value !== undefined ? { value: i.value } : {}),
+        ...(i.history ? { history: i.history } : {}),
       };
       this.needles.push(needle);
       name(node, i.name, i.about);
@@ -830,10 +855,13 @@ export class Cabin {
     this.readings = r;
     this.signals = signalsAt(this.live ? this.times : (record?.times ?? {}), sample?.t ?? t, lifted);
 
+    // (an orbital flight's events: the deck's run's while it is flown, the record's otherwise)
+    const events = this.live ? this.events : (record?.events ?? {});
+    const at = sample?.t ?? t;
     let moved = false;
     const k = dt > 0 ? 1 - Math.exp(-dt / NEEDLE_TAU) : 1;
     for (const n of this.needles) {
-      const reading = n.reads ? r[n.reads as keyof Readings] : n.value;
+      const reading = n.reads ? r[n.reads as keyof Readings] : n.history ? historyAt(n.history, events, at) : n.value;
       const value = reading === undefined ? n.rest : n.reads ? reading / n.per : reading;
       n.goal = n.drum ? drumAt(value, n.place, n.drum) : scaleAt(n.turn ?? n.slide ?? [], value, n.wrap);
       // (the first reading is stood on, not eased to: and the node is put there, or it stays where it was built)
@@ -850,9 +878,6 @@ export class Cabin {
       else if (n.turn) n.node.quaternion.copy(n.home).multiply(q.setFromAxisAngle(AXIS_Y, n.now - scaleAt(n.turn, n.rest, n.wrap)));
       else if (n.slide) n.node.position.copy(n.at).add(v.set(n.now - scaleAt(n.slide, n.rest), 0, 0).applyQuaternion(n.home));
     }
-    // (an orbital flight's events: the deck's run's while it is flown, the record's otherwise)
-    const events = this.live ? this.events : (record?.events ?? {});
-    const at = sample?.t ?? t;
     const happened = (id: string | undefined): boolean => id !== undefined && at >= (events[id] ?? Infinity);
     for (const lamp of this.lamps) {
       // (a lamp that shows nothing simulated stays dark)

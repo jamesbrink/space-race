@@ -55,8 +55,12 @@ never adjusted to bring a check in.
   first stages lit at liftoff as one engine (`liftoffEngine`); later fires burn from their own nozzles (`flies.fires`); a
   cabin control's `does` of `code:` and a numeral is a key of the deck's lock. Because the ascent as recorded falls short of
   the published orbit, what the scene and the deck show from separation is the published orbit begun where the ascent
-  left the spacecraft (`published`); the tests hold the ascent itself to the record as flown. Heating's glow, the
-  parachutes drawn and the cabin's Globus, Vzor, gauges and lamps are not hooked to an orbital run yet. The smoke is
+  left the spacecraft (`published`); the tests hold the ascent itself to the record as flown. The cabin rides it:
+  with each sample the deck tells the cabin (`DeckNews`: the instants of the record's events on the run on show,
+  `ascent.ts orbitalEvents`, moved by a burn by hand; the hand controller's push; whether the hands are free), so its
+  lamps light on those events, its gauges with a `history` follow the readings the record gives at their instants, the
+  manual orientation's switch stands as the hands are, and the hand controller moves with the keys. Heating's glow and
+  the parachutes drawn are not hooked to an orbital run yet. The smoke is
   laid no higher than 80 km (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
@@ -322,7 +326,14 @@ never adjusted to bring a check in.
   From the couch the deck's strip is put away (`#ui.panel-only`), P brings it back, and that is remembered
   (`deckAboard`). The periscope's screen shows what its objective sees: a cube map drawn from where the objective
   is, laid along its axis, a face or two a frame and only while someone is aboard, shown through a fisheye of the
-  documented field. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
+  documented field, with Mercury's reticle on it unless `reticle: false` (a screen whose rulings are the model's); a
+  `ring` of ports round it shows a band of angles off the axis on the same cube, the nearer the axis the nearer the
+  middle, so the horizon stands evenly in it only with the axis on the Earth's centre (the Vzor). The deck's predicted
+  path is not seen through it, and after the vehicle turns with the clock stopped frames are asked for until every face
+  is drawn again. A `globe` (the Globus) turns its node so the point under the spacecraft is under its cross and the
+  way it goes over the ground runs up the board (gauges.ts `globeTurn`), painted from the globe's land map
+  (`CabinHost.earth`). A lamp can show an orbital record's event (`event:<id>`, out at `until`'s); a gauge can follow
+  a `history` of readings, each at an instant from liftoff or after an event. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
   map of one shade, the model's lights fall off with distance, not its square, and are held against the exposure;
   the Sun through a window is the scene's own. Each window (`CabinDef.windows`) and the periscope's screen is besides a small light whose colour is what is outside it, looked at through an 8 px picture every few frames while someone is aboard (`Cabin.see`); the lights are there from the load, dark, because a light added later rebuilds every shader. The cabin's own lamps have their switch (`CabinDef.lighting`: a lever of the model with a turn for each position, what each position lights, and each lamp's tube): a click on it from the seat, or its button under the lookouts, throws it (it has no key: none is free on the flight deck) (`Cabin.light`), the lamps it names come on or go out in a few hundredths of a second, their tubes glow or not, and every surface the build shaded goes over to its lamps-out figure (rendering.md, "An inside to sit in"), so with them out the cabin is lit by its windows, its periscope's screen and its telelights. It opens as the model was built (as flown) and is not remembered: nothing else in a cabin is. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull, twice a frame. Nothing in cabin.ts or gauges.ts names a spacecraft.
 - **A mechanism runs to its programme, and a hand can take it** (`ModelDef.mechanisms`, types.ts: `MechanismDef`;

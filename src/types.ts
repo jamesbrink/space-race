@@ -316,9 +316,19 @@ export interface CabinDef {
    * value, metres pairs; `drum`: digits on a wheel, with `place` the power of ten it shows), so the scale has one home.
    * `reads` is the quantity and `per` what one unit of the face is in that quantity's units (a face in thousands of
    * feet reads metres with `per: 304.8`). An instrument of something not simulated has `value` instead, in the face's
-   * units, and stands there.
+   * units, and stands there. One whose readings the record gives at instants (a pilot reading his gauges out on the
+   * radio) has `history` instead: each reading at `at` seconds from liftoff, or `at` seconds after the event `from` of
+   * an orbital flight's record (as the run on show has it), straight between readings and held beyond the last.
    */
-  instruments: { node: string; name: string; about: string; reads?: Quantity; per?: number; value?: number }[];
+  instruments: {
+    node: string;
+    name: string;
+    about: string;
+    reads?: Quantity;
+    per?: number;
+    value?: number;
+    history?: { at: number; from?: string; value: number }[];
+  }[];
   /**
    * Lamps: lit, in `colour`, while the signal holds. One with no signal shows something not simulated: it stays dark and says so.
    * On a flight into orbit a lamp can show an event of its record (`event:` and the id of one of `orbital.events`), lit

@@ -1,6 +1,6 @@
 import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
-import { orbital } from './orbital.ts';
+import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const DEG = Math.PI / 180;
@@ -560,7 +560,6 @@ vehicle.seats = [
  * at what Gagarin read off them before launch, and say so.
  */
 const NOT_SIMULATED = 'Not simulated: the needle stands where it was built.';
-const READ = 'the transcript of 12 April (Izvestiya TsK KPSS, 1991 No. 5)';
 // which lens carries which words is not established: the words are a reconstruction (vostoksupersite, from archive
 // documents it names, with doubts of its own), so each lens says its block's and stays dark
 const SIGNALS: [block: string, lamps: number, says: string][] = [
@@ -578,8 +577,8 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
 ];
 // The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
 const GLOBUS =
-  'The ship’s place over the Earth: a globe turned by a clockwork drive at the orbit’s period about the orbit’s pole and at the Earth’s rate about its own, set before launch, so that the point under the ship stood under the cross. ' +
-  'Here it is turned by where the ship is in the run (the point under it under the cross, its way over the ground up the board): the instrument working perfectly, with none of the clockwork’s drift that its correction counter (reading 510) was there to take out. Its map is the globe’s own, in two tones.';
+  'The ship’s place over the Earth: “it turns all the time, following the ship’s motion over the Earth, and the fixed cross in its ring shows over which point of the globe the ship is now” (Ponomareva). Set before launch with the orbit’s period as a three-figure number in its correction window and turned by its two knobs in the planes of the equator and of the orbit, it started at the separation (“the Globus stopped about the middle of the Mediterranean”, Gagarin) and was good to some 300 km (his report). ' +
+  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 510, as one print of the transcript has it; the archive’s print has 710. Its landing-place mode (a tumbler threw the globe on to where a burn now would land) is not here, there being no node for the tumbler. Its map is the globe’s own, in two tones.';
 // The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
 // ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
 // degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
@@ -587,17 +586,50 @@ const VZOR: NonNullable<CabinDef['periscope']> = {
   screen: 'Vzor_Screen',
   name: 'Vzor',
   about:
-    'The optical orientator, on the porthole at his feet. Its ring of eight ports shows the horizon as a ring of even width only when the axis points at the Earth’s centre; in the middle the ground runs along the rulings, toward the arrows, only when the ship lies along its track with its braking engine forward. That is how the ship was turned by hand for the braking burn. ' +
-    'Here the screen shows the outside along the porthole’s axis and the ring the band round the horizon, each estimated (spacecraft.md says how it differs from the optics).',
+    'The optical orientator on the porthole at his feet: a mirror ring in which the horizon stands in all eight windows alike when the axis points at the Earth’s centre, and a centre 7 degrees across through which the ground runs along the arrows when the ship lies along its track for braking (Tyapchenko; Gagarin’s report: “the whole horizon was inscribed perfectly evenly in the outer ring”). That is how the ship was turned by hand for the braking burn. ' +
+    'Here the centre is the outside along the porthole’s axis and the ring the band where the horizon stands from 150 to 350 km up (Tyapchenko), drawn as a straight map of angle to radius; the mirrors’ own geometry, their inner ring at 5 to 7 degrees and the arrows lit for the jets are not drawn (spacecraft.md, “The Vzor”).',
   // the objective just outside the porthole's glass, on its axis (vostok_cabin.py prints the porthole's place)
   at: [0.82, 3.34, 0.82],
   axis: [0.683013, 0.258819, 0.683013],
   // the ship's nose (its long axis, toward the braking engine's push) at the top of the screen, where the arrows point
   up: [0, 1, 0],
-  fields: [30],
+  // its centre's whole field (Gagarin: «угол зрения «взора» 7 градусов»); the ring from a degree and a half inside the horizon at
+  // 350 km (71.4 degrees off the nadir) to as far outside it at 150 km (77.7): the margins are ours
+  fields: [7],
   reticle: false,
-  ring: { mesh: 'Vzor_Ring', from: 64, to: 84 },
+  ring: { mesh: 'Vzor_Ring', from: 70, to: 79 },
 };
+// The three legends Gagarin's words put a time to (his report and the transcript, «Первый пилотируемый полёт», 2011),
+// each on a lens of its colour: which of the 24 lenses carried which legend is not in anything read, so the lens is
+// ours. Lit from its event of the record (as the run on show has it) until the next that the record says put it out
+const WHICH =
+  'The legend, its colour and when it lit are the record’s; which of the 24 lenses carried it is not known, and this one is chosen.';
+const LIT: Record<string, Omit<NonNullable<CabinDef['lamps']>[number], 'node'>> = {
+  Tele_TS1_6: {
+    name: '«Приготовиться к катапультированию»: prepare to eject',
+    about: `Red. At the modules’ parting “all the windows on the PKRS went out; only one legend came on: prepare to eject” (Gagarin’s report); out when the seat goes. ${WHICH}`,
+    shows: 'event:modules',
+    until: 'ejection',
+    colour: 0xff4a3a,
+  },
+  Tele_TS2_1: {
+    name: '«Ориентация по Солнцу»: orientation on the Sun',
+    about: `Amber. Lit as the solar orientation was switched on in the Earth’s shadow (“the Sun orientation is working”, the transcript; the plan’s signal at 32 minutes); when it went out is not recorded, and the braking command is taken. ${WHICH}`,
+    shows: 'event:orientation',
+    until: 'retro-command',
+    colour: 0xffb340,
+  },
+  Tele_TS2_5: {
+    name: '«Спуск-I»: descent I',
+    about: `Green. The timer’s first descent command, at its 56th minute; it did not go out after the burn (“«Спуск I» does not go out”, Gagarin) and went with the others at the modules’ parting. ${WHICH}`,
+    shows: 'event:descent-1',
+    until: 'modules',
+    colour: 0x7dff9a,
+  },
+};
+// What Gagarin read off the board's gauges, by the clock (the transcript, the onboard tape and his report, as
+// «Первый пилотируемый полёт», 2011, vol. 1 prints them): straight between his readings, held beyond (types.ts `history`)
+const RADIO = 'his readings on the radio and in his report («Первый пилотируемый полёт», 2011)';
 vehicle.cabin = {
   within: ['Cabin', 'EjectionSeat'],
   // the top of the pilot's head: up the seat's rails, toward hatch No. 1 (vehicles/vostok_3ka.py `seat_node`)
@@ -618,15 +650,29 @@ vehicle.cabin = {
     {
       node: 'Gauge_CabinPressure',
       name: 'Cabin pressure',
-      about: `Atmospheres, 0 to 1.5. It stands at 1.0, as he read it before launch (${READ}). ${NOT_SIMULATED}`,
+      about: `Atmospheres, 0 to 1.5. Held at 1: he read 1 at every reading from 07:29 to 10:23, and the telemetry kept 750 to 770 mm of mercury (${RADIO}). Not simulated: the record’s constant.`,
       value: 1.0,
     },
-    { node: 'Gauge_Humidity', name: 'Cabin humidity', about: `Per cent. It stands at the 65 he read. ${NOT_SIMULATED}`, value: 65 },
+    {
+      node: 'Gauge_Humidity',
+      name: 'Cabin humidity',
+      about: `Per cent. As he read it: 65 at every reading, rising through the braking burn to 71, “the needles went toward the red line” (${RADIO}). Straight between his readings; how it rose in the burn is ours. Not simulated: the record’s.`,
+      history: [
+        { at: 0, value: 65 },
+        { at: 0, from: 'retro-command', value: 65 },
+        { at: 0, from: 'retro-off', value: 71 },
+      ],
+    },
     {
       node: 'Gauge_Temperature',
       name: 'Cabin temperature',
-      about: `Degrees Celsius, 0 to 40. It stands at the 19 he read. ${NOT_SIMULATED}`,
-      value: 19,
+      about: `Degrees Celsius, 0 to 40. As he read it: 19 before launch, 20 from 09:21, and 21 to 22 by the end of the braking burn (${RADIO}). Straight between his readings. Not simulated: the record’s.`,
+      history: [
+        { at: MSK(7, 29), value: 19 },
+        { at: MSK(9, 21), value: 20 },
+        { at: 0, from: 'retro-command', value: 20 },
+        { at: 0, from: 'retro-off', value: 21.5 },
+      ],
     },
     {
       node: 'Gauge_CarbonDioxide',
@@ -649,28 +695,40 @@ vehicle.cabin = {
     {
       node: 'Gauge_ManualGas',
       name: 'Gas for turning the ship by hand',
-      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. It stands at the 155 he read. ${NOT_SIMULATED}`,
+      about: `Atmospheres of nitrogen in the bottles of the manual system, 0 to 200. Never used: he read 150 to 155 throughout (175 before launch in one print, 155 in another), and it stands at 155 (${RADIO}). Not simulated: the record’s.`,
       value: 155,
     },
     {
       node: 'Gauge_RetroPressure',
       name: 'Braking engine’s bottle',
-      about: `Atmospheres in the bottle that pressurises the TDU. It stands at the 320 he read. ${NOT_SIMULATED}`,
-      value: 320,
+      about: `Atmospheres in the bottle that pressurises the TDU. 320 at every reading, falling sharply when the engine was started and at nothing when it was shut down (${RADIO}); straight between is ours. Not simulated: the record’s.`,
+      history: [
+        { at: 0, value: 320 },
+        { at: 0, from: 'retro-command', value: 320 },
+        { at: 0, from: 'retro-timer', value: 0 },
+      ],
     },
     {
       node: 'Gauge_AutomaticGas',
       name: 'Gas for the automatic orientation',
-      about: `Atmospheres, 0 to 200: the first or the second set of bottles, by a tumbler on the control panel. It stands at the 155 he read of the first (157 of the second). ${NOT_SIMULATED}`,
-      value: 155,
+      about: `Atmospheres, 0 to 200: the first or the second set of bottles, by a tumbler on the control panel; it shows the first. As he read it: 155 to 10:04, 150 leaving the shadow at 10:09, 110 at 10:23, and both sets at nothing by the end of the burn (${RADIO}). Straight between his readings. Not simulated: the record’s.`,
+      history: [
+        { at: MSK(10, 4), value: 155 },
+        { at: MSK(10, 9), value: 150 },
+        { at: MSK(10, 23), value: 110 },
+        { at: 0, from: 'retro-command', value: 110 },
+        { at: 0, from: 'retro-off', value: 0 },
+      ],
     },
   ],
   lamps: SIGNALS.flatMap(([block, lamps, says]) =>
-    Array.from({ length: lamps }, (_, i) => ({
-      node: `Tele_${block}_${i + 1}`,
-      name: 'Signal lamp',
-      about: `${says} Which lens says which is not established. Not simulated: it stays dark.`,
-    })),
+    Array.from({ length: lamps }, (_, i) => {
+      const node = `Tele_${block}_${i + 1}`;
+      const known = LIT[node];
+      return known
+        ? { ...known, node }
+        : { node, name: 'Signal lamp', about: `${says} Which lens says which is not established. Not simulated: it stays dark.` };
+    }),
   ),
   controls: [
     ...[1, 2, 3, 4, 5, 6].map((key) => ({
@@ -847,9 +905,6 @@ const crew: ModelDef = {
     { id: 'boots', label: 'Boots', centreY: 0.18, span: 0.62, from: facingCosmonaut(0.2) },
   ],
 };
-
-/** Seconds from liftoff (09:06:59.7) of a time on Moscow's clocks that morning. */
-const MSK = (h: number, m: number, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
 
 // What served the rocket and was taken away before it left, as sites/site1/ has it (service_trusses.py, cable_mast.py,
 // erector.py: the numbers live there, and site-1.md tabulates the pivots). Angles round the site are from due east,

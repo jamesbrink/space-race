@@ -211,6 +211,14 @@ export const orbital: OrbitalFlight = {
       label: 'Solar orientation switched on, in the Earth’s shadow',
       at: m(MSK(9, 50), 'documented', `${ZAK}: planned for 09:50, and “around 09:50” Gagarin confirmed it. To the minute at best`),
     },
+    {
+      id: 'descent-1',
+      label: 'The timer’s first descent command: «Спуск-1» lit',
+      at: derived(
+        MSK(9, 18, 28) + 56 * 60,
+        `the separation (${OKB1}: 0918:28) and 56 minutes on the cycle's clock: Gagarin, «На 56 минуте прошла первая команда» (his report, as printed in «Первый пилотируемый полёт», 2011, vol. 1); the flight plan's 56 minutes (ibid., doc. 90, p. 352). To the minute`,
+      ),
+    },
     { id: 'retro-command', label: 'Braking engine commanded on', at: doc(TDU, `${OKB1}: 1025:04.2 (“pressurize”)`) },
     {
       id: 'retro-on',

@@ -151,6 +151,13 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
         }
         assert.ok(i.name && i.about, `${i.node}: a name and something to say about it`);
         assert.ok(i.reads || /not simulated/i.test(i.about), `${i.node} reads nothing, and does not say it is not simulated`);
+        // (a history read off the record: each reading's event is one of the record's)
+        for (const h of i.history ?? [])
+          if (h.from)
+            assert.ok(
+              (flight.orbital?.events ?? []).some((e) => e.id === h.from),
+              `${i.node}: no event ${h.from} in the record`,
+            );
         if (i.reads?.startsWith('supply'))
           assert.ok(flight.trajectory?.body?.capsule.rcs?.supplies[Number(i.reads.slice(6))], `${i.node}: no such supply as ${i.reads}`);
       }
