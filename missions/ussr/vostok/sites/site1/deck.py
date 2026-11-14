@@ -63,6 +63,18 @@ EDGE = -HALF - ABUTMENT + 0.05  # just inside the abutment's west face: where th
 LAND = {"centre": -160.0, "spur": -100.0}
 RAMP = 10.0
 SLEEPER = 0.015  # where the land's paint takes over, a rail's head is this far above it
+# The apron: from the abutment to 90 m west of the axis the ground is concrete slabs with the rails flush in them (the
+# film of the morning, looking down from the erector's head; the land paints the slabs, a band along each track and a
+# flangeway inside each rail: src/viewer/tyuratam.ts SLABS, whose west end this is). So over it a rail's head lies at
+# the land's level, RAIL_TOP proud of it as on the deck and for the same reason, and the rest of the rail is under the
+# land. The land lies 0.12 m under the deck (GROUND), where the real apron was level with it: so the heads come down
+# that much in DIP metres west of the abutment, which no rail did (ours), and on the centre track, west of the apron,
+# climb again in DIP metres to stand on the sleepers the land paints, as far as the erector is drawn off.
+APRON_WEST = -90.0
+DIP = 3.0
+# The erector's wagon stands on the centre track until 08:37 with its last axle 30.4 m west of the axis (erector.AXLES),
+# 2.2 m out past the abutment: the rails keep the deck's level under its wheels, and come down west of them.
+CENTRE_HELD = -31.0
 
 # ---- the masts
 MAST_HEIGHT = 110.0 * FT  # to the top of the array (HTA/JR-4/58)
@@ -121,9 +133,25 @@ def _at(line, x: float) -> float:
     raise ValueError(f"no track at {x}")
 
 
+def _profile(line, heads) -> list[tuple[float, float, float]]:
+    """A rail's path along a track's middle line: (x, y, its head's height) at each place a height is given (`heads`:
+    x and height, east to west) and at each bend of the line between the first and the last of them."""
+    (east, _), (west, _) = heads[0], heads[-1]
+    xs = sorted({*[x for x, _ in heads], *[x for x, _ in line if west < x < east]})
+
+    def top(x: float) -> float:
+        for (xa, za), (xb, zb) in zip(heads, heads[1:]):
+            if xb <= x <= xa:
+                return za + (zb - za) * (xa - x) / (xa - xb)
+        raise ValueError(f"no height at {x}")
+
+    return [(x, _at(line, x), top(x)) for x in xs]
+
+
 def land_rails(parts: Parts) -> None:
-    """The same rails where they stand on the land west of the platform, on the sleepers the land paints: the place's.
-    Their lines are the land's own (place.CENTRE_TRACK, place.SPURS: keep the three in step)."""
+    """The same rails where they run on over the land west of the platform: the place's. Flush in the apron's slabs,
+    and beyond it on the sleepers the land paints. Their lines are the land's own (place.CENTRE_TRACK, place.SPURS:
+    keep the three in step)."""
     g = "Tracks"
     parts.node(
         g,
@@ -131,25 +159,34 @@ def land_rails(parts: Parts) -> None:
         about=(
             "The centre track the erector brought the rocket along, and the spurs beside it that the propellant trains stood on, "
             "where they come up to the platform. Their lines are today's map's, brought to where the CIA's plan of March 1961 has "
-            "them on the platform; the gauge was 1,524 mm. Further west they are painted on the land."
+            "them on the platform; the gauge was 1,524 mm. Over the apron they lie flush in its slabs, as the film of the morning "
+            "has them. Further west they are painted on the land."
         ),
     )
     steel = parts(g, "rail")
-    low = GROUND + SLEEPER
-    for line, far in (
-        (place.CENTRE_TRACK, LAND["centre"]),
-        (place.SPURS[0], LAND["spur"]),
-        (place.SPURS[1], LAND["spur"]),
-        (place.SPURS[2], LAND["spur"]),
-    ):
-        xs = sorted({far - RAMP, far, EDGE, *[x for x, _ in line if far < x < EDGE]})
-        _pair(steel, [(x, _at(line, x), low if x < far else RAIL_TOP) for x in xs], GAUGE / 2)
-    strip = parts(g, "concrete/strips")
+    low, flush = GROUND + SLEEPER, GROUND + RAIL_TOP
+    # the centre track: level with the deck under the erector's wagon, down into the apron, flush across it, up onto the
+    # sleepers west of it, and down to the land's paint at its end
+    far = LAND["centre"]
+    heads = [
+        (EDGE, RAIL_TOP),
+        (CENTRE_HELD, RAIL_TOP),
+        (CENTRE_HELD - DIP, flush),
+        (APRON_WEST, flush),
+        (APRON_WEST - DIP, RAIL_TOP),
+        (far, RAIL_TOP),
+        (far - RAMP, low),
+    ]
+    _pair(steel, _profile(place.CENTRE_TRACK, heads), GAUGE / 2)
+    # the three beside it: down into the apron at the abutment, flush across it, and from its west end on at the land's
+    # level to where the paint takes over (10 to 20 m: a rail does not climb onto sleepers and come down again in that)
+    far = LAND["spur"]
+    for line in place.SPURS[:3]:
+        _pair(steel, _profile(line, [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST, flush), (far - RAMP, low)]), GAUGE / 2)
+    # the gantry tracks' two rails, which begin 11 ft short of the abutment: down into the apron as the others are
     for s in (-1, 1):
         y = s * GANTRY / 2
-        sitelib.rail(steel, [(GANTRY_WEST, y, RAIL_TOP), (EDGE, y, RAIL_TOP)])
-        # (what a gantry rail lay on short of the abutment is not recorded: a strip of concrete level with the abutment's top)
-        box(strip, (GANTRY_WEST - 0.2, y - 0.3, -place.FOOTING), (-HALF - ABUTMENT, y + 0.3, -0.03))
+        sitelib.rail(steel, [(EDGE, y, RAIL_TOP), (EDGE - DIP, y, flush), (GANTRY_WEST, y, flush)])
 
 
 def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:
