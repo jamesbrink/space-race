@@ -58,6 +58,7 @@ pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same 
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
+pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 ```
@@ -226,11 +227,13 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - A switch looks like one: `class="switch"` with `aria-pressed` puts a lamp before its name, lit while it is on. Passing
   notes (`ui.say`, "Find the vehicle") go in the one stack under the clock (`Ui.notes`), never placed by hand; what is
   drawn on the view (the path's labels) lies under the panels and keeps off them (`Ui.panels`).
-- The flight deck (`cockpit.ts`, `cockpit.css`) is three panels: the navball and path in the left corner, the primary
-  figures and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
+- The flight deck (`deck.ts`, `cockpit.css`) is one for every flight: three panels, the navball and path in the left corner, the primary
+  figures, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
   line. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
   while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how
-  much of the view it covers (`Ui.covers`).
+  much of the view it covers (`Ui.covers`). A flight kind (`cockpit.ts` ballistic, `orbitdeck.ts` into orbit) supplies what differs
+  as data (`DeckSpec`: figures, readings, systems, steps, extra keys); a new kind is a class on `Deck`, not a second deck.
+  As flown is the default; G, B or a step of Space takes a flight over, and the deck says so in its mode line.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look.
 - The front page (`front.ts`; its words `title.ts`, the mark in `logo.ts`) is what an address that names

@@ -247,6 +247,8 @@ for (const f of flown) {
       'ascent.guidance.kick',
       'ascent.guidance.target.climb',
       'ascent.guidance.vertical',
+      // (moves nothing here: only the live vehicle is steered by it; tests/stagedlive.test.mjs says what it is worth there)
+      'ascent.steering.authority',
       'stages.0.ignition',
       'stages.0.propellant',
       'stages.0.throttle',
