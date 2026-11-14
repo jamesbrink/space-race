@@ -121,8 +121,9 @@ interface Switch {
   /** Where a hand last threw it, and the turn its lever stands at now. */
   at: number;
   now: number;
-  /** What of the cabin it switches, if anything: the lights' ways, the globe's modes. */
+  /** What of the cabin it switches, if anything: the lights' ways, the globe's modes; and what that is called, which the bar and the notes call it. */
   sets?: 'lighting' | 'globe';
+  title?: string;
   /** The flight deck's command it gives when thrown, and the deck's state it stands as while flown (CabinDef.controls). */
   does?: string;
   holds?: string;
@@ -448,12 +449,12 @@ export class Cabin {
     const lever = lighting?.control ? find(lighting.control) : null;
     if (lighting?.ways.length && (lever || !lighting.control)) {
       this.lightsSwitch = switchOf(lever, lighting.name, lighting.about);
-      Object.assign(this.lightsSwitch, { sets: 'lighting', says: lighting.ways.map((w) => w.says) });
+      Object.assign(this.lightsSwitch, { sets: 'lighting', title: lighting.name, says: lighting.ways.map((w) => w.says) });
     }
     const tumbler = g?.control && modes.length ? find(g.control) : null;
     if (g && tumbler && Array.isArray(tumbler.userData.throw)) {
-      this.globeSwitch = switchOf(tumbler, `${g.name}: mode`, g.about);
-      Object.assign(this.globeSwitch, { sets: 'globe', says: modes.map((m) => m.says) });
+      this.globeSwitch = switchOf(tumbler, g.name, g.about);
+      Object.assign(this.globeSwitch, { sets: 'globe', title: g.name, says: modes.map((m) => m.says) });
     }
     for (const c of this.def.controls ?? []) {
       const node = find(c.node);
@@ -739,7 +740,7 @@ export class Cabin {
   /** The lights' switch as it stands: which position, and what that position is called. Null: the cabin has none. */
   get lighting(): { way: number; says: string; name: string; built: boolean } | null {
     const s = this.lightsSwitch;
-    return s ? { way: s.at, says: s.says[s.at] ?? '', name: s.name, built: s.node !== null } : null;
+    return s ? { way: s.at, says: s.says[s.at] ?? '', name: s.title ?? s.name, built: s.node !== null } : null;
   }
 
   /**
@@ -758,13 +759,15 @@ export class Cabin {
     const at = this.standing(s);
     // (one the deck holds goes over when the deck says so: what it is for is said meanwhile)
     const says = s.holds && this.live ? s.about : (s.says[at] ?? '');
-    return { name: s.name, at, says, ...(s.does ? { does: s.does } : {}) };
+    return { name: s.title ?? s.name, at, says, ...(s.does ? { does: s.does } : {}) };
   }
 
   /** Every switch that switches something of the cabin's, as the seat's bar shows it: its index (`throwSwitch`), name, position and what it reads, and whether it is in the model to be clicked. */
   get switched(): { index: number; name: string; at: number; says: string; built: boolean }[] {
     return this.switches.flatMap((s, index) =>
-      s.sets ? [{ index, name: s.name, at: this.standing(s), says: s.says[this.standing(s)] ?? '', built: s.node !== null }] : [],
+      s.sets
+        ? [{ index, name: s.title ?? s.name, at: this.standing(s), says: s.says[this.standing(s)] ?? '', built: s.node !== null }]
+        : [],
     );
   }
 
@@ -953,6 +956,7 @@ export class Cabin {
   /** The flight deck has taken the flight (every sample will come through `fly`), or given it back to the record. */
   piloted(on: boolean): void {
     this.live = on;
+    if (this.globe) this.globe.lands = null;
     this.times = {};
     this.events = {};
     this.holding = new Set();
@@ -1247,7 +1251,13 @@ export class Cabin {
     const due = !c || since < 0 || since > LAND_EVERY;
     if (due && (!c || Math.abs(since) > LAND_JUMP || this.wall - c.wall > LAND_WAIT)) {
       const from = { t: s.t, r: [...s.r] as Vec3, v: [...s.v] as Vec3 };
-      c = gl.lands = { from, to: this.landing(from), wall: this.wall };
+      let to: Landing | null = null;
+      try {
+        to = this.landing(from);
+      } catch (e) {
+        console.warn('cabin.ts: where a descent begun now would come down could not be worked out:', e);
+      }
+      c = gl.lands = { from, to, wall: this.wall };
     }
     const to = c?.to;
     if (!c || !to) return null;

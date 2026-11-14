@@ -195,7 +195,7 @@ for (const flight of flights) {
     // bar; its lever goes over and stays, and what it switches follows (the lamps lit, out or coloured; the globe's mode)
     const switches = await page.evaluate(() =>
       window.sr.gallery.stage.cabin.switches.map((sw) => ({
-        name: sw.name,
+        name: sw.title ?? sw.name,
         n: sw.says.length,
         sets: sw.sets ?? null,
         node: sw.node?.name ?? null,
