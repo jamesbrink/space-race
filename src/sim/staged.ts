@@ -744,6 +744,33 @@ export function recordSamples(
   return out;
 }
 
+/** A descent as the scene draws it (`descentOf`). */
+export interface DrawnDescent {
+  /** Each body's path in fly.ts's frame that does not turn, as `recordSamples` puts the spacecraft's centre of mass. */
+  tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]>;
+  /** When each body's parachutes came out and were let go, s from liftoff (orbital.ts `DescentFlown`). */
+  opened: Record<string, Record<string, number>>;
+  gone: Record<string, Record<string, number>>;
+}
+
+/**
+ * The descent of a whole flight (`whole.down`) in the frame and by the offset `recordSamples` gives the spacecraft's samples
+ * (the run's own samples after the ejection are its first body's): every body's track, for the scene to carry what came
+ * down on each (viewer/ascent.ts). Null where nothing came down.
+ */
+export function descentOf(whole: FlownWhole, launchJd: number, centre: number): DrawnDescent | null {
+  if (!whole.down) return null;
+  const gast0 = greenwichSiderealTime(launchJd);
+  const [c, s0] = [Math.cos(-gast0), Math.sin(-gast0)];
+  const flat = (v: Vec3): Vec3 => [c * v[0] - s0 * v[1], s0 * v[0] + c * v[1], v[2]];
+  const last = whole.ascent.samples[whole.ascent.samples.length - 1]!;
+  const offset = scale(flat(last.axis), centre);
+  const tracks: DrawnDescent['tracks'] = {};
+  for (const [id, track] of Object.entries(whole.down.tracks))
+    tracks[id] = track.map((p) => ({ t: p.t, r: add(flat(p.r), offset), v: flat(p.v) }));
+  return { tracks, opened: whole.down.opened, gone: whole.down.gone };
+}
+
 /**
  * The record with the braking burn made by hand (`OrbitalFlight.manual`): lit at `t`, pushing along `aim` (a unit vector in
  * frames.ts's inertial frame of date) for as long as the engine takes to give its integrator's impulse, and the modules

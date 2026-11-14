@@ -141,9 +141,20 @@ flight in particular:
   and nothing joins the ship to the adapter but four pushers.
 - **Nothing after separation of the modules.** The descent module's look during and after entry
   (insulation gone, shield charred, hatches off, the antennas burned away) is not modelled.
-- **The seat does not leave as it flew.** On show it slides out along its rails; the flown
-  sequence (hatch, then the seat on two rockets, a stabilising parachute, the pilot leaving the
-  seat at 4 km) waits for the simulator.
+- **The seat leaves as flown, but as a point.** In the gallery it slides out along its rails. In
+  flight the hatch, the parachute container's cover and the seat with him in it each come down on
+  their own track (orbital.ts `descent`: flyDown), the seat thrown clear at its documented "up to
+  20 m/s" against its motion through the air rather than along its rails, at the hatch's instant
+  rather than two seconds after; from 4 km the seat falls on under its stabilising parachute and
+  he hangs under his own canopy, the figure in the pose the crew model's `Harness` carries. How
+  each turns as it hangs is drawn, not flown (each is a point to the simulator); he goes from
+  seated to hanging at once as the canopy takes him out of the seat. The module and every piece
+  land on a drawn globe at sea level while the ground there is 43 m up: they stand that far above
+  it.
+- **The entry's glow is the heat flux's, not the shield's.** The shock layer is as bright as the
+  stagnation-point heat flux on the ball's 1.15 m radius; the shield is never drawn hot, its
+  ablator's figures being unread. The canopies' areas are the record's; their gores, lines and
+  colours are chosen.
 
 ## Level of detail
 

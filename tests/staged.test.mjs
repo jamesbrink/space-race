@@ -392,3 +392,18 @@ for (const f of flown) {
       hold(o.descent.checks, value, misses.descent ?? {}, 'down  ');
     });
 }
+
+test('Vostok 1’s lock: the code is the one Kamanin checked on the ship that morning, and the other the histories give is named beside it', async () => {
+  const { flight: v } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const code = v.orbital.manual.code;
+  assert.equal(code.value, 145);
+  assert.equal(code.confidence, 'documented');
+  assert.match(code.source, /шифр \(145\) логического замка/, 'in the diary’s own words');
+  assert.match(code.source, /1-2-5/, 'and the disagreement said');
+  // every key of the code is a key of the cabin's lock
+  const keys = v.models
+    .find((m) => m.id === 'vehicle')
+    .cabin.controls.filter((c) => c.does?.startsWith('code:'))
+    .map((c) => c.does.slice(5));
+  for (const d of String(code.value)) assert.ok(keys.includes(d), `key ${d} is on the panel`);
+});

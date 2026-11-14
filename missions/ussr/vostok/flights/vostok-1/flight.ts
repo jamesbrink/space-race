@@ -1,4 +1,4 @@
-import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, ChuteDef, Flight, Keyframe, Measure, ModelDef, Move, Part } from '../../../../../src/types';
 import { SITE1 } from '../../sites/site-1.ts';
 import { MSK, orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
@@ -94,9 +94,14 @@ const parts: Part[] = [
       'whole of it is covered in heat shield and its weight is put low and behind the pilot: it turns itself heavy side first ' +
       'and stays there, with no thrusters at all. The price is a steep ballistic fall, more than ten g by Gagarin’s account, and a landing too hard ' +
       'to sit through, which is why the pilot left before it reached the ground. In orbit the shield is under a blanket of ' +
-      'insulation faced with foil, as modelled; the charred brown ball in the museum is what the air left of it.',
+      'insulation faced with foil, as modelled; the charred brown ball in the museum is what the air left of it. Coming down, ' +
+      'the glow round it is the shock layer’s, drawn as bright as the heat at its leading point, which is computed from the ' +
+      'height and speed flown and the ball’s 1.15 m radius alone. The shield is not drawn glowing: how hot its surface got ' +
+      'needs the ablator’s thickness and make-up, which have not been read. Below seven kilometres it hangs from its own ' +
+      'parachute, made fast at the container behind hatch No. 2.',
     facts: [
       ['Diameter', '2.3 m over the heat shield; pressure hull 2.2 m'],
+      ['Entry glow', 'from the computed heat flux; the shield’s own heat not shown'],
       ['Mass', '2,460 kg'],
       ['Hatches', '3, each 1 m in the clear'],
       ['Portholes', '3, two of them in hatch covers'],
@@ -157,7 +162,7 @@ const parts: Part[] = [
       'three gauges of three needles each and three blocks of signal lamps. Under it, on the porthole at his feet, the ' +
       'Vzor: a ring of eight ports in which the horizon stood as a ring when the ship was level, round a ruled screen on ' +
       'which the ground ran. At his left the black control panel, its raked side toward him with six keys: the flight ' +
-      'was automatic, and to fly it by hand he would first have had to key 1-2-5 into that lock, the number sealed in an ' +
+      'was automatic, and to fly it by hand he would first have had to key 1-4-5 into that lock, the number sealed in an ' +
       'envelope on board. At his right the hand controller, which he never touched. The fit is the first ships’ own, by ' +
       'Darevsky’s laboratory at the Flight Research Institute; its places and sizes here are read off photographs.',
     facts: [
@@ -168,7 +173,7 @@ const parts: Part[] = [
       ['He read before launch', '1.0 atm, 65 %, 19 °C; 155, 320 and 155 atm of gas'],
       ['Globus correction window', '510'],
       ['Vzor field of view', '7°'],
-      ['Manual control code', '1-2-5, on six keys'],
+      ['Manual control code', '1-4-5, on six keys (Kamanin; 1-2-5 in later memoirs)'],
     ],
     explode: [0, LIFT, 0],
     order: SHIP + 1,
@@ -254,6 +259,9 @@ const parts: Part[] = [
   },
   {
     node: 'InstrumentModule',
+    commands: [
+      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
+    ],
     group: 'Spacecraft',
     inside: true,
     name: 'Instrument module',
@@ -297,6 +305,7 @@ const parts: Part[] = [
   },
   {
     node: 'RetroEngine',
+    commands: [{ label: 'Fire the braking engine along the long axis (his, once the code had freed the hand controls)', ask: 'retro' }],
     group: 'Spacecraft',
     inside: true,
     name: 'TDU-1 braking engine',
@@ -331,6 +340,7 @@ const BOOSTER_DETAIL =
 const launcherParts: Part[] = [
   {
     node: 'Fairing',
+    commands: [{ label: 'Drop the fairing (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:drop:fairing' }],
     group: 'Third stage',
     name: 'Fairing',
     summary: 'Two halves, and a round hole to be thrown out through.',
@@ -359,6 +369,11 @@ const launcherParts: Part[] = [
   },
   {
     node: 'BlockE',
+    commands: [
+      { label: 'Light the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:ignite:2' },
+      { label: 'Cut off the third stage (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:2' },
+      { label: 'Separate the spacecraft (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:2' },
+    ],
     group: 'Third stage',
     inside: true,
     name: 'Block E, the third stage',
@@ -404,6 +419,10 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreStage',
+    commands: [
+      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
+      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
+    ],
     group: 'Core, Block A',
     inside: true,
     name: 'Block A, the core',
@@ -428,6 +447,10 @@ const launcherParts: Part[] = [
   },
   {
     node: 'CoreEngine',
+    commands: [
+      { label: 'Cut off the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:cut:1' },
+      { label: 'Drop the core (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:1' },
+    ],
     group: 'Core, Block A',
     inside: true,
     name: 'RD-108',
@@ -452,6 +475,9 @@ const launcherParts: Part[] = [
   ...BOOSTERS.map(
     ([letter, block, az], i): Part => ({
       node: `Booster_${letter}`,
+      commands: [
+        { label: 'Drop the strap-ons (he had no say over the launch vehicle: this takes the flight over)', ask: 'step:separate:0' },
+      ],
       group: 'Strap-on boosters',
       inside: true,
       name: `Block ${letter} (${block})`,
@@ -513,6 +539,91 @@ const vehicle: ModelDef = {
     { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: turned(along(250, -32, 1)) },
   ],
 };
+
+const EJECTION = orbital.events.find((e) => e.id === 'ejection')!.at.value;
+
+/**
+ * The descent's parachutes as drawn (viewer/chute.ts), each on its body of `orbital.descent` (flown there: when it comes
+ * out, its drag, how long it takes to fill). Their areas are the record's (Bobkov; the GCTC page: mission.md, "The last
+ * minutes"); each is drawn as a flat round canopy of that area (its diameter derived), and every other figure of their
+ * making (gores, lines, colours) is chosen and says so. The module's three are made fast at its parachute container; the
+ * seat's stabilising parachute at the seat's top; the pilot's two at his harness.
+ */
+const ROUND = (area: number, what: string): Measure => ({
+  value: Math.sqrt((4 * area) / Math.PI),
+  confidence: 'derived',
+  source: `${what}: ${area} m² of canopy laid flat as a circle (Bobkov; GCTC)`,
+});
+const chosen = (value: number, source: string): Measure => ({ value, confidence: 'estimated', source });
+const CLOTH = (value: string[], source: string): ChuteDef['colours'] => ({ value, confidence: 'estimated', source });
+const CHUTES: ChuteDef[] = [
+  {
+    on: 'pilot parachute',
+    body: 'module',
+    at: 'ParachuteContainer',
+    cut: 'solid',
+    diameter: ROUND(1.5, 'the module’s pilot parachute'),
+    gores: chosen(8, 'not read: drawn with eight'),
+    lines: chosen(1.5, 'not read: about its diameter'),
+    riser: chosen(4, 'not read: clear of the ball'),
+    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
+  },
+  {
+    on: 'braking parachute',
+    body: 'module',
+    at: 'ParachuteContainer',
+    cut: 'solid',
+    diameter: ROUND(18, 'the module’s braking parachute'),
+    gores: chosen(16, 'not read: drawn with sixteen'),
+    lines: chosen(5, 'not read: about its diameter'),
+    riser: chosen(8, 'not read: some three of the ball’s diameters, clear of its wake'),
+    colours: CLOTH(['#f0ece2', '#e2622b'], 'not read: orange and white, as the later Vostoks’ canopies are shown on the ground'),
+  },
+  {
+    on: 'main parachute',
+    body: 'module',
+    at: 'ParachuteContainer',
+    cut: 'solid',
+    diameter: ROUND(574, 'the module’s main parachute'),
+    gores: chosen(28, 'not read: drawn with twenty-eight'),
+    lines: chosen(24, 'not read: a little under its diameter'),
+    riser: chosen(4, 'not read'),
+    colours: CLOTH(['#e2622b', '#f0ece2'], 'not read: orange and white, as the later Vostoks’ canopies are shown on the ground'),
+  },
+  {
+    on: 'seat’s braking parachute',
+    body: 'pilot',
+    at: 'EjectionSeat',
+    cut: 'solid',
+    diameter: ROUND(2, 'the seat’s stabilising parachute'),
+    gores: chosen(8, 'not read: drawn with eight'),
+    lines: chosen(1.8, 'not read: about its diameter'),
+    riser: chosen(3, 'not read'),
+    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
+  },
+  {
+    on: 'main canopy',
+    body: 'pilot',
+    at: 'Harness',
+    cut: 'solid',
+    diameter: ROUND(83.5, 'the pilot’s main canopy'),
+    gores: chosen(24, 'not read: drawn with twenty-four'),
+    lines: chosen(8.5, 'not read: a little under its diameter, as a man’s canopy'),
+    riser: chosen(0.6, 'not read: from his shoulders to where the lines meet'),
+    colours: CLOTH(['#f0ece2', '#e2622b'], 'not read: orange and white'),
+  },
+  {
+    on: 'reserve canopy',
+    body: 'pilot',
+    at: 'Harness',
+    cut: 'solid',
+    diameter: ROUND(56, 'the pilot’s reserve canopy'),
+    gores: chosen(20, 'not read: drawn with twenty'),
+    lines: chosen(7, 'not read: a little under its diameter'),
+    riser: chosen(0.6, 'not read'),
+    colours: CLOTH(['#f0ece2'], 'not read: undyed'),
+  },
+];
 
 /**
  * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an
@@ -735,7 +846,7 @@ vehicle.cabin = {
       node: `Ctl_Code${key}`,
       name: `Logical lock, key ${key}`,
       about:
-        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-2-5 (Gallay; Kamanin’s diary has 1-4-5). On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
+        'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. The number was sealed in an envelope aboard; it was 1-4-5 by Kamanin’s diary, who checked it on the ship that morning; Gallay’s memoir and the histories that follow it have 1-2-5. On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
       // (the flight deck's lock, orbitdeck.ts: pressed here or typed there, the same key)
       does: `code:${key}`,
     })),
@@ -2342,12 +2453,17 @@ export const flight: Flight = {
         nodes: ['InstrumentModule', 'RetroEngine', 'Antennas', 'GasBottles', 'RetainingStraps', 'CableMast'],
         on: 'modules',
       },
-      {
-        at: orbital.events.find((e) => e.id === 'ejection')!.at.value,
-        nodes: ['EntryHatch', 'EjectionSeat', 'ParachuteHatch'],
-        on: 'ejection',
-      },
+      // what leaves at the ejection height comes down on the descent's own bodies (orbital.ts `descent`, flown by flyDown)
+      { at: EJECTION, nodes: ['EntryHatch'], on: 'ejection', rides: [{ body: 'hatch' }] },
+      { at: EJECTION, nodes: ['ParachuteHatch'], on: 'ejection', rides: [{ body: 'cover' }] },
+      // the seat with him in it to 4 km, then the seat alone under its stabilising parachute: he has left it
+      { at: EJECTION, nodes: ['EjectionSeat'], on: 'ejection', rides: [{ body: 'pilot' }, { body: 'seat', hide: ['Pilot'] }] },
     ],
+    // and from 4 km Gagarin himself, the figure in his suit, hanging in his harness under his own canopy
+    hangs: [{ model: 'crew', body: 'pilot', from: 'main canopy' }],
+    chutes: CHUTES,
+    // the shock layer stands off the ball's face: its brightness is the heat flux worked on its 1.15 m radius (orbital.ts `heating`)
+    air: { shield: 'DescentModule' },
   },
   models: [vehicle, pad, crew],
   // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (sites/site1/model/1961-04.py)

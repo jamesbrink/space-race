@@ -116,6 +116,7 @@ that, and is `estimated`.
 | Instruments' graduations | accelerometer -6 to 16 g; altimeter one turn in ten; rate of descent 0 to 70 ft/s | estimated | read off the figure, which is too small to read a scale from |
 | Overhead, left and right switch and circuit breaker panels | 9.8 by 11.4 in; 12.5 by 8 in | derived from the figure; their places estimated | Figure 3-5 sheet 2; S65-13244 for the side panels |
 | Abort handle, water management panel, drinking water, stowage, floodlights, hatch curtains | where Figure 3-1 and the text say, to the nearest hand's breadth | documented that they are there; places estimated | SEDR 300, Figure 3-1 and pp. 2-19, 3-20, 3-26 to 3-31 |
+| The three-knob panel between the men | one panel, on the bulkhead between them at shoulder height, with the three valves of Figure 3-5 sheet 2 (condensate, water tank, waste) | **derived**: that SEDR 300's two panels are one | The manual names a three-knob panel twice. Figure 3-1 draws a "drinking control panel" between the seats' heads, and p. 3-26 has drinking controlled "by means of a 3-knob panel located between the pilots at approximately shoulder level". Figure 3-5 sheet 2 ("S/C 3") draws a "water management panel" with three valves, and p. 6-30 has "a three knob panel ... for managing, replenishing, and dumping waste water overboard", without saying where it is. No figure shows two. The model takes them for the same panel: Figure 3-5's three valves, standing where Figure 3-1 puts the drinking panel. If they were two, the drinking panel's own knobs are not built |
 
 **What the viewer is promised** is what the Mercury cabin promises
 ([mercury-cabin.md](../../mercury/vehicles/mercury-cabin.md)): `Seat_CommandPilot` and `Seat_Pilot`, empties at the
@@ -123,8 +124,21 @@ seated eyes; `Gauge_Accelerometer`, `Gauge_Altimeter`, `Gauge_RateOfDescent`, `G
 pivots with their scales in their extras; `Gauge_ClockHours` and `Gauge_ClockMinutes`; the tape gauges' pointers
 (`Gauge_Stage1Fuel` and the rest), each sliding along its own X; `Ball_CommandPilot` and `Ball_Pilot`, the two
 attitude balls, each a node at its own middle; `Tele_...` lamps, each with its own material; `Ctl_Abort`,
-`Ctl_AttitudeController`, `Ctl_ManeuverController`, `Ctl_EjectCommandPilot`, `Ctl_EjectPilot`. No flight deck reads
-them yet: the flight has no `cabin` in its data until one does.
+`Ctl_AttitudeController`, `Ctl_ManeuverController`, `Ctl_EjectCommandPilot`, `Ctl_EjectPilot`; `Lamp_Left`,
+`Lamp_Right` and `Lamp_Centre`, the three floodlights' lenses. Gemini-Titan 3 declares them (`flight.ts`: `lights`,
+`cabin`): the inside is lit as indoors by the three floodlights and the instruments, lamps and controls are named.
+No flight deck reads them yet: nothing of the flight is simulated, so every needle stands as built and says so.
+
+**The men** are a suit module's seated figures ([g3c-suit.md](../crew/g3c-suit.md)), built into a seat by the
+flight's script through `Fit.crew` (`gemini_cabin.seat`): with a man aboard the seat's restraint is laid over him
+(the reel's two straps over his shoulders to his harness's quick disconnects, the lap belt across his lap) and the
+seat's node is at his own eyes. Aboard or not, each build measures the room the cabin has for him and prints it.
+**As laid out above it has not enough**: Grissom's helmet is 1.7 in and Young's 2.3 in through the hatch's inner
+skin, each man's outboard arm is 0.7 to 0.9 in through the vessel's side, and both men's feet are through the floor
+forward of the stirrups, where it rises with the cone (8 to 9 in at the toes as posed, about 2 in at the best posture
+found); no posture brings them in, and lowering the seats for the helmets makes the feet worse. The attitude hand controller is beside
+a seated man's elbow and the abort handle at his shoulder. The vessel, the seats' place, the centre console and those
+two controls want laying out again round the two men; until then Gemini-Titan 3 leaves them out.
 
 ## Propulsion
 
@@ -161,8 +175,9 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   floor and where the seats and panels stand in it are what the documented things allow, not what
   McDonnell built; its double skins are single, its stiffeners are on the large bulkhead only, and
   the equipment bays between it and the cone are empty but for the experiment's water tank.
-- **The seats are empty.** Grissom and Young are not in them: the G3C suit has not been modelled,
-  and nothing stands in for it. The seat is the Smithsonian's two in form and size, with none of
+- **The seats are empty.** Grissom and Young are modelled in their G3C suits
+  ([g3c-suit.md](../crew/g3c-suit.md)) and are not in them: the crew station as laid out is too
+  small for either ("What the viewer is promised", above). The seat is the Smithsonian's two in form and size, with none of
   what was packed on it (the parachute, the ballute, the raft, the survival kit, the drogue mortar,
   the seat-man separator): the backboard is a cushion and the egress kit a pad. The harness lies
   on the empty seat as two shoulder straps and a lap belt. Its stirrups hang 10 in below the pan,
@@ -175,8 +190,9 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   stand one way. The circuit breakers carry their rows' titles, not each its own legend. The
   plotting board, the optical sight, the bio-medical recorder, the utility lights and the mirror
   are left out, and so are the stowage boxes on the side walls.
-- **No cabin lighting is described to the viewer**, and the inside's shadows are not baked: cut
-  open, it is lit by the studio's lamps.
+- **The inside's shadows are not baked.** Its three floodlights are described to the viewer and
+  light it as indoors, but nothing here casts the cabin's own shadows into its vertices as the
+  Mercury cabin's are (`mercury_cabin.shade`), and the floodlights have no switch.
 - **The windows are placed from one photograph.** Where each is, its outline and the trough's are
   S65-21090's, through a camera fitted to it: two inches and three degrees. SEDR 300's section
   (Figure 2-10) marks station Z136.50 at the pane's sunk end. The photographs and both of the

@@ -156,7 +156,7 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
   fired the TDU 67 minutes on (S15). Z records a ground station's claim to have commanded it; R says
   the command link "was not used".
 - **What he could do.** Talk, key Morse, take food and water, write, work the tape recorder, close
-  the shades, read the board. The hand controller was locked by a three-digit code (1-2-5: S), kept
+  the shades, read the board. The hand controller was locked by a three-digit code (1-4-5: K; 1-2-5: S. See "The lock's code"), kept
   in an envelope aboard; with it, manual orientation by the Vzor and a manual command to the TDU.
   Asked afterwards, he said he could have done it (G, questions: by the Vzor, over sea or land, and
   with the Globus could pick a landing "within a 300-kilometer deviation").
@@ -167,6 +167,27 @@ with an error on both tries). **T**: the TASS announcement of the day, as Z tabu
   the clock and stopwatch; pressures of the orientation gas (150 atm falling to 110 by the burn)
   and the TDU's bottle (320 atm); humidity 65 to 71 %, 19 to 22 °C, 1.1 to 1.25 atm in the
   instrument module (G).
+
+### The lock's code
+
+The record does not agree on it, and the deck follows the nearer source.
+
+- **Kamanin's diary, 12 April 1961** (K; the text copy of *Skrytyi kosmos*, book 1, read for this in
+  November 2026, the day's entry): «В 8 часов я вместе с ведущим инженером корабля на лифте поднялся к
+  верху ракеты и проверил шифр (145) логического замка. Логический замок работал нормально.» He
+  checked the lock on the ship himself, two hours before launch, and wrote the number down that day.
+- **Siddiqi** (S, *Challenge to Apollo*): 1-2-5, the code most histories give. Tyapchenko (the
+  cabin's maker, astronaut.ru article 130) gives both, 125 after Gallay and 145 after Kamanin.
+  Gallay's memoir is where the story of the code whispered to Gagarin before the hatch was shut
+  comes from; it was written a quarter of a century later.
+- **Not read for this**: Gallay's own text, Ivanovsky's (the copy at hand has no passage on the
+  code), Chertok's third volume (the copy at hand is not the book), Gagarin's report and the
+  cosmonaut's instruction of 1961 (neither, as published in the 2011 volumes, prints the number in
+  anything searched).
+
+So the deck's lock (`manual.code`, orbital.ts) is 1-4-5, `documented` from the diary, with 1-2-5
+named beside it wherever the code is shown. The cabin's keys (`Ctl_Code1` to `6`) are wired to
+their own digits and do not change with the code.
 
 ## 2. What the simulator needs, and the order to build it
 
@@ -315,7 +336,7 @@ orbit, with supplies for ten days against the decay time. `MISSES` for the coast
   1. **As flown.** The hand controller is locked. The player rides: reports (the record's own
      exchanges on the clock), the board, the Vzor, the Globus, the shades, time acceleration. The
      sequencer does what the Granit did, faults and all. This is the record.
-  2. **Manual, by the emergency procedure.** The envelope, the code 1-2-5 on the six-key panel, the
+  2. **Manual, by the emergency procedure.** The envelope, the code 1-4-5 on the six-key panel, the
      hand controller live, orientation by the Vzor (the horizon even in the ring, the ground
      running along the marks), the TDU by hand. It is what the ship allowed and what Gagarin said
      he could have done; it is not what happened, and the deck says so on its face and in the
