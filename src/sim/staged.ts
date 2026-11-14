@@ -175,14 +175,20 @@ export function schedule(o: OrbitalFlight): { from: number; to: number; dry: boo
     const load = (s.usable ?? s.propellant).value;
     const burned = (t: number) => flowOf(s) * integral(s.throttle, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
-    let [lo, hi] = [from, cutoff];
-    for (let k = 0; k < 60; k++) {
-      const mid = (lo + hi) / 2;
-      if (burned(mid) < load) lo = mid;
-      else hi = mid;
-    }
-    return { from, to: lo, dry: true };
+    return { from, to: spentAt(burned, load, from, cutoff), dry: true };
   });
+}
+
+/** When `burned` (rising with time) reaches `load`, between `from` and `hi`, by bisection to the last bit. */
+export function spentAt(burned: (t: number) => number, load: number, from: number, hi: number): number {
+  let lo = from;
+  let top = hi;
+  for (let k = 0; k < 60; k++) {
+    const mid = (lo + top) / 2;
+    if (burned(mid) < load) lo = mid;
+    else top = mid;
+  }
+  return lo;
 }
 
 /** The event instant a guidance target names. */

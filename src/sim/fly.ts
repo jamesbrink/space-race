@@ -28,7 +28,8 @@
  * so a run is the same run every time.
  */
 import type { Curve, Trajectory } from '../types';
-import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { gravity as orbitGravity } from '../world/orbit.ts';
 import {
   add,
   angleBetween,
@@ -60,13 +61,7 @@ export const P0 = 101_325;
 export const MEAN_RADIUS = 6_371_008.8;
 
 /** Gravity at a position in an Earth-centred frame whose +Z is the pole, m/s^2. `j2`: the oblateness (0 for a point mass). */
-export function gravity(r: Vec3, j2 = J2): Vec3 {
-  const d = length(r);
-  const k = (1.5 * j2 * WGS84_A * WGS84_A) / (d * d);
-  const z2 = (5 * r[2] * r[2]) / (d * d);
-  const g = -EARTH.gm.value / (d * d * d);
-  return [g * r[0] * (1 + k * (1 - z2)), g * r[1] * (1 + k * (1 - z2)), g * r[2] * (1 + k * (3 - z2))];
-}
+export const gravity = (r: Vec3, j2 = J2): Vec3 => orbitGravity(r, j2);
 
 /**
  * Coast: a position and velocity carried forward under gravity alone, by the same fixed-step

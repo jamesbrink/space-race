@@ -238,7 +238,7 @@ for (const f of flown) {
     };
     walk(o.ascent, 'ascent');
     o.stages.forEach((s, i) => {
-      for (const key of ['exitArea', 'usable', 'throttle', 'propellant', 'mass', 'dry', 'cutoff', 'ignition'])
+      for (const key of ['exitArea', 'usable', 'throttle', 'propellant', 'mass', 'dry', 'cutoff', 'ignition', 'start', 'hot'])
         if (s[key] && s[key].confidence !== 'documented') read.push(`stages.${i}.${key}`);
     });
     assert.deepEqual(read.sort(), [
@@ -246,9 +246,14 @@ for (const f of flown) {
       'ascent.drag.0.curve',
       'ascent.drag.1.area',
       'ascent.drag.1.curve',
+      // (these four and the third stage's start and hot staging move nothing here: only the live vehicle hears what a hand
+      // does out of the record's order; tests/stagedlive.test.mjs holds each to its consequence)
+      'ascent.drops.0.q',
       'ascent.guidance.kick',
       'ascent.guidance.target.climb',
       'ascent.guidance.vertical',
+      'ascent.limits.axial',
+      'ascent.limits.qAlpha',
       // (moves nothing here: only the live vehicle is steered by it; tests/stagedlive.test.mjs says what it is worth there)
       'ascent.steering.authority',
       'stages.0.ignition',
@@ -258,7 +263,9 @@ for (const f of flown) {
       'stages.1.ignition',
       'stages.1.propellant',
       'stages.1.throttle',
+      'stages.2.hot',
       'stages.2.propellant',
+      'stages.2.start',
     ]);
     const [site, jd, sea] = where(f);
     const base = whole.ascent.summary;
@@ -407,6 +414,7 @@ for (const f of flown) {
           from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
           to: stops[i] <= s.t ? stops[i] : Infinity,
           gone: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
+          loose: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
         })),
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };

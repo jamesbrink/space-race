@@ -34,7 +34,6 @@ import {
   ecefToGeodetic,
   ecefToInertial,
   type Geodetic,
-  geodeticToEcef,
   inertialToEcef,
   length,
   scale,
@@ -45,7 +44,8 @@ import {
 import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, thrustIn } from './fly.ts';
-import { blowing, blowOf, upAt } from './forces.ts';
+import { blowing, blowOf, floorAt, upAt } from './forces.ts';
+import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
@@ -56,12 +56,8 @@ const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
 /** The ground's height above the sea under a place (vehicle.ts's): the pad's own level within a kilometre of it, the sea beyond. */
 export function floorOf(site: Geodetic, seaLevel: number): (here: Geodetic) => number {
-  const pad = geodeticToEcef(site);
-  const padHeight = site.height - seaLevel;
-  return (here) =>
-    padHeight !== 0 && length(sub(geodeticToEcef({ latitude: here.latitude, longitude: here.longitude, height: site.height }), pad)) < 1000
-      ? padHeight
-      : 0;
+  const at = floorAt(site, seaLevel);
+  return (here) => at(here.latitude, here.longitude);
 }
 
 /** The next of a list of instants after `t`, in order (Infinity: none). */
@@ -234,8 +230,13 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         const wind = windOf(p, u, t, altitude);
         const q = 0.5 * atmosphere(altitude).density * dot(wind, wind);
         const area = chuteArea(chute, t);
-        if (q > limits[which].value || q * area > (limits.pull?.[which]?.value ?? Infinity)) {
-          const left = Math.min(area, tr[which].dragArea.value * limits.torn.value);
+        const tear = tearOf(q, area, tr[which].dragArea.value, {
+          strength: limits[which].value,
+          pull: limits.pull?.[which]?.value,
+          torn: limits.torn.value,
+        });
+        if (tear) {
+          const left = tear.left;
           chute = { full: left, was: left, at: t, fills: 1 };
           torn = true;
         }
@@ -400,7 +401,13 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
     if (Number.isFinite(st.gone)) return;
     if (k.kind === 'ignite' && !Number.isFinite(st.from)) st.from = t;
     else if (k.kind === 'cut' && Number.isFinite(st.from) && st.to === Infinity) st.to = t;
-    else if (k.kind === 'separate') for (let j = 0; j <= k.stage; j++) if (!Number.isFinite(stages[j]!.gone)) stages[j]!.gone = t;
+    // (let go and gone at once: the stagedlive.ts `settle` of a stage pressed on after its release is not predicted)
+    else if (k.kind === 'separate')
+      for (let j = 0; j <= k.stage; j++)
+        if (!Number.isFinite(stages[j]!.gone)) {
+          stages[j]!.gone = t;
+          stages[j]!.loose = Math.min(stages[j]!.loose, t);
+        }
     into.stages = stages;
   };
   // The steps ahead and their instants: the record's, each at its time (one due already, at the start), a cut on the

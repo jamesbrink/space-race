@@ -230,6 +230,106 @@ for (const [w, h, touch] of SIZES) {
     await page.keyboard.press('KeyO');
     await ctx.close();
   }
+  // staging by hand (sim/staging.ts): hot staging explained where it is offered and harmless at its moment, a minute early
+  // the stack breaks up and the card says by what; the fairing let go at max q and the core let go early say what they did;
+  // Freedom 7's capsule let go under thrust rides on to the cutoff
+  if (w !== 820) {
+    const where = `staging by hand at ${w}`;
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 });
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    const open = async (id) => {
+      await page.goto(`${url}#${id}/fly`);
+      await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
+        timeout: 120000,
+      });
+      await page.waitForTimeout(500);
+    };
+    // the clock run on to `t` a few seconds a frame, as the deck flies it (it steps no more than five seconds a frame)
+    const run = async (t) => {
+      for (let i = 0; i < 400 && (await page.evaluate(() => window.sr.clock.t)) < t - 0.05; i++) {
+        await page.evaluate((x) => window.sr.clock.seek(Math.min(x, window.sr.clock.t + 4)), t);
+        await page.waitForTimeout(30);
+      }
+      await page.waitForTimeout(200);
+    };
+    const read = () =>
+      page.evaluate(() => ({
+        t: window.sr.clock.t,
+        prompt: document.querySelector('[data-cell=prompt]')?.textContent ?? '',
+        notes: document.querySelector('.notes')?.textContent ?? '',
+        card: document.querySelector('.cockpit-card:not([hidden])')?.textContent ?? '',
+        core: document.querySelector('[data-cell=stage-1]')?.textContent ?? '',
+        phase: document.querySelector('[data-cell=phase]')?.textContent ?? '',
+      }));
+    const ask = (what) => page.evaluate((x) => window.sr.cockpit.ask(x), what);
+    const shot = async (name) => {
+      if (process.env.SR_SHOTS) await page.screenshot({ path: `${process.env.SR_SHOTS}/${name}-${w}.png` });
+    };
+    await open('ussr/vostok/vostok-1');
+    await page.keyboard.press('Space');
+    await run(290);
+    let r = await read();
+    if (!/hot staging, as it flew/.test(r.prompt))
+      fail(where, `before the third stage the prompt does not say it is hot staging: "${r.prompt}"`);
+    await shot('hot-offered');
+    await run(299);
+    await ask('step:ignite:2');
+    await run(299.6);
+    r = await read();
+    if (!/Hot staging/.test(r.notes)) fail(where, `lit at 299 s, no note of hot staging: "${r.notes}"`);
+    await shot('hot-lit');
+    await run(306);
+    r = await read();
+    if (r.card || r.core !== 'Gone')
+      fail(where, `lit at its moment it did not part clean: core "${r.core}", card "${r.card.slice(0, 80)}"`);
+    console.log(`  ${where}: hot staging at 299 s: "${r.notes.slice(0, 90)}…", the core ${r.core}`);
+    // a minute early
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(240);
+    await ask('step:ignite:2');
+    await run(250);
+    r = await read();
+    if (!/Broke up on the launch vehicle/.test(r.card) || !/estimated/.test(r.card))
+      fail(where, `lit a minute early, no breakup card: "${r.card.slice(0, 120)}"`);
+    await shot('hot-early-card');
+    console.log(`  ${where}: lit at 240 s: ${r.phase}; "${r.card.slice(0, 160)}…"`);
+    // the fairing at max q, the core early
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(60);
+    await ask('step:drop:fairing');
+    await run(61);
+    r = await read();
+    if (!/let go in the air/.test(r.notes)) fail(where, `the fairing at max q said nothing: "${r.notes}"`);
+    await shot('fairing-maxq');
+    await ask('step:separate:1');
+    await run(63);
+    r = await read();
+    if (!/still pushing/.test(r.notes)) fail(where, `the core let go early under the strap-ons said nothing: "${r.notes}"`);
+    await shot('core-early');
+    console.log(`  ${where}: the fairing at 60 s and the core at 61 s said so`);
+    // Freedom 7: the capsule let go under thrust rides the booster to its cutoff
+    await open('usa/mercury/mr-3-freedom-7');
+    await page.keyboard.press('Space');
+    await run(100);
+    await ask('separate');
+    await run(101);
+    r = await read();
+    if (!/still pushing/.test(r.notes)) fail(where, `Freedom 7 let go under thrust said nothing: "${r.notes}"`);
+    await shot('mr3-pressed');
+    const apart = await page.evaluate(() => window.sr.cockpit.state?.shed.booster);
+    if (apart) fail(where, 'Freedom 7 parted at once under thrust');
+    await run(146);
+    if (!(await page.evaluate(() => window.sr.cockpit.state?.shed.booster))) fail(where, 'Freedom 7 had not parted after the cutoff');
+    console.log(`  ${where}: Freedom 7 let go at 100 s parted after its cutoff`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    await ctx.close();
+  }
   // the same panels in the same corners on both flights
   const [a, b] = Object.values(seen);
   for (const p of ['nav', 'main', 'sys']) {
