@@ -78,7 +78,15 @@ never adjusted to bring a check in.
   and the hand controller moves with the keys. Because
   the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
   orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
-  Heating's glow and the parachutes drawn are not hooked to an orbital run yet. The smoke is laid no higher than 80 km
+  The descent is drawn from the run's own `descent` (staged.ts `descentOf`: flyDown's tracks in the scene's frame, when
+  each parachute came out and went): a drop that `rides` the descent's bodies is carried along each body's track in turn
+  and turned to hang against its motion through the air; a body's parachute (`ChuteDef.body`) is drawn by chute.ts from
+  flyDown's instants and streams against the air of what carries it; a parachute that `replaces` a body's drag can leave
+  what was left behind as a body of its own (`leaves`: the seat), and one `instead` of another lets that one go; a figure
+  of the flight's `hangs` from its harness under its body's canopy in the pose the figure carries; the run's own body
+  turns to hang from where its parachute is made fast (`Ascent.hangsFrom`). How each hangs is drawn; the tracks are
+  points. The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
+  documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
   (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
   engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts

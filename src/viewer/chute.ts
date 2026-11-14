@@ -162,6 +162,8 @@ export function bands(cut: ChuteDef['cut']): { from: number; to: number; close: 
     }
     return out;
   }
+  // a solid canopy: one sheet of cloth from the vent to the skirt, no slots
+  if (cut === 'solid') return [{ from: vent, to: 1, close: 1, full: 0 }];
   // a ringsail: close rings over the crown, then sails, each fuller at its lower edge, with crescents between
   const n = 12;
   for (let i = 0; i < n; i++) {
@@ -370,6 +372,11 @@ export class Chute {
       renderer.getDrawingBufferSize(this.size);
     };
     this.group.add(this.lines);
+  }
+
+  /** Where it is made fast, in the frame of the node it is made fast to. */
+  get anchor(): THREE.Vector3 {
+    return this.fast;
   }
 
   /**

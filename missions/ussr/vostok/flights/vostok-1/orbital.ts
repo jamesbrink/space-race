@@ -6,8 +6,9 @@
  * (06:06:59.7 UTC). Nothing here was adjusted after the simulator was run: the checks' tolerances were written before
  * `flyOrbit` existed (the commit that added this file has no simulator in it).
  */
-import type { Confidence, Measure } from '../../../../../src/types';
+
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
+import type { Confidence, Measure } from '../../../../../src/types';
 
 const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
 const doc = (value: number, source: string): Measure => m(value, 'documented', source);
@@ -641,6 +642,13 @@ export const orbital: OrbitalFlight = {
   ejection: { altitude: doc(7_000, `${GAGARIN}: “approximately at the altitude of 7,000 meters, the hatch cover of hatch Nº 1 ejected”`) },
   // From 7 km down: the descent module on its own parachutes, and the pilot on his seat and then his canopies. The
   // checks below were written before flyDown had flown anything.
+  heating: {
+    noseRadius: doc(1.15, 'the 2.3 m ball (Siddiqi p. 195; RKK Energia’s drawing: Ø2300): a sphere’s face is its own radius'),
+    starts: guess(290, 'not read: the cabin’s 19 °C at launch (his report) taken for the outside; it is not used, there being no surface'),
+    // (no surfaces: the ablator's thickness, density, heat of ablation and the shield's temperatures have not been read)
+    surfaces: [],
+    round: true,
+  },
   descent: {
     ground: doc(43, `${PPP} via Keldysh’s preprint: the landing place at 43 m. ${ZAK}: about 50 m above the sea`),
     bodies: [
@@ -673,12 +681,15 @@ export const orbital: OrbitalFlight = {
             altitude: doc(4_000, `${BOBKOV}: “на высоте 4 км при скорости 200 м/с”; ${GCTC}`),
             dragArea: guess(13.5, `18 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(2, 'chosen: no filling time found'),
+            // (the usual train: the small parachute draws the next out and goes with it; not stated for Vostok in anything read)
+            instead: ['pilot parachute'],
           },
           {
             name: 'main parachute',
             altitude: doc(2_500, `${BOBKOV}; ${GCTC}: at 2.5 km`),
             dragArea: guess(430, `574 m² of canopy (${BOBKOV}; ${GCTC}) at 0.75`),
             fills: guess(6, 'chosen: no filling time found'),
+            instead: ['braking parachute'],
           },
         ],
       },
@@ -687,6 +698,10 @@ export const orbital: OrbitalFlight = {
         label: 'Gagarin, on his seat and then under his canopies',
         mass: guess(188, 'he in his suit, 88 kg (as for the module), and a seat taken as 100 kg: not found'),
         dragArea: guess(0.6, 'a seated man and his seat, chosen'),
+        thrown: guess(
+          20,
+          `${BOBKOV} and ${GCTC} via mission.md: the seat left “at up to 20 m/s”, on its two rockets, two seconds after the hatch; taken at that bound, and at the hatch’s instant`,
+        ),
         chutes: [
           {
             name: 'seat’s braking parachute',
@@ -710,6 +725,14 @@ export const orbital: OrbitalFlight = {
                 131,
                 'he in his suit, 88 kg, with the survival pack, 43 kg (Baturin), which hung on its line and was then lost: carried to the ground here',
               ),
+              leaves: {
+                id: 'seat',
+                label: 'The ejection seat',
+                dragArea: guess(
+                  1.8,
+                  'the empty seat, 0.3 m² (chosen), under its stabilising parachute, 1.5 m² as above, which stays with it: chosen',
+                ),
+              },
             },
           },
           {
@@ -722,6 +745,25 @@ export const orbital: OrbitalFlight = {
             fills: guess(4, 'chosen: no filling time found'),
           },
         ],
+      },
+      {
+        id: 'hatch',
+        label: 'Hatch No. 1',
+        mass: guess(30, 'not found: a cover 1 m across in the clear, its heat shield and its lock, by judgement'),
+        dragArea: guess(0.8, 'a plate a little over 1 m across, tumbling: chosen'),
+        thrown: guess(
+          30,
+          'not found: blown off by its pyrotechnics at 7 km, two seconds before the seat; chosen to keep it ahead of the seat, which here leaves at the same instant',
+        ),
+        chutes: [],
+      },
+      {
+        id: 'cover',
+        label: 'Hatch No. 2, the parachute container’s cover',
+        mass: guess(25, 'not found: by judgement, as hatch No. 1'),
+        dragArea: guess(0.8, 'as hatch No. 1: chosen'),
+        thrown: guess(10, `not found: shot off with the hatch at about 7 km, drawing out the module’s small parachute (${BOBKOV}); chosen`),
+        chutes: [],
       },
     ],
     checks: [

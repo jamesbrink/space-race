@@ -4,7 +4,18 @@ import { orbitPredictor } from './sim/orbitpath.ts';
 import type { Predictor } from './sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
 import { Sheds } from './sim/shed.ts';
-import { type Ascended, byHand, type FlownWhole, flowOf, flyWhole, held, integral, recordSamples } from './sim/staged.ts';
+import {
+  type Ascended,
+  byHand,
+  type DrawnDescent,
+  descentOf,
+  type FlownWhole,
+  flowOf,
+  flyWhole,
+  held,
+  integral,
+  recordSamples,
+} from './sim/staged.ts';
 import {
   ascentSample,
   type StagedPilot,
@@ -497,6 +508,7 @@ export class OrbitDeck extends Deck {
       dropped: this.flight.flies!.drops.map(() => Infinity),
       sheds,
       live: true,
+      descent: null,
     };
     this.kept = this.run.samples.length;
     this.dropsFrom(s, from);
@@ -589,6 +601,13 @@ export class OrbitDeck extends Deck {
     return { ascent: this.ascended, coast, down: plan.descent && end.phase === 'down' ? flyDown(plan, jd, sea, end) : null };
   }
 
+  /** The bodies down from the ejection on this flight as flown now, for the scene to carry what came down on each. */
+  private descentOf(): DrawnDescent | null {
+    const o = this.flight.orbital!;
+    const centre = (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
+    return this.flown ? descentOf(this.flown, julianDate(this.flight.launch), centre) : null;
+  }
+
   /** Samples the scene can show of a whole flight from `plan`: the user's ascent's own, then the coast's. */
   private samplesOf(plan: OrbitalFlight, whole: FlownWhole): LiveSample[] {
     const o = this.flight.orbital!;
@@ -618,7 +637,7 @@ export class OrbitDeck extends Deck {
     const plan = this.givenUp();
     this.flown = this.whole(plan);
     const samples = this.samplesOf(plan, this.flown);
-    this.run = { ...this.run!, samples, duration: samples[samples.length - 1]!.t };
+    this.run = { ...this.run!, samples, duration: samples[samples.length - 1]!.t, descent: this.descentOf() };
     this.dropsFrom(s);
     this.times = orbitalEvents(this.flight, this.flown);
     this.freeHands(null);
@@ -678,6 +697,7 @@ export class OrbitDeck extends Deck {
       dropped,
       duration: samples[samples.length - 1]!.t,
       fires: this.fires({ on: t, off: t + burn }),
+      descent: this.descentOf(),
     };
     this.host.fly(this.run);
     this.host.say?.('Braking engine', `Fired by hand: ${burn.toFixed(0)} s to ${m.deltaV.value} m/s`);
@@ -756,9 +776,9 @@ export class OrbitDeck extends Deck {
       this.run = { ...this.run, samples: copy, fires: this.fires() };
       this.host.fly(this.run);
     }
-    if (t > this.run.duration + 12) {
+    if (t > this.over() + 12) {
       this.clock.pause();
-      this.clock.seek(this.run.duration + 12);
+      this.clock.seek(this.over() + 12);
     }
     this.show();
   }
@@ -826,6 +846,15 @@ export class OrbitDeck extends Deck {
     return down ? (down.landed.pilot ?? Object.values(down.landed)[0]) : undefined;
   }
   /** How far a landing is from the record's, km. */
+  /** When the flight on show is over: the last body of its descent on the ground (the pilot, minutes after the module), or the run's own end. */
+  private over(): number {
+    const run = this.run;
+    if (!run) return Infinity;
+    const whole = this.flown ?? (this.mine === null && this.fired === null ? orbitalFlown(this.flight) : null);
+    const landings = Object.values(whole?.down?.landed ?? {}).map((l) => l.at);
+    return Math.max(run.duration, ...landings);
+  }
+
   private apart(at: { latitude: number; longitude: number }): number {
     const o = this.flight.orbital!;
     const [la, lo] = [o.landing.latitude.value * DEG, o.landing.longitude.value * DEG];
@@ -1041,7 +1070,8 @@ export class OrbitDeck extends Deck {
     const down = this.landed(whole);
     // (the run on show follows the descent module down; the pilot lands under his canopy some minutes after it)
     const crashed = this.state?.landed && t >= this.state.landed.t;
-    const over = this.run !== null && (Boolean(crashed) || (down !== undefined && t >= this.run.duration));
+    // (and the card waits until the last of them is down)
+    const over = this.run !== null && (Boolean(crashed) || (down !== undefined && t >= this.over()));
     const key = `${this.fired}|${this.mine}|${crashed}`;
     if (el.hidden === !over && el.dataset.at === key) return;
     el.hidden = !over;
@@ -1054,6 +1084,16 @@ export class OrbitDeck extends Deck {
       el.innerHTML = `<h3>Back on the ground, on the launch vehicle</h3><p class="cockpit-why">Your flight never parted the spacecraft from its launch vehicle: it came down with it at ${this.state!.landed!.speed.toFixed(0)} m/s, ${(this.sampleAt(t).range / KM).toFixed(0)} km from the pad. Not survivable.</p>${buttons}`;
       return;
     }
+    const module = whole.down?.landed[o.descent?.bodies[0]?.id ?? ''];
+    // the record's own landings: each body's time (its check) and the place the record gives
+    const when = (id: string) => o.descent?.checks.find((c) => c.id === `${id}.at`);
+    const landings = [
+      ...(o.descent?.bodies.slice(0, 2) ?? []).flatMap((b) => {
+        const c = when(b.id);
+        return c ? [`${c.label} at ${this.wall(c.value)}`] : [];
+      }),
+      `the landing at ${o.landing.latitude.value.toFixed(2)}° N ${o.landing.longitude.value.toFixed(2)}° E`,
+    ].join('; ');
     const show = (unit: string, v: number) =>
       unit === 'm' ? `${(v / 1000).toFixed(1)} km` : unit === 's' ? this.wall(v) : `${v.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
     // (the coast's and the descent's: what a pilot's hand can change; the ascent's too, on a flight that was the user's going up)
@@ -1067,7 +1107,8 @@ export class OrbitDeck extends Deck {
       .join('');
     el.innerHTML = `
       <h3>${this.mine !== null ? 'Down, on your own flight' : this.fired !== null ? 'Down, by your own braking burn' : 'Down, as the automatic system flew it'}</h3>
-      <p class="cockpit-why">The descent module landed at ${this.wall(this.run!.duration)}; the pilot at ${this.wall(down.at)}, ${down.latitude.toFixed(2)}° N ${down.longitude.toFixed(2)}° E, at ${down.speed.toFixed(1)} m/s: ${this.apart(down).toFixed(0)} km from where the record has the landing.${this.mine !== null || this.fired !== null ? ` Not the flight of ${this.day}.` : ''}</p>
+      <p class="cockpit-why">The descent module landed at ${this.wall(module?.at ?? this.run!.duration)}${module ? `, ${module.latitude.toFixed(2)}° N ${module.longitude.toFixed(2)}° E, at ${module.speed.toFixed(1)} m/s` : ''}; the pilot at ${this.wall(down.at)}, ${down.latitude.toFixed(2)}° N ${down.longitude.toFixed(2)}° E, at ${down.speed.toFixed(1)} m/s: ${this.apart(down).toFixed(0)} km from where the record has the landing.${this.mine !== null || this.fired !== null ? ` Not the flight of ${this.day}.` : ''}</p>
+      <p class="cockpit-why">${this.flight.callsign} as recorded: ${landings}.</p>
       <table>
         <thead><tr><td></td><td>You</td><td>${this.flight.callsign}</td></tr></thead>
         ${rows}

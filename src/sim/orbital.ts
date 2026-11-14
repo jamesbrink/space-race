@@ -13,7 +13,7 @@
  * the pilot left at. The powered ascent is flown by sim/staged.ts from `stages` and `ascent`, on a
  * stated steering law where the programme flown has not been found.
  */
-import type { Confidence, Curve, Measure, ShedBody } from '../types';
+import type { Confidence, Curve, Heating, Measure, ShedBody } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {
@@ -225,6 +225,11 @@ export interface OrbitalFlight {
   /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */
   descent?: DescentRecord;
   /**
+   * The air's heat at the entry body's stagnation point, for the shock layer drawn (viewer/effects.ts): worked from each
+   * sample's height and speed on `noseRadius` (sim/heating.ts). Surfaces only where their figures are known.
+   */
+  heating?: Heating;
+  /**
    * What a pilot could do by hand, where the spacecraft allowed it (the flight deck, orbitdeck.ts): the code that frees the
    * hand controls, how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
    * its thrust (N) and the impulse its integrator shuts it down at (m/s), the modules parting `parting` seconds after.
@@ -248,25 +253,42 @@ export interface OrbitalFlight {
  */
 export interface DescentRecord {
   ground: Measure;
-  bodies: {
-    id: string;
-    label: string;
-    mass: Measure;
-    /** Drag coefficient times area of the body alone, m^2. */
-    dragArea: Measure;
-    chutes: {
-      name: string;
-      /** Let out falling through this height above the sea, m, or this long after the ejection, s. */
-      altitude?: Measure;
-      after?: Measure;
-      dragArea: Measure;
-      fills: Measure;
-      /** What it leaves behind as it comes out: the body's own drag and every parachute before it (it is a new body: the man off his seat), with this mass now. */
-      replaces?: { mass: Measure };
-    }[];
-  }[];
-  /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the landings). */
+  bodies: DescentBody[];
+  /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the first two bodies' landings). */
   checks: AscentCheck[];
+}
+
+/** One body of a descent (`DescentRecord.bodies`). */
+export interface DescentBody {
+  id: string;
+  label: string;
+  mass: Measure;
+  /** Drag coefficient times area of the body alone, m^2. */
+  dragArea: Measure;
+  /**
+   * How fast it is thrown clear as it leaves, m/s, added against its motion through the air (a hatch blown off, a seat on
+   * its rockets: the rails' own line, which leans from that, is not known to a point mass).
+   */
+  thrown?: Measure;
+  chutes: DescentChute[];
+}
+
+/** A parachute of a descent body. */
+export interface DescentChute {
+  name: string;
+  /** Let out falling through this height above the sea, m, or this long after the ejection, s. */
+  altitude?: Measure;
+  after?: Measure;
+  dragArea: Measure;
+  fills: Measure;
+  /** Parachutes of the same body this one takes the place of: each is let go (its drag with it) as this one comes out. */
+  instead?: string[];
+  /**
+   * What it leaves behind as it comes out: the body's own drag and every parachute before it (it is a new body: the man off
+   * his seat), with this mass now. What is left behind (`leaves`) comes down on its own from there: the mass the body had
+   * less this one (derived), on its own drag area, which counts the parachutes it keeps.
+   */
+  replaces?: { mass: Measure; leaves?: { id: string; label: string; dragArea: Measure } };
 }
 
 /** Where and when each body of the descent came down. */
@@ -277,17 +299,25 @@ export interface Landed {
   longitude: number;
 }
 
+/** A descent flown (`flyDown`). */
+export interface DescentFlown {
+  /** Each body's landing, by id: those of `DescentRecord.bodies`, and what they left behind (`replaces.leaves`). */
+  landed: Record<string, Landed>;
+  /** Between the first two bodies' landings, m. */
+  apart: number;
+  /** Each body's path, in frames.ts's inertial frame of date, from where it began (a second apart, and its landing). */
+  tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]>;
+  /** When each body's parachutes came out, seconds from liftoff, by body and parachute name; and when each was let go (`instead`). */
+  opened: Record<string, Record<string, number>>;
+  gone: Record<string, Record<string, number>>;
+}
+
 /**
  * Fly the descent from the coast's end (`from`: its last sample's state and time). Point masses in the inertial frame of
  * date under J2 gravity and the standard air turning with the Earth (no wind: the day's at Saratov has not been read),
  * RK4 at 0.05 s. Returns each body's landing, by id, and `apart`, the distance between the first two, m.
  */
-export function flyDown(
-  o: OrbitalFlight,
-  launchJd: number,
-  seaLevel: number,
-  from: { t: number; r: Vec3; v: Vec3 },
-): { landed: Record<string, Landed>; apart: number; tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> } {
+export function flyDown(o: OrbitalFlight, launchJd: number, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }): DescentFlown {
   const d = o.descent;
   if (!d) throw new Error('this orbital record has no `descent`');
   const gast0 = greenwichSiderealTime(launchJd);
@@ -295,15 +325,28 @@ export function flyDown(
   const ground = d.ground.value;
   const landed: Record<string, Landed> = {};
   const tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> = {};
-  for (const body of d.bodies) {
-    const track: { t: number; r: Vec3; v: Vec3 }[] = (tracks[body.id] = [{ t: from.t, r: from.r, v: from.v }]);
-    let t = from.t;
-    let s: State = { r: from.r, v: from.v };
+  const opened: Record<string, Record<string, number>> = {};
+  const gone: Record<string, Record<string, number>> = {};
+  const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
+  // each body from the ejection, thrown clear against its motion through the air if it was; and what one leaves behind from there
+  const queue: { body: DescentBody; t: number; s: State }[] = d.bodies.map((body) => {
+    const wind = sub(from.v, cross(spin, from.r));
+    const speed = length(wind);
+    const v = body.thrown && speed > 0 ? sub(from.v, scale(wind, body.thrown.value / speed)) : from.v;
+    return { body, t: from.t, s: { r: from.r, v } };
+  });
+  for (let n = 0; n < queue.length; n++) {
+    const { body, t: t0, s: s0 } = queue[n]!;
+    const track: { t: number; r: Vec3; v: Vec3 }[] = (tracks[body.id] = [{ t: t0, r: s0.r, v: s0.v }]);
+    const times: Record<string, number> = (opened[body.id] = {});
+    const let_go: Record<string, number> = (gone[body.id] = {});
+    let t = t0;
+    let s: State = s0;
     let mass = body.mass.value;
     let base = body.dragArea.value; // what is out for good: the body's own, and every parachute filled
-    let filling: { area: number; at: number; fills: number } | null = null;
+    let filling: { area: number; at: number; fills: number; name: string } | null = null;
+    const kept = new Map<string, number>(); // (each parachute in `base`, by name, with its area: for `instead`)
     const out = new Set<number>();
-    const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
     const areaAt = (at: number) => base + (filling ? filling.area * Math.min(1, Math.max(0, (at - filling.at) / filling.fills)) : 0);
     const push = (q: State, at: number): Vec3 => {
       const air = atmosphere(heightOf(q, at));
@@ -333,12 +376,40 @@ export function flyDown(
         const due = c.altitude ? h <= c.altitude.value && h < was.h : c.after ? t - from.t >= c.after.value : false;
         if (!due) return;
         out.add(i);
+        times[c.name] = t;
         // what was filling is full now, or is left behind with the seat
         if (c.replaces) {
+          const leaves = c.replaces.leaves;
+          if (leaves)
+            queue.push({
+              body: {
+                id: leaves.id,
+                label: leaves.label,
+                mass: { value: mass - c.replaces.mass.value, confidence: 'derived', source: `${body.id}'s mass less what goes on` },
+                dragArea: leaves.dragArea,
+                chutes: [],
+              },
+              t,
+              s,
+            });
+          // (what was out goes with what is left behind, or, with nothing left behind, is let go)
+          if (!leaves) for (const name of [...kept.keys(), ...(filling ? [filling.name] : [])]) let_go[name] ??= t;
           base = 0;
+          kept.clear();
           mass = c.replaces.mass.value;
-        } else if (filling) base += filling.area;
-        filling = { area: c.dragArea.value, at: t, fills: c.fills.value };
+        } else if (filling) {
+          base += filling.area;
+          kept.set(filling.name, filling.area);
+        }
+        filling = { area: c.dragArea.value, at: t, fills: c.fills.value, name: c.name };
+        // what it takes the place of goes, with its drag
+        for (const name of c.instead ?? []) {
+          const area = kept.get(name);
+          if (area === undefined) continue;
+          base -= area;
+          kept.delete(name);
+          let_go[name] = t;
+        }
       });
     }
   }
@@ -353,7 +424,7 @@ export function flyDown(
           ),
         )
       : Number.NaN;
-  return { landed, apart, tracks };
+  return { landed, apart, tracks, opened, gone };
 }
 
 /** What the record gives figures for, as the coast has them. */

@@ -4,7 +4,7 @@ import { axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { blowOf, windAt } from '../sim/forces.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
-import { type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
+import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
@@ -78,6 +78,8 @@ export interface Run {
   fires?: { from: number; to: number }[];
   /** What it has let go, each flown beside it (sim/shed.ts): a live run's. The record's are made here. */
   sheds?: Sheds;
+  /** An orbital flight's bodies down from the ejection, each on its own track, with their parachutes (sim/staged.ts `descentOf`). */
+  descent?: DrawnDescent | null;
 }
 
 /** A parachute at an instant, for viewer/chute.ts to draw. */
@@ -235,16 +237,18 @@ export class Ascent {
   chute(i: number, t: number, padTurn: THREE.Quaternion): ChuteMoment | null {
     const def = this.chutes[i];
     if (!def || !this.flying(t)) return null;
+    if (def.body) return this.descentChute(def, t);
     const run = this.flown();
-    const at = run.out[def.on];
+    const on = def.on as 'drogue' | 'main';
+    const at = run.out[on];
     if (!(t >= at)) return null;
     const tr = this.flight.trajectory!;
     const end = run.samples[run.samples.length - 1]!;
     const landed = run.live && Number.isFinite(run.duration);
     const moment: ChuteMoment = {
       since: Math.min(t, landed ? run.duration : Infinity) - at,
-      fills: tr[def.on].fills.value,
-      torn: t >= (run.torn?.[def.on] ?? Infinity) ? t - run.torn![def.on] : -1,
+      fills: tr[on].fills.value,
+      torn: t >= (run.torn?.[on] ?? Infinity) ? t - run.torn![on] : -1,
       air: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
       seen: 1,
@@ -252,8 +256,8 @@ export class Ascent {
       floor: 0,
     };
     // the drogue's work is over when the main is out
-    const over = def.on === 'drogue' ? run.out.main : Infinity;
-    const carried = this.drops.findIndex((d) => d.under === def.on);
+    const over = on === 'drogue' ? run.out.main : Infinity;
+    const carried = this.drops.findIndex((d) => d.under === on);
     if (t >= over) {
       const drop = this.drops[carried];
       if (!drop || t < drop.at) return null;
@@ -285,6 +289,134 @@ export class Ascent {
         this.stood(end.t).y;
     }
     return moment;
+  }
+
+  /** Body `id` of the orbital flight's descent, as the record gives it (a body left behind is not among them). */
+  private descentBody(id: string) {
+    return this.flight.orbital?.descent?.bodies.find((b) => b.id === id);
+  }
+
+  /**
+   * Which body's track parachute `on` of body `id` is carried on at `t`: its own, or, for one out before the parachute that
+   * left something behind (`replaces.leaves`: the seat's stabilising parachute, which stays with the seat), what was left
+   * behind, from then on.
+   */
+  private carrier(id: string, on: string, t: number): string {
+    const body = this.descentBody(id);
+    const d = this.flown().descent;
+    if (!body || !d) return id;
+    const i = body.chutes.findIndex((c) => c.name === on);
+    const j = body.chutes.findIndex((c) => c.replaces?.leaves);
+    if (j < 0 || i < 0 || i >= j) return id;
+    return t >= (d.opened[id]?.[body.chutes[j]!.name] ?? Infinity) ? body.chutes[j]!.replaces!.leaves!.id : id;
+  }
+
+  /**
+   * Body `id` of the descent at `t` (sim/staged.ts `descentOf`): its point in the scene's frame, its motion through the air
+   * (m/s, the scene's frame: nothing once down), up where it is, and when it came down. Null before its track begins.
+   */
+  descentAt(id: string, t: number): { p: THREE.Vector3; air: THREE.Vector3; up: THREE.Vector3; landed: number } | null {
+    const track = this.flown().descent?.tracks[id] as unknown as readonly Sample[] | undefined;
+    if (!track?.length || t < track[0]!.t) return null;
+    const end = track[track.length - 1]!;
+    const at = Math.min(t, end.t);
+    const { r, v } = between(track, at);
+    const spin = EARTH_ROTATION_RATE * at;
+    const here = inertialToEcef(r, spin);
+    return {
+      p: toThree(ecefToSite(this.site, here)),
+      air: t >= end.t ? new THREE.Vector3() : toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin))),
+      up: toThree(ecefToSiteDirection(this.site, unit(here))),
+      landed: end.t,
+    };
+  }
+
+  /** A descent body's parachute (`ChuteDef.body`) at `t`: out from when flyDown let it out until it was let go, streaming against the motion of what carries it. */
+  private descentChute(def: ChuteDef, t: number): ChuteMoment | null {
+    const d = this.flown().descent;
+    const id = def.body!;
+    const at = d?.opened[id]?.[def.on];
+    if (!d || at === undefined || !(t >= at) || t >= (d.gone[id]?.[def.on] ?? Infinity)) return null;
+    const on = this.descentAt(this.carrier(id, def.on, t), t);
+    if (!on) return null;
+    const down = t >= on.landed ? t - on.landed : -1;
+    return {
+      since: Math.min(t, on.landed) - at,
+      fills: this.descentBody(id)?.chutes.find((c) => c.name === def.on)?.fills.value ?? 1,
+      torn: -1,
+      air: on.air,
+      up: on.up,
+      seen: 1,
+      down,
+      floor: on.p.y,
+    };
+  }
+
+  /**
+   * Where a piece of drop `i` (its centre `piece.centre` and its +Y `piece.lie`, in the flown model's frame: Stage
+   * `fall` measures them) is drawn at `t` while it comes down on the descent's bodies (`flies.drops[].rides`): its centre
+   * carried from where it was as it left along each body's track in turn, each from where that track begins, and the
+   * piece turned over SWINGS seconds from leaving until its +Y is against its motion through the air (where its parachute
+   * pulls). Returns the centre, the turn (as `place` gives a model's) and which leg it is on; null before it leaves.
+   * The tracks are the simulator's (points); how each piece hangs on its own is drawn.
+   */
+  rideAt(
+    i: number,
+    t: number,
+    padTurn: THREE.Quaternion,
+    piece: { centre: THREE.Vector3; lie: THREE.Vector3 },
+  ): { centre: THREE.Vector3; turn: THREE.Quaternion; leg: number; air: THREE.Vector3; up: THREE.Vector3 } | null {
+    const legs = this.flight.flies!.drops[i]?.rides;
+    const from = this.release(i, padTurn);
+    const tracks = this.flown().descent?.tracks;
+    if (!legs?.length || !from || !tracks || t < from.at) return null;
+    const centre = piece.centre.clone().applyQuaternion(from.q).add(from.p);
+    let leg = 0;
+    let begun = from.at;
+    let now: ReturnType<Ascent['descentAt']> = null;
+    for (let k = 0; k < legs.length; k++) {
+      const next = tracks[legs[k + 1]?.body ?? '']?.[0]?.t ?? Infinity;
+      const a = this.descentAt(legs[k]!.body, begun);
+      now = this.descentAt(legs[k]!.body, Math.min(t, next));
+      if (!a || !now) return null;
+      centre.add(now.p).sub(a.p);
+      leg = k;
+      if (t < next) break;
+      begun = next;
+    }
+    if (!now) return null;
+    const lie = piece.lie.clone().applyQuaternion(from.q).normalize();
+    const line = now.air.lengthSq() > 1 ? now.air.clone().normalize().negate() : now.up.clone();
+    const hang = new THREE.Quaternion().setFromUnitVectors(lie, line);
+    const k = THREE.MathUtils.smoothstep(t - from.at, 0, SWINGS);
+    const turn = new THREE.Quaternion().slerp(hang, k).multiply(from.q);
+    return { centre, turn, leg, air: now.air, up: now.up };
+  }
+
+  /**
+   * Figure `j` of `flies.hangs` at `t`: where its harness is (from where the piece riding its body was as his parachute came
+   * out, carried along that body's track: the seat he leaves) and the line up to his canopy; null before then.
+   */
+  hangerAt(j: number, t: number, padTurn: THREE.Quaternion, piece: (i: number) => { centre: THREE.Vector3; lie: THREE.Vector3 } | null) {
+    const h = this.flight.flies?.hangs?.[j];
+    const at = h && this.flown().descent?.opened[h.body]?.[h.from];
+    if (!h || at === undefined || !(t >= at)) return null;
+    const i = this.flight.flies!.drops.findIndex((d) => d.rides?.some((r) => r.body === h.body));
+    const p = piece(i);
+    const left = p && this.rideAt(i, at, padTurn, p);
+    const a = this.descentAt(h.body, at);
+    const now = this.descentAt(h.body, t);
+    if (!left || !a || !now) return null;
+    const harness = left.centre.clone().add(now.p).sub(a.p);
+    const line = now.air.lengthSq() > 1 ? now.air.clone().normalize().negate() : now.up.clone();
+    return { harness, line, up: now.up, since: t - at, down: t >= now.landed };
+  }
+
+  /** What a drop or a figure carried down is called: the descent body it rides, by its label. */
+  descentLabel(i: number): string | null {
+    const flies = this.flight.flies!;
+    const body = i < flies.drops.length ? flies.drops[i]?.rides?.[0]?.body : flies.hangs?.[i - flies.drops.length]?.body;
+    return body ? (this.descentBody(body)?.label ?? null) : null;
   }
 
   /**
@@ -343,7 +475,7 @@ export class Ascent {
    */
   shed(i: number, t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
     const drop = this.drops[i];
-    if (!drop || t < drop.at || !this.flying(t)) return false;
+    if (!drop || t < drop.at || !this.flying(t) || this.flight.flies!.drops[i]?.rides) return false; // (what rides a descent's body: `rideAt`)
     const from = this.release(i, padTurn);
     if (!from) return false;
     if (drop.under) {
@@ -383,7 +515,7 @@ export class Ascent {
   /** The body flown for drop `i` (sim/shed.ts), if the flight gives one: the cockpit's on a flight flown by hand, else made here from the record's run as it left. */
   /** What drop `i` is called, where the flight gives it a body (`ShedBody.name`): null where it does not. */
   dropName(i: number): string | null {
-    return this.body(i)?.shedder.def.name ?? null;
+    return this.descentLabel(i) ?? this.body(i)?.shedder.def.name ?? null;
   }
 
   private body(i: number): ShedRun | undefined {
@@ -585,11 +717,43 @@ export class Ascent {
     const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
     const centre = beyond > 0 ? a.centre : between(samples, t, (s) => (s as LiveSample).centre).r;
     const now = turn(nlerp(a.attitude, b.attitude, k), arm);
+    const middle = toThree(ecefToSite(this.site, inertialToEcef(centre, spin)));
     position
-      .copy(toThree(ecefToSite(this.site, inertialToEcef(centre, spin))))
+      .copy(middle)
       .add(toThree(ecefToSiteDirection(this.site, inertialToEcef(now, spin))))
       .add(offset);
+    this.underCanopy(t, middle, position, quaternion);
     return true;
+  }
+
+  /**
+   * Where the flown model's own parachute is made fast, in the model's frame (Stage measures it from the first of
+   * `flies.chutes` on the descent's first body, whose track the run's samples follow after the ejection), or null.
+   */
+  hangsFrom: THREE.Vector3 | null = null;
+
+  /**
+   * Once the run's own body (the descent's first: the empty module) has a parachute out, the model turns about its centre
+   * over SWINGS seconds until the point its parachute is made fast at is straight up the line, against its motion through
+   * the air: hanging under it. The body is a point to the simulator; how it hangs is drawn.
+   */
+  private underCanopy(t: number, middle: THREE.Vector3, position: THREE.Vector3, quaternion: THREE.Quaternion): void {
+    const d = this.flown().descent;
+    const id = this.flight.orbital?.descent?.bodies[0]?.id;
+    if (!this.hangsFrom || !d || !id) return;
+    const first = Math.min(...Object.values(d.opened[id] ?? {}));
+    if (!(t >= first)) return;
+    const on = this.descentAt(id, t);
+    if (!on) return;
+    const line = on.air.lengthSq() > 1 ? on.air.clone().normalize().negate() : on.up.clone();
+    const arm = this.hangsFrom.clone().applyQuaternion(quaternion).add(position).sub(middle);
+    if (arm.lengthSq() < 1e-6) return;
+    const swing = new THREE.Quaternion().slerp(
+      new THREE.Quaternion().setFromUnitVectors(arm.normalize(), line),
+      THREE.MathUtils.smoothstep(t - first, 0, SWINGS),
+    );
+    quaternion.premultiply(swing);
+    position.sub(middle).applyQuaternion(swing).add(middle);
   }
 }
 
@@ -641,6 +805,8 @@ const BODY: readonly Vec3[] = [
 const riding = (s: Sample): boolean => s.phase === 'powered' || s.phase === 'coast';
 /** Something left behind under a parachute: the drift it slows to, m/s, in how many seconds, and by when it is lost to sight, s. Drawn, not flown. */
 const DRIFT = new THREE.Vector3(0, -25, 0);
+/** Seconds over which a piece come down on a descent's body (`rides`) turns from how it left to hanging against the air: drawn, chosen. */
+const SWINGS = 2;
 const EASES = 1;
 const LOST = 8;
 /** Seconds of flight over which the height of the launcher's support under the stack is eased out of where the model is drawn (`Ascent.stand`). */
@@ -745,6 +911,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     out: { drogue: Infinity, main: Infinity },
     sheds,
     fires: firesOf(flight, whole),
+    descent: descentOf(whole, jd, centre),
   };
   orbitalRuns.set(o, run);
   return run;
