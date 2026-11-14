@@ -311,6 +311,7 @@ const KINDS = {
   tower: ['Tower jett', 40],
   separation: ['Separation', 46],
   retro: ['Retrofire', 58],
+  burnout: ['Burnout', 36],
   retropack: ['Pack jett', 38],
   entry: ['0.05 g', 50],
   peak: ['Max', 54],

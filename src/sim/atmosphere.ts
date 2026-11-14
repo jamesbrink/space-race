@@ -86,3 +86,6 @@ export function atmosphere(height: number): Air {
   // temperature and the speed of sound are held at their values at 86 km: by here they only set a Mach number far above any that matters
   return { density, pressure: 0, temperature: 186.87, soundSpeed: 274.1 };
 }
+
+/** Above this height, m, the predicted path leaves the air out (sim/fliers.ts): at 200 km its drag on a spacecraft is under a ten-thousandth of a millimetre a second squared. */
+export const AIR_TOP = 200_000;
