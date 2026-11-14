@@ -59,7 +59,6 @@ from gemini_shell import (
     Z_RR_TAPER,
     Z_RR_TOP,
     Z_SHIELD_APEX,
-    Z_SILL,
     band,
     chamber,
     depth,
@@ -79,7 +78,6 @@ from srlib import IN, TAU, MeshBuilder, Surf, deg, frame, group, interior, lette
 # What the ship's stations and surfaces are, and what its skins are made of, is in gemini_shell.py.
 
 RETRO = (6.5, 19.5, 84.0)  # a retrograde rocket: its case's radius, how far its axis is from the ship's, its middle's station
-SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward
 
 # The orbit attitude and maneuver system's sixteen chambers, by SEDR 300's Figure 8-72 and its table. Which way each
 # fires is documented; these places are read off the figure, which is a sketch in perspective: estimated.
@@ -759,9 +757,9 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
         )
         noz.build("Experiment_Nozzles", M["nozzle"], g, sharp_angle=35)
         if interior():
+            # (its water, in the landing gear's well behind the door, outside the pressure vessel: its size and place a guess)
             tank = MeshBuilder()
-            c = CABIN.p(t, zz(140.0), -6.5)
-            tank.tube(c - Vector((0, 0, 7.0)) * IN, c + Vector((0, 0, 7.0)) * IN, 3.8 * IN, 16)
+            tank.tube(CABIN.p(t, zz(111.0), -5.0), CABIN.p(t, zz(125.0), -5.0), 2.2 * IN, 16)
             tank.build("Experiment_WaterTank", M["tank"], g, sharp_angle=35)
 
 
@@ -797,160 +795,12 @@ def build_scanner_fairing(M) -> None:
     rivets.build("ScannerFairing_Rivets", M["aluminium"], g)
 
 
-def seat(M, g, name: str, side: int, pilot: str) -> None:
-    """An ejection seat: a built-up metal seat on a rocket catapult, canted outboard and forward so that two of them
-    leave the ship on diverging paths. Empty: nobody is modelled in it."""
-    out, fwd = SEAT_CANT
-    # the seat's own axes: x to the occupant's right, y the way he faces (the ship's nose), z up his back (the ship's top)
-    to_ship = Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-    cant = Matrix.Rotation(side * out, 4, "Y") @ Matrix.Rotation(-fwd, 4, "X")
-    m = Matrix.Translation(P(side * 12.0, -9.0, 120.0)) @ to_ship @ cant
-    S = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
-    frame_, pad, web, ring = (MeshBuilder() for _ in range(4))
+def build_crew_station(M, fit: Fit, font=None) -> None:
+    """The pressure vessel and what is in it: gemini_cabin.py. The vessel is not the cone: it is a welded titanium box
+    inside it, flat sided, with the hatches for its roof; the space between its sides and the cone is the equipment bays."""
+    import gemini_cabin
 
-    def box(mb: MeshBuilder, lo, hi) -> None:
-        size = [(hi[i] - lo[i]) * IN for i in range(3)]
-        mb.box(size, m @ Matrix.Translation(S(*[(hi[i] + lo[i]) / 2 for i in range(3)])))
-
-    for sx in (-1, 1):  # the two side beams of the back, the arm rests, and the legs' guards
-        box(frame_, (sx * 8.4 - 0.6, -5.5, -3.0), (sx * 8.4 + 0.6, -1.0, 30.0))
-        box(frame_, (sx * 8.5 - 0.5, -1.0, -3.0), (sx * 8.5 + 0.5, 12.0, 4.0))
-        box(frame_, (sx * 7.6 - 0.4, 12.0, -3.0), (sx * 7.6 + 0.4, 15.0, 1.0))
-    box(frame_, (-7.8, -5.2, -3.0), (7.8, -4.4, 30.0))  # the back's web
-    box(frame_, (-8.0, -5.0, -4.2), (8.0, 15.0, -3.2))  # the pan
-    box(frame_, (-7.7, -6.5, 25.0), (7.7, 0.6, 31.5))  # the box at its head: the parachute's risers, and the raft above them
-    box(frame_, (-5.0, -7.5, 31.5), (5.0, -0.5, 34.0))
-    frame_.tube(m @ S(0.0, -8.6, -4.0), m @ S(0.0, -8.6, 31.0), 2.1 * IN, 16)  # the rocket catapult up its back
-    for sx in (-1, 1):  # the stirrups, on bars from the pan's front
-        frame_.tube(m @ S(sx * 2.6, 15.0, -3.7), m @ S(sx * 2.6, 21.0, -1.6), 0.6 * IN, 8)
-        box(frame_, (sx * 2.6 - 1.8, 20.0, -1.6), (sx * 2.6 + 1.8, 26.0, -0.9))
-    box(pad, (-6.9, -3.9, 0.6), (6.9, -2.6, 24.5))  # the backboard, and the egress kit he sits on
-    box(pad, (-7.3, -2.4, -3.1), (7.3, 14.0, 0.1))
-    box(pad, (-3.6, 0.7, 25.6), (3.6, 2.2, 30.6))  # the headrest
-    for sx in (-1, 1):  # the shoulder straps down the backboard, and the lap belt's two halves on the kit
-        web.ribbon(
-            [m @ S(sx * 2.6, -2.45, 23.5), m @ S(sx * 3.0, -2.45, 14.0), m @ S(sx * 3.4, -2.45, 3.0)], m.to_3x3() @ Vector((1, 0, 0)), 1.75 * IN
-        )
-        web.ribbon([m @ S(sx * 7.2, 2.0, 0.25), m @ S(sx * 1.0, 3.0, 0.25)], m.to_3x3() @ Vector((0, 1, 0)), 1.75 * IN)
-    # the D-ring between the knees: pulled, it fires both seats
-    ring.lathe(
-        prof([(2.1 + 0.4 * math.cos(a), 0.4 * math.sin(a)) for a in (TAU * i / 8 for i in range(9))]),
-        20,
-        matrix=m @ Matrix.Translation(S(0.0, 14.0, 2.6)) @ Matrix.Rotation(math.pi / 2, 4, "X"),
-    )
-    about = (
-        f"{pilot}'s seat. " if pilot else ""
-    ) + "Gemini has no escape tower: for the first fifteen thousand feet and again under a failed parachute the way out is this, an "
-    about += (
-        "ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows both hatches open and fires "
-        "both seats, which are canted 12° apart and 8° forward so that they do not meet. Nobody ever had to. The seat here is "
-        "empty, and is drawn from SEDR 300's figure, which has no dimensions."
-    )
-    say(frame_.build(f"{name}_Frame", M["seat"], g, sharp_angle=35), "Ejection seat", about)
-    pad.build(f"{name}_Cushions", M["cushion"], g, sharp_angle=35)
-    web.build(f"{name}_Harness", M["webbing"], g, smooth=False)
-    say(
-        ring.build(f"{name}_EjectionRing", M["yellow"], g, sharp_angle=None),
-        "Ejection control",
-        "The D-ring: pulled with both hands, it fires both seats.",
-    )
-
-
-def build_crew_station(M, fit: Fit) -> None:
-    """The pressure vessel and what is in it. The vessel is not the cone: it is a welded titanium box inside it, flat
-    sided, with the hatches for its roof; the space between its sides and the cone is the equipment bays."""
-    g = group("CrewStation")
-    v = MeshBuilder()
-    za, zb = Z_SILL, Z_HATCH_FWD - 0.8
-
-    def section(station: float, n: int = 48) -> list[Vector]:
-        """The vessel's outline at a station: the roof's arc under the hatches, then down one side, across the floor and up."""
-        k = (station - za) / (160.2 - za)
-        rr = lambda a: CABIN.r(zz(station)) - max(WALL, depth(a, zz(station)) + 0.9) - 0.1  # noqa: E731
-        arc = [P(rr(a) * math.sin(a), rr(a) * math.cos(a), station) for a in (-HATCH_OUT + 2 * HATCH_OUT * i / n for i in range(n + 1))]
-        half, floor = 26.0 - 13.0 * k, -17.5 + 3.0 * k
-        return [*arc, P(half, floor, station), P(-half, floor, station)]
-
-    a, b = section(za), section(zb)
-    n = len(a)
-    rows = 8
-    for i in range(n):  # the sides and the floor (the roof is the hatches and the beam between them)
-        j = (i + 1) % n
-        if j <= 48 and i < 48:
-            continue
-        quad = [a[i].lerp(b[i], t / rows) for t in range(rows + 1)] + [a[j].lerp(b[j], t / rows) for t in range(rows + 1)]
-        v.add([tuple(p) for p in quad], [(t, t + 1, rows + 2 + t, rows + 1 + t) for t in range(rows)])
-    for ring_, facing in ((a, 1), (b, -1)):  # the two pressure bulkheads
-        mid = sum(ring_, Vector()) / n
-        v.add(
-            [tuple(mid)] + [tuple(p) for p in ring_], [(0, 1 + i, 1 + (i + 1) % n) if facing > 0 else (0, 1 + (i + 1) % n, 1 + i) for i in range(n)]
-        )
-    # the beam between the hatches, inside
-    r_of = lambda s: CABIN.r(zz(s)) - WALL  # noqa: E731
-    beam = lambda k, s: k * hatch_in(zz(s))  # noqa: E731
-    v.grid(lambda k, s: P(r_of(s) * math.sin(beam(k, s)), r_of(s) * math.cos(beam(k, s)), s), [-1, 0, 1], [za + (zb - za) * i / 8 for i in range(9)])
-    v.build("CrewStation_PressureVessel", M["titanium"], g, sharp_angle=30)
-    if not interior():
-        return
-    seat(M, g, "SeatCommandPilot", -1, fit.names[0])
-    seat(M, g, "SeatPilot", 1, fit.names[1])
-    # the instrument panels across the cabin ahead of the seats: one before each man, one between, a pedestal below it
-    board, dials, faces = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    station = 141.5
-    tilt = Matrix.Rotation(deg(-8), 4, "Y")  # leaned back a little toward the eyes
-
-    def panel(right: float, top: float, wide: float, tall: float, turn: float = 0.0) -> Matrix:
-        """A panel's own frame: x across it to the crew's right, y up it, z out of its face toward the seats."""
-        to_ship = Matrix(((0, 1, 0, 0), (1, 0, 0, 0), (0, 0, -1, 0), (0, 0, 0, 1)))
-        at = Matrix.Translation(P(right, top, station)) @ Matrix.Rotation(turn, 4, "X") @ tilt @ to_ship
-        board.box((wide * IN, tall * IN, 1.2 * IN), at @ Matrix.Translation(Vector((0, 0, -0.6)) * IN))
-        return at
-
-    def dial(at: Matrix, x: float, y: float, r: float) -> None:
-        dials.lathe(prof([(r + 0.25, 0.0), (r + 0.25, 0.3), (r, 0.3)]), 20, matrix=at @ Matrix.Translation(Vector((x, y, 0.0)) * IN))
-        faces.lathe(prof([(r, 0.22), (0.0, 0.22)]), 20, matrix=at @ Matrix.Translation(Vector((x, y, 0.0)) * IN))
-
-    def strip(at: Matrix, x: float, y: float, wide: float, tall: float) -> None:
-        faces.box((wide * IN, tall * IN, 0.24 * IN), at @ Matrix.Translation(Vector((x, y, 0.12)) * IN))
-
-    for side in (-1, 1):  # each man's panel: an attitude ball, round instruments beside it, tapes under
-        at = panel(side * 13.5, 8.0, 15.0, 11.0, side * deg(8))
-        dial(at, -side * 2.2, 1.6, 2.6)
-        for i, (x, y) in enumerate(((3.6, 3.2), (3.6, -0.4), (-5.4, 3.2), (-5.4, -0.4))):
-            dial(at, side * x if i < 2 else side * x, y, 1.25)
-        strip(at, -side * 2.2, -3.6, 5.2, 1.6)
-        strip(at, side * 4.6, -3.8, 3.0, 1.3)
-    at = panel(0.0, 10.0, 9.0, 15.0)  # the centre panel: tapes for the propellants and the cabin, rows of switches
-    for i in range(4):
-        strip(at, -2.7 + 1.8 * i, 3.6, 1.1, 5.2)
-    for j in range(3):
-        for i in range(5):
-            strip(at, -3.2 + 1.6 * i, -2.0 - 1.9 * j, 0.9, 0.9)
-    # (the pedestal's own frame: x to the crew's right, y toward the nose, z toward the top)
-    ped = Matrix.Translation(P(0.0, -2.0, 132.0)) @ Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-    board.box((5.0 * IN, 20.0 * IN, 5.0 * IN), ped)  # the pedestal between the seats, running aft from the panel
-    for j in range(4):
-        for i in range(2):
-            faces.box((1.0 * IN, 1.0 * IN, 0.24 * IN), ped @ Matrix.Translation(Vector((-1.0 + 2.0 * i, -6.0 + 3.6 * j, 2.62)) * IN))
-    stick = MeshBuilder()  # the one attitude hand controller, on the pedestal between them, which either man can reach
-    stick.tube(P(0.0, 0.9, 125.0), P(0.0, 6.0, 125.6), 0.6 * IN, 10)
-    stick.tube(P(0.0, 6.0, 125.6), P(0.0, 8.5, 125.6), 1.0 * IN, 12)
-    say(
-        board.build("CrewStation_Panels", M["panel"], g, sharp_angle=35),
-        "Instrument panels",
-        "One panel before each man, one between them, and a pedestal running back between the seats. The command pilot, on the "
-        "left, has the attitude ball, the velocity indicator and the abort handle; the pilot has the computer's keyboard and the "
-        "radios. The panels are placed from SEDR 300's figure of a typical cabin; the instruments on them are stand-ins, not "
-        "this spacecraft's own panel, which is drawn in a report that has not been read.",
-    )
-    dials.build("CrewStation_Bezels", M["aluminium"], g, sharp_angle=35)
-    faces.build("CrewStation_Instruments", M["dial"], g, sharp_angle=35)
-    say(
-        stick.build("CrewStation_AttitudeController", M["equipment"], g, sharp_angle=35),
-        "Attitude hand controller",
-        "One stick between the seats, where either man can reach it: it turns the ship. The thrusters that move it bodily are "
-        "worked by a second handle under each man's outboard hand, which is not modelled. Its place is estimated.",
-    )
+    gemini_cabin.build(group("CrewStation"), M, font or srlib.load_font(), fit.names, say)
 
 
 # ------------------------------------------------------------------ the adapter
@@ -1249,7 +1099,7 @@ def build(font, flag, fit: Fit | None = None) -> str:
     build_hatches(M, fit)
     build_scanner_fairing(M)
     build_cabin(M, fit, font, flag)
-    build_crew_station(M, fit)
+    build_crew_station(M, fit, font)
     build_heat_shield(M)
     build_retro_section(M, fit)
     build_equipment_section(M, fit)

@@ -186,20 +186,28 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Crew station',
-    summary: 'Two ejection seats side by side. The seats are empty: the crew is not modelled yet.',
+    summary: 'Two ejection seats side by side before the panels this ship flew with. The seats are empty.',
     detail:
-      'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi. The seats are ' +
-      'ejection seats, canted 12° outboard and 8° forward so that two of them leave on diverging paths: Gemini has ' +
-      'no escape tower, and below 15,000 ft this was the way out. One hand controller between the men turns the ' +
-      'ship; the handles that move it bodily are at their outboard hands. Somewhere in here on 23 March was a ' +
-      'corned beef sandwich. Walter Schirra had bought it at Wolfie’s in Cocoa Beach, Young had put it in a pocket ' +
-      'of his suit, and when the time came to try the flight’s freeze-dried food he handed it to Grissom, who took ' +
-      'a few bites and put it away because of the crumbs. Congress heard about it. The seats and panels are placed ' +
-      'from SEDR 300’s figures, which carry no dimensions; the instruments are stand-ins; Grissom and Young are not ' +
-      'here, because a G3C suit has not been modelled and a Mercury suit would be the wrong suit.',
+      'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi, each with a ' +
+      'window before him and a hatch over him. The seats are ejection seats on rails on the bulkhead behind, ' +
+      'canted 12° outboard and 8° forward so that two of them leave on diverging paths: Gemini has no escape ' +
+      'tower, and below 15,000 ft this was the way out. The panels are this spacecraft’s own, from McDonnell’s ' +
+      'drawing of them: before each man a ball that shows which way the ship points; before Grissom the ' +
+      'accelerometer, the Titan’s tank pressures, the counters that say how much speed is still to be added, and ' +
+      'a round blank where later ships had a clock; before Young the clock, the computer’s readout and its ' +
+      'keyboard; between them the lamps pressed as each event is called, and on the right-hand wall a switch ' +
+      'marked RE ENT ANT EXP, for this flight’s experiment. One hand controller between the men turns the ship. ' +
+      'Somewhere in here on 23 March was a corned beef sandwich. Walter Schirra had bought it at Wolfie’s in ' +
+      'Cocoa Beach, Young had put it in a pocket of his suit, and when the time came to try the flight’s ' +
+      'freeze-dried food he handed it to Grissom, who took a few bites and put it away because of the crumbs. ' +
+      'Congress heard about it. No drawing read gives the pressure vessel’s dimensions: it is laid out so that ' +
+      'the seats, the panels and a helmet fit, and a seated eye looks along the trough through its window. ' +
+      'Grissom and Young are not here, because their G3C suits have not been modelled and a Mercury suit would ' +
+      'be the wrong suit.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
-      ['Seats', 'ejection seats, canted 12° outboard and 8° forward'],
+      ['Seats', 'ejection seats, 22 in wide, canted 12° outboard and 8° forward'],
+      ['Panels', 'spacecraft 3’s own, from SEDR 300 Figure 3-5'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', '4 main batteries of 45 Ah here; 3 of 400 Ah in the adapter'],
       ['Also aboard', 'one corned beef sandwich'],
@@ -424,6 +432,13 @@ const vehicle: ModelDef = {
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
+  // Each seat's node is at a seated man's eyes (vehicles/gemini_cabin.py), which look along the trough through his
+  // window. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when the
+  // hatches were shut is not in anything read, and twenty minutes are allowed: estimated.
+  seats: [
+    { node: 'Seat_CommandPilot', label: 'the command pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
+    { node: 'Seat_Pilot', label: 'the pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
+  ],
   parts,
   position: [0, BASE, 0],
   home: 'stack',
@@ -609,6 +624,22 @@ export const flight: Flight = {
       unit: 'deg',
       confidence: 'documented',
       note: '12° outboard and 8° forward (SEDR 300, p. 3-3)',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Ejection seat, width',
+      value: 22 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '22 in wide and 54 to 55 in tall: the Smithsonian’s two Gemini ejection seats, A19710058000 ("a spare that has been installed in the Gemini 3 spacecraft") and A19690023001',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Command pilot’s panel, lower edge',
+      value: 14.5 * IN,
+      unit: 'm',
+      confidence: 'derived',
+      note: '14.5 in: SEDR 300, Figure 3-5 sheet 1 ("S/C 3"), scaled on the incremental velocity indicator’s 5.05 in and the keyboard’s 3.38 in (SEDR 300, Section VIII, pp. 8-252 and 8-164). Where the panels stand in the cabin is laid out, not drawn',
     },
     {
       group: 'Spacecraft',

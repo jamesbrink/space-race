@@ -31,8 +31,8 @@ changed from spacecraft 3; the **press kit**, NASA release 65-81.
 | Extravehicular provisions | none | spacecraft 4 carried an umbilical, a ventilation control module and a hand-held manoeuvring unit | documented for spacecraft 4 as additions; not stated of spacecraft 3 in so many words | GIV, 3.1.2.3.1 to 3.1.2.3.3 | none modelled; no hand-holds |
 | Drogue mortar | steel breech | aluminium | documented | GIV, 3.1.2.8 | said on the part |
 | Z100 separation sensor switches | fitted | removed | documented | GIV, 3.1.2.6 | no |
-| Panels | ACME logic switches on the pedestal; re-entry control shutoff switches on the pilot's panel; no G.m.t. clock on the command pilot's | moved, and a clock added | documented | GIV, 3.1.2.9.1 and 3.1.2.5 | no: the panels are stand-ins |
-| Ejection seats | as built | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | documented | GIV, 3.1.2.9.4 | the seat is the type's |
+| Panels | ACME logic switches on the pedestal; re-entry control shutoff switches on the pilot's panel; no G.m.t. clock on the command pilot's | moved, and a clock added | documented | GIV, 3.1.2.9.1 and 3.1.2.5; SEDR 300, Figure 3-5 sheets 1 and 2 "(S/C 3)" | yes: the panels are this ship's, with the blank where the clock came later, the re-entry control switches on the pilot's panel, ACME logic on the pedestal, and RE ENT ANT EXP on the right-hand wall |
+| Ejection seats | as built | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | documented | GIV, 3.1.2.9.4 | the seat is the type's: the Smithsonian's A19710058000, a spare that had been fitted in this spacecraft, is one of the two it is drawn from |
 | Suits | G3C | G4C | documented | GIV, 3.1.2.9.2 | no crew |
 | Structure | "the same production configuration" as spacecraft 1, 2 and 4 | | documented | GIV, 3.1.1 | the type's |
 | Recovery light | came on with the main parachute's jettison | a switch added | documented | SEDR 300, p. 4-26; GIV, 3.1.2.11 | no |
@@ -74,12 +74,16 @@ Shoulders of Titans*, pp. 235 and 236).
 - **Everything the type's record lists** as estimated or left out is so of this ship:
   [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md).
 - **The right side's paint** is the left's, mirrored.
-- **The panels as flown** are in the GT-3 mission report, which has not been read; the Gemini IV
-  report's Figure 3-14 is spacecraft 4's.
+- **The panels as flown** are SEDR 300's Figure 3-5 sheets 1 and 2, which are captioned for this
+  spacecraft; the GT-3 mission report, which would say what was changed before the flight, has
+  not been found.
 - **The cover on the forward face** is as photographed on 6 January; whether it flew so is not
   established.
-- **The crew are not in their seats.** The G3C suit, the helmets, and what Grissom and Young
-  carried are not modelled.
+- **The crew are not in their seats.** The two flown G3C suits are at the Smithsonian (Grissom's
+  A19680456000, Young's A19730226000) and are photographed front and back; a suit module to the
+  standard of Mercury's has not been built from them, and no other suit stands in. The seats'
+  eye points are a seated man's of average build, since neither man's measures are in a primary
+  source.
 - **The flown ship** is at the Grissom Memorial at Mitchell, Indiana, and has not been compared.
 
 ## Sources
