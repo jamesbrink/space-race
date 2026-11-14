@@ -187,7 +187,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | Node | Contains | Moves |
 | --- | --- | --- |
 | `DescentModule`, `EntryHatch`, `ParachuteHatch`, `Cabin`, `RetainingStraps`, `CableMast`, `InstrumentModule`, `Antennas`, `GasBottles`, `RetroEngine` | the Vostok's ([vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md)), with hatches Nos. 2 and 3 at their own latitudes, less the housing on the pole and its three rods, the seat's rails, the cases laid out round the seat, the left-hand panel and the hand controller; in `Cabin`, the board where the 1961 fit has it and `ParachuteContainer`, this ship's own drum, a node with its origin in the middle of its mouth | as the Vostok's |
-| `ReserveEngine` | collar and gussets, case, bands and bolts, the hatch, duct, boss and stubs | |
+| `ReserveEngine` | collar and gussets, case, bands and bolts, the hatch, duct and stubs; and `ReserveEngine_Nozzle`, a node with the boss in the middle of the face under it (`Reserve_Nozzle`): its origin on the axis in the plane of the boss's face, 1,346 mm above the pole, its own +Z (the file's +Y) the way the engine pushes, toward the sphere, so the gas leaves along its −Z, forward, as `RetroEngine_Nozzle`'s leaves aft: what a flight hangs the reserve engine's fire on. Forward: derived (D-KV's two bodies with their mouths toward the nose); on the axis: estimated | |
 | `CouchLeft`, `CouchCentre`, `CouchRight` (3KV); `CouchLeft`, `CouchRight` (3KD) | each: `_Liner` (the pads), `_Pan` (the trough, its box and stampings), `_Frame` (rivets, the calf rest's rails and stays, the struts' rods), `_Struts`, `_Cradle` (the red beams), `_Belt`, `_Plate`; and the man the flight puts in it (`Crew_<place>_...`) with `Seat_<place>`, an empty at his eyes ("The couches as seats", below), built at detail 0.75 and above. On the 3KD `CouchLeft` is Leonov's, the middle one of the 3KV's three | |
 | `Airlock` (3KD) | `Airlock_Body` (the lower ring, four bottles, their cradles and pipes); `Airlock_Tube_1` to `_9` (the soft tube's bands: cover, bladder, hoop); `Airlock_Head` (the ribbed ring, the rail, the camera) and under it `Airlock_OuterHatch`, hinged at its rim. Each a node with its origin where the airlock is made fast to the hull | built folded: a flight slides each band out 225 mm further than the one below and the head 1,800 mm, swings the outer hatch inward, and later slides the whole away along its line |
 | `AirlockRing` (3KD) | the ring it stood on | stays |
@@ -200,7 +200,8 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
 - **The reserve engine is an outline.** How its gas left it is in nothing read. D-KV draws two
   nozzle-like bodies lying forward along it, canted out from the axis with their mouths toward the
   nose, and no text read explains them; none of the photographs shows them. They are not built, and
-  the face carries the six stubs the test article's photograph shows.
+  the face carries the six stubs the test article's photograph shows. The engine's nozzle is a node
+  on the axis at the face (`ReserveEngine_Nozzle`), where two such nozzles would act together.
 - **The cabin is fitted, not drawn** ("The fit", above, which lists what contradicts it: the middle couch's
   displacement, the container's depth, the couches' height).
 - **The couches are designed to the photographs, not surveyed**: no dimension of an Elbrus couch was found. The

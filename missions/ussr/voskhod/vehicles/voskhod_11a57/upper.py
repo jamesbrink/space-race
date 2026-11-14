@@ -194,8 +194,10 @@ def build_block_i(X: Matrix, M: dict) -> None:
         c, sn = math.cos(a), math.sin(a)
         turn = Matrix.Rotation(a, 4, "Z")
         m = at(STEER_R * c, STEER_R * sn, S(E_EXIT + 250))
-        steel.lathe(STEER_BELL, 16, m)
-        steel.lathe([(66, 0), (60, 60), (42, 170), (0, 170)], 16, m, flip=True)
+        # (its bell with the main chambers' and its liner with theirs, as the RD-107's and RD-108's are: a flight's fire is
+        # hung on `RD0108_Bells`, whose chambers, main and steering, the viewer finds in its geometry: viewer/fires.ts)
+        bell.lathe(STEER_BELL, 16, m)
+        liner.lathe([(66, 0), (60, 60), (42, 170), (0, 170)], 16, m, flip=True)
         steel.tube(((STEER_R - 90) * c, (STEER_R - 90) * sn, S(E_EXIT + 560)), ((STEER_R + 90) * c, (STEER_R + 90) * sn, S(E_EXIT + 560)), 16, 8)
         for k in (-1, 1):
             steel.box((18, 50, 130), at((STEER_R + k * 78) * c, (STEER_R + k * 78) * sn, S(E_EXIT + 600)) @ turn)
