@@ -180,7 +180,7 @@ const parts: Part[] = [
     detail:
       'Nickel-alloy shingles 0.016 in thick, oxidised blue-black, each stiffened by beads pressed across it and held ' +
       'through oversized holes so that it can grow when hot. Grissom named the capsule for its shape, and had the ' +
-      'Liberty Bell’s crack painted on it in white from the base toward the nose; the name is under the window in ' +
+      'Liberty Bell’s crack painted on it in white from the base nearly to the nose; the name is under the window in ' +
       'three lines. UNITED STATES stands beside the periscope’s door and the flag on its other side. The shingles ' +
       'are laid out as this capsule’s photographs show them, on the pad and as it was raised from the sea in 1999, ' +
       'with their beads running round the cone. The periscope’s door is shut here as it was at liftoff: the ' +
@@ -1089,10 +1089,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
-      value: 35.8 * IN,
+      value: 31.5 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: '35.8 in: scaled off NASA 61-MR4-53 and MSFC-6116423 by the pane’s own length',
+      note: '31.5 in, give or take 1.5: no document read gives the window’s station. Measured on photographs of No. 20 (NASA S63-07701) and of No. 13 as it is kept (NASM A19670176000) between the cone’s two ends, and carried to this capsule through the hatch’s opening beside it (Liberty Bell 7 at Bonn, 2014). Its own close photographs (61-MR4-53, MSFC-6116423), their cameras solved for together, agree: they put the glass’s foot 21.3 in above the lower edge of the ring at the cone’s foot. Until November 2026 the model had 35.8',
     },
     {
       group: 'Spacecraft',

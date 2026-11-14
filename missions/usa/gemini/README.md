@@ -59,7 +59,7 @@ The first column, and the power, thrusters, umbilical and suit of the second, ar
 | | In this repo |
 | --- | --- |
 | Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](sites/lc-19.ts) |
-| The G3C suit | not modelled: the ship's seats are empty |
+| The G3C suit | not modelled: the ship's seats are empty. The two suits flown on Gemini-Titan 3 are at the Smithsonian (A19680456000, A19730226000) |
 
 ## Sources
 

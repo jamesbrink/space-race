@@ -37,13 +37,17 @@ const parts: Part[] = [
     summary: 'A glass-fibre cap over the ship’s forward face, thrown off on the way up.',
     detail:
       'The forward section ends in a flat face full of fittings, and going up through the air it wants a cover. This ' +
-      'one is laminated glass fibre, 5.31 in deep, and it is the tip of the whole vehicle. It was to go 3 minutes 15 ' +
-      'seconds after liftoff, with the second stage burning and the air behind: an ejector pushes it off and it ' +
-      'falls away. The cover over the horizon scanners goes at the same moment.',
+      'one is laminated glass fibre, 5.31 in deep, and it is the tip of the whole vehicle. The press kit had it going ' +
+      '3 minutes 15 seconds after liftoff, with the second stage burning. It did not. On this ship and the next the ' +
+      'command pilot pressed the switch only after the second stage had cut off, and here the ship was already ' +
+      'free of the Titan and in orbit: the ground reminded Grissom at 6 minutes 15 seconds, and at 6 minutes 21 ' +
+      'he called "There went all fairings". An ejector pushes it off and it drifts clear. The cover over the ' +
+      'horizon scanners goes on the same switch.',
     facts: [
       ['Depth', '5.31 in (0.13 m): Z233.97 to Z239.28'],
       ['Material', 'glass fibre reinforced plastic laminate'],
-      ['Thrown off', 'planned for 3 min 15 s after liftoff'],
+      ['Thrown off', 'in orbit, between 6 min 15 s and 6 min 21 s after liftoff'],
+      ['The plan', '3 min 15 s in the press kit; after second stage cutoff in McDonnell’s manual'],
     ],
     explode: [0, 9.4, 0],
     order: 5,
@@ -76,19 +80,23 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Re-entry control system section',
-    summary: 'Sixteen small thrusters in two rings: what steers the ship once the adapter has gone.',
+    summary: 'Sixteen small thrusters in four clusters, none of them pointing straight out.',
     detail:
       'Eighteen inches of cylinder between the cabin and the forward section. Everything that steers the ship in ' +
       'orbit is in the adapter, and the adapter is thrown away before the ship comes home; from then to the ' +
-      'parachute it is steered by this. There are two rings of eight thrust chambers, each ring with its own fuel, ' +
-      'oxidiser and pressurant, so that either alone is enough. Gemini’s heat shield is set off-centre on purpose: ' +
-      'the ship flies a little nose-up and makes lift, and by rolling with these thrusters the crew can point that ' +
-      'lift and steer toward the ship that is waiting. On this flight the lift turned out much smaller than the ' +
-      'wind tunnels had said.',
+      'parachute it is steered by this. There are two rings of eight thrust chambers of 25 lbf, each ring with its ' +
+      'own fuel, oxidiser and nitrogen, so that either alone is enough. They stand in four clusters on the ' +
+      'diagonals, and each fires along one of the ship’s own axes, up, down, left or right, rather than out ' +
+      'along a radius: so the ports are ovals, and the bells are cut off flush with the skin. Gemini’s heat ' +
+      'shield is set off-centre on purpose: the ship flies a little nose-up and makes lift, and by rolling with ' +
+      'these thrusters the crew can point that lift and steer toward the ship that is waiting. On this flight the ' +
+      'lift turned out much smaller than the wind tunnels had said. Which chamber fires which way is McDonnell’s ' +
+      'drawing; where the clusters stand is read off a photograph of this ship on the morning it flew.',
     facts: [
       ['Length', '18.00 in (0.46 m)'],
       ['Diameter', '38.66 in (0.98 m)'],
-      ['Thrust chambers', '16, in two rings of 8'],
+      ['Thrust chambers', '16 × 25 lbf, in two rings of 8'],
+      ['Clusters', '4, at 34° and 55° from the top and the bottom'],
       ['Skin', '8 beryllium shingles'],
     ],
     explode: [0, 7.2, 0],
@@ -98,19 +106,26 @@ const parts: Part[] = [
     node: 'Hatches',
     group: 'Spacecraft',
     name: 'Hatches',
-    summary: 'Two doors, one over each man, hinged outboard. No hand-holds outside: nobody was going out.',
+    summary: 'Two doors, one over each man, each with a window set like a windscreen at its forward end.',
     detail:
-      'Each man has a hatch over him, hinged along its outboard edge and latched by hand, with a window in it: an ' +
-      'outer pane and two inner ones, all of 96 per cent silica glass, the right-hand window’s optically ' +
-      'ground. In an emergency on the pad or low in the air the hatches are blown open and the seats fired ' +
-      'out through them. On this flight they carried the experiments: a canister of sea urchin eggs on the inside ' +
-      'of the left one, a box of human blood and a radioactive source on the right. They stayed shut in orbit; the ' +
-      'first man out of one was Edward White, ten weeks later. After the landing Grissom, who had lost a ship to a ' +
-      'blown hatch four years before, would not open his until swimmers had a collar round the spacecraft. Where ' +
-      'the hatches lie on the cone and the size of the windows are read off photographs of this ship.',
+      'Each man has a hatch over him, hinged along its outboard edge and held down by twelve latches, skinned in the ' +
+      'same beaded shingles as the cabin. The window is at its forward end and is not in the skin: the outer pane ' +
+      'stands at about 35° to the hatch, its aft edge at the surface and its forward edge sunk five inches, so that ' +
+      'it faces forward; and ahead of it a trough is cut into the cone, running out toward the neck, for the pilot to ' +
+      'look along. There are three panes of 96 per cent silica glass, one in a gold-coloured outer frame and two in ' +
+      'a frame bolted on inside; the right-hand window’s are optically ground. In an emergency on the pad or ' +
+      'low in the air the hatches are blown open and the seats fired out through them. On this flight they ' +
+      'carried the experiments: a canister of sea urchin eggs on the inside of the left one, a box of human blood ' +
+      'and a radioactive source on the right. They stayed shut in orbit; the first man out of one was Edward ' +
+      'White, ten weeks later. After the landing Grissom, who had lost a ship to a blown hatch four years before, ' +
+      'would not open his until swimmers had a collar round the spacecraft. The pane’s angle is McDonnell’s ' +
+      'drawing; where the windows and the hatches’ edges lie is read off photographs of this ship, to about ' +
+      'two inches.',
     facts: [
       ['Number', '2, hinged on the outboard side'],
-      ['Windows', 'an outer pane and two inner, Vycor'],
+      ['Latches', '12 to a hatch'],
+      ['Windows', 'an outer pane and two inner, Vycor, at 35° to the hatch'],
+      ['Window opening', 'about 14.8 in across and 8.5 in fore and aft'],
       ['On the left hatch', 'the sea urchin egg experiment'],
       ['On the right hatch', 'the blood irradiation experiment'],
       ['Opened in flight', 'no'],
@@ -122,17 +137,20 @@ const parts: Part[] = [
     node: 'ScannerFairing',
     group: 'Spacecraft',
     name: 'Horizon scanner fairing',
-    summary: 'A cover over the infrared eyes that find the horizon. It goes with the nose fairing.',
+    summary: 'A bronze-coloured cover over the infrared eyes that find the horizon. It goes once the ship is in orbit.',
     detail:
-      'On the cabin’s left side, just behind the neck, two infrared scanners look out for the edge of the Earth and ' +
-      'tell the ship which way is down. They would not survive the climb through the air uncovered, so a fairing ' +
-      'sits over them and is thrown off with the nose fairing. The scanners themselves are thrown off too, much ' +
-      'later, when the adapter goes: both this crew and the next saw something drift past the window just after ' +
-      'retrofire, and it was decided that it had been the scanner head. That there is a fairing here is SEDR 300’s; ' +
-      'its shape and exact place are estimated.',
+      'On the ship’s left side at the neck, two infrared scanners look out for the edge of the Earth and tell the ' +
+      'ship which way is down. They would not survive the climb through the air uncovered, so a fairing sits over ' +
+      'them and is thrown off with the nose fairing. The scanners themselves are thrown off too, much later, when ' +
+      'the adapter goes: both this crew and the next saw something drift past the window just after retrofire, ' +
+      'and it was decided that it had been the scanner head. In the colour photograph taken on the morning of the ' +
+      'launch a long flat-faced box the colour of bronze, riveted along its edges, lies here from the cabin’s ' +
+      'forward end up over the re-entry control section; that is taken to be this fairing, and its size and place ' +
+      'are read off that photograph.',
     facts: [
       ['Covers', 'the horizon scanners, on the left side'],
-      ['Thrown off', 'with the nose fairing'],
+      ['Lies', 'from Z166.5 to Z190.5, about two feet'],
+      ['Thrown off', 'with the nose fairing, after the second stage’s cutoff'],
     ],
     explode: along(LEFT_AZ, 4.2, 1.5),
     order: 8,
@@ -144,19 +162,23 @@ const parts: Part[] = [
     summary: 'Beaded shingles of René 41 over a titanium frame; UNITED STATES and the flag on each side.',
     detail:
       'A cone 70.53 in long at 20° to its axis, 90 in across the heat shield and 38.66 in across the neck. The skin ' +
-      'is shingles of René 41, a nickel alloy, pressed into rows of short beads that stiffen them and let them ' +
-      'grow when hot, and black outside so that they radiate. They are not the pressure vessel: that is a welded ' +
-      'titanium box inside, and the room between its flat sides and the cone is equipment bays, reached through ' +
-      'doors under the shingles. Behind the right-hand landing gear door (there is no landing gear: the door is ' +
-      'left from the plan to land Gemini on skids under a paraglider) was this flight’s third experiment, 85 lb of ' +
-      'water and plumbing that sprayed into the glowing air round the ship on the way down, to see whether radio ' +
-      'could be got through it. It could. There is no name on the ship. Grissom called it Molly Brown, after the ' +
-      'musical about a woman who would not sink, his last spacecraft having sunk; NASA did not care for it, ' +
-      'accepted it when told the alternative was Titanic, and gave no later Gemini a name.',
+      'is shingles of René 41, a nickel alloy, pressed into short beads that lie round the cone one after another, ' +
+      'in cells between rows of fasteners: they stiffen the sheet and let it grow when hot, and it is black outside ' +
+      'so that it radiates. The shingles are not the pressure vessel: that is a welded titanium box inside, and the ' +
+      'room between its flat sides and the cone is equipment bays, reached through doors that are themselves ' +
+      'shingles. Along the top, between the hatches, runs a white cover over the parachute’s cables, and ahead of ' +
+      'each window a trough is cut into the cone. On the right-hand landing gear door (there is no landing gear: ' +
+      'the door is left from the plan to land Gemini on skids under a paraglider) is a plate with three nozzles: ' +
+      'this flight’s third experiment, 85 lb of water and plumbing that sprayed into the glowing air round the ' +
+      'ship on the way down, to see whether radio could be got through it. It could. There is no name on the ' +
+      'ship. Grissom called it Molly Brown, after the musical about a woman who would not sink, his last ' +
+      'spacecraft having sunk; NASA did not care for it, accepted it when told the alternative was Titanic, and ' +
+      'gave no later Gemini a name.',
     facts: [
       ['Length', '70.53 in (1.79 m)'],
       ['Half-angle', '20°'],
       ['Skin', 'beaded René 41 shingles, black'],
+      ['Beads', 'round the cone, about 1.15 in apart'],
       ['Paint', 'UNITED STATES and the flag, each side'],
       ['Name', 'none painted: "Molly Brown" by radio only'],
     ],
@@ -168,20 +190,28 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Crew station',
-    summary: 'Two ejection seats side by side. The seats are empty: the crew is not modelled yet.',
+    summary: 'Two ejection seats side by side before the panels this ship flew with. The seats are empty.',
     detail:
-      'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi. The seats are ' +
-      'ejection seats, canted 12° outboard and 8° forward so that two of them leave on diverging paths: Gemini has ' +
-      'no escape tower, and below 15,000 ft this was the way out. One hand controller between the men turns the ' +
-      'ship; the handles that move it bodily are at their outboard hands. Somewhere in here on 23 March was a ' +
-      'corned beef sandwich. Walter Schirra had bought it at Wolfie’s in Cocoa Beach, Young had put it in a pocket ' +
-      'of his suit, and when the time came to try the flight’s freeze-dried food he handed it to Grissom, who took ' +
-      'a few bites and put it away because of the crumbs. Congress heard about it. The seats and panels are placed ' +
-      'from SEDR 300’s figures, which carry no dimensions; the instruments are stand-ins; Grissom and Young are not ' +
-      'here, because a G3C suit has not been modelled and a Mercury suit would be the wrong suit.',
+      'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi, each with a ' +
+      'window before him and a hatch over him. The seats are ejection seats on rails on the bulkhead behind, ' +
+      'canted 12° outboard and 8° forward so that two of them leave on diverging paths: Gemini has no escape ' +
+      'tower, and below 15,000 ft this was the way out. The panels are this spacecraft’s own, from McDonnell’s ' +
+      'drawing of them: before each man a ball that shows which way the ship points; before Grissom the ' +
+      'accelerometer, the Titan’s tank pressures, the counters that say how much speed is still to be added, and ' +
+      'a round blank where later ships had a clock; before Young the clock, the computer’s readout and its ' +
+      'keyboard; between them the lamps pressed as each event is called, and on the right-hand wall a switch ' +
+      'marked RE ENT ANT EXP, for this flight’s experiment. One hand controller between the men turns the ship. ' +
+      'Somewhere in here on 23 March was a corned beef sandwich. Walter Schirra had bought it at Wolfie’s in ' +
+      'Cocoa Beach, Young had put it in a pocket of his suit, and when the time came to try the flight’s ' +
+      'freeze-dried food he handed it to Grissom, who took a few bites and put it away because of the crumbs. ' +
+      'Congress heard about it. No drawing read gives the pressure vessel’s dimensions: it is laid out so that ' +
+      'the seats, the panels and a helmet fit, and a seated eye looks along the trough through its window. ' +
+      'Grissom and Young are not here, because their G3C suits have not been modelled and a Mercury suit would ' +
+      'be the wrong suit.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
-      ['Seats', 'ejection seats, canted 12° outboard and 8° forward'],
+      ['Seats', 'ejection seats, 22 in wide, canted 12° outboard and 8° forward'],
+      ['Panels', 'spacecraft 3’s own, from SEDR 300 Figure 3-5'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', '4 main batteries of 45 Ah here; 3 of 400 Ah in the adapter'],
       ['Also aboard', 'one corned beef sandwich'],
@@ -216,13 +246,13 @@ const parts: Part[] = [
     name: 'Adapter: retrograde section',
     summary: 'Four solid rockets to come home on, and thrusters that on this ship were dummies.',
     detail:
-      'The upper third of the white adapter. Inside, on a cross of aluminium beams, are four solid rockets in ' +
+      'The upper two fifths of the white adapter, from station Z68.44. Inside, on a cross of aluminium I-beams, are four solid rockets in ' +
       'titanium balls about 13 in across, each of about 2,500 lbf for five and a half seconds, fired one after ' +
       'another. At 4 hours 33 minutes 23 seconds they slowed Gemini 3 out of orbit; then the section itself was ' +
       'cut loose, and the heat shield was bare for the first time. In its skin are six thrusters of the ' +
-      'manoeuvring system: two that fire forward, and four that push the ship sideways, up and down. On this ship ' +
-      'those four were dummies, so it could go only forward and back; to shift its orbit sideways Grissom turned ' +
-      'the whole ship square to its path.',
+      'manoeuvring system: two that fire forward, and four that push the ship sideways, up and down. McDonnell’s ' +
+      'manual has a note on its drawing of them: chambers 13, 14, 15 and 16 inoperative on spacecraft 3. So it ' +
+      'could go only forward and back; to shift its orbit sideways Grissom turned the whole ship square to its path.',
     facts: [
       ['Retrograde rockets', '4 × about 2,500 lbf, 5.5 s each'],
       ['Fired', '4 h 33 min 23 s after liftoff'],
@@ -240,20 +270,22 @@ const parts: Part[] = [
     name: 'Adapter: equipment section',
     summary: 'Propellant, oxygen, batteries and a radiator: everything wanted only in orbit.',
     detail:
-      'The lower two thirds of the adapter, 10 ft across at the foot, where it is bolted to the Titan with twenty ' +
+      'The lower three fifths of the adapter, 10 ft across at the foot, where it is bolted to the Titan with twenty ' +
       'bolts. It holds what a ship needs in orbit and not afterwards: the propellant for the manoeuvring thrusters, ' +
       'the oxygen the crew breathe, the coolant pumps, and the power, which on this ship was three silver-zinc ' +
       'batteries, the fuel cells not being ready. The skin is itself the radiator: coolant runs through hollow ' +
       'stringers on its inner face and the white paint gives the heat to space. Ten thrusters are let into it: ' +
-      'eight small ones that turn the ship, and two at the foot that push it forward. With those two Grissom ' +
+      'eight small ones in four clusters that turn the ship, each firing along one of its axes and not straight ' +
+      'out, and two at the foot that push it forward. With those two Grissom ' +
       'finished the climb to orbit, and with their opposite numbers he changed the orbit an hour and a half later: ' +
-      'the first time a crew had done so. The whole section is cut off just before retrofire. The equipment inside ' +
-      'is placed by guess.',
+      'the first time a crew had done so. The whole section is cut off just before retrofire. The three tanks of ' +
+      'the manoeuvring system are McDonnell’s sizes, 21 in and 16 in across; the rest of what is inside is placed ' +
+      'by guess.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Attitude thrusters', '8 × 25 lbf'],
       ['Aft-firing thrusters', '2 × 100 lbf'],
-      ['Propellant', 'about 300 lb'],
+      ['Propellant', 'about 300 lb, in two 21 in tanks'],
       ['Batteries', '3 silver-zinc, 400 Ah each'],
       ['Cut away', 'just before retrofire'],
     ],
@@ -294,11 +326,12 @@ const parts: Part[] = [
     detail:
       'An Aerojet YLR91-AJ-7, hung on a gimbal under the fuel tank and, until staging, inside the top of the first ' +
       'stage. Its propellants ignite on meeting, so it has no igniter and can be started at altitude without ' +
-      'ceremony. The upper third of its bell is tubes cooled by the fuel; below that it is an ablative skirt. One ' +
+      'ceremony. Its bell is tubes cooled by the fuel as far as half its width, and below that an ablative skirt. One ' +
       'engine cannot roll the stage, so the gas that has driven its pumps is let out through a small swivelling ' +
       'nozzle, and that is the roll control. It burned for about three minutes, and Young, who had not been in ' +
-      'space before, was taken with the horizon. The engine’s place is documented; its bell is sized from published ' +
-      'ratios, and its form is representative.',
+      'space before, was taken with the horizon. The engine’s place is documented, and so are the two expansion ' +
+      'ratios, 13 and 49.2, that put the joint in its bell where it is; the bell’s size is computed from them, and ' +
+      'the rest of its form is representative.',
     facts: [
       ['Thrust', 'about 100,000 lbf at altitude (445 kN)'],
       ['Engine', 'Aerojet YLR91-AJ-7'],
@@ -404,6 +437,13 @@ const vehicle: ModelDef = {
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
+  // Each seat's node is at a seated man's eyes (vehicles/gemini_cabin.py), which look along the trough through his
+  // window. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when the
+  // hatches were shut is not in anything read, and twenty minutes are allowed: estimated.
+  seats: [
+    { node: 'Seat_CommandPilot', label: 'the command pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
+    { node: 'Seat_Pilot', label: 'the pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
+  ],
   parts,
   position: [0, BASE, 0],
   home: 'stack',
@@ -432,8 +472,9 @@ export const flight: Flight = {
   callsign: 'Molly Brown',
   spacecraft: 'Gemini spacecraft No. 3 (McDonnell Aircraft)',
   launchVehicle: 'Gemini Launch Vehicle 3, a Titan II (Martin)',
-  // 9:24:00 a.m. e.s.t. (NASA SP-4002, Appendix 1, Table A): 14:24:00 UTC. The fraction of the second is in the mission report, not read
-  launch: '1965-03-23T14:24:00Z',
+  // 9:24:00.064 a.m. e.s.t. (On the Shoulders of Titans, NASA SP-4203, Appendix B, p. 524): 14:24:00.064 UTC. The programme's
+  // table has it to the second (NASA SP-4002, Appendix 1, Table A)
+  launch: '1965-03-23T14:24:00.064Z',
   launchSite: LC19.name,
   site: LC19,
   crew: ['Virgil I. Grissom', 'John W. Young'],
@@ -442,7 +483,7 @@ export const flight: Flight = {
     'Earth in 4 hours 52 minutes 31 seconds, three burns of its own thrusters, and a landing well short of the ' +
     'ship waiting for it, because Gemini made less lift coming down than the wind tunnels had promised.',
   facts: [
-    { label: 'Liftoff', value: '23 March 1965, 14:24:00 UTC' },
+    { label: 'Liftoff', value: '23 March 1965, 14:24:00.064 UTC' },
     { label: 'Command pilot', value: 'Virgil I. Grissom' },
     { label: 'Pilot', value: 'John W. Young' },
     { label: 'Duration', value: '4 h 52 min 31 s' },
@@ -453,20 +494,62 @@ export const flight: Flight = {
     { label: 'Landing', value: '22°26′ N 70°51′ W, 60 nautical miles short' },
     { label: 'Recovery', value: 'USS Intrepid' },
   ],
-  // The programme's table (NASA SP-4002, Appendix 1, Table A) for the three times given to the second; the press kit's
-  // plan for the ascent, marked as planned; On the Shoulders of Titans (pp. 233 to 237) for the rest, which it gives
-  // in round figures. The mission report (MSC-G-R-65-2), which has every event to the tenth, has not been read.
+  // The flight as flown; README.md, "Timeline", gives each time its source and confidence. Second stage cutoff (334 s),
+  // separation (359 s) and retrofire (16,403 s) are the guidance reconstruction's (supplemental report 4 to the mission
+  // report, section 3.2 and PDF p. 79); insertion is the Midprogram Conference's (NASA SP-121, Table 4-IV, p. 33); the
+  // last burn's start and the landing are the programme's table (NASA SP-4002, Appendix 1, Table A). The rest are the
+  // times against the calls in the composite voice transcript (GT-3 Communications Transcript, NASA MSC, April 1965),
+  // to the second and a moment after the event. Staging alone is derived: the press kit's planned 2 min 36 s (release
+  // 65-81, p. 11) less the 1.70 s by which the first stage cut off early (Gemini Program Launch Systems Final Report,
+  // Table II.D-14, p. II.D-55), which takes the press kit's time to be the nominal one that table measures from. For
+  // the second stage's cutoff it is: the press kit's 5 min 38 s is 338 s, and SP-121's nominal insertion less its 20 s is
+  // 338.4 s. The mission report itself (MSC-G-R-65-2), which has every event to the tenth, has not been found.
   timeline: [
-    { t: 0, event: 'Liftoff, 09:24:00 EST' },
-    { t: 156, event: 'Staging: the second stage’s engine starts and the first stage is cut loose (planned time)' },
-    { t: 195, event: 'Nose fairing and scanner cover thrown off (planned time)' },
-    { t: 338, event: 'Second stage cutoff (planned time)' },
-    { t: 358, event: 'The spacecraft cuts itself free and thrusts into orbit (planned time)' },
-    { t: 1200, event: 'The oxygen pressure reading drops: an instrument power supply has failed, and Young finds it in 45 s (about)' },
-    { t: 5400, event: 'First burn: the forward thrusters for 75 s, 15 m/s off the speed, the orbit nearly round (about)' },
-    { t: 8100, event: 'Second burn: the ship turned square to its path, and the orbit’s plane shifted by a fiftieth of a degree (about)' },
-    { t: 15683, event: 'Third burn: two and a half minutes of the aft thrusters, perigee down to 72 km' },
+    { t: 0, event: 'Liftoff, 09:24:00.064 EST' },
+    { t: 12, event: 'The roll programme, as Grissom calls it; complete at 0:22, and the pitch programme begins at 0:25' },
+    {
+      t: 154,
+      event:
+        'Staging: the second stage’s engine starts and the first stage is cut loose (about: the planned 2 min 36 s less ' +
+        'the 1.70 s by which the first stage cut off early; Grissom called it at 2:35)',
+    },
+    { t: 334, event: 'Second stage cutoff, 4.68 s earlier than planned' },
+    { t: 353.8, event: 'Insertion as the tables reckon it, 20 s after cutoff: 25,682 ft/s, 15 ft/s short of the plan' },
+    { t: 359, event: 'The spacecraft cuts itself free and Grissom thrusts on with the aft thrusters; "We are separated" at 6:10' },
+    {
+      t: 381,
+      event:
+        'Nose fairing and scanner cover thrown off, after the second stage’s cutoff and not at the press kit’s 3:15: ' +
+        '"There went all fairings" (between 6:15 and 6:21)',
+    },
+    {
+      t: 1415,
+      event:
+        'The oxygen pressure reading drops; 39 s later Young has the cause, "Lost a primary converter", and the ' +
+        'instruments go over to the secondary supply',
+    },
+    {
+      t: 5580,
+      event:
+        'First burn: the forward-firing thrusters for 74 s, about 49 ft/s (15 m/s) off the speed by the velocity ' +
+        'indicator; the orbit nearly round, 85.6 by 92.6 nautical miles as the ground called it',
+    },
+    {
+      t: 8220,
+      event:
+        'Second burn (about): the ship yawed square to its path, 10 ft/s from the forward-firing thrusters and a ' +
+        'second of the aft ones; the orbit’s plane shifted by a fiftieth of a degree',
+    },
+    {
+      t: 15683,
+      event:
+        'Third burn: the aft thrusters for about 1 min 50 s, 97 ft/s on the velocity indicator burned to nothing; the ' +
+        'perigee down to 45 nautical miles (83 km) in vacuum',
+    },
     { t: 16403, event: 'Retrofire: four rockets, one after another' },
+    { t: 16455, event: 'The retrograde section is cut away, as called' },
+    { t: 17208, event: 'Drogue parachute: "There goes the drogue"' },
+    { t: 17327, event: 'On the main parachute; the swing to the landing attitude throws both men at their windows' },
     { t: 17551, event: 'Landing, 22°26′ N 70°51′ W' },
   ],
   specs: [
@@ -544,11 +627,27 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
-      label: 'Window, middle above the heat shield’s rim',
-      value: (149.15 - 103.44) * IN,
+      label: 'Window, aft edge above the heat shield’s rim',
+      value: (141.3 - 103.44) * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: 'Z149.15 is a station of Figure 2-4 that the figure does not name; it is taken as the windows’ because it falls on them in the photograph of this ship (NASA S65-13395). The opening’s size, 13 in by 10 in narrowing to 6.5 in, is read off the same photograph',
+      note: 'Z141.3, where the outer pane meets the skin, 41° round from the top; the opening about 14.8 in across and 8.5 in fore and aft. Read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a camera fitted to the photograph: good to about two inches. SEDR 300’s Figure 2-10 marks Z136.50 at the pane’s sunk end, which the photographs do not bear out',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Window pane to the hatch’s skin',
+      value: 35,
+      unit: 'deg',
+      confidence: 'estimated',
+      note: 'the outer pane stands at about 35° to the hatch, its forward edge sunk: SEDR 300, Figure 2-10, as drawn (38° measured on the page); the figure gives no angle',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Hatch, forward edge above the heat shield’s rim',
+      value: (151.62 - 103.44) * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Z151.62 is a station of Project Gemini: A Technical Summary (NASA CR-1106), Figure 1, drawn at the hatch’s forward edge; that it is that edge is read off the drawing',
     },
     {
       group: 'Spacecraft',
@@ -576,11 +675,27 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
+      label: 'Ejection seat, width',
+      value: 22 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '22 in wide and 54 to 55 in tall: the Smithsonian’s two Gemini ejection seats, A19710058000 ("a spare that has been installed in the Gemini 3 spacecraft") and A19690023001',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Command pilot’s panel, lower edge',
+      value: 14.5 * IN,
+      unit: 'm',
+      confidence: 'derived',
+      note: '14.5 in: SEDR 300, Figure 3-5 sheet 1 ("S/C 3"), scaled on the incremental velocity indicator’s 5.05 in and the keyboard’s 3.38 in (SEDR 300, Section VIII, pp. 8-252 and 8-164). Where the panels stand in the cabin is laid out, not drawn',
+    },
+    {
+      group: 'Spacecraft',
       label: 'Perigee at insertion',
       value: 87.0 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `87.0 nautical miles (${CHRONOLOGY})`,
+      note: `87.0 nautical miles, against 87.1 planned (Gemini Midprogram Conference, NASA SP-121, Table 4-III, p. 33; ${CHRONOLOGY})`,
     },
     {
       group: 'Spacecraft',
@@ -588,17 +703,41 @@ export const flight: Flight = {
       value: 121.0 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `121.0 nautical miles (the same table). ${TITANS}, p. 235, prints "122 by 175 kilometers" for this orbit, which agrees with neither`,
+      note: `121.0 nautical miles, against 130.1 planned (the same two tables). ${TITANS}, Appendix B, p. 524, has the same 224 km (121 n.m.) as the highest apogee; its narrative, p. 235, prints "122 by 175 kilometers" for this orbit, which agrees with nothing else read and is not followed. The first figure passed up to the crew, at 7 min 23 s, was "87 by 125"`,
     },
-    { group: 'Spacecraft', label: 'Period', value: 88.3 * 60, unit: 's', confidence: 'documented', note: '88.3 min (the same table)' },
+    { group: 'Spacecraft', label: 'Period', value: 88.3 * 60, unit: 's', confidence: 'documented', note: `88.3 min (${CHRONOLOGY})` },
     { group: 'Spacecraft', label: 'Inclination', value: 32.6, unit: 'deg', confidence: 'documented', note: '32.6° (the same table)' },
+    {
+      group: 'Spacecraft',
+      label: 'Speed at insertion',
+      value: 25682 * 12 * IN,
+      unit: 'm/s',
+      confidence: 'documented',
+      note: '25,682 ft/s at 353.8 s from liftoff, the flight path 0.01° above level; planned, 25,697 ft/s at 358.4 s (NASA SP-121, Table 4-IV, p. 33). Insertion in that table is 20 s after the second stage’s cutoff',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Perigee after the third burn',
+      value: 45 * NMI,
+      unit: 'm',
+      confidence: 'documented',
+      note: `a vacuum perigee of 45 nautical miles (83 km), from a burn finished 12 minutes before retrofire (Gemini Summary Conference, NASA SP-138, p. 163); the press kit planned "a perigee of 52 miles", statute as its other miles are, which is the same height (p. 10). ${TITANS}, p. 235, has 72 kilometers, which is 45 statute miles, and is not followed`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Retrofire, from liftoff',
+      value: 16403,
+      unit: 's',
+      confidence: 'documented',
+      note: `16,403 s, which is 4:33:23 (Inertial Guidance System Evaluation, Trajectory Reconstruction: supplemental report 4 to the mission report, PDF p. 79; ${CHRONOLOGY}); the count to it in the voice transcript ends at 4:33:23; planned for 4:33:30 (the press kit, p. 10)`,
+    },
     {
       group: 'Spacecraft',
       label: 'Duration, liftoff to landing',
       value: 4 * 3600 + 52 * 60 + 31,
       unit: 's',
       confidence: 'documented',
-      note: '4:52:31; retrofire at 4:33:23 and the burn before it at 4:21:23 (the same table)',
+      note: `4:52:31, and the burn before retrofire begun at 4:21:23 (${CHRONOLOGY}); the voice transcript has the same two to the second`,
     },
     {
       group: 'Spacecraft',
@@ -606,7 +745,7 @@ export const flight: Flight = {
       value: 60 * NMI,
       unit: 'm',
       confidence: 'documented',
-      note: `60 nautical miles (the same table; and the text, p. 189); ${TITANS}, p. 236, has "about 84 kilometers", which is 45`,
+      note: `60 nautical miles, with a navigation error of 0.8 (NASA SP-138, Table 13-I, p. 163; ${CHRONOLOGY}, and its text, p. 189; ${TITANS}, Appendix B, p. 524, as 111.1 km). ${TITANS}, p. 236, has "about 84 kilometers", which is 45 nautical miles: the figure SP-138 gives on the same page for the vacuum perigee before retrofire, a height and not a distance along the sea. It is not followed. The ship made about 35 per cent less lift for its drag than predicted, which cost about 160 nautical miles of reach`,
     },
     {
       group: 'Launch vehicle',
@@ -663,21 +802,23 @@ export const flight: Flight = {
       name: 'Aerojet YLR87-AJ-7, first stage chamber',
       count: 2,
       thrustN: 215000 * LBF,
-      burnS: 156,
+      burnS: 154,
       propellant: 'Aerozine 50 / nitrogen tetroxide',
       kind: 'liquid',
-      confidence: 'documented',
-      note: `"about 430,000 pounds of thrust at lift-off" for the two (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is the press kit’s planned staging time, 2 min 36 s; what this vehicle did is in a report not read`,
+      // the thrust is documented; the burn is derived, and the entry takes the weaker of the two
+      confidence: 'derived',
+      note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
     },
     {
       name: 'Aerojet YLR91-AJ-7, second stage',
       count: 1,
       thrustN: 100000 * LBF,
-      burnS: 182,
+      burnS: 180,
       propellant: 'Aerozine 50 / nitrogen tetroxide',
       kind: 'liquid',
-      confidence: 'documented',
-      note: '"about 100,000 pounds of thrust at altitude" (the same pages). The burn is the press kit’s plan, staging to cutoff at 5 min 38 s',
+      // the thrust and the cutoff are documented; the burn starts at a derived time, and the entry takes the weaker
+      confidence: 'derived',
+      note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at about 154 s, as above. The plan was 182 s',
     },
     {
       name: 'Retrograde rocket',
@@ -718,8 +859,8 @@ export const flight: Flight = {
       count: 16,
       thrustN: 25 * LBF,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
-      confidence: 'estimated',
-      note: `sixteen thrust chamber assemblies in two rings (${GIV}, Figure 3-12): documented. Their 25 lb is general knowledge of the type: the part of SEDR 300 that describes them is a separate supplement, not read`,
+      confidence: 'documented',
+      note: `sixteen thrust chamber assemblies of 25 lb in two rings, burning monomethylhydrazine and nitrogen tetroxide (SEDR 300, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12)`,
     },
   ],
   models: [vehicle],

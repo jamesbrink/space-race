@@ -55,7 +55,7 @@ change (Table IV, pp. 31 and 32). All of them are here; the last column says whi
 | Telemetry, sequencing, cooling | | low-frequency telemetry up 500 kc; the ¼ g relay locked in at cutoff; the inverter cold-plate check valve and the suit's constant-bleed orifice deleted; HF on at tower separation | documented | TN D-3814, pp. 6 and 61 | no |
 | Weight | 4,265 lb at launch | 4,244.09 lb at launch; 2,974.56 in orbit; 2,663.36 at entry; 2,557.70 at main parachute; 2,407.83 afloat | documented | TN D-3814, p. 7 | not used |
 | Hatch | 70 bolts, refitted | 70 bolts, "aligned properly"; never blown | documented | *This New Ocean*, p. 447; TN D-3814, p. 67 | yes: 70 bolts |
-| Shingle under the window | (taken as No. 11's: one stack of beads) | two stacks of beads side by side | documented by photograph | NASA S62-03907; the colour photograph of the emblem | yes |
+| Shingle under the window | two halves of ten beads either side of a flat strip (No. 11) | two stacks of ten beads side by side | documented by photograph | NASA S62-03907; the colour photograph of the emblem, which shows the whole of it | yes |
 | Paint | *Friendship 7* by hand; UNITED STATES twice | the Aurora 7 emblem; UNITED STATES twice; the white patch | documented by photographs; every place estimated | see "Paint" | yes |
 
 ## What is assumed the same
@@ -64,9 +64,9 @@ Nothing read says these differed from the capsule named; nothing read says they 
 
 | Item | Taken from | Why |
 | --- | --- | --- |
-| Where the window stands, its plate and rim | No. 11 | NASA S62-03907 shows the same plate, the pane's foot just above the seam the emblem's shingle begins at |
+| Where the window stands, its plate and rim | No. 11's script, at the place measured on Nos. 13 and 20 | the middle of its outer pane at station 31.5, the glass from 21.6 to 41.4 and the plate from 20.5 to 42.5: estimated, ±1.5 in. No document read gives the window a station; it is measured from photographs of No. 13 as kept (NASM A19670176000) and of No. 20 (NASA S63-07701), and this capsule is taken to be as they are. Its own photograph, NASA S62-03907, is too close and too steep to measure, but agrees: the plate's lower row of screws runs on as the seam under UNITED STATES, the plate ends level with the foot of the hatch's opening, and the emblem's shingle begins there. Until November 2026 the model had 35.8, where the plate's foot stood 6.3 in above the hatch's |
 | Where the hatch is and its two shingles | No. 11 | the same photograph and S62-04018 have the hatch beside the window on the pilot's right; the emblem's last letter ends at its edge |
-| The shingle layout elsewhere (twelve columns, seams at stations 24.8 and 46.8) | No. 11 | 62-MA7-73 shows the seam at 24.8 running on to the left of the window under UNITED STATES; the far side has not been compared |
+| The shingle layout elsewhere (twelve columns) | No. 11 | 62-MA7-73 and S62-03907 show the seam at the window's foot running on to the left of the window under UNITED STATES. The seams at the window's plate's foot and head (20.5 and 42.5) run on through the three columns beside it away from the hatch (165° to 255°) and moved with the window in November 2026; the shingles above the hatch begin at its border's head (46.8); the columns from the hatch round past the periscope to 165° keep the seams they had (24.8 and 46.8): the far side has not been compared |
 | Where the periscope's door and the umbilical are | No. 11 | no photograph of that side of No. 18 has been read |
 | The roll jets, low on the cone | No. 11 | as built for No. 11 "by judgement"; 62-MA7-73 shows a round fitting marked J37 below the emblem, not modelled |
 | Heat shield, retropack, recovery compartment, antenna canister, escape tower, pressure vessel | No. 13 and No. 7 | "essentially identical to that of spacecraft 13" (TN D-3814, p. 5) |
@@ -78,15 +78,15 @@ All of it is placed from photographs; none of the places is dimensioned.
 
 | Item | As modelled | Basis |
 | --- | --- | --- |
-| The emblem | on the shingle under the window, laid out from the shingle's upper left corner (255°, station 24.8) in inches right and down (`RINGS`, `SEVEN`, `AURORA`) | a colour photograph taken square on (Commons: *Aurora 7 insignia proper.jpg*), scaled by taking the shingle as the model's 16.3 in wide; NASA S62-03907 and 62-MA7-73 for where it sits |
-| its 7 | blue with a pale edge, 7.5 in wide and 9.75 in tall, its bar beginning at the shingle's edge and its foot under the word | the same. The figure is a chancery typeface's 7 stretched to that box, not her brush |
-| its rings | four circles of rays in one layer: cream, 6.8 in across; orange, 4.6 and 2.6 in; pale blue, 5.2 in. Where two cross, one is broken | the same photograph. The colours are read off it; how many rings there were and which lay over which is not certain in it |
-| AURORA | white capitals 16.4 in long and 3.4 in tall at station 16.95, ending at 287°, the hatch's edge; their sides waver by rule | the same, and S62-03907, where the last A touches the hatch's sill. The model's shingle ends at 285°, so the last letter lies on the hatch's border |
-| UNITED STATES, first | two lines 23 in long, letters 6 in tall, centred on 212° at stations 38.4 and 31.3: its right end 6 in from the window's plate | TN D-3814, Figure 25 (square on, after the flight); 62-MA7-73; S62-03907 |
-| its flag | 12 by 6.3 in at 208°, station 20.2: below the seam at 24.8, under the middle of the lines and a little to the left | the same |
-| UNITED STATES, second | the same size, centred on 20°: round to the right of the hatch | NASA 62PC-52 (the liftoff, in colour), where it faces the camera above "107 D". Good to perhaps 15° round the cone |
+| The emblem | on the shingle under the window, laid out from the shingle's upper left corner (255°, station 20.5) in inches right and down (`RINGS`, `SEVEN`, `AURORA`): 9.4 in wide, and 12.6 from its highest ray to the 7's foot | a colour photograph taken square on (Commons: *Aurora 7 insignia proper.jpg*), which shows the whole shingle, scaled by its ten beads (1.3 in apart, ±5 per cent); NASA S62-03907 and 62-MA7-73 for where it sits. Until November 2026 it was scaled by the width of a shingle the model had 15 in tall, and hung 4.3 in higher with the window, its word 5 in higher |
+| its 7 | blue with a pale edge, 8.0 in wide and 10.6 in tall, its bar beginning half an inch left of the shingle's edge, its top 3.4 in under the seam and its foot at station 7.35, just above the beads' foot | the same, ±0.3 in (its height ±0.6). The figure is a chancery typeface's 7 stretched to that box, not her brush |
+| its rings | four circles of rays in one layer: cream, 6.6 in across; orange, 4.6 and 2.6 in; pale blue, 5.0 in; the highest ray 1.4 in under the seam. Where two cross, one is broken | the same photograph. The colours are read off it; how many rings there were and which lay over which is not certain in it. By the beads they read 7 per cent taller than wide, and are drawn round |
+| AURORA | white capitals 16.9 in long and 3.4 in tall at station 11.2, across the 7's stem, ending at 285°, the seam at the hatch's edge; their sides waver by rule | the same, and S62-03907, where the last A touches the hatch's sill: station ±0.6. The letters read 3.3 in |
+| UNITED STATES, first | two lines 23 in long, letters 6 in tall, centred on 212° at stations 37.1 and 27.9: UNITED's top 0.9 in below the glass's head, STATES' foot 3.1 in above its foot, its right end at 239.5° | TN D-3814, Figure 25 (square on, after the flight); 62-MA7-73; S62-03907; a colour photograph of the insertion: ±0.7 in. Until November 2026: 38.4 and 31.3, the lines 2 in closer together than they are |
+| its flag | 13.7 by 7.2 in at 208°, station 15.9: its top 1.2 in under the seam at the window's foot, under the middle of the lines and a little to the left | the same, ±0.7 in. Until November 2026: 12 by 6.3 in at 20.2 |
+| UNITED STATES, second | the same size and stations, centred on 20°: round to the right of the hatch | NASA 62PC-52 (the liftoff, in colour), where it faces the camera above "107 D": against the cone's own ends there UNITED is at 37.4 and STATES at 28.1, ±2, the first pair's. Good to perhaps 15° round the cone |
 | its flag | at 28°: under the last letters | the same photograph, in which it is a few pixels |
-| White paint patch | 4 in square, its middle at 188.6°, station 44.2: over the U of the first UNITED | documented that it was there and what it was for (TN D-3814, p. 66: "shown in fig. 25, upper left of spacecraft"); its size and place read off Figure 25, where it measures about 4.4 by 4.8 in. It is drawn a little smaller to lie on one shingle of the model's layout |
+| White paint patch | 4.3 in across and 5.0 up the cone, its middle at 187°, station 45.05: over the U of the first UNITED, its foot on the upper seam | documented that it was there and what it was for (TN D-3814, p. 66: "shown in fig. 25, upper left of spacecraft"); its size and place read off Figure 25 and the colour photograph of the insertion, where its middle is at station 44.0 (±0.9) and the seam under it at 41.5. The model's seam is at 42.5, and the patch stands on it |
 
 Not modelled: the stencils "CAUTION THERMOCOUPLE" beside the window and "J37" below the emblem
 (62-MA7-73). Not established: what was painted between 60° and 180°. No photograph read shows that
@@ -150,6 +150,12 @@ Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.
 The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md).
 
 ## What the model gets wrong or leaves out
+
+- **Only the window's side was read again when the window was moved** (November 2026): the window, the seams of the
+  three columns beside it away from the hatch, the shingle under it, and the paint. The seams from the hatch round
+  past the periscope to 165° are where they were laid out before, against a window 4.3 in too high, so the rows step
+  at 165°; the periscope's door and the umbilical are No. 11's, which were placed the same way. They probably stand
+  some 4 in too high. The hatch's height is not settled either (Liberty Bell 7's spacecraft.md, "The hatch").
 
 - **The outside is No. 11's with No. 18's paint**, but for the shingle under the window. Its
   window's and hatch's places, its periscope door and its roll jets are Liberty Bell 7's. In this

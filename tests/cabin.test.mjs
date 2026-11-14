@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Cabin } from '../src/viewer/cabin.ts';
+import { Cabin, historyAt } from '../src/viewer/cabin.ts';
 
 /** A cabin of the nodes given, with no flight to read: every instrument shows its own fixed `value`. */
 function cabin(nodes, instruments) {
@@ -158,6 +158,19 @@ test('what the build shaded reads its shade by the lights: lamps on in red, lamp
   assert.equal(shader.uniforms.uCabinLit.value, 0, 'the one figure every shaded surface reads');
   // (indoors, and darker still for metal with the lamps out: it mirrors a sky the cabin cannot see)
   assert.ok(c.wall.material.aoMap, 'what is shaded as indoors is indoors');
+});
+
+test('a gauge read off the record: straight between readings, each at its instant or after its event, held beyond; an event not come is never', () => {
+  const h = [
+    { at: 100, value: 10 },
+    { at: 0, from: 'burn', value: 10 },
+    { at: 40, from: 'burn', value: 0 },
+  ];
+  assert.equal(historyAt(h, { burn: 200 }, 0), 10);
+  assert.equal(historyAt(h, { burn: 200 }, 220), 5);
+  assert.equal(historyAt(h, { burn: 200 }, 300), 0);
+  assert.equal(historyAt(h, { burn: Infinity }, 300), 10, 'a burn given up: it stays where it was');
+  assert.equal(historyAt(h, {}, 300), 10);
 });
 
 /** A cabin flown on a deck that tells it its news (orbitdeck.ts): two lamps on the record's events, a switch the deck's state throws, and a globe. */

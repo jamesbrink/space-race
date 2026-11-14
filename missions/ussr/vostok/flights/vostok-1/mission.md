@@ -542,8 +542,9 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
 - **Gagarin's flight task, page 1** (ЦА РКВ ф. 19, оп. 114сс, д. 15; pictured in Kommersant Nauka No. 9, 2021; read off a
   1,200-pixel image): the aiming azimuth **34°37′59″.2**; the third stage's main cutoff at **2,283.52 m/s of apparent
   velocity** (the third numeral could be a 6); the planned landing **52.5° N, 47.7° E**; the flight 1 h 46 min, 1.03 orbits.
-  Also on it, not yet used: the B-137M's charging times for "Разделение", 308.29 s, and "Наддув", 399.88 s. The azimuth now
-  sets the launch plane (the law solves two unknowns, not three) and Block E is cut on its apparent velocity.
+  Also on it: the B-137M's charging times for "Разделение", 308.29 s, and "Наддув", 399.88 s (what they are: "The 2011
+  documents", below). The azimuth now sets the launch plane (the law solves two unknowns, not three) and Block E is cut
+  on its apparent velocity.
 - **The blocks' propellant figures were Soyuz-ST's**: Brügge's 39.16 t, 90.10 t, 1.47 t and 3.12 t are Arianespace's
   figures for Soyuz-ST, copied into every R-7. For the 8K72K only fuelled and dry masses exist: everything not structure is
   taken as what a block can burn (39.55 t, 93.6 t: derived), drained at the engine's whole flow, which already counts the
@@ -571,4 +572,64 @@ spacecraft's separation, the published orbit begun where the ascent left it (`pu
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
 ascent puts it at 27.84°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:40 at
 7 km, landing 465 km long and 13 km across (holds), module 10:50:28, pilot 10:59:04.
+
+### The 2011 documents: the whole flight task, the cyclogram and NIIP-5's report (November 2026)
+
+**Found.** All three sheets of the flight task (ЦА РКВ ф. 19, оп. 114сс, д. 15, лл. 126–128, with the cover letter, л. 125),
+published by the Ministry of Defence in 2021 («Покорители космоса», 60cosmonauts.mil.ru; scans kept by the Wayback
+Machine and Tilda's CDN); and Lissov and Afanasyev, «106 минут Гагарина в свете рассекреченных документов», Novosti
+Kosmonavtiki 2011 No. 6, pp. 2–11, written page by page from «Первый пилотируемый полёт» (2011): the task (book 1, pp.
+429–430), the launch cyclogram (book 1, p. 431) and NIIP-5's operational report of 13 May 1961 (book 2, pp. 54–69). The two
+books themselves were not reached.
+
+**The two timers.** Section V of the task sets the instrument B-137M: "Время заряда интегрирующих элементов команды
+«Разделение» 308,29 сек" and "... команды «Наддув» 399,88 сек". These are **charging times of the autonomous integrator's
+elements, not instants of the flight**:
+
+- «Разделение» is the strap-ons' separation, which "the integrator commanded at 119.50 s" (PPP via Gammal and Tuchin; NK p.
+  4: commanded at 119.50 s, carried out by T+120.70). On Sputnik's 8K71PS the same integrator command was set "на время
+  разделения t = 116,44 сек" (rvsn.info): documented.
+- «Наддув» is the pressurising of the third stage's tanks, "инициирующей запуск ДУ 3-й ступени и отделение центрального
+  блока" (the cyclogram, NK p. 4): the command that starts the staging. Normally the radio system's (planned 304.74 s); on
+  12 April, the radio antennas having had no proper power since 156 s (a converter failed at 117 s), it came "по запасному
+  варианту от интегратора на 305.20 сек — на 0.46 сек позже расчетного" (NIIP-5's report, NK p. 4): documented. That the
+  backup was the B-137M's «Наддув» setting is the reading of the task's own words, not stated by a source.
+- How a charging time stands to an apparent velocity is not stated anywhere read. 308.29 s and 399.88 s at the
+  accelerometer's one-g current would be 3,023 and 3,921 m/s, together 6,945 m/s, against the record's 9,243.25 m/s in all
+  less Block E's 2,285.55 (6,957.70): a reading of the research's, estimated, and not used.
+
+**The core's cutoff.** The task gives **no core cutoff setting** (no velocity, no time, no preliminary or main command):
+the only integrator settings are the B-137M's two, Block E's main command (2,283.52 m/s, now read off the 800-pixel scan
+for certain) and the TDU's (136 m/s, sheet 127). The core's cutoff was the radio system's, set in a separate task ("Полетное
+задание на настройку приборов системы радиоуправления", not found). The cyclogram gives its plan: «Предварительная» (main
+chambers off) at **305.74 s** and «Главная» (steering chambers off) at **312.74 s**, a final stage of 7.00 s; the third
+stage's start at 311.74 s; Block E's main command at 674.68 s; «Отделение» at 684.68 s. On the day: the preliminary command
+carried out 0.51 s late (306.25 s, derived), the main command and the separation not recorded, the core 22.0 m/s over its
+design; the third stage's «Зажигание» at **321.42 s** (which is Gagarin's 10 to 15 s of weightlessness), cut at **677.08 s**
+by its integrator at 2,285.55 m/s and 0.92 g; separation 10.00 s later (687.08 s). Siddiqi's 300 s and 676 s are not the
+documents' figures. Also from NK p. 10 (from the documents, page not given): 291,619 kg at liftoff, 409.9 tf at liftoff,
+Block E 1,210 kg dry with 4,482 kg of oxidiser, 2,088 of fuel and 6 of gas, the fairing 582 kg, 5,935 kg in orbit with the
+third stage; the greatest loads 4.4 g before the strap-ons' cutoff and 4.2 g before the core's.
+
+**What is flown, and why not more.** Taken in: the third stage's cutoff check and the injection at 677.08 s (the flown
+cutoff, 676.35 s, holds against it), the events' times (`core` at 306.25 s, `third` at 321.42 s, `orbit` at 677.08 s), and the
+core's cutoff now labelled `estimated` (the documents put its main command at about 313 s, not recorded). **Not flown yet**,
+and recorded in each input's source:
+
+- **The core's documented timing.** Flown with full thrust to 306.25 s and the final stage to 313.25 s, the core runs dry at
+  305.8 s (its 93.6 t is the Astronautix masses less the dry, secondary) and the steering law cannot reach its target: the
+  vehicle as the secondary figures make it is several hundred m/s fast (the final stage alone was worth +443 m/s). With the
+  third stage lit at 321.42 s instead of 300 s and the core's old timing, the law fails likewise. So the core is still flown
+  on the estimated timing (main stage to 290 s, final stage to 300 s) that the documents now contradict. The blocks'
+  masses are the suspect: from the documented 4.2 g before the core's cutoff the stack weighed about 23 t, the core about
+  10.4 t of it, 3.6 t over Astronautix's dry figure (a reading of the research's, derived).
+- **The documented masses.** The stack is flown as the liftoff mass less what has burned and dropped, so any block's mass
+  changed with the total fixed lands on the spacecraft: NK's fairing (582 kg for 800) or Block E (1,210 dry and 6,576 kg for
+  Minakov's 1,472 and 6,512) each made the spacecraft heavier and the miss worse (perigee −380 km for −189), and NK's total
+  (291,619 kg, 4.9 t more than the blocks add to) carried 4.9 t nobody can place and the law did not reach its target. Until
+  the blocks' masses are found for the 8K72K (the task's sister enclosure, «Основные данные по изделию 8К72 № Е10316», 3
+  sheets, is in the same file and was not published), they stay as they were.
+
+The ascent's checks are therefore as above but for the third stage's cutoff (676.35 s against 677.08 ± 3 s: holds), and the
+miss is still 157 m/s short.
 

@@ -295,11 +295,23 @@ class Skin:
     # -- a shingle ---------------------------------------------------------------
 
     def shingle(
-        self, t0: float, t1: float, z0: float, z1: float, stacks: int = 2, *, panels=None, bolts=None, fasten: str = "tbl", gap: float = GAP
+        self,
+        t0: float,
+        t1: float,
+        z0: float,
+        z1: float,
+        stacks: int = 2,
+        *,
+        panels=None,
+        bolts=None,
+        fasten: str = "tbl",
+        gap: float = GAP,
+        beads: int | None = None,
     ) -> None:
         """One shingle between two meridians and two stations: a flat fastened margin round `stacks` stacks of beads
         (0: a plain plate). `fasten`: which edges carry a row of screws, of top, bottom, left (the lower angle), right.
-        `gap`: how far it stands in from the lines given, inches: a hatch's shingles stand further from what is round them."""
+        `gap`: how far it stands in from the lines given, inches: a hatch's shingles stand further from what is round them.
+        `beads`: how many beads a stack has, for a shingle whose photographs count them; otherwise as many as go at PITCH."""
         surf = self.surf
         panels, bolts = panels or self.panels, bolts or self.bolts
         rmid = surf.r((z0 + z1) / 2)
@@ -308,7 +320,7 @@ class Skin:
         width, run_ = (tb - ta) * rmid, (zb - za) / self.cos  # inches across at its middle, and along the cone
         detail = srlib.DETAIL
         margin, ramp, strip, end = 1.0, 0.4, 0.55, 1.25
-        count = int((run_ - 2 * end) / PITCH)
+        count = int((run_ - 2 * end) / PITCH) if beads is None else beads
         if detail < 0.5 or count < 1 or width < 2 * (margin + ramp) + 1.0:
             stacks = 0
 
