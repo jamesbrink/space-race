@@ -362,6 +362,14 @@ export const orbital: OrbitalFlight = {
         ),
       },
     ],
+    // For the live vehicle flown by hand (src/sim/stagedlive.ts): how hard its steering chambers turn it. No figure read.
+    steering: {
+      authority: guess(
+        5,
+        'deg/s² at full throw, about each axis: NOT FOUND. Of the order the steering chambers give: the core’s four of 2.5 tf (RKK Energia 1946–1996) and the strap-ons’ eight, swung, ' +
+          '15 m or so from the centre of mass of a stack of 287 t and 30 m (about 2 × 10⁷ kg m² as a rod), a few degrees a second squared; taken as the same on every stage and at every mass, which it was not',
+      ),
+    },
     // For the scene: where the spacecraft's centre of mass is, and what leaves as a body of its own (sim/shed.ts). Stations
     // are metres above the main nozzles' exits, as vostok-8k72k.md has them. Every drag figure is estimated; so is every
     // centre and gyration, from the stations and masses there.
