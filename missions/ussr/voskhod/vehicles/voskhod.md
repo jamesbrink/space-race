@@ -105,7 +105,7 @@ Top-level nodes in the GLB. These names are the `node` fields in a flight's `fli
 | --- | --- | --- |
 | `DescentModule`, `EntryHatch`, `ParachuteHatch`, `Cabin`, `RetainingStraps`, `CableMast`, `InstrumentModule`, `Antennas`, `GasBottles`, `RetroEngine` | the Vostok's ([vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md)), less the housing on the pole and its three rods, the seat's rails, the cases laid out round the seat, the left-hand panel and the hand controller | as the Vostok's |
 | `ReserveEngine` | collar and gussets, case, bands and bolts, the hatch, duct, boss and stubs | |
-| `CouchLeft`, `CouchCentre`, `CouchRight` (3KV); `CouchLeft`, `CouchRight` (3KD) | each: liner, pan, sledge and posts, struts; and the man the flight puts in it (`Crew_<place>_...`), built at detail 0.75 and above | |
+| `CouchLeft`, `CouchCentre`, `CouchRight` (3KV); `CouchLeft`, `CouchRight` (3KD) | each: liner, pan, sledge and posts, struts; and the man the flight puts in it (`Crew_<place>_...`) with `Seat_<place>`, an empty at his eyes ("The couches as seats", below), built at detail 0.75 and above | |
 | `Airlock` (3KD) | `Airlock_Body` (the lower ring, four bottles, their cradles and pipes); `Airlock_Tube_1` to `_9` (the soft tube's bands: cover, bladder, hoop); `Airlock_Head` (the ribbed ring, the rail, the camera) and under it `Airlock_OuterHatch`, hinged at its rim. Each a node with its origin where the airlock is made fast to the hull | built folded: a flight slides each band out 225 mm further than the one below and the head 1,800 mm, swings the outer hatch inward, and later slides the whole away along its line |
 | `AirlockRing` (3KD) | the ring it stood on | stays |
 | `AirlockHatch` (3KD) | the cover of hatch No. 3, with the Vzor's porthole | |
@@ -153,8 +153,45 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
 - **Which couch the 3KD lost** is from a NASA diagram and from where the hatch's cover swung.
 - **The antennas** are the Vostok model's ten, withdrawn into the hull when stowed.
 - **Cabin equipment**: the Vostok's board, Vzor and parachute container only.
-- **No seat to sit in.** The couches and the men in them are modelled, but no couch has an eye-point node, so the
-  gallery offers no seat (it does not make one up). What is wanted, for each man, is a `Seat_<Left|Centre|Right>` node at
-  his eyes (between `Crew_<side>_Helmet_Eyes`), its +Z the way he looks and +Y the top of his head, as
-  vehicles/gemini_cabin.py does; then `seats` (with `hide`: his `Crew_<side>_Helmet_*`) and a `cabin` (`within`, the
-  portholes, the Vzor if the fit has one, the lamp) in each flight's flight.ts.
+- **Sat in, the cabin is the plain one.** Each couch has an eye point (`Seat_Left`, `Seat_Centre`, `Seat_Right`: "The
+  couches as seats", below) and the flights declare them with a cabin (`cabin.ts`): the lining, the two portholes of the
+  hull to lean to, one lamp switched from the page. The board, the Globus and the Vzor are the Vostok's plain shapes,
+  so nothing on them reads, lights or works, and the control panel a Voskhod had by the couches is not built, so the
+  lamp has no switch of its own.
+- **The parachute container is a hand's breadth from two faces.** It is the Vostok's, 0.8 m across and reaching 0.44 m
+  in from hatch No. 2, over the crew's heads: the man in the middle couch of the 3KV lies with his eyes about 0.1 m
+  under its flat inner end, and the man by the entry hatch (in either build) with its side beside his left temple. Whether
+  the real container stood so near the real couches is in nothing read: both are placed by estimate.
+
+## The couches as seats
+
+Each couch's node carries an empty at its man's eyes, `Seat_<Left|Centre|Right>`, for the gallery's "Sit in the cabin"
+(the names are the couches' own, as `CouchLeft` and `Crew_Left_…` are: which man lay where is the flight's to say). It
+is built from the seated figure and not from the cabin (`voskhod.seat_view`, from `figurelib.head_view`):
+
+| What | Value | Confidence |
+| --- | --- | --- |
+| Where | midway between the figure's irises, as the flight's suit builds him in that couch (in the file's axes, metres, the 3KV: left 0.750, 2.706, −0.133; centre 0.397, 3.068, −0.373; right 0.065, 3.137, −0.818; the 3KD: left 0.550, 2.860, −0.301; right 0.112, 3.122, −0.782) | **derived** from the figure and the couch's place, which are both estimated |
+| Which way it looks (the node's +Z in the file) | the way his own face is turned. The figure lies with his head straight on his shoulders, so that is out of his chest, square to the couches' plane: 0.288, 0.914, 0.288 in the file's axes, which is toward the forward pole and 24° off the long axis, away from the entry hatch | **derived** from the figure's pose; the 24° is the couches' tilt, itself the Vostok seat's estimate |
+| The top of his head (the node's +Y) | along the couch toward hatch No. 2: 0.707, 0, −0.707 | derived, as above |
+
+What each man has before him, lying with his head at rest (stills taken from each eye point in the gallery, the studio
+outside the portholes):
+
+- **By the entry hatch** (the right couch: Komarov on Voskhod 1, Belyayev on Voskhod 2): the lining over him; the side
+  of the parachute container filling the left half of his view, some 0.15 m from his eyes, and past its edge the ring
+  of hatch No. 2; low at his right the rim of the entry hatch. The board is out of sight until he turns his head: 52°
+  from where he looks, toward his feet and well to his left, 1.3 m off.
+- **In the middle** (Feoktistov, Voskhod 1): the flat under side of the parachute container, about 0.1 m over his face,
+  across nearly all he sees; under its edge, low at his left, a corner of the instrument board (44° from where he
+  looks, 0.9 m off) and the ring of hatch No. 3.
+- **By hatch No. 3** (the left couch: Yegorov on Voskhod 1, beside the Vzor; Leonov on Voskhod 2, beside the airlock's
+  hatch): the lining over him; the ring of hatch No. 3 close and low at his left; the top of the instrument board at
+  the bottom of his view, straight beyond his knees (38° from where he looks, 1.0 m off); the parachute container
+  and the ring of hatch No. 2 over his head at his right.
+
+**So the board is not at the crew's left in this model**, as the sources say it was ("to the left side of the three
+couches instead of in front", S p. 412): it stands where the Vostok's stood, which from these couches is beyond the
+crew's knees, to the left only for the man by the hatch. The Vzor, on hatch No. 3, is at their left. Either the couches
+or the board are not where the real ones were; both are placed by estimate, and nothing here was moved to make the
+view agree.

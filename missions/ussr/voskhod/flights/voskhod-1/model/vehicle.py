@@ -43,9 +43,9 @@ from vostok_8k72k.common import FAIRING_R  # noqa: E402
 CREW = {"Left": flight_suit.YEGOROV, "Centre": flight_suit.FEOKTISTOV, "Right": flight_suit.KOMAROV}
 
 
-def crew(name: str, node, place) -> None:
+def crew(name: str, node, place) -> dict:
     """The man in a couch, in what he flew in (../../../crew/flight_suit.py)."""
-    flight_suit.build_seated(node, place, f"Crew_{name}", CREW[name])
+    return flight_suit.build_seated(node, place, f"Crew_{name}", CREW[name])
 
 
 def build() -> str:

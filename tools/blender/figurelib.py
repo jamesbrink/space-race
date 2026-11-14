@@ -1764,3 +1764,16 @@ def body_key_points(pose: Rig, pts: dict[str, list[Vector]]) -> dict:
         "extent_min": tuple(min(p[i] for ps in pts.values() for p in ps) for i in range(3)),
         "extent_max": tuple(max(p[i] for ps in pts.values() for p in ps) for i in range(3)),
     }
+
+
+def head_view(pose: Rig) -> dict:
+    """Where a posed figure sees from and the way his own head is turned, in the pose's frame: `eyes` (centimetres)
+    midway between the irises (build_head puts each 3.15 cm off the middle), `look` the way his face is turned and
+    `crown` the way the top of his head points (unit vectors). What a seat's eye point is made from."""
+    eyes = (head_point(3.15, 0.5) + head_point(-3.15, 0.5)) / 2 + Vector((0, -0.2, 0.02))
+    at = pose.carry(eyes)
+    return {
+        "eyes": tuple(at),
+        "look": tuple((pose.carry(eyes + FRONT) - at).normalized()),
+        "crown": tuple((pose.carry(eyes + UP) - at).normalized()),
+    }
