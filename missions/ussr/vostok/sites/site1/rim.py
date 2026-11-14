@@ -21,7 +21,7 @@ import srlib
 
 from . import platform, relief
 from .place import FOOTING, ROAD_HALF, ridge, to_road, toward_pad, turned
-from .site import FT, GROUND, PLATFORM, P, Parts, beam, box, fine, lattice, stood
+from .site import FT, GROUND, PLATFORM, P, Parts, Welded, beam, box, fine, lattice, stood
 
 # ---- the nine positions (HTA/JR-4/58: "at least nine instrumentation and observation positions ... around the rim
 # of the pit. These positions face toward the launching structure and are generally heavily earth-covered. Six
@@ -50,12 +50,36 @@ CLEAR = 8.0  # how far outside the modelled rim a position's middle is kept, m
 
 # ---- the spoil: "a large pile some 800 feet to the northeast" (HTA/JR-4/58), a "spoil bank" on Figure 5, and
 # standing today. Its outline is Figure 5's, fitted to the heap's extent on today's imagery (it lies 181 to 381 m
-# east); its height is what SRTM read in 2000: 114 m at its top against 105 to 107 m round it.
+# east); its height is what SRTM read in 2000: 114 m at its top against 105 to 107 m round it. The U-2's photograph of
+# July 1959 (NPIC/B-24/61 Figure 1, a high-contrast print at some 2.7 px a metre as scanned) has it as a rounded white
+# mass from 200 to 384 m east and 45 to 313 m north, bare and burnt out to white, so that nothing of its top or its
+# faces can be read; along its west side a dark band 30 to 40 m broad with a scalloped inner edge, some five bays in
+# 230 m. The CORONA frames of 7 December 1960 and 30 May 1962 (4 m a pixel as kept) show its ground as paler and
+# mottled, and no more. So: the outline with its corners rounded and the lobes' breadth (some 50 m) are from the
+# photographs; that there are lobes all the way round, their depth, the face's slope, the gullies and the level top
+# are estimated: what earth tipped from trucks four years before looks like, drawn clean.
 HEAP = [(181.0, 266.0), (225.4, 287.4), (314.3, 292.0), (372.1, 279.0), (381.0, 213.1), (372.1, 137.9), (339.9, 90.6),
         (288.8, 72.0), (238.8, 96.1), (203.2, 143.5), (181.0, 202.0)]  # fmt: skip
 HEAP_HEIGHT = 9.0  # m (estimated: SRTM's 8 m, and a 30 m grid rounds a heap's top off)
-HEAP_RUN = 45.0  # how far in from its edge it reaches its height, m (estimated)
 HEAP_SUNK = 0.4  # its mesh's edge lies this far under the land, so the land covers the join
+# The face: earth tipped over a brow lies at its angle of repose, 1 in 1.5 or so, its foot eased where what slid has
+# gathered (HEAP_TOE, m in from the edge) and its brow rounded by four winters (HEAP_BROW, m). All estimated.
+HEAP_SLOPE = 1.5
+HEAP_TOE, HEAP_TOE_SLOPE, HEAP_BROW = 3.0, 0.15, 4.0
+# The top, where the trucks ran: nearly level, with a slow swell of this much either way, m, and falling HEAP_CROWN
+# m from its middle to its brow over the last so many metres (estimated: a top is tipped from its middle outward)
+HEAP_SWELL = 0.35
+HEAP_CROWN = (1.2, 40.0)
+# The lobes: one to each tipping place along the brow, HEAP_LOBES of them round the heap (its edge is some 690 m, so
+# some 50 m each, as the U-2 has along the west side; here 29 to 67 m), each bay between two of them bitten
+# HEAP_BAY m back from the outline, more or less, and on the east side, which the U-2 has nearly straight along its
+# ditch, HEAP_BAY_EAST of that (estimated).
+HEAP_LOBES = 14
+HEAP_BAY = (6.0, 2.5)
+HEAP_BAY_EAST = 0.3
+# The gullies: rain runs off the top where two lobes meet, and cuts there (m deep, and this far either side of the
+# bay's line, m); a lesser rill down each flank of a lobe. Estimated: a bare clay bank four springs old has them.
+HEAP_GULLY, HEAP_RILL = (1.0, 2.5), (0.5, 2.0)
 
 # ---- the conduit: "a new probable cable conduit and passageway ... becomes visible at a point on the edge of the
 # pit ... makes two turns and connects with the launching structure at a point about 80 feet above the base of the pit
@@ -88,19 +112,123 @@ def _inside(poly, x: float, y: float) -> float:
     return best if odd else -best
 
 
-def _heap(x: float, y: float) -> float:
-    """The heap's surface over the land, m: under it by HEAP_SUNK at its edge and on down outside it."""
-    d = _inside(HEAP, x, y)
-    if d <= 0:
-        return -HEAP_SUNK - min(1.5, -d * 0.3)
-    t = min(1.0, d / HEAP_RUN)
-    lumps = 0.86 + 0.14 * math.sin(x * 0.045 + 1.3) * math.sin(y * 0.038 + 0.4)  # tipped earth is not a table
-    return HEAP_HEIGHT * t * t * (3 - 2 * t) * lumps - HEAP_SUNK
+def _smooth(a: float, b: float, x: float) -> float:
+    t = min(1.0, max(0.0, (x - a) / (b - a)))
+    return t * t * (3.0 - 2.0 * t)
+
+
+HEAP_FACE_RISE = HEAP_HEIGHT - HEAP_SWELL - HEAP_CROWN[0] + HEAP_SUNK  # what the face climbs, from its sunk edge to the brow
+# how far in from its edge the face reaches the top, m (derived from the slope, the foot and the brow)
+HEAP_FACE = HEAP_TOE + HEAP_BROW + (HEAP_FACE_RISE - HEAP_TOE * (1 / HEAP_SLOPE + HEAP_TOE_SLOPE) / 2 - HEAP_BROW / HEAP_SLOPE / 2) * HEAP_SLOPE
+
+
+def _face(t: float) -> float:
+    """The face's section: how much of its rise it has made `t` metres in from its edge, 0 to 1. A foot that steepens
+    over HEAP_TOE, a straight fall at 1 in HEAP_SLOPE, a brow rounded over HEAP_BROW."""
+    m, m0 = 1 / HEAP_SLOPE, HEAP_TOE_SLOPE
+    t = min(max(t, 0.0), HEAP_FACE)
+    if t < HEAP_TOE:
+        h = m0 * t + (m - m0) * t * t / (2 * HEAP_TOE)
+    else:
+        h = HEAP_TOE * (m + m0) / 2 + m * (min(t, HEAP_FACE - HEAP_BROW) - HEAP_TOE)
+        if t > HEAP_FACE - HEAP_BROW:
+            u = t - (HEAP_FACE - HEAP_BROW)
+            h += m * u - m * u * u / (2 * HEAP_BROW)
+    return h / HEAP_FACE_RISE
+
+
+def _heap_top(x: float, y: float, t: float) -> float:
+    """The top's height over the land, m, `t` metres in from the heap's edge: nearly level, with a slow swell (tipped
+    earth is not a table), and falling a little to its brow."""
+    crown = HEAP_CROWN[0] * (1.0 - _smooth(HEAP_FACE - HEAP_BROW, HEAP_FACE + HEAP_CROWN[1], t))
+    return HEAP_HEIGHT - crown - HEAP_SWELL * (1.0 - math.sin(x * 0.045 + 1.3) * math.sin(y * 0.038 + 0.4))
+
+
+def _heap_edge(per_lobe: int) -> list[tuple]:
+    """The heap's edge as stations round it, `per_lobe` to a lobe, the first of each in the bay between two lobes:
+    (x, y, the way in as a unit nx, ny, how far the edge is bitten back there, how far round its lobe it is from
+    0 to 1, the lobe's breadth). The outline is HEAP with its corners rounded (cut four times, as a spline's)."""
+    pts = HEAP
+    for _ in range(4):
+        pts = [
+            q
+            for a, b in zip(pts, pts[1:] + pts[:1])
+            for q in ((0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]), (0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]))
+        ]
+    run = [0.0]
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        run.append(run[-1] + math.hypot(b[0] - a[0], b[1] - a[1]))
+    total = run[-1]
+
+    def at(s: float) -> tuple[float, float]:
+        s %= total
+        k = max(i for i in range(len(pts)) if run[i] <= s)
+        a, b = pts[k], pts[(k + 1) % len(pts)]
+        f = (s - run[k]) / (run[k + 1] - run[k])
+        return a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f
+
+    # the lobes are not all one breadth: where each bay falls round the edge is drawn out and closed up
+    where = lambda q: total * (q + 0.016 * math.sin(math.tau * 3 * q + 1.0) + 0.008 * math.sin(math.tau * 5 * q + 2.2))  # noqa: E731
+    count = HEAP_LOBES * per_lobe
+    stations = []
+    for k in range(count):
+        s = where(k / count)
+        (x, y), (ax, ay), (bx, by) = at(s), at(s - 4.0), at(s + 4.0)
+        n = math.hypot(bx - ax, by - ay)
+        stations.append((x, y, (by - ay) / n, -(bx - ax) / n))  # (the outline runs clockwise from above, so the way in is to its right)
+    # each bay's depth: deeper on the side that faces west (the way in there is east)
+    bay = [
+        (HEAP_BAY[0] + HEAP_BAY[1] * math.sin(2.4 * j + 0.7))
+        * (HEAP_BAY_EAST + (1.0 - HEAP_BAY_EAST) * _smooth(-0.5, 0.5, stations[j * per_lobe][2]))
+        for j in range(HEAP_LOBES)
+    ]
+    out = []
+    for k, (x, y, nx, ny) in enumerate(stations):
+        lobe, f = divmod(k, per_lobe)
+        f /= per_lobe
+        deep = bay[lobe] * (1 - f) + bay[(lobe + 1) % HEAP_LOBES] * f
+        breadth = where((lobe + 1) / HEAP_LOBES) - where(lobe / HEAP_LOBES)
+        nose = f ** (1.0 + 0.3 * math.sin(1.7 * lobe + 0.3))  # (a lobe's nose is not in its middle)
+        out.append((x, y, nx, ny, deep * (1.0 - math.sin(math.pi * nose) ** 0.75), f, breadth))
+    return out
+
+
+def _heap_at(x: float, y: float, t: float, f: float, breadth: float, rills: bool = True) -> float:
+    """The heap's surface over the land, m, at a point `t` metres in from its edge and `f` of the way round its lobe:
+    under the land by HEAP_SUNK at the edge and on down outside it."""
+    if t <= 0:
+        return -HEAP_SUNK - min(1.5, -t * 0.3)
+    h = -HEAP_SUNK + (_heap_top(x, y, t) + HEAP_SUNK) * _face(t)
+    # (a gully dies out at the foot, and on the top)
+    down = _smooth(1.0, 4.0, t) * (1.0 - _smooth(HEAP_FACE - HEAP_BROW, HEAP_FACE + 1.5, t))
+    off = min(f, 1.0 - f) * breadth  # metres from the bay's line
+    h -= HEAP_GULLY[0] * max(0.0, 1.0 - off / HEAP_GULLY[1]) * down
+    if rills:
+        off = min(abs(f - 0.3), abs(f - 0.7)) * breadth
+        h -= HEAP_RILL[0] * max(0.0, 1.0 - off / HEAP_RILL[1]) * down
+    return h
+
+
+_EDGE: list[tuple] = []
 
 
 def heap_height(x: float, y: float) -> float:
     """The spoil heap's height over the land at a point, m (0 off it)."""
-    return max(0.0, _heap(x, y))
+    if not _EDGE:
+        _EDGE.extend(_heap_edge(20))
+    best, odd = (1e9, 0, 0.0), False
+    for k, (a, b) in enumerate(zip(_EDGE, _EDGE[1:] + _EDGE[:1])):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        u = max(0.0, min(1.0, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)))
+        best = min(best, (math.hypot(x - a[0] - u * dx, y - a[1] - u * dy), k, u))
+        if (a[1] > y) != (b[1] > y) and x < a[0] + dx * (y - a[1]) / dy:
+            odd = not odd
+    if not odd:
+        return 0.0
+    d, k, u = best
+    a, b = _EDGE[k], _EDGE[(k + 1) % len(_EDGE)]
+    f = a[5] + ((b[5] or 1.0) - a[5]) * u
+    return max(0.0, _heap_at(x, y, d - (a[4] + (b[4] - a[4]) * u), f, a[6]))
 
 
 def ground(x: float, y: float) -> float:
@@ -206,20 +334,40 @@ def heap(parts: Parts) -> None:
         about=(
             "Earth dug from the flame pit in 1955 and 1956 and tipped here, north-east of it; the rest went into the railway's "
             "embankment. It is on the CIA's drawings of 1957 and 1959 and stands today. Its outline is theirs, fitted to today's "
-            "imagery; its height (9 m) is estimated from the height SRTM read in 2000."
+            "imagery and to the U-2's photograph of July 1959, which has scallops some 50 m apart along its west side; its height "
+            "(9 m) is estimated from the height SRTM read in 2000. The lobes round the rest of it, the slope of its face, its "
+            "gullies and its level top are estimated: no photograph read is close enough to show them."
         ),
     )
-    earth = parts(g, "earth", True)
-    cell = 5.0 if fine() else 10.0
-    xs = [176.0 + cell * i for i in range(int(210.0 / cell) + 1)]
-    ys = [66.0 + cell * i for i in range(int(232.0 / cell) + 1)]
-
-    for i in range(len(xs) - 1):
-        for j in range(len(ys) - 1):
-            c = [(xs[i], ys[j]), (xs[i + 1], ys[j]), (xs[i + 1], ys[j + 1]), (xs[i], ys[j + 1])]
-            if all(_inside(HEAP, x, y) < -cell for x, y in c):
-                continue
-            earth.add([P(x, y, GROUND + _heap(x, y)) for x, y in c], [(0, 1, 2), (0, 2, 3)] if (i + j) % 2 else [(0, 1, 3), (1, 2, 3)])
+    earth = Welded(parts(g, "earth", True))
+    # Its mesh follows its form: a station every 2.5 m or so round the edge (5 m at a lower level of detail), and from
+    # each a line up the face, so that a gully is a line of the mesh and not a row of teeth across a square grid.
+    per_lobe = 20 if fine() else 10
+    edge = _heap_edge(per_lobe)
+    brow = HEAP_FACE
+    rows = [-5.0, 0.0, 1.2, 2.4, 3.6, 5.5, 7.5, 9.5, brow - 3.6, brow - 2.4, brow - 1.2, brow, brow + 1.5, brow + 4.0]
+    rings = (0.85, 0.7, 0.5, 0.25)  # and on over the top toward its middle, by these shares of the way
+    if not fine():
+        rows, rings = [-5.0, 0.0, 2.4, 5.5, 9.5, brow - 2.4, brow, brow + 4.0], (0.7, 0.4)
+    n = len(edge)
+    cx, cy = sum(e[0] for e in edge) / n, sum(e[1] for e in edge) / n
+    grid = []  # each station's points, from outside the edge to the top's middle
+    for x, y, nx, ny, bite, f, breadth in edge:
+        line = [(x + nx * (bite + t), y + ny * (bite + t), t) for t in rows]
+        ix, iy, it = line[-1]
+        line += [(cx + (ix - cx) * u, cy + (iy - cy) * u, it + math.hypot(ix - cx, iy - cy) * (1 - u)) for u in rings]
+        grid.append([P(px, py, GROUND + _heap_at(px, py, t, f, breadth, fine())) for px, py, t in line])
+    for k in range(n):
+        k1 = (k + 1) % n
+        last = len(grid[k]) - 1
+        for r in range(last):
+            # (clockwise round the edge and inward: the face is up)
+            earth.add(
+                [(k, r), (k, r + 1), (k1, r + 1), (k1, r)],
+                [grid[k][r], grid[k][r + 1], grid[k1][r + 1], grid[k1][r]],
+                [(0, 1, 2), (0, 2, 3)] if r % 2 else [(0, 1, 3), (1, 2, 3)],
+            )
+        earth.add([(k, last), "middle", (k1, last)], [grid[k][last], P(cx, cy, GROUND + _heap_top(cx, cy, 1e3)), grid[k1][last]], [(0, 1, 2)])
 
 
 def _along(line, step: float) -> list[tuple[float, float, float]]:
