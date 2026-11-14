@@ -34,7 +34,10 @@ from srlib import TAU, MeshBuilder, deg, frame, interior, prof
 SEAT_CANT = (deg(12), deg(8))  # the seats: outboard, and forward (SEDR 300, p. 3-3): documented
 SEAT_AT = (-12.0, 13.2, 117.0)  # a seat's reference point (the top of its pan, at the front of its back): toward the top, off the middle, station
 SEAT = dict(wide=22.0, top=40.5, drop=10.0, deep=19.0)  # the back's width; pan to the shroud's top; pan to the stirrups' foot; the bucket's depth
-EYE = (0.0, 6.5, 33.5)  # a seated man's eyes in his seat's own frame (to his right, the way he faces, up his back): on the egress kit
+EYE = (0.0, 6.5, 33.5)  # an empty seat's eye point, in its own frame (to his right, the way he faces, up his back): a man's own eyes replace it
+SIT = (3.2, 2.6)  # where a man's back and his seat meet the cushions: forward of the seat's reference point, and above it
+# figurelib's seat frame (his right, toward his feet, the way his chest faces) in the seat's own (his right, the way he faces, up his back)
+FIGURE = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
 WALLS = ((108.0, 28.4), (131.0, 26.8), (150.8, 23.5), (160.2, 17.0))  # the vessel's flat sides: station, and half the width between them
 FLOOR = (-29.0, 17.5)  # the floor's deepest, and half the width of its flat
 GEAR_BAY = -17.0  # below this the vessel's sides are let in for the landing gear's wells
@@ -93,6 +96,15 @@ def section(station: float) -> list[tuple[float, float]]:
     shoulder = min(hinge[0] - 3.0, max(low + 3.0, hinge[0] - 16.0)) if hinge[1] > w + 0.5 else hinge[0] - 3.0
     top_w = min(w, hinge[1] - 0.2)
     return [hinge, (shoulder, top_w), (low, top_w), (floor, min(FLOOR[1], top_w)), (floor, 0.0)]
+
+
+def breadth(station: float, top: float) -> float:
+    """How far to the right the vessel reaches at a station and a height: its outline between the hinge and the floor."""
+    half = section(station)
+    for (x0, y0), (x1, y1) in zip(half, half[1:]):
+        if x1 <= top <= x0 and x0 > x1:
+            return y0 + (y1 - y0) * (x0 - top) / (x0 - x1)
+    return half[0][1] if top > half[0][0] else half[-2][1]
 
 
 def vessel(c: Station) -> None:
@@ -167,11 +179,19 @@ def seat_frame(side: int) -> Matrix:
     return Matrix.Translation(V(SEAT_AT[0], side * SEAT_AT[1], SEAT_AT[2]) * IN) @ to_ship @ cant @ Matrix.Scale(IN, 4)
 
 
-def seat(c: Station, name: str, side: int, who: str, say) -> None:
+def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | None:
     """An ejection seat, as the Smithsonian's two are (A19690023001, A19710058000): a channelled back with a faceted
     shroud over the man's head, holed rails behind it, a bucket with arm sides, a guard before the shins and two
-    stirrups; on a rocket catapult, on rails on the large bulkhead."""
+    stirrups; on a rocket catapult, on rails on the large bulkhead.
+
+    `crew(name, parent, sit)` is the man for it (a suit module's seated figure: ../crew/): it returns that figure's
+    key points with `place`, the matrix that takes them into the model, and `aboard`, whether it built him; `sit` is
+    figurelib's seat frame laid where his back and his seat meet the cushions. With a man aboard the seat's restraint
+    is laid over him: the reel's straps over his shoulders to his harness, the lap belt across his lap; and the seat's
+    node is at his own eyes. Aboard or not, the build says what room the cabin has for him."""
     m = seat_frame(side)
+    fits = crew(name, c.g, rigid(m) @ Matrix.Translation(Vector((0.0, SIT[0], SIT[1])) * IN) @ FIGURE) if crew and interior() else None
+    man = fits if fits and fits["aboard"] else None
     R = m.to_3x3().normalized()
     box = lambda mb, size, at, bevel=0.12: chamfered(mb, size, rigid(m) @ Matrix.Translation(Vector(at) * IN), bevel)  # noqa: E731
     tube = lambda mb, a, b, r, segs=10: mb.tube(m @ Vector(a), m @ Vector(b), r * IN, segs)  # noqa: E731
@@ -231,11 +251,26 @@ def seat(c: Station, name: str, side: int, who: str, say) -> None:
     soft(pad, rigid(m) @ Matrix.Translation(Vector((0, SEAT["deep"] / 2 + 0.2, 1.35)) * IN), (2 * h - 3.4, SEAT["deep"] - 2.0, 2.5), 0.8)
     soft(pad, rigid(m) @ Matrix.Translation(Vector((0, 2.45, 14.5)) * IN), (15.0, 1.5, 23.0), 0.6)
     soft(pad, rigid(m) @ Matrix.Translation(Vector((0, 1.75, back - 3.0)) * IN), (7.0, 2.6, 5.4), 0.7)
-    for sx in (-1, 1):  # the shoulder straps down the backboard from the inertia reel, and the lap belt's two halves
-        web.ribbon(
-            [m @ Vector(p) for p in ((sx * 2.4, 3.32, back - 6.2), (sx * 3.0, 3.32, 14.0), (sx * 3.6, 3.32, 4.0))], R @ Vector((1, 0, 0)), 1.75 * IN
-        )
-        web.ribbon([m @ Vector(p) for p in ((sx * (h - 2.2), 3.0, 2.7), (sx * 1.2, 6.0, 2.7))], R @ Vector((0, 1, 0)), 1.75 * IN)
+    if man:
+        # the restraint as worn: the reel's two straps over his shoulders to the quick disconnects of his harness, and
+        # the lap belt from the bucket's sides across his lap to its release at the middle
+        at = lambda p: man["place"] @ (Vector(p) * 0.01)  # noqa: E731
+        for key, sx in (("left", -1), ("right", 1)):
+            run = [m @ Vector((sx * 2.4, 2.3, back - 6.4)), *(at(p) for p in man["worn"]["reel"][key])]
+            web.ribbon(run, R @ Vector((1, 0, 0)), 1.75 * IN)
+        lap = man["worn"]["lap"]
+        ends = [m @ Vector((sx * (h - 1.7), SIT[0] + 3.4, 3.6)) for sx in (-1, 1)]
+        web.ribbon([ends[0], *(at(p) for p in lap), ends[1]], R @ Vector((0, 1, 0)), 1.75 * IN)
+        mid = at(lap[len(lap) // 2]) + R @ Vector((0, 0.012, 0))
+        chamfered(ring, (2.6, 0.5, 2.2), rigid(m) @ Matrix.Translation(rigid(m).inverted() @ mid), 0.1)
+    else:
+        for sx in (-1, 1):  # the shoulder straps down the backboard from the inertia reel, and the lap belt's two halves
+            web.ribbon(
+                [m @ Vector(p) for p in ((sx * 2.4, 3.32, back - 6.2), (sx * 3.0, 3.32, 14.0), (sx * 3.6, 3.32, 4.0))],
+                R @ Vector((1, 0, 0)),
+                1.75 * IN,
+            )
+            web.ribbon([m @ Vector(p) for p in ((sx * (h - 2.2), 3.0, 2.7), (sx * 1.2, 6.0, 2.7))], R @ Vector((0, 1, 0)), 1.75 * IN)
     box(fr, (5.0, 1.4, 2.0), (0, 2.3, back - 7.6), 0.3)  # the inertia reel
     # the D-ring between his knees: pulled, it fires both seats
     mb = MeshBuilder()
@@ -261,7 +296,7 @@ def seat(c: Station, name: str, side: int, who: str, say) -> None:
     web.build(f"Seat{name}_Harness", c.M["webbing"], c.g, smooth=False)
     ring.build(f"Seat{name}_Tubes", c.M["aluminium"], c.g, sharp_angle=35)
     # the seat's node, at a seated man's eyes: in the file its +Z looks ahead and its +Y is the top of his head
-    eye = m @ Vector(EYE)
+    eye = man["place"] @ (Vector(man["eyes"]) * 0.01) if man else m @ Vector(EYE)
     look, over = R @ Vector((0, 1, 0)), R @ Vector((0, 0, 1))
     node = bpy.data.objects.new(f"Seat_{name}", None)
     bpy.context.scene.collection.objects.link(node)
@@ -273,6 +308,18 @@ def seat(c: Station, name: str, side: int, who: str, say) -> None:
         f"gemini cabin: {name}'s eyes at {tuple(round(v / IN, 1) for v in eye)} in (model axes), the middle of his window "
         f"{math.degrees(to_pane.angle(Vector((0, 0, 1)))):.1f} degrees off the ship's axis from there"
     )
+    if fits:
+        # what room the cabin has for him: under the hatch's inner skin, inside the vessel's side, over its floor (negative: through it)
+        skin_ = [fits["place"] @ (Vector(p) * 0.01) / IN for p in fits["skin"]]
+        head = [fits["place"] @ (Vector(p) * 0.01) / IN for p in fits["helmet"]]
+        roof = min(inner(math.atan2(p.y, p.x), p.z) - math.hypot(p.x, p.y) for p in head)
+        wall = min(breadth(p.z + Z0, p.x) - abs(p.y) for p in skin_ if p.x > section(p.z + Z0)[-1][0])
+        floor = min(p.x - section(p.z + Z0)[-1][0] for p in skin_)
+        print(
+            f"gemini cabin: {name} {'is aboard' if man else 'is NOT aboard: the cabin as laid out does not hold him'}; his helmet "
+            f"{roof:.2f} in under the hatch's inner skin, his side {wall:.2f} in inside the vessel's, his feet {floor:.2f} in over its floor"
+        )
+    return man
 
 
 # ------------------------------------------------------------------ the panels
@@ -862,7 +909,7 @@ SMOOTH = (
 )
 
 
-def build(parent, M: dict, font, names: tuple[str, str], say) -> None:
+def build(parent, M: dict, font, names: tuple[str, str], say, crew=None) -> None:
     """Everything in the pressure vessel, and the vessel. The vessel's walls are built at every level of detail (they
     close the hatches' openings from behind); the rest only where an inside is built."""
     c = Station(parent, CABIN, M)
@@ -882,7 +929,7 @@ def build(parent, M: dict, font, names: tuple[str, str], say) -> None:
     side_panels(c, P, sheet)
     fittings(c, say)
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):
-        seat(c, name, side, who, say)
+        seat(c, name, side, who, say, crew)
     c.finish(MATERIALS, smooth=SMOOTH)
     for sh, key in ((sheet, "panel_main"), (faces, "faces")):
         img = sh.image()

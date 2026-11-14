@@ -31,11 +31,35 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "crew"))
+from mathutils import Matrix, Vector  # noqa: E402
+
+import g3c_suit  # noqa: E402
 import gemini_spacecraft  # noqa: E402
 import titan_ii_glv  # noqa: E402
 from gemini_spacecraft import Z0, Z_BASE, Z_NOSE, Fit  # noqa: E402
 from mercury_capsule import flag_image  # noqa: E402  (the fifty-star flag: the same flag as Mercury's ships wore)
-from srlib import IN, load_font, mark_shells, material, run  # noqa: E402
+from srlib import CM, IN, load_font, mark_shells, material, run  # noqa: E402
+
+# Who sat where: the command pilot on the left (SEDR 300, p. 1-5).
+CREW = {"CommandPilot": g3c_suit.GRISSOM, "Pilot": g3c_suit.YOUNG}
+# The two men are modelled (the suit, and each seated) and are not yet aboard: the crew station as it is laid out
+# does not hold a man of either's size in his helmet (../spacecraft.md, "The crew"). Each build measures by how much
+# (gemini_cabin.seat prints it). True seats them, with the seats' restraint over them and each seat's node at his eyes.
+CREW_ABOARD = False
+
+
+def crew(name: str, parent, sit: Matrix) -> dict:
+    """The man for a seat, in his G3C suit (../../../crew/g3c_suit.py). `sit` is figurelib's seat frame laid where his
+    back and his seat meet the seat's cushions: he is put so that they do."""
+    who = CREW[name]
+    g3c_suit.wear(who)
+    keys = g3c_suit.seated_key_points()
+    place = sit @ Matrix.Translation(Vector((0.0, -keys["seat_y"], -keys["back_plane_z"])) * CM)
+    if CREW_ABOARD:
+        keys = g3c_suit.build_seated(parent, place, f"Crew_{name}", who)
+    return {**keys, "place": place, "aboard": CREW_ABOARD}
+
 
 # What spacecraft 3 had, against the ships after it (../spacecraft.md, "This ship and the others").
 FIT = Fit(
@@ -45,6 +69,7 @@ FIT = Fit(
     water_tanks=1,  # "instead of the one flown on GT-3" (Gemini IV mission report, 3.1.2.3)
     experiments=("sea-urchin", "blood", "reentry-communications"),  # the press kit, pp. 26 to 30
     names=("Grissom", "Young"),
+    crew=crew,
 )
 
 Z_BOOSTER_BASE = (Z_BASE - Z0) - titan_ii_glv.LENGTH  # the first stage engines' exit plane
@@ -107,6 +132,17 @@ if __name__ == "__main__":
                         "RCS_Ports",
                     ),
                 ),
+            ),
+            # from each seat: ahead, up through his window, down at his knees, across the cabin
+            *(
+                (f"seat-{who}-{view}.png", (0, 0, 0), 0, dict(seat=f"Seat_{name}", look=look, lens=lens, lamps="Lamp_", res=(1600, 1000)))
+                for name, who in (("CommandPilot", "left"), ("Pilot", "right"))
+                for view, look, lens in (
+                    ("ahead", (0, 0), 18),
+                    ("window", (0, 28), 28),
+                    ("down", (0, -50), 16),
+                    ("inboard", (-55 if name == "CommandPilot" else 55, -10), 18),
+                )
             ),
             (
                 "inside-cabin.png",
