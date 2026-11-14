@@ -604,7 +604,7 @@ vehicle.cabin = {
     ways: [
       { says: 'White', lit: [0, 1, 2] },
       { says: 'Off', lit: [] },
-      { says: 'Red (not drawn: dark)', lit: [] },
+      { says: 'Red (dark)', lit: [] },
     ],
     fittings: ['Lamp_Left', 'Lamp_Right', 'Lamp_Centre'],
   },
