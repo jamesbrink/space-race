@@ -3,7 +3,8 @@ import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import { SITE1_SPECS, TAIL, TURN, turned } from '../../sites/site-1.parts.ts';
 import { SITE1 } from '../../sites/site-1.ts';
 import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
-import { MSK } from './orbital.ts';
+import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
+import { MSK, orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -493,6 +494,12 @@ const launcherParts: Part[] = [
   ),
 ];
 
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const COMMANDS = vostokCommands({
+  parted: 'on the day the cable bundle held them until it burnt through in the entry, 10:07',
+  reserve: 'by itself after the main, as the type’s was',
+});
+
 const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
 
 const vehicle: ModelDef = {
@@ -505,7 +512,7 @@ const vehicle: ModelDef = {
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
-  parts: [...launcherParts, ...parts],
+  parts: commanded([...launcherParts, ...parts], COMMANDS),
   position: [0, BASE + TAIL, 0],
   rotationY: TURN,
   // the cabin's two lamps (../../vehicles/cabin.ts)
@@ -867,6 +874,14 @@ export const flight: Flight = {
       note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N). Worked by hand on this flight, on orbits 1 and 7',
     },
   ],
+  // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
+  orbital,
+  flownNote:
+    'The ascent is the type’s, flown on Vostok 1’s instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The braking burn’s instant is derived (mission.md): Titov’s 09:57 is not possible on the documented orbit.',
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
+  flies: vostokFlies(orbital),
   models: [vehicle, pad, crew],
   // the place round the pad as it stood that August: April's, less Site 51, burnt out three days before (sites/site1/model/1961-08.py)
   surroundings: 'models/ussr/vostok/sites/site1/1961-08.glb',
