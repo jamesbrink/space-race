@@ -98,6 +98,7 @@ import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
 import { airForces, blowOf, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
 import { loadsOf, type Strain, strain, UNSTRAINED } from './loads.ts';
+import { pressed } from './staging.ts';
 import {
   aboutAxis,
   euler,
@@ -207,6 +208,8 @@ export interface VehicleState {
   rcs: { left: readonly number[]; firing: readonly number[] };
   /** When the air was first felt coming down (a twentieth of a g). */
   enteredAt: number | null;
+  /** When the spacecraft was let go of its booster while the booster still pushed it (staging.ts `pressed`): it rides on until the push ends. */
+  loose: number | null;
   /** Where and how fast it came down, once it has: speeds through the air there, m/s, and the long axis's angle from the vertical, degrees. */
   landing: null | { t: number; vertical: number; horizontal: number; latitude: number; longitude: number; lean: number };
   /** The controls last applied. */
@@ -631,6 +634,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       drogueAt: null,
       mainAt: null,
       enteredAt: null,
+      loose: null,
       landing: null,
       controls: HANDS_OFF,
     };
@@ -673,7 +677,13 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (s.held) return s;
     // (the escape rocket takes the tower with it only once it is out: until then the tower is what is pulling)
     if (c.tower && !s.shed.tower && (s.abortAt === null || s.t >= s.abortAt + escapeOver)) s = dropTower(s);
-    if (c.separate && !s.shed.booster) s = leave(s, tr.separation.speed.value);
+    // let go while the booster still pushes, the spacecraft stays pressed on its adapter and rides it until the push ends
+    if (c.separate && !s.shed.booster && s.loose === null) s.loose = s.t;
+    if (s.loose !== null && !s.shed.booster) {
+      const capsule = capsuleMass(s);
+      const booster = { thrust: burning(s) ? tr.engine.thrust.value * s.throttle : 0, mass: s.mass - capsule };
+      if (!pressed(booster, { thrust: 0, mass: capsule })) s = leave(s, tr.separation.speed.value);
+    }
     if (s.shed.booster) {
       if (c.retro && s.retroAt === null && !s.shed.retropack) s.retroAt = s.t;
       if (c.retropack && !s.shed.retropack) dropPack(s);

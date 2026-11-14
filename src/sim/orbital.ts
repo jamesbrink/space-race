@@ -72,6 +72,18 @@ export interface StageRecord {
    * the record's instant, held as a check and not flown to.
    */
   velocity?: { speed: Measure; over?: Measure; apparent?: boolean };
+  /**
+   * How its engines can be started (sim/stagedlive.ts): how many times, and whether only on the ground (igniters put up
+   * the nozzles from the pad). Left out: once, anywhere. A hand that asks for more is told why not.
+   */
+  start?: { count: number; ground: boolean; confidence: Confidence; source: string };
+  /**
+   * Lit while the stage it stands on (the one before it in `stages`) is still joined, its jet strikes that stage's top
+   * (sim/staging.ts `hotStage`): `open`, the share of the joint's side the turned jet escapes through (the rest stopped by
+   * its structure); `turn`, the angle below the level at which what escapes leaves the deflector, degrees; `endures`, how
+   * many seconds at full thrust the stage below's top stands it, after which its tank fails and the stack breaks up.
+   */
+  hot?: { open: Measure; turn: Measure; endures: Measure };
 }
 
 /**
@@ -110,8 +122,22 @@ export interface AscentRecord {
   guidance: Guidance;
   /** The stack's drag: from liftoff, each entry until its `until` (seconds from liftoff; the last holds to the end), its reference area, m^2, and its coefficient against Mach number. */
   drag: { until: Measure; area: Measure; curve: Curve }[];
-  /** What leaves that is no stage (the fairing): when, and its mass, kg. */
-  drops: { id: string; at: Measure; mass: Measure }[];
+  /**
+   * What leaves that is no stage (the fairing): when, and its mass, kg. `q`: the most dynamic pressure it was made to be let
+   * go in, Pa (sim/stagedlive.ts says when a hand lets it go in more, and what is not modelled of it); `covers`: the
+   * spacecraft is inside it, and cannot leave while it is on.
+   */
+  drops: { id: string; at: Measure; mass: Measure; q?: Measure; covers?: boolean }[];
+  /**
+   * What the launch vehicle's structure stands going up (sim/loads.ts's rule, as a ballistic flight's `body.limits`): the
+   * dynamic pressure times the angle off the wind, Pa rad, and the load along the axis, g. Past either it breaks up.
+   */
+  limits?: { qAlpha: Measure; axial: Measure };
+  /**
+   * What the spacecraft's escape did if the launch vehicle failed, by the time it failed: each mode until `until` seconds
+   * from liftoff (its source there), in a few words. Said on the deck's card when the launch vehicle breaks up; not flown.
+   */
+  aborts?: { until: Measure; does: string }[];
   /**
    * What the live vehicle needs to be turned (sim/stagedlive.ts): the angular acceleration the stack's steering gives at
    * full throw while its engines burn, deg/s^2, about each axis alike. Without it the vehicle can be ridden but not steered.

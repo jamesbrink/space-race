@@ -167,7 +167,7 @@ test('the live staged vehicle: the strap-ons let go while they burn take their t
     `what they weighed, with what was left in them, left too: ${before - after} against ${gone}`,
   );
   // flown on by the law and the record's sequence, it does not get as high or as fast
-  while (!s.parted && !s.landed && s.t < 2000) s = v.tick(s, pilot);
+  while (!s.parted && !s.landed && !s.broke && s.t < 2000) s = v.tick(s, pilot);
   const good = fly().s;
   console.log(`# at the spacecraft's parting: ${(length(s.v)).toFixed(0)} m/s against ${length(good.v).toFixed(0)} m/s flown as recorded`);
   assert.ok(length(s.v) < length(good.v) - 500);
@@ -265,4 +265,116 @@ test('the live staged vehicle: what the estimated steering acceleration is worth
     `# ascent.steering.authority (estimated) +5 %: cutoff speed ${(more.speed - base.speed).toFixed(2)} m/s, height ${(more.altitude - base.altitude).toFixed(0)} m`,
   );
   assert.ok(Number.isFinite(more.speed));
+});
+
+/**
+ * Fly the live vehicle on the record's law and sequence with a hand's `asks` (each `{ at, steps }` given at that instant,
+ * besides the record's) and `hands` (the sticks, guidance off), until the spacecraft parts, the vehicle is down or broken
+ * up, or `until`. Returns the last state and the first at or after each instant in `look`.
+ */
+function asked({ asks = [], sequence = true, guidance = true, hands, until = 2000, look = [] } = {}) {
+  const v = stagedVehicle(o, site, jd, sea, x);
+  let now = 0;
+  const queue = [...asks].sort((a, b) => a.at - b.at);
+  const pilot = stagedPilot(v, x, site, jd, sea, {
+    guidance,
+    sequence,
+    hands: hands ? () => hands(now) : undefined,
+    steps: () => {
+      const out = [];
+      while (queue.length && queue[0].at <= now + 1e-9) out.push(...queue.shift().steps);
+      return out;
+    },
+  });
+  let s = v.tick(v.start(), {
+    pitch: 0,
+    yaw: 0,
+    roll: 0,
+    steps: [
+      { kind: 'ignite', stage: 0 },
+      { kind: 'ignite', stage: 1 },
+    ],
+  });
+  const at = {};
+  while (!s.parted && !s.landed && !s.broke && s.t < until) {
+    now = s.t;
+    for (const t of look) if (at[t] === undefined && s.t >= t - 1e-9) at[t] = s;
+    s = v.tick(s, pilot);
+  }
+  return { v, s, at };
+}
+const said = (s, title) => s.said.find((n) => n.title === title);
+
+test('hot staging at the record’s moment: the third stage lit with the core on fires into it, a share of its push reaching the stack, and the core let go a second later parts clean', () => {
+  const E = o.stages[2];
+  const share = E.hot.open.value * Math.sin(E.hot.turn.value * DEG);
+  // lit a second before the core goes, as the cyclogram had it (start 311.74 s, the core's main command 312.74 s)
+  const { v, s, at } = asked({ asks: [{ at: 299, steps: [{ kind: 'ignite', stage: 2 }] }], look: [299.5, 300.5] });
+  const joined = at[299.5];
+  const core = v.thrust({ ...joined, stages: joined.stages.map((g, i) => (i === 2 ? { ...g, from: Infinity } : g)) });
+  const pushing = v.thrust(joined) - core;
+  console.log(
+    `# lit at 299 s, joined: the third stage pushes ${(pushing / 1000).toFixed(1)} kN of its ${(E.thrust.vacuum.value / 1000).toFixed(1)} (${(100 * share).toFixed(0)} per cent, estimated); ${s.scorch[2].toFixed(2)} s of jet on the core’s top against ${E.hot.endures.value} s`,
+  );
+  assert.ok(Math.abs(pushing - E.thrust.vacuum.value * share) < 1, `${pushing}`);
+  assert.ok(said(at[300.5], 'Hot staging'), 'the deck is told it is hot staging');
+  assert.equal(s.broke, null);
+  assert.ok(s.parted, 'and the flight goes on to the spacecraft’s parting');
+  assert.ok(Math.abs(s.scorch[2] - 1) < 0.02, `${s.scorch[2]}`);
+});
+
+test('hot staging a minute early: the jet plays on the core’s top past what it stands, and the stack breaks up there', () => {
+  const E = o.stages[2];
+  const { s } = asked({ asks: [{ at: 240, steps: [{ kind: 'ignite', stage: 2 }] }] });
+  assert.ok(s.broke, 'it broke up');
+  console.log(`# lit at 240 s with the core on: ${s.broke.text}`);
+  assert.equal(s.broke.by, 'scorch');
+  assert.ok(Math.abs(s.broke.t - (240 + E.hot.endures.value)) < 0.05, `${s.broke.t}`);
+  assert.equal(s.parted, null);
+  assert.ok(
+    s.stages.every((g) => g.gone <= s.broke.t + 1e-9 && g.to <= s.broke.t + 1e-9),
+    'every engine out, every stage apart',
+  );
+});
+
+test('a part let go under thrust stays pressed on until what is under it stops pushing: the spacecraft rides the third stage to its cutoff', () => {
+  const { s } = asked({ asks: [{ at: 400, steps: [{ kind: 'separate', stage: 2 }] }] });
+  assert.ok(said(s, 'Let go, still pushing'));
+  assert.ok(Math.abs(s.parted.t - batch.summary.cutoffAt) < 0.5, `${s.parted.t}`);
+  console.log(`# let go at 400 s: parted at ${s.parted.t.toFixed(2)} s, when the third stage stopped`);
+});
+
+test('the spacecraft cannot leave while the fairing is over it, nor the core while the strap-ons push it on', () => {
+  const inside = asked({ asks: [{ at: 140, steps: [{ kind: 'separate', stage: 2 }] }], until: 160 }).s;
+  assert.ok(said(inside, 'Held inside the fairing'));
+  assert.equal(inside.parted, null);
+  // the core let go at 60 s: its own command shuts it, but the strap-ons on it push the lot on until they go
+  const { s } = asked({ asks: [{ at: 60, steps: [{ kind: 'separate', stage: 1 }] }], until: 130 });
+  assert.ok(said(s, 'Let go, still pushing'));
+  assert.ok(Math.abs(s.stages[1].to - 60) < 0.02, `${s.stages[1].to}`);
+  assert.ok(Math.abs(s.stages[1].gone - o.stages[0].separation.value) < 0.02, `${s.stages[1].gone}`);
+});
+
+test('the structure: turned across the wind at its greatest dynamic pressure it breaks up by its bending load; an engine lit only on the pad is not lit again', () => {
+  const { s } = asked({ guidance: false, hands: (t) => ({ pitch: t > 50 && t < 56 ? 1 : 0, yaw: 0, roll: 0 }) });
+  assert.equal(s.broke?.by, 'bending');
+  console.log(`# turned at 50 s: ${s.broke.text}`);
+  assert.ok(s.broke.t < 56, `${s.broke.t}`);
+  // the record's own run comes nowhere near its limits
+  const record = asked().s;
+  console.log(
+    `# the record’s run: bending at most ${(100 * record.strain.most).toFixed(0)} per cent of the limit, ${(100 * record.axial.most).toFixed(0)} per cent of the axial`,
+  );
+  assert.equal(record.broke, null);
+  assert.ok(record.strain.most < 0.5 && record.axial.most < 0.9);
+  const relit = asked({
+    sequence: false,
+    asks: [
+      { at: 10, steps: [{ kind: 'cut', stage: 0 }] },
+      { at: 12, steps: [{ kind: 'ignite', stage: 0 }] },
+    ],
+    until: 13,
+  }).s;
+  assert.ok(said(relit, 'Not lit'));
+  assert.ok(Math.abs(relit.stages[0].to - 10) < 0.02);
 });

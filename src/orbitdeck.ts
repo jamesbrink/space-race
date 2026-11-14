@@ -135,6 +135,8 @@ export class OrbitDeck extends Deck {
   private asked: Step[] = [];
   private tally: StagedTally | null = null;
   private kept = 0;
+  /** How many of the live vehicle's notes (`StagedState.said`) the deck has said. */
+  private heard = 0;
   private eventAt = Number.NEGATIVE_INFINITY;
   /** The user's ascent as staged.ts's batch run has its results, once the spacecraft has parted (for the coast and the checks). */
   private ascended: Ascended | null = null;
@@ -386,6 +388,7 @@ export class OrbitDeck extends Deck {
     this.pilot = null;
     this.asked = [];
     this.tally = null;
+    this.heard = 0;
     this.ascended = null;
     this.trim = { pitch: 0, yaw: 0 };
     this.eventAt = Number.NEGATIVE_INFINITY;
@@ -559,7 +562,7 @@ export class OrbitDeck extends Deck {
       steps: o.stages.flatMap((st, i) => (st.ignition.value <= 0 ? [{ kind: 'ignite' as const, stage: i }] : [])),
     });
     const tally = new StagedTally(v);
-    while (s.t < t - TICK / 2 && !s.parted) {
+    while (s.t < t - TICK / 2 && !s.parted && !s.broke) {
       const was = s;
       s = v.tick(s, caught);
       tally.note(was, s);
@@ -625,6 +628,7 @@ export class OrbitDeck extends Deck {
       descent: null,
     };
     this.kept = this.run.samples.length;
+    this.heard = s.said.length;
     this.dropsFrom(s, from);
     this.host.fly(this.run);
   }
@@ -1144,10 +1148,16 @@ export class OrbitDeck extends Deck {
     }
     const centre = (this.flight.flies?.datum ?? 0) + (this.flight.orbital!.ascent!.centre?.value ?? 0);
     const upTo = s.t + Math.min(ahead, MOST);
-    while (s.t < upTo - TICK / 2 && !s.landed && !s.parted) {
+    while (s.t < upTo - TICK / 2 && !s.landed && !s.parted && !s.broke) {
       const was = s;
       s = v.tick(s, this.pilot!);
       if (s.parted) break;
+      if (s.broke) {
+        run.samples.length = this.kept;
+        run.samples.push(v.sample(s, centre));
+        this.kept = run.samples.length;
+        break;
+      }
       if (s.ticks === was.ticks) break;
       this.tally!.note(was, s);
       // (a sample kept every tenth of a second and at every event; between, only the frame's last is put at the head)
@@ -1160,6 +1170,9 @@ export class OrbitDeck extends Deck {
       if (event || s.t - last.t >= KEEP - TICK / 2) this.kept = run.samples.length;
     }
     this.state = s;
+    // what the hardware made of what was asked, each said once
+    for (const n of s.said.slice(this.heard)) this.host.say?.(n.title, n.text);
+    this.heard = s.said.length;
     if (ahead > MOST) this.clock.seek(s.t);
     this.dropsFrom(s);
     run.fires = this.fires();
@@ -1174,6 +1187,12 @@ export class OrbitDeck extends Deck {
       run.cutoff = Number.isFinite(st.from) && !v.burning(s, engine) ? Math.min(st.to, v.dry(engine, st.from), st.gone) : Infinity;
     }
     if (s.parted) return void this.parted(s);
+    if (s.broke) {
+      run.duration = s.broke.t;
+      this.clock.setRate(1);
+      this.clock.seek(s.broke.t);
+      this.host.say?.('Broke up', s.broke.text);
+    }
     if (s.landed) {
       run.duration = s.landed.t;
       this.clock.setRate(1);
@@ -1323,25 +1342,27 @@ export class OrbitDeck extends Deck {
         ? 'On the pad'
         : this.state?.landed && t >= this.state.landed.t
           ? 'Down'
-          : s.phase === 'powered'
-            ? 'Powered flight'
-            : s.phase === 'coast'
-              ? alone
-                ? 'Spacecraft alone'
-                : 'Coasting on the launch vehicle'
-              : s.phase === 'capsule'
-                ? orbit && el.a * (1 - el.e) > ball + 100_000
-                  ? 'In orbit'
-                  : 'Spacecraft alone'
-                : s.phase === 'entry'
-                  ? 'Re-entry'
-                  : t >= this.run.duration
-                    ? 'Down'
-                    : Math.min(
-                          ...Object.values((this.flown ?? orbitalFlown(this.flight)).down?.opened[o.descent?.bodies[0]?.id ?? ''] ?? {}),
-                        ) <= t
-                      ? 'Under the parachutes'
-                      : 'Falling';
+          : this.state?.broke && t >= this.state.broke.t
+            ? 'Broken up'
+            : s.phase === 'powered'
+              ? 'Powered flight'
+              : s.phase === 'coast'
+                ? alone
+                  ? 'Spacecraft alone'
+                  : 'Coasting on the launch vehicle'
+                : s.phase === 'capsule'
+                  ? orbit && el.a * (1 - el.e) > ball + 100_000
+                    ? 'In orbit'
+                    : 'Spacecraft alone'
+                  : s.phase === 'entry'
+                    ? 'Re-entry'
+                    : t >= this.run.duration
+                      ? 'Down'
+                      : Math.min(
+                            ...Object.values((this.flown ?? orbitalFlown(this.flight)).down?.opened[o.descent?.bodies[0]?.id ?? ''] ?? {}),
+                          ) <= t
+                        ? 'Under the parachutes'
+                        : 'Falling';
     set('phase', phase);
     // (from the spacecraft's separation the record's run is the published orbit begun where the simulated ascent left it: said, so it is not taken for a result)
     const leant = (x: number, plus: string, minus: string) =>
@@ -1395,18 +1416,24 @@ export class OrbitDeck extends Deck {
       (descending && !auto && descent !== null && this.descentDue(descent.id, t));
     const prompt = this.cells.get('prompt')!;
     const lights = matchMedia('(hover: none), (pointer: coarse)').matches ? 'Ignition lights' : 'Space lights';
+    // (the next step lights a stage into the one it stands on: said where it is offered, as it is how it flew)
+    const hot = step ? this.hotNote(step.step) : null;
     const text = waiting
       ? this.mine === null
         ? `Ready: ${lights} the engines; the flight is the record’s. G or B makes it yours`
         : `Ready: ${lights} the engines; the flight is yours`
       : !alone
         ? this.mine === null
-          ? `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
+          ? hot
+            ? `Next, ${step!.label.toLowerCase()}: ${hot}`
+            : `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
           : due && step
-            ? `${step.label} is due: Space`
-            : this.guidance
-              ? 'Guidance flies the law: W S A D lean it'
-              : 'Hands only: W S pitch, A D yaw, Q E roll, while an engine burns'
+            ? `${step.label} is due: Space${hot ? `. ${hot}` : ''}`
+            : hot
+              ? `Next, ${step!.label.toLowerCase()} (Space): ${hot}`
+              : this.guidance
+                ? 'Guidance flies the law: W S A D lean it'
+                : 'Hands only: W S pitch, A D yaw, Q E roll, while an engine burns'
         : descending && (!auto || this.downMine !== null)
           ? !descent
             ? t >= this.over()
@@ -1430,6 +1457,22 @@ export class OrbitDeck extends Deck {
     this.card(t);
   }
 
+  /**
+   * What to know of a step that lights a stage while the stage it stands on is still on (`StageRecord.hot`): hot staging,
+   * which is how it flew, and what it costs if it goes on too long. Null for any other step.
+   */
+  private hotNote(step: Step): string | null {
+    const o = this.flight.orbital!;
+    const g = step.kind === 'ignite' ? o.stages[step.stage] : undefined;
+    if (!g?.hot || step.kind !== 'ignite') return null;
+    const below = o.stages[step.stage - 1];
+    const s = this.mine !== null ? this.state : null;
+    const on = s ? !Number.isFinite(s.stages[step.stage]!.from) && !Number.isFinite(s.stages[step.stage - 1]!.gone) : true;
+    if (!below || !on) return null;
+    const lower = short(below.name).toLowerCase();
+    return `hot staging, as it flew. It is lit with the ${lower} still under it, its fire through the open lattice onto the deflector on the ${lower}’s top, and then the ${lower} is let go. Not for long: the ${lower}’s top is taken to stand ${g.hot.endures.value} s of it (${g.hot.endures.confidence})`;
+  }
+
   /** When the record has a step, s (a stage cut on its velocity: its recorded cutoff). */
   private dueAt(step: Step): number {
     return this.vehicleOf().sequence.find((k) => JSON.stringify(k.step) === JSON.stringify(step))?.at ?? Infinity;
@@ -1445,11 +1488,12 @@ export class OrbitDeck extends Deck {
     const down = this.landed(whole);
     // (the run on show follows the descent module down; the pilot lands under his canopy some minutes after it)
     const crashed = this.state?.landed && t >= this.state.landed.t;
+    const broke = this.state?.broke && t >= this.state.broke.t - 1e-9 ? this.state.broke : null;
     // (a flight that does not come down: its coast flown six hours on, still up)
     const stays = !whole.down && whole.coast.samples[whole.coast.samples.length - 1]!.phase !== 'down';
     // (and the card waits until the last of them is down)
-    const over = this.run !== null && (Boolean(crashed) || ((down !== undefined || stays) && t >= this.over()));
-    const key = `${this.flownAt}|${this.mine}|${crashed}`;
+    const over = this.run !== null && (Boolean(crashed) || broke !== null || ((down !== undefined || stays) && t >= this.over()));
+    const key = `${this.flownAt}|${this.mine}|${crashed}|${broke?.t}`;
     if (el.hidden === !over && el.dataset.at === key) return;
     el.hidden = !over;
     el.dataset.at = key;
@@ -1457,6 +1501,16 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const buttons =
       '<p><button data-do="again"><kbd>N</kbd> Fly it again</button><button data-do="leave"><kbd>Esc</kbd> Leave</button></p>';
+    if (broke) {
+      // what the record says its escape would have done at that instant (`ascent.aborts`): said, not flown
+      const abort = o.ascent?.aborts?.find((x) => broke.t < x.until.value);
+      el.innerHTML = `<h3>Broke up on the launch vehicle</h3><p class="cockpit-why"><b>${broke.text}.</b></p>${
+        abort
+          ? `<p class="cockpit-why">What ${this.flight.callsign}’s escape did at that time, by the record: ${abort.does}. Not flown here: the flight ends at the breakup.</p>`
+          : ''
+      }<p class="cockpit-why">Not the flight of ${this.day}.</p>${buttons}`;
+      return;
+    }
     if (crashed) {
       el.innerHTML = `<h3>Back on the ground, on the launch vehicle</h3><p class="cockpit-why">Your flight never parted the spacecraft from its launch vehicle: it came down with it at ${this.state!.landed!.speed.toFixed(0)} m/s, ${(this.sampleAt(t).range / KM).toFixed(0)} km from the pad. Not survivable.</p>${buttons}`;
       return;

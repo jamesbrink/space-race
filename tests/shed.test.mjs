@@ -164,7 +164,8 @@ test('a stack that is turning as it parts, or parts early, still keeps its momen
     const auto = autopilot(v, { sequence: false });
     let s = run(v, auto, (x) => x.t >= t);
     s = { ...s, w };
-    const after = v.tick(s, { ...auto(s), separate: true });
+    // (the engine cut in the same tick: let go while the booster still pushes, the spacecraft rides on: tests/vehicle.test.mjs)
+    const after = v.tick(s, { ...auto(s), throttle: 0, separate: true });
     const pieces = after.released.filter((g) => g.t === s.t);
     assert.ok(pieces.length >= 1 && pieces.at(-1).on === 'separation', what);
     // every piece let go in that tick and the spacecraft that went on (the last release's rest): together the stack
