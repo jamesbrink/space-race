@@ -438,7 +438,7 @@ const capeCanaveral = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting 
 
 /** Site 1 at Tyuratam, on the steppe by the Syr Darya, at any hour: see `ground` and tyuratam.ts. */
 const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
-  ground(renderer, when, 'tyuratam', (day) => buildTyuratam(renderer, GROUND_Y, day));
+  ground(renderer, when, 'tyuratam', (day) => buildTyuratam(renderer, GROUND_Y, day, when?.site.around));
 
 /**
  * A place on the ground, at any hour, under its own sky. For Freedom 7 at the Cape (14:34:13 UTC,

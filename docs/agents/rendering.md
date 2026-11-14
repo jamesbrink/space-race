@@ -76,6 +76,10 @@ different one per pixel per frame. Three things stop it, and all three must stay
   half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
   the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
   in `site.py`). Change the two together and rebuild the pad and the place.
+- **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
+  writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
+  `smooth` (Tyuratam does: its graded slopes showed every cell as a facet). The Cape's land does not yet, and its
+  thickets' roofs are lit per triangle; turning it on there changes the Cape's picture.
 
 - **Far off, parallel faces need centimetres, not a millimetre.** Seen from 150 m while the
   camera is close to something else, faces under about 5 cm apart fight. Scenery that is looked at
@@ -548,7 +552,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     weather.ts, a flight's weather, the land map or the relief.
   - **High cloud is fibres or a veil.** Cirrus is `cirrusAt`'s fibres, never more than half opaque. Cirrostratus
     over the whole sky is `veilAt`: a smooth sheet as deep as the record's optical depth, the Sun's disc and a
-    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look.
+    glow through it, whiter toward the horizon, a white sheet from above, one flat paler tone in the cel look from under it and its fibres in two flat tones from above it.
     It is lit by the Sun at its own height and from the Sun's own direction (`highSun`, `uTrueSun`: lit before
     sunrise on the ground; the scene's one light is the Moon by night and points nowhere in between, and a veil
     lit by it stepped at sunrise). What is under it has
