@@ -472,9 +472,13 @@ never adjusted to bring a check in.
   points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame, for every vehicle
   (`Predictor.run(budget)`, the path put at its own instants in a slice of its own; `sr.path.cost` says what the last
   one took): sliced, not a worker, because a vehicle is closures over its flight's data (a programme's axis, a plan)
-  that a worker would have to rebuild for every state. On a phone-class processor (Chrome's CPU slowed four times) the
-  longest slice, both flights by the record and by hand under thrust, was 2.4 to 4.4 ms in each run but one (19 ms
-  once, in Vostok 1's ascent: a pause of the page's, a whole cut-now prediction there taking 1 to 7 ms unslowed), where
+  that a worker would have to rebuild for every state. On a phone-class processor (Chrome's CPU slowed four times), both flights by the record and
+  by hand stepped through deterministically, the camera moving every frame, the longest slice was 1.6 to 3.1 ms, the
+  line's placing for the eye 4.9 to 7.6 ms and the path's whole frame 6.8 to 10.5 ms, one frame in a few hundred over
+  8 (November 2026; the 19 ms slice an earlier, real-time measurement saw once did not come again: the two things that
+  could make one long frame of it, the path laid out again at once when it did not fit its points and each place on the
+  curve found from its first piece, are gone: `sampled` begins again in a slice of its own, pathline.ts `pieceOf`
+  halves), where
   the orbital deck's old predictor took 135 ms in one frame (14 November 2026). It is worked out only when it is
   wanted: while a prediction made again from the flight would lie within half a pixel of the curve on show wherever that
   is drawn (its departure from the curve, its place and three times its velocity's over the time ahead: a coast's
