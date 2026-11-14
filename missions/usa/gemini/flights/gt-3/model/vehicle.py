@@ -43,11 +43,11 @@ from srlib import CM, IN, load_font, mark_shells, material, run  # noqa: E402
 
 # Who sat where: the command pilot on the left (SEDR 300, p. 1-5).
 CREW = {"CommandPilot": g3c_suit.GRISSOM, "Pilot": g3c_suit.YOUNG}
-# The two men are modelled (the suit, and each seated) and the crew station is fitted round them
-# (../../../vehicles/gemini-spacecraft.md, "Crew station"); they are not yet put aboard. Each build prints the room
-# each would have (gemini_cabin.seat). True seats them, with the seats' restraint over them and each seat's node at
-# his eyes.
-CREW_ABOARD = False
+# Both men are aboard, seated as for the launch (../../../crew/g3c-suit.md, "Seated"): the crew station is fitted round
+# them (../../../vehicles/gemini-spacecraft.md, "Crew station"), and each build prints the room each has
+# (gemini_cabin.seat). False leaves the seats empty, with the harness lying on them and each seat's node where a
+# seated Grissom's eyes come.
+CREW_ABOARD = True
 
 
 def crew(name: str, parent, sit: Matrix) -> dict:
@@ -92,6 +92,10 @@ if __name__ == "__main__":
     mid = (top + base) / 2
     sc = (Z_NOSE + Z_BASE - 2 * Z0) / 2 * IN
     station = lambda s: base + (titan_ii_glv.S_EXIT - s) * IN  # noqa: E731
+    st = lambda z: (z - Z0) * IN  # noqa: E731  (a station of the spacecraft)
+    PANES = ("HatchLeft_Window", "HatchRight_Window")
+    SKINS = ("Cabin_", "Hatches_", "Hatch", "Experiment_")
+    OUTSIDE = (*SKINS, "RR_", "RCS_", "Retro", "Equipment", "Heat", "Nose", "Titan", "Scanner")
     run(
         "gt-3 vehicle",
         build,
@@ -134,16 +138,42 @@ if __name__ == "__main__":
                     ),
                 ),
             ),
-            # from each seat: ahead, up through his window, down at his knees, across the cabin
+            # from each seat: ahead, through his window, down at his knees, across the cabin. His own helmet is not drawn
+            # (the eyes are in it), nor the windows' panes, which a still drawn here would show as opaque
             *(
-                (f"seat-{who}-{view}.png", (0, 0, 0), 0, dict(seat=f"Seat_{name}", look=look, lens=lens, lamps="Lamp_", res=(1600, 1000)))
+                (
+                    f"seat-{who}-{view}.png",
+                    (0, 0, 0),
+                    0,
+                    dict(seat=f"Seat_{name}", look=look, lens=lens, lamps="Lamp_", res=(1600, 1000), hide=(f"Crew_{name}_Helmet", *PANES)),
+                )
                 for name, who in (("CommandPilot", "left"), ("Pilot", "right"))
                 for view, look, lens in (
                     ("ahead", (0, 0), 18),
-                    ("window", (0, 28), 28),
+                    ("window", (0, 4), 35),
                     ("down", (0, -50), 16),
                     ("inboard", (-55 if name == "CommandPilot" else 55, -10), 18),
                 )
+            ),
+            # the crew station and the men in it, as the sources look at them: down through where the hatches are
+            # (S65-13244); over the beam at the command pilot (S65-22665); in through each window (S65-20605, S65-24719,
+            # S65-24721); from the left side in section, the nose up; looking aft at the seats (SEDR 300, Figure 3-1)
+            ("cabin-above.png", (0.35, 0, st(128)), 3.2, dict(azimuth=0, elevation=8, res=(1500, 1500), hide=SKINS, lens=50)),
+            ("cabin-over-beam.png", (0.40, -0.43, st(125)), 0.84, dict(azimuth=23.4, elevation=10.4, res=(1400, 1400), hide=SKINS, lens=28)),
+            ("cabin-window-left.png", (0.495, -0.46, st(127.5)), 0.80, dict(azimuth=0, elevation=84.7, res=(1100, 1400), hide=PANES[:1], lens=40)),
+            ("cabin-window-right.png", (0.495, 0.46, st(127.5)), 0.80, dict(azimuth=0, elevation=84.7, res=(1100, 1400), hide=PANES[1:], lens=40)),
+            ("cabin-side.png", (0, -0.3, st(130)), 6.0, dict(azimuth=-90, elevation=0, res=(1300, 1700), hide=(*OUTSIDE, "CrewStation_"), lens=110)),
+            (
+                "cabin-aft.png",
+                (0, 0, st(120)),
+                5.5,
+                dict(
+                    azimuth=180,
+                    elevation=89.9,
+                    res=(1500, 1500),
+                    hide=(*OUTSIDE, "CrewCabin_", "Gauge", "Tele", "Ball", "Lamp", "CrewStation_"),
+                    lens=90,
+                ),
             ),
             (
                 "inside-cabin.png",

@@ -37,7 +37,7 @@ Z_BULKHEAD = 105.0  # the large pressure bulkhead's forward face: at the head of
 SEAT_REAR = (4.8, 9.0)  # the seat's rearmost point, the foot of its catapult: behind its reference point, and below it
 # a seat's reference point (the top of its pan, in the plane of the tray's front): toward the top, off the middle, station.
 # Its station is as far aft as the bulkhead lets the canted seat stand, with 0.4 in between them
-SEAT_AT = (-9.9, 11.6, Z_BULKHEAD + 0.4 + SEAT_REAR[0] * math.cos(deg(8 + 20 / 60)) + SEAT_REAR[1] * math.sin(deg(8 + 20 / 60)))
+SEAT_AT = (-9.9, 11.6, Z_BULKHEAD + 0.4 + SEAT_REAR[0] * math.cos(SEAT_CANT[1]) + SEAT_REAR[1] * math.sin(SEAT_CANT[1]))
 SEAT = dict(wide=22.0, top=40.5, drop=14.5, deep=19.0)  # the back's width; pan to the shroud's top; pan to the stirrups' foot; the bucket's depth
 STIRRUP = (3.0, 1.35, 4.9)  # a stirrup's platform: how far it stands forward, its top above the stirrup's foot, its middle off the seat's
 TRAY = 5.6  # how deep the back's tray is: the backboard, with the parachute on it, lies in it

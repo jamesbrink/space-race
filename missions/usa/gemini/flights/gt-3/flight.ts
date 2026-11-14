@@ -190,8 +190,7 @@ const parts: Part[] = [
     group: 'Spacecraft',
     inside: true,
     name: 'Crew station',
-    summary:
-      'Two ejection seats side by side before the panels this ship flew with. The seats are empty: the two men are modelled, and not yet put aboard.',
+    summary: 'Two ejection seats side by side before the panels this ship flew with, and the two men in them as they rode the launch.',
     detail:
       'Two men sit as in an aeroplane, the command pilot on the left, in pure oxygen at about 5 psi, each with a ' +
       'window before him and a hatch over him. The seats are ejection seats on rails on the bulkhead behind, ' +
@@ -210,7 +209,8 @@ const parts: Part[] = [
       'outside is documented. Seated for the launch, with his heels locked in the seat’s stirrups as an ' +
       'ejection needs them, Grissom has less than an inch between his helmet and the hatch and Young, two ' +
       'inches taller, about half an inch. The real cabin was famously made to Grissom’s measure and little ' +
-      'more. The men themselves are not yet put aboard.',
+      'more. Grissom’s left hand is on the abort handle, as a photograph of him in the cabin has it. Neither ' +
+      'man’s height is in a record that was read: 5 ft 7 in and 5 ft 9 in are estimates.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
       ['Seats', 'ejection seats, 22 in wide, canted 12° outboard and 8° forward'],
@@ -430,6 +430,26 @@ const REENTRY_MODULE = [
 ];
 const SPACECRAFT = [...REENTRY_MODULE, 'RetroSection', 'EquipmentSection'];
 
+/** A seated man's helmet and what is in it (crew/g3c_suit.py: build_helmet), mesh by mesh. */
+const HELMET = [
+  'Shell',
+  'Liner',
+  'VisorSeal',
+  'Head',
+  'Hair',
+  'Eyes',
+  'Irises',
+  'Brows',
+  'Lips',
+  'Earphones',
+  'Microphones',
+  'Visor',
+  'VisorBand',
+  'Pivots',
+  'NeckRing',
+  'NeckRingJoint',
+];
+
 const vehicle: ModelDef = {
   id: 'vehicle',
   name: 'Vehicle',
@@ -443,10 +463,25 @@ const vehicle: ModelDef = {
   // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
   // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
   // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
-  // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated.
+  // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
+  // man's helmet and head are not drawn (`hide`): the eyes are inside them.
   seats: [
-    { node: 'Seat_CommandPilot', label: 'the command pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
-    { node: 'Seat_Pilot', label: 'the pilot’s seat', from: 'Hatches', open: [-7200, -6000], egress: ['pad'] },
+    {
+      node: 'Seat_CommandPilot',
+      label: 'the command pilot’s seat',
+      from: 'Hatches',
+      open: [-7200, -6000],
+      egress: ['pad'],
+      hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
+    },
+    {
+      node: 'Seat_Pilot',
+      label: 'the pilot’s seat',
+      from: 'Hatches',
+      open: [-7200, -6000],
+      egress: ['pad'],
+      hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
+    },
   ],
   parts,
   position: [0, BASE, 0],

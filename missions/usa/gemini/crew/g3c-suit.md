@@ -8,9 +8,8 @@ garment module of its own: it is not the Mercury suit recoloured. It is parametr
 (`Wearer`, `wear`), so a later flight names its own man; the G4C that followed is a different
 cover layer on the same suit and would be a module beside this one.
 
-**The two men are modelled and are not yet in their seats.** The crew station is fitted round
-them ([gemini-spacecraft.md](../vehicles/gemini-spacecraft.md), "Crew station"); how they sit in it
-is under "Seated" below.
+**Both men are aboard Gemini-Titan 3**, seated as for the launch: see "Seated" below. The crew
+station is fitted round them ([gemini-spacecraft.md](../vehicles/gemini-spacecraft.md), "Crew station").
 
 **Confidence**: *documented* is a published figure or statement; *derived* is computed from
 documented ones; *estimated* was read off photographs, or chosen to look right.
@@ -94,7 +93,7 @@ arm turned at the shoulder as well as the elbow) and returns where the seat's ow
 to run over him: the reel's two straps over the shoulders to the harness's quick disconnects,
 the lap belt over the pelvis. [gemini_cabin.py](../vehicles/gemini_cabin.py) lays them, and puts
 each seat's node at the man's own eyes, when a flight's script says the men are aboard
-(`Fit.crew`; Gemini-Titan 3's `CREW_ABOARD`, which does not say so yet).
+(`Fit.crew`; Gemini-Titan 3's `CREW_ABOARD`).
 
 **The posture is the launch's**, which is an ejection's: "during seat ejection, the pilot's feet
 must be in place" in the stirrups, where each "shoe heel will lock in place" on a short platform

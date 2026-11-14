@@ -134,7 +134,7 @@ where the seats are, and the fit was held to them:
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Seats' cant | 12° outboard, 8°20' forward | documented | SEDR 300, p. 3-3 ("12° outboard and 8° forward"); Technical Summary, p. 209 ("8 degrees 20 min forward"). Forward is toward the nose: the cant is "to provide required elevation" for an ejection off the pad, where the nose is up |
-| Seat | 22 in wide, 54 in tall, 27 in deep | documented | Smithsonian A19710058000 ("22 x 55 in", a spare that was fitted in spacecraft 3) and A19690023001 (a training seat, 24 by 54 by 27 in). As built 22 wide, 54.7 from the stirrups' feet to the head of the catapult's fitting, 28.3 from the catapult to the stirrups' platforms |
+| Seat | 22 in wide, 54 in tall, 27 in deep | documented | Smithsonian A19710058000 ("22 x 55 in", a spare that was fitted in spacecraft 3) and A19690023001 (a training seat, 24 by 54 by 27 in). As built 22 wide and 54.7 from the stirrups' feet to the head of the catapult's fitting. **Its depth is a misfit:** 28.9 in from the back of its tray to the front of the stirrups' platforms, 1.9 in more than the 27. The bucket's 19 in is the pass before's and was not derived again; a shallower bucket would bring the heels aft, where the cone leaves more room, so the fit errs on the tight side |
 | Seat's form | a tray for a back, beaded, with a box channel up it and lightening holes down its sides; a five-sided shroud over its head with the catapult's fitting at the peak, white; the rocket catapult behind the channel; tee rails on the bulkhead; a bucket with arm sides rounded down to the front; a guard before the shins; two stirrups, each a frame of tube with a short platform and an edge up its outboard side; arm loops of 1/2 in tube; the D-ring on the bucket's front | by photograph and figure | the Smithsonian's photographs of both seats; SEDR 300, Figure 3-2 and pp. 3-5 to 3-13; the white shrouds are S65-13244's |
 | Seat: pan to the shroud's top | 40.5 in | estimated | the Smithsonian's front view of A19690023001, scaled on its 54 in with the nearer parts allowed for |
 | Seat: pan to the stirrups' foot, down the bucket's front | 14.5 in | estimated | the same photograph scales to 14 to 15.5. With the bucket raked it makes the seat's 54 in |
@@ -235,10 +235,8 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   the parachute and the raft are one pad behind the backboard, the egress kit a thin pad (thinner
   than the fit implies: "Crew station"), and there is no ballute, survival kit, drogue mortar,
   seat-man separator, leg strap or elbow restraint. Its tee rails stand off the square bulkhead
-  on plain struts. **The seats are empty in this build**: the station is fitted round the
-  two men ([g3c-suit.md](../crew/g3c-suit.md)) and each build prints the room they have, but
-  the flight's script does not yet put them aboard, and the harness lies on the empty seat as
-  two shoulder straps and a lap belt.
+  on plain struts. The lap belt is built only as far as the fold of each hip, where a seated
+  man's raised thighs cover the rest and its buckle; the gas hoses to the suits are not built.
 - **The panels are the drawing's in layout and scale, and estimated in every graduation.** The
   figure is too small to read a scale or most legends from, so a face has the range its instrument
   is known to have and the legends that can be read. The event timer, the velocity indicator and
