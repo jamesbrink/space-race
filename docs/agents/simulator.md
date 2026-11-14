@@ -42,28 +42,59 @@ never adjusted to bring a check in.
   apparent velocity, stops at 676.35 s with 46 kg aboard against NIIP-5's recorded 677.08 s; the ascent ends 157 m/s
   short of the orbit, and the documents' own staging times for the core cannot be flown on the blocks' secondary masses
   (the flight's mission.md, "What the ascent gives" and "The 2011 documents", says why).
-- **An orbital flight is flown on its own deck** (`src/orbitdeck.ts`, chosen in main.ts for a flight with
-  `orbital.ascent` and no `trajectory`; `lacks` in address.ts lights Fly for it). It offers what that flight's pilot had
-  and no more (`orbital.manual`). As flown, everything is automatic and the run is the record's (`flyWhole`), shown by
-  the scene through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts `orbitalRecord`): what
-  it drops is flown from `orbital.ascent.sheds`. By hand, once the spacecraft is alone and before the timer's burn, the
-  code on the lock (its digits) frees the hand controls: W S A D Q E turn the spacecraft at `manual.rate`, the timer's
-  burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest is flown again from that
-  burn and shown with where the pilot came down against the record's landing. The turning is a hand's on the attitude,
-  not a rigid body's: no jets, no gas, no tumble. The ascent has no hand controls (Vostok's had none). From the
-  spacecraft's separation the deck predicts its path with the same coast (`sim/orbitpath.ts`, given to path.ts as the
-  source's `predict`): once round with Ap and Pe, or down to the ejection height with the burn and the entry marked. The
-  Flown panel and the deck's card hold every check the orbital record sets (staged.ts `held`); sound and shake take the
-  first stages lit at liftoff as one engine (`liftoffEngine`); later fires burn from their own nozzles (`flies.fires`); a
-  cabin control's `does` of `code:` and a numeral is a key of the deck's lock. Because the ascent as recorded falls short of
-  the published orbit, what the scene and the deck show from separation is the published orbit begun where the ascent
-  left the spacecraft (`published`); the tests hold the ascent itself to the record as flown. The cabin rides it:
-  with each sample the deck tells the cabin (`DeckNews`: the instants of the record's events on the run on show,
-  `ascent.ts orbitalEvents`, moved by a burn by hand; the hand controller's push; whether the hands are free), so its
-  lamps light on those events, its gauges with a `history` follow the readings the record gives at their instants, the
-  manual orientation's switch stands as the hands are, and the hand controller moves with the keys. Heating's glow and
-  the parachutes drawn are not hooked to an orbital run yet. The smoke is
-  laid no higher than 80 km (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
+- **Every flight is flown on the one deck** (`src/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
+  notes and card), with a flight kind's code behind it: `cockpit.ts` for a flight on a `trajectory`, `orbitdeck.ts` for
+  one into orbit (`orbital.ascent` and no `trajectory`; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
+  differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
+  flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
+  stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
+  deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
+  both, Space is the next thing on both.
+- **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
+  record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
+  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`. Its pilot had no controls going up, and the deck says
+  so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
+  code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
+  `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
+  is flown again from that burn. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
+  from that instant it is the user's ("Not the record's"), the live staged vehicle (below) is caught up to the record at
+  that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
+  second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed
+  (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
+  ascent left it (`flyOrbit` from `parted`), short of an orbit or not: the handover to the published orbit is the record's
+  run's alone. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
+  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight with the same
+  coast (`sim/orbitpath.ts`, given to path.ts as the source's `predict`): on the launch vehicle, where it goes if the
+  engines stopped now (drawn with the ball's drag, so a vehicle cut low comes down nearer than drawn); alone, once round
+  with Ap and Pe, or down to the ejection height with the burn and the entry marked (`flyOrbit` stops there whether a burn
+  was made or not). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
+  ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
+  braking engine is heard when the run on show burns it (its `fires`), as one burn of its length; later fires burn from
+  their own nozzles (`flies.fires`); a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
+  deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; ascent.ts
+  `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
+  events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
+  and the hand controller moves with the keys. Because
+  the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
+  orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
+  Heating's glow and the parachutes drawn are not hooked to an orbital run yet. The smoke is laid no higher than 80 km
+  (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
+- **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
+  engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
+  `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose
+  steering gives `ascent.steering.authority` (estimated) about each axis at full throw while an engine aboard burns (no
+  inertia, no aerodynamic moment, no structural limit: none read; drag acts along the motion, as in the batch run), and the
+  hands' say over every event (`StagedControls.steps`): nothing happens that is not asked for, a stage let go takes every
+  stage below it still on, its propellant and its thrust, an engine is started once and stops when cut or dry. The
+  record's flight is a pilot (`stagedPilot`): the law's axis held by a critically damped turn (`OMEGA`, chosen) with the
+  law's own turning fed forward, the steps at the record's times and a stage with `velocity` cut on its integrator's sum,
+  read every tick from switches the deck throws; guidance on, W S A D lean the law as a ballistic deck's trim does. With
+  the attitude placed as the law's (`prescribed`, a test's) it is the batch run to 0.03 m/s and 48 m at the last cutoff;
+  steered at the stated acceleration it is 5.6 m/s slow and 0.5 km high there, the pitch-over's lag carried on by the
+  gravity turn: a recorded miss in `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by
+  hand to their consequences. Steered as well as the law steers it, a hand-flown ascent falls short of an orbit as the
+  record's run does (perigee about -200 km at the cutoff): no input is changed to bring it in.
 - **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
   half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
   is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails

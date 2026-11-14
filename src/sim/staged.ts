@@ -48,10 +48,10 @@ import {
 import { elementsOf, period, planeThrough, type State, step, subpoint } from '../world/orbit.ts';
 import { greenwichSiderealTime } from '../world/time.ts';
 import { atmosphere } from './atmosphere.ts';
-import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
-import type { LiveSample } from './vehicle.ts';
 import { along, G0, MEAN_RADIUS, P0 } from './fly.ts';
 import { flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
+import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
+import type { LiveSample } from './vehicle.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -196,21 +196,16 @@ const parting = (o: OrbitalFlight): number => {
   return (last.separation ?? last.cutoff).value;
 };
 
-type Mode = 'vertical' | 'turn' | 'tangent';
+export type Mode = 'vertical' | 'turn' | 'tangent';
 
 /**
- * Fly the ascent with the law's unknowns as given. `site` and `launchJd` as flyOrbit's; `every`: how often a sample is
- * kept, s. Ends at the spacecraft's separation from the last stage.
+ * The stated steering law (orbital.ts: Guidance) with its unknowns given: where it puts the thrust's axis at a state, in
+ * frames.ts's inertial frame of date. What the batch run flies (`ascend`) and what the live vehicle's guidance steers to
+ * (sim/stagedlive.ts): one law. `thetaTurn` is the axis's angle above the local level as the tangent takes over.
  */
-export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel: number, x: Solved, every = 0.5): Ascended {
-  const a = o.ascent;
-  if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
-  const g = a.guidance;
+export function lawOf(o: OrbitalFlight, site: Geodetic, launchJd: number, x: Solved) {
+  const g = o.ascent!.guidance;
   const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
-  const gastAt = (t: number) => gast0 + EARTH_ROTATION_RATE * t;
-  const radius = o.orbit.radius.value;
-
   const pad = ecefToInertial(geodeticToEcef(site), gast0);
   const up0 = ecefToInertial(enuAxes(site).up, gast0); // the plumb line at liftoff, held by the gyros
   // the launch plane: through the plumb line and the aiming azimuth, where the record gives it; else the one solved for
@@ -227,17 +222,93 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   const down0 = unit(cross(n, unit(pad))); // level in the plane, the way it will go
   const tiltOf = (d: Vec3) => Math.atan2(dot(d, down0), dot(d, upIn));
   const tilted = (tilt: number): Vec3 => add(scale(upIn, Math.cos(tilt)), scale(down0, Math.sin(tilt)));
+  const tVertical = g.vertical.value;
+  const tKicked = tVertical + g.kick.value;
+  const tTurn = g.turn.value;
+  /** The local level in the plane, and up, at a position. */
+  const localAt = (r: Vec3) => {
+    const u = unit(sub(r, scale(n, dot(n, r))));
+    return { u, h: unit(cross(n, u)) };
+  };
+  const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
+    if (m === 'vertical') return up0;
+    if (m === 'turn') {
+      // along the motion through the air, in the plane; leaned past it by the pitch-over while that lasts
+      const w = sub(wind, scale(n, dot(n, wind)));
+      const along = length(w) > 1e-9 ? tiltOf(w) : 0;
+      const lean = t < tKicked ? x.kick * Math.sin((Math.PI * (t - tVertical)) / g.kick.value) ** 2 : 0;
+      return tilted(along + lean);
+    }
+    const { u, h } = localAt(s.r);
+    const theta = Math.atan(Math.tan(thetaTurn) - x.rate * (t - tTurn));
+    return add(scale(h, Math.cos(theta)), scale(u, Math.sin(theta)));
+  };
+  /** Which part of the law holds at `t`. */
+  const modeAt = (t: number): Mode => (t < tVertical ? 'vertical' : t < tTurn ? 'turn' : 'tangent');
+  return { n, pad, up0, down0, localAt, axisAt, modeAt, tVertical, tKicked, tTurn };
+}
+
+/** The air at a state (atmosphere.ts, turning with the Earth, no wind): where it is over, its height, the air, the motion through it. */
+export function airAt(seaLevel: number, launchJd: number) {
+  const gast0 = greenwichSiderealTime(launchJd);
+  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  return (s: State, t: number) => {
+    const here = subpoint(s.r, gast0 + EARTH_ROTATION_RATE * t);
+    const altitude = here.height - seaLevel;
+    const air = atmosphere(altitude);
+    const wind = sub(s.v, cross(spin, s.r));
+    const airspeed = length(wind);
+    return { here, altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed };
+  };
+}
+
+/**
+ * The stack's engines and drag, as the record has them: one stage's thrust at an instant and a pressure (each `count`
+ * alike, vacuum thrust less exit area times the air's pressure, times its throttle), one unit's propellant burned while
+ * lit from `from` to `to`, and the drag area for the shape that flies at a record instant `at` (`ascent.drag`'s piece
+ * for it) and a Mach number. The batch run and the live vehicle both fly on these.
+ */
+export function stackOf(o: OrbitalFlight) {
+  const a = o.ascent!;
+  const flows = o.stages.map(flowOf);
+  const areas = o.stages.map(exitAreaOf);
+  const throttle = (i: number, t: number) => (o.stages[i]!.throttle ? along(o.stages[i]!.throttle!, t) : 1);
+  return {
+    flows,
+    areas,
+    throttle,
+    burned: (i: number, from: number, t: number) => flows[i]! * integral(o.stages[i]!.throttle, from, t),
+    thrust: (i: number, t: number, pressure: number) =>
+      o.stages[i]!.count * throttle(i, t) * (o.stages[i]!.thrust.vacuum.value - pressure * areas[i]!),
+    dragArea: (at: number, mach: number) => {
+      const drag = a.drag.find((d) => at < d.until.value) ?? a.drag[a.drag.length - 1]!;
+      return drag.area.value * along(drag.curve, mach);
+    },
+  };
+}
+
+/**
+ * Fly the ascent with the law's unknowns as given. `site` and `launchJd` as flyOrbit's; `every`: how often a sample is
+ * kept, s. Ends at the spacecraft's separation from the last stage.
+ */
+export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel: number, x: Solved, every = 0.5): Ascended {
+  const a = o.ascent;
+  if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
+  const g = a.guidance;
+  const gast0 = greenwichSiderealTime(launchJd);
+  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const gastAt = (t: number) => gast0 + EARTH_ROTATION_RATE * t;
+  const radius = o.orbit.radius.value;
+  const law = lawOf(o, site, launchJd, x);
+  const { pad, n } = law;
+  const stack = stackOf(o);
 
   const plan = schedule(o);
   // a stage cut on its velocity: the space-fixed speed its integrator stops it at (the design's, and the error it had)
   const cutAt = o.stages.map((st) => (st.velocity ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : Infinity));
-  const flows = o.stages.map(flowOf);
-  const areas = o.stages.map(exitAreaOf);
-  const burned = (i: number, t: number) => flows[i]! * integral(o.stages[i]!.throttle, plan[i]!.from, Math.min(t, plan[i]!.to));
-  const throttle = (i: number, t: number) => (o.stages[i]!.throttle ? along(o.stages[i]!.throttle!, t) : 1);
-  const tVertical = g.vertical.value;
-  const tKicked = tVertical + g.kick.value;
-  const tTurn = g.turn.value;
+  const burned = (i: number, t: number) => stack.burned(i, plan[i]!.from, Math.min(t, plan[i]!.to));
+  const throttle = stack.throttle;
+  const { tVertical, tKicked, tTurn } = law;
   const tEnd = instant(o, g.target.at);
   const tPart = parting(o);
   // a stage cut on its apparent velocity: the instant its integrator reaches its setting, found here from the mass flown
@@ -272,32 +343,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
 
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
-  /** The local level in the plane, and up, at a position. */
-  const localAt = (r: Vec3) => {
-    const u = unit(sub(r, scale(n, dot(n, r))));
-    return { u, h: unit(cross(n, u)) };
-  };
-  const airOf = (s: State, t: number) => {
-    const here = subpoint(s.r, gastAt(t));
-    const altitude = here.height - seaLevel;
-    const air = atmosphere(altitude);
-    const wind = sub(s.v, cross(spin, s.r));
-    const airspeed = length(wind);
-    return { here, altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed };
-  };
-  const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => {
-    if (m === 'vertical') return up0;
-    if (m === 'turn') {
-      // along the motion through the air, in the plane; leaned past it by the pitch-over while that lasts
-      const w = sub(wind, scale(n, dot(n, wind)));
-      const along = length(w) > 1e-9 ? tiltOf(w) : 0;
-      const lean = t < tKicked ? x.kick * Math.sin((Math.PI * (t - tVertical)) / g.kick.value) ** 2 : 0;
-      return tilted(along + lean);
-    }
-    const { u, h } = localAt(s.r);
-    const theta = Math.atan(Math.tan(thetaTurn) - x.rate * (t - tTurn));
-    return add(scale(h, Math.cos(theta)), scale(u, Math.sin(theta)));
-  };
+  const localAt = law.localAt;
+  const airOf = airAt(seaLevel, launchJd);
+  const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
   /** Every force but gravity over the mass, m/s^2, at a state, with the stages burning and what has left fixed for the step. */
   const forces = (s: State, t: number, m: Mode, gone: number) => {
     const air = airOf(s, t);
@@ -305,11 +353,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
     let mass = o.liftoffMass.value - gone;
     o.stages.forEach((st, i) => {
       mass -= st.count * burned(i, t);
-      if (t >= plan[i]!.from && t < plan[i]!.to)
-        thrust += st.count * throttle(i, t) * (st.thrust.vacuum.value - air.air.pressure * areas[i]!);
+      if (t >= plan[i]!.from && t < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
     });
-    const drag = a.drag.find((d) => t < d.until.value) ?? a.drag[a.drag.length - 1]!;
-    const dragArea = drag.area.value * along(drag.curve, air.mach);
+    const dragArea = stack.dragArea(t, air.mach);
     const axis = axisAt(s, t, m, air.wind);
     let f: Vec3 = scale(axis, thrust);
     if (air.airspeed > 0) f = add(f, scale(air.wind, (-air.q * dragArea) / air.airspeed));

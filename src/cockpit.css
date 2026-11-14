@@ -335,3 +335,4 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 /* From the couch the model's own panel is in front of the pilot: the deck is put away unless it is asked for (P; main.ts panelOnly), and with it the navball and the path's labels */
 #ui.panel-only :is(.cockpit, .navball, .path-marks) { display: none; }
 #ui.piloting.aboard > .tip:not([hidden]) { display: block; }
+.tank.jets u[data-cell]::before { display: none; }
