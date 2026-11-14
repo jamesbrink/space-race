@@ -121,6 +121,8 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | FloodlightTower | rim.py | the 60 ft tower west of the platform | yes (the place) |
 | OuterFence…, InnerFence… (North, East, South, West), LightPoles…, GuardTowers (`GuardTower_NW` …) | perimeter.py | the double fence, the light poles inside it, six guard towers | yes (the place) |
 | SouthBuilding_1, SouthStore_2, PumpHut_3, SouthTanks, VehicleShed_6, SouthBuilding_7, Tents_11, FencedYard_12 | south.py | what one photograph of July 1959 shows south of the embankment and outside the south fence, the CIA's item numbers in their names: two gable-roofed buildings, a pump hut, two pairs of tanks, a vehicle shed, a building with a mast, six tents, a boarded yard; doors shut, windows dark | yes (the place) |
+| Site51 | site51.py | the R-9's pad 415 m north-north-west, outside the north fence: an octagonal pad on its bank, a square building, the end of a rail spur; no rocket | yes (the place) |
+| AssemblyBuilding | [tyuratam/mik.py](tyuratam/mik.py) | Site 2's assembly and test building, 2 km west-south-west | built as a model of its own (`sites/tyuratam/1961-04.glb`); **not shown**: the viewer does not fetch it |
 | (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
 | (the cosmonaut) | the flight's crew.glb | on the deck's west edge, 19.5 m west and 6.5 m south of the axis: on his way from the bus to the foot of the erector's stair; where he is stood is estimated | yes |
 
@@ -428,6 +430,19 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | 12 | a solid-fenced area, dark objects in its north-west corner; added after 1957 | (-120, -470), to thirty metres | 325 by 130 ft, long axis north and south | size documented; the fence as boards on posts, 2.2 m, estimated |
 | 8, 9, 10 | a semi-buried store, a building, a covered bunker | | | gone by 1959: not built |
 
+### On the horizon
+
+| Item | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| Site 51, the R-9's first pad (the CIA's "Launch Site 2-A") | its middle at (-101, 403): 415 m on bearing 346° | documented | PIC/JR-8/61 (August 1961), pp. 13-14; today's map |
+| Its pad | octagonal, about 190 by 120 ft, long axis north-west and south-east | documented (measured) | PIC/JR-8/61 |
+| What else is described | a road from the west; a rail spur ending at a building 50 ft square south of the pad; road and rail on a fan-shaped bank some 1,000 ft long and 350 ft wide at its east end | documented | the same. Built: the pad on a metre of bank (its height estimated), the building (47 m south of the pad's middle, clear of its bank, 4.5 m to its roof: estimated), the spur's last 40 m ([site1/site51.py](site1/site51.py)) |
+| Whether it stood on 12 April 1961 | yes: the first R-9 left it on 9 April 1961 (and failed), the next on 21 April | documented | ru.wikipedia, Р-9А; Zak, RussianSpaceWeb. No rocket stood on it on the 12th |
+| The assembly and test building of Site 2 (МИК 2-1; the CIA's "Missile Assembly and Checkout Facility No 1") | 395 by 105 ft, 70 ft high (120.4 by 32.0 by 21.3 m), a shed 30 ft broad along its west side, three tracks through it; its middle at (-1941, -641): 2.04 km on bearing 252°, long axis on 028° | documented (the size: measured, PIC/JR-2/60 p. 16; the place: OpenStreetMap way 173526300 less its extension of 1973 to 1974 at the north-north-east end) | accepted 11 May 1957. Its top 13 m shows over the land from the deck |
+| Its roof, walls, colour | a low double-pitched roof, pale render, tall gates in its ends, a band of windows under the eaves | estimated | no photograph of it from 1957 to 1961 was found |
+| Where it is built | a model of its own, `public/models/ussr/vostok/sites/tyuratam/1961-04.glb` ([tyuratam/mik.py](tyuratam/mik.py), `pnpm model:tyuratam`): 2,380 triangles, in Site 1's frame | | **not shown**: the viewer does not fetch it yet ("What the model gets wrong") |
+| Left out | the building 75 ft square 1.43 km north-west (not dated to April 1961); the measuring point IP-1, 1.43 km south-west (only its tops show); Site 2's housing and the cottages (hidden by some 30 m of land); Site 31, 19 km off | | the research's sight lines (SRTM, eye 1.7 m over the deck) |
+
 ## The land
 
 [src/viewer/tyuratam.ts](../../../../src/viewer/tyuratam.ts): the land's frame is the site's (+X east, -Z north).
@@ -716,6 +731,8 @@ opens: what was behind each is not recorded.
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
 | South of the embankment: two gable-roofed buildings, a pump hut, two pairs of tanks; outside the south fence: a vehicle shed, a building with a mast (items 1 to 7) | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | NPIC/B-24/61 |
 | Six tents; a solid-fenced yard (items 11, 12) | between August 1957 and July 1959 | not known (the tents "not permanent") | documented for July 1959; assumed for 1961, the tents least surely | NPIC/B-24/61 |
+| Site 51: its pad, a building 50 ft square, its spur | by 9 April 1961 (new on the photographs of 1961) | today, rebuilt | documented | PIC/JR-8/61 pp. 13-14; the first R-9's launch |
+| Assembly and test building of Site 2 | 11 May 1957 | today (extended 1973 to 1974) | documented | PIC/JR-2/60 p. 16; OpenStreetMap |
 | Observation positions a to i | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
 | Spoil heap | 1957 | today | documented | HTA/JR-4/58; today's imagery; SRTM |
 | Cable conduit to the bunker | between August 1957 and 1959 | today (its line) | documented | PIC/JR-2/60 |
@@ -892,6 +909,15 @@ rocket can leave the erector out by its date.
   passage or cable line from the bunker south to the embankment (seen; its form unknown), the open pit 15 ft
   square "90 feet southwest of the new support building", and the six camera stations within 450 ft of the
   platform beyond those the rim's positions stand for.
+- Not built, because they are new on photographs of 1961 whose date is redacted and so are not dated to April:
+  two buildings near the check-out shop, the double fence's extension 1,300 ft north to take in Site 51, and
+  the building 75 ft square with six small ones 1.43 km to the north-west (PIC/JR-8/61).
+- Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
+  mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
+  the rest of its spur are not drawn. The building's distance from the pad is ours.
+- **The assembly and test building of Site 2 is built and not shown** ("On the horizon"): it stands 2 km off, and
+  the place's model cannot hold it without moving the place's coarse shadow map off the pad. It waits for the
+  viewer to place it, as the Cape's far complexes are placed.
 - **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
   roster has people, each there until its time and then gone between one frame and the next ("The morning's
   people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's

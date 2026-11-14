@@ -46,6 +46,7 @@ pnpm model:voskhod-1  # rebuild Voskhod 1's vehicle: 3KV No. 3 on its 11A57
 pnpm model:voskhod-2  # rebuild Voskhod 2's vehicle: 3KD No. 4, the airlock folded under the fairing's blister
 pnpm model:lc-5       # rebuild the place round the pad, each of its dated states (the site's own models)
 pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
+pnpm model:tyuratam   # rebuild what stands beyond Site 1's fences: Site 2's assembly building (built; the viewer does not fetch it yet)
 pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
 pnpm models           # rebuild every flight's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region; pnpm globe:weather each flight's day's weather map

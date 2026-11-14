@@ -69,7 +69,7 @@ def build_place(date: str | None = None) -> str:
       Tracks                                                      deck.py       the rails where they come up to the platform over the land
       Outer/InnerFence<side>, LightPoles<side>, GuardTowers       perimeter.py  the double fence, its lights and its towers
     The roads are painted on the land (src/viewer/tyuratam.ts), as the tracks are further off. Returns a line of its sizes."""
-    from site1 import buildings, bunker, deck, perimeter, place, rim, south, storage
+    from site1 import buildings, bunker, deck, perimeter, place, rim, site51, south, storage
 
     sitelib.as_of(date)
     parts = Parts(place.materials())
@@ -83,8 +83,9 @@ def build_place(date: str | None = None) -> str:
     if sitelib.stood("Tracks onto the platform", **seen, source="HTA/JR-4/58 (five spurs in 1957); PIC/JR-2/61 Figure 1; OpenStreetMap"):
         deck.land_rails(parts)
     perimeter.build(parts)
-    # what one vertical photograph of July 1959 shows south of the embankment and outside the south fence
+    # what one vertical photograph of July 1959 shows south of the embankment and outside the south fence, and the R-9's pad to the north
     south.build(parts)
+    site51.build(parts)
     # Everything above is built on the deck's level; the land north of the tracks and east of the pit lies under it
     # (relief.py). The fences, their poles and the spoil go down vertex by vertex, each thing that stands in one spot as
     # it is; the tracks are on the embankment, and the conduit is built from the pit's rim as it lies.
@@ -94,4 +95,6 @@ def build_place(date: str | None = None) -> str:
     parts.build()
     print(sitelib.standing())
     print("on the land, m from the deck's level: " + ", ".join(f"{name} {dz:+.2f}" for name, dz in down))
-    return "; ".join((bunker.summary(), storage.summary(), buildings.summary(), rim.summary(), perimeter.summary(), south.summary()))
+    return "; ".join(
+        (bunker.summary(), storage.summary(), buildings.summary(), rim.summary(), perimeter.summary(), south.summary(), site51.summary())
+    )
