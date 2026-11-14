@@ -200,8 +200,23 @@ films with the steering chambers' thin jets beside them. The uniforms (five vect
 the march under the 224 fragment uniform vectors WebGL 2 promises. The fires share one light at their middle (each
 light would be another shader variant for everything lit), as strong as one fire as large as all of them by the
 square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
-as broad as they are spread. The pad's cloud is still the one read off LC-5's photographs (trail.ts `blast`), drawn
-at Site 1 too: the flame pit, which takes an R-7's exhaust down and out of its open side, is not modelled.
+as broad as they are spread.
+
+**A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
+the nozzle's; the colours, the light given and how much of what is behind it a fire hides are the chemistry's, one entry
+a propellant pair: kerosene and oxygen glow with soot (yellow-white, opaque for their first lengths, far brighter than
+the alcohol flame), the hydrazines and nitrogen tetroxide hardly at all (peach, seen through), alcohol and oxygen as the
+Redstone's fire was first drawn, which is the unit and is unchanged. Each fire carries its entry to the march
+(`uJetF`: its light, its opacity, how much its body glows, and its row in the colour tables built from the file), and the
+fires' one light takes the colour and strength of what burns, by area. The temperatures in the table are the reason the
+entries differ and are cited; every look is estimated and says what film or photograph it was judged on.
+
+**Where the exhaust goes is the site's** (`SiteDef.exhaust`, trail.ts `blast`). Left out, it strikes a deflector under
+the stand and is thrown out over the concrete (LC-5's cloud, read off its photographs). Site 1's is a flame pit: the
+fires go down through the opening in the deck, along the pit's floor between its retaining walls and up out of its open
+eastern side, so the cloud (`pitBlast`) starts in the pit past the slot's end, rises out of it within three seconds and
+spreads only on the side away from the rocket (`uBlastE`: where its middle is, the fan it fills, how deep it reaches),
+with a fifth of LC-5's puff on the deck. Its sizes are estimated from photographs and film of R-7s leaving the pad.
 
 ## Levels of detail
 

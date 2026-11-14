@@ -13,6 +13,9 @@ import type { OrbitalFlight } from './sim/orbital.ts';
  */
 export type Confidence = 'documented' | 'derived' | 'estimated';
 
+/** What an engine burns, for its fire's look (viewer/flames.ts: each one's colours, light and opacity, with their sources). */
+export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
+
 export interface Spec {
   /** Which thing the figure describes: 'Spacecraft', 'Launch vehicle', 'Launch pad', 'Pressure suit'. */
   group: string;
@@ -593,6 +596,14 @@ export interface SiteDef {
   quiet?: { wind: number; surf: number; hum: number; sea: number };
   /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
   around?: SiteAround;
+  /**
+   * Where a rocket's exhaust goes at liftoff (viewer/trail.ts `blast`). Left out, it strikes a deflector under the stand
+   * and is thrown out over the concrete all round (LC-5's). `pit`: down through an opening in the deck into a flame pit
+   * and along its floor to its open side, where the cloud rises: `toward` that side's bearing, degrees true; the pit's
+   * `depth` under the deck; how far from the rocket's axis the gas comes along the floor (`out`) before it can rise; and
+   * the width of the slot it is held in, metres.
+   */
+  exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
 }
 
 /**
@@ -1248,9 +1259,12 @@ export interface Flight {
      * instants it burns between where the run has them (an orbital flight's: `stage:<index>` for a stage, at its
      * throttle, or `retro` for the braking burn). `node`: with `radius` (the exit's, m), a node whose lowest point is
      * one round exit; without, a node holding only the engine's nozzles (its bells), whose every chamber, main or
-     * steering, is found in the model's geometry and drawn from its own exit.
+     * steering, is found in the model's geometry and drawn from its own exit. `burns`: what it burns, which gives the
+     * fire its colours, its light and how much of what is behind it it hides (viewer/flames.ts); left out, alcohol and oxygen.
      */
-    fires?: { node: string; radius?: number; on: string }[];
+    fires?: { node: string; radius?: number; on: string; burns?: Burns }[];
+    /** What `engine`'s fire burns: its colours, light and how much it hides (viewer/flames.ts). Left out, alcohol and oxygen. */
+    burns?: Burns;
     /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
     chutes?: ChuteDef[];
     /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */

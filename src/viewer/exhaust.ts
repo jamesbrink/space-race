@@ -4,6 +4,7 @@ import { installedAir } from './air.ts';
 import { hash2 } from './field.ts';
 import { type Cluster, mergeOf } from './fires.ts';
 import { uOrigin } from './origin.ts';
+import { FLAME_TABLES, FLAMES, KINDS } from './flames.ts';
 import { jetEdge } from './plume.ts';
 import type { Blast } from './trail.ts';
 
@@ -70,6 +71,8 @@ export interface Flame {
   readonly cluster: Cluster | null;
   time: number;
   bright: number;
+  /** What it burns, as the shader's tables hold it (flames.ts `kindOf`): its colours, its light and how much it hides. */
+  readonly kind: number;
   readonly light: THREE.PointLight;
   /** The jet's shape in the air it is in (plume.ts `plumeShape`). */
   shape(): { width: number; length: number; air: number; cell: number };
@@ -240,6 +243,8 @@ const u = {
    * before the exit), metres; where its main chambers have merged into it, from and to, in a main chamber's radii.
    */
   uJetB: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
+  /** What it burns (flames.ts): its light against the alcohol flame's, how much it hides, how much its body glows, and its entry in the tables. */
+  uJetF: { value: Array.from({ length: JETS }, () => new THREE.Vector4(1, 1, 1, 0)) },
   /** Each chamber's place across its exit, over the exit's radius: two to a vector, the main chambers of a fire first. */
   uChamber: { value: Array.from({ length: CHAMBERS / 2 }, () => new THREE.Vector4()) },
   uBright: { value: 1 },
@@ -255,6 +260,8 @@ const u = {
   uBlastC: { value: new THREE.Vector4() },
   /** The upright cylinder it all lies in: its middle's offset from the stand (x, z), its radius and height. Radius 0: there is none. */
   uBlastD: { value: new THREE.Vector4() },
+  /** Where a flame pit sends it (trail.ts `Blast.mouth`, `fan`, `deep`): nought for a stand over a deck. */
+  uBlastE: { value: new THREE.Vector4(0, 0, -2, 0) },
   /** The trail's nodes, oldest first: place and spread; extinction on the path and metres along it. */
   uNodeP: { value: new Float32Array(NODES * 4) },
   uNodeQ: { value: new Float32Array(NODES * 4) },
@@ -287,7 +294,9 @@ const DEPTH = /* glsl */ `
  * dust's extinction; C: the ring's drift (x, z) and its head's lift. Shared by the march and by the shadow it casts.
  */
 const BLAST_FORM = /* glsl */ `
-  vec4 blastForm(vec3 q, vec4 A, vec4 B, vec4 C) {
+  // E: where a flame pit sends the ring (trail.ts \`pitBlast\`): its middle from the stand, the cosine of half the fan it
+  // spreads in, away from the stand (under -1: all round), how far under the stand it can reach. Nought for a deck.
+  vec4 blastForm(vec3 q, vec4 A, vec4 B, vec4 C, vec4 E) {
     float out_ = 1e4;
     // the puff: a squat dome over the stand, carried a third as far as the ring
     vec3 qp = q - vec3(C.x, 0.0, C.y) * 0.33;
@@ -299,7 +308,7 @@ const BLAST_FORM = /* glsl */ `
     // The jet does not leave the deflector evenly (its faces and the stand's legs split it into tongues): round the
     // stand the front runs out further in some ways than others, and the head is taller there. Fixed lobes, a few to the
     // turn (estimated): smooth, and the same in the shadow's arithmetic as in the march.
-    vec2 qr = q.xz - C.xy;
+    vec2 qr = q.xz - C.xy - E.xy;
     float r = length(qr), th = r < 1e-3 ? 0.0 : atan(qr.y, qr.x);
     float lobe = 0.5 * sin(3.0 * th + 1.3) + 0.32 * sin(5.0 * th + 0.4) + 0.18 * sin(9.0 * th + 2.1);
     float a = max(0.5 * A.y, 0.1) * (1.0 + 0.45 * lobe);
@@ -308,6 +317,8 @@ const BLAST_FORM = /* glsl */ `
     // (and some ways it is thick, others it is torn through: the ring is not a ring for long)
     float torn = 0.5 * sin(2.0 * th + 4.1) + 0.3 * sin(7.0 * th + 0.9) + 0.2 * sin(11.0 * th + 5.3);
     float head = (1.0 - smoothstep(0.2, 1.0, eh)) * (0.62 + 0.38 * torn);
+    float el = length(E.xy);
+    if (E.z > -1.5 && el > 1e-3 && r > 1e-3) head *= smoothstep(E.z - 0.35, E.z + 0.2, dot(qr / r, E.xy / el));   // (only away from the stand)
     if (A.z > 0.0) out_ = min(out_, (eh - 1.0) * a);
     // the dust and the thin wash of exhaust behind the head: the lowest two metres, out a little past it
     float dust = (1.0 - smoothstep(0.6, 2.2, q.y)) * smoothstep(1.0, 4.0, r) * (1.0 - smoothstep(0.85 * A.x, 1.15 * A.x, r));
@@ -320,7 +331,7 @@ const SMOKE = /* glsl */ `
   #define NODES ${NODES}
   uniform highp sampler3D tNoise;
   uniform vec3 uPad;
-  uniform vec4 uBlast, uBlastB, uBlastC, uBlastD;
+  uniform vec4 uBlast, uBlastB, uBlastC, uBlastD, uBlastE;
   uniform vec4 uNodeP[NODES];
   uniform vec4 uNodeQ[NODES];
   uniform int uNodes;
@@ -347,7 +358,7 @@ const SMOKE = /* glsl */ `
   float blastDensity(vec3 p, float lod, out float dust) {
     dust = 0.0;
     vec3 q = p - uPad;
-    vec4 f = blastForm(q, uBlast, uBlastB, uBlastC);
+    vec4 f = blastForm(q, uBlast, uBlastB, uBlastC, uBlastE);
     if (f.w > 0.0) return 0.0;
     float tile = 4.0 * (2.0 + 0.16 * uBlast.x);
     float n = billow((q - vec3(uBlastC.x, uBlast.w, uBlastC.y)) / tile, lod);
@@ -419,7 +430,8 @@ const MARCH = /* glsl */ `
   uniform float uBright;
   #define JETS ${JETS}
   uniform int uJets;
-  uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS];
+  uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS], uJetF[JETS];
+  ${FLAME_TABLES}
   uniform vec4 uChamber[${CHAMBERS / 2}];
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and cover
@@ -453,16 +465,19 @@ const MARCH = /* glsl */ `
     float w = uShape.x;
     return 1.0 + (w - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * w))) + 0.085 * max(x, 0.0) * uFlame.z;
   }
-  // the fire's colour by how hot it is, 0 to 1 and over: orange where it is going out, pale yellow, nearly white (alcohol burns pale)
-  vec3 glow(float heat) {
-    vec3 c = mix(vec3(1.0, 0.3, 0.05), vec3(1.0, 0.56, 0.15), smoothstep(0.03, 0.35, heat));
-    return mix(c, vec3(1.0, 0.9, 0.62), smoothstep(0.35, 1.0, heat));
+  // the fire's colour by how hot it is, 0 to 1 and over, from what it burns (flames.ts): orange where it is going out,
+  // warm, hottest (alcohol burns pale yellow, nearly white; kerosene's soot yellow-white; the hydrazines peach)
+  vec3 glow(float heat, int kind) {
+    vec3 c = mix(FLAME_COOL[kind], FLAME_WARM[kind], smoothstep(0.03, 0.35, heat));
+    return mix(c, FLAME_HOT[kind], smoothstep(0.35, 1.0, heat));
   }
   // Light given off at q from the nozzle (rgb, by a metre of path over the exit's radius), and what is taken back (a), of
   // a jet from an exit of radius R along A, burning at on, its eddies run flow metres aft. near: a cluster's own chambers
   // there (chambers()): how far out q is against the nearest one's edge, its bright core, and how far they have merged
   // into this jet (1: wholly, as one round exit always is).
-  vec4 fire(vec3 q, float R, float on, vec3 A, float flow, vec3 near) {
+  // F: what it burns (uJetF): its light against alcohol's, how much it hides, how much its body glows, its entry.
+  vec4 fire(vec3 q, float R, float on, vec3 A, float flow, vec3 near, vec4 F) {
+    int kind = int(F.w + 0.5);
     float air = uFlame.z;
     float x = dot(q, A) / R;
     vec3 radial = q / R - A * x;
@@ -499,13 +514,14 @@ const MARCH = /* glsl */ `
     // the gas straight from the throat, white, for the first few radii whatever the air
     float core = mix(near.y, exp(-r * r * 1.6) * exp(-x / (3.0 + 2.0 * air)), near.z);
     // in air it burns; in none the gas only glows, paler and bluer, over the whole balloon
-    vec3 tint = mix(vec3(0.7, 0.8, 1.0), glow(heat), 0.2 + 0.8 * smoothstep(0.0, 0.4, air));
+    vec3 tint = mix(FLAME_VACUUM[kind], glow(heat, kind), 0.2 + 0.8 * smoothstep(0.0, 0.4, air));
     float fade = mix(1.0 - smoothstep(0.35, 1.0, along), 1.0, air);   // (with no air to burn in it has no tip: it thins away)
     float body = (1.0 - smoothstep(0.5, 1.05, rr)) * (1.0 - 0.6 * along);
     body *= mix(1.0, smoothstep(0.3, 0.7, fine + 0.35 * (1.0 - along)), rough * air);
-    vec3 e = tint * ((0.5 * body + 2.4 * heat * heat) * gain * fade) + vec3(1.0, 0.93, 0.78) * (core * 2.0 + knot * 5.0 * gain);
-    float k = ((0.15 * body + heat * 0.45) * gain + core * 0.3) * lit;
-    return vec4(e * (lit * on * uBright), k * on);
+    // (soot glows and hides wherever it is: a sooty flame's body is bright and thick, not only its hot core)
+    vec3 e = tint * ((0.5 * body * F.z + 2.4 * heat * heat) * gain * fade) + FLAME_CORE[kind] * (core * 2.0 + knot * 5.0 * gain);
+    float k = ((0.15 * body * F.z + heat * 0.45) * gain + core * 0.3) * lit * F.y;
+    return vec4(e * (lit * on * uBright * F.x), k * on);
   }
   // a chamber's place across its fire's exit, over the exit's radius
   vec2 chamberAt(int i) {
@@ -614,7 +630,7 @@ const MARCH = /* glsl */ `
         float R = P.w;
         vec3 q = m - P.xyz;
         if (((inside >> (5 * j)) & 1) == 1) {
-          vec4 f = fire(q, R, A.w, A.xyz, uJetX[j].w, chambers(j, q, dot(q, A.xyz) / R));
+          vec4 f = fire(q, R, A.w, A.xyz, uJetX[j].w, chambers(j, q, dot(q, A.xyz) / R), uJetF[j]);
           lum += f.rgb;
           e += f.rgb * (ds / R);
           k += f.a / R;
@@ -627,7 +643,7 @@ const MARCH = /* glsl */ `
           if (s >= ns) break;
           if (((inside >> (5 * j + 1 + s)) & 1) == 0) continue;
           vec2 c = chamberAt(first + s) * R;
-          vec4 f = fire(q - X * c.x - Z * c.y, rs, K.z, A.xyz, mod(uFlame.w * ${FLOW.toFixed(1)}, 7.7 * rs * 64.0), vec3(0.0, 0.0, 1.0));
+          vec4 f = fire(q - X * c.x - Z * c.y, rs, K.z, A.xyz, mod(uFlame.w * ${FLOW.toFixed(1)}, 7.7 * rs * 64.0), vec3(0.0, 0.0, 1.0), uJetF[j]);
           lum += f.rgb;
           e += f.rgb * (ds / rs);
           k += f.a / rs;
@@ -651,7 +667,7 @@ const MARCH = /* glsl */ `
   Layer blastLayer(vec3 dir, float far, float toSun) {
     Layer l = Layer(vec4(0.0), 0.0, 1e9, 0.0);
     if (uBlastD.z <= 0.0) return l;
-    vec2 hit = inCylinder(vec3(0.0), dir, uPad + vec3(uBlastD.x, -0.5, uBlastD.y), vec3(0.0, 1.0, 0.0), uBlastD.w + 0.5, uBlastD.z);
+    vec2 hit = inCylinder(vec3(0.0), dir, uPad + vec3(uBlastD.x, -0.5 - uBlastE.w, uBlastD.y), vec3(0.0, 1.0, 0.0), uBlastD.w + 0.5 + uBlastE.w, uBlastD.z);
     float t = max(hit.x, 0.0), t1 = min(hit.y, far);
     if (t1 <= t) return l;
     float tile = 4.0 * (2.0 + 0.16 * uBlast.x);
@@ -666,7 +682,7 @@ const MARCH = /* glsl */ `
       if (t >= t1 || T < 0.01) break;
       float lod = lodFor(t, tile);
       float ds = max(0.4 * tile / 16.0 * exp2(lod), least);
-      float clear = blastForm(dir * t - uPad, uBlast, uBlastB, uBlastC).w;
+      float clear = blastForm(dir * t - uPad, uBlast, uBlastB, uBlastC, uBlastE).w;
       if (clear > 0.5 * ds) { t += 0.5 * clear; continue; }   // (the lobes make it less than a true distance: half of it is safe)
       ds = min(ds, t1 - t);
       vec3 p = dir * (t + 0.5 * ds);
@@ -885,7 +901,7 @@ const STRETCHES = 12;
  * the cloud over the pad as the march has it (uBlast, uBlastB, uBlastC's drift and lift), with how many nodes follow;
  * then each node's place and spread, and its extinction on the path.
  */
-const shade = new Float32Array(4 * (4 + 2 * (STRETCHES + 1)));
+const shade = new Float32Array(4 * (5 + 2 * (STRETCHES + 1)));
 const uSmokeShade: THREE.IUniform<Float32Array> = { value: shade };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uSmokeShade = uSmokeShade;
 THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uSmokeShade } as typeof THREE.UniformsLib.fog; // for a ShaderMaterial that takes the fog
@@ -899,7 +915,7 @@ THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uSmokeShade } as typeof THRE
       float tau = 0.0;
       // the cloud over the pad: its forms, without their billows, read at four heights along the way to the light from the
       // point up to the cloud's top (six tenths of it: the billows cut that much out of what is drawn)
-      vec4 A = uSmokeShade[1], B = uSmokeShade[2], C = uSmokeShade[3];
+      vec4 A = uSmokeShade[1], B = uSmokeShade[2], C = uSmokeShade[3], E = uSmokeShade[4];
       if (uSmokeShade[0].w > 0.0 && toLight.y > 0.02) {
         vec3 q = world - uSmokeShade[0].xyz;
         float top = max(C.z + 1.45 * A.y, B.y), y = max(q.y, 0.0);   // (the head is up to 1.45 of its height where it is tallest)
@@ -907,7 +923,7 @@ THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uSmokeShade } as typeof THRE
           float seg = 0.25 * (top - y);
           for (int k = 0; k < 4; k++) {
             float h = y + seg * (float(k) + 0.5);
-            vec4 f = blastForm(q + toLight * ((h - q.y) / toLight.y), A, B, C);
+            vec4 f = blastForm(q + toLight * ((h - q.y) / toLight.y), A, B, C, E);
             tau += (B.z * f.x + A.z * f.y + B.w * f.z) * seg / toLight.y;
           }
           tau *= 0.6 * uSmokeShade[0].w;
@@ -917,7 +933,7 @@ THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uSmokeShade } as typeof THRE
       int n = int(C.w);
       for (int i = 0; i < ${STRETCHES}; i++) {
         if (i >= n - 1) break;
-        vec4 a = uSmokeShade[4 + 2 * i], b = uSmokeShade[6 + 2 * i];
+        vec4 a = uSmokeShade[5 + 2 * i], b = uSmokeShade[7 + 2 * i];
         vec3 u = b.xyz - a.xyz;
         float len = max(length(u), 1e-3);
         u /= len;
@@ -928,7 +944,7 @@ THREE.UniformsLib.fog = { ...THREE.UniformsLib.fog, uSmokeShade } as typeof THRE
         float s = max(dot(on - world, toLight), 0.0);   // (only smoke on the light's side of the point)
         vec3 d = world + toLight * s - on;
         float k = h / len, r = mix(a.w, b.w, k), x2 = dot(d, d) / (r * r);
-        if (x2 < 1.0) tau += mix(uSmokeShade[5 + 2 * i].x, uSmokeShade[7 + 2 * i].x, k) * r * 1.07 * (1.0 - x2) * (1.0 - x2) / sqrt(across);
+        if (x2 < 1.0) tau += mix(uSmokeShade[6 + 2 * i].x, uSmokeShade[8 + 2 * i].x, k) * r * 1.07 * (1.0 - x2) * (1.0 - x2) / sqrt(across);
       }
       return 1.0 - ${SHADE.toFixed(2)} * (1.0 - exp(-tau));
     }`;
@@ -958,6 +974,7 @@ export function shadeBy(source?: Smoke): void {
   if (b.amount > 0 && source.pad(v)) {
     shade.set([v.x, v.y, v.z, daylight], 0);
     shade.set(blastVectors(b).slice(0, 12), 4); // (the march's bounds are not wanted, and C.w is the count, below)
+    shade.set(blastVectors(b).slice(16, 20), 16);
   }
   // the stretches with smoke in them, as a dozen at most
   const n = source.nodes(source.now, nodes);
@@ -971,7 +988,7 @@ export function shadeBy(source?: Smoke): void {
   for (let k = 0; k < count; k++) {
     const i = first + Math.round((k * (last - first)) / (count - 1));
     // (six tenths of it: the billows cut that much out of the smoke that is drawn)
-    shade.set([nodes[i * 6]!, nodes[i * 6 + 1]!, nodes[i * 6 + 2]!, nodes[i * 6 + 3]!, 0.6 * daylight * nodes[i * 6 + 4]!], 16 + 8 * k);
+    shade.set([nodes[i * 6]!, nodes[i * 6 + 1]!, nodes[i * 6 + 2]!, nodes[i * 6 + 3]!, 0.6 * daylight * nodes[i * 6 + 4]!], 20 + 8 * k);
   }
   shade[15] = count;
 }
@@ -985,6 +1002,26 @@ function blastVectors(b: Blast): number[] {
   const carried = Math.hypot(dx, dz);
   // the ring is carried all the way and reaches 1.16 of its front where it runs furthest (its dust 1.15), its head 1.45 of
   // its height where it is tallest; the puff is carried a third of the way
+  const [mx, mz] = b.mouth;
+  const E = [mx, mz, b.fan, b.deep];
+  if (mx || mz) {
+    // (into a pit: round both the ring, carried and sent along the pit, and the puff over the stand)
+    const cx = dx + mx,
+      cz = dz + mz,
+      px = dx / 3,
+      pz = dz / 3;
+    const ox = (cx + px) / 2,
+      oz = (cz + pz) / 2;
+    const reach = Math.max(Math.hypot(cx - ox, cz - oz) + 1.16 * b.ringRadius, Math.hypot(px - ox, pz - oz) + b.puffRadius) + 1;
+    const tall = Math.max(b.puffHeight, b.lift + 1.45 * b.head, 2.2) + 1;
+    return [
+      ...[b.ringRadius, b.head, b.ring, b.rise],
+      ...[b.puffRadius, b.puffHeight, b.puff, b.dust],
+      ...[dx, dz, b.lift, b.thin],
+      ...[ox, oz, reach, tall],
+      ...E,
+    ];
+  }
   const radius = Math.max(0.3 * carried + 1.16 * b.ringRadius, 0.37 * carried + b.puffRadius) + 1;
   const height = Math.max(b.puffHeight, b.lift + 1.45 * b.head, 2.2) + 1;
   return [
@@ -992,6 +1029,7 @@ function blastVectors(b: Blast): number[] {
     ...[b.puffRadius, b.puffHeight, b.puff, b.dust],
     ...[dx, dz, b.lift, b.thin],
     ...[0.7 * dx, 0.7 * dz, radius, height],
+    ...E,
   ];
 }
 
@@ -1062,6 +1100,8 @@ function place(camera: THREE.Camera): void {
         c && steering.length ? c.steeringRadius / R : 1,
       );
       u.uJetB.value[j]!.set(reach, (L + 0.2) * R, merge, envelope);
+      const look = FLAMES[KINDS[f.kind] ?? 'alcohol-lox'];
+      u.uJetF.value[j]!.set(look.luminous, look.opacity, look.body, f.kind);
       chamber += main.length + steering.length;
     });
   }
@@ -1077,6 +1117,7 @@ function place(camera: THREE.Camera): void {
       u.uBlastB.value.fromArray(k, 4);
       u.uBlastC.value.fromArray(k, 8);
       u.uBlastD.value.fromArray(k, 12);
+      u.uBlastE.value.fromArray(k, 16);
     }
     const n = s.nodes(s.now!, nodes);
     const P = u.uNodeP.value,
@@ -1191,7 +1232,8 @@ export class ExhaustPass extends Pass {
       );
     }
     const D = u.uBlastD.value;
-    if (D.z > 0) ball(v.copy(u.uPad.value).add(this.at.set(D.x, 0.5 * D.w, D.y)), Math.hypot(D.z, 0.5 * D.w + 0.5));
+    const deep = u.uBlastE.value.w;
+    if (D.z > 0) ball(v.copy(u.uPad.value).add(this.at.set(D.x, 0.5 * (D.w - deep), D.y)), Math.hypot(D.z, 0.5 * (D.w + deep) + 0.5));
     const P = u.uNodeP.value,
       Q = u.uNodeQ.value;
     for (let i = 0; i < u.uNodes.value; i++)

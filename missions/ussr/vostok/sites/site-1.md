@@ -203,6 +203,7 @@ some half a metre), and the film of the morning («Первый рейс к зв
 | Its form | a curved chute from the back wall under the opening, down and forward to the pit's floor, between the two sides | documented (a model) | a scale model "of the original R-7 pad in Tyuratam circa 1957", photographed by A. Zak (RussianSpaceWeb, Site 1); which museum is not said |
 | As drawn | an arc from the abutment's face 16 m under the deck to the pit base at the platform's east edge, where it lies level: 44.9 m radius; as wide as the slot | estimated (the 16 m, off the model); derived (the radius) | |
 | Ladders | one out of each trench, one up the sump's face at the pit base's south edge | estimated | not recorded: the way on foot from the road's end to the pit base |
+| Where the exhaust goes (`SITE1.exhaust`, drawn by trail.ts `pitBlast`) | down through the opening onto the deflector, east along the floor between the retaining walls, and up out of the pit past the slot's end (38.9 m east of the axis), on the side away from the rocket; little comes back over the deck | derived (the geometry: the rows above); estimated (the cloud's sizes and growth, read off photographs of the launch of 12 April 1961 from across the pit and later film from this pad) | rendering.md, "Where the exhaust goes is the site's" |
 | Lining | the west part surfaced "with a crude spray, possibly gunite"; the slot concrete, blackened | documented (west part); estimated (the rest) | HTA/JR-4/58; the 1957 photograph |
 
 ### The launch system

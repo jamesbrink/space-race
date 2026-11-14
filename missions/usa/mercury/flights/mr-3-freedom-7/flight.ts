@@ -2420,6 +2420,8 @@ export const flight: Flight = {
     turned: TURNED,
     datum: CAPSULE_PLANE * IN,
     engine: 'RedstoneEngine',
+    // (75 % alcohol and liquid oxygen: the pale fire seen through, viewer/flames.ts)
+    burns: 'alcohol-lox',
     // drawn (viewer/effects.ts): the glow of entry off the heat shield, the collar of cloud at Mach 1 where the capsule's cone ends, ice off the oxygen tank
     air: { shield: 'HeatShield', collar: 'HeatShield', frost: ['frost-lox'] },
     chutes: [

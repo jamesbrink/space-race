@@ -41,6 +41,29 @@ export const SITE1: SiteDef = {
       'east of it; CIA HTA/JR-4/58 (U-2 photography of August 1957): pad and pit "oriented along a west-east axis". The rocket was aimed by ' +
       'turning the launch ring, so the launch azimuth (about 37.5 degrees, derived from the orbit: the flight README) is not this figure',
   },
+  // Where the exhaust goes: down through the opening in the deck onto the curved deflector, along the pit's floor between
+  // its retaining walls, and up out of the pit toward its open, eastern side (site-1.md, "The flame pit")
+  exhaust: {
+    way: 'pit',
+    toward: {
+      value: 90,
+      confidence: 'derived',
+      source:
+        'the pit runs east from the platform (OpenStreetMap way 172441917; HTA/JR-4/58: "oriented along a west-east axis"), its floor rising east to its point (site-1.md)',
+    },
+    depth: {
+      value: 43,
+      confidence: 'derived',
+      source: 'site-1.md, "The flame pit’s depth": 80 + 60 ft from PIC/JR-2/60 (site.PIT_DEPTH); Russian print says 45 m',
+    },
+    out: {
+      value: 38.9,
+      confidence: 'derived',
+      source:
+        'the slot’s end, the sump’s face: half the platform (135 ft, PIC/JR-2/61) and the 60 ft pit base (PIC/JR-2/60) east of the axis (platform.SLOT_END)',
+    },
+    width: { value: 33.5, confidence: 'documented', source: 'the retaining walls 110 ft apart (PIC/JR-2/61 Figure 1, measured)' },
+  },
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },

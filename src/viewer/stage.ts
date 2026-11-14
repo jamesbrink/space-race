@@ -10,7 +10,8 @@ import type { MeshBVH } from 'three-mesh-bvh';
 import { sameTarget, type Target, type Workings } from '../actions';
 import { readingFor } from '../sim/mechanism';
 import { exitAreaOf } from '../sim/staged.ts';
-import type { Action, Flight as FlightData, ModelDef } from '../types';
+import type { Action, Burns, Flight as FlightData, ModelDef, SitedFlight } from '../types';
+import { kindOf } from './flames';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent';
@@ -2313,7 +2314,7 @@ export class Stage {
       const b = new THREE.Box3().setFromObject(node);
       return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
     };
-    const hang = (node: THREE.Object3D, level: number, radius: number, at: THREE.Vector3, cluster: Cluster | null): void => {
+    const hang = (node: THREE.Object3D, level: number, radius: number, at: THREE.Vector3, cluster: Cluster | null, burns?: Burns): void => {
       let owner = node;
       while (owner.parent && owner.parent !== s.full) owner = owner.parent;
       if (!owner.parent) owner = s.group;
@@ -2323,7 +2324,7 @@ export class Stage {
         .invert()
         .multiply(fromGroup)
         .multiply(new THREE.Matrix4().makeTranslation(at));
-      const plume = new Plume(radius, cluster, light);
+      const plume = new Plume(radius, cluster, light, kindOf(burns));
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
       root.add(plume.mesh);
@@ -2338,12 +2339,12 @@ export class Stage {
           const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
           return stage ? exitAreaOf(stage) : undefined;
         })();
-      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null);
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null, flight.flies.burns);
       level++;
     }
     for (const f of flight.flies.fires ?? []) {
       const node = s.full.getObjectByName(f.node);
-      if (node && f.radius) hang(node, level, f.radius, lowest(node), null);
+      if (node && f.radius) hang(node, level, f.radius, lowest(node), null, f.burns);
       else if (node) {
         // every vertex under it, in the vehicle's frame as it stands
         const points: number[] = [];
@@ -2364,6 +2365,7 @@ export class Stage {
             cluster.radius,
             new THREE.Vector3(x, y, z),
             cluster.main.length > 1 || cluster.steering.length ? cluster : null,
+            f.burns,
           );
         }
       }
@@ -2391,7 +2393,15 @@ export class Stage {
     }
     this.trailFrom.divideScalar(area);
     const spread = Math.max(...from.map((h) => Math.hypot(at(h).x - this.trailFrom.x, at(h).z - this.trailFrom.z)));
-    this.trail = new Trail(2.5 + spread);
+    // (where the site sends the exhaust: into a flame pit and out of its open side, or out over the concrete all round)
+    const way = (flight as Partial<SitedFlight>).site?.exhaust;
+    const bearing = THREE.MathUtils.degToRad((way?.toward.value ?? 0) - ((flight as Partial<SitedFlight>).site?.bearingX.value ?? 0));
+    this.trail = new Trail(
+      2.5 + spread,
+      way
+        ? { toward: [Math.cos(bearing), Math.sin(bearing)], depth: way.depth.value, out: way.out.value, width: way.width.value }
+        : undefined,
+    );
     this.scene.add(this.trail.mesh);
     this.veils.push(...this.plumes.map((h) => h.plume.mesh), this.trail.mesh); // (cloud behind them shows through them: clouds.ts)
   }

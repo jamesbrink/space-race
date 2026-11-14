@@ -769,6 +769,18 @@ Kosmonavtiki*; the press conference of 25 June in Russian; part 2 of Siddiqi's *
 article; zvezda-npp.ru; Encyclopedia Astronautica's suit pages; the Russian edition of Abramov and
 Skoog (2005); *Flight International* for June and July 1963; epizodsspace's own hosts.
 
+### Fires by what they burn, and where the exhaust goes at Site 1
+
+Read for [viewer/flames.ts](../src/viewer/flames.ts) and trail.ts `pitBlast` (rendering.md, "A fire looks as what it burns").
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Huzel and Huang, *Design of Liquid Propellant Rocket Engines*, NASA SP-125 (1967), tables 1-7 to 1-9, pp. 25-27 | [rrs.org copy](https://rrs.org/wp-content/uploads/2014/01/Huzel-Huang-sp125.pdf) | Chamber flame temperatures at 1,000 psia: oxygen and RP-1 at 2.56, 6,150 °F (3,672 K); oxygen and 95 % alcohol at 1.73, 5,640 °F; nitrogen tetroxide and Aerozine 50 at 2.00, 5,590 °F; IRFNA and UDMH, 3,222 K | Not the engines' own mixtures or pressures: the A-7's (75 % alcohol), the RD-107's and the braking engine's are equilibrium calculations of ours (Cantera, NASA thermodynamic data), checked against these cases to 6 to 20 K, and are `derived` |
+| J. D. Clark, *Ignition!* (1972; Rutgers 2017 ed.), p. 96, as quoted at sindark.com (2018) | the quotation only was read | That kerosene burns luminous with free carbon and that the hydrazines and nitrogen tetroxide burn nearly invisible, the shock diamonds showing | Read at second hand |
+| NASA film *Gemini: The Twins* (1965), Gemini 3's launch; Periscope Film stock listing xd17414 | [listing](https://stock.periscopefilm.com/xd17414-gemini-the-twins-1965-nasa-film-preparation-and-achievements-of-gemini-3-gemini-4) | The Titan II's flame: peach, seen through | The listing and stills only were seen, not the film frame by frame |
+| Photographs of the launch of 12 April 1961 from across the pit (RussianSpaceWeb, Vostok 1); the newsreel *Pervyi reis k zvezdam* (1961) | RussianSpaceWeb's Vostok 1 pages | The R-7's five fires white at the nozzles and opaque, the cloud out of the pit | That the newsreel's launch footage is Vostok 1's, or in colour, is not shown. No colour film of Vostok 1 or of Freedom 7 was found by title and archive: the colour look is judged also on colour film of later launches from the same pads |
+| Soyuz CSG User's Manual, Issue 2 (Arianespace, March 2012), §A5.1.2 | [copy](https://courses.edx.org/asset-v1:DelftX+AEASM1x+1T2023+type@asset+block/Soyuz-Users-Manual-March-2012.pdf) | That the RD-107's turbine runs on steam from hydrogen peroxide (so no dark, sooty turbine exhaust) | Where that steam is vented is not said: it is not drawn |
+
 ### Known, not yet read
 
 | Source | Why it matters |
