@@ -80,6 +80,13 @@ never adjusted to bring a check in.
   thrusters, a lifting entry) with figures of 1, as a shape and not as data. `problems` is what is wrong with a plan, in
   words. Until the runs read plans and the flights' data says its own, sim/planof.ts makes one from each of today's two
   shapes, every figure carried over as it was, and the test holds each plan to what it was made from.
+- **One machine.** What is lit, let go and gone, what parachute is out, which events have happened and which are armed,
+  and the attitude held, are kept for every craft by sim/craft.ts on its plan: `act` does one action if the hardware
+  lets it (an engine starts so many times, some only on the ground; a solid cannot be cut; what is gone cannot act) and
+  says why where it does not, `due` is the events whose triggers all hold, `fire` sets one off, and `part` parts a joint
+  once the simulator's physics lets it (whether what is let go is still pressed on is physics, not the machine's). The
+  live staged vehicle is flown on it: its `stages` and `drops` are the machine's state as the forces read it, and the
+  record's pilot gives the plan's events as they come due. tests/craft.test.mjs holds each rule on a plan of its own.
 - **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between

@@ -235,6 +235,7 @@ src/
   sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
   sim/plan.ts                         what a flight is flown from, one shape for every kind: its craft (bodies, joints, engines on tanks, thrusters, parachutes, limits), events (triggers, actions), attitudes, checks; `problems` says what is wrong with one
   sim/planof.ts                       a plan made from each of today's two shapes (`Trajectory`, `OrbitalFlight`), until the flights' data says its plan itself
+  sim/craft.ts                        the one machine a craft is flown by: what is lit, let go and gone, what is out, which events have happened, as its plan's hardware allows
   sound/audio.ts                      what the walk and a driven vehicle are heard as (an interface, silent until something that plays is given), and the board every posed move that names a machine is told to (`machinery`)
   sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are; and the works: engines, tyres and machines on the ground (pure, tested)
   sound/engine.ts                     the Web Audio graph those numbers are set on: noise, filters, envelopes, the works' six voices; no recordings

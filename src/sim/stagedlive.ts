@@ -17,9 +17,12 @@
  * staged.ts `recordSamples` has it) and +Z = X x Y points back up range. A positive turn about +Y (pitch, W) tips the
  * nose downrange, about +Z (yaw, A) to the left, about +X (roll, E) is right-handed about the nose: as sim/vehicle.ts.
  *
- * Events. Nothing happens that is not asked for (`StagedControls.steps`): a stage lit, cut off or let go, a drop let go,
- * the spacecraft parted. The record's sequence (each at its time, the stage cut on its integrator's apparent velocity)
- * is the pilot's to give: `stagedPilot` with the sequencer on, as sim/autopilot.ts gives a ballistic flight's. A stage
+ * Events. Nothing happens that is not asked for (`StagedControls.steps`, or the plan's `events`): a stage lit, cut off or
+ * let go, a drop let go, the spacecraft parted. What is lit, let go and gone, and which of the plan's events have happened,
+ * is kept by the one machine (sim/craft.ts) on the flight's plan (sim/plan.ts, made from the record by planof.ts), whose
+ * hardware rules it applies; `stages` and `drops` are its view, which the forces read. The record's sequence (each at its
+ * time, the stage cut on its integrator's apparent velocity) is the pilot's to give: `stagedPilot` with the sequencer on
+ * gives each event of it as it comes due (craft.ts `due`), as sim/autopilot.ts gives a ballistic flight's. A stage
  * stops when it is cut or when its usable propellant is gone; one let go takes with it every stage below it in the list
  * that is still on (the strap-ons hang on the core), what it had left aboard, and whatever thrust it was giving, once nothing
  * presses it on (staging.ts `pressed`: until then it stays on and pushes); its own separation command shuts it down where
@@ -29,15 +32,21 @@
  *
  * Time: ticks of sim/vehicle.ts's TICK; events at the tick they are asked on.
  */
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+
+import { clamp } from '../util/math.ts';
+import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { type State, step } from '../world/orbit.ts';
+import { airDrag } from './air.ts';
+import { sensed, trapezoid } from './apparent.ts';
+import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { MEAN_RADIUS } from './fly.ts';
-import { G0 } from '../world/bodies.ts';
 import { floorAt } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
 import type { OrbitalFlight } from './orbital.ts';
+import type { Action, FlightPlan } from './plan.ts';
+import { planOfOrbital, stageId } from './planof.ts';
 import { aboutAxis, fromAxes, multiply, normalize, type Quat, turn, unturn } from './rigid.ts';
 import {
   type AscentSample,
@@ -54,9 +63,6 @@ import {
 } from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
-import { clamp } from '../util/math.ts';
-import { airDrag } from './air.ts';
-import { sensed, trapezoid } from './apparent.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
 export type Step = { kind: 'ignite' | 'cut' | 'separate'; stage: number } | { kind: 'drop'; id: string };
@@ -66,8 +72,9 @@ export interface StagedControls {
   pitch: number;
   yaw: number;
   roll: number;
-  /** What to set off at this tick. */
+  /** What to set off at this tick: a hand's steps, then the plan's events by id (`FlightPlan.events`: the record's pilot gives these). */
   steps?: readonly Step[];
+  events?: readonly string[];
   /**
    * Not a control: the long axis put where this says at every instant of the tick, as staged.ts's law puts it, and the
    * body's turning ignored. Only for holding the live vehicle's forces to the batch run's (tests/stagedlive.test.mjs).
@@ -95,6 +102,8 @@ export interface StagedState {
   stages: readonly { from: number; to: number; gone: number; loose: number }[];
   /** Each of `ascent.drops`, by id: when it was let go. */
   drops: Readonly<Record<string, number>>;
+  /** The machine's state (sim/craft.ts): what is lit, let go and gone, which events have happened. `stages` and `drops` are its view. */
+  craft: CraftState;
   /** Each stage's integrator: the thrust it has sensed over the mass, summed from its ignition, m/s (staged.ts `apparentCut`). */
   apparent: readonly number[];
   /** The spacecraft parted from the last stage: when and where, for the coast. */
@@ -138,6 +147,8 @@ export type StagedPilot = (state: StagedState) => StagedControls;
 
 export interface StagedVehicle {
   readonly flight: OrbitalFlight;
+  /** The plan it is flown from (sim/plan.ts). */
+  readonly plan: FlightPlan;
   /** The frame it is flown in (world/earthframe.ts): its states are in it. */
   readonly frame: EarthFrame;
   /** The launch plane's pole (the body's +Y on the pad), and the plumb line at liftoff, in the inertial frame of date. */
@@ -155,8 +166,8 @@ export interface StagedVehicle {
   thrust(state: StagedState): number;
   /** When a stage lit at `from` runs dry, s. */
   dry(i: number, from: number): number;
-  /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff). */
-  readonly sequence: readonly { step: Step; at: number; label: string }[];
+  /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff), each the plan's `event`. */
+  readonly sequence: readonly { step: Step; at: number; label: string; event: string }[];
   /**
    * The state as the scene's samples are (staged.ts `recordSamples`): in the vehicle's frame (`frame`), `r` the stack's
    * base, `centre` the spacecraft's centre of mass `centre` metres up the long axis.
@@ -199,6 +210,28 @@ export function stagedVehicle(
   const yIn = unit(sub(law.n, scale(law.up0, dot(law.n, law.up0))));
   const q0 = fromAxes(law.up0, yIn, cross(law.up0, yIn));
   const full = o.stages.map((s) => (s.usable ?? s.propellant).value);
+  const plan = planOfOrbital(o);
+  const stageIndex = new Map(o.stages.map((_, i) => [stageId(i), i]));
+  /** The step a plan's action is, where it is one of the ascent's: a stage's engine or joint, a drop's joint. */
+  const stepOf = (x: Action): Step | null => {
+    const i = (id: string) => stageIndex.get(id);
+    if ('ignite' in x && i(x.ignite) !== undefined) return { kind: 'ignite', stage: i(x.ignite)! };
+    if ('cut' in x && i(x.cut) !== undefined) return { kind: 'cut', stage: i(x.cut)! };
+    if ('separate' in x && i(x.separate) !== undefined) return { kind: 'separate', stage: i(x.separate)! };
+    if ('separate' in x && a.drops.some((d) => d.id === x.separate)) return { kind: 'drop', id: x.separate };
+    return null;
+  };
+  /** The machine's state as the forces read it: each stage lit, stopped, let go and gone; each drop let go. */
+  const viewOf = (craft: CraftState): Pick<StagedState, 'stages' | 'drops'> => ({
+    stages: o.stages.map((_, i) => {
+      const id = stageId(i);
+      const e = craft.engines[id]!;
+      return { from: e.lit, to: e.out, gone: craft.bodies[id]!, loose: craft.joints[id]?.loose ?? Infinity };
+    }),
+    drops: Object.fromEntries(
+      a.drops.flatMap((d) => (Number.isFinite(craft.joints[d.id]!.loose) ? [[d.id, craft.joints[d.id]!.loose]] : [])),
+    ),
+  });
 
   const dry = (i: number, from: number): number => {
     const load = full[i]!;
@@ -294,15 +327,17 @@ export function stagedVehicle(
    * with every stage still on below it, against all that is above it; the spacecraft against the last stage, and not
    * while what `covers` it is on. Said once when it stays on, and when it goes.
    */
-  const settle = (s: StagedState, stages: { from: number; to: number; gone: number; loose: number }[], said: Said[]) => {
+  const settle = (s: StagedState, craft0: CraftState, said: Said[]): { craft: CraftState; parted: StagedState['parted'] } => {
     let parted: StagedState['parted'] = s.parted;
+    let craft = craft0;
     let pressure: number | null = null;
     for (let k = last; k >= 0; k--) {
-      const st = stages[k]!;
-      if (!Number.isFinite(st.loose) || Number.isFinite(st.gone)) continue;
-      const view: StagedState = { ...s, stages };
-      if (k === last && a.drops.some((d) => d.covers && !Number.isFinite(s.drops[d.id] ?? Infinity))) {
-        if (st.loose === s.t)
+      const id = stageId(k);
+      const loose = craft.joints[id]?.loose ?? Infinity;
+      if (!Number.isFinite(loose) || Number.isFinite(craft.bodies[id]!)) continue;
+      const view: StagedState = { ...s, ...viewOf(craft) };
+      if (heldBy(plan, craft, id)) {
+        if (loose === s.t)
           said.push({
             t: s.t,
             title: 'Held inside the fairing',
@@ -311,7 +346,7 @@ export function stagedVehicle(
         continue;
       }
       pressure ??= air(s, s.t).air.pressure;
-      const group = o.stages.map((_, j) => j <= k && !Number.isFinite(stages[j]!.gone));
+      const group = o.stages.map((_, j) => j <= k && !Number.isFinite(view.stages[j]!.gone));
       let behind = { thrust: 0, mass: 0 };
       let ahead = { thrust: 0, mass: massAt(view, s.t) };
       o.stages.forEach((g, j) => {
@@ -324,7 +359,7 @@ export function stagedVehicle(
       });
       ahead = { ...ahead, mass: ahead.mass - behind.mass };
       if (pressed(behind, ahead)) {
-        if (st.loose === s.t)
+        if (loose === s.t)
           said.push({
             t: s.t,
             title: 'Let go, still pushing',
@@ -332,30 +367,28 @@ export function stagedVehicle(
           });
         continue;
       }
-      group.forEach((on, j) => {
-        if (on) stages[j]!.gone = s.t;
-      });
-      if (st.loose < s.t)
+      craft = part(plan, craft, id, s.t);
+      if (loose < s.t)
         said.push({ t: s.t, title: 'Parted', text: `${cap(k === last ? 'the spacecraft' : called(k))} parted at last, its push gone` });
       if (k === last) parted = { t: s.t, r: s.r, v: s.v };
     }
-    return parted;
+    return { craft, parted };
   };
 
-  /** What the controls set off at this instant. */
+  /** What the controls set off at this instant: the hands' steps, then the plan's events, each through the machine. */
   const command = (state: StagedState, c: StagedControls): StagedState => {
-    let s: StagedState = { ...state, controls: c };
+    const s: StagedState = { ...state, controls: c };
     if (s.parted || s.landed || s.broke) return s;
     const loose = s.stages.some((st) => Number.isFinite(st.loose) && !Number.isFinite(st.gone));
-    if (!c.steps?.length && !loose) return s;
-    const stages = s.stages.map((st) => ({ ...st }));
-    const drops = { ...s.drops };
+    if (!c.steps?.length && !c.events?.length && !loose) return s;
+    let craft = s.craft;
     const said = [...s.said];
-    for (const k of c.steps ?? []) {
+    const doing = (k: Step): void => {
       if (k.kind === 'drop') {
         const d = a.drops.find((x) => x.id === k.id);
-        if (d && !Number.isFinite(drops[k.id] ?? Infinity)) {
-          drops[k.id] = s.t;
+        if (d && !Number.isFinite(craft.joints[k.id]!.loose)) {
+          // nothing presses a drop on: let go, it is gone
+          craft = part(plan, act(plan, craft, { separate: k.id }, s.t, s.held).state, k.id, s.t);
           const q = air(s, s.t).q;
           if (d.q && q > d.q.value)
             said.push({
@@ -364,52 +397,68 @@ export function stagedVehicle(
               text: `At ${(q / 1000).toFixed(1)} kPa of dynamic pressure, where it was made to part in ${(d.q.value / 1000).toFixed(1)} (${d.q.confidence}). Not modelled: where its pieces went in that air and what they struck`,
             });
         }
-        continue;
+        return;
       }
-      const st = stages[k.stage];
+      const id = stageId(k.stage);
       const g = o.stages[k.stage];
-      if (!st || !g || Number.isFinite(st.gone)) continue;
+      const view = (): StagedState => ({ ...s, ...viewOf(craft) });
+      if (!g || Number.isFinite(craft.bodies[id] ?? Infinity)) return;
+      const e = craft.engines[id]!;
       if (k.kind === 'ignite') {
-        const view: StagedState = { ...s, stages };
-        if (Number.isFinite(st.from)) {
-          if (!burning(view, k.stage))
+        if (Number.isFinite(e.lit)) {
+          // (one burn a stage: what it burns is worked from its one lighting, so a stage once lit is not lit again)
+          if (!burning(view(), k.stage))
             said.push({
               t: s.t,
               title: 'Not lit',
               text: `${cap(called(k.stage))}’s ${name(g.engine)} has been started ${(g.start?.count ?? 1) === 1 ? 'once' : 'as often as it can be'}, and cannot be again${g.start ? `: ${g.start.source}` : ''}`,
             });
-        } else if (g.start?.ground && !s.held)
+          return;
+        }
+        const r = act(plan, craft, { ignite: id }, s.t, s.held);
+        if (r.refused.some((x) => x.why === 'ground')) {
           said.push({
             t: s.t,
             title: 'Not lit',
-            text: `${cap(called(k.stage))}’s ${name(g.engine)} can be lit only on the pad: ${g.start.source}`,
+            text: `${cap(called(k.stage))}’s ${name(g.engine)} can be lit only on the pad: ${g.start!.source}`,
           });
-        else {
-          st.from = s.t;
-          const nothing = !o.stages.some((_, j) => burning(view, j));
-          if (firesInto({ ...view, stages }, k.stage, s.t))
-            said.push({
-              t: s.t,
-              title: 'Hot staging',
-              text: `${cap(called(k.stage))} lit with ${called(k.stage - 1)} still on, as it flew: its jet strikes the deflector on ${called(k.stage - 1)}’s top and leaves through the lattice, so ${(100 * hotShare[k.stage]!).toFixed(0)} per cent of its push reaches the stack until ${called(k.stage - 1)} is let go. The top is taken to stand ${g.hot!.endures.value} s of it (${g.hot!.endures.confidence})`,
-            });
-          else if (nothing && !s.held)
-            said.push({
-              t: s.t,
-              title: 'Lit in free fall',
-              text: `Nothing was pushing the stack: whether its propellant lay settled over the pumps' inlets is not modelled, and it is taken to start`,
-            });
+          return;
         }
-      } else if (k.kind === 'cut' && Number.isFinite(st.from) && st.to === Infinity) st.to = s.t;
-      else if (k.kind === 'separate' && !Number.isFinite(st.loose)) {
+        craft = r.state;
+        const now = view();
+        const nothing = !o.stages.some((_, j) => burning(now, j));
+        if (firesInto(now, k.stage, s.t))
+          said.push({
+            t: s.t,
+            title: 'Hot staging',
+            text: `${cap(called(k.stage))} lit with ${called(k.stage - 1)} still on, as it flew: its jet strikes the deflector on ${called(k.stage - 1)}’s top and leaves through the lattice, so ${(100 * hotShare[k.stage]!).toFixed(0)} per cent of its push reaches the stack until ${called(k.stage - 1)} is let go. The top is taken to stand ${g.hot!.endures.value} s of it (${g.hot!.endures.confidence})`,
+          });
+        else if (nothing && !s.held)
+          said.push({
+            t: s.t,
+            title: 'Lit in free fall',
+            text: `Nothing was pushing the stack: whether its propellant lay settled over the pumps' inlets is not modelled, and it is taken to start`,
+          });
+      } else if (k.kind === 'cut') craft = act(plan, craft, { cut: id }, s.t, s.held).state;
+      else if (k.kind === 'separate' && craft.joints[id] && !Number.isFinite(craft.joints[id]!.loose)) {
         // the command that lets it go shuts its engines down where the record has them stop at its separation
-        if (g.separation && g.cutoff.value >= g.separation.value - 1e-9 && st.to === Infinity && Number.isFinite(st.from)) st.to = s.t;
-        st.loose = s.t;
+        if (g.separation && g.cutoff.value >= g.separation.value - 1e-9) craft = act(plan, craft, { cut: id }, s.t, s.held).state;
+        craft = act(plan, craft, { separate: id }, s.t, s.held).state;
+      }
+    };
+    for (const k of c.steps ?? []) doing(k);
+    for (const id of c.events ?? []) {
+      const e = plan.events.find((x) => x.id === id);
+      if (!e || craft.fired[id] !== undefined) continue;
+      craft = { ...craft, fired: { ...craft.fired, [id]: s.t } };
+      for (const x of e.do) {
+        const k = stepOf(x);
+        if (k) doing(k);
+        else craft = act(plan, craft, x, s.t, s.held).state;
       }
     }
-    const parted = settle({ ...s, drops }, stages, said);
-    s = { ...s, stages, drops, parted, said };
-    return s;
+    const settled = settle({ ...s, ...viewOf(craft) }, craft, said);
+    return { ...s, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
   };
 
   const start = (): StagedState => {
@@ -423,6 +472,7 @@ export function stagedVehicle(
       q: q0,
       w: [0, 0, 0],
       held: true,
+      craft: startCraft(plan),
       stages: o.stages.map(() => ({ from: Infinity, to: Infinity, gone: Infinity, loose: Infinity })),
       drops: {},
       apparent: o.stages.map(() => 0),
@@ -554,57 +604,32 @@ export function stagedVehicle(
     return apart({ ...next, scorch, strain: bend.strain, axial: axial.strain, broke });
   };
   /** Broken up, it is in pieces: every engine out and every stage gone from the instant it broke (for the scene to let them fall). */
-  const apart = (s: StagedState): StagedState =>
-    s.broke
-      ? {
-          ...s,
-          stages: s.stages.map((st) => ({
-            ...st,
-            to: Number.isFinite(st.from) ? Math.min(st.to, s.broke!.t) : st.to,
-            gone: Math.min(st.gone, s.broke!.t),
-          })),
-        }
-      : s;
+  const apart = (s: StagedState): StagedState => {
+    if (!s.broke) return s;
+    const at = s.broke.t;
+    const engines = { ...s.craft.engines };
+    const bodies = { ...s.craft.bodies };
+    o.stages.forEach((_, i) => {
+      const id = stageId(i);
+      const e = engines[id]!;
+      if (Number.isFinite(e.lit)) engines[id] = { ...e, out: Math.min(e.out, at) };
+      bodies[id] = Math.min(bodies[id]!, at);
+    });
+    const craft = { ...s.craft, engines, bodies };
+    return { ...s, craft, ...viewOf(craft) };
+  };
 
   const thrustNow = (s: StagedState): number => {
     const here = air(s, s.t);
     return o.stages.reduce((sum, _, i) => sum + (burning(s, i) ? pushOf(s, i, s.t, here.air.pressure) : 0), 0);
   };
 
-  // The record's sequence: each stage lit (unless at liftoff), cut (where that is not its separation), let go; each drop
-  const sequence: { step: Step; at: number; label: string; order: number }[] = [];
-  o.stages.forEach((st, i) => {
-    const sep = st.separation?.value ?? Infinity;
-    const one =
-      i === last
-        ? 'the spacecraft'
-        : name(st.name)
-            .toLowerCase()
-            .replace(/^strap-on boosters$/, 'strap-ons');
-    if (st.ignition.value > 0)
-      sequence.push({
-        step: { kind: 'ignite', stage: i },
-        at: st.ignition.value,
-        label: `Light the ${name(st.name).replace(/^(Third|Second|First) stage$/, (m) => m.toLowerCase())}`,
-        order: 0,
-      });
-    if (i === last || st.cutoff.value < sep - 1e-9)
-      sequence.push({
-        step: { kind: 'cut', stage: i },
-        at: st.cutoff.value,
-        label: `Cut off the ${name(st.name).toLowerCase()}`,
-        order: 1,
-      });
-    if (Number.isFinite(sep))
-      sequence.push({
-        step: { kind: 'separate', stage: i },
-        at: sep,
-        label: i === last ? 'Separate the spacecraft' : `Drop the ${one}`,
-        order: 3,
-      });
+  // The record's sequence: the plan's events that light, cut or let go a stage or let go a drop, in its order (planof.ts:
+  // each stage lit unless at liftoff, cut where that is not its separation, let go; each drop), at the record's instants
+  const sequence = plan.events.flatMap((e) => {
+    const step = e.at && e.do.length === 1 ? stepOf(e.do[0]!) : null;
+    return step ? [{ step, at: e.at!.value, label: e.label, event: e.id }] : [];
   });
-  for (const d of a.drops) sequence.push({ step: { kind: 'drop', id: d.id }, at: d.at.value, label: `Drop the ${d.id}`, order: 2 });
-  sequence.sort((p, q) => p.at - q.at || p.order - q.order);
 
   const sample = (s: StagedState, centre: number): LiveSample => {
     const here = air(s, s.t);
@@ -649,6 +674,7 @@ export function stagedVehicle(
 
   return {
     flight: o,
+    plan,
     frame,
     plane: law.n,
     up: law.up0,
@@ -675,7 +701,7 @@ export function stagedVehicle(
     burning,
     thrust: thrustNow,
     dry: dryOf,
-    sequence: sequence.map(({ step, at, label }) => ({ step, at, label })),
+    sequence,
     sample,
     shape,
   };
@@ -703,9 +729,6 @@ export interface StagedPilotOptions {
   steps?: () => Step[];
 }
 
-/** The time a record step is due: its instant (a stage cut on its velocity has none: its integrator says when). */
-const due = (v: StagedVehicle, i: number) => v.sequence[i]!;
-
 /**
  * The record's flight, flown through the vehicle's controls as a hand flies it: the law's attitude held by the steering
  * (a critically damped turn toward the law's axis, its own turning fed forward) and the record's steps at their times,
@@ -724,28 +747,30 @@ export function stagedPilot(
   const air = airOf(seaLevel, frame);
   const memo = (options.memo ??= { thetaTurn: null });
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
-  const done = new Set<number>();
-  const cutAt = o.stages.map((st) => (st.velocity ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : Infinity));
+  const inSequence = new Set(v.sequence.map((k) => k.event));
+  const index = new Map(o.stages.map((_, i) => [stageId(i), i]));
   return (s) => {
     const steps: Step[] = [...(options.steps?.() ?? [])];
-    if (options.sequence) {
-      v.sequence.forEach((k, i) => {
-        if (done.has(i)) return;
-        const step = k.step;
-        const velocity = step.kind === 'cut' && o.stages[step.stage]!.velocity;
-        const ready = velocity
-          ? velocity.apparent
-            ? s.apparent[step.stage]! >= cutAt[step.stage]!
-            : length(s.v) >= cutAt[step.stage]!
-          : s.t >= due(v, i).at - 1e-9;
-        if (ready) {
-          done.add(i);
-          steps.push(step);
-        }
-      });
-    }
+    // each event of the record's sequence that has not happened, as it comes due (craft.ts `due`): at its instant, or a
+    // stage cut on its velocity when its integrator (or the space-fixed speed) reaches the setting. Time and speed alone set them off.
+    const events = options.sequence
+      ? due(
+          v.plan,
+          s.craft,
+          {
+            t: s.t,
+            height: Number.NaN,
+            falling: false,
+            speed: length(s.v),
+            apparent: (id) => s.apparent[index.get(id)!]!,
+            g: Number.NaN,
+            held: s.held,
+          },
+          (e) => inSequence.has(e.id),
+        ).map((e) => e.id)
+      : [];
     const hands = options.hands?.() ?? { pitch: 0, yaw: 0, roll: 0 };
-    if (!options.guidance) return { ...hands, steps };
+    if (!options.guidance) return { ...hands, steps, events };
     if (options.prescribed) {
       // as staged.ts flies it: the part of the law fixed for the tick, thetaTurn from the instant the tangent took over
       const mode = law.modeAt(s.t);
@@ -754,7 +779,7 @@ export function stagedPilot(
         memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', air(s, s.t).wind, 0), u))));
       }
       const theta = memo.thetaTurn ?? 0;
-      return { pitch: 0, yaw: 0, roll: 0, steps, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).wind, theta) };
+      return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).wind, theta) };
     }
     // the law's axis now, leaned by the hands' trim
     const here = air(s, s.t);
@@ -790,6 +815,7 @@ export function stagedPilot(
       yaw: hands.yaw || command(2),
       roll: hands.roll || clamp(k * 2 * w * -s.w[0], -1, 1),
       steps,
+      events,
     };
   };
 }
