@@ -63,7 +63,9 @@ It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful fl
 `pnpm model <id>`: `--only pad` builds one model, `--preview <dir>` also writes
 EEVEE stills (the quick way to look at geometry without the browser), `--detail 0.3 --out-dir <dir>`
 builds a lower level of detail somewhere else. Blender runs with `--factory-startup`, so no user
-add-on or preference reaches a model.
+add-on or preference reaches a model. Lettering and panel legends are set in the font kept in the repo
+(`tools/blender/fonts/LiberationSans-Bold.ttf`, SIL OFL; `srlib.load_font`), so a model reads the same wherever it is
+built; one built before that font was added keeps Arial Bold until it is next rebuilt.
 
 `window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
 frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly;

@@ -233,6 +233,8 @@ tools/
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
+  blender/fonts/LiberationSans-Bold.ttf  the one typeface models' lettering and panel legends are built in, on any machine (srlib.load_font)
+  blender/fonts/LICENSE               its licence: the SIL Open Font License 1.1, as Liberation Fonts 2.1.5 ships it
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
   blender/figurelib.py                what any crew figure is built from: a body's measures and joints, the trunk and trousers as skins, hands, a head,
                                       the pose; a suit is a garment module on top (crew/mark_iv_suit.py, crew/sk_1.py)

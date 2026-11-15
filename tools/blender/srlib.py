@@ -1091,8 +1091,16 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
 
 
 def load_font():
-    """A bold sans for painted lettering; falls back to Blender's built-in font."""
-    for path in ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
-        if os.path.exists(path):
+    """The bold sans painted lettering and panel legends are set in. It is the same on every machine: Liberation Sans
+    Bold, kept beside this file (fonts/LiberationSans-Bold.ttf, under the SIL Open Font License: fonts/LICENSE), which
+    is cut to Arial's widths. $SR_FONT names another file to try first; the two system fonts the models were first built
+    with, and then Blender's built-in face, are only what is left if the repo's own file is missing."""
+    for path in (
+        os.environ.get("SR_FONT", ""),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "LiberationSans-Bold.ttf"),
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ):
+        if path and os.path.exists(path):
             return bpy.data.fonts.load(path)
     return None
