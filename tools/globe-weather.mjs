@@ -4,7 +4,7 @@
 //   node tools/globe-weather.mjs [<flight module> ...]
 //
 // Without a module, every flight with a weather.ts beside its flight.ts is baked.
-// <flight module> is a flights/<flight>/flight.ts exporting a Flight with a `site` that has a `region` and a
+// <flight module> is a flights/<flight>/flight.ts exporting a Flight whose `site` is in a place with a `region`, and a
 // `weather` of its own; its map is written to public/globe/<region>.<date>.weather.png (the date its launch's, UTC;
 // red: cumulus cover; green: high cloud; blue: the middle deck; alpha: land). One map for each region and day:
 // weather.ts says why. It reads the globe's own baked maps for where the land is and how high
@@ -73,7 +73,7 @@ for (const path of flights) {
   const flight = Object.values(await import(pathToFileURL(resolve(path)).href)).find(
     (v) => v && typeof v === 'object' && v.site && v.launch,
   );
-  if (!flight?.site.region) throw new Error(`${path}: no Flight whose site has a region`);
+  if (!flight?.site.place.region) throw new Error(`${path}: no Flight whose site has a region`);
   if (!flight.weather) throw new Error(`${path}: the flight has no weather of its own: a site's default has no map (viewer/day.ts)`);
   const site = siteFrame(flight.site);
   const R = gaussianRadius(site.latitude);

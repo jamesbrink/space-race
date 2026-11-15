@@ -9,6 +9,8 @@ import type { DayWeather } from './weather.ts';
  */
 export interface SiteDef {
   name: string;
+  /** The place the site is in (missions/<nation>/places/<place>/place.ts): its country, its usual sky, its quiet, its ground. */
+  place: PlaceDef;
   /** Degrees north, WGS 84. */
   latitude: Measure;
   /** Degrees east, WGS 84: negative in the Americas. */
@@ -21,19 +23,6 @@ export interface SiteDef {
   bearingX: Measure;
   /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
   zone: { name: string; utcOffset: number };
-  /** The country round the site seen in its flights, which the globe draws from a finer map than its own (RegionDef). */
-  region?: RegionDef;
-  /**
-   * The sky a flight from here stands under when it gives none of its own (`Flight.weather`): the place's usual fair
-   * morning, every figure of it `estimated`. A flight's own day replaces all of it, never part.
-   */
-  weather?: DayWeather;
-  /**
-   * The place's quiet as it is heard (sound/model.ts `Place`): gains for the wind, the surf, a far hum of machinery, and
-   * the water round a spacecraft that has come down. All estimated. Left out, it is a launch site by the sea whose
-   * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
-   */
-  quiet?: { wind: number; surf: number; hum: number; sea: number };
   /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
   around?: SiteAround;
   /**
@@ -44,6 +33,29 @@ export interface SiteDef {
    * the width of the slot it is held in, metres.
    */
   exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
+}
+
+/**
+ * A place on the Earth that holds one pad or many (Cape Canaveral, Tyuratam): what is the same for every pad in it and
+ * every flight from them. Its ground, and what stands on it, the viewer draws from the place's own module beside this
+ * one (ground.ts: viewer/scenery/ground.ts `GroundSpec`), placed round whichever of its pads a flight left from.
+ */
+export interface PlaceDef {
+  /** Its folder under missions/<nation>/places/, by which the viewer finds its ground. */
+  name: string;
+  /** The country round it seen in its flights, which the globe draws from a finer map than its own (RegionDef). */
+  region?: RegionDef;
+  /**
+   * The sky a flight from here stands under when it gives none of its own (`Flight.weather`): the place's usual fair
+   * morning, every figure of it `estimated`. A flight's own day replaces all of it, never part.
+   */
+  weather?: DayWeather;
+  /**
+   * The place's quiet as it is heard (sound/model.ts `Place`): gains for the wind, the surf, a far hum of machinery, and
+   * the water round a spacecraft that has come down. All estimated. Every place says, so that a rocket is never heard in
+   * a surf that is not there.
+   */
+  quiet: { wind: number; surf: number; hum: number; sea: number };
 }
 
 /**
@@ -69,8 +81,12 @@ export interface RegionDef {
   north: number;
   west: number;
   east: number;
+  /** The pad its near plane is centred on (tools/globe-region.mjs): its module beside place.ts. */
+  pad: string;
   /** Why these bounds: what the flights from the site see. */
   why: string;
+  /** What the globe's relief and its land's colours are baked over for it (tools/globe-surface.mjs), wider than the coast's bounds above. */
+  surface: RegionSurface;
   /** The date the shore is drawn as (ISO): works in `later` built after it are undone. Today's map is the shore as it stands. */
   asOf: string;
   /** What has been built since that changed the shore: each undone in the bake if built after `asOf`. */
@@ -80,6 +96,23 @@ export interface RegionDef {
    * `match` a pattern for the way's name, `width` the channel's, metres.
    */
   rivers?: { match: string; width: number; source: string }[];
+}
+
+/** A region's relief and colours as tools/globe-surface.mjs bakes them: on one gnomonic plane (world/region.ts). */
+export interface RegionSurface {
+  /** Its bounds, degrees north and east. */
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+  /** Where its plane touches the sphere, [latitude, longitude] degrees. */
+  centre: [number, number];
+  /** A texel's size, metres. */
+  metres: number;
+  /** Blue Marble's month its colours are of: May (the globe's own) unless said. */
+  month?: 'april' | 'may';
+  /** Where shallow water is turquoise over pale sand: [latitude, longitude, radius in km], each estimated. */
+  banks?: [number, number, number][];
 }
 
 /**

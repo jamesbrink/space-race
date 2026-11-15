@@ -119,8 +119,8 @@ const DAY_MS = 86_400_000;
 /** The day the first map was made for: Freedom 7's. */
 const FIRST = Date.UTC(1961, 4, 5);
 
-/** The weather a flight is shown under: its own, else its site's, else a clear sky. */
-export const weatherOf = (when: { site: SiteDef; weather?: DayWeather }): DayWeather => when.weather ?? when.site.weather ?? CLEAR;
+/** The weather a flight is shown under: its own, else its place's, else a clear sky. */
+export const weatherOf = (when: { site: SiteDef; weather?: DayWeather }): DayWeather => when.weather ?? when.site.place.weather ?? CLEAR;
 
 /** The day as the viewer draws it, for a flight's site, launch and weather. */
 export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeather }): Day {
@@ -142,7 +142,7 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
     };
   }
   const date = when.launch.slice(0, 10);
-  const region = when.site.region?.name;
+  const region = when.site.place.region?.name;
   return {
     cumulus,
     deck: { cover: w.middle ? deckPatches(w.middle.cover.value) : 0, height: w.middle?.base.value ?? DECK_HEIGHT },

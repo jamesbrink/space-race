@@ -120,7 +120,7 @@ never adjusted to bring a check in.
   camera's (at what it turns about, `World.upAt`), so the horizon there is level. Away from the
   site the globe is lit by the true Sun through the air over each place (`chapman`), so the
   terminator reddens and the night side is dark whatever the site's hour; near it, by the scene's
-  light, so the two agree where they meet. Round the site the coast is finer: a site's
+  light, so the two agree where they meet. Round the site the coast is finer: a place's
   `region` (types.ts: RegionDef) names the country its flights see, and tools/globe-region.mjs
   bakes it from OpenStreetMap's coastline and larger lakes onto two gnomonic planes
   (world/region.ts): `near`, 160 km square at 39 m a texel, and `wide`, the region (for the

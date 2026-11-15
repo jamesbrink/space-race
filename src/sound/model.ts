@@ -26,7 +26,7 @@
  * - How loud a level is on a loudspeaker is a choice: `loudness` puts `FULL` dB at full scale and
  *   halves the range in decibels, since 140 dB at the pad and 60 dB of surf cannot both be
  *   reproduced. Inverse-square is exact in `spl` and compressed in what is heard.
- * - The one-shots' levels (`CUES`), the place's bed (`PLACE`) and every timbre are synthesised
+ * - The one-shots' levels (`CUES`), the place's bed (`PlaceDef.quiet`) and every timbre are synthesised
  *   impressions, `estimated`: no recording was measured or used.
  */
 import { atmosphere } from '../sim/atmosphere.ts';
@@ -252,13 +252,13 @@ export interface Hearing {
   stays: boolean;
   /** The scene's origin above the sea, m. */
   padHeight: number;
-  /** The place's own bed: see PLACE. */
+  /** The place's own bed (`PlaceDef.quiet`). */
   place: Place;
 }
 
 /**
  * A place's quiet: gains for wind, surf and far-off machinery, heard at its ground, and for the water round a spacecraft
- * that has come down and stayed (`sea`: nought where its flights come down on land). A site's own data (`SiteDef.quiet`).
+ * that has come down and stayed (`sea`: nought where its flights come down on land). A place's own data (`PlaceDef.quiet`).
  */
 export interface Place {
   wind: number;
@@ -266,9 +266,6 @@ export interface Place {
   hum: number;
   sea: number;
 }
-
-/** A launch site by the sea on a calm morning, its flights coming down in the sea. Estimated: what a site is given when it says nothing of its own; the same wherever the ears are on its ground. */
-export const PLACE: Place = { wind: 0.05, surf: 0.035, hum: 0.006, sea: 0.12 };
 
 /** What the engine (sound/engine.ts) is set to. Gains are of full scale. */
 export interface Mix {

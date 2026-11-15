@@ -482,7 +482,7 @@ const vehicle: ModelDef = {
   url: 'models/ussr/vostok/vostok-1/vehicle.glb',
   scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
   // on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
-  backdrop: 'tyuratam',
+  backdrop: 'ground',
   slider: ['On the pad', 'Taken apart'],
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],

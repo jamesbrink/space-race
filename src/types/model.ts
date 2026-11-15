@@ -246,10 +246,10 @@ export interface Command {
 }
 
 /**
- * What is drawn behind a model: Earth from orbit, a dark studio, or a launch site on the ground.
- * A new site is a new name here and a new entry in `Settings` (viewer/backdrops.ts).
+ * What is drawn behind a model: Earth from orbit, a dark studio, or the ground of the flight's place round its pad
+ * (`Flight.site`: its `place`, whose ground is viewer/scenery/ground.ts's from the place's own module).
  */
-export type BackdropKind = 'orbit' | 'studio' | 'cape-canaveral' | 'tyuratam';
+export type BackdropKind = 'orbit' | 'studio' | 'ground';
 
 /**
  * A camera framing: look at height `centreY` from far enough back to fit `span` metres.

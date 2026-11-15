@@ -39,7 +39,6 @@ import {
   type Mix,
   type Moment,
   mix,
-  PLACE,
   score,
   stepShots,
   type Vec,
@@ -372,7 +371,7 @@ export class Sound {
       duration,
       stays: this.live !== null,
       padHeight: this.padHeight,
-      place: this.flight.site.quiet ?? PLACE,
+      place: this.flight.site.place.quiet,
     };
   }
 

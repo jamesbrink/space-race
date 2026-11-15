@@ -21,6 +21,7 @@ missions/                             the record: one folder per nation, program
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts)
   <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
+    place.ts                          the place (`PlaceDef`): its region (the globe's finer maps), its usual sky, its quiet
     <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
     <site>.parts.ts                   a pad's parts as flight data, said once for every flight from it, each giving its own
                                       morning (lc-5.parts.ts: `lc5Parts`, `PadDay`; site-1.parts.ts)
@@ -51,7 +52,7 @@ src/
   types.ts                            the barrel: every type a flight's data has, gathered from types/ (and Confidence, Measure)
   types/flight.ts                     Flight, SitedFlight, Spec, Motor, TimelineEvent, FlightCheck
   types/model.ts                      ModelDef, Part, Move, Runs, Drive, Action, Command, ViewDef, the cabin (CabinDef) and its mechanisms
-  types/site.ts                       SiteDef, what stands round it (SiteAround), its region (RegionDef, LaterWork)
+  types/site.ts                       SiteDef, the place it is in (PlaceDef), what stands round it (SiteAround), its region (RegionDef, RegionSurface, LaterWork)
   types/weather.ts                    DayWeather: the wind, each layer of cloud, the visibility, the weather beyond the station
   types/sim.ts                        what the simulator flies from: Trajectory, Body, MassPart, Thruster, ShedBody, ChuteDef, Limits, Curve
   measure.ts                          Confidence and Measure, and doc, derived, estimated: a figure with how far it can be trusted (imports nothing)
@@ -240,8 +241,8 @@ tools/
   browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
-  globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date
-  globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and a region's, finer; needs GDAL
+  globe-region.mjs                    bakes a place's region (PlaceDef.region) round a pad from OpenStreetMap's coast and lakes, as it stood on its date
+  globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and each place's region's (`region.surface`), finer; needs GDAL
   globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
   figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)

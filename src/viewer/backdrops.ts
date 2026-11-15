@@ -391,6 +391,7 @@ interface Place {
   /** And its tone in the cel look, which the globe draws the country round it in from height (globe.ts: `colourGlsl`). */
   drawn?: THREE.Color;
 }
+/** The places built, by place, pad and day: a place is laid round its pad, and its season and sky are the day's. */
 const places = new Map<string, Place>();
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
@@ -459,6 +460,7 @@ const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
  */
 function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name: string, build: (day: Day) => Place): Setting {
   if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
+  const key = [name, when.site.name, when.launch.slice(0, 10)].join(' ');
   const site = siteFrame(when.site);
   const today = dayOf(when);
   // High cloud over the site, by the record: it dims the Sun for everything under it and gives most of what it takes
@@ -490,8 +492,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
   // and the Sun itself: a small bright patch, so a polished edge has something to catch
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), below), patch);
-  let here = places.get(name);
-  if (!here) places.set(name, (here = build(today)));
+  let here = places.get(key);
+  if (!here) places.set(key, (here = build(today)));
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
   const land = here.floor.userData.land as Land;
   here.floor.updateMatrixWorld();
@@ -501,7 +503,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     when.site.seaLevel.value,
     { frame: here.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
     installedAir(),
-    when.site.region?.name ?? null,
+    when.site.place.region?.name ?? null,
     here.tone,
     here.drawn,
   );
@@ -806,12 +808,21 @@ function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
   return setting;
 }
 
+/** Each place's ground, by its name (PlaceDef.name). */
+const GROUNDS: Record<string, (renderer: THREE.WebGLRenderer, when?: Occasion) => Setting> = {
+  'cape-canaveral': capeCanaveral,
+  tyuratam,
+};
+
 /** One builder per kind of place a model can be shown in. The studio is nowhere and has no hour; the others take theirs from the flight. */
 const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer, when?: Occasion) => Setting> = {
   orbit,
   studio: (renderer) => studio(renderer),
-  'cape-canaveral': capeCanaveral,
-  tyuratam,
+  ground: (renderer, when) => {
+    const build = when && GROUNDS[when.site.place.name];
+    if (!build) throw new Error(`no ground for ${when ? `the place ${when.site.place.name}` : 'a flight with no site'}`);
+    return build(renderer, when);
+  },
 };
 
 /**
@@ -823,12 +834,15 @@ export class Settings {
   private readonly cache = new Map<string, Setting>();
   constructor(private readonly renderer: THREE.WebGLRenderer) {}
 
-  /** The setting of a kind for a flight: its site, first shown at its launch. Leave the flight out for a setting with no place. */
+  /**
+   * The setting of a kind for a flight: its site, first shown at its launch. Leave the flight out for a setting with no
+   * place. One for each pad and day: the place is laid round the pad, and its sky and season are the day's.
+   */
   get(kind: BackdropKind, when?: Occasion): Setting {
     const { site } = when ?? {};
     const key =
-      site && kind !== 'studio'
-        ? [kind, site.latitude.value, site.longitude.value, site.height.value, site.bearingX.value].join(' ')
+      when && site && kind !== 'studio'
+        ? [kind, site.place.name, site.name, site.latitude.value, site.longitude.value, site.bearingX.value, when.launch].join(' ')
         : kind;
     let s = this.cache.get(key);
     if (!s) {

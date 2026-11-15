@@ -86,7 +86,7 @@ export const sk1Crew = (m: { url: string; scale: string; helmet: PartWords }): M
   name: 'Crew',
   url: m.url,
   scale: m.scale,
-  backdrop: 'tyuratam',
+  backdrop: 'ground',
   parts: crewParts(m.helmet),
   position: COSMONAUT_AT,
   rotationY: COSMONAUT_FACING,

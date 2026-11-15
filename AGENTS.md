@@ -180,7 +180,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
    wind, the visibility, at the station and hour nearest liftoff, each figure with its confidence and
    source), set `weather` from it and bake its map (`pnpm globe:weather`, which finds every flight with a weather.ts): the
    site's sky is drawn from it ([rendering.md](docs/agents/rendering.md), "The weather is a day's").
-   Without one the flight stands under its site's default sky, which is an estimate.
+   Without one the flight stands under its place's default sky, which is an estimate.
 2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
    the `node` fields in `flight.ts`. +Z is up in Blender and becomes +Y in the viewer.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to

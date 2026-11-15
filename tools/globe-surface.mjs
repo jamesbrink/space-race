@@ -23,10 +23,10 @@
 // gdalbuildvrt on PATH, or through `nix shell nixpkgs#gdal`) and ImageMagick's `magick` writes the
 // JPEGs; everything between is done here, so the projection is this file's and region.ts's alone.
 import { execFileSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, globSync, mkdirSync, openSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { planeAt, surfaceDirection, toPlane } from '../src/world/region.ts';
 import { encodeRelief } from '../src/world/relief.ts';
 import { gaussianRadius } from '../src/world/surface.ts';
@@ -61,44 +61,16 @@ const TONE = [104, 102, 78];
 const SAMPLES = 4;
 /** JPEG quality. */
 const QUALITY = 88;
-/** The regions: bounds in degrees, and the middle its plane touches the sphere at. */
 /**
- * `banks`: where the sea's bed is pale carbonate sand under clear water, so that shallow water there is turquoise
- * (viewer/globe.ts: globeWater): each a circle, [latitude, longitude, radius in km], drawn generously round a bank
- * (the bank's own edge is in the relief: it is only the shallows inside a circle that are bright). Read off charts
- * and photographs from orbit: estimated. Elsewhere a shallow bed is taken as dark and the water as less clear.
+ * The regions: each place's (missions/<nation>/places/<place>/place.ts: `region.surface`), its bounds in degrees, the
+ * middle its plane touches the sphere at, the size of a texel, its month and its banks (types/site.ts: RegionSurface).
  */
-const REGIONS = [
-  {
-    name: 'cape-canaveral',
-    south: 20.5,
-    north: 31.5,
-    west: -84.5,
-    east: -72.5,
-    centre: [26.0, -78.5],
-    metres: 450,
-    banks: [
-      [26.9, -78.2, 130], // Little Bahama Bank
-      [24.9, -78.6, 190], // Great Bahama Bank: Bimini, the Berry Islands, Andros
-      [23.0, -76.6, 260], // Great Bahama Bank: the Exumas to the Ragged Islands
-      [23.9, -80.3, 60], // Cay Sal Bank
-      [24.9, -81.0, 110], // the Florida Keys, Florida Bay and the reef tract
-      [22.2, -73.5, 180], // Crooked Island, Acklins and the Caicos Bank's edge
-    ],
-  },
-  {
-    // Site 1 at Tyuratam: the lower Syr Darya, the Aral Sea of 1961 and the country round (missions/ussr/places/tyuratam/site-1.ts).
-    // Its colours are April's, the month of every flight from it the region is drawn for: the steppe's short spring.
-    name: 'tyuratam',
-    south: 41,
-    north: 50,
-    west: 56,
-    east: 70,
-    centre: [45.5, 63.0],
-    metres: 450,
-    month: 'april',
-  },
-];
+const REGIONS = (
+  await Promise.all(globSync('missions/*/places/*/place.ts', { cwd: root }).map((f) => import(pathToFileURL(join(root, f)).href)))
+)
+  .flatMap((m) => Object.values(m))
+  .filter((p) => p?.region?.surface)
+  .map((p) => ({ name: p.region.name, ...p.region.surface }));
 /** Blue Marble's months, as its folders and file stamps name them (2004). A region gives its own; the globe's cube is May's. */
 const MONTHS = { april: '200404', may: '200405' };
 /** Blue Marble's 500 m tiles: each 90 degrees square, 240 pixels a degree, named by a letter for its column (A from 180 W) and 1 or 2 (north or south). */

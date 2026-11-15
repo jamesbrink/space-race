@@ -1,4 +1,5 @@
 import type { SiteDef } from '../../../../src/types.ts';
+import { CAPE_CANAVERAL } from './place.ts';
 
 /**
  * Launch Complex 19 on the Earth: where every crewed Gemini left from. The origin is the middle of the launch
@@ -11,6 +12,7 @@ import type { SiteDef } from '../../../../src/types.ts';
  */
 export const LC19: SiteDef = {
   name: 'Cape Kennedy, Launch Complex 19',
+  place: CAPE_CANAVERAL,
   latitude: {
     value: 28.506719,
     confidence: 'documented',
@@ -53,5 +55,4 @@ export const LC19: SiteDef = {
       'the target on the stand: derived from the Gemini IV crew rolling "to a heads-up position" after insertion (the same ' +
       'report, p. 7-17); nothing read says it of this flight. To be settled from the complex’s drawings when it is built',
   },
-  // (no `region` yet: the country round the Cape is baked for Complex 5's flights, and an orbital flight's is the whole globe)
 };

@@ -412,7 +412,7 @@ const vehicle: ModelDef = {
   // the periscope on its programme, and in the pilot's hands in a flight flown by hand (vehicles/periscope.ts)
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   scale: '25.41 m tall · spacecraft 7.91 m · to scale',
-  backdrop: 'cape-canaveral',
+  backdrop: 'ground',
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
@@ -801,7 +801,7 @@ const pad: ModelDef = {
   name: 'Launch pad',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/pad.glb',
   scale: 'Launch Complex 5 · hardstand 61 m square · to scale',
-  backdrop: 'cape-canaveral',
+  backdrop: 'ground',
   slider: ['Pilot aboard · 03:58', 'Pad clear'],
   sequence: MORNING,
   specGroups: ['Launch pad'],
@@ -972,7 +972,7 @@ const crew: ModelDef = {
   name: 'Crew',
   url: 'models/usa/mercury/mr-4-liberty-bell-7/crew.glb',
   scale: 'Virgil I. Grissom · 1.70 m, 1.79 m suited · to scale',
-  backdrop: 'cape-canaveral',
+  backdrop: 'ground',
   parts: crewParts,
   ...PILOT,
   walker: {

@@ -1,4 +1,5 @@
 import type { SiteDef } from '../../../../src/types.ts';
+import { CAPE_CANAVERAL } from './place.ts';
 
 /**
  * Launch Complex 14 on the Earth: where the four orbital Mercury flights left from. The origin is the middle of
@@ -8,6 +9,7 @@ import type { SiteDef } from '../../../../src/types.ts';
  */
 export const LC14: SiteDef = {
   name: 'Cape Canaveral, Launch Complex 14',
+  place: CAPE_CANAVERAL,
   latitude: {
     value: 28.491115,
     confidence: 'documented',
@@ -48,5 +50,4 @@ export const LC14: SiteDef = {
       'OpenStreetMap ways 195727091 and 1264624135) at the left has the hatch toward a camera on the stand’s east side, so 60. Each step but ' +
       'the first is read off photographs: good to perhaps 15 degrees, and to be settled from the complex’s drawings when it is built',
   },
-  // (no `region` yet: the country round the Cape is baked for Complex 5's flights, and an orbital flight's is the whole globe)
 };

@@ -2,8 +2,8 @@
 // from OpenStreetMap's coastline and its larger lakes, as signed distance fields on two planes.
 //   node tools/globe-region.mjs [<site module> [--from <dir>]]
 //
-// <site module> is a places/<place>/<site>.ts exporting a SiteDef with a `region`; without one, every such module under
-// missions/*/places/ is baked in turn. <dir> holds
+// <site module> is a places/<place>/<site>.ts exporting a SiteDef whose place has a `region`, its near plane centred on the
+// site; without one, each place's region is baked round the pad it names (`region.pad`). <dir> holds
 // coastline.json and water.json as the Overpass queries below return them; without it they are
 // fetched into a temporary folder. Writes public/globe/<name>.near.png, <name>.wide.png and
 // <name>.json (the planes, for the viewer).
@@ -56,24 +56,26 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-/** The SiteDef with a region a module exports, if it does. */
+/** The SiteDef a module exports whose place has a region, if it does. */
 const siteIn = async (path) =>
-  Object.values(await import(pathToFileURL(resolve(path)).href)).find((v) => v && typeof v === 'object' && v.region);
+  Object.values(await import(pathToFileURL(resolve(path)).href)).find((v) => v && typeof v === 'object' && v.place?.region);
 const sitePath = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--from');
 if (!sitePath) {
   if (opt('from', null)) throw new Error('usage: node tools/globe-region.mjs [<places/<place>/<site>.ts> [--from <dir>]]');
-  // every site that has a region, each in a process of its own
-  for (const path of globSync('missions/*/places/*/*.ts', { cwd: root }).sort()) {
-    if (!(await siteIn(join(root, path)))) continue;
-    console.log(path);
-    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), join(root, path)], { stdio: 'inherit' });
+  // every place that has a region, round the pad it names, each in a process of its own
+  for (const path of globSync('missions/*/places/*/place.ts', { cwd: root }).sort()) {
+    const place = Object.values(await import(pathToFileURL(join(root, path)).href)).find((v) => v?.region);
+    if (!place) continue;
+    const pad = join(root, dirname(path), place.region.pad);
+    console.log(pad);
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), pad], { stdio: 'inherit' });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
   process.exit(0);
 }
 const site = await siteIn(sitePath);
-if (!site) throw new Error(`${sitePath}: no SiteDef with a region`);
-const region = site.region;
+if (!site) throw new Error(`${sitePath}: no SiteDef whose place has a region`);
+const region = site.place.region;
 
 async function source() {
   const from = opt('from', null);

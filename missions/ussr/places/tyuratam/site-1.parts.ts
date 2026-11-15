@@ -706,7 +706,7 @@ export const site1Pad = (m: {
   name: 'Launch pad',
   url: m.url,
   scale: 'Site 1 · platform 41.15 m square over a pit 43 m deep · to scale',
-  backdrop: 'tyuratam',
+  backdrop: 'ground',
   slider: m.slider,
   sequence: m.sequence,
   specGroups: ['Launch pad'],
@@ -769,7 +769,7 @@ export const SITE1_SPECS: Flight['specs'] = [
 export function site1Vehicle(model: ModelDef, base: number): ModelDef {
   return {
     ...model,
-    backdrop: 'tyuratam',
+    backdrop: 'ground',
     position: [0, base + TAIL, 0],
     rotationY: TURN,
     views: model.views.map((v) => ({

@@ -610,7 +610,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   the low cloud, the middle deck, the high cloud, the wind, how far one could see, each figure a `Measure`, and
   `beyond` for what a report says of a stretch of country. `viewer/day.ts` turns it once into what is drawn
   (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not `cape.ts`, not `weather.ts`. A
-  flight with none stands under its site's (`SiteDef.weather`), and then under a clear sky: both estimates.
+  flight with none stands under its place's (`PlaceDef.weather`), and then under a clear sky: both estimates.
   - **A day is written into the shaders, not handed to them.** A flight is a page, so a page has one day: its
     figures are text in the shaders that draw it (`sheetsGlsl`, `weatherGlsl`, `overGlsl`, the shared chunk in
     air.ts, the globe's shade), and what a day does not have is not in the text at all (weather.ts: `highOf`).

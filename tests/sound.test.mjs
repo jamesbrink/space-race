@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
 import { flownOnce, G0 } from '../src/sim/fly.ts';
 import { liftoffEngine } from '../src/sim/staged.ts';
@@ -24,7 +25,6 @@ import {
   loudness,
   mix,
   NEAR,
-  PLACE,
   score,
   soundSpeed,
   spl,
@@ -57,7 +57,7 @@ function heard(f) {
     duration: results.duration,
     stays: false,
     padHeight: 0,
-    place: PLACE,
+    place: f.site.place.quiet,
     ...over,
   });
   return { TR, CRAFT, samples, results, where, burn, hearing };
@@ -193,9 +193,7 @@ test('the clock: stopped or backwards the flight is silent, fast it is a bed, an
 
 test('a site inland has no surf and no sea: nothing is heard at Tyuratam before an engine is lit but its wind and hum', async () => {
   // (every Soviet flight so far leaves from this site: its bed is theirs)
-  const site = Object.values(await import('../missions/ussr/places/tyuratam/site-1.ts')).find((v) => v?.quiet);
-  assert.ok(site, 'Site 1 says what its place sounds like, and does not fall back on a site by the sea');
-  const steppe = site.quiet;
+  const steppe = TYURATAM.quiet;
   assert.equal(steppe.surf, 0, 'no surf on the steppe');
   assert.equal(steppe.sea, 0, 'and a flight from here comes down on land');
   // standing on the pad a minute before liftoff: no engine, no air, no water; the wind and the hum as on any ground
@@ -389,7 +387,7 @@ for (const each of ORBITERS) {
     duration: run.duration,
     stays: false,
     padHeight: 0,
-    place: PLACE,
+    place: each.site.place.quiet,
     ...over,
   });
 

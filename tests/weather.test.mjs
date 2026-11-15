@@ -142,7 +142,7 @@ test('every figure of a flight’s weather, and of a site’s default sky, carri
     assert.ok(!Number.isNaN(Date.parse(f.weather.observed.at)), `${f.id}: observed at an hour`);
     for (const b of f.weather.beyond ?? []) assert.ok(b.south < b.north && b.west < b.east && b.source.length > 12 && b.what.length > 12);
     // and a site's own default, for a flight with none: an estimate, every figure of it
-    for (const [path, m] of measures(f.site.weather)) assert.equal(m.confidence, 'estimated', `${f.site.name} ${path}`);
+    for (const [path, m] of measures(f.site.place.weather)) assert.equal(m.confidence, 'estimated', `${f.site.name} ${path}`);
   }
 });
 
@@ -198,10 +198,10 @@ test('Vostok 1’s day has high cloud and nothing under it, and its own map over
 test('a flight with no weather stands under its site’s, and with neither under a clear sky; neither has a map', () => {
   const { weather: _, ...bare } = mr3;
   const site = dayOf(bare);
-  assert.equal(site.cumulus.cover, mr3.site.weather.low.cover.value);
+  assert.equal(site.cumulus.cover, mr3.site.place.weather.low.cover.value);
   assert.equal(site.map, null);
-  const { weather: __, ...nowhere } = mr3.site;
-  const clear = dayOf({ ...bare, site: nowhere });
+  const { weather: __, ...nowhere } = mr3.site.place;
+  const clear = dayOf({ ...bare, site: { ...mr3.site, place: nowhere } });
   assert.equal(clear.cumulus, null);
   assert.equal(clear.high.cover, null);
   assert.equal(clear.deck.cover, 0);
