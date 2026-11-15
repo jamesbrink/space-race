@@ -27,6 +27,7 @@
     "test:wheels": "node tools/wheels-test.mjs",
     "test:seat": "node tools/seat-test.mjs",
     "test:walk": "node tools/walk-test.mjs",
+    "test:sound": "node tools/sound-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "test:lineup": "node tools/lineup-test.mjs",
     "test:deck": "node tools/deck-test.mjs",

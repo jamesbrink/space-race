@@ -2,10 +2,11 @@
 // the delay and Doppler of distance over the speed of sound, nothing airborne in vacuum) and is held to it here; the
 // levels' rules of thumb are only held to behave (finite, continuous, monotonic).
 import assert from 'node:assert/strict';
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
+import { flights } from '../missions/index.ts';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
@@ -21,9 +22,11 @@ import {
   craft,
   cueShots,
   cutoffAfter,
+  engineVoice,
   gate,
   heardAt,
   loudness,
+  MACHINES,
   mix,
   NEAR,
   score,
@@ -31,6 +34,10 @@ import {
   spl,
   stateAt,
   stepShots,
+  treadOf,
+  tyreVoice,
+  WORK_VOICES,
+  Works,
 } from '../src/sound/model.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { BALLISTIC } from './ballistic.mjs';
@@ -405,3 +412,320 @@ for (const each of ORBITERS) {
     assert.equal(at(3000).gain, 0, 'nothing in orbit');
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// On the ground (issues #2 and #4): a driven vehicle, and the machines that move a site's parts (model.ts `Works`).
+
+const HEAR = 0.05; // (index.ts sets the engine every 50 ms)
+const ENGINE = { fuel: 'petrol', cylinders: 6, idle: 450, most: 4000, confidence: 'estimated', source: 'a test' };
+/** `seconds` of hearings of a `Works`, each source given by `at(t)` (null: not posed), from `ears`: what each hearing gave. */
+function hearings(sources, seconds, ears = [5, 1.7, 0], works = new Works(), land = 'concrete') {
+  const out = [];
+  for (let t = 0; t <= seconds + 1e-9; t += HEAR) {
+    const now = sources.map((s) => s(t)).filter(Boolean);
+    const { voices, shots } = works.hear(now, ears, HEAR, land);
+    out.push({ t, voices, shots, playing: works.playing });
+  }
+  return out;
+}
+const loud = (h) => h.voices.reduce((sum, v) => sum + (v?.gain ?? 0), 0);
+
+test('seated at the wheel, the walker makes no footfalls and no breath and says it is driving; out again, the footfalls come back', async () => {
+  globalThis.window ??= { addEventListener() {}, setTimeout, clearTimeout };
+  globalThis.document ??= { addEventListener() {}, pointerLockElement: null, hasFocus: () => true, exitPointerLock() {} };
+  globalThis.matchMedia ??= () => ({ matches: false });
+  const THREE = await import('three');
+  const { Walker } = await import('../src/viewer/onfoot/walk.ts');
+  const root = new THREE.Scene();
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(400, 1, 400), new THREE.MeshBasicMaterial({ name: 'concrete-joint' }));
+  slab.position.y = -0.5;
+  root.add(slab);
+  root.updateMatrixWorld(true);
+  const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 1000);
+  const canvas = { addEventListener() {}, setPointerCapture() {}, requestPointerLock() {} };
+  const walker = new Walker(canvas, camera, {
+    solids: () => [root],
+    ground: () => -0.45,
+    reach: () => 500,
+    leave() {},
+    act() {},
+    viewed() {},
+    locked() {},
+  });
+  const heard = { footfalls: 0, breaths: 0, driving: [], ended: 0 };
+  walker.sounds = {
+    footfall: () => heard.footfalls++,
+    breath: () => heard.breaths++,
+    driving: (d) => (d ? heard.driving.push(d) : heard.ended++),
+  };
+  walker.start(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1), 1.7, 1.85);
+  walker.stick(0, 1);
+  for (let i = 0; i < 120; i++) walker.update(1 / 60);
+  assert.ok(heard.footfalls > 2, `walking two seconds: ${heard.footfalls} footfalls`);
+  // a seat that carries him along at 8 m/s, as a vehicle's does (drive.ts)
+  const at = { x: walker.body.position.x, z: walker.body.position.z, speed: 0 };
+  walker.sit({
+    drive: (pedal, _wheel, dt) => {
+      at.speed = Math.min(8, at.speed + 3 * pedal * dt);
+      at.x += at.speed * dt;
+    },
+    eyes: (to) => to.set(at.x, 1.4, at.z),
+    facing: () => 0,
+    driving: () => ({ at: [at.x + 3, 0.4, at.z], speed: at.speed, top: 11, throttle: 1, engine: 'test' }),
+  });
+  const before = { footfalls: heard.footfalls, breaths: heard.breaths };
+  for (let i = 0; i < 300; i++) walker.update(1 / 60);
+  assert.equal(heard.footfalls, before.footfalls, 'no footfall at the wheel, though the seat went 30 m');
+  assert.equal(heard.breaths, before.breaths, 'no walking breath at the wheel');
+  assert.ok(heard.driving.length >= 290, `driving said each frame: ${heard.driving.length}`);
+  const last = heard.driving.at(-1);
+  assert.ok(last.speed > 7 && last.throttle === 1 && last.engine === 'test', JSON.stringify(last));
+  assert.equal(last.under, 'concrete-joint', 'and what is under it is the slab’s material');
+  // out again, and walking
+  walker.sit(null, new THREE.Vector3(at.x, 0, at.z + 2));
+  walker.stick(0, 1);
+  for (let i = 0; i < 120; i++) walker.update(1 / 60);
+  assert.equal(heard.ended, 1, 'getting out is said once');
+  assert.ok(heard.footfalls > before.footfalls + 2, 'the footfalls come back');
+});
+
+test('a driven vehicle: its engine idles standing and turns faster and louder with its speed and its throttle', () => {
+  const idle = engineVoice(ENGINE, 0, 11, 0);
+  assert.equal(idle.rpm, ENGINE.idle);
+  assert.ok(Math.abs(idle.firing - (450 / 60) * 3) < 1e-9, 'a four-stroke six fires three times a turn');
+  let was = idle;
+  for (const v of [1, 3, 6, 9, 11]) {
+    const e = engineVoice(ENGINE, v, 11, 0.3);
+    assert.ok(e.rpm > was.rpm && e.level > was.level && e.buzz.hertz > was.buzz.hertz, `at ${v} m/s`);
+    was = e;
+  }
+  assert.ok(engineVoice(ENGINE, 11, 11, 1).rpm <= ENGINE.most + 1e-9, 'never past its most');
+  assert.ok(engineVoice(ENGINE, 4, 11, 1).level > engineVoice(ENGINE, 4, 11, 0).level + 8, 'under load it is louder');
+  assert.ok(engineVoice({ ...ENGINE, fuel: 'diesel' }, 0, 11, 0).level > idle.level, 'a diesel is the louder');
+  // heard: idling while it stands, and its engine voice following the speed
+  const driven = (speed, throttle) => () => ({
+    key: 'v',
+    kind: 'road',
+    along: 0,
+    travel: Infinity,
+    where: [0, 0.5, 0],
+    driven: { speed, top: 11, throttle },
+    engine: ENGINE,
+  });
+  const standing = hearings([driven(0, 0)], 3);
+  const engine = (h) => h.voices.find((_, i) => h.playing[i]?.part === 'engine');
+  assert.ok(engine(standing.at(-1))?.gain > 0, 'it idles where it stands');
+  assert.ok(!standing.at(-1).playing.some((p) => p?.part === 'tyres'), 'and its tyres are silent');
+  assert.ok(standing[0].shots.length > 0, 'and it was started: the starter');
+  const going = hearings([driven(9, 0.6)], 3);
+  assert.ok(
+    engine(going.at(-1)).gain > engine(standing.at(-1)).gain && engine(going.at(-1)).buzz.hertz > engine(standing.at(-1)).buzz.hertz,
+  );
+  // out of it (no longer posed), it runs down and is silent
+  const works = new Works();
+  hearings([driven(5, 0.5)], 2, undefined, works);
+  const after = hearings([], 3, undefined, works);
+  assert.equal(loud(after.at(-1)), 0, 'silent once its driver has got out and it has run down');
+});
+
+test('tyres follow the surface: silent standing, 35 dB a decade of speed, each surface its own, the place’s land off the made ones', () => {
+  for (const on of ['concrete', 'gravel', 'earth', 'steppe', 'sand', 'steel', 'timber']) {
+    assert.equal(tyreVoice(on, 0).level, -Infinity, `${on}: silent standing`);
+    assert.ok(Math.abs(tyreVoice(on, 10).level - tyreVoice(on, 1).level - 35) < 1e-9, on);
+    finite(tyreVoice(on, 7));
+  }
+  assert.ok(tyreVoice('gravel', 8).grit.gain > tyreVoice('gravel', 8).hiss.gain, 'gravel crunches');
+  assert.ok(tyreVoice('concrete', 8).hiss.gain > tyreVoice('concrete', 8).grit.gain, 'concrete hisses');
+  assert.ok(tyreVoice('gravel', 8).level > tyreVoice('concrete', 8).level && tyreVoice('concrete', 8).level > tyreVoice('sand', 8).level);
+  // the places' own: their models' materials, and the land
+  const cape = flights.find((f) => f.site.place.name === 'cape-canaveral').site.place.tread;
+  const tyuratam = TYURATAM.tread;
+  assert.equal(treadOf('concrete-joint', cape), 'concrete');
+  assert.equal(treadOf('ballast-gravel', cape), 'gravel');
+  assert.equal(treadOf('steel-rail', cape), 'steel');
+  assert.equal(treadOf(null, cape), 'sand');
+  assert.equal(treadOf('road-gravel', tyuratam), 'gravel');
+  assert.equal(treadOf('concrete-apron-band', tyuratam), 'concrete');
+  assert.equal(treadOf(null, tyuratam), 'steppe');
+  assert.equal(treadOf('paint-auto-black', tyuratam), 'steppe', 'what is not a surface is the land');
+  // heard: a driven vehicle's tyres are what is under it
+  const on = (tread) =>
+    hearings(
+      [
+        () => ({
+          key: 'v',
+          kind: 'road',
+          along: 0,
+          travel: Infinity,
+          where: [0, 0.5, 0],
+          driven: { speed: 8, top: 11, throttle: 0.4 },
+          engine: ENGINE,
+          tread,
+        }),
+      ],
+      2,
+    )
+      .at(-1)
+      .playing.find((p) => p?.part === 'tyres');
+  assert.equal(on('gravel').tread, 'gravel');
+  assert.equal(on('steppe').tread, 'steppe');
+  assert.ok(on('gravel').gain > on('steppe').gain);
+});
+
+/** A move of `travel` that goes from 0 to the whole of it over `from`..`to` seconds (eased, as the slider eases it), `metres` from the ears. */
+const moving =
+  (kind, from, to, metres = 3, travel = 2) =>
+  (t) => ({
+    key: kind,
+    kind,
+    along: travel * Math.min(1, Math.max(0, (t - from) / (to - from))) ** 2 * (3 - 2 * Math.min(1, Math.max(0, (t - from) / (to - from)))),
+    travel,
+    where: [5 + metres, 1.7, 0],
+    engine: kind === 'road' || kind === 'locomotive' ? ENGINE : null,
+  });
+
+for (const kind of Object.keys(MACHINES)) {
+  test(`${kind}: silent standing, heard while it moves, finite and without a step, silent again once it has stopped`, () => {
+    const runs = hearings([moving(kind, 1, 5)], 10);
+    for (const h of runs) for (const v of h.voices) if (v) finite(v);
+    assert.equal(loud(runs.find((h) => h.t > 0.5)), 0, 'still before it moves');
+    const during = runs.filter((h) => h.t > 2 && h.t < 4);
+    assert.ok(
+      during.every((h) => loud(h) > 0),
+      'heard all the while it moves',
+    );
+    assert.equal(loud(runs.at(-1)), 0, 'silent once it has stopped and run down');
+    // no step: from one hearing to the next it comes up and runs down no faster than its own `up` and `down` say
+    const m = MACHINES[kind];
+    const most = Math.max(...runs.map(loud));
+    for (let i = 1; i < runs.length; i++) {
+      const step = Math.abs(loud(runs[i]) - loud(runs[i - 1]));
+      assert.ok(
+        step <= most * (HEAR / Math.min(m.up, m.down) + 0.15),
+        `${kind} at ${runs[i].t.toFixed(2)} s: a step of ${step} of ${most}`,
+      );
+    }
+    // falls off with distance, and comes late by it
+    const at = (metres) => hearings([moving(kind, 0, 4, metres)], 2).at(-1);
+    assert.ok(loud(at(2)) > loud(at(6)) && loud(at(6)) > loud(at(24)), `${loud(at(2))} ${loud(at(6))} ${loud(at(24))}`);
+    const far = at(24).voices.find(Boolean);
+    if (far) assert.ok(Math.abs(far.delay - 24 / C0) < 1e-6 && far.cutoff <= at(2).voices.find(Boolean).cutoff);
+  });
+}
+
+test('a machine heard starting and stopping: its one-shots once each, a door latching only as it shuts, nothing for a move passed over', () => {
+  const shots = (runs) => runs.flatMap((h) => h.shots.map((s) => ({ t: h.t, s })));
+  const motor = shots(hearings([moving('motor', 1, 3)], 6));
+  assert.equal(motor.length, 2, 'a motor: a start and a stop');
+  assert.ok(motor[0].t < 1.2 && motor[1].t > 3 && motor.every(({ s }) => s.bus === 'works' && s.gain > 0));
+  // a door: open, then shut
+  const door = (t) => ({
+    ...moving('door', 1, 2)(t),
+    along: t < 3 ? moving('door', 1, 2)(t).along : moving('door', 4, 5)(t).along * -1 + 2,
+  });
+  const latch = shots(hearings([door], 7));
+  assert.ok(latch.length === 2 && latch[1].s.gain > latch[0].s.gain, 'it bumps open, and latches louder as it shuts');
+  // the slider dragged across the whole of a move: nothing heard
+  const jump = (t) => ({ ...moving('winch', 0, 1)(t), along: t < 1 ? 0 : 2 });
+  const over = hearings([jump], 4);
+  assert.ok(
+    over.every((h) => loud(h) === 0 && !h.shots.length),
+    'a jump plays nothing it passed over',
+  );
+  // a wagon knocks over its rails' joints, one for each it passes
+  const wagon = shots(hearings([moving('locomotive', 0, 30, 10, 80)], 31)).filter(({ s }) => s.thump);
+  assert.equal(wagon.length, 3, '80 m over 25 m rails');
+});
+
+test('no more voices than the works have, each kept in its slot while it sounds', () => {
+  const kinds = Object.keys(MACHINES).filter((k) => k !== 'locomotive' && k !== 'road');
+  const sources = kinds.map((k, i) => (t) => ({ ...moving(k, 0, 6, 4 + 3 * i)(t), key: `m${i}` }));
+  const runs = hearings(sources, 5);
+  for (const h of runs) assert.equal(h.voices.length, WORK_VOICES);
+  const name = (p) => p && `${p.key}/${p.part}`;
+  for (let i = 1; i < runs.length; i++)
+    runs[i - 1].playing.forEach((was, slot) => {
+      const now = runs[i].playing.map(name).indexOf(name(was));
+      if (was && now >= 0) assert.equal(now, slot, `${name(was)} kept its slot at ${runs[i].t.toFixed(2)} s`);
+    });
+  assert.ok(runs.at(-1).playing.every(Boolean), 'and all of them in use while more are moving');
+});
+
+test('posing a move that names a machine tells the sound: the slider, a hand, the clock alike (explode.ts, audio.ts)', async () => {
+  const THREE = await import('three');
+  const { Sequence } = await import('../src/viewer/explode.ts');
+  const { machinery } = await import('../src/sound/audio.ts');
+  const scene = new THREE.Scene();
+  const part = new THREE.Group();
+  part.name = 'Part';
+  const arm = new THREE.Group();
+  arm.name = 'Arm';
+  part.add(arm);
+  scene.add(part);
+  const swing = {
+    kind: 'swing',
+    node: 'Arm',
+    axis: [0, 0, 1],
+    angle: 1.5,
+    from: 0.2,
+    to: 0.6,
+    machine: { kind: 'hydraulic', confidence: 'estimated', source: 'a test' },
+  };
+  const quiet = {
+    kind: 'slide',
+    node: 'Arm',
+    by: [1, 0, 0],
+    from: 0,
+    to: 1,
+    machine: { kind: 'none', confidence: 'derived', source: 'a test' },
+  };
+  const sequence = new Sequence(part, part.position.clone(), [swing, quiet]);
+  sequence.set(0.4);
+  const entry = machinery.working().find(([key]) => key === swing)?.[1];
+  assert.ok(entry && entry.node === arm && Math.abs(entry.along - 0.75) < 1e-9 && entry.travel === 1.5, JSON.stringify(entry?.along));
+  assert.ok(!machinery.working().some(([key]) => key === quiet), 'a move that is no machine is not heard');
+  scene.remove(part);
+  assert.ok(!machinery.working().some(([key]) => key === swing), 'gone from the scene, forgotten');
+});
+
+test('every swing, slide and drive at a site names its machine, every vehicle and locomotive its engine, every one its place lists', () => {
+  const missing = [];
+  const engines = [];
+  const seen = new Set();
+  const check = (f, where, move) => {
+    if (seen.has(move)) return;
+    seen.add(move);
+    if (!move.machine) missing.push(`${f.id} ${where} ${move.kind} ${move.node ?? ''}`);
+    else if ((move.machine.kind === 'road' || move.machine.kind === 'locomotive') && !f.site.place.engines[move.machine.engine])
+      engines.push(`${f.id} ${where} ${move.node ?? ''}: ${move.machine.engine}`);
+  };
+  for (const f of flights)
+    for (const m of f.models)
+      for (const p of m.parts) {
+        // a site's model is on the clock (a morning's sequence): its moves are hardware; a vehicle's slider takes it apart, and is not
+        if (m.sequence) for (const move of p.moves ?? []) check(f, `${m.id}/${p.node}`, move);
+        for (const move of p.clocked ?? []) check(f, `${m.id}/${p.node} (clocked)`, move);
+        for (const a of p.actions ?? []) {
+          if (a.do.kind === 'toggle') for (const move of a.do.moves) check(f, `${m.id}/${p.node} ${a.id}`, move);
+          if (a.do.kind === 'lift' && !a.do.machine) missing.push(`${f.id} ${m.id}/${p.node} ${a.id} lift`);
+        }
+      }
+  assert.ok(seen.size > 100, `${seen.size} moves`);
+  assert.deepEqual(missing, [], 'moves with no machine (silent)');
+  assert.deepEqual(engines, [], 'engines no place lists');
+  // every vehicle a site's models carry (its extras' `vehicle`), drivable by hand, has its engine in its place's list
+  const vehicles = (file) => {
+    const glb = readFileSync(file);
+    return JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'))
+      .nodes.filter((n) => typeof n.extras?.vehicle === 'string')
+      .map((n) => n.extras.vehicle);
+  };
+  const unlisted = new Set();
+  for (const f of flights) {
+    const files = [...f.models.filter((m) => m.sequence).map((m) => m.url)];
+    for (const file of globSync(`public/models/*/places/${f.site.place.name}/**/*.glb`)) files.push(file.replace(/^public\//, ''));
+    for (const url of files)
+      for (const name of vehicles(join('public', url))) if (!f.site.place.engines[name]) unlisted.add(`${f.site.place.name}: ${name}`);
+  }
+  assert.deepEqual([...unlisted], [], 'vehicles whose engine their place does not list');
+});

@@ -231,9 +231,9 @@ src/
   sim/verdict.ts                      how a flight flown by hand ended, said plainly, and whether it was survivable by the flight's stated limits
   sim/predict.ts                      looking ahead from a state: one propagator for every vehicle (error-controlled, in slices), the path if nothing more is done, its apsides, events, impact or orbit (pure)
   sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
-  sound/audio.ts                      what the walk is heard as: an interface, silent until something that plays is given
-  sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are (pure, tested)
-  sound/engine.ts                     the Web Audio graph those numbers are set on: noise, filters, envelopes; no recordings
+  sound/audio.ts                      what the walk and a driven vehicle are heard as (an interface, silent until something that plays is given), and the board every posed move that names a machine is told to (`machinery`)
+  sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are; and the works: engines, tyres and machines on the ground (pure, tested)
+  sound/engine.ts                     the Web Audio graph those numbers are set on: noise, filters, envelopes, the works' six voices; no recordings
   sound/index.ts                      the joinery: the clock, the scene's run and the camera in; the speaker by the clock, U, the volume
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
@@ -256,6 +256,7 @@ tools/
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights, seen from each rig and from far out
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
+  sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows
   shot.mjs                            one screenshot of the viewer, for looking at a change
