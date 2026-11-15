@@ -571,8 +571,8 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   degree) is not stepped, nor the staged vehicle's turning. Freedom 7's prediction: the one gravity (world/orbit.ts) and fly.ts's drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
   will do by itself (`Sequence`, from the live state: separation and its push along the joint's axis, as every simulator parts two bodies (`Sequence.axis`: the programme's under guidance, the axis it has otherwise), the retrorockets as fly.ts fires them,
   the pack, the parachutes at their heights; with the sequencer off, nothing, not even the parachutes, as the live
-  simulator has it), until it meets the sea, has gone once round (then it is an orbit, with its osculating elements) or
-  six hours have passed. Predicted from before separation it is the landing the live simulator then flies, within half
+  simulator has it), until it meets the sea, has gone round (then it is an orbit, with its osculating elements) or
+  its horizons say (predict.ts `Horizons`: six hours, once round and 60,000 steps unless a plan says otherwise). Predicted from before separation it is the landing the live simulator then flies, within half
   a per cent (tests/predict.test.mjs). While the engine burns under guidance K chooses between "to cutoff" (thrust
   along `programmeAxis`, the tilt programme with the pilot's trim: attitude prescribed, as fly.ts's is, not the rigid
   body stepped), drawn dashed up to the cutoff, and "cut now"; the choice is a two-way control beside the figures,

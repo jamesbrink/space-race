@@ -93,9 +93,23 @@ export interface Sequence {
   chutes?: boolean;
 }
 
+/**
+ * How far a prediction looks ahead before it stops: the longest time, s; how many turns round the Earth (an orbit is drawn
+ * once round, where it begins to repeat); and the most steps the integrator may take. A flight's plan says these; the
+ * default is a ballistic flight's and a day's orbit's alike: six hours, once round, 60,000 steps.
+ */
+export interface Horizons {
+  limit: number;
+  turns: number;
+  steps: number;
+}
+export const HORIZONS: Horizons = { limit: 6 * 3600, turns: 1, steps: 60_000 };
+
 export interface PredictOptions extends BallisticOptions {
-  /** The longest it looks ahead, s: six hours unless given. */
+  /** The longest it looks ahead, s (`Horizons.limit`). */
   limit?: number;
+  /** How far ahead it looks, beyond the longest time (`Horizons`): the default's unless given. */
+  horizons?: Partial<Horizons>;
   /** The most points the path is returned as. */
   points?: number;
 }
@@ -365,13 +379,15 @@ export function propagate(
   flier: Flier,
   start: { t: number; r: Vec3; v: Vec3 },
   where: Ground,
-  options: { limit?: number; points?: number } = {},
+  options: { limit?: number; horizons?: Partial<Horizons>; points?: number } = {},
 ): Predictor {
   const { site, seaLevel } = where;
   const frame = where.frame ?? LIFTOFF;
   const field = fieldOf(where.gravity ?? EARTH_GRAVITY);
   const pad = geodeticToEcef(site);
-  const limit = options.limit ?? 6 * 3600;
+  const horizons = { ...HORIZONS, ...options.horizons, ...(options.limit !== undefined ? { limit: options.limit } : {}) };
+  const limit = horizons.limit;
+  const round = 2 * Math.PI * horizons.turns;
   const most = Math.max(8, options.points ?? 480);
 
   let t = start.t;
@@ -627,9 +643,9 @@ export function propagate(
       return;
     }
 
-    if (swept + turned >= 2 * Math.PI) {
-      // once round: the path ends where it began to repeat
-      const part = turned > 0 ? (2 * Math.PI - swept) / turned : 1;
+    if (swept + turned >= round) {
+      // once round (or as many turns as the horizons say): the path ends where it began to repeat
+      const part = turned > 0 ? (round - swept) / turned : 1;
       const at = before.t + (t - before.t) * part;
       const close = between(before.t, before.r, before.v, t, r, v, at);
       while (points.length > 1 && points[points.length - 1]!.t > before.t) points.pop();
@@ -650,7 +666,7 @@ export function propagate(
         if (bottom) bottoms.push(bottom);
       }
     }
-    if (t - start.t >= limit || steps >= 60_000) done = true;
+    if (t - start.t >= limit || steps >= horizons.steps) done = true;
   };
 
   /**

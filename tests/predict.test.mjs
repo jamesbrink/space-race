@@ -19,7 +19,7 @@ import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts
 import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { coast } from '../src/sim/fly.ts';
-import { AIR_TOP, elements, predict, predictor, programmeAxis } from '../src/sim/predict.ts';
+import { AIR_TOP, elements, HORIZONS, predict, predictor, programmeAxis } from '../src/sim/predict.ts';
 import { turn } from '../src/sim/rigid.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { EARTH, WGS84_A } from '../src/world/bodies.ts';
@@ -325,4 +325,16 @@ test('the path is given at instants of its own: two predictions a moment apart l
     if (length(u) < 1 || length(w) < 1) continue;
     assert.ok(angleBetween(u, w) / DEG < 1.3, `a corner of ${(angleBetween(u, w) / DEG).toFixed(2)} degrees at ${q.points[i].t} s`);
   }
+});
+
+test('how far ahead it looks is the horizons’: twice round when asked, and the time and the steps as limits', () => {
+  const o = atPerigee(300_000, 300_000, 51.6);
+  const once = predict(TR, SITE, SEA, state(o));
+  const twice = predict(TR, SITE, SEA, state(o), { horizons: { turns: 2 } });
+  assert.equal(twice.outcome, 'orbit');
+  near(twice.points.at(-1).t / once.points.at(-1).t, 2, 0.01, 'twice round takes twice as long');
+  const short = predict(TR, SITE, SEA, state(o), { horizons: { limit: 600 } });
+  assert.equal(short.outcome, 'limit');
+  assert.ok(short.points.at(-1).t <= 700, 'stopped at the time given');
+  assert.deepEqual(HORIZONS, { limit: 6 * 3600, turns: 1, steps: 60_000 });
 });
