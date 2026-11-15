@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { along, axisOf, flownOnce, type Sample } from '../sim/fly.ts';
-import { blowOf, windAt } from '../sim/forces.ts';
+import { airAt, blowOf } from '../sim/air.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
@@ -303,7 +303,7 @@ export class Ascent {
     const here = this.frame.toFixed(r, clamped);
     // (its motion through the air, as the simulator pulls on it: in the day's wind it drifts with the air, and a canopy drawn
     // against its motion over the ground stood off to one side of a spacecraft hanging plumb)
-    const through = windAt(this.frame, r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
+    const through = airAt(this.frame, r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
     moment.air.copy(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(through, clamped))));
     moment.up.copy(toThree(ecefToSiteDirection(this.site, unit(here))));
     if (moment.down >= 0) {

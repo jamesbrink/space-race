@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { fly } from '../src/sim/fly.ts';
-import { blowOf, windAt } from '../src/sim/forces.ts';
+import { airAt, blowOf } from '../src/sim/air.ts';
 import { predict } from '../src/sim/predict.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
@@ -66,8 +66,8 @@ test('a wind is named for where it blows from: the air moves the other way, and 
 test('standing on the pad, the air goes by at the surface wind; with no sounding, not at all', () => {
   const r = geodeticToEcef(SITE);
   const v = cross([0, 0, EARTH_ROTATION_RATE], r);
-  near(windAt(LIFTOFF, r, v, 0, SEA).airspeed, 0, 1e-9, 'calm');
-  const air = windAt(LIFTOFF, r, v, 0, SEA, blowOf(TR.winds));
+  near(airAt(LIFTOFF, r, v, 0, SEA).airspeed, 0, 1e-9, 'calm');
+  const air = airAt(LIFTOFF, r, v, 0, SEA, blowOf(TR.winds));
   near(air.airspeed / KT, 12, 0.3, 'twelve knots over the pad');
   near(length(air.ground), 0, 1e-9, 'and it is not moving over the ground');
   // from 070: the air comes at it from east of north

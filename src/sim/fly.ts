@@ -48,8 +48,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { atmosphere } from './atmosphere.ts';
-import { blowing, blowOf } from './forces.ts';
+import { airAt, blowOf } from './air.ts';
 import { G0, P0 } from '../world/bodies.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
@@ -205,14 +204,8 @@ export function fly(
    * step on its burning out had it out: each burn began a sixth of a step early and ended as much short.
    */
   const forces = (s: State, at: number, as = at): { force: Vec3; q: number; mach: number; altitude: number } => {
-    const place = ecefToGeodetic(fixed(s.r, at));
-    const altitude = place.height - seaLevel;
-    const air = atmosphere(altitude);
-    const ground = sub(s.v, cross(spin, s.r)); // motion over the ground
-    const wind = blow ? sub(ground, blowing(frame, blow, place, altitude, at)) : ground; // motion through the air, which turns with the Earth and moves over it as the day's wind has it
-    const airspeed = length(wind);
-    const mach = airspeed / air.soundSpeed;
-    const q = 0.5 * air.density * airspeed * airspeed;
+    // the air there, and the motion over the ground and through the air (air.ts)
+    const { altitude, air, ground, wind, airspeed, mach, q } = airAt(frame, s.r, s.v, at, seaLevel, blow);
     const riding = phase === 'powered' || phase === 'coast';
     const area = riding
       ? tr.area.value * along(tr.ascentDrag, mach)

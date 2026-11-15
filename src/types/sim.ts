@@ -58,7 +58,7 @@ export interface Winds {
 export interface Trajectory {
   /** The bearing flown, degrees clockwise from true north. */
   azimuth: Measure;
-  /** The day's winds aloft (sim/forces.ts: `blowOf`): the air everything is flown through moves with them. Left out: the air turns with the Earth and no more. */
+  /** The day's winds aloft (sim/air.ts: `blowOf`): the air everything is flown through moves with them. Left out: the air turns with the Earth and no more. */
   winds?: Winds;
   /** Everything that leaves the pad, kg. */
   liftoffMass: Measure;

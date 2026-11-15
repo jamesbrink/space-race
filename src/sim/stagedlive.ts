@@ -42,7 +42,7 @@ import { aboutAxis, fromAxes, multiply, normalize, type Quat, turn, unturn } fro
 import {
   type AscentSample,
   type AscentSummary,
-  airAt,
+  airOf,
   flowOf,
   integral,
   lawOf,
@@ -187,7 +187,7 @@ export function stagedVehicle(
   const spinE = frame.spin;
   const law = lawOf(o, site, frame, x);
   const stack = stackOf(o);
-  const air = airAt(seaLevel, frame);
+  const air = airOf(seaLevel, frame);
   const authority = authorityOverride ?? (a.steering?.authority.value ?? 0) * DEG;
   const last = o.stages.length - 1;
   const floor = floorAt(site, seaLevel);
@@ -718,7 +718,7 @@ export function stagedPilot(
 ): StagedPilot {
   const o = v.flight;
   const law = lawOf(o, site, frame, x);
-  const air = airAt(seaLevel, frame);
+  const air = airOf(seaLevel, frame);
   const memo = (options.memo ??= { thetaTurn: null });
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
   const done = new Set<number>();

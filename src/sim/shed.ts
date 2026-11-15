@@ -40,7 +40,8 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airForces, blowOf, floorAt, pieceOf, type Release, type Shape, windAt as airAt } from './forces.ts';
+import { airAt, blowOf } from './air.ts';
+import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
 import { MEAN_RADIUS } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';

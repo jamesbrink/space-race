@@ -22,6 +22,7 @@ import { atmosphere } from './atmosphere.ts';
 import { along } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { tearOf } from './loads.ts';
+import { airAt } from './air.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -834,7 +835,6 @@ export function flyOrbit(
   from?: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
 ): OrbitFlown {
-  const spin = frame.spin;
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
 
@@ -845,15 +845,8 @@ export function flyOrbit(
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
   const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at));
 
-  const airAt = (s: State, at: number) => {
-    const altitude = frame.place(s.r, at).height - seaLevel;
-    const air = atmosphere(altitude);
-    const wind = sub(s.v, cross(spin, s.r));
-    const airspeed = length(wind);
-    const mach = airspeed / air.soundSpeed;
-    const q = 0.5 * air.density * airspeed * airspeed;
-    return { altitude, wind, airspeed, mach, q };
-  };
+  // (no wind: none has been read for the coast's places)
+  const airOf = (s: State, at: number) => airAt(frame, s.r, s.v, at, seaLevel);
   /**
    * Everything but gravity, m/s^2, with the ship as it is from instant `as` (the engine lit or not, the modules joined or
    * not) at a state at `at`. A step ends on every instant the ship changes at, so within a step it is as it was at the
@@ -862,7 +855,7 @@ export function flyOrbit(
    * a sixth of a step short: 0.5 m/s of Vostok 1's 136.)
    */
   const pushAs = (s: State, at: number, as: number): Vec3 => {
-    const air = airAt(s, at);
+    const air = airOf(s, at);
     return shipPush(o, as, air.wind, air.altitude, as >= on && as < off && as < parted ? aim : null);
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
@@ -871,7 +864,7 @@ export function flyOrbit(
 
   let phase: OrbitPhase = 'orbit';
   const sample = (): OrbitSample => {
-    const air = airAt(state, t);
+    const air = airOf(state, t);
     const here = frame.place(state.r, t);
     return {
       t,
@@ -929,7 +922,7 @@ export function flyOrbit(
       const el = elementsOf(state.r, state.v);
       results.retroPerigee = el.a * (1 - el.e) - o.orbit.radius.value;
     }
-    if (t === parted) results.separationAltitude = airAt(state, t).altitude;
+    if (t === parted) results.separationAltitude = airOf(state, t).altitude;
   };
   /** The plumb line at a sample's place, in the inertial frame. */
   const upAt = (s: OrbitSample): Vec3 => frame.upOver(s, s.t);
@@ -970,7 +963,7 @@ export function flyOrbit(
     if (t > off) {
       if (Number.isNaN(results.interfaceAt) && before.altitude > INTERFACE && now.altitude <= INTERFACE) {
         const part = (before.altitude - INTERFACE) / (before.altitude - now.altitude);
-        const air = airAt(state, t);
+        const air = airOf(state, t);
         results.interfaceAt = before.t + part * (now.t - before.t);
         results.interfaceSpeed = air.airspeed;
         results.interfaceAngle = -Math.asin(dot(air.wind, upAt(now)) / air.airspeed) / DEG;
@@ -1001,7 +994,7 @@ export function flyOrbit(
         results.ejectionAt = t;
         results.ejectionLatitude = end.latitude;
         results.ejectionLongitude = end.longitude;
-        results.ejectionSpeed = -dot(airAt(state, t).wind, upAt(end));
+        results.ejectionSpeed = -dot(airOf(state, t).wind, upAt(end));
         const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
         if (gate) {
           const axes = enuAxes({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value });

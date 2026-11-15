@@ -45,12 +45,12 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
-import { atmosphere } from './atmosphere.ts';
 import { along, MEAN_RADIUS } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
+import { type AirHere, airAt } from './air.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -258,18 +258,11 @@ export function lawOf(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, x: So
   return { n, pad, up0, down0, localAt, axisAt, modeAt, tVertical, tKicked, tTurn };
 }
 
-/** The air at a state (atmosphere.ts, turning with the Earth, no wind): where it is over, its height, the air, the motion through it. */
-export function airAt(seaLevel: number, frame: EarthFrame) {
-  const spin = frame.spin;
-  return (s: State, t: number) => {
-    const here = frame.place(s.r, t);
-    const altitude = here.height - seaLevel;
-    const air = atmosphere(altitude);
-    const wind = sub(s.v, cross(spin, s.r));
-    const airspeed = length(wind);
-    return { here, altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed };
-  };
-}
+/** The air at a state of the ascent (air.ts, no wind: the day's winds aloft at Tyuratam have not been read). */
+export const airOf =
+  (seaLevel: number, frame: EarthFrame) =>
+  (s: State, t: number): AirHere =>
+    airAt(frame, s.r, s.v, t, seaLevel);
 
 /**
  * The stack's engines and drag, as the record has them: one stage's thrust at an instant and a pressure (each `count`
@@ -351,7 +344,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
   const localAt = law.localAt;
-  const airOf = airAt(seaLevel, frame);
+  const airHere = airOf(seaLevel, frame);
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
   /**
    * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that
@@ -360,7 +353,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
    * one that ends a step on an ignition had it lit: each burn was a sixth of a step late in starting and short at its end.
    */
   const forces = (s: State, t: number, m: Mode, gone: number, as = t) => {
-    const air = airOf(s, t);
+    const air = airHere(s, t);
     let thrust = 0;
     let mass = o.liftoffMass.value - gone;
     o.stages.forEach((st, i) => {

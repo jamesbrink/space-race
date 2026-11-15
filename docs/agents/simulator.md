@@ -46,18 +46,18 @@ never adjusted to bring a check in.
   `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
   eastward motion. Say which in any label.
 - **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
-  are measured from the geodetic normal (`upAt` in forces.ts), not from the line to the Earth's
+  are measured from the geodetic normal (the flight frame's `up`, world/earthframe.ts), not from the line to the Earth's
   centre, which leans a sixth of a degree from it at the Cape.
 - **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
   (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
   bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
-  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`, which fly.ts's is); when a
+  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`); the air at a point (air.ts `airAt`: where it is over, its height,
+  the standard air there and the motion through it, with the day's wind where there is one); when a
   load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
   (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Each was the
   same arithmetic in the same order, so no record's run moved a bit. Still apart, as the same physics in different
   arithmetic (merging would move the printed figures in their last digits, so each wants its own commit and its own
-  diff): the air at a point (forces.ts `windAt`, staged.ts `airAt`, flyOrbit's own and fly.ts's written out, the same
-  formula with the Earth's angle taken differently), drag along the motion (the q form in fly.ts, staged.ts and
+  diff): drag along the motion (the q form in fly.ts, staged.ts and
   stagedlive.ts; the half rho v v form in fliers.ts, flyDown and `decay`), thrust in air (a Trajectory's from its
   sea-level figure, a stage's from its vacuum one), the six-degree Runge-Kutta written twice (vehicle.ts, shed.ts),
   the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
@@ -199,7 +199,7 @@ never adjusted to bring a check in.
   four strap-ons fall back as a cross, each tumbling under the air on its own track, and the core flies exactly as it
   did: what leaves takes only its own mass, as before.
 - **The air moves.** `trajectory.winds` (types.ts: `Winds`) is the day's sounding over the pad,
-  each level's speed and bearing a `Measure`; `blowOf` (forces.ts) turns it into the air's motion
+  each level's speed and bearing a `Measure`; `blowOf` (air.ts) turns it into the air's motion
   east and north at a height, straight lines between levels in those parts (so a swing through
   north is not a spin through south), the lowest held to the surface, falling evenly to nothing
   from the highest to `calmAbove`. Every flier (fly.ts, vehicle.ts, shed.ts, predict.ts) takes its
@@ -317,7 +317,7 @@ never adjusted to bring a check in.
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
   (`TRAIL_TOP` in stage/flightshow.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
-  engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
+  engines, throttle curves, propellant, drops and drag (`stackOf`), air (air.ts `airAt`), gravity and integrator (world/orbit.ts
   `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose
   steering gives `ascent.steering.authority` (estimated) about each axis at full throw while an engine aboard burns (no
   inertia, no aerodynamic moment: none read; drag acts along the motion, as in the batch run; its structure held to

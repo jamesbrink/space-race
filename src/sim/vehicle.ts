@@ -97,7 +97,8 @@ import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
-import { airForces, blowOf, floorAt, part, pieceOf, type Release, windAt as airAt } from './forces.ts';
+import { airAt, blowOf } from './air.ts';
+import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
 import { loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import { pressed } from './staging.ts';
 import {

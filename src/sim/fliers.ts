@@ -32,12 +32,13 @@ import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } f
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { blowing, blowOf, floorAt } from './forces.ts';
+import { blowing, blowOf } from './air.ts';
+import { floorAt } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
-import { airAt, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
+import { airOf as airOfStack, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -357,7 +358,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
   const stack = stackOf(o);
   // (the law, the air and the path are all in the vehicle's frame)
   const law = lawOf(o, site, v.frame, now.solved);
-  const airOf = airAt(seaLevel, v.frame);
+  const airOf = airOfStack(seaLevel, v.frame);
   const last = o.stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
