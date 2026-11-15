@@ -31,6 +31,7 @@ import { asStudio, type Studio } from '../viewer/studio.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
 import { smoothstep } from '../util/math.ts';
 import { isTyping } from '../util/keys.ts';
+import { scripted, unattended } from '../util/env.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -856,7 +857,7 @@ export class Gallery {
       said.end();
       this.ready = true;
       this.measure();
-      if (navigator.webdriver) document.body.classList.add('instant'); // (a script taking pictures does not wait for a fade)
+      if (scripted()) document.body.classList.add('instant'); // (a script taking pictures does not wait for a fade)
       this.canvas.classList.add('ready');
       curtain.done();
       if (!this.open) stage.sleep(true);
@@ -1324,8 +1325,7 @@ export class Gallery {
    */
   private show(dt: number): void {
     // not for a browser driven by a script (unless it asks: ?demo), nor for anyone who has asked their system for less motion
-    const unattended = (navigator.webdriver && !location.search.includes('demo')) || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (unattended && !this.touring) return;
+    if (unattended() && !this.touring) return;
     // (nor while someone is sitting in it: the view is theirs, however long they sit still)
     if (!this.touring && this.seat !== null) return void (this.idle = 0);
     if (!this.touring) {

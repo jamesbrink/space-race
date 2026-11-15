@@ -7,6 +7,7 @@ import { FrontScene } from './front/scene.ts';
 import { instantAt, PATH } from './front/view.ts';
 import { Title } from '../ui/title.ts';
 import { isoDate } from '../world/time.ts';
+import { scripted } from '../util/env.ts';
 
 /**
  * The front page: the mark and the list of flights (title.ts), over a scene that is no flight's: the Earth seen
@@ -28,8 +29,8 @@ import { isoDate } from '../world/time.ts';
 const scene = new FrontScene(document.body);
 scene.still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // a script holds the picture where it asks (tools/shot.mjs: sr.front.seek); nobody is watching it move
-const scripted = navigator.webdriver && !location.search.includes('demo');
-if (scripted) {
+const driven = scripted('demo');
+if (driven) {
   scene.held = true;
   document.body.classList.add('instant');
 }
@@ -75,7 +76,7 @@ async function enter(id: string): Promise<void> {
         scene.dispose();
         delete (window as unknown as { sr: { front?: FrontScene } }).sr.front;
       },
-      navigator.webdriver ? 0 : 1400,
+      scripted() ? 0 : 1400,
     );
   });
   try {
@@ -108,7 +109,7 @@ for (const touch of ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchsta
     { capture: true, passive: true },
   );
 setInterval(() => {
-  if (entering || document.hidden || scripted) return;
+  if (entering || document.hidden || driven) return;
   idle += 1;
   if (idle < IDLE_TITLE || title.tucked) return;
   title.tuck(true);

@@ -1,6 +1,7 @@
 import './fold.css';
 import { prefs } from '../app/prefs.ts';
 import type { Sheet } from './sheet.ts';
+import { scripted } from '../util/env.ts';
 
 /**
  * How a place folds on a phone (under 960 px wide or 520 px tall). The gallery is the first place built this way; the
@@ -90,7 +91,7 @@ export function handle(button: HTMLElement, panel: HTMLElement, sheet: Sheet): {
  */
 export function hintOnce(stack: HTMLElement, title: string, line: string): void {
   if (!narrow() || prefs.get('handleSeen')) return;
-  if (navigator.webdriver && !location.search.includes('hint')) return;
+  if (scripted('hint')) return;
   prefs.set('handleSeen', true);
   sayIn(stack, title, line, true);
 }

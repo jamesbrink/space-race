@@ -37,6 +37,7 @@ import { FlightPath } from '../viewer/path.ts';
 import { Stage, type Thing, type WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
 import { isTyping } from '../util/keys.ts';
+import { scripted, unattended } from '../util/env.ts';
 
 /** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
 const address = () => parseAddress(where());
@@ -335,7 +336,7 @@ async function start(id: string, fly = false): Promise<void> {
     if (prefs.get('demo')) demo.start();
     await new Promise((done) => setTimeout(done, 500));
     // (a script taking pictures does not wait for a fade)
-    if (navigator.webdriver && !location.search.includes('demo')) document.body.classList.add('instant');
+    if (scripted('demo')) document.body.classList.add('instant');
     document.body.classList.add('scene-ready');
     ui.loaded();
     stage.veiled = false;
@@ -889,7 +890,7 @@ clock.listen(() => {
     );
 });
 // (a script driving the browser asks for the show with ?demo in the address)
-const unattended = (navigator.webdriver && !location.search.includes('demo')) || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const alone = unattended();
 for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
   window.addEventListener(
     touch,
@@ -908,7 +909,7 @@ const showFrame = (): void => {
   const now = performance.now();
   const dt = Math.min(1, (now - demoAt) / 1000);
   demoAt = now;
-  if (unattended && !demo.active) return;
+  if (alone && !demo.active) return;
   demo.tick(dt);
 };
 requestAnimationFrame(showFrame);

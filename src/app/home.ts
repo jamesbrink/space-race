@@ -1,4 +1,5 @@
 import { write } from './address.ts';
+import { reducedMotion, scripted } from '../util/env.ts';
 
 /**
  * The way out to the front page, from anywhere in a flight (the Space Race crumb, an address that names nothing).
@@ -15,6 +16,6 @@ export function goHome(): void {
     location.reload();
   };
   // (the fade is style.css's, 0.2 s; none for anyone who has asked for less motion, or a script)
-  if (navigator.webdriver || matchMedia('(prefers-reduced-motion: reduce)').matches) go();
+  if (scripted() || reducedMotion()) go();
   else setTimeout(go, 220);
 }
