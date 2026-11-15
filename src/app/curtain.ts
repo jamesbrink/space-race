@@ -1,3 +1,4 @@
+import { esc } from '../util/dom.ts';
 /**
  * The curtain: what is shown while something is on its way in. There is one, the same wherever
  * something loads (a flight's gallery, its launch site): the name of what is coming, a bar that
@@ -11,8 +12,6 @@ export interface LoadStep {
   done: number;
   note?: string;
 }
-
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 /** The curtain's markup: put it last in whatever it is to cover, and hand its element to `Curtain`. */
 export const CURTAIN = `

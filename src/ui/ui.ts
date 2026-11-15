@@ -9,6 +9,7 @@ import { functionsOf } from '../viewer/explode.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
 import { Wheel } from './wheel.ts';
+import { $, esc } from '../util/dom.ts';
 
 export interface UiHandlers {
   model(id: string): void;
@@ -69,8 +70,6 @@ const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   onboard: 'aboard',
   pad: 'tracking',
 };
-
-export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 const clock = (t: number) => {
   const s = Math.round(t);
@@ -379,10 +378,10 @@ export class Ui {
       <output class="stats" aria-label="Diagnostics"></output>
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
-    this.curtain = new Curtain(root.querySelector<HTMLElement>('.loading')!);
+    this.curtain = new Curtain($<HTMLElement>(root, '.loading'));
 
     // On a phone the panel is a sheet: tapping a tab opens it, tapping the open tab closes it.
-    const panel = root.querySelector<HTMLElement>('.panel')!;
+    const panel = $<HTMLElement>(root, '.panel');
     root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) =>
       b.addEventListener('click', () => {
         const same = b.getAttribute('aria-selected') === 'true';
@@ -393,7 +392,7 @@ export class Ui {
         else panel.classList.toggle('open', !(same && panel.classList.contains('open')));
       }),
     );
-    const stage = document.querySelector<HTMLElement>('#stage')!;
+    const stage = $<HTMLElement>(document, '#stage');
     // (on a phone the sheet stays where it was put: a finger on the view is turning the view)
     stage.addEventListener('pointerdown', () => !narrow() && panel.classList.remove('open'));
     // Panels tuck away. The data panel shuts to its row of tabs (on a phone it is a sheet that
@@ -401,13 +400,13 @@ export class Ui {
     // the lot for an unobstructed view.
     // Each of these choices is remembered (prefs.ts), so the page comes back the way it was left.
     this.tuckPanel(prefs.get('panelTucked'));
-    root.querySelector('.close')!.addEventListener('click', () => {
+    $(root, '.close').addEventListener('click', () => {
       const tucked = panel.classList.contains('tucked');
       panel.classList.toggle('open', tucked);
       this.tuckPanel(!tucked);
     });
-    const title = root.querySelector<HTMLElement>('.title')!;
-    const tuck = title.querySelector<HTMLElement>('.tuck')!;
+    const title = $<HTMLElement>(root, '.title');
+    const tuck = $<HTMLElement>(title, '.tuck');
     const tuckTitle = (on: boolean) => {
       title.classList.toggle('tucked', on);
       tuck.setAttribute('aria-expanded', String(!on));
@@ -421,9 +420,9 @@ export class Ui {
     };
     bare(prefs.get('bare'));
     // the legend is a "? Keys" tab until it is asked for; whether it is open, and how much of it, is remembered
-    const legendKeys = root.querySelector<HTMLElement>('.legend-keys')!;
-    const legendToggle = legendKeys.querySelector<HTMLElement>('.legend-toggle')!;
-    const moreToggle = legendKeys.querySelector<HTMLElement>('.legend-more-toggle')!;
+    const legendKeys = $<HTMLElement>(root, '.legend-keys');
+    const legendToggle = $<HTMLElement>(legendKeys, '.legend-toggle');
+    const moreToggle = $<HTMLElement>(legendKeys, '.legend-more-toggle');
     const showLegend = (open: boolean) => {
       legendKeys.classList.toggle('folded', !open);
       legendToggle.setAttribute('aria-expanded', String(open));
@@ -432,7 +431,7 @@ export class Ui {
     const showMore = (open: boolean) => {
       legendKeys.classList.toggle('all', open);
       moreToggle.setAttribute('aria-expanded', String(open));
-      moreToggle.querySelector('span')!.textContent = open ? 'Less' : 'More';
+      $<HTMLSpanElement>(moreToggle, 'span').textContent = open ? 'Less' : 'More';
       prefs.set('legendMore', open);
     };
     showLegend(prefs.get('legendOpen'));
@@ -440,7 +439,7 @@ export class Ui {
     legendToggle.addEventListener('click', () => showLegend(legendKeys.classList.contains('folded')));
     moreToggle.addEventListener('click', () => showMore(!legendKeys.classList.contains('all')));
     // the flight's facts fold under the summary: shut until asked for, and remembered
-    const factsToggle = title.querySelector<HTMLElement>('.facts-toggle')!;
+    const factsToggle = $<HTMLElement>(title, '.facts-toggle');
     const showFacts = (open: boolean) => {
       title.classList.toggle('facts-open', open);
       factsToggle.setAttribute('aria-expanded', String(open));
@@ -470,14 +469,14 @@ export class Ui {
       grip?.shown();
       window.setTimeout(() => this.root.querySelector('[data-node][aria-expanded=true]')?.scrollIntoView({ block: 'nearest' }), 320);
     });
-    grip = handle(root.querySelector<HTMLElement>('.handle-open')!, panel, this.sheet);
+    grip = handle($<HTMLElement>(root, '.handle-open'), panel, this.sheet);
     // a key that is also a button (the handle's Walk): pressed, it is the key itself
-    root.querySelector('.handle')!.addEventListener('click', (e) => {
+    $(root, '.handle').addEventListener('click', (e) => {
       const key = (e.target as HTMLElement).closest<HTMLElement>('[data-press]')?.dataset.press;
       if (key) window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
     });
-    root.querySelector('[data-walk-exit]')!.addEventListener('click', () => on.walk(false));
-    root.querySelector('.lookouts')!.addEventListener('click', (e) => {
+    $(root, '[data-walk-exit]').addEventListener('click', () => on.walk(false));
+    $(root, '.lookouts').addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-lookout]');
       if (b) this.onLookout(Number(b.dataset.lookout));
       const sw = (e.target as HTMLElement).closest<HTMLElement>('[data-switch]');
@@ -485,9 +484,9 @@ export class Ui {
       (document.activeElement as HTMLElement | null)?.blur?.(); // (or Space would press it again: Space is the flight's next event)
     });
     this.wheel = new Wheel(root);
-    root.querySelector('[data-walk-act]')!.addEventListener('click', () => on.walkAct());
-    root.querySelector('[data-walk-view]')!.addEventListener('click', () => on.walkView());
-    root.querySelector('[data-walk-motion]')!.addEventListener('click', () => on.walkMotion());
+    $(root, '[data-walk-act]').addEventListener('click', () => on.walkAct());
+    $(root, '[data-walk-view]').addEventListener('click', () => on.walkView());
+    $(root, '[data-walk-motion]').addEventListener('click', () => on.walkMotion());
     // the visor's rim round the view through the eyes: a choice, remembered
     const visor = (shown: boolean) => {
       root.classList.toggle('visor-on', shown);
@@ -496,9 +495,9 @@ export class Ui {
     };
     visor(prefs.get('walkVisor'));
     for (const b of root.querySelectorAll('[data-walk-visor]')) b.addEventListener('click', () => visor(!prefs.get('walkVisor')));
-    root.querySelector('.card-close')!.addEventListener('click', () => this.showWalkCard(null));
+    $(root, '.card-close').addEventListener('click', () => this.showWalkCard(null));
     // (on the press, not the click: a jump is wanted now, and a finger held on the button must not look round)
-    root.querySelector('[data-walk-jump]')!.addEventListener('pointerdown', (e) => {
+    $(root, '[data-walk-jump]').addEventListener('pointerdown', (e) => {
       e.preventDefault();
       on.walkJump();
     });
@@ -517,8 +516,8 @@ export class Ui {
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => on.walkPush(0));
     });
     // The walking stick, for a finger: push it the way you want to go, further to go faster.
-    const stick = root.querySelector<HTMLElement>('.stick')!;
-    const knob = stick.querySelector<HTMLElement>('i')!;
+    const stick = $<HTMLElement>(root, '.stick');
+    const knob = $<HTMLElement>(stick, 'i');
     const push = (e: PointerEvent | null) => {
       const r = stick.getBoundingClientRect();
       const reach = r.width / 2;
@@ -540,9 +539,9 @@ export class Ui {
       if (stick.hasPointerCapture(e.pointerId)) push(e);
     });
     for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) stick.addEventListener(end, () => push(null));
-    root.querySelector('.loading button')!.addEventListener('click', () => on.model(this.model.id));
+    $(root, '.loading button').addEventListener('click', () => on.model(this.model.id));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
-    root.querySelector('.tabs')!.addEventListener('keydown', (e) => {
+    $(root, '.tabs').addEventListener('keydown', (e) => {
       const key = (e as KeyboardEvent).key;
       if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
       const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
@@ -553,7 +552,7 @@ export class Ui {
     });
     this.slider.addEventListener('input', () => on.explode(Number(this.slider.value)));
     // parts and view buttons are rebuilt per model, so their clicks are delegated
-    const parts = root.querySelector<HTMLElement>('.parts')!;
+    const parts = $<HTMLElement>(root, '.parts');
     const node = (e: Event) => (e.target as HTMLElement).closest<HTMLElement>('[data-node]')?.dataset.node ?? null;
     parts.addEventListener('pointerover', (e) => on.hoverPart(node(e)));
     parts.addEventListener('pointerleave', () => on.hoverPart(null));
@@ -569,7 +568,7 @@ export class Ui {
       input.value = String(on.setFn(box.dataset.fns!, input.dataset.fn, Number(input.value)));
       this.showFns(box.dataset.fns!);
     });
-    root.querySelector<HTMLElement>('.buttons')!.addEventListener('click', (e) => {
+    $<HTMLElement>(root, '.buttons').addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.view) on.view(b.dataset.view);
       else if (b?.hasAttribute('data-rotate')) this.setRotate(b.getAttribute('aria-pressed') !== 'true');
@@ -590,8 +589,8 @@ export class Ui {
       this.placeTip();
     });
     // the phone layout stacks the switcher on the control block, whose height depends on wrapping
-    const controls = root.querySelector<HTMLElement>('.controls')!;
-    const switcher = root.querySelector<HTMLElement>('.models')!;
+    const controls = $<HTMLElement>(root, '.controls');
+    const switcher = $<HTMLElement>(root, '.models');
     this.measure = new ResizeObserver(() => {
       root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
       // whatever sits over the lower half of the 3D view hides that much of it: views are framed above
@@ -627,14 +626,14 @@ export class Ui {
     for (const el of [controls, switcher, stage, panel]) this.measure.observe(el);
     // On a phone the control block is the sheet's View pane and the sections are the handle's (fold.ts); on a wide page
     // they are where they were made
-    const slot = (name: string) => root.querySelector<HTMLElement>(`[data-slot=${name}]`)!;
+    const slot = (name: string) => $<HTMLElement>(root, `[data-slot=${name}]`);
     dock(
       [
-        [root.querySelector<HTMLElement>('.explode')!, slot('apart')],
-        [root.querySelector<HTMLElement>('.buttons')!, slot('buttons')],
-        [root.querySelector<HTMLElement>('.controls .scale')!, slot('scale')],
-        [root.querySelector<HTMLElement>('.stats')!, slot('stats')],
-        [switcher, root.querySelector<HTMLElement>('.handle-slot')!],
+        [$<HTMLElement>(root, '.explode'), slot('apart')],
+        [$<HTMLElement>(root, '.buttons'), slot('buttons')],
+        [$<HTMLElement>(root, '.controls .scale'), slot('scale')],
+        [$<HTMLElement>(root, '.stats'), slot('stats')],
+        [switcher, $<HTMLElement>(root, '.handle-slot')],
       ],
       (on) => {
         const at = root.querySelector<HTMLElement>('[data-tab][aria-selected=true]')?.dataset.tab;
@@ -651,9 +650,9 @@ export class Ui {
 
   /** How tall the sheet is with the View pane in it: as tall as what the pane holds, so the place keeps the rest (fold.css). */
   private sized(): void {
-    const panel = this.root.querySelector<HTMLElement>('.panel')!;
+    const panel = $<HTMLElement>(this.root, '.panel');
     const tall = viewHeight(panel);
-    if (tall) for (const el of [panel, document.querySelector<HTMLElement>('#stage')!]) el.style.setProperty('--sheet-view', `${tall}px`);
+    if (tall) for (const el of [panel, $<HTMLElement>(document, '#stage')]) el.style.setProperty('--sheet-view', `${tall}px`);
   }
 
   private readonly measure: ResizeObserver;
@@ -677,7 +676,7 @@ export class Ui {
 
   /** Beside the pointer, on whichever side has room. */
   private placeTip(): void {
-    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const tip = $<HTMLElement>(this.root, '.tip');
     if (tip.hidden) return;
     const [x, y] = this.pointer;
     const left = x > window.innerWidth * 0.6;
@@ -692,7 +691,7 @@ export class Ui {
   }
 
   private get slider(): HTMLInputElement {
-    return this.root.querySelector<HTMLInputElement>('.explode input[type=range]')!; // (its own, by name: the first slider on the page is no longer this one)
+    return $<HTMLInputElement>(this.root, '.explode input[type=range]'); // (its own, by name: the first slider on the page is no longer this one)
   }
 
   /** Rebuild everything that belongs to one model: its parts, its views, its scale line. */
@@ -700,7 +699,7 @@ export class Ui {
     const m = (this.model = this.flight.models.find((x) => x.id === id) ?? this.model);
     const r = this.root;
     r.querySelectorAll<HTMLElement>('[data-model]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.model === m.id)));
-    r.querySelector('.parts')!.innerHTML = m.parts
+    $(r, '.parts').innerHTML = m.parts
       .map(
         (p, i) => `${
           p.group && p.group !== m.parts[i - 1]?.group
@@ -726,7 +725,7 @@ export class Ui {
       )
       .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
-    r.querySelector('.buttons')!.innerHTML =
+    $(r, '.buttons').innerHTML =
       `<span class="set" role="group" aria-label="View"><span class="set-items">${[
         ...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]),
         ...m.views,
@@ -741,15 +740,15 @@ export class Ui {
       `<button data-lighter class="switch" aria-pressed="${tier().lighter}" title="For a phone or a machine short of memory: smaller shadow maps and pictures, and nothing held that is not on show. Chosen for you on a phone. Changing it reloads the page">Lighter graphics</button></span>`;
     this.slider.setAttribute('aria-label', m.slider ? `${m.slider[0]} to ${m.slider[1]}` : '');
     // this model's own figures first
-    const specs = r.querySelector('[data-pane="Specs"]')!;
+    const specs = $(r, '[data-pane="Specs"]');
     for (const g of [...(m.specGroups ?? [])].reverse()) {
       const el = specs.querySelector(`[data-group="${g}"]`);
       if (el) specs.prepend(el);
     }
-    r.querySelector('.scale')!.textContent = m.scale;
-    r.querySelector<HTMLElement>('.explode')!.hidden = !m.slider;
-    r.querySelector('[data-slider="0"]')!.textContent = m.slider?.[0] ?? '';
-    r.querySelector('[data-slider="1"]')!.textContent = m.slider?.[1] ?? '';
+    $(r, '.scale').textContent = m.scale;
+    $<HTMLElement>(r, '.explode').hidden = !m.slider;
+    $(r, '[data-slider="0"]').textContent = m.slider?.[0] ?? '';
+    $(r, '[data-slider="1"]').textContent = m.slider?.[1] ?? '';
     this.slider.value = String(apart);
     this.selected = null;
     // (on a phone the sheet stays on the tab it was put on: the section is chosen from its handle)
@@ -784,7 +783,7 @@ export class Ui {
     for (const c of new Set(Object.values(CAMERA_CLASS))) this.root.classList.toggle(c, CAMERA_CLASS[mode] === c);
     const b = this.root.querySelector<HTMLElement>('[data-camera]');
     if (b) {
-      b.querySelector('span')!.textContent = cameraName(mode);
+      $<HTMLSpanElement>(b, 'span').textContent = cameraName(mode);
       b.title = `${CAMERA_LABEL[mode]}: the next camera (C)`;
     }
     if (!quiet) this.say(RIGS[mode].name, `${RIGS[mode].says} · C for the next view`);
@@ -878,16 +877,16 @@ export class Ui {
   /** Shut the data panel to its row of tabs, or open it again. */
   private tuckPanel(on: boolean, remember = true): void {
     // (a wide page's choice: on a phone the sheet has its stops, and the handle works them)
-    this.root.querySelector('.panel')!.classList.toggle('tucked', on && !narrow());
-    this.root.querySelector('.close')!.setAttribute('aria-expanded', String(!on));
+    $(this.root, '.panel').classList.toggle('tucked', on && !narrow());
+    $(this.root, '.close').setAttribute('aria-expanded', String(!on));
     if (remember && !narrow()) prefs.set('panelTucked', on);
   }
 
   /** Walking on foot has begun or ended: the panels make way for the view, and one bar says how to stop. */
   setWalking(on: boolean): void {
     this.root.classList.toggle('walking', on);
-    this.root.querySelector<HTMLElement>('.walkbar')!.hidden = !on;
-    this.root.querySelector('.panel')!.classList.remove('open', 'full'); // a phone's sheet would keep its share of the screen
+    $<HTMLElement>(this.root, '.walkbar').hidden = !on;
+    $(this.root, '.panel').classList.remove('open', 'full'); // a phone's sheet would keep its share of the screen
     if (on) {
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button just used
       this.setWalkLook(false);
@@ -908,7 +907,7 @@ export class Ui {
     const [back, on] = this.root.querySelectorAll<HTMLButtonElement>('[data-walk-push]');
     back!.hidden = on!.hidden = !ends;
     if (ends) [back!.textContent, on!.textContent] = ends;
-    this.root.querySelector<HTMLButtonElement>('[data-walk-jump]')!.hidden = Boolean(ends);
+    $<HTMLButtonElement>(this.root, '[data-walk-jump]').hidden = Boolean(ends);
     this.working = Boolean(ends);
     this.updateAct();
   }
@@ -927,20 +926,20 @@ export class Ui {
 
   /** While walking: how much the view moves with the body, as the bar's button says it. */
   setWalkMotion(level: 'full' | 'reduced' | 'off'): void {
-    this.root.querySelector('[data-walk-motion]')!.textContent = `Motion · ${level}`;
+    $(this.root, '[data-walk-motion]').textContent = `Motion · ${level}`;
   }
 
   /** While walking: whether the view is over the figure's shoulder (and not through its eyes). */
   setWalkView(third: boolean): void {
-    this.root.querySelector('[data-walk-view]')!.setAttribute('aria-pressed', String(third));
+    $(this.root, '[data-walk-view]').setAttribute('aria-pressed', String(third));
   }
 
   /** While walking: the name of what is being looked at from within reach and can be acted on, or null. The reticle says so. */
   setWalkTarget(name: string | null): void {
-    const reticle = this.root.querySelector<HTMLElement>('.reticle')!;
+    const reticle = $<HTMLElement>(this.root, '.reticle');
     reticle.classList.toggle('on', Boolean(name));
-    reticle.querySelector('span')!.textContent = name ?? '';
-    reticle.querySelector('kbd')!.textContent = matchMedia('(hover: none), (pointer: coarse)').matches ? 'hold' : 'E';
+    $<HTMLSpanElement>(reticle, 'span').textContent = name ?? '';
+    $(reticle, 'kbd').textContent = matchMedia('(hover: none), (pointer: coarse)').matches ? 'hold' : 'E';
     this.targetName = name;
     this.updateAct();
   }
@@ -948,32 +947,32 @@ export class Ui {
 
   /** The act button is there when there is something to act on, and says Done while something is being worked by hand. */
   private updateAct(): void {
-    const act = this.root.querySelector<HTMLElement>('[data-walk-act]')!;
+    const act = $<HTMLElement>(this.root, '[data-walk-act]');
     act.hidden = !this.targetName && !this.working;
     act.textContent = this.working ? 'Done' : 'Act';
   }
 
   /** While walking: a compact card of what the flight's data says about a part (not the orbit view's panel), or null to put it away. */
   showWalkCard(part: Part | null): void {
-    const card = this.root.querySelector<HTMLElement>('.walk-card')!;
+    const card = $<HTMLElement>(this.root, '.walk-card');
     card.hidden = !part;
     if (!part) return;
-    card.querySelector('h3')!.textContent = part.name;
-    card.querySelector('.card-what')!.textContent = part.summary;
-    card.querySelector('.card-more')!.textContent = part.detail;
-    card.querySelector('.pf')!.innerHTML = (part.facts ?? []).map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('');
+    $(card, 'h3').textContent = part.name;
+    $(card, '.card-what').textContent = part.summary;
+    $(card, '.card-more').textContent = part.detail;
+    $(card, '.pf').innerHTML = (part.facts ?? []).map(([k, v]) => `<span><i>${esc(k)}</i>${esc(v)}</span>`).join('');
     card.scrollTop = 0;
   }
 
   get walkCardOpen(): boolean {
-    return !this.root.querySelector<HTMLElement>('.walk-card')!.hidden;
+    return !$<HTMLElement>(this.root, '.walk-card').hidden;
   }
 
   /** While walking: whether the mouse has been captured for looking round. The bar says what to do next. */
   setWalkLook(captured: boolean): void {
     this.captured = captured;
     const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
-    this.root.querySelector('.walkbar span')!.textContent = this.note
+    $(this.root, '.walkbar span').textContent = this.note
       ? this.note
       : touch
         ? 'Drag to look · stick walks'
@@ -984,10 +983,10 @@ export class Ui {
 
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */
   setStats(text: string): void {
-    const stats = this.root.querySelector<HTMLElement>('.stats')!;
+    const stats = $<HTMLElement>(this.root, '.stats');
     stats.textContent = text;
     // Under the control block's own left edge it wraps rather than run beneath it (and the legend above it makes room for the lines)
-    const controls = this.root.querySelector<HTMLElement>('.controls')!.getBoundingClientRect();
+    const controls = $<HTMLElement>(this.root, '.controls').getBoundingClientRect();
     const free = !this.root.classList.contains('piloting') && getComputedStyle(stats).position === 'absolute' && controls.width > 0;
     stats.style.maxWidth = free ? `${Math.max(120, Math.floor(controls.left - stats.offsetLeft - 14))}px` : '';
     this.root.style.setProperty('--stats-h', `${stats.offsetHeight}px`);
@@ -999,7 +998,7 @@ export class Ui {
    */
   loading(what: string): void {
     this.curtain.begin(what);
-    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const tip = $<HTMLElement>(this.root, '.tip');
     tip.hidden = true;
     delete tip.dataset.model;
   }
@@ -1019,15 +1018,16 @@ export class Ui {
 
   /** A part under the pointer in the 3D view. */
   hover(node: string | null): void {
-    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const tip = $<HTMLElement>(this.root, '.tip');
     const part = this.model.parts.find((p) => p.node === node);
     // not for the part already selected: its name is on the panel, and the label would sit on it
     if (part) delete tip.dataset.model;
     // (with no part under the pointer the label may be showing a neighbouring model instead: leave it)
     if (!tip.dataset.model) tip.hidden = !part || node === this.selected || matchMedia('(hover: none)').matches;
     if (part) {
-      tip.querySelector('b')!.textContent = part.name;
-      tip.querySelector('span')!.textContent = part.summary + (this.model.walker ? ` Double-click to walk as ${this.model.name}.` : '');
+      $<HTMLElement>(tip, 'b').textContent = part.name;
+      $<HTMLSpanElement>(tip, 'span').textContent =
+        part.summary + (this.model.walker ? ` Double-click to walk as ${this.model.name}.` : '');
       this.placeTip();
     }
     this.root.querySelectorAll<HTMLElement>('[data-node]').forEach((b) => b.classList.toggle('hot', b.dataset.node === node));
@@ -1071,7 +1071,7 @@ export class Ui {
    * to it and back (its digit is the key), lit while he leans to it. An empty list puts it away.
    */
   setLookouts(names: string[], leaning: number | null, switches: CabinSwitch[] = []): void {
-    lookoutsBar(this.root.querySelector<HTMLElement>('.lookouts')!, names, leaning, switches);
+    lookoutsBar($<HTMLElement>(this.root, '.lookouts'), names, leaning, switches);
   }
   /** One of `setLookouts` was asked for. */
   onLookout: (n: number) => void = () => {};
@@ -1080,7 +1080,7 @@ export class Ui {
 
   /** A label beside the pointer for something that is not a part: a window to look through. */
   hint(text: [title: string, line: string] | null): void {
-    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const tip = $<HTMLElement>(this.root, '.tip');
     if (!text) {
       if (tip.dataset.model === '-') {
         tip.hidden = true;
@@ -1090,14 +1090,14 @@ export class Ui {
     }
     tip.dataset.model = '-';
     tip.hidden = matchMedia('(hover: none)').matches;
-    tip.querySelector('b')!.textContent = text[0];
-    tip.querySelector('span')!.textContent = text[1];
+    $<HTMLElement>(tip, 'b').textContent = text[0];
+    $<HTMLSpanElement>(tip, 'span').textContent = text[1];
     this.placeTip();
   }
 
   /** Another of the flight's models under the pointer: a click would open it. */
   hoverModel(id: string | null): void {
-    const tip = this.root.querySelector<HTMLElement>('.tip')!;
+    const tip = $<HTMLElement>(this.root, '.tip');
     const model = this.flight.models.find((m) => m.id === id);
     if (!model) {
       if (tip.dataset.model) tip.hidden = true;
@@ -1106,8 +1106,8 @@ export class Ui {
     }
     tip.dataset.model = model.id;
     tip.hidden = matchMedia('(hover: none)').matches;
-    tip.querySelector('b')!.textContent = model.name;
-    tip.querySelector('span')!.textContent = model.walker ? `Click to open · double-click to walk as ${model.name}` : 'Click to open';
+    $<HTMLElement>(tip, 'b').textContent = model.name;
+    $<HTMLSpanElement>(tip, 'span').textContent = model.walker ? `Click to open · double-click to walk as ${model.name}` : 'Click to open';
     this.placeTip();
   }
 
@@ -1120,7 +1120,7 @@ export class Ui {
       const v = values.find((f) => f.id === input.dataset.fn);
       if (v && document.activeElement !== input) input.value = String(v.value);
     });
-    const why = box.querySelector<HTMLElement>('.fn-why')!;
+    const why = $<HTMLElement>(box, '.fn-why');
     const refused = values.find((f) => f.refused);
     why.hidden = !refused;
     why.textContent = refused?.refused ?? '';
@@ -1131,7 +1131,7 @@ export class Ui {
     if (node) this.showFns(node);
     if (node && !narrow()) {
       this.tab('Parts');
-      this.root.querySelector('.panel')!.classList.add('open');
+      $(this.root, '.panel').classList.add('open');
       this.tuckPanel(false);
     } else if (node && !this.root.querySelector('.panel.open')) {
       // (on a phone choosing a part opens nothing: it is named in passing, and the sheet stays where it was put)
@@ -1151,7 +1151,7 @@ export class Ui {
       b.tabIndex = b.dataset.tab === name ? 0 : -1; // one stop in the tab order; the arrow keys move within
     });
     this.root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => (p.hidden = p.dataset.pane !== name));
-    this.root.querySelector('.panel')!.classList.toggle('on-view', name === 'View');
+    $(this.root, '.panel').classList.toggle('on-view', name === 'View');
     this.sized();
   }
 }
@@ -1215,6 +1215,6 @@ export function lookoutsBar(
     if (!b) continue;
     // (lit while the switch is as the cabin was built: its first position is as flown)
     b.setAttribute('aria-pressed', String(s.at === 0));
-    b.querySelector('span')!.textContent = `${s.name} · ${s.says}`;
+    $<HTMLSpanElement>(b, 'span').textContent = `${s.name} · ${s.says}`;
   }
 }

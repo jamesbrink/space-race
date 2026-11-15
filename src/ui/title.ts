@@ -2,8 +2,8 @@ import './title.css';
 import { listed } from '../app/address.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
+import { esc } from '../util/dom.ts';
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const date = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
