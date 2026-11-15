@@ -44,6 +44,7 @@ import {
   stepShots,
   type Vec,
 } from './model.ts';
+import { isTyping } from '../util/keys.ts';
 
 export interface SoundHost {
   /** Where the ears are, in the scene's frame: the camera. */
@@ -148,7 +149,7 @@ export class Sound {
     };
     for (const touch of TOUCHES) window.addEventListener(touch, wake, { capture: true, passive: true });
     window.addEventListener('keydown', (e) => {
-      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      const typing = isTyping(e);
       if (e.metaKey || e.ctrlKey || e.altKey || typing || e.repeat) return;
       if (e.key.toLowerCase() === 'u') this.set(!this.enabled);
     });

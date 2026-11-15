@@ -4,6 +4,7 @@ import type { Command, SitedFlight } from '../types.ts';
 import type { Run } from '../viewer/ascent.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
+import { isTyping } from '../util/keys.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -353,7 +354,7 @@ export abstract class Deck {
   }
 
   private key(e: KeyboardEvent, down: boolean): void {
-    const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+    const typing = isTyping(e);
     if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
     const key = e.key.toLowerCase();
     if (!this.on) {

@@ -10,6 +10,7 @@ import { chooseTier, tier } from '../viewer/tier.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
 import { Wheel } from './wheel.ts';
 import { $, esc } from '../util/dom.ts';
+import { isTyping } from '../util/keys.ts';
 
 export interface UiHandlers {
   model(id: string): void;
@@ -452,7 +453,7 @@ export class Ui {
     const name = title.querySelector<HTMLElement>(':scope > h1');
     if (name) fitName(name);
     window.addEventListener('keydown', (e) => {
-      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      const typing = isTyping(e);
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (e.key.toLowerCase() === 'h') bare(!root.classList.contains('bare'));
       if (e.key.toLowerCase() === 't') this.setCel(!prefs.get('cel'));

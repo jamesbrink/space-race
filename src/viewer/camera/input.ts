@@ -1,4 +1,5 @@
 import { wheelZoom } from './maths.ts';
+import { isTyping } from '../../util/keys.ts';
 
 /**
  * The hands: what a mouse, a trackpad, fingers and keys do to the view, read off the page and handed
@@ -158,7 +159,7 @@ export function listen(canvas: HTMLElement, hands: Hands): void {
     const key = e.key.toLowerCase();
     hands.shift(e.shiftKey);
     const el = e.target as HTMLElement;
-    const typing = el.matches?.('input, textarea, select, [contenteditable]');
+    const typing = isTyping(e);
     const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
     if (e.metaKey || e.ctrlKey || e.altKey || typing || widget || !hands.on()) return;
     if (hands.spoken() && 'wasdqe'.includes(key)) return;

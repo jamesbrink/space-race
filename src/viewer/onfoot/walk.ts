@@ -4,6 +4,7 @@ import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 import { type Sounds, silent } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
+import { isTyping } from '../../util/keys.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -1149,7 +1150,7 @@ export class Walker {
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
       const key = e.key.toLowerCase();
-      const typing = (e.target as HTMLElement).matches?.('input, textarea, select, [contenteditable]');
+      const typing = isTyping(e);
       if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
       if (key === 'escape') return this.modal ? this.modal.cancel() : this.host.leave();
       if (this.modal) return; // the keys are the menu's

@@ -30,6 +30,7 @@ import { Stage } from '../viewer/stage.ts';
 import { asStudio, type Studio } from '../viewer/studio.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
 import { smoothstep } from '../util/math.ts';
+import { isTyping } from '../util/keys.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -779,7 +780,7 @@ export class Gallery {
       'keydown',
       (e) => {
         if (!this.open) return;
-        const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+        const typing = isTyping(e);
         if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
         const key = e.key.toLowerCase();
         if (CAMERA_KEYS.has(key)) return;

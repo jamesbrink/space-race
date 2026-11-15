@@ -15,6 +15,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { isTyping } from '../util/keys.ts';
 
 /**
  * The navball: the vehicle's attitude against the local horizon, and on it the directions that
@@ -266,7 +267,7 @@ export class Navball {
     button?.addEventListener('click', () => this.tuck(!this.tucked));
     this.button = button ?? null;
     window.addEventListener('keydown', (e) => {
-      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      const typing = isTyping(e);
       if (!source.active || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing) return;
       const key = e.key.toLowerCase();
       if (key === 'i') this.tuck(!this.tucked);

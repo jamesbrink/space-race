@@ -2,6 +2,7 @@ import './time.css';
 import { prefs } from '../app/prefs.ts';
 import type { Flight, SitedFlight } from '../types.ts';
 import { type Clock, localTime, missionTime, RATES } from '../world/clock.ts';
+import { isTyping } from '../util/keys.ts';
 
 /**
  * The clock's face: what time it is at the site, where that is in the count, and the means to
@@ -80,7 +81,7 @@ export class TimeBar {
     });
     // P runs and stops the clock from anywhere (the camera legend lists it)
     window.addEventListener('keydown', (e) => {
-      const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+      const typing = isTyping(e);
       if (e.metaKey || e.ctrlKey || e.altKey || typing || e.repeat) return;
       if (e.key.toLowerCase() === 'p') clock.play(!clock.running);
       // [ and ] step the rate down and up; the rate shows in the bar, which opens so the change is seen

@@ -36,6 +36,7 @@ import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
 import { Stage, type Thing, type WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
+import { isTyping } from '../util/keys.ts';
 
 /** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
 const address = () => parseAddress(where());
@@ -195,7 +196,7 @@ ui.onLookout = leanTo;
 stage.onLean = lookouts;
 stage.onSeat = lookouts;
 window.addEventListener('keydown', (e) => {
-  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  const typing = isTyping(e);
   if (!/^[1-9]$/.test(e.key) || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || ui.wheel.isOpen) return;
   const n = Number(e.key) - 1;
   if (n >= stage.lookouts().length) return;
@@ -488,7 +489,7 @@ window.addEventListener(
   true,
 );
 window.addEventListener('keydown', (e) => {
-  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  const typing = isTyping(e);
   if (e.key.toLowerCase() !== 'p' || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || stage.cameraMode !== 'onboard') return;
   prefs.set('deckAboard', !prefs.get('deckAboard'));
   panelOnly();
@@ -668,7 +669,7 @@ stage.onHome = () => (selected ? select(null) : show(current.id));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
-  const typing = (e.target as HTMLElement).matches?.('input:not([type=range]), textarea');
+  const typing = isTyping(e);
   // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
   // stands, the whole skin off the vehicle in flight, from outside it or from its seat
   if (e.key.toLowerCase() === 'y' && ready && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
