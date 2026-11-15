@@ -53,6 +53,41 @@ jobs:
         with:
           path: dist
 
+  # The browser suites as a smoke test: the front page, Back and Forward, a flight's places, against the dev server
+  # in the runner's Chrome (tools/browser.mjs finds it on PATH). The runner has no GPU, so it draws on SwiftShader,
+  # and SwiftShader is far too slow for these suites: on a 32-core machine the front page alone took 1.8 to 2.6 s a
+  # frame at 1280x800, its moving checks failed, and a launch site did not finish loading in three minutes. So the
+  # job runs only when asked for (Actions, "Run workflow"), never blocks a deploy, and waits for a runner with a GPU.
+  browser:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 40
+    env:
+      SR_URL: http://localhost:5180/
+      SR_ANGLE: swiftshader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: dev server
+        run: |
+          pnpm dev --port 5180 --strictPort > vite.log 2>&1 &
+          for i in $(seq 60); do curl -sf http://localhost:5180/ > /dev/null && exit 0; sleep 1; done
+          cat vite.log
+          exit 1
+      - run: node tools/front-test.mjs --no-idle
+      - if: success() || failure()
+        run: node tools/history-test.mjs
+      - if: success() || failure()
+        run: node tools/places-test.mjs
+
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [check, build]
