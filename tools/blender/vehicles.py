@@ -67,6 +67,7 @@ from dataclasses import dataclass, field
 import bpy
 from mathutils import Matrix, Vector
 
+import sitelib
 import srlib
 from srlib import IN, TAU, MeshBuilder, group, material
 
@@ -1299,10 +1300,11 @@ class Car:
         hw = w / 2
         paint_key = self.wheel or self.paint
         if not trimmed():
-            kit("rubber").lathe([(0.0, -hw + 1.2), (R - 1.0, -hw), (R, -hw + 1.5), (R, hw - 1.5), (R - 1.0, hw), (rr, hw - 0.3)], 16, matrix=out)
+            sides = sitelib.wheel_sides(16)
+            kit("rubber").lathe([(0.0, -hw + 1.2), (R - 1.0, -hw), (R, -hw + 1.5), (R, hw - 1.5), (R - 1.0, hw), (rr, hw - 0.3)], sides, matrix=out)
             kit(self.hub if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
             return
-        segs = 32 if srlib.DETAIL >= 0.75 else 20
+        segs = sitelib.wheel_sides(32 if srlib.DETAIL >= 0.75 else 20)
         # a tyre in section: bead, a sidewall that swells, a shoulder, a tread with a little crown
         bulge, mid = hw + 0.28, rr + 0.5 * (R - rr)
         tyre = [

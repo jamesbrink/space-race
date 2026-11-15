@@ -208,7 +208,7 @@ def wheelset(parts: Parts, car_node: str, k: int, x: float, y: float) -> None:
         (0.0, -0.045), (0.12, -0.045), (0.14, -0.03), (0.44, -0.03), (WHEEL_R + 0.03, -0.028), (WHEEL_R + 0.03, -0.004),
         (WHEEL_R + 0.003, 0.0), (WHEEL_R - 0.003, 0.13), (0.42, 0.13), (0.4, 0.06), (0.13, 0.06), (0.11, 0.16), (0.0, 0.16),
     ]  # fmt: skip
-    segs = 32 if fine() else 16
+    segs = sitelib.wheel_sides(32 if fine() else 16)
     for s in (-1, 1):
         steel.lathe(profile(wheel), segs, matrix=axes((x, y + s * (GAUGE / 2 - 0.005), AXLE_Z), (1, 0, 0), (0, s, 0)))
     steel.tube(Vector((x, y - GAUGE / 2 + 0.03, AXLE_Z)), Vector((x, y + GAUGE / 2 - 0.03, AXLE_Z)), 0.09, 12)

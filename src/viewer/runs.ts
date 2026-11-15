@@ -315,7 +315,9 @@ export class Rider {
         hub = deeper;
       }
       // its own triangles in the hub's frame: its reach along its axle, its axle's line (the middle of its reach across
-      // it), and how far its surface stands from that line at each point where a tread is asked
+      // it: a wheel is built with a multiple of four sides at every level of detail, a corner straight under its axle and
+      // one over it, so its box is its diameter about its axle: sitelib.wheel_sides), and how far its surface stands from
+      // that line at each point where a tread is asked (its flange, its coned tread: a profile no one radius says)
       const k = wheels.axle === 'x' ? 0 : 2;
       const [i, j] = k === 0 ? [1, 2] : [0, 1];
       const edges: [THREE.Vector3, THREE.Vector3][] = [];

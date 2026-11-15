@@ -251,6 +251,10 @@ Models are generated, so a lower level of detail is a rebuild, not a remodel:
 fasteners; eight sides or fewer is a shape, not a curve, and is kept. The inventory uses 1.0.
 The clearance check runs at every level, and coarser curves sit differently against each other,
 so a fitting that clears at 1.0 can land on its neighbour at 0.3.
+A wheel that rolls is the exception to plain thinning: it asks for `sitelib.wheel_sides(n)` sides, a multiple
+of four at every level, its corners on its tread's circle, so that one corner is straight under its axle as built
+and its box is its true diameter about its axle (the viewer stands a wheel on what it runs on by its own shape:
+viewer/runs.ts; thirty-two sides thinned to nineteen read 7 mm out).
 
 Every model build writes three files: `<name>.glb`, and `<name>.lod1.glb` and `.lod2.glb` at detail
 0.6 and 0.3. The viewer draws whichever suits the thing's size on screen (`viewer/lod.ts`), in

@@ -163,7 +163,7 @@ def wheel(
     # the tyre's section (radius, across from its middle) and the wheel inside it, dished outward
     section = [(r * 0.62, -half * 0.8), (r * 0.9, -half), (r, -half * 0.6), (r, half * 0.6), (r * 0.9, half), (r * 0.62, half * 0.8)]
     disc = [(r * 0.64, half * 0.75), (r * 0.6, half * 0.75), (r * 0.5, half * 0.1), (r * 0.26, half * 0.05), (r * 0.2, half * 0.3), (0.0, half * 0.2)]
-    segs = 20 if sitelib.fine() else 12
+    segs = sitelib.wheel_sides(20 if sitelib.fine() else 12)
     for off in (-(half + 0.02), half + 0.02) if dual else (0.0,):
         m = Matrix.Translation(Vector(hub) + Vector((0.0, off, 0.0))) @ Matrix.Rotation(-side * math.pi / 2, 4, "X")
         tyre.lathe(section, segs, matrix=m)

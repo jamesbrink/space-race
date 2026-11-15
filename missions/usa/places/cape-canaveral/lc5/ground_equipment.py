@@ -127,7 +127,7 @@ def trailer_wheel(parts: Parts, node: str, centre, side: int) -> None:
     """A trailer's road wheel standing still: a tyre on a pressed-steel disc, its outer face toward `side` (+1: +X)."""
     m = axes(centre, (0, 1, 0), (side, 0, 0))
     tyre = [(0.85, -0.3), (1.15, -0.33), (1.32, -0.3), (1.4, -0.18), (1.4, 0.18), (1.32, 0.3), (1.15, 0.33), (0.85, 0.3)]
-    parts(node, "tyre", True).lathe(ftp(tyre), 28, matrix=m)
+    parts(node, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(28), matrix=m)
     rim = [(0.0, -0.28), (0.86, -0.28), (0.86, 0.2), (0.55, 0.22), (0.3, 0.24), (0.27, 0.34), (0.0, 0.34)]
     parts(node, "grey/wheels", True).lathe(ftp(rim), 28, matrix=m)
 
@@ -218,7 +218,7 @@ def near_launcher(parts: Parts) -> None:
     for side in (-1, 1):
         m = axes((cx + side * 1.95, cy - 0.6, 1.0), (0, 1, 0), (side, 0, 0))
         tyre = [(0.6, -0.2), (0.86, -0.22), (0.97, -0.17), (1.0, -0.08), (1.0, 0.08), (0.97, 0.17), (0.86, 0.22), (0.6, 0.2)]
-        parts(u, "tyre", True).lathe(ftp(tyre), 24, matrix=m)
+        parts(u, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(24), matrix=m)
         parts(u, "grey/wheels", True).lathe(ftp([(0.0, -0.18), (0.61, -0.18), (0.61, 0.12), (0.2, 0.16), (0.0, 0.16)]), 20, matrix=m)
     beam(frame, (cx, cy + 3.2, 1.6), (cx, cy + 3.2, 0.12), 0.16)  # the prop it stands on
     box(frame, (cx - 0.35, cy + 2.85, 0.0), (cx + 0.35, cy + 3.55, 0.12))
@@ -476,7 +476,10 @@ def furniture(parts: Parts) -> None:
             castor = f"{sh}_Wheel_{k}"
             parts.node(castor, sh, (sx + dx * 1.15, sy + dy, SHOWER_CASTOR))
             parts(castor, "chassis", True).tube(
-                P(sx + dx * 1.15, sy + dy - 0.12, SHOWER_CASTOR), P(sx + dx * 1.15, sy + dy + 0.12, SHOWER_CASTOR), SHOWER_CASTOR * FT, 12
+                P(sx + dx * 1.15, sy + dy - 0.12, SHOWER_CASTOR),
+                P(sx + dx * 1.15, sy + dy + 0.12, SHOWER_CASTOR),
+                SHOWER_CASTOR * FT,
+                sitelib.wheel_sides(12),
             )
         tube.tube(P(sx + dx, sy - 1.6, 8.6), P(sx + dx, sy + 1.6, 8.6), 0.07 * FT, 8)
     for dy in (-1.6, 1.6):
@@ -639,7 +642,7 @@ def furniture(parts: Parts) -> None:
             xa, xb = sorted((s * 2.3 + (tx0 + tx1) / 2, s * 3.9 + (tx0 + tx1) / 2))
             wheel = f"{tr}_Wheel_{k}"
             parts.node(wheel, tr, ((xa + xb) / 2, y, 1.55))
-            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(16))
             parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
         box(parts(tr, "chassis/axles"), ((tx0 + tx1) / 2 - 2.3, y - 0.2, 1.35), ((tx0 + tx1) / 2 + 2.3, y + 0.2, 1.75))
     for s in (-1, 1):  # the landing legs at the front
@@ -744,7 +747,7 @@ def transfer_van(parts: Parts) -> None:
             xa, xb = sorted((xm + s * 2.3, xm + s * 3.9))
             wheel = f"{tv}_Wheel_{k}"
             parts.node(wheel, tv, ((xa + xb) / 2, y, 1.55))
-            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, 16)
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(16))
             parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
         box(parts(tv, "chassis/tvaxles"), (xm - 2.3, y - 0.2, 1.35), (xm + 2.3, y + 0.2, 1.75))
         for s in (-1, 1):  # a hanger from each axle up to the frame

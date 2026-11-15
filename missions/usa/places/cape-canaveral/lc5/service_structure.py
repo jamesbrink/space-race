@@ -377,7 +377,7 @@ def wheelset(parts: Parts, k: int, sx: int, yc: float) -> None:
     for d in (-1, 1):
         x = sx * RAIL_PAIR_X + d * GAUGE / 2
         inward = -d  # toward the pair's middle: the flange runs inside the rail
-        steel.lathe(ftp(tread), 32, matrix=axes(L(x, yc, zc), (0, 1, 0), (inward, 0, 0)))
+        steel.lathe(ftp(tread), sitelib.wheel_sides(32), matrix=axes(L(x, yc, zc), (0, 1, 0), (inward, 0, 0)))
     steel.tube(P(*L(sx * RAIL_PAIR_X - 3.45, yc, zc)), P(*L(sx * RAIL_PAIR_X + 3.45, yc, zc)), 0.25 * FT, 12)
 
 

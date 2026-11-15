@@ -46,7 +46,7 @@ import math
 
 from mathutils import Vector
 
-from sitelib import axes, stair_rails, stairs
+from sitelib import axes, stair_rails, stairs, wheel_sides
 
 from . import deck_fittings
 from .site import GAUGE, RAIL_TOP, TAIL_Z, Parts, beam, box, fine, handrail, obox, profile, stood, truss
@@ -240,7 +240,7 @@ def wheelset(parts: Parts, k: int, x: float) -> None:
         (WHEEL_R + 0.003, 0.0), (WHEEL_R - 0.003, 0.13), (0.42, 0.13), (0.4, 0.06), (0.13, 0.06), (0.11, 0.16), (0.0, 0.16),
     ]  # fmt: skip
     for s in (-1, 1):
-        steel.lathe(profile(wheel), 32, matrix=axes((x, s * (GAUGE / 2 - 0.005), AXLE_Z), (1, 0, 0), (0, s, 0)))
+        steel.lathe(profile(wheel), wheel_sides(32), matrix=axes((x, s * (GAUGE / 2 - 0.005), AXLE_Z), (1, 0, 0), (0, s, 0)))
     steel.tube(Vector((x, -GAUGE / 2 + 0.03, AXLE_Z)), Vector((x, GAUGE / 2 - 0.03, AXLE_Z)), 0.09, 12)
 
 

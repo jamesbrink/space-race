@@ -838,6 +838,22 @@ def axle_cap(mb: MeshBuilder, centre, normal, radius: float | None = None) -> No
         )
 
 
+def wheel_sides(n: int) -> int:
+    """How many sides to ask a lathe or a tube for (in place of `n`) so that a wheel has a multiple of four of them at
+    this level of detail. A wheel is a polygon inscribed in its tread's circle: its corners are on the circle at every
+    level, so a lower level has fewer sides and not a smaller wheel. With a multiple of four sides, one corner is
+    straight under the axle as it is built, one over it and one fore and aft, so the wheel's own box is its true
+    diameter and its middle is on its axle: the viewer reads a wheel's axle and radius off its box and its corners
+    (viewer/runs.ts), and a wheel of nineteen sides (32 thinned to 0.6) gave it an axle 3.4 mm off and a radius up to
+    7 mm out. At the inventory's level this is `n` itself, if `n` is a multiple of four."""
+    want = max(8, 4 * math.floor(srlib._segs(n) / 4 + 0.5))
+    k = want
+    while srlib._segs(k) < want:
+        k += 1
+    assert srlib._segs(k) == want, f"no count gives a wheel {want} sides at this level of detail"
+    return k
+
+
 def rail_clamp(mb: MeshBuilder, x: float, y: float, rail_top: float) -> None:
     """A rail clamp under the end of a rail truck: two jaws either side of the rail's head and the yoke over them. At detail 0.5 and up."""
     if not fine():
@@ -898,7 +914,7 @@ def searchlight(
         for s in (-1, 1):
             hub = o + flat * (a * f) + side * (s * 2.75 * f) + up * (1.3 * f)
             m = axes(tuple(hub), tuple(flat), tuple(side * s))
-            tyre.lathe(fp([(0.75, -0.3), (1.1, -0.33), (1.27, -0.25), (1.3, 0.0), (1.27, 0.25), (1.1, 0.33), (0.75, 0.3)]), 24, matrix=m)
+            tyre.lathe(fp([(0.75, -0.3), (1.1, -0.33), (1.27, -0.25), (1.3, 0.0), (1.27, 0.25), (1.1, 0.33), (0.75, 0.3)]), wheel_sides(24), matrix=m)
             metal.lathe(fp([(0.0, -0.28), (0.76, -0.28), (0.76, 0.22), (0.3, 0.26), (0.0, 0.36)]), 20, matrix=m)
             g = o + flat * (a * f) + side * (s * 2.75 * f)  # the mudguard: a plate bent over the wheel
             ts = (0.35, 1.1, 2.05, 2.8)

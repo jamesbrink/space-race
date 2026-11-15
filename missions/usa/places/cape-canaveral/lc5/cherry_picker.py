@@ -35,6 +35,7 @@ import math
 
 from mathutils import Matrix, Vector
 
+from sitelib import wheel_sides
 from srlib import FT, TAU
 
 from .site import HATCH_Z, P, Parts, arch, axes, beam, box, fine, ftp, hull, plate, truss
@@ -113,7 +114,7 @@ def road_wheel(parts: Parts, name: str, hub, side: int, dual: bool) -> None:
     offsets = (-0.5, 0.5) if dual else (0.0,)
     for off in offsets:
         m = out @ Matrix.Translation((0, 0, off * FT))
-        tyre.lathe(ftp(skin), 32, matrix=m)
+        tyre.lathe(ftp(skin), wheel_sides(32), matrix=m)
         if fine():  # shoulder lugs, staggered side to side
             for k in range(36):
                 for sz in (-1, 1):
@@ -127,7 +128,7 @@ def road_wheel(parts: Parts, name: str, hub, side: int, dual: bool) -> None:
     else:
         face = [(rb - 0.14, zo + 0.22), (0.62, zo + 0.10), (0.55, zo + 0.30), (0.30, zo + 0.30), (0.27, zo + 0.52), (0, zo + 0.55)]
         nut_r, nut_z = 0.43, zo + 0.30
-    rim.lathe(ftp([(0, zi), (rb + 0.04, zi), (rb + 0.04, zo + 0.40), (rb - 0.08, zo + 0.40), *face]), 32, matrix=out)
+    rim.lathe(ftp([(0, zi), (rb + 0.04, zi), (rb + 0.04, zo + 0.40), (rb - 0.08, zo + 0.40), *face]), wheel_sides(32), matrix=out)
     axle = out.to_3x3() @ Vector((0, 0, 1))
     for k in range(10):
         a = TAU * k / 10
