@@ -1095,7 +1095,7 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     source: `${SIDDIQI}, pp. 359 to 361; the flight’s README`,
     named: {
       why: 'Беркут (Berkut), “golden eagle”: Popovich’s call sign, another of the first cosmonauts’ strong birds.',
-      source: 'The flight’s README; Rossiyskaya Gazeta, 24 August 2025 (as above)',
+      source: 'The flight’s README; N. Yachmennikova, “Кедр, Кречет, Бурлак”, Rossiyskaya Gazeta, 24 August 2025',
       confidence: 'documented',
     },
   },
@@ -1127,7 +1127,7 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     source: `${SIDDIQI}, pp. 353, 362, 369 and 372; the flight’s README`,
     named: {
       why: 'Чайка (Chayka), “seagull”: Tereshkova’s call sign, and with Kedr the best known of them all.',
-      source: 'The flight’s README; Rossiyskaya Gazeta, 24 August 2025 (as above)',
+      source: 'The flight’s README; N. Yachmennikova, “Кедр, Кречет, Бурлак”, Rossiyskaya Gazeta, 24 August 2025',
       confidence: 'documented',
     },
   },
