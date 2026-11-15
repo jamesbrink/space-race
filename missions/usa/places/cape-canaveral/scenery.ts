@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Dated } from '../../../../src/types.ts';
+import type { Dated, SiteDef } from '../../../../src/types.ts';
 import { Around } from '../../../../src/viewer/around.ts';
 import type { Levelled } from '../../../../src/viewer/lod.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
@@ -388,6 +388,8 @@ interface Complex {
    * on 5 May 1961, so a flight on another day shows it only where this says it stood so then.
    */
   stood: Dated;
+  /** The pad's own record, where it has one (lc-14.ts, lc-19.ts): round that pad it is not drawn, its own model stands there. */
+  pad?: SiteDef;
 }
 
 /** What every complex here is drawn as: as it stood on 5 May 1961, and not known to have changed since unless it says. */
@@ -436,20 +438,21 @@ const COMPLEXES: Complex[] = [
     heading: 15,
     draw: (k) => KINDS.atlas(k),
     stood: { from: '1957-01' },
+    pad: LC14,
   },
   { name: 'LC-15', lat: 28.496278, lon: -80.549362, heading: 60, draw: KINDS.titan, stood: MAY_1961 }, // 15 and 16 were being converted for Titan II: their state that day is not established
   { name: 'LC-16', lat: 28.501676, lon: -80.551796, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
-  { name: 'LC-19', lat: LC19.latitude.value, lon: LC19.longitude.value, heading: 355, draw: KINDS.titan, stood: MAY_1961 },
+  { name: 'LC-19', lat: LC19.latitude.value, lon: LC19.longitude.value, heading: 355, draw: KINDS.titan, stood: MAY_1961, pad: LC19 },
   { name: 'LC-20', lat: 28.512176, lon: -80.556704, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
   { name: 'LC-34', lat: 28.521839, lon: -80.561182, heading: 0, draw: KINDS.saturn, stood: MAY_1961 },
 ];
 
-/** The complexes that stood on a day (ISO date). */
-const standing = (date: string): Complex[] => COMPLEXES.filter((c) => stood(c.stood, date));
+/** The complexes that stood on a day (ISO date), round a pad: each but the pad itself. */
+const standing = (compass: Compass, date: string): Complex[] => COMPLEXES.filter((c) => c.pad !== compass.origin && stood(c.stood, date));
 
 /** Ground the near complexes' models stand on, where nothing grows: [x, z, radius], compass metres from the pad. */
 export const pavedAt = (compass: Compass, date: string): [number, number, number][] =>
-  standing(date)
+  standing(compass, date)
     .filter((c) => c.paved)
     .map((c) => [...compass.at(c.lat, c.lon), c.paved!]);
 
@@ -458,7 +461,10 @@ const LIGHTHOUSE = { lat: 28.46036, lon: -80.543454 };
 
 /** Where each complex and the lighthouse stand, for keeping the ground round the near ones clear: [x, z, radius]. */
 export const clearingsAt = (compass: Compass, date: string): [number, number, number][] => [
-  ...standing(date).map((c): [number, number, number] => [...compass.at(c.lat, c.lon), c.clear ?? (c.draw === KINDS.saturn ? 110 : 45)]),
+  ...standing(compass, date).map((c): [number, number, number] => [
+    ...compass.at(c.lat, c.lon),
+    c.clear ?? (c.draw === KINDS.saturn ? 110 : 45),
+  ]),
   [...compass.at(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 30],
 ];
 
@@ -497,7 +503,7 @@ const PAD_OVER_GROUND = 0.12;
  */
 function neighbours(groundAt: (x: number, z: number) => number, compass: Compass, date: string): Around | null {
   if (!stood(NEIGHBOURS, date)) return null;
-  const things = standing(date).flatMap((c) =>
+  const things = standing(compass, date).flatMap((c) =>
     c.node
       ? [
           {
@@ -528,7 +534,7 @@ export function buildScenery(
   const k = new Kit();
   const stands = (x: number, z: number, reach: number) =>
     Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => groundAt(x + ((i % 3) - 1) * reach, z + (Math.floor(i / 3) - 1) * reach)));
-  for (const c of standing(date)) {
+  for (const c of standing(compass, date)) {
     if (!c.draw) continue;
     const [x, z] = compass.at(c.lat, c.lon);
     c.draw(k.at(x, stands(x, z, 30), z, c.heading));
