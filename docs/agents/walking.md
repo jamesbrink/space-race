@@ -8,7 +8,7 @@ double-click on the figure from anywhere, puts the camera at its eyes and lets y
 (`viewer/onfoot/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
 it and the camera flies back to that section. C (a View button on a touch screen) changes
 between the figure's eyes and over its right shoulder, and the choice is remembered.
-Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one flight: keep it that way.
+Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, which the stage owns) knows any one flight: keep it that way.
 
 - **The figure comes from the flight's data.** It starts where the model stands (`position`),
   facing `walker.forward` (the model's own frame) turned by `rotationY`; `walker.eyes` names the
@@ -158,7 +158,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   meaning down until the legs stop. The wheel offers Climb on a ladder too. Seen from outside, the
   hands and feet are on the rungs: each on the rung its height up the ladder gives it (`gait.ts`:
   `rungs`, by height alone, never by time: the left foot and the right hand go up two rungs while
-  the others hold), put there by `Stage.onTheLadder` (`reach` for a hand, `step` for a foot). The
+  the others hold), put there by `OnFoot.onTheLadder` (`reach` for a hand, `step` for a foot). The
   ladder is known only by its box, so the rungs are taken to be where `srlib.ladder` puts them: a
   foot apart from a foot above its foot. A hand that carries something is not put on a rung: that
   arm hangs with its load and he climbs with the other (the pose's `load`, `onTheLadder`). That is
@@ -196,7 +196,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   the ball of it; faster than the flight's pace the stride does not keep to the treads, which is
   why nothing is run up; and the hands do not take the rail.
 - **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
-  within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
+  within `REACH` (2.5 m); `OnFoot.targetOf` says what it is in the flight's terms (a `Target`:
   model and part, a window pane, a place in the surroundings) and the reticle names it. E (a
   finger held on the view, or the Act button) opens the wheel (`src/ui/wheel.ts`: a radial menu that
   knows nothing of what its choices mean) with the verbs `choices()` in `src/app/actions.ts` finds
@@ -265,7 +265,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   stands on it: Ride from on it, Call from off it). `Action.on` limits a verb to one node of the
   part (the door, a call button). A model can also mark these on its own nodes, as
   `tools/blender/sitelib.py` does (extras `door` with `swing`, `lift` with `stops`): the stage
-  turns the marks into the same actions (`Stage.markedOn`), which is how scenery, having no
+  turns the marks into the same actions (`OnFoot.markedOn`), which is how scenery, having no
   parts, gets working doors; a marked lift is called from anywhere on its structure. A lift's
   `stops` are heights above where the car was built, or `[across, up]` pairs for a car that
   shifts sideways as it rises, in metres in the car's parent's frame; `stop_names` names them.
@@ -278,7 +278,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   Site 1's (the erector's stair and lift to the hatch, round the deck, down the road into the pit and its trenches,
   the cut in the north rim, the road's ramp to the bunker and the buildings). A structure built or changed gets a
   leg; a new site gets its routes.
-- **The camera's rigs are off while walking** (`Stage.stepWalk`): no drift, bounds,
+- **The camera's rigs are off while walking** (`OnFoot.stepWalk`): no drift, bounds,
   picking or `fitDepth`, and the hands on the page are the walker's (`Scene.free`). When the walk ends
   the rig in charge takes the view up from where the walker's eyes were (`Cameras.adopt`). The walker sets its own near plane from the nearest surface (5 cm
   indoors, up to 30 cm in the open) and a wider lens, eased in and out over half a second
