@@ -46,8 +46,13 @@ export const LC14: SiteDef = {
       'on an azimuth of 105 degrees" (Results of the First United States Manned Orbital Space Flight, p. 46); the Atlas’s pitch axis is the ' +
       'one its pods and booster engines lie on (NASA SP-45, Figures 5-4 and 5-10); the capsule’s window stood over the long pod and its ' +
       'hatch 45 degrees round from the window (photographs of MA-6 on the stand: vehicles/atlas-lv3b.md, "Which way round"). That puts the ' +
-      'hatch on 60 or on 240 degrees; a photograph with the service structure rolled back along the ramp (which runs to 194.5 degrees: ' +
-      'OpenStreetMap ways 195727091 and 1264624135) at the left has the hatch toward a camera on the stand’s east side, so 60. Each step but ' +
-      'the first is read off photographs: good to perhaps 15 degrees, and to be settled from the complex’s drawings when it is built',
+      'hatch on 60 or on 240 degrees. 60 was chosen from a photograph taken as having the service structure parked south of the stand, along ' +
+      'the ramp; it did not park there (below), so the choice is to be read again from the photographs (issue #25) and from the ' +
+      'complex’s drawings when it is built. Good to perhaps 15 degrees if the side is right',
   },
+  // Where the service structure went: off the stand to the north onto a rail-mounted transfer table, which carried it about
+  // 300 ft east to its parking area (HAER FL-8-7, p. 22; the NHL nomination of Cape Canaveral AFS, Item 7 p. 9: documented);
+  // the table's two tracks run on 105 degrees, 44 ft apart, their centre line some 65 ft north of the stand's middle
+  // (OpenStreetMap ways 1264975420 and 1264975421, railway=abandoned: derived). Not back along the ramp, which runs from the
+  // stand to 195 degrees (way 1264624135). When the complex is built this goes in lc-14.md.
 };
