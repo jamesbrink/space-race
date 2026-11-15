@@ -50,7 +50,7 @@ from .site import (
 # The pit's rim, metres east and north of the rocket's axis (OpenStreetMap, clockwise from the north-west corner). The
 # six points from (-13.5, 78) to (4.5, 82) are not today's: they are the cut that ran north from the rim in 1959, which
 # the old cable tray and the new conduit came out beside (PIC/JR-2/60 Figure 5, scaled: good to some five metres). It is
-# filled today. Keep in step with src/viewer/tyuratam.ts (RIM).
+# filled today. Keep in step with missions/ussr/places/tyuratam/ground.ts (RIM).
 RIM = [
     (-18, 59), (-15, 65.5), (-13.5, 78), (-10, 93), (-4.5, 108), (0, 114), (3.5, 108), (5, 96), (4.5, 82), (18, 89.5),
     (29.5, 92.5), (44, 91), (148.5, 62.5), (229.5, 24.5), (237.5, 16),
@@ -112,7 +112,7 @@ CUT = (-16.0, 8.0, 78.0, 114.0)  # the cut's box: west, east, its mouth, its hea
 CUT_GRADE = 3.0
 CUT_EASY = 100.0
 # North of CUT_RAMP the floor lies a step under the land, and from there it goes down: the land is drawn, and stood on,
-# for 3 m inside the rim (viewer/tyuratam.ts: OVERLAP), which at the cut's narrow head is all of it, and where the land
+# for 3 m inside the rim (missions/ussr/places/tyuratam/ground.ts: OVERLAP), which at the cut's narrow head is all of it, and where the land
 # ends the floor must be within a step of it all the way across
 CUT_RAMP = 103.0
 CUT_STEP = 0.2
@@ -182,7 +182,7 @@ def pit_z(x: float, y: float) -> float:
     way round: the north rim lies some 8 m under the deck's level and the pit's point some 5.5 m (relief.py). The sides
     go down from there to terraces that are level, so a side that starts lower reaches its terrace sooner. Outside the
     rim a skirt runs on under the land, a hand's breadth below it for SKIRT metres and then down into the ground: the
-    land is cut away a little inside the rim (viewer/tyuratam.ts: OVERLAP), and a line of sight that passes under the
+    land is cut away a little inside the rim (missions/ussr/places/tyuratam/ground.ts: OVERLAP), and a line of sight that passes under the
     land's cut edge, out of the pit, meets this and not the sky."""
     d = to_rim(x, y)
     if in_slot(x, y):

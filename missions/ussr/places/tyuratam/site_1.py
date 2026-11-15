@@ -68,7 +68,7 @@ def build_place(date: str | None = None) -> str:
       ObservationPosts, SpoilHeap, CableConduit, FloodlightTower  rim.py        what stood round the flame pit's rim
       Tracks                                                      deck.py       the rails where they come up to the platform over the land
       Outer/InnerFence<side>, LightPoles<side>, GuardTowers       perimeter.py  the double fence, its lights and its towers
-    The roads are painted on the land (src/viewer/tyuratam.ts), as the tracks are further off. Returns a line of its sizes."""
+    The roads are painted on the land (missions/ussr/places/tyuratam/ground.ts), as the tracks are further off. Returns a line of its sizes."""
     from site1 import buildings, bunker, deck, perimeter, place, rim, site51, south, storage
 
     sitelib.as_of(date)

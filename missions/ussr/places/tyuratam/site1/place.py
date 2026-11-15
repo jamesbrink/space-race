@@ -29,7 +29,7 @@ from .site import GROUND, Parts
 FOOTING = 0.6  # how far under the deck's level whatever stands on the land goes down: the land is 0.12 m under it
 FLOOR = GROUND + 0.15  # a building's floor: a step up from the land (estimated)
 
-# The tracks that cross the fence, and the roads: the same lines the land paints (src/viewer/tyuratam.ts: RAILS,
+# The tracks that cross the fence, and the roads: the same lines the land paints (missions/ussr/places/tyuratam/ground.ts: RAILS,
 # ROADS). Keep the two in step. Metres east and north.
 # The centre track is on the rocket's axis from 160 m out (the erector carried the rocket along it to the axis); the three
 # beside it are brought, over their last 60 m, to where the CIA's plan of March 1961 has them on the platform (deck.py).
@@ -51,7 +51,7 @@ RING_ROAD = [(-85.6, -22.6), (-81.0, -33.8), (-86.8, -91.8), (-81.0, -109.3), (-
 # The road from the storage bunker south to the propellant shed (way 172441909, its last leg), as far as the northern spur.
 BUNKER_ROAD = [(-82.7, 249.4), (-81.7, 199.6), (-83.5, 34.0)]
 ROAD_HALF = 3.0  # half a road's width, m (estimated: a road of concrete slabs two lanes wide)
-TRACK_HALF = 2.2  # half a track's bed, m (tyuratam.ts paints it 2.1 m either side)
+TRACK_HALF = 2.2  # half a track's bed, m (places/tyuratam/ground.ts paints it 2.1 m either side)
 
 # The short drives off them, which are ours: to the gas receivers by the platform, to the storage bunker's three bays
 # and to the check-out shop's gate.

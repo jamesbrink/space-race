@@ -35,7 +35,7 @@
       "suspicious": {
         // one-line forEach((b) => b.addEventListener(...)): the returned value is ignored on purpose
         "useIterableCallbackReturn": "off",
-        // const m = (this.model = ...), the seeded rand() in cape.ts, ??= on userData
+        // const m = (this.model = ...), the seeded rand() in missions/usa/places/cape-canaveral/ground.ts, ??= on userData
         "noAssignInExpressions": "off"
       },
       "correctness": {

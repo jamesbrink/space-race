@@ -3,7 +3,7 @@ import type { Confidence } from '../../../../src/types.ts';
 /**
  * What the ground is round Site 1 where it is not the steppe's loam: the takyrs (bare clay pans), the salt crusts, the
  * sand and the old channels, where the maps and photographs place them. Metres east and north of Site 1's axis, out to
- * the land's edge 8 km off (viewer/tyuratam.ts draws them; beyond, the region's maps). A pan, a crust or a patch of sand
+ * the land's edge 8 km off (missions/ussr/places/tyuratam/ground.ts draws them; beyond, the region's maps). A pan, a crust or a patch of sand
  * is a ring; a channel is its middle line and its breadth. Things under some 80 m across are not mapped and not drawn.
  *
  * `documented`: the General Staff's 1:100,000 sheet L-41-79 (state of 1974) or Krechetov and others' soil map of the

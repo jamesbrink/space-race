@@ -129,7 +129,7 @@ never adjusted to bring a check in.
   colours, so a shore that two maps put apart moves across the fade and is never doubled. The
   region is dated (`asOf`): each work in `later` (a causeway, a canal) built after it is undone
   along its line, so the Cape's lagoons are 1961's. Where the ground drawn round the pad hands
-  over, its shore lines (cape1961.ts) follow the same coastline, so the two agree to tens of
+  over, its shore lines (missions/usa/places/cape-canaveral/scenery.ts) follow the same coastline, so the two agree to tens of
   metres there; change one, change the other, and rebake (`pnpm globe:region`).
 - **The air is seen and felt.** `sim/heating.ts` works the heat flux at the stagnation point from a
   sample's height and airspeed and carries each surface in `Trajectory.heating` (a `Measure` for

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { cloudAt, cloudMiddle } from '../src/viewer/air.ts';
 
-// (the Cape's at liftoff, cape.ts: a tenth of the sky in cells of 1,500 m)
+// (the Cape's at liftoff, missions/usa/places/cape-canaveral/ground.ts: a tenth of the sky in cells of 1,500 m)
 const cumulus = (cover) => ({ height: 720, depth: 650, cover, size: 1500, wind: [0, 0] });
 
 /** The share of a wide patch of sky (48 km square, every 60 m) where a cloud stands: where the field is over one half. */

@@ -145,7 +145,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   is a wall, low clumps are waded through, and the eye is never in the leaves.
 - **The terrain is a height, not a mesh.** It lies at `Setting.groundAt(x, z)` (dunes, the beach,
   the land falling to the river; the setting's floor where it has none), and cannot be fallen
-  through: the walker, the ragdoll and a driven vehicle's `Road` all stand on it. Where that is below the models' surface (`GROUND_Y`)
+  through: the walker, the ragdoll and a driven vehicle's `Road` all stand on it. Where that is below the models' surface (the place's `grade`)
   it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
   the edge of a pad is not a kerb.
 - **Ladders are climbed.** A ladder is its own mesh with `userData.climb` (a Blender custom

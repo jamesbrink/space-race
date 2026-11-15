@@ -5,17 +5,17 @@ import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
-import { buildCape } from './cape.ts';
-import { type Day, dayOf, VEIL_DOWN, veilShade } from './day.ts';
+import { dayOf, VEIL_DOWN, veilShade } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
 import type { Land } from './land.ts';
 import { later } from './later.ts';
 import type { Levelled } from './lod.ts';
+import { groundPlace, type Place } from './scenery/ground.ts';
+import { GROUNDS } from './scenery/places.ts';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space.ts';
 import { studio } from './studio.ts';
-import { buildTyuratam } from './tyuratam.ts';
 import { checkUnits } from './units.ts';
 import { placeWeather } from './weathermap.ts';
 
@@ -60,6 +60,8 @@ export interface Setting {
   arrived?: () => boolean;
   /** The camera as it is about to draw, for a place that leaves out what it cannot see. */
   view?: (camera: THREE.Camera) => void;
+  /** The terrain's height under the model's zero round the pad, metres (GroundSpec.grade); left out, GROUND_Y. */
+  grade?: number;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
   groundAt?: (x: number, z: number) => number;
   /** How far a point is from the nearest plant, if under `within` metres (plants are not solid: the near plane asks). */
@@ -88,11 +90,11 @@ export interface Setting {
 }
 
 /**
- * Height of the ground setting's terrain, metres; the model's own surface is at 0. The pads and
- * roads were at grade, so the sand is only a hand's breadth under the concrete: 12 cm, which is
- * more than the 5 to 6 cm at which parallel faces seen from across the site began to flicker
- * (AGENTS.md, "No flicker"). Models that stand on the ground reach down past it (site.py:
- * FOOTING), and the site's builders take it as `GROUND`, in feet: change both together.
+ * Height of the terrain under the model's zero, metres, where a setting gives none of its own (`Setting.grade`: a
+ * place's, GroundSpec.grade). At both places so far the pads and roads were at grade, so the sand is only a hand's
+ * breadth under the concrete: 12 cm, which is more than the 5 to 6 cm at which parallel faces seen from across the site
+ * began to flicker (AGENTS.md, "No flicker"). Models that stand on the ground reach down past it (site.py: FOOTING), and
+ * the site's builders take it as `GROUND`: change them together.
  */
 export const GROUND_Y = -0.12;
 
@@ -367,30 +369,6 @@ class DomeBackdrop implements Backdrop {
  */
 export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'>;
 
-/**
- * The ground of a place on the Earth (cape.ts, tyuratam.ts): its land and what stands and grows on it, which a ground
- * setting puts under its sky. The same on any day: built once, whatever the instant.
- */
-interface Place {
-  floor: THREE.Mesh;
-  scenery: THREE.Object3D[];
-  levels: Levelled[];
-  tick: (dt: number) => void;
-  simplify: (on: boolean) => void;
-  attend: (eye: THREE.Vector3) => boolean;
-  arrived: () => boolean;
-  view: (camera: THREE.Camera) => void;
-  groundAt: (x: number, z: number) => number;
-  plantsClear: (at: THREE.Vector3, within: number) => number;
-  plantsOut: (at: THREE.Vector3, margin: number) => number;
-  /** How far from the pad there is something to walk to, and how far away the furthest thing placed is, metres (Setting). */
-  reach: number;
-  horizon: number;
-  /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts). */
-  tone?: THREE.Color;
-  /** And its tone in the cel look, which the globe draws the country round it in from height (globe.ts: `colourGlsl`). */
-  drawn?: THREE.Color;
-}
 /** The places built, by place, pad and day: a place is laid round its pad, and its season and sky are the day's. */
 const places = new Map<string, Place>();
 
@@ -433,18 +411,6 @@ const LOOK_STEP = 0.04;
 const apart = (a: number[], b: number[]): number =>
   a.length === b.length ? a.reduce((most, v, i) => Math.max(most, Math.abs(v - b[i]!) / Math.max(1, Math.abs(v))), 0) : Infinity;
 
-/** Cape Canaveral's Missile Row from Launch Complex 5, at any hour, under the flight's own day: see `ground`. */
-const capeCanaveral = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
-  ground(renderer, when, 'cape-canaveral', (day) => ({
-    ...buildCape(renderer, GROUND_Y, day),
-    reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable
-    horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
-  }));
-
-/** Site 1 at Tyuratam, on the steppe by the Syr Darya, at any hour: see `ground` and tyuratam.ts. */
-const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
-  ground(renderer, when, 'tyuratam', (day) => buildTyuratam(renderer, GROUND_Y, day, when?.site.around));
-
 /**
  * A place on the ground, at any hour, under its own sky. For Freedom 7 at the Cape (14:34:13 UTC,
  * 5 May 1961) the Sun comes out on 098.8 degrees true, 50.2 degrees up: in the pad's frame that
@@ -458,9 +424,12 @@ const tyuratam = (renderer: THREE.WebGLRenderer, when?: Occasion): Setting =>
  * The weather is the flight's own day (types.ts: DayWeather; day.ts): the place is built under it, the clouds are
  * laid out by it, and where it has high cloud over the site the light is that Sun's through it (`veil`, below).
  */
-function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name: string, build: (day: Day) => Place): Setting {
+function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Setting {
   if (!when) throw new Error('a place on the ground needs a site and an instant: Settings.get(kind, flight)');
-  const key = [name, when.site.name, when.launch.slice(0, 10)].join(' ');
+  const { place } = when.site;
+  const spec = GROUNDS[place.name];
+  if (!spec) throw new Error(`no ground for the place ${place.name} (viewer/scenery/places.ts)`);
+  const key = [place.name, when.site.name, when.launch.slice(0, 10)].join(' ');
   const site = siteFrame(when.site);
   const today = dayOf(when);
   // High cloud over the site, by the record: it dims the Sun for everything under it and gives most of what it takes
@@ -493,7 +462,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
   const patch = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 8), new THREE.MeshBasicMaterial());
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), below), patch);
   let here = places.get(key);
-  if (!here) places.set(key, (here = build(today)));
+  if (!here) places.set(key, (here = groundPlace(renderer, spec, when.site, today)));
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
   const land = here.floor.userData.land as Land;
   here.floor.updateMatrixWorld();
@@ -578,6 +547,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined, name:
     levels: here.levels,
     reach: here.reach,
     horizon: here.horizon,
+    grade: here.grade,
     tick: here.tick,
     simplify: here.simplify,
     globe,
@@ -808,21 +778,11 @@ function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
   return setting;
 }
 
-/** Each place's ground, by its name (PlaceDef.name). */
-const GROUNDS: Record<string, (renderer: THREE.WebGLRenderer, when?: Occasion) => Setting> = {
-  'cape-canaveral': capeCanaveral,
-  tyuratam,
-};
-
 /** One builder per kind of place a model can be shown in. The studio is nowhere and has no hour; the others take theirs from the flight. */
 const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer, when?: Occasion) => Setting> = {
   orbit,
   studio: (renderer) => studio(renderer),
-  ground: (renderer, when) => {
-    const build = when && GROUNDS[when.site.place.name];
-    if (!build) throw new Error(`no ground for ${when ? `the place ${when.site.place.name}` : 'a flight with no site'}`);
-    return build(renderer, when);
-  },
+  ground,
 };
 
 /**

@@ -76,7 +76,7 @@ export function trailFade(age: number, air: number, breadth = 2.5): number {
  * stand once the vehicle is a few metres up; a translucent veil of steam and dust 20 to 50 m out and
  * 5 to 10 m high while it is low; the apron clear but for wisps by the time it is two or three of its
  * own heights up (about T+6). No deluge, so no great white wall. The wind that carries it is the
- * day's surface wind, which is not in the record: the clouds' (cape.ts, from 090) taken at six tenths
+ * day's surface wind, which is not in the record: the clouds' (missions/usa/places/cape-canaveral/ground.ts, from 090) taken at six tenths
  * near the ground, about 4 m/s.
  *
  * What it leaves out: the billows do not roll, they grow with the ring, drift and churn upward; the
@@ -125,7 +125,7 @@ export interface Pit {
   width: number;
 }
 
-/** Of the clouds' wind (cape.ts), what blows over the concrete: the ground slows it (estimated). */
+/** Of the clouds' wind (missions/usa/places/cape-canaveral/ground.ts), what blows over the concrete: the ground slows it (estimated). */
 export const SURFACE_WIND = 0.6;
 
 /** The cloud over the pad `t` seconds after liftoff, in a surface wind of `wind` m/s (toward, the scene's x and z). Estimated: see `Blast`. */

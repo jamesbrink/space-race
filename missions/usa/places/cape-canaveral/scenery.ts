@@ -1,37 +1,35 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LC5 } from '../../missions/usa/places/cape-canaveral/lc-5.ts';
-import { Around } from './around.ts';
-import type { Levelled } from './lod.ts';
+import type { Dated } from '../../../../src/types.ts';
+import { Around } from '../../../../src/viewer/around.ts';
+import type { Levelled } from '../../../../src/viewer/lod.ts';
+import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
+import { stood } from '../../../../src/viewer/scenery/ground.ts';
+import { Kit } from '../../../../src/viewer/scenery/kit.ts';
+import { LC14 } from './lc-14.ts';
+import { LC19 } from './lc-19.ts';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
  * day, the lighthouse, and the shore, each at its real place.
  *
  * Places are documented: every position is a published coordinate (OpenStreetMap's outline of
- * the pad or its ruin, checked against Wikipedia's), turned into metres east and north of pad 5.
+ * the pad or its ruin, checked against Wikipedia's), put on the ground round whichever pad a flight left from
+ * (viewer/scenery/compass.ts).
  * What stood there is documented in kind (the Cape Canaveral Space Force Museum's page for each
  * complex, Moonport for Complex 34, the GCAT launch log for what was in use), and in a few sizes,
  * which are given below where they are.
  *
  * The complexes a walker can reach (26, 30, 25, 29 and 17, all within 1.1 km) are not drawn here: each is
- * modelled in Blender from its own record, as the pad is (missions/usa/places/cape-canaveral/complexes/, one module a complex;
+ * modelled in Blender from its own record, as the pad is (complexes/, one module a complex;
  * places/cape-canaveral/complexes.md says what is documented and what is not), built into one file and placed here (`NEIGHBOURS`).
  * The rest, 1.2 to 9 km off, are shapes made here, each a stand-in for its type, drawn so that an Atlas pad, a
  * Titan pad and a Minuteman tower can be told apart on the horizon, and no more. A complex whose structure
  * could not be verified for that day is drawn as its pad alone, or left out and listed in
  * missions/usa/places/cape-canaveral/lc-5.md.
  *
- * Everything is on the compass, metres from pad 5: +X east, -Z north. See docs/sources.md, "The Cape".
+ * Everything is given in latitude and longitude, and laid out on the compass round the flight's pad: +X east, -Z north
+ * (viewer/scenery/compass.ts). See docs/sources.md, "The Cape".
  */
-
-/** Pad 5's launcher: the site's own record (places/cape-canaveral/lc-5.ts). */
-const PAD5 = { lat: LC5.latitude.value, lon: LC5.longitude.value };
-/** Metres to a degree at this latitude (WGS 84 series): northward, eastward. */
-const M_LAT = 110_826.5;
-const M_LON = 97_960;
-/** A latitude and longitude as metres east and south of pad 5: the compass frame's x and z. */
-export const fromPad5 = (lat: number, lon: number): [number, number] => [(lon - PAD5.lon) * M_LON, -(lat - PAD5.lat) * M_LAT];
 
 /**
  * The Atlantic shore, south to north, as [latitude, longitude]: today's surf line from
@@ -216,24 +214,34 @@ const PORT: [[number, number], [number, number], number][] = [
   [[28.4093, -80.58703], [28.41014, -80.62452], 150],
   [[28.41353, -80.61002], [28.41353, -80.60818], 200],
 ];
-/** The harbour as the terrain wants it: each line's ends on the compass (x east, z south of pad 5) and half its breadth. */
-export const HARBOUR: [number, number, number, number, number][] = PORT.map(([a, b, half]) => [
-  ...fromPad5(a[0], a[1]),
-  ...fromPad5(b[0], b[1]),
-  half,
-]);
-/** A shore as the terrain's shader wants it: [metres north, metres east] of pad 5, northward. */
-const northing = (shore: [number, number][]): [number, number][] =>
-  shore.map(([lat, lon]) => {
-    const [x, z] = fromPad5(lat, lon);
-    return [-z, x];
-  });
-export const COAST = northing(ATLANTIC);
-export const RIVER = northing(BANANA_RIVER);
-export const RIVER_WEST = northing(BANANA_RIVER_WEST);
-export const INDIAN = northing(INDIAN_RIVER);
-export const HARBOR_WEST = northing(NEWFOUND_WEST);
-export const HARBOR_EAST = northing(NEWFOUND_EAST);
+/** The shores and the harbour on the compass round a pad, as the terrain wants them. */
+export interface Shores {
+  /** Each shore as [metres north, metres east] of the pad, northward. */
+  COAST: [number, number][];
+  RIVER: [number, number][];
+  RIVER_WEST: [number, number][];
+  INDIAN: [number, number][];
+  HARBOR_WEST: [number, number][];
+  HARBOR_EAST: [number, number][];
+  /** The harbour: each line's ends on the compass (x east, z south of the pad) and half its breadth. */
+  HARBOUR: [number, number, number, number, number][];
+}
+export function shoresAt(compass: Compass): Shores {
+  const northing = (shore: [number, number][]): [number, number][] =>
+    shore.map(([lat, lon]) => {
+      const [x, z] = compass.at(lat, lon);
+      return [-z, x];
+    });
+  return {
+    COAST: northing(ATLANTIC),
+    RIVER: northing(BANANA_RIVER),
+    RIVER_WEST: northing(BANANA_RIVER_WEST),
+    INDIAN: northing(INDIAN_RIVER),
+    HARBOR_WEST: northing(NEWFOUND_WEST),
+    HARBOR_EAST: northing(NEWFOUND_EAST),
+    HARBOUR: PORT.map(([a, b, half]) => [...compass.at(a[0], a[1]), ...compass.at(b[0], b[1]), half]),
+  };
+}
 /** How far east a shore is at a given northing: the same reading of the line as the shader's. */
 export function shoreAt(shore: [number, number][], north: number): number {
   let x = shore[0]![1];
@@ -243,85 +251,6 @@ export function shoreAt(shore: [number, number][], north: number): number {
     if (north >= n0) x = x0 + (x1 - x0) * Math.min(1, (north - n0) / (n1 - n0));
   }
   return x;
-}
-
-type Paint = 'red' | 'white' | 'steel' | 'concrete' | 'black' | 'dark';
-const COLOURS: Record<Paint, number> = {
-  red: 0x7a2018,
-  white: 0xdedbd2,
-  steel: 0x6c7074,
-  concrete: 0x8d8a82,
-  black: 0x121212,
-  dark: 0x2a2c2e,
-};
-
-/** Boxes gathered by colour, to be drawn as one mesh each: twenty complexes are six draw calls, not six hundred. */
-class Kit {
-  private readonly boxes = new Map<Paint, THREE.BufferGeometry[]>();
-  private frame = new THREE.Matrix4();
-
-  /** Everything added from now on is in a frame at (x, z) on the compass, turned `heading` degrees clockwise from north, standing on `y`. */
-  at(x: number, y: number, z: number, heading = 0): this {
-    this.frame = new THREE.Matrix4().makeRotationY(-THREE.MathUtils.degToRad(heading)).setPosition(x, y, z);
-    return this;
-  }
-
-  /** A box w by h by d whose base's middle is at (x, y, z) in the frame: x right, y up, z toward the viewer facing north. */
-  box(paint: Paint, w: number, h: number, d: number, x = 0, y = 0, z = 0): this {
-    return this.add(paint, new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z));
-  }
-
-  /** A square member from one point to another. */
-  bar(paint: Paint, from: [number, number, number], to: [number, number, number], thick: number): this {
-    const a = new THREE.Vector3(...from),
-      b = new THREE.Vector3(...to);
-    const g = new THREE.BoxGeometry(thick, a.distanceTo(b), thick);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(THREE.Object3D.DEFAULT_UP, b.clone().sub(a).normalize()));
-    g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-    return this.add(paint, g);
-  }
-
-  /** A round, tapering thing standing at (x, y, z): a tank, a band of the lighthouse. */
-  drum(paint: Paint, r0: number, r1: number, h: number, x = 0, y = 0, z = 0, sides = 16): this {
-    return this.add(paint, new THREE.CylinderGeometry(r1, r0, h, sides).translate(x, y + h / 2, z));
-  }
-
-  /** An open lattice tower: four legs, a ring of members every `bay`, a diagonal on each face. */
-  lattice(paint: Paint, w: number, d: number, h: number, x = 0, y = 0, z = 0, bay = 6, leg = 0.5): this {
-    const cx = [-w / 2, w / 2, w / 2, -w / 2],
-      cz = [-d / 2, -d / 2, d / 2, d / 2];
-    for (let i = 0; i < 4; i++) this.box(paint, leg, h, leg, x + cx[i]!, y, z + cz[i]!);
-    const bays = Math.max(1, Math.round(h / bay));
-    for (let k = 1; k <= bays; k++) {
-      const yk = y + (h * k) / bays,
-        y0 = y + (h * (k - 1)) / bays;
-      for (let i = 0; i < 4; i++) {
-        const j = (i + 1) % 4;
-        this.bar(paint, [x + cx[i]!, yk, z + cz[i]!], [x + cx[j]!, yk, z + cz[j]!], leg * 0.6);
-        this.bar(paint, [x + cx[i]!, y0, z + cz[i]!], [x + cx[j]!, yk, z + cz[j]!], leg * 0.5);
-      }
-    }
-    return this;
-  }
-
-  private add(paint: Paint, g: THREE.BufferGeometry): this {
-    g.applyMatrix4(this.frame);
-    const list = this.boxes.get(paint) ?? [];
-    list.push(g);
-    this.boxes.set(paint, list);
-    return this;
-  }
-
-  meshes(): THREE.Mesh[] {
-    return [...this.boxes].map(([paint, list]) => {
-      const material = new THREE.MeshStandardMaterial({ color: COLOURS[paint], roughness: paint === 'concrete' ? 0.95 : 0.6 });
-      // These take the same haze as the land (air.ts: 25 km at sea level, thinning over 1.4 km of height),
-      // which leaves the Atlas pads at 5 to 6 km and Complex 34 at 9 km faint but there, as on a clear morning.
-      const mesh = new THREE.Mesh(mergeGeometries(list), material);
-      mesh.castShadow = mesh.receiveShadow = true;
-      return mesh;
-    });
-  }
 }
 
 const FT = 0.3048;
@@ -357,18 +286,26 @@ const KINDS = {
     slab(k, 50, 50);
   },
   /**
-   * An Atlas pad, Complexes 11 to 14. Complex 14's figures are the only ones published and are used for all four:
-   * a ramp 92 ft long rising 22 ft to a launch stand 60 by 78 ft; an umbilical mast 84 ft 6 in above the stand; a
-   * service structure 154 ft 8 in tall that rolled 300 ft back on rails. Where each tower stood that day is not known:
-   * it is drawn part of the way back from the stand. Complex 14's was red; the others are taken to be.
+   * An Atlas pad, Complexes 11 to 14. Complex 14's figures are the only ones published and are used for all four (HAER
+   * FL-8-7, pp. 20 to 22): a ramp and stand 432 ft long, the stand 60 by 78 ft at the north end, the ramp 24 ft wide in
+   * eleven bays, its southernmost 170 ft on fill and rising to 22 ft over the northern six; an umbilical mast 84 ft 6 in
+   * above the stand; a service structure 154 ft 8 in tall, which left the stand on rails onto a transfer table that
+   * carried it 300 ft east. (The museum's "92 ft" ramp is not the ramp's length: HAER's and OpenStreetMap's agree.)
+   * Where each tower stood that day is not known: it is drawn part of the way off the stand. Complex 14's was red;
+   * the others are taken to be.
    */
   atlas(k: Kit, tower = true) {
     const up = 22 * FT,
       w = 60 * FT,
-      d = 78 * FT;
+      d = 78 * FT,
+      bay = (432 - 78 - 170) / 10; // ft: the ten bays on steel north of the fill
     slab(k, 46, 150, 0.45, 0, -40);
     k.box('concrete', w, up, d, 0, 0.45, 0); // the stand
-    for (let i = 0; i < 6; i++) k.box('concrete', 12, (up * (6 - i)) / 7, (92 * FT) / 6, 0, 0.45, d / 2 + ((92 * FT) / 6) * (i + 0.5)); // the ramp, stepped
+    // the ramp, stepped: up over its northern six bays, then low over the rest and the fill
+    for (let i = 0; i < 6; i++) k.box('concrete', 24 * FT, (up * (6 - i)) / 7, bay * FT, 0, 0.45, d / 2 + bay * FT * (i + 0.5));
+    const low = (432 - 78 - 6 * bay) * FT;
+    slab(k, 24 * FT + 4, low + 6 * bay * FT, 0.45, 0, d / 2 + (6 * bay * FT + low) / 2); // (its foot, under the steps too)
+    k.box('concrete', 24 * FT, up / 7, low, 0, 0.45, d / 2 + 6 * bay * FT + low / 2);
     k.lattice('steel', 2.4, 2.4, 84.5 * FT, w / 2 - 2, up + 0.45, -d / 4, 5.2, 0.35);
     if (!tower) return;
     const h = 154.67 * FT,
@@ -436,7 +373,7 @@ interface Complex {
   name: string;
   lat: number;
   lon: number;
-  /** Which way the pad is turned, degrees clockwise from north. Not published for any of them: Complex 26 lies on pad 5's rail line; the rest are set square to their stretch of shore (estimated). */
+  /** Which way the pad is turned, degrees clockwise from north. Not published for any of them: Complex 26 lies on pad 5's rail line; Complexes 14 and 19 lie along their stands' axes on OpenStreetMap (derived); the rest are set square to their stretch of shore (estimated). */
   heading: number;
   /** A far one: the stand-in drawn here. */
   draw?: (k: Kit) => void;
@@ -446,7 +383,15 @@ interface Complex {
   clear?: number;
   /** How far from its middle its concrete and buildings reach, metres: nothing grows there (a near one's). */
   paved?: number;
+  /**
+   * When it stood as drawn (`Dated`: ISO dates): from when, if known, until when, if it changed. Each is drawn as it stood
+   * on 5 May 1961, so a flight on another day shows it only where this says it stood so then.
+   */
+  stood: Dated;
 }
+
+/** What every complex here is drawn as: as it stood on 5 May 1961, and not known to have changed since unless it says. */
+const MAY_1961: Dated = { from: '1961-05-05' };
 
 /**
  * What stood on 5 May 1961, nearest first. Coordinates: OpenStreetMap (the way or relation of each pad).
@@ -458,54 +403,70 @@ const COMPLEXES: Complex[] = [
   // The near ones: each a model in a frame of its own (places/cape-canaveral/complexes/<complex>.py says where its origin is and which way its +Y runs).
   // A complex's other pad and its blockhouse are listed for the ground kept clear round them; the blockhouses' places are
   // OpenStreetMap's outlines of what survives.
-  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46 },
-  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72, paved: 46 },
-  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34, paved: 24 },
-  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 202, node: 'LC30', clear: 60, paved: 44 },
-  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 202, clear: 60, paved: 44 },
-  { name: 'LC-30 blockhouse', lat: 28.439487, lon: -80.58086, heading: 202, clear: 34, paved: 24 },
-  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 213, node: 'LC25', clear: 50, paved: 34 },
-  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 213, clear: 45, paved: 28 },
-  { name: 'LC-25 blockhouse', lat: 28.432062, lon: -80.576976, heading: 213, clear: 34, paved: 24 },
-  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 24, node: 'LC17', clear: 80, paved: 62 },
-  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 203, node: 'LC29', clear: 50, paved: 34 },
-  { name: 'LC-29 blockhouse', lat: 28.429512, lon: -80.578231, heading: 203, clear: 34, paved: 24 },
-  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 24, clear: 80, paved: 62 },
-  { name: 'LC-17 blockhouse', lat: 28.447197, lon: -80.566933, heading: 24, clear: 34, paved: 24 },
-  { name: 'LC-18B', lat: 28.449016, lon: -80.561774, heading: 115, draw: KINDS.bare },
-  { name: 'LC-18A', lat: 28.450785, lon: -80.562232, heading: 115, draw: KINDS.bare },
-  { name: 'LC-9', lat: 28.452227, lon: -80.559383, heading: 115, draw: KINDS.navaho },
-  { name: 'LC-31A', lat: 28.45184, lon: -80.556222, heading: 115, draw: KINDS.minuteman },
-  { name: 'LC-32A', lat: 28.453741, lon: -80.555625, heading: 115, draw: KINDS.minuteman },
-  { name: 'LC-21', lat: 28.460544, lon: -80.540238, heading: 115, draw: KINDS.mace },
-  { name: 'LC-11', lat: 28.475282, lon: -80.539523, heading: 60, draw: (k) => KINDS.atlas(k) },
-  { name: 'LC-12', lat: 28.480713, lon: -80.541926, heading: 60, draw: (k) => KINDS.atlas(k, false) }, // its tower burned in September 1959; what replaced it by May 1961 is not established
-  { name: 'LC-13', lat: 28.485852, lon: -80.544441, heading: 60, draw: (k) => KINDS.atlas(k) },
-  { name: 'LC-14', lat: 28.491115, lon: -80.546898, heading: 60, draw: (k) => KINDS.atlas(k) },
-  { name: 'LC-15', lat: 28.496278, lon: -80.549362, heading: 60, draw: KINDS.titan }, // 15 and 16 were being converted for Titan II: their state that day is not established
-  { name: 'LC-16', lat: 28.501676, lon: -80.551796, heading: 60, draw: KINDS.titan },
-  { name: 'LC-19', lat: 28.506719, lon: -80.554253, heading: 60, draw: KINDS.titan },
-  { name: 'LC-20', lat: 28.512176, lon: -80.556704, heading: 60, draw: KINDS.titan },
-  { name: 'LC-34', lat: 28.521839, lon: -80.561182, heading: 0, draw: KINDS.saturn },
+  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46, stood: MAY_1961 },
+  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72, paved: 46, stood: MAY_1961 },
+  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34, paved: 24, stood: MAY_1961 },
+  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 202, node: 'LC30', clear: 60, paved: 44, stood: MAY_1961 },
+  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 202, clear: 60, paved: 44, stood: MAY_1961 },
+  { name: 'LC-30 blockhouse', lat: 28.439487, lon: -80.58086, heading: 202, clear: 34, paved: 24, stood: MAY_1961 },
+  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 213, node: 'LC25', clear: 50, paved: 34, stood: MAY_1961 },
+  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 213, clear: 45, paved: 28, stood: MAY_1961 },
+  { name: 'LC-25 blockhouse', lat: 28.432062, lon: -80.576976, heading: 213, clear: 34, paved: 24, stood: MAY_1961 },
+  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 24, node: 'LC17', clear: 80, paved: 62, stood: MAY_1961 },
+  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 203, node: 'LC29', clear: 50, paved: 34, stood: MAY_1961 },
+  { name: 'LC-29 blockhouse', lat: 28.429512, lon: -80.578231, heading: 203, clear: 34, paved: 24, stood: MAY_1961 },
+  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 24, clear: 80, paved: 62, stood: MAY_1961 },
+  { name: 'LC-17 blockhouse', lat: 28.447197, lon: -80.566933, heading: 24, clear: 34, paved: 24, stood: MAY_1961 },
+  { name: 'LC-18B', lat: 28.449016, lon: -80.561774, heading: 115, draw: KINDS.bare, stood: MAY_1961 },
+  { name: 'LC-18A', lat: 28.450785, lon: -80.562232, heading: 115, draw: KINDS.bare, stood: MAY_1961 },
+  { name: 'LC-9', lat: 28.452227, lon: -80.559383, heading: 115, draw: KINDS.navaho, stood: MAY_1961 },
+  { name: 'LC-31A', lat: 28.45184, lon: -80.556222, heading: 115, draw: KINDS.minuteman, stood: MAY_1961 },
+  { name: 'LC-32A', lat: 28.453741, lon: -80.555625, heading: 115, draw: KINDS.minuteman, stood: MAY_1961 },
+  { name: 'LC-21', lat: 28.460544, lon: -80.540238, heading: 115, draw: KINDS.mace, stood: MAY_1961 },
+  { name: 'LC-11', lat: 28.475282, lon: -80.539523, heading: 60, draw: (k) => KINDS.atlas(k), stood: MAY_1961 },
+  { name: 'LC-12', lat: 28.480713, lon: -80.541926, heading: 60, draw: (k) => KINDS.atlas(k, false), stood: MAY_1961 }, // its tower burned in September 1959; what replaced it by May 1961 is not established
+  { name: 'LC-13', lat: 28.485852, lon: -80.544441, heading: 60, draw: (k) => KINDS.atlas(k), stood: MAY_1961 },
+  // Complexes 14 and 19 where their own records put them (lc-14.ts, lc-19.ts), each turned to the long axis of its stand
+  // and ramp on OpenStreetMap, the ramp to the south (issue #25: derived). Complex 14 was in use from January 1957 (HAER
+  // FL-8-7, pp. 13 and 19) and is drawn as it was for Mercury
+  {
+    name: 'LC-14',
+    lat: LC14.latitude.value,
+    lon: LC14.longitude.value,
+    heading: 15,
+    draw: (k) => KINDS.atlas(k),
+    stood: { from: '1957-01' },
+  },
+  { name: 'LC-15', lat: 28.496278, lon: -80.549362, heading: 60, draw: KINDS.titan, stood: MAY_1961 }, // 15 and 16 were being converted for Titan II: their state that day is not established
+  { name: 'LC-16', lat: 28.501676, lon: -80.551796, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
+  { name: 'LC-19', lat: LC19.latitude.value, lon: LC19.longitude.value, heading: 355, draw: KINDS.titan, stood: MAY_1961 },
+  { name: 'LC-20', lat: 28.512176, lon: -80.556704, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
+  { name: 'LC-34', lat: 28.521839, lon: -80.561182, heading: 0, draw: KINDS.saturn, stood: MAY_1961 },
 ];
 
-/** Ground the near complexes' models stand on, where nothing grows: [x, z, radius], compass metres from pad 5. */
-export const PAVED: [number, number, number][] = COMPLEXES.filter((c) => c.paved).map((c) => [...fromPad5(c.lat, c.lon), c.paved!]);
+/** The complexes that stood on a day (ISO date). */
+const standing = (date: string): Complex[] => COMPLEXES.filter((c) => stood(c.stood, date));
+
+/** Ground the near complexes' models stand on, where nothing grows: [x, z, radius], compass metres from the pad. */
+export const pavedAt = (compass: Compass, date: string): [number, number, number][] =>
+  standing(date)
+    .filter((c) => c.paved)
+    .map((c) => [...compass.at(c.lat, c.lon), c.paved!]);
 
 /** Cape Canaveral Light: OpenStreetMap way 1219644136; 3.73 km from pad 5 on 051 degrees. */
 const LIGHTHOUSE = { lat: 28.46036, lon: -80.543454 };
 
 /** Where each complex and the lighthouse stand, for keeping the ground round the near ones clear: [x, z, radius]. */
-export const CLEARINGS: [number, number, number][] = [
-  ...COMPLEXES.map((c): [number, number, number] => [...fromPad5(c.lat, c.lon), c.clear ?? (c.draw === KINDS.saturn ? 110 : 45)]),
-  [...fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 30],
+export const clearingsAt = (compass: Compass, date: string): [number, number, number][] => [
+  ...standing(date).map((c): [number, number, number] => [...compass.at(c.lat, c.lon), c.clear ?? (c.draw === KINDS.saturn ? 110 : 45)]),
+  [...compass.at(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 30],
 ];
 
 /**
  * The complexes a walker can reach, as built by missions/usa/places/cape-canaveral/complexes/model/1961-05.py: one node a complex,
  * each in its own frame. It is small (places/cape-canaveral/complexes.md gives its size), so it is fetched with the scene.
  */
-export const NEIGHBOURS = 'models/usa/places/cape-canaveral/complexes/1961-05.glb';
+const NEIGHBOURS: Dated & { model: string } = { model: 'models/usa/places/cape-canaveral/complexes/1961-05.glb', from: '1961-05-05' };
 /**
  * The materials that model may wear, by the names its script gives them (the pad's own: places/cape-canaveral/lc5/site.py). Each is
  * one mesh here from the start, empty until the model arrives, so that the look in force (look.ts) and the walker
@@ -534,14 +495,15 @@ const PAD_OVER_GROUND = 0.12;
  * The near complexes, each where it stood on its own ground and at the level of detail its size on screen calls for
  * (around.ts: the same scenery as what stands round any place). `arrived()` is true once, when something of it has.
  */
-function neighbours(groundAt: (x: number, z: number) => number): Around {
-  const things = COMPLEXES.flatMap((c) =>
+function neighbours(groundAt: (x: number, z: number) => number, compass: Compass, date: string): Around | null {
+  if (!stood(NEIGHBOURS, date)) return null;
+  const things = standing(date).flatMap((c) =>
     c.node
       ? [
           {
             node: c.node,
             place: (node: THREE.Object3D) => {
-              const [x, z] = fromPad5(c.lat, c.lon);
+              const [x, z] = compass.at(c.lat, c.lon);
               node.rotation.y = -THREE.MathUtils.degToRad(c.heading);
               node.position.set(x, groundAt(x, z) + PAD_OVER_GROUND, z);
             },
@@ -549,32 +511,32 @@ function neighbours(groundAt: (x: number, z: number) => number): Around {
         ]
       : [],
   );
-  return new Around(NEIGHBOURS, things, WORN_BY_NEIGHBOURS, 'cape1961.ts');
+  return new Around(NEIGHBOURS.model, things, WORN_BY_NEIGHBOURS, 'cape-canaveral/scenery.ts');
 }
 
 /**
- * The complexes and the lighthouse, as a handful of meshes on the compass. `groundAt` is the terrain's height at a
- * place (compass metres from pad 5). Each far one stands on the highest ground within its pad's reach, its concrete
+ * The complexes and the lighthouse that stood on a day (ISO date), as a handful of meshes on the compass round the
+ * flight's pad. `groundAt` is the terrain's height at a place (compass metres from the pad). Each far one stands on the highest ground within its pad's reach, its concrete
  * sunk well below that; a near one stands as the pad does, its zero 12 cm over the ground, which is level round it
- * (cape.ts: the clearings). `changed()` is true once when something of it has arrived late.
+ * (ground.ts: the clearings). `arrived()` is true once when something of it has arrived late.
  */
-export function buildCape1961(groundAt: (x: number, z: number) => number): {
-  scenery: THREE.Object3D[];
-  levels: Levelled[];
-  changed: () => boolean;
-} {
+export function buildScenery(
+  groundAt: (x: number, z: number) => number,
+  compass: Compass,
+  date: string,
+): { objects: THREE.Object3D[]; levels: Levelled[]; arrived: () => boolean } {
   const k = new Kit();
   const stands = (x: number, z: number, reach: number) =>
     Math.max(...[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => groundAt(x + ((i % 3) - 1) * reach, z + (Math.floor(i / 3) - 1) * reach)));
-  for (const c of COMPLEXES) {
+  for (const c of standing(date)) {
     if (!c.draw) continue;
-    const [x, z] = fromPad5(c.lat, c.lon);
+    const [x, z] = compass.at(c.lat, c.lon);
     c.draw(k.at(x, stands(x, z, 30), z, c.heading));
   }
-  const groundY = stands(...fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon), 5);
+  const [lx, lz] = compass.at(LIGHTHOUSE.lat, LIGHTHOUSE.lon);
+  const groundY = stands(lx, lz, 5);
   // The lighthouse: a cast-iron tower 151 ft tall, three black and three white bands from the foot, a black lantern
   // (documented); its taper and the brick oil house beside it are drawn by eye.
-  const [lx, lz] = fromPad5(LIGHTHOUSE.lat, LIGHTHOUSE.lon);
   k.at(lx, groundY, lz);
   const tower = 151 * FT - 6,
     bands = 6;
@@ -584,6 +546,10 @@ export function buildCape1961(groundAt: (x: number, z: number) => number): {
     .drum('dark', 1.6, 1.6, 3.2, 0, tower + 0.4, 0, 12)
     .drum('black', 1.9, 0.2, 2.2, 0, tower + 3.6, 0, 12);
   k.box('red', 4, 3, 6, 9, 0, 0).box('dark', 4.4, 0.5, 6.4, 9, 3, 0); // the oil house
-  const near = neighbours(groundAt);
-  return { scenery: [...k.meshes(), near.group], levels: [near], changed: () => near.arrived() };
+  const near = neighbours(groundAt, compass, date);
+  return {
+    objects: [...k.meshes(), ...(near ? [near.group] : [])],
+    levels: near ? [near] : [],
+    arrived: () => near?.arrived() ?? false,
+  };
 }

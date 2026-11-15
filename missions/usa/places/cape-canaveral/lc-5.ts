@@ -4,7 +4,7 @@ import { CAPE_CANAVERAL } from './place.ts';
 /**
  * Launch Complex 5 on the Earth: the origin of the pad model's frame (the launcher's centre on
  * the hardstand) and which way that frame lies. See lc-5.md, "The site's frame". The viewer's
- * compass (viewer/cape.ts: COMPASS) and the sky over the pad (src/world) both come from here.
+ * compass (missions/usa/places/cape-canaveral/ground.ts: COMPASS) and the sky over the pad (src/world) both come from here.
  */
 export const LC5: SiteDef = {
   name: 'Cape Canaveral, Launch Complex 5',

@@ -23,8 +23,6 @@ export interface SiteDef {
   bearingX: Measure;
   /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
   zone: { name: string; utcOffset: number };
-  /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
-  around?: SiteAround;
   /**
    * Where a rocket's exhaust goes at liftoff (viewer/trail.ts `blast`). Left out, it strikes a deflector under the stand
    * and is thrown out over the concrete all round (LC-5's). `pit`: down through an opening in the deck into a flame pit
@@ -59,10 +57,22 @@ export interface PlaceDef {
 }
 
 /**
- * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
- * each thing's node origin at its middle on the ground; the nodes to draw; and every material it wears, by name.
+ * When something stood as it is drawn, as ISO dates (a year or a month stands for its first day): from `from`, until
+ * `until` (the day it was gone or changed); either left out where nothing says (tools/blender/sitelib.py's `stood`, the
+ * same rule for what a place's models hold). A place's ground draws what stood on its flight's day
+ * (viewer/scenery/ground.ts `stood`).
  */
-export interface SiteAround {
+export interface Dated {
+  from?: string;
+  until?: string;
+}
+
+/**
+ * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
+ * each thing's node origin at its middle on the ground; the nodes to draw; every material it wears, by name; and when
+ * it stood so. A place's ground lists them (missions/<nation>/places/<place>/ground.ts).
+ */
+export interface SiteAround extends Dated {
   model: string;
   nodes: string[];
   wears: string[];

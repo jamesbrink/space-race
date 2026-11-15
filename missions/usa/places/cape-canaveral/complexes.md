@@ -6,8 +6,8 @@ neighbours, not the flight's pad: no interiors (doors shut, windows dark), nothi
 nothing to climb. `cape/<complex>.py` builds each in a frame of its own (feet; the origin on a named
 pad; +Y along a stated bearing), `complexes_1961.py` puts them in one model
 (`public/models/usa/places/cape-canaveral/complexes/1961-05.glb`, 265 kB and 28,000 triangles, so it is fetched with the scene), and
-`src/viewer/cape1961.ts` stands each where its pad's published coordinates put it. The complexes
-further off (1.2 to 9 km) are still stand-ins drawn in cape1961.ts.
+`missions/usa/places/cape-canaveral/scenery.ts` stands each where its pad's published coordinates put it. The complexes
+further off (1.2 to 9 km) are still stand-ins drawn in scenery.ts.
 
 Confidence is as everywhere here: **documented** (a published figure, cited), **derived** (worked
 from documented ones, and how), **estimated** (scaled off a named photograph, or chosen). Positions
@@ -73,7 +73,7 @@ either pad in the first week of May 1961, or AM-19G's processing log, would sett
 - The gantry's lacing is a designed pattern, not the blueprint's member for member; its office and
   generator on the base are two boxes placed by eye; the trucks are plain.
 - The aprons have no joints, painted circle or stains, and the track no sleepers (its ballast is the
-  land's: `cape.ts`, TRACKS).
+  land's: `ground.ts`, TRACKS).
 - Left out because nothing gives their place or size: the wooden light poles round each pad
   (documented that there were), the blockhouse's two 18 in ventilation stacks (documented; height not
   found), building 41109 (whether it stood in 1961 is not established), the trailers, trucks and the
@@ -151,7 +151,7 @@ Left out: the pond, the small camera towers and the tank trailers seen in Januar
 ## The neighbours on 21 July 1961
 
 Mercury-Redstone 4 flew eleven weeks after the day this model is dated for. **It is shown the same
-model**, and this is why. The viewer has one Cape (`src/viewer/cape1961.ts`: `NEIGHBOURS`, and the far
+model**, and this is why. The viewer has one Cape (`missions/usa/places/cape-canaveral/scenery.ts`: `NEIGHBOURS`, and the far
 stand-ins), not one a flight; and nothing found says that anything permanent on these complexes
 was built or taken down between 5 May and 21 July. What could have differed is where each movable
 tower stood and what vehicle stood on each pad, and for 21 July, as for 5 May, no dated source read
@@ -172,7 +172,7 @@ is built.
 ## Ways on foot
 
 The track runs from pad 5 through pad 6 to Complex 26 (documented: *A Noble Endeavor*). To the others a
-shell road is drawn (`cape.ts`, TRACKS): from Complex 5/6's gate west to Complex 30; from its
+shell road is drawn (`ground.ts`, TRACKS): from Complex 5/6's gate west to Complex 30; from its
 south-west corner to Complex 25 and on to 29; from Complex 26 east-north-east to Complex 17. That each
 complex had its road is plain in the aerials of 1959 to 1965. **Their lines here are estimated**: each is
 straight from one known place to the next, not traced from a map of 1961.

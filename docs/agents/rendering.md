@@ -78,7 +78,7 @@ different one per pixel per frame. Three things stop it, and all three must stay
   off), and the site far below is drawn in steps of centimetres to decimetres.
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
-  half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (`GROUND_Y`, and `GROUND` in
+  half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (the place's `grade`, GroundSpec, and `GROUND` in
   the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
   in `site.py`). Change the two together and rebuild the pad and the place.
 - **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
@@ -261,7 +261,7 @@ or a dense screen keeps the fine level further). A model that is cut open is alw
 is chosen piece by piece (`Scenery` in lod.ts): each top-level node, a building or the track, at
 the level its own size on screen calls for, so the building beside the walker is always the finest;
 level 0 is the one picked, walked on, lit and worked, and anything driven is always drawn from it. What stands round
-a place beyond its own model (`SiteDef.around`, the Cape's neighbouring complexes) is chosen by the same `Scenery`
+a place beyond its own model (`SiteAround` in its ground.ts, dated; the Cape's neighbouring complexes) is chosen by the same `Scenery`
 (viewer/around.ts `Around`: each thing a piece, its meshes joined a material a level, its coarser levels `ghost`s the
 walker does not stand on), and the stage asks every `Levelled` alike: the place's, and the setting's `levels`.
 When the simulator needs distant LODs, add them to `build-model.mjs` as extra outputs per
@@ -494,7 +494,7 @@ What has been found, so it is not found again:
   what a pass's own drawing costs. `sr.stage.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
   Anything new that wants to lay something over the whole frame does it in the output's pass too.
 - **The Cape's coarser levels are built and not drawn, and are not worth drawing.** The near complexes
-  (`cape1961.ts`, `1961-05.glb`) lose a few per cent of their triangles between levels (LC-17 none), and they
+  (`missions/usa/places/cape-canaveral/scenery.ts`, `1961-05.glb`) lose a few per cent of their triangles between levels (LC-17 none), and they
   are drawn as fourteen meshes, one a material, all five complexes joined.
   To choose a level a complex they would have to be drawn a complex, a material and a level apart: some seventy
   draws in place of fourteen, in a frame that is bound by its draws, to save a few thousand triangles of millions.
@@ -603,13 +603,17 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   GDAL; downloads stay outside the repo; `--region <name>` bakes one region and leaves the others' files as they
   were). The colours are 2004's land, not 1961's: say so where it matters. A region may take another month of 2004
   for the season of its flights (Tyuratam's is April's: the steppe's short green).
-  A region names its `banks` (pale sand under clear water) in tools/globe-surface.mjs: the sea's colour is
-  worked from depth (`globeWater`), bright only there.
+  A region is its place's (`PlaceDef.region`, with the bounds, month and `banks` the surface bake reads in
+  `region.surface`: pale sand under clear water): the sea's colour is worked from depth (`globeWater`), bright only there.
+- **A place's ground is data, laid round the flight's pad.** Each place's `ground.ts` (`GroundSpec`) gives its land,
+  plants, what stood round it (dated: drawn only on a day it stood) and its grade; `groundPlace` lays it on the compass
+  round whichever pad is the origin (`compass.ts`: latitude and longitude through `frames.ts`) and the setting is kept
+  by place, pad and day.
 - **The weather is a day's, and the day is the flight's.** A flight's `weather` (types.ts: `DayWeather`; a
   `weather.ts` beside its `flight.ts`) is what was observed at or nearest its site at the hour nearest liftoff:
   the low cloud, the middle deck, the high cloud, the wind, how far one could see, each figure a `Measure`, and
   `beyond` for what a report says of a stretch of country. `viewer/day.ts` turns it once into what is drawn
-  (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not `cape.ts`, not `weather.ts`. A
+  (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not a place's `ground.ts`, not `weather.ts`. A
   flight with none stands under its place's (`PlaceDef.weather`), and then under a clear sky: both estimates.
   - **A day is written into the shaders, not handed to them.** A flight is a page, so a page has one day: its
     figures are text in the shaders that draw it (`sheetsGlsl`, `weatherGlsl`, `overGlsl`, the shared chunk in
@@ -828,5 +832,5 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   bytes; a map that has not arrived reads 0. A new one-channel map goes into a spare channel or layer, not a new sampler.
 - A site whose ground reads a table of its own bakes the land's cover maps in pairs (`LandSpec.paired`: A and B side
   by side in one texture, each read half a texel inside its own half), so the land reads two maps where it would read
-  four. Tyuratam does, for its one table of heights and ways (`uWorks`, tyuratamworks.ts): 12 units. The Cape reads 13.
+  four. Tyuratam does, for its one table of heights and ways (`uWorks`, missions/ussr/places/tyuratam/works.ts): 12 units. The Cape reads 13.
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.

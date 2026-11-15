@@ -150,7 +150,7 @@ test('Freedom 7’s day is the sky the Cape was first drawn under, figure for fi
   const day = dayOf(mr3);
   const compass = (mr3.site.bearingX.value - 90) * RAD;
   assert.deepEqual({ ...day.cumulus, wind: null }, { height: 720, depth: 650, cover: 0.1, size: 1500, wind: null });
-  // (it drifts toward 270 at 7 m/s: in the pad's frame, as cape.ts had it)
+  // (it drifts toward 270 at 7 m/s: in the pad's frame, as missions/usa/places/cape-canaveral/ground.ts had it)
   assert.ok(
     Math.abs(day.cumulus.wind[0] - -7 * Math.cos(compass)) < 1e-12 && Math.abs(day.cumulus.wind[1] - 7 * Math.sin(compass)) < 1e-12,
   );
@@ -323,7 +323,7 @@ const compiled = (glsl) =>
 
 test('a day is written into the shaders: Freedom 7’s are the text they were before a flight could give its day', () => {
   // (comments aside. These are what the map's reader, the two sheets and the deck's shadow came to with 5 May's
-  // figures as constants in viewer/weather.ts and cape.ts. A change that is meant changes them: then say so, look at
+  // figures as constants in viewer/weather.ts and missions/usa/places/cape-canaveral/ground.ts. A change that is meant changes them: then say so, look at
   // Freedom 7's sky before and after, and pin them again. A change that is not meant is a day's term that got into
   // a shader the day does not have it in.)
   const day = dayOf(mr3);

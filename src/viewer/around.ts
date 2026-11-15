@@ -8,7 +8,7 @@ import { grain } from './surface.ts';
 
 /**
  * What stands round a place beyond its own model and is seen from it: the assembly building of Site 2 round Site 1
- * (`SiteDef.around`), the Cape's neighbouring launch complexes round LC-5 (cape1961.ts). A model of its own, one top-level
+ * (`SiteDef.around`), the Cape's neighbouring launch complexes round LC-5 (missions/usa/places/cape-canaveral/scenery.ts). A model of its own, one top-level
  * node a thing, fetched with the scene at each of its levels of detail and set down on the land as scenery. Scenery is
  * never measured or framed, so it does not pull the pad's shadow maps off the pad as a far building in the place's own
  * model did (site-1.md, "On the horizon").

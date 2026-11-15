@@ -1,12 +1,11 @@
 import * as THREE from 'three';
-import { TYURATAM_GROUND } from '../../missions/ussr/places/tyuratam/tyuratam-ground.ts';
-import type { SiteAround } from '../types.ts';
-import { type Air, driftClouds, installAir } from './air.ts';
-import { buildAround } from './around.ts';
-import type { Day } from './day.ts';
-import { fbm2 } from './field.ts';
-import { Flora } from './flora.ts';
-import { Land, type LandSpec } from './land.ts';
+import type { SiteAround } from '../../../../src/types.ts';
+import { smoothstep } from '../../../../src/util/math.ts';
+import { buildAround } from '../../../../src/viewer/around.ts';
+import { fbm2 } from '../../../../src/viewer/field.ts';
+import type { LandSpec } from '../../../../src/viewer/land.ts';
+import { type GroundSpec, stood } from '../../../../src/viewer/scenery/ground.ts';
+import { SITE1 } from './site-1.ts';
 import {
   STEPPE,
   STEPPE_COVER,
@@ -19,9 +18,9 @@ import {
   steppePalette,
   steppeTone,
 } from './steppe.ts';
-import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
-import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './tyuratamworks.ts';
-import { smoothstep } from '../util/math.ts';
+import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './relief.ts';
+import { TYURATAM_GROUND as MAPPED } from './tyuratam-ground.ts';
+import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './works.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -267,7 +266,7 @@ const SPOIL: [number, number, number, number] = [181, 381, 72, 292];
 const RUTS: { line: [number, number][]; half: number; worn: number }[] = [
   { line: ROADS[0]!, half: 70, worn: 0.75 },
   { line: RAILS[0]!.slice(0, -1), half: 35, worn: 0.5 },
-  // along the embankment's brow north of the tracks, 3 m in from it (tyuratamrelief.ts BROW): the way along the top of the fall
+  // along the embankment's brow north of the tracks, 3 m in from it (relief.ts BROW): the way along the top of the fall
   {
     line: [
       [-335, 5],
@@ -360,13 +359,13 @@ const SHARED = /* glsl */ `
 /**
  * The lie of the land, metres above the ground at the pad, in JavaScript (the walker, the plants) and GLSL (the mesh):
  * keep the two in step. The pad stands on the brow of a scarp: the ground south of the tracks is at their level, the
- * steppe north of them some 8 m down and the ground east of the pit some 5 m (tyuratamrelief.ts, which the place's
+ * steppe north of them some 8 m down and the ground east of the pit some 5 m (relief.ts, which the place's
  * models are built on too: places/tyuratam/site1/relief.py). Over that, beyond 400 m, a swell of half a metre over hundreds
- * of metres (estimated). From 700 m to 1.5 km out the land goes over to SRTM's (tyuratamworks.ts `heightsAt`): the
+ * of metres (estimated). From 700 m to 1.5 km out the land goes over to SRTM's (works.ts `heightsAt`): the
  * swell the pad stands on the north brow of, Kilinshek to the south-west, the hollow to the north and the Takyrsai's
  * valley to the south. Inside 700 m nothing the place's models stand on has moved.
  */
-/** From here to here from the pad the land goes over from the place's own lie (tyuratamrelief.ts) to SRTM's, metres. */
+/** From here to here from the pad the land goes over from the place's own lie (relief.ts) to SRTM's, metres. */
 const SRTM_FROM: [number, number] = [700, 1500];
 /**
  * And from here to here out (along the land's own axes, as its edge is a square) SRTM's lie comes back to the tracks'
@@ -398,7 +397,7 @@ const RELIEF = /* glsl */ `
  */
 /** How far out from a mapped thing its margin reaches, metres (a pan's ring of biyurgun: steppe.ts `steppeMapped`; a worked area's edge). */
 const KINDS_REACH = 40;
-/** A railway's banks: how far its embankment reaches past its bed's half breadth, metres (estimated; tyuratamworks.ts draws them). */
+/** A railway's banks: how far its embankment reaches past its bed's half breadth, metres (estimated; works.ts draws them). */
 const RAIL_BANKS = 4;
 const KINDS_WIDE = 1024;
 const KINDS_GRID = 32;
@@ -406,7 +405,7 @@ const KINDS = (() => {
   // (the ground's kinds, then the worked ground: an area is closed, a way open, with half its breadth; a rail's banks are part of it)
   const code = { takyr: 0, salt: 1, sand: 2, channel: 3, worn: 4, bare: 5, graded: 6, rail: 7, road: 8, track: 9 } as const;
   const things: { kind: keyof typeof code; rings: [number, number][][]; open: boolean; half: number }[] = [
-    ...TYURATAM_GROUND.map((t) => ({ kind: t.kind, rings: [t.ring], open: t.kind === 'channel', half: (t.width ?? 0) / 2 })),
+    ...MAPPED.map((t) => ({ kind: t.kind, rings: [t.ring], open: t.kind === 'channel', half: (t.width ?? 0) / 2 })),
     ...WORKS_FOR_KINDS.map((w) => ({
       kind: w.kind,
       rings: w.line ? [w.line] : w.rings,
@@ -548,7 +547,7 @@ const COVER = /* glsl */ `
       else made.w = max(made.w, d);
     }
   }
-  // How far the ground at p lies below the ground round it, metres (SRTM: tyuratamworks.ts), over some 250 m: positive
+  // How far the ground at p lies below the ground round it, metres (SRTM: works.ts), over some 250 m: positive
   // in a hollow or a wash's bed, negative on a swell.
   float lowness(vec2 p) {
     vec2 q = vec2(p.x, -p.y);
@@ -769,7 +768,7 @@ function landSpec(season: SteppeSeason): LandSpec {
     far: FAR,
     // (the worked ground's areas and the ways reach 6 km: a texel of 16 m keeps a worn area's edge and a road's line)
     farTexels: 1024,
-    // (it reads a table of its own, the heights and the ways: tyuratamworks.ts)
+    // (it reads a table of its own, the heights and the ways: works.ts)
     paired: true,
     shared: SHARED,
     cover: COVER,
@@ -816,64 +815,54 @@ function inPit(x: number, z: number): number {
 /** Under the pit's floor (43 m) by a margin: inside the rim the open ground is this far down, and what is walked on is the pit's own model. */
 const UNDER_PIT = -60;
 
-/** Everything round the pad, under a day's sky (day.ts: the flight's `weather`). `groundY` is the terrain's height; the platform's deck is 0. */
-export function buildTyuratam(renderer: THREE.WebGLRenderer, groundY: number, day: Day, around?: SiteAround) {
-  const air: Air = { scale: day.haze, base: groundY, ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
-  installAir(air);
-  // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
-  const season = seasonOf(day.date);
-  const land = new Land(renderer, landSpec(season), groundY, 0);
-  const flora = new Flora(steppeFlora(day), land);
-  flora.group.position.y = groundY;
-  // what stands round the site (the assembly building of Site 2): each on the highest of the land drawn under it, over
-  // the site's relief at its middle, which its model stands on (site1/relief.py); its walls go down 0.48 m into the land
-  const far = around
-    ? buildAround(around, (x, z, half) => {
+/**
+ * What stands round the site beyond its own place and is seen from it, modelled apart (viewer/around.ts), each in Site 1's
+ * frame with its node's origin at its middle on the ground: the assembly and test building of Site 2, 2.04 km off on 252
+ * degrees, whose top shows over the land from the deck (site-1.md, "On the horizon"; site2/mik.py, `pnpm model:tyuratam`).
+ * It stood from before the first flight; its model is as of April 1961.
+ */
+const NEIGHBOURS: SiteAround[] = [
+  {
+    model: 'models/ussr/places/tyuratam/site2/1961-04.glb',
+    nodes: ['AssemblyBuilding'],
+    wears: ['concrete-plaster-whitewashed', 'roof-felt-grey', 'steel-door-green', 'steel-window-frame', 'window-void'],
+    from: '1961-04-12',
+  },
+];
+
+/**
+ * The steppe round Site 1, as viewer/scenery/ground.ts lays it out. Everything here is in Site 1's own frame (its +X due
+ * east, so the compass frame round it), so it is laid round Site 1 alone: a second pad at Tyuratam needs what is drawn
+ * at Site 1's figures (the rim, the tracks, the apron, the relief, the worked ground) put where Site 1 lies from it, as the
+ * Cape's ground does with Complex 5's (missions/usa/places/cape-canaveral/ground.ts: `pad5`).
+ */
+export const TYURATAM_GROUND: GroundSpec = {
+  // the deck's level is the model's zero, and the land round it a hand's breadth under (site1/site.py: GROUND)
+  grade: -0.12,
+  land: (day, compass) => {
+    if (compass.origin !== SITE1) throw new Error(`the steppe is drawn round Site 1 alone, not ${compass.origin.name}`);
+    // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
+    return landSpec(seasonOf(day.date));
+  },
+  flora: steppeFlora,
+  reach: 1500,
+  horizon: FAR,
+  // (the building round the site: each on the highest of the land drawn under it, over the site's relief at its middle,
+  // which its model stands on (site1/relief.py); its walls go down 0.48 m into the land)
+  scenery: ({ land, day }) => {
+    const far = NEIGHBOURS.filter((n) => stood(n, day.date)).map((n) =>
+      buildAround(n, (x, z, half) => {
         let top = Number.NEGATIVE_INFINITY;
         for (let i = -1; i <= 1; i++)
           for (let j = -1; j <= 1; j++) top = Math.max(top, land.heightAt(x + 0.7 * half * i, z + 0.7 * half * j));
         return top - siteRelief(x, -z);
-      })
-    : null;
-  const eye = new THREE.Vector3();
-  const local = (at: THREE.Vector3) => {
-    eye.copy(at);
-    eye.y -= groundY;
-    return eye;
-  };
-  return {
-    floor: land.mesh,
-    scenery: [flora.group, ...(far ? [far.group] : [])] as THREE.Object3D[],
-    // (the building at its levels of detail, each chosen by its size on screen: around.ts)
-    levels: far ? [far] : [],
-    reach: 1500,
-    horizon: FAR,
-    /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
-    tone: steppeTone(season),
-    drawn: steppeCel(season),
-    tick: (dt: number) => {
-      driftClouds(dt);
-      land.tick(dt);
-      flora.tick(dt);
-    },
-    simplify: (on: boolean) => {
-      land.simplify(on);
-      flora.simplify(on);
-    },
-    attend: (at: THREE.Vector3) => {
-      local(at);
-      land.attend(eye);
-      return flora.attend(eye);
-    },
-    arrived: () => far?.arrived() ?? false, // (the building round the site: something that casts a shadow where there was nothing)
-    view: (camera: THREE.Camera) => land.view(camera),
-    plantsClear: (at: THREE.Vector3, within: number) => flora.clear(local(at), within),
-    plantsOut: (at: THREE.Vector3, margin: number) => {
-      const still = flora.out(local(at), margin);
-      at.x = eye.x;
-      at.z = eye.z;
-      return still;
-    },
-    groundAt: (x: number, z: number) => (inPit(x, z) > OVERLAP ? UNDER_PIT : groundY + land.heightAt(x, z)),
-  };
-}
+      }),
+    );
+    return { objects: far.map((a) => a.group), levels: far, arrived: () => far.map((a) => a.arrived()).some(Boolean) };
+  },
+  // inside the flame pit's rim the open ground is far down, and what is walked on is the pit's own model
+  under: (x, z) => (inPit(x, z) > OVERLAP ? UNDER_PIT : null),
+  /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
+  tone: (day) => steppeTone(seasonOf(day.date)),
+  drawn: (day) => steppeCel(seasonOf(day.date)),
+};

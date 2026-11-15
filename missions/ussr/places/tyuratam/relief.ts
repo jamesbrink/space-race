@@ -1,4 +1,4 @@
-import { smoothstep } from '../util/math.ts';
+import { smoothstep } from '../../../../src/util/math.ts';
 /**
  * The lie of the land round Site 1 at Tyuratam: how high the ground is, metres from the level of the tracks and the
  * platform's deck. The pad stands on the brow of a scarp: south of the tracks the ground is at their level, north of

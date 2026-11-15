@@ -4,7 +4,7 @@ import { CAPE_CANAVERAL } from './place.ts';
 /**
  * Launch Complex 19 on the Earth: where every crewed Gemini left from. The origin is the middle of the launch
  * stand, at the deck the Titan's thrust mount stood on; the site's own model is not built (the complex is drawn as
- * scenery from Complex 5: src/viewer/cape1961.ts), so nothing stands on this frame so far and only the sky over it
+ * scenery from Complex 5: missions/usa/places/cape-canaveral/scenery.ts), so nothing stands on this frame so far and only the sky over it
  * is used. When it is built its record goes in lc-19.md.
  *
  * +X is the side the spacecraft's hatches faced on the stand (vehicles/gemini-spacecraft.md: the model's +X is the
@@ -18,7 +18,7 @@ export const LC19: SiteDef = {
     confidence: 'documented',
     source:
       'OpenStreetMap way 195727094, "Launch Complex 19": the middle of the launch stand as it stands today, traced from imagery (a ' +
-      'few metres): the point that places the complex as scenery in src/viewer/cape1961.ts. Wikipedia gives 28°30′24″ N ' +
+      'few metres): the point that places the complex as scenery in missions/usa/places/cape-canaveral/scenery.ts. Wikipedia gives 28°30′24″ N ' +
       '(28.50667). No surveyed coordinate has been read',
   },
   longitude: {

@@ -10,7 +10,7 @@
  * - haze (aerosol), scattering nearly evenly across colours and mostly forward (Cornette and
  *   Shanks's phase function, g = 0.8): its amount at the sea is the setting's own haze (a
  *   visibility: air.ts), less what the gas already takes, thinning by e over the setting's own
- *   height (cape.ts: 1,400 m). It is the pale band that hugs the horizon;
+ *   height (missions/usa/places/cape-canaveral/ground.ts: 1,400 m). It is the pale band that hugs the horizon;
  * - ozone, which only absorbs, in a layer about 25 km up (a tent 30 km wide: Hillaire 2020). It is
  *   why the zenith stays blue at twilight and the upper limb is a deep blue. Its Chappuis band
  *   peaks in the orange (575 to 603 nm), between the wavelengths the gas is sampled at: sampled

@@ -553,6 +553,11 @@ export class Stage {
   /** Its levels of detail, chosen building by building (lod.ts): `surroundings` is its level 0. */
   private scenery: Scenery | null = null;
   /** What chooses its own levels of detail beyond the models: the place round the pad, and the setting's scenery round that (lod.ts `Levelled`). */
+  /** The terrain's height under the models' zero (the place's grade: backdrops.ts `Setting.grade`). */
+  private get grade(): number {
+    return this.setting.grade ?? GROUND_Y;
+  }
+
   private get sceneries(): Levelled[] {
     return [...(this.scenery ? [this.scenery] : []), ...(this.setting.levels ?? [])];
   }
@@ -1274,7 +1279,7 @@ export class Stage {
 
   /** What the camera may ask of the scene (camera/index.ts: Scene). */
   private world(): Scene {
-    const UNDER = (x: number, z: number) => Math.max(0, this.setting.groundAt?.(x, z) ?? GROUND_Y);
+    const UNDER = (x: number, z: number) => Math.max(0, this.setting.groundAt?.(x, z) ?? this.grade);
     const clearance = (p: THREE.Vector3): number => {
       // Wherever the site's ground is drawn (out to its horizon) there is ground to stay above; beyond it, the globe's
       // sea (the site's level is not the sea's 100 km off); with neither, nothing.
@@ -2226,14 +2231,14 @@ export class Stage {
       const born = (trail.laid + 1) * TRAIL_STEP;
       if (!ascent.place(born, pad, at, turn)) break;
       at.add(nozzle.clone().applyQuaternion(turn));
-      if (at.y - GROUND_Y > TRAIL_TOP) break;
+      if (at.y - this.grade > TRAIL_TOP) break;
       const along = UP.clone().applyQuaternion(turn);
-      trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
+      trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - this.grade) / 8000));
     }
     // and from the last point to the nozzle as it is now, while it burns
-    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn) && at.y - GROUND_Y <= TRAIL_TOP) {
+    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn) && at.y - this.grade <= TRAIL_TOP) {
       at.add(nozzle.clone().applyQuaternion(turn));
-      trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - GROUND_Y) / 8000));
+      trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - this.grade) / 8000));
     } else trail.headless();
     trail.show(flying ? t : null, this.setting.sunIntensity / 3 + 0.1);
   }
@@ -3331,7 +3336,7 @@ export class Stage {
       // nearer along the view than the camera's height times the cosine of the frame's half-diagonal; a near plane
       // beyond that slices the foreground away. From well above, what grows on the ground is counted with it (the
       // tallest palm is under `CANOPY`), and the plants are not asked one by one.
-      let height = eye.y - GROUND_Y;
+      let height = eye.y - this.grade;
       if (height > 4 * CANOPY) {
         height -= CANOPY;
         plants = false;
@@ -3389,7 +3394,7 @@ export class Stage {
     if (this.setting.attend?.(this.camera.position)) this.dirty = true;
     if (this.clock) {
       // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
-      const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - GROUND_Y;
+      const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - this.grade;
       const change = this.setting.at?.(this.clock.jdUT, height, this.frozen);
       if (change) this.relight(change.shadows);
     }

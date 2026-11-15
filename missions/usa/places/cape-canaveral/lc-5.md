@@ -862,9 +862,11 @@ the track bed as the table says.
 ## Beyond the complex
 
 The other launch complexes, the lighthouse and the shore are drawn by the viewer
-(`src/viewer/cape1961.ts`), not modelled in Blender. **Each is at its published place**: the
+(`missions/usa/places/cape-canaveral/scenery.ts`), not modelled in Blender. **Each is at its published place**: the
 coordinates of its pad (OpenStreetMap's outline of the pad or its ruin, agreeing with Wikipedia's
-to a few metres), turned into metres east and north of pad 5 (28.439426° N, 80.573292° W). That
+to a few metres), laid out round pad 5 (28.439426° N, 80.573292° W) on the plane touching the ellipsoid there
+(src/viewer/scenery/compass.ts, through world/frames.ts; until November 2026 by a flat scale of metres to a degree,
+which put the far complexes up to a metre or so off). Each is dated (`stood`): drawn as it stood on 5 May 1961. That
 much is documented. **Its shape is a stand-in for its type**, drawn so that the kinds can be told
 apart on the horizon and no more: estimated, except the few sizes given below.
 
@@ -878,7 +880,7 @@ apart on the horizon and no more: estimated, except the few sizes given below.
 | 9 | 1,969 m on 044° | Navaho; inactive since 1958 | its concrete launch pedestal; the erector is not drawn (whether it still stood is not established) | pedestal 66 ft 8 in by 30 ft |
 | 31 A and 32 A | 2,166 m on 050°, 2,349 m on 047° | Minuteman flat pads | a roll-back service tower and an umbilical tower | 65 ft and 35 ft |
 | 21 | 3,995 m on 054° | Mace: a hardened launch building, finished February 1960 | a low concrete building with two cells | none |
-| 11, 13, 14 | 5,176 m on 040°, 5,883 m on 029°, 6,300 m on 024° | Atlas | ramp, launch stand, umbilical mast, and the service tower drawn back from the stand | Complex 14's, used for all three: ramp 92 ft rising 22 ft, stand 60 by 78 ft, mast 84 ft 6 in, tower 154 ft 8 in |
+| 11, 13, 14 | 5,176 m on 040°, 5,883 m on 029°, 6,300 m on 024° | Atlas | ramp, launch stand, umbilical mast, and the service tower drawn back from the stand | Complex 14's, used for all three (HAER FL-8-7): ramp and stand 432 ft long, the ramp 24 ft wide rising 22 ft over its northern six bays, stand 60 by 78 ft, mast 84 ft 6 in, tower 154 ft 8 in. (The museum's 92 ft ramp, drawn until November 2026, is not its length) |
 | 12 | 5,521 m on 034° | Atlas; being rebuilt for Atlas-Agena | the same without a tower: its tower burned in September 1959 and what stood in May 1961 is not established | as above |
 | 15, 16, 19, 20 | 6,741 m on 020°, 7,234 m on 017°, 7,711 m on 014°, 8,250 m on 011° | Titan I (15 and 16 being converted for Titan II) | launch stand, umbilical tower, and the erector lying down | none: 33 m and 30 m estimated |
 | 34 | 9,240 m on 007° | Saturn; under construction, dedicated 5 June 1961 | the service structure at its parking place 185 m west of the pad, the launch pedestal, the umbilical tower's first 27 ft | all of those: 310 ft on a 70 by 130 ft base; 42 ft square and 27 ft high; 27 ft |
@@ -888,7 +890,9 @@ Left out, because nothing above the ground can be shown for that day: Complexes 
 by then, inactive), 10 (demolished in 1959), 22 (a revetted soft pad), the Minuteman silos 31 B
 and 32 B, 36 (finished in 1961; whether its tower stood by May is not established), and 37, 43 and
 25 C and D (not begun). Which way each pad is turned is not published: Complex 26 lies on pad 5's
-rail line and the rest are set square to their stretch of shore.
+rail line, Complexes 14 and 19 along their stands' and ramps' axes on OpenStreetMap, the ramps to the south (015° and
+355°: issue #25, derived; until November 2026 both were set square to the shore at 060°), and the rest square to their
+stretch of shore.
 
 The shore is today's, from OpenStreetMap, thinned to 31 points for the Atlantic and 22 for the
 Banana River's east shore, 42 for its west, 12 for the Indian River's east and 11 for each of
@@ -897,7 +901,7 @@ Toward the edge of the ground drawn round the pad, where it hands over to the gl
 port, the Banana River north of 28.5, Newfound Harbor), the lines are read off the globe's own
 coast (below) so the two agree to tens of metres. Port Canaveral's harbour, 3.3 km south of the pad
 and open since 1953, is drawn as two straight-banked reaches of still water (`HARBOUR` in
-cape1961.ts): the entrance channel from the sea to the dike that closed it from the Banana River,
+scenery.ts): the entrance channel from the sea to the dike that closed it from the Banana River,
 and the one turning basin north of it. Their lines are read off the globe's coast; that this was
 the harbour's extent in May 1961 is estimated. No jetties, wharves or sheds are drawn, and the
 beach's sand and surf stop at the channel's banks without the works that held them.
@@ -939,7 +943,7 @@ on a clear morning.
 ## The land
 
 The ground the complex stands on, what grows on it, and the sea are drawn by the viewer from
-parameters (`src/viewer/cape.ts`, on the machinery of `land.ts` and `flora.ts`, which know no
+parameters (`missions/usa/places/cape-canaveral/ground.ts`, on the machinery of `land.ts` and `flora.ts`, which know no
 site), not modelled. **The communities and their order are documented; where each one lies, how
 dense and how tall, and every colour, are estimated** from photographs of 1958 to 1965.
 
@@ -954,7 +958,7 @@ dense and how tall, and every colour, are estimated** from photographs of 1958 t
 | The neighbouring pads | each in an oval of grass and sand 75 m beyond its pad | estimated | 63PC-0033 |
 | Firebreaks | straight sand lines on a grid square to the rails, about 270 by 240 m, some lengths left uncut | the kind is documented (every aerial of the period shows them); where each one ran is not, and these are invented | KSC-61C-0873, 650400 |
 | The breeze the plants move in | the day's wind at the ground, from the flight's own weather: on 5 May from 090° at about 10 knots; on 21 July from 200° at 4 knots, so they barely stir | documented: the Skid Strip's observations at 09:00 EST on 5 May and 07:00 EST on 21 July | NOAA ISD 74794012868; each flight's `weather.ts` |
-| Colours of sand, grass, leaf and litter | as in `cape.ts` | estimated from period colour film, which has shifted | the photographs above |
+| Colours of sand, grass, leaf and litter | as in `ground.ts` | estimated from period colour film, which has shifted | the photographs above |
 | The lie of the land | the complex's ground (y = -0.12 m in the viewer) taken as 9.5 ft above NAVD 88; the sea's surface 2.9 m below it; inland, old beach ridges and swales about 110 m apart and half a metre deep; the foredune's crest about 1.9 m above the sea, 45 to 62 m inland of the waterline; the beach face rising 1.35 m in its first 30 m to a berm | heights derived from today's survey (USGS 3DEP along 28.4394° N: ground near Complex 5 about 9.5 ft, dune crest 6 to 8 ft about 60 m from the water); the ridges' spacing read off the 1950 aerial; that 1961's ground was the same as today's is assumed | USGS 3DEP; USGS aerial 1950 |
 | Level ground | exactly level at the complex's height over Complex 5/6's clearing and roads and within 85 m of every other complex's pad, easing to the natural lie over 40 m | a rule of the viewer (the models stand on a flat datum), not a survey | |
 | Beach and sea | beach 40 to 50 m from the waterline to the dune, with a wrack line 17 m up; the bed falling 2.2 m in 100 m with a bar 75 m out; a swell of 55 m crests every 7.7 s, about 1 m crest to trough offshore, breaking on the bar and at the shore, so two lines of breakers | the swell's period and height documented as May medians (NOAA buoy 41009, 2010 to 2019); two lines of breakers read off KSC-61C-0873 and 63PC-0033; the bed's slope, the bar's place and the beach's width estimated | |
@@ -987,7 +991,7 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 ## What the model gets wrong or leaves out
 
 - **Port Canaveral's harbour is two straight reaches of still water** (the entrance channel and one basin,
-  `HARBOUR` in cape1961.ts), round-ended, with no jetties, wharves, sheds or ships, and the beach's sand and
+  `HARBOUR` in scenery.ts), round-ended, with no jetties, wharves, sheds or ships, and the beach's sand and
   surf stop at its banks. Near 15 km up its banks show faint second lines, where the ground's marsh tint
   follows its own bank a few tens of metres from the shore the globe's map has. Its extent in 1961 is estimated.
 - **What the ground round the pad does not draw comes in from nothing on the way up**: the spoil islands in
@@ -1168,7 +1172,7 @@ The rest of the complex:
   road, the walks and the trench covers are at the pad's level on concrete that goes down into the
   ground, and the shell paving is a low bank with sloped edges. In life all of it was flush with
   the grass. Along the track's ballast off the pads the ground is let down to 0.45 m again
-  (cape.ts: `trackAt`), easing back over a few metres, so the bed stands proud of its own ground
+  (ground.ts: `trackAt`), easing back over a few metres, so the bed stands proud of its own ground
   as track does; whether the real ground dipped there is not known.
 - **The far-field rule.** `check_clearance` passes faces a millimetre apart, which is enough only
   close to. Seen from 150 m with the camera near something else, parallel faces under about 5 cm
@@ -1234,7 +1238,7 @@ The rest of the complex:
   track in July, which the collection's caption calls the transfer van arriving.
 - No fence is modelled: none shows in the 1961 photographs. No power or telephone wires are strung
   between the poles.
-- Roads are painted on the viewer's ground (`TRACKS` in `src/viewer/cape.ts`), not modelled: the
+- Roads are painted on the viewer's ground (`TRACKS` in `missions/usa/places/cape-canaveral/ground.ts`), not modelled: the
   road behind the blockhouse and the drive past its back door follow F16_016 loosely. No road is
   drawn beyond what that photograph shows, so none leads to the other complexes.
 - The base girders of the service structure and of pad 6's gantry are built-up box girders with

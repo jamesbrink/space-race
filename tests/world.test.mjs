@@ -117,7 +117,7 @@ test('geodetic to Earth-fixed and back', () => {
 
 test('the site frame: +X on the stated bearing, +Y up, +Z a quarter turn clockwise from +X', () => {
   const close = (got, want, what, tolerance = 1e-12) => got.forEach((v, i) => near(v, want[i], tolerance, what));
-  // on the compass (bearingX 90: +X east) the viewer's -Z is north, as cape.ts lays its scenery out
+  // on the compass (bearingX 90: +X east) the viewer's -Z is north, as missions/usa/places/cape-canaveral/ground.ts lays its scenery out
   close(enuToSite(90, [0, 1, 0]), [0, 0, -1], 'north on the compass frame');
   // LC-5: +X is 295 degrees true, so +Z bears 025 and the rails run along Z (site.py's docstring)
   close(siteToEnu(295, [1, 0, 0]), [Math.sin(295 * DEG), Math.cos(295 * DEG), 0], '+X');

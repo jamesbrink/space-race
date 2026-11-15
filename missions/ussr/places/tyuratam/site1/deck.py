@@ -71,7 +71,7 @@ RAMP = 10.0
 SLEEPER = 0.0276
 # The apron: from the abutment to 90 m west of the axis the ground is concrete slabs with the rails flush in them (the
 # film of the morning, looking down from the erector's head; the land paints the slabs, a band along each track and a
-# flangeway inside each rail: src/viewer/tyuratam.ts SLABS, whose west end this is). So over it a rail's head lies at
+# flangeway inside each rail: missions/ussr/places/tyuratam/ground.ts SLABS, whose west end this is). So over it a rail's head lies at
 # the land's level, RAIL_TOP proud of it as on the deck and for the same reason, and the rest of the rail is under the
 # land. The land lies 0.12 m under the deck (GROUND), where the real apron was level with it: so the heads come down
 # that much in DIP metres west of the abutment, which no rail did (ours), and on the centre track, west of the apron,

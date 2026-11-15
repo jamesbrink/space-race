@@ -4,7 +4,7 @@ import type { Confidence } from '../../../../src/types.ts';
  * What the builders had made of the steppe round Site 1 by April 1961, as ground: the worked ground (the crust ground
  * to dust by four years of building and traffic, and the yards and beds graded bare), the railways, the roads and the
  * dirt tracks, where the two Corona frames that bracket the flight show them. Metres east and north of Site 1's axis.
- * viewer/tyuratam.ts draws them; site-1.md, "The worked ground", says how each kind is drawn and what of it rests on
+ * missions/ussr/places/tyuratam/ground.ts draws them; site-1.md, "The worked ground", says how each kind is drawn and what of it rests on
  * what. Made by the research of November 2026 (its notes: the frames' ids, how they were laid on the site's frame).
  *
  * An area (`worn`, `bare`) is a ring, with any holes; a way (`rail`, `road`, `track`, a `graded` strip) is its middle
@@ -1878,7 +1878,7 @@ export const TYURATAM_WORKS: Works[] = [
     confidence: 'documented',
     source:
       "OpenStreetMap way 37547653 (its line); CORONA KH-2 (mission 9013), 7 December 1960, frame DS009013038DV129; CORONA KH-4 (mission 9035), 30 May 1962, frame DS009035033AA014 (USGS declassified; Wikimedia Commons copies, laid on the site's frame to 10 to 30 m)",
-    note: "the main line from Tyuratam station north to Site 2 and on toward the pad: dark ballast with the embankment's shadow on both frames, the line within 20 m of today's. From Site 2's north throat (-1797, -193) on, tyuratam.ts RAILS draws it",
+    note: "the main line from Tyuratam station north to Site 2 and on toward the pad: dark ballast with the embankment's shadow on both frames, the line within 20 m of today's. From Site 2's north throat (-1797, -193) on, ground.ts RAILS draws it",
     width: 6,
     line: [
       [-1213.4, -7118.9],
@@ -2051,7 +2051,7 @@ export const TYURATAM_WORKS: Works[] = [
     confidence: 'documented',
     source:
       "OpenStreetMap way 172441909 (its line); CORONA KH-2 (mission 9013), 7 December 1960, frame DS009013038DV129; CORONA KH-4 (mission 9035), 30 May 1962, frame DS009035033AA014 (USGS declassified; Wikimedia Commons copies, laid on the site's frame to 10 to 30 m)",
-    note: "beside the spur to Site 51 and back south to the storage bunker's road (tyuratam.ts ROADS). Its surface is not known: drawn as graded earth",
+    note: "beside the spur to Site 51 and back south to the storage bunker's road (ground.ts ROADS). Its surface is not known: drawn as graded earth",
     width: 6,
     line: [
       [-1415.4, -42.6],

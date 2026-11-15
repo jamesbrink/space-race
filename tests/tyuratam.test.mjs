@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { BROW, pastBrow, siteRelief } from '../src/viewer/tyuratamrelief.ts';
+import { BROW, pastBrow, siteRelief } from '../missions/ussr/places/tyuratam/relief.ts';
 
 // What the place's models are built on (missions/ussr/places/tyuratam/site1/relief.py), as that file prints it:
 // `python3 missions/ussr/places/tyuratam/site1/relief.py > tests/fixtures/site1-relief.json` after changing either.
@@ -58,9 +58,9 @@ test('Site 1: the brow runs west to east with the low ground on its left', () =>
   assert.ok(pastBrow(0, 100) > 0 && pastBrow(0, 0) < 0 && pastBrow(300, 0) > 0 && pastBrow(100, -150) < 0);
 });
 
-// The country past the place's own ground (viewer/tyuratamworks.ts): SRTM's lie of the land, and the worked ground off
+// The country past the place's own ground (missions/ussr/places/tyuratam/works.ts): SRTM's lie of the land, and the worked ground off
 // the Corona frames of December 1960 and May 1962 (missions/ussr/places/tyuratam/tyuratam-works.ts).
-const { heightsAt } = await import('../src/viewer/tyuratamworks.ts');
+const { heightsAt } = await import('../missions/ussr/places/tyuratam/works.ts');
 const { TYURATAM_WORKS, FANS } = await import('../missions/ussr/places/tyuratam/tyuratam-works.ts');
 const { TYURATAM_HEIGHTS } = await import('../missions/ussr/places/tyuratam/tyuratam-heights.ts');
 
@@ -120,9 +120,9 @@ test('Site 1: every piece of the worked ground was there in April 1961, says whe
   for (const f of FANS) assert.ok(Math.hypot(...f.at) < 3000 && f.name.length > 5);
 });
 
-// The steppe's season is the flight's day's (viewer/steppe.ts `SEASONS`): Vostok 1's April flush, Vostok 2's August straw.
+// The steppe's season is the flight's day's (missions/ussr/places/tyuratam/steppe.ts `SEASONS`): Vostok 1's April flush, Vostok 2's August straw.
 test('the steppe in its season: the spring flush in April, the summer’s reddish grey in August, each with a source', async () => {
-  const { SEASONS, seasonOf, STEPPE } = await import('../src/viewer/steppe.ts');
+  const { SEASONS, seasonOf, STEPPE } = await import('../missions/ussr/places/tyuratam/steppe.ts');
   assert.equal(seasonOf('1961-04-12').name, 'spring');
   assert.equal(seasonOf('1961-08-06').name, 'summer');
   assert.equal(seasonOf('1962-08-11').name, 'summer');

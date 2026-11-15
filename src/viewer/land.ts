@@ -6,7 +6,7 @@ import { NOISE } from './space.ts';
 /**
  * The ground of a place, from its parameters: one mesh from under the walker's feet to the
  * horizon, painted from maps of what grows where. Nothing here knows which place it is; a site
- * (cape.ts) supplies a `LandSpec`.
+ * (missions/usa/places/cape-canaveral/ground.ts) supplies a `LandSpec`.
  *
  * **What covers the ground** is the site's GLSL, `coverA` and `coverB`, evaluated once on the GPU
  * into two maps: a detailed one round the site and a coarse one to the horizon. The terrain's
@@ -56,7 +56,7 @@ export interface LandSpec {
   farTexels?: number;
   /**
    * Bake each map's two halves (`coverA`, `coverB`) side by side into one texture, so the land reads two textures where
-   * it would read four: for a place whose own GLSL reads textures of its own (tyuratam.ts), within the budget of
+   * it would read four: for a place whose own GLSL reads textures of its own (missions/ussr/places/tyuratam/ground.ts), within the budget of
    * texture units a lit material keeps (units.ts). Unless given, four.
    */
   paired?: boolean;
@@ -94,7 +94,7 @@ export interface LandSpec {
   palette: Palette;
   /**
    * GLSL `Ground ground(vec2 p, vec4 A, vec4 B)`: the ground's own look from the maps, for a place whose ground is not
-   * the default's sand, grass and leaf litter (the steppe's clay, crust and spring green: tyuratam.ts). May use `seen`,
+   * the default's sand, grass and leaf litter (the steppe's clay, crust and spring green: missions/ussr/places/tyuratam/ground.ts). May use `seen`,
    * NOISE, FIELD and `shared`. Unless given, the default's.
    */
   ground?: string;

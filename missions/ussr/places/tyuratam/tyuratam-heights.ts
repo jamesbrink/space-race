@@ -1,8 +1,8 @@
 /**
  * The lie of the land round Site 1 out to the land's edge, from SRTM: heights every `step` metres over `half` metres
  * each way of the pad, `n` by `n`, one byte each (base64), from the southern row, west to east; metres above EGM96 are
- * `low + byte * quant`, and the deck's level is `level`. viewer/tyuratam.ts lays the land on them past a kilometre
- * from the pad (inside, tyuratamrelief.ts is the ground, as the place's models have it), back to level by 6.4 km.
+ * `low + byte * quant`, and the deck's level is `level`. missions/ussr/places/tyuratam/ground.ts lays the land on them past a kilometre
+ * from the pad (inside, relief.ts is the ground, as the place's models have it), back to level by 6.4 km.
  *
  * SRTM 1 arc-second (tile N45E063, February 2000), resampled on the site's frame; then what is made and later than
  * 1961 taken out: every bump and pit narrower than some 120 m (a grey-scale opening and closing), and every compact

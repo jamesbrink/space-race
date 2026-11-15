@@ -68,11 +68,4 @@ export const SITE1: SiteDef = {
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },
-  // The assembly and test building of Site 2, 2.04 km off on 252 degrees, whose top shows over the land from the deck
-  // (site-1.md, "On the horizon"; places/tyuratam/site2/mik.py, `pnpm model site2`).
-  around: {
-    model: 'models/ussr/places/tyuratam/site2/1961-04.glb',
-    nodes: ['AssemblyBuilding'],
-    wears: ['concrete-plaster-whitewashed', 'roof-felt-grey', 'steel-door-green', 'steel-window-frame', 'window-void'],
-  },
 };

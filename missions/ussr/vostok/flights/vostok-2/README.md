@@ -45,7 +45,7 @@ summarised in [site-1.md](../../../places/tyuratam/site-1.md), "What stood when"
   were abroad. The ground party's figures are dressed for April: summer clothes are new geometry,
   listed for a modelling agent. April's people, car and truck are not shown.
 - **The land is the summer's**: the steppe "dried out ... a uniform reddish-gray" by June (Chertok,
-  vol. 2, p. 357), the tulips and the spring's green gone (src/viewer/steppe.ts, `SEASONS`).
+  vol. 2, p. 357), the tulips and the spring's green gone (missions/ussr/places/tyuratam/steppe.ts, `SEASONS`).
 - **The weather**: [weather.ts](weather.ts), from the stations either side of the range.
 
 So the flight has all three places: the Gallery; the Launch site on the morning of 6 August; and Fly, on the

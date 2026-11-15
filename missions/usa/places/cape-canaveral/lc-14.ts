@@ -4,7 +4,7 @@ import { CAPE_CANAVERAL } from './place.ts';
 /**
  * Launch Complex 14 on the Earth: where the four orbital Mercury flights left from. The origin is the middle of
  * the launch stand, at the deck the Atlas's launcher stood on; the site's own model is not built yet (the complex
- * is drawn as scenery from Complex 5: places/cape-canaveral/complexes.md, src/viewer/cape1961.ts), so nothing stands on this frame so far
+ * is drawn as scenery from Complex 5: places/cape-canaveral/complexes.md, missions/usa/places/cape-canaveral/scenery.ts), so nothing stands on this frame so far
  * and only the sky over it is used. When it is built its record goes in lc-14.md.
  */
 export const LC14: SiteDef = {
@@ -15,7 +15,7 @@ export const LC14: SiteDef = {
     confidence: 'documented',
     source:
       'OpenStreetMap way 195727091, "Cape Canaveral Launch Complex 14": the middle of the launch stand as it stands today, traced from ' +
-      'imagery (a few metres). Wikipedia gives 28.4911 N for the complex. The same point places it as scenery in src/viewer/cape1961.ts. ' +
+      'imagery (a few metres). Wikipedia gives 28.4911 N for the complex. The same point places it as scenery in missions/usa/places/cape-canaveral/scenery.ts. ' +
       'No surveyed coordinate has been read',
   },
   longitude: {

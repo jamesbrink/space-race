@@ -2,7 +2,7 @@
 
 Each complex is built in a frame of its own, in feet as its sources are: the origin on a named pad's
 centre at the pad's surface, +Z up, +Y along a stated compass bearing (the complex's `heading` in
-src/viewer/cape1961.ts, which places it by that pad's published latitude and longitude) and +X ninety
+missions/usa/places/cape-canaveral/scenery.ts, which places it by that pad's published latitude and longitude) and +X ninety
 degrees clockwise of that seen from above. A thing given in the record as a distance and a true bearing
 from the pad is placed with `at()`.
 
@@ -13,7 +13,7 @@ any building whose inside is not recorded. ../cape.md says of each thing what is
 is estimated, and from when to when it stood.
 
 The materials are Complex 5/6's own (lc5/site.py), by the same names, so that concrete here is the
-concrete there. Only those the viewer has a mesh waiting for may be used (cape1961.ts:
+concrete there. Only those the viewer has a mesh waiting for may be used (places/cape-canaveral/scenery.ts:
 WORN_BY_NEIGHBOURS): `materials()` gives exactly that set.
 """
 
@@ -62,7 +62,7 @@ __all__ = [
     "wedge_blockhouse",
 ]
 
-# The keys of lc5/site.py's materials a neighbour may wear. Keep in step with WORN_BY_NEIGHBOURS in cape1961.ts.
+# The keys of lc5/site.py's materials a neighbour may wear. Keep in step with WORN_BY_NEIGHBOURS in places/cape-canaveral/scenery.ts.
 WORN = ("concrete", "bunker", "block", "red", "white", "grey", "black", "galv", "deck", "rail", "blast", "tar", "shell", "void")
 
 
@@ -118,7 +118,7 @@ def ring_stand(parts: Parts, node: str, centre, across: float, height: float, le
 def rails(parts: Parts, node: str, y0: float, y1: float, pairs=(-RAIL_PAIR_X, RAIL_PAIR_X)) -> None:
     """A service structure's track along Y: two pairs of rails, each pair standard gauge, as Complex 5/6's is
     (lc5/site.py: the same track ran on to Complex 26). The rails only: they stand through the ground, their heads
-    just proud of a pad's concrete; between pads the ballast under them is the land's own (cape.ts: TRACKS), and
+    just proud of a pad's concrete; between pads the ballast under them is the land's own (places/cape-canaveral/ground.ts: TRACKS), and
     the sleepers are not built."""
     steel = parts(node, "rail")
     for cx in pairs:

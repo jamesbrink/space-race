@@ -1,6 +1,6 @@
 """The lie of the land round Site 1: how high the ground is, metres from the level the tracks and the platform's
 deck are at. Pure arithmetic (no Blender), written three times and kept in step: here, for whatever is built on the
-land; in src/viewer/tyuratamrelief.ts for the walker and the plants (JavaScript) and for the land's mesh (GLSL).
+land; in missions/ussr/places/tyuratam/relief.ts for the walker and the plants (JavaScript) and for the land's mesh (GLSL).
 tests/tyuratam.test.mjs holds the JavaScript to the figures this file prints (`python3 relief.py`).
 
 The pad stands on the brow of a scarp. South of the tracks the ground is at the tracks' level; north of them it

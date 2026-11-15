@@ -215,9 +215,10 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   shows it so, and the launch site and the flight play them on the clock.
 - A site has its own frame (at Complex 5, +X square to the rails on the blockhouse's side) and lies at an angle to the
   compass; a vehicle that was laid on its azimuth by turning its launcher stands turned in it (`rotationY`, worked
-  from the azimuth: places/cape-canaveral/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. Scenery is laid
-  out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
-  was: `src/world` computes it from the flight's `site` and `launch`.
+  from the azimuth: places/cape-canaveral/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. A place's scenery
+  is given in latitude and longitude (or in the frame of the pad it was drawn round), laid out on the compass round the
+  flight's pad and turned as one (`viewer/scenery/compass.ts`, `groundPlace`); the Sun is where it was: `src/world`
+  computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
   them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/app/prefs.ts`).
   A new panel gets the same control and a `Pref`.

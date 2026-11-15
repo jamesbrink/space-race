@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import type { Day } from './day.ts';
-import { breeze } from './day.ts';
-import type { FloraSpec, Species } from './flora.ts';
-import type { Palette } from './land.ts';
+import type { Day } from '../../../../src/viewer/day.ts';
+import { breeze } from '../../../../src/viewer/day.ts';
+import type { FloraSpec, Species } from '../../../../src/viewer/flora.ts';
+import type { Palette } from '../../../../src/viewer/land.ts';
 
 /**
  * The northern desert of the Turan lowland on the lower Syr Darya's right bank, in the second week of April, as a
  * kind of country: what its ground is, what grows on it and how thick, in the look the project asks for (AGENTS.md,
- * "Designed, not photographic"). Nothing here knows a site: Tyuratam's Site 1 (tyuratam.ts) uses it, and so can the
+ * "Designed, not photographic"). Nothing here knows a site: Tyuratam's Site 1 (ground.ts) uses it, and so can the
  * next pad on the same steppe (Site 31, the later Soviet flights), each giving its own lie of the land and its own made
  * ground. Sources and confidence are set out in missions/ussr/places/tyuratam/site-1.md, "The ground and what grows", and
  * docs/sources.md, "The steppe at Tyuratam". Its season is the flight's day's (`SEASONS`, `seasonOf`): the April flush
@@ -16,7 +16,7 @@ import type { Palette } from './land.ts';
  * - **The ground** is grey-brown desert loam under a thick clay crust (Chertok's "steppe asphalt", which the builders'
  *   trucks of 1955 to 1957 ground to dust in ruts kilometres wide), with takyrs (bare cracked clay floors) and
  *   solonchaks (salt crusts) in the hollows and small patches of sand on the rises: the soils of the Syr Darya's desert
- *   valley (Veselova and others 2017). Where each lies round a site is the site's (tyuratam.ts: the maps, the Corona
+ *   valley (Veselova and others 2017). Where each lies round a site is the site's (ground.ts: the maps, the Corona
  *   frames and Krechetov's soil map of the cosmodrome, 2015); their colours are estimated.
  * - **What grows**: white-earth wormwood (Artemisia terrae-albae, 8 to 30 cm, grey-white felted) in complexes with
  *   biyurgun (Anabasis salsa), with teresken (Krascheninnikovia ceratoides), saltwort in the hollows and sedge

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { TYURATAM_HEIGHTS } from '../../missions/ussr/places/tyuratam/tyuratam-heights.ts';
-import { FANS, TYURATAM_WORKS } from '../../missions/ussr/places/tyuratam/tyuratam-works.ts';
+import { TYURATAM_HEIGHTS } from './tyuratam-heights.ts';
+import { FANS, TYURATAM_WORKS } from './tyuratam-works.ts';
 import { STEPPE } from './steppe.ts';
 
 /**
  * What the land round Site 1 has past the place's own ground: the lie of the land from SRTM (tyuratam-heights.ts), and
  * the worked ground off the Corona frames of December 1960 and May 1962 (tyuratam-works.ts): the railways, the roads
  * and the dirt tracks as ways drawn on the ground at any distance, and the tracks fanning over the worked ground.
- * tyuratam.ts puts them in its land; what each rests on is in site-1.md, "The worked ground" and "The lie of the land".
+ * ground.ts puts them in its land; what each rests on is in site-1.md, "The worked ground" and "The lie of the land".
  */
 
 const glsl = (v: number) => v.toFixed(3);
@@ -238,7 +238,7 @@ export const WORKS_PAINT = /* glsl */ `
     bool cel = uCel > 0.5;
     vec3 dust = ${vec3(STEPPE.dust)}, rut = ${vec3(STEPPE.rut)};
     // The fans over the worked ground: a track is two wheels' ruts in pale dust, 3 to 6 m of it; under two pixels, its tone
-    // (not inside the pad's fence, whose ground is its own: tyuratam.ts fenced)
+    // (not inside the pad's fence, whose ground is its own: ground.ts fenced)
     float worked = smoothstep(0.12, 0.4, B.r) * smoothstep(-20.0, 20.0, -fenced(p));
     if (worked > 0.0) {
       float across, lane;
@@ -347,7 +347,7 @@ export const worksUniforms = (): Record<string, THREE.IUniform> => ({
   uFans: { value: FANS.map((f) => new THREE.Vector2(f.at[0], f.at[1])) },
 });
 
-/** For the cover's bake (tyuratam.ts KINDS): the worked areas and the ways, each a ring or a line with half its breadth. */
+/** For the cover's bake (ground.ts KINDS): the worked areas and the ways, each a ring or a line with half its breadth. */
 export const WORKS_FOR_KINDS = TYURATAM_WORKS.filter((w) => w.frames === 'both').map((w) => ({
   kind: w.kind,
   rings: w.ring ? [w.ring, ...(w.holes ?? [])] : [],

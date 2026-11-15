@@ -45,7 +45,7 @@ export interface Day {
   apart: number;
   /** The stem of the day's baked map under public/globe/ (`<region>.<date>`), or null: the site has no region, or the day is the site's own default. */
   map: string | null;
-  /** The day itself, 'YYYY-MM-DD' (UTC): the land's season is read from it (steppe.ts `seasonOf`). */
+  /** The day itself, 'YYYY-MM-DD' (UTC): the land's season is read from it (missions/ussr/places/tyuratam/steppe.ts `seasonOf`). */
   date: string;
 }
 
