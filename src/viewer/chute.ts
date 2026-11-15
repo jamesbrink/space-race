@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import type { ChuteDef } from '../types.ts';
 import type { ChuteMoment } from './ascent.ts';
 import { clamp, smoothstep } from '../util/math.ts';
+import { hazeAboveUniform } from './air.ts';
+import { INK } from './look.ts';
+import { cloudAheadGlsl, drawLast, sceneDepthGlsl, uDepthRange, uLast, uSceneDepth, undrawLast } from './overlay.ts';
 
 /**
  * A parachute as the hardware was, built from the flight's data (`Flight.flies.chutes`: diameter,
@@ -21,7 +24,10 @@ import { clamp, smoothstep } from '../util/math.ts';
  *
  * The lines. One from each seam at the skirt to where they meet, and the riser from there to the
  * vehicle: straight, being under load, and drawn as ribbons that face the eye, as wide as they
- * are and never narrower than a pixel and a quarter, so they neither vanish nor shimmer.
+ * are and never narrower than a pixel and a quarter, so they neither vanish nor shimmer. They are
+ * nearer than any cloud and mostly thinner than a pixel, so they are drawn over the finished frame
+ * (overlay.ts `drawLast`), where the clouds, the air and the land behind them cannot be laid over
+ * them or left out under them.
  *
  * What it does is the simulator's, on the clock's seconds (`ChuteMoment.since`), never a timer:
  * thrown out, it pays out to line stretch (`stretch`), streams, fills over what is left of the
@@ -199,50 +205,99 @@ function translucent(material: THREE.Material): void {
   material.customProgramCacheKey = () => 'chute-cloth';
 }
 
-/** What makes a line a ribbon facing the eye: the vertex is moved off its line, across it on the screen, by half its width or half the least width. */
-function ribbon(material: THREE.Material, size: THREE.Vector2): void {
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uSize = { value: size };
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        '#include <common>\nattribute vec3 aOther;\nattribute vec2 aSide;\nuniform vec2 uSize;\nvarying float vThin;',
-      )
-      .replace(
-        '#include <project_vertex>',
-        /* glsl */ `#include <project_vertex>
-        {
-          // A line that runs past the eye is cut at the near plane here, before anything is worked out on the screen: an end
-          // behind the eye has no place on the screen (its w is nothing or less), and a ribbon made from one was a sheet
-          // across the whole view, seen from close above the spacecraft with the riser going by. Both ends behind: not drawn.
-          vec4 far = projectionMatrix * modelViewMatrix * vec4(aOther, 1.0);
-          float nearW = projectionMatrix[3][2] / (projectionMatrix[2][2] - 1.0);
-          vec4 here = gl_Position;
-          if (here.w < nearW && far.w > nearW) here = mix(here, far, (nearW - here.w) / (far.w - here.w));
-          if (far.w < nearW && here.w > nearW) far = mix(far, here, (nearW - far.w) / (here.w - far.w));
-          if (here.w < nearW) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-          else {
-            gl_Position = here;
-            vec2 along = (far.xy / far.w - here.xy / here.w) * uSize;
-            float len = length(along);
-            if (len > 1e-6) {
-              vec2 across = vec2(-along.y, along.x) / len;
-              // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
-              // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
-              float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / here.w;
-              float half_ = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
-              vThin = clamp(own / half_, 0.12, 1.0);
-              gl_Position.xy += across * aSide.x * half_ * 2.0 / uSize * here.w;
-            }
-          }
-        }`,
-      );
-    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvThin = 1.0;');
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vThin;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vThin;');
-  };
-  material.customProgramCacheKey = () => 'chute-line';
+/**
+ * The lines' material: each line a ribbon facing the eye, its vertices moved off the line, across it on the screen, by
+ * half its width or half the least width and a pixel more, in which its edge is worked out (`vAcross`): so a line is
+ * as much of each pixel as it covers, and none of it is left to the frame's multisampling. Unlit (its colour is dimmed
+ * with the day by `Chute.set`) and the same in both looks. It is drawn over the finished frame (overlay.ts `drawLast`):
+ * hidden where the scene's surface is in front of it and by the cloud in front of it, and tone-mapped as it goes to the
+ * canvas.
+ */
+function cord(size: THREE.Vector2): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    name: 'chute-line',
+    uniforms: {
+      uColour: { value: new THREE.Color() },
+      uInk: { value: INK },
+      uSize: { value: size },
+      tSceneDepth: uSceneDepth,
+      uDepthRange,
+      ...uLast,
+      ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+      // (the haze is the scene's, air.ts: less of it the further the eye is out of the air, as for everything else)
+      uHazeAbove: hazeAboveUniform,
+    },
+    vertexShader: /* glsl */ `
+      #include <common>
+      #include <fog_pars_vertex>
+      attribute vec3 aOther;
+      attribute vec2 aSide;
+      uniform vec2 uSize;
+      varying float vThin, vAcross, vHalf;
+      varying vec3 vView;
+      void main() {
+        // A line that runs past the eye is cut at the near plane here, before anything is worked out on the screen: an end
+        // behind the eye has no place on the screen (its w is nothing or less), and a ribbon made from one was a sheet
+        // across the whole view, seen from close above the spacecraft with the riser going by. Both ends behind: not drawn.
+        vec3 a = (modelViewMatrix * vec4(position, 1.0)).xyz;
+        vec3 b = (modelViewMatrix * vec4(aOther, 1.0)).xyz;
+        float nearW = projectionMatrix[3][2] / (projectionMatrix[2][2] - 1.0);
+        if (-a.z < nearW && -b.z > nearW) a = mix(a, b, (nearW + a.z) / (a.z - b.z));
+        if (-b.z < nearW && -a.z > nearW) b = mix(b, a, (nearW + b.z) / (b.z - a.z));
+        vThin = 1.0;
+        vAcross = aSide.x;
+        vHalf = 0.0;
+        vView = a;
+        vec4 mvPosition = vec4(a, 1.0);
+        #include <fog_vertex>
+        if (-a.z < nearW) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+        vec4 here = projectionMatrix * vec4(a, 1.0), far = projectionMatrix * vec4(b, 1.0);
+        gl_Position = here;
+        vec2 along = (far.xy / far.w - here.xy / here.w) * uSize;
+        float len = length(along);
+        if (len > 1e-6) {
+          vec2 across = vec2(-along.y, along.x) / len;
+          // half its own width in pixels at this distance, or half the least: and one held at the least is drawn fainter by as
+          // much as it is thinner than that, so forty-eight lines a kilometre off are a haze of cord, not a white cone
+          float own = 0.5 * aSide.y * projectionMatrix[1][1] * uSize.y * 0.5 / here.w;
+          vHalf = max(own, ${(LEAST_PIXELS / 2).toFixed(3)});
+          vThin = clamp(own / vHalf, 0.12, 1.0);
+          gl_Position.xy += across * aSide.x * (vHalf + 1.0) * 2.0 / uSize * here.w;
+        }
+      }`,
+    fragmentShader: /* glsl */ `
+      #include <common>
+      #include <fog_pars_fragment>
+      ${sceneDepthGlsl}
+      ${cloudAheadGlsl}
+      uniform vec3 uColour, uInk;
+      uniform vec2 uSize;
+      varying float vThin, vAcross, vHalf;
+      varying vec3 vView;
+      void main() {
+        if (behindScene(-vView.z, uSize)) discard;
+        // how much of this pixel the line covers: a box a pixel across against a line vHalf pixels each side of its middle
+        float px = abs(vAcross) * (vHalf + 1.0);
+        float cover = clamp(vHalf + 0.5 - px, 0.0, 1.0);
+        float a = cover * vThin * (1.0 - cloudAhead(gl_FragCoord.xy / uSize, length(vView)));
+        if (a <= 0.0) discard;
+        // in the cel look a line is drawn as everything there is, its own tone inside an edge of ink a pixel wide: so a
+        // line under two pixels across is a line of ink, and reads against cloud and sky alike
+        vec3 colour = uLastCel > 0.5 ? mix(uColour, uInk, smoothstep(vHalf - 1.5, vHalf - 0.5, px)) : uColour;
+        gl_FragColor = vec4(colour, a);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+    side: THREE.DoubleSide,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    fog: true,
+  });
 }
 
 export class Chute {
@@ -254,7 +309,7 @@ export class Chute {
   private readonly fast = new THREE.Vector3();
   private readonly crown = new THREE.Group();
   private readonly panels: Panel[] = [];
-  private readonly lines: THREE.Mesh;
+  private readonly lines: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private readonly lineColour: THREE.Color;
   private readonly size = new THREE.Vector2(1, 1);
   private readonly radius: number;
@@ -344,29 +399,17 @@ export class Chute {
     lines.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(count * 12), 3));
     lines.setAttribute('aOther', new THREE.Float32BufferAttribute(new Float32Array(count * 12), 3));
     lines.setAttribute('aSide', new THREE.Float32BufferAttribute(side, 2));
-    lines.setAttribute(
-      'normal',
-      new THREE.Float32BufferAttribute(
-        new Float32Array(count * 12).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)),
-        3,
-      ),
-    );
     lines.setIndex(index);
     this.lineColour = new THREE.Color(0xe6e1d2);
-    const cord = new THREE.MeshBasicMaterial({
-      name: 'chute-line',
-      color: this.lineColour.clone(),
-      side: THREE.DoubleSide,
-      transparent: true,
-    });
-    ribbon(cord, this.size);
-    this.lines = new THREE.Mesh(lines, cord);
+    this.lines = new THREE.Mesh(lines, cord(this.size));
     this.lines.name = `Chute_${def.on}_Lines`;
     this.lines.frustumCulled = false;
     this.lines.raycast = () => {};
     this.lines.onBeforeRender = (renderer) => {
       renderer.getDrawingBufferSize(this.size);
     };
+    // (over the clouds, the air and the glow, as nearer than any of them: overlay.ts)
+    drawLast(this.lines);
     this.group.add(this.lines);
   }
 
@@ -429,7 +472,7 @@ export class Chute {
       this.cut(table, open, lay, depth, beat);
     }
     this.string(table, lay, riser, depth);
-    (this.lines.material as THREE.MeshBasicMaterial).color.copy(this.lineColour).multiplyScalar(Math.max(0.04, Math.min(1, light)));
+    (this.lines.material.uniforms.uColour!.value as THREE.Color).copy(this.lineColour).multiplyScalar(Math.max(0.04, Math.min(1, light)));
   }
 
   /** Where the cloth is at `s` down a gore, in the crown's frame (the skirt's plane at 0, the apex above it), metres from the axis and up. */
@@ -509,7 +552,8 @@ export class Chute {
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
+    undrawLast(this.lines);
     this.lines.geometry.dispose();
-    (this.lines.material as THREE.Material).dispose();
+    this.lines.material.dispose();
   }
 }

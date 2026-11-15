@@ -13,7 +13,7 @@ import { watchContext } from '../lost.ts';
 import type { Solids } from '../onfoot/walk.ts';
 import { Origin } from '../origin.ts';
 import { Outline } from '../outline.ts';
-import { OverlayPass } from '../overlay.ts';
+import { drawsLast, OverlayPass } from '../overlay.ts';
 import { Quality } from '../quality.ts';
 import { tier } from '../tier.ts';
 
@@ -90,7 +90,8 @@ export interface PipelineHost {
 
 /**
  * A stage's frame, from the scene to the screen: the passes (the sky, the scene, the clouds' depth, the ink, the fire
- * and smoke, what is drawn over the flight, the clouds, the outline, the glow, the output), drawn from the eye
+ * and smoke, what is drawn over the flight, the clouds, the outline, the glow, the output, and over that what is drawn
+ * last: overlay.ts `drawLast`), drawn from the eye
  * (origin.ts); the drawing's resolution and the net under the frame rate; the near and far planes fitted to what is
  * there (`fitDepth`); and the counts the diagnostics read.
  */
@@ -175,6 +176,14 @@ export class Pipeline {
     this.bloom.adopt(output); // (and the glow added under them, in the same pass)
     if (h.plain) this.bloomOld = true;
     this.composer.addPass(output);
+    // (and over all of it, as it goes to the canvas, what is nearer than any cloud and thinner than a pixel: overlay.ts `drawLast`)
+    drawsLast(
+      output,
+      scene,
+      this.camera,
+      () => this.clouds.mark.texture,
+      () => this.clouds.laid(),
+    );
     // (the lights with a shadow and the sky's light are handed over as the stage makes them: `origin.light`)
     this.origin = new Origin(this.renderer, scene, this.camera, h.cutPlanes);
   }

@@ -1468,6 +1468,16 @@ export class CloudPass extends Pass {
   }
 
   /**
+   * The march as this frame laid it (its last blend: colour and opacity, and where along each ray its cloud begins and is
+   * half opaque), whether any was laid, and the look: for what is drawn over the finished frame, which the cloud in front
+   * of it hides (overlay.ts `cloudAhead`).
+   */
+  laid(): { cloud: THREE.Texture | null; info: THREE.Texture | null; on: boolean; cel: boolean } {
+    const u = this.uniforms;
+    return { cloud: u.tCloud.value, info: u.tInfo.value, on: u.uClouds.value > 0.5, cel: this.cel };
+  }
+
+  /**
    * Lay the clouds over the frame in the output's own pass (three's OutputPass, the last, which draws
    * the frame to the screen), instead of in a pass of their own: a pass over the multisampled frame
    * costs a millisecond and a half on a dense screen, and the output reads every pixel anyway. They

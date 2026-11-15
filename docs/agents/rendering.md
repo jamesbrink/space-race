@@ -131,6 +131,14 @@ a hemisphere light's direction). So:
 - `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
   fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 
+## Drawn last
+
+**A line held at a least width in pixels (a parachute's lines) is in no buffer the frame is made from**: it writes
+no depth and is drawn after everything, over the clouds, the air and the glow, into the canvas (overlay.ts `drawLast`),
+hidden by the scene's depth and by the march's cloud in front of it. In the scene it wrote depth while it let most of the
+pixel through, so the clouds and the air laid over the frame were left out under it and it came through cloud as
+threads of bare sea (GitHub issue #1); `pnpm test:chute` holds it.
+
 ## The predicted path
 
 The path (`viewer/path.ts`, its numbers in `viewer/pathline.ts`) is an instrument's line drawn over the scene, and its

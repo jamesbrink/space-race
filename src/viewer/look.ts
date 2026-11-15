@@ -145,6 +145,9 @@ export class Looks {
   }
 }
 
+/** The ink's colour, in the frame's linear light: the ink line's, and a parachute's lines' in the cel look (chute.ts). */
+export const INK = new THREE.Color(0.018, 0.02, 0.03);
+
 /**
  * The ink line. Depth changes smoothly across a surface and jumps at its edge, so a line is
  * drawn where the depth of a pixel differs from the average of its neighbours by more than a
@@ -161,7 +164,7 @@ export class InkPass extends ShaderPass {
         uNear: { value: 0.1 },
         uFar: { value: 1000 },
         uTan: { value: new THREE.Vector2(1, 1) },
-        uInk: { value: new THREE.Color(0.018, 0.02, 0.03) },
+        uInk: { value: INK.clone() },
       },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
