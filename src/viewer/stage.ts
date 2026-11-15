@@ -1,10 +1,6 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
 import type { MeshBVH } from 'three-mesh-bvh';
 import { sameTarget, type Target, type Workings } from '../app/actions.ts';
@@ -16,7 +12,7 @@ import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import { Ascent, type Run } from './ascent.ts';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
-import { Bloom } from './bloom.ts';
+import type { Bloom } from './bloom.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { AT_GLASS, leanPath } from './camera/head.ts';
@@ -24,10 +20,8 @@ import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
 import { Carry } from './onfoot/carry.ts';
 import { Chute } from './chute.ts';
-import { CloudPass } from './clouds.ts';
 import { Vehicle } from './onfoot/drive.ts';
 import type { Effects } from './effects.ts';
-import { ExhaustPass } from './exhaust.ts';
 import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode.ts';
 import { type Cluster, clusterOf, exitsOf } from './fires.ts';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './onfoot/gait.ts';
@@ -35,19 +29,19 @@ import { Jets } from './jets.ts';
 import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
-import { InkPass, type Look, Looks } from './look.ts';
+import { type Look, Looks } from './look.ts';
 import { type LookoutDef, lookoutsOf, windowAt } from './lookouts.ts';
-import { refused, sayRefused, watchContext } from './lost.ts';
-import { absolute, Origin } from './origin.ts';
-import { OVERLAY_LAYER, OverlayPass } from './overlay.ts';
-import { Outline } from './outline.ts';
+import { refused, sayRefused } from './lost.ts';
+import { absolute, type Origin } from './origin.ts';
+import { OVERLAY_LAYER } from './overlay.ts';
 import { Panes } from './panes.ts';
 import { through, triangles } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
 import { lightFires, Plume } from './plume.ts';
-import { Quality } from './quality.ts';
+import type { Quality } from './quality.ts';
 import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
 import { Surfaces } from './runs.ts';
+import { makeRenderer, Pipeline } from './stage/pipeline.ts';
 import { ShadowCache } from './shadowcache.ts';
 import { BAND, depthBias, FarShadow, uShadowFade } from './shadows.ts';
 import { wearTexture } from './space.ts';
@@ -190,14 +184,6 @@ const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const spin = new THREE.Quaternion();
 /** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
 const WALK_SHADOW = 26;
-/** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
-const NEAR_LEAST = 0.03;
-/** Seconds the near plane takes to go most of the way out to where it may stand (`fitDepth`); it comes in at once. */
-const NEAR_EASE = 0.25;
-/** Metres: taller than anything that grows at a site (flora.ts: the tallest palm), for a near plane fitted from well above it. */
-const CANOPY = 30;
-/** Metres from where a parachute is made fast within which all of it is (the main's lines and canopy, with room). */
-const CHUTE_REACH = 60;
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
@@ -417,15 +403,16 @@ export class Stage {
   readonly cam: Cameras;
   /** The rig in charge of the camera has changed (the hands, the page, or the vehicle leaving the pad). */
   onRig: (id: RigId) => void = () => {};
-  private readonly composer: EffectComposer;
-  /** The buffer the scene is drawn into: multisampled, with the frame's depth. */
-  private readonly frameTarget: THREE.WebGLRenderTarget;
-  /** The cumulus, marched through and laid over the frame (clouds.ts). */
-  private readonly clouds: CloudPass;
+  /** The frame from the scene to the screen: the passes, the drawing's resolution, the near plane (stage/pipeline.ts). */
+  readonly pipe: Pipeline;
   /** Draws the scene from the eye (origin.ts): the GPU sees only eye-relative positions; everything the code reads stays where it is. */
-  readonly origin: Origin;
-  private readonly backdropPass: RenderPass;
-  private readonly outline: Outline;
+  get origin(): Origin {
+    return this.pipe.origin;
+  }
+  /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
+  get quality(): Quality {
+    return this.pipe.quality;
+  }
   private readonly settings: Settings;
   private readonly sun = new THREE.DirectionalLight(0xffffff, 4);
   /** The Sun's shadow maps, by their size in texels a side (`shadowGrain`). */
@@ -516,33 +503,22 @@ export class Stage {
   }[] = [];
   /** The flight's figures that come down on a descent (`flies.hangs`), each posed as it hangs, made the first time the vehicle flies. */
   private hangers: { root: THREE.Object3D; harness: THREE.Vector3; foot: number }[] | null = null;
-  private readonly ink = new InkPass();
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
-  readonly bloom = new Bloom(0.14, 0.6, 2.4);
-  private bloomWas: UnrealBloomPass | null = null;
+  get bloom(): Bloom {
+    return this.pipe.bloom;
+  }
+
+  /** The glow the old way, for measuring the new against it (`?plain` sets it: stage/pipeline.ts). */
+  get bloomOld(): boolean {
+    return this.pipe.bloomOld;
+  }
+  set bloomOld(on: boolean) {
+    this.pipe.bloomOld = on;
+  }
 
   /** For measuring: the ground's layers drawn apart in depth (laid.ts), or where they are. */
   set layered(on: boolean) {
     for (const material of layering(on)) this.looks.sync(material);
-    this.dirty = true;
-  }
-
-  /**
-   * The glow the old way, for measuring the new against it (`?plain` sets it): three's own pass, at the drawing
-   * buffer's size with its blurs in texels, blended over the multisampled frame. Made the first time it is asked for.
-   */
-  get bloomOld(): boolean {
-    return this.bloomWas?.enabled ?? false;
-  }
-  set bloomOld(on: boolean) {
-    if (on && !this.bloomWas) {
-      this.bloomWas = new UnrealBloomPass(new THREE.Vector2(1, 1), this.bloom.strength, this.bloom.radius, this.bloom.threshold);
-      this.composer.insertPass(this.bloomWas, this.composer.passes.indexOf(this.bloom));
-      const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-      this.bloomWas.setSize(size.x, size.y);
-    }
-    if (this.bloomWas) this.bloomWas.enabled = on;
-    this.bloom.enabled = !on;
     this.dirty = true;
   }
 
@@ -564,14 +540,6 @@ export class Stage {
   /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
   private readonly far: FarShadow;
   /** On foot, the fine map's still casters kept from one frame to the next, and only the figure drawn again (shadowcache.ts). */
-  /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
-  readonly quality = new Quality();
-  /** Frames drawn one after another, and the share of full resolution the canvas is at now. */
-  private run = 0;
-  private pixelScale = 1;
-  private frameAt = 0;
-  /** What the stars were last sized for: a pixel ratio, in a sky (their points are sized in the drawing's pixels). */
-  private starsFor: { ratio: number; sky: THREE.Scene | null } = { ratio: 0, sky: null };
   readonly shadowCache: ShadowCache;
   /** When the last walk ended (`performance.now()`), until the maps it used have been let go; 0: nothing is owed. */
   private walkEnded = 0;
@@ -624,28 +592,15 @@ export class Stage {
   /** `?plain` in the address: everything the old way, for measuring the new against it (tools/bench.mjs). */
   private readonly plain: boolean;
   private sinceDrawn = 0;
-  private frames = 0;
-  private drawn = 0;
-  private work = 0;
-  private statsAt = performance.now();
   private readonly lastView = new THREE.Matrix4();
   private readonly lastProjection = new THREE.Matrix4();
   /** How much of the bottom of the canvas the controls cover, 0 to 1: views are framed above it. */
   private inset = 0.26;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    // nothing that casts a shadow moves by itself: the map is redrawn when something is changed
-    this.renderer.shadowMap.autoUpdate = false;
-    this.renderer.localClippingEnabled = true;
-    this.renderer.info.autoReset = false; // counted per frame drawn, across every pass (stats())
-    // a context the browser takes away (a phone short of memory) stops the loop and says so: never a dead page, never a reload by itself (lost.ts)
-    watchContext(canvas, () => {
+    // (a context the browser takes away stops the loop for good: lost.ts)
+    this.renderer = makeRenderer(canvas, () => {
       this.lost = true;
-      this.renderer.setAnimationLoop(null);
     });
     this.glazing = new Panes(this.renderer, (mesh, real) => this.looks.give(mesh, real));
     // (`?plain` in the address draws the old way, for measuring one against the other: tools/bench.mjs)
@@ -711,66 +666,32 @@ export class Stage {
       this.lens,
     );
 
-    // Multisampled HDR target: trusses are all thin bright lines against a plain background.
-    // The depth texture is explicit: left to its default the target gets 16 bits of depth, which
-    // cannot tell concrete from the ground 6 cm under it across the pad. 24 bits can.
-    const target = new THREE.WebGLRenderTarget(1, 1, {
-      type: THREE.HalfFloatType,
-      samples: 4,
-      depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType),
+    this.pipe = new Pipeline(this.renderer, this.scene, this.camera, {
+      backdrop: this.setting.backdrop,
+      veils: this.veils,
+      overlays: () => this.overlays,
+      screens: () => this.screens(),
+      cutPlanes: this.cutPlanes,
+      plain: this.plain,
+      redraw: () => {
+        this.dirty = true;
+      },
+      depth: {
+        bounds: this.bounds,
+        frozen: () => this.frozen,
+        pivot: () => this.cam.pivot,
+        setting: () => this.setting,
+        grade: () => this.grade,
+        flying: () => (this.lifted.flying ? this.flier : null),
+        shed: () => this.debris,
+        chutes: () => this.chutes,
+        solids: () => this.walk.solids,
+        solidRoots: () => this.solidRoots(),
+        owe: (geometry: THREE.BufferGeometry) => this.treesOwed.add(geometry),
+      },
     });
-    this.composer = new EffectComposer(this.renderer, target);
-    // The composer's other buffer is a copy of that one: multisampled, with its own depth. Only the ink pass ever
-    // draws into it (one quad, in the cel look), after which the two changed places, so the scene was drawn into
-    // each in turn and both had to be whole. It is a plain texture here, and the two are put back after each frame
-    // (`step`): the scene is always drawn into `target`, and a second multisampled frame with its depth is never made.
-    this.frameTarget = target;
-    this.composer.renderTarget2.dispose();
-    this.composer.renderTarget2 = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
-    this.composer.readBuffer = target;
-    this.composer.writeBuffer = this.composer.renderTarget2;
-    this.backdropPass = new RenderPass(this.setting.backdrop.scene, this.setting.backdrop.camera);
-    this.composer.addPass(this.backdropPass);
-    const main = new RenderPass(this.scene, this.camera);
-    main.clear = false;
-    main.clearDepth = true;
-    this.composer.addPass(main);
-    this.clouds = new CloudPass(this.scene, this.camera);
-    this.clouds.veils = this.veils; // (read live: panes arrive as each level of detail does)
-    this.composer.addPass(this.clouds.mark); // the scene's depth, for the clouds laid over after the ink
-    this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
-    this.composer.addPass(this.ink);
-    this.composer.addPass(new ExhaustPass(this.scene, this.camera, this.clouds)); // the engine's fire and its smoke, marched (exhaust.ts): over the ink, under the clouds and the bloom
-    // what is drawn over the flight (the predicted path): over the fire and the smoke, under the clouds (overlay.ts)
-    this.composer.addPass(
-      new OverlayPass(
-        this.scene,
-        this.camera,
-        () => this.overlays,
-        () => this.clouds.mark.texture,
-      ),
-    );
-    this.composer.addPass(this.clouds);
-    // (the frame's depth says where a part is hidden; glass and what the cutaway has opened are not in it)
-    this.outline = new Outline(
-      this.scene,
-      this.camera,
-      () => this.clouds.mark.texture,
-      () => this.screens(),
-    );
-    this.outline.edgeStrength = 3;
-    this.outline.edgeThickness = 1;
-    this.outline.edgeGlow = 0.4;
-    this.outline.visibleEdgeColor.set(0xffc46b);
-    this.outline.hiddenEdgeColor.set(0x9a7434); // dimmer than the visible edge, but still an outline
-    this.composer.addPass(this.outline);
-    this.composer.addPass(this.bloom);
-    const output = new OutputPass();
-    this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
-    this.bloom.adopt(output); // (and the glow added under them, in the same pass)
-    if (this.plain) this.bloomOld = true;
-    this.composer.addPass(output);
-    this.origin = new Origin(this.renderer, this.scene, this.camera, this.cutPlanes, [this.sun, this.far.light, this.far.sky, this.fill]); // (the only light with a shadow, the only sky light)
+    // (the only light with a shadow, the only sky light)
+    for (const light of [this.sun, this.far.light, this.far.sky, this.fill]) this.pipe.origin.light(light);
     this.applySetting();
 
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
@@ -1200,8 +1121,7 @@ export class Stage {
 
   private applySetting(): void {
     const s = this.setting;
-    this.backdropPass.scene = s.backdrop.scene;
-    this.backdropPass.camera = s.backdrop.camera;
+    this.pipe.setBackdrop(s.backdrop);
     this.scene.environment = s.environment;
     this.scene.environmentIntensity = s.environmentIntensity;
     this.sun.color.set(s.sunColor);
@@ -1355,7 +1275,7 @@ export class Stage {
       renderer: this.renderer,
       scene: this.scene,
       camera: this.camera,
-      draw: (render: () => void) => this.origin.draw(render),
+      draw: (render: () => void) => this.pipe.origin.draw(render),
       sky: () => this.setting.backdrop,
       upAt: (p: THREE.Vector3, out: THREE.Vector3) => this.setting.globe?.up(p, out) ?? out.copy(UP),
       earth: () => this.setting.globe?.landMap ?? null,
@@ -2465,7 +2385,7 @@ export class Stage {
     // (a level of detail giving way to another goes on doing so, in the materials of this look: lod.ts)
     for (const s of this.staged) s.relook();
     for (const s of this.sceneries) s.relook();
-    this.ink.enabled = look === 'cel';
+    this.pipe.ink.enabled = look === 'cel';
     this.light();
     this.dirty = true;
   }
@@ -2477,7 +2397,7 @@ export class Stage {
    */
   private light(): void {
     const cel = this.looks.current === 'cel';
-    this.clouds.cel = cel;
+    this.pipe.clouds.cel = cel;
     this.fill.intensity = this.setting.fill[2] * (cel ? CEL_FILL : 1);
     this.setting.simplify?.(cel);
     this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
@@ -2653,7 +2573,7 @@ export class Stage {
     this.selected = selected;
     this.dirty = true;
     // outlined in the level of detail that is on show
-    this.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => {
+    this.pipe.outline.selectedObjects = [...new Set([hovered, selected])].flatMap((n) => {
       const o = n ? this.staged[this.current]?.part(n) : undefined;
       return o ? [o] : [];
     });
@@ -2699,7 +2619,7 @@ export class Stage {
    */
   async warm(patience = 9000, onStep?: (step: WarmStep, fraction: number) => void): Promise<void> {
     // (made a little at a time while the rest arrives; a setting with no air has no clouds to make)
-    const clouds = this.setting.fog ? this.clouds.warm() : Promise.resolve();
+    const clouds = this.setting.fog ? this.pipe.clouds.warm() : Promise.resolve();
     const settled = Promise.allSettled(this.arriving);
     // (said as it happens, for whoever is showing how far along it is: the list grows as the place brings its own levels)
     let arrived = 0;
@@ -2810,7 +2730,7 @@ export class Stage {
       // Built for the buffer the scene is drawn into: a shader for the canvas (tone-mapped, in the screen's colours) is
       // another shader, and built for that every one of them was built again, one at a time, as the first frame was drawn.
       const target = this.renderer.getRenderTarget();
-      if (!this.plain) this.renderer.setRenderTarget(this.frameTarget);
+      if (!this.plain) this.renderer.setRenderTarget(this.pipe.frameTarget);
       const built = [this.renderer.compileAsync(this.scene, this.camera)];
       // (and the sky's, which is a scene of its own drawn into the same buffer)
       if (!this.plain) built.push(this.renderer.compileAsync(this.setting.backdrop.scene, this.setting.backdrop.camera));
@@ -2818,7 +2738,7 @@ export class Stage {
       await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
       if (!tier().warmLevels) drawAll(false);
       this.held = false; // (the first frame is drawn now, with its shaders ready)
-      this.quality.rest(performance.now(), 8000); // (and the first seconds are slow for reasons that pass: maps arriving, the other look's shaders)
+      this.pipe.quality.rest(performance.now(), 8000); // (and the first seconds are slow for reasons that pass: maps arriving, the other look's shaders)
       this.renderer.shadowMap.needsUpdate = true;
       await frames(2);
       onStep?.('shaders', (i + 1) / passes.length);
@@ -2836,7 +2756,7 @@ export class Stage {
     await frames(3);
     onStep?.('settle', 1);
     // (an allocation the GPU refused while all that was made: said, with the way back in the lighter tier; lost.ts)
-    if (refused(this.renderer, [this.frameTarget])) sayRefused();
+    if (refused(this.renderer, [this.pipe.frameTarget])) sayRefused();
     if (!this.plain && tier().prebuildLook) this.prebuild(this.looks.current === 'cel' ? 'real' : 'cel');
   }
 
@@ -2886,7 +2806,7 @@ export class Stage {
     if (look === now) return;
     this.looks.set(look);
     const target = this.renderer.getRenderTarget();
-    this.renderer.setRenderTarget(this.frameTarget);
+    this.renderer.setRenderTarget(this.pipe.frameTarget);
     const covered = this.uncover(true); // (what is out of sight has the other look's shaders too)
     void this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
     this.uncover(false, covered);
@@ -3312,75 +3232,6 @@ export class Stage {
   }
 
   /**
-   * Keep the near plane as far out as what is there allows, every frame, whatever the rig. Depth precision at
-   * distance d is about d² / (near × 2²⁴): with a fixed 5 cm near plane, faces 3 mm apart fight from across the pad,
-   * and with one 15 m out the pad's slab and the ground under it, 12 cm apart, fight from 20 km up. So the plane
-   * stands at half the way to the nearest thing drawn in the scene's depth, and that is asked of what is there, not
-   * guessed from what the camera turns about (it was a quarter of the pivot's distance, and a free camera's pivot is
-   * a point just in front of the lens): the ground or the sea under the eye; the flown vehicle, what it has shed and
-   * its parachutes; and every solid thing and plant (`uncut`). Twenty kilometres over the site with nothing nearer
-   * than the ground that is a plane kilometres out and depth steps of centimetres down there. It comes in at once
-   * (nothing is ever cut) and goes out over a moment (`NEAR_EASE`: it never steps); a frozen stage has it at once.
-   */
-  private fitDepth(dt: number): void {
-    const eye = this.camera.position;
-    const toCentre = eye.distanceTo(this.bounds.center);
-    const toTarget = eye.distanceTo(this.cam.pivot);
-    const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect);
-    const corner = Math.hypot(1, tan);
-    let near = Number.POSITIVE_INFINITY;
-    let plants = true;
-    // (beyond the site there is no ground at the camera's feet to keep in view)
-    if (this.setting.floor && Math.hypot(eye.x, eye.z) <= (this.setting.reach ?? Infinity)) {
-      // Never past the ground at the camera's feet. The nearest ground in view is at the corner of the frame, no
-      // nearer along the view than the camera's height times the cosine of the frame's half-diagonal; a near plane
-      // beyond that slices the foreground away. From well above, what grows on the ground is counted with it (the
-      // tallest palm is under `CANOPY`), and the plants are not asked one by one.
-      let height = eye.y - this.grade;
-      if (height > 4 * CANOPY) {
-        height -= CANOPY;
-        plants = false;
-      }
-      near = Math.min(near, (0.9 * height) / corner);
-    }
-    // beyond the site's ground the globe's sea is under the camera instead, and it is seen out to its horizon
-    const globe = this.setting.globe;
-    if (globe?.mesh.visible) near = Math.min(near, (0.9 * globe.altitude(eye)) / corner);
-    let far = Math.max(toCentre + this.bounds.radius + (this.setting.horizon ?? 10), globe?.reach(eye) ?? 0);
-    // a vehicle in flight is seen as far off as it is, and the near plane is never beyond it
-    const flier = this.lifted.flying ? this.flier : null;
-    if (flier) {
-      const to = eye.distanceTo(flier.sphere.center);
-      // (with room to spare: the far plane is only moved when it is 2 % out, and a vehicle going away from a camera that
-      // stands still, the pad camera's, would otherwise be beyond it between one move and the next)
-      far = Math.max(far, 1.05 * (to + flier.sphere.radius));
-      near = Math.min(near, Math.max(NEAR_LEAST, 0.5 * (to - flier.sphere.radius), 0.01 * toTarget));
-      // ...nor beyond what it has shed, which is no longer part of it, nor a parachute (reshaped as it fills: its
-      // bounds as made say nothing, so it is taken as everything within its lines' length of where it is made fast)
-      const box = this.depthBox;
-      const at = this.depthAt;
-      for (const d of this.debris) near = Math.min(near, (0.5 * box.setFromObject(d.holder).distanceToPoint(eye)) / corner);
-      for (const chute of this.chutes ?? [])
-        if (chute.group.visible)
-          near = Math.min(near, (0.5 * Math.max(0, chute.group.getWorldPosition(at).distanceTo(eye) - CHUTE_REACH)) / corner);
-    }
-    // (a setting with no ground and no sea, a studio: the models are all there is, and are asked below)
-    if (near === Number.POSITIVE_INFINITY) near = Math.max(NEAR_LEAST, 0.5 * (toCentre - this.bounds.radius), 0.01 * toTarget);
-    near = this.uncut(Math.max(NEAR_LEAST, near), plants);
-    // in at once, out over a moment
-    const was = this.nearEased;
-    if (!(near > was) || this.frozen || !(dt > 0)) this.nearEased = near;
-    else this.nearEased = Math.min(near, was * (near / was) ** (1 - Math.exp(-dt / NEAR_EASE)));
-    near = this.nearEased;
-    if (Math.abs(near - this.camera.near) > near * 0.02 || Math.abs(far - this.camera.far) > far * 0.02) {
-      this.camera.near = near;
-      this.camera.far = far;
-      this.camera.updateProjectionMatrix();
-    }
-  }
-  private nearEased = NEAR_LEAST;
-
-  /**
    * Tell the setting the instant and where the eye is: the sky, the haze and the stars for the eye's height (`at`,
    * which says when that is worth showing), what is made or chosen round the eye (the globe's mesh and the air's ball,
    * the land's cells, which form each plant is drawn in and how far through its fade), and which rooms' lamps are
@@ -3400,8 +3251,6 @@ export class Stage {
     }
     if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
   }
-  private readonly depthBox = new THREE.Box3();
-  private readonly depthAt = new THREE.Vector3();
 
   /** How far indoors the eye is, 0 in the open to 1 in a room: eased, never stepped (`adapt`). */
   private indoors = 0;
@@ -3448,45 +3297,6 @@ export class Stage {
     this.expose();
     this.dirty = true;
   }
-
-  /**
-   * The near plane brought in, if it must be, so that it cuts nothing: `near` is where the view's subject and the
-   * ground would let it be, which knows nothing of what stands between (orbiting the pad from 150 m it was 19 m out,
-   * and the other pad's gantry, 15 m in front of the eye, was sliced away). So the nearest surface of anything solid
-   * is asked for (the walker's `Solids`: every model as posed and the place round them, exactly, by their hierarchies),
-   * and the plants, which are not solid, are asked for where they stand (`Setting.plantsClear`). The plane's corner, not its middle, is what must stay short of the thing. Depth resolution is spent only
-   * where something really is that near, which is where it was being cut.
-   */
-  private uncut(near: number, plants = true): number {
-    if (near <= NEAR_LEAST) return near;
-    const eye = this.camera.position;
-    // (a still eye is asked again only a few times a second, for what may have moved toward it)
-    const kept = this.uncutKept;
-    const now = performance.now();
-    if (!this.frozen && kept.eye.equals(eye) && kept.asked >= near && now - kept.at < 250) return Math.min(near, kept.near);
-    const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * Math.hypot(1, this.camera.aspect));
-    // (the plane at half the way to the nearest thing: so things are looked for twice as far as its corner reaches)
-    const reach = 2 * near * corner;
-    let clear = reach;
-    if (plants) clear = this.setting.plantsClear?.(eye, clear) ?? clear;
-    const solids = this.walk.solids;
-    solids.set(this.solidRoots());
-    // (what has no hierarchy yet is taken as its box and its hierarchy is owed, made in time to spare: `growTrees`. Made
-    // here, the capsule's were made in the frame it left its booster, as the chase view came in on it: 26 ms. A frozen
-    // stage makes them at once: a frame of it owes nothing to when it is drawn, and a box given way to its hierarchy some
-    // frames later moved the near plane and with it 149 pixels along the pad's lines, test:frozen's "thrown")
-    solids.gather(eye, clear, clear, clear, this.frozen);
-    for (const geometry of solids.wanted) this.treesOwed.add(geometry);
-    solids.wanted.clear();
-    clear = solids.clear(eye, clear);
-    const fitted = clear >= reach ? near : Math.max(NEAR_LEAST, (0.5 * clear) / corner);
-    kept.eye.copy(eye);
-    kept.asked = near;
-    kept.near = clear >= reach ? Number.POSITIVE_INFINITY : fitted;
-    kept.at = now;
-    return fitted;
-  }
-  private readonly uncutKept = { eye: new THREE.Vector3(Number.NaN), asked: 0, near: 0, at: 0 };
 
   /**
    * Draw each model at the level of detail its size on screen calls for. The model being
@@ -3683,65 +3493,21 @@ export class Stage {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;
     if (!w || !h) return;
-    this.fitPixels();
-    this.quality.rest(performance.now(), 3000); // (every target is made again: slow for a moment, and not the machine's pace)
+    this.pipe.fitPixels();
+    this.pipe.quality.rest(performance.now(), 3000); // (every target is made again: slow for a moment, and not the machine's pace)
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.refollow(); // a framing made for the old shape no longer fits
   }
 
-  /**
-   * The drawing's pixels for the canvas as it is: the screen's own, up to two a CSS pixel, times what the net under the
-   * frame rate allows (quality.ts: 1 on a machine that keeps up). The canvas keeps its place and size on the page.
-   */
-  private fitPixels(scale = this.pixelScale): void {
-    const w = this.canvas.clientWidth,
-      h = this.canvas.clientHeight;
-    if (!w || !h) return;
-    // a phone's GPU has four times the pixels to fill per inch and a fraction of the power
-    const coarse = matchMedia('(pointer: coarse)').matches;
-    const full = Math.min(window.devicePixelRatio, coarse ? 1.5 : 2, tier().pixelRatio);
-    this.quality.setFull(full);
-    this.pixelScale = scale;
-    this.renderer.setPixelRatio(full * scale);
-    this.renderer.setSize(w, h, false);
-    this.composer.setPixelRatio(this.renderer.getPixelRatio());
-    this.composer.setSize(w, h);
-    this.bloom.fit(w, h);
-    this.dirty = true;
-  }
-
-  /** The stars are points sized in the drawing's pixels: told when those change, or the sky does, so they keep their size on the screen. */
-  private sizeStars(sky: THREE.Scene): void {
-    const ratio = this.renderer.getPixelRatio();
-    if (this.starsFor.ratio === ratio && this.starsFor.sky === sky) return;
-    this.starsFor = { ratio, sky };
-    sky.traverse((o) => {
-      const uniform = ((o as THREE.Points).material as THREE.ShaderMaterial | undefined)?.uniforms?.uPixel;
-      if ((o as THREE.Points).isPoints && uniform) uniform.value = ratio;
-    });
-  }
-
-  /**
-   * For the diagnostics readout: how fast the loop is turning over and what a drawn frame costs.
-   * `fps` is the loop (what motion would get); `drawn` is how many of those frames were actually
-   * drawn, since a still view is not redrawn.
-   */
+  /** For the diagnostics readout: how fast the loop is turning over and what a drawn frame costs (stage/pipeline.ts). */
   stats(): { fps: number; drawn: number; ms: number; triangles: number; calls: number; levels: number[]; scale: number } {
-    const now = performance.now();
-    const seconds = Math.max(1e-3, (now - this.statsAt) / 1000);
-    const out = {
-      fps: this.frames / seconds,
-      drawn: this.drawn / seconds,
-      ms: this.frames ? this.work / this.frames : 0,
-      triangles: this.renderer.info.render.triangles,
-      calls: this.renderer.info.render.calls,
-      levels: this.staged.map((s) => s.shownLevel),
-      scale: this.pixelScale,
-    };
-    this.statsAt = now;
-    this.frames = this.drawn = this.work = 0;
-    return out;
+    return this.pipe.stats(this.staged.map((s) => s.shownLevel));
+  }
+
+  /** The near and far planes fitted to what is there, every frame (stage/pipeline.ts: `Pipeline.fitDepth`). */
+  private fitDepth(dt: number): void {
+    this.pipe.fitDepth(dt);
   }
 
   private frame(): void {
@@ -3758,26 +3524,13 @@ export class Stage {
       this.renderer.shadowMap.needsUpdate = true;
       this.shadowsOwed = false;
     }
-    const drawn = this.drawn;
+    const drawn = this.pipe.drawn;
     this.step();
-    this.frames++;
-    this.work += performance.now() - began;
-    // the pace of frames drawn one after another is what the net under the frame rate goes by (quality.ts)
-    // A view that is still is always drawn at full: the frame after the last one that moved is drawn again at the
-    // screen's own pixels, and the lowered resolution comes back only once it has been moving again for a few frames.
-    if (this.drawn === drawn) {
-      this.run = 0;
-      this.quality.idle();
-      if (this.pixelScale < 1) this.fitPixels(1);
-    } else {
-      if (this.run > 0 && this.quality.frame(began - this.frameAt, began)) this.run = Math.min(this.run, 3); // (taken up below)
-      this.run++;
-      if (this.run > 3 && this.pixelScale !== this.quality.scale) this.fitPixels(this.quality.scale);
-    }
-    this.frameAt = began;
+    this.pipe.counted(began);
+    this.pipe.paced(began, this.pipe.drawn !== drawn);
     // (after the frame's own work is counted: a frame that drew nothing has time to spare, one that took under half its time has a little)
     if (this.treesOwed.size) {
-      if (this.drawn === drawn) this.growTrees(6, true);
+      if (this.pipe.drawn === drawn) this.growTrees(6, true);
       else if (performance.now() - began < 8) this.growTrees(1.5, false);
     }
   }
@@ -3845,11 +3598,9 @@ export class Stage {
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
     this.dirty = false;
-    this.ink.range(this.camera);
-    this.renderer.info.reset();
-    this.drawn++;
+    this.pipe.begin();
     this.setting.view?.(this.camera);
-    this.sizeStars(backdrop.scene);
+    this.pipe.sizeStars(backdrop.scene);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
     const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
     this.shadowCache.figure = walking;
@@ -3863,14 +3614,10 @@ export class Stage {
       this.onLean(null);
     }
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
-    // (a frozen stage keeps nothing of an earlier frame: the clouds' blend with their last frames is the one thing that would)
-    (this.clouds as { frozen?: boolean }).frozen = this.frozen;
-    this.bloom.before();
     uShadowFade.value.x = 1 - this.fineShare; // (shared by every stage's materials: each sets it for its own draw)
-    this.origin.draw(() => this.composer.render(this.sinceDrawn));
+    this.pipe.draw(this.sinceDrawn, this.frozen);
     this.far.after();
     unshake?.();
-    if (this.composer.readBuffer !== this.frameTarget) this.composer.swapBuffers(); // (the ink pass changed them over: see the constructor)
     this.sinceDrawn = 0;
   }
 

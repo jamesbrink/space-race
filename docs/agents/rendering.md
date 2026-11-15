@@ -68,7 +68,7 @@ different one per pixel per frame. Three things stop it, and all three must stay
   the pad and is millimetres at the ground from 20 km up (with the plane 15 m from a free camera up there, one step
   was 1.6 m and the pad's slab fought the ground under it). Do not give the camera a fixed near plane, and do not
   guess it from what the camera turns about. What is asked: the ground or the sea under the eye; the flown vehicle,
-  what it has shed and its parachutes; and, in `Stage.uncut`, the nearest solid surface (the walker's `Solids`) and
+  what it has shed and its parachutes; and, in `Pipeline.uncut` (stage/pipeline.ts), the nearest solid surface (the walker's `Solids`) and
   the nearest plant (`Setting.plantsClear`), with the plane's corner kept short of them, so what the camera passes
   is not sliced (`pnpm test:camera`, "the near plane cuts nothing"); a mesh with no hierarchy yet is taken as its box
   and its hierarchy is made in time to spare (`growTrees`), never in the frame that first comes near it (the capsule's

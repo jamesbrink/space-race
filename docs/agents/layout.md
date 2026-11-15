@@ -107,7 +107,9 @@ src/
   deck/orbitdeck.ts                   the deck's orbital kind (`Flight.orbital`): the stages, the events and what the hands could reach, from the record
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
-  viewer/stage.ts                     renderer, camera, picking, post-processing, depth range
+  viewer/stage.ts                     the stage: one scene of a flight's models in their setting, the camera, the clock; it owns the pieces below and keeps
+                                      the one API the page uses (`window.sr.stage`)
+  viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there
   viewer/pick.ts                      what a ray meets, through each mesh's bounding volume hierarchy
   viewer/outline.ts                   the line round what is hovered or selected (three's OutlinePass from its mask on)
   viewer/overlay.ts                   what is drawn over the flight that is no part of it (the predicted path), in a pass of its own
