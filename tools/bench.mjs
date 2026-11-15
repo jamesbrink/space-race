@@ -430,16 +430,16 @@ function inPage(DT) {
   own();
 
   // the composer's passes, by what they are (the build has no names left)
-  const passes = st.pipe.composer.passes.map((p, i) => {
+  const passes = (st.pipe ?? st).composer.passes.map((p, i) => {
     let name = `pass${i}`;
-    if (p === st.pipe.backdropPass) name = 'sky';
-    else if (p === st.pipe.clouds) name = 'clouds';
-    else if (p === st.pipe.clouds.mark) name = 'depth';
-    else if (p === st.pipe.ink) name = 'ink';
-    else if (p === st.pipe.outline) name = 'outline';
+    if (p === (st.pipe ?? st).backdropPass) name = 'sky';
+    else if (p === (st.pipe ?? st).clouds) name = 'clouds';
+    else if (p === (st.pipe ?? st).clouds.mark) name = 'depth';
+    else if (p === (st.pipe ?? st).ink) name = 'ink';
+    else if (p === (st.pipe ?? st).outline) name = 'outline';
     else if (p.scene === st.scene && 'clearDepth' in p && 'overrideMaterial' in p) name = 'scene';
     else if (p === st.bloom || 'bloomTintColors' in p || 'nMips' in p) name = 'bloom';
-    else if (i === st.pipe.composer.passes.length - 1) name = 'output';
+    else if (i === (st.pipe ?? st).composer.passes.length - 1) name = 'output';
     else if (p.scene === st.scene || 'veils' in p || i === 4) name = i === 4 ? 'exhaust' : `effect${i}`;
     return { p, name };
   });
@@ -474,11 +474,11 @@ function inPage(DT) {
   /** One frame, by hand. Returns its cost in ms with the GPU finished, and whether anything was drawn. */
   const frame = (force) => {
     if (force) st.dirty = true;
-    const drawn = st.pipe.drawn;
+    const drawn = (st.pipe ?? st).drawn;
     const t = now();
     st.frame();
     sync();
-    return { ms: now() - t, drew: st.pipe.drawn !== drawn };
+    return { ms: now() - t, drew: (st.pipe ?? st).drawn !== drawn };
   };
   const still = () => {
     const m = st.camera.matrixWorld.elements;
@@ -492,7 +492,7 @@ function inPage(DT) {
       frame(true);
       await turn();
       const at = still();
-      rest = at === last && !st.picker.treesOwed?.size ? rest + 1 : 0;
+      rest = at === last && !(st.picker ?? st).treesOwed?.size ? rest + 1 : 0;
       last = at;
     }
     return rest >= 8;
@@ -539,7 +539,7 @@ function inPage(DT) {
             max.max(p);
           }
     });
-    const ray = st.picker.raycaster;
+    const ray = (st.picker ?? st).raycaster;
     const down = new V3(0, -1, 0);
     for (let i = 1; i < 12; i++)
       for (let j = 1; j < 12; j++) {
@@ -914,7 +914,7 @@ function inPage(DT) {
       own();
       if (st.quality && st.quality.scale < 1) {
         st.quality.reset();
-        st.pipe.fitPixels(1);
+        (st.pipe ?? st).fitPixels(1);
       }
       sr.clock.pause();
       return { gaps, heap, least };
