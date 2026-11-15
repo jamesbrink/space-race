@@ -2,7 +2,7 @@
 stood on the morning of 11 August 1962.
 
 Run headless:
-    pnpm model:vostok-3        (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model vostok-3        (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The whole stack. The spacecraft type is ../../../vehicles/vostok_3ka.py and the launch vehicle
 ../../../vehicles/vostok_8k72k/; this file chooses what this flight's carried, which the record

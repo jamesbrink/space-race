@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 20, "Faith 7", on Atlas 130-D, as launched on Mercury-Atlas 9 (15 May 1963).
 
 Run headless:
-    pnpm model:ma-9            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model ma-9            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. No. 20 was the capsule of the "manned
 one-day mission" and the most changed of the six that flew with a man, so this is the script with the most of its

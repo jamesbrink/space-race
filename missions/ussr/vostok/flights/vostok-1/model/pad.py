@@ -1,4 +1,4 @@
-"""Site 1 at Tyuratam as it stood for Vostok 1, on the morning of 12 April 1961. Run with `pnpm model:vostok-1`.
+"""Site 1 at Tyuratam as it stood for Vostok 1, on the morning of 12 April 1961. Run with `pnpm model vostok-1`.
 
 The place itself is ../../../sites/site_1.py, shared with the Vostoks that followed. The vehicle and the
 pilot are vehicle.py and crew.py beside this file; the viewer hangs the vehicle in the supports.

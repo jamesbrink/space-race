@@ -4,7 +4,7 @@ so nothing is built there). The place itself, not any flight's: Vostok 2 (6 Augu
 What the CIA found added by August (PIC/JR-8/61, pp. 13-14: the double fence taken 1,300 ft north round Site 51, two
 new buildings by the check-out shop) is not built: unmeasured (../../site-1.md, "What stood when").
 
-Run with `pnpm model:site-1`. A later state of the place is another script beside this one, named for its
+Run with `pnpm model site-1`. A later state of the place is another script beside this one, named for its
 date, giving that date to the same builders: each thing they build says when it stood (sitelib.stood), so what
 had gone or not yet come is left out. The pieces are the modules of the package above this folder, put
 together by ../../site_1.py; ../../site-1.md records every dimension, its confidence, what stood when, and what

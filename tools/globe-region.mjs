@@ -1,8 +1,9 @@
 // Bakes a site's region (types.ts: RegionDef) for the globe (viewer/globe.ts): where the land is,
 // from OpenStreetMap's coastline and its larger lakes, as signed distance fields on two planes.
-//   node tools/globe-region.mjs <site module> [--from <dir>]
+//   node tools/globe-region.mjs [<site module> [--from <dir>]]
 //
-// <site module> is a sites/<site>.ts exporting a SiteDef with a `region`. <dir> holds
+// <site module> is a sites/<site>.ts exporting a SiteDef with a `region`; without one, every such module under
+// missions/*/*/sites/ is baked in turn. <dir> holds
 // coastline.json and water.json as the Overpass queries below return them; without it they are
 // fetched into a temporary folder. Writes public/globe/<name>.near.png, <name>.wide.png and
 // <name>.json (the planes, for the viewer).
@@ -20,7 +21,8 @@
 //
 // The data is OpenStreetMap's, © OpenStreetMap contributors, under the Open Database Licence
 // (docs/sources.md); the maps baked from it are a produced work and say so.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -54,9 +56,22 @@ const OVERPASS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
+/** The SiteDef with a region a module exports, if it does. */
+const siteIn = async (path) =>
+  Object.values(await import(pathToFileURL(resolve(path)).href)).find((v) => v && typeof v === 'object' && v.region);
 const sitePath = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--from');
-if (!sitePath) throw new Error('usage: node tools/globe-region.mjs <sites/<site>.ts> [--from <dir>]');
-const site = Object.values(await import(pathToFileURL(resolve(sitePath)).href)).find((v) => v && typeof v === 'object' && v.region);
+if (!sitePath) {
+  if (opt('from', null)) throw new Error('usage: node tools/globe-region.mjs [<sites/<site>.ts> [--from <dir>]]');
+  // every site that has a region, each in a process of its own
+  for (const path of globSync('missions/*/*/sites/*.ts', { cwd: root }).sort()) {
+    if (!(await siteIn(join(root, path)))) continue;
+    console.log(path);
+    const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), join(root, path)], { stdio: 'inherit' });
+    if (r.status !== 0) process.exit(r.status ?? 1);
+  }
+  process.exit(0);
+}
+const site = await siteIn(sitePath);
 if (!site) throw new Error(`${sitePath}: no SiteDef with a region`);
 const region = site.region;
 

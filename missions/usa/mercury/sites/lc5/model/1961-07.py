@@ -1,7 +1,7 @@
 """Launch Complex 5/6 as it stood on 21 July 1961: the blockhouse, pad 6, and what lay between them and pad 5.
 The place itself, not any flight's: Mercury-Redstone 4 shows it round its pad.
 
-Run with `pnpm model:lc-5`. The same builders as 1961-05.py, given this date: each thing they build says when it
+Run with `pnpm model lc-5`. The same builders as 1961-05.py, given this date: each thing they build says when it
 stood (sitelib.stood). Nothing here is known to have been built or taken away between 5 May and 21 July, so what
 is built is what May's state has; what differs is what the record says of it. May's state was read off July's
 photographs and assumed for May; this is the month they were taken in, so the gantry at pad 6 (which had flown its

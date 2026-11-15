@@ -3,7 +3,7 @@ pad, what stood round the flame pit's rim, and the double fence with its lights 
 not any flight's: Vostok 1 (12 April 1961) shows it round its pad, and so can anything else that flew from
 here that spring.
 
-Run with `pnpm model:site-1`. A later state of the place is another script beside this one, named for its
+Run with `pnpm model site-1`. A later state of the place is another script beside this one, named for its
 date, giving that date to the same builders: each thing they build says when it stood (sitelib.stood), so what
 had gone or not yet come is left out. The pieces are the modules of the package above this folder, put
 together by ../../site_1.py; ../../site-1.md records every dimension, its confidence, what stood when, and what

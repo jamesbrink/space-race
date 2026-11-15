@@ -1,4 +1,4 @@
-"""Alan Shepard, suited for Mercury-Redstone 3. Run with `pnpm model:mr-3`.
+"""Alan Shepard, suited for Mercury-Redstone 3. Run with `pnpm model mr-3`.
 
 The suit is ../../../crew/mark_iv_suit.py, shared with MR-4 (whose crew.py asks for that flight's: mark_iv_suit.MR_4). The
 vehicle and the pad are vehicle.py and pad.py beside this file.

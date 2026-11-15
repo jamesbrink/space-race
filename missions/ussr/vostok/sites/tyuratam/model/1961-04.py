@@ -1,7 +1,7 @@
 """What of the range beyond Site 1's fences stands over the land from its pad, as of April 1961: the assembly and
 test building of Site 2, two kilometres off. The range's own, not any flight's, and in Site 1's frame.
 
-Run with `pnpm model:tyuratam`. It is a model of its own, and not part of Site 1's place, because of where it is: the
+Run with `pnpm model tyuratam`. It is a model of its own, and not part of Site 1's place, because of where it is: the
 place's coarse shadow map is laid over the box of what the place holds, and a building 2 km to the west would take
 it off the pad. The viewer fetches it as scenery round the site (../../site-1.ts `around`, src/viewer/around.ts) and
 draws it in full at any distance: its two coarser levels are built and measured (1961-04.lod.json, and

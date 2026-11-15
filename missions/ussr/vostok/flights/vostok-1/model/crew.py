@@ -1,4 +1,4 @@
-"""Yuri Gagarin, suited for Vostok 1. Run with `pnpm model:vostok-1`.
+"""Yuri Gagarin, suited for Vostok 1. Run with `pnpm model vostok-1`.
 
 The suit is ../../../crew/sk_1.py, shared with the Vostok flights that followed. The spacecraft is
 vehicle.py beside this file.

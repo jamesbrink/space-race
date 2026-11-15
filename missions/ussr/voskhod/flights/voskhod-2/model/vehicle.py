@@ -2,7 +2,7 @@
 on the morning of 18 March 1965, the Volga airlock folded on its side under the fairing's blister.
 
 Run headless:
-    pnpm model:voskhod-2       (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model voskhod-2       (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The whole stack. The spacecraft is ../../../vehicles/voskhod.py built as the 3KD (a Vostok 3KA altered: what
 was the Vostok's is imported from ../../../../vostok/vehicles/vostok_3ka.py) and the launch vehicle

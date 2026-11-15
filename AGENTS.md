@@ -30,26 +30,9 @@ pnpm lint             # Biome (TS, JS, CSS, JSON) and Ruff (Python)
 pnpm format           # rewrite files in place: Biome and Ruff (`nix fmt` does the same, plus Nix)
 pnpm typecheck        # tsc --noEmit, strict
 pnpm build            # typecheck, then a production bundle in dist/
-pnpm model:mr-3       # rebuild Freedom 7's GLBs (vehicle, pad, crew) from their Blender scripts
-pnpm model:mr-4       # rebuild Liberty Bell 7's GLBs (vehicle, pad)
-pnpm model:ma-6       # rebuild Friendship 7's vehicle: spacecraft No. 13 on Atlas 109-D
-pnpm model:ma-7       # rebuild Aurora 7's vehicle: spacecraft No. 18 on Atlas 107-D
-pnpm model:ma-8       # rebuild Sigma 7's vehicle: spacecraft No. 16 on Atlas 113-D
-pnpm model:ma-9       # rebuild Faith 7's vehicle: spacecraft No. 20 on Atlas 130-D
-pnpm model:vostok-2   # rebuild Vostok 2's vehicle
-pnpm model:gt-3       # rebuild Gemini-Titan 3's vehicle: spacecraft No. 3 on GLV-3 (a Titan II)
-pnpm model:vostok-3   # rebuild Vostok 3's vehicle
-pnpm model:vostok-4   # rebuild Vostok 4's vehicle
-pnpm model:vostok-5   # rebuild Vostok 5's vehicle
-pnpm model:vostok-6   # rebuild Vostok 6's vehicle
-pnpm model:voskhod-1  # rebuild Voskhod 1's vehicle: 3KV No. 3 on its 11A57
-pnpm model:voskhod-2  # rebuild Voskhod 2's vehicle: 3KD No. 4, the airlock folded under the fairing's blister
-pnpm model:lc-5       # rebuild the place round the pad, each of its dated states (the site's own models)
-pnpm model:site-1     # rebuild the place round Site 1's pad at Tyuratam
-pnpm model:tyuratam   # rebuild what stands beyond Site 1's fences: Site 2's assembly building (built; the viewer does not fetch it yet)
-pnpm model:cape       # rebuild the neighbouring launch complexes (sites/cape.md)
-pnpm models           # rebuild every flight's GLBs
-pnpm globe            # bake public/globe/ again; pnpm globe:region bakes the site's region; pnpm globe:weather each flight's day's weather map
+pnpm model <id>       # rebuild one flight's or site's GLBs from its Blender scripts (mr-3, vostok-2, lc-5, site-1 ...; no id lists them)
+pnpm models           # rebuild every flight's and site's GLBs
+pnpm globe            # bake public/globe/ again; pnpm globe:region every site's region; pnpm globe:weather every flight's day's weather map
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
@@ -76,7 +59,7 @@ in `flight.ts`. The GLBs are committed, so CI needs no Blender.
 
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
 It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful flags on
-`node tools/build-model.mjs <flight>`: `--only pad` builds one model, `--preview <dir>` also writes
+`pnpm model <id>`: `--only pad` builds one model, `--preview <dir>` also writes
 EEVEE stills (the quick way to look at geometry without the browser), `--detail 0.3 --out-dir <dir>`
 builds a lower level of detail somewhere else. Blender runs with `--factory-startup`, so no user
 add-on or preference reaches a model.
@@ -188,14 +171,14 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
    `flight.ts` from it, and state the computed Sun and Moon in the flight's README. Record the weather
    it stood under in a `weather.ts` beside `flight.ts` (types.ts: `DayWeather`: each layer of cloud, the
    wind, the visibility, at the station and hour nearest liftoff, each figure with its confidence and
-   source), set `weather` from it and bake its map (`pnpm globe:weather`, which lists the flights): the
+   source), set `weather` from it and bake its map (`pnpm globe:weather`, which finds every flight with a weather.ts): the
    site's sky is drawn from it ([rendering.md](docs/agents/rendering.md), "The weather is a day's").
    Without one the flight stands under its site's default sky, which is an estimate.
 2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
    the `node` fields in `flight.ts`. +Z is up in Blender and becomes +Y in the viewer.
 3. Give each part a `summary`, a `detail` and a few `facts`. Write for someone choosing what to
    look at: what it is, why it is the way it is, one thing they would not have guessed.
-4. Append the flight to `missions/index.ts` and add a `model:<flight>` script to `package.json`.
+4. Append the flight to `missions/index.ts` (`pnpm model <flight>` finds its scripts by itself).
    A flight with only a vehicle (one model, `backdrop: 'studio'`) is complete enough to ship: it
    is in the Gallery, and its Launch site and Fly light up as they are built
    ([gallery.md](docs/agents/gallery.md)).

@@ -1,9 +1,13 @@
 // Runs a flight's Blender scripts headless: each model/<name>.py becomes
 // public/models/<nation>/<programme>/<flight>/<name>.glb. A place's own models are built the same
 // way from missions/<nation>/<programme>/sites/<site>/model/<name>.py.
-//   node tools/build-model.mjs usa/mercury/mr-3-freedom-7 [--only pad] [--preview <dir>]
-//   node tools/build-model.mjs usa/mercury/sites/lc5 [--only 1961-05]
+//   node tools/build-model.mjs                                  lists the targets
+//   node tools/build-model.mjs mr-3 [--only pad] [--preview <dir>]
+//   node tools/build-model.mjs lc-5 [--only 1961-05]
 //   node tools/build-model.mjs --all
+// A target is named by its id (usa/mercury/mr-3-freedom-7, usa/mercury/sites/lc5), its path under missions/
+// (usa/mercury/flights/mr-3-freedom-7), its folder's name (mr-3-freedom-7, lc5), or the start of that name
+// before a dash (mr-3), dashes optional (lc-5, site-1). `pnpm model <target>` runs this.
 //   node tools/build-model.mjs --all --detail 0.3 --out-dir <dir>    a lower level of detail, written elsewhere
 // Blender is found at $BLENDER, on PATH, or in /Applications (macOS).
 import { spawnSync } from 'node:child_process';
@@ -52,13 +56,34 @@ if (detail && !outDir) {
   process.exit(2);
 }
 if (!args.length) {
-  console.error(
-    'usage: build-model.mjs <nation>/<program>/<flight> | --all   [--only <name>] [--preview <dir>] [--detail <0..1> --out-dir <dir>]',
-  );
+  console.log('usage: build-model.mjs <target> ... | --all   [--only <name>] [--preview <dir>] [--detail <0..1> --out-dir <dir>]');
+  console.log(`targets:\n  ${allFlights().join('\n  ')}`);
+  process.exit(0);
+}
+
+/** The target a name given on the command line means: see the header. */
+function resolveTarget(name) {
+  const all = allFlights();
+  const id = name
+    .replace(/^missions\//, '')
+    .replace(/\/flights\//, '/')
+    .replace(/\/$/, '');
+  if (all.includes(id)) return id;
+  const bare = (s) => s.replaceAll('-', '');
+  const leaf = (t) => t.split('/').at(-1);
+  for (const match of [(t) => leaf(t) === id, (t) => leaf(t).startsWith(`${id}-`), (t) => bare(leaf(t)) === bare(id)]) {
+    const found = all.filter(match);
+    if (found.length === 1) return found[0];
+    if (found.length > 1) {
+      console.error(`${name} could be any of: ${found.join(', ')}`);
+      process.exit(2);
+    }
+  }
+  console.error(`no target ${name}; the targets are:\n  ${all.join('\n  ')}`);
   process.exit(2);
 }
 
-const targets = args.includes('--all') ? allFlights() : args;
+const targets = args.includes('--all') ? allFlights() : args.map(resolveTarget);
 
 /**
  * Every string in every flight's data. A build joins static meshes that share a material

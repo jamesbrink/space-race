@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 11, "Liberty Bell 7", as flown on Mercury-Redstone 4 (21 July 1961).
 
 Run headless:
-    pnpm model:mr-4            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model mr-4            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle. What No. 11 shared with No. 7 (the shield, the
 retropack, the recovery compartment, the antenna canister, the tower, the periscope's optics, the

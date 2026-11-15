@@ -1,4 +1,4 @@
-"""Virgil Grissom, suited for Mercury-Redstone 4 on 21 July 1961. Run with `pnpm model:mr-4`.
+"""Virgil Grissom, suited for Mercury-Redstone 4 on 21 July 1961. Run with `pnpm model mr-4`.
 
 The suit is ../../../crew/mark_iv_suit.py, the one module Mercury-Redstone 3's crew is built from: this script only
 says whose it is and of which day (`mark_iv_suit.MR_4`). What that changes is in ../../../crew/mark-iv-suit.md,

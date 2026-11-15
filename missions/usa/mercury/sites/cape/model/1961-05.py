@@ -1,7 +1,7 @@
 """The launch complexes round Complex 5/6 as they stood in May 1961: what a walker from pad 5 can reach.
 The Cape's own, not any flight's: Mercury-Redstone 3 (5 May 1961) shows them on its horizon.
 
-Run with `pnpm model:cape`. A later state is another script beside this one, named for its date. The
+Run with `pnpm model cape`. A later state is another script beside this one, named for its date. The
 pieces are the modules of the package above this folder, put together by ../../cape_1961.py;
 ../../cape.md records every dimension, its confidence, what stood when, and what is simplified.
 """

@@ -107,7 +107,7 @@ src/
   viewer/cloudnoise.worker.ts         makes those tiles off the page's thread
   viewer/around.ts                    what stands round a place beyond its own model (SiteDef.around: Site 2's assembly building; the Cape's neighbouring complexes), fetched as scenery at its levels of detail and set on the land
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places: the near ones a model of their own
-                                      (missions/usa/mercury/sites/cape/, `pnpm model:cape`), fetched and placed here; the far ones shapes made here
+                                      (missions/usa/mercury/sites/cape/, `pnpm model cape`), fetched and placed here; the far ones shapes made here
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
   viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed

@@ -310,7 +310,7 @@ established and the model's three are kept.
 ## The rest of the complex
 
 The place's own model, not any flight's: `lc5/model/1961-05.py` builds
-`public/models/usa/mercury/sites/lc5/1961-05.glb` (`pnpm model:lc-5`) from `lc_5.build_place(date)`,
+`public/models/usa/mercury/sites/lc5/1961-05.glb` (`pnpm model lc-5`) from `lc_5.build_place(date)`,
 and a flight names it as its `surroundings`. It is scenery in the pad's frame, which the viewer
 draws round the pad and does not let you pick. A later state of the place is another script beside
 that one, named for its date: see "What stood when".

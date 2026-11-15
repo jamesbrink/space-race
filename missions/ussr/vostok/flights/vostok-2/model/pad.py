@@ -1,4 +1,4 @@
-"""Site 1 at Tyuratam as it stood for Vostok 2, on the morning of 6 August 1961. Run with `pnpm model:vostok-2`.
+"""Site 1 at Tyuratam as it stood for Vostok 2, on the morning of 6 August 1961. Run with `pnpm model vostok-2`.
 
 The place itself is ../../../sites/site_1.py, Vostok 1's sixteen weeks before: this script only names the day, and
 each thing the site's modules build says whether it stood then (sitelib.stood). What that changes is in

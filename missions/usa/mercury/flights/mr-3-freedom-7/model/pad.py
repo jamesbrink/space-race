@@ -1,4 +1,4 @@
-"""Launch Complex 5 as it stood for Mercury-Redstone 3. Run with `pnpm model:mr-3`.
+"""Launch Complex 5 as it stood for Mercury-Redstone 3. Run with `pnpm model mr-3`.
 
 The pad itself is ../../../sites/lc_5.py, shared with MR-4. The vehicle and the pilot are
 vehicle.py and crew.py beside this file; the viewer stands them on the pad.

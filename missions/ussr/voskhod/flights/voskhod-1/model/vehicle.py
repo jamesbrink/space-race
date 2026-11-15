@@ -2,7 +2,7 @@
 on the morning of 12 October 1964.
 
 Run headless:
-    pnpm model:voskhod-1       (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model voskhod-1       (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The whole stack. The spacecraft is ../../../vehicles/voskhod.py (which builds a Vostok 3KA altered, importing
 what was the Vostok's from ../../../../vostok/vehicles/vostok_3ka.py) and the launch vehicle

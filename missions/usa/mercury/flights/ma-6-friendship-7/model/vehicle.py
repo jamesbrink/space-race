@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 13, "Friendship 7", on Atlas 109-D, as launched on Mercury-Atlas 6 (20 February 1962).
 
 Run headless:
-    pnpm model:ma-6            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model ma-6            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. What No. 13 shared with the
 Redstone capsules (the retropack, the recovery compartment, the antenna canister, the tower, the periscope's

@@ -1,7 +1,7 @@
 """Gemini spacecraft No. 3 on Gemini Launch Vehicle 3, as launched on Gemini-Titan 3 (23 March 1965).
 
 Run headless:
-    pnpm model:gt-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model gt-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. The spacecraft is
 ../../../vehicles/gemini_spacecraft.py (its skins in gemini_shell.py, its crew station in gemini_cabin.py) and the

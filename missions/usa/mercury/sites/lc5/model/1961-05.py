@@ -2,7 +2,7 @@
 and pad 5. The place itself, not any flight's: Mercury-Redstone 3 (5 May 1961) shows it round its
 pad, and so can anything else that flew from here that month.
 
-Run with `pnpm model:lc-5`. A later state of the place is another script beside this one, named
+Run with `pnpm model lc-5`. A later state of the place is another script beside this one, named
 for its date, giving that date to the same builders: each thing they build says when it stood
 (sitelib.stood), so what had gone or not yet come is left out. The pieces are the modules of the
 package above this folder, put together by ../../lc_5.py; ../../lc-5.md records every dimension,

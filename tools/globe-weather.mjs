@@ -1,8 +1,9 @@
 // Bakes the weather round a site on a flight's day (src/viewer/weather.ts: weatherAt) for the clouds seen from
 // height (viewer/clouds.ts, viewer/globe.ts): how much of the sky the cumulus cover, the high cloud, the middle
 // decks, on the site's own horizontal plane.
-//   node tools/globe-weather.mjs <flight module> [<flight module> ...]
+//   node tools/globe-weather.mjs [<flight module> ...]
 //
+// Without a module, every flight with a weather.ts beside its flight.ts is baked.
 // <flight module> is a flights/<flight>/flight.ts exporting a Flight with a `site` that has a `region` and a
 // `weather` of its own; its map is written to public/globe/<region>.<date>.weather.png (the date its launch's, UTC;
 // red: cumulus cover; green: high cloud; blue: the middle deck; alpha: land). One map for each region and day:
@@ -10,7 +11,7 @@
 // (public/globe/land.*.png from tools/globe.mjs, relief.*.png from tools/globe-surface.mjs): bake those first.
 // Everything in the map is estimated but what the flight's record says (its `weather`: the high cloud over the
 // site, and `beyond`): see weather.ts.
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dayOf } from '../src/viewer/day.ts';
@@ -21,8 +22,12 @@ import { gaussianRadius } from '../src/world/surface.ts';
 import { readGreyPng, writeRgbPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const flights = process.argv.slice(2);
-if (!flights.length) throw new Error('usage: node tools/globe-weather.mjs <flights/<flight>/flight.ts> ...');
+const given = process.argv.slice(2);
+const flights = given.length
+  ? given
+  : globSync('missions/*/*/flights/*/weather.ts', { cwd: root })
+      .sort()
+      .map((w) => join(root, dirname(w), 'flight.ts'));
 
 /** The cube's faces as tools/globe.mjs writes them: major axis, s axis, t axis. */
 const FACES = [

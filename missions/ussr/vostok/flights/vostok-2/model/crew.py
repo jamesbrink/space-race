@@ -1,4 +1,4 @@
-"""Gherman Titov, suited for Vostok 2. Run with `pnpm model:vostok-2`.
+"""Gherman Titov, suited for Vostok 2. Run with `pnpm model vostok-2`.
 
 The suit is ../../../crew/sk_1.py, Vostok 1's, worn again: the SK-1 was made to each man's measure, and nothing read
 says how Titov's differed from Gagarin's but the man in it. His height was not found (163 cm is printed on biography

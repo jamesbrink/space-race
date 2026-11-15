@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 7, "Freedom 7", as flown on Mercury-Redstone 3 (5 May 1961).
 
 Run headless:
-    pnpm model:mr-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model mr-3            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 This is the flight's vehicle: spacecraft and launch vehicle. Its pad and its pilot are
 pad.py and crew.py beside it.

@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 18, "Aurora 7", on Atlas 107-D, as launched on Mercury-Atlas 7 (24 May 1962).
 
 Run headless:
-    pnpm model:ma-7            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model ma-7            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. What No. 18 shared with every
 capsule so far (the retropack, the recovery compartment, the antenna canister, the tower, the periscope's

@@ -2,7 +2,7 @@
 morning of 16 June 1963, two days after Vostok 5 left the same pad.
 
 Run headless:
-    pnpm model:vostok-6        (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model vostok-6        (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The whole stack. The spacecraft type is ../../../vehicles/vostok_3ka.py and the launch vehicle
 ../../../vehicles/vostok_8k72k/; this file chooses what this flight's carried. The record

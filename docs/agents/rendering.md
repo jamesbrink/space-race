@@ -662,7 +662,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   - **Everything else is estimated and says so**: `viewer/weather.ts` builds a plausible morning from the land
     map, the relief and the day's wind; no chart or reanalysis of any day has been read.
   - **One map is baked for each region and day** (`public/globe/<region>.<date>.weather.png`, `pnpm
-    globe:weather`, which takes the flights): not one map with the record blended in as it is drawn, and not
+    globe:weather`, every flight with a weather.ts): not one map with the record blended in as it is drawn, and not
     parameters to the shaders. weather.ts says why: a day's weather is not another's with a number changed, a
     stretch of country is a shape on a map, and a map a day leaves every shader as it was (one texture, nothing
     more for each pixel), so the first day's file and its pictures are what they were. Bake again after changing

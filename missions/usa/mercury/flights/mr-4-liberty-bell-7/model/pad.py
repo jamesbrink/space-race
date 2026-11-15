@@ -1,4 +1,4 @@
-"""Launch Complex 5 as it stood for Mercury-Redstone 4 on 21 July 1961. Run with `pnpm model:mr-4`.
+"""Launch Complex 5 as it stood for Mercury-Redstone 4 on 21 July 1961. Run with `pnpm model mr-4`.
 
 The pad itself is ../../../sites/lc_5.py, the one Mercury-Redstone 3 flew from eleven weeks before: this script
 only names the day, and each thing the site's modules build says whether it stood then (sitelib.stood). What that

@@ -1,7 +1,7 @@
 """Mercury spacecraft No. 16, "Sigma 7", on Atlas 113-D, as launched on Mercury-Atlas 8 (3 October 1962).
 
 Run headless:
-    pnpm model:ma-8            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
+    pnpm model ma-8            (or: blender -b -P <this file> -- --out <glb> [--preview DIR])
 
 The flight's vehicle: spacecraft and launch vehicle, as they left the pad. What No. 16 shared with every
 capsule so far (the retropack, the recovery compartment, the antenna canister, the tower, the periscope's
