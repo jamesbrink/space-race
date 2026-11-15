@@ -15,10 +15,11 @@ import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts
 import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { coast, fly, sampleAt } from '../src/sim/fly.ts';
-import { G0 } from '../src/world/bodies.ts';
+import { G0, P0 } from '../src/world/bodies.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
 import { add, angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
+import { vacuumOf } from '../src/sim/thrust.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -829,7 +830,13 @@ test('a throttled engine (a fixture) follows its lever within its range, burns i
   near(mass - s.mass, FLOW * 0.8 * 2, FLOW * TICK * 1.01, 'the flow is the thrust over g0 Isp: eight tenths of it');
   const main = v.sample(s).burning.find((m) => m.name === 'main').thrust;
   const sea = v.sample(until(v, v.start(), at(0.8), 0.02)).burning[0].thrust;
-  near(sea, 0.8 * TR.engine.thrust.value, 50, 'eight tenths of rated thrust at the pad (and 10 N for the pad’s few metres of height)');
+  // (eight tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
+  near(
+    sea,
+    0.8 * vacuumOf(TR.engine).value - TR.engine.exitArea.value * P0,
+    50,
+    'eight tenths of the vacuum thrust at the pad, less one atmosphere on the exit (and 10 N for the pad’s few metres of height)',
+  );
   assert.ok(main > sea, 'and the thinner air’s gain on top of it');
   s = v.tick(s, at(2));
   assert.equal(s.throttle, 1, 'no more than its most');

@@ -6,8 +6,8 @@
  *
  * Forces, in the flight's frame (world/earthframe.ts: of date, as the coast's), on a point that is the vehicle:
  *   gravity  world/orbit.ts's, with J2.
- *   thrust   each stage burning, `count` of them alike: its vacuum thrust less its nozzles' exit area times the air's
- *            pressure, times its throttle (`StageRecord.throttle`, rated where none is given). Flow is the vacuum
+ *   thrust   each stage burning, `count` of them alike: its throttle (`StageRecord.throttle`, rated where none is
+ *            given) of its vacuum thrust, less its nozzles' exit area times the air's pressure (sim/thrust.ts). Flow is the vacuum
  *            thrust over g0 times the vacuum specific impulse, times the throttle: so the engine's propellant flow is
  *            the same in air as out of it, and sea-level thrust and impulse come out as the record has them when the
  *            exit area is the one the two thrusts give (`exitAreaOf`). It burns from `ignition` to `cutoff`, or until
@@ -51,6 +51,7 @@ import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlo
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
+import { nozzleThrust } from './thrust.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -266,7 +267,7 @@ export const airOf =
 
 /**
  * The stack's engines and drag, as the record has them: one stage's thrust at an instant and a pressure (each `count`
- * alike, vacuum thrust less exit area times the air's pressure, times its throttle), one unit's propellant burned while
+ * alike, its throttle of its vacuum thrust less exit area times the air's pressure: sim/thrust.ts), one unit's propellant burned while
  * lit from `from` to `to`, and the drag area for the shape that flies at a record instant `at` (`ascent.drag`'s piece
  * for it) and a Mach number. The batch run and the live vehicle both fly on these.
  */
@@ -281,7 +282,7 @@ export function stackOf(o: OrbitalFlight) {
     throttle,
     burned: (i: number, from: number, t: number) => flows[i]! * integral(o.stages[i]!.throttle, from, t),
     thrust: (i: number, t: number, pressure: number) =>
-      o.stages[i]!.count * throttle(i, t) * (o.stages[i]!.thrust.vacuum.value - pressure * areas[i]!),
+      nozzleThrust(o.stages[i]!.count, o.stages[i]!.thrust.vacuum.value, throttle(i, t), areas[i]!, pressure),
     dragArea: (at: number, mach: number) => {
       const drag = a.drag.find((d) => at < d.until.value) ?? a.drag[a.drag.length - 1]!;
       return drag.area.value * along(drag.curve, mach);

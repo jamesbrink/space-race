@@ -10,8 +10,8 @@
  *
  * Forces
  *   gravity   the Earth's, with its oblateness (J2): bodies.ts's GM and WGS 84's figure.
- *   thrust    along the vehicle's axis: the sea-level thrust plus the nozzle's exit area times
- *             the fall in air pressure. The flow is thrust over (g0 times specific impulse), steady
+ *   thrust    along the vehicle's axis: sim/thrust.ts's one law, the vacuum thrust (derived from the
+ *             sea-level figure and the exit area) less the exit area times the air's pressure. The flow is thrust over (g0 times specific impulse), steady
  *             from liftoff to cutoff: no build-up, no tail-off.
  *   drag      half rho v^2 Cd A against the motion through the air, which turns with the Earth and
  *             moves over it with the day's winds aloft where the trajectory gives them (`winds`:
@@ -49,7 +49,8 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
-import { G0, P0 } from '../world/bodies.ts';
+import { G0 } from '../world/bodies.ts';
+import { nozzleThrust, vacuumOf } from './thrust.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -176,6 +177,7 @@ export function fly(
   const tr = trajectory;
   const cutoff = tr.engine.cutoff.value;
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
+  const vacuum = vacuumOf(tr.engine).value;
   const separation = tr.separation.at.value;
   const retroBurn = tr.retro.burn.value;
   const fires = tr.retro.fires.map((f) => f.value);
@@ -214,7 +216,7 @@ export function fly(
         (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
     let force: Vec3 = airDrag(wind, airspeed, air.density, area);
     if (phase === 'powered') {
-      const thrust = tr.engine.thrust.value + (P0 - air.pressure) * tr.engine.exitArea.value;
+      const thrust = nozzleThrust(1, vacuum, 1, tr.engine.exitArea.value, air.pressure);
       force = add(force, scale(axisAt(at), thrust));
     }
     // each retrorocket pushes against the motion over the ground, pitched below the level
@@ -439,9 +441,9 @@ export function chuteArea(chute: { full: number; was: number; at: number; fills:
   return chute.was + (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
 }
 
-/** The engine's thrust in air of a pressure, N: the sea-level thrust plus the nozzle's exit area times the fall in pressure. */
+/** The engine's thrust in air of a pressure, N (thrust.ts: its vacuum figure derived from the sea-level one, less exit area times pressure). */
 export function thrustIn(trajectory: Trajectory, pressure: number): number {
-  return trajectory.engine.thrust.value + (P0 - pressure) * trajectory.engine.exitArea.value;
+  return nozzleThrust(1, vacuumOf(trajectory.engine).value, 1, trajectory.engine.exitArea.value, pressure);
 }
 
 /** The flight at an instant between samples: the nearest kept sample at or before `t`. */

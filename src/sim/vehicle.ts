@@ -95,7 +95,7 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
-import { G0, P0 } from '../world/bodies.ts';
+import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
@@ -116,6 +116,7 @@ import {
   unturn,
 } from './rigid.ts';
 import { clamp } from '../util/math.ts';
+import { nozzleThrust, vacuumOf } from './thrust.ts';
 
 /** The integration step, s. */
 export const TICK = 0.01;
@@ -315,6 +316,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const body = tr.body;
   if (!body) throw new Error('this trajectory has no `body`: it can be flown by fly(), not steered');
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
+  const vacuum = vacuumOf(tr.engine).value;
   const frame = options.frame ?? LIFTOFF;
   const earth = frame.spin;
   const pad = geodeticToEcef(site);
@@ -538,7 +540,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     if (burning(s)) {
       // (throttled, the chamber's thrust goes with the lever and the nozzle's gain from thinner air is held as at full: no record says otherwise)
-      const thrust = tr.engine.thrust.value * s.throttle + (P0 - air.pressure) * tr.engine.exitArea.value;
+      const thrust = nozzleThrust(1, vacuum, s.throttle, tr.engine.exitArea.value, air.pressure);
       const c = s.controls;
       const [py, pz] = [-deflection * c.yaw, deflection * c.pitch];
       push([thrust * Math.sqrt(1 - py * py - pz * pz), thrust * py, thrust * pz], body.control.station.value - props.centre);
@@ -1103,7 +1105,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
           ? [
               {
                 name: 'main',
-                thrust: tr.engine.thrust.value * s.throttle + (P0 - atmosphere(here.height - seaLevel).pressure) * tr.engine.exitArea.value,
+                thrust: nozzleThrust(1, vacuum, s.throttle, tr.engine.exitArea.value, atmosphere(here.height - seaLevel).pressure),
               },
             ]
           : []),
