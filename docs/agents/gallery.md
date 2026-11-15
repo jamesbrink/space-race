@@ -140,8 +140,11 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
   the same top line, handle and sheet (fold.css). Names and heights are written on the picture, never under a panel
   or on each other, and are left out where there is no room.
 - **Left alone it shows itself** (after 40 s; not for a script or anyone who has asked for less motion): the camera
-  goes down the row, one vehicle at a time, a card saying what each was. Any touch ends it and the view goes back to
-  where it was left.
+  goes down the row, one vehicle at a time, a card saying what each was (the history's headline over the first part of
+  its story, or its own summary where the history has none; on each as long as that takes to read: `showCard`). Any
+  touch ends it and the view goes back to where it was left.
+- **The history's words are written once** (`ui/history.ts`, `history.css`): the card's story, name, crew, programme
+  and moments are the same markup and look as a flight's gallery's History tab.
 
 `sr.lineup` is the handle (`sr.lineup.view`, `.choose(id)`, `.step(1)`, `.whole()`); `sr.stage` its scene
 (`sr.stage.report()`, `.stats()`, `.pose(azimuth, elevation, distance, y, x)`). `tools/shot.mjs out.png lineup "" 1440
@@ -193,6 +196,13 @@ Nothing new is asked of a flight. Everything comes from what a vehicle already d
   "as modelled".
 - **Part by part**: N and B step through the parts in order; left alone, the gallery tours itself
   with the same shots the idle show takes of a section (`tour` in `demo.ts`).
+- **History** (the last tab; on a phone a tab of the sheet): what `missions/history.ts` tells of the flight
+  (`toldOf` in `lineup/row.ts`), written as the Lineup's card writes it (`ui/history.ts`): its headline, story and
+  firsts, why it has its name (with its source and confidence), the crew (each opens to their own story, dates and
+  name in its own script), the history's milestones that are this flight, and its programme (opens to why, how and
+  what it left). A flight the history has no story for has no History tab, never an empty one. Its **See it in the
+  Lineup** goes to `#lineup/<flight id>` (`formatLineup`) through `home.ts`, a step: Back comes into the gallery again.
+  The launch site and the flight deck say nothing of the history: the gallery is its home.
 
 It is always drawn in full (`Stage.fullDetail`: the coarser levels are not even fetched).
 

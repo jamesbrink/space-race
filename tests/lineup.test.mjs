@@ -21,12 +21,14 @@ import {
   keyFigures,
   layOutRow,
   nations,
+  showCard,
   SLOTS,
   sections,
   spacecraftNodes,
   timeAxis,
   timeline,
   tintOf,
+  toldOf,
 } from '../src/app/lineup/row.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -189,6 +191,52 @@ test('the timeline is the history’s milestones and, among them, every vehicle 
   assert.equal(axis.years[0], 1957);
   assert.ok(axis.at.every((t) => t >= 0 && t <= 1));
   assert.deepEqual(timeAxis([]).years, []);
+});
+
+test('a flight’s gallery is told what the history tells of it, and nothing of a flight it has no story for', () => {
+  for (const f of flights) {
+    const told = toldOf(f, history);
+    if (!STORIES[f.id]) {
+      assert.equal(told, null, `${f.id}: no story, so no History tab`);
+      continue;
+    }
+    assert.equal(told.story, STORIES[f.id]);
+    assert.equal(told.programme?.id ?? programmeOf(f.id), programmeOf(f.id), `${f.id}: its own programme`);
+    assert.ok(told.programme, `${f.id}: the history tells of its programme`);
+    assert.deepEqual(
+      told.crew.map((c) => c.name),
+      f.crew,
+      `${f.id}: its crew as the flight names them`,
+    );
+    for (const { name, person } of told.crew) assert.ok(person?.flights.includes(f.id), `${f.id}: ${name} has a story of their own`);
+    assert.ok(
+      told.milestones.every((m) => m.flight === f.id),
+      `${f.id}: only its own moments`,
+    );
+    assert.deepEqual(
+      told.milestones,
+      MILESTONES.filter((m) => m.flight === f.id),
+    );
+  }
+  // (a flight the history has never heard of: nothing, rather than an empty section)
+  assert.equal(toldOf({ id: 'test/fixture/vehicle-only', crew: [] }, history), null);
+  assert.equal(toldOf(flights[0]), null);
+});
+
+test('the show says of each what the history says first, and stays as long as it takes to read', () => {
+  for (const e of row) {
+    const card = showCard(e, 9);
+    assert.ok(card.dwell >= 9);
+    if (e.story) {
+      assert.equal(card.lead, e.story.headline, `${e.flight.id}: its headline`);
+      assert.ok(e.story.story.startsWith(card.text), `${e.flight.id}: the start of its story`);
+      assert.ok(!card.text.includes('\n'), `${e.flight.id}: one paragraph`);
+      const words = `${card.lead} ${card.text}`.split(/\s+/).length;
+      assert.ok(card.dwell >= words / 4, `${e.flight.id}: ${card.dwell} s for ${words} words`);
+    } else assert.deepEqual([card.lead, card.text], ['', e.flight.summary]);
+  }
+  const bare = { flight: { summary: 'Its own words.' }, story: null };
+  assert.deepEqual(showCard(bare, 9), { lead: '', text: 'Its own words.', dwell: 9 });
 });
 
 test('every flight’s key figures are its own: a spec or a check of that flight, with its confidence', () => {

@@ -10,6 +10,8 @@
   opacity: 0; transition: opacity 0.4s ease; }
 .callout-card p { font: 10px/1.4 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); }
 .callout-card h2 { margin: 5px 0 0; padding: 0; border: 0; font: 600 21px/1.15 var(--sans); letter-spacing: 0.01em; text-transform: none; color: var(--ink); }
+.callout-card strong { display: block; margin-top: 7px; font: 500 14.5px/1.35 var(--sans); color: var(--ink); text-wrap: balance; }
+.callout-card strong:empty { display: none; }
 .callout-card div { margin-top: 7px; font-size: 13.5px; line-height: 1.45; color: var(--dim); }
 .callout.showing .callout-card { opacity: 1; }
 .callout.showing.pointed :is(.callout-mark, line) { opacity: 0.9; }

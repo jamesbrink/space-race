@@ -65,7 +65,7 @@ src/
   app/front/front.css                 the front page's looks
   app/lineup.ts                       the Lineup's page (`#lineup`): every vehicle side by side; what the address says, what is chosen, what stands in the row, its keys, its show
   app/lineup/row.ts                   its arithmetic on the flights' data and the history: the row, the programmes' sections, the timeline, the key figures, where
-                                      each stands, which level of detail each is granted (pure, tested)
+                                      each stands, which level of detail each is granted, the show's card, what a gallery's History tab is told (pure, tested)
   app/lineup/scene.ts                 its scene: a renderer of its own, the row formed, each vehicle coarsest first and finest where the eye is, the camera's rigs, drawn only when it changes
   app/lineup/stand.ts                 one vehicle of the row: its levels and their fade, its spacecraft alone, its plate, its person, its own shadow drawn once
   app/lineup/hall.ts                  the hall it stands in: the gallery's studio made long, ruled in height, with a tape along the floor
@@ -77,7 +77,8 @@ src/
   app/mem.ts                          `?mem`: every GPU allocation the page makes, counted by bytes and by who asked (`srMem.report()`)
   app/demo.ts                         the idle show: the day run round, a tour of the flight, a callout on each thing
   ui/ui.ts  ui/style.css              the panels: one class that renders from the flight's data, and the page's looks
-  ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own; the switch between the places
+  ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own, its History tab; the switch between the places
+  ui/history.ts  ui/history.css       the history's words as the page writes them, the same on the Lineup's card and in a gallery's History tab: the story, the name, the crew, a programme, a moment
   ui/fold.ts  ui/fold.css  ui/sheet.ts  ui/sheet.css  a place on a phone (the gallery and the launch site alike): the control block docked in the sheet's View pane,
                                       the handle's button, the hint said once; the sheet a finger moves, and what the browser is told to leave alone
   ui/slider.ts                        every slider under a finger: a touch anywhere puts the thumb under it
@@ -219,7 +220,7 @@ tools/
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
-  history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks
+  history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks; a gallery's History tab and its way to the Lineup
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor

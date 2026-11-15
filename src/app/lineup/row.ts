@@ -186,6 +186,43 @@ export function crewOf(flight: Pick<Flight, 'id' | 'crew'>, people: readonly Per
   return out;
 }
 
+/** What the history tells of one flight, as its own gallery tells it (ui/history.ts): its story, who flew it, its programme and its moments. */
+export interface Told {
+  story: FlightStory;
+  crew: { name: string; person: Person | null }[];
+  /** Its programme's why, how and legacy, if the history tells them yet. */
+  programme: Programme | null;
+  /** The milestones that are this flight, in the history's order. */
+  milestones: Milestone[];
+}
+
+/** What the history tells of a flight; null while it has no story for it, so that nothing is shown rather than an empty section. */
+export function toldOf(flight: Pick<Flight, 'id' | 'crew'>, history: History = NONE): Told | null {
+  const story = history.stories[flight.id];
+  if (!story) return null;
+  return {
+    story,
+    crew: crewOf(flight, history.people),
+    programme: history.programmes.find((p) => p.id === programmeOf(flight.id)) ?? null,
+    milestones: history.milestones.filter((m) => m.flight === flight.id),
+  };
+}
+
+/** Words read in a second, by someone reading a card on a picture that moves. */
+const READ = 3.5;
+
+/**
+ * What the idle show's card says of one in the row: the history's headline over the first paragraph of its story (the
+ * whole of it is on its card when it is chosen), or, where the history has no story for it yet, its own summary. And
+ * how long the show stays on it, seconds: `least`, or as long as the words take to read.
+ */
+export function showCard(e: Pick<Entry, 'story' | 'flight'>, least: number): { lead: string; text: string; dwell: number } {
+  const lead = e.story?.headline ?? '';
+  const text = (e.story?.story.split(/\n\s*\n/)[0] ?? '').trim() || e.flight.summary;
+  const words = `${lead} ${text}`.split(/\s+/).filter(Boolean).length;
+  return { lead, text, dwell: Math.max(least, Math.ceil(words / READ)) };
+}
+
 /** A moment on the timeline: a milestone of the history, or a flight of the row the history has no milestone for. */
 export interface Moment {
   /** UTC: a day or an instant, as given. */

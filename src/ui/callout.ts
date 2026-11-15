@@ -9,6 +9,8 @@ export interface CalloutText {
   /** A word above the title: which section this is. */
   eyebrow: string;
   title: string;
+  /** A line under the title, before the text: what it was for (the history's headline). */
+  lead?: string;
   text: string;
 }
 
@@ -29,7 +31,7 @@ export class Callout {
     this.root.innerHTML = `
       <svg aria-hidden="true"><line /></svg>
       <i class="callout-mark" aria-hidden="true"></i>
-      <article class="callout-card" aria-live="polite"><p></p><h2></h2><div></div></article>
+      <article class="callout-card" aria-live="polite"><p></p><h2></h2><strong></strong><div></div></article>
       <p class="callout-clock"></p>`;
     parent.append(this.root);
     this.card = this.root.querySelector('.callout-card')!;
@@ -47,6 +49,7 @@ export class Callout {
     this.swap = window.setTimeout(() => {
       this.card.querySelector('p')!.textContent = text.eyebrow;
       this.card.querySelector('h2')!.textContent = text.title;
+      this.card.querySelector('strong')!.textContent = text.lead ?? '';
       this.card.querySelector('div')!.textContent = text.text;
       this.anchor = anchor;
       this.root.classList.add('showing');

@@ -11,7 +11,10 @@
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 //   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
 //                chosen, Back to the front page, Forward to the Lineup
+//   story        Freedom 7's gallery, its History tab (the story, why it has its name, the pilot's own story, at 1280
+//                and at 390 wide), See it in the Lineup (a step, Freedom 7 chosen there); Back to the gallery
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
+import { PEOPLE, STORIES } from '../missions/history.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -23,10 +26,10 @@ const V1 = 'ussr/vostok/vostok-1';
 const browser = await launch();
 
 const { check, failures } = checks();
-async function scenario(name, run) {
+async function scenario(name, run, viewport) {
   if (only && only !== name) return;
-  console.log(name);
-  const { page, errors, context } = await open(browser, null);
+  console.log(`${name}${viewport ? ` at ${viewport[0]}` : ''}`);
+  const { page, errors, context } = await open(browser, null, viewport ? { viewport } : {});
   try {
     await run(page);
     check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
@@ -192,6 +195,61 @@ await scenario('lineup', async (page) => {
   const out = await arrive(page, 'front');
   check(out.hash === '' && out.length === fwd.length, `its Space Race crumb: the front page (${out.length} entries)`);
 });
+
+/** Freedom 7's History tab: what it says, a person opened, and the way to the Lineup and Back. */
+async function story(page, narrow) {
+  const told = STORIES[MR3];
+  const pilot = PEOPLE.find((p) => p.flights.includes(MR3));
+  await page.goto(`${url}#${MR3}/gallery`);
+  const g = await arrive(page, 'gallery', MR3);
+  // (on a phone the tabs are the sheet's: its handle opens it first)
+  if (narrow) {
+    await page.locator('#gallery .handle-open').click();
+    await page.waitForTimeout(500);
+  }
+  await page.locator('#gallery [data-tab=History]').click();
+  await page.waitForTimeout(500);
+  const read = () =>
+    page.evaluate(() => {
+      const pane = document.querySelector('#gallery [data-pane=History]');
+      const seen = (el) => Boolean(el?.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+      const person = pane?.querySelector('[data-person]');
+      const box = pane?.getBoundingClientRect();
+      return {
+        open: seen(pane) && !pane.hidden,
+        tall: box ? box.height : 0,
+        headline: pane?.querySelector('.hist-headline')?.textContent ?? '',
+        story: pane?.querySelector('.hist-story')?.textContent ?? '',
+        named: pane?.querySelector('.hist-named')?.textContent ?? '',
+        dot: pane?.querySelector('.hist-named .conf')?.className ?? '',
+        person: person?.dataset.person ?? '',
+        expanded: person?.getAttribute('aria-expanded') ?? '',
+        bio: seen(person?.nextElementSibling) ? person.nextElementSibling.textContent : '',
+        go: seen(pane?.querySelector('[data-lineup]')),
+      };
+    });
+  const at = await read();
+  check(at.open && at.tall > 100, `History is open, and has room (${Math.round(at.tall)} px)`);
+  check(at.headline === told.headline, `its headline: ${at.headline}`);
+  check(at.story.includes(told.story.split('\n')[0].slice(0, 60)), 'its story');
+  check(Boolean(told.named) && at.named.includes(told.named.why.slice(0, 40)), 'why it has its name');
+  check(at.dot.includes(told.named.confidence), `with how sure that is (${at.dot})`);
+  check(at.person === pilot.id && at.expanded === 'false' && !at.bio, `its pilot, ${pilot.name}, closed`);
+  await page.locator('#gallery [data-pane=History] [data-person]').first().click();
+  const opened = await read();
+  check(opened.expanded === 'true' && opened.bio.includes(pilot.bio.slice(0, 50)), 'pressed, he opens to his own story');
+  check(opened.go, 'See it in the Lineup is there');
+  await page.locator('#gallery [data-pane=History] [data-lineup]').click();
+  const row = await arrive(page, 'lineup');
+  check(row.hash === `#lineup/${MR3}` && row.length === g.length + 1, `See it in the Lineup: the Lineup, and a step (${row.hash})`);
+  const card = await page.evaluate(() => document.querySelector('#ui [data-pane=Vehicle] .lu-big')?.textContent ?? '');
+  check(narrow || card === 'Freedom 7', `Freedom 7 is chosen there (${card || 'its card is in the sheet'})`);
+  await page.goBack();
+  const back = await arrive(page, 'gallery', MR3);
+  check(back.hash === `#${MR3}/gallery` && back.length === row.length, `Back: Freedom 7's gallery (${back.hash})`);
+}
+await scenario('story', (page) => story(page, false));
+await scenario('story', (page) => story(page, true), [390, 844]);
 
 await browser.close();
 console.log(failures.length ? `\n${failures.length} failed:\n  ${failures.join('\n  ')}` : '\nBack and Forward go where they should');

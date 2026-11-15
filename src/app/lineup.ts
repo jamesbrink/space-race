@@ -9,7 +9,7 @@ import { chooseTier } from '../viewer/tier.ts';
 import { formatAddress, formatLineup, namesLineup, onMoved, parseLineup, programmeOf, settle, where } from './address.ts';
 import { follow } from './curtain.ts';
 import { goHome } from './home.ts';
-import { day, entries, sections, timeline } from './lineup/row.ts';
+import { day, entries, sections, showCard, timeline } from './lineup/row.ts';
 import { LineupScene } from './lineup/scene.ts';
 import { prefs } from './prefs.ts';
 
@@ -305,8 +305,12 @@ function next(): void {
   const e = row.find((x) => x.flight.id === standing[shot - 1])!;
   scene.choose(e.flight.id);
   scene.frame([e.flight.id]);
-  callout.show({ eyebrow: `${parts[e.programme]!.name} · ${day(e.flight.launch)}`, title: e.flight.callsign, text: e.flight.summary }, () =>
-    scene.topOf(e.flight.id),
+  // (what the history says of it where it has a story, its headline over the story's first part, and the time to read it)
+  const card = showCard(e, DWELL);
+  left = card.dwell;
+  callout.show(
+    { eyebrow: `${parts[e.programme]!.name} · ${day(e.flight.launch)}`, title: e.flight.callsign, lead: card.lead, text: card.text },
+    () => scene.topOf(e.flight.id),
   );
 }
 

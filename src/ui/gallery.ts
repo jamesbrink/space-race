@@ -1,7 +1,9 @@
 import './gallery.css';
 import type { Vector3 } from 'three';
+import { MILESTONES, PEOPLE, PROGRAMMES, STORIES } from '../../missions/history.ts';
 import {
   exhibit,
+  formatLineup,
   galleryAt,
   galleryFlight,
   lacks,
@@ -15,6 +17,8 @@ import {
   WHOLE_VIEW,
 } from '../app/address.ts';
 import { Callout } from './callout.ts';
+import { crewMarkup, momentMarkup, namedMarkup, programmeMarkup, storyMarkup } from './history.ts';
+import { type Told, toldOf } from '../app/lineup/row.ts';
 import { CURTAIN, Curtain, follow } from '../app/curtain.ts';
 import { type Shot, tour } from '../app/demo.ts';
 import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
@@ -46,13 +50,15 @@ import { scripted, unattended } from '../util/env.ts';
  * is only what is remembered between visits (prefs.ts): the look, the turntable, the panels.
  *
  * Everything it shows comes from what a vehicle already declares: its parts and their headings
- * (what can stand there alone), its views, its slider, its cutaway, the flight's specs and motors.
+ * (what can stand there alone), its views, its slider, its cutaway, the flight's specs and motors;
+ * and, in its History tab, what the history tells of the flight (missions/history.ts, written as
+ * the Lineup's card writes it: ui/history.ts), with the way to it in the Lineup.
  */
 export interface GalleryHost {
   /** The switch was put to another place (one the flight has). */
   go(place: Place): void;
-  /** The crumb back to the front page. */
-  home(): void;
+  /** The crumb back to the front page; or, given an address that is no flight's (the Lineup's), out to that page (home.ts). */
+  home(to?: string): void;
   /** What is on show has changed: the part or the choice of what stands there, '' for neither. The host writes the address. */
   address(what: string): void;
   /** Something lies over the gallery (the front page) and it is only a picture behind it. */
@@ -164,8 +170,10 @@ export const crumbs = (flight: Flight, here: Place): string =>
       : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`
   } <b>/</b> <span>${PLACE_NAME[here]}</span>`;
 
-/** (View is the control block, which on a phone lives in the sheet: fold.ts) */
-const TABS = ['View', 'Parts', 'Specs', 'Motors'] as const;
+/** (View is the control block, which on a phone lives in the sheet: fold.ts; History is there only for a flight the history has a story for) */
+const TABS = ['View', 'Parts', 'Specs', 'Motors', 'History'] as const;
+/** What the history tells, as the gallery is given it. */
+const HISTORY = { milestones: MILESTONES, stories: STORIES, people: PEOPLE, programmes: PROGRAMMES };
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
 const CAMERA_KEYS = new Set([
   'w',
@@ -394,7 +402,8 @@ export class Gallery {
     const date = new Date(f.launch).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
     const specs = m.specGroups ? f.specs.filter((s) => m.specGroups!.includes(s.group)) : f.specs;
     const groups = [...new Set(specs.map((s) => s.group))];
-    const tabs = TABS.filter((t) => t !== 'Motors' || f.motors.length);
+    const told = toldOf(f, HISTORY);
+    const tabs = TABS.filter((t) => (t !== 'Motors' || f.motors.length) && (t !== 'History' || told));
     const pane = (name: string) => `data-pane="${name}" id="gallery-pane-${name}" role="tabpanel" aria-labelledby="gallery-tab-${name}"`;
     // (what can be looked out of from a seat: the cabin's windows, then its periscope)
     const seen = m.seats?.length ? lookoutsOf(m.cabin) : [];
@@ -463,6 +472,7 @@ export class Gallery {
         </section>`
             : ''
         }
+        ${told ? `<section ${pane('History')} hidden>${this.history(told)}</section>` : ''}
         <nav class="steps handle" aria-label="Part by part">
           <button data-step="-1" title="The part before (B)" aria-label="The part before"><i class="arrow back"></i><span>Previous</span></button>
           <button class="handle-open" aria-expanded="false" title="Views, taking it apart, the parts and the figures: open or put away"><b></b><span></span><output aria-live="off"></output><i class="chevron"></i></button>
@@ -528,6 +538,37 @@ export class Gallery {
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();
     this.tab(narrow() ? 'View' : 'Parts');
+  }
+
+  /**
+   * The History tab: what the history tells of the flight, as the Lineup's card tells it (ui/history.ts). Its story
+   * under its headline and its firsts, the way to it in the Lineup, why it has its name, who flew it (each opens to
+   * their own story), its moments of the race, and its programme (which opens to why it was, how, and what it left).
+   */
+  private history(told: Told): string {
+    const { story, crew, programme, milestones } = told;
+    return `
+      <article class="hist-card">
+        ${storyMarkup(story.headline, story.story, story.firsts)}
+        <p class="hist-actions"><button class="hist-go" data-lineup title="The Lineup: it beside every other vehicle, to one scale, in the order they flew">See it in the Lineup<i class="arrow"></i></button></p>
+        ${story.named ? namedMarkup(story.named) : ''}
+        ${crew.length ? crewMarkup(crew) : ''}
+        ${
+          milestones.length
+            ? `<h3>In the race</h3><ol class="hist-moments">${milestones
+                .map((m) => `<li><div>${momentMarkup({ ...m, what: '' })}</div></li>`)
+                .join('')}</ol>`
+            : ''
+        }
+        ${
+          programme
+            ? `<h3>The programme</h3><ul class="hist-crew"><li><button data-programme aria-expanded="false"><span class="name">${esc(programme.name)}</span><span class="what">${esc(programme.nation)} · ${esc(programme.years)}</span><i class="chevron"></i></button>
+               <div class="hist-told">${programmeMarkup(programme)}</div></li></ul>`
+            : ''
+        }
+        <p class="fine hist-source">${esc(story.source)}</p>
+        ${legend}
+      </article>`;
   }
 
   /** Everything that belongs to what stands there: its parts, its views. */
@@ -739,6 +780,13 @@ export class Gallery {
       else if (b.dataset.seat !== undefined) this.sitIn(Number(b.dataset.seat));
       else if (b.dataset.switch !== undefined) this.throwSwitch(Number(b.dataset.switch));
       else if (b.hasAttribute('data-unseat')) this.sitIn(null);
+    });
+    // the History tab: a person or the programme opens to its words, and the Lineup is gone to with this one chosen in it
+    root.querySelector('[data-pane=History]')?.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('button');
+      if (!b) return;
+      if (b.hasAttribute('data-lineup')) this.host.home(formatLineup('vehicles', [this.flight.id]));
+      else if (b.hasAttribute('aria-expanded')) b.setAttribute('aria-expanded', String(b.getAttribute('aria-expanded') !== 'true'));
     });
     this.q('.steps').addEventListener('click', (e) => {
       const by = (e.target as HTMLElement).closest<HTMLElement>('[data-step]')?.dataset.step;
