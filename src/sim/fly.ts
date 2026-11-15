@@ -204,11 +204,7 @@ export function fly(
     // the air there, and the motion over the ground and through the air (air.ts)
     const { altitude, air, ground, wind, airspeed, mach, q } = airAt(frame, s.r, s.v, at, seaLevel, blow);
     const riding = phase === 'powered' || phase === 'coast';
-    const area = riding
-      ? tr.area.value * along(tr.ascentDrag, mach)
-      : capsuleDrag * along(tr.entryDrag, mach) +
-        chute.was +
-        (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
+    const area = riding ? tr.area.value * along(tr.ascentDrag, mach) : capsuleDrag * along(tr.entryDrag, mach) + chuteArea(chute, at);
     let force: Vec3 = airDrag(wind, airspeed, air.density, area);
     if (phase === 'powered') {
       const thrust = nozzleThrust(1, vacuum, 1, tr.engine.exitArea.value, air.pressure);

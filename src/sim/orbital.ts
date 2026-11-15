@@ -19,7 +19,7 @@ import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } from '../world/orbit.ts';
 import { atmosphere } from './atmosphere.ts';
-import { along } from './fly.ts';
+import { along, chuteArea } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { tearOf } from './loads.ts';
 import { airAt, airDrag } from './air.ts';
@@ -504,7 +504,7 @@ export function flyDown(
     const areaAt = (at: number, h: number, mach: number) =>
       (entry && h > floor + 1 ? o.entry.area.value * along(o.entry.drag, mach) - body.dragArea.value : 0) +
       base +
-      (filling ? filling.area * Math.min(1, Math.max(0, (at - filling.at) / filling.fills)) : 0);
+      (filling ? chuteArea({ full: filling.area, was: 0, at: filling.at, fills: filling.fills }, at) : 0);
     const push = (q: State, at: number): Vec3 => {
       const h = heightOf(q, at);
       const air = atmosphere(h);
