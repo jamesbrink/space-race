@@ -301,6 +301,8 @@ export interface PathSample {
   mass: number;
   phase: Phase;
   centre?: Vec3;
+  /** The long axis (the body's +X) in the frame, where the sample says how it lies. */
+  axis?: Vec3;
   /** The parachute out, as the live state has it (filling, or torn). */
   chute?: { full: number; was: number; at: number; fills: number };
 }
@@ -758,10 +760,21 @@ export class FlightPath {
     const retroAt = live.retroAt ?? tr.retro.fires[0]!.value;
     return {
       ...(tr.body?.tower && !shed.tower ? { tower: tr.body.tower.at.value } : {}),
-      ...(!shed.booster ? { separation: tr.separation.at.value } : {}),
+      ...(!shed.booster ? { separation: tr.separation.at.value, axis: this.jointAxis(tr.separation.at.value) } : {}),
       ...(!shed.retropack ? { retro: offsets.map((o) => retroAt + o), retropack: tr.retropack.at.value } : {}),
       chutes: true,
     };
+  }
+
+  /**
+   * The stack's long axis at an instant to come, for the joint the spacecraft and booster part along: the tilt programme's
+   * under guidance (with its trim), as the autopilot holds it; otherwise the axis it has now, which nothing is turning.
+   */
+  private jointAxis(at: number): Vec3 {
+    const craft = this.source.craft;
+    const { trim, guidance } = this.source.steering;
+    if (craft && guidance) return programmeAxis(craft, at, trim);
+    return this.sample?.axis ?? (craft ? craft.programme(at) : [0, 0, 1]);
   }
 
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */

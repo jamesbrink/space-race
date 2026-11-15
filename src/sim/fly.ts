@@ -52,6 +52,7 @@ import { airAt, airDrag, blowOf } from './air.ts';
 import { G0 } from '../world/bodies.ts';
 import { nozzleThrust, vacuumOf } from './thrust.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
+import { keptShare } from './forces.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -315,9 +316,9 @@ export function fly(
       results.separationClimb = s.climb;
       results.separationGroundClimb = s.groundClimb;
       results.separationAltitude = s.altitude;
-      // the two are pushed apart along the axis; the capsule's share is the booster's part of the whole
-      const share = tr.separation.boosterMass.value / (tr.separation.boosterMass.value + tr.separation.mass.value);
-      state = { r: state.r, v: add(state.v, scale(axisAt(t), tr.separation.speed.value * share)) };
+      // the two are pushed apart along the joint's axis; the capsule's share is the booster's part of the whole (forces.ts)
+      const kick = keptShare(tr.separation.speed.value, tr.separation.mass.value, tr.separation.boosterMass.value);
+      state = { r: state.r, v: add(state.v, scale(axisAt(t), kick)) };
       mass = tr.separation.mass.value;
       phase = 'capsule';
     }

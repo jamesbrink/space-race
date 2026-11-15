@@ -121,6 +121,12 @@ export interface Release {
 }
 
 /**
+ * How much faster the piece kept goes along the joint's axis when two are pushed apart at `push` m/s: its share of the
+ * push is the other's part of the whole, so their momentum is what it was (`part` makes the same split).
+ */
+export const keptShare = (push: number, kept: number, gone: number): number => (push * gone) / (kept + gone);
+
+/**
  * One rigid body becomes two. `whole` is the body as it was (its centre of mass at station
  * `centre`); `gone` is the piece that leaves, by its mass and the station of its own centre of
  * mass. Both pieces keep the body's attitude and rates, and each centre of mass keeps the velocity

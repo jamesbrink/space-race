@@ -20,6 +20,7 @@ import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { coast } from '../src/sim/fly.ts';
 import { AIR_TOP, elements, predict, predictor, programmeAxis } from '../src/sim/predict.ts';
+import { turn } from '../src/sim/rigid.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { EARTH, WGS84_A } from '../src/world/bodies.ts';
 import { angleBetween, DEG, length, siteFrame, sub } from '../src/world/frames.ts';
@@ -232,6 +233,8 @@ const planOf = (s, TR) => {
   return {
     tower: s.shed.tower ? undefined : late(TR.body.tower.at.value),
     separation: s.shed.booster ? undefined : late(TR.separation.at.value),
+    // (the stack's long axis as it lies now: the autopilot holds the programme's, which after the arrest does not turn)
+    axis: turn(s.q, [1, 0, 0]),
     retro: s.shed.retropack ? [] : offsets.map((o) => (s.retroAt ?? late(TR.retro.fires[0].value)) + o),
     retropack: s.shed.retropack ? undefined : late(TR.retropack.at.value),
     chutes: true,

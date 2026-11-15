@@ -81,8 +81,9 @@ export interface Burn {
 export interface Sequence {
   /** The escape tower let go: marked on the path only (a point mass in space feels neither its mass nor its shape). */
   tower?: number;
-  /** The spacecraft let go of its booster. */
+  /** The spacecraft let go of its booster, and the joint's axis then (the stack's long axis, in the frame): pushed apart along it. */
   separation?: number;
+  axis?: Vec3;
   /** When each retrorocket lights (those not yet burnt out). */
   retro?: number[];
   /** The retrorockets' pack let go. */

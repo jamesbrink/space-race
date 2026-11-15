@@ -33,7 +33,7 @@ import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { airDrag, blowing, blowOf } from './air.ts';
-import { floorAt } from './forces.ts';
+import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
@@ -78,6 +78,8 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
   const ahead = (x: number | undefined): number | null => (x !== undefined && Number.isFinite(x) ? Math.max(x, start.t) : null);
   const towerAt = ahead(seq?.tower);
   const separationAt = ahead(seq?.separation);
+  const separationAxis = seq?.axis ?? null;
+  if (separationAt !== null && !separationAxis) throw new Error('a separation to come needs the joint’s axis (Sequence.axis)');
   const packAt = ahead(seq?.retropack);
   const retroBurn = tr.retro.burn.value;
   const fires = (seq?.retro ?? []).filter((f) => f + retroBurn > start.t && (packAt === null || f < packAt));
@@ -195,10 +197,12 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
       }
       if (t === towerAt) events.push('tower');
       if (t === separationAt && !alone) {
-        // the two are pushed apart along the motion; the spacecraft's share is the booster's part of the whole (fly.ts)
-        const share = tr.separation.boosterMass.value / (tr.separation.boosterMass.value + tr.separation.mass.value);
-        const wind = sub(v, cross(SPIN, _r));
-        if (length(wind) > 0) dv = add(v, scale(unit(wind), tr.separation.speed.value * share));
+        // the two are pushed apart along the joint's axis, as every simulator parts them (fly.ts; vehicle.ts by forces.ts
+        // `part`); the spacecraft's share is the booster's part of the whole
+        dv = add(
+          v,
+          scale(separationAxis!, keptShare(tr.separation.speed.value, tr.separation.mass.value, tr.separation.boosterMass.value)),
+        );
         mass = tr.separation.mass.value;
         massAt = t;
         alone = true;
