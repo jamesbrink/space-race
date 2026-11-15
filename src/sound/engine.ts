@@ -22,13 +22,18 @@
  *   white   -> low-pass 650 Hz  -> water (swells)   -> place
  *   60 and 120 Hz                -> hum             -> place
  *   white   -> band-pass         -> breath          -> walk
- *   one-shots (model.ts `Shot`): a stretch of a buffer -> filter -> envelope -> flight or walk
- *   flight + place + walk -> volume -> compressor -> soft clip (never past full scale) -> out
+ *   one-shots (model.ts `Shot`): a stretch of a buffer -> filter -> envelope -> flight, walk or works
+ *   six voices of the works (model.ts `Voice`: a machine, an engine, tyres), each:
+ *     sawtooth -> low-pass -> buzz --+
+ *     sine                  -> tone -+-> voice -> low-pass (the air) -> delay (the distance) -> works
+ *     white   -> band-pass  -> hiss -+
+ *     crackle -> band-pass  -> grit -+
+ *   flight + place + walk + works -> volume -> compressor -> soft clip (never past full scale) -> out
  *
  * `crackle` is what makes a rocket a rocket: noise in bursts whose positive peaks are sharper
  * than its negative ones, as a supersonic jet's pressure is.
  */
-import type { Mix, Shot } from './model.ts';
+import { type Mix, type Shot, type Voice, WORK_VOICES } from './model.ts';
 
 /** Seconds of each noise buffer. */
 const LOOP = 5;
@@ -144,6 +149,23 @@ export class Engine {
   };
   private sounding = 0;
   private readonly rnd: () => number;
+  /** The works' voices (model.ts `Works`), each its parts' AudioParams. */
+  private readonly voices: {
+    gain: AudioParam;
+    buzz: AudioParam;
+    buzzHz: AudioParam;
+    buzzCut: AudioParam;
+    tone: AudioParam;
+    toneHz: AudioParam;
+    hiss: AudioParam;
+    hissHz: AudioParam;
+    hissQ: AudioParam;
+    grit: AudioParam;
+    gritHz: AudioParam;
+    gritQ: AudioParam;
+    air: AudioParam;
+    delay: AudioParam;
+  }[] = [];
 
   constructor(ctx: BaseAudioContext, seed = 1961) {
     this.ctx = ctx;
@@ -198,7 +220,8 @@ export class Engine {
     const flight = gain(0, this.volume);
     const place = gain(1, this.volume);
     const walk = gain(1, this.volume);
-    this.buses = { flight, walk };
+    const works = gain(1, this.volume);
+    this.buses = { flight, walk, works };
 
     // the engine
     const engine = gain(1, flight);
@@ -248,6 +271,50 @@ export class Engine {
       osc.start();
     }
 
+    // the works: six voices on one white noise and one crackle of their own (after the engine's two loops, which Doppler plays faster)
+    const hisses: AudioNode[] = [];
+    const grits: AudioNode[] = [];
+    for (let i = 0; i < WORK_VOICES; i++) {
+      const delay = ctx.createDelay(2);
+      delay.connect(works);
+      const air = filter('lowpass', 16_000, 0.5, delay);
+      const voice = gain(0, air);
+      const buzz = gain(0, voice);
+      const buzzCut = filter('lowpass', 400, 0.7, buzz);
+      const saw = ctx.createOscillator();
+      saw.type = 'sawtooth';
+      saw.connect(buzzCut);
+      saw.start();
+      const tone = gain(0, voice);
+      const sine = ctx.createOscillator();
+      sine.connect(tone);
+      sine.start();
+      const hiss = gain(0, voice);
+      const hissBand = filter('bandpass', 1000, 0.7, hiss);
+      const grit = gain(0, voice);
+      const gritBand = filter('bandpass', 800, 0.7, grit);
+      hisses.push(hissBand);
+      grits.push(gritBand);
+      this.voices.push({
+        gain: voice.gain,
+        buzz: buzz.gain,
+        buzzHz: saw.frequency,
+        buzzCut: buzzCut.frequency,
+        tone: tone.gain,
+        toneHz: sine.frequency,
+        hiss: hiss.gain,
+        hissHz: hissBand.frequency,
+        hissQ: hissBand.Q,
+        grit: grit.gain,
+        gritHz: gritBand.frequency,
+        gritQ: gritBand.Q,
+        air: air.frequency,
+        delay: delay.delayTime,
+      });
+    }
+    loop('white', hisses);
+    loop('crackle', grits);
+
     this.p = {
       rumbleLow: rumbleLow.frequency,
       rumble: rumble.gain,
@@ -295,6 +362,36 @@ export class Engine {
     to(p.wind, m.place.wind, 0.4);
     to(p.water, m.place.water, 0.4);
     to(p.hum, m.place.hum, 0.4);
+  }
+
+  /**
+   * The works' voices toward what model.ts `Works` heard (null: that slot silent), from `when`. A band of noise is
+   * quieter than the whole of it, and a sawtooth louder than a sine: made up roughly, so a share is what is heard.
+   */
+  works(voices: readonly (Voice | null)[], when: number): void {
+    const top = this.ctx.sampleRate / 2.2;
+    const to = (param: AudioParam, value: number, slow = EASE) => param.setTargetAtTime(Number.isFinite(value) ? value : 0, when, slow);
+    this.voices.forEach((p, i) => {
+      const v = voices[i];
+      if (!v) {
+        to(p.gain, 0, 0.08);
+        return;
+      }
+      to(p.gain, v.gain, 0.08);
+      to(p.buzz, 0.6 * v.buzz.gain);
+      to(p.buzzHz, Math.max(5, v.buzz.hertz), 0.1);
+      to(p.buzzCut, Math.min(top, Math.max(30, v.buzz.cut)), 0.1);
+      to(p.tone, 0.8 * v.tone.gain);
+      to(p.toneHz, Math.min(top, Math.max(5, v.tone.hertz)), 0.1);
+      to(p.hiss, 2.5 * v.hiss.gain);
+      to(p.hissHz, Math.min(top, v.hiss.hertz), 0.1);
+      to(p.hissQ, v.hiss.q, 0.1);
+      to(p.grit, 2.5 * v.grit.gain);
+      to(p.gritHz, Math.min(top, v.grit.hertz), 0.1);
+      to(p.gritQ, v.grit.q, 0.1);
+      to(p.air, Math.min(top, v.cutoff), 0.2);
+      to(p.delay, Math.min(1.9, v.delay), 0.3);
+    });
   }
 
   /** Play a one-shot at `when`. */

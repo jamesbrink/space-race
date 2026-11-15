@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Action, Move } from '../../types.ts';
 // (with its extension: the tests run this file under Node, which adds none)
 import { Sequence } from '../explode.ts';
+import { machinery } from '../../sound/audio.ts';
 
 /**
  * Things on a site that work when somebody works them: a door that opens, a lift that goes up.
@@ -49,6 +50,9 @@ interface Toggle {
 
 interface Lift {
   kind: 'lift';
+  /** What it is (its action's `do`): what it is heard by, with how far it has ridden in all, metres. */
+  key: Extract<Action['do'], { kind: 'lift' }>;
+  ridden: number;
   at: [number, number, number];
   stop: number;
   stops: { name: string; by: [number, number, number] }[];
@@ -91,6 +95,8 @@ export class Works {
       const nodes = levels.flatMap((l) => l.getObjectByName(part)?.getObjectByName(act.node) ?? []);
       work = {
         kind: 'lift',
+        key: act,
+        ridden: 0,
         at: [...(act.stops[0]?.by ?? [0, 0, 0])] as [number, number, number],
         stop: 0,
         stops: act.stops,
@@ -184,6 +190,10 @@ export class Works {
         if (parent) delta.transformDirection(parent.matrixWorld).multiplyScalar(length);
         carried.push({ nodes: work.nodes.map((n) => n.node), delta });
         moved = true;
+        // heard as it goes (sound/audio.ts): how far it has ridden in all, which only grows
+        work.ridden += length;
+        const node = work.nodes[0]?.node;
+        if (work.key.machine && node) machinery.posed(work.key, work.key.machine, node, work.ridden, Number.POSITIVE_INFINITY);
       }
     }
     return moved ? carried : null;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { Driving } from '../../sound/audio.ts';
 import type { Part } from '../../types.ts';
 
 /**
@@ -123,6 +124,8 @@ export class Vehicle {
   private top = 0;
   private turned = 0;
   private y = 0;
+  /** How far the pedal that drives it was down in the last frame, 0 to 1: the throttle forward, the brake once it is backing. */
+  private throttle = 0;
 
   /** `root` is the vehicle's node. Left out of its extras, a figure is taken: 3 m of wheelbase, 0.35 m wheels, an 12 m turning circle. */
   constructor(root: THREE.Object3D) {
@@ -291,6 +294,8 @@ export class Vehicle {
   drive(pedal: number, wheel: number, dt: number, road: Road): void {
     const was = this.motion;
     let next = roll(was, pedal, wheel, dt, this.chassis);
+    // (the throttle is what drives it: forward, or the brake pedal once it has stopped and backs; braking is not)
+    this.throttle = pedal > 0 && was.speed >= 0 ? pedal : pedal < 0 && next.speed < 0 ? -pedal : 0;
     const going = Math.sign(next.speed);
     if (going) {
       const way = new THREE.Vector3(Math.cos(was.heading) * going, 0, -Math.sin(was.heading) * going);
@@ -323,6 +328,24 @@ export class Vehicle {
     }
     // the steering wheel goes round with them: about its own column, as many times further as the box is geared
     if (this.tiller) this.tiller.node.quaternion.copy(this.tiller.rest).multiply(spin.setFromAxisAngle(COLUMN, next.steer * GEARING));
+  }
+
+  /**
+   * It as it is heard (sound/audio.ts), but for what is under it, which the walker asks of the solids: its engine over
+   * its front axle, by the name its model gives it (`engine` from a drive's machine, else its `vehicle`).
+   */
+  driving(): Omit<Driving, 'under'> {
+    const m = this.motion;
+    const u = this.root.userData;
+    const name = typeof u.engine === 'string' ? u.engine : typeof u.vehicle === 'string' ? u.vehicle : null;
+    const ahead = this.chassis.wheelbase;
+    return {
+      at: [m.x + Math.cos(m.heading) * ahead, this.y + this.radius, m.z - Math.sin(m.heading) * ahead],
+      speed: m.speed,
+      top: this.chassis.top,
+      throttle: this.throttle,
+      engine: name,
+    };
   }
 
   /** Put the node where the motion has it, in whatever frame its parent is in. */
@@ -359,6 +382,7 @@ export function markDriven(root: THREE.Object3D, parts: Part[]): void {
     if (!node) continue;
     const u = node.userData;
     u.vehicle ??= part.name;
+    if (drive.machine?.engine) u.engine ??= drive.machine.engine;
     u.wheelbase ??= drive.wheelbase;
     u.wheel_radius ??= drive.wheelRadius;
     if (drive.turningCircle) u.turning_circle ??= drive.turningCircle;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
-import { type Sounds, silent } from '../../sound/audio.ts';
+import { type Driving, type Sounds, silent } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 import { isTyping } from '../../util/keys.ts';
@@ -507,6 +507,24 @@ export class Solids {
     }));
   }
 
+  /**
+   * The first surface straight down from a point within `far` metres, among everything solid, leaving what was gathered
+   * as it was: what a driven vehicle stands on, for its tyres' sound (it is asked of whatever is there, wherever it is).
+   */
+  beneath(origin: THREE.Vector3, far: number): Hit | null {
+    const kept = { near: this.near, rungs: this.rungs, boxed: [...this.boxed], region: this.region.clone() };
+    this.near = [];
+    this.rungs = [];
+    this.gather(origin, 0.25, far, 0.25);
+    const hit = this.cast(origin, DOWN, far);
+    this.near = kept.near;
+    this.rungs = kept.rungs;
+    this.boxed.length = 0;
+    this.boxed.push(...kept.boxed);
+    this.region.copy(kept.region);
+    return hit;
+  }
+
   /** The first surface along a ray, within `far` metres, or null. The normal is turned to face the ray's origin. */
   cast(origin: THREE.Vector3, direction: THREE.Vector3, far: number): Hit | null {
     let best: Hit | null = null;
@@ -932,6 +950,8 @@ export interface Seat {
    */
   frame?(out: THREE.Matrix4): THREE.Matrix4;
   limits?: Limits;
+  /** A vehicle's driving seat: the vehicle as it is heard (sound/audio.ts `Driving`), but for what is under it. */
+  driving?(): Omit<Driving, 'under'>;
 }
 
 /** What the walker needs from the stage it walks on. */
@@ -1310,6 +1330,8 @@ export class Walker {
   stop(): void {
     if (!this.active) return;
     this.active = false;
+    if (this.wasDriving) this.sounds.driving(null);
+    this.wasDriving = false;
     this.held.clear();
     this.drag = null;
     this.modal = null;
@@ -1470,6 +1492,18 @@ export class Walker {
   /** Tell the sound (audio.ts) what the last advance of the gait brought: feet landing, a fall's end, the breath. */
   private listen(climbing: boolean): void {
     const gait = this.gait;
+    // at a vehicle's wheel the legs are still whatever the vehicle carries them through: no footfalls, no walking breath, but the vehicle
+    const driving = this.seat?.driving?.();
+    if (driving) {
+      gait.landed = null;
+      this.sounds.driving({ ...driving, under: this.underWheels(driving.at) });
+      this.wasDriving = true;
+      return;
+    }
+    if (this.wasDriving) {
+      this.wasDriving = false;
+      this.sounds.driving(null);
+    }
     if (gait.landed !== null) {
       for (const foot of ['L', 'R'] as const) this.sounds.footfall({ foot, pace: this.pace, kind: 'landing', height: gait.landed });
       gait.landed = null;
@@ -1480,6 +1514,28 @@ export class Walker {
     if (breath !== this.breathed) this.sounds.breath((this.breathed = breath));
   }
   private breathed = -1;
+  private wasDriving = false;
+  /** What the driven vehicle was last found standing on, and when it was looked for (it is asked a few times a second). */
+  private under: { name: string | null; at: number } = { name: null, at: -1 };
+
+  /**
+   * The name of the material under a driven vehicle at `at` (its engine, over its front axle: the vehicle is left out of
+   * the solids), or null where what is under it is the land.
+   */
+  private underWheels(at: readonly [number, number, number]): string | null {
+    const now = performance.now();
+    if (now - this.under.at < 250) return this.under.name;
+    const hit = this.solids.beneath(new THREE.Vector3(at[0], at[1] + 0.5, at[2]), 4);
+    const land = this.body.level(at[0], at[2]);
+    // (the land is what it is on where nothing modelled is under it, or what is lies below the land: paint the land covers)
+    let name: string | null = null;
+    if (hit && (land === null || hit.point.y > land - 0.05)) {
+      const m = (hit.mesh.userData.real ?? hit.mesh.material) as THREE.Material | THREE.Material[];
+      name = (Array.isArray(m) ? m[0] : m)?.name ?? null;
+    }
+    this.under = { name, at: now };
+    return name;
+  }
 
   /** Hop (Space, or the page's button). */
   jump(): void {

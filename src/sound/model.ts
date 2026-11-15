@@ -28,8 +28,14 @@
  *   reproduced. Inverse-square is exact in `spl` and compressed in what is heard.
  * - The one-shots' levels (`CUES`), the place's bed (`PlaceDef.quiet`) and every timbre are synthesised
  *   impressions, `estimated`: no recording was measured or used.
+ * - On the ground (`Works`): a driven vehicle's engine (`engineVoice`: its firing frequency from its own cylinders and
+ *   revolutions, PlaceDef.engines) and tyres (`tyreVoice`, by what is under them, PlaceDef.tread), and each machine that
+ *   moves a part (`MACHINES`, by the kind its move names: types.ts Machine). The path is the launch's (inverse square
+ *   from a metre, the air's absorption, the delay of distance over the speed of sound); every level at a metre and every
+ *   timbre is `estimated`: impressions of the kind of machine, in proportion to one another, nothing measured.
  */
 import { atmosphere } from '../sim/atmosphere.ts';
+import type { Engine, MachineKind, Tread, TreadKind } from '../types.ts';
 import { clamp, lerp, smoothstep } from '../util/math.ts';
 import { G0 } from '../world/bodies.ts';
 
@@ -431,8 +437,8 @@ export interface Shot {
   decay: number;
   gain: number;
   thump?: { from: number; to: number; gain: number; decay: number };
-  /** Which bus: the flight's (which follows the clock) or the walk's. */
-  bus: 'flight' | 'walk';
+  /** Which bus: the flight's (which follows the clock), the walk's, or the works' (the site's machines and vehicles, which follow what moves). */
+  bus: 'flight' | 'walk' | 'works';
 }
 
 /** The level at 10 m in sea-level air of each event's bang, dB. Estimated: impressions, in proportion to one another. */
@@ -594,4 +600,520 @@ export function breath(phase: number): { gain: number; centre: number } {
   if (p < 0.42) return { gain: 0.011 * Math.sin((Math.PI * p) / 0.42), centre: 1500 };
   if (p >= 0.5 && p < 0.95) return { gain: 0.015 * Math.sin((Math.PI * (p - 0.5)) / 0.45), centre: 750 };
   return { gain: 0, centre: 1000 };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// On the ground: a driven vehicle and the site's machines (types.ts Machine). The path is the launch's; the sources'
+// levels (dB at a metre) and timbres are estimated throughout, as impressions of each kind in proportion to the rest.
+
+/** No vehicle or machine is heard from nearer than this, m: they are a metre or more across. */
+export const CLOSE = 1;
+/** The speed of sound at the ground, m/s (1976 standard air at sea level). */
+const GROUND_C = atmosphere(0).soundSpeed;
+/** How many voices the works have (engine.ts): the loudest at any moment are played, the rest are not. */
+export const WORK_VOICES = 6;
+
+/** One voice of the works (engine.ts `works`): a buzz (a sawtooth through a low-pass), a tone, a band of hiss and one of grit (crackle). */
+export interface Voice {
+  /** Of full scale, the whole voice; each part's own gain is its share of it. */
+  gain: number;
+  buzz: { hertz: number; gain: number; cut: number };
+  tone: { hertz: number; gain: number };
+  hiss: { hertz: number; q: number; gain: number };
+  grit: { hertz: number; q: number; gain: number };
+  /** What the air between leaves of the highs (a low-pass, Hz), and how late it arrives, s. */
+  cutoff: number;
+  delay: number;
+}
+
+/** A source of `level` dB at a metre heard `metres` off: its level at the ears, what the air leaves of its highs, and its delay. */
+export function across(level: number, metres: number, hertz = 500): { level: number; cutoff: number; delay: number } {
+  const d = Math.max(CLOSE, metres);
+  return {
+    level: level - 20 * Math.log10(d) - absorbed(hertz, metres),
+    cutoff: cutoffAfter(metres),
+    delay: Math.max(0, metres) / GROUND_C,
+  };
+}
+
+/** A voice's timbre before the path: its level at a metre, dB, and its parts (gains are shares, 0 to 1). */
+export interface Timbre {
+  level: number;
+  buzz: { hertz: number; gain: number; cut: number };
+  tone: { hertz: number; gain: number };
+  hiss: { hertz: number; q: number; gain: number };
+  grit: { hertz: number; q: number; gain: number };
+}
+
+const NO_BUZZ = { hertz: 50, gain: 0, cut: 200 };
+const NO_TONE = { hertz: 100, gain: 0 };
+const NO_HISS = { hertz: 1000, q: 0.7, gain: 0 };
+
+/** The timbre heard `metres` off, as a voice: nothing under the floor. */
+export function voiceOf(t: Timbre, metres: number): Voice {
+  const path = across(t.level, metres);
+  return { gain: loudness(path.level), buzz: t.buzz, tone: t.tone, hiss: t.hiss, grit: t.grit, cutoff: path.cutoff, delay: path.delay };
+}
+
+/**
+ * An engine, four-stroke, at `speed` (m/s, of its `top`) with its throttle down `throttle` (0 to 1): it turns between its
+ * idle and its most with the speed and the pedal (65 and 35 per cent, as a gearbox would keep it in its range), fires
+ * cylinders/2 times a turn, and is louder under load (14 dB from idle to full). A diesel is 6 dB louder than a petrol
+ * engine at a metre and knocks more (its buzz brighter). The buzz is the firing; the tone half of it, a four-stroke's
+ * uneven beat; the hiss the intake and the exhaust. Estimated, every figure.
+ */
+export function engineVoice(engine: Engine, speed: number, top: number, throttle: number): Timbre & { rpm: number; firing: number } {
+  const v = clamp(Math.abs(speed) / Math.max(1, top), 0, 1);
+  const pedal = clamp(throttle, 0, 1);
+  const turn = clamp(0.65 * v + 0.35 * pedal, 0, 1);
+  const rpm = engine.idle + (engine.most - engine.idle) * turn;
+  const firing = (rpm / 60) * (Math.max(1, engine.cylinders) / 2);
+  const load = clamp(0.25 * v + 0.75 * pedal, 0, 1);
+  const diesel = engine.fuel === 'diesel';
+  return {
+    rpm,
+    firing,
+    level: (diesel ? 86 : 80) + 14 * load + 4 * turn,
+    buzz: { hertz: firing, gain: 1, cut: firing * ((diesel ? 6 : 4) + 8 * load) },
+    tone: { hertz: firing / 2, gain: 0.45 },
+    hiss: { hertz: clamp(firing * 8, 300, 4000), q: 1.1, gain: 0.08 + 0.25 * load },
+    grit: { hertz: 2500, q: 0.8, gain: diesel ? 0.12 + 0.2 * load : 0 },
+  };
+}
+
+/** What each surface gives a tyre at 14 m/s and a metre (dB), and its sound: a hiss for a smooth one, grit for loose stones and a crust. Estimated. */
+const TREADS: Record<TreadKind, Omit<Timbre, 'buzz'>> = {
+  concrete: { level: 82, tone: NO_TONE, hiss: { hertz: 900, q: 0.7, gain: 1 }, grit: { hertz: 3000, q: 0.8, gain: 0.08 } },
+  gravel: { level: 86, tone: NO_TONE, hiss: { hertz: 500, q: 0.8, gain: 0.4 }, grit: { hertz: 1600, q: 0.6, gain: 1 } },
+  earth: { level: 78, tone: NO_TONE, hiss: { hertz: 350, q: 0.7, gain: 0.7 }, grit: { hertz: 700, q: 0.8, gain: 0.35 } },
+  steppe: { level: 79, tone: NO_TONE, hiss: { hertz: 300, q: 0.7, gain: 0.7 }, grit: { hertz: 900, q: 0.8, gain: 0.45 } },
+  sand: { level: 74, tone: NO_TONE, hiss: { hertz: 450, q: 0.6, gain: 0.8 }, grit: { hertz: 1200, q: 0.8, gain: 0.1 } },
+  steel: { level: 84, tone: { hertz: 70, gain: 0.5 }, hiss: { hertz: 1200, q: 1, gain: 0.5 }, grit: { hertz: 2400, q: 1.5, gain: 0.2 } },
+  timber: { level: 82, tone: { hertz: 50, gain: 0.4 }, hiss: { hertz: 600, q: 0.8, gain: 0.3 }, grit: { hertz: 400, q: 1, gain: 0.6 } },
+};
+
+/** Tyres rolling at `speed` m/s on a surface: louder as the 3.5th power of the speed (35 dB a decade), silent standing. Estimated. */
+export function tyreVoice(on: TreadKind, speed: number): Timbre {
+  const t = TREADS[on];
+  const v = Math.abs(speed);
+  const level = v > 0.05 ? t.level + 35 * Math.log10(v / 14) : Number.NEGATIVE_INFINITY;
+  return { level, buzz: NO_BUZZ, tone: t.tone, hiss: { ...t.hiss, hertz: t.hiss.hertz * (0.8 + 0.4 * clamp(v / 14, 0, 1)) }, grit: t.grit };
+}
+
+/** What a place's material (a model's own name for it) is to a tyre: the first of the place's prefixes it begins with, else the land. */
+export function treadOf(material: string | null, tread: Tread): TreadKind {
+  if (material) for (const m of tread.materials) if (material.startsWith(m.prefix)) return m.kind;
+  return tread.land.kind;
+}
+
+/** A one-shot of a machine's: a Shot's recipe with its level at a metre (dB) in place of its gain. */
+export type Burst = Omit<Shot, 'bus' | 'gain'> & { level: number };
+
+/** How a kind of machine is heard: its timbre running, how it comes up and runs down, and its one-shots. */
+export interface MachineSound extends Timbre {
+  /** Seconds to come up to its running, and to run down. */
+  up: number;
+  down: number;
+  /** Its pitch comes up with it (a motor, a pump), or stays where it is (friction). */
+  spins: boolean;
+  /** As it starts, as it stops, and as it shuts (stops where its travel begins: a door's latch). */
+  start?: Burst;
+  stop?: Burst;
+  shut?: Burst;
+  /** A wagon's: how far apart its rails' joints are, m. */
+  joints?: number;
+}
+
+const knock = (level: number, from: number, decay: number): Burst => ({
+  level,
+  noise: 'brown',
+  filter: 'lowpass',
+  from,
+  to: 150,
+  q: 0.7,
+  attack: 0.002,
+  hold: 0.01,
+  decay,
+});
+const click = (level: number, hertz: number): Burst => ({
+  level,
+  noise: 'white',
+  filter: 'highpass',
+  from: hertz,
+  to: hertz,
+  q: 0.7,
+  attack: 0.001,
+  hold: 0.004,
+  decay: 0.06,
+});
+
+/**
+ * Each kind of machine as it is heard (types.ts MachineKind). Every figure is estimated: impressions of the kind, not of
+ * the machine, none measured. `road` and `locomotive` are heard as their engines (engineVoice), and `road` and `towed`
+ * as their tyres too; what is given here for them is the rest of them.
+ */
+export const MACHINES: Record<Exclude<MachineKind, 'none'>, MachineSound> = {
+  motor: {
+    level: 74,
+    buzz: { hertz: 100, gain: 0.35, cut: 600 },
+    tone: { hertz: 780, gain: 0.35 },
+    hiss: { hertz: 2500, q: 1, gain: 0.12 },
+    grit: { hertz: 1500, q: 2, gain: 0.05 },
+    up: 0.4,
+    down: 0.7,
+    spins: true,
+    start: click(78, 2500),
+    stop: knock(80, 900, 0.12),
+  },
+  winch: {
+    level: 82,
+    buzz: { hertz: 100, gain: 0.4, cut: 500 },
+    tone: { hertz: 520, gain: 0.3 },
+    hiss: { hertz: 1800, q: 1, gain: 0.08 },
+    grit: { hertz: 900, q: 2, gain: 0.25 },
+    up: 0.6,
+    down: 0.9,
+    spins: true,
+    start: knock(88, 1200, 0.15),
+    stop: knock(92, 1500, 0.25),
+  },
+  hydraulic: {
+    level: 84,
+    buzz: { hertz: 180, gain: 0.3, cut: 900 },
+    tone: { hertz: 360, gain: 0.4 },
+    hiss: { hertz: 3000, q: 0.7, gain: 0.35 },
+    grit: { hertz: 600, q: 1, gain: 0.08 },
+    up: 0.5,
+    down: 0.4,
+    spins: true,
+    start: click(84, 1800),
+    stop: knock(90, 1000, 0.3),
+  },
+  rails: {
+    level: 88,
+    buzz: { hertz: 100, gain: 0.35, cut: 400 },
+    tone: { hertz: 600, gain: 0.2 },
+    hiss: { hertz: 1500, q: 0.8, gain: 0.1 },
+    grit: { hertz: 250, q: 0.8, gain: 0.6 },
+    up: 1.5,
+    down: 2,
+    spins: true,
+    start: knock(92, 800, 0.4),
+    stop: knock(94, 700, 0.5),
+  },
+  locomotive: {
+    level: 90,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: NO_HISS,
+    grit: { hertz: 300, q: 0.8, gain: 0.5 },
+    up: 2,
+    down: 3,
+    spins: true,
+    joints: 25,
+  },
+  // (its start is the starter motor turning it over until it catches)
+  road: {
+    level: 80,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: NO_HISS,
+    grit: NO_HISS,
+    up: 1.2,
+    down: 1.5,
+    spins: true,
+    start: { level: 80, noise: 'brown', filter: 'bandpass', from: 220, to: 420, q: 2, attack: 0.05, hold: 0.55, decay: 0.2 },
+  },
+  towed: {
+    level: 76,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: NO_HISS,
+    grit: { hertz: 700, q: 1.2, gain: 0.5 },
+    up: 0.3,
+    down: 0.5,
+    spins: false,
+  },
+  skids: {
+    level: 84,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: { hertz: 1500, q: 0.8, gain: 0.3 },
+    grit: { hertz: 500, q: 0.6, gain: 1 },
+    up: 0.2,
+    down: 0.3,
+    spins: false,
+  },
+  hand: {
+    level: 62,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: { hertz: 700, q: 0.8, gain: 0.3 },
+    grit: { hertz: 1200, q: 3, gain: 0.4 },
+    up: 0.15,
+    down: 0.2,
+    spins: false,
+    stop: knock(72, 900, 0.08),
+  },
+  lift: {
+    level: 76,
+    buzz: { hertz: 100, gain: 0.3, cut: 300 },
+    tone: { hertz: 420, gain: 0.2 },
+    hiss: { hertz: 1200, q: 0.8, gain: 0.08 },
+    grit: { hertz: 700, q: 1, gain: 0.3 },
+    up: 0.5,
+    down: 0.6,
+    spins: true,
+    start: knock(82, 1000, 0.15),
+    stop: knock(86, 1200, 0.25),
+  },
+  door: {
+    level: 58,
+    buzz: NO_BUZZ,
+    tone: { hertz: 1100, gain: 0.25 },
+    hiss: { hertz: 900, q: 1, gain: 0.2 },
+    grit: { hertz: 2000, q: 6, gain: 0.3 },
+    up: 0.05,
+    down: 0.1,
+    spins: false,
+    stop: knock(66, 700, 0.08),
+    shut: { level: 86, noise: 'white', filter: 'bandpass', from: 1800, to: 900, q: 1.2, attack: 0.001, hold: 0.008, decay: 0.12 },
+  },
+  release: {
+    level: 70,
+    buzz: NO_BUZZ,
+    tone: NO_TONE,
+    hiss: { hertz: 800, q: 0.7, gain: 0.5 },
+    grit: { hertz: 300, q: 0.8, gain: 0.3 },
+    up: 0.1,
+    down: 0.3,
+    spins: false,
+    start: click(84, 1800),
+    stop: { ...knock(104, 1400, 0.5), thump: { from: 70, to: 32, gain: 0.8, decay: 0.4 } },
+  },
+};
+
+/** A machine's one-shot `metres` off: its level after the path, its highs what the air leaves; null if it would not be heard. */
+export function burstShot(b: Burst, metres: number): Shot | null {
+  const path = across(b.level, metres, Math.max(b.from, b.to));
+  const gain = loudness(path.level);
+  if (!(gain > 0.001)) return null;
+  const { level: _level, ...recipe } = b;
+  return { ...recipe, from: Math.min(b.from, path.cutoff), to: Math.min(b.to, path.cutoff), gain, bus: 'works' };
+}
+
+/** A wagon's wheels over a rail joint: a knock and its ring. Estimated. */
+const JOINT: Burst = {
+  level: 92,
+  noise: 'white',
+  filter: 'bandpass',
+  from: 2400,
+  to: 900,
+  q: 1.5,
+  attack: 0.001,
+  hold: 0.005,
+  decay: 0.07,
+  thump: { from: 110, to: 60, gain: 0.8, decay: 0.08 },
+};
+
+/** Something that moves, as the works hear it: a move of the hardware (sound/audio.ts `Working`), or a vehicle being driven. */
+export interface Source {
+  key: unknown;
+  kind: Exclude<MachineKind, 'none'>;
+  /** How far along its travel it is in its own measure, and the whole of its travel (Infinity: open-ended). */
+  along: number;
+  travel: number;
+  /** Where it is heard from, in the scene's frame. */
+  where: Vec;
+  /** A vehicle driven by hand: its own speed and pedal (it runs whether it moves or not), not how far along it has gone. */
+  driven?: { speed: number; top: number; throttle: number };
+  /** Its engine (`road`, `locomotive`), and what its tyres are on (`road`, `towed`; else the place's land). */
+  engine?: Engine | null;
+  tread?: TreadKind;
+}
+
+/** What a voice of the works is playing, for the diagnostics: which source, which part of it, how loud and how far. */
+export interface Playing {
+  key: unknown;
+  kind: MachineKind;
+  part: 'machine' | 'engine' | 'tyres';
+  gain: number;
+  metres: number;
+  /** An engine's revolutions a minute; a tyre's surface. */
+  rpm?: number;
+  tread?: TreadKind;
+}
+
+/** A source's state from one hearing to the next. */
+interface Run {
+  along: number;
+  /** How far it is come up to its running, 0 to 1. */
+  spin: number;
+  /** How long since it last moved, s, and how fast it went then, in its measure a second. */
+  still: number;
+  pace: number;
+  moving: boolean;
+  kind: Exclude<MachineKind, 'none'>;
+  where: Vec;
+  engine: Engine | null;
+  tread: TreadKind;
+  driven: Source['driven'];
+  /** The last rail joint it was over, for a wagon. */
+  joint: number;
+  /** Its number, for its voices' names. */
+  n: number;
+}
+
+/** How long a move may go without being posed again and still be running, s: the scene poses it each frame it changes, not each hearing. */
+export const HOLD = 0.25;
+/** More of its travel than this in one hearing is a jump (the slider dragged across it, the clock put elsewhere): nothing it passed over is heard. */
+export const JUMP = 0.3;
+/** A slider's or the clock's road vehicle says no top speed: what drive.ts takes for one whose model gives none, m/s. */
+const ROAD_TOP = 11;
+
+/**
+ * The site's machines and vehicles, heard. Pure (the page's state is passed in, and nothing is played): at each
+ * hearing, every source's progress since the last says whether it is moving; a machine comes up to its running over
+ * its `up` and runs down over its `down` once it stops, starting and stopping with its one-shots, and is silent when it
+ * has run down. The loudest WORK_VOICES voices are played, each kept in its slot while it sounds, so that none jumps
+ * from one to another.
+ */
+export class Works {
+  private readonly runs = new Map<unknown, Run>();
+  private readonly slots: (string | null)[] = new Array(WORK_VOICES).fill(null);
+  private count = 0;
+  /** What each slot played at the last hearing (null: nothing). */
+  playing: (Playing | null)[] = new Array(WORK_VOICES).fill(null);
+
+  /** One hearing, `dt` s after the last, from `ears`, on a place whose land is `land`: the voices to play now, in their slots, and the one-shots due. */
+  hear(sources: readonly Source[], ears: Vec, dt: number, land: TreadKind): { voices: (Voice | null)[]; shots: Shot[] } {
+    const shots: Shot[] = [];
+    const shoot = (b: Burst | undefined, metres: number): void => {
+      const shot = b && burstShot(b, metres);
+      if (shot) shots.push(shot);
+    };
+    const seen = new Set<unknown>();
+    for (const src of sources) {
+      seen.add(src.key);
+      const m = MACHINES[src.kind];
+      let run = this.runs.get(src.key);
+      if (!run) {
+        run = {
+          along: src.along,
+          spin: 0,
+          still: Number.POSITIVE_INFINITY,
+          pace: 0,
+          moving: false,
+          kind: src.kind,
+          where: src.where,
+          engine: src.engine ?? null,
+          tread: src.tread ?? land,
+          driven: src.driven,
+          joint: Math.floor(src.along / (m.joints ?? Number.POSITIVE_INFINITY)),
+          n: this.count++,
+        };
+        this.runs.set(src.key, run);
+      }
+      const gone = Math.abs(src.along - run.along);
+      const jumped = Number.isFinite(src.travel) && src.travel > 0 && gone > JUMP * src.travel;
+      run.where = src.where;
+      run.engine = src.engine ?? run.engine;
+      run.tread = src.tread ?? land;
+      run.driven = src.driven;
+      if (jumped) {
+        // put somewhere else at once: nothing it passed over is heard, and it stands as it was left
+        run.spin = 0;
+        run.still = Number.POSITIVE_INFINITY;
+      } else if (src.driven || gone > 1e-9) {
+        if (gone > 1e-9) run.pace += (gone / Math.max(dt, Math.min(run.still + dt, 1)) - run.pace) * 0.5;
+        run.still = 0;
+      } else {
+        run.still += dt;
+        if (run.still >= HOLD) run.pace *= Math.exp(-dt / 0.4); // (stopped: what it was doing dies away, it does not end at once)
+      }
+      run.along = src.along;
+      if (src.driven) run.pace = Math.abs(src.driven.speed);
+      const moving = !jumped && run.still < HOLD;
+      const metres = distance(ears, run.where);
+      if (moving && !run.moving && run.spin < 0.3) shoot(m.start, metres);
+      if (!moving && run.moving && !jumped) shoot(m.shut && src.along <= 1e-6 ? m.shut : m.stop, metres);
+      // a wagon over its rails' joints
+      if (m.joints) {
+        const joint = Math.floor(src.along / m.joints);
+        if (moving && joint !== run.joint) shoot(JOINT, metres);
+        run.joint = joint;
+      }
+      run.moving = moving;
+    }
+    // a source no longer posed (a driver has got out, a model has gone): it runs down as if it had stopped
+    for (const [key, run] of this.runs)
+      if (!seen.has(key)) {
+        run.still += dt;
+        run.driven = undefined;
+        run.pace = 0;
+        if (run.moving) shoot(MACHINES[run.kind].stop, distance(ears, run.where));
+        run.moving = false;
+      }
+    // each comes up and runs down at its own rate, and is forgotten once it has run down and gone
+    const wanted: { name: string; voice: Voice; playing: Playing }[] = [];
+    for (const [key, run] of this.runs) {
+      const m = MACHINES[run.kind];
+      run.spin = run.moving ? Math.min(1, run.spin + dt / m.up) : Math.max(0, run.spin - dt / m.down);
+      if (run.spin <= 0 && !run.moving) {
+        if (!seen.has(key)) this.runs.delete(key);
+        continue;
+      }
+      const metres = distance(ears, run.where);
+      for (const [part, timbre] of this.timbres(run)) {
+        if (!timbre) continue;
+        const voice = voiceOf(timbre, metres);
+        voice.gain *= run.spin;
+        if (!(voice.gain > 1e-4)) continue;
+        const rpm = 'rpm' in timbre ? (timbre.rpm as number) : undefined;
+        const playing: Playing = { key, kind: run.kind, part, gain: voice.gain, metres, ...(rpm ? { rpm } : {}) };
+        if (part === 'tyres') playing.tread = run.tread;
+        wanted.push({ name: `${run.n}/${part}`, voice, playing });
+      }
+    }
+    // the loudest, each kept in the slot it has
+    wanted.sort((a, b) => b.voice.gain - a.voice.gain);
+    const chosen = new Map(wanted.slice(0, WORK_VOICES).map((w) => [w.name, w]));
+    for (let i = 0; i < this.slots.length; i++) if (this.slots[i] && !chosen.has(this.slots[i]!)) this.slots[i] = null;
+    for (const name of chosen.keys()) if (!this.slots.includes(name)) this.slots[this.slots.indexOf(null)] = name;
+    this.playing = this.slots.map((name) => (name ? chosen.get(name)!.playing : null));
+    return { voices: this.slots.map((name) => (name ? chosen.get(name)!.voice : null)), shots };
+  }
+
+  /** A run's timbres at a metre: its machine's, or its engine's and its tyres'. */
+  private timbres(run: Run): [Playing['part'], Timbre | null][] {
+    const m = MACHINES[run.kind];
+    const speed = run.driven ? run.driven.speed : run.pace;
+    const top = run.driven?.top ?? ROAD_TOP;
+    // (one the slider or the clock drives is taken to have its pedal half down while it gathers pace, and let up as it stops)
+    const throttle = run.driven ? run.driven.throttle : 0.5 * clamp(run.pace / 3, 0, 1);
+    if (run.kind === 'road')
+      return [
+        ['engine', run.engine ? engineVoice(run.engine, speed, top, throttle) : null],
+        ['tyres', tyreVoice(run.tread, speed)],
+      ];
+    // a locomotive's engine works at a notch while it draws, and its wheels rumble on the rails by its pace
+    if (run.kind === 'locomotive')
+      return [
+        ['engine', run.engine ? engineVoice(run.engine, 0.5 * ROAD_TOP, ROAD_TOP, 0.6) : null],
+        ['machine', { ...m, level: m.level + 20 * Math.log10(clamp(run.pace / 2, 0.2, 2)) }],
+      ];
+    if (run.kind === 'towed')
+      return [
+        ['tyres', tyreVoice(run.tread, speed)],
+        ['machine', m],
+      ];
+    // a motor's pitch comes up as it does; friction's is where it is
+    const k = m.spins ? 0.35 + 0.65 * run.spin : 1;
+    return [
+      [
+        'machine',
+        { ...m, buzz: { ...m.buzz, hertz: m.buzz.hertz * k, cut: m.buzz.cut * k }, tone: { ...m.tone, hertz: m.tone.hertz * k } },
+      ],
+    ];
+  }
 }

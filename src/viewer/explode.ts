@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Drive, Move, Part } from '../types.ts';
 import { Rider, type Surfaces } from './runs.ts';
+import { machinery } from '../sound/audio.ts';
 import { smoothstep } from '../util/math.ts';
 
 /**
@@ -166,6 +167,11 @@ class Driver {
     return chordAt(this.route, distance, this.drive.wheelbase);
   }
 
+  /** How far it goes, metres. */
+  get length(): number {
+    return this.route.length;
+  }
+
   set(k: number): void {
     const distance = k * this.route.length;
     const p = this.route.at(distance);
@@ -310,6 +316,11 @@ export function refusal(fn: Fn, value: (id: string) => number): string | null {
   return null;
 }
 
+/** Tell the sound how far along a move that names a machine now is (sound/audio.ts `machinery`): `u` of its `travel`. */
+function heard(move: Move, object: THREE.Object3D, u: number, travel: number): void {
+  if (move.machine && move.machine.kind !== 'none') machinery.posed(move, move.machine, object, u * travel, travel);
+}
+
 const RUN_BY = new THREE.Vector3();
 const RUN_TURN = new THREE.Quaternion();
 const RUN_NEXT = new THREE.Quaternion();
@@ -411,9 +422,16 @@ export class Sequence {
         if (!runAt(object.userData.run, move.back ? 1 - through : through, RUN_BY, RUN_TURN)) continue;
         object.position.copy(rest.position).add(RUN_BY);
         object.quaternion.copy(rest.quaternion).premultiply(RUN_TURN);
+        heard(move, object, through, 1);
         continue;
       }
       const u = smoothstep(0, 1, (at - move.from) / Math.max(1e-6, move.to - move.from));
+      heard(
+        move,
+        object,
+        u,
+        move.kind === 'swing' ? Math.abs(move.angle) : move.kind === 'slide' ? Math.hypot(...move.by) : (driver?.length ?? 0),
+      );
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has
         object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...move.axis).normalize(), move.angle * u));

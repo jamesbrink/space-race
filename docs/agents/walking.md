@@ -103,7 +103,8 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   Through the eyes the helmet's visor rim can frame the view (Visor on the walk bar, remembered).
 - **The walk is heard as events.** The gait says which foot landed (phase 0.25 left, 0.75 right,
   by distance gone), a landing's height and the breath's phase; the walker hands them to
-  `Walker.sounds` (`src/sound/audio.ts`: an interface, silent until something that plays is given).
+  `Walker.sounds` (`src/sound/audio.ts`: an interface, silent until something that plays is given). At a vehicle's
+  wheel there are no footfalls and no breath: the seat's `driving()` is reported instead, with the material under it.
 - **Falls.** More than a hop off the ground the figure falls (`Moment.fall`: arms out, legs
   trailing). Landings go by height: under 1.5 m the knees give; from 1.5 m a deep crouch and a
   moment in which the legs take no orders; from 3 m (`LIMP_FALL`) the figure goes limp. Limp is

@@ -34,7 +34,17 @@ plays until the page has been touched, and a hidden page is suspended.
   on the site's ground and fading with height, and the surf is no louder toward the beach. A site
   inland has no surf and no sea: Tyuratam's was the Cape's until November 2026, and its surf was
   heard as a rocket before any engine was lit.
+- **On the ground it is what moves** (`Works` in `model.ts`, the works bus). Every move says what drives it
+  (`Move.machine`, a lift's `machine`: motor, winch, hydraulic, rails, locomotive, road, towed, skids, hand, lift,
+  door, release, or `none` with why, each with its confidence); whatever poses a move tells `audio.ts`'s
+  `machinery` how far along it is, and the sound hears the change: the slider, a hand and the clock alike. Still is
+  silent; starting, running and stopping are a kind's own (`MACHINES`). At the wheel the walker makes no footfalls and
+  no breath and reports `driving`; the engine is the vehicle's own (`PlaceDef.engines`, by the name its model or its
+  move gives), its tyres on what is under them (`PlaceDef.tread`: the models' material names, else the land). A move
+  with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance, absorption and delay are the
+  launch's path; every level and timbre is estimated. A road painted on the land is the land's.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
-  spectral centroid; the last stage is a soft clip that cannot pass full scale. After changing a
+  spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works
+  play, slot by slot (`pnpm test:sound` reads it while driving and while machines run). After changing a
   level, measure at the pad, liftoff, max q, apogee, entry and under the main, from the pad view
   and the chase camera.

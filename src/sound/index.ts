@@ -16,7 +16,7 @@
  * suspended.
  */
 import { Quaternion, Vector3 } from 'three';
-import type { Footfall, Sounds } from './audio.ts';
+import { type Driving, type Footfall, machinery, type Sounds } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
 import { flownOnce } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
@@ -41,8 +41,11 @@ import {
   type Moment,
   mix,
   score,
+  type Source,
   stepShots,
+  treadOf,
   type Vec,
+  Works,
 } from './model.ts';
 import { isTyping } from '../util/keys.ts';
 import { frameOf } from '../world/earthframe.ts';
@@ -88,6 +91,12 @@ export class Sound {
   private last: Mix | null = null;
   private setAt = 0;
   private breathAt = 0;
+  // ---- the works (issues #2 and #4): the vehicle at whose wheel the walker sits, and every move that names a machine ----
+  private readonly works = new Works();
+  private driving: Driving | null = null;
+  private drivingAt = 0;
+  private readonly labels = new Map<unknown, string>();
+  private readonly node = new Vector3();
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: SoundHost) {
     this.flight = flight;
@@ -117,6 +126,10 @@ export class Sound {
         const b = breath(phase);
         this.engine!.breath(b.gain, b.centre, this.ctx!.currentTime);
         this.breathAt = performance.now();
+      },
+      driving: (state: Driving | null) => {
+        this.driving = state;
+        this.drivingAt = performance.now();
       },
     };
 
@@ -328,6 +341,56 @@ export class Sound {
       engine.breath(0, 1000, now);
       this.breathAt = 0;
     }
+    this.hearWorks([e.x, e.y, e.z], dt, now);
+  }
+
+  // ---- the works: what of the site moves, and the vehicle being driven, heard from the ears (model.ts `Works`) ----
+
+  /** Set the works' voices to what moves now (sound/audio.ts `machinery`) and what is being driven, and play their one-shots. */
+  private hearWorks(ears: Vec, dt: number, now: number): void {
+    const place = this.flight.site.place;
+    const sources: Source[] = [];
+    for (const [key, w] of machinery.working()) {
+      if (w.machine.kind === 'none') continue;
+      w.node.getWorldPosition(this.node);
+      if (!this.labels.has(key)) this.labels.set(key, w.node.name);
+      sources.push({
+        key,
+        kind: w.machine.kind,
+        along: w.along,
+        travel: w.travel,
+        where: [this.node.x, this.node.y, this.node.z],
+        engine: w.machine.engine ? place.engines[w.machine.engine] : null,
+        tread: w.machine.tread,
+      });
+    }
+    // (a driver nobody has reported for a while has got out: the walk has ended)
+    const d = this.driving && performance.now() - this.drivingAt < 400 ? this.driving : null;
+    if (d) {
+      this.labels.set(DRIVEN, d.engine ?? 'vehicle');
+      sources.push({
+        key: DRIVEN,
+        kind: 'road',
+        along: 0,
+        travel: Number.POSITIVE_INFINITY,
+        where: d.at,
+        driven: { speed: d.speed, top: d.top, throttle: d.throttle },
+        engine: d.engine ? (place.engines[d.engine] ?? null) : null,
+        tread: treadOf(d.under, place.tread),
+      });
+    }
+    const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind);
+    this.engine!.works(voices, now);
+    for (const shot of shots) this.engine!.shot(shot, now);
+  }
+
+  /** What the works are playing now, slot by slot (null: silent): for measuring what cannot be heard (`sr.sound.voices`). */
+  get voices(): ({ what: string; kind: string; part: string; gain: number; metres: number; rpm?: number; tread?: string } | null)[] {
+    return this.works.playing.map((p) =>
+      p
+        ? { what: this.labels.get(p.key) ?? '?', kind: p.kind, part: p.part, gain: p.gain, metres: p.metres, rpm: p.rpm, tread: p.tread }
+        : null,
+    );
   }
 
   /** Where the engine is at `t`, in the scene's frame: where the scene puts the model (viewer/ascent.ts), on its pad when it is not flying. */
@@ -432,3 +495,5 @@ export class Sound {
 }
 
 const TOUCHES = ['pointerdown', 'keydown', 'touchend'] as const;
+/** The key the vehicle being driven is heard by (there is one at a time). */
+const DRIVEN = Symbol('driven');

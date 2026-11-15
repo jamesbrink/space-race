@@ -545,6 +545,7 @@ export class OnFoot {
           : driven.hips(to).setY(to.y + walk.eye - walk.gait.hipHeight(this.h.staged()[this.walked]?.shown ?? this.h.scene)),
       facing: () => driven.motion.heading,
       chase: () => driven.chase(this.h.camera.position),
+      driving: () => driven.driving(), // (heard: sound/audio.ts)
     });
     this.setAim(null);
   }
