@@ -11,9 +11,11 @@
 //
 // On Linux (hal9000: NixOS, an RTX 4090, Chrome 156 from nixpkgs) the defaults draw the page correctly, headless, with
 // no display: ANGLE on Vulkan reports the card and the vehicle, the launch sites and the gallery come out as on the
-// laptop. `SR_ANGLE=gl-egl` draws them too, about half as fast to load. `SR_ANGLE=swiftshader` (with
-// SR_ARGS=--enable-unsafe-swiftshader) is the software fallback: it reports SwiftShader, and is too slow to load a site
-// in three minutes. Run there as on the laptop: SR_URL=http://localhost:<port>/ node tools/<tool>.mjs
+// laptop. `SR_ANGLE=gl-egl` draws them too, about half as fast to load. `SR_ANGLE=swiftshader` is the software
+// fallback (Playwright already passes --enable-unsafe-swiftshader): correct but 2 s a frame for the front page, and a
+// launch site does not finish loading in three minutes. A synthesized touch gesture scrolls nothing in Chrome on Linux
+// (dispatch touches instead), and three warns that ANGLE there has no KHR_parallel_shader_compile.
+// Run there as on the laptop: SR_URL=http://localhost:<port>/ node tools/<tool>.mjs
 //
 // What is comparable between machines: what a check decides from what is drawn (the frozen and flicker checks, levels
 // of detail chosen, wheels, positions, memory as the page accounts it) is the page's and should agree; a screenshot
