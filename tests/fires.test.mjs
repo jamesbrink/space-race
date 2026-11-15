@@ -8,8 +8,8 @@ import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flig
 import { steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
-import { clusterOf, exitsOf, fireLevel, mergeOf } from '../src/viewer/fires.ts';
-import { jetEdge, plumeShape } from '../src/viewer/plume.ts';
+import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
+import { plumeShape } from '../src/viewer/plume.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { julianDate } from '../src/world/time.ts';
 

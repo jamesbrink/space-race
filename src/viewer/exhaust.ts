@@ -2,10 +2,9 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import { installedAir } from './air.ts';
 import { hash2 } from './field.ts';
-import { type Cluster, mergeOf } from './fires.ts';
+import { type Cluster, jetEdge, mergeOf } from './fires.ts';
 import { uOrigin } from './origin.ts';
 import { FLAME_TABLES, FLAMES, KINDS } from './flames.ts';
-import { jetEdge } from './plume.ts';
 import type { Blast } from './trail.ts';
 import { smoothstep } from '../util/math.ts';
 

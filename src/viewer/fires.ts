@@ -147,6 +147,16 @@ export function fireLevel(t: number, from: number, to: number, throttle = 1, ste
 }
 
 /**
+ * The jet's edge `x` exit radii aft, in exit radii, in the air `shape` gives (plume.ts `plumeShape`): the free jet swells to its
+ * width as the air lets it, and where there is air the mixing layer spreads slowly outward. The march's own (exhaust.ts
+ * `edge`), here for what is worked out before it: how far a jet can reach, and where a cluster's chambers merge.
+ */
+export function jetEdge(shape: { width: number; air: number }, x: number): number {
+  const w = shape.width;
+  return 1 + (w - 1) * (1 - Math.exp(-Math.max(x, 0) / (1.5 * w))) + 0.085 * Math.max(x, 0) * shape.air;
+}
+
+/**
  * Where a jet's chambers, once their own jets have each widened to touch the next, have merged into one: from `start`
  * to `end`, in a main chamber's exit radii aft of the exit. `edge` is the jet's edge x exit radii aft, in exit radii
  * (exhaust.ts: the same function the march has); `gap` the nearest two main chambers' axes apart over one's exit radius.

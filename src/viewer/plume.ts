@@ -46,16 +46,6 @@ const LIT_AREA = 652 * 0.0254 ** 2;
  */
 const LIGHT_BY_AREA = 0.5;
 
-/**
- * The jet's edge `x` exit radii aft, in exit radii, in the air `shape` gives (plumeShape): the free jet swells to its
- * width as the air lets it, and where there is air the mixing layer spreads slowly outward. The march's own (exhaust.ts
- * `edge`), here for what is worked out before it: how far a jet can reach, and where a cluster's chambers merge.
- */
-export function jetEdge(shape: { width: number; air: number }, x: number): number {
-  const w = shape.width;
-  return 1 + (w - 1) * (1 - Math.exp(-Math.max(x, 0) / (1.5 * w))) + 0.085 * Math.max(x, 0) * shape.air;
-}
-
 export class Plume implements Flame {
   /** The nozzle's exit: nothing is drawn with it (the fire is drawn by exhaust.ts); shown while the engine burns. */
   readonly mesh: THREE.Mesh;
