@@ -105,7 +105,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | ServiceTrusses | service_trusses.py | the two service trusses, `ServiceTruss_North` and `ServiceTruss_South`, with their half-ring platforms and ladders | yes: two of each one's three platforms |
 | UpperCableMast | cable_mast.py | the cable mast to the third stage | yes; the two lower cable masts are not |
 | Erector | erector.py | the erector on the centre track, with `Erector_Boom` (the platforms, the stair's landing) and `Erector_Lift` | yes: its form estimated |
-| TankCars | tank_cars.py | the railway fillers beside the rocket: `TankCar_Oxygen` (8G117) on the north track and `TankCar_Kerosene` (8G119) on the south, each with `..._Wheel_1..8` (a wheel set on its axle) and `..._Bogie_1` and `_2` (east and west: a four-axle bogie's frame, its origin on its pivot at the axles' height) | yes: one of each; their form estimated |
+| TankCars | tank_cars.py | the railway fillers beside the rocket: `TankCar_Oxygen` (8G117) on the north track and `TankCar_Kerosene` (8G119) on the south, each with `..._Wheel_1..8` (a wheel set on its axle) and `..._Bogie_1` and `_2` (east and west: a four-axle bogie's frame, its origin on its pivot at the axles' height, which the viewer swings over its wheel sets as the car is drawn off) | yes: one of each; their form estimated |
 | (the land) | missions/ussr/places/tyuratam/ground.ts | the steppe, the tracks and the roads painted on it, the pit cut out of it | yes |
 | Tracks | deck.py | the rails where they come up to the platform over the land: the centre track's last 140 m, the others' last 80 m; over the apron, as far as 90 m west, flush in a band of concrete laid with them (1.2 m either side of each track's middle), a flangeway cut in it beside each rail; each rail's west end square, a flange's depth over the land | yes (the place) |
 | CommandBunker | bunker.py | the mound over the firing room, its four periscopes, three corner vents, the entrance, the smoking place | yes (the place); the rooms below are not |
@@ -635,7 +635,7 @@ the morning's clock ("The morning at the pad"); clocked motions (`clocked`) are 
 | `Support_3` | `LaunchRing` | the same, at 277.5° (south): (1.083, -8.229, 1.6) | 277.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Support_4` | `LaunchRing` | the same, at 7.5° (east): (8.229, 1.083, 1.6) | 7.5° | +45° | T+0.7 s | 1.9 s | `clocked` | as Support_1 |
 | `Guide_1..4` | `LaunchRing` | each on its foot on the turning cage, 7.66 out, 5.45 under the deck, at its support's bearing (97.5°, 187.5°, 277.5°, 7.5°) | its support's bearing | -25°: its tip goes down and back from the tail | T+0.3 s | 2.0 s | `clocked` on the part `LaunchRing` | that they go back under their own weight once the rocket has left them, in 2.5 s at most: documented for the later system. The angle: estimated |
-| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive` with `bogies`: both bogies on the track's line, each wheel set on its rails, the model's where they are modelled and the land beyond: `runs`) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
+| `TankCar_Oxygen` (and `TankCar_Oxygen_Wheel_1..8`, each about its axle) | `TankCars` | the rails under the middle of its east bogie: Blender (6.3, 13.564, 0.009) | follows the north track west (a `drive` with `bogies`: both bogies on the track's line, each wheel set on its rails, the model's where they are modelled and the land beyond, each bogie's frame swung over its sets: `runs`) | 196 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | that the cars left, and when: documented. How far, how fast, and that this one stood here: estimated |
 | `TankCar_Kerosene` (and its eight wheels) | `TankCars` | the same: (4.8, -12.375, 0.009) | follows the south track west, onto the centre track and out through the fence | 525 m | 08:08 | to 08:15 | `moves`: slider 0.118 to 0.136 | as the oxygen filler |
 | `UpperCableMast` | (top level) | its hinge line on the ring: 8.75 out, 0.7 up, at 7.5° (east): (8.675, 1.142, 0.7) | 7.5° | +40° | 09:06:00 (T-59.7 s) | 10 s | `moves`: slider 0.82 to 0.874 | the minute: documented (the transcript). That it went the whole way then: read off the two photographs. The angle and the ten seconds: estimated |
 | `ServiceTruss_North` | `ServiceTrusses` | its hinge line on the ring: 8.6 out, 0.9 up, at 97.5° | 97.5° | +98° | 08:40 | to about 08:44 | `moves`: slider 0.505 to 0.703 | that they were lowered and when it began: documented. The angle, the order and how long: estimated |
@@ -900,9 +900,15 @@ rocket can leave the erector out by its date.
   apron and up again at its west end, pitched between its axles (its `runs`: src/viewer/runs.ts).
 - The fillers are drawn off with both bogies on their tracks (`bogies`), the body on the line between them, each wheel
   set put on its rails across and turned to them (src/viewer/runs.ts). Each has its two bogies' frames as nodes
-  (`TankCar_<which>_Bogie_1`, `_2`), which nothing turns yet: a bogie rides with the body, where a real one swings about
-  its pivot to the track and rocks over a change of grade; its wheel sets are the car's own children, since the viewer
-  puts those on the track by themselves. The tracks' bends are arcs where the rails are modelled ("The rails over the apron") and the map's corners beyond, where a real track curves. Over the apron each wheel's flange
+  (`TankCar_<which>_Bogie_1`, `_2`), and each frame swings over its four wheel sets (the drive's `runs.bogies`:
+  src/viewer/runs.ts `swing`): moved with their middle, turned to the line through them, which is the track under it,
+  and pitched with them over a change of grade. It is the frame that follows the wheel sets, where a real bogie holds
+  its sets square in its frame: the sets stay the car's own children and each is put on the track by itself
+  (explode.ts `onRails`), so on a bend each lies along the track where it stands and the four are not parallel. Held
+  square in a frame 3.9 m between its end axles, the two inner sets would stand 8.5 mm off the rails of a 200 m arc,
+  and a flange is modelled 9 mm from its rail's face. A set behind the bogie that follows the route as the car
+  stands, or past the route's end when the car has been drawn off, keeps its place along the car: the track is taken
+  to go on straight both ways. The tracks' bends are arcs where the rails are modelled ("The rails over the apron") and the map's corners beyond, where a real track curves. Over the apron each wheel's flange
   runs in a flangeway cut in the band of concrete its track lies in, which is the place's model and not the land's
   paint ("The rails over the apron"): the land is left open along each track for it. The band meets the land's painted
   slabs at the same height but is another surface, with the model's grain and not the land's stains, and the slabs'

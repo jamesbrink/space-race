@@ -112,7 +112,8 @@ const carLeaves = (node: string, wheelbase: number, corners: [number, number][],
   steered: `${node}_Steered_`,
   axle: 'z',
   bogies: true,
-  runs: ON_RAILS,
+  // (each bogie's frame swings over its four wheel sets: turned to the track under it, pitched over a change of grade)
+  runs: { ...ON_RAILS, bogies: `${node}_Bogie_` },
 });
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;

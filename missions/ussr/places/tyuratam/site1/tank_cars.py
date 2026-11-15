@@ -129,7 +129,8 @@ def car(parts: Parts, node: str, length: float, track, middle: float) -> None:
     # The two bogies: a frame either side with its axle boxes, a bolster and the centre plate over it, a node of its own
     # (`<car>_Bogie_1`, the east one, and `_2`), its origin on its pivot at the axles' height; and four wheelsets, each
     # its own node. The wheelsets are the car's own children and not their bogie's: the viewer puts every wheelset that
-    # is the car's child on the track by itself (explode.ts `onRails`), and turns no bogie yet (site-1.md).
+    # is the car's child on the track by itself (explode.ts `onRails`), and swings each bogie's frame over its four
+    # (runs.ts `swing`: the drive's `runs.bogies`; site-1.md).
     n = 0
     for b, bx in enumerate((middle + half - BOGIE_IN, middle - half + BOGIE_IN), 1):  # the east one first
         bogie = f"{node}_Bogie_{b}"

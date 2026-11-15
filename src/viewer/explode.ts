@@ -203,9 +203,14 @@ class Driver {
       const z = o.position.z - rest.x * sin + rest.z * cos - oz;
       const s = this.route.nearest(x, z, distance, this.drive.wheelbase + 5);
       const on = this.route.at(s);
+      // Before the route's start and past its end the track goes on straight, as it lies there: a set behind the bogie
+      // that follows the route as the wagon stands, or ahead of it when the wagon has come to the route's end, keeps
+      // its place along the wagon (without this it was drawn in to the route's end, under the bogie's pivot)
+      const h = on.heading + this.route.start;
+      const beyond = s <= 0 || s >= this.route.length ? (x - on.x) * Math.sin(h) + (z - on.z) * Math.cos(h) : 0;
       // across to it, in the vehicle's own frame, and turned to the track there
-      const dx = on.x - x;
-      const dz = on.z - z;
+      const dx = on.x + beyond * Math.sin(h) - x;
+      const dz = on.z + beyond * Math.cos(h) - z;
       w.position.x += dx * cos - dz * sin;
       w.position.z += dx * sin + dz * cos;
       w.rotation.y = on.heading - heading;

@@ -251,4 +251,114 @@ test("a rail wagon's wheel sets keep to its track past a corner, each moved acro
       near(Math.hypot(on.x - p.x, on.z - p.z), 0, 5e-3, `at ${k}, set ${n} off its track`);
     }
   }
+  // As it stands at the start, one set is behind the bogie that follows the route; at the route's end three are past
+  // it. The track goes on straight both ways: each set keeps its place along the car, and is not drawn in to the end.
+  for (const k of [0, 1]) {
+    seq.set(k);
+    for (const [n, x] of [
+      [1, 1],
+      [2, -1],
+      [3, -11],
+      [4, -13],
+    ]) {
+      const set = car.getObjectByName(`Car_Wheel_${n}`);
+      near(set.position.x, x, 1e-6, `at ${k}, set ${n} along the car`);
+      near(set.position.z, 0, 1e-6, `at ${k}, set ${n} across the car`);
+    }
+  }
+});
+
+test("a rail wagon's bogies swing over their wheel sets: turned to the track under each, pitched with its grade", () => {
+  // the same car, with a frame over each pair of sets (its origin on its pivot) and wheels to stand on
+  const root = new THREE.Group();
+  const car = new THREE.Group();
+  car.name = 'Car';
+  root.add(car);
+  for (const [n, x] of [
+    [1, 0],
+    [2, -12],
+  ]) {
+    const frame = new THREE.Group();
+    frame.name = `Car_Bogie_${n}`;
+    frame.position.set(x, 0.5, 0);
+    car.add(frame);
+  }
+  for (const [n, x] of [
+    [1, 1],
+    [2, -1],
+    [3, -11],
+    [4, -13],
+  ]) {
+    const set = new THREE.Group();
+    set.name = `Car_Wheel_${n}`;
+    set.position.set(x, 0.5, 0);
+    for (const z of [-0.75, 0.75]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 24).rotateX(Math.PI / 2));
+      wheel.position.z = z;
+      set.add(wheel);
+    }
+    car.add(set);
+  }
+  root.updateMatrixWorld(true);
+  // west 40 m, then round a corner of 1 in 20 to the north; the ground level to 60 m west, then down 1 in 50
+  const path = [];
+  let [x0, z0] = [0, 0];
+  for (const [x, z] of [
+    [-40, 0],
+    [-140, -5],
+  ]) {
+    for (let i = 1; i <= 25; i++) path.push([x0 + ((x - x0) * i) / 25, z0 + ((z - z0) * i) / 25]);
+    [x0, z0] = [x, z];
+  }
+  const height = (x) => (x > -60 ? 0 : (x + 60) / 50);
+  const surfaces = new Surfaces((x) => height(x));
+  surfaces.set([root]);
+  const move = {
+    kind: 'drive',
+    from: 0,
+    to: 1,
+    path,
+    pivot: [0, 0.5, 0],
+    forward: [-1, 0],
+    wheelRadius: 0.5,
+    wheelbase: 12,
+    wheels: 'Car_Wheel_',
+    steered: 'Car_Steered_',
+    axle: 'z',
+    bogies: true,
+    runs: { ground: true, bogies: 'Car_Bogie_' },
+  };
+  const seq = new Sequence(car, car.position.clone(), [move], surfaces);
+  const at = (name) => car.getObjectByName(name).getWorldPosition(new THREE.Vector3());
+  const check = (k, what) => {
+    seq.set(k);
+    root.updateMatrixWorld(true);
+    for (const [n, a, b] of [
+      [1, 1, 2],
+      [2, 3, 4],
+    ]) {
+      const frame = car.getObjectByName(`Car_Bogie_${n}`);
+      const [pa, pb] = [at(`Car_Wheel_${a}`), at(`Car_Wheel_${b}`)];
+      // its pivot between its two sets, and its own length along the line from one to the other
+      const pivot = frame.getWorldPosition(new THREE.Vector3());
+      near(pivot.distanceTo(pa.clone().add(pb).multiplyScalar(0.5)), 0, 1e-9, `${what}: bogie ${n} off the middle of its sets`);
+      const along = new THREE.Vector3(1, 0, 0).transformDirection(frame.matrixWorld);
+      near(along.angleTo(pa.clone().sub(pb).normalize()), 0, 1e-6, `${what}: bogie ${n} off the line of its sets`);
+    }
+  };
+  check(0, 'as built');
+  const built = new THREE.Quaternion();
+  near(car.getObjectByName('Car_Bogie_1').quaternion.angleTo(built), 0, 1e-9, 'as built, a bogie is as it was modelled');
+  // the front bogie past the corner and the rear one not yet: the front one is turned to the new line, the rear is not
+  check(0.326, 'across the corner'); // (the slider eases: 35 m along)
+  const turnOf = (n) => {
+    const along = new THREE.Vector3(1, 0, 0).applyQuaternion(car.getObjectByName(`Car_Bogie_${n}`).quaternion);
+    return Math.atan2(-along.z, along.x);
+  };
+  assert.ok(Math.abs(turnOf(2) - turnOf(1)) > 0.02, `the two bogies lie ${turnOf(2) - turnOf(1)} rad apart across a corner of 0.05`);
+  // the front bogie over the change of grade and the rear one on the level: the front one is pitched down, the rear is not
+  check(0.427, 'across the change of grade'); // (55 m along)
+  const pitchOf = (n) => new THREE.Vector3(1, 0, 0).transformDirection(car.getObjectByName(`Car_Bogie_${n}`).matrixWorld).y;
+  near(pitchOf(2), 1 / 50, 2e-3, 'the front bogie on the grade');
+  near(pitchOf(1), 0, 2e-3, 'the rear bogie on the level');
 });

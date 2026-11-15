@@ -62,6 +62,13 @@ export interface Runs {
    * (a hut's skids, a cart's wheels that are not nodes of their own).
    */
   wheels?: string;
+  /**
+   * A rail wagon's bogies: nodes named this and a number (`_1`, `_2`), children of what moves, each a bogie's frame
+   * with its origin on its pivot. Each is kept over its wheel sets (the wheels nearest it as built, which stay the
+   * wagon's own children: each is put on the track by itself): moved with their middle, turned about its pivot to
+   * the line through them, which is the track under it, and pitched with them over a change of grade.
+   */
+  bogies?: string;
   /** A slide's wheels' radius where the tread bears, metres. */
   wheelRadius?: number;
   /** Which of a slide's wheel's own axes is its axle. */

@@ -207,7 +207,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   a structure rolls on its rails, a jib lowers, a truck folds its legs and drives off with its
   wheels rolling and steering. A slide or a drive that runs on something says what (`runs`: the model's rails, a
   road, the land; types.ts `Runs`) and stands on it at every instant, each wheel on what is under its tread
-  (src/viewer/runs.ts; `pnpm test:wheels` holds every wheel within 5 mm of it). The model builds each moving piece as its own node with its origin
+  (src/viewer/runs.ts; `pnpm test:wheels` holds every wheel within 5 mm of it), a rail wagon's bogies swung to the track under them (`runs.bogies`). The model builds each moving piece as its own node with its origin
   on its hinge, in the pose it has at the start of the slider or at the hatch; `lc-5.md` tabulates
   them. Say in the part's text which motions are documented and which are not. Hardware that moved
   at its own times on a model whose slider takes it apart (the periscope's door) has `clocked`

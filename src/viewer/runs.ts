@@ -16,7 +16,8 @@ import type { Runs } from '../types.ts';
  * land otherwise (`bearing`). The body is turned and lifted as one onto the plane its bearings rest on (`restOn`:
  * height, pitch and roll, on the high points), about their middle; then each wheel takes up what is left on its own
  * (its springs), so every tread is on what is under it and none is in it. A thing with no wheels (a hut on skids, a
- * cart) stands so on its own lowest vertices, lifted so none is in what is under it.
+ * cart) stands so on its own lowest vertices, lifted so none is in what is under it. A rail wagon's bogies (`Runs.bogies`)
+ * are then swung over their wheel sets: each frame turned to the track under it and pitched with it (`swing`).
  *
  * Every level of detail does this for itself from the same surface (level 0's meshes and the land), from the same
  * wheel nodes and its own wheels' shape, so the levels agree to within what their wheels differ by.
@@ -251,6 +252,7 @@ const TREAD_STEP = 0.015;
 
 const UP = new THREE.Vector3(0, 1, 0);
 const AXES = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+const u = new THREE.Vector3();
 const v = new THREE.Vector3();
 const w = new THREE.Vector3();
 const q = new THREE.Quaternion();
@@ -278,6 +280,18 @@ interface Wheel {
   span: number;
 }
 
+/** A rail wagon's bogie (types.ts Runs `bogies`): its frame, and the wheel sets it is kept over. */
+interface Bogie {
+  node: THREE.Object3D;
+  rest: THREE.Vector3;
+  turn: THREE.Quaternion;
+  /** Its wheel sets, each with how far along the bogie from their middle it was built, metres. */
+  sets: { wheel: Wheel; along: number }[];
+  /** As built, in the frame of the wagon: the middle of its wheel sets, and the way they lie (a unit vector). */
+  middle: THREE.Vector3;
+  lie: THREE.Vector3;
+}
+
 /**
  * One node that runs on something (a move's `runs`), at one level of detail. `stand` is called once its moves have been
  * played for an instant: it lifts, pitches and rolls it onto what it runs on and sets each wheel on its own.
@@ -287,6 +301,8 @@ export class Rider {
   private readonly runs: Runs;
   private readonly radius: number;
   private readonly wheels: Wheel[] = [];
+  /** A rail wagon's bogies, each kept over its wheel sets (`swing`). */
+  private readonly bogies: Bogie[] = [];
   /** For a thing with no wheels: the bottom corners of its own box, in its own frame. */
   private readonly feet: THREE.Vector3[] = [];
   /** Whether it rolls its own wheels (a slide's; a drive's are rolled by its Driver). */
@@ -367,6 +383,32 @@ export class Rider {
         span: hi - lo,
       });
     });
+    // A rail wagon's bogies: each frame with the wheel sets nearer its pivot than any other's as built (the wagon's own
+    // children, as the frames are), the middle of those and the way they lie along the wagon
+    const frames = runs.bogies ? object.children.filter((c) => named(runs.bogies!, c.name)) : [];
+    for (const node of frames) {
+      const sets = this.wheels.filter(
+        (wh) =>
+          wh.node.parent === object &&
+          frames.every((f) => f === node || wh.rest.distanceToSquared(node.position) < wh.rest.distanceToSquared(f.position)),
+      );
+      if (sets.length < 2) continue; // (one axle says nothing of which way a frame lies)
+      const middle = new THREE.Vector3();
+      for (const wh of sets) middle.addScaledVector(wh.rest, 1 / sets.length);
+      // the way they lie: from one end set to the other (the two furthest apart)
+      const furthest = (from: THREE.Vector3): Wheel =>
+        sets.reduce((a, b) => (b.rest.distanceToSquared(from) > a.rest.distanceToSquared(from) ? b : a));
+      const far = furthest(sets[0]!.rest);
+      const lie = far.rest.clone().sub(furthest(far.rest).rest).normalize();
+      this.bogies.push({
+        node,
+        rest: node.position.clone(),
+        turn: node.quaternion.clone(),
+        sets: sets.map((wheel) => ({ wheel, along: wheel.rest.clone().sub(middle).dot(lie) })),
+        middle,
+        lie,
+      });
+    }
     if (!this.wheels.length) {
       // what it stands on: its lowest faces (a skid's underside, a cart's wheels), points over each of them FOOT apart and
       // at its corners, the lowest in each square of FOOT (a skid's middle is a face with no vertex in it)
@@ -414,6 +456,32 @@ export class Rider {
    * there is nothing to ask yet, and it stays as played.
    */
   stand(surfaces: Surfaces | null): void {
+    this.settled(surfaces);
+    this.swing();
+  }
+
+  /**
+   * Each bogie's frame over its wheel sets as they stand this instant (each on its rails, lifted onto them): moved with
+   * their middle, and turned from the way they lay as built to the way they lie now, which is the line that best fits
+   * them: about the vertical to the track under it, and pitched along it where the track changes grade. What a real
+   * bogie does about its pivot; here the frame follows the wheel sets, where there the sets are held in the frame.
+   */
+  private swing(): void {
+    for (const b of this.bogies) {
+      const middle = v.set(0, 0, 0);
+      for (const { wheel } of b.sets) middle.addScaledVector(wheel.node.position, 1 / b.sets.length);
+      // least squares: each set's place from their middle, weighed by how far along the bogie it was built
+      const lie = w.set(0, 0, 0);
+      for (const { wheel, along } of b.sets) lie.addScaledVector(u.copy(wheel.node.position).sub(middle), along);
+      if (lie.lengthSq() < 1e-12) continue;
+      q.setFromUnitVectors(b.lie, lie.normalize());
+      b.node.quaternion.copy(q).multiply(b.turn);
+      b.node.position.copy(b.rest).sub(b.middle).applyQuaternion(q).add(middle);
+    }
+  }
+
+  /** The body and each wheel on what they run on (`stand`, all but the bogies). */
+  private settled(surfaces: Surfaces | null): void {
     // its wheels roll with the distance slid (a drive's Driver rolls its own)
     if (this.rolls)
       for (const wh of this.wheels)
