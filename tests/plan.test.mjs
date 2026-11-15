@@ -55,7 +55,7 @@ for (const f of ballistic) {
     assert.equal(sep.leaves, tr.separation.boosterMass);
     assert.equal(eventOf(plan, 'separation').when[0].time, tr.separation.at.value);
     tr.retro.fires.forEach((fire, k) => {
-      const e = eventOf(plan, `retro-${k + 1}`);
+      const e = eventOf(plan, k === 0 ? 'retro' : `retro-${k + 1}`);
       assert.equal(e.at, fire);
       assert.equal(byId(c.engines, `retro-${k + 1}`).burn, tr.retro.burn);
     });

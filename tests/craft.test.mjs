@@ -2,8 +2,12 @@
 // plan of its own, so that each rule is seen alone; the flights' plans fly on it in stagedlive.test.mjs and the rest.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { flight as mr3 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { aboard, act, due, fire, heldBy, holds, lit, part, startCraft } from '../src/sim/craft.ts';
 import { problems } from '../src/sim/plan.ts';
+import { vehicle } from '../src/sim/vehicle.ts';
+import { siteFrame } from '../src/world/frames.ts';
 
 const m = (value = 1) => ({ value, confidence: 'estimated', source: 'test' });
 const starts = (count, ground = false) => ({ count, ground, confidence: 'estimated', source: 'test' });
@@ -184,4 +188,32 @@ test('events come due on their triggers, once; an armed one waits for its arming
   assert.ok(holds({ height: 1000, going: 'down' }, armed, sense({ height: 999, falling: true })));
   assert.ok(!holds({ height: 1000, going: 'down' }, armed, sense({ height: 999, falling: false })));
   assert.ok(holds({ command: 'arm' }, armed, sense({ commands: new Set(['arm']) })));
+});
+
+test('the live ballistic vehicle takes a hand’s commands as the plan’s: the old switches and the plan’s actions fly the same flight', () => {
+  const v = vehicle(mr3.trajectory, siteFrame(mr3.site), mr3.site.seaLevel.value);
+  const plain = flyLive(v, autopilot(v));
+  const on = (x, a) => (x ? [a] : []);
+  const asPlan = (c) => {
+    const { tower, separate, retro, retropack, drogue, main, abort, ...rest } = c;
+    return {
+      ...rest,
+      do: [
+        ...on(tower, { separate: 'tower' }),
+        ...on(separate, { separate: 'separation' }),
+        ...on(retropack, { separate: 'retropack' }),
+        ...on(drogue, { deploy: 'drogue' }),
+        ...on(main, { deploy: 'main' }),
+      ],
+      events: [...on(retro, 'retro'), ...on(abort, 'abort')],
+    };
+  };
+  const pilot = autopilot(v);
+  const planned = flyLive(v, (s) => asPlan(pilot(s)));
+  assert.deepEqual(planned.state.landing, plain.state.landing);
+  assert.deepEqual(planned.state.craft, plain.state.craft);
+  const c = plain.state.craft;
+  for (const b of ['tower', 'booster', 'retropack']) assert.ok(Number.isFinite(c.bodies[b]), `${b} has gone`);
+  assert.ok(Number.isFinite(c.chutes.main.out) && c.chutes.drogue.off === c.chutes.main.out, 'the main out in the drogue’s place');
+  assert.ok(c.fired.retro > 0, 'the retrorockets’ sequence begun');
 });

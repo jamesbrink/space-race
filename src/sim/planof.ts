@@ -265,11 +265,12 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
       at: sep.at,
       source: sep.at.source,
     },
+    // the retrorockets' sequence: begun with the first, each other so long after it (a hand may begin it at any time)
     ...tr.retro.fires.map(
       (f, k): EventDef => ({
-        id: `retro-${k + 1}`,
-        label: `Retrorocket ${k + 1} fires`,
-        when: atTime(f),
+        id: k === 0 ? 'retro' : `retro-${k + 1}`,
+        label: k === 0 ? 'Retrorocket sequence: the first fires' : `Retrorocket ${k + 1} fires`,
+        when: k === 0 ? atTime(f) : [{ after: 'retro', wait: f.value - tr.retro.fires[0]!.value }],
         do: [{ ignite: `retro-${k + 1}` }],
         automatic: true,
         at: f,
@@ -307,14 +308,18 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
       id: 'abort',
       label: 'Abort',
       when: [{ command: 'abort' }],
-      do: [
-        { cut: 'main' },
-        { ignite: 'escape' },
-        { separate: 'separation' },
-        ...(body.escape.sequence?.retropack ? [{ separate: 'retropack' }] : []),
-      ],
+      do: [{ cut: 'main' }, { ignite: 'escape' }, { separate: 'separation' }],
       automatic: false,
       source: 'the abort handle, or the sequencer’s abort signal',
+    });
+  if (body?.escape?.sequence?.retropack)
+    events.push({
+      id: 'abort-retropack',
+      label: 'Retropack dropped as the spacecraft leaves',
+      when: [{ after: 'abort' }],
+      do: [{ separate: 'retropack' }],
+      automatic: true,
+      source: body.escape.sequence.ceiling.source,
     });
   return {
     kind: 'ballistic',

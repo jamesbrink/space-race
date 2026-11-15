@@ -86,7 +86,11 @@ never adjusted to bring a check in.
   says why where it does not, `due` is the events whose triggers all hold, `fire` sets one off, and `part` parts a joint
   once the simulator's physics lets it (whether what is let go is still pressed on is physics, not the machine's). The
   live staged vehicle is flown on it: its `stages` and `drops` are the machine's state as the forces read it, and the
-  record's pilot gives the plan's events as they come due. tests/craft.test.mjs holds each rule on a plan of its own.
+  record's pilot gives the plan's events as they come due. The live ballistic vehicle keeps on it what has left it, which
+  parachute is out and which of its events (the retrorockets' sequence, an abort) have happened, `shed` being its view;
+  a hand's commands are the plan's (`Controls.do`, `Controls.events`), and its old switches are the same commands by
+  their old names. Its engine and retrorockets are still its own until the record's pilot gives the plan's events.
+  tests/craft.test.mjs holds each rule on a plan of its own.
 - **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
