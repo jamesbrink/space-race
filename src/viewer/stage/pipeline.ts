@@ -65,7 +65,7 @@ export interface DepthScene {
   /** The walker's solids (walk.ts), and every root that is solid now. */
   solids(): Solids;
   solidRoots(): THREE.Object3D[];
-  /** A geometry with no hierarchy yet: one is owed, made in time to spare (`Stage.growTrees`). */
+  /** A geometry with no hierarchy yet: one is owed, made in time to spare (`Picker.growTrees`, stage/picker.ts). */
   owe(geometry: THREE.BufferGeometry): void;
 }
 

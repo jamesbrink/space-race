@@ -110,6 +110,7 @@ src/
   viewer/stage.ts                     the stage: one scene of a flight's models in their setting, the camera, the clock; it owns the pieces below and keeps
                                       the one API the page uses (`window.sr.stage`)
   viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there
+  viewer/stage/picker.ts              what is under the pointer: a part, another model, a window, a place round the pad, any spot; the hierarchies picks want, made in time to spare
   viewer/stage/shadows.ts             the Sun's shadows: the fine map and where it is spent (the section, the gallery's focus, the walker, the vehicle), its maps by size, the far map under it
   viewer/pick.ts                      what a ray meets, through each mesh's bounding volume hierarchy
   viewer/outline.ts                   the line round what is hovered or selected (three's OutlinePass from its mask on)

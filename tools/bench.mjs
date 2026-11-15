@@ -492,7 +492,7 @@ function inPage(DT) {
       frame(true);
       await turn();
       const at = still();
-      rest = at === last && !st.treesOwed?.size ? rest + 1 : 0;
+      rest = at === last && !st.picker.treesOwed?.size ? rest + 1 : 0;
       last = at;
     }
     return rest >= 8;
@@ -539,7 +539,7 @@ function inPage(DT) {
             max.max(p);
           }
     });
-    const ray = st.raycaster;
+    const ray = st.picker.raycaster;
     const down = new V3(0, -1, 0);
     for (let i = 1; i < 12; i++)
       for (let j = 1; j < 12; j++) {

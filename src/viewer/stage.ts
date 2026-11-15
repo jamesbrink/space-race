@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
-import type { MeshBVH } from 'three-mesh-bvh';
 import { sameTarget, type Target, type Workings } from '../app/actions.ts';
 import { readingFor } from '../sim/mechanism.ts';
 import { exitAreaOf } from '../sim/staged.ts';
@@ -35,13 +34,14 @@ import { refused, sayRefused } from './lost.ts';
 import { absolute, type Origin } from './origin.ts';
 import { OVERLAY_LAYER } from './overlay.ts';
 import { Panes } from './panes.ts';
-import { through, triangles } from './pick.ts';
+import { through } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
 import { lightFires, Plume } from './plume.ts';
 import type { Quality } from './quality.ts';
 import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
 import { Surfaces } from './runs.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
+import { NOTHING, type Picked, Picker, skinless, type Thing } from './stage/picker.ts';
 import { Shadows } from './stage/shadows.ts';
 import { uShadowFade } from './shadows.ts';
 import { wearTexture } from './space.ts';
@@ -198,30 +198,12 @@ const ENCLOSING = [
   [0, 1, 1],
   [0, 1, -1],
 ].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
-/** Triangles a millisecond at which a geometry's hierarchy is taken to be made, when deciding whether one fits in the time to spare (`growTrees`): half what is measured. */
-const TREE_RATE = 1000;
 /** After the clock has been put somewhere, the hardware plays the last stretch before that instant (seconds of the sequence) at this many times life. */
 const CATCH_UP_NEAR = 20;
 const CATCH_UP_PACE = 4;
-/** The most of a scenery object that is framed at once, metres across: beyond this a click looks at where it landed. */
-const PLACE = 60;
 /** How much stronger the sky's fill light is in the cel look. */
 const CEL_FILL = 4.5;
 
-/** What a pointer is on: a part of the model on show, or another model standing beside it. */
-interface Picked {
-  node: string | null;
-  model: string | null;
-  /** Something in the place round the pad (Flight.surroundings): what it is called, and the part of it to go and look at. */
-  place?: { name: string; box: THREE.Box3; title?: string; about?: string };
-  /** The object itself, if the model names it for people (custom properties `label`, `about`): one searchlight, not all the ground equipment. */
-  thing?: Thing;
-  /** A window of the section's model: where on the pane, and which way the pane faces. */
-  pane?: { point: THREE.Vector3; normal: THREE.Vector3 };
-}
-const NOTHING: Picked = { node: null, model: null };
-
-/** An object a model names for people: what it is, a sentence about it, and the node itself. */
 /** One model on its way in (Stage.load): how much of it has arrived, in bytes where the fetch says how big it is (total 0 until it does). */
 export interface LoadPart {
   label: string;
@@ -231,35 +213,10 @@ export interface LoadPart {
 }
 /** What Stage.warm is doing: the place round the pad and the coarser levels arriving, the clouds made, the shaders built, a few frames to settle. */
 export type WarmStep = 'place' | 'clouds' | 'shaders' | 'settle';
-
-export interface Thing {
-  label: string;
-  about: string | null;
-  object: THREE.Object3D;
-}
+export type { Thing };
 
 /** A click on board that was on nothing. */
-/** A shell whose skin has been taken off (Stage.setCutaway, in flight): it is not drawn, so a ray goes through it. */
-const skinless = (o: THREE.Object3D): boolean => ((o as THREE.Mesh).material as THREE.Material | undefined)?.visible === false;
 const NO_THING: CabinThing = { label: '', about: null, object: new THREE.Object3D() };
-
-/** The nearest object at or above `o` that the model names (a `label`, or a vehicle's `vehicle`). */
-export function thingOf(o: THREE.Object3D): Thing | undefined {
-  for (let at: THREE.Object3D | null = o; at; at = at.parent) {
-    const label = (at.userData.label ?? at.userData.vehicle) as unknown;
-    if (typeof label === 'string' && label) {
-      const about = at.userData.about;
-      return { label, about: typeof about === 'string' ? about : null, object: at };
-    }
-  }
-  return undefined;
-}
-
-/** Whether `inner` is `outer` or somewhere under it. */
-function contains(outer: THREE.Object3D, inner: THREE.Object3D | null): boolean {
-  for (let o = inner; o; o = o.parent) if (o === outer) return true;
-  return false;
-}
 
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
@@ -391,6 +348,8 @@ export class Stage {
   readonly cam: Cameras;
   /** The rig in charge of the camera has changed (the hands, the page, or the vehicle leaving the pad). */
   onRig: (id: RigId) => void = () => {};
+  /** What is under the pointer (stage/picker.ts). */
+  readonly picker: Picker;
   /** The Sun's shadows: its fine map and where it is spent, the far map under it (stage/shadows.ts). */
   readonly shadows: Shadows;
   /** The frame from the scene to the screen: the passes, the drawing's resolution, the near plane (stage/pipeline.ts). */
@@ -405,8 +364,6 @@ export class Stage {
   }
   private readonly settings: Settings;
   private readonly fill = new THREE.HemisphereLight(0, 0, 0.5);
-  private readonly raycaster = new THREE.Raycaster();
-  private readonly pointer = new THREE.Vector2();
   private readonly timer = new THREE.Timer();
   private readonly loader = new GLTFLoader();
   private readonly loaded = new Map<string, Promise<THREE.Object3D>>();
@@ -671,17 +628,33 @@ export class Stage {
         chutes: () => this.chutes,
         solids: () => this.walk.solids,
         solidRoots: () => this.solidRoots(),
-        owe: (geometry: THREE.BufferGeometry) => this.treesOwed.add(geometry),
+        owe: (geometry: THREE.BufferGeometry) => this.picker.treesOwed.add(geometry),
       },
     });
     // (the only light with a shadow, the only sky light)
     for (const light of [sun, far.light, far.sky, this.fill]) this.pipe.origin.light(light);
     this.applySetting();
 
+    this.picker = new Picker({
+      camera: this.camera,
+      cutPlanes: this.cutPlanes,
+      cut: () => this.cut,
+      staged: () => this.staged,
+      defs: () => this.defs,
+      current: () => this.current,
+      parts: () => this.parts,
+      surroundings: () => this.surroundings,
+      floor: () => this.setting.floor ?? null,
+      solids: () => this.walk.solids,
+      thingAt: (point) => this.cabin?.thingAt(point),
+      shed: () => this.debris,
+      dropTitle: (drop) => this.dropTitle(drop),
+      flying: () => (this.lifted.flying ? this.flier : null),
+    });
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
     const aim = (e: PointerEvent) => {
       const r = canvas.getBoundingClientRect();
-      this.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      this.picker.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     };
     canvas.addEventListener('pointermove', (e) => {
       aim(e);
@@ -701,14 +674,14 @@ export class Stage {
       asked = null;
       if (e.button !== 2 || !from || Math.hypot(e.clientX - from.x, e.clientY - from.y) >= 5) return;
       aim(e);
-      const spot = this.spot();
+      const spot = this.picker.spot();
       if (spot) this.onSpot({ x: e.clientX, y: e.clientY }, spot.point, spot.floor, spot.on);
     });
     canvas.addEventListener('pointerdown', (e) => {
       if (this.walk.active) return; // on foot there is nothing to pick: a drag looks round
       if (e.button !== 0) return; // right and middle buttons pan and zoom; they select nothing
       aim(e);
-      this.down = { x: e.clientX, y: e.clientY, ...this.pick() };
+      this.down = { x: e.clientX, y: e.clientY, ...this.picker.pick() };
     });
     canvas.addEventListener('pointerup', (e) => {
       const down = this.down;
@@ -1227,13 +1200,13 @@ export class Stage {
         return hit !== null;
       },
       solidAt: (x, y) => {
-        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
-        const { origin, direction } = this.raycaster.ray;
+        this.picker.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+        const { origin, direction } = this.picker.raycaster.ray;
         // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
         const gone = (h: THREE.Intersection) =>
           this.cut && h.object.userData.shell && (skinless(h.object) || this.cutPlanes.every((c) => c.distanceToPoint(h.point) < 0));
         const roots = [...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])];
-        const hit = through(this.raycaster, roots, this.pickTree, !this.cut).find((h) => !gone(h));
+        const hit = through(this.picker.raycaster, roots, this.picker.pickTree, !this.cut).find((h) => !gone(h));
         // the ground is a height, not a mesh: where the ray comes down onto it
         let ground: THREE.Vector3 | null = null;
         if (this.setting.floor && direction.y < -1e-4) {
@@ -2831,7 +2804,7 @@ export class Stage {
       )
         return;
       const first = mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(at, 0));
-      const point = this.paneCentre(mesh, first);
+      const point = this.picker.paneCentre(mesh, first);
       const normal = new THREE.Vector3().fromBufferAttribute(facing, 0).transformDirection(mesh.matrixWorld);
       // outward: away from the middle of the model it is a window of
       if (normal.dot(point.clone().sub(middle).setY(0)) < 0) normal.negate();
@@ -3118,121 +3091,6 @@ export class Stage {
     roots: [] as THREE.Object3D[],
   };
 
-  /**
-   * A geometry's hierarchy for a pick, if it has one. Making one takes from a fraction of a millisecond to a frame
-   * or more, and a ray crosses dozens of meshes, so the pointer never waits for it: a mesh without one is asked
-   * three's way, which gives the same answer, and its hierarchy is owed (`growTrees`).
-   */
-  private readonly pickTree = (geometry: THREE.BufferGeometry): MeshBVH | null => {
-    const solids = this.walk.solids;
-    const tree = solids.fresh(geometry);
-    if (!tree && !solids.has(geometry)) this.treesOwed.add(geometry); // (one that has gone stale stays stale: its vertices move)
-    return tree;
-  };
-  private readonly treesOwed = new Set<THREE.BufferGeometry>();
-
-  /**
-   * Make hierarchies that picks have wanted, in time nobody is waiting for: `spare` milliseconds of it. One is
-   * started only if it should fit (a hierarchy is made at some two thousand triangles a millisecond, taken here
-   * as a thousand); with `still` (nothing was drawn this frame, so nothing is in motion) one too big to fit is
-   * made anyway, alone.
-   */
-  private growTrees(spare: number, still: boolean): void {
-    const until = performance.now() + spare;
-    let made = 0;
-    for (const geometry of this.treesOwed) {
-      const left = until - performance.now();
-      if (left <= 0) break;
-      if (triangles(geometry) / TREE_RATE > left && !(still && !made)) continue;
-      this.treesOwed.delete(geometry);
-      this.walk.solids.tree(geometry);
-      made++;
-    }
-  }
-
-  /**
-   * What is under the pointer: one of this model's parts, or one of the models standing beside
-   * it (the pad under the rocket, the pilot at its foot), which a click opens.
-   */
-  private pick(): Picked {
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    // a ray does not know about the cutaway: skip what has been cut away to reach what is inside
-    const gone = (h: THREE.Intersection) =>
-      this.cut && h.object.userData.shell && (skinless(h.object) || this.cutPlanes.every((p) => p.distanceToPoint(h.point) < 0));
-    // (what three's own intersectObjects gives, found through the hierarchies the walker keeps: pick.ts. With
-    // nothing cut away the first thing met is the answer, and each mesh need only say where the ray first meets it.)
-    const roots = [...this.staged.map((s) => s.shown), ...(this.surroundings ? [this.surroundings] : [])];
-    // nor about what is not being drawn: from the seat, the pilot's own visor is in front of the eye
-    const hidden = (o: THREE.Object3D | null): boolean => (o ? !o.visible || hidden(o.parent) : false);
-    const hit = through(this.raycaster, roots, this.pickTree, !this.cut).find((h) => !gone(h) && !hidden(h.object));
-    // something in the place round the pad: a click goes over to it
-    const place = hit ? this.placeOf(hit.object, hit.point) : null;
-    if (place) return { node: null, model: null, place };
-    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent) {
-      const at = this.staged.findIndex((s) => s.shown === o);
-      if (at >= 0 && at !== this.current) return { node: null, model: this.defs[at]!.id };
-      if (at === this.current) break;
-    }
-    // a window pane of this model: a click goes up to it and looks in
-    const mesh = hit?.object as THREE.Mesh | undefined;
-    const of = (mesh?.material as THREE.Material | undefined)?.name ?? '';
-    if (hit?.face && mesh && of.startsWith('glass') && !of.startsWith('glass-lens')) {
-      const normal = hit.face.normal.clone().transformDirection(mesh.matrixWorld);
-      if (normal.dot(this.raycaster.ray.direction) > 0) normal.negate(); // toward the viewer, whichever side was hit
-      return { node: null, model: null, pane: { point: this.paneCentre(mesh, hit.point), normal } };
-    }
-    const thing = hit ? (thingOf(hit.object) ?? this.cabin?.thingAt(hit.point) ?? undefined) : undefined;
-    for (let o: THREE.Object3D | null = hit?.object ?? null; o; o = o.parent)
-      if (this.parts.has(o.name)) return { node: o.name, model: null, ...(thing ? { thing } : {}) };
-    return { node: null, model: null };
-  }
-
-  /** Something in the place round the pad that `object` belongs to: what it is called, and the part of it to go and look at. */
-  private placeOf(object: THREE.Object3D, point: THREE.Vector3): { name: string; box: THREE.Box3; title?: string; about?: string } | null {
-    // (only the surroundings have places: a model's parts are its own, even one marked a vehicle)
-    let o: THREE.Object3D | null = object;
-    while (o && o !== this.surroundings) o = o.parent;
-    if (!o) return null;
-    // A thing the model has named for people (a custom property `label`, or `vehicle` on a car)
-    // is that thing, however deep it sits: one car in a car park, not the car park.
-    const thing = thingOf(object);
-    if (thing && thing.object !== this.surroundings && !contains(thing.object, this.surroundings))
-      return {
-        name: thing.object.name,
-        box: new THREE.Box3().setFromObject(thing.object),
-        title: thing.label,
-        ...(thing.about ? { about: thing.about } : {}),
-      };
-    for (let o: THREE.Object3D | null = object; o && this.surroundings; o = o.parent) {
-      if (o.parent !== this.surroundings && o.parent?.parent !== this.surroundings) continue;
-      if (!o.name || (o as THREE.Mesh).isMesh) continue;
-      const box = new THREE.Box3().setFromObject(o);
-      // a building is looked at whole; a road or a row of poles, where it was clicked
-      if (box.getSize(new THREE.Vector3()).length() > PLACE)
-        box.setFromCenterAndSize(point, new THREE.Vector3(PLACE, 6, PLACE).multiplyScalar(0.5));
-      return { name: o.name, box };
-    }
-    return null;
-  }
-
-  /**
-   * The middle of the window pane that `point` is on, not where the pointer happened to land:
-   * the mean of the mesh's vertices within arm's reach of the point (one mesh may hold several windows).
-   */
-  private paneCentre(mesh: THREE.Mesh, point: THREE.Vector3): THREE.Vector3 {
-    const at = mesh.geometry.getAttribute('position');
-    const centre = new THREE.Vector3();
-    const v = new THREE.Vector3();
-    let n = 0;
-    for (let i = 0; i < at.count; i++) {
-      mesh.localToWorld(v.fromBufferAttribute(at, i));
-      if (v.distanceTo(point) > 0.6) continue;
-      centre.add(v);
-      n++;
-    }
-    return n ? centre.divideScalar(n) : point.clone();
-  }
-
   private setHover({ node, model, pane, place, thing }: Picked): void {
     if (model !== this.hoveredModel) {
       this.hoveredModel = model;
@@ -3295,9 +3153,9 @@ export class Stage {
     this.pipe.counted(began);
     this.pipe.paced(began, this.pipe.drawn !== drawn);
     // (after the frame's own work is counted: a frame that drew nothing has time to spare, one that took under half its time has a little)
-    if (this.treesOwed.size) {
-      if (this.pipe.drawn === drawn) this.growTrees(6, true);
-      else if (performance.now() - began < 8) this.growTrees(1.5, false);
+    if (this.picker.treesOwed.size) {
+      if (this.pipe.drawn === drawn) this.picker.growTrees(6, true);
+      else if (performance.now() - began < 8) this.picker.growTrees(1.5, false);
     }
   }
 
@@ -3329,7 +3187,7 @@ export class Stage {
       this.fitDetail(dt);
       if (this.pointerDirty && !this.down) {
         this.pointerDirty = false;
-        const under = this.inert || this.veiled ? NOTHING : this.pick();
+        const under = this.inert || this.veiled ? NOTHING : this.picker.pick();
         // (from the seat a part is not something to choose: only what is in reach is, and a window to look out of)
         // (and nothing is named over a view being looked through: what it is has been said in the note line)
         this.setHover(this.cam.rig === 'onboard' ? (this.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
@@ -3409,47 +3267,6 @@ export class Stage {
     this.highlight(null, null);
     this.embody(at);
     return true;
-  }
-
-  /**
-   * What is under the pointer, anywhere: on a model, in the place round it, or on the ground.
-   * `floor` says whether it is something to stand on (it faces up).
-   */
-  private spot(): {
-    point: THREE.Vector3;
-    floor: boolean;
-    on: { craft: THREE.Vector3 | null; node: string | null; shed: { drop: number; name: string } | null };
-  } | null {
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    const hit = this.raycaster
-      .intersectObjects(
-        [
-          ...this.staged.map((s) => s.shown),
-          ...this.debris.filter((d) => d.holder.visible).map((d) => d.holder), // (what the vehicle has let go, falling beside it)
-          ...(this.surroundings ? [this.surroundings] : []),
-          ...(this.setting.floor ? [this.setting.floor] : []),
-        ],
-        true,
-      )
-      .find((h) => h.face && !(h.object as THREE.InstancedMesh).isInstancedMesh);
-    if (!hit?.face) return null;
-    const up = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y;
-    let shed: { drop: number; name: string } | null = null;
-    for (let o: THREE.Object3D | null = hit.object; o && !shed; o = o.parent) {
-      const piece = this.debris.find((d) => d.holder === o);
-      if (piece) shed = { drop: piece.drop, name: this.dropTitle(piece.drop) };
-    }
-    // the flown vehicle, off its pad, and which of its parts
-    const flier = this.lifted.flying ? this.flier : null;
-    const parts = flier ? this.defs[this.staged.indexOf(flier)]?.parts : undefined;
-    let craft = false;
-    let node: string | null = null;
-    for (let o: THREE.Object3D | null = flier ? hit.object : null; o; o = o.parent) {
-      if (node === null && parts?.some((p) => p.node === o.name)) node = o.name;
-      if (o === flier!.group) craft = true;
-    }
-    const local = craft ? flier!.group.worldToLocal(hit.point.clone()) : null;
-    return { point: hit.point.clone(), floor: up > 0.7, on: { craft: local, node: craft ? node : null, shed } };
   }
 
   /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */
@@ -3654,7 +3471,7 @@ export class Stage {
     const material = hit.mesh.material as THREE.Material | THREE.Material[];
     const pane = (Array.isArray(material) ? material[0] : material)?.name.startsWith('glass') || undefined;
     const climb = Boolean(hit.mesh.userData.climb || hit.mesh.parent?.userData.climb) || undefined;
-    const place = this.placeOf(hit.mesh, hit.point);
+    const place = this.picker.placeOf(hit.mesh, hit.point);
     if (place) return { target: { place: place.name, pane, climb, marked: this.markedOn(hit.mesh, this.surroundings!) }, box: place.box };
     const names: string[] = [];
     for (let o: THREE.Object3D | null = hit.mesh; o; o = o.parent) {
@@ -3688,7 +3505,7 @@ export class Stage {
   walkLookIn(): void {
     const hit = this.aim?.hit;
     if (!hit || !this.aim?.target.pane) return;
-    const centre = this.paneCentre(hit.mesh, hit.point);
+    const centre = this.picker.paneCentre(hit.mesh, hit.point);
     this.walk.peek(centre.clone().addScaledVector(hit.normal, 0.4), hit.normal.clone().negate());
   }
 
