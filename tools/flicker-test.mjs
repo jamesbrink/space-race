@@ -143,9 +143,11 @@ for (const model of models) {
       }
   }
 }
-if (errors.length) {
+// (but not the machine's own: three warns that ANGLE on Linux offers no KHR_parallel_shader_compile, and compiles anyway)
+const own = errors.filter((e) => !e.includes('KHR_parallel_shader_compile'));
+if (own.length) {
   failed++;
-  console.log(`FAIL console: ${errors.length} errors or warnings\n  ${errors.slice(0, 8).join('\n  ')}`);
+  console.log(`FAIL console: ${own.length} errors or warnings\n  ${own.slice(0, 8).join('\n  ')}`);
 }
 await browser.close();
 console.log(failed ? `flicker-test: ${failed} FAILED` : 'flicker-test: ok');
