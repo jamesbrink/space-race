@@ -47,6 +47,7 @@ import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
 import { TICK } from './vehicle.ts';
+import { rk4Body } from './core/rk4.ts';
 
 /** Under this dynamic pressure, Pa, the air is left out of a coarse step; and how many ticks such a step is. */
 export const LULL = 0.01;
@@ -202,31 +203,11 @@ export function shedder(
     const f = forces(d, at, still, push, turn0);
     return { r: d.v, v: add(gravity(d.r), scale(f.force, 1 / mass)), q: spin(d.q, d.w), w: euler(d.w, f.torque, roll, across) };
   };
-  const nudge = (d: Dyn, k: Dyn, h: number): Dyn => ({
-    r: add(d.r, scale(k.r, h)),
-    v: add(d.v, scale(k.v, h)),
-    q: [d.q[0] + k.q[0] * h, d.q[1] + k.q[1] * h, d.q[2] + k.q[2] * h, d.q[3] + k.q[3] * h],
-    w: add(d.w, scale(k.w, h)),
-  });
+  /** A step from `at` (core/rk4.ts), its rockets' push held at what it is at the step's middle. */
   const rk4 = (d: Dyn, at: number, h: number, still: boolean): Dyn => {
     const push = thrust(at + h / 2 - release.t);
     const torque = twist(at + h / 2 - release.t);
-    const k1 = rate(d, at, still, push, torque);
-    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, still, push, torque);
-    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, still, push, torque);
-    const k4 = rate(nudge(d, k3, h), at + h, still, push, torque);
-    const sum = (a: Vec3, b: Vec3, c: Vec3, e: Vec3): Vec3 => scale(add(add(a, scale(b, 2)), add(scale(c, 2), e)), 1 / 6);
-    const next = nudge(
-      d,
-      {
-        r: sum(k1.r, k2.r, k3.r, k4.r),
-        v: sum(k1.v, k2.v, k3.v, k4.v),
-        q: [0, 1, 2, 3].map((i) => (k1.q[i]! + 2 * k2.q[i]! + 2 * k3.q[i]! + k4.q[i]!) / 6) as unknown as Quat,
-        w: sum(k1.w, k2.w, k3.w, k4.w),
-      },
-      h,
-    );
-    return { ...next, q: normalize(next.q) };
+    return rk4Body(d, at, h, (x, tt) => rate(x, tt, still, push, torque));
   };
 
   const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);

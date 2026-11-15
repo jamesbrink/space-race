@@ -109,7 +109,6 @@ import {
   type MassProperties,
   massOf,
   multiply,
-  normalize,
   type Quat,
   spin,
   turn,
@@ -117,6 +116,7 @@ import {
 } from './rigid.ts';
 import { clamp } from '../util/math.ts';
 import { nozzleThrust, vacuumOf } from './thrust.ts';
+import { rk4Body } from './core/rk4.ts';
 
 /** The integration step, s. */
 export const TICK = 0.01;
@@ -588,32 +588,8 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         (escapeBurn > 0 && s.abortAt !== null && !s.shed.tower ? escapeBurn * escapeThrust(at - s.abortAt) : 0),
     };
   };
-  const nudge = (d: Dyn, k: Dyn, h: number): Dyn => ({
-    r: add(d.r, scale(k.r, h)),
-    v: add(d.v, scale(k.v, h)),
-    q: [d.q[0] + k.q[0] * h, d.q[1] + k.q[1] * h, d.q[2] + k.q[2] * h, d.q[3] + k.q[3] * h],
-    w: add(d.w, scale(k.w, h)),
-    mass: d.mass + k.mass * h,
-  });
-  const rk4 = (d: Dyn, at: number, h: number, s: VehicleState): Dyn => {
-    const k1 = rate(d, at, s, at);
-    const k2 = rate(nudge(d, k1, h / 2), at + h / 2, s, at);
-    const k3 = rate(nudge(d, k2, h / 2), at + h / 2, s, at);
-    const k4 = rate(nudge(d, k3, h), at + h, s, at);
-    const sum = (a: Vec3, b: Vec3, c: Vec3, e: Vec3): Vec3 => scale(add(add(a, scale(b, 2)), add(scale(c, 2), e)), 1 / 6);
-    const next = nudge(
-      d,
-      {
-        r: sum(k1.r, k2.r, k3.r, k4.r),
-        v: sum(k1.v, k2.v, k3.v, k4.v),
-        q: [0, 1, 2, 3].map((i) => (k1.q[i]! + 2 * k2.q[i]! + 2 * k3.q[i]! + k4.q[i]!) / 6) as unknown as Quat,
-        w: sum(k1.w, k2.w, k3.w, k4.w),
-        mass: (k1.mass + 2 * k2.mass + 2 * k3.mass + k4.mass) / 6,
-      },
-      h,
-    );
-    return { ...next, q: normalize(next.q) };
-  };
+  /** A step from `at` (core/rk4.ts), with what burns and what is attached as it is from the step's start. */
+  const rk4 = (d: Dyn, at: number, h: number, s: VehicleState): Dyn => rk4Body(d, at, h, (x, tt) => rate(x, tt, s, at));
 
   /** Standing on the turning Earth at `at`, with `mass` aboard: where that puts the centre of mass, and how it lies. */
   const standing = (s: VehicleState, at: number, mass: number): Dyn => {

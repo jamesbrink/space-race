@@ -35,7 +35,6 @@ import type { Trajectory } from '../types.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
-  add,
   angleBetween,
   cross,
   DEG,
@@ -54,6 +53,7 @@ import { MEAN_RADIUS, type Phase } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { aboutAxis, turn } from './rigid.ts';
+import { acceleration } from './core/rk4.ts';
 
 export { AIR_TOP };
 
@@ -382,7 +382,7 @@ export function propagate(
   const accel = (at: number, p: Vec3, u: Vec3, altitude: number): Vec3 => {
     const f = flier.push(at, p, u, altitude);
     pushed = length(f);
-    return add(gravity(p), f);
+    return acceleration(gravity(p), f);
   };
   /** One step of the pair from the state now: the state `h` on, and its error in place and speed. */
   const pair = (h: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => {

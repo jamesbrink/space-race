@@ -51,6 +51,7 @@ import {
 import { airAt, airDrag, blowOf } from './air.ts';
 import { G0 } from '../world/bodies.ts';
 import { nozzleThrust, vacuumOf } from './thrust.ts';
+import { acceleration, rk4 } from './core/rk4.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -62,16 +63,9 @@ export const MEAN_RADIUS = 6_371_008.8;
 export function coast(r: Vec3, v: Vec3, seconds: number, step = 1, j2 = EARTH_J2): { r: Vec3; v: Vec3 } {
   const steps = Math.max(1, Math.round(seconds / step));
   const h = seconds / steps;
-  const at = (a: Vec3, b: Vec3, k: number): Vec3 => add(a, scale(b, k));
-  for (let i = 0; i < steps; i++) {
-    const [k1r, k1v] = [v, gravity(r, j2)];
-    const [k2r, k2v] = [at(v, k1v, h / 2), gravity(at(r, k1r, h / 2), j2)];
-    const [k3r, k3v] = [at(v, k2v, h / 2), gravity(at(r, k2r, h / 2), j2)];
-    const [k4r, k4v] = [at(v, k3v, h), gravity(at(r, k3r, h), j2)];
-    r = at(r, add(add(k1r, scale(k2r, 2)), add(scale(k3r, 2), k4r)), h / 6);
-    v = at(v, add(add(k1v, scale(k2v, 2)), add(scale(k3v, 2), k4v)), h / 6);
-  }
-  return { r, v };
+  let s = { r, v };
+  for (let i = 0; i < steps; i++) s = rk4(s, 0, h, (q) => gravity(q.r, j2));
+  return s;
 }
 
 /** A curve's value at x: straight lines between its points, flat beyond its ends. */
@@ -231,22 +225,11 @@ export function fly(
     return { force, q, mach, altitude };
   };
 
-  const rate = (s: State, at: number, m: number, as: number): State => ({
-    r: s.v,
-    v: add(gravity(s.r), scale(forces(s, at, as).force, 1 / m)),
-  });
   const nudge = (s: State, d: State, h: number): State => ({ r: add(s.r, scale(d.r, h)), v: add(s.v, scale(d.v, h)) });
   const massAt = (at: number): number => (phase === 'powered' ? tr.liftoffMass.value - flow * Math.min(at, cutoff) : mass);
-  const rk4 = (s: State, at: number, h: number): State => {
-    const k1 = rate(s, at, massAt(at), at);
-    const k2 = rate(nudge(s, k1, h / 2), at + h / 2, massAt(at + h / 2), at);
-    const k3 = rate(nudge(s, k2, h / 2), at + h / 2, massAt(at + h / 2), at);
-    const k4 = rate(nudge(s, k3, h), at + h, massAt(at + h), at);
-    return {
-      r: add(s.r, scale(add(add(k1.r, scale(k2.r, 2)), add(scale(k3.r, 2), k4.r)), h / 6)),
-      v: add(s.v, scale(add(add(k1.v, scale(k2.v, 2)), add(scale(k3.v, 2), k4.v)), h / 6)),
-    };
-  };
+  /** A step from `at` (core/rk4.ts), with what burns as it is from the step's start. */
+  const stepOf = (s: State, at: number, h: number): State =>
+    rk4(s, at, h, (q, tt) => acceleration(gravity(q.r), scale(forces(q, tt, at).force, 1 / massAt(tt))));
 
   const sample = (): Sample => {
     const m = massAt(t);
@@ -357,7 +340,7 @@ export function fly(
     const h = Math.min(step, mark === undefined ? step : mark - t);
     const before = state;
     const heightBefore = forces(state, t).altitude;
-    state = rk4(state, t, h);
+    state = stepOf(state, t, h);
     t = Math.abs(t + h - (mark ?? Number.NaN)) < 1e-9 ? mark! : t + h;
 
     arrive();

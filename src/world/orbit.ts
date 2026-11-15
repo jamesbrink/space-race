@@ -23,7 +23,6 @@
  */
 import { EARTH, EARTH_J2, EARTH_ROTATION_RATE, SUN, WGS84_A } from './bodies.ts';
 import {
-  add,
   cross,
   dot,
   ecefToGeodetic,
@@ -43,6 +42,7 @@ import {
   unit,
   type Vec3,
 } from './frames.ts';
+import { acceleration, rk4 } from '../sim/core/rk4.ts';
 
 const GM = EARTH.gm.value;
 const TAU = 2 * Math.PI;
@@ -216,16 +216,7 @@ export function energy(s: State, j2 = EARTH_J2): number {
  * gravity: nothing, on a coast) at `t`.
  */
 export function step(s: State, t: number, h: number, push?: (s: State, t: number) => Vec3, j2 = EARTH_J2): State {
-  const rate = (q: State, at: number): State => ({ r: q.v, v: push ? add(gravity(q.r, j2), push(q, at)) : gravity(q.r, j2) });
-  const nudge = (q: State, d: State, by: number): State => ({ r: add(q.r, scale(d.r, by)), v: add(q.v, scale(d.v, by)) });
-  const k1 = rate(s, t);
-  const k2 = rate(nudge(s, k1, h / 2), t + h / 2);
-  const k3 = rate(nudge(s, k2, h / 2), t + h / 2);
-  const k4 = rate(nudge(s, k3, h), t + h);
-  return {
-    r: add(s.r, scale(add(add(k1.r, scale(k2.r, 2)), add(scale(k3.r, 2), k4.r)), h / 6)),
-    v: add(s.v, scale(add(add(k1.v, scale(k2.v, 2)), add(scale(k3.v, 2), k4.v)), h / 6)),
-  };
+  return rk4(s, t, h, (q, at) => acceleration(gravity(q.r, j2), push ? push(q, at) : null));
 }
 
 /**

@@ -54,13 +54,14 @@ never adjusted to bring a check in.
   fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`); the air at a point (air.ts `airAt`: where it is over, its height,
   the standard air there and the motion through it, with the day's wind where there is one); a point's drag and a
   parachute's on a rigid body (air.ts `airDrag`, -1/2 rho |w| w CdA); thrust in air (thrust.ts `nozzleThrust`, n (throttle
-  Fvac - Ae p), a ballistic flight's vacuum figure derived from its sea-level one, `vacuumOf`); when a
+  Fvac - Ae p), a ballistic flight's vacuum figure derived from its sea-level one, `vacuumOf`); the fixed step (core/rk4.ts:
+  `rk4` for a point, world/orbit.ts `step`'s and fly.ts's; `rk4Body` for a rigid body, vehicle.ts's and shed.ts's;
+  `acceleration`, gravity and the push summed, which the predictor's pair takes too: tests/step.test.mjs); when a
   load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
   (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Each was the
   same arithmetic in the same order, so no record's run moved a bit. Still apart, as the same physics in different
   arithmetic (merging would move the printed figures in their last digits, so each wants its own commit and its own
-  diff): the six-degree Runge-Kutta written twice (vehicle.ts, shed.ts),
-  the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
+  diff): the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
   kept so: forces.ts `airForces` (axial, normal and broadside on a rigid body) against the point masses' drag;
   flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
   ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
