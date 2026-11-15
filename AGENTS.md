@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
-in three.js. Today it ships 15 flights (`missions/index.ts`, Vostok 1 to Gemini-Titan 3), each in its Gallery;
+in three.js. Today it ships 16 flights (`missions/index.ts`, Vostok 1 to Gemini-Titan 4), each in its Gallery;
 Freedom 7, Liberty Bell 7, Vostok 1 and Vostok 2 also have their Launch site and can be flown. The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.

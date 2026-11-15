@@ -10,7 +10,7 @@ Aircraft built in St. Louis, all on Martin's Titan II from Launch Complex 19.
 | Flight | Spacecraft | Crew | Launch | Duration | In this repo |
 | --- | --- | --- | --- | --- | --- |
 | Gemini-Titan 3, "Molly Brown" | No. 3 | Virgil Grissom, John Young | 23 March 1965 | 4 h 52 min 31 s | [flight](flights/gt-3/README.md): the vehicle, in the Gallery |
-| Gemini IV | No. 4 | James McDivitt, Edward White | 3 June 1965 | 97 h 56 min 12 s | |
+| Gemini IV | No. 4 | James McDivitt, Edward White | 3 June 1965 | 97 h 56 min 12 s | [flight](flights/gt-4/README.md): the vehicle, in the Gallery |
 | Gemini V | No. 5 | Gordon Cooper, Charles Conrad | 21 August 1965 | 190 h 55 min 14 s | |
 | Gemini VII | No. 7 | Frank Borman, James Lovell | 4 December 1965 | 330 h 35 min 1 s | |
 | Gemini VI-A | No. 6 | Walter Schirra, Thomas Stafford | 15 December 1965 | 25 h 51 min 24 s | |
