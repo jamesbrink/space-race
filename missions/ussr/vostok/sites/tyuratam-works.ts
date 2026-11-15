@@ -1,4 +1,4 @@
-import type { Confidence } from '../../../../src/types';
+import type { Confidence } from '../../../../src/types.ts';
 
 /**
  * What the builders had made of the steppe round Site 1 by April 1961, as ground: the worked ground (the crust ground

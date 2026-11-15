@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { choices } from '../src/actions.ts';
-import { rideTo, swingTo, Works } from '../src/viewer/works.ts';
+import { choices } from '../src/app/actions.ts';
+import { rideTo, swingTo, Works } from '../src/viewer/onfoot/works.ts';
 
 test('a toggle runs to open and back at a steady pace and stops at each end', () => {
   let k = 0;

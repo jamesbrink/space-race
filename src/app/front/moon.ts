@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { Vec3 } from '../world/frames.ts';
-import { MOON_RADIUS } from '../world/moon.ts';
+import type { Vec3 } from '../../world/frames.ts';
+import { MOON_RADIUS } from '../../world/moon.ts';
 
 /**
  * The Moon under the camera: its real ground, lit by the real Sun, from 110 km up to 100,000.

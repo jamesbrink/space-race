@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { prefs } from '../prefs.ts';
+import { prefs } from '../app/prefs.ts';
 import type { Phase } from '../sim/fly.ts';
 import {
   apsides,
@@ -11,7 +11,7 @@ import {
   type Sequence,
   type Start,
 } from '../sim/predict.ts';
-import type { SitedFlight } from '../types';
+import type { SitedFlight } from '../types.ts';
 import { EARTH_ROTATION_RATE, WGS84_B } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';

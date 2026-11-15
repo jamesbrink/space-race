@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import type { BackdropKind, SitedFlight } from '../types';
+import type { BackdropKind, SitedFlight } from '../types.ts';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air';
-import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere';
-import { buildCape } from './cape';
+import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
+import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
+import { buildCape } from './cape.ts';
 import { type Day, dayOf, VEIL_DOWN, veilShade } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
-import { chapman, Globe } from './globe';
-import { Heavens, MOON_GLSL, starsAlone } from './heavens';
-import type { Land } from './land';
-import { later } from './later';
-import type { Levelled } from './lod';
-import { NOISE, OrbitBackdrop, orbitEnvironment } from './space';
-import { studio } from './studio';
-import { buildTyuratam } from './tyuratam';
-import { checkUnits } from './units';
-import { placeWeather } from './weathermap';
+import { chapman, Globe } from './globe.ts';
+import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
+import type { Land } from './land.ts';
+import { later } from './later.ts';
+import type { Levelled } from './lod.ts';
+import { NOISE, OrbitBackdrop, orbitEnvironment } from './space.ts';
+import { studio } from './studio.ts';
+import { buildTyuratam } from './tyuratam.ts';
+import { checkUnits } from './units.ts';
+import { placeWeather } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {

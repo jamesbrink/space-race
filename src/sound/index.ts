@@ -16,16 +16,16 @@
  * suspended.
  */
 import { Quaternion, Vector3 } from 'three';
-import type { Footfall, Sounds } from '../audio';
-import { prefs } from '../prefs';
+import type { Footfall, Sounds } from './audio.ts';
+import { prefs } from '../app/prefs.ts';
 import { flownOnce, G0 } from '../sim/fly.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { SitedFlight } from '../types';
-import { Ascent, orbitalRecord, type Run } from '../viewer/ascent';
+import type { SitedFlight } from '../types.ts';
+import { Ascent, orbitalRecord, type Run } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame } from '../world/frames.ts';
-import { Engine } from './engine';
+import { Engine } from './engine.ts';
 import {
   breath,
   type Craft,

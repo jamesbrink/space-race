@@ -7,7 +7,7 @@ import * as THREE from 'three';
 globalThis.window ??= { addEventListener() {}, setTimeout, clearTimeout };
 globalThis.document ??= { addEventListener() {}, pointerLockElement: null, hasFocus: () => true, exitPointerLock() {} };
 globalThis.matchMedia ??= () => ({ matches: false });
-const { Walker, WALK_SPEED } = await import('../src/viewer/walk.ts');
+const { Walker, WALK_SPEED } = await import('../src/viewer/onfoot/walk.ts');
 
 const DT = 1 / 60;
 
@@ -118,7 +118,7 @@ test('over the shoulder, something thin crossing behind the head brings the came
 });
 
 test('whether the figure is drawn does not flicker as the camera comes to the line', async () => {
-  const { boomOutside, boomTo } = await import('../src/viewer/walk.ts');
+  const { boomOutside, boomTo } = await import('../src/viewer/onfoot/walk.ts');
   assert.equal(boomTo(3.4, 1.0, DT), 1.0, 'in at once');
   assert.ok(boomTo(1.0, 3.4, DT) - 1.0 < 0.06 && boomTo(1.0, 3.4, DT) > 1.0, 'out by degrees');
   assert.equal(boomTo(3.39, 3.4, DT), 3.4, 'and no further than is clear');

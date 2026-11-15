@@ -1,4 +1,4 @@
-import { write } from './address';
+import { write } from './address.ts';
 
 /**
  * The way out to the front page, from anywhere in a flight (the Space Race crumb, an address that names nothing).

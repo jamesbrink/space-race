@@ -1,4 +1,4 @@
-import type { CabinDef, ModelDef } from '../../../../src/types';
+import type { CabinDef, ModelDef } from '../../../../src/types.ts';
 
 /**
  * The ejection seat and the cabin of a Vostok after the first (Vostoks 2 to 6) as somewhere to sit (types.ts:

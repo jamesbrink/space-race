@@ -1,4 +1,4 @@
-import type { DayWeather } from '../../../../../src/types';
+import type { DayWeather } from '../../../../../src/types.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 5 km north of the pad)';
 const HOUR = '07:00 EST (12:00 UTC), 21 July 1961';

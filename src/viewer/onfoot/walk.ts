@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
-import { type Sounds, silent } from '../audio.ts';
-import { Head, type Limits, type Lookout } from './camera/head.ts';
+import { type Sounds, silent } from '../../sound/audio.ts';
+import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 
 /**

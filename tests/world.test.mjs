@@ -438,7 +438,7 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   assert.ok(flights.length > 0);
   for (const flight of flights) {
     assert.ok(Number.isFinite(julianDate(flight.launch)), `${flight.id}: launch instant`);
-    if (!flight.site) continue; // (only its vehicle is built: it has the gallery and no place yet, src/address.ts)
+    if (!flight.site) continue; // (only its vehicle is built: it has the gallery and no place yet, src/app/address.ts)
     for (const key of ['latitude', 'longitude', 'height', 'bearingX']) {
       const m = flight.site[key];
       assert.ok(Number.isFinite(m.value), `${flight.id}: site.${key}`);

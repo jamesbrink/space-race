@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { SiteAround } from '../types';
-import { Crossfade, LOD_ABOVE, type Levelled, lodUrl, Scenery } from './lod';
-import { grain } from './surface';
+import type { SiteAround } from '../types.ts';
+import { Crossfade, LOD_ABOVE, type Levelled, lodUrl, Scenery } from './lod.ts';
+import { grain } from './surface.ts';
 
 /**
  * What stands round a place beyond its own model and is seen from it: the assembly building of Site 2 round Site 1

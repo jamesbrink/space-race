@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { choices, lookUp, nameOf, quiet, sameTarget, spaced } from '../src/actions.ts';
-import { GAP, MARGIN, seat, sector, spread } from '../src/wheel.ts';
+import { choices, lookUp, nameOf, quiet, sameTarget, spaced } from '../src/app/actions.ts';
+import { GAP, MARGIN, seat, sector, spread } from '../src/ui/wheel.ts';
 
 /** A flight with nothing of any real one in it: a machine with a part that can be worked, and two people. */
 const part = (node, extra = {}) => ({ node, name: `The ${node}`, summary: '', detail: '', explode: [0, 0, 0], order: 0, ...extra });

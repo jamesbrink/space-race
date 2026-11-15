@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { TYURATAM_GROUND } from '../../missions/ussr/vostok/sites/tyuratam-ground.ts';
-import type { SiteAround } from '../types';
-import { type Air, driftClouds, installAir } from './air';
-import { buildAround } from './around';
+import type { SiteAround } from '../types.ts';
+import { type Air, driftClouds, installAir } from './air.ts';
+import { buildAround } from './around.ts';
 import type { Day } from './day.ts';
-import { fbm2 } from './field';
-import { Flora } from './flora';
-import { Land, type LandSpec } from './land';
+import { fbm2 } from './field.ts';
+import { Flora } from './flora.ts';
+import { Land, type LandSpec } from './land.ts';
 import {
   STEPPE,
   STEPPE_COVER,

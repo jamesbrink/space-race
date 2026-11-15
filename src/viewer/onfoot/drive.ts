@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Part } from '../types';
+import type { Part } from '../../types.ts';
 
 /**
  * Driving. Any vehicle built to the contract (tools/blender/vehicles.py: one node with its

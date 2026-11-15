@@ -1,4 +1,4 @@
-import type { SiteDef } from '../../../../src/types';
+import type { SiteDef } from '../../../../src/types.ts';
 import { ARAL_1960 } from './aral-1960.ts';
 
 /**

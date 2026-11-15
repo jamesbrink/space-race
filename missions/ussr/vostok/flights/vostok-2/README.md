@@ -49,7 +49,7 @@ summarised in [site-1.md](../../sites/site-1.md), "What stood when"):
 - **The weather**: [weather.ts](weather.ts), from the stations either side of the range.
 
 So the flight has all three places: the Gallery; the Launch site on the morning of 6 August; and Fly, on the
-shared flight deck (src/orbitdeck.ts), with nothing in its code that is this flight's.
+shared flight deck (src/deck/orbitdeck.ts), with nothing in its code that is this flight's.
 
 ## What happened
 

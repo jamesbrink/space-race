@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Heavens, MOON_GLSL } from './heavens';
+import { Heavens, MOON_GLSL } from './heavens.ts';
 
 /** Altitude the backdrop is drawn from, in Earth radii: Freedom 7's apogee, 187.4 km. */
 const ALTITUDE = 187.4 / 6371;

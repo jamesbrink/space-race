@@ -1,4 +1,4 @@
-// The address bar and the places a flight is seen in (src/address.ts): what an address names,
+// The address bar and the places a flight is seen in (src/app/address.ts): what an address names,
 // which places a flight has, which it opens in, and what the gallery is given to show.
 import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
@@ -27,7 +27,7 @@ import {
   settle,
   WHOLE_VIEW,
   write,
-} from '../src/address.ts';
+} from '../src/app/address.ts';
 import { flight as fixture } from './fixtures/vehicle-only/flight.ts';
 
 // (every flight there is, found as tests/flights.test.mjs finds them)

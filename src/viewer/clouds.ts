@@ -12,14 +12,14 @@ import {
   installedAir,
   veilGlow,
   veilLightUniform,
-} from './air';
-import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere';
-import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise';
-import { fieldAs } from './field';
-import { uOrigin } from './origin';
+} from './air.ts';
+import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere.ts';
+import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise.ts';
+import { fieldAs } from './field.ts';
+import { uOrigin } from './origin.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
-import { onWeather, weatherUniforms } from './weathermap';
+import { onWeather, weatherUniforms } from './weathermap.ts';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
 const VEIL_LAYER = 7;

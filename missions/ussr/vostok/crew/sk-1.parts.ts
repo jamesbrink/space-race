@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Part } from '../../../../src/types';
+import type { Flight, ModelDef, Part } from '../../../../src/types.ts';
 import type { PartWords } from '../sites/site-1.parts.ts';
 
 /**

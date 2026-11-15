@@ -1,4 +1,4 @@
-import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Trajectory, Winds } from '../../../../../src/types';
+import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Trajectory, Winds } from '../../../../../src/types.ts';
 import {
   HARDWARE_WORDS,
   held,

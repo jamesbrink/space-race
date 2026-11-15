@@ -14,7 +14,7 @@
  * go at 1,850 ft going up, Freedom 7's lets it go at the top). Nothing here is fitted.
  */
 import { flight } from '../../../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import type { AbortRecord, Measure, Trajectory } from '../../../src/types';
+import type { AbortRecord, Measure, Trajectory } from '../../../src/types.ts';
 
 const IN = 0.0254;
 const FT = 0.3048;

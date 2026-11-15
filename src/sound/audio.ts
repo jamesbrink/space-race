@@ -1,7 +1,7 @@
 /**
  * What the walk would sound like, as events, for whoever makes the sound. Nothing here plays
  * anything and there are no recordings: this is the interface a sound engine implements, fed by
- * the gait (viewer/gait.ts) through the walker (viewer/walk.ts: `Walker.sounds`). Every event is
+ * the gait (viewer/onfoot/gait.ts) through the walker (viewer/onfoot/walk.ts: `Walker.sounds`). Every event is
  * a moment in the stride, never a timer, so what is heard is what is seen.
  */
 

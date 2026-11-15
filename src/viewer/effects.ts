@@ -3,12 +3,12 @@ import { atmosphere } from '../sim/atmosphere.ts';
 import { flownOnce, G0, type Sample } from '../sim/fly.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
 import { liftoffEngine } from '../sim/staged.ts';
-import type { SitedFlight } from '../types';
+import type { SitedFlight } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { ecefToSite, ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity, type Site, siteFrame } from '../world/frames.ts';
-import { orbitalRecord, type Run } from './ascent';
-import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry';
-import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake';
+import { orbitalRecord, type Run } from './ascent.ts';
+import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry.ts';
+import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake.ts';
 
 /**
  * What flying through the air does that is seen and felt, from the simulator's own numbers at the

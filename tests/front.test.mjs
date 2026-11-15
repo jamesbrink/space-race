@@ -1,4 +1,4 @@
-// The front page's view (src/front/view.ts): the instant it shows and what the sky is then, against the
+// The front page's view (src/app/front/view.ts): the instant it shows and what the sky is then, against the
 // ephemeris and JPL Horizons; the camera's path as numbers; and that what is baked for it (public/front) was
 // baked for these figures.
 import assert from 'node:assert/strict';
@@ -21,7 +21,7 @@ import {
   PATH,
   pathAt,
   skyAt,
-} from '../src/front/view.ts';
+} from '../src/app/front/view.ts';
 import { EARTH } from '../src/world/bodies.ts';
 import { skyFrom } from '../src/world/ephemeris.ts';
 import { angleBetween, cross, DEG, dot, length, rotate, sub, unit } from '../src/world/frames.ts';

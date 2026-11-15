@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { JOINTS } from '../src/viewer/gait.ts';
-import { Limp, POINTS, Ragdoll } from '../src/viewer/ragdoll.ts';
+import { JOINTS } from '../src/viewer/onfoot/gait.ts';
+import { Limp, POINTS, Ragdoll } from '../src/viewer/onfoot/ragdoll.ts';
 
 /** A stick figure with the fifteen joints where a 1.8 m man has them, standing as built. */
 function figure() {

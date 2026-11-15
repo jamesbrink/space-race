@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { ModelDef } from '../types';
+import type { ModelDef } from '../../types.ts';
 // (with their extensions: the tests run this file under Node, which adds none)
 import { jointKey } from './gait.ts';
 import { Hose, type KeepOut } from './hose.ts';

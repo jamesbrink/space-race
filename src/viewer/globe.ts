@@ -19,7 +19,7 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
-import type { Beyond } from './land';
+import type { Beyond } from './land.ts';
 import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Demo, IDLE_FIRST, pace, programme, tour, workingHours } from '../src/demo.ts';
+import { Demo, IDLE_FIRST, pace, programme, tour, workingHours } from '../src/app/demo.ts';
 import { Clock } from '../src/world/clock.ts';
 
 const flight = {

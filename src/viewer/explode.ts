@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Drive, Move, Part } from '../types';
+import type { Drive, Move, Part } from '../types.ts';
 import { Rider, type Surfaces } from './runs.ts';
 
 /**

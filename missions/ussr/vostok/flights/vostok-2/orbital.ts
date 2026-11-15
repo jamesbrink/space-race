@@ -14,7 +14,7 @@
  */
 
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
-import type { Confidence, Measure } from '../../../../../src/types';
+import type { Confidence, Measure } from '../../../../../src/types.ts';
 import {
   CREW,
   ENTRY_AREA,

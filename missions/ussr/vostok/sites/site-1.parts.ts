@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types';
+import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
 
 /**
  * Site 1's pad as a flight's data: the parts of a flight's pad.glb (sites/site_1.py), what each is and how it moves. The

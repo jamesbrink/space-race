@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as mr3 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { exhibit } from '../src/address.ts';
+import { exhibit } from '../src/app/address.ts';
 import { cleared, covers, LABEL_H, layOut, PIN_W, spread } from '../src/viewer/labels.ts';
 
 const part = (explode, order, moves) => ({ explode, order, ...(moves ? { moves } : {}) });

@@ -15,7 +15,7 @@
  *              take, which are part of the stack: a force inside it). And the top takes the jet's heat, which it is
  *              made to stand for so long; past that it fails.
  */
-import type { Measure } from '../types';
+import type { Measure } from '../types.ts';
 import { DEG } from '../world/frames.ts';
 
 /** Whether what was let go stays pressed against what it was let go of: it would on its own gather speed faster. */

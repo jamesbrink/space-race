@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type { Day } from './day.ts';
 import { breeze } from './day.ts';
-import type { FloraSpec, Species } from './flora';
-import type { Palette } from './land';
+import type { FloraSpec, Species } from './flora.ts';
+import type { Palette } from './land.ts';
 
 /**
  * The northern desert of the Turan lowland on the lower Syr Darya's right bank, in the second week of April, as a

@@ -1,10 +1,10 @@
-// src/navball.ts `ballOf`: the ball's orientation and its markers, from a position, velocity and
+// src/deck/navball.ts `ballOf`: the ball's orientation and its markers, from a position, velocity and
 // attitude in the simulator's frame. Held against the geometry they must come out as, on states
 // built from the flight's own site and launch axes.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { ballOf, ballPoint } from '../src/navball.ts';
+import { ballOf, ballPoint } from '../src/deck/navball.ts';
 import { aboutAxis, fromAxes, multiply, turn } from '../src/sim/rigid.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';

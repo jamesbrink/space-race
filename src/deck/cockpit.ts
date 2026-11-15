@@ -1,17 +1,17 @@
-import { type CockpitHost, Deck, type DeckSpec, tank } from './deck';
-import { autopilot, blend, rateCommand, Tally } from './sim/autopilot.ts';
-import { G0, type Results } from './sim/fly.ts';
-import { Lever, NOTCH } from './sim/lever.ts';
-import { standing } from './sim/loads.ts';
-import { type Hand, type Span, sentBy, travelAt } from './sim/mechanism.ts';
-import { MISSES } from './sim/misses.ts';
-import { Sheds } from './sim/shed.ts';
-import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from './sim/vehicle.ts';
-import { verdict } from './sim/verdict.ts';
-import type { Command, MechanismDef, SitedFlight } from './types';
-import type { Run } from './viewer/ascent';
-import type { Clock } from './world/clock.ts';
-import { angleBetween, DEG, siteFrame } from './world/frames.ts';
+import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
+import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
+import { G0, type Results } from '../sim/fly.ts';
+import { Lever, NOTCH } from '../sim/lever.ts';
+import { standing } from '../sim/loads.ts';
+import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
+import { MISSES } from '../sim/misses.ts';
+import { Sheds } from '../sim/shed.ts';
+import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
+import { verdict } from '../sim/verdict.ts';
+import type { Command, MechanismDef, SitedFlight } from '../types.ts';
+import type { Run } from '../viewer/ascent.ts';
+import type { Clock } from '../world/clock.ts';
+import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
 
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
@@ -73,7 +73,7 @@ const ABORT_ARMED = 2;
 const LOW = 0.2;
 const FT = 0.3048;
 
-export type { CockpitHost } from './deck';
+export type { CockpitHost } from './deck.ts';
 
 export class Cockpit extends Deck {
   /** The greatest dynamic pressure flown through on the booster so far, Pa: for calling it. */

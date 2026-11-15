@@ -1,5 +1,5 @@
 // The flight deck's promises, checked in the running page for every flight that can be flown, at a desk, a tablet and a
-// phone (AGENTS.md: the flight deck; src/deck.ts): the same three panels in the same order and corners on every flight,
+// phone (AGENTS.md: the flight deck; src/deck/deck.ts): the same three panels in the same order and corners on every flight,
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, and Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space.

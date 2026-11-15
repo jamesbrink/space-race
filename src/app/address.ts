@@ -1,5 +1,5 @@
-import { type Upcoming, upcoming } from '../missions/upcoming.ts';
-import type { Flight, ModelDef, ViewDef } from './types';
+import { type Upcoming, upcoming } from '../../missions/upcoming.ts';
+import type { Flight, ModelDef, ViewDef } from '../types.ts';
 
 /**
  * Where the page is: the address bar's fragment, and the places a flight is seen in.

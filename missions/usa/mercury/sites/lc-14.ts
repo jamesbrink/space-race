@@ -1,4 +1,4 @@
-import type { SiteDef } from '../../../../src/types';
+import type { SiteDef } from '../../../../src/types.ts';
 
 /**
  * Launch Complex 14 on the Earth: where the four orbital Mercury flights left from. The origin is the middle of

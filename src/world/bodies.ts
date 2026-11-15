@@ -11,7 +11,7 @@
  * ones geodesy and the lunar ephemerides use. The other planets are placeholders: correct masses,
  * sizes, poles and mean orbits, and nothing more (no moons, no rings, no atmospheres).
  */
-import type { Confidence } from '../types';
+import type { Confidence } from '../types.ts';
 
 /** One number with how far it can be trusted and where it came from (types.ts: Confidence). */
 export interface Quantity {

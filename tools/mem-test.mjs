@@ -11,7 +11,7 @@
 //   node tools/mem-test.mjs --json out.json        keep the whole account
 //   node tools/mem-test.mjs --flight ussr/vostok/vostok-1    another flight's launch site (Freedom 7's by default): one with no
 //                                                  flight deck is held to the budget ready, late, on foot and at its peak
-// The page counts for itself (src/mem.ts, `?mem`): every texture, renderbuffer and buffer by the bytes its format
+// The page counts for itself (src/app/mem.ts, `?mem`): every texture, renderbuffer and buffer by the bytes its format
 // says, and each canvas's drawing buffer. A phone's browser kills a tab by what it holds and says nothing, and a
 // desktop browser does not reproduce the kill, so the account is the evidence and the budget is the test.
 //

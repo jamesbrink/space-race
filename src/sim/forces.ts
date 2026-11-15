@@ -26,7 +26,7 @@
  * the instant, the wake of one part on another, roll damping, and all unsteady flow. A tumbling
  * body's drag is these three summed at each instant, which is the usual approximation and no more.
  */
-import type { AeroSurface, Body, MassPart, ShedBody, Winds } from '../types';
+import type { AeroSurface, Body, MassPart, ShedBody, Winds } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   add,

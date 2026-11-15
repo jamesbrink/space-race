@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { ChuteDef } from '../types';
-import type { ChuteMoment } from './ascent';
+import type { ChuteDef } from '../types.ts';
+import type { ChuteMoment } from './ascent.ts';
 
 /**
  * A parachute as the hardware was, built from the flight's data (`Flight.flies.chutes`: diameter,

@@ -1,4 +1,4 @@
-import type { CabinDef, ModelDef } from '../../../../src/types';
+import type { CabinDef, ModelDef } from '../../../../src/types.ts';
 
 /**
  * A Voskhod's couches and its cabin as somewhere to sit (types.ts: ModelDef.seats, CabinDef; viewer/cabin.ts), from the

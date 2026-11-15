@@ -27,7 +27,7 @@
  * Fixed-step fourth-order Runge-Kutta, with each step cut short to end exactly on the next event,
  * so a run is the same run every time.
  */
-import type { Curve, Trajectory } from '../types';
+import type { Curve, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { gravity as orbitGravity } from '../world/orbit.ts';
 import {

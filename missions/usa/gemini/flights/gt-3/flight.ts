@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types';
+import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
 import { LC19 } from '../../sites/lc-19.ts';
 
 const IN = 0.0254;

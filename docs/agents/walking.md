@@ -5,7 +5,7 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 A model with a `walker` entry in `flight.ts` (types.ts: `ModelDef.walker`) is a figure the site
 can be walked as; a flight may have several. The Walk button in that model's section, or a
 double-click on the figure from anywhere, puts the camera at its eyes and lets you walk the site
-(`viewer/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
+(`viewer/onfoot/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
 it and the camera flies back to that section. C (a View button on a touch screen) changes
 between the figure's eyes and over its right shoulder, and the choice is remembered.
 Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one flight: keep it that way.
@@ -19,7 +19,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **Over the shoulder the figure is drawn, and walks.** The camera sits behind, right of and
   above the head and comes in to just short of anything between it and the head (a ray against
   the same `Solids`); pressed right up to the head, the figure is not drawn. The figure stands
-  where the walker's body is, turned to the way it is going, and `viewer/gait.ts` moves its limbs:
+  where the walker's body is, turned to the way it is going, and `viewer/onfoot/gait.ts` moves its limbs:
   `pose(phase, speed, air)` is a pure function to the fifteen joints every crew figure is built
   with (srlib.FIGURE: `Hips`, `Spine`, `Head`, `UpperArm.L` ... `Foot.R`, found by name with or
   without the dot), and the phase advances by distance gone over the length of a stride, so a
@@ -66,11 +66,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.
 - **What it carries is in its hand.** `walker.carries` names a rigid node of the model and a
-  hand; `viewer/carry.ts` puts it in that hand by the contract every crew figure is built to
+  hand; `viewer/onfoot/carry.ts` puts it in that hand by the contract every crew figure is built to
   (`Grip.L`/`Grip.R` under the hands, `Fingers.L`/`.R` hooked 50 degrees, the item's origin on
   its handle), keeps it hanging plumb as the arm swings, and puts it back where the model has it
   when the walk ends. The gait knows the weight (`Gait.load`): that arm hangs straighter and
-  swings a third as much. A `hose` between two anchor nodes is hung by `viewer/hose.ts`: a chain
+  swings a third as much. A `hose` between two anchor nodes is hung by `viewer/onfoot/hose.ts`: a chain
   of fixed length under gravity, above the ground and outside the body, leaving each anchor
   along its +Y, drawn as a tube in the hidden modelled hose's material.
 - **Both views are one walk.** `Walker.gait` is the only stride there is. From outside it poses
@@ -103,11 +103,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   Through the eyes the helmet's visor rim can frame the view (Visor on the walk bar, remembered).
 - **The walk is heard as events.** The gait says which foot landed (phase 0.25 left, 0.75 right,
   by distance gone), a landing's height and the breath's phase; the walker hands them to
-  `Walker.sounds` (`src/audio.ts`: an interface, silent until something that plays is given).
+  `Walker.sounds` (`src/sound/audio.ts`: an interface, silent until something that plays is given).
 - **Falls.** More than a hop off the ground the figure falls (`Moment.fall`: arms out, legs
   trailing). Landings go by height: under 1.5 m the knees give; from 1.5 m a deep crouch and a
   moment in which the legs take no orders; from 3 m (`LIMP_FALL`) the figure goes limp. Limp is
-  `viewer/ragdoll.ts`: eighteen points held the bones' lengths apart by sticks (bones, braces
+  `viewer/onfoot/ragdoll.ts`: eighteen points held the bones' lengths apart by sticks (bones, braces
   and limits), falling under gravity, kept out of the solids (`Solids.out`) and losing their
   speed to them; the bones are laid along the points each frame. Joints bend one way only
   (`BENDS`: a knee forward of the hip-to-ankle line, an elbow behind the shoulder-to-wrist line,
@@ -198,8 +198,8 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **What is in front of you can be acted on.** Each frame a ray from the eyes finds what is
   within `REACH` (2.5 m); `Stage.targetOf` says what it is in the flight's terms (a `Target`:
   model and part, a window pane, a place in the surroundings) and the reticle names it. E (a
-  finger held on the view, or the Act button) opens the wheel (`src/wheel.ts`: a radial menu that
-  knows nothing of what its choices mean) with the verbs `choices()` in `src/actions.ts` finds
+  finger held on the view, or the Act button) opens the wheel (`src/ui/wheel.ts`: a radial menu that
+  knows nothing of what its choices mean) with the verbs `choices()` in `src/app/actions.ts` finds
   for it: Info (a card of the part's text and facts), Look inside (a pane: the eyes lean in to
   it), Become (another model with a `walker`), Inspect (leave the walk and orbit it), and
   whatever the part's own `actions` are. **A mission adds a verb as data**: an `Action` on a
@@ -226,7 +226,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
 - **Vehicles are driven.** Anything built to the vehicle contract (`tools/blender/vehicles.py`:
   a node marked `vehicle` with `wheelbase`, `wheel_radius` and `turning_circle`, its origin under
   the rear axle, and `_Wheel_n`, `_Knuckle_n`/`_SteerWheel_n`, `_Seat_Driver` and `_Stand_Driver`
-  under it) offers "Get in and drive" on the wheel. `viewer/drive.ts` is kinematic for now:
+  under it) offers "Get in and drive" on the wheel. `viewer/onfoot/drive.ts` is kinematic for now:
   `roll` is a bicycle model (pure), `Vehicle` puts the node where it says, rolls and steers the
   wheels, stops short of what is in its way and stays on the ground under its axles. What it
   asks of the world goes through `Road`, so a physics engine can replace `roll` later. Seated
@@ -259,7 +259,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   could not be opened from inside in flight). Nothing offers 'orbit' or 'sea' yet: a spacecraft
   that allowed them says so in its data, and the offer is to follow the data, never a name.
 - **There is always a way up.** Stairs (risers of 0.3 m or less), a ladder, or one of the two
-  actions that open the way, both played by `viewer/works.ts` at every level of detail and solid
+  actions that open the way, both played by `viewer/onfoot/works.ts` at every level of detail and solid
   as posed: `toggle` (a door: `Move`s played forward and back; the wheel says Open or Close by
   how it stands) and `lift` (a platform node that slides between named stops and carries whoever
   stands on it: Ride from on it, Call from off it). `Action.on` limits a verb to one node of the

@@ -1,4 +1,4 @@
-import type { Flight } from '../../../src/types';
+import type { Flight } from '../../../src/types.ts';
 
 /**
  * A flight that is only its vehicle: no site, no trajectory, no pad, no crew. It is not a flight

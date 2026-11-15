@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { Backdrop, Setting } from './backdrops';
-import { CASCADED_MASK } from './shadows';
+import type { Backdrop, Setting } from './backdrops.ts';
+import { CASCADED_MASK } from './shadows.ts';
 
 /**
- * The studio: the setting a thing is shown in when it is shown nowhere (the gallery, src/gallery.ts).
+ * The studio: the setting a thing is shown in when it is shown nowhere (the gallery, src/ui/gallery.ts).
  * It is not a place on the Earth and has no hour: no Sun, no sky, no haze, no clock. What it has is
  * designed, as a museum lights a piece:
  *

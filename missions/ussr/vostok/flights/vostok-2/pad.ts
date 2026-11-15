@@ -1,4 +1,4 @@
-import type { Keyframe } from '../../../../../src/types';
+import type { Keyframe } from '../../../../../src/types.ts';
 import { busPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../sites/site-1.parts.ts';
 import { MSK } from './orbital.ts';
 

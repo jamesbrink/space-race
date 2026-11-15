@@ -1,7 +1,7 @@
 import './title.css';
-import { listed } from './address';
-import { logo } from './logo';
-import type { Flight } from './types';
+import { listed } from '../app/address.ts';
+import { logo } from './logo.ts';
+import type { Flight } from '../types.ts';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const date = (iso: string) =>

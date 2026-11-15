@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { carriage, cycleLength, Gait, pose } from '../src/viewer/gait.ts';
+import { carriage, cycleLength, Gait, pose } from '../src/viewer/onfoot/gait.ts';
 
 // The stride in three dimensions, measured on a jointed figure as `Gait.apply` leaves it: the
 // pelvis turns and tips, the legs lean in to the stride's line, and through all of it a planted

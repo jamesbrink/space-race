@@ -13,26 +13,26 @@ import {
   plinthViews,
   scaleFigure,
   WHOLE_VIEW,
-} from './address';
-import { Callout } from './callout';
-import { CURTAIN, Curtain, follow } from './curtain';
-import { type Shot, tour } from './demo';
-import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold';
-import { prefs } from './prefs';
-import { type Sheet, sheet } from './sheet';
-import './slider';
-import type { Flight, ModelDef, Part, Spec } from './types';
-import { dot, esc, legend, lookoutsBar, si } from './ui';
-import { lookoutsOf } from './viewer/lookouts';
-import { type Anchor, cleared, covers, type Frame, Labels, layOut } from './viewer/labels';
-import { Stage } from './viewer/stage';
-import { asStudio, type Studio } from './viewer/studio';
-import { chooseTier, tier } from './viewer/tier';
+} from '../app/address.ts';
+import { Callout } from './callout.ts';
+import { CURTAIN, Curtain, follow } from '../app/curtain.ts';
+import { type Shot, tour } from '../app/demo.ts';
+import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
+import { prefs } from '../app/prefs.ts';
+import { type Sheet, sheet } from './sheet.ts';
+import './slider.ts';
+import type { Flight, ModelDef, Part, Spec } from '../types.ts';
+import { dot, esc, legend, lookoutsBar, si } from './ui.ts';
+import { lookoutsOf } from '../viewer/lookouts.ts';
+import { type Anchor, cleared, covers, type Frame, Labels, layOut } from '../viewer/labels.ts';
+import { Stage } from '../viewer/stage.ts';
+import { asStudio, type Studio } from '../viewer/studio.ts';
+import { chooseTier, tier } from '../viewer/tier.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
  * (viewer/studio.ts), to be turned, taken apart, cut open and read. It is the first of a flight's
- * places (src/address.ts): the one every flight opens in, and the only one it has until its
+ * places (src/app/address.ts): the one every flight opens in, and the only one it has until its
  * launch site is built.
  *
  * It is a second stage, on a canvas of its own, given the flight with everything but its vehicle

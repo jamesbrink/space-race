@@ -45,7 +45,7 @@ never adjusted to bring a check in.
   apparent velocity, stops at 676.35 s with 46 kg aboard against NIIP-5's recorded 677.08 s; the ascent ends 157 m/s
   short of the orbit, and the documents' own staging times for the core cannot be flown on the blocks' secondary masses
   (the flight's mission.md, "What the ascent gives" and "The 2011 documents", says why).
-- **Every flight is flown on the one deck** (`src/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
+- **Every flight is flown on the one deck** (`src/deck/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
   notes and card), with a flight kind's code behind it: `cockpit.ts` for a flight on a `trajectory`, `orbitdeck.ts` for
   one into orbit (`orbital.ascent` and no `trajectory`; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
   differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
@@ -222,7 +222,7 @@ never adjusted to bring a check in.
 - **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
   `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
   eastward motion. Say which in any label.
-- **The Flown panel** (`src/flown.ts`) flies the flight once, after the page has opened, and draws
+- **The Flown panel** (`src/deck/flown.ts`) flies the flight once, after the page has opened, and draws
   height, range, space-fixed speed and load against time with the reports' figures as dashed
   lines, the clock's instant as a cursor (dragging a trace moves the clock), and the checks as a
   table, amber where out of tolerance. It reads the clock; it keeps no time of its own.
@@ -409,7 +409,7 @@ never adjusted to bring a check in.
   82 m/s into the sea. `sim/verdict.ts` says how it ended and holds it to `capsule.limits`
   (a landing speed and a load, with their confidence). Nothing rescues the pilot; nothing is scored.
 - **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
-  deck (`src/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
+  deck (`src/deck/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
   camera's, the page out of the way. Space lights the engine and after that sets off the next
   event; the clock runs the flight (stopped, so is the flight; faster, so is the flight, up to
   five seconds of it a frame), and each time it moves the cockpit steps the vehicle up to it.
@@ -522,7 +522,7 @@ never adjusted to bring a check in.
   out has been read.
 - **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
-  clock has been put back) and nothing else of it. The navball (`src/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is
+  clock has been put back) and nothing else of it. The navball (`src/deck/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is
   the sphere of directions fixed to north, east and down at the place under the vehicle, seen
   from inside along the nose (body +X forward, +Z up, -Y right: sim/vehicle.ts), so the launch
   azimuth is at the bottom of the ball on the pad and W takes the nose toward it. O changes its

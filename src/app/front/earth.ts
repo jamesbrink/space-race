@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { ATMOSPHERE_GLSL, type atmosphereUniforms } from '../viewer/atmosphere.ts';
-import { WGS84_A, WGS84_B } from '../world/bodies.ts';
-import type { Mat3, Vec3 } from '../world/frames.ts';
-import { RELIEF_GLSL } from '../world/relief.ts';
+import { ATMOSPHERE_GLSL, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
+import { WGS84_A, WGS84_B } from '../../world/bodies.ts';
+import type { Mat3, Vec3 } from '../../world/frames.ts';
+import { RELIEF_GLSL } from '../../world/relief.ts';
 
 /**
  * The Earth from the Moon: the whole of it, 1.9 degrees across, as one ball.

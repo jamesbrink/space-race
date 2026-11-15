@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Tossed } from '../src/viewer/carry.ts';
-import { Hose } from '../src/viewer/hose.ts';
-import { Ragdoll } from '../src/viewer/ragdoll.ts';
+import { Tossed } from '../src/viewer/onfoot/carry.ts';
+import { Hose } from '../src/viewer/onfoot/hose.ts';
+import { Ragdoll } from '../src/viewer/onfoot/ragdoll.ts';
 
 // What falls and hangs (the limp figure, what it dropped, the hose) is worked in ticks of one
 // length whatever the frames are: the same fall must come out the same on any display.

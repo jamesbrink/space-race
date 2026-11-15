@@ -1,4 +1,4 @@
-import type { Part } from '../types';
+import type { Part } from '../types.ts';
 import { partProgress } from './explode.ts';
 
 /**

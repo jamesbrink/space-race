@@ -1,10 +1,10 @@
-// Writes the mark (src/logo.ts) as files for places that cannot run the page: docs/logo.svg, shown in
+// Writes the mark (src/ui/logo.ts) as files for places that cannot run the page: docs/logo.svg, shown in
 // the README, and public/og.png, the card a pasted link shows.
 //   node tools/logo.mjs
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { logo } from '../src/logo.ts';
+import { logo } from '../src/ui/logo.ts';
 
 const INK = '#f3efe6';
 const GROUND = '#0a0b0e';

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { through } from '../src/viewer/pick.ts';
-import { Solids, WorldBox } from '../src/viewer/walk.ts';
+import { Solids, WorldBox } from '../src/viewer/onfoot/walk.ts';
 
 /** A small scene with one of everything a pick has to deal with. */
 function scene() {

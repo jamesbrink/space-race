@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { Around } from './around';
-import type { Levelled } from './lod';
+import { Around } from './around.ts';
+import type { Levelled } from './lod.ts';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that

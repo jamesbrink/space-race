@@ -1,6 +1,6 @@
 import { Box3, type Object3D, Vector3 } from 'three';
-import { flights } from '../missions';
-import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions';
+import { flights } from '../../missions/index.ts';
+import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
 import {
   flightFor,
   formatAddress,
@@ -13,29 +13,29 @@ import {
   settle,
   where,
   write,
-} from './address';
-import { Callout } from './callout';
-import { Cockpit } from './cockpit';
-import { follow } from './curtain';
-import { Demo } from './demo';
-import { Flown } from './flown';
-import { crumbs, Gallery, markPlace, placesNav } from './gallery';
-import { goHome } from './home';
-import { OrbitDeck } from './orbitdeck';
-import './navball.css';
-import { Navball } from './navball';
-import { prefs } from './prefs';
-import { programmeAxis } from './sim/predict';
-import { Sound } from './sound';
-import { TimeBar } from './timebar';
-import type { SitedFlight } from './types';
-import { Ui } from './ui';
-import type { DeckNews } from './viewer/cabin';
-import { Effects } from './viewer/effects';
-import { uOrigin } from './viewer/origin';
-import { FlightPath } from './viewer/path';
-import { Stage, type Thing, type WarmStep } from './viewer/stage';
-import { Clock, localTime, missionTime } from './world/clock.ts';
+} from './address.ts';
+import { Callout } from '../ui/callout.ts';
+import { Cockpit } from '../deck/cockpit.ts';
+import { follow } from './curtain.ts';
+import { Demo } from './demo.ts';
+import { Flown } from '../deck/flown.ts';
+import { crumbs, Gallery, markPlace, placesNav } from '../ui/gallery.ts';
+import { goHome } from './home.ts';
+import { OrbitDeck } from '../deck/orbitdeck.ts';
+import '../ui/navball.css';
+import { Navball } from '../deck/navball.ts';
+import { prefs } from './prefs.ts';
+import { programmeAxis } from '../sim/predict.ts';
+import { Sound } from '../sound/index.ts';
+import { TimeBar } from '../ui/timebar.ts';
+import type { SitedFlight } from '../types.ts';
+import { Ui } from '../ui/ui.ts';
+import type { DeckNews } from '../viewer/cabin.ts';
+import { Effects } from '../viewer/effects.ts';
+import { uOrigin } from '../viewer/origin.ts';
+import { FlightPath } from '../viewer/path.ts';
+import { Stage, type Thing, type WarmStep } from '../viewer/stage.ts';
+import { Clock, localTime, missionTime } from '../world/clock.ts';
 
 /** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
 const address = () => parseAddress(where());

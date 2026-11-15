@@ -1,7 +1,7 @@
-import { flights } from '../missions';
-import { flightFor, formatAddress, namesNothing, onMoved, parseAddress, settle, where } from './address';
-import { Gallery } from './gallery';
-import { goHome } from './home';
+import { flights } from '../../missions/index.ts';
+import { flightFor, formatAddress, namesNothing, onMoved, parseAddress, settle, where } from './address.ts';
+import { Gallery } from '../ui/gallery.ts';
+import { goHome } from './home.ts';
 
 /**
  * The page for a flight that is only its vehicle yet: the gallery (gallery.ts), with its other

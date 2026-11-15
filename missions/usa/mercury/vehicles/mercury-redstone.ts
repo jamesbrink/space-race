@@ -10,7 +10,7 @@ import type {
   Thruster,
   Trajectory,
   Winds,
-} from '../../../../src/types';
+} from '../../../../src/types.ts';
 
 /**
  * The Mercury-Redstone as the simulator flies it (src/sim: fly.ts, vehicle.ts, shed.ts, heating.ts): what is the same on

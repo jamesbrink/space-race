@@ -24,7 +24,7 @@
  * stopping rules; the orbital coast's drag on the launch vehicle (it was the spacecraft's ball's, so a vehicle cut low
  * came down nearer than drawn); and a burn's end falling on a stage of the step that had it off.
  */
-import type { Trajectory } from '../types';
+import type { Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {

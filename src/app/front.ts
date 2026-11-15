@@ -1,12 +1,12 @@
 import './front/front.css';
-import { flights } from '../missions';
-import { entrances, formatAddress, namesNothing, onMoved, where, write } from './address';
-import { whenLifted } from './curtain';
-import { IDLE_TITLE } from './demo';
-import { FrontScene } from './front/scene';
-import { instantAt, PATH } from './front/view';
-import { Title } from './title';
-import { isoDate } from './world/time';
+import { flights } from '../../missions/index.ts';
+import { entrances, formatAddress, namesNothing, onMoved, where, write } from './address.ts';
+import { whenLifted } from './curtain.ts';
+import { IDLE_TITLE } from './demo.ts';
+import { FrontScene } from './front/scene.ts';
+import { instantAt, PATH } from './front/view.ts';
+import { Title } from '../ui/title.ts';
+import { isoDate } from '../world/time.ts';
 
 /**
  * The front page: the mark and the list of flights (title.ts), over a scene that is no flight's: the Earth seen
@@ -79,7 +79,7 @@ async function enter(id: string): Promise<void> {
     );
   });
   try {
-    await (entrances(flight).site ? import('./main') : import('./only'));
+    await (entrances(flight).site ? import('./main.ts') : import('./only.ts'));
     // (the flight's page has its own debug handle: the picture is on it for as long as it lasts)
     (window as unknown as { sr: { front?: FrontScene } }).sr.front = scene;
   } catch (e) {

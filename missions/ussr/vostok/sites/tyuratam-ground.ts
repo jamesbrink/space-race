@@ -1,4 +1,4 @@
-import type { Confidence } from '../../../../src/types';
+import type { Confidence } from '../../../../src/types.ts';
 
 /**
  * What the ground is round Site 1 where it is not the steppe's loam: the takyrs (bare clay pans), the salt crusts, the

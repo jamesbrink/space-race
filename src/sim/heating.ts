@@ -34,7 +34,7 @@
  * That is a judgement, chosen to give the 6,000 to 7,000 K commonly quoted for an orbital entry
  * (remembered, not looked up), and it is used for colour only.
  */
-import type { HeatedSurface, Heating } from '../types';
+import type { HeatedSurface, Heating } from '../types.ts';
 import { atmosphere } from './atmosphere.ts';
 import type { Sample } from './fly.ts';
 

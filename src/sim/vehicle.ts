@@ -73,7 +73,7 @@
  * a few parts in a thousand, is left out), the tower's centre of mass and inertia are scaled with
  * its weight as the propellant goes, not moved, and the booster is left to itself.
  */
-import type { MassPart, Trajectory } from '../types';
+import type { MassPart, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   add,

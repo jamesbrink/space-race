@@ -13,7 +13,7 @@
  * the pilot left at. The powered ascent is flown by sim/staged.ts from `stages` and `ascent`, on a
  * stated steering law where the programme flown has not been found.
  */
-import type { Confidence, Curve, Heating, Measure, ShedBody } from '../types';
+import type { Confidence, Curve, Heating, Measure, ShedBody } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {

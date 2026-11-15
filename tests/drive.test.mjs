@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { lockFor, roll, Vehicle } from '../src/viewer/drive.ts';
+import { lockFor, roll, Vehicle } from '../src/viewer/onfoot/drive.ts';
 
 const chassis = { wheelbase: 3, lock: lockFor(3, 12), top: 11, reverse: 3 };
 const still = { x: 0, z: 0, heading: 0, speed: 0, steer: 0 };
@@ -131,7 +131,7 @@ test('it stops short of what is in its way, stays on the ground under it, and no
 });
 
 test('a part its flight drives off is marked a vehicle from its drive, if it is built to the contract; a chase view clears it', async () => {
-  const { markDriven } = await import('../src/viewer/drive.ts');
+  const { markDriven } = await import('../src/viewer/onfoot/drive.ts');
   const { root } = truck();
   root.userData = {};
   const drive = {

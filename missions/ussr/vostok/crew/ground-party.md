@@ -53,7 +53,7 @@ Colours are read off the colour film and the two colour photographs and cleaned,
 ## What is wrong or left out
 
 - **They do not move.** A figure is posed once. A group is on the pad until the time the record has it leave, and
-  then is not: nobody walks off, gets into the bus or climbs a stair. The viewer's gait (`viewer/gait.ts`) is for the
+  then is not: nobody walks off, gets into the bus or climbs a stair. The viewer's gait (`viewer/onfoot/gait.ts`) is for the
   figure being walked as, and playing it on scenery needs work in the viewer that has not been done.
 - Nobody is a likeness. The faces are one textbook face at a coarse sampling; statures and builds are guesses.
 - Hands are mitts with a thumb; fingers are not modelled. A hand in a pocket is left out.

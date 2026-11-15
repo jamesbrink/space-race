@@ -1,6 +1,6 @@
 import './fold.css';
-import { prefs } from './prefs';
-import type { Sheet } from './sheet';
+import { prefs } from '../app/prefs.ts';
+import type { Sheet } from './sheet.ts';
 
 /**
  * How a place folds on a phone (under 960 px wide or 520 px tall). The gallery is the first place built this way; the

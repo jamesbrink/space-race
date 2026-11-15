@@ -26,10 +26,10 @@
  *
  * The path is a design, and says so (`estimated`: chosen to look right). The sky it looks at is not.
  */
-import { EARTH } from '../world/bodies.ts';
-import { cross, DEG, dot, j2000ToInertial, length, type Mat3, rotate, scale, sub, transpose, unit, type Vec3 } from '../world/frames.ts';
-import { fromMoon, MOON_RADIUS, selenographic } from '../world/moon.ts';
-import { greenwichSiderealTime, julianDate, terrestrialTime } from '../world/time.ts';
+import { EARTH } from '../../world/bodies.ts';
+import { cross, DEG, dot, j2000ToInertial, length, type Mat3, rotate, scale, sub, transpose, unit, type Vec3 } from '../../world/frames.ts';
+import { fromMoon, MOON_RADIUS, selenographic } from '../../world/moon.ts';
+import { greenwichSiderealTime, julianDate, terrestrialTime } from '../../world/time.ts';
 
 /** A figure with how far it can be trusted and where it came from (types.ts: Measure, restated so this file needs nothing of a flight). */
 export interface Figure {

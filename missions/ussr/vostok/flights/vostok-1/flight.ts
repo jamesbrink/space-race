@@ -1,4 +1,4 @@
-import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types';
+import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../../../src/types.ts';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import {
   busPart,

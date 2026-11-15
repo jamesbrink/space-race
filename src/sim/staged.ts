@@ -26,7 +26,7 @@
  * Fixed steps of fourth-order Runge-Kutta, `STEP` long, each cut to end on the next event, so one input gives one
  * flight to the last bit.
  */
-import type { Curve } from '../types';
+import type { Curve } from '../types.ts';
 import { EARTH, EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   add,

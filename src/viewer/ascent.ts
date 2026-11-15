@@ -6,7 +6,7 @@ import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
-import type { ChuteDef, Flight, SitedFlight } from '../types';
+import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import {

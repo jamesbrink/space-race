@@ -1,4 +1,4 @@
-// Bakes the Earth as the front page sees it from the Moon (src/front/earth.ts): the globe's own maps at the size
+// Bakes the Earth as the front page sees it from the Moon (src/app/front/earth.ts): the globe's own maps at the size
 // that distance needs, and the day's cloud, sea ice and snow.
 //   node tools/front-earth.mjs [--cache <dir>] [--only surface|colour|day]
 //
@@ -33,7 +33,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INSTANT } from '../src/front/view.ts';
+import { INSTANT } from '../src/app/front/view.ts';
 import { readGreyPng, writeRgbPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

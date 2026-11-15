@@ -1,11 +1,11 @@
-import './time.css';
-import { flownOnce, type Sample, sampleAt } from './sim/fly.ts';
-import { held } from './sim/staged.ts';
-import type { SitedFlight } from './types';
-import { orbitalFlown, orbitalRecord } from './viewer/ascent';
-import type { Run } from './viewer/ascent';
-import { type Clock, missionTime } from './world/clock.ts';
-import { siteFrame } from './world/frames.ts';
+import '../ui/time.css';
+import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { held } from '../sim/staged.ts';
+import type { SitedFlight } from '../types.ts';
+import { orbitalFlown, orbitalRecord } from '../viewer/ascent.ts';
+import type { Run } from '../viewer/ascent.ts';
+import { type Clock, missionTime } from '../world/clock.ts';
+import { siteFrame } from '../world/frames.ts';
 
 /**
  * The flight as the simulator flies it (sim/fly.ts), beside what the reports say happened: four

@@ -1,4 +1,4 @@
-import type { MechanismDef, Move } from '../../../../src/types';
+import type { MechanismDef, Move } from '../../../../src/types.ts';
 
 /**
  * The periscope's door, objective and the link between them through a Redstone flight, on the flight's clock (types.ts:

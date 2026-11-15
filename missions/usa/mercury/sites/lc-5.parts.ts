@@ -1,4 +1,4 @@
-import type { Action, Flight, Move, Part, Runs } from '../../../../src/types';
+import type { Action, Flight, Move, Part, Runs } from '../../../../src/types.ts';
 import { LC5 } from './lc-5.ts';
 
 /**

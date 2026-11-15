@@ -1,4 +1,4 @@
-import { prefs } from '../prefs.ts';
+import { prefs } from '../app/prefs.ts';
 
 /**
  * What the device can hold. A phone's browser kills a tab that takes too much memory, without a

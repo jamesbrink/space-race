@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import * as THREE from 'three';
 import { NODES } from '../src/viewer/exhaust.ts';
 import { Exploder } from '../src/viewer/explode.ts';
-import { Gait } from '../src/viewer/gait.ts';
+import { Gait } from '../src/viewer/onfoot/gait.ts';
 import { TRAIL_STEP, Trail } from '../src/viewer/trail.ts';
-import { Works } from '../src/viewer/works.ts';
+import { Works } from '../src/viewer/onfoot/works.ts';
 
 // Things that move by themselves start, go and stop without a step: a trail on a second run
 // through the flight, a lift setting off, a truck's front wheels along its route, a second landing.

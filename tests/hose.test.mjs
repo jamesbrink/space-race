@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { relax } from '../src/viewer/hose.ts';
+import { relax } from '../src/viewer/onfoot/hose.ts';
 
 /** A chain of `n` points laid straight from a to b, settled for `ticks`. */
 function hang(a, b, length, { n = 16, ticks = 240, floor = null, keepOut = null, aOut = [0, -1, 0], bOut = [0, -1, 0] } = {}) {

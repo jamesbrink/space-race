@@ -87,7 +87,7 @@ figure of half an hour earlier and are kept as they were.
 `src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts) (thrust, specific
 impulse, masses, the tilt programme, drag, retrofire, parachutes; nothing fitted) and
 `tests/sim.test.mjs` holds the result against `checks`, the figures the Postlaunch Report gives.
-The page's Flown panel (`src/flown.ts`) shows the same run against the clock, and from liftoff to
+The page's Flown panel (`src/deck/flown.ts`) shows the same run against the clock, and from liftoff to
 landing the vehicle in the scene flies it (`src/viewer/ascent.ts`; C to the chase camera), shedding
 the tower at 02:22.2, the booster at separation and the retropack at 06:13.6.
 

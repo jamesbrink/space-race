@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Thruster } from '../types';
+import type { Thruster } from '../types.ts';
 
 /**
  * The attitude jets, seen: a short pale cone at the nozzle of each chamber that is open, from the

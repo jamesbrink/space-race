@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
-import type { Runs } from '../types';
+import type { Runs } from '../types.ts';
 
 /**
  * A thing that slides or drives stands on what it runs on (types.ts: Runs), at every instant of its move: each wheel

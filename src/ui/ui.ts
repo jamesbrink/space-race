@@ -1,14 +1,14 @@
-import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold';
-import { type Sheet, sheet } from './sheet';
-import './slider';
-import { CURTAIN, Curtain } from './curtain';
-import { prefs } from './prefs';
-import type { Confidence, Flight, ModelDef, Part } from './types';
-import { RIGS, type RigId } from './viewer/camera/rig.ts';
-import { functionsOf } from './viewer/explode';
-import { chooseTier, tier } from './viewer/tier';
-import { lookoutsOf } from './viewer/lookouts';
-import { Wheel } from './wheel';
+import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
+import { type Sheet, sheet } from './sheet.ts';
+import './slider.ts';
+import { CURTAIN, Curtain } from '../app/curtain.ts';
+import { prefs } from '../app/prefs.ts';
+import type { Confidence, Flight, ModelDef, Part } from '../types.ts';
+import { RIGS, type RigId } from '../viewer/camera/rig.ts';
+import { functionsOf } from '../viewer/explode.ts';
+import { chooseTier, tier } from '../viewer/tier.ts';
+import { lookoutsOf } from '../viewer/lookouts.ts';
+import { Wheel } from './wheel.ts';
 
 export interface UiHandlers {
   model(id: string): void;

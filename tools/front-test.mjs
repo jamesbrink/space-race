@@ -25,7 +25,7 @@ const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
 const FLIGHT = 'usa/mercury/mr-3-freedom-7';
 
 /**
- * Accounted GPU memory as a phone, MiB (src/mem.ts; rendering.md, "Memory"): the front page by itself, and the most
+ * Accounted GPU memory as a phone, MiB (src/app/mem.ts; rendering.md, "Memory"): the front page by itself, and the most
  * at any moment while a flight's gallery arrives over it (the picture is let go only when the flight is there to
  * be seen). Measured when set: 71 and 257 (the gallery alone, after: 186).
  */

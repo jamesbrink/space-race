@@ -1,12 +1,24 @@
 import * as THREE from 'three';
 import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
-import { type Air, driftClouds, installAir } from './air';
+import { type Air, driftClouds, installAir } from './air.ts';
 import { breeze, type Day } from './day.ts';
-import { buildCape1961, CLEARINGS, PAVED, COAST, HARBOR_EAST, HARBOR_WEST, HARBOUR, INDIAN, RIVER, RIVER_WEST, shoreAt } from './cape1961';
-import { fbm2 } from './field';
-import { Flora, type FloraSpec } from './flora';
-import { Land, type LandSpec, type Palette } from './land';
-import type { Levelled } from './lod';
+import {
+  buildCape1961,
+  CLEARINGS,
+  PAVED,
+  COAST,
+  HARBOR_EAST,
+  HARBOR_WEST,
+  HARBOUR,
+  INDIAN,
+  RIVER,
+  RIVER_WEST,
+  shoreAt,
+} from './cape1961.ts';
+import { fbm2 } from './field.ts';
+import { Flora, type FloraSpec } from './flora.ts';
+import { Land, type LandSpec, type Palette } from './land.ts';
+import type { Levelled } from './lod.ts';
 
 /**
  * Cape Canaveral round Launch Complex 5, May 1961, as scenery: the ground the complex stands on,

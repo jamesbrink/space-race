@@ -6,7 +6,7 @@
  * engine then does with the figure is its nature's (vehicle.ts: below its least it is off, and it
  * starts again only as often as it can).
  */
-import type { EngineNature } from '../types';
+import type { EngineNature } from '../types.ts';
 
 /** A notch of the lever, of rated thrust: one press of an arrow key. */
 export const NOTCH = 0.05;

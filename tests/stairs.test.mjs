@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Gait } from '../src/viewer/gait.ts';
-import { gradePace, RUN_SPEED, STAIR_RUN, STAIR_WALK, WALK_SPEED } from '../src/viewer/walk.ts';
+import { Gait } from '../src/viewer/onfoot/gait.ts';
+import { gradePace, RUN_SPEED, STAIR_RUN, STAIR_WALK, WALK_SPEED } from '../src/viewer/onfoot/walk.ts';
 
 // A flight of stairs under a jointed figure: each foot has its own ground (`Terrain`), lands whole on its own tread,
 // a tread to a step, and stays there; no foot goes through a tread or a riser on its way; and on flat ground a gait

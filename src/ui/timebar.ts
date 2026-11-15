@@ -1,7 +1,7 @@
 import './time.css';
-import { prefs } from './prefs';
-import type { Flight, SitedFlight } from './types';
-import { type Clock, localTime, missionTime, RATES } from './world/clock.ts';
+import { prefs } from '../app/prefs.ts';
+import type { Flight, SitedFlight } from '../types.ts';
+import { type Clock, localTime, missionTime, RATES } from '../world/clock.ts';
 
 /**
  * The clock's face: what time it is at the site, where that is in the count, and the means to

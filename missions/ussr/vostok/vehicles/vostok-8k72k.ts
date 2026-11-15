@@ -8,7 +8,7 @@
  */
 
 import type { AscentCheck, AscentRecord, Guidance, StageRecord } from '../../../../src/sim/orbital.ts';
-import type { Confidence, Curve, Measure, ShedBody } from '../../../../src/types';
+import type { Confidence, Curve, Measure, ShedBody } from '../../../../src/types.ts';
 
 /** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
 export const BOOSTERS: [letter: string, block: string, az: number][] = [

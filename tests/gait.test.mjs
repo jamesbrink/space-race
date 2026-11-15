@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, RUNG, rungs, swing, view } from '../src/viewer/gait.ts';
+import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, RUNG, rungs, swing, view } from '../src/viewer/onfoot/gait.ts';
 
 /** The pose at a phase and speed, with whatever else the moment has. */
 const pose = (phase, speed, air = 0, more = {}) => poseOf({ phase, speed, air, ...more });
@@ -280,7 +280,7 @@ test('falling flings the arms out and up and trails the legs, and comes in witho
 });
 
 test('getting up starts flat, ends standing as built, and never jumps on the way', async () => {
-  const { rising } = await import('../src/viewer/gait.ts');
+  const { rising } = await import('../src/viewer/onfoot/gait.ts');
   for (const faceDown of [true, false]) {
     const first = rising(0, faceDown, 0.98);
     assert.ok(
@@ -324,7 +324,7 @@ test('sitting at a wheel: thighs level, shins down, hands up and going round wit
 });
 
 test('a tall figure under a low roof sinks into the seat and leans back until his head clears it, and no further than a body can', async () => {
-  const { seatFit } = await import('../src/viewer/gait.ts');
+  const { seatFit } = await import('../src/viewer/onfoot/gait.ts');
   assert.deepEqual(seatFit(0.9, 1.2), { drop: 0, recline: 0 }, 'room enough: he sits up');
   assert.deepEqual(seatFit(0.9, Number.POSITIVE_INFINITY), { drop: 0, recline: 0 }, 'no roof');
   const short = seatFit(0.9, 0.9);
@@ -344,7 +344,7 @@ test('a tall figure under a low roof sinks into the seat and leans back until hi
 });
 
 test('a hand is put where it is sent, with the elbow bent the way it was', async () => {
-  const { reach } = await import('../src/viewer/gait.ts');
+  const { reach } = await import('../src/viewer/onfoot/gait.ts');
   const root = new THREE.Group();
   const add = (name, parent, x, y, z) => {
     const o = new THREE.Object3D();

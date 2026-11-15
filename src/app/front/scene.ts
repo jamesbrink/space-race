@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { makeAtmosphere, ownAtmosphere } from '../viewer/atmosphere.ts';
-import { starsAlone } from '../viewer/heavens.ts';
-import { tier } from '../viewer/tier.ts';
-import { EARTH } from '../world/bodies.ts';
-import { length, sub, unit } from '../world/frames.ts';
-import { yearsFrom2000 } from '../world/stars.ts';
-import { terrestrialTime } from '../world/time.ts';
+import { makeAtmosphere, ownAtmosphere } from '../../viewer/atmosphere.ts';
+import { starsAlone } from '../../viewer/heavens.ts';
+import { tier } from '../../viewer/tier.ts';
+import { EARTH } from '../../world/bodies.ts';
+import { length, sub, unit } from '../../world/frames.ts';
+import { yearsFrom2000 } from '../../world/stars.ts';
+import { terrestrialTime } from '../../world/time.ts';
 import { FarEarth } from './earth.ts';
 import { FarMoon } from './moon.ts';
 import { cameraFor, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pathAt, skyAt } from './view.ts';

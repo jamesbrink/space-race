@@ -8,7 +8,7 @@
  */
 
 import type { DescentBody, DescentChute, DescentRecord, OrbitalFlight } from '../../../../src/sim/orbital.ts';
-import type { Curve, Measure } from '../../../../src/types';
+import type { Curve, Measure } from '../../../../src/types.ts';
 import { BOBKOV, derived, doc, G0, GCTC, guess, SIDDIQI } from './vostok-8k72k.ts';
 
 /** The descent module's mass with its pilot and seat aboard: the type's. */

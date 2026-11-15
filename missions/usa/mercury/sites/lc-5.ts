@@ -1,4 +1,4 @@
-import type { SiteDef } from '../../../../src/types';
+import type { SiteDef } from '../../../../src/types.ts';
 
 /**
  * Launch Complex 5 on the Earth: the origin of the pad model's frame (the launcher's centre on

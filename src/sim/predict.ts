@@ -31,7 +31,7 @@
  * `propagate` does the work in slices (`run(budget)`), so a page can spread it over frames; `predict` and `predictor`
  * are a ballistic flight's (sim/fliers.ts `ballistic`) for those who have one.
  */
-import type { Trajectory } from '../types';
+import type { Trajectory } from '../types.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
 import {
   add,

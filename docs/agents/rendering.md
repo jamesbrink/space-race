@@ -551,7 +551,7 @@ arrived, and 1091 on foot, most of it for things not on show (the globe's maps, 
 cabin's panels; shadow maps sized for a desk's screen; three levels of detail of everything), beside 300 MB of
 JavaScript heap and 125 MB of decoded pictures.
 
-- **It is counted, not guessed.** `?mem` in the address (src/mem.ts) wraps every call that allocates on every WebGL
+- **It is counted, not guessed.** `?mem` in the address (src/app/mem.ts) wraps every call that allocates on every WebGL
   context before one exists, and `srMem.report()` is every live texture, renderbuffer and buffer by bytes and by who
   asked (the page's own frames of the stack); `?mem=show` writes the totals in a corner, for a phone with no console.
   `pnpm test:mem` (tools/mem-test.mjs, `--table` for the list) opens the launch site as a phone (390x844 at 3, touch)

@@ -1,6 +1,6 @@
-import { prefs } from './prefs.ts';
-import { type Quat, turn } from './sim/rigid.ts';
-import { EARTH_ROTATION_RATE } from './world/bodies.ts';
+import { prefs } from '../app/prefs.ts';
+import { type Quat, turn } from '../sim/rigid.ts';
+import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   cross,
   DEG,
@@ -14,7 +14,7 @@ import {
   sub,
   unit,
   type Vec3,
-} from './world/frames.ts';
+} from '../world/frames.ts';
 
 /**
  * The navball: the vehicle's attitude against the local horizon, and on it the directions that

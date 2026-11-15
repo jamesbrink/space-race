@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, JOINTS, pose, stance } from '../src/viewer/gait.ts';
+import { cycleLength, Gait, JOINTS, pose, stance } from '../src/viewer/onfoot/gait.ts';
 
 // A planted foot stays where it was planted: the leg's angles follow from the foot's place and
 // the hips', the foot rocks from its heel to its toes as a foot does, the figure's pelvis comes
@@ -323,7 +323,7 @@ test('a figure is stood as built to be measured without its stride being forgott
 });
 
 test('a figure sitting down goes from where it stands to its seat as its pose goes from standing to sitting', async () => {
-  const { sitAt } = await import('../src/viewer/gait.ts');
+  const { sitAt } = await import('../src/viewer/onfoot/gait.ts');
   const stand = { position: new THREE.Vector3(1, 0, 2), quaternion: new THREE.Quaternion() };
   const seat = {
     position: new THREE.Vector3(1.9, -0.4, 2.1),

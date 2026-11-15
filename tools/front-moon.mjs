@@ -1,4 +1,4 @@
-// Bakes the Moon as the front page sees it (src/front/moon.ts): its colour, and its relief at three sizes, finest
+// Bakes the Moon as the front page sees it (src/app/front/moon.ts): its colour, and its relief at three sizes, finest
 // where the camera starts.
 //   node tools/front-moon.mjs [--cache <dir>] [--only colour|whole|wide|near]
 //
@@ -25,7 +25,7 @@
 // Where the Sun is lower than that the texel is in a shadow cast on it, and the shader says so. It holds while the
 // Sun keeps near that bearing, which it does for the hours the camera is near; the shader lets it go as the Sun moves on.
 //
-// Where the planes touch follows from the front page's own figures (src/front/view.ts: the instant, and the place on
+// Where the planes touch follows from the front page's own figures (src/app/front/view.ts: the instant, and the place on
 // the limb the Earth stands over), so this is run again when those change; tests/front.test.mjs fails until it is.
 //
 // The sources, both NASA's and public domain (docs/sources.md, "The Moon"), are the CGI Moon Kit's (Scientific
@@ -39,7 +39,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readSync, statSync, writeFi
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INSTANT, instantAt, limbPoint, PATH, skyAt } from '../src/front/view.ts';
+import { INSTANT, instantAt, limbPoint, PATH, skyAt } from '../src/app/front/view.ts';
 import { cross, dot, unit } from '../src/world/frames.ts';
 import { MOON_RADIUS, selenographic } from '../src/world/moon.ts';
 import { writeGreyPng } from './png.mjs';

@@ -1,6 +1,6 @@
-import type { Action, Flight, ModelDef, Part } from './types';
+import type { Action, Flight, ModelDef, Part } from '../types.ts';
 // (with its extension: the tests run this file under Node, which adds none)
-import { functionsOf } from './viewer/explode.ts';
+import { functionsOf } from '../viewer/explode.ts';
 
 /**
  * What can be done, on foot, with the thing being looked at. The stage says what that thing is

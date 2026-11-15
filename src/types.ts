@@ -85,7 +85,7 @@ export interface Drive {
    */
   bogies?: boolean;
   /**
-   * Between kerbs at full lock, metres: what it can be driven round on foot (viewer/drive.ts).
+   * Between kerbs at full lock, metres: what it can be driven round on foot (viewer/onfoot/drive.ts).
    * A vehicle that drives itself off this way can also be got into and driven, if its model has
    * a `_Seat_Driver` and faces +X with its wheels named as the vehicle contract names them.
    */
@@ -172,7 +172,7 @@ export interface Keyframe {
 }
 
 /**
- * Something a person standing at a part can do to it: a verb on the action wheel (src/actions.ts),
+ * Something a person standing at a part can do to it: a verb on the action wheel (src/app/actions.ts),
  * offered beside the ones every part has (Info, Inspect). A flight adds verbs here as data; the
  * wheel knows none of them by name.
  *
@@ -402,11 +402,11 @@ export interface CabinDef {
   lamps?: { node: string; name: string; about: string; shows?: Signal | `event:${string}`; until?: string; colour?: number }[];
   /**
    * Controls that are the controls: a click on one does what the flight deck's key does (`does`: a command of
-   * src/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'; or of an orbital flight's deck,
-   * src/orbitdeck.ts: 'retro', and `code:` and a numeral for a key of its logical lock). One with no `does` is
+   * src/deck/cockpit.ts: 'tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort'; or of an orbital flight's deck,
+   * src/deck/orbitdeck.ts: 'retro', and `code:` and a numeral for a key of its logical lock). One with no `does` is
    * there to be read about. How it moves when worked is in the node's extras (`pull` or `press`, metres along its axis).
    * One with `works` works a mechanism of the model by hand (`ModelDef.mechanisms`, by its id): sent the other way
-   * from where it is headed, in a flight being flown by hand (src/cockpit.ts `work`). One that `holds` a state of the
+   * from where it is headed, in a flight being flown by hand (src/deck/cockpit.ts `work`). One that `holds` a state of the
    * flight deck (orbitdeck.ts `holds`: 'free', the hand controls freed) stands at the second of its `throw` positions
    * (its node's extras) while the deck says that state holds, and at its first otherwise, so the cabin and the deck agree.
    *
@@ -538,7 +538,7 @@ export interface ModelDef {
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;
   /**
-   * This model is a person the site can be walked as (viewer/walk.ts): the walk starts where the
+   * This model is a person the site can be walked as (viewer/onfoot/walk.ts): the walk starts where the
    * figure stands, at its eye height, looking the way it faces. A flight may have several.
    */
   walker?: {
@@ -552,7 +552,7 @@ export interface ModelDef {
      */
     hide?: string[];
     /**
-     * What the figure has in its hands when it walks (viewer/carry.ts): each a rigid node of the
+     * What the figure has in its hands when it walks (viewer/onfoot/carry.ts): each a rigid node of the
      * model whose origin is its handle, taken into the named hand at the model's `Grip.L` or
      * `Grip.R`. `hose` is a line back to the figure: the two anchor nodes it hangs between (it
      * leaves each along the anchor's +Y; `from`, on the item, carries `hose_length` and
@@ -1292,14 +1292,14 @@ export interface Flight {
   launchSite: string;
   /**
    * Where that is, as numbers: the sky over the models is computed from this and `launch`. Left out: the flight has no
-   * place to be shown in yet, only its vehicle in the gallery (src/address.ts `entrances`).
+   * place to be shown in yet, only its vehicle in the gallery (src/app/address.ts `entrances`).
    */
   site?: SiteDef;
   /**
    * How its launch site first shows: at the instant `at`, seconds from liftoff (negative before it), on the section
    * `model` framed by its view `view` (both of the flight's own; left out, the first model and its home view). An
    * address that names a section opens on that section, at `at`. Left out, liftoff, on the first model. Flying it
-   * starts at liftoff whatever this says (cockpit.ts): there is no countdown to fly. src/address.ts `openingFor`.
+   * starts at liftoff whatever this says (cockpit.ts): there is no countdown to fly. src/app/address.ts `openingFor`.
    */
   opens?: { at: number; model?: string; view?: string };
   /**

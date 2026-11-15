@@ -3,7 +3,7 @@
  * whether the pilot aboard could have lived through the loads and the landing by the limits the
  * flight's data gives (`Body.capsule.limits`, each with its confidence). No score: what happened.
  */
-import type { Trajectory } from '../types';
+import type { Trajectory } from '../types.ts';
 import type { Results } from './fly.ts';
 import type { OrbitalFlight } from './orbital.ts';
 import type { FlownWhole } from './staged.ts';

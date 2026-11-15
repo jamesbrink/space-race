@@ -1,4 +1,4 @@
-import type { SiteDef } from '../../../../src/types';
+import type { SiteDef } from '../../../../src/types.ts';
 
 /**
  * Launch Complex 19 on the Earth: where every crewed Gemini left from. The origin is the middle of the launch

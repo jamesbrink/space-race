@@ -1,4 +1,4 @@
-import type { CabinDef, ModelDef, Signal } from '../../../../src/types';
+import type { CabinDef, ModelDef, Signal } from '../../../../src/types.ts';
 
 /**
  * The seat and the cabin of an orbital-type Mercury capsule (No. 11 on: Liberty Bell 7, Friendship 7, Aurora 7,

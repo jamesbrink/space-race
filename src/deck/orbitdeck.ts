@@ -1,10 +1,10 @@
-import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck';
-import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from './sim/orbital.ts';
-import { apparentBy, guided, spacecraft, stack } from './sim/fliers.ts';
-import { type Predictor, propagate } from './sim/predict.ts';
-import { aboutAxis, multiply, normalize, type Quat, turn } from './sim/rigid.ts';
-import { along } from './sim/fly.ts';
-import { apart, Sheds } from './sim/shed.ts';
+import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck.ts';
+import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from '../sim/orbital.ts';
+import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
+import { type Predictor, propagate } from '../sim/predict.ts';
+import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
+import { along } from '../sim/fly.ts';
+import { apart, Sheds } from '../sim/shed.ts';
 import {
   type Ascended,
   byHand,
@@ -17,7 +17,7 @@ import {
   integral,
   published,
   recordSamples,
-} from './sim/staged.ts';
+} from '../sim/staged.ts';
 import {
   ascentSample,
   type StagedPilot,
@@ -28,19 +28,19 @@ import {
   type Step,
   stagedPilot,
   stagedVehicle,
-} from './sim/stagedlive.ts';
-import { type LiveSample, TICK } from './sim/vehicle.ts';
-import { downVerdict } from './sim/verdict.ts';
-import type { SitedFlight } from './types';
-import type { Run } from './viewer/ascent';
-import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from './viewer/ascent';
-import type { DeckNews } from './viewer/cabin';
-import { EARTH_ROTATION_RATE } from './world/bodies.ts';
-import type { Clock } from './world/clock.ts';
-import { sunPosition } from './world/ephemeris.ts';
-import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from './world/frames.ts';
-import { elementsOf, subpoint } from './world/orbit.ts';
-import { greenwichSiderealTime, julianDate, terrestrialTime } from './world/time.ts';
+} from '../sim/stagedlive.ts';
+import { type LiveSample, TICK } from '../sim/vehicle.ts';
+import { downVerdict } from '../sim/verdict.ts';
+import type { SitedFlight } from '../types.ts';
+import type { Run } from '../viewer/ascent.ts';
+import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from '../viewer/ascent.ts';
+import type { DeckNews } from '../viewer/cabin.ts';
+import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import type { Clock } from '../world/clock.ts';
+import { sunPosition } from '../world/ephemeris.ts';
+import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
+import { elementsOf, subpoint } from '../world/orbit.ts';
+import { greenwichSiderealTime, julianDate, terrestrialTime } from '../world/time.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (`Flight.orbital` with an `ascent`): the deck (deck.ts) is the one every

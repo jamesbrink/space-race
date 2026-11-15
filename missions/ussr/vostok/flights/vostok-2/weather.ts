@@ -1,4 +1,4 @@
-import type { DayWeather } from '../../../../../src/types';
+import type { DayWeather } from '../../../../../src/types.ts';
 
 const ISD = 'NOAA Integrated Surface Database';
 const KAZALY = `${ISD}, station 35849099999 (Kazaly, that is Kazalinsk: 45.77° N 62.12° E, 97 km west of Site 1)`;

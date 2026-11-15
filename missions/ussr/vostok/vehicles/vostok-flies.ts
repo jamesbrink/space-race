@@ -1,5 +1,5 @@
 import type { OrbitalFlight } from '../../../../src/sim/orbital.ts';
-import type { ChuteDef, Command, Flight, Measure, Part } from '../../../../src/types';
+import type { ChuteDef, Command, Flight, Measure, Part } from '../../../../src/types.ts';
 import { BOOSTERS } from './vostok-8k72k.ts';
 
 /**

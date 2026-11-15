@@ -22,7 +22,7 @@
  * stands under it (`Release.stands`): nothing else of one shed body on another is flown. A body that has come down is not
  * integrated again. Its mass does not change: a motor's propellant is not taken off it.
  */
-import type { ShedBody, Trajectory } from '../types';
+import type { ShedBody, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import {
   add,

@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vector3 } from 'three';
-import type { Part } from '../types';
-import { markDriven } from './drive.ts';
+import type { Part } from '../types.ts';
+import { markDriven } from './onfoot/drive.ts';
 import { Exploder } from './explode.ts';
 import type { Surfaces } from './runs.ts';
 

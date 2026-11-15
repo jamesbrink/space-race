@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { NOISE } from './space';
+import { NOISE } from './space.ts';
 
 /**
  * What a surface looks like from a metre away. A model gives a material one colour, which is

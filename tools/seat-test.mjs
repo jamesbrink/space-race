@@ -11,7 +11,7 @@ import { globSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
-import { exhibit } from '../src/address.ts';
+import { exhibit } from '../src/app/address.ts';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);

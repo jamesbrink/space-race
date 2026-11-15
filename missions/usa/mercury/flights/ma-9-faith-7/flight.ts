@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types';
+import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
 import { LC14 } from '../../sites/lc-14.ts';
 import { mercuryCabin, mercurySeat } from '../../vehicles/cabin.ts';
 

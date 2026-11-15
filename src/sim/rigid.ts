@@ -6,7 +6,7 @@
  * A quaternion is [w, x, y, z] and turns body axes into the frame's: `turn(q, v)` is the vector
  * `v`, given in the body's axes, in the frame's. Body rates are in the body's axes, rad/s.
  */
-import type { MassPart } from '../types';
+import type { MassPart } from '../types.ts';
 import { cross, type Vec3 } from '../world/frames.ts';
 
 export type Quat = readonly [w: number, x: number, y: number, z: number];

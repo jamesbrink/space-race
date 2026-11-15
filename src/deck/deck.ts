@@ -1,9 +1,9 @@
-import './cockpit.css';
-import type { LiveSample, VehicleState } from './sim/vehicle.ts';
-import type { Command, SitedFlight } from './types';
-import type { Run } from './viewer/ascent';
-import type { DeckNews } from './viewer/cabin';
-import type { Clock } from './world/clock.ts';
+import '../ui/cockpit.css';
+import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
+import type { Command, SitedFlight } from '../types.ts';
+import type { Run } from '../viewer/ascent.ts';
+import type { DeckNews } from '../viewer/cabin.ts';
+import type { Clock } from '../world/clock.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -279,7 +279,7 @@ export abstract class Deck {
   /** Whether this flight can be flown on the deck. */
   abstract get able(): boolean;
   /** The flight's own vehicle of sim/vehicle.ts, where it has one (the path flies its programme ahead), and how it is flown. */
-  abstract get craft(): import('./sim/vehicle.ts').Vehicle | null;
+  abstract get craft(): import('../sim/vehicle.ts').Vehicle | null;
   abstract get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } };
   /** A control in the cabin, or a part's menu, asking for something (types.ts `Command`, CabinDef `does`). */
   abstract ask(what: string): void;

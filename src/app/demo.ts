@@ -1,6 +1,6 @@
-import type { Flight, ModelDef } from './types';
-import type { Clock } from './world/clock.ts';
-import { sliderAt } from './world/sequence.ts';
+import type { Flight, ModelDef } from '../types.ts';
+import type { Clock } from '../world/clock.ts';
+import { sliderAt } from '../world/sequence.ts';
 
 /**
  * The idle show. Left alone, the page does not sit still: the day runs (quickly through the

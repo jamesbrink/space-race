@@ -7,59 +7,59 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
 import type { MeshBVH } from 'three-mesh-bvh';
-import { sameTarget, type Target, type Workings } from '../actions';
-import { readingFor } from '../sim/mechanism';
+import { sameTarget, type Target, type Workings } from '../app/actions.ts';
+import { readingFor } from '../sim/mechanism.ts';
 import { exitAreaOf } from '../sim/staged.ts';
-import type { Action, Burns, Flight as FlightData, ModelDef, SitedFlight } from '../types';
-import { kindOf } from './flames';
+import type { Action, Burns, Flight as FlightData, ModelDef, SitedFlight } from '../types.ts';
+import { kindOf } from './flames.ts';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import { Ascent, type Run } from './ascent';
-import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops';
-import { Bloom } from './bloom';
-import { bulkOf } from './bulk';
-import { Cabin, type CabinThing } from './cabin';
+import { Ascent, type Run } from './ascent.ts';
+import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
+import { Bloom } from './bloom.ts';
+import { bulkOf } from './bulk.ts';
+import { Cabin, type CabinThing } from './cabin.ts';
 import { AT_GLASS, ease, leanPath } from './camera/head.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
-import { Carry } from './carry';
-import { Chute } from './chute';
-import { CloudPass } from './clouds';
-import { Vehicle } from './drive';
-import type { Effects } from './effects';
-import { ExhaustPass } from './exhaust';
-import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode';
-import { type Cluster, clusterOf, exitsOf } from './fires';
-import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait';
-import { Jets } from './jets';
-import { ground, lay, layering } from './laid';
-import { Lamps } from './lamps';
-import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod';
-import { InkPass, type Look, Looks } from './look';
-import { type LookoutDef, lookoutsOf, windowAt } from './lookouts';
-import { refused, sayRefused, watchContext } from './lost';
-import { absolute, Origin } from './origin';
-import { OVERLAY_LAYER, OverlayPass } from './overlay';
-import { Outline } from './outline';
-import { Panes } from './panes';
-import { through, triangles } from './pick';
-import { fitIndices, fitPictures } from './pictures';
-import { lightFires, Plume } from './plume';
-import { Quality } from './quality';
-import { type Collide, Ragdoll, type Tumbler } from './ragdoll';
-import { Surfaces } from './runs';
-import { ShadowCache } from './shadowcache';
-import { BAND, depthBias, FarShadow, uShadowFade } from './shadows';
-import { wearTexture } from './space';
-import { grain, mark } from './surface';
-import { tier } from './tier';
-import { TRAIL_STEP, Trail } from './trail';
+import { Carry } from './onfoot/carry.ts';
+import { Chute } from './chute.ts';
+import { CloudPass } from './clouds.ts';
+import { Vehicle } from './onfoot/drive.ts';
+import type { Effects } from './effects.ts';
+import { ExhaustPass } from './exhaust.ts';
+import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from './explode.ts';
+import { type Cluster, clusterOf, exitsOf } from './fires.ts';
+import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './onfoot/gait.ts';
+import { Jets } from './jets.ts';
+import { ground, lay, layering } from './laid.ts';
+import { Lamps } from './lamps.ts';
+import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
+import { InkPass, type Look, Looks } from './look.ts';
+import { type LookoutDef, lookoutsOf, windowAt } from './lookouts.ts';
+import { refused, sayRefused, watchContext } from './lost.ts';
+import { absolute, Origin } from './origin.ts';
+import { OVERLAY_LAYER, OverlayPass } from './overlay.ts';
+import { Outline } from './outline.ts';
+import { Panes } from './panes.ts';
+import { through, triangles } from './pick.ts';
+import { fitIndices, fitPictures } from './pictures.ts';
+import { lightFires, Plume } from './plume.ts';
+import { Quality } from './quality.ts';
+import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
+import { Surfaces } from './runs.ts';
+import { ShadowCache } from './shadowcache.ts';
+import { BAND, depthBias, FarShadow, uShadowFade } from './shadows.ts';
+import { wearTexture } from './space.ts';
+import { grain, mark } from './surface.ts';
+import { tier } from './tier.ts';
+import { TRAIL_STEP, Trail } from './trail.ts';
 
 /** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
 const TRAIL_TOP = 80_000;
 
-import { EYE_FRACTION, type Hit, Walker } from './walk';
-import { Works } from './works';
+import { EYE_FRACTION, type Hit, Walker } from './onfoot/walk.ts';
+import { Works } from './onfoot/works.ts';
 
 /** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
 const EMERGE_CLEAR = 0.12;
@@ -5085,7 +5085,7 @@ export class Stage {
     }
   }
 
-  // --- a stage that is a room and not a place: what the gallery asks of its own (src/gallery.ts) ---
+  // --- a stage that is a room and not a place: what the gallery asks of its own (src/ui/gallery.ts) ---
 
   /**
    * Every model is drawn in full, whatever its size on screen, and its coarser levels are not

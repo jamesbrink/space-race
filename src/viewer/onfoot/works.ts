@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Action, Move } from '../types';
+import type { Action, Move } from '../../types.ts';
 // (with its extension: the tests run this file under Node, which adds none)
-import { Sequence } from './explode.ts';
+import { Sequence } from '../explode.ts';
 
 /**
  * Things on a site that work when somebody works them: a door that opens, a lift that goes up.

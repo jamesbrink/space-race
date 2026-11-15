@@ -229,7 +229,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
   was: `src/world` computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears
-  them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/prefs.ts`).
+  them all, and each of those choices, with Auto-orbit, is remembered between visits (`src/app/prefs.ts`).
   A new panel gets the same control and a `Pref`.
 - A switch looks like one: `class="switch"` with `aria-pressed` puts a lamp before its name, lit while it is on. Passing
   notes (`ui.say`, "Find the vehicle") go in the one stack under the clock (`Ui.notes`), never placed by hand; what is

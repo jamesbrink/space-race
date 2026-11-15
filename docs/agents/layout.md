@@ -81,13 +81,13 @@ src/
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
-  viewer/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
-  viewer/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
-  viewer/ragdoll.ts                   a figure gone limp after a long fall: points, sticks, and the bones laid along them
-  viewer/works.ts                     things that work when worked: doors (toggles) and lifts, from a part's actions
-  viewer/drive.ts                     driving: a kinematic bicycle model and the vehicle contract's nodes
-  viewer/carry.ts                     what a walking figure has in its hand, by the model's grip contract
-  viewer/hose.ts                      a hose or tether of fixed length hanging between two moving anchors
+  viewer/onfoot/walk.ts                      walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
+  viewer/onfoot/gait.ts                      how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
+  viewer/onfoot/ragdoll.ts                   a figure gone limp after a long fall: points, sticks, and the bones laid along them
+  viewer/onfoot/works.ts                     things that work when worked: doors (toggles) and lifts, from a part's actions
+  viewer/onfoot/drive.ts                     driving: a kinematic bicycle model and the vehicle contract's nodes
+  viewer/onfoot/carry.ts                     what a walking figure has in its hand, by the model's grip contract
+  viewer/onfoot/hose.ts                      a hose or tether of fixed length hanging between two moving anchors
   prefs.ts                            what is remembered between visits
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -179,7 +179,7 @@ tools/
   globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
-  logo.mjs                            writes the mark (src/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
+  logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
   blender/figurelib.py                what any crew figure is built from: a body's measures and joints, the trunk and trousers as skins, hands, a head,

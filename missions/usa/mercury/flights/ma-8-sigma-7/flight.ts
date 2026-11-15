@@ -1,4 +1,4 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types';
+import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
 import { LC14 } from '../../sites/lc-14.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { mercuryCabin, mercurySeat, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';

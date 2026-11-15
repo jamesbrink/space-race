@@ -38,6 +38,10 @@
         // const m = (this.model = ...), the seeded rand() in cape.ts, ??= on userData
         "noAssignInExpressions": "off"
       },
+      "correctness": {
+        // the tests run the sources under Node's type stripping, which adds no extension: every relative import names its file
+        "useImportExtensions": "error"
+      },
       "complexity": {
         // [hidden] and pointer-events overrides must beat every later rule
         "noImportantStyles": "off"

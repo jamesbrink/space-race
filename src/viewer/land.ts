@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { FIELD } from './field';
-import { onlyAsItself } from './flora';
-import { NOISE } from './space';
+import { FIELD } from './field.ts';
+import { onlyAsItself } from './flora.ts';
+import { NOISE } from './space.ts';
 
 /**
  * The ground of a place, from its parameters: one mesh from under the walker's feet to the

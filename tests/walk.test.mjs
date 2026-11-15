@@ -22,7 +22,7 @@ import {
   settle,
   stickSpeed,
   WALK_SPEED,
-} from '../src/viewer/walk.ts';
+} from '../src/viewer/onfoot/walk.ts';
 
 test('the floor is the highest surface within a riser of the feet; anything higher is a wall', () => {
   assert.equal(pickFloor([], 0), null);
