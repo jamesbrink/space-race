@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { TYURATAM_HEIGHTS } from '../../missions/ussr/vostok/sites/tyuratam-heights.ts';
-import { FANS, TYURATAM_WORKS } from '../../missions/ussr/vostok/sites/tyuratam-works.ts';
+import { TYURATAM_HEIGHTS } from '../../missions/ussr/places/tyuratam/tyuratam-heights.ts';
+import { FANS, TYURATAM_WORKS } from '../../missions/ussr/places/tyuratam/tyuratam-works.ts';
 import { STEPPE } from './steppe.ts';
 
 /**

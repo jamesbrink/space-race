@@ -108,7 +108,7 @@ export async function measure({ url, flight, only }) {
   const flights =
     flight?.split(',') ??
     [...new Set(globSync('public/models/**/*.lod1.glb', { cwd: root }).map((f) => dirname(f).split('/').slice(2).join('/')))].filter(
-      (f) => !f.includes('/sites/'),
+      (f) => !f.includes('/places/'),
     );
   const browser = await launch();
   const done = new Set();

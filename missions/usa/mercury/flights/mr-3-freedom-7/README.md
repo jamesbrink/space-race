@@ -5,7 +5,7 @@ The first American in space, and the first person to control a spacecraft's atti
 | | |
 | --- | --- |
 | Liftoff | 5 May 1961, 14:34:13 UTC (09:34 EST) |
-| Site | Cape Canaveral, Launch Complex 5: [lc-5.md](../../sites/lc-5.md) |
+| Site | Cape Canaveral, Launch Complex 5: [lc-5.md](../../../places/cape-canaveral/lc-5.md) |
 | Pilot | Alan B. Shepard Jr. (backup: John Glenn): [mark-iv-suit.md](../../crew/mark-iv-suit.md) |
 | Spacecraft | Mercury No. 7, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Redstone MRLV, MR-7: [redstone-mrlv.md](../../vehicles/redstone-mrlv.md) |
@@ -55,7 +55,7 @@ The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-5.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-5.ts`) and the
 launch instant, 14:34:13 UTC (09:34:13 EST). All `derived`; the Sun and Moon agree with JPL Horizons
 to 0.002° (`tests/world.test.mjs`). Elevations are geometric; air lifts the Moon another 0.17°.
 
@@ -77,7 +77,7 @@ site's sky is drawn from it and from nothing else: "1/10 cumulus" at liftoff (Po
 wind from 090° at 10 knots (the Skid Strip, 09:00 EST), visibility at the station's 16 km limit. No
 high cloud is recorded over the Cape at those hours. What is ours, estimated: the cumulus's depth
 (650 m), their breadth and the wind at their height (7 m/s), how far past the limit one could see
-(80 km), and all the weather beyond the Cape ([lc-5.md](../../sites/lc-5.md), "What the model gets
+(80 km), and all the weather beyond the Cape ([lc-5.md](../../../places/cape-canaveral/lc-5.md), "What the model gets
 wrong or leaves out"). The report gives the surface wind at liftoff as 12 knots, from 070 by its
 profile: the simulator flies that (below); the plants and the clouds were drawn for the station's
 figure of half an hour earlier and are kept as they were.

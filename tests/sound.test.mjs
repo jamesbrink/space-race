@@ -193,7 +193,7 @@ test('the clock: stopped or backwards the flight is silent, fast it is a bed, an
 
 test('a site inland has no surf and no sea: nothing is heard at Tyuratam before an engine is lit but its wind and hum', async () => {
   // (every Soviet flight so far leaves from this site: its bed is theirs)
-  const site = Object.values(await import('../missions/ussr/vostok/sites/site-1.ts')).find((v) => v?.quiet);
+  const site = Object.values(await import('../missions/ussr/places/tyuratam/site-1.ts')).find((v) => v?.quiet);
   assert.ok(site, 'Site 1 says what its place sounds like, and does not fall back on a site by the sea');
   const steppe = site.quiet;
   assert.equal(steppe.surf, 0, 'no surf on the steppe');

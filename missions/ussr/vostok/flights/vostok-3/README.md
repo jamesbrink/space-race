@@ -15,7 +15,7 @@ module and landing by parachute. Backup: Valeriy Bykovskiy; reserve for both shi
 | Spacecraft (3KA No. 5) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have carried that can be drawn: the two television cameras as the Seliger camera was photographed, and a hand-held film camera |
 | Launch vehicle (8K72K No. E103-23) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
-| Launch site (Site 1 as it stood in August 1962, rebuilt after the fire of 1 June) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)); what the repairs changed has not been looked for |
+| Launch site (Site 1 as it stood in August 1962, rebuilt after the fire of 1 June) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what the repairs changed has not been looked for |
 | Crew to be walked as | not built |
 | The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: the forecast given to the State Commission at 07:30 on the 11th, an anticyclone, clear, wind 6 to 7 m/s (Kamanin). No station's report was looked for |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
@@ -155,7 +155,7 @@ on 21 August as the initial orbit, and what the film *Звёздные брат�
 
 ## The sky at liftoff
 
-Computed by `src/world` from [site-1.ts](../../sites/site-1.ts) and the launch instant
+Computed by `src/world` from [site-1.ts](../../../places/tyuratam/site-1.ts) and the launch instant
 (08:30:00 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |

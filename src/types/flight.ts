@@ -168,7 +168,7 @@ export interface Flight {
     };
   };
   models: ModelDef[];
-  /** The place round the pad, built like a model (the site's own: sites/<site>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
+  /** The place round the pad, built like a model (the site's own: places/<place>/<package>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;
 }
 

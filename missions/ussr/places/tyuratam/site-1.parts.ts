@@ -1,17 +1,17 @@
 import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
 
 /**
- * Site 1's pad as a flight's data: the parts of a flight's pad.glb (sites/site_1.py), what each is and how it moves. The
+ * Site 1's pad as a flight's data: the parts of a flight's pad.glb (places/tyuratam/site_1.py), what each is and how it moves. The
  * hardware is the site's and the same for every flight from it (Vostoks 1 to 6, the Voskhods), so it is said once, here;
  * a flight gives its day (`Site1Day`): where its morning's motions fall on the pad's slider, what it says of each part
  * (or what it adds to the site's own words), when the erector's crew left, and whether the railway fillers stood beside
- * it. The people and road vehicles of a morning are the flight's own parts. sites/site-1.md has every pivot, travel and
+ * it. The people and road vehicles of a morning are the flight's own parts. places/tyuratam/site-1.md has every pivot, travel and
  * source. Moved here from Vostok 1's flight.ts unchanged.
  */
 
 export const DEG = Math.PI / 180;
 
-// Where the vehicle hangs at Site 1, as sites/site1/site.py has it (the numbers live there; site-1.md): its nozzles' exits
+// Where the vehicle hangs at Site 1, as places/tyuratam/site1/site.py has it (the numbers live there; site-1.md): its nozzles' exits
 // 6.75 m under the platform's deck, level with the foot of the launch system's turning part, and the whole system turned
 // in the platform's opening to the launch azimuth, 37.5 degrees (derived), with booster B's plane along it (estimated).
 /** The nozzles' exits, m above the deck (site.TAIL_Z). */
@@ -34,7 +34,7 @@ const outward = (node: string, az: number, degrees: number, from: number, to: nu
   to,
 });
 
-// What served the rocket and was taken away before it left, as sites/site1/ has it (service_trusses.py, cable_mast.py,
+// What served the rocket and was taken away before it left, as places/tyuratam/site1/ has it (service_trusses.py, cable_mast.py,
 // erector.py: the numbers live there, and site-1.md tabulates the pivots). Angles round the site are from due east,
 // anticlockwise from above; the launch system stands turned TURN, so its north truss is 45 degrees on from that.
 /** Where each piece's hinge is round the site, degrees. */
@@ -65,7 +65,7 @@ const GUIDE_FALL = -25;
 const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
 /**
  * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
- * line (metres east and south from where that bogie stood: sites/site1/place.py, SPURS and CENTRE_TRACK).
+ * line (metres east and south from where that bogie stood: places/tyuratam/site1/place.py, SPURS and CENTRE_TRACK).
  */
 /** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
 const CAR_WHEEL = 0.475 + 0.0024;
@@ -724,7 +724,7 @@ export const SITE1_SPECS: Flight['specs'] = [
     value: 41.15,
     unit: 'm',
     confidence: 'documented',
-    note: '135 ft square, measured off U-2 photographs (CIA PIC/JR-2/60); "40 by 40 m" (RussianSpaceWeb). No drawing has been published: sites/site-1.md',
+    note: '135 ft square, measured off U-2 photographs (CIA PIC/JR-2/60); "40 by 40 m" (RussianSpaceWeb). No drawing has been published: places/tyuratam/site-1.md',
   },
   {
     group: 'Launch pad',
@@ -748,7 +748,7 @@ export const SITE1_SPECS: Flight['specs'] = [
     value: 8,
     unit: 'm',
     confidence: 'derived',
-    note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: sites/site-1.md, "The lie of the land"',
+    note: 'the pad stands on the brow of a scarp: SRTM (2000, a 30 m grid) reads 113 to 114 m along the tracks and 104 to 107 m from 65 m north of them, where the command bunker stands; the CIA has the track on "a man-made embankment", its height redacted. Good to some 2 m: places/tyuratam/site-1.md, "The lie of the land"',
   },
   {
     group: 'Launch pad',

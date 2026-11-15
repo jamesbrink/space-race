@@ -447,7 +447,7 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
     }
     assert.ok(flight.site.zone.name.length > 1 && Math.abs(flight.site.zone.utcOffset) <= 14, `${flight.id}: the site's civil time`);
   }
-  // Freedom 7: the figures quoted in its README ("The sky at liftoff") and in sites/lc-5.md
+  // Freedom 7: the figures quoted in its README ("The sky at liftoff") and in places/cape-canaveral/lc-5.md
   const mr3 = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
   const sky = skyFrom(siteFrame(mr3.site), julianDate(mr3.launch));
   near(sky.sun.azimuth / DEG, 98.8, 0.05, 'Sun azimuth');

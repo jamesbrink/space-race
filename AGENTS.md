@@ -159,8 +159,9 @@ standing in it: on foot at eye height beside the thing, and from across the pad.
 ## A place is built once and dated
 
 A site outlives a flight: Mercury-Redstone 4 flew from the same pad eleven weeks after Freedom 7,
-and the Cape round it is the same Cape for a decade of flights. So a site's hardware lives under
-`sites/` as modules that know nothing of any flight, and a flight's `model/*.py` only chooses what
+and the Cape round it is the same Cape for a decade of flights. So a place lives under its nation,
+`missions/<nation>/places/<place>/` (`cape-canaveral`, `tyuratam`): its pads' `SiteDef`s, and their hardware
+as modules that know nothing of any flight, and a flight's `model/*.py` only chooses what
 stood there on its day and how it was arranged. A later flight adds to the place and replaces what
 had changed (a new gantry, a pad rebuilt, a car park paved); it does not copy it. When something
 is built that did not stand there for every flight, record when it did (from, until, and how
@@ -169,9 +170,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 ## Adding a flight
 
 1. Create `missions/<nation>/<programme>/flights/<flight>/` with the files above. Hardware that
-   other flights will reuse (a booster, a pad, a suit) goes in the programme's `vehicles/`,
-   `sites/` or `crew/`, with its own `.md`; the flight's `model/*.py` imports it.
-   Record where it flew from: if the site is new, add `sites/<site>.ts` exporting a `SiteDef`
+   other flights will reuse (a booster, a suit) goes in the programme's `vehicles/` or `crew/`, a pad in
+   its place (`missions/<nation>/places/<place>/`), each with its own `.md`; the flight's `model/*.py` imports it.
+   Record where it flew from: if the site is new, add `places/<place>/<site>.ts` exporting a `SiteDef`
    (latitude and longitude in WGS 84 degrees, height above the ellipsoid, the bearing of the model
    frame's +X, the time zone kept that day, each with its confidence and source), set `site` in
    `flight.ts` from it, and state the computed Sun and Moon in the flight's README. Record the weather
@@ -214,7 +215,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   shows it so, and the launch site and the flight play them on the clock.
 - A site has its own frame (at Complex 5, +X square to the rails on the blockhouse's side) and lies at an angle to the
   compass; a vehicle that was laid on its azimuth by turning its launcher stands turned in it (`rotationY`, worked
-  from the azimuth: sites/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. Scenery is laid
+  from the azimuth: places/cape-canaveral/lc-5.parts.ts `launcherTurn`), and its pad is built turned to match. Scenery is laid
   out on the compass and turned as one (`COMPASS` in `cape.ts`); the Sun is where it
   was: `src/world` computes it from the flight's `site` and `launch`.
 - Every panel tucks away with the same chevron (title card, data panel, camera legend), H clears

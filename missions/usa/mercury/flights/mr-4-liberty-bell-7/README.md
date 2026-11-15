@@ -6,7 +6,7 @@ a hatch he could blow off himself.
 | | |
 | --- | --- |
 | Liftoff | 21 July 1961, 12:20:36 UTC (07:20:36 EST) |
-| Site | Cape Canaveral, Launch Complex 5: [lc-5.md](../../sites/lc-5.md) |
+| Site | Cape Canaveral, Launch Complex 5: [lc-5.md](../../../places/cape-canaveral/lc-5.md) |
 | Pilot | Virgil I. "Gus" Grissom (backup: John Glenn) |
 | Spacecraft | Mercury No. 11, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Redstone MRLV, MR-8: [redstone-mrlv.md](../../vehicles/redstone-mrlv.md) |
@@ -84,13 +84,13 @@ On the pad (the same report, p. 6; TM X-53107, 8.3.2): the first half of the spl
 hour's hold for the weather; the pilot was in the spacecraft at 03:58, 3 hours 22 minutes before
 launch; holds of 30 minutes at T-45 (the hatch bolt), 9 minutes at T-30 (the searchlights) and 41
 minutes at T-15 (cloud). The whole morning on the clock, and what stood on the pad through it, is in
-[lc-5.md](../../sites/lc-5.md), "Where things stood, and when (MR-4, 21 July 1961)"; the same as
+[lc-5.md](../../../places/cape-canaveral/lc-5.md), "Where things stood, and when (MR-4, 21 July 1961)"; the same as
 data is `MORNING` in [flight.ts](flight.ts). (The report prints "2:30 a.m. e.s.t. on July 20" for
 the start of the count's second half, which cannot be: T-180 was reached at 02:00 on the 21st.)
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-5.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-5.ts`) and the
 launch instant, 12:20:36 UTC. All `derived`. Elevations are geometric.
 
 | Body | Azimuth (true) | Elevation | Note |
@@ -135,7 +135,7 @@ was held for, is not shown thicker (lc-5.md, "What the model gets wrong or leave
 
 ## What is not built
 
-**The launch site is built** ([lc-5.md](../../sites/lc-5.md), "5 May and 21 July 1961", has what
+**The launch site is built** ([lc-5.md](../../../places/cape-canaveral/lc-5.md), "5 May and 21 July 1961", has what
 differs from Freedom 7's morning and how sure each difference is). What it still lacks:
 
 - **Grissom on the couch**: the pilot in the cabin's cutaway is still Shepard's figure with the name

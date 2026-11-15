@@ -4,7 +4,7 @@ import { smoothstep } from '../util/math.ts';
  * platform's deck. The pad stands on the brow of a scarp: south of the tracks the ground is at their level, north of
  * them it falls some 8 m to the steppe the bunker and the buildings stand on, and east of the pit it lies some 5 m down.
  *
- * Written three times and kept in step: missions/ussr/vostok/sites/site1/relief.py (for whatever is built on the land:
+ * Written three times and kept in step: missions/ussr/places/tyuratam/site1/relief.py (for whatever is built on the land:
  * that file says what each figure rests on, and site-1.md, "The land"), and here in JavaScript (the walker, the plants)
  * and GLSL (the land's mesh). tests/tyuratam.test.mjs holds this file's JavaScript to the Python's figures; the GLSL is
  * the same arithmetic line for line.

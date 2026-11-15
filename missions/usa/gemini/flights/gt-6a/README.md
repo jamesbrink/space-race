@@ -7,7 +7,7 @@ that ended 120 ft from Gemini 7.
 | | |
 | --- | --- |
 | Liftoff | 15 December 1965, 13:37:26.471 UTC (8:37:26.471 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../sites/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
 | Crew | Walter M. Schirra, Jr., command pilot; Thomas P. Stafford, pilot |
 | Spacecraft | Gemini No. 6, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 6, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -162,7 +162,7 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../sites/lc-19.ts): the place on the Earth, with
+- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
   an estimated bearing. Nothing stands on it yet.
 - **The crew.** Schirra and Stafford wore the G4C suit (*Midprogram Conference*, p. 64). It is not
   modelled, and the seats are empty.

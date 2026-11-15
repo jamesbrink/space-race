@@ -11,8 +11,8 @@ cape/model/<date>.py; ./cape.md records every dimension, its confidence and sour
 from __future__ import annotations
 
 import sitelib
-from cape import lc17, lc25, lc26, lc30
-from cape.site import Parts, materials
+from complexes import lc17, lc25, lc26, lc30
+from complexes.site import Parts, materials
 
 __all__ = ["build"]
 

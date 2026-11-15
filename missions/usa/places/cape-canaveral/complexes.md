@@ -4,8 +4,8 @@ What a walker from pad 5 can reach: the complexes within about a kilometre, each
 record as clean forms with the silhouette that record gives, at one level of detail. They are
 neighbours, not the flight's pad: no interiors (doors shut, windows dark), nothing that moves,
 nothing to climb. `cape/<complex>.py` builds each in a frame of its own (feet; the origin on a named
-pad; +Y along a stated bearing), `cape_1961.py` puts them in one model
-(`public/models/usa/mercury/sites/cape/1961-05.glb`, 265 kB and 28,000 triangles, so it is fetched with the scene), and
+pad; +Y along a stated bearing), `complexes_1961.py` puts them in one model
+(`public/models/usa/places/cape-canaveral/complexes/1961-05.glb`, 265 kB and 28,000 triangles, so it is fetched with the scene), and
 `src/viewer/cape1961.ts` stands each where its pad's published coordinates put it. The complexes
 further off (1.2 to 9 km) are still stand-ins drawn in cape1961.ts.
 

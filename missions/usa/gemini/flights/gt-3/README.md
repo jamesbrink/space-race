@@ -6,7 +6,7 @@ spacecraft changed the orbit they were in.
 | | |
 | --- | --- |
 | Liftoff | 23 March 1965, 14:24:00.064 UTC (9:24:00.064 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../sites/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
 | Crew | Virgil I. Grissom, command pilot; John W. Young, pilot (backup: Walter M. Schirra, Jr., and Thomas P. Stafford) |
 | Spacecraft | Gemini No. 3, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 3, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -139,7 +139,7 @@ hatches sealed at 7:30; the hold of 24 minutes at T-35; liftoff at 9:24.
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-19.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
 launch instant, 14:24:00.064 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
 are held to these figures by `tests/world.test.mjs`.
 
@@ -210,7 +210,7 @@ These are the figures one would be written from.
 
 ## What is not built
 
-- **The launch site.** Complex 19 is [a site as numbers](../../sites/lc-19.ts): where it was, and
+- **The launch site.** Complex 19 is [a site as numbers](../../../places/cape-canaveral/lc-19.ts): where it was, and
   which way the vehicle is taken to have faced on it, which is not settled.
 - **The crew.** Grissom and Young are in their seats in the G3C suits they wore
   ([g3c-suit.md](../../crew/g3c-suit.md)), posed as for the launch; nothing moves them, and

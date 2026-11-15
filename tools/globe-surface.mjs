@@ -87,7 +87,7 @@ const REGIONS = [
     ],
   },
   {
-    // Site 1 at Tyuratam: the lower Syr Darya, the Aral Sea of 1961 and the country round (missions/ussr/vostok/sites/site-1.ts).
+    // Site 1 at Tyuratam: the lower Syr Darya, the Aral Sea of 1961 and the country round (missions/ussr/places/tyuratam/site-1.ts).
     // Its colours are April's, the month of every flight from it the region is drawn for: the steppe's short spring.
     name: 'tyuratam',
     south: 41,

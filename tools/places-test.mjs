@@ -35,7 +35,7 @@ async function lateNeighbours(walk, workers = false) {
   const held = new Promise((done) => (release = done));
   const { page, context } = await openPage(browser, `${url}#pad`, {
     before: (page) =>
-      page.route(/sites\/cape\/[^/]*\.glb(\?|$)/, async (route) => {
+      page.route(/cape-canaveral\/complexes\/[^/]*\.glb(\?|$)/, async (route) => {
         await held;
         await route.continue().catch(() => {});
       }),

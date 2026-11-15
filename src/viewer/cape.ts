@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
+import { LC5 } from '../../missions/usa/places/cape-canaveral/lc-5.ts';
 import { type Air, driftClouds, installAir } from './air.ts';
 import { breeze, type Day } from './day.ts';
 import {
@@ -29,13 +29,13 @@ import { smoothstep } from '../util/math.ts';
  * the one into the other, and the whole site is turned by it.
  *
  * The complex itself (the blockhouse, pad 6, the track, the huts, the parked cars) is not here: it
- * is modelled in Blender like the pad, in the pad's frame (Flight.surroundings; sites/lc-5.md).
+ * is modelled in Blender like the pad, in the pad's frame (Flight.surroundings; places/cape-canaveral/lc-5.md).
  * Nor is the rest of the Cape's hardware: the other complexes, the lighthouse and the line of the
  * shore are cape1961.ts, each at its published place. This file is the land itself, as parameters
  * to the machinery in land.ts (the ground) and flora.ts (what grows on it): which communities
  * grow where, the colours of sand, grass and leaf, the roads, and the sea.
  *
- * What is documented and what is estimated is set out in missions/usa/mercury/sites/lc-5.md,
+ * What is documented and what is estimated is set out in missions/usa/places/cape-canaveral/lc-5.md,
  * "The land". In short: the shore and the complexes' places are documented; the plant
  * communities, their order from the sea and their heights are published descriptions of the
  * Cape's vegetation; the clearing round Complex 5/6 is its fence line on the period's site plan;
@@ -246,7 +246,7 @@ const SHARED = /* glsl */ `
 /*
  * The sky is not the Cape's but a day's: the haze, the cumulus, the decks over them and the wind are the flight's own
  * record (its `weather` in flight.ts, each figure with its confidence and source; day.ts turns it into what is drawn),
- * and a flight that has none stands under the site's default (missions/usa/mercury/sites/lc-5.ts), which is an estimate.
+ * and a flight that has none stands under the site's default (missions/usa/places/cape-canaveral/lc-5.ts), which is an estimate.
  */
 
 /** The sea's surface, metres above the ground at the complex (GROUND_Y): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */

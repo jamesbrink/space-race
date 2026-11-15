@@ -15,8 +15,8 @@ import {
   swing,
   TOWER,
   Z,
-} from '../../sites/lc-5.parts.ts';
-import { LC5 } from '../../sites/lc-5.ts';
+} from '../../../places/cape-canaveral/lc-5.parts.ts';
+import { LC5 } from '../../../places/cape-canaveral/lc-5.ts';
 import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
 import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
@@ -332,7 +332,7 @@ const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 /**
  * The flight's azimuth, degrees true (`trajectory.azimuth` has its sources), and how the vehicle therefore stood on
  * the launcher: the table turned until the pitch plane lay on the azimuth, the capsule's hatch 55 degrees round from
- * the site's +X toward the structure's side (sites/lc-5.parts.ts `launcherTurn`; sites/lc-5.md, "Which way round the
+ * the site's +X toward the structure's side (places/cape-canaveral/lc-5.parts.ts `launcherTurn`; places/cape-canaveral/lc-5.md, "Which way round the
  * vehicle stood"). model/pad.py builds the launcher, the cable masts and the umbilical turned by the same figure.
  */
 const AZIMUTH = 105;
@@ -582,7 +582,7 @@ const AFTER_HOLDS = `the count was held once more after this, for one minute at 
  * T-2 (Postlaunch Report, section 10.2). So a time in the count is a time before liftoff only
  * once the holds after it are added: the events of the last two minutes are fixed, those between
  * T-15 and T-2 are a minute earlier than they read, and the reports give 05:20 and 06:37 by the
- * wall clock. How long each motion took is nowhere recorded. sites/lc-5.md, "Where things stood".
+ * wall clock. How long each motion took is nowhere recorded. places/cape-canaveral/lc-5.md, "Where things stood".
  */
 const MORNING: Keyframe[] = [
   {
@@ -695,7 +695,7 @@ const MORNING: Keyframe[] = [
     source: 'not documented, as above; half a minute to cross the apron',
   },
 ];
-/** What this flight says of each part of the pad: the hardware is the site's (sites/lc-5.parts.ts). */
+/** What this flight says of each part of the pad: the hardware is the site's (places/cape-canaveral/lc-5.parts.ts). */
 const PAD_WORDS: Record<PadNode, PartWords> = {
   ...HARDWARE_WORDS,
   ServiceStructure: {
@@ -1464,7 +1464,7 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '4.6 psi, held by the suit regulator only if the cabin loses pressure (SEDR 104; Results of the First U.S. Manned Suborbital Space Flight)',
     },
-    // (the pad's own figures are the site's, the same for every flight from it: sites/lc-5.parts.ts, from lc-5.md)
+    // (the pad's own figures are the site's, the same for every flight from it: places/cape-canaveral/lc-5.parts.ts, from lc-5.md)
     ...LC5_SPECS,
     launcherSpec(AZIMUTH),
   ],
@@ -1566,5 +1566,5 @@ export const flight: Flight = {
     chutes: CHUTES,
   },
   models: [vehicle, pad, crew],
-  surroundings: 'models/usa/mercury/sites/lc5/1961-05.glb',
+  surroundings: 'models/usa/places/cape-canaveral/lc5/1961-05.glb',
 };

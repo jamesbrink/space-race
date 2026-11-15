@@ -16,7 +16,7 @@ parachute. Backups: Irina Solovyeva and Valentina Ponomareva.
 | Spacecraft (3KA No. 8) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have had that can be drawn: its pilot in the suit made for her, the cabin's white lining as the flown article shows it, the two television cameras as the Seliger camera was photographed, and a hand-held film camera. **Apart from the pilot it cannot be told from Vostok 5's on the record read** |
 | Launch vehicle (8K72K No. E103-25) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's |
 | Pilot in the seat | built: the figure of [sk-1.md](../../crew/sk-1.md) as a woman of her height in the SK-2, the SK-1 cut again for women, as the photographs of 16 June show it: white boots, the black breathing valve at the collar, "СССР" on the helmet |
-| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)); what had changed in two years has not been looked for |
+| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in two years has not been looked for |
 | Crew to be walked as | not built |
 | The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: no figure for the 16th. The press at the pad saw the rocket "shining in the Sun" and vanish "into the blue of the sky" (TASS's pool, in *Заря Востока*, 18 June); the colour photograph of her reporting at the pad shows hard sunlight and short shadows. Round it: "a wonderful, sunny, still morning" on the 13th; a clear starry sky at 20:07 on the 17th, when the ship was watched going over; about 40 °C at the range on the 17th and 18th (Kamanin). No station's report was looked for |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
@@ -173,7 +173,7 @@ those heights over a sphere of 6,371 km give 88.5 min by Kepler's third law.
 
 ## The sky at liftoff
 
-Computed by `src/world` from [site-1.ts](../../sites/site-1.ts) and the launch instant
+Computed by `src/world` from [site-1.ts](../../../places/tyuratam/site-1.ts) and the launch instant
 (09:29:52 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |

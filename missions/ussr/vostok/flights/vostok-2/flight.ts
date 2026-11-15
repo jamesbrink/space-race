@@ -1,7 +1,7 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types.ts';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
-import { SITE1_SPECS, site1Vehicle } from '../../sites/site-1.parts.ts';
-import { SITE1 } from '../../sites/site-1.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
 import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
@@ -884,6 +884,6 @@ export const flight: Flight = {
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
   flies: vostokFlies(orbital),
   models: [vehicle, pad, crew],
-  // the place round the pad as it stood that August: April's, less Site 51, burnt out three days before (sites/site1/model/1961-08.py)
-  surroundings: 'models/ussr/vostok/sites/site1/1961-08.glb',
+  // the place round the pad as it stood that August: April's, less Site 51, burnt out three days before (places/tyuratam/site1/model/1961-08.py)
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };

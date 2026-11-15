@@ -2,10 +2,10 @@ import type { Action, Flight, Move, Part, Runs } from '../../../../src/types.ts'
 import { LC5 } from './lc-5.ts';
 
 /**
- * Launch Complex 5's pad as a flight's data: the parts of pad.glb (sites/lc_5.py), what each does and how it moves.
+ * Launch Complex 5's pad as a flight's data: the parts of pad.glb (places/cape-canaveral/lc_5.py), what each does and how it moves.
  * The hardware is the site's and is the same for every flight from it, so it is said once, here; a flight gives the
  * day (`PadDay`): where its count falls on the slider, what it says of each part, and what differed that morning
- * (how the tower waited, when the platforms parted, what was cleared off the pad and when). sites/lc-5.md has every
+ * (how the tower waited, when the platforms parted, what was cleared off the pad and when). places/cape-canaveral/lc-5.md has every
  * pivot, travel and source.
  */
 
@@ -144,7 +144,7 @@ export const swing = (node: string, axis: [number, number, number], degrees: num
 export const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
 /**
  * The meridian of a Mercury capsule that lay down range on the launcher, degrees round from the hatch's middle
- * (anticlockwise from above): the periscope's, with a fin's. sites/lc5/site.py `PITCH_PLANE`.
+ * (anticlockwise from above): the periscope's, with a fin's. places/cape-canaveral/lc5/site.py `PITCH_PLANE`.
  */
 export const PITCH_PLANE = 135;
 /**
@@ -152,10 +152,10 @@ export const PITCH_PLANE = 135;
  * about the vertical, anticlockwise from above, from the site's +X to the capsule hatch's middle. The Redstone
  * tilted in a plane fixed in the vehicle and had no roll programme (TM X-53107 4.4 and Figure 4-8), so it was
  * "positioned to flight azimuth" on the launcher (7.1.3, L-25); the capsule rode with the pilot's feet, and the
- * periscope under them, down range. Derived: the site's bearing is estimated. sites/lc5/site.py `launcher_turn`.
+ * periscope under them, down range. Derived: the site's bearing is estimated. places/cape-canaveral/lc5/site.py `launcher_turn`.
  */
 export const launcherTurn = (azimuth: number): number => (((LC5.bearingX.value - azimuth - PITCH_PLANE) % 360) + 360) % 360;
-/** Where each cable mast stands round the vehicle, degrees from the hatch's middle (anticlockwise from above): sites/lc5/site.py `MASTS`. */
+/** Where each cable mast stands round the vehicle, degrees from the hatch's middle (anticlockwise from above): places/cape-canaveral/lc5/site.py `MASTS`. */
 const MAST_AT = { booster: 241, capsule: 115 };
 /** The axis a mast standing `degrees` round from the site's +X (toward the structure's side, viewer -Z) falls about, straight out from the vehicle: its hinge pin, in the viewer's frame. */
 const fallAxis = (degrees: number): [number, number, number] => [-Math.sin(degrees * DEG), 0, -Math.cos(degrees * DEG)];
@@ -427,7 +427,7 @@ export function lc5Parts(day: PadDay): Part[] {
 
 /**
  * The trailer NASA SP-No 1 taken away behind its tractor, north off the pad past the cherry picker, between two
- * positions on the slider (estimated throughout: sites/lc-5.md, "Moving parts").
+ * positions on the slider (estimated throughout: places/cape-canaveral/lc-5.md, "Moving parts").
  */
 export const spareTrailerLeaves = (from: number, to: number): Move[] => [
   {
@@ -523,7 +523,7 @@ export const hutLeaves = (k: number, from: number, to: number): Move[] => [
 ];
 
 /**
- * The pad's own figures, as sites/lc-5.md and the model scripts have them (lc5/site.py): for a flight's `specs`,
+ * The pad's own figures, as places/cape-canaveral/lc-5.md and the model scripts have them (lc5/site.py): for a flight's `specs`,
  * under the heading 'Launch pad'.
  */
 /** How the vehicle stood on the launcher for a flight on `azimuth` (degrees true), for its `specs`. */
@@ -537,7 +537,7 @@ export const launcherSpec = (azimuth: number): Flight['specs'][number] => ({
     `the capsule hatch’s middle ${launcherTurn(azimuth)}° round from square to the rails on the blockhouse side, toward the service ` +
     `structure’s parking place: bearing ${LC5.bearingX.value - launcherTurn(azimuth)}° true. The Redstone had no roll programme, so the launcher’s ` +
     `table was turned until the vehicle’s pitch plane lay on the ${azimuth}° azimuth (TM X-53107 4.4, 7.1.3), with the periscope, ` +
-    `${PITCH_PLANE}° round from the hatch, down range. The site’s own bearing is estimated; photographs of July 1961 put Liberty Bell 7’s between 50° and 75° (sites/lc-5.md)`,
+    `${PITCH_PLANE}° round from the hatch, down range. The site’s own bearing is estimated; photographs of July 1961 put Liberty Bell 7’s between 50° and 75° (places/cape-canaveral/lc-5.md)`,
 });
 
 export const LC5_SPECS: Flight['specs'] = [

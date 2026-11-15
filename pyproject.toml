@@ -5,7 +5,7 @@ target-version = "py311" # Blender 5.x ships Python 3.11+
 line-length = 150
 extend-exclude = [".claude", "node_modules", "dist", "public"]
 # so `import srlib` and the shared hardware modules sort as first-party
-src = ["tools/blender", "missions/*/*/vehicles", "missions/*/*/sites", "missions/*/*/crew"]
+src = ["tools/blender", "missions/*/*/vehicles", "missions/*/places/*", "missions/*/*/crew"]
 
 [tool.ruff.format]
 quote-style = "double"

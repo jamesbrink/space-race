@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TYURATAM_GROUND } from '../../missions/ussr/vostok/sites/tyuratam-ground.ts';
+import { TYURATAM_GROUND } from '../../missions/ussr/places/tyuratam/tyuratam-ground.ts';
 import type { SiteAround } from '../types.ts';
 import { type Air, driftClouds, installAir } from './air.ts';
 import { buildAround } from './around.ts';
@@ -25,14 +25,14 @@ import { smoothstep } from '../util/math.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
- * out to the horizon. The site's frame lies on the compass (missions/ussr/vostok/sites/site-1.ts:
+ * out to the horizon. The site's frame lies on the compass (missions/ussr/places/tyuratam/site-1.ts:
  * its +X is due east), so the land's frame is the scene's: +X east, -Z north, metres from the
  * rocket's axis.
  *
  * The pad, the flame pit and the launch system are not here: they are modelled in Blender, in the
- * same frame (sites/site1/). The land has the pit's outline cut out of it, where the pit's own model
+ * same frame (places/tyuratam/site1/). The land has the pit's outline cut out of it, where the pit's own model
  * is the ground, and the tracks that came onto the platform and the roads painted on it. What is documented and
- * what is estimated is in missions/ussr/vostok/sites/site-1.md, "The land". In short: the pit's
+ * what is estimated is in missions/ussr/places/tyuratam/site-1.md, "The land". In short: the pit's
  * rim and the tracks are today's map (OpenStreetMap), which the CIA's photographs of 1957 agree
  * with. The ground itself and what grows on it are the steppe's (steppe.ts: the kind of country, its
  * sources and what of it is estimated); this file says where on it the ground lies low, and what the
@@ -40,7 +40,7 @@ import { smoothstep } from '../util/math.ts';
  * the spoil heap, and the ruts beside the ways the traffic came.
  */
 
-/** The flame pit's rim, metres east and north of the rocket's axis: the same outline as sites/site1/platform.py (RIM). Keep the two in step. */
+/** The flame pit's rim, metres east and north of the rocket's axis: the same outline as places/tyuratam/site1/platform.py (RIM). Keep the two in step. */
 const RIM: [number, number][] = [
   [-18, 59],
   [-15, 65.5],
@@ -86,9 +86,9 @@ const RIM: [number, number][] = [
  * Near the platform they are not quite the map's. The map has its centre track 3.0 m north of the middle of its outline
  * of the pad, which is this frame's origin; the rocket's axis was on that track, so the track is brought onto the axis
  * over its last 160 m (the erector is drawn off along it), and the three beside it are brought, over their last 60 m,
- * to where the CIA's plan of March 1961 has them on the platform (PIC/JR-2/61 Figure 1: sites/site1/deck.py, which
+ * to where the CIA's plan of March 1961 has them on the platform (PIC/JR-2/61 Figure 1: places/tyuratam/site1/deck.py, which
  * lays the rails there), each within 1.5 m of the map's place measured from its own centre track. Their west ends are
- * moved to stay on the lines they branch from. Keep in step with sites/site1/place.py (CENTRE_TRACK, SPURS).
+ * moved to stay on the lines they branch from. Keep in step with places/tyuratam/site1/place.py (CENTRE_TRACK, SPURS).
  */
 const RAILS: [number, number][][] = [
   [
@@ -159,7 +159,7 @@ const SEGMENTS: [number, number, number, number][] = RAILS.flatMap((line) =>
  * command bunker (way 172571827), the road from the storage bunker south to the propellant shed (way 172441909, as far
  * as the northern spur: the drawing shows no crossing of the tracks), and the short drives off them to the storage
  * bunker's three bays, the check-out shop's gate and the gas receivers by the platform, which are ours. That they were
- * concrete, and six metres wide, is estimated. Keep in step with sites/site1/place.py (ROADS), which keeps posts off them.
+ * concrete, and six metres wide, is estimated. Keep in step with places/tyuratam/site1/place.py (ROADS), which keeps posts off them.
  */
 const ROADS: [number, number][][] = [
   [
@@ -231,7 +231,7 @@ const ROAD_SEGMENTS: [number, number, number, number][] = ROADS.flatMap((line) =
 /** Half a road's width, metres (estimated). */
 const ROAD_HALF = 3;
 
-/** Half the platform and the abutment behind it, metres (sites/site1/site.py: 135 ft square; platform.py: 25 ft). */
+/** Half the platform and the abutment behind it, metres (places/tyuratam/site1/site.py: 135 ft square; platform.py: 25 ft). */
 const HALF = (135 * 0.3048) / 2;
 const ABUTMENT = 25 * 0.3048;
 /** The ground cleared and graded round the platform's landward side, where the tracks come on, metres from its edge (estimated). */
@@ -361,7 +361,7 @@ const SHARED = /* glsl */ `
  * The lie of the land, metres above the ground at the pad, in JavaScript (the walker, the plants) and GLSL (the mesh):
  * keep the two in step. The pad stands on the brow of a scarp: the ground south of the tracks is at their level, the
  * steppe north of them some 8 m down and the ground east of the pit some 5 m (tyuratamrelief.ts, which the place's
- * models are built on too: sites/site1/relief.py). Over that, beyond 400 m, a swell of half a metre over hundreds
+ * models are built on too: places/tyuratam/site1/relief.py). Over that, beyond 400 m, a swell of half a metre over hundreds
  * of metres (estimated). From 700 m to 1.5 km out the land goes over to SRTM's (tyuratamworks.ts `heightsAt`): the
  * swell the pad stands on the north brow of, Kilinshek to the south-west, the hollow to the north and the Takyrsai's
  * valley to the south. Inside 700 m nothing the place's models stand on has moved.
@@ -390,7 +390,7 @@ const RELIEF = /* glsl */ `
   }`;
 
 /**
- * The mapped ground (missions/ussr/vostok/sites/tyuratam-ground.ts) as a table the cover's bake reads (`mappedKinds`),
+ * The mapped ground (missions/ussr/places/tyuratam/tyuratam-ground.ts) as a table the cover's bake reads (`mappedKinds`),
  * KINDS_WIDE texels a row: from row 0 each thing's box (west, south, east, north, m); then (its first edge, how many, its
  * kind, half its breadth); then a grid of KINDS_GRID cells a side over the land, each (its first entry, how many) in the
  * list that follows of the things that come within reach of it; then every edge (x0, y0, x1, y1), metres east and north.

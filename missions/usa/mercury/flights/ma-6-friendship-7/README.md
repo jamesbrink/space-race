@@ -6,7 +6,7 @@ through the atmosphere with the retropack still strapped across the heat shield.
 | | |
 | --- | --- |
 | Liftoff | 20 February 1962, 14:47:39 UTC (09:47:39 EST) |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../sites/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
 | Pilot | John H. Glenn, Jr. (backup: M. Scott Carpenter) |
 | Spacecraft | Mercury No. 13, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 109-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -121,7 +121,7 @@ report does not say which of the two its 14:47:39 is).
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-14.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-14.ts`) and the
 launch instant, 14:47:39 UTC. All `derived`. Elevations are geometric.
 
 | Body | Azimuth (true) | Elevation | Note |
@@ -147,9 +147,9 @@ weather station have not been looked up, as they were for Liberty Bell 7.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../sites/lc-14.ts): where it was, and
+- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
   which way the vehicle faced on it. Its stand, ramp, umbilical tower and service structure are
-  drawn as scenery from Complex 5, 5.8 km away (`sites/cape.md`), and are not a place to stand in.
+  drawn as scenery from Complex 5, 5.8 km away (`places/cape-canaveral/complexes.md`), and are not a place to stand in.
 - **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
   be boarded. The figure on the couch is the suit as modelled for Shepard with Glenn's name on it
   ([spacecraft.md](spacecraft.md), "The pilot").

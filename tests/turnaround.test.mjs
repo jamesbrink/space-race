@@ -1,7 +1,7 @@
 // After the spacecraft has turned round, the autopilot holds the side that is to face the Earth toward it
 // (`trajectory.body.capsule.earthward`: the periscope's side, so the pilot is head up), and leaves the roll alone
 // where a flight gives no such side. That side lay down range on the pad (the launcher was turned to the azimuth:
-// sites/lc-5.md), so it is toward the Earth all the way up as well.
+// places/cape-canaveral/lc-5.md), so it is toward the Earth all the way up as well.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';

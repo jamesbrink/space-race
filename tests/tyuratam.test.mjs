@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { BROW, pastBrow, siteRelief } from '../src/viewer/tyuratamrelief.ts';
 
-// What the place's models are built on (missions/ussr/vostok/sites/site1/relief.py), as that file prints it:
-// `python3 missions/ussr/vostok/sites/site1/relief.py > tests/fixtures/site1-relief.json` after changing either.
+// What the place's models are built on (missions/ussr/places/tyuratam/site1/relief.py), as that file prints it:
+// `python3 missions/ussr/places/tyuratam/site1/relief.py > tests/fixtures/site1-relief.json` after changing either.
 const built = JSON.parse(readFileSync(new URL('./fixtures/site1-relief.json', import.meta.url), 'utf8'));
 
 test('Site 1: the land the walker stands on is the land the place was built on, to a tenth of a millimetre', () => {
@@ -59,10 +59,10 @@ test('Site 1: the brow runs west to east with the low ground on its left', () =>
 });
 
 // The country past the place's own ground (viewer/tyuratamworks.ts): SRTM's lie of the land, and the worked ground off
-// the Corona frames of December 1960 and May 1962 (missions/ussr/vostok/sites/tyuratam-works.ts).
+// the Corona frames of December 1960 and May 1962 (missions/ussr/places/tyuratam/tyuratam-works.ts).
 const { heightsAt } = await import('../src/viewer/tyuratamworks.ts');
-const { TYURATAM_WORKS, FANS } = await import('../missions/ussr/vostok/sites/tyuratam-works.ts');
-const { TYURATAM_HEIGHTS } = await import('../missions/ussr/vostok/sites/tyuratam-heights.ts');
+const { TYURATAM_WORKS, FANS } = await import('../missions/ussr/places/tyuratam/tyuratam-works.ts');
+const { TYURATAM_HEIGHTS } = await import('../missions/ussr/places/tyuratam/tyuratam-heights.ts');
 
 test('Site 1: the land beyond holds the country’s form, against the sheet and the record', () => {
   const H = TYURATAM_HEIGHTS;

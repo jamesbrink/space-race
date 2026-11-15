@@ -13,7 +13,7 @@ const KZYLORDA = `${ISD}, station 38062099999 (Kzyl-Orda, 214 km south-east)`;
  * a clear sky, and the site was drawn clear. The two do not sit easily together. Three stations' trained observers
  * over 300 km of the same valley are taken over a reading of the film: the sky is drawn as theirs, with the cirrus
  * thin enough to see the Sun through, which is as far as the film is honoured. Nothing here is certain until an
- * observation at the range is read. See the site's notes (sites/site-1.md, "The land": the sky).
+ * observation at the range is read. See the site's notes (places/tyuratam/site-1.md, "The land": the sky).
  */
 export const WEATHER: DayWeather = {
   observed: {

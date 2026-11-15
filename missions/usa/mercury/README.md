@@ -48,8 +48,8 @@ What the two Redstone capsules shared is built once: [mercury-capsule.md](vehicl
 
 | | In this repo |
 | --- | --- |
-| Launch Complex 5 (the Redstone flights), as it stood on 5 May and on 21 July 1961 | [lc-5.md](sites/lc-5.md) |
-| Launch Complex 14 (the Atlas flights): where it is and which way it faced; its place is not built | [lc-14.ts](sites/lc-14.ts) |
+| Launch Complex 5 (the Redstone flights), as it stood on 5 May and on 21 July 1961 | [lc-5.md](places/cape-canaveral/lc-5.md) |
+| Launch Complex 14 (the Atlas flights): where it is and which way it faced; its place is not built | [lc-14.ts](places/cape-canaveral/lc-14.ts) |
 | The Mark IV pressure suit, as Shepard wore it on 5 May 1961 and as Grissom wore it on 21 July | [mark-iv-suit.md](crew/mark-iv-suit.md) |
 
 ## Sources

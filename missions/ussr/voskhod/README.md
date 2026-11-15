@@ -62,7 +62,7 @@ climb rescue would be "difficult".
 | --- | --- |
 | Voskhod spacecraft, 3KV and 3KD | [voskhod.md](vehicles/voskhod.md): built as an alteration of the Vostok 3KA, importing what was the Vostok's ([vostok-3ka.md](../vostok/vehicles/vostok-3ka.md)) and building the couches, the reserve engine, the airlock and what served it |
 | Voskhod launch vehicle (11A57), with Block I | [voskhod-11a57.md](vehicles/voskhod-11a57.md): built on the Vostok launcher's core and boosters ([vostok-8k72k.md](../vostok/vehicles/vostok-8k72k.md)), with its own third stage, aft section and fairing |
-| Site 1, Tyuratam | the Vostoks' ([site-1.md](../vostok/sites/site-1.md)), built as it stood in April 1961. What had changed by 1964 has not been looked for, and neither flight has its launch site yet |
+| Site 1, Tyuratam | the Vostoks' ([site-1.md](../places/tyuratam/site-1.md)), built as it stood in April 1961. What had changed by 1964 has not been looked for, and neither flight has its launch site yet |
 | What Voskhod 1's crew wore | [flight-suit.md](crew/flight-suit.md): a grey wool suit and the headset's cap; built seated, in the couches |
 | The Berkut suit | [berkut.md](crew/berkut.md): built seated, in the couches, to both men's documented statures; the pack Leonov wore outside built by itself |
 

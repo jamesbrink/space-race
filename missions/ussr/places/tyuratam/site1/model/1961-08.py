@@ -22,7 +22,7 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
-sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "sites"))
+sys.path.insert(0, os.path.join(_root, "missions", "ussr", "places", "tyuratam"))
 import site_1  # noqa: E402
 from site1 import bunker, storage  # noqa: E402
 from srlib import run  # noqa: E402

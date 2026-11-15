@@ -3,7 +3,7 @@ import type { SiteDef } from '../../../../src/types.ts';
 /**
  * Launch Complex 14 on the Earth: where the four orbital Mercury flights left from. The origin is the middle of
  * the launch stand, at the deck the Atlas's launcher stood on; the site's own model is not built yet (the complex
- * is drawn as scenery from Complex 5: sites/cape.md, src/viewer/cape1961.ts), so nothing stands on this frame so far
+ * is drawn as scenery from Complex 5: places/cape-canaveral/complexes.md, src/viewer/cape1961.ts), so nothing stands on this frame so far
  * and only the sky over it is used. When it is built its record goes in lc-14.md.
  */
 export const LC14: SiteDef = {

@@ -1,10 +1,10 @@
 import type { Keyframe } from '../../../../../src/types.ts';
-import { busPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../sites/site-1.parts.ts';
+import { busPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../../places/tyuratam/site-1.parts.ts';
 import { MSK } from './orbital.ts';
 
 /**
  * Site 1 on the morning of 6 August 1961, as Vostok 2's pad.glb has it (model/pad.py: the site's modules at that date).
- * The hardware is the site's (sites/site-1.parts.ts); this is the morning. What the record gives of it is the plan of
+ * The hardware is the site's (places/tyuratam/site-1.parts.ts); this is the morning. What the record gives of it is the plan of
  * 4 August (doc 190 of «Первый пилотируемый полёт», 2011, book 2: «График подготовки космонавтов ... в день старта»,
  * in local time, Moscow's plus two: derived), which Titov's report says the day kept to, the film of the morning («Снова
  * к звёздам», Моснаучфильм 1961) and RussianSpaceWeb's photographs. No transcript of the exchanges before liftoff and no
@@ -15,7 +15,7 @@ import { MSK } from './orbital.ts';
  * in summer dress (white short-sleeved shirts; officers in khaki summer shirts and peaked caps); Smirnov, now the State
  * Commission's chairman, in a white jacket and straw hat; Nikolayev suited beside him at the bus. The ground party's figures
  * (crew/ground_party.py) are dressed for April, and summer clothes are new geometry: listed for a modelling agent
- * (sites/site-1.md, "What the model gets wrong or leaves out"). Kamanin and Gagarin were abroad.
+ * (places/tyuratam/site-1.md, "What the model gets wrong or leaves out"). Kamanin and Gagarin were abroad.
  */
 
 const PLAN =
@@ -136,7 +136,7 @@ const MORNING: Keyframe[] = [
     slider: 1,
     event: 'The four supports have fallen back: the launch system stands open',
     confidence: 'estimated',
-    source: 'as Vostok 1’s (sites/site-1.parts.ts): how long they took on this flight is not recorded',
+    source: 'as Vostok 1’s (places/tyuratam/site-1.parts.ts): how long they took on this flight is not recorded',
   },
 ];
 

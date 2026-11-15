@@ -6,7 +6,7 @@ that Gemini VI-A flew up to: the first time two crewed ships met.
 | | |
 | --- | --- |
 | Liftoff | 4 December 1965, 19:30:03.702 UTC (2:30:03.702 p.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../sites/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
 | Crew | Frank Borman, command pilot; James A. Lovell Jr., pilot |
 | Spacecraft | Gemini No. 7, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 7, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -171,7 +171,7 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../sites/lc-19.ts): the place on the Earth, with
+- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
   an estimated bearing. Nothing stands on it yet.
 - **The crew.** Borman and Lovell wore the G5C suit. It is not modelled, and the seats are empty.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as

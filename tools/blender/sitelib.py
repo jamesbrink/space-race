@@ -1,6 +1,6 @@
 """Building blocks for a launch site: the pieces every pad, blockhouse and tower is made of.
 
-A site's own package (missions/<nation>/<programme>/sites/<site>/) holds that site's dimensions
+A site's own package (missions/<nation>/places/<place>/<package>/) holds that site's dimensions
 and layout and nothing else; what it builds them from is here, so the next site starts with
 walls, windows, doors, stairs, ladders, paving, fences, light poles and trusses already made.
 
@@ -60,7 +60,7 @@ def units(unit: float):
 # ------------------------------------------------------------------- what stood when
 
 # A place is built once and dated. A site's builders say of each thing when it stood there; a
-# state script (sites/<site>/model/<date>.py) or a flight's pad script names its date, and what
+# state script (places/<place>/<package>/model/<date>.py) or a flight's pad script names its date, and what
 # did not stand then is left out. Dates are ISO text, as exact as is known: "1955", "1961-02",
 # "1961-05-05". None is open-ended: not known to have begun, or to have ended.
 AS_OF: str | None = None

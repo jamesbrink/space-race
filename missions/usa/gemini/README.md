@@ -67,7 +67,7 @@ ship from the next").
 
 | | In this repo |
 | --- | --- |
-| Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](sites/lc-19.ts) |
+| Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](../places/cape-canaveral/lc-19.ts) |
 | The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch. The G4C suit of Gemini IV, V and VI-A and the G5C of Gemini VII are not built: those ships' seats are empty |
 
 ## Sources

@@ -11,13 +11,8 @@ missions/                             the record: one folder per nation, program
                                       labelled, no figure the simulator reads (tests/history.test.mjs holds it to the flights)
   <nation>/<programme>/
     README.md                         the programme
-    vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it (a big
-                                      one as a package of modules, e.g. sites/lc5/),
+    vehicles/  crew/                  hardware shared by several flights: <name>.py builds it,
                                       <name>.md records its dimensions, confidence, simplifications
-    sites/<site>.ts                   a site on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
-    sites/<site>.parts.ts             a pad's parts as flight data, said once for every flight from it, each giving its own
-                                      morning (lc-5.parts.ts: `lc5Parts`, `PadDay`; site-1.parts.ts)
-    sites/tyuratam-*.ts  aral-1960.ts the land round Site 1 as data: its ground (takyr, salt), its lie (SRTM), the builders' works; the Aral Sea's 1960 shore
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day
                                       (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
                                       gemini-titan.ts, a Gemini on its Titan: the views, the cabin, the type's dimensions and thrusters;
@@ -25,6 +20,14 @@ missions/                             the record: one folder per nation, program
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts)
+  <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
+    <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
+    <site>.parts.ts                   a pad's parts as flight data, said once for every flight from it, each giving its own
+                                      morning (lc-5.parts.ts: `lc5Parts`, `PadDay`; site-1.parts.ts)
+    <site>.md  <site>.py  <package>/  a pad's record and its Blender build, a package of modules (lc5/, site1/); what stands round it
+                                      the same (complexes/: the Cape's neighbouring complexes; site2/: Site 2's assembly building)
+    <package>/model/<date>.py         a dated state of what stood there, built to public/models/<nation>/places/<place>/<package>/<date>.glb
+    tyuratam-*.ts  aral-1960.ts       the land round Site 1 as data: its ground (takyr, salt), its lie (SRTM), the builders' works; the Aral Sea's 1960 shore
     flights/<flight>/
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
@@ -104,7 +107,7 @@ src/
   viewer/tyuratam.ts                  the land round Site 1: where the steppe lies low, the builders' ground (the apron's slabs, worn ground, ruts, the fall's rills), the tracks and roads painted, the flame pit cut out
   viewer/tyuratamworks.ts             the land past Site 1's own ground: SRTM's lie, and the railways, roads and tracks off the Corona frames, drawn at any distance
   viewer/steppe.ts                    the steppe on the lower Syr Darya in April as a kind of country: its ground (crust, takyr, salt, sand, spring green) and cel ground in GLSL, its palette and its plants, for any pad on it
-  viewer/tyuratamrelief.ts            how high the ground is round Site 1 (the pad on a scarp's brow, the steppe 8 m under it), in JavaScript and GLSL; the place's models are built on the same figures (sites/site1/relief.py; tests/tyuratam.test.mjs)
+  viewer/tyuratamrelief.ts            how high the ground is round Site 1 (the pad on a scarp's brow, the steppe 8 m under it), in JavaScript and GLSL; the place's models are built on the same figures (places/tyuratam/site1/relief.py; tests/tyuratam.test.mjs)
   viewer/land.ts                      any site's ground: cover maps baked from its GLSL, a mesh that follows the eye, thickets as a lifted roof
   viewer/flora.ts                     any site's plants: species built from forms (shrub, fan, palm, flower, rosette), placed by the cover map, near and far forms, wind
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
@@ -119,7 +122,7 @@ src/
   viewer/cloudnoise.worker.ts         makes those tiles off the page's thread
   viewer/around.ts                    what stands round a place beyond its own model (SiteDef.around: Site 2's assembly building; the Cape's neighbouring complexes), fetched as scenery at its levels of detail and set on the land
   viewer/cape1961.ts                  the Cape's launch complexes as they stood in May 1961, at their real places: the near ones a model of their own
-                                      (missions/usa/mercury/sites/cape/, `pnpm model cape`), fetched and placed here; the far ones shapes made here
+                                      (missions/usa/places/cape-canaveral/complexes/, `pnpm model complexes`), fetched and placed here; the far ones shapes made here
   viewer/lod.ts                       levels of detail: which one each model and each piece of the place is drawn at, and the fade from one to the next
   viewer/shadows.ts                   the Sun's second shadow map: the whole place, coarsely, under the fine one
   viewer/shadowcache.ts               on foot, the fine shadow map kept between steps: only the walker drawn into it again while nothing else has changed

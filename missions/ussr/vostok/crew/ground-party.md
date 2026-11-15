@@ -2,7 +2,7 @@
 
 Clothed standing figures for a launch site's scenery: the State Commission, officers, the launch crew, doctors, a
 cameraman. Model: [ground_party.py](ground_party.py). Who stood where on a given morning is the site's to say
-([../sites/site1/morning.py](../sites/site1/morning.py) for 12 April 1961).
+([../../places/tyuratam/site1/morning.py](../../places/tyuratam/site1/morning.py) for 12 April 1961).
 
 **These are not crew figures.** A crew figure ([sk_1.py](sk_1.py)) is one man at some 110,000 triangles, skinned to
 fifteen joints so that the viewer can walk him. A pad on a launch morning has fifty people standing on it. So these

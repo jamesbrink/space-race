@@ -1,6 +1,6 @@
 """Launch Complex 5 as it stood for Mercury-Redstone 3. Run with `pnpm model mr-3`.
 
-The pad itself is ../../../sites/lc_5.py, shared with MR-4. The vehicle and the pilot are
+The pad itself is ../../../../places/cape-canaveral/lc_5.py, shared with MR-4. The vehicle and the pilot are
 vehicle.py and crew.py beside this file; the viewer stands them on the pad.
 """
 
@@ -11,7 +11,7 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
-sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "sites"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "places", "cape-canaveral"))
 import lc_5  # noqa: E402
 from srlib import FT, run  # noqa: E402
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
             ("pad-pedestal.png", (0, 0, 1.5), 22, dict(azimuth=-60, elevation=12, res=(1200, 900))),
             ("pad-top.png", (-8, 0, 30), 70, dict(azimuth=-130, elevation=8, res=(1200, 1100))),
             # the two cable masts under level 1, from where the photographs that place them were taken round the vehicle
-            # (FHSU items 466, 468 and 333: sites/lc5/site.py MASTS), which the launcher's turn puts on the pad
+            # (FHSU items 466, 468 and 333: places/cape-canaveral/lc5/site.py MASTS), which the launcher's turn puts on the pad
             ("pad-masts-151.png", (0, 0, 8.0), 36, dict(azimuth=151 + TURN, elevation=4, res=(1100, 1400))),
             ("pad-masts-232.png", (0, 0, 8.0), 36, dict(azimuth=232 + TURN, elevation=4, res=(1100, 1400))),
             ("pad-masts-312.png", (0, 0, 8.0), 36, dict(azimuth=312.5 + TURN, elevation=4, res=(1100, 1400))),

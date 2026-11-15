@@ -260,7 +260,7 @@ never adjusted to bring a check in.
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
   down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
-  capsule rode feet down range (derived: sites/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
+  capsule rode feet down range (derived: places/cape-canaveral/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
   holds the vehicle's turn in the scene, the pad's and this to one another). tests/turnaround.test.mjs holds it to
   three degrees going up and through the top of the flight, and to ten through the turnaround. With a side named
   the control makes one turn to the whole attitude (`turnBoth`: the long axis to where it is wanted and the keel

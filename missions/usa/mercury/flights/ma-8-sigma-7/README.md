@@ -7,7 +7,7 @@ a landing in the Pacific within sight of the carrier sent to fetch it.
 | | |
 | --- | --- |
 | Liftoff | 3 October 1962, 12:15:11 UTC (07:15:11 EST) |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../sites/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
 | Pilot | Walter M. Schirra, Jr. (backup: L. Gordon Cooper, Jr.) |
 | Spacecraft | Mercury No. 16, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 113-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -104,7 +104,7 @@ shutting, in that order (p. 28); the report does not say when in the count.
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-14.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-14.ts`) and the
 launch instant, 12:15:11 UTC. All `derived`. Elevations are geometric.
 
 | Body | Azimuth (true) | Elevation | Note |
@@ -132,7 +132,7 @@ are the figures one would be written from.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../sites/lc-14.ts): where it was, and
+- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
   which way the vehicle faced on it.
 - **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
   be boarded. The figure on the couch is the suit as modelled for Shepard with Schirra's name on

@@ -106,7 +106,7 @@ test('the maps are what the viewer expects', () => {
 test('the Cape: land and water where the published places are', () => {
   const places = [
     // [what, latitude, longitude, land?, maps]
-    ["Launch Complex 5's launcher (sites/lc-5.ts)", 28.439426, -80.573292, true, ['near', 'wide']],
+    ["Launch Complex 5's launcher (places/cape-canaveral/lc-5.ts)", 28.439426, -80.573292, true, ['near', 'wide']],
     ['Cape Canaveral Light (Wikipedia: 28 27 35 N, 80 32 36 W)', 28.45972, -80.54333, true, ['near']],
     ['the Atlantic 5 km east of the pad', 28.4394, -80.522, false, ['near', 'wide']],
     ['the Banana River abreast of the pad', 28.44, -80.625, false, ['near', 'wide']],
@@ -141,7 +141,7 @@ test('Tyuratam: the steppe is land, the Syr Darya and the Aral of 1961 are water
   assert.equal(tyuratam.meta.asOf, '1961-04-12');
   const places = [
     // [what, latitude, longitude, land?, maps]
-    ['Site 1 (sites/site-1.ts)', 45.92025, 63.34225, true, ['near', 'wide']],
+    ['Site 1 (places/tyuratam/site-1.ts)', 45.92025, 63.34225, true, ['near', 'wide']],
     ['the steppe 20 km north of the pad', 46.1, 63.34, true, ['near', 'wide']],
     ['the Syr Darya at Baikonur (OpenStreetMap way 95384206)', 45.6219, 63.3297, false, ['near']],
     ['Kazalinsk, on the river’s north bank (Wikipedia: 45 46 N, 62 06 E)', 45.7628, 62.1075, true, ['wide']],

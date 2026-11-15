@@ -1,4 +1,4 @@
-// A vehicle that was laid on its azimuth by turning the launcher's table (Mercury-Redstone: sites/lc-5.md, "Which way
+// A vehicle that was laid on its azimuth by turning the launcher's table (Mercury-Redstone: places/cape-canaveral/lc-5.md, "Which way
 // round the vehicle stood") stands turned in the scene, and three things must then agree: the turn the flight gives its
 // vehicle (`rotationY`), the turn its pad was built with (the launcher's `turn`, the cable masts' places) and the
 // azimuth it flew, which the capsule's periscope must lie on.

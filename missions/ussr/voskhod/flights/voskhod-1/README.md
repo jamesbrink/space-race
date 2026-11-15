@@ -16,7 +16,7 @@ Georgiy Katys, Aleksey Sorokin and Vasiliy Lazarev.
 | Spacecraft (3KV No. 3) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The Voskhod's model ([voskhod.md](../../vehicles/voskhod.md)), which is the Vostok's with what a 3KV had instead of the ejection seat and on top of the sphere: three couches a quarter turn from the seat's line, the reserve braking engine on the forward pole. No dimension of either was found: both are scaled off OKB-1's general drawing and photographs |
 | Launch vehicle (11A57 No. R15000-04) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md). The Vostok launcher's core and boosters under the larger third stage, Block I, with its aft section, adapter and a fairing with a conical nose |
 | Crew in the couches | **built**: three figures in what the crew flew in, a grey wool suit and the headset's white cap ([flight-suit.md](../../crew/flight-suit.md)). One build for all three: none of their heights was found |
-| Launch site (Site 1 as it stood in October 1964) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../vostok/sites/site-1.md)); what had changed in three and a half years has not been looked for |
+| Launch site (Site 1 as it stood in October 1964) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in three and a half years has not been looked for |
 | Crew to be walked as | not built |
 | The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read is under "The weather", below |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
@@ -183,7 +183,7 @@ Kosmos 47: seven tenths of cloud, wind 8 to 10 m/s gusting to 15, 9 to 12 °C.
 
 ## The sky at liftoff
 
-Computed by `src/world` from [site-1.ts](../../../vostok/sites/site-1.ts) and the launch instant
+Computed by `src/world` from [site-1.ts](../../../places/tyuratam/site-1.ts) and the launch instant
 (07:30:01 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |

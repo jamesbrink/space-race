@@ -1,5 +1,5 @@
 import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
-import { LC19 } from '../../sites/lc-19.ts';
+import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 
 const IN = 0.0254;
 const LB = 0.45359237;

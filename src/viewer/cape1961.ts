@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LC5 } from '../../missions/usa/mercury/sites/lc-5.ts';
+import { LC5 } from '../../missions/usa/places/cape-canaveral/lc-5.ts';
 import { Around } from './around.ts';
 import type { Levelled } from './lod.ts';
 
@@ -15,17 +15,17 @@ import type { Levelled } from './lod.ts';
  * which are given below where they are.
  *
  * The complexes a walker can reach (26, 30, 25, 29 and 17, all within 1.1 km) are not drawn here: each is
- * modelled in Blender from its own record, as the pad is (missions/usa/mercury/sites/cape/, one module a complex;
- * sites/cape.md says what is documented and what is not), built into one file and placed here (`NEIGHBOURS`).
+ * modelled in Blender from its own record, as the pad is (missions/usa/places/cape-canaveral/complexes/, one module a complex;
+ * places/cape-canaveral/complexes.md says what is documented and what is not), built into one file and placed here (`NEIGHBOURS`).
  * The rest, 1.2 to 9 km off, are shapes made here, each a stand-in for its type, drawn so that an Atlas pad, a
  * Titan pad and a Minuteman tower can be told apart on the horizon, and no more. A complex whose structure
  * could not be verified for that day is drawn as its pad alone, or left out and listed in
- * missions/usa/mercury/sites/lc-5.md.
+ * missions/usa/places/cape-canaveral/lc-5.md.
  *
  * Everything is on the compass, metres from pad 5: +X east, -Z north. See docs/sources.md, "The Cape".
  */
 
-/** Pad 5's launcher: the site's own record (sites/lc-5.ts). */
+/** Pad 5's launcher: the site's own record (places/cape-canaveral/lc-5.ts). */
 const PAD5 = { lat: LC5.latitude.value, lon: LC5.longitude.value };
 /** Metres to a degree at this latitude (WGS 84 series): northward, eastward. */
 const M_LAT = 110_826.5;
@@ -209,7 +209,7 @@ const NEWFOUND_EAST: [number, number][] = [
  * barrier island from the sea to the dike that then closed it from the Banana River (the lock is 1965's), and
  * the one turning basin on its north side. Each a line, [latitude, longitude] at its ends, and half its
  * breadth, metres. Read off the globe's own coast (tools/globe-region.mjs, OpenStreetMap's, with the later
- * Trident and west basins undone: sites/lc-5.ts), so the two agree to a few tens of metres; that this is
+ * Trident and west basins undone: places/cape-canaveral/lc-5.ts), so the two agree to a few tens of metres; that this is
  * the harbour's extent in 1961 is estimated (the port was dredged 1951 to 1955 and dedicated in 1953).
  */
 const PORT: [[number, number], [number, number], number][] = [
@@ -455,7 +455,7 @@ interface Complex {
  * stood by May is not established), 37, 43 and the Polaris pads 25C/D (not begun).
  */
 const COMPLEXES: Complex[] = [
-  // The near ones: each a model in a frame of its own (sites/cape/<complex>.py says where its origin is and which way its +Y runs).
+  // The near ones: each a model in a frame of its own (places/cape-canaveral/complexes/<complex>.py says where its origin is and which way its +Y runs).
   // A complex's other pad and its blockhouse are listed for the ground kept clear round them; the blockhouses' places are
   // OpenStreetMap's outlines of what survives.
   { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46 },
@@ -502,12 +502,12 @@ export const CLEARINGS: [number, number, number][] = [
 ];
 
 /**
- * The complexes a walker can reach, as built by missions/usa/mercury/sites/cape/model/1961-05.py: one node a complex,
- * each in its own frame. It is small (sites/cape.md gives its size), so it is fetched with the scene.
+ * The complexes a walker can reach, as built by missions/usa/places/cape-canaveral/complexes/model/1961-05.py: one node a complex,
+ * each in its own frame. It is small (places/cape-canaveral/complexes.md gives its size), so it is fetched with the scene.
  */
-export const NEIGHBOURS = 'models/usa/mercury/sites/cape/1961-05.glb';
+export const NEIGHBOURS = 'models/usa/places/cape-canaveral/complexes/1961-05.glb';
 /**
- * The materials that model may wear, by the names its script gives them (the pad's own: sites/lc5/site.py). Each is
+ * The materials that model may wear, by the names its script gives them (the pad's own: places/cape-canaveral/lc5/site.py). Each is
  * one mesh here from the start, empty until the model arrives, so that the look in force (look.ts) and the walker
  * (walk.ts: what is solid) have them before there is anything to see; an unknown name is reported and not drawn.
  */
@@ -527,7 +527,7 @@ const WORN_BY_NEIGHBOURS = [
   'shell-gravel',
   'window-void',
 ];
-/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (backdrops.ts: GROUND_Y; sites/lc5/site.py: GROUND). */
+/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (backdrops.ts: GROUND_Y; places/cape-canaveral/lc5/site.py: GROUND). */
 const PAD_OVER_GROUND = 0.12;
 
 /**

@@ -1,5 +1,5 @@
 import type { Flight, ModelDef, Part } from '../../../../src/types.ts';
-import type { PartWords } from '../sites/site-1.parts.ts';
+import type { PartWords } from '../../places/tyuratam/site-1.parts.ts';
 
 /**
  * A Vostok pilot in his SK-1 (sk_1.py, sk-1.md) as a flight's crew model: its parts, where he stands at Site 1 on his way

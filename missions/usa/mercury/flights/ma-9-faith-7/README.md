@@ -7,7 +7,7 @@ power.
 | | |
 | --- | --- |
 | Liftoff | 15 May 1963, 13:04:13 UTC (08:04:13 EST) |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../sites/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
 | Pilot | L. Gordon Cooper, Jr. (backup: Alan B. Shepard, Jr.) |
 | Spacecraft | Mercury No. 20, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 130-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -99,7 +99,7 @@ The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
 ## The sky at liftoff
 
-Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`sites/lc-14.ts`) and the
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-14.ts`) and the
 launch instant, 13:04:13 UTC. All `derived`. Elevations are geometric.
 
 | Body | Azimuth (true) | Elevation | Note |
@@ -123,7 +123,7 @@ model for a sky to stand over, and no record to write one from.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../sites/lc-14.ts): where it was, and
+- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
   which way the vehicle faced on it.
 - **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
   be boarded. The figure on the couch is the Mercury suit as modelled, to Cooper's height and with

@@ -60,7 +60,7 @@ January 1967; NASA CR on NTRS 19670076796); **GIV** is *Gemini Program Mission R
 | --- | --- | --- | --- |
 | The two first stage chambers | on the yaw axis, which points at the target | documented | LSFR, Figure II.C-1 (the plan view: "subassembly no. 1" toward the target) |
 | Longerons and external conduits | on the diagonals, 45° from the axes | documented | the same plan view |
-| The spacecraft's top (its hatches) | toward the target | derived, not established for this flight | the Gemini IV crew rolled "to a heads-up position" after insertion (GIV, p. 7-17), so they rode heads down: [lc-19.ts](../sites/lc-19.ts) |
+| The spacecraft's top (its hatches) | toward the target | derived, not established for this flight | the Gemini IV crew rolled "to a heads-up position" after insertion (GIV, p. 7-17), so they rode heads down: [lc-19.ts](../../places/cape-canaveral/lc-19.ts) |
 | The conduit beside the lettering | 45° from the spacecraft's top toward the crew's left | estimated | the liftoff photograph: the conduit is toward the camera and the spacecraft's left-hand UNITED STATES 40° to its left |
 | UNITED STATES | 33° round from that conduit, toward the top | estimated | the liftoff photograph and S65-21881 agree to a degree |
 | Which way the plan view is drawn | from above | estimated | the figure does not say. From below, left and right change places |

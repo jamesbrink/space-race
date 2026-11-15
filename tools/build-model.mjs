@@ -1,11 +1,11 @@
 // Runs a flight's Blender scripts headless: each model/<name>.py becomes
 // public/models/<nation>/<programme>/<flight>/<name>.glb. A place's own models are built the same
-// way from missions/<nation>/<programme>/sites/<site>/model/<name>.py.
+// way from missions/<nation>/places/<place>/<package>/model/<name>.py, to public/models/<nation>/places/<place>/<package>/.
 //   node tools/build-model.mjs                                  lists the targets
 //   node tools/build-model.mjs mr-3 [--only pad] [--preview <dir>]
 //   node tools/build-model.mjs lc-5 [--only 1961-05]
 //   node tools/build-model.mjs --all
-// A target is named by its id (usa/mercury/mr-3-freedom-7, usa/mercury/sites/lc5), its path under missions/
+// A target is named by its id (usa/mercury/mr-3-freedom-7, usa/places/cape-canaveral/lc5), its path under missions/
 // (usa/mercury/flights/mr-3-freedom-7), its folder's name (mr-3-freedom-7, lc5), or the start of that name
 // before a dash (mr-3), dashes optional (lc-5, site-1). `pnpm model <target>` runs this.
 //   node tools/build-model.mjs --all --detail 0.3 --out-dir <dir>    a lower level of detail, written elsewhere
@@ -30,13 +30,16 @@ function allFlights() {
       .map((d) => d.name);
   for (const nation of dirs(join(root, 'missions')))
     for (const program of dirs(join(root, 'missions', nation))) {
+      // a place's own models: what stood there, as of a date, shared by every flight from it
+      if (program === 'places') {
+        for (const place of dirs(join(root, 'missions', nation, 'places')))
+          for (const pkg of dirs(join(root, 'missions', nation, 'places', place)))
+            if (existsSync(join(root, 'missions', nation, 'places', place, pkg, 'model'))) out.push(`${nation}/places/${place}/${pkg}`);
+        continue;
+      }
       const flights = join(root, 'missions', nation, program, 'flights');
       if (!existsSync(flights)) continue;
       for (const flight of dirs(flights)) if (existsSync(join(flights, flight, 'model'))) out.push(`${nation}/${program}/${flight}`);
-      // a place's own models: what stood there, as of a date, shared by every flight from it
-      const sites = join(root, 'missions', nation, program, 'sites');
-      if (existsSync(sites))
-        for (const site of dirs(sites)) if (existsSync(join(sites, site, 'model'))) out.push(`${nation}/${program}/sites/${site}`);
     }
   return out;
 }
@@ -111,14 +114,14 @@ writeFileSync(named, JSON.stringify(await namedByFlights()));
 process.on('exit', () => rmSync(scratch, { recursive: true, force: true }));
 
 for (const id of targets) {
-  // A flight is <nation>/<programme>/<flight>; a place is <nation>/<programme>/sites/<site>. Either
+  // A flight is <nation>/<programme>/<flight>; a place's package is <nation>/places/<place>/<package>. Either
   // has a model/ directory of scripts, and its GLBs go to the same path under public/models/.
   const parts = id.split('/');
-  const site = parts[2] === 'sites';
+  const place = parts[1] === 'places';
   const [nation, program] = parts;
-  const flight = site ? join('sites', parts[3]) : parts[2];
-  const dir = site
-    ? join(root, 'missions', nation, program, 'sites', parts[3], 'model')
+  const flight = place ? join(parts[2], parts[3]) : parts[2];
+  const dir = place
+    ? join(root, 'missions', nation, 'places', parts[2], parts[3], 'model')
     : join(root, 'missions', nation, program, 'flights', parts[2], 'model');
   const scripts = readdirSync(dir)
     .filter((f) => f.endsWith('.py') && (!only || f === `${only}.py`))

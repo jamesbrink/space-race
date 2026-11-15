@@ -1,5 +1,5 @@
 import type { Flight, ModelDef, Move, Part } from '../../../../../src/types.ts';
-import { SITE1 } from '../../../vostok/sites/site-1.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { voskhodCabin, voskhodSeat } from '../../vehicles/cabin.ts';
 
 const DEG = Math.PI / 180;

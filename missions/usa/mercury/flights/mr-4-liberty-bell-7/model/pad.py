@@ -1,8 +1,8 @@
 """Launch Complex 5 as it stood for Mercury-Redstone 4 on 21 July 1961. Run with `pnpm model mr-4`.
 
-The pad itself is ../../../sites/lc_5.py, the one Mercury-Redstone 3 flew from eleven weeks before: this script
+The pad itself is ../../../../places/cape-canaveral/lc_5.py, the one Mercury-Redstone 3 flew from eleven weeks before: this script
 only names the day, and each thing the site's modules build says whether it stood then (sitelib.stood). What that
-changes is in ../../../sites/lc-5.md, "What stood when": capsule No. 11's umbilical, the emergency shower beside
+changes is in ../../../../places/cape-canaveral/lc-5.md, "What stood when": capsule No. 11's umbilical, the emergency shower beside
 the structure's base, the transfer van that brought the pilot, no packing case. The vehicle is vehicle.py beside
 this file; the viewer stands it on the pad.
 """
@@ -14,7 +14,7 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
-sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "sites"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "places", "cape-canaveral"))
 import lc_5  # noqa: E402
 from srlib import FT, run  # noqa: E402
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
             ("pad-van.png", (8.5, 8.0, 2.4), 30, dict(azimuth=38, elevation=7, res=(1600, 1100))),
             ("pad-hatch.png", (0.6, 0, 20.6), 9, dict(azimuth=-12, elevation=4, res=(1300, 1100))),
             # the two cable masts under level 1, from where the photographs that place them were taken round the vehicle
-            # (FHSU items 466, 468 and 333: sites/lc5/site.py MASTS), which the launcher's turn puts on the pad
+            # (FHSU items 466, 468 and 333: places/cape-canaveral/lc5/site.py MASTS), which the launcher's turn puts on the pad
             ("pad-masts-151.png", (0, 0, 8.0), 36, dict(azimuth=151 + TURN, elevation=4, res=(1100, 1400))),
             ("pad-masts-232.png", (0, 0, 8.0), 36, dict(azimuth=232 + TURN, elevation=4, res=(1100, 1400))),
             ("pad-masts-312.png", (0, 0, 8.0), 36, dict(azimuth=312.5 + TURN, elevation=4, res=(1100, 1400))),

@@ -1,6 +1,6 @@
 """Site 1 at Tyuratam as it stood for Vostok 1, on the morning of 12 April 1961. Run with `pnpm model vostok-1`.
 
-The place itself is ../../../sites/site_1.py, shared with the Vostoks that followed. The vehicle and the
+The place itself is ../../../../places/tyuratam/site_1.py, shared with the Vostoks that followed. The vehicle and the
 pilot are vehicle.py and crew.py beside this file; the viewer hangs the vehicle in the supports.
 
 `SITE1_WITH_VEHICLE=1` in the environment builds the vehicle in its place as well, so that the clearance
@@ -17,7 +17,7 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
-sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "sites"))
+sys.path.insert(0, os.path.join(_root, "missions", "ussr", "places", "tyuratam"))
 sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "crew"))
 import bpy  # noqa: E402

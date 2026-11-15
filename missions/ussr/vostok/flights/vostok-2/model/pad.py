@@ -1,8 +1,8 @@
 """Site 1 at Tyuratam as it stood for Vostok 2, on the morning of 6 August 1961. Run with `pnpm model vostok-2`.
 
-The place itself is ../../../sites/site_1.py, Vostok 1's sixteen weeks before: this script only names the day, and
+The place itself is ../../../../places/tyuratam/site_1.py, Vostok 1's sixteen weeks before: this script only names the day, and
 each thing the site's modules build says whether it stood then (sitelib.stood). What that changes is in
-../../../sites/site-1.md, "What stood when": the same bus and the fillers, not April's car and truck, nor April's
+../../../../places/tyuratam/site-1.md, "What stood when": the same bus and the fillers, not April's car and truck, nor April's
 people (this morning's, a hundred in summer dress, are not built: the figures have no summer clothes yet). The vehicle and the
 pilot are vehicle.py and crew.py beside this file; the viewer hangs the vehicle in the supports.
 
@@ -20,7 +20,7 @@ _root = os.path.dirname(os.path.abspath(__file__))
 while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
-sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "sites"))
+sys.path.insert(0, os.path.join(_root, "missions", "ussr", "places", "tyuratam"))
 sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "ussr", "vostok", "crew"))
 import bpy  # noqa: E402

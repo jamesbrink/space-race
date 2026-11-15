@@ -42,7 +42,7 @@ export const ALLOWED = [100, 350];
 export function recordOf(glb) {
   const parts = glb.replace(/\.glb$/, '').split('/');
   const name = parts.pop();
-  const at = parts.indexOf('sites');
+  const at = parts.indexOf('places');
   const dir = at >= 0 ? parts : [...parts.slice(0, 2), 'flights', ...parts.slice(2)];
   return join(root, 'missions', ...dir, 'model', `${name}.lod.json`);
 }
@@ -52,7 +52,7 @@ export function records() {
   return globSync('missions/**/model/*.lod.json', { cwd: root })
     .sort()
     .map((file) => {
-      const parts = file.split('/').slice(1); // nation, programme, ('flights', flight | 'sites', site), 'model', name.lod.json
+      const parts = file.split('/').slice(1); // nation, (programme, 'flights', flight | 'places', place, package), 'model', name.lod.json
       const name = parts.pop().replace(/\.lod\.json$/, '');
       parts.pop();
       const dir = parts.filter((p, i) => !(p === 'flights' && i === 2));

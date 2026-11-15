@@ -2,8 +2,8 @@
 // from OpenStreetMap's coastline and its larger lakes, as signed distance fields on two planes.
 //   node tools/globe-region.mjs [<site module> [--from <dir>]]
 //
-// <site module> is a sites/<site>.ts exporting a SiteDef with a `region`; without one, every such module under
-// missions/*/*/sites/ is baked in turn. <dir> holds
+// <site module> is a places/<place>/<site>.ts exporting a SiteDef with a `region`; without one, every such module under
+// missions/*/places/ is baked in turn. <dir> holds
 // coastline.json and water.json as the Overpass queries below return them; without it they are
 // fetched into a temporary folder. Writes public/globe/<name>.near.png, <name>.wide.png and
 // <name>.json (the planes, for the viewer).
@@ -61,9 +61,9 @@ const siteIn = async (path) =>
   Object.values(await import(pathToFileURL(resolve(path)).href)).find((v) => v && typeof v === 'object' && v.region);
 const sitePath = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--from');
 if (!sitePath) {
-  if (opt('from', null)) throw new Error('usage: node tools/globe-region.mjs [<sites/<site>.ts> [--from <dir>]]');
+  if (opt('from', null)) throw new Error('usage: node tools/globe-region.mjs [<places/<place>/<site>.ts> [--from <dir>]]');
   // every site that has a region, each in a process of its own
-  for (const path of globSync('missions/*/*/sites/*.ts', { cwd: root }).sort()) {
+  for (const path of globSync('missions/*/places/*/*.ts', { cwd: root }).sort()) {
     if (!(await siteIn(join(root, path)))) continue;
     console.log(path);
     const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), join(root, path)], { stdio: 'inherit' });

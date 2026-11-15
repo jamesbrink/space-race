@@ -210,7 +210,7 @@ The model's own frame has the hatch on +X. On the pad the vehicle stood turned t
 periscope down range and the pilot's head up range: the hatch's middle bore 235 degrees true, 60 degrees round from
 the side the cherry picker's truck stood on (`rotationY` in `flight.ts`, worked from the azimuth by `launcherTurn`).
 Derived, from the Redstone's want of a roll programme and the capsule's own axes; this capsule's paint and its
-booster's fins, in six photographs of July 1961, put the turn between 50 and 75 degrees. `sites/lc-5.md`, "Which way
+booster's fins, in six photographs of July 1961, put the turn between 50 and 75 degrees. `places/cape-canaveral/lc-5.md`, "Which way
 round the vehicle stood", has all of it.
 
 ## Parts in the model
@@ -232,7 +232,7 @@ The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../veh
 - **The far side's paint**, above.
 - **The two round plates in the top row** (left out here): on Freedom 7 the like plates, at 45° and 135°, carry a large and a small nozzle each and are taken for the roll jets. This model still has its roll jets low on the cone (`mercury_capsule.roll_thrusters`); whether No. 11's plates are the same jets has not been checked against its photographs.
 
-**On the pad** (sites/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
+**On the pad** (places/cape-canaveral/lc-5.md, "5 May and 21 July 1961"): the capsule's umbilical is built to this
 capsule's receptacle (station 32.5; Freedom 7's is at 31.2), and the white room and the cherry
 picker's cab meet its hatch as they met Freedom 7's, both capsules standing with the hatch on +X.
 The umbilical comes from the capsule's cable mast, which stands on the launcher 20° round from the

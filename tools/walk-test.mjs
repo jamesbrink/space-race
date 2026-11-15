@@ -25,8 +25,8 @@ const url = urlOf(args);
 const V1_MORNING = -(1 * 3600 + 56 * 60 + 59.7);
 
 /**
- * The ways walked, by flight. Site 1 is in the site's own frame: x east, z south, y up from the deck (sites/site-1.md);
- * where each thing stands is from the modules that build it (missions/ussr/vostok/sites/site1/).
+ * The ways walked, by flight. Site 1 is in the site's own frame: x east, z south, y up from the deck (places/tyuratam/site-1.md);
+ * where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
  */
 const ROUTES = {
   'ussr/vostok/vostok-1': [

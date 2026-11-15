@@ -14,8 +14,8 @@ import {
   TAIL,
   TURN,
   turned,
-} from '../../sites/site-1.parts.ts';
-import { SITE1 } from '../../sites/site-1.ts';
+} from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { DUTY } from '../../vehicles/cabin.ts';
 import { BOOSTERS } from '../../vehicles/vostok-8k72k.ts';
 import { BASE, commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
@@ -985,7 +985,7 @@ const MORNING: Keyframe[] = [
   },
 ];
 
-/** What this morning's record says of the pad's hardware (the site's own words for the rest: sites/site-1.parts.ts). */
+/** What this morning's record says of the pad's hardware (the site's own words for the rest: places/tyuratam/site-1.parts.ts). */
 const PAD_WORDS: Partial<Record<Site1Node, PartWords>> = {
   DeckRails: {
     summary: 'The railway runs on to the platform and stops at the edge of the hole.',
@@ -1867,6 +1867,6 @@ export const flight: Flight = {
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
   flies: vostokFlies(orbital),
   models: [vehicle, pad, crew],
-  // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (sites/site1/model/1961-04.py)
-  surroundings: 'models/ussr/vostok/sites/site1/1961-04.glb',
+  // the place round the pad as it stood that April: the bunker, the buildings, the rim's positions, the fence (places/tyuratam/site1/model/1961-04.py)
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-04.glb',
 };

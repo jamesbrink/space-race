@@ -271,7 +271,7 @@ test('a fire looks as what it burns: the Redstone’s alcohol flame as it always
 
 test('at Site 1 the exhaust goes down into the flame pit and its cloud rises out of the pit’s open side, away from the rocket', async () => {
   const { blast } = await import('../src/viewer/trail.ts');
-  const { SITE1 } = await import('../missions/ussr/vostok/sites/site-1.ts');
+  const { SITE1 } = await import('../missions/ussr/places/tyuratam/site-1.ts');
   const way = SITE1.exhaust;
   assert.equal(way.way, 'pit');
   const pit = { toward: [1, 0], depth: way.depth.value, out: way.out.value, width: way.width.value };

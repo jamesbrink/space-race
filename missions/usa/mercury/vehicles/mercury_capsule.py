@@ -1077,7 +1077,7 @@ def roll_fittings(M, g, places, about: str) -> None:
 
 def stand(hatch_mid: float, nodes) -> Matrix:
     """Turn the spacecraft about its long axis so that the middle of its hatch is on +X, the side every launch site's
-    frame gives the hatch (sites/lc-5.ts). A flight's script builds its capsule in the pilot's frame (his right hand
+    frame gives the hatch (places/cape-canaveral/lc-5.ts). A flight's script builds its capsule in the pilot's frame (his right hand
     at 0 degrees, his feet at 90, his head at 270) and calls this last. The turn is put into the meshes themselves and
     into the placing of whatever has a placing of its own (a needle on its pivot, the seat), so every top-level node
     stays where it was, unturned. Returns the turn, for whatever the script reports in the model's frame."""

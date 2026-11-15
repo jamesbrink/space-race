@@ -43,7 +43,7 @@ ship differed from the one before in, what of that is modelled and what is assum
 | --- | --- |
 | Vostok 3KA spacecraft | [vostok-3ka.md](vehicles/vostok-3ka.md): built |
 | Vostok-K launch vehicle (8K72K), with Block E | [vostok-8k72k.md](vehicles/vostok-8k72k.md): built (core, four strap-ons, lattice, Block E, fairing), every station estimated |
-| Site 1, Tyuratam | [site-1.md](sites/site-1.md): built as it stood on 12 April 1961: the platform over its flame pit, the launch system, what served the rocket that morning, and the place round the pad |
+| Site 1, Tyuratam | [site-1.md](places/tyuratam/site-1.md): built as it stood on 12 April 1961: the platform over its flame pit, the launch system, what served the rocket that morning, and the place round the pad |
 | The SK-1 suit, and the SK-2 | [sk-1.md](crew/sk-1.md): built, standing (the flight's crew model) and in the spacecraft's seat (`sk_1.build_seated`); who wears it is a parameter (`sk_1.wear`): Gagarin, Bykovskiy, and Tereshkova in the SK-2 |
 
 ## Sources

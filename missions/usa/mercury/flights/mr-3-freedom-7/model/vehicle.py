@@ -387,7 +387,7 @@ def build() -> str:
     mercury_capsule.build_antenna_canister(M)
     mercury_capsule.build_escape_tower(M)
     # Built in the pilot's frame, the capsule stands on its booster with its hatch on +X, as every site's frame has it
-    # (sites/lc-5.ts): turned 45 degrees about its long axis. What flight.ts quotes of the cabin is in the turned frame.
+    # (places/cape-canaveral/lc-5.ts): turned 45 degrees about its long axis. What flight.ts quotes of the cabin is in the turned frame.
     turn = mercury_capsule.stand((HATCH[0] + HATCH[1]) / 2, mercury_capsule.SPACECRAFT)
     if where:
         report(where, turn)

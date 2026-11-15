@@ -416,7 +416,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         fit.lathe(prof([(3.2, -0.2), (3.2, 0.5), (2.4, 0.5), (2.3, 0.2), (0, 0.2)]), 28, matrix=f)
     # UNITED STATES, twice: stacked upright, one letter under the next, on the meridians of the two fins that stand
     # square to the pitch plane, 45 and 225 degrees round from the capsule's hatch (the periscope's fin, 135, lies down
-    # range: sites/lc-5.md). So each faces a camera abeam of the flight's line. Estimated, read off photographs of both
+    # range: places/cape-canaveral/lc-5.md). So each faces a camera abeam of the flight's line. Estimated, read off photographs of both
     # boosters: MR-8's is 222 +/- 4 degrees round from the hatch in FHSU items 241, 466 and 468 and faces 289 to 294
     # degrees round from the pad's +X in item 306, where that fin's meridian is 285; MR-7's is on a fin's meridian too,
     # with an MR-7 plate, in S61-02407. UNITED stands above the dark band and STATES below it, a letter's place left

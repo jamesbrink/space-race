@@ -17,8 +17,8 @@ import {
   TOWER,
   X,
   Z,
-} from '../../sites/lc-5.parts.ts';
-import { LC5 } from '../../sites/lc-5.ts';
+} from '../../../places/cape-canaveral/lc-5.parts.ts';
+import { LC5 } from '../../../places/cape-canaveral/lc-5.ts';
 import {
   MERCURY_STICK,
   mercuryCabin,
@@ -398,7 +398,7 @@ const facingPilot = (lift: number, aside = 0.12, behind = false): [number, numbe
 /**
  * The flight's azimuth, degrees true (TM X-53107 7.4.3 and 8.3.2: 100 degrees for MR-4), and how the vehicle therefore
  * stood on the launcher: the table turned until the pitch plane lay on the azimuth, the capsule's hatch 60 degrees
- * round from the site's +X toward the structure's side (sites/lc-5.parts.ts `launcherTurn`; sites/lc-5.md, "Which way
+ * round from the site's +X toward the structure's side (places/cape-canaveral/lc-5.parts.ts `launcherTurn`; places/cape-canaveral/lc-5.md, "Which way
  * round the vehicle stood": photographs of 3, 19 and 21 July 1961 put it between 50 and 75). model/pad.py builds the
  * launcher, the cable masts and the umbilical turned by the same figure.
  */
@@ -443,7 +443,7 @@ const vehicle: ModelDef = {
 
 /**
  * The pad's slider is the morning of 21 July 1961, from the pilot going aboard to the pad standing empty. Its stops
- * are the ones Freedom 7's morning is laid out on (sites/lc-5.parts.ts: PadStops); `MORNING` says when each fell.
+ * are the ones Freedom 7's morning is laid out on (places/cape-canaveral/lc-5.parts.ts: PadStops); `MORNING` says when each fell.
  */
 const T: PadStops = {
   platforms: 0.0, // T-85 to T-60: platforms 2, 4 and 3 part (1 had opened at T-200)
@@ -474,7 +474,7 @@ const GANTRY_REMOVED = count(55);
 const ROLLED_BACK = GANTRY_REMOVED + 5 * MIN;
 /**
  * The morning on the clock: when each stop on the pad's slider (T, above) happened, in seconds from liftoff, and the
- * three holds, through which nothing on the pad moved. sites/lc-5.md, "Where things stood, and when (MR-4)".
+ * three holds, through which nothing on the pad moved. places/cape-canaveral/lc-5.md, "Where things stood, and when (MR-4)".
  */
 const MORNING: Keyframe[] = [
   {
@@ -625,7 +625,7 @@ const MORNING: Keyframe[] = [
   },
 ];
 
-/** What this flight says of each part of the pad: the hardware is the site's (sites/lc-5.parts.ts). */
+/** What this flight says of each part of the pad: the hardware is the site's (places/cape-canaveral/lc-5.parts.ts). */
 const PAD_WORDS: Record<PadNode, PartWords> = {
   ...HARDWARE_WORDS,
   ServiceStructure: {
@@ -759,7 +759,7 @@ const padParts: Part[] = lc5Parts({
   ],
   // Folded on its truck while the structure stands round the vehicle, as it is photographed through this count (FHSU
   // Project Mercury items 443 and 445, 21 July; item 544, undated): the mast down on its rest, the jib back along it,
-  // the cab at the truck's tail. The angles are the stow's (sites/lc-5.md, "Moving parts"). Once the structure has
+  // the cab at the truck's tail. The angles are the stow's (places/cape-canaveral/lc-5.md, "Moving parts"). Once the structure has
   // gone it is raised and the cab brought to the hatch; the cab hangs level throughout.
   tower: [
     held('CherryPicker_Mast', Z, -TOWER.stow),
@@ -1247,7 +1247,7 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
     earthward: derived(
       180,
       'the periscope’s side, by Freedom 7’s reasoning (its `earthward`): the vehicle stood on the launcher with its pitch plane on the azimuth, here 100 degrees ' +
-        '(sites/lc-5.md, "Which way round the vehicle stood"), so the spacecraft rode feet and periscope down range and was turned heat shield first by a yaw, ' +
+        '(places/cape-canaveral/lc-5.md, "Which way round the vehicle stood"), so the spacecraft rode feet and periscope down range and was turned heat shield first by a yaw, ' +
         '"counter clockwise" (Results, Figure 2-5), into the orbit attitude of 34 degrees (p. 6)',
     ),
     push: estimated(30 * FT, `not recorded for MR-4: Freedom 7’s, ${PLR}, section 4.2, approximately 30 plus or minus 3 ft/s`),
@@ -1659,7 +1659,7 @@ export const flight: Flight = {
     chutes: CHUTES,
   },
   models: [vehicle, pad, crew],
-  surroundings: 'models/usa/mercury/sites/lc5/1961-07.glb',
+  surroundings: 'models/usa/places/cape-canaveral/lc5/1961-07.glb',
 };
 
 // The couch as somewhere to sit, and its cabin: No. 11's panel (vehicles/mercury_cabin_11.py, Results Figure 2-3 as Hammack and

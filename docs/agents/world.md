@@ -18,7 +18,7 @@ date, and that frame turned back about the pole to the Earth's axes at liftoff; 
 symmetric about the pole, so a flight is the same flight in either to rounding (tests/frame.test.mjs).
 
 Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
-`missions/<nation>/<programme>/sites/<site>.ts`) and the clock's instant give the Sun, the Moon
+`missions/<nation>/places/<place>/<site>.ts`) and the clock's instant give the Sun, the Moon
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and
 `viewer/daysky.ts` derives the light's colour and strength, the sky's colours and the exposure
 from the Sun's height. Positions, sizes and phase are computed; brightnesses are a model fitted by

@@ -81,7 +81,7 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
   of 1961 (the next item).
 - **UNITED STATES is on the two fins' meridians that stand square to the pitch plane**: 45° and 225° round from the
   capsule's hatch, the fins being at 45° + 90°k and the one at 135°, with the periscope, lying down range
-  (sites/lc-5.md, "Which way round the vehicle stood"). So each faces a camera abeam of the flight's line. Estimated,
+  (places/cape-canaveral/lc-5.md, "Which way round the vehicle stood"). So each faces a camera abeam of the flight's line. Estimated,
   from photographs of both boosters, each camera's place round the vehicle read off the capsule's paint and the fins:
   - **MR-8** (Liberty Bell 7's). FHSU item 468 (camera at 232°): the U is 13° left of centre, so at 219°; item 466
     (151°): at the right limb, 73° right, so at 224°; item 241 (191°): 32° right, so at 223°; item 333 (312.5°): none

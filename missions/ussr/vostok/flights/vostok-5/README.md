@@ -16,7 +16,7 @@ Backup: Boris Volynov.
 | Spacecraft (3KA No. 7) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have had that can be drawn: its pilot in the suit of that morning, the cabin's white lining as the flown article shows it, the two television cameras as the Seliger camera was photographed, and a hand-held film camera |
 | Launch vehicle (8K72K No. E103-24) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's to look at. What its third stage did is in the record below, not in the model |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)) with what the photographs of 14 June show of his suit, "СССР" on the helmet. His height is in [spacecraft.md](spacecraft.md) |
-| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../sites/site-1.md)); what had changed in two years has not been looked for |
+| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in two years has not been looked for |
 | Crew to be walked as | not built |
 | The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: no figure for the 14th. The meteorologists' charts shown at the pad before 06:00 Moscow time were "favourable to the launch" (Kamanin). The press at the pad: dry, sandy winds for several days, "now it is still, a few small clouds in the blue, the Sun beating down", the pad's slabs too hot to stand on, yet "much cooler today" than the forty degrees the place can reach (TASS's pool, in *Заря Востока*, 16 June). Before it: cloud, gusts of 15 to 20 m/s and no more than 25 °C from 1 to 5 June; 34 °C and still on the 7th; rain and 14 °C on the 12th; "a wonderful, sunny, still morning" on the 13th (Kamanin). No station's report was looked for |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
@@ -196,7 +196,7 @@ The ship was some 6 km low at perigee and 13 km at apogee, and that cost three d
 
 ## The sky at liftoff
 
-Computed by `src/world` from [site-1.ts](../../sites/site-1.ts) and the launch instant
+Computed by `src/world` from [site-1.ts](../../../places/tyuratam/site-1.ts) and the launch instant
 (11:58:58 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |

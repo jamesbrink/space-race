@@ -60,7 +60,7 @@ anything built on them can be found.
 | Roll jets | two round plates in the top row at 45° and 135°, station 50, each with a large and a small nozzle (6 and 1 lbf) | NASM2021-00160, -00161, DSH01; the 1961 pad photographs show the same fitting above UNITED STATES. That they are the roll jets is read from their two nozzles | at the base, at 90° and 270° |
 | The coiled cord's clip | ends in the lining | it went 0.7 in on through the hull at 225° | |
 
-So the stance on the pad changes with it (`sites/lc-5.ts` is unchanged: the hatch faces the white room on +X, 295°
+So the stance on the pad changes with it (`places/cape-canaveral/lc-5.ts` is unchanged: the hatch faces the white room on +X, 295°
 true): the pilot's head bears 340° true and the periscope 160°, where they bore 25° and 205°.
 
 ### The periscope's door
@@ -246,7 +246,7 @@ middle, 135 degrees round from the periscope, bore 240 degrees true, 55 degrees 
 picker's truck stood on. **Derived**, not documented: a Redstone tilted in a plane fixed in the vehicle and did not
 roll, so the launcher's table was turned until that plane lay on the azimuth (TM X-53107 4.4 and Figure 4-8; 7.1.3,
 "positioned to flight azimuth"), and the capsule rode feet down range, which is why the periscope looked at the Earth
-after a turnaround that was a yaw. `sites/lc-5.md`, "Which way round the vehicle stood", has the rule, the
+after a turnaround that was a yaw. `places/cape-canaveral/lc-5.md`, "Which way round the vehicle stood", has the rule, the
 photographs that bear on it and where they disagree; MR-3's one photograph (S61-02407) agrees by its cable masts and
 its booster's fins and reads 11 degrees less by this capsule's UNITED STATES.
 
@@ -254,7 +254,7 @@ Until November 2026 the model stood the vehicle square to the rails, the hatch b
 `bearingX`, which is the rails' line and was taken for the hatch's), which left the periscope 55 degrees off the
 azimuth and the pilot partly on his side. What changed with the turn: the vehicle's `rotationY` in `flight.ts`
 (55 degrees, worked from the azimuth: `launcherTurn`), with this model and its angles round the cone untouched; the
-pad's launcher, masts, umbilical, platforms' cuts and cherry picker (`sites/lc-5.md`); and
+pad's launcher, masts, umbilical, platforms' cuts and cherry picker (`places/cape-canaveral/lc-5.md`); and
 `trajectory.body.capsule.earthward`, the side the automatic control keeps toward the Earth, which is now the down-range
 one, 180 degrees from the body's +Z (it was 125, and 80 before the hatch was moved round the cone). Flown live the
 recorded figures do not move (the tests that pin them to the Postlaunch Report pass unchanged); the live flight's
@@ -275,9 +275,9 @@ capsule was indexed on the adapter, or the Postlaunch Report's roll trace throug
 
 **The umbilical on the pad followed the receptacle** (November 2026). The site's cable plugged in at 270 degrees in
 the pilot's frame and station 8, where the old model had the receptacle; it now reaches the receptacle under the
-periscope's lens (`sites/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`) stands on the launcher's table 3.55 ft from the
+periscope's lens (`places/cape-canaveral/lc5/site.py` `UMBILICAL`). Its mast (`masts.py`) stands on the launcher's table 3.55 ft from the
 vehicle's axis, 20 degrees round from the receptacle on the side away from the hatch, where photographs of July 1961
-put it (derived: `sites/lc-5.md`, "The two cable masts"); the umbilical goes from the mast's head, beside the heat
+put it (derived: `places/cape-canaveral/lc-5.md`, "The two cable masts"); the umbilical goes from the mast's head, beside the heat
 shield's rim, up round the cone and under the periscope's open door to the receptacle, and the mast falls straight out
 from the vehicle. Until November 2026 it stood on the hardstand 8 ft behind the vehicle.
 

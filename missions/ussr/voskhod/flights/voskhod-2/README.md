@@ -15,7 +15,7 @@ snow before they could be got out. Backups: Dmitriy Zaikin and Yevgeniy Khrunov.
 | Spacecraft (3KD No. 4) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The Voskhod's model ([voskhod.md](../../vehicles/voskhod.md)) as the 3KD: two couches, the reserve engine, and the Volga airlock on hatch No. 3, folded as it rode under the fairing and drawn out by the gallery's slider, with the ring it leaves on the hull, its outer hatch, the cine camera on its bracket and four air bottles |
 | Launch vehicle (11A57 No. R15000-05) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md), with the blister on the fairing over the folded airlock. The blister's form is ours |
 | Crew in the couches | **built**: Belyayev and Leonov in the Berkut suit ([berkut.md](../../crew/berkut.md)), to their documented statures, visors down; and beside Leonov the pack he wore outside, which was put on in orbit |
-| Launch site (Site 1 as it stood in March 1965) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../vostok/sites/site-1.md)) |
+| Launch site (Site 1 as it stood in March 1965) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)) |
 | Crew to be walked as; Leonov outside on his line | not built |
 | The day's weather as data (`weather.ts`) | not written. What was read is under "The weather", below: the accounts disagree and none gives a figure |
 | Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
@@ -196,7 +196,7 @@ cloud at 600 m with 10 km of visibility.
 
 ## The sky at liftoff
 
-Computed by `src/world` from [site-1.ts](../../../vostok/sites/site-1.ts) and the launch instant
+Computed by `src/world` from [site-1.ts](../../../places/tyuratam/site-1.ts) and the launch instant
 (07:00:00 UTC), and held to these figures by `tests/world.test.mjs`:
 
 | | Azimuth | Elevation |

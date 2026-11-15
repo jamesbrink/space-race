@@ -9,7 +9,7 @@ import type { Palette } from './land.ts';
  * kind of country: what its ground is, what grows on it and how thick, in the look the project asks for (AGENTS.md,
  * "Designed, not photographic"). Nothing here knows a site: Tyuratam's Site 1 (tyuratam.ts) uses it, and so can the
  * next pad on the same steppe (Site 31, the later Soviet flights), each giving its own lie of the land and its own made
- * ground. Sources and confidence are set out in missions/ussr/vostok/sites/site-1.md, "The ground and what grows", and
+ * ground. Sources and confidence are set out in missions/ussr/places/tyuratam/site-1.md, "The ground and what grows", and
  * docs/sources.md, "The steppe at Tyuratam". Its season is the flight's day's (`SEASONS`, `seasonOf`): the April flush
  * below, or the summer's reddish-grey once the ephemerals have gone. In short:
  *
