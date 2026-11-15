@@ -1472,11 +1472,11 @@ export const flight: Flight = {
     {
       name: 'Rocketdyne A-7 (booster)',
       count: 1,
-      thrustN: 78000 * LBF,
-      burnS: 143.5,
+      thrustN: THRUST,
+      burnS: MR3.cutoff,
       propellant: 'ethyl alcohol / liquid oxygen',
-      confidence: 'assumed',
-      note: 'sea level, nominal. MR-3 measured 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s',
+      confidence: 'documented',
+      note: `sea level, as measured on MR-3: 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s (${TMX_8_1}); 78,000 lbf and 143.5 s nominal`,
     },
     {
       name: 'Escape motor (Grand Central)',
