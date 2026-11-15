@@ -234,7 +234,9 @@ def build(parts: Parts) -> None:
     parts.node(
         "TankCars",
         label="Railway fillers",
-        about="The liquid oxygen filler on the north track and the kerosene filler on the south, drawn off at 08:08.",
+        # (no time of day here: the node is every flight's from this pad, and when the cars left is each flight's own
+        # record, said in its own words of this part: 08:08 on 12 April 1961, not recorded on 6 August)
+        about="The liquid oxygen filler on the north track and the kerosene filler on the south, each drawn off along its track before the launch.",
     )
     for node, _, length, track, middle in CARS:
         car(parts, node, length, track, middle)
