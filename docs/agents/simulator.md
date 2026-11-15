@@ -30,6 +30,11 @@ never adjusted to bring a check in.
   on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
   come within tolerance (take it off). So the list is the truth either way, and improving an input
   means updating it.
+- **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds
+  each run's key results, as doubles, against `tests/fixtures/figures.json`: only figures that do not depend on the
+  inertial frame (heights, speeds, times, places on the Earth, elements). Exact doubles differ between machines, so the
+  capture is made and compared on hal9000 and it is not part of `pnpm check`. A commit that changes the simulator quotes
+  its diff; one that moves a figure says why, and blesses the capture again (`--write`) in the same commit.
 - **The inputs that are not documented are listed and weighed.** The last test names every
   `assumed`, `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
   new input that is not documented must be added there. An `assumed` input (the type's or a sister vehicle's

@@ -38,6 +38,7 @@ pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from 
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
+pnpm figures          # the simulators' figures to the last digit against tests/fixtures/figures.json (run on hal9000; --write blesses)
 pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
 pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys

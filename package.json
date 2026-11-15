@@ -31,6 +31,7 @@
     "test:deck": "node tools/deck-test.mjs",
     "test:path": "node tools/path-test.mjs",
     "bench": "node tools/bench.mjs",
+    "figures": "node tools/figures.mjs",
     "globe": "node tools/globe.mjs",
     "globe:region": "node tools/globe-region.mjs",
     "globe:surface": "node tools/globe-surface.mjs",

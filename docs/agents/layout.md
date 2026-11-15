@@ -231,6 +231,7 @@ tools/
   globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and a region's, finer; needs GDAL
   globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
+  figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
