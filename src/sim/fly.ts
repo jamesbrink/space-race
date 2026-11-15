@@ -5,8 +5,8 @@
  * flight it is, and nothing is adjusted to make a result come out. tests/sim.test.mjs holds it
  * against the flight's documented results.
  *
- * The state is position and velocity in an Earth-centred frame that does not turn (frames.ts's
- * inertial frame, with the Greenwich meridian on +X at liftoff), in doubles, with the mass.
+ * The state is position and velocity in an Earth-centred frame that does not turn (the flight's, world/earthframe.ts:
+ * of date, or fixed at liftoff with the Greenwich meridian on +X then), in doubles, with the mass.
  *
  * Forces
  *   gravity   the Earth's, with its oblateness (J2): bodies.ts's GM and WGS 84's figure.
@@ -28,7 +28,7 @@
  * so a run is the same run every time.
  */
 import type { Curve, Trajectory } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { EARTH_J2, gravity as orbitGravity } from '../world/orbit.ts';
 import {
   add,
@@ -41,7 +41,6 @@ import {
   fromHorizontal,
   type Geodetic,
   geodeticToEcef,
-  inertialToEcef,
   length,
   scale,
   sub,
@@ -49,7 +48,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
-import { blowing, blowOf, upAt, upOver } from './forces.ts';
+import { blowing, blowOf } from './forces.ts';
 import { G0 } from '../world/bodies.ts';
 
 /** Standard gravity (world/bodies.ts), and the Earth's oblateness (world/orbit.ts `EARTH_J2`), under the names the simulator has used. */
@@ -169,10 +168,18 @@ interface State {
  * The same inputs give the same flight to the last bit.
  *
  * `from` starts the flight at capsule separation instead, with the position and velocity given
- * (in the frame that does not turn, whose axes are the Earth's at liftoff): the capsule's half of
+ * (in `frame`, the flight's: world/earthframe.ts, fixed at liftoff unless given): the capsule's half of
  * the flight can then be flown from the separation the reports give, whatever the booster did.
  */
-export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step = 0.05, every = 0.5, from?: { r: Vec3; v: Vec3 }): Flown {
+export function fly(
+  trajectory: Trajectory,
+  site: Geodetic,
+  seaLevel = 0,
+  step = 0.05,
+  every = 0.5,
+  from?: { r: Vec3; v: Vec3 },
+  frame: EarthFrame = LIFTOFF,
+): Flown {
   const tr = trajectory;
   const cutoff = tr.engine.cutoff.value;
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
@@ -180,10 +187,10 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
   const retroBurn = tr.retro.burn.value;
   const fires = tr.retro.fires.map((f) => f.value);
   const capsuleDrag = tr.area.value;
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const spin = frame.spin;
 
   const pad = geodeticToEcef(site);
-  const axisAt = axisOf(tr, site);
+  const axisAt = axisOf(tr, site, frame);
   const blow = blowOf(tr.winds);
 
   let t = 0;
@@ -191,10 +198,11 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
   let mass = tr.liftoffMass.value;
   // the parachute now out: the drag area it has when full, the area the one before it had, when it was let out and how long it takes to fill
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
-  let state: State = { r: pad, v: cross(spin, pad) }; // standing on the turning Earth
+  const pad0 = frame.toInertial(pad, 0);
+  let state: State = { r: pad0, v: cross(spin, pad0) }; // standing on the turning Earth
 
-  /** Where the Earth-fixed axes have turned to: the frames coincide at liftoff. */
-  const fixed = (r: Vec3, at: number): Vec3 => inertialToEcef(r, EARTH_ROTATION_RATE * at);
+  /** Where the Earth-fixed axes have turned to. */
+  const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);
 
   /**
    * Every force but gravity, N, and what the air is doing, at a state at `at`, with the retrorockets lit as they are from
@@ -207,7 +215,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     const altitude = place.height - seaLevel;
     const air = atmosphere(altitude);
     const ground = sub(s.v, cross(spin, s.r)); // motion over the ground
-    const wind = blow ? sub(ground, blowing(blow, place, altitude, at)) : ground; // motion through the air, which turns with the Earth and moves over it as the day's wind has it
+    const wind = blow ? sub(ground, blowing(frame, blow, place, altitude, at)) : ground; // motion through the air, which turns with the Earth and moves over it as the day's wind has it
     const airspeed = length(wind);
     const mach = airspeed / air.soundSpeed;
     const q = 0.5 * air.density * airspeed * airspeed;
@@ -225,7 +233,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     // each retrorocket pushes against the motion over the ground, pitched below the level
     const burning = fires.filter((f) => as >= f && as < f + retroBurn).length;
     if (burning > 0 && !riding) {
-      const up = upAt(s.r, at);
+      const up = frame.up(s.r, at);
       const level = unit(sub(ground, scale(up, dot(ground, up))));
       const pitch = tr.retro.pitch.value * DEG;
       const push = sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
@@ -255,7 +263,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
     const m = massAt(t);
     const f = forces(state, t);
     const here = ecefToGeodetic(fixed(state.r, t));
-    const up = upOver(here, t);
+    const up = frame.upOver(here, t);
     const wind = sub(state.v, cross(spin, state.r));
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(Math.max(-1, Math.min(1, dot(v, up) / length(v)))) / DEG : 90);
     return {
@@ -384,7 +392,7 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
       state = nudge(before, { r: scale(sub(state.r, before.r), 1 / h), v: scale(sub(state.v, before.v), 1 / h) }, h * part);
       t = t - h + h * part;
       const last = sample();
-      results.landingSpeed = -dot(sub(state.v, cross(spin, state.r)), upAt(state.r, t));
+      results.landingSpeed = -dot(sub(state.v, cross(spin, state.r)), frame.up(state.r, t));
       results.range = last.range;
       results.duration = t;
       phase = 'landed';
@@ -407,11 +415,11 @@ export function fly(trajectory: Trajectory, site: Geodetic, seaLevel = 0, step =
  * toward the launch azimuth by the programme, as the gyro platform holds it. Both directions are
  * fixed in inertial space at liftoff.
  */
-export function axisOf(trajectory: Trajectory, site: Geodetic): (t: number) => Vec3 {
+export function axisOf(trajectory: Trajectory, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
   const axes = enuAxes(site);
   const [e, n] = fromHorizontal(trajectory.azimuth.value * DEG, 0);
-  const up0 = axes.up;
-  const downrange0 = unit(add(scale(axes.east, e), scale(axes.north, n)));
+  const up0 = frame.toInertial(axes.up, 0);
+  const downrange0 = frame.toInertial(unit(add(scale(axes.east, e), scale(axes.north, n))), 0);
   return (t) => {
     const tilt = along(trajectory.tilt, t) * DEG;
     return add(scale(up0, Math.cos(tilt)), scale(downrange0, Math.sin(tilt)));
@@ -420,13 +428,13 @@ export function axisOf(trajectory: Trajectory, site: Geodetic): (t: number) => V
 
 const runs = new WeakMap<Trajectory, Map<string, Flown>>();
 /** The flight flown once, whoever asks first: the readout and the scene show the same run. */
-export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0): Flown {
-  // (the same hardware flown from another place, or over another sea, is another flight)
-  const where = `${site.latitude},${site.longitude},${site.height},${seaLevel}`;
+export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0, frame: EarthFrame = LIFTOFF): Flown {
+  // (the same hardware flown from another place, over another sea, or in another frame, is another flight)
+  const where = `${site.latitude},${site.longitude},${site.height},${seaLevel},${frame.gast0},${frame.jd0}`;
   let from = runs.get(trajectory);
   if (!from) runs.set(trajectory, (from = new Map()));
   let run = from.get(where);
-  if (!run) from.set(where, (run = fly(trajectory, site, seaLevel)));
+  if (!run) from.set(where, (run = fly(trajectory, site, seaLevel, undefined, undefined, undefined, frame)));
   return run;
 }
 

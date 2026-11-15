@@ -109,3 +109,68 @@ test('a flight’s frame is made once from its liftoff; its frame of date likewi
   near(datedOf(freedom7).gast0, greenwichSiderealTime(JD), 0, 'the frame of date’s angle');
   near(frameOf(freedom7).jd0, JD, 0, 'from the flight’s own liftoff');
 });
+
+// Flown in either frame, a flight is the same flight: every sample within a millimetre once turned into the other, and
+// every result within rounding of itself.
+const { fly } = await import('../src/sim/fly.ts');
+const { flyLive } = await import('../src/sim/autopilot.ts');
+const { vehicle } = await import('../src/sim/vehicle.ts');
+const { flyWhole, steer } = await import('../src/sim/staged.ts');
+const { siteFrame } = await import('../src/world/frames.ts');
+const { flight: vostok1 } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+
+/** Every sample of two runs of one flight, one in each frame (`fixed`, `dated`), a millimetre apart at most; the largest gap, m. */
+const sameRun = (fixed, dated, turn, what) => {
+  assert.equal(fixed.length, dated.length, `${what}: as many samples`);
+  let most = 0;
+  fixed.forEach((s, i) => {
+    near(s.t, dated[i].t, 1e-6, `${what}: the same instants`);
+    most = Math.max(most, apart(s.r, turn(dated[i].r)));
+  });
+  assert.ok(most < 1e-3, `${what}: ${most} m apart at most`);
+  return most;
+};
+/**
+ * Every figure of two runs' results within rounding of itself (and a NaN a NaN). (The true anomaly where the ascent cuts
+ * off is that of an orbit all but round, so its rounding is in millionths of a degree: given as `loose`, degrees.)
+ */
+const sameResults = (a, b, what, loose = {}) => {
+  for (const [k, x] of Object.entries(a))
+    if (typeof x !== 'number') continue;
+    else if (Number.isFinite(x)) near(b[k], x, loose[k] ?? 1e-9 * Math.max(1, Math.abs(x)), `${what}: ${k}`);
+    else assert.equal(String(b[k]), String(x), `${what}: ${k}`);
+};
+
+test('Freedom 7 flown whole and live in the frame fixed at liftoff and in the frame of date: the same flight', (t) => {
+  const site = siteFrame(freedom7.site);
+  const sea = freedom7.site.seaLevel.value;
+  const turn = between(DATED, FIXED);
+  const a = fly(freedom7.trajectory, site, sea, undefined, undefined, undefined, FIXED);
+  const b = fly(freedom7.trajectory, site, sea, undefined, undefined, undefined, DATED);
+  t.diagnostic(`whole: samples at most ${sameRun(a.samples, b.samples, turn, 'fly').toExponential(2)} m apart`);
+  sameResults(a.results, b.results, 'fly');
+  const la = flyLive(vehicle(freedom7.trajectory, site, sea, { frame: FIXED }));
+  const lb = flyLive(vehicle(freedom7.trajectory, site, sea, { frame: DATED }));
+  t.diagnostic(`live: samples at most ${sameRun(la.samples, lb.samples, turn, 'live').toExponential(2)} m apart`);
+  sameResults(la.results, lb.results, 'live');
+});
+
+test('Vostok 1 flown whole in both frames: the law solved, the ascent, the coast and the descent, the same flight', (t) => {
+  const site = siteFrame(vostok1.site);
+  const sea = vostok1.site.seaLevel.value;
+  const jd = julianDate(vostok1.launch);
+  const [fixed, dated] = [earthFrame(jd, false), earthFrame(jd, true)];
+  const xa = steer(vostok1.orbital, site, fixed, sea);
+  const xb = steer(vostok1.orbital, site, dated, sea);
+  near(xa.kick, xb.kick, 1e-12, 'the law solved the same: its pitch-over');
+  near(xa.rate, xb.rate, 1e-15, 'and its tangent');
+  const a = flyWhole(vostok1.orbital, site, fixed, sea, xb, 10, 'published');
+  const b = flyWhole(vostok1.orbital, site, dated, sea, xb, 10, 'published');
+  const turn = between(dated, fixed);
+  const up = sameRun(a.ascent.samples, b.ascent.samples, turn, 'ascent');
+  const round = sameRun(a.coast.samples, b.coast.samples, turn, 'coast');
+  t.diagnostic(`ascent at most ${up.toExponential(2)} m apart, coast ${round.toExponential(2)} m`);
+  sameResults(a.ascent.summary, b.ascent.summary, 'ascent', { anomaly: 1e-5 });
+  sameResults(a.coast.results, b.coast.results, 'coast');
+  for (const id of Object.keys(b.down.landed)) sameResults(a.down.landed[id], b.down.landed[id], `${id} down`);
+});

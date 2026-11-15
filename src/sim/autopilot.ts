@@ -8,10 +8,8 @@
  * The law is `steer`, and it is the only one: how far the attitude is out, and how fast the
  * error is closing, in; a command between -1 and 1 out.
  */
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import type { Flown, Results } from './fly.ts';
-import { upAt } from './forces.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
 import { type Controls, HANDS_OFF, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
@@ -113,7 +111,7 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
   const want = { pitch: true, yaw: true, roll: true, launch: true, sequence: true, ...options };
   const boosterGains = options.booster ?? BOOSTER_GAINS;
   const capsuleGains = options.capsule ?? CAPSULE_GAINS;
-  const earth: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const earth = vehicle.frame.spin;
   const late = (at: number, t: number): boolean => t >= at - 1e-9;
 
   return (s: VehicleState): Controls => {
@@ -152,7 +150,7 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       // rate damping on, and that lasts until the main parachute is out. On any other descent it hangs from the drogue on.
       if (s.abortAt !== null && !s.shed.tower) return c;
       if (s.mainAt !== null || (s.drogueAt !== null && s.abortAt === null)) return c;
-      const up = upAt(s.r, s.t);
+      const up = vehicle.frame.up(s.r, s.t);
       const wind = sub(s.v, cross(earth, s.r));
       if (s.enteredAt === null && s.shed.tower && length(wind) > 1) {
         // blunt end first: for retrofire, pitched as the record has it; after the pack has gone, straight into the air
@@ -258,8 +256,8 @@ export class Tally {
     if (state.separation && r.separationSpeed === 0) {
       // the stack as it was at the instant they parted, before the push
       const { r: at, v } = state.separation;
-      const up = upAt(at, state.separation.t);
-      const wind = sub(v, cross([0, 0, EARTH_ROTATION_RATE], at));
+      const up = vehicle.frame.up(at, state.separation.t);
+      const wind = sub(v, cross(vehicle.frame.spin, at));
       r.separationSpeed = length(v);
       r.separationGroundSpeed = length(wind);
       r.separationClimb = 90 - angleBetween(v, up) / DEG;

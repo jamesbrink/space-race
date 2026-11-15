@@ -8,11 +8,12 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { fly } from '../src/sim/fly.ts';
-import { blowOf, upAt, windAt } from '../src/sim/forces.ts';
+import { blowOf, windAt } from '../src/sim/forces.ts';
 import { predict } from '../src/sim/predict.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
 import { cross, DEG, dot, enuAxes, geodeticToEcef, length, siteFrame, sub } from '../src/world/frames.ts';
+import { LIFTOFF } from '../src/world/earthframe.ts';
 
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
@@ -65,14 +66,14 @@ test('a wind is named for where it blows from: the air moves the other way, and 
 test('standing on the pad, the air goes by at the surface wind; with no sounding, not at all', () => {
   const r = geodeticToEcef(SITE);
   const v = cross([0, 0, EARTH_ROTATION_RATE], r);
-  near(windAt(r, v, 0, SEA).airspeed, 0, 1e-9, 'calm');
-  const air = windAt(r, v, 0, SEA, blowOf(TR.winds));
+  near(windAt(LIFTOFF, r, v, 0, SEA).airspeed, 0, 1e-9, 'calm');
+  const air = windAt(LIFTOFF, r, v, 0, SEA, blowOf(TR.winds));
   near(air.airspeed / KT, 12, 0.3, 'twelve knots over the pad');
   near(length(air.ground), 0, 1e-9, 'and it is not moving over the ground');
   // from 070: the air comes at it from east of north
   const axes = enuAxes(SITE);
   assert.ok(dot(air.wind, axes.east) > 0 && dot(air.wind, axes.north) > 0, 'it meets air coming from the north-east');
-  assert.ok(Math.abs(dot(air.wind, upAt(r, 0))) < 1e-9, 'level');
+  assert.ok(Math.abs(dot(air.wind, LIFTOFF.up(r, 0))) < 1e-9, 'level');
 });
 
 const windy = fly(TR, SITE, SEA);
@@ -128,7 +129,7 @@ test('what the day’s wind does to the flight, against the record: stated, both
 const liveDay = flyLive(vehicle(TR, SITE, SEA));
 const liveCalm = flyLive(vehicle(CALM, SITE, SEA));
 /** What the Postlaunch Report plots as its angle of attack (Figure 4.2-8): the gyros' pitch less the Earth-fixed flight-path angle, degrees. */
-const gyro = (s) => Math.asin(dot(s.axis, upAt(s.r, s.t))) / DEG - s.groundClimb;
+const gyro = (s) => Math.asin(dot(s.axis, LIFTOFF.up(s.r, s.t))) / DEG - s.groundClimb;
 
 test('the report’s angle of attack going up (Figure 4.2-8) is the wind’s doing: about 1.5 degrees at 01:32', (t) => {
   // The record, read off the figure to 0.3 of a degree and 2 s: near nothing to 00:25, a peak of about +1.5 degrees at

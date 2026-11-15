@@ -27,21 +27,8 @@
  * body's drag is these three summed at each instant, which is the usual approximation and no more.
  */
 import type { AeroSurface, Body, MassPart, ShedBody, Winds } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import {
-  add,
-  cross,
-  ecefToGeodetic,
-  ecefToInertial,
-  enuAxes,
-  type Geodetic,
-  geodeticToEcef,
-  inertialToEcef,
-  length,
-  scale,
-  sub,
-  type Vec3,
-} from '../world/frames.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
+import { add, cross, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { type Air, atmosphere } from './atmosphere.ts';
 import { type MassProperties, massOf, type Quat, turn } from './rigid.ts';
 
@@ -102,8 +89,6 @@ export function airForces(shape: Shape, centre: number, through: Vec3, w: Vec3, 
   return { force: [fx, fy, fz], torque: [0, ty, tz] };
 }
 
-const EARTH_SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
-
 /** The air's own motion over the ground at a height, m above the sea: metres a second toward the east and toward the north. */
 export type Blow = (altitude: number) => readonly [east: number, north: number];
 
@@ -143,7 +128,7 @@ export function blowOf(winds: Winds | undefined | null): Blow | null {
   };
 }
 
-/** The air at a place and what a body moving through it there meets: `r` and `v` in the frame that does not turn, `at` seconds from liftoff. */
+/** The air at a place and what a body moving through it there meets: `r` and `v` in the flight's frame (world/earthframe.ts), `at` seconds from liftoff. */
 export interface Wind {
   /** Height above the sea, m. */
   altitude: number;
@@ -168,22 +153,22 @@ export function floorAt(site: Geodetic, seaLevel: number): (latitude: number, lo
   };
 }
 
-export function windAt(r: Vec3, v: Vec3, at: number, seaLevel: number, blow: Blow | null = null): Wind {
-  const place = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * at));
+export function windAt(frame: EarthFrame, r: Vec3, v: Vec3, at: number, seaLevel: number, blow: Blow | null = null): Wind {
+  const place = frame.place(r, at);
   const altitude = place.height - seaLevel;
   const air = atmosphere(altitude);
-  const ground = sub(v, cross(EARTH_SPIN, r));
-  const wind = blow ? sub(ground, blowing(blow, place, altitude, at)) : ground;
+  const ground = sub(v, cross(frame.spin, r));
+  const wind = blow ? sub(ground, blowing(frame, blow, place, altitude, at)) : ground;
   const airspeed = length(wind);
   return { altitude, air, wind, airspeed, mach: airspeed / air.soundSpeed, q: 0.5 * air.density * airspeed * airspeed, ground };
 }
 
-/** The air's motion over the ground at a place, as a vector in the frame that does not turn: level there, by the compass there. */
-export function blowing(blow: Blow, place: { latitude: number; longitude: number }, altitude: number, at: number): Vec3 {
+/** The air's motion over the ground at a place, as a vector in the flight's frame: level there, by the compass there. */
+export function blowing(frame: EarthFrame, blow: Blow, place: { latitude: number; longitude: number }, altitude: number, at: number): Vec3 {
   const [east, north] = blow(altitude);
   if (east === 0 && north === 0) return [0, 0, 0];
   const axes = enuAxes(place);
-  return ecefToInertial(add(scale(axes.east, east), scale(axes.north, north)), EARTH_ROTATION_RATE * at);
+  return frame.toInertial(add(scale(axes.east, east), scale(axes.north, north)), at);
 }
 
 /** Something let go, as it is the instant it leaves: a rigid body's whole state and what it weighs where. */
@@ -258,18 +243,4 @@ export function pieceOf(body: Body, def: ShedBody, filled: number | ((part: Mass
   }
   const mass = def.mass.value;
   return { mass, centre: def.centre.value, roll: mass * def.gyration.roll.value ** 2, across: mass * def.gyration.across.value ** 2 };
-}
-
-/**
- * Up at a place: the ellipsoid's normal there (frames.ts: what level is measured from), as a direction in the frame that
- * does not turn, `at` seconds from liftoff. Not the line from the Earth's centre, which at 28 degrees north leans a
- * sixth of a degree from it: climb angles, the retro attitude and a landing's vertical speed are all measured from this.
- */
-export function upAt(r: Vec3, at: number): Vec3 {
-  return upOver(ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * at)), at);
-}
-
-/** The same, over a place already known by its latitude and longitude. */
-export function upOver(place: { latitude: number; longitude: number }, at: number): Vec3 {
-  return ecefToInertial(enuAxes(place).up, EARTH_ROTATION_RATE * at);
 }

@@ -17,7 +17,7 @@ function cabin(nodes, instruments) {
     redraw: () => redrawn++,
     reshade: () => {},
   };
-  const flight = { site: { zone: { utcOffset: -5 }, bearingX: { value: 0 } } };
+  const flight = { launch: '1961-05-05T14:34:13Z', site: { zone: { utcOffset: -5 }, bearingX: { value: 0 } } };
   const model = { cabin: { instruments, within: [] } };
   return { cabin: new Cabin(host, flight, model, group, full, []), redrawn: () => redrawn };
 }
@@ -70,7 +70,7 @@ function lit(ways, throws) {
   full.add(lever, ...tubes, wall, plain);
   const lamps = [new THREE.PointLight(0xffffff, 0.7), new THREE.PointLight(0xffffff, 0.5)];
   const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
-  const flight = { site: { zone: { utcOffset: -5 }, bearingX: { value: 0 } } };
+  const flight = { launch: '1961-05-05T14:34:13Z', site: { zone: { utcOffset: -5 }, bearingX: { value: 0 } } };
   const lighting = { control: 'Ctl_Lights', name: 'Cabin lights', about: 'A switch.', ways, fittings: ['Lamp_A', 'Lamp_B'] };
   const cabin = new Cabin(host, flight, { cabin: { instruments: [], within: [], lighting } }, group, full, lamps);
   return { cabin, lever, tubes, wall, plain, lamps };
@@ -185,7 +185,7 @@ function deckCabin() {
   const globe = Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshStandardMaterial()), { name: 'Globe' });
   full.add(burn, dark, lever, globe);
   const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
-  const flight = { site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
+  const flight = { launch: '1961-04-12T06:07:00Z', site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
   const model = {
     cabin: {
       instruments: [],
@@ -263,7 +263,7 @@ test('a thrown control steps through its positions on a click, holds there, and 
   ring.position.set(1, 0, 0);
   full.add(tumbler, ring);
   const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
-  const flight = { site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
+  const flight = { launch: '1961-04-12T06:07:00Z', site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
   const controls = [
     { node: 'Ctl_Tumbler', name: 'Tumbler', about: 'Three ways.', says: ['Up', 'Middle', 'Down'] },
     { node: 'Ctl_Ring', name: 'Ring', about: 'Pulled.' },
@@ -358,7 +358,7 @@ function modal(finder) {
       return finder(start);
     },
   };
-  const flight = { site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
+  const flight = { launch: '1961-04-12T06:07:00Z', site: { zone: { utcOffset: 3 }, bearingX: { value: 0 } } };
   const model = {
     cabin: {
       instruments: [],

@@ -75,6 +75,7 @@
  */
 import type { MassPart, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
   add,
   angleBetween,
@@ -82,12 +83,10 @@ import {
   DEG,
   dot,
   ecefToGeodetic,
-  ecefToInertial,
   enuAxes,
   fromHorizontal,
   type Geodetic,
   geodeticToEcef,
-  inertialToEcef,
   length,
   scale,
   sub,
@@ -96,7 +95,7 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, G0, gravity, MEAN_RADIUS, P0, type Phase, type Sample } from './fly.ts';
-import { airForces, blowOf, floorAt, part, pieceOf, type Release, upAt, upOver, windAt as airAt } from './forces.ts';
+import { airForces, blowOf, floorAt, part, pieceOf, type Release, windAt as airAt } from './forces.ts';
 import { loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import { pressed } from './staging.ts';
 import {
@@ -256,6 +255,8 @@ export type Pilot = (state: VehicleState) => Controls;
 export interface Vehicle {
   readonly trajectory: Trajectory;
   readonly site: Geodetic;
+  /** The frame it is flown in (world/earthframe.ts): its states' positions, velocities and attitudes are in it. */
+  readonly frame: EarthFrame;
   /** The launch axes in the frame that does not turn: up, level along the azimuth, and level to its left. */
   readonly launch: { up: Vec3; downrange: Vec3; left: Vec3 };
   /** The tilt programme's axis at `t`, in the same frame (fly.ts: axisOf). */
@@ -301,6 +302,8 @@ export interface VehicleOptions {
   floor?: (latitude: number, longitude: number) => number;
   /** A launcher that is not upright: the long axis's elevation as it stands, degrees, leaning along the azimuth. 90 unless given. */
   elevation?: number;
+  /** The frame it is flown in (world/earthframe.ts): fixed at liftoff unless given. */
+  frame?: EarthFrame;
 }
 
 /** A flight's vehicle, ready to be flown. `seaLevel` as in fly.ts. */
@@ -309,16 +312,17 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const body = tr.body;
   if (!body) throw new Error('this trajectory has no `body`: it can be flown by fly(), not steered');
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
-  const earth: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const frame = options.frame ?? LIFTOFF;
+  const earth = frame.spin;
   const pad = geodeticToEcef(site);
   // the day's wind: everything the air does here is done by air that moves with it
   const blow = blowOf(tr.winds);
-  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(r, v, at, sea, blow);
-  const programme = axisOf(tr, site);
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
+  const programme = axisOf(tr, site, frame);
   const up0 = programme(-1e9);
   // (level along the launch azimuth, from the azimuth itself: a programme that never tilts has no direction to give)
   const [east, north] = fromHorizontal(tr.azimuth.value * DEG, 0);
-  const downrange0 = unit(add(scale(enuAxes(site).east, east), scale(enuAxes(site).north, north)));
+  const downrange0 = frame.toInertial(unit(add(scale(enuAxes(site).east, east), scale(enuAxes(site).north, north))), 0);
   const left0 = cross(up0, downrange0);
   // (as it stands: upright, unless the launcher leans it along the azimuth)
   const lean = (90 - (options.elevation ?? 90)) * DEG;
@@ -399,7 +403,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const retroBurn = tr.retro.burn.value;
   const retroEnd = retroOffsets[retroOffsets.length - 1]! + retroBurn;
 
-  const fixed = (r: Vec3, at: number): Vec3 => inertialToEcef(r, EARTH_ROTATION_RATE * at);
+  const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);
   const rangeOf = (r: Vec3, at: number): number => angleBetween(fixed(r, at), pad) * MEAN_RADIUS;
   const floor = options.floor ?? floorAt(site, seaLevel);
 
@@ -608,9 +612,9 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
 
   /** Standing on the turning Earth at `at`, with `mass` aboard: where that puts the centre of mass, and how it lies. */
   const standing = (s: VehicleState, at: number, mass: number): Dyn => {
-    const angle = EARTH_ROTATION_RATE * at;
-    const q = multiply(aboutAxis([0, 0, 1], angle), q0);
-    const r = add(ecefToInertial(pad, angle), scale(turn(q, X), massNow(s, mass).centre));
+    // (q0 is how it stood at liftoff in the flight's frame: turned since by the Earth's turning since)
+    const q = multiply(aboutAxis([0, 0, 1], EARTH_ROTATION_RATE * at), q0);
+    const r = add(frame.toInertial(pad, at), scale(turn(q, X), massNow(s, mass).centre));
     return { r, v: cross(earth, r), q, w: unturn(q, earth), mass };
   };
 
@@ -944,7 +948,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       // it leaves when what holds it up is more than what holds it down: the Earth's turning helps a little
       const here: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass };
       const lifts = add(add(gravity(s.r), scale(forces(here, s.t, s).force, 1 / s.mass)), scale(cross(earth, cross(earth, s.r)), -1));
-      if (dot(lifts, upAt(s.r, s.t)) > 0) s.held = false;
+      if (dot(lifts, frame.up(s.r, s.t)) > 0) s.held = false;
       else return { ...s, ...standing(s, t, burning(s) ? s.mass - flow * s.throttle * h : s.mass), t, ticks };
     }
     const before: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass };
@@ -968,7 +972,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (dry !== s) s = dry;
     const was = heightOf(foot(s, before), s.t);
     const now = heightOf(foot(s, after), t);
-    const up = upOver(now, t);
+    const up = frame.upOver(now, t);
     const wind = sub(after.v, cross(earth, after.r));
     const falling = dot(wind, up) < 0;
     if (falling && now.height <= now.ground) {
@@ -980,7 +984,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       const at = s.t + h * part;
       const through = sub(v, cross(earth, r));
       const here = ecefToGeodetic(fixed(r, at));
-      const plumb = upOver(here, at);
+      const plumb = frame.upOver(here, at);
       const vertical = -dot(through, plumb);
       return {
         ...s,
@@ -1064,7 +1068,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     // the point fly.ts flies: the stack's base, and after separation that point as the spacecraft carried it off
     const point = s.separation ? sub(centre, scale(s.separation.axis, capsule.centre.value)) : sub(s.r, scale(axis, f.props.centre));
     const here = ecefToGeodetic(fixed(s.separation ? s.r : point, s.t));
-    const up = upOver(here, s.t);
+    const up = frame.upOver(here, s.t);
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(clamp(dot(v, up) / length(v), -1, 1)) / DEG : 90);
     return {
       t: s.t,
@@ -1117,6 +1121,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   return {
     trajectory: tr,
     site,
+    frame,
     launch: { up: up0, downrange: downrange0, left: left0 },
     programme,
     start,

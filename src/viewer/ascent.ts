@@ -7,24 +7,9 @@ import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { datedOf, type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import {
-  add,
-  cross,
-  ecefToGeodetic,
-  ecefToSite,
-  ecefToSiteDirection,
-  inertialToEcef,
-  inertialToEcefVelocity,
-  length,
-  type Site,
-  scale,
-  siteFrame,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
+import { add, cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { fireLevel } from './fires.ts';
 
@@ -114,6 +99,8 @@ export class Ascent {
   readonly model: string;
   private readonly flight: SitedFlight;
   private readonly site: Site;
+  /** The frame the runs on show are in (world/earthframe.ts `frameOf`): every place and direction they give goes through it. */
+  private readonly frame: EarthFrame;
   private record: Run | null = null;
   private live: Run | null = null;
   private axis: ((t: number) => Vec3) | null = null;
@@ -138,6 +125,7 @@ export class Ascent {
     this.flight = flight;
     this.model = flight.flies!.model;
     this.site = siteFrame(flight.site);
+    this.frame = frameOf(flight);
     const def = flight.models.find((m) => m.id === this.model);
     this.home.set(...(def?.position ?? [0, 0, 0]));
     const datum = flight.flies!.datum ?? this.home.y;
@@ -175,7 +163,7 @@ export class Ascent {
     if (!this.record && !this.flight.trajectory) this.record = orbitalRecord(this.flight);
     if (!this.record) {
       const tr = this.flight.trajectory!;
-      const { samples, results } = flownOnce(tr, this.site, this.flight.site.seaLevel.value);
+      const { samples, results } = flownOnce(tr, this.site, this.flight.site.seaLevel.value, this.frame);
       const when = (t: number): number => (Number.isFinite(t) ? t : Infinity);
       const out = { drogue: when(results.drogueAt), main: when(results.mainAt) };
       this.record = {
@@ -187,7 +175,7 @@ export class Ascent {
         live: false,
         out,
       };
-      this.axis = axisOf(tr, this.site);
+      this.axis = axisOf(tr, this.site, this.frame);
     }
     return this.record;
   }
@@ -214,7 +202,7 @@ export class Ascent {
     const on = THREE.MathUtils.smoothstep(t, from, from + 0.5) * (1 - THREE.MathUtils.smoothstep(t, to, to + 0.5));
     if (on <= 0) return { on: 0, vacuum: 1, fire };
     const { r } = between(this.flown().samples, t);
-    const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
+    const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
     return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25, fire };
   }
 
@@ -244,7 +232,7 @@ export class Ascent {
     });
     if (!levels.some((l) => l.main > 0 || l.steering > 0)) return out(1, levels);
     const { r } = between(this.flown().samples, t);
-    const height = ecefToGeodetic(inertialToEcef(r, EARTH_ROTATION_RATE * t)).height - this.flight.site.seaLevel.value;
+    const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
     return out(1 - (atmosphere(height).pressure / 101_325) ** 0.25, levels);
   }
 
@@ -311,19 +299,18 @@ export class Ascent {
     }
     const clamped = Math.min(t, end.t);
     const { r, v } = between(run.samples, clamped, run.live ? (s) => (s as LiveSample).centre : undefined);
-    const spin = EARTH_ROTATION_RATE * clamped;
-    const here = inertialToEcef(r, spin);
+    const here = this.frame.toFixed(r, clamped);
     // (its motion through the air, as the simulator pulls on it: in the day's wind it drifts with the air, and a canopy drawn
     // against its motion over the ground stood off to one side of a spacecraft hanging plumb)
-    const through = windAt(r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
-    moment.air.copy(toThree(ecefToSiteDirection(this.site, inertialToEcef(through, spin))));
+    const through = windAt(this.frame, r, v, clamped, this.flight.site.seaLevel.value, blowOf(tr.winds)).wind;
+    moment.air.copy(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(through, clamped))));
     moment.up.copy(toThree(ecefToSiteDirection(this.site, unit(here))));
     if (moment.down >= 0) {
       moment.air.set(0, 0, 0);
       // (a flight flown by hand comes down where its centre of mass meets the surface: sim/vehicle.ts)
       // (it came down on its blunt end, which is `capsule.base` under its centre of mass: sim/vehicle.ts)
       moment.floor =
-        toThree(ecefToSite(this.site, inertialToEcef((end as LiveSample).centre, EARTH_ROTATION_RATE * end.t))).y -
+        toThree(ecefToSite(this.site, this.frame.toFixed((end as LiveSample).centre, end.t))).y -
         (tr.body?.capsule.base?.value ?? 0) +
         this.stood(end.t).y;
     }
@@ -360,11 +347,10 @@ export class Ascent {
     const end = track[track.length - 1]!;
     const at = Math.min(t, end.t);
     const { r, v } = between(track, at);
-    const spin = EARTH_ROTATION_RATE * at;
-    const here = inertialToEcef(r, spin);
+    const here = this.frame.toFixed(r, at);
     return {
       p: toThree(ecefToSite(this.site, here)),
-      air: t >= end.t ? new THREE.Vector3() : toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin))),
+      air: t >= end.t ? new THREE.Vector3() : toThree(ecefToSiteDirection(this.site, this.frame.velocityToFixed(r, v, at))),
       up: toThree(ecefToSiteDirection(this.site, unit(here))),
       landed: end.t,
     };
@@ -484,7 +470,7 @@ export class Ascent {
     const into = padTurn.clone().invert();
     let axes: THREE.Vector3[];
     if (live?.attitude) {
-      axes = BODY.map((b) => toThree(ecefToSiteDirection(this.site, inertialToEcef(turn(live.attitude, b), EARTH_ROTATION_RATE * live.t))));
+      axes = BODY.map((b) => toThree(ecefToSiteDirection(this.site, this.frame.toFixed(turn(live.attitude, b), live.t))));
     } else {
       // on the pad the nose is up, +Z against the azimuth: the site frame's +X bears `bearingX`, +Z a quarter turn clockwise of it
       const bearing = THREE.MathUtils.degToRad(this.flight.trajectory!.azimuth.value - this.flight.site.bearingX.value);
@@ -538,7 +524,7 @@ export class Ascent {
       // (a strap-on's is on its own axis, out from the stack's the way its +Z points as it leaves: sim/shed.ts `apart`)
       const apart = body.shedder.def.apart;
       if (apart) {
-        const out = inertialToEcef(turn(body.shedder.release.q, [0, 0, 1]), EARTH_ROTATION_RATE * from.at);
+        const out = this.frame.toFixed(turn(body.shedder.release.q, [0, 0, 1]), from.at);
         centre.addScaledVector(toThree(ecefToSiteDirection(this.site, out)), apart.across.value);
       }
       held = this.carried[i] = {
@@ -568,7 +554,7 @@ export class Ascent {
     const on = this.flight.flies!.drops[i]?.on;
     if (run.live) return run.sheds?.get(on);
     const tr = this.flight.trajectory!;
-    this.sheds ??= new Sheds(tr, this.site, this.flight.site.seaLevel.value);
+    this.sheds ??= new Sheds(tr, this.site, this.flight.site.seaLevel.value, { frame: this.frame });
     const had = this.sheds.get(on);
     const def = tr.body?.sheds?.find((d) => d.on === on);
     if (had || !def) return had;
@@ -576,20 +562,19 @@ export class Ascent {
     const { r, v } = between(run.samples, at);
     // which way the long axis points, as `place` has it: the gyros' going up, heat shield first once the spacecraft is alone
     const riding = at <= tr.separation.at.value;
-    const through = sub(v, cross([0, 0, EARTH_ROTATION_RATE], r));
+    const through = sub(v, cross(this.frame.spin, r));
     const axis = riding || length(through) < 1e-6 ? this.axis!(at) : scale(unit(through), -1);
     return this.sheds.add(recordRelease(tr, def, at, r, v, axis, riding));
   }
 
   /** A place in the frame that does not turn, at `t`, in the scene's frame. */
   private where(r: Vec3, t: number): THREE.Vector3 {
-    return toThree(ecefToSite(this.site, inertialToEcef(r, EARTH_ROTATION_RATE * t)));
+    return toThree(ecefToSite(this.site, this.frame.toFixed(r, t)));
   }
 
   /** A body's three axes (attitude `q`, body to the frame that does not turn) at `t`, as directions in the site's frame. */
   private axes(q: Quat, t: number, into: THREE.Matrix4): THREE.Matrix4 {
-    const spin = EARTH_ROTATION_RATE * t;
-    const [x, y, z] = BODY.map((b) => toThree(ecefToSiteDirection(this.site, inertialToEcef(turn(q, b), spin))));
+    const [x, y, z] = BODY.map((b) => toThree(ecefToSiteDirection(this.site, this.frame.toFixed(turn(q, b), t))));
     return into.makeBasis(x!, y!, z!);
   }
 
@@ -642,13 +627,12 @@ export class Ascent {
     const separation = this.flight.trajectory!.separation.at.value;
     const turned = Math.max(separation, this.flight.flies!.turned ?? separation);
     const { r, v } = between(samples, t);
-    const spin = EARTH_ROTATION_RATE * t;
-    const at = ecefToSite(this.site, inertialToEcef(r, spin));
+    const at = ecefToSite(this.site, this.frame.toFixed(r, t));
     // which way the axis points: the gyros' going up, heat shield first coming down
-    const up = (s: number) => toThree(ecefToSiteDirection(this.site, inertialToEcef(axis(s), EARTH_ROTATION_RATE * s)));
+    const up = (s: number) => toThree(ecefToSiteDirection(this.site, this.frame.toFixed(axis(s), s)));
     this.arc.setFromUnitVectors(Y, up(Math.min(t, separation)));
     if (t > separation) {
-      const air = toThree(ecefToSiteDirection(this.site, inertialToEcefVelocity(r, v, spin)));
+      const air = toThree(ecefToSiteDirection(this.site, this.frame.velocityToFixed(r, v, t)));
       const back = air.lengthSq() > 1e-6 ? air.normalize().negate() : Y.clone();
       const k = turned > separation ? THREE.MathUtils.smoothstep(t, separation, turned) : 1;
       // Nearly end for end. Where the spacecraft names the side it keeps toward the Earth (its periscope's: the pilot is
@@ -658,7 +642,7 @@ export class Ascent {
       const end = new THREE.Quaternion().setFromUnitVectors(Y, back);
       const keel = this.keel();
       if (keel) {
-        const down = toThree(ecefToSiteDirection(this.site, inertialToEcef(r, spin)))
+        const down = toThree(ecefToSiteDirection(this.site, this.frame.toFixed(r, t)))
           .normalize()
           .negate();
         const under = down.addScaledVector(back, -down.dot(back));
@@ -744,14 +728,13 @@ export class Ascent {
     const qb = new THREE.Quaternion().setFromRotationMatrix(this.basis(b, new THREE.Matrix4()).multiply(stood));
     this.arc.copy(qa).slerp(qb, k);
     quaternion.copy(this.arc).multiply(padTurn);
-    const spin = EARTH_ROTATION_RATE * t;
     // (the model's origin from the stack's base, turned as the body is; and what the site stood the base on, while that lasts)
     const offset = this.along.clone().applyQuaternion(this.arc).add(this.stood(t));
     // (by the earlier of the two: up to the first sample of the spacecraft alone the point flown is the stack's, which that
     // sample's `r` carries on, so the model does not jump as the reference changes)
     if (riding(a)) {
       const { r } = beyond > 0 ? a : between(samples, t);
-      position.copy(toThree(ecefToSite(this.site, inertialToEcef(r, spin)))).add(offset);
+      position.copy(toThree(ecefToSite(this.site, this.frame.toFixed(r, t)))).add(offset);
       return true;
     }
     // where the model's origin lay from the centre of mass, in the body's axes, when the spacecraft left
@@ -763,17 +746,17 @@ export class Ascent {
     const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
     const centre = beyond > 0 ? a.centre : between(samples, t, (s) => (s as LiveSample).centre).r;
     const now = turn(nlerp(a.attitude, b.attitude, k), arm);
-    const middle = toThree(ecefToSite(this.site, inertialToEcef(centre, spin)));
+    const middle = toThree(ecefToSite(this.site, this.frame.toFixed(centre, t)));
     position
       .copy(middle)
-      .add(toThree(ecefToSiteDirection(this.site, inertialToEcef(now, spin))))
+      .add(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(now, t))))
       .add(offset);
     this.underCanopy(t, middle, position, quaternion);
     // flooded afloat, it goes down: out of sight (its own height, 3.5 m, under the sea) in `under` seconds
     const sinks = this.live?.sinks;
     if (sinks && asked > sinks.at) {
       const depth = SUNK_OUT * Math.min(1, (asked - sinks.at) / sinks.under);
-      position.addScaledVector(toThree(ecefToSiteDirection(this.site, inertialToEcef(unit(centre), spin))), -depth);
+      position.addScaledVector(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(unit(centre), t))), -depth);
     }
     return true;
   }
@@ -928,7 +911,7 @@ export function orbitalFlown(flight: SitedFlight): FlownWhole {
   if (!whole)
     orbitalWholes.set(
       o,
-      (whole = flyWhole(o, siteFrame(flight.site), julianDate(flight.launch), flight.site.seaLevel.value, undefined, 1, 'published')),
+      (whole = flyWhole(o, siteFrame(flight.site), datedOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
     );
   return whole;
 }
@@ -940,11 +923,13 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const jd = julianDate(flight.launch);
   const whole = orbitalFlown(flight);
   const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-  const samples = recordSamples(o, whole, jd, centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  const samples = recordSamples(o, whole, datedOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
-  const sheds = new Sheds({ area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } }, site, flight.site.seaLevel.value);
+  const sheds = new Sheds({ area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } }, site, flight.site.seaLevel.value, {
+    frame: frameOf(flight),
+  });
   for (const def of o.ascent!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
     if (i < 0 || !def.mass || !def.centre || !def.gyration) continue;
@@ -979,7 +964,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     out: { drogue: Infinity, main: Infinity },
     sheds,
     fires: firesOf(flight, whole),
-    descent: descentOf(whole, jd, centre, o.descent?.ground.value),
+    descent: descentOf(whole, datedOf(flight), centre, o.descent?.ground.value),
   };
   orbitalRuns.set(o, run);
   return run;

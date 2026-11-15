@@ -6,6 +6,7 @@
 //
 //   pnpm figures            what moved against the capture (exit 1 if anything did), largest first
 //   pnpm figures --write    record this tree's figures as the capture
+//   pnpm figures --against <file> [--write]   the same against (or into) another file
 //
 // A refactor of the simulator quotes this diff in its commit, and a figure it moves is explained there. Exact doubles
 // differ between machines (Math's functions are not the same last bit on every libm), so the capture is made on one
@@ -43,10 +44,12 @@ import {
   unit,
 } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
-import { greenwichSiderealTime, julianDate } from '../src/world/time.ts';
+import { datedOf, earthFrame } from '../src/world/earthframe.ts';
 
 const root = join(import.meta.dirname, '..');
-const FIXTURE = join(root, 'tests/fixtures/figures.json');
+// (`--against <file>`: another capture, such as one made on this machine before a change)
+const against = process.argv.indexOf('--against');
+const FIXTURE = against > 0 ? process.argv[against + 1] : join(root, 'tests/fixtures/figures.json');
 const write = process.argv.includes('--write');
 
 const flights = (
@@ -156,15 +159,16 @@ for (const flight of flights.filter((f) => f.trajectory)) {
 for (const flight of flights.filter((f) => f.orbital && f.site)) {
   const o = flight.orbital;
   const site = siteFrame(flight.site);
-  const jd = julianDate(flight.launch);
+  const dated = datedOf(flight);
+  const lift = earthFrame(dated.jd0, false);
   const sea = flight.site.seaLevel.value;
 
-  put(flight, 'coast', flyOrbit(o, site, jd, sea).results);
+  put(flight, 'coast', flyOrbit(o, site, dated, sea).results);
   if (!o.ascent) continue;
 
-  const x = steer(o, site, jd, sea);
+  const x = steer(o, site, dated, sea);
   put(flight, 'solved', x);
-  const shown = flyWhole(o, site, jd, sea, x, 10, 'published');
+  const shown = flyWhole(o, site, dated, sea, x, 10, 'published');
   const a = shown.ascent;
   put(flight, 'ascent', a.summary);
   for (const [id, e] of Object.entries(a.at)) put(flight, `ascent@${id}`, { t: e.t, altitude: e.altitude, speed: e.speed, mass: e.mass });
@@ -174,13 +178,13 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     for (const [id, l] of Object.entries(shown.down.landed)) put(flight, `down:${id}`, l);
     put(flight, 'down', { apart: shown.down.apart });
   }
-  const flown = flyWhole(o, site, jd, sea, x, 10, 'flown');
+  const flown = flyWhole(o, site, dated, sea, x, 10, 'flown');
   put(flight, 'flown', { ...flown.coast.results, samples: flown.coast.samples.length });
 
   // the live staged vehicle, from the pad, by its pilot: steered, and with the law's attitude placed
   for (const prescribed of [false, true]) {
-    const sv = stagedVehicle(o, site, jd, sea, x);
-    const pilot = stagedPilot(sv, x, site, jd, sea, { guidance: true, sequence: true, prescribed });
+    const sv = stagedVehicle(o, site, dated, sea, x);
+    const pilot = stagedPilot(sv, x, site, dated, sea, { guidance: true, sequence: true, prescribed });
     let s = sv.start();
     s = sv.tick(s, {
       pitch: 0,
@@ -238,8 +242,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   }
 
   // the predictor from fixed states (in fly.ts's frame, as the deck gives them)
-  const g = greenwichSiderealTime(jd);
-  const flat = (u) => inertialToEcef(u, g);
+  const flat = (u) => inertialToEcef(u, dated.gast0);
   const where = { site, seaLevel: sea };
   {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
@@ -248,7 +251,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= o.retro.on.value - 2400) : null;
     const from = late ?? sep;
     const start = { t: from.t, r: flat(from.r), v: flat(from.v) };
-    const job = propagate(spacecraft(o, jd, site, sea, start), start, where);
+    const job = propagate(spacecraft(o, lift, site, sea, start), start, where);
     job.run();
     put(flight, 'predict:spacecraft', pathFigures(job.result));
   }
@@ -261,7 +264,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     put(flight, 'predict:stack@100', pathFigures(job.result));
   }
   {
-    const sv = stagedVehicle(o, site, jd, sea, x);
+    const sv = stagedVehicle(o, site, dated, sea, x);
     for (const t0 of [40, 150, 400]) {
       const s = a.samples.find((p) => p.t >= t0);
       const state = {
@@ -283,7 +286,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? a.thetaTurn : null,
           plan: o,
-          launchJd: jd,
+          frame: lift,
         }),
         start,
         where,
@@ -317,7 +320,7 @@ function headingOf(s) {
 const keys = Object.keys(figures).sort();
 if (write) {
   writeFileSync(FIXTURE, `${JSON.stringify(Object.fromEntries(keys.map((k) => [k, figures[k]])), null, 2)}\n`);
-  console.log(`${keys.length} figures written to tests/fixtures/figures.json`);
+  console.log(`${keys.length} figures written to ${FIXTURE}`);
   process.exit(0);
 }
 

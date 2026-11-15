@@ -12,7 +12,8 @@ import {
   type Start,
 } from '../sim/predict.ts';
 import type { SitedFlight } from '../types.ts';
-import { EARTH_ROTATION_RATE, WGS84_B } from '../world/bodies.ts';
+import { WGS84_B } from '../world/bodies.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
 import { sceneDepthGlsl, uDepthRange, uSceneDepth } from './overlay.ts';
@@ -481,6 +482,8 @@ export class FlightPath {
   private readonly uniforms: Record<string, THREE.IUniform>;
   private readonly materials: THREE.ShaderMaterial[] = [];
   private readonly flight: SitedFlight;
+  /** The frame the runs and predictions shown are in (world/earthframe.ts). */
+  private readonly earth: EarthFrame;
   private readonly site: Site;
   private readonly source: PathSource;
   private readonly host: PathHost;
@@ -547,6 +550,7 @@ export class FlightPath {
     button?: HTMLElement | null,
   ) {
     this.flight = flight;
+    this.earth = frameOf(flight);
     this.source = source;
     this.host = host;
     this.site = siteFrame(flight.site);
@@ -817,6 +821,7 @@ export class FlightPath {
         points: MOST - 2,
         ...(want.burn ? { burn: want.burn } : {}),
         ...(want.sequence ? { sequence: want.sequence } : {}),
+        frame: this.earth,
       };
       const run = tr
         ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options)
@@ -864,7 +869,7 @@ export class FlightPath {
     out: Float64Array | number[],
     p: number,
   ): void {
-    const turned = EARTH_ROTATION_RATE * (frame === 'orbit' ? now : t);
+    const turned = this.earth.angle(frame === 'orbit' ? now : t);
     const cos = Math.cos(turned);
     const sin = Math.sin(turned);
     const x = r[o]! * cos + r[o + 1]! * sin;

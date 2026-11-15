@@ -17,7 +17,8 @@ import { fromAxes } from '../src/sim/rigid.ts';
 import { HANDS_OFF, vehicle } from '../src/sim/vehicle.ts';
 import { curveAt, curveOf, ERROR_PX, sample } from '../src/viewer/pathline.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { greenwichSiderealTime, julianDate } from '../src/world/time.ts';
+import { julianDate } from '../src/world/time.ts';
+import { datedOf, earthFrame } from '../src/world/earthframe.ts';
 
 /** A seeded generator (mulberry32), so the family is the same every run. */
 function seeded(seed) {
@@ -164,13 +165,13 @@ test('the orbital deck`s predictor on the same family: one result, the same inva
   const plan = structuredClone(vostok1.orbital);
   plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
   const site = siteFrame(vostok1.site);
-  const jd = julianDate(vostok1.launch);
+  const lift = earthFrame(julianDate(vostok1.launch), false);
   const rand = seeded(12);
   for (const [name, s] of family(1961)) {
     // (the orbital deck's coast flies from above the air: a lob from low down is the ballistic deck's)
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const p = propagate(spacecraft(plan, jd, site, vostok1.site.seaLevel.value, start), start, {
+    const p = propagate(spacecraft(plan, lift, site, vostok1.site.seaLevel.value, start), start, {
       site,
       seaLevel: vostok1.site.seaLevel.value,
     });
@@ -244,16 +245,17 @@ test('prediction against outcome: the orbital spacecraft, predicted, then flown 
   plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
   const site = siteFrame(vostok1.site);
   const sea = vostok1.site.seaLevel.value;
-  const jd = julianDate(vostok1.launch);
-  const g = greenwichSiderealTime(jd);
+  const dated = datedOf(vostok1);
+  const lift = earthFrame(dated.jd0, false);
+  const g = dated.gast0;
   const turn = (v, a) => [Math.cos(a) * v[0] - Math.sin(a) * v[1], Math.sin(a) * v[0] + Math.cos(a) * v[1], v[2]];
   for (const [name, s] of family(1961)) {
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const job = propagate(spacecraft(plan, jd, site, sea, start), start, { site, seaLevel: sea });
+    const job = propagate(spacecraft(plan, lift, site, sea, start), start, { site, seaLevel: sea });
     job.run();
     const p = job.result;
-    const run = flyOrbit(plan, site, jd, sea, 10, { t: 1000, r: turn(s.r, g), v: turn(s.v, g) });
+    const run = flyOrbit(plan, site, dated, sea, 10, { t: 1000, r: turn(s.r, g), v: turn(s.v, g) });
     let miss;
     let flownAt;
     let end;

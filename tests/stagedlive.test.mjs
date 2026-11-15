@@ -12,8 +12,8 @@ import { ascend, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
-import { julianDate } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
+import { datedOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -24,10 +24,10 @@ const all = await Promise.all(
 const flight = all.find((f) => f.id === 'ussr/vostok/vostok-1');
 const o = flight.orbital;
 const site = siteFrame(flight.site);
-const jd = julianDate(flight.launch);
+const dated = datedOf(flight);
 const sea = flight.site.seaLevel.value;
-const x = steer(o, site, jd, sea);
-const batch = ascend(o, site, jd, sea, x);
+const x = steer(o, site, dated, sea);
+const batch = ascend(o, site, dated, sea, x);
 const last = o.stages.length - 1;
 
 /**
@@ -35,8 +35,8 @@ const last = o.stages.length - 1;
  * take over; `cut` reports each stage's stop. Returns the states at each stage's stop and the last.
  */
 function fly({ guidance = true, sequence = true, steps, hands, prescribed = false, until = 2000 } = {}) {
-  const v = stagedVehicle(o, site, jd, sea, x);
-  const pilot = stagedPilot(v, x, site, jd, sea, { guidance, sequence, steps, hands, prescribed });
+  const v = stagedVehicle(o, site, dated, sea, x);
+  const pilot = stagedPilot(v, x, site, dated, sea, { guidance, sequence, steps, hands, prescribed });
   let s = v.start();
   s = v.tick(s, {
     pitch: 0,
@@ -125,8 +125,8 @@ test('the live staged vehicle, steered by its guidance on the record’s sequenc
 test('the live staged vehicle: the strap-ons let go while they burn take their thrust and propellant with them', () => {
   const early = 60;
   const sep = o.stages[0].separation.value;
-  const v = stagedVehicle(o, site, jd, sea, x);
-  const pilot = stagedPilot(v, x, site, jd, sea, { guidance: true, sequence: true });
+  const v = stagedVehicle(o, site, dated, sea, x);
+  const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true });
   let s = v.tick(v.start(), {
     pitch: 0,
     yaw: 0,
@@ -160,8 +160,8 @@ test('the live staged vehicle: the strap-ons let go while they burn take their t
 });
 
 test('the live staged vehicle: an engine cut by hand stops burning and leaves what it had not burned aboard', () => {
-  const v = stagedVehicle(o, site, jd, sea, x);
-  const pilot = stagedPilot(v, x, site, jd, sea, { guidance: true, sequence: false });
+  const v = stagedVehicle(o, site, dated, sea, x);
+  const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: false });
   let s = v.tick(v.start(), {
     pitch: 0,
     yaw: 0,
@@ -198,7 +198,7 @@ test('the live staged vehicle: an engine cut by hand stops burning and leaves wh
 });
 
 test('the live staged vehicle: by hand, the steering turns it while the engines burn, and not when none does', () => {
-  const v = stagedVehicle(o, site, jd, sea, x);
+  const v = stagedVehicle(o, site, dated, sea, x);
   let s = v.tick(v.start(), {
     pitch: 0,
     yaw: 0,
@@ -229,8 +229,8 @@ test('the live staged vehicle: by hand, the steering turns it while the engines 
 
 test('the live staged vehicle: what the estimated steering acceleration is worth (5 per cent more)', () => {
   const base = cutoff(fly().lastCut);
-  const v = stagedVehicle(o, site, jd, sea, x, o.ascent.steering.authority.value * 1.05 * DEG);
-  const pilot = stagedPilot(v, x, site, jd, sea, { guidance: true, sequence: true });
+  const v = stagedVehicle(o, site, dated, sea, x, o.ascent.steering.authority.value * 1.05 * DEG);
+  const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true });
   let s = v.tick(v.start(), {
     pitch: 0,
     yaw: 0,
@@ -259,10 +259,10 @@ test('the live staged vehicle: what the estimated steering acceleration is worth
  * up, or `until`. Returns the last state and the first at or after each instant in `look`.
  */
 function asked({ asks = [], sequence = true, guidance = true, hands, until = 2000, look = [] } = {}) {
-  const v = stagedVehicle(o, site, jd, sea, x);
+  const v = stagedVehicle(o, site, dated, sea, x);
   let now = 0;
   const queue = [...asks].sort((a, b) => a.at - b.at);
-  const pilot = stagedPilot(v, x, site, jd, sea, {
+  const pilot = stagedPilot(v, x, site, dated, sea, {
     guidance,
     sequence,
     hands: hands ? () => hands(now) : undefined,
@@ -367,9 +367,9 @@ test('the structure: turned across the wind at its greatest dynamic pressure it 
 
 test('the sequencer taken and handed back: off and on again with nothing due between, the record’s flight to the last bit; off over a step, that step comes when it is on again', () => {
   const fly = (off, on) => {
-    const v = stagedVehicle(o, site, jd, sea, x);
+    const v = stagedVehicle(o, site, dated, sea, x);
     const options = { guidance: true, sequence: true };
-    const pilot = stagedPilot(v, x, site, jd, sea, options);
+    const pilot = stagedPilot(v, x, site, dated, sea, options);
     let s = v.tick(v.start(), {
       pitch: 0,
       yaw: 0,

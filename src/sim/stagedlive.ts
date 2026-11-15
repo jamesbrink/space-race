@@ -30,13 +30,12 @@
  * Time: ticks of sim/vehicle.ts's TICK; events at the tick they are asked on.
  */
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
 import {
   angleBetween,
   cross,
   DEG,
   dot,
-  ecefToInertial,
-  enuAxes,
   type Geodetic,
   geodeticToEcef,
   inertialToEcef,
@@ -47,7 +46,6 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { elementsOf, period, type State, step } from '../world/orbit.ts';
-import { greenwichSiderealTime } from '../world/time.ts';
 import { G0, MEAN_RADIUS } from './fly.ts';
 import { floorAt } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
@@ -149,6 +147,8 @@ export type StagedPilot = (state: StagedState) => StagedControls;
 
 export interface StagedVehicle {
   readonly flight: OrbitalFlight;
+  /** The frame it is flown in (world/earthframe.ts): its states are in it. */
+  readonly frame: EarthFrame;
   /** The launch plane's pole (the body's +Y on the pad), and the plumb line at liftoff, in the inertial frame of date. */
   readonly plane: Vec3;
   readonly up: Vec3;
@@ -184,11 +184,11 @@ const along1 = (x: Vec3, n: Vec3): Quat => {
 const name = (s: string) => s.split(',')[0]!;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** A flight's staged vehicle, ready to be flown. `site`, `launchJd` and `seaLevel` as staged.ts `ascend`'s; `x` the law's solution, for its plane. */
+/** A flight's staged vehicle, ready to be flown. `site`, `frame` and `seaLevel` as staged.ts `ascend`'s; `x` the law's solution, for its plane. */
 export function stagedVehicle(
   o: OrbitalFlight,
   site: Geodetic,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel: number,
   x: Solved,
   /** For a test of the forces alone: a steering acceleration other than the record's, rad/s^2. */
@@ -196,11 +196,11 @@ export function stagedVehicle(
 ): StagedVehicle {
   const a = o.ascent;
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spinE: Vec3 = [0, 0, EARTH_ROTATION_RATE];
-  const law = lawOf(o, site, launchJd, x);
+  const gast0 = frame.gast0;
+  const spinE = frame.spin;
+  const law = lawOf(o, site, frame, x);
   const stack = stackOf(o);
-  const air = airAt(seaLevel, launchJd);
+  const air = airAt(seaLevel, frame);
   const authority = authorityOverride ?? (a.steering?.authority.value ?? 0) * DEG;
   const last = o.stages.length - 1;
   const floor = floorAt(site, seaLevel);
@@ -617,10 +617,10 @@ export function stagedVehicle(
   sequence.sort((p, q) => p.at - q.at || p.order - q.order);
 
   const sample = (s: StagedState, centre: number): LiveSample => {
-    const [c, sn] = [Math.cos(-gast0), Math.sin(-gast0)];
-    const flat = (u: Vec3): Vec3 => [c * u[0] - sn * u[1], sn * u[0] + c * u[1], u[2]];
+    // (the frame turned to the Earth's axes at liftoff, where the scene shows it)
+    const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
     const here = air(s, s.t);
-    const up = ecefToInertial(enuAxes(here.here).up, gast0 + EARTH_ROTATION_RATE * s.t);
+    const up = frame.upOver(here.here, s.t);
     const climb = (d: Vec3) => (length(d) > 1e-9 ? Math.asin(clamp(dot(d, up) / length(d), -1, 1)) / DEG : 90);
     const axisIn = turn(s.q, X);
     const f = accel(s, s.t, s, axisIn, shape(s));
@@ -632,7 +632,7 @@ export function stagedVehicle(
       t: s.t,
       phase: thrust > 0 ? 'powered' : 'coast',
       altitude: here.altitude,
-      range: angleBetween(inertialToEcef(s.r, gast0 + EARTH_ROTATION_RATE * s.t), pad0) * MEAN_RADIUS,
+      range: angleBetween(frame.toFixed(s.r, s.t), pad0) * MEAN_RADIUS,
       speed: length(s.v),
       groundSpeed: here.airspeed,
       climb: climb(s.v),
@@ -661,6 +661,7 @@ export function stagedVehicle(
 
   return {
     flight: o,
+    frame,
     plane: law.n,
     up: law.up0,
     authority,
@@ -726,13 +727,13 @@ export function stagedPilot(
   v: StagedVehicle,
   x: Solved,
   site: Geodetic,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel: number,
   options: StagedPilotOptions,
 ): StagedPilot {
   const o = v.flight;
-  const law = lawOf(o, site, launchJd, x);
-  const air = airAt(seaLevel, launchJd);
+  const law = lawOf(o, site, frame, x);
+  const air = airAt(seaLevel, frame);
   const memo = (options.memo ??= { thetaTurn: null });
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
   const done = new Set<number>();

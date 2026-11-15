@@ -1,20 +1,7 @@
 import { prefs } from '../app/prefs.ts';
 import { type Quat, turn } from '../sim/rigid.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import {
-  cross,
-  DEG,
-  dot,
-  ecefToGeodetic,
-  ecefToInertial,
-  enuAxes,
-  inertialToEcef,
-  length,
-  scale,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
+import { cross, DEG, dot, enuAxes, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { isTyping } from '../util/keys.ts';
 
 /**
@@ -74,26 +61,25 @@ export interface Ball {
 const X: Vec3 = [1, 0, 0];
 const Y: Vec3 = [0, 1, 0];
 const Z: Vec3 = [0, 0, 1];
-const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+const SPIN: Vec3 = LIFTOFF.spin;
 const flip = (v: OnBall | null): OnBall | null => (v ? scale(v, -1) : null);
 /** What the ball reads of a vehicle that is down: nought, going nowhere. */
 const STILL = { speed: 0, prograde: null, retrograde: null } as const;
 
 /**
- * The ball for a state: position and velocity in the frame that does not turn, the attitude (body
- * to that frame) and seconds from liftoff. `target` is a direction in the same frame.
+ * The ball for a state: position and velocity in the flight's frame (world/earthframe.ts: fixed at liftoff unless given),
+ * the attitude (body to that frame) and seconds from liftoff. `target` is a direction in the same frame.
  */
-export function ballOf(r: Vec3, v: Vec3, attitude: Quat, t: number, target?: Vec3 | null): Ball {
+export function ballOf(r: Vec3, v: Vec3, attitude: Quat, t: number, target?: Vec3 | null, frame: EarthFrame = LIFTOFF): Ball {
   const forward = turn(attitude, X);
   const right = scale(turn(attitude, Y), -1);
   const up = turn(attitude, Z);
   const on = (d: Vec3): OnBall => [dot(d, right), dot(d, up), dot(d, forward)];
   // the ground's axes under the vehicle, carried into the frame that does not turn
-  const angle = EARTH_ROTATION_RATE * t;
-  const axes = enuAxes(ecefToGeodetic(inertialToEcef(r, angle)));
-  const north = on(ecefToInertial(axes.north, angle));
-  const east = on(ecefToInertial(axes.east, angle));
-  const zenith = on(ecefToInertial(axes.up, angle));
+  const axes = enuAxes(frame.place(r, t));
+  const north = on(frame.toInertial(axes.north, t));
+  const east = on(frame.toInertial(axes.east, t));
+  const zenith = on(frame.toInertial(axes.up, t));
 
   const pitch = Math.asin(Math.max(-1, Math.min(1, zenith[2]))) / DEG;
   // the nose's bearing; straight up or down it has none, and the way the pilot's feet point (where pitching forward takes it) stands in
@@ -156,6 +142,8 @@ export type Frame = 'surface' | 'orbit';
 /** What the instrument reads: the flight deck (cockpit.ts), or anything that shows samples the same way. */
 export interface NavSource {
   readonly active: boolean;
+  /** The frame its samples are in (world/earthframe.ts). */
+  readonly frame: EarthFrame;
   listen(fn: (sample: NavSample, live: unknown) => void): void;
 }
 export interface NavSample {
@@ -318,7 +306,7 @@ export class Navball {
   private draw(force: boolean): void {
     const s = this.last;
     if (!s || this.tucked || !this.source.active) return;
-    const ball = ballOf(s.centre ?? s.r, s.v, s.attitude, s.t, this.target(s));
+    const ball = ballOf(s.centre ?? s.r, s.v, s.attitude, s.t, this.target(s), this.source.frame);
     // down (the run's end: on the ground, or in the sea), standing still on the turning Earth and in no orbit, as the deck's
     // figures say: no speed in either frame and no way it is going, whatever the last moment of the descent's motion was
     const down = Boolean(s.down) || s.phase === 'landed';

@@ -24,6 +24,7 @@
  */
 import type { ShedBody, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
   add,
   angleBetween,
@@ -33,14 +34,13 @@ import {
   ecefToInertial,
   type Geodetic,
   geodeticToEcef,
-  inertialToEcef,
   length,
   scale,
   sub,
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airForces, blowOf, floorAt, pieceOf, type Release, type Shape, upAt, windAt as airAt } from './forces.ts';
+import { airForces, blowOf, floorAt, pieceOf, type Release, type Shape, windAt as airAt } from './forces.ts';
 import { G0, gravity, MEAN_RADIUS } from './fly.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
 import { TICK } from './vehicle.ts';
@@ -97,6 +97,8 @@ export interface Shedder {
 export interface ShedOptions {
   /** The ground's height above the sea under a place, m: by default the pad's own level within a kilometre of it and the sea beyond, as the vehicle's is. */
   floor?: (latitude: number, longitude: number) => number;
+  /** The frame the vehicle that let it go is flown in (world/earthframe.ts): fixed at liftoff unless given. */
+  frame?: EarthFrame;
 }
 
 interface Dyn {
@@ -128,7 +130,8 @@ export function shedder(
   const pad = geodeticToEcef(site);
   // (the day's wind, as the vehicle that let it go flies through)
   const blow = blowOf(trajectory.winds);
-  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(r, v, at, sea, blow);
+  const frame = options.frame ?? LIFTOFF;
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
   const floor = options.floor ?? floorAt(site, seaLevel);
   const { mass, roll, across, centre } = release;
   const shape: Shape = {
@@ -223,7 +226,7 @@ export function shedder(
     return { ...next, q: normalize(next.q) };
   };
 
-  const fixed = (r: Vec3, at: number): Vec3 => inertialToEcef(r, EARTH_ROTATION_RATE * at);
+  const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);
   /** How far its lower end is above the ground under it, m, and where that is. */
   const clear = (d: Dyn, at: number): { by: number; height: number; latitude: number; longitude: number } => {
     const axis = turn(d.q, X);
@@ -246,7 +249,7 @@ export function shedder(
     return {
       t: at,
       speed: length(through),
-      vertical: -dot(through, upAt(d.r, at)),
+      vertical: -dot(through, frame.up(d.r, at)),
       latitude: here.latitude,
       longitude: here.longitude,
       range: angleBetween(fixed(d.r, at), pad) * MEAN_RADIUS,

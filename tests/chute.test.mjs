@@ -217,11 +217,11 @@ for (const v of FLIGHTS.filter((f) => f.orbital?.descent)) {
   test(`${v.designation}’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies`, async () => {
     const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
     const { siteFrame } = await import('../src/world/frames.ts');
-    const { julianDate } = await import('../src/world/time.ts');
+    const { datedOf } = await import('../src/world/earthframe.ts');
     const o = v.orbital;
-    const jd = julianDate(v.launch);
-    const whole = flyWhole(o, siteFrame(v.site), jd, v.site.seaLevel.value, undefined, 10, 'published');
-    const drawn = descentOf(whole, jd, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
+    const dated = datedOf(v);
+    const whole = flyWhole(o, siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10, 'published');
+    const drawn = descentOf(whole, dated, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
     assert.ok(drawn, 'the record’s run comes down from the ejection height');
     for (const c of v.flies.chutes.filter((c) => c.body)) {
       const body = o.descent.bodies.find((b) => b.id === c.body);

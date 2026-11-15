@@ -27,14 +27,14 @@
  * flight to the last bit.
  */
 import type { Curve } from '../types.ts';
-import { EARTH, EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { EARTH } from '../world/bodies.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
 import {
   add,
   angleBetween,
   cross,
   DEG,
   dot,
-  ecefToInertial,
   enuAxes,
   type Geodetic,
   geodeticToEcef,
@@ -45,8 +45,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { elementsOf, period, planeThrough, type State, step, subpoint } from '../world/orbit.ts';
-import { greenwichSiderealTime } from '../world/time.ts';
+import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, G0, MEAN_RADIUS, P0 } from './fly.ts';
 import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
@@ -211,17 +210,16 @@ export type Mode = 'vertical' | 'turn' | 'tangent';
  * frames.ts's inertial frame of date. What the batch run flies (`ascend`) and what the live vehicle's guidance steers to
  * (sim/stagedlive.ts): one law. `thetaTurn` is the axis's angle above the local level as the tangent takes over.
  */
-export function lawOf(o: OrbitalFlight, site: Geodetic, launchJd: number, x: Solved) {
+export function lawOf(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, x: Solved) {
   const g = o.ascent!.guidance;
-  const gast0 = greenwichSiderealTime(launchJd);
-  const pad = ecefToInertial(geodeticToEcef(site), gast0);
-  const up0 = ecefToInertial(enuAxes(site).up, gast0); // the plumb line at liftoff, held by the gyros
+  const pad = frame.toInertial(geodeticToEcef(site), 0);
+  const up0 = frame.toInertial(enuAxes(site).up, 0); // the plumb line at liftoff, held by the gyros
   // the launch plane: through the plumb line and the aiming azimuth, where the record gives it; else the one solved for
   const aimed = (() => {
     if (!g.azimuth) return null;
     const { east, north } = enuAxes(site);
     const a = g.azimuth.value * DEG;
-    const bearing = ecefToInertial(add(scale(east, Math.sin(a)), scale(north, Math.cos(a))), gast0);
+    const bearing = frame.toInertial(add(scale(east, Math.sin(a)), scale(north, Math.cos(a))), 0);
     return unit(cross(up0, bearing));
   })();
   const n = aimed ?? planeThrough(pad, x.plane, o.injection.heading === 'north');
@@ -257,11 +255,10 @@ export function lawOf(o: OrbitalFlight, site: Geodetic, launchJd: number, x: Sol
 }
 
 /** The air at a state (atmosphere.ts, turning with the Earth, no wind): where it is over, its height, the air, the motion through it. */
-export function airAt(seaLevel: number, launchJd: number) {
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+export function airAt(seaLevel: number, frame: EarthFrame) {
+  const spin = frame.spin;
   return (s: State, t: number) => {
-    const here = subpoint(s.r, gast0 + EARTH_ROTATION_RATE * t);
+    const here = frame.place(s.r, t);
     const altitude = here.height - seaLevel;
     const air = atmosphere(altitude);
     const wind = sub(s.v, cross(spin, s.r));
@@ -296,18 +293,16 @@ export function stackOf(o: OrbitalFlight) {
 }
 
 /**
- * Fly the ascent with the law's unknowns as given. `site` and `launchJd` as flyOrbit's; `every`: how often a sample is
+ * Fly the ascent with the law's unknowns as given. `site` and `frame` as flyOrbit's; `every`: how often a sample is
  * kept, s. Ends at the spacecraft's separation from the last stage.
  */
-export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel: number, x: Solved, every = 0.5): Ascended {
+export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel: number, x: Solved, every = 0.5): Ascended {
   const a = o.ascent;
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
   const g = a.guidance;
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
-  const gastAt = (t: number) => gast0 + EARTH_ROTATION_RATE * t;
+  const spin = frame.spin;
   const radius = o.orbit.radius.value;
-  const law = lawOf(o, site, launchJd, x);
+  const law = lawOf(o, site, frame, x);
   const { pad, n } = law;
   const stack = stackOf(o);
 
@@ -352,7 +347,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
   const localAt = law.localAt;
-  const airOf = airAt(seaLevel, launchJd);
+  const airOf = airAt(seaLevel, frame);
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
   /**
    * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that
@@ -377,12 +372,12 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
 
   const sample = (s: State, t: number): AscentSample => {
     const f = forces(s, t, mode, droppedBy(t - 1e-9));
-    const up = ecefToInertial(enuAxes(f.air.here).up, gastAt(t));
+    const up = frame.upOver(f.air.here, t);
     const climb = (d: Vec3) => (length(d) > 1e-9 ? Math.asin(Math.max(-1, Math.min(1, dot(d, up) / length(d)))) / DEG : 90);
     return {
       t,
       altitude: f.air.altitude,
-      downrange: angleBetween(inertialToEcef(s.r, gastAt(t)), geodeticToEcef(site)) * MEAN_RADIUS,
+      downrange: angleBetween(frame.toFixed(s.r, t), geodeticToEcef(site)) * MEAN_RADIUS,
       latitude: f.air.here.latitude,
       longitude: f.air.here.longitude,
       speed: length(s.v),
@@ -530,12 +525,12 @@ export function ascend(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLe
  * pitch-over of eight degrees and a tangent falling a thousandth a second. Throws if it does not converge:
  * a law that cannot reach its target is a finding, not something to paper over.
  */
-export function steer(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel = 0): Solved {
+export function steer(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
   const g = o.ascent!.guidance;
   const want = [o.orbit.radius.value + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
-  if (g.azimuth) return steer2(o, site, launchJd, seaLevel, want);
+  if (g.azimuth) return steer2(o, site, frame, seaLevel, want);
   const miss = (x: Solved): number[] => {
-    const s = ascend(o, site, launchJd, seaLevel, x, Infinity).summary;
+    const s = ascend(o, site, frame, seaLevel, x, Infinity).summary;
     return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
   };
   const vec = (x: Solved) => [x.plane, x.kick, x.rate];
@@ -564,9 +559,9 @@ export function steer(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLev
 }
 
 /** The law with its plane given by the aiming azimuth: two unknowns, the pitch-over and the tangent's rate, for height and climb. */
-function steer2(o: OrbitalFlight, site: Geodetic, launchJd: number, seaLevel: number, want: number[]): Solved {
+function steer2(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel: number, want: number[]): Solved {
   const miss = (v: number[]): number[] => {
-    const s = ascend(o, site, launchJd, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
+    const s = ascend(o, site, frame, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
     return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
   };
   let v = [8 * DEG, 1e-3];
@@ -601,24 +596,17 @@ function solve3(A: number[][], b: number[]): number[] {
 export function flyWhole(
   o: OrbitalFlight,
   site: Geodetic,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel = 0,
   solved?: Solved,
   every = 10,
   handover: 'flown' | 'published' = 'flown',
 ): FlownWhole {
-  const x = solved ?? steer(o, site, launchJd, seaLevel);
-  const ascent = ascend(o, site, launchJd, seaLevel, x);
-  const coast = flyOrbit(
-    o,
-    site,
-    launchJd,
-    seaLevel,
-    every,
-    handover === 'published' ? published(o, ascent.separation) : ascent.separation,
-  );
+  const x = solved ?? steer(o, site, frame, seaLevel);
+  const ascent = ascend(o, site, frame, seaLevel, x);
+  const coast = flyOrbit(o, site, frame, seaLevel, every, handover === 'published' ? published(o, ascent.separation) : ascent.separation);
   const end = coast.samples[coast.samples.length - 1]!;
-  const down = o.descent && end.phase === 'down' ? flyDown(o, launchJd, seaLevel, end) : null;
+  const down = o.descent && end.phase === 'down' ? flyDown(o, frame, seaLevel, end) : null;
   return { ascent, coast, down };
 }
 
@@ -630,16 +618,16 @@ export function flyWhole(
 export function flyOn(
   o: OrbitalFlight,
   site: Geodetic,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel: number,
   ascent: Ascended,
   from: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
   every = 1,
 ): FlownWhole {
-  const coast = flyOrbit(o, site, launchJd, seaLevel, every, from, hands);
+  const coast = flyOrbit(o, site, frame, seaLevel, every, from, hands);
   const end = coast.samples[coast.samples.length - 1]!;
-  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(o, launchJd, seaLevel, end, hands) : null };
+  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(o, frame, seaLevel, end, hands) : null };
 }
 
 /**
@@ -672,14 +660,13 @@ export function published(o: OrbitalFlight, at: { t: number; r: Vec3; v: Vec3 })
 export function recordSamples(
   o: OrbitalFlight,
   whole: FlownWhole,
-  launchJd: number,
+  frame: EarthFrame,
   centre: number,
   sunAt: (t: number) => Vec3,
 ): LiveSample[] {
-  const gast0 = greenwichSiderealTime(launchJd);
-  const [c, s0] = [Math.cos(-gast0), Math.sin(-gast0)];
-  const flat = (v: Vec3): Vec3 => [c * v[0] - s0 * v[1], s0 * v[0] + c * v[1], v[2]];
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  // (the run's frame turned to the Earth's axes at liftoff, where the scene shows it)
+  const flat = (v: Vec3): Vec3 => inertialToEcef(v, frame.gast0);
+  const spin = frame.spin;
   const n = whole.ascent.plane;
   const lie = (x: Vec3): Quat => {
     const y = unit(sub(n, scale(x, dot(n, x))));
@@ -765,15 +752,14 @@ export function recordSamples(
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
-    const gast = gast0 + EARTH_ROTATION_RATE * s.t;
-    const here = subpoint(s.r, gast);
+    const here = frame.place(s.r, s.t);
     const at = add(flat(s.drawn), offset);
     out.push({
       ...blank,
       t: s.t,
       phase: s.down ? 'main' : s.entering ? 'entry' : 'capsule',
       altitude: here.height,
-      range: angleBetween(inertialToEcef(s.r, gast), inertialToEcef(pad, gast0)) * MEAN_RADIUS,
+      range: angleBetween(frame.toFixed(s.r, s.t), frame.toFixed(pad, 0)) * MEAN_RADIUS,
       speed: length(s.v),
       groundSpeed: length(wind),
       climb: 0,
@@ -831,11 +817,10 @@ export interface DrawnDescent {
  * (the run's own samples after the ejection are its first body's): every body's track, for the scene to carry what came
  * down on each (viewer/ascent.ts). Null where nothing came down.
  */
-export function descentOf(whole: FlownWhole, launchJd: number, centre: number, ground = 0): DrawnDescent | null {
+export function descentOf(whole: FlownWhole, frame: EarthFrame, centre: number, ground = 0): DrawnDescent | null {
   if (!whole.down) return null;
-  const gast0 = greenwichSiderealTime(launchJd);
-  const [c, s0] = [Math.cos(-gast0), Math.sin(-gast0)];
-  const flat = (v: Vec3): Vec3 => [c * v[0] - s0 * v[1], s0 * v[0] + c * v[1], v[2]];
+  // (the run's frame turned to the Earth's axes at liftoff, where the scene shows it)
+  const flat = (v: Vec3): Vec3 => inertialToEcef(v, frame.gast0);
   const last = whole.ascent.samples[whole.ascent.samples.length - 1]!;
   const offset = scale(flat(last.axis), centre);
   const tracks: DrawnDescent['tracks'] = {};

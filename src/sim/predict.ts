@@ -33,6 +33,7 @@
  */
 import type { Trajectory } from '../types.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
   add,
   angleBetween,
@@ -42,7 +43,6 @@ import {
   ecefToGeodetic,
   type Geodetic,
   geodeticToEcef,
-  inertialToEcef,
   length,
   scale,
   sub,
@@ -51,7 +51,6 @@ import {
 import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
 import { G0, gravity, MEAN_RADIUS, type Phase } from './fly.ts';
-import { upAt } from './forces.ts';
 import { aboutAxis, turn } from './rigid.ts';
 
 export { AIR_TOP };
@@ -348,6 +347,8 @@ const E = [71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 
 export interface Ground {
   site: Geodetic;
   seaLevel: number;
+  /** The frame the start and the path are in (world/earthframe.ts): fixed at liftoff unless given. */
+  frame?: EarthFrame;
 }
 
 /**
@@ -361,6 +362,7 @@ export function propagate(
   options: { limit?: number; points?: number } = {},
 ): Predictor {
   const { site, seaLevel } = where;
+  const frame = where.frame ?? LIFTOFF;
   const pad = geodeticToEcef(site);
   const limit = options.limit ?? 6 * 3600;
   const most = Math.max(8, options.points ?? 480);
@@ -368,7 +370,7 @@ export function propagate(
   let t = start.t;
   let r = start.r;
   let v = start.v;
-  const fixed = (p: Vec3, at: number): Vec3 => inertialToEcef(p, EARTH_ROTATION_RATE * at);
+  const fixed = (p: Vec3, at: number): Vec3 => frame.toFixed(p, at);
   const place = (p: Vec3, at: number): Geodetic => ecefToGeodetic(fixed(p, at));
 
   // (the stages of a step: positions and velocities, and the accelerations at them)
@@ -504,7 +506,7 @@ export function propagate(
       latitude: g.latitude,
       longitude: g.longitude,
       range: angleBetween(fixed(r, t), pad) * MEAN_RADIUS,
-      speed: -dot(sub(v, cross(SPIN, r)), upAt(r, t)),
+      speed: -dot(sub(v, cross(SPIN, r)), frame.up(r, t)),
     };
     outcome = 'impact';
     done = true;
@@ -750,7 +752,7 @@ export function propagate(
 
 /** A ballistic flight's prediction to be worked out in slices (sim/fliers.ts `ballistic`). `site` and `seaLevel` as in fly.ts. */
 export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: number, start: Start, options: PredictOptions = {}): Predictor {
-  return propagate(ballistic(trajectory, site, seaLevel, start, options), start, { site, seaLevel }, options);
+  return propagate(ballistic(trajectory, site, seaLevel, start, options), start, { site, seaLevel, frame: options.frame }, options);
 }
 
 /** A ballistic flight's prediction, worked out at once. */

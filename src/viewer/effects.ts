@@ -4,8 +4,8 @@ import { flownOnce, G0, type Sample } from '../sim/fly.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import { ecefToSite, ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity, type Site, siteFrame } from '../world/frames.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { ecefToSite, ecefToSiteDirection, type Site, siteFrame } from '../world/frames.ts';
 import { orbitalRecord, type Run } from './ascent.ts';
 import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry.ts';
 import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake.ts';
@@ -44,6 +44,8 @@ export class Effects {
   motion = 1;
   private readonly flight: SitedFlight;
   private readonly site: Site;
+  /** The frame the runs shown are in (world/earthframe.ts). */
+  private readonly frame: EarthFrame;
   private live: Run | null = null;
   private readonly log: HeatLog | null;
   private states: readonly Thermal[] = [];
@@ -64,6 +66,7 @@ export class Effects {
   constructor(flight: SitedFlight) {
     this.flight = flight;
     this.site = siteFrame(flight.site);
+    this.frame = frameOf(flight);
     const heating = flight.trajectory?.heating ?? flight.orbital?.heating;
     this.log = heating ? new HeatLog(heating) : null;
     this.glow = heating ? new Incandescence(heating.surfaces.map((s) => s.materials)) : null;
@@ -79,7 +82,7 @@ export class Effects {
     if (this.live) return this.live.samples;
     const tr = this.flight.trajectory;
     if (!tr && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).samples;
-    return tr ? flownOnce(tr, this.site, this.flight.site.seaLevel.value).samples : [];
+    return tr ? flownOnce(tr, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
   }
 
   private cutoff(): number {
@@ -142,7 +145,7 @@ export class Effects {
     const pair = this.either(t);
     if (!pair) return into.set(0, 0, 0);
     const [a, b, k] = pair;
-    const at = (s: Sample) => ecefToSite(this.site, inertialToEcef(s.r, EARTH_ROTATION_RATE * s.t));
+    const at = (s: Sample) => ecefToSite(this.site, this.frame.toFixed(s.r, s.t));
     const [p, q] = [at(a), at(b)];
     return into.set(p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k, p[2] + (q[2] - p[2]) * k);
   }
@@ -376,9 +379,8 @@ export class Effects {
         }
         if (glow > 0) {
           // which way the air goes past: against the motion over the turning Earth
-          const spin = EARTH_ROTATION_RATE * a.t;
-          const v = ecefToSiteDirection(this.site, inertialToEcefVelocity(a.r, a.v, spin));
-          const w = k > 0 ? ecefToSiteDirection(this.site, inertialToEcefVelocity(b.r, b.v, EARTH_ROTATION_RATE * b.t)) : v;
+          const v = ecefToSiteDirection(this.site, this.frame.velocityToFixed(a.r, a.v, a.t));
+          const w = k > 0 ? ecefToSiteDirection(this.site, this.frame.velocityToFixed(b.r, b.v, b.t)) : v;
           const downstream = new THREE.Vector3(v[0] + (w[0] - v[0]) * k, v[1] + (w[1] - v[1]) * k, v[2] + (w[2] - v[2]) * k)
             .negate()
             .normalize();

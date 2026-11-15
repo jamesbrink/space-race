@@ -10,17 +10,15 @@ import { byHand, flyOn, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/viewer/ascent.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
-import { subpoint } from '../src/world/orbit.ts';
-import { greenwichSiderealTime, julianDate } from '../src/world/time.ts';
+import { datedOf } from '../src/world/earthframe.ts';
 
 const o = flight.orbital;
 const site = siteFrame(flight.site);
-const jd = julianDate(flight.launch);
+const dated = datedOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
 const from = published(o, shown.ascent.separation);
-const fly = (plan, hands) => flyOn(plan, site, jd, sea, shown.ascent, from, hands);
+const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, hands);
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {
   const r = Math.PI / 180;
@@ -38,8 +36,8 @@ const say = (name, whole, decayed, plan = o) => {
   return v;
 };
 /** When the entry body first falls through `height` after the burn on a run: on the coast, or on its own track below. */
-const gast0 = greenwichSiderealTime(jd);
-const heightOf = (p) => subpoint(p.r, gast0 + EARTH_ROTATION_RATE * p.t).height - sea;
+const gast0 = dated.gast0;
+const heightOf = (p) => dated.place(p.r, p.t).height - sea;
 const through = (whole, height) => {
   const coast = whole.coast.samples.filter((x) => x.t > o.retro.off.value && x.phase !== 'down');
   const track = whole.down?.tracks[o.descent.bodies[0].id] ?? [];
@@ -132,7 +130,7 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
   const w = fly(plan);
   assert.equal(w.down, null);
   const end = w.coast.samples.at(-1);
-  const lasts = decay(plan, jd, sea, end);
+  const lasts = decay(plan, dated, sea, end);
   assert.ok(lasts > 0);
   say('forward burn from the record’s orbit', w, lasts, plan);
 });
@@ -140,8 +138,8 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
 test('as drawn, each body comes to rest on the drawn surface (the globe at the sea), not the ground’s 43 m above it', async () => {
   const { descentOf } = await import('../src/sim/staged.ts');
   const centre = (flight.flies?.datum ?? 0) + (o.ascent.centre?.value ?? 0);
-  const drawn = descentOf(shown, jd, centre, o.descent.ground.value);
-  const plain = descentOf(shown, jd, centre, 0);
+  const drawn = descentOf(shown, dated, centre, o.descent.ground.value);
+  const plain = descentOf(shown, dated, centre, 0);
   // (fly.ts's frame that does not turn, back into the frame of date: the drawn point's height over the sea)
   const [c, s] = [Math.cos(gast0), Math.sin(gast0)];
   const height = (p) => heightOf({ t: p.t, r: [c * p.r[0] - s * p.r[1], s * p.r[0] + c * p.r[1], p.r[2]] });

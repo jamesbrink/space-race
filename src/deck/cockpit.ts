@@ -12,6 +12,7 @@ import type { Command, MechanismDef, SitedFlight } from '../types.ts';
 import type { Run } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
+import { frameOf } from '../world/earthframe.ts';
 
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
@@ -116,7 +117,8 @@ export class Cockpit extends Deck {
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
     super(parent, flight, clock, host, Cockpit.spec(flight));
     const tr = flight.trajectory;
-    this.vehicle = tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value) : null;
+    this.vehicle =
+      tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) }) : null;
     this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
     this.systems();
@@ -247,7 +249,9 @@ export class Cockpit extends Deck {
       dropped: this.flight.flies!.drops.map(() => Infinity),
       live: true,
       out: { drogue: Infinity, main: Infinity },
-      sheds: new Sheds(this.flight.trajectory!, siteFrame(this.flight.site), this.flight.site.seaLevel.value),
+      sheds: new Sheds(this.flight.trajectory!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
+        frame: frameOf(this.flight),
+      }),
     };
     this.maxQ = 0;
     this.kept = 1;

@@ -7,6 +7,7 @@
  */
 import type { Quantity, Signal } from '../types.ts';
 import { EARTH_ROTATION_RATE as EARTH_SPIN } from '../world/bodies.ts';
+import { LIFTOFF } from '../world/earthframe.ts';
 
 export type Readings = Partial<Record<Quantity, number>>;
 export type Signals = Partial<Record<Signal, boolean>>;
@@ -113,12 +114,12 @@ export function ratesOf(
  * The turn of a globe that shows where a spacecraft is (CabinDef.globe), as a quaternion [x, y, z, w] about the globe's
  * own axes as built: the point under the spacecraft brought under the cross (+Z) and the way it is going over the
  * ground brought up the board (+Y). The globe's own +Y is the Earth's axis to the north and its own +Z the meridian of
- * Greenwich, so an Earth-fixed direction (x, y, z) is (y, z, x) in its axes. `r` and `v` are sim/fly.ts's: an
- * Earth-centred frame that does not turn and is the Earth's own at liftoff; `t` is seconds from liftoff, by which the
- * Earth has turned under it. Null where there is no way going (standing still over the ground).
+ * Greenwich, so an Earth-fixed direction (x, y, z) is (y, z, x) in its axes. `r` and `v` are in the flight's frame
+ * (world/earthframe.ts: one that does not turn, in which the Earth's angle at `t` is `angle(t)`; fixed at liftoff unless
+ * given); `t` is seconds from liftoff. Null where there is no way going (standing still over the ground).
  */
-export function globeTurn(r: V3, v: V3, t: number): [number, number, number, number] | null {
-  const a = -EARTH_SPIN * t;
+export function globeTurn(r: V3, v: V3, t: number, frame: { angle(t: number): number } = LIFTOFF): [number, number, number, number] | null {
+  const a = -frame.angle(t);
   const [c, s] = [Math.cos(a), Math.sin(a)];
   const turned = (p: V3): V3 => [c * p[0] - s * p[1], s * p[0] + c * p[1], p[2]];
   // over the ground: the velocity less the Earth's own turning there, both into the Earth's axes of the instant

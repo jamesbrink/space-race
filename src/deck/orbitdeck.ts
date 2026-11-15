@@ -35,12 +35,12 @@ import type { SitedFlight } from '../types.ts';
 import type { Run } from '../viewer/ascent.ts';
 import { firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from '../viewer/ascent.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { datedOf, type EarthFrame, frameOf } from '../world/earthframe.ts';
 import type { Clock } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
-import { elementsOf, period, subpoint } from '../world/orbit.ts';
-import { greenwichSiderealTime, julianDate, terrestrialTime } from '../world/time.ts';
+import { elementsOf, period } from '../world/orbit.ts';
+import { julianDate, terrestrialTime } from '../world/time.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (`Flight.orbital` with an `ascent`): the deck (deck.ts) is the one every
@@ -160,6 +160,14 @@ export class OrbitDeck extends Deck {
   private flownPlan: OrbitalFlight | null = null;
   private flownAt = 0;
 
+  /** The frame the record is flown in (its inertial frame of date), and the one the scene shows it in (world/earthframe.ts). */
+  private get dated(): EarthFrame {
+    return datedOf(this.flight);
+  }
+  private get shown(): EarthFrame {
+    return frameOf(this.flight);
+  }
+
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
     super(parent, flight, clock, host, OrbitDeck.spec(flight));
     this.systems();
@@ -222,7 +230,7 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const site = siteFrame(this.flight.site);
     const sea = this.flight.site.seaLevel.value;
-    const where = { site, seaLevel: sea };
+    const where = { site, seaLevel: sea, frame: this.shown };
     const options = points ? { points } : {};
     if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
     const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
@@ -252,7 +260,7 @@ export class OrbitDeck extends Deck {
           ...(live ? { trim: this.trim } : {}),
           thetaTurn: live ? (this.options.memo?.thetaTurn ?? null) : turned ? flown.thetaTurn : null,
           plan,
-          launchJd: julianDate(this.flight.launch),
+          frame: this.shown,
         }),
         start,
         where,
@@ -267,7 +275,7 @@ export class OrbitDeck extends Deck {
         ? (this.run?.samples as readonly LiveSample[] | undefined)?.find((x) => Math.abs(x.t - on) < 1e-6)
         : undefined;
     const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
-    return propagate(spacecraft(plan, julianDate(this.flight.launch), site, sea, start, lit), start, where, options);
+    return propagate(spacecraft(plan, this.shown, site, sea, start, lit), start, where, options);
   }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
@@ -581,7 +589,7 @@ export class OrbitDeck extends Deck {
       this.vehicle = stagedVehicle(
         o,
         siteFrame(this.flight.site),
-        julianDate(this.flight.launch),
+        this.dated,
         this.flight.site.seaLevel.value,
         orbitalFlown(this.flight).ascent.solved,
       );
@@ -608,10 +616,9 @@ export class OrbitDeck extends Deck {
     const v = this.vehicleOf();
     const o = this.flight.orbital!;
     const site = siteFrame(this.flight.site);
-    const jd = julianDate(this.flight.launch);
     const solved = orbitalFlown(this.flight).ascent.solved;
     this.options = { guidance: this.guidance, sequence: this.sequence, memo: { thetaTurn: null } };
-    const caught = stagedPilot(v, solved, site, jd, this.flight.site.seaLevel.value, {
+    const caught = stagedPilot(v, solved, site, this.dated, this.flight.site.seaLevel.value, {
       ...this.options,
       guidance: true,
       sequence: true,
@@ -649,7 +656,7 @@ export class OrbitDeck extends Deck {
       v,
       orbitalFlown(this.flight).ascent.solved,
       siteFrame(this.flight.site),
-      julianDate(this.flight.launch),
+      this.dated,
       this.flight.site.seaLevel.value,
       {
         ...this.options,
@@ -679,6 +686,7 @@ export class OrbitDeck extends Deck {
       { area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } },
       siteFrame(this.flight.site),
       this.flight.site.seaLevel.value,
+      { frame: this.shown },
     );
     this.run = {
       ...record,
@@ -786,14 +794,13 @@ export class OrbitDeck extends Deck {
   /** The coast and what follows on this flight with `plan`: from where the user's ascent left the spacecraft, or the record's whole flight. */
   private whole(plan: OrbitalFlight, hands?: DescentHands): FlownWhole {
     const site = siteFrame(this.flight.site);
-    const jd = julianDate(this.flight.launch);
     const sea = this.flight.site.seaLevel.value;
     // (the record's ascent as the scene has it, then the published orbit from where it left the spacecraft: staged.ts flyWhole's 'published')
     if (this.mine === null || !this.ascended) {
       const record = orbitalFlown(this.flight);
-      return flyOn(plan, site, jd, sea, record.ascent, published(plan, record.ascent.separation), hands);
+      return flyOn(plan, site, this.dated, sea, record.ascent, published(plan, record.ascent.separation), hands);
     }
-    return flyOn(plan, site, jd, sea, this.ascended, this.ascended.separation, hands);
+    return flyOn(plan, site, this.dated, sea, this.ascended, this.ascended.separation, hands);
   }
 
   /** What this flight gave for each of the record's checks (sim/staged.ts `held`): the ascent's only where the ascent was the user's. */
@@ -808,7 +815,7 @@ export class OrbitDeck extends Deck {
   private descentOf(): DrawnDescent | null {
     const o = this.flight.orbital!;
     const centre = (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-    return this.flown ? descentOf(this.flown, julianDate(this.flight.launch), centre, o.descent?.ground.value) : null;
+    return this.flown ? descentOf(this.flown, this.dated, centre, o.descent?.ground.value) : null;
   }
 
   /** Samples the scene can show of a whole flight from `plan`: the user's ascent's own, then the coast's. */
@@ -816,7 +823,7 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const jd = julianDate(this.flight.launch);
     const centre = (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-    const all = recordSamples(plan, whole, jd, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
+    const all = recordSamples(plan, whole, this.dated, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
     if (this.mine === null) return all;
     const mine = (this.run!.samples as LiveSample[]).filter((x) => x.t <= this.ascended!.separation.t + 1e-9);
     return [...mine, ...all.slice(1)];
@@ -861,13 +868,9 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const m = o.manual;
     if (!m) return;
-    const jd = julianDate(this.flight.launch);
-    const gast0 = greenwichSiderealTime(jd);
     this.turnTo(t);
-    // the long axis in fly.ts's frame, into the inertial frame of date
-    const x = turn(this.hand!.q, [1, 0, 0]);
-    const [c, s] = [Math.cos(gast0), Math.sin(gast0)];
-    const aim: Vec3 = [c * x[0] - s * x[1], s * x[0] + c * x[1], x[2]];
+    // the long axis in the frame the flight is shown in, into the inertial frame of date
+    const aim: Vec3 = this.shown.toDate(turn(this.hand!.q, [1, 0, 0]));
     const plan = byHand(o, t, aim);
     const burn = plan.retro.off.value - t;
     this.planned = plan;
@@ -1052,8 +1055,7 @@ export class OrbitDeck extends Deck {
     const track = down?.tracks[body!];
     if (body !== first && track?.length) {
       const p = track.find((x) => x.t >= t) ?? track[track.length - 1]!;
-      const gast0 = greenwichSiderealTime(julianDate(this.flight.launch));
-      h = subpoint(p.r, gast0 + EARTH_ROTATION_RATE * p.t).height - this.flight.site.seaLevel.value;
+      h = this.dated.place(p.r, p.t).height - this.flight.site.seaLevel.value;
     }
     if (id === 'ejection') return h <= o.ejection.altitude.value;
     const c = d.bodies.find((b) => b.id === body)?.chutes.find((k) => k.name === name);
@@ -1385,10 +1387,7 @@ export class OrbitDeck extends Deck {
     const shown = t >= this.run.duration && !broken ? Object.assign({}, s, { down: true }) : s;
     for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
-    const jd = julianDate(this.flight.launch);
-    const gast0 = greenwichSiderealTime(jd);
-    const [c, sn] = [Math.cos(gast0), Math.sin(gast0)];
-    const into = (v: Vec3): Vec3 => [c * v[0] - sn * v[1], sn * v[0] + c * v[1], v[2]];
+    const into = this.shown.toDate;
     const el = elementsOf(into(s.r), into(s.v));
     const ball = o.orbit.radius.value;
     // down: what it rode is on the ground (the run's end), standing still on it, in no orbit; the figures say so, as
@@ -1641,12 +1640,7 @@ export class OrbitDeck extends Deck {
       if (this.lasts?.of !== whole)
         this.lasts = {
           of: whole,
-          s: decay(
-            plan,
-            julianDate(this.flight.launch),
-            this.flight.site.seaLevel.value,
-            whole.coast.samples[whole.coast.samples.length - 1]!,
-          ),
+          s: decay(plan, this.dated, this.flight.site.seaLevel.value, whole.coast.samples[whole.coast.samples.length - 1]!),
         };
       decayed = this.lasts.s;
     }

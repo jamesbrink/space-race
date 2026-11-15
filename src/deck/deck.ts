@@ -5,6 +5,7 @@ import type { Run } from '../viewer/ascent.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
 import { isTyping } from '../util/keys.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -266,6 +267,11 @@ export abstract class Deck {
     window.addEventListener('keyup', (e) => this.key(e, false));
     window.addEventListener('blur', () => this.held.clear());
     clock.listen(() => this.follow());
+  }
+
+  /** The frame the samples it hands on are in (world/earthframe.ts `frameOf`). */
+  get frame(): EarthFrame {
+    return frameOf(this.flight);
   }
 
   get active(): boolean {

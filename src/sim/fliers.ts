@@ -26,25 +26,12 @@
  */
 import type { Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { between, type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import {
-  add,
-  cross,
-  dot,
-  ecefToGeodetic,
-  ecefToInertial,
-  type Geodetic,
-  inertialToEcef,
-  length,
-  scale,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
-import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
+import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, G0, thrustIn } from './fly.ts';
-import { blowing, blowOf, floorAt, upAt } from './forces.ts';
+import { blowing, blowOf, floorAt } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
@@ -71,6 +58,8 @@ export interface BallisticOptions {
   burn?: Burn;
   /** What the sequencer does from here: without it, nothing but the parachutes of a spacecraft alone. */
   sequence?: Sequence;
+  /** The frame the state and the path are in (world/earthframe.ts): fixed at liftoff unless given. */
+  frame?: EarthFrame;
 }
 
 /** A ballistic flight's vehicle from `start`, as its live simulator has it (above). `site` and `seaLevel` as fly.ts's. */
@@ -79,6 +68,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
   const burn = options.burn && start.t < options.burn.until ? options.burn : null;
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
   const floor = floorOf(site, seaLevel);
+  const frame = options.frame ?? LIFTOFF;
 
   // what the sequencer does from here: each instant at or after the start (one that is late happens at once)
   const seq = options.sequence ?? null;
@@ -126,11 +116,11 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
     ? (main && chute.full < tr.main.dragArea.value) || (drogue && !main && chute.full < tr.drogue.dragArea.value)
     : drogue || main;
 
-  const place = (p: Vec3, at: number): Geodetic => ecefToGeodetic(inertialToEcef(p, EARTH_ROTATION_RATE * at));
+  const place = (p: Vec3, at: number): Geodetic => frame.place(p, at);
   /** The motion through the air: over the ground, less the day's wind there. */
   const windOf = (p: Vec3, u: Vec3, at: number, altitude: number): Vec3 => {
     const over = sub(u, cross(SPIN, p));
-    return blow ? sub(over, blowing(blow, place(p, at), altitude, at)) : over;
+    return blow ? sub(over, blowing(frame, blow, place(p, at), altitude, at)) : over;
   };
   const weight = (at: number): number => (burning ? mass - flow * (at - massAt) : mass);
 
@@ -158,7 +148,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
       if (burning && burn) a = add(a, scale(burn.axis(at), thrustIn(tr, air ? air.pressure : 0) / m));
       if (retros > 0) {
         // each retrorocket against the motion over the ground, pitched below the level (fly.ts)
-        const up = upAt(p, at);
+        const up = frame.up(p, at);
         const over = sub(u, cross(SPIN, p));
         const level = sub(over, scale(up, dot(over, up)));
         const across = length(level);
@@ -256,20 +246,18 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
  */
 export function spacecraft(
   o: OrbitalFlight,
-  launchJd: number,
+  frame: EarthFrame,
   site: Geodetic,
   seaLevel: number,
   start: { t: number; r: Vec3; v: Vec3 },
   options: { lit?: { r: Vec3; v: Vec3 } } = {},
 ): Flier {
-  const gast0 = greenwichSiderealTime(launchJd);
-  // (fly.ts's frame is frames.ts's inertial frame of date turned back by the sidereal time at liftoff)
-  const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
+  // (the Sun, and an aim given by hand, are of date: turned into the frame the state is in)
+  const flat = frame.fromDate;
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
   const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
-  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
-    aimOf(o, r, v, () => flat(sunPosition(terrestrialTime(launchJd + t / 86_400))), flat);
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(o, r, v, () => flat(sunPosition(frame.jdTT(t))), flat);
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
@@ -351,9 +339,9 @@ export interface GuidedNow {
   /** How far the hands have leaned the law, radians; and the law's angle as its tangent took over, where it has. */
   trim?: { pitch: number; yaw: number };
   thetaTurn?: number | null;
-  /** The plan the spacecraft flies once parted (its braking burn), and when the flight was launched (a Julian date). */
+  /** The plan the spacecraft flies once parted (its braking burn), and the frame the state and the path are in (world/earthframe.ts). */
   plan: OrbitalFlight;
-  launchJd: number;
+  frame: EarthFrame;
 }
 
 /**
@@ -369,11 +357,11 @@ export interface GuidedNow {
 export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
   const v = now.vehicle;
   const stack = stackOf(o);
-  const gast0 = greenwichSiderealTime(now.launchJd);
-  const law = lawOf(o, site, now.launchJd, now.solved);
-  const airOf = airAt(seaLevel, now.launchJd);
-  const toDate = (u: Vec3): Vec3 => ecefToInertial(u, gast0);
-  const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
+  // (the law and the air are worked in the vehicle's frame, the path in the one the state is given in)
+  const law = lawOf(o, site, v.frame, now.solved);
+  const airOf = airAt(seaLevel, v.frame);
+  const toDate = between(now.frame, v.frame);
+  const flat = between(v.frame, now.frame);
   const last = o.stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
@@ -523,7 +511,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
         if (p.step.kind === 'separate' && p.step.stage === last) {
           events.push('separation');
           since = t;
-          alone = spacecraft(now.plan, now.launchJd, site, seaLevel, { t, r, v: u });
+          alone = spacecraft(now.plan, now.frame, site, seaLevel, { t, r, v: u });
           const then = alone.arrive(t, r, u, altitude, 'time');
           return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
         }

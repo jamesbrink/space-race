@@ -7,7 +7,7 @@ import { byHand } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
-import { greenwichSiderealTime, julianDate } from '../world/time.ts';
+import { frameOf } from '../world/earthframe.ts';
 import { orbitalEvents, orbitalFlown, orbitalRecord } from './ascent.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
@@ -163,9 +163,9 @@ export function burnNow(flight: Flight): LandingFinder | null {
   const o = flight.orbital;
   const site = flight.site;
   if (!o?.manual || !site) return null;
-  const jd = julianDate(flight.launch);
-  const gast0 = greenwichSiderealTime(jd);
-  const frame = siteFrame(site);
+  // (the states are in the frame the scene shows the flight in; the aim by hand is given in the inertial frame of date)
+  const shown = frameOf(flight);
+  const where = siteFrame(site);
   const never = structuredClone(o);
   never.retro.on.value = never.retro.off.value = never.entry.separation.value = Number.MAX_SAFE_INTEGER;
   return (start) => {
@@ -173,13 +173,12 @@ export function burnNow(flight: Flight): LandingFinder | null {
     const down = !(el.periapsisHeight > LANDING_AIR);
     let plan = never;
     if (!down) {
-      // (against the way it goes, from fly.ts's frame into the inertial frame of date the coast flies in)
+      // (against the way it goes)
       const n = Math.hypot(...start.v);
-      const [x, y, z] = [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n];
-      plan = byHand(o, start.t + 1, [Math.cos(gast0) * x - Math.sin(gast0) * y, Math.sin(gast0) * x + Math.cos(gast0) * y, z]);
+      plan = byHand(o, start.t + 1, shown.toDate([-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]));
     }
     const sea = site.seaLevel.value;
-    const flown = propagate(spacecraft(plan, jd, frame, sea, start), start, { site: frame, seaLevel: sea });
+    const flown = propagate(spacecraft(plan, shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
     flown.run();
     const p = flown.result;
     const end = p.outcome === 'impact' ? p.points[p.points.length - 1] : undefined;
@@ -1016,7 +1015,7 @@ export class Cabin {
     const site = this.flight.site;
     if (!tr || !site) return null;
     if (!this.recorded) {
-      const { samples, results } = flownOnce(tr, siteFrame(site), site.seaLevel.value);
+      const { samples, results } = flownOnce(tr, siteFrame(site), site.seaLevel.value, frameOf(this.flight));
       this.recorded = {
         samples,
         times: {
@@ -1145,7 +1144,7 @@ export class Cabin {
     const gl = this.globe;
     if (gl && sample) {
       const shown = gl.modes[mode]?.shows === 'landing' ? (this.landed(sample) ?? sample) : sample;
-      const turn = globeTurn(shown.r, shown.v, shown.t);
+      const turn = globeTurn(shown.r, shown.v, shown.t, frameOf(this.flight));
       if (turn) {
         q.set(...turn);
         if (1 - Math.abs(q.dot(gl.turn)) > 1e-12) {

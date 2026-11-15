@@ -14,25 +14,10 @@
  * stated steering law where the programme flown has not been found.
  */
 import type { Confidence, Curve, Heating, Measure, ShedBody } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import {
-  add,
-  cross,
-  DEG,
-  dot,
-  ecefToInertial,
-  enuAxes,
-  type Geodetic,
-  geodeticToEcef,
-  length,
-  scale,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
-import { elementsOf, period, planeThrough, type State, stateOf, step, subpoint, sunlit } from '../world/orbit.ts';
-import { greenwichSiderealTime, terrestrialTime } from '../world/time.ts';
+import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } from '../world/orbit.ts';
 import { atmosphere } from './atmosphere.ts';
 import { along, G0 } from './fly.ts';
 import { tearOf } from './loads.ts';
@@ -448,15 +433,14 @@ export interface DescentFlown {
  */
 export function flyDown(
   o: OrbitalFlight,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel: number,
   from: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
 ): DescentFlown {
   const d = o.descent;
   if (!d) throw new Error('this orbital record has no `descent`');
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+  const spin = frame.spin;
   const ground = d.ground.value;
   const floor = o.ejection.altitude.value;
   const parted = o.entry.separation.value;
@@ -471,7 +455,7 @@ export function flyDown(
   const peak: Record<string, { q: number; g: number; speed: number }> = {};
   const up: string[] = [];
   let ejected = Number.NaN;
-  const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
+  const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const airOf = (q: State) => sub(q.v, cross(spin, q.r));
   const [first, ...rest] = d.bodies;
   if (!first) throw new Error('a descent needs its entry body');
@@ -635,8 +619,8 @@ export function flyDown(
         const part = (was.h - ground) / (was.h - h);
         s = { r: add(was.s.r, scale(sub(s.r, was.s.r), part)), v: add(was.s.v, scale(sub(s.v, was.s.v), part)) };
         t = was.t + dt * part;
-        const here = subpoint(s.r, gast0 + EARTH_ROTATION_RATE * t);
-        const up = ecefToInertial(enuAxes(here).up, gast0 + EARTH_ROTATION_RATE * t);
+        const here = frame.place(s.r, t);
+        const up = frame.upOver(here, t);
         landed[body.id] = { at: t, speed: -dot(sub(s.v, cross(spin, s.r)), up), latitude: here.latitude, longitude: here.longitude };
         track.push({ t, r: s.r, v: s.v });
         break;
@@ -678,14 +662,13 @@ export function flyDown(
  * revolution) or `days` have gone. Seconds from `from.t` to there, or Infinity. The standard atmosphere is the mean: the
  * day's Sun, which moves the density at 200 km several-fold, is not in it.
  */
-export function decay(o: OrbitalFlight, launchJd: number, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
+export function decay(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
+  const spin = frame.spin;
   const cd = o.supplies?.rarefied.value ?? along(o.entry.drag, 25);
   const parted = from.t >= o.entry.separation.value;
   const mass = parted ? o.entry.mass.value : o.mass.value;
   const k = (cd * o.entry.area.value) / mass;
-  const heightOf = (q: State, at: number) => subpoint(q.r, gast0 + EARTH_ROTATION_RATE * at).height - seaLevel;
+  const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const push = (q: State, at: number): Vec3 => {
     const air = atmosphere(heightOf(q, at));
     const wind = sub(q.v, cross(spin, q.r));
@@ -776,12 +759,12 @@ const THICK = 100_000;
 const INTERFACE = 100_000;
 
 /**
- * The orbit the record gives, as a position and velocity at `injection.at`, in the inertial frame
- * of date. The plane is the one of the published inclination through the launch site's place at
- * liftoff; the place on it and the perigee are `injection`'s.
+ * The orbit the record gives, as a position and velocity at `injection.at`, in the flight's frame (world/earthframe.ts):
+ * the elements are of date and are worked in the frame of date, then turned into it. The plane is the one of the
+ * published inclination through the launch site's place at liftoff; the place on it and the perigee are `injection`'s.
  */
-export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: number): State {
-  const pad = ecefToInertial(geodeticToEcef(site), greenwichSiderealTime(launchJd));
+export function injectionState(o: OrbitalFlight, site: Geodetic, frame: EarthFrame): State {
+  const pad = frame.toDate(frame.toInertial(geodeticToEcef(site), 0));
   const i = o.orbit.inclination.value * DEG;
   const n = planeThrough(pad, i, o.injection.heading === 'north');
   if (!n) throw new Error(`no orbit inclined ${o.orbit.inclination.value} degrees passes over latitude ${site.latitude}`);
@@ -794,7 +777,8 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, launchJd: numbe
   const nu = o.injection.anomaly.value * DEG;
   const a = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
   const e = (o.orbit.apogee.value - o.orbit.perigee.value) / (2 * a);
-  return stateOf({ a, e, i, node, argp: latitudeArgument - nu, nu });
+  const s = stateOf({ a, e, i, node, argp: latitudeArgument - nu, nu });
+  return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
 }
 
 /**
@@ -829,8 +813,8 @@ export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3, fixed
 
 /**
  * Fly the coast: from the published orbit round to the braking burn, and down through the air to
- * the height the pilot left at. `site` is where it was launched from and `launchJd` when (a Julian
- * date in UT), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
+ * the height the pilot left at. `site` is where it was launched from and `frame` the flight's (world/earthframe.ts:
+ * made from the instant of liftoff), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
  * `seaLevel` is the sea's height above the ellipsoid, taken as the same everywhere. `every`: how
  * often a sample is kept, s. With `hands` (the flight deck's descent by hand), the coast hands
  * over to flyDown at the first event of the descent a hand gave, if that comes before the height.
@@ -846,27 +830,25 @@ export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3, fixed
 export function flyOrbit(
   o: OrbitalFlight,
   site: Geodetic,
-  launchJd: number,
+  frame: EarthFrame,
   seaLevel = 0,
   every = 10,
   from?: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
 ): OrbitFlown {
-  const gast0 = greenwichSiderealTime(launchJd);
-  const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
-  const gastAt = (t: number): number => gast0 + EARTH_ROTATION_RATE * t;
-  const sunAt = (t: number): Vec3 => sunPosition(terrestrialTime(launchJd + t / 86_400));
+  const spin = frame.spin;
+  const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : o.injection.at.value;
-  let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, launchJd);
+  let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, frame);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at));
+  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at), frame.fromDate);
 
   const airAt = (s: State, at: number) => {
-    const altitude = subpoint(s.r, gastAt(at)).height - seaLevel;
+    const altitude = frame.place(s.r, at).height - seaLevel;
     const air = atmosphere(altitude);
     const wind = sub(s.v, cross(spin, s.r));
     const airspeed = length(wind);
@@ -892,7 +874,7 @@ export function flyOrbit(
   let phase: OrbitPhase = 'orbit';
   const sample = (): OrbitSample => {
     const air = airAt(state, t);
-    const here = subpoint(state.r, gastAt(t));
+    const here = frame.place(state.r, t);
     return {
       t,
       phase,
@@ -940,7 +922,7 @@ export function flyOrbit(
   const arrive = (): void => {
     if (t === on) {
       aim = aimAt(state, t);
-      const here = subpoint(state.r, gastAt(t));
+      const here = frame.place(state.r, t);
       results.retroLatitude = here.latitude;
       results.retroLongitude = here.longitude;
       results.retroOffRetrograde = Math.acos(Math.max(-1, Math.min(1, -dot(aim, unit(state.v))))) / DEG;
@@ -952,7 +934,7 @@ export function flyOrbit(
     if (t === parted) results.separationAltitude = airAt(state, t).altitude;
   };
   /** The plumb line at a sample's place, in the inertial frame. */
-  const upAt = (s: OrbitSample): Vec3 => ecefToInertial(enuAxes(s).up, gastAt(s.t));
+  const upAt = (s: OrbitSample): Vec3 => frame.upOver(s, s.t);
 
   // (the coast hands over to the descent at the ejection height, or at the first event of the descent a hand gave: flyDown)
   const handover = Math.min(...Object.values(hands?.given ?? {}).filter((g) => g > t));

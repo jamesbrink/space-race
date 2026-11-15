@@ -7,14 +7,14 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
-import { upAt } from '../src/sim/forces.ts';
 import { unturn } from '../src/sim/rigid.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { siteFrame } from '../src/world/frames.ts';
+import { LIFTOFF } from '../src/world/earthframe.ts';
 
 /** How far round the long axis the given side is from facing the Earth, degrees, at each sample. */
 function off(sample, degrees) {
-  const up = upAt(sample.r, sample.t);
+  const up = LIFTOFF.up(sample.r, sample.t);
   const down = unturn(sample.attitude, [-up[0], -up[1], -up[2]]);
   const a = (degrees * Math.PI) / 180;
   const side = [0, -Math.sin(a), Math.cos(a)];
