@@ -172,7 +172,7 @@ const grain = async () => {
     return pen.getImageData(0, 0, copy.width, copy.height).data;
   };
   const lit = await grab();
-  const maps = [st.sun, st.far.light]; // (the Sun's two: the sky's map over what is under a roof is another matter, and is left as it is in both frames)
+  const maps = [st.shadows.sun, st.shadows.far.light]; // (the Sun's two: the sky's map over what is under a roof is another matter, and is left as it is in both frames)
   for (const l of maps) l.shadow.intensity = 0;
   const bare = await grab();
   for (const l of maps) l.shadow.intensity = 1;
@@ -202,12 +202,12 @@ const grain = async () => {
     }
   const cam = st.camera;
   const along = cam.position.distanceTo(st.cam.pivot);
-  const box = st.sun.shadow.camera;
+  const box = st.shadows.sun.shadow.camera;
   return {
     part,
     cut: st.cutaway,
     grain: (1000 * sum) / Math.max(1, n),
-    texelMm: (1000 * (box.right - box.left)) / st.sun.shadow.mapSize.x,
+    texelMm: (1000 * (box.right - box.left)) / st.shadows.sun.shadow.mapSize.x,
     pixelMm: (1000 * 2 * along * Math.tan((cam.fov * Math.PI) / 360)) / H,
   };
 };

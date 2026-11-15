@@ -4,7 +4,7 @@ import { tier } from './tier.ts';
 /**
  * The Sun's second shadow map: the whole place, coarsely, under the fine one.
  *
- * The Sun's own map (stage.ts: fitShadows, fitWalkShadows) is spent where it is looked at: on the
+ * The Sun's own map (stage/shadows.ts: fitShadows, fitWalkShadows) is spent where it is looked at: on the
  * section's model, or on foot on 52 m of ground round the walker at 6 mm a texel. Beyond its edge
  * nothing had a shadow at all: from the hardstand the blockhouse, the other pad's gantry and the
  * far rails stood unshadowed on lit ground, and on foot the edge was 26 m off and jumped 9 m
@@ -51,7 +51,7 @@ export const BAND = [0.78, 0.96] as const;
 
 /**
  * How far the fine map is faded out everywhere (`x`: 0 not at all, 1 wholly, the far one read in its place): a stage
- * that spends the fine map on a region of its own choosing (Stage.steerFocus, in the gallery) fades it out before
+ * that spends the fine map on a region of its own choosing (Shadows.steerFocus, stage/shadows.ts, in the gallery) fades it out before
  * fitting it somewhere else and in again after, so a shadow never changes grain in a cut. A plain object, as
  * `uOrigin` is (origin.ts), so three's copying of each material's uniforms shares it; each stage sets it before it
  * draws. A material that never had it reads nothing, which is the fine map in full.
@@ -195,7 +195,7 @@ export class FarShadow {
     light.shadow.autoUpdate = false;
     light.shadow.mapSize.set(SIZE, SIZE);
     light.shadow.radius = 1.5;
-    // (made here for the reason the Sun's is, stage.ts shadowGrain: three's own carries a colour texture nothing reads)
+    // (made here for the reason the Sun's is, stage/shadows.ts shadowGrain: three's own carries a colour texture nothing reads)
     const target = new THREE.WebGLRenderTarget(SIZE, SIZE, {
       format: THREE.RedFormat,
       type: THREE.UnsignedByteType,

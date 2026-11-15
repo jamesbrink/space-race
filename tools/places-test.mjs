@@ -49,7 +49,7 @@ async function lateNeighbours(walk, workers = false) {
   // (still: nothing has asked for a shadow for a second)
   const read = () => {
     const st = window.sr.stage;
-    return { far: st.far.drawnAt, waiting: st.far.waiting || st.renderer.shadowMap.needsUpdate };
+    return { far: st.shadows.far.drawnAt, waiting: st.shadows.far.waiting || st.renderer.shadowMap.needsUpdate };
   };
   let before = await page.evaluate(read);
   for (let quiet = 0, tries = 0; quiet < 4 && tries < 80; tries++) {

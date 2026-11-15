@@ -22,7 +22,7 @@ export interface Tier {
   why: string;
   /** The most drawing pixels a CSS pixel. */
   pixelRatio: number;
-  /** Texels a side of the Sun's fine shadow map, of the far one, of the sky's, and the most of the fine one on foot (Stage.walkShadow). */
+  /** Texels a side of the Sun's fine shadow map, of the far one, of the sky's, and the most of the fine one on foot (Shadows.walkShadow, stage/shadows.ts). */
   shadow: { fine: number; far: number; sky: number; walk: number };
   /** On foot, a second fine map holds what does not move (shadowcache.ts). */
   walkCache: boolean;

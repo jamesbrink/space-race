@@ -93,7 +93,7 @@ never adjusted to bring a check in.
   shadow is, so it has no texels to crawl). All of it moves by the clock's seconds only, and all
   of its sizes and amounts are estimated, from film. In the cel look the same volumes are cut
   into flat tones. The rigs that are about the vehicle (chase, locked, on board, pad: "The camera") go
-  with it or follow it, and the Sun's shadow map goes with it under them (`Stage.shadeCraft`). The sky darkens with the
+  with it or follow it, and the Sun's shadow map goes with it under them (`Shadows.shadeCraft`, stage/shadows.ts). The sky darkens with the
   eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). Under it
   all is the Earth (`viewer/globe.ts`): the WGS 84 ellipsoid at the site's `seaLevel`, drawn in
   the site's frame, which is exact anywhere (frames.ts), so the vehicle, placed from the run

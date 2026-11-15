@@ -309,7 +309,7 @@ are kept in `<name>.lod.json` beside the model's script and carried in the GLB's
 lost them. **After changing what a level leaves out, measure again.** A thing with no record
 has 8 and 2.
 
-**Shadows reach as far as the place does.** The Sun has two maps. Its own (`fitShadows`,
+**Shadows reach as far as the place does.** The Sun has two maps. Its own (stage/shadows.ts: `fitShadows`,
 `fitWalkShadows`) is fine and spent where it is looked at: the section's model, 52 m of ground
 round the walker, or in the gallery what is looked at closely (below). The far one (`viewer/shadows.ts`: `FarShadow`) covers everything that stands at
 the place, coarsely, and is fitted once, so it never shifts under a walker; the shader's
@@ -322,7 +322,7 @@ that gives no light; it is drawn only when something it would show asked for the
 would keep his shadow where he had been. Two directional lights with shadows mean exactly this
 pair to the shader: a third would need the patch widened.
 
-**In the gallery the fine map goes where the eye is close** (`Stage.focusWanted`, `steerFocus`). The far map holds the
+**In the gallery the fine map goes where the eye is close** (`Shadows.focusWanted`, `steerFocus`: stage/shadows.ts). The far map holds the
 whole exhibit (as far apart as the slider goes, while it is taken apart): a centimetre a texel for a 34 m Gemini-Titan,
 the grain one map over the whole vehicle had, which stepped across a cabin's walls in blocks when it was cut open and
 looked at from a few metres. The fine map is spent on a square round the camera's pivot wide enough to hold all that is

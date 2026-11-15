@@ -42,8 +42,8 @@ import type { Quality } from './quality.ts';
 import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
 import { Surfaces } from './runs.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
-import { ShadowCache } from './shadowcache.ts';
-import { BAND, depthBias, FarShadow, uShadowFade } from './shadows.ts';
+import { Shadows } from './stage/shadows.ts';
+import { uShadowFade } from './shadows.ts';
 import { wearTexture } from './space.ts';
 import { grain, mark } from './surface.ts';
 import { tier } from './tier.ts';
@@ -182,8 +182,6 @@ const DOWN = new THREE.Vector3(0, -1, 0);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const spin = new THREE.Quaternion();
-/** While walking: half the width of ground the shadow map covers round the walker, metres (a texel is then a little over a centimetre). */
-const WALK_SHADOW = 26;
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
@@ -200,16 +198,6 @@ const ENCLOSING = [
   [0, 1, 1],
   [0, 1, -1],
 ].map(([x, y, z]) => new THREE.Vector3(x, y, z).normalize());
-/** Texels along a side of the Sun's shadow map, as the orbiting views use it. */
-const SHADOW_MAP = tier().shadow.fine;
-/** In the gallery, the most steps of a root of two down from the section's reach the fine shadow map is spent on (Stage.focusWanted): ten, a 32nd (0.6 m of a Gemini-Titan's). */
-const FOCUS_LEVELS = 10;
-/** Seconds the fine map takes to fade out, or in, when it is spent somewhere else (Stage.steerFocus). */
-const FOCUS_FADE = 0.25;
-/** Seconds a new place for it must be wanted, the camera at rest, before it goes there. */
-const FOCUS_HOLD = 0.15;
-/** Where the gallery's fine shadow map is spent (Stage.shadowFocus). */
-type Focus = { centre: THREE.Vector3; half: number; level: number };
 /** Triangles a millisecond at which a geometry's hierarchy is taken to be made, when deciding whether one fits in the time to spare (`growTrees`): half what is measured. */
 const TREE_RATE = 1000;
 /** After the clock has been put somewhere, the hardware plays the last stretch before that instant (seconds of the sequence) at this many times life. */
@@ -403,6 +391,8 @@ export class Stage {
   readonly cam: Cameras;
   /** The rig in charge of the camera has changed (the hands, the page, or the vehicle leaving the pad). */
   onRig: (id: RigId) => void = () => {};
+  /** The Sun's shadows: its fine map and where it is spent, the far map under it (stage/shadows.ts). */
+  readonly shadows: Shadows;
   /** The frame from the scene to the screen: the passes, the drawing's resolution, the near plane (stage/pipeline.ts). */
   readonly pipe: Pipeline;
   /** Draws the scene from the eye (origin.ts): the GPU sees only eye-relative positions; everything the code reads stays where it is. */
@@ -414,9 +404,6 @@ export class Stage {
     return this.pipe.quality;
   }
   private readonly settings: Settings;
-  private readonly sun = new THREE.DirectionalLight(0xffffff, 4);
-  /** The Sun's shadow maps, by their size in texels a side (`shadowGrain`). */
-  private readonly shadowMaps = new Map<number, THREE.WebGLRenderTarget>();
   private readonly fill = new THREE.HemisphereLight(0, 0, 0.5);
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -537,12 +524,6 @@ export class Stage {
   private get sceneries(): Levelled[] {
     return [...(this.scenery ? [this.scenery] : []), ...(this.setting.levels ?? [])];
   }
-  /** The Sun's second shadow map: everything that stands at the place, coarsely (shadows.ts). */
-  private readonly far: FarShadow;
-  /** On foot, the fine map's still casters kept from one frame to the next, and only the figure drawn again (shadowcache.ts). */
-  readonly shadowCache: ShadowCache;
-  /** When the last walk ended (`performance.now()`), until the maps it used have been let go; 0: nothing is owed. */
-  private walkEnded = 0;
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
   /** What a thing that slides or drives runs on (Move `runs`: viewer/runs.ts): the flight's models, the place and the land. */
@@ -614,29 +595,6 @@ export class Stage {
     this.settings = new Settings(this.renderer);
     this.setting = this.settings.get('orbit');
 
-    this.sun.castShadow = true;
-    this.shadowGrain(SHADOW_MAP, 1);
-    this.sun.shadow.bias = -0.0002;
-    this.sun.shadow.normalBias = 0.012;
-    this.scene.add(this.sun, this.sun.target, this.fill);
-    // the whole place has shadows, under the fine map (shadows.ts): its light comes after the Sun and gives none
-    this.far = new FarShadow(this.renderer, this.sun, () => this.shadowed());
-    this.scene.add(this.far.light, this.far.light.target, this.far.sky, this.far.sky.target);
-    // (not while he is limp, driving or getting in: what moves then is more than the figure where it stands)
-    this.shadowCache = new ShadowCache(
-      this.renderer,
-      this.sun,
-      () =>
-        this.far.waiting ||
-        this.far.light.shadow.needsUpdate ||
-        this.far.sky.shadow.needsUpdate ||
-        this.tumble !== null ||
-        this.wheel !== null ||
-        this.boarding !== null,
-      () => this.far.nearOnly(),
-    );
-    if (this.plain || !tier().walkCache) this.shadowCache.enabled = false; // (the lighter tier holds no second fine map: tier.ts)
-
     // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
     // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
     this.cam = new Cameras(
@@ -665,6 +623,32 @@ export class Stage {
       },
       this.lens,
     );
+    this.shadows = new Shadows({
+      renderer: this.renderer,
+      camera: this.camera,
+      cam: this.cam,
+      bounds: this.bounds,
+      plain: this.plain,
+      setting: () => this.setting,
+      exhibit: () => this.exhibit,
+      frozen: () => this.frozen,
+      redraw: () => {
+        this.dirty = true;
+      },
+      oweShadows: () => {
+        this.shadowsOwed = true;
+      },
+      cover: () => this.shadowed(),
+      section: () => this.sectionBox(),
+      fitBounds: () => this.fitBounds(),
+      cabin: () => this.cabinBox(),
+      walker: () => this.walk.body.position,
+      craft: () => (this.followed !== null && this.shedCraft) || this.crafted,
+      busy: () => this.tumble !== null || this.wheel !== null || this.boarding !== null,
+    });
+    const { sun, far } = this.shadows;
+    this.scene.add(sun, sun.target, this.fill);
+    this.scene.add(far.light, far.light.target, far.sky, far.sky.target);
 
     this.pipe = new Pipeline(this.renderer, this.scene, this.camera, {
       backdrop: this.setting.backdrop,
@@ -691,7 +675,7 @@ export class Stage {
       },
     });
     // (the only light with a shadow, the only sky light)
-    for (const light of [this.sun, this.far.light, this.far.sky, this.fill]) this.pipe.origin.light(light);
+    for (const light of [sun, far.light, far.sky, this.fill]) this.pipe.origin.light(light);
     this.applySetting();
 
     // A tap sends no pointermove first, so every handler that picks reads the pointer itself.
@@ -835,7 +819,7 @@ export class Stage {
     this.scene.add(this.root);
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
-    this.far.refit();
+    this.shadows.far.refit();
     this.lamps.clear();
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
@@ -881,7 +865,7 @@ export class Stage {
         this.fetch(place).then((object) => {
           if (staged !== this.staged) return;
           this.surroundings = object;
-          this.far.refit();
+          this.shadows.far.refit();
           this.scene.add(object);
           object.updateMatrixWorld(true);
           this.surfaces.set([...staged.map((s) => s.full), object]);
@@ -946,7 +930,7 @@ export class Stage {
       if (snap) this.setApart(i, this.apartGoal[i]!);
     });
     this.highlight(null, null);
-    this.fitShadows();
+    this.shadows.fitShadows();
     this.view(def.home ?? 'all', snap);
   }
 
@@ -961,7 +945,7 @@ export class Stage {
 
   private setApart(i: number, t: number): void {
     // (an exhibit taken apart reaches further than one standing whole: the far map is fitted to it again as it starts and ends)
-    if (this.exhibit && i === this.current && t > 0 !== (this.apart[i] ?? 0) > 0) this.far.refit();
+    if (this.exhibit && i === this.current && t > 0 !== (this.apart[i] ?? 0) > 0) this.shadows.far.refit();
     this.apart[i] = t;
     this.staged[i]?.explode(t);
     this.lamps.place(); // lamps ride the hardware they are on
@@ -1101,18 +1085,18 @@ export class Stage {
     const s = this.setting;
     this.scene.environment = s.environment;
     this.scene.environmentIntensity = s.environmentIntensity; // how bright the sky is changes every frame; what it looks like, by bakes
-    this.sun.color.set(s.sunColor);
-    this.sun.intensity = s.sunIntensity;
+    this.shadows.sun.color.set(s.sunColor);
+    this.shadows.sun.intensity = s.sunIntensity;
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
     this.expose();
     // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
     this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), this.renderer.toneMappingExposure);
     if (shadows) {
-      if (this.walk.active) this.fitWalkShadows(true);
+      if (this.walk.active) this.shadows.fitWalkShadows(true);
       else {
-        const target = this.sun.target.position;
-        const back = this.sun.position.distanceTo(target); // as far up the light's line as it was fitted
-        this.sun.position.copy(target).addScaledVector(s.sunDir, back);
+        const target = this.shadows.sun.target.position;
+        const back = this.shadows.sun.position.distanceTo(target); // as far up the light's line as it was fitted
+        this.shadows.sun.position.copy(target).addScaledVector(s.sunDir, back);
       }
       this.renderer.shadowMap.needsUpdate = true;
     }
@@ -1124,8 +1108,8 @@ export class Stage {
     this.pipe.setBackdrop(s.backdrop);
     this.scene.environment = s.environment;
     this.scene.environmentIntensity = s.environmentIntensity;
-    this.sun.color.set(s.sunColor);
-    this.sun.intensity = s.sunIntensity;
+    this.shadows.sun.color.set(s.sunColor);
+    this.shadows.sun.intensity = s.sunIntensity;
     this.fill.color.set(s.fill[0]);
     this.fill.groundColor.set(s.fill[1]);
     this.light();
@@ -1190,7 +1174,7 @@ export class Stage {
     // been put back on its pad, and not yet been moved there by a frame)
     if (id === 'orbit' || id === 'free' || (id === 'onboard' && this.exhibit)) {
       this.lift();
-      this.fitShadows();
+      this.shadows.fitShadows();
     }
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
@@ -1834,26 +1818,6 @@ export class Stage {
     | (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null; size: THREE.Vector3 })
     | null = null;
 
-  /** How far up its line the Sun's light stands from what it is aimed at, as last fitted (shadeCraft keeps it to the bit). */
-  private readonly sunBack = new THREE.Vector3();
-
-  /** While a rig that is about the vehicle is in charge, the Sun's shadow map goes with the vehicle, so it shades itself all the way up. */
-  private shadeCraft(): void {
-    // (or with the stage that has left, while the view is following that)
-    const c = this.cam.rig === 'orbit' || this.cam.rig === 'free' ? null : (this.followed !== null && this.shedCraft) || this.crafted;
-    if (!c) return;
-    // (put where the vehicle is, not moved by how far it went: a sum of moves is a last bit out, and the map of a
-    // vehicle that went and came back would not be the map it had)
-    const to = c.centre.clone().applyMatrix4(c.matrix);
-    const target = this.sun.target.position;
-    if (to.equals(target)) return;
-    const back = this.sun.position.sub(target);
-    if (this.sunBack.distanceToSquared(back) > 1e-12 * back.lengthSq()) this.sunBack.copy(back);
-    target.copy(to);
-    this.sun.position.copy(to).add(this.sunBack);
-    this.shadowsOwed = true;
-  }
-
   /**
    * Show a flight being flown by hand (ascent.ts `Run`) in place of the record's, or the record's again (null).
    * The trail starts afresh: the one laid belongs to the flight before.
@@ -1976,9 +1940,9 @@ export class Stage {
     this.dirty = true;
     // its shadow is drawn again only while it can fall inside the shadow map (which goes with it under the chase camera):
     // a rocket long gone from a map fitted to the pad casts nothing there
-    const box = this.sun.shadow.camera;
+    const box = this.shadows.sun.shadow.camera;
     const within =
-      (this.cam.rig !== 'orbit' && this.cam.rig !== 'free') || g.position.distanceTo(this.sun.target.position) < 2 * box.right + 60;
+      (this.cam.rig !== 'orbit' && this.cam.rig !== 'free') || g.position.distanceTo(this.shadows.sun.target.position) < 2 * box.right + 60;
     if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.shadowsOwed = true;
     this.lifted.shrank = false;
     this.lifted.shadowed = within;
@@ -3034,204 +2998,6 @@ export class Stage {
   }
 
   /**
-   * Aim the shadow map, once per section. It is spent on the model being studied and its
-   * surroundings, since one map stretched over a whole launch pad gives the rocket sawtooth
-   * shadows; and it is sized for that model fully taken apart, so that moving the slider never
-   * changes it. (Refitting it as parts moved made every other shadow on the pad shift and
-   * change sharpness with the slider.) In the gallery it may be spent closer still (`shadowFocus`).
-   */
-  private fitShadows(): void {
-    const box = this.sectionBox();
-    if (!box) return;
-    this.fitBounds();
-    const centre = box.getCenter(new THREE.Vector3());
-    const radius = Math.min(
-      this.bounds.radius,
-      box.getSize(new THREE.Vector3()).length() / 2 + Math.max(6, box.getSize(new THREE.Vector3()).length() * 0.5),
-    );
-    this.sectionFit = { centre: centre.clone(), radius };
-    const focus = this.exhibit ? this.shadowFocus : null;
-    const half = focus ? focus.half : radius;
-    const aim = focus ? focus.centre : centre;
-    // (a map spent on a part still reaches back toward the Sun over the whole section, or what stands between it and
-    // the Sun would cast nothing into it: its depth runs from beyond the section to past the part)
-    const back = focus ? Math.abs(this.setting.sunDir.dot(new THREE.Vector3().subVectors(centre, aim))) + radius + 10 : radius + 10;
-    this.sun.target.position.copy(aim);
-    this.sun.position.copy(aim).addScaledVector(this.setting.sunDir, back);
-    Object.assign(this.sun.shadow.camera, { left: -half, right: half, top: half, bottom: -half, near: 1, far: back + half + 10 });
-    this.sun.shadow.camera.updateProjectionMatrix();
-    this.sun.shadow.normalBias = focus ? Math.max((1.5 * 2 * half) / SHADOW_MAP, half / 900) : Math.max(0.012, radius / 900);
-    this.shadowGrain(SHADOW_MAP, this.setting.shadowRadius ?? 1);
-    depthBias(this.sun.shadow); // (a length, a few texels of the map: not a share of the camera's depth, shadows.ts)
-    this.renderer.shadowMap.needsUpdate = true;
-  }
-
-  /** The section's own fit (`fitShadows`): the middle of its box and how far the map reaches from it. */
-  private sectionFit: { centre: THREE.Vector3; radius: number } | null = null;
-  /**
-   * In the gallery, where the fine shadow map is spent now when that is not the whole section: a square `half` metres
-   * from the middle across the light, `level` steps of a root of two down from the section's reach. Null: the whole section.
-   */
-  private shadowFocus: Focus | null = null;
-  /** A fit the fine map is fading out to go to (undefined: none), and how long the wish for it has held still. */
-  private refocus: Focus | null | undefined = undefined;
-  private refocusHeld = 0;
-  /** How much of the fine map is read now (1: all of it; under, the far one is read in its place: `uShadowFade`). */
-  private fineShare = 1;
-
-  /**
-   * Where the fine shadow map is to be spent, in the gallery. The far map (shadows.ts) holds the whole exhibit as far
-   * apart as it goes, at a centimetre a texel for a 34 m Gemini-Titan; the fine one is spent on what is looked at
-   * closely, at the scale it is framed: the cabin while sat in, else a square round the camera's pivot wide enough to
-   * hold all that is in view at the pivot's distance, inside the far map's band, in steps of a root of two down from
-   * the section's reach (so a slow zoom changes it seldom, and each step is a clear gain). Cut open on the Gemini cabin from 5 m, 2 mm a
-   * texel for 8.4. At a site the fine map stays on the section: there the far one is 16 cm a texel, and what stands
-   * round a part looked at closely (the gantry, the pad) is in view and would lose its shadows' edges.
-   */
-  private focusWanted(): Focus | null {
-    const fit = this.sectionFit;
-    if (!this.exhibit || !fit) return null;
-    let centre: THREE.Vector3;
-    let reach: number;
-    if (this.cam.rig === 'onboard') {
-      const cabin = this.cabinBox();
-      if (!cabin) return null;
-      centre = cabin.getCenter(new THREE.Vector3());
-      reach = cabin.getSize(new THREE.Vector3()).length() / 2;
-    } else {
-      centre = this.cam.pivot.clone();
-      const along = this.camera.position.distanceTo(centre);
-      const tall = along * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-      reach = 1.1 * tall * Math.hypot(1, Math.max(1, this.camera.aspect));
-    }
-    const half = reach / BAND[0];
-    // steps of a root of two down from the section's reach: held a little either side of a step, so a resting zoom does not flutter
-    const exact = 2 * Math.log2(fit.radius / half);
-    const was = this.shadowFocus?.level ?? 0;
-    let level = exact > was - 0.2 && exact < was + 1.2 ? was : Math.floor(exact);
-    level = Math.min(FOCUS_LEVELS, Math.max(0, level));
-    if (level === 0) return null;
-    const size = fit.radius / Math.SQRT2 ** level;
-    // (held where it is while the pivot stays well inside it; moved, on a grid of an eighth of it)
-    if (this.shadowFocus && this.shadowFocus.level === level && this.shadowFocus.centre.distanceTo(centre) < size * 0.2)
-      return this.shadowFocus;
-    const grid = size / 8;
-    centre.set(Math.round(centre.x / grid) * grid, Math.round(centre.y / grid) * grid, Math.round(centre.z / grid) * grid);
-    return { centre, half: size, level };
-  }
-
-  /**
-   * Each frame, in the gallery: take the fine shadow map where it is wanted (`focusWanted`). It is never moved in a
-   * cut: it fades out (the far map read in its place, the whole exhibit's grain, as the gallery was before), waits
-   * until the camera has stopped and the wish has held still, is fitted again, and fades back in. While the view moves
-   * the map does not chase it. A frozen stage (a test) moves it at once.
-   */
-  private steerFocus(dt: number): void {
-    if (!this.exhibit) return;
-    const want = this.focusWanted();
-    const same = (a: Focus | null | undefined, b: Focus | null): boolean =>
-      a === b || Boolean(a && b && a.level === b.level && a.centre.equals(b.centre));
-    if (this.frozen) {
-      if (!same(this.shadowFocus, want)) {
-        this.shadowFocus = want;
-        this.fitShadows();
-      }
-      this.refocus = undefined;
-      this.fineShare = 1;
-      return;
-    }
-    if (this.refocus === undefined && same(this.shadowFocus, want)) {
-      if (this.fineShare < 1) {
-        this.fineShare = Math.min(1, this.fineShare + dt / FOCUS_FADE);
-        this.dirty = true;
-      }
-      return;
-    }
-    // something else is wanted: out first, then (once it holds still, the camera at rest) fitted, and in again
-    if (!same(this.refocus, want)) this.refocusHeld = 0;
-    this.refocus = want;
-    this.refocusHeld += dt;
-    if (this.fineShare > 0) {
-      this.fineShare = Math.max(0, this.fineShare - dt / FOCUS_FADE);
-      this.dirty = true;
-      return;
-    }
-    if (this.refocusHeld < FOCUS_HOLD || this.cam.travelling || this.cam.handled) return;
-    this.shadowFocus = want;
-    this.refocus = undefined;
-    this.fitShadows();
-    this.far.nearOnly(); // (the far map holds the whole exhibit and has not changed)
-  }
-
-  /**
-   * Give the Sun's shadow map this many texels a side and this much softening of its edges. There is one map for
-   * each size asked for (the section's, and the finer one on foot), kept: going on foot and back changes which is
-   * in use, and frees and allocates nothing. Whoever changes the size has the map drawn again.
-   *
-   * The maps are made here, not left to three (WebGLShadowMap makes one where `shadow.map` is null). Its own is a
-   * render target with the default colour texture beside the depth: four bytes a texel that nothing reads, 256 MB
-   * at 8192 a side. A WebGL render target has to have a colour texture, so this one has the smallest there is, one
-   * byte a texel. The depth texture is exactly three's for a PCF shadow: 24 bits (in 32), compared in the lookup,
-   * linearly filtered.
-   */
-  private shadowGrain(size: number, radius: number): void {
-    const shadow = this.sun.shadow;
-    shadow.radius = radius;
-    if (shadow.mapSize.x === size && shadow.map) return;
-    shadow.mapSize.set(size, size);
-    let map = this.shadowMaps.get(size);
-    if (!map) {
-      map = new THREE.WebGLRenderTarget(size, size, { format: THREE.RedFormat, type: THREE.UnsignedByteType, generateMipmaps: false });
-      map.texture.name = 'sun.shadowMapUnread';
-      const depth = new THREE.DepthTexture(size, size, THREE.UnsignedIntType);
-      depth.name = 'sun.shadowMap';
-      depth.format = THREE.DepthFormat;
-      depth.compareFunction = THREE.LessEqualCompare;
-      depth.minFilter = depth.magFilter = THREE.LinearFilter;
-      map.depthTexture = depth;
-      this.shadowMaps.set(size, map);
-    }
-    shadow.map = map;
-    // (the lighter tier holds only the one in use, tier.ts: the other is made again when it is next wanted)
-    if (this.tier.oneFineMap)
-      for (const [other, unused] of this.shadowMaps) {
-        if (unused === map) continue;
-        unused.depthTexture?.dispose();
-        unused.dispose();
-        this.shadowMaps.delete(other);
-      }
-  }
-
-  /**
-   * Half a minute after a walk: the maps only a walk uses are let go, the fine one (8192 a side is a quarter of a
-   * gigabyte) and the still casters' copy of it. The next walk makes them again in its first frame.
-   */
-  private freeWalkShadows(): void {
-    this.walkEnded = 0;
-    this.shadowCache.release();
-    for (const [size, map] of this.shadowMaps) {
-      if (size <= SHADOW_MAP || this.sun.shadow.map === map) continue;
-      map.depthTexture?.dispose();
-      map.dispose();
-      this.shadowMaps.delete(size);
-    }
-  }
-
-  /**
-   * How the shadow map is spent on foot. From eye height a wall two metres off that the Sun
-   * grazes shows every texel of the map as a tooth along a shadow's edge, so the map is made as
-   * fine as the machine allows: 8192 a side over 52 m of ground (6 mm a texel) where the GPU
-   * takes a texture that size and is not a phone's, and otherwise the usual 4096 over a smaller
-   * 36 m (9 mm), or on the lighter tier 3072 over the same 36 m (12 mm: tier.ts); and its edges
-   * are softened by a texel or two either way.
-   */
-  private walkShadow(): { half: number; size: number; radius: number } {
-    const most = tier().shadow.walk; // (the lighter tier's is the smaller map: tier.ts)
-    const big = most >= 8192 && this.renderer.capabilities.maxTextureSize >= 8192 && !matchMedia('(pointer: coarse)').matches;
-    return big ? { half: WALK_SHADOW, size: 8192, radius: 1.5 } : { half: 18, size: Math.min(most, 4096), radius: 2 };
-  }
-
-  /**
    * Tell the setting the instant and where the eye is: the sky, the haze and the stars for the eye's height (`at`,
    * which says when that is worth showing), what is made or chosen round the eye (the globe's mesh and the air's ball,
    * the land's cells, which form each plant is drawn in and how far through its fade), and which rooms' lamps are
@@ -3555,11 +3321,11 @@ export class Stage {
       // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
       this.cam.update(dt);
       this.camStepped += dt;
-      this.steerFocus(dt);
+      this.shadows.steerFocus(dt);
       this.emerge();
       if (this.indoors > 0) this.adapt(dt, false); // (off foot again: the eye goes back to the day)
       this.lookWatched();
-      this.shadeCraft();
+      this.shadows.shadeCraft();
       this.fitDetail(dt);
       if (this.pointerDirty && !this.down) {
         this.pointerDirty = false;
@@ -3603,10 +3369,7 @@ export class Stage {
     this.pipe.sizeStars(backdrop.scene);
     const unshake = this.shaker?.(this.camera, backdrop.camera);
     const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
-    this.shadowCache.figure = walking;
-    if (walking) this.walkEnded = 0;
-    else if (this.walkEnded && performance.now() - this.walkEnded > (this.tier.lighter ? 2_000 : 30_000)) this.freeWalkShadows();
-    this.far.before(walking, this.frozen);
+    this.shadows.before(walking, this.frozen);
     // (back from a lean by another way than asking: 0, another camera, out of the seat)
     if (this.leanAt !== null && this.leaning === null) {
       this.leanAt = null;
@@ -3614,9 +3377,9 @@ export class Stage {
       this.onLean(null);
     }
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
-    uShadowFade.value.x = 1 - this.fineShare; // (shared by every stage's materials: each sets it for its own draw)
+    uShadowFade.value.x = 1 - this.shadows.fineShare; // (shared by every stage's materials: each sets it for its own draw)
     this.pipe.draw(this.sinceDrawn, this.frozen);
-    this.far.after();
+    this.shadows.far.after();
     unshake?.();
     this.sinceDrawn = 0;
   }
@@ -3751,7 +3514,7 @@ export class Stage {
     this.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.dirty = true;
     this.walk.start(feet, toward, eye, height, walker.radius);
-    this.fitWalkShadows(true);
+    this.shadows.fitWalkShadows(true);
   }
 
   /** The figure being walked as is stood where it was walked to, facing the way it was looking, and can be seen again. */
@@ -3816,7 +3579,7 @@ export class Stage {
     this.setAim(null);
     this.walk.stop();
     this.walked = -1;
-    this.walkEnded = performance.now();
+    this.shadows.walkEnded = performance.now();
     // the camera takes the view up from this very place, turning about a point a few steps ahead, so the flight back starts from here
     this.cam.adopt(this.camera.position.clone().add(this.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3)));
     this.renderer.shadowMap.needsUpdate = true;
@@ -4530,7 +4293,7 @@ export class Stage {
     this.carryOn(figure, at);
     // Breathing alone moves him by millimetres: seen from outside it is worth drawing, but
     // nobody's shadow is redrawn for it.
-    if (placed || walk.stir === 2) this.far.nearOnly(); // its shadow walks with it (in the fine map: the far one leaves it out)
+    if (placed || walk.stir === 2) this.shadows.far.nearOnly(); // its shadow walks with it (in the fine map: the far one leaves it out)
     if (placed || walk.stir === 2 || (walk.stir === 1 && !unseen)) this.dirty = true;
   }
 
@@ -4611,7 +4374,7 @@ export class Stage {
       this.dirty = true;
       // (what he carries is part of him: on foot its shadow is the fine map's alone, as his is, and asking for all the
       // shadows had the far map drawn again ten times a second for a hose it leaves out)
-      if (this.walk.active) this.far.nearOnly();
+      if (this.walk.active) this.shadows.far.nearOnly();
       else this.renderer.shadowMap.needsUpdate = true;
     }
   }
@@ -4747,47 +4510,6 @@ export class Stage {
     });
   }
 
-  /**
-   * While walking, the shadow map is spent on the ground round the walker: the section's own fit
-   * (fitShadows) is a few metres round where the figure started, and a figure walked out of it
-   * had no shadow at all. The map moves in steps of whole texels, in the light's own frame, so
-   * that a shadow's edge does not crawl as he walks; and it reaches up the Sun's line far enough
-   * for whatever stands over him to shade him.
-   */
-  private fitWalkShadows(force = false): void {
-    const p = this.walk.body.position;
-    const shadow = this.sun.shadow;
-    const { half, size, radius } = this.walkShadow();
-    // It goes with the walker a metre at a time (in whole texels, below), not in leaps: it is drawn again every frame
-    // he moves anyway, for his own shadow, and where it hands over to the far map (shadows.ts) must not jump.
-    if (!force && this.sun.target.position.distanceTo(p) < 1) return;
-    this.shadowGrain(size, radius);
-    const dir = this.setting.sunDir;
-    const right = new THREE.Vector3().crossVectors(UP, dir).normalize();
-    const up = new THREE.Vector3().crossVectors(dir, right);
-    const texel = (2 * half) / shadow.mapSize.x;
-    const snap = (v: number) => Math.round(v / texel) * texel;
-    const centre = new THREE.Vector3()
-      .addScaledVector(right, snap(p.dot(right)))
-      .addScaledVector(up, snap(p.dot(up)))
-      .addScaledVector(dir, p.dot(dir));
-    const back = Math.min(400, this.bounds.radius + 20);
-    this.sun.target.position.copy(centre);
-    this.sun.position.copy(centre).addScaledVector(dir, back);
-    Object.assign(shadow.camera, {
-      left: -half,
-      right: half,
-      top: half,
-      bottom: -half,
-      near: 1,
-      far: back + half + 20,
-    });
-    shadow.camera.updateProjectionMatrix();
-    shadow.normalBias = Math.max(0.012, half / 900);
-    depthBias(shadow);
-    this.far.nearOnly(); // (the fine map is moved: the far one stays where it is)
-  }
-
   /** For the diagnostics: the figure is being shown from outside but its model has no joints, so it glides. */
   get walkRigid(): boolean {
     const figure = this.staged[this.walked];
@@ -4826,7 +4548,7 @@ export class Stage {
     this.walkDt = dt;
     this.board(dt);
     this.poseFigure();
-    this.fitWalkShadows();
+    this.shadows.fitWalkShadows();
     // the walker keeps its own near plane (centimetres, indoors); the far one is the site's, as for orbiting
     const far = Math.max(
       this.camera.position.distanceTo(this.bounds.center) + this.bounds.radius + (this.setting.horizon ?? 10),
@@ -4877,7 +4599,7 @@ export class Stage {
   /** The setting has been changed where it stands (its tone, what stands in it): take it up again. */
   reset(): void {
     this.applySetting();
-    this.fitShadows();
+    this.shadows.fitShadows();
   }
 
   /** Fetch a model that is no part of the flight and dress it as the flight's are (the gallery's figure for scale). Whoever asks puts it somewhere. */
