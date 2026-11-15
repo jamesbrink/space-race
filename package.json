@@ -22,6 +22,7 @@
     "test:camera": "node tools/camera-test.mjs",
     "test:places": "node tools/places-test.mjs",
     "test:fires": "node tools/fires-test.mjs",
+    "test:chute": "node tools/chute-test.mjs",
     "test:history": "node tools/history-test.mjs",
     "test:mem": "node tools/mem-test.mjs",
     "test:wheels": "node tools/wheels-test.mjs",

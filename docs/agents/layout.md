@@ -117,7 +117,7 @@ src/
   viewer/stage/shadows.ts             the Sun's shadows: the fine map and where it is spent (the section, the gallery's focus, the walker, the vehicle), its maps by size, the far map under it
   viewer/pick.ts                      what a ray meets, through each mesh's bounding volume hierarchy
   viewer/outline.ts                   the line round what is hovered or selected (three's OutlinePass from its mask on)
-  viewer/overlay.ts                   what is drawn over the flight that is no part of it (the predicted path), in a pass of its own
+  viewer/overlay.ts                   what is drawn over the flight that is no part of it (the predicted path), in a pass of its own; and what is drawn last, over the finished frame (a parachute's lines)
   viewer/backdrops.ts                 the settings: orbit, studio, and a place's ground under its sky, round the flight's pad, on its day
   viewer/scenery/ground.ts            a place's ground as data (`GroundSpec`) laid out round one of its pads on a day (`groundPlace`): the land, its plants,
                                       what stood there that day (`stood`), turned to lie round the pad model
@@ -254,6 +254,7 @@ tools/
   around-test.mjs                     browser check that what stands round a site is drawn at the level its size on screen calls for
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be
+  chute-test.mjs                      browser check that a parachute's lines are drawn over the land, the sea, the air and the cloud behind them, from the chase view, at 1280 and 390, in both looks
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights, seen from each rig and from far out
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
