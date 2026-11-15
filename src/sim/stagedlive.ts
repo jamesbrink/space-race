@@ -424,9 +424,11 @@ export function stagedVehicle(
           });
           return;
         }
+        // (whether anything was pushing it, before this stage lit)
+        const before = view();
+        const nothing = !o.stages.some((_, j) => burning(before, j));
         craft = r.state;
         const now = view();
-        const nothing = !o.stages.some((_, j) => burning(now, j));
         if (firesInto(now, k.stage, s.t))
           said.push({
             t: s.t,

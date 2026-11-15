@@ -10,10 +10,10 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ascend, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { holdChecks, missesOf } from './misses.mjs';
-import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -363,6 +363,28 @@ test('the structure: turned across the wind at its greatest dynamic pressure it 
   }).s;
   assert.ok(said(relit, 'Not lit'));
   assert.ok(Math.abs(relit.stages[0].to - 10) < 0.02);
+});
+
+test('a stage lit with nothing pushing the stack is said to be lit in free fall; one lit beside another burning is not', () => {
+  const fall = asked({
+    sequence: false,
+    asks: [
+      {
+        at: 10,
+        steps: [
+          { kind: 'cut', stage: 0 },
+          { kind: 'cut', stage: 1 },
+        ],
+      },
+      { at: 12, steps: [{ kind: 'separate', stage: 1 }] },
+      { at: 14, steps: [{ kind: 'ignite', stage: 2 }] },
+    ],
+    until: 15,
+  }).s;
+  assert.ok(Number.isFinite(fall.stages[1].gone), 'the core and strap-ons gone');
+  assert.ok(said(fall, 'Lit in free fall'));
+  const pushed = asked({ sequence: false, asks: [{ at: 14, steps: [{ kind: 'ignite', stage: 2 }] }], until: 15 }).s;
+  assert.ok(!said(pushed, 'Lit in free fall'));
 });
 
 test('the sequencer taken and handed back: off and on again with nothing due between, the record’s flight to the last bit; off over a step, that step comes when it is on again', () => {
