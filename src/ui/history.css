@@ -45,6 +45,9 @@
 /* (in a card, its own moments run to its edges, as the headings' rules do) */
 .hist-card .hist-moments { margin: 0 -18px; padding: 0; }
 .hist-card .hist-moments li > div .name { font-weight: 600; color: var(--ink); }
+/* (the card's own source and the key to its dots keep to its edges) */
+.hist-card > .fine { padding: 16px 0 0; }
+.hist-card > .legend { padding: 12px 0 0; }
 
 @media (max-width: 960px), (max-height: 520px) {
   .hist-actions button { min-height: 44px; padding: 0 14px; }
