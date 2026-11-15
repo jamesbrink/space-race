@@ -50,9 +50,9 @@ ships); ***Titans***, *On the Shoulders of Titans*; the **press kit**, NASA rele
 | Oxygen tank, inside | 20.3 in across | derived | 180 lb at liquid oxygen's density, as for spacecraft 5 ([gt-5/spacecraft.md](../gt-5/spacecraft.md)) |
 | Hydrogen tank, inside | 25.5 in across | derived | 22.25 lb at liquid hydrogen's density, as for spacecraft 5 |
 | The two tanks, outside | 23 in and 28 in across | estimated | spacecraft 5's guess at the shells; this ship's hydrogen tank had fifty layers of film more, of a thickness not given |
-| Where the fuel cell module's things lie | the two sections side by side, then the hydrogen, then the oxygen, across one side of the equipment section | the order documented as drawn; the places estimated | GVII, Figure 3.1-7 (a sketch); Figure 3.1-8's inset for the hydrogen tank |
+| Where the fuel cell module's things lie | in a row beyond one of the equipment section's two beams, on the side away from the OAMS module: the two sections at one end, then the hydrogen, then the oxygen | the order and the side documented as drawn; the places estimated | GVII, Figure 3.1-7 (a sketch); Figure 3.1-8's inset for the hydrogen tank; SEDR 300 vol. 1, Figure 5-5; the Technical Summary, Figure 4 |
 | Water tanks A and B | 21.12 in across | assumed | "as in the spacecraft 5 configuration" (GVII, 3.1.2.3), which were of the OAMS propellant tank's pattern; that tank's size on the early ships (SEDR 300 vol. 1, p. 8-273) |
-| Where A and B stand | 21 in and 22 in above the middle, 33 in to the right and 28 in to the left, at Z44 | estimated | spacecraft 5's places in this model. SEDR 300 vol. 1, Figure 6-10 sheet 5 and Section VIII, Figure 8-72, draw them at the two ends of the OAMS module's frame, with the two propellant tanks between: the model does not follow that (below) |
+| Where A and B stand | at the two ends of the OAMS module's row of four places, the two propellant tanks between them: 24.5 in from the axis, at Z50 | that they are at the ends documented; the row's place estimated | SEDR 300 vol. 1, Figure 6-10 sheet 5 and Section VIII, Figure 8-72 |
 | Water tank C, capacity | 42 lb | documented | GVII, 3.1.2.3 |
 | Water tank C, inside | 13.05 in across | derived | 42 lb of water at 62.4 lb/cu ft is 0.673 cu ft, a ball of that width; that it is a ball, in two halves bolted round the middle, is as SEDR 300 vol. 1, Figure 6-10 sheet 5, draws it |
 | Water tank C, outside | 13.5 in across | estimated | the shell round the 13.05 in is a guess |
@@ -63,9 +63,9 @@ ships); ***Titans***, *On the Shoulders of Titans*; the **press kit**, NASA rele
 | Reserve tank, what it held | 12.9 lb of usable fuel | documented | GVII, 5.1.8.1.1; "12.3 to 14.3 pounds" in it when it was opened, at about 290:24 (5.1.8.1.2) |
 | Reserve tank's place | across the ship forward of the propellant tanks, its middle 10 in to the right of the axis and 12 in above it, at Z60.2; its ends rounded to 1.3 in | estimated | SEDR 300 vol. 1, Section VIII, Figure 8-72, and GVII, Figure 3.1-10, which draw it on the OAMS module beside the "F" package: sketches |
 | Transponder antenna | one spiral antenna, 6.6 in across and 2.4 in deep, 7 in off the ship's axis on the forward face | the thing documented; its size and place estimated | GVII, 3.1.2.4. Its size is the pod's antenna's in this model, scaled from GV's Figure 3.1-4b. NASA S65-63113, taken from spacecraft 6, shows one pale disc about half way out from the middle of the face, and a short rod at the rim beside it; which way round the face is not made out, and it is put toward the bottom |
-| Acquisition lights | two, at the base of the equipment section, on opposite sides: here left and right, 53 in from the axis, looking aft | the things documented; their size, form, mounting and which sides estimated | GVII, 3.1.1.2 and 3.1.2.4; the press kit has them 180° apart. Their form is the Agena light's as this model draws it on GLV-4 and GLV-7. Not made out in the two photographs read that show this ship's foot (S65-63221 and GPN-2006-000035) |
+| Acquisition lights | two, at the base of the equipment section, on opposite sides: here left and right, 52.5 in from the axis, looking aft through the gold cover | the things documented; their size, form, mounting and which sides estimated | GVII, 3.1.1.2 and 3.1.2.4; the press kit has them 180° apart. Their form is the Agena light's as this model draws it on GLV-4 and GLV-7. NASA S65-63221 shows a small fitting at the rim to left and right of the two aft-firing thrusters, which may be the lights; they were not made out |
 | Hydrogen tank's wrap | 0.3 in thick, silvered | estimated | "Fifty layers of aluminized mylar" (GVII, 3.1.2.6.2); Figure 3.1-8 draws it as a band, without a scale |
-| Spectrometer, magnetometer boom | in the equipment section | the things documented; their places assumed to be spacecraft 4's | GVII, 8.12.2 and 8.13.2; [gt-4/spacecraft.md](../gt-4/spacecraft.md). NASA S65-63221 shows an instrument looking aft through an opening in the middle of the cover, which is where the spectrometer is put |
+| Spectrometer, magnetometer boom | under the middle of the blast shield's access door, the spectrometer looking aft through an opening in the gold cover and the boom beside it | the things documented; the place by photograph | GVII, 8.12.2 and 8.13.2; GIV, 8.4.2, has spacecraft 4's spectrometer "fixed to the center of the equipment adapter section blast shield door". NASA S65-63221 shows an instrument looking aft through an opening in the middle of the cover, and the boom run out from the same opening |
 
 ## The experiments
 
@@ -86,9 +86,11 @@ and the medical ones were on the men.
 | The white disc forward of the left hatch | left off | | it is spacecraft 3's, and not identified (`white_disc=False`) |
 
 Three of the photographs Gemini VI-A's crew took of this ship were read for this, at the sizes
-Wikimedia Commons holds. They also show what the model does not have (below): the gold cover
-across the foot as a deep funnel; a boxed fitting standing off the retrograde section near the
-top, with a rod forward of it, not identified; cords trailing from the foot. The lights were not
+Wikimedia Commons holds, and one of them, S65-63221, at its full 4,115 pixels: the gold cover
+across the foot is measured on it ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md),
+"Equipment section"). They also show what the model does not have (below): a raised oblong under
+the cover's cloth; a boxed fitting standing off the retrograde section near the top, with a rod
+forward of it, not identified; cords trailing from the foot. The lights were not
 made out in them.
 
 ## Weights
@@ -122,19 +124,18 @@ out". Of what was No. 7's own:
 - **Water tank C is sized from what it held** and placed from sketches without dimensions; its tray is a plate, a
   ring and two lips, where McDonnell's drawing has a pan with lightening holes.
 - **The reserve fuel tank's size is McDonnell's; its place is not.** Its "F" package and its lines are not built.
-- **The equipment section is laid out as spacecraft 5's is in this model, by guess, and McDonnell's drawings show
-  it otherwise.** SEDR 300 vol. 1 (Figure 6-10 sheet 5; Section VIII, Figure 8-72) draws the OAMS module as one
-  curved frame against the adapter's wall with four balls in a row on it: water tank B, the two propellant tanks,
-  water tank A. Here the propellant tanks stand near the middle and the water tanks apart from them. The
-  photograph of this ship from behind agrees with the drawings: the middle of the section is clear, and the gold
-  cover runs up into it as a funnel to a flat disc with an instrument looking out of its middle. To lay the section
-  out from the drawings is work for every Gemini in the repo together, and is not done here.
-- **The gold cover is the type's shallow dish**, for the same reason.
-- **The fuel cell module is not laid out from a drawing**, as on spacecraft 5. The hydrogen tank's insulation is a
+- **The equipment section is McDonnell's arrangement and our sizes** ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Equipment section"): the OAMS module with the two
+  propellant tanks between water tanks A and B, the fuel cell module opposite it, the middle clear. How far the
+  modules' beams are turned from the ship's own sides is measured on two perspective sketches.
+- **The gold cover is measured on one photograph of this ship**, good to 3 in in depth and 4 in across. Its gathers
+  are drawn as even pleats. The raised oblong the photograph shows under the cloth beside the lower aft-firing
+  thruster is not identified and not built.
+- **The fuel cell module's sizes are not from a drawing**, as on spacecraft 5. The hydrogen tank's insulation is a
   silvered skin 0.3 in thick, a guess. No plumbing: the oxygen crossfeed that this flight used in its first half
   hour is not built, nor the standpipe on the water line, nor the fibreglass supports.
-- **The spectrometer and the magnetometer's boom are where spacecraft 4's are drawn**, which is an assumption; the
-  boom is drawn stowed, and was run out once the ship was in orbit and left out.
+- **The spectrometer and the magnetometer's boom** are where the photograph of this ship has them, under the middle
+  of the blast shield; their forms are estimated. The boom is drawn stowed, and was run out once the ship was in
+  orbit and left out.
 - **Not built:** the docking light, the boxed fitting the photographs show on the retrograde section, the radiometry
   experiments' sensors, the auxiliary heaters on the thrust chambers, the new hatch latches, the HF whip antenna.
 - **The paint** is spacecraft 3's, which the photographs of this ship's right side bear out; the left side's is assumed.

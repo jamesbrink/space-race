@@ -16,6 +16,9 @@ photographs of spacecraft 3.
 Top-level nodes: NoseFairing  RendezvousRecovery  ReentryControl  Hatches  ScannerFairing  Cabin  CrewStation
                  HeatShield  RetroSection  EquipmentSection
 and, on a ship that carried them (`Fit`): ExtravehicularEquipment (spacecraft 4), RadarEvaluationPod (spacecraft 5).
+
+In the equipment section a place is given by the module it belongs to (L, Lm): the section's modules stand against the
+wall round a clear middle, and their beams are turned from the ship's own sides (MODULES_TURN).
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
@@ -67,6 +71,7 @@ from gemini_shell import (
     hatch_in,
     hatch_margin,
     holes,
+    pierce,
     radial,
     sheet,
     shingle,
@@ -86,10 +91,56 @@ RETRO = (6.5, 19.5, 84.0)  # a retrograde rocket: its case's radius, how far its
 OAMS_ATTITUDE = (deg(36), deg(54))  # a cluster's two chambers at the adapter's foot, round from the top or the bottom
 OAMS_ATTITUDE_Z = 27.0  # their station
 OAMS_AFT = (0.0, math.pi)  # 9 and 10, which push the ship forward: at the foot, top and bottom
+# and where those two stand: how far from the ship's axis, the station of their exits, an exit's radius. NASA S65-63221
+# (spacecraft 7 from behind) shows them standing through the gold cover at 0.86 to 0.92 of its rim's radius, their
+# exits about 5 in across, a little forward of the rim: estimated from it
+OAMS_AFT_AT = (52.5, Z_BASE + 3.4, 2.7)
 OAMS_FORWARD = (deg(78), 95.5)  # 11 and 12, which slow it: round from the top on either side, and their station
 OAMS_LATERAL = 86.0  # 13 to 16: the station they push through
-# its tanks, as (inches to the crew's right, inches toward the top, station): fuel, oxidiser, helium
-OAMS_TANKS = ((9.0, 21.0, 44.0), (20.0, 2.0, 44.0), (-8.0, -2.0, 46.0))
+
+# How the equipment section is laid out. McDonnell's own drawing of it is the Technical Summary's Figure 4 (p. 12),
+# "Adapter equipment module structure", which names the ship's four sides on it: a blast shield at Z66.74 made of the
+# modules' own support panels and an access door; two beams across the section; the OAMS module the segment beyond one
+# beam, the fuel cell (or battery) module the segment beyond the other; between the beams the electronic module, the
+# door and the environmental control system's module; and the coolant pump module a frame against the wall from Z28.61
+# to Z41.17. Those are documented. The figure is a perspective sketch, so what is measured on it is estimated:
+Z_BLAST = 66.74  # the blast shield's plane: documented (Technical Summary, Figures 3 and 4)
+SHIELD_THICK = 0.9  # the shield's panels, honeycomb between two faces: a guess
+# the beams do not run square to the ship's top and bottom. In Figure 4 the OAMS module's middle is 23 degrees round
+# from the top toward the crew's right; in SEDR 300's Figure 8-72, which looks at the same module from the other end,
+# the row of tanks is turned 25 degrees the same way: estimated
+MODULES_TURN = deg(23)
+BEAM_AT = 15.0  # each beam's middle from the ship's axis: Figure 4 scales to 14 in and 20 in, and four tanks must go beyond one
+DOOR_HALF = 17.0  # half the access door's length along the beams: a third of the band between them, as Figure 4 draws it
+BEAM_FOOT = Z_BLAST - SHIELD_THICK - 0.15 - 3.6  # the under side of a beam, which is 3.6 in deep (a guess)
+T_OAMS = MODULES_TURN  # which way each module faces, round from the top: the OAMS module's wall,
+T_POWER = MODULES_TURN + math.pi  # the fuel cell or battery module's, opposite it,
+T_ELECTRONIC = MODULES_TURN + math.pi / 2  # the electronic module's, at one end of the band between the beams,
+T_ECS = MODULES_TURN - math.pi / 2  # and the environmental control system's, at the other
+PUMP_MODULE = (28.61, 41.17)  # the coolant pump module's stations: documented (Figure 4)
+PUMP_MODULE_AT = (deg(-61), 33.0, 49.0, 26.0)  # where it is round from the top, its inner and outer faces from the axis, its width
+PRIMARY_OXYGEN = (31.0, 55.5, 9.0)  # the primary oxygen: from the axis, its middle's station, its radius. All estimated
+# the electronic module's boxes, each (from the axis, along, the middle's station) and (deep, wide, tall): all guesses
+ELECTRONICS = (
+    ((24.0, -6.2, 58.0), (10.0, 11.0, 12.0)),
+    ((24.0, 6.2, 58.5), (10.0, 11.0, 11.0)),
+    ((36.0, -6.2, 59.0), (10.0, 11.0, 10.0)),
+    ((36.0, 6.2, 59.5), (10.0, 11.0, 9.0)),
+    ((43.4, 0.0, 60.8), (3.6, 16.0, 7.0)),
+)
+# The temperature control cover across the foot, measured on NASA S65-63221 (spacecraft 7 from behind, 15 December
+# 1965): an ellipse fitted to its rim gives the camera 41 degrees off the ship's axis, and the hoop the cloth is
+# gathered to then lies 18 in forward of the rim (good to 3 in) and is 44 in across (good to 4 in). Estimated, and
+# taken to be the same on every ship. Its rim is where the first model had it: just inside the mating ring
+COVER_RIM = (BASE_R - 3.0, Z_BASE + 2.2)  # its rim: from the axis, and its station
+COVER_HOOP = (22.0, 33.5)  # the hoop, and the flat disc inside it
+PLEAT = 0.55  # how deep the cloth's gathers are at their deepest: by eye, from the same photograph
+COVER_PORT = (5.3, 4.4)  # the opening in the disc's middle that an instrument looks out of: half its length and width (10.6 in in the photograph)
+# the OAMS module's row of four places for a 21 in tank (SEDR 300 volume 1, Figure 6-10 sheet 5; Gemini V mission report,
+# Figure 3.1-3): the row's distance from the axis, from one place to the next, and the tanks' station. Four 21.13 in
+# balls in a straight row fit between a beam at 15 in and the wall only about here: estimated
+OAMS_ROW = (24.5, 21.5, 50.0)
+OAMS_HELIUM = (38.8, 43.0)  # a helium tank, between two of them and the wall: from the axis, and its station. Estimated
 
 # What is read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a fitted camera, but the lettering:
 # estimated.
@@ -107,8 +158,10 @@ SCANNER_PROUD = 3.4  # its face from the re-entry control section's skin
 # hinge, the two equipment bay doors, the main landing gear door (SEDR 300, Figure 2-7; Technical Summary, Figure 1;
 # S64-04925 for the gear door's taper, which is a sector of about 31 degrees). All estimated.
 DOORS = (deg(66), deg(112), deg(143))
-# The three fairings over the retaining straps: one is beside a hatch's aft outboard corner in S65-13395; the rest follow
-STRAPS = (deg(180), deg(68), deg(-68))
+# The three fairings over the retaining straps: "strap locations at Z103.44, looking forward" (Technical Summary, Figure
+# 3, p. 10): one 13 degrees 8 minutes above the ship's left side, one the same above its right, and one 45 degrees
+# round from the bottom toward the right. Documented. (S65-13395 shows one beside a hatch's aft outboard corner.)
+STRAPS = (deg(135), deg(90 - 13 - 8 / 60), deg(-(90 - 13 - 8 / 60)))
 NOZZLE_PLATE = (157.0, 5.2, 7.6)  # the fluid injection nozzles' plate on the right gear door: its station, width, length
 
 
@@ -118,20 +171,30 @@ HATCH_OPEN = deg(100)  # how far the pilot's hatch stood open in the extravehicu
 # the rendezvous radar's four spiral antennas on the forward face (Gemini V mission report, Figure 3.1-4a): a cup's radius,
 # how far it stands off the face, how far its axis is from the ship's. Scaled on the face in the figure, which is a sketch
 RADAR_CUP = (3.1, 3.4, 4.3)
-# the rendezvous evaluation pod at the middle of the adapter's foot (the same report, Figure 3.1-4b): its body across the
-# ship, toward the top, along the ship; and the station of its aft face. A sixth of the adapter's width in the figure's inset
-POD = (20.0, 12.0, 9.0)
-POD_Z = 26.6  # (forward of the crown of the Titan's oxidiser dome, which stands inside the adapter to Z25.1)
-POD_WELL = 22.0  # the radius of the hole in the temperature control cover that it left through, under its own cover
+# the rendezvous evaluation pod (the same report, Figure 3.1-4b; SEDR 300 volume 2, Section VIII, pp. 8-291 to 8-299 and
+# Figures 8-79 and 8-80). "The transponder, 10 by 10 by 20 inches, is the largest component", and the rest is fastened
+# to it; its spiral antennas "extend outward approximately two inches from the case"; its dipole is "on the end of a
+# two-foot long fixed boom": documented. It was "installed in the center of the equipment adapter section", its mount
+# "on the blast shield access door" (Gemini VII mission report, 3.1.1.2): documented. The rest is estimated:
+POD_BODY = (10.0, 10.0, 20.0)  # the transponder: along the ship, across the band between the beams, along the band
+POD_AT = 50.0  # the station of the transponder's middle: what the mount and the charge's barrel leave under the door
+POD_ANTENNA = (3.3, 2.0)  # a spiral antenna's radius (scaled from Figure 8-79), and how far its face stands off the case
+POD_BOOM = 24.0  # the dipole's boom
+POD_POSTS = (6.5, 11.0)  # the four posts that carry the cover: from the pod's middle across the band, and along it
+# its cover, "an oval, plane structure" on those posts (p. 8-298), drawn in Figure 8-80 longer one way than the other: a
+# circle of this radius over the pod, a smaller one over the dipole, that far along the boom, and the lines between
+POD_COVER = (14.5, 4.5, 39.5)
+POD_COVER_Z = 33.1  # its station: in the plane of the gold cover's disc, a little aft of it
 # the reactant supply's two tanks, across their outsides. Derived inside: 22.25 lb of hydrogen and 180 lb of oxygen (SEDR 300
 # volume 2, p. 5-33) at their liquids' densities, 4.42 and 71.2 lb/cu ft, make balls 25.5 and 20.3 in across; the 1.3 in of
 # shell and insulation round each is a guess
 RSS_TANKS = (28.0, 23.0)
 FUEL_CELL = (6.25, 25.0)  # a fuel cell section: its radius and its length. Scaled on the hydrogen tank in the same report's Figure 3.1-5
-# where the module's four things lie: inches to the crew's right, toward the top, station. A row across the bottom of the
-# section, as Figure 3.1-5's inset has them: the two sections at one end, then the hydrogen, then the oxygen
-RSS_AT = ((8.0, -33.0, 44.0), (-21.0, -33.0, 44.0))
-FUEL_CELLS_AT = ((30.0, -31.0, 45.0), (38.0, -20.0, 45.0))
+# where the module's four things lie, each (from the ship's axis toward the module's wall, along the beam, station): a
+# row beyond the beam, as Figure 3.1-5 and SEDR 300 volume 2's Figure 5-6 have them: the two sections at one end, then
+# the hydrogen, then the oxygen. Which end the sections are at is read off those figures' insets: estimated
+RSS_AT = ((33.5, 0.5, 50.0), (29.0, -26.0, 51.0))
+FUEL_CELLS_AT = ((24.0, 33.5, 52.5), (24.0, 19.9, 52.5))
 # the hand-held manoeuvring unit as stowed: 17 by 10 by 3 in folded (the Smithsonian's record of it, A19670211000), in the centre
 # stowage box between the seats' heads (Gemini IV mission report, Table 3-III items 33 and 64, and Figure 3-15, which has no
 # dimensions): toward the top, to the crew's right, station
@@ -149,32 +212,29 @@ TRANSPONDER = (3.3, 2.4, 7.0)
 # 3.1.1.2 and 3.1.2.4): round from the top, and how far from the ship's axis. Which sides is not said, nor how they were
 # mounted: they are put on the left and the right, a quarter of the way round from the two aft-firing thrusters, looking aft
 # through the edge of the cover. Their form is the launch vehicle's flashing light's (titan_ii_glv.py), the same Agena light
-ACQUISITION_LIGHTS = ((deg(90), deg(-90)), 53.0)
+ACQUISITION_LIGHTS = ((deg(90), deg(-90)), 52.5)
 # its third drinking water tank, tank C, in the retrograde section: a ball across its outside, round from the top, from the
 # ship's axis, its middle's station. Inside it is derived: 42 lb of water (GVII, 3.1.2.3) at 62.4 lb/cu ft is a ball 13.05 in
 # across; the shell round it is a guess. SEDR 300 volume 1, Figure 6-10 sheet 5, draws it on a tray toward the top of the
 # section; which side of the top is not read from it
 WATER_C = (13.5, deg(24), 34.0, 88.5)
 # the OAMS's reserve fuel tank, spacecraft 7's alone: "5.10 inches outside diameter, 30.7 inches in length" (SEDR 300 volume
-# 1, Section VIII, p. 8-271: documented). Where its middle is (to the crew's right, toward the top, station), lying across
-# the ship forward of the propellant tanks: estimated from that section's Figure 8-72
+# 1, Section VIII, p. 8-271: documented). It lies along the OAMS module's inboard side, under the beam: estimated from
+# that section's Figure 8-72
 RESERVE_TANK = (5.10, 30.7)
-RESERVE_TANK_AT = (10.0, 12.0, 60.2)
 MYLAR = 0.3  # the fifty layers of aluminised mylar round spacecraft 7's hydrogen tank (GVII, 3.1.2.6.2): how thick is a guess
-# spacecraft 6's adapter battery module (SEDR 300 volume 2, Figure 5-9): the beam its three batteries hang under, and at the
-# row's end the one drinking water tank this ship had, with the ball of oxygen that pushed the water out (Figure 6-10 sheet
-# 3). The tank is 1.8 times a battery's width in the figure: 13.5 in, which is also what a 42 lb tank comes to (WATER_C); the
-# pressurant's is a guess. Each: to the crew's right, toward the top, station
-BATTERY_BEAM = (0.0, -26.0, 53.5)
-BATTERY_WATER = (13.5, (-7.5, -27.0, 40.0))
-BATTERY_PRESSURANT = (5.0, (-0.5, -37.0, 40.0))
+# an adapter battery, 400 ampere-hours: toward the wall, along the row, along the ship. Estimated
+BATTERY = (12.0, 7.4, 10.0)
+# spacecraft 6's adapter battery module (SEDR 300 volume 2, Figure 5-9): its three batteries in a row, and at the row's end
+# the one drinking water tank this ship had, with the bottle of oxygen that pushed the water out (Figure 6-10 sheet 3).
+# The tank is 1.8 times a battery's width in the figure: 13.5 in, which is also what a 42 lb tank comes to (WATER_C); the
+# bottle's size is a guess. Each: across, and (from the ship's axis, along the beam, station)
+BATTERY_WATER = (13.5, (26.0, -12.0, 53.0))
+BATTERY_PRESSURANT = (3.2, (24.0, -22.0, 53.0))
 # its OAMS tanks: two of fuel, two of oxidiser and two of helium, where spacecraft 5 and 7 had one of each (SEDR 300 volume
 # 2, Section VIII, Figure 8-96 sheet 1: "one tank on S/C 5, two tanks on S/C 6": documented), each of the same size as the
-# one. Figure 8-94 draws the four propellant tanks in a row round the arc of the module's frame: how far that arc is from
-# the ship's axis, the angles of the four round from the top (the fuel tanks the middle two, as near as the figure can be
-# read) and their station; and the two of helium, to the crew's right, toward the top, station. All estimated
-OAMS_ARC = (36.0, (deg(-20), deg(20), deg(-60), deg(60)), 44.0)
-OAMS_HELIUM_2 = ((-9.0, -2.0, 46.0), (9.0, -2.0, 46.0))
+# one. Figure 8-94 draws the four propellant tanks in the four places of the module's row (OAMS_ROW), the fuel tanks the
+# middle two, as near as the figure can be read; the two of helium are put between them and the wall. Estimated
 # and its three mooring latch receptacles, for the hooks of an Agena's docking cone: "equally spaced around the forward
 # perimeter" of the rendezvous and recovery section, "the lower latch" the nose fairing's pivot (SEDR 300 volume 2, p. 13-5
 # and Figure 13-2). Round from the top; and a fitting's width round the rim, its depth toward the axis and how far it stands
@@ -201,14 +261,14 @@ class Fit:
     eva: bool = False  # the hand-held manoeuvring unit and the umbilical, stowed in the cabin (spacecraft 4)
     fuel_cells: bool = False  # the fuel cell module in the adapter: two sections, and their hydrogen and oxygen (spacecraft 5)
     water_spheres: int = 0  # drinking water tanks of the OAMS propellant tank's form in the adapter (spacecraft 5 had two)
-    pod: bool = False  # the rendezvous evaluation pod at the adapter's foot (spacecraft 5 only)
+    pod: bool = False  # the rendezvous evaluation pod under the blast shield's access door (spacecraft 5 only)
     # what spacecraft 6 and 7 had
     transponder: bool = False  # an L-band transponder's spiral antenna on the forward face, in the radar's place (spacecraft 7)
     acquisition_lights: bool = False  # two flashing lights at the adapter's foot, for another ship to find this one by (spacecraft 7)
     retro_water_tank: bool = False  # a third drinking water tank, in the retrograde section (spacecraft 7)
     oams_reserve_tank: bool = False  # the OAMS's reserve fuel tank (spacecraft 7 only)
     hydrogen_insulated: bool = False  # the fuel cells' hydrogen tank wrapped in aluminised mylar (spacecraft 7)
-    battery_module: bool = False  # the adapter battery module's beam, and the one water tank at its end (spacecraft 6)
+    battery_module: bool = False  # the adapter battery module as spacecraft 6 had it: one row, the one water tank at its end
     oams_tanks: int = 1  # how many of each of the OAMS's fuel, oxidiser and helium tanks (spacecraft 6 had two)
     mooring_latches: bool = False  # the three latch receptacles round the forward face's rim, for docking (spacecraft 6)
     range_indicator: bool = True  # the radar's range and range-rate indicator on the command pilot's panel (spacecraft 7 had none)
@@ -250,6 +310,8 @@ SHELLS = (
     "Equipment_Foil",
     "Equipment_Rings",
     "Equipment_Cover",
+    "Equipment_CoverWells",
+    "Equipment_CoverHoop",
 )
 # and those only some ships have (`Fit`): a flight that asks for one adds its names to the list it marks (shells)
 SHELLS_OF = {
@@ -950,9 +1012,10 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
     say(
         fair.build("Cabin_StrapFairings", M["shingle"], g, sharp_angle=35),
         "Retaining strap fairing",
-        "The re-entry module is held to the adapter by three titanium straps across this joint, a third of the way round from one "
-        "another, with the wires and pipes crossing beside them. After retrofire a shaped charge cuts the straps and the last of "
-        "the adapter is pushed away. The fairings are counted in SEDR 300; where round the ship they stand is estimated.",
+        "The re-entry module is held to the adapter by three titanium straps across this joint, one high on each side and one "
+        "low on the right, each where a bundle of wires and pipes crosses, so that the charge that cuts a strap cuts those "
+        "too. After retrofire the three charges fire and the last of the adapter is pushed away. The fairings are counted "
+        "in SEDR 300; where round the ship the straps are is McDonnell's drawing; the fairings' shape is ours.",
     )
     if "reentry-communications" in fit.experiments:
         # on the right landing gear door, near its forward end: a plate with three nozzles in it, and an arming
@@ -1231,6 +1294,193 @@ def build_retro_water_tank(M, g) -> None:
     tray.build("Retro_WaterTankSupport", M["aluminium"], g, sharp_angle=35)
 
 
+# ------------------------------------------------------------------ the equipment section
+
+
+def L(theta: float, out: float, along: float, station: float) -> Vector:
+    """A point in the equipment section, by the module it belongs to: `out` inches from the ship's axis toward the wall
+    that module stands against (`theta`, round from the top), `along` inches a quarter turn further round, and its Z
+    station; metres out."""
+    return (radial(theta) * out + radial(theta + math.pi / 2) * along + Vector((0.0, 0.0, zz(station)))) * IN
+
+
+def Lm(theta: float, out: float, along: float, station: float) -> Matrix:
+    """A frame there: its x outward, its y along, its z toward the nose."""
+    return Matrix.Translation(L(theta, out, along, station)) @ Matrix.Rotation(theta, 4, "Z")
+
+
+def slab(mb: MeshBuilder, outline: list[tuple[float, float]], s0: float, s1: float, theta: float, bevel: float = 0.12) -> None:
+    """A plate cut to an outline, (out, along) in a module's frame and anticlockwise seen from the nose, between two
+    stations, its edges chamfered."""
+    n = len(outline)
+    cx, cy = sum(p[0] for p in outline) / n, sum(p[1] for p in outline) / n
+
+    def at(p: tuple[float, float], inset: float, station: float) -> tuple:
+        k = inset / (math.hypot(p[0] - cx, p[1] - cy) or 1.0)
+        return tuple(L(theta, p[0] + (cx - p[0]) * k, p[1] + (cy - p[1]) * k, station))
+
+    verts = [at(p, inset, s) for inset, s in ((bevel, s1), (0.0, s1 - bevel), (0.0, s0 + bevel), (bevel, s0)) for p in outline]
+    faces: list[tuple[int, ...]] = [tuple(range(n))]
+    for k in range(3):
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append((k * n + i, (k + 1) * n + i, (k + 1) * n + j, k * n + j))
+    faces.append(tuple(range(4 * n - 1, 3 * n - 1, -1)))
+    mb.add(verts, faces)
+
+
+def can(mb: MeshBuilder, m: Matrix, r: float, long: float, k: float, segs: int = 24) -> None:
+    """A cylinder with rounded ends about a frame's z: a tank, a bottle, a fuel cell's case. `k` is the radius its ends
+    are rounded to."""
+    h = long / 2
+    arc = [(r - k + k * math.sin(a), k - k * math.cos(a)) for a in (math.pi / 2 * i / 5 for i in range(6))]
+    mb.lathe(prof([(0.0, -h), *((x, -h + y) for x, y in arc[1:]), *((x, h - y) for x, y in arc[::-1][:-1]), (0.0, h)]), segs, matrix=m)
+
+
+def ball(mb: MeshBuilder, m: Matrix, r: float, segs: int = 32, ring: float = 0.0) -> None:
+    """A tank that is a ball, with a boss at each pole where a line comes in and, with `ring`, the band round its
+    middle that its halves are joined by, standing that far proud."""
+    sphere(mb, m.translation, r * IN, segs)
+    for s in (-1, 1):
+        mb.lathe(prof([(1.1, s * (r - 0.3)), (1.1, s * (r + 1.0)), (0.0, s * (r + 1.0))][::s]), 12, matrix=m)
+    if ring:
+        mb.lathe(hoop(r - 0.1, r + ring, -0.35, 0.35), segs, matrix=m)
+
+
+def cover_station(r: float) -> float:
+    """The station of the temperature control cover, that far from the ship's axis: flat inside its hoop, a cone from
+    the hoop out to the rim."""
+    (r1, s1), (r0, s0) = COVER_RIM, COVER_HOOP
+    return s0 if r <= r0 else s0 + (s1 - s0) * (r - r0) / (r1 - r0)
+
+
+def pod_outline(delta: float) -> float:
+    """The rendezvous pod cover's outline: how far its edge is from the ship's axis, `delta` round from the way the
+    pod's dipole points. An egg: a circle over the pod, a smaller one over the dipole, and the lines between them."""
+    a, b, d = POD_COVER
+    delta = abs((delta + math.pi) % TAU - math.pi)
+    psi = math.pi / 2 - math.asin((a - b) / d)  # where the straight sides leave the larger circle
+    tip = math.atan2(b * math.sin(psi), d + b * math.cos(psi))  # and where they reach the smaller
+    if delta >= psi:
+        return a
+    if delta >= tip:
+        return a / math.cos(delta - psi)
+    return d * math.cos(delta) + math.sqrt(b * b - (d * math.sin(delta)) ** 2)
+
+
+def port_outline(delta: float) -> float:
+    """The opening in the cover's middle that an instrument looks out of: a rectangle with rounded corners."""
+    half_along, half_out = COVER_PORT
+    return ((abs(math.cos(delta)) / half_along) ** 4 + (abs(math.sin(delta)) / half_out) ** 4) ** -0.25
+
+
+def well(mb: MeshBuilder, theta: float, rho: float, radius: float, floor: float) -> None:
+    """Where something stands through the cover (a thrust chamber, a light): a collar lying on the cover round the
+    hole, and the cuff inside it, up to a floor at that station."""
+    c = radial(theta) * rho
+    n = srlib._segs(24)
+    spokes = [Vector((math.cos(TAU * i / n), math.sin(TAU * i / n), 0.0)) for i in range(n)]
+
+    def ring(r_: float, lift: float) -> list[Vector]:
+        return [Vector(((c + e * r_).x, (c + e * r_).y, zz(cover_station((c + e * r_).length) - lift))) * IN for e in spokes]
+
+    cuff = [(c + e * (radius + 0.12) + Vector((0.0, 0.0, zz(floor)))) * IN for e in spokes]
+    rings = [ring(radius + 0.9, 0.5), ring(radius + 0.12, 0.5), cuff]
+    mb.grid(lambda i, j: rings[j][i], range(n), range(3), closed_u=True)
+    mb.add([tuple((c + Vector((0.0, 0.0, zz(floor)))) * IN)] + [tuple(p) for p in cuff], [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)])
+
+
+def build_cover(M, g, fit: Fit, wells: list[tuple[float, float, float, float]]) -> None:
+    """The temperature control cover across the open end (SEDR 300, p. 2-23; NASA S65-63221, spacecraft 7 from behind):
+    gold-coated cloth gathered in from the rim to a hoop, and a flat disc inside the hoop. `wells` are what stands
+    through it: round from the top, from the ship's axis, the hole's radius, and the station of the cuff's floor."""
+    (r1, _), (r0, s0) = COVER_RIM, COVER_HOOP
+    fine = srlib.DETAIL >= 0.5
+    gores = 48 if srlib.DETAIL >= 1.0 else 36 if fine else 24
+    cols, rows = 2 * gores, (8 if fine else 3)
+    pleat = PLEAT if fine else 0.0
+    looks_aft = "proton-electron-spectrometer" in fit.experiments
+    # (a ship with the pod has the pod's own cover in the middle, and the gold cut back round it: build_pod)
+    hole = (lambda d: pod_outline(d) + 0.3) if fit.pod else port_outline if looks_aft else None
+    angles = [T_ELECTRONIC + TAU * i / cols for i in range(cols)]
+    inner = [hole(a - T_ELECTRONIC) if hole else 0.0 for a in angles]
+
+    def point(i: int, r: float, lift: float = 0.0) -> tuple:
+        return tuple((radial(angles[i]) * r + Vector((0.0, 0.0, zz(cover_station(r)) + lift))) * IN)
+
+    verts: list[tuple] = []
+    faces: list[tuple[int, ...]] = []
+    for i in range(cols):  # the cone: a ridge and a valley to each gore, deepest toward the hoop it is gathered to
+        start = max(r0, inner[i])
+        for j in range(rows + 1):
+            r = start + (r1 - start) * j / rows
+            t = (r1 - r) / (r1 - r0)
+            verts.append(point(i, r, pleat * (0.4 + 0.6 * t) * min(1.0, (1.0 - t) / 0.12) * (1 if i % 2 == 0 else -1)))
+    for i in range(cols):
+        k = (i + 1) % cols
+        faces.extend((i * (rows + 1) + j, k * (rows + 1) + j, k * (rows + 1) + j + 1, i * (rows + 1) + j + 1) for j in range(rows))
+    base = len(verts)
+    if hole:  # the disc inside the hoop, out from the opening in it
+        for i in range(cols):
+            verts += [point(i, min(inner[i], r0)), point(i, r0)]
+        for i in range(cols):
+            k = (i + 1) % cols
+            if min(inner[i], inner[k]) < r0 - 1e-6:
+                faces.append((base + 2 * i, base + 2 * k, base + 2 * k + 1, base + 2 * i + 1))
+    else:
+        verts.append((0.0, 0.0, zz(s0) * IN))
+        verts += [point(i, r0) for i in range(cols)]
+        faces.extend((base, base + 1 + i, base + 1 + (i + 1) % cols) for i in range(cols))
+    cover, hoops = MeshBuilder(), MeshBuilder()
+    cover.add(verts, faces)
+    # the hoop the cloth is gathered to, and the seam inside it; where the pod's cover crosses the hoop it is cut
+    cut = next((a for a in (TAU * i / 720 for i in range(360)) if pod_outline(a) + 0.3 < r0), 0.0) if fit.pod else 0.0
+    arc = (T_ELECTRONIC + cut, T_ELECTRONIC + TAU - cut)
+    for r, k in ((r0, 0.32), *(() if fit.pod else ((r0 - 2.4, 0.18),))):
+        hoops.lathe(
+            prof([(r + k * math.cos(a), zz(s0) - 0.1 + k * math.sin(a)) for a in (-math.pi / 2 + TAU * i / 8 for i in range(9))]), cols, arc=arc
+        )
+    hoops.build("Equipment_CoverHoop", M["gold"], g, sharp_angle=None)
+    say(
+        cover.build("Equipment_Cover", M["gold"], g, sharp_angle=6),  # (each gather a crease, as the cloth's are)
+        "Temperature control cover",
+        "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
+        "fibre cloth with gold deposited on it closes the opening: gathered in from the rim to a hoop, like the inside of a "
+        "funnel, with a flat disc in the middle. Until the ship leaves the Titan, the dome of the Titan's tank stands up into "
+        "the adapter under it. The two thrusters that push the ship forward stand through it at the rim. That it was there and "
+        "what it "
+        "was made of are documented; its form is measured on a photograph of Gemini 7 taken from Gemini 6, good to two or "
+        "three inches, and taken to be the same on every ship.",
+    )
+    cuffs = MeshBuilder()
+    for theta, rho, radius, floor in wells:
+        if holes():
+            pierce("Equipment_Cover", radial(theta) * rho + Vector((0.0, 0.0, zz(cover_station(rho)))), Vector((0.0, 0.0, -1.0)), radius)
+            well(cuffs, theta, rho, radius, floor)
+    if cuffs.verts:
+        trim("Equipment_Cover", [(radial(theta) * rho * IN, (radius + 3.0) * IN) for theta, rho, radius, _ in wells])
+        cuffs.build("Equipment_CoverWells", M["gold"], g, sharp_angle=35)
+
+
+def trim(name: str, spots: list[tuple[Vector, float]]) -> None:
+    """Take out of a mesh, round each spot where a hole was cut in it (where, and how far round, in metres across the
+    ship), the faces the cutting left with no area. Such a face has no direction of its own, and can be taken for one
+    that will flicker against the cuff beside it; one with three corners in a line is a triangle and a sliver."""
+    obj = bpy.data.objects[name]
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+
+    def near(f) -> bool:
+        c = f.calc_center_median()
+        return any(math.hypot(c.x - at.x, c.y - at.y) < reach for at, reach in spots)
+
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3 and near(f)])
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if near(f) and f.calc_area() < 2e-3 * f.calc_perimeter() ** 2], context="FACES")
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+
+
 def build_equipment_section(M, fit: Fit) -> None:
     """The adapter's lower part: what is needed only in orbit. It is cut away just before retrofire."""
     g = group("EquipmentSection")
@@ -1263,13 +1513,12 @@ def build_equipment_section(M, fit: Fit) -> None:
         "way each fires are documented; where the clusters stand round the foot is read off SEDR 300's sketch.",
     )
     aft = MeshBuilder()
-    for a in OAMS_AFT:  # 9 and 10, which push the ship forward: at the foot, top and bottom, firing aft
-        c = radial(a) * 49.0 + Vector((0, 0, zz(Z_BASE + 9.0)))
-        aft.lathe(
-            prof([(1.0, 7.0), (1.6, 4.0), (2.6, 1.5), (3.1, 0.0)][::-1]),
-            20,
-            matrix=frame(c * IN, Vector((0, 0, -1))) @ Matrix.Translation(Vector((0, 0, -7.0)) * IN),
-        )
+    rho, exit_, exit_r = OAMS_AFT_AT
+    wells = []
+    for a in OAMS_AFT:  # 9 and 10, which push the ship forward: at the foot, top and bottom, firing aft through the cover
+        here = Matrix.Translation((radial(a) * rho + Vector((0.0, 0.0, zz(exit_)))) * IN)
+        aft.lathe(prof([(exit_r, 0.0), (exit_r - 0.35, 1.5), (1.6, 4.0), (0.85, 6.4), (1.25, 7.0), (1.25, 9.6), (0.0, 9.6)]), 20, matrix=here)
+        wells.append((a, rho, exit_r + 0.3, exit_ + 5.0))
     say(
         aft.build("Equipment_AftThrusters", M["nozzle"], g, sharp_angle=35),
         "Aft-firing thrusters",
@@ -1277,110 +1526,36 @@ def build_equipment_section(M, fit: Fit) -> None:
         "charge had cut the ship free, Grissom held these on to push it clear and into orbit. He held them a little long. At "
         "4 hours 21 minutes he used them again, for two and a half minutes, to bring the low point of the orbit down into the "
         "air: had the retrograde rockets then failed, the ship would have come home anyway. SEDR 300's sketch puts one at "
-        "the top of the foot and one at the bottom; there they lean outward, and here they fire straight aft.",
-    )
-    cover = MeshBuilder()
-    # (a ship with the pod has a hole in the cover's middle, which the pod's own cover closes: build_pod)
-    crown = (POD_WELL, zz(Z_BASE + 13.0 - 3.0 * POD_WELL / 30.0)) if fit.pod else (0.0, zz(Z_BASE + 13.0))
-    cover.lathe(prof([crown, (30.0, zz(Z_BASE + 10.0)), (BASE_R - 3.0, zz(Z_BASE + 2.2))]), 72)
-    say(
-        cover.build("Equipment_Cover", M["gold"], g, sharp_angle=None),
-        "Temperature control cover",
-        "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
-        "fibre with gold deposited on it is stretched across the opening. Documented; its shape here is estimated from a "
-        "photograph of this adapter being lowered onto the launch vehicle.",
+        "the top of the foot and one at the bottom, and a photograph of Gemini 7 from behind shows the two standing through "
+        "the gold cover just inside its rim; how far in is measured on that photograph.",
     )
     if fit.acquisition_lights:
-        build_acquisition_lights(M, g)
+        wells += build_acquisition_lights(M, g)
+    build_cover(M, g, fit, wells)
     if not interior():
         return
-    shield = MeshBuilder()
-    shield.lathe(prof([(0.0, zz(Z_DIVISION - 3.0)), (ADAPTER.r(zz(Z_DIVISION - 3.0)) - 2.8, zz(Z_DIVISION - 3.0))]), 72)
-    say(
-        shield.build("Equipment_BlastShield", M["honeycomb"], g, sharp_angle=None),
-        "Blast shield",
-        "A honeycomb shield across the top of this section, under the retrograde rockets. If the rockets were ever fired to pull "
-        "the ship off a failing launch vehicle, this section and the Titan's oxidiser tank would be straight below them.",
-    )
-    tanks, frames_, gear, batt = (MeshBuilder() for _ in range(4))
-    lay = layout(fit)
-    # the OAMS's own: a fuel tank, an oxidiser tank and the helium that pushes them, each a ball (SEDR 300, section
-    # VIII: 21.13, 21.12 and 16.20 in across). Spacecraft 3 has one of each
-    for (right, top, station), across in lay["oams"]:
-        sphere(tanks, P(right, top, station), across / 2 * IN)
-        # (a boss at each pole, where the lines come in)
-        for s in (-1, 1):
-            tanks.tube(P(right, top, station + s * (across / 2 - 0.3)), P(right, top, station + s * (across / 2 + 1.1)), 1.1 * IN, 12)
-    say(
-        tanks.build("Equipment_OamsTanks", M["tank"], g, sharp_angle=None),
-        "OAMS propellant tanks",
-        "The orbit attitude and maneuver system: a fuel tank 21.13 in across, an oxidiser tank 21.12 in across and a ball "
-        "of helium 16.20 in across to push them, feeding sixteen thrust chambers round the adapter. About 300 lb of "
-        "propellant on this flight. With it Gemini 3 changed its orbit three times. The sizes are SEDR 300's; the sketch of "
-        "the system shows the two propellant tanks together on one side and the helium near the middle, and exactly where "
-        "they are here is estimated.",
-    )
-    oxygen = MeshBuilder()
-    sphere(oxygen, P(*lay["oxygen"], 42.0), 9.0 * IN)
-    say(
-        oxygen.build("Equipment_PrimaryOxygen", M["tank"], g, sharp_angle=None),
-        "Primary oxygen",
-        "The oxygen the crew breathe in orbit: 15.3 lb of it on this flight. When this section is cut away before retrofire they "
-        "go on to a smaller supply in the re-entry module. Its size and place here are estimated.",
-    )
-    n = fit.adapter_batteries
-    for i in range(n):
-        chamfered(batt, (12.0, 7.4, 10.0), Matrix.Translation(P(16.0 + (i - (n - 1) / 2) * 8.6, -26.0, 40.0)), 0.3)
-    if n:
-        say(
-            batt.build("Equipment_Batteries", M["battery"], g, sharp_angle=35),
-            "Adapter batteries",
-            f"{('Three', 'Six')[n > 3]} silver-zinc batteries of 400 ampere-hours: all the power the ship has in orbit. The fuel "
-            "cells that were to make Gemini's electricity from hydrogen and oxygen were not ready, so the first two crews flew on "
-            "batteries, and how long the batteries would last set how long the flights could be. Their number and rating are "
-            "documented; their size and place here are estimated.",
-        )
-    if fit.battery_module:
-        build_battery_module(M, g, n)
-    if fit.oams_reserve_tank:
-        build_reserve_tank(M, g)
-    for right, top in lay["water"]:
-        gear.tube(P(right, top, 34.0), P(right, top, 46.0), 3.6 * IN, 16)
-    for right, top, size in lay["modules"]:
-        chamfered(gear, size, Matrix.Translation(P(right, top, 40.0)), 0.25)
-    gear.build("Equipment_Modules", M["equipment"], g, sharp_angle=35)
-    zf = Z_BASE + 17.5
-    hub = 13.2 if fit.pod else 0.0  # (the pod is where the hub would be: its spokes begin round it)
-    for a in (TAU * i / 6 for i in range(6)):  # the frame the modules hang on: spokes from a hub to the adapter's wall
-        frames_.tube(P(hub * math.sin(a), hub * math.cos(a), zf), ADAPTER.p(a, zz(zf), -2.2), 0.9 * IN, 8)
-    frames_.build("Equipment_ModuleFrame", M["aluminium"], g, sharp_angle=35)
-    if fit.water_spheres:
-        water = MeshBuilder()
-        for right, top in lay["water_spheres"]:
-            sphere(water, P(right, top, 44.0), 21.12 / 2 * IN)
-        say(
-            water.build("Equipment_WaterTanks", M["tank"], g, sharp_angle=None),
-            "Drinking water tanks",
-            "Two tanks of the manoeuvring system's own pattern, each able to hold 150 lb of water behind a diaphragm. One "
-            "went up with 30 lb in it, pushed out by oxygen. The other went up with 126 lb and did two jobs: the water the "
-            "fuel cells made was piped in on the far side of its diaphragm, and pushed the drinking water out as it came. "
-            "So the more electricity the ship made, the less room it had left for the water that made, and late in the "
-            "flight power was held down for that reason too. That there were two, and whose pattern they were, are "
-            "documented; where they stand here is estimated.",
-        )
+    build_blast_shield(M, g, fit)
+    build_oams_module(M, g, fit)
     if fit.fuel_cells:
         build_fuel_cells(M, g, fit.hydrogen_insulated)
+    if fit.adapter_batteries:
+        build_battery_module(M, g, fit)
+    build_ecs_module(M, g)
+    build_electronic_module(M, g)
     build_adapter_experiments(M, g, fit)
+    if fit.pod:
+        build_pod_mount(M, g)
 
 
-def build_acquisition_lights(M, g) -> None:
+def build_acquisition_lights(M, g) -> list[tuple[float, float, float, float]]:
     """Spacecraft 7's two acquisition lights (Gemini VII mission report, 3.1.1.2 and 3.1.2.4): the flashing lights made
-    for the Agena, at the foot of the adapter on opposite sides, for the crew of spacecraft 6 to find this ship by."""
+    for the Agena, at the foot of the adapter on opposite sides, for the crew of spacecraft 6 to find this ship by.
+    Returns where each stands through the cover (build_cover's `wells`)."""
     angles, rho = ACQUISITION_LIGHTS
     base, lens = MeshBuilder(), MeshBuilder()
     for a in angles:
         port = frame((radial(a) * rho + Vector((0.0, 0.0, zz(Z_BASE + 3.1)))) * IN, Vector((0.0, 0.0, -1.0)))
-        base.lathe(prof([(0.0, -0.9), (2.6, -0.9), (2.6, 0.5), (0.0, 0.5)]), 20, matrix=port)
+        base.lathe(prof([(0.0, -3.4), (2.6, -3.4), (2.6, 0.5), (0.0, 0.5)]), 20, matrix=port)
         lens.lathe(prof([(1.9, 0.5), (1.9, 1.3), (1.3, 2.1), (0.0, 2.4)]), 20, matrix=port)
     base.build("Equipment_AcquisitionLightBases", M["aluminium"], g, sharp_angle=35)
     say(
@@ -1390,21 +1565,182 @@ def build_acquisition_lights(M, g) -> None:
         "that fires about 65 times a minute and can be seen for some twenty miles as a star of the third magnitude. The "
         "crew switched them from a circuit breaker by the pilot's elbow. That there were two, on opposite sides at the base "
         "of this section, is documented; which sides, and how they were mounted, was not found: they are put left and "
-        "right, looking aft.",
+        "right, looking aft through the cover.",
+    )
+    return [(a, rho, 2.9, Z_BASE + 6.4) for a in angles]
+
+
+def build_blast_shield(M, g, fit: Fit) -> None:
+    """The blast shield at Z66.74 and the beams it lies on (Technical Summary, Figure 4, p. 12, and p. 13): not one
+    sheet but the support panels of the section's modules and an access door between them, of aluminium honeycomb
+    faced with glass fibre. Two beams cross the section; the OAMS module is the segment beyond one, the fuel cell or
+    battery module the segment beyond the other, and between the beams are the electronic module, the door, and the
+    environmental control system's module."""
+    rs = ADAPTER.r(zz(Z_BLAST)) - 2.8
+    gap = 0.12
+    b, d = BEAM_AT - gap, DOOR_HALF
+
+    def arc(a0: float, a1: float, n: int) -> list[tuple[float, float]]:
+        return [(rs * math.cos(a), rs * math.sin(a)) for a in (a0 + (a1 - a0) * i / n for i in range(n + 1))]
+
+    seg = math.acos((BEAM_AT + gap) / rs)
+    end = math.acos(b / rs)
+    panels, door, beams = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    s0, s1 = Z_BLAST - SHIELD_THICK, Z_BLAST
+    slab(panels, arc(-seg, seg, 28), s0, s1, T_OAMS)  # the OAMS module's
+    slab(panels, arc(-seg, seg, 28), s0, s1, T_POWER)  # the fuel cell or battery module's
+    slab(panels, [(-b, d + gap), (b, d + gap), *arc(end, math.pi - end, 12)], s0, s1, T_OAMS)  # the electronic module's
+    slab(panels, [(b, -d - gap), (-b, -d - gap), *arc(math.pi + end, TAU - end, 12)], s0, s1, T_OAMS)  # the ECS module's
+    slab(door, [(-b, -d + gap), (b, -d + gap), (b, d - gap), (-b, d - gap)], s0, s1, T_OAMS)
+    say(
+        panels.build("Equipment_BlastShield", M["honeycomb"], g, sharp_angle=30),
+        "Blast shield",
+        "Aluminium honeycomb faced with glass fibre, across the head of this section under the retrograde rockets. If the "
+        "rockets were ever fired to pull the ship off a failing launch vehicle, this section and the Titan's oxidiser tank "
+        "would be straight below them. It is not one sheet: each of the section's modules hangs under a panel of its own, "
+        "and the panels and a door between them make the shield. McDonnell's drawing gives its station and which module is "
+        "on which side; how wide each panel is is scaled from that drawing.",
+    )
+    say(
+        door.build("Equipment_BlastShieldDoor", M["honeycomb"], g, sharp_angle=30),
+        "Blast shield access door",
+        "The panel in the middle of the blast shield, between the two beams. Nothing hangs under it but what a flight puts "
+        "there, an experiment or spacecraft 5's pod, so the middle of the section is clear from here to the gold cover. That "
+        "there was a door in the middle is McDonnell's drawing; its size is scaled "
+        "from it.",
+    )
+    # the two beams, each the edge of the module beyond it; the short ones that frame the door; a fitting at each end
+    top = s0 - 0.15
+    half = math.sqrt((ADAPTER.r(zz(top - 1.8)) - 2.5) ** 2 - BEAM_AT**2)
+    for side in (1, -1):
+        i_beam(beams, Lm(T_OAMS, side * BEAM_AT, 0.0, top - 1.8) @ Matrix.Rotation(math.pi / 2, 4, "Z"), 2 * half - 3.4, 3.6, 2.6)
+        for e in (1, -1):
+            chamfered(beams, (3.0, 3.2, 4.4), Lm(T_OAMS, side * BEAM_AT, e * (half - 1.6), top - 2.6), 0.25)
+    for e in (1, -1):
+        i_beam(beams, Lm(T_OAMS, 0.0, e * DOOR_HALF, top - 1.2), 2 * BEAM_AT - 3.0, 2.4, 2.0)
+    for e in (1, -1):  # the fasteners along the door's two long edges, seen from below
+        for i in range(7):
+            beams.disc(L(T_OAMS, e * (b - 1.0), (i - 3) * (d - 2.0) / 3, s0), (0.0, 0.0, -1.0), 0.4 * IN, 0.14 * IN)
+    say(
+        beams.build("Equipment_ModuleBeams", M["aluminium"], g, sharp_angle=35),
+        "Module support beams",
+        "Two beams across the section, wall to wall, with the blast shield's panels lying on them. Each is the inboard edge of a "
+        "module: the manoeuvring system's tanks hang beyond one, the fuel cells or the batteries beyond the other, and the "
+        "space between the two is left clear. They do not run square to the ship's top and bottom: two of McDonnell's drawings "
+        "have them turned about 23 degrees, as near as a sketch can be measured. The beams and what hangs from each are his "
+        "drawing; how far apart they are and "
+        "their section are scaled from it.",
     )
 
 
-def build_reserve_tank(M, g) -> None:
+def build_oams_module(M, g, fit: Fit) -> None:
+    """The orbit attitude and maneuver system's module (Technical Summary, Figure 4; SEDR 300 volume 1, Section VIII,
+    Figure 8-72; volume 2, Section VIII, Figures 8-94 and 8-96; the Gemini V mission report, Figure 3.1-3): a frame
+    with a straight inboard side and a side curved to the wall, and four places in a row along it. A ship with one
+    tank each of fuel and oxidiser has them in the middle two, and a fuel cell ship has its two drinking water tanks,
+    of the same pattern, at the ends; spacecraft 6 has propellant in all four."""
+    out, pitch, station = OAMS_ROW
+    places = [(i - 1.5) * pitch for i in range(4)]
+    tanks, water, frames_, packs = (MeshBuilder() for _ in range(4))
+    if fit.oams_tanks > 1:
+        propellant = [(places[0], 21.12), (places[1], 21.13), (places[2], 21.13), (places[3], 21.12)]  # (fuel the middle two)
+        helium = (-pitch, pitch)
+    else:
+        propellant = [(places[1], 21.13), (places[2], 21.12)]
+        helium = (0.0,)
+    for along, across in propellant:
+        ball(tanks, Lm(T_OAMS, out, along, station), across / 2)
+    for along in helium:  # the helium that pushes them: in the gap between two tanks and the wall, a little aft
+        ball(tanks, Lm(T_OAMS, OAMS_HELIUM[0], along, OAMS_HELIUM[1]), 16.20 / 2, 24)
+    say(
+        tanks.build("Equipment_OamsTanks", M["tank"], g, sharp_angle=None),
+        "OAMS propellant tanks",
+        "The orbit attitude and maneuver system: a fuel tank 21.13 in across, an oxidiser tank 21.12 in across and a ball "
+        "of helium 16.20 in across to push them, feeding sixteen thrust chambers round the adapter. About 300 lb of "
+        "propellant on this flight. With it Gemini 3 changed its orbit three times. The sizes are SEDR 300's. McDonnell's "
+        "drawings have the propellant tanks side by side on one module, against the wall toward the ship's top and a "
+        "little to the crew's right; where along that module each stands, and where the helium is, are estimated.",
+    )
+    filled = [a for a, _ in propellant]
+    if fit.water_spheres and fit.oams_tanks == 1:
+        for along in (places[0], places[3])[: fit.water_spheres]:
+            ball(water, Lm(T_OAMS, out, along, station), 21.12 / 2)
+            filled.append(along)
+        say(
+            water.build("Equipment_WaterTanks", M["tank"], g, sharp_angle=None),
+            "Drinking water tanks",
+            "Two tanks of the manoeuvring system's own pattern, at the two ends of its row of tanks, each able to hold 150 lb "
+            "of water behind a diaphragm. One went up with 30 lb in it, pushed out by oxygen. The other went up with 126 lb "
+            "and did two jobs: the water the fuel cells made was piped in on the far side of its diaphragm, and pushed the "
+            "drinking water out as it came. So the more electricity the ship made, the less room it had left for the water "
+            "that made, and late in the flight power was held down for that reason too. That there were two, whose pattern "
+            "they were and that they stood at the ends of this row are documented; the row's place is scaled from "
+            "McDonnell's drawings.",
+        )
+    # the frame they hang in, a little above their middles: the straight side, the curved side, a member between each
+    # two places, and a ring round each tank
+    level = station + 9.0
+    side, rim = 13.6, ADAPTER.r(zz(level)) - 3.6
+    reach = math.sqrt(rim**2 - side**2)
+    chamfered(frames_, (2.0, 2 * reach - 1.0, 2.0), Lm(T_OAMS, side, 0.0, level), 0.2)
+    steps = 28
+    phi = math.atan2(reach, side)
+    curve = [L(T_OAMS, rim * math.cos(a), rim * math.sin(a), level) for a in (-phi + 2 * phi * i / steps for i in range(steps + 1))]
+    for p, q in zip(curve, curve[1:]):
+        frames_.tube(p, q, 0.9 * IN, 8, caps=False)
+    for along in (0.0, -pitch, pitch):
+        frames_.tube(L(T_OAMS, side + 0.8, along, level), L(T_OAMS, math.sqrt(rim**2 - along**2) - 0.4, along, level), 0.8 * IN, 8)
+    girth = math.sqrt((21.13 / 2) ** 2 - 9.0**2)  # a tank's radius at the frame's level
+    for along in filled:
+        frames_.lathe(hoop(girth + 0.25, girth + 0.95, -0.3, 0.3), 24, matrix=Lm(T_OAMS, out, along, level))
+        for e in (-1, 1):  # a lug to the member on either hand (at the row's ends, to the curved side)
+            far = along + e * pitch / 2
+            to = L(T_OAMS, out, far - e * 0.6, level) if abs(far) < 1.2 * pitch else L(T_OAMS, out + 1.0, along + e * (girth + 3.2), level)
+            frames_.tube(L(T_OAMS, out, along + e * (girth + 0.8), level), to, 0.5 * IN, 8)
+    for along in (-0.9 * reach, -pitch, 0.0, pitch, 0.9 * reach):  # hangers up to the beam
+        frames_.tube(L(T_OAMS, side, along, level + 0.9), L(T_OAMS, BEAM_AT - 0.5, along, BEAM_FOOT + 0.15), 0.5 * IN, 8)
+    for a in (-0.55 * phi, 0.0, 0.55 * phi):  # and a fitting to the wall
+        chamfered(frames_, (2.6, 3.0, 2.4), Lm(T_OAMS + a, rim + 0.9, 0.0, level), 0.2)
+    say(
+        frames_.build("Equipment_OamsModule", M["aluminium"], g, sharp_angle=35),
+        "OAMS module structure",
+        "The frame the manoeuvring system's tanks hang in: straight on the side toward the middle of the ship, curved to the "
+        "wall on the other, with room for four tanks in a row. It went into the adapter as one piece, tanks and valves "
+        "already on it. Its form is McDonnell's drawings of the module; none of them is dimensioned, and its sizes here "
+        "are what the four tanks and the wall leave.",
+    )
+    # the valve packages on their manifold, along the module's inboard side under the beam (Figure 8-72 draws them so:
+    # the pressure regulator, and the packages lettered A to E, with the two propellant shutoff valves)
+    bar = (side - 3.0, level + 2.0)
+    packs.tube(L(T_OAMS, bar[0], -17.0, bar[1]), L(T_OAMS, bar[0], 17.0, bar[1]), 0.6 * IN, 10)
+    for i, along in enumerate((-15.0, -9.0, -3.0, 3.0, 9.0, 15.0)):
+        if i % 2:
+            chamfered(packs, (2.4, 2.8, 2.6), Lm(T_OAMS, bar[0], along, bar[1]), 0.25)
+            packs.tube(L(T_OAMS, bar[0] - 1.2, along, bar[1]), L(T_OAMS, bar[0] - 2.4, along, bar[1]), 0.5 * IN, 8)
+        else:
+            packs.tube(L(T_OAMS, bar[0], along - 1.5, bar[1] - 0.2), L(T_OAMS, bar[0], along + 1.5, bar[1] - 0.2), 1.25 * IN, 12)
+            packs.tube(L(T_OAMS, bar[0], along, bar[1] - 0.2), L(T_OAMS, bar[0], along, bar[1] - 2.3), 0.55 * IN, 8)
+    say(
+        packs.build("Equipment_OamsPackages", M["equipment"], g, sharp_angle=35),
+        "OAMS valve packages",
+        "The manoeuvring system's plumbing, gathered into packages on one manifold: the regulator that brings the helium "
+        "down from 3,000 lb to the square inch to what the tanks are pushed with, the valves that squibs open to let the helium "
+        "and the propellants through for the first time, the filters and check valves, and the two valves by which the fuel and "
+        "the oxidiser could be shut off again. What the packages are is documented; their forms here are "
+        "tokens, and their place along the module's inboard side is read off McDonnell's sketch.",
+    )
+    if fit.oams_reserve_tank:
+        build_reserve_tank(M, g, side - 4.0, level - 3.0)
+
+
+def build_reserve_tank(M, g, out: float, station: float) -> None:
     """The OAMS's reserve fuel tank, which only spacecraft 7 had (Gemini VII mission report, 3.1.2.7; SEDR 300 volume 1,
-    Section VIII, p. 8-271 and Figure 8-72): a cylinder of the re-entry control system's pattern, lying across the ship."""
+    Section VIII, p. 8-271 and Figure 8-72): a cylinder of the re-entry control system's pattern, lying along the
+    module's inboard side."""
     across, long = RESERVE_TANK
-    right, top, station = RESERVE_TANK_AT
-    r, h, k = across / 2, long / 2, 1.3  # (k: the radius its ends are rounded to: a guess)
-    arc = [(r - k + k * math.sin(a), k - k * math.cos(a)) for a in (math.pi / 2 * i / 5 for i in range(6))]
-    profile = [(0.0, -h), *((x, -h + y) for x, y in arc[1:]), *((x, h - y) for x, y in arc[::-1][:-1]), (0.0, h)]
-    along = frame(P(right, top, station), Vector((0.0, 1.0, 0.0)))
     tank, straps = MeshBuilder(), MeshBuilder()
-    tank.lathe(prof(profile), 24, matrix=along)
+    along = Lm(T_OAMS, out, 0.0, station) @ Matrix.Rotation(-math.pi / 2, 4, "X")  # (its axis along the module)
+    can(tank, along, across / 2, long, 1.3)
     say(
         tank.build("Equipment_OamsReserveTank", M["tank"], g, sharp_angle=None),
         "OAMS reserve fuel tank",
@@ -1414,101 +1750,144 @@ def build_reserve_tank(M, g) -> None:
         "this one and know exactly what they had left. They did, at 290 hours. Its size is McDonnell's figure; where it "
         "lies is estimated from the manual's sketch of the system.",
     )
-    for s in (-1, 1):  # the two straps that hold it to the module
-        straps.lathe(hoop(r - 0.1, r + 0.25, s * 9.0 - 0.5, s * 9.0 + 0.5), 24, matrix=along)
-        straps.tube(P(right + s * 9.0, top, station - r - 0.2), P(right + s * 9.0, top, station - r - 2.2), 0.45 * IN, 8)
+    for s in (-1, 1):  # the two straps that hold it to the module's frame
+        straps.lathe(hoop(across / 2 - 0.1, across / 2 + 0.25, s * 9.0 - 0.5, s * 9.0 + 0.5), 24, matrix=along)
+        straps.tube(L(T_OAMS, out + across / 2, s * 9.0, station + 0.6), L(T_OAMS, out + 3.4, s * 9.0, station + 2.4), 0.45 * IN, 8)
     straps.build("Equipment_OamsReserveTankStraps", M["aluminium"], g, sharp_angle=35)
 
 
-def build_battery_module(M, g, n: int) -> None:
-    """Spacecraft 6's adapter battery module (SEDR 300 volume 2, Figure 5-9 and Figure 6-10 sheet 3): the beam its `n`
-    batteries hang under, and at the end of their row the ship's one drinking water tank and the oxygen that pushed
-    the water out of it."""
-    right, top, station = BATTERY_BEAM
-    frames_, water = MeshBuilder(), MeshBuilder()
-    i_beam(frames_, Matrix.Translation(P(right, top, station)) @ Matrix.Rotation(math.radians(90), 4, "Z"), 84.0, 4.0, 2.4)
-    for i in range(n):  # a hanger from the beam to each battery (which stand as build_equipment_section puts them)
-        x = 16.0 + (i - (n - 1) / 2) * 8.6
-        for dt in (-3.6, 3.6):
-            frames_.tube(P(x, top + dt, 44.5), P(x, top + dt * 0.25, station - 1.9), 0.4 * IN, 8)
-    across, at = BATTERY_WATER
-    sphere(water, P(*at), across / 2 * IN, 32)
-    water.lathe(hoop(across / 2 - 0.1, across / 2 + 0.5, -0.3, 0.3), 32, matrix=Matrix.Translation(P(*at)))  # its halves' flange
-    frames_.tube(P(at[0], at[1], at[2] + across / 2 - 0.2), P(at[0], top, station - 1.9), 0.5 * IN, 8)
-    small, where = BATTERY_PRESSURANT
-    sphere(water, P(*where), small / 2 * IN, 20)
-    frames_.tube(P(where[0], where[1], where[2] + small / 2 - 0.1), P(where[0], top - 1.0, station - 1.9), 0.3 * IN, 8)
+def battery(mb: MeshBuilder, m: Matrix) -> None:
+    """One of the adapter's 400 ampere-hour batteries: a ribbed case, its lid and its connector (SEDR 300 volume 2,
+    Figure 5-9, draws them so; their size is estimated)."""
+    deep, wide, tall = BATTERY
+    chamfered(mb, (deep, wide, tall), m, 0.3)
+    for k in (-0.32, 0.0, 0.32):  # the ribs round the case
+        chamfered(mb, (deep + 0.36, wide + 0.36, 0.55), m @ Matrix.Translation(Vector((0.0, 0.0, k * tall)) * IN), 0.12)
+    chamfered(mb, (deep - 1.6, wide - 1.4, 0.5), m @ Matrix.Translation(Vector((0.0, 0.0, -tall / 2 - 0.1)) * IN), 0.12)  # its lid, aft
+    mb.lathe(prof([(0.9, 0.0), (0.9, -1.1), (0.0, -1.1)][::-1]), 10, matrix=m @ Matrix.Translation(Vector((deep / 4, 0.0, -tall / 2 - 0.3)) * IN))
+
+
+def build_battery_module(M, g, fit: Fit) -> None:
+    """The adapter battery module of a ship without fuel cells (SEDR 300 volume 1, Figures 5-2 and 6-10 sheets 2 and 4,
+    for spacecraft 3 and 4; volume 2, Figures 5-9 and 6-10 sheet 3, for spacecraft 6): the batteries hung in rows from
+    a frame beyond the beam, on the side of the section away from the OAMS module, and the ship's drinking water with
+    them. Spacecraft 3 has three batteries and one water tank; spacecraft 4 six, in two tiers, with four water tanks and
+    the oxygen that pushed the water out; spacecraft 6 three, with one tank that is a ball and its oxygen."""
+    n = fit.adapter_batteries
+    out, upper, lower = 26.0, 55.5, 43.5
+    deep, wide, tall = BATTERY
+    batt, frames_, water = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    # where each hangs, as (along, station): three to a tier; spacecraft 6's in a row from one end, the water tank at the other
+    places = [(22.0 - 10.0 * i, upper) if fit.battery_module else ((i % 3 - 1) * 8.6, (upper, lower)[i // 3]) for i in range(n)]
+    for along, station in places:
+        battery(batt, Lm(T_POWER, out, along, station))
     say(
-        water.build("Equipment_WaterTank", M["tank"], g, sharp_angle=None),
-        "Drinking water tank",
-        "All the drinking water this ship carried in its adapter: one tank at the end of the row of batteries, with a "
-        "small ball of oxygen beside it to push the water forward to the cabin. Two days needed no more. The ships either "
-        "side of it had fuel cells, which make water, and two or three big tanks to hold it. That there was one tank, "
-        "where it hung and what pushed it are McDonnell's drawing; its size is scaled from that drawing.",
+        batt.build("Equipment_Batteries", M["battery"], g, sharp_angle=35),
+        "Adapter batteries",
+        f"{('Three', 'Six')[n > 3]} silver-zinc batteries of 400 ampere-hours: all the power the ship has in orbit. The fuel "
+        "cells that were to make Gemini's electricity from hydrogen and oxygen were not ready, so the first two crews flew on "
+        "batteries, and how long the batteries would last set how long the flights could be. Their number and rating are "
+        "documented, and McDonnell's drawings show them hung in a row from the module on this side of the section; their "
+        "size is estimated.",
     )
+    # the drinking water that hangs with them, as (along, station, how far its top is below a battery's): the early
+    # ships' tanks are drums on end, spacecraft 6's is a ball
+    hung: list[tuple[float, float, float]] = []
+    if fit.battery_module:
+        hung = [(BATTERY_WATER[1][1], upper, 1.6)]
+    elif fit.water_tanks == 1:
+        hung = [(-19.4, upper, 1.2)]
+    elif fit.water_tanks > 1:  # in pairs at the two ends of the lower tier (SEDR 300 volume 1, Figure 6-10 sheet 4)
+        hung = [(s * (16.9 + 7.7 * k), lower, 1.2) for s in (-1, 1) for k in range(fit.water_tanks // 2)]
+    # the frame: two rails over each tier with a rung over each thing that hangs from them, the upper rails hung from
+    # the beam and the lower from the upper
+    tiers = sorted({station for _, station in places}, reverse=True)
+    lo, hi = min(a for a, _ in places) - wide / 2 - 1.2, max(a for a, _ in places) + wide / 2 + 1.2
+    rails = (out - deep / 2 + 0.6, out + deep / 2 - 0.6)
+    for station in tiers:
+        held = [(a, 0.2) for a, s in places if s == station] + [(a, drop) for a, s, drop in hung if s == station]
+        a0, a1 = min([lo, *(a - 4.8 for a, _ in held)]), max([hi, *(a + 4.8 for a, _ in held)])
+        rail = station + tall / 2 + 0.9
+        for o in rails:
+            chamfered(frames_, (1.2, a1 - a0, 1.2), Lm(T_POWER, o, (a0 + a1) / 2, rail), 0.15)
+        for along in (a0 + 0.6, a1 - 0.6):
+            chamfered(frames_, (deep - 2.0, 1.0, 0.8), Lm(T_POWER, out, along, rail), 0.12)
+        for along, drop in held:
+            chamfered(frames_, (deep - 2.0, 1.0, 0.8), Lm(T_POWER, out, along, rail), 0.12)
+            for o in (-1, 1):
+                frames_.tube(L(T_POWER, out + o * 3.0, along, rail), L(T_POWER, out + o * 3.0, along, station + tall / 2 - drop), 0.3 * IN, 8)
+        if station == tiers[0]:
+            for along in (a0 + 2.0, (a0 + a1) / 2, a1 - 2.0):  # hangers to the beam
+                frames_.tube(L(T_POWER, rails[0], along, rail), L(T_POWER, BEAM_AT + 0.6, along, BEAM_FOOT + 0.15), 0.5 * IN, 8)
+        else:
+            for along in (lo + 0.6, hi - 0.6):  # posts from the tier above
+                for o in rails:
+                    frames_.tube(L(T_POWER, o, along, rail), L(T_POWER, o, along, tiers[0] + tall / 2 + 0.9), 0.4 * IN, 8)
+    bottle = (out - deep / 2 - 2.4, -6.0, upper)  # spacecraft 4's bottle of oxygen, inboard of the upper tier
+    if len(hung) > 1:
+        frames_.tube(L(T_POWER, bottle[0], bottle[1], bottle[2] + 4.2), L(T_POWER, rails[0] - 0.3, bottle[1], upper + tall / 2 + 0.9), 0.3 * IN, 8)
     say(
         frames_.build("Equipment_BatteryModule", M["aluminium"], g, sharp_angle=35),
         "Adapter battery module",
-        "The beam the batteries hang under, across the bottom of the section: on the other ships of this pattern the "
-        "same place holds the fuel cells and their tanks. McDonnell's drawing shows the beam with the three batteries "
-        "under it in a row and the water tank at the end; its size and section here are estimated from it.",
+        "The frame the batteries hang from, beyond one of the section's two beams: on the fuel cell ships the same place "
+        "holds the cells and their tanks. McDonnell's drawings show the beam, the batteries under it in a row and the "
+        "drinking water at the row's end; the frame's members here are estimated from them.",
     )
-
-
-def layout(fit: Fit) -> dict:
-    """Where the equipment section's loose contents lie, as (inches to the crew's right, inches toward the top). All
-    estimated. Spacecraft 3's is as that ship was first laid out here; a ship that carried more has things moved to make
-    room for it."""
-    lay = {
-        "oxygen": (-24.0, -22.0),
-        "water": [(-6.0 - 9.0 * i, -30.0) for i in range(fit.water_tanks)],
-        # the electronic modules: to the right, toward the top, and their size (toward the top, across, along the ship)
-        "modules": [
-            (-34.0, -4.0, (9.0, 12.0, 14.0)),
-            (36.0, -18.0, (9.0, 14.0, 12.0)),
-            (-26.0, 14.0, (12.0, 9.0, 10.0)),
-            (-16.0, 34.0, (12.0, 8.0, 10.0)),
-        ],
-        "water_spheres": [],
-        # the OAMS's fuel tank, oxidiser tank and helium: where each is and how far across
-        "oams": list(zip(OAMS_TANKS, (21.13, 21.12, 16.20))),
-    }
-    if fit.water_tanks > 1:
-        # four tanks together, as the Gemini IV mission report's Figure 3-6 draws them; with six batteries along the
-        # bottom there is no room for them there
-        lay["water"] = [(-37.0 + 8.0 * (i % 2), 24.0 + 8.0 * (i // 2)) for i in range(fit.water_tanks)]
-    if fit.fuel_cells:
-        # the fuel cell module lies across the bottom (RSS_AT, FUEL_CELLS_AT): the oxygen the crew breathe moves up the left side
-        lay["oxygen"] = (-34.0, -6.0)
-        lay["modules"] = [(-10.0, 41.0, (8.0, 12.0, 10.0)), (12.0, 42.0, (8.0, 12.0, 10.0)), (44.0, 4.0, (12.0, 6.0, 10.0))]
-        lay["water_spheres"] = [(33.0, 21.0), (-28.0, 22.0)][: fit.water_spheres]
-    if fit.oams_tanks > 1:
-        # spacecraft 6: four propellant tanks in an arc across the top of the section and two of helium below them
-        # (OAMS_ARC), and the electronic modules moved out of their way
-        rho, angles, station = OAMS_ARC
-        arc = [(rho * math.sin(a), rho * math.cos(a), station) for a in angles]
-        lay["oams"] = [(arc[0], 21.13), (arc[1], 21.13), (arc[2], 21.12), (arc[3], 21.12), *((at, 16.20) for at in OAMS_HELIUM_2)]
-        lay["modules"] = [
-            (-34.0, -4.0, (9.0, 12.0, 14.0)),
-            (36.0, -18.0, (9.0, 14.0, 12.0)),
-            (40.0, -2.0, (9.0, 10.0, 12.0)),
-            (0.0, 14.0, (8.0, 12.0, 10.0)),
-        ]
-    return lay
+    if fit.battery_module:
+        across, (w_out, w_along, w_station) = BATTERY_WATER
+        small, (p_out, p_along, p_station) = BATTERY_PRESSURANT
+        ball(water, Lm(T_POWER, w_out, w_along, w_station), across / 2, 32, ring=0.5)
+        can(water, Lm(T_POWER, p_out, p_along, p_station), small / 2, 9.0, 1.2, 16)
+        water.tube(
+            L(T_POWER, p_out, p_along + small / 2 - 0.2, p_station), L(T_POWER, w_out - 1.0, w_along - across / 2 + 0.3, w_station), 0.3 * IN, 8
+        )
+        say(
+            water.build("Equipment_WaterTank", M["tank"], g, sharp_angle=None),
+            "Drinking water tank",
+            "All the drinking water this ship carried in its adapter: one tank at the end of the row of batteries, with a "
+            "small bottle of oxygen beside it to push the water forward to the cabin. Two days needed no more. The ships either "
+            "side of it had fuel cells, which make water, and two or three big tanks to hold it. That there was one tank, "
+            "where it hung and what pushed it are McDonnell's drawing; its size is scaled from that drawing.",
+        )
+    elif hung:
+        for along, station, drop in hung:  # each a drum in two halves bolted together round the middle
+            m = Lm(T_POWER, out, along, station - drop + 0.2)
+            can(water, m, 3.6, 12.0, 1.6, 20)
+            water.lathe(hoop(3.5, 4.2, -0.25, 0.25), 20, matrix=m)
+        if len(hung) > 1:
+            can(water, Lm(T_POWER, *bottle), 1.6, 9.0, 1.2, 12)
+        say(
+            water.build("Equipment_WaterTanks", M["tank"], g, sharp_angle=None),
+            ("Drinking water tank", "Drinking water tanks")[len(hung) > 1],
+            (
+                "The drinking water for the flight: one small tank, a drum in two halves bolted together round the middle, "
+                "from which the tank in the cabin was refilled. Three orbits needed no more. That there was one, and its "
+                "form, are McDonnell's drawing; its size and where it hangs on the battery module are estimated.",
+                "Four tanks of drinking water where the three-orbit ship had one, each a drum in two halves bolted together "
+                "round the middle, with a bottle of oxygen to push the water forward to the cabin. McDonnell's drawing of "
+                "this ship's module shows them in pairs at the ends of the lower row of batteries; their size is estimated.",
+            )[len(hung) > 1],
+        )
 
 
 def build_fuel_cells(M, g, insulated: bool = False) -> None:
-    """The reactant supply system and fuel cell module (Gemini V mission report, 3.1.2.6 and Figure 3.1-5): two fuel cell
-    sections, each a sealed can of three stacks of 32 cells, and the two tanks of supercritical hydrogen and oxygen
-    that feed them."""
+    """The reactant supply system and fuel cell module (Gemini V mission report, 3.1.2.6 and Figure 3.1-5; SEDR 300
+    volume 2, Figure 5-6; volume 1, Figure 5-5): two fuel cell sections, each a sealed can of three stacks of 32 cells,
+    and the two tanks of supercritical hydrogen and oxygen that feed them, in a row beyond the beam on the side of the
+    section away from the OAMS module: the sections at one end, then the hydrogen, then the oxygen."""
     cells, frames_ = MeshBuilder(), MeshBuilder()
     r, long = FUEL_CELL
-    for right, top, station in FUEL_CELLS_AT:
-        cells.tube(P(right, top, station - long / 2), P(right, top, station + long / 2), r * IN, 28)
+    hang = BEAM_FOOT  # the under side of the beam
+    for out, along, station in FUEL_CELLS_AT:
+        m = Lm(T_POWER, out, along, station)
+        can(cells, m, r, long, 2.2, 28)
         for s in (-1, 1):  # the band at each end that its dome is clamped on by
-            m = Matrix.Translation(P(right, top, station + s * (long / 2 - 2.2)))
-            cells.lathe(hoop(r, r + 0.35, -0.7, 0.7), 28, matrix=m)
-        cells.tube(P(right, top - r + 0.2, station - 6.0), P(right, top - r - 1.6, station - 6.0), 1.5 * IN, 10)  # its accessory pad
+            cells.lathe(hoop(r - 0.1, r + 0.35, s * (long / 2 - 3.0) - 0.7, s * (long / 2 - 3.0) + 0.7), 28, matrix=m)
+            # and the strap it is held in, with an arm in to a post that hangs from the beam
+            frames_.lathe(hoop(r + 0.05, r + 0.32, s * 6.0 - 0.5, s * 6.0 + 0.5), 28, matrix=m)
+            frames_.tube(L(T_POWER, out - r - 0.2, along, station + s * 6.0), L(T_POWER, BEAM_AT + 1.4, along, station + s * 6.0), 0.4 * IN, 8)
+        frames_.tube(L(T_POWER, BEAM_AT + 1.4, along, station - 8.0), L(T_POWER, BEAM_AT + 1.4, along, hang + 0.15), 0.6 * IN, 8)
+        cells.lathe(prof([(2.6, -long / 2 + 0.4), (2.6, -long / 2 - 1.2), (0.0, -long / 2 - 1.2)][::-1]), 16, matrix=m)  # its accessory pad, aft
     say(
         cells.build("Equipment_FuelCells", M["aluminium"], g, sharp_angle=35),
         "Fuel cell sections",
@@ -1516,10 +1895,11 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
         "plastic a tenth of an inch thick that lets only the hydrogen's nuclei through; the electrons have to go round by the "
         "wire, and that is the ship's power. What comes out the other side is water. Batteries enough for eight days would "
         "have weighed more than the ship could lift, so this was the flight the fuel cell had to work on, and it did, on "
-        "less oxygen pressure than anyone had planned to try. That there are two sections of three stacks is documented; "
-        "their size is scaled from McDonnell's sketch and where they stand is estimated.",
+        "less oxygen pressure than anyone had planned to try. That there are two sections of three stacks, and that they "
+        "stand at one end of this module with the two tanks beside them, are documented; their size is scaled from "
+        "McDonnell's sketch.",
     )
-    for (right, top, station), across, name, label, about in (
+    for (out, along, station), across, name, label, about in (
         (
             RSS_AT[0],
             RSS_TANKS[0],
@@ -1527,8 +1907,8 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
             "Fuel cell hydrogen tank",
             "Hydrogen for the fuel cells, 23 lb of it at launch, kept so cold and so squeezed that it is neither liquid nor "
             "gas. It behaved as predicted for the whole flight, except that what boiled off had to be vented, and the "
-            "venting turned the drifting ship slowly over until the eighth day. Its weight is documented; the tank's "
-            "size is worked from it, with a guess at the insulation, and where it stands is estimated.",
+            "venting turned the drifting ship slowly over until the eighth day. Its weight is documented, and that it is "
+            "the middle one of the module's row; the tank's size is worked from the weight, with a guess at the insulation.",
         ),
         (
             RSS_AT[1],
@@ -1540,112 +1920,333 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
             "and it never worked again. The pressure fell from 853 lb to the square inch to about 70 in four hours, the "
             "ship was powered down, the pod it had come to chase was abandoned, and Houston came within two hours of bringing "
             "the crew home. Then the pressure steadied, where the oxygen was part liquid and part gas, and the cells went on "
-            "working on it for seven more days. Its weight and pressures are documented; the tank's size is worked from the "
-            "weight, with a guess at the insulation, and where it stands is estimated.",
+            "working on it for seven more days. Its weight and pressures are documented, and that it is at the end of the "
+            "module's row; the tank's size is worked from the weight, with a guess at the insulation.",
         ),
     ):
-        ball = MeshBuilder()
+        tank = MeshBuilder()
         wrap = MYLAR if insulated and name == "Hydrogen" else 0.0  # (spacecraft 7's hydrogen tank under its fifty layers of mylar)
-        sphere(ball, P(right, top, station), (across / 2 + wrap) * IN, 40)
-        say(ball.build(f"Equipment_Rss{name}", M["silver" if wrap else "tank"], g, sharp_angle=None), label, about)
-        for s in (-1, 1):  # the strap each hangs in from the module's beam
-            frames_.lathe(
-                hoop(across / 2 + wrap - 0.1, across / 2 + wrap + 0.3, -0.6, 0.6), 40, matrix=Matrix.Translation(P(right, top, station + s * 3.0))
+        rr = across / 2 + wrap
+        m = Lm(T_POWER, out, along, station)
+        sphere(tank, m.translation, rr * IN, 40)
+        say(tank.build(f"Equipment_Rss{name}", M["silver" if wrap else "tank"], g, sharp_angle=None), label, about)
+        # the band round its middle with what is fastened to it (heater, sensors, switches), and two struts up to the beam
+        frames_.lathe(hoop(rr - 0.1, rr + 0.45, -0.4, 0.4), 40, matrix=m)
+        for k in (-2, -1, 1, 2):
+            chamfered(
+                frames_,
+                (1.5, 1.7, 1.5),
+                Lm(T_POWER, out, along, station)
+                @ Matrix.Rotation(math.pi + k * 0.42, 4, "Z")
+                @ Matrix.Translation(Vector((rr + 0.9, 0.0, -0.9)) * IN),
+                0.15,
             )
-    # the module's beam, across the bottom of the section forward of them
-    beam = Matrix.Translation(P(6.0, -34.0, 61.0)) @ Matrix.Rotation(math.radians(90), 4, "Z")
-    i_beam(frames_, beam, 78.0, 4.0, 2.4)
-    frames_.build("Equipment_RssStructure", M["aluminium"], g, sharp_angle=35)
+        for e in (-1, 1):
+            frames_.tube(
+                L(T_POWER, out - rr * 0.94, along + e * rr * 0.36, station + 0.2),
+                L(T_POWER, BEAM_AT + 0.4, along + e * 4.0, hang + 0.15),
+                0.5 * IN,
+                8,
+            )
+    # the reactants' shutoff valves, on the beam between the two tanks
+    mid = (RSS_AT[0][1] + RSS_AT[1][1]) / 2
+    chamfered(frames_, (2.2, 6.0, 2.2), Lm(T_POWER, BEAM_AT + 2.6, mid, hang - 1.4), 0.2)
+    for e in (-1, 1):
+        frames_.tube(L(T_POWER, BEAM_AT + 2.6, mid + e * 1.5, hang - 2.4), L(T_POWER, BEAM_AT + 2.6, mid + e * 1.5, hang - 4.0), 0.6 * IN, 10)
+        frames_.tube(L(T_POWER, BEAM_AT + 2.6, mid + e * 1.5, hang - 0.8), L(T_POWER, BEAM_AT + 1.0, mid + e * 1.5, hang + 0.15), 0.4 * IN, 8)
+    say(
+        frames_.build("Equipment_RssStructure", M["aluminium"], g, sharp_angle=35),
+        "Fuel cell module structure",
+        "What holds the fuel cells and their two tanks to the beam: a strap round each can, a band round the middle of each "
+        "tank carrying its heater, its sensors and its pressure switch, and between the tanks the two valves that shut the "
+        "hydrogen and the oxygen off. McDonnell's drawing of the module shows all of it; nothing in it is dimensioned.",
+    )
+
+
+def build_ecs_module(M, g) -> None:
+    """The environmental control system's two modules (Technical Summary, Figure 4): the primary oxygen under its own
+    panel of the blast shield, at one end of the space between the beams, and the coolant pump module, a frame
+    against the wall aft of it between Z28.61 and Z41.17."""
+    oxygen, frames_, pumps = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    out, station, r = PRIMARY_OXYGEN
+    here = Lm(T_ECS, out, 0.0, station)
+    ball(oxygen, here, r, 32, ring=0.45)
+    say(
+        oxygen.build("Equipment_PrimaryOxygen", M["tank"], g, sharp_angle=None),
+        "Primary oxygen",
+        "The oxygen the crew breathe in orbit, kept so cold and so squeezed that it is neither liquid nor gas: 15.3 lb of it "
+        "on this flight. When this section is cut away before retrofire they go on to a smaller supply in the re-entry "
+        "module. McDonnell's drawing puts it under its own panel of the blast shield, at one end of the space between the "
+        "two beams; its size is estimated.",
+    )
+    for k in range(3):  # three struts up to its panel, each from a lug on the band
+        turn = here @ Matrix.Rotation(TAU * k / 3 + 0.5, 4, "Z")
+        chamfered(frames_, (1.6, 1.3, 1.0), turn @ Matrix.Translation(Vector((r + 0.95, 0.0, 0.0)) * IN), 0.12)
+        foot = Vector((r + 1.15, 0.0, 0.0))
+        frames_.tube(turn @ (foot * IN), turn @ ((foot + Vector((0.0, 0.0, Z_BLAST - SHIELD_THICK + 0.2 - station))) * IN), 0.4 * IN, 8)
+    # the coolant pump module: a frame of tube, with the two pump packages, the reservoir and a heat exchanger in it
+    (s0, s1), (theta, inner, outer, wide) = PUMP_MODULE, PUMP_MODULE_AT
+    k = 0.6
+    corners = [(o, a, s) for o in (inner + k, outer - k) for a in (-wide / 2 + k, wide / 2 - k) for s in (s0 + k, s1 - k)]
+    for i, p in enumerate(corners):
+        for q in corners[i + 1 :]:
+            if sum(abs(x - y) > 1e-6 for x, y in zip(p, q)) == 1:  # an edge of the box
+                frames_.tube(L(theta, *p), L(theta, *q), k * IN, 8)
+    for a in (-1, 1):  # and the two rods that steady it from the wall above
+        frames_.tube(L(theta, outer - k, a * (wide / 2 - k), s1 - k), L(theta, outer + 1.2, a * (wide / 2 - k), s1 + 9.0), 0.4 * IN, 8)
+        frames_.tube(L(theta, outer - k, a * (wide / 2 - k), s0 + k), L(theta, outer + 5.0, a * (wide / 2 - k), s0 + k), 0.5 * IN, 8)
+    can(pumps, Lm(theta, outer - 4.6, 0.0, s0 + 7.4) @ Matrix.Rotation(-math.pi / 2, 4, "X"), 3.2, 18.0, 2.0, 20)  # the reservoir
+    for a in (-1, 1):
+        m = Lm(theta, inner + 4.2, a * 6.0, s0 + 3.8) @ Matrix.Rotation(-math.pi / 2, 4, "X")
+        can(pumps, m, 2.4, 9.0, 0.8, 16)  # a pump package: two pumps and their motors in one case
+        pumps.lathe(hoop(2.3, 2.9, -0.4, 0.4), 16, matrix=m)
+        pumps.tube(L(theta, inner + 4.2, a * 8.2, s0 + 5.0), L(theta, inner + 4.2, a * 8.2, s0 + 8.0), 0.5 * IN, 8)
+    chamfered(pumps, (5.6, 15.0, 3.6), Lm(theta, inner + 4.4, 0.0, s1 - 3.4), 0.25)  # the heat exchanger
+    for i in range(9):
+        chamfered(pumps, (6.0, 0.3, 4.0), Lm(theta, inner + 4.4, (i - 4) * 1.6, s1 - 3.4), 0.05)
+    frames_.build("Equipment_EcsStructure", M["aluminium"], g, sharp_angle=35)
+    say(
+        pumps.build("Equipment_CoolantModule", M["equipment"], g, sharp_angle=35),
+        "Coolant pump module",
+        "The pumps that keep the ship's coolant moving: out through the cabin, the suits and the electronics to take up their "
+        "heat, and back through the hollow stringers of this adapter's skin to lose it to space. Two circuits, each with two "
+        "pumps, and a reservoir the coolant comes back to. McDonnell's drawing shows the module as a frame "
+        "against the wall and gives the stations it lies between; what is in the frame is listed in his manual, and its "
+        "forms and places here are estimated.",
+    )
+
+
+def build_electronic_module(M, g) -> None:
+    """The electronic module (Technical Summary, Figure 4): at the other end of the space between the beams from the
+    primary oxygen, the adapter's electronics hung under their own panel of the blast shield."""
+    boxes, rack = MeshBuilder(), MeshBuilder()
+    under = Z_BLAST - SHIELD_THICK
+    for (out, along, station), size in ELECTRONICS:
+        m = Lm(T_ELECTRONIC, out, along, station)
+        chamfered(boxes, size, m, 0.3)
+        chamfered(
+            boxes, (size[0] - 1.4, size[1] - 1.4, 0.4), m @ Matrix.Translation(Vector((0.0, 0.0, -size[2] / 2 - 0.08)) * IN), 0.1
+        )  # its cover, aft
+        for i in (-1, 0, 1):  # its connectors, on the face toward the middle of the ship
+            at = m @ (Vector((-size[0] / 2, i * size[1] * 0.26, size[2] * 0.12)) * IN)
+            boxes.lathe(prof([(0.62, -0.2), (0.62, 0.9), (0.0, 0.9)]), 10, matrix=frame(at, m.to_3x3() @ Vector((-1.0, 0.0, 0.0))))
+        for o in (-1, 1):  # and the two hangers it is held to the rack by
+            rack.tube(
+                m @ (Vector((o * (size[0] / 2 - 1.0), 0.0, size[2] / 2 - 0.1)) * IN),
+                L(T_ELECTRONIC, out + o * (size[0] / 2 - 1.0), along, under - 0.9),
+                0.45 * IN,
+                8,
+            )
+    say(
+        boxes.build("Equipment_Modules", M["equipment"], g, sharp_angle=35),
+        "Electronic module",
+        "The electronics that are wanted only in orbit and can be left behind: among them a radar beacon that the ground tracks "
+        "the ship by, one of the three telemetry transmitters and a diplexer for the UHF antennas. They hang under their own "
+        "panel of the blast shield. That there is an "
+        "electronic module on this side of the section is McDonnell's drawing; which box is where, and every box's size, "
+        "is a guess.",
+    )
+    for out in sorted({o + s * (size[0] / 2 - 1.0) for (o, _, _), size in ELECTRONICS for s in (-1, 1)}):
+        chamfered(rack, (1.2, 26.0, 0.8), Lm(T_ELECTRONIC, out, 0.0, under - 0.55), 0.12)
+    rack.tube(L(T_ELECTRONIC, DOOR_HALF + 2.4, 0.0, under - 0.94), L(T_ELECTRONIC, 41.0, 0.0, under - 0.94), 0.6 * IN, 10)  # the wire bundle along it
+    rack.build("Equipment_ModuleFrame", M["aluminium"], g, sharp_angle=35)
 
 
 def build_adapter_experiments(M, g, fit: Fit) -> None:
-    """What a flight's experiments put in the equipment section."""
+    """What a flight's experiments put in the equipment section: under the access door, in the clear middle, looking
+    out of the back through an opening in the cover (NASA S65-63221 shows spacecraft 7's so)."""
+    under = Z_BLAST - SHIELD_THICK
+    foot = COVER_HOOP[1]
     if "proton-electron-spectrometer" in fit.experiments:
         mb = MeshBuilder()
-        z = Z_DIVISION - 3.0
-        chamfered(mb, (7.0, 7.0, 6.0), Matrix.Translation(P(0.0, 0.0, z - 3.6)), 0.3)
-        mb.lathe(prof([(2.4, -6.4), (2.4, -9.0), (1.6, -9.0), (1.6, -8.6), (0.0, -8.6)][::-1]), 16, matrix=Matrix.Translation(P(0.0, 0.0, z)))
+        along, body = -1.8, foot + 6.5  # (its body's middle)
+        here = Lm(T_OAMS, 0.0, along, body)
+        chamfered(mb, (7.0, 7.0, 6.0), here, 0.3)
+        mb.lathe(prof([(0.0, -5.2), (1.6, -5.2), (1.6, -5.6), (2.4, -5.6), (2.4, -3.0)]), 16, matrix=here)  # its aperture, looking aft
+        for o in (-1, 1):
+            for a in (-1, 1):  # the four legs it stands off the door on
+                mb.tube(here @ (Vector((o * 2.6, a * 2.6, 2.9)) * IN), L(T_OAMS, o * 4.6, along + a * 4.6, under + 0.2), 0.4 * IN, 8)
         say(
             mb.build("Experiment_Spectrometer", M["equipment"], g, sharp_angle=35),
             "Proton-electron spectrometer",
             "Experiment MSC-2: a counter for the protons and electrons of the inner radiation belt, which dips to the ship's "
-            "height over the South Atlantic. It hangs under the middle of the blast shield and looks out of the back of the "
-            "ship, where there is nothing between it and space once the Titan has gone. It was switched on for the passes "
-            "through the anomaly. Where it is, and that it faces aft, are documented; it weighed 12.5 lb; its form here is "
-            "estimated.",
+            "height over the South Atlantic. It stands off the middle of the blast shield and looks out of the back of the "
+            "ship through an opening in the gold cover, where there is nothing between it and space once the Titan has "
+            "gone. It was switched on for the passes through the anomaly. Where it is, and that it faces aft, are "
+            "documented; it weighed 12.5 lb; its form here is estimated.",
         )
     if "magnetometer" in fit.experiments:
         mb = MeshBuilder()
-        right, top = -16.0, -47.0
-        mb.tube(P(right, top, 24.0), P(right, top, 52.0), 0.7 * IN, 10)
-        mb.tube(P(right, top, 24.6), P(right, top, 38.0), 1.0 * IN, 10)
-        chamfered(mb, (2.6, 2.6, 3.4), Matrix.Translation(P(right, top, 22.2)), 0.2)
+        along = 3.9
+        mb.tube(L(T_OAMS, 0.0, along, foot + 2.6), L(T_OAMS, 0.0, along, under - 2.0), 0.7 * IN, 10)
+        mb.tube(L(T_OAMS, 0.0, along, foot + 6.5), L(T_OAMS, 0.0, along, under - 1.6), 1.0 * IN, 10)
+        chamfered(mb, (2.6, 2.6, 3.4), Lm(T_OAMS, 0.0, along, foot + 1.9), 0.2)
+        for o in (-1, 1):
+            mb.tube(L(T_OAMS, o * 0.8, along, under - 2.4), L(T_OAMS, o * 3.0, along + 2.0, under + 0.2), 0.35 * IN, 8)
         say(
             mb.build("Experiment_Magnetometer", M["aluminium"], g, sharp_angle=35),
             "Magnetometer boom",
             "Experiment MSC-3: three flux-gate sensors on the end of a boom, to find which way the Earth's magnetic field ran "
             "past the ship while the spectrometer counted, since particles in the belt spiral along the field. In orbit the "
-            "pilot threw a switch, a guillotine cut the cable that held the boom, and it ran out past the end of the adapter "
-            "to get the sensors clear of the ship's own iron. It could not be drawn back. The boom and that it pointed aft are "
-            "documented; where round the adapter it was stowed, and its form, are estimated.",
+            "pilot threw a switch, a guillotine cut the cable that held the boom, and it ran out through the gold cover and "
+            "past the end of the adapter, to get the sensors clear of the ship's own iron. It could not be drawn back. The "
+            "boom and that it pointed aft are documented; a photograph of Gemini 7 from behind shows it run out from the "
+            "middle of the cover, beside the spectrometer, which is where it is stowed here; its form is estimated.",
         )
 
 
+def build_pod_mount(M, g) -> None:
+    """What spacecraft 5's rendezvous evaluation pod was thrown from, which stayed with the ship (SEDR 300 volume 2,
+    Section VIII, pp. 8-298 and 8-299 and Figure 8-80; Gemini VII mission report, 3.1.1.2): the support assembly on the
+    blast shield's access door, with the charge that threw the pod out, and the four posts that reach aft past the pod
+    to carry its cover."""
+    under = Z_BLAST - SHIELD_THICK
+    out, along = POD_POSTS
+    head = POD_AT + POD_BODY[0] / 2 + 0.75  # the forward face of the pod's own mounting plate
+    mb = MeshBuilder()
+    chamfered(mb, (2 * out + 2.4, 2 * along + 2.4, 0.8), Lm(T_OAMS, 0.0, 0.0, under - 0.55), 0.15)
+    mb.tube(L(T_OAMS, 0.0, 0.0, under - 0.9), L(T_OAMS, 0.0, 0.0, head + 0.15), 1.8 * IN, 16)  # the barrel the charge is in
+    for o in (-1, 1):
+        for a in (-1, 1):
+            mb.tube(L(T_OAMS, o * out, a * along, under - 0.9), L(T_OAMS, o * out, a * along, POD_COVER_Z + 1.5), 0.45 * IN, 10)
+            # two posts diagonally opposite end in guide pins, the other two in the sockets the cover's springs were in
+            mb.lathe(
+                prof([(0.0, 0.0), (0.85 if o == a else 0.6, 0.0), (0.85 if o == a else 0.6, 1.6)]),
+                10,
+                matrix=Lm(T_OAMS, o * out, a * along, POD_COVER_Z + 1.1),
+            )
+            mb.tube(L(T_OAMS, o * 1.6, a * 1.6, under - 3.0), L(T_OAMS, o * (out - 0.4), a * (along - 0.4), under - 0.95), 0.35 * IN, 8)
+    say(
+        mb.build("Equipment_PodMount", M["aluminium"], g, sharp_angle=35),
+        "Pod support assembly",
+        "What the pod was thrown from: a mount on the blast shield's access door, in the middle of the section, with a charge "
+        "in it, and four tubular posts reaching aft past the pod to hold its cover. Two of the posts ended in pins that "
+        "kept the cover square; the other two held springs, squeezed by a cable through each. When the switch was pressed "
+        "a guillotine cut the cables, the springs threw the cover off at 100 ft a second, and 80 thousandths of a second "
+        "later the charge threw the pod after it at 5. That it was on the access door, the posts, the springs and the "
+        "speeds are documented; every size is estimated.",
+    )
+
+
 def build_pod(M) -> None:
-    """The rendezvous evaluation pod (Gemini V mission report, 3.1.2.4.2 and Figure 3.1-4b): what an Agena's docking
-    adapter would carry for the radar to find, in a package the ship took up with it and threw out. A node of its own:
-    it left."""
+    """The rendezvous evaluation pod (SEDR 300 volume 2, Section VIII, pp. 8-291 to 8-299 and Figures 8-79 and 8-80;
+    Gemini V mission report, 3.1.2.4.2 and Figure 3.1-4b): what an Agena's docking adapter would carry for the radar
+    to find, in a package the ship took up with it and threw out. Its transponder, 10 by 10 by 20 in, is the body the
+    rest is fastened to. A node of its own: it left, and its cover with it."""
     g = group("RadarEvaluationPod")
-    wide, tall, deep = POD
-    body, antennas, lamps, cover = (MeshBuilder() for _ in range(4))
-    # the transponder, the two batteries beside each other forward of it, and the boost regulator on one of them
-    chamfered(body, (tall, wide, deep / 2), Matrix.Translation(P(0.0, 0.0, POD_Z + deep / 4)), 0.3)
-    for s in (-1, 1):
-        chamfered(
-            body, (tall - 2.0, wide / 2 - 1.2, deep / 2 - 0.4), Matrix.Translation(P(s * (wide / 4 - 0.1), 0.0, POD_Z + deep * 0.75 - 0.1)), 0.3
+    sheet, ribs = MeshBuilder(), MeshBuilder()
+    n = srlib._segs(96)
+    edge = [radial(T_ELECTRONIC + TAU * i / n) * pod_outline(TAU * i / n) for i in range(n)]
+    at = lambda p, station: tuple((p + Vector((0.0, 0.0, zz(station)))) * IN)  # noqa: E731
+    sheet.add([at(Vector(), POD_COVER_Z), *(at(p, POD_COVER_Z) for p in edge)], [(0, 1 + i, 1 + (i + 1) % n) for i in range(n)])
+    say(
+        sheet.build("Pod_Cover", M["silver"], g, sharp_angle=None),
+        "Pod cover",
+        "Glass fibre cloth stretched on a frame of tube, its outer face silvered: an umbrella to keep the Sun off the pod "
+        "while it waited in the open end of the adapter. McDonnell's sketch draws it longer one way than the other; here the "
+        "long end lies over the pod's antenna boom. When the pod's switch was pressed a guillotine cut two cables, and two "
+        "springs threw "
+        "the cover off at 100 ft a second, out of the way of the pod that followed. What it was made of, how it was held "
+        "and how it left are documented; its outline is scaled from McDonnell's sketch.",
+    )
+    if not interior():
+        return  # (from far off there is only its cover: the pod is behind it)
+    rim = [p * 0.975 for p in edge]
+    for i in range(0, n, 2):
+        ribs.tube(Vector(at(rim[i], POD_COVER_Z + 0.5)), Vector(at(rim[(i + 2) % n], POD_COVER_Z + 0.5)), 0.3 * IN, 8, caps=False)
+    spine = radial(T_ELECTRONIC)
+    cross = radial(T_ELECTRONIC + math.pi / 2)
+    ribs.tube(Vector(at(spine * -13.6, POD_COVER_Z + 0.5)), Vector(at(spine * 42.4, POD_COVER_Z + 0.5)), 0.3 * IN, 8)
+    for s, half in ((-11.0, 8.9), (11.0, 8.9), (30.0, 6.2)):
+        ribs.tube(Vector(at(spine * s - cross * half, POD_COVER_Z + 0.5)), Vector(at(spine * s + cross * half, POD_COVER_Z + 0.5)), 0.3 * IN, 8)
+    ribs.build("Pod_Ribs", M["aluminium"], g, sharp_angle=35)
+    tall, wide, long = POD_BODY
+    body, antennas, lamps = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    here = Lm(T_OAMS, 0.0, 0.0, POD_AT)
+    T = lambda o, a, z: here @ Matrix.Translation(Vector((o, a, z)) * IN)  # noqa: E731  (inches from the transponder's middle)
+    chamfered(body, (wide, long, tall), here, 0.35)
+    chamfered(body, (wide - 1.4, long - 1.6, 0.3), T(0.0, 0.0, -tall / 2 - 0.1), 0.1)  # its cover plate, aft
+    for o in (-1, 1):
+        for a in (-1, 0, 1):
+            body.disc(here @ (Vector((o * (wide / 2 - 1.3), a * (long / 2 - 1.4), -tall / 2 - 0.25)) * IN), (0.0, 0.0, -1.0), 0.28 * IN, 0.1 * IN)
+    chamfered(body, (wide - 1.0, 9.0, 0.6), T(0.0, 0.0, tall / 2 + 0.25), 0.12)  # the plate it was mounted by, forward
+    for o in (-1, 1):
+        for a in (-1, 1):
+            body.disc(here @ (Vector((o * 3.6, a * 3.6, tall / 2 + 0.55)) * IN), (0.0, 0.0, 1.0), 0.35 * IN, 0.2 * IN)
+    for o in (-1, 1):  # the two switches that the mount held in, and that turned the pod on as it left
+        body.tube(here @ (Vector((o * 1.2, -6.4, tall / 2)) * IN), here @ (Vector((o * 1.2, -6.4, tall / 2 + 1.0)) * IN), 0.3 * IN, 8)
+    # the two squib batteries, one on either side, and the boost regulator beside one of them: each a case with a
+    # flanged lid
+    for o, a, z, size in ((1, -3.0, 0.5, (4.2, 7.0, 6.0)), (-1, 0.0, -0.5, (4.2, 7.0, 6.0)), (1, 5.6, 1.0, (3.2, 5.4, 5.0))):
+        off = o * (wide / 2 + size[0] / 2 - 0.05)
+        chamfered(body, size, T(off, a, z), 0.25)
+        chamfered(body, (0.3, size[1] + 0.5, size[2] + 0.5), T(off + o * (size[0] / 2 + 0.05), a, z), 0.08)
+        for e in (-1, 1):
+            for f in (-1, 1):
+                body.disc(
+                    here @ (Vector((off + o * (size[0] / 2 + 0.2), a + e * (size[1] / 2 - 0.3), z + f * (size[2] / 2 - 0.3))) * IN),
+                    here.to_3x3() @ Vector((o, 0.0, 0.0)),
+                    0.2 * IN,
+                    0.08 * IN,
+                )
+        body.lathe(
+            prof([(0.0, 0.0), (0.55, 0.0), (0.55, 1.0), (0.0, 1.0)]),
+            10,
+            matrix=frame(here @ (Vector((off, a + size[1] * 0.2, z - size[2] / 2)) * IN), (0.0, 0.0, -1.0)),
         )
     say(
         body.build("Pod_Body", M["aluminium"], g, sharp_angle=35),
         "Rendezvous evaluation pod",
         "A target the ship carried with it. It holds what an Agena's docking adapter was to hold: a transponder to answer the "
-        "radar, antennas, two flashing lights, and two batteries to run them for a few hours. At 2 hours 7 minutes 15 "
-        "seconds, with the ship turned square to its path, it was thrown out of the back of the adapter at 5 ft a second, and "
-        "the radar found it at once and followed it out to 7,721 ft. Then the oxygen pressure fell, the ship was powered "
-        "down, and nobody went after it. What it carried is documented; its size is scaled from McDonnell's sketch.",
+        "radar, antennas, two flashing lights, and two batteries to run them for a few hours, with a regulator to hold the "
+        "transponder's voltage up as its battery ran down. The transponder is the box the rest is fastened to. At 2 hours "
+        "7 minutes 15 seconds, with the ship turned square to its path, it was thrown out of the back of the adapter at 5 "
+        "ft a second, and the radar found it at once and followed it out to 7,721 ft. Then the oxygen pressure fell, the "
+        "ship was powered down, and nobody went after it. What it carried is documented, and the transponder's size, 10 by "
+        "10 by 20 in; the rest is scaled from McDonnell's drawing of it, which has no dimensions.",
     )
-    # two spiral antennas, for cover all round: one on an end, one on the side toward the top
-    r, thick = 3.3, 2.4
-    disc = prof([(r, 0.0), (r, thick), (0.0, thick)])
-    antennas.lathe(disc, 24, matrix=frame(P(-wide / 2, 0.0, POD_Z + 4.4), Vector((0.0, -1.0, 0.0))))
-    antennas.lathe(disc, 24, matrix=frame(P(wide / 4, tall / 2, POD_Z + 4.4), Vector((1.0, 0.0, 0.0))))
-    # and the dipole, on a boom off the other end
-    antennas.tube(P(wide / 2, 0.0, POD_Z + 3.0), P(wide / 2 + 5.0, 0.0, POD_Z + 3.0), 0.5 * IN, 10)
-    antennas.tube(P(wide / 2 + 5.0, 0.0, POD_Z + 3.0), P(wide / 2 + 10.5, 0.0, POD_Z + 3.0), 2.3 * IN, 20)
+    # two spiral antennas, each standing 2 in off the case: one on the aft face, one on an end; and the dipole, on a
+    # boom two feet long off the other end
+    r, proud = POD_ANTENNA
+    dish = prof([(0.0, 0.4), (r, 0.4), (r, proud), (0.0, proud)])
+    stem = prof([(1.3, 0.0), (1.3, 0.45)])
+    fittings = MeshBuilder()
+    for origin, normal in (
+        (here @ (Vector((0.0, -4.0, -tall / 2 - 0.25)) * IN), Vector((0.0, 0.0, -1.0))),
+        (here @ (Vector((0.0, -long / 2, 0.0)) * IN), here.to_3x3() @ Vector((0.0, -1.0, 0.0))),
+    ):
+        antennas.lathe(dish, 28, matrix=frame(origin, normal))
+        fittings.lathe(stem, 16, matrix=frame(origin, normal))
+    boom = (long / 2, POD_BOOM, 8.4)
+    antennas.tube(here @ (Vector((0.0, boom[0], -1.5)) * IN), here @ (Vector((0.0, boom[0] + boom[1], -1.5)) * IN), 0.55 * IN, 10)
+    chamfered(antennas, (1.8, 1.6, 1.8), T(0.0, boom[0] + 0.7, -1.5), 0.2)
+    can(antennas, T(0.0, boom[0] + boom[1] + boom[2] / 2, -1.5) @ Matrix.Rotation(-math.pi / 2, 4, "X"), 2.4, boom[2], 0.5, 20)
     say(
         antennas.build("Pod_Antennas", M["fairing"], g, sharp_angle=35),
         "Pod antennas",
         "Two flat spiral antennas, facing different ways so that between them the pod can be heard from any side as it "
-        "tumbles, and a dipole on a boom that covers what they miss. They are the pattern meant for the Agena. Documented; "
-        "their places on the pod are the sketch's, as near as it can be read.",
+        "tumbles, and a dipole on a boom that covers what they miss. They are the pattern meant for the Agena, with two "
+        "differences: on the Agena the spirals lie flush and the boom folds away, and here the spirals stand two inches "
+        "off the case and the boom is fixed, two feet long. Those two figures are documented; the antennas' size and which "
+        "faces they are on are scaled from McDonnell's drawing.",
     )
-    for right, top in ((-wide / 2 + 2.2, -tall / 2 - 1.9), (wide / 2 - 2.2, tall / 2 + 1.9)):
-        chamfered(lamps, (3.2, 3.6, 3.6), Matrix.Translation(P(right, top, POD_Z + 2.4)), 0.25)
+    # the two flashing lights, on opposite faces: each a ring of xenon on the case its circuit is in
+    for z, way in ((-tall / 2 - 0.2, -1), (tall / 2, 1)):
+        chamfered(fittings, (4.0, 4.0, 3.4), T(0.0, 7.0, z + way * 1.65), 0.25)
+        seat = frame(here @ (Vector((0.0, 7.0, z + way * 3.35)) * IN), (0.0, 0.0, float(way)))
+        fittings.lathe(prof([(0.7, 0.0), (0.7, 0.45), (0.0, 0.45)]), 12, matrix=seat)
+        lamps.lathe(
+            prof([(1.3 + 0.34 * math.cos(a), 0.4 + 0.34 * math.sin(a)) for a in (-math.pi / 2 + TAU * i / 10 for i in range(11))]), 24, matrix=seat
+        )
+    fittings.build("Pod_Fittings", M["aluminium"], g, sharp_angle=35)
     say(
         lamps.build("Pod_Beacons", M["beacon"], g, sharp_angle=35),
         "Flashing beacons",
-        "Two flashing lights, of the kind an Agena was to carry, for the crew to find the pod by eye in the dark. They "
-        "worked: Cooper and Conrad saw them. But sunlight glinting off the tumbling pod turned out to be easier to see "
-        "than the lights were.",
-    )
-    # its own cover, silvered against the Sun, closing the hole in the adapter's cover: thrown off first
-    rim = zz(Z_BASE + 13.0 - 3.0 * POD_WELL / 30.0)
-    cover.lathe(prof([(0.0, zz(POD_Z) - 0.6), (POD_WELL - 2.0, zz(POD_Z) - 0.6), (POD_WELL - 0.05, rim)][::-1]), 56)
-    say(
-        cover.build("Pod_Cover", M["silver"], g, sharp_angle=None),
-        "Pod cover",
-        "Silvered glass fibre over the pod, to keep the Sun off it while it waited in the open end of the adapter. When "
-        "the pod's switch was pressed a cable cutter let go two springs that threw the cover off; a second charge then "
-        "threw out the pod. Documented; its form here is estimated.",
+        "Two flashing lights, of the kind an Agena was to carry, for the crew to find the pod by eye in the dark: each a "
+        "ring-shaped tube of xenon, flashing about 80 times a minute, on opposite faces so that one could be seen from any "
+        "side. They worked: Cooper and Conrad saw them. But sunlight glinting off the tumbling pod turned out to be easier "
+        "to see than the lights were. That they were rings, their rate and that they were on opposite sides are "
+        "documented; which faces is read off McDonnell's drawing.",
     )
 
 

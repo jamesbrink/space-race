@@ -70,16 +70,44 @@ kept in the repository.
 | Adapter | aluminium rings, magnesium stringers and skin; white ceramic paint outside, aluminium foil inside | documented | p. 2-21 |
 | Stringers | bulb-tee, the bulb a path for the coolant | documented; their number (40) a guess | p. 2-21 |
 | Mating ring | machined aluminium, 120 in, twenty bolts | documented | p. 2-23 |
-| Retaining straps | three, titanium, with a fairing over each | documented; their places estimated | p. 2-21 and Figures 2-5 and 2-11; SP-121, p. 16 |
+| Retaining straps | three, titanium, with a fairing over each: one 13° 08' above the ship's left side, one the same above its right, one 45° round from the bottom toward the right | documented | p. 2-21 and Figures 2-5 and 2-11; SP-121, p. 16; their places TS, Figure 3 (p. 10), "strap locations at Z103.44, looking forward" |
 | Retrograde rockets | four, spherical, "approximately 13 inches in diameter", titanium cases, one in each quadrant of a cross of aluminium I-beams, each hung by lugs, with its nozzle aft and an igniter beside it | documented; their station (Z84), their distance from the axis (19.5 in) and the beams' depth (11 in) and flanges (3.2 in) estimated | pp. 2-23 and 11-71; Figure 11-32 (p. 11-70) |
-| Thrust chambers, adapter: which and where | 1 to 8 (attitude) in four clusters at the equipment section's foot; 9 and 10 (forward) at the foot, top and bottom, firing aft; 11 and 12 (aft) on the retrograde section, one each side, firing forward; 13 to 16 (right, left, up, down) on the retrograde section at the left, the right, the bottom and the top; ten on the equipment section, six on the retrograde section | documented in number and in which way each pushes (SEDR VIII, Figure 8-72 and its table, p. 8-256; p. 2-23); the places are read off Figure 8-72, which is a sketch in perspective: estimated | 36° and 54° from the top or bottom at Z27 for the attitude clusters; 78° at Z95.5 for 11 and 12; Z86 for 13 to 16 |
+| Thrust chambers, adapter: which and where | 1 to 8 (attitude) in four clusters at the equipment section's foot; 9 and 10 (forward) at the foot, top and bottom, firing aft; 11 and 12 (aft) on the retrograde section, one each side, firing forward; 13 to 16 (right, left, up, down) on the retrograde section at the left, the right, the bottom and the top; ten on the equipment section, six on the retrograde section | documented in number and in which way each pushes (SEDR VIII, Figure 8-72 and its table, p. 8-256; p. 2-23); the places are read off Figure 8-72, which is a sketch in perspective: estimated | 36° and 54° from the top or bottom at Z27 for the attitude clusters; 78° at Z95.5 for 11 and 12; Z86 for 13 to 16. 9 and 10 stand through the gold cover 52.5 in from the axis, their exits at Z16.84: NASA S65-63221 has them at 0.86 to 0.92 of the rim's radius |
 | Thrust chambers, adapter: which way they fire | 5, 6 toward the top and 1, 2 toward the bottom (pitch); 3, 4 toward the crew's right and 7, 8 toward the left (yaw); 3 with 7 and 4 with 8 (roll); none along a radius | the table documented; that an aft chamber which pitches the nose up must fire toward the top is derived from it | SEDR VIII, Figure 8-72 |
 | Chambers 13 to 16 on spacecraft 3 | inoperative | documented | SEDR VIII, Figure 8-72's note and p. 8-258 |
-| OAMS tanks | fuel 21.13 in, oxidiser 21.12 in, helium 16.20 in across, one of each on spacecraft 3 | documented; where each is in the section estimated from Figure 8-72 | SEDR VIII, pp. 8-263, 8-271, 8-273 |
+| OAMS tanks | fuel 21.13 in, oxidiser 21.12 in, helium 16.20 in across, one of each on spacecraft 3 | documented; which module they are on documented, where on it estimated ("Equipment section", below) | SEDR VIII, pp. 8-263, 8-271, 8-273 |
 | Thrust chambers, re-entry control: which way they fire | 1, 2 toward the top (pitch down); 5, 6 toward the bottom; 3, 4 toward the crew's left (yaw right); 7, 8 toward the right; roll by 3 with 7 or 4 with 8 | documented | SEDR VIII, Figure 8-84 and its inset (p. 8-281) |
 | Thrust chambers, re-entry control: where | four clusters on the diagonals, each a pitch and a yaw chamber side by side, 34° and 55° from the top or the bottom, each there twice (A ring and B ring) at Z183.4 and Z188.1 | the clusters documented (Figure 8-84; GIV, Figure 3-12); angles and stations estimated | S65-21090 through the fitted camera: 33° to 37° and 52° to 62°, Z183.2 to Z184.3 and Z187.7 to Z189.8. TS Figure 1's side view scales to 30° and 52° |
 | Thrust chambers, re-entry control: splay | each turned 10° from the axis it fires along | estimated | the inset draws the arrows a little apart |
 | Re-entry control tanks, each ring | a nitrogen ball 7.25 in across; a fuel tank 5.10 in across and 30.7 in long; an oxidiser tank 5.10 by 25.2 in | documented; how they lie in the section estimated | SEDR VIII, pp. 8-286, 8-288 |
+
+## Equipment section
+
+Laid out from McDonnell's drawing of it: the Technical Summary's Figure 4 (p. 12), "Adapter equipment module
+structure", which names the ship's four sides (TY, BY, LX, RX) on the blast shield and gives three stations. SEDR
+300's figures of each module show its form and agree with it; none of them is dimensioned. A place is given in the
+module's own frame: out from the ship's axis toward the wall the module stands against, and along the beams.
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| Blast shield | at Z66.74; not one sheet but the modules' own support panels and an access door, of aluminium honeycomb faced with glass fibre | documented | TS, Figures 3 and 4 and p. 13: "their support panels and an access door combine to form a blast shield" |
+| Which module is where | two beams across the section; the OAMS module the segment beyond one, the fuel cell (or battery) module the segment beyond the other; between the beams the electronic module, the access door and the environmental control system's module with the primary oxygen | documented | TS, Figure 4. SEDR 300 vol. 1, Figures 5-1, 5-2 and 5-5; vol. 2, Figures 5-6 and 5-9; Gemini V report, Figure 3.1-2, which lists the modules |
+| How the beams lie | the OAMS module's middle 23° round from the top toward the crew's right, so the fuel cell or battery module's is 23° from the bottom toward the left, the electronic module toward the right and the primary oxygen toward the left | estimated | measured on TS Figure 4 (the beams against its TY-BY line: 23°) and on SEDR VIII's Figure 8-72 (the row of tanks: 25°), two drawings from opposite ends |
+| Beams | 15 in either side of the axis; 3.6 in deep | estimated | TS Figure 4 scales to 14 in and 20 in; four 21 in tanks have to go beyond one of them |
+| Access door | 30 in by 34 in, in the middle | estimated | a third of the band between the beams, as TS Figure 4 draws it |
+| Coolant pump module | a frame from Z28.61 to Z41.17 against the wall | stations documented; where round the wall (61° from the top toward the left), its width and depth estimated | TS, Figure 4 |
+| OAMS module | a frame straight on its inboard side and curved to the wall, four places in a row for a 21 in tank: 24.5 in from the axis, 21.5 in apart, the tanks' middles at Z50 | the form documented; every size estimated | SEDR 300 vol. 1, Figure 6-10 sheet 5; Gemini V report, Figure 3.1-3; SEDR VIII, Figures 8-72 and (vol. 2) 8-94 |
+| What is in the four places | one tank each of fuel and oxidiser in the middle two, on spacecraft 3, 4, 5 and 7; a drinking water tank of the same pattern at each end on 5 and 7; fuel in the middle two and oxidiser at the ends on spacecraft 6 | that there are so many of each documented; the water tanks at the ends documented (Figures 6-10 sheet 5 and 3.1-3); which place is fuel estimated | as above; SEDR VIII vol. 2, Figure 8-96 sheet 1 |
+| Helium | between two propellant tanks and the wall, 38.8 in from the axis at Z43 | estimated | Figure 8-72 draws the pressurant tank inboard of the row; there it would stand under the access door, in the pod's way on spacecraft 5 |
+| Valve packages | the regulator and the packages lettered A to E on one manifold along the module's inboard side | documented that they are there; forms and place estimated | SEDR VIII, Figure 8-72 |
+| Fuel cell module | the two sections at one end of the row (the left, toward the primary oxygen), then the hydrogen, then the oxygen | the order documented; which end estimated from the figures' insets; sizes as "One ship from the next" | Gemini V report, Figure 3.1-5; SEDR 300 vol. 2, Figure 5-6; vol. 1, Figure 5-5 |
+| Battery module | spacecraft 3: three batteries in a row and one water tank, a drum in two bolted halves; spacecraft 4: six in two tiers of three, four such drums in pairs at the ends of the lower tier, and a bottle of oxygen; spacecraft 6: three in a row from one end, a water tank that is a ball at the other, and its oxygen bottle | which and how many documented; sizes and places estimated | SEDR 300 vol. 1, Figures 5-2 and 6-10 sheets 2 and 4; vol. 2, Figures 5-9 and 6-10 sheet 3 |
+| Primary oxygen | a ball 18 in across under its own panel, 31 in from the axis | that it is a ball under the ECS module's panel documented; size estimated | TS, Figure 4; SEDR 300, p. 6-7 ("a cryogenic spherical container") |
+| Electronic module | five boxes hung under their panel | that there is an electronic module there documented; every box a guess | TS, Figure 4 |
+| Temperature control cover | gold-coated glass fibre cloth, gathered in from its rim (57 in from the axis at Z15.6) to a hoop 44 in across at Z33.5, with a flat disc inside the hoop | that it is there and its material documented; its form estimated | SEDR 300, p. 2-23. Measured on NASA S65-63221 (spacecraft 7 from behind, 15 December 1965): an ellipse fitted to the rim has axes of 748.7 and 564.9 pixels, so the camera stood 41° off the ship's axis; the hoop's middle is 147 pixels from the rim's along the axis and the hoop 270 pixels in half-width, which is 18 in forward of the rim (good to 3 in) and 44 in across (good to 4 in). Taken to be the same on every ship |
+| Opening in the cover's disc | 10.6 in by 8.8 in, on a ship with the spectrometer | estimated | S65-63221 |
+| Pod (spacecraft 5) | hung under the access door, in the middle; the transponder that is its body 10 by 10 by 20 in; its spiral antennas standing 2 in off the case; its dipole on a fixed boom 2 ft long; its cover "an oval, plane structure" on four tubular posts that reach aft past the pod | documented | SEDR 300 vol. 2, Section VIII, pp. 8-291 to 8-299 and Figures 8-79 and 8-80; Gemini VII report, 3.1.1.2 ("on the blast shield access door") |
+| Pod: everything else | which way the transponder lies, which faces the batteries, regulator, antennas and lights are on, the cover's outline (29 in across over the pod, running out 44 in over the dipole) and its station (Z33.1, in the gold cover's disc) | estimated | Figures 8-79 and 8-80, which have no dimensions |
 
 ## Crew station
 
@@ -221,7 +249,7 @@ stirrup posture's and nothing more.
 | `CrewStation` | the pressure vessel; the two ejection seats on their rails; each man's panel, the centre panel, the pedestal, the centre console with the attitude hand controller, the overhead and the two side switch and circuit breaker panels, the water management panel; the abort handle and the manoeuvre controller; the drinking water, three stowage boxes, three floodlights, the hatch curtains |
 | `HeatShield` | the ablator and the structure behind it |
 | `RetroSection` | skin, foil, rings and stringers; the band it is cut at; six chambers in their ports (13 to 16 dummies on this ship); inside, the four rockets with their nozzles, igniters and lugs on a cross of I-beams |
-| `EquipmentSection` | skin, foil, rings and stringers; the mating ring and its bolts; ten chambers (eight in oval ports, two at the foot); the gold cover across the foot; inside, the blast shield, the three OAMS tanks, the oxygen, the batteries, the modules |
+| `EquipmentSection` | skin, foil, rings and stringers; the mating ring and its bolts; ten chambers (eight in oval ports, two standing through the cover); the gold cover across the foot, gathered to its hoop; inside, the blast shield's panels and door on their two beams, and under them the OAMS module with its tanks and valve packages, the battery or fuel cell module, the primary oxygen, the coolant pump module and the electronic module |
 
 Below three-quarters detail nothing inside is built and the windows are dark panes; below full
 detail the beads are half as many; below half there are none, and the thrust chambers' ports are
@@ -238,35 +266,33 @@ level). What each rests on is in the flight's own `spacecraft.md`.
 | --- | --- | --- | --- |
 | `radar` | four spiral antennas on the forward face, in place of the ribbed cover | spacecraft 5 | scaled from the Gemini V mission report's Figure 3.1-4a: estimated |
 | `lateral_thrusters` | OAMS chambers 13 to 16 as real chambers, or as dummies in steel | real from spacecraft 4 | the type's |
-| `adapter_batteries` | that many 400 Ah batteries in a row (0 on a fuel cell ship) | 3, then 6 on spacecraft 4 | estimated |
-| `water_tanks` | that many small water tanks: one alone, or a cluster | 1, then 4 on spacecraft 4 | estimated |
-| `water_spheres` | drinking water tanks of the OAMS propellant tank's pattern | 2 on spacecraft 5 | 21.12 in, that tank's size on the early ships: assumed |
-| `fuel_cells` | two fuel cell sections, a hydrogen tank and an oxygen tank on a beam across the bottom of the equipment section | spacecraft 5 | the tanks' insides derived from their loads; the rest estimated |
-| `pod` | the rendezvous evaluation pod and its silvered cover at the adapter's foot, as the node `RadarEvaluationPod`; a hole for it in the gold cover | spacecraft 5 only | scaled from Figure 3.1-4b: estimated |
+| `adapter_batteries` | that many 400 Ah batteries hung from the battery module, three to a tier (0 on a fuel cell ship) | 3, then 6 on spacecraft 4 | the tiers are SEDR 300 vol. 1's Figure 6-10 sheet 4; sizes estimated |
+| `water_tanks` | that many small water tanks on the battery module, each a drum in two bolted halves: one beside the batteries, or two pairs at the ends of the lower tier with a bottle of oxygen | 1, then 4 on spacecraft 4 | their form and arrangement are Figure 6-10 sheets 2 and 4; sizes estimated |
+| `water_spheres` | drinking water tanks of the OAMS propellant tank's pattern, at the two ends of the OAMS module's row | 2 on spacecraft 5 | 21.12 in, that tank's size on the early ships: assumed; their places documented |
+| `fuel_cells` | two fuel cell sections, a hydrogen tank and an oxygen tank in a row beyond the beam, where a battery ship has its batteries | spacecraft 5 | the tanks' insides derived from their loads; the rest estimated |
+| `pod` | the rendezvous evaluation pod and its silvered cover, as the node `RadarEvaluationPod`, hung under the blast shield's access door; its mount and four posts, which stay; the gold cover cut back round its cover | spacecraft 5 only | "Equipment section", above: three sizes and its place documented, the rest scaled from SEDR 300 vol. 2's Figures 8-79 and 8-80 |
 | `eva` | the hand-held manoeuvring unit and the umbilical between the seats' heads, as the node `ExtravehicularEquipment` | spacecraft 4 | the unit's folded size is the Smithsonian's; the rest estimated |
 | `right_hatch_opens` | the pilot's hatch as a node of its own, `HatchRight`, its origin on its hinge, for a flight to swing | spacecraft 4 | the hinge is the type's, estimated |
 | `gmt_clock` | a 24-hour clock on the command pilot's panel where spacecraft 3 had a blank | spacecraft 4 | its place and face are the Gemini IV mission report's Figure 3-14; its size assumed from the pilot's clock |
 | `white_disc` | the unidentified white disc forward of the left hatch | spacecraft 3; left off the others | read off photographs of spacecraft 3 |
 | `experiments` | by name: spacecraft 3's three; spacecraft 4's spectrometer and magnetometer boom in the adapter | | each flight's record |
 | `crew` | the man in each seat; without it the seats are empty | spacecraft 3 (the G3C suit) | [g3c-suit.md](../crew/g3c-suit.md) |
-| `battery_module` | the beam the adapter's batteries hang under, and at the end of their row one drinking water tank with its ball of oxygen | spacecraft 6 | SEDR 300 vol. 2, Figures 5-9 and 6-10 sheet 3, which have no dimensions: estimated |
-| `oams_tanks` | that many each of the OAMS's fuel, oxidiser and helium tanks; with two, the four propellant tanks stand in an arc across the top of the section | 2 on spacecraft 6 | the number and the tanks' sizes are SEDR 300 vol. 2, Section VIII, Figures 8-94 and 8-96: documented; their places estimated |
+| `battery_module` | the battery module as spacecraft 6 had it: the batteries in one row from one end, and at the other one drinking water tank that is a ball, with its bottle of oxygen | spacecraft 6 | SEDR 300 vol. 2, Figures 5-9 and 6-10 sheet 3, which have no dimensions: estimated |
+| `oams_tanks` | that many each of the OAMS's fuel, oxidiser and helium tanks; with two, propellant fills all four places of the module's row | 2 on spacecraft 6 | the number and the tanks' sizes are SEDR 300 vol. 2, Section VIII, Figures 8-94 and 8-96: documented; which place is which estimated |
 | `mooring_latches` | three latch receptacles round the rim of the forward face, under the nose fairing | spacecraft 6 | SEDR 300 vol. 2, Figure 13-2, which has no dimensions: estimated |
 | `transponder` | one spiral antenna on the forward face, where the radar's four would be | spacecraft 7 only | the pod's antenna's size, itself scaled from a sketch; to one side of the face, as one photograph has it |
 | `acquisition_lights` | two flashing lights at the foot of the adapter, left and right | spacecraft 7 only | that there were two, on opposite sides, is documented; which sides and their form estimated |
 | `retro_water_tank` | a third drinking water tank, a ball on a tray in the retrograde section | spacecraft 7 only | 13.05 in inside, derived from its 42 lb; its place read off two sketches |
-| `oams_reserve_tank` | the OAMS's reserve fuel tank, a cylinder lying across the equipment section | spacecraft 7 only | 5.10 in by 30.7 in: SEDR 300 vol. 1, Section VIII, p. 8-271, documented; its place estimated |
+| `oams_reserve_tank` | the OAMS's reserve fuel tank, a cylinder lying along the OAMS module's inboard side | spacecraft 7 only | 5.10 in by 30.7 in: SEDR 300 vol. 1, Section VIII, p. 8-271, documented; its place estimated |
 | `hydrogen_insulated` | the fuel cells' hydrogen tank in its wrap of aluminised mylar | spacecraft 7 | the wrap's thickness a guess |
 | `range_indicator` | the radar's range and range-rate indicator on the command pilot's panel; off, a blank | off on spacecraft 7 only | the blank is its report's Figure 3.1-12 |
 | `get_clock` | a digital clock of elapsed time on the centre panel, where the flight plan roller was | spacecraft 7 | its place is the roller's; its form estimated |
 
-With `adapter_batteries` over three, `water_tanks` over one or `fuel_cells`, the loose contents of
-the equipment section are laid out again to make room (`layout` in gemini_spacecraft.py): every
-place in it is a guess for every ship.
-
-Spacecraft 3, 4 and 5 ask for none of the last ten, and their models are unchanged by them:
-rebuilt on one machine from the commit before these were added and from the one that added them,
-each ship's three GLBs are the same byte for byte.
+Every ship's equipment section is laid out the same way ("Equipment section", above), and a
+`Fit` only says what hangs on each module. Spacecraft 3, 4 and 5 ask for none of the last ten.
+(When those ten were added the three ships' GLBs came out the same byte for byte. The equipment
+section was laid out again from McDonnell's drawing after that, in November 2026, and all five
+ships were rebuilt.)
 
 Where a part's own words tell what happened on Gemini-Titan 3, a later flight gives its own
 (`SAYS` in its script, applied by `gemini_stack.build`).
@@ -337,26 +363,38 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
   lean outward in it and fire straight aft here. What stood in the ports of 13 to 16 on this ship,
   where the chambers were inoperative, is not recorded: here they are the chambers' own shapes in
   steel.
-- **Inside the adapter the tanks are the right size and in roughly the right place**; everything
-  else is placed by guess: the oxygen bottle, the battery module, the electronics, the modules'
-  frame. The plumbing, the wiring, the coolant pumps and the radar transponder are left out.
-  The first model of this ship built every ball in the adapter (tanks and rockets) a fortieth of
-  its size, by giving metres to a profile that took inches; that is put right.
-- **The adapter's layout and its gold cover are not McDonnell's**, and the photographs taken in
-  orbit in December 1965 show how far off they are. SEDR 300 draws the equipment section's modules
-  against the wall, round a clear middle: the OAMS module is one curved frame with four balls in a
-  row on it (vol. 1, Figure 6-10 sheet 5 and Section VIII, Figure 8-72; vol. 2, Section VIII,
-  Figure 8-94), the fuel cell or battery module a beam across the other side (vol. 1, Figure 5-5;
-  vol. 2, Figure 5-9). NASA S65-63221, spacecraft 7 from behind, shows the cover as a deep funnel
-  running up that clear middle to a flat disc, and the two aft-firing thrusters standing through
-  it at the rim. Here the cover is a smooth shallow cone, estimated from one photograph of
-  spacecraft 3's adapter being lowered onto its launch vehicle, with those thrusters hidden above
-  it, and tanks stand in the middle. (The real cover is also a quilted blanket, not a smooth one.)
-  To lay the section out from the drawings would move things on every ship in the repo, and is not
-  done.
+- **The equipment section is McDonnell's arrangement and our sizes** ("Equipment section", above).
+  Which module is on which side, the blast shield's station and its make-up, and the coolant
+  module's stations are his drawing. How far the beams are turned from the ship's own sides (23°)
+  is measured on two perspective sketches that agree to 2°, and nothing dimensioned confirms it.
+  Every other size and place in the section is scaled from an undimensioned figure or is what the
+  tanks and the wall leave: the beams' distance from the axis, each tank's place on its module,
+  the frames' members, the batteries, the electronics.
+- **The helium is not where the sketch has it.** SEDR 300's Figure 8-72 draws the OAMS's pressurant
+  tank inboard of the propellant tanks. There it would stand under the access door, where
+  spacecraft 5's pod hung, so it is put between two tanks and the wall. Which of the row's two
+  middle places holds fuel is not read from anything either.
+- **The gold cover is one photograph's**, of one ship: NASA S65-63221, spacecraft 7. The hoop's
+  depth is good to 3 in and its width to 4 in, and both are taken for every ship. The cloth's
+  gathers are drawn as even pleats, 48 to the turn; the real ones are irregular. On spacecraft 7
+  the photograph shows a raised oblong under the cloth beside the lower aft-firing thruster, not
+  identified and not built, and small fittings at the rim to left and right that may be the
+  acquisition lights. How spacecraft 5's cover was cut round the pod's own cover is not in
+  anything read: here the gold is cut back to the pod cover's outline, which runs out across the
+  hoop into the cone on the side the dipole points.
+- **The battery and electronic modules are tokens.** A battery is a ribbed case of estimated size;
+  spacecraft 4's eight water and oxygen vessels are plain drums and a bottle; the electronic
+  module is five boxes with connectors, none of them identified; the coolant module has two pump
+  packages, a reservoir and a heat exchanger of our own form. The plumbing, the wiring, the
+  radar beacon's antennas and the umbilical connection in the adapter's skin are left out.
+  The primary oxygen is the same 18 in ball on every ship, though spacecraft 4 carried 52 lb
+  and spacecraft 7 109 lb where spacecraft 3 carried 15.
+  (The first model of this ship built every ball in the adapter, tanks and rockets, a fortieth of
+  its size, by giving metres to a profile that took inches; that was put right long since.)
 - **The scanner fairing** is a box of the size, place and colour the photograph gives, with none of
   its detail (it is stepped, and has a foot on the cabin). **The strap fairings** are blisters of
-  our own shape; one is put where S65-13395 shows one, beside a hatch's aft outboard corner.
+  our own shape, where the Technical Summary's Figure 3 has the straps (one of them is beside a
+  hatch's aft outboard corner in S65-13395).
 - **The rendezvous and recovery section's inside** is a parachute pack and two mortars of our own
   form. The docking bar is not modelled; the three latch receptacles, on the ship built with
   them, are plain blocks on the rim. The radar, on a ship that had it, is its four antennas as

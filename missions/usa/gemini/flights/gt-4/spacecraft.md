@@ -49,8 +49,8 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 
 | Experiment | Where | Confidence | Source | In the model |
 | --- | --- | --- | --- | --- |
-| MSC-2, proton-electron spectrometer | "in the equipment adapter section on a support assembly fixed to the center of the equipment adapter section blast shield door"; the sensor's face "will look to the rear"; 12.5 lb | documented; its form estimated | GIV, 8.4.2; the press kit (release 65-158), p. 52 | yes: a case under the middle of the blast shield with a sensor looking aft |
-| MSC-3, tri-axis magnetometer | an electronics unit and sensors in the equipment section, the sensors on a boom "which can be extended beyond the end of the adapter"; 3.5 lb; its lock released by a guillotine | documented; where round the adapter and its form estimated | GIV, 8.5.2 and 3.1.2.8; the press kit, p. 53 | yes: a boom stowed along the adapter's wall with the sensor at its aft end |
+| MSC-2, proton-electron spectrometer | "in the equipment adapter section on a support assembly fixed to the center of the equipment adapter section blast shield door"; the sensor's face "will look to the rear"; 12.5 lb | documented; its form estimated | GIV, 8.4.2; the press kit (release 65-158), p. 52 | yes: a case standing off the middle of the blast shield's access door on four legs, its sensor looking aft through an opening in the gold cover |
+| MSC-3, tri-axis magnetometer | an electronics unit and sensors in the equipment section, the sensors on a boom "which can be extended beyond the end of the adapter"; 3.5 lb; its lock released by a guillotine | documented; where in the section and its form estimated | GIV, 8.5.2 and 3.1.2.8; the press kit, p. 53. NASA S65-63221 shows spacecraft 7's run out from the middle of the gold cover | yes: a boom stowed under the access door beside the spectrometer, the sensor at its aft end |
 | MSC-1, electrostatic charge | a sensor "flush with the outer surface of the spacecraft" in the adapter, behind a door opened by a pyrotechnic device | documented | the press kit, p. 51; GIV, 3.1.2.8 | no: where in the skin is not found |
 | D-8, D-9, MSC-10, S-5, S-6, M-3, M-4, M-6 | in the cabin, or done by the crew with hand-held equipment | documented | GIV, section 8 | no |
 
@@ -92,7 +92,12 @@ out". Of what was No. 4's own:
   that limited it are not from a drawing. The command pilot's hatch does not open.
 - **The forward face's cover** is spacecraft 3's, as photographed in January 1965: assumed for this ship.
 - **The adapter's batteries, water tanks, spectrometer and magnetometer boom** are documented to exist and to be
-  about where they are; their forms and exact places are estimated. The boom is shown stowed.
+  about where they are: six batteries in two tiers of three on the battery module, the four water tanks in pairs at
+  the ends of the lower tier with their bottle of oxygen (SEDR 300 vol. 1, Figure 6-10 sheet 4), the two experiments
+  under the middle of the blast shield's door ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Equipment section"). Their forms, sizes and exact places are estimated. The
+  boom is shown stowed; that it ran out through the middle of the gold cover is seen on spacecraft 7, not this ship.
+- **The gold cover is another ship's**: measured on a photograph of spacecraft 7 in orbit. That this ship's had an
+  opening in its middle for the spectrometer is assumed from that photograph.
 - **Not built:** the electrostatic charge sensor and its door, the second HF whip antenna, the C-band transponder,
   the long-life chambers' differences, the urine dump line.
 - **The paint** is spacecraft 3's.

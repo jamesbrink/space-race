@@ -281,9 +281,15 @@ const parts: Part[] = [
       'eight small ones in four clusters that turn the ship, each firing along one of its axes and not straight ' +
       'out, and two at the foot that push it forward. With those two Grissom ' +
       'finished the climb to orbit, and with their opposite numbers he changed the orbit an hour and a half later: ' +
-      'the first time a crew had done so. The whole section is cut off just before retrofire. The three tanks of ' +
-      'the manoeuvring system are McDonnell’s sizes, 21 in and 16 in across; the rest of what is inside is placed ' +
-      'by guess.',
+      'the first time a crew had done so. Inside, everything stands against the wall round a clear middle, hung ' +
+      'under a blast shield that is not one sheet but each module’s own panel and a door between them: the ' +
+      'manoeuvring system’s tanks beyond one beam, the batteries and the drinking water beyond the other, the ' +
+      'oxygen and the electronics at the two ends of the space between. Across the open foot is a cover of ' +
+      'gold-coated cloth, gathered in like the inside of a funnel, with the two aft-firing thrusters standing ' +
+      'through it. The whole section is cut off just before retrofire. Which module stands on which side is ' +
+      'McDonnell’s drawing, and the three tanks of the manoeuvring system are his sizes, 21 in and 16 in across; ' +
+      'the cover’s form is measured on a photograph of Gemini 7 in orbit; the other sizes, and each thing’s exact ' +
+      'place, are estimated.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Attitude thrusters', '8 × 25 lbf'],

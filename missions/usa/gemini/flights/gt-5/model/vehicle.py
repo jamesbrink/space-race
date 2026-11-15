@@ -26,8 +26,8 @@ sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 import gemini_stack  # noqa: E402
-from gemini_spacecraft import POD_Z, Fit  # noqa: E402
-from gemini_stack import BARE, st  # noqa: E402
+from gemini_spacecraft import POD_AT, POD_COVER_Z, Fit  # noqa: E402
+from gemini_stack import OPEN, TITAN, st  # noqa: E402
 from srlib import run  # noqa: E402
 
 # What spacecraft 5 had, against spacecraft 4 before it (../spacecraft.md, "This ship and the others"). "GV" is the
@@ -142,21 +142,26 @@ SAYS = {
     "Equipment_Cover": (
         "Temperature control cover",
         "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
-        "fibre with gold deposited on it is stretched across the opening. On this ship its middle is the pod's own cover, "
-        "which went when the pod did. Documented; its shape here is estimated from a photograph of spacecraft 3's adapter.",
+        "fibre with gold deposited on it is stretched across the opening. It is gathered in from the rim to a hoop, like the "
+        "inside of a funnel, with a flat disc in the middle, and the two aft-firing thrusters stand through it at the rim. On "
+        "this ship the middle is cut away for the pod's own silvered cover, which went when the pod did. That it was there and "
+        "what it was made of are documented; its form is measured on a photograph of Gemini 7 from behind, good to two or three "
+        "inches, and taken to be the same on this ship; how it was cut round the pod's cover is not in anything read.",
     ),
     "Equipment_OamsTanks": (
         "OAMS propellant tanks",
         "The orbit attitude and maneuver system: a fuel tank, an oxidiser tank and a ball of helium to push them, feeding "
         "sixteen thrust chambers round the adapter. This flight used 289 lb of propellant in eight days. The tanks are "
-        "drawn at spacecraft 3's sizes, 21 in and 16 in across, which are SEDR 300's for the early ships; whether this "
-        "ship's were larger is not settled by anything read. Exactly where they are is estimated.",
+        "21.13 in, 21.12 in and 16.20 in across: McDonnell's manual for the rendezvous ships gives this one a single tank of "
+        "each, of the early ships' size, where the next ship had two. His drawings have the two propellant tanks in the middle "
+        "of a row of four on one module, with a drinking water tank at each end; where the helium is is estimated.",
     ),
     "Equipment_PrimaryOxygen": (
         "Primary oxygen",
         "The oxygen the crew breathe in orbit, in a tank of its own: it is not the fuel cells' oxygen, and the trouble with "
         "that tank never touched this one. When this section is cut away before retrofire the crew go on to a smaller "
-        "supply in the re-entry module. Its size and place here are estimated.",
+        "supply in the re-entry module. McDonnell's drawing puts it under its own panel of the blast shield, at one end of the "
+        "space between the two beams; its size is estimated.",
     ),
     "CrewCabin_InstrumentPanel": (
         "Instrument panels",
@@ -230,26 +235,24 @@ if __name__ == "__main__":
         build,
         gemini_stack.previews(
             (
-                # the radar on the forward face (the nose fairing off), the pod from below (the Titan off), and the
-                # equipment section's contents from aft with the adapter's skin and covers off
+                # the radar on the forward face (the nose fairing off); the pod's cover in the gold cover, from below (the
+                # Titan off); the pod under the access door with the adapter's skin and covers off, from two sides; and the
+                # pod alone, from aft and from forward
                 ("radar.png", (0, 0, st(236)), 2.6, dict(azimuth=-30, elevation=40, res=(1300, 1300), hide=("NoseFairing",), lens=50)),
+                ("pod-cover.png", (0, 0, st(POD_COVER_Z)), 3.6, dict(azimuth=-60, elevation=-55, res=(1400, 1400), hide=TITAN, lens=50)),
+                ("pod-in-place.png", (0, 0, st(POD_AT)), 3.0, dict(azimuth=-40, elevation=-30, res=(1500, 1300), hide=OPEN, lens=50)),
+                ("pod-in-place-far.png", (0, 0, st(POD_AT)), 3.0, dict(azimuth=150, elevation=-24, res=(1500, 1300), hide=OPEN, lens=50)),
                 (
                     "pod.png",
-                    (0, 0, st(POD_Z)),
-                    3.4,
-                    dict(azimuth=-60, elevation=-55, res=(1400, 1400), hide=("Titan", "Stage", "Interstage", "Pod_Cover"), lens=50),
+                    (0.25, 0.25, st(POD_AT - 3)),
+                    1.9,
+                    dict(azimuth=-35, elevation=-34, res=(1500, 1300), only=("Pod_",), hide=("Pod_Cover",), lens=50),
                 ),
                 (
-                    "equipment-aft.png",
-                    (0, 0, st(40)),
-                    7.5,
-                    dict(
-                        azimuth=0,
-                        elevation=-89.9,
-                        res=(1500, 1500),
-                        hide=(*BARE, "Titan", "Stage", "Interstage", "Equipment_Cover", "Pod_Cover"),
-                        lens=90,
-                    ),
+                    "pod-forward.png",
+                    (0.25, 0.25, st(POD_AT)),
+                    1.9,
+                    dict(azimuth=160, elevation=38, res=(1500, 1300), only=("Pod_",), hide=("Pod_Cover",), lens=50),
                 ),
             )
         ),

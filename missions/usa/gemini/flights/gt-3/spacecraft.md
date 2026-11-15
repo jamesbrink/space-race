@@ -104,8 +104,12 @@ out". Of what was No. 3's own:
   burst diaphragms, the S-band transponder, the urine line, the Z100 separation switches and the recovery light's
   wiring ("This ship and the others", the rows marked "no"). The drogue mortar's steel breech is said on the part,
   not built.
-- **Estimated in form and place:** the adapter's three batteries and its one water tank; where on each hatch the two
-  experiments stand, and where on the cone the landing gear door with the re-entry experiment is.
+- **Estimated in form and place:** the adapter's three batteries and its one water tank, which hang from the battery
+  module on the side of the equipment section that McDonnell's drawings give it ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Equipment section"); where on each hatch the
+  two experiments stand, and where on the cone the landing gear door with the re-entry experiment is.
+- **The gold cover is another ship's.** Its funnel is measured on a photograph of spacecraft 7 in orbit and taken to
+  be this ship's too. The photograph of this adapter being lowered onto its launch vehicle (S65-17337) shows the
+  same gathered cloth sloping up into the section from the rim; nothing was measured on it.
 - **The forward face's cover** is as photographed on 6 January, and what was behind it is not found.
 - **The paint** is placed by eye off the liftoff's photograph, and the right side's is the left's, mirrored; the fine
   lines down the equipment section are not modelled.

@@ -19,7 +19,7 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 
 **In this repo: the vehicle, in the gallery.** Spacecraft No. 5 on GLV-5 as they left the pad can
 be turned, taken apart as they staged, and cut open: the radar on its nose, the fuel cells and
-their tanks in the adapter, the pod at its foot. Its launch site, its crew and the flight itself
+their tanks in the adapter, the pod hung in its middle. Its launch site, its crew and the flight itself
 are not built: see "What is not built" below.
 
 ## The name

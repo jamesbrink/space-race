@@ -36,6 +36,7 @@ from mathutils import Matrix, Vector  # noqa: E402
 
 import g3c_suit  # noqa: E402
 import gemini_spacecraft  # noqa: E402
+import gemini_stack  # noqa: E402
 import titan_ii_glv  # noqa: E402
 from gemini_spacecraft import Z0, Z_BASE, Z_NOSE, Fit  # noqa: E402
 from mercury_capsule import flag_image  # noqa: E402  (the fifty-star flag: the same flag as Mercury's ships wore)
@@ -138,6 +139,8 @@ if __name__ == "__main__":
                     ),
                 ),
             ),
+            # the equipment section, as every Gemini's build takes it
+            *gemini_stack.equipment_previews(),
             # from each seat: ahead, through his window, down at his knees, across the cabin. His own helmet is not drawn
             # (the eyes are in it), nor the windows' panes, which a still drawn here would show as opaque
             *(

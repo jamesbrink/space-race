@@ -271,8 +271,12 @@ const parts: Part[] = [
       'Louis a cell was run at low pressure to see; in orbit the pressure steadied; and on the seventh revolution ' +
       'the ship was switched back on, a little at a time. The cells ran the rest of the eight days. The water they ' +
       'made went into one of the two drinking water tanks, behind its diaphragm, and by the fifth day the room ' +
-      'left in it was being watched. The fuel cells, their tanks and the water tanks are documented; their sizes are worked from ' +
-      'the weights or scaled from sketches, and where each stands is estimated.',
+      'left in it was being watched. Everything here stands against the wall round a clear middle: the fuel cells ' +
+      'and their tanks beyond one beam, the manoeuvring system’s tanks with a water tank at each end beyond the ' +
+      'other, and in the middle, under the blast shield’s door, the pod. The fuel cells, their tanks and the water ' +
+      'tanks are documented, and so is which side of the section each module stands on; their sizes are worked from ' +
+      'the weights or scaled from sketches; the gold cover’s form is measured on a photograph of Gemini 7 in ' +
+      'orbit; each thing’s exact place is estimated.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Fuel cells', '2 sections of 3 stacks of 32 cells'],
@@ -293,7 +297,8 @@ const parts: Part[] = [
     summary: 'A target the ship took up with it, threw out at 2 hours 7 minutes, and never got back to.',
     detail:
       'This flight was first meant to meet an Agena. That was put off, and the radar still had to be tried on ' +
-      'something. So the ship carried its own target in the back of the adapter, under a silvered cover: a package holding what an ' +
+      'something. So the ship carried its own target in the middle of the adapter, hung under the blast shield’s ' +
+      'access door behind a silvered cover: a package holding what an ' +
       'Agena’s docking adapter was to hold. A transponder to answer the radar; two flat spiral antennas and a ' +
       'dipole on a boom, so that it could be heard from any side; two flashing lights; and two batteries of 24 ' +
       'volts to run it. The plan was to throw it out, let it drift miles away, and then find it again and fly back ' +
@@ -303,18 +308,23 @@ const parts: Part[] = [
       'expected it to fall behind. Ten minutes later the crew reported the fuel cells’ oxygen pressure falling ' +
       'fast, and the ship was powered down. The pod stayed near for five revolutions, easier to see by the Sun glinting off it ' +
       'than by its lights. Two days later the crew flew the same manoeuvres toward a point in empty space where an ' +
-      'Agena might have been. What the pod carried is the mission report’s; its size and form are scaled from that ' +
-      'report’s sketch, and where it sat in the adapter is as the sketch’s inset has it.',
+      'Agena might have been. What the pod carried is documented, and so are three sizes: the transponder that is ' +
+      'its body, 10 by 10 by 20 in; the two inches its spiral antennas stand off the case; the two feet of its ' +
+      'dipole’s boom. So is where it hung: in the middle of the section, on the blast shield’s access door, with ' +
+      'four posts reaching past it to hold its cover. The rest of its form is scaled from McDonnell’s drawing of ' +
+      'it, which has no dimensions, and the cover’s outline from his sketch.',
     facts: [
       ['Carried', 'a transponder, 3 antennas, 2 flashing lights, 2 batteries'],
       ['Power', 'two 24 V silver-zinc batteries'],
       ['Thrown out', '2 h 7 min 15 s after liftoff, at 4.6 ft/s'],
       ['Followed by radar to', '7,721 ft'],
       ['Stayed in sight', 'about five revolutions'],
-      ['Size', 'about 20 in across: estimated'],
+      ['Transponder', '10 × 10 × 20 in'],
+      ['Dipole boom', '2 ft, fixed'],
+      ['Mounted', 'on the blast shield’s access door, in the middle of the section'],
     ],
     // out of the back of the adapter, between it and the Titan
-    explode: [0, 0.8, 0],
+    explode: [0, 0.45, 0],
     order: 12,
   },
   {

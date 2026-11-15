@@ -313,12 +313,16 @@ const parts: Part[] = [
       'flight were still not ready, so this ship did four days on batteries: six of 400 ampere-hours where the ' +
       'three-orbit flight had three. It carried four tanks of drinking water for one, 52 lb of oxygen for 15, and ' +
       '410 lb of propellant, of which the chase after the Titan’s second stage took 115 in the first 80 minutes; ' +
-      'after that the ship mostly drifted, to save what was left. Under the blast shield, looking out of the back, ' +
+      'after that the ship mostly drifted, to save what was left. All of it stands against the wall round a clear ' +
+      'middle: the propellant beyond one beam, the batteries and the water in two tiers beyond the other. In the ' +
+      'middle, under the blast shield’s door and looking out of the back through an opening in the gold cover, ' +
       'is a spectrometer that counted the radiation belt’s protons and electrons where the belt dips over the South ' +
-      'Atlantic, and beside the wall a boom that ran a magnetometer out past the end of the adapter to say which ' +
+      'Atlantic, and beside it a boom that ran a magnetometer out past the end of the adapter to say which ' +
       'way the field lay. The skin is itself the radiator: coolant runs through hollow stringers on its inner ' +
-      'face. The whole section is cut off just before retrofire. The tanks of the manoeuvring system are ' +
-      'McDonnell’s sizes for the early ships; the rest of what is inside is placed by guess.',
+      'face. The whole section is cut off just before retrofire. Which module stands on which side is ' +
+      'McDonnell’s drawing, and so are the six batteries in two rows with the water tanks at the ends of the ' +
+      'lower; the tanks of the manoeuvring system are his sizes for the early ships; the gold cover’s form is ' +
+      'measured on a photograph of Gemini 7 in orbit; the other sizes, and each thing’s exact place, are estimated.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Batteries', '6 silver-zinc, 400 Ah each'],

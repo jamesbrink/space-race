@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 import gemini_stack  # noqa: E402
 from gemini_spacecraft import Fit  # noqa: E402
-from gemini_stack import BARE, st  # noqa: E402
+from gemini_stack import TITAN, st  # noqa: E402
 from srlib import run  # noqa: E402
 
 # What spacecraft 7 had, against spacecraft 5 before it (../spacecraft.md, "This ship and the others"). "GVII" is the
@@ -174,7 +174,11 @@ SAYS = {
         "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
         "fibre with gold deposited on it is stretched across the opening. When Gemini VI-A came up behind this ship its crew "
         "saw cords and strips trailing from round this end: what was left of the holder of the charge that had cut the "
-        "ship from its Titan. Documented; its shape here is estimated from a photograph of spacecraft 3's adapter.",
+        "ship from its Titan. Their photograph shows the cover too: gathered in from the rim to a hoop, like the inside of a "
+        "funnel, with a flat disc in the middle, an opening in the disc that an instrument looks out of, and the two aft-firing "
+        "thrusters standing through the cloth at the rim. That it was there and what it was made of are documented; its form is "
+        "measured on that photograph, good to two or three inches. A raised oblong under the cloth beside the lower thruster, "
+        "in the same photograph, is not identified and not built.",
     ),
     "Equipment_OamsTanks": (
         "OAMS propellant tanks",
@@ -183,7 +187,8 @@ SAYS = {
         "of it usable, and came home with almost none: by the eighth day it was drifting to save what was left for the "
         "rendezvous. The tanks are 21.13 in, 21.12 in and 16.20 in across, which is McDonnell's manual for this ship; it "
         "gives each propellant tank 5,355 cubic inches, and that with the reserve tank beside them is room for what was "
-        "loaded. Exactly where they are is estimated.",
+        "loaded. McDonnell's drawings have the two propellant tanks in the middle of a row of four on one module, with a "
+        "drinking water tank at each end; where the helium is is estimated.",
     ),
     "Equipment_PrimaryOxygen": (
         "Primary oxygen",
@@ -191,7 +196,8 @@ SAYS = {
         "days. On this ship a pipe joins it to the fuel cells' oxygen tank, so that either can lend to the other if a "
         "heater fails, as one had on the flight before. It lent in the first half hour: 17.5 seconds with the valve open, "
         "a third of a pound across. When this section is cut away before retrofire the crew go on to a smaller supply in "
-        "the re-entry module. Its size and place here are estimated.",
+        "the re-entry module. McDonnell's drawing puts it under its own panel of the blast shield, at one end of the space "
+        "between the two beams; its size is estimated.",
     ),
     "Equipment_FuelCells": (
         "Fuel cell sections",
@@ -202,7 +208,8 @@ SAYS = {
         "get rid of its water: its warning lamp burned for most of the flight, its output sagged and was coaxed back four "
         "times by purging it and resting it, and at 286 hours 57 minutes two of its three stacks were taken off the line. "
         "Four stacks out of six carried the ship to retrofire. That there are two sections of three stacks is documented; "
-        "their size is scaled from McDonnell's sketch of spacecraft 5's and where they stand is estimated.",
+        "their size is scaled from McDonnell's sketch of spacecraft 5's; his drawing of this ship's module has them at one end "
+        "of it, beyond the beam, with the two tanks beside them.",
     ),
     "Equipment_RssHydrogen": (
         "Fuel cell hydrogen tank",
@@ -211,8 +218,8 @@ SAYS = {
         "this tank was wrapped in fifty layers of aluminised film, hung on mounts that carry little heat, and its outlet "
         "pipe was led round it to cool it; a small charge could cut open the tube its vacuum jacket had been pumped out "
         "through, to let the jacket empty into space. It did not vent once in fourteen days, and 8.55 lb was left at the "
-        "end. Its load and what was done to it are documented; the tank's size is worked from the load, with a guess at "
-        "the insulation, and where it stands is estimated.",
+        "end. Its load and what was done to it are documented; the tank's size is worked from the load, with a guess at the "
+        "insulation; it is the middle one of the module's row, as McDonnell's drawing has it.",
     ),
     "Equipment_RssOxygen": (
         "Fuel cell oxygen tank",
@@ -222,7 +229,7 @@ SAYS = {
         "for 17.5 seconds and let a third of a pound of their own breathing oxygen in: 417 lb to the square inch. After "
         "that the heater kept it. At 171 hours the gauge stuck at 910 and stayed there; the heater could still be seen "
         "switching by what it drew. 60.95 lb was left at the end. Its load and pressures are documented; the tank's size "
-        "is worked from the load, with a guess at the insulation, and where it stands is estimated.",
+        "is worked from the load, with a guess at the insulation; it is at the end of the module's row, as McDonnell's drawing has it.",
     ),
     "Equipment_WaterTanks": (
         "Drinking water tanks",
@@ -231,8 +238,8 @@ SAYS = {
         "water the fuel cells made; that water also went in behind tank B's diaphragm and pushed the drinking water out. "
         "Late in the flight Houston thought the fuel cells' warning lamps had to do with both men drawing water for "
         "breakfast at once, and asked them to take turns. A third, smaller tank is in the retrograde section. That "
-        "there were two here, and what each carried, are documented; their pattern is spacecraft 5's; where they stand "
-        "here is estimated.",
+        "there were two here, and what each carried, are documented; their pattern is spacecraft 5's; McDonnell's drawing has "
+        "them at the two ends of the manoeuvring system's row of tanks.",
     ),
     "Experiment_Spectrometer": (
         "Proton-electron spectrometer",
@@ -251,8 +258,8 @@ SAYS = {
         "Earth's magnetic field ran past the ship while the spectrometer counted, since particles in the belt spiral along "
         "the field. It was run out when the ship reached orbit and left out for the fourteen days; one of its three axes "
         "had stopped answering before the launch. In the photographs Gemini VI-A took, a cord from the charge that cut "
-        "the ship from its Titan is caught round it. The boom is documented; where round the adapter it was stowed, and "
-        "its form, are estimated.",
+        "the ship from its Titan is caught round it, and the boom is seen run out from the middle of the gold cover, beside the "
+        "spectrometer, which is where it is stowed here. The boom is documented; its form is estimated.",
     ),
     "CrewCabin_InstrumentPanel": (
         "Instrument panels",
@@ -346,8 +353,7 @@ if __name__ == "__main__":
             (
                 # the transponder's antenna on the forward face (the nose fairing off); tank C among the retrograde rockets,
                 # from forward with the re-entry module and the section's skin off; the foot of the adapter from below with
-                # the Titan off, an acquisition light on either hand; the two near beacons on the second stage; the panels;
-                # and the equipment section's contents from aft, with the adapter's skin and cover off
+                # the Titan off, an acquisition light on either hand; the two near beacons on the second stage; and the panels
                 ("transponder.png", (0, 0, st(236)), 2.6, dict(azimuth=-30, elevation=40, res=(1300, 1300), hide=("NoseFairing",), lens=50)),
                 (
                     "tank-c.png",
@@ -362,25 +368,13 @@ if __name__ == "__main__":
                         lens=50,
                     ),
                 ),
-                ("foot.png", (0, 0, st(16)), 6.5, dict(azimuth=-70, elevation=-62, res=(1400, 1400), hide=("Titan", "Stage", "Interstage"), lens=50)),
+                ("foot.png", (0, 0, st(16)), 6.5, dict(azimuth=-70, elevation=-62, res=(1400, 1400), hide=TITAN, lens=50)),
                 ("beacons.png", (0, 0, gemini_stack.station(366)), 7.0, dict(azimuth=-45, elevation=6, res=(1400, 1100), lens=50)),
                 (
                     "panels.png",
                     (0.4, 0, st(143)),
                     1.25,
                     dict(azimuth=0, elevation=-28, res=(1700, 1100), hide=(*gemini_stack.SKINS, "CrewStation_PressureVessel", "Seat"), lens=40),
-                ),
-                (
-                    "equipment-aft.png",
-                    (0, 0, st(40)),
-                    7.5,
-                    dict(
-                        azimuth=0,
-                        elevation=-89.9,
-                        res=(1500, 1500),
-                        hide=(*BARE, "Titan", "Stage", "Interstage", "Equipment_Cover"),
-                        lens=90,
-                    ),
                 ),
             )
         ),

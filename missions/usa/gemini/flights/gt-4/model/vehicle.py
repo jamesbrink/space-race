@@ -157,8 +157,11 @@ SAYS = {
     "Equipment_Cover": (
         "Temperature control cover",
         "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
-        "fibre with gold deposited on it is stretched across the opening. Documented; its shape here is estimated from a "
-        "photograph of spacecraft 3's adapter.",
+        "fibre with gold deposited on it is stretched across the opening. It is gathered in from the rim to a hoop, like the "
+        "inside of a funnel, with a flat disc in the middle, and the two aft-firing thrusters stand through it at the rim. This "
+        "ship's has an opening in the middle for the spectrometer to look out of and the magnetometer's boom to run out "
+        "through. That it was there and what it was made of are documented; its form is measured on a photograph of Gemini 7 "
+        "from behind, good to two or three inches, and taken to be the same on this ship.",
     ),
     "Equipment_OamsTanks": (
         "OAMS propellant tanks",
@@ -167,14 +170,16 @@ SAYS = {
         "aboard at launch. In the first eighty "
         "minutes of this flight 115 lb of it went on the chase after the Titan's second stage, which was most of what had "
         "been allowed for that; the chase was called off and the ship drifted for the next two and a half days to save "
-        "the rest. The sizes are SEDR 300's; the sketch of the system shows the two propellant tanks together on one "
-        "side and the helium near the middle, and exactly where they are here is estimated.",
+        "the rest. The sizes are SEDR 300's. McDonnell's drawings have the propellant tanks side by side on one module, against "
+        "the wall toward the ship's top and a little to the crew's right; where along that module each stands, and where the "
+        "helium is, are estimated.",
     ),
     "Equipment_PrimaryOxygen": (
         "Primary oxygen",
         "The oxygen the crew breathe in orbit: 52 lb of it for four days, where the three-orbit flight before had carried "
         "15. White's umbilical drew on it too, at 9 lb an hour while he was outside. When this section is cut away before "
-        "retrofire the crew go on to a smaller supply in the re-entry module. Its size and place here are estimated.",
+        "retrofire the crew go on to a smaller supply in the re-entry module. McDonnell's drawing puts it under its own panel "
+        "of the blast shield, at one end of the space between the two beams; its size is estimated.",
     ),
     "CrewCabin_InstrumentPanel": (
         "Instrument panels",

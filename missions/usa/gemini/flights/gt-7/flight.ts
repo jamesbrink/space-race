@@ -305,7 +305,10 @@ const parts: Part[] = [
       'to see. And as on Gemini IV there is a counter for the radiation belt’s particles and a magnetometer on a ' +
       'boom, run out after the ship reached orbit and left out. What is here is documented; the manoeuvring ' +
       'system’s tanks are McDonnell’s sizes, the other sizes are worked from the loads or scaled from sketches, ' +
-      'and where each thing stands is estimated.',
+      'which module stands on which side of the section is his drawing, and each thing’s exact place is ' +
+      'estimated. The gold cover across the foot is measured on the photograph Gemini VI-A’s crew took of this ' +
+      'ship from behind: a funnel of cloth gathered to a hoop, the spectrometer looking out of its middle and the ' +
+      'two aft-firing thrusters standing through it at the rim.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Fuel cells', '2 sections of 3 stacks; stacks 2A and 2C off at 286 h 57 min'],

@@ -290,7 +290,9 @@ const parts: Part[] = [
       'ships met, each crew saw cords streaming from the back of the other; they were the holders of the charge ' +
       'that cuts the adapter from the Titan. The batteries and the water tank are McDonnell’s figure of this ' +
       'ship’s module, and the water tank’s size is scaled from it; that the tanks were doubled, and their sizes, ' +
-      'are his manual’s; where each thing stands is estimated.',
+      'are his manual’s; which side of the section each module stands on is his drawing; the gold cover across ' +
+      'the foot, a funnel of cloth with the two aft-firing thrusters standing through it, is measured on the ' +
+      'photograph this ship’s crew took of Gemini 7; each thing’s exact place is estimated.',
     facts: [
       ['Base diameter', '120.00 in (3.05 m)'],
       ['Batteries', '3 silver-zinc, 400 Ah, 118 lb each'],

@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
 import gemini_stack  # noqa: E402
 from gemini_spacecraft import Fit  # noqa: E402
-from gemini_stack import BARE, st  # noqa: E402
+from gemini_stack import st  # noqa: E402
 from srlib import run  # noqa: E402
 
 # What spacecraft 6 had, against spacecraft 5 before it and spacecraft 7, which flew first (../spacecraft.md, "This ship and
@@ -168,8 +168,10 @@ SAYS = {
         "The adapter's foot is open once the Titan has gone, and the Sun would shine straight in on the tanks. A cover of glass "
         "fibre with gold deposited on it is stretched across the opening. When the two ships met, each crew told the other "
         "that it had cords several metres long streaming from its back end: they were the rubber holders of the charge that "
-        "cuts the ship from the Titan, torn loose round this rim. Documented; the cover's shape here is estimated from a "
-        "photograph of spacecraft 3's adapter.",
+        "cuts the ship from the Titan, torn loose round this rim. It is gathered in from the rim to a hoop, like the inside of "
+        "a funnel, with a flat disc in the middle, and the two aft-firing thrusters stand through it at the rim. That it was "
+        "there and what it was made of are documented; its form is measured on the photograph this ship's crew took of Gemini 7 "
+        "from behind, good to two or three inches, and taken to be the same on this ship.",
     ),
     "Equipment_OamsTanks": (
         "OAMS propellant tanks",
@@ -178,13 +180,15 @@ SAYS = {
         "of fuel, two of oxidiser and two of helium, each the size of the one a Gemini had carried until now. 669 lb was "
         "the load announced for this flight, against about 300 lb for Gemini 3. The whole chase used 113 lb of fuel, and "
         "Schirra arrived with 62 per cent of his propellant left. That there were two of each, 21.13 in, 21.12 in and "
-        "16.20 in across, is McDonnell's manual; its drawing has the four propellant tanks in a row round the module's "
-        "frame, and where each stands here is estimated from it.",
+        "16.20 in across, is McDonnell's manual; its drawing has the four propellant tanks in a row along the module's frame, "
+        "against the wall toward the ship's top and a little to the crew's right. Which of the four are fuel, and where the two "
+        "helium tanks are, are estimated.",
     ),
     "Equipment_PrimaryOxygen": (
         "Primary oxygen",
         "The oxygen the crew breathe in orbit, in a tank of its own. When this section is cut away before retrofire the "
-        "crew go on to a smaller supply in the re-entry module. Its size and place here are estimated.",
+        "crew go on to a smaller supply in the re-entry module. McDonnell's drawing puts it under its own panel of the blast "
+        "shield, at one end of the space between the two beams; its size is estimated.",
     ),
     "Equipment_Batteries": (
         "Adapter batteries",
@@ -285,8 +289,7 @@ if __name__ == "__main__":
         gemini_stack.previews(
             (
                 # the radar on the forward face and the three latch receptacles round its rim (the nose fairing off); the
-                # panels; the battery module alone, with the water tank at its end and the oxygen tank beside it, from below;
-                # and the equipment section's contents from aft
+                # panels; and the battery module alone, with the water tank at its end, from below
                 ("radar.png", (0, 0, st(236)), 2.6, dict(azimuth=-30, elevation=40, res=(1300, 1300), hide=("NoseFairing",), lens=50)),
                 (
                     "panels.png",
@@ -296,26 +299,14 @@ if __name__ == "__main__":
                 ),
                 (
                     "battery-module.png",
-                    (-0.69, 0.1, st(45)),
+                    (-0.6, -0.25, st(54)),
                     2.9,
                     dict(
-                        azimuth=205,
+                        azimuth=203,
                         elevation=-24,
                         res=(1500, 1100),
-                        only=("Equipment_Batteries", "Equipment_BatteryModule", "Equipment_WaterTank", "Equipment_PrimaryOxygen"),
+                        only=("Equipment_Batteries", "Equipment_BatteryModule", "Equipment_WaterTank", "Equipment_ModuleBeams"),
                         lens=50,
-                    ),
-                ),
-                (
-                    "equipment-aft.png",
-                    (0, 0, st(40)),
-                    7.5,
-                    dict(
-                        azimuth=0,
-                        elevation=-89.9,
-                        res=(1500, 1500),
-                        hide=(*BARE, "Titan", "Stage", "Interstage", "Equipment_Cover"),
-                        lens=90,
                     ),
                 ),
             )

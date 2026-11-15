@@ -49,11 +49,11 @@ dimensioned.
 | --- | --- | --- | --- |
 | Adapter batteries | three, 400 Ah, about 118 lb each | documented | SEDR2, p. 5-22 |
 | A battery's size | 12 in by 7.4 in by 10 in along the ship | estimated | the type's, as spacecraft 3's three are drawn. SEDR2, Figure 5-9, shows three ribbed cases side by side under the module's beam and gives no dimension |
-| The module's place | a band across the equipment section 26 in below its middle: a beam 84 in long at Z53.5, the three batteries hung under it to the right of the middle and the water tank to the left | estimated | the inset of SEDR2, Figure 5-9, and Figure 6-10 sheet 3, which is the same drawing. The beam's section is ours |
+| The module's place | beyond one of the equipment section's two beams, on the side away from the OAMS module: the three batteries in a row from one end, 26 in from the ship's axis with their middles at Z55.5, and the water tank at the other end | which side documented; the rest estimated | the Technical Summary, Figure 4; the inset of SEDR2, Figure 5-9, and Figure 6-10 sheet 3, which is the same drawing. The frame's members are ours |
 | Water tank | one ball 13.5 in across, its halves flanged round the middle, at the end of the row of batteries | estimated | SEDR2, Figure 6-10 sheets 1 and 3, where it is 1.8 times a battery's width. Its capacity is not given for this ship. 13.5 in is also the size worked out for spacecraft 7's 42 lb tank C ([gt-7/spacecraft.md](../gt-7/spacecraft.md)), which may be the same tank: not established |
 | Oxygen pressurant tank | a ball 5 in across beside the water tank | estimated | SEDR2, Figure 6-10 sheet 3, which draws a small bottle and a shutoff valve; its size is a guess, and the valve is not built |
 | OAMS tanks, sizes | fuel 21.13 in across, oxidiser 21.12 in, each of 5,355 cu in; helium 16.20 in | documented | SEDR 300 vol. 2, Section VIII, pp. 8-359 and 8-362, for the rendezvous ships; the helium tank's is vol. 1's (p. 8-263), taken for these. (A ball 21.13 in across is 4,940 cu in: the manual's two figures do not agree.) Two tanks of each propellant at 5,355 cu in are room for about 338 lb of fuel and 560 lb of oxidiser, at 54.6 and 90.3 lb/cu ft, which are handbook densities: the 669 lb announced fits |
-| OAMS tanks, places | the four propellant tanks in an arc across the top of the section, 36 in from the axis at 20° and 60° either side of the top, the fuel tanks the middle two, at Z44; the two of helium side by side below them at Z46 | estimated | SEDR 300 vol. 2, Section VIII, Figure 8-94, draws the four in a row round the arc of the module's frame against the wall, in perspective; which is fuel and which oxidiser is read from its leaders as near as they can be followed |
+| OAMS tanks, places | the four propellant tanks in the four places of the OAMS module's row, 24.5 in from the axis and 21.5 in apart at Z50, the fuel tanks the middle two; the two of helium between them and the wall, at Z43 | the row documented; which is fuel, and the helium's places, estimated | SEDR 300 vol. 2, Section VIII, Figure 8-94, draws the four in a row on the module's frame, in perspective; which is fuel and which oxidiser is read from its leaders as near as they can be followed |
 | Mooring latch receptacles | three, "equally spaced around the forward perimeter" of the rendezvous and recovery section, shielded by the nose fairing during boost; the lower one is the fairing's pivot. Here at the bottom and 60° either side of the top, each a block 3.2 in round the rim, 1.5 in deep and standing 1.1 in forward of it, with a catch along its inboard edge | documented as to number and place; size and form estimated | SEDR2, pp. 13-5 and 13-18 and Figure 13-2; S65-64040 shows a notch at the bottom of this ship's rim |
 | Index bar | a bar in a housing on the section, run out by a cartridge in orbit and thrown off before retrofire: stowed at launch | documented | SEDR2, pp. 13-5 and 13-20 and Figure 13-2. Not built: stowed, nothing of it shows, and S65-64040 shows none run out |
 | Radar antennas | four, as spacecraft 5's are built | estimated | the shared module's, from GV's Figure 3.1-4a; S65-64040 shows two dark round antennas in red rings on this ship's face and the rest of the face in glare |
@@ -98,17 +98,18 @@ out". Of what was No. 6's own:
   counts; no source read says they were on it, or off it, on 15 December. They are three blocks sized from one
   perspective figure and one photograph. The index bar, which was stowed, the umbilical receptacle and pads and
   the UHF antenna that McDonnell's figure puts on the same face are not built.
-- **The OAMS tanks are placed by guess.** That there were two of each is McDonnell's schematic; the drawing that
-  shows where they stood is a perspective sketch, and the module's curved frame that carried them is not built.
-- **The battery module is scaled from an undimensioned figure**: three boxes, a beam, a ball and a smaller ball
-  about where McDonnell's sketch has them. The batteries' ribs are not drawn. No wiring, no coldplates, no plumbing.
+- **The OAMS tanks' places are scaled, not dimensioned.** That there were two of each is McDonnell's schematic, and
+  that the four propellant tanks stood in a row on one module is his drawing ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Equipment section"); how far the row is from the
+  axis is what four 21 in tanks and the wall leave, and the two helium tanks are put where there is room.
+- **The battery module is scaled from an undimensioned figure**: three ribbed cases, a frame, a ball and a bottle
+  about where McDonnell's sketch has them. No wiring, no coldplates, no plumbing.
 - **The panels are spacecraft 3's**, with spacecraft 4's clock and the elapsed-time clock, whose place on this
   ship is assumed from spacecraft 7's and whose form is estimated. The voltmeter and ammeter, the Agena's control
   panel and the encoder are not drawn.
 - **The radar is spacecraft 5's four plain cups**, sized from a sketch of that ship's.
-- **The equipment section's other contents** (the oxygen the crew breathe, the electronic modules) are placed by
-  guess, as on the other ships, and the gold cover across the foot is the type's shallow dish: on spacecraft 7,
-  photographed from this ship, it is a deep funnel ([gt-7/spacecraft.md](../gt-7/spacecraft.md)).
+- **The equipment section's other contents** (the oxygen the crew breathe, the electronic module, the coolant
+  pumps) are on the sides McDonnell's drawing gives them, with every size estimated. The gold cover across the foot
+  is measured on the photograph this ship's crew took of spacecraft 7 and taken to be this ship's too.
 - **Not built:** the docking light, the radiation experiment's sensors, the new hatch latches, the red seen about
   the hatches in the photograph.
 - **The paint on the left side** is taken from the right.
