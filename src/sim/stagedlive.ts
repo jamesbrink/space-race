@@ -31,7 +31,7 @@
  */
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
-import { angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period, type State, step } from '../world/orbit.ts';
 import { MEAN_RADIUS } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
@@ -54,6 +54,7 @@ import {
 import { hotStage, pressed } from './staging.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
 import { clamp } from '../util/math.ts';
+import { airDrag } from './air.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
 export type Step = { kind: 'ignite' | 'cut' | 'separate'; stage: number } | { kind: 'drop'; id: string };
@@ -268,7 +269,7 @@ export function stagedVehicle(
     });
     const dragArea = stack.dragArea(gone, here.mach);
     let f = scale(axis, thrust);
-    if (here.airspeed > 0) f = sub(f, scale(here.wind, (here.q * dragArea) / here.airspeed));
+    f = add(f, airDrag(here.wind, here.airspeed, here.air.density, dragArea));
     return { accel: scale(f, 1 / massAt(s, at)), thrust, here };
   };
   const vacuumPush = (s: StagedState, i: number, at: number) => {

@@ -48,7 +48,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airAt, blowOf } from './air.ts';
+import { airAt, airDrag, blowOf } from './air.ts';
 import { G0, P0 } from '../world/bodies.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
@@ -212,7 +212,7 @@ export function fly(
       : capsuleDrag * along(tr.entryDrag, mach) +
         chute.was +
         (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
-    let force: Vec3 = airspeed > 0 ? scale(wind, (-q * area) / airspeed) : [0, 0, 0];
+    let force: Vec3 = airDrag(wind, airspeed, air.density, area);
     if (phase === 'powered') {
       const thrust = tr.engine.thrust.value + (P0 - air.pressure) * tr.engine.exitArea.value;
       force = add(force, scale(axisAt(at), thrust));

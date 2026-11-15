@@ -22,7 +22,7 @@ import { atmosphere } from './atmosphere.ts';
 import { along } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { tearOf } from './loads.ts';
-import { airAt } from './air.ts';
+import { airAt, airDrag } from './air.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -510,7 +510,7 @@ export function flyDown(
       const air = atmosphere(h);
       const wind = airOf(q);
       const speed = length(wind);
-      return speed > 0 ? scale(wind, (-0.5 * air.density * speed * areaAt(at, h, speed / air.soundSpeed)) / massAt(at)) : [0, 0, 0];
+      return speed > 0 ? scale(airDrag(wind, speed, air.density, areaAt(at, h, speed / air.soundSpeed)), 1 / massAt(at)) : [0, 0, 0];
     };
     const pressure = (q: State, h: number) => 0.5 * atmosphere(h).density * length(airOf(q)) ** 2;
     /** Parachute `c` (the `i`th of the body) out at `t`, torn at once in more air than its cloth takes. */
@@ -669,12 +669,12 @@ export function decay(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, fro
   const cd = o.supplies?.rarefied.value ?? along(o.entry.drag, 25);
   const parted = from.t >= o.entry.separation.value;
   const mass = parted ? o.entry.mass.value : o.mass.value;
-  const k = (cd * o.entry.area.value) / mass;
+  const cdA = cd * o.entry.area.value;
   const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const push = (q: State, at: number): Vec3 => {
     const air = atmosphere(heightOf(q, at));
     const wind = sub(q.v, cross(spin, q.r));
-    return scale(wind, -0.5 * air.density * length(wind) * k);
+    return scale(airDrag(wind, length(wind), air.density, cdA), 1 / mass);
   };
   let s: State = { r: from.r, v: from.v };
   let t = from.t;
@@ -793,9 +793,8 @@ export function shipPush(o: OrbitalFlight, at: number, wind: Vec3, altitude: num
   const air = atmosphere(altitude);
   const airspeed = length(wind);
   const mach = airspeed / air.soundSpeed;
-  const q = 0.5 * air.density * airspeed * airspeed;
   const mass = at >= o.entry.separation.value ? o.entry.mass.value : o.mass.value;
-  const drag: Vec3 = airspeed > 0 ? scale(wind, (-q * o.entry.area.value * along(o.entry.drag, mach)) / (airspeed * mass)) : [0, 0, 0];
+  const drag = scale(airDrag(wind, airspeed, air.density, o.entry.area.value * along(o.entry.drag, mach)), 1 / mass);
   // (the braking engine is on the instrument module: parted, it pushes no more)
   return aim ? add(drag, scale(aim, o.retro.deltaV.value / (o.retro.off.value - o.retro.on.value))) : drag;
 }

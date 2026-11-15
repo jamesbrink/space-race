@@ -97,7 +97,7 @@ import { atmosphere } from './atmosphere.ts';
 import { along, axisOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
-import { airAt, blowOf } from './air.ts';
+import { airAt, airDrag, blowOf } from './air.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
 import { loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import { pressed } from './staging.ts';
@@ -533,7 +533,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         // it streams along the air's motion past where it is made fast, which the body's turning adds to
         const arm = capsule.chuteArm.value - props.centre;
         const u = add(through, cross(d.w, [arm, 0, 0]));
-        push(scale(u, -0.5 * air.density * length(u) * chute), arm);
+        push(airDrag(u, length(u), air.density, chute), arm);
       }
     }
     if (burning(s)) {

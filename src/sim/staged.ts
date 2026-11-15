@@ -50,7 +50,7 @@ import { G0, P0 } from '../world/bodies.ts';
 import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
-import { type AirHere, airAt } from './air.ts';
+import { type AirHere, airAt, airDrag } from './air.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -363,7 +363,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     const dragArea = stack.dragArea(as, air.mach);
     const axis = axisAt(s, t, m, air.wind);
     let f: Vec3 = scale(axis, thrust);
-    if (air.airspeed > 0) f = add(f, scale(air.wind, (-air.q * dragArea) / air.airspeed));
+    f = add(f, airDrag(air.wind, air.airspeed, air.air.density, dragArea));
     return { accel: scale(f, 1 / mass), mass, thrust, axis, air };
   };
 

@@ -32,7 +32,7 @@ import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } f
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { blowing, blowOf } from './air.ts';
+import { airDrag, blowing, blowOf } from './air.ts';
 import { floorAt } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
@@ -144,7 +144,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         const speed = length(wind);
         if (speed > 0) {
           const area = dragArea(tr, riding, speed / air.soundSpeed) + (riding ? 0 : chuteArea(chute, at));
-          a = scale(wind, (-0.5 * air.density * speed * area) / m);
+          a = scale(airDrag(wind, speed, air.density, area), 1 / m);
         }
       }
       if (burning && burn) a = add(a, scale(burn.axis(at), thrustIn(tr, air ? air.pressure : 0) / m));
@@ -318,8 +318,7 @@ export function stack(o: OrbitalFlight, site: Geodetic, seaLevel: number, mass: 
       const wind = sub(u, cross(SPIN, p));
       const airspeed = length(wind);
       if (!(airspeed > 0)) return [0, 0, 0];
-      const q = 0.5 * air.density * airspeed * airspeed;
-      return scale(wind, (-q * drag(gone, airspeed / air.soundSpeed)) / (airspeed * mass));
+      return scale(airDrag(wind, airspeed, air.density, drag(gone, airspeed / air.soundSpeed)), 1 / mass);
     },
     next: () => Infinity,
     below: () => Number.NEGATIVE_INFINITY,
@@ -474,10 +473,8 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       for (let i = 0; i < o.stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
       const mass = v.mass(cur, at);
       let f: Vec3 = thrust > 0 ? scale(axisAt(p, u, at), thrust / mass) : [0, 0, 0];
-      if (airspeed > 0) {
-        const q = 0.5 * air.density * airspeed * airspeed;
-        f = add(f, scale(wind, (-q * stack.dragArea(v.shape(cur), airspeed / air.soundSpeed)) / (airspeed * mass)));
-      }
+      if (airspeed > 0)
+        f = add(f, scale(airDrag(wind, airspeed, air.density, stack.dragArea(v.shape(cur), airspeed / air.soundSpeed)), 1 / mass));
       return f;
     },
     next(t) {

@@ -91,3 +91,13 @@ export function blowing(frame: EarthFrame, blow: Blow, place: { latitude: number
   const axes = enuAxes(place);
   return frame.toInertial(add(scale(axes.east, east), scale(axes.north, north)), at);
 }
+
+/**
+ * The air's drag on a point moving through it at `wind` (its motion through the air, `airspeed` its size), in air of
+ * `density`, kg/m^3, for a drag area (coefficient times area) `dragArea`, m^2: -1/2 rho |w| w CdA, N, against the motion
+ * through the air. The one drag every point-mass flier and every parachute is flown by (forces.ts `airForces` is a rigid
+ * body's, by its ends, fins and side).
+ */
+export function airDrag(wind: Vec3, airspeed: number, density: number, dragArea: number): Vec3 {
+  return scale(wind, -0.5 * density * airspeed * dragArea);
+}

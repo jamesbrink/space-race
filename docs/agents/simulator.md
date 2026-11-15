@@ -52,13 +52,13 @@ never adjusted to bring a check in.
   (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
   bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
   fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`); the air at a point (air.ts `airAt`: where it is over, its height,
-  the standard air there and the motion through it, with the day's wind where there is one); when a
+  the standard air there and the motion through it, with the day's wind where there is one); a point's drag and a
+  parachute's on a rigid body (air.ts `airDrag`, -1/2 rho |w| w CdA); when a
   load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
   (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Each was the
   same arithmetic in the same order, so no record's run moved a bit. Still apart, as the same physics in different
   arithmetic (merging would move the printed figures in their last digits, so each wants its own commit and its own
-  diff): drag along the motion (the q form in fly.ts, staged.ts and
-  stagedlive.ts; the half rho v v form in fliers.ts, flyDown and `decay`), thrust in air (a Trajectory's from its
+  diff): thrust in air (a Trajectory's from its
   sea-level figure, a stage's from its vacuum one), the six-degree Runge-Kutta written twice (vehicle.ts, shed.ts),
   the 0.05 g mark written four times, and the parachute's filling (fly.ts writes `chuteArea` out). Different physics, and
   kept so: forces.ts `airForces` (axial, normal and broadside on a rigid body) against the point masses' drag;
