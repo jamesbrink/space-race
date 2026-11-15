@@ -230,10 +230,13 @@ await scenario('steady', async () => {
       };
       tick();
     });
+    // as many strokes as the list is long, and a few more: the list grows with every flight
+    const room = await page.evaluate(() => document.querySelector('#title').scrollHeight - innerHeight);
     if (phone) {
       // (a finger dragged, its touches sent one at a time: Chrome on Linux scrolls nothing for a synthesized touch gesture)
       const cdp = await context.newCDPSession(page);
-      for (const dy of [-700, -700, -700, 700, 700, 700]) {
+      const strokes = Math.ceil(room / 700) + 1;
+      for (const dy of [...Array(strokes).fill(-700), ...Array(strokes).fill(700)]) {
         const at = (f) => [{ x: 200 + (dy < 0 ? -14 : 14) * f, y: (dy < 0 ? 760 : 120) + dy * f, id: 1 }];
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(0) });
         for (let i = 1; i <= 20; i++) {
@@ -245,7 +248,7 @@ await scenario('steady', async () => {
     } else {
       await page.mouse.move(width / 2, height * 0.7);
       for (const dy of [60, -60])
-        for (let i = 0; i < 45; i++) {
+        for (let i = 0; i < Math.ceil(room / 60) + 10; i++) {
           await page.mouse.wheel(i % 3 ? -2 : 4, dy);
           await page.waitForTimeout(16);
         }
