@@ -2,7 +2,7 @@
  * A staged vehicle flown live: the ascent of an orbital flight (`Flight.orbital`) stepped a tick at a time and steered by
  * hand or by guidance, where staged.ts's `ascend` flies it whole with its attitude prescribed by the law. The same flight:
  * the same stages, engines, throttle curves, propellant, drops and drag (staged.ts `stackOf`), the same air (`airAt`),
- * the same gravity and integrator (world/orbit.ts `step`), in the same inertial frame of date. What it adds is the body's
+ * the same gravity and integrator (world/orbit.ts `step`), in the same frame (world/earthframe.ts). What it adds is the body's
  * turning and the hands' say over every event.
  *
  * Attitude. A rigid body whose steering gives an angular acceleration (`ascent.steering.authority`, estimated) about each
@@ -31,20 +31,7 @@
  */
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
-import {
-  angleBetween,
-  cross,
-  DEG,
-  dot,
-  type Geodetic,
-  geodeticToEcef,
-  inertialToEcef,
-  length,
-  scale,
-  sub,
-  unit,
-  type Vec3,
-} from '../world/frames.ts';
+import { angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period, type State, step } from '../world/orbit.ts';
 import { G0, MEAN_RADIUS } from './fly.ts';
 import { floorAt } from './forces.ts';
@@ -89,7 +76,7 @@ export interface StagedState {
   t: number;
   ticks: number;
   carry: number;
-  /** The stack's base (the point staged.ts flies) in frames.ts's inertial frame of date, m and m/s. */
+  /** The stack's base (the point staged.ts flies) in the vehicle's frame, m and m/s. */
   r: Vec3;
   v: Vec3;
   /** Attitude, body to that frame, and body rates, rad/s. */
@@ -167,7 +154,7 @@ export interface StagedVehicle {
   /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff). */
   readonly sequence: readonly { step: Step; at: number; label: string }[];
   /**
-   * The state as the scene's samples are (staged.ts `recordSamples`): in fly.ts's frame that does not turn, `r` the stack's
+   * The state as the scene's samples are (staged.ts `recordSamples`): in the vehicle's frame (`frame`), `r` the stack's
    * base, `centre` the spacecraft's centre of mass `centre` metres up the long axis.
    */
   sample(state: StagedState, centre: number): LiveSample;
@@ -196,7 +183,6 @@ export function stagedVehicle(
 ): StagedVehicle {
   const a = o.ascent;
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
-  const gast0 = frame.gast0;
   const spinE = frame.spin;
   const law = lawOf(o, site, frame, x);
   const stack = stackOf(o);
@@ -617,17 +603,15 @@ export function stagedVehicle(
   sequence.sort((p, q) => p.at - q.at || p.order - q.order);
 
   const sample = (s: StagedState, centre: number): LiveSample => {
-    // (the frame turned to the Earth's axes at liftoff, where the scene shows it)
-    const flat = (u: Vec3): Vec3 => inertialToEcef(u, gast0);
     const here = air(s, s.t);
     const up = frame.upOver(here.here, s.t);
     const climb = (d: Vec3) => (length(d) > 1e-9 ? Math.asin(clamp(dot(d, up) / length(d), -1, 1)) / DEG : 90);
     const axisIn = turn(s.q, X);
     const f = accel(s, s.t, s, axisIn, shape(s));
-    const axis = flat(axisIn);
+    const axis = axisIn;
     const thrust = f.thrust;
-    const attitude = multiply(aboutAxis([0, 0, 1], -gast0), s.q);
-    const rFlat = flat(s.r);
+    const attitude = s.q;
+    const r0 = s.r;
     return {
       t: s.t,
       phase: thrust > 0 ? 'powered' : 'coast',
@@ -643,14 +627,14 @@ export function stagedVehicle(
       mass: massAt(s, s.t),
       latitude: here.here.latitude,
       longitude: here.here.longitude,
-      r: rFlat,
-      v: flat(s.v),
+      r: r0,
+      v: s.v,
       axis,
       attitude,
       rates: s.w,
       alpha: here.airspeed > 1e-6 ? angleBetween(axisIn, here.wind) / DEG : 0,
       burning: thrust > 0 ? [{ name: 'main', thrust }] : [],
-      centre: [rFlat[0] + axis[0] * centre, rFlat[1] + axis[1] * centre, rFlat[2] + axis[2] * centre],
+      centre: [r0[0] + axis[0] * centre, r0[1] + axis[1] * centre, r0[2] + axis[2] * centre],
       chute: { full: 0, was: 0, at: 0, fills: 1 },
       rcs: { left: [], firing: [] },
       tanks: null,
@@ -890,7 +874,7 @@ export class StagedTally {
   }
 }
 
-/** The live state as staged.ts's batch samples are (`AscentSample`): in the inertial frame of date. */
+/** The live state as staged.ts's batch samples are (`AscentSample`): in the vehicle's frame. */
 export function ascentSample(v: StagedVehicle, s: StagedState): AscentSample {
   const x = v.sample(s, 0);
   return {

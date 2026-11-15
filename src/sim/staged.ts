@@ -4,7 +4,7 @@
  * at the spacecraft's separation, so the whole flight is flown from the pad. Nothing here knows which flight it is:
  * every stage, event and figure is the flight's data, and the law is `AscentRecord.guidance`.
  *
- * Forces, in frames.ts's inertial frame of date (as the coast's), on a point that is the vehicle:
+ * Forces, in the flight's frame (world/earthframe.ts: of date, as the coast's), on a point that is the vehicle:
  *   gravity  world/orbit.ts's, with J2.
  *   thrust   each stage burning, `count` of them alike: its vacuum thrust less its nozzles' exit area times the air's
  *            pressure, times its throttle (`StageRecord.throttle`, rated where none is given). Flow is the vacuum
@@ -38,7 +38,6 @@ import {
   enuAxes,
   type Geodetic,
   geodeticToEcef,
-  inertialToEcef,
   length,
   scale,
   sub,
@@ -81,7 +80,7 @@ export interface AscentSample {
   q: number;
   mach: number;
   mass: number;
-  /** Position and velocity in the inertial frame of date, m and m/s; and the thrust's axis there (the vehicle's long axis). */
+  /** Position and velocity in the flight's frame, m and m/s; and the thrust's axis there (the vehicle's long axis). */
   r: Vec3;
   v: Vec3;
   axis: Vec3;
@@ -645,8 +644,7 @@ export function published(o: OrbitalFlight, at: { t: number; r: Vec3; v: Vec3 })
 
 /**
  * The whole flight as samples the scene can show (viewer/ascent.ts places a run's samples by their own attitude): in
- * fly.ts's frame that does not turn (Greenwich on +X at liftoff, where frames.ts's inertial frame of date has it at the
- * sidereal time of liftoff), every `LiveSample` field filled. `centre` is the spacecraft's centre of mass, metres up the
+ * the frame it was flown in (world/earthframe.ts), every `LiveSample` field filled. `centre` is the spacecraft's centre of mass, metres up the
  * stack from the base, which is the point the ascent flies; from the spacecraft's separation the coast's point is that
  * centre (carried on by the offset it had then, so nothing jumps). After the ejection height, the first of the
  * descent's bodies (`DescentRecord.bodies`) is the one followed.
@@ -664,13 +662,11 @@ export function recordSamples(
   centre: number,
   sunAt: (t: number) => Vec3,
 ): LiveSample[] {
-  // (the run's frame turned to the Earth's axes at liftoff, where the scene shows it)
-  const flat = (v: Vec3): Vec3 => inertialToEcef(v, frame.gast0);
   const spin = frame.spin;
   const n = whole.ascent.plane;
   const lie = (x: Vec3): Quat => {
     const y = unit(sub(n, scale(x, dot(n, x))));
-    return fromAxes(flat(x), flat(y), flat(cross(x, y)));
+    return fromAxes(x, y, cross(x, y));
   };
   const blank = {
     chute: { full: 0, was: 0, at: 0, fills: 1 },
@@ -683,7 +679,7 @@ export function recordSamples(
   const pad = whole.ascent.samples[0]!.r;
   const out: LiveSample[] = [];
   for (const s of whole.ascent.samples) {
-    const axis = flat(s.axis);
+    const axis = s.axis;
     out.push({
       ...blank,
       t: s.t,
@@ -700,17 +696,17 @@ export function recordSamples(
       mass: s.mass,
       latitude: s.latitude,
       longitude: s.longitude,
-      r: flat(s.r),
-      v: flat(s.v),
+      r: s.r,
+      v: s.v,
       axis,
       attitude: lie(s.axis),
       alpha: angleBetween(s.axis, sub(s.v, cross(spin, s.r))) / DEG,
       burning: s.thrust > 0 ? [{ name: 'main', thrust: s.thrust }] : [],
-      centre: add(flat(s.r), scale(axis, centre)),
+      centre: add(s.r, scale(axis, centre)),
     });
   }
   const parted = out[out.length - 1]!;
-  const offset = sub(parted.centre, parted.r); // (in fly.ts's frame: the coast flies the point the ascent left, drawn as the centre of mass)
+  const offset = sub(parted.centre, parted.r); // (the coast flies the point the ascent left, drawn as the centre of mass)
   const held = parted.attitude;
   const oriented = o.events.find((e) => e.id === 'orientation')?.at.value ?? o.retro.on.value - 60;
   const burnAt = whole.coast.samples.find((x) => x.t >= o.retro.on.value) ?? whole.coast.samples[0]!;
@@ -723,7 +719,7 @@ export function recordSamples(
   // (the first body as it is drawn, at rest on the drawn surface: `settled`; its figures are the flight's own)
   const track = whole.down ? (Object.values(whole.down.tracks)[0] ?? []) : [];
   // (lowered by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
-  const lift = track.length ? dot(offset, unit(flat(track[track.length - 1]!.r))) : 0;
+  const lift = track.length ? dot(offset, unit(track[track.length - 1]!.r)) : 0;
   const drawn = settled(track, (o.descent?.ground.value ?? 0) + lift);
   const descent = track.slice(1).map((s, i) => ({ ...s, drawn: drawn[i + 1]!.r }));
   const ending = [
@@ -753,7 +749,7 @@ export function recordSamples(
     else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
     const here = frame.place(s.r, s.t);
-    const at = add(flat(s.drawn), offset);
+    const at = add(s.drawn, offset);
     out.push({
       ...blank,
       t: s.t,
@@ -771,7 +767,7 @@ export function recordSamples(
       latitude: here.latitude,
       longitude: here.longitude,
       r: sub(at, scale(axis, centre)),
-      v: flat(s.v),
+      v: s.v,
       axis,
       attitude: q,
       alpha: 0,
@@ -803,7 +799,7 @@ export function settled<P extends { t: number; r: Vec3 }>(track: readonly P[], g
 
 /** A descent as the scene draws it (`descentOf`). */
 export interface DrawnDescent {
-  /** Each body's path in fly.ts's frame that does not turn, as `recordSamples` puts the spacecraft's centre of mass. */
+  /** Each body's path in the frame the flight was flown in, as `recordSamples` puts the spacecraft's centre of mass. */
   tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]>;
   /** When each body's parachutes came out and were let go, s from liftoff (orbital.ts `DescentFlown`). */
   opened: Record<string, Record<string, number>>;
@@ -817,18 +813,16 @@ export interface DrawnDescent {
  * (the run's own samples after the ejection are its first body's): every body's track, for the scene to carry what came
  * down on each (viewer/ascent.ts). Null where nothing came down.
  */
-export function descentOf(whole: FlownWhole, frame: EarthFrame, centre: number, ground = 0): DrawnDescent | null {
+export function descentOf(whole: FlownWhole, centre: number, ground = 0): DrawnDescent | null {
   if (!whole.down) return null;
-  // (the run's frame turned to the Earth's axes at liftoff, where the scene shows it)
-  const flat = (v: Vec3): Vec3 => inertialToEcef(v, frame.gast0);
   const last = whole.ascent.samples[whole.ascent.samples.length - 1]!;
-  const offset = scale(flat(last.axis), centre);
+  const offset = scale(last.axis, centre);
   const tracks: DrawnDescent['tracks'] = {};
   for (const [id, track] of Object.entries(whole.down.tracks))
     tracks[id] = settled(
-      track.map((p) => ({ t: p.t, r: add(flat(p.r), offset), v: flat(p.v) })),
+      track.map((p) => ({ t: p.t, r: add(p.r, offset), v: p.v })),
       // (by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
-      ground && track.length ? ground + dot(offset, unit(flat(track[track.length - 1]!.r))) : 0,
+      ground && track.length ? ground + dot(offset, unit(track[track.length - 1]!.r)) : 0,
     );
   const torn = Object.fromEntries(
     Object.entries(whole.down.torn ?? {}).map(([id, of]) => [id, Object.fromEntries(Object.entries(of).map(([name, x]) => [name, x.t]))]),
@@ -838,7 +832,7 @@ export function descentOf(whole: FlownWhole, frame: EarthFrame, centre: number, 
 
 /**
  * The record with the braking burn made by hand (`OrbitalFlight.manual`): lit at `t`, pushing along `aim` (a unit vector in
- * frames.ts's inertial frame of date) for as long as the engine takes to give its integrator's impulse, and the modules
+ * the flight's frame, world/earthframe.ts) for as long as the engine takes to give its integrator's impulse, and the modules
  * parting `manual.parting` after. What the flight deck flies from a hand's burn (orbitdeck.ts); the rest is the record's.
  */
 export function byHand(o: OrbitalFlight, t: number, aim: Vec3): OrbitalFlight {

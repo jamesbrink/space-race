@@ -10,11 +10,11 @@ import { byHand, flyOn, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/viewer/ascent.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { datedOf } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 const o = flight.orbital;
 const site = siteFrame(flight.site);
-const dated = datedOf(flight);
+const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
 const from = published(o, shown.ascent.separation);
@@ -36,7 +36,6 @@ const say = (name, whole, decayed, plan = o) => {
   return v;
 };
 /** When the entry body first falls through `height` after the burn on a run: on the coast, or on its own track below. */
-const gast0 = dated.gast0;
 const heightOf = (p) => dated.place(p.r, p.t).height - sea;
 const through = (whole, height) => {
   const coast = whole.coast.samples.filter((x) => x.t > o.retro.off.value && x.phase !== 'down');
@@ -138,11 +137,10 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
 test('as drawn, each body comes to rest on the drawn surface (the globe at the sea), not the ground’s 43 m above it', async () => {
   const { descentOf } = await import('../src/sim/staged.ts');
   const centre = (flight.flies?.datum ?? 0) + (o.ascent.centre?.value ?? 0);
-  const drawn = descentOf(shown, dated, centre, o.descent.ground.value);
-  const plain = descentOf(shown, dated, centre, 0);
-  // (fly.ts's frame that does not turn, back into the frame of date: the drawn point's height over the sea)
-  const [c, s] = [Math.cos(gast0), Math.sin(gast0)];
-  const height = (p) => heightOf({ t: p.t, r: [c * p.r[0] - s * p.r[1], s * p.r[0] + c * p.r[1], p.r[2]] });
+  const drawn = descentOf(shown, centre, o.descent.ground.value);
+  const plain = descentOf(shown, centre, 0);
+  // (the drawn point's height over the sea)
+  const height = heightOf;
   for (const id of Object.keys(shown.down.landed)) {
     const end = drawn.tracks[id].at(-1);
     assert.ok(Math.abs(height(end)) < 0.5, `${id} at ${height(end).toFixed(2)} m over the drawn sea`);

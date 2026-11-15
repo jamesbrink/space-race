@@ -13,7 +13,7 @@ import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
-import { datedOf } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -22,7 +22,7 @@ const all = await Promise.all(
   ),
 );
 const orbiters = all.filter((f) => f.orbital && f.site);
-const fly = (f, orbital = f.orbital) => flyOrbit(orbital, siteFrame(f.site), datedOf(f), f.site.seaLevel.value);
+const fly = (f, orbital = f.orbital) => flyOrbit(orbital, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);
@@ -100,7 +100,7 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
-    const s = injectionState(o, siteFrame(f.site), datedOf(f));
+    const s = injectionState(o, siteFrame(f.site), frameOf(f));
     const el = elementsOf(s.r, s.v);
     assert.ok(Math.abs(el.i / DEG - o.orbit.inclination.value) < 1e-9, 'inclination');
     assert.ok(Math.abs(el.a * (1 - el.e) - o.orbit.radius.value - o.orbit.perigee.value) < 1e-3, 'perigee');

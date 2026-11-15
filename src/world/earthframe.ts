@@ -104,20 +104,12 @@ export function between(from: EarthFrame, to: EarthFrame): (v: Vec3) => Vec3 {
 export const LIFTOFF: EarthFrame = earthFrame(Number.NaN, false);
 
 /** Whether flights are flown and shown in the frame of date (true) or the frame fixed at liftoff (false). */
-export const OF_DATE = false;
+export const OF_DATE = true;
 
 const frames = new Map<string, EarthFrame>();
 /** The frame a flight is flown and shown in, made once from its liftoff (`Flight.launch`, ISO 8601 UTC). */
 export function frameOf(flight: { launch: string }): EarthFrame {
   let frame = frames.get(flight.launch);
   if (!frame) frames.set(flight.launch, (frame = earthFrame(julianDate(flight.launch), OF_DATE)));
-  return frame;
-}
-
-const dated = new Map<string, EarthFrame>();
-/** A flight's inertial frame of date (`Flight.launch`), whatever frame it is shown in: what an orbital record is flown in. */
-export function datedOf(flight: { launch: string }): EarthFrame {
-  let frame = dated.get(flight.launch);
-  if (!frame) dated.set(flight.launch, (frame = earthFrame(julianDate(flight.launch), true)));
   return frame;
 }

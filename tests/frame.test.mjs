@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
-import { between, datedOf, earthFrame, frameOf, LIFTOFF } from '../src/world/earthframe.ts';
+import { between, earthFrame, frameOf, LIFTOFF, OF_DATE } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import {
   cross,
@@ -102,11 +102,11 @@ test('the frame fixed at liftoff is the frame of date turned back about the pole
   near(DEG, Math.PI / 180, 0, '(degrees)');
 });
 
-test('a flight’s frame is made once from its liftoff; its frame of date likewise', () => {
+test('a flight is flown in its frame of date, made once from its liftoff', () => {
+  assert.equal(OF_DATE, true);
   assert.equal(frameOf(freedom7), frameOf({ launch: freedom7.launch }));
-  assert.equal(datedOf(freedom7), datedOf({ launch: freedom7.launch }));
-  assert.equal(datedOf(freedom7).ofDate, true);
-  near(datedOf(freedom7).gast0, greenwichSiderealTime(JD), 0, 'the frame of date’s angle');
+  assert.equal(frameOf(freedom7).ofDate, true);
+  near(frameOf(freedom7).gast0, greenwichSiderealTime(JD), 0, 'the frame of date’s angle');
   near(frameOf(freedom7).jd0, JD, 0, 'from the flight’s own liftoff');
 });
 

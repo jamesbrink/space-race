@@ -138,7 +138,7 @@ export interface Thrown {
 }
 
 /**
- * Where a descent begun at `start` (an instant of the flight, in fly.ts's frame that does not turn) would come down: the
+ * Where a descent begun at `start` (an instant of the flight, in its frame: world/earthframe.ts `frameOf`) would come down: the
  * instant, place and velocity where it reaches the ground (or the height at which the pilot leaves), or null if it would
  * not come down. The globe's landing-place mode (CabinDef.globe.modes) asks it.
  */
@@ -163,7 +163,7 @@ export function burnNow(flight: Flight): LandingFinder | null {
   const o = flight.orbital;
   const site = flight.site;
   if (!o?.manual || !site) return null;
-  // (the states are in the frame the scene shows the flight in; the aim by hand is given in the inertial frame of date)
+  // (the states, and the aim by hand, are in the flight's frame)
   const shown = frameOf(flight);
   const where = siteFrame(site);
   const never = structuredClone(o);
@@ -175,7 +175,7 @@ export function burnNow(flight: Flight): LandingFinder | null {
     if (!down) {
       // (against the way it goes)
       const n = Math.hypot(...start.v);
-      plan = byHand(o, start.t + 1, shown.toDate([-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]));
+      plan = byHand(o, start.t + 1, [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]);
     }
     const sea = site.seaLevel.value;
     const flown = propagate(spacecraft(plan, shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });

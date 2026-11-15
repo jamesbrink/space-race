@@ -13,7 +13,7 @@ import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { holdChecks, missesOf } from './misses.mjs';
-import { datedOf } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -24,7 +24,7 @@ const all = await Promise.all(
 const flight = all.find((f) => f.id === 'ussr/vostok/vostok-1');
 const o = flight.orbital;
 const site = siteFrame(flight.site);
-const dated = datedOf(flight);
+const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const x = steer(o, site, dated, sea);
 const batch = ascend(o, site, dated, sea, x);

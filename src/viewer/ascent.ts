@@ -7,7 +7,7 @@ import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
-import { datedOf, type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
@@ -911,7 +911,7 @@ export function orbitalFlown(flight: SitedFlight): FlownWhole {
   if (!whole)
     orbitalWholes.set(
       o,
-      (whole = flyWhole(o, siteFrame(flight.site), datedOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
+      (whole = flyWhole(o, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
     );
   return whole;
 }
@@ -923,7 +923,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const jd = julianDate(flight.launch);
   const whole = orbitalFlown(flight);
   const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-  const samples = recordSamples(o, whole, datedOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  const samples = recordSamples(o, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
@@ -964,7 +964,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     out: { drogue: Infinity, main: Infinity },
     sheds,
     fires: firesOf(flight, whole),
-    descent: descentOf(whole, datedOf(flight), centre, o.descent?.ground.value),
+    descent: descentOf(whole, centre, o.descent?.ground.value),
   };
   orbitalRuns.set(o, run);
   return run;

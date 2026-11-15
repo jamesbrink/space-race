@@ -8,6 +8,7 @@ import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
 import { siteFrame } from '../src/world/frames.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 // every flight flown on a trajectory (tests/ballistic.mjs), each held as Freedom 7 was first
 for (const flight of BALLISTIC) {
@@ -18,7 +19,7 @@ for (const flight of BALLISTIC) {
     flight.models.find((m) => m.id === flight.flies.model).rotationY ?? 0,
   );
   const live = () => {
-    const v = vehicle(TR, siteFrame(flight.site), flight.site.seaLevel.value);
+    const v = vehicle(TR, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) });
     const flown = flyLive(v, autopilot(v), 0.1);
     return {
       samples: flown.samples,
@@ -166,9 +167,9 @@ for (const flight of BALLISTIC) {
   test(named('the batch run is cached by where it flew from, not by the hardware alone'), async () => {
     const { flownOnce } = await import('../src/sim/fly.ts');
     const site = siteFrame(flight.site);
-    const here = flownOnce(TR, site, flight.site.seaLevel.value);
-    assert.equal(flownOnce(TR, site, flight.site.seaLevel.value), here);
-    const there = flownOnce(TR, { ...site, latitude: site.latitude + 0.1 }, flight.site.seaLevel.value);
+    const here = flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight));
+    assert.equal(flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight)), here);
+    const there = flownOnce(TR, { ...site, latitude: site.latitude + 0.1 }, flight.site.seaLevel.value, frameOf(flight));
     assert.notEqual(there, here);
     assert.notEqual(there.samples[0].latitude, here.samples[0].latitude);
   });
@@ -182,16 +183,14 @@ for (const flight of BALLISTIC) {
     named('on the record’s run the spacecraft turns about its own centre of mass, not about the plane it sat on the booster by'),
     async () => {
       const { flownOnce } = await import('../src/sim/fly.ts');
-      const { ecefToSite, inertialToEcef } = await import('../src/world/frames.ts');
-      const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+      const { ecefToSite } = await import('../src/world/frames.ts');
       const site = siteFrame(flight.site);
       const record = Ascent.of(flight);
-      const { samples } = flownOnce(TR, site, flight.site.seaLevel.value);
+      const { samples } = flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight));
       const separation = TR.separation.at.value;
       // from the point flown (the run's own samples, at their own instants) the centre of mass stays where it was at
       // separation, all through the turnaround and after it; the model's origin, 0.4 m from it, is what goes round
-      const from = (s) =>
-        landmark(at(record, s.t)).sub(new THREE.Vector3(...ecefToSite(site, inertialToEcef(s.r, EARTH_ROTATION_RATE * s.t))));
+      const from = (s) => landmark(at(record, s.t)).sub(new THREE.Vector3(...ecefToSite(site, frameOf(flight).toFixed(s.r, s.t))));
       const after = samples.filter((s) => s.t > separation + 0.5 && s.t < flight.flies.turned + 60);
       const first = from(after[0]);
       let swung = 0;
@@ -208,8 +207,7 @@ for (const flight of BALLISTIC) {
   );
 
   test(named('a flight flown by hand is drawn with its centre of mass where the simulator has it, however it has turned'), async () => {
-    const { ecefToSite, inertialToEcef } = await import('../src/world/frames.ts');
-    const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+    const { ecefToSite } = await import('../src/world/frames.ts');
     const site = siteFrame(flight.site);
     const run = live();
     const ascent = Ascent.of(flight);
@@ -217,7 +215,7 @@ for (const flight of BALLISTIC) {
     const alone = run.samples.filter((s) => s.phase !== 'powered' && s.phase !== 'coast');
     assert.ok(alone.length > 100);
     for (const s of alone.filter((_, i) => i % 25 === 0)) {
-      const sim = new THREE.Vector3(...ecefToSite(site, inertialToEcef(s.centre, EARTH_ROTATION_RATE * s.t)));
+      const sim = new THREE.Vector3(...ecefToSite(site, frameOf(flight).toFixed(s.centre, s.t)));
       const off = landmark(at(ascent, s.t)).distanceTo(sim);
       assert.ok(off < 0.01, `at ${s.t.toFixed(1)} s (${s.phase}) the model’s centre of mass is ${off.toFixed(3)} m from the simulator’s`);
     }
@@ -225,7 +223,7 @@ for (const flight of BALLISTIC) {
     // above it as the model's origin stands above the pad
     const end = run.samples.at(-1);
     // (the surface is under its blunt end, `capsule.base` below the centre of mass: sim/vehicle.ts)
-    const surface = ecefToSite(site, inertialToEcef(end.centre, EARTH_ROTATION_RATE * end.t))[1] - (TR.body.capsule.base?.value ?? 0);
+    const surface = ecefToSite(site, frameOf(flight).toFixed(end.centre, end.t))[1] - (TR.body.capsule.base?.value ?? 0);
     const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
     const down = ascent.chute(main, run.duration + 30, PAD);
     assert.ok(down && down.down > 0, 'the main parachute is down');
@@ -262,11 +260,11 @@ for (const flight of BALLISTIC) {
     async () => {
       const { Sheds } = await import('../src/sim/shed.ts');
       const site = siteFrame(flight.site);
-      const v = vehicle(TR, site, flight.site.seaLevel.value);
+      const v = vehicle(TR, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
       // unlit, the escape rocket fired: as the flight deck does it (cockpit.ts)
       let state = v.start();
       const samples = [v.sample(state)];
-      const sheds = new Sheds(TR, site, flight.site.seaLevel.value);
+      const sheds = new Sheds(TR, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
       const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
       for (let i = 0; i < 300; i++) {
         state = v.tick(state, pilot);
@@ -300,8 +298,7 @@ for (const flight of BALLISTIC) {
   );
 
   test(named('under the main parachute in the day’s wind, the canopy stands over the spacecraft, not off to one side of it'), async () => {
-    const { ecefToSiteDirection, inertialToEcef, inertialToEcefVelocity } = await import('../src/world/frames.ts');
-    const { EARTH_ROTATION_RATE } = await import('../src/world/bodies.ts');
+    const { ecefToSiteDirection } = await import('../src/world/frames.ts');
     const site = siteFrame(flight.site);
     const run = live();
     const ascent = Ascent.of(flight);
@@ -315,11 +312,12 @@ for (const flight of BALLISTIC) {
     for (const s of hanging.filter((_, i) => i % 50 === 0)) {
       const m = ascent.chute(main, s.t, PAD);
       const lines = m.air.clone().normalize().negate(); // the way the lines run from the spacecraft
-      const spin = EARTH_ROTATION_RATE * s.t;
-      const axis = new THREE.Vector3(...ecefToSiteDirection(site, inertialToEcef(s.axis, spin)));
+      const axis = new THREE.Vector3(...ecefToSiteDirection(site, frameOf(flight).toFixed(s.axis, s.t)));
       worst = Math.max(worst, lines.angleTo(axis));
       // (and the wind is not nothing: over the ground it is going well off the vertical, which is where the canopy used to be drawn)
-      const ground = new THREE.Vector3(...ecefToSiteDirection(site, inertialToEcefVelocity(s.centre, s.v, spin))).normalize().negate();
+      const ground = new THREE.Vector3(...ecefToSiteDirection(site, frameOf(flight).velocityToFixed(s.centre, s.v, s.t)))
+        .normalize()
+        .negate();
       drift = Math.max(drift, ground.angleTo(m.up));
       assert.ok(
         lines.angleTo(m.up) < (3 * Math.PI) / 180,

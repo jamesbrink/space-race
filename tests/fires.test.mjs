@@ -11,7 +11,7 @@ import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
 import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
 import { plumeShape } from '../src/viewer/plume.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { datedOf } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 /** A bell lathed as the engine scripts lathe one (vostok_8k72k/engines.py): rings of `segs` points from its lip up, open below. */
 function bell(points, cx, cz, exitR, y0, height, segs) {
@@ -165,7 +165,7 @@ test("Vostok 1's record: the four strap-ons and the core from the pad, the strap
 test('Vostok 1 flown by hand: its fires burn when its own stages do, not when the record has them', () => {
   const o = vostok1.orbital;
   const site = siteFrame(vostok1.site);
-  const dated = datedOf(vostok1);
+  const dated = frameOf(vostok1);
   const sea = vostok1.site.seaLevel.value;
   const x = steer(o, site, dated, sea);
   const v = stagedVehicle(o, site, dated, sea, x);

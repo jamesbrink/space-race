@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { burnNow, Cabin, historyAt } from '../src/viewer/cabin.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 /** A cabin of the nodes given, with no flight to read: every instrument shows its own fixed `value`. */
 function cabin(nodes, instruments) {
@@ -234,18 +235,21 @@ test('the globe turns the point under the spacecraft under its cross, the way it
   const R = 6.7e6;
   const spin = 7.292115e-5;
   const ground = east.map((e, i) => (e + north[i]) * 5000);
-  // (in the frame that does not turn: the motion over the ground plus the Earth's own turning there)
-  const v = [ground[0] - spin * R * up[1], ground[1] + spin * R * up[0], ground[2]];
+  // (in the flight's frame at liftoff: the motion over the ground plus the Earth's own turning there)
+  const frame = frameOf({ launch: '1961-04-12T06:07:00Z' });
+  const fixed = up.map((x) => x * R);
+  const r = frame.toInertial(fixed, 0);
+  const v = frame.velocityToInertial(fixed, ground, 0);
   // the globe's own axes: +Y north, +Z Greenwich; a direction in them as the node is turned
   const seen = (d) => new THREE.Vector3(d[1], d[2], d[0]).applyQuaternion(c.globe.quaternion);
-  c.cabin.fly({ t: 0, r: up.map((x) => x * R), v }, null, {});
+  c.cabin.fly({ t: 0, r, v }, null, {});
   c.cabin.step(1, 0, 2437402, 1);
   const under = seen(up);
   assert.ok(under.distanceTo(new THREE.Vector3(0, 0, 1)) < 1e-6, `under the cross: ${under.toArray()}`);
   const ahead = seen(ground.map((x) => x / Math.hypot(...ground)));
   assert.ok(ahead.distanceTo(new THREE.Vector3(0, 1, 0)) < 1e-6, `the way it goes is up the board: ${ahead.toArray()}`);
   // the same point of space an hour on is over ground 15 degrees further west: that is what stands under the cross
-  c.cabin.fly({ t: 3600, r: up.map((x) => x * R), v }, null, {});
+  c.cabin.fly({ t: 3600, r, v }, null, {});
   c.cabin.step(1, 3600, 2437402, 1);
   const there = seen(place(lo - spin * 3600));
   assert.ok(
@@ -392,12 +396,11 @@ test('a globe of modes: thrown, it turns to where a descent begun now comes down
     return { t: s.t + 1500, r: [R * Math.cos(a), R * Math.sin(a), 0], v: [-7700 * Math.sin(a), 7700 * Math.cos(a), 0] };
   });
   const seen = (d) => new THREE.Vector3(d[1], d[2], d[0]).applyQuaternion(c.globe.quaternion);
-  const spin = 7.292115e-5;
-  /** The direction of an inertial place at `t`, in the Earth's own axes then. */
+  /** The direction of a place in the flight's frame at `t`, in the Earth's own axes then. */
   const fixed = (r, t) => {
-    const a = -spin * t;
-    const n = Math.hypot(...r);
-    return [(Math.cos(a) * r[0] - Math.sin(a) * r[1]) / n, (Math.sin(a) * r[0] + Math.cos(a) * r[1]) / n, r[2] / n];
+    const p = frameOf({ launch: '1961-04-12T06:07:00Z' }).toFixed(r, t);
+    const n = Math.hypot(...p);
+    return [p[0] / n, p[1] / n, p[2] / n];
   };
   const fly = (t) => {
     c.cabin.fly(at(t), null, {});

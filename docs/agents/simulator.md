@@ -10,7 +10,9 @@ cutoff, the tilt programme, drag against Mach number, separation, retrofire, the
 event, so one input gives one flight to the last bit; within a step what burns and what is attached are as they are
 from the step's start, so a burn that ends on a step's end is pushed through all of it and one that lights there is
 not felt in it: every integrator here, batch, live and predicting, keeps that rule, and a live tick that holds a burn's
-end inside it is flown in two there) in an Earth-centred frame that does not turn,
+end inside it is flown in two there) in an Earth-centred frame that does not turn (the flight's,
+`world/earthframe.ts` `frameOf`: the inertial frame of date, the Sun's and the published elements', which every simulator,
+predictor, deck and view of a run shares; world.md),
 under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
 returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
 shield first coming down. `from` starts it at separation from a given state, so the capsule's half
@@ -273,8 +275,8 @@ never adjusted to bring a check in.
 - **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
   beside `trajectory`: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
-  says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
-  inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
+  says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in the flight's
+  frame (of date, as every run's) on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its misses (src/sim/misses.ts) by the same rule as
   below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
 - **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
   burning together and in turn (each `count` alike; vacuum thrust less exit area times the air's pressure, the exit area

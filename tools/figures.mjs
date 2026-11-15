@@ -26,25 +26,9 @@ import { flyWhole, published, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
-import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
-import {
-  add,
-  cross,
-  DEG,
-  dot,
-  ecefToInertial,
-  enuToEcefDirection,
-  fromHorizontal,
-  geodeticToEcef,
-  inertialToEcef,
-  length,
-  scale,
-  siteFrame,
-  sub,
-  unit,
-} from '../src/world/frames.ts';
+import { DEG, dot, enuToEcefDirection, fromHorizontal, geodeticToEcef, length, scale, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
-import { datedOf, earthFrame } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(import.meta.dirname, '..');
 // (`--against <file>`: another capture, such as one made on this machine before a change)
@@ -85,8 +69,10 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   const tr = flight.trajectory;
   const site = siteFrame(flight.site);
   const sea = flight.site.seaLevel.value;
+  // (in the frame the app flies it in: world/earthframe.ts frameOf)
+  const frame = frameOf(flight);
 
-  const whole = fly(tr, site, sea);
+  const whole = fly(tr, site, sea, undefined, undefined, undefined, frame);
   put(flight, 'whole', { ...whole.results, samples: whole.samples.length });
 
   // the capsule's half from the separation the record gives (as tests/sim.test.mjs builds it)
@@ -94,24 +80,24 @@ for (const flight of flights.filter((f) => f.trajectory)) {
     const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
     const at = sampleAt(whole.samples, tr.separation.at.value);
     const record = (id) => want[id] ?? whole.results[id];
-    const turn = EARTH_ROTATION_RATE * tr.separation.at.value;
+    const at0 = tr.separation.at.value;
     const place = { latitude: at.latitude, longitude: at.longitude, height: record('separationAltitude') + sea };
-    const heading = tr.separation.heading?.value ?? headingOf(at);
+    const heading = tr.separation.heading?.value ?? headingOf(at, frame);
     const moving = scale(
       enuToEcefDirection(place, fromHorizontal(heading * DEG, record('separationGroundClimb') * DEG)),
       want.separationGroundSpeed,
     );
-    const r = ecefToInertial(geodeticToEcef(place), turn);
-    const v = add(ecefToInertial(moving, turn), cross([0, 0, EARTH_ROTATION_RATE], r));
-    put(flight, 'capsule', fly(tr, site, sea, 0.05, 0.5, { r, v }).results);
+    const r = frame.toInertial(geodeticToEcef(place), at0);
+    const v = frame.velocityToInertial(geodeticToEcef(place), moving, at0);
+    put(flight, 'capsule', fly(tr, site, sea, 0.05, 0.5, { r, v }, frame).results);
   }
 
   // the live vehicle, by the autopilot, and what it sheds
-  const v = vehicle(tr, site, sea);
+  const v = vehicle(tr, site, sea, { frame });
   const live = flyLive(v);
   const end = live.state.landing;
   put(flight, 'live', { ...live.results, landingT: end?.t, landingLatitude: end?.latitude, landingLongitude: end?.longitude });
-  const sheds = new Sheds(tr, site, sea);
+  const sheds = new Sheds(tr, site, sea, { frame });
   sheds.follow(live.state);
   for (const body of sheds.all) {
     const l = body.finish();
@@ -128,13 +114,13 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   // the predictor from the record's run at fixed instants
   for (const t0 of [60, 200, 400]) {
     const s = sampleAt(whole.samples, t0);
-    put(flight, `predict:T+${t0}`, pathFigures(predict(tr, site, sea, s)));
+    put(flight, `predict:T+${t0}`, pathFigures(predict(tr, site, sea, s, { frame })));
   }
 
   // an abort off the pad, the engine never lit, in still air
   if (tr.body?.escape) {
     const still = { ...tr, winds: undefined };
-    const av = vehicle(still, site, sea);
+    const av = vehicle(still, site, sea, { frame });
     const auto = autopilot(av, { launch: false });
     const tally = new Tally();
     let state = av.start();
@@ -159,8 +145,7 @@ for (const flight of flights.filter((f) => f.trajectory)) {
 for (const flight of flights.filter((f) => f.orbital && f.site)) {
   const o = flight.orbital;
   const site = siteFrame(flight.site);
-  const dated = datedOf(flight);
-  const lift = earthFrame(dated.jd0, false);
+  const dated = frameOf(flight);
   const sea = flight.site.seaLevel.value;
 
   put(flight, 'coast', flyOrbit(o, site, dated, sea).results);
@@ -242,22 +227,21 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   }
 
   // the predictor from fixed states (in fly.ts's frame, as the deck gives them)
-  const flat = (u) => inertialToEcef(u, dated.gast0);
-  const where = { site, seaLevel: sea };
+  const where = { site, seaLevel: sea, frame: dated };
   {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
     // before it (as tests/staged.test.mjs)
     const sep = published(o, a.separation);
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= o.retro.on.value - 2400) : null;
     const from = late ?? sep;
-    const start = { t: from.t, r: flat(from.r), v: flat(from.v) };
-    const job = propagate(spacecraft(o, lift, site, sea, start), start, where);
+    const start = { t: from.t, r: from.r, v: from.v };
+    const job = propagate(spacecraft(o, dated, site, sea, start), start, where);
     job.run();
     put(flight, 'predict:spacecraft', pathFigures(job.result));
   }
   {
     const s = a.samples.find((p) => p.t >= 100);
-    const start = { t: s.t, r: flat(s.r), v: flat(s.v) };
+    const start = { t: s.t, r: s.r, v: s.v };
     const gone = o.stages.filter((st) => (st.separation?.value ?? Infinity) <= s.t).reduce((m, st) => Math.max(m, st.separation.value), 0);
     const job = propagate(stack(o, site, sea, s.mass, gone), start, where);
     job.run();
@@ -277,7 +261,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };
       state.apparent = apparentBy(o, sv, state, s.t);
-      const start = { t: s.t, r: flat(s.r), v: flat(s.v) };
+      const start = { t: s.t, r: s.r, v: s.v };
       const job = propagate(
         guided(o, site, sea, start, {
           vehicle: sv,
@@ -286,7 +270,6 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? a.thetaTurn : null,
           plan: o,
-          frame: lift,
         }),
         start,
         where,
@@ -306,14 +289,12 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   }
 }
 
-/** The heading over the ground of a sample's motion, degrees true (as tests/sim.test.mjs has it). */
-function headingOf(s) {
+/** The heading over the ground of a sample's motion in `frame`, degrees true (as tests/sim.test.mjs has it). */
+function headingOf(s, frame) {
   const place = { latitude: s.latitude, longitude: s.longitude, height: 0 };
   const east = enuToEcefDirection(place, fromHorizontal(90 * DEG, 0));
   const north = enuToEcefDirection(place, fromHorizontal(0, 0));
-  const turn = EARTH_ROTATION_RATE * s.t;
-  const wind = sub(s.v, cross([0, 0, EARTH_ROTATION_RATE], s.r));
-  const g = inertialToEcef(wind, turn);
+  const g = frame.toFixed(frame.overGround(s.r, s.v), s.t);
   return (((Math.atan2(dot(g, east), dot(g, north)) / DEG) % 360) + 360) % 360;
 }
 

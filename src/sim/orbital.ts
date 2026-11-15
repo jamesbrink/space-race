@@ -162,7 +162,7 @@ export interface EventRecord {
 export interface Aim {
   /** 'fixed': along `vector`, as a hand aimed it (the flight deck's manual descent, orbitdeck.ts). */
   along: 'sun' | 'velocity' | 'fixed';
-  /** For 'fixed': the line pushed along, a unit vector in frames.ts's inertial frame of date. */
+  /** For 'fixed': the line pushed along, a unit vector in the flight's frame (world/earthframe.ts `frameOf`). */
   vector?: Vec3;
   sense: 1 | -1;
   confidence: Confidence;
@@ -401,7 +401,7 @@ export interface DescentFlown {
   landed: Record<string, Landed>;
   /** Between the first two bodies' landings, m. */
   apart: number;
-  /** Each body's path, in frames.ts's inertial frame of date, from where it began (a second apart, and its landing). */
+  /** Each body's path, in the flight's frame, from where it began (a second apart, and its landing). */
   tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]>;
   /** When each body's parachutes came out, seconds from liftoff, by body and parachute name; and when each was let go (`instead`). */
   opened: Record<string, Record<string, number>>;
@@ -656,7 +656,7 @@ export function flyDown(
 }
 
 /**
- * How long an orbit lasts: from `from` (a state in frames.ts's inertial frame of date, at seconds from liftoff) under J2
+ * How long an orbit lasts: from `from` (a state in `frame`, at seconds from liftoff) under J2
  * gravity and the standard air turning with the Earth, the ship (whole, or the entry body once the modules have parted)
  * on the ball's disc at `supplies.rarefied`, RK4 at 30 s, until it is down to 120 km (from there it comes down within the
  * revolution) or `days` have gone. Seconds from `from.t` to there, or Infinity. The standard atmosphere is the mean: the
@@ -742,7 +742,7 @@ export interface OrbitSample {
   mach: number;
   /** How much of the Sun's disc it sees: 1 in sunlight, 0 in the Earth's shadow. */
   sunlit: number;
-  /** Position and velocity in frames.ts's inertial frame of date, m and m/s. */
+  /** Position and velocity in the flight's frame (world/earthframe.ts), m and m/s. */
   r: Vec3;
   v: Vec3;
 }
@@ -800,15 +800,12 @@ export function shipPush(o: OrbitalFlight, at: number, wind: Vec3, altitude: num
 
 /**
  * The line the braking engine pushes along as it lights, from the spacecraft's place and velocity then (and the Sun's
- * place, asked for only when the aim is at the Sun), all in frames.ts's inertial frame of date: flyOrbit's, and the
- * predicted path's, which gives them in its own frame and turns a `fixed` aim into it.
+ * place, asked for only when the aim is at the Sun), all in the flight's frame (world/earthframe.ts): flyOrbit's, and
+ * the predicted path's.
  */
-export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3, fixed?: (aim: Vec3) => Vec3): Vec3 {
+export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3): Vec3 {
   const a = o.retro.aim;
-  return scale(
-    unit(a.along === 'fixed' && a.vector ? (fixed ? fixed(a.vector) : a.vector) : a.along === 'sun' ? sub(sun(), r) : v),
-    a.sense,
-  );
+  return scale(unit(a.along === 'fixed' && a.vector ? a.vector : a.along === 'sun' ? sub(sun(), r) : v), a.sense);
 }
 
 /**
@@ -845,7 +842,7 @@ export function flyOrbit(
   let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, frame);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at), frame.fromDate);
+  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at));
 
   const airAt = (s: State, at: number) => {
     const altitude = frame.place(s.r, at).height - seaLevel;

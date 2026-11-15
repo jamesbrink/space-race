@@ -15,7 +15,7 @@ import { between, propagate } from '../src/sim/predict.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, published, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, siteFrame } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
-import { datedOf, earthFrame } from '../src/world/earthframe.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -24,7 +24,7 @@ const all = await Promise.all(
   ),
 );
 const flown = all.filter((f) => f.orbital?.ascent && f.site);
-const where = (f) => [siteFrame(f.site), datedOf(f), f.site.seaLevel.value];
+const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
 
 /**
  * By flight, every input the ascent reads that is not documented (the last test's list): a new one must be added here. Vostok
@@ -284,14 +284,12 @@ for (const f of flown) {
 
   test(`${f.designation}: the predicted path in orbit is the coast flown: from separation it comes down where the record's run does`, () => {
     const [site, dated, sea] = where(f);
-    const g = dated.gast0;
-    const flat = (v) => [Math.cos(-g) * v[0] - Math.sin(-g) * v[1], Math.sin(-g) * v[0] + Math.cos(-g) * v[1], v[2]];
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
     const sep = published(o, whole.ascent.separation);
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= o.retro.on.value - 2400) : null;
-    const start = late ? { t: late.t, r: flat(late.r), v: flat(late.v) } : { t: sep.t, r: flat(sep.r), v: flat(sep.v) };
-    const job = propagate(spacecraft(o, earthFrame(dated.jd0, false), site, sea, start), start, { site, seaLevel: sea });
+    const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
+    const job = propagate(spacecraft(o, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
     job.run();
     const p = job.result;
     assert.equal(p.outcome, 'impact');
@@ -316,7 +314,7 @@ for (const f of flown) {
     const i = p.points.findIndex((x) => x.t > before.t);
     const [a, b] = [p.points[i - 1], p.points[i]];
     const there = between(a.t, a.r, a.v, b.t, b.r, b.v, before.t).r;
-    const off = Math.hypot(...flat(before.r).map((x, k) => x - there[k]));
+    const off = Math.hypot(...before.r.map((x, k) => x - there[k]));
     assert.ok(off < 1, `round the orbit to the burn, ${off.toFixed(3)} m from the run`);
     assert.ok(p.apogee && !p.perigee, 'with its apogee marked (a perigee under the ground is not)');
     assert.ok(
@@ -330,13 +328,13 @@ for (const f of flown) {
     const lit = shown.coast.samples.find((x) => x.t === on);
     const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < o.retro.off.value);
     assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
-    const from = { t: mid.t, r: flat(mid.r), v: flat(mid.v) };
+    const from = { t: mid.t, r: mid.r, v: mid.v };
     const within = (options) => {
-      const j = propagate(spacecraft(o, earthFrame(dated.jd0, false), site, sea, from, options), from, { site, seaLevel: sea });
+      const j = propagate(spacecraft(o, dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
       j.run();
       return j.result.impact;
     };
-    const held = within({ lit: { r: flat(lit.r), v: flat(lit.v) } });
+    const held = within({ lit: { r: lit.r, v: lit.v } });
     const fresh = within({});
     const kmOff = (i) =>
       111.2 * Math.hypot(i.latitude - at.ejectionLatitude, (i.longitude - at.ejectionLongitude) * Math.cos(at.ejectionLatitude * DEG));
@@ -354,8 +352,6 @@ for (const f of flown) {
 
   test(`${f.designation}: the path if guidance carries on is the ascent flown: from the record's state it parts where the batch run does`, () => {
     const [site, dated, sea] = where(f);
-    const g = dated.gast0;
-    const flat = (v) => [Math.cos(-g) * v[0] - Math.sin(-g) * v[1], Math.sin(-g) * v[0] + Math.cos(-g) * v[1], v[2]];
     const x = whole.ascent.solved;
     const vehicle = stagedVehicle(o, site, dated, sea, x);
     const stops = whole.ascent.stops;
@@ -372,7 +368,7 @@ for (const f of flown) {
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };
       state.apparent = apparentBy(o, vehicle, state, s.t);
-      const start = { t: s.t, r: flat(s.r), v: flat(s.v) };
+      const start = { t: s.t, r: s.r, v: s.v };
       const job = propagate(
         guided(o, site, sea, start, {
           vehicle,
@@ -381,10 +377,9 @@ for (const f of flown) {
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? whole.ascent.thetaTurn : null,
           plan: o,
-          frame: earthFrame(dated.jd0, false),
         }),
         start,
-        { site, seaLevel: sea },
+        { site, seaLevel: sea, frame: dated },
       );
       job.run();
       const p = job.result;
@@ -392,8 +387,8 @@ for (const f of flown) {
       const cut = p.events.find((e) => e.kind === 'cutoff');
       assert.ok(parted && cut && p.kind === 'guided', `from T+${t0}: the last cutoff and the parting are on the path`);
       const sep = whole.ascent.separation;
-      const off = Math.hypot(...flat(sep.r).map((q, k) => q - parted.r[k]));
-      const dv = Math.hypot(...flat(sep.v).map((q, k) => q - parted.v[k]));
+      const off = Math.hypot(...sep.r.map((q, k) => q - parted.r[k]));
+      const dv = Math.hypot(...sep.v.map((q, k) => q - parted.v[k]));
       console.log(
         `  #   if guidance carries on, from T+${t0}: cut off at T+${cut.t.toFixed(2)} (the run ${whole.ascent.stops.at(-1).toFixed(2)}), parted ${(off / 1000).toFixed(2)} km and ${dv.toFixed(2)} m/s from the run; ${p.outcome}, ${p.steps} steps in ${p.cost.toFixed(0)} ms`,
       );

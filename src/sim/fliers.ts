@@ -26,7 +26,7 @@
  */
 import type { Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import { between, type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
+import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
@@ -252,12 +252,11 @@ export function spacecraft(
   start: { t: number; r: Vec3; v: Vec3 },
   options: { lit?: { r: Vec3; v: Vec3 } } = {},
 ): Flier {
-  // (the Sun, and an aim given by hand, are of date: turned into the frame the state is in)
-  const flat = frame.fromDate;
+  // (the Sun is of date: turned into the frame the state is in)
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
   const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
-  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(o, r, v, () => flat(sunPosition(frame.jdTT(t))), flat);
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(o, r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
@@ -339,15 +338,13 @@ export interface GuidedNow {
   /** How far the hands have leaned the law, radians; and the law's angle as its tangent took over, where it has. */
   trim?: { pitch: number; yaw: number };
   thetaTurn?: number | null;
-  /** The plan the spacecraft flies once parted (its braking burn), and the frame the state and the path are in (world/earthframe.ts). */
+  /** The plan the spacecraft flies once parted (its braking burn). */
   plan: OrbitalFlight;
-  frame: EarthFrame;
 }
 
 /**
- * A staged launch vehicle flown on by its guidance (above, `guided`): from `start` (fly.ts's frame) with `now` as it
- * stands. The law is staged.ts's (`lawOf`), its axis worked in frames.ts's inertial frame of date as the live vehicle and
- * the batch run work it; the forces are theirs (`stackOf`'s thrust, drag and shape flown, the live vehicle's mass). Its
+ * A staged launch vehicle flown on by its guidance (above, `guided`): from `start` (in the vehicle's frame, `vehicle.frame`)
+ * with `now` as it stands. The law is staged.ts's (`lawOf`), its axis worked as the live vehicle and the batch run work it; the forces are theirs (`stackOf`'s thrust, drag and shape flown, the live vehicle's mass). Its
  * steps are at their instants, worked out first in one sweep over the time ahead (a stage cut on its apparent velocity at
  * the instant its integrator's sum reaches the setting: its vacuum thrust over the mass, summed, as stagedlive.ts sums
  * it), so the propagator ends a step on each; a stage runs dry when its load is gone. A stage cut on its space-fixed speed
@@ -357,11 +354,9 @@ export interface GuidedNow {
 export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
   const v = now.vehicle;
   const stack = stackOf(o);
-  // (the law and the air are worked in the vehicle's frame, the path in the one the state is given in)
+  // (the law, the air and the path are all in the vehicle's frame)
   const law = lawOf(o, site, v.frame, now.solved);
   const airOf = airAt(seaLevel, v.frame);
-  const toDate = between(now.frame, v.frame);
-  const flat = between(v.frame, now.frame);
   const last = o.stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
@@ -450,12 +445,12 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
   let thetaTurn = now.thetaTurn ?? null;
   let alone: Flier | null = null;
   const axisAt = (r: Vec3, u: Vec3, at: number): Vec3 => {
-    const s = { r: toDate(r), v: toDate(u) };
+    const s = { r, v: u };
     const mode: Mode = law.modeAt(since);
     let axis = law.axisAt(s, at, mode === 'tangent' && thetaTurn === null ? 'turn' : mode, airOf(s, at).wind, thetaTurn ?? 0);
     if (trim.pitch) axis = turn(aboutAxis(law.n, trim.pitch), axis);
     if (trim.yaw) axis = turn(aboutAxis(unit(s.r), trim.yaw), axis);
-    return flat(axis);
+    return axis;
   };
   const lit = (): boolean => o.stages.some((_, i) => v.burning(cur, i, since));
   return {
@@ -500,7 +495,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       const events: EventKind[] = [];
       // the law's own change: the tangent takes over from the axis it had then (staged.ts `ascend`)
       if (thetaTurn === null && law.modeAt(t) === 'tangent') {
-        const s = { r: toDate(r), v: toDate(u) };
+        const s = { r, v: u };
         const { u: up } = law.localAt(s.r);
         thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, t, 'turn', airOf(s, t).wind, 0), up))));
       }
@@ -511,7 +506,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
         if (p.step.kind === 'separate' && p.step.stage === last) {
           events.push('separation');
           since = t;
-          alone = spacecraft(now.plan, now.frame, site, seaLevel, { t, r, v: u });
+          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: u });
           const then = alone.arrive(t, r, u, altitude, 'time');
           return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
         }

@@ -4,7 +4,7 @@
  * (thrust, drag, lift where it is modelled: the same force functions the live vehicle and the batch runs call), what it
  * is scheduled to do next (an engine's cutoff, a separation, a burn's start and end, a parachute filling) and what it
  * does by itself at a height (a parachute let out, an ejection). Gravity is the Earth's with J2 (fly.ts `gravity`, which
- * is world/orbit.ts's), in fly.ts's frame that does not turn (Greenwich on +X at liftoff), the air turning with the
+ * is world/orbit.ts's), in the flight's frame (world/earthframe.ts: of date, unless a test gives another), the air turning with the
  * Earth. It goes on until it meets the ground, has gone once round the Earth, is told to stop (`Arrival.end`), or runs
  * out of time. Nothing here knows which flight or which kind of vehicle it is, and nothing is drawn: viewer/path.ts
  * draws what this returns. The vehicles there are, and what each supplies, are in sim/fliers.ts.
@@ -352,7 +352,7 @@ export interface Ground {
 }
 
 /**
- * A prediction to be worked out in slices: `flier` from `start` (its place and velocity at an instant, in fly.ts's frame).
+ * A prediction to be worked out in slices: `flier` from `start` (its place and velocity at an instant, in `where.frame`).
  * `site` is where ranges are measured from; `seaLevel` the sea's height above the ellipsoid.
  */
 export function propagate(
@@ -415,7 +415,7 @@ export function propagate(
         v1 = u;
       }
       kr[i] = u;
-      kv[i] = accel(t + C[i]! * h, p, u, ecefToGeodetic(p).height - seaLevel);
+      kv[i] = accel(t + C[i]! * h, p, u, place(p, t + C[i]! * h).height - seaLevel);
     }
     let er0 = 0;
     let er1 = 0;
