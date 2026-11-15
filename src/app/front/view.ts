@@ -31,13 +31,10 @@ import { cross, DEG, dot, j2000ToInertial, length, type Mat3, rotate, scale, sub
 import { fromMoon, MOON_RADIUS, selenographic } from '../../world/moon.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from '../../world/time.ts';
 import { ease } from '../../util/math.ts';
+import type { Measure } from '../../measure.ts';
 
-/** A figure with how far it can be trusted and where it came from (types.ts: Measure, restated so this file needs nothing of a flight). */
-export interface Figure {
-  value: number;
-  confidence: 'documented' | 'derived' | 'estimated';
-  source: string;
-}
+/** A figure with how far it can be trusted and where it came from (measure.ts, which needs nothing of a flight). */
+export type Figure = Measure;
 
 /** The instant on show as the page opens, UTC: Vostok 1's liftoff (missions/ussr/vostok/flights/vostok-1/flight.ts `launch`; the test holds the two together). */
 export const INSTANT = '1961-04-12T06:06:59.7Z';

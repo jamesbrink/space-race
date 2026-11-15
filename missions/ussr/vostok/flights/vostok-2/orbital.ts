@@ -14,7 +14,6 @@
  */
 
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
-import type { Confidence, Measure } from '../../../../../src/types.ts';
 import {
   CREW,
   ENTRY_AREA,
@@ -46,11 +45,7 @@ import {
   VERTICAL,
   ZAK,
 } from '../../vehicles/vostok-8k72k.ts';
-
-const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
-const doc = (value: number, source: string): Measure => m(value, 'documented', source);
-const derived = (value: number, source: string): Measure => m(value, 'derived', source);
-const guess = (value: number, source: string): Measure => m(value, 'estimated', source);
+import { derived, doc, estimated, measure } from '../../../../../src/measure.ts';
 
 /** Seconds from liftoff, 09:00:00 Moscow time on 6 August 1961, of a Moscow time that day (h) or, past midnight, on the 7th (h + 24). */
 export const MSK = (h: number, min: number, s = 0): number => (h - 9) * 3600 + min * 60 + s;
@@ -71,43 +66,43 @@ const TYPE = (what: string) =>
 const TDU = MSK(33, 51);
 
 export const orbital: OrbitalFlight = {
-  liftoffMass: guess(
+  liftoffMass: estimated(
     287_000,
     `${TYPE('liftoff mass')}: 287 t (RKK Energia 1946–1996; Minakov). This vehicle’s own was not found; its spacecraft was 6 kg heavier`,
   ),
   stages: stages8K72K({
     boosters: {
-      cutoff: guess(
+      cutoff: estimated(
         119.5,
         `${TYPE('strap-ons’ integrator command')}: 119.50 s flown, 119.45 s planned. Titov: the greatest load at the strap-ons’ cutoff, «затем следует рывок» (${REPORT}, p. 184)`,
       ),
-      separation: guess(119.5, TYPE('strap-ons’ separation, with their cutoff')),
+      separation: estimated(119.5, TYPE('strap-ons’ separation, with their cutoff')),
       throttle: strapOnThrottle(119.5),
     },
     core: {
-      cutoff: guess(
+      cutoff: estimated(
         300,
         `${TYPE('core cutoff')}. Titov: «По прекращению ее работы чувствуется небольшой толчок. В этот момент перегрузки резко спадают» (${REPORT}, p. 184)`,
       ),
-      separation: guess(300, TYPE('core’s separation, with the third stage’s fire through the lattice')),
+      separation: estimated(300, TYPE('core’s separation, with the third stage’s fire through the lattice')),
       throttle: coreThrottle(300),
     },
     third: {
-      ignition: guess(
+      ignition: estimated(
         300,
         `${TYPE('third stage’s start')}. Titov: «Запуск третьей ступени происходит примерно секунд через десять после отделения второй ступени» (${REPORT}, p. 184): the same gap Gagarin felt`,
       ),
-      cutoff: guess(
+      cutoff: estimated(
         677.08,
         `${TYPE('third stage’s cutoff')}: 677.08 s flown, 674.68 s planned. Cut here on its integrator (below), so this is a result`,
       ),
-      separation: guess(
+      separation: estimated(
         687.08,
         `about ten seconds after the cutoff: «Третья ступень отработала, выключилась, и секунд через десять произошло отделение» (${REPORT}, p. 184), on the type’s cutoff; McDowell’s catalogue: 06:11 UTC, to the minute`,
       ),
       velocity: {
         apparent: true,
-        speed: guess(
+        speed: estimated(
           2_283.52,
           'm/s of apparent velocity: Vostok 1’s flight task’s setting for its third stage (the 2011 documents), for an orbit of 180 km perigee. NOT this flight’s: E103-17’s flight task is not published. Its planned perigee was the same 180 km (doc. 184)',
         ),
@@ -124,32 +119,32 @@ export const orbital: OrbitalFlight = {
     {
       id: 'boosters',
       label: 'The four strap-ons separate',
-      at: guess(119.5, TYPE('strap-ons’ separation')),
+      at: estimated(119.5, TYPE('strap-ons’ separation')),
       also: 'Titov felt it as the greatest load, then a jerk forward in the straps',
     },
     {
       id: 'fairing',
       label: 'Fairing jettisoned',
-      at: guess(154.6, TYPE('fairing’s jettison')),
+      at: estimated(154.6, TYPE('fairing’s jettison')),
       also: `Titov: «Отделение конуса происходит очень заметно ... После отделения конуса в иллюминаторе «Взора» видна Земля была» (${REPORT}, p. 184)`,
     },
-    { id: 'core', label: 'Core’s main chambers off: its steering chambers alone', at: guess(290, TYPE('core’s preliminary command')) },
+    { id: 'core', label: 'Core’s main chambers off: its steering chambers alone', at: estimated(290, TYPE('core’s preliminary command')) },
     {
       id: 'third',
       label: 'Third stage alight; the core cut loose',
-      at: guess(300, TYPE('third stage’s start')),
+      at: estimated(300, TYPE('third stage’s start')),
       also: 'Titov: about ten seconds after the second stage left; «Хлопка никакого я не слышал»',
     },
     {
       id: 'orbit',
       label: 'Third stage cut off: in orbit',
-      at: guess(677.08, TYPE('third stage’s cutoff')),
+      at: estimated(677.08, TYPE('third stage’s cutoff')),
       also: 'Titov: the rocket some 50° from the horizontal at the end of the third stage’s burn, the Earth in the Vzor’s ring',
     },
     {
       id: 'separation',
       label: 'Spacecraft separates from the third stage',
-      at: guess(687.08, 'about ten seconds after the cutoff (Titov), on the type’s cutoff'),
+      at: estimated(687.08, 'about ten seconds after the cutoff (Titov), on the type’s cutoff'),
       also: '06:11 UTC (McDowell, to the minute). «При этом чувствовался толчок. После этого стало тихо и объект начал вращаться»',
     },
     {
@@ -191,7 +186,7 @@ export const orbital: OrbitalFlight = {
     {
       id: 'orientation',
       label: 'Solar orientation on, in the Earth’s shadow',
-      at: guess(
+      at: estimated(
         TDU - 35 * 60,
         `the type’s cycle: 35 minutes before the burn, as Vostok 1’s (09:50 for 10:25). Titov: at "about the 34th, maybe 34th to 36th minute" of the index, in the shadow (${REPORT}, p. 195)`,
       ),
@@ -250,26 +245,29 @@ export const orbital: OrbitalFlight = {
   ],
   ascent: ascent8K72K({
     guidance: {
-      azimuth: guess(
+      azimuth: estimated(
         34 + 37 / 60 + 59.2 / 3600,
         'Vostok 1’s aiming azimuth, 34°37′59″.2 (its flight task), for an orbit inclined a minute of arc more than this one’s 64°56′: E103-17’s flight task is not published',
       ),
       vertical: VERTICAL,
       kick: KICK,
-      turn: guess(119.5, 'the law changes at the strap-ons’ separation, the type’s 119.5 s'),
+      turn: estimated(119.5, 'the law changes at the strap-ons’ separation, the type’s 119.5 s'),
       target: {
         at: 'orbit',
         altitude: doc(
           180_000,
           `${MEMO}, p. 153: «Выбор траектории полета корабля с высотой перигея 180 км»: the planned perigee, taken as the height the design put the last cutoff at`,
         ),
-        climb: guess(0, 'level at the last cutoff, so that it is the perigee: the usual design for a direct ascent, not read for this one'),
+        climb: estimated(
+          0,
+          'level at the last cutoff, so that it is the perigee: the usual design for a direct ascent, not read for this one',
+        ),
         inclination: doc(64 + 56 / 60, `${FAI}, the Coordination-Computing Centre’s orbit, p. 224: 64°56′`),
       },
     },
-    boostersGo: guess(119.5, TYPE('strap-ons’ separation')),
-    lastCutoff: guess(677.08, TYPE('third stage’s cutoff')),
-    fairing: guess(154.6, TYPE('fairing’s jettison')),
+    boostersGo: estimated(119.5, TYPE('strap-ons’ separation')),
+    lastCutoff: estimated(677.08, TYPE('third stage’s cutoff')),
+    fairing: estimated(154.6, TYPE('fairing’s jettison')),
     left: {
       booster: derived(5_283, '3,750 kg dry (Minakov; Astronautix 3,710) and the 1,533 kg the ascent flown leaves in each'),
       core: derived(
@@ -340,13 +338,13 @@ export const orbital: OrbitalFlight = {
     period: doc(88.46 * 60, `${FAI}, p. 224: 88.46 min. TASS: 88.6 min. Titov timed 89 min by the shadow (his report, p. 188)`),
   },
   injection: {
-    at: guess(677.08, `${TYPE('third stage’s cutoff')}. The orbit is taken to begin here`),
+    at: estimated(677.08, `${TYPE('third stage’s cutoff')}. The orbit is taken to begin here`),
     heading: 'north',
-    arc: guess(
+    arc: estimated(
       27.5,
       'NOT documented: Vostok 1’s reckoning of where its cutoff was, 27.5 degrees of arc downrange, for the same vehicle on the same plane. Flying the ascent replaces it',
     ),
-    anomaly: guess(0, 'NOT documented. Perigee is put at the cutoff, as Vostok 1’s'),
+    anomaly: estimated(0, 'NOT documented. Perigee is put at the cutoff, as Vostok 1’s'),
   },
   mass: doc(
     4_731,
@@ -358,7 +356,7 @@ export const orbital: OrbitalFlight = {
       TDU + 3.7 + 40,
       `forty seconds of thrust by ear (${REPORT}, p. 196). Pervushin has 45 s, unsourced; what shut it down is not stated`,
     ),
-    deltaV: guess(
+    deltaV: estimated(
       136,
       'not found for this flight: the type’s integrator setting, 136 m/s (Chertok, vol. 3, p. 80, of Vostok 1). 1,614 kgf for 40 s on 4.6 t would give 138',
     ),
@@ -376,13 +374,13 @@ export const orbital: OrbitalFlight = {
     drag: ENTRY_DRAG,
   },
   manual: {
-    code: guess(
+    code: estimated(
       145,
       'Vostok 1’s code, 1-4-5 (Kamanin’s diary, 12 April 1961). How the code of No. 4’s lock reached Titov, and what it was, is in no document read: he says only that he switched the lock on',
     ),
     rate: HAND_RATE,
     thrust: TDU_THRUST,
-    deltaV: guess(136, 'the type’s integrator setting (Chertok, vol. 3, p. 80)'),
+    deltaV: estimated(136, 'the type’s integrator setting (Chertok, vol. 3, p. 80)'),
     parting: PARTING,
     // Titov's two periods by hand, by plan («При полёте на втором витке пилот производит проверку ручного управления»: the programme, p. 156)
     periods: [
@@ -405,10 +403,10 @@ export const orbital: OrbitalFlight = {
     ),
     rarefied: RAREFIED,
   },
-  ejection: { altitude: guess(7_000, `the type’s barometric switch, about 7 km (${BOBKOV}; ${ZAK}): Titov gives no height`) },
+  ejection: { altitude: estimated(7_000, `the type’s barometric switch, about 7 km (${BOBKOV}; ${ZAK}): Titov gives no height`) },
   heating: HEATING,
   descent: {
-    ground: guess(
+    ground: estimated(
       30,
       'not read: the landing place’s height. The Volga’s left-bank lowland round Krasny Kut lies some 20 to 40 m above the sea',
     ),
@@ -416,7 +414,7 @@ export const orbital: OrbitalFlight = {
       {
         id: 'module',
         label: 'The descent module, empty',
-        mass: guess(
+        mass: estimated(
           2_272,
           `the 2,460 kg of the module with its pilot aboard (${SIDDIQI}, p. 195) less a pilot in his suit and a seat, as Vostok 1’s (88 and 100 kg): Titov’s own mass was not read`,
         ),
@@ -426,18 +424,18 @@ export const orbital: OrbitalFlight = {
       {
         id: 'pilot',
         label: 'Titov, on his seat and then under his canopies',
-        mass: guess(188, 'he in his suit and his seat, as Vostok 1’s: not found'),
+        mass: estimated(188, 'he in his suit and his seat, as Vostok 1’s: not found'),
         dragArea: SEATED_DRAG,
         thrown: THROWN,
         chutes: [
           SEAT_CHUTE,
           mainCanopy(
-            m(
+            measure(
               4_000,
               'documented',
               `the type’s: at 4 km, as he leaves the seat (${BOBKOV}). Titov gives no height: a jerk, his feet struck the pack, the seat gone (his report, p. 198)`,
             ),
-            guess(131, 'he in his suit with the survival pack, as Vostok 1’s (88 and 43 kg)'),
+            estimated(131, 'he in his suit with the survival pack, as Vostok 1’s (88 and 43 kg)'),
           ),
           reserveCanopy(
             doc(

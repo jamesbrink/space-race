@@ -8,7 +8,6 @@
  */
 
 import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
-import type { Confidence, Measure } from '../../../../../src/types.ts';
 import {
   CREW,
   ENTRY_AREA,
@@ -43,11 +42,7 @@ import {
   VERTICAL,
   ZAK,
 } from '../../vehicles/vostok-8k72k.ts';
-
-const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
-const doc = (value: number, source: string): Measure => m(value, 'documented', source);
-const derived = (value: number, source: string): Measure => m(value, 'derived', source);
-const guess = (value: number, source: string): Measure => m(value, 'estimated', source);
+import { derived, doc, estimated, measure } from '../../../../../src/measure.ts';
 
 /** Seconds from liftoff of a Moscow time on the morning of 12 April 1961. */
 export const MSK = (h: number, min: number, s = 0): number => (h - 9) * 3600 + (min - 6) * 60 + (s - 59.7);
@@ -109,7 +104,7 @@ export const orbital: OrbitalFlight = {
           '(lpre.de). Gagarin felt 10 to 15 s of weightlessness before the third stage lit, which the third stage’s ignition at 321.42 s explains. ' +
           'The level is not found: the four steering chambers at their rated 2.5 tf each (RKK Energia 1946–1996), 10 tf of the engine’s 96.4 in vacuum, 10.4 per cent, is the most it can be (“at a reduced setting”), and is taken; thrust and flow fall together here, which the steering chambers’ own lower impulse does not quite do',
       },
-      cutoff: guess(
+      cutoff: estimated(
         300,
         `the main command, which put out the steering chambers: planned at 312.74 s (the cyclogram, ${NK}, p. 4) and not recorded on the day; taken as late as the preliminary command was (0.51 s). ` +
           `«300 s» (${SIDDIQI}, p. 277) and 299 s (${ZAK}) are not the documents’ figures. The core reached 22.0 m/s over its design (NIIP-5’s report, ibid.): a result here, not an input`,
@@ -192,7 +187,7 @@ export const orbital: OrbitalFlight = {
     {
       id: 'orientation',
       label: 'Solar orientation switched on, in the Earth’s shadow',
-      at: m(MSK(9, 50), 'documented', `${ZAK}: planned for 09:50, and “around 09:50” Gagarin confirmed it. To the minute at best`),
+      at: measure(MSK(9, 50), 'documented', `${ZAK}: planned for 09:50, and “around 09:50” Gagarin confirmed it. To the minute at best`),
     },
     {
       id: 'descent-1',
@@ -262,7 +257,10 @@ export const orbital: OrbitalFlight = {
           180_000,
           `the planned perigee, over the record’s reference ball: Zak’s table of the plan, 180 by 230 km: secondary. Taken as the height the design put the last cutoff at`,
         ),
-        climb: guess(0, 'level at the last cutoff, so that it is the perigee: the usual design for a direct ascent, not read for this one'),
+        climb: estimated(
+          0,
+          'level at the last cutoff, so that it is the perigee: the usual design for a direct ascent, not read for this one',
+        ),
         inclination: doc(
           64.95,
           `${OKB1}: 64°57′. TASS on the day: 65°4′. ${SOYUZ}: Table 2-1 gives 34.8° of azimuth for 64.9° from Baikonur today`,
@@ -377,13 +375,13 @@ export const orbital: OrbitalFlight = {
       `NIIP-5’s report: third stage cutoff at T+677.08 s (${NK}, p. 4); ${SIDDIQI}, p. 277: 676 s. The orbit is taken to begin here; the push of separation twelve seconds later is not known and is left out`,
     ),
     heading: 'north',
-    arc: guess(
+    arc: estimated(
       27.5,
       'NOT documented: no source read gives where the spacecraft was at cutoff. Reckoned by hand from the record’s times and round speeds: some 45 km downrange when the strap-ons left, ' +
         '580 km more to the core’s cutoff at “about 5.5 km/s” (Zak), then 376 s on the third stage rising to the 7.84 km/s the orbit needs at perigee, at a mean of 6.5 km/s: 2,440 km. ' +
         'About 3,070 km in all, 27 to 28 degrees of arc; good to perhaps 3 degrees, which is 340 km along the track. It is the weakest input the coast has, and flying the ascent is what replaces it',
     ),
-    anomaly: guess(
+    anomaly: estimated(
       0,
       'NOT documented. Perigee is put at the cutoff: a stage that burns a little long along a level path raises the far side of the orbit and leaves its low point where it stopped. ' +
         'Gagarin’s “about when I was passing Cape Horn (at apogee)” is the only word on it in the record, and is loose',
@@ -436,7 +434,10 @@ export const orbital: OrbitalFlight = {
   // checks below were written before flyDown had flown anything.
   heating: {
     ...HEATING,
-    starts: guess(290, 'not read: the cabin’s 19 °C at launch (his report) taken for the outside; it is not used, there being no surface'),
+    starts: estimated(
+      290,
+      'not read: the cabin’s 19 °C at launch (his report) taken for the outside; it is not used, there being no surface',
+    ),
   },
   descent: {
     ground: doc(43, `${PPP} via Keldysh’s preprint: the landing place at 43 m. ${ZAK}: about 50 m above the sea`),
@@ -444,7 +445,7 @@ export const orbital: OrbitalFlight = {
       {
         id: 'module',
         label: 'The descent module, empty',
-        mass: guess(
+        mass: estimated(
           2_272,
           `the 2,460 kg of the module with its pilot aboard (${SIDDIQI}, p. 195) less the pilot in his suit (88 kg: his service record’s 68 kg and the SK-1’s 20 kg) and a seat taken as 100 kg (not found: Siddiqi’s 800 kg is not credible)`,
         ),
@@ -454,7 +455,7 @@ export const orbital: OrbitalFlight = {
       {
         id: 'pilot',
         label: 'Gagarin, on his seat and then under his canopies',
-        mass: guess(188, 'he in his suit, 88 kg (as for the module), and a seat taken as 100 kg: not found'),
+        mass: estimated(188, 'he in his suit, 88 kg (as for the module), and a seat taken as 100 kg: not found'),
         dragArea: SEATED_DRAG,
         thrown: THROWN,
         chutes: [
@@ -464,7 +465,7 @@ export const orbital: OrbitalFlight = {
               4_000,
               `${BOBKOV}: at 4 km, as he leaves the seat with its back, the reserve and the survival pack; ${BATURIN}: “Через 50 секунд на высоте примерно 4 км ввелся основной парашют, одновременно произошел сход пилота с кресла”`,
             ),
-            guess(
+            estimated(
               131,
               'he in his suit, 88 kg, with the survival pack, 43 kg (Baturin), which hung on its line and was then lost: carried to the ground here',
             ),

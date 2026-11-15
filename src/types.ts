@@ -5,13 +5,10 @@
 import type { Results } from './sim/fly.ts';
 import type { OrbitalFlight } from './sim/orbital.ts';
 
-/**
- * documented — a published figure (NASA report, manufacturer manual, museum record).
- * derived    — computed from documented figures; the note says how.
- * estimated  — read off photographs or drawings, or chosen to look right. Replace these
- *              before a simulation depends on them.
- */
-export type Confidence = 'documented' | 'derived' | 'estimated';
+import type { Confidence, Measure } from './measure.ts';
+
+/** How far a figure can be trusted, and the figure with it: said in measure.ts, which imports nothing. */
+export type { Confidence, Measure } from './measure.ts';
 
 /** What an engine burns, for its fire's look (viewer/flames.ts: each one's colours, light and opacity, with their sources). */
 export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
@@ -619,14 +616,6 @@ export interface ModelDef {
    * or shown as built.
    */
   with?: ({ model: string; exploded: number } | { model: string; at: number })[];
-}
-
-/** A figure that is not a model's dimension (a place on the Earth), with how far it can be trusted and where it came from. */
-export interface Measure {
-  value: number;
-  confidence: Confidence;
-  /** Document and section, or the survey or map it was read from; for `derived`, how. */
-  source: string;
 }
 
 /**

@@ -14,15 +14,14 @@
  * go at 1,850 ft going up, Freedom 7's lets it go at the top). Nothing here is fitted.
  */
 import { flight } from '../../../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import type { AbortRecord, Measure, Trajectory } from '../../../src/types.ts';
+import type { AbortRecord, Trajectory } from '../../../src/types.ts';
+import { derived, doc } from '../../../src/measure.ts';
 
 const IN = 0.0254;
 const FT = 0.3048;
 const LB = 0.45359237;
 const SLUG_FT2 = 1.3558179619;
 const TMX_422 = 'Blanchard and Raper, NASA TM X-422 (1960)';
-const doc = (value: number, source: string): Measure => ({ value, confidence: 'documented', source });
-const derived = (value: number, source: string): Measure => ({ value, confidence: 'derived', source });
 
 /** The launcher's elevation, degrees: "The model was launched at an elevation angle of 71 degrees to insure a water impact" (p. 6). */
 export const ELEVATION = 71;

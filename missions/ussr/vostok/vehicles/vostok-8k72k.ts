@@ -8,7 +8,8 @@
  */
 
 import type { AscentCheck, AscentRecord, Guidance, StageRecord } from '../../../../src/sim/orbital.ts';
-import type { Confidence, Curve, Measure, ShedBody } from '../../../../src/types.ts';
+import type { Curve, Measure, ShedBody } from '../../../../src/types.ts';
+import { derived, doc, estimated } from '../../../../src/measure.ts';
 
 /** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
 export const BOOSTERS: [letter: string, block: string, az: number][] = [
@@ -17,11 +18,6 @@ export const BOOSTERS: [letter: string, block: string, az: number][] = [
   ['G', 'Г', 180],
   ['D', 'Д', 270],
 ];
-
-export const m = (value: number, confidence: Confidence, source: string): Measure => ({ value, confidence, source });
-export const doc = (value: number, source: string): Measure => m(value, 'documented', source);
-export const derived = (value: number, source: string): Measure => m(value, 'derived', source);
-export const guess = (value: number, source: string): Measure => m(value, 'estimated', source);
 
 export const G0 = 9.80665;
 export const SIDDIQI = 'Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -68,7 +64,7 @@ export const STRAP_ONS: Hardware = {
     seaLevel: doc(2510 / G0, `${ENERGOMASH}: 2,510 N·s/kg (256 s)`),
     vacuum: doc(3069 / G0, `${ENERGOMASH}: 3,069 N·s/kg (313 s)`),
   },
-  ignition: guess(
+  ignition: estimated(
     0,
     'lit on the pad before liftoff, through a preliminary and an intermediate stage of thrust (Gagarin’s report); how many seconds before has not been read, and the propellant burned before liftoff is not known',
   ),
@@ -102,7 +98,7 @@ export const CORE: Hardware = {
     seaLevel: doc(2432 / G0, `${ENERGOMASH}: 2,432 N·s/kg (248 s)`),
     vacuum: doc(3089 / G0, `${ENERGOMASH}: 3,089 N·s/kg (315 s)`),
   },
-  ignition: guess(0, 'lit on the pad with the strap-ons, as theirs'),
+  ignition: estimated(0, 'lit on the pad with the strap-ons, as theirs'),
   start: {
     count: 1,
     ground: true,
@@ -137,15 +133,15 @@ export const BLOCK_E: Omit<Hardware, 'ignition'> = {
   // Hot staging: lit through the open lattice with the core still on (vostok-8k72k.md, "Staging"; the cyclogram's start
   // command at 311.74 s a second before the core's main command at 312.74 s: mission.md, "The 2011 documents")
   hot: {
-    open: guess(
+    open: estimated(
       0.67,
       'of the lattice’s side, the model’s: 24 struts 64 mm across and 1.22 m long, two rings 60 mm deep and 24 feet on a cylinder 1.25 m in radius and 1.26 m high block 3.2 of its 9.9 m² (upper.py `build_interstage`, whose stations are estimated from photographs)',
     ),
-    turn: guess(
+    turn: estimated(
       24,
       'degrees below the level that the jet leaves the deflector at: its cone’s outer face, 320 mm down over 710 mm out (upper.py, estimated from photographs). What escapes pushes the stack by the sine of it; the turn taken as losing no speed, so this is the most it could be',
     ),
-    endures: guess(
+    endures: estimated(
       5,
       'seconds of the third stage’s full thrust the heat shield on the core’s top stands: NOT FOUND. It is there to protect the stage’s top and turn the jet out across the flight (Volkhonsky, lecture notes on launcher design, Moscow 2012: «Для защиты верхнего днища предыдущей ступени на нем устанавливается теплозащитный экран»); on Soyuz it is a titanium-covered cone over the instrument bay on the oxidiser tank (RussianSpaceWeb, “Stage II of Soyuz rocket”). The plan gave it about a second (the start command at 311.74 s, the core’s main command at 312.74 s and the separation after it); Soyuz 18a’s stack stayed joined about two seconds under its third stage’s thrust, and nothing burst (RussianSpaceWeb, “Soyuz 18-1”, from Energia’s history). Five seconds, a few times that, chosen',
     ),
@@ -217,12 +213,12 @@ export function stages8K72K(day: Staging): StageRecord[] {
 }
 
 /** How long the stack rises straight before the pitch-over begins: the type's estimate (Soyuz's manual), until an 8K72K's programme is read. */
-export const VERTICAL: Measure = guess(
+export const VERTICAL: Measure = estimated(
   15,
   `${SOYUZ}: within half a degree of the vertical at 19 s and 3.3 degrees off it at 29 s. The 8K72K’s own programme has not been found; its boosters reached their main stage of thrust 6 s after liftoff (as Sputnik’s did: ${SPUTNIK})`,
 );
 /** How long the pitch-over takes: chosen. */
-export const KICK: Measure = guess(10, 'how long the pitch-over takes: chosen. Its angle is solved, not chosen (staged.ts: steer)');
+export const KICK: Measure = estimated(10, 'how long the pitch-over takes: chosen. Its angle is solved, not chosen (staged.ts: steer)');
 
 /** The drag curve of the stack against Mach number: chosen (no R-7's has been found). */
 const CURVE: Curve['points'] = [
@@ -288,7 +284,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
           800,
           `${ZAK}: 0.8 t. Brügge 0.64 t: secondary. ${NK}, p. 10, note 31: «Масса головного обтекателя составляла 582 кг», not flown yet (mission.md, "The 2011 documents")`,
         ),
-        q: guess(
+        q: estimated(
           1_000,
           'Pa: NOT FOUND for the 8K72K. Let go at 154.6 s, where the ascent flown has 0.15 kPa: two halves on hinges at the foot, made to swing open in air too thin to throw them back. Soyuz-2 lets its fairing go once the air’s heating is under 1,135 W/m² (Arianespace, Soyuz CSG User’s Manual, issue 2, 2012, §3.4.3.2): another vehicle’s rule. A kilopascal, chosen',
         ),
@@ -297,7 +293,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
     ],
     // For the live vehicle flown by hand (src/sim/stagedlive.ts): how hard its steering chambers turn it. No figure read.
     steering: {
-      authority: guess(
+      authority: estimated(
         5,
         'deg/s² at full throw, about each axis: NOT FOUND. Of the order the steering chambers give: the core’s four of 2.5 tf (RKK Energia 1946–1996) and the strap-ons’ eight, swung, ' +
           '15 m or so from the centre of mass of a stack of 287 t and 30 m (about 2 × 10⁷ kg m² as a rod), a few degrees a second squared; taken as the same on every stage and at every mass, which it was not',
@@ -306,7 +302,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
     // For the scene: where the spacecraft's centre of mass is, and what leaves as a body of its own (sim/shed.ts). Stations
     // are metres above the main nozzles' exits, as vostok-8k72k.md has them. Every drag figure is estimated; so is every
     // centre and gyration, from the stations and masses there.
-    centre: guess(
+    centre: estimated(
       1.6,
       'the spacecraft’s centre of mass above its station 0 (the braking nozzle): about the instrument module’s top and the ball’s bottom, from the stations of vostok-3ka.md',
     ),
@@ -340,11 +336,11 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
     ],
     // What the structure stands (src/sim/stagedlive.ts, by sim/loads.ts's rule). No figure for the R-7 has been read.
     limits: {
-      qAlpha: guess(
+      qAlpha: estimated(
         3_340,
         'Pa rad: NOT FOUND for the R-7. Soyuz-2 is held to 3 degrees off the wind about its greatest dynamic pressure, 34 to 45 kPa (Shakmaev et al., Инженерный журнал 2024 No. 3, Table 1: another vehicle’s tolerance, not a strength), which is 2.4 kPa rad; with a half again for strength over the tolerance it is the 4,000 lb/sq ft degrees (3,340 Pa rad) the launch vehicles of the time are credited with, the figure Freedom 7’s Redstone is given (mr-3-freedom-7/flight.ts). The ascent flown meets 1.0 kPa rad in the day’s wind',
       ),
-      axial: guess(
+      axial: estimated(
         6,
         'g along the axis: NOT FOUND. The record’s greatest were 4.4 before the strap-ons were cut and 4.2 before the core was (NIIP-5’s report, NK p. 4; Soyuz-2’s are under 4.3: its manual, §3.2.1); the ascent flown reaches 4.7. A quarter over that, chosen',
       ),
@@ -371,15 +367,15 @@ function sheds(left: Left): ShedBody[] {
       to: doc(19.8, `${ZAK}; Brügge: 19.8 m with the nozzles`),
       radius: doc(1.34, `${MINAKOV}: 2.68 m across`),
       mass: left.booster,
-      centre: guess(8, 'about two fifths up a strap-on, empty: its engine and tail are the heaviest part'),
+      centre: estimated(8, 'about two fifths up a strap-on, empty: its engine and tail are the heaviest part'),
       gyration: {
-        roll: guess(0.9, 'a shell 1.34 m in radius with its engine on the axis'),
-        across: guess(6, 'a 19.8 m block, its mass low'),
+        roll: estimated(0.9, 'a shell 1.34 m in radius with its engine on the axis'),
+        across: estimated(6, 'a 19.8 m block, its mass low'),
       },
-      ahead: guess(4.5, 'its tip, 5.6 m², at 0.8'),
-      astern: guess(5.6, 'its tail, 5.6 m², at 1.0'),
+      ahead: estimated(4.5, 'its tip, 5.6 m², at 0.8'),
+      astern: estimated(5.6, 'its tail, 5.6 m², at 1.0'),
       side: {
-        dragArea: guess(35, '19.8 m × 2 m on average, at 0.9'),
+        dragArea: estimated(35, '19.8 m × 2 m on average, at 0.9'),
         from: doc(0, 'the body’s own stretch, as above'),
         to: doc(19.8, 'the body’s own stretch, as above'),
       },
@@ -388,30 +384,30 @@ function sheds(left: Left): ShedBody[] {
       motors: [
         {
           name: 'oxidizer tank vent',
-          thrust: guess(
+          thrust: estimated(
             3_000,
             'N: NOT FOUND. The tank’s ullage gas, a few bar, through a nozzle of the order of 10 cm: some kilonewtons, falling as the tank empties (taken as steady)',
           ),
-          burn: guess(6, 's: NOT FOUND: until the tank’s pressure has gone'),
+          burn: estimated(6, 's: NOT FOUND: until the tank’s pressure has gone'),
           cant: derived(
             135,
             'degrees from the strap-on’s +X toward its outward +Z: the jet at 45° to the axis and forward (Zak), so its push is 45° back of outward',
           ),
-          station: guess(16, 'the oxidizer tank’s top, under the cone (vostok-8k72k.md has the tank above the fuel’s)'),
+          station: estimated(16, 'the oxidizer tank’s top, under the cone (vostok-8k72k.md has the tank above the fuel’s)'),
         },
       ],
       apart: {
         bearing: az,
         across: derived(2.78, 'its axis at the base, from the stack’s (vostok-8k72k.md)'),
         pivot: {
-          station: guess(19.5, 'the ball at its tip, a little under the cone’s point (the model: 19.9 m with the nozzles)'),
-          across: guess(1.3, 'the ball in its socket on the core’s skin, under the core’s upper tank (the model)'),
+          station: estimated(19.5, 'the ball at its tip, a little under the cone’s point (the model: 19.9 m with the nozzles)'),
+          across: estimated(1.3, 'the ball in its socket on the core’s skin, under the core’s upper tank (the model)'),
         },
-        tailOff: guess(
+        tailOff: estimated(
           100_000,
           'N: NOT FOUND. The RD-107 was cut from its last throttle level as the ties went; what was left as it swung, a tenth of its rated thrust, is taken',
         ),
-        swing: guess(3, 'degrees: NOT FOUND: how far the tail swings before the ball rolls out of its socket'),
+        swing: estimated(3, 'degrees: NOT FOUND: how far the tail swings before the ball rolls out of its socket'),
       },
     })),
     {
@@ -421,12 +417,12 @@ function sheds(left: Left): ShedBody[] {
       to: doc(38.36, `${MINAKOV}: the whole vehicle’s length`),
       radius: doc(1.35, `${MINAKOV}: 2.7 m across`),
       mass: doc(800, `${ZAK}: 0.8 t; Brügge 0.64 t. Flown as one body: it was two halves`),
-      centre: guess(34.5, 'a little below the middle of a shell that narrows to its tip'),
-      gyration: { roll: guess(1.1, 'a thin shell 1.35 m in radius'), across: guess(2, 'a 6.6 m shell') },
-      ahead: guess(2.5, 'its nose, 5.7 m², at 0.45'),
-      astern: guess(6, 'its open foot, at 1.0'),
+      centre: estimated(34.5, 'a little below the middle of a shell that narrows to its tip'),
+      gyration: { roll: estimated(1.1, 'a thin shell 1.35 m in radius'), across: estimated(2, 'a 6.6 m shell') },
+      ahead: estimated(2.5, 'its nose, 5.7 m², at 0.45'),
+      astern: estimated(6, 'its open foot, at 1.0'),
       side: {
-        dragArea: guess(18, '6.6 m × 2.7 m at 1.0'),
+        dragArea: estimated(18, '6.6 m × 2.7 m at 1.0'),
         from: derived(31.73, 'the body’s own stretch, as above'),
         to: doc(38.36, 'the body’s own stretch, as above'),
       },
@@ -438,12 +434,12 @@ function sheds(left: Left): ShedBody[] {
       to: doc(28.75, `${MINAKOV}: the core with its lattice`),
       radius: doc(1.475, `${MINAKOV}: 2.95 m across`),
       mass: left.core,
-      centre: guess(9, 'below its middle: the engine and the empty tanks’ lower half'),
-      gyration: { roll: guess(1.0, 'a shell 1.2 to 1.5 m in radius'), across: guess(8, 'a 28.75 m block') },
-      ahead: guess(4, 'its lattice end, 5.2 m², at 0.8'),
-      astern: guess(5, 'its tail, 3.3 m², and the engine, at 1.5'),
+      centre: estimated(9, 'below its middle: the engine and the empty tanks’ lower half'),
+      gyration: { roll: estimated(1.0, 'a shell 1.2 to 1.5 m in radius'), across: estimated(8, 'a 28.75 m block') },
+      ahead: estimated(4, 'its lattice end, 5.2 m², at 0.8'),
+      astern: estimated(5, 'its tail, 3.3 m², and the engine, at 1.5'),
       side: {
-        dragArea: guess(70, '28.75 m × 2.5 m on average, at 1.0'),
+        dragArea: estimated(70, '28.75 m × 2.5 m on average, at 1.0'),
         from: doc(0, 'the body’s own stretch, as above'),
         to: doc(28.75, 'the body’s own stretch, as above'),
       },
@@ -455,16 +451,16 @@ function sheds(left: Left): ShedBody[] {
       to: derived(31.73, 'its adapter’s rim, 2.98 m higher (Minakov)'),
       radius: doc(1.29, `${MINAKOV}: 2.58 m across`),
       mass: left.blockE,
-      centre: guess(29.8, 'the engine in its tanks’ ring, low in the stage'),
-      gyration: { roll: guess(0.9, 'ring tanks 1.29 m in radius'), across: guess(1, 'a stage 3 m long') },
-      push: guess(
+      centre: estimated(29.8, 'the engine in its tanks’ ring, low in the stage'),
+      gyration: { roll: estimated(0.9, 'ring tanks 1.29 m in radius'), across: estimated(1, 'a stage 3 m long') },
+      push: estimated(
         1,
         'not found: the spacecraft left Block E’s adapter on pushers (spacecraft.md: four of them), at a speed nothing read gives; 1 m/s apart, of the order spring pushers give, is chosen. Block E’s venting of what was left in its tanks after cutoff, which would have moved it further, is not modelled',
       ),
-      ahead: guess(5, 'its adapter’s open rim, at 1.0'),
-      astern: guess(5, 'its base, at 1.0'),
+      ahead: estimated(5, 'its adapter’s open rim, at 1.0'),
+      astern: estimated(5, 'its base, at 1.0'),
       side: {
-        dragArea: guess(8, '3 m × 2.6 m at 1.0'),
+        dragArea: estimated(8, '3 m × 2.6 m at 1.0'),
         from: doc(28.75, 'the body’s own stretch, as above'),
         to: derived(31.73, 'the body’s own stretch, as above'),
       },
@@ -473,17 +469,17 @@ function sheds(left: Left): ShedBody[] {
       on: 'modules',
       name: 'The instrument module and braking engine',
       from: derived(30.53, 'the spacecraft’s station 0, the braking nozzle (vostok-8k72k.md)'),
-      to: guess(32.8, 'the instrument module’s top, from RKK Energia’s drawing as vostok-3ka.md has it'),
-      radius: guess(1.25, 'its widest, 2.43 m (Siddiqi)'),
+      to: estimated(32.8, 'the instrument module’s top, from RKK Energia’s drawing as vostok-3ka.md has it'),
+      radius: estimated(1.25, 'its widest, 2.43 m (Siddiqi)'),
       mass: doc(2_265, `${BOBKOV}: the instrument module, 2.265 t`),
-      centre: guess(31.5, 'the middle of its two cones'),
-      gyration: { roll: guess(0.8, 'two cones 1.2 m in radius'), across: guess(0.8, 'two cones 2.3 m long') },
-      ahead: guess(3, 'its concave top, 4.6 m², at 0.7'),
-      astern: guess(3, 'its base, at 0.7'),
+      centre: estimated(31.5, 'the middle of its two cones'),
+      gyration: { roll: estimated(0.8, 'two cones 1.2 m in radius'), across: estimated(0.8, 'two cones 2.3 m long') },
+      ahead: estimated(3, 'its concave top, 4.6 m², at 0.7'),
+      astern: estimated(3, 'its base, at 0.7'),
       side: {
-        dragArea: guess(5, '2.3 m × 2.2 m at 1.0'),
+        dragArea: estimated(5, '2.3 m × 2.2 m at 1.0'),
         from: derived(30.53, 'the body’s own stretch, as above'),
-        to: guess(32.8, 'the body’s own stretch, as above'),
+        to: estimated(32.8, 'the body’s own stretch, as above'),
       },
     },
   ];

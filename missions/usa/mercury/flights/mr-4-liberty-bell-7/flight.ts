@@ -28,18 +28,10 @@ import {
   OBJECTIVE_OUT,
   sequenceLamp,
 } from '../../vehicles/cabin.ts';
-import {
-  CAPSULE_PLANE,
-  CHUTES,
-  cutoffMass,
-  derived,
-  doc,
-  guess,
-  trajectory as mercuryRedstone,
-  PLR,
-} from '../../vehicles/mercury-redstone.ts';
+import { CAPSULE_PLANE, CHUTES, cutoffMass, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
+import { derived, doc, estimated } from '../../../../../src/measure.ts';
 
 const IN = 0.0254;
 
@@ -1147,7 +1139,7 @@ const WINDS: Winds = {
     },
     from: { value: from, confidence: 'documented', source: `${IGRA}, ${hPa} hPa: from ${from} degrees` },
   })),
-  calmAbove: guess(
+  calmAbove: estimated(
     40_000,
     'no wind is recorded above 10 hPa (31.4 km). Taken as falling evenly to nothing by 40 km, where the air is a three-hundredth of the surface’s and what it does to the flight is past measuring. Ours',
   ),
@@ -1193,12 +1185,12 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
       SEPARATION,
       `${RESULTS}, p. 6: "Ten seconds later, the spacecraft-to-launch-vehicle adapter clamp ring was separated"; the pilot at 02:33: "There went posigrades, capsule has separated" (p. 42)`,
     ),
-    mass: guess(CAPSULE_ORBIT * LB, `${NO11}: ${CAPSULE_ORBIT.toFixed(2)} lb in the "orbit" configuration`),
-    boosterMass: guess(
+    mass: estimated(CAPSULE_ORBIT * LB, `${NO11}: ${CAPSULE_ORBIT.toFixed(2)} lb in the "orbit" configuration`),
+    boosterMass: estimated(
       cutoffMass(LIFTOFF * LB, THRUST, ISP, CUTOFF) - CAPSULE_LAUNCH * LB,
       `the liftoff weight, less the flow for ${CUTOFF} s, less the capsule and tower at launch (${CAPSULE_LAUNCH.toFixed(2)} lb, estimated: ${NO11})`,
     ),
-    speed: guess(
+    speed: estimated(
       30 * FT,
       `not recorded for MR-4. Freedom 7’s, the same posigrades on the same adapter: ${PLR}, section 4.2, separation velocity approximately 30 plus or minus 3 ft/s`,
     ),
@@ -1223,14 +1215,14 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
   },
   retropack: {
     at: doc(367, `${RESULTS}, p. 6: "The retrorocket package was jettisoned at T+6 minutes 7 seconds"`),
-    mass: guess(CAPSULE_ENTRY * LB, `${NO11}: ${CAPSULE_ENTRY.toFixed(2)} lb in the re-entry configuration`),
+    mass: estimated(CAPSULE_ENTRY * LB, `${NO11}: ${CAPSULE_ENTRY.toFixed(2)} lb in the re-entry configuration`),
   },
   drogue: doc(21_000 * FT, 'This New Ocean, p. 372: "The drogue parachute deployed on schedule at 21,000 feet"'),
   main: doc(
     12_300 * FT,
     'This New Ocean, p. 372: "Main parachute deployment occurred at 12,300 feet, which was about 1000 feet higher than the design nominal altitude" (Hammack p. 9 has the design’s 10,000 ft, which is 2,300 lower: the history’s "about 1000" and its own two figures disagree)',
   ),
-  starts: guess(
+  starts: estimated(
     299,
     'a July morning at the Cape, 25.5 C at the Skid Strip at 07:00 (weather.ts): what the shield and skin stood at on the pad is not in anything read',
   ),
@@ -1258,13 +1250,13 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
         '(sites/lc-5.md, "Which way round the vehicle stood"), so the spacecraft rode feet and periscope down range and was turned heat shield first by a yaw, ' +
         '"counter clockwise" (Results, Figure 2-5), into the orbit attitude of 34 degrees (p. 6)',
     ),
-    push: guess(30 * FT, `not recorded for MR-4: Freedom 7’s, ${PLR}, section 4.2, approximately 30 plus or minus 3 ft/s`),
+    push: estimated(30 * FT, `not recorded for MR-4: Freedom 7’s, ${PLR}, section 4.2, approximately 30 plus or minus 3 ft/s`),
     rate: {
       deadband: doc(
         3,
         `${RESULTS}, p. 3: the rate stabilization and control system "damps to the commanded rate to within ±3 deg/sec. Without manual command, it damps to zero rate within ±3 deg/sec"; the pilot, p. 52: "This system had a deadband of ±3 deg/sec"`,
       ),
-      full: guess(
+      full: estimated(
         10,
         'the rate asked for at full throw of the stick is not in anything read (the record says only that "design turning rates were not achieved with full stick deflection", p. 7, blamed on the linkage): ten degrees a second is ours',
       ),
@@ -1648,7 +1640,7 @@ export const flight: Flight = {
       afloat:
         'The hatch is gone, the sea comes in over the sill, and the spacecraft fills and goes down. Grissom went out through the hatch in a moment; ' +
         'the helicopter already hooked on to it could not lift it full of water, and let it go.',
-      under: guess(
+      under: estimated(
         45,
         'not recorded to the second. The history has the hatch fly off, Grissom out at once, and the helicopter’s copilot clip the antenna and hook on as the capsule "sank out of sight" (This New Ocean, p. 373): under within a minute. Ours',
       ),

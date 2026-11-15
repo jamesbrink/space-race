@@ -18,19 +18,10 @@ import {
 } from '../../sites/lc-5.parts.ts';
 import { LC5 } from '../../sites/lc-5.ts';
 import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
-import {
-  CAPSULE_PLANE,
-  CHUTES,
-  cutoffMass,
-  derived,
-  doc,
-  guess,
-  MR3,
-  trajectory as mercuryRedstone,
-  PLR,
-} from '../../vehicles/mercury-redstone.ts';
+import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
+import { derived, doc, estimated } from '../../../../../src/measure.ts';
 
 const IN = 0.0254;
 
@@ -1076,7 +1067,7 @@ const WINDS: Winds = {
       from: doc(from, `NOAA IGRA, station USM00074794, 5 May 1961 12Z, ${hPa} hPa: from ${from} degrees, given to ten degrees`),
     })),
   ],
-  calmAbove: guess(
+  calmAbove: estimated(
     30_000,
     'no wind is recorded above 30 hPa (24 km). Taken as falling evenly to nothing by 30 km, where the air is a hundredth of the surface’s and what it does to the flight is past measuring. Ours',
   ),
@@ -1126,7 +1117,7 @@ const trajectory: Trajectory = mercuryRedstone({
   },
   drogue: doc(21_000 * FT, 'Results of the First U.S. Manned Suborbital Space Flight, p. 7; Hammack p. 9: deployed at 21,000 ft'),
   main: doc(10_000 * FT, 'Results, p. 7; Hammack p. 9: main parachute at 10,000 ft'),
-  starts: guess(300, 'a May morning at the Cape, about 27 C: what the shield and skin stood at on the pad is not in anything read'),
+  starts: estimated(300, 'a May morning at the Cape, about 27 C: what the shield and skin stood at on the pad is not in anything read'),
   stack: {
     booster: 'MR-3',
     boosterDry: 8093,

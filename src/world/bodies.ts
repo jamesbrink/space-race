@@ -11,15 +11,10 @@
  * ones geodesy and the lunar ephemerides use. The other planets are placeholders: correct masses,
  * sizes, poles and mean orbits, and nothing more (no moons, no rings, no atmospheres).
  */
-import type { Confidence } from '../types.ts';
+import type { Confidence, Measure } from '../measure.ts';
 
-/** One number with how far it can be trusted and where it came from (types.ts: Confidence). */
-export interface Quantity {
-  value: number;
-  confidence: Confidence;
-  source: string;
-  note?: string;
-}
+/** One number with how far it can be trusted and where it came from (measure.ts), and a note. */
+export type Quantity = Measure & { note?: string };
 
 /** A Keplerian element at J2000.0 and its rate per Julian century. */
 export type Rated = readonly [atJ2000: number, perCentury: number];
