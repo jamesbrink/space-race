@@ -69,6 +69,17 @@ never adjusted to bring a check in.
   flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
   ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
   this: its stages, drops, limits and `hot` in `Flight.orbital`, or its `trajectory.body`; nothing names a vehicle.
+- **One plan for every kind of flight.** What a flight is flown from is a `FlightPlan` (sim/plan.ts): its craft (bodies,
+  the joints between them with their push, what they cover and hold and any hot staging; engines that draw on tanks, with a
+  throttle, a gimbal and a number of starts; thruster sets that turn it, push it along, or both; parachutes; limits),
+  the events that change it (each `when` a set of triggers that must all hold: a time, so long after another event, a
+  height passed going up or down, a speed or an engine's apparent velocity, a load, a hand's command; each `do` a list
+  of actions: ignite, cut, throttle, separate, deploy, release, attitude, arm), the attitudes it is held in, and the
+  record's checks, each saying where in the flight it is read. A flight of a kind already flown is a new plan and no new
+  code: tests/plan.test.mjs says a Gemini on its Titan in it (two stages on their own tanks, hot staging, translation
+  thrusters, a lifting entry) with figures of 1, as a shape and not as data. `problems` is what is wrong with a plan, in
+  words. Until the runs read plans and the flights' data says its own, sim/planof.ts makes one from each of today's two
+  shapes, every figure carried over as it was, and the test holds each plan to what it was made from.
 - **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between

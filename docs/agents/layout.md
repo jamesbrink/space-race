@@ -233,6 +233,8 @@ src/
   sim/verdict.ts                      how a flight flown by hand ended, said plainly, and whether it was survivable by the flight's stated limits
   sim/predict.ts                      looking ahead from a state: one propagator for every vehicle (error-controlled, in slices), the path if nothing more is done, its apsides, events, impact or orbit (pure)
   sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
+  sim/plan.ts                         what a flight is flown from, one shape for every kind: its craft (bodies, joints, engines on tanks, thrusters, parachutes, limits), events (triggers, actions), attitudes, checks; `problems` says what is wrong with one
+  sim/planof.ts                       a plan made from each of today's two shapes (`Trajectory`, `OrbitalFlight`), until the flights' data says its plan itself
   sound/audio.ts                      what the walk and a driven vehicle are heard as (an interface, silent until something that plays is given), and the board every posed move that names a machine is told to (`machinery`)
   sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are; and the works: engines, tyres and machines on the ground (pure, tested)
   sound/engine.ts                     the Web Audio graph those numbers are set on: noise, filters, envelopes, the works' six voices; no recordings
