@@ -91,9 +91,16 @@ out". Of what was No. 5's own:
 - **The pod is a block model**: a body in three boxes, two discs, a boom and two lamps, sized from an inset an inch
   across. Its support, its ejector and its cover's springs are not built. It is put at the level of the adapter's
   own cover, which is as far aft as the crown of the Titan's oxidiser dome lets it be.
+  Two things found since, when spacecraft 7 was built, and not yet acted on: the Gemini VII mission report says
+  spacecraft 5's pod mount was "installed on the blast shield access door" (MSC-G-R-66-1, 3.1.1.2), which is at
+  the head of the equipment section and not at its foot; and the Gemini 5 press kit (NASA release 65-262, NTRS
+  19650020587, p. 6A) has an artist's view of the pod alone, a cluster of boxes with its antennas, without
+  dimensions.
 - **The equipment section is laid out again for this ship.** The oxygen the crew breathe, the electronic modules and
   the water tanks are moved from where spacecraft 3's layout has them to make room; all of it is placed by guess.
-- **The OAMS tanks are spacecraft 3's sizes.** Whether this ship's were larger is not settled.
+- **The OAMS tanks are spacecraft 3's sizes.** Whether this ship's were larger was not settled when it was built.
+  It is now: SEDR 300 vol. 2's Section VIII (Figure 8-96 sheet 1, p. 8-346) has "one tank on S/C 5" of fuel, of
+  oxidiser and of helium, of the same sizes. The part's own words still say it is not settled.
 - **Not built:** the docking light, the radiometry experiments' sensors, the fourth telemetry transmitter and its
   antenna, the nose fairing's piston.
 - **The paint** is spacecraft 3's.
