@@ -2,6 +2,7 @@ import type { Flight } from '../src/types.ts';
 import { flight as gt3 } from './usa/gemini/flights/gt-3/flight.ts';
 import { flight as gt4 } from './usa/gemini/flights/gt-4/flight.ts';
 import { flight as gt5 } from './usa/gemini/flights/gt-5/flight.ts';
+import { flight as gt7 } from './usa/gemini/flights/gt-7/flight.ts';
 import { flight as mr3 } from './usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as ma6 } from './usa/mercury/flights/ma-6-friendship-7/flight.ts';
 import { flight as ma7 } from './usa/mercury/flights/ma-7-aurora-7/flight.ts';
@@ -39,4 +40,5 @@ export const flights: Flight[] = [
   gt3,
   gt4,
   gt5,
+  gt7,
 ];

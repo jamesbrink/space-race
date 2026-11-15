@@ -18,7 +18,6 @@ export interface Upcoming {
 }
 
 export const upcoming: Upcoming[] = [
-  { id: 'usa/gemini/gt-7', nation: 'USA', name: 'Gemini 7', line: 'Gemini-Titan 7 · Frank Borman · Jim Lovell', launch: '1965-12-04' },
   {
     id: 'usa/gemini/gt-6a',
     nation: 'USA',
