@@ -1,4 +1,4 @@
-import type { MechanismDef, Move } from '../../../../src/types.ts';
+import type { Machine, MechanismDef, Move } from '../../../../src/types.ts';
 
 /**
  * The periscope's door, objective and the link between them through a Redstone flight, on the flight's clock (types.ts:
@@ -37,12 +37,34 @@ export const TAKES = 5;
 const NODES = ['Periscope_Objective', 'Periscope_Door', 'Periscope_Link'];
 
 /**
+ * What is heard of it (types.ts Machine): the cartridge's electric motor, documented (12-2); the door and the link go
+ * with it through the linkage, and are heard as that one motor.
+ */
+const BY: Record<string, Machine> = {
+  Periscope_Objective: {
+    kind: 'motor',
+    confidence: 'documented',
+    source: 'an electric motor on the lower housing runs the cartridge (SEDR 104, 12-2)',
+  },
+  Periscope_Door: {
+    kind: 'none',
+    confidence: 'documented',
+    source: 'moved by the cartridge through its link (SEDR 104, 12-18): heard as the motor',
+  },
+  Periscope_Link: {
+    kind: 'none',
+    confidence: 'documented',
+    source: 'the link between the cartridge and the door (SEDR 104, 12-18): heard as the motor',
+  },
+};
+
+/**
  * `events` are the instants (seconds from launch) at which the periscope went out (true) or in (false), in order; it
  * stands drawn in until the first.
  */
 export function periscopeMoves(events: [number, boolean][]): Move[] {
   return events.flatMap(([at, out]) =>
-    NODES.map((node): Move => ({ kind: 'run', node, from: at, to: at + TAKES, ...(out ? {} : { back: true }) })),
+    NODES.map((node): Move => ({ kind: 'run', node, from: at, to: at + TAKES, machine: BY[node], ...(out ? {} : { back: true }) })),
   );
 }
 

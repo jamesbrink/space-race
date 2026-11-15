@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
+import type { Flight, Keyframe, Machine, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
 import { CENTRE_CURVED, SPURS_CURVED, wayWest } from './tracks.ts';
 
 /**
@@ -25,14 +25,72 @@ export const turned = ([x, y, z]: [number, number, number]): [number, number, nu
   y,
   -x * Math.sin(TURN) + z * Math.cos(TURN),
 ];
-/** A swing outward about a hinge at the foot of something standing at this azimuth round the site. */
-const outward = (node: string, az: number, degrees: number, from: number, to: number): Move => ({
+/**
+ * What drives each of the pad's motions, as it is heard (types.ts Machine). What drove each is the record's where it
+ * says (site-1.md), and how each sounded is ours throughout (sound/model.ts).
+ */
+export const BY: Record<'trusses' | 'mast' | 'weights' | 'erector' | 'locomotive' | 'lift' | 'gone' | 'bus' | 'saloon' | 'lorry', Machine> =
+  {
+    trusses: {
+      kind: 'hydraulic',
+      confidence: 'documented',
+      source: 'the service truss (8T119): “raised by hydraulics” (site-1.md, as quoted by militaryrussia.ru)',
+    },
+    mast: {
+      kind: 'hydraulic',
+      confidence: 'estimated',
+      source: 'what swung the cable mast clear is not recorded: taken to be hydraulics, as the trusses’ and the erector’s were',
+    },
+    weights: {
+      kind: 'release',
+      confidence: 'assumed',
+      source: 'the later launch system’s: the supports go back “under the action of the weights”, braked by a hydraulic buffer (site-1.md)',
+    },
+    erector: {
+      kind: 'hydraulic',
+      confidence: 'documented',
+      source: 'the erector (8U213): “hydraulic, on rails” (site-1.md, as quoted by militaryrussia.ru)',
+    },
+    locomotive: {
+      kind: 'locomotive',
+      confidence: 'estimated',
+      source: 'drawn along the track by a diesel shunting locomotive, which is not drawn: what worked the site’s track is not recorded',
+      engine: 'diesel shunting locomotive',
+    },
+    lift: {
+      kind: 'lift',
+      confidence: 'documented',
+      source: 'the erector’s lift up the boom, 23 m in a minute or in two or three (Ivanovsky)',
+    },
+    gone: {
+      kind: 'none',
+      confidence: 'derived',
+      source: 'people going out of sight: nobody is heard walking off, and nothing drives them',
+    },
+    bus: {
+      kind: 'road',
+      confidence: 'documented',
+      source: 'the cosmonauts’ LAZ-695B bus (site-1.md), under its own engine',
+      engine: 'LAZ-695B',
+    },
+    saloon: {
+      kind: 'road',
+      confidence: 'estimated',
+      source: 'taken for a GAZ-21 Volga (the part’s words)',
+      engine: 'GAZ-21 Volga, 1958-62',
+    },
+    lorry: { kind: 'road', confidence: 'estimated', source: 'taken for the roster’s GAZ-63 (the part’s words)', engine: 'GAZ-63' },
+  };
+
+/** A swing outward about a hinge at the foot of something standing at this azimuth round the site, driven by `machine`. */
+const outward = (node: string, az: number, degrees: number, from: number, to: number, machine: Machine): Move => ({
   kind: 'swing',
   node,
   axis: [-Math.sin(az * DEG), 0, -Math.cos(az * DEG)],
   angle: degrees * DEG,
   from,
   to,
+  machine,
 });
 
 // What served the rocket and was taken away before it left, as places/tyuratam/site1/ has it (service_trusses.py, cable_mast.py,
@@ -114,6 +172,7 @@ const carLeaves = (node: string, wheelbase: number, corners: [number, number][],
   bogies: true,
   // (each bogie's frame swings over its four wheel sets: turned to the track under it, pitched over a change of grade)
   runs: { ...ON_RAILS, bogies: `${node}_Bogie_` },
+  machine: BY.locomotive,
 });
 /** The erector: its boom's lean toward the rocket, how far it is drawn back before the wagon moves, the wagon's two runs west and its wheels' radius. */
 const BOOM_LEAN = 14;
@@ -140,8 +199,22 @@ const LIFT_STOPS: [name: string, up: number][] = [
  * from launch, on the flight's clock.
  */
 export const OUT_OF_SIGHT = 90;
-export const leaves = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, -OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
-export const comes = (node: string, at: number): Move => ({ kind: 'slide', node, by: [0, OUT_OF_SIGHT, 0], from: at, to: at + 0.1 });
+export const leaves = (node: string, at: number): Move => ({
+  kind: 'slide',
+  node,
+  by: [0, -OUT_OF_SIGHT, 0],
+  from: at,
+  to: at + 0.1,
+  machine: BY.gone,
+});
+export const comes = (node: string, at: number): Move => ({
+  kind: 'slide',
+  node,
+  by: [0, OUT_OF_SIGHT, 0],
+  from: at,
+  to: at + 0.1,
+  machine: BY.gone,
+});
 
 /**
  * A road vehicle driven on the clock (road_vehicles.py): `path` is where its rear axle goes, metres ahead and to the
@@ -155,6 +228,7 @@ export const drives = (
   path: [number, number][],
   wheelbase: number,
   wheelRadius: number,
+  machine: Machine,
   reverse = false,
 ): Move => ({
   kind: 'drive',
@@ -171,6 +245,7 @@ export const drives = (
   steered: `${node}_SteerWheel_`,
   axle: 'z',
   runs: ON_ROAD,
+  machine,
 });
 export const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
@@ -210,6 +285,7 @@ export function busPart(
           ],
           BUS.wheelbase,
           BUS.wheel,
+          BY.bus,
         ),
       },
       drives(
@@ -226,6 +302,7 @@ export function busPart(
         ],
         BUS.wheelbase,
         BUS.wheel,
+        BY.bus,
         true,
       ),
       drives(
@@ -243,6 +320,7 @@ export function busPart(
         ],
         BUS.wheelbase,
         BUS.wheel,
+        BY.bus,
       ),
     ],
   };
@@ -392,8 +470,8 @@ export function site1Parts(day: Site1Day): Part[] {
       // photograph of the launch; the times off film of the later system); each guide about its foot on the cage, its
       // tip going down (documented for the later system that they fall away; the angle estimated)
       clocked: [
-        ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO)),
-        ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO)),
+        ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO, BY.weights)),
+        ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO, BY.weights)),
       ],
     },
     ...(day.fillers ? [fillers] : []),
@@ -411,6 +489,7 @@ export function site1Parts(day: Site1Day): Part[] {
           do: {
             kind: 'lift',
             node: 'Erector_Lift',
+            machine: BY.lift,
             stops: LIFT_STOPS.map(([name, up]) => ({ name, by: [up * Math.tan(BOOM_LEAN * DEG), up, 0] as [number, number, number] })),
             // 23 m in "a minute" by one of Ivanovsky's tellings and "two or three minutes" by another
             speed: 0.3,
@@ -433,7 +512,15 @@ export function site1Parts(day: Site1Day): Part[] {
         // the boom comes away (documented, 08:35 to 08:37), then goes down as the wagon rides off (documented that it
         // did; how far it had gone before it lay down is ours), and the wagon is drawn on (documented; how far, ours), on
         // its rails and its wheels turning as it goes (ERECTOR_RUNS)
-        { kind: 'swing', node: 'Erector_Boom', axis: [0, 0, 1], angle: BOOM_BACK * DEG, from: s.erector, to: s.boomAway },
+        {
+          kind: 'swing',
+          node: 'Erector_Boom',
+          axis: [0, 0, 1],
+          angle: BOOM_BACK * DEG,
+          from: s.erector,
+          to: s.boomAway,
+          machine: BY.erector,
+        },
         {
           kind: 'swing',
           node: 'Erector_Boom',
@@ -441,9 +528,17 @@ export function site1Parts(day: Site1Day): Part[] {
           angle: (90 + BOOM_LEAN - BOOM_BACK) * DEG,
           from: s.boomAway,
           to: s.boomDown,
+          machine: BY.erector,
         },
-        { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: s.boomAway, to: s.boomDown, runs: ERECTOR_RUNS },
-        { kind: 'slide', by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0], from: s.boomDown, to: s.cleared, runs: ERECTOR_RUNS },
+        { kind: 'slide', by: [-ERECTOR_ROLL[0]!, 0, 0], from: s.boomAway, to: s.boomDown, runs: ERECTOR_RUNS, machine: BY.locomotive },
+        {
+          kind: 'slide',
+          by: [-(ERECTOR_ROLL[1]! - ERECTOR_ROLL[0]!), 0, 0],
+          from: s.boomDown,
+          to: s.cleared,
+          runs: ERECTOR_RUNS,
+          machine: BY.locomotive,
+        },
       ],
       // two of its crew at the wagon's rail (a colour photograph), until thirty minutes' readiness (the roster)
       ...(day.erectorCrew !== null ? { clocked: [leaves('Erector_Crew', day.erectorCrew)] } : {}),
@@ -462,8 +557,8 @@ export function site1Parts(day: Site1Day): Part[] {
       moves: [
         // lowered about their hinges on the ring (documented that they were, and when they began; how long each took and
         // which went first are ours)
-        outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, s.north[0], s.north[1]),
-        outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, s.south[0], s.south[1]),
+        outward('ServiceTruss_North', TRUSS_NORTH, TRUSS_FALL, s.north[0], s.north[1], BY.trusses),
+        outward('ServiceTruss_South', TRUSS_SOUTH, TRUSS_FALL, s.south[0], s.south[1], BY.trusses),
       ],
     },
     {
@@ -475,7 +570,7 @@ export function site1Parts(day: Site1Day): Part[] {
       order: 0,
       functions: [{ nodes: ['UpperCableMast'], name: 'Swing clear', ends: ['at the rocket', 'swung clear'], seconds: 10 }],
       // back the whole way at 09:06 (the minute documented; the angle and the ten seconds estimated)
-      moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, s.mast[0], s.mast[1])],
+      moves: [outward('UpperCableMast', MAST_AT, MAST_FALL, s.mast[0], s.mast[1], BY.mast)],
     },
   ];
 }

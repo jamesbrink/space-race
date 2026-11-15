@@ -1,5 +1,6 @@
 import type { Flight, FlightCheck, Keyframe, ModelDef, Part, Trajectory, Winds } from '../../../../../src/types.ts';
 import {
+  BY,
   HARDWARE_WORDS,
   held,
   hutLeaves,
@@ -780,8 +781,8 @@ const padParts: Part[] = lc5Parts({
     // standing by, clear of the structure, until it has gone; the cab hangs level whatever the jib does
     held('CherryPicker_Jib', Z, TOWER.standby),
     held('CherryPicker_Cab', Z, -TOWER.standby),
-    swing('CherryPicker_Jib', Z, -TOWER.standby, T.cabIn, T.cabIn + 0.09),
-    swing('CherryPicker_Cab', Z, TOWER.standby, T.cabIn, T.cabIn + 0.09),
+    swing('CherryPicker_Jib', Z, -TOWER.standby, T.cabIn, T.cabIn + 0.09, BY.hydraulics),
+    swing('CherryPicker_Cab', Z, TOWER.standby, T.cabIn, T.cabIn + 0.09, BY.hydraulics),
   ],
   azimuth: AZIMUTH,
   cleared: [
@@ -793,10 +794,19 @@ const padParts: Part[] = lc5Parts({
       from: T.platforms + 0.02,
       to: T.platforms + 0.11,
       runs: SHOWER_RUNS,
+      machine: BY.hand,
     },
-    { kind: 'slide', node: 'GroundEquipment_Case', by: [2.51, 0, 42.4], from: T.platforms + 0.03, to: T.platforms + 0.12, runs: ON_ROAD },
+    {
+      kind: 'slide',
+      node: 'GroundEquipment_Case',
+      by: [2.51, 0, 42.4],
+      from: T.platforms + 0.03,
+      to: T.platforms + 0.12,
+      runs: ON_ROAD,
+      machine: BY.hand,
+    },
     // the trailer's door steps fold up first, so nothing hangs below its frame while it is towed (estimated)
-    swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008),
+    swing('GroundEquipment_TrailerSteps', Z, 95, T.platforms, T.platforms + 0.008, BY.hand),
     // the trailer taken away behind a tractor unit, north off the pad past the cherry picker (estimated throughout)
     ...spareTrailerLeaves(T.platforms + 0.01, T.platforms + 0.12),
     // each hut dragged off on its skids by a pickup, straight out across the pad's edge to the road behind (estimated)

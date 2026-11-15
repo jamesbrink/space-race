@@ -1,4 +1,4 @@
-import type { Action, Flight, Move, Part, Runs } from '../../../../src/types.ts';
+import type { Action, Flight, Machine, Move, Part, Runs } from '../../../../src/types.ts';
 import { LC5 } from './lc-5.ts';
 
 /**
@@ -131,17 +131,104 @@ export interface PadDay {
 export const DEG = Math.PI / 180;
 export const X: [number, number, number] = [1, 0, 0];
 export const Z: [number, number, number] = [0, 0, 1];
-/** A hinged piece turning `degrees` about `axis` between two positions on the slider. */
-export const swing = (node: string, axis: [number, number, number], degrees: number, from: number, to: number): Move => ({
+/**
+ * What drives each of the pad's motions, as it is heard (types.ts Machine). What drove each is the record's where it
+ * says, and how each sounded is ours throughout (sound/model.ts).
+ */
+export const BY: Record<
+  | 'platforms'
+  | 'structure'
+  | 'lift'
+  | 'door'
+  | 'hydraulics'
+  | 'tower'
+  | 'tractor'
+  | 'pickup'
+  | 'trailer'
+  | 'skids'
+  | 'hand'
+  | 'bungee'
+  | 'boom'
+  | 'held',
+  Machine
+> = {
+  platforms: {
+    kind: 'motor',
+    confidence: 'estimated',
+    source:
+      'the platforms were parted from the blockhouse once the structure had remote control (the part’s words); that an electric drive did it is ours',
+  },
+  structure: {
+    kind: 'rails',
+    confidence: 'documented',
+    source:
+      'it moved on its rails under its own power, on four powered rail trucks (the part’s words); that the trucks were electric is ours',
+  },
+  lift: { kind: 'lift', confidence: 'documented', source: 'an open mesh cage up the blockhouse side’s leg (the part’s words)' },
+  door: { kind: 'door', confidence: 'derived', source: 'a hinged leaf worked by hand: what the model is' },
+  hydraulics: {
+    kind: 'hydraulic',
+    confidence: 'derived',
+    source: 'the truck carries its hydraulic tank and valve bank, worked from the levers at its tail (lc-5.md: cherry_picker.py)',
+  },
+  tower: {
+    kind: 'road',
+    confidence: 'estimated',
+    source: 'its folding and driving off are how such a tower travels, not something the record shows (the part’s words)',
+    engine: 'International Harvester R-series truck',
+    tread: 'concrete',
+  },
+  tractor: {
+    kind: 'road',
+    confidence: 'estimated',
+    source: 'an Army M275 of the kind photographed coupled to the trailer (the part’s words); that it drove the trailer off is ours',
+    engine: 'M275 2-1/2-ton 6x6 truck tractor, NASA',
+    tread: 'concrete',
+  },
+  pickup: {
+    kind: 'road',
+    confidence: 'estimated',
+    source: 'nothing records how the huts were moved: a pickup is ours',
+    engine: '1957-60 Ford F-100 Flareside',
+    tread: 'concrete',
+  },
+  trailer: {
+    kind: 'towed',
+    confidence: 'estimated',
+    source: 'taken away behind its tractor (estimated: lc-5.md, “Moving parts”)',
+    tread: 'concrete',
+  },
+  skids: {
+    kind: 'skids',
+    confidence: 'estimated',
+    source: 'each hut dragged off on its skids (estimated: nothing records how the huts were moved)',
+  },
+  hand: { kind: 'hand', confidence: 'estimated', source: 'wheeled, carried or folded by hand: how is not recorded' },
+  bungee: {
+    kind: 'release',
+    confidence: 'documented',
+    source: 'a release valve and a bungee pulled the capsule’s mast over, hinged on the launcher’s table (lc-5.md, “Moving parts”)',
+  },
+  boom: {
+    kind: 'release',
+    confidence: 'estimated',
+    source: '“boom drop”: the booster’s mast falling over about its pin (lc-5.md); what pulled it over is taken to be the capsule mast’s',
+  },
+  held: { kind: 'none', confidence: 'derived', source: 'a pose held from before the slider begins: it never moves while it is seen' },
+};
+
+/** A hinged piece turning `degrees` about `axis` between two positions on the slider, driven by `machine`. */
+export const swing = (node: string, axis: [number, number, number], degrees: number, from: number, to: number, machine: Machine): Move => ({
   kind: 'swing',
   node,
   axis,
   angle: degrees * DEG,
   from,
   to,
+  machine,
 });
 /** A pose held from the start: the piece is built somewhere else and stands here until it moves. */
-export const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5);
+export const held = (node: string, axis: [number, number, number], degrees: number): Move => swing(node, axis, degrees, -1, -0.5, BY.held);
 /**
  * The meridian of a Mercury capsule that lay down range on the launcher, degrees round from the hatch's middle
  * (anticlockwise from above): the periscope's, with a fin's. places/cape-canaveral/lc5/site.py `PITCH_PLANE`.
@@ -190,7 +277,7 @@ export const doorAction = (id: string, node: string, degrees: number): Action =>
   id,
   label: 'Open',
   on: node,
-  do: { kind: 'toggle', moves: [swing(node, [0, 1, 0], degrees, 0, 1)], back: 'Close' },
+  do: { kind: 'toggle', moves: [swing(node, [0, 1, 0], degrees, 0, 1, BY.door)], back: 'Close' },
 });
 
 /** The pad's parts for one morning. */
@@ -212,6 +299,7 @@ export function lc5Parts(day: PadDay): Part[] {
           do: {
             kind: 'lift',
             node: 'ServiceStructure_Lift',
+            machine: BY.lift,
             stops: [
               { name: 'Pad', by: [0, 0, 0] },
               { name: 'Level 1', by: [-1.415, 13.188, 0] },
@@ -258,11 +346,11 @@ export function lc5Parts(day: PadDay): Part[] {
       moves: [
         // the platforms part before anything rolls, each pair when the day says
         ...day.platforms.flatMap(([level, from, to]): Move[] => [
-          { kind: 'slide', node: `ServiceStructure_Platform${level}_Left`, by: [-1.372, 0, 0], from, to },
-          { kind: 'slide', node: `ServiceStructure_Platform${level}_Right`, by: [1.372, 0, 0], from, to },
+          { kind: 'slide', node: `ServiceStructure_Platform${level}_Left`, by: [-1.372, 0, 0], from, to, machine: BY.platforms },
+          { kind: 'slide', node: `ServiceStructure_Platform${level}_Right`, by: [1.372, 0, 0], from, to, machine: BY.platforms },
         ]),
-        { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01, runs: ON_RAILS },
-        { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02, runs: ON_RAILS },
+        { kind: 'slide', by: [0, 0, -ROLL[0]!], from: T.rollback, to: T.cabIn - 0.01, runs: ON_RAILS, machine: BY.structure },
+        { kind: 'slide', by: [0, 0, -ROLL[1]!], from: T.launchPosition, to: T.cabAway - 0.02, runs: ON_RAILS, machine: BY.structure },
       ],
     },
     {
@@ -328,16 +416,16 @@ export function lc5Parts(day: PadDay): Part[] {
         // how it waits while the structure stands round the vehicle, and how it comes to the hatch: the day's
         ...day.tower,
         // away and down, by remote control
-        swing('CherryPicker_Jib', Z, TOWER.lower, T.cabAway, T.cabAway + 0.12),
-        swing('CherryPicker_Cab', Z, -TOWER.lower, T.cabAway, T.cabAway + 0.12),
+        swing('CherryPicker_Jib', Z, TOWER.lower, T.cabAway, T.cabAway + 0.12, BY.hydraulics),
+        swing('CherryPicker_Cab', Z, -TOWER.lower, T.cabAway, T.cabAway + 0.12, BY.hydraulics),
         // afterwards: jib folded, mast laid forward on its rest, legs up, and away
-        swing('CherryPicker_Jib', Z, -TOWER.fold, T.stow, T.stow + 0.03),
-        swing('CherryPicker_Mast', Z, -TOWER.stow, T.stow, T.stow + 0.07),
-        swing('CherryPicker_Cab', Z, TOWER.fold + TOWER.stow, T.stow, T.stow + 0.07),
-        swing('CherryPicker_Outrigger_1', X, -105, T.stow + 0.06, T.drive),
-        swing('CherryPicker_Outrigger_3', X, -105, T.stow + 0.06, T.drive),
-        swing('CherryPicker_Outrigger_2', X, 105, T.stow + 0.06, T.drive),
-        swing('CherryPicker_Outrigger_4', X, 105, T.stow + 0.06, T.drive),
+        swing('CherryPicker_Jib', Z, -TOWER.fold, T.stow, T.stow + 0.03, BY.hydraulics),
+        swing('CherryPicker_Mast', Z, -TOWER.stow, T.stow, T.stow + 0.07, BY.hydraulics),
+        swing('CherryPicker_Cab', Z, TOWER.fold + TOWER.stow, T.stow, T.stow + 0.07, BY.hydraulics),
+        swing('CherryPicker_Outrigger_1', X, -105, T.stow + 0.06, T.drive, BY.hydraulics),
+        swing('CherryPicker_Outrigger_3', X, -105, T.stow + 0.06, T.drive, BY.hydraulics),
+        swing('CherryPicker_Outrigger_2', X, 105, T.stow + 0.06, T.drive, BY.hydraulics),
+        swing('CherryPicker_Outrigger_4', X, 105, T.stow + 0.06, T.drive, BY.hydraulics),
         {
           kind: 'drive',
           from: T.drive,
@@ -359,6 +447,7 @@ export function lc5Parts(day: PadDay): Part[] {
           steered: 'CherryPicker_SteerWheel',
           axle: 'z',
           runs: ON_ROAD,
+          machine: BY.tower,
         },
       ],
     },
@@ -377,9 +466,9 @@ export function lc5Parts(day: PadDay): Part[] {
       order: 0,
       moves: [
         // straight out from the vehicle about the pin, until its head is on the pad (masts.py: resting)
-        swing('UmbilicalMast', fallAxis(MAST_AT.capsule + turn), 94.9, T.umbilical, T.umbilical + 0.035),
+        swing('UmbilicalMast', fallAxis(MAST_AT.capsule + turn), 94.9, T.umbilical, T.umbilical + 0.035, BY.bungee),
         // the umbilical swings on over the head as the mast goes down, and lies from it on the pad (estimated: how it fell is not recorded)
-        swing('UmbilicalMast_Cable', fallAxis(MAST_AT.capsule + turn), 49, T.umbilical, T.umbilical + 0.035),
+        swing('UmbilicalMast_Cable', fallAxis(MAST_AT.capsule + turn), 49, T.umbilical, T.umbilical + 0.035, BY.bungee),
       ],
     },
     {
@@ -388,7 +477,7 @@ export function lc5Parts(day: PadDay): Part[] {
       ...day.words.BoosterMast,
       explode: [0, 0, 0],
       order: 0,
-      moves: [swing('BoosterMast', fallAxis(MAST_AT.booster + turn), 93.7, T.boom, T.boom + 0.035)],
+      moves: [swing('BoosterMast', fallAxis(MAST_AT.booster + turn), 93.7, T.boom, T.boom + 0.035, BY.boom)],
     },
     {
       node: 'Hardstand',
@@ -455,6 +544,7 @@ export const spareTrailerLeaves = (from: number, to: number): Move[] => [
     steered: 'GroundEquipment_Tractor_SteerWheel',
     axle: 'z',
     runs: ON_ROAD,
+    machine: BY.tractor,
   },
   {
     kind: 'drive',
@@ -495,12 +585,13 @@ export const spareTrailerLeaves = (from: number, to: number): Move[] => [
     steered: 'GroundEquipment_Trailer_NoSteer',
     axle: 'x',
     runs: ON_ROAD,
+    machine: BY.trailer,
   },
 ];
 
 /** Hut `k` (1 or 2) dragged off on its skids by its pickup, straight out across the pad's edge to the road behind (estimated). */
 export const hutLeaves = (k: number, from: number, to: number): Move[] => [
-  { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from, to, runs: ON_ROAD },
+  { kind: 'slide', node: `GroundEquipment_Hut${k}`, by: [72, 0, 0], from, to, runs: ON_ROAD, machine: BY.skids },
   {
     kind: 'drive',
     node: `GroundEquipment_Tow${k}`,
@@ -519,6 +610,7 @@ export const hutLeaves = (k: number, from: number, to: number): Move[] => [
     steered: `GroundEquipment_Tow${k}_SteerWheel`,
     axle: 'z',
     runs: ON_ROAD,
+    machine: BY.pickup,
   },
 ];
 

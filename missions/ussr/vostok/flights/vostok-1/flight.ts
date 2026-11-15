@@ -2,6 +2,7 @@ import type { CabinDef, Flight, Keyframe, ModelDef, Move, Part } from '../../../
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import {
   busPart,
+  BY as SITE1_BY,
   comes,
   drives,
   leaves,
@@ -1282,6 +1283,7 @@ const padParts: Part[] = [
         ],
         2.7,
         0.357,
+        SITE1_BY.saloon,
       ),
     ],
   },
@@ -1324,6 +1326,7 @@ const padParts: Part[] = [
         ],
         3.3,
         0.5,
+        SITE1_BY.lorry,
       ),
     ],
   },
