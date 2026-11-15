@@ -77,7 +77,7 @@ export interface Flight {
   opens?: { at: number; model?: string; view?: string };
   /**
    * The weather it stood under at liftoff, as recorded (DayWeather): its launch site's sky is drawn from it. Left out,
-   * the site's own (`SiteDef.weather`), which is an estimate; with neither, a clear sky, which is one too.
+   * the place's own (`PlaceDef.weather`), which is an estimate; with neither, a clear sky, which is one too.
    */
   weather?: DayWeather;
   crew: string[];

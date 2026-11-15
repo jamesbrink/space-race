@@ -8,7 +8,7 @@ import { grain } from './surface.ts';
 
 /**
  * What stands round a place beyond its own model and is seen from it: the assembly building of Site 2 round Site 1
- * (`SiteDef.around`), the Cape's neighbouring launch complexes round LC-5 (missions/usa/places/cape-canaveral/scenery.ts). A model of its own, one top-level
+ * (a `SiteAround` in Tyuratam's ground.ts), the Cape's neighbouring launch complexes round LC-5 (missions/usa/places/cape-canaveral/scenery.ts). A model of its own, one top-level
  * node a thing, fetched with the scene at each of its levels of detail and set down on the land as scenery. Scenery is
  * never measured or framed, so it does not pull the pad's shadow maps off the pad as a far building in the place's own
  * model did (site-1.md, "On the horizon").
@@ -194,7 +194,7 @@ export class Around implements Levelled {
 }
 
 /**
- * What stands round a site (`SiteDef.around`), each thing on the land drawn under it: `lift(x, z, half)` is how far to
+ * What stands round a site (`SiteAround`), each thing on the land drawn under it: `lift(x, z, half)` is how far to
  * raise a thing whose middle is (x, z) in the scene and which reaches `half` metres from it, over where its model has
  * it, so that it stands on the land and not in it or over it.
  */
