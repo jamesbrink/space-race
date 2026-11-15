@@ -32,7 +32,7 @@
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { elementsOf, period, type State, step } from '../world/orbit.ts';
+import { type State, step } from '../world/orbit.ts';
 import { MEAN_RADIUS } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { floorAt } from './forces.ts';
@@ -43,6 +43,7 @@ import {
   type AscentSample,
   type AscentSummary,
   airOf,
+  atCutoff,
   flowOf,
   integral,
   lawOf,
@@ -860,20 +861,7 @@ export class StagedTally {
       if (did) this.at[m.id] = a;
     }
     const last = o.stages.length - 1;
-    if (v.burning(before, last) && !v.burning(s, last)) {
-      const el = elementsOf(before.r, before.v);
-      const radius = o.orbit.radius.value;
-      Object.assign(sum, {
-        cutoffAt: before.t,
-        perigee: el.a * (1 - el.e) - radius,
-        apogee: el.a * (1 + el.e) - radius,
-        inclination: el.i / DEG,
-        period: period(el.a),
-        cutoffAltitude: length(before.r) - radius,
-        cutoffSpeed: length(before.v),
-        cutoffClimb: Math.asin(dot(unit(before.r), unit(before.v))) / DEG,
-      });
-    }
+    if (v.burning(before, last) && !v.burning(s, last)) Object.assign(sum, atCutoff(o, before.t, before, v.start().r));
   }
 }
 

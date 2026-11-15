@@ -91,6 +91,36 @@ export interface AscentSample {
   thrust: number;
 }
 
+/**
+ * The ascent's summary at the last cutoff, from the state there: the osculating orbit over the record's reference ball,
+ * the height, speed and climb, and how far round from the pad's place at liftoff (`pad`, in the same frame). One for the
+ * batch run (`ascend`) and the live vehicle (stagedlive.ts `StagedTally`).
+ */
+export function atCutoff(
+  o: OrbitalFlight,
+  t: number,
+  s: { r: Vec3; v: Vec3 },
+  pad: Vec3,
+): Pick<
+  AscentSummary,
+  'cutoffAt' | 'perigee' | 'apogee' | 'inclination' | 'period' | 'cutoffAltitude' | 'cutoffSpeed' | 'cutoffClimb' | 'arc' | 'anomaly'
+> {
+  const radius = o.orbit.radius.value;
+  const el = elementsOf(s.r, s.v);
+  return {
+    cutoffAt: t,
+    perigee: el.a * (1 - el.e) - radius,
+    apogee: el.a * (1 + el.e) - radius,
+    inclination: el.i / DEG,
+    period: period(el.a),
+    cutoffAltitude: length(s.r) - radius,
+    cutoffSpeed: length(s.v),
+    cutoffClimb: Math.asin(dot(unit(s.r), unit(s.v))) / DEG,
+    arc: angleBetween(pad, s.r) / DEG,
+    anomaly: el.nu / DEG,
+  };
+}
+
 /** What the ascent gives figures for: the summary's fields, by name, for `AscentCheck` ids. */
 export interface AscentSummary {
   /** The greatest dynamic pressure, Pa, and when. */
@@ -300,7 +330,6 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
   const g = a.guidance;
   const spin = frame.spin;
-  const radius = o.orbit.radius.value;
   const law = lawOf(o, site, frame, x);
   const { pad, n } = law;
   const stack = stackOf(o);
@@ -466,19 +495,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
     for (const e of o.events) if (e.at.value === t) at[e.id] = s;
-    if (t === plan[plan.length - 1]!.to) {
-      const el = elementsOf(state.r, state.v);
-      summary.cutoffAt = t;
-      summary.perigee = el.a * (1 - el.e) - radius;
-      summary.apogee = el.a * (1 + el.e) - radius;
-      summary.inclination = el.i / DEG;
-      summary.period = period(el.a);
-      summary.cutoffAltitude = length(state.r) - radius;
-      summary.cutoffSpeed = length(state.v);
-      summary.cutoffClimb = Math.asin(dot(unit(state.r), unit(state.v))) / DEG;
-      summary.arc = angleBetween(pad, state.r) / DEG;
-      summary.anomaly = el.nu / DEG;
-    }
+    if (t === plan[plan.length - 1]!.to) Object.assign(summary, atCutoff(o, t, state, pad));
     // the law's own changes, at the end of a step
     if (mode === 'vertical' && t >= tVertical) mode = 'turn';
     if (mode === 'turn' && t >= tTurn) {
