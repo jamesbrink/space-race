@@ -1,0 +1,52 @@
+/* The history's words (ui/history.ts), the same wherever they are told: on the Lineup's card and in a flight's gallery (its History tab).
+   The panel's glass round them is the page's. --tint is the programme's colour where the page has one (the Lineup sets it on the card), the
+   accent where it has not. */
+.hist-card { --tint: var(--amber); padding: 12px 18px 6px; }
+.hist-card h3 { margin: 20px -18px 0; padding: 12px 18px 6px; border-top: 1px solid var(--line); font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.hist-headline { margin-top: 12px; font: 500 15.5px/1.35 var(--sans); color: var(--ink); text-wrap: balance; }
+.hist-card > .hist-headline:first-child { margin-top: 6px; }
+.hist-story { margin-top: 8px; color: #dcd7cb; font-size: 13.5px; }
+.hist-story p + p, .hist-told p + p { margin-top: 8px; }
+.hist-firsts { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; padding: 0; }
+.hist-firsts li { padding: 3px 8px; font: 11.5px/1.35 var(--sans); color: var(--ink); border: 1px solid var(--tint); border-radius: 10px; background: rgba(243, 239, 230, 0.05); }
+/* the buttons under it: the one that goes somewhere is lit */
+.hist-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.hist-actions button { display: inline-flex; align-items: center; padding: 8px 12px; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+.hist-actions button:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+.hist-actions .hist-go { color: #0b0a07; background: var(--amber); border-color: var(--amber); font-weight: 600; }
+.hist-actions .hist-go:is(:hover, :focus-visible) { color: #0b0a07; background: #ffd591; border-color: #ffd591; }
+.hist-actions .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+/* words told at more length, each with where it is from and how sure it is */
+.hist-told { color: #d6d1c5; font-size: 13px; }
+.hist-told small, .hist-text small { margin-top: 8px; font-size: 11.5px; color: var(--faint); }
+.hist-told h4 { margin: 12px 0 3px; font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.hist-told h4:first-child { margin-top: 0; }
+/* who flew (and, in a gallery, its programme): each opens to what the history tells of them */
+.hist-crew { list-style: none; padding: 0; }
+.hist-crew li + li { border-top: 1px solid rgba(243, 239, 230, 0.07); }
+.hist-crew button, .hist-crew li > p { display: grid; grid-template-columns: 1fr auto 14px; align-items: baseline; gap: 2px 10px; width: 100%; padding: 8px 0; text-align: left; }
+.hist-crew .name { font-weight: 600; }
+/* (a name in its own script beside it: plain, not the parts list's tag) */
+.hist-crew .name em { display: block; margin: 1px 0 0; padding: 0; border: 0; font: 400 12.5px/1.35 var(--sans); letter-spacing: 0; text-transform: none; color: var(--dim); vertical-align: baseline; }
+.hist-crew .what { grid-column: auto; font: 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--faint); white-space: nowrap; }
+.hist-crew .chevron { align-self: center; display: block; color: var(--faint); }
+.hist-crew button:is(:hover, :focus-visible) .name { color: var(--amber); }
+.hist-crew button[aria-expanded='false'] + .hist-told { display: none; }
+.hist-crew .hist-told { padding: 2px 0 12px; }
+/* moments of the race: a day, and what happened */
+.hist-moments { list-style: none; padding: 4px 0 0; }
+.hist-moments li > :is(button, div) { display: grid; grid-template-columns: 82px 1fr; gap: 0 8px; width: 100%; padding: 10px 18px 10px 16px; text-align: left; border-left: 2px solid var(--tint); }
+.hist-moments li + li { border-top: 1px solid rgba(243, 239, 230, 0.07); }
+.hist-moments time { grid-row: span 3; padding-top: 2px; font: 10.5px/1.5 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); }
+.hist-moments .name, .hist-moments .what, .hist-moments .hist-text { grid-column: 2; }
+.hist-moments .hist-text { margin-top: 6px; font-size: 13px; color: #d6d1c5; }
+.hist-moments li > div .name { font-weight: 500; color: var(--dim); }
+.hist-moments button:is(:hover, :focus-visible) { background: rgba(243, 239, 230, 0.07); }
+/* (in a card, its own moments run to its edges, as the headings' rules do) */
+.hist-card .hist-moments { margin: 0 -18px; padding: 0; }
+.hist-card .hist-moments li > div .name { font-weight: 600; color: var(--ink); }
+
+@media (max-width: 960px), (max-height: 520px) {
+  .hist-actions button { min-height: 44px; padding: 0 14px; }
+  .hist-crew button { min-height: 44px; }
+}

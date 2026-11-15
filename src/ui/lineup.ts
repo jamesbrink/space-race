@@ -1,4 +1,5 @@
 import './lineup.css';
+import { crewMarkup, momentMarkup, namedMarkup, programmeMarkup, shortDay, storyMarkup } from './history.ts';
 import type { Person } from '../../missions/history.ts';
 import type { LineupRow } from '../app/address.ts';
 import { CURTAIN, Curtain } from '../app/curtain.ts';
@@ -21,7 +22,7 @@ import {
   yearOf,
 } from '../app/lineup/row.ts';
 import { prefs } from '../app/prefs.ts';
-import type { Confidence, Spec } from '../types.ts';
+import type { Spec } from '../types.ts';
 import { esc } from '../util/dom.ts';
 import { tier } from '../viewer/tier.ts';
 import { dock, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
@@ -114,19 +115,6 @@ export interface Picture {
 
 const TABS = ['View', 'Vehicle', 'Programmes', 'Timeline'] as const;
 type Tab = (typeof TABS)[number];
-
-/** Text as paragraphs: a blank line parts them (the history's one convention). */
-const paras = (text: string): string =>
-  text
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p>${esc(p)}</p>`)
-    .join('');
-
-/** A short day: 12 Apr 1961. */
-const shortDay = (iso: string): string =>
-  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 const overlap = (a: Rect, b: Rect, air = 0): boolean =>
   a.left < b.right + air && a.right > b.left - air && a.top < b.bottom + air && a.bottom > b.top - air;
@@ -620,10 +608,6 @@ export class LineupUi {
       at >= 0 ? `${String(at + 1).padStart(2, '0')}/${String(standing.length).padStart(2, '0')}` : '';
   }
 
-  private conf(c: Confidence | null): string {
-    return c ? dot(c) : '';
-  }
-
   /** How tall it stands in the row, as a row of the figures: the flight's own figure where it gives one to match, with its confidence; else as modelled. */
   private stands(e: Entry): { text: string; says: string; dot: string } | null {
     const h = this.heights.get(e.flight.id);
@@ -641,7 +625,7 @@ export class LineupUi {
       ${
         section
           ? `<div class="lu-head" style="--tint: ${css(section.tint)}"><p class="lu-eyebrow"><i></i>${esc(section.nation)} <b>·</b> ${esc(section.years)}</p><h2 class="lu-big">${esc(section.name)}</h2>
-             <p class="lu-actions"><button data-tab-to="Programmes">Read about it</button><button data-whole>Whole row</button></p></div>`
+             <p class="hist-actions"><button data-tab-to="Programmes">Read about it</button><button data-whole>Whole row</button></p></div>`
           : `<p class="fine lu-hint">${this.view.picking ? 'Choose the one to stand beside it.' : 'Choose a vehicle: here, on the timeline, or in the row itself.'}</p>`
       }
       <ol class="parts lu-list">${standing
@@ -674,34 +658,22 @@ export class LineupUi {
     const height = this.heights.get(f.id);
     const stands =
       height?.spec && figures.some((x) => x.label === height.spec!.label && x.value === height.spec!.value) ? null : this.stands(e);
-    const lived = (p: Person): string => (p.died ? `${yearOf(p.born)} to ${yearOf(p.died)}` : `born ${yearOf(p.born)}`);
-    const story = e.story?.story ? paras(e.story.story) : `<p>${esc(f.summary)}</p>`;
     return `
-      <article class="lu-card" style="--tint: ${css(e.tint)}">
+      <article class="lu-card hist-card" style="--tint: ${css(e.tint)}">
         <p class="lu-eyebrow"><i></i><button data-section="${esc(section.id)}" title="${esc(section.name)}: its section of the row, and its story">${esc(section.name)}</button> <b>·</b> ${esc(f.nation)} <b>·</b> ${String(all.indexOf(e) + 1).padStart(2, '0')} of ${all.length}</p>
         <h2 class="lu-big">${esc(f.callsign)}</h2>
         <p class="sub">${esc(f.designation)} <b>·</b> ${day(f.launch)}</p>
-        <p class="lu-headline">${esc(e.headline)}</p>
-        <div class="lu-story">${story}</div>
-        ${e.firsts.length && e.story ? `<ul class="lu-firsts" aria-label="Firsts">${e.firsts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-        <p class="lu-actions">
-          <button class="lu-go" data-gallery="${esc(f.id)}" title="Its gallery: turn it, take it apart, cut it open (O)">Open its gallery<i class="arrow"></i></button>
+        ${storyMarkup(e.headline, e.story?.story || f.summary, e.story ? e.firsts : [])}
+        <p class="hist-actions">
+          <button class="hist-go" data-gallery="${esc(f.id)}" title="Its gallery: turn it, take it apart, cut it open (O)">Open its gallery<i class="arrow"></i></button>
           <button data-pick class="switch" aria-pressed="${this.view.picking}" title="Choose another to stand beside it (X)">Compare</button>
         </p>
-        ${
-          e.story?.named
-            ? `<h3>The name</h3><div class="lu-told">${paras(e.story.named.why)}<small>${dot(e.story.named.confidence)}${esc(e.story.named.source)}</small></div>`
-            : ''
-        }
-        <h3>${crew.length > 1 ? 'Crew' : 'Pilot'}</h3>
-        <ul class="lu-crew">${crew
-          .map(({ name, person }) =>
-            person
-              ? `<li><button data-person="${esc(person.id)}" aria-expanded="${this.openPerson === person.id}"><span class="name">${esc(name)}${person.native ? `<em lang="ru">${esc(person.native)}</em>` : ''}</span><span class="what">${esc(lived(person))}</span><i class="chevron"></i></button>
-                 <div class="lu-told">${paras(person.bio)}${this.flown(person, f.id)}<small>${dot(person.confidence)}${esc(person.source)}</small></div></li>`
-              : `<li><p><span class="name">${esc(name)}</span></p></li>`,
-          )
-          .join('')}</ul>
+        ${e.story?.named ? namedMarkup(e.story.named) : ''}
+        ${crewMarkup(
+          crew,
+          (id) => this.openPerson === id,
+          (person) => this.flown(person, f.id),
+        )}
         <h3>Key figures</h3>
         <table>
           ${stands ? `<tr><th>${stands.dot}Stands here<small>${esc(stands.says)}</small></th><td>${esc(stands.text)}</td></tr>` : ''}
@@ -743,7 +715,7 @@ export class LineupUi {
     const slots = SLOTS.filter(([slot]) => rows.some((r) => r.figures.some((x) => x.slot === slot)));
     return `
       <div class="lu-compare">
-        <p class="lu-actions"><button data-pick class="switch" aria-pressed="${this.view.picking}" title="Choose another to stand with them (X)">Add another</button><button data-whole title="Back to the whole row (Esc)">Whole row</button></p>
+        <p class="hist-actions"><button data-pick class="switch" aria-pressed="${this.view.picking}" title="Choose another to stand with them (X)">Add another</button><button data-whole title="Back to the whole row (Esc)">Whole row</button></p>
         <div class="lu-scroll"><table>
           <thead><tr><th></th>${rows
             .map(
@@ -788,19 +760,15 @@ export class LineupUi {
           <span class="name"><i class="lu-chip"></i>${esc(s.name)}</span>
           <span class="what">${esc(s.nation)} <b>·</b> ${esc(s.years)} <b>·</b> ${s.flights.length} ${s.flights.length === 1 ? 'vehicle' : 'vehicles'} here</span>
         </button>
-        <div class="lu-told lu-programme">
-          ${
-            told
-              ? `<h4>Why</h4>${paras(told.why)}<h4>How</h4>${paras(told.how)}<h4>What it left</h4>${paras(told.legacy)}<small>${esc(told.source)}</small>`
-              : '<p>Its story is not written here yet. Its vehicles are in the row:</p>'
-          }
+        <div class="hist-told lu-programme">
+          ${told ? programmeMarkup(told) : '<p>Its story is not written here yet. Its vehicles are in the row:</p>'}
           <p class="lu-chips">${s.flights
             .map((id) => {
               const e = entries.find((x) => x.flight.id === id)!;
               return `<button data-flight="${esc(id)}">${esc(e.flight.callsign)}</button>`;
             })
             .join('')}</p>
-          <p class="lu-actions"><button data-whole>Whole row</button></p>
+          <p class="hist-actions"><button data-whole>Whole row</button></p>
         </div></li>`;
       })
       .join('')}</ol>`;
@@ -810,15 +778,16 @@ export class LineupUi {
   private moments(): string {
     const { moments, entries } = this.data;
     const nationsOf = [...new Set([...entries.map((e) => e.flight.nation), ...moments.map((m) => m.nation)])];
-    return `<ol class="lu-moments">${moments
+    return `<ol class="hist-moments lu-moments">${moments
       .map((m, i) => {
         const e = m.built ? this.entry(m.flight) : null;
         const tint = e ? e.tint : tintOf(nationsOf.indexOf(m.nation), 0);
-        const body = `
-          <time datetime="${esc(m.date)}">${esc(shortDay(m.date))}</time>
-          <span class="name">${this.conf(m.confidence)}${esc(m.title)}</span>
-          ${e ? `<span class="what">${esc(e.flight.callsign)} <b>·</b> ${esc(e.flight.designation)}</span>` : `<span class="what">${esc(m.nation)}${m.flight ? ' <b>·</b> not built here yet' : ''}</span>`}
-          ${m.text ? `<span class="lu-text">${paras(m.text)}${m.source ? `<small>${esc(m.source)}</small>` : ''}</span>` : ''}`;
+        const body = momentMarkup({
+          ...m,
+          what: e
+            ? `${esc(e.flight.callsign)} <b>·</b> ${esc(e.flight.designation)}`
+            : `${esc(m.nation)}${m.flight ? ' <b>·</b> not built here yet' : ''}`,
+        });
         const chosen = Boolean(e && e.flight.id === this.view.chosen);
         return `<li data-at="${i}" style="--tint: ${css(tint)}" class="${chosen ? 'chosen' : ''}">${e ? `<button data-flight="${esc(e.flight.id)}">${body}</button>` : `<div>${body}</div>`}</li>`;
       })

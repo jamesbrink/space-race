@@ -149,7 +149,7 @@ await scenario('card', async () => {
     return {
       figures: pane.querySelectorAll('table tr').length,
       confidences: pane.querySelectorAll('table .conf').length,
-      crew: pane.querySelectorAll('.lu-crew li').length,
+      crew: pane.querySelectorAll('.hist-crew li').length,
       gallery: pane.querySelector('[data-gallery]')?.dataset.gallery,
       tall: [...pane.querySelectorAll('table tr th')].some((th) => /^(Stands here|Height on the pad)/.test(th.textContent)),
     };
