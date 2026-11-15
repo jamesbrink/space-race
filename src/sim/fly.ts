@@ -29,7 +29,7 @@
  */
 import type { Curve, Trajectory } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
-import { gravity as orbitGravity } from '../world/orbit.ts';
+import { EARTH_J2, gravity as orbitGravity } from '../world/orbit.ts';
 import {
   add,
   angleBetween,
@@ -50,24 +50,23 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { blowing, blowOf, upAt, upOver } from './forces.ts';
+import { G0 } from '../world/bodies.ts';
 
-/** Standard gravity, m/s^2: what a "g" is, and what turns specific impulse into flow. */
-export const G0 = 9.80665;
-/** The Earth's oblateness: the second zonal harmonic of WGS 84's gravity model (EGM96's C20, unnormalised). */
-export const J2 = 1.082_629_989e-3;
+/** Standard gravity (world/bodies.ts), and the Earth's oblateness (world/orbit.ts `EARTH_J2`), under the names the simulator has used. */
+export { G0, EARTH_J2 as J2 };
 /** Sea-level air pressure, Pa: what a sea-level thrust is quoted at. */
 export const P0 = 101_325;
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
 
 /** Gravity at a position in an Earth-centred frame whose +Z is the pole, m/s^2. `j2`: the oblateness (0 for a point mass). */
-export const gravity = (r: Vec3, j2 = J2): Vec3 => orbitGravity(r, j2);
+export const gravity = (r: Vec3, j2 = EARTH_J2): Vec3 => orbitGravity(r, j2);
 
 /**
  * Coast: a position and velocity carried forward under gravity alone, by the same fixed-step
  * Runge-Kutta the flight uses. For orbits, and for checking the integrator against Kepler.
  */
-export function coast(r: Vec3, v: Vec3, seconds: number, step = 1, j2 = J2): { r: Vec3; v: Vec3 } {
+export function coast(r: Vec3, v: Vec3, seconds: number, step = 1, j2 = EARTH_J2): { r: Vec3; v: Vec3 } {
   const steps = Math.max(1, Math.round(seconds / step));
   const h = seconds / steps;
   const at = (a: Vec3, b: Vec3, k: number): Vec3 => add(a, scale(b, k));

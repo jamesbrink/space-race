@@ -5,6 +5,7 @@ import { type Sounds, silent } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 import { isTyping } from '../../util/keys.ts';
+import { G0 } from '../../world/bodies.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -49,7 +50,8 @@ export function gradePace(speed: number, grade: number): number {
   const most = STAIR_WALK + (STAIR_RUN - STAIR_WALK) * Math.min(1, Math.max(0, (speed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED)));
   return speed + (Math.min(speed, most) - speed) * k * k * (3 - 2 * k);
 }
-export const GRAVITY = 9.81;
+/** What a walker falls by, m/s^2: standard gravity (world/bodies.ts). */
+export const GRAVITY = G0;
 /** How high a standing jump lifts the feet, metres: an ordinary hop, not an athlete's. */
 export const JUMP_HEIGHT = 0.4;
 /** The speed the feet leave the ground at to reach it: v² = 2gh. */

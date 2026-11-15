@@ -74,7 +74,9 @@ test('a limp figure thrown along a floor comes to rest in the same place at the 
     return { kind, t, x: doll.hips.x - x0, fastest };
   });
   const [steady] = runs;
-  assert.ok(steady.t < 4, `at a steady sixty a second it lies still after ${steady.t} s`);
+  // (how long it tumbles is chaotic in its inputs: gravity taken as 9.81 it lay still after 2.28 s, 1.84 m on; as standard
+  // gravity, 9.80665, after 4.45 s, 2.21 m on. What is held is that every display agrees, below)
+  assert.ok(steady.t < 5, `at a steady sixty a second it lies still after ${steady.t} s`);
   for (const run of runs) {
     assert.ok(Math.abs(run.t - steady.t) < 0.1, `${run.kind}: at rest after ${run.t} s, against ${steady.t} s`);
     assert.ok(Math.abs(run.x - steady.x) < 0.05, `${run.kind}: it went ${run.x} m, against ${steady.x} m`);

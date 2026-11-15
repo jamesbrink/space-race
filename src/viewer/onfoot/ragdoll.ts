@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 // (with its extension: the tests run this file under Node, which adds none)
 import { halfHips, type Joint, jointKey } from './gait.ts';
+import { G0 } from '../../world/bodies.ts';
 
 /**
  * A figure gone limp: what a long fall does to it. No physics engine yet: a handful of points
@@ -119,7 +120,6 @@ const SMALL = 0.06;
  */
 export type Collide = (point: THREE.Vector3, radius: number, from?: THREE.Vector3) => THREE.Vector3 | null;
 
-const GRAVITY = 9.81;
 const t1 = new THREE.Vector3();
 const t2 = new THREE.Vector3();
 const t3 = new THREE.Vector3();
@@ -186,7 +186,7 @@ export class Limp {
 
   /** A tick: gravity, what holds it together, the world. */
   step(dt: number, collide: Collide, passes = 12): void {
-    const g = GRAVITY * dt * dt;
+    const g = G0 * dt * dt;
     this.points.forEach((p, i) => {
       const was = this.before[i]!;
       const keep = this.touching[i] ? GRIP : AIR;

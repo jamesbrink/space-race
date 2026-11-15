@@ -63,6 +63,13 @@ export interface Body {
   magnitude?: { v10: number; phase: readonly [number, number, number]; phaseOrigin: number; confidence: Confidence; source: string };
 }
 
+/**
+ * Standard gravity, m/s^2: what a "g" is, what turns specific impulse into flow, and what a kilogram-force weighs.
+ * Exact by definition (documented: 3rd CGPM, 1901). The pull felt at the Earth's surface differs from it by under 0.3 per
+ * cent from the equator to the poles; anything walked, dropped or hung on the Earth here falls by it.
+ */
+export const G0 = 9.80665;
+
 /** Metres in an astronomical unit: exact by definition (IAU 2012 Resolution B1). */
 export const AU = 149_597_870_700;
 /** Speed of light, m/s: exact by definition. */
@@ -315,6 +322,12 @@ export const NEPTUNE: Body = {
 };
 
 /** The planets seen in the sky from the Earth, nearest the Sun first. */
+/**
+ * A body's gravity at its equator from its GM and radius alone, m/s^2 (derived: GM / a^2; no rotation, no oblateness). The
+ * Earth's is 9.798, the Moon's 1.62.
+ */
+export const surfaceGravity = (body: Body): number => body.gm.value / body.equatorialRadius.value ** 2;
+
 export const PLANETS: readonly Body[] = [MERCURY, VENUS, MARS, JUPITER, SATURN, URANUS, NEPTUNE];
 /** Every body, the Sun first. */
 export const BODIES: readonly Body[] = [SUN, MERCURY, VENUS, EARTH, MOON, MARS, JUPITER, SATURN, URANUS, NEPTUNE];

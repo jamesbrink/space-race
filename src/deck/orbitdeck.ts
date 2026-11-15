@@ -39,7 +39,7 @@ import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import type { Clock } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
-import { elementsOf, subpoint } from '../world/orbit.ts';
+import { elementsOf, period, subpoint } from '../world/orbit.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from '../world/time.ts';
 
 /**
@@ -1404,7 +1404,7 @@ export class OrbitDeck extends Deck {
     set('mach', down ? '0.00' : s.mach.toFixed(2));
     set('apogee', orbit ? ((el.a * (1 + el.e) - ball) / KM).toFixed(0) : '—');
     set('perigee', orbit ? ((el.a * (1 - el.e) - ball) / KM).toFixed(0) : '—');
-    set('period', orbit && el.a > ball ? ((2 * Math.PI * Math.sqrt(el.a ** 3 / 3.986004418e14)) / 60).toFixed(1) : '—');
+    set('period', orbit && el.a > ball ? (period(el.a) / 60).toFixed(1) : '—');
     set('q', (s.q / 1000).toFixed(1));
     set('alpha', t > 0 && s.groundSpeed > 5 && s.q > 1 ? s.alpha.toFixed(1) : '–');
     set('range', (s.range / KM).toFixed(s.range < 99_950 ? 2 : 1));

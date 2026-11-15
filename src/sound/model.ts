@@ -31,10 +31,10 @@
  */
 import { atmosphere } from '../sim/atmosphere.ts';
 import { clamp, lerp, smoothstep } from '../util/math.ts';
+import { G0 } from '../world/bodies.ts';
 
 export type Vec = readonly [number, number, number];
 
-const G0 = 9.80665;
 const RHO0 = atmosphere(0).density;
 /** The reference sound pressure, Pa, and intensity, W/m^2: 0 dB. */
 const P_REF = 2e-5;

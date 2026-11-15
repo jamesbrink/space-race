@@ -4,6 +4,7 @@ import type { ModelDef } from '../../types.ts';
 import { jointKey } from './gait.ts';
 import { Hose, type KeepOut } from './hose.ts';
 import { type Collide, MOST_TICKS, TICK } from './ragdoll.ts';
+import { G0 } from '../../world/bodies.ts';
 
 /** What a figure carries, as its flight declares it (types.ts: ModelDef.walker.carries). */
 export type CarryDef = NonNullable<NonNullable<ModelDef['walker']>['carries']>[number];
@@ -240,7 +241,7 @@ export class Tossed {
         const v = v1.subVectors(p, was).multiplyScalar(this.grounded ? 0.6 : 0.995);
         was.copy(p);
         this.start[i]!.copy(p);
-        p.add(v).setY(p.y - 9.81 * h * h);
+        p.add(v).setY(p.y - G0 * h * h);
       });
       for (let pass = 0; pass < 8; pass++) {
         for (const [i, j, length] of this.sticks) {

@@ -1,3 +1,4 @@
+import { G0 } from '../world/bodies.ts';
 /**
  * The air: the U.S. Standard Atmosphere, 1976 (NOAA-S/T 76-1562). Below 86 km it is the
  * standard's own definition, seven layers of constant temperature gradient in geopotential
@@ -9,7 +10,6 @@
  * the flight's own planners used the annual Patrick AFB atmosphere, which is not reproduced here.
  */
 
-const G0 = 9.80665;
 /** Specific gas constant of dry air, J/(kg K), and the ratio of its specific heats. */
 const R = 287.053;
 const GAMMA = 1.4;

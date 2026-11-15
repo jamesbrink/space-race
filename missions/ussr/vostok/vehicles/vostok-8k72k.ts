@@ -10,6 +10,7 @@
 import type { AscentCheck, AscentRecord, Guidance, StageRecord } from '../../../../src/sim/orbital.ts';
 import type { Curve, Measure, ShedBody } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
+import { G0 } from '../../../../src/world/bodies.ts';
 
 /** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
 export const BOOSTERS: [letter: string, block: string, az: number][] = [
@@ -19,7 +20,7 @@ export const BOOSTERS: [letter: string, block: string, az: number][] = [
   ['D', 'Д', 270],
 ];
 
-export const G0 = 9.80665;
+export { G0 };
 export const SIDDIQI = 'Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
 export const ZAK = 'Zak, RussianSpaceWeb';
 export const ENERGOMASH = 'NPO Energomash’s table by vehicle, row 8K72K, as reproduced by Brügge (b14643.eu): secondary';

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { G0 } from '../../world/bodies.ts';
 
 /**
  * A hose, a cable, a tether: something of fixed length hanging between two things that move.
@@ -19,8 +20,7 @@ export interface KeepOut {
   top: number;
 }
 
-/** How hard gravity pulls the chain, m/s², and how much of its motion it keeps from one tick to the next (a hose is not a pendulum: it settles). */
-const GRAVITY = 9.81;
+/** How much of its motion the chain keeps from one tick to the next (a hose is not a pendulum: it settles); gravity pulls it by G0. */
 const KEEP = 0.9;
 /** How long a tick of the chain is, seconds, whatever the frames are, and the most ticks in one frame. */
 const TICK = 1 / 60;
@@ -54,7 +54,7 @@ export function relax(
       const at = points[i * 3 + k]!;
       const moved = (at - before[i * 3 + k]!) * KEEP;
       before[i * 3 + k] = at;
-      points[i * 3 + k] = at + moved - (k === 1 ? GRAVITY * dt * dt : 0);
+      points[i * 3 + k] = at + moved - (k === 1 ? G0 * dt * dt : 0);
     }
   const pin = () => {
     for (let k = 0; k < 3; k++) {
