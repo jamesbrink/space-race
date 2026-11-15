@@ -95,6 +95,23 @@ and the rest are the press kit's round figures from a week before.
   estimates.
 - **The flown ship** is at the Grissom Memorial at Mitchell, Indiana, and has not been compared.
 
+## What the model gets wrong or leaves out
+
+The type's list is [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "What the model gets wrong or leaves
+out". Of what was No. 3's own:
+
+- **Not built:** the re-entry module's batteries, the OAMS chambers' short-life build, the B packages without their
+  burst diaphragms, the S-band transponder, the urine line, the Z100 separation switches and the recovery light's
+  wiring ("This ship and the others", the rows marked "no"). The drogue mortar's steel breech is said on the part,
+  not built.
+- **Estimated in form and place:** the adapter's three batteries and its one water tank; where on each hatch the two
+  experiments stand, and where on the cone the landing gear door with the re-entry experiment is.
+- **The forward face's cover** is as photographed on 6 January, and what was behind it is not found.
+- **The paint** is placed by eye off the liftoff's photograph, and the right side's is the left's, mirrored; the fine
+  lines down the equipment section are not modelled.
+- **The ejection seats are the type's**, drawn from two seats, one of them a spare that had been fitted in this
+  spacecraft.
+
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 3".

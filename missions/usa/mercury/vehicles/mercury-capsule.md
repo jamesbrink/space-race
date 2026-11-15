@@ -104,3 +104,24 @@ turned frame; Freedom 7's script prints it.
 
 `wall` builds a wall of revolution with openings left in it (a hatch, a window, a door), their
 angles whole multiples of 2.5° so that the facets of one band meet those of the next.
+
+## What the model gets wrong or leaves out
+
+Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights/mr-3-freedom-7/spacecraft.md),
+"What the model gets wrong or leaves out"; these are the ones that belong to the parts built here.
+
+- **The cone's upper end** is the derived 58.38 in, not SEDR 104's 57.21 ("Open: where the cone meets the cylinder").
+- **The window's station is estimated**, to 1.5 in, and the far side (the seams from the hatch round to 165°, the
+  periscope's door, the umbilical, Liberty Bell 7's lettering) was laid out against where the window stood before and
+  not read again ("Where the window stands").
+- **The shingles are a regular layout** fitted to photographs; real ones vary and are cut round fittings.
+- **The landing bag** is a flat ring standing in for the folded bag; it does not deploy.
+- **The retropack's straps** run from its sides instead of meeting under its centre at one explosive bolt, and its
+  motors are not canted toward the centre of mass.
+- **The escape tower:** the jettison motor has one nozzle, where it had three; the bracing is one diagonal a bay.
+- **The periscope's objective** is a lens over three inches of barrel, not the instrument's optics; its door has no
+  latch, seal or spring, and the motor, gear box and roller guides are not drawn.
+- **The antenna canister's diameter** disagrees with the one document that states it.
+- **That No. 11's shared parts were No. 7's** rests, for the canister, the tower and the retropack, on nothing read
+  saying otherwise.
+

@@ -71,7 +71,7 @@ board was weighed (November 2026) and not built: the inside is already its own s
 detail only and drawn only on board, cut open or from within 30 m (`viewer/cabin.ts`: `seen`), so nothing is saved by a
 second file; two cabins would be two sets of needles, lamps and controls to keep in step, two bakes of shade and a
 change from one to the other that must not be a cut; and from the couch is where a phone has least memory to spare
-(473 of 500 MiB: rendering.md, "Memory"). What was wrong from the couch was wrong, not coarse: a port's ring wound inside
+(rendering.md, "Memory"). What was wrong from the couch was wrong, not coarse: a port's ring wound inside
 out and turned about the wrong line, shade asked at a vertex under a clip, plain boxes. Those are put right here, for
 both views. If the cabin outgrows the cutaway on a phone, the place to split is `srlib.interior()` (a level above it
 for what is seen only from the seat), not a second script.
@@ -97,3 +97,27 @@ described by `cabin.ts` beside this file from what the models already have: the 
 hidden from inside it, the floodlights and their three-way switch, the window, and the periscope (none on Faith 7). Their
 instruments, telelights and controls are nodes of the model (`Gauge_*`, `Tele_*`, `Ctl_*`) but are not yet named in any
 flight's data, so the pointer names none of them and none reads anything: each flight needs its own words for them.
+
+## What the model gets wrong or leaves out
+
+No. 7's fit in full is in [Freedom 7's spacecraft.md](../flights/mr-3-freedom-7/spacecraft.md), "What the model gets
+wrong or leaves out"; what holds for every cabin built from this module:
+
+- **What the pilot sees, not a survey of the installation.** Behind the panel each case has one connector and lead and
+  a laced trunk; the wall's harnesses and cases are of no particular kind, their data plates blank; the insulation
+  behind the lining, placards, harness straps and the loose equipment (flashlight, food, tape recorder, batteries)
+  are not built.
+- **Few controls move.** The sequence overrides, the abort handle, the hand controller and the lights' switch are
+  worked; the other switches and handles are set one way.
+- **The lamps are two lights hung in the middle of the cabin**, falling off with distance and not its square, casting
+  no shadows. The shade is baked at the vertices (`shade`): nothing that moves casts one, a large flat plate is shaded
+  only at its corners, and one lamps-on figure stands for every lamp together.
+- **The ports and the periscope's screen light the cabin without direction**, each as one colour looked at a couple of
+  times a second, its strength chosen by eye; the sky's light indoors is cut to a tenth by rule, not traced.
+- **The portholes have two panes**, how many No. 7's had not being in anything read; no shutters or filters.
+- **The periscope has no filters, map or turning index**, and its reticle is a few lines of the real one's.
+- **The pilot looks down his body by his eyes**: the seated figure's head does not bend, so the panel is placed square
+  to a line 55 degrees toward his feet.
+- **The orbital capsules' instruments, lamps and controls** are nodes of the model but not yet named in any flight's
+  data, so none reads anything ("Sat in from the gallery").
+- **Only at detail 0.75 and above**: the coarser levels have no cabin.

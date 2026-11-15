@@ -109,12 +109,6 @@ against something else: on the onboard tape Gagarin reports «разделени
 tested, and its 510 is not kept. (Until November 2026 the model read 510, from that print.) What the three figures
 meant in minutes and seconds was not found: the other values in print are 426, 466, 786 and 956.
 
-Left out or wrong: **the cabin is not shaded** (no shadow is baked at its vertices, as the Mercury cabin's is, so
-with its lamps off it is lit evenly); the Vzor's and the Globus's simplifications above; 21 of the 24 lenses are
-blank and dark; the porthole blinds, the loudspeaker, the tape recorder, the food
-container, the water, the sanitary device and the log are not told apart from the type's plain cases; the telegraph
-key is not built; the seat is still the type's slabs, where the real one is a riveted tub with rollers.
-
 ## How it was checked
 
 Side by side with, in order of weight:
@@ -150,9 +144,22 @@ Side by side with, in order of weight:
 - **The housing on the pole** scales to about 250 mm in the drawing; 220 mm is built, to keep both
   the 4.4 m length and the frame's station.
 
+## Level of detail
+
+| Level | Triangles | Meshes |
+| --- | --- | --- |
+| Full (1.0) | 128,640 | 68 |
+| 0.6 | 67,901 | 49 |
+| 0.3 | 42,074 | 50 |
+
+Freedom 7's capsule alone, for comparison, is about 265,000, 95,000 and 57,000. The clearance check
+passes at all three.
+
+## What the model gets wrong or leaves out
+
 What the model simplifies or leaves out as a type is listed in
-[vostok-3ka.md](../../vehicles/vostok-3ka.md), "What the model gets wrong or leaves out". For this
-flight in particular:
+[vostok-3ka.md](../../vehicles/vostok-3ka.md), "What the model gets wrong or leaves out"; where it disagrees with what
+it was checked against is "Where it still disagrees", above. For this flight in particular:
 
 - **The launch configuration is approximate.** The fairing, Block E and its adapter are built
   ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)), but the antennas are withdrawn, not folded,
@@ -173,14 +180,9 @@ flight in particular:
   stagnation-point heat flux on the ball's 1.15 m radius; the shield is never drawn hot, its
   ablator's figures being unread. The canopies' areas are the record's; their gores, lines and
   colours are chosen.
-
-## Level of detail
-
-| Level | Triangles | Meshes |
-| --- | --- | --- |
-| Full (1.0) | 128,640 | 68 |
-| 0.6 | 67,901 | 49 |
-| 0.3 | 42,074 | 50 |
-
-Freedom 7's capsule alone, for comparison, is about 265,000, 95,000 and 57,000. The clearance check
-passes at all three.
+- **The cabin is not shaded**: no shadow is baked at its vertices, as the Mercury cabin's is, so with its lamps off
+  it is lit evenly.
+- **The Vzor and the Globus** are simplified as "Cabin" says; 21 of the 24 lenses are blank and dark.
+- **Not told apart from the type's plain cases:** the porthole blinds, the loudspeaker, the tape recorder, the food
+  container, the water, the sanitary device and the log. The telegraph key is not built; the seat is still the type's
+  slabs, where the real one is a riveted tub with rollers.
