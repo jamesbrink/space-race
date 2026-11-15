@@ -51,6 +51,9 @@ export const CHRONOLOGY = 'Project Gemini: Technology and Operations, a Chronolo
 export const TITANS = 'On the Shoulders of Titans (NASA SP-4203)';
 export const GIV = 'Gemini Program Mission Report, Gemini IV (MSC-G-R-65-3)';
 export const GV = 'Gemini Program Mission Report, Gemini V (MSC-G-R-65-4)';
+export const GVII = 'Gemini Program Mission Report, Gemini VII (MSC-G-R-66-1)';
+/** NASA's press kit for Gemini 7 and Gemini 6 together. */
+export const KIT_7_6 = 'NASA release 65-362, the Gemini 7/6 press kit (29 November 1965)';
 export const LAUNCH_SYSTEMS = 'Gemini Program Launch Systems Final Report (Aerospace, January 1967)';
 
 /** The first stage engines' exit plane below the model's origin (the spacecraft's Z103.44), m: 90 in of adapter and 1,071.278 in of launch vehicle. */
@@ -115,9 +118,10 @@ const lamp = (node: string, name: string, about: string) => ({ node, name, about
  * The crew station as somewhere to sit (types.ts: CabinDef; viewer/cabin.ts), for a ship from spacecraft 4 on: the
  * nodes are the model's (vehicles/gemini_cabin.py, built with `gmt_clock`). Nothing is flown yet, so every instrument
  * stands where it was built and every lamp is dark, and each says so. `radar` is what the range indicator says of
- * this ship's radar; `fairing` when this ship threw off its fairings.
+ * this ship's radar, or null on a ship built without the indicator (`range_indicator=False`: spacecraft 7); `fairing`
+ * when this ship threw off its fairings.
  */
-export const cabin = (says: { radar: string; fairing: string; power: string }): NonNullable<ModelDef['cabin']> => ({
+export const cabin = (says: { radar: string | null; fairing: string; power: string }): NonNullable<ModelDef['cabin']> => ({
   within: ['CrewStation'],
   // the top of a seated man's head is toward the hatches, on +X; the seats' 12° cant is not counted
   overhead: [1, 0, 0],
@@ -135,7 +139,7 @@ export const cabin = (says: { radar: string; fairing: string; power: string }): 
     instrument('Gauge_Stage1Oxidiser', 'Stage I oxidiser tank pressure', 'The first stage oxidiser tank pressure.'),
     instrument('Gauge_Stage2Fuel', 'Stage II fuel tank pressure', 'The second stage fuel tank pressure.'),
     instrument('Gauge_Stage2Oxidiser', 'Stage II oxidiser tank pressure', 'The second stage oxidiser tank pressure.'),
-    instrument('Gauge_RangeRate', 'Range and range rate', says.radar),
+    ...(says.radar === null ? [] : [instrument('Gauge_RangeRate', 'Range and range rate', says.radar)]),
     instrument('Gauge_RateOfDescent', 'Rate of descent', 'Feet per second on the way down under the parachute.'),
     instrument(
       'Gauge_GmtClockHours',

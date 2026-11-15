@@ -70,6 +70,9 @@ LETTERS = (655.0, 1004.0, (20.0, 16.0))  # UNITED STATES down the first stage: f
 ARROW = (1012.0, 1029.0)  # the mark under the lettering
 # GLV-4's two flashing lights: round from the conduit, and their station (between the tanks, which is 319.5 to 424.5): estimated
 BEACONS = ((deg(90), deg(-90)), 366.0)
+# GLV-7's four, "near the center, and spaced 90° apart around the circumference" (Gemini VII mission report, 3.2.2.5): round
+# from the conduit, at GLV-4's station. Which four sides is not said: these keep them off the doors. Estimated
+BEACONS_4 = (deg(45), deg(135), deg(-135), deg(-45))
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
@@ -208,12 +211,13 @@ def build(
     skirt_insulation: bool = True,
     conduit_at: float = deg(-45),
     letters_at: float = deg(-12),
-    beacons: bool = False,
+    beacons: bool | int = False,
 ) -> None:
     """Build the launch vehicle with its first stage engines' exit plane at `base_z` (inches) of the flight's frame.
     `skirt_insulation`: whether the second stage's forward skirt wears its insulation (GLV-1 to GLV-3 did; GLV-4 on did not).
     `conduit_at`: the angle of the external conduit that the lettering stands beside; `letters_at`: the angle of UNITED STATES.
-    `beacons`: the two flashing lights on the second stage, between its tanks, that only GLV-4 carried."""
+    `beacons`: the flashing lights on the second stage, between its tanks: True for the two GLV-4 carried, 4 for the four,
+    90 degrees apart, that GLV-7 carried; no other vehicle had them."""
     M = reuse(materials())
     z = lambda s: base_z + (S_EXIT - s)  # noqa: E731  a station's height in the flight's frame
     body = Surf(R, 0.0, 0.0)
@@ -322,7 +326,7 @@ def build(
         # "Two Gemini target docking adapter flashing lights were mounted 180 degrees apart between the tanks on the second
         # stage" (Gemini IV mission report, 5.2.6): which two sides is not said, nor the station
         base, lens = MeshBuilder(), MeshBuilder()
-        for a in (conduit_at + da for da in BEACONS[0]):
+        for a in (conduit_at + da for da in (BEACONS_4 if beacons == 4 else BEACONS[0])):
             port = frame(at(a, R, BEACONS[1]), radial(a))
             base.lathe(prof([(2.6, -0.3), (2.6, 0.5), (0.0, 0.5)]), 20, matrix=port)
             lens.lathe(prof([(1.9, 0.5), (1.9, 1.6), (1.3, 2.5), (0.0, 2.8)]), 20, matrix=port)

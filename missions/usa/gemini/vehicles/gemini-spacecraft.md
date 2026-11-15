@@ -249,10 +249,24 @@ level). What each rests on is in the flight's own `spacecraft.md`.
 | `white_disc` | the unidentified white disc forward of the left hatch | spacecraft 3; left off the others | read off photographs of spacecraft 3 |
 | `experiments` | by name: spacecraft 3's three; spacecraft 4's spectrometer and magnetometer boom in the adapter | | each flight's record |
 | `crew` | the man in each seat; without it the seats are empty | spacecraft 3 (the G3C suit) | [g3c-suit.md](../crew/g3c-suit.md) |
+| `battery_module` | the beam the adapter's batteries hang under, and at the end of their row one drinking water tank with its ball of oxygen | spacecraft 6 | SEDR 300 vol. 2, Figures 5-9 and 6-10 sheet 3, which have no dimensions: estimated |
+| `oams_tanks` | that many each of the OAMS's fuel, oxidiser and helium tanks; with two, the four propellant tanks stand in an arc across the top of the section | 2 on spacecraft 6 | the number and the tanks' sizes are SEDR 300 vol. 2, Section VIII, Figures 8-94 and 8-96: documented; their places estimated |
+| `mooring_latches` | three latch receptacles round the rim of the forward face, under the nose fairing | spacecraft 6 | SEDR 300 vol. 2, Figure 13-2, which has no dimensions: estimated |
+| `transponder` | one spiral antenna on the forward face, where the radar's four would be | spacecraft 7 only | the pod's antenna's size, itself scaled from a sketch; to one side of the face, as one photograph has it |
+| `acquisition_lights` | two flashing lights at the foot of the adapter, left and right | spacecraft 7 only | that there were two, on opposite sides, is documented; which sides and their form estimated |
+| `retro_water_tank` | a third drinking water tank, a ball on a tray in the retrograde section | spacecraft 7 only | 13.05 in inside, derived from its 42 lb; its place read off two sketches |
+| `oams_reserve_tank` | the OAMS's reserve fuel tank, a cylinder lying across the equipment section | spacecraft 7 only | 5.10 in by 30.7 in: SEDR 300 vol. 1, Section VIII, p. 8-271, documented; its place estimated |
+| `hydrogen_insulated` | the fuel cells' hydrogen tank in its wrap of aluminised mylar | spacecraft 7 | the wrap's thickness a guess |
+| `range_indicator` | the radar's range and range-rate indicator on the command pilot's panel; off, a blank | off on spacecraft 7 only | the blank is its report's Figure 3.1-12 |
+| `get_clock` | a digital clock of elapsed time on the centre panel, where the flight plan roller was | spacecraft 7 | its place is the roller's; its form estimated |
 
 With `adapter_batteries` over three, `water_tanks` over one or `fuel_cells`, the loose contents of
 the equipment section are laid out again to make room (`layout` in gemini_spacecraft.py): every
 place in it is a guess for every ship.
+
+Spacecraft 3, 4 and 5 ask for none of the last ten, and their models are unchanged by them:
+rebuilt on one machine from the commit before these were added and from the one that added them,
+each ship's three GLBs are the same byte for byte.
 
 Where a part's own words tell what happened on Gemini-Titan 3, a later flight gives its own
 (`SAYS` in its script, applied by `gemini_stack.build`).
@@ -328,13 +342,25 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
   frame. The plumbing, the wiring, the coolant pumps and the radar transponder are left out.
   The first model of this ship built every ball in the adapter (tanks and rockets) a fortieth of
   its size, by giving metres to a profile that took inches; that is put right.
-- **The gold cover** is a smooth shallow cone; the real one is a quilted blanket.
+- **The adapter's layout and its gold cover are not McDonnell's**, and the photographs taken in
+  orbit in December 1965 show how far off they are. SEDR 300 draws the equipment section's modules
+  against the wall, round a clear middle: the OAMS module is one curved frame with four balls in a
+  row on it (vol. 1, Figure 6-10 sheet 5 and Section VIII, Figure 8-72; vol. 2, Section VIII,
+  Figure 8-94), the fuel cell or battery module a beam across the other side (vol. 1, Figure 5-5;
+  vol. 2, Figure 5-9). NASA S65-63221, spacecraft 7 from behind, shows the cover as a deep funnel
+  running up that clear middle to a flat disc, and the two aft-firing thrusters standing through
+  it at the rim. Here the cover is a smooth shallow cone, estimated from one photograph of
+  spacecraft 3's adapter being lowered onto its launch vehicle, with those thrusters hidden above
+  it, and tanks stand in the middle. (The real cover is also a quilted blanket, not a smooth one.)
+  To lay the section out from the drawings would move things on every ship in the repo, and is not
+  done.
 - **The scanner fairing** is a box of the size, place and colour the photograph gives, with none of
   its detail (it is stepped, and has a foot on the cabin). **The strap fairings** are blisters of
   our own shape; one is put where S65-13395 shows one, beside a hatch's aft outboard corner.
 - **The rendezvous and recovery section's inside** is a parachute pack and two mortars of our own
-  form. The docking bar and the three latch receptacles are not modelled. The radar, on a ship
-  that had it, is its four antennas as plain cups on the face.
+  form. The docking bar is not modelled; the three latch receptacles, on the ship built with
+  them, are plain blocks on the rim. The radar, on a ship that had it, is its four antennas as
+  plain cups on the face.
 - **The later ships are spacecraft 3 with additions** ("One ship from the next"). What they
   changed that is not in that table is not built: the long-life thrust chambers, the transponders
   and antennas, the panels' rearrangement beyond the command pilot's clock, the ejection seats'

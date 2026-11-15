@@ -1,6 +1,7 @@
 """The Gemini crew station as spacecraft 3 flew it: the pressure vessel, the two ejection seats, the panels of
 SEDR 300's Figure 3-5 sheets 1 and 2 ("S/C 3"), the controls and the stowage. A later ship is this one with what build()
-is told of it (`gmt_clock`, `reentry_switch`); the rest of what its panels changed is not drawn, and its record says so.
+is told of it (`gmt_clock`, `reentry_switch`, `range_indicator`, `get_clock`); the rest of what its panels changed is not
+drawn, and its record says so.
 
 gemini_spacecraft.build_crew_station calls build(). Dimensions are inches; a point is (inches toward the ship's top,
 inches to the crew's right, McDonnell's Z station). The men sit with their backs to the large pressure bulkhead and
@@ -630,7 +631,9 @@ def ball(c: Station, F: Matrix, faces: Sheet, name: str, u: float, v: float) -> 
     c.disc("CrewCabin_InstrumentGlass", F, u, v, 1.7, 0.76, None, 24)
 
 
-def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool = False) -> None:
+def main_panels(
+    c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool = False, range_indicator: bool = True, get_clock: bool = False
+) -> None:
     # ---- the command pilot's (Figure 3-5 sheet 1, measured from its outboard lower corner at 47 px to the inch)
     F = P["left"]
     rg = plate(c, F, OUTLINE, sheet)
@@ -654,7 +657,12 @@ def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool
     rg.text("MIN        SEC", 12.87, 5.12, 0.07, mc.INK)
     switches(c, F, rg, [(11.5, 4.3, "STBY"), (14.25, 4.3, "UP")])
     knob(c, F, 12.87, 3.95, 0.3)
-    round_dial(c, F, faces, "RangeRate", RANGE, 12.66, 1.53, 1.38, rim=True)
+    if range_indicator:
+        round_dial(c, F, faces, "RangeRate", RANGE, 12.66, 1.53, 1.38, rim=True)
+    else:
+        # (spacecraft 7 had no radar, and the range and range-rate indicator was deleted: its report's Figure 3.1-12 draws
+        # the round space blank)
+        c.turned("CrewCabin_PanelFittings", F, 12.66, 1.53, [(1.38, 0.0), (1.38, 0.05), (0.0, 0.05)], 28)
     # the incremental velocity indicator: three counters, fore and aft, left and right, up and down (3.25 by 5.05 in)
     c.box("CrewCabin_Bezels", F, 8.32, 1.63, 5.05, 3.25, 0.0, 0.16)
     for du in (-1.6, 0.0, 1.6):  # (fore and aft, left and right, down and up)
@@ -804,9 +812,20 @@ def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool
         tape(c, F, rg, faces, name, "", (3.0 + i * 2.25) * k, H - 4.85, 1.5, 2.2, 10, 5)
     tape(c, F, rg, faces, "EcsOxygen", "ECS O2", 3.0 * k, H - 8.2, 1.5, 3.2, 100, 100)
     tape(c, F, rg, faces, "Propellant", "PROP", (W / k - 1.75) * k, H - 8.2, 1.5, 3.2, 100, 100)
-    rg.rect(4.2 * k, H - 9.9, (W / k - 2.8) * k, H - 6.5, (0.86, 0.86, 0.8), r=0.1)  # the card in the middle
-    for i in range(9):
-        rg.line((4.5 * k, H - 6.9 - i * 0.32), ((W / k - 3.1) * k, H - 6.9 - i * 0.32), 0.03, (0.3, 0.3, 0.3))
+    if not get_clock:
+        rg.rect(4.2 * k, H - 9.9, (W / k - 2.8) * k, H - 6.5, (0.86, 0.86, 0.8), r=0.1)  # the card in the middle: the flight plan roller
+        for i in range(9):
+            rg.line((4.5 * k, H - 6.9 - i * 0.32), ((W / k - 3.1) * k, H - 6.9 - i * 0.32), 0.03, (0.3, 0.3, 0.3))
+    else:
+        # spacecraft 7's digital clock of ground elapsed time "in place of the flight plan roller" (Gemini VII mission report,
+        # 3.1.2.5 and 3.1.2.9.1): hours to 999, minutes, seconds, and "provisions ... for starting and stopping, or resetting".
+        # Its place is the roller's; its form, and the two switches under it, are estimated, and their legends are not drawn
+        u, v = (4.2 * k + (W / k - 2.8) * k) / 2, H - 8.0
+        rg.rect(4.2 * k, H - 9.9, (W / k - 2.8) * k, H - 6.5, (0.44, 0.45, 0.45), r=0.1)
+        for du, digits, legend in ((-1.02, "000", "HR"), (0.17, "00", "MIN"), (1.19, "00", "SEC")):
+            counter(c, F, rg, faces, u + du, v, digits, 0.34, 0.6, 0.0)
+            rg.text(legend, u + du, v + 0.62, 0.07, mc.INK)
+        switches(c, F, rg, [(u - 0.8, v - 1.25, ""), (u + 0.8, v - 1.25, "")])
     switches(c, F, rg, [(2.4 * k, H - 11.0, "QTY"), (4.3 * k, H - 11.0, "AUTO"), (5.75 * k, H - 11.0, "AUTO"), (W - 1.2, H - 11.0, "EXP")], 0.065)
     rg.text("HEATERS", 5.0 * k, H - 11.75, 0.07, mc.INK)
     c.box("CrewCabin_RedCaps", F, 8.1 * k, H - 11.0, 0.5, 1.0, 0.0, 0.5)  # the squib switch under its guard
@@ -1056,7 +1075,18 @@ SMOOTH = (
 )
 
 
-def build(parent, M: dict, font, names: tuple[str, str], say, crew=None, gmt_clock: bool = False, reentry_switch: bool = True) -> None:
+def build(
+    parent,
+    M: dict,
+    font,
+    names: tuple[str, str],
+    say,
+    crew=None,
+    gmt_clock: bool = False,
+    reentry_switch: bool = True,
+    range_indicator: bool = True,
+    get_clock: bool = False,
+) -> None:
     """Everything in the pressure vessel, and the vessel. The vessel's walls are built at every level of detail (they
     close the hatches' openings from behind); the rest only where an inside is built."""
     c = Station(parent, CABIN, M)
@@ -1073,7 +1103,7 @@ def build(parent, M: dict, font, names: tuple[str, str], say, crew=None, gmt_clo
     sheet = Sheet("gemini-panels", 4096)
     faces = Sheet("gemini-faces", 2048, mc.BLACK)
     P = frames()
-    main_panels(c, P, sheet, faces, gmt_clock)
+    main_panels(c, P, sheet, faces, gmt_clock, range_indicator, get_clock)
     side_panels(c, P, sheet, reentry_switch)
     fittings(c, say)
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):

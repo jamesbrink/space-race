@@ -138,6 +138,50 @@ FUEL_CELLS_AT = ((30.0, -31.0, 45.0), (38.0, -20.0, 45.0))
 EVA_AT = (30.0, 0.0, 112.0)
 UMBILICAL = (25.0 * 12.0, 0.4, 4.6)  # the umbilical: its length (25 ft: the same report, 3.1.2.3.1), its radius and its coil's, both guesses
 
+# What spacecraft 6 and 7 carried that spacecraft 5 did not (flights/gt-6a/spacecraft.md, flights/gt-7/spacecraft.md). "GVII"
+# is the Gemini VII mission report, MSC-G-R-66-1. The things are documented; a size or a place is as its comment says.
+# spacecraft 7's L-band transponder antenna on the forward face: "a single spiral antenna similar to equipment included in
+# the rendezvous evaluation pod" (GVII, 3.1.2.4). Its radius and depth are the pod's antenna's, themselves scaled from a
+# sketch; and how far it stands off the ship's axis, which is about half the face's radius in a photograph taken from
+# spacecraft 6 (NASA S65-63113), where it is one pale disc to one side of the face. Which side is not made out: toward the bottom
+TRANSPONDER = (3.3, 2.4, 7.0)
+# its two acquisition lights, "at the base of the adapter" and "on opposite sides of the equipment adapter section" (GVII,
+# 3.1.1.2 and 3.1.2.4): round from the top, and how far from the ship's axis. Which sides is not said, nor how they were
+# mounted: they are put on the left and the right, a quarter of the way round from the two aft-firing thrusters, looking aft
+# through the edge of the cover. Their form is the launch vehicle's flashing light's (titan_ii_glv.py), the same Agena light
+ACQUISITION_LIGHTS = ((deg(90), deg(-90)), 53.0)
+# its third drinking water tank, tank C, in the retrograde section: a ball across its outside, round from the top, from the
+# ship's axis, its middle's station. Inside it is derived: 42 lb of water (GVII, 3.1.2.3) at 62.4 lb/cu ft is a ball 13.05 in
+# across; the shell round it is a guess. SEDR 300 volume 1, Figure 6-10 sheet 5, draws it on a tray toward the top of the
+# section; which side of the top is not read from it
+WATER_C = (13.5, deg(24), 34.0, 88.5)
+# the OAMS's reserve fuel tank, spacecraft 7's alone: "5.10 inches outside diameter, 30.7 inches in length" (SEDR 300 volume
+# 1, Section VIII, p. 8-271: documented). Where its middle is (to the crew's right, toward the top, station), lying across
+# the ship forward of the propellant tanks: estimated from that section's Figure 8-72
+RESERVE_TANK = (5.10, 30.7)
+RESERVE_TANK_AT = (10.0, 12.0, 60.2)
+MYLAR = 0.3  # the fifty layers of aluminised mylar round spacecraft 7's hydrogen tank (GVII, 3.1.2.6.2): how thick is a guess
+# spacecraft 6's adapter battery module (SEDR 300 volume 2, Figure 5-9): the beam its three batteries hang under, and at the
+# row's end the one drinking water tank this ship had, with the ball of oxygen that pushed the water out (Figure 6-10 sheet
+# 3). The tank is 1.8 times a battery's width in the figure: 13.5 in, which is also what a 42 lb tank comes to (WATER_C); the
+# pressurant's is a guess. Each: to the crew's right, toward the top, station
+BATTERY_BEAM = (0.0, -26.0, 53.5)
+BATTERY_WATER = (13.5, (-7.5, -27.0, 40.0))
+BATTERY_PRESSURANT = (5.0, (-0.5, -37.0, 40.0))
+# its OAMS tanks: two of fuel, two of oxidiser and two of helium, where spacecraft 5 and 7 had one of each (SEDR 300 volume
+# 2, Section VIII, Figure 8-96 sheet 1: "one tank on S/C 5, two tanks on S/C 6": documented), each of the same size as the
+# one. Figure 8-94 draws the four propellant tanks in a row round the arc of the module's frame: how far that arc is from
+# the ship's axis, the angles of the four round from the top (the fuel tanks the middle two, as near as the figure can be
+# read) and their station; and the two of helium, to the crew's right, toward the top, station. All estimated
+OAMS_ARC = (36.0, (deg(-20), deg(20), deg(-60), deg(60)), 44.0)
+OAMS_HELIUM_2 = ((-9.0, -2.0, 46.0), (9.0, -2.0, 46.0))
+# and its three mooring latch receptacles, for the hooks of an Agena's docking cone: "equally spaced around the forward
+# perimeter" of the rendezvous and recovery section, "the lower latch" the nose fairing's pivot (SEDR 300 volume 2, p. 13-5
+# and Figure 13-2). Round from the top; and a fitting's width round the rim, its depth toward the axis and how far it stands
+# forward of the rim: scaled on the rim in the figure and in a photograph of this ship taken from spacecraft 7 (NASA
+# S65-64040), where the lowest shows as a notch: estimated
+LATCHES = ((deg(180), deg(60), deg(-60)), (3.2, 1.5, 1.1))
+
 
 @dataclass
 class Fit:
@@ -158,6 +202,17 @@ class Fit:
     fuel_cells: bool = False  # the fuel cell module in the adapter: two sections, and their hydrogen and oxygen (spacecraft 5)
     water_spheres: int = 0  # drinking water tanks of the OAMS propellant tank's form in the adapter (spacecraft 5 had two)
     pod: bool = False  # the rendezvous evaluation pod at the adapter's foot (spacecraft 5 only)
+    # what spacecraft 6 and 7 had
+    transponder: bool = False  # an L-band transponder's spiral antenna on the forward face, in the radar's place (spacecraft 7)
+    acquisition_lights: bool = False  # two flashing lights at the adapter's foot, for another ship to find this one by (spacecraft 7)
+    retro_water_tank: bool = False  # a third drinking water tank, in the retrograde section (spacecraft 7)
+    oams_reserve_tank: bool = False  # the OAMS's reserve fuel tank (spacecraft 7 only)
+    hydrogen_insulated: bool = False  # the fuel cells' hydrogen tank wrapped in aluminised mylar (spacecraft 7)
+    battery_module: bool = False  # the adapter battery module's beam, and the one water tank at its end (spacecraft 6)
+    oams_tanks: int = 1  # how many of each of the OAMS's fuel, oxidiser and helium tanks (spacecraft 6 had two)
+    mooring_latches: bool = False  # the three latch receptacles round the forward face's rim, for docking (spacecraft 6)
+    range_indicator: bool = True  # the radar's range and range-rate indicator on the command pilot's panel (spacecraft 7 had none)
+    get_clock: bool = False  # a digital clock of elapsed time on the centre panel, where the flight plan roller was (spacecraft 7)
 
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
@@ -370,22 +425,51 @@ def build_rendezvous_recovery(M, fit: Fit) -> None:
     face.lathe(prof([(r1 - 2.0, z1 - 0.6), (0.0, z1 - 0.6)]), 64)
     if fit.radar:
         build_radar(M, g, z1 - 0.6)
+    elif fit.transponder:
+        build_transponder(M, g, z1 - 0.6)
     elif srlib.DETAIL >= 0.5:
         for i in range(-5, 6):  # stiffening ribs across the cover
             y = i * 2.4
             half = math.sqrt(max(0.0, (r1 - 2.6) ** 2 - y**2))
             face.box((2 * half * IN, 0.5 * IN, 0.35 * IN), Matrix.Translation(Vector((0.0, y, z1 - 0.42)) * IN))
-    say(
-        face.build("RR_Face", M["fairing"] if not fit.radar else M["equipment"], g, sharp_angle=35),
-        "Forward face" if not fit.radar else "Rendezvous radar",
-        "Where a ship going to meet another carries its rendezvous radar. This one was going nowhere near anything, and carried "
-        "none: the section held only the parachutes. A photograph of this spacecraft eleven weeks before it flew shows the face "
-        "closed by a flat ribbed cover. What, if anything, stood behind it in the radar's place has not been found."
-        if not fit.radar
-        else "The rendezvous radar's place: the face its four antennas stand on. The radar is an interferometer: it calls a "
-        "transponder on the target, and from the answer's time and the difference in its phase at three receiving antennas "
-        "it has the target's range and bearing.",
-    )
+    if fit.transponder and not fit.radar:
+        label, about = (
+            "Radar transponder",
+            "The rendezvous radar's place, and on this ship the other half of one: a transponder, which hears another ship's "
+            "radar call and answers it on its own frequency, so that the caller can tell the answer from an echo and time "
+            "it. The box and its regulator are behind this face; the antenna stands on it.",
+        )
+    elif fit.radar:
+        label, about = (
+            "Rendezvous radar",
+            "The rendezvous radar's place: the face its four antennas stand on. The radar is an interferometer: it calls a "
+            "transponder on the target, and from the answer's time and the difference in its phase at three receiving antennas "
+            "it has the target's range and bearing.",
+        )
+    else:
+        label, about = (
+            "Forward face",
+            "Where a ship going to meet another carries its rendezvous radar. This one was going nowhere near anything, and carried "
+            "none: the section held only the parachutes. A photograph of this spacecraft eleven weeks before it flew shows the face "
+            "closed by a flat ribbed cover. What, if anything, stood behind it in the radar's place has not been found.",
+        )
+    say(face.build("RR_Face", M["equipment"] if fit.radar or fit.transponder else M["fairing"], g, sharp_angle=35), label, about)
+    if fit.mooring_latches:
+        angles, (wide, deep, proud) = LATCHES
+        latch = MeshBuilder()
+        for a in angles:  # each a block on the rim with a catch standing over its inboard edge, for a hook to drop behind
+            at = Matrix.Translation((radial(a) * (r1 - 1.1 - deep / 2) + Vector((0.0, 0.0, z1))) * IN) @ Matrix.Rotation(a, 4, "Z")
+            chamfered(latch, (deep, wide, 2 * proud), at, 0.1)
+            chamfered(latch, (0.5, wide - 0.6, 0.5), at @ Matrix.Translation(Vector((-deep / 2 + 0.1, 0.0, proud + 0.15)) * IN), 0.08)
+        say(
+            latch.build("RR_MooringLatches", M["steel"], g, sharp_angle=35),
+            "Mooring latch receptacle",
+            "One of three fittings round the rim of the forward face, a third of a turn apart, for the hooks of an Agena's "
+            "docking cone to drop behind: with all three caught, the cone is drawn in and the two are one vehicle. The nose "
+            "fairing covers them on the way up, and swings away on the lowest one. Before the ship comes home they are "
+            "thrown off and covers slide over the holes they leave. That a ship of this pattern had three, equally spaced, "
+            "is McDonnell's manual; their size here is estimated.",
+        )
     if not interior():
         return
     chute = MeshBuilder()
@@ -433,6 +517,26 @@ def build_radar(M, g, face: float) -> None:
         "stands on the face are scaled from McDonnell's sketch.",
     )
     lids.build("RR_RadarAntennaFaces", M["fairing"], g, sharp_angle=35)
+
+
+def build_transponder(M, g, face: float) -> None:
+    """Spacecraft 7's L-band transponder antenna on the forward face (Gemini VII mission report, 3.1.2.4): one spiral
+    antenna of the pod's pattern, where spacecraft 5 and 6 had the radar's four. `face` is the forward face's height, inches."""
+    r, thick, off = TRANSPONDER
+    m = Matrix.Translation(Vector((-off, 0.0, face)) * IN)
+    cup, lid = MeshBuilder(), MeshBuilder()
+    cup.lathe(prof([(r, 0.0), (r, thick - 0.25), (r - 0.25, thick)]), 28, matrix=m)
+    cup.lathe(hoop(r, r + 0.5, 0.0, 0.3), 28, matrix=m)  # the flange it is bolted down by
+    lid.lathe(prof([(r - 0.25, thick), (0.0, thick)]), 28, matrix=m)
+    say(
+        cup.build("RR_TransponderAntenna", M["aluminium"], g, sharp_angle=35),
+        "Transponder antenna",
+        "One flat spiral antenna, of the pattern the last ship's pod carried and the Agena was to carry. Through it the "
+        "transponder behind the face heard the other ship's radar and answered. That there was one, and whose pattern "
+        "it was, are documented; its size is the pod's antenna's, scaled from a sketch. A photograph taken from the "
+        "other ship shows it as one pale disc to one side of the face; which side is not made out.",
+    )
+    lid.build("RR_TransponderAntennaFace", M["fairing"], g, sharp_angle=35)
 
 
 def cable_cover(mb: MeshBuilder, surf: Surf, s0: float, s1: float, foot: bool = False) -> None:
@@ -926,6 +1030,8 @@ def build_crew_station(M, fit: Fit, font=None) -> None:
         fit.crew,
         gmt_clock=fit.gmt_clock,
         reentry_switch="reentry-communications" in fit.experiments,
+        range_indicator=fit.range_indicator,
+        get_clock=fit.get_clock,
     )
 
 
@@ -1092,6 +1198,37 @@ def build_retro_section(M, fit: Fit) -> None:
         "A cross of aluminium I-beams across the section, each rocket hung in one of its quarters by lugs. The beams and the "
         "rockets on them are SEDR 300's figure; the beams' depth and the flanges' width are estimated from it.",
     )
+    if fit.retro_water_tank:
+        build_retro_water_tank(M, g)
+
+
+def build_retro_water_tank(M, g) -> None:
+    """Spacecraft 7's tank C (Gemini VII mission report, 3.1.2.3 and Figure 3.1-4; SEDR 300 volume 1, Figure 6-10 sheet 5):
+    a ball of drinking water in the retrograde section, on a tray between two of the rockets, its two halves bolted
+    together round its middle."""
+    across, theta, rho, station = WATER_C
+    r = across / 2
+    c = radial(theta) * rho + Vector((0.0, 0.0, zz(station)))
+    here = Matrix.Translation(c * IN) @ Matrix.Rotation(theta, 4, "Z")
+    tank, tray = MeshBuilder(), MeshBuilder()
+    sphere(tank, c * IN, r * IN, 32)
+    tank.lathe(hoop(r - 0.1, r + 0.6, -0.3, 0.3), 32, matrix=here)  # the flange its halves are bolted by
+    tank.tube((c + Vector((0, 0, r - 0.3))) * IN, (c + Vector((0, 0, r + 0.9))) * IN, 0.8 * IN, 12)  # where the line comes in
+    say(
+        tank.build("Retro_WaterTank", M["tank"], g, sharp_angle=None),
+        "Drinking water tank C",
+        "A third tank of drinking water, which only this ship had: fourteen days of it for two men would not go in the two "
+        "tanks of the equipment section, one of which had to be kept for the water the fuel cells made. It could hold 42 lb "
+        "and went up with 25, pushed out by oxygen. It is in this section and not the one behind because this section "
+        "stays on until retrofire. That it was here and what it held are documented; its size is worked from the 42 lb, "
+        "and where in the section it sat is read off two sketches: toward the top, on a tray.",
+    )
+    foot = -r - 0.9  # the tray's upper face, below the tank's middle
+    chamfered(tray, (15.0, 15.0, 0.5), here @ Matrix.Translation(Vector((0.0, 0.0, foot - 0.25)) * IN), 0.12)
+    tray.lathe(hoop(4.2, 4.9, foot, -r + 1.25), 24, matrix=here)  # the ring the tank sits in
+    for side in (-1, 1):  # a lip down each side
+        chamfered(tray, (15.4, 0.4, 2.4), here @ Matrix.Translation(Vector((0.0, side * 7.5, foot + 0.5)) * IN), 0.08)
+    tray.build("Retro_WaterTankSupport", M["aluminium"], g, sharp_angle=35)
 
 
 def build_equipment_section(M, fit: Fit) -> None:
@@ -1153,6 +1290,8 @@ def build_equipment_section(M, fit: Fit) -> None:
         "fibre with gold deposited on it is stretched across the opening. Documented; its shape here is estimated from a "
         "photograph of this adapter being lowered onto the launch vehicle.",
     )
+    if fit.acquisition_lights:
+        build_acquisition_lights(M, g)
     if not interior():
         return
     shield = MeshBuilder()
@@ -1167,7 +1306,7 @@ def build_equipment_section(M, fit: Fit) -> None:
     lay = layout(fit)
     # the OAMS's own: a fuel tank, an oxidiser tank and the helium that pushes them, each a ball (SEDR 300, section
     # VIII: 21.13, 21.12 and 16.20 in across). Spacecraft 3 has one of each
-    for (right, top, station), across in zip(OAMS_TANKS, (21.13, 21.12, 16.20)):
+    for (right, top, station), across in lay["oams"]:
         sphere(tanks, P(right, top, station), across / 2 * IN)
         # (a boss at each pole, where the lines come in)
         for s in (-1, 1):
@@ -1201,6 +1340,10 @@ def build_equipment_section(M, fit: Fit) -> None:
             "batteries, and how long the batteries would last set how long the flights could be. Their number and rating are "
             "documented; their size and place here are estimated.",
         )
+    if fit.battery_module:
+        build_battery_module(M, g, n)
+    if fit.oams_reserve_tank:
+        build_reserve_tank(M, g)
     for right, top in lay["water"]:
         gear.tube(P(right, top, 34.0), P(right, top, 46.0), 3.6 * IN, 16)
     for right, top, size in lay["modules"]:
@@ -1226,8 +1369,90 @@ def build_equipment_section(M, fit: Fit) -> None:
             "documented; where they stand here is estimated.",
         )
     if fit.fuel_cells:
-        build_fuel_cells(M, g)
+        build_fuel_cells(M, g, fit.hydrogen_insulated)
     build_adapter_experiments(M, g, fit)
+
+
+def build_acquisition_lights(M, g) -> None:
+    """Spacecraft 7's two acquisition lights (Gemini VII mission report, 3.1.1.2 and 3.1.2.4): the flashing lights made
+    for the Agena, at the foot of the adapter on opposite sides, for the crew of spacecraft 6 to find this ship by."""
+    angles, rho = ACQUISITION_LIGHTS
+    base, lens = MeshBuilder(), MeshBuilder()
+    for a in angles:
+        port = frame((radial(a) * rho + Vector((0.0, 0.0, zz(Z_BASE + 3.1)))) * IN, Vector((0.0, 0.0, -1.0)))
+        base.lathe(prof([(0.0, -0.9), (2.6, -0.9), (2.6, 0.5), (0.0, 0.5)]), 20, matrix=port)
+        lens.lathe(prof([(1.9, 0.5), (1.9, 1.3), (1.3, 2.1), (0.0, 2.4)]), 20, matrix=port)
+    base.build("Equipment_AcquisitionLightBases", M["aluminium"], g, sharp_angle=35)
+    say(
+        lens.build("Equipment_AcquisitionLights", M["beacon"], g, sharp_angle=35),
+        "Acquisition light",
+        "One of two flashing lights of the kind made for the Agena, put on this ship when it became a target: a xenon lamp "
+        "that fires about 65 times a minute and can be seen for some twenty miles as a star of the third magnitude. The "
+        "crew switched them from a circuit breaker by the pilot's elbow. That there were two, on opposite sides at the base "
+        "of this section, is documented; which sides, and how they were mounted, was not found: they are put left and "
+        "right, looking aft.",
+    )
+
+
+def build_reserve_tank(M, g) -> None:
+    """The OAMS's reserve fuel tank, which only spacecraft 7 had (Gemini VII mission report, 3.1.2.7; SEDR 300 volume 1,
+    Section VIII, p. 8-271 and Figure 8-72): a cylinder of the re-entry control system's pattern, lying across the ship."""
+    across, long = RESERVE_TANK
+    right, top, station = RESERVE_TANK_AT
+    r, h, k = across / 2, long / 2, 1.3  # (k: the radius its ends are rounded to: a guess)
+    arc = [(r - k + k * math.sin(a), k - k * math.cos(a)) for a in (math.pi / 2 * i / 5 for i in range(6))]
+    profile = [(0.0, -h), *((x, -h + y) for x, y in arc[1:]), *((x, h - y) for x, y in arc[::-1][:-1]), (0.0, h)]
+    along = frame(P(right, top, station), Vector((0.0, 1.0, 0.0)))
+    tank, straps = MeshBuilder(), MeshBuilder()
+    tank.lathe(prof(profile), 24, matrix=along)
+    say(
+        tank.build("Equipment_OamsReserveTank", M["tank"], g, sharp_angle=None),
+        "OAMS reserve fuel tank",
+        "A third tank for the manoeuvring system, on this ship only: a cylinder 5.10 in across and 30.7 in long, of the "
+        "pattern the re-entry control system uses, holding about 13 lb of fuel behind a valve that a squib opens. It is "
+        "there because the gauge could not be trusted near empty: when the main fuel tank ran dry the crew would open "
+        "this one and know exactly what they had left. They did, at 290 hours. Its size is McDonnell's figure; where it "
+        "lies is estimated from the manual's sketch of the system.",
+    )
+    for s in (-1, 1):  # the two straps that hold it to the module
+        straps.lathe(hoop(r - 0.1, r + 0.25, s * 9.0 - 0.5, s * 9.0 + 0.5), 24, matrix=along)
+        straps.tube(P(right + s * 9.0, top, station - r - 0.2), P(right + s * 9.0, top, station - r - 2.2), 0.45 * IN, 8)
+    straps.build("Equipment_OamsReserveTankStraps", M["aluminium"], g, sharp_angle=35)
+
+
+def build_battery_module(M, g, n: int) -> None:
+    """Spacecraft 6's adapter battery module (SEDR 300 volume 2, Figure 5-9 and Figure 6-10 sheet 3): the beam its `n`
+    batteries hang under, and at the end of their row the ship's one drinking water tank and the oxygen that pushed
+    the water out of it."""
+    right, top, station = BATTERY_BEAM
+    frames_, water = MeshBuilder(), MeshBuilder()
+    i_beam(frames_, Matrix.Translation(P(right, top, station)) @ Matrix.Rotation(math.radians(90), 4, "Z"), 84.0, 4.0, 2.4)
+    for i in range(n):  # a hanger from the beam to each battery (which stand as build_equipment_section puts them)
+        x = 16.0 + (i - (n - 1) / 2) * 8.6
+        for dt in (-3.6, 3.6):
+            frames_.tube(P(x, top + dt, 44.5), P(x, top + dt * 0.25, station - 1.9), 0.4 * IN, 8)
+    across, at = BATTERY_WATER
+    sphere(water, P(*at), across / 2 * IN, 32)
+    water.lathe(hoop(across / 2 - 0.1, across / 2 + 0.5, -0.3, 0.3), 32, matrix=Matrix.Translation(P(*at)))  # its halves' flange
+    frames_.tube(P(at[0], at[1], at[2] + across / 2 - 0.2), P(at[0], top, station - 1.9), 0.5 * IN, 8)
+    small, where = BATTERY_PRESSURANT
+    sphere(water, P(*where), small / 2 * IN, 20)
+    frames_.tube(P(where[0], where[1], where[2] + small / 2 - 0.1), P(where[0], top - 1.0, station - 1.9), 0.3 * IN, 8)
+    say(
+        water.build("Equipment_WaterTank", M["tank"], g, sharp_angle=None),
+        "Drinking water tank",
+        "All the drinking water this ship carried in its adapter: one tank at the end of the row of batteries, with a "
+        "small ball of oxygen beside it to push the water forward to the cabin. Two days needed no more. The ships either "
+        "side of it had fuel cells, which make water, and two or three big tanks to hold it. That there was one tank, "
+        "where it hung and what pushed it are McDonnell's drawing; its size is scaled from that drawing.",
+    )
+    say(
+        frames_.build("Equipment_BatteryModule", M["aluminium"], g, sharp_angle=35),
+        "Adapter battery module",
+        "The beam the batteries hang under, across the bottom of the section: on the other ships of this pattern the "
+        "same place holds the fuel cells and their tanks. McDonnell's drawing shows the beam with the three batteries "
+        "under it in a row and the water tank at the end; its size and section here are estimated from it.",
+    )
 
 
 def layout(fit: Fit) -> dict:
@@ -1245,6 +1470,8 @@ def layout(fit: Fit) -> dict:
             (-16.0, 34.0, (12.0, 8.0, 10.0)),
         ],
         "water_spheres": [],
+        # the OAMS's fuel tank, oxidiser tank and helium: where each is and how far across
+        "oams": list(zip(OAMS_TANKS, (21.13, 21.12, 16.20))),
     }
     if fit.water_tanks > 1:
         # four tanks together, as the Gemini IV mission report's Figure 3-6 draws them; with six batteries along the
@@ -1255,10 +1482,22 @@ def layout(fit: Fit) -> dict:
         lay["oxygen"] = (-34.0, -6.0)
         lay["modules"] = [(-10.0, 41.0, (8.0, 12.0, 10.0)), (12.0, 42.0, (8.0, 12.0, 10.0)), (44.0, 4.0, (12.0, 6.0, 10.0))]
         lay["water_spheres"] = [(33.0, 21.0), (-28.0, 22.0)][: fit.water_spheres]
+    if fit.oams_tanks > 1:
+        # spacecraft 6: four propellant tanks in an arc across the top of the section and two of helium below them
+        # (OAMS_ARC), and the electronic modules moved out of their way
+        rho, angles, station = OAMS_ARC
+        arc = [(rho * math.sin(a), rho * math.cos(a), station) for a in angles]
+        lay["oams"] = [(arc[0], 21.13), (arc[1], 21.13), (arc[2], 21.12), (arc[3], 21.12), *((at, 16.20) for at in OAMS_HELIUM_2)]
+        lay["modules"] = [
+            (-34.0, -4.0, (9.0, 12.0, 14.0)),
+            (36.0, -18.0, (9.0, 14.0, 12.0)),
+            (40.0, -2.0, (9.0, 10.0, 12.0)),
+            (0.0, 14.0, (8.0, 12.0, 10.0)),
+        ]
     return lay
 
 
-def build_fuel_cells(M, g) -> None:
+def build_fuel_cells(M, g, insulated: bool = False) -> None:
     """The reactant supply system and fuel cell module (Gemini V mission report, 3.1.2.6 and Figure 3.1-5): two fuel cell
     sections, each a sealed can of three stacks of 32 cells, and the two tanks of supercritical hydrogen and oxygen
     that feed them."""
@@ -1306,10 +1545,13 @@ def build_fuel_cells(M, g) -> None:
         ),
     ):
         ball = MeshBuilder()
-        sphere(ball, P(right, top, station), across / 2 * IN, 40)
-        say(ball.build(f"Equipment_Rss{name}", M["tank"], g, sharp_angle=None), label, about)
+        wrap = MYLAR if insulated and name == "Hydrogen" else 0.0  # (spacecraft 7's hydrogen tank under its fifty layers of mylar)
+        sphere(ball, P(right, top, station), (across / 2 + wrap) * IN, 40)
+        say(ball.build(f"Equipment_Rss{name}", M["silver" if wrap else "tank"], g, sharp_angle=None), label, about)
         for s in (-1, 1):  # the strap each hangs in from the module's beam
-            frames_.lathe(hoop(across / 2 - 0.1, across / 2 + 0.3, -0.6, 0.6), 40, matrix=Matrix.Translation(P(right, top, station + s * 3.0)))
+            frames_.lathe(
+                hoop(across / 2 + wrap - 0.1, across / 2 + wrap + 0.3, -0.6, 0.6), 40, matrix=Matrix.Translation(P(right, top, station + s * 3.0))
+            )
     # the module's beam, across the bottom of the section forward of them
     beam = Matrix.Translation(P(6.0, -34.0, 61.0)) @ Matrix.Rotation(math.radians(90), 4, "Z")
     i_beam(frames_, beam, 78.0, 4.0, 2.4)

@@ -99,7 +99,7 @@ Liftoff.jpg*, a NASA photograph). Stations are good to about 15 in.
 | Insulation on the second stage's forward skirt | half the thickness GLV-1 wore (MMS K-438) | none | documented | LSFR, p. II.C-8; GIV, 3.2.1.2 | yes: `skirt_insulation`. Its colour is the liftoff photograph's |
 | Oxidiser feed line conduit, first stage | lapped circumferential joints | butt-welded | documented | GIV, 3.2.1.1 | no: inside the fuel tank; said on the part |
 | Oxidiser standpipes | charged by hand | charged remotely; the fuel tank's aft skirt changed for it | documented | GIV, 3.2.1.1 and 3.2.2.1 | no |
-| Flashing beacon lights on the second stage | none | GLV-4 only: "Two Gemini target docking adapter flashing lights were mounted 180° apart between the tanks on the second stage", each on its own battery, lit at cutoff; "not installed on GLV-5" | documented | GIV, 3.2.2.5 and 5.2.6; GV, 3.2.2.5 | yes: `beacons`, on GLV-4. Which two sides, their station and their form are estimated: opposite each other, square to the conduit, at station 366 |
+| Flashing beacon lights on the second stage | none | GLV-4: "Two Gemini target docking adapter flashing lights were mounted 180° apart between the tanks on the second stage", each on its own battery, lit at cutoff; "not installed on GLV-5". GLV-7: "four lights were installed near the center, and spaced 90° apart around the circumference". No other vehicle | documented | GIV, 3.2.2.5 and 5.2.6; GV, 3.2.2.5; GVII, 3.2.2.5 and Table 3.2-I | yes: `beacons`, True on GLV-4 and 4 on GLV-7. Which sides, their station and their form are estimated: GLV-4's two opposite each other, square to the conduit; GLV-7's four at 45° to the conduit, clear of the doors; all at station 366 |
 | Structural instrumentation | 16 measurements, with GLV-2 the last to carry strain gauges | removed | documented | GIV, 3.2.2.7; LSFR, p. II.C-14 | no |
 | Fuel dampener | no heat shield; Teflon bearing | heat shield; ceramic-filled Teflon | documented | GIV, 3.2.2.1 | no |
 | Switchback | first flight on which the spacecraft could switch guidance back to the primary system | | documented | LSFR, p. II.C-91 | no |
@@ -114,6 +114,16 @@ recorder removed; the flashing lights left off. And one thing that was not a cha
 oxidiser standpipes were charged with a tenth of the nitrogen they needed, and the crew were
 shaken at up to 0.38 g for about 13 seconds of first stage flight (*On the Shoulders of Titans*,
 p. 256, footnote).
+
+GLV-6 from GLV-5 is in the Gemini VI-A mission report (MSC-G-R-66-2), which has not been found;
+the model builds GLV-6 as GLV-5. What is known of it comes from the Gemini VII report (GVII,
+MSC-G-R-66-1, 3.2 and Table 3.2-I), which describes GLV-7 as GLV-6 but for these, of which only
+the lights are built: on GLV-2 to GLV-6 cover plates closed two of four cutouts for telemetry
+antennas, and GLV-7 had two cutouts; GLV-6's back-pressure orifice was reduced from 0.50 in to
+0.46 in against a late oxidiser pressurant pressure switch, and GLV-7's was not; after the
+shutdown on the stand on 12 December 1965 a breakwire was added to GLV-6's pad disconnect tail
+plugs "to prevent premature dropout", and GLV-7, already flown, never had it; and GLV-7 carried
+four flashing lights (the table above). GLV-7 flew first, on 4 December; GLV-6 on 15 December.
 
 | | GLV-3 | GLV-4 | GLV-5 | Confidence |
 | --- | --- | --- | --- | --- |
