@@ -30,6 +30,7 @@ import { EARTH } from '../../world/bodies.ts';
 import { cross, DEG, dot, j2000ToInertial, length, type Mat3, rotate, scale, sub, transpose, unit, type Vec3 } from '../../world/frames.ts';
 import { fromMoon, MOON_RADIUS, selenographic } from '../../world/moon.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from '../../world/time.ts';
+import { ease } from '../../util/math.ts';
 
 /** A figure with how far it can be trusted and where it came from (types.ts: Measure, restated so this file needs nothing of a flight). */
 export interface Figure {
@@ -93,12 +94,6 @@ export const PATH = {
   /** The still frame anyone who has asked for less motion is given: this many seconds along the path (the Earth risen over a level horizon, from 250 km). */
   still: 80,
 } as const;
-
-/** 6x^5 - 15x^4 + 10x^3: from 0 to 1 with no speed and no acceleration at either end. */
-export const ease = (x: number): number => {
-  const t = Math.min(1, Math.max(0, x));
-  return t * t * t * (t * (6 * t - 15) + 10);
-};
 
 /** Where the path is `t` seconds along: the camera's height over the Moon's mean sphere (metres) and how far the Earth's centre stands above the limb (radians). */
 export function pathAt(t: number): { height: number; rise: number } {

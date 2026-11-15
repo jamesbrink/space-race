@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Flyer } from '../fly.ts';
-import { ease, journeySeconds, NEAREST } from './maths.ts';
+import { journeySeconds, NEAREST } from './maths.ts';
 import { looking, type Pose, type Rig, type World, Y } from './rig.ts';
+import { ease } from '../../util/math.ts';
 
 /** How far the eye stays above the ground, metres. */
 const FLOOR = 0.35;

@@ -19,16 +19,13 @@
  *   zenith that stays blue (ozone) while everything else greys.
  */
 import { DEG } from '../world/frames.ts';
+import { smoothstep } from '../util/math.ts';
 
 export type RGB = readonly [number, number, number];
 
 const mix = (a: RGB, b: RGB, t: number): RGB => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const times = (a: RGB, s: number): RGB => [a[0] * s, a[1] * s, a[2] * s];
 const plus = (a: RGB, b: RGB): RGB => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-const smooth = (x: number, from: number, to: number): number => {
-  const t = Math.min(1, Math.max(0, (x - from) / (to - from)));
-  return t * t * (3 - 2 * t);
-};
 
 /** How many thicknesses of atmosphere a line of sight at this apparent elevation (degrees) crosses: Kasten and Young, 1989. */
 export function airmass(elevation: number): number {
@@ -144,7 +141,7 @@ export function dayLight(sunElevation: number, moon: { elevation: number; lit: n
   const sky = level(sunElevation);
 
   // the Sun's disc is half a degree across: it sets over that half degree, not at an instant
-  const showing = smooth(sunElevation, -0.3, 0.3);
+  const showing = smoothstep(-0.3, 0.3, sunElevation);
   const sun = times(beam(airmass(sunElevation)), showing);
   const sunStrength = Math.max(sun[0] * SUN_COLOUR[0], sun[1] * SUN_COLOUR[1], sun[2] * SUN_COLOUR[2]);
   // moonlight is there all along; it shows once the sky has let go
@@ -168,15 +165,15 @@ export function dayLight(sunElevation: number, moon: { elevation: number; lit: n
   const ground = 0.8 * sunStrength * (Math.sin(Math.max(sunElevation, 0) * DEG) / Math.sin(REFERENCE * DEG)) + 0.2 * sky;
   const adaptation = Math.min(NIGHT_ADAPTATION, Math.max(0.9, Math.max(ground, 1e-6) ** -0.3));
 
-  const dusk = smooth(-sunElevation, -10, 4);
+  const dusk = smoothstep(-10, 4, -sunElevation);
   const zenith = plus(times(mix(ZENITH_DAY, ZENITH_DUSK, dusk), sky), NIGHT);
   const horizon = plus(times(mix(HORIZON_DAY, HORIZON_DUSK, dusk), sky), NIGHT);
   // the glow comes up as the Sun nears the horizon, reddens as it goes under, and is gone by -14;
   // it fades more slowly than the sky it stands against, which is why twilight has colour at all
-  const glowing = smooth(-sunElevation, -9, 0) * (1 - smooth(-sunElevation, 2, 14));
-  const glow = times(mix(GLOW_HIGH, GLOW_LOW, smooth(-sunElevation, -2, 6)), glowing * 0.55 * sky ** 0.55);
+  const glowing = smoothstep(-9, 0, -sunElevation) * (1 - smoothstep(2, 14, -sunElevation));
+  const glow = times(mix(GLOW_HIGH, GLOW_LOW, smoothstep(-2, 6, -sunElevation)), glowing * 0.55 * sky ** 0.55);
   // cloud tops stand above half the air, so the Sun that reaches them is less reddened and sets later
-  const aloft = times(beam(airmass(Math.max(sunElevation, 0) + 1.5) * 0.5 + 0.5), smooth(sunElevation, -2.5, 0.5));
+  const aloft = times(beam(airmass(Math.max(sunElevation, 0) + 1.5) * 0.5 + 0.5), smoothstep(-2.5, 0.5, sunElevation));
   const cloud = plus(plus(times(aloft, 0.82), times([1, 1, 1.05], 0.18 * sky)), times(NIGHT, 3));
 
   return {

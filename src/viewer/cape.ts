@@ -19,6 +19,7 @@ import { fbm2 } from './field.ts';
 import { Flora, type FloraSpec } from './flora.ts';
 import { Land, type LandSpec, type Palette } from './land.ts';
 import type { Levelled } from './lod.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * Cape Canaveral round Launch Complex 5, May 1961, as scenery: the ground the complex stands on,
@@ -263,10 +264,6 @@ const SEA = -2.9;
  * built (the complex's clearing, its roads, every other complex) the ground is exactly level at
  * the complex's height, easing out to the natural lie over 40 m: nothing the models stand on moves.
  */
-const smooth = (a: number, b: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
 const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
 const riverwardAt = (x: number, z: number) => {
   const n = -z;
@@ -335,18 +332,18 @@ function relief(x: number, z: number): number {
     SEA -
     0.022 * Math.max(-s, 0) +
     0.45 * Math.exp(-bar * bar) +
-    1.35 * smooth(0, 30, s) +
-    0.15 * smooth(30, 45, s) +
-    crest * smooth(44, 62, s) -
-    0.45 * smooth(60, 88, s);
+    1.35 * smoothstep(0, 30, s) +
+    0.15 * smoothstep(30, 45, s) +
+    crest * smoothstep(44, 62, s) -
+    0.45 * smoothstep(60, 88, s);
   const swale = Math.sin(s * 0.057 + 3 * fbm2(x * 0.004, z * 0.004, 35, 3)) * 0.5 + 0.5;
   const inner = -0.55 - 0.5 * (swale - 0.5) + 0.3 * (fbm2(x * 0.008, z * 0.008, 71, 3) - 0.45);
-  h += (inner - h) * smooth(110, 220, s);
+  h += (inner - h) * smoothstep(110, 220, s);
   const r = riverwardAt(x, z);
-  h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smooth(-8, 70, r);
+  h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smoothstep(-8, 70, r);
   let d = Math.min(lc56At(x, z) - 25, wayAt(x, z) - 6);
   for (const [cx, cz, cr] of CLEARINGS) d = Math.min(d, Math.hypot(x - cx, z - cz) - cr - 85);
-  return Math.min(h * smooth(0, 40, d), 0.05) - BED_DOWN * (1 - smooth(0.3, 2.8, trackAt(x, z)));
+  return Math.min(h * smoothstep(0, 40, d), 0.05) - BED_DOWN * (1 - smoothstep(0.3, 2.8, trackAt(x, z)));
 }
 const RELIEF = /* glsl */ `
   float track(vec2 p) {   // trackAt, above

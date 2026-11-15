@@ -28,6 +28,7 @@ import { type Anchor, cleared, covers, type Frame, Labels, layOut } from '../vie
 import { Stage } from '../viewer/stage.ts';
 import { asStudio, type Studio } from '../viewer/studio.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -192,7 +193,6 @@ const MANY_VIEWS = 5;
 /** Milliseconds its canvas takes to fade in over the site's, or out (gallery.css has the same). */
 const FADE = 450;
 const TURN = 0.5;
-const ease = (x: number): number => x * x * (3 - 2 * x);
 
 export class Gallery {
   private readonly root: HTMLElement;
@@ -1336,7 +1336,7 @@ export class Gallery {
       const step = dt / APART;
       const far = this.apartGoal - this.apart;
       this.apart = Math.abs(far) <= step ? this.apartGoal : this.apart + Math.sign(far) * step;
-      this.made!.stage.setExplode(this.stretchAt(ease(this.apart)));
+      this.made!.stage.setExplode(this.stretchAt(smoothstep(0, 1, this.apart)));
       this.q<HTMLInputElement>('.explode input').value = String(this.apart);
     }
     this.left -= dt;

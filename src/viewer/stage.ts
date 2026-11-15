@@ -19,7 +19,7 @@ import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
 import { Bloom } from './bloom.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
-import { AT_GLASS, ease, leanPath } from './camera/head.ts';
+import { AT_GLASS, leanPath } from './camera/head.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
 import { Carry } from './onfoot/carry.ts';
@@ -60,6 +60,7 @@ const TRAIL_TOP = 80_000;
 
 import { EYE_FRACTION, type Hit, Walker } from './onfoot/walk.ts';
 import { Works } from './onfoot/works.ts';
+import { ease } from '../util/math.ts';
 
 /** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
 const EMERGE_CLEAR = 0.12;

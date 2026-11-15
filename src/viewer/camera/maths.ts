@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ease } from '../../util/math.ts';
 
 /**
  * The camera's arithmetic, apart from any page or renderer: how a wheel becomes a zoom, what a zoom
@@ -219,12 +220,6 @@ export function journeySeconds(pivot0: THREE.Vector3, offset0: THREE.Vector3, pi
     Math.abs(offset1.length() - offset0.length()) +
     offset0.angleTo(offset1) * Math.min(offset0.length(), offset1.length());
   return THREE.MathUtils.clamp(0.7 + 0.55 * Math.log2(1 + far / 4), 0.9, 2.8);
-}
-
-/** Eased at both ends, 0 to 1. */
-export function ease(t: number): number {
-  const k = THREE.MathUtils.clamp(t, 0, 1);
-  return k * k * k * (k * (k * 6 - 15) + 10);
 }
 
 /**

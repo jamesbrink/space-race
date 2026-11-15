@@ -113,6 +113,7 @@ import {
   turn,
   unturn,
 } from './rigid.ts';
+import { clamp } from '../util/math.ts';
 
 /** The integration step, s. */
 export const TICK = 0.01;
@@ -285,7 +286,6 @@ export interface Vehicle {
 const X: Vec3 = [1, 0, 0];
 const NONE: ReadonlySet<string> = new Set();
 const TOWER: ReadonlySet<string> = new Set(['tower']);
-const clamp = (x: number, lo = -1, hi = 1): number => Math.min(hi, Math.max(lo, x));
 
 /** What changes smoothly: what Runge-Kutta carries. */
 interface Dyn {
@@ -667,7 +667,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
 
   /** What the controls set off at this instant. */
   const command = (state: VehicleState, asked: Controls): VehicleState => {
-    const c: Controls = { ...asked, pitch: clamp(asked.pitch), yaw: clamp(asked.yaw), roll: clamp(asked.roll) };
+    const c: Controls = { ...asked, pitch: clamp(asked.pitch, -1, 1), yaw: clamp(asked.yaw, -1, 1), roll: clamp(asked.roll, -1, 1) };
     let s: VehicleState = { ...state, controls: c, shed: { ...state.shed } };
     // a solid, lit, burns on whatever the lever says
     const lever = solid && burning(s) ? 1 : allowed(c.throttle);
@@ -1065,7 +1065,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const point = s.separation ? sub(centre, scale(s.separation.axis, capsule.centre.value)) : sub(s.r, scale(axis, f.props.centre));
     const here = ecefToGeodetic(fixed(s.separation ? s.r : point, s.t));
     const up = upOver(here, s.t);
-    const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(clamp(dot(v, up) / length(v))) / DEG : 90);
+    const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(clamp(dot(v, up) / length(v), -1, 1)) / DEG : 90);
     return {
       t: s.t,
       phase: phaseOf(s),

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { smoothstep } from '../../util/math.ts';
 
 /**
  * How a jointed figure moves its limbs when it walks, runs, stands and jumps: no recorded
@@ -198,9 +199,8 @@ export function cycleLength(speed: number, leg = 0.9): number {
  * down fast as the weight arrives, and up again over about a third of a second.
  */
 export function give(t: number): number {
-  const smooth = (x: number) => x * x * (3 - 2 * x);
   if (t <= 0 || t >= GIVE_DOWN + GIVE_UP) return 0;
-  return t < GIVE_DOWN ? smooth(t / GIVE_DOWN) : 1 - smooth((t - GIVE_DOWN) / GIVE_UP);
+  return t < GIVE_DOWN ? smoothstep(0, 1, t / GIVE_DOWN) : 1 - smoothstep(0, 1, (t - GIVE_DOWN) / GIVE_UP);
 }
 const GIVE_DOWN = 0.07;
 const GIVE_UP = 0.32;
@@ -548,8 +548,7 @@ function asked(limbs: Limbs, side: 'L' | 'R', phase: number, speed: number, crou
   // cycles since the foot was under the hip, -0.5 to 0.5
   const from = phase - (side === 'L' ? 0.5 : 0);
   const d = from - Math.round(from);
-  const smooth = (v: number) => v * v * (3 - 2 * v);
-  const late = smooth(Math.min(1, Math.max(0, (d - (st - UNLOCK)) / UNLOCK)));
+  const late = smoothstep(0, 1, (d - (st - UNLOCK)) / UNLOCK);
   const least = late > 0 ? straight + (leaving(limbs, speed, crouch) - straight) * late : straight;
   const landed = Math.min(1, Math.max(0, (d + st) / Math.min(SLAP, st)));
   if (landed >= 1) return { least, toes: 0, most: TOES_UP };

@@ -21,6 +21,7 @@ import {
 } from './steppe.ts';
 import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './tyuratamrelief.ts';
 import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './tyuratamworks.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -365,10 +366,6 @@ const SHARED = /* glsl */ `
  * swell the pad stands on the north brow of, Kilinshek to the south-west, the hollow to the north and the Takyrsai's
  * valley to the south. Inside 700 m nothing the place's models stand on has moved.
  */
-const smooth = (a: number, b: number, x: number) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
 /** From here to here from the pad the land goes over from the place's own lie (tyuratamrelief.ts) to SRTM's, metres. */
 const SRTM_FROM: [number, number] = [700, 1500];
 /**
@@ -379,8 +376,8 @@ const SRTM_FROM: [number, number] = [700, 1500];
 const SRTM_TO: [number, number] = [5200, 6400];
 function relief(x: number, z: number): number {
   const r = Math.hypot(x, z);
-  const w = smooth(SRTM_FROM[0], SRTM_FROM[1], r) * (1 - smooth(SRTM_TO[0], SRTM_TO[1], Math.max(Math.abs(x), Math.abs(z))));
-  const own = siteRelief(x, -z) + 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smooth(400, 900, r);
+  const w = smoothstep(SRTM_FROM[0], SRTM_FROM[1], r) * (1 - smoothstep(SRTM_TO[0], SRTM_TO[1], Math.max(Math.abs(x), Math.abs(z))));
+  const own = siteRelief(x, -z) + 0.6 * (fbm2(x * 0.0025, z * 0.0025, 61, 3) - 0.45) * smoothstep(400, 900, r);
   return w > 0 ? own + (heightsAt(x, -z) - own) * w : own;
 }
 const RELIEF = /* glsl */ `

@@ -5,7 +5,6 @@ import {
   anglesOf,
   approach,
   Coast,
-  ease,
   fitDistance,
   frameOf,
   type Journey,
@@ -15,6 +14,7 @@ import {
   Zoom,
   zoomBy,
 } from './maths.ts';
+import { ease } from '../../util/math.ts';
 import { type Craft, looking, type Pose, type Rig, type RigId, type World, Y } from './rig.ts';
 
 /** The nearest the view comes to looking straight down, radians. */

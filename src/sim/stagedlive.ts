@@ -67,6 +67,7 @@ import {
 } from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
+import { clamp } from '../util/math.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
 export type Step = { kind: 'ignite' | 'cut' | 'separate'; stage: number } | { kind: 'drop'; id: string };
@@ -180,7 +181,6 @@ const along1 = (x: Vec3, n: Vec3): Quat => {
   const y = unit(sub(n, scale(x, dot(n, x))));
   return fromAxes(x, y, cross(x, y));
 };
-const clamp = (x: number, lo = -1, hi = 1): number => Math.min(hi, Math.max(lo, x));
 const name = (s: string) => s.split(',')[0]!;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -458,7 +458,9 @@ export function stagedVehicle(
     const t = ticks * h;
     const c = s.controls;
     // steering while anything aboard burns: the stated acceleration, as far as the controls are thrown
-    const alpha: Vec3 = lit ? [authority * clamp(c.roll), authority * clamp(c.pitch), authority * clamp(c.yaw)] : [0, 0, 0];
+    const alpha: Vec3 = lit
+      ? [authority * clamp(c.roll, -1, 1), authority * clamp(c.pitch, -1, 1), authority * clamp(c.yaw, -1, 1)]
+      : [0, 0, 0];
     const gone = shape(s);
     let held = s.held;
     let r = s.r;
@@ -619,7 +621,7 @@ export function stagedVehicle(
     const flat = (u: Vec3): Vec3 => [c * u[0] - sn * u[1], sn * u[0] + c * u[1], u[2]];
     const here = air(s, s.t);
     const up = ecefToInertial(enuAxes(here.here).up, gast0 + EARTH_ROTATION_RATE * s.t);
-    const climb = (d: Vec3) => (length(d) > 1e-9 ? Math.asin(clamp(dot(d, up) / length(d))) / DEG : 90);
+    const climb = (d: Vec3) => (length(d) > 1e-9 ? Math.asin(clamp(dot(d, up) / length(d), -1, 1)) / DEG : 90);
     const axisIn = turn(s.q, X);
     const f = accel(s, s.t, s, axisIn, shape(s));
     const axis = flat(axisIn);
@@ -793,11 +795,11 @@ export function stagedPilot(
     const error: Vec3 = [0, -tb[2], tb[1]];
     const k = v.authority > 0 ? 1 / v.authority : 0;
     const w = options.omega ?? OMEGA;
-    const command = (i: 1 | 2) => clamp(k * (ab[i] + w * w * error[i] + 2 * w * (rb[i] - s.w[i])));
+    const command = (i: 1 | 2) => clamp(k * (ab[i] + w * w * error[i] + 2 * w * (rb[i] - s.w[i])), -1, 1);
     return {
       pitch: hands.pitch || command(1),
       yaw: hands.yaw || command(2),
-      roll: hands.roll || clamp(k * 2 * w * -s.w[0]),
+      roll: hands.roll || clamp(k * 2 * w * -s.w[0], -1, 1),
       steps,
     };
   };

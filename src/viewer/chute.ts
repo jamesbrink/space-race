@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { ChuteDef } from '../types.ts';
 import type { ChuteMoment } from './ascent.ts';
+import { clamp, smoothstep } from '../util/math.ts';
 
 /**
  * A parachute as the hardware was, built from the flight's data (`Flight.flies.chutes`: diameter,
@@ -54,12 +55,6 @@ const THROUGH = 0.55;
 /** And how much more every part of the cloth has from the light going about inside the canopy, as a share of a light square on. Judged likewise. */
 const INSIDE = 0.3;
 
-const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
-const smooth = (x: number): number => {
-  const k = clamp01(x);
-  return k * k * (3 - 2 * k);
-};
-
 /** The radius a crown of unit arc reaches: the integral of the cosine of its turn. */
 const REACH = (() => {
   let sum = 0;
@@ -84,19 +79,19 @@ export function mouth(def: Pick<ChuteDef, 'reefed' | 'stretch'>, since: number, 
     return STREAM + (1 - STREAM) * Math.sqrt((since - stretch) / (fills - stretch));
   }
   const held = Math.max(STREAM, Math.min(1, reef.mouth.value));
-  if (since <= reef.until.value) return STREAM + (held - STREAM) * smooth((since - stretch) / ((reef.until.value - stretch) / 3));
-  return held + (1 - held) * smooth((since - reef.until.value) / (fills - reef.until.value));
+  if (since <= reef.until.value) return STREAM + (held - STREAM) * smoothstep(0, 1, (since - stretch) / ((reef.until.value - stretch) / 3));
+  return held + (1 - held) * smoothstep(0, 1, (since - reef.until.value) / (fills - reef.until.value));
 }
 
 /** The mouth of a canopy that tore `torn` seconds ago with its mouth `open`: it lets its air go and streams. Whole (`torn` < 0), `open`. */
 export function tornMouth(open: number, torn: number): number {
-  return torn < 0 ? open : STREAM + (open - STREAM) * (1 - smooth(torn / TEARS));
+  return torn < 0 ? open : STREAM + (open - STREAM) * (1 - smoothstep(0, 1, torn / TEARS));
 }
 
 /** How far out it has been paid, 0 to 1 of its lines' and riser's length, `since` seconds after it was thrown out. */
 export function paid(def: Pick<ChuteDef, 'stretch'>, since: number): number {
   const stretch = def.stretch?.value ?? 0;
-  return stretch > 0 ? clamp01(Math.max(since, 0) / stretch) : 1;
+  return stretch > 0 ? clamp(Math.max(since, 0) / stretch, 0, 1) : 1;
 }
 
 /**
@@ -121,7 +116,8 @@ function line(open: number): Float64Array {
   for (let i = 0; i < STEPS; i++) {
     const s = (i + 0.5) * h;
     // (the sleeve takes up its lean over its first fifth, so the shoulder is round, not a corner)
-    const turn = s <= arc ? (Math.PI / 2) * (s / arc) ** CROWN : Math.PI / 2 + lean * (1 + 0.25 * (1 - smooth((s - arc) / (0.2 * sleeve))));
+    const turn =
+      s <= arc ? (Math.PI / 2) * (s / arc) ** CROWN : Math.PI / 2 + lean * (1 + 0.25 * (1 - smoothstep(0, 1, (s - arc) / (0.2 * sleeve))));
     r += Math.cos(turn) * h;
     y -= Math.sin(turn) * h;
     out[(i + 1) * 2] = Math.max(r, 0);
@@ -132,7 +128,7 @@ function line(open: number): Float64Array {
 
 /** A point of a `line` table at `s` (0 apex, 1 skirt). */
 function on(table: Float64Array, s: number): [r: number, y: number] {
-  const x = clamp01(s) * STEPS;
+  const x = clamp(s, 0, 1) * STEPS;
   const i = Math.min(STEPS - 1, Math.floor(x));
   const k = x - i;
   return [table[i * 2]! + (table[i * 2 + 2]! - table[i * 2]!) * k, table[i * 2 + 1]! + (table[i * 2 + 3]! - table[i * 2 + 1]!) * k];
@@ -393,7 +389,7 @@ export class Chute {
     // (torn, it had the mouth it had filled to when it tore, and has let it go since)
     const open = tornMouth(mouth(def, m.torn >= 0 ? m.since - m.torn : m.since, m.fills), m.torn);
     const out = paid(def, m.since);
-    const lay = m.down >= 0 ? smooth(m.down / COLLAPSE) : 0;
+    const lay = m.down >= 0 ? smoothstep(0, 1, m.down / COLLAPSE) : 0;
     const table = line(open);
     const R = this.radius;
     const lip = table[STEPS * 2]! * R;

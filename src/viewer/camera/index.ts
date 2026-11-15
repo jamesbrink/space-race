@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { FreeRig } from './free.ts';
 import { type Hands, listen } from './input.ts';
-import { anchorOk, blendPose, ease, fitDistance, nudgeIntoFrame } from './maths.ts';
+import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
 import { OnboardRig } from './onboard.ts';
 import { ChaseRig, OrbitRig } from './orbit.ts';
 import { looking, type Pose, type Rig, type RigId, type World } from './rig.ts';
 import { TrackRig } from './track.ts';
+import { ease } from '../../util/math.ts';
 
 export { RIGS, type RigId } from './rig.ts';
 

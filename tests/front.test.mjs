@@ -10,7 +10,6 @@ import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flig
 import {
   cameraAt,
   cameraFor,
-  ease,
   FIELD,
   INSTANT,
   instantAt,
@@ -27,6 +26,7 @@ import { skyFrom } from '../src/world/ephemeris.ts';
 import { angleBetween, cross, DEG, dot, length, rotate, sub, unit } from '../src/world/frames.ts';
 import { MOON_RADIUS, selenographic } from '../src/world/moon.ts';
 import { julianDate } from '../src/world/time.ts';
+import { ease } from '../src/util/math.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const near = (got, want, tolerance, what) =>

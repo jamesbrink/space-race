@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Drive, Move, Part } from '../types.ts';
 import { Rider, type Surfaces } from './runs.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * How far along its travel a part is when the explode slider reads `t`.
@@ -116,7 +117,7 @@ export class Route {
 export function steerAlong(route: Route, distance: number, wheelbase: number): number {
   const s = Math.min(route.length, Math.max(0, distance));
   const reach = Math.max(wheelbase, 1e-3);
-  const soft = (x: number) => ease(Math.min(1, Math.max(0, x)));
+  const soft = (x: number) => smoothstep(0, 1, x);
   const turn = route.at(s + reach).heading - route.at(s).heading;
   return Math.atan(turn) * soft(s / reach) * soft((route.length - s) / reach);
 }
@@ -225,10 +226,6 @@ export function chordAt(route: Route, distance: number, ahead: number): number {
           z: end.z + Math.cos(end.heading + route.start) * (far - route.length),
         };
   return Math.atan2(b.x - a.x, b.z - a.z);
-}
-
-function ease(x: number): number {
-  return x * x * (3 - 2 * x);
 }
 
 /** One thing a part does (types.ts: Part.functions): its nodes, the stretch of the slider their moves span, and what the flight says of it. */
@@ -411,7 +408,7 @@ export class Sequence {
         object.quaternion.copy(rest.quaternion).premultiply(RUN_TURN);
         continue;
       }
-      const u = ease(Math.min(1, Math.max(0, (at - move.from) / Math.max(1e-6, move.to - move.from))));
+      const u = smoothstep(0, 1, (at - move.from) / Math.max(1e-6, move.to - move.from));
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has
         object.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...move.axis).normalize(), move.angle * u));

@@ -1,3 +1,4 @@
+import { smoothstep } from '../util/math.ts';
 /**
  * Which of a flight's fires burn at an instant, how hard, and where each one's nozzles are: the arithmetic of the fire
  * that knows nothing of three.js or of any flight, so that it can be tested (tests/fires.test.mjs). stage.ts hangs the
@@ -130,11 +131,6 @@ export function clusterOf(exits: readonly Exit[]): Cluster | null {
   };
 }
 
-const smooth = (x: number, a: number, b: number): number => {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
-};
-
 /**
  * How hard a fire burns at `t`: `main` its main chambers (or its one exit), `steering` its steering chambers, each 0
  * (out) to 1 (rated). It comes up over the half second from `from` and dies over the half second from `to` (neither
@@ -144,7 +140,7 @@ const smooth = (x: number, a: number, b: number): number => {
  * ones burn at what is asked of them. Above it every chamber is throttled together, as an intermediate stage is.
  */
 export function fireLevel(t: number, from: number, to: number, throttle = 1, steeringShare = 0): { main: number; steering: number } {
-  const on = smooth(t, from, from + 0.5) * (1 - smooth(t, to, to + 0.5));
+  const on = smoothstep(from, from + 0.5, t) * (1 - smoothstep(to, to + 0.5, t));
   if (on <= 0) return { main: 0, steering: 0 };
   if (steeringShare > 0 && throttle <= steeringShare * 1.05) return { main: 0, steering: on * Math.min(throttle / steeringShare, 1) };
   return { main: on * throttle, steering: steeringShare > 0 ? on * throttle : 0 };

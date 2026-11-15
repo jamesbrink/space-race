@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { approach } from './maths.ts';
+import { ease } from '../../util/math.ts';
 
 /**
  * A head in a seat: where the eyes are and which way they look, in the seat's own frame (+Z where the eyes rest, +Y the
@@ -168,12 +169,6 @@ export function leanPhases(k: number, out: boolean): [move: number, turn: number
 /** How long a lean of `metres` takes, seconds. */
 export function leanSeconds(metres: number): number {
   return Math.min(LEAN_MOST, LEAN_START + LEAN_PER_METRE * metres);
-}
-
-/** Eased at both ends and level at them: 0 to 1 as `k` goes 0 to 1 (Perlin's smootherstep). */
-export function ease(k: number): number {
-  const t = THREE.MathUtils.clamp(k, 0, 1);
-  return t * t * t * (t * (6 * t - 15) + 10);
 }
 
 /**

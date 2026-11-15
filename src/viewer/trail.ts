@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { installedAir } from './air.ts';
 import { NODES, type Smoke, shadeBy, tend, veilMesh } from './exhaust.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * What a rocket leaves in the air: the smoke along the path its nozzle has flown, and the blast
@@ -33,11 +34,6 @@ const SCALE_HEIGHT = 8000;
 /** The noise the smoke is cut from repeats over this many metres along the path (exhaust.ts): a node's place along it is kept within it. */
 const ALONG = 4096;
 
-const smooth = (x: number, a: number, b: number): number => {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
-};
-
 /**
  * How far the smoke has spread from the path, metres, at `age` seconds: from the fire's own breadth (`breadth`: 2.5 m for
  * one engine; a cluster's is as much more as its engines are spread), a metre and a half a second, to 90 m.
@@ -55,10 +51,10 @@ export function trailFade(age: number, air: number, breadth = 2.5): number {
   const height = -SCALE_HEIGHT * Math.log(Math.min(air, 1));
   const spread = breadth / trailRadius(age, breadth);
   // steam in the humid air near the ground: not in the first metres, where the fire's wash goes into the blast
-  const low = 0.8 * smooth(height, 6, 40) * Math.exp(-height / 3000) * Math.exp(-age / 25) * spread ** 0.7;
+  const low = 0.8 * smoothstep(6, 40, height) * Math.exp(-height / 3000) * Math.exp(-age / 25) * spread ** 0.7;
   // the contrail: ice, which stays, and thins only as it spreads
-  const cold = 1.4 * smooth(height, 7000, 8500) * (1 - smooth(height, 12000, 14000)) * Math.exp(-age / 120) * spread ** 0.4;
-  return smooth(age, 0.2, 1.4) * (low + cold);
+  const cold = 1.4 * smoothstep(7000, 8500, height) * (1 - smoothstep(12000, 14000, height)) * Math.exp(-age / 120) * spread ** 0.4;
+  return smoothstep(0.2, 1.4, age) * (low + cold);
 }
 
 /**
@@ -138,21 +134,21 @@ export function blast(at: number, wind: readonly [number, number] = [0, 0], pit?
   if (pit) return pitBlast(t, wind, pit);
   // the puff: up at once, about 20 m across and 5 m high by T+1.5, blown off the stand by T+3
   const grow = 1 - Math.exp(-t / 0.6);
-  const puff = 1.2 * smooth(t, 0, 0.8) * Math.exp(-Math.max(t - 1, 0) / 0.8);
+  const puff = 1.2 * smoothstep(0, 0.8, t) * Math.exp(-Math.max(t - 1, 0) / 0.8);
   // the ring: out fast and slowing, 14 m at T+1 (a mound round the stand still), 24 at T+2, 29 at T+3, 38 at T+6; its
   // head 3 m tall at first, 6 m at T+3, 8 m at T+6
   const ringRadius = 2 + 42 * (1 - Math.exp(-t / 3));
   const head = 1.5 + 0.12 * ringRadius + 0.3 * Math.max(t - 2, 0);
   // fed while the fire reaches the concrete, then thinning: mostly in a few seconds, the last wisps over a quarter of a minute
-  const fed = smooth(t, 0.1, 1.0);
+  const fed = smoothstep(0.1, 1.0, t);
   const after = Math.max(t - 2, 0);
   const ring = 1.0 * fed * (0.85 * Math.exp(-after / 1.4) + 0.15 * Math.exp(-after / 8));
-  const dust = 0.015 * smooth(t, 0.2, 1.2) * Math.exp(-after / 3);
+  const dust = 0.015 * smoothstep(0.2, 1.2, t) * Math.exp(-after / 3);
   // the wind takes it once the jet no longer pushes it out (from about T+1.5)
   const blown = Math.max(t - 1.5, 0);
   const amount = Math.max(puff / 1.2, ring, dust / 0.015);
   // (the last of it goes out over a few seconds, not at once)
-  const left = smooth(amount, 0.02, 0.06);
+  const left = smoothstep(0.02, 0.06, amount);
   return {
     puffRadius: 3 + 8 * grow,
     puffHeight: 2 + 3.5 * grow,
@@ -164,7 +160,7 @@ export function blast(at: number, wind: readonly [number, number] = [0, 0], pit?
     dust: dust * left,
     drift: [wind[0] * blown, wind[1] * blown],
     rise: 0.6 * t,
-    thin: smooth(t, 2.5, 10),
+    thin: smoothstep(2.5, 10, t),
     amount: left > 0 ? amount : 0,
     mouth: [0, 0],
     fan: -2,
@@ -193,18 +189,18 @@ export function blast(at: number, wind: readonly [number, number] = [0, 0], pit?
  */
 function pitBlast(t: number, wind: readonly [number, number], pit: Pit): Blast {
   const grow = 1 - Math.exp(-t / 0.6);
-  const puff = 0.2 * 1.2 * smooth(t, 0, 0.8) * Math.exp(-Math.max(t - 1, 0) / 0.8);
+  const puff = 0.2 * 1.2 * smoothstep(0, 0.8, t) * Math.exp(-Math.max(t - 1, 0) / 0.8);
   // out along the floor and up, a mass rather than a ring: its front 8 m out at once, 40 m by T+3, 52 m by T+6, its
   // head 13 m tall at first, 32 m by T+3 and 41 m by T+6, so that there is little hole in its middle
   const ringRadius = 0.25 * pit.width + 50 * (1 - Math.exp(-t / 3));
   const head = 8 + 0.6 * ringRadius + 0.5 * Math.max(t - 2, 0);
   const run = pit.out + 25 * (1 - Math.exp(-t / 2.5));
-  const fed = smooth(t, 0.1, 1.0);
+  const fed = smoothstep(0.1, 1.0, t);
   const after = Math.max(t - 4, 0);
   const ring = 1.2 * fed * (0.8 * Math.exp(-after / 3) + 0.2 * Math.exp(-after / 12));
   const blown = Math.max(t - 2, 0);
   const amount = Math.max(puff / 1.2, ring);
-  const left = smooth(amount, 0.02, 0.06);
+  const left = smoothstep(0.02, 0.06, amount);
   return {
     puffRadius: 2 + 4 * grow,
     puffHeight: 2 + 2 * grow,
@@ -217,7 +213,7 @@ function pitBlast(t: number, wind: readonly [number, number], pit: Pit): Blast {
     dust: 0,
     drift: [wind[0] * blown, wind[1] * blown],
     rise: 0.8 * t,
-    thin: smooth(t, 4, 20),
+    thin: smoothstep(4, 20, t),
     amount: left > 0 ? amount : 0,
     mouth: [pit.toward[0] * run, pit.toward[1] * run],
     fan: Math.cos((75 * Math.PI) / 180),

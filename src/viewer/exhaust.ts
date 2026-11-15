@@ -7,6 +7,7 @@ import { uOrigin } from './origin.ts';
 import { FLAME_TABLES, FLAMES, KINDS } from './flames.ts';
 import { jetEdge } from './plume.ts';
 import type { Blast } from './trail.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * The engine's fire and the smoke it leaves, as volumes. This one part of the picture is meant to
@@ -137,7 +138,6 @@ function noiseMade(): THREE.Data3DTexture {
           for (let a = 0; a < 3; a++) v[((i * cells + j) * cells + k) * 3 + a] = hash2(i * cells + j, k, seed + a);
     return v;
   };
-  const smooth = (f: number) => f * f * (3 - 2 * f);
   const octaves = [6, 12, 24].map((cells, o) => ({ cells, v: lattice(cells, 900 + o * 7) }));
   const balls = [4, 8, 16].map((cells, o) => ({ cells, v: lattice(cells, 950 + o * 7) }));
   for (let z = 0; z < n; z++)
@@ -149,7 +149,7 @@ function noiseMade(): THREE.Data3DTexture {
         for (const { cells, v } of octaves) {
           const p = [((x + 0.5) / n) * cells, ((y + 0.5) / n) * cells, ((z + 0.5) / n) * cells];
           const c = p.map(Math.floor);
-          const f = p.map((q, i) => smooth(q - c[i]!));
+          const f = p.map((q, i) => smoothstep(0, 1, q - c[i]!));
           const g = (dx: number, dy: number, dz: number) =>
             v[((((c[0]! + dx) % cells) * cells + ((c[1]! + dy) % cells)) * cells + ((c[2]! + dz) % cells)) * 3]!;
           const mix = (a: number, b: number, t: number) => a + (b - a) * t;

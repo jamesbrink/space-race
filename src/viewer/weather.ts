@@ -44,6 +44,7 @@
 import type { WeatherBeyond } from '../types.ts';
 import { type Day, DECK_HEIGHT, reportReach, VEIL_FORWARD } from './day.ts';
 import { fbm2, hash2, noise2 } from './field.ts';
+import { smoothstep } from '../util/math.ts';
 
 /** The map's breadth, metres: from 187 km up the horizon is 1,540 km off. */
 export const EXTENT = 4_096_000;
@@ -106,10 +107,6 @@ export interface Weather {
   deck: number;
 }
 
-const smooth = (a: number, b: number, x: number): number => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
 const KM = 1000;
 
 /** Cells: the distance to the nearest of one point in every square of a grid, and to the next nearest (in squares). */
@@ -147,39 +144,39 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
   const along = e * wind[0] + n * wind[1],
     across = -e * wind[1] + n * wind[0];
   const meso = fbm2(along / (190 * KM) + 5.3, across / (110 * KM) + 1.9, 421, 3) / 0.875;
-  const clusters = smooth(0.36, 0.7, meso) ** 1.5;
+  const clusters = smoothstep(0.36, 0.7, meso) ** 1.5;
 
-  const land = smooth(-1.5, 3, place.shore);
-  const inland = smooth(3, 38, place.shore);
+  const land = smoothstep(-1.5, 3, place.shore);
+  const inland = smoothstep(3, 38, place.shore);
   // over land: a morning's cumulus, thicker inland and over high ground
-  const high = smooth(150, 900, place.height);
+  const high = smoothstep(150, 900, place.height);
   const overLand = (0.07 + 0.13 * inland) * (0.2 + 1.9 * clusters) + 0.3 * high;
   // over the sea: clear beside a shore, then the trades' clusters; and here and there an arc of them along the edge
   // of an old shower's outflow (the walls of cells, pushed about so none is straight, and only parts of any)
   const wx = e + 60 * KM * (fbm2(e / (140 * KM) + 1.1, n / (140 * KM) + 2.2, 433, 3) - 0.44),
     wy = n + 60 * KM * (fbm2(e / (140 * KM) + 8.1, n / (140 * KM) + 5.2, 435, 3) - 0.44);
   const [d1, d2] = cells(wx / (120 * KM) + 40, wy / (120 * KM) + 40, 431);
-  const some = smooth(0.5, 0.75, noise2(e / (170 * KM) + 3.3, n / (170 * KM) + 6.6, 437));
-  const arcs = smooth(0.2, 0.03, d2 - d1) * some;
-  const offshore = smooth(-4, -34, place.shore);
+  const some = smoothstep(0.5, 0.75, noise2(e / (170 * KM) + 3.3, n / (170 * KM) + 6.6, 437));
+  const arcs = smoothstep(0.2, 0.03, d2 - d1) * some;
+  const offshore = smoothstep(-4, -34, place.shore);
   const trades = (0.01 + 0.19 * clusters + 0.1 * arcs * (0.3 + 0.7 * clusters)) * (0.12 + 0.88 * offshore);
   // far out and to the north-east, decks of cells: closed where the weather thickens, open (rings of cloud round clear
   // air) at their edges; the cells pushed about too, their cracks ragged
   const cx = e + 14 * KM * (fbm2(e / (30 * KM) + 4.1, n / (30 * KM) + 7.2, 445, 3) - 0.44),
     cy = n + 14 * KM * (fbm2(e / (30 * KM) + 2.1, n / (30 * KM) + 9.2, 447, 3) - 0.44);
   const [c1, c2] = cells(cx / (42 * KM) + 11, cy / (42 * KM) + 23, 441);
-  const thick = smooth(0.5, 0.78, synoptic) * smooth(500 * KM, 950 * KM, Math.hypot(east, north) + 0.5 * (east + north));
+  const thick = smoothstep(0.5, 0.78, synoptic) * smoothstep(500 * KM, 950 * KM, Math.hypot(east, north) + 0.5 * (east + north));
   const decks = thick * offshore;
   const ragged2 = 0.75 + 0.5 * noise2(e / (9 * KM), n / (9 * KM), 443);
-  const closedCells = 0.8 * smooth(0.03, 0.3, (c2 - c1) * ragged2);
-  const openCells = 0.55 * smooth(0.34, 0.08, (c2 - c1) * ragged2) + 0.04;
-  const closed = openCells + (closedCells - openCells) * smooth(0.45, 0.8, thick + 0.25 * noise2(e / (300 * KM), n / (300 * KM), 449));
+  const closedCells = 0.8 * smoothstep(0.03, 0.3, (c2 - c1) * ragged2);
+  const openCells = 0.55 * smoothstep(0.34, 0.08, (c2 - c1) * ragged2) + 0.04;
+  const closed = openCells + (closedCells - openCells) * smoothstep(0.45, 0.8, thick + 0.25 * noise2(e / (300 * KM), n / (300 * KM), 449));
   let cumulus = land * overLand + (1 - land) * trades;
   cumulus = cumulus + (closed - cumulus) * decks;
   // the weather's breadth over all of it: from a third to half as much again
   cumulus *= 0.3 + 1.3 * synoptic;
   // and broad clear lanes between cloudier country, 150 to 300 km across: what is seen of the weather from 187 km
-  const lanes = smooth(0.36, 0.62, fbm2(e / (280 * KM) + 6.6, n / (230 * KM) + 3.9, 495, 3) / 0.875);
+  const lanes = smoothstep(0.36, 0.62, fbm2(e / (280 * KM) + 6.6, n / (230 * KM) + 3.9, 495, 3) / 0.875);
   cumulus *= 0.12 + 1.2 * lanes;
 
   // a front to the north-west: a band 1,000 km off, lying west-south-west to east-north-east, waving
@@ -187,14 +184,14 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
   const off = (0.94 * north - 0.34 * east - 1050 * KM + wave) / KM; // km north-west of its middle line
   const band = Math.exp(-((off / 190) ** 2));
   const ragged = fbm2(e / (90 * KM) + 7.7, n / (60 * KM) + 4.4, 461, 4) / 0.9375;
-  let deck = band * smooth(0.25, 0.6, ragged + 0.5 * band - 0.2);
+  let deck = band * smoothstep(0.25, 0.6, ragged + 0.5 * band - 0.2);
   // its shield of cirrus reaches 400 km ahead of it, thinning; and patches of cirrus elsewhere, few
   const shield =
-    Math.exp(-(((off + 260) / 300) ** 2)) * smooth(0.3, 0.75, fbm2(e / (260 * KM) + 1.3, n / (260 * KM) + 6.1, 471, 3) / 0.875 + 0.25);
-  const patches = smooth(0.62, 0.86, fbm2(e / (420 * KM) + 9.9, n / (300 * KM) + 2.6, 481, 3) / 0.875);
+    Math.exp(-(((off + 260) / 300) ** 2)) * smoothstep(0.3, 0.75, fbm2(e / (260 * KM) + 1.3, n / (260 * KM) + 6.1, 471, 3) / 0.875 + 0.25);
+  const patches = smoothstep(0.62, 0.86, fbm2(e / (420 * KM) + 9.9, n / (300 * KM) + 2.6, 481, 3) / 0.875);
   let cirrus = Math.min(1, 0.9 * shield + 0.7 * patches);
   // altocumulus in patches under no front: an eighth of the sky where there is any, on the whole
-  const patchy = smooth(0.6, 0.85, fbm2(e / (260 * KM) + 4.2, n / (260 * KM) + 7.3, 491, 3) / 0.875);
+  const patchy = smoothstep(0.6, 0.85, fbm2(e / (260 * KM) + 4.2, n / (260 * KM) + 7.3, 491, 3) / 0.875);
   deck = Math.min(1, deck + 0.25 * patchy * (1 - band));
   // under the front's own cloud the cumulus are few: no Sun on the ground
   cumulus *= 1 - 0.7 * deck * band;
@@ -207,12 +204,12 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
     const k = within(place, b);
     if (k <= 0) continue;
     if (b.high) cirrus += (b.high.value - cirrus) * k;
-    if (b.low) cumulus += (Math.min(MOST, b.low.value * (0.35 + 1.3 * smooth(0.3, 0.7, meso))) - cumulus) * k;
+    if (b.low) cumulus += (Math.min(MOST, b.low.value * (0.35 + 1.3 * smoothstep(0.3, 0.7, meso))) - cumulus) * k;
   }
   // And last, standing over those, the high cloud the station under it reported, as far as its report holds:
   if (day.high) {
     const held = day.high.ragged ? heldDistance(east, north) : Math.hypot(east, north);
-    cirrus += (day.high.cover - cirrus) * (1 - smooth(day.high.reach[0], day.high.reach[1], held));
+    cirrus += (day.high.cover - cirrus) * (1 - smoothstep(day.high.reach[0], day.high.reach[1], held));
   }
   return { cumulus, cirrus, deck };
 }
@@ -231,16 +228,16 @@ export const heldDistance = (east: number, north: number): number =>
 /** How far inside a record's stretch of country a place is: 1 within its bounds, 0 from FEATHER degrees outside them (or where the place is not given). */
 function within(place: Place, b: WeatherBeyond): number {
   if (place.latitude === undefined || place.longitude === undefined) return 0;
-  const lat = smooth(b.south - FEATHER, b.south, place.latitude) * (1 - smooth(b.north, b.north + FEATHER, place.latitude));
-  const lon = smooth(b.west - FEATHER, b.west, place.longitude) * (1 - smooth(b.east, b.east + FEATHER, place.longitude));
+  const lat = smoothstep(b.south - FEATHER, b.south, place.latitude) * (1 - smoothstep(b.north, b.north + FEATHER, place.latitude));
+  const lon = smoothstep(b.west - FEATHER, b.west, place.longitude) * (1 - smoothstep(b.east, b.east + FEATHER, place.longitude));
   return lat * lon;
 }
 
 /** How much of a place is land, for the map's fourth channel: all of it a few kilometres in from a shore, none on the water. */
-export const landShare = (place: Place): number => smooth(-1.5, 3, place.shore);
+export const landShare = (place: Place): number => smoothstep(-1.5, 3, place.shore);
 
 /** How much the map is believed `distance` metres from the site: none at the site, where the record is, all of it past NEAR[1]. */
-export const believed = (distance: number): number => smooth(NEAR[0], NEAR[1], distance);
+export const believed = (distance: number): number => smoothstep(NEAR[0], NEAR[1], distance);
 
 /** The cumulus cover `distance` metres from the site: the record's (`site`) there, the map's (`map`) away from it. */
 export const coverNear = (site: number, map: number, distance: number): number => site + (map - site) * believed(distance);

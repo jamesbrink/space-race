@@ -1,3 +1,4 @@
+import { smoothstep } from '../util/math.ts';
 /**
  * The lie of the land round Site 1 at Tyuratam: how high the ground is, metres from the level of the tracks and the
  * platform's deck. The pad stands on the brow of a scarp: south of the tracks the ground is at their level, north of
@@ -37,11 +38,6 @@ const PLOT_EDGE: [number, number] = [1.5, 14];
 /** From here to here from the pad the ground comes back to the tracks' level, m: so that the land meets the globe. */
 const FAR: [number, number] = [900, 2500];
 
-const smooth = (a: number, b: number, x: number): number => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return t * t * (3 - 2 * t);
-};
-
 /** How far a point is past the brow, m: over the low ground positive, on the high ground negative. */
 export function pastBrow(x: number, y: number): number {
   let best = 1e12;
@@ -65,10 +61,10 @@ export function pastBrow(x: number, y: number): number {
 
 /** The fall alone. */
 function scarp(x: number, y: number): number {
-  const west = 1 - smooth(-450, -150, x);
-  const depth = DEPTH + DEPTH_WEST * west + DEPTH_EAST * smooth(120, 300, x);
-  const breadth = BREADTH + BREADTH_WEST * west + BREADTH_EAST * smooth(60, 200, x);
-  return -depth * smooth(0, breadth, pastBrow(x, y));
+  const west = 1 - smoothstep(-450, -150, x);
+  const depth = DEPTH + DEPTH_WEST * west + DEPTH_EAST * smoothstep(120, 300, x);
+  const breadth = BREADTH + BREADTH_WEST * west + BREADTH_EAST * smoothstep(60, 200, x);
+  return -depth * smoothstep(0, breadth, pastBrow(x, y));
 }
 
 const PLOT_LEVEL = scarp(PLOT[0], PLOT[1]);
@@ -81,10 +77,10 @@ export function siteRelief(x: number, y: number): number {
   const dy = by - ay;
   const t = Math.min(1, Math.max(0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
   const off = Math.hypot(x - ax - t * dx, y - ay - t * dy);
-  g += (Math.max(g, -DEPTH * t) - g) * (1 - smooth(RAMP_HALF[0], RAMP_HALF[1], off));
+  g += (Math.max(g, -DEPTH * t) - g) * (1 - smoothstep(RAMP_HALF[0], RAMP_HALF[1], off));
   const out = Math.hypot(Math.max(Math.abs(x - PLOT[0]) - PLOT[2], 0), Math.max(Math.abs(y - PLOT[1]) - PLOT[3], 0));
-  g = PLOT_LEVEL + (g - PLOT_LEVEL) * smooth(PLOT_EDGE[0], PLOT_EDGE[1], out);
-  return g * (1 - smooth(FAR[0], FAR[1], Math.hypot(x, y)));
+  g = PLOT_LEVEL + (g - PLOT_LEVEL) * smoothstep(PLOT_EDGE[0], PLOT_EDGE[1], out);
+  return g * (1 - smoothstep(FAR[0], FAR[1], Math.hypot(x, y)));
 }
 
 const f = (v: number) => (Number.isInteger(v) ? v.toFixed(1) : String(v));

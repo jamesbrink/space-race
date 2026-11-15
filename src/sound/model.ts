@@ -30,6 +30,7 @@
  *   impressions, `estimated`: no recording was measured or used.
  */
 import { atmosphere } from '../sim/atmosphere.ts';
+import { clamp, lerp, smoothstep } from '../util/math.ts';
 
 export type Vec = readonly [number, number, number];
 
@@ -65,13 +66,6 @@ const JET_EXHAUST = 1000;
 /** Faster than this the flight is not played as it sounds but kept as a low bed, and its events are not played at all. */
 export const FASTEST = 2;
 
-const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
-const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
-export function smoothstep(v: number, from: number, to: number): number {
-  if (!(to > from)) return v >= to ? 1 : 0;
-  const k = clamp((v - from) / (to - from), 0, 1);
-  return k * k * (3 - 2 * k);
-}
 const distance = (a: Vec, b: Vec): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /**
@@ -80,7 +74,7 @@ const distance = (a: Vec, b: Vec): number => Math.hypot(a[0] - b[0], a[1] - b[1]
  */
 export function carries(height: number): number {
   const h = Math.max(0, height);
-  return Math.min(1, atmosphere(h).density / RHO0) * (1 - smoothstep(h, 80_000, 120_000));
+  return Math.min(1, atmosphere(h).density / RHO0) * (1 - smoothstep(80_000, 120_000, h));
 }
 
 /** A point of the scene's frame (the site's: +Y up from its origin) as a height above the sea, m: the frame is flat and the sea is not. */
@@ -155,7 +149,7 @@ export function soundSpeed(heightA: number, heightB: number): number {
 /** The gain a level in dB is played at: FULL is 1, every SQUEEZE decibels of level one of gain, nothing under FLOOR. */
 export function loudness(level: number): number {
   if (!(level > FLOOR)) return 0;
-  return Math.min(1.4, 10 ** ((level - FULL) / (20 * SQUEEZE))) * smoothstep(level, FLOOR, FLOOR + 12);
+  return Math.min(1.4, 10 ** ((level - FULL) / (20 * SQUEEZE))) * smoothstep(FLOOR, FLOOR + 12, level);
 }
 
 export interface Heard {
@@ -335,7 +329,7 @@ export function mix(h: Hearing): Mix {
   const air = carries(now.altitude);
   const power = acousticPower(thrust * h.burn(h.t), exhaustSpeed);
   const structure = loudness(spl(power, NEAR) - STRUCTURE);
-  const cabin = loudness(spl(power * air * (1 - smoothstep(now.mach, 0.8, 1.3)), NEAR) - CABIN);
+  const cabin = loudness(spl(power * air * (1 - smoothstep(0.8, 1.3, now.mach)), NEAR) - CABIN);
   const through = cabin / (structure + cabin + 1e-9);
   const inside = { gain: structure + cabin, crackle: 0.35 * cabin, sub: structure + 0.7 * cabin, cutoff: 180 + 1400 * through };
 
@@ -348,15 +342,15 @@ export function mix(h: Hearing): Mix {
   const rise = Math.max(0, h.where(h.t)[1]);
   const echo = {
     delay: clamp(lerp(longer / c, (2 * rise) / c, k), 0, 0.5),
-    gain: lerp(0.6 * (1 - smoothstep(up, 60, 500)), 0.5 * (1 - smoothstep(rise, 20, 250)), k),
+    gain: lerp(0.6 * (1 - smoothstep(60, 500, up)), 0.5 * (1 - smoothstep(20, 250, rise)), k),
   };
 
   // the air on the skin, for whoever rides: by dynamic pressure, rougher through Mach 1; under a canopy it is heard in the open, flapping
-  const drogue = smoothstep(h.t, h.out.drogue, h.out.drogue + 1.5);
-  const main = smoothstep(h.t, h.out.main, h.out.main + 1.5);
+  const drogue = smoothstep(h.out.drogue, h.out.drogue + 1.5, h.t);
+  const main = smoothstep(h.out.main, h.out.main + 1.5, h.t);
   const under = Math.max(drogue, main);
   // (down over the last half second of the fall, so that it is so when the clock stops at the landing)
-  const down = smoothstep(h.t, h.duration - 0.5, h.duration);
+  const down = smoothstep(h.duration - 0.5, h.duration, h.t);
   const sonic = Math.exp(-(((now.mach - 1) / 0.15) ** 2));
   const skin = SKIN * Math.max(0, now.q) * (1 + 1.5 * sonic);
   const rush = skin > 0 ? 20 * Math.log10(skin / P_REF) - lerp(lerp(CABIN, CANOPY[0], drogue), CANOPY[1], main) : Number.NEGATIVE_INFINITY;
@@ -366,7 +360,7 @@ export function mix(h: Hearing): Mix {
 
   // the place: its own bed near its ground, and the sea round a spacecraft that has come down and stayed
   const off = Math.hypot(h.ears[0], h.ears[2]);
-  const near = (1 / (1 + (Math.max(0, h.ears[1]) / 500) ** 2)) * (1 - smoothstep(off, 5000, 30_000)) * earsAir;
+  const near = (1 / (1 + (Math.max(0, h.ears[1]) / 500) ** 2)) * (1 - smoothstep(5000, 30_000, off)) * earsAir;
   const afloat = h.stays ? k * down : 0;
 
   return {

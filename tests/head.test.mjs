@@ -8,7 +8,6 @@ import { flight as libertyBell7 } from '../missions/usa/mercury/flights/mr-4-lib
 import {
   AT_GLASS,
   clampHead,
-  ease,
   eyeOf,
   GLANCE,
   HEAD_TURN,
@@ -22,6 +21,7 @@ import {
   turnOf,
 } from '../src/viewer/camera/head.ts';
 import { lookoutsOf, windowAt } from '../src/viewer/lookouts.ts';
+import { ease } from '../src/util/math.ts';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const gazeOf = (q) => V(0, 0, -1).applyQuaternion(q);
