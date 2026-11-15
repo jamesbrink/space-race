@@ -403,6 +403,11 @@ build) narrow it; the header of the file lists the rest.
   ends with what moved by more than the noise. `--toggle "<script>" --toggle-off "<script>"`
   throws a switch inside one page and times blocks of frames each way, turn about, which is the
   closest comparison there is. `--compare old.json new.json` does the same for two kept results.
+- **Another machine is another baseline.** Every browser tool launches through `tools/browser.mjs`, which reads
+  `SR_CHROME`, `SR_ANGLE`, `SR_HEADLESS`, `SR_ARGS` and `SR_URL` (its header; with none set, the installed Chrome on
+  Metal on macOS, and on Linux the first Chrome on PATH on ANGLE's Vulkan, headless, which draws the page on an NVIDIA
+  card). What a check decides from what is drawn (frozen, flicker, levels, wheels, memory as the page counts it) holds
+  on either; frame and load times are each machine's own and are compared only on the one machine.
 - **Pictures prove nothing across page loads** (cloud, surf and reflections go by the time since
   the page opened). What proves a change leaves the picture alone is `--shots <dir>` with
   `--toggle`: each scenario frozen (no time passes at all), drawn with the switch off, on, and off

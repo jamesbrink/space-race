@@ -3,19 +3,13 @@
 // distances from each thing, every piece's level against chooseLevel's for its pixels a metre, and the fade between.
 // (rendering.md, "Levels of detail"; viewer/around.ts). Needs a server running.
 //   node tools/around-test.mjs [url]     (default url: http://localhost:5180/)
-import { chromium } from 'playwright-core';
+import { launch, open, url as urlOf } from './browser.mjs';
 
-const url = process.argv[2] ?? process.env.SR_URL ?? 'http://localhost:5180/';
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const url = urlOf(process.argv.slice(2));
+const browser = await launch();
 const fails = [];
 for (const where of ['ussr/vostok/vostok-1/site/pad', 'usa/mercury/mr-3-freedom-7/site/pad']) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.routeWebSocket(/.*/, () => {});
-  await page.goto(`${url}#${where}`);
-  await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 180000 });
+  const { page, errors, close } = await open(browser, `${url}#${where}`, { timeout: 180000 });
   await page.waitForFunction(() => window.sr.stage.setting.levels?.[0]?.scenery?.all.length === 3, null, { timeout: 60000 });
   await page.waitForTimeout(1500);
   const r = await page.evaluate(() => {
@@ -73,7 +67,7 @@ for (const where of ['ussr/vostok/vostok-1/site/pad', 'usa/mercury/mr-3-freedom-
     if (!ok) fails.push(`${where}: ${s.name} at ${s.ppm.toFixed(2)} px/m drawn ${s.shown}, wants ${want}`);
   }
   if (errors.length) fails.push(`${where}: console errors: ${errors.slice(0, 3).join(' | ')}`);
-  await page.close();
+  await close();
 }
 await browser.close();
 console.log(fails.length ? `\n${fails.length} failed:\n  ${fails.join('\n  ')}` : '\nevery piece drawn at the level its size calls for');

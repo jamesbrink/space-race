@@ -219,6 +219,9 @@ tools/
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows
+  shot.mjs                            one screenshot of the viewer, for looking at a change
+  browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share
+  bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   globe.mjs                           bakes public/globe/ from Natural Earth's coastlines: distances to the shore on a cube's faces
   globe-region.mjs                    bakes a site's region (SiteDef.region) from OpenStreetMap's coast and lakes, as it stood on its date
   globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and a region's, finer; needs GDAL

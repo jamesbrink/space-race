@@ -10,14 +10,13 @@
 import { globSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
+import { launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 import { exhibit } from '../src/app/address.ts';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const only = opt('--only', null);
-const shots = opt('--shots', null);
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const only = opt(args, '--only', null);
+const shots = opt(args, '--shots', null);
+const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -34,7 +33,7 @@ if (!flights.length) {
   process.exit(1);
 }
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 const fails = [];
 const fail = (what) => {
   fails.push(what);
@@ -43,21 +42,18 @@ const fail = (what) => {
 const HANDOVER = 1800; // ms: a change of rig fades over at most 1.4 s (camera/index.ts handOver)
 
 async function open(hash, width, height) {
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {});
-  await page.goto(`${url}#${hash}`);
-  await page.waitForFunction(() => window.sr?.gallery?.ready, null, { timeout: 180000 });
+  const { page, errors, close } = await openPage(browser, `${url}#${hash}`, {
+    viewport: [width, height],
+    wait: 'gallery',
+    timeout: 180000,
+  });
   // (still: the turntable off, so a view the hands set stays where it was set)
   await page.evaluate(() => {
     const g = window.sr.gallery;
     g.setTurntable(false);
   });
   await page.waitForTimeout(400);
-  return { page, errors, close: () => context.close() };
+  return { page, errors, close };
 }
 
 /** In the page: the gallery's stage as a test needs it. */

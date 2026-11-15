@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
+import { launch } from './browser.mjs';
 import { ALLOWED, apart, LOD_ABOVE, PPMS, recordOf, thresholdFrom } from './lod-thresholds.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -110,7 +110,7 @@ export async function measure({ url, flight, only }) {
     [...new Set(globSync('public/models/**/*.lod1.glb', { cwd: root }).map((f) => dirname(f).split('/').slice(2).join('/')))].filter(
       (f) => !f.includes('/sites/'),
     );
-  const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+  const browser = await launch();
   const done = new Set();
   for (const id of flights) {
     const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });

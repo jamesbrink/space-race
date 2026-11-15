@@ -4,7 +4,7 @@
 //   node tools/shot.mjs /tmp/gallery.png usa/mercury/mr-3-freedom-7/gallery "sr.gallery.stage.pose(215, 9, 60, 12)" --ui
 //   node tools/shot.mjs /tmp/front.png "" "sr.front.seek(80)" 1440 900 --ui      the front page (an address that names nothing), 80 s along its path
 // The page's UI is hidden unless --ui is given. `sr` is the viewer's debug handle (see AGENTS.md).
-import { chromium } from 'playwright-core';
+import { launch, open } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const ui = args.includes('--ui');
@@ -17,18 +17,14 @@ if (!out) {
   console.error('usage: shot.mjs <out.png> <model> "<js>" [width height] [--ui]');
   process.exit(2);
 }
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: Number(w), height: Number(h) }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push(m.text()));
-page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(`${process.env.SR_URL ?? 'http://localhost:5180/'}#${model}`);
+const browser = await launch();
 // (the front page has no curtain and no stage: its own picture, held still for a script until it is told where to be)
 const front = model === '';
-if (front) {
-  await page.waitForFunction(() => window.sr?.front, null, { timeout: 60000 });
-  await page.evaluate(() => window.sr.front.ready);
-} else await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 60000 });
+const { page, errors } = await open(browser, `${process.env.SR_URL ?? 'http://localhost:5180/'}#${model}`, {
+  viewport: [Number(w), Number(h)],
+  console: ['error', 'warning'],
+  wait: front ? 'front' : 'ready',
+});
 if (!ui) await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
 if (click) await page.mouse.click(click[0], click[1]);
 // (the stage that is on show: the gallery has its own)

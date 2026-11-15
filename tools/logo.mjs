@@ -31,8 +31,8 @@ const card = `<!doctype html><meta charset="utf-8"><style>
   p { margin: 26px 0 0; font: 20px/1.4 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.26em; text-transform: uppercase; color: #cbc5b7; }
   i { font-style: normal; color: #ffc46b; margin: 0 0.5em; }
 </style><main>${logo().replaceAll('currentColor', INK)}<p>Every crewed spacecraft <i>·</i> to scale <i>·</i> as it flew</p></main>`;
-const { chromium } = await import('playwright-core');
-const browser = await chromium.launch({ channel: 'chrome' });
+const { launch } = await import('./browser.mjs');
+const browser = await launch({ gpu: false });
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
 await page.setContent(card);
 const png = join(root, 'public', 'og.png');

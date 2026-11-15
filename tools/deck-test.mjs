@@ -4,9 +4,9 @@
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, and Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space.
 //   pnpm dev, then: node tools/deck-test.mjs [url]
-import { chromium } from 'playwright-core';
+import { launch, open, url as urlOf } from './browser.mjs';
 
-const url = process.argv[2] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const url = urlOf(process.argv.slice(2));
 const FLIGHTS = {
   'usa/mercury/mr-3-freedom-7': ['Ignition', 'Engine cutoff'],
   'usa/mercury/mr-4-liberty-bell-7': ['Ignition', 'Engine cutoff'],
@@ -25,7 +25,15 @@ const fail = (where, what) => {
   failed++;
   console.log(`  FAIL ${where}: ${what}`);
 };
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
+/** The deck's page of `id` at this size, flown: a page of its own, which counts only what it throws. */
+const fly = (id, w, h, touch) =>
+  open(browser, `${url}#${id}/fly`, {
+    context: { viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 },
+    console: [],
+    wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
+    timeout: 120000,
+  });
 
 /** Each panel's box and the deck's order, as the page has them. */
 const layout = (page) =>
@@ -51,14 +59,7 @@ for (const [w, h, touch] of SIZES) {
   const seen = {};
   for (const [id, steps] of Object.entries(FLIGHTS)) {
     const where = `${id} at ${w}`;
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 });
-    const page = await ctx.newPage();
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${url}#${id}/fly`);
-    await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
-      timeout: 120000,
-    });
+    const { page, errors, context: ctx } = await fly(id, w, h, touch);
     await page.waitForTimeout(800);
     const l = await layout(page);
     seen[id] = l;
@@ -165,14 +166,7 @@ for (const [w, h, touch] of SIZES) {
   // the descent by hand (orbitdeck.ts `descent:` commands): offered when the simulator would hear it, B its sequencer, Space its steps
   {
     const where = `vostok-1's descent at ${w}`;
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 });
-    const page = await ctx.newPage();
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${url}#ussr/vostok/vostok-1/fly`);
-    await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
-      timeout: 120000,
-    });
+    const { page, errors, context: ctx } = await fly('ussr/vostok/vostok-1', w, h, touch);
     const can = () =>
       page.evaluate(() =>
         Object.fromEntries(['descent:modules', 'descent:ejection', 'descent:pilot/main canopy'].map((a) => [a, window.sr.cockpit.can(a)])),
@@ -240,11 +234,15 @@ for (const [w, h, touch] of SIZES) {
   // Freedom 7's capsule let go under thrust rides on to the cutoff
   if (w !== 820) {
     const where = `staging by hand at ${w}`;
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 });
-    const page = await ctx.newPage();
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(String(e)));
-    const open = async (id) => {
+    const {
+      page,
+      errors,
+      context: ctx,
+    } = await open(browser, null, {
+      context: { viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 },
+      console: [],
+    });
+    const goTo = async (id) => {
       await page.goto(`${url}#${id}/fly`);
       await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
         timeout: 120000,
@@ -272,7 +270,7 @@ for (const [w, h, touch] of SIZES) {
     const shot = async (name) => {
       if (process.env.SR_SHOTS) await page.screenshot({ path: `${process.env.SR_SHOTS}/${name}-${w}.png` });
     };
-    await open('ussr/vostok/vostok-1');
+    await goTo('ussr/vostok/vostok-1');
     await page.keyboard.press('Space');
     await run(290);
     let r = await read();
@@ -319,7 +317,7 @@ for (const [w, h, touch] of SIZES) {
     await shot('core-early');
     console.log(`  ${where}: the fairing at 60 s and the core at 61 s said so`);
     // Freedom 7: the capsule let go under thrust rides the booster to its cutoff
-    await open('usa/mercury/mr-3-freedom-7');
+    await goTo('usa/mercury/mr-3-freedom-7');
     await page.keyboard.press('Space');
     await run(100);
     await ask('separate');

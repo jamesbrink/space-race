@@ -19,19 +19,16 @@
 //   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1] [--quick] [--at 60,700] [--seed n] [--hands: the hands alone]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { flag, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const flag = (name) => {
-  const i = args.indexOf(name);
-  return i >= 0 ? args.splice(i, 2)[1] : null;
-};
-const shots = flag('--shots');
-const only = flag('--only');
-const at = flag('--at');
-const handsOnly = args.includes('--hands') ? args.splice(args.indexOf('--hands'), 1) && true : false;
-const quick = args.includes('--quick') ? args.splice(args.indexOf('--quick'), 1) && true : false;
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const shots = opt(args, '--shots', null);
+const only = opt(args, '--only', null);
+const at = opt(args, '--at', null);
+const seed = Number(opt(args, '--seed', 1961));
+const handsOnly = flag(args, '--hands');
+const quick = flag(args, '--quick');
+const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
 /** Pixels: the most a chord may stray from its curve (pathline.ts samples to 0.35; the rest is the camera having moved since). */
@@ -66,7 +63,7 @@ const fail = (where, what) => {
   failed++;
   console.log(`  FAIL ${where}: ${what}`);
 };
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 /** The window sizes: a laptop's, a tablet's upright and a phone's. */
 const SIZES = [
   [1280, 800],
@@ -74,6 +71,8 @@ const SIZES = [
   [390, 844],
 ];
 let page = null;
+let closePage = null;
+/** Each page's errors, as `open` collects them. */
 const errors = [];
 const turn = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
@@ -614,13 +613,15 @@ async function inspect(where, v, look, W, H) {
 
 /** A page of the size given, on a flight's deck with the path drawn. */
 async function open(W, H, f) {
-  if (page) await page.close();
-  page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${url}#${f.id}/fly`);
-  await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
+  if (closePage) await closePage();
+  const opened = await openPage(browser, `${url}#${f.id}/fly`, {
+    viewport: [W, H],
+    console: [],
+    wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
     timeout: 120000,
   });
+  ({ page, close: closePage } = opened);
+  errors.push(opened.errors);
   await page.evaluate(() => {
     window.sr.path.show(true, false);
     window.sr.navball?.tuck?.(false, false);
@@ -793,7 +794,7 @@ const hands = [];
 
 // Taken over at seeded instants and flown by scripted hands, each step checked as the record's instants are, then run on
 // to its end and held against what the path said when the hands let go.
-const rand = seeded(Number(flag('--seed') ?? 1961));
+const rand = seeded(seed);
 if (!quick && !at) {
   for (const [key, f] of Object.entries(FLIGHTS)) {
     if (only && only !== key) continue;
@@ -880,7 +881,7 @@ if (!quick && !at) {
   }
 }
 
-for (const e of errors) fail('page', e);
+for (const e of errors.flat()) fail('page', e);
 await browser.close();
 if (hands.length)
   console.log(

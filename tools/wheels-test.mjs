@@ -14,15 +14,13 @@
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
+import { flag, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const flag = (name) => (args.includes(name) ? (args.splice(args.indexOf(name), 1), true) : false);
-const only = opt('--flight', null);
-const tolerance = Number(opt('--tolerance', 5)) / 1000;
-const report = flag('--report');
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const only = opt(args, '--flight', null);
+const tolerance = Number(opt(args, '--tolerance', 5)) / 1000;
+const report = flag(args, '--report');
+const url = urlOf(args);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** What of a part's moves are to be checked: a slide or a drive with wheels or with `runs`. */
@@ -45,15 +43,16 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
 }
 flights.sort((a, b) => a.id.localeCompare(b.id));
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 const fails = [];
 const rows = [];
 for (const flight of flights) {
-  const page = await browser.newPage({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 1 });
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${url}#${flight.id}/site/pad`);
-  await page.waitForFunction(() => window.sr?.stage && document.querySelector('.loading.done'), null, { timeout: 180_000 });
+  const { page, errors, close } = await open(browser, `${url}#${flight.id}/site/pad`, {
+    viewport: [800, 500],
+    console: [],
+    wait: () => window.sr?.stage && document.querySelector('.loading.done'),
+    timeout: 180_000,
+  });
   const result = await page.evaluate(async (moving) => {
     const { stage, clock } = window.sr;
     stage.setAutoRotate(false);
@@ -365,7 +364,7 @@ for (const flight of flights) {
     else if (!r.checked) fails.push(`${tag}: nothing it runs on was found under it`);
   }
   if (errors.length) fails.push(`${flight.id}: page errors: ${errors.slice(0, 3).join(' | ')}`);
-  await page.close();
+  await close();
 }
 await browser.close();
 for (const f of fails) console.log(`  ${report ? 'over' : 'FAIL'} ${f}`);

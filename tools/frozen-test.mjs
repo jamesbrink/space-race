@@ -18,7 +18,7 @@
 // picture changes because the scene does.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { launch, open, opt, url as urlOf } from './browser.mjs';
 
 const NPIX = 1280 * 800;
 const SETTLE = 4; // frames drawn after a pose or a switch before the picture is trusted (what the other tools give it)
@@ -47,22 +47,18 @@ const POSES = [
 ];
 
 const args = process.argv.slice(2);
-const shotsAt = args.indexOf('--shots');
-const shots = shotsAt >= 0 ? args.splice(shotsAt, 2)[1] : null;
-const flightAt = args.indexOf('--flight');
-const flight = flightAt >= 0 ? args.splice(flightAt, 2)[1] : null;
-const onlyAt = args.indexOf('--only');
-const only = onlyAt >= 0 ? new RegExp(args.splice(onlyAt, 2)[1]) : null;
-const url = args[0] ?? 'http://localhost:5180/';
+const shots = opt(args, '--shots', null);
+const flight = opt(args, '--flight', null);
+const onlyAs = opt(args, '--only', null);
+const only = onlyAs === null ? null : new RegExp(onlyAs);
+const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-page.on('pageerror', (e) => errors.push(String(e)));
-await page.goto(`${url}#${flight ? `${flight}/site/vehicle` : 'vehicle'}`);
-await page.waitForFunction(() => window.sr?.stage && document.querySelector('.loading.done'), null, { timeout: 180_000 });
+const browser = await launch();
+const { page, errors } = await open(browser, `${url}#${flight ? `${flight}/site/vehicle` : 'vehicle'}`, {
+  wait: () => window.sr?.stage && document.querySelector('.loading.done'),
+  timeout: 180_000,
+});
 await page.addStyleTag({ content: '#ui, #gallery { display: none !important }' });
 
 await page.evaluate(async () => {

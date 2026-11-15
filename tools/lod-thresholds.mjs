@@ -141,7 +141,11 @@ async function main(args) {
   if (args.includes('--measure')) {
     const { measure } = await import('./lod-measure.mjs');
     const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
-    await measure({ url: option('--url') ?? 'http://localhost:5180/', flight: option('--flight'), only: option('--only') });
+    await measure({
+      url: option('--url') ?? process.env.SR_URL ?? 'http://localhost:5180/',
+      flight: option('--flight'),
+      only: option('--only'),
+    });
   }
   const check = args.includes('--check');
   let wrong = 0;

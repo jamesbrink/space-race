@@ -16,7 +16,7 @@
 // desktop browser does not reproduce the kill, so the account is the evidence and the budget is the test.
 //
 // The budget (MiB, accounted GPU memory, the launch site as a phone): see BUDGET below and rendering.md, "Memory".
-import { chromium, webkit } from 'playwright-core';
+import { launch } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -36,15 +36,13 @@ const flightId = value('flight', 'usa/mercury/mr-3-freedom-7');
  */
 export const BUDGET = { ready: 350, late: 350, foot: 400, flight: 450, aboard: 500, peak: 500 };
 
-const engine = value('browser', 'chromium') === 'webkit' ? webkit : chromium;
-const browser = await engine.launch(
-  engine === chromium ? { channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] } : {},
-);
+const engine = value('browser', 'chromium') === 'webkit' ? 'webkit' : 'chromium';
+const browser = await launch({ engine });
 const context = await browser.newContext({
   viewport: { width: Number(w), height: Number(h) },
   deviceScaleFactor: Number(dpr),
   hasTouch: !desktop,
-  isMobile: !desktop && engine === chromium ? true : undefined,
+  isMobile: !desktop && engine === 'chromium' ? true : undefined,
 });
 const page = await context.newPage();
 const errors = [];
@@ -105,7 +103,7 @@ const device = await page.evaluate(() => ({
   maxTexture: window.sr.stage.renderer.capabilities.maxTextureSize,
   tier: window.sr.stage.tier.lighter ? `lighter (${window.sr.stage.tier.why})` : `full (${window.sr.stage.tier.why})`,
 }));
-console.log(`${engine.name()} ${w}x${h}@${dpr}: ${JSON.stringify(device)}`);
+console.log(`${engine} ${w}x${h}@${dpr}: ${JSON.stringify(device)}`);
 /** Wait until the total has stood still for three seconds (maps arriving a piece a frame), or `most` ms. */
 async function settle(most) {
   let last = -1;

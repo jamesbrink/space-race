@@ -15,13 +15,12 @@
 //              arrives over it, against the budget below
 // and says what a frame of it costs here (not held to a figure: it is this machine's, now).
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
-import { chromium } from 'playwright-core';
+import { checks, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const only = opt('--only', null);
+const only = opt(args, '--only', null);
 const noIdle = args.includes('--no-idle') && Boolean(args.splice(args.indexOf('--no-idle'), 1));
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const url = urlOf(args);
 const FLIGHT = 'usa/mercury/mr-3-freedom-7';
 
 /**
@@ -31,38 +30,24 @@ const FLIGHT = 'usa/mercury/mr-3-freedom-7';
  */
 export const BUDGET = { front: 90, entering: 350 };
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 
 /** A page at `hash`. `search`: the address's query (`?demo`: not treated as a script, so the picture moves). */
 async function open(hash = '', { search = '', reduced = false, phone = false, slow = 0, size = [1280, 800] } = {}) {
-  const context = await browser.newContext(
-    phone
+  return openPage(browser, `${url}${search}#${hash}`, {
+    context: phone
       ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true }
       : { viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 1, reducedMotion: reduced ? 'reduce' : 'no-preference' },
-  );
-  const page = await context.newPage();
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {});
-  if (slow)
-    await page.route(/\.glb(\?|$)/, async (route) => {
-      await new Promise((done) => setTimeout(done, slow));
-      await route.continue().catch(() => {});
-    });
-  await page.goto(`${url}${search}#${hash}`);
-  return { page, errors, context };
+    slowGlb: slow,
+    wait: null,
+  });
 }
 const front = async (page) => {
   await page.waitForFunction(() => window.sr?.front, null, { timeout: 60000 });
   await page.evaluate(() => window.sr.front.ready);
 };
 
-const failures = [];
-const check = (ok, what) => {
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
-  if (!ok) failures.push(what);
-};
+const { check, failures } = checks();
 async function scenario(name, run) {
   if (only && only !== name) return;
   console.log(name);

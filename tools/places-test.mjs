@@ -3,36 +3,25 @@
 // and what is on show agree, any touch ends a show, and what is remembered for both places is the same in both.
 //   node tools/places-test.mjs [url] [--only <name>] [--flight <id>]      (default url: http://localhost:5180/; Freedom 7)
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
-import { chromium } from 'playwright-core';
+import { launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const only = opt('--only', null);
-const FLIGHT = opt('--flight', 'usa/mercury/mr-3-freedom-7');
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const only = opt(args, '--only', null);
+const FLIGHT = opt(args, '--flight', 'usa/mercury/mr-3-freedom-7');
+const url = urlOf(args);
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 
 /**
  * A page at `hash`. `slow`: milliseconds every model is kept back by, so there is time to change one's mind while it
  * loads. `search`: the address's query (`?demo` lets a show start in a browser driven by a script).
  */
 async function open(hash, { slow = 0, search = '', prefs = null } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {});
-  if (slow)
-    await page.route(/\.glb(\?|$)/, async (route) => {
-      await new Promise((done) => setTimeout(done, slow));
-      await route.continue().catch(() => {});
-    });
-  if (prefs) await page.addInitScript((p) => localStorage.setItem(p[0], p[1]), prefs);
-  await page.goto(`${url}${search}#${hash}`);
-  await page.waitForFunction(() => window.sr, null, { timeout: 60000 });
-  return { page, errors, close: () => context.close() };
+  return openPage(browser, `${url}${search}#${hash}`, {
+    slowGlb: slow,
+    before: prefs ? (page) => page.addInitScript((p) => localStorage.setItem(p[0], p[1]), prefs) : undefined,
+    wait: 'sr',
+  });
 }
 /**
  * The site with its neighbouring complexes kept back until everything else has arrived and the shadows have been
@@ -42,16 +31,16 @@ async function open(hash, { slow = 0, search = '', prefs = null } = {}) {
  * whether the workers that decoded their model were let go.
  */
 async function lateNeighbours(walk, workers = false) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const page = await context.newPage();
-  await page.routeWebSocket(/.*/, () => {});
   let release;
   const held = new Promise((done) => (release = done));
-  await page.route(/sites\/cape\/[^/]*\.glb(\?|$)/, async (route) => {
-    await held;
-    await route.continue().catch(() => {});
+  const { page, context } = await openPage(browser, `${url}#pad`, {
+    before: (page) =>
+      page.route(/sites\/cape\/[^/]*\.glb(\?|$)/, async (route) => {
+        await held;
+        await route.continue().catch(() => {});
+      }),
+    wait: null,
   });
-  await page.goto(`${url}#pad`);
   await siteReady(page);
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving));
   if (walk) await page.evaluate(() => window.sr.stage.enterWalk());

@@ -17,7 +17,7 @@
 // time; this is the end-to-end check that the renderer's depth range is doing its part.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { launch, open, opt, url as urlOf } from './browser.mjs';
 
 const FLIPS = 40; // pixels in solid patches, at 1280 x 800. Two fighting faces give hundreds; thin posts lining up give a few.
 const JUMP = 90; // summed RGB difference that counts as a jump
@@ -25,20 +25,14 @@ const NUDGE = 0.005; // degrees. Small enough that a thin post 60 m off-axis mov
 const BACK = 24; // and how close the second A must be to the first
 
 const args = process.argv.slice(2);
-const shotsAt = args.indexOf('--shots');
-const shots = shotsAt >= 0 ? args.splice(shotsAt, 2)[1] : null;
-const url = args[0] ?? 'http://localhost:5180/';
+const shots = opt(args, '--shots', null);
+const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('console', (m) => ['error', 'warning'].includes(m.type()) && errors.push(m.text()));
-page.on('pageerror', (e) => errors.push(String(e)));
+const browser = await launch();
 // (the launch site's page: an address that names nothing opens the gallery, which has one model and no `sr.show`. A url that
 // carries an address is opened as it is: `#vehicle` put after it made a flight's name no flight's, and the first flight's gallery was tested instead)
-await page.goto(url.includes('#') ? url : `${url}#vehicle`);
-await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'));
+const { page, errors } = await open(browser, url.includes('#') ? url : `${url}#vehicle`, { console: ['error', 'warning'], timeout: 30000 });
 // which stage is up: the gallery's (its own canvas) or the site's
 await page.waitForTimeout(600);
 const inGallery = await page.evaluate(() => Boolean(window.sr.gallery?.active ?? !window.sr.show));

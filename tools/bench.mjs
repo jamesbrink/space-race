@@ -21,6 +21,9 @@
 // both to one run: each scenario is run on one and then the other, repeat by repeat, and the run ends with the
 // comparison and, with --shots, the pixels that differ.
 //
+// Frame times, load times and soak figures are this machine's, now: compare them only with a run on the same machine
+// (the result names the Chrome, the platform and the switches, which browser.mjs reads from the environment).
+//
 // It builds the production bundle into node_modules/.bench/dist and serves it with `vite preview` on a free port of
 // its own (never the dev server), in Chrome with vsync and the frame-rate limit off. Nothing in the page knows it is
 // being measured: the script reaches in through `window.sr`, stops the page's own loop and turns it over by hand,
@@ -45,12 +48,10 @@ import { createServer } from 'node:net';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { chromium } from 'playwright-core';
+import { flag, gpuArgs, launch, opt } from './browser.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-const flag = (name) => (args.includes(name) ? Boolean(args.splice(args.indexOf(name), 1)) : false);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
 
 const median = (a) => {
   const s = [...a].sort((x, y) => x - y);
@@ -175,10 +176,8 @@ if (args[0] === '--compare') {
 // the browser
 // ---------------------------------------------------------------------------------------------------------------
 
+/** On top of the GPU's switches (browser.mjs): vsync and the frame-rate limit off, nothing throttled. */
 const CHROME = [
-  '--use-angle=metal',
-  '--enable-gpu',
-  '--ignore-gpu-blocklist',
   '--disable-gpu-vsync',
   '--disable-frame-rate-limit',
   '--enable-precise-memory-info',
@@ -188,7 +187,7 @@ const CHROME = [
 ];
 
 async function diffShots(dirA, dirB) {
-  const browser = await chromium.launch({ channel: 'chrome' });
+  const browser = await launch({ gpu: false });
   const page = await browser.newPage();
   const rows = [['shot', 'pixels', 'differ', 'by 1 level', 'most', 'verdict']];
   let failed = 0;
@@ -248,39 +247,39 @@ if (args[0] === '--diff-shots') {
   process.exit((await diffShots(args[1], args[2])).failed ? 1 : 0);
 }
 
-const out = resolve(opt('--out', join(ROOT, 'node_modules/.bench/results')));
-const label = opt('--label', 'run');
-const REPS = Number(opt('--reps', 3));
-const FRAMES = Number(opt('--frames', 90));
-const only = new RegExp(opt('--only', '.'));
-const sizes = opt('--sizes', '1440x900@1,1440x900@2,390x800@3')
+const out = resolve(opt(args, '--out', join(ROOT, 'node_modules/.bench/results')));
+const label = opt(args, '--label', 'run');
+const REPS = Number(opt(args, '--reps', 3));
+const FRAMES = Number(opt(args, '--frames', 90));
+const only = new RegExp(opt(args, '--only', '.'));
+const sizes = opt(args, '--sizes', '1440x900@1,1440x900@2,390x800@3')
   .split(',')
   .map((s) => {
     const [, w, h, r] = /^(\d+)x(\d+)@(\d+(?:\.\d+)?)$/.exec(s) ?? [];
     if (!w) throw new Error(`a size is <width>x<height>@<pixel ratio>, not ${s}`);
     return { name: s, width: Number(w), height: Number(h), ratio: Number(r) };
   });
-const looks = opt('--looks', 'real,cel').split(',');
-const profile = flag('--profile');
-const shots = opt('--shots', null);
-const noBuild = flag('--no-build');
-const noLoad = flag('--no-load');
-const noSoak = flag('--no-soak');
-const config = opt('--config', null); // another Vite config to build with
-const SOAK = Number(opt('--soak', 60));
+const looks = opt(args, '--looks', 'real,cel').split(',');
+const profile = flag(args, '--profile');
+const shots = opt(args, '--shots', null);
+const noBuild = flag(args, '--no-build');
+const noLoad = flag(args, '--no-load');
+const noSoak = flag(args, '--no-soak');
+const config = opt(args, '--config', null); // another Vite config to build with
+const SOAK = Number(opt(args, '--soak', 60));
 // a switch thrown in the page for the pictures: `--toggle "sr.stage.glazing.enabled = true" --toggle-off "sr.stage.glazing.enabled = false"`
-const toggle = opt('--toggle', null);
-const toggleOff = opt('--toggle-off', '');
+const toggle = opt(args, '--toggle', null);
+const toggleOff = opt(args, '--toggle-off', '');
 // (another flight's launch site: its id, as the address has it: `--flight ussr/vostok/vostok-1`)
-const flightId = opt('--flight', null);
+const flightId = opt(args, '--flight', null);
 const vite = join(ROOT, 'node_modules/.bin/vite');
 const BUILT = join(ROOT, 'node_modules/.bench', profile ? 'dist-profile' : 'dist');
 // what is measured, and what it is measured against: a build (this tree's unless another is given) and a switch in the address
-const variants = [{ name: opt('--name', 'a'), dist: resolve(opt('--dist', BUILT)), query: opt('--query', '') }];
+const variants = [{ name: opt(args, '--name', 'a'), dist: resolve(opt(args, '--dist', BUILT)), query: opt(args, '--query', '') }];
 {
-  const dist = opt('--b-dist', null);
-  const query = opt('--b-query', null);
-  const name = opt('--b-name', 'b');
+  const dist = opt(args, '--b-dist', null);
+  const query = opt(args, '--b-query', null);
+  const name = opt(args, '--b-name', 'b');
   if (dist !== null || query !== null) variants.push({ name, dist: resolve(dist ?? variants[0].dist), query: query ?? '' });
 }
 mkdirSync(out, { recursive: true });
@@ -1110,9 +1109,18 @@ function top(prof, n = 30) {
     .map(([where, us]) => ({ where, ms: us / 1000, share: us / total }));
 }
 
-const browser = await chromium.launch({ channel: 'chrome', args: CHROME });
+const browser = await launch({ args: CHROME });
 const summary = (values) => ({ median: median(values), spread: spreadOf(values), values });
-const result = { label, when: new Date().toISOString(), reps: REPS, frames: FRAMES, chrome: browser.version(), variants: {} };
+const result = {
+  label,
+  when: new Date().toISOString(),
+  reps: REPS,
+  frames: FRAMES,
+  chrome: browser.version(),
+  platform: process.platform,
+  switches: gpuArgs(),
+  variants: {},
+};
 // with a switch to throw in the page, each build is measured with it off and with it on, in the same page, turn about
 const modes = toggle
   ? [

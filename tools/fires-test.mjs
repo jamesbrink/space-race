@@ -7,16 +7,15 @@
 // in each look; with a page that has no fireReport (an older build) it only takes the pictures.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const flight = opt('--flight', 'ussr/vostok/vostok-1');
-const shots = opt('--shots', null);
-const cams = opt('--cams', 'pad,chase,far').split(',');
-const looks = opt('--looks', 'real').split(',');
-const instants = opt('--at', '2,60,118,125,200,400').split(',').map(Number);
-const url = args[0] ?? 'http://localhost:5180/';
+const flight = opt(args, '--flight', 'ussr/vostok/vostok-1');
+const shots = opt(args, '--shots', null);
+const cams = opt(args, '--cams', 'pad,chase,far').split(',');
+const looks = opt(args, '--looks', 'real').split(',');
+const instants = opt(args, '--at', '2,60,118,125,200,400').split(',').map(Number);
+const url = urlOf(args);
 
 // The engines burning at each instant on the record, by the part that carries each (the flight's own data says so: these are what it says)
 const EXPECTED = {
@@ -30,19 +29,10 @@ const EXPECTED = {
   'usa/mercury/mr-4-liberty-bell-7': (t) => (t < 143 ? ['RedstoneEngine'] : []),
 };
 
-let failed = 0;
-const check = (ok, what) => {
-  console.log(`${ok ? '  ok  ' : '  FAIL'} ${what}`);
-  if (!ok) failed++;
-};
+const { check, failures } = checks();
 if (shots) mkdirSync(shots, { recursive: true });
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-await page.goto(`${url}#${flight}/site/vehicle`);
-await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 120000 });
+const browser = await launch();
+const { page, errors } = await open(browser, `${url}#${flight}/site/vehicle`, { timeout: 120000 });
 await page.addStyleTag({ content: '#ui, #gallery, #title, .notes { display: none !important }' });
 const reports = await page.evaluate(() => typeof window.sr.stage.fireReport === 'function');
 const wait = (ms) => page.waitForTimeout(ms);
@@ -104,5 +94,5 @@ for (const look of looks) {
 await browser.close();
 if (errors.length) console.log(`console: ${errors.length}\n  ${errors.slice(0, 6).join('\n  ')}`);
 if (!reports) console.log('(no fireReport in this page: pictures only)');
-console.log(failed ? `${failed} failed` : 'all passed');
-process.exit(failed ? 1 : 0);
+console.log(failures.length ? `${failures.length} failed` : 'all passed');
+process.exit(failures.length ? 1 : 0);

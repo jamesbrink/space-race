@@ -10,31 +10,21 @@
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
-import { chromium } from 'playwright-core';
+import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const only = opt('--only', null);
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const only = opt(args, '--only', null);
+const url = urlOf(args);
 const MR3 = 'usa/mercury/mr-3-freedom-7';
 const V1 = 'ussr/vostok/vostok-1';
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 
-const failures = [];
-const check = (ok, what) => {
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
-  if (!ok) failures.push(what);
-};
+const { check, failures } = checks();
 async function scenario(name, run) {
   if (only && only !== name) return;
   console.log(name);
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {});
+  const { page, errors, context } = await open(browser, null);
   try {
     await run(page);
     check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);

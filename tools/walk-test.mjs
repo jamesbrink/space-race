@@ -13,14 +13,13 @@
 // --shots writes a still from the walker's eyes at the end of every leg.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium } from 'playwright-core';
+import { launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const flight = opt('--flight', 'ussr/vostok/vostok-1');
-const only = opt('--only', null);
-const shots = opt('--shots', null);
-const url = args[0] ?? process.env.SR_URL ?? 'http://localhost:5180/';
+const flight = opt(args, '--flight', 'ussr/vostok/vostok-1');
+const only = opt(args, '--only', null);
+const shots = opt(args, '--shots', null);
+const url = urlOf(args);
 
 /** Seconds from Vostok 1's liftoff (09:06:59.7 Moscow time) of 07:10 that morning: the erector at the rocket, the trusses up. */
 const V1_MORNING = -(1 * 3600 + 56 * 60 + 59.7);
@@ -182,17 +181,12 @@ if (!routes.length) {
 }
 if (shots) mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const browser = await launch();
 let failed = 0;
 let legsGone = 0;
 for (const [n, route] of routes.entries()) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {}); // (the dev server's reloads are kept from the page under test)
-  await page.goto(`${url}#${flight}/site/${route.model ?? 'pad'}`);
-  await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 90000 });
+  // (the dev server's reloads are kept from the page under test)
+  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${route.model ?? 'pad'}`, { console: [], timeout: 90000 });
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
   await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
   // the morning's hardware where the route wants it, then on foot there

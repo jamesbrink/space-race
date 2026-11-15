@@ -14,15 +14,14 @@
 //   - with no drag in hand, nothing moved faster than a zoom, a coast and a key can move it.
 //
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
-import { chromium } from 'playwright-core';
+import { checks, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
-const opt = (name, fallback) => (args.includes(name) ? args.splice(args.indexOf(name), 2)[1] : fallback);
-const seed = Number(opt('--seed', 1));
-const EVENTS = Number(opt('--events', 350));
-const only = opt('--only', null);
-const THROTTLE = Number(opt('--throttle', 1));
-const url = args[0] ?? 'http://localhost:5180/';
+const seed = Number(opt(args, '--seed', 1));
+const EVENTS = Number(opt(args, '--events', 350));
+const only = opt(args, '--only', null);
+const THROTTLE = Number(opt(args, '--throttle', 1));
+const url = urlOf(args);
 
 function seeded(from) {
   let s = from >>> 0;
@@ -35,15 +34,11 @@ function seeded(from) {
 }
 
 async function open({ model = 'vehicle', width = 1440, height = 900, touch = false } = {}) {
-  const browser = await chromium.launch({ channel: 'chrome', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch });
-  const page = await context.newPage();
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.routeWebSocket(/.*/, () => {});
-  await page.goto(`${url}#${model}`);
-  await page.waitForFunction(() => window.sr && document.querySelector('.loading.done'), null, { timeout: 90000 });
+  const browser = await launch();
+  const { page, context, errors } = await openPage(browser, `${url}#${model}`, {
+    context: { viewport: { width, height }, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch },
+    timeout: 90000,
+  });
   if (touch) await page.addStyleTag({ content: '#ui { display: none !important }' });
   // every frame: where the camera is, and what the hands did since the last one
   await page.evaluate(() => {
@@ -176,11 +171,7 @@ const len = (a) => Math.hypot(a[0], a[1], a[2]);
 const ang = (a, b) => Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (len(a) * len(b) || 1))));
 const far = (s) => len(sub(s.p, s.pivot));
 const side = (s) => sub(s.p, s.pivot);
-let failed = 0;
-const check = (ok, what) => {
-  if (!ok) failed++;
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
-};
+const { check, failures } = checks();
 
 /** What the separation's frames say: the booster left after the first was kept, drifted off, and the capsule kept its place. */
 function separation(frames) {
@@ -761,5 +752,5 @@ const soaks = {
   'proof, a turn nobody asked for': { fault: true },
 };
 for (const [name, how] of Object.entries(soaks)) if (named(name)) await soak(name, how);
-console.log(failed ? `\n${failed} failed` : '\nall held');
-process.exit(failed ? 1 : 0);
+console.log(failures.length ? `\n${failures.length} failed` : '\nall held');
+process.exit(failures.length ? 1 : 0);
