@@ -1,5 +1,6 @@
 /** A model and its parts: what each is, how it moves, its views, its cabin and its mechanisms. */
 import type { Confidence } from '../measure.ts';
+import type { TreadKind } from './site.ts';
 
 /**
  * How a wheeled vehicle drives. All lengths in metres, viewer space (+Y up); positions are in
@@ -96,12 +97,73 @@ export interface Runs {
  *
  * Axes and offsets are in the node's parent's coordinates (viewer space: +Y up).
  */
-export type Move = { from: number; to: number; node?: string } & (
+export type Move = { from: number; to: number; node?: string; machine?: Machine } & (
   | { kind: 'swing'; axis: [number, number, number]; angle: number }
   | { kind: 'slide'; by: [number, number, number]; runs?: Runs }
   | { kind: 'run'; back?: boolean }
   | ({ kind: 'drive'; runs?: Runs } & Drive)
 );
+
+/**
+ * What drives a move, for what it is heard as while it moves (sound/model.ts `MACHINES`, each kind's timbre and level):
+ *
+ * motor       an electric motor through a gearbox: a platform's drive, a periscope's door
+ * winch       an electric winch: a drum, a brake, a cable paying out
+ * hydraulic   a pump and its rams: an aerial tower's jib, an erector's boom
+ * rails       a structure on its own powered rail trucks: motors, and steel wheels on its rails
+ * locomotive  a wagon drawn or pushed along its track by a diesel locomotive, which is not drawn (`engine`)
+ * road        a road vehicle under its own engine (`engine`), its tyres on its `tread`
+ * towed       a trailer behind something: its tyres and its rattle, no engine of its own
+ * skids       dragged over the ground on runners
+ * hand        pushed, wheeled or folded by hand
+ * lift        a lift's car on its way up or down
+ * door        a door, a gate or a hatch on its hinges: the latch as it shuts
+ * release     let go and falling under its own weight, or its weights': a mast, a support arm; the landing
+ * none        not a machine (a pose held from before the slider, people going out of sight): silent, and said so
+ *
+ * How each really sounded is not recorded anywhere we have read: what is known is what drove it, and that is what
+ * `confidence` and `source` are about. A move that names no machine is silent (tests/sound.test.mjs lists any at a site).
+ */
+export type MachineKind =
+  | 'motor'
+  | 'winch'
+  | 'hydraulic'
+  | 'rails'
+  | 'locomotive'
+  | 'road'
+  | 'towed'
+  | 'skids'
+  | 'hand'
+  | 'lift'
+  | 'door'
+  | 'release'
+  | 'none';
+
+export interface Machine {
+  kind: MachineKind;
+  confidence: Confidence;
+  /** Why this kind: what the record says drove it, or that nothing does. */
+  source: string;
+  /** A `road` vehicle's or a `locomotive`'s engine: the name its place lists it under (PlaceDef.engines). */
+  engine?: string;
+  /** What a `road` or `towed` move's tyres run on, where it is not the place's land (PlaceDef.tread). */
+  tread?: TreadKind;
+}
+
+/**
+ * A road vehicle's or a locomotive's engine, as it is heard (sound/model.ts `engineVoice`): four-stroke, so it fires
+ * `cylinders / 2` times a turn, between `idle` and `most` revolutions a minute. Listed by its place (PlaceDef.engines)
+ * under the name a vehicle's model gives itself (its extras' `vehicle`) or a move's machine names.
+ */
+export interface Engine {
+  fuel: 'petrol' | 'diesel';
+  cylinders: number;
+  /** Revolutions a minute at idle, and the most it was run to. */
+  idle: number;
+  most: number;
+  confidence: Confidence;
+  source: string;
+}
 
 /**
  * One instant on a model's slider: at `at` seconds from launch the slider reads `slider`
@@ -150,7 +212,7 @@ export interface Action {
   do:
     | { kind: 'slider'; to: number }
     | { kind: 'toggle'; moves: Move[]; seconds?: number; back: string }
-    | { kind: 'lift'; node: string; stops: { name: string; by: [number, number, number] }[]; speed?: number };
+    | { kind: 'lift'; node: string; stops: { name: string; by: [number, number, number] }[]; speed?: number; machine?: Machine };
 }
 
 export interface Part {

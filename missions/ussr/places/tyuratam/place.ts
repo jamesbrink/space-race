@@ -1,4 +1,4 @@
-import type { PlaceDef } from '../../../../src/types.ts';
+import type { Engine, PlaceDef } from '../../../../src/types.ts';
 import { ARAL_1960 } from './aral-1960.ts';
 
 /**
@@ -14,6 +14,39 @@ export const TYURATAM: PlaceDef = {
   // morning of 12 April 1961 (the flight's weather.ts) against the Cape's 5.1 m/s on 5 May, so 0.05 x 2.1 / 5.1; the
   // hum is the Cape's own.
   quiet: { wind: 0.02, surf: 0, hum: 0.006, sea: 0 },
+  // What a tyre runs on at Site 1: the land is the steppe's clay crust over loam (steppe.ts, "The ground"); the made
+  // surfaces are known by their materials' names in the models (site1/), which say what each is
+  tread: {
+    land: {
+      kind: 'steppe',
+      confidence: 'derived',
+      source: 'the steppe’s clay crust over grey-brown loam (steppe.ts); a road or a track painted on it is not told apart',
+    },
+    materials: [
+      { prefix: 'concrete', kind: 'concrete' },
+      { prefix: 'road-gravel', kind: 'gravel' },
+      { prefix: 'earth', kind: 'earth' },
+      { prefix: 'steel', kind: 'steel' },
+      { prefix: 'galvanised', kind: 'steel' },
+      { prefix: 'timber', kind: 'timber' },
+    ],
+    source: 'derived: each material’s name says what it is (concrete, gravel, clay, a steel rail or deck, a timber tie)',
+  },
+  // The engines of the vehicles at the pad, by the name a vehicle's model gives itself (its extras' `vehicle`) or a move
+  // names. Each is the type's usual engine as remembered, not checked against a manual; the locomotive's type is not
+  // recorded at all: estimated throughout
+  engines: {
+    'GAZ-21 Volga, 1958-62': engine('petrol', 4, 550, 4000, 'the ZMZ-21 2.45 litre four'),
+    'LAZ-695B': engine('petrol', 6, 450, 2800, 'the ZIL-158’s 5.55 litre straight six'),
+    'GAZ-63': engine('petrol', 6, 450, 2800, 'the GAZ-51’s 3.48 litre straight six'),
+    'diesel shunting locomotive': engine(
+      'diesel',
+      6,
+      300,
+      740,
+      'a TEM1’s 2D50 six (which kind of locomotive worked the site’s track is not recorded)',
+    ),
+  },
   // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
   // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
   weather: {
@@ -67,3 +100,7 @@ export const TYURATAM: PlaceDef = {
     ],
   },
 };
+
+function engine(fuel: Engine['fuel'], cylinders: number, idle: number, most: number, what: string): Engine {
+  return { fuel, cylinders, idle, most, confidence: 'estimated', source: `the type’s usual engine, from memory: ${what}` };
+}

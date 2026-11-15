@@ -1,4 +1,4 @@
-import type { PlaceDef } from '../../../../src/types.ts';
+import type { Engine, PlaceDef } from '../../../../src/types.ts';
 
 /**
  * Cape Canaveral: the place every American crewed flight of the 1960s left from, and what is the same for every pad in
@@ -201,4 +201,43 @@ export const CAPE_CANAVERAL: PlaceDef = {
   // hum of machinery, and the sea round a spacecraft that has come down in it. Estimated, as every place's bed is
   // (sound/model.ts: the levels are impressions, not measured).
   quiet: { wind: 0.05, surf: 0.035, hum: 0.006, sea: 0.12 },
+  // What a tyre runs on round the pads: the land is the Cape's sand under grass and scrub (lc-5.md, "The land"); the made
+  // surfaces are known by their materials' names in the models (lc5/, complexes/), which say what each is
+  tread: {
+    land: {
+      kind: 'sand',
+      confidence: 'estimated',
+      source: 'the Cape’s sand under its grass and scrub (lc-5.md, “The land”); a road painted on it is not told apart',
+    },
+    materials: [
+      { prefix: 'concrete', kind: 'concrete' },
+      { prefix: 'paint-line', kind: 'concrete' },
+      { prefix: 'ballast-gravel', kind: 'gravel' },
+      { prefix: 'shell-gravel', kind: 'gravel' },
+      { prefix: 'steel', kind: 'steel' },
+      { prefix: 'galvanised-deck', kind: 'steel' },
+      { prefix: 'timber', kind: 'timber' },
+    ],
+    source: 'derived: each material’s name says what it is (concrete, gravel, a steel rail or deck, a timber tie)',
+  },
+  // The engines of the vehicles at the pads, by the name each vehicle's model gives itself (its extras' `vehicle`) or a
+  // move names. Each is the type's usual engine as remembered, not checked against a manual: estimated throughout
+  engines: {
+    '1956 Ford Fairlane Town Sedan': engine('petrol', 8, 475, 4400, 'Ford’s 272 or 292 cu in Y-block V8'),
+    '1957 Ford Custom 300 Fordor': engine('petrol', 8, 475, 4400, 'Ford’s 272 cu in Y-block V8'),
+    '1957 Ford Country Sedan': engine('petrol', 8, 475, 4400, 'Ford’s 272 cu in Y-block V8'),
+    '1957-60 Ford F-100 Flareside': engine('petrol', 6, 450, 4000, 'Ford’s 223 cu in straight six, the work truck’s usual'),
+    '1957-60 Ford F-100 Flareside with a utility body': engine('petrol', 6, 450, 4000, 'Ford’s 223 cu in straight six'),
+    '1958-60 Rambler American': engine('petrol', 6, 550, 4200, 'Nash’s 196 cu in flathead six'),
+    '1959 Chevrolet Biscayne sedan': engine('petrol', 6, 475, 4200, 'Chevrolet’s 235 cu in straight six, the Biscayne’s base engine'),
+    '1960 Chevrolet Corvair 700 sedan': engine('petrol', 6, 500, 4400, 'the Corvair’s air-cooled 140 cu in flat six'),
+    '1960 Chevrolet Suburban Carryall': engine('petrol', 6, 450, 4000, 'Chevrolet’s 235 cu in straight six'),
+    'Volkswagen Type 1, 1958-61': engine('petrol', 4, 850, 3900, 'the air-cooled 1192 cc flat four'),
+    'M275 2-1/2-ton 6x6 truck tractor, NASA': engine('petrol', 6, 550, 3400, 'the M35 family’s REO Gold Comet straight six'),
+    'International Harvester R-series truck': engine('petrol', 6, 450, 3400, 'an IH Black Diamond straight six, the R-series’ usual'),
+  },
 };
+
+function engine(fuel: Engine['fuel'], cylinders: number, idle: number, most: number, what: string): Engine {
+  return { fuel, cylinders, idle, most, confidence: 'estimated', source: `the type’s usual engine, from memory: ${what}` };
+}

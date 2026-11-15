@@ -1,5 +1,6 @@
 /** Where a site is on the Earth, what stands round it, and the region its map is baked for. */
-import type { Measure } from '../measure.ts';
+import type { Confidence, Measure } from '../measure.ts';
+import type { Engine } from './model.ts';
 import type { DayWeather } from './weather.ts';
 
 /**
@@ -54,6 +55,25 @@ export interface PlaceDef {
    * a surf that is not there.
    */
   quiet: { wind: number; surf: number; hum: number; sea: number };
+  /** What a tyre runs on here (sound/model.ts `tyreVoice`): the land, and the made surfaces by their material. */
+  tread: Tread;
+  /** The engines of the road vehicles and locomotives that worked here, by the name a vehicle's model or a move's machine gives (types/model.ts Machine). */
+  engines: Record<string, Engine>;
+}
+
+/** What a tyre or a wheel is heard running on. */
+export type TreadKind = 'concrete' | 'gravel' | 'earth' | 'sand' | 'steppe' | 'steel' | 'timber';
+
+/**
+ * What a place's ground is to a tyre: the land off its made surfaces (the terrain, which is a height and has no
+ * material), and each made surface by the name its material has in the models (the first `prefix` its name begins
+ * with). A road painted on the land is the land's.
+ */
+export interface Tread {
+  land: { kind: TreadKind; confidence: Confidence; source: string };
+  materials: { prefix: string; kind: TreadKind }[];
+  /** How the materials were sorted. */
+  source: string;
 }
 
 /**
