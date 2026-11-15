@@ -16,6 +16,11 @@ import type { Flight, ModelDef, ViewDef } from '../types.ts';
  * The way back is always the same: front page, flight, place.
  *
  *   #                                    the front page: no flight's (front.ts)
+ *   #lineup[/spacecraft][/<nation>/<programme>][/<flight id>[/vs/<flight id>...]]
+ *                                        the Lineup: every vehicle side by side (lineup.ts); no flight's either. With
+ *                                        `spacecraft`, the spacecraft alone; a programme named, its section of the
+ *                                        row; a flight named is the one chosen; more, each after `vs`, stand together
+ *                                        to be compared (`parseLineup`)
  *   #<flight id>                         the flight: its gallery
  *   #<flight id>/gallery[/<what>]        the gallery, on a part (its node), with one of the
  *                                        choices of what stands there (its id), or sitting in
@@ -25,7 +30,7 @@ import type { Flight, ModelDef, ViewDef } from '../types.ts';
  *
  * Addresses older than the places still mean what they meant: `#<flight id>/<model>` is that
  * section of the site, and a bare `#<model>` (or `#gallery`, `#site/<model>`, `#fly`) is the first
- * listed flight's. So no model may be called `gallery`, `site` or `fly`.
+ * listed flight's. So no model may be called `gallery`, `site`, `fly` or `lineup`.
  *
  * Nothing here touches the page but the last four (`where`, `write`, `settle`, `onMoved`), which are the only
  * things anywhere that read or write the address bar; the rest is arithmetic on the flight's data (tests/address.test.mjs).
@@ -86,6 +91,80 @@ export function listed<F extends Dated>(flights: readonly F[], coming: readonly 
 
 /** Whether an address names nothing at all, neither a flight nor a place: the front page's (front.ts), which is no flight's. */
 export const namesNothing = (hash: string): boolean => hash.replace(/^#/, '').split('/').filter(Boolean).length === 0;
+
+/** The word an address begins with when it is the Lineup's. */
+export const LINEUP = 'lineup';
+
+/** What stands in the Lineup's row: every vehicle whole, or each spacecraft alone, without its launch vehicle. */
+export type LineupRow = 'vehicles' | 'spacecraft';
+
+/** What a Lineup address names. */
+export interface LineupAddress {
+  row: LineupRow;
+  /**
+   * A programme, by the first two words of its flights' ids ('usa/mercury'): its section of the row is what stands
+   * there. Null: the whole row.
+   */
+  programme: string | null;
+  /**
+   * The flights named, in the order given: none, nothing chosen; one, that one chosen where it stands; more, those
+   * alone, standing together to be compared (and no programme's section).
+   */
+  flights: string[];
+}
+
+/**
+ * Read a Lineup address, or null if the address is not the Lineup's:
+ *
+ *   #lineup[/spacecraft][/<nation>/<programme>][/<flight id>[/vs/<flight id>...]]
+ *
+ * A flight's id is three words and a programme's is the first two of its flights'. What is named and is neither, or is
+ * named twice, is left out (whether there is such a flight is for whoever has the list: `lineupFlights`).
+ */
+export function parseLineup(hash: string): LineupAddress | null {
+  const words = hash.replace(/^#/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (words[0] !== LINEUP) return null;
+  const rest = words.slice(1);
+  const row: LineupRow = rest[0] === 'spacecraft' ? 'spacecraft' : 'vehicles';
+  if (rest[0] === 'spacecraft') rest.shift();
+  const flights: string[] = [];
+  let programme: string | null = null;
+  rest
+    .join('/')
+    .split(/(?:^|\/)vs(?:\/|$)/)
+    .forEach((group, i) => {
+      const id = group.split('/').filter(Boolean);
+      // (the first thing named may be a programme, alone or before a flight of its own)
+      if (i === 0 && (id.length === 2 || id.length === 5)) programme = id.splice(0, 2).join('/');
+      if (id.length === 3 && !flights.includes(id.join('/'))) flights.push(id.join('/'));
+    });
+  return { row, programme: flights.length > 1 ? null : programme, flights };
+}
+
+/** Write a Lineup address: the fragment, with its `#`. */
+export function formatLineup(row: LineupRow = 'vehicles', flights: readonly string[] = [], programme: string | null = null): string {
+  const words = [
+    LINEUP,
+    ...(row === 'spacecraft' ? ['spacecraft'] : []),
+    ...(programme && flights.length < 2 ? [programme] : []),
+    ...flights.flatMap((id, i) => (i ? ['vs', id] : [id])),
+  ];
+  return `#${words.map((s) => s.split('/').map(encodeURIComponent).join('/')).join('/')}`;
+}
+
+/** The programme a flight is of, as an address names it: the first two words of its id. */
+export const programmeOf = (flightId: string): string => flightId.split('/').slice(0, 2).join('/');
+
+/** Whether an address is the Lineup's. */
+export const namesLineup = (hash: string): boolean => parseLineup(hash) !== null;
+
+/** Whether an address is about no one flight: the front page's or the Lineup's. A flight's page that finds itself at one lets itself go (home.ts). */
+export const aboutNoFlight = (hash: string): boolean => namesNothing(hash) || namesLineup(hash);
+
+/** The flights a Lineup address names that there are, in the order named. */
+export function lineupFlights<F extends Dated>(flights: readonly F[], to: LineupAddress): F[] {
+  return to.flights.flatMap((id) => flights.find((f) => f.id === id) ?? []);
+}
 
 /**
  * The flight an address is about: the one it names; and for one that names a place and no flight
@@ -262,10 +341,12 @@ export function scaleFigure(flight: Pick<Flight, 'models'>): ModelDef | null {
 
 /**
  * Whether two addresses are one entry's worth of the history: the same flight at the same place (or both the front
- * page), whatever is on show there. Read as written: `#pad` and the flight's own `#…/site/pad` are not the same place
+ * page, or both the Lineup), whatever is on show there. Read as written: `#pad` and the flight's own `#…/site/pad` are not the same place
  * until the page has settled the first into the second (`settle`).
  */
 export function samePlace(a: string, b: string): boolean {
+  // (the Lineup is one place, whatever is chosen or compared in it)
+  if (namesLineup(a) || namesLineup(b)) return namesLineup(a) && namesLineup(b);
   const [x, y] = [parseAddress(a), parseAddress(b)];
   return x.flightId === y.flightId && x.place === y.place;
 }

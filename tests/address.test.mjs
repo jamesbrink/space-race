@@ -6,21 +6,27 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  aboutNoFlight,
   byDate,
   entrances,
   exhibit,
   flightFor,
   formatAddress,
+  formatLineup,
   galleryAt,
   galleryFlight,
   lacks,
+  lineupFlights,
   listed,
+  namesLineup,
   namesNothing,
   openingFor,
   opensIn,
   PLACES,
   parseAddress,
+  parseLineup,
   plinths,
+  programmeOf,
   plinthViews,
   samePlace,
   scaleFigure,
@@ -397,4 +403,60 @@ test('a launch site opens at the instant its flight says, and every other at lif
   }
   for (const f of flights.filter((f) => !f.opens)) assert.equal(openingFor(f, first), null, f.id);
   assert.equal(openingFor(mr3, first), null);
+});
+
+test('the Lineup has an address of its own: the row, a programme’s section, one chosen, several compared', () => {
+  const V1 = 'ussr/vostok/vostok-1';
+  const GT3 = 'usa/gemini/gt-3';
+  assert.equal(parseLineup(''), null);
+  assert.equal(parseLineup(`#${MR3}/gallery`), null);
+  assert.equal(parseLineup('#pad'), null);
+  assert.deepEqual(parseLineup('#lineup'), { row: 'vehicles', programme: null, flights: [] });
+  assert.deepEqual(parseLineup('#lineup/'), { row: 'vehicles', programme: null, flights: [] });
+  assert.deepEqual(parseLineup('#lineup/spacecraft'), { row: 'spacecraft', programme: null, flights: [] });
+  assert.deepEqual(parseLineup(`#lineup/${MR3}`), { row: 'vehicles', programme: null, flights: [MR3] });
+  assert.deepEqual(parseLineup(`#lineup/spacecraft/${MR3}`), { row: 'spacecraft', programme: null, flights: [MR3] });
+  assert.deepEqual(parseLineup(`#lineup/${MR3}/vs/${V1}/vs/${GT3}`), { row: 'vehicles', programme: null, flights: [MR3, V1, GT3] });
+  // a programme is the first two words of its flights' ids; alone, or with one of its flights chosen in it
+  assert.deepEqual(parseLineup('#lineup/usa/mercury'), { row: 'vehicles', programme: 'usa/mercury', flights: [] });
+  assert.deepEqual(parseLineup(`#lineup/spacecraft/usa/mercury/${MR3}`), { row: 'spacecraft', programme: 'usa/mercury', flights: [MR3] });
+  assert.equal(programmeOf(MR3), 'usa/mercury');
+  // several compared are no programme's section; one named twice is named once; what is not an id is left out
+  assert.deepEqual(parseLineup(`#lineup/usa/mercury/${MR3}/vs/${V1}`), { row: 'vehicles', programme: null, flights: [MR3, V1] });
+  assert.deepEqual(parseLineup(`#lineup/${MR3}/vs/${MR3}`).flights, [MR3]);
+  assert.deepEqual(parseLineup('#lineup/nonsense'), { row: 'vehicles', programme: null, flights: [] });
+  // written and read back
+  for (const [row, ids, programme] of [
+    ['vehicles', [], null],
+    ['spacecraft', [], null],
+    ['vehicles', [MR3], null],
+    ['spacecraft', [V1, GT3], null],
+    ['vehicles', [], 'ussr/vostok'],
+    ['spacecraft', [V1], 'ussr/vostok'],
+  ])
+    assert.deepEqual(parseLineup(formatLineup(row, ids, programme)), { row, programme, flights: ids });
+  assert.equal(formatLineup(), '#lineup');
+  assert.equal(formatLineup('vehicles', [MR3, V1]), `#lineup/${MR3}/vs/${V1}`);
+  assert.equal(formatLineup('vehicles', [MR3, V1], 'usa/mercury'), `#lineup/${MR3}/vs/${V1}`, 'a comparison is of no one programme');
+  // the flights it names that there are, in the order named
+  assert.deepEqual(
+    lineupFlights(flights, parseLineup(`#lineup/${V1}/vs/no/such/flight/vs/${MR3}`)).map((f) => f.id),
+    [V1, MR3],
+  );
+});
+
+test('the Lineup is one place, and no flight’s', () => {
+  assert.ok(namesLineup('#lineup') && namesLineup(`#lineup/${MR3}`) && !namesLineup('') && !namesLineup(`#${MR3}`));
+  assert.ok(!namesNothing('#lineup'), 'it is not the front page');
+  assert.ok(aboutNoFlight('') && aboutNoFlight('#lineup/spacecraft') && !aboutNoFlight(`#${MR3}/gallery`) && !aboutNoFlight('#pad'));
+  // choosing, comparing and changing the row are within the place: the entry is rewritten
+  assert.ok(samePlace('#lineup', `#lineup/${MR3}`));
+  assert.ok(samePlace(`#lineup/spacecraft/${MR3}`, `#lineup/${MR3}/vs/ussr/vostok/vostok-1`));
+  assert.ok(samePlace('#lineup/usa/mercury', '#lineup'));
+  // going to it, and from it into a flight, are steps
+  assert.ok(!samePlace('', '#lineup'), 'the front page to the Lineup');
+  assert.ok(!samePlace(`#lineup/${MR3}`, formatAddress(MR3, 'gallery')), 'the Lineup to a flight’s gallery');
+  assert.ok(!samePlace(formatAddress(MR3, 'gallery'), '#lineup'));
+  // no model may be called `lineup`, as none may be called by a place's name: the word is the Lineup's
+  for (const f of flights) for (const m of f.models) assert.notEqual(m.id, 'lineup', `${f.id}: a model called lineup`);
 });

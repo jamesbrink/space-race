@@ -4,7 +4,7 @@ import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from
 import {
   flightFor,
   formatAddress,
-  namesNothing,
+  aboutNoFlight,
   onMoved,
   openingFor,
   opensIn,
@@ -933,7 +933,7 @@ function followAddress(): void {
 placed('site', false);
 followAddress();
 onMoved(() => {
-  if (namesNothing(where())) return goHome();
+  if (aboutNoFlight(where())) return goHome(where()); // (the front page's or the Lineup's: no flight's)
   const to = address();
   // another flight is another page's worth of state: start clean rather than rebuild in place
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();

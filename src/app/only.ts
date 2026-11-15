@@ -1,5 +1,5 @@
 import { flights } from '../../missions/index.ts';
-import { flightFor, formatAddress, namesNothing, onMoved, parseAddress, settle, where } from './address.ts';
+import { aboutNoFlight, flightFor, formatAddress, onMoved, parseAddress, settle, where } from './address.ts';
 import { Gallery } from '../ui/gallery.ts';
 import { goHome } from './home.ts';
 
@@ -28,7 +28,7 @@ function follow(): string {
 }
 void gallery.enter(follow());
 onMoved(() => {
-  if (namesNothing(where())) return goHome();
+  if (aboutNoFlight(where())) return goHome(where()); // (the front page's or the Lineup's: no flight's)
   const to = address();
   if (to.flightId && to.flightId !== flight.id && flights.some((f) => f.id === to.flightId)) location.reload();
   else gallery.go(follow());

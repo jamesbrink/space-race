@@ -7,12 +7,15 @@ import { reducedMotion, scripted } from '../util/env.ts';
  * budget of memory. So going out lets the flight go entirely: the page fades to black and is opened again at the
  * address that names nothing, and nothing of the flight is held behind the front page. Chosen, it is a step like any
  * other (Back comes into the flight again, where it was); come to by Back, the entry is the one already there.
+ *
+ * `to`: the address the page is opened again at, for the other pages that hold nothing of each other and are left the
+ * same way: the Lineup (lineup.ts), and a flight gone into from it.
  */
-export function goHome(): void {
+export function goHome(to = ''): void {
   if (document.body.classList.contains('going-home')) return; // (a crumb is heard by its place and by the page)
   document.body.classList.add('going-home');
   const go = (): void => {
-    write('');
+    write(to);
     location.reload();
   };
   // (the fade is style.css's, 0.2 s; none for anyone who has asked for less motion, or a script)
