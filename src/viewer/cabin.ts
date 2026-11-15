@@ -140,9 +140,15 @@ export interface Thrown {
 /**
  * Where a descent begun at `start` (an instant of the flight, in its frame: world/earthframe.ts `frameOf`) would come down: the
  * instant, place and velocity where it reaches the ground (or the height at which the pilot leaves), or null if it would
- * not come down. The globe's landing-place mode (CabinDef.globe.modes) asks it.
+ * not come down. The globe's landing-place mode (CabinDef.globe.modes) asks it. The answer is given at once, or as a job
+ * to be worked out in slices across frames (`LandingJob`: the simulator's own, `burnNow`, is a flight flown down).
  */
-export type LandingFinder = (start: { t: number; r: Vec3; v: Vec3 }) => Landing | null;
+export type LandingFinder = (start: { t: number; r: Vec3; v: Vec3 }) => Landing | LandingJob | null;
+/** A landing being worked out: `run` it with a budget, ms, until it says it is done; then `result` is the answer. */
+export interface LandingJob {
+  run(budget?: number): boolean;
+  readonly result: Landing | null;
+}
 /** Where a descent comes down (`LandingFinder`); `begun`, the descent was under way already, and its place does not move on with the clock. */
 export interface Landing {
   t: number;
@@ -179,10 +185,14 @@ export function burnNow(flight: Flight): LandingFinder | null {
     }
     const sea = site.seaLevel.value;
     const flown = propagate(spacecraft(plan, shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
-    flown.run();
-    const p = flown.result;
-    const end = p.outcome === 'impact' ? p.points[p.points.length - 1] : undefined;
-    return end ? { t: end.t, r: end.r, v: end.v, ...(down ? { begun: true } : {}) } : null;
+    return {
+      run: (budget) => flown.run(budget),
+      get result() {
+        const p = flown.result;
+        const end = p.outcome === 'impact' ? p.points[p.points.length - 1] : undefined;
+        return end ? { t: end.t, r: end.r, v: end.v, ...(down ? { begun: true } : {}) } : null;
+      },
+    };
   };
 }
 /** Below this perigee, m, the orbit reaches into the air: a descent is under way and no burn is added (`burnNow`). */
@@ -309,6 +319,8 @@ export class Cabin {
     turn: THREE.Quaternion;
     modes: NonNullable<NonNullable<CabinDef['globe']>['modes']>;
     lands: { from: { t: number; r: Vec3; v: Vec3 }; to: Landing | null; wall: number } | null;
+    /** A landing being worked out, a slice a frame, and where from: it replaces `lands` when it is done. */
+    working?: { from: { t: number; r: Vec3; v: Vec3 }; job: LandingJob; wall: number } | null;
   } | null = null;
   /** The globe's landing-place mode's answer (CabinHost.landing, or the simulator's: `burnNow`), made when first wanted. */
   private landing: LandingFinder | null | undefined;
@@ -756,7 +768,7 @@ export class Cabin {
     const n = Math.max(1, s.says.length);
     if (!(s.holds && this.live)) s.at = (((to ?? s.at + 1) % n) + n) % n;
     if (s.sets === 'lighting') this.lightWay(s.at);
-    if (s.sets === 'globe' && this.globe) this.globe.lands = null;
+    if (s.sets === 'globe' && this.globe) this.globe.lands = this.globe.working = null;
     this.host.redraw();
     const at = this.standing(s);
     // (one the deck holds goes over when the deck says so: what it is for is said meanwhile)
@@ -958,7 +970,7 @@ export class Cabin {
   /** The flight deck has taken the flight (every sample will come through `fly`), or given it back to the record. */
   piloted(on: boolean): void {
     this.live = on;
-    if (this.globe) this.globe.lands = null;
+    if (this.globe) this.globe.lands = this.globe.working = null;
     this.times = {};
     this.events = {};
     this.holding = new Set();
@@ -1251,15 +1263,32 @@ export class Cabin {
     let c = gl.lands;
     const since = c ? s.t - c.from.t : Infinity;
     const due = !c || since < 0 || since > LAND_EVERY;
-    if (due && (!c || Math.abs(since) > LAND_JUMP || this.wall - c.wall > LAND_WAIT)) {
+    if (due && !gl.working && (!c || Math.abs(since) > LAND_JUMP || this.wall - c.wall > LAND_WAIT)) {
       const from = { t: s.t, r: [...s.r] as Vec3, v: [...s.v] as Vec3 };
-      let to: Landing | null = null;
+      let to: Landing | LandingJob | null = null;
       try {
         to = this.landing(from);
       } catch (e) {
         console.warn('cabin.ts: where a descent begun now would come down could not be worked out:', e);
       }
-      c = gl.lands = { from, to, wall: this.wall };
+      if (to && 'run' in to) gl.working = { from, job: to, wall: this.wall };
+      else c = gl.lands = { from, to, wall: this.wall };
+    }
+    // a landing being worked out: a slice of it a frame (sim/predict.ts `Predictor.run`), the last answer shown meanwhile
+    const working = gl.working;
+    if (working) {
+      let done = true;
+      let to: Landing | null = null;
+      try {
+        done = working.job.run(LAND_SLICE);
+        if (done) to = working.job.result;
+      } catch (e) {
+        console.warn('cabin.ts: where a descent begun now would come down could not be worked out:', e);
+      }
+      if (done) {
+        c = gl.lands = { from: working.from, to, wall: working.wall };
+        gl.working = null;
+      } else this.host.redraw();
     }
     const to = c?.to;
     if (!c || !to) return null;
@@ -1527,6 +1556,8 @@ const WORK_SECONDS = 0.45;
  * this many of the page's between one and the next, unless the clock has jumped by more than the last, seconds.
  */
 const LAND_EVERY = 30;
+/** How long a frame works at it, ms (Predictor.run's budget: a phone's frame keeps room for everything else). */
+const LAND_SLICE = 1.5;
 const LAND_WAIT = 0.5;
 const LAND_JUMP = 600;
 

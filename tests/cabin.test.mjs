@@ -435,11 +435,61 @@ test('a globe of modes: thrown, it turns to where a descent begun now comes down
   assert.equal(glow(c.lamp), 0);
 });
 
+test('a landing worked out in slices: the present place shown until it is done, a slice a frame, then the landing', () => {
+  const R = 6.7e6;
+  const w = 7700 / R;
+  const at = (t) => ({ t, r: [R * Math.cos(w * t), R * Math.sin(w * t), 0], v: [-7700 * Math.sin(w * t), 7700 * Math.cos(w * t), 0] });
+  const runs = [];
+  // a job that needs three slices, as a flight flown down does (cabin.ts burnNow on Predictor.run)
+  const c = modal((s) => {
+    let left = 3;
+    return {
+      run: (budget) => {
+        runs.push(budget);
+        return --left <= 0;
+      },
+      get result() {
+        const a = Math.atan2(s.r[1], s.r[0]) + Math.PI / 2;
+        return { t: s.t + 1500, r: [R * Math.cos(a), R * Math.sin(a), 0], v: [-7700 * Math.sin(a), 7700 * Math.cos(a), 0] };
+      },
+    };
+  });
+  const seen = (d) => new THREE.Vector3(d[1], d[2], d[0]).applyQuaternion(c.globe.quaternion);
+  const fixed = (r, t) => {
+    const p = frameOf({ launch: '1961-04-12T06:07:00Z' }).toFixed(r, t);
+    const n = Math.hypot(...p);
+    return [p[0] / n, p[1] / n, p[2] / n];
+  };
+  const under = (d) => seen(d).distanceTo(new THREE.Vector3(0, 0, 1));
+  const fly = (t) => {
+    c.cabin.fly(at(t), null, {});
+    c.cabin.step(1, t, 2437402, 1);
+  };
+  c.cabin.throwSwitch(c.cabin.thingAt(new THREE.Vector3()).thrown);
+  fly(100);
+  fly(100.02);
+  assert.ok(under(fixed(at(100.02).r, 100.02)) < 1e-6, 'two slices in: still the present place');
+  fly(100.04);
+  const a = w * 100 + Math.PI / 2;
+  const landing = fixed([Math.cos(a), Math.sin(a), 0], 100 + 1500);
+  assert.ok(under(landing) < 1e-3, `the third slice done: where it would come down (${under(landing)})`);
+  assert.deepEqual(c.asked, [100], 'asked once');
+  assert.ok(runs.length === 3 && runs.every((b) => b > 0 && b <= 2), `a slice a frame, each of a millisecond or two: ${runs}`);
+});
+
 test('the simulator’s answer for a burn now: a Vostok fired against its way comes down, and one coming down already is let come', async () => {
   const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
   const { orbitalRecord } = await import('../src/viewer/ascent.ts');
   const { sampleAt } = await import('../src/sim/fly.ts');
-  const find = burnNow(flight);
+  // (a flight flown down, worked out in slices: Predictor.run's budget)
+  const job = burnNow(flight);
+  const find = (start) => {
+    const j = job(start);
+    let slices = 1;
+    while (!j.run(1)) slices++;
+    assert.ok(slices >= 1);
+    return j.result;
+  };
   const samples = orbitalRecord(flight).samples;
   const s = sampleAt(samples, 4000);
   const down = find({ t: s.t, r: s.r, v: s.v });
