@@ -60,7 +60,7 @@ Fly light up as they are built.
 
 ## The front page
 
-`front.ts` is the page; `title.ts` its words (the mark, the list); `front/scene.ts` its picture, on a canvas and a
+`front.ts` is the page; `title.ts` its words (the mark, the list); `app/front/scene.ts` its picture, on a canvas and a
 renderer of its own that share nothing with a flight's stages (rendering.md, "The front page's picture"; what the
 picture is of, world.md).
 

@@ -601,7 +601,7 @@ JavaScript heap and 125 MB of decoded pictures.
     each is somebody's picture. The shadow maps' colour attachments, which nothing reads, stay: three's
     WebGLRenderer makes no target without one (a `count` of 0 is WebGPURenderer's only), and they are one byte a
     texel (R8), a quarter of the depth's.
-- **The front page holds its own picture and nothing of a flight** (front/scene.ts): as a phone, 71 MiB (textures
+- **The front page holds its own picture and nothing of a flight** (app/front/scene.ts): as a phone, 71 MiB (textures
   45: the Earth's three cubes and the Moon's six maps; the Moon's mesh 9; the canvas 17, at 1.5 drawing pixels a CSS
   pixel with its multisampling), where the front page had been Freedom 7's launch site behind a veil, 309. On a desk at 1440 x 900
   at 1 it is 155 (the colours at full size, the mesh four times as fine, the canvas 31). `pnpm test:front` holds it

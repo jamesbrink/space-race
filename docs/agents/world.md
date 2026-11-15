@@ -34,7 +34,7 @@ direction of the Earth, as its maps are drawn), from Cassini's laws and Meeus's 
 1961 to 2024 the points of the Moon under the Earth and under the Sun are within 0.03 degrees (900 m of ground): do
 not quote better. Heights on the Moon are above the sphere of 1,737,400 m.
 
-The front page's sky is the same sky, from the Moon (`front/view.ts`, pure and tested: tests/front.test.mjs). Its
+The front page's sky is the same sky, from the Moon (`app/front/view.ts`, pure and tested: tests/front.test.mjs). Its
 instant is data (`INSTANT`: Vostok 1's liftoff, as that flight records it) and everything follows from it: `skyAt`
 gives the Earth, how it is turned, the Sun and the stars in the Moon's frame, which is that scene's. At the instant
 the Earth is 88.7 % lit seen from the Moon and 1.985 degrees across; the point of the Earth under the Moon is 7.3 S
