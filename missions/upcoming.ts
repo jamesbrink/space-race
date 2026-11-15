@@ -18,13 +18,6 @@ export interface Upcoming {
 }
 
 export const upcoming: Upcoming[] = [
-  {
-    id: 'usa/gemini/gt-6a',
-    nation: 'USA',
-    name: 'Gemini 6A',
-    line: 'Gemini-Titan 6A · Wally Schirra · Tom Stafford',
-    launch: '1965-12-15',
-  },
   { id: 'usa/gemini/gt-8', nation: 'USA', name: 'Gemini 8', line: 'Gemini-Titan 8 · Neil Armstrong · David Scott', launch: '1966-03-16' },
   { id: 'usa/gemini/gt-9a', nation: 'USA', name: 'Gemini 9A', line: 'Gemini-Titan 9A · Tom Stafford · Gene Cernan', launch: '1966-06-03' },
   {
