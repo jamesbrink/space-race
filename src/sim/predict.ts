@@ -54,6 +54,7 @@ import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { aboutAxis, turn } from './rigid.ts';
 import { acceleration } from './core/rk4.ts';
+import { ENTRY_G } from './loads.ts';
 
 export { AIR_TOP };
 
@@ -596,7 +597,7 @@ export function propagate(
 
     // the air's load coming down, once nothing burns and no burn is to come, and before a parachute is out: the first 0.05 g, and the most
     if (falling && !flier.chute && before.t >= flier.quiet && !flier.burning()) {
-      if (!entry && load >= 0.05) {
+      if (!entry && load >= ENTRY_G) {
         entry = true;
         note('entry', load, before);
       }

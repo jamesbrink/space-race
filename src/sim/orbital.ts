@@ -21,7 +21,7 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } f
 import { atmosphere } from './atmosphere.ts';
 import { along, chuteArea } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { tearOf } from './loads.ts';
+import { ENTRY_G, tearOf } from './loads.ts';
 import { airAt, airDrag } from './air.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
@@ -859,7 +859,7 @@ export function flyOrbit(
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
-    at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= 0.05 ? 'entry' : 'descent';
+    at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
 
   let phase: OrbitPhase = 'orbit';
   const sample = (): OrbitSample => {
@@ -968,7 +968,7 @@ export function flyOrbit(
         results.interfaceAngle = -Math.asin(dot(air.wind, upAt(now)) / air.airspeed) / DEG;
         gate = geodeticToEcef({ latitude: now.latitude, longitude: now.longitude, height: 0 });
       }
-      if (Number.isNaN(results.entryAt) && now.g >= 0.05) results.entryAt = t;
+      if (Number.isNaN(results.entryAt) && now.g >= ENTRY_G) results.entryAt = t;
       if (now.g > results.entryG) {
         results.entryG = now.g;
         results.entryGAt = t;

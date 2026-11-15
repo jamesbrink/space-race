@@ -53,6 +53,7 @@ import { G0 } from '../world/bodies.ts';
 import { nozzleThrust, vacuumOf } from './thrust.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
 import { keptShare } from './forces.ts';
+import { ENTRY_G } from './loads.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -292,7 +293,7 @@ export function fly(
       results.entryQ = Math.max(results.entryQ, s.q);
       // the retrorockets are felt too, but the reports' re-entry figure is the air's
       if (!fires.some((f) => s.t >= f && s.t <= f + retroBurn)) results.entryG = Math.max(results.entryG, s.g);
-      if (Number.isNaN(results.entryAt) && s.t > fires[fires.length - 1]! + retroBurn && s.g >= 0.05) {
+      if (Number.isNaN(results.entryAt) && s.t > fires[fires.length - 1]! + retroBurn && s.g >= ENTRY_G) {
         results.entryAt = s.t;
         phase = 'entry';
       }

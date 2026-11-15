@@ -99,7 +99,7 @@ import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
-import { loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
+import { ENTRY_G, loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import { pressed } from './staging.ts';
 import {
   aboutAxis,
@@ -1025,7 +1025,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       if (automatic && !timed && s.drogueAt === null && s.mainAt === null && now.height <= tr.drogue.altitude.value) s = drogue(s);
       if (automatic && !timed && s.drogueAt !== null && s.mainAt === null && now.height <= tr.main.altitude.value) s = main(s);
       if (s.enteredAt === null && retros(s, t) === 0 && (s.retroAt === null || t > s.retroAt + retroEnd)) {
-        if (length(forces(after, t, s).force) / after.mass / G0 >= 0.05) s.enteredAt = t;
+        if (length(forces(after, t, s).force) / after.mass / G0 >= ENTRY_G) s.enteredAt = t;
       }
     }
     return s;

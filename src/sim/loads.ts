@@ -28,6 +28,11 @@ import { G0 } from '../world/bodies.ts';
 export const CAUTION = 0.8;
 export const HOLDS = 0.5;
 export const SNAPS = 1.5;
+/**
+ * The entry's mark: the first twentieth of a g an accelerometer reads coming down once nothing burns (the reports'
+ * "0.05 g", which Mercury's sequence keyed on). Every simulator's and the predicted path's entry is the first reading of it.
+ */
+export const ENTRY_G = 0.05;
 
 export interface Loads {
   /** Pa; radians; Pa rad. */
