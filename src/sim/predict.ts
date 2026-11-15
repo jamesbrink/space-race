@@ -51,10 +51,10 @@ import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
 import { MEAN_RADIUS, type Phase } from './fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { gravity } from '../world/orbit.ts';
 import { aboutAxis, turn } from './rigid.ts';
 import { acceleration } from './core/rk4.ts';
 import { ENTRY_G } from './loads.ts';
+import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
 
 export { AIR_TOP };
 
@@ -353,6 +353,8 @@ export interface Ground {
   seaLevel: number;
   /** The frame the start and the path are in (world/earthframe.ts): fixed at liftoff unless given. */
   frame?: EarthFrame;
+  /** What pulls on it (core/gravity.ts): the Earth with J2 unless given. */
+  gravity?: readonly GravityTerm[];
 }
 
 /**
@@ -367,6 +369,7 @@ export function propagate(
 ): Predictor {
   const { site, seaLevel } = where;
   const frame = where.frame ?? LIFTOFF;
+  const field = fieldOf(where.gravity ?? EARTH_GRAVITY);
   const pad = geodeticToEcef(site);
   const limit = options.limit ?? 6 * 3600;
   const most = Math.max(8, options.points ?? 480);
@@ -384,7 +387,7 @@ export function propagate(
   const accel = (at: number, p: Vec3, u: Vec3, altitude: number): Vec3 => {
     const f = flier.push(at, p, u, altitude);
     pushed = length(f);
-    return acceleration(gravity(p), f);
+    return acceleration(field(p, at), f);
   };
   /** One step of the pair from the state now: the state `h` on, and its error in place and speed. */
   const pair = (h: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => {

@@ -213,6 +213,7 @@ src/
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
   sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
   sim/air.ts                          the air at a point for every simulator: where it is over, its height, the standard air, the motion through it with the day's wind (`airAt`, `blowOf`)
+  sim/core/gravity.ts                 gravity as terms: the Earth with J2 (the default), a third body as a point mass, the central body switched
   sim/core/rk4.ts                     the one fixed-step integrator: fourth-order Runge-Kutta for a point and for a rigid body; gravity and push summed
   sim/apparent.ts                     a stage's apparent-velocity integrator: what it senses, its trapezoid, where its sum reaches its setting
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure

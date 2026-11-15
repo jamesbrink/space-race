@@ -51,7 +51,9 @@ never adjusted to bring a check in.
 - **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
   (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
   bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
-  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`); the air at a point (air.ts `airAt`: where it is over, its height,
+  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`; as terms, core/gravity.ts: the Earth's with J2 by default, a third body
+  as a point mass, the Moon or the Earth at the centre, which the predictor takes as `Ground.gravity`; the Moon's and the
+  Sun's pulls are on Meeus's places and estimated until the JPL ephemeris); the air at a point (air.ts `airAt`: where it is over, its height,
   the standard air there and the motion through it, with the day's wind where there is one); a point's drag and a
   parachute's on a rigid body (air.ts `airDrag`, -1/2 rho |w| w CdA); thrust in air (thrust.ts `nozzleThrust`, n (throttle
   Fvac - Ae p), a ballistic flight's vacuum figure derived from its sea-level one, `vacuumOf`); the fixed step (core/rk4.ts:
