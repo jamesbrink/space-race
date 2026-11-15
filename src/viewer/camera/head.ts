@@ -60,7 +60,7 @@ export const HEAD_TURN = 0.6;
 export const GLANCE = { side: 0.45, up: 0.35, down: 0.35 };
 /**
  * How far from a port's pane the eyes stop, metres: the visor's breadth in front of them, and a little; and further,
- * where what stands round a port leaves no room for a face at it (Stage.approach tries each in turn).
+ * where what stands round a port leaves no room for a face at it (CabinView.approach, stage/cabinview.ts, tries each in turn).
  */
 export const AT_GLASS = [0.16, 0.22, 0.3, 0.4];
 /** How much of the picture's height the glass of a port fills, leaning to it: the rest is its frame. */

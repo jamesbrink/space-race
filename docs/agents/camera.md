@@ -61,7 +61,7 @@ turns to it, the eyes go to it along a curve that comes in down the line it is l
 lens closes on it last (`leanPhases`), eased by time, never a cut; the same act or Escape (or 0, which also looks
 ahead) brings him back the same way. A port is leant to square to its pane where the model leaves room for a face
 there, else as square as it allows, else along the line from the eyes to it as far as there is room
-(`Stage.approach`, asked of the model's own meshes: what stands in a cabin is the cabin's, so the data cannot say),
+(`CabinView.approach` in stage/cabinview.ts, asked of the model's own meshes: what stands in a cabin is the cabin's, so the data cannot say),
 and what is seen is the scene itself from that place. The periscope is leant to until its screen fills the picture;
 clicked again, its power changes. While leaning the hands turn the look about what is leant to, within a glance
 (`GLANCE`), and never end it. A click on board selects nothing and flies nowhere (a right click offers nothing): it

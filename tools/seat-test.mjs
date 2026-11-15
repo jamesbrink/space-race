@@ -66,7 +66,7 @@ const state = () => {
   const cam = st.camera;
   cam.updateMatrixWorld();
   const eye = cam.position;
-  const craft = st.exhibited();
+  const craft = st.seats.exhibited();
   const seatEye = craft?.seat ? [craft.seat.elements[12], craft.seat.elements[13], craft.seat.elements[14]] : null;
   // inside the cabin: within the box round what the cabin calls indoors (or, with no cabin, round the seat's part)
   const THREEBox = cam.position.constructor; // (a Vector3: the box is made by hand)

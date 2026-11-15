@@ -14,7 +14,6 @@ import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
 import type { Bloom } from './bloom.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
-import { AT_GLASS, leanPath } from './camera/head.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Craft } from './camera/rig.ts';
 import { Carry } from './onfoot/carry.ts';
@@ -29,7 +28,7 @@ import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
 import { type Look, Looks } from './look.ts';
-import { type LookoutDef, lookoutsOf, windowAt } from './lookouts.ts';
+import type { LookoutDef } from './lookouts.ts';
 import { refused, sayRefused } from './lost.ts';
 import { absolute, type Origin } from './origin.ts';
 import { OVERLAY_LAYER } from './overlay.ts';
@@ -41,6 +40,7 @@ import type { Quality } from './quality.ts';
 import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
 import { Surfaces } from './runs.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
+import { CabinView } from './stage/cabinview.ts';
 import { Framing } from './stage/framing.ts';
 import { NOTHING, type Picked, Picker, skinless, type Thing } from './stage/picker.ts';
 import { Shadows } from './stage/shadows.ts';
@@ -55,7 +55,6 @@ const TRAIL_TOP = 80_000;
 
 import { EYE_FRACTION, type Hit, Walker } from './onfoot/walk.ts';
 import { Works } from './onfoot/works.ts';
-import { ease } from '../util/math.ts';
 
 /** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
 const EMERGE_CLEAR = 0.12;
@@ -351,6 +350,8 @@ export class Stage {
   onRig: (id: RigId) => void = () => {};
   /** What the camera is sent to frame, in what the controls leave clear (stage/framing.ts). */
   readonly framing: Framing;
+  /** The view from a seat: which is sat in, what is looked out of, the lean to it (stage/cabinview.ts). */
+  readonly seats: CabinView;
   /** What is under the pointer (stage/picker.ts). */
   readonly picker: Picker;
   /** The Sun's shadows: its fine map and where it is spent, the far map under it (stage/shadows.ts). */
@@ -591,6 +592,30 @@ export class Stage {
       onInteract: () => this.onInteract(),
       onVisit: () => this.onVisit(),
     });
+    this.seats = new CabinView({
+      cam: this.cam,
+      walk: () => this.walk,
+      bounds: this.bounds,
+      defs: () => this.defs,
+      staged: () => this.staged,
+      current: () => this.current,
+      exhibit: () => this.exhibit,
+      flown: () => this.ascent?.model,
+      craft: () => this.craft(),
+      cabin: () => this.cabin,
+      boarded: () => this.boarded,
+      partOf: (name) => this.partOf(name),
+      shed: () => this.debris,
+      redraw: () => {
+        this.dirty = true;
+      },
+      reshade: () => {
+        this.renderer.shadowMap.needsUpdate = true;
+        this.dirty = true;
+      },
+      onSeat: () => this.onSeat(),
+      onLean: (at) => this.onLean(at),
+    });
     this.shadows = new Shadows({
       renderer: this.renderer,
       camera: this.camera,
@@ -609,7 +634,7 @@ export class Stage {
       cover: () => this.shadowed(),
       section: () => this.sectionBox(),
       fitBounds: () => this.fitBounds(),
-      cabin: () => this.cabinBox(),
+      cabin: () => this.seats.cabinBox(),
       walker: () => this.walk.body.position,
       craft: () => (this.followed !== null && this.shedCraft) || this.crafted,
       busy: () => this.tumble !== null || this.wheel !== null || this.boarding !== null,
@@ -1151,8 +1176,8 @@ export class Stage {
     this.framing.following = this.framing.watched = null;
     this.onView(null);
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
-    const at = this.seatHolder;
-    this.showSeatHidden(at, this.defs[at]?.seats?.[this.seatAt]?.hide, id !== 'onboard');
+    const at = this.seats.seatHolder;
+    this.seats.showSeatHidden(at, this.defs[at]?.seats?.[this.seats.seatAt]?.hide, id !== 'onboard');
     this.cabin?.board(id === 'onboard');
     // leaving the vehicle, the shadows go back to the section: fitted to it where the clock has it now (it may just have
     // been put back on its pad, and not yet been moved there by a frame)
@@ -1259,107 +1284,10 @@ export class Stage {
   }
 
   /**
-   * The seat being sat in, if the view is from one: the on-board view's (the flown vehicle's first seat), or the couch
-   * boarded on foot. Its model's definition and level, and the frame of its eyes in the scene (+Z where they rest).
-   */
-  private sitting(): { def: ModelDef; group: THREE.Object3D; eyes: THREE.Matrix4 } | null {
-    if (this.walk.active) {
-      const b = this.boarded;
-      const at = b ? this.defs.findIndex((m) => m.id === b.model) : -1;
-      if (!b || at < 0) return null;
-      b.node.updateWorldMatrix(true, false);
-      const eyes = b.node.matrixWorld.clone().multiply(new THREE.Matrix4().makeTranslation(...(b.seat.eye ?? ([0, 0, 0] as const))));
-      return { def: this.defs[at]!, group: this.staged[at]!.group, eyes };
-    }
-    if (this.cam.rig !== 'onboard') return null;
-    const seat = this.craft()?.seat;
-    const at = this.seatHolder;
-    return seat && at >= 0 ? { def: this.defs[at]!, group: this.staged[at]!.group, eyes: seat } : null;
-  }
-
-  /**
-   * The model whose seats the on-board view is from: at a site the flown vehicle's; on a stage that shows an exhibit
-   * (`exhibit`: the gallery's), the model on show. -1: none.
-   */
-  private get seatHolder(): number {
-    if (this.ascent) return this.defs.findIndex((m) => m.id === this.ascent?.model);
-    return this.exhibit ? this.current : -1;
-  }
-
-  /**
    * This stage shows an exhibit (the gallery's): nothing flies, and its seats (`ModelDef.seats`) can be sat in where it
    * stands, one at a time (`sit`). At a site only the flown vehicle's first seat is sat in, and only in flight.
    */
   exhibit = false;
-  /** Which of the seat holder's seats the on-board view is from (the site's is always its first). */
-  private seatAt = 0;
-
-  /** What each of the exhibit's seats is called (`ModelDef.seats[].label`): empty where it has none, or nothing is an exhibit. */
-  get seatLabels(): string[] {
-    return this.exhibit ? (this.defs[this.seatHolder]?.seats ?? []).map((s) => s.label) : [];
-  }
-
-  /** The exhibit's seat being sat in (an index into `seatLabels`), or null. */
-  get seat(): number | null {
-    return this.exhibit && this.cam.rig === 'onboard' ? this.seatAt : null;
-  }
-
-  /** The exhibit's seat `n`'s node (ModelDef.seats[].node): the address's word for it. */
-  seatName(n: number): string | null {
-    return this.exhibit ? (this.defs[this.seatHolder]?.seats?.[n]?.node ?? null) : null;
-  }
-
-  /**
-   * Sit in the exhibit's seat `n`, or with null get out of the one sat in: back to the view the seat was taken from, as
-   * it was left (camera/index.ts `unseat`). From one seat to another the eye is carried across. Each is an explicit act:
-   * nothing else puts the camera in a seat. The seat's part must be on show (`Stage.only`): false if it is not.
-   */
-  sit(n: number | null): boolean {
-    if (!this.exhibit) return false;
-    const at = this.seatHolder;
-    const seats = this.defs[at]?.seats ?? [];
-    const on = this.cam.rig === 'onboard';
-    if (n === null) {
-      if (on) this.cam.unseat();
-      return true;
-    }
-    if (!seats[n]) return false;
-    if (on && n === this.seatAt) return true;
-    const was = this.seatAt;
-    this.seatAt = n;
-    if (!this.craft()?.seat) {
-      this.seatAt = was;
-      return false;
-    }
-    if (!on) {
-      this.cam.set('onboard');
-      return (this.cam.rig as RigId) === 'onboard';
-    }
-    // from one seat to the next: the other man's helmet is drawn again, this one's not
-    this.showSeatHidden(at, seats[was]?.hide, true);
-    this.showSeatHidden(at, seats[n]!.hide, false);
-    this.cam.reseat();
-    this.renderer.shadowMap.needsUpdate = true;
-    this.dirty = true;
-    this.onSeat();
-    return true;
-  }
-
-  /** The box round the seated model's cabin (`CabinDef.within`, else the part the seat is in), a metre added all round; null if there is none. */
-  private cabinBox(): THREE.Box3 | null {
-    const at = this.seatHolder;
-    const def = this.defs[at];
-    const full = this.staged[at]?.full;
-    if (!def || !full) return null;
-    const seat = def.seats?.[this.seatAt]?.node;
-    const names = def.cabin?.within ?? (seat ? [this.partOf(seat) ?? ''] : []);
-    const box = new THREE.Box3();
-    for (const n of names) {
-      const node = full.getObjectByName(n);
-      if (node) box.expandByObject(node);
-    }
-    return box.isEmpty() ? null : box.expandByScalar(1);
-  }
 
   /** The part (a top-level node named in the model's parts) a node of the model on show is in, or null. */
   partOf(name: string): string | null {
@@ -1367,208 +1295,10 @@ export class Stage {
     return null;
   }
 
-  /** What can be looked out of from the seat being sat in (lookouts.ts): its windows, then its periscope. Empty when not in one. */
-  lookouts(): LookoutDef[] {
-    return lookoutsOf(this.sitting()?.def.cabin);
-  }
-
-  /** Which of `lookouts` the pilot is leaning to, or null. */
-  get leaning(): number | null {
-    const out = this.walk.active
-      ? this.boarded !== null && this.walk.head.looking()
-      : this.cam.rig === 'onboard' && this.cam.onboard.looking;
-    return out ? this.leanAt : null;
-  }
   /** Told when a couch is boarded on foot or left: what can be looked out of has changed. */
   onSeat: () => void = () => {};
   /** Told whenever what is leant to changes (by the act, by 0, by leaving the seat): the page's buttons follow it. */
   onLean: (at: number | null) => void = () => {};
-
-  /**
-   * Lean to the `n`th of `lookouts` and look out of it, or come back to the seat (null, or the one already leant to
-   * asked again). A window is looked out of from just inside its pane, along it: what is seen is the scene itself.
-   * The periscope is leant to until its screen fills the view, at its wide power. Says what to say, if anything.
-   */
-  leanTo(n: number | null): string | null {
-    const seat = this.sitting();
-    const list = lookoutsOf(seat?.def.cabin);
-    const to = n === null || n === this.leaning ? null : (list[n] ?? null);
-    const head = this.walk.active ? this.walk.head : this.cam.onboard;
-    let said: string | null = null;
-    if (!seat || !to) {
-      head.lean(null);
-      this.leanAt = null;
-    } else if (to.periscope) {
-      const screen = this.cabin?.screen;
-      if (!screen) return null;
-      head.lean({ kind: 'screen', at: screen.point, facing: screen.normal, radius: screen.radius });
-      const fields = seat.def.cabin?.periscope?.fields ?? [];
-      const power = this.cabin?.power(0) ?? 0;
-      said = fields.length > 1 ? `Low power · ${fields[power]}° · click the screen for high` : null;
-      this.leanAt = n;
-    } else {
-      const w = seat.def.cabin!.windows![to.window!]!;
-      seat.group.updateWorldMatrix(true, false);
-      const at = new THREE.Vector3(...w.at).applyMatrix4(seat.group.matrixWorld);
-      const out = new THREE.Vector3(...w.out).transformDirection(seat.group.matrixWorld);
-      head.lean({ kind: 'port', at, across: w.across, ...this.approach(seat, at, out, w.across) });
-      this.leanAt = n;
-    }
-    if (this.cabin) this.cabin.watched = this.leanAt !== null && Boolean(list[this.leanAt]?.periscope);
-    this.onLean(this.leanAt);
-    this.dirty = true;
-    return said;
-  }
-  private leanAt: number | null = null;
-
-  /**
-   * From the seat, a click on something to look out through: a window's pane (`point` on it) leans to that window; the
-   * periscope's screen leans to it, and clicked again while leant to, changes its power. Anything else comes back.
-   */
-  lookOut(thing: CabinThing | null): string | null {
-    const seat = this.sitting();
-    if (!seat || !thing?.lookout) return this.leanTo(null);
-    const list = lookoutsOf(seat.def.cabin);
-    if (thing.lookout === 'screen') {
-      const n = list.findIndex((l) => l.periscope);
-      if (n < 0) return null;
-      if (this.leaning !== n) return this.leanTo(n);
-      const fields = seat.def.cabin?.periscope?.fields ?? [];
-      const power = this.cabin?.power() ?? 0;
-      return fields.length > 1 ? `${power ? 'High' : 'Low'} power · ${fields[power]}° · click again to change` : null;
-    }
-    const n = thing.point ? this.lookoutAt(thing.point) : -1;
-    return n < 0 ? null : this.leanTo(n);
-  }
-
-  /**
-   * The line to lean in along and look out of a window by (its pane's middle `at`, facing out `out`, `across` its glass),
-   * in the scene: square to the pane if that is clear, or as little toward the line from the eyes at rest to the pane as
-   * is. Clear is that the eyes' way there passes through nothing and that from where they stop the middle of the glass
-   * and most of its breadth can be seen. What stands in a cabin is the cabin's (a box in front of a port, the hoses
-   * across it), so this is asked of the model and not of the data. The line from the eyes is the last resort: if the
-   * pane can be seen from the seat, it is clear.
-   */
-  private approach(
-    seat: { def: ModelDef; group: THREE.Object3D; eyes: THREE.Matrix4 },
-    at: THREE.Vector3,
-    out: THREE.Vector3,
-    across: number,
-  ): { out: THREE.Vector3; stop: number } {
-    const at0 = this.staged[this.defs.indexOf(seat.def)]!;
-    const root = at0.full; // (the cabin is the full level's: a coarser one has no inside to be in the way)
-    const rest = new THREE.Vector3().setFromMatrixPosition(seat.eyes);
-    const sight = at.clone().sub(rest).normalize();
-    const caster = new THREE.Raycaster();
-    const hidden = (o: THREE.Object3D | null): boolean => (o ? !o.visible || hidden(o.parent) : false);
-    const glass = (o: THREE.Object3D) => {
-      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-      return (Array.isArray(m) ? m[0] : m)?.name.startsWith('glass') ?? false;
-    };
-    // (straight from a to b, short of b by a centimetre: does it meet anything but glass? With `r`, nor do the four lines
-    // `r` to either side of it: a tube that much round the line)
-    const across3 = new THREE.Vector3();
-    const up3 = new THREE.Vector3();
-    const line = (a: THREE.Vector3, b: THREE.Vector3): boolean => {
-      const far = a.distanceTo(b) - 0.01;
-      if (far <= 0) return false;
-      caster.set(a, b.clone().sub(a).normalize());
-      caster.far = far;
-      return through(caster, [root], (g) => this.walk.solids.tree(g), true).some((h) => !hidden(h.object) && !glass(h.object));
-    };
-    const blocked = (a: THREE.Vector3, b: THREE.Vector3, r = 0): boolean => {
-      if (line(a, b)) return true;
-      if (!r) return false;
-      const d = b.clone().sub(a).normalize();
-      across3.crossVectors(d, Math.abs(d.y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize();
-      up3.crossVectors(d, across3);
-      for (const o of [across3, across3.clone().negate(), up3, up3.clone().negate()])
-        if (line(a.clone().addScaledVector(o, r), b.clone().addScaledVector(o, r))) return true;
-      return false;
-    };
-    const side = new THREE.Vector3().crossVectors(out, Math.abs(out.y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize();
-    const lift = new THREE.Vector3().crossVectors(out, side);
-    // most of the glass's breadth, all round
-    const rim = Array.from({ length: 8 }, (_, i) => {
-      const a = (i / 8) * 2 * Math.PI;
-      return at
-        .clone()
-        .addScaledVector(side, 0.4 * across * Math.cos(a))
-        .addScaledVector(lift, 0.4 * across * Math.sin(a));
-    });
-    const curve = new THREE.Vector3();
-    const cone = new THREE.Vector3();
-    // (something in the picture nearer than the visor would be, looking along `dir` from `eye`: rays round the line, a
-    // lens's half-width out)
-    const crowded = (eye: THREE.Vector3, dir: THREE.Vector3): boolean => {
-      const a3 = new THREE.Vector3().crossVectors(dir, Math.abs(dir.y) < 0.9 ? UP : new THREE.Vector3(1, 0, 0)).normalize();
-      const b3 = new THREE.Vector3().crossVectors(dir, a3);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * 2 * Math.PI;
-        cone
-          .copy(dir)
-          .addScaledVector(a3, 0.55 * Math.cos(a))
-          .addScaledVector(b3, 0.55 * Math.sin(a))
-          .normalize();
-        if (blocked(eye, eye.clone().addScaledVector(cone, 0.09))) return true;
-      }
-      return false;
-    };
-    // the best there is: the least of the glass hidden (its middle counts twice), nearest the glass, nearest square to it
-    let best: { out: THREE.Vector3; stop: number; hid: number } | null = null;
-    for (const stop of AT_GLASS) {
-      for (let k = 0; k <= 1.0001; k += 0.1) {
-        const dir = out.clone().lerp(sight, k).normalize();
-        const eye = at.clone().addScaledVector(dir, -stop);
-        // how much of the glass is hidden from where the eyes stop
-        const hid = 2 * Number(blocked(eye, at)) + rim.filter((p) => blocked(eye, p)).length;
-        // (its middle and all but two of the eight round it, or it is not looking out of it)
-        if (hid > 2 || (best && hid >= best.hid)) continue;
-        if (crowded(eye, dir)) continue;
-        // the way there, as the head will take it (head.ts leanPath, in to the pane along `dir`), with room round it
-        let from = rest.clone();
-        let clear = true;
-        for (let i = 1; i <= 12 && clear; i++) {
-          leanPath(rest, eye, null, dir, ease(i / 12), curve);
-          clear = !blocked(from, curve, 0.04);
-          from = curve.clone();
-        }
-        if (!clear) continue;
-        best = { out: dir, stop, hid };
-        if (!hid) return best;
-      }
-    }
-    if (best) return best;
-    // no room for a face at it: lean along the line from the eyes at rest to the pane as far as there is room, and the
-    // lens brings the glass up to fill the picture from there (from the seat, if the pane can be seen at all)
-    const all = rest.distanceTo(at);
-    let stop = all;
-    for (let go = 0.03; all - go >= AT_GLASS[0]!; go += 0.03) {
-      const eye = rest.clone().addScaledVector(sight, go);
-      if (blocked(rest.clone().addScaledVector(sight, go - 0.03), eye, 0.04) || crowded(eye, sight)) break;
-      stop = all - go;
-    }
-    return { out: sight, stop };
-  }
-
-  /** Which of `lookouts` a point on a pane in the scene is (the nearest window of the seat's cabin), or -1. */
-  lookoutAt(point: THREE.Vector3): number {
-    const seat = this.sitting();
-    if (!seat) return -1;
-    const p = seat.group.worldToLocal(point.clone());
-    const w = windowAt(seat.def.cabin?.windows, [p.x, p.y, p.z]);
-    return lookoutsOf(seat.def.cabin).findIndex((l) => l.window === w);
-  }
-
-  /** From the seat, something is being looked out through (`leanTo`). */
-  get lookingOut(): boolean {
-    return this.leaning !== null;
-  }
-
-  /** The view is from the seat: nothing is labelled over the scene (the predicted path's markers would lie across the cabin). */
-  aboard(): boolean {
-    return this.cam.rig === 'onboard' && !this.walk.active;
-  }
 
   /**
    * The flown vehicle, in the scene's frame (also during the draw): its middle into `out`, its long axis into `axis`; the
@@ -1599,27 +1329,10 @@ export class Stage {
     return this.looks.current;
   }
 
-  /**
-   * Whoever sits in the flown model's seat is aboard it, or back outside: the flight's figure of him standing on the
-   * pad (`seats[].figure`) is not drawn while he is in the couch. There is one of him.
-   */
-  crewAboard(on: boolean): void {
-    const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
-    for (const seat of this.defs[at]?.seats ?? []) {
-      const figure = this.staged[this.defs.findIndex((m) => m.id === seat.figure)];
-      if (figure && figure.group.visible === on) {
-        figure.group.visible = !on;
-        this.renderer.shadowMap.needsUpdate = true;
-        this.dirty = true;
-      }
-    }
-    this.cabin?.piloted(on);
-  }
-
   /** The flown vehicle as the camera needs it (camera/rig.ts: Craft): its frame, the middle and size of what is left of it, a place to see from inside it. */
   private craft(): Craft | null {
     const s = this.flier;
-    if (!s) return this.exhibited();
+    if (!s) return this.seats.exhibited();
     if (this.followed !== null) {
       const shed = this.shedAsCraft(this.followed);
       if (shed) return shed;
@@ -1639,7 +1352,7 @@ export class Stage {
     });
     const at = this.defs.findIndex((m) => m.id === this.ascent?.model);
     const seat = this.defs[at]?.seats?.[0];
-    if (c.of !== s) c.place = seat ? this.seatNode(at, seat) : null; // (found once: the first place its data gives to see from)
+    if (c.of !== s) c.place = seat ? this.seats.seatNode(at, seat) : null; // (found once: the first place its data gives to see from)
     if (c.of !== s || c.shed !== this.lifted.shed || c.level !== s.shown) {
       // measured when what is left of it changes, not every frame: the box round what is still drawn of it
       c.of = s;
@@ -1683,45 +1396,6 @@ export class Stage {
     } else c.seat = null;
     return c;
   }
-  /**
-   * The exhibit as the camera needs it (`exhibit`): where it stands, and the eyes of the seat chosen (`seatAt`), if its
-   * part is on show. It never flies.
-   */
-  private exhibited(): Craft | null {
-    if (!this.exhibit) return null;
-    const at = this.seatHolder;
-    const staged = this.staged[at];
-    const seat = this.defs[at]?.seats?.[this.seatAt];
-    if (!staged || !seat) return null;
-    const e = (this.exhibitCraft ??= {
-      matrix: staged.group.matrixWorld,
-      centre: new THREE.Vector3(),
-      radius: 1,
-      shape: 0,
-      flying: false,
-      seat: null,
-      exhibit: true,
-    });
-    const key = `${at}/${this.seatAt}`;
-    if (this.shownKey !== key) {
-      this.shownKey = key;
-      this.shownPlace = this.seatNode(at, seat);
-    }
-    e.matrix = staged.group.matrixWorld;
-    e.radius = this.bounds.radius;
-    const node = this.shownPlace;
-    const drawn = (o: THREE.Object3D | null): boolean => !o || (o.visible && drawn(o.parent));
-    if (node && drawn(node)) {
-      node.updateWorldMatrix(true, false);
-      e.seat = (e.seat ?? new THREE.Matrix4())
-        .copy(node.matrixWorld)
-        .multiply(new THREE.Matrix4().makeTranslation(...(seat.eye ?? ([0, 0, 0] as const))));
-    } else e.seat = null;
-    return e;
-  }
-  private exhibitCraft: Craft | null = null;
-  private shownKey = '';
-  private shownPlace: THREE.Object3D | null = null;
 
   /**
    * Something the vehicle has let go, as the camera needs it: the frame it is carried in (the vehicle's own, as it was
@@ -2908,7 +2582,7 @@ export class Stage {
       this.onHoverPlace((this.hoveredPlace = place?.name ?? null), place?.title, place?.about);
     if (Boolean(pane) !== this.overPane) {
       // (from a seat, which window it is: one to lean to and look out of)
-      const from = pane && this.cam.rig === 'onboard' ? this.lookouts()[this.lookoutAt(pane.point)]?.name : undefined;
+      const from = pane && this.cam.rig === 'onboard' ? this.seats.lookouts()[this.seats.lookoutAt(pane.point)]?.name : undefined;
       this.onHoverWindow((this.overPane = Boolean(pane)), from);
     }
     this.canvas.style.cursor = node || model || pane || place ? 'pointer' : 'grab';
@@ -2998,7 +2672,7 @@ export class Stage {
         const under = this.inert || this.veiled ? NOTHING : this.picker.pick();
         // (from the seat a part is not something to choose: only what is in reach is, and a window to look out of)
         // (and nothing is named over a view being looked through: what it is has been said in the note line)
-        this.setHover(this.cam.rig === 'onboard' ? (this.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
+        this.setHover(this.cam.rig === 'onboard' ? (this.seats.lookingOut ? NOTHING : { ...under, node: null, model: null }) : under);
       }
       this.attend();
       this.fitDepth(dt);
@@ -3037,11 +2711,7 @@ export class Stage {
     const walking = this.walk.active ? (this.staged[this.walked]?.group ?? null) : null;
     this.shadows.before(walking, this.frozen);
     // (back from a lean by another way than asking: 0, another camera, out of the seat)
-    if (this.leanAt !== null && this.leaning === null) {
-      this.leanAt = null;
-      if (this.cabin) this.cabin.watched = false;
-      this.onLean(null);
-    }
+    this.seats.unleant();
     this.cabin?.see(); // (what its periscope shows, drawn first: the screen is part of this frame)
     uShadowFade.value.x = 1 - this.shadows.fineShare; // (shared by every stage's materials: each sets it for its own draw)
     this.pipe.draw(this.sinceDrawn, this.frozen);
@@ -3539,7 +3209,7 @@ export class Stage {
         `T${t < 0 ? '−' : '+'}${Math.floor(Math.abs(t) / 3600)} h ${String(Math.floor((Math.abs(t) % 3600) / 60)).padStart(2, '0')} min`;
       return `${seat.label} could be boarded from ${span(seat.open[0])} to ${span(seat.open[1])}`;
     }
-    const place = this.seatNode(at, seat);
+    const place = this.seats.seatNode(at, seat);
     if (!place) return 'there is nowhere to sit';
     const node: THREE.Object3D = place;
     node.updateWorldMatrix(true, false);
@@ -3548,7 +3218,7 @@ export class Stage {
     const flat = Math.hypot(ahead.x, ahead.z) > 0.2 ? ahead : new THREE.Vector3(0, 1, 0).transformDirection(node.matrixWorld);
     const facing = Math.atan2(-flat.z, flat.x);
     this.boarded = { model, seat, node, from: this.walk.body.position.clone(), facing };
-    this.showSeatHidden(at, seat.hide, false);
+    this.seats.showSeatHidden(at, seat.hide, false);
     const eye = new THREE.Vector3(...(seat.eye ?? [0, 0, 0]));
     // a couch with a cabin round it is sat in as a strapped-in person sits (camera/head.ts): the head turns about the neck
     // within the cabin's limits, in the couch's own frame, as it does on board in flight
@@ -3577,41 +3247,12 @@ export class Stage {
     return null;
   }
 
-  /** The node a seat is (ModelDef.seats): the model's own, or, until the model has one, a placeholder made at the middle of its stand-in, facing along `look`. */
-  private seatNode(at: number, seat: NonNullable<ModelDef['seats']>[number]): THREE.Object3D | null {
-    const level = this.staged[at]?.full;
-    if (!level) return null;
-    let place = level.getObjectByName(seat.node);
-    if (!place && seat.standIn) {
-      const mesh = level.getObjectByName(seat.standIn.mesh);
-      if (!mesh?.parent) return null;
-      level.updateWorldMatrix(true, true);
-      const middle = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-      const look = new THREE.Vector3(...seat.standIn.look).transformDirection(level.matrixWorld);
-      place = new THREE.Object3D();
-      place.name = seat.node;
-      mesh.parent.add(place);
-      place.position.copy(mesh.parent.worldToLocal(middle));
-      const parent = mesh.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
-      const turn = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), look);
-      if (seat.standIn.up) {
-        // (+Z along `look`, +Y as near `up` as that allows)
-        const up = new THREE.Vector3(...seat.standIn.up).transformDirection(level.matrixWorld);
-        const across = new THREE.Vector3().crossVectors(up, look).normalize();
-        turn.setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, new THREE.Vector3().crossVectors(look, across), look));
-      }
-      place.quaternion.copy(parent.multiply(turn));
-      console.info(`seat ${seat.node}: a placeholder at the middle of ${seat.standIn.mesh}; the model has no such node`);
-    }
-    return place ?? null;
-  }
-
   /** Out of the place taken (boardSeat), standing where he boarded it from. */
   leaveSeat(): void {
     const b = this.boarded;
     if (!b) return;
     this.boarded = null;
-    this.showSeatHidden(
+    this.seats.showSeatHidden(
       this.defs.findIndex((m) => m.id === b.model),
       b.seat.hide,
       true,
@@ -3623,13 +3264,6 @@ export class Stage {
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
     this.onSeat();
-  }
-
-  private showSeatHidden(at: number, names: string[] | undefined, shown: boolean): void {
-    if (!names?.length) return;
-    this.staged[at]?.group.traverse((o) => names.includes(o.name) && (o.visible = shown));
-    // (and on what has left the model with the seat: the seat out of the ball at the ejection height, its pilot in it)
-    for (const d of this.debris) d.node.traverse((o) => names.includes(o.name) && (o.visible = shown));
   }
 
   /** While driving: get out (the door opens first, and shuts behind), and stand beside the driver's door. */
@@ -4399,5 +4033,65 @@ export class Stage {
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.framing.pose(azimuthDeg, elevationDeg, distance, targetY, targetX, targetZ);
+  }
+
+  /** What each of the exhibit's seats is called (`ModelDef.seats[].label`): empty where it has none, or nothing is an exhibit. */
+  get seatLabels(): string[] {
+    return this.seats.seatLabels;
+  }
+
+  /** The exhibit's seat being sat in (an index into `seatLabels`), or null. */
+  get seat(): number | null {
+    return this.seats.seat;
+  }
+
+  /** The exhibit's seat `n`'s node (ModelDef.seats[].node): the address's word for it. */
+  seatName(n: number): string | null {
+    return this.seats.seatName(n);
+  }
+
+  /** Sit in the exhibit's seat `n`, or with null get out of the one sat in (stage/cabinview.ts). False if its part is not on show. */
+  sit(n: number | null): boolean {
+    return this.seats.sit(n);
+  }
+
+  /** What can be looked out of from the seat being sat in (lookouts.ts): its windows, then its periscope. Empty when not in one. */
+  lookouts(): LookoutDef[] {
+    return this.seats.lookouts();
+  }
+
+  /** Which of `lookouts` the pilot is leaning to, or null. */
+  get leaning(): number | null {
+    return this.seats.leaning;
+  }
+
+  /** Lean to the `n`th of `lookouts` and look out of it, or come back to the seat (null). Says what to say, if anything. */
+  leanTo(n: number | null): string | null {
+    return this.seats.leanTo(n);
+  }
+
+  /** From the seat, a click on something to look out through: a window's pane, or the periscope's screen. */
+  lookOut(thing: CabinThing | null): string | null {
+    return this.seats.lookOut(thing);
+  }
+
+  /** Which of `lookouts` a point on a pane in the scene is (the nearest window of the seat's cabin), or -1. */
+  lookoutAt(point: THREE.Vector3): number {
+    return this.seats.lookoutAt(point);
+  }
+
+  /** From the seat, something is being looked out through (`leanTo`). */
+  get lookingOut(): boolean {
+    return this.seats.lookingOut;
+  }
+
+  /** The view is from the seat: nothing is labelled over the scene (the predicted path's markers would lie across the cabin). */
+  aboard(): boolean {
+    return this.seats.aboard();
+  }
+
+  /** Whoever sits in the flown model's seat is aboard it, or back outside: his figure on the pad is not drawn while he is in the couch. */
+  crewAboard(on: boolean): void {
+    this.seats.crewAboard(on);
   }
 }
