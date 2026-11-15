@@ -11,6 +11,9 @@
 //     since the simulator is given the figure.
 // Nothing in the simulator or in a flight's data was changed to bring a figure in.
 import assert from 'node:assert/strict';
+import { globSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
@@ -23,20 +26,17 @@ import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { recordRelease, ShedRun, Sheds, shedder } from '../src/sim/shed.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
+import { BALLISTIC } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
+// The arithmetic of a parting, a body in no air and the air on a shape is held on Freedom 7's figures; everything a flight's
+// own run does (what it lets go, how, where it comes down, what breaks it and its parachutes) is held for every ballistic
+// flight with something to shed, below.
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
 const TR = flight.trajectory;
-const SHEDS = TR.body.sheds;
-const def = (on) => SHEDS.find((d) => d.on === on);
-
-function with_(change) {
-  const tr = structuredClone(TR);
-  change(tr);
-  return tr;
-}
+const def = (on) => TR.body.sheds.find((d) => d.on === on);
 /** Tick a vehicle on under a pilot until `stop` says so; every state on the way goes to `each`. */
 function run(v, pilot, stop, each = () => {}) {
   let s = v.start();
@@ -49,21 +49,6 @@ function run(v, pilot, stop, each = () => {}) {
   }
   return s;
 }
-
-const whole = vehicle(TR, SITE, SEA);
-/** The record's programme flown by the autopilot, to the sea: every parting on the way, with the vehicle just before and just after. */
-const partings = [];
-let peak = { load: 0, t: 0, lateral: 0 };
-const landed = run(
-  whole,
-  autopilot(whole),
-  () => false,
-  (before, after) => {
-    if (after.released.length > before.released.length)
-      partings.push({ before, after, gone: after.released.slice(before.released.length) });
-    if (after.strain.load > peak.load) peak = { load: after.strain.load, t: after.t, lateral: whole.sample(after).lateral };
-  },
-);
 
 test('one body made two keeps its momentum, linear and angular, whatever it was doing', () => {
   // a body turning at half a radian a second about an axis across it, 1,000 kg with its centre at 4 m; 300 kg leaves from 9 m, pushed off at 3 m/s
@@ -93,117 +78,6 @@ test('one body made two keeps its momentum, linear and angular, whatever it was 
   const apart = dot(sub(sub(gone.v, kept.v), turn(q, cross(w, [gone.centre - kept.centre, 0, 0]))), axis);
   near(apart, 3, 1e-12, 'the speed they part at');
 });
-
-test('every parting of the flight keeps the momentum of the two: tower, booster, retropack', (t) => {
-  assert.deepEqual(
-    partings.flatMap((p) => p.gone.map((g) => g.on)),
-    ['tower', 'separation', 'retropack'],
-  );
-  for (const { before, gone } of partings) {
-    // (a tick's commands take effect at its start: `before` is the vehicle at the event, whole, and the release carries both pieces as they were made)
-    const [g] = gone;
-    const kept = g.rest;
-    const m0 = kept.mass + g.mass;
-    near(m0, before.mass, 1e-9 * before.mass, `${g.on}: the two weigh what there was`);
-    const p = add(scale(kept.v, kept.mass), scale(g.v, g.mass));
-    const scaleOf = m0 * length(before.v);
-    for (const i of [0, 1, 2]) near(p[i], m0 * before.v[i], 1e-12 * scaleOf, `${g.on}: linear momentum, axis ${i}`);
-    const centre = scale(add(scale(kept.r, kept.mass), scale(g.r, g.mass)), 1 / m0);
-    near(length(sub(centre, before.r)), 0, 1e-8, `${g.on}: the pair's centre of mass is where the whole's was`);
-    // Angular momentum about that centre. Both keep the whole's rates on their own inertia, so what is left to check is
-    // the orbital part: two masses a fixed distance apart on the axis, going round with the body, are their reduced
-    // mass times that distance squared times the rate across the axis; the push, along the line between them, adds none.
-    const axis = turn(before.q, [1, 0, 0]);
-    const orbit = add(
-      scale(cross(sub(kept.r, centre), sub(kept.v, before.v)), kept.mass),
-      scale(cross(sub(g.r, centre), sub(g.v, before.v)), g.mass),
-    );
-    const turning = turn(before.q, [0, before.w[1], before.w[2]]);
-    const apart = dot(sub(g.r, kept.r), axis);
-    const want = scale(turning, ((kept.mass * g.mass) / m0) * apart * apart);
-    // (a double places a point this far from the Earth's centre to a nanometre and a half: that, on each piece's momentum about the centre)
-    const rounding = 4e-9 * (kept.mass * length(sub(kept.v, before.v)) + g.mass * length(sub(g.v, before.v)));
-    near(length(sub(orbit, want)), 0, rounding + 1e-9 * length(want), `${g.on}: the angular momentum of the two about their centre`);
-    t.diagnostic(
-      `${g.on} at ${g.t.toFixed(2)} s: ${g.mass.toFixed(1)} kg leaves ${kept.mass.toFixed(1)} kg at ${dot(sub(kept.v, g.v), axis).toFixed(3)} m/s along the axis`,
-    );
-  }
-});
-
-test('the booster and the spacecraft part at the record’s 30 ft/s, shared by their masses', () => {
-  const { before, gone } = partings.find((p) => p.gone[0].on === 'separation');
-  const [booster] = gone;
-  const speed = TR.separation.speed.value;
-  const m = TR.separation.mass.value;
-  // along the axis (across it each piece has what the stack's slow turning gave its own place): the two part at the speed, the booster's share the spacecraft's part of the whole
-  const axis = turn(before.q, [1, 0, 0]);
-  near(dot(sub(booster.rest.v, booster.v), axis), speed, 1e-9, 'the speed they part at');
-  near(-dot(sub(booster.v, before.v), axis), (speed * m) / (m + booster.mass), 1e-9, 'the booster’s own change of speed');
-  near(
-    booster.mass,
-    TR.separation.boosterMass.value,
-    0.02 * booster.mass,
-    'the booster as it leaves, against the trajectory’s figure for it',
-  );
-  assert.ok(dot(sub(booster.v, before.v), turn(before.q, [1, 0, 0])) < 0, 'it is pushed back along the axis');
-});
-
-test('a stack that is turning as it parts, or parts early, still keeps its momentum', () => {
-  // turning at a radian a second about an axis across it when the spacecraft is let go; and let go at 100 s, the tanks a third full
-  for (const [what, t, w] of [
-    ['turning at separation', TR.separation.at.value - 0.1, [0, 1, 0]],
-    ['an early separation', 100, [0.02, -0.4, 0.7]],
-  ]) {
-    const v = vehicle(
-      with_((tr) => {
-        delete tr.body.limits;
-      }),
-      SITE,
-      SEA,
-    );
-    const auto = autopilot(v, { sequence: false });
-    let s = run(v, auto, (x) => x.t >= t);
-    s = { ...s, w };
-    // (the engine cut in the same tick: let go while the booster still pushes, the spacecraft rides on: tests/vehicle.test.mjs)
-    const after = v.tick(s, { ...auto(s), throttle: 0, separate: true });
-    const pieces = after.released.filter((g) => g.t === s.t);
-    assert.ok(pieces.length >= 1 && pieces.at(-1).on === 'separation', what);
-    // every piece let go in that tick and the spacecraft that went on (the last release's rest): together the stack
-    const all = [...pieces, pieces.at(-1).rest];
-    const mass = all.reduce((sum, p) => sum + p.mass, 0);
-    near(mass, s.mass, 1e-9 * s.mass, `${what}: the pieces weigh what the stack did`);
-    const p = all.reduce((sum, x) => add(sum, scale(x.v, x.mass)), [0, 0, 0]);
-    const scaleOf = s.mass * length(s.v);
-    for (const i of [0, 1, 2]) near(p[i], s.mass * s.v[i], 1e-12 * scaleOf, `${what}: linear momentum, axis ${i}`);
-    const centre = scale(
-      all.reduce((sum, x) => add(sum, scale(x.r, x.mass)), [0, 0, 0]),
-      1 / mass,
-    );
-    near(length(sub(centre, s.r)), 0, 1e-8, `${what}: the centre of mass of the pieces is the stack's`);
-  }
-});
-
-test('each staging steps the mass, the centre of mass and the inertia as the parts say', () => {
-  for (const { before, after, gone } of partings) {
-    const [g] = gone;
-    const [was, is] = [whole.mass(before), whole.mass(after)];
-    assert.ok(is.mass < was.mass && is.across < was.across && is.roll <= was.roll, `${g.on}: lighter, and easier to turn`);
-    if (g.on === 'tower') {
-      near(was.mass - is.mass, g.mass, 0.02, 'the tower’s weight goes (and a tick’s propellant, none: the engine is out)');
-      assert.ok(is.centre < was.centre, 'the centre of mass moves down the stack');
-      near(was.mass * was.centre, is.mass * is.centre + g.mass * g.centre, 1e-6 * was.mass * was.centre, 'by the tower’s own moment');
-    }
-    if (g.on === 'retropack') {
-      near(
-        is.centre,
-        (g.mass * (TR.body.capsule.centre.value - g.centre)) / is.mass,
-        1e-9,
-        'the spacecraft’s centre of mass moves toward its small end by the pack’s moment',
-      );
-    }
-  }
-});
-
 test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () => {
   // 300 km up, at 2 km/s, turning at a third of a radian a second about an axis across it
   const r = scale(unit([1, 0.2, 0.5]), 6.678e6);
@@ -228,7 +102,6 @@ test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () =
   near(length(sub(s.v, want.v)), 0, 1e-5, 'and its velocity');
   near(s.w[1], 0.33, 1e-12, 'its rate about the axis it was turning on');
 });
-
 test('in air a tumbling body comes to the terminal speed its weight and drag areas give', (t) => {
   // the retropack let go broadside and turning, 12 km up at 300 m/s straight down
   const d = def('retropack');
@@ -284,7 +157,6 @@ test('in air a tumbling body comes to the terminal speed its weight and drag are
   );
   near(held / count, 1 + lag / count, 0.1, 'the air holds its weight and slows it as the thickening air requires, to a tenth');
 });
-
 test('side on, the air pushes as the sine squared, on the middle of the side; turning, the side damps it', () => {
   const shape = { area: 1, ahead: 0, astern: 0, surfaces: [], side: { dragArea: 10, from: 0, to: 6 } };
   const rho = 1.2;
@@ -304,7 +176,6 @@ test('side on, the air pushes as the sine squared, on the middle of the side; tu
   near(-torque[1], exact, 0.03 * exact, 'and within 3 per cent of the integral');
   assert.ok(-torque[1] < exact, 'from below: the pieces’ middles understate the ends');
 });
-
 test('end on, the drag is the curve’s for the end that leads; the capsule at an angle is slowed less and lifted', () => {
   const shape = { area: 2.81, ahead: 1.5, astern: 4.4, surfaces: [], side: null };
   const rho = 0.01;
@@ -323,102 +194,6 @@ test('end on, the drag is the curve’s for the end that leads; the capsule at a
   );
   near(drag([0, 0, 1000]), 0, 1e-9, 'and broadside the ends give none: that is the side’s');
 });
-
-test('the tower leaves on both its rockets, ahead of the stack, and does not come back to it', (t) => {
-  const { before, gone } = partings.find((p) => p.gone[0].on === 'tower');
-  const body = shedder(TR, SITE, SEA, def('tower'), gone[0]);
-  let s = body.start();
-  // the stack coasts on from the event (its engine is out by then: the record's order)
-  assert.ok(before.cutoff, 'the engine was out when the tower went');
-  const rest = gone[0].rest;
-  let last = length(sub(gone[0].r, rest.r));
-  const first = last;
-  // the same tower with no air on it, for the arithmetic of its rocket
-  const bare = structuredClone(def('tower'));
-  bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
-  const airless = shedder(TR, SITE, SEA, bare, gone[0]);
-  let a = airless.start();
-  for (let i = 1; i <= 800; i++) {
-    s = body.tick(s);
-    a = airless.tick(a);
-    // (the stack is coasted: 65 km up the air slows it by a few millimetres a second in these eight)
-    const stack = coast(rest.r, rest.v, s.t - gone[0].t, TICK);
-    const gap = length(sub(s.r, stack.r));
-    assert.ok(gap > last - 1e-9, `the gap grows at ${s.t.toFixed(2)} s: ${gap} after ${last}`);
-    last = gap;
-  }
-  const gained = length(sub(a.r, coast(rest.r, rest.v, a.t - gone[0].t, TICK).r)) - first;
-  // The record's flight fires both: the escape rocket (thrust for its burn, then the rest of its impulse falling evenly
-  // to nothing) and the jettison rocket (a plain burn). Each gives its impulse over the tower's mass, and in no air the
-  // distance gained is each rocket's share as if given at the middle of its own impulse.
-  const motors = def('tower').motors;
-  assert.deepEqual(
-    motors.map((m) => m.name),
-    ['escape rocket', 'tower jettison rocket'],
-  );
-  let dv = 0;
-  let reach = 0;
-  for (const m of motors) {
-    const f = m.thrust.value;
-    const b = m.burn.value;
-    const tail = m.impulse ? (2 * (m.impulse.value - f * b)) / f : 0;
-    const impulse = f * b + (f * tail) / 2;
-    // the middle of the impulse: the flat part's at b / 2, the falling part's a third of the way along it
-    const middle = (f * b * (b / 2) + ((f * tail) / 2) * (b + tail / 3)) / impulse;
-    dv += impulse / gone[0].mass;
-    reach += (impulse / gone[0].mass) * (8 - middle);
-  }
-  t.diagnostic(
-    `eight seconds on it is ${(last - first).toFixed(1)} m further ahead of the stack than it stood (${gained.toFixed(1)} m in no air); its rockets gave it ${dv.toFixed(1)} m/s`,
-  );
-  near(gained, reach, 0.002 * reach, 'how far ahead in no air, by its rockets’ impulses over its mass');
-  assert.ok(dv > 400 && dv < 550, `several hundred metres a second: ${dv.toFixed(1)}`);
-  assert.ok(last - first < gained && last - first > 0.9 * gained, 'and in the thin air there, a little less');
-});
-
-test('after an abort the escape rocket is spent: the tower goes on its jettison rocket alone', () => {
-  const { gone } = partings.find((p) => p.gone[0].on === 'tower');
-  const bare = structuredClone(def('tower'));
-  bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
-  const speedGained = (release) => {
-    const body = shedder(TR, SITE, SEA, bare, release);
-    let s = body.start();
-    for (let i = 1; i <= 800; i++) s = body.tick(s);
-    const stack = coast(release.rest.r, release.rest.v, s.t - release.t, TICK);
-    return length(sub(s.v, stack.v));
-  };
-  const jettison = bare.motors.find((m) => !m.unless);
-  near(
-    speedGained({ ...gone[0], aborted: true }),
-    (jettison.thrust.value * jettison.burn.value) / gone[0].mass,
-    0.05,
-    'the jettison rocket’s impulse over its mass',
-  );
-  assert.ok(speedGained(gone[0]) > 40 * speedGained({ ...gone[0], aborted: true }), 'and on a good flight the escape rocket fires with it');
-});
-
-test('the shed bodies of the record’s programme come down, and say where', (t) => {
-  const sheds = new Sheds(TR, SITE, SEA);
-  sheds.follow(landed);
-  assert.equal(sheds.all.length, 3);
-  for (const body of sheds.all) {
-    const end = body.finish();
-    const s = body.now;
-    t.diagnostic(
-      `${body.shedder.def.name}: apogee ${(s.apogee / 1852).toFixed(1)} n. mi., greatest pressure ${(s.peakQ / 1000).toFixed(1)} kPa, down at ${end.t.toFixed(1)} s, ` +
-        `${(end.range / 1852).toFixed(1)} n. mi. from the pad (${end.latitude.toFixed(3)} N, ${(-end.longitude).toFixed(3)} W) at ${end.speed.toFixed(0)} m/s`,
-    );
-    assert.ok(end.t > body.from && Number.isFinite(end.speed) && end.vertical > 0, 'it came down, falling');
-    assert.ok(s.apogee > 150_000, 'having gone over the top with the spacecraft');
-  }
-  // the retropack is light for its size: it is the slowest of the three at the sea
-  const speed = (on) => sheds.get(on).now.landing.speed;
-  assert.ok(speed('retropack') < speed('tower') && speed('retropack') < speed('separation'), 'the retropack falls slowest');
-  t.diagnostic(
-    `the spacecraft itself: down at ${landed.landing.t.toFixed(1)} s at ${landed.landing.latitude.toFixed(3)} N, ${(-landed.landing.longitude).toFixed(3)} W`,
-  );
-});
-
 /** Two values the same in shape, their numbers within 1e-12 of their size (and exactly the same where not numbers). */
 function same(actual, expected, path = 'value') {
   if (typeof expected === 'number' && typeof actual === 'number') {
@@ -429,63 +204,6 @@ function same(actual, expected, path = 'value') {
     for (const k of Object.keys(expected)) same(actual[k], expected[k], `${path}.${k}`);
   } else assert.deepEqual(actual, expected, path);
 }
-
-test('a shed body’s flight is the same however it is asked for, and is kept for showing again', () => {
-  const release = partings.find((p) => p.gone[0].on === 'separation').gone[0];
-  const make = () => new ShedRun(shedder(TR, SITE, SEA, def('separation'), release));
-  const [a, b] = [make(), make()];
-  a.upTo(release.t + 400);
-  for (let t = release.t; t < release.t + 400; t += 0.0166) b.upTo(t); // a frame at a time
-  b.upTo(release.t + 400);
-  // The same to the last few bits, not to the last bit: flown a frame at a time on CI's x86 Linux, the attitude came out
-  // a unit in the last place apart from the same flight flown at once (the position and speed bit for bit), where on
-  // arm64 both were bit for bit. A difference of 1e-12 of a value is a flight that is the same however it is asked for.
-  same(b.now, a.now);
-  // shown again at an earlier instant, it is where it was
-  const then = a.at(release.t + 37.3);
-  const fresh = make();
-  same(fresh.at(release.t + 37.3), then);
-  assert.equal(a.at(release.t - 1), null, 'it is nowhere before it left');
-  // between kept states the cubic is within a centimetre of the flight itself
-  const body = shedder(TR, SITE, SEA, def('separation'), release);
-  let s = body.start();
-  while (s.t < release.t + 37.3 - TICK / 2) s = body.tick(s);
-  near(length(sub(then.r, s.r)), 0, 0.01, 'the kept flight against the flight');
-});
-
-test('let go standing on the pad, the booster stays where it stands', () => {
-  // an abort before the engine is lit
-  const v = vehicle(TR, SITE, SEA);
-  const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
-  // (the booster, and the retropack the abort's own sequence drops with it)
-  assert.deepEqual(
-    s.released.map((r) => r.on),
-    ['separation', 'retropack'],
-  );
-  const body = new ShedRun(shedder(TR, SITE, SEA, def('separation'), s.released[0]));
-  assert.ok(body.now.landing, 'it is down from the first');
-  const later = body.at(600);
-  assert.ok(later.down);
-  // carried round with the Earth: 600 s on it is where the pad has gone
-  const moved = length(sub(later.r, s.released[0].r));
-  // (the chord of the arc the pad has gone through)
-  const from = s.released[0].r;
-  near(moved, 2 * Math.hypot(from[0], from[1]) * Math.sin((7.292115e-5 * 600) / 2), 0.01, 'it has gone round with the ground');
-});
-
-test('a release made from the record’s run starts the booster where the spacecraft left it, 30 ft/s slower along the axis', () => {
-  const batch = fly(TR, SITE, SEA);
-  const at = TR.separation.at.value;
-  const s = batch.samples.find((x) => x.t === at);
-  const axis = whole.programme(at);
-  const release = recordRelease(TR, def('separation'), at, s.r, s.v, axis, true);
-  near(dot(sub(s.v, release.v), axis), TR.separation.speed.value, 1e-9, 'slower along the axis by the parting speed');
-  near(release.mass, TR.separation.boosterMass.value, 0.02 * release.mass, 'the booster’s mass, from the parts, against the trajectory’s');
-  near(dot(turn(release.q, [1, 0, 0]), axis), 1, 1e-12, 'pointing as the programme has the stack');
-  const tower = recordRelease(TR, def('tower'), TR.body.tower.at.value, s.r, s.v, axis, true);
-  near(length(sub(tower.v, s.v)), 0, 1e-12, 'the tower leaves with the stack’s own velocity: its rocket does the rest');
-});
-
 test('the structure: caution from four fifths of the limit, gone after half a second over it or at once at half as much again', () => {
   assert.equal(standing(0.5), 'safe');
   assert.equal(standing(CAUTION), 'caution');
@@ -502,243 +220,541 @@ test('the structure: caution from four fifths of the limit, gone after half a se
   assert.ok(strain(UNSTRAINED, SNAPS, TICK).fails, 'and at once at SNAPS');
   near(s.most, 1.2, 1e-12, 'the most it has been is remembered');
 });
+// Every flight into orbit whose strap-ons are flown when they leave (Vostok 1's and 2's R-7s)
+const ORBITERS = (
+  await Promise.all(
+    globSync('missions/*/*/flights/*/flight.ts', { cwd: join(import.meta.dirname, '..') }).map(
+      async (f) => (await import(pathToFileURL(join(import.meta.dirname, '..', f)).href)).flight,
+    ),
+  )
+).filter((f) => f.orbital?.ascent?.sheds?.some((d) => d.on.startsWith('boosters/')));
+assert.ok(ORBITERS.length >= 2, 'Vostok 1 and 2 at least');
+for (const o of ORBITERS) {
+  test(`${o.designation}: the four strap-ons leave as a cross: each a body of its own, swung out and vented away, tumbling, down some 400 km along the track`, async () => {
+    const { orbitalRecord } = await import('../src/viewer/ascent.ts');
+    const { length, sub, dot, unit } = await import('../src/world/frames.ts');
+    const run = orbitalRecord(o);
+    const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`boosters/${l}`));
+    assert.ok(four.every(Boolean), 'each strap-on is flown');
+    const t0 = four[0].from;
+    assert.equal(t0, 119.5, 'at the stage’s separation');
+    const at = (t) => four.map((b) => b.at(t));
+    const middle = (s) => s.map((x) => x.r).reduce((m, r) => m.map((v, i) => v + r[i] / 4), [0, 0, 0]);
+    // as they leave: each from its own place round the stack, 2.78 m out
+    const first = at(t0);
+    const m0 = middle(first);
+    for (const s of first) assert.ok(Math.abs(length(sub(s.r, m0)) - 2.78) < 0.05);
+    // and outward: five seconds on each is further from the four's middle, by much the same, the four still a cross
+    const later = at(t0 + 5);
+    const m5 = middle(later);
+    const out = later.map((s) => length(sub(s.r, m5)));
+    assert.ok(Math.min(...out) > 8, `spread: ${out.map((x) => x.toFixed(1))}`);
+    assert.ok(Math.max(...out) / Math.min(...out) < 1.15, 'evenly');
+    const ways = later.map((s) => unit(sub(s.r, m5)));
+    assert.ok(Math.abs(dot(ways[0], ways[2]) + 1) < 0.1 && Math.abs(dot(ways[1], ways[3]) + 1) < 0.1, 'B against G, V against D');
+    assert.ok(Math.abs(dot(ways[0], ways[1])) < 0.15, 'B and V square to each other');
+    // each turning end over end as it goes, not falling flat
+    for (const b of four) {
+      const [p, q] = [b.at(t0).q, b.at(t0 + 5).q];
+      const turned = (2 * Math.acos(Math.min(1, Math.abs(p.reduce((s, v, i) => s + v * q[i], 0))))) / (Math.PI / 180);
+      assert.ok(turned > 10, `turned ${turned.toFixed(1)} degrees in five seconds`);
+    }
+    // down in the drop zone: about 350 km from Site 1 for Soyuz's on 51.6° (derived: Interfax, Progress MS-06's), and the
+    // record gives none of its own for 64.95°: within 300 to 450 km down range is the check
+    for (const b of four) {
+      const l = b.finish();
+      assert.ok(l.range > 300_000 && l.range < 450_000, `down ${(l.range / 1000).toFixed(0)} km from the pad`);
+    }
+  });
+}
 
-test('on the record’s programme the stack goes through the greatest pressure with room to spare', (t) => {
-  assert.equal(landed.broke, null);
-  assert.ok(!landed.torn.drogue && !landed.torn.main, 'and both parachutes open inside what they can take');
-  t.diagnostic(
-    `the bending load is at most ${(100 * peak.load).toFixed(1)} per cent of the limit, at ${peak.t.toFixed(1)} s, with ${peak.lateral.toFixed(3)} g across the axis`,
-  );
-  assert.ok(peak.load < CAUTION, `no warning is raised: the most is ${peak.load} of the limit`);
-});
+for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
+  const name = `${each.designation} (${each.callsign})`;
+  const SITE = siteFrame(each.site);
+  const SEA = each.site.seaLevel.value;
+  const TR = each.trajectory;
+  const def = (on) => TR.body.sheds.find((d) => d.on === on);
+  const with_ = (change) => {
+    const tr = structuredClone(TR);
+    change(tr);
+    return tr;
+  };
 
-test('a programme leaned 15 degrees through the greatest pressure breaks the stack at its joint, and the pieces keep its momentum', (t) => {
-  const v = vehicle(TR, SITE, SEA);
-  const lean = { pitch: 0, yaw: 0 };
-  const auto = autopilot(v, { trim: () => lean });
-  let event = null;
-  const end = run(
-    v,
-    (s) => {
-      lean.pitch = s.t >= 70 && s.t <= 90 ? 15 * DEG : 0;
-      return auto(s);
-    },
-    (s) => s.t > 100,
+  const whole = vehicle(TR, SITE, SEA);
+  /** The record's programme flown by the autopilot, to the sea: every parting on the way, with the vehicle just before and just after. */
+  const partings = [];
+  let peak = { load: 0, t: 0, lateral: 0 };
+  const landed = run(
+    whole,
+    autopilot(whole),
+    () => false,
     (before, after) => {
-      if (after.broke && !before.broke) event = { before, after };
+      if (after.released.length > before.released.length)
+        partings.push({ before, after, gone: after.released.slice(before.released.length) });
+      if (after.strain.load > peak.load) peak = { load: after.strain.load, t: after.t, lateral: whole.sample(after).lateral };
     },
   );
-  assert.ok(end.broke, 'it broke');
-  const { before, after } = event;
-  t.diagnostic(
-    `broke at ${after.broke.t.toFixed(2)} s: bending load ${(100 * after.broke.load).toFixed(0)} per cent of the limit at ${(after.broke.q / 1000).toFixed(1)} kPa, ${after.broke.alpha.toFixed(1)} degrees off the wind`,
-  );
-  assert.equal(after.broke.joint, 'separation');
-  assert.ok(after.broke.t > 70 && after.broke.t < 90, 'while it was leaned');
-  assert.ok(after.broke.load > 1, 'over the limit');
-  assert.ok(after.cutoff && after.shed.booster, 'the engine is out and the booster gone its own way');
-  assert.ok(after.abortAt !== null && !after.shed.tower, 'the spacecraft is pulled clear on its escape rocket, the tower still aboard');
-  // (the abort's own sequence drops the retropack as the spacecraft leaves: three pieces, not two)
-  const booster = after.released.find((r) => r.on === 'separation');
-  const pack = after.released.at(-1);
-  assert.equal(pack.on, 'retropack');
-  // The break is found at the end of a tick and made of the stack as that tick left it: the same tick flown by a stack
-  // that cannot break is the whole the two pieces must add up to.
-  const unbreakable = vehicle(
-    with_((tr) => {
-      delete tr.body.limits;
-    }),
-    SITE,
-    SEA,
-  );
-  const stack = unbreakable.tick(before, after.controls);
-  const mk = after.mass;
-  near(mk + booster.mass + pack.mass, stack.mass, 1e-9 * stack.mass, 'the three weigh what the stack did');
-  const p = add(add(scale(after.v, mk), scale(booster.v, booster.mass)), scale(pack.v, pack.mass));
-  const centre = scale(add(add(scale(after.r, mk), scale(booster.r, booster.mass)), scale(pack.r, pack.mass)), 1 / stack.mass);
-  near(length(sub(centre, stack.r)), 0, 1e-7, 'the pieces’ centre of mass is where the unbroken stack’s is');
-  const scaleOf = stack.mass * length(stack.v);
-  for (const i of [0, 1, 2]) near(p[i], stack.mass * stack.v[i], 1e-12 * scaleOf, `linear momentum, axis ${i}`);
-  // and it is the same break every time
-  const again = run(
-    vehicle(TR, SITE, SEA),
-    (() => {
-      const l = { pitch: 0, yaw: 0 };
-      const a = autopilot(v, { trim: () => l });
-      return (s) => {
-        l.pitch = s.t >= 70 && s.t <= 90 ? 15 * DEG : 0;
-        return a(s);
-      };
-    })(),
-    (s) => s.t > 100,
-  );
-  assert.deepEqual(again.broke, end.broke);
-});
-
-test('a parachute let out in more pressure than it can take tears, and does not save the flight', (t) => {
-  // the drogue let out by hand as the air comes on hard, well above its height
-  const v = vehicle(TR, SITE, SEA);
-  const auto = autopilot(v);
-  let early = false;
-  const end = run(
-    v,
-    (s) => {
-      const c = auto(s);
-      const q = s.shed.booster && s.enteredAt !== null ? v.sample(s).q : 0;
-      if (q > 2 * TR.body.limits.drogue.value) early = true;
-      return early ? blend(c, { drogue: true, main: true }) : c;
-    },
-    () => false,
-  );
-  assert.ok(end.torn.drogue && end.torn.main, 'both tore');
-  near(end.chute.full, TR.main.dragArea.value * TR.body.limits.torn.value, 1e-9, 'what is left of the main is a twentieth of it');
-  t.diagnostic(
-    `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where a good main brings it down at ${landed.landing.vertical.toFixed(1)}`,
-  );
-  assert.ok(end.landing.vertical > 3 * landed.landing.vertical, 'and it comes down hard');
-});
-
-// A parachute is held to what it can take for as long as it is out. The bounds were set before these were run:
-//   - a tick is 0.01 s and the air comes on over tens of seconds, so one that tears does so within a per cent of its limit;
-//   - a streaming canopy keeps a twentieth of its area (`limits.torn`), so a spacecraft under one falls at several times
-//     the speed a whole main gives it, and a main that never tore would be the record's landing to the centimetre a second.
-test('a drogue let out above the air is torn by the air it is carried into; the main still saves it', () => {
-  const v = vehicle(TR, SITE, SEA);
-  const auto = autopilot(v);
-  let whole = 0; // how long it was out and whole
-  const end = run(
-    v,
-    (s) => (s.shed.retropack ? blend(auto(s), { drogue: true }) : auto(s)),
-    () => false,
-    (_, after) => {
-      if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
-    },
-  );
-  const tear = end.tore.drogue;
-  const limit = TR.body.limits.drogue.value;
-  assert.ok(tear, 'it tore');
-  assert.equal(tear.by, 'pressure');
-  assert.ok(whole > 60, `it was whole for ${whole.toFixed(0)} s above the air: it was not torn as it came out`);
-  assert.ok(tear.q > limit && tear.q < 1.01 * limit, `it tore as the pressure passed its limit: ${tear.q.toFixed(0)} Pa against ${limit}`);
-  assert.ok(end.mainAt !== null && !end.torn.main, 'the main came out at its height, whole');
-  near(end.landing.vertical, landed.landing.vertical, 0.01, 'and the landing is the record’s');
-});
-
-test('a main let out above the air pulls its lines apart as the air comes on, and the landing is not survivable', (t) => {
-  const v = vehicle(TR, SITE, SEA);
-  const auto = autopilot(v);
-  let most = 0;
-  let predicted = null;
-  const end = run(
-    v,
-    (s) => (s.shed.retropack ? blend(auto(s), { main: true }) : auto(s)),
-    () => false,
-    (_, after) => {
-      if (after.mainAt === null) return;
-      if (!after.torn.main) most = Math.max(most, v.sample(after).q * chuteArea(after.chute, after.t));
-      // what the path ahead is told, a minute after it is out, full and whole and still above the air
-      if (predicted === null && after.t >= after.mainAt + 60) {
-        const m = v.sample(after);
-        predicted = predict(TR, SITE, SEA, { t: after.t, r: m.centre, v: after.v, mass: m.mass, phase: m.phase, chute: m.chute });
+  test(`${name}: every parting of the flight keeps the momentum of the two: tower, booster, retropack`, (t) => {
+    assert.deepEqual(
+      partings.flatMap((p) => p.gone.map((g) => g.on)),
+      ['tower', 'separation', 'retropack'],
+    );
+    for (const { before, gone } of partings) {
+      // (a tick's commands take effect at its start: `before` is the vehicle at the event, whole, and the release carries both pieces as they were made)
+      const [g] = gone;
+      const kept = g.rest;
+      const m0 = kept.mass + g.mass;
+      near(m0, before.mass, 1e-9 * before.mass, `${g.on}: the two weigh what there was`);
+      const p = add(scale(kept.v, kept.mass), scale(g.v, g.mass));
+      const scaleOf = m0 * length(before.v);
+      for (const i of [0, 1, 2]) near(p[i], m0 * before.v[i], 1e-12 * scaleOf, `${g.on}: linear momentum, axis ${i}`);
+      const centre = scale(add(scale(kept.r, kept.mass), scale(g.r, g.mass)), 1 / m0);
+      near(length(sub(centre, before.r)), 0, 1e-8, `${g.on}: the pair's centre of mass is where the whole's was`);
+      // Angular momentum about that centre. Both keep the whole's rates on their own inertia, so what is left to check is
+      // the orbital part: two masses a fixed distance apart on the axis, going round with the body, are their reduced
+      // mass times that distance squared times the rate across the axis; the push, along the line between them, adds none.
+      const axis = turn(before.q, [1, 0, 0]);
+      const orbit = add(
+        scale(cross(sub(kept.r, centre), sub(kept.v, before.v)), kept.mass),
+        scale(cross(sub(g.r, centre), sub(g.v, before.v)), g.mass),
+      );
+      const turning = turn(before.q, [0, before.w[1], before.w[2]]);
+      const apart = dot(sub(g.r, kept.r), axis);
+      const want = scale(turning, ((kept.mass * g.mass) / m0) * apart * apart);
+      // (a double places a point this far from the Earth's centre to a nanometre and a half: that, on each piece's momentum about the centre)
+      const rounding = 4e-9 * (kept.mass * length(sub(kept.v, before.v)) + g.mass * length(sub(g.v, before.v)));
+      near(length(sub(orbit, want)), 0, rounding + 1e-9 * length(want), `${g.on}: the angular momentum of the two about their centre`);
+      t.diagnostic(
+        `${g.on} at ${g.t.toFixed(2)} s: ${g.mass.toFixed(1)} kg leaves ${kept.mass.toFixed(1)} kg at ${dot(sub(kept.v, g.v), axis).toFixed(3)} m/s along the axis`,
+      );
+    }
+  });
+  test(`${name}: the booster and the spacecraft part at the record’s parting speed, shared by their masses`, () => {
+    const { before, gone } = partings.find((p) => p.gone[0].on === 'separation');
+    const [booster] = gone;
+    const speed = TR.separation.speed.value;
+    const m = TR.separation.mass.value;
+    // along the axis (across it each piece has what the stack's slow turning gave its own place): the two part at the speed, the booster's share the spacecraft's part of the whole
+    const axis = turn(before.q, [1, 0, 0]);
+    near(dot(sub(booster.rest.v, booster.v), axis), speed, 1e-9, 'the speed they part at');
+    near(-dot(sub(booster.v, before.v), axis), (speed * m) / (m + booster.mass), 1e-9, 'the booster’s own change of speed');
+    near(
+      booster.mass,
+      TR.separation.boosterMass.value,
+      0.02 * booster.mass,
+      'the booster as it leaves, against the trajectory’s figure for it',
+    );
+    assert.ok(dot(sub(booster.v, before.v), turn(before.q, [1, 0, 0])) < 0, 'it is pushed back along the axis');
+  });
+  test(`${name}: a stack that is turning as it parts, or parts early, still keeps its momentum`, () => {
+    // turning at a radian a second about an axis across it when the spacecraft is let go; and let go at 100 s, the tanks a third full
+    for (const [what, t, w] of [
+      ['turning at separation', TR.separation.at.value - 0.1, [0, 1, 0]],
+      ['an early separation', 100, [0.02, -0.4, 0.7]],
+    ]) {
+      const v = vehicle(
+        with_((tr) => {
+          delete tr.body.limits;
+        }),
+        SITE,
+        SEA,
+      );
+      const auto = autopilot(v, { sequence: false });
+      let s = run(v, auto, (x) => x.t >= t);
+      s = { ...s, w };
+      // (the engine cut in the same tick: let go while the booster still pushes, the spacecraft rides on: tests/vehicle.test.mjs)
+      const after = v.tick(s, { ...auto(s), throttle: 0, separate: true });
+      const pieces = after.released.filter((g) => g.t === s.t);
+      assert.ok(pieces.length >= 1 && pieces.at(-1).on === 'separation', what);
+      // every piece let go in that tick and the spacecraft that went on (the last release's rest): together the stack
+      const all = [...pieces, pieces.at(-1).rest];
+      const mass = all.reduce((sum, p) => sum + p.mass, 0);
+      near(mass, s.mass, 1e-9 * s.mass, `${what}: the pieces weigh what the stack did`);
+      const p = all.reduce((sum, x) => add(sum, scale(x.v, x.mass)), [0, 0, 0]);
+      const scaleOf = s.mass * length(s.v);
+      for (const i of [0, 1, 2]) near(p[i], s.mass * s.v[i], 1e-12 * scaleOf, `${what}: linear momentum, axis ${i}`);
+      const centre = scale(
+        all.reduce((sum, x) => add(sum, scale(x.r, x.mass)), [0, 0, 0]),
+        1 / mass,
+      );
+      near(length(sub(centre, s.r)), 0, 1e-8, `${what}: the centre of mass of the pieces is the stack's`);
+    }
+  });
+  test(`${name}: each staging steps the mass, the centre of mass and the inertia as the parts say`, () => {
+    for (const { before, after, gone } of partings) {
+      const [g] = gone;
+      const [was, is] = [whole.mass(before), whole.mass(after)];
+      assert.ok(is.mass < was.mass && is.across < was.across && is.roll <= was.roll, `${g.on}: lighter, and easier to turn`);
+      if (g.on === 'tower') {
+        near(was.mass - is.mass, g.mass, 0.02, 'the tower’s weight goes (and a tick’s propellant, none: the engine is out)');
+        assert.ok(is.centre < was.centre, 'the centre of mass moves down the stack');
+        near(was.mass * was.centre, is.mass * is.centre + g.mass * g.centre, 1e-6 * was.mass * was.centre, 'by the tower’s own moment');
       }
-    },
-  );
-  const tear = end.tore.main;
-  const limit = TR.body.limits.pull.main.value;
-  assert.ok(tear, 'it tore');
-  assert.equal(tear.by, 'pull');
-  assert.ok(tear.q < TR.body.limits.main.value, 'in less pressure than its cloth takes: it was full');
-  assert.ok(
-    tear.pull > limit && tear.pull < 1.01 * limit,
-    `as the pull passed what its lines take: ${tear.pull.toFixed(0)} N against ${limit}`,
-  );
-  assert.ok(most <= limit, 'and it never pulled harder than that');
-  near(end.chute.full, TR.main.dragArea.value * TR.body.limits.torn.value, 1e-9, 'a twentieth of it is left');
-  assert.ok(end.drogueAt === null, 'no drogue came out after it');
-  const lives = TR.body.capsule.limits.landingSpeed.value;
-  assert.ok(end.landing.vertical > 2 * lives, `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where ${lives} is survivable`);
-  assert.ok(end.landing.t < landed.landing.t, 'and sooner than the record’s landing: it did not float down from sixty kilometres');
-  // the path shown ahead says the same, from when the canopy was still whole
-  assert.equal(predicted.outcome, 'impact');
-  near(predicted.impact.t, end.landing.t, 20, 'the predicted time down');
-  assert.ok(predicted.impact.speed > 2 * lives, `and the predicted landing is as hard: ${predicted.impact.speed.toFixed(1)} m/s`);
-  t.diagnostic(
-    `torn at T+${tear.t.toFixed(0)} s in ${tear.q.toFixed(0)} Pa, pulling ${(tear.pull / 1000).toFixed(1)} kN; down at ${end.landing.vertical.toFixed(1)} m/s`,
-  );
-});
-
-test('a drogue let out going up, inside what it can take, pulls against the climb', (t) => {
-  // an abort at T+20 s; the tower let go by hand once its rocket is out, and then, or not, the drogue, while it is still climbing
-  const fly = (chute) => {
+      if (g.on === 'retropack') {
+        near(
+          is.centre,
+          (g.mass * (TR.body.capsule.centre.value - g.centre)) / is.mass,
+          1e-9,
+          'the spacecraft’s centre of mass moves toward its small end by the pack’s moment',
+        );
+      }
+    }
+  });
+  test(`${name}: the tower leaves on both its rockets, ahead of the stack, and does not come back to it`, (t) => {
+    const { before, gone } = partings.find((p) => p.gone[0].on === 'tower');
+    const body = shedder(TR, SITE, SEA, def('tower'), gone[0]);
+    let s = body.start();
+    // the stack coasts on from the event (its engine is out by then: the record's order)
+    // (Freedom 7's tower went 0.4 s after the cutoff; Liberty Bell 7's at it, the same instant: the record's order either way)
+    assert.ok(
+      before.cutoff || Math.abs(before.t - TR.engine.cutoff.value) < TICK,
+      'the engine was out when the tower went, or went out with it',
+    );
+    const rest = gone[0].rest;
+    let last = length(sub(gone[0].r, rest.r));
+    const first = last;
+    // the same tower with no air on it, for the arithmetic of its rocket
+    const bare = structuredClone(def('tower'));
+    bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
+    const airless = shedder(TR, SITE, SEA, bare, gone[0]);
+    let a = airless.start();
+    for (let i = 1; i <= 800; i++) {
+      s = body.tick(s);
+      a = airless.tick(a);
+      // (the stack is coasted: 65 km up the air slows it by a few millimetres a second in these eight)
+      const stack = coast(rest.r, rest.v, s.t - gone[0].t, TICK);
+      const gap = length(sub(s.r, stack.r));
+      assert.ok(gap > last - 1e-9, `the gap grows at ${s.t.toFixed(2)} s: ${gap} after ${last}`);
+      last = gap;
+    }
+    const gained = length(sub(a.r, coast(rest.r, rest.v, a.t - gone[0].t, TICK).r)) - first;
+    // The record's flight fires both: the escape rocket (thrust for its burn, then the rest of its impulse falling evenly
+    // to nothing) and the jettison rocket (a plain burn). Each gives its impulse over the tower's mass, and in no air the
+    // distance gained is each rocket's share as if given at the middle of its own impulse.
+    const motors = def('tower').motors;
+    assert.deepEqual(
+      motors.map((m) => m.name),
+      ['escape rocket', 'tower jettison rocket'],
+    );
+    let dv = 0;
+    let reach = 0;
+    for (const m of motors) {
+      const f = m.thrust.value;
+      const b = m.burn.value;
+      const tail = m.impulse ? (2 * (m.impulse.value - f * b)) / f : 0;
+      const impulse = f * b + (f * tail) / 2;
+      // the middle of the impulse: the flat part's at b / 2, the falling part's a third of the way along it
+      const middle = (f * b * (b / 2) + ((f * tail) / 2) * (b + tail / 3)) / impulse;
+      dv += impulse / gone[0].mass;
+      reach += (impulse / gone[0].mass) * (8 - middle);
+    }
+    t.diagnostic(
+      `eight seconds on it is ${(last - first).toFixed(1)} m further ahead of the stack than it stood (${gained.toFixed(1)} m in no air); its rockets gave it ${dv.toFixed(1)} m/s`,
+    );
+    near(gained, reach, 0.002 * reach, 'how far ahead in no air, by its rockets’ impulses over its mass');
+    assert.ok(dv > 400 && dv < 550, `several hundred metres a second: ${dv.toFixed(1)}`);
+    assert.ok(last - first < gained && last - first > 0.9 * gained, 'and in the thin air there, a little less');
+  });
+  test(`${name}: after an abort the escape rocket is spent: the tower goes on its jettison rocket alone`, () => {
+    const { gone } = partings.find((p) => p.gone[0].on === 'tower');
+    const bare = structuredClone(def('tower'));
+    bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
+    const speedGained = (release) => {
+      const body = shedder(TR, SITE, SEA, bare, release);
+      let s = body.start();
+      for (let i = 1; i <= 800; i++) s = body.tick(s);
+      const stack = coast(release.rest.r, release.rest.v, s.t - release.t, TICK);
+      return length(sub(s.v, stack.v));
+    };
+    const jettison = bare.motors.find((m) => !m.unless);
+    near(
+      speedGained({ ...gone[0], aborted: true }),
+      (jettison.thrust.value * jettison.burn.value) / gone[0].mass,
+      0.05,
+      'the jettison rocket’s impulse over its mass',
+    );
+    assert.ok(
+      speedGained(gone[0]) > 40 * speedGained({ ...gone[0], aborted: true }),
+      'and on a good flight the escape rocket fires with it',
+    );
+  });
+  test(`${name}: the shed bodies of the record’s programme come down, and say where`, (t) => {
+    const sheds = new Sheds(TR, SITE, SEA);
+    sheds.follow(landed);
+    assert.equal(sheds.all.length, 3);
+    for (const body of sheds.all) {
+      const end = body.finish();
+      const s = body.now;
+      t.diagnostic(
+        `${body.shedder.def.name}: apogee ${(s.apogee / 1852).toFixed(1)} n. mi., greatest pressure ${(s.peakQ / 1000).toFixed(1)} kPa, down at ${end.t.toFixed(1)} s, ` +
+          `${(end.range / 1852).toFixed(1)} n. mi. from the pad (${end.latitude.toFixed(3)} N, ${(-end.longitude).toFixed(3)} W) at ${end.speed.toFixed(0)} m/s`,
+      );
+      assert.ok(end.t > body.from && Number.isFinite(end.speed) && end.vertical > 0, 'it came down, falling');
+      assert.ok(s.apogee > 150_000, 'having gone over the top with the spacecraft');
+    }
+    // the retropack is light for its size: it is the slowest of the three at the sea
+    const speed = (on) => sheds.get(on).now.landing.speed;
+    assert.ok(speed('retropack') < speed('tower') && speed('retropack') < speed('separation'), 'the retropack falls slowest');
+    t.diagnostic(
+      `the spacecraft itself: down at ${landed.landing.t.toFixed(1)} s at ${landed.landing.latitude.toFixed(3)} N, ${(-landed.landing.longitude).toFixed(3)} W`,
+    );
+  });
+  test(`${name}: a shed body’s flight is the same however it is asked for, and is kept for showing again`, () => {
+    const release = partings.find((p) => p.gone[0].on === 'separation').gone[0];
+    const make = () => new ShedRun(shedder(TR, SITE, SEA, def('separation'), release));
+    const [a, b] = [make(), make()];
+    a.upTo(release.t + 400);
+    for (let t = release.t; t < release.t + 400; t += 0.0166) b.upTo(t); // a frame at a time
+    b.upTo(release.t + 400);
+    // The same to the last few bits, not to the last bit: flown a frame at a time on CI's x86 Linux, the attitude came out
+    // a unit in the last place apart from the same flight flown at once (the position and speed bit for bit), where on
+    // arm64 both were bit for bit. A difference of 1e-12 of a value is a flight that is the same however it is asked for.
+    same(b.now, a.now);
+    // shown again at an earlier instant, it is where it was
+    const then = a.at(release.t + 37.3);
+    const fresh = make();
+    same(fresh.at(release.t + 37.3), then);
+    assert.equal(a.at(release.t - 1), null, 'it is nowhere before it left');
+    // between kept states the cubic is within a centimetre of the flight itself
+    const body = shedder(TR, SITE, SEA, def('separation'), release);
+    let s = body.start();
+    while (s.t < release.t + 37.3 - TICK / 2) s = body.tick(s);
+    near(length(sub(then.r, s.r)), 0, 0.01, 'the kept flight against the flight');
+  });
+  test(`${name}: let go standing on the pad, the booster stays where it stands`, () => {
+    // an abort before the engine is lit
     const v = vehicle(TR, SITE, SEA);
-    const auto = autopilot(v);
-    let top = 0;
-    let out = null;
+    const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
+    // (the booster, and the retropack the abort's own sequence drops with it)
+    assert.deepEqual(
+      s.released.map((r) => r.on),
+      ['separation', 'retropack'],
+    );
+    const body = new ShedRun(shedder(TR, SITE, SEA, def('separation'), s.released[0]));
+    assert.ok(body.now.landing, 'it is down from the first');
+    const later = body.at(600);
+    assert.ok(later.down);
+    // carried round with the Earth: 600 s on it is where the pad has gone
+    const moved = length(sub(later.r, s.released[0].r));
+    // (the chord of the arc the pad has gone through)
+    const from = s.released[0].r;
+    near(moved, 2 * Math.hypot(from[0], from[1]) * Math.sin((7.292115e-5 * 600) / 2), 0.01, 'it has gone round with the ground');
+  });
+  test(`${name}: a release made from the record’s run starts the booster where the spacecraft left it, slower along the axis by the parting speed`, () => {
+    const batch = fly(TR, SITE, SEA);
+    const at = TR.separation.at.value;
+    const s = batch.samples.find((x) => x.t === at);
+    const axis = whole.programme(at);
+    const release = recordRelease(TR, def('separation'), at, s.r, s.v, axis, true);
+    near(dot(sub(s.v, release.v), axis), TR.separation.speed.value, 1e-9, 'slower along the axis by the parting speed');
+    near(
+      release.mass,
+      TR.separation.boosterMass.value,
+      0.02 * release.mass,
+      'the booster’s mass, from the parts, against the trajectory’s',
+    );
+    near(dot(turn(release.q, [1, 0, 0]), axis), 1, 1e-12, 'pointing as the programme has the stack');
+    const tower = recordRelease(TR, def('tower'), TR.body.tower.at.value, s.r, s.v, axis, true);
+    near(length(sub(tower.v, s.v)), 0, 1e-12, 'the tower leaves with the stack’s own velocity: its rocket does the rest');
+  });
+  test(`${name}: on the record’s programme the stack goes through the greatest pressure with room to spare`, (t) => {
+    assert.equal(landed.broke, null);
+    assert.ok(!landed.torn.drogue && !landed.torn.main, 'and both parachutes open inside what they can take');
+    t.diagnostic(
+      `the bending load is at most ${(100 * peak.load).toFixed(1)} per cent of the limit, at ${peak.t.toFixed(1)} s, with ${peak.lateral.toFixed(3)} g across the axis`,
+    );
+    assert.ok(peak.load < CAUTION, `no warning is raised: the most is ${peak.load} of the limit`);
+  });
+  test(`${name}: a programme leaned 15 degrees through the greatest pressure breaks the stack at its joint, and the pieces keep its momentum`, (t) => {
+    const v = vehicle(TR, SITE, SEA);
+    const lean = { pitch: 0, yaw: 0 };
+    const auto = autopilot(v, { trim: () => lean });
+    let event = null;
     const end = run(
       v,
       (s) => {
-        let c = auto(s);
-        if (s.t >= 20 && s.abortAt === null) c = blend(c, { abort: true });
-        if (s.abortAt !== null && s.t > s.abortAt + 3)
-          c = blend({ ...c, automatic: false }, { tower: true, ...(chute && s.shed.tower ? { drogue: true } : {}) });
-        return c;
+        lean.pitch = s.t >= 70 && s.t <= 90 ? 15 * DEG : 0;
+        return auto(s);
       },
-      () => false,
+      (s) => s.t > 100,
       (before, after) => {
-        const m = v.sample(after);
-        top = Math.max(top, m.altitude);
-        if (after.drogueAt !== null && before.drogueAt === null) out = m;
+        if (after.broke && !before.broke) event = { before, after };
       },
     );
-    return { end, top, out };
-  };
-  const without = fly(false);
-  const drogue = fly(true);
-  assert.ok(drogue.out.groundClimb > 45, `it was let out climbing ${drogue.out.groundClimb.toFixed(0)} degrees above the level`);
-  assert.ok(drogue.out.q < TR.body.limits.drogue.value && !drogue.end.torn.drogue, 'inside its limit, and it held');
-  // 1.3 sq m in six kilopascals on a spacecraft of a tonne and more is two thirds of a g, over the few seconds left of the climb
-  const cut = without.top - drogue.top;
-  assert.ok(cut > 5 && cut < 60, `the climb is cut short by ${cut.toFixed(1)} m`);
-  assert.ok(drogue.end.landing.vertical < without.end.landing.vertical - 5, 'and it comes down slower under it than with nothing');
-  t.diagnostic(
-    `out at ${drogue.out.altitude.toFixed(0)} m in ${drogue.out.q.toFixed(0)} Pa; top ${drogue.top.toFixed(0)} m against ${without.top.toFixed(0)}`,
-  );
-});
+    assert.ok(end.broke, 'it broke');
+    const { before, after } = event;
+    t.diagnostic(
+      `broke at ${after.broke.t.toFixed(2)} s: bending load ${(100 * after.broke.load).toFixed(0)} per cent of the limit at ${(after.broke.q / 1000).toFixed(1)} kPa, ${after.broke.alpha.toFixed(1)} degrees off the wind`,
+    );
+    assert.equal(after.broke.joint, 'separation');
+    assert.ok(after.broke.t > 70 && after.broke.t < 90, 'while it was leaned');
+    assert.ok(after.broke.load > 1, 'over the limit');
+    assert.ok(after.cutoff && after.shed.booster, 'the engine is out and the booster gone its own way');
+    assert.ok(after.abortAt !== null && !after.shed.tower, 'the spacecraft is pulled clear on its escape rocket, the tower still aboard');
+    // (the abort's own sequence drops the retropack as the spacecraft leaves: three pieces, not two)
+    const booster = after.released.find((r) => r.on === 'separation');
+    const pack = after.released.at(-1);
+    assert.equal(pack.on, 'retropack');
+    // The break is found at the end of a tick and made of the stack as that tick left it: the same tick flown by a stack
+    // that cannot break is the whole the two pieces must add up to.
+    const unbreakable = vehicle(
+      with_((tr) => {
+        delete tr.body.limits;
+      }),
+      SITE,
+      SEA,
+    );
+    const stack = unbreakable.tick(before, after.controls);
+    const mk = after.mass;
+    near(mk + booster.mass + pack.mass, stack.mass, 1e-9 * stack.mass, 'the three weigh what the stack did');
+    const p = add(add(scale(after.v, mk), scale(booster.v, booster.mass)), scale(pack.v, pack.mass));
+    const centre = scale(add(add(scale(after.r, mk), scale(booster.r, booster.mass)), scale(pack.r, pack.mass)), 1 / stack.mass);
+    near(length(sub(centre, stack.r)), 0, 1e-7, 'the pieces’ centre of mass is where the unbroken stack’s is');
+    const scaleOf = stack.mass * length(stack.v);
+    for (const i of [0, 1, 2]) near(p[i], stack.mass * stack.v[i], 1e-12 * scaleOf, `linear momentum, axis ${i}`);
+    // and it is the same break every time
+    const again = run(
+      vehicle(TR, SITE, SEA),
+      (() => {
+        const l = { pitch: 0, yaw: 0 };
+        const a = autopilot(v, { trim: () => l });
+        return (s) => {
+          l.pitch = s.t >= 70 && s.t <= 90 ? 15 * DEG : 0;
+          return a(s);
+        };
+      })(),
+      (s) => s.t > 100,
+    );
+    assert.deepEqual(again.broke, end.broke);
+  });
+  test(`${name}: a parachute let out in more pressure than it can take tears, and does not save the flight`, (t) => {
+    // the drogue let out by hand as the air comes on hard, well above its height
+    const v = vehicle(TR, SITE, SEA);
+    const auto = autopilot(v);
+    let early = false;
+    const end = run(
+      v,
+      (s) => {
+        const c = auto(s);
+        const q = s.shed.booster && s.enteredAt !== null ? v.sample(s).q : 0;
+        if (q > 2 * TR.body.limits.drogue.value) early = true;
+        return early ? blend(c, { drogue: true, main: true }) : c;
+      },
+      () => false,
+    );
+    assert.ok(end.torn.drogue && end.torn.main, 'both tore');
+    near(end.chute.full, TR.main.dragArea.value * TR.body.limits.torn.value, 1e-9, 'what is left of the main is a twentieth of it');
+    t.diagnostic(
+      `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where a good main brings it down at ${landed.landing.vertical.toFixed(1)}`,
+    );
+    assert.ok(end.landing.vertical > 3 * landed.landing.vertical, 'and it comes down hard');
+  });
 
-test('Vostok 1’s four strap-ons leave as a cross: each a body of its own, swung out and vented away, tumbling, down some 400 km along the track', async () => {
-  const { flight: vostok1 } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
-  const { orbitalRecord } = await import('../src/viewer/ascent.ts');
-  const { length, sub, dot, unit } = await import('../src/world/frames.ts');
-  const run = orbitalRecord(vostok1);
-  const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`boosters/${l}`));
-  assert.ok(four.every(Boolean), 'each strap-on is flown');
-  const t0 = four[0].from;
-  assert.equal(t0, 119.5, 'at the stage’s separation');
-  const at = (t) => four.map((b) => b.at(t));
-  const middle = (s) => s.map((x) => x.r).reduce((m, r) => m.map((v, i) => v + r[i] / 4), [0, 0, 0]);
-  // as they leave: each from its own place round the stack, 2.78 m out
-  const first = at(t0);
-  const m0 = middle(first);
-  for (const s of first) assert.ok(Math.abs(length(sub(s.r, m0)) - 2.78) < 0.05);
-  // and outward: five seconds on each is further from the four's middle, by much the same, the four still a cross
-  const later = at(t0 + 5);
-  const m5 = middle(later);
-  const out = later.map((s) => length(sub(s.r, m5)));
-  assert.ok(Math.min(...out) > 8, `spread: ${out.map((x) => x.toFixed(1))}`);
-  assert.ok(Math.max(...out) / Math.min(...out) < 1.15, 'evenly');
-  const ways = later.map((s) => unit(sub(s.r, m5)));
-  assert.ok(Math.abs(dot(ways[0], ways[2]) + 1) < 0.1 && Math.abs(dot(ways[1], ways[3]) + 1) < 0.1, 'B against G, V against D');
-  assert.ok(Math.abs(dot(ways[0], ways[1])) < 0.15, 'B and V square to each other');
-  // each turning end over end as it goes, not falling flat
-  for (const b of four) {
-    const [p, q] = [b.at(t0).q, b.at(t0 + 5).q];
-    const turned = (2 * Math.acos(Math.min(1, Math.abs(p.reduce((s, v, i) => s + v * q[i], 0))))) / (Math.PI / 180);
-    assert.ok(turned > 10, `turned ${turned.toFixed(1)} degrees in five seconds`);
-  }
-  // down in the drop zone: about 350 km from Site 1 for Soyuz's on 51.6° (derived: Interfax, Progress MS-06's), and the
-  // record gives none of its own for 64.95°: within 300 to 450 km down range is the check
-  for (const b of four) {
-    const l = b.finish();
-    assert.ok(l.range > 300_000 && l.range < 450_000, `down ${(l.range / 1000).toFixed(0)} km from the pad`);
-  }
-});
+  // A parachute is held to what it can take for as long as it is out. The bounds were set before these were run:
+  //   - a tick is 0.01 s and the air comes on over tens of seconds, so one that tears does so within a per cent of its limit;
+  //   - a streaming canopy keeps a twentieth of its area (`limits.torn`), so a spacecraft under one falls at several times
+  //     the speed a whole main gives it, and a main that never tore would be the record's landing to the centimetre a second.
+  test(`${name}: a drogue let out above the air is torn by the air it is carried into; the main still saves it`, () => {
+    const v = vehicle(TR, SITE, SEA);
+    const auto = autopilot(v);
+    let whole = 0; // how long it was out and whole
+    const end = run(
+      v,
+      (s) => (s.shed.retropack ? blend(auto(s), { drogue: true }) : auto(s)),
+      () => false,
+      (_, after) => {
+        if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
+      },
+    );
+    const tear = end.tore.drogue;
+    const limit = TR.body.limits.drogue.value;
+    assert.ok(tear, 'it tore');
+    assert.equal(tear.by, 'pressure');
+    assert.ok(whole > 60, `it was whole for ${whole.toFixed(0)} s above the air: it was not torn as it came out`);
+    assert.ok(
+      tear.q > limit && tear.q < 1.01 * limit,
+      `it tore as the pressure passed its limit: ${tear.q.toFixed(0)} Pa against ${limit}`,
+    );
+    assert.ok(end.mainAt !== null && !end.torn.main, 'the main came out at its height, whole');
+    near(end.landing.vertical, landed.landing.vertical, 0.01, 'and the landing is the record’s');
+  });
+  test(`${name}: a main let out above the air pulls its lines apart as the air comes on, and the landing is not survivable`, (t) => {
+    const v = vehicle(TR, SITE, SEA);
+    const auto = autopilot(v);
+    let most = 0;
+    let predicted = null;
+    const end = run(
+      v,
+      (s) => (s.shed.retropack ? blend(auto(s), { main: true }) : auto(s)),
+      () => false,
+      (_, after) => {
+        if (after.mainAt === null) return;
+        if (!after.torn.main) most = Math.max(most, v.sample(after).q * chuteArea(after.chute, after.t));
+        // what the path ahead is told, a minute after it is out, full and whole and still above the air
+        if (predicted === null && after.t >= after.mainAt + 60) {
+          const m = v.sample(after);
+          predicted = predict(TR, SITE, SEA, { t: after.t, r: m.centre, v: after.v, mass: m.mass, phase: m.phase, chute: m.chute });
+        }
+      },
+    );
+    const tear = end.tore.main;
+    const limit = TR.body.limits.pull.main.value;
+    assert.ok(tear, 'it tore');
+    assert.equal(tear.by, 'pull');
+    assert.ok(tear.q < TR.body.limits.main.value, 'in less pressure than its cloth takes: it was full');
+    assert.ok(
+      tear.pull > limit && tear.pull < 1.01 * limit,
+      `as the pull passed what its lines take: ${tear.pull.toFixed(0)} N against ${limit}`,
+    );
+    assert.ok(most <= limit, 'and it never pulled harder than that');
+    near(end.chute.full, TR.main.dragArea.value * TR.body.limits.torn.value, 1e-9, 'a twentieth of it is left');
+    assert.ok(end.drogueAt === null, 'no drogue came out after it');
+    const lives = TR.body.capsule.limits.landingSpeed.value;
+    assert.ok(end.landing.vertical > 2 * lives, `it met the sea at ${end.landing.vertical.toFixed(1)} m/s, where ${lives} is survivable`);
+    assert.ok(end.landing.t < landed.landing.t, 'and sooner than the record’s landing: it did not float down from sixty kilometres');
+    // the path shown ahead says the same, from when the canopy was still whole
+    assert.equal(predicted.outcome, 'impact');
+    near(predicted.impact.t, end.landing.t, 20, 'the predicted time down');
+    assert.ok(predicted.impact.speed > 2 * lives, `and the predicted landing is as hard: ${predicted.impact.speed.toFixed(1)} m/s`);
+    t.diagnostic(
+      `torn at T+${tear.t.toFixed(0)} s in ${tear.q.toFixed(0)} Pa, pulling ${(tear.pull / 1000).toFixed(1)} kN; down at ${end.landing.vertical.toFixed(1)} m/s`,
+    );
+  });
+  test(`${name}: a drogue let out going up, inside what it can take, pulls against the climb`, (t) => {
+    // an abort at T+20 s; the tower let go by hand once its rocket is out, and then, or not, the drogue, while it is still climbing
+    const fly = (chute) => {
+      const v = vehicle(TR, SITE, SEA);
+      const auto = autopilot(v);
+      let top = 0;
+      let out = null;
+      const end = run(
+        v,
+        (s) => {
+          let c = auto(s);
+          if (s.t >= 20 && s.abortAt === null) c = blend(c, { abort: true });
+          if (s.abortAt !== null && s.t > s.abortAt + 3)
+            c = blend({ ...c, automatic: false }, { tower: true, ...(chute && s.shed.tower ? { drogue: true } : {}) });
+          return c;
+        },
+        () => false,
+        (before, after) => {
+          const m = v.sample(after);
+          top = Math.max(top, m.altitude);
+          if (after.drogueAt !== null && before.drogueAt === null) out = m;
+        },
+      );
+      return { end, top, out };
+    };
+    const without = fly(false);
+    const drogue = fly(true);
+    assert.ok(drogue.out.groundClimb > 45, `it was let out climbing ${drogue.out.groundClimb.toFixed(0)} degrees above the level`);
+    assert.ok(drogue.out.q < TR.body.limits.drogue.value && !drogue.end.torn.drogue, 'inside its limit, and it held');
+    // 1.3 sq m in six kilopascals on a spacecraft of a tonne and more is two thirds of a g, over the few seconds left of the climb
+    const cut = without.top - drogue.top;
+    assert.ok(cut > 5 && cut < 60, `the climb is cut short by ${cut.toFixed(1)} m`);
+    assert.ok(drogue.end.landing.vertical < without.end.landing.vertical - 5, 'and it comes down slower under it than with nothing');
+    t.diagnostic(
+      `out at ${drogue.out.altitude.toFixed(0)} m in ${drogue.out.q.toFixed(0)} Pa; top ${drogue.top.toFixed(0)} m against ${without.top.toFixed(0)}`,
+    );
+  });
+}

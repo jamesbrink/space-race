@@ -3,6 +3,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
+import { globSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { bands, Chute, FILLED, mouth, paid, profile, STREAM, TEARS, tornMouth } from '../src/viewer/chute.ts';
 
@@ -10,6 +13,20 @@ const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 const measure = (value) => ({ value, confidence: 'estimated', source: 'a test' });
 const CHUTES = flight.flies.chutes;
+const root = join(import.meta.dirname, '..');
+/** Every flight that draws parachutes, in the order they flew. */
+const FLIGHTS = (
+  await Promise.all(
+    globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).map(async (f) => (await import(pathToFileURL(join(root, f)).href)).flight),
+  )
+)
+  .filter((f) => f.flies?.chutes?.length)
+  .sort((a, b) => a.launch.localeCompare(b.launch));
+/** How long a drawn parachute takes to fill, as the simulator flies it: a ballistic flight's trajectory, or the descent body's own. */
+const fillsOf = (f, def) =>
+  def.body
+    ? f.orbital.descent.bodies.find((b) => b.id === def.body).chutes.find((p) => p.name === def.on).fills.value
+    : f.trajectory[def.on].fills.value;
 const moment = (since, fills, more = {}) => ({
   since,
   fills,
@@ -108,58 +125,59 @@ test('the cloth is cut in bands that run apex to skirt in order, with openings b
   }
 });
 
-test('built from the flight’s data: every line is its length, nothing is not a number, and it settles flat', () => {
-  for (const def of CHUTES) {
-    const chute = new Chute(def, new THREE.Group());
-    const fills = flight.trajectory[def.on].fills.value;
-    const cloths = chute.group.children[0].children;
-    assert.equal(cloths.length, def.colours.value.length, 'a mesh for each colour');
-    assert.ok(
-      cloths.every((m) => m.castShadow),
-      'it casts a shadow',
-    );
-    const lines = chute.group.children[1].geometry.getAttribute('position');
-    assert.equal(lines.count, (1 + def.gores.value) * 4, 'a riser and a line a gore, each a ribbon');
-    const finite = (attribute) => Array.from(attribute.array).every(Number.isFinite);
-    for (const since of [0, 0.01, (def.stretch?.value ?? 0) / 2, fills / 3, fills, fills + 60]) {
-      chute.set(moment(since, fills), 1);
-      assert.ok(chute.group.visible);
-      for (const m of cloths)
-        assert.ok(finite(m.geometry.getAttribute('position')) && finite(m.geometry.getAttribute('normal')), `cloth at ${since} s`);
-      assert.ok(finite(lines), `lines at ${since} s`);
-      const out = paid(def, since);
-      const a = new THREE.Vector3();
-      const b = new THREE.Vector3();
-      near(
-        b.fromBufferAttribute(lines, 2).distanceTo(a.fromBufferAttribute(lines, 0)),
-        def.riser.value * out,
-        1e-4,
-        `the riser at ${since} s`,
+test('built from each flight’s data: every line is its length, nothing is not a number, and it settles flat', () => {
+  for (const f of FLIGHTS)
+    for (const def of f.flies.chutes) {
+      const chute = new Chute(def, new THREE.Group());
+      const fills = fillsOf(f, def);
+      const cloths = chute.group.children[0].children;
+      assert.equal(cloths.length, def.colours.value.length, 'a mesh for each colour');
+      assert.ok(
+        cloths.every((m) => m.castShadow),
+        'it casts a shadow',
       );
-      for (let g = 0; g < def.gores.value; g++) {
-        a.fromBufferAttribute(lines, 4 + g * 4);
-        b.fromBufferAttribute(lines, 6 + g * 4);
-        if (out === 1) near(a.distanceTo(b), def.lines.value, 1e-3, `line ${g} at ${since} s`);
-        else assert.ok(a.distanceTo(b) <= def.lines.value + 1e-3, 'paying out: no longer than it is');
+      const lines = chute.group.children[1].geometry.getAttribute('position');
+      assert.equal(lines.count, (1 + def.gores.value) * 4, 'a riser and a line a gore, each a ribbon');
+      const finite = (attribute) => Array.from(attribute.array).every(Number.isFinite);
+      for (const since of [0, 0.01, (def.stretch?.value ?? 0) / 2, fills / 3, fills, fills + 60]) {
+        chute.set(moment(since, fills), 1);
+        assert.ok(chute.group.visible);
+        for (const m of cloths)
+          assert.ok(finite(m.geometry.getAttribute('position')) && finite(m.geometry.getAttribute('normal')), `cloth at ${since} s`);
+        assert.ok(finite(lines), `lines at ${since} s`);
+        const out = paid(def, since);
+        const a = new THREE.Vector3();
+        const b = new THREE.Vector3();
+        near(
+          b.fromBufferAttribute(lines, 2).distanceTo(a.fromBufferAttribute(lines, 0)),
+          def.riser.value * out,
+          1e-4,
+          `the riser at ${since} s`,
+        );
+        for (let g = 0; g < def.gores.value; g++) {
+          a.fromBufferAttribute(lines, 4 + g * 4);
+          b.fromBufferAttribute(lines, 6 + g * 4);
+          if (out === 1) near(a.distanceTo(b), def.lines.value, 1e-3, `line ${g} at ${since} s`);
+          else assert.ok(a.distanceTo(b) <= def.lines.value + 1e-3, 'paying out: no longer than it is');
+        }
       }
+      // full, it is two thirds of its made diameter across (and up to a fifth more where the gores stand out: most on a canopy of few gores)
+      const across = new THREE.Box3().setFromBufferAttribute(cloths[0].geometry.getAttribute('position')).getSize(new THREE.Vector3());
+      assert.ok(
+        across.x > FILLED * def.diameter.value * 0.98 && across.x < FILLED * def.diameter.value * 1.2,
+        `${across.x.toFixed(2)} m across`,
+      );
+      // down on a flight flown by hand: after it has settled the cloth is within half a metre of flat, wider than it flew, and stays so
+      chute.set(moment(fills + 60, fills, { down: 30, floor: -2, air: new THREE.Vector3() }), 1);
+      const flat = new THREE.Box3().setFromBufferAttribute(cloths[0].geometry.getAttribute('position')).getSize(new THREE.Vector3());
+      assert.ok(flat.y < 0.5 && flat.x > across.x, `settled: ${flat.y.toFixed(2)} m deep, ${flat.x.toFixed(1)} m across`);
+      const before = Array.from(cloths[0].geometry.getAttribute('position').array);
+      chute.set(moment(fills + 60, fills, { down: 300, floor: -2, air: new THREE.Vector3() }), 1);
+      assert.deepEqual(Array.from(cloths[0].geometry.getAttribute('position').array), before, 'and it lies still');
+      chute.set(null, 1);
+      assert.equal(chute.group.visible, false);
+      chute.dispose();
     }
-    // full, it is two thirds of its made diameter across (and up to a fifth more where the gores stand out: most on a canopy of few gores)
-    const across = new THREE.Box3().setFromBufferAttribute(cloths[0].geometry.getAttribute('position')).getSize(new THREE.Vector3());
-    assert.ok(
-      across.x > FILLED * def.diameter.value * 0.98 && across.x < FILLED * def.diameter.value * 1.2,
-      `${across.x.toFixed(2)} m across`,
-    );
-    // down on a flight flown by hand: after it has settled the cloth is within half a metre of flat, wider than it flew, and stays so
-    chute.set(moment(fills + 60, fills, { down: 30, floor: -2, air: new THREE.Vector3() }), 1);
-    const flat = new THREE.Box3().setFromBufferAttribute(cloths[0].geometry.getAttribute('position')).getSize(new THREE.Vector3());
-    assert.ok(flat.y < 0.5 && flat.x > across.x, `settled: ${flat.y.toFixed(2)} m deep, ${flat.x.toFixed(1)} m across`);
-    const before = Array.from(cloths[0].geometry.getAttribute('position').array);
-    chute.set(moment(fills + 60, fills, { down: 300, floor: -2, air: new THREE.Vector3() }), 1);
-    assert.deepEqual(Array.from(cloths[0].geometry.getAttribute('position').array), before, 'and it lies still');
-    chute.set(null, 1);
-    assert.equal(chute.group.visible, false);
-    chute.dispose();
-  }
 });
 
 test('it breathes on the simulator’s seconds: the same instant is the same cloth', () => {
@@ -195,36 +213,37 @@ test('a canopy that tears lets its air go and streams, from the mouth it had', (
 
 // An orbital flight's descent drawn (types.ts ChuteDef.body, flies.drops[].rides, flies.hangs): each parachute and each piece
 // names what the simulator flies, and the seat left at the pilot's canopy comes down as a body of its own.
-test('Vostok 1’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies', async () => {
-  const { flight: v } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
-  const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
-  const { siteFrame } = await import('../src/world/frames.ts');
-  const { julianDate } = await import('../src/world/time.ts');
-  const o = v.orbital;
-  const jd = julianDate(v.launch);
-  const whole = flyWhole(o, siteFrame(v.site), jd, v.site.seaLevel.value, undefined, 10, 'published');
-  const drawn = descentOf(whole, jd, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
-  assert.ok(drawn, 'the record’s run comes down from the ejection height');
-  for (const c of v.flies.chutes.filter((c) => c.body)) {
-    const body = o.descent.bodies.find((b) => b.id === c.body);
-    assert.ok(
-      body?.chutes.some((p) => p.name === c.on),
-      `${c.on} is a parachute of ${c.body}`,
-    );
-    assert.ok(Number.isFinite(drawn.opened[c.body][c.on]), `${c.on} comes out on the record’s run`);
-    assert.ok(
-      Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
-      `${c.on}: drawn with the area its drag is worked on`,
-    );
-  }
-  for (const d of v.flies.drops.filter((d) => d.rides))
-    for (const r of d.rides) assert.ok(drawn.tracks[r.body]?.length > 1, `${d.nodes[0]} rides ${r.body}, which is flown`);
-  for (const h of v.flies.hangs) assert.ok(Number.isFinite(drawn.opened[h.body][h.from]), `the figure comes in as ${h.from} comes out`);
-  // the seat begins where the pilot left it, with the stabilising parachute, and lands before him
-  const seat = drawn.tracks.seat;
-  assert.equal(seat[0].t, drawn.opened.pilot['main canopy']);
-  assert.ok(whole.down.landed.seat.at < whole.down.landed.pilot.at);
-  // each of the module's parachutes is let go as the next comes out
-  assert.equal(drawn.gone.module['pilot parachute'], drawn.opened.module['braking parachute']);
-  assert.equal(drawn.gone.module['braking parachute'], drawn.opened.module['main parachute']);
-});
+for (const v of FLIGHTS.filter((f) => f.orbital?.descent)) {
+  test(`${v.designation}’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies`, async () => {
+    const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
+    const { siteFrame } = await import('../src/world/frames.ts');
+    const { julianDate } = await import('../src/world/time.ts');
+    const o = v.orbital;
+    const jd = julianDate(v.launch);
+    const whole = flyWhole(o, siteFrame(v.site), jd, v.site.seaLevel.value, undefined, 10, 'published');
+    const drawn = descentOf(whole, jd, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
+    assert.ok(drawn, 'the record’s run comes down from the ejection height');
+    for (const c of v.flies.chutes.filter((c) => c.body)) {
+      const body = o.descent.bodies.find((b) => b.id === c.body);
+      assert.ok(
+        body?.chutes.some((p) => p.name === c.on),
+        `${c.on} is a parachute of ${c.body}`,
+      );
+      assert.ok(Number.isFinite(drawn.opened[c.body][c.on]), `${c.on} comes out on the record’s run`);
+      assert.ok(
+        Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
+        `${c.on}: drawn with the area its drag is worked on`,
+      );
+    }
+    for (const d of v.flies.drops.filter((d) => d.rides))
+      for (const r of d.rides) assert.ok(drawn.tracks[r.body]?.length > 1, `${d.nodes[0]} rides ${r.body}, which is flown`);
+    for (const h of v.flies.hangs) assert.ok(Number.isFinite(drawn.opened[h.body][h.from]), `the figure comes in as ${h.from} comes out`);
+    // the seat begins where the pilot left it, with the stabilising parachute, and lands before him
+    const seat = drawn.tracks.seat;
+    assert.equal(seat[0].t, drawn.opened.pilot['main canopy']);
+    assert.ok(whole.down.landed.seat.at < whole.down.landed.pilot.at);
+    // each of the module's parachutes is let go as the next comes out
+    assert.equal(drawn.gone.module['pilot parachute'], drawn.opened.module['braking parachute']);
+    assert.equal(drawn.gone.module['braking parachute'], drawn.opened.module['main parachute']);
+  });
+}

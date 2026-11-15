@@ -125,6 +125,22 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
   },
   'usa/mercury/mr-4-liberty-bell-7': {
+    // (the records are the type's, the Beach Abort's and the maker's, flown on this flight's own spacecraft and pad)
+    'abort:off the pad, upright': {
+      apogee: {
+        by: -0.255,
+        slack: 0.03,
+        why: `as Freedom 7’s, and for the same reasons: the maker’s round figure is reached with the thrust through the centre of mass; set off it, the spacecraft tumbles and the air takes a quarter of the climb. ${SAME_SHAPE}`,
+      },
+    },
+    'abort:Beach Abort, 9 May 1960': {
+      apogee: {
+        by: -0.382,
+        slack: 0.03,
+        why: `as Freedom 7’s, flown here as Liberty Bell 7’s spacecraft (its weights estimated, Freedom 7’s: tests/sim.test.mjs). ${UNKNOWN_BEACH}`,
+      },
+      duration: { by: -0.365, slack: 0.03, why: `follows from the height, as Freedom 7’s. ${UNKNOWN_BEACH}` },
+    },
     whole: {
       separationSpeed: { by: 0.043, slack: 0.01, why: MR8, short: BURNOUT },
       separationGroundSpeed: { by: 0.045, slack: 0.01, why: MR8, short: BURNOUT },

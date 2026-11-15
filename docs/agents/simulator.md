@@ -154,7 +154,9 @@ never adjusted to bring a check in.
   is mercury-redstone.ts, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
   (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
   the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
-  turnaround, ascent and verdict hold each as they hold Freedom 7 (its misses in `MISSES`, its undocumented inputs listed).
+  turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
+  its undocumented inputs listed; Freedom 7's own record figures are held on Freedom 7 alone). Every flight into orbit is
+  held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
 - **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
   (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
   the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,

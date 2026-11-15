@@ -21,12 +21,10 @@ import {
   wallFactor,
 } from '../src/sim/heating.ts';
 import { siteFrame } from '../src/world/frames.ts';
+import { BALLISTIC } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
-
-const heating = flight.trajectory.heating;
-const run = fly(flight.trajectory, siteFrame(flight.site), flight.site.seaLevel.value);
 
 test('the stagnation-point heat flux is Sutton and Graves', () => {
   // NASA TR R-376 (1971): for air, K = 1.7415e-4 kg^0.5/m, q = K sqrt(rho / Rn) V^3
@@ -128,33 +126,9 @@ test('what is under the booster is out of the air, and what flies nose first tak
   near(begin(model, live(90)).blunt, 0.5, 1e-12, 'side on');
 });
 
-test('the same heating whether worked all at once or kept up sample by sample, as a flight being flown is', () => {
-  const whole = heatRun(heating, run.samples);
-  const log = new HeatLog(heating);
-  const growing = [];
-  for (const s of run.samples.slice(0, 1200)) {
-    // (the head is replaced until it is kept: cockpit.ts)
-    growing.push({ ...s, altitude: s.altitude + 50 });
-    log.upTo(growing);
-    growing.pop();
-    growing.push(s);
-    log.upTo(growing);
-  }
-  const states = log.upTo(growing);
-  assert.equal(states.length, 1200);
-  // and what it came to is the same, though the head was replaced at every step (it is not summed again from the start each time)
-  assert.deepEqual(log.results, heatRun(heating, run.samples.slice(0, 1200)).results);
-  for (const i of [0, 300, 700, 1100, 1199]) {
-    assert.deepEqual(states[i], whole.states[i], `state ${i}`);
-  }
-  // between samples it is read evenly
-  const [a, b] = [whole.states[1000], whole.states[1001]];
-  near(thermalAt(whole.states, (a.t + b.t) / 2).flux, (a.flux + b.flux) / 2, 1e-9, 'between two samples');
-  assert.equal(thermalAt(whole.states, -5), whole.states[0]);
-  assert.equal(thermalAt(whole.states, 1e9), whole.states.at(-1));
-});
-
-test('Mercury-Redstone 3: the heating the simulator flies', () => {
+test('Mercury-Redstone 3: the heating its record’s run gives', () => {
+  const heating = flight.trajectory.heating;
+  const run = fly(flight.trajectory, siteFrame(flight.site), flight.site.seaLevel.value);
   const started = performance.now();
   const { states, results } = heatRun(heating, run.samples);
   const took = performance.now() - started;
@@ -195,25 +169,90 @@ test('Mercury-Redstone 3: the heating the simulator flies', () => {
   assert.ok(atmosphere(maxQ.altitude).density > 0.2);
 });
 
-test('every heating input says how sure it is', () => {
-  const measures = [heating.noseRadius, heating.starts];
-  for (const s of heating.surfaces) measures.push(...Object.values(s.share), s.arealMass, s.specificHeat, s.emissivity, s.limit);
-  for (const m of measures) {
-    assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(m.confidence));
-    assert.ok(m.source.length > 20, `a source for ${m.value}`);
-  }
-  // the judgements, and how far a tenth more of each moves the shield's and the afterbody's peak
-  const base = heatRun(heating, run.samples).results.peaks;
-  const weigh = (label, change) => {
-    const model = structuredClone(heating);
-    change(model);
-    const peaks = heatRun(model, run.samples).results.peaks;
+// Every ballistic flight with heating: the arithmetic held on its own run.
+for (const each of BALLISTIC.filter((f) => f.trajectory.heating)) {
+  const name = `${each.designation} (${each.callsign})`;
+  const heating = each.trajectory.heating;
+  const run = fly(each.trajectory, siteFrame(each.site), each.site.seaLevel.value);
+
+  test(`${name}: the same heating whether worked all at once or kept up sample by sample, as a flight being flown is`, () => {
+    const whole = heatRun(heating, run.samples);
+    const log = new HeatLog(heating);
+    const growing = [];
+    for (const s of run.samples.slice(0, 1200)) {
+      // (the head is replaced until it is kept: cockpit.ts)
+      growing.push({ ...s, altitude: s.altitude + 50 });
+      log.upTo(growing);
+      growing.pop();
+      growing.push(s);
+      log.upTo(growing);
+    }
+    const states = log.upTo(growing);
+    assert.equal(states.length, 1200);
+    // and what it came to is the same, though the head was replaced at every step (it is not summed again from the start each time)
+    assert.deepEqual(log.results, heatRun(heating, run.samples.slice(0, 1200)).results);
+    for (const i of [0, 300, 700, 1100, 1199]) {
+      assert.deepEqual(states[i], whole.states[i], `state ${i}`);
+    }
+    // between samples it is read evenly
+    const [a, b] = [whole.states[1000], whole.states[1001]];
+    near(thermalAt(whole.states, (a.t + b.t) / 2).flux, (a.flux + b.flux) / 2, 1e-9, 'between two samples');
+    assert.equal(thermalAt(whole.states, -5), whole.states[0]);
+    assert.equal(thermalAt(whole.states, 1e9), whole.states.at(-1));
+  });
+
+  test(`${name}: the heating the simulator flies`, () => {
+    const started = performance.now();
+    const { states, results } = heatRun(heating, run.samples);
+    const took = performance.now() - started;
+    // (about 8 ms on a quiet machine: the bound is for a busy one, and catches only a change of order)
+    assert.ok(took < 1000, `cheap enough to work out as the page opens: ${took.toFixed(1)} ms for ${run.samples.length} samples`);
     console.log(
-      `  ${label} +10 %: shield ${(peaks[0].temperature - base[0].temperature).toFixed(2)} K, afterbody ${(peaks[1].temperature - base[1].temperature).toFixed(2)} K`,
+      `  ${name} going up: ${(results.exitFlux / 1000).toFixed(1)} kW/m2 at ${results.exitFluxAt.toFixed(1)} s, ${(results.exitLoad / 1e6).toFixed(2)} MJ/m2\n` +
+        `  coming down: ${(results.entryFlux / 1000).toFixed(1)} kW/m2 at ${results.entryFluxAt.toFixed(1)} s; in all ${(results.load / 1e6).toFixed(2)} MJ/m2\n` +
+        heating.surfaces
+          .map((s, i) => `  ${s.name}: ${results.peaks[i].temperature.toFixed(1)} K at ${results.peaks[i].at.toFixed(1)} s`)
+          .join('\n'),
     );
-  };
-  weigh('shield share', (m) => void (m.surfaces[0].share.down.value *= 1.1));
-  weigh('afterbody share going up', (m) => void (m.surfaces[1].share.up.value *= 1.1));
-  weigh('emissivities', (m) => m.surfaces.forEach((s) => void (s.emissivity.value = Math.min(1, s.emissivity.value * 1.1))));
-  weigh('starting temperature', (m) => void (m.starts.value *= 1.1));
-});
+    // every surface stays under what it is made to stand, and is no colder than it started
+    heating.surfaces.forEach((s, i) => {
+      assert.ok(results.peaks[i].temperature >= heating.starts.value - 1e-9, `${s.name}: no colder than it started`);
+      assert.ok(results.peaks[i].temperature < s.limit.value, `${s.name}: under its limit`);
+    });
+    // the heat sink's rise is the heat it took over what it can hold, radiation being nothing at that temperature
+    const last = states.at(-1).surfaces[0];
+    near(
+      last.absorbed / (heating.surfaces[0].arealMass.value * heating.surfaces[0].specificHeat.value),
+      last.temperature - heating.starts.value,
+      0.5,
+      'rise from the heat taken in',
+    );
+    // nothing heats above where it flies slowly: at the greatest dynamic pressure going up the flux is a few kW/m2
+    const maxQ = run.samples.reduce((a, b) => (b.t < 140 && b.q > a.q ? b : a));
+    const there = states[run.samples.indexOf(maxQ)];
+    assert.ok(there.flux < 6000, `at the greatest dynamic pressure going up, ${there.flux.toFixed(0)} W/m2`);
+    assert.ok(atmosphere(maxQ.altitude).density > 0.2);
+  });
+  test(`${name}: every heating input says how sure it is`, () => {
+    const measures = [heating.noseRadius, heating.starts];
+    for (const s of heating.surfaces) measures.push(...Object.values(s.share), s.arealMass, s.specificHeat, s.emissivity, s.limit);
+    for (const m of measures) {
+      assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(m.confidence));
+      assert.ok(m.source.length > 20, `a source for ${m.value}`);
+    }
+    // the judgements, and how far a tenth more of each moves the shield's and the afterbody's peak
+    const base = heatRun(heating, run.samples).results.peaks;
+    const weigh = (label, change) => {
+      const model = structuredClone(heating);
+      change(model);
+      const peaks = heatRun(model, run.samples).results.peaks;
+      console.log(
+        `  ${label} +10 %: shield ${(peaks[0].temperature - base[0].temperature).toFixed(2)} K, afterbody ${(peaks[1].temperature - base[1].temperature).toFixed(2)} K`,
+      );
+    };
+    weigh('shield share', (m) => void (m.surfaces[0].share.down.value *= 1.1));
+    weigh('afterbody share going up', (m) => void (m.surfaces[1].share.up.value *= 1.1));
+    weigh('emissivities', (m) => m.surfaces.forEach((s) => void (s.emissivity.value = Math.min(1, s.emissivity.value * 1.1))));
+    weigh('starting temperature', (m) => void (m.starts.value *= 1.1));
+  });
+}
