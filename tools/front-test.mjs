@@ -231,15 +231,17 @@ await scenario('steady', async () => {
       tick();
     });
     if (phone) {
+      // (a finger dragged, its touches sent one at a time: Chrome on Linux scrolls nothing for a synthesized touch gesture)
       const cdp = await context.newCDPSession(page);
-      for (const dy of [-700, -700, -700, 700, 700, 700])
-        await cdp.send('Input.synthesizeScrollGesture', {
-          x: 200,
-          y: dy < 0 ? 760 : 120,
-          xDistance: dy < 0 ? -14 : 14,
-          yDistance: dy,
-          gestureSourceType: 'touch',
-        });
+      for (const dy of [-700, -700, -700, 700, 700, 700]) {
+        const at = (f) => [{ x: 200 + (dy < 0 ? -14 : 14) * f, y: (dy < 0 ? 760 : 120) + dy * f, id: 1 }];
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: at(0) });
+        for (let i = 1; i <= 20; i++) {
+          await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: at(i / 20) });
+          await page.waitForTimeout(16);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      }
     } else {
       await page.mouse.move(width / 2, height * 0.7);
       for (const dy of [60, -60])
