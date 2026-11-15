@@ -46,7 +46,7 @@ marked so; across the track, the burn-through's height and the entry's load are.
 
 Flown once at Titov's 09:57 on the same record, as the evidence: the modules part at 123 km at 10:07 (against the 80 to
 100 km the entry then implies), 7 km at 10:15:56, the pilot down at 10:27:52 over 53.83° N 50.28° E, 395 km beyond the
-record's landing. Flown at 09:51: the modules part at 79 km, 7 km at 10:11:41 over 39.99° N 35.33° E, **1,493 km short**
+record's landing. Flown at 09:51: the modules part at 79 km, 7 km at 10:11:41 over 40.00° N 35.34° E, **1,493 km short**
 (the pilot down some twelve minutes later). The simulator's coast puts 09:57 nearer, and that is the coast's error, not the record's
 vindication: flown round from where the ascent left it, the published orbit crosses the equator northbound every 88.66
 minutes (at 11:49:09 and 17:43:46, where TASS has 11:48 and 17:42, 88.5 apart), and over seventeen orbits falls four
@@ -72,10 +72,10 @@ scene shows), then the descent. Tolerances were set before anything was flown.
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Greatest load, first stage | about 4.5 g (≤ 5, by feel) ± 1 | 4.72 g | yes | |
-| Perigee at the last cutoff | 183 km ± 5 | −168 km | **miss** | the type's ascent falls short, as Vostok 1's (SHORT) |
+| Perigee at the last cutoff | 183 km ± 5 | −184 km | **miss** | the type's ascent falls short, as Vostok 1's (SHORT) |
 | Apogee at the last cutoff | 244 km ± 10 | 180 km | **miss** | the same |
 | Inclination | 64°56′ ± 0.05° | 64.99° | **miss** (0.06) | Vostok 1's aiming azimuth, estimated |
-| Period at the last cutoff | 88.46 min ± 15 s | 84.31 min | **miss** | the same as the perigee |
+| Period at the last cutoff | 88.46 min ± 15 s | 84.15 min | **miss** | the same as the perigee |
 | Period, from the published heights | 88.46 min ± 2 s | 88.46 | yes | not independent (the reference ball is derived from it) |
 | Apogee as flown round | 244 km ± 5 | 265 km | **miss** | the published heights read as osculating (Vostok 1's) |
 | Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 79 km | yes | |

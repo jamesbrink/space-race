@@ -59,17 +59,25 @@ const UNKNOWN_BEACH =
   'what spacecraft No. 1 weighed that day and how far its launcher leaned are not in anything read: it is flown here as Freedom 7’s spacecraft (3,764 lb with its tower, the retropack dropped) off the 1959 trial’s 71 degrees. ' +
   'No. 1 was stripped of most of its systems (This New Ocean, p. 261), so it was lighter and went higher and stayed up longer';
 const SHORT =
-  'The vehicle as the record now reads it does not reach orbit: at the last cutoff it has 7,686 m/s where the published orbit needs 7,844 at 180 km, 157 m/s short, and its perigee is under the ground. ' +
+  'The vehicle as the record now reads it does not reach orbit: at the last cutoff it has 7,681 m/s where the published orbit needs 7,844 at 180 km, 162 m/s short, and its perigee is under the ground (until November 2026 the law’s axis was up to 0.14 per cent long, and the thrust along it with it: 5 m/s more and 157 short). ' +
   'Block E is cut where its integrator was set (2,283.52 m/s of apparent velocity, the flight task) and that comes at 676.4 s, the recorded instant to a third of a second, with 46 kg left: so the third stage as recorded is ' +
   'right, and the shortfall is the first two stages’. What owns it (the last test): the throttling documented in kind and estimated in level, the strap-ons’ intermediate stage (none: +143 m/s; at 80 per cent: +71) and above ' +
   'all the core’s final stage (none: +443 m/s; 5 s of it, not 10: +221), with 4.5 t left in the core at its cutoff, which a vehicle with tank-emptying regulators would not carry. So the core’s figures and its final ' +
   'stage as the sources give them do not agree: its load (100.4 t fuelled less 6.8 t dry, Astronautix) or the length or level of its final stage is wrong. Not adjusted. ' +
   'The first reading (rated thrust to the recorded instants, Soyuz-ST’s loads) was 142 m/s fast: the documented throttling is worth more than the whole miss either way';
+/** (tests/stagedlive.test.mjs) The live staged vehicle steered by its pilot against the batch ascent's last cutoff. */
+const STEERED =
+  'the attitude is steered, not placed: through the pitch-over and the turn the guidance loop (stagedlive.ts OMEGA, chosen) is a little off the law, ' +
+  'and the gravity turn that follows the motion carries that on to the cutoff: 3.2 m/s fast and 1.8 km low. It is the loop’s: with the attitude ' +
+  'prescribed the same vehicle gives the batch run back to 0.02 m/s and 52 m (the test before), so the forces are one, and the steered miss goes as ' +
+  'the loop’s stiffness goes (half as stiff, 7.4 m/s and 4.1 km; twice, 2.5 m/s and 1.4 km), which is chosen, so it is not tuned to come in. ' +
+  '(Until November 2026 the law’s axis was not a unit vector, and the batch run’s thrust was up to 0.14 per cent high where the steered vehicle’s, ' +
+  'along its own axis, was not: the miss read 5.6 m/s slow and 0.5 km high, the two effects against each other)';
 const PUBLISHED =
   'The coast is flown from the published orbit, begun where the ascent left the spacecraft (staged.ts `published`), since the ascent as flown does not reach it';
 const SHORT_TYPE =
   'Vostok 2’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-17’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
-  'at the last cutoff it is level at the planned 180 km with 7,698 m/s where 183 by 244 km needs some 7,840';
+  'at the last cutoff it is level at the planned 180 km with 7,693 m/s where 183 by 244 km needs some 7,840';
 const PHASE =
   'The published orbit flown round from where the ascent left the spacecraft, as osculating elements under J2, crosses the equator northbound every 88.66 min: at 11:49:09 and 17:43:46, where TASS’s crossings are 11:48 and 17:42, 88.5 min apart. ' +
   'Over seventeen orbits it falls four minutes behind the record’s orbit (its node opening the eighteenth at 09:58:55 against 09:54.9 reckoned from TASS and Titov’s Globus fixes: mission.md), and the burn, at the instant derived from the record, is four minutes early on it. ' +
@@ -248,9 +256,9 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'A minute up the run reads 2.20 g; Zak has Gagarin feeling 3 to 4. Thrust and mass alone give 2.4 g there (4.6 MN on 191 t), less 0.2 for the drag, and Soyuz’s manual shows 2.6 g ' +
           'at 60 s on the same first stages: the record’s figure is a man’s feeling, not an accelerometer’s',
       },
-      perigee: { by: -370_080, slack: 2_000, why: SHORT },
+      perigee: { by: -386_039, slack: 2_000, why: SHORT },
       apogee: { by: -147_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT}` },
-      period: { by: -310.97, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
+      period: { by: -320.47, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
     },
     shown: {
       apogee: {
@@ -266,14 +274,14 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       ejectionAt: {
         by: 219.2,
         slack: 10,
-        why: `${PUBLISHED}. It reaches 7 km at 10:45:39, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 454 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
+        why: `${PUBLISHED}. It reaches 7 km at 10:45:39, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 452 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
       },
       alongTrack: {
-        by: 453_800,
+        by: 452_400,
         slack: 10_000,
         why:
-          `${PUBLISHED}. It comes down 454 km beyond the record’s landing along the track and 14 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
-          'The place on the orbit is now the ascent’s (27.84 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 450 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 301 km shorter)',
+          `${PUBLISHED}. It comes down 452 km beyond the record’s landing along the track and 14 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
+          'The place on the orbit is now the ascent’s (27.82 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 450 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 301 km shorter)',
       },
     },
     descent: {
@@ -292,13 +300,14 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
     live: {
       speed: {
-        by: -5.6,
+        by: 3.2,
         slack: 1,
-        why:
-          'the attitude is steered, not placed: through the ten seconds of the pitch-over the guidance loop (stagedlive.ts OMEGA, chosen) lags the law by ' +
-          'some hundredths of a degree, and the gravity turn that follows the motion carries that on to the cutoff. With the attitude prescribed the ' +
-          'same vehicle gives the batch run back to a hundredth of a metre a second (the test before), so the forces are one; and the steered result ' +
-          'moves by several metres a second with the loop’s stiffness, which is chosen, so it is not tuned to come in',
+        why: STEERED,
+      },
+      altitude: {
+        by: -1_786,
+        slack: 300,
+        why: STEERED,
       },
     },
   }),
@@ -321,14 +330,14 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
     },
     ascent: {
-      perigee: { by: -351_028, slack: 2_000, why: SHORT_TYPE },
+      perigee: { by: -366_957, slack: 2_000, why: SHORT_TYPE },
       apogee: { by: -64_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_TYPE}` },
       inclination: {
         by: 0.06,
         slack: 0.01,
         why: 'The aiming azimuth flown is Vostok 1’s (estimated: E103-17’s flight task is not published), and gives 64.99°, as it does on Vostok 1, against this flight’s determined 64°56′. The azimuth is owner',
       },
-      period: { by: -249.16, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
+      period: { by: -258.65, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
     },
     shown: {
       apogee: {

@@ -283,7 +283,8 @@ never adjusted to bring a check in.
   derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
   known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
   fuelled less what it burned, other drops (a fairing) by mass, drag on `ascent.drag`'s areas and curves. Attitude is a
-  **stated law**, not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
+  **stated law** (the turn's tilt measured between the plumb line in the launch plane and the level square to it, so its
+  axis is a unit vector: tests/staged.test.mjs), not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
   solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
   cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
   separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
@@ -326,8 +327,8 @@ never adjusted to bring a check in.
   law's own turning fed forward, the steps at the record's times and a stage with `velocity` cut on its integrator's sum,
   read every tick from switches the deck throws; guidance on, W S A D lean the law as a ballistic deck's trim does. With
   the attitude placed as the law's (`prescribed`, a test's) it is the batch run; steered at the stated acceleration it
-  is slow and high at the last cutoff, the pitch-over's lag carried on by the gravity turn: a recorded miss in
-  `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by hand to their consequences.
+  is fast and low at the last cutoff, the loop's lag carried on by the gravity turn and going as the loop's stiffness: a
+  recorded miss (src/sim/misses.ts, `live`) held by `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by hand to their consequences.
   Steered as well as the law steers it, a hand-flown ascent falls short of an orbit as the record's run does: no input
   is changed to bring it in.
 - **Staging by hand is physics** (`sim/staging.ts`, the rules every vehicle is held to; the figures are the flight's).

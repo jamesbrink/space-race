@@ -12,8 +12,8 @@ import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/sim/fly.ts';
 import { between, propagate } from '../src/sim/predict.ts';
-import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, published, schedule, steer } from '../src/sim/staged.ts';
-import { DEG, siteFrame } from '../src/world/frames.ts';
+import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, lawOf, published, schedule, steer } from '../src/sim/staged.ts';
+import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
 
@@ -192,6 +192,19 @@ for (const f of flown) {
     console.log(
       `  #   the published orbit from where the ascent left it: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
     );
+  });
+
+  test(`${f.designation}: the law's level is square to the plumb line, and its axis a unit vector at every instant`, () => {
+    // (the turn's tilt is measured between the plumb line in the plane and the level square to it: until November 2026 the
+    // level was square to the line to the Earth's centre, 0.16 degrees off at Tyuratam, and the axis up to 0.14 % long)
+    const [site, dated] = where(f);
+    const law = lawOf(o, site, dated, whole.ascent.solved);
+    const upIn = unit(sub(law.up0, scale(law.n, dot(law.n, law.up0))));
+    assert.ok(Math.abs(dot(upIn, law.down0)) < 1e-15, `level square to the plumb line: ${dot(upIn, law.down0)}`);
+    assert.ok(Math.abs(dot(law.n, law.down0)) < 1e-15, 'and in the launch plane');
+    let most = 0;
+    for (const s of whole.ascent.samples) most = Math.max(most, Math.abs(length(s.axis) - 1));
+    assert.ok(most < 1e-14, `the axis a unit vector throughout: ${most} off at most`);
   });
 
   test(`${f.designation}: the ascent against the record; every miss is recorded`, () => {

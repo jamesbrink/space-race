@@ -1862,7 +1862,7 @@ export const flight: Flight = {
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
   flownNote:
-    'The ascent as simulated falls 157 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +
+    'The ascent as simulated falls 162 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +
     'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result.',
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
   flies: vostokFlies(orbital),

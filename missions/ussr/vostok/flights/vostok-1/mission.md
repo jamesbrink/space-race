@@ -628,21 +628,21 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
 | --- | --- | --- | --- | --- | --- |
 | Block E cut off | 676 s | 659.3 s | **676.4 s, 46 kg left** | 676 s | **holds**: the integrator's setting and Block E's figures agree with the recorded instant |
 | Inclination | 64.95° (target) | 64.95° (target) | **64.99°** | 64.95° | **holds**, and is now a check |
-| Core cut off | 5,810 m/s | 5,812 | 5,542 m/s, **4.5 t left** | about 5.5 km/s | holds |
-| At the last cutoff | 7,986 m/s | 7,841 | **7,686 m/s, 157 short** | 7,844 needed | **misses: does not reach orbit** (perigee -189 km) |
+| Core cut off | 5,810 m/s | 5,812 | 5,558 m/s, **4.5 t left** | about 5.5 km/s | holds |
+| At the last cutoff | 7,986 m/s | 7,841 | **7,681 m/s, 162 short** | 7,844 needed | **misses: does not reach orbit** (perigee -205 km) |
 | Most load, first stage | 5.25 g | 5.25 | 4.72 g | about 5 | holds |
 
 **The finding now.** With the third stage cut where its integrator was set and arriving at the recorded instant, the
-miss is the first two stages': 157 m/s short. Their throttling, documented in kind, is worth more than the whole miss either
-way (no core final stage: +443 m/s; 5 s of it, not 10: +221; no strap-on intermediate stage: +143), and the core carries 4.5 t
+miss is the first two stages': 162 m/s short. Their throttling, documented in kind, is worth more than the whole miss either
+way (no core final stage: +444 m/s; 5 s of it, not 10: +222; no strap-on intermediate stage: +143), and the core carries 4.5 t
 to its cutoff, which a vehicle with tank-emptying regulators would not. So the core's load (100.4 less 6.8 t) and its final
 stage as the sources give them do not agree with one another; which is wrong is not known.
 
 **What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
-ascent puts it at 27.84°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:39 at
-7 km, landing 454 km long and 14 km across (holds), module 10:50:21, pilot 10:59:03. (Until November 2026 the braking
+ascent puts it at 27.82°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:39 at
+7 km, landing 452 km long and 14 km across (holds), module 10:50:21, pilot 10:59:03. (Until November 2026 the braking
 burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
 10:59:04. orbital.ts `flyOrbit`, `pushAs`.)
 
@@ -698,11 +698,19 @@ and recorded in each input's source:
   10.4 t of it, 3.6 t over Astronautix's dry figure (a reading of the research's, derived).
 - **The documented masses.** The stack is flown as the liftoff mass less what has burned and dropped, so any block's mass
   changed with the total fixed lands on the spacecraft: NK's fairing (582 kg for 800) or Block E (1,210 dry and 6,576 kg for
-  Minakov's 1,472 and 6,512) each made the spacecraft heavier and the miss worse (perigee −380 km for −189), and NK's total
+  Minakov's 1,472 and 6,512) each made the spacecraft heavier and the miss worse (perigee −380 km for −189, as read before the law's axis was put right; −205 now), and NK's total
   (291,619 kg, 4.9 t more than the blocks add to) carried 4.9 t nobody can place and the law did not reach its target. Until
   the blocks' masses are found for the 8K72K (the task's sister enclosure, «Основные данные по изделию 8К72 № Е10316», 3
   sheets, is in the same file and was not published), they stay as they were.
 
 The ascent's checks are therefore as above but for the third stage's cutoff (676.35 s against 677.08 ± 3 s: holds), and the
-miss is still 157 m/s short.
+miss is still 162 m/s short.
+
+**The law's level put right (November 2026).** The turn's tilt had been measured between the plumb line in the launch
+plane and a level square to the line to the Earth's centre, 0.16° apart at Tyuratam, so the law's axis came out up to
+0.14 % long and the batch run's thrust along it with it. Made square to the plumb line (staged.ts `lawOf`, held by
+tests/staged.test.mjs), the law's solved pitch-over is 9.62° (was 9.23°) and its tangent falls 0.3250 per 1000 s (was
+0.3318); at the last cutoff 7,681 m/s (was 7,686), 162 m/s short (was 157), perigee −205 km (was −189), period 84.10 min
+(was 84.26); Block E's cutoff, 676.35 s with 46 kg left, does not move. The miss grew because the old axis was giving the
+stack thrust it did not have: nothing was changed to bring it back.
 

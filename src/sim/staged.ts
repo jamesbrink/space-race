@@ -224,7 +224,11 @@ export function lawOf(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, x: So
   const n = aimed ?? planeThrough(pad, x.plane, o.injection.heading === 'north');
   if (!n) throw new Error(`no plane inclined ${x.plane / DEG} degrees passes over the pad`);
   const upIn = unit(sub(up0, scale(n, dot(n, up0)))); // the same, in the launch plane
-  const down0 = unit(cross(n, unit(pad))); // level in the plane, the way it will go
+  // level in the plane, the way it will go: square to the plumb line in the plane, so that the two are the axes the turn's
+  // tilt is measured on and the axis tilted between them is a unit vector (until November 2026 it was square to the line to
+  // the Earth's centre, which at Tyuratam leans 0.16 degrees from the plumb line: the axis came out up to 0.14 per cent long
+  // or short, and the thrust along it with it)
+  const down0 = unit(cross(n, upIn));
   const tiltOf = (d: Vec3) => Math.atan2(dot(d, down0), dot(d, upIn));
   const tilted = (tilt: number): Vec3 => add(scale(upIn, Math.cos(tilt)), scale(down0, Math.sin(tilt)));
   const tVertical = g.vertical.value;
