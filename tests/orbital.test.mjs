@@ -1,5 +1,5 @@
 // The coast of an orbital flight (src/sim/orbital.ts: flyOrbit) against the record. As tests/sim.test.mjs does for a
-// ballistic flight: every check in a flight's `orbital.checks` is flown; one outside its tolerance must be in MISSES with
+// ballistic flight: every check in a flight's `orbital.checks` is flown; one outside its tolerance must be in src/sim/misses.ts with
 // how far out it is and why; the test fails on a miss nobody recorded, on one that has moved past its slack, and on one
 // that has come within tolerance. Nothing in a flight's inputs is adjusted to bring a check in.
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
+import { holdChecks, missesOf } from './misses.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -59,78 +60,12 @@ const INPUTS = {
   ],
 };
 
-/**
- * Checks the coast misses today, by flight: how far out (run less record, in the check's unit), give or take `slack`,
- * and which input is most likely to blame.
- */
-const MISSES = {
-  'ussr/vostok/vostok-2': {
-    apogee: {
-      by: 17_816,
-      slack: 500,
-      why: 'Flown round, the orbit tops out at 262 km, not 244: Vostok 1’s miss, the published heights taken as the osculating orbit at the cutoff. The cure is a stated conversion from mean to osculating elements, not a number changed',
-    },
-    crossTrack: {
-      by: -153_276,
-      slack: 3_000,
-      why: 'From the estimated injection (Vostok 1’s place at cutoff) the coast falls behind the record’s orbit over seventeen revolutions, as the coast from the ascent flown does (tests/staged.test.mjs, PHASE: the published elements read as osculating), and the Earth has turned less under the track; the Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s)',
-    },
-    alongTrack: {
-      by: -1_426_770,
-      slack: 10_000,
-      why: 'It comes down 1,427 km short along the track: the coast reaches the landing latitude some four minutes after the record’s orbit does (tests/staged.test.mjs, PHASE), so the burn, at the instant derived from the record, is four minutes early on it. `injection.arc` (no source) is worth 129 km a degree; the reading of `orbit` is the rest',
-    },
-  },
-  'ussr/vostok/vostok-1': {
-    apogee: {
-      by: 18_000,
-      slack: 500,
-      why:
-        'Flown round, the orbit tops out at 345 km over the report’s 6,371 km ball, not 327. The blame is how `orbit` is read: the published heights are taken as the osculating orbit at cutoff, ' +
-        'at 62 degrees north, where the oblateness has the osculating semi-major axis some kilometres under its mean. The report’s figures are evidently mean ones, or heights measured round the ' +
-        'orbit; the last test prints what both heights 9 km lower would move (the flown apogee is then 336 km, so it is not the semi-major axis alone). The cure is a stated conversion from mean ' +
-        'to osculating elements, not a number changed: not done yet',
-    },
-    separationAltitude: {
-      by: -17_900,
-      slack: 1_500,
-      why:
-        'At 10:36 it is at 137 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170. Theirs are reckonings too. Ours rests on the push lying along the line from the Sun, 30 degrees ' +
-        'below level, which brings it down early: `retro.aim`',
-    },
-    ejectionAt: {
-      by: 225,
-      slack: 10,
-      why:
-        'It reaches 7 km at 10:45:43 Moscow time, where the record has the hatch going at 10:42 (to the minute) and the module on the ground at 10:48. A minute of it is the landing being 448 km long; ' +
-        'the rest is a descent that takes longer than the flight’s did, which points at `retro.aim` and `retro.deltaV` (a push only 59 per cent of which is against the motion) and at the orbit being read too high',
-    },
-    crossTrack: {
-      by: -68_800,
-      slack: 3_000,
-      why:
-        'It comes down 69 km to the left of the record’s landing. All of it is the braking burn’s sideways part: the Sun stood 41 degrees out of the orbit’s plane that morning (derived from the site, ' +
-        'the hour and the inclination, and not in doubt), so a push straight along the line from the Sun has 65 per cent of itself across the track. With the same burn straight against the motion the ' +
-        'miss is 9 km. So `retro.aim` as the record words it (“the TDU was directed to the Sun”) cannot be the whole of how the engine’s axis lay: the sensor’s axis to the engine’s is the thing to find. Not adjusted',
-    },
-    alongTrack: {
-      by: 448_300,
-      slack: 10_000,
-      why:
-        'It comes down 448 km beyond the record’s landing along its own track. Three inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 129 km a degree), ' +
-        '`retro.aim` (straight against the motion it lands 450 km shorter, 2 km short of the record: which is no proof, given the first) and the reading of `orbit` (see apogee). Not adjusted: ' +
-        'the ascent flown is what replaces the first, a source on the solar sensor the second',
-    },
-  },
-};
-
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });
 
 for (const f of orbiters) {
   const o = f.orbital;
-  const misses = MISSES[f.id] ?? {};
   let run;
 
   test(`${f.designation}: every figure in the orbital record has a confidence and a source, and its times are in order`, () => {
@@ -212,28 +147,7 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the coast against the record; every miss is recorded`, () => {
-    for (const check of o.checks) {
-      const got = run.results[check.id];
-      const out = got - check.value;
-      const within = Math.abs(out) <= check.tolerance;
-      const miss = misses[check.id];
-      console.log(
-        `  #   ${within ? 'holds ' : 'MISSES'} ${check.label}: ${got.toFixed(1)} against ${check.value.toFixed(1)} ± ${check.tolerance} ${check.unit} (${check.confidence})`,
-      );
-      if (within) assert.ok(!miss, `${check.id} is within tolerance now: take it off MISSES`);
-      else {
-        assert.ok(miss, `${check.id} misses by ${out.toFixed(1)} ${check.unit} and is not in MISSES`);
-        assert.ok(
-          Math.abs(out - miss.by) <= miss.slack,
-          `${check.id} misses by ${out.toFixed(1)}, recorded as ${miss.by} give or take ${miss.slack}`,
-        );
-      }
-    }
-    for (const id of Object.keys(misses))
-      assert.ok(
-        o.checks.some((c) => c.id === id),
-        `MISSES names ${id}, which is not a check`,
-      );
+    holdChecks(o.checks, (id) => run.results[id], missesOf(f.id, 'coast'), { name: f.designation });
   });
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {

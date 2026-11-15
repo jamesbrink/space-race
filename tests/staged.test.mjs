@@ -1,6 +1,6 @@
 // The whole of an orbital flight flown from the pad (src/sim/staged.ts: the ascent on its stated steering law, then
 // orbital.ts's coast from where it left the spacecraft) against the record. As tests/sim.test.mjs and orbital.test.mjs
-// do: every check is flown; one outside its tolerance must be in MISSES with how far out it is and why; the test fails
+// do: every check is flown; one outside its tolerance must be in src/sim/misses.ts with how far out it is and why; the test fails
 // on a miss nobody recorded, on one that has moved past its slack, and on one that has come within tolerance. Nothing
 // in a flight's inputs is adjusted to bring a check in.
 import assert from 'node:assert/strict';
@@ -15,6 +15,7 @@ import { between, propagate } from '../src/sim/predict.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, published, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, siteFrame } from '../src/world/frames.ts';
 import { greenwichSiderealTime, julianDate } from '../src/world/time.ts';
+import { holdChecks, missesOf } from './misses.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -24,117 +25,6 @@ const all = await Promise.all(
 );
 const flown = all.filter((f) => f.orbital?.ascent && f.site);
 const where = (f) => [siteFrame(f.site), julianDate(f.launch), f.site.seaLevel.value];
-
-/**
- * By flight, then by run ('ascent': the ascent's own checks; 'whole': the coast's checks, flown on from the ascent), then
- * by check id: how far out (run less record, in the check's unit), give or take `slack`, and why.
- */
-const SHORT =
-  'The vehicle as the record now reads it does not reach orbit: at the last cutoff it has 7,686 m/s where the published orbit needs 7,844 at 180 km, 157 m/s short, and its perigee is under the ground. ' +
-  'Block E is cut where its integrator was set (2,283.52 m/s of apparent velocity, the flight task) and that comes at 676.4 s, the recorded instant to a third of a second, with 46 kg left: so the third stage as recorded is ' +
-  'right, and the shortfall is the first two stages’. What owns it (the last test): the throttling documented in kind and estimated in level, the strap-ons’ intermediate stage (none: +143 m/s; at 80 per cent: +71) and above ' +
-  'all the core’s final stage (none: +443 m/s; 5 s of it, not 10: +221), with 4.5 t left in the core at its cutoff, which a vehicle with tank-emptying regulators would not carry. So the core’s figures and its final ' +
-  'stage as the sources give them do not agree: its load (100.4 t fuelled less 6.8 t dry, Astronautix) or the length or level of its final stage is wrong. Not adjusted. ' +
-  'The first reading (rated thrust to the recorded instants, Soyuz-ST’s loads) was 142 m/s fast: the documented throttling is worth more than the whole miss either way';
-const PUBLISHED =
-  'The coast is flown from the published orbit, begun where the ascent left the spacecraft (staged.ts `published`), since the ascent as flown does not reach it';
-const SHORT_TYPE =
-  'Vostok 2’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-17’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
-  'at the last cutoff it is level at the planned 180 km with 7,698 m/s where 183 by 244 km needs some 7,840';
-const PHASE =
-  'The published orbit flown round from where the ascent left the spacecraft, as osculating elements under J2, crosses the equator northbound every 88.66 min: at 11:49:09 and 17:43:46, where TASS’s crossings are 11:48 and 17:42, 88.5 min apart. ' +
-  'Over seventeen orbits it falls four minutes behind the record’s orbit (its node opening the eighteenth at 09:58:55 against 09:54.9 reckoned from TASS and Titov’s Globus fixes: mission.md), and the burn, at the instant derived from the record, is four minutes early on it. ' +
-  'What owns it is how the published elements are read (Vostok 1’s apogee miss is the same thing) and the place on the orbit at cutoff, which is the type’s ascent and not this flight’s';
-const MISSES = {
-  'ussr/vostok/vostok-2': {
-    ascent: {
-      perigee: { by: -351_028, slack: 2_000, why: SHORT_TYPE },
-      apogee: { by: -64_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_TYPE}` },
-      inclination: {
-        by: 0.06,
-        slack: 0.01,
-        why: 'The aiming azimuth flown is Vostok 1’s (estimated: E103-17’s flight task is not published), and gives 64.99°, as it does on Vostok 1, against this flight’s determined 64°56′. The azimuth is owner',
-      },
-      period: { by: -249.16, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
-    },
-    whole: {
-      apogee: {
-        by: 20_943,
-        slack: 300,
-        why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 265 km, not 244: Vostok 1’s miss, the same reading of the published elements`,
-      },
-      crossTrack: {
-        by: -94_571,
-        slack: 3_000,
-        why: `${PUBLISHED}. ${PHASE}: four minutes early the Earth has turned a degree less under the track, and the plane flown is Vostok 1’s, 0.06° steeper`,
-      },
-      alongTrack: {
-        by: -1_493_390,
-        slack: 10_000,
-        why: `${PUBLISHED}. It comes down over Anatolia, 1,493 km short along the track: ${PHASE}. Flown at Titov’s own 09:57, which the record’s orbit rules out, it would come down 395 km beyond (mission.md, "The braking burn")`,
-      },
-    },
-    descent: {
-      'pilot.at': {
-        by: 339.85,
-        slack: 10,
-        why: 'Late by the type’s descent, as Vostok 1’s is: from the burn he is 32.6 min to the ground where the record’s 09:51 to 10:18 is 27, and four kilometres under a canopy at 5 m/s is 13 minutes by itself (Vostok 1’s miss)',
-      },
-    },
-  },
-  'ussr/vostok/vostok-1': {
-    ascent: {
-      minuteG: {
-        by: -1.3,
-        slack: 0.1,
-        why:
-          'A minute up the run reads 2.20 g; Zak has Gagarin feeling 3 to 4. Thrust and mass alone give 2.4 g there (4.6 MN on 191 t), less 0.2 for the drag, and Soyuz’s manual shows 2.6 g ' +
-          'at 60 s on the same first stages: the record’s figure is a man’s feeling, not an accelerometer’s',
-      },
-      perigee: { by: -370_080, slack: 2_000, why: SHORT },
-      apogee: { by: -147_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT}` },
-      period: { by: -310.97, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
-    },
-    whole: {
-      apogee: {
-        by: 19_184,
-        slack: 300,
-        why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 346 km, not 327: the same miss as the coast from the published orbit in tests/orbital.test.mjs (345 km), which is how the published elements are read`,
-      },
-      separationAltitude: {
-        by: -16_923,
-        slack: 1_500,
-        why: `${PUBLISHED}. At 10:36 it is at 138 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170 (reckonings). The burn is aimed along the line from the Sun, 30 degrees below level, which brings it down early: \`retro.aim\`, as in the coast’s own misses`,
-      },
-      ejectionAt: {
-        by: 219.2,
-        slack: 10,
-        why: `${PUBLISHED}. It reaches 7 km at 10:45:39, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 454 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
-      },
-      alongTrack: {
-        by: 453_800,
-        slack: 10_000,
-        why:
-          `${PUBLISHED}. It comes down 454 km beyond the record’s landing along the track and 14 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
-          'The place on the orbit is now the ascent’s (27.84 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 450 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 301 km shorter)',
-      },
-    },
-    descent: {
-      'module.at': {
-        by: 141.3,
-        slack: 10,
-        why: 'Late by its late arrival at 7 km (see the coast’s ejectionAt): from 7 km the module takes 6 min 10 s, the record’s clocks at most 6',
-      },
-      'pilot.at': {
-        by: 363.3,
-        slack: 10,
-        why:
-          'Late by the late arrival at 7 km, and from 7 km he takes 13 min 23 s where R and Z’s clocks have 11 (10:42 to 10:53) and Baturin’s 4 (10:49). ' +
-          'Four kilometres under a canopy at the record’s own 5 m/s (which the run holds) is 13 minutes by itself: the record’s clocks and its descent figures do not agree with one another',
-      },
-    },
-  },
-};
 
 /**
  * By flight, every input the ascent reads that is not documented (the last test's list): a new one must be added here. Vostok
@@ -200,27 +90,6 @@ const UNDOCUMENTED = {
   ],
 };
 
-/** Hold a set of results to checks: every miss recorded, every recorded miss still a miss and where it was. */
-function hold(checks, value, misses, label) {
-  const wrong = [];
-  for (const check of checks) {
-    const got = value(check.id);
-    assert.ok(Number.isFinite(got), `${check.id}: the run gives no figure`);
-    const out = got - check.value;
-    const within = Math.abs(out) <= check.tolerance;
-    const miss = misses[check.id];
-    console.log(
-      `  #   ${label} ${within ? 'holds ' : 'MISSES'} ${check.label}: ${got.toFixed(2)} against ${check.value.toFixed(2)} ± ${check.tolerance} ${check.unit} (${check.confidence}), out by ${out.toFixed(2)}`,
-    );
-    if (within && miss) wrong.push(`${check.id} is within tolerance now: take it off MISSES`);
-    if (!within && !miss) wrong.push(`${check.id} misses by ${out.toFixed(2)} ${check.unit} and is not in MISSES`);
-    if (!within && miss && Math.abs(out - miss.by) > miss.slack)
-      wrong.push(`${check.id} misses by ${out.toFixed(2)}, recorded as ${miss.by} give or take ${miss.slack}`);
-  }
-  for (const id of Object.keys(misses)) if (!checks.some((c) => c.id === id)) wrong.push(`MISSES names ${id}, which is not a check`);
-  assert.deepEqual(wrong, []);
-}
-
 /** An ascent check's figure: an event's field ('core.speed'), or the summary's. */
 const ascentValue = (run) => (id) => {
   const [event, field] = id.split('.');
@@ -233,7 +102,6 @@ test('there is an orbital flight whose ascent can be flown', () => {
 
 for (const f of flown) {
   const o = f.orbital;
-  const misses = MISSES[f.id] ?? { ascent: {}, whole: {}, descent: {} };
   // `whole`: the flight flown from the pad, ascent and coast and descent, as the physics has it; `shown`: the ascent flown,
   // then the published orbit from where it left the spacecraft (staged.ts `published`), which is what the scene shows and
   // what the coast's and the descent's checks are held to, since the ascent as flown does not reach the published orbit
@@ -327,11 +195,11 @@ for (const f of flown) {
   });
 
   test(`${f.designation}: the ascent against the record; every miss is recorded`, () => {
-    hold(o.ascent.checks, ascentValue(whole.ascent), misses.ascent, 'ascent');
+    holdChecks(o.ascent.checks, ascentValue(whole.ascent), missesOf(f.id, 'ascent'), { name: `${f.designation}, ascent` });
   });
 
   test(`${f.designation}: the coast flown on from the ascent against the record; every miss is recorded`, () => {
-    hold(o.checks, (id) => shown.coast.results[id], misses.whole, 'whole ');
+    holdChecks(o.checks, (id) => shown.coast.results[id], missesOf(f.id, 'shown'), { name: `${f.designation}, coast` });
   });
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
@@ -584,7 +452,7 @@ for (const f of flown) {
         const [body, field] = id.split('.');
         return shown.down.landed[body]?.[field];
       };
-      hold(o.descent.checks, value, misses.descent ?? {}, 'down  ');
+      holdChecks(o.descent.checks, value, missesOf(f.id, 'descent'), { name: `${f.designation}, descent` });
     });
 }
 

@@ -816,7 +816,7 @@ export class Cockpit extends Deck {
       const miss = known[id];
       const note =
         miss && check && Math.abs(flown - check.value) > check.tolerance
-          ? `<small class="cockpit-miss">a known miss: ${miss.short}</small>`
+          ? `<small class="cockpit-miss">a known miss: ${miss.short ?? miss.why}</small>`
           : '';
       return `<tr><th>${label}${note}</th><td>${(flown / per).toFixed(digits)} ${unit}</td><td>${record === undefined ? '' : `${(record / per).toFixed(digits)} ${unit}`}</td></tr>`;
     };

@@ -3,13 +3,12 @@
 //
 // No input is fitted. Where the run misses a documented result by more than its tolerance, the
 // miss is written down in src/sim/misses.ts (the debrief reads it too) with the input most likely responsible, and the test holds
-// the run to that record: a miss that is not recorded fails, and so does a recorded miss that
+// the run to that record (tests/misses.mjs `holdChecks`): a miss that is not recorded fails, and so does a recorded miss that
 // has quietly gone away or grown, so the list cannot drift from the truth either way.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { atmosphere } from '../src/sim/atmosphere.ts';
 import { along, coast, fly, G0, gravity, J2, sampleAt } from '../src/sim/fly.ts';
-import { MISSES as RECORDED } from '../src/sim/misses.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../src/world/bodies.ts';
 import {
   add,
@@ -28,6 +27,7 @@ import {
   unit,
 } from '../src/world/frames.ts';
 import { BALLISTIC } from './ballistic.mjs';
+import { holdChecks, missesOf } from './misses.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -126,32 +126,8 @@ function plain(flight) {
 }
 const siteOf = (flight) => ({ SITE: siteFrame(flight.site), SEA: flight.site.seaLevel.value });
 
-function hold(flight, results, misses, skip, t) {
-  for (const c of flight.checks) {
-    if (skip.includes(c.id)) continue;
-    const got = results[c.id];
-    assert.ok(Number.isFinite(got), `${flight.callsign}, ${c.id}: the run has no such result`);
-    const off = got - c.value;
-    const line = `${c.label}: ${got.toPrecision(6)} ${c.unit} against ${c.value.toPrecision(6)} (${off >= 0 ? '+' : ''}${((off / c.value) * 100).toFixed(1)} %)`;
-    const miss = misses[c.id];
-    if (Math.abs(off) <= c.tolerance) {
-      assert.ok(!miss, `${flight.callsign}, ${c.id} is now within its tolerance: take it off the list of misses. ${line}`);
-      t.diagnostic(`ok    ${line}`);
-      continue;
-    }
-    assert.ok(miss, `${flight.callsign}, ${c.id} misses and no reason is recorded. ${line}`);
-    const measured = miss.absolute ? off : off / c.value;
-    assert.ok(
-      Math.abs(measured - miss.by) <= miss.slack,
-      `${flight.callsign}, ${c.id}: the miss has moved from the ${miss.by} recorded to ${measured.toFixed(3)}. ${line}`,
-    );
-    t.diagnostic(`MISS  ${line}: ${miss.why}`);
-  }
-}
-
 for (const flight of BALLISTIC) {
   const { SITE, SEA } = siteOf(flight);
-  const MISSES = RECORDED[flight.id] ?? {};
   const name = `${flight.designation} (${flight.callsign})`;
 
   test(`${name}: the rocket equation: what the accelerometer adds up to is exhaust speed times the log of the mass ratio`, () => {
@@ -182,7 +158,7 @@ for (const flight of BALLISTIC) {
 
   test(`${name}, flown whole from its inputs, against the record`, (t) => {
     const { results, samples } = fly(flight.trajectory, SITE, SEA);
-    hold(flight, results, MISSES.whole ?? {}, [], t);
+    holdChecks(flight.checks, (id) => results[id], missesOf(flight.id, 'whole'), { name: flight.callsign, log: (l) => t.diagnostic(l) });
     // what the run gets right going up is the shape: the climb angles at separation, and the two loads (Freedom 7's report has the figures)
     if (flight.id !== FREEDOM_7) return;
     near(results.separationGroundClimb, 46.47, 1, 'Earth-fixed climb angle at separation');
@@ -219,12 +195,12 @@ for (const flight of BALLISTIC) {
       near(results.separationSpeed, want.separationSpeed, 1, 'space-fixed speed from Earth-fixed');
       near(results.separationClimb, want.separationClimb, 0.1, 'space-fixed climb angle from Earth-fixed');
     }
-    hold(
-      flight,
-      results,
-      MISSES.capsule ?? {},
-      ['exitQ', 'exitG', ...(want.separationAltitude === undefined ? ['separationSpeed'] : [])],
-      t,
+    const skip = ['exitQ', 'exitG', ...(want.separationAltitude === undefined ? ['separationSpeed'] : [])];
+    holdChecks(
+      flight.checks.filter((c) => !skip.includes(c.id)),
+      (id) => results[id],
+      missesOf(flight.id, 'capsule'),
+      { name: flight.callsign, log: (l) => t.diagnostic(l) },
     );
     near(results.landingSpeed, 29 * 0.3048, 0.3, 'onto the sea at 29 ft/s');
     if (want.separationClimb !== undefined)

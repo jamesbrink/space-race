@@ -4,7 +4,7 @@
 // is tipped over as it is pulled and comes down clear of the booster it left; the sequence after it is the capsule's own
 // (`body.escape.sequence`). Nothing is fitted. The records are `body.escape.record` (flight.ts) and the Langley trial's
 // (fixtures/pad-abort), each with a tolerance set before the simulator flew it; a figure outside its tolerance is written
-// down in MISSES with why, and the test holds the run to that: an unrecorded miss fails, and so does a recorded one that
+// down in src/sim/misses.ts with why, and the test holds the run to that: an unrecorded miss fails, and so does a recorded one that
 // has gone away or moved.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -15,6 +15,7 @@ import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { ELEVATION, padAbort, RECORD } from './fixtures/pad-abort/trajectory.ts';
+import { holdChecks, missesOf } from './misses.mjs';
 
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
@@ -58,12 +59,6 @@ function abort(tr, options = {}, hand = {}) {
   return { v, state, tally, phases, got, revolutions: turnedByTower / (2 * Math.PI) };
 }
 
-const SAME_SHAPE =
-  'the air on the spacecraft with its tower on is Freedom 7’s estimates: one drag curve end on (TM X-491, at no angle of attack), a side’s drag area and a heat shield’s slope that are ours. ' +
-  'It tumbles, as the trial did, and how much of the climb the air takes then is those estimates';
-const UNKNOWN_BEACH =
-  'what spacecraft No. 1 weighed that day and how far its launcher leaned are not in anything read: it is flown here as Freedom 7’s spacecraft (3,764 lb with its tower, the retropack dropped) off the 1959 trial’s 71 degrees. ' +
-  'No. 1 was stripped of most of its systems (This New Ocean, p. 261), so it was lighter and went higher and stayed up longer';
 // How these runs were come by, so that it is on record. The first run of the Langley trial left the tower's own side
 // out of the air on the spacecraft-with-tower (only the spacecraft's side was pushed on): 2,160 ft up (+10.8 %), 2,587 ft
 // out (+62 %), 78.6 s (+25 %), half a turn before the tower went. The tower's side (`body.sheds`' estimate for the tower
@@ -71,52 +66,15 @@ const UNKNOWN_BEACH =
 // after the first run had been seen: 1,763 ft (-9.6 %), 1,918 ft (+20 %), 61.9 s (-1.9 %), two turns. Freedom 7's own
 // abort went from 2,223 ft and 288 m from the pad to 1,850 ft and 231 m. No figure was chosen to bring a result in, but
 // the reader should know the order things happened in.
-/** Every figure outside its tolerance: by how much (a fraction of the record), give or take `slack`, and why. */
-const MISSES = {
-  'TM X-422': {
-    speed: {
-      by: -0.095,
-      slack: 0.02,
-      why:
-        'it leaves 17 m/s slow. The motor is burned by one "typical" static firing’s curve (its impulse is the figure’s to 2 per cent), and the air’s drag while it burns is the end-on curve at no angle of attack: ' +
-        'either the trial’s motor gave more than the typical one or the drag end on is less than taken. Not known which',
-    },
-    landingSpeed: {
-      by: -0.051,
-      slack: 0.01,
-      why: 'just outside 5 per cent: the fixture comes down under Freedom 7’s 63 ft parachute, whose drag area is derived from 29 ft/s at 2,579 lb, and the model’s was a 64 ft one of another make',
-    },
-  },
-  'Beach Abort, 9 May 1960': {
-    apogee: { by: -0.386, slack: 0.03, why: UNKNOWN_BEACH },
-    duration: { by: -0.376, slack: 0.03, why: `follows from the height. ${UNKNOWN_BEACH}` },
-  },
-  'off the pad, upright': {
-    apogee: {
-      by: -0.26,
-      slack: 0.03,
-      why: `the maker’s round figure is reached to 3 per cent with the thrust through the centre of mass (2,565 ft); set off it, the spacecraft tumbles and the air takes a quarter of the climb. ${SAME_SHAPE}`,
-    },
-  },
-};
-
-function hold(got, records, misses, t) {
-  for (const c of records) {
-    const off = got[c.of] - c.value;
-    const line = `${c.test}: ${c.label} ${got[c.of].toFixed(1)} ${c.unit} against ${c.value.toFixed(1)} (${off >= 0 ? '+' : ''}${((off / c.value) * 100).toFixed(1)} %)`;
-    const miss = misses[c.of];
-    if (Math.abs(off) <= c.tolerance) {
-      assert.ok(!miss, `${c.of} is now within its tolerance: take it off the list of misses. ${line}`);
-      t.diagnostic(`ok    ${line}`);
-      continue;
-    }
-    assert.ok(miss, `${c.of} misses and no reason is recorded. ${line}`);
-    assert.ok(
-      Math.abs(off / c.value - miss.by) <= miss.slack,
-      `${c.of}: the miss has moved from the ${miss.by} recorded to ${(off / c.value).toFixed(3)}. ${line}`,
-    );
-    t.diagnostic(`MISS  ${line}: ${miss.why}`);
-  }
+/** A run's figures held to the records of one test, by tests/misses.mjs's rule: the misses are src/sim/misses.ts's, `abort:<test>`. */
+function hold(got, records, owner, t) {
+  const test = records[0].test;
+  holdChecks(
+    records.map((c) => ({ ...c, id: c.of, label: `${c.test}: ${c.label}` })),
+    (id) => got[id],
+    missesOf(owner, `abort:${test}`),
+    { name: test, log: (l) => t.diagnostic(l) },
+  );
 }
 
 const upright = abort(TR);
@@ -136,7 +94,7 @@ test('the Langley trial of 1959, flown from its own weights off its own launcher
   );
   near(props.across / 1.3558179619, 6100, 5, 'its moment of inertia in pitch (the rod has a radius: 3 slug-ft2 more)');
   const run = abort(tr, { elevation: ELEVATION });
-  hold(run.got, RECORD, MISSES['TM X-422'], t);
+  hold(run.got, RECORD, 'fixtures/pad-abort', t);
   // what the report says of how it went, not held to a figure: about one and a quarter turns in pitch by the time the tower went
   t.diagnostic(
     `turned ${run.revolutions.toFixed(2)} times before the tower went (the trial: about 1 1/4); tower off at ${run.state.towerAt.toFixed(1)} s, drogue ${run.state.drogueAt.toFixed(1)} s, main ${run.state.mainAt.toFixed(1)} s; greatest load ${run.tally.abort.peakG.toFixed(1)} g (the trial: about 22 g for 0.1 s)`,
@@ -149,14 +107,14 @@ test('Freedom 7’s own abort off the pad, against the Beach Abort and the maker
   hold(
     upright.got,
     record.filter((c) => c.test === 'off the pad, upright'),
-    MISSES['off the pad, upright'],
+    flight.id,
     t,
   );
   const beach = abort(TR, { elevation: ELEVATION });
   hold(
     beach.got,
     record.filter((c) => c.test === 'Beach Abort, 9 May 1960'),
-    MISSES['Beach Abort, 9 May 1960'],
+    flight.id,
     t,
   );
   assert.equal(record.length, 4, 'every record is held to');

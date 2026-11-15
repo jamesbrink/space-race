@@ -13,6 +13,7 @@ import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { julianDate } from '../src/world/time.ts';
+import { holdChecks, missesOf } from './misses.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -80,22 +81,6 @@ function cutoff(s) {
 // flown with its attitude prescribed and its cut found within a step.
 const TOLERANCE = { at: 0.5, altitude: 1000, speed: 2, climb: 0.1, inclination: 0.05 };
 
-/**
- * Where the steered run is outside a tolerance, by how much and why, as tests/sim.test.mjs keeps its misses: the test
- * fails on a miss nobody recorded, on one that has moved past its slack, and on one that has come within tolerance.
- */
-const MISSES = {
-  speed: {
-    by: -5.6,
-    slack: 1,
-    why:
-      'the attitude is steered, not placed: through the ten seconds of the pitch-over the guidance loop (stagedlive.ts OMEGA, chosen) lags the law by ' +
-      'some hundredths of a degree, and the gravity turn that follows the motion carries that on to the cutoff. With the attitude prescribed the ' +
-      'same vehicle gives the batch run back to a hundredth of a metre a second (the test before), so the forces are one; and the steered result ' +
-      'moves by several metres a second with the loop’s stiffness, which is chosen, so it is not tuned to come in',
-  },
-};
-
 function compare(live, label) {
   const b = batch.summary;
   const want = { at: b.cutoffAt, altitude: b.cutoffAltitude, speed: b.cutoffSpeed, climb: b.cutoffClimb, inclination: b.inclination };
@@ -124,16 +109,17 @@ test('the live staged vehicle, steered by its guidance on the record’s sequenc
   const { lastCut, v } = fly();
   assert.ok(lastCut, 'the last stage stopped');
   assert.ok(v.authority > 0, 'steered, not placed');
-  const d = compare(cutoff(lastCut), 'steered');
-  for (const k of Object.keys(TOLERANCE)) {
-    const miss = MISSES[k];
-    const out = Math.abs(d[k]) > TOLERANCE[k];
-    if (miss) {
-      console.log(`# steered ${k}: a recorded miss, ${d[k].toFixed(2)} against ${miss.by} ± ${miss.slack}: ${miss.why}`);
-      assert.ok(out, `${k} has come within tolerance: take it off MISSES`);
-      assert.ok(Math.abs(d[k] - miss.by) <= miss.slack, `${k}: ${d[k]} has moved past ${miss.by} ± ${miss.slack}`);
-    } else assert.ok(!out, `${k}: ${d[k]} against ${TOLERANCE[k]}, and not recorded`);
-  }
+  const live = cutoff(lastCut);
+  compare(live, 'steered');
+  // (as tests/sim.test.mjs keeps its misses: the batch run's cutoff is the check, at tolerances set before it was flown)
+  const b = batch.summary;
+  const want = { at: b.cutoffAt, altitude: b.cutoffAltitude, speed: b.cutoffSpeed, climb: b.cutoffClimb, inclination: b.inclination };
+  holdChecks(
+    Object.entries(TOLERANCE).map(([id, tolerance]) => ({ id, value: want[id], tolerance })),
+    (id) => live[id],
+    missesOf(flight.id, 'live'),
+    { name: 'steered', log: (l) => console.log(`# steered ${l}`) },
+  );
 });
 
 test('the live staged vehicle: the strap-ons let go while they burn take their thrust and propellant with them', () => {
