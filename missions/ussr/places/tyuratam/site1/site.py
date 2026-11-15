@@ -45,7 +45,7 @@ __all__ = [
 # --------------------------------------------------------------------------- the site
 
 TRUE_NORTH = (0.0, 1.0, 0.0)
-GROUND = -0.12  # the viewer's terrain under the deck's level (backdrops.ts: GROUND_Y), m
+GROUND = -0.12  # the viewer's terrain under the deck's level (../ground.ts: `grade`), m
 
 # The platform: 135 ft square and about 10 ft thick (PIC/JR-2/60, measured; Zak: "40 x 40 m"), on four hollow
 # pylons 30 ft long and 55 ft apart, 115 ft over the pair, about 10 ft thick (PIC/JR-2/61 Figure 1).

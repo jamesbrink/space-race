@@ -494,7 +494,7 @@ const WORN_BY_NEIGHBOURS = [
   'shell-gravel',
   'window-void',
 ];
-/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (backdrops.ts: GROUND_Y; places/cape-canaveral/lc5/site.py: GROUND). */
+/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (ground.ts: `grade`; lc5/site.py: GROUND). */
 const PAD_OVER_GROUND = 0.12;
 
 /**

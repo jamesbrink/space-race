@@ -628,7 +628,7 @@ export class Body {
   }
   /**
    * How far the open ground lies under the surface the models stand on (y = 0): the sand a hand's
-   * breadth under the concrete at grade (backdrops.ts: GROUND_Y). It is not a kerb, and a riser
+   * breadth under the concrete at grade (the place's `grade`: viewer/scenery/ground.ts). It is not a kerb, and a riser
    * met from down there is measured from the surface, not from the feet.
    */
   get sunk(): number {
