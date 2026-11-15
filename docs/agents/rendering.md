@@ -44,18 +44,8 @@ lights' switch moves (`CabinDef.lighting`), and to take the indirect light (the 
 mirrors) toward the lit lamps' colour by `uCabinTint` (white for lamps lit as built), so switching the lamps, to red or
 to a dim duty light, is uniforms and the lamps' strength and colour: no light is added or taken away, and no shader is
 built. The shade has one lamps-on figure for all the lamps together: a way that lights some of them, or another bulb
-in the same fitting, is shaded as if all were lit and dimmed by their share. To be right for one lamp alone a model
-would bake a shade per lamp, which nothing does yet. Looked at in November 2026 and left: only the Mercury cabins bake a
-shade at all (no Vostok, Voskhod or Gemini GLB carries a `Shade`), so the two ways that light less than every lamp (the
-Vostok's duty light, one lamp at a quarter; Gemini's red) have no shade to divide: they would first need the bake itself
-(`mercury_cabin.shade` is written round a cone, its lamps and its mesh names; their walls are not cut for it), which is
-a piece of work on each cabin and not a change to this one. Where there is a bake the division is small and costs no
-memory: `shade` already asks each lamp in turn and averages, so it can keep them apart, one lamp to a channel of the
-same attribute in the order of `ModelDef.lights` (red the first, green the second, blue the third; alpha the lamps off
-as now; a cabin of more than three lamps would need a second attribute). The viewer would then have to read it so
-everywhere such a model is drawn, since a material that multiplies by the three channels as a colour tints the surface:
-in place of `uCabinLit`'s mix, `mix(shade.a, dot(shade.rgb, uCabinLamps), lit)`, with `uCabinLamps` each lamp's share
-of the strength that is lit (they sum to one) and `lit` the share of the whole that is lit, as `uCabinLit` is now.
+in the same fitting, is shaded as if all were lit and dimmed by their share (a shade per lamp, and the bake
+the other cabins lack, is #18).
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
 indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray
@@ -82,7 +72,7 @@ different one per pixel per frame. Three things stop it, and all three must stay
   the nearest plant (`Setting.plantsClear`), with the plane's corner kept short of them, so what the camera passes
   is not sliced (`pnpm test:camera`, "the near plane cuts nothing"); a mesh with no hierarchy yet is taken as its box
   and its hierarchy is made in time to spare (`growTrees`), never in the frame that first comes near it (the capsule's
-  were made as the chase view came in on it at separation, 26 ms). It comes in at once and goes out over a quarter
+  were once made as the chase view came in on it at separation). It comes in at once and goes out over a quarter
   of a second. Anything new that is drawn in the scene's depth and is in none of those (not a model, not the
   place, not a plant) must be asked there too. Following a vehicle the plane cannot go out (the vehicle is 30 m
   off), and the site far below is drawn in steps of centimetres to decimetres.
@@ -300,7 +290,7 @@ compared.
 
 **Each thing has its own thresholds, measured.** 8 and 2 are what the worst things need (a gantry
 whose bracing goes, the pad). Most differ far less from level to level (a road and a cable trench
-not at all), and holding them fine until 8 px/m cost 8 ms a frame on the pad against 40 and 12.
+not at all), and holding them all fine until 8 px/m cost frames on the pad for nothing seen.
 So `node tools/lod-thresholds.mjs --measure` (needs `pnpm dev`; `--only <regex>` for some of them) draws every
 model, and every piece of the place, at each pair of levels from the same eye at a range
 of sizes, in both looks, and counts the pixels that differ in the worse of the two (the first level is drawn again
@@ -416,19 +406,16 @@ build) narrow it; the header of the file lists the rest.
 - **A frozen stage draws the same frame twice** (`stage.frozen`; `pnpm test:frozen` checks it in both looks, still
   and with every level of detail thrown to another and back). Every tool that compares pictures stands on it, so
   nothing may reach a frozen frame from the wall's clock or from an earlier frame. What did, and is now cut while
-  frozen: a room's lamp handed from one room to the next over 0.6 s of `performance.now()` (lamps.ts `atOnce`: 72
-  frames of a lit room changing after every move of the eye, thousands of pixels in the cel look, where a tone
-  flips); the clouds' blend with their last frames (clouds.ts `frozen`: 25 frames to come to rest after anything
-  changed the depth under a cloud, and a cel cloud's edge is cut at one half); and the Sun's maps, kept from
+  frozen: a room's lamp handed from one room to the next over 0.6 s of `performance.now()` (lamps.ts `atOnce`: a lit
+  room changed for frames after every move of the eye); the clouds' blend with their last frames (clouds.ts `frozen`); and the Sun's maps, kept from
   whenever something last asked (a plant's shadow in the form the eye was then near enough for), which a frozen
   frame draws with itself; and the reflections' bake, faded in over up to six seconds of the wall's clock
-  (backdrops.ts `Reflections`): coming down from orbit to the pad one ran on under the frozen frames that followed,
-  and beside the gantry, where the vehicle fills the view, 13,000 to 25,000 of its pixels differed between two draws
-  of one frozen frame (`Setting.at`'s `atOnce`: a bake owed is made at once, a fade under way is finished). Anything
+  (backdrops.ts `Reflections`): coming down from orbit to the pad one ran on under the frozen frames that followed
+  (`Setting.at`'s `atOnce`: a bake owed is made at once, a fade under way is finished). Anything
   new that eases over time takes its time from `dt` and is cut by `frozen`.
   Nor may where something stands depend on how it got there: the box the chase camera and the Sun's map go by is
   taken in the vehicle's own frame through its nodes' own placings (taken in the scene's frame it was a different
-  box for every attitude, and 1400 to 6200 pixels of the vehicle differed after a level went and came back), and
+  box for every attitude), and
   a pivot or a light that follows is put where its subject is, not moved by how far it went (a sum of moves comes
   back a last bit out). And the frame leaves for the canvas opaque (`Bloom.adopt`): where something is blended into
   it (the air from above) its alpha is under one, and a copy of the canvas (`drawImage`, which every such tool
@@ -452,43 +439,37 @@ What has been found, so it is not found again:
 - **Never draw the scene through a camera that cannot see its lights.** Three keeps one lighting state for each
   scene object it draws. The clouds' veil pass drew the scene on a layer of its own, where there are no lights:
   the state went from the frame's lights to none and back every frame, and each change sent every lit material of
-  the frame to have its shader looked up again: 3 ms of the main thread and 1.4 MB of garbage a frame, in every
-  view. Such a draw is given a scene of its own that holds the same children (`CloudPass.veiled`, as
+  the frame to have its shader looked up again, in every view. Such a draw is given a scene of its own that holds the same children (`CloudPass.veiled`, as
   `outline.ts`'s list scenes are): same objects, same picture, its own state.
 - **A shader is built for the buffer it draws into.** `renderer.compileAsync` builds what it is asked for off the
   main thread, but for whatever render target is set when it is called: with none set it built every shader for
   the canvas (tone-mapped, in the screen's colours), and the scene is drawn into the composer's buffer, so the
-  first frame built them all again, one at a time, with the page stopped (`onFirstUse`: 3.7 s of a 10 s load).
+  first frame built them all again, one at a time, with the page stopped (`onFirstUse`).
   `Stage.warm` sets the frame's own target for the call. And nothing is drawn while the page opens (`Stage.held`)
-  until `warm` has had them built: a draw that needs a shader not yet built waits for it there and then. Opening
-  went from 8.8 s to 6.2 s on the same machine in the same run, the main thread blocked for 3.5 s instead of 6.4,
-  and 183 programs are made where 321 were. Anything new that draws a scene into the frame's buffer is covered by
+  until `warm` has had them built: a draw that needs a shader not yet built waits for it there and then. Anything new that draws a scene into the frame's buffer is covered by
   `warm`; a pass with a shader of its own (a full-screen quad) is still built at its first draw.
 - **Three builds only for what is shown.** `compileAsync` walks the visible scene, and a mesh's buffers go to the GPU
   the first time it is drawn: what the flight keeps hidden until its moment was built in front of whoever was flying.
   The attitude jets' shader and the cabin's 93 inside meshes (drawn only from within 30 m) went in the frame the capsule
-  left its booster, the parachutes' three shaders as the drogue came out (25 to 120 ms each). `Stage.uncover` shows
+  left its booster, the parachutes' three shaders as the drogue came out. `Stage.uncover` shows
   them for `warm`'s passes and `prebuild`'s; and the jets and parachutes are the flight's, kept when a run is flown
   (`flyRun`), not made again with shaders nobody built. Anything new that is hidden until an event goes in `uncover`.
 - **One shader for every twin that can share one.** A cel twin (`look.ts`) had a program key of its own, so two
-  hundred toon shaders were built, one after another, the first time T was pressed: the page stopped for four to
-  seven seconds. Twins now share a shader unless their materials are patched differently (the material's own
-  `customProgramCacheKey` says so), which is nineteen programs, and `Stage.prebuild` asks for the other look's
+  hundred toon shaders were built, one after another, the first time T was pressed, with the page stopped. Twins now share a shader unless their materials are patched differently (the material's own
+  `customProgramCacheKey` says so), and `Stage.prebuild` asks for the other look's
   at the end of `warm`, to be built behind what is on show: the first change of look is one frame.
 - **On foot the fine shadow map is kept between steps** (`shadowcache.ts`). The walker's own shadow is in the 8192
-  map, so every frame he moved three drew every caster in reach again: 270 draws and 470 000 triangles for one
-  figure's shadow. A second depth map holds everything but the figure; a frame in which nothing else changed copies
-  its texels back over where the figure's shadow was and draws the figure on top. Walking the apron at 1440x900:
-  7.7 to 6.3 ms a frame (real), 6.0 to 4.6 (cel). The condition was that the map be the same to the last texel, and
-  it is checked that way: at 114 stopped instants of seven walks (standing, walking, running a curve, first person,
-  low Sun, the gantry rolling, the clock fast) the map was drawn both ways and compared, 67 million depths each
-  time, none different. What that took is the lesson: nothing may be assumed to have told you it changed. Levels of
+  map, so every frame he moved three drew every caster in reach again for one figure's shadow. A second depth map holds everything but the figure; a frame in which nothing else changed copies
+  its texels back over where the figure's shadow was and draws the figure on top. The condition was that the map be the same to the last texel, and
+  it was checked that way: at stopped instants of seven walks (standing, walking, running a curve, first person,
+  low Sun, the gantry rolling, the clock fast) the map was drawn both ways and compared depth for depth, none
+  different. What that took is the lesson: nothing may be assumed to have told you it changed. Levels of
   detail change with the eye and ask nobody, so the cache reads every caster the light can see, every frame (which,
   where, what shape); the figure is skinned, so its bounds as built say nothing about where its shadow fell, and the
   texels to put back are found from spheres round its bones; and during the draw every matrix is relative to the
   eye (origin.ts), so a place is read with the scene's own shift taken off. Where a caster's shadow moves with the
   time alone (plants in the wind, a level of detail fading) nothing is kept and the map is drawn whole as before: so
-  among plants, and on the gantry above them, it buys nothing. It costs 256 MiB while someone is on foot, freed with
+  among plants, and on the gantry above them, it buys nothing. Its second map is held while someone is on foot, freed with
   the 8192 map half a minute after.
 - **A net under the frame rate, for a weak machine only** (`quality.ts`, the "Hold frame rate" switch, pref
   `resolutionAuto`, off unless chosen). Everything is drawn at the screen's own pixels. With the switch on, while
@@ -498,13 +479,13 @@ What has been found, so it is not found again:
   drawn at full. A hitch (a frame over a quarter of a second) and the seconds after a load, a resize or a change of
   look are not counted. If two steps running buy no frames (the pace is the processor's) the pixels are given back
   and left alone four minutes. The diagnostics line shows a lamp while it is acting. It is never a way to make a
-  scene affordable on a capable machine: 24 ms a frame is that scene's fault and is to be fixed there. `pnpm bench`
+  scene affordable on a capable machine: a slow frame there is that scene's fault and is to be fixed there. `pnpm bench`
   switches it off while it drives frames and its soak reports the least resolution drawn at.
 - **A pass over the multisampled frame is the dear thing, not what it draws.** The frame is 4x multisampled half
   floats; a full-screen quad blended into it reads every sample back, writes every sample and has the whole frame
   resolved again. The glow did that to add itself (three's UnrealBloomPass ends by blending over the frame), as the
-  clouds once did. It is now added in the output's own pass, under the clouds (`bloom.ts`: `Bloom.adopt`): 1.2 to 2.9
-  ms a frame at 1440x900 on a dense screen, in every view, with the same picture (no pixel by more than one level).
+  clouds once did. It is now added in the output's own pass, under the clouds (`bloom.ts`: `Bloom.adopt`): cheaper
+  in every view, with the same picture (no pixel by more than one level).
   Its blurs are sized in CSS pixels, so the glow is as wide on any screen (it was half as wide on a dense one as on a
   plain one; the dense screen's is the one kept). Halving the finest blur's size as well bought nothing that could
   be measured and was up to 6 levels out, so it was not kept. GPU timer queries round each pass (scratch `gpu.mjs`)
@@ -513,39 +494,28 @@ What has been found, so it is not found again:
   what a pass's own drawing costs. `sr.stage.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
   Anything new that wants to lay something over the whole frame does it in the output's pass too.
 - **The Cape's coarser levels are built and not drawn, and are not worth drawing.** The near complexes
-  (`cape1961.ts`, `1961-05.glb`) are 28,332 triangles in full, 26,972 and 26,540 at levels 1 and 2 (LC-17, 12,336 of
-  them, is the same at all three), and they are drawn as fourteen meshes, one a material, all five complexes joined.
+  (`cape1961.ts`, `1961-05.glb`) lose a few per cent of their triangles between levels (LC-17 none), and they
+  are drawn as fourteen meshes, one a material, all five complexes joined.
   To choose a level a complex they would have to be drawn a complex, a material and a level apart: some seventy
-  draws in place of fourteen, in a frame that is bound by its draws, to save 1,800 triangles of three million.
-- **Tried and taken out: the pad choosing its level of detail piece by piece.** The pad is 160 m across and one
-  model, so on foot it is always beside the walker and always in full. It was split as the place is (`Scenery`): each
-  top-level node a piece, and a node whose children stand apart (the ground equipment, one node spread over the whole
-  pad; the floodlights; the camera towers) taken child by child, 41 pieces, each with thresholds measured in both
-  looks, a cross-fade of its own, its box taken again when the slider or a door moved, in full within 9 m and when
-  cut open or driven. Thrown in one page (`pnpm bench --toggle`, the fades cut at each throw, three repeats, both
-  looks, 1440x900 at 1 and 2) it took 3.6 % off the draws and 5.4 % off the triangles of the pad's own view and
-  nothing off the frame: every pair of repeats within 0.3 ms either way at 1440x900 (12.88 to 12.68, 11.77 to 11.77
-  ms), no scenario outside its spread. On foot 16 of the 41 went coarser and nothing changed, because **what is dear
-  is what the walker stands beside** (the gantry, the cherry picker, the trucks) and the pieces that can go coarse
-  are the cheap ones, most of them the same geometry at every level (huts, screens, barricades). And the picture
-  paid: each piece kept inside its own 100 and 350 pixels, but 37 pieces each inside their own allowance came to
-  1,900 pixels of 1.3 million in the pad's view where the pad in full drew none. A first timing had it 2 to 4 ms
-  slower: every throw of the switch started 37 cross-fades, which the timed frames then drew (cut the fade before
-  timing a change of level). Do not build it again for a pad; a model would have to be dear in its far parts.
-- **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame at 1440x900 is
-  bound by the CPU (three's work per draw call), so a batch per material per file was built, with the meshes left
-  in the scene on a layer the camera did not see (so picking, outline, cutaway, moves, levels of detail and
-  collision asked the same objects) and each instance given the very matrices three gives a mesh, from a texture,
-  in three's own draw order. It took the pad from 1422 calls to 676 and 12 to 15 % off its frame, and it lost: 2
-  to 5 % slower in 15 of 50 scenario-looks (wherever little of what was batched was in view, every instance was
-  still looked at every frame), and never the same picture: 1 to 37 edge pixels in 1.3 million differed (331 in one
-  cel view), because the GPU's compiler rounds the batched shader's vertices one bit apart from the unbatched
-  one's. `invariant gl_Position` made them agree exactly but moved 300,000 depths and 2,000 pixels against today's
-  picture. What it taught is worth keeping: a texture written every frame must not be the one the last frame drew
-  from (the driver waits for the GPU: 3 ms); an object three is left to walk past costs ten microseconds in every
-  pass; where two faces are at one depth the later draw is the one seen, so draw order is part of the picture; and
-  two shader variants of one material do not round alike. Do not build it again without a per-batch bound and a
-  ruling on those pixels.
+  draws in place of fourteen, in a frame that is bound by its draws, to save a few thousand triangles of millions.
+- **Tried and taken out: the pad choosing its level of detail piece by piece.** The pad is one model 160 m across,
+  so on foot it is always in full. Split as the place is (`Scenery`: 41 pieces, each with measured thresholds and a
+  fade of its own), it took a few per cent off the pad's draws and triangles and nothing off the frame (`pnpm bench
+  --toggle`), because **what is dear is what the walker stands beside** (the gantry, the cherry picker, the trucks)
+  and the pieces that can go coarse are the cheap ones. And the picture paid: 37 pieces each inside its own
+  allowance added up to a change where the pad in full drew none. (Cut the fades before timing a change of level:
+  each throw of the switch started 37 cross-fades, which the timed frames then drew.) Do not build it again for a
+  pad; a model would have to be dear in its far parts.
+- **Tried and taken out: drawing every mesh of a material in one multi-draw.** The pad's frame is bound by the CPU
+  (three's work per draw call), so a batch per material per file was built, the meshes left in the scene unseen so
+  that everything else still asked them. It halved the pad's calls and took an eighth off its frame, and it lost:
+  slower in 15 of 50 scenario-looks (every instance was looked at every frame, in view or not), and never the same
+  picture, because the GPU's compiler rounds the batched shader's vertices one bit apart (`invariant gl_Position`
+  made them agree but moved today's picture). What it taught is worth keeping: a texture written every frame must
+  not be the one the last frame drew from (the driver waits for the GPU); an object three is left to walk past
+  costs time in every pass; where two faces are at one depth the later draw is the one seen, so draw order is part
+  of the picture; and two shader variants of one material do not round alike. Do not build it again without a
+  per-batch bound and a ruling on those pixels.
 
 ## Memory: what a phone can hold
 
@@ -561,8 +531,7 @@ JavaScript heap and 125 MB of decoded pictures.
   asked (the page's own frames of the stack); `?mem=show` writes the totals in a corner, for a phone with no console.
   `pnpm test:mem` (tools/mem-test.mjs, `--table` for the list) opens the launch site as a phone (390x844 at 3, touch)
   and **fails over a budget** (MiB): 350 with the curtain up and half a minute later, 400 on foot, 450 in flight,
-  500 from the couch and at any moment between (measured: 309, 317, 388, 409, 473; the full tier at the same size
-  728, 902, 1091, 1095, 1172). The reasoning: the phone that was killed held between 838 and 1011 accounted, with
+  500 from the couch and at any moment between (`--table` gives today's figures). The reasoning: the phone that was killed held between 838 and 1011 accounted, with
   some 430 MB more on the page's side, so a tab on a 4 GB iPhone dies near 1.3 to 1.4 GB all told. 400 with the
   340 the lighter tier holds on the page's side is a little over half of that: room for what the count does not see
   (a driver's own copies, the compositor's), and for the next flight. A desktop browser will not reproduce the
@@ -576,24 +545,21 @@ JavaScript heap and 125 MB of decoded pictures.
   renderbuffer of 8192), never by the browser's name; "Lighter graphics" in the controls chooses or refuses it on any
   machine (prefs `lighter`, `lighterOff`; it reloads, since what a tier allocates is allocated at the start), and
   `?lighter` / `?lighter=0` do it for one visit.
-- **On every device:** the cabin's pictures (its panels, 155 MiB with their mip levels) are not sent as the page
+- **On every device:** the cabin's pictures (its panels) are not sent as the page
   opens but by the cabin, a picture a frame, as the eye comes within 60 m of the vehicle (cabin.ts, `send`); three
-  sends a picture whole, so the largest is one frame of some tens of milliseconds on a desk, once.
+  sends a picture whole, so the largest is one long frame, once.
 - **What the lighter tier changes, and what of it can be seen:**
   - *Nothing made that is not on show (no loss).* Only the levels of detail in view are sent to the GPU as the page
     opens (every level's shaders are still built: `warm`); another level is sent when first drawn. The whole Earth's
     cube is made from 150 m up, the relief and colours when the eye passes 1500 m and never by the timer (later.ts);
-    each picture is decoded, copied in and let go before the next is fetched, where six decoded faces at once were
-    100 MiB. A model's pictures are sent when first drawn, not all at the start; the cabin's only once the inside is
+    each picture is decoded, copied in and let go before the next is fetched, not six decoded faces at once. A model's pictures are sent when first drawn, not all at the start; the cabin's only once the inside is
     drawn, and let go again when it is not. The other look's shaders are built at the first T, which then takes a
     moment. On foot there is no second fine shadow map (shadowcache.ts off: the same picture, more drawing), the
     walk's map is let go two seconds after a walk and not thirty, and only one of the Sun's fine maps is held at a
     time. Triangles are listed in two bytes a corner where a mesh has under 65,536 vertices (the same triangles).
-  - *Sizes (seen, if looked for).* The Sun's fine map 2048 for 4096: a texel on the ground is twice the full tier's
-    (2.4 cm for 1.2 round the vehicle, 12 cm for 6 across the pad), so a shadow's edge in a close view is softer. The
-    far map 2048 for 4096: 30 cm a texel for 15, the soft shadows of things past the fine map's edge are softer still.
-    The sky's map 1024 for 2048. On foot the fine map is 3072 over 36 m, 12 mm a texel, where a phone had 4096 and
-    9 mm (a desk has 8192 over 52 m, 6 mm). A model's picture of 2048 a side or more is sent at half size each way
+  - *Sizes (seen, if looked for).* The Sun's fine map 2048 for 4096: a texel on the ground is twice the full tier's, so a shadow's edge in a close view is softer. The
+    far map 2048 for 4096: the soft shadows of things past the fine map's edge are softer still.
+    The sky's map 1024 for 2048. On foot the fine map is 3072 over 36 m (a desk has 8192 over 52 m). A model's picture of 2048 a side or more is sent at half size each way
     (the cabin's main panel 2048 for 4096: 0.27 mm a texel, where a phone's pixel at the couch's distance is 0.6 mm;
     with the lens zoomed in past twice it is the picture that gives out first). The periscope's cube 512 a face for
     1024. The region's flat maps 2048 a layer for 4096 (the near map's coast 78 m a texel for 39, kept as a distance,
@@ -601,17 +567,14 @@ JavaScript heap and 125 MB of decoded pictures.
     2048 and its colours and relief at half size each way (globe.ts `small`, which was meant for this and never true
     on a phone: it compared device pixels): past the region's own maps coasts are rounder and the land's tones
     softer. Drawing pixels stay 1.5 a CSS pixel, as a finger's screen had already.
-  - *Not changed:* the frame's 4x multisampling and half floats, the clouds' field (4096, 32 MiB) and the ground's
-    cover maps (two of 2048, 43 MiB), anything's shape. Those are the next to weigh if the budget must come down;
+  - *Not changed:* the frame's 4x multisampling and half floats, the clouds' field (4096) and the ground's
+    cover maps (two of 2048), anything's shape. Those are the next to weigh if the budget must come down;
     each is somebody's picture. The shadow maps' colour attachments, which nothing reads, stay: three's
     WebGLRenderer makes no target without one (a `count` of 0 is WebGPURenderer's only), and they are one byte a
     texel (R8), a quarter of the depth's.
-- **The front page holds its own picture and nothing of a flight** (app/front/scene.ts): as a phone, 71 MiB (textures
-  45: the Earth's three cubes and the Moon's six maps; the Moon's mesh 9; the canvas 17, at 1.5 drawing pixels a CSS
-  pixel with its multisampling), where the front page had been Freedom 7's launch site behind a veil, 309. On a desk at 1440 x 900
-  at 1 it is 155 (the colours at full size, the mesh four times as fine, the canvas 31). `pnpm test:front` holds it
-  to 90 as a phone, and the most at any moment while a flight's gallery arrives over it to 350 (measured: 257, and
-  186 once the picture is let go): the picture is let go only when the flight is there to be seen, so for those
+- **The front page holds its own picture and nothing of a flight** (app/front/scene.ts: the Earth's three cubes, the Moon's
+  maps and mesh, the canvas), where it had been Freedom 7's launch site behind a veil. `pnpm test:front` holds it
+  to 90 MiB as a phone, and the most at any moment while a flight's gallery arrives over it to 350: the picture is let go only when the flight is there to be seen, so for those
   seconds the page holds both. A context that has been
   let go is counted as holding nothing (mem.ts), which is what losing it means.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
@@ -702,7 +665,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   the cover half way through the morph): change a cell's breadth or how many stand and measure again. Whether a cell stands is worked out at
   the cell's own middle from the coarse octaves' corners, read once a pixel (`cellsCorners`): not from the value and
   slope at the pixel (the same cell then stood for one pixel and not the next, and specks came and went), and not by
-  reading the noise at each middle (nine cells, up to five times a pixel: 1 to 2 ms a frame in flight). A cell comes
+  reading the noise at each middle (nine cells, up to five times a pixel: dear in flight). A cell comes
   up from nothing as the field passes its cut, and one under three pixels across is spread over the pixels round it
   (`gHaze`) instead of being drawn as a dot that is there or not by where a pixel's middle falls; the veil between
   cells has an edge as soft as the pixel. Flips a frame on the climb, straight down: 47 to 13 from 187 km, 21 to 12
@@ -819,8 +782,8 @@ terms:
   the Earth has turned a quarter of a drawn pixel at its middle (two to five frames a second at a minute of the
   world a second), when a map is coming in, when the window changes or the Earth is being eased to another place in the
   picture. A still picture (less motion) is drawn once.
-- **A lower level of detail is a rebuild.** The Earth is the globe's own maps baked small, never the globe's 300 MiB
-  of them (`pnpm front:earth`); the Moon's relief is baked at three sizes and each is faded in over the coarser
+- **A lower level of detail is a rebuild.** The Earth is the globe's own maps baked small, never the globe's full
+  maps (`pnpm front:earth`); the Moon's relief is baked at three sizes and each is faded in over the coarser
   from its edge (`pnpm front:moon`). Both bakes follow from view.ts's figures (the instant, the limb the camera
   looks across) and tests/front.test.mjs fails until they are run again after those change.
 - **A change of level fades.** A map that arrives comes up over 1.2 s; the canvas fades up when the first whole
@@ -836,9 +799,7 @@ terms:
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).
 
-What it costs (`pnpm test:front` says so each run; measured when written on an M-series desk machine, 1280 x 800 at
-1): a frame 1.1 to 1.3 ms from one end of the path to the other, and 2.8 to 3.0 with the machine busy with other
-work; 1.9 million triangles in two draw calls (0.45 million on the lighter tier). What it holds: "Memory", above.
+What a frame costs, `pnpm test:front` says each run (its triangles are in two draw calls). What it holds: "Memory", above.
 `pnpm bench` does not measure it (its harness turns a `Stage` over by hand). It has not been run on a real phone.
 
 ## Texture units

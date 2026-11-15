@@ -21,177 +21,25 @@ speeds and climb angles at separation, loads, event times), each with an `id` th
 `Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
 never adjusted to bring a check in.
 
-- **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
-  beside `trajectory`: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
-  and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
-  says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
-  inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
-  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
-- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
-  burning together and in turn (each `count` alike; vacuum thrust less exit area times the air's pressure, the exit area
-  derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
-  known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
-  fuelled less what it burned, other drops (a fairing) by mass, drag on `ascent.drag`'s areas and curves. Attitude is a
-  **stated law**, not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
-  solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
-  cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
-  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
-  pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
-  the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
-  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
-  A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
-  sensed since its ignition) reaches the setting (found within the step by the secant, so the instant is smooth in the
-  inputs), and its recorded `cutoff` becomes a check. Vostok 1's Block E, cut on the flight task's 2,283.52 m/s of
-  apparent velocity, stops at 676.35 s with 46 kg aboard against NIIP-5's recorded 677.08 s; the ascent ends 157 m/s
-  short of the orbit, and the documents' own staging times for the core cannot be flown on the blocks' secondary masses
-  (the flight's mission.md, "What the ascent gives" and "The 2011 documents", says why).
-- **Every flight is flown on the one deck** (`src/deck/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
-  notes and card), with a flight kind's code behind it: `cockpit.ts` for a flight on a `trajectory`, `orbitdeck.ts` for
-  one into orbit (`orbital.ascent` and no `trajectory`; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
-  differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
-  flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
-  stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
-  deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
-  both, Space is the next thing on both.
-- **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
-  record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
-  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
-  so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
-  code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
-  `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
-  is flown again from that burn. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
-  from that instant it is the user's ("Not the record's"), the live staged vehicle (below) is caught up to the record at
-  that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
-  second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed
-  (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
-  ascent left it (`flyOrbit` from `parted`), short of an orbit or not: the handover to the published orbit is the record's
-  run's alone. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
-  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
-  propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
-  source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
-  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "if cut now" beside
-  the figures), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
-  as a ballistic flight's (To cutoff / Cut now, K: path.ts asks the deck's `guidable`): fliers.ts `guided`, the stated law's
-  axis leaned by the trim, the record's steps at their times while the sequencer is on (Block E cut where its integrator's
-  sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
-  each stage dry when its load is gone, drawn dashed to the last cutoff, and from the parting the spacecraft as planned,
-  round the orbit or down (from the record's state at T+40, 150 and 400 s it parts within 70 m and 0.16 m/s of the batch
-  run: tests/staged.test.mjs); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe,
-  or down to the ejection height with the burn, its end, the modules' parting and the entry marked (it stops there
-  whether a burn was made or not, as flyOrbit does; begun within the burn, the burn goes on along the line it lit on,
-  from the run's own state then: `lit`). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
-  the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
-  ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
-  braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
-  from its own nozzles (`flies.fires`: each strap-on's RD-107 and the core's RD-108 as well as Block E and the braking
-  engine), between its stage's instants on the run on show and at its stage's throttle (`Ascent.fireLevels`, the
-  arithmetic in viewer/fires.ts, tests/fires.test.mjs): the strap-ons at their intermediate stage before they part and
-  gone with them, the core on its steering chambers alone through its final stage; a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
-  deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; ascent.ts
-  `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
-  events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
-  and the hand controller moves with the keys. Because
-  the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
-  orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
-  The descent is drawn from the run's own `descent` (staged.ts `descentOf`: flyDown's tracks in the scene's frame, when
-  each parachute came out and went): a drop that `rides` the descent's bodies is carried along each body's track in turn
-  and turned to hang against its motion through the air; a body's parachute (`ChuteDef.body`) is drawn by chute.ts from
-  flyDown's instants and streams against the air of what carries it; a parachute that `replaces` a body's drag can leave
-  what was left behind as a body of its own (`leaves`: the seat), and one `instead` of another lets that one go; a figure
-  of the flight's `hangs` from its harness under its body's canopy in the pose the figure carries; the run's own body
-  turns to hang from where its parachute is made fast (`Ascent.hangsFrom`). How each hangs is drawn; the tracks are
-  points. The globe is drawn at the sea's height, not the ground's, so each body's last kilometre is drawn lowered evenly
-  by the descent's `ground` until it rests on the drawn surface (staged.ts `settled`); the figures, and the card's height
-  of the landing place, are the flight's own.
-- **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
-  the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
-  than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules
-  part) leaves it at the first of its `with` events. The automatic sequence (the timer, the barometric switches) acts only
-  while the sequencer is on (`switched`); what a hand gives (`given`, at the clock's instant) acts whatever it is. flyOrbit
-  hands over to flyDown at a hand's first event if that comes before the ejection height, and the modules' parting ends a
-  braking burn (the engine is on the instrument module). The entry body flies the coast's drag above the ejection height
-  and its own figure below; joined, it is heavier by the instrument module and no draggier (the coast's convention: no
-  figure for the joined ship's drag, nor for the heat that burned its cables through on the day). Every parachute is held
-  to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
-  not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
-  the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
-  a flight that stays up to `decay` (the orbit's life in the standard air on a free-molecule drag coefficient, against
-  `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
-  (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
-  vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no
-  burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
-  what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
-  documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
-  (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
-- **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
-  engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
-  `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose
-  steering gives `ascent.steering.authority` (estimated) about each axis at full throw while an engine aboard burns (no
-  inertia, no aerodynamic moment: none read; drag acts along the motion, as in the batch run; its structure held to
-  `ascent.limits`, below), and the hands' say over every event (`StagedControls.steps`): nothing happens that is not asked for, a stage let go takes every
-  stage below it still on, its propellant and its thrust, once nothing presses it on (below), an engine is started once and stops when cut or dry. The
-  record's flight is a pilot (`stagedPilot`): the law's axis held by a critically damped turn (`OMEGA`, chosen) with the
-  law's own turning fed forward, the steps at the record's times and a stage with `velocity` cut on its integrator's sum,
-  read every tick from switches the deck throws; guidance on, W S A D lean the law as a ballistic deck's trim does. With
-  the attitude placed as the law's (`prescribed`, a test's) it is the batch run to 0.03 m/s and 48 m at the last cutoff;
-  steered at the stated acceleration it is 5.6 m/s slow and 0.5 km high there, the pitch-over's lag carried on by the
-  gravity turn: a recorded miss in `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by
-  hand to their consequences. Steered as well as the law steers it, a hand-flown ascent falls short of an orbit as the
-  record's run does (perigee about -200 km at the cutoff): no input is changed to bring it in.
-- **Staging by hand is physics** (`sim/staging.ts`, the rules every vehicle is held to; the figures are the flight's).
-  *Pressed*: two bodies let go of each other part only once the one behind stops pushing the one in front (its thrust
-  over its mass against the other's; drag left out, no figure dividing it): a stage, or a spacecraft, let go under
-  thrust stays pressed on and pushes on until its push falls (stagedlive.ts `settle`, `loose` and `gone`; vehicle.ts
-  `loose`, so Freedom 7's capsule let go at T+100 rides the Redstone to its cutoff and its engine is not cut by it). A
-  stage's own separation command shuts its engines where the record has them stop at its separation (the strap-ons'
-  integrator command, the core's); what it takes along below it keeps burning. A drop that `covers` the spacecraft (the
-  fairing) keeps it in until it has gone. *Hot staging* (`StageRecord.hot`, `hotStage`): an engine lit while the stage it
-  stands on is joined fires into its top; only what escapes the joint's open side pushes, by its sine below the level
-  (Block E: 0.67 of the lattice open and 24 degrees, from the model's estimated geometry: 27 per cent, 14.9 of 54.5 kN),
-  and each second at full thrust is counted against what the top stands (`endures`, 5 s, estimated); past it the tank
-  under it fails and the stack breaks up (`Broke`, by `scorch`). *The structure* (`ascent.limits`, by loads.ts's rule,
-  as `body.limits` on a ballistic flight): bending (q alpha, 3,340 Pa rad) and the load along the axis (6 g), both
-  estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
-  every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the
-  record says the spacecraft's escape did at that instant (`ascent.aborts`, Molodtsov 2001), which is not flown.
-  *Starts* (`StageRecord.start`): how many and whether only on the pad (the R-7's 32 chambers each lit by a pyrotechnic
-  igniter on a wooden stand from the pad); a start asked for that the hardware could not make is refused and said. A
-  drop let go in more than its `q` is said, and what its pieces struck is not modelled. What the vehicle made of each
-  thing asked is in `StagedState.said`, which the deck says once each; the step that lights a stage hot says so where
-  it is offered ("hot staging, as it flew"). tests/stagedlive.test.mjs and tests/vehicle.test.mjs hold each rule.
-- **What a hand can do, and what happens.** Flown by script against stagedlive.ts and vehicle.ts (the record's law and
-  sequence with one thing done by hand; before is November 2026 ahead of `sim/staging.ts`):
+## Every flight
 
-  | Vostok 1 (stagedlive.ts) | Allowed | Before | The hardware | Now, and from what |
-  | --- | --- | --- | --- | --- |
-  | Light the third stage on the pad | any time | 54.5 kN more for 379 s, with nothing to pay: perigee -2,933 km | jet into the core's top under its deflector | 27 % of its push reaches the stack; the core's top burns through at 5 s and it breaks up (estimated: `hot`) |
-  | Light it a minute early (240 s) | any time | free extra thrust: perigee -590 km | as above | breaks up at T+245 s, 5.0 s against 5 s (estimated); the card says so |
-  | Light it a second before the core goes (299 s) | any time | perigee -206 km | hot staging, as planned (start 311.74, the core's main command 312.74) | the same: 1.0 s on the core's top, no harm; said where offered |
-  | Relight a stage once cut (any, 10 and 12 s) | any time | ignored, said nothing | one-shot pyrotechnics; the first two only from the pad | refused and said (`start`: documented for the first two, estimated for Block E) |
-  | Cut every engine at T+10 | any time | falls back, lands at 81 m/s | falls back, tumbles | breaks up at 19.5 s falling tail first, q alpha 4.1 kPa rad (estimated limit) |
-  | Drop the strap-ons at 60 s | any time | thrust and mass leave; it flies on and lands at 1,367 m/s | the separation command shuts them | the same; it breaks up by bending at 131 s as it falls |
-  | Drop the core with the strap-ons on (60 s) | any time | everything below Block E gone at once, thrust and all | the strap-ons still burning push the lot against Block E | the core shuts, the strap-ons keep it pressed on until they go at 119.5 s (`pressed`) |
-  | Drop the fairing at max q (60 s) or on the pad | any time | no consequence: 800 kg less carried, perigee -171 km | two hinged halves made to open in thin air | the same flight, and said: 48 kPa against 1 kPa (estimated); where the halves went: not modelled |
-  | Separate the spacecraft at 60, 140 or 400 s | any time | parted at once, inside the fairing or under thrust | held in by the fairing; pressed on by Block E | held while the fairing is on and while anything pushes; parts at Block E's cutoff, 676.4 s |
-  | Turn across the wind at max q (hands, 50 s) | any time | no limit: 310 kPa rad, flew on to the ground | breaks up | breaks up at 51.9 s, 151 % of 3.34 kPa rad (estimated) |
-  | Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
-  | Ask a step twice | any time | heard once | heard once | heard once |
-  | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
-  | An abort | not offered ("not simulated") | | the seat to 40 s, then the spacecraft's separation (Molodtsov) | said on the breakup's card, not flown |
-
-  | Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
-  | --- | --- | --- | --- | --- |
-  | Separate under thrust (100 s) | in flight | the Redstone's engine cut by it and the capsule off at once | the booster's push holds the capsule on its adapter | rides on to the cutoff, 141.8 s, and parts then (`pressed`) |
-  | Tower let go on the pad | not offered, ignored | | MR-1's escape rocket fired on its pad (21 November 1960) | not modelled: still not offered |
-  | Tower let go at max q | in flight | leaves; the flight goes on | as that | the same |
-  | Retrofire, retropack before separation | not offered, ignored | | into the adapter; interlocks not read | not modelled |
-  | Retrofire in the air | once alone | fires; the physics | as that | the same |
-  | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
-  | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
-  | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
-
-  Where the two kinds still differ for no physical reason: the ballistic deck offers nothing on the pad but ignition
-  (the tower could have gone), and the orbital deck has no abort; both are left as they were and said here.
+- **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
+  half against the checks. A check outside its tolerance must be in `MISSES` (`src/sim/misses.ts`; the orbital, staged,
+  live and abort tests keep their own) with how far out it
+  is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
+  on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
+  come within tolerance (take it off). So the list is the truth either way, and improving an input
+  means updating it.
+- **The inputs that are not documented are listed and weighed.** The last test names every
+  `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
+  new input that is not documented must be added there. Keep the label honest: the simulator
+  may come to refuse `estimated` inputs.
+- **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
+  `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
+  eastward motion. Say which in any label.
+- **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
+  are measured from the geodetic normal (`upAt` in forces.ts), not from the line to the Earth's
+  centre, which leans a sixth of a degree from it at the Cape.
 - **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
   (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
   bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
@@ -209,23 +57,6 @@ never adjusted to bring a check in.
   flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
   ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
   this: its stages, drops, limits and `hot` in `Flight.orbital`, or its `trajectory.body`; nothing names a vehicle.
-- **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
-  half against the checks. A check outside its tolerance must be in `MISSES` with how far out it
-  is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
-  on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
-  come within tolerance (take it off). So the list is the truth either way, and improving an input
-  means updating it.
-- **The inputs that are not documented are listed and weighed.** The last test names every
-  `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
-  new input that is not documented must be added there. Keep the label honest: the simulator
-  may come to refuse `estimated` inputs.
-- **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
-  `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
-  eastward motion. Say which in any label.
-- **The Flown panel** (`src/deck/flown.ts`) flies the flight once, after the page has opened, and draws
-  height, range, space-fixed speed and load against time with the reports' figures as dashed
-  lines, the clock's instant as a cursor (dragging a trace moves the clock), and the checks as a
-  table, amber where out of tolerance. It reads the clock; it keeps no time of its own.
 - **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
@@ -308,10 +139,33 @@ never adjusted to bring a check in.
   Motion setting to nothing. It is laid on the camera for the draw only (`Stage.shaker`), so
   nothing else sees it. A new effect of the air goes in `effects.ts` and takes its numbers from
   the sample; it does not keep time or name a flight.
-- **Getting it right is the work.** Today the powered flight ends 4 % fast, and ten checks miss
-  because of it (and an eleventh, the greatest dynamic pressure going up, by the day's tail wind);
-  the capsule flown from the report's separation passes all but one. The flight's
-  README ("The flight as flown") states the numbers.
+
+## Ballistic flights
+
+- **Getting it right is the work.** What each flight misses, by how much and why, is `src/sim/misses.ts`; the
+  flight's README ("The flight as flown") states the numbers. An input made better moves them, and the list with it.
+- **A launch vehicle's flight data is said once** (`missions/<nation>/<programme>/vehicles/<stack>.ts`: the Mercury-Redstone's
+  is mercury-redstone.ts, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
+  (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
+  the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
+  turnaround, ascent and verdict hold each as they hold Freedom 7 (its misses in `MISSES`, its undocumented inputs listed).
+- **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
+  (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
+  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
+  pitch, yaw and roll from -1 to 1, and the events (tower, separation, retrofire, retropack,
+  parachutes) as commands. To fly.ts's forces it adds the body's turning: thrust turned by the
+  vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
+  jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
+  propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
+  `Trajectory.body`, each figure with its confidence; most are `estimated`, and
+  `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
+  the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
+  the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
+  record's event times) and any axis of it can be switched off or overridden (`blend`), or its
+  programme leaned by a pilot's `trim`. It is held
+  to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
+  with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.
+  A new force goes in `forces`, a new event in `command` and `Controls`.
 - **Staging is physics, and so is what is shed.** One force model flies everything
   (`sim/forces.ts`): drag along the body's axis by whichever end leads, falling off as the cosine
   and nothing broadside; each `AeroSurface`'s normal force; and the cross-flow on the body's side
@@ -323,7 +177,7 @@ never adjusted to bring a check in.
   the rockets of its own the data gives it, `ShedBody.motors`, all lit as it leaves: the tower's escape and
   jettison rockets both, as the record has a good flight, and the jettison rocket alone after an abort has
   spent the other: `unless: 'abort'`, `Release.aborted`), to the sea, on the vehicle's tick (five ticks at a time
-  above the air): about 10 microseconds a tick each. The cockpit steps them beside the vehicle
+  above the air). The cockpit steps them beside the vehicle
   (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
   new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic
   code names no part. Every drag area in them today is `estimated`, and says so. Several bodies let go at one event
@@ -355,29 +209,8 @@ never adjusted to bring a check in.
   is drawn streaming (`Run.torn`, `chute.ts` `tornMouth`), and the path ahead tears it likewise
   (`predict.ts`). `VehicleState.tore` says when and by which. The limits are `estimated` (no structural figure has been
   read); the constants of consequence are chosen and say so. On the record's programme the load
-  peaks at 26 per cent of the limit in the day's wind (10 in still air); hands off from 60 s the
-  stack as estimated diverges and breaks up at 80 s in still air, and from the pad in the day's
-  wind at 36 s, so it has to be flown.
-- **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
-  are measured from the geodetic normal (`upAt` in forces.ts), not from the line to the Earth's
-  centre, which leans a sixth of a degree from it at the Cape.
-- **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
-  (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
-  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
-  pitch, yaw and roll from -1 to 1, and the events (tower, separation, retrofire, retropack,
-  parachutes) as commands. To fly.ts's forces it adds the body's turning: thrust turned by the
-  vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
-  jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
-  propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
-  `Trajectory.body`, each figure with its confidence; most are `estimated`, and
-  `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
-  the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
-  the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
-  record's event times) and any axis of it can be switched off or overridden (`blend`), or its
-  programme leaned by a pilot's `trim`. It is held
-  to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
-  with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.
-  A new force goes in `forces`, a new event in `command` and `Controls`.
+  stays well inside the limit; hands off, the stack as estimated diverges and breaks up, sooner in
+  the day's wind than in still air, so it has to be flown.
 - **Controls are hardware, and run out.** The spacecraft's jets are `body.capsule.rcs`: supplies
   (usable propellant, specific impulse, automatic or manual) and thrusters (place and line of push
   in the body's axes, thrust, supply, the axis and sense that opens each). A chamber is open or
@@ -408,6 +241,153 @@ never adjusted to bring a check in.
   so then nothing happens that is not commanded, and what follows is the physics: no parachute,
   82 m/s into the sea. `sim/verdict.ts` says how it ended and holds it to `capsule.limits`
   (a landing speed and a load, with their confidence). Nothing rescues the pilot; nothing is scored.
+- **What a capsule had that another did not is data, not deck code.** A rate command mode (`rcs.rate`: the deck's Rate
+  command switch, autopilot.ts `rateCommand`: the stick asks for a rate and the manual chambers fire full on an axis while
+  its rate is more than the deadband from it); an explosive hatch (`flies.hatch`: `Command` 'hatch', Space once down, a
+  cabin control's `does`; nothing of it reaches the physics: blown in flight the debrief says what it meant, blown afloat
+  the spacecraft is drawn going under in `under` seconds, `Run.sinks`, and the clock runs on until it has).
+- **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
+  automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
+  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
+  down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
+  capsule rode feet down range (derived: sites/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
+  holds the vehicle's turn in the scene, the pad's and this to one another). tests/turnaround.test.mjs holds it to
+  three degrees going up and through the top of the flight, and to ten through the turnaround. With a side named
+  the control makes one turn to the whole attitude (`turnBoth`: the long axis to where it is wanted and the keel
+  down together), which end for end is a half turn about the plumb line: a yaw, as the record's turnaround was
+  ("yawed 180 degrees"), the periscope toward the Earth throughout. A flight
+  that names no side still turns the long axis the short way and keeps the roll it had. The scene turns the record's
+  own flight round the same way (`viewer/ascent.ts` `place`, `keel`): to the attitude with that side underneath, which
+  from how it rode the booster is the yaw. tests/ascent.test.mjs holds both runs to it.
+
+## Into orbit
+
+- **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
+  beside `trajectory`: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
+  and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
+  says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in frames.ts's
+  inertial frame of date on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its `MISSES` by the same rule as
+  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
+- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
+  burning together and in turn (each `count` alike; vacuum thrust less exit area times the air's pressure, the exit area
+  derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
+  known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
+  fuelled less what it burned, other drops (a fairing) by mass, drag on `ascent.drag`'s areas and curves. Attitude is a
+  **stated law**, not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
+  solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
+  cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
+  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
+  pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
+  the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
+  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
+  A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
+  sensed since its ignition) reaches the setting (found within the step by the secant, so the instant is smooth in the
+  inputs), and its recorded `cutoff` becomes a check (Vostok 1's Block E, on the flight task's apparent velocity). How
+  the ascent compares with the record, and why the documents' own staging times for the core cannot be flown on the
+  blocks' secondary masses, is in the flight's mission.md ("What the ascent gives", "The 2011 documents").
+- **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
+  the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
+  than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules
+  part) leaves it at the first of its `with` events. The automatic sequence (the timer, the barometric switches) acts only
+  while the sequencer is on (`switched`); what a hand gives (`given`, at the clock's instant) acts whatever it is. flyOrbit
+  hands over to flyDown at a hand's first event if that comes before the ejection height, and the modules' parting ends a
+  braking burn (the engine is on the instrument module). The entry body flies the coast's drag above the ejection height
+  and its own figure below; joined, it is heavier by the instrument module and no draggier (the coast's convention: no
+  figure for the joined ship's drag, nor for the heat that burned its cables through on the day). Every parachute is held
+  to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
+  not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
+  the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
+  a flight that stays up to `decay` (the orbit's life in the standard air on a free-molecule drag coefficient, against
+  `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
+  (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
+  vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no
+  burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
+  what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
+  documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
+  (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
+- **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
+  engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
+  `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose
+  steering gives `ascent.steering.authority` (estimated) about each axis at full throw while an engine aboard burns (no
+  inertia, no aerodynamic moment: none read; drag acts along the motion, as in the batch run; its structure held to
+  `ascent.limits`, below), and the hands' say over every event (`StagedControls.steps`): nothing happens that is not asked for, a stage let go takes every
+  stage below it still on, its propellant and its thrust, once nothing presses it on (below), an engine is started once and stops when cut or dry. The
+  record's flight is a pilot (`stagedPilot`): the law's axis held by a critically damped turn (`OMEGA`, chosen) with the
+  law's own turning fed forward, the steps at the record's times and a stage with `velocity` cut on its integrator's sum,
+  read every tick from switches the deck throws; guidance on, W S A D lean the law as a ballistic deck's trim does. With
+  the attitude placed as the law's (`prescribed`, a test's) it is the batch run; steered at the stated acceleration it
+  is slow and high at the last cutoff, the pitch-over's lag carried on by the gravity turn: a recorded miss in
+  `tests/stagedlive.test.mjs`, which also holds a stage let go early and an engine cut by hand to their consequences.
+  Steered as well as the law steers it, a hand-flown ascent falls short of an orbit as the record's run does: no input
+  is changed to bring it in.
+- **Staging by hand is physics** (`sim/staging.ts`, the rules every vehicle is held to; the figures are the flight's).
+  *Pressed*: two bodies let go of each other part only once the one behind stops pushing the one in front (its thrust
+  over its mass against the other's; drag left out, no figure dividing it): a stage, or a spacecraft, let go under
+  thrust stays pressed on and pushes on until its push falls (stagedlive.ts `settle`, `loose` and `gone`; vehicle.ts
+  `loose`, so Freedom 7's capsule let go at T+100 rides the Redstone to its cutoff and its engine is not cut by it). A
+  stage's own separation command shuts its engines where the record has them stop at its separation (the strap-ons'
+  integrator command, the core's); what it takes along below it keeps burning. A drop that `covers` the spacecraft (the
+  fairing) keeps it in until it has gone. *Hot staging* (`StageRecord.hot`, `hotStage`): an engine lit while the stage it
+  stands on is joined fires into its top; only what escapes the joint's open side pushes, by its sine below the level
+  (Block E's from the model's estimated geometry), and each second at full thrust is counted against what the top
+  stands (`endures`, estimated); past it the tank
+  under it fails and the stack breaks up (`Broke`, by `scorch`). *The structure* (`ascent.limits`, by loads.ts's rule,
+  as `body.limits` on a ballistic flight): bending (q alpha) and the load along the axis, both
+  estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
+  every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the
+  record says the spacecraft's escape did at that instant (`ascent.aborts`, Molodtsov 2001), which is not flown.
+  *Starts* (`StageRecord.start`): how many and whether only on the pad (the R-7's 32 chambers each lit by a pyrotechnic
+  igniter on a wooden stand from the pad); a start asked for that the hardware could not make is refused and said. A
+  drop let go in more than its `q` is said, and what its pieces struck is not modelled. What the vehicle made of each
+  thing asked is in `StagedState.said`, which the deck says once each; the step that lights a stage hot says so where
+  it is offered ("hot staging, as it flew"). tests/stagedlive.test.mjs and tests/vehicle.test.mjs hold each rule.
+
+## What a hand can do
+
+Flown by script against stagedlive.ts and vehicle.ts: the record's law and sequence with one thing done by hand.
+Before is what it did ahead of `sim/staging.ts`.
+
+| Vostok 1 (stagedlive.ts) | Allowed | Before | The hardware | Now, and from what |
+| --- | --- | --- | --- | --- |
+| Light the third stage on the pad | any time | 54.5 kN more for 379 s, with nothing to pay: perigee -2,933 km | jet into the core's top under its deflector | 27 % of its push reaches the stack; the core's top burns through at 5 s and it breaks up (estimated: `hot`) |
+| Light it a minute early (240 s) | any time | free extra thrust: perigee -590 km | as above | breaks up at T+245 s, 5.0 s against 5 s (estimated); the card says so |
+| Light it a second before the core goes (299 s) | any time | perigee -206 km | hot staging, as planned (start 311.74, the core's main command 312.74) | the same: 1.0 s on the core's top, no harm; said where offered |
+| Relight a stage once cut (any, 10 and 12 s) | any time | ignored, said nothing | one-shot pyrotechnics; the first two only from the pad | refused and said (`start`: documented for the first two, estimated for Block E) |
+| Cut every engine at T+10 | any time | falls back, lands at 81 m/s | falls back, tumbles | breaks up at 19.5 s falling tail first, q alpha 4.1 kPa rad (estimated limit) |
+| Drop the strap-ons at 60 s | any time | thrust and mass leave; it flies on and lands at 1,367 m/s | the separation command shuts them | the same; it breaks up by bending at 131 s as it falls |
+| Drop the core with the strap-ons on (60 s) | any time | everything below Block E gone at once, thrust and all | the strap-ons still burning push the lot against Block E | the core shuts, the strap-ons keep it pressed on until they go at 119.5 s (`pressed`) |
+| Drop the fairing at max q (60 s) or on the pad | any time | no consequence: 800 kg less carried, perigee -171 km | two hinged halves made to open in thin air | the same flight, and said: 48 kPa against 1 kPa (estimated); where the halves went: not modelled |
+| Separate the spacecraft at 60, 140 or 400 s | any time | parted at once, inside the fairing or under thrust | held in by the fairing; pressed on by Block E | held while the fairing is on and while anything pushes; parts at Block E's cutoff, 676.4 s |
+| Turn across the wind at max q (hands, 50 s) | any time | no limit: 310 kPa rad, flew on to the ground | breaks up | breaks up at 51.9 s, 151 % of 3.34 kPa rad (estimated) |
+| Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
+| Ask a step twice | any time | heard once | heard once | heard once |
+| Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
+| An abort | not offered ("not simulated") | | the seat to 40 s, then the spacecraft's separation (Molodtsov) | said on the breakup's card, not flown |
+
+| Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
+| --- | --- | --- | --- | --- |
+| Separate under thrust (100 s) | in flight | the Redstone's engine cut by it and the capsule off at once | the booster's push holds the capsule on its adapter | rides on to the cutoff, 141.8 s, and parts then (`pressed`) |
+| Tower let go on the pad | not offered, ignored | | MR-1's escape rocket fired on its pad (21 November 1960) | not modelled: still not offered |
+| Tower let go at max q | in flight | leaves; the flight goes on | as that | the same |
+| Retrofire, retropack before separation | not offered, ignored | | into the adapter; interlocks not read | not modelled |
+| Retrofire in the air | once alone | fires; the physics | as that | the same |
+| A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
+| Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
+| Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
+
+Where the two kinds still differ for no physical reason: the ballistic deck offers nothing on the pad but ignition
+(the tower could have gone), and the orbital deck has no abort; both are left as they were and said here.
+
+## The deck
+
+- **Every flight is flown on the one deck** (`src/deck/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
+  notes and card), with a flight kind's code behind it: `cockpit.ts` for a flight on a `trajectory`, `orbitdeck.ts` for
+  one into orbit (`orbital.ascent` and no `trajectory`; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
+  differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
+  flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
+  stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
+  deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
+  both, Space is the next thing on both.
 - **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
   deck (`src/deck/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
   camera's, the page out of the way. Space lights the engine and after that sets off the next
@@ -444,31 +424,59 @@ never adjusted to bring a check in.
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
   `flies` can be flown without being told how.
-- **A launch vehicle's flight data is said once** (`missions/<nation>/<programme>/vehicles/<stack>.ts`: the Mercury-Redstone's
-  is mercury-redstone.ts, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
-  (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
-  the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
-  turnaround, ascent and verdict hold each as they hold Freedom 7 (its misses in `MISSES`, its undocumented inputs listed).
-- **What a capsule had that another did not is data, not deck code.** A rate command mode (`rcs.rate`: the deck's Rate
-  command switch, autopilot.ts `rateCommand`: the stick asks for a rate and the manual chambers fire full on an axis while
-  its rate is more than the deadband from it); an explosive hatch (`flies.hatch`: `Command` 'hatch', Space once down, a
-  cabin control's `does`; nothing of it reaches the physics: blown in flight the debrief says what it meant, blown afloat
-  the spacecraft is drawn going under in `under` seconds, `Run.sinks`, and the clock runs on until it has).
-- **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
-  automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
-  the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
-  down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
-  capsule rode feet down range (derived: sites/lc-5.md, "Which way round the vehicle stood"; tests/launcher.test.mjs
-  holds the vehicle's turn in the scene, the pad's and this to one another). tests/turnaround.test.mjs holds it to
-  three degrees going up and through the top of the flight, and to ten through the turnaround. With a side named
-  the control makes one turn to the whole attitude (`turnBoth`: the long axis to where it is wanted and the keel
-  down together), which end for end is a half turn about the plumb line: a yaw, as the record's turnaround was
-  ("yawed 180 degrees"), the periscope toward the Earth throughout. Until November 2026 it turned the long axis the
-  short way, pitching over, and then rolled to the side: the same end by a way the record does not have. A flight
-  that names no side still turns the long axis the short way and keeps the roll it had. The scene turns the record's
-  own flight round the same way (`viewer/ascent.ts` `place`, `keel`): to the attitude with that side underneath, which
-  from how it rode the booster is the yaw. Until then it pitched the model over the top and left the pilot head down
-  from the turnaround on (the roll needle read 179). tests/ascent.test.mjs holds both runs to it.
+- **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
+  record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
+  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
+  so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
+  code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
+  `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
+  is flown again from that burn. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
+  from that instant it is the user's ("Not the record's"), the live staged vehicle (below) is caught up to the record at
+  that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
+  second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed
+  (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
+  ascent left it (`flyOrbit` from `parted`), short of an orbit or not: the handover to the published orbit is the record's
+  run's alone. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
+  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
+  propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
+  source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
+  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "if cut now" beside
+  the figures), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
+  as a ballistic flight's (To cutoff / Cut now, K: path.ts asks the deck's `guidable`): fliers.ts `guided`, the stated law's
+  axis leaned by the trim, the record's steps at their times while the sequencer is on (Block E cut where its integrator's
+  sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
+  each stage dry when its load is gone, drawn dashed to the last cutoff, and from the parting the spacecraft as planned,
+  round the orbit or down (tests/staged.test.mjs holds where it parts to the batch run); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe,
+  or down to the ejection height with the burn, its end, the modules' parting and the entry marked (it stops there
+  whether a burn was made or not, as flyOrbit does; begun within the burn, the burn goes on along the line it lit on,
+  from the run's own state then: `lit`). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
+  ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
+  braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns
+  from its own nozzles (`flies.fires`: each strap-on's RD-107 and the core's RD-108 as well as Block E and the braking
+  engine), between its stage's instants on the run on show and at its stage's throttle (`Ascent.fireLevels`, the
+  arithmetic in viewer/fires.ts, tests/fires.test.mjs): the strap-ons at their intermediate stage before they part and
+  gone with them, the core on its steering chambers alone through its final stage; a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
+  deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; ascent.ts
+  `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
+  events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
+  and the hand controller moves with the keys. Because
+  the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
+  orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
+  The descent is drawn from the run's own `descent` (staged.ts `descentOf`: flyDown's tracks in the scene's frame, when
+  each parachute came out and went): a drop that `rides` the descent's bodies is carried along each body's track in turn
+  and turned to hang against its motion through the air; a body's parachute (`ChuteDef.body`) is drawn by chute.ts from
+  flyDown's instants and streams against the air of what carries it; a parachute that `replaces` a body's drag can leave
+  what was left behind as a body of its own (`leaves`: the seat), and one `instead` of another lets that one go; a figure
+  of the flight's `hangs` from its harness under its body's canopy in the pose the figure carries; the run's own body
+  turns to hang from where its parachute is made fast (`Ascent.hangsFrom`). How each hangs is drawn; the tracks are
+  points. The globe is drawn at the sea's height, not the ground's, so each body's last kilometre is drawn lowered evenly
+  by the descent's `ground` until it rests on the drawn surface (staged.ts `settled`); the figures, and the card's height
+  of the landing place, are the flight's own.
+- **The Flown panel** (`src/deck/flown.ts`) flies the flight once, after the page has opened, and draws
+  height, range, space-fixed speed and load against time with the reports' figures as dashed
+  lines, the clock's instant as a cursor (dragging a trace moves the clock), and the checks as a
+  table, amber where out of tolerance. It reads the clock; it keeps no time of its own.
 - **A right click on the vehicle in flight is the part's own menu** (main.ts `stage.onSpot`): what that part can be told
   to do now, from the flight's data (`Part.commands`, types.ts `Command`: a step `Cockpit.ask` sets off, offered only
   while `Cockpit.can` says the simulator would hear it), and a look at the spot, which is kept in the vehicle's own frame
@@ -505,7 +513,7 @@ never adjusted to bring a check in.
   (`CabinHost.earth`). A lamp can show an orbital record's event (`event:<id>`, out at `until`'s); a gauge can follow
   a `history` of readings, each at an instant from liftoff or after an event. Indoors (`CabinDef.within`) the sky's light and reflection are cut to a tenth by an occlusion
   map of one shade, the model's lights fall off with distance, not its square, and are held against the exposure;
-  the Sun through a window is the scene's own. Each window (`CabinDef.windows`) and the periscope's screen is besides a small light whose colour is what is outside it, looked at through an 8 px picture every few frames while someone is aboard (`Cabin.see`); the lights are there from the load, dark, because a light added later rebuilds every shader. Every thrown control is one mechanism (`CabinDef.controls`: a node whose extras carry `throw`, a turn for each position; `Cabin.throwSwitch`): a click on it from the seat, or its button under the lookouts if it switches something, throws it to its next position and it stays there (none has a key: none is free on the flight deck); what it switches names it as its `control` and is told; one with `does` asks the deck; one that `holds` stands as the deck's state has it while flown. The cabin's own lamps have such a switch (`CabinDef.lighting`: what each position lights, each lamp in its colour and at its share of its strength, `CabinLamp`, and each lamp's tube): the lamps it names come on or go out in a few hundredths of a second, in their colours (Gemini's red, Vostok's dim duty light), their tubes glow so, and every surface the build shaded goes over toward its lamps-out figure by the share of the lamps' strength that is lit, its fill (the sky's tenth, what metal mirrors) taking the lamps' colour as far (rendering.md, "An inside to sit in"), so with them out the cabin is lit by its windows, its periscope's screen and its telelights. A globe with `modes` has its mode on such a switch: in `landing` it turns to where a braking burn fired now would bring the ship down (`burnNow`: the record's burn moved to now and flown down by the one propagator, sim/predict.ts `propagate` on sim/fliers.ts `spacecraft`; worked out every 30 s of the flight and carried round with the ship between), and its mode's `lamp` is lit. It opens as the model was built (as flown) and is not remembered: nothing else in a cabin is. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull, twice a frame. Nothing in cabin.ts or gauges.ts names a spacecraft.
+  the Sun through a window is the scene's own. Each window (`CabinDef.windows`) and the periscope's screen is besides a small light whose colour is what is outside it, looked at through an 8 px picture every few frames while someone is aboard (`Cabin.see`); the lights are there from the load, dark, because a light added later rebuilds every shader. Every thrown control is one mechanism (`CabinDef.controls`: a node whose extras carry `throw`, a turn for each position; `Cabin.throwSwitch`): a click on it from the seat, or its button under the lookouts if it switches something, throws it to its next position and it stays there (none has a key: none is free on the flight deck); what it switches names it as its `control` and is told; one with `does` asks the deck; one that `holds` stands as the deck's state has it while flown. The cabin's own lamps have such a switch (`CabinDef.lighting`: what each position lights, each lamp in its colour and at its share of its strength, `CabinLamp`, and each lamp's tube): the lamps it names come on or go out in a few hundredths of a second, in their colours (Gemini's red, Vostok's dim duty light), their tubes glow so, and every surface the build shaded goes over toward its lamps-out figure by the share of the lamps' strength that is lit, its fill (the sky's tenth, what metal mirrors) taking the lamps' colour as far (rendering.md, "An inside to sit in"), so with them out the cabin is lit by its windows, its periscope's screen and its telelights. A globe with `modes` has its mode on such a switch: in `landing` it turns to where a braking burn fired now would bring the ship down (`burnNow`: the record's burn moved to now and flown down by the one propagator, sim/predict.ts `propagate` on sim/fliers.ts `spacecraft`; worked out every 30 s of the flight and carried round with the ship between), and its mode's `lamp` is lit. It opens as the model was built (as flown) and is not remembered: nothing else in a cabin is. What is inside and not shell is drawn only when it can be seen (on board, cut open, or within 30 m) and casts a shadow only on board or cut open (`Cabin.seen`): from the chase view it was half the vehicle's triangles behind a closed hull. Nothing in cabin.ts or gauges.ts names a spacecraft.
 - **A mechanism runs to its programme, and a hand can take it** (`ModelDef.mechanisms`, types.ts: `MechanismDef`;
   `sim/mechanism.ts`, pure and tested). A periscope and its door: one motion with one figure, its travel. Its motion
   is the model's own: each node that moves carries it in its extras, written by the script that built the linkage
@@ -560,14 +568,9 @@ never adjusted to bring a check in.
   points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame, for every vehicle
   (`Predictor.run(budget)`, the path put at its own instants in a slice of its own; `sr.path.cost` says what the last
   one took): sliced, not a worker, because a vehicle is closures over its flight's data (a programme's axis, a plan)
-  that a worker would have to rebuild for every state. On a phone-class processor (Chrome's CPU slowed four times), both flights by the record and
-  by hand stepped through deterministically, the camera moving every frame, the longest slice was 1.6 to 3.1 ms, the
-  line's placing for the eye 4.9 to 7.6 ms and the path's whole frame 6.8 to 10.5 ms, one frame in a few hundred over
-  8 (November 2026; the 19 ms slice an earlier, real-time measurement saw once did not come again: the two things that
-  could make one long frame of it, the path laid out again at once when it did not fit its points and each place on the
-  curve found from its first piece, are gone: `sampled` begins again in a slice of its own, pathline.ts `pieceOf`
-  halves), where
-  the orbital deck's old predictor took 135 ms in one frame (14 November 2026). It is worked out only when it is
+  that a worker would have to rebuild for every state. Nothing of it may make one long frame: a path that does not fit its points is laid out again
+  in a slice of its own (`sampled`), and a place on the curve is found by halving (pathline.ts `pieceOf`), not from its
+  first piece. It is worked out only when it is
   wanted: while a prediction made again from the flight would lie within half a pixel of the curve on show wherever that
   is drawn (its departure from the curve, its place and three times its velocity's over the time ahead: a coast's
   departure grows no faster), the plan unchanged, and a path that comes round still reaching most of the way round,

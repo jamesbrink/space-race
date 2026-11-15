@@ -63,7 +63,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `stage.ts` knows any one fligh
   foot coming to its landing holds its toes as they will be when the heel lands, `asked`'s `most`:
   rocked on a heel not yet down it turned 5 degrees in the last hundredth of a cycle, which was 1.65).
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
-  1/120 s with the remainder carried and are drawn between their last two ticks, so a fall is the
+  1/60 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.
 - **What it carries is in its hand.** `walker.carries` names a rigid node of the model and a
   hand; `viewer/onfoot/carry.ts` puts it in that hand by the contract every crew figure is built to
