@@ -150,7 +150,7 @@ try {
   // ---- #4: a machine worked by hand: the erector's boom ----
   await page.evaluate(() => window.sr.stage.onFoot.exitWalk());
   await wait(500);
-  const refused = await page.evaluate(() => window.sr.stage.onFoot.pushFunction('pad', 'Erector', 'Erector_Boom', 1));
+  const refused = await page.evaluate(() => window.sr.stage.hands.push('pad', 'Erector', 'Erector_Boom', 1));
   check(refused === null, `the boom is worked by hand${refused ? `: refused, ${refused}` : ''}`);
   await wait(2500);
   const boom = await voices();
@@ -159,7 +159,7 @@ try {
     boom.some((v) => v.kind === 'hydraulic' && v.what === 'Erector_Boom'),
     'its hydraulics are heard while it moves',
   );
-  await page.evaluate(() => window.sr.stage.onFoot.pushFunction('pad', 'Erector', 'Erector_Boom', 0));
+  await page.evaluate(() => window.sr.stage.hands.push('pad', 'Erector', 'Erector_Boom', 0));
   await wait(2500);
   const boomAfter = await voices();
   say('let go', boomAfter);

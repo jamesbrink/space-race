@@ -32,6 +32,7 @@ import { uShadowFade } from './shadows.ts';
 import { wearTexture } from './space.ts';
 import { grain, mark } from './surface.ts';
 import { tier } from './tier.ts';
+import { HandWorks } from './onfoot/handworks.ts';
 import { OnFoot } from './onfoot/onfoot.ts';
 import { Walker } from './onfoot/walk.ts';
 
@@ -226,6 +227,8 @@ export class Stage {
   readonly picker: Picker;
   /** The flight on show: the vehicle where the clock has it, what it sheds, its fires, trail and parachutes (stage/flightshow.ts). */
   readonly show: FlightShow;
+  /** The functions of the models' parts worked by hand, and their levers (onfoot/handworks.ts). */
+  readonly hands: HandWorks;
   /** Being at the place on foot: the figure walked as, what it aims at, drives, boards, carries and works (onfoot/onfoot.ts). */
   readonly onFoot: OnFoot;
   /** The Sun's shadows: its fine map and where it is spent, the far map under it (stage/shadows.ts). */
@@ -597,6 +600,20 @@ export class Stage {
       locked: (on) => this.onWalkLook(on),
     });
 
+    this.hands = new HandWorks({
+      defs: () => this.defs,
+      staged: () => this.staged,
+      apart: () => this.apart,
+      scripted: () => this.scripted,
+      redraw: () => {
+        this.dirty = true;
+      },
+      reshade: () => {
+        this.dirty = true;
+        this.renderer.shadowMap.needsUpdate = true;
+      },
+      fitBounds: () => this.fitBounds(),
+    });
     this.onFoot = new OnFoot({
       scene: this.scene,
       camera: this.camera,
@@ -615,7 +632,7 @@ export class Stage {
       setting: () => this.setting,
       clock: () => this.clock,
       cabin: () => this.cabin,
-      apart: () => this.apart,
+      functions: (model, node) => this.hands.functions(model, node),
       scripted: () => this.scripted,
       groundAt: (x, z) => this.groundAt(x, z),
       fitBounds: () => this.fitBounds(),
@@ -1859,7 +1876,8 @@ export class Stage {
     else if (this.exhibit) this.cabin?.step(dt, 0, Number.NaN, this.renderer.toneMappingExposure); // (no clock: it stands as built)
     this.settle(dt);
     this.onFoot.runWorks(dt);
-    this.onFoot.runFunctions(dt);
+    this.onFoot.runDriven();
+    this.hands.run(dt);
     if (this.walk.active) {
       this.onFoot.stepWalk(dt);
       this.attend();

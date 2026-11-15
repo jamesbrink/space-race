@@ -153,7 +153,8 @@ src/
   viewer/surface.ts                   what large plain surfaces look like from a metre away: grain by material name
   viewer/bulk.ts                      where a part's bulk is: the middle of its surface, the same however it is cut into meshes (a callout's point)
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
-  viewer/onfoot/onfoot.ts             being at the place on foot, as the stage has it: the figure walked as, what it aims at, drives, boards, carries and works, a fall it goes limp in, the figure posed
+  viewer/onfoot/onfoot.ts             being at the place on foot, as the stage has it: the figure walked as, what it aims at, drives, boards and carries, doors and lifts, a fall it goes limp in, the figure posed
+  viewer/onfoot/handworks.ts          the functions of a model's parts worked by hand (a tower raised, a jib lowered), held until the script moves the hardware, and their levers
   viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them

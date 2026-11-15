@@ -5,7 +5,7 @@ import type { Clock } from '../../world/clock.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cabin } from '../cabin.ts';
 import type { Cameras } from '../camera/index.ts';
-import { type Fn, functionsOf, refusal, scriptedAt, sliderFor } from '../explode.ts';
+import type { Fn } from '../explode.ts';
 import type { Scenery, Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import type { CabinView } from '../stage/cabinview.ts';
@@ -24,8 +24,6 @@ const EMERGE_CLEAR = 0.12;
 const DOOR_SECONDS = 1.05;
 const UP = new THREE.Vector3(0, 1, 0);
 const DOWN = new THREE.Vector3(0, -1, 0);
-const X_AXIS = new THREE.Vector3(1, 0, 0);
-const Z_AXIS = new THREE.Vector3(0, 0, 1);
 const spin = new THREE.Quaternion();
 
 /** What being on foot at a place asks of the stage it is on. */
@@ -52,8 +50,8 @@ export interface OnFootHost {
   setting(): Setting;
   clock(): Clock | null;
   cabin(): Cabin | null;
-  /** How far apart each model is taken (its slider), 0 to 1. */
-  apart(): readonly number[];
+  /** The functions of a part of a model, each with why it will not move, if it will not (onfoot/handworks.ts). */
+  functions(model: string, node: string): { fn: Fn; refused: string | null }[];
   /** The clock moved hardware this frame: something operated by hand gives way to the script. */
   scripted(): boolean;
   /** The open ground under a point; null where there is none. */
@@ -77,8 +75,8 @@ export interface OnFootHost {
 /**
  * Being at the place on foot as one of the flight's figures (viewer/onfoot/onfoot.ts; walking.md): becoming the figure
  * and leaving it where it was walked to, what is aimed at within reach, ladders, windows, doors and lifts, getting into
- * a vehicle and driving it, a couch boarded, what the figure carries, a fall it goes limp in, the functions of a part
- * worked by hand and their levers, and the figure posed to the gait each frame.
+ * a vehicle and driving it, a couch boarded, what the figure carries, a fall it goes limp in, and the figure posed to
+ * the gait each frame. (The functions of a part worked by hand are handworks.ts's.)
  */
 export class OnFoot {
   constructor(private readonly h: OnFootHost) {}
@@ -88,27 +86,11 @@ export class OnFoot {
   /** Which model is being walked as: an index into `staged`, or -1. */
   walked = -1;
 
-  /**
-   * Functions being worked by hand (explode.ts: Fn), by `<model index>/<function id>`: how far
-   * along its travel each has been put (0 to 1), and how fast it is moving (in travels a second
-   * times its pace: it eases to a stop). The slider is the script; these hold until the script
-   * next moves the hardware, then ease back to it.
-   */
-  private readonly handset = new Map<
-    string,
-    { at: number; fn: Fn; v: number; pace: number; push: number; back?: boolean; lever?: number }
-  >();
-
   /** A model's parts that have been driven by hand (a truck that drives itself off in the script, driven instead): the slider leaves them be until the script next moves it. */
   private readonly driven = new Map<string, { at: number; node: string }>();
 
   /** For a vehicle driven by hand, its named pieces paired with the same pieces in its model's other levels of detail, which are put as it is. */
   private readonly twins = new WeakMap<THREE.Object3D, [THREE.Object3D, THREE.Object3D][]>();
-
-  /** Levers found by name in each level of detail (swingLever). */
-  private readonly levers = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D | null>>();
-
-  private readonly fns = new WeakMap<object, Fn[]>();
 
   /** The lifts a model marks under each of its top-level nodes, found once (markedOn). */
   private readonly lifts = new WeakMap<THREE.Object3D, Action[]>();
@@ -441,7 +423,7 @@ export class OnFoot {
     const owner = root && this.ownerOf(root);
     if (!owner) return null;
     const def = this.h.defs()[owner.at]!;
-    return this.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
+    return this.h.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
   }
 
   /** Put a vehicle's pieces in its model's other levels of detail where they are in the one being driven. */
@@ -659,57 +641,8 @@ export class OnFoot {
     if (box) this.h.visit(box);
   }
 
-  /** The functions of one part of a model (what it does, each workable by hand), with how far along each is and why it will not move, if it will not. */
-  functions(model: string, node: string): { fn: Fn; value: number; refused: string | null }[] {
-    const at = this.h.defs().findIndex((m) => m.id === model);
-    const part = this.h.defs()[at]?.parts.find((p) => p.node === node);
-    if (!part) return [];
-    let fns = this.fns.get(part);
-    if (!fns) this.fns.set(part, (fns = functionsOf(part)));
-    const value = (id: string) => {
-      const fn = fns!.find((f) => f.id === id);
-      return this.handset.get(`${at}/${id}`)?.v ?? (fn ? scriptedAt(fn, this.h.apart()[at] ?? 0) : 0);
-    };
-    return fns.map((fn) => ({ fn, value: value(fn.id), refused: refusal(fn, value) }));
-  }
-
-  /**
-   * Work a function by hand. `push` is 1 to run it toward the end of its travel, -1 back, 0 to
-   * let go: it runs at its own pace for as long as it is pushed and eases to a stop. Returns why
-   * it will not move, if it will not.
-   */
-  pushFunction(model: string, node: string, id: string, push: number): string | null {
-    const found = this.functions(model, node).find((f) => f.fn.id === id);
-    if (!found) return null;
-    const at = this.h.defs().findIndex((m) => m.id === model);
-    const key = `${at}/${id}`;
-    if (push && found.refused) return found.refused;
-    const held = this.handset.get(key) ?? { at, fn: found.fn, v: found.value, pace: 0, push: 0 };
-    held.push = push;
-    if (push) held.back = false; // taken in hand again
-    this.handset.set(key, held);
-    return null;
-  }
-
-  /** Put a function straight to a place along its travel (a slider in a panel). Returns where it now is: where it was, if it will not move. */
-  setFunction(model: string, node: string, id: string, v: number): number {
-    const found = this.functions(model, node).find((f) => f.fn.id === id);
-    if (!found || found.refused) return found?.value ?? 0;
-    const at = this.h.defs().findIndex((m) => m.id === model);
-    this.handset.set(`${at}/${id}`, { at, fn: found.fn, v: THREE.MathUtils.clamp(v, 0, 1), pace: 0, push: 0 });
-    this.poseFunction(at, found.fn, v);
-    return v;
-  }
-
-  private poseFunction(at: number, fn: Fn, v: number | null): void {
-    for (const node of fn.nodes) this.h.staged()[at]?.hold(node, v === null ? null : sliderFor(fn, v));
-    this.h.redraw();
-    this.h.renderer.shadowMap.needsUpdate = true;
-  }
-
-  /** A frame of the functions worked by hand: those being pushed run, the rest stay; and all of them go back to the script when the script moves. */
-  runFunctions(dt: number): void {
-    // a vehicle driven by hand goes back where the script has it when the script moves it, unless it is being driven
+  /** A frame of what is driven by hand: a vehicle goes back where the script has it when the script moves it, unless it is being driven. */
+  runDriven(): void {
     if (this.h.scripted())
       for (const [key, { at, node }] of this.driven) {
         if (this.wheel?.root.name === node && this.ownerOf(this.wheel.root)?.at === at) continue;
@@ -718,52 +651,6 @@ export class OnFoot {
         this.h.redraw();
         this.h.renderer.shadowMap.needsUpdate = true;
       }
-    if (!this.handset.size) return;
-    let moved = false;
-    for (const [key, held] of this.handset) {
-      const { fn, at } = held;
-      const script = scriptedAt(fn, this.h.apart()[at] ?? 0);
-      if (this.h.scripted() && !held.push) held.back = true;
-      if (held.back && !held.push) {
-        // the script has moved the hardware: back to where it has this function, at the function's own pace (or in a few seconds, if that is longer), and let go
-        const step = dt / Math.min(fn.seconds, 6);
-        held.v = Math.abs(script - held.v) <= step ? script : held.v + Math.sign(script - held.v) * step;
-        if (held.v === script) {
-          this.handset.delete(key);
-          this.poseFunction(at, fn, null);
-        } else this.poseFunction(at, fn, held.v);
-        moved = true;
-        continue;
-      }
-      // pushed, it gathers its pace over a quarter of a second; let go, it loses it as quickly
-      held.pace += (held.push - held.pace) * (1 - Math.exp(-dt / 0.2));
-      if (!held.push && Math.abs(held.pace) < 0.01) held.pace = 0;
-      // its lever is held over as far as it is being pushed, and springs back to the middle
-      if (fn.lever && held.lever !== held.pace) this.swingLever(at, fn.lever, (held.lever = held.pace));
-      if (!held.pace) continue;
-      const to = THREE.MathUtils.clamp(held.v + (held.pace * dt) / fn.seconds, 0, 1);
-      if (to === held.v) continue;
-      held.v = to;
-      this.poseFunction(at, fn, to);
-      moved = true;
-    }
-    if (moved) this.h.fitBounds();
-  }
-
-  /** Hold a lever (Part.functions: lever) over by `k` of its swing, -1 to 1, at every level of detail. */
-  private swingLever(at: number, name: string, k: number): void {
-    for (const level of this.h.staged()[at]?.group.children ?? []) {
-      let found = this.levers.get(level);
-      if (!found) this.levers.set(level, (found = new Map()));
-      if (!found.has(name)) found.set(name, level.getObjectByName(name) ?? null);
-      const lever = found.get(name);
-      if (!lever) continue;
-      const rest = ((lever.userData.rest as THREE.Quaternion | undefined) ??= lever.quaternion.clone());
-      const axis = String(lever.userData.axis ?? 'z');
-      const turn = THREE.MathUtils.degToRad(Number(lever.userData.swing) || 25) * k;
-      lever.quaternion.copy(rest).multiply(spin.setFromAxisAngle(axis === 'x' ? X_AXIS : axis === 'y' ? UP : Z_AXIS, turn));
-    }
-    this.h.redraw();
   }
 
   /** The levels of detail of a model: an action moves the same node in each. */

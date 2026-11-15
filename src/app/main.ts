@@ -112,14 +112,14 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   walkJump: () => stage.walk.jump(),
   walkAct: () => act(),
   walkPush: (push) => {
-    if (working) noteWorking(stage.onFoot.pushFunction(working.model, working.node, working.fn, push));
+    if (working) noteWorking(stage.hands.push(working.model, working.node, working.fn, push));
   },
   walkView: () => stage.walk.setThird(!stage.walk.third),
   walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
-  fnValues: (node) => stage.onFoot.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
-  setFn: (node, id, v) => stage.onFoot.setFunction(current.id, node, id, v),
+  fnValues: (node) => stage.hands.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
+  setFn: (node, id, v) => stage.hands.set(current.id, node, id, v),
   inset: (px, top) => stage.framing.setInset(px, top),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
@@ -654,7 +654,7 @@ function noteWorking(refused: string | null): void {
 }
 function stopWorking(): void {
   if (!working) return;
-  stage.onFoot.pushFunction(working.model, working.node, working.fn, 0);
+  stage.hands.push(working.model, working.node, working.fn, 0);
   working = null;
   stage.walk.release();
   ui.setWalkNote(null);
@@ -665,10 +665,10 @@ window.addEventListener('keydown', (e) => {
   if (!working || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'e') stopWorking();
-  else if (pushKey(key) && !e.repeat) noteWorking(stage.onFoot.pushFunction(working.model, working.node, working.fn, pushKey(key)));
+  else if (pushKey(key) && !e.repeat) noteWorking(stage.hands.push(working.model, working.node, working.fn, pushKey(key)));
 });
 window.addEventListener('keyup', (e) => {
-  if (working && pushKey(e.key.toLowerCase())) stage.onFoot.pushFunction(working.model, working.node, working.fn, 0);
+  if (working && pushKey(e.key.toLowerCase())) stage.hands.push(working.model, working.node, working.fn, 0);
 });
 
 // with the mouse captured a click lands on no button: it chooses what the wheel is pointing at
