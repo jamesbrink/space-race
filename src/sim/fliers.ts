@@ -40,6 +40,7 @@ import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict
 import { aboutAxis, turn } from './rigid.ts';
 import { airOf as airOfStack, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
+import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
@@ -412,7 +413,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
     const sweep: StagedState = { ...cur, stages: cur.stages.map((x) => ({ ...x })), drops: { ...cur.drops } };
     const sums = [...cur.apparent];
     const pushOf = (i: number, at: number) =>
-      v.burning(sweep, i, at) ? (o.stages[i]!.count * stack.throttle(i, at) * o.stages[i]!.thrust.vacuum.value) / v.mass(sweep, at) : 0;
+      v.burning(sweep, i, at) ? sensed(o.stages[i]!.count, stack.throttle(i, at), o.stages[i]!.thrust.vacuum.value, v.mass(sweep, at)) : 0;
     // (the sum's step, s: the live vehicle sums every tick by the trapezoid; this is the same sum over whole seconds, whose
     // error on a thrust over a mass that change smoothly is a few millimetres a second (a quarter of a millisecond on the cut); and only while a stage cut
     // on it burns: before, the sweep goes from one step to the next)
@@ -431,9 +432,9 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       for (let j = summed.length - 1; j >= 0; j--) {
         const i = (summed[j]!.step as { stage: number }).stage;
         const want = setting(i)!;
-        const add = ((pushOf(i, t) + pushOf(i, next)) / 2) * (next - t);
+        const add = trapezoid(pushOf(i, t), pushOf(i, next), next - t);
         if (add > 0 && sums[i]! + add >= want) {
-          const at = t + ((want - sums[i]!) / add) * (next - t);
+          const at = crossing(t, next - t, sums[i]!, add, want);
           plan.push({ at, step: summed[j]!.step });
           apply(summed[j]!.step, at, sweep);
           summed.splice(j, 1);
@@ -531,12 +532,7 @@ export function apparentBy(o: OrbitalFlight, v: StagedVehicle, state: Pick<Stage
   return o.stages.map((st, i) => {
     const from = state.stages[i]!.from;
     if (!Number.isFinite(from) || !st.velocity?.apparent) return 0;
-    const push = (at: number) => (v.burning(s, i, at) ? (st.count * stack.throttle(i, at) * st.thrust.vacuum.value) / v.mass(s, at) : 0);
-    let sum = 0;
-    for (let a = from; a < t - 1e-9; a += 1) {
-      const b = Math.min(t, a + 1);
-      sum += ((push(a) + push(b)) / 2) * (b - a);
-    }
-    return sum;
+    const push = (at: number) => (v.burning(s, i, at) ? sensed(st.count, stack.throttle(i, at), st.thrust.vacuum.value, v.mass(s, at)) : 0);
+    return integrate(push, from, t, 1).sum;
   });
 }

@@ -55,6 +55,7 @@ import { hotStage, pressed } from './staging.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
 import { clamp } from '../util/math.ts';
 import { airDrag } from './air.ts';
+import { sensed, trapezoid } from './apparent.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
 export type Step = { kind: 'ignite' | 'cut' | 'separate'; stage: number } | { kind: 'drop'; id: string };
@@ -274,7 +275,7 @@ export function stagedVehicle(
   };
   const vacuumPush = (s: StagedState, i: number, at: number) => {
     if (!burning(s, i, at)) return 0;
-    const f = (o.stages[i]!.count * stack.throttle(i, at) * o.stages[i]!.thrust.vacuum.value) / massAt(s, at);
+    const f = sensed(o.stages[i]!.count, stack.throttle(i, at), o.stages[i]!.thrust.vacuum.value, massAt(s, at));
     return firesInto(s, i, at) ? f * hotShare[i]! : f;
   };
   /** A stage's name as the deck says it ('the core', 'the strap-ons', 'the third stage'); the last's load is 'the spacecraft'. */
@@ -486,7 +487,7 @@ export function stagedVehicle(
       w = [s.w[0] + alpha[0] * h, s.w[1] + alpha[1] * h, s.w[2] + alpha[2] * h];
     }
     // each burning stage's integrator: its own vacuum thrust over the mass, summed (the trapezoid, as staged.ts `apparentCut`)
-    const apparent = s.apparent.map((sum, i) => sum + ((vacuumPush(s, i, s.t) + vacuumPush(s, i, t)) / 2) * h);
+    const apparent = s.apparent.map((sum, i) => sum + trapezoid(vacuumPush(s, i, s.t), vacuumPush(s, i, t), h));
     let landed: StagedState['landed'] = null;
     if (!held) {
       const here = air({ r, v }, t);

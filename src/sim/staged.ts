@@ -52,6 +52,7 @@ import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './r
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
+import { integrate, sensed } from './apparent.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -317,16 +318,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
   const apparentCut = (i: number): number => {
     const st = o.stages[i]!;
-    let sum = 0;
-    const h = 0.01;
     const massAt = (t: number) => o.liftoffMass.value - droppedBy(t) - o.stages.reduce((m, s, j) => m + s.count * burned(j, t), 0);
-    const pushAt = (t: number) => (st.count * throttle(i, t) * st.thrust.vacuum.value) / massAt(t);
-    for (let t = plan[i]!.from; t < plan[i]!.to; t += h) {
-      const step = ((pushAt(t) + pushAt(t + h)) / 2) * h;
-      if (sum + step >= cutAt[i]!) return t + (h * (cutAt[i]! - sum)) / step;
-      sum += step;
-    }
-    return plan[i]!.to;
+    const pushAt = (t: number) => sensed(st.count, throttle(i, t), st.thrust.vacuum.value, massAt(t));
+    return integrate(pushAt, plan[i]!.from, plan[i]!.to, 0.01, cutAt[i]!).at;
   };
   const stageSep = o.stages.map((s) => (s.separation ? s.separation.value : Infinity));
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own

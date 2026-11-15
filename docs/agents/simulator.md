@@ -57,7 +57,8 @@ never adjusted to bring a check in.
   Fvac - Ae p), a ballistic flight's vacuum figure derived from its sea-level one, `vacuumOf`); the fixed step (core/rk4.ts:
   `rk4` for a point, world/orbit.ts `step`'s and fly.ts's; `rk4Body` for a rigid body, vehicle.ts's and shed.ts's;
   `acceleration`, gravity and the push summed, which the predictor's pair takes too: tests/step.test.mjs); a parachute's
-  filling (fly.ts `chuteArea`); the entry's 0.05 g (loads.ts `ENTRY_G`); when a
+  filling (fly.ts `chuteArea`); the entry's 0.05 g (loads.ts `ENTRY_G`); a stage's apparent-velocity integrator
+  (apparent.ts: the batch run's, the live vehicle's and the guided flier's); when a
   load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
   (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Where two were
   the same physics in different arithmetic, merging them moved the figures in their last digits, and each commit says by
