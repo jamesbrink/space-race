@@ -20,6 +20,7 @@ missions/                             the record: one folder per nation, program
     sites/tyuratam-*.ts  aral-1960.ts the land round Site 1 as data: its ground (takyr, salt), its lie (SRTM), the builders' works; the Aral Sea's 1960 shore
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day
                                       (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
+                                      gemini-titan.ts, a Gemini on its Titan: the views, the cabin, the type's dimensions and thrusters;
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)

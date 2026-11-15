@@ -227,6 +227,36 @@ Below three-quarters detail nothing inside is built and the windows are dark pan
 detail the beads are half as many; below half there are none, and the thrust chambers' ports are
 collars and dark ovals on the skin. The troughs and the windows' frames are there at every level.
 
+## One ship from the next
+
+The module was written for spacecraft 3. A flight's `model/vehicle.py` says what its own ship had
+in a `Fit`, and each thing in it is off unless asked for, so spacecraft 3's model is what it was
+(rebuilt beside the old one when these were added: the same nodes and the same size at every
+level). What each rests on is in the flight's own `spacecraft.md`.
+
+| `Fit` | What it builds | First on | Sizes and places |
+| --- | --- | --- | --- |
+| `radar` | four spiral antennas on the forward face, in place of the ribbed cover | spacecraft 5 | scaled from the Gemini V mission report's Figure 3.1-4a: estimated |
+| `lateral_thrusters` | OAMS chambers 13 to 16 as real chambers, or as dummies in steel | real from spacecraft 4 | the type's |
+| `adapter_batteries` | that many 400 Ah batteries in a row (0 on a fuel cell ship) | 3, then 6 on spacecraft 4 | estimated |
+| `water_tanks` | that many small water tanks: one alone, or a cluster | 1, then 4 on spacecraft 4 | estimated |
+| `water_spheres` | drinking water tanks of the OAMS propellant tank's pattern | 2 on spacecraft 5 | 21.12 in, that tank's size on the early ships: assumed |
+| `fuel_cells` | two fuel cell sections, a hydrogen tank and an oxygen tank on a beam across the bottom of the equipment section | spacecraft 5 | the tanks' insides derived from their loads; the rest estimated |
+| `pod` | the rendezvous evaluation pod and its silvered cover at the adapter's foot, as the node `RadarEvaluationPod`; a hole for it in the gold cover | spacecraft 5 only | scaled from Figure 3.1-4b: estimated |
+| `eva` | the hand-held manoeuvring unit and the umbilical between the seats' heads, as the node `ExtravehicularEquipment` | spacecraft 4 | the unit's folded size is the Smithsonian's; the rest estimated |
+| `right_hatch_opens` | the pilot's hatch as a node of its own, `HatchRight`, its origin on its hinge, for a flight to swing | spacecraft 4 | the hinge is the type's, estimated |
+| `gmt_clock` | a 24-hour clock on the command pilot's panel where spacecraft 3 had a blank | spacecraft 4 | its place and face are the Gemini IV mission report's Figure 3-14; its size assumed from the pilot's clock |
+| `white_disc` | the unidentified white disc forward of the left hatch | spacecraft 3; left off the others | read off photographs of spacecraft 3 |
+| `experiments` | by name: spacecraft 3's three; spacecraft 4's spectrometer and magnetometer boom in the adapter | | each flight's record |
+| `crew` | the man in each seat; without it the seats are empty | spacecraft 3 (the G3C suit) | [g3c-suit.md](../crew/g3c-suit.md) |
+
+With `adapter_batteries` over three, `water_tanks` over one or `fuel_cells`, the loose contents of
+the equipment section are laid out again to make room (`layout` in gemini_spacecraft.py): every
+place in it is a guess for every ship.
+
+Where a part's own words tell what happened on Gemini-Titan 3, a later flight gives its own
+(`SAYS` in its script, applied by `gemini_stack.build`).
+
 ## What the model gets wrong or leaves out
 
 - **The pressure vessel is fitted, not drawn** ("Crew station", above). Its flat sides, its
@@ -303,10 +333,17 @@ collars and dark ovals on the skin. The troughs and the windows' frames are ther
   its detail (it is stepped, and has a foot on the cabin). **The strap fairings** are blisters of
   our own shape; one is put where S65-13395 shows one, beside a hatch's aft outboard corner.
 - **The rendezvous and recovery section's inside** is a parachute pack and two mortars of our own
-  form. The docking bar, the three latch receptacles and the radar are not modelled: this module
-  has only been built for a ship without them.
+  form. The docking bar and the three latch receptacles are not modelled. The radar, on a ship
+  that had it, is its four antennas as plain cups on the face.
+- **The later ships are spacecraft 3 with additions** ("One ship from the next"). What they
+  changed that is not in that table is not built: the long-life thrust chambers, the transponders
+  and antennas, the panels' rearrangement beyond the command pilot's clock, the ejection seats'
+  changes, the nose fairing's release. Their paint is spacecraft 3's until a photograph of each is
+  read.
 - **No landing attitude gear**: the two-point bridle and its cover along the top are left out.
-- **Lettering** is Arial Bold; the flag is the fifty-star flag as Mercury's ships wore it.
+- **Lettering** is Arial Bold on spacecraft 3's model as committed and Liberation Sans Bold, the
+  repo's own font, cut to the same widths, on the later ships' and on any model built since; the
+  flag is the fifty-star flag as Mercury's ships wore it.
 - **No mass properties.**
 
 ## Sources

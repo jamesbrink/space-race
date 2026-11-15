@@ -1,5 +1,6 @@
 """The Gemini crew station as spacecraft 3 flew it: the pressure vessel, the two ejection seats, the panels of
-SEDR 300's Figure 3-5 sheets 1 and 2 ("S/C 3"), the controls and the stowage.
+SEDR 300's Figure 3-5 sheets 1 and 2 ("S/C 3"), the controls and the stowage. A later ship is this one with what build()
+is told of it (`gmt_clock`, `reentry_switch`); the rest of what its panels changed is not drawn, and its record says so.
 
 gemini_spacecraft.build_crew_station calls build(). Dimensions are inches; a point is (inches toward the ship's top,
 inches to the crew's right, McDonnell's Z station). The men sit with their backs to the large pressure bulkhead and
@@ -629,7 +630,7 @@ def ball(c: Station, F: Matrix, faces: Sheet, name: str, u: float, v: float) -> 
     c.disc("CrewCabin_InstrumentGlass", F, u, v, 1.7, 0.76, None, 24)
 
 
-def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet) -> None:
+def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool = False) -> None:
     # ---- the command pilot's (Figure 3-5 sheet 1, measured from its outboard lower corner at 47 px to the inch)
     F = P["left"]
     rg = plate(c, F, OUTLINE, sheet)
@@ -672,8 +673,31 @@ def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet) -> None:
     lamp(c, F, faces, "Barostat40K", "40K", 2.43, 7.63, (0.62, 0.62))
     lamp(c, F, faces, "Barostat10K", "10.6K", 2.23, 6.74, (0.62, 0.62))
     round_dial(c, F, faces, "RateOfDescent", DESCENT, 2.25, 4.88, 0.96, rim=True)
-    # (the round space beside it is blank on spacecraft 3, which had no G.m.t. clock here: GIV, 3.1.2.5)
-    c.turned("CrewCabin_PanelFittings", F, 4.62, 4.85, [(0.98, 0.0), (0.98, 0.05), (0.0, 0.05)], 28)
+    if not gmt_clock:
+        # (the round space beside it is blank on spacecraft 3, which had no G.m.t. clock here: GIV, 3.1.2.5)
+        c.turned("CrewCabin_PanelFittings", F, 4.62, 4.85, [(0.98, 0.0), (0.98, 0.05), (0.0, 0.05)], 28)
+    else:
+        # the G.m.t. clock spacecraft 4 added, in that space (GIV, 3.1.2.5 and Figure 3-14, which draws a 24-hour dial in a
+        # square bezel there). Taken to be the pilot's clock's size; its hands are on their own nodes, as his are
+        c.box("CrewCabin_Bezels", F, 4.62, 4.85, 2.25, 2.25, 0.0, 0.2)
+        c.rim("CrewCabin_Bezels", F, 4.62, 4.85, 2.0, 2.0, 0.125, 0.2, 0.62)
+        face = faces.take(2.1, 2.1, 125, -1.05, -1.05)
+        mc.draw_dial(face, 0.95, [(0, 0), (24, 360)], [(h, str(h) if h else "24") for h in range(0, 24, 2)], 0.5, [("GMT", 0, -0.35, 0.06)])
+        c.disc("CrewCabin_Instruments", F, 4.62, 4.85, 0.97, 0.27, face)
+        c.disc("CrewCabin_InstrumentGlass", F, 4.62, 4.85, 0.97, 0.56, None, 20)
+        for name, length, wide, period, lift in (("Hours", 0.5, 0.08, 86400.0, 0.33), ("Minutes", 0.78, 0.06, 3600.0, 0.38)):
+            c.node(
+                f"Gauge_GmtClock{name}",
+                "needle_white",
+                F,
+                4.62,
+                4.85,
+                lift,
+                pointer(length, wide, 0.12, hub=0.06),
+                turn=[0.0, 0.0, period, -TAU],
+                rest=0.0,
+                wrap=period,
+            )
     round_dial(c, F, faces, "Altimeter", ALTIMETER, 2.22, 1.84, 1.21, rim=True)
     tape(c, F, rg, faces, "PropellantQuantity", "PROP QTY", 4.92, 1.6, 0.7, 2.4, 100, 100)
     # the manoeuvre hand controller under the panel: pushed in, it stows
@@ -841,7 +865,7 @@ def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet) -> None:
     rg.text("REPRESS", W / 2, 2.75, 0.065, mc.INK)
 
 
-def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
+def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool = True) -> None:
     # ---- overhead: seven rows of eight circuit breakers, a switch at the head of four of them, five pull handles
     F = P["overhead"]
     Wd, Ht = 9.8, 11.4
@@ -909,7 +933,7 @@ def side_panels(c: Station, P: dict, sheet: Sheet) -> None:
             toggle(c, F, u, 1.25, "v", False)
             rg.text(legend, u, 0.45, 0.065, mc.INK)
         rg.text("RETRO ROCKET SQUIB" if not experiment else "MAIN BATTERIES          SQUIB BATTERIES", Wd / 2, 2.3, 0.07, mc.INK)
-        if experiment:  # the switch for this flight's experiment in the cone's glow, on the pilot's side
+        if experiment and reentry_switch:  # the switch for spacecraft 3's experiment in the cone's glow, on the pilot's side
             rg.rect(Wd - 1.9, 2.9, Wd - 0.3, 4.6, (0.44, 0.45, 0.45), r=0.1)
             rg.text("RE ENT ANT\nEXP", Wd - 1.1, 4.25, 0.065, mc.INK)
             toggle(c, F, Wd - 1.1, 3.4, "v", False)
@@ -1032,7 +1056,7 @@ SMOOTH = (
 )
 
 
-def build(parent, M: dict, font, names: tuple[str, str], say, crew=None) -> None:
+def build(parent, M: dict, font, names: tuple[str, str], say, crew=None, gmt_clock: bool = False, reentry_switch: bool = True) -> None:
     """Everything in the pressure vessel, and the vessel. The vessel's walls are built at every level of detail (they
     close the hatches' openings from behind); the rest only where an inside is built."""
     c = Station(parent, CABIN, M)
@@ -1049,8 +1073,8 @@ def build(parent, M: dict, font, names: tuple[str, str], say, crew=None) -> None
     sheet = Sheet("gemini-panels", 4096)
     faces = Sheet("gemini-faces", 2048, mc.BLACK)
     P = frames()
-    main_panels(c, P, sheet, faces)
-    side_panels(c, P, sheet)
+    main_panels(c, P, sheet, faces, gmt_clock)
+    side_panels(c, P, sheet, reentry_switch)
     fittings(c, say)
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):
         seat(c, name, side, who, say, crew)

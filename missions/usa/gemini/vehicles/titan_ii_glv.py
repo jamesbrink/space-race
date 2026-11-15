@@ -68,6 +68,8 @@ WHITE_BAND = (S_SPLICE1, 1035.0)
 ROLL_RING_1 = (1035.0, 1095.0)
 LETTERS = (655.0, 1004.0, (20.0, 16.0))  # UNITED STATES down the first stage: from, to, a letter's height and its widest letter's width
 ARROW = (1012.0, 1029.0)  # the mark under the lettering
+# GLV-4's two flashing lights: round from the conduit, and their station (between the tanks, which is 319.5 to 424.5): estimated
+BEACONS = ((deg(90), deg(-90)), 366.0)
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
 SHELLS = (
@@ -113,6 +115,7 @@ def materials() -> dict:
         "alu": m("aluminium", (0.62, 0.62, 0.61), 1.0, 0.45),
         "bolt": m("fastener", (0.22, 0.215, 0.21), 1.0, 0.62),
         "equipment": m("equipment-grey", (0.13, 0.14, 0.15), 0.3, 0.55),
+        "beacon": m("beacon-lens", (0.78, 0.80, 0.82), 0.0, 0.25),
     }
 
 
@@ -199,10 +202,18 @@ def stacked(mb: MeshBuilder, surf: Surf, body: str, s0: float, s1: float, size, 
         mb.add([tuple(surf.p(theta + (x - (x0 + x1) / 2) * kx / surf.r(0.0), mid + (y - (y0 + y1) / 2) * ky, off)) for x, y, _ in verts], faces)
 
 
-def build(base_z: float, font=None, skirt_insulation: bool = True, conduit_at: float = deg(-45), letters_at: float = deg(-12)) -> None:
+def build(
+    base_z: float,
+    font=None,
+    skirt_insulation: bool = True,
+    conduit_at: float = deg(-45),
+    letters_at: float = deg(-12),
+    beacons: bool = False,
+) -> None:
     """Build the launch vehicle with its first stage engines' exit plane at `base_z` (inches) of the flight's frame.
     `skirt_insulation`: whether the second stage's forward skirt wears its insulation (GLV-1 to GLV-3 did; GLV-4 on did not).
-    `conduit_at`: the angle of the external conduit that the lettering stands beside; `letters_at`: the angle of UNITED STATES."""
+    `conduit_at`: the angle of the external conduit that the lettering stands beside; `letters_at`: the angle of UNITED STATES.
+    `beacons`: the two flashing lights on the second stage, between its tanks, that only GLV-4 carried."""
     M = reuse(materials())
     z = lambda s: base_z + (S_EXIT - s)  # noqa: E731  a station's height in the flight's frame
     body = Surf(R, 0.0, 0.0)
@@ -307,6 +318,23 @@ def build(base_z: float, font=None, skirt_insulation: bool = True, conduit_at: f
         "launch, they were fired for a moment to prove them; a lined duct, a scupper, took each one's exhaust out through the "
         "side of the forward skirt here. That there were two, opposite each other, is documented; where round the vehicle is not.",
     )
+    if beacons:
+        # "Two Gemini target docking adapter flashing lights were mounted 180 degrees apart between the tanks on the second
+        # stage" (Gemini IV mission report, 5.2.6): which two sides is not said, nor the station
+        base, lens = MeshBuilder(), MeshBuilder()
+        for a in (conduit_at + da for da in BEACONS[0]):
+            port = frame(at(a, R, BEACONS[1]), radial(a))
+            base.lathe(prof([(2.6, -0.3), (2.6, 0.5), (0.0, 0.5)]), 20, matrix=port)
+            lens.lathe(prof([(1.9, 0.5), (1.9, 1.6), (1.3, 2.5), (0.0, 2.8)]), 20, matrix=port)
+        base.build("Stage2_BeaconBases", M["frame"], g, sharp_angle=35)
+        say(
+            lens.build("Stage2_Beacons", M["beacon"], g, sharp_angle=35),
+            "Flashing beacon",
+            "One of two flashing lights of the kind made for the Agena's docking adapter, put on this stage so that a crew "
+            "could keep it in sight after it had done its work. Each had its own battery and came on when the engine "
+            "stopped. Only this vehicle had them. That there were two, opposite each other between the tanks, is documented; "
+            "which sides they were on, their station and their form are estimated.",
+        )
     fair, bands = MeshBuilder(), MeshBuilder()
     for s0, s1 in CONDUIT_2:
         conduit(fair, bands, conduit_at, s0, s1)

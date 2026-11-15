@@ -3,7 +3,8 @@
 The booster for every Gemini: Martin's Titan II missile, changed as little as would make it fit to
 carry men. Model: [titan_ii_glv.py](titan_ii_glv.py), imported by each flight's `model/vehicle.py`.
 Built for GLV-3, which flew Gemini-Titan 3; another vehicle is what its record shows to differ
-("One vehicle from the next", below).
+("One vehicle from the next", below): GLV-4 and GLV-5 are built from it with the arguments that
+table names.
 
 **Two stages, nothing cryogenic.** Both burn Aerozine 50 (hydrazine and UDMH, half and half) with
 nitrogen tetroxide, which ignite on meeting and keep at ordinary temperatures. The tanks' walls are
@@ -17,7 +18,8 @@ Martin's stations run in inches from the nose toward the tail; the model keeps t
 
 Sources, short: **LSFR** is *Gemini Program Launch Systems Final Report* (Aerospace Corporation,
 January 1967; NASA CR on NTRS 19670076796); **GIV** is *Gemini Program Mission Report, Gemini IV*
-(MSC-G-R-65-3), which lists what GLV-4 changed from GLV-3; the **press kit** is NASA release 65-81.
+(MSC-G-R-65-3), which lists what GLV-4 changed from GLV-3; **GV** is the same for Gemini V
+(MSC-G-R-65-4) and GLV-5; the **press kit** is NASA release 65-81.
 
 ## Dimensions
 
@@ -76,7 +78,8 @@ Liftoff.jpg*, a NASA photograph). Stations are good to about 15 in.
 | Interstage | a black ring 13 in deep under the separation plane, then eight panels to station 596, black on the diagonals and white on the axes | estimated |
 | First stage | white from the splice at station 923 to about 1035; black to about 1095; then the eight panels again to the foot of the skirt | estimated |
 | UNITED STATES | black, down the first stage from about station 655 to 1004, each letter upright under the last, the last four on the white band; a short mark like an arrow under it | estimated |
-| The vehicle's number | not painted in the model | Not legible on GLV-3 in anything read. NASA S65-10461, captioned Gemini-Titan 3, shows "12557" at the foot of the first stage and on the second: it is dated November 1964 in NASA's library and is taken as GLV-2 (Air Force serial 62-12557: LSFR, p. II.E-38). GLV-3 would be 62-12558, by the sequence only |
+| The vehicle's number | not painted in the model | Not legible on GLV-3 in anything read. NASA S65-10461, captioned Gemini-Titan 3, shows "12557" at the foot of the first stage and on the second: it is dated November 1964 in NASA's library and is taken as GLV-2 (Air Force serial 62-12557: LSFR, p. II.E-38). GLV-3 would be 62-12558, GLV-4 62-12559 and GLV-5 62-12560, by the sequence only: none of the three has been read in a source or on a photograph |
+| GLV-4 and GLV-5 | the same scheme as GLV-3: bare tanks, the white and black bands, the roll pattern, UNITED STATES down the first stage with the mark under it; the second stage's skirt bare metal | documented by photograph for the scheme (GLV-4: the liftoff in colour, Wikimedia Commons *GT-4 Launch - GPN-2000-001014.jpg*; GLV-5: NASA S65-43447, on the stand). The edges' stations are GLV-3's, not read again on these two: assumed |
 
 ## Mass and propulsion
 
@@ -96,12 +99,27 @@ Liftoff.jpg*, a NASA photograph). Stations are good to about 15 in.
 | Insulation on the second stage's forward skirt | half the thickness GLV-1 wore (MMS K-438) | none | documented | LSFR, p. II.C-8; GIV, 3.2.1.2 | yes: `skirt_insulation`. Its colour is the liftoff photograph's |
 | Oxidiser feed line conduit, first stage | lapped circumferential joints | butt-welded | documented | GIV, 3.2.1.1 | no: inside the fuel tank; said on the part |
 | Oxidiser standpipes | charged by hand | charged remotely; the fuel tank's aft skirt changed for it | documented | GIV, 3.2.1.1 and 3.2.2.1 | no |
-| Flashing beacon lights on the second stage | none | added | documented | GIV, 3.2.2.5 | none modelled |
+| Flashing beacon lights on the second stage | none | GLV-4 only: "Two Gemini target docking adapter flashing lights were mounted 180° apart between the tanks on the second stage", each on its own battery, lit at cutoff; "not installed on GLV-5" | documented | GIV, 3.2.2.5 and 5.2.6; GV, 3.2.2.5 | yes: `beacons`, on GLV-4. Which two sides, their station and their form are estimated: opposite each other, square to the conduit, at station 366 |
 | Structural instrumentation | 16 measurements, with GLV-2 the last to carry strain gauges | removed | documented | GIV, 3.2.2.7; LSFR, p. II.C-14 | no |
 | Fuel dampener | no heat shield; Teflon bearing | heat shield; ceramic-filled Teflon | documented | GIV, 3.2.2.1 | no |
 | Switchback | first flight on which the spacecraft could switch guidance back to the primary system | | documented | LSFR, p. II.C-91 | no |
 
 What GLV-3 changed from GLV-2 is in the GT-3 mission report (MSC-G-R-65-2), which has not been read.
+
+GLV-5 from GLV-4 (GV, 3.2 and its table of modifications), none of it built: the second stage
+fuel tank's conduit butt-welded; the brackets for the missile's vernier engines taken off the
+second stage fuel tank's aft skirt; an air-conditioning cutout in compartment 3 deleted; two
+microphones, the redundant propellant level sensors, the FM/FM telemetry and the airborne tape
+recorder removed; the flashing lights left off. And one thing that was not a change of design: its
+oxidiser standpipes were charged with a tenth of the nitrogen they needed, and the crew were
+shaken at up to 0.38 g for about 13 seconds of first stage flight (*On the Shoulders of Titans*,
+p. 256, footnote).
+
+| | GLV-3 | GLV-4 | GLV-5 | Confidence |
+| --- | --- | --- | --- | --- |
+| Weight at liftoff, with the spacecraft | "about 340,000 pounds" (the plan) | 336,000 lb | 341,163 lb | documented (press kit, p. 39; GIV and GV, section 3.3, from the Aerospace Corporation) |
+| First stage cutoff | about 154.3 s (derived) | 152.43 s | 153.55 s | documented for GLV-4 and GLV-5 (GIV, Table 4-I; GV, Table 4.2-I) |
+| Second stage cutoff | 334 s | 333.75 s | 333.28 s | documented |
 
 ## What made it a Gemini Launch Vehicle
 
@@ -149,7 +167,9 @@ In the gallery the vehicle comes apart as it staged.
   connectors on the side toward the tower, small vents, stencils.
 - **The scupper ports' places** round the skirt are assumed (on the spacecraft's left and right).
 - **The paint's edges** are read off photographs to about 15 in, and the lettering's typeface is
-  Arial Bold, which it was not.
+  a stand-in: Arial Bold on GLV-3's model as committed, Liberation Sans Bold (the repo's own font,
+  cut to the same widths) on GLV-4's and GLV-5's and on any model built since. Neither is what
+  was painted.
 - **UNITED STATES is on one side**, where the photographs show it. Whether it was repeated on the
   other is not established.
 - **The stiffened skins** (the forward skirt's integral stiffening, the tanks' chemically milled
@@ -161,6 +181,8 @@ In the gallery the vehicle comes apart as it staged.
 - **No mass properties, no thrust curve.** The flight cannot be flown yet.
 - **Its levels of detail change at the viewer's own distances**: they have not been measured. Below
   half detail the ports and holes are dark discs, not openings.
+- **GLV-4 and GLV-5 are GLV-3 with a bare skirt**, and GLV-4 with its two lights. Their paint's
+  edges are GLV-3's; nothing else of what they changed shows or is built.
 
 ## Sources
 
