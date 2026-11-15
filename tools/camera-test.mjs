@@ -75,7 +75,7 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
     window.__probe = () => {
       const c = st.camera;
       const e = c.matrixWorld.elements;
-      const craft = st.crafted;
+      const craft = st.show.crafted;
       const middle = craft ? craft.centre.clone().applyMatrix4(craft.matrix) : null;
       const ndc = (p) => v(tmp.copy(p).project(c));
       return {

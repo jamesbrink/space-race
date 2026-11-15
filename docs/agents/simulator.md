@@ -70,7 +70,7 @@ never adjusted to bring a check in.
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
   the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
   does (the gyros' tilt going up, heat shield first after the turnaround). What it sheds is
-  flown (`sim/shed.ts`, `Ascent.shed`, `Stage.fall`): each thing in `trajectory.body.sheds` is a
+  flown (`sim/shed.ts`, `Ascent.shed`, `FlightShow.fall` in stage/flightshow.ts): each thing in `trajectory.body.sheds` is a
   rigid body of its own from the instant it leaves, and the full level's own node is carried by it,
   turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
   of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
@@ -314,7 +314,7 @@ never adjusted to bring a check in.
   burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
   what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
-  (`TRAIL_TOP` in stage.ts): laid round the Earth, its marched volume stalled the page.
+  (`TRAIL_TOP` in stage/flightshow.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,
   engines, throttle curves, propellant, drops and drag (`stackOf`), air (`airAt`), gravity and integrator (world/orbit.ts
   `step`), in the same frame, stepped by sim/vehicle.ts's TICK. What it adds is the body's turning, a rigid body whose

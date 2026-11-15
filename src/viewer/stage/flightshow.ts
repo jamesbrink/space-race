@@ -1,0 +1,888 @@
+import * as THREE from 'three';
+import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
+import { exitAreaOf } from '../../sim/staged.ts';
+import type { Burns, Flight as FlightData, ModelDef, SitedFlight } from '../../types.ts';
+import type { Clock } from '../../world/clock.ts';
+import { Ascent, type Run } from '../ascent.ts';
+import type { Setting } from '../backdrops.ts';
+import type { Cameras } from '../camera/index.ts';
+import type { Craft } from '../camera/rig.ts';
+import { Chute } from '../chute.ts';
+import type { Effects } from '../effects.ts';
+import { type Cluster, clusterOf, exitsOf } from '../fires.ts';
+import { kindOf } from '../flames.ts';
+import { Jets } from '../jets.ts';
+import type { Staged } from '../lod.ts';
+import type { Looks } from '../look.ts';
+import { jointKey } from '../onfoot/gait.ts';
+import { absolute } from '../origin.ts';
+import { lightFires, Plume } from '../plume.ts';
+import { TRAIL_STEP, Trail } from '../trail.ts';
+
+/** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
+const TRAIL_TOP = 80_000;
+const UP = new THREE.Vector3(0, 1, 0);
+const ONE = new THREE.Vector3(1, 1, 1);
+/** How far off something a vehicle has shed is still drawn, m: an 18 m booster is half a pixel at this distance. It is flown on beyond it (sim/shed.ts). */
+const SHED_SIGHT = 40_000;
+
+/**
+ * A figure for a descent (`flies.hangs`): its finest level copied, skeleton and all, and put in the pose its `Harness`
+ * node's extras give (`hang_joints`, `hang`: a quaternion in each joint's own axes, sk-1.md), with where its harness is in
+ * its own frame and how far below that its feet hang.
+ */
+function hangerOf(full: THREE.Object3D): { root: THREE.Object3D; harness: THREE.Vector3; foot: number } {
+  const root = cloneRigged(full);
+  // (a copy's userData went through JSON: the real material each mesh is drawn from is the original's, not a copy of it)
+  const made: THREE.Object3D[] = [];
+  full.traverse((o) => made.push(o));
+  let n = 0;
+  root.traverse((o) => {
+    const was = made[n++];
+    if (was && (o as THREE.Mesh).isMesh) {
+      o.userData = { ...was.userData };
+      (o as THREE.Mesh).material = (was as THREE.Mesh).material;
+    }
+  });
+  root.position.set(0, 0, 0);
+  root.quaternion.identity();
+  root.scale.setScalar(1);
+  const harness = root.getObjectByName('Harness');
+  const extras = harness?.userData as { hang_joints?: string; hang?: number[] } | undefined;
+  const joints = new Map<string, THREE.Object3D>();
+  root.traverse((o) => joints.set(jointKey(o.name), o));
+  (extras?.hang_joints ?? '').split(',').forEach((name, i) => {
+    const q = extras?.hang?.slice(i * 4, i * 4 + 4);
+    const joint = joints.get(jointKey(name.trim()));
+    if (joint && q?.length === 4) joint.quaternion.set(q[0]!, q[1]!, q[2]!, q[3]!);
+  });
+  root.updateMatrixWorld(true);
+  const at = harness ? harness.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 1.5, 0);
+  const feet = ['Foot.L', 'Foot.R'].map((f) => joints.get(jointKey(f))?.getWorldPosition(new THREE.Vector3()).y ?? 0);
+  root.traverse((o) => {
+    o.frustumCulled = false; // (posed away from its bounds as made)
+  });
+  return { root, harness: at, foot: Math.max(0, at.y - Math.min(...feet)) + 0.08 };
+}
+
+/** A node that rides a descent's body, as `Ascent.rideAt` needs it: the middle of its meshes and its +Y, in the flown model's frame (`rel`: its parent's place there). */
+function pieceOf(node: THREE.Object3D, rel: THREE.Matrix4): { centre: THREE.Vector3; lie: THREE.Vector3 } {
+  const own = rel.clone().multiply(node.matrix);
+  const box = new THREE.Box3();
+  node.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry.boundingBox ?? mesh.geometry.computeBoundingBox();
+    const to = new THREE.Matrix4();
+    for (let p: THREE.Object3D | null = mesh; p && p !== node; p = p.parent) to.premultiply(p.matrix);
+    box.union(mesh.geometry.boundingBox!.clone().applyMatrix4(to));
+  });
+  const centre = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+  return { centre: centre.applyMatrix4(own), lie: new THREE.Vector3(0, 1, 0).transformDirection(own) };
+}
+
+/** What the flight on show asks of the stage it is shown on. */
+export interface FlightShowHost {
+  readonly scene: THREE.Scene;
+  readonly camera: THREE.PerspectiveCamera;
+  readonly renderer: THREE.WebGLRenderer;
+  readonly cam: Cameras;
+  /** The Sun: its shadow map goes with the vehicle while it can fall inside it. */
+  readonly sun: THREE.DirectionalLight;
+  /** What is drawn without depth and may stand in front of cloud (clouds.ts `veils`): the fires and the trail join it. */
+  readonly veils: THREE.Object3D[];
+  readonly looks: Looks;
+  /** `?plain`: nothing made ahead of its moment (tools/bench.mjs). */
+  readonly plain: boolean;
+  clock(): Clock | null;
+  defs(): readonly ModelDef[];
+  staged(): readonly Staged[];
+  /** All the flight's models, under which what is shed is carried. */
+  root(): THREE.Group | null;
+  setting(): Setting;
+  /** The terrain's height under the models' zero. */
+  grade(): number;
+  /** What the flight's air does that is seen and felt (effects.ts), given by the page. */
+  effects(): Effects | null;
+  /** Whether the cutaway is open, and to open it again (cut open on its pad, its skin off in flight). */
+  cut(): boolean;
+  setCutaway(on: boolean): void;
+  /** Measure what is on show again. */
+  fitBounds(): void;
+  /** The exhibit as the camera needs it (stage/cabinview.ts), where nothing flies. */
+  exhibited(): Craft | null;
+  /** The node a seat is (stage/cabinview.ts). */
+  seatNode(at: number, seat: NonNullable<ModelDef['seats']>[number]): THREE.Object3D | null;
+  redraw(): void;
+  /** Hardware has moved: its shadows are drawn again in the same frame. */
+  oweShadows(): void;
+  /** The view has been sent to follow something the vehicle let go (its name), or is back with the vehicle (null). */
+  onFollow(name: string | null): void;
+}
+
+/**
+ * The flight on show (stage/flightshow.ts): the flown vehicle where the run on show has it at the clock's instant
+ * (ascent.ts), what it sheds carried away from it, the figures and parachutes of its descent, its attitude jets, each
+ * engine's fire hung at its nozzles and the trail it leaves; and the vehicle as the camera needs it (`craft`), or what
+ * it has let go while the view follows that.
+ */
+export class FlightShow {
+  constructor(private readonly h: FlightShowHost) {}
+
+  /** Take up another flight: its run, nothing shed, its fires hung afresh (the last flight's parachutes and jets taken away). */
+  load(flight: FlightData): void {
+    this.ascent = Ascent.of(flight);
+    this.lifted.t = Number.NaN;
+    this.debris.length = 0; // (their holders were under the last flight's root)
+    this.flightData = flight;
+    this.unhang();
+    this.hangPlume(flight);
+  }
+
+  /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
+  ascent: Ascent | null = null;
+
+  flightData: FlightData | null = null;
+
+  /**
+   * The flown vehicle's fires (plume.ts), one an engine: each hung at its nozzles' exit on the part that carries it
+   * (`owner`, a top-level node of the model, which may leave as a body of its own), at `offset` in that part's frame;
+   * `level`: its place in what `Ascent.fireLevels` gives; `share`: its steering chambers' share of its thrust.
+   */
+  plumes: { plume: Plume; owner: THREE.Object3D; offset: THREE.Matrix4; level: number; share: number }[] = [];
+
+  /** Their one light (plume.ts `lightFires`), in the flown model's frame. */
+  private fireLight: THREE.PointLight | null = null;
+
+  /** Where the trail leaves the vehicle, in its frame as it stands: the middle of the fires lit at liftoff, by their exits' areas. */
+  private readonly trailFrom = new THREE.Vector3();
+
+  /** The trail it leaves in the air while the engine burns (trail.ts), in the scene's frame. */
+  trail: Trail | null = null;
+
+  readonly lifted = {
+    t: Number.NaN,
+    flying: false,
+    shed: '',
+    shrank: false,
+    /** Whether its shadow could fall inside the shadow map when last put somewhere. */
+    shadowed: false,
+    hidden: [] as THREE.Object3D[],
+    by: new THREE.Vector3(),
+  };
+
+  /**
+   * What the flown vehicle has shed and is still seen falling away (ascent.ts `shed`): each node
+   * taken out of the model's full level into a holder that stands where its parent would be, so it
+   * keeps its own place and turn under it; `rel` is that parent in the model's frame.
+   */
+  /**
+   * What the vehicle has let go that the view is following in place of the vehicle (an index into the ascent's drops),
+   * or null; and that piece as the camera needs it, measured once in its own frame.
+   */
+  followed: number | null = null;
+
+  shedCraft: (Craft & { drop: number }) | null = null;
+
+  /**
+   * What the vehicle has let go, each node in a holder of its own: by its drop's index, or for a figure carried down on a
+   * descent (`flies.hangs`) the number of drops and its own. What rides a descent's bodies has its `piece` measured once
+   * (its centre and +Y in the model's frame), and `hidden` what of it is not drawn on the leg it is on.
+   */
+  readonly debris: {
+    node: THREE.Object3D;
+    parent: THREE.Object3D;
+    drop: number;
+    holder: THREE.Group;
+    rel: THREE.Matrix4;
+    piece?: { centre: THREE.Vector3; lie: THREE.Vector3 };
+    hidden?: THREE.Object3D[];
+  }[] = [];
+
+  /** The flight's figures that come down on a descent (`flies.hangs`), each posed as it hangs, made the first time the vehicle flies. */
+  private hangers: { root: THREE.Object3D; harness: THREE.Vector3; foot: number }[] | null = null;
+
+  /** The flown vehicle as the camera needs it (camera/rig.ts: Craft): its frame, the middle and size of what is left of it, a place to see from inside it. */
+  craft(): Craft | null {
+    const s = this.flier;
+    if (!s) return this.h.exhibited();
+    if (this.followed !== null) {
+      const shed = this.shedAsCraft(this.followed);
+      if (shed) return shed;
+    }
+    const c = (this.crafted ??= {
+      matrix: s.group.matrixWorld,
+      centre: new THREE.Vector3(),
+      radius: 1,
+      shape: 0,
+      flying: false,
+      seat: null as THREE.Matrix4 | null,
+      of: null as Staged | null,
+      shed: '',
+      level: null as THREE.Object3D | null,
+      place: null as THREE.Object3D | null,
+      size: new THREE.Vector3(),
+    });
+    const at = this.h.defs().findIndex((m) => m.id === this.ascent?.model);
+    const seat = this.h.defs()[at]?.seats?.[0];
+    if (c.of !== s) c.place = seat ? this.h.seatNode(at, seat) : null; // (found once: the first place its data gives to see from)
+    if (c.of !== s || c.shed !== this.lifted.shed || c.level !== s.shown) {
+      // measured when what is left of it changes, not every frame: the box round what is still drawn of it
+      c.of = s;
+      c.shed = this.lifted.shed;
+      c.level = s.shown;
+      c.matrix = s.group.matrixWorld;
+      // (in the vehicle's own frame, so it is the same box however the vehicle lay when it was taken: a box in the
+      // scene's frame round a pitched rocket is a different box, and the camera and the Sun's map then stood a little
+      // differently according to when a level or a stage had last changed)
+      // (and from each node's own placing up to the vehicle's, never through where the vehicle is in the world: twelve
+      // kilometres up that is the last bits of every number, and the same box must come back to the bit)
+      const left = new THREE.Box3();
+      const within = new THREE.Matrix4();
+      const each = new THREE.Box3();
+      s.shown.traverseVisible((o) => {
+        const geometry = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry : null;
+        if (!geometry) return;
+        if (!geometry.boundingBox) geometry.computeBoundingBox();
+        within.copy(o.matrix);
+        for (let up = o.parent; up && up !== s.group; up = up.parent) within.premultiply(up.matrix);
+        left.union(each.copy(geometry.boundingBox!).applyMatrix4(within));
+      });
+      if (!left.isEmpty()) {
+        const centre = left.getCenter(new THREE.Vector3());
+        const radius = left.getSize(new THREE.Vector3()).length() / 2;
+        // (a coarser level of the same thing is the same shape: only a real change counts as one)
+        if (centre.distanceTo(c.centre) > 0.05 * radius || Math.abs(radius - c.radius) > 0.05 * radius) c.shape++;
+        c.centre.copy(centre);
+        c.radius = radius;
+        left.getSize(c.size);
+      }
+    }
+    c.flying = this.lifted.flying;
+    // the eyes, in the seat's frame
+    const node = c.place;
+    if (node && seat) {
+      node.updateWorldMatrix(true, false);
+      c.seat = (c.seat ?? new THREE.Matrix4())
+        .copy(node.matrixWorld)
+        .multiply(new THREE.Matrix4().makeTranslation(...(seat.eye ?? ([0, 0, 0] as const))));
+    } else c.seat = null;
+    return c;
+  }
+
+  crafted:
+    | (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null; size: THREE.Vector3 })
+    | null = null;
+
+  /**
+   * Something the vehicle has let go, as the camera needs it: the frame it is carried in (the vehicle's own, as it was
+   * when the piece left, moved and turned as its body has gone since), and the middle and size of its nodes in that
+   * frame, measured when the view is first sent to it. Null when none of it is drawn (the clock is back before it left).
+   */
+  shedAsCraft(drop: number): Craft | null {
+    const pieces = this.debris.filter((d) => d.drop === drop && d.holder.visible);
+    const first = pieces[0];
+    if (!first) return null;
+    const frame = new THREE.Matrix4().copy(first.rel).invert().premultiply(first.holder.matrix);
+    let c = this.shedCraft;
+    if (!c || c.drop !== drop) {
+      const into = new THREE.Matrix4().copy(frame).invert();
+      const box = new THREE.Box3();
+      const each = new THREE.Box3();
+      const within = new THREE.Matrix4();
+      for (const d of pieces) {
+        d.node.traverse((o) => {
+          const geometry = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry : null;
+          if (!geometry) return;
+          if (!geometry.boundingBox) geometry.computeBoundingBox();
+          // (from each mesh up to its holder, then the holder's own place: never through the world, as `craft` has it)
+          within.copy(o.matrix);
+          for (let up = o.parent; up && up !== d.holder; up = up.parent) within.premultiply(up.matrix);
+          within.premultiply(d.holder.matrix).premultiply(into);
+          box.union(each.copy(geometry.boundingBox!).applyMatrix4(within));
+        });
+      }
+      if (box.isEmpty()) return null;
+      c = this.shedCraft = {
+        drop,
+        matrix: new THREE.Matrix4(),
+        centre: box.getCenter(new THREE.Vector3()),
+        radius: box.getSize(new THREE.Vector3()).length() / 2,
+        shape: 1000 + drop,
+        flying: true,
+        seat: null,
+      };
+    }
+    c.matrix.copy(frame);
+    return c;
+  }
+
+  /**
+   * Send the view after something the vehicle has let go (a drop of the ascent's, by its index: `onSpot` names the one
+   * under a right click), or back to the vehicle (null). The flight goes on being flown; only what the chase view, the
+   * locked view and the pad camera are about changes, until the reset key, another rig, or the clock going back before
+   * the piece left.
+   */
+  followShed(drop: number | null): void {
+    if (drop === this.followed) return;
+    if (drop !== null && !this.debris.some((d) => d.drop === drop && d.holder.visible)) return;
+    this.followed = drop;
+    this.shedCraft = null;
+    this.h.cam.retake();
+    this.h.onFollow(drop === null ? null : this.dropTitle(drop));
+    this.h.oweShadows();
+    this.h.redraw();
+  }
+
+  /** Let go of what was being followed without moving the view: another rig has it now, or the piece is no longer there. */
+  unfollow(): void {
+    if (this.followed === null) return;
+    this.followed = null;
+    this.shedCraft = null;
+    this.h.onFollow(null);
+  }
+
+  /** What a drop is called: its body's name where the flight gives one, or the part its first node is. */
+  dropTitle(drop: number): string {
+    const node = this.ascent?.drops[drop]?.nodes[0];
+    const part = this.h
+      .defs()
+      .find((m) => m.id === this.ascent?.model)
+      ?.parts.find((p) => p.node === node);
+    return this.ascent?.dropName(drop) ?? part?.name ?? 'stage';
+  }
+
+  /**
+   * Show a flight being flown by hand (ascent.ts `Run`) in place of the record's, or the record's again (null).
+   * The trail starts afresh: the one laid belongs to the flight before.
+   */
+  flyRun(run: Run | null): void {
+    if (!this.ascent) return;
+    this.ascent.use(run);
+    this.h.effects()?.use(run);
+    this.stand();
+    if (this.flightData) this.hangPlume(this.flightData);
+    // (the jets and the parachutes are the flight's, not the run's: kept, with the shaders `warm` built for them. Made
+    // again here, the deck's were made and their shaders built at their first use, in the middle of the flight. The jets
+    // stand in the body's axes as this run has them on its pad.)
+    const flier = this.h.defs().find((m) => m.id === this.ascent?.model);
+    const frame = this.jets && this.ascent.bodyFrame(new THREE.Quaternion().setFromAxisAngle(UP, flier?.rotationY ?? 0));
+    if (this.jets && frame) this.jets.group.matrix.copy(frame);
+    this.lifted.t = Number.NaN;
+    this.h.redraw();
+  }
+
+  /**
+   * Stand the flown model on its pad, whole, wherever the run before had it: what it had shed is put back in it and
+   * shown. The fire is hung on it as it stands there (`hangPlume` measures the nozzle on the model upright, and finds
+   * the engine in the model, not carried off with a booster that has left); `lift` then puts it where the run on show
+   * has it at the clock's instant, and does what follows from its having moved.
+   */
+  stand(): void {
+    const s = this.flier;
+    const def = this.h.defs().find((m) => m.id === this.ascent?.model);
+    if (!s || !def) return;
+    for (const d of this.debris.splice(0)) {
+      d.parent.add(d.node);
+      d.holder.removeFromParent();
+      for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
+    }
+    for (const o of this.lifted.hidden) o.visible = true;
+    this.lifted.hidden = [];
+    this.lifted.shed = '';
+    s.group.position.set(...(def.position ?? [0, 0, 0]));
+    s.group.quaternion.setFromAxisAngle(UP, def.rotationY ?? 0);
+    s.group.updateMatrixWorld(true);
+    this.h.oweShadows();
+  }
+
+  /** The model the flight carries off the pad, if there is one. */
+  get flier(): Staged | null {
+    const id = this.ascent?.model;
+    return this.h.staged()[this.h.defs().findIndex((m) => m.id === id)] ?? null;
+  }
+
+  /**
+   * Put the flown vehicle where the simulator has it at the clock's instant (ascent.ts): from
+   * liftoff to landing it flies, without what it has shed; before and after it stands on its pad.
+   */
+  lift(): void {
+    this.lifted.by.set(0, 0, 0);
+    const ascent = this.ascent;
+    const s = this.flier;
+    const clock = this.h.clock();
+    if (!ascent || !s || !clock) return;
+    const t = clock.t;
+    if (t === this.lifted.t) return;
+    this.lifted.t = t;
+    const def = this.h.defs().find((m) => m.id === ascent.model)!;
+    const g = s.group;
+    const before = g.position.clone();
+    const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
+    const flying = ascent.place(t, pad, g.position, g.quaternion);
+    if (!flying && !this.lifted.flying) return; // standing on its pad, as it was
+    if (!flying) {
+      g.position.set(...(def.position ?? [0, 0, 0]));
+      g.quaternion.copy(pad);
+    }
+    const changed = flying !== this.lifted.flying;
+    this.lifted.flying = flying;
+    const shed = ascent.dropped(t);
+    if (shed.join() !== this.lifted.shed) {
+      this.lifted.shed = shed.join();
+      for (const o of this.lifted.hidden) o.visible = true;
+      this.lifted.hidden = [];
+      const names = new Set(shed);
+      g.traverse((o) => {
+        if (names.has(o.name) && o.visible) {
+          o.visible = false;
+          this.lifted.hidden.push(o);
+        }
+      });
+      this.h.renderer.shadowMap.needsUpdate = true;
+      this.lifted.shrank = flying;
+    }
+    this.fall(ascent, s, pad, t, flying);
+    this.hang(ascent, s, pad, t, flying);
+    this.burnFires(ascent, t); // (their flicker is the clock's: the same instant is the same fire)
+    this.layTrail(ascent, pad, t, flying);
+    this.h
+      .effects()
+      ?.set(t, flying, g, s.full, clock.rate, this.h.renderer.toneMappingExposure, this.h.setting().sunIntensity, this.h.veils);
+    this.lifted.by.subVectors(g.position, before);
+    g.updateMatrixWorld(true);
+    s.measure(); // levels of detail are chosen by the distance to it
+    if (changed) this.h.fitBounds(); // (a vehicle in flight is left out of them, so they change only as it leaves and comes back)
+    if (changed && this.h.cut()) this.h.setCutaway(true); // (cut open on its pad, its skin off in flight: as it leaves and comes back)
+    this.h.redraw();
+    // its shadow is drawn again only while it can fall inside the shadow map (which goes with it under the chase camera):
+    // a rocket long gone from a map fitted to the pad casts nothing there
+    const box = this.h.sun.shadow.camera;
+    const within =
+      (this.h.cam.rig !== 'orbit' && this.h.cam.rig !== 'free') || g.position.distanceTo(this.h.sun.target.position) < 2 * box.right + 60;
+    if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.h.oweShadows();
+    this.lifted.shrank = false;
+    this.lifted.shadowed = within;
+  }
+
+  /**
+   * Carry what the vehicle has shed away from it: the tower on its own rocket, the booster and
+   * the retropack falling behind (ascent.ts `shed`), instead of their vanishing. Each is the full
+   * level's own node, moved into a holder in the scene while it falls and put back when the clock
+   * goes back before it left or the flight is over.
+   */
+  fall(ascent: Ascent, s: Staged, pad: THREE.Quaternion, t: number, flying: boolean): void {
+    const root = this.h.root();
+    const drops = ascent.drops.length;
+    const gone = (i: number) =>
+      flying && (i < drops ? t >= ascent.drops[i]!.at : ascent.hangerAt(i - drops, t, pad, this.pieceOf) !== null);
+    for (let k = this.debris.length - 1; k >= 0; k--) {
+      const d = this.debris[k]!;
+      if (gone(d.drop)) continue;
+      d.parent.add(d.node);
+      d.holder.removeFromParent();
+      for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
+      this.debris.splice(k, 1);
+    }
+    s.group.updateMatrixWorld(true);
+    const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
+    const riders = this.flightData?.flies?.drops ?? [];
+    ascent.drops.forEach((drop, i) => {
+      if (!gone(i) || this.debris.some((d) => d.drop === i)) return;
+      for (const name of drop.nodes) {
+        const node = s.full.getObjectByName(name);
+        const parent = node?.parent;
+        if (!node || !parent || !root) continue;
+        const holder = new THREE.Group();
+        holder.matrixAutoUpdate = false;
+        root.add(holder);
+        holder.add(node);
+        node.visible = true; // (hidden with the rest of what was shed, at every level, a moment ago)
+        const rel = into.clone().multiply(parent.matrixWorld);
+        this.debris.push({ node, parent, drop: i, holder, rel, piece: riders[i]?.rides ? pieceOf(node, rel) : undefined });
+      }
+    });
+    // the figures carried down on a descent, as each comes to be (his canopy out: he has left the seat)
+    this.hangers?.forEach((h, j) => {
+      const drop = drops + j;
+      if (!gone(drop) || this.debris.some((d) => d.drop === drop) || !root) return;
+      const holder = new THREE.Group();
+      holder.matrixAutoUpdate = false;
+      root.add(holder);
+      const parent = h.root.parent ?? new THREE.Group();
+      holder.add(h.root);
+      this.debris.push({ node: h.root, parent, drop, holder, rel: new THREE.Matrix4() });
+    });
+    const at = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    for (const d of this.debris) {
+      let shown: boolean;
+      if (d.drop >= drops) {
+        // a figure: his harness where the body is, the line up to his canopy through it, his feet coming down under it
+        const h = this.hangers![d.drop - drops]!;
+        const now = ascent.hangerAt(d.drop - drops, t, pad, this.pieceOf);
+        shown = now !== null;
+        if (now) {
+          turn.setFromUnitVectors(UP, now.line);
+          at.copy(now.harness)
+            .addScaledVector(now.line, h.foot * THREE.MathUtils.smoothstep(now.since, 0, 2))
+            .sub(h.harness.clone().applyQuaternion(turn));
+          d.holder.matrix.compose(at, turn, ONE);
+        }
+      } else if (d.piece) {
+        // on a descent's body: its centre along the body's track, its +Y against the air
+        const ride = ascent.rideAt(d.drop, t, pad, d.piece);
+        shown = ride !== null;
+        if (ride) {
+          at.copy(d.piece.centre).applyQuaternion(ride.turn).negate().add(ride.centre);
+          d.holder.matrix.compose(at, ride.turn, ONE).multiply(d.rel);
+          const hide = riders[d.drop]?.rides?.[ride.leg]?.hide ?? [];
+          if ((d.hidden?.length ?? 0) !== hide.length) {
+            for (const o of d.hidden?.splice(0) ?? []) o.visible = true;
+            d.hidden = hide.map((name) => d.node.getObjectByName(name)).filter((o): o is THREE.Object3D => Boolean(o?.visible));
+            for (const o of d.hidden) o.visible = false;
+            this.h.oweShadows();
+          }
+        }
+      } else {
+        shown = ascent.shed(d.drop, t, pad, at, turn);
+        // (what left under a parachute is lost to sight: drawn smaller, to nothing)
+        if (shown) d.holder.matrix.compose(at, turn, ONE.clone().multiplyScalar(ascent.seen(d.drop, t))).multiply(d.rel);
+      }
+      // (what the flight gives no body for is not drawn; nor is anything past SHED_SIGHT of both the eye and the vehicle, which
+      // the camera may be about to go to: it is under a pixel there, and is flown on all the same)
+      const where = new THREE.Vector3().setFromMatrixPosition(d.holder.matrix);
+      d.holder.visible = shown && Math.min(where.distanceTo(this.h.camera.position), where.distanceTo(s.group.position)) < SHED_SIGHT;
+      if (d.holder.visible) d.holder.matrixWorldNeedsUpdate = true;
+    }
+    // what the view was following is no longer there (the clock put back before it left, the flight begun again): back to the vehicle
+    const followed = this.followed;
+    if (followed !== null && !this.debris.some((d) => d.drop === followed && d.holder.visible)) this.followShed(null);
+  }
+
+  /** What drop `i` rides a descent on, as `fall` measured it (its first node's), for `Ascent.hangerAt`. */
+  private readonly pieceOf = (i: number): { centre: THREE.Vector3; lie: THREE.Vector3 } | null =>
+    this.debris.find((d) => d.drop === i && d.piece)?.piece ?? null;
+
+  /** The flown vehicle's parachutes (`Flight.flies.chutes`), made the first time the vehicle flies, and its attitude jets (viewer/jets.ts). */
+  chutes: Chute[] | null = null;
+
+  jets: Jets | null = null;
+
+  /**
+   * Draw the parachutes as the run has them at `t` (ascent.ts `chute`, viewer/chute.ts): each made fast to the node the
+   * flight names, on the full level's own node, so one that leaves with what it carried off goes where `fall` puts that.
+   */
+  hang(ascent: Ascent, s: Staged, pad: THREE.Quaternion, t: number, flying: boolean): void {
+    // the attitude jets: a cone at each chamber that is open, on the model in the body's own axes
+    const thrusters = this.flightData?.trajectory?.body?.capsule.rcs?.thrusters;
+    const frame = thrusters && !this.jets ? ascent.bodyFrame(pad) : null;
+    if (thrusters && frame) {
+      this.jets = new Jets(thrusters);
+      this.jets.group.matrix.copy(frame);
+      s.group.add(this.jets.group);
+    }
+    this.jets?.set(flying ? ascent.jets(t) : null, this.h.renderer.toneMappingExposure);
+    if (!this.hangers) {
+      this.hangers = (this.flightData?.flies?.hangs ?? []).flatMap((h) => {
+        const figure = this.h.staged()[this.h.defs().findIndex((m) => m.id === h.model)];
+        return figure ? [hangerOf(figure.full)] : [];
+      });
+      for (const h of this.hangers) this.h.looks.add(h.root);
+    }
+    if (!ascent.chutes.length) return;
+    if (!this.chutes) {
+      s.group.updateMatrixWorld(true);
+      const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
+      const own = this.flightData?.orbital?.descent?.bodies[0]?.id;
+      this.chutes = ascent.chutes.map((def) => {
+        // (the node may be away already, carried off in `fall`'s holder, or on a figure carried down)
+        const node =
+          s.full.getObjectByName(def.at) ??
+          this.hangers?.map((h) => h.root.getObjectByName(def.at)).find(Boolean) ??
+          this.debris.map((d) => d.node.getObjectByName(def.at)).find(Boolean) ??
+          s.full;
+        const chute = new Chute(def, node);
+        // (the run's own body hangs from where its parachute is made fast: measured on the model as it stands now)
+        if (def.body && def.body === own && !ascent.hangsFrom && s.full.getObjectByName(def.at)) {
+          node.updateWorldMatrix(true, false);
+          ascent.hangsFrom = chute.anchor.clone().applyMatrix4(node.matrixWorld).applyMatrix4(into);
+        }
+        this.h.scene.add(chute.group);
+        this.h.looks.add(chute.group);
+        return chute;
+      });
+    }
+    const light = this.h.setting().sunIntensity / 3 + 0.1;
+    this.chutes.forEach((chute, i) => chute.set(flying ? ascent.chute(i, t, pad) : null, light));
+  }
+
+  /**
+   * Lay the trail up to `t` (it is laid once, point by point, as far as the clock has gone while
+   * the engine burns; going back only shows less of it) and show it as it stands at `t`.
+   */
+  layTrail(ascent: Ascent, pad: THREE.Quaternion, t: number, flying: boolean): void {
+    const trail = this.trail;
+    const nozzle = this.plumes.length ? this.trailFrom : undefined;
+    if (!trail || !nozzle) return;
+    // (nothing is laid, and no head drawn, above TRAIL_TOP: no trail is drawn there, and an orbital flight's, laid on round
+    // the Earth, swelled the volume the smoke is marched in until the page stalled)
+    const upTo = flying ? Math.min(t, ascent.cutoff) : -1;
+    const at = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    while ((trail.laid + 1) * TRAIL_STEP <= upTo) {
+      const born = (trail.laid + 1) * TRAIL_STEP;
+      if (!ascent.place(born, pad, at, turn)) break;
+      at.add(nozzle.clone().applyQuaternion(turn));
+      if (at.y - this.h.grade() > TRAIL_TOP) break;
+      const along = UP.clone().applyQuaternion(turn);
+      trail.reach(at, along, born, Math.exp(-Math.max(0, at.y - this.h.grade()) / 8000));
+    }
+    // and from the last point to the nozzle as it is now, while it burns
+    if (flying && t < ascent.cutoff && ascent.place(t, pad, at, turn) && at.y - this.h.grade() <= TRAIL_TOP) {
+      at.add(nozzle.clone().applyQuaternion(turn));
+      trail.head(at, UP.clone().applyQuaternion(turn), t, Math.exp(-Math.max(0, at.y - this.h.grade()) / 8000));
+    } else trail.headless();
+    trail.show(flying ? t : null, this.h.setting().sunIntensity / 3 + 0.1);
+  }
+
+  /** Take the last flight's parachutes and attitude jets away: another flight has its own. */
+  unhang(): void {
+    for (const chute of this.chutes ?? []) {
+      chute.group.removeFromParent();
+      this.h.looks.remove(chute.group); // (or every flight's parachutes would be kept, and dressed again at each change of look)
+      chute.dispose();
+    }
+    this.chutes = null;
+    for (const h of this.hangers ?? []) {
+      h.root.removeFromParent();
+      this.h.looks.remove(h.root);
+    }
+    this.hangers = null;
+    this.jets?.group.removeFromParent();
+    this.jets?.dispose();
+    this.jets = null;
+  }
+
+  /**
+   * Burn each fire as the run on show has it at `t` (`Ascent.fireLevels`), where the part that carries it is now: on
+   * the vehicle, or on a booster swinging away, which takes its dying fire with it. Then their one light.
+   */
+  burnFires(ascent: Ascent, t: number): void {
+    const root = this.h.root();
+    if (!root || !this.plumes.length) return;
+    const { vacuum, levels } = ascent.fireLevels(
+      t,
+      Array.from(
+        { length: Math.max(...this.plumes.map((h) => h.level)) + 1 },
+        (_, i) => this.plumes.find((h) => h.level === i)?.share ?? 0,
+      ),
+    );
+    root.updateWorldMatrix(true, false);
+    const into = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    for (const h of this.plumes) {
+      const l = levels[h.level] ?? { main: 0, steering: 0 };
+      h.owner.updateWorldMatrix(true, false);
+      h.plume.mesh.matrix.multiplyMatrices(into, h.owner.matrixWorld).multiply(h.offset);
+      h.plume.mesh.matrixWorldNeedsUpdate = true;
+      h.plume.set(l.main, vacuum, t, this.h.renderer.toneMappingExposure, l.steering);
+    }
+    if (this.fireLight)
+      lightFires(
+        this.fireLight,
+        this.plumes.map((h) => h.plume),
+      );
+  }
+
+  /**
+   * For tests (tools/fires-test.mjs): each fire hung, as it stands: the part that carries it, how hard it burns, whether
+   * it is drawn, its exit's middle and the part's bounds in the world, and how many chambers of each kind it has.
+   */
+  fireReport(): {
+    owner: string;
+    on: number;
+    steering: number;
+    drawn: boolean;
+    exit: number[];
+    box: number[][];
+    chambers: number[];
+  }[] {
+    return this.plumes.map((h) => {
+      h.plume.mesh.updateWorldMatrix(true, false);
+      const box = new THREE.Box3().setFromObject(h.owner);
+      let shown = h.plume.mesh.visible;
+      for (let o = h.plume.mesh.parent; o; o = o.parent) shown &&= o.visible;
+      return {
+        owner: h.owner.name,
+        on: h.plume.on,
+        steering: h.plume.steering,
+        drawn: shown,
+        exit: new THREE.Vector3().setFromMatrixPosition(h.plume.mesh.matrixWorld).toArray(),
+        box: [box.min.toArray(), box.max.toArray()],
+        chambers: [h.plume.cluster?.main.length ?? 1, h.plume.cluster?.steering.length ?? 0],
+      };
+    });
+  }
+
+  /**
+   * Hang the flown vehicle's fires, measured as it stands on the pad: `Flight.flies.engine`'s (one round exit at its
+   * node's lowest middle, its area the trajectory's or its stage's), then each of `flies.fires`: one round exit of the
+   * `radius` given, or, with none given, the nozzles found in the node's geometry (fires.ts `exitsOf`: an engine of
+   * several chambers, main and steering). Each is carried by the top-level part of the model that holds its node.
+   */
+  hangPlume(flight: FlightData): void {
+    const gone = [...this.plumes.map((h) => h.plume.mesh), this.trail?.mesh];
+    this.h.veils.splice(0, this.h.veils.length, ...this.h.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
+    // (their meshes draw nothing, but the clouds' pass has drawn them among the veils, so the renderer holds their geometry)
+    for (const h of this.plumes) h.plume.dispose();
+    this.plumes = [];
+    this.fireLight?.removeFromParent();
+    this.fireLight = null;
+    this.trail?.mesh.removeFromParent();
+    this.trail?.dispose();
+    this.trail = null;
+    const s = this.flier;
+    const root = this.h.root();
+    if (!s || !root || !flight.flies) return;
+    s.group.updateMatrixWorld(true);
+    const fromGroup = new THREE.Matrix4().copy(s.group.matrixWorld);
+    const intoGroup = fromGroup.clone().invert();
+    const light = new THREE.PointLight(0xffb468, 0, 0, 2);
+    light.name = 'PlumeLight';
+    // the lowest middle of a node's bounds as the vehicle stands, in its frame
+    const lowest = (node: THREE.Object3D): THREE.Vector3 => {
+      const b = new THREE.Box3().setFromObject(node);
+      return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
+    };
+    const hang = (node: THREE.Object3D, level: number, radius: number, at: THREE.Vector3, cluster: Cluster | null, burns?: Burns): void => {
+      let owner = node;
+      while (owner.parent && owner.parent !== s.full) owner = owner.parent;
+      if (!owner.parent) owner = s.group;
+      owner.updateWorldMatrix(true, false);
+      const offset = new THREE.Matrix4()
+        .copy(owner.matrixWorld)
+        .invert()
+        .multiply(fromGroup)
+        .multiply(new THREE.Matrix4().makeTranslation(at));
+      const plume = new Plume(radius, cluster, light, kindOf(burns));
+      plume.mesh.matrixAutoUpdate = false;
+      plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
+      root.add(plume.mesh);
+      this.plumes.push({ plume, owner, offset, level, share: cluster?.steeringShare ?? 0 });
+    };
+    let level = 0;
+    if (flight.flies.engine) {
+      const engine = s.full.getObjectByName(flight.flies.engine);
+      const exitArea =
+        flight.trajectory?.engine.exitArea.value ??
+        (() => {
+          const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
+          return stage ? exitAreaOf(stage) : undefined;
+        })();
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null, flight.flies.burns);
+      level++;
+    }
+    for (const f of flight.flies.fires ?? []) {
+      const node = s.full.getObjectByName(f.node);
+      if (node && f.radius) hang(node, level, f.radius, lowest(node), null, f.burns);
+      else if (node) {
+        // every vertex under it, in the vehicle's frame as it stands
+        const points: number[] = [];
+        const p = new THREE.Vector3();
+        node.updateWorldMatrix(true, true);
+        node.traverse((o) => {
+          const position = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry.getAttribute('position') : undefined;
+          if (!position) return;
+          const m = new THREE.Matrix4().multiplyMatrices(intoGroup, o.matrixWorld);
+          for (let i = 0; i < position.count; i++) points.push(...p.fromBufferAttribute(position, i).applyMatrix4(m).toArray());
+        });
+        const cluster = clusterOf(exitsOf(points));
+        if (cluster) {
+          const { x, y, z } = cluster.centre;
+          hang(
+            node,
+            level,
+            cluster.radius,
+            new THREE.Vector3(x, y, z),
+            cluster.main.length > 1 || cluster.steering.length ? cluster : null,
+            f.burns,
+          );
+        }
+      }
+      level++;
+    }
+    if (!this.plumes.length) return;
+    s.group.add(light); // (in the scene at no strength until a fire burns: lighting it builds no shader)
+    this.fireLight = light;
+    // the trail leaves from the middle of the fires lit at liftoff, as wide as they are spread
+    const ascent = this.ascent;
+    const lit = ascent?.fireLevels(
+      1,
+      Array.from({ length: level }, (_, i) => this.plumes.find((h) => h.level === i)?.share ?? 0),
+    ).levels;
+    const first = this.plumes.filter((h) => (lit?.[h.level]?.main ?? 0) > 0);
+    const from = first.length ? first : this.plumes.slice(0, 1);
+    const at = (h: (typeof this.plumes)[number]) =>
+      new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(intoGroup, h.owner.matrixWorld).multiply(h.offset));
+    let area = 0;
+    this.trailFrom.set(0, 0, 0);
+    for (const h of from) {
+      const a = h.plume.radius ** 2;
+      this.trailFrom.addScaledVector(at(h), a);
+      area += a;
+    }
+    this.trailFrom.divideScalar(area);
+    const spread = Math.max(...from.map((h) => Math.hypot(at(h).x - this.trailFrom.x, at(h).z - this.trailFrom.z)));
+    // (where the site sends the exhaust: into a flame pit and out of its open side, or out over the concrete all round)
+    const way = (flight as Partial<SitedFlight>).site?.exhaust;
+    const bearing = THREE.MathUtils.degToRad((way?.toward.value ?? 0) - ((flight as Partial<SitedFlight>).site?.bearingX.value ?? 0));
+    this.trail = new Trail(
+      2.5 + spread,
+      way
+        ? { toward: [Math.cos(bearing), Math.sin(bearing)], depth: way.depth.value, out: way.out.value, width: way.width.value }
+        : undefined,
+    );
+    this.h.scene.add(this.trail.mesh);
+    this.h.veils.push(...this.plumes.map((h) => h.plume.mesh), this.trail.mesh); // (cloud behind them shows through them: clouds.ts)
+  }
+
+  /**
+   * Have everything the flight will put in the scene made now, unseen: the frost that comes off at liftoff, the glow
+   * of the entry, the attitude jets, the parachutes. Each was made the first time it was wanted, and its shader built
+   * there and then, with the page stopped for it in the middle of the flight (141 ms at liftoff). Made here, hidden
+   * as they are until their moment, they are in the scene when `warm` has every shader built, and shown to it (`uncover`).
+   */
+  rehearse(): void {
+    const ascent = this.ascent;
+    const s = this.flier;
+    const clock = this.h.clock();
+    if (!ascent || !s || !clock || this.h.plain) return;
+    const def = this.h.defs().find((m) => m.id === ascent.model)!;
+    const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
+    const t = clock.t;
+    s.group.updateMatrixWorld(true);
+    this.h
+      .effects()
+      ?.set(t, false, s.group, s.full, clock.rate, this.h.renderer.toneMappingExposure, this.h.setting().sunIntensity, this.h.veils);
+    this.hang(ascent, s, pad, t, false);
+  }
+
+  /**
+   * The flown vehicle, in the scene's frame (also during the draw): its middle into `out`, its long axis into `axis`; the
+   * radius of a ball round what is left of it, and half its length and its breadth along and across that axis. Null if
+   * nothing flies.
+   */
+  vessel(out: THREE.Vector3, axis?: THREE.Vector3): { radius: number; half: number; across: number } | null {
+    // (as the camera last measured it this frame, not measured again: in the draw every world matrix is the eye's, and
+    // what `craft` keeps, the seat's, must not be taken then)
+    const c = this.crafted;
+    const of = this.flier;
+    if (!c || !of || c.of !== of || !this.lifted.flying) return null;
+    absolute(out.copy(c.centre).applyMatrix4(of.group.matrixWorld));
+    const size = c.size;
+    const long = size.x >= size.y && size.x >= size.z ? 0 : size.y >= size.z ? 1 : 2;
+    axis?.setFromMatrixColumn(of.group.matrixWorld, long).normalize();
+    const across = (long === 0 ? Math.max(size.y, size.z) : long === 1 ? Math.max(size.x, size.z) : Math.max(size.x, size.y)) / 2;
+    return { radius: c.radius, half: size.getComponent(long) / 2, across };
+  }
+}

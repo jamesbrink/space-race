@@ -111,6 +111,7 @@ src/
                                       the one API the page uses (`window.sr.stage`)
   viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there
   viewer/stage/cabinview.ts           the view from a seat: which is sat in (the site's on board, the gallery's exhibit), what is looked out of, the lean to it, the way in to a port
+  viewer/stage/flightshow.ts          the flight on show: the vehicle where the run has it at the clock's instant, what it sheds carried off, its descent's figures and parachutes, jets, fires and trail
   viewer/stage/framing.ts             what the camera is sent to frame (a view, a part, a place, a window) in what the controls leave clear; framed again while followed, watched once taken
   viewer/stage/picker.ts              what is under the pointer: a part, another model, a window, a place round the pad, any spot; the hierarchies picks want, made in time to spare
   viewer/stage/shadows.ts             the Sun's shadows: the fine map and where it is spent (the section, the gallery's focus, the walker, the vehicle), its maps by size, the far map under it
@@ -191,7 +192,7 @@ src/
   viewer/exhaust.ts                   fire and smoke drawn as volumes (the one thing here meant to look real): marched at a quarter of the pixels, laid over the frame; the smoke's shadow
   viewer/chute.ts                     the parachutes, drawn from Flight.flies.chutes: out, filling, reefed, full, and down on the sea
   viewer/jets.ts                      the attitude jets, seen: a pale cone at each chamber that is open, from the thruster data
-  viewer/effects.ts                   what the air does, seen and felt, at the clock's instant: fed by Stage.lift, and the camera's shake for the draw
+  viewer/effects.ts                   what the air does, seen and felt, at the clock's instant: fed by FlightShow.lift, and the camera's shake for the draw
   viewer/entry.ts                     incandescence by black-body colour, the shock layer's glow as a marched volume, the collar of cloud at Mach 1
   viewer/shake.ts                     the camera shaken: engine sound, buffet, load and jolts as levels, band-limited noise in the clock's time
   viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
