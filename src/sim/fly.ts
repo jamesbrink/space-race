@@ -29,7 +29,8 @@
  */
 import type { Curve, Trajectory } from '../types.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
-import { EARTH_J2, gravity as orbitGravity } from '../world/orbit.ts';
+import { EARTH_J2 } from '../world/bodies.ts';
+import { gravity } from '../world/orbit.ts';
 import {
   add,
   angleBetween,
@@ -49,17 +50,10 @@ import {
 } from '../world/frames.ts';
 import { atmosphere } from './atmosphere.ts';
 import { blowing, blowOf } from './forces.ts';
-import { G0 } from '../world/bodies.ts';
+import { G0, P0 } from '../world/bodies.ts';
 
-/** Standard gravity (world/bodies.ts), and the Earth's oblateness (world/orbit.ts `EARTH_J2`), under the names the simulator has used. */
-export { G0, EARTH_J2 as J2 };
-/** Sea-level air pressure, Pa: what a sea-level thrust is quoted at. */
-export const P0 = 101_325;
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
-
-/** Gravity at a position in an Earth-centred frame whose +Z is the pole, m/s^2. `j2`: the oblateness (0 for a point mass). */
-export const gravity = (r: Vec3, j2 = EARTH_J2): Vec3 => orbitGravity(r, j2);
 
 /**
  * Coast: a position and velocity carried forward under gravity alone, by the same fixed-step

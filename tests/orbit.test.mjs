@@ -6,7 +6,6 @@
 // published case was found (the shadow) the test says so and holds the code to geometry instead.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { gravity as flyGravity, J2 } from '../src/sim/fly.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../src/world/bodies.ts';
 import { cross, DEG, dot, geodeticToEcef, length, scale, sub, unit } from '../src/world/frames.ts';
 import {
@@ -14,7 +13,6 @@ import {
   coast,
   crossings,
   drift,
-  EARTH_J2,
   eccentricAnomaly,
   elementsOf,
   energy,
@@ -115,12 +113,6 @@ test('J2’s steady rates: the Sun-synchronous orbit and the critical inclinatio
   assert.ok(vostok.node < 0, 'westward');
   near((vostok.node * 86_400) / DEG, -3.7, 0.05, 'Vostok 1: node, degrees a day');
   near(nodalPeriod(6_625_000, 0.011, 64.95 * DEG) - period(6_625_000), 0, 5, 'nodal period less Kepler’s, s');
-});
-
-test('the same gravity as the simulator’s', () => {
-  assert.equal(EARTH_J2, J2);
-  const r = [3_000_000, -4_000_000, 4_500_000];
-  assert.deepEqual(gravity(r), flyGravity(r));
 });
 
 test('a coast with no oblateness is Kepler’s orbit: once round and back where it began', () => {

@@ -1,7 +1,7 @@
 /**
  * What a vehicle lets go, flown: the tower, the spent booster, the retropack, whatever a flight's
  * `Trajectory.body.sheds` lists. Each is a rigid body of its own from the instant it leaves, in
- * the same frame that does not turn, under the same gravity (fly.ts, with J2), the same air
+ * the same frame that does not turn, under the same gravity (world/orbit.ts, with J2), the same air
  * (atmosphere.ts) and the same force model as the vehicle (forces.ts): axial drag by which end
  * leads, the push on its fins, the cross-flow on its side, so it flies end on, weathercocks or
  * tumbles as its shape and its centre of mass say, and a tumble is damped by the air it stirs.
@@ -41,7 +41,9 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { airForces, blowOf, floorAt, pieceOf, type Release, type Shape, windAt as airAt } from './forces.ts';
-import { G0, gravity, MEAN_RADIUS } from './fly.ts';
+import { MEAN_RADIUS } from './fly.ts';
+import { G0 } from '../world/bodies.ts';
+import { gravity } from '../world/orbit.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
 import { TICK } from './vehicle.ts';
 

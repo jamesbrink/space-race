@@ -46,7 +46,8 @@ import {
 } from '../world/frames.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { atmosphere } from './atmosphere.ts';
-import { along, G0, MEAN_RADIUS, P0 } from './fly.ts';
+import { along, MEAN_RADIUS } from './fly.ts';
+import { G0, P0 } from '../world/bodies.ts';
 import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';

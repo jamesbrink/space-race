@@ -8,7 +8,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { along, coast, fly, G0, gravity, J2, sampleAt } from '../src/sim/fly.ts';
+import { along, coast, fly, sampleAt } from '../src/sim/fly.ts';
+import { G0, EARTH_J2 as J2 } from '../src/world/bodies.ts';
+import { gravity } from '../src/world/orbit.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../src/world/bodies.ts';
 import {
   add,

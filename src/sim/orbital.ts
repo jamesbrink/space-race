@@ -19,7 +19,8 @@ import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } from '../world/orbit.ts';
 import { atmosphere } from './atmosphere.ts';
-import { along, G0 } from './fly.ts';
+import { along } from './fly.ts';
+import { G0 } from '../world/bodies.ts';
 import { tearOf } from './loads.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */

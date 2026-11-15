@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
-import { flownOnce, G0, type Sample } from '../sim/fly.ts';
+import { flownOnce, type Sample } from '../sim/fly.ts';
+import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';

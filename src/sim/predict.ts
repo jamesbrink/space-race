@@ -3,8 +3,8 @@
  * happen. One propagator for every vehicle (`propagate`), given the vehicle as a `Flier`: what pushes it at a state
  * (thrust, drag, lift where it is modelled: the same force functions the live vehicle and the batch runs call), what it
  * is scheduled to do next (an engine's cutoff, a separation, a burn's start and end, a parachute filling) and what it
- * does by itself at a height (a parachute let out, an ejection). Gravity is the Earth's with J2 (fly.ts `gravity`, which
- * is world/orbit.ts's), in the flight's frame (world/earthframe.ts: of date, unless a test gives another), the air turning with the
+ * does by itself at a height (a parachute let out, an ejection). Gravity is the Earth's with J2 (world/orbit.ts
+ * `gravity`, every simulator's), in the flight's frame (world/earthframe.ts: of date, unless a test gives another), the air turning with the
  * Earth. It goes on until it meets the ground, has gone once round the Earth, is told to stop (`Arrival.end`), or runs
  * out of time. Nothing here knows which flight or which kind of vehicle it is, and nothing is drawn: viewer/path.ts
  * draws what this returns. The vehicles there are, and what each supplies, are in sim/fliers.ts.
@@ -50,7 +50,9 @@ import {
 } from '../world/frames.ts';
 import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
-import { G0, gravity, MEAN_RADIUS, type Phase } from './fly.ts';
+import { MEAN_RADIUS, type Phase } from './fly.ts';
+import { G0 } from '../world/bodies.ts';
+import { gravity } from '../world/orbit.ts';
 import { aboutAxis, turn } from './rigid.ts';
 
 export { AIR_TOP };

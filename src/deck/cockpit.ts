@@ -1,6 +1,7 @@
 import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
-import { G0, type Results } from '../sim/fly.ts';
+import type { Results } from '../sim/fly.ts';
+import { G0 } from '../world/bodies.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';

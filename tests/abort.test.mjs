@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, blend, Tally } from '../src/sim/autopilot.ts';
-import { G0 } from '../src/sim/fly.ts';
+import { G0 } from '../src/world/bodies.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';

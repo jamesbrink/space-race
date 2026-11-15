@@ -125,6 +125,10 @@ export const WGS84_INVERSE_FLATTENING = 298.257223563;
 export const WGS84_B = WGS84_A * (1 - 1 / WGS84_INVERSE_FLATTENING);
 /** The Earth's rotation rate, rad/s (WGS 84; the same figure as the IERS's nominal mean rate). */
 export const EARTH_ROTATION_RATE = 7.292115e-5;
+/** The Earth's oblateness: the second zonal harmonic of WGS 84's gravity model (EGM96's C20, unnormalised). Every simulator's gravity (world/orbit.ts `gravity`). */
+export const EARTH_J2 = 1.082_629_989e-3;
+/** The standard atmosphere's pressure at sea level, Pa: what a sea-level thrust is quoted at, and where the 1976 standard air begins (exact by definition). */
+export const P0 = 101_325;
 
 export const SUN: Body = {
   id: 'sun',

@@ -564,7 +564,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   the vehicles': drag curves and areas, what is scheduled, the retrorockets' line (against the motion over the ground)
   against the braking engine's (fixed as it lights), parachutes. Each is a point mass with the attitude its forces need
   prescribed: the Redstone's rigid body (vehicle.ts: its moments, its autopilot's lag behind its programme, under a
-  degree) is not stepped, nor the staged vehicle's turning. Freedom 7's prediction: fly.ts's gravity and drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
+  degree) is not stepped, nor the staged vehicle's turning. Freedom 7's prediction: the one gravity (world/orbit.ts) and fly.ts's drag curves (`dragArea`, `chuteArea`, `thrustIn`), and what the sequencer
   will do by itself (`Sequence`, from the live state: separation and its push, the retrorockets as fly.ts fires them,
   the pack, the parachutes at their heights; with the sequencer off, nothing, not even the parachutes, as the live
   simulator has it), until it meets the sea, has gone once round (then it is an orbit, with its osculating elements) or

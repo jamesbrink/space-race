@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
-import { P0 } from '../src/sim/fly.ts';
+import { P0 } from '../src/world/bodies.ts';
 import { between, propagate } from '../src/sim/predict.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, lawOf, published, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';

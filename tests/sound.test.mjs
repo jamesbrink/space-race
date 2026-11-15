@@ -9,7 +9,8 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { flownOnce, G0 } from '../src/sim/fly.ts';
+import { flownOnce } from '../src/sim/fly.ts';
+import { G0 } from '../src/world/bodies.ts';
 import { liftoffEngine } from '../src/sim/staged.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
 import {

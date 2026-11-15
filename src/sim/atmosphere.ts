@@ -1,4 +1,4 @@
-import { G0 } from '../world/bodies.ts';
+import { G0, P0 } from '../world/bodies.ts';
 /**
  * The air: the U.S. Standard Atmosphere, 1976 (NOAA-S/T 76-1562). Below 86 km it is the
  * standard's own definition, seven layers of constant temperature gradient in geopotential
@@ -29,7 +29,7 @@ const LAYERS: readonly [base: number, temperature: number, gradient: number, pre
   ];
   const out: [number, number, number, number][] = [];
   let temperature = 288.15;
-  let pressure = 101_325;
+  let pressure = P0;
   defined.forEach(([base, gradient], i) => {
     out.push([base, temperature, gradient, pressure]);
     const top = defined[i + 1]?.[0] ?? 84_852;

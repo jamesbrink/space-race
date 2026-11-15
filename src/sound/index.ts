@@ -18,7 +18,8 @@
 import { Quaternion, Vector3 } from 'three';
 import type { Footfall, Sounds } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
-import { flownOnce, G0 } from '../sim/fly.ts';
+import { flownOnce } from '../sim/fly.ts';
+import { G0 } from '../world/bodies.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight } from '../types.ts';

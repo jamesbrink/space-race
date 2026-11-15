@@ -22,7 +22,7 @@
  * and so does one whose pull (that pressure times the drag area it has filled to) passes what its
  * lines take, where the flight gives that (vehicle.ts leaves it `torn` of its drag area). A load on the spacecraft past its own limit breaks nothing: it is reported.
  */
-import { G0 } from './fly.ts';
+import { G0 } from '../world/bodies.ts';
 
 /** The fraction of a limit at which the pilot is warned, how long over it a structure holds, s, and the fraction at which it goes at once. */
 export const CAUTION = 0.8;

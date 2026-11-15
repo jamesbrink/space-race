@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
-import { G0 } from '../src/sim/fly.ts';
+import { G0 } from '../src/world/bodies.ts';
 import { Lever, NOTCH } from '../src/sim/lever.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { siteFrame } from '../src/world/frames.ts';

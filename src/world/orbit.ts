@@ -21,7 +21,7 @@
  * instant. Under J2 they wobble round each revolution (the semi-major axis by some ten kilometres
  * in a low orbit); `secularRates` gives the steady drift of the mean ones.
  */
-import { EARTH, EARTH_ROTATION_RATE, SUN, WGS84_A } from './bodies.ts';
+import { EARTH, EARTH_J2, EARTH_ROTATION_RATE, SUN, WGS84_A } from './bodies.ts';
 import {
   add,
   cross,
@@ -44,8 +44,6 @@ import {
   type Vec3,
 } from './frames.ts';
 
-/** The Earth's oblateness: the second zonal harmonic of WGS 84's gravity model (EGM96's C20, unnormalised). The simulator's is the same figure (sim/fly.ts). */
-export const EARTH_J2 = 1.082_629_989e-3;
 const GM = EARTH.gm.value;
 const TAU = 2 * Math.PI;
 const wrap = (angle: number): number => ((angle % TAU) + TAU) % TAU;

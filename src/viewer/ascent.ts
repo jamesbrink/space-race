@@ -7,6 +7,7 @@ import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
+import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
@@ -203,7 +204,7 @@ export class Ascent {
     if (on <= 0) return { on: 0, vacuum: 1, fire };
     const { r } = between(this.flown().samples, t);
     const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
-    return { on, vacuum: 1 - (atmosphere(height).pressure / 101_325) ** 0.25, fire };
+    return { on, vacuum: 1 - (atmosphere(height).pressure / P0) ** 0.25, fire };
   }
 
   /**
@@ -233,7 +234,7 @@ export class Ascent {
     if (!levels.some((l) => l.main > 0 || l.steering > 0)) return out(1, levels);
     const { r } = between(this.flown().samples, t);
     const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
-    return out(1 - (atmosphere(height).pressure / 101_325) ** 0.25, levels);
+    return out(1 - (atmosphere(height).pressure / P0) ** 0.25, levels);
   }
 
   /** The parts that have left the vehicle by `t`. */
