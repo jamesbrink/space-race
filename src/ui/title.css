@@ -36,6 +36,9 @@ body.titled #ui { visibility: hidden; }
 .title-flights .what em { font-style: normal; font-size: 13px; color: var(--dim); }
 .title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
 .title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
+/* the Lineup: every vehicle side by side. No flight's: it stands before them, a little apart, marked by a row of heights */
+.title-flights .title-lineup { grid-template-columns: auto 1fr auto; margin-bottom: 8px; border-color: rgba(255, 196, 107, 0.4); }
+.title-flights .title-lineup svg.n { width: 26px; height: 18px; fill: none; stroke: var(--amber); stroke-width: 1.7; stroke-linecap: round; }
 /* a flight to come: a slimmer line among the ones that can be gone into, and not a button */
 .title-flights .to-come { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; background: var(--title-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
 .title-flights .to-come .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }

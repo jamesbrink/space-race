@@ -14,7 +14,8 @@ Every flight has the same three places, in the same order, and opens in the firs
 
 - **The front page** is no flight's: it is what an address that names nothing shows (`front.ts`), the list of
   flights over a picture of its own, the Earth seen from out by the Moon ("The front page", below). It has one
-  entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery.
+  entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery. Before
+  them stands the way into the Lineup ("The Lineup", below), which is no flight's either.
 - **Inside a flight** one switch, in the title card, shows the three places, the same control in
   the same spot in every place (`placesNav` in `gallery.ts`; on the flight deck, where the card
   makes way, the switch alone stays in its corner). A place the flight does not have yet is
@@ -31,7 +32,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   `#<flight>/site[/<vehicle|pad|crew>]` the launch site; `#<flight>/fly` the flight deck.
   Addresses older than the places mean what they meant: `#<flight>/<model>` and a bare `#pad`,
   `#vehicle`, `#crew` (the first *listed* flight's: every tool and script uses them) are sections
-  of the site. So no model may be called `gallery`, `site` or `fly`. An address that names nothing
+  of the site. So no model may be called `gallery`, `site`, `fly` or `lineup` (the Lineup's word, below). An address that names nothing
   at all (`namesNothing`) is the front page's and is about no flight.
 - **Loading follows the place.** The front page fetches its own picture and no flight (6 MB: the
   Earth's maps and the Moon's). Going into a flight fetches only what the gallery needs: the
@@ -92,6 +93,60 @@ picture is of, world.md).
 `sr.front.cost()` say what it draws and what a frame costs, `sr.instant` the moment on show. `pnpm test:front`
 (tools/front-test.mjs, with `pnpm dev` running) checks all of the above in a real browser, and what the page holds
 as a phone. `tools/shot.mjs out.png "" "sr.front.seek(80)" 1440 900 --ui` takes its picture.
+
+## The Lineup
+
+`#lineup` is every vehicle the flights have built, side by side on one floor at one scale, in the order they flew
+(`app/lineup.ts` the page; `app/lineup/` its scene, one vehicle of it, the hall and the arithmetic; `ui/lineup.ts` what is
+written round it and on it). It is at the front page's level and, like it, no flight's: the front page lists it before
+the flights, its crumb goes back out, and a flight gone into from it is another page's worth of state (home.ts).
+
+- **It reads the flights' data and the history, and nothing else.** A flight appended to `missions/index.ts` stands in
+  the row, in its programme's section, on the timeline and in the figures, without being told how (`row.ts`, tested
+  against every flight). Every word about a flight is its own (`flight.ts`) or the history's (`missions/history.ts`:
+  each flight's story and its name's, the people, the programmes, the milestones); where the history says nothing of
+  a flight yet, the first sentence of its own summary is its line. Nothing is written in the page but what the controls
+  are called. A figure is a spec or a check of the flight, found by what its label says (`keyFigures`), shown with the
+  confidence it was given there; one a flight does not give is not shown. How tall a vehicle "stands here" is measured on
+  its model, and is the flight's own figure where one matches to a hundredth (the gallery's rule), else "as modelled".
+- **To scale, and it says so.** Nothing is scaled, ever. Each stands on the floor about its own axis as built (not turned
+  as its pad turns it), with the same clear floor between every two, half the widest one's width (`layOutRow`). The row is ruled in height in the plane
+  of the vehicles' axes, so a top meets its line from any view; a person 1.8 m tall stands by each; a tape runs along the
+  floor. `pnpm test:lineup` holds every vehicle's height to its flight's own figure.
+- **What stands there** is the whole row, one programme's section of it, or two or more standing together to be
+  compared; each whole on its launch vehicle, or the spacecraft alone (the parts under the vehicle's `Spacecraft`
+  heading: no new field). Forming the row again is a dip of the picture, never things sliding through each other.
+- **One thing is chosen**, by a click on it, its name, its mark on the timeline, or N and B: the camera goes to it and its
+  card comes up (its story, why it has its name, its crew, each of whom opens to their own, the way into its gallery,
+  its figures). With nothing chosen a click on nothing does nothing; Escape and 0 go back a step (out of a comparison,
+  off the one chosen, out of a section, then the whole row framed again).
+- **A programme** has a colour (a step round from its nation's hue: `tintOf`), a lane on the timeline, and a section of
+  the row; asked for (its lane's name, the key in the title card, the card's eyebrow, the Programmes tab) the row is
+  its vehicles alone under its name, and the tab tells why it was, how it was done and what it left.
+- **The address** (`parseLineup`, `formatLineup` in address.ts): `#lineup[/spacecraft][/<nation>/<programme>][/<flight
+  id>[/vs/<flight id>...]]`. Everything chosen, compared or formed there rewrites the entry it is on (the Lineup is one
+  place: `samePlace`); going to it from the front page and from it into a flight's gallery (`#<flight id>/gallery`) are
+  steps, so Back comes out to the Lineup with the same thing chosen. No model may be called `lineup`.
+- **Coarsest first, finest where the eye is** (rendering.md's rule; `scene.ts`). The page opens on the coarsest level of
+  every vehicle, a fifth of the bytes. Each is then drawn at the level its size on screen calls for, the nearest to what
+  is looked at first, as far as the device's allowance goes (`allot`, `ALLOWANCE`); a finer level is fetched once the
+  view has rested on wanting it, fades in, and is let go whole when it is no longer wanted. It is not a `Stage`: a stage
+  holds one flight in full. It shares the stages' camera (`viewer/camera`: every promise in camera.md holds), their two
+  looks, their levels' fade and the studio's light. A vehicle's shadow is a picture of its own, drawn once (`stand.ts`).
+- **The view is framed in what the panels leave clear**: beside the title card for a tall thing, under it for a long
+  row, the pivot seen in the middle of that part (the rig tips the camera for what is covered at the foot; the scene
+  turns it for what is covered at the side). Once the hands take the view only an explicit act moves it.
+- **Its panels are the site's**, in the page's own `#ui`: the same glass, chevrons, H, legend and prefs, and on a phone
+  the same top line, handle and sheet (fold.css). Names and heights are written on the picture, never under a panel
+  or on each other, and are left out where there is no room.
+- **Left alone it shows itself** (after 40 s; not for a script or anyone who has asked for less motion): the camera
+  goes down the row, one vehicle at a time, a card saying what each was. Any touch ends it and the view goes back to
+  where it was left.
+
+`sr.lineup` is the handle (`sr.lineup.view`, `.choose(id)`, `.step(1)`, `.whole()`); `sr.stage` its scene
+(`sr.stage.report()`, `.stats()`, `.pose(azimuth, elevation, distance, y, x)`). `tools/shot.mjs out.png lineup "" 1440
+900 --ui` takes its picture; `pnpm test:lineup` (tools/lineup-test.mjs, `--shots <dir>`) checks all of the above in a
+real browser at 1280, 820 and 390 wide, and what it holds as a phone.
 
 ## One rule: nothing leaks
 

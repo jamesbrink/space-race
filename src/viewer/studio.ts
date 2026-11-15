@@ -36,7 +36,7 @@ export type Tone = 'dark' | 'light';
 type RGB = [number, number, number];
 
 /** What changes between the tones: the sweep's three colours, the light on the floor, how dark a shadow is, and the room the metal sees. */
-interface Palette {
+export interface Palette {
   floor: RGB;
   band: RGB;
   top: RGB;
@@ -55,7 +55,8 @@ interface Palette {
   ground: number;
 }
 
-const PALETTE: Record<Tone | 'paper', Palette> = {
+/** (Shared with the Lineup's hall, which is this room made long: app/lineup/hall.ts.) */
+export const PALETTE: Record<Tone | 'paper', Palette> = {
   dark: {
     floor: [0.028, 0.029, 0.034],
     band: [0.06, 0.06, 0.065],
@@ -109,13 +110,13 @@ const PALETTE: Record<Tone | 'paper', Palette> = {
 };
 
 /** Toward each light, from the thing. The default view stands at (-0.62, y, 0.78), so +X and +Z are its right and its front. */
-const KEY = new THREE.Vector3(0.4, 1.3, 0.8).normalize();
-const RIM = new THREE.Vector3(-0.78, 0.5, -0.62).normalize();
-const FILL = new THREE.Vector3(-0.92, 0.22, 0.4).normalize();
+export const KEY = new THREE.Vector3(0.4, 1.3, 0.8).normalize();
+export const RIM = new THREE.Vector3(-0.78, 0.5, -0.62).normalize();
+export const FILL = new THREE.Vector3(-0.92, 0.22, 0.4).normalize();
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** Unlit, one colour, the same in both looks (a material that is all its own shader has no cel twin: look.ts). */
-function flat(colour: THREE.IUniform<THREE.Color>, opacity = 1): THREE.ShaderMaterial {
+export function flat(colour: THREE.IUniform<THREE.Color>, opacity = 1): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: { uColour: colour, uOpacity: { value: opacity } },
     transparent: opacity < 1,
@@ -177,7 +178,7 @@ function shadowFloor(opacity: THREE.IUniform<number>): THREE.Mesh {
 }
 
 /** The sweep: drawn behind everything, by direction alone. */
-class Sweep implements Backdrop {
+export class Sweep implements Backdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   readonly uniforms = {
@@ -225,7 +226,7 @@ class Sweep implements Backdrop {
 }
 
 /** The room the metal reflects: a plain box with a softbox where each light is, a strip overhead, and a floor. Brightnesses are a design, not a measurement. */
-function room(wall: number, boxes: number): THREE.Scene {
+export function room(wall: number, boxes: number): THREE.Scene {
   const scene = new THREE.Scene();
   const lit = (v: number, tint: RGB = [1, 1, 1]) =>
     new THREE.MeshBasicMaterial({ color: new THREE.Color(v * tint[0], v * tint[1], v * tint[2]), side: THREE.DoubleSide });
@@ -269,9 +270,9 @@ const HALF_BODY: [number, number][] = [
   [0.06, 1.525],
   [0.05, 1.58],
 ];
-const STATURE = 1.8;
+export const STATURE = 1.8;
 
-function outline(colour: THREE.IUniform<THREE.Color>): THREE.Group {
+export function outline(colour: THREE.IUniform<THREE.Color>): THREE.Group {
   const shape = new THREE.Shape();
   shape.moveTo(0, 0.86); // (the crotch: the legs part below it)
   for (const [x, y] of HALF_BODY) shape.lineTo(x, y);

@@ -1,5 +1,5 @@
 import './title.css';
-import { listed } from '../app/address.ts';
+import { exhibit, listed } from '../app/address.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
 import { esc } from '../util/dom.ts';
@@ -8,7 +8,7 @@ const date = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /**
- * The front page's words: the mark, and the flights there are to go into, over the page's own
+ * The front page's words: the mark, the way into the Lineup, and the flights there are to go into, over the page's own
  * picture (front.ts: the Earth from out by the Moon). It is shown only when the address names
  * nothing: a link or a refresh goes straight to its place. Left alone it makes way for the
  * picture (`tuck`) and comes back at a touch.
@@ -16,7 +16,8 @@ const date = (iso: string) =>
 export class Title {
   private readonly root: HTMLElement;
 
-  constructor(parent: HTMLElement, flights: Flight[], enter: (flightId: string) => void) {
+  constructor(parent: HTMLElement, flights: Flight[], enter: (flightId: string) => void, lineup?: () => void) {
+    const built = flights.filter((f) => exhibit(f)).length;
     this.root = document.createElement('div');
     this.root.id = 'title';
     this.root.hidden = true;
@@ -26,6 +27,17 @@ export class Title {
         <p class="title-line">Every crewed spacecraft <i>·</i> to scale <i>·</i> as it flew</p>
       </div>
       <nav class="title-flights" aria-label="Flights">
+        ${
+          // (the Lineup: every vehicle there is, side by side; it is no flight's, and stands before them)
+          lineup && built > 1
+            ? `
+          <button class="title-lineup" data-lineup>
+            <svg class="n" viewBox="0 0 26 18" aria-hidden="true"><path d="M1 17h24M4 17V9M9 17V2M14 17V6M19 17V4M23 17v-6" /></svg>
+            <span class="what"><b>The Lineup</b><em>All ${built} vehicles side by side, to scale, with their history</em></span>
+            <span class="go" aria-hidden="true">Enter</span>
+          </button>`
+            : ''
+        }
         ${listed(flights)
           .map((f, i) => {
             const n = `<span class="n">${String(i + 1).padStart(2, '0')}</span>`;
@@ -54,6 +66,7 @@ export class Title {
     this.root.addEventListener('click', (e) => {
       const id = (e.target as HTMLElement).closest<HTMLElement>('[data-flight]')?.dataset.flight;
       if (id) enter(id);
+      else if ((e.target as HTMLElement).closest('[data-lineup]')) lineup?.();
     });
   }
 

@@ -23,6 +23,10 @@ can be flown.
 - **Three places.** A flight opens in its **Gallery**: the vehicle alone in a studio, taken apart
   with every part named, cut open, a person beside it for scale. From there go on to its **Launch
   site** and to **Fly**; a place not built yet says so.
+- **The Lineup.** From the front page: every vehicle built so far side by side on one floor at one
+  scale, in the order they flew, with a person beside each. Choose one to read its story, its crew
+  and its figures; stand two together to compare them; see the spacecraft alone, or one
+  programme's section; a timeline of the race runs under the row.
 - **Look.** Drag to orbit, scroll to zoom, or let the view drift round on its own; `C` steps through
   the camera's views and the screen says which one it is in. Choose a part to fly to it and read
   about it; click a window to look in.

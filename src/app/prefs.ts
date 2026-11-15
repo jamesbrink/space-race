@@ -33,7 +33,9 @@ export type Pref =
   | 'lighter'
   | 'lighterOff'
   | 'sheetOpen'
-  | 'handleSeen';
+  | 'handleSeen'
+  | 'lineupScaleOff'
+  | 'lineupNamesOff';
 
 const KEY = 'space-race.prefs';
 /** Amounts are kept apart from the switches, which are all true or false. */

@@ -1,6 +1,6 @@
 import './front/front.css';
 import { flights } from '../../missions/index.ts';
-import { entrances, formatAddress, namesNothing, onMoved, where, write } from './address.ts';
+import { entrances, formatAddress, formatLineup, namesNothing, onMoved, where, write } from './address.ts';
 import { whenLifted } from './curtain.ts';
 import { IDLE_TITLE } from './demo.ts';
 import { FrontScene } from './front/scene.ts';
@@ -22,6 +22,7 @@ import { scripted } from '../util/env.ts';
  *   this scene (main.ts or only.ts, as enter.ts would have chosen), which goes on moving while the flight arrives:
  *   the flight's curtain says how far along it is, over the picture. When the curtain lifts the flight's own canvas
  *   fades in over this one, and then this scene is let go whole: its textures, its buffers, its context.
+ * - **Going into the Lineup** (lineup.ts) is the same: named in the address, brought up under the picture.
  * - **Coming back out** (the Space Race crumb, or Back) is home.ts: the page is opened again at the address that names
  *   nothing, so a flight holds nothing of this and this nothing of a flight. Going in is a step in the history like any
  *   other (address.ts: `write`), so Back comes out here and Forward goes in again.
@@ -37,7 +38,12 @@ if (driven) {
 void scene.ready.then(() => scene.canvas.classList.add('on'));
 
 let entering = false;
-const title = new Title(document.body, flights, (id) => void enter(id));
+const title = new Title(
+  document.body,
+  flights,
+  (id) => void enter(id),
+  () => void go(formatLineup(), () => import('./lineup.ts')),
+);
 title.show();
 
 /**
@@ -62,9 +68,17 @@ addEventListener('resize', compose);
 /** Go into a flight: its page is brought up under the picture, which is let go when the flight is there to be seen. */
 async function enter(id: string): Promise<void> {
   const flight = flights.find((f) => f.id === id);
-  if (!flight || entering) return;
+  if (flight) await go(formatAddress(id, 'gallery'), () => (entrances(flight).site ? import('./main.ts') : import('./only.ts')));
+}
+
+/**
+ * Go somewhere from here (a flight's gallery, the Lineup): the address says so at once, and that page is brought up
+ * under the picture, which is let go when the page's curtain has lifted.
+ */
+async function go(address: string, page: () => Promise<unknown>): Promise<void> {
+  if (entering) return;
   entering = true;
-  write(formatAddress(id, 'gallery')); // (a step of the visitor's: Back comes out to this page again)
+  write(address); // (a step of the visitor's: Back comes out to this page again)
   document.body.classList.add('fronted');
   title.hide();
   whenLifted(() => {
@@ -80,7 +94,7 @@ async function enter(id: string): Promise<void> {
     );
   });
   try {
-    await (entrances(flight).site ? import('./main.ts') : import('./only.ts'));
+    await page();
     // (the flight's page has its own debug handle: the picture is on it for as long as it lasts)
     (window as unknown as { sr: { front?: FrontScene } }).sr.front = scene;
   } catch (e) {

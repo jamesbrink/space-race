@@ -63,6 +63,12 @@ src/
   app/front/scene.ts                  its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
   app/front/earth.ts  app/front/moon.ts  the Earth from the Moon (the globe's maps small, the day's cloud, the air) and the Moon under the camera (its relief at three sizes, its own light)
   app/front/front.css                 the front page's looks
+  app/lineup.ts                       the Lineup's page (`#lineup`): every vehicle side by side; what the address says, what is chosen, what stands in the row, its keys, its show
+  app/lineup/row.ts                   its arithmetic on the flights' data and the history: the row, the programmes' sections, the timeline, the key figures, where
+                                      each stands, which level of detail each is granted (pure, tested)
+  app/lineup/scene.ts                 its scene: a renderer of its own, the row formed, each vehicle coarsest first and finest where the eye is, the camera's rigs, drawn only when it changes
+  app/lineup/stand.ts                 one vehicle of the row: its levels and their fade, its spacecraft alone, its plate, its person, its own shadow drawn once
+  app/lineup/hall.ts                  the hall it stands in: the gallery's studio made long, ruled in height, with a tape along the floor
   app/address.ts                      the address bar, the two places a flight is seen in, and what the gallery is given to show
   app/only.ts                         the page of a flight with no site: its gallery alone
   app/curtain.ts                      the curtain shown while something loads: what is coming, a bar that never goes back, the steps; it takes every key while it shows
@@ -78,7 +84,8 @@ src/
   ui/wheel.ts                         a radial menu: a few choices round a centre
   ui/timebar.ts  ui/time.css          the clock's control
   ui/callout.ts  ui/callout.css       the idle show's callouts
-  ui/title.ts  ui/logo.ts  ui/title.css  the front page's words (the list of flights) and the mark
+  ui/title.ts  ui/logo.ts  ui/title.css  the front page's words (the way into the Lineup, the list of flights) and the mark
+  ui/lineup.ts  ui/lineup.css         the Lineup's page: the card, the programmes, the timeline's strip and its words, and what is written on the picture
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
   deck/cockpit.ts                     the deck's ballistic kind: a flight on a `trajectory` flown by hand, the live simulator stepped by the clock, the instruments
@@ -217,6 +224,7 @@ tools/
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
+  lineup-test.mjs                     browser check of the Lineup: every flight in the row at one scale, the card, the way into a gallery and back, the levels of detail, what it holds as a phone
   around-test.mjs                     browser check that what stands round a site is drawn at the level its size on screen calls for
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be

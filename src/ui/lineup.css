@@ -1,0 +1,224 @@
+/* The Lineup (ui/lineup.ts): every vehicle side by side. Its panels are the site's own classes (style.css) in the page's own #ui, so they are
+   the same glass and fold on a phone as a launch site does (fold.css); what is here is what the Lineup has that a flight has not: the
+   timeline's strip, the card, the programmes, and what is written on the picture. --tint is a programme's colour (app/lineup/row.ts). */
+
+/* the row formed again (another row, a programme's section, a comparison) is a dip of the picture, never a cut (app/lineup.ts DIP) */
+#stage.dip { opacity: 0 !important; transition: opacity 0.2s ease !important; }
+#stage.quick { transition: opacity 0.26s ease; }
+@media (prefers-reduced-motion: reduce) { #stage.dip, #stage.quick { transition: none !important; } }
+
+@media (min-width: 961px) and (min-height: 521px) {
+  #ui.lineup .title { display: flex; flex-direction: column; padding-bottom: 18px; }
+  #ui.lineup .title .lede { margin-top: 12px; }
+  #ui.lineup .title .lu-key { margin-top: 14px; padding-top: 12px; }
+}
+#ui.lineup .crumbs span { color: var(--amber); }
+/* the programmes, and their colours: the key to the row, and a way into each one's section */
+.lu-key { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; padding: 14px 0 0; border-top: 1px solid var(--line); }
+.lu-key button { pointer-events: auto; display: flex; align-items: center; gap: 7px; padding: 5px 9px 5px 7px; font: 10px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+.lu-key button i, .lu-chip, .lu-eyebrow > i { flex: none; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--tint); }
+.lu-key button em { font-style: normal; color: var(--faint); }
+.lu-key button:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+.lu-key button[aria-pressed='true'] { color: var(--ink); border-color: var(--tint); background: rgba(243, 239, 230, 0.08); }
+#ui.lineup .title.tucked .lu-key { display: none; }
+@media (max-width: 1180px) { .lu-key { display: none; } }
+
+/* across the top: what stands in the row, and under it the passing notes */
+.lu-top { position: absolute; top: var(--edge); left: 50%; transform: translateX(-50%); z-index: 4; }
+.lu-top .models { position: static; transform: none; }
+.lu-top .notes { pointer-events: none; }
+#ui.lineup.picking .lu-top .models { box-shadow: 0 0 0 1px var(--amber); }
+
+/* --- the control block: the timeline's strip, then the views and the switches. It lies under the row, as wide as the page leaves it --- */
+#ui.lineup .controls { left: var(--edge); right: calc(min(360px, 30vw) + 2 * var(--edge)); bottom: calc(var(--edge) + 28px); transform: none; min-width: 0; max-width: none; justify-items: stretch; gap: 8px; padding: 10px 16px 10px; }
+#ui.lineup:has(.panel.tucked) .controls { right: var(--edge); }
+#ui.lineup .controls .buttons { justify-content: space-between; gap: 6px 16px; }
+/* (how many stand there is said in the title card and in the row itself: the line is the sheet's, on a phone) */
+#ui.lineup .controls .scale { display: none; }
+#ui.lineup .controls .buttons button { padding: 6px 9px; }
+#ui.lineup .buttons .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+#ui.lineup .buttons [data-step] { padding-left: 12px; padding-right: 12px; }
+#ui.lineup .buttons [data-step] .arrow { margin: 0 2px 0 0; }
+#ui.lineup .buttons [data-step] .arrow.back { margin: 0 0 0 2px; }
+/* in a drawing the hall is paper, whichever tone it has: there is nothing for the switch to change */
+#ui.lineup.cel [data-light] { display: none; }
+/* under the control block, on the line the diagnostics have: the keys, which open upward over it when asked for */
+#ui.lineup .stats { bottom: calc(var(--edge) - 6px); }
+#ui.lineup .legend-keys { left: auto; right: calc(min(360px, 30vw) + 2 * var(--edge)); bottom: calc(var(--edge) - 12px); z-index: 5; }
+#ui.lineup:has(.panel.tucked) .legend-keys { right: var(--edge); }
+.arrow { display: inline-block; width: 6px; height: 6px; margin-left: 9px; border: solid currentColor; border-width: 1.5px 1.5px 0 0; transform: rotate(45deg); }
+.arrow.back { margin: 0 1px 0 3px; transform: rotate(225deg); }
+
+/* the strip: a lane a programme, a mark a vehicle; the history's other milestones on a lane of their own; the years under them */
+.lu-strip { display: grid; gap: 1px; min-width: 0; }
+.lu-lane { display: grid; grid-template-columns: minmax(0, 136px) minmax(0, 1fr); align-items: center; gap: 10px; height: 17px; }
+.lu-lane-name { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 0; font: 10px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.lu-lane-name::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--tint, var(--faint)); }
+.lu-lane.events .lu-lane-name::before { border-radius: 0; transform: rotate(45deg) scale(0.8); background: none; border: 1px solid var(--dim); }
+.lu-lane.axis .lu-lane-name::before { display: none; }
+button.lu-lane-name:is(:hover, :focus-visible) { color: var(--ink); }
+.lu-lane-name[aria-pressed='true'] { color: var(--ink); }
+.lu-lane-name[aria-pressed='true']::before { box-shadow: 0 0 0 2px rgba(243, 239, 230, 0.35); }
+.lu-track { position: relative; height: 100%; background: linear-gradient(rgba(243, 239, 230, 0.12), rgba(243, 239, 230, 0.12)) center / 100% 1px no-repeat; }
+.lu-span { position: absolute; top: 50%; height: 2px; margin-top: -1px; background: var(--tint); opacity: 0.5; }
+/* a mark is a bar three pixels wide in a place to press eleven wide; one the history calls a first is whole and lit */
+.lu-tick { position: absolute; top: 0; bottom: 0; width: 11px; margin-left: -5.5px; padding: 0; }
+.lu-tick::before { content: ''; position: absolute; left: 4px; top: 4px; bottom: 4px; width: 3px; border-radius: 1px; background: var(--tint); opacity: 0.8; }
+.lu-tick.first::before { top: 1px; bottom: 1px; opacity: 1; box-shadow: 0 0 6px var(--tint); }
+.lu-tick:is(:hover, :focus-visible, .hot)::before { background: var(--ink); opacity: 1; top: 0; bottom: 0; }
+.lu-tick.chosen::before { background: var(--amber); opacity: 1; top: 0; bottom: 0; left: 3px; width: 5px; box-shadow: 0 0 8px rgba(255, 196, 107, 0.8); }
+.lu-tick:focus-visible { outline-offset: 0; }
+.lu-dot { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; padding: 0; }
+.lu-dot::before { content: ''; position: absolute; inset: 3px; border: 1px solid var(--tint); transform: rotate(45deg); }
+.lu-dot:is(:hover, :focus-visible)::before { background: var(--tint); }
+.lu-years { background: none; }
+.lu-years i { position: absolute; top: 0; width: 1px; height: 4px; background: var(--faint); }
+.lu-years i[data-year]::after { content: attr(data-year); position: absolute; top: 4px; left: 3px; font: 9.5px/1.2 var(--mono); letter-spacing: 0.06em; font-style: normal; color: var(--faint); }
+
+/* --- the panel: the card, the row as a list, the programmes, the timeline in words --- */
+#ui.lineup .panel h2.lu-big { margin: 6px 0 2px -1px; padding: 0; font: 600 27px/1.08 var(--sans); letter-spacing: -0.02em; text-transform: none; color: var(--ink); overflow-wrap: anywhere; }
+.lu-card, .lu-head, .lu-compare { padding: 12px 18px 6px; }
+.lu-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0 7px; font: 10px/1.6 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.lu-eyebrow button { padding: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink); border-bottom: 1px solid var(--tint); }
+.lu-eyebrow button:is(:hover, :focus-visible) { color: var(--amber); }
+.lu-card .sub { white-space: normal; }
+.lu-headline { margin-top: 12px; font: 500 15.5px/1.35 var(--sans); color: var(--ink); text-wrap: balance; }
+.lu-story { margin-top: 8px; color: #dcd7cb; font-size: 13.5px; }
+.lu-story p + p, .lu-told p + p { margin-top: 8px; }
+.lu-firsts { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; padding: 0; }
+.lu-firsts li { padding: 3px 8px; font: 11.5px/1.35 var(--sans); color: var(--ink); border: 1px solid var(--tint); border-radius: 10px; background: rgba(243, 239, 230, 0.05); }
+.lu-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.lu-actions button, .lu-chips button, .lu-also button { display: inline-flex; align-items: center; padding: 8px 12px; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+.lu-actions button:is(:hover, :focus-visible), .lu-chips button:is(:hover, :focus-visible), .lu-also button:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+.lu-actions .lu-go { color: #0b0a07; background: var(--amber); border-color: var(--amber); font-weight: 600; }
+.lu-actions .lu-go:is(:hover, :focus-visible) { color: #0b0a07; background: #ffd591; border-color: #ffd591; }
+.lu-actions .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+.lu-card h3, .lu-compare h3 { margin: 20px -18px 0; padding: 12px 18px 6px; border-top: 1px solid var(--line); font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.lu-told { color: #d6d1c5; font-size: 13px; }
+.lu-told small, .lu-text small { margin-top: 8px; font-size: 11.5px; color: var(--faint); }
+.lu-told h4 { margin: 12px 0 3px; font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.lu-told h4:first-child { margin-top: 0; }
+/* who flew: each opens to what the history tells of them */
+.lu-crew { list-style: none; padding: 0; }
+.lu-crew li + li { border-top: 1px solid rgba(243, 239, 230, 0.07); }
+.lu-crew button, .lu-crew li > p { display: grid; grid-template-columns: 1fr auto 14px; align-items: baseline; gap: 2px 10px; width: 100%; padding: 8px 0; text-align: left; }
+.lu-crew .name { font-weight: 600; }
+/* (a name in its own script beside it: plain, not the parts list's tag) */
+.lu-crew .name em { display: block; margin: 1px 0 0; padding: 0; border: 0; font: 400 12.5px/1.35 var(--sans); letter-spacing: 0; text-transform: none; color: var(--dim); vertical-align: baseline; }
+.lu-crew .what { grid-column: auto; font: 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--faint); white-space: nowrap; }
+.lu-crew .chevron { align-self: center; display: block; color: var(--faint); }
+.lu-crew button:is(:hover, :focus-visible) .name { color: var(--amber); }
+.lu-crew button[aria-expanded='false'] + .lu-told { display: none; }
+.lu-crew .lu-told { padding: 2px 0 12px; }
+.lu-also { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--faint); }
+.lu-also button, .lu-chips button { padding: 4px 8px; font-size: 10px; }
+.lu-card table, .lu-compare table { margin: 0 -18px; width: calc(100% + 36px); }
+.lu-card th small { margin-left: 14px; }
+.lu-card .legend { padding: 12px 0 0; }
+.lu-card .facts { margin-top: 2px; border-top: 0; padding-top: 0; }
+.lu-card .facts.lu-wide { grid-template-columns: 1fr; }
+.lu-source { padding: 16px 0 0; }
+.lu-hint { padding-bottom: 6px; }
+.lu-list .name, .lu-programmes .name { display: flex; align-items: center; gap: 8px; }
+.lu-list .lu-line { color: var(--faint); }
+.lu-list button.hot { background: rgba(243, 239, 230, 0.07); }
+/* the programmes: each opens to its words */
+.lu-programmes li > button[aria-expanded='false'] + .lu-told { display: none; }
+.lu-programme { padding: 4px 18px 16px 54px; border-left: 2px solid var(--amber); background: rgba(255, 196, 107, 0.08); }
+.lu-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+/* those standing together: their figures side by side, a column each; more than fit are scrolled across */
+.lu-scroll { margin: 12px -18px 0; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--faint) transparent; touch-action: pan-x pan-y; }
+.lu-compare table { margin: 0; width: 100%; }
+.lu-compare th, .lu-compare td { padding: 8px 10px; text-align: left; white-space: normal; vertical-align: top; }
+.lu-compare tbody th { padding-left: 18px; font: 10px/1.5 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.lu-compare thead th { position: relative; padding-right: 26px; min-width: 104px; border-top: 2px solid var(--tint); font-weight: 600; }
+.lu-compare thead th:first-child { border-top-color: transparent; min-width: 0; }
+.lu-compare thead th .lu-chip { display: none; }
+.lu-compare thead th > button:first-of-type { padding: 0; font-weight: 600; text-align: left; }
+.lu-compare thead th > button:first-of-type:is(:hover, :focus-visible) { color: var(--amber); }
+.lu-compare .lu-drop { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; color: var(--faint); font-size: 15px; line-height: 1; }
+.lu-compare .lu-drop:is(:hover, :focus-visible) { color: var(--ink); }
+.lu-compare td { font-size: 12.5px; }
+.lu-compare td small { font-size: 11px; }
+.lu-compare .legend { padding: 12px 0 0; }
+.lu-compare > .fine { padding: 8px 0 12px; }
+/* the timeline in words */
+.lu-moments { list-style: none; padding: 4px 0 0; }
+.lu-moments li > :is(button, div) { display: grid; grid-template-columns: 82px 1fr; gap: 0 8px; width: 100%; padding: 10px 18px 10px 16px; text-align: left; border-left: 2px solid var(--tint); }
+.lu-moments li + li { border-top: 1px solid rgba(243, 239, 230, 0.07); }
+.lu-moments time { grid-row: span 3; padding-top: 2px; font: 10.5px/1.5 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--amber); }
+.lu-moments .name, .lu-moments .what, .lu-moments .lu-text { grid-column: 2; }
+.lu-moments .lu-text { margin-top: 6px; font-size: 13px; color: #d6d1c5; }
+.lu-moments li > div .name { font-weight: 500; color: var(--dim); }
+.lu-moments button:is(:hover, :focus-visible) { background: rgba(243, 239, 230, 0.07); }
+.lu-moments li.chosen > button { background: rgba(255, 196, 107, 0.08); border-left-color: var(--amber); }
+.lu-moments li.lit > * { animation: lu-lit 1.6s ease-out; }
+@keyframes lu-lit { from { background: rgba(255, 196, 107, 0.22); } to { background: transparent; } }
+#ui.lineup .panel .legend { padding-left: 18px; padding-right: 18px; }
+#ui.lineup .lu-card .legend, #ui.lineup .lu-compare .legend { padding-left: 0; padding-right: 0; }
+
+/* the foot of the panel on a phone: the one before, what is chosen, the spacecraft alone, the next (fold.css lays it out) */
+.steps { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--line); }
+.steps button { display: flex; align-items: center; padding: 8px 12px; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 2px; white-space: nowrap; }
+.steps .arrow.back { margin: 0 9px 0 2px; }
+
+/* --- written on the picture: names under the vehicles, figures on the ruled heights, a programme over its section --- */
+#ui.lineup > .lu-marks { position: fixed; inset: 0; pointer-events: none; }
+#ui.lineup.bare > .lu-marks { opacity: 1; }
+body.demo #ui.lineup .lu-marks { visibility: visible; }
+body.demo #ui.lineup .lu-label { display: none; }
+.lu-marks > * { position: absolute; left: 0; top: 0; margin: 0; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
+.lu-marks > .on { opacity: 1; }
+.lu-label { display: grid; justify-items: center; gap: 1px; padding: 3px 8px 4px; text-align: center; white-space: nowrap; background: rgba(10, 11, 14, 0.62); border-top: 2px solid var(--tint); border-radius: 0 0 2px 2px; }
+.lu-label.on { pointer-events: auto; }
+.lu-label b { font: 600 12px/1.25 var(--sans); color: var(--ink); }
+.lu-label span { font: 10px/1.3 var(--mono); letter-spacing: 0.04em; color: var(--dim); }
+.lu-label .conf { margin-right: 5px; vertical-align: 1px; }
+.lu-label:is(:hover, :focus-visible, .hot) { background: rgba(10, 11, 14, 0.9); }
+.lu-label.chosen { border-top-color: var(--amber); background: rgba(34, 28, 16, 0.92); }
+.lu-label.chosen b { color: var(--amber); }
+#ui.lineup.picking .lu-label { border-top-style: dashed; }
+.lu-height { padding: 0 5px; font: 10px/1.5 var(--mono); letter-spacing: 0.06em; color: var(--dim); background: rgba(10, 11, 14, 0.55); border-radius: 2px; white-space: nowrap; }
+.lu-section { display: grid; justify-items: center; gap: 1px; padding: 6px 14px 7px; text-align: center; white-space: nowrap; background: rgba(10, 11, 14, 0.62); border-bottom: 2px solid var(--tint); border-radius: 2px 2px 0 0; }
+.lu-section b { font: 600 19px/1.15 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+.lu-section span { font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+
+/* --- a narrower desk: the control block keeps to what is left of the page --- */
+@media (max-width: 1180px) and (min-width: 961px) {
+  #ui.lineup .controls .buttons { justify-content: flex-start; }
+}
+
+/* --- phone and small tablet: the top line, the handle and the sheet are fold.css's; here what the Lineup puts in them --- */
+@media (max-width: 960px), (max-height: 520px) {
+  .lu-top { top: calc(var(--top) + var(--line-h) + 8px); left: var(--left); transform: none; }
+  .lu-top .models { display: none; }
+  #ui.lineup .title > .lu-key { display: none; }
+  #ui.lineup .title > .sub span { display: inline; }
+  /* the handle is the gallery's: the one before, what is chosen and the way to the rest, the spacecraft alone, the next */
+  #ui.lineup .panel .handle > button { flex: none; min-width: 44px; height: 44px; justify-content: center; padding: 0 10px; font: 10px/1.2 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 3px; }
+  #ui.lineup .panel .handle > .handle-open { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) 16px; column-gap: 8px; align-content: center; justify-content: stretch; padding: 0 6px 0 8px; border-color: transparent; text-align: left; text-transform: none; letter-spacing: 0; }
+  #ui.lineup .panel .handle-open b { grid-column: 1 / span 2; font: 600 14px/1.25 var(--sans); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ui.lineup .panel .handle-open span { grid-column: 2; grid-row: 2; font: 12px/1.3 var(--sans); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #ui.lineup .panel .handle-open output { grid-column: 1; grid-row: 2; font: 10px/1.5 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+  #ui.lineup .panel .handle-open output:empty { display: none; }
+  #ui.lineup .panel .handle-open output:empty + .chevron, #ui.lineup .panel .handle-open .chevron { grid-column: 3; grid-row: 1 / span 2; align-self: center; display: block; width: 10px; color: var(--amber); }
+  #ui.lineup .panel .handle-open:has(output:empty) span { grid-column: 1 / span 2; }
+  #ui.lineup .handle .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
+  /* the View pane: the timeline first, then stepping and the whole row, then the switches */
+  #ui.lineup .slot .buttons, #ui.lineup .slot.buttons { display: block; }
+  #ui.lineup .slot .set { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; }
+  #ui.lineup .slot .scale { display: block; margin: 2px 0 0; text-align: left; }
+  #ui.lineup [data-slot='strip'] { padding-top: 4px; }
+  .lu-lane { grid-template-columns: minmax(0, 126px) minmax(0, 1fr); gap: 6px; height: 22px; }
+  .lu-lane-name { letter-spacing: 0.06em; }
+  .lu-tick { width: 15px; margin-left: -7.5px; }
+  .lu-tick::before { left: 6px; }
+  .lu-tick.chosen::before { left: 5px; }
+  .lu-label b { font-size: 11px; }
+  .lu-label span { font-size: 9.5px; }
+  .lu-section b { font-size: 16px; }
+  #ui.lineup .panel h2.lu-big { font-size: 23px; }
+  .lu-actions button { min-height: 44px; padding: 0 14px; }
+  .lu-crew button { min-height: 44px; }
+  .lu-chips button, .lu-also button { min-height: 36px; padding: 0 10px; }
+}

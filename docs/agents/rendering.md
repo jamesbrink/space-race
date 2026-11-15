@@ -577,6 +577,15 @@ JavaScript heap and 125 MB of decoded pictures.
   to 90 MiB as a phone, and the most at any moment while a flight's gallery arrives over it to 350: the picture is let go only when the flight is there to be seen, so for those
   seconds the page holds both. A context that has been
   let go is counted as holding nothing (mem.ts), which is what losing it means.
+- **The Lineup holds every vehicle, coarsest first** (app/lineup/scene.ts; gallery.md, "The Lineup"). As a phone, with
+  fifteen vehicles: 106 MiB with the row at its coarsest (their buffers 7 MiB a vehicle, the frame 34, each one's
+  shadow and the hall's room the rest), and at most 96 more of finer levels (`ALLOWANCE`: one vehicle in full, or a
+  few at the middle level), given to what is looked at (`allot`); a level that is let go is released whole, its
+  pictures closed. A vehicle's pictures are sent no larger than 1024 a side there, on every device (a cabin's panel is
+  read from its couch, not from across a hall: with them whole, six Mercury vehicles in full were 890 MiB). `pnpm
+  test:lineup` holds it to 240 with the row up and with one framed, and to 280 at any moment while the row is stepped
+  through (measured: 202, 197, 202; with seventeen, 207 with the row up). The row's own share grows with every flight added: at some forty vehicles it would
+  be the budget by itself, and a level coarser still, or one model for vehicles of a type, is owed before then.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
   good and puts up a word with "Reload with lighter graphics" (which chooses the lighter tier and remembers it) and
   "Reload"; nothing reloads by itself, so there is no loop for the browser to give up on. An allocation the GPU
