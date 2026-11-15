@@ -412,6 +412,45 @@ for (const f of flown) {
     }
   });
 
+  test(`${f.designation}: the guided path worked out in slices is the path worked out at once, its steps ahead swept in the slices too`, () => {
+    const [site, dated, sea] = where(f);
+    const x = whole.ascent.solved;
+    const vehicle = stagedVehicle(o, site, dated, sea, x);
+    const s = whole.ascent.samples.find((p) => p.t >= 40);
+    const stops = whole.ascent.stops;
+    const state = {
+      stages: o.stages.map((st, i) => ({
+        from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
+        to: stops[i] <= s.t ? stops[i] : Infinity,
+        gone: Infinity,
+        loose: Infinity,
+      })),
+      drops: {},
+    };
+    state.apparent = apparentBy(o, vehicle, state, s.t);
+    const make = () => {
+      const start = { t: s.t, r: s.r, v: s.v };
+      return propagate(guided(o, site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: o }), start, {
+        site,
+        seaLevel: sea,
+        frame: dated,
+      });
+    };
+    const once = make();
+    once.run();
+    const sliced = make();
+    // (a budget of nothing: one piece of the sweep or one step each time)
+    let slices = 0;
+    while (!sliced.run(0)) slices++;
+    assert.ok(slices > 10, `${slices} slices`);
+    assert.deepEqual(sliced.result.impact, once.result.impact, 'the same landing');
+    assert.deepEqual(
+      sliced.result.events.map((e) => [e.kind, e.t]),
+      once.result.events.map((e) => [e.kind, e.t]),
+      'the same events at the same instants',
+    );
+  });
+
   if (o.manual)
     test(`${f.designation}: a burn by hand is the same physics: against the motion it comes down, along it it stays up`, () => {
       const [site, dated, sea] = where(f);

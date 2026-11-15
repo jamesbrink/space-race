@@ -160,6 +160,11 @@ export interface Flier {
   settle?(t: number, r: Vec3, v: Vec3, altitude: number, falling: boolean): void;
   /** Whether anything aboard burns now. */
   burning(): boolean;
+  /**
+   * Work out what it is before the first step, in slices (a guided stack's steps ahead): worked on until `until`
+   * (performance.now()), true when done. The propagator runs it in its own slices; a flier without one is ready.
+   */
+  prepare?(until?: number): boolean;
   /** When the last burn it will make ends (-Infinity: none): the air's marks of a descent are of what follows it. */
   readonly quiet: number;
   /** Whether a parachute is out. */
@@ -535,22 +540,26 @@ export function propagate(
     done = true;
   };
 
-  // what is due already happens now
-  if (arrive('time')) {
-    points.length = 1;
-    end();
-  }
-  // Below the height the flier acts at, coming down, it acts now (a parachute out; or the path's end, which is then none)
-  if (!done && altitude <= flier.below() && dot(sub(v, cross(SPIN, r)), r) < 0 && arrive('height')) {
-    outcome = 'none';
-    done = true;
-  }
-  // Standing on the ground with nothing burning: there is nothing to say. (`r` is a centre of mass, which on a stack is
-  // metres above what it stands on: at rest over the ground within a vehicle's height of it is taken as standing.)
-  if (!done && !flier.burning() && altitude <= flier.ground(first) + 60 && length(sub(v, cross(SPIN, r))) < 0.05) {
-    outcome = 'none';
-    done = true;
-  }
+  // what is due already happens now, once the flier is ready (`Flier.prepare`, in the first slices)
+  let begun = false;
+  const begin = (): void => {
+    begun = true;
+    if (arrive('time')) {
+      points.length = 1;
+      end();
+    }
+    // Below the height the flier acts at, coming down, it acts now (a parachute out; or the path's end, which is then none)
+    if (!done && altitude <= flier.below() && dot(sub(v, cross(SPIN, r)), r) < 0 && arrive('height')) {
+      outcome = 'none';
+      done = true;
+    }
+    // Standing on the ground with nothing burning: there is nothing to say. (`r` is a centre of mass, which on a stack is
+    // metres above what it stands on: at rest over the ground within a vehicle's height of it is taken as standing.)
+    if (!done && !flier.burning() && altitude <= flier.ground(first) + 60 && length(sub(v, cross(SPIN, r))) < 0.05) {
+      outcome = 'none';
+      done = true;
+    }
+  };
 
   /** Back along the step just taken (from `before`, `h0` long, ending at the state now) to where its cubic is at height `at`, flown again to there. */
   const back = (before: PathPoint, h0: number, at: number): void => {
@@ -750,6 +759,13 @@ export function propagate(
       if (answer) return true;
       const began = now();
       const until = budget === undefined ? Number.POSITIVE_INFINITY : began + budget;
+      if (!begun) {
+        if (flier.prepare && !flier.prepare(until)) {
+          cost += now() - began;
+          return false;
+        }
+        begin();
+      }
       while (!done) {
         advance();
         if (now() >= until) break;

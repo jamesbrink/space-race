@@ -580,7 +580,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   Besides the path it names what happens on it (`events`: cutoff, tower, separation, retrofire, the pack, the first
   0.05 g after retrofire, the greatest load before a parachute, drogue, main) and returns the path at instants of its
   own, multiples of a power-of-two step its bend allows (`gridStep`), so two predictions of the same flight share their
-  points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame, for every vehicle
+  points. A prediction is begun at most five times a second and worked in slices of 1.5 ms a frame, for every vehicle (a guided stack's steps ahead swept in the first of them, `Flier.prepare`)
   (`Predictor.run(budget)`, the path put at its own instants in a slice of its own; `sr.path.cost` says what the last
   one took): sliced, not a worker, because a vehicle is closures over its flight's data (a programme's axis, a plan)
   that a worker would have to rebuild for every state. Nothing of it may make one long frame: a path that does not fit its points is laid out again

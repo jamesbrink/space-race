@@ -401,7 +401,12 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
   };
   // The steps ahead and their instants: the record's, each at its time (one due already, at the start), a cut on the
   // apparent velocity found by summing the integrator over the time ahead with the steps before it applied
+  // The steps ahead and their instants: the record's, each at its time (one due already, at the start), a cut on the
+  // apparent velocity found by summing the integrator over the time ahead with the steps before it applied. Worked out in
+  // slices (`prepare`, which the propagator runs in its own: a few milliseconds in one go was a phone's whole frame).
   const plan: { at: number; step: Step }[] = [];
+  /** One more piece of the sweep ahead; false when there is no more. */
+  let sweepOn: () => boolean = () => false;
   if (now.sequence) {
     const setting = (i: number): number | null => {
       const st = o.stages[i]!;
@@ -420,7 +425,9 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
     const H = 1;
     let k = 0;
     const end = Math.max(start.t, ...timed.map((x) => x.at)) + 2000;
-    for (let t = start.t; t < end && (k < timed.length || summed.length > 0); ) {
+    let t = start.t;
+    sweepOn = () => {
+      if (!(t < end && (k < timed.length || summed.length > 0))) return false;
       while (k < timed.length && timed[k]!.at <= t + 1e-9) {
         apply(timed[k]!.step, timed[k]!.at, sweep);
         plan.push(timed[k]!);
@@ -441,12 +448,23 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
         } else sums[i] = sums[i]! + add;
       }
       t = next;
-    }
-    plan.sort((a, b) => a.at - b.at);
+      return true;
+    };
   }
-  const marks = [...new Set([...plan.map((p) => p.at), law.tVertical, law.tTurn].filter((x) => x > start.t))].sort((a, b) => a - b);
+  let marks: number[] = [];
   // the last stage's stop: the burn under guidance ends there (the path is drawn dashed to it)
-  const lastCut = plan.find((p) => p.step.kind === 'cut' && p.step.stage === last)?.at ?? null;
+  let lastCut: number | null = null;
+  let ready = false;
+  /** The sweep worked on until done, or until `until` (performance.now()): whether it is done. */
+  const prepare = (until = Number.POSITIVE_INFINITY): boolean => {
+    if (ready) return true;
+    for (let n = 1; sweepOn(); n++) if (n % 32 === 0 && performance.now() >= until) return false;
+    plan.sort((a, b) => a.at - b.at);
+    marks = [...new Set([...plan.map((p) => p.at), law.tVertical, law.tTurn].filter((x) => x > start.t))].sort((a, b) => a - b);
+    lastCut = plan.find((p) => p.step.kind === 'cut' && p.step.stage === last)?.at ?? null;
+    ready = true;
+    return true;
+  };
   let since = start.t;
   let thetaTurn = now.thetaTurn ?? null;
   let alone: Flier | null = null;
@@ -460,8 +478,13 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
   };
   const lit = (): boolean => o.stages.some((_, i) => v.burning(cur, i, since));
   return {
-    kind: lastCut !== null ? 'guided' : 'coast',
-    cutoff: lastCut,
+    get kind() {
+      return lastCut !== null ? 'guided' : 'coast';
+    },
+    get cutoff() {
+      return lastCut;
+    },
+    prepare,
     get quiet() {
       return alone ? alone.quiet : Number.POSITIVE_INFINITY;
     },
