@@ -608,7 +608,8 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 - **A place's ground is data, laid round the flight's pad.** Each place's `ground.ts` (`GroundSpec`) gives its land,
   plants, what stood round it (dated: drawn only on a day it stood) and its grade; `groundPlace` lays it on the compass
   round whichever pad is the origin (`compass.ts`: latitude and longitude through `frames.ts`) and the setting is kept
-  by place, pad and day.
+  by place, pad and day. The globe leaves each place's ground its square (`Hole`, one for each ground there is, each at
+  its own height): the site's first.
 - **The weather is a day's, and the day is the flight's.** A flight's `weather` (types.ts: `DayWeather`; a
   `weather.ts` beside its `flight.ts`) is what was observed at or nearest its site at the hour nearest liftoff:
   the low cloud, the middle deck, the high cloud, the wind, how far one could see, each figure a `Measure`, and

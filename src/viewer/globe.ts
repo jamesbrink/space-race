@@ -88,7 +88,7 @@ const SPREAD = 8;
 /** The maps' faces, in the order a cube map takes them. */
 const FACES = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
 
-/** Linear colours, chosen by eye against photographs from orbit (estimated): the sea's is the Cape's offshore water (cape.ts). */
+/** Linear colours, chosen by eye against photographs from orbit (estimated): the sea's is the Cape's offshore water (missions/usa/places/cape-canaveral/ground.ts). */
 const SEA = new THREE.Color().setRGB(0.018, 0.07, 0.12);
 /**
  * The deep sea seen from above the air: what clear ocean water sends back up from within, about 0.3, 1.6 and 4.5
@@ -111,7 +111,7 @@ const SEA_SLOPES = 0.003 + 0.00512 * 7;
  * tuned to.
  */
 const SEA_ROUGH = Math.sqrt(Math.sqrt(SEA_SLOPES));
-const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: cape.ts PALETTE)
+const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: missions/usa/places/cape-canaveral/ground.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
 const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
@@ -269,7 +269,7 @@ const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
       ground *= mix(1.0, tilted, smoothstep(-0.02, 0.08, level));
     #endif
     // Round the site, until the eye is well up, the land and the sea keep the site's own tones (its ground's tone; its
-    // offshore water: cape.ts), as the site's ground does (LIFT_TONE, which uGlobeLift follows): so from a few
+    // offshore water: missions/usa/places/cape-canaveral/ground.ts), as the site's ground does (LIFT_TONE, which uGlobeLift follows): so from a few
     // kilometres up the site's square is not a patch of another colour in the map's. Gone by 60 km out and by 40 km up.
     ground = mix(uGlobeOwn, ground, uGlobeSurfaced);
     water = mix(deep, water, uGlobeSurfaced);
@@ -374,12 +374,21 @@ const AIR = /* glsl */ `
     gl_FragColor = vec4(light * uWeight, mix(1.0, dot(through, vec3(0.3, 0.4, 0.3)), uWeight));
   }`;
 
-/** The square the site's own ground covers, which the globe leaves to it. */
+/**
+ * A square of the Earth a place's own ground covers, which the globe leaves to it: the site's round the pad, and any
+ * other place drawn on the ground (where a flight comes down, where it lands).
+ */
 export interface Hole {
   /** From the scene's frame to the ground's own (its mesh's inverse world matrix): the square is axis-aligned there. */
   frame: THREE.Matrix4;
   /** Half the square's side, metres: the globe is drawn only outside it. */
   half: number;
+  /**
+   * The height of that ground in the scene's frame, metres (the site's: its grade): the globe is left to it only near
+   * that height, and drawn where its points are kilometres under it (the far side of the Earth, whose x and z can be
+   * the same).
+   */
+  ground: number;
 }
 
 /** A cube map of one channel from the six faces tools/globe.mjs writes. */
@@ -537,6 +546,9 @@ export class Globe {
     under: [0, 0, 0] as Vec3,
   };
   private arrived = false;
+  /** The squares a place's own ground covers: the site's first (`hole`). */
+  private readonly holes: Hole[];
+  /** The site's own ground's square, round the pad: what the globe hands over from and the light blends from. */
   private readonly hole: Hole | null;
   /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
   private readonly clouds: Clouds | null;
@@ -546,14 +558,15 @@ export class Globe {
   private readonly day: Day | null;
 
   /**
-   * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `hole`: the site's own ground;
+   * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `holes`: the squares a place's own
+   * ground covers, the site's first (`Hole`);
    * `region`: the name of the site's region's maps (RegionDef.name), if it has them.
    */
   constructor(
     renderer: THREE.WebGLRenderer,
     site: Site,
     seaLevel: number,
-    hole: Hole | null,
+    holes: Hole[],
     haze: { scale: number; clouds?: unknown; day?: Day } | null,
     region: string | null = null,
     /** The tone of the site's own ground seen whole, kept round it until the eye is well up: the Cape's canopy's green unless said. */
@@ -566,7 +579,9 @@ export class Globe {
     this.site = site;
     this.renderer = renderer;
     this.seaLevel = seaLevel;
-    this.hole = hole;
+    this.holes = holes;
+    this.hole = holes[0] ?? null;
+    const hole = this.hole;
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
     this.day = haze?.day ?? null;
     this.sheets = !this.clouds && this.day !== null && (this.day.deck.cover > 0 || (this.day.high.cover ?? 0) > 0);
@@ -603,7 +618,9 @@ export class Globe {
       uGlobeOrigin: { value: new THREE.Vector3(o[0], o[1], o[2]) },
       uGlobeAxes: { value: new THREE.Matrix3().set(m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]) },
       uGlobeSeaLevel: { value: seaLevel },
-      uGlobeHole: { value: hole ? hole.frame : new THREE.Matrix4() },
+      // (one at the least, with no side: the shader's arrays are never empty)
+      uGlobeHoles: { value: holes.length ? holes.map((h) => h.frame) : [new THREE.Matrix4()] },
+      uGlobeHoleSize: { value: holes.length ? holes.map((h) => new THREE.Vector2(h.half, h.ground)) : [new THREE.Vector2(-1, 0)] },
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
@@ -922,13 +939,16 @@ export class Globe {
     return c;
   }
 
-  /** How far the eye is inside the hole the site's ground fills (to its nearest edge), metres; 0 outside it. Nothing of the globe nearer than this is drawn. */
+  /** How far the eye is inside a hole a place's ground fills (to its nearest edge), metres; 0 outside them. Nothing of the globe nearer than this is drawn. */
   private inside(eye: THREE.Vector3): number {
-    if (!this.hole) return 0;
-    const m = this.hole.frame.elements;
-    const x = m[0]! * eye.x + m[4]! * eye.y + m[8]! * eye.z + m[12]!,
-      z = m[2]! * eye.x + m[6]! * eye.y + m[10]! * eye.z + m[14]!;
-    return Math.max(0, this.hole.half - Math.max(Math.abs(x), Math.abs(z)));
+    let most = 0;
+    for (const hole of this.holes) {
+      const m = hole.frame.elements;
+      const x = m[0]! * eye.x + m[4]! * eye.y + m[8]! * eye.z + m[12]!,
+        z = m[2]! * eye.x + m[6]! * eye.y + m[10]! * eye.z + m[14]!;
+      most = Math.max(most, hole.half - Math.max(Math.abs(x), Math.abs(z)));
+    }
+    return most;
   }
 
   /** Straight up from the sea under the eye, in the scene's frame. */
@@ -1086,7 +1106,8 @@ export class Globe {
           varying vec3 vGlobeNormal;
           uniform vec3 uGlobeSun, uGlobeOrigin;
           uniform mat3 uGlobeAxes;
-          uniform mat4 uGlobeHole;
+          uniform mat4 uGlobeHoles[${Math.max(1, this.holes.length)}];
+          uniform vec2 uGlobeHoleSize[${Math.max(1, this.holes.length)}];   // each square's half side, and its ground's height
           uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze;
           uniform float uGlobePixel;   // radians a pixel of the frame
           ${ATMOSPHERE_GLSL}
@@ -1154,10 +1175,13 @@ export class Globe {
         .replace(
           '#include <map_fragment>',
           /* glsl */ `
-          // the site's own ground is drawn there (but not on the far side of the Earth, whose x and z are the same)
-          if (uGlobeHalf > 0.0 && vGlobeSite.y > -3000.0) {
-            vec2 q = (uGlobeHole * vec4(vGlobeSite, 1.0)).xz;
-            if (max(abs(q.x), abs(q.y)) < uGlobeHalf) discard;
+          // a place's own ground is drawn there (but not on the far side of the Earth, whose x and z are the same)
+          for (int i = 0; i < ${Math.max(1, this.holes.length)}; i++) {
+            vec2 size = uGlobeHoleSize[i];
+            if (size.x > 0.0 && vGlobeSite.y > size.y - 3000.0) {
+              vec2 q = (uGlobeHoles[i] * vec4(vGlobeSite, 1.0)).xz;
+              if (max(abs(q.x), abs(q.y)) < size.x) discard;
+            }
           }
           diffuseColor.rgb = globeAlbedo(normalize(vEarth), globeRough);`,
         )
@@ -1253,6 +1277,6 @@ export class Globe {
           #endif`,
         );
     };
-    material.customProgramCacheKey = () => `globe${this.drawnKey}`;
+    material.customProgramCacheKey = () => `globe${this.drawnKey}:${this.holes.length}`;
   }
 }

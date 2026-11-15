@@ -470,7 +470,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     renderer,
     site,
     when.site.seaLevel.value,
-    { frame: here.floor.matrixWorld.clone().invert(), half: land.extent - 150 },
+    [{ frame: here.floor.matrixWorld.clone().invert(), half: land.extent - 150, ground: here.grade }],
     installedAir(),
     when.site.place.region?.name ?? null,
     here.tone,
