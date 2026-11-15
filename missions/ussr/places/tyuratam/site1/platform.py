@@ -63,6 +63,7 @@ HALF = PLATFORM / 2
 LIP = (10.0 * FT, 8.0 * FT)
 CHAMFER = 10.0 * FT  # the south-east corner, cut off this far along each edge (scaled off Figure 1; Figure 2 draws it too: estimated)
 ABUTMENT = 25.0 * FT  # east-west, under the platform's west edge (PIC/JR-2/60)
+ABUTMENT_TOP = -0.03  # its top, under the deck's level, m (ours: so that it and the slab's top are never one plane)
 # The section (estimated from PIC/JR-2/61 Figure 1, front elevation, and HTA/JR-4/58's "two terrace levels"): the
 # sides fall 1 in 1 from the rim to an upper terrace 15 m down, 8 m wide, then to the lower terrace 30 m down.
 TERRACES = [(0.0, 0.0), (15.0, 15.0), (23.0, 15.0), (38.0, 30.0)]  # (metres in from the rim, metres down)
@@ -269,7 +270,7 @@ def build(parts: Parts, tracks=()) -> None:
             y = sy * PYLON_Y
             box(edge, (min(x0, x1), y - PYLON_T / 2, -DEEPEST), (max(x0, x1), y + PYLON_T / 2, z0 + 0.5))
     # the abutment the platform's west side rests on, faced in concrete down to the pit's floor
-    box(edge, (-HALF - ABUTMENT, -HALF, -DEEPEST), (-HALF, HALF, -0.03))
+    box(edge, (-HALF - ABUTMENT, -HALF, -DEEPEST), (-HALF, HALF, ABUTMENT_TOP))
     # the retaining walls either side of the slot: up into the slab under the platform, to the lower terrace beyond it
     for s in (-1, 1):
         y0, y1 = sorted((s * SLOT, s * (SLOT + WALL)))

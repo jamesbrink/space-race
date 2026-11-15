@@ -63,5 +63,9 @@ if __name__ == "__main__":
             ("place-site51.png", (-101, 390, -8), 110, dict(azimuth=-70, elevation=22, res=(1600, 1000))),
             # along the south track from the abutment, west over its bend at 60 m (an arc: tracks.py)
             ("place-bend.png", (-62, -12.37, 0), 32, dict(azimuth=0, elevation=5, res=(1600, 900))),
+            # the band of concrete the centre track lies in over the apron, a flangeway beside each rail; and the south
+            # track's band at the apron's west end, where the flangeways shallow out and the rails rise a flange's depth
+            ("place-flangeway.png", (-45, 0, -0.1), 6, dict(azimuth=25, elevation=22, res=(1600, 900))),
+            ("place-band-end.png", (-88.5, -11.7, -0.1), 7, dict(azimuth=30, elevation=16, res=(1600, 900))),
         ],
     )

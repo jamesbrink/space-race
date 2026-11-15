@@ -192,6 +192,13 @@ const APRON = 70;
  * across them, laid in rows along them (estimated, read off the film at the bus's scale).
  */
 const SLABS = { east: -(HALF + ABUTMENT), west: -90, north: 20, south: -21, along: 1.5, across: 3 };
+/**
+ * Over the apron the band of concrete along each track is not paint: the land is left open this far either side of the
+ * track's middle line, metres, and the place's model lays the band there at the land's level with a flangeway cut beside
+ * each rail (site1/deck.py `STRIP`, `_band`: keep the two in step). The land is a surface in cells of half a metre and
+ * cannot be grooved; its height there is still answered as the band's top, which is what is walked and driven on.
+ */
+const STRIP = 1.2;
 /** How far the ground is drawn: past the horizon from any height a person stands at (4.7 km at 1.7 m). */
 const FAR = 8000;
 
@@ -584,7 +591,8 @@ const OVERLAP = 3;
 /**
  * The site's own marks: the roads (concrete laid in slabs, a joint across every six metres and one down the middle), the
  * tracks' beds (grey stone ballast, sleepers, two rails at the Soviet gauge, 1,524 mm in 1961), and the hole where the flame
- * pit is. The rails are paint, not rails, except where they come up to the platform (the place's model: deck.py).
+ * pit is. The rails are paint, not rails, except where they come up to the platform (the place's model: deck.py), and
+ * there, over the apron, the band of concrete they lie in is the model's too and the land is left open for it (STRIP).
  */
 const PAINT = /* glsl */ `
   ${SCARP_FRAME_GLSL}
@@ -625,6 +633,9 @@ const PAINT = /* glsl */ `
   void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {
     // (a little inside the rim, over the pit's own slope: OVERLAP)
     if (inPit(p) > ${glsl(OVERLAP)}) discard;
+    // and open along each track over the apron, where the place's model lays the band of concrete with its flangeways (STRIP)
+    float d = rail(p);
+    if (d < ${glsl(STRIP)} && apron(p) < 0.0) discard;
     fall(p, g);
     paintWorks(p, B, g);
     float way = road(p);
@@ -647,9 +658,10 @@ const PAINT = /* glsl */ `
     }
     // The apron (SLABS), as the film shows it from the erector's head: rectangular slabs in rows along the tracks, each a
     // little darker in its middle than at its margins and each a shade of its own, the joints pale with sand; a pale
-    // band of concrete along each track with the rails flush in it, a flangeway inside each rail; the steppe's dust
-    // drifted over the outer slabs, which give way to bare trodden earth.
-    float d = rail(p);
+    // band of concrete along each track with the rails flush in it (the band itself, with a flangeway inside each rail,
+    // is the place's model over the apron, STRIP: what is painted of it here is its margin, its joint with the slabs, and
+    // the little that the slabs' ragged edge carries past the apron's ends); the steppe's dust drifted over the outer
+    // slabs, which give way to bare trodden earth.
     float slabbed = 1.0 - smoothstep(-0.03, 0.03, apron(p) + 1.4 * smoothstep(-6.0, 0.0, apron(p)) * (noise(vec3(p * 0.16, 92.0)) - 0.35));
     if (slabbed > 0.0) {
       vec2 size = vec2(${glsl(SLABS.along)}, ${glsl(SLABS.across)});
@@ -671,9 +683,9 @@ const PAINT = /* glsl */ `
       float joint = (1.0 - smoothstep(0.015, 0.035, e)) * (1.0 - band);
       joint = max(joint, (1.0 - smoothstep(0.015, 0.035, abs(d - 1.2))) * step(d, 1.5));
       slab = mix(slab, vec3(0.63, 0.59, 0.51), joint * seen(0.06));
+      // (no flangeway is painted: the band's are cut in the model, and where the slabs' edge runs on past the apron's
+      // west end the rails have risen out of them)
       float steel = 1.0 - smoothstep(0.03, 0.04, abs(d - 0.79));
-      float flange = (1.0 - smoothstep(0.02, 0.03, abs(d - 0.72))) * band;
-      slab = mix(slab, vec3(0.1, 0.09, 0.08), flange * seen(0.05));
       slab = mix(slab, vec3(0.45, 0.43, 0.41), steel * band * seen(0.07));
       if (uCel > 0.5) {
         // drawn: two flat tones of slab, the band paler, the joints and the rails inked
@@ -682,7 +694,7 @@ const PAINT = /* glsl */ `
       }
       g.albedo = mix(g.albedo, slab, slabbed);
       g.rough = mix(g.rough, mix(0.9, 0.45, steel * band), slabbed);
-      g.bump = mix(g.bump, (-0.008 * joint - 0.03 * flange) * seen(0.05), slabbed);
+      g.bump = mix(g.bump, -0.008 * joint * seen(0.05), slabbed);
       if (slabbed > 0.99) return;
     }
     float bed = 1.0 - smoothstep(1.6, 2.1, d + 0.3 * (noise(vec3(p * 0.8, 20.0)) - 0.5));

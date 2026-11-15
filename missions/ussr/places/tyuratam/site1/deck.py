@@ -43,10 +43,12 @@ from __future__ import annotations
 
 import math
 
+from mathutils import Vector
+
 import sitelib
 
 from . import tracks
-from .platform import ABUTMENT, HALF, LIP
+from .platform import ABUTMENT, ABUTMENT_TOP, FLANGEWAY, HALF, LIP
 from .site import FT, GAUGE, GROUND, OPENING_R, RAIL_TOP, Parts, beam, box, fine, handrail, lattice, stood
 
 # ---- the tracks on the platform: each one's middle line north of the rocket's axis, and where its rails end, east of
@@ -79,6 +81,22 @@ SLEEPER = 0.0276
 # climb again in DIP metres to stand on the sleepers the land paints, as far as the erector is drawn off.
 APRON_WEST = -90.0
 DIP = 3.0
+# The band of concrete along each track over the apron, which the film shows paler than the slabs with the rails flush
+# in it, is the place's own and not the land's paint: the land is the viewer's surface in cells of half a metre and
+# cannot be cut, so it is left open STRIP either side of each track's middle line from the abutment to the apron's west
+# end (ground.ts `STRIP`: keep the two in step), and the band is laid there at the land's level with a flangeway cut on
+# the gauge side of each rail, as the platform's slab has (platform.FLANGEWAY: 60 mm wide, 45 mm deep). So a wheel's
+# flange, 27.6 mm under its tread, runs in a groove and not in the ground. Where the rails come down from the deck's
+# level the band comes down with them, from the abutment's top (platform.ABUTMENT_TOP) to the land's level: a ramp of
+# concrete 9 cm high along each track, which the real apron, level with the deck, had no need of. Over the apron's last DIP metres each rail's
+# head rises a flange's depth (SLEEPER) and its flangeway shallows to nothing, so that a flange leaves the groove onto the
+# land at the land's height: west of the apron there is no slab to cut. The band's breadth is the film's, as the land
+# painted it (1.2 m either side: estimated off the bus's scale); that it ends so is ours.
+STRIP = 1.2
+# Past the land's edge the band goes on this far out, and this far down, under the land (so that no crack opens between
+# the two surfaces); and its flat top stops this far inside the land's edge (so that the two are never one plane). Ours.
+SHOULDER = (0.06, 0.03)
+LAP = 0.002
 # The erector's wagon stands on the centre track until 08:37 with its last axle 30.4 m west of the axis (erector.AXLES),
 # 2.2 m out past the abutment: the rails keep the deck's level under its wheels, and come down west of them.
 CENTRE_HELD = -31.0
@@ -158,9 +176,47 @@ def _profile(line, heads) -> list[tuple[float, float, float]]:
     return [(x, _at(line, x), top(x)) for x in xs]
 
 
+def _band(mb, line, held: float) -> None:
+    """The band of concrete along one track over the apron, from the abutment's west face to the apron's west end: a
+    flangeway on the gauge side of each rail (reaching 4 mm under the rail's head, which hides its edge, as on the
+    platform), a shoulder under the land's edge either side and past its west end. Its top is the abutment's where it
+    leaves it, comes down to the land's level in DIP metres from `held` as the rails do (so no rail's foot shows, and a
+    wheel's flange is in a groove all the way down), and is the land's from there on. Swept along the track's line from
+    point to point, as its rails are."""
+    wide, deep = FLANGEWAY
+    a, b = GAUGE / 2 + 0.004, GAUGE / 2 - wide
+    out, down = SHOULDER
+
+    def section(z: float, depth: float, foot: float) -> list[tuple[float, float]]:
+        """Across the track, from its left to its right: how far from its middle line, and how high."""
+        left = [(-(STRIP + out), foot), (-(STRIP - LAP), z), (-a, z), (-a, z - depth), (-b, z - depth), (-b, z)]
+        return left + [(-o, h) for o, h in reversed(left)]
+
+    face = -HALF - ABUTMENT
+    tops = [(face, ABUTMENT_TOP), (held, ABUTMENT_TOP), (held - DIP, GROUND), (APRON_WEST + DIP, GROUND), (APRON_WEST, GROUND)]
+    mid = [Vector(p) for p in reversed(_profile(line, [t for k, t in enumerate(tops) if k == 0 or t[0] < tops[k - 1][0]]))]  # east to west
+    loops = []
+    for k, p in enumerate(mid):
+        t = (mid[min(len(mid) - 1, k + 1)] - mid[max(0, k - 1)]).normalized()
+        t = Vector((t.x, t.y, 0.0)).normalized()
+        s = Vector((-t.y, t.x, 0.0))
+        # (the flangeway shallows to nothing over the apron's last DIP metres, where the rail's head rises out of it)
+        depth = deep * min(1.0, (p.x - APRON_WEST) / DIP)
+        loops.append([(p.x + s.x * o, p.y + s.y * o, z) for o, z in section(p.z, depth, GROUND - down)])
+    # its west end, on under the land
+    loops.append([(p.x + t.x * out + s.x * o, p.y + t.y * out + s.y * o, z) for o, z in section(GROUND - down, 0.0, GROUND - 2 * down)])
+    for la, lb in zip(loops, loops[1:]):
+        for i in range(len(la) - 1):
+            quad = [Vector(la[i]), Vector(lb[i]), Vector(lb[i + 1]), Vector(la[i + 1])]
+            if (quad[1] - quad[0]).cross(quad[3] - quad[0]).length + (quad[1] - quad[2]).cross(quad[3] - quad[2]).length < 1e-9:
+                continue  # (a flangeway's wall where it has no depth)
+            mb.add([sitelib.P(*v) for v in quad], [(0, 1, 2, 3)])
+
+
 def land_rails(parts: Parts) -> None:
-    """The same rails where they run on over the land west of the platform: the place's. Flush in the apron's slabs,
-    and beyond it on the sleepers the land paints. Their lines are the land's own, their bends curved (tracks.py)."""
+    """The same rails where they run on over the land west of the platform: the place's. Flush in the apron's bands of
+    concrete, which are laid here with their flangeways (the land is left open over them), and beyond the apron on the
+    sleepers the land paints. Their lines are the land's own, their bends curved (tracks.py)."""
     g = "Tracks"
     parts.node(
         g,
@@ -168,35 +224,44 @@ def land_rails(parts: Parts) -> None:
         about=(
             "The centre track the erector brought the rocket along, and the spurs beside it that the propellant trains stood on, "
             "where they come up to the platform. Their lines are today's map's, brought to where the CIA's plan of March 1961 has "
-            "them on the platform; the gauge was 1,524 mm. Over the apron they lie flush in its slabs, as the film of the morning "
-            "has them. Further west they are painted on the land."
+            "them on the platform; the gauge was 1,524 mm. Over the apron they lie flush in a band of concrete, as the film of the "
+            "morning has them, with a groove beside each rail for the wheels' flanges. Further west they are painted on the land."
         ),
     )
     steel = parts(g, "rail")
     low, flush = GROUND + SLEEPER, GROUND + RAIL_TOP
-    # the centre track: level with the deck under the erector's wagon, down into the apron, flush across it, up onto the
-    # sleepers west of it, and down to a flange's depth over the land's paint at its end
+    # the centre track: level with the deck under the erector's wagon, down into the apron, flush across it, a flange's
+    # depth out of it over its last 3 m and up onto the sleepers west of it, and down to a flange's depth over the land's
+    # paint at its end
     far = LAND["centre"]
     heads = [
         (EDGE, RAIL_TOP),
         (CENTRE_HELD, RAIL_TOP),
         (CENTRE_HELD - DIP, flush),
-        (APRON_WEST, flush),
+        (APRON_WEST + DIP, flush),
+        (APRON_WEST, low),
         (APRON_WEST - DIP, RAIL_TOP),
         (far, RAIL_TOP),
         (far - RAMP, low),
     ]
     _pair(steel, _profile(tracks.CENTRE_CURVED, heads), GAUGE / 2)
-    # the three beside it: down into the apron at the abutment, flush across it, and from its west end on at the land's
-    # level to where the paint takes over (10 to 20 m: a rail does not climb onto sleepers and come down again in that)
+    # the three beside it: down into the apron at the abutment, flush across it, a flange's depth out of it over its last
+    # 3 m, and on at that height over the land to where the paint takes over (10 to 20 m: a rail does not climb onto
+    # sleepers and come down again in that)
     far = LAND["spur"]
     for line in tracks.SPURS_CURVED[:3]:
-        heads = [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST, flush), (far - RAMP, low)]
+        heads = [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST + DIP, flush), (APRON_WEST, low), (far - RAMP, low)]
         _pair(steel, _profile(line, heads), GAUGE / 2)
     # the gantry tracks' two rails, which begin 11 ft short of the abutment: down into the apron as the others are
+    # (nothing rides them: they lie in the land's painted slabs, with no flangeway)
     for s in (-1, 1):
         y = s * GANTRY / 2
         sitelib.rail(steel, [(EDGE, y, RAIL_TOP), (EDGE - DIP, y, flush), (GANTRY_WEST, y, flush)])
+    # the bands of concrete the four tracks lie in over the apron, each with its flangeways
+    band = parts(g, "band")
+    _band(band, tracks.CENTRE_CURVED, CENTRE_HELD)
+    for line in tracks.SPURS_CURVED[:3]:
+        _band(band, line, -HALF - ABUTMENT)
 
 
 def mast(parts: Parts, name: str, at, sign: int, foot: float) -> None:

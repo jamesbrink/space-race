@@ -245,6 +245,9 @@ def materials() -> dict:
     M.update(
         {
             "plaster": m("concrete-plaster-whitewashed", (0.66, 0.64, 0.58), 0.0, 0.92),
+            # the band of concrete along each track over the apron, paler than the slabs either side of it in the film
+            # (deck.py `_band`): the tone the land painted it in (places/tyuratam/ground.ts, the apron's `band`)
+            "band": m("concrete-apron-band", (0.6, 0.585, 0.55), 0.0, 0.9),
             # the one wall colour a photograph of the day shows: the long building west of the pad at the deck's level is
             # white, in the colour photograph of the liftoff taken from the south (the propellant shed: buildings.py)
             "white": m("wall-limewashed-white", (0.8, 0.79, 0.75), 0.0, 0.9),
