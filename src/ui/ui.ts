@@ -89,7 +89,7 @@ export function si(value: number, unit: string): string {
 
 export const dot = (c: Confidence) => `<i class="conf ${c}" title="${c}"></i>`;
 
-export const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
+export const legend = `<p class="fine legend"><span>${dot('documented')}documented</span><span>${dot('assumed')}assumed from its type</span><span>${dot('derived')}derived from documented</span><span>${dot('estimated')}estimated</span></p>`;
 
 /** A row of the legend: a gesture in words, or keys (each its own cap), and what it does. */
 type LegendRow = [on: string | string[], does: string];

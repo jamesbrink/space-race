@@ -38,7 +38,7 @@ export const LC14: SiteDef = {
   },
   bearingX: {
     value: 60,
-    confidence: 'derived',
+    confidence: 'estimated',
     source:
       'the side the capsule’s hatch faced on the stand. "The launch pad is oriented so that the pitch axis of the launch vehicle is alined ' +
       'on an azimuth of 105 degrees" (Results of the First United States Manned Orbital Space Flight, p. 46); the Atlas’s pitch axis is the ' +

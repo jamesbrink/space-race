@@ -76,7 +76,7 @@ def as_of(date: str | None) -> None:
 
 def stood(thing: str, *, since: str | None = None, until: str | None = None, confidence: str, source: str) -> bool:
     """Whether `thing` stood on the date being built, and a record that it was asked: when it
-    stood (`since`, `until`), how sure that is ("documented", "derived" or "estimated", as for any
+    stood (`since`, `until`), how sure that is ("documented", "assumed", "derived" or "estimated", as for any
     number in this repo) and what says so. Use it round whatever was not always there:
 
         if stood("White room", since="1961-02", confidence="documented", source="TM X-53107 7.5.1.2"):
@@ -84,7 +84,7 @@ def stood(thing: str, *, since: str | None = None, until: str | None = None, con
 
     A date given to the month or the year covers all of it: something there "until 1961-06" is
     there on 1961-06-27 and gone on 1961-07-01."""
-    if confidence not in ("documented", "derived", "estimated"):
+    if confidence not in ("documented", "assumed", "derived", "estimated"):
         raise ValueError(f"stood: {thing}: confidence is {confidence!r}")
     there = AS_OF is None or ((since is None or since <= AS_OF) and (until is None or AS_OF[: len(until)] <= until))
     STANDING.append((thing, since, until, confidence, source, there))

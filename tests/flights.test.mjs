@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { faults } from '../src/world/sequence.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CONFIDENCE = ['documented', 'derived', 'estimated'];
+const CONFIDENCE = ['documented', 'assumed', 'derived', 'estimated'];
 
 /** The names of a GLB's top-level nodes, read from its JSON chunk (no geometry is decoded). */
 function topLevelNodes(file) {

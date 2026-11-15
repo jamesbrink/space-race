@@ -868,7 +868,7 @@ export const flight: Flight = {
       burnS: 120,
       propellant: 'kerosene T-1 / liquid oxygen',
       kind: 'liquid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '3,276.4 kN at the ground for the four, 819.1 kN each (Brügge’s table for the 11A57: secondary, and uncited figure by figure). The strap-ons left at 120 s on Kosmos 47 six days before (Kamanin, 6 October 1964); this flight’s time was not found',
     },
     {
@@ -878,7 +878,7 @@ export const flight: Flight = {
       burnS: 290,
       propellant: 'kerosene T-1 / liquid oxygen',
       kind: 'liquid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '777.8 kN at the ground (Brügge’s table for the 11A57: secondary). The third stage lit at 290 s on Kosmos 47 (Kamanin); this flight’s time was not found',
     },
     {
@@ -916,7 +916,7 @@ export const flight: Flight = {
       count: 16,
       thrustN: 1.5 * KGF,
       propellant: 'compressed gas',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'the Vostok’s: two sets of eight, 1.5 kgf each (Siddiqi p. 197). Nothing read says the 3KV’s differed. Komarov turned the ship by hand on the sixth orbit (TASS, 13 October 1964)',
     },
   ],

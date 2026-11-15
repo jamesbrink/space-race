@@ -1019,7 +1019,7 @@ export const flight: Flight = {
       count: 16,
       thrustN: 1.5 * KGF,
       propellant: 'compressed gas',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'the Vostok’s: two sets of eight, 1.5 kgf each (Siddiqi p. 197). Nothing read says the 3KD’s differed. Worked by hand for the descent: the hand system’s bottles stood at 106 atm before it (Belyayev)',
     },
   ],

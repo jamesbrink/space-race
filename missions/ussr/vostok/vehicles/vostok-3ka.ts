@@ -10,10 +10,10 @@
 import type { DescentBody, DescentChute, DescentRecord, OrbitalFlight } from '../../../../src/sim/orbital.ts';
 import type { Curve, Measure } from '../../../../src/types.ts';
 import { BOBKOV, G0, GCTC, SIDDIQI } from './vostok-8k72k.ts';
-import { derived, doc, estimated } from '../../../../src/measure.ts';
+import { assumed, derived, doc, estimated } from '../../../../src/measure.ts';
 
 /** The descent module's mass with its pilot and seat aboard: the type's. */
-export const ENTRY_MASS: Measure = doc(
+export const ENTRY_MASS: Measure = assumed(
   2_460,
   `${SIDDIQI}, p. 195: 2.46 t for the type, the pilot and his seat aboard. No. 3’s own figure has not been found`,
 );

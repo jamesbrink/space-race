@@ -48,7 +48,7 @@ export class Title {
           })
           .join('')}
       </nav>
-      <p class="title-foot">Vehicle, launch pad and crew of each flight, with every figure marked documented, derived or estimated.</p>
+      <p class="title-foot">Vehicle, launch pad and crew of each flight, with every figure marked documented, assumed, derived or estimated.</p>
       <p class="title-rights">Copyright © 2026 James Brink</p>`;
     parent.append(this.root);
     this.root.addEventListener('click', (e) => {

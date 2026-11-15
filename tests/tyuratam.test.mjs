@@ -104,7 +104,7 @@ test('Site 1: every piece of the worked ground was there in April 1961, says whe
     assert.ok(kinds.has(w.kind), w.id);
     // on both frames, which bracket the flight: anything on the frame of 1962 alone is left out
     assert.equal(w.frames, 'both', w.id);
-    assert.ok(['documented', 'derived', 'estimated'].includes(w.confidence), w.id);
+    assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(w.confidence), w.id);
     assert.match(w.source, /CORONA/, w.id);
     assert.ok(w.note.length > 20, w.id);
     const pts = w.ring ?? w.line;
@@ -129,7 +129,8 @@ test('the steppe in its season: the spring flush in April, the summer’s reddis
   // the spring's sward is the steppe's own colours, so Vostok 1's ground is as it was drawn
   const spring = SEASONS.find((x) => x.name === 'spring');
   assert.ok(spring.herbGreen.equals(STEPPE.herbGreen) && spring.herbDry.equals(STEPPE.herbDry));
-  for (const x of SEASONS) assert.ok(['documented', 'derived', 'estimated'].includes(x.confidence) && x.source.length > 20, x.name);
+  for (const x of SEASONS)
+    assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(x.confidence) && x.source.length > 20, x.name);
   // in August the tulips and the rhubarb are below ground
   const summer = SEASONS.find((x) => x.name === 'summer');
   assert.equal(summer.species.tulip.share, 0);

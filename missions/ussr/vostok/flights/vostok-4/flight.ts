@@ -693,7 +693,7 @@ export const flight: Flight = {
       label: 'Descent module mass',
       value: 2460,
       unit: 'kg',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '2.46 t for the type (Siddiqi p. 195). No. 6’s own figure has not been found',
     },
     {
@@ -701,7 +701,7 @@ export const flight: Flight = {
       label: 'Instrument module mass',
       value: 2270,
       unit: 'kg',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '2.27 t for the type (Siddiqi p. 195)',
     },
     {
@@ -797,7 +797,7 @@ export const flight: Flight = {
       label: 'Liftoff mass',
       value: 287000,
       unit: 'kg',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '287 t, the type’s figure and Vostok 1’s (RKK Energia 1946–1996; Minakov; Siddiqi). No. E103-22’s own was not found; its spacecraft was 6 kg heavier than Vostok 3’s',
     },
     {
@@ -865,7 +865,7 @@ export const flight: Flight = {
       burnS: 118,
       propellant: 'kerosene T-1 / liquid oxygen',
       kind: 'liquid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '815.9 kN at the ground, 997.7 kN in vacuum; 256 and 313 s (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s)',
     },
     {
@@ -875,7 +875,7 @@ export const flight: Flight = {
       burnS: 290,
       propellant: 'kerosene T-1 / liquid oxygen',
       kind: 'liquid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '744.3 kN at the ground, 945.4 kN in vacuum; 248 and 315 s (the same table). The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
     },
     {

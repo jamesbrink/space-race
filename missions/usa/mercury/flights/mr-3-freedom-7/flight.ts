@@ -1475,7 +1475,7 @@ export const flight: Flight = {
       thrustN: 78000 * LBF,
       burnS: 143.5,
       propellant: 'ethyl alcohol / liquid oxygen',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'sea level, nominal. MR-3 measured 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s',
     },
     {
@@ -1493,7 +1493,7 @@ export const flight: Flight = {
       thrustN: 800 * LBF,
       burnS: 1.5,
       propellant: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 785 lbf. Three nozzles canted 30°',
     },
     {
@@ -1502,7 +1502,7 @@ export const flight: Flight = {
       thrustN: 400 * LBF,
       burnS: 1,
       propellant: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 370 lbf',
     },
     {
@@ -1511,7 +1511,7 @@ export const flight: Flight = {
       thrustN: 1000 * LBF,
       burnS: 10,
       propellant: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 992 lbf over 13.2 s. Fired 5 s apart',
     },
     {

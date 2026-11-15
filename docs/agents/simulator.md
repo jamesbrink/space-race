@@ -31,9 +31,10 @@ never adjusted to bring a check in.
   come within tolerance (take it off). So the list is the truth either way, and improving an input
   means updating it.
 - **The inputs that are not documented are listed and weighed.** The last test names every
-  `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
-  new input that is not documented must be added there. Keep the label honest: the simulator
-  may come to refuse `estimated` inputs.
+  `assumed`, `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
+  new input that is not documented must be added there. An `assumed` input (the type's or a sister vehicle's
+  documented figure, taken for this unit) is flown as a documented one would be, but is weighed, since the unit's own
+  may differ. Keep the label honest: the simulator may come to refuse `estimated` inputs, never `assumed` ones.
 - **Space-fixed is not Earth-fixed.** Speeds and climb angles come in both (`speed`,
   `groundSpeed`); the reports quote both, and the larger, space-fixed one includes the pad's own
   eastward motion. Say which in any label.

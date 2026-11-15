@@ -281,6 +281,7 @@ td { text-align: right; white-space: nowrap; font: 13px var(--mono); font-varian
 small { display: block; color: var(--faint); font: 12px/1.35 var(--sans); white-space: normal; }
 .conf { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 8px; vertical-align: 2px; }
 .conf.documented { background: #7fd49b; }
+.conf.assumed { background: transparent; box-shadow: inset 0 0 0 2px #7fd49b; }
 .conf.derived { background: var(--amber); }
 .conf.estimated { background: transparent; box-shadow: inset 0 0 0 1px #e8806c; }
 .fine { padding: 14px 18px 0; color: var(--faint); font-size: 12px; }

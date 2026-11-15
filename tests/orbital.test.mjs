@@ -31,8 +31,9 @@ const withInput = (o, path, value) => {
 };
 
 /**
- * By flight, every derived or estimated input the coast reads (the last test's list): a new one must be added here. Vostok 2's
- * are Vostok 1's and the injection's instant (the type's cutoff), the burn's velocity change and the ejection's height besides.
+ * By flight, every assumed, derived or estimated input the coast reads (the last test's list): a new one must be added here.
+ * Vostok 2's are Vostok 1's and the injection's instant (the type's cutoff), the burn's velocity change and the ejection's
+ * height besides. The descent module's mass is the type's on both (vostok-3ka.ts ENTRY_MASS: assumed).
  */
 const INPUTS = {
   'ussr/vostok/vostok-1': [
@@ -41,6 +42,7 @@ const INPUTS = {
     ['injection', 'anomaly'],
     ['retro', 'on'],
     ['retro', 'off'],
+    ['entry', 'mass'],
     ['entry', 'area'],
   ],
   'ussr/vostok/vostok-2': [
@@ -51,6 +53,7 @@ const INPUTS = {
     ['retro', 'on'],
     ['retro', 'off'],
     ['retro', 'deltaV'],
+    ['entry', 'mass'],
     ['entry', 'area'],
     ['ejection', 'altitude'],
   ],
@@ -136,7 +139,7 @@ for (const f of orbiters) {
       if (!x || typeof x !== 'object') return;
       if ('confidence' in x) {
         count++;
-        assert.ok(['documented', 'derived', 'estimated'].includes(x.confidence), `${where}: confidence`);
+        assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(x.confidence), `${where}: confidence`);
         assert.ok(typeof x.source === 'string' && x.source.length > 12, `${where}: a source`);
         if ('value' in x) assert.ok(Number.isFinite(x.value), `${where}: a number`);
       }
@@ -234,7 +237,7 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
-    // every derived or estimated input the coast reads, by where it is in the record: a new one must be added here
+    // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'radius'],

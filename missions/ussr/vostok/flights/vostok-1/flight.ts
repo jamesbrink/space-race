@@ -1595,7 +1595,7 @@ export const flight: Flight = {
       label: 'Descent module mass',
       value: 2460,
       unit: 'kg',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '2.46 t for the type (Siddiqi p. 195). No. 3’s own figure has not been found',
     },
     {
@@ -1603,7 +1603,7 @@ export const flight: Flight = {
       label: 'Instrument module mass',
       value: 2270,
       unit: 'kg',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '2.27 t for the type (Siddiqi p. 195)',
     },
     {

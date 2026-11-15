@@ -75,7 +75,7 @@ test('Freedom 7’s pad: the morning on its slider is the morning on the clock',
   const seq = pad.sequence;
   assert.deepEqual(faults(seq), []);
   for (const k of seq) {
-    assert.ok(['documented', 'derived', 'estimated'].includes(k.confidence), `${k.event}: confidence`);
+    assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(k.confidence), `${k.event}: confidence`);
     assert.ok(k.source.length > 8 && k.event.length > 3, `${k.event}: source`);
   }
   assert.equal(seq[0].slider, 0);

@@ -116,7 +116,7 @@ const load = async (path) => (await import(new URL(path, flightsDir).href)).flig
 const mr3 = await load('usa/mercury/flights/mr-3-freedom-7/flight.ts');
 const mr4 = await load('usa/mercury/flights/mr-4-liberty-bell-7/flight.ts');
 const vostok1 = await load('ussr/vostok/flights/vostok-1/flight.ts');
-const CONFIDENCE = ['documented', 'derived', 'estimated'];
+const CONFIDENCE = ['documented', 'assumed', 'derived', 'estimated'];
 const RAD = Math.PI / 180;
 
 /** Every Measure in a record, with where it is. */

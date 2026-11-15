@@ -135,7 +135,8 @@ standing in it: on foot at eye height beside the thing, and from across the pad.
 
 ## Rules that keep the numbers honest
 
-- **Every number carries a confidence** (`src/types.ts`): `documented` (a published figure),
+- **Every number carries a confidence** (`src/measure.ts`): `documented` (a published figure),
+  `assumed` (the type's or a sister vehicle's documented figure, taken for this unit; say whose),
   `derived` (computed from documented ones; say how), `estimated` (read off photographs, or chosen
   to look right). Never promote an estimate by rewording it. The simulator will refuse to depend on
   `estimated` values, so the label is load-bearing.

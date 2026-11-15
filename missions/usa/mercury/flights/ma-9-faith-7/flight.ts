@@ -769,7 +769,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `52,000 lb for 1 s, nominal (${SUMMARY}, Table 3-III, p. 53)`,
     },
     {
@@ -779,7 +779,7 @@ export const flight: Flight = {
       burnS: 1.5,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '800 lb for 1.5 s, nominal (the same table)',
     },
     {
@@ -789,7 +789,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `400 lb for 1 s, nominal (the same table). On the missile these were retrorockets on the Atlas; Mercury moved them to the capsule (${SUMMARY}, p. 93)`,
     },
     {
@@ -799,7 +799,7 @@ export const flight: Flight = {
       burnS: 10,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `1,000 lb for 10 s, nominal (the same table). Fired by hand at 33:59:53 by the capsule communicator’s count (${SUMMARY}, the air-ground transcript, p. 440)`,
     },
     {

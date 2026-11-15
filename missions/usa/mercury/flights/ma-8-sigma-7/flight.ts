@@ -839,7 +839,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '52,000 lb for 1 s, nominal (NASA SP-6, p. 3: the type’s)',
     },
     {
@@ -849,7 +849,7 @@ export const flight: Flight = {
       burnS: 1.5,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '800 lb for 1.5 s, nominal (the same table)',
     },
     {
@@ -859,7 +859,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '400 lb for 1 s, nominal (the same table). On the missile these were retrorockets on the Atlas; Mercury moved them to the capsule (NASA SP-45, p. 93)',
     },
     {
@@ -869,7 +869,7 @@ export const flight: Flight = {
       burnS: 10,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `1,000 lb for 10 s, nominal (the same table). Fired at 08:52:00, :05 and :10 (${REPORT}, Table XXII); a total impulse of 38,975 lb s is the nominal figure the entry was computed with (p. 108). Their heater blankets were removed for this flight (p. 11)`,
     },
     {

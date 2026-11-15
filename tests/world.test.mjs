@@ -409,7 +409,7 @@ test('the bodies: every number has a source, and the figures hang together', () 
   assert.equal(BODIES.length, 10);
   for (const b of BODIES) {
     for (const q of [b.gm, b.equatorialRadius, b.polarRadius, b.rotationPeriod]) {
-      assert.ok(['documented', 'derived', 'estimated'].includes(q.confidence), `${b.name}: confidence`);
+      assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(q.confidence), `${b.name}: confidence`);
       assert.ok(q.source.length > 8, `${b.name}: source`);
       assert.ok(Number.isFinite(q.value));
     }
@@ -442,7 +442,7 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
     for (const key of ['latitude', 'longitude', 'height', 'bearingX']) {
       const m = flight.site[key];
       assert.ok(Number.isFinite(m.value), `${flight.id}: site.${key}`);
-      assert.ok(['documented', 'derived', 'estimated'].includes(m.confidence), `${flight.id}: site.${key} confidence`);
+      assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(m.confidence), `${flight.id}: site.${key} confidence`);
       assert.ok(m.source.length > 8, `${flight.id}: site.${key} source`);
     }
     assert.ok(flight.site.zone.name.length > 1 && Math.abs(flight.site.zone.utcOffset) <= 14, `${flight.id}: the site's civil time`);

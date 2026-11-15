@@ -89,7 +89,8 @@ test('the lens: 500 mm on a 55 mm frame sees 6.3 degrees', () => {
   near(FIELD / DEG, 6.296, 0.001, 'degrees across the frame');
   // so the Earth is a third of the frame's side across
   near(sky0.earthBreadth / FIELD, 0.315, 0.002, 'the Earth’s share of the frame');
-  for (const f of Object.values(LENS)) assert.ok(f.source.length > 20 && ['documented', 'derived', 'estimated'].includes(f.confidence));
+  for (const f of Object.values(LENS))
+    assert.ok(f.source.length > 20 && ['documented', 'assumed', 'derived', 'estimated'].includes(f.confidence));
 });
 
 test('the path: one move outward, from 110 km to 100,000, smooth at both ends', () => {

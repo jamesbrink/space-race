@@ -783,7 +783,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '52,000 lb for 1 s, nominal (NASA SP-6, p. 3)',
     },
     {
@@ -793,7 +793,7 @@ export const flight: Flight = {
       burnS: 1.5,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '800 lb for 1.5 s, nominal (the same table)',
     },
     {
@@ -803,7 +803,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: '400 lb for 1 s, nominal (the same table). On the missile these were retrorockets on the Atlas; Mercury moved them to the capsule (NASA SP-45, p. 93)',
     },
     {
@@ -813,7 +813,7 @@ export const flight: Flight = {
       burnS: 10,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `1,000 lb for 10 s, nominal (the same table). Fired at 04:33:10.3, :15.3 and :20.3 (${REPORT}, Table XVI), about 3 per cent under their rating (NASA SP-6, p. 3)`,
     },
     {

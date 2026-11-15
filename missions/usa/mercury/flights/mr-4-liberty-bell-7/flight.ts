@@ -1542,7 +1542,7 @@ export const flight: Flight = {
       burnS: 143,
       propellant: 'ethyl alcohol / liquid oxygen',
       kind: 'liquid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: `78,000 lbf at sea level, nominal (TM X-53107). Cutoff on this flight at T+2:23 (${RESULTS}, p. 6); MR-8’s measured thrust has not been read`,
     },
     {
@@ -1562,7 +1562,7 @@ export const flight: Flight = {
       burnS: 1.5,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 785 lbf. Three nozzles canted 30°',
     },
     {
@@ -1572,7 +1572,7 @@ export const flight: Flight = {
       burnS: 1,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal. Fired into the adapter they gave 78 % more than in the open (This New Ocean, p. 367)',
     },
     {
@@ -1582,7 +1582,7 @@ export const flight: Flight = {
       burnS: 10,
       propellant: 'solid',
       kind: 'solid',
-      confidence: 'documented',
+      confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 992 lbf over 13.2 s. Fired 5 s apart',
     },
     {

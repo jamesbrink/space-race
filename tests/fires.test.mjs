@@ -257,7 +257,7 @@ test('a fire looks as what it burns: the Redstone’s alcohol flame as it always
   for (const id of KINDS) {
     const f = FLAMES[id];
     assert.ok(
-      f.temperature.source.length > 20 && ['documented', 'derived', 'estimated'].includes(f.temperature.confidence),
+      f.temperature.source.length > 20 && ['documented', 'assumed', 'derived', 'estimated'].includes(f.temperature.confidence),
       `${id}: its temperature cited`,
     );
     assert.ok(f.look.length > 20, `${id}: what its look was judged on`);

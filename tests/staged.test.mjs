@@ -246,7 +246,7 @@ for (const f of flown) {
       if (!x || typeof x !== 'object') return;
       if ('confidence' in x) {
         count++;
-        assert.ok(['documented', 'derived', 'estimated'].includes(x.confidence), `${at}: confidence`);
+        assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(x.confidence), `${at}: confidence`);
         assert.ok(typeof x.source === 'string' && x.source.length > 12, `${at}: a source`);
       }
       for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);

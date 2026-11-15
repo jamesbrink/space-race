@@ -199,7 +199,7 @@ test('every heating input says how sure it is', () => {
   const measures = [heating.noseRadius, heating.starts];
   for (const s of heating.surfaces) measures.push(...Object.values(s.share), s.arealMass, s.specificHeat, s.emissivity, s.limit);
   for (const m of measures) {
-    assert.ok(['documented', 'derived', 'estimated'].includes(m.confidence));
+    assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(m.confidence));
     assert.ok(m.source.length > 20, `a source for ${m.value}`);
   }
   // the judgements, and how far a tenth more of each moves the shield's and the afterbody's peak

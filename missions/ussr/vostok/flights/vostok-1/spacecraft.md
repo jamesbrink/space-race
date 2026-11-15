@@ -12,8 +12,8 @@ and before anything of its own moves it is **as in orbit**: antennas out, the fo
 cable mast holding the two modules together, the sphere under its foil-faced insulation. The charred brown ball in the RKK
 Energia museum is the same sphere after entry, with the insulation and most of the shield gone.
 
-**Confidence**: *documented* is a published figure; *derived* is computed from documented ones;
-*estimated* was read off a drawing or photographs, or chosen to look right. The same labels are in
+**Confidence**: *documented* is a published figure; *assumed* is the type's documented figure, taken for this ship;
+*derived* is computed from documented ones; *estimated* was read off a drawing or photographs, or chosen to look right. The same labels are in
 [flight.ts](flight.ts).
 
 ## The figures that matter most
@@ -26,7 +26,7 @@ Energia museum is the same sphere after entry, with the insulation and most of t
 | Instrument module length | 2.25 m | documented | built 2.13 m to the dish's rim, 2.23 m to the support ring's top |
 | Hatches | three, 1 m in the clear | documented | Siddiqi p. 195 |
 | Mass in orbit, this flight | 4,725 kg | documented, from a secondary source | Encyclopedia Astronautica and others; its origin has not been read. The type: 4.73 t (Siddiqi) |
-| Descent module / instrument module mass | 2,460 kg / 2,270 kg | documented, for the type | Siddiqi p. 195. No. 3's own have not been found (No. 1's descent module: 2,452 kg, RussianSpaceWeb) |
+| Descent module / instrument module mass | 2,460 kg / 2,270 kg | assumed: the type's | Siddiqi p. 195. No. 3's own have not been found (No. 1's descent module: 2,452 kg, RussianSpaceWeb) |
 | Seat with pilot | about 335 kg | derived | 7.1% of launch mass (the encyclopedia text). Siddiqi's "ejection seat weighing 800 kilograms" does not fit it and is not used |
 | Braking engine | 1,614 kgf, 45 s at most, 280 kg of propellant | documented | Siddiqi p. 197. Other figures: 1,600 kgf; 275 kg |
 | Attitude jets | 2 sets of 8, 1.5 kgf, nitrogen | documented | Siddiqi p. 197 |

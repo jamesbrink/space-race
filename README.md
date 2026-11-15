@@ -37,8 +37,8 @@ can be flown.
 - **Walk.** `V`, the **Walk** button in the Crew section, or a double-click on the pilot puts you
   on the pad on foot; Space jumps.
 - **Cel shading** (or `T`) redraws the whole scene as an inked drawing.
-- **Check the numbers.** The **Specs** and **Motors** tabs mark each figure as documented, derived
-  or estimated.
+- **Check the numbers.** The **Specs** and **Motors** tabs mark each figure as documented, assumed
+  from its type, derived or estimated.
 
 The legend at the bottom left of the page lists every key and gesture.
 
