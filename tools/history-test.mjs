@@ -9,6 +9,8 @@
 //                Back, Back, Back: each lands on the place before, the last on the front page
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
+//   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
+//                chosen, Back to the front page, Forward to the Lineup
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
@@ -43,7 +45,8 @@ const state = (page) =>
       return Boolean(e && !e.hidden && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden');
     };
     let on = 'loading';
-    if (sr.front && shown('#title') && !sr.gallery && !sr.stage) on = 'front';
+    if (sr.lineup) on = sr.lineup.ready && document.querySelector('.loading.done') ? 'lineup' : 'loading';
+    else if (sr.front && shown('#title') && !sr.gallery && !sr.stage) on = 'front';
     else if (sr.gallery?.active && sr.gallery.ready) on = 'gallery';
     else if (sr.cockpit?.active) on = 'fly';
     else if (sr.stage && !sr.gallery?.active && document.body.classList.contains('scene-ready')) on = 'site';
@@ -157,6 +160,37 @@ await scenario('crumb', async (page) => {
   await page.goForward();
   const fwd = await arrive(page, 'gallery', V1);
   check(fwd.length === b.length, `Forward, Forward: the front page, then Vostok 1 again (${fwd.hash})`);
+});
+
+await scenario('lineup', async (page) => {
+  await page.goto(url);
+  const start = await arrive(page, 'front');
+  await page.locator('#title [data-lineup]').click();
+  const row = await arrive(page, 'lineup');
+  check(row.hash === '#lineup' && row.length === start.length + 1, `the front page to the Lineup: a step (${row.hash})`);
+  await mark(page);
+  await page.locator(`#ui .lu-strip [data-flight="${V1}"]`).click();
+  await page.waitForTimeout(500);
+  const chosen = await state(page);
+  check(
+    chosen.hash === `#lineup/${V1}` && chosen.length === row.length && chosen.kept,
+    `Vostok 1 chosen there: the address says it, and no step (${chosen.hash})`,
+  );
+  await page.locator('#ui [data-pane=Vehicle] [data-gallery]').click();
+  const g = await arrive(page, 'gallery', V1);
+  check(g.hash === `#${V1}/gallery` && g.length === row.length + 1, `Open its gallery: Vostok 1's gallery, and a step (${g.hash})`);
+  await page.goBack();
+  const back = await arrive(page, 'lineup');
+  check(back.hash === `#lineup/${V1}`, `Back: the Lineup, with Vostok 1 still chosen (${back.hash})`);
+  await page.goBack();
+  const front = await arrive(page, 'front');
+  check(front.hash === '' && front.length === g.length, 'Back: the front page, the address bare');
+  await page.goForward();
+  const fwd = await arrive(page, 'lineup');
+  check(fwd.hash === `#lineup/${V1}`, `Forward: the Lineup again (${fwd.hash})`);
+  await page.locator('#ui .crumbs [data-home]').click();
+  const out = await arrive(page, 'front');
+  check(out.hash === '' && out.length === fwd.length, `its Space Race crumb: the front page (${out.length} entries)`);
 });
 
 await browser.close();

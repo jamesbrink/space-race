@@ -51,6 +51,7 @@ pnpm test:path        # needs `pnpm dev` running: the predicted path flown live 
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
+pnpm test:lineup      # needs `pnpm dev` running: the Lineup: every flight in the row to scale, the card, its gallery and back, the levels of detail, what it holds as a phone
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
@@ -101,7 +102,7 @@ Detail lives in `docs/agents/`. Read the one for what you are about to change; e
 | `src/sim/`, the flight deck, flight effects | [simulator.md](docs/agents/simulator.md) | inputs are `Measure`s with confidence; nothing is fitted; a miss against the record is recorded in `MISSES`; the live simulator is the same physics, steered; the scene shows what was flown |
 | The camera | [camera.md](docs/agents/camera.md) | one camera, a set of rigs; zoom never surprises; once the user takes the camera only an explicit act moves it |
 | On foot: walk, gait, ragdoll, driving, actions | [walking.md](docs/agents/walking.md) | nothing there knows a flight; motion follows the gait and never a timer; a planted foot is planted; loose things tick at a fixed rate; a mission adds a verb as data |
-| The gallery, a flight's places, the address bar, the front page | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; going to another flight or place is a step in the history, anything else rewrites the one it is on; old `#pad` links still land on the site; the front page is no flight's, picks none for the visitor, and holds nothing of a flight nor a flight of it |
+| The gallery, a flight's places, the address bar, the front page, the Lineup | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; going to another flight or place is a step in the history, anything else rewrites the one it is on; old `#pad` links still land on the site; the front page is no flight's, picks none for the visitor, and holds nothing of a flight nor a flight of it; the Lineup reads only the flights' data and the history, writes no word of its own, and holds the coarsest level of every vehicle and the finest only of what is looked at |
 | Sound | [sound.md](docs/agents/sound.md) | synthesised, no files; follows the clock; levels and timbres are estimated and say so |
 
 ## Being there
