@@ -82,10 +82,10 @@ browser's check below for the page):
   (`Cameras.showPivot`). While the view drifts round a subject the zoom is about the subject.
   A double click is the explicit way to turn about any point, ground included.
 - **A view the hands have set is only moved by an explicit act**: choosing something, a view
-  button, 0, C. `Stage.following` is what was last framed and is let go the moment the hands turn,
+  button, 0, C. `Framing.following` (stage/framing.ts) is what was last framed and is let go the moment the hands turn,
   slide or zoom (`Told.taken`); what happens by itself (the slider, the clock, a panel opening, a
   resize) frames again only a view that is still being followed, and keeps its direction. Under a
-  view the hands have set, the subject it was taken from is still watched (`Stage.watched`): if it
+  view the hands have set, the subject it was taken from is still watched (`Framing.watched`): if it
   was in the frame and would leave it, the view moves sideways by the least that keeps it in
   (`nudgeIntoFrame`), with the distance and direction untouched. A stage
   leaving the vehicle eases the chase pivot onto what is left and keeps a distance set by hand; a distance nobody set

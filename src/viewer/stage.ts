@@ -41,6 +41,7 @@ import type { Quality } from './quality.ts';
 import { type Collide, Ragdoll, type Tumbler } from './onfoot/ragdoll.ts';
 import { Surfaces } from './runs.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
+import { Framing } from './stage/framing.ts';
 import { NOTHING, type Picked, Picker, skinless, type Thing } from './stage/picker.ts';
 import { Shadows } from './stage/shadows.ts';
 import { uShadowFade } from './shadows.ts';
@@ -348,6 +349,8 @@ export class Stage {
   readonly cam: Cameras;
   /** The rig in charge of the camera has changed (the hands, the page, or the vehicle leaving the pad). */
   onRig: (id: RigId) => void = () => {};
+  /** What the camera is sent to frame, in what the controls leave clear (stage/framing.ts). */
+  readonly framing: Framing;
   /** What is under the pointer (stage/picker.ts). */
   readonly picker: Picker;
   /** The Sun's shadows: its fine map and where it is spent, the far map under it (stage/shadows.ts). */
@@ -502,8 +505,6 @@ export class Stage {
   private pointerDirty = false;
   /** A press in progress: where it began and what was under it then. */
   private down: ({ x: number; y: number } & Picked) | null = null;
-  /** What the camera was last sent to look at; cleared when the user moves it. */
-  private following: { view?: string; part?: string } | null = null;
   /** Called when the framing stops being a named view (the user orbited, or a part was chosen). */
   onView: (id: string | null) => void = () => {};
   private centreY = 0;
@@ -532,8 +533,6 @@ export class Stage {
   private sinceDrawn = 0;
   private readonly lastView = new THREE.Matrix4();
   private readonly lastProjection = new THREE.Matrix4();
-  /** How much of the bottom of the canvas the controls cover, 0 to 1: views are framed above it. */
-  private inset = 0.26;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     // (a context the browser takes away stops the loop for good: lost.ts)
@@ -552,23 +551,13 @@ export class Stage {
     this.settings = new Settings(this.renderer);
     this.setting = this.settings.get('orbit');
 
-    // Taking hold of the view (a drag, moving or turning it by key) stops the drift round it and lets go of whatever
-    // it was framed on. Zooming lets go of the framing but leaves it turning; a tilt changes neither.
+    // (taking hold of the view lets go of whatever it was framed on: Framing.taken)
     this.cam = new Cameras(
       this.camera,
       canvas,
       this.world(),
       {
-        taken: (how) => {
-          if (how === 'tilt') return;
-          if (this.following) {
-            // what it was framed on is still watched: the hands' distance and direction are kept, and the subject is kept in frame (keepWatched)
-            this.watched = { ...this.following, seen: true, stale: true };
-            this.following = null;
-            this.onView(null);
-          } else if (this.watched) this.watched.stale = true;
-          if (how === 'move') this.onInteract();
-        },
+        taken: (how) => this.framing.taken(how),
         home: () => this.onHome(),
         // (following a stage that has left, the reset key comes back to the vehicle)
         back: () => {
@@ -580,6 +569,28 @@ export class Stage {
       },
       this.lens,
     );
+    this.framing = new Framing({
+      canvas,
+      camera: this.camera,
+      cam: this.cam,
+      lens: this.lens,
+      parts: () => this.parts,
+      def: () => this.def,
+      main: () => this.main,
+      root: () => this.root,
+      onCraft: () => this.defs[this.current]?.id === this.ascent?.model,
+      flying: () => (this.lifted.flying ? (this.flier?.group ?? null) : null),
+      modelsBox: (without) => this.modelsBox(without),
+      lift: () => this.lift(),
+      setting: () => this.setting,
+      centreY: () => this.centreY,
+      redraw: () => {
+        this.dirty = true;
+      },
+      onView: (id) => this.onView(id),
+      onInteract: () => this.onInteract(),
+      onVisit: () => this.onVisit(),
+    });
     this.shadows = new Shadows({
       renderer: this.renderer,
       camera: this.camera,
@@ -1137,7 +1148,7 @@ export class Stage {
   private rigChanged(id: RigId): void {
     // (only the rigs that go with something can go with a stage that has left: any other is about the vehicle or the place)
     if (this.followed !== null && id !== 'chase' && id !== 'locked' && id !== 'pad') this.unfollow();
-    this.following = this.watched = null;
+    this.framing.following = this.framing.watched = null;
     this.onView(null);
     // on board, what would be in front of the eyes is not drawn (the seat's `hide`)
     const at = this.seatHolder;
@@ -2340,89 +2351,6 @@ export class Stage {
     this.renderer.toneMapping = cel ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
   }
 
-  /**
-   * Tell the stage how many pixels at the bottom of the canvas the controls cover, and (`top`) how many at the top
-   * something else does: views are framed in what is left between them. `across`: the width a view is fitted to, as a
-   * share of the canvas's width, about its middle. Left at 1 a view is fitted to the whole width as if nothing covered
-   * any of the height, which leaves room to spare; whoever knows what is clear (panels down the sides, a short wide
-   * strip between a title and a control block) gives the clear width over the clear height's share.
-   */
-  setInset(pixels: number, top = 0, across = 1): void {
-    const tall = Math.max(1, this.canvas.clientHeight);
-    const inset = THREE.MathUtils.clamp(pixels / tall, 0, 0.65);
-    const head = THREE.MathUtils.clamp(top / tall, 0, 0.3);
-    const sides = THREE.MathUtils.clamp(across, 0.25, 4);
-    if (Math.abs(inset - this.inset) < 0.01 && Math.abs(head - this.head) < 0.01 && Math.abs(sides - this.sides) < 0.01) return;
-    this.inset = inset;
-    this.head = head;
-    this.sides = sides;
-    this.cam.inset = inset - head; // (the pivot is seen in the middle of what is left clear, whatever the distance)
-    this.cam.clear = 1 - inset - head;
-    this.refollow();
-  }
-
-  /** How much of the top of the canvas is covered, 0 to 0.3 (setInset). */
-  private head = 0;
-  /** The width a view is fitted to, as a share of the canvas's (setInset). */
-  private sides = 1;
-
-  /** Frame again whatever the camera was last sent to: the canvas or the model has changed shape. */
-  private refollow(): void {
-    const snap = !this.cam.travelling; // a flight under way is sent to the new framing instead of cut short
-    if (this.following?.part) this.focus(this.following.part, snap, undefined, true);
-    else if (this.following?.view) this.view(this.following.view, snap, true);
-    else this.keepWatched();
-  }
-
-  /**
-   * What the hands took the view from (the subject last framed), whether it was in the frame when they last let go,
-   * and whether they have had hold of the view since that was looked at.
-   */
-  private watched: { view?: string; part?: string; seen: boolean; stale: boolean } | null = null;
-
-  /** The box round one model, or (null) round everything on show: but for a vehicle in flight, which is not part of the place while it is away. */
-  private wholeOf(model: THREE.Object3D | null, box: THREE.Box3): THREE.Box3 {
-    if (model) return box.setFromObject(model);
-    // (the models only: what a flight leaves under the root, shed parts and effects, is not part of the place)
-    return box.copy(this.modelsBox(this.lifted.flying ? this.flier?.group : null));
-  }
-
-  /** The middle of what `of` names: a part, or a view's subject as `view` frames it. */
-  private middleOf(of: { view?: string; part?: string }): THREE.Vector3 | null {
-    const box = new THREE.Box3();
-    const part = of.part ? this.parts.get(of.part) : undefined;
-    if (part) box.setFromObject(part);
-    else if (of.view && this.root) {
-      const named = this.def?.views.find((v) => v.id === of.view);
-      const subjects = (named?.nodes ?? []).flatMap((n) => this.parts.get(n) ?? []);
-      if (subjects.length) for (const o of subjects) box.expandByObject(o);
-      else this.wholeOf(named ? this.main : null, box);
-    }
-    return box.isEmpty() ? null : box.getCenter(new THREE.Vector3());
-  }
-
-  /**
-   * A view the hands have set is not framed again when its subject moves by itself (the slider, the clock): its
-   * distance and direction are theirs. Only if the subject was in the frame and would leave it does the view move,
-   * sideways, and no further than brings it back to the edge of the middle of the frame.
-   */
-  private keepWatched(): void {
-    const w = this.watched;
-    if (!w?.seen || w.stale || this.cam.rig !== 'orbit') return;
-    const middle = this.middleOf(w);
-    const by = middle && this.cam.offFrame(middle);
-    if (by?.lengthSq()) this.cam.shift(by);
-  }
-
-  /** Once the hands have let go of a view they took, look whether its subject is in the frame: what `keepWatched` goes by. */
-  private lookWatched(): void {
-    const w = this.watched;
-    if (!w?.stale || this.cam.handled || this.cam.keys.size) return;
-    w.stale = false;
-    const middle = this.cam.rig === 'orbit' ? this.middleOf(w) : null;
-    w.seen = Boolean(middle) && this.cam.offFrame(middle!).lengthSq() === 0;
-  }
-
   /** Take the section's model apart this far (its slider). */
   setExplode(t: number): void {
     // A slider that is a sequence of events is the clock seen through the hardware: taking hold of
@@ -2436,7 +2364,7 @@ export class Stage {
     this.setApart(this.current, t);
     if (this.stood) this.ground();
     this.fitBounds();
-    this.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
+    this.framing.refollow(); // keep looking at what was asked for, until the user takes the camera themselves
   }
 
   /**
@@ -2474,7 +2402,7 @@ export class Stage {
     });
     if (!this.scripted) return;
     this.fitBounds();
-    if (following) this.refollow(); // keep looking at what was asked for, as it moves
+    if (following) this.framing.refollow(); // keep looking at what was asked for, as it moves
   }
 
   /** Move every model toward the state it has been asked for: a rollback or a drive-off takes a few seconds. */
@@ -2493,7 +2421,7 @@ export class Stage {
     });
     if (!moved) return;
     this.fitBounds();
-    if (following) this.refollow(); // keep looking at what was asked for, as it moves
+    if (following) this.framing.refollow(); // keep looking at what was asked for, as it moves
   }
 
   /**
@@ -2536,15 +2464,6 @@ export class Stage {
     veils: -1,
     list: [],
   };
-
-  /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
-  focus(node: string, snap = false, from?: { turn: number; rise: number }, again = false): void {
-    const object = this.parts.get(node);
-    if (!object) return;
-    this.lift(); // (what is framed is where the clock has it now, not where it was last drawn)
-    this.frameBox(new THREE.Box3().setFromObject(object), snap, from, this.defs[this.current]?.id === this.ascent?.model, again);
-    this.following = { part: node };
-  }
 
   /**
    * Be ready to be looked at. The scene can be drawn as soon as the models are in, but the
@@ -2813,117 +2732,6 @@ export class Stage {
     return out;
   }
 
-  /** How fast the view drifts round its subject, as a multiple of the usual: a show turns faster than a study. */
-  setDrift(times: number): void {
-    this.cam.driftTimes = times;
-  }
-
-  /** Come round the subject on show by `turn` radians, to `rise` radians above the level, at the same distance: a new angle on the same thing. */
-  swing(turn: number, rise: number): void {
-    this.cam.swing(turn, rise);
-  }
-
-  /** Go over to something that is not part of any model (a building beside the pad) and look at it: the view then turns about it. */
-  visit(box: THREE.Box3): void {
-    this.frameBox(box, false);
-    this.onVisit();
-  }
-
-  /** Fly to whatever fills `box` and frame it, keeping the direction the camera is already looking from. */
-  private frameBox(box: THREE.Box3, snap: boolean, from?: { turn: number; rise: number }, onCraft = false, again = false): void {
-    const size = box.getSize(new THREE.Vector3());
-    const target = box.getCenter(new THREE.Vector3());
-    // never closer than a 1.6 m subject would be: a small part is seen with its surroundings
-    const span = Math.max(size.y, Math.hypot(size.x, size.z) / (this.camera.aspect * this.sides), 1.6);
-    const dir = this.cam.direction();
-    if (from) {
-      // seen from somewhere else: round from where the camera is, and at a height of its own
-      const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize().applyAxisAngle(UP, from.turn);
-      dir.copy(flat.multiplyScalar(Math.cos(from.rise)).addScaledVector(UP, Math.sin(from.rise)));
-    }
-    if (this.setting.floor) dir.setY(Math.max(dir.y, 0.12)).normalize();
-    this.following = this.watched = null;
-    this.onView(null);
-    // no closer than just outside the part: nearer than that the camera is inside its skin
-    this.cam.frame({
-      centre: target,
-      distance: this.cam.fit(span, 0.5),
-      direction: dir,
-      min: Math.max(0.35, Math.min(size.x, size.z) * 0.62),
-      snap,
-      onCraft,
-      again,
-    });
-  }
-
-  /**
-   * Go up to a window and look through it: the camera swings round to face the pane square on,
-   * close enough that the opening fills the view, looking at what is just inside.
-   */
-  lookIn(point: THREE.Vector3, normal: THREE.Vector3): void {
-    this.following = this.watched = null;
-    this.onView(null);
-    this.onInteract(); // drifting round would carry the view off the window again
-    this.cam.frame({ centre: point.clone().addScaledVector(normal, -0.45), distance: 1, direction: normal, min: 0.2 });
-  }
-
-  /** Frame 'all' (everything on show) or one of the model's named views. */
-  view(id: string, snap = false, keepDirection = false): void {
-    if (!this.root || !this.def) return;
-    this.lift(); // (what is framed is where the clock has it now, not where it was last drawn: the clock may just have been put back)
-    const named = this.def.views.find((v) => v.id === id);
-    // 'all' is everything on show; a named view with no numbers is the model alone, as it stands;
-    // one that names parts is those parts wherever they are now, so it follows them as they come apart
-    const box = new THREE.Box3();
-    const subjects = (named?.nodes ?? []).flatMap((n) => this.parts.get(n) ?? []);
-    if (subjects.length) for (const o of subjects) box.expandByObject(o);
-    else this.wholeOf(named ? this.main : null, box);
-    const size = box.getSize(new THREE.Vector3());
-    const centreY = named?.centreY ?? (box.min.y + box.max.y) / 2;
-    // a wide, low subject (a launch pad) must fit by width as well as by height
-    const span =
-      named?.span ?? Math.max(size.y, Math.hypot(size.x, size.z) / (this.camera.aspect * this.sides)) * (subjects.length ? 1.12 : 1);
-    // the subject fills most of the frame above the controls, which sit over the bottom of it
-    const fill = (1 - this.inset - this.head) * 0.9;
-    const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
-    // a named view looks at the model's own axis; 'all' looks at the middle of everything
-    const mid = box.getCenter(new THREE.Vector3());
-    const target =
-      named && !subjects.length
-        ? new THREE.Vector3(this.main!.position.x, centreY, this.main!.position.z)
-        : new THREE.Vector3(mid.x, centreY, mid.z);
-    const lift = this.setting.floor ? 0.16 : span < 4 ? 0.22 : 0.1;
-    // (the subject sits in the middle of the frame that the controls leave clear: the camera aims under it, camera/maths.ts aimBelow)
-    // Framed again because the subject changed shape (the slider, a resize): from wherever the
-    // camera has got to, so a view that is drifting round or has been tilted is not thrown back.
-    const from = keepDirection
-      ? this.cam.direction()
-      : named?.from
-        ? // a view's direction is given for the model as the flight stands it: it turns with a model that has been turned (a figure walked somewhere else)
-          new THREE.Vector3(...named.from).applyAxisAngle(UP, (this.main?.rotation.y ?? 0) - (this.def.rotationY ?? 0))
-        : new THREE.Vector3(-0.62, lift, 0.78); // the sunlit side, and the one the cutaway opens toward
-    this.following = { view: id };
-    this.watched = null;
-    this.onView(id);
-    // no further out than half as far again as it takes to see everything on show: beyond that
-    // the subject is a speck in a field of scrub
-    const all = this.modelsBox().getSize(new THREE.Vector3());
-    const widest = Math.max(all.y, Math.hypot(all.x, all.z) / this.camera.aspect);
-    const wide = (1.5 * widest) / 2 / Math.tan(THREE.MathUtils.degToRad(this.lens / 2)) / fill;
-    this.cam.frame({
-      centre: target,
-      distance,
-      direction: from,
-      min: Math.max(0.35, Math.min(1.4, span * 0.2)),
-      // ...unless there is a place round it worth seeing from the air: then as far as the place goes
-      max: Math.max(30, wide, this.setting.horizon ?? this.setting.reach ?? 0),
-      snap,
-      onCraft: this.def.id === this.ascent?.model,
-      whole: !subjects.length,
-      again: keepDirection,
-    });
-  }
-
   /** Measure everything on show, for the camera's depth range and its limits. Called whenever something moves. */
   /**
    * The bounds of the flight's models, but for `without`. The models, not everything under the root: what a flight has
@@ -3121,7 +2929,7 @@ export class Stage {
     this.pipe.quality.rest(performance.now(), 3000); // (every target is made again: slow for a moment, and not the machine's pace)
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.refollow(); // a framing made for the old shape no longer fits
+    this.framing.refollow(); // a framing made for the old shape no longer fits
   }
 
   /** For the diagnostics readout: how fast the loop is turning over and what a drawn frame costs (stage/pipeline.ts). */
@@ -3182,7 +2990,7 @@ export class Stage {
       this.shadows.steerFocus(dt);
       this.emerge();
       if (this.indoors > 0) this.adapt(dt, false); // (off foot again: the eye goes back to the day)
-      this.lookWatched();
+      this.framing.lookWatched();
       this.shadows.shadeCraft();
       this.fitDetail(dt);
       if (this.pointerDirty && !this.down) {
@@ -3260,7 +3068,7 @@ export class Stage {
       figure.measure();
     }
     this.onWalk(true, this.defs[at]!.id);
-    this.following = null;
+    this.framing.following = null;
     this.cam.keys.clear();
     this.down = null;
     this.setHover(NOTHING);
@@ -3284,7 +3092,7 @@ export class Stage {
     if (!flier) return;
     flier.group.updateWorldMatrix(true, false);
     const point = flier.group.localToWorld(local.clone());
-    this.frameBox(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(2, 2, 2)), false, undefined, true);
+    this.framing.frameBox(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(2, 2, 2)), false, undefined, true);
   }
 
   /** The model being walked as, or null. */
@@ -4545,29 +4353,51 @@ export class Stage {
   /** For tests: the seconds the camera's rig has been stepped through in all (tools/camera-test.mjs sets a camera's movement against the time it was moved for, not against the clock's). */
   camStepped = 0;
 
+  /**
+   * Tell the stage how many pixels at the bottom of the canvas the controls cover, and (`top`) how many at the top
+   * something else does; `across`: the width a view is fitted to, as a share of the canvas's (stage/framing.ts).
+   */
+  setInset(pixels: number, top = 0, across = 1): void {
+    this.framing.setInset(pixels, top, across);
+  }
+
+  /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
+  focus(node: string, snap = false, from?: { turn: number; rise: number }, again = false): void {
+    this.framing.focus(node, snap, from, again);
+  }
+
+  /** Frame 'all' (everything on show) or one of the model's named views. */
+  view(id: string, snap = false, keepDirection = false): void {
+    this.framing.view(id, snap, keepDirection);
+  }
+
+  /** Go over to something that is not part of any model (a building beside the pad) and look at it: the view then turns about it. */
+  visit(box: THREE.Box3): void {
+    this.framing.visit(box);
+  }
+
+  /** Go up to a window and look through it, square on to the pane. */
+  lookIn(point: THREE.Vector3, normal: THREE.Vector3): void {
+    this.framing.lookIn(point, normal);
+  }
+
+  /** Come round the subject on show by `turn` radians, to `rise` radians above the level, at the same distance. */
+  swing(turn: number, rise: number): void {
+    this.framing.swing(turn, rise);
+  }
+
+  /** How fast the view drifts round its subject, as a multiple of the usual: a show turns faster than a study. */
+  setDrift(times: number): void {
+    this.framing.setDrift(times);
+  }
+
   /** For tests: a named view, turned `azimuthDeg` about the vertical and nudged `nudgeDeg` more. */
   shot(viewId: string, azimuthDeg: number, nudgeDeg = 0): void {
-    this.cam.drift = false;
-    this.cam.set('orbit', true);
-    this.view(viewId, true);
-    this.following = this.watched = null; // an exact pose: a resize must not frame it again
-    this.cam.turn(THREE.MathUtils.degToRad(azimuthDeg + nudgeDeg));
+    this.framing.shot(viewId, azimuthDeg, nudgeDeg);
   }
 
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
-    this.following = this.watched = null;
-    const az = THREE.MathUtils.degToRad(azimuthDeg),
-      el = THREE.MathUtils.degToRad(elevationDeg);
-    const pivot = new THREE.Vector3(targetX, targetY, targetZ);
-    this.cam.place(
-      pivot,
-      new THREE.Vector3(
-        targetX + distance * Math.cos(el) * Math.cos(az),
-        targetY + distance * Math.sin(el),
-        targetZ + distance * Math.cos(el) * Math.sin(az),
-      ),
-    );
-    this.dirty = true;
+    this.framing.pose(azimuthDeg, elevationDeg, distance, targetY, targetX, targetZ);
   }
 }
