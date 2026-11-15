@@ -9,6 +9,14 @@ of `frames.ts` before using a frame: it states every convention once. Lengths ar
 radians, except that a place is recorded in degrees as published. A site's frame is the viewer's
 and the model's: +Y up, +X on the site's stated bearing, +Z a quarter turn clockwise from it.
 
+A flight is flown in one frame, made once from its liftoff (`world/earthframe.ts`: `EarthFrame`, `frameOf(flight)`):
+Earth-centred, not turning, with the Earth's angle in it at every instant (the sidereal time at liftoff and the steady rate
+from there). Every simulator, the predictor, the decks and everything in the viewer that shows a run go between space and
+the Earth through it (`toFixed`, `toInertial`, `place`, `up`), and what is of date (the Sun, published elements) comes in
+through `fromDate`, so no two of them can take the Earth's angle differently. Two frames are offered: the inertial frame of
+date, and that frame turned back about the pole to the Earth's axes at liftoff; gravity with J2, the air and the ground are
+symmetric about the pole, so a flight is the same flight in either to rounding (tests/frame.test.mjs).
+
 Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
 `missions/<nation>/<programme>/sites/<site>.ts`) and the clock's instant give the Sun, the Moon
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and
