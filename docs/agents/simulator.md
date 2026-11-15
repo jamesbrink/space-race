@@ -25,13 +25,13 @@ never adjusted to bring a check in.
 
 ## Every flight
 
-- **A miss is recorded, not hidden.** `tests/sim.test.mjs` flies the whole flight and the capsule's
-  half against the checks. A check outside its tolerance must be in `MISSES` (`src/sim/misses.ts`; the orbital, staged,
-  live and abort tests keep their own) with how far out it
-  is (`by`, give or take `slack`) and why, naming the input most likely to blame. The test fails
-  on a miss nobody recorded, on a recorded miss that has moved past its slack, and on one that has
-  come within tolerance (take it off). So the list is the truth either way, and improving an input
-  means updating it.
+- **A miss is recorded, not hidden.** Every run held to checks (`tests/sim.test.mjs` the whole flight and the capsule's
+  half; orbital, staged, stagedlive and abort theirs) is held by one rule (tests/misses.mjs `holdChecks`) to one table,
+  `src/sim/misses.ts` `MISSES`, by flight (or fixture), run and check: a check outside its tolerance must be there with
+  how far out it is (`by`, a fraction of the check, or in its unit where `absolute`; give or take `slack`) and why, naming
+  the input most likely to blame. The test fails on a miss nobody recorded, on a recorded miss that has moved past its
+  slack, on one that has come within tolerance (take it off), and on a miss that names no check. So the list is the
+  truth either way, and improving an input means updating it.
 - **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds
   each run's key results, as doubles, against `tests/fixtures/figures.json`: only figures that do not depend on the
   inertial frame (heights, speeds, times, places on the Earth, elements). Exact doubles differ between machines, so the
@@ -245,7 +245,7 @@ never adjusted to bring a check in.
   by the clock after the tower for an abort begun under its `ceiling`) or, without one, the usual
   descent. Phase `escape`; `Tally.abort` has the greatest load. `escape.record` and
   `tests/fixtures/pad-abort` (a trial flown from its own weights off its own leaning launcher:
-  `VehicleOptions.elevation`) are what `tests/abort.test.mjs` holds it to, with its own `MISSES`.
+  `VehicleOptions.elevation`) are what `tests/abort.test.mjs` holds it to, its misses under `abort:<test>`.
 - **Manual means manual.** `Controls.automatic: false` switches off the spacecraft's own sequence
   (parachutes by height, the tower after an abort); the cockpit sends it with the sequencer off,
   so then nothing happens that is not commanded, and what follows is the physics: no parachute,
@@ -288,7 +288,7 @@ never adjusted to bring a check in.
   cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
   separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
   pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
-  the descent's checks with their own `MISSES`, lists every input that is not documented and prints what each moves, the
+  the descent's checks against their misses (src/sim/misses.ts), lists every input that is not documented and prints what each moves, the
   law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
   A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
   sensed since its ignition) reaches the setting (found within the step by the secant, so the instant is smooth in the
