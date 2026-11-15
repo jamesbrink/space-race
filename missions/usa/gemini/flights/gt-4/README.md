@@ -6,7 +6,7 @@ spacecraft up to another object in orbit, which failed and taught why.
 | | |
 | --- | --- |
 | Liftoff | 3 June 1965, 15:15:59.562 UTC (10:15:59.562 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../sites/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
 | Crew | James A. McDivitt, command pilot; Edward H. White II, pilot |
 | Spacecraft | Gemini No. 4, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 4, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -118,7 +118,7 @@ the site is built (`src/world`), and the weather read from the same station reco
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../sites/lc-19.ts): the place on the Earth, with
+- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
   an estimated bearing. Nothing stands on it yet.
 - **The crew.** McDivitt and White wore the G4C suit, White's with an outer cover, an overvisor and
   thermal gloves for going outside. It is not modelled, and the seats are empty: the G3C suit that

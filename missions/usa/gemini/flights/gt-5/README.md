@@ -6,7 +6,7 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 | | |
 | --- | --- |
 | Liftoff | 21 August 1965, 13:59:59.518 UTC (8:59:59.518 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../sites/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
 | Crew | L. Gordon Cooper, Jr., command pilot; Charles Conrad Jr., pilot |
 | Spacecraft | Gemini No. 5, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 5, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -116,7 +116,7 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../sites/lc-19.ts): the place on the Earth, with
+- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
   an estimated bearing. Nothing stands on it yet.
 - **The crew.** Cooper and Conrad wore the G4C suit, without the outer cover Gemini IV's pilot had.
   It is not modelled, and the seats are empty.
