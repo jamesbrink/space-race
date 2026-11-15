@@ -8,6 +8,7 @@ import { RIGS } from '../viewer/camera/index.ts';
 import { chooseTier } from '../viewer/tier.ts';
 import { formatAddress, formatLineup, namesLineup, onMoved, parseLineup, programmeOf, settle, where } from './address.ts';
 import { follow } from './curtain.ts';
+import { installDebug } from './debug.ts';
 import { goHome } from './home.ts';
 import { day, entries, sections, showCard, timeline } from './lineup/row.ts';
 import { LineupScene } from './lineup/scene.ts';
@@ -410,27 +411,25 @@ settle(addressOf(view));
 void arrive();
 
 // debug handle, as every page has: sr.lineup (the page), sr.stage (its scene: sr.stage.pose(azimuth, elevation, distance, y, x))
-Object.assign(window, {
-  sr: {
-    stage: scene,
-    lineup: {
-      scene,
-      ui,
-      get ready() {
-        return ready;
-      },
-      get view() {
-        return view;
-      },
-      get touring() {
-        return touring;
-      },
-      entries: row,
-      sections: parts,
-      show,
-      choose,
-      step,
-      whole,
+installDebug({
+  stage: scene,
+  lineup: {
+    scene,
+    ui,
+    get ready() {
+      return ready;
     },
+    get view() {
+      return view;
+    },
+    get touring() {
+      return touring;
+    },
+    entries: row,
+    sections: parts,
+    show,
+    choose,
+    step,
+    whole,
   },
 });

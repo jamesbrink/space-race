@@ -17,6 +17,7 @@ import {
 import { Callout } from '../ui/callout.ts';
 import { Cockpit } from '../deck/cockpit.ts';
 import { follow } from './curtain.ts';
+import { installDebug } from './debug.ts';
 import { Demo } from './demo.ts';
 import { Flown } from '../deck/flown.ts';
 import { crumbs, Gallery, markPlace, placesNav } from '../ui/gallery.ts';
@@ -953,5 +954,5 @@ setInterval(() => {
   );
 }, 500);
 
-// debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist)
-Object.assign(window, { sr: { stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects, gallery } });
+// debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist) (debug.ts)
+installDebug({ stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects, gallery });

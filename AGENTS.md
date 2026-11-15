@@ -71,7 +71,7 @@ add-on or preference reaches a model. Lettering and panel legends are set in the
 (`tools/blender/fonts/LiberationSans-Bold.ttf`, SIL OFL; `srlib.load_font`), so a model reads the same wherever it is
 built; one built before that font was added keeps Arial Bold until it is next rebuilt.
 
-`window.sr` is the debug handle: `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
+`window.sr` is the debug handle (`src/app/debug.ts` says what each page puts on it): `sr.show('pad')` switches model; `sr.stage.shot(view, azimuth)`
 frames a named view from a direction; `sr.stage.pose(az, el, dist, y)` places the camera exactly;
 `sr.stage.setCutaway(true)` opens the cutaway. The address bar's `#<flight id>/<model>` (or just `#vehicle` / `#pad` / `#crew` for the first flight)
 selects the model. To look at a change, `node tools/shot.mjs out.png pad "sr.stage.pose(215, 9, 150, 14)"`

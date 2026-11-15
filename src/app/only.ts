@@ -1,6 +1,7 @@
 import { flights } from '../../missions/index.ts';
 import { aboutNoFlight, flightFor, formatAddress, onMoved, parseAddress, settle, where } from './address.ts';
 import { Gallery } from '../ui/gallery.ts';
+import { installDebug } from './debug.ts';
 import { goHome } from './home.ts';
 
 /**
@@ -35,12 +36,10 @@ onMoved(() => {
 });
 
 // debug handle, as the site's page has: sr.gallery, and sr.stage is the gallery's own
-Object.assign(window, {
-  sr: {
-    gallery,
-    flight,
-    get stage() {
-      return gallery.stage;
-    },
+installDebug({
+  gallery,
+  flight,
+  get stage() {
+    return gallery.stage;
   },
 });

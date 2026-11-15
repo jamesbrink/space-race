@@ -71,6 +71,7 @@ src/
   util/keys.ts                        isTyping: whether a key is going into a field (a range input is not one)
   util/env.ts                         scripted, unattended, reducedMotion: what the page is being run by and asked for
   app/enter.ts                        the way in: front.ts for an address that names nothing, main.ts for a flight with a site, only.ts for one that is only its vehicle
+  app/debug.ts                        the debug handle, `window.sr`: what each page puts on it (a flight's, the vehicle-only, the front page, the Lineup), typed, installed in one place
   app/main.ts                         the page of a flight with a site: the stage, the panels, the clock, the deck, wired together
   app/front.ts  app/home.ts           the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
   app/front/view.ts                   the front page's view as numbers: the instant, the lens, the camera's path, the sky from the Moon (pure, tested)

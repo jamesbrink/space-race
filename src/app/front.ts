@@ -2,6 +2,7 @@ import './front/front.css';
 import { flights } from '../../missions/index.ts';
 import { entrances, formatAddress, formatLineup, namesNothing, onMoved, where, write } from './address.ts';
 import { whenLifted } from './curtain.ts';
+import { installDebug, keepFront } from './debug.ts';
 import { IDLE_TITLE } from './demo.ts';
 import { FrontScene } from './front/scene.ts';
 import { instantAt, PATH } from './front/view.ts';
@@ -88,7 +89,7 @@ async function go(address: string, page: () => Promise<unknown>): Promise<void> 
     setTimeout(
       () => {
         scene.dispose();
-        delete (window as unknown as { sr: { front?: FrontScene } }).sr.front;
+        keepFront(null);
       },
       scripted() ? 0 : 1400,
     );
@@ -96,7 +97,7 @@ async function go(address: string, page: () => Promise<unknown>): Promise<void> 
   try {
     await page();
     // (the flight's page has its own debug handle: the picture is on it for as long as it lasts)
-    (window as unknown as { sr: { front?: FrontScene } }).sr.front = scene;
+    keepFront(scene);
   } catch (e) {
     console.error(e);
     location.reload(); // (its page did not arrive: the address names the flight now, and says so there)
@@ -131,13 +132,11 @@ setInterval(() => {
 }, 1000);
 
 // debug handle, as a flight's page has: sr.front.seek(120) goes two minutes along the path; sr.front.stats(); sr.front.cost()
-Object.assign(window, {
-  sr: {
-    front: scene,
-    path: PATH,
-    /** The moment on show, UTC. */
-    get instant() {
-      return isoDate(instantAt(scene.still ? 0 : scene.t));
-    },
+installDebug({
+  front: scene,
+  path: PATH,
+  /** The moment on show, UTC. */
+  get instant() {
+    return isoDate(instantAt(scene.still ? 0 : scene.t));
   },
 });
