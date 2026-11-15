@@ -60,5 +60,7 @@ if __name__ == "__main__":
             ("place-yard.png", (-120, -470, 2), 150, dict(azimuth=60, elevation=20, res=(1600, 1000))),
             ("place-cascade.png", (-35, -27, 2), 34, dict(azimuth=120, elevation=14, res=(1600, 1000))),
             ("place-site51.png", (-101, 390, -8), 110, dict(azimuth=-70, elevation=22, res=(1600, 1000))),
+            # along the south track from the abutment, west over its bend at 60 m (an arc: tracks.py)
+            ("place-bend.png", (-62, -12.37, 0), 32, dict(azimuth=0, elevation=5, res=(1600, 900))),
         ],
     )

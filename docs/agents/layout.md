@@ -37,6 +37,8 @@ missions/                             the record: one folder per nation, program
     steppe.ts  relief.ts  works.ts    Tyuratam's: the steppe in April as a kind of country (its ground, cel ground, palette, plants); how high the ground
                                       is round Site 1 in JavaScript and GLSL (as site1/relief.py; tests/tyuratam.test.mjs); SRTM's lie and the Corona
                                       frames' railways, roads and tracks past Site 1's own ground
+    tracks.ts                         Tyuratam's: the tracks onto Site 1's platform as lines, their bends curved where the rails are modelled, and a
+                                      wagon's way west along them (as site1/tracks.py; tests/tyuratam.test.mjs): what the land paints and the fillers follow
     flights/<flight>/
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified

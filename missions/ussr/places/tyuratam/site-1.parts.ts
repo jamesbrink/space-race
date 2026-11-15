@@ -1,4 +1,5 @@
 import type { Flight, Keyframe, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
+import { CENTRE_CURVED, SPURS_CURVED, wayWest } from './tracks.ts';
 
 /**
  * Site 1's pad as a flight's data: the parts of a flight's pad.glb (places/tyuratam/site_1.py), what each is and how it moves. The
@@ -65,8 +66,12 @@ const GUIDE_FALL = -25;
 const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
 /**
  * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
- * line (metres east and south from where that bogie stood: places/tyuratam/site1/place.py, SPURS and CENTRE_TRACK).
+ * line (tracks.ts `wayWest`: the same line the model's rails are laid along and the land paints, its bends curved).
  */
+/** Where each filler's east bogie stands, metres east of the axis (site1/tank_cars.py `rear`), and how far west it is drawn. */
+const OXYGEN_WAY = wayWest([SPURS_CURVED[0]!], 6.3, -190);
+/** The kerosene filler goes on from the south track onto the centre track where it joins it, and out through the fence. */
+const KEROSENE_WAY = wayWest([SPURS_CURVED[2]!, CENTRE_CURVED], 4.8, -520);
 /** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
 const CAR_WHEEL = 0.475 + 0.0024;
 /**
@@ -78,9 +83,10 @@ export const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true };
 /** What a road vehicle runs on: the land, which the roads and the apron are painted on, and a modelled rail it crosses. */
 export const ON_ROAD: Runs = { on: ['Tracks'], ground: true };
 /**
- * A track's line as a route: its corners (place.py's polylines, which the model's rails follow straight from corner to
- * corner) with a point every few metres between them, so that the drive's smooth curve through its points (explode.ts
- * `Route`) keeps to the rails and does not bow off them between corners.
+ * A track's line as a route: its points (tracks.ts: the corners of the map's line, and the chords of each bend that is
+ * curved, which the model's rails follow from point to point) with a point every few metres between them, so that the
+ * drive's smooth curve through its points (explode.ts `Route`) keeps to the rails and does not bow off them between
+ * points.
  */
 const alongTrack = (corners: [number, number][], step = 4): [number, number][] => {
   const out: [number, number][] = [];
@@ -320,29 +326,9 @@ export function site1Parts(day: Site1Day): Part[] {
     ],
     moves: [
       // west along the north track to short of its end (documented that they left, and when; how far and how fast are ours)
-      carLeaves(
-        'TankCar_Oxygen',
-        16.6,
-        [
-          [-66.3, 0],
-          [-196.3, -1.394],
-        ],
-        s.cars[0],
-        s.cars[1],
-      ),
+      carLeaves('TankCar_Oxygen', 16.6, OXYGEN_WAY, s.cars[0], s.cars[1]),
       // west along the south track, onto the centre track where it joins it, and out through the fence
-      carLeaves(
-        'TankCar_Kerosene',
-        15.6,
-        [
-          [-64.8, 0],
-          [-160.2, -2.275],
-          [-291.0, -13.475],
-          [-524.8, -15.452],
-        ],
-        s.cars[0],
-        s.cars[1],
-      ),
+      carLeaves('TankCar_Kerosene', 15.6, KEROSENE_WAY, s.cars[0], s.cars[1]),
     ],
   };
   return [

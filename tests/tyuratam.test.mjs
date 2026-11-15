@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { BROW, pastBrow, siteRelief } from '../missions/ussr/places/tyuratam/relief.ts';
+import { CENTRE_CURVED, MODELLED, northAt, SPURS_CURVED } from '../missions/ussr/places/tyuratam/tracks.ts';
+import { Route } from '../src/viewer/explode.ts';
 
 // What the place's models are built on (missions/ussr/places/tyuratam/site1/relief.py), as that file prints it:
 // `python3 missions/ussr/places/tyuratam/site1/relief.py > tests/fixtures/site1-relief.json` after changing either.
@@ -135,4 +137,63 @@ test('the steppe in its season: the spring flush in April, the summer’s reddis
   const summer = SEASONS.find((x) => x.name === 'summer');
   assert.equal(summer.species.tulip.share, 0);
   assert.equal(summer.species.rhubarb.share, 0);
+});
+
+// The tracks' lines with their bends curved, as the place's rails are laid (missions/ussr/places/tyuratam/site1/tracks.py):
+// `python3 missions/ussr/places/tyuratam/site1/tracks.py > tests/fixtures/site1-tracks.json` after changing either.
+const laid = JSON.parse(readFileSync(new URL('./fixtures/site1-tracks.json', import.meta.url), 'utf8'));
+
+test('Site 1: the land paints the tracks along the lines the rails are laid on, bend for bend', () => {
+  const same = (ours, theirs, what) => {
+    assert.equal(ours.length, theirs.length, `${what}: ${ours.length} points against the model's ${theirs.length}`);
+    ours.forEach((p, i) => {
+      assert.ok(Math.hypot(p[0] - theirs[i][0], p[1] - theirs[i][1]) < 1e-9, `${what}: point ${i} is ${p}, the model's ${theirs[i]}`);
+    });
+  };
+  // (the land's centre track goes on west of where the model's begins)
+  same(CENTRE_CURVED.slice(-laid.centre.length), laid.centre, 'the centre track');
+  SPURS_CURVED.forEach((line, i) => {
+    same(line, laid.spurs[i], `spur ${i}`);
+  });
+  // every bend where the rails are modelled is curved: no point of a line there turns it by more than a third of a degree
+  for (const [line, west] of [[CENTRE_CURVED, MODELLED.centre], ...SPURS_CURVED.slice(0, 3).map((l) => [l, MODELLED.spur])])
+    for (let i = 1; i + 1 < line.length; i++) {
+      const [a, b, c] = [line[i - 1], line[i], line[i + 1]];
+      if (b[0] <= west) continue;
+      const turn = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]);
+      assert.ok(Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn))) < (0.34 * Math.PI) / 180, `a corner at ${b}`);
+    }
+});
+
+test('Site 1: a filler drawn off keeps to its rails round the bends, within 2 mm', async () => {
+  const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const cars = flight.models.flatMap((m) => m.parts).find((p) => p.node === 'TankCars');
+  const how = [
+    ['TankCar_Oxygen', [SPURS_CURVED[0]], 6.3],
+    ['TankCar_Kerosene', [SPURS_CURVED[2], CENTRE_CURVED], 4.8],
+  ];
+  for (const [node, lines, from] of how) {
+    const move = cars.moves.find((m) => m.node === node);
+    assert.equal(move.kind, 'drive');
+    const route = new Route(move.path);
+    const north = northAt(lines[0], from);
+    let worst = 0;
+    for (let s = 0; s <= route.length; s += 0.25) {
+      const at = route.at(s);
+      // where that is on the site, and how far from the nearest of its tracks' chords
+      const [x, y] = [from + at.x, north - at.z];
+      // (where the rails are modelled: beyond, the track is paint and the route rounds the map's corners)
+      if (x <= MODELLED.spur) continue;
+      let off = Infinity;
+      for (const line of lines)
+        for (let i = 0; i + 1 < line.length; i++) {
+          const [a, b] = [line[i], line[i + 1]];
+          const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+          const t = Math.min(1, Math.max(0, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)));
+          off = Math.min(off, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+        }
+      worst = Math.max(worst, off);
+    }
+    assert.ok(worst < 2e-3, `${node} leaves its track's line by ${(worst * 1000).toFixed(1)} mm`);
+  }
 });

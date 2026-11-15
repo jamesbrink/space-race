@@ -45,7 +45,7 @@ import math
 
 import sitelib
 
-from . import place
+from . import tracks
 from .platform import ABUTMENT, HALF, LIP
 from .site import FT, GAUGE, GROUND, OPENING_R, RAIL_TOP, Parts, beam, box, fine, handrail, lattice, stood
 
@@ -62,6 +62,7 @@ EDGE = -HALF - ABUTMENT + 0.05  # just inside the abutment's west face: where th
 # heads come down to the land for it (ours): the centre track as far as the erector is drawn off, the others a hundred metres.
 LAND = {"centre": -160.0, "spur": -100.0}
 RAMP = 10.0
+assert all(tracks.MODELLED[k] == LAND[k] - RAMP for k in LAND), "tracks.py curves the bends as far as the rails are modelled"
 # Where the land's painted rails take over, a rail ends square with its head this far above the land: a flange's depth.
 # Beyond the modelled rails a wagon runs on the land the track is painted on, which has no flangeway, so it rides on its
 # flanges; a flange stands 30 mm under the nominal tread and the tread bears 2.4 mm out (tank_cars.wheelset, AXLE_Z), so a
@@ -141,8 +142,8 @@ def _at(line, x: float) -> float:
 
 def _profile(line, heads) -> list[tuple[float, float, float]]:
     """A rail's path along a track's middle line: (x, y, its head's height) at each place a height is given (`heads`:
-    x and height, east to west) and at each bend of the line between the first and the last of them. The bends are
-    corners, as the map's lines have them and as the land paints them (site-1.md: arcs were tried and taken out)."""
+    x and height, east to west) and at each point of the line between the first and the last of them: a bend of the
+    line is an arc cut into chords (tracks.py), the same chords the land paints and the wagons are drawn off along."""
     (east, _), (west, _) = heads[0], heads[-1]
     # (a point of the line within 5 cm of one where a height is given is left out: two that close are a sliver of rail)
     given = [x for x, _ in heads]
@@ -159,8 +160,7 @@ def _profile(line, heads) -> list[tuple[float, float, float]]:
 
 def land_rails(parts: Parts) -> None:
     """The same rails where they run on over the land west of the platform: the place's. Flush in the apron's slabs,
-    and beyond it on the sleepers the land paints. Their lines are the land's own (place.CENTRE_TRACK, place.SPURS:
-    keep the three in step)."""
+    and beyond it on the sleepers the land paints. Their lines are the land's own, their bends curved (tracks.py)."""
     g = "Tracks"
     parts.node(
         g,
@@ -186,11 +186,11 @@ def land_rails(parts: Parts) -> None:
         (far, RAIL_TOP),
         (far - RAMP, low),
     ]
-    _pair(steel, _profile(place.CENTRE_TRACK, heads), GAUGE / 2)
+    _pair(steel, _profile(tracks.CENTRE_CURVED, heads), GAUGE / 2)
     # the three beside it: down into the apron at the abutment, flush across it, and from its west end on at the land's
     # level to where the paint takes over (10 to 20 m: a rail does not climb onto sleepers and come down again in that)
     far = LAND["spur"]
-    for line in place.SPURS[:3]:
+    for line in tracks.SPURS_CURVED[:3]:
         heads = [(EDGE, RAIL_TOP), (EDGE - DIP, flush), (APRON_WEST, flush), (far - RAMP, low)]
         _pair(steel, _profile(line, heads), GAUGE / 2)
     # the gantry tracks' two rails, which begin 11 ft short of the abutment: down into the apron as the others are

@@ -6,6 +6,7 @@ import { fbm2 } from '../../../../src/viewer/field.ts';
 import type { LandSpec } from '../../../../src/viewer/land.ts';
 import { type GroundSpec, stood } from '../../../../src/viewer/scenery/ground.ts';
 import { SITE1 } from './site-1.ts';
+import { CENTRE_TRACK, RAILS } from './tracks.ts';
 import {
   STEPPE,
   STEPPE_COVER,
@@ -77,79 +78,25 @@ const RIM: [number, number][] = [
 ];
 
 /**
- * The tracks that ran onto the platform, metres east and north (OpenStreetMap, simplified to a metre): the centre track
- * from the west, on which the erector brought the rocket (way 37547653, its last 2.6 km), and the four spurs beside it
- * (ways 172441851, 172441854, 172441876, 172441879). HTA/JR-4/58 counts five spurs onto the pad in August 1957. The
- * other lines on today's map round the site are not drawn: when each was laid is not known to us.
- *
- * Near the platform they are not quite the map's. The map has its centre track 3.0 m north of the middle of its outline
- * of the pad, which is this frame's origin; the rocket's axis was on that track, so the track is brought onto the axis
- * over its last 160 m (the erector is drawn off along it), and the three beside it are brought, over their last 60 m,
- * to where the CIA's plan of March 1961 has them on the platform (PIC/JR-2/61 Figure 1: places/tyuratam/site1/deck.py, which
- * lays the rails there), each within 1.5 m of the map's place measured from its own centre track. Their west ends are
- * moved to stay on the lines they branch from. Keep in step with places/tyuratam/site1/place.py (CENTRE_TRACK, SPURS).
+ * The tracks that ran onto the platform are tracks.ts's `RAILS` (their lines, their sources, and the bends that are
+ * curved where the place's model lays the rails: site1/deck.py): the centre track, the four spurs beside it and the
+ * line from the assembly building.
  */
-const RAILS: [number, number][][] = [
-  [
-    [-1796.8, -193.4],
-    [-1766.0, -146.0],
-    [-1749.7, -126.8],
-    [-1719.8, -96.6],
-    [-1692.5, -72.7],
-    [-1667.5, -55.5],
-    [-1636.4, -37.9],
-    [-1585.5, -15.2],
-    [-1554.4, -5.3],
-    [-1522.2, 3.5],
-    [-1492.0, 7.9],
-    [-1464.7, 9.8],
-    [-1400.7, 10.6],
-    [-160.0, 0.0],
-    [-25.8, 0.0],
-  ],
-  [
-    [15.0, 13.564],
-    [-60.0, 13.564],
-    [-212.6, 15.2],
-  ],
-  [
-    [-204.5, -5.9],
-    [-60.0, -8.321],
-    [-26.8, -8.321],
-  ],
-  [
-    [10.9, -12.375],
-    [-60.0, -12.375],
-    [-155.4, -10.1],
-    [-286.2, 1.1],
-  ],
-  [
-    [-330.6, 1.5],
-    [-121.8, 25.7],
-    [-39.8, 28.9],
-  ],
-  // The line the rocket came by: out of the assembly building's north gate (around.ts; site-1.md, "On the horizon") and
-  // round to join the centre track 1.32 km west of the pad. Today's map has it as an abandoned line (way 676662205), cut
-  // by the building's extension of 1973 to 1974, whose length (76 m) the first stretch here crosses (way 676662204, the
-  // track through the building). That it was the way out in 1961 is derived: it is the one line from the gate to the pad.
-  [
-    [-1912.4, -587.8],
-    [-1877.0, -520.3],
-    [-1754.5, -284.4],
-    [-1673.8, -150.8],
-    [-1620.6, -95.7],
-    [-1566.5, -56.2],
-    [-1495.9, -21.4],
-    [-1462.0, -9.8],
-    [-1423.5, -1.9],
-    [-1384.2, 2.5],
-    [-1319.1, 9.5],
-  ],
-];
+/** How far apart the painted sleepers lie, metres (estimated). */
+const SLEEPERS = 0.55;
 /** Each a segment (x0, z0, x1, z1) in the land's frame (+Z is south). */
 const SEGMENTS: [number, number, number, number][] = RAILS.flatMap((line) =>
   line.slice(1).map((b, i): [number, number, number, number] => [line[i]![0], -line[i]![1], b[0], -b[1]]),
 );
+/** How far along its own track each of those segments begins, metres: so that the sleepers are spaced along the track and not along each chord of a bend. */
+const SEGMENT_FROM: number[] = RAILS.flatMap((line) => {
+  let along = 0;
+  return line.slice(1).map((b, i) => {
+    const from = along;
+    along += Math.hypot(b[0] - line[i]![0], b[1] - line[i]![1]);
+    return from % SLEEPERS;
+  });
+});
 
 /**
  * The roads, metres east and north: painted on the land as the tracks are, since they lay flush with it. Their lines are
@@ -265,7 +212,7 @@ const SPOIL: [number, number, number, number] = [181, 381, 72, 292];
  */
 const RUTS: { line: [number, number][]; half: number; worn: number }[] = [
   { line: ROADS[0]!, half: 70, worn: 0.75 },
-  { line: RAILS[0]!.slice(0, -1), half: 35, worn: 0.5 },
+  { line: CENTRE_TRACK.slice(0, -1), half: 35, worn: 0.5 },
   // along the embankment's brow north of the tracks, 3 m in from it (relief.ts BROW): the way along the top of the fall
   {
     line: [
@@ -642,6 +589,8 @@ const OVERLAP = 3;
 const PAINT = /* glsl */ `
   ${SCARP_FRAME_GLSL}
   ${WORKS_PAINT}
+  // how far along its own track each of uRails' segments begins (SEGMENT_FROM: a constant, so it takes no uniform)
+  const float RAIL_FROM[${SEGMENTS.length}] = float[${SEGMENTS.length}](${SEGMENT_FROM.map(glsl).join(', ')});
   // The graded fall: four springs' thaw on bare clay. Rills down it where it is steep, a stride or two apart, each
   // starting below the brow, deepest on the steepest part and fanning out at the foot; and the toe darker, where the
   // fines wash to and the thaw's water stands. Their spacing, breadth and tone are estimated (site-1.md, "The lie of
@@ -749,8 +698,8 @@ const PAINT = /* glsl */ `
         vec2 ab = s.zw - s.xy;
         float t = dot(p - s.xy, ab) / dot(ab, ab);
         if (t < 0.0 || t > 1.0 || segment(p, s) > 1.6) continue;
-        float along = t * length(ab);
-        float tie = (1.0 - smoothstep(0.11, 0.14, abs(fract(along / 0.55) - 0.5) * 0.55)) * step(d, 1.35);
+        float along = t * length(ab) + RAIL_FROM[i];
+        float tie = (1.0 - smoothstep(0.11, 0.14, abs(fract(along / ${glsl(SLEEPERS)}) - 0.5) * ${glsl(SLEEPERS)})) * step(d, 1.35);
         g.albedo = mix(g.albedo, vec3(0.13, 0.1, 0.08), tie * seen(0.25));
         float steel = 1.0 - smoothstep(0.03, 0.05, abs(d - 0.79));
         k = max(k, steel);
