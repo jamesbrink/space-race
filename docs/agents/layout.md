@@ -6,6 +6,9 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 missions/                             the record: one folder per nation, programme, flight
   index.ts                            the list of flights the viewer can show
   upcoming.ts                         the flights to come, as the front page lists them; one drops off the day its id is in index.ts
+  history.ts                          the history the Lineup tells: the race's milestones in date order, each flight's story and
+                                      why its ship has its name, the people who flew, the programmes; each entry sourced and
+                                      labelled, no figure the simulator reads (tests/history.test.mjs holds it to the flights)
   <nation>/<programme>/
     README.md                         the programme
     vehicles/  sites/  crew/          hardware shared by several flights: <name>.py builds it (a big
