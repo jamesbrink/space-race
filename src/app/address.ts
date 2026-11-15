@@ -309,7 +309,7 @@ export const WHOLE_VIEW = 'gallery-whole';
 /**
  * The flight as the gallery's stage is given it: the vehicle alone, at the origin of a studio, as
  * built (its slider at rest, nothing asked of anything else), with no site, no clock to follow,
- * no trajectory and nobody to walk as. Its seats are kept, to be sat in where it stands (`Stage.sit`), with
+ * no trajectory and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
  * nobody standing outside them (`figure`): there is no one else in the gallery.
  */
 export function galleryFlight(flight: Flight): Flight {

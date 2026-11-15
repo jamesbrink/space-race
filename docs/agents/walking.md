@@ -246,7 +246,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   measured straight up from the hip point); the eyes are taken off the posed head and kept under
   the roof. The chase view sits behind the whole vehicle and over its roof, looking at it.
 - **Places can be taken.** `ModelDef.seats` (a couch) is boarded from the wheel at its `from`
-  node while the clock is in its `open` window (the clock is not moved for it); `stage.seated`
+  node while the clock is in its `open` window (the clock is not moved for it); `stage.onFoot.seated`
   says where, E gets out where he got in. A model without the node can name a `standIn` mesh
   for a placeholder until it has one. In a couch whose model has a cabin (`Seat.frame`) the
   head is the on-board view's (`camera/head.ts`, camera.md): it turns about the neck within the
@@ -254,7 +254,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   aboard (its periscope shows, its windows light it), and its ports and periscope are leant to
   by the same digits and buttons as from the flight deck. A seat's `figure` names the flight's model of whoever sits
   there as he stands outside: there is one of him, so while the flight deck is taken that figure
-  is not drawn on the pad (`Stage.crewAboard`), and comes back when the deck is left. A seat's
+  is not drawn on the pad (`CabinView.crewAboard`), and comes back when the deck is left. A seat's
   `egress` says where it can be left for the outside: 'pad' (through the hatch while `open`: the
   default), 'orbit' (an EVA) or 'sea'. Freedom 7 declares the pad only, as it was (the hatch
   could not be opened from inside in flight). Nothing offers 'orbit' or 'sea' yet: a spacecraft

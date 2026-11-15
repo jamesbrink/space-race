@@ -209,7 +209,7 @@ It is always drawn in full (`Stage.fullDetail`: the coarser levels are not even 
 ## A seat
 
 A vehicle whose data gives it `seats` can be sat in where it stands (the gallery's stage is an `exhibit`:
-`Stage.sit`, `Craft.exhibit` in camera/rig.ts). It is the on-board view the site has in flight, and the same code:
+`CabinView.sit`, `Craft.exhibit` in camera/rig.ts). It is the on-board view the site has in flight, and the same code:
 
 - **In**: the "Sit in the cabin" switch among the others, C, or an address that names the seat
   (`#usa/gemini/gt-3/gallery/Seat_CommandPilot`: `galleryAt` reads a seat's node as it reads a part's). Sitting stands
@@ -263,7 +263,7 @@ out).
   is remembered (`sheetOpen`), and so is the hint said once on a first visit, in the gallery's notes stack
   (`handleSeen`).
 - Opening or closing it moves no camera the hands have set: the canvas keeps the space above it and only a view
-  still being followed is framed again in it (`Stage.setInset`).
+  still being followed is framed again in it (`Framing.setInset`).
 - **Names on the parts** are smaller; where the column of names would lie on the thing (`covers` in `labels.ts`) each
   part has a pin with its number in the parts list instead. The measure's figures are the figures alone, and keep
   off the labels and each other.

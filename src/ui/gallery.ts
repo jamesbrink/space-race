@@ -324,13 +324,13 @@ export class Gallery {
   /** What is on show, as an address names it: the seat sat in, else the part chosen, else what stands there, '' for the whole vehicle. */
   get at(): string {
     const seat = this.seat;
-    const sat = seat === null ? null : this.made?.stage.seatName(seat);
+    const sat = seat === null ? null : this.made?.stage.seats.seatName(seat);
     return sat ?? this.selected ?? (this.plinth.nodes ? this.plinth.id : '');
   }
 
   /** The seat of the vehicle's being sat in (an index into its `seats`), or null. */
   get seat(): number | null {
-    return this.made?.stage.seat ?? null;
+    return this.made?.stage.seats.seat ?? null;
   }
 
   /** Go out: it sleeps as it stands, and is as it was left when next come into. */
@@ -756,7 +756,7 @@ export class Gallery {
       if (!b || !this.ready) return;
       const on = b.getAttribute('aria-pressed') !== 'true';
       if (b.dataset.view) {
-        this.made!.stage.view(b.dataset.view);
+        this.made!.stage.framing.view(b.dataset.view);
         this.turn();
       } else if (b.hasAttribute('data-views')) {
         b.setAttribute('aria-expanded', String(this.q('.views').classList.toggle('open')));
@@ -838,7 +838,7 @@ export class Gallery {
         const seated = this.seat !== null;
         if (key === 'escape' && seated) {
           // (from the seat: back from a lean first, then up out of the seat)
-          if (this.made!.stage.leaning !== null) this.leanTo(null);
+          if (this.made!.stage.seats.leaning !== null) this.leanTo(null);
           else this.sitIn(null);
         } else if (key === 'escape') this.select(null);
         else if (key === 'c') this.camera();
@@ -936,13 +936,13 @@ export class Gallery {
     stage.onCabin = (thing) => {
       if (thing.thrown !== undefined) this.throwSwitch(thing.thrown);
       else if (thing.lookout) {
-        const said = stage.lookOut(thing);
+        const said = stage.seats.lookOut(thing);
         if (said) this.say(thing.label || 'Looking out', said);
       } else if (thing.label) {
         // (nothing is flown here: a control is worked, and says what it is for)
         stage.cabin?.work(thing.object);
         this.say(thing.label, thing.about ?? '');
-      } else stage.lookOut(null);
+      } else stage.seats.lookOut(null);
     };
     stage.onRig = () => this.seated();
     stage.onSeat = () => this.seated();
@@ -995,13 +995,13 @@ export class Gallery {
     if (!narrow()) this.tab('Parts');
     else this.tally();
     this.apartTo = null;
-    stage.view(WHOLE_VIEW, snap);
+    stage.framing.view(WHOLE_VIEW, snap);
     this.turn();
     this.mark();
   }
 
   private whole(): void {
-    this.made?.stage.view(WHOLE_VIEW);
+    this.made?.stage.framing.view(WHOLE_VIEW);
     this.turn();
   }
 
@@ -1030,8 +1030,8 @@ export class Gallery {
     if (node) {
       if (!narrow()) this.tab('Parts');
       this.untuck();
-      stage.focus(node, snap);
-    } else stage.view(WHOLE_VIEW, snap);
+      stage.framing.focus(node, snap);
+    } else stage.framing.view(WHOLE_VIEW, snap);
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-node]')) {
       const on = b.dataset.node === node;
       b.setAttribute('aria-expanded', String(on));
@@ -1247,7 +1247,7 @@ export class Gallery {
     // (the stage fits a width as if the whole height were clear: told the clear width over the clear height's share, it
     // fits the clear part itself, which on a phone is short and wide)
     const tall = Math.max(0.2, 1 - (foot + over) / view.height);
-    this.made?.stage.setInset(foot, over, clear / view.width / tall);
+    this.made?.stage.framing.setInset(foot, over, clear / view.width / tall);
     // a panel down one side takes that side; one across the foot is already under the canvas
     const side = shown(panel) ? panel.getBoundingClientRect() : null;
     this.clear = {
@@ -1409,7 +1409,7 @@ export class Gallery {
     document.body.classList.add('gallery-show');
     const stage = this.made!.stage;
     stage.inert = true;
-    stage.setDrift(2.2);
+    stage.framing.setDrift(2.2);
     stage.setAutoRotate(true);
     this.labels.clear();
     this.take(this.shots[0]!);
@@ -1424,7 +1424,7 @@ export class Gallery {
     this.callout.hide();
     const stage = this.made!.stage;
     stage.inert = false;
-    stage.setDrift(1);
+    stage.framing.setDrift(1);
     // handed back as it is studied: together, closed, the whole of it
     this.setApart(0);
     this.q<HTMLInputElement>('.explode input').value = '0';
@@ -1458,19 +1458,19 @@ export class Gallery {
     };
     if (shot.kind === 'whole') {
       this.setCutaway(false);
-      stage.view(WHOLE_VIEW);
-      stage.swing(TURN, rise);
+      stage.framing.view(WHOLE_VIEW);
+      stage.framing.swing(TURN, rise);
       say(f.callsign, `${f.spacecraft}. ${this.vehicle.scale}.`, null);
     } else if (shot.kind === 'apart') {
       this.apartGoal = shot.to;
       this.setCutaway(false);
-      stage.view(WHOLE_VIEW);
-      stage.swing(TURN, rise);
+      stage.framing.view(WHOLE_VIEW);
+      stage.framing.swing(TURN, rise);
       say(shot.to ? 'Taken apart' : 'Together again', shot.to ? 'Every part, in the order it comes off.' : this.vehicle.scale, null);
     } else if (shot.kind === 'part') {
       const part = this.vehicle.parts.find((p) => p.node === shot.node);
       this.setCutaway(Boolean(part?.inside));
-      stage.focus(shot.node, false, { turn: TURN, rise });
+      stage.framing.focus(shot.node, false, { turn: TURN, rise });
       if (part) say(part.name, part.summary, part.node);
     } else {
       const panes = stage.panes();
@@ -1478,7 +1478,7 @@ export class Gallery {
       if (!to) return void this.next();
       this.setCutaway(false);
       this.pane = to.point;
-      stage.lookIn(to.point, to.normal);
+      stage.framing.lookIn(to.point, to.normal);
       say('Through the window', 'What is inside is modelled too: every window is glass over an opening.', 'window');
     }
     stage.setAutoRotate(shot.kind !== 'window');
@@ -1497,11 +1497,11 @@ export class Gallery {
   private sitIn(n: number | null): void {
     const stage = this.made?.stage;
     if (!stage || !this.ready) return;
-    if (n === null) return void stage.sit(null);
+    if (n === null) return void stage.seats.sit(null);
     if (this.seat === null) {
       if (this.touring) this.endShow();
       // what is sat in stands there, together and closed: from inside the cabin is the cabin, not the room through a cut
-      const node = stage.seatName(n);
+      const node = stage.seats.seatName(n);
       const part = node ? stage.partOf(node) : null;
       if (this.plinth.nodes && part && !this.plinth.nodes.includes(part)) this.stand(this.choices[0]!, true);
       if (this.cut) {
@@ -1521,7 +1521,7 @@ export class Gallery {
         this.tally();
       }
     }
-    if (!stage.sit(n)) this.say('Sit in the cabin', 'Its seat is not standing here: show the whole of it first');
+    if (!stage.seats.sit(n)) this.say('Sit in the cabin', 'Its seat is not standing here: show the whole of it first');
   }
 
   /** C: into the first seat, then each of the others, then out again to the view it was taken from. */
@@ -1535,9 +1535,9 @@ export class Gallery {
   /** Lean to the `n`th of what can be looked out of from the seat, or back from it (null, or the same asked again). */
   private leanTo(n: number | null): void {
     const stage = this.made?.stage;
-    if (!stage || this.seat === null || (n !== null && n >= stage.lookouts().length)) return;
-    const said = stage.leanTo(n);
-    if (said && n !== null) this.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
+    if (!stage || this.seat === null || (n !== null && n >= stage.seats.lookouts().length)) return;
+    const said = stage.seats.leanTo(n);
+    if (said && n !== null) this.say(stage.seats.lookouts()[n]?.name ?? 'Looking out', said);
   }
 
   /** A switch of the cabin (its own lights, a globe's mode), to its next position: from its console (a click from the seat) or the bar. Nothing is flown here: no command goes to a deck. */
@@ -1562,10 +1562,10 @@ export class Gallery {
     this.root.classList.toggle('seated', at !== null);
     lookoutsBar(
       this.q('.lookouts'),
-      at === null ? [] : stage.lookouts().map((l) => l.name),
-      stage.leaning,
+      at === null ? [] : stage.seats.lookouts().map((l) => l.name),
+      stage.seats.leaning,
       at === null ? [] : (stage.cabin?.switched ?? []),
-      at === null ? null : { labels: stage.seatLabels, at },
+      at === null ? null : { labels: stage.seats.seatLabels, at },
     );
     if (at === null) this.tip(null);
     // (a choice within the gallery: the entry it is on is rewritten, and an address already saying so is left alone)

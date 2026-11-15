@@ -48,7 +48,7 @@ const flight = flightFor(flights, where()) as SitedFlight;
 document.title = `${flight.callsign} · ${flight.designation} · Space Race`;
 
 const stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
-stage.quality.auto = prefs.get('resolutionAuto'); // ("Hold frame rate": off unless chosen, so the picture is the screen's own)
+stage.pipe.quality.auto = prefs.get('resolutionAuto'); // ("Hold frame rate": off unless chosen, so the picture is the screen's own)
 /** The instant on show: stopped at liftoff until it is run or moved (the time bar, or `sr.clock`). */
 const clock = new Clock(flight.launch);
 stage.clock = clock;
@@ -87,7 +87,7 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   model: (id) => (ready ? show(id) : void start(id)), // before it has loaded, this is "try again"
   explode: (t) => stage.setExplode(t),
   view: (id) => {
-    stage.view(id);
+    stage.framing.view(id);
     orbit();
   },
   autoRotate: (on) => {
@@ -101,26 +101,26 @@ const ui = new Ui(document.querySelector<HTMLElement>('#ui')!, flight, {
   },
   cel: (on) => stage.setLook(on ? 'cel' : 'real'),
   holdPace: (on) => {
-    stage.quality.auto = on;
+    stage.pipe.quality.auto = on;
   },
   camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
   nextCamera: () => stage.nextCamera,
   refind: () => stage.refind(),
 
-  walk: (on) => (on ? void stage.enterWalk(current.id) : stage.exitWalk()),
+  walk: (on) => (on ? void stage.enterWalk(current.id) : stage.onFoot.exitWalk()),
   walkStick: (x, y) => stage.walk.stick(x, y),
   walkJump: () => stage.walk.jump(),
   walkAct: () => act(),
   walkPush: (push) => {
-    if (working) noteWorking(stage.pushFunction(working.model, working.node, working.fn, push));
+    if (working) noteWorking(stage.onFoot.pushFunction(working.model, working.node, working.fn, push));
   },
   walkView: () => stage.walk.setThird(!stage.walk.third),
   walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
   hoverPart: (node) => stage.highlight(node, selected),
   selectPart: select,
-  fnValues: (node) => stage.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
-  setFn: (node, id, v) => stage.setFunction(current.id, node, id, v),
-  inset: (px, top) => stage.setInset(px, top),
+  fnValues: (node) => stage.onFoot.functions(current.id, node).map((f) => ({ id: f.fn.id, value: f.value, refused: f.refused })),
+  setFn: (node, id, v) => stage.onFoot.setFunction(current.id, node, id, v),
+  inset: (px, top) => stage.framing.setInset(px, top),
 });
 new TimeBar(document.querySelector<HTMLElement>('#ui')!, clock, flight);
 // the flight as the simulator flies it, beside the reports' figures: in the Flight tab
@@ -147,15 +147,15 @@ const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, cl
   heat: (t) => effects.reading(t),
   say: (title, line) => ui.say(title, line),
   fly: (run) => {
-    stage.flyRun(run);
+    stage.show.flyRun(run);
     flown.fly(run); // its traces over the record's, as it grows
     sound.fly(run);
   },
   piloting: (on) => {
-    if (on && stage.walk.active) stage.exitWalk();
+    if (on && stage.walk.active) stage.onFoot.exitWalk();
     if (!on) for (const m of mechanisms) stage.setMechanism(m.id, null); // (back on the record's clock)
     stage.piloted = on;
-    stage.crewAboard(on); // (he is in the couch from the moment the deck is taken: not also standing on the pad)
+    stage.seats.crewAboard(on); // (he is in the couch from the moment the deck is taken: not also standing on the pad)
     document.querySelector('#ui')!.classList.toggle('piloting', on);
     const flier = flight.flies?.model;
     if (on && flier && current.id !== flier) show(flier);
@@ -172,11 +172,11 @@ cockpit.listen((sample) => {
 });
 // the cabin's own instruments read the same samples, and its controls are the flight deck's (viewer/cabin.ts)
 cockpit.listen((sample, state, news?: DeckNews) => stage.cabin?.fly(sample, state, news));
-// From a seat, what can be looked out of: a switch apiece, and its digit (stage.leanTo)
+// From a seat, what can be looked out of: a switch apiece, and its digit (stage.seats.leanTo)
 const lookouts = () =>
   ui.setLookouts(
-    stage.lookouts().map((l) => l.name),
-    stage.leaning,
+    stage.seats.lookouts().map((l) => l.name),
+    stage.seats.leaning,
     stage.cabin?.switched ?? [],
   );
 // The cabin's switches (its own lights, a globe's mode, any thrown control): the switch on its console (a click from the
@@ -191,8 +191,8 @@ const throwSwitch = (index: number): void => {
 };
 ui.onSwitch = throwSwitch;
 const leanTo = (n: number | null) => {
-  const said = stage.leanTo(n);
-  if (said && n !== null) ui.say(stage.lookouts()[n]?.name ?? 'Looking out', said);
+  const said = stage.seats.leanTo(n);
+  if (said && n !== null) ui.say(stage.seats.lookouts()[n]?.name ?? 'Looking out', said);
 };
 ui.onLookout = leanTo;
 stage.onLean = lookouts;
@@ -201,7 +201,7 @@ window.addEventListener('keydown', (e) => {
   const typing = isTyping(e);
   if (!/^[1-9]$/.test(e.key) || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || ui.wheel.isOpen) return;
   const n = Number(e.key) - 1;
-  if (n >= stage.lookouts().length) return;
+  if (n >= stage.seats.lookouts().length) return;
   leanTo(n);
   e.preventDefault();
 });
@@ -216,12 +216,12 @@ stage.onCabin = (thing) => {
     cockpit.ask(thing.does);
     ui.say(thing.label, thing.about ?? '');
   } else if (thing.lookout) {
-    const said = stage.lookOut(thing);
+    const said = stage.seats.lookOut(thing);
     if (said) ui.say(thing.label || 'Looking out', said);
   } else if (thing.label) {
     stage.cabin?.work(thing.object);
     ui.say(thing.label, thing.about ?? '');
-  } else stage.lookOut(null);
+  } else stage.seats.lookOut(null);
 };
 // its other instruments: the navball on the flight deck's top edge, and the predicted path drawn in the scene
 const deck = document.querySelector<HTMLElement>('#ui .cockpit')!;
@@ -234,7 +234,15 @@ const path = new FlightPath(
   navball.aside,
   cockpit,
   flight,
-  stage,
+  {
+    overlay: (object) => stage.overlay(object),
+    vessel: (out, axis) => stage.show.vessel(out, axis),
+    viewRect: () => stage.viewRect(),
+    get look() {
+      return stage.look;
+    },
+    aboard: () => stage.seats.aboard(),
+  },
   deck.querySelector<HTMLElement>('[data-do=path]'),
 );
 navball.onFrame((frame) => path.setFrame(frame));
@@ -279,8 +287,8 @@ function select(node: string | null): void {
     ui.setCutaway(false);
     autoCut = false;
   }
-  if (node) stage.focus(node);
-  else stage.view(current.home ?? 'all'); // back to where this section starts
+  if (node) stage.framing.focus(node);
+  else stage.framing.view(current.home ?? 'all'); // back to where this section starts
   orbit();
 }
 
@@ -289,7 +297,7 @@ function select(node: string | null): void {
  * Nothing is loaded and nothing leaves the scene. The address bar follows, so a view can be linked.
  */
 function show(id: string, snap = false, asItStands = false): void {
-  if (stage.walk.active) stage.exitWalk(); // going anywhere else ends a walk
+  if (stage.walk.active) stage.onFoot.exitWalk(); // going anywhere else ends a walk
   const model = flight.models.find((m) => m.id === id) ?? flight.models[0]!;
   selected = null;
   autoCut = false;
@@ -327,7 +335,7 @@ async function start(id: string, fly = false): Promise<void> {
     await stage.load(flight, (f, parts) => said.arrive(f, parts));
     said.arrive(1);
     show(id, true);
-    if (opening?.view) stage.view(opening.view, true);
+    if (opening?.view) stage.framing.view(opening.view, true);
     // The scene is kept dark until it can move smoothly (stage.warm): shown sooner, it would
     // stutter as the rest arrived and then jump.
     await stage.warm(undefined, (step, f) => said.step(step, f));
@@ -390,7 +398,7 @@ window.addEventListener('keydown', (e) => {
 });
 // A right click offers what can be done at that spot: stand a crew member there and walk, or turn the view about it.
 stage.onSpot = (page, point, floor, on) => {
-  if (stage.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
+  if (stage.seats.aboard()) return; // (from the couch there is nowhere to walk from or fly to: the view is the pilot's own)
   // Flying it, there is nobody to get out and walk (no flight here has an EVA), and a spot on the ground or the pad is not
   // somewhere the view can be sent while it is the vehicle's. What is offered is on the vehicle: what the part under the
   // pointer can be told to do now (Part.commands), and a look at it, which goes with the vehicle.
@@ -407,7 +415,7 @@ stage.onSpot = (page, point, floor, on) => {
         .filter((c, i, all) => all.findIndex((k) => k.ask === c.ask) === i && cockpit.can(c.ask));
       ui.menu(page.x, page.y, [
         ...(asks ?? []).map((c) => ({ label: c.label, run: () => cockpit.ask(c.ask) })),
-        { label: `Follow the ${name.toLowerCase()}`, run: () => stage.followShed(drop) },
+        { label: `Follow the ${name.toLowerCase()}`, run: () => stage.show.followShed(drop) },
       ]);
       return;
     }
@@ -447,7 +455,7 @@ stage.onHoverWindow = (over, name) =>
     !over
       ? null
       : name
-        ? [name, `Click to lean to it and look out (${stage.lookouts().findIndex((l) => l.name === name) + 1})`]
+        ? [name, `Click to lean to it and look out (${stage.seats.lookouts().findIndex((l) => l.name === name) + 1})`]
         : ['Window', 'Click to look inside'],
   );
 // taking the camera pauses the drift; it starts again with the next thing chosen
@@ -475,7 +483,7 @@ function panelOnly(): void {
   root.classList.toggle('panel-only', aboard && !prefs.get('deckAboard') && !matchMedia('(pointer: coarse)').matches);
   root.classList.toggle('aboard', aboard);
   if (aboard && !was && root.classList.contains('panel-only') && ready && !demo.active) {
-    const n = stage.lookouts().length;
+    const n = stage.seats.lookouts().length;
     ui.say('From the couch', '', `${n ? `${n > 1 ? `1–${n}` : '1'} lean and look out · ` : ''}P brings the flight deck back`);
   }
 }
@@ -483,8 +491,8 @@ function panelOnly(): void {
 window.addEventListener(
   'keydown',
   (e) => {
-    if (e.key !== 'Escape' || !stage.lookingOut) return;
-    stage.leanTo(null);
+    if (e.key !== 'Escape' || !stage.seats.lookingOut) return;
+    stage.seats.leanTo(null);
     e.stopImmediatePropagation();
     e.preventDefault();
   },
@@ -523,7 +531,7 @@ let target: Target | null = null;
 let cardAt: { x: number; z: number } | null = null;
 let naming = 0;
 stage.onWalkTarget = (found) => {
-  const offered = found ? choices(found, flight, stage.walkingAs ?? '', stage.workings) : [];
+  const offered = found ? choices(found, flight, stage.onFoot.walkingAs ?? '', stage.onFoot.workings) : [];
   target = found && offered.length ? found : null;
   ui.wheel.close(); // what it was about is no longer in front of you
   // the ground under your own feet is named only once it has been looked at for a second (E works on it at once all the same)
@@ -548,14 +556,14 @@ function act(): void {
     return;
   }
   // in a seat (a couch), the act key gets out of it
-  if (stage.seated) {
-    stage.leaveSeat();
+  if (stage.onFoot.seated) {
+    stage.onFoot.leaveSeat();
     ui.setWalkNote(null);
     return;
   }
   // at the wheel of something, the act key gets out of it
-  if (stage.driving) {
-    stage.walkAlight();
+  if (stage.onFoot.driving) {
+    stage.onFoot.walkAlight();
     ui.setWalkNote(null);
     return;
   }
@@ -564,7 +572,7 @@ function act(): void {
     ui.showWalkCard(null);
     return;
   }
-  const list = choices(on, flight, stage.walkingAs ?? '', stage.workings);
+  const list = choices(on, flight, stage.onFoot.walkingAs ?? '', stage.onFoot.workings);
   // while it is open the walker stands still and the captured mouse points at choices; Escape shuts it
   stage.walk.hold(
     (dx, dy) => ui.wheel.nudge(dx, dy),
@@ -585,32 +593,32 @@ function perform(on: Target, { verb }: Choice): void {
   if (verb.do === 'info' && part) {
     ui.showWalkCard(part);
     cardAt = { x: stage.walk.body.position.x, z: stage.walk.body.position.z };
-  } else if (verb.do === 'look') stage.walkLookIn();
-  else if (verb.do === 'climb') stage.walkClimb();
+  } else if (verb.do === 'look') stage.onFoot.walkLookIn();
+  else if (verb.do === 'climb') stage.onFoot.walkClimb();
   else if (verb.do === 'drive') {
     ui.showWalkCard(null);
     // (one that will not move yet says why: a tower still up, its legs still down)
-    if (stage.walkDrive()) {
-      const why = stage.wheelRefusal;
+    if (stage.onFoot.walkDrive()) {
+      const why = stage.onFoot.wheelRefusal;
       ui.setWalkNote(why ? `It will not drive: ${why} · E get out` : 'W throttle · S brake, then reverse · A D steer · C view · E get out');
     }
   } else if (verb.do === 'become') {
     ui.showWalkCard(null);
-    stage.becomeWalk(verb.model);
+    stage.onFoot.becomeWalk(verb.model);
   } else if (verb.do === 'operate') startWorking(verb);
   else if (verb.do === 'board') {
     ui.showWalkCard(null);
-    const why = stage.boardSeat(verb.model, verb.seat);
+    const why = stage.onFoot.boardSeat(verb.model, verb.seat);
     ui.setWalkNote(why ? `Not now: ${why}` : 'Mouse looks · E gets out');
-    if (why) setTimeout(() => !stage.seated && ui.setWalkNote(null), 4000);
+    if (why) setTimeout(() => !stage.onFoot.seated && ui.setWalkNote(null), 4000);
   } else if (verb.do === 'action') {
     if (verb.action.do.kind === 'slider') stage.operate(verb.model, verb.action.do.to);
-    else stage.workAction(verb.model, verb.node, verb.action, verb.stop);
+    else stage.onFoot.workAction(verb.model, verb.node, verb.action, verb.stop);
   } else if (verb.do === 'inspect') {
     // out of the walk, and round the thing itself: a place in the surroundings, or a part in its own section
-    if (on.place) stage.walkVisit();
+    if (on.place) stage.onFoot.walkVisit();
     else if (on.model && on.node) {
-      stage.exitWalk();
+      stage.onFoot.exitWalk();
       show(on.model);
       select(on.node);
     }
@@ -646,7 +654,7 @@ function noteWorking(refused: string | null): void {
 }
 function stopWorking(): void {
   if (!working) return;
-  stage.pushFunction(working.model, working.node, working.fn, 0);
+  stage.onFoot.pushFunction(working.model, working.node, working.fn, 0);
   working = null;
   stage.walk.release();
   ui.setWalkNote(null);
@@ -657,10 +665,10 @@ window.addEventListener('keydown', (e) => {
   if (!working || e.metaKey || e.ctrlKey || e.altKey) return;
   const key = e.key.toLowerCase();
   if (key === 'e') stopWorking();
-  else if (pushKey(key) && !e.repeat) noteWorking(stage.pushFunction(working.model, working.node, working.fn, pushKey(key)));
+  else if (pushKey(key) && !e.repeat) noteWorking(stage.onFoot.pushFunction(working.model, working.node, working.fn, pushKey(key)));
 });
 window.addEventListener('keyup', (e) => {
-  if (working && pushKey(e.key.toLowerCase())) stage.pushFunction(working.model, working.node, working.fn, 0);
+  if (working && pushKey(e.key.toLowerCase())) stage.onFoot.pushFunction(working.model, working.node, working.fn, 0);
 });
 
 // with the mouse captured a click lands on no button: it chooses what the wheel is pointing at
@@ -681,12 +689,12 @@ window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'v' && ready && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);
-    const next = walkers[walkers.indexOf(stage.walkingAs ?? '') + 1];
+    const next = walkers[walkers.indexOf(stage.onFoot.walkingAs ?? '') + 1];
     if (!stage.walk.active) stage.enterWalk();
     else if (next) {
       ui.showWalkCard(null);
-      stage.becomeWalk(next);
-    } else stage.exitWalk();
+      stage.onFoot.becomeWalk(next);
+    } else stage.onFoot.exitWalk();
   }
 });
 
@@ -757,7 +765,7 @@ function toGallery(what?: string): void {
   leaving = true;
   if (cockpit.active) cockpit.leave();
   demo.stop();
-  if (stage.walk.active) stage.exitWalk();
+  if (stage.walk.active) stage.onFoot.exitWalk();
   if (told) stage.onThing(null);
   held.clock = clock.running;
   clock.pause();
@@ -833,13 +841,13 @@ const demo = new Demo(flight, clock, {
   },
   whole: (turn, rise) => {
     stage.setCutaway(false);
-    stage.view(current.home ?? 'all');
-    stage.swing(turn, rise);
+    stage.framing.view(current.home ?? 'all');
+    stage.framing.swing(turn, rise);
     orbit();
   },
   part: (node, inside, turn, rise) => {
     stage.setCutaway(inside); // what is inside is only worth going to if it can be seen
-    stage.focus(node, false, { turn, rise });
+    stage.framing.focus(node, false, { turn, rise });
     orbit();
   },
   apart: (t) => {
@@ -851,7 +859,7 @@ const demo = new Demo(flight, clock, {
     const to = panes[n % panes.length]!;
     stage.setCutaway(false);
     pane = to.point;
-    stage.lookIn(to.point, to.normal);
+    stage.framing.lookIn(to.point, to.normal);
     return true;
   },
   say: (text, at) => callout.show(text, at === null ? null : () => (at === 'window' ? pane && stage.screenOf(pane) : stage.screenOf(at))),
@@ -868,7 +876,7 @@ const demo = new Demo(flight, clock, {
   running: (on) => {
     document.body.classList.toggle('demo', on);
     stage.inert = on; // shown, not used: nothing lights up under the pointer
-    stage.setDrift(on ? 2.4 : 1);
+    stage.framing.setDrift(on ? 2.4 : 1);
     stage.setUnhurried(on);
     // the show is a state of the page like any other: a reload comes back to it
     prefs.set('demo', on);
@@ -950,7 +958,7 @@ setInterval(() => {
   const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
   ui.showFind(stage.vehicleAway);
   ui.setStats(
-    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.walkRigid ? ' · figure rigid (no joints)' : ''}${stage.quality.scale < 1 ? ` · ◐ resolution ${Math.round(s.scale * 100)} % (holding the frame rate)` : ''}`,
+    `${s.fps.toFixed(0)} fps · ${s.drawn.toFixed(0)} drawn · ${s.ms.toFixed(1)} ms · ${tris} tris · ${s.calls} calls · detail ${s.levels.join('/')}${stage.onFoot.walkRigid ? ' · figure rigid (no joints)' : ''}${stage.pipe.quality.scale < 1 ? ` · ◐ resolution ${Math.round(s.scale * 100)} % (holding the frame rate)` : ''}`,
   );
 }, 500);
 

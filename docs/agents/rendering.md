@@ -128,7 +128,7 @@ a hemisphere light's direction). So:
   `uOrigin` (as `surface.ts`'s grain and `air.ts`'s fog do); a position in an object's own frame
   needs nothing. `uOrigin` is declared in three's `common` chunk and given to every built-in
   material, so a shader patch uses it without declaring it (a second declaration will not compile).
-- `sr.stage.origin.enabled = false` draws the old way: the two must look the same (checked from
+- `sr.stage.pipe.origin.enabled = false` draws the old way: the two must look the same (checked from
   fixed views, frozen: a few dozen pixels in 640,000 differ, by one level, from rounding).
 
 ## Drawn last
@@ -503,7 +503,7 @@ What has been found, so it is not found again:
   be measured and was up to 6 levels out, so it was not kept. GPU timer queries round each pass (scratch `gpu.mjs`)
   put the glow at a fifth to two fifths of the frame and did not move when its work was quartered: on this GPU
   (tile-based) they charge a pass with the loading and storing of whatever target it leaves, and are no guide to
-  what a pass's own drawing costs. `sr.stage.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
+  what a pass's own drawing costs. `sr.stage.pipe.bloomOld = true` (and `?plain`) draws it three's way, for measuring.
   Anything new that wants to lay something over the whole frame does it in the output's pass too.
 - **The Cape's coarser levels are built and not drawn, and are not worth drawing.** The near complexes
   (`missions/usa/places/cape-canaveral/scenery.ts`, `1961-05.glb`) lose a few per cent of their triangles between levels (LC-17 none), and they

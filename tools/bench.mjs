@@ -421,10 +421,10 @@ function inPage(DT) {
   // soak the page's own loop runs and the net is left as the page has it: `leastScale` says whether it ever acted.)
   const own = () => {
     r.setAnimationLoop(null);
-    if (st.quality) st.quality.auto = false;
+    if ((st.pipe ?? st).quality) (st.pipe ?? st).quality.auto = false;
   };
   const loose = () => {
-    if (st.quality) st.quality.auto = true;
+    if ((st.pipe ?? st).quality) (st.pipe ?? st).quality.auto = true;
     r.setAnimationLoop(() => st.frame());
   };
   own();
@@ -438,7 +438,7 @@ function inPage(DT) {
     else if (p === (st.pipe ?? st).ink) name = 'ink';
     else if (p === (st.pipe ?? st).outline) name = 'outline';
     else if (p.scene === st.scene && 'clearDepth' in p && 'overrideMaterial' in p) name = 'scene';
-    else if (p === st.bloom || 'bloomTintColors' in p || 'nMips' in p) name = 'bloom';
+    else if (p === (st.pipe ?? st).bloom || 'bloomTintColors' in p || 'nMips' in p) name = 'bloom';
     else if (i === (st.pipe ?? st).composer.passes.length - 1) name = 'output';
     else if (p.scene === st.scene || 'veils' in p || i === 4) name = i === 4 ? 'exhaust' : `effect${i}`;
     return { p, name };
@@ -505,7 +505,7 @@ function inPage(DT) {
   /** Everything back as the page opens: nobody walking or flying, the clock at liftoff and stopped, closed up, in orbit. */
   const reset = async () => {
     if (sr.cockpit.active) sr.cockpit.leave();
-    if (st.walk.active) st.exitWalk();
+    if (st.walk.active) (st.onFoot ?? st).exitWalk();
     st.walk.stick(0, 0);
     sr.clock.reset();
     st.setCamera('orbit');
@@ -903,7 +903,7 @@ function inPage(DT) {
           const t = now();
           gaps.push(t - last);
           last = t;
-          least = Math.min(least, st.quality?.scale ?? 1);
+          least = Math.min(least, (st.pipe ?? st).quality?.scale ?? 1);
           st.dirty = true;
           if (gaps.length % 30 === 0) heap.push(performance.memory?.usedJSHeapSize ?? 0);
           if (t - began < seconds * 1000) requestAnimationFrame(each);
@@ -912,8 +912,8 @@ function inPage(DT) {
         requestAnimationFrame(each);
       });
       own();
-      if (st.quality && st.quality.scale < 1) {
-        st.quality.reset();
+      if ((st.pipe ?? st).quality && (st.pipe ?? st).quality.scale < 1) {
+        (st.pipe ?? st).quality.reset();
         (st.pipe ?? st).fitPixels(1);
       }
       sr.clock.pause();

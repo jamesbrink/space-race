@@ -300,5 +300,5 @@ held and moved is "The camera", below.
 
 **Anything can be gone to.** A click on a part flies to it; on another model, opens its section; on
 a window, looks in; on something in the place round the pad (`Flight.surroundings`: a blockhouse, a
-road), flies over and turns about it (`Stage.visit`). A figure that has been walked somewhere stays
+road), flies over and turns about it (`Framing.visit`). A figure that has been walked somewhere stays
 where it was left.

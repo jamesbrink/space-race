@@ -606,7 +606,7 @@ async function soak(name, { touch = false, at = -4, fault = false } = {}) {
     else if (r < 0.97) await page.keyboard.press('c');
     else await page.keyboard.press('0');
     if (random() < 0.3) await h.wait(random() * 120);
-    if (i % 50 === 49) await page.evaluate(() => window.sr.stage.walk.active && window.sr.stage.exitWalk()); // (a double click on the crew goes on foot)
+    if (i % 50 === 49) await page.evaluate(() => window.sr.stage.walk.active && window.sr.stage.onFoot.exitWalk()); // (a double click on the crew goes on foot)
   }
   await h.wait(2500);
   const frames = await page.evaluate(() => {

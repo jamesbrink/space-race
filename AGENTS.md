@@ -264,7 +264,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   cutaway, which closes again when the selection moves on unless the user opened it by hand;
   Escape or a click on nothing deselects and returns to the section's first view. With nothing
   selected a click on nothing does nothing: the camera is the user's.
-- Views are framed in the part of the canvas the controls leave clear (`Stage.setInset`, fed by
+- Views are framed in the part of the canvas the controls leave clear (`stage.framing.setInset`, fed by
   the UI's measurement): the camera tips where it stands so the pivot is in the middle of what is
   clear (`aimBelow`), and a view nobody has taken is framed again when the canvas changes shape.
 - Small text uses `--faint` at the least, which is 4.5:1 on the glass. Do not go dimmer.

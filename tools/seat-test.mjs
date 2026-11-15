@@ -105,7 +105,7 @@ const state = () => {
     seats,
     hash: location.hash,
     history: history.length,
-    leaning: st.leaning,
+    leaning: st.seats.leaning,
     lighting: st.cabin?.lighting ?? null,
     lightGoals: st.cabin ? st.cabin.lights.map((l) => l.goal) : [],
     sitPressed: document.querySelector('#gallery [data-sit]')?.getAttribute('aria-pressed'),
@@ -230,7 +230,7 @@ for (const flight of flights) {
     if (s.history !== was.history) fail(`${flight.id}: sitting down added to the history (${was.history} to ${s.history})`);
     await picture(page, `${slug}-seat0-real`);
     // the numbered views
-    const lookouts = await page.evaluate(() => window.sr.gallery.stage.lookouts().map((l) => l.name));
+    const lookouts = await page.evaluate(() => window.sr.gallery.stage.seats.lookouts().map((l) => l.name));
     for (let i = 0; i < lookouts.length; i++) {
       const before = await read(page);
       await page.keyboard.press(String(i + 1));
@@ -238,7 +238,7 @@ for (const flight of flights) {
       const leant = await read(page);
       const target = await page.evaluate((i) => {
         const st = window.sr.gallery.stage;
-        const l = st.lookouts()[i];
+        const l = st.seats.lookouts()[i];
         const def = st.defs[st.current];
         if (l.periscope) return st.cabin?.screen ? st.cabin.screen.point.toArray() : null;
         const p = new st.camera.position.constructor(...def.cabin.windows[l.window].at);

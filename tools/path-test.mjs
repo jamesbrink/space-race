@@ -175,7 +175,7 @@ const measure = () =>
     };
     const out = { probe: typeof p.line === 'function' && typeof p.where === 'function', issues: [], marks: [], chips: [], panels: [] };
     const ship = new V();
-    const vessel = sr.stage.vessel(ship);
+    const vessel = sr.stage.show.vessel(ship);
     out.ship = vessel ? toPage(toView(ship.x, ship.y, ship.z)) : null;
     // the ball of the gap and the fade round the vehicle (path.ts: so many pixels at it), where the line comes in from nothing, as it is seen
     if (vessel && p.drawn && out.ship.front) {

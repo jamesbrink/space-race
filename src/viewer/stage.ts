@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import type { Target, Workings } from '../app/actions.ts';
+import type { Target } from '../app/actions.ts';
 import { readingFor } from '../sim/mechanism.ts';
-import type { Action, Flight as FlightData, ModelDef } from '../types.ts';
+import type { Flight as FlightData, ModelDef } from '../types.ts';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
-import type { Ascent, Run } from './ascent.ts';
+import type { Ascent } from './ascent.ts';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
-import type { Bloom } from './bloom.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
@@ -17,14 +16,11 @@ import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
 import { type Look, Looks } from './look.ts';
-import type { LookoutDef } from './lookouts.ts';
 import { refused, sayRefused } from './lost.ts';
-import type { Origin } from './origin.ts';
 import { OVERLAY_LAYER } from './overlay.ts';
 import { Panes } from './panes.ts';
 import { through } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
-import type { Quality } from './quality.ts';
 import { Surfaces } from './runs.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
 import { CabinView } from './stage/cabinview.ts';
@@ -236,14 +232,6 @@ export class Stage {
   readonly shadows: Shadows;
   /** The frame from the scene to the screen: the passes, the drawing's resolution, the near plane (stage/pipeline.ts). */
   readonly pipe: Pipeline;
-  /** Draws the scene from the eye (origin.ts): the GPU sees only eye-relative positions; everything the code reads stays where it is. */
-  get origin(): Origin {
-    return this.pipe.origin;
-  }
-  /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
-  get quality(): Quality {
-    return this.pipe.quality;
-  }
   private readonly settings: Settings;
   private readonly fill = new THREE.HemisphereLight(0, 0, 0.5);
   private readonly timer = new THREE.Timer();
@@ -277,18 +265,6 @@ export class Stage {
    */
   effects: Effects | null = null;
   shaker: ((camera: THREE.PerspectiveCamera, sky: THREE.Camera) => (() => void) | null) | null = null;
-  /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
-  get bloom(): Bloom {
-    return this.pipe.bloom;
-  }
-
-  /** The glow the old way, for measuring the new against it (`?plain` sets it: stage/pipeline.ts). */
-  get bloomOld(): boolean {
-    return this.pipe.bloomOld;
-  }
-  set bloomOld(on: boolean) {
-    this.pipe.bloomOld = on;
-  }
 
   /** For measuring: the ground's layers drawn apart in depth (laid.ts), or where they are. */
   set layered(on: boolean) {
@@ -592,8 +568,8 @@ export class Stage {
             ? { label: '', about: null, object: this.scene, lookout: 'pane', ...down.pane }
             : ((down.thing as CabinThing) ?? NO_THING),
         );
-      if (down.pane) this.lookIn(down.pane.point, down.pane.normal);
-      else if (down.place) this.visit(down.place.box);
+      if (down.pane) this.framing.lookIn(down.pane.point, down.pane.normal);
+      else if (down.place) this.framing.visit(down.place.box);
       else if (down.model && !down.node) this.onModel(down.model);
       else {
         this.onSelect(down.node);
@@ -615,7 +591,7 @@ export class Stage {
       groundAt: (x, z) => this.groundAt(x, z),
       plantsOut: (at, margin) => this.setting.plantsOut?.(at, margin) ?? 0,
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
-      leave: () => this.exitWalk(),
+      leave: () => this.onFoot.exitWalk(),
       act: () => this.onWalkAct(),
       viewed: (third) => this.onWalkView(third),
       locked: (on) => this.onWalkLook(on),
@@ -645,7 +621,7 @@ export class Stage {
       fitBounds: () => this.fitBounds(),
       fitDetail: (dt) => this.fitDetail(dt),
       adapt: (dt, walking) => this.adapt(dt, walking),
-      visit: (box) => this.visit(box),
+      visit: (box) => this.framing.visit(box),
       redraw: () => {
         this.dirty = true;
       },
@@ -844,7 +820,7 @@ export class Stage {
     });
     this.highlight(null, null);
     this.shadows.fitShadows();
-    this.view(def.home ?? 'all', snap);
+    this.framing.view(def.home ?? 'all', snap);
   }
 
   /** How far apart a model has been taken, 0 to 1: what its slider should read. */
@@ -1980,7 +1956,7 @@ export class Stage {
 
   /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */
   lookAt(point: THREE.Vector3): void {
-    this.visit(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(8, 4, 8)));
+    this.framing.visit(new THREE.Box3().setFromCenterAndSize(point, new THREE.Vector3(8, 4, 8)));
   }
 
   /**
@@ -2178,44 +2154,6 @@ export class Stage {
   /** For tests: the seconds the camera's rig has been stepped through in all (tools/camera-test.mjs sets a camera's movement against the time it was moved for, not against the clock's). */
   camStepped = 0;
 
-  /**
-   * Tell the stage how many pixels at the bottom of the canvas the controls cover, and (`top`) how many at the top
-   * something else does; `across`: the width a view is fitted to, as a share of the canvas's (stage/framing.ts).
-   */
-  setInset(pixels: number, top = 0, across = 1): void {
-    this.framing.setInset(pixels, top, across);
-  }
-
-  /** Fly to one part and frame it, keeping the direction the camera is already looking from. */
-  focus(node: string, snap = false, from?: { turn: number; rise: number }, again = false): void {
-    this.framing.focus(node, snap, from, again);
-  }
-
-  /** Frame 'all' (everything on show) or one of the model's named views. */
-  view(id: string, snap = false, keepDirection = false): void {
-    this.framing.view(id, snap, keepDirection);
-  }
-
-  /** Go over to something that is not part of any model (a building beside the pad) and look at it: the view then turns about it. */
-  visit(box: THREE.Box3): void {
-    this.framing.visit(box);
-  }
-
-  /** Go up to a window and look through it, square on to the pane. */
-  lookIn(point: THREE.Vector3, normal: THREE.Vector3): void {
-    this.framing.lookIn(point, normal);
-  }
-
-  /** Come round the subject on show by `turn` radians, to `rise` radians above the level, at the same distance. */
-  swing(turn: number, rise: number): void {
-    this.framing.swing(turn, rise);
-  }
-
-  /** How fast the view drifts round its subject, as a multiple of the usual: a show turns faster than a study. */
-  setDrift(times: number): void {
-    this.framing.setDrift(times);
-  }
-
   /** For tests: a named view, turned `azimuthDeg` about the vertical and nudged `nudgeDeg` more. */
   shot(viewId: string, azimuthDeg: number, nudgeDeg = 0): void {
     this.framing.shot(viewId, azimuthDeg, nudgeDeg);
@@ -2224,183 +2162,5 @@ export class Stage {
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.framing.pose(azimuthDeg, elevationDeg, distance, targetY, targetX, targetZ);
-  }
-
-  /** What each of the exhibit's seats is called (`ModelDef.seats[].label`): empty where it has none, or nothing is an exhibit. */
-  get seatLabels(): string[] {
-    return this.seats.seatLabels;
-  }
-
-  /** The exhibit's seat being sat in (an index into `seatLabels`), or null. */
-  get seat(): number | null {
-    return this.seats.seat;
-  }
-
-  /** The exhibit's seat `n`'s node (ModelDef.seats[].node): the address's word for it. */
-  seatName(n: number): string | null {
-    return this.seats.seatName(n);
-  }
-
-  /** Sit in the exhibit's seat `n`, or with null get out of the one sat in (stage/cabinview.ts). False if its part is not on show. */
-  sit(n: number | null): boolean {
-    return this.seats.sit(n);
-  }
-
-  /** What can be looked out of from the seat being sat in (lookouts.ts): its windows, then its periscope. Empty when not in one. */
-  lookouts(): LookoutDef[] {
-    return this.seats.lookouts();
-  }
-
-  /** Which of `lookouts` the pilot is leaning to, or null. */
-  get leaning(): number | null {
-    return this.seats.leaning;
-  }
-
-  /** Lean to the `n`th of `lookouts` and look out of it, or come back to the seat (null). Says what to say, if anything. */
-  leanTo(n: number | null): string | null {
-    return this.seats.leanTo(n);
-  }
-
-  /** From the seat, a click on something to look out through: a window's pane, or the periscope's screen. */
-  lookOut(thing: CabinThing | null): string | null {
-    return this.seats.lookOut(thing);
-  }
-
-  /** Which of `lookouts` a point on a pane in the scene is (the nearest window of the seat's cabin), or -1. */
-  lookoutAt(point: THREE.Vector3): number {
-    return this.seats.lookoutAt(point);
-  }
-
-  /** From the seat, something is being looked out through (`leanTo`). */
-  get lookingOut(): boolean {
-    return this.seats.lookingOut;
-  }
-
-  /** The view is from the seat: nothing is labelled over the scene (the predicted path's markers would lie across the cabin). */
-  aboard(): boolean {
-    return this.seats.aboard();
-  }
-
-  /** Whoever sits in the flown model's seat is aboard it, or back outside: his figure on the pad is not drawn while he is in the couch. */
-  crewAboard(on: boolean): void {
-    this.seats.crewAboard(on);
-  }
-
-  /**
-   * Send the view after something the vehicle has let go (a drop of the ascent's, by its index), or back to the vehicle
-   * (null): only what the chase view, the locked view and the pad camera are about changes (stage/flightshow.ts).
-   */
-  followShed(drop: number | null): void {
-    this.show.followShed(drop);
-  }
-
-  /** Show a flight being flown by hand (ascent.ts `Run`) in place of the record's, or the record's again (null). */
-  flyRun(run: Run | null): void {
-    this.show.flyRun(run);
-  }
-
-  /** For tests (tools/fires-test.mjs): each fire hung, as it stands. */
-  fireReport(): ReturnType<FlightShow['fireReport']> {
-    return this.show.fireReport();
-  }
-
-  /** The flown vehicle, in the scene's frame (also during the draw): its middle, its long axis, its size; null if nothing flies. */
-  vessel(out: THREE.Vector3, axis?: THREE.Vector3): { radius: number; half: number; across: number } | null {
-    return this.show.vessel(out, axis);
-  }
-
-  /** Stop walking: the figure is back where it stood, and the orbiting camera takes over from where the walker was looking. */
-  exitWalk(): void {
-    this.onFoot.exitWalk();
-  }
-
-  /** While walking as one figure, become another (a model with a `walker`): the first is left standing where it was walked to. */
-  becomeWalk(model: string): boolean {
-    return this.onFoot.becomeWalk(model);
-  }
-
-  /** The model being walked as, or null. */
-  get walkingAs(): string | null {
-    return this.onFoot.walkingAs;
-  }
-
-  /** For the diagnostics: the figure is being shown from outside but its model has no joints, so it glides. */
-  get walkRigid(): boolean {
-    return this.onFoot.walkRigid;
-  }
-
-  /** While walking: lean in to the window being looked at, and look through it. */
-  walkLookIn(): void {
-    this.onFoot.walkLookIn();
-  }
-
-  /** While walking: get onto the ladder being looked at, from its foot or from the deck at its top. */
-  walkClimb(): void {
-    this.onFoot.walkClimb();
-  }
-
-  /** Is the walker at the wheel of something? */
-  get driving(): boolean {
-    return this.onFoot.driving;
-  }
-
-  /** While walking: get into the vehicle being looked at and drive it (drive.ts). False if it has nowhere to sit. */
-  walkDrive(): boolean {
-    return this.onFoot.walkDrive();
-  }
-
-  /** While driving: get out (the door opens first, and shuts behind), and stand beside the driver's door. */
-  walkAlight(): void {
-    this.onFoot.walkAlight();
-  }
-
-  /** Why the vehicle at the wheel will not move, if it will not. */
-  get wheelRefusal(): string | null {
-    return this.onFoot.wheelRefusal;
-  }
-
-  /** The place in a model the walker is in, if it is in one. */
-  get seated(): { model: string; seat: string; label: string } | null {
-    return this.onFoot.seated;
-  }
-
-  /** While walking: take a place in a model (a couch). Refused, with the reason, outside the time it could be boarded. */
-  boardSeat(model: string, name: string): string | null {
-    return this.onFoot.boardSeat(model, name);
-  }
-
-  /** Out of the place taken (boardSeat), standing where he boarded it from. */
-  leaveSeat(): void {
-    this.onFoot.leaveSeat();
-  }
-
-  /** While walking: stop, and go and look at the place in the surroundings that was being looked at. */
-  walkVisit(): void {
-    this.onFoot.walkVisit();
-  }
-
-  /** The functions of one part of a model, each workable by hand, with how far along each is and why it will not move. */
-  functions(model: string, node: string): ReturnType<OnFoot['functions']> {
-    return this.onFoot.functions(model, node);
-  }
-
-  /** Work a function by hand: `push` 1 toward the end of its travel, -1 back, 0 to let go. Returns why it will not move. */
-  pushFunction(model: string, node: string, id: string, push: number): string | null {
-    return this.onFoot.pushFunction(model, node, id, push);
-  }
-
-  /** Put a function straight to a place along its travel (a slider in a panel). Returns where it now is. */
-  setFunction(model: string, node: string, id: string, v: number): number {
-    return this.onFoot.setFunction(model, node, id, v);
-  }
-
-  /** Work something a part declares as an action: open or shut a toggle, or send a lift to a stop. */
-  workAction(model: string, node: string, action: Action, stop?: number | 'call'): void {
-    this.onFoot.workAction(model, node, action, stop);
-  }
-
-  /** How the doors and lifts stand: what the wheel needs to know to name their verbs. */
-  get workings(): Workings {
-    return this.onFoot.workings;
   }
 }

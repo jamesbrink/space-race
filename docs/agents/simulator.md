@@ -412,7 +412,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   second (the vanes at full throw turn the stack end over end in four seconds); with it off, and
   on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
   sets events off at the record's times. The scene shows it through the same `Ascent`, given the
-  live run (`Stage.flyRun`, ascent.ts `Run`), at the clock's instant (the last tick carried on by its own motion for the
+  live run (`FlightShow.flyRun`, ascent.ts `Run`), at the clock's instant (the last tick carried on by its own motion for the
   part of a tick the clock is past it, as what it has shed is flown to that instant): placed by each sample's own attitude, the spacecraft
   turning about its centre of mass (on the record's run too: the model's origin is `flies.datum` up
   the stack and the centre of mass `capsule.centre`, and `tests/ascent.test.mjs` holds the model's
@@ -424,7 +424,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   through `Cockpit.tick`, which notes it: none is flown unseen. The simulator starts the stack's
   base on the site's origin and the model stands on the launcher's support above it: that height
   is eased out of where the model is drawn over the first five seconds (`Ascent.stood`), so what
-  comes down meets the surface itself. `Stage.flyRun` stands the model whole on its pad before
+  comes down meets the surface itself. `FlightShow.flyRun` stands the model whole on its pad before
   anything is hung on it again. Put the
   clock back and it shows what was flown; the record's own run is untouched and comes back on
   leaving. An abort is X twice within two seconds (the first press arms it and says so). Under the

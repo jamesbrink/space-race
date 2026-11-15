@@ -214,8 +214,8 @@ for (const [n, route] of routes.entries()) {
           .parts.find((p) => p.node === part)
           .actions.find((a) => a.id === action);
         const body = sr.stage.walk.body;
-        if (!sr.stage.workings.riding(model, def.do.node, def)) return { error: 'not standing on the lift', y: body.position.y };
-        sr.stage.workAction(model, def.do.node, def, stop);
+        if (!sr.stage.onFoot.workings.riding(model, def.do.node, def)) return { error: 'not standing on the lift', y: body.position.y };
+        sr.stage.onFoot.workAction(model, def.do.node, def, stop);
         const t0 = performance.now();
         let last = body.position.y;
         let still = 0;

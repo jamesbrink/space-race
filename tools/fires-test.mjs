@@ -1,7 +1,7 @@
 // Every engine that burns shows its fire: checked in the running viewer, on the record's flight.
 //   node tools/fires-test.mjs [url] [--flight <id>] [--shots <dir>] [--cams pad,chase,far] [--looks real,cel] [--at 2,60,118]
 //                                                                    (default url: http://localhost:5180/, flight: Vostok 1)
-// At each instant (T+2, 60, 118, 125, 200 and 400 s) it counts the fires drawn (Stage.fireReport) against the engines the
+// At each instant (T+2, 60, 118, 125, 200 and 400 s) it counts the fires drawn (FlightShow.fireReport, sr.stage.show) against the engines the
 // record has burning then, and checks that each hangs at the part that carries it: on the vehicle, or on a strap-on as
 // it swings away. --shots also writes a picture of each instant from each camera (the pad's, the chase's, and from 5 km)
 // in each look; with a page that has no fireReport (an older build) it only takes the pictures.
@@ -34,7 +34,7 @@ if (shots) mkdirSync(shots, { recursive: true });
 const browser = await launch();
 const { page, errors } = await open(browser, `${url}#${flight}/site/vehicle`, { timeout: 120000 });
 await page.addStyleTag({ content: '#ui, #gallery, #title, .notes { display: none !important }' });
-const reports = await page.evaluate(() => typeof window.sr.stage.fireReport === 'function');
+const reports = await page.evaluate(() => typeof (window.sr.stage.show ?? window.sr.stage).fireReport === 'function');
 const wait = (ms) => page.waitForTimeout(ms);
 const shortId = flight.split('/').at(-1);
 
@@ -49,7 +49,7 @@ for (const look of looks) {
     }, t);
     await wait(600);
     if (reports && look === looks[0]) {
-      const fires = await page.evaluate(() => window.sr.stage.fireReport());
+      const fires = await page.evaluate(() => (window.sr.stage.show ?? window.sr.stage).fireReport());
       const drawn = fires.filter((f) => f.drawn && (f.on > 0.001 || f.steering > 0.001));
       const want = EXPECTED[flight]?.(t) ?? [];
       check(

@@ -36,7 +36,7 @@ from far off, it goes to where the whole vehicle is seen, from the side the last
 subject from, turned about the plumb line by the least that leaves nothing of the place between the
 eye and the vehicle (`World.blocked`, the solids the near plane asks: a structure rolled back on
 its rails stands in the way from some sides). "The whole vehicle" is half the frame's height and never more than 85 per cent of
-what the controls leave clear, top and bottom (`Camera.clear`, from `Stage.setInset`), and a chase
+what the controls leave clear, top and bottom (`Camera.clear`, from `Framing.setInset`), and a chase
 view nobody has set is framed again when that changes (the flight deck opening, a phone turned); back from on
 board or the pad camera it is as it was last left (`Rig.enter`'s `resume`). The pad camera stands
 where the orbiting or free view was, set down on the ground at tripod height, if that was within
@@ -56,7 +56,7 @@ the pilot is then seen from inside or cut, and the near plane is not involved.
 
 What can be looked out of is the cabin's data (`lookouts.ts`: each of `CabinDef.windows`, by its `name`, then the
 periscope), and each is one explicit act: its digit, its button in the lookouts bar (`Ui.setLookouts`, right edge),
-or a click on its pane or the screen (`Stage.lookOut`). The pilot leans (`Stage.leanTo`, `Head.leanIn`): the head
+or a click on its pane or the screen (`CabinView.lookOut`). The pilot leans (`CabinView.leanTo`, `Head.leanIn`): the head
 turns to it, the eyes go to it along a curve that comes in down the line it is looked through (`leanPath`), and the
 lens closes on it last (`leanPhases`), eased by time, never a cut; the same act or Escape (or 0, which also looks
 ahead) brings him back the same way. A port is leant to square to its pane where the model leaves room for a face
@@ -92,7 +92,7 @@ browser's check below for the page):
   comes in with the pivot and never ahead of it, so what is left never goes further from the middle of the frame than
   it was as the stage left.
 - **The view can go with a stage that has left.** A right click on something the vehicle has let go offers to follow
-  it (`Stage.followShed`, by the ascent's drop): `Scene.craft()` then gives that piece (its nodes' bounds in the frame
+  it (`FlightShow.followShed`, by the ascent's drop): `Scene.craft()` then gives that piece (its nodes' bounds in the frame
   it is carried in, measured once), the chase view takes it up afresh (`Cameras.retake`: the whole of it, from the side
   it is seen from) and it, the locked view and the pad camera go with it; on board is not offered. The flight goes on
   being flown. 0 (`told.back`), a rig that is not about a vehicle, or the clock going back before the piece left, gives
@@ -110,12 +110,12 @@ browser's check below for the page):
 - **The eye never goes under the ground or the sea** (`World.clearance`: the site's terrain as a
   height, the globe beyond it): it comes up round the pivot at the same distance, never in.
 - **The pivot is in the middle of the clear part of the frame**, by tipping the camera where it
-  stands (`aimBelow`), so the controls never cover what is being turned about. `Stage.setInset`
+  stands (`aimBelow`), so the controls never cover what is being turned about. `Framing.setInset`
   takes what the controls cover at the bottom and, as a second figure, what is covered at the top;
   today the page reports only the bottom, so on a phone the title and the clock still lie over the
   top of a tall subject.
 
-`Stage.view`, `focus`, `visit`, `lookIn`, `section` and `swing` say what to frame and
+`Framing.view` (`stage.framing`), `focus`, `visit`, `lookIn` and `swing`, and `Stage.section`, say what to frame and
 `Cameras.frame` does it: flown to in orbit and free; in flight, a subject on the vehicle is the
 chase view's (nothing else can keep up with it). `pose` and `shot` put the orbiting rig somewhere
 exact for tests and screenshots (looking straight at the pivot, and still, with nothing left easing).

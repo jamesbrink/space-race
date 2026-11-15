@@ -121,7 +121,7 @@ if (seated) {
   // the gallery alone: ready, then in each seat in turn (C), the camera settled and the inside's pictures sent
   await page.waitForFunction(() => window.sr.gallery?.ready, null, { timeout: 180000 });
   await note('ready (gallery)');
-  const seats = await page.evaluate(() => window.sr.gallery.stage.seatLabels.length);
+  const seats = await page.evaluate(() => window.sr.gallery.stage.seats.seatLabels.length);
   for (let n = 0; n < seats; n++) {
     await page.keyboard.press('c');
     await settle(20000);
@@ -156,7 +156,7 @@ if (!seated) {
   if (flies) {
     await page.evaluate(() => {
       const sr = window.sr;
-      sr.stage.exitWalk();
+      sr.stage.onFoot.exitWalk();
       sr.clock.seek(150);
       sr.clock.play();
       sr.stage.setCamera('chase');
