@@ -1,0 +1,102 @@
+/** Where a site is on the Earth, what stands round it, and the region its map is baked for. */
+import type { Measure } from '../measure.ts';
+import type { DayWeather } from './weather.ts';
+
+/**
+ * Where a site is on the Earth, and how its own frame lies there (src/world/frames.ts: Site). The
+ * origin is the model's origin (the launcher's centre on the pad's surface); from it and the
+ * launch instant the Sun, the Moon and the stars are put where they were (src/world/ephemeris.ts).
+ */
+export interface SiteDef {
+  name: string;
+  /** Degrees north, WGS 84. */
+  latitude: Measure;
+  /** Degrees east, WGS 84: negative in the Americas. */
+  longitude: Measure;
+  /** Metres above the WGS 84 ellipsoid, which is not sea level. */
+  height: Measure;
+  /** Where mean sea level is there, metres above the ellipsoid (the geoid's height: negative where the sea is below it). */
+  seaLevel: Measure;
+  /** The bearing of the site frame's +X, degrees clockwise from true north. +Y is up; +Z bears 90 degrees more. */
+  bearingX: Measure;
+  /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
+  zone: { name: string; utcOffset: number };
+  /** The country round the site seen in its flights, which the globe draws from a finer map than its own (RegionDef). */
+  region?: RegionDef;
+  /**
+   * The sky a flight from here stands under when it gives none of its own (`Flight.weather`): the place's usual fair
+   * morning, every figure of it `estimated`. A flight's own day replaces all of it, never part.
+   */
+  weather?: DayWeather;
+  /**
+   * The place's quiet as it is heard (sound/model.ts `Place`): gains for the wind, the surf, a far hum of machinery, and
+   * the water round a spacecraft that has come down. All estimated. Left out, it is a launch site by the sea whose
+   * flights come down in it (`PLACE`): a site inland says so here, or a rocket is heard in the surf that is not there.
+   */
+  quiet?: { wind: number; surf: number; hum: number; sea: number };
+  /** What stands beyond the site's own place and is seen from it, modelled apart (viewer/around.ts). */
+  around?: SiteAround;
+  /**
+   * Where a rocket's exhaust goes at liftoff (viewer/trail.ts `blast`). Left out, it strikes a deflector under the stand
+   * and is thrown out over the concrete all round (LC-5's). `pit`: down through an opening in the deck into a flame pit
+   * and along its floor to its open side, where the cloud rises: `toward` that side's bearing, degrees true; the pit's
+   * `depth` under the deck; how far from the rocket's axis the gas comes along the floor (`out`) before it can rise; and
+   * the width of the slot it is held in, metres.
+   */
+  exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
+}
+
+/**
+ * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
+ * each thing's node origin at its middle on the ground; the nodes to draw; and every material it wears, by name.
+ */
+export interface SiteAround {
+  model: string;
+  nodes: string[];
+  wears: string[];
+}
+
+/**
+ * The country round a site, drawn on the globe from a finer coast than Natural Earth's:
+ * tools/globe-region.mjs bakes it from OpenStreetMap to public/globe/<name>.*, and viewer/globe.ts
+ * draws it where it covers and its own 1:10 million map elsewhere.
+ */
+export interface RegionDef {
+  /** The stem of its files. */
+  name: string;
+  /** Its bounds, degrees north and east (WGS 84). */
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+  /** Why these bounds: what the flights from the site see. */
+  why: string;
+  /** The date the shore is drawn as (ISO): works in `later` built after it are undone. Today's map is the shore as it stands. */
+  asOf: string;
+  /** What has been built since that changed the shore: each undone in the bake if built after `asOf`. */
+  later: LaterWork[];
+  /**
+   * Rivers drawn as their channel along OpenStreetMap's middle line (waterway=river), where its water areas leave gaps:
+   * `match` a pattern for the way's name, `width` the channel's, metres.
+   */
+  rivers?: { match: string; width: number; source: string }[];
+}
+
+/**
+ * A causeway filled or a channel dug: the shore as it was before, along a line. Or a change over a whole area (a sea
+ * that has shrunk): what was there before, inside a closed `ring`, from a source of that time.
+ */
+export interface LaterWork {
+  what: string;
+  /** The year it was finished (for an area: the first year it was no longer as the ring has it). */
+  built: number;
+  /** What was there before it: water where a causeway now stands, land where a canal is now cut. */
+  was: 'water' | 'land';
+  /** The line it follows, [latitude, longitude] degrees, and the width put back along it, metres. */
+  path?: [number, number][];
+  width?: number;
+  /** Or the area it was, as one closed ring of [latitude, longitude] degrees: inside it the bake puts back what `was`. */
+  ring?: [number, number][];
+  /** For the date, and for the line (read off OpenStreetMap unless it says otherwise). */
+  source: string;
+}
