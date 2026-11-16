@@ -387,7 +387,7 @@ test('a rider says what each of its wheels is on: the material of what it names 
   const scene = new THREE.Scene();
   scene.add(root);
   seq.set(0);
-  const under = machinery.working().find(([key]) => key === move)?.[1].wheels?.under;
+  const under = machinery.working().find(([key]) => key === move)?.[1].rider?.under;
   assert.ok(under, 'the sound is told what stands it on what it runs on');
   const sorted = [...under].sort((a, b) => a.x - b.x);
   assert.deepEqual(

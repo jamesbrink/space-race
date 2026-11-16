@@ -716,9 +716,18 @@ test('a machine heard starting and stopping: its one-shots once each, a door lat
     over.every((h) => loud(h) === 0 && !h.shots.length),
     'a jump plays nothing it passed over',
   );
-  // a wagon knocks over its rails' joints, one for each it passes
-  const wagon = shots(hearings([moving('locomotive', 0, 30, 10, 80)], 31)).filter(({ s }) => s.thump);
+  // a wagon knocks over its rails' joints, one for each it passes (Runs `joints`: the rails' own spacing)
+  const jointed = (kind, every) => (t) => ({ ...moving(kind, 0, 30, 10, 80)(t), joints: every });
+  const wagon = shots(hearings([jointed('locomotive', 25)], 31)).filter(({ s }) => s.thump);
   assert.equal(wagon.length, 3, '80 m over 25 m rails');
+  // and so does a structure on its own rail trucks, over 39 ft rails; on rails that say no joints, nothing
+  const rolling = shots(hearings([jointed('rails', 39 * 0.3048)], 31)).filter(({ s }) => s.thump);
+  assert.equal(rolling.length, Math.floor(80 / (39 * 0.3048)), '80 m over 39 ft rails');
+  assert.equal(
+    shots(hearings([moving('locomotive', 0, 30, 10, 80)], 31)).filter(({ s }) => s.thump).length,
+    0,
+    'unjointed rails, no knocks',
+  );
 });
 
 test('no more voices than the works have, each kept in its slot while it sounds', () => {
@@ -831,4 +840,21 @@ test('a place’s far hum is at its own mains: 60 Hz at the Cape, 50 Hz at Tyura
     );
   }
   for (const f of flights) assert.ok(f.site.place.mains, `${f.id}: its place says its mains`);
+});
+
+test('what rolls on rails at a site says how far apart their joints are, as data with its confidence: Complex 5’s structure too (#29)', () => {
+  const rolling = [];
+  for (const f of flights)
+    for (const m of f.models)
+      for (const p of m.parts)
+        for (const move of [...(p.moves ?? []), ...(p.clocked ?? [])])
+          if (move.machine && ['rails', 'locomotive'].includes(move.machine.kind) && move.runs) rolling.push({ f, p, move });
+  assert.ok(
+    rolling.some(({ p, move }) => p.node === 'ServiceStructure' && move.machine.kind === 'rails'),
+    'Complex 5’s service structure',
+  );
+  for (const { f, p, move } of rolling) {
+    const j = move.runs.joints;
+    assert.ok(j && j.value > 5 && j.value < 40 && j.confidence && j.source, `${f.id} ${p.node}: its rails' joints`);
+  }
 });

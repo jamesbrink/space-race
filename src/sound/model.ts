@@ -725,8 +725,6 @@ export interface MachineSound extends Timbre {
   start?: Burst;
   stop?: Burst;
   shut?: Burst;
-  /** A wagon's: how far apart its rails' joints are, m. */
-  joints?: number;
 }
 
 const knock = (level: number, from: number, decay: number): Burst => ({
@@ -815,7 +813,6 @@ export const MACHINES: Record<Exclude<MachineKind, 'none'>, MachineSound> = {
     up: 2,
     down: 3,
     spins: true,
-    joints: 25,
   },
   // (its start is the starter motor turning it over until it catches)
   road: {
@@ -932,6 +929,8 @@ export interface Source {
   where: Vec;
   /** A vehicle driven by hand: its own speed and pedal (it runs whether it moves or not), not how far along it has gone. */
   driven?: { speed: number; top: number; throttle: number };
+  /** How far apart the joints of the rails it runs on are, m (Runs `joints`): it knocks over each as it passes. */
+  joints?: number;
   /** Its engine (`road`, `locomotive`), and what each of its tyres is on (`road`, `towed`; none given: the place's land). */
   engine?: Engine | null;
   treads?: readonly TreadKind[];
@@ -1014,7 +1013,7 @@ export class Works {
           engine: src.engine ?? null,
           treads: src.treads?.length ? src.treads : [land],
           driven: src.driven,
-          joint: Math.floor(src.along / (m.joints ?? Number.POSITIVE_INFINITY)),
+          joint: Math.floor(src.along / (src.joints ?? Number.POSITIVE_INFINITY)),
           n: this.count++,
         };
         this.runs.set(src.key, run);
@@ -1042,9 +1041,9 @@ export class Works {
       const metres = distance(ears, run.where);
       if (moving && !run.moving && run.spin < 0.3) shoot(m.start, metres);
       if (!moving && run.moving && !jumped) shoot(m.shut && src.along <= 1e-6 ? m.shut : m.stop, metres);
-      // a wagon over its rails' joints
-      if (m.joints) {
-        const joint = Math.floor(src.along / m.joints);
+      // over its rails' joints: a wagon, a structure on its rail trucks
+      if (src.joints) {
+        const joint = Math.floor(src.along / src.joints);
         if (moving && joint !== run.joint) shoot(JOINT, metres);
         run.joint = joint;
       }

@@ -337,6 +337,10 @@ export class Rider {
    * what it bears on there, or null where that is the land. A thing with no wheels has none.
    */
   readonly under: Underfoot[] = [];
+  /** How far apart the joints of the rails it runs on are, metres (Runs `joints`), if they have them: what it knocks over. */
+  get joints(): number | undefined {
+    return this.runs.joints?.value;
+  }
   /** The last instant's answer, kept while nothing that went into it has changed. */
   private kept: { key: number[]; position: THREE.Vector3; quaternion: THREE.Quaternion; lifts: number[] } | null = null;
 

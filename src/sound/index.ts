@@ -380,9 +380,10 @@ export class Sound {
         travel: w.travel,
         where: [this.node.x, this.node.y, this.node.z],
         engine: w.machine.engine ? place.engines[w.machine.engine] : null,
+        ...(w.rider?.joints ? { joints: w.rider.joints } : {}),
         // (each wheel's own, as its rider last stood it; with none, what is under the move's node)
         ...(tyres
-          ? { treads: w.wheels?.under.length ? w.wheels.under.map(tread) : [tread({ material: null, x: this.node.x, z: this.node.z })] }
+          ? { treads: w.rider?.under.length ? w.rider.under.map(tread) : [tread({ material: null, x: this.node.x, z: this.node.z })] }
           : {}),
       });
     }

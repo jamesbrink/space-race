@@ -253,6 +253,14 @@ const ROLL = [33.53, 19.2]; // metres: to the edge of the pad, then on to the la
 /** What the structure rolls on (types.ts Runs): its rails, on the hardstand and on along the track beyond it (the place's). */
 const ON_RAILS: Runs = {
   on: ['Hardstand/steel-rail', 'Track/steel-rail'],
+  // the rails' joints, which its trucks knock over as it rolls (sound/model.ts `Works`): fishplated every 39 ft, as the
+  // model lays them off the pad (lc5/hardstand.py; lc-5.md, “Track off the pad”)
+  joints: {
+    value: 39 * 0.3048,
+    confidence: 'estimated',
+    source:
+      'a 39 ft length of rail, the American standard rail length of the time: ordinary practice, not read off a drawing of the pad (lc-5.md)',
+  },
   wheels: 'ServiceStructure_Wheel_',
   wheelRadius: WHEEL_R,
   axle: 'x',

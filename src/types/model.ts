@@ -70,6 +70,11 @@ export interface Runs {
    * the line through them, which is the track under it, and pitched with them over a change of grade.
    */
   bogies?: string;
+  /**
+   * How far apart the joints of the rails it runs on are, metres along them, where they are jointed: each wheel knocks over
+   * each (sound/model.ts `Works`). Left out, they are not (a road, the land) or nothing says.
+   */
+  joints?: Measure;
   /** A slide's wheels' radius where the tread bears, metres. */
   wheelRadius?: number;
   /** Which of a slide's wheel's own axes is its axle. */

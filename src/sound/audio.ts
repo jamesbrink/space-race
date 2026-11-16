@@ -75,8 +75,11 @@ export interface Working {
   node: Object3D;
   along: number;
   travel: number;
-  /** What runs on something (viewer/runs.ts `Rider`): what each of its wheels was last stood on. */
-  wheels?: { readonly under: readonly Underfoot[] };
+  /**
+   * What runs on something (viewer/runs.ts `Rider`): what each of its wheels was last stood on, and how far apart the
+   * joints of the rails it runs on are, metres (Runs `joints`), if it is on rails that have them.
+   */
+  rider?: { readonly under: readonly Underfoot[]; readonly joints?: number };
 }
 
 /**
@@ -88,15 +91,15 @@ export interface Working {
 export class Machinery {
   private readonly all = new Map<object, Working>();
 
-  /** A move has just been posed (`wheels`: what stands it on what it runs on, which says what each of its wheels is on). */
-  posed(key: object, machine: Machine, node: Object3D, along: number, travel: number, wheels?: Working['wheels']): void {
+  /** A move has just been posed (`rider`: what stands it on what it runs on, which says what each of its wheels is on). */
+  posed(key: object, machine: Machine, node: Object3D, along: number, travel: number, rider?: Working['rider']): void {
     const was = this.all.get(key);
     if (was) {
       was.node = node;
       was.along = along;
       was.travel = travel;
-      was.wheels = wheels;
-    } else this.all.set(key, { machine, node, along, travel, wheels });
+      was.rider = rider;
+    } else this.all.set(key, { machine, node, along, travel, rider });
   }
 
   /** Every move posed so far, by its key; one whose node has left the scene is forgotten. */

@@ -1,4 +1,4 @@
-import type { Flight, Keyframe, Machine, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
+import type { Flight, Keyframe, Machine, Measure, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
 import { CENTRE_CURVED, SPURS_CURVED, wayWest } from './tracks.ts';
 
 /**
@@ -133,11 +133,20 @@ const KEROSENE_WAY = wayWest([SPURS_CURVED[2]!, CENTRE_CURVED], 4.8, -520);
 /** The fillers' wheels' radius where the coned tread bears on the rail's head: 950 mm wheels, 2.4 mm out (site1/tank_cars.py `AXLE_Z`). */
 const CAR_WHEEL = 0.475 + 0.0024;
 /**
+ * How far apart the joints of the site's rails are, metres: what a wagon knocks over (sound/model.ts `Works`). The Soviet
+ * railways' standard length of rail, 25 m; that the site's track was laid in it is taken (the model draws no joints).
+ */
+const RAIL_JOINTS: Measure = {
+  value: 25,
+  confidence: 'estimated',
+  source: 'the Soviet railways’ standard 25 m rail, from memory and unchecked; the site’s track is not recorded',
+};
+/**
  * What a railway wagon runs on (types.ts Runs): the model's own rails, on the deck (DeckRails) and where they come up to
  * the platform over the land (the place's Tracks); beyond the modelled rails the track is painted on the land, and
  * there it runs on that.
  */
-export const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true };
+export const ON_RAILS: Runs = { on: ['DeckRails', 'Tracks'], ground: true, joints: RAIL_JOINTS };
 /** What a road vehicle runs on: the land, which the roads and the apron are painted on, and a modelled rail it crosses. */
 export const ON_ROAD: Runs = { on: ['Tracks'], ground: true };
 /**
@@ -184,7 +193,13 @@ const ERECTOR_AXLES = [1, 2, 3, 4, 5, 6];
  * The wagon on the model's rails all the way it goes (DeckRails, then the place's Tracks, modelled to where it is left).
  * Its wheels bear 2.4 mm out from the nominal radius, where the coned tread meets the rail's head (site1/erector.py `AXLE_Z`).
  */
-const ERECTOR_RUNS: Runs = { on: ['DeckRails', 'Tracks'], wheels: 'Erector_Wheel_', wheelRadius: ERECTOR_WHEEL + 0.0024, axle: 'z' };
+const ERECTOR_RUNS: Runs = {
+  on: ['DeckRails', 'Tracks'],
+  joints: RAIL_JOINTS,
+  wheels: 'Erector_Wheel_',
+  wheelRadius: ERECTOR_WHEEL + 0.0024,
+  axle: 'z',
+};
 /** The lift's stops above its lowest, m: it rides the leaning boom, so each is 0.2493 of its height nearer the rocket. */
 const LIFT_STOPS: [name: string, up: number][] = [
   ['Lift door, 15 steps up', 0],

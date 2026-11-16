@@ -45,7 +45,8 @@ plays until the page has been touched, and a hidden page is suspended.
   worked from the lines its shader draws, each with its confidence; else the land), a voice for each surface its
   wheels are on, as that surface's share of them. A driven vehicle's wheels are asked of the solids under each hub;
   one the slider or the clock moves is stood on what it runs on by `viewer/runs.ts`, which says what each wheel bears
-  on (`Rider.under`). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance,
+  on (`Rider.under`). What rolls on jointed rails knocks over each joint, a wagon and Complex 5's structure alike, at
+  the spacing its rails say (`Runs.joints`, with its confidence: 39 ft at the Cape, 25 m at Site 1, both estimated). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance,
   absorption and delay are the launch's path; every level and timbre is estimated.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works
