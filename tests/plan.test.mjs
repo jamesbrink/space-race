@@ -83,7 +83,8 @@ for (const f of orbital) {
       const e = byId(c.engines, stageId(i));
       assert.equal(e.thrust, s.thrust);
       assert.equal(e.isp, s.isp);
-      assert.equal(byId(c.tanks, stageId(i)).load.value, s.count * s.propellant.value);
+      assert.equal(byId(c.tanks, stageId(i)).load, s.propellant, 'one unit’s load');
+      assert.equal(byId(c.bodies, stageId(i)).mass, s.mass, 'one unit’s mass');
       assert.equal(byId(c.bodies, stageId(i)).count, s.count);
       const lit = s.ignition.value > 0 ? eventOf(plan, `${stageId(i)}:ignite`) : eventOf(plan, 'liftoff');
       assert.ok(doing(lit).includes(`ignite:${stageId(i)}`), `${s.name} is lit`);

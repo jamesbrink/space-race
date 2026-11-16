@@ -69,7 +69,7 @@ export interface Craft {
 export interface BodyDef {
   id: string;
   label: string;
-  /** How many alike (a stage's strap-ons): each figure below is all of them together unless it says one. */
+  /** How many alike (a stage's strap-ons): each figure below is one unit's, and the body's is `count` times it (so a dropped stage's mass is `count * (mass - burned)`, exactly as it is flown). */
   count: number;
   /** Its mass as it leaves the pad, kg, with what is in its tanks; its mass empty, where the record gives one. */
   mass: Measure;
@@ -166,7 +166,7 @@ export interface TankDef {
   id: string;
   label: string;
   body: string;
-  /** What it holds as it leaves the pad, kg; what of that goes through the chambers, where it is less. */
+  /** What it holds as it leaves the pad, kg; what of that goes through the chambers, where it is less: one unit's, on a body of several (`BodyDef.count`). */
   load: Measure;
   usable?: Measure;
   /** One of an engine's two propellants, or both as one load; or attitude control's. */

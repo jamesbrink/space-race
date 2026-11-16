@@ -52,7 +52,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     the pad, the retropack's, a vacuum specific impulse.
   - `EngineDef.flown` is the impulse the record's coast flies.
   - Ids are generated: a stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
-  - `BodyDef` and `TankDef` figures are all the units together.
+  - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
   - These go when the flights' data says its plan itself.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
   which events have happened and which are armed, and the attitude held. It is never changed in place.

@@ -355,8 +355,8 @@ export function planOfOrbital(o: OrbitalFlight): FlightPlan {
     id: stageId(i),
     label: s.name,
     count: s.count,
-    mass: s.count === 1 ? s.mass : derived(s.count * s.mass.value, `${s.count} of ${s.mass.value} kg`),
-    dry: s.count === 1 ? s.dry : derived(s.count * s.dry.value, `${s.count} of ${s.dry.value} kg`),
+    mass: s.mass,
+    dry: s.dry,
     nodes: s.nodes,
   }));
   for (const x of a?.drops ?? []) bodies.push({ id: x.id, label: x.id, count: 1, mass: x.mass });
@@ -440,8 +440,8 @@ export function planOfOrbital(o: OrbitalFlight): FlightPlan {
     id: stageId(i),
     label: `${s.name.split(',')[0]} propellant`,
     body: stageId(i),
-    load: s.count === 1 ? s.propellant : derived(s.count * s.propellant.value, `${s.count} of ${s.propellant.value} kg`),
-    ...(s.usable ? { usable: s.count === 1 ? s.usable : derived(s.count * s.usable.value, `${s.count} of ${s.usable.value} kg`) } : {}),
+    load: s.propellant,
+    ...(s.usable ? { usable: s.usable } : {}),
     holds: 'propellant',
   }));
   const thrusters: ThrusterSet[] = [];
@@ -710,5 +710,5 @@ function ascentWhen(id: string, o: OrbitalFlight): Pick<PlanCheck, 'when'> {
   return {};
 }
 
-/** Every mass a plan's first craft carries, kg: its bodies' sum (which the record's liftoff figure need not equal). */
-export const bodiesMass = (plan: FlightPlan): number => sum(plan.craft[0]!.bodies.map((b) => b.mass.value));
+/** Every mass a plan's first craft carries, kg: its bodies' sum, each as many times as it has units (which the record's liftoff figure need not equal). */
+export const bodiesMass = (plan: FlightPlan): number => sum(plan.craft[0]!.bodies.map((b) => b.count * b.mass.value));
