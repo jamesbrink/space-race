@@ -203,8 +203,8 @@ attitude balls, each a node at its own middle; `Tele_...` lamps, each with its o
 at the head of the overhead panel's forward row, its origin on its pivot and its `throw` extras its three positions
 (WHT as built, OFF, RED: SEDR 300 p. 3-20, "The center floodlight WHITE-OFF-RED control switch is in the forward row
 of the overhead panel", and Figure 3-5 sheet 2, which draws it there with RED over OFF over WHT: documented; how far
-the lever leans is the Mercury toggle's: estimated). Gemini-Titan 3 declares them (`flight.ts`: `lights`,
-`cabin`): the inside is lit as indoors by the three floodlights and the instruments, lamps and controls are named.
+the lever leans is the Mercury toggle's: estimated). The lights are the type's (`gemini-titan.ts`: `LIGHTS`) and each
+flight declares its cabin (`gemini-titan.ts`: `cabin`; Gemini-Titan 3, without the g.m.t. clock, its own): the inside is lit as indoors by the three floodlights and the instruments, lamps and controls are named.
 No flight deck reads them yet: nothing of the flight is simulated, so every needle stands as built and says so.
 
 **The men** are a suit module's seated figures ([g3c-suit.md](../crew/g3c-suit.md)), built into a seat by the

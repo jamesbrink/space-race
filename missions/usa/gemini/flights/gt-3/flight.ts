@@ -1,38 +1,29 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
+import type { CabinDef, Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import {
+  CHRONOLOGY,
+  GIV,
+  IN,
+  LAUNCH_SYSTEMS,
+  LB,
+  NMI,
+  type PartWords,
+  RED_LIGHT,
+  SEDR,
+  SIZE,
+  THRUST,
+  TITANS,
+  geminiTitanStack,
+  instrument,
+  lamp,
+  titanEngines,
+} from '../../vehicles/gemini-titan.ts';
 
-const IN = 0.0254;
-const LB = 0.45359237;
-const LBF = 4.4482216;
-const NMI = 1852;
-const DEG = Math.PI / 180;
-
-// Where things are round the vehicle, as vehicles/gemini_spacecraft.py and vehicles/titan_ii_glv.py have them: degrees
-// about the long axis from the spacecraft's top (the side its hatches are on, the model's +X) toward the crew's right.
-// The numbers live there; these are quoted for the views and for how the parts come away.
-const TOP_AZ = 0;
-const LEFT_AZ = -90;
-/** The external conduit that UNITED STATES stands beside on the first stage, and the lettering itself. */
-const CONDUIT_AZ = -45;
-const LETTERS_AZ = -12;
-/** A direction on the model in the viewer's axes (+Y is the model's long axis; the model's +Y is the viewer's -Z). */
-const along = (az: number, lift: number, by = 1): [number, number, number] => [
-  by * Math.cos(az * DEG),
-  by * lift,
-  -by * Math.sin(az * DEG),
-];
-
-const SEDR = 'Project Gemini Familiarization Manual, SEDR 300 vol. 1 (McDonnell, 30 September 1965)';
 const KIT = 'NASA release 65-81, the Gemini-Titan 3 press kit (17 March 1965)';
-const CHRONOLOGY = 'Project Gemini: Technology and Operations, a Chronology (NASA SP-4002), Appendix 1, Table A';
-const TITANS = 'On the Shoulders of Titans (NASA SP-4203)';
-const GIV = 'Gemini Program Mission Report, Gemini IV (MSC-G-R-65-3)';
-const LAUNCH_SYSTEMS = 'Gemini Program Launch Systems Final Report (Aerospace, January 1967)';
 
-const parts: Part[] = [
+const parts: PartWords[] = [
   {
     node: 'NoseFairing',
-    group: 'Spacecraft',
     name: 'Nose fairing',
     summary: 'A glass-fibre cap over the ship’s forward face, thrown off on the way up.',
     detail:
@@ -49,13 +40,9 @@ const parts: Part[] = [
       ['Thrown off', 'in orbit, between 6 min 15 s and 6 min 21 s after liftoff'],
       ['The plan', '3 min 15 s in the press kit; after second stage cutoff in McDonnell’s manual'],
     ],
-    explode: [0, 9.4, 0],
-    order: 5,
   },
   {
     node: 'RendezvousRecovery',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Rendezvous and recovery section',
     summary: 'Where the radar goes. This ship carried none, and the section was only its parachutes.',
     detail:
@@ -72,13 +59,9 @@ const parts: Part[] = [
       ['Main parachute', 'ring-sail, 84.2 ft'],
       ['Leaves the ship', 'at 10,600 ft, with the pilot parachute'],
     ],
-    explode: [0, 8.2, 0],
-    order: 6,
   },
   {
     node: 'ReentryControl',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Re-entry control system section',
     summary: 'Sixteen small thrusters in four clusters, none of them pointing straight out.',
     detail:
@@ -99,12 +82,9 @@ const parts: Part[] = [
       ['Clusters', '4, at 34° and 55° from the top and the bottom'],
       ['Skin', '8 beryllium shingles'],
     ],
-    explode: [0, 7.2, 0],
-    order: 7,
   },
   {
     node: 'Hatches',
-    group: 'Spacecraft',
     name: 'Hatches',
     summary: 'Two doors, one over each man, each with a window set like a windscreen at its forward end.',
     detail:
@@ -130,12 +110,9 @@ const parts: Part[] = [
       ['On the right hatch', 'the blood irradiation experiment'],
       ['Opened in flight', 'no'],
     ],
-    explode: along(TOP_AZ, 3.8, 1.7),
-    order: 8,
   },
   {
     node: 'ScannerFairing',
-    group: 'Spacecraft',
     name: 'Horizon scanner fairing',
     summary: 'A bronze-coloured cover over the infrared eyes that find the horizon. It goes once the ship is in orbit.',
     detail:
@@ -152,12 +129,9 @@ const parts: Part[] = [
       ['Lies', 'from Z166.5 to Z190.5, about two feet'],
       ['Thrown off', 'with the nose fairing, after the second stage’s cutoff'],
     ],
-    explode: along(LEFT_AZ, 4.2, 1.5),
-    order: 8,
   },
   {
     node: 'Cabin',
-    group: 'Spacecraft',
     name: 'Cabin section',
     summary: 'Beaded shingles of René 41 over a titanium frame; UNITED STATES and the flag on each side.',
     detail:
@@ -182,13 +156,9 @@ const parts: Part[] = [
       ['Paint', 'UNITED STATES and the flag, each side'],
       ['Name', 'none painted: "Molly Brown" by radio only'],
     ],
-    explode: [0, 6.0, 0],
-    order: 8,
   },
   {
     node: 'CrewStation',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Crew station',
     summary: 'Two ejection seats side by side before the panels this ship flew with, and the two men in them as they rode the launch.',
     detail:
@@ -219,12 +189,9 @@ const parts: Part[] = [
       ['Power', '4 main batteries of 45 Ah here; 3 of 400 Ah in the adapter'],
       ['Also aboard', 'one corned beef sandwich'],
     ],
-    explode: [0, 5.0, 0],
-    order: 9,
   },
   {
     node: 'HeatShield',
-    group: 'Spacecraft',
     name: 'Heat shield',
     summary: 'A shallow dish of resin-filled honeycomb, 90 inches across, that chars away.',
     detail:
@@ -239,13 +206,9 @@ const parts: Part[] = [
       ['Material', 'silicone-filled glass-fibre honeycomb'],
       ['After the flight', '"a very white cast"'],
     ],
-    explode: [0, 4.0, 0],
-    order: 10,
   },
   {
     node: 'RetroSection',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Adapter: retrograde section',
     summary: 'Four solid rockets to come home on, and thrusters that on this ship were dummies.',
     detail:
@@ -263,13 +226,9 @@ const parts: Part[] = [
       ['Lateral thrusters', '4, dummies on this ship'],
       ['Skin', 'magnesium, white ceramic paint'],
     ],
-    explode: [0, 3.0, 0],
-    order: 11,
   },
   {
     node: 'EquipmentSection',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Adapter: equipment section',
     summary: 'Propellant, oxygen, batteries and a radiator: everything wanted only in orbit.',
     detail:
@@ -298,13 +257,9 @@ const parts: Part[] = [
       ['Batteries', '3 silver-zinc, 400 Ah each'],
       ['Cut away', 'just before retrofire'],
     ],
-    explode: [0, 1.8, 0],
-    order: 12,
   },
   {
     node: 'TitanStage2',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Second stage',
     summary: 'Two tanks and the guidance between them. The tan band is insulation only the first three vehicles wore.',
     detail:
@@ -323,13 +278,9 @@ const parts: Part[] = [
       ['Spacecraft attached by', '20 bolts through external lugs'],
       ['External conduits', '1 (the missile had 2)'],
     ],
-    explode: [0, 0, 0],
-    order: 4,
   },
   {
     node: 'TitanStage2Engine',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Second stage engine',
     summary: 'One chamber of 100,000 lbf, lit before the stages part.',
     detail:
@@ -347,12 +298,9 @@ const parts: Part[] = [
       ['Roll control', 'the turbine’s exhaust, through a swivelling nozzle'],
       ['Cutoff', 'about five and a half minutes after liftoff'],
     ],
-    explode: [0, -2.6, 0],
-    order: 3,
   },
   {
     node: 'TitanInterstage',
-    group: 'Launch vehicle',
     name: 'Interstage',
     summary: 'The first stage’s top, with holes to let the second stage’s fire out.',
     detail:
@@ -368,13 +316,9 @@ const parts: Part[] = [
       ['Paint', 'eight panels, black on the diagonals'],
       ['Exhaust ports', 'in groups under the white panels'],
     ],
-    explode: [0, -5.6, 0],
-    order: 2,
   },
   {
     node: 'TitanStage1',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'First stage',
     summary: 'Seventy feet of tank with UNITED STATES down it, one letter under the next.',
     detail:
@@ -392,12 +336,9 @@ const parts: Part[] = [
       ['Paint', 'white band, black band, roll pattern'],
       ['Held', '24 min at T-35 min: a leaking oxidiser line'],
     ],
-    explode: [0, -7.6, 0],
-    order: 1,
   },
   {
     node: 'TitanStage1Engine',
-    group: 'Launch vehicle',
     name: 'First stage engine',
     summary: 'Two chambers on one frame: 430,000 lbf. And two pipes that stopped the vehicle shaking.',
     detail:
@@ -417,104 +358,8 @@ const parts: Part[] = [
       ['Against pogo', 'oxidiser standpipes, fuel accumulators'],
       ['Cutoff', 'about two and a half minutes after liftoff'],
     ],
-    explode: [0, -10.6, 0],
-    order: 0,
   },
 ];
-
-/** The first stage engines' exit plane below the model's origin (the spacecraft's Z103.44), m: 90 in of adapter and 1,071.278 in of launch vehicle. */
-const BASE = (90 + 1071.278) * IN;
-const REENTRY_MODULE = [
-  'NoseFairing',
-  'RendezvousRecovery',
-  'ReentryControl',
-  'Hatches',
-  'ScannerFairing',
-  'Cabin',
-  'CrewStation',
-  'HeatShield',
-];
-const SPACECRAFT = [...REENTRY_MODULE, 'RetroSection', 'EquipmentSection'];
-
-/** A seated man's helmet and what is in it (crew/g3c_suit.py: build_helmet), mesh by mesh. */
-const HELMET = [
-  'Shell',
-  'Liner',
-  'VisorSeal',
-  'Head',
-  'Hair',
-  'Eyes',
-  'Irises',
-  'Brows',
-  'Lips',
-  'Earphones',
-  'Microphones',
-  'Visor',
-  'VisorBand',
-  'Pivots',
-  'NeckRing',
-  'NeckRingJoint',
-];
-
-const vehicle: ModelDef = {
-  id: 'vehicle',
-  name: 'Vehicle',
-  url: 'models/usa/gemini/gt-3/vehicle.glb',
-  scale: '32.95 m tall · spacecraft 5.74 m · to scale',
-  // only the vehicle is built: it stands in the gallery, on its engines. Its launch site (Complex 19) is not built yet.
-  backdrop: 'studio',
-  slider: ['Assembled', 'Taken apart'],
-  cutaway: true,
-  specGroups: ['Spacecraft', 'Launch vehicle'],
-  // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
-  // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
-  // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
-  // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
-  // man's helmet and head are not drawn (`hide`): the eyes are inside them.
-  seats: [
-    {
-      node: 'Seat_CommandPilot',
-      label: 'the command pilot’s seat',
-      from: 'Hatches',
-      open: [-7200, -6000],
-      egress: ['pad'],
-      hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
-    },
-    {
-      node: 'Seat_Pilot',
-      label: 'the pilot’s seat',
-      from: 'Hatches',
-      open: [-7200, -6000],
-      egress: ['pad'],
-      hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
-    },
-  ],
-  parts,
-  position: [0, BASE, 0],
-  // The three cabin floodlights: one on each side and one at the centre (SEDR 300, p. 3-20); the model's fittings are
-  // `Lamp_Left`, `Lamp_Right` and `Lamp_Centre` (vehicles/gemini_cabin.py), their places estimated. Each light is put
-  // toward the middle of the cabin from its fitting, as Mercury's are, so that the wall beside it is not burnt. Colour
-  // and strength chosen by eye: estimated. The left one first (the command pilot's side is +Z in the viewer's axes).
-  lights: [
-    { position: [0.24, 0.8, 0.3], colour: 0xfff6ea, intensity: 0.55, reach: 3 },
-    { position: [0.24, 0.8, -0.3], colour: 0xfff6ea, intensity: 0.55, reach: 3 },
-    { position: [0.5, 0.78, 0], colour: 0xfff6ea, intensity: 0.45, reach: 3 },
-  ],
-  home: 'stack',
-  views: [
-    // as the liftoff was photographed: the lettering toward the eye, the conduit to its left
-    { id: 'stack', label: 'Full stack', from: along(LETTERS_AZ - 12, 0.1) },
-    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
-    { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT, from: along(LEFT_AZ + 30, 0.12) },
-    { id: 'reentry', label: 'Re-entry module', nodes: REENTRY_MODULE, from: along(LEFT_AZ + 40, 0.2) },
-    { id: 'hatches', label: 'Hatches', nodes: ['Hatches'], from: along(TOP_AZ - 12, 0.45) },
-    { id: 'adapter', label: 'Adapter', nodes: ['RetroSection', 'EquipmentSection'], from: along(LEFT_AZ + 25, 0.1) },
-    { id: 'stage2', label: 'Second stage', nodes: ['TitanStage2'], from: along(CONDUIT_AZ + 8, 0.1) },
-    { id: 'interstage', label: 'Interstage', nodes: ['TitanInterstage'], from: along(CONDUIT_AZ + 20, 0.1) },
-    { id: 'lettering', label: 'First stage', nodes: ['TitanStage1'], from: along(LETTERS_AZ - 6, 0.05) },
-    { id: 'engines', label: 'Engines', nodes: ['TitanStage1Engine'], from: along(CONDUIT_AZ - 20, -0.6) },
-  ],
-};
 
 /**
  * The crew station as somewhere to sit (types.ts: CabinDef; viewer/cabin.ts). The nodes are the model's
@@ -522,13 +367,7 @@ const vehicle: ModelDef = {
  * where it was built and every lamp is dark, and each says so. What this gives is the cabin lit as indoors by its own
  * three floodlights, its instruments and controls named, and its two windows to look out of.
  */
-/** The floodlights' red bulbs (SEDR 300, p. 3-20: each fixture had one): the colour is estimated, a red that keeps the eyes dark-adapted. */
-const RED_LIGHT = 0xff3018;
-const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
-const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
-const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
-const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
-vehicle.cabin = {
+const cabin: CabinDef = {
   within: ['CrewStation'],
   // the top of a seated man's head is toward the hatches, on +X (model/vehicle.py); the seats' 12° cant is not counted
   overhead: [1, 0, 0],
@@ -619,6 +458,55 @@ vehicle.cabin = {
     fittings: ['Lamp_Left', 'Lamp_Right', 'Lamp_Centre'],
   },
 };
+
+/** A seated man's helmet and what is in it (crew/g3c_suit.py: build_helmet), mesh by mesh. */
+const HELMET = [
+  'Shell',
+  'Liner',
+  'VisorSeal',
+  'Head',
+  'Hair',
+  'Eyes',
+  'Irises',
+  'Brows',
+  'Lips',
+  'Earphones',
+  'Microphones',
+  'Visor',
+  'VisorBand',
+  'Pivots',
+  'NeckRing',
+  'NeckRingJoint',
+];
+
+const vehicle = geminiTitanStack({
+  flight: 'gt-3',
+  parts,
+  // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
+  // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
+  // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
+  // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
+  // man's helmet and head are not drawn (`hide`): the eyes are inside them.
+  seats: [
+    {
+      node: 'Seat_CommandPilot',
+      label: 'the command pilot’s seat',
+      from: 'Hatches',
+      open: [-7200, -6000],
+      egress: ['pad'],
+      hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
+    },
+    {
+      node: 'Seat_Pilot',
+      label: 'the pilot’s seat',
+      from: 'Hatches',
+      open: [-7200, -6000],
+      egress: ['pad'],
+      hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
+    },
+  ],
+  cabin,
+});
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-3',
@@ -714,7 +602,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Length at launch',
-      value: 225.84 * IN,
+      value: SIZE.launchLength * IN,
       unit: 'm',
       confidence: 'documented',
       note: `225.84 in, launch configuration: Z13.44 to Z239.28 (${SEDR}, Figures 2-3 and 2-4); the press kit rounds it to 18 ft 5 in; model: 5.736 m`,
@@ -722,7 +610,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Length in orbit',
-      value: 219.03 * IN,
+      value: SIZE.orbitLength * IN,
       unit: 'm',
       confidence: 'documented',
       note: '219.03 in, orbit configuration (the same Figure 2-3): without the nose fairing, and without the inch and a half of adapter left on the launch vehicle',
@@ -730,7 +618,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Diameter at the adapter’s base',
-      value: 120 * IN,
+      value: SIZE.adapterBase * IN,
       unit: 'm',
       confidence: 'documented',
       note: '120.00 in (Figure 2-3); model: 3.048 m',
@@ -738,7 +626,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Heat shield diameter',
-      value: 90 * IN,
+      value: SIZE.heatShield * IN,
       unit: 'm',
       confidence: 'documented',
       note: '90.00 in (Figure 2-3; p. 2-18)',
@@ -746,7 +634,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Heat shield spherical radius',
-      value: 144 * IN,
+      value: SIZE.heatShieldRadius * IN,
       unit: 'm',
       confidence: 'documented',
       note: '144.0 in (Figure 2-3; p. 2-18)',
@@ -754,7 +642,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Adapter length',
-      value: 90 * IN,
+      value: SIZE.adapter * IN,
       unit: 'm',
       confidence: 'documented',
       note: '90.00 in, Z13.44 to Z103.44, tapering at 10° from 120.00 in to 88.30 in across (Figure 2-3)',
@@ -762,7 +650,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Cabin section length',
-      value: 70.53 * IN,
+      value: SIZE.cabin * IN,
       unit: 'm',
       confidence: 'documented',
       note: '70.53 in, Z103.44 to Z173.97, at 20° (Figure 2-3)',
@@ -770,7 +658,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Re-entry control section',
-      value: 18 * IN,
+      value: SIZE.reentryControl * IN,
       unit: 'm',
       confidence: 'documented',
       note: '18.00 in long and 38.66 in across (Figure 2-3)',
@@ -778,7 +666,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Rendezvous and recovery section',
-      value: 42 * IN,
+      value: SIZE.rendezvous * IN,
       unit: 'm',
       confidence: 'documented',
       note: '42.00 in, Z191.97 to Z233.97, tapering at 7° from Z201.47 (Figures 2-3 and 2-4). The figure’s end view dimensions a 32.30 in circle at its face; a 7° taper from 38.66 in gives 30.68 in, which is what the model has',
@@ -786,7 +674,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Window, aft edge above the heat shield’s rim',
-      value: (141.3 - 103.44) * IN,
+      value: (SIZE.windowAft - SIZE.cabinBase) * IN,
       unit: 'm',
       confidence: 'estimated',
       note: 'Z141.3, where the outer pane meets the skin, 41° round from the top; the opening about 14.8 in across and 8.5 in fore and aft. Read off NASA S65-21090 (the ship on the launch vehicle, 23 March 1965) through a camera fitted to the photograph: good to about two inches. SEDR 300’s Figure 2-10 marks Z136.50 at the pane’s sunk end, which the photographs do not bear out',
@@ -802,7 +690,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Hatch, forward edge above the heat shield’s rim',
-      value: (151.62 - 103.44) * IN,
+      value: (151.62 - SIZE.cabinBase) * IN,
       unit: 'm',
       confidence: 'estimated',
       note: 'Z151.62 is a station of Project Gemini: A Technical Summary (NASA CR-1106), Figure 1, drawn at the hatch’s forward edge; that it is that edge is read off the drawing',
@@ -826,7 +714,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Seat cant, outboard',
-      value: 12,
+      value: SIZE.seatCant,
       unit: 'deg',
       confidence: 'documented',
       note: '12° outboard and 8° forward (SEDR 300, p. 3-3)',
@@ -908,7 +796,7 @@ export const flight: Flight = {
     {
       group: 'Launch vehicle',
       label: 'Height on the pad',
-      value: (225.84 + 1071.278) * IN,
+      value: (SIZE.launchLength + SIZE.vehicleLength) * IN,
       unit: 'm',
       confidence: 'derived',
       note: `1,297.118 in: the spacecraft’s 225.84 in on the launch vehicle’s 1,071.278 in. The same figure follows from the next flight’s report, which puts the spacecraft’s tip at launch vehicle station 50.985 (${GIV}, Figure 3-1). The press kit says 109 ft; model: 32.947 m`,
@@ -916,16 +804,23 @@ export const flight: Flight = {
     {
       group: 'Launch vehicle',
       label: 'Launch vehicle length',
-      value: 1071.278 * IN,
+      value: SIZE.vehicleLength * IN,
       unit: 'm',
       confidence: 'documented',
       note: `1,071.278 in, "89 ft 3.278 in": station 276.825 to station 1348.103 (${LAUNCH_SYSTEMS}, Figure II.C-1). ${GIV}, Figure 3-1, has the engines at station 1342.31`,
     },
-    { group: 'Launch vehicle', label: 'Diameter', value: 120 * IN, unit: 'm', confidence: 'documented', note: '120 in (the same figure)' },
+    {
+      group: 'Launch vehicle',
+      label: 'Diameter',
+      value: SIZE.vehicleDiameter * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: '120 in (the same figure)',
+    },
     {
       group: 'Launch vehicle',
       label: 'First stage length',
-      value: 848.103 * IN,
+      value: SIZE.stage1 * IN,
       unit: 'm',
       confidence: 'documented',
       note: '848.103 in, from the separation plane at station 500 to the engines’ exit (the same figure); the press kit says 63 ft and Figure II.C-2 70.65 ft',
@@ -933,7 +828,7 @@ export const flight: Flight = {
     {
       group: 'Launch vehicle',
       label: 'Second stage forward skirt',
-      value: 22.326 * IN,
+      value: SIZE.skirt * IN,
       unit: 'm',
       confidence: 'documented',
       note: 'station 276.825 to 299.151 (the same figure); "22.55 inches" in the report’s text (p. II.C-8), which also has its insulation at half thickness on this vehicle',
@@ -956,34 +851,26 @@ export const flight: Flight = {
     },
   ],
   motors: [
-    {
-      name: 'Aerojet YLR87-AJ-7, first stage chamber',
-      count: 2,
-      thrustN: 215000 * LBF,
-      burnS: 154,
-      propellant: 'Aerozine 50 / nitrogen tetroxide',
-      kind: 'liquid',
-      // One confidence to an entry, and it is the weaker figure's. The Redstone's and the Atlas's entries are documented
-      // because both their figures are published ones (a nominal burn, a recorded cutoff). Here the thrust is documented
-      // and this flight's burn is a difference of documented times, which is what derived means: so, derived.
-      confidence: 'derived',
-      note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
-    },
-    {
-      name: 'Aerojet YLR91-AJ-7, second stage',
-      count: 1,
-      thrustN: 100000 * LBF,
-      burnS: 180,
-      propellant: 'Aerozine 50 / nitrogen tetroxide',
-      kind: 'liquid',
-      // the thrust and the cutoff are documented; the burn starts at a derived time, and the entry takes the weaker
-      confidence: 'derived',
-      note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at about 154 s, as above. The plan was 182 s',
-    },
+    ...titanEngines(
+      {
+        burnS: 154,
+        // One confidence to an entry, and it is the weaker figure's. The Redstone's and the Atlas's entries are documented
+        // because both their figures are published ones (a nominal burn, a recorded cutoff). Here the thrust is documented
+        // and this flight's burn is a difference of documented times, which is what derived means: so, derived.
+        confidence: 'derived',
+        note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
+      },
+      {
+        burnS: 180,
+        // the thrust and the cutoff are documented; the burn starts at a derived time, and the entry takes the weaker
+        confidence: 'derived',
+        note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at about 154 s, as above. The plan was 182 s',
+      },
+    ),
     {
       name: 'Retrograde rocket',
       count: 4,
-      thrustN: 2500 * LBF,
+      thrustN: THRUST.retrograde.value,
       burnS: 5.5,
       propellant: 'solid',
       kind: 'solid',
@@ -993,7 +880,7 @@ export const flight: Flight = {
     {
       name: 'OAMS attitude thruster',
       count: 8,
-      thrustN: 25 * LBF,
+      thrustN: THRUST.oamsAttitude.value,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
       confidence: 'documented',
       note: 'eight of 25 lb (Gemini Midprogram Conference, NASA SP-121, p. 16, whose text is misprinted "95"; the Chronology, 27 March 1965, has "25-pound thrusters")',
@@ -1001,7 +888,7 @@ export const flight: Flight = {
     {
       name: 'OAMS forward-firing thruster',
       count: 2,
-      thrustN: 85 * LBF,
+      thrustN: THRUST.oamsForward.value,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
       confidence: 'documented',
       note: 'two of 85 lb (NASA SP-121, p. 16)',
@@ -1009,7 +896,7 @@ export const flight: Flight = {
     {
       name: 'OAMS aft-firing thruster',
       count: 2,
-      thrustN: 100 * LBF,
+      thrustN: THRUST.oamsAft.value,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
       confidence: 'documented',
       note: `"two 100-pound thrusters, located at the base of the spacecraft" (NASA SP-121, p. 16). The four other 100 lb chambers, which translate sideways, up and down, were dummies on this spacecraft (${GIV}, 3.1.2.7)`,
@@ -1017,7 +904,7 @@ export const flight: Flight = {
     {
       name: 'Re-entry control thruster',
       count: 16,
-      thrustN: 25 * LBF,
+      thrustN: THRUST.reentryControl.value,
       propellant: 'monomethylhydrazine / nitrogen tetroxide',
       confidence: 'documented',
       note: `sixteen thrust chamber assemblies of 25 lb in two rings, burning monomethylhydrazine and nitrogen tetroxide (SEDR 300, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12)`,

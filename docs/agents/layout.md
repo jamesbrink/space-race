@@ -13,9 +13,10 @@ missions/                             the record: one folder per nation, program
     README.md                         the programme
     vehicles/  crew/                  hardware shared by several flights: <name>.py builds it,
                                       <name>.md records its dimensions, confidence, simplifications
-    vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day
+    vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
                                       (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
-                                      gemini-titan.ts, a Gemini on its Titan: the views, the cabin, the type's dimensions and thrusters;
+                                      gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
+                                      sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)

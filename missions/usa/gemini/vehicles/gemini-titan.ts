@@ -1,10 +1,12 @@
-import type { Confidence, ModelDef, Motor, Spec, ViewDef } from '../../../../src/types.ts';
+import { doc, type Measure } from '../../../../src/measure.ts';
+import type { CabinDef, Confidence, ModelDef, Motor, Part, Spec, ViewDef } from '../../../../src/types.ts';
 
 /**
  * A Gemini on its Titan, as flight data said once: what is the type's and so the same for every flight that is built
  * on vehicles/gemini_stack.py (the stack's views, its cabin as somewhere to sit, the dimensions McDonnell's and Martin's
- * drawings give, the thrusters). A flight says what was its own: its parts' words, its record, its weights and times.
- * Gemini-Titan 3 was written before this file and says all of it itself (flights/gt-3/flight.ts).
+ * drawings give, the engines and thrusters, how each part comes away). A flight says what was its own: its parts' words,
+ * its record, its weights and times, and what differed on its ship. Gemini-Titan 3 keeps its own notes on the type's
+ * dimensions and its own cabin (spacecraft 3 had no g.m.t. clock); the numbers it quotes are these.
  */
 
 export const IN = 0.0254;
@@ -56,8 +58,43 @@ export const GVII = 'Gemini Program Mission Report, Gemini VII (MSC-G-R-66-1)';
 export const KIT_7_6 = 'NASA release 65-362, the Gemini 7/6 press kit (29 November 1965)';
 export const LAUNCH_SYSTEMS = 'Gemini Program Launch Systems Final Report (Aerospace, January 1967)';
 
+/**
+ * The type's sizes, in the drawings' inches: the spacecraft's from McDonnell's (SEDR 300 vol. 1, Figures 2-3 and 2-4),
+ * the launch vehicle's from Martin's general arrangement (Launch Systems Final Report, Figure II.C-1). Quoted by
+ * `dimensions` and by Gemini-Titan 3's own specs; vehicles/gemini_spacecraft.py and vehicles/titan_ii_glv.py build to them.
+ */
+export const SIZE = {
+  /** Launch configuration, Z13.44 to Z239.28. */
+  launchLength: 225.84,
+  /** Orbit configuration: without the nose fairing and the inch and a half of adapter left on the launch vehicle. */
+  orbitLength: 219.03,
+  adapterBase: 120,
+  heatShield: 90,
+  heatShieldRadius: 144,
+  /** Z13.44 to Z103.44. */
+  adapter: 90,
+  /** Z103.44: the heat shield's rim, the cabin's foot and the model's origin. */
+  cabinBase: 103.44,
+  /** Z103.44 to Z173.97. */
+  cabin: 70.53,
+  reentryControl: 18,
+  /** Z191.97 to Z233.97. */
+  rendezvous: 42,
+  /** Z141.3, the window's aft edge: estimated, read off NASA S65-21090 (the `dimensions` note says how). */
+  windowAft: 141.3,
+  /** Degrees outboard (SEDR 300 vol. 1, p. 3-3). */
+  seatCant: 12,
+  /** Station 276.825 to station 1348.103. */
+  vehicleLength: 1071.278,
+  vehicleDiameter: 120,
+  /** Station 500 to the engines' exit. */
+  stage1: 848.103,
+  /** The second stage's forward skirt, station 276.825 to 299.151. */
+  skirt: 22.326,
+};
+
 /** The first stage engines' exit plane below the model's origin (the spacecraft's Z103.44), m: 90 in of adapter and 1,071.278 in of launch vehicle. */
-export const BASE = (90 + 1071.278) * IN;
+export const BASE = (SIZE.adapter + SIZE.vehicleLength) * IN;
 export const REENTRY_MODULE = [
   'NoseFairing',
   'RendezvousRecovery',
@@ -69,6 +106,73 @@ export const REENTRY_MODULE = [
   'HeatShield',
 ];
 export const SPACECRAFT = [...REENTRY_MODULE, 'RetroSection', 'EquipmentSection'];
+
+/** What a flight says of one of the stack's parts: its words, and anything that differed on its ship (a hatch that opened). */
+export type PartWords = Pick<Part, 'node' | 'name' | 'summary' | 'detail'> & Partial<Part>;
+
+/**
+ * How each of the stack's parts comes away, which is the type's: the model's top-level nodes (vehicles/gemini_stack.py),
+ * their heading in the parts list, whether they are inside, where they go at full explode and in what order. The
+ * spacecraft lifts off the top and the Titan's pieces drop below.
+ */
+const HARDWARE: Record<string, Pick<Part, 'group' | 'inside' | 'explode' | 'order'>> = {
+  NoseFairing: { group: 'Spacecraft', explode: [0, 9.4, 0], order: 5 },
+  RendezvousRecovery: { group: 'Spacecraft', inside: true, explode: [0, 8.2, 0], order: 6 },
+  ReentryControl: { group: 'Spacecraft', inside: true, explode: [0, 7.2, 0], order: 7 },
+  Hatches: { group: 'Spacecraft', explode: along(TOP_AZ, 3.8, 1.7), order: 8 },
+  ScannerFairing: { group: 'Spacecraft', explode: along(LEFT_AZ, 4.2, 1.5), order: 8 },
+  Cabin: { group: 'Spacecraft', explode: [0, 6.0, 0], order: 8 },
+  CrewStation: { group: 'Spacecraft', inside: true, explode: [0, 5.0, 0], order: 9 },
+  HeatShield: { group: 'Spacecraft', explode: [0, 4.0, 0], order: 10 },
+  RetroSection: { group: 'Spacecraft', inside: true, explode: [0, 3.0, 0], order: 11 },
+  EquipmentSection: { group: 'Spacecraft', inside: true, explode: [0, 1.8, 0], order: 12 },
+  TitanStage2: { group: 'Launch vehicle', inside: true, explode: [0, 0, 0], order: 4 },
+  TitanStage2Engine: { group: 'Launch vehicle', inside: true, explode: [0, -2.6, 0], order: 3 },
+  TitanInterstage: { group: 'Launch vehicle', explode: [0, -5.6, 0], order: 2 },
+  TitanStage1: { group: 'Launch vehicle', inside: true, explode: [0, -7.6, 0], order: 1 },
+  TitanStage1Engine: { group: 'Launch vehicle', explode: [0, -10.6, 0], order: 0 },
+};
+
+/**
+ * The stack as a model (types.ts: ModelDef), from what the flight says: its GLB's folder (`flight`, as under
+ * public/models/usa/gemini/), its parts' words in the order the parts list gives them (a part of the stack takes its
+ * place and how it comes away from `HARDWARE`; one the flight carried alone, a pod, says all of it), its seats, its
+ * views after the stack's own, and its cabin. Only the vehicle is built: it stands in the gallery, on its engines. Its
+ * launch site (Complex 19) is not built yet.
+ */
+export const geminiTitanStack = (ship: {
+  flight: string;
+  parts: PartWords[];
+  seats: NonNullable<ModelDef['seats']>;
+  views?: ViewDef[];
+  cabin: CabinDef;
+}): ModelDef => {
+  for (const node of Object.keys(HARDWARE)) {
+    if (!ship.parts.some((p) => p.node === node)) throw new Error(`${ship.flight}: no words for the stack's ${node}`);
+  }
+  for (const p of ship.parts) {
+    if (!HARDWARE[p.node] && (p.explode === undefined || p.order === undefined)) {
+      throw new Error(`${ship.flight}: ${p.node} is not the stack's, so it says where it goes and when`);
+    }
+  }
+  return {
+    id: 'vehicle',
+    name: 'Vehicle',
+    url: `models/usa/gemini/${ship.flight}/vehicle.glb`,
+    scale: '32.95 m tall · spacecraft 5.74 m · to scale',
+    backdrop: 'studio',
+    slider: ['Assembled', 'Taken apart'],
+    cutaway: true,
+    specGroups: ['Spacecraft', 'Launch vehicle'],
+    seats: ship.seats,
+    parts: ship.parts.map((p) => ({ ...HARDWARE[p.node], ...p }) as Part),
+    position: [0, BASE, 0],
+    lights: LIGHTS,
+    home: 'stack',
+    views: views(ship.views),
+    cabin: ship.cabin,
+  };
+};
 
 /** The stack's views; a flight adds its own after them (`more`). Each is of named parts, so it stays on them as the slider takes the vehicle apart. */
 export const views = (more: ViewDef[] = []): ViewDef[] => [
@@ -108,11 +212,11 @@ export const seats = (open: [number, number]): NonNullable<ModelDef['seats']> =>
 ];
 
 /** The floodlights' red bulbs (SEDR 300, p. 3-20: each fixture had one): the colour is estimated, a red that keeps the eyes dark-adapted. */
-const RED_LIGHT = 0xff3018;
-const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
-const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
-const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
-const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
+export const RED_LIGHT = 0xff3018;
+export const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
+export const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
+export const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
+export const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
 
 /**
  * The crew station as somewhere to sit (types.ts: CabinDef; viewer/cabin.ts), for a ship from spacecraft 4 on: the
@@ -226,7 +330,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Length at launch',
-    value: 225.84 * IN,
+    value: SIZE.launchLength * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `225.84 in, launch configuration: Z13.44 to Z239.28 (${whose}); ${vehicleFigure} has the same two stations for this vehicle; model: 5.736 m`,
@@ -234,7 +338,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Length in orbit',
-    value: 219.03 * IN,
+    value: SIZE.orbitLength * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `219.03 in, orbit configuration (${whose}): without the nose fairing, and without the inch and a half of adapter left on the launch vehicle`,
@@ -242,16 +346,23 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Diameter at the adapter’s base',
-    value: 120 * IN,
+    value: SIZE.adapterBase * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `120.00 in (${whose}); model: 3.048 m`,
   },
-  { group: 'Spacecraft', label: 'Heat shield diameter', value: 90 * IN, unit: 'm', confidence: spacecraft, note: `90.00 in (${whose})` },
+  {
+    group: 'Spacecraft',
+    label: 'Heat shield diameter',
+    value: SIZE.heatShield * IN,
+    unit: 'm',
+    confidence: spacecraft,
+    note: `90.00 in (${whose})`,
+  },
   {
     group: 'Spacecraft',
     label: 'Heat shield spherical radius',
-    value: 144 * IN,
+    value: SIZE.heatShieldRadius * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `144.0 in (${whose})`,
@@ -259,7 +370,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Adapter length',
-    value: 90 * IN,
+    value: SIZE.adapter * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `90.00 in, Z13.44 to Z103.44, tapering at 10° from 120.00 in to 88.30 in across (${whose})`,
@@ -267,7 +378,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Cabin section length',
-    value: 70.53 * IN,
+    value: SIZE.cabin * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `70.53 in, Z103.44 to Z173.97, at 20° (${whose})`,
@@ -275,7 +386,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Re-entry control section',
-    value: 18 * IN,
+    value: SIZE.reentryControl * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `18.00 in long and 38.66 in across (${whose})`,
@@ -283,7 +394,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Rendezvous and recovery section',
-    value: 42 * IN,
+    value: SIZE.rendezvous * IN,
     unit: 'm',
     confidence: spacecraft,
     note: `42.00 in, Z191.97 to Z233.97, tapering at 7° from Z201.47 (${whose})`,
@@ -291,7 +402,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Window, aft edge above the heat shield’s rim',
-    value: (141.3 - 103.44) * IN,
+    value: (SIZE.windowAft - SIZE.cabinBase) * IN,
     unit: 'm',
     confidence: 'estimated',
     note: 'Z141.3, where the outer pane meets the skin, 41° round from the top; the opening about 14.8 in across and 8.5 in fore and aft. Read off NASA S65-21090, which is spacecraft 3 on the morning it flew, and taken to be the same on this ship: good to about two inches',
@@ -299,7 +410,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Spacecraft',
     label: 'Seat cant, outboard',
-    value: 12,
+    value: SIZE.seatCant,
     unit: 'deg',
     confidence: spacecraft,
     note: '12° outboard and 8° forward (SEDR 300 vol. 1, p. 3-3)',
@@ -307,7 +418,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Launch vehicle',
     label: 'Height on the pad',
-    value: (225.84 + 1071.278) * IN,
+    value: (SIZE.launchLength + SIZE.vehicleLength) * IN,
     unit: 'm',
     confidence: 'derived',
     note: `1,297.118 in: the spacecraft’s 225.84 in on the launch vehicle’s 1,071.278 in. The same follows from ${vehicleFigure}, which puts the spacecraft’s tip at launch vehicle station 50.985 and the interface at 276.825; model: 32.947 m`,
@@ -315,7 +426,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Launch vehicle',
     label: 'Launch vehicle length',
-    value: 1071.278 * IN,
+    value: SIZE.vehicleLength * IN,
     unit: 'm',
     confidence: 'documented',
     note: `1,071.278 in, "89 ft 3.278 in": station 276.825 to station 1348.103 (${LAUNCH_SYSTEMS}, Figure II.C-1, which is the Gemini Launch Vehicle's general arrangement). ${vehicleFigure} has the engines at station 1342.31: not resolved`,
@@ -323,7 +434,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Launch vehicle',
     label: 'Diameter',
-    value: 120 * IN,
+    value: SIZE.vehicleDiameter * IN,
     unit: 'm',
     confidence: 'documented',
     note: `120 in (${LAUNCH_SYSTEMS}, Figure II.C-1)`,
@@ -331,7 +442,7 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Launch vehicle',
     label: 'First stage length',
-    value: 848.103 * IN,
+    value: SIZE.stage1 * IN,
     unit: 'm',
     confidence: 'documented',
     note: `848.103 in, from the separation plane at station 500 to the engines’ exit (${LAUNCH_SYSTEMS}, Figure II.C-1)`,
@@ -339,11 +450,47 @@ export const dimensions = (spacecraft: Confidence, whose: string, vehicleFigure:
   {
     group: 'Launch vehicle',
     label: 'Second stage forward skirt',
-    value: 22.326 * IN,
+    value: SIZE.skirt * IN,
     unit: 'm',
     confidence: 'documented',
     note: `station 276.825 to 299.151 (${vehicleFigure}; ${LAUNCH_SYSTEMS}, Figure II.C-1). Bare on this vehicle: the insulation GLV-1 to GLV-3 wore there was left off from GLV-4 (${GIV}, 3.2.1.2)`,
   },
+];
+
+/**
+ * The type's thrusts, N. Each flight's motor quotes these and says, in its own note, what was nominal and what was
+ * measured on its day. Retrograde and OAMS figures are the type's from spacecraft 3 on; the four lateral OAMS chambers
+ * that spacecraft 3 had as dummies were real from spacecraft 4.
+ */
+export const THRUST = {
+  /** One of the first stage's two YLR87-AJ-7 chambers, at liftoff. */
+  stage1Chamber: doc(
+    215000 * LBF,
+    '"about 430,000 pounds of thrust at lift-off" for the two chambers (NASA release 65-81, the Gemini-Titan 3 press kit, p. 40; release 65-158, the Gemini-Titan 4 press kit; Launch Systems Final Report, Figure II.C-2)',
+  ),
+  /** The second stage's YLR91-AJ-7, at altitude. */
+  stage2: doc(100000 * LBF, '"about 100,000 pounds of thrust at altitude" (the same press kits)'),
+  retrograde: doc(2500 * LBF, '"approximately 2500 pounds of thrust for 5.5 seconds" (NASA release 65-81, p. 8)'),
+  oamsAttitude: doc(25 * LBF, 'eight of 25 lb (Gemini Midprogram Conference, NASA SP-121, p. 16, whose text is misprinted "95")'),
+  oamsForward: doc(85 * LBF, 'two of 85 lb (NASA SP-121, p. 16)'),
+  oamsAft: doc(100 * LBF, 'two of 100 lb at the foot, firing aft, and four lateral (NASA SP-121, p. 16)'),
+  reentryControl: doc(25 * LBF, 'sixteen chambers of 25 lb in two rings (SEDR 300 vol. 1, Section VIII, pp. 8-281 to 8-284)'),
+} satisfies Record<string, Measure>;
+
+const STORABLE = 'Aerozine 50 / nitrogen tetroxide';
+/** What a flight says of one of its Titan's burns: how long (where it is known) and how sure, and its note. */
+export type Burn = Pick<Motor, 'confidence' | 'note'> & { burnS?: number };
+/** The Titan's two engines: the first stage's two chambers and the second stage's one, at the type's thrust. */
+export const titanEngines = (first: Burn, second: Burn): Motor[] => [
+  {
+    name: 'Aerojet YLR87-AJ-7, first stage chamber',
+    count: 2,
+    thrustN: THRUST.stage1Chamber.value,
+    propellant: STORABLE,
+    kind: 'liquid',
+    ...first,
+  },
+  { name: 'Aerojet YLR91-AJ-7, second stage', count: 1, thrustN: THRUST.stage2.value, propellant: STORABLE, kind: 'liquid', ...second },
 ];
 
 /** The spacecraft's own rockets and thrusters, which are the type's from spacecraft 4 on (all sixteen OAMS chambers real). */
@@ -351,7 +498,7 @@ export const thrusters = (whose: string): Motor[] => [
   {
     name: 'Retrograde rocket',
     count: 4,
-    thrustN: 2500 * LBF,
+    thrustN: THRUST.retrograde.value,
     burnS: 5.5,
     propellant: 'solid',
     kind: 'solid',
@@ -361,7 +508,7 @@ export const thrusters = (whose: string): Motor[] => [
   {
     name: 'OAMS attitude thruster',
     count: 8,
-    thrustN: 25 * LBF,
+    thrustN: THRUST.oamsAttitude.value,
     propellant: 'monomethylhydrazine / nitrogen tetroxide',
     confidence: 'assumed',
     note: `eight of 25 lb (Gemini Midprogram Conference, NASA SP-121, p. 16, whose text is misprinted "95"). The type's figure, taken for ${whose}`,
@@ -369,7 +516,7 @@ export const thrusters = (whose: string): Motor[] => [
   {
     name: 'OAMS forward-firing thruster',
     count: 2,
-    thrustN: 85 * LBF,
+    thrustN: THRUST.oamsForward.value,
     propellant: 'monomethylhydrazine / nitrogen tetroxide',
     confidence: 'assumed',
     note: `two of 85 lb (NASA SP-121, p. 16). The type's figure, taken for ${whose}`,
@@ -377,7 +524,7 @@ export const thrusters = (whose: string): Motor[] => [
   {
     name: 'OAMS aft-firing and lateral thruster',
     count: 6,
-    thrustN: 100 * LBF,
+    thrustN: THRUST.oamsAft.value,
     propellant: 'monomethylhydrazine / nitrogen tetroxide',
     confidence: 'assumed',
     note: `two of 100 lb at the foot, firing aft, and four that translate sideways, up and down, real ones from spacecraft 4 (NASA SP-121, p. 16; ${GIV}, 3.1.2.7). The type's figure, taken for ${whose}`,
@@ -385,7 +532,7 @@ export const thrusters = (whose: string): Motor[] => [
   {
     name: 'Re-entry control thruster',
     count: 16,
-    thrustN: 25 * LBF,
+    thrustN: THRUST.reentryControl.value,
     propellant: 'monomethylhydrazine / nitrogen tetroxide',
     confidence: 'assumed',
     note: `sixteen thrust chamber assemblies of 25 lb in two rings (SEDR 300 vol. 1, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12). The type's figure, taken for ${whose}`,

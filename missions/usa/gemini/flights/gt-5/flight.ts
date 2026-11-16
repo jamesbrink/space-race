@@ -1,35 +1,32 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
+import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import {
-  BASE,
   CHRONOLOGY,
   FT,
   GV,
   IN,
   LB,
-  LBF,
   LEFT_AZ,
-  LIGHTS,
   NMI,
   SEDR2,
   TITANS,
-  TOP_AZ,
   along,
   cabin,
   dimensions,
   seats,
   thrusters,
-  views,
+  type PartWords,
+  geminiTitanStack,
+  titanEngines,
 } from '../../vehicles/gemini-titan.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
 const PSI = 6894.757;
 
-const parts: Part[] = [
+const parts: PartWords[] = [
   {
     node: 'NoseFairing',
-    group: 'Spacecraft',
     name: 'Nose fairing',
     summary: 'A glass-fibre cap over the ship’s forward face, which on this ship had a radar on it.',
     detail:
@@ -47,13 +44,9 @@ const parts: Part[] = [
       ['By', 'a pyrotechnic piston'],
       ['Under it', 'the rendezvous radar'],
     ],
-    explode: [0, 9.4, 0],
-    order: 5,
   },
   {
     node: 'RendezvousRecovery',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Rendezvous and recovery section',
     summary: 'The first rendezvous radar to fly: four antennas on the ship’s nose, and nothing left to point them at.',
     detail:
@@ -75,13 +68,9 @@ const parts: Part[] = [
       ['Locked on a ground transponder', '27 h 4 min 2 s, over Cape Kennedy'],
       ['Main parachute', 'ring-sail, 84.2 ft'],
     ],
-    explode: [0, 8.2, 0],
-    order: 6,
   },
   {
     node: 'ReentryControl',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Re-entry control system section',
     summary: 'Sixteen small thrusters kept for the way home, and on this flight needed before it.',
     detail:
@@ -102,12 +91,9 @@ const parts: Part[] = [
       ['Used before retrofire', 'ring A, to line the ship up'],
       ['Landing', '89 nautical miles short: wrong figures from the ground'],
     ],
-    explode: [0, 7.2, 0],
-    order: 7,
   },
   {
     node: 'Hatches',
-    group: 'Spacecraft',
     name: 'Hatches',
     summary: 'Two doors, one over each man, shut for a week and a day.',
     detail:
@@ -128,12 +114,9 @@ const parts: Part[] = [
       ['Window opening', 'about 14.8 in across and 8.5 in fore and aft'],
       ['Opened in flight', 'no'],
     ],
-    explode: along(TOP_AZ, 3.8, 1.7),
-    order: 8,
   },
   {
     node: 'ScannerFairing',
-    group: 'Spacecraft',
     name: 'Horizon scanner fairing',
     summary: 'A bronze-coloured cover over the infrared eyes that find the horizon. On this ship it went during the climb.',
     detail:
@@ -149,12 +132,9 @@ const parts: Part[] = [
       ['Lies', 'from Z166.5 to Z190.5, about two feet'],
       ['Thrown off', '207.00 s after liftoff, with the nose fairing'],
     ],
-    explode: along(LEFT_AZ, 4.2, 1.5),
-    order: 8,
   },
   {
     node: 'Cabin',
-    group: 'Spacecraft',
     name: 'Cabin section',
     summary: 'Beaded shingles of René 41 over a titanium frame. Its crew called it the Covered Wagon.',
     detail:
@@ -175,13 +155,9 @@ const parts: Part[] = [
       ['Paint', 'UNITED STATES and the flag, each side: as spacecraft 3, assumed'],
       ['Name', 'none painted: "Covered Wagon" to its crew'],
     ],
-    explode: [0, 6.0, 0],
-    order: 8,
   },
   {
     node: 'CrewStation',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Crew station',
     summary: 'Two ejection seats side by side, for 190 hours 55 minutes: longer than anyone had yet stayed in space.',
     detail:
@@ -204,12 +180,9 @@ const parts: Part[] = [
       ['Power', 'two fuel cell sections in the adapter; 4 batteries of 45 Ah here for the way home'],
       ['Suits', 'G4C, without the outer cover: not modelled, the seats are empty'],
     ],
-    explode: [0, 5.0, 0],
-    order: 9,
   },
   {
     node: 'HeatShield',
-    group: 'Spacecraft',
     name: 'Heat shield',
     summary: 'A shallow dish of resin-filled honeycomb, 90 inches across, that chars away.',
     detail:
@@ -224,13 +197,9 @@ const parts: Part[] = [
       ['Material', 'silicone-filled glass-fibre honeycomb'],
       ['Entry load', '7.1 g by telemetry'],
     ],
-    explode: [0, 4.0, 0],
-    order: 10,
   },
   {
     node: 'RetroSection',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Adapter: retrograde section',
     summary: 'Four solid rockets that waited eight days to be fired, and did it in the dark.',
     detail:
@@ -250,13 +219,9 @@ const parts: Part[] = [
       ['Lateral thrusters', '4 × 100 lbf: about 5 s of firing in the flight'],
       ['Docking light', '4,000 beam candlepower, 6° beam: not modelled'],
     ],
-    explode: [0, 3.0, 0],
-    order: 11,
   },
   {
     node: 'EquipmentSection',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Adapter: equipment section',
     summary: 'The first fuel cells to power a crew, and the oxygen tank whose heater failed at 25 minutes.',
     detail:
@@ -286,8 +251,6 @@ const parts: Part[] = [
       ['Oxygen pressure', '853 psi, falling to about 70 by 4 h 22 min'],
       ['Drinking water', '2 tanks of 150 lb, one also taking the cells’ water'],
     ],
-    explode: [0, 1.8, 0],
-    order: 12,
   },
   {
     node: 'RadarEvaluationPod',
@@ -329,8 +292,6 @@ const parts: Part[] = [
   },
   {
     node: 'TitanStage2',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Second stage',
     summary: 'Two tanks and the guidance between them, with a bare skirt and nothing left over from the missile.',
     detail:
@@ -349,13 +310,9 @@ const parts: Part[] = [
       ['Flashing lights', 'none: GLV-4’s were not repeated'],
       ['Taken off since GLV-4', 'vernier engine brackets, FM telemetry, a tape recorder'],
     ],
-    explode: [0, 0, 0],
-    order: 4,
   },
   {
     node: 'TitanStage2Engine',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Second stage engine',
     summary: 'One chamber of 100,000 lbf, lit before the stages part.',
     detail:
@@ -373,12 +330,9 @@ const parts: Part[] = [
       ['Burned', '153.55 s to 333.28 s from liftoff'],
       ['Roll control', 'the turbine’s exhaust, through a swivelling nozzle'],
     ],
-    explode: [0, -2.6, 0],
-    order: 3,
   },
   {
     node: 'TitanInterstage',
-    group: 'Launch vehicle',
     name: 'Interstage',
     summary: 'The first stage’s top, with holes to let the second stage’s fire out.',
     detail:
@@ -395,13 +349,9 @@ const parts: Part[] = [
       ['Paint', 'eight panels, black on the diagonals'],
       ['Stages began to part', '154.29 s after liftoff'],
     ],
-    explode: [0, -5.6, 0],
-    order: 2,
   },
   {
     node: 'TitanStage1',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'First stage',
     summary: 'Seventy feet of tank with UNITED STATES down it, launched two days late and half a second early.',
     detail:
@@ -421,12 +371,9 @@ const parts: Part[] = [
       ['Paint', 'white band, black band, roll pattern: as GLV-3'],
       ['Weight at liftoff, with the spacecraft', '341,163 lb'],
     ],
-    explode: [0, -7.6, 0],
-    order: 1,
   },
   {
     node: 'TitanStage1Engine',
-    group: 'Launch vehicle',
     name: 'First stage engine',
     summary: 'Two chambers on one frame: 430,000 lbf. On this flight the cure for its shaking was left half undone.',
     detail:
@@ -448,32 +395,19 @@ const parts: Part[] = [
       ['Pogo on this flight', 'up to ±0.38 g, over the limit for about 13 s'],
       ['Cutoff', '153.55 s after liftoff'],
     ],
-    explode: [0, -10.6, 0],
-    order: 0,
   },
 ];
 
-const vehicle: ModelDef = {
-  id: 'vehicle',
-  name: 'Vehicle',
-  url: 'models/usa/gemini/gt-5/vehicle.glb',
-  scale: '32.95 m tall · spacecraft 5.74 m · to scale',
-  // only the vehicle is built: it stands in the gallery, on its engines. Its launch site (Complex 19) is not built yet.
-  backdrop: 'studio',
-  slider: ['Assembled', 'Taken apart'],
-  cutaway: true,
-  specGroups: ['Spacecraft', 'Launch vehicle'],
+const vehicle = geminiTitanStack({
+  flight: 'gt-5',
+  parts,
   // when this crew went aboard is not in what was read: taken as the flight before's count, T-100 minutes (On the
   // Shoulders of Titans, p. 245, of Gemini-Titan 4), the hatches shut twenty minutes after. Estimated
   seats: seats([-100 * 60, -80 * 60]),
-  parts,
-  position: [0, BASE, 0],
-  lights: LIGHTS,
-  home: 'stack',
-  views: views([
+  views: [
     { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
     { id: 'pod', label: 'Pod', nodes: ['RadarEvaluationPod'], from: along(LEFT_AZ + 30, -0.7) },
-  ]),
+  ],
   cabin: cabin({
     radar:
       'The range and closing speed of what the rendezvous radar has found. This was the first ship to carry the radar: it read the pod out to 7,721 ft.',
@@ -482,7 +416,7 @@ const vehicle: ModelDef = {
     power:
       'The pilot’s ammeter as spacecraft 3 had it. On this ship a monitor for the six fuel cell stacks stood here instead, which is not drawn.',
   }),
-};
+});
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-5',
@@ -724,28 +658,20 @@ export const flight: Flight = {
     },
   ],
   motors: [
-    {
-      name: 'Aerojet YLR87-AJ-7, first stage chamber',
-      count: 2,
-      thrustN: 215000 * LBF,
-      burnS: 153.55,
-      propellant: 'Aerozine 50 / nitrogen tetroxide',
-      kind: 'liquid',
-      // the burn is this flight's own; the thrust is the type's nominal, taken for this vehicle
-      confidence: 'assumed',
-      note: `a combined 430,000 lb of thrust for the two is the Gemini Launch Vehicle's nominal (NASA release 65-158, the Gemini-Titan 4 press kit), taken for GLV-5; on the day it was "higher than expected" (${GV}, 4.1). The burn is liftoff to the shutdown signal, 153.55 s, with the start signal 3.33 s before liftoff (Table 4.2-I)`,
-    },
-    {
-      name: 'Aerojet YLR91-AJ-7, second stage',
-      count: 1,
-      thrustN: 100000 * LBF,
-      burnS: 179.73,
-      propellant: 'Aerozine 50 / nitrogen tetroxide',
-      kind: 'liquid',
-      // the thrust is the type's nominal and the burn is a difference of two documented times: the entry takes the weaker
-      confidence: 'derived',
-      note: `100,000 lb of thrust at altitude is the type's nominal (the same press kit), "slightly higher than nominal" on the day (${GV}, 4.1). The burn is the start signal at 153.55 s to the shutdown signal at 333.28 s (Table 4.2-I): 179.73 s`,
-    },
+    ...titanEngines(
+      {
+        burnS: 153.55,
+        // the burn is this flight's own; the thrust is the type's nominal, taken for this vehicle
+        confidence: 'assumed',
+        note: `a combined 430,000 lb of thrust for the two is the Gemini Launch Vehicle's nominal (NASA release 65-158, the Gemini-Titan 4 press kit), taken for GLV-5; on the day it was "higher than expected" (${GV}, 4.1). The burn is liftoff to the shutdown signal, 153.55 s, with the start signal 3.33 s before liftoff (Table 4.2-I)`,
+      },
+      {
+        burnS: 179.73,
+        // the thrust is the type's nominal and the burn is a difference of two documented times: the entry takes the weaker
+        confidence: 'derived',
+        note: `100,000 lb of thrust at altitude is the type's nominal (the same press kit), "slightly higher than nominal" on the day (${GV}, 4.1). The burn is the start signal at 153.55 s to the shutdown signal at 333.28 s (Table 4.2-I): 179.73 s`,
+      },
+    ),
     ...thrusters('spacecraft 5, whose propulsion system "was the same as the spacecraft 4 system" (the Gemini V mission report, 3.1.2.7)'),
   ],
   models: [vehicle],
