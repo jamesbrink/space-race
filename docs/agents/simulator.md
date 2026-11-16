@@ -23,20 +23,109 @@ speeds and climb angles at separation, loads, event times), each with an `id` th
 `Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
 never adjusted to bring a check in.
 
+## The core
+
+The rules every simulator, predictor and deck keeps. Each names the one place it lives; a second copy is a bug.
+
+- **One plan for every kind of flight** (`sim/plan.ts`). A `FlightPlan` is `{ kind, craft[], events[], attitude[], gravity?,
+  winds?, checks[], record? }`.
+  - `Craft`: `bodies`, the `joints` between them, `engines`, `tanks`, `thrusters`, `chutes`, `limits` and the stack's `drag`.
+    - A joint carries its `push`, the bodies it lets go (`gone`), what it `covers` and the joints it `holds` (a fairing
+      over the spacecraft), any `hot` staging, and the record's mass after it parts (`after`) and of what leaves (`leaves`).
+    - An engine draws on tanks and carries a throttle, a gimbal and a number of `starts`. A thruster set does rotation,
+      translation or both.
+  - `EventDef`: `{ id, label, when: Trigger[], do: Action[], automatic, at?, record?, source, armed? }`.
+    - Every trigger in `when` must hold: `time`, `after` another event (+`wait`), `height` going up or down, `speed`
+      (space-fixed, or an engine's `apparent` velocity), `g`, a hand's `command`, `falling`.
+    - `do` lists the actions, in order: `ignite`, `cut`, `throttle`, `separate`, `deploy`, `release`, `attitude`, `arm`.
+    - `at` is the record's instant; `record` names the record's own event at that instant (set on every timed event at one).
+    - An event marked `armed: false` waits for an `arm`.
+  - `record.marks` are the record's instants that set nothing off. An instant counts as an event's only where the clock sets
+    that event off, so a stage cut on its velocity leaves its record instant a mark.
+  - `PlanCheck.when` says where a figure is read: an instant, the most while some bodies are aboard, the most while an
+    engine burns.
+  - `problems(plan)` says in words what is wrong with a plan. A plan is checked before it is flown.
+  - A flight of a kind already flown is a new plan, not new code. tests/plan.test.mjs holds a Gemini shape in it, with
+    figures of 1.
+- **Plans from today's data** (`sim/planof.ts`). `planOfTrajectory` and `planOfOrbital` carry every figure over as it was.
+  - Where the plan wants a figure the old shape lacks, it is `derived` and says how: the booster's and tower's masses at
+    the pad, the retropack's, a vacuum specific impulse.
+  - `EngineDef.flown` is the impulse the record's coast flies.
+  - Ids are generated: a stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
+  - `BodyDef` and `TankDef` figures are all the units together.
+  - These go when the flights' data says its plan itself.
+- **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
+  which events have happened and which are armed, and the attitude held. It is never changed in place.
+  - `act` does one action if the hardware lets it, and otherwise returns a `Refusal` for the simulator to word: an engine
+    starts only `starts.count` times, some only on the ground; a solid cannot be cut or throttled; what is gone cannot act.
+  - `due` gives the events whose triggers all hold; `fire` sets one off.
+  - `part` parts a joint once the simulator's physics lets it go. Whether what is let go is still pressed on
+    (staging.ts `pressed`) is physics, not the machine's. `heldBy` is a joint held on by another.
+  - The live staged vehicle's `stages` and `drops` are the machine's state as its forces read them. The live ballistic
+    vehicle's `shed` is the same.
+  - A hand's commands are the plan's actions and events (`Controls.do`, `Controls.events`; `StagedControls.events`).
+- **A record's run is its plan flown by the record's pilot.**
+  - `fly` is `flyPlan`: the craft on the machine, every automatic event set off as it comes due (by the clock, or at a
+    height coming down). Each instant one is due at, and each solid motor's burning out, ends a step.
+    - What burns is what is lit and still aboard, along the attitude held: the tilt programme (`programmeAxis`), or the
+      retro attitude.
+    - The air meets the stack's drag while the body it stood on is aboard, and the last body's `aero` with its parachutes
+      after.
+    - The mass is the record's at a parting that gives one (`after`); otherwise it is less what leaves.
+  - The orbital batch reads what happens when from the plan's events: staged.ts `sequenceOf` and orbital.ts `coastOf`.
+    - `sequenceOf`: each stage lit, cut (at an instant, on a speed, on its apparent velocity) and let go by the joint that
+      first lets its body go; the drops; the record's instants by id.
+    - `coastOf`: the burn the coast flies, the parting of the body it is on, and the height what comes down is let loose
+      at.
+    - Its stage figures are still the records'.
+  - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
+- **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
+  their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
+  - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.
+  - fliers.ts `descending` flies the same object for the path ahead, handing over to the followed body as it is let loose,
+    and begins part-way down from the run's `states`. `spacecraft` with `descend` goes on into it; without it the
+    spacecraft stops at the ejection height.
+  - tests/descending.test.mjs holds the predicted landings to flyDown's.
+- **One frame** (`world/earthframe.ts`). `frameOf(flight)` is the inertial frame of date: the Sun's, the Moon's and the
+  published elements'. Every simulator, predictor, deck and view of a run shares it.
+  - `toFixed`/`toInertial`/`place`/`up`/`upOver` take an instant. `LIFTOFF` is the liftoff-fixed frame, kept for tests:
+    tests/frame.test.mjs holds the two within a millimetre.
+  - Level is the ellipsoid's (`up`), never the line to the centre.
+- **One body of flight physics.** One function each, which every flier calls:
+  - the air at a point: air.ts `airAt` (place, height, the 1976 air, the motion through it with the day's wind);
+  - drag: air.ts `airDrag`, -1/2 rho |w| w CdA;
+  - thrust in air: thrust.ts `nozzleThrust`, n (throttle Fvac - Ae p). A sea-level figure's vacuum one is `vacuumOf`,
+    labelled derived;
+  - the fixed step: core/rk4.ts `rk4` (a point) and `rk4Body` (a rigid body), and `acceleration`, gravity plus the push.
+    The predictor's DP45 takes the same;
+  - gravity as terms: core/gravity.ts. The Earth with J2 is the default; a third body is a point mass; the central body
+    can be switched; the Moon and Sun are on Meeus and estimated;
+  - G0, J2 and P0: world/bodies.ts;
+  - the tear rule: loads.ts `tearOf`; the 0.05 g mark: `ENTRY_G`; a parachute's filling: `chuteArea`;
+  - the apparent-velocity integrator: apparent.ts; when a load is spent: `spentAt`; one separation, along the joint's
+    axis: forces.ts `keptShare`;
+  - the predictor's horizons: predict.ts `Horizons`. Its work is resumable in slices (`Predictor.run(budget)`, `Flier.prepare`).
+  - Different physics, and kept so: forces.ts `airForces` on a rigid body against a point's drag; flyDown's several canopies
+    against a capsule's one; shed.ts `apart`; leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust
+    against weight).
+- **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds 740
+  frame-free figures (heights, speeds, times, places, elements), as doubles, against `tests/fixtures/figures.json`.
+  - Exact doubles differ between machines. So the capture is made and compared on hal9000 only, and it is not part of
+    `pnpm check`. (On a Mac, compare a tree against a capture of its own base: `--write --against <file>`, then `--against <file>`.)
+  - "Bit for bit" means all 740 equal to the last bit.
+  - A commit that moves any figure says why, proves the cause where it can (e.g. the move gone with the one change undone),
+    quotes the `pnpm figures` diff in its body, blesses the capture again on hal9000 (`--write`) in the same commit, and
+    restates any README or mission.md figure whose rounding shows the move.
+- **A miss is recorded, not hidden.** One table, `src/sim/misses.ts` `MISSES`, by flight (or fixture), run and check. One
+  rule holds every run to it: tests/misses.mjs `holdChecks`.
+  - A check outside its tolerance must be in the table, with how far out it is (`by`, or `absolute`; give or take
+    `slack`) and why.
+  - The test fails on a miss nobody recorded, on one that has moved past its slack, on one that has come within
+    tolerance, and on one that names no check.
+  - Tolerances are set before a run; nothing is fitted.
+
 ## Every flight
 
-- **A miss is recorded, not hidden.** Every run held to checks (`tests/sim.test.mjs` the whole flight and the capsule's
-  half; orbital, staged, stagedlive and abort theirs) is held by one rule (tests/misses.mjs `holdChecks`) to one table,
-  `src/sim/misses.ts` `MISSES`, by flight (or fixture), run and check: a check outside its tolerance must be there with
-  how far out it is (`by`, a fraction of the check, or in its unit where `absolute`; give or take `slack`) and why, naming
-  the input most likely to blame. The test fails on a miss nobody recorded, on a recorded miss that has moved past its
-  slack, on one that has come within tolerance (take it off), and on a miss that names no check. So the list is the
-  truth either way, and improving an input means updating it.
-- **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds
-  each run's key results, as doubles, against `tests/fixtures/figures.json`: only figures that do not depend on the
-  inertial frame (heights, speeds, times, places on the Earth, elements). Exact doubles differ between machines, so the
-  capture is made and compared on hal9000 and it is not part of `pnpm check`. A commit that changes the simulator quotes
-  its diff; one that moves a figure says why, and blesses the capture again (`--write`) in the same commit.
 - **The inputs that are not documented are listed and weighed.** The last test names every
   `assumed`, `derived` and `estimated` input and prints how far a 5 % change in each moves the results; a
   new input that is not documented must be added there. An `assumed` input (the type's or a sister vehicle's
@@ -48,49 +137,6 @@ never adjusted to bring a check in.
 - **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
   are measured from the geodetic normal (the flight frame's `up`, world/earthframe.ts), not from the line to the Earth's
   centre, which leans a sixth of a degree from it at the Cape.
-- **One body of flight physics, and what is still apart.** One function each, which every flier calls: the tear rule
-  (loads.ts `tearOf`: vehicle.ts as a parachute is let out and while out, fliers.ts's prediction, orbital.ts flyDown's
-  bodies as each is let out and while out); the ground under a place (forces.ts `floorAt`: vehicle.ts, shed.ts,
-  fliers.ts `floorOf`, stagedlive.ts's landing); gravity with J2 (world/orbit.ts `gravity`; as terms, core/gravity.ts: the Earth's with J2 by default, a third body
-  as a point mass, the Moon or the Earth at the centre, which the predictor takes as `Ground.gravity`; the Moon's and the
-  Sun's pulls are on Meeus's places and estimated until the JPL ephemeris); the air at a point (air.ts `airAt`: where it is over, its height,
-  the standard air there and the motion through it, with the day's wind where there is one); a point's drag and a
-  parachute's on a rigid body (air.ts `airDrag`, -1/2 rho |w| w CdA); thrust in air (thrust.ts `nozzleThrust`, n (throttle
-  Fvac - Ae p), a ballistic flight's vacuum figure derived from its sea-level one, `vacuumOf`); the fixed step (core/rk4.ts:
-  `rk4` for a point, world/orbit.ts `step`'s and fly.ts's; `rk4Body` for a rigid body, vehicle.ts's and shed.ts's;
-  `acceleration`, gravity and the push summed, which the predictor's pair takes too: tests/step.test.mjs); a parachute's
-  filling (fly.ts `chuteArea`); the entry's 0.05 g (loads.ts `ENTRY_G`); a stage's apparent-velocity integrator
-  (apparent.ts: the batch run's, the live vehicle's and the guided flier's); when a
-  load is spent (staged.ts `spentAt`, the batch run's schedule and the live vehicle's `dry`); a stage's flow
-  (`flowOf`); the staging rules (staging.ts) and the structure's (loads.ts `strain`) on both live vehicles. Where two were
-  the same physics in different arithmetic, merging them moved the figures in their last digits, and each commit says by
-  how much (`pnpm figures`). Different physics, and
-  kept so: forces.ts `airForces` (axial, normal and broadside on a rigid body) against the point masses' drag;
-  flyDown's several canopies at once against a capsule's one at a time; shed.ts `apart` (a strap-on's swing about its
-  ball); leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust against weight). A new flight is data on
-  this: its stages, drops, limits and `hot` in `Flight.orbital`, or its `trajectory.body`; nothing names a vehicle.
-- **One plan for every kind of flight.** What a flight is flown from is a `FlightPlan` (sim/plan.ts): its craft (bodies,
-  the joints between them with their push, what they cover and hold and any hot staging; engines that draw on tanks, with a
-  throttle, a gimbal and a number of starts; thruster sets that turn it, push it along, or both; parachutes; limits),
-  the events that change it (each `when` a set of triggers that must all hold: a time, so long after another event, a
-  height passed going up or down, a speed or an engine's apparent velocity, a load, a hand's command; each `do` a list
-  of actions: ignite, cut, throttle, separate, deploy, release, attitude, arm), the attitudes it is held in, and the
-  record's checks, each saying where in the flight it is read. A flight of a kind already flown is a new plan and no new
-  code: tests/plan.test.mjs says a Gemini on its Titan in it (two stages on their own tanks, hot staging, translation
-  thrusters, a lifting entry) with figures of 1, as a shape and not as data. `problems` is what is wrong with a plan, in
-  words. Until the runs read plans and the flights' data says its own, sim/planof.ts makes one from each of today's two
-  shapes, every figure carried over as it was, and the test holds each plan to what it was made from.
-- **One machine.** What is lit, let go and gone, what parachute is out, which events have happened and which are armed,
-  and the attitude held, are kept for every craft by sim/craft.ts on its plan: `act` does one action if the hardware
-  lets it (an engine starts so many times, some only on the ground; a solid cannot be cut; what is gone cannot act) and
-  says why where it does not, `due` is the events whose triggers all hold, `fire` sets one off, and `part` parts a joint
-  once the simulator's physics lets it (whether what is let go is still pressed on is physics, not the machine's). The
-  live staged vehicle is flown on it: its `stages` and `drops` are the machine's state as the forces read it, and the
-  record's pilot gives the plan's events as they come due. The live ballistic vehicle keeps on it what has left it, which
-  parachute is out and which of its events (the retrorockets' sequence, an abort) have happened, `shed` being its view;
-  a hand's commands are the plan's (`Controls.do`, `Controls.events`), and its old switches are the same commands by
-  their old names. Its engine and retrorockets are still its own until the record's pilot gives the plan's events.
-  tests/craft.test.mjs holds each rule on a plan of its own.
 - **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
@@ -185,13 +231,6 @@ never adjusted to bring a check in.
   turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
   its undocumented inputs listed; Freedom 7's own record figures are held on Freedom 7 alone). Every flight into orbit is
   held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
-- **The record's run is the plan flown by the record's pilot.** `fly` is `flyPlan` on the plan made of the trajectory:
-  the craft on the one machine, every automatic event set off as it comes due (by the clock, or at a height coming
-  down), each instant one is due at and each solid motor's burning out ending a step. What burns is what is lit and
-  still aboard, along the attitude held; the air meets the stack's drag while the body it stood on is aboard and the
-  last body's with its parachutes after; the mass is the record's at a parting that gives one and otherwise less what
-  leaves. So the escape tower leaves the record's run at its jettison (Freedom 7's 0.4 s after cutoff, Liberty Bell 7's
-  at it), where before it rode to separation: the coast between is lighter by it.
 - **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
   (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
   the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
@@ -325,7 +364,7 @@ never adjusted to bring a check in.
   drag, what it puts out and when, the air's tearing) which the path ahead flies too (fliers.ts `descending`;
   tests/descending.test.mjs holds the predicted landings to flyDown's). `tests/staged.test.mjs` holds the ascent's, the coast's and
   the descent's checks against their misses (src/sim/misses.ts), lists every input that is not documented and prints what each moves, the
-  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage. What happens when is read from the plan's events (staged.ts `sequenceOf`: each stage lit, cut at an instant or on a speed, let go; the drops; the record's instants by id; orbital.ts `coastOf`: the burn the coast flies, the parting, the height what comes down is let loose at), not from the stage records' times; the figures are still the records' until the flights say their plans.
+  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage. What happens when is read from the plan's events ("The core").
   A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
   sensed since its ignition) reaches the setting (found within the step by the secant, so the instant is smooth in the
   inputs), and its recorded `cutoff` becomes a check (Vostok 1's Block E, on the flight task's apparent velocity). How
