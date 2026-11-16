@@ -1,4 +1,4 @@
-import type { Engine, PlaceDef } from '../../../../src/types.ts';
+import type { Confidence, Measure, PlaceDef } from '../../../../src/types.ts';
 import { ARAL_1960 } from './aral-1960.ts';
 
 /**
@@ -61,19 +61,52 @@ export const TYURATAM: PlaceDef = {
     source: 'derived: each material’s name says what it is (concrete, gravel, clay, a steel rail or deck, a timber tie)',
   },
   // The engines of the vehicles at the pad, by the name a vehicle's model gives itself (its extras' `vehicle`) or a move
-  // names. Each is the type's usual engine as remembered, not checked against a manual; the locomotive's type is not
-  // recorded at all: estimated throughout
+  // names: which engine each type had and the speed it is rated at, from reference works (docs/sources.md, "Site 1
+  // (Tyuratam)"); no idle speed was found for any, and each is estimated. The locomotive's type is not recorded.
   engines: {
-    'GAZ-21 Volga, 1958-62': engine('petrol', 4, 550, 4000, 'the ZMZ-21 2.45 litre four'),
-    'LAZ-695B': engine('petrol', 6, 450, 2800, 'the ZIL-158’s 5.55 litre straight six'),
-    'GAZ-63': engine('petrol', 6, 450, 2800, 'the GAZ-51’s 3.48 litre straight six'),
-    'diesel shunting locomotive': engine(
-      'diesel',
-      6,
-      300,
-      740,
-      'a TEM1’s 2D50 six (which kind of locomotive worked the site’s track is not recorded)',
-    ),
+    'GAZ-21 Volga, 1958-62': {
+      fuel: 'petrol',
+      cylinders: 4,
+      idle: idling(550),
+      most: rpm(4000, 'documented', 'the ZMZ-21A’s 70 to 75 hp at 4,000 rpm (ru.wikipedia, «ГАЗ-21», Силовой агрегат)'),
+      confidence: 'documented',
+      source: 'the ZMZ-21A, a 2,445 cc straight four (ru.wikipedia, «ГАЗ-21», Силовой агрегат and infobox)',
+    },
+    'LAZ-695B': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(450),
+      most: rpm(2800, 'documented', '109 hp at 2,800 rpm (ru.wikipedia, «ЗИЛ-158», Технические характеристики)'),
+      confidence: 'documented',
+      source:
+        'the ZIL-158’s side-valve 5.55 litre straight six (ru.wikipedia, «ЛАЗ-695»; Za Rulyom, «ЛАЗ-695Е: конструкция», 2025): called the ZIL-124 in ' +
+        'some sources, the same engine; the ZIL-130 V8 was the 695E’s, from 1963',
+    },
+    'GAZ-63': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(450),
+      most: rpm(2800, 'documented', 'the GAZ-51’s 70 hp at 2,800 rpm (ru.wikipedia, «ГАЗ-63», infobox)'),
+      confidence: 'documented',
+      source: 'the GAZ-51, a 3,485 cc straight six (ru.wikipedia, «ГАЗ-63» and «ГАЗ-51»)',
+    },
+    'diesel shunting locomotive': {
+      fuel: 'diesel',
+      cylinders: 6,
+      idle: rpm(
+        270,
+        'assumed',
+        'the D50’s lowest controller position, 270 ± 15 rpm (ru.wikipedia, «ТЭ1», Органы управления), taken for the 2D50 developed from it',
+      ),
+      most: rpm(
+        740,
+        'assumed',
+        'the TEM1’s 2D50 at 740 rpm, 1,000 hp (ru.wikipedia, «ТЭМ1» and «ТЭМ2»), taken for a locomotive of unrecorded type',
+      ),
+      confidence: 'assumed',
+      source:
+        'a TEM1’s 2D50, a six-cylinder diesel (ru.wikipedia, «ТЭМ1»): which kind of locomotive worked the site’s track is not recorded',
+    },
   },
   // The sky a flight from here stands under when it has no record of its own day: the steppe's clear, dry air. Every
   // figure is an estimate. Vostok 1 has its day's (its flight's weather.ts).
@@ -129,6 +162,11 @@ export const TYURATAM: PlaceDef = {
   },
 };
 
-function engine(fuel: Engine['fuel'], cylinders: number, idle: number, most: number, what: string): Engine {
-  return { fuel, cylinders, idle, most, confidence: 'estimated', source: `the type’s usual engine, from memory: ${what}` };
+/** An engine's speed, revolutions a minute, with how sure it is and whose it is. */
+function rpm(value: number, confidence: Confidence, source: string): Measure {
+  return { value, confidence, source };
+}
+/** An idle speed no source read gives. */
+function idling(value: number): Measure {
+  return rpm(value, 'estimated', 'its idle: no source read gives it');
 }

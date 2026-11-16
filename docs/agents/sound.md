@@ -43,7 +43,7 @@ plays until the page has been touched, and a hidden page is suspended.
   `machinery` how far along it is, and the sound hears the change: the slider, a hand and the clock alike. Still is
   silent; starting, running and stopping are a kind's own (`MACHINES`). At the wheel the walker makes no footfalls and
   no breath and reports `driving`; the engine is the vehicle's own (`PlaceDef.engines`, by the name its model or its
-  move gives), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
+  move gives: which engine, its idle and its rated speed, each with its confidence, from the makers' manuals or reference works where found), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
   the land is painted as there, a road, an apron, a track's bed, by the name its ground gives it, `GroundSpec.painted`,
   worked from the lines its shader draws, each with its confidence; else the land), a voice for each surface its
   wheels are on, as that surface's share of them. A driven vehicle's wheels are asked of the solids under each hub;

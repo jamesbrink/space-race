@@ -1,4 +1,4 @@
-import type { Engine, PlaceDef } from '../../../../src/types.ts';
+import type { Confidence, Measure, PlaceDef } from '../../../../src/types.ts';
 
 /**
  * Cape Canaveral: the place every American crewed flight of the 1960s left from, and what is the same for every pad in
@@ -244,23 +244,147 @@ export const CAPE_CANAVERAL: PlaceDef = {
     source: 'derived: each material’s name says what it is (concrete, gravel, a steel rail or deck, a timber tie)',
   },
   // The engines of the vehicles at the pads, by the name each vehicle's model gives itself (its extras' `vehicle`) or a
-  // move names. Each is the type's usual engine as remembered, not checked against a manual: estimated throughout
+  // move names: each type's engine and the speed it is rated at, from the makers' literature where it was found, else
+  // reference works or secondary sources (docs/sources.md, "The Cape"). Which of a type's engines a car on
+  // the day had is not recorded: where a type had several, the one taken is `assumed`. Idle speeds are estimated but
+  // for Chevrolet's, whose owner's manuals give them.
   engines: {
-    '1956 Ford Fairlane Town Sedan': engine('petrol', 8, 475, 4400, 'Ford’s 272 or 292 cu in Y-block V8'),
-    '1957 Ford Custom 300 Fordor': engine('petrol', 8, 475, 4400, 'Ford’s 272 cu in Y-block V8'),
-    '1957 Ford Country Sedan': engine('petrol', 8, 475, 4400, 'Ford’s 272 cu in Y-block V8'),
-    '1957-60 Ford F-100 Flareside': engine('petrol', 6, 450, 4000, 'Ford’s 223 cu in straight six, the work truck’s usual'),
-    '1957-60 Ford F-100 Flareside with a utility body': engine('petrol', 6, 450, 4000, 'Ford’s 223 cu in straight six'),
-    '1958-60 Rambler American': engine('petrol', 6, 550, 4200, 'Nash’s 196 cu in flathead six'),
-    '1959 Chevrolet Biscayne sedan': engine('petrol', 6, 475, 4200, 'Chevrolet’s 235 cu in straight six, the Biscayne’s base engine'),
-    '1960 Chevrolet Corvair 700 sedan': engine('petrol', 6, 500, 4400, 'the Corvair’s air-cooled 140 cu in flat six'),
-    '1960 Chevrolet Suburban Carryall': engine('petrol', 6, 450, 4000, 'Chevrolet’s 235 cu in straight six'),
-    'Volkswagen Type 1, 1958-61': engine('petrol', 4, 850, 3900, 'the air-cooled 1192 cc flat four'),
-    'M275 2-1/2-ton 6x6 truck tractor, NASA': engine('petrol', 6, 550, 3400, 'the M35 family’s REO Gold Comet straight six'),
-    'International Harvester R-series truck': engine('petrol', 6, 450, 3400, 'an IH Black Diamond straight six, the R-series’ usual'),
+    '1956 Ford Fairlane Town Sedan': {
+      fuel: 'petrol',
+      cylinders: 8,
+      idle: idling(475),
+      most: rpm(4600, 'assumed', 'the 292’s 200 hp at 4,600 rpm (en.wikipedia, “1955 Ford”, the 1956 engines, citing the 1956 brochures)'),
+      confidence: 'assumed',
+      source:
+        'the Fairlane’s 292 cu in Y-block V8 (en.wikipedia, “1955 Ford”, citing the 1956 brochures); a 272 V8 or the 223 six were to be had, and ' +
+        'which this car had is not recorded',
+    },
+    '1957 Ford Custom 300 Fordor': {
+      fuel: 'petrol',
+      cylinders: 8,
+      idle: idling(475),
+      most: rpm(
+        4400,
+        'estimated',
+        'not in Ford’s brochure; 4,400 rpm by secondary sources, which disagree on the 272’s rating (over-drive-magazine.com)',
+      ),
+      confidence: 'assumed',
+      source:
+        'the 272 cu in Y-block V8, which Ford offered in the Custom and the Custom 300 only (“’57 Ford Engines and Transmissions”, Ford, 1957); the ' +
+        '223 six was every model’s base engine, and which this car had is not recorded',
+    },
+    '1957 Ford Country Sedan': {
+      fuel: 'petrol',
+      cylinders: 8,
+      idle: idling(475),
+      most: rpm(
+        4700,
+        'estimated',
+        'not in Ford’s brochure; the 292’s 212 hp at 4,700 rpm by a secondary source (over-drive-magazine.com, 1957 fact sheet)',
+      ),
+      confidence: 'assumed',
+      source:
+        'the 292 cu in Y-block V8, the “basic V-8” in the station wagons (“’57 Ford Engines and Transmissions”, Ford, 1957); the 223 six was ' +
+        'every model’s base engine, and which this car had is not recorded',
+    },
+    '1957-60 Ford F-100 Flareside': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(450),
+      most: rpm(
+        4200,
+        'estimated',
+        '139 hp at 4,200 rpm by secondary sources (auto-data.net; the 1958 to 1960 ratings are given as 131 to 139 hp): no Ford source found',
+      ),
+      confidence: 'estimated',
+      source: 'Ford’s 223 cu in straight six, the F-100’s base engine, by secondary sources (auto-data.net, fordf100s)',
+    },
+    '1957-60 Ford F-100 Flareside with a utility body': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(450),
+      most: rpm(4200, 'estimated', 'as the Flareside’s: 139 hp at 4,200 rpm by secondary sources (auto-data.net)'),
+      confidence: 'estimated',
+      source: 'Ford’s 223 cu in straight six, by secondary sources (auto-data.net, fordf100s)',
+    },
+    '1958-60 Rambler American': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(550),
+      most: rpm(4200, 'estimated', 'no rated speed found for the 195.6 L-head’s 90 hp'),
+      confidence: 'documented',
+      source: 'the 195.6 cu in L-head straight six, 90 hp (en.wikipedia, “Rambler American”, first generation)',
+    },
+    '1959 Chevrolet Biscayne sedan': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: rpm(475, 'documented', 'with the manual box, in neutral: 1959 Chevrolet Passenger Car Owner’s Manual, “Engine Idle Speeds”'),
+      most: rpm(4000, 'documented', 'the 235’s 135 hp at 4,000 rpm: 1959 Chevrolet Passenger Car Owner’s Manual, p. 30'),
+      confidence: 'documented',
+      source: 'Chevrolet’s 235 cu in straight six, the Biscayne’s base engine (1959 Chevrolet Passenger Car Owner’s Manual, p. 30)',
+    },
+    '1960 Chevrolet Corvair 700 sedan': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(500),
+      most: rpm(
+        4400,
+        'estimated',
+        '80 hp gross at 4,400 rpm (65 net at 3,600) by a club’s catalogue: R. Garrido, The Corvair Catalog, 1960',
+      ),
+      confidence: 'documented',
+      source: 'the Corvair’s air-cooled 140 cu in flat six (R. Garrido, The Corvair Catalog, 1960)',
+    },
+    '1960 Chevrolet Suburban Carryall': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: rpm(475, 'documented', 'with the manual box, in neutral: 1960 Chevrolet Truck Operator’s Manual'),
+      most: rpm(4000, 'documented', 'the Thriftmaster 235’s 135 hp at 4,000 rpm: 1960 Chevrolet Truck Operator’s Manual, p. 131'),
+      confidence: 'documented',
+      source: 'Chevrolet’s 235.5 cu in Thriftmaster straight six (1960 Chevrolet Truck Operator’s Manual, p. 131)',
+    },
+    'Volkswagen Type 1, 1958-61': {
+      fuel: 'petrol',
+      cylinders: 4,
+      idle: idling(850),
+      most: rpm(
+        3900,
+        'assumed',
+        'the 34 PS engine’s 3,900 rpm, from August 1960 (en.wikipedia, “Volkswagen air-cooled engine”); a car of 1958 to 1960 had 30 PS at 3,700',
+      ),
+      confidence: 'documented',
+      source: 'the air-cooled 1,192 cc flat four (en.wikipedia, “Volkswagen air-cooled engine”)',
+    },
+    'M275 2-1/2-ton 6x6 truck tractor, NASA': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(550),
+      most: rpm(3400, 'documented', '146 hp gross at 3,400 rpm (en.wikipedia, “List of US Army tactical truck engines”)'),
+      confidence: 'documented',
+      source:
+        'the M35 family’s 331 cu in straight six, REO’s OA-331 or Continental’s COA-331 (en.wikipedia, “M35 2½-ton cargo truck”, citing TM 9-2800-1, 1953)',
+    },
+    'International Harvester R-series truck': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: idling(450),
+      most: rpm(
+        3800,
+        'estimated',
+        'the Silver Diamond 240’s 131 hp at 3,800 rpm as a museum gives it from 1953 literature (BC Vintage Truck Museum, 1953 R-160); Wikipedia has 108 hp',
+      ),
+      confidence: 'estimated',
+      source:
+        'a straight six of IH’s Diamond family; which R-series truck it was, and which engine, is not recorded (en.wikipedia, “International R series”)',
+    },
   },
 };
 
-function engine(fuel: Engine['fuel'], cylinders: number, idle: number, most: number, what: string): Engine {
-  return { fuel, cylinders, idle, most, confidence: 'estimated', source: `the type’s usual engine, from memory: ${what}` };
+/** An engine's speed, revolutions a minute, with how sure it is and whose it is. */
+function rpm(value: number, confidence: Confidence, source: string): Measure {
+  return { value, confidence, source };
+}
+/** An idle speed no source read gives. */
+function idling(value: number): Measure {
+  return rpm(value, 'estimated', 'its idle: no source read gives it');
 }

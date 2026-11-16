@@ -420,7 +420,8 @@ for (const each of ORBITERS) {
 // On the ground (issues #2 and #4): a driven vehicle, and the machines that move a site's parts (model.ts `Works`).
 
 const HEAR = 0.05; // (index.ts sets the engine every 50 ms)
-const ENGINE = { fuel: 'petrol', cylinders: 6, idle: 450, most: 4000, confidence: 'estimated', source: 'a test' };
+const rpm = (value) => ({ value, confidence: 'estimated', source: 'a test' });
+const ENGINE = { fuel: 'petrol', cylinders: 6, idle: rpm(450), most: rpm(4000), confidence: 'estimated', source: 'a test' };
 /** `seconds` of hearings of a `Works`, each source given by `at(t)` (null: not posed), from `ears`: what each hearing gave. */
 function hearings(sources, seconds, ears = [5, 1.7, 0], works = new Works(), land = 'concrete') {
   const out = [];
@@ -494,7 +495,7 @@ test('seated at the wheel, the walker makes no footfalls and no breath and says 
 
 test('a driven vehicle: its engine idles standing and turns faster and louder with its speed and its throttle', () => {
   const idle = engineVoice(ENGINE, 0, 11, 0);
-  assert.equal(idle.rpm, ENGINE.idle);
+  assert.equal(idle.rpm, ENGINE.idle.value);
   assert.ok(Math.abs(idle.firing - (450 / 60) * 3) < 1e-9, 'a four-stroke six fires three times a turn');
   let was = idle;
   for (const v of [1, 3, 6, 9, 11]) {
@@ -502,7 +503,7 @@ test('a driven vehicle: its engine idles standing and turns faster and louder wi
     assert.ok(e.rpm > was.rpm && e.level > was.level && e.buzz.hertz > was.buzz.hertz, `at ${v} m/s`);
     was = e;
   }
-  assert.ok(engineVoice(ENGINE, 11, 11, 1).rpm <= ENGINE.most + 1e-9, 'never past its most');
+  assert.ok(engineVoice(ENGINE, 11, 11, 1).rpm <= ENGINE.most.value + 1e-9, 'never past its most');
   assert.ok(engineVoice(ENGINE, 4, 11, 1).level > engineVoice(ENGINE, 4, 11, 0).level + 8, 'under load it is louder');
   assert.ok(engineVoice({ ...ENGINE, fuel: 'diesel' }, 0, 11, 0).level > idle.level, 'a diesel is the louder');
   // heard: idling while it stands, and its engine voice following the speed
@@ -857,4 +858,18 @@ test('what rolls on rails at a site says how far apart their joints are, as data
     const j = move.runs.joints;
     assert.ok(j && j.value > 5 && j.value < 40 && j.confidence && j.source, `${f.id} ${p.node}: its rails' joints`);
   }
+});
+
+test('every engine at a site says which it was and at what speeds, each with its confidence and its source (#29)', () => {
+  const kinds = ['documented', 'assumed', 'derived', 'estimated'];
+  const places = new Map(flights.map((f) => [f.site.place.name, f.site.place]));
+  let documented = 0;
+  for (const place of places.values())
+    for (const [name, e] of Object.entries(place.engines)) {
+      for (const m of [e.idle, e.most]) assert.ok(kinds.includes(m.confidence) && m.source.length > 10, `${name}: ${JSON.stringify(m)}`);
+      assert.ok(kinds.includes(e.confidence) && e.source.length > 10, name);
+      assert.ok(e.idle.value > 0 && e.idle.value < e.most.value, `${name}: idles under its most`);
+      if (e.most.confidence === 'documented') documented++;
+    }
+  assert.ok(documented >= 6, `${documented} rated speeds documented`);
 });

@@ -187,9 +187,10 @@ export interface Machine {
 export interface Engine {
   fuel: 'petrol' | 'diesel';
   cylinders: number;
-  /** Revolutions a minute at idle, and the most it was run to. */
-  idle: number;
-  most: number;
+  /** Revolutions a minute at idle, and the most it was run to (its rated speed, where that is published), each with its own confidence. */
+  idle: Measure;
+  most: Measure;
+  /** Which engine it was, its fuel and its cylinders: how sure, and whose. */
   confidence: Confidence;
   source: string;
 }

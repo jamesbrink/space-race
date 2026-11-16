@@ -667,7 +667,7 @@ export function engineVoice(engine: Engine, speed: number, top: number, throttle
   const v = clamp(Math.abs(speed) / Math.max(1, top), 0, 1);
   const pedal = clamp(throttle, 0, 1);
   const turn = clamp(0.65 * v + 0.35 * pedal, 0, 1);
-  const rpm = engine.idle + (engine.most - engine.idle) * turn;
+  const rpm = engine.idle.value + (engine.most.value - engine.idle.value) * turn;
   const firing = (rpm / 60) * (Math.max(1, engine.cylinders) / 2);
   const load = clamp(0.25 * v + 0.75 * pedal, 0, 1);
   const diesel = engine.fuel === 'diesel';
