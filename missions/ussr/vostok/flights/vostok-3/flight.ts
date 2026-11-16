@@ -399,7 +399,11 @@ const launcherParts: PartWords[] = [
 ];
 
 // The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
-const COMMANDS = vostokCommands({ parted: 'the sequence, ten seconds after the burn (not recorded)', reserve: null });
+const COMMANDS = vostokCommands({
+  parted: 'the sequence, ten seconds after the burn (not recorded)',
+  reserve: null,
+  pilot: { they: 'he', theirs: 'his' },
+});
 
 /** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
 const vehicle = site1Vehicle(
@@ -430,6 +434,26 @@ const crew = sk1Crew({
       ['Visor', 'double, closes by itself on loss of pressure'],
       ['Lettering', '"СССР", red (the film of the morning)'],
     ],
+  },
+  suit: {
+    kind: {
+      value: 'SK-1',
+      confidence: 'documented',
+      source: 'Abramov and Skoog, Russian Spacesuits, pp. 41 to 44',
+    },
+    wearer: { name: 'Nikolayev', they: 'he', their: 'his' },
+    gloves: {
+      value: 'cover',
+      confidence: 'estimated',
+      source:
+        'as built for Gagarin: the cover’s orange backs. That he wore gloves is Kamanin’s (12 August 1962: he told him to put them on before the count); their colour is in nothing read, and no photograph of the morning was looked at for it. Probably wrong: the SK-1s kept since have black leather gloves (crew/sk-1.md)',
+    },
+    neck: { value: 'grey', confidence: 'estimated', source: 'as Gagarin’s (crew/sk-1.md): not checked for this morning' },
+    mirror: {
+      value: true,
+      confidence: 'assumed',
+      source: 'Gagarin’s, documented by the Smithsonian’s label, taken for his: nothing read says whether his sleeve had one',
+    },
   },
 });
 
