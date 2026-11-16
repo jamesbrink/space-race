@@ -802,6 +802,25 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   an eighth over each patch with an edge (`gDeckBody`, `gDeckMean`, `gDeckNear`): near, separate cloudlets with the sea
   between; far, the same sea a tone lighter. (In the flip count every hard edge of the cel look scores, along the sides of
   each cloudlet, as if the count's chase view swayed a little between its frames: fewer, larger shapes lower it.)
+- **The clouds stand in the air, not round the eye.** A cloud moves with the day's wind and with nothing else: what is
+  drawn of it may depend on how far off it is only through what a pixel can show (each level of detail by the pixel's
+  footprint), never through a distance from the eye. The sheets are layers the eye climbs into and out of the top of
+  (clouds.ts `SHEET_DEPTH`: the deck 300 m deep from the record's base, the high cloud 800 m about its height, as the
+  shared chunk's veil steps the Sun's light; both estimated): a ray is given as much of a layer as it passes through
+  (`layerThrough`), all of it from outside, from inside what is left of it that way, and is drawn half way through
+  that part (from outside the layer's middle, so the deck 150 m over its base, while its shadow is still cast from
+  the base: 400 m off in a dapple 3 km across at a low Sun; from inside, half way to where the ray
+  leaves it), so what is drawn where does not jump as the eye goes in or out; a ray a little under level from inside
+  or over a layer meets it whole again far off, over the Earth's curve, behind. In the cel look a sheet's tones are cut from the
+  whole layer and laid on by the share passed through (cut from the share, each flat tone swept over the view at
+  once). They had been faded out within 3 km (the deck) and 8 km (the high cloud) of the eye: on Liberty Bell 7's
+  climb a hole went up with the vehicle, the marched cumulus showing through it round the ship as if they followed it,
+  and the veil overhead was clear within 8 km of it all the way up to it. The march itself was measured world-fixed
+  then and is held so: `pnpm test:clouds` flies a held camera up through each flight's layers at 250 m/s, carries every
+  point of cloud surface the march finds into the next frame by the world and the wind (97 % at least where the next
+  frame's march has it, 0.5 % at most drawn unchanged at the pixel it was at), looks at each sheet from 300 m and 2 km
+  off (the same), and crosses each layer looking level and down (a change from one frame to the next must shrink as
+  the climb between them is halved: a step does not).
 - **The deck's shadow is its patches', on everything, from above.** `deckShadeAt` (weather.ts) is the deck where the
   ray to the Sun crosses it, as its patches with the share of each that is cloud, not its cloudlets (whose shadows the
   Sun's disc blurs by 33 m): a soft grey dapple 3 km from each patch away from the Sun at liftoff (Sun at 50 degrees).

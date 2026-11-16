@@ -84,7 +84,8 @@ const VEIL_LAYER = 7;
  * cloud does not shimmer. Glass, which writes no depth either, is still laid over by cloud behind it.
  *
  * Over the cumulus lie the day's two sheets (`sheet`, in OVER): the middle deck and the high cloud, each on a shell
- * at the height the day's record has it (written into the shader: `overGlsl`), drawn at the frame's pixels. The high cloud
+ * at the height the day's record has it (written into the shader: `overGlsl`), drawn at the frame's pixels, and each a
+ * layer of its own depth that the eye climbs into and out of (`SHEET_DEPTH`, `layerThrough`). The high cloud
  * is fibres of cirrus, or, where the record has cirrostratus over the sky, a veil: a smooth milky sheet the Sun's
  * disc shows through with a glow round it, whiter the lower the eye looks (the sight line is longer in it), lit by
  * the Sun as it stands at the veil's own height (so it is lit before sunrise on the ground and after sunset), and
@@ -186,6 +187,34 @@ const FRAY_THIN = 0.25;
 const SUN_GAIN = 1.65;
 /** The Earth's sphere (world/bodies.ts): the layer is a shell this far plus its height from the centre under the site. */
 const EARTH = EARTH_SPHERE;
+
+/**
+ * How deep the two sheets are, metres: the eye climbs into each and out of the top of it (`layerThrough`). The deck
+ * is a layer of altocumulus a few hundred metres deep, from the record's base up; the high cloud is taken about its
+ * height, as deep as the step in the Sun's light under it (air.ts: the shared chunk's veil, over 400 m each way).
+ * Neither depth is recorded for any day: both estimated.
+ */
+export const SHEET_DEPTH = { deck: 300, high: 800 } as const;
+
+/**
+ * How much of a layer from `lo` to `hi` (metres above the sea) a ray from an eye `eyeH` up, going `ud` of the way
+ * straight up (the cosine), passes through before the scene's surface `d` along it: 1 from outside the layer (a sheet
+ * drawn from outside is drawn whole), and from inside it what is left of its depth that way, so 0 just as the eye
+ * leaves it. A function of the eye's height and the ray alone: nothing about where the eye is over the ground.
+ * (Flat over the layer's depth: a few hundred metres of the Earth's curve are nothing to it.)
+ */
+export function layerThrough(eyeH: number, lo: number, hi: number, ud: number, d: number): number {
+  if (!(eyeH > lo && eyeH < hi)) return 1;
+  const left = ud > 0 ? hi - eyeH : eyeH - lo;
+  return Math.min(left, d * Math.abs(ud)) / (hi - lo);
+}
+/** The same in GLSL (kept to the letter of the above: tests/clouds.test.mjs). */
+export const LAYER_THROUGH_GLSL = /* glsl */ `
+  float layerThrough(float eyeH, float lo, float hi, float ud, float d) {
+    if (!(eyeH > lo && eyeH < hi)) return 1.0;
+    float left = ud > 0.0 ? hi - eyeH : eyeH - lo;
+    return min(left, d * abs(ud)) / (hi - lo);
+  }`;
 
 /** A cloud's outline, to be marched again finer (`CloudPass.fine`): where the march's neighbouring pixels differ by this much opacity. */
 const EDGE = 0.1;
@@ -686,8 +715,15 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
  */
 export const overGlsl = (day: Day | null | undefined): string => {
   const high = highOf(day);
-  const deckHeight = (day?.deck.height ?? DECK_HEIGHT).toFixed(1),
-    highHeight = (day?.high.height ?? HIGH_HEIGHT).toFixed(1);
+  const deckAt_ = day?.deck.height ?? DECK_HEIGHT,
+    highAt_ = day?.high.height ?? HIGH_HEIGHT;
+  const deckHeight = deckAt_.toFixed(1),
+    highHeight = highAt_.toFixed(1);
+  // (each sheet's layer: the deck from the record's base up, the high cloud about the height it is drawn at)
+  const deckLo = deckAt_.toFixed(1),
+    deckHi = (deckAt_ + SHEET_DEPTH.deck).toFixed(1),
+    highLo = (highAt_ - SHEET_DEPTH.high / 2).toFixed(1),
+    highHi = (highAt_ + SHEET_DEPTH.high / 2).toFixed(1);
   /** The sky's light on what is under the high cloud: with what it gives back, on a day that has any. */
   const sky = high ? 'skyLight' : 'uSkyLight';
   /**
@@ -1023,13 +1059,39 @@ export const overGlsl = (day: Day | null | undefined): string => {
     return vec4(celTone(l, 1e-3 + max(even, along), hz), 1.0) * (mix(cut, acc.a, max(even, along)) * shown);
   }
 
-  // The sheets over the cumulus: the middle deck (\`kind\` 0) and the cirrus (1), each on a shell at its own height
+  ${LAYER_THROUGH_GLSL}
+  // The sheets over the cumulus: the middle deck (\`kind\` 0) and the cirrus (1), each drawn on a shell in its layer
   // (weather.ts), seen from above, from under, and along. Drawn here, at the frame's pixels: they are thin, and
-  // have no depth to march.
+  // have no depth to march. Each is a layer of its own depth all the same (SHEET_DEPTH: the deck from its base up, the
+  // high cloud about its height), and a ray is given as much of it as it passes through (layerThrough): all of it from
+  // outside, from inside only what is left of it that way. So the eye climbs into a sheet and out of the top of it,
+  // and nothing of the sheet is cut away round the eye wherever it is (it was, within 3 and 8 km of it: a hole that
+  // went up with the vehicle, the cumulus seen through it as if they followed it).
+  vec4 sheetAt(vec3 dir, int kind, float height, float tm, float limb, float through, float d, float dv, float veil);
   vec4 sheet(vec3 dir, int kind, float d, float dv, float veil) {
     float height = kind == 0 ? ${deckHeight} : ${highHeight};
-    float limb, tm = shellHit(dir, height, limb);
-    if (tm < 0.0 || hidden(tm, d)) return vec4(0.0);
+    float lo = kind == 0 ? ${deckLo} : ${highLo}, hi = kind == 0 ? ${deckHi} : ${highHi};
+    // A sheet is drawn where the ray is half way through the part of its layer it passes through: from outside, the
+    // layer's middle; from inside, half way between the eye and where the ray leaves it. So as the eye goes in or out,
+    // what is drawn where is what was drawn there a moment before (drawn at the base from outside and nearer the eye
+    // from inside, it was taken from another place of the sheet the instant the eye came in).
+    float mid = 0.5 * (lo + hi);
+    float ud = dot(uUp, dir);
+    bool within = uEyeH > lo && uEyeH < hi;
+    float through = layerThrough(uEyeH, lo, hi, ud, d);
+    float limb, tm = shellHit(dir, !within ? mid : ud > 0.0 ? 0.5 * (uEyeH + hi) : 0.5 * (uEyeH + lo), limb);
+    vec4 near = tm > 0.0 && through > 0.0 && (within || !hidden(tm, d)) ? sheetAt(dir, kind, height, tm, limb, through, d, dv, veil) : vec4(0.0);
+    // A ray a little under level from inside the layer or over it comes up into it again far off, over the Earth's
+    // curve, if it misses the Earth: the whole of it, behind (from just under the layer the same ray meets only that,
+    // and without it the band along the horizon went as the eye came in)
+    if (ud >= 0.0 || uEyeH <= lo) return near;
+    float b = uRe * ud, c = (uEyeH - mid) * (uRe + EARTH + mid), disc = b * b - c;
+    if (b * b - uEyeH * (uRe + EARTH) > 0.0) return near;   // (into the Earth first)
+    float far = uEyeH < mid ? shellHit(dir, mid, limb) : disc > 0.0 ? sqrt(disc) - b : -1.0;
+    if (far <= 0.0 || hidden(far, d)) return near;
+    return near + (1.0 - near.a) * sheetAt(dir, kind, height, far, 1.0, 1.0, d, dv, veil);
+  }
+  vec4 sheetAt(vec3 dir, int kind, float height, float tm, float limb, float through, float d, float dv, float veil) {
     vec3 v = dir * tm;
     vec3 up = normalize(uRe * uUp + v);
     float cosv = max(abs(dot(up, dir)), 0.05);
@@ -1058,17 +1120,22 @@ ${
     vec2 slope = kind == 0 ? gDeckSlope : vec2(0.0);
     float shaded = kind == 0 ? gDeckShade : 1.0;
     // looked along, a sheet is as many times thicker as the ray is longer in it
-    float along = min(1.0 / cosv, uEyeH < height ? 2.2 : kind == 0 ? 5.0 : 3.5);${
+    // (seen from under it or from over it by which way the ray crosses it there: from inside the layer, up and down
+    // are each a side of it; from outside, the side the eye is on)
+    bool under = dot(up, dir) > 0.0;
+    float along = min(1.0 / cosv, under ? 2.2 : kind == 0 ? 5.0 : 3.5);${
       high?.veil
         ? /* glsl */ `
     // (a veil the more so from under it: it is whole, so toward the horizon the sky under it is white)
-    if (uEyeH < height) along = min(1.0 / cosv, mix(2.2, 6.0, veiled));`
+    if (under) along = min(1.0 / cosv, mix(2.2, 6.0, veiled));`
         : ''
     }
-    a = 1.0 - pow(1.0 - a, along);
-    // (and the eye goes through it, not into a wall: nothing of it close by)
-    float fade = limb * smoothstep(0.0, kind == 0 ? 3000.0 : 8000.0, tm);
-    a *= fade;
+    float fade = limb;
+    // (and only as much of its depth as the ray goes through: from inside it, so much less the nearer the eye is to
+    // leaving it that way. A drawing is cut from the whole layer's opacity and laid on by the share passed through:
+    // cut from that share, each flat tone was swept over the view at once as the eye went through it)
+    float whole = (1.0 - pow(1.0 - a, along)) * fade;
+    a = (1.0 - pow(1.0 - a, along * through)) * fade;
     // (a drawing's cloudlets and their mean, apart: below)
     float body = kind == 0 ? (1.0 - pow(1.0 - gDeckBody, along)) * fade : 0.0;
     float mean = kind == 0 ? (1.0 - pow(1.0 - gDeckMean, along)) * fade : 0.0;
@@ -1086,7 +1153,6 @@ ${
     }`
     : /* glsl */ `    vec3 sunWhite = sunOn(height, up, v);`
 }
-    bool under = uEyeH < height;
     // from above, its lit top (the cirrus's ice a little brighter toward the Sun); from under, the light that comes
     // through it, most where the Sun is behind it, and the sky's
     float toSun = max(dot(dir, ${sun}), 0.0);
@@ -1125,14 +1191,14 @@ ${
       // thinner sheet between them), thinning out in sheaves where the record's cover gives way (weather.ts
       // heldDistance), so no line is drawn round it.
       if (!under) {
-        float sheaves = step(0.34, a), between = step(0.1, a) * (1.0 - sheaves);
+        float sheaves = step(0.34, whole), between = step(0.1, whole) * (1.0 - sheaves);
         if (sheaves + between <= 0.0) return vec4(0.0);
         vec3 lit = sunWhite * 0.95 + skyLight;
-        return vec4(mix(lit, uHaze, hz), 1.0) * ((0.78 * sheaves + 0.32 * between) * shown);
+        return vec4(mix(lit, uHaze, hz), 1.0) * ((0.78 * sheaves + 0.32 * between) * shown * through);
       }
       float washed = smoothstep(0.5, 0.9, high);
       if (washed <= 0.0) return vec4(0.0);
-      float wash = ${(Math.min(high.depth, 0.6)).toFixed(3)} * (under ? 1.25 : 1.0) * smoothstep(0.45, 0.55, washed) * fade;
+      float wash = ${(Math.min(high.depth, 0.6)).toFixed(3)} * (under ? 1.25 : 1.0) * smoothstep(0.45, 0.55, washed) * fade * through;
       vec3 flat_ = under ? skyLight * 1.1 + sunWhite * 0.35 : sunWhite * 0.95 + skyLight;
       return vec4(mix(flat_, uHaze, hz), 1.0) * (wash * shown);
     }`
@@ -1144,7 +1210,7 @@ ${
     // (the wash is added light and covers nothing: the sea under it is the same sea, a tone lighter and bluer, where
     // laid over it as a colour it was a grey sheet)
     vec3 tone = celTone(l, 0.03, hz), pale = mix(${sky}, uHaze, hz);
-    return vec4(tone * cut + pale * wash * (1.0 - cut), cut) * shown;
+    return vec4(tone * cut + pale * wash * (1.0 - cut), cut) * (shown * through);
   }
 
   float w4(int k, vec2 fr) { return ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y); }
@@ -1212,13 +1278,13 @@ ${
       cloud = vec4(celTone(l, max(fwidth(l), 1e-3), tone.y / max(a, 1e-4)), 1.0) * alpha;
     }
     cloud += (1.0 - cloud.a) * farCumulus(dir, d, dv, veil);
-    // the sheets: whichever of them the eye is over lie in front of the cumulus, the rest behind
+    // the sheets: whichever of them the eye is over the foot of lie in front of the cumulus, the rest behind
     vec4 deck = sheet(dir, 0, d, dv, veil), cirrus = sheet(dir, 1, d, dv, veil);
-    vec4 all = uEyeH > ${highHeight} ? cirrus : vec4(0.0);
-    if (uEyeH > ${deckHeight}) all += (1.0 - all.a) * deck;
+    vec4 all = uEyeH > ${highLo} ? cirrus : vec4(0.0);
+    if (uEyeH > ${deckLo}) all += (1.0 - all.a) * deck;
     all += (1.0 - all.a) * cloud;
-    if (uEyeH <= ${deckHeight}) all += (1.0 - all.a) * deck;
-    if (uEyeH <= ${highHeight}) all += (1.0 - all.a) * cirrus;
+    if (uEyeH <= ${deckLo}) all += (1.0 - all.a) * deck;
+    if (uEyeH <= ${highLo}) all += (1.0 - all.a) * cirrus;
     return all;
   }`;
 };
@@ -1465,11 +1531,13 @@ export class CloudPass extends Pass {
   private readonly eye = new THREE.Vector3();
   private readonly turn = new THREE.Matrix4();
 
-  constructor(
-    private readonly scene: THREE.Scene,
-    private readonly camera: THREE.PerspectiveCamera,
-  ) {
+  private readonly scene: THREE.Scene;
+  private readonly camera: THREE.PerspectiveCamera;
+
+  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     super();
+    this.scene = scene;
+    this.camera = camera;
     this.needsSwap = false;
   }
 
