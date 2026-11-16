@@ -112,7 +112,6 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
             count: 1,
             ground: false,
             confidence: 'estimated',
-            source: 'not given: started once, as a liquid at fixed thrust is taken to be',
           },
       ...(e.depletion ? { depletion: e.depletion } : {}),
     },
@@ -437,7 +436,7 @@ function makeOrbitalPlan(o: OrbitalFlight): FlightPlan {
     ...(s.exitArea ? { exitArea: s.exitArea } : {}),
     kind: 'liquid',
     ...(s.throttle ? { throttle: { curve: s.throttle } } : {}),
-    starts: s.start ?? { count: 1, ground: false, confidence: 'estimated', source: 'not given: started once, anywhere' },
+    starts: s.start ?? { count: 1, ground: false, confidence: 'estimated' },
   }));
   engines.push({
     id: 'braking',

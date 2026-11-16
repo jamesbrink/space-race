@@ -149,8 +149,11 @@ export interface EngineDef {
   throttle?: { range?: [least: number, most: number]; curve?: Curve };
   /** How far its thrust can be turned off the axis, degrees, and where the turned thrust acts, m from the base. */
   gimbal?: { deflection: Measure; station?: Measure };
-  /** How many times it can be started, and whether only on the ground (igniters put up the nozzles from the pad). */
-  starts: { count: number; ground: boolean; confidence: Confidence; source: string };
+  /**
+   * How many times it can be started, and whether only on the ground (igniters put up the nozzles from the pad). With no
+   * source nothing read says: it is then taken to start once, anywhere, and that is an estimate.
+   */
+  starts: { count: number; ground: boolean; confidence: Confidence; source?: string };
   /** What it burns, for its fire's look (viewer/flames.ts). */
   burns?: Burns;
   /** The impulse its integrator shuts it down at, m/s, where the record gives one (a braking engine). */

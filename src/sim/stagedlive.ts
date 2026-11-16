@@ -417,7 +417,7 @@ export function stagedVehicle(
             said.push({
               t: s.t,
               title: 'Not lit',
-              text: `${cap(called(k.stage))}’s ${name(g.engine.label)} has been started ${g.engine.starts.count === 1 ? 'once' : 'as often as it can be'}, and cannot be again: ${g.engine.starts.source}`,
+              text: `${cap(called(k.stage))}’s ${name(g.engine.label)} has been started ${g.engine.starts.count === 1 ? 'once' : 'as often as it can be'}, and cannot be again${g.engine.starts.source ? `: ${g.engine.starts.source}` : '.'}`,
             });
           return;
         }
@@ -426,7 +426,7 @@ export function stagedVehicle(
           said.push({
             t: s.t,
             title: 'Not lit',
-            text: `${cap(called(k.stage))}’s ${name(g.engine.label)} can be lit only on the pad: ${g.engine.starts.source}`,
+            text: `${cap(called(k.stage))}’s ${name(g.engine.label)} can be lit only on the pad${g.engine.starts.source ? `: ${g.engine.starts.source}` : '.'}`,
           });
           return;
         }
