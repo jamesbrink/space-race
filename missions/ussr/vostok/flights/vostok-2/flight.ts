@@ -352,6 +352,7 @@ const launcherParts: PartWords[] = [
 const COMMANDS = vostokCommands({
   parted: 'on the day the cable bundle held them until it burnt through in the entry, 10:07',
   reserve: 'by itself after the main, as the type’s was',
+  pilot: { they: 'he', theirs: 'his' },
 });
 
 /** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */

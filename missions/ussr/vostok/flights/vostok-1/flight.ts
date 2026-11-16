@@ -343,7 +343,11 @@ const launcherParts: StackWords[] = [
 ];
 
 // The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
-const COMMANDS = vostokCommands({ parted: 'on the day the thermal backup did, 10:36', reserve: 'by itself at 3 km, as again on Vostok 2' });
+const COMMANDS = vostokCommands({
+  parted: 'on the day the thermal backup did, 10:36',
+  reserve: 'by itself at 3 km, as again on Vostok 2',
+  pilot: { they: 'he', theirs: 'his' },
+});
 
 /**
  * The ejection seat as a place to be. `Seat_Pilot` is the model's own node (vehicles/vostok_3ka.py `seat_view`): an

@@ -18,14 +18,19 @@ export interface DescentWords {
   parted: string;
   /** What put out the reserve canopy, or null where it was not put out. */
   reserve: string | null;
+  /** The pilot, as the labels speak of them: the word for them in a sentence ("he") and for what was theirs ("his"). */
+  pilot: { they: string; theirs: string };
 }
-
-const OVER = 'he had no say over the launch vehicle: this takes the flight over';
 
 /** The commands on each part of the vehicle by its node (orbitdeck.ts `can`, `ask`; main.ts `stage.onSpot`). */
 export function vostokCommands(day: DescentWords): Record<string, Command[]> {
-  const part: Command = { label: `Part the modules (he could not: ${day.parted})`, ask: 'descent:modules' };
-  const eject: Command = { label: 'Blow the hatch and eject (he could not: the barometric switch, 7 km)', ask: 'descent:seat-ejection' };
+  const { they, theirs } = day.pilot;
+  const OVER = `${they} had no say over the launch vehicle: this takes the flight over`;
+  const part: Command = { label: `Part the modules (${they} could not: ${day.parted})`, ask: 'descent:modules' };
+  const eject: Command = {
+    label: `Blow the hatch and eject (${they} could not: the barometric switch, 7 km)`,
+    ask: 'descent:seat-ejection',
+  };
   const chutes: Command[] = [
     { label: 'Module’s pilot parachute: the cover off (automatic: with the hatch, 7 km)', ask: 'descent:module/pilot parachute' },
     { label: 'Module’s braking parachute (automatic: its barometric switch, 4 km)', ask: 'descent:module/braking parachute' },
@@ -49,7 +54,9 @@ export function vostokCommands(day: DescentWords): Record<string, Command[]> {
         : []),
     ],
     InstrumentModule: [separate, part],
-    RetroEngine: [{ label: 'Fire the braking engine along the long axis (his, once the code had freed the hand controls)', ask: 'retro' }],
+    RetroEngine: [
+      { label: `Fire the braking engine along the long axis (${theirs}, once the code had freed the hand controls)`, ask: 'retro' },
+    ],
     Fairing: [{ label: `Drop the fairing (${OVER})`, ask: 'step:drop:fairing' }],
     BlockE: [
       {
