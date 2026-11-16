@@ -47,8 +47,10 @@ Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, de
 `missions/<nation>/places/<place>/<site>.ts`) and the clock's instant give the Sun, the Moon
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and
 `viewer/daysky.ts` derives the light's colour and strength, the sky's colours and the exposure
-from the Sun's height. Positions, sizes and phase are computed; brightnesses are a model fitted by
-eye and say so.
+from the Sun's height. Positions, sizes and phase are computed; the day's brightnesses are a model fitted by
+eye and say so. From sunset on what there is is documented (lux on level ground: USNO Circular 171's twilight, the
+Moon by its phase, the natural night sky's 0.8 millilux), and only how bright the eye draws it is estimated
+([rendering.md](rendering.md), "The night is the light there is").
 
 Two ephemerides answer, and each answer says which (`ephemerisOf`, `stateOf(...).source`). JPL's DE440 is baked
 for 1957 to 2035 (`pnpm ephemeris`: tools/ephemeris-bake.mjs reads JPL's de440s.bsp and refits each body as Chebyshev
@@ -192,8 +194,11 @@ moved a twentieth of a degree, and the reflections are baked at a day's brightne
 sky's every frame through `environmentIntensity`, and each new bake is faded in from the last
 (`Reflections` in backdrops.ts). Where the Sun hands over to the Moon the one direct light passes
 through nothing (daysky.ts), so shadows turn round unseen. Room lights are handed between rooms by
-fading. A change to the light is checked by sampling a still view's mean brightness frame by frame
-through dusk and dawn at 1200x: it should run one way, without jumps.
+fading. A change to the light is checked by sampling a view's brightness through dusk and dawn (`pnpm test:night`: the frame,
+the sky, the dark ground and a lamp-lit patch every few seconds of the site's time at 60 times life, with the clouds
+held still): it should run without jumps. The pad's floods come on as a function of the instant too (lamps.ts
+`lampsLit`), warming up over their own minutes, and the eye's adaptation to them runs in the world's time
+(viewer/eye.ts), so neither steps when the clock runs fast.
 
 The weather over a site is its flight's own day (`Flight.weather`, types.ts: `DayWeather`; the rules are in
 [rendering.md](rendering.md), "The weather is a day's"). Where the record has high cloud over the site the
