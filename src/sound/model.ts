@@ -37,7 +37,7 @@
 import { atmosphere } from '../sim/atmosphere.ts';
 import type { Engine, MachineKind, Tread, TreadKind } from '../types.ts';
 import { clamp, lerp, smoothstep } from '../util/math.ts';
-import { G0 } from '../world/bodies.ts';
+import { EARTH_SPHERE, G0 } from '../world/bodies.ts';
 
 export type Vec = readonly [number, number, number];
 
@@ -45,8 +45,8 @@ const RHO0 = atmosphere(0).density;
 /** The reference sound pressure, Pa, and intensity, W/m^2: 0 dB. */
 const P_REF = 2e-5;
 const I_REF = 1e-12;
-/** The Earth's mean radius, m: how far the sea has fallen below the site's flat frame at a distance. */
-const EARTH = 6_371_000;
+/** The Earth's sphere, m (world/bodies.ts): how far the sea has fallen below the site's flat frame at a distance. */
+const EARTH = EARTH_SPHERE;
 
 /** The share of a jet's mechanical power that leaves as sound. Estimated: a rule of thumb for rockets (0.2 to 1 per cent). */
 export const EFFICIENCY = 0.005;

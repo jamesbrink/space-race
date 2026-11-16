@@ -20,6 +20,7 @@ import { uOrigin } from './origin.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { onWeather, weatherUniforms } from './weathermap.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
 const VEIL_LAYER = 7;
@@ -183,8 +184,8 @@ const FRAY_SKIN = 14;
 const FRAY_THIN = 0.25;
 /** How much brighter than a white wall facing it the Sun's light leaves a thick cloud, with the phase and the octaves below (fitted by eye). */
 const SUN_GAIN = 1.65;
-/** The Earth's mean radius: the layer is a shell this far plus its height from the centre under the site. */
-const EARTH = 6_371_000;
+/** The Earth's sphere (world/bodies.ts): the layer is a shell this far plus its height from the centre under the site. */
+const EARTH = EARTH_SPHERE;
 
 /** A cloud's outline, to be marched again finer (`CloudPass.fine`): where the march's neighbouring pixels differ by this much opacity. */
 const EDGE = 0.1;

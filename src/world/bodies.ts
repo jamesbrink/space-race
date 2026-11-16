@@ -129,6 +129,14 @@ const mag = (v10: number, phase: readonly [number, number, number] = [0, 0, 0], 
 export const WGS84_A = 6_378_137;
 export const WGS84_INVERSE_FLATTENING = 298.257223563;
 export const WGS84_B = WGS84_A * (1 - 1 / WGS84_INVERSE_FLATTENING);
+/**
+ * The sphere the viewer takes the Earth to be where a sphere will do, metres: the sky's three models (the air's tables,
+ * the clouds' shell, the stars' and the haze's horizon), the globe's texels measured on the ground, and the sound's fall
+ * of the sea below the site's flat frame. It is the Earth's mean radius to the kilometre (IUGG's R1 is 6,371,008.8 m:
+ * Moritz, Geodetic Reference System 1980, which the simulator's ballistic run takes, sim/fly.ts `MEAN_RADIUS`). A
+ * drawing's figure, not geodesy's: whatever is placed on the Earth is placed on WGS 84, above.
+ */
+export const EARTH_SPHERE = 6_371_000;
 /** The Earth's rotation rate, rad/s (WGS 84; the same figure as the IERS's nominal mean rate). */
 export const EARTH_ROTATION_RATE = 7.292115e-5;
 /** The Earth's oblateness: the second zonal harmonic of WGS 84's gravity model (EGM96's C20, unnormalised). Every simulator's gravity (world/orbit.ts `gravity`). */

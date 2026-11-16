@@ -38,6 +38,9 @@ by `gravityOn(body)`: standard gravity on the Earth, as everything on foot has f
 (the Moon 1.624, Mars 3.696: NASA's fact sheets give 1.62 and 3.69). On foot the walker, the limp body, what is carried
 and the hose fall by it (walking.md), as the host says (`OnFootHost.gravity`): the stage says
 `gravityOn(bodyOf(flight.site?.body))` (G0 on every site today, all being on the Earth).
+Where the viewer takes the Earth as a sphere (the sky's three models, the clouds' shell, the horizon's dip, the sound's
+sea falling away) it is one sphere, `EARTH_SPHERE` (the mean radius to the kilometre, 6,371 km); a point placed on the
+Earth is placed on WGS 84, never on that sphere.
 
 Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
 `missions/<nation>/places/<place>/<site>.ts`) and the clock's instant give the Sun, the Moon

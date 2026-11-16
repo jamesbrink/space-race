@@ -11,6 +11,7 @@ import {
   sub,
   type Vec3,
 } from '../world/frames.ts';
+import { EARTH_SPHERE, WGS84_A, WGS84_B } from '../world/bodies.ts';
 import { planeAt, surfaceDirection } from '../world/region.ts';
 import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
@@ -115,7 +116,6 @@ const SEA_ROUGH = Math.sqrt(Math.sqrt(SEA_SLOPES));
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: missions/usa/places/cape-canaveral/ground.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
-
 /**
  * Heights of the eye, metres, between which the site's own ground goes over to the globe's surface (land.ts takes
  * them through `beyond`): by the upper one its own paint is under a pixel and would only shimmer (held to 40 km,
@@ -136,8 +136,8 @@ const SURFACING = 1500;
 const BANKS = 6;
 /** The land's cube faces, texels a side (tools/globe.mjs: --size). */
 const FACE = 2048;
-/** The Earth's mean radius, metres: for turning the cube's texels into distances on the ground, near enough for mixing them. */
-const EARTH = 6_371_000;
+/** The Earth's sphere, metres (world/bodies.ts): for turning the cube's texels into distances on the ground, near enough for mixing them. */
+const EARTH = EARTH_SPHERE;
 
 /**
  * GLSL: the globe's colour toward a direction from the Earth's centre (ECEF), with its roughness.
@@ -1117,7 +1117,7 @@ export class Globe {
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;
-            float s = sqrt(dot(q.xy, q.xy) / ${(6378137 ** 2).toExponential(10)} + q.z * q.z / ${(6356752.314245 ** 2).toExponential(10)});
+            float s = sqrt(dot(q.xy, q.xy) / ${(WGS84_A ** 2).toExponential(10)} + q.z * q.z / ${(WGS84_B ** 2).toExponential(10)});
             return length(q) * (1.0 - 1.0 / s) - uGlobeSeaLevel;
           }`,
         )

@@ -3,6 +3,7 @@ import type { Day } from './day.ts';
 import { fieldAs, noise2 } from './field.ts';
 import { deckPatchGlsl } from './weather.ts';
 import { newPlace } from './programs.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -229,7 +230,7 @@ const cloudField = (c: Clouds | undefined, deckHeight: number) =>
   // so a far coast does not crawl as the shadows drift.
   float cloudShade(vec3 world, vec3 toLight, float fp) {
     if (toLight.y <= 0.02) return 1.0;
-    float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * 6_371_000).toFixed(1)};
+    float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * EARTH_SPHERE).toFixed(1)};
     vec2 under = world.xz + toLight.xz / toLight.y * (layer - world.y);
     float w = 0.25 * fp / ${c.size.toFixed(1)};
     // (a cloud stands where the noise is over its cut (clouds.ts), and the Sun's disc blurs the shadow of one 720 m up

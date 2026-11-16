@@ -38,12 +38,13 @@
  * same arithmetic in TypeScript, for the tests and for the Sun's own colour seen from a height.
  */
 import * as THREE from 'three';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { vec3 } from './glsl.ts';
 
 /** The top of the air, metres above the sea: above it there is nothing to scatter. */
 export const TOP = 100_000;
-/** The Earth's radius the tables are made for, metres (a shader gives heights above its own sphere: a few km in 6,371 changes nothing). */
-export const GROUND = 6_371_000;
+/** The Earth's radius the tables are made for, metres: its sphere (world/bodies.ts; a shader gives heights above its own sphere: a few km in 6,371 changes nothing). */
+export const GROUND = EARTH_SPHERE;
 /** Rayleigh scattering at the sea, per metre, for red, green and blue; and the height over which the gas thins by e. */
 export const RAYLEIGH = [5.802e-6, 13.558e-6, 33.1e-6] as const;
 export const RAYLEIGH_SCALE = 8000;

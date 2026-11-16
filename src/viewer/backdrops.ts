@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { disposeTree } from './dispose.ts';
 import type { BackdropKind, SitedFlight } from '../types.ts';
 import { skyFrom } from '../world/ephemeris.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
@@ -523,11 +524,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const reference = transmittanceAt(0, Math.sin(50 * DEG), haze);
   const sunFrom = (height: number, elevation: number): RGB => {
     const mu = Math.sin(elevation * DEG);
-    const dip = -Math.acos(6_371_000 / (6_371_000 + Math.max(height, 0))) / DEG; // the horizon's, degrees
+    const dip = -Math.acos(EARTH_SPHERE / (EARTH_SPHERE + Math.max(height, 0))) / DEG; // the horizon's, degrees
     const showing = THREE.MathUtils.smoothstep(elevation, dip - 0.27, dip + 0.27);
     if (showing <= 0) return [0, 0, 0];
     const k = extinctionAt(Math.min(height, 99_000), haze);
-    const column = RAYLEIGH_SCALE * chapman(height, Math.max(mu, Math.sin(dip * DEG)), 6_371_000, RAYLEIGH_SCALE);
+    const column = RAYLEIGH_SCALE * chapman(height, Math.max(mu, Math.sin(dip * DEG)), EARTH_SPHERE, RAYLEIGH_SCALE);
     return [0, 1, 2].map((c) => (showing * Math.exp(-k[c]! * column)) / reference[c]!) as unknown as RGB;
   };
   const gen = new THREE.PMREMGenerator(renderer);
@@ -686,7 +687,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       // What the veil gives back of what it takes from the beam, as the sky's light on the clouds under it: the Sun's
       // light where the veil is (it stands higher there by the horizon's dip from that height, 3.3 degrees from 10.5
       // km, so the veil is giving light before the Sun is up on the ground), less what gets through, VEIL_DOWN of it.
-      const dip = Math.acos(6_371_000 / (6_371_000 + veil.height));
+      const dip = Math.acos(EARTH_SPHERE / (EARTH_SPHERE + veil.height));
       const muHigh = Math.max(Math.sin(h.sunElevation * DEG + dip), 0);
       const taken = VEIL_DOWN * (1 - veilShade(veil.depth, veil.cover, muHigh)) * muHigh;
       setVeilLight(left, (installedAir()?.base ?? 0) + veil.height, [0, 1, 2].map((c) => taken * high[c]! * noonSun[c]!) as unknown as RGB);

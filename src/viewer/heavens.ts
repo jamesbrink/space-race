@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { refraction, type Seen, type Sky } from '../world/ephemeris.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { DEG, enuToSite, fromEquatorial, fromHorizontal, j2000ToSite, type Site, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { STAR_STRIDE, STARS, starMotion, yearsFrom2000 } from '../world/stars.ts';
 import { airmass } from './daysky.ts';
@@ -414,7 +415,7 @@ export class Heavens {
     band.uGain!.value = gain;
     this.night.visible = limit > 5.5 && gain > 0;
     // how much of the air is above the eye, and the sine of the horizon's dip from `height` metres up
-    const dip = -Math.sqrt(Math.max(height, 0) * (2 * 6_371_000 + Math.max(height, 0))) / (6_371_000 + Math.max(height, 0));
+    const dip = -Math.sqrt(Math.max(height, 0) * (2 * EARTH_SPHERE + Math.max(height, 0))) / (EARTH_SPHERE + Math.max(height, 0));
     (this.material.uniforms.uAir!.value as THREE.Vector2).set(air, dip);
     (band.uAir!.value as THREE.Vector2).set(air, dip);
   }
