@@ -7,6 +7,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -25,8 +26,10 @@ const all = await Promise.all(
   ),
 );
 const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
-/** The coast of a flight's plan, or of the plan of its record with an input changed (its Vostok's: every orbiter is one). */
-const fly = (f, orbital) => flyOrbit(orbital ? vostokPlan(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
+/** The plan a record is written into: a Vostok's (vostok-record.ts, `stages`) or a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`). */
+const planOf = (orbital) => ('atlas' in orbital ? mercuryAtlasPlan(orbital) : vostokPlan(orbital));
+/** The coast of a flight's plan, or of the plan of its record with an input changed. */
+const fly = (f, orbital) => flyOrbit(orbital ? planOf(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);
@@ -42,6 +45,19 @@ const withInput = (o, path, value) => {
  * height besides. The descent module's mass is the type's on both (vostok-3ka.ts ENTRY_MASS: assumed).
  */
 const INPUTS = {
+  // Friendship 7's: the ball the heights are over, where on the orbit it began, the retrofire's impulse (worked from the
+  // specified total impulse), when the pack went, the capsule's mass then and drag area, and its free-molecule figure
+  'usa/mercury/ma-6-friendship-7': [
+    ['orbit', 'radius'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['rarefied', 'drag'],
+    ['rarefied', 'area'],
+    ['retro', 'deltaV'],
+    ['retro', 'gone'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+  ],
   'ussr/vostok/vostok-1': [
     ['orbit', 'radius'],
     ['injection', 'arc'],
@@ -123,6 +139,56 @@ const INPUTS = {
   ],
 };
 
+/**
+ * A Mercury-Atlas's coast inputs that are not documented (its record, mercury-atlas-plan.ts): listed, and what each is
+ * worth, flown on the plan `mercuryAtlasPlan` writes from a changed copy.
+ */
+function atlasInputs(f, o, run) {
+  const read = [
+    ['orbit', 'radius'],
+    ['orbit', 'perigee'],
+    ['orbit', 'apogee'],
+    ['orbit', 'inclination'],
+    ['orbit', 'period'],
+    ['injection', 'at'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['mass'],
+    ['rarefied', 'drag'],
+    ['rarefied', 'area'],
+    ['retro', 'on'],
+    ['retro', 'spacing'],
+    ['retro', 'burn'],
+    ['retro', 'deltaV'],
+    ['retro', 'below'],
+    ['retro', 'gone'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+    ['descent', 'drogue', 'altitude'],
+    ['landing', 'latitude'],
+    ['landing', 'longitude'],
+  ];
+  const at = (path) => path.reduce((x, key) => x[key], o);
+  const undocumented = read.filter((path) => at(path).confidence !== 'documented').map((p) => p.join('.'));
+  assert.deepEqual(undocumented.sort(), INPUTS[f.id].map((p) => p.join('.')).sort(), 'the inputs that are not documented');
+  const base = run.results;
+  const moved = (changed) => {
+    const r = fly(f, changed).results;
+    return `along ${((r.alongTrack - base.alongTrack) / 1000).toFixed(0)} km, across ${((r.crossTrack - base.crossTrack) / 1000).toFixed(1)} km, load ${(r.entryG - base.entryG).toFixed(2)} g, drogue ${(r.ejectionAt - base.ejectionAt).toFixed(0)} s`;
+  };
+  console.log('  #   what a change in an input moves:');
+  console.log(`  #   injection.arc +1 deg: ${moved(withInput(o, ['injection', 'arc'], o.injection.arc.value + 1))}`);
+  console.log(`  #   orbit.radius the mean 6,371 km: ${moved(withInput(o, ['orbit', 'radius'], 6_371_000))}`);
+  console.log(`  #   retro.deltaV +5 %: ${moved(withInput(o, ['retro', 'deltaV'], o.retro.deltaV.value * 1.05))}`);
+  console.log(
+    `  #   retro.deltaV as the motors' 3 x 1,000 lbf x 10 s: ${moved(withInput(o, ['retro', 'deltaV'], (30_000 * 4.4482216) / (2_970 * 0.45359237)))}`,
+  );
+  console.log(`  #   retro.below 3 deg more: ${moved(withInput(o, ['retro', 'below'], o.retro.below.value + 3))}`);
+  console.log(`  #   retro.gone at the planned jettison: ${moved(withInput(o, ['retro', 'gone'], 16_438))}`);
+  console.log(`  #   entry.mass +5 %: ${moved(withInput(o, ['entry', 'mass'], o.entry.mass.value * 1.05))}`);
+  console.log(`  #   rarefied.area +20 %: ${moved(withInput(o, ['rarefied', 'area'], o.rarefied.area.value * 1.2))}`);
+}
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });
@@ -156,13 +222,16 @@ for (const f of orbiters) {
       'events in order',
     );
     assert.equal(new Set(o.events.map((e) => e.id)).size, o.events.length, 'event ids are unique');
-    assert.ok(
-      o.injection.at.value < o.retro.on.value && o.retro.on.value < o.retro.off.value && o.retro.off.value < o.entry.separation.value,
-    );
+    if ('atlas' in o) assert.ok(o.injection.at.value < o.retro.sequence.value && o.retro.on.value < o.retro.gone.value);
+    else
+      assert.ok(
+        o.injection.at.value < o.retro.on.value && o.retro.on.value < o.retro.off.value && o.retro.off.value < o.entry.separation.value,
+      );
     for (const check of o.checks) assert.ok(check.tolerance > 0, `${check.id}: a tolerance`);
     // the stages' nodes are parts of the model the flight shows
     const nodes = new Set(f.models.flatMap((m) => m.parts.map((p) => p.node)));
-    for (const stage of o.stages) for (const node of stage.nodes) assert.ok(nodes.has(node), `${stage.name}: node ${node} is a part`);
+    const stages = 'atlas' in o ? [o.atlas.booster, o.atlas.tank] : o.stages;
+    for (const stage of stages) for (const node of stage.nodes) assert.ok(nodes.has(node), `${stage.name}: node ${node} is a part`);
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
@@ -232,6 +301,7 @@ for (const f of orbiters) {
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
     const o = recordFrom(f);
+    if ('atlas' in o) return atlasInputs(f, o, run);
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'radius'],

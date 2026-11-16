@@ -17,9 +17,11 @@ through the atmosphere with the retropack still strapped across the heat shield.
 | Landing | 19:43:02 UTC, about 21°26′ N 68°37′ W, some 40 miles short of the planned point |
 | Recovery | USS *Noa*, a destroyer, with the pilot still aboard his capsule |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 13 on Atlas 109-D as they left the
-pad can be turned, taken apart as they staged, and cut open. Its launch site and the flight itself
-are not built: see "What is not built" below.
+**In this repo: the vehicle, its launch site and the flight.** Spacecraft No. 13 on Atlas 109-D can be
+turned, taken apart as they staged, and cut open in the gallery; Complex 14 stands as it stood that morning; and the
+flight is flown (Fly) from its record: the Atlas a stage and a half on one tank, three revolutions, the retrofire, the
+pack kept on through the entry, the drogue and the main. What it gives against the record is "The flight as flown"
+below; how the record becomes data is [mission.md](mission.md).
 
 ## What happened
 
@@ -175,16 +177,31 @@ from the tower.
 - **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with
   Glenn's name, his wrist rings and his chest mirror ([spacecraft.md](spacecraft.md), "The pilot");
   the same figure lies on the couch.
-- **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
-  programme, which have not been read (the launch vehicle's own report for 109-D, if it survives);
-  an orbit and an entry as data (`Flight.orbital`, as Vostok 1 has); the control modes, with a jet
-  that fails; the retropack kept on, and burning; and a landing forty miles short for the reason it
-  was.
+- **Atlas 109-D's own figures, and a flight by its pilot.** The Atlas is flown on the Atlas D's weights and impulses
+  (a secondary source) and a stated steering law; the capsule in orbit is not a rigid body, so the yaw jet that failed,
+  the drift and the hours flown by hand are not flown; the retropack kept on is not drawn burning
+  ([mission.md](mission.md), "What is simplified or left out").
 - **The periscope is not seen to move.** Its door, objective and the link between them are built as
   one linkage and carry their motion, and `flight.ts` has when each went on this flight (out at
   separation; in by hand at 04:40:30; "Scope did not come out" under the drogue, and pumped out by
   hand from 04:49:34: *Results*, pp. 71, 133, 150, 189 and 191). With no clock in the gallery
   nothing plays them: the door is shut and the objective in, as at liftoff.
+
+## The flight as flown
+
+Flown from the pad (`plan`, tests/staged.test.mjs) the Atlas reaches the ground guidance's 25,730 ft/s at T+293.7 s,
+7.7 s before the record's cutoff, with a tonne still in its tank: on the Atlas D's figures, not 109-D's. At the cutoff
+it is in an orbit of 161 by 280 km at 32.33° (the record 161 by 261, 32.54°); the air pushed hardest at 50.0 kPa at
+T+62 s (982 lb/ft², 47.0 kPa, "at approximately T+1 minute"); 6.8 g at the booster engines' cutoff and 7.9 at the
+sustainer's (7.7).
+
+On the published orbit from where the ascent left it, the retrorockets fire over the Pacific off California, at 32.1° N
+127.8° W; the capsule comes through 100 km at T+4:42:40 at 7.41 km/s through the air, 1.2° below level; 0.05 g at
+04:43:53 (the relay by hand at 04:43:31) and 7.7 g (7.7); the drogue out at 30,000 ft at 04:49:37 (04:49:17.2) and down at 04:56:14 (04:55:23), falling
+8.7 m/s on the main, 215 km beyond where the *Noa* picked it up and 47 km to the right. From the published orbit begun
+at the estimated injection the drogue is out at 04:49:15 and 104 km beyond. Each miss is recorded with its cause in
+`src/sim/misses.ts`. The record landed 40 miles short of the planned point because the retrofire had been worked
+without the consumables spent; the run is held to where it was picked up.
 
 ## Where sources disagree
 
@@ -198,6 +215,8 @@ from the tower.
 - **The engines' thrust.** NASA SP-45 gives 154,000 lbf for each booster engine and 57,000 for the
   sustainer; the press kit for MA-9, 150,000 and 60,000; *Results* (p. 45) "approximately 360,000
   pounds" in all. The model's data carries SP-45's ratings and says they are ratings.
+- **The drogue's height.** "Drogue came out at 30,000" (Glenn, 04:49:20: *Results*, p. 191), "slightly higher" than
+  the design's 21,000 ft (Figure 2-22); *This New Ocean* has 28,000. The flight is flown with the pilot's.
 - **The landing point.** Reported where the capsule was picked up, 21°25.6′ N 68°36.5′ W; predicted
   21°31.2′ N 68°52.9′ W (NASA SP-45, Table 8-III). The landing itself was not fixed more closely.
 - **The launch azimuth.** *Results* (p. 46) gives a heading "about 75 degrees" at insertion and the

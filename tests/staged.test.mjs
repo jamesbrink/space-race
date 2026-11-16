@@ -8,6 +8,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
@@ -50,6 +51,31 @@ const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
  * 2's are Vostok 1's and every instant of the ascent besides, its record having none of its own (its mission.md).
  */
 const UNDOCUMENTED = {
+  // Friendship 7's: the Atlas D's weights and impulses (no figure for 109-D read), what is derived from them, the tower's
+  // weight and the posigrades' push, the staging instant (the type's sequence), and the ascent's drag, pitch-over and steering
+  'usa/mercury/ma-6-friendship-7': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.guidance.kick',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.engine.thrust.vacuum',
+    'atlas.booster.mass',
+    'atlas.booster.separation',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.engine.thrust.seaLevel',
+    'atlas.tank.engine.thrust.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'record.liftoffMass',
+    'separation.push',
+    'tower.mass',
+  ],
   'ussr/vostok/vostok-1': [
     'ascent.drag.0.area',
     'ascent.drag.0.curve',
@@ -243,6 +269,72 @@ const ascentValue = (run) => (id) => {
   return field ? run.at[event]?.[field] : run.summary[id];
 };
 
+/**
+ * A Mercury-Atlas's ascent inputs that are not documented (mercury-atlas-plan.ts's record: the Atlas's two engines and
+ * its masses, the tower, the separation, the ascent's law, drag and steering), listed, and what each is worth, the law
+ * solved afresh each time on the plan `mercuryAtlasPlan` writes from a changed copy.
+ */
+function atlasInputs(f, o, whole) {
+  const read = [];
+  const walk = (x, at) => {
+    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
+    if ('confidence' in x && 'value' in x) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    if ('confidence' in x && 'points' in x) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
+  };
+  walk(o.atlas, 'atlas');
+  walk(o.tower, 'tower');
+  walk(o.separation, 'separation');
+  walk(o.ascent, 'ascent');
+  walk({ liftoffMass: o.liftoffMass }, 'record');
+  assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
+  const [site, dated, sea] = where(f);
+  const base = whole.ascent.summary;
+  const weigh = (label, change) => {
+    const copy = structuredClone(o);
+    change(copy);
+    let s;
+    try {
+      const plan = mercuryAtlasPlan(copy);
+      s = ascend(plan, site, dated, sea, steer(plan, site, dated, sea)).summary;
+    } catch (e) {
+      console.log(`  #   ${label.padEnd(58)} ${e.message}`);
+      return;
+    }
+    console.log(
+      `  #   ${label.padEnd(58)} cutoff ${(s.cutoffAt - base.cutoffAt).toFixed(1).padStart(6)} s, ${(s.cutoffSpeed - base.cutoffSpeed).toFixed(1).padStart(7)} m/s, ${(s.perigee / 1000).toFixed(0).padStart(5)} by ${(s.apogee / 1000).toFixed(0).padStart(5)} km`,
+    );
+  };
+  const both = (e, k) => {
+    e.thrust.seaLevel.value *= k;
+    e.thrust.vacuum.value *= k;
+  };
+  console.log('  #   what a change in an input moves (the law solved afresh each time):');
+  weigh('the drag curves x 1.3 (estimated)', (c) => c.ascent.drag.forEach((d) => d.curve.points.forEach((p) => (p[1] *= 1.3))));
+  weigh('the pitch-over 5 s longer (estimated)', (c) => (c.ascent.guidance.kick.value += 5));
+  weigh('the booster engines 5 % less thrust and flow (assumed)', (c) => both(c.atlas.booster.engine, 0.95));
+  weigh('the sustainer 5 % less thrust and flow (assumed)', (c) => both(c.atlas.tank.engine, 0.95));
+  weigh('the boosters’ vacuum impulse 5 % less (assumed)', (c) => (c.atlas.booster.engine.isp.vacuum.value *= 0.95));
+  weigh('the sustainer’s vacuum impulse 5 % less (assumed)', (c) => (c.atlas.tank.engine.isp.vacuum.value *= 0.95));
+  weigh('the propellant 5 % less (derived)', (c) => (c.atlas.tank.propellant.value *= 0.95));
+  weigh('the tank section 5 % heavier empty (assumed)', (c) => {
+    c.atlas.tank.dry.value *= 1.05;
+    c.atlas.tank.mass.value += c.atlas.tank.dry.value / 21;
+    c.liftoffMass.value += c.atlas.tank.dry.value / 21;
+  });
+  weigh('the booster section 5 % heavier (assumed)', (c) => {
+    c.atlas.booster.mass.value *= 1.05;
+    c.liftoffMass.value += c.atlas.booster.mass.value / 21;
+  });
+  weigh('the staging 2 s later (assumed)', (c) => (c.atlas.booster.separation.value += 2));
+}
+
 test('there is an orbital flight whose ascent can be flown', () => {
   assert.ok(flown.length > 0);
 });
@@ -370,6 +462,7 @@ for (const f of part(flown)) {
     // every input the ascent reads that is not documented, by where it is in the record (the Vostok module's own, which
     // vostokPlan writes the plan from): a new one must be added here
     const o = recordFrom(f);
+    if ('atlas' in o) return atlasInputs(f, o, whole);
     const read = [];
     const walk = (x, at) => {
       // (the checks are not inputs; `sheds` and `centre` are the scene's alone: staged.ts does not read them)
@@ -525,6 +618,7 @@ for (const f of part(flown)) {
     const stops = whole.ascent.stops;
     for (const t0 of [40, 150, 400]) {
       const s = whole.ascent.samples.find((p) => p.t >= t0);
+      if (!s || s.t >= whole.ascent.separation.t) continue; // (an ascent over before it: a Mercury-Atlas's)
       // the record's vehicle as it stood then: each stage lit, stopped and let go at the run's instants, the drops gone
       const state = {
         stages: seq.stages.map((st, i) => ({
@@ -623,7 +717,9 @@ for (const f of part(flown)) {
       );
       const down = flyWhole(back, site, dated, sea, x, 10, 'published');
       assert.equal(down.coast.samples.at(-1).phase, 'down', 'straight against the motion at the record’s instant, it comes down');
-      assert.ok(down.down?.landed.pilot, 'and the pilot lands');
+      // (the body he lands in: his own, where he leaves the ship, or the first that comes down, where he rides it down)
+      const his = plan.craft[0].crew?.alone ?? downOf(plan).bodies[0].id;
+      assert.ok(down.down?.landed[his], 'and the pilot lands');
       const along = flyWhole(
         byHand(
           f.plan,
@@ -638,7 +734,7 @@ for (const f of part(flown)) {
         'published',
       );
       assert.notEqual(along.coast.samples.at(-1).phase, 'down', 'along the motion it does not');
-      const l = down.down.landed.pilot;
+      const l = down.down.landed[his];
       console.log(
         `  #   by hand, straight against the motion at the record’s instant: down at ${l.latitude.toFixed(2)} N ${l.longitude.toFixed(2)} E, ${(down.coast.results.alongTrack / 1000).toFixed(0)} km along and ${(down.coast.results.crossTrack / 1000).toFixed(0)} km across the record’s landing`,
       );

@@ -117,6 +117,18 @@ const SHORT_V4 =
 const PERIOD_48 =
   'Over 48 revolutions the period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min, the one traceable period of this ship, is given to a tenth of a minute (2,100 km). ' +
   'On it, with the joined ship’s free-molecule drag in the air of the day’s Sun, the ship comes down 2,344 km long (633 km long on the ball’s continuum drag, until November 2026): no period published is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
+
+/** Friendship 7's coast, from the published orbit and from where the ascent left it. */
+const MA6_RETRO =
+  'Nothing in the retrofire is MA-6’s own measure: the three motors’ impulse is their specified total, 38,880 lb s (the MA-4 and MA-5 trajectory report), over the capsule at retrofire, ' +
+  '2,970 lb, 128 m/s spread evenly from the first’s lighting to the third’s burning out, with nothing for the propellant they burned (not read: a few per cent more); the entry is the ' +
+  'capsule’s own drag curve (TM X-491), the retropack kept on and burning away not modelled; and where on the orbit it began is reckoned by hand (`injection.arc`). The record itself ' +
+  'landed some 40 nautical miles short of the planned point because the retrofire was worked without the consumables spent (This New Ocean, p. 433): a miss of the planners’, not of these figures. ' +
+  'Which input owns this one is not established (tests/orbital.test.mjs prints what each is worth); not adjusted';
+const MA6_SHOWN =
+  'Begun from where the ascent flown left the capsule, which reached its cutoff speed 7.7 s early and is so much further on round the orbit at the separation, in the ascent’s ' +
+  'own plane, 0.2 degrees under the published inclination: flown on MA-5’s aiming azimuth with no steering out of the plane, which in three revolutions carries it across the track';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -221,6 +233,41 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       duration: { by: 59, slack: 8, absolute: true, why: MAIN_HEIGHT, short: 'the main out at 12,300 ft' },
     },
   },
+  'usa/mercury/ma-6-friendship-7': inUnits({
+    ascent: {
+      cutoffAt: {
+        by: -7.74,
+        slack: 0.5,
+        why:
+          'The sustainer reaches the ground guidance’s 25,730 ft/s at T+293.7 s, 7.7 s before the record’s 301.4. The Atlas is flown on SP-45’s rated thrusts taken at sea level and the Atlas D’s ' +
+          'weights and impulses from a secondary source (Astronautix), none of them 109-D’s; on the same figures its tank would run dry at T+302.8, so it is not short of propellant. Which figure is ' +
+          'off for 109-D is not established; not adjusted',
+        short: 'the Atlas D’s figures, not 109-D’s',
+      },
+    },
+    coast: {
+      alongTrack: {
+        by: 103_912,
+        slack: 3_000,
+        why: `The drogue comes out 104 km beyond where the capsule was picked up, along the track. ${MA6_RETRO}`,
+      },
+      crossTrack: { by: 29_454, slack: 2_000, why: `And 29 km to the right of it. ${MA6_RETRO}` },
+    },
+    shown: {
+      alongTrack: { by: 214_788, slack: 5_000, why: `215 km beyond the pick-up point along the track. ${MA6_SHOWN}. ${MA6_RETRO}` },
+      crossTrack: { by: 47_076, slack: 2_000, why: `47 km to the right of it. ${MA6_SHOWN}` },
+    },
+    descent: {
+      'mercury-capsule.at': {
+        by: 51.0,
+        slack: 3,
+        why:
+          'Down 51 s late. The drogue is out 19 s late, with the coast (within its tolerance); the rest is the main: the record has 5 min 12 s from the main at 10,800 ft to the sea (04:50:11 to ' +
+          '04:55:23; Results, p. 135), 10.6 m/s on the average, where the canopy as derived on Freedom 7 (mercury-redstone.ts, main.dragArea) brings the 2,493 lb capsule down at 8.7 m/s. ' +
+          'Either the height is not the barostat’s or it came down faster than the canopy’s figure: nothing read says which, and nothing is changed',
+      },
+    },
+  }),
   'ussr/vostok/vostok-1': inUnits({
     coast: {
       separationAltitude: {

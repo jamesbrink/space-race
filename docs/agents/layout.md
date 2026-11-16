@@ -17,7 +17,8 @@ missions/                             the record: one folder per nation, program
                                       (mercury-redstone.ts: `plan`, `Day`, `HARDWARE`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record; vostok-record.ts, the record's shape;
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
-                                      `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;
+                                      `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`; mercury-atlas-plan.ts, a Mercury-Atlas's record
+                                      (`MercuryAtlasRecord`, its flight's orbital.ts) and the plan written from it (`mercuryAtlasPlan`);
                                       mercury-redstone-stack.ts, the capsule on its Redstone on the pad: `mercuryRedstoneStack`,
                                       `mercuryRedstoneParts`, `SPEC`, `mercuryRedstoneMotors` (the A-7's thrust each flight's own, as measured);
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's

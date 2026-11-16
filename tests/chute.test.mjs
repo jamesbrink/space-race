@@ -233,13 +233,22 @@ for (const v of FLIGHTS.filter((f) => f.plan?.kind === 'orbital' && downOf(f.pla
         `${c.on} is a parachute of ${c.body}`,
       );
       assert.ok(Number.isFinite(drawn.opened[c.body][c.on]), `${c.on} comes out on the record’s run`);
-      assert.ok(
-        Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
-        `${c.on}: drawn with the area its drag is worked on`,
-      );
+      // (drawn with the area its drag is worked on, unless the canopy's own size is the record's: Mercury's 6 ft drogue and 63 ft main)
+      if (c.diameter.confidence !== 'documented')
+        assert.ok(
+          Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
+          `${c.on}: drawn with the area its drag is worked on`,
+        );
     }
     for (const d of v.flies.drops.filter((d) => d.rides))
       for (const r of d.rides) assert.ok(drawn.tracks[r.body]?.length > 1, `${d.nodes[0]} rides ${r.body}, which is flown`);
+    // each parachute that takes another's place lets it go as it comes out (a Mercury capsule's main, its drogue)
+    for (const b of downOf(v.plan).bodies)
+      for (const c of b.chutes)
+        for (const was of c.instead ?? [])
+          assert.equal(drawn.gone[b.id][was], drawn.opened[b.id][c.name], `${was} goes as ${c.name} comes out`);
+    // (a pilot who leaves his ship: a Vostok's)
+    if (!v.flies.hangs) return;
     for (const h of v.flies.hangs) assert.ok(Number.isFinite(drawn.opened[h.body][h.from]), `the figure comes in as ${h.from} comes out`);
     // the seat begins where the pilot left it, with the stabilising parachute, and lands before him
     const seat = drawn.tracks.seat;

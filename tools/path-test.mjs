@@ -76,6 +76,14 @@ const FLOWN_AFTER = 60;
 const FLIGHTS = {
   f7: { id: 'usa/mercury/mr-3-freedom-7', ballistic: true, instants: [5, 60, 142, 200, 300, 420, 560, 700] },
   lb7: { id: 'usa/mercury/mr-4-liberty-bell-7', ballistic: true, instants: [5, 60, 143, 200, 310, 420, 580, 700] },
+  // (three revolutions: the ascent and its staging, the first orbit by day and night, the retrosequence and the burn, the
+  // pack going in the entry, the drogue and the main)
+  ma6: {
+    id: 'usa/mercury/ma-6-friendship-7',
+    instants: [5, 60, 131, 140, 200, 302, 600, 3000, 8000, 16_300, 16_395, 16_900, 17_100, 17_380, 17_500, 17_700],
+    orbit: [3000, 8000],
+    coast: 3000,
+  },
   v1: {
     id: 'ussr/vostok/vostok-1',
     instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500],

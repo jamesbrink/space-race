@@ -10,6 +10,7 @@ const url = urlOf(process.argv.slice(2));
 const FLIGHTS = {
   'usa/mercury/mr-3-freedom-7': ['Ignition', 'Engine cutoff'],
   'usa/mercury/mr-4-liberty-bell-7': ['Ignition', 'Engine cutoff'],
+  'usa/mercury/ma-6-friendship-7': ['Ignition', 'Booster engine cutoff'],
   'ussr/vostok/vostok-1': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-2': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-3': ['Ignition', 'Drop the strap-ons'],

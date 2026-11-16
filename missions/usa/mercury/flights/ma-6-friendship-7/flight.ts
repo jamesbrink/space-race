@@ -1,4 +1,4 @@
-import type { Flight } from '../../../../../src/types.ts';
+import type { Command, Flight } from '../../../../../src/types.ts';
 import { LC14 } from '../../../places/cape-canaveral/lc-14.ts';
 import {
   SPEC,
@@ -19,6 +19,10 @@ import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS, STAND_TURN } from './pad.ts';
 import { WEATHER } from './weather.ts';
+import { BASE } from '../../vehicles/mercury-atlas.ts';
+import { mercuryAtlasPlan } from '../../vehicles/mercury-atlas-plan.ts';
+import { CHUTES } from '../../vehicles/mercury-redstone.ts';
+import { orbital } from './orbital.ts';
 
 const RESULTS = 'Results of the First United States Manned Orbital Space Flight (NASA MSC, 1962)';
 
@@ -78,13 +82,13 @@ const parts: PartWords[] = [
       'for voice, telemetry and command. Two infrared scanners find the horizon in pitch and roll and keep the ' +
       'attitude gyros true through each orbit; for this flight they were given heater blankets. The drogue ' +
       'parachute is in its top. Coming down, with both fuel tanks dry and the capsule swinging "like a falling ' +
-      'leaf", Glenn reached for the switch to let it out early; it came out by itself as he did, at 28,000 ft ' +
+      'leaf", Glenn reached for the switch to let it out early; it came out by itself as he did, at 30,000 ft by his reading ' +
       'where 21,000 was planned. As built for the Redstone flights: nothing read gives a difference in its shape.',
     facts: [
       ['Length', '24 in (0.61 m)'],
       ['Antenna', 'bicone, voice and telemetry'],
       ['Scanners', '2 infrared, pitch and roll'],
-      ['Drogue', 'out at 04:49:17, at 28,000 ft'],
+      ['Drogue', 'out at 04:49:17, at 30,000 ft'],
     ],
   },
   {
@@ -367,11 +371,40 @@ const parts: PartWords[] = [
   },
 ];
 
+// What a hand can ask of each part in flight (the deck's part menu: orbitdeck.ts `can`, `ask`), each saying what Glenn could do
+const OVER = 'Glenn had no say over the Atlas but the abort: this takes the flight over';
+const COMMANDS: Record<string, Command[]> = {
+  AtlasBoosterEngines: [{ label: `Cut off the booster engines (${OVER})`, ask: 'step:cut:0' }],
+  AtlasBoosterSection: [{ label: `Drop the booster section (${OVER})`, ask: 'step:separate:0' }],
+  EscapeTower: [
+    { label: 'Release the escape tower (he could: its switch; on the day the sequence did, at 2:33)', ask: 'step:drop:tower-clamp' },
+  ],
+  AtlasSustainer: [{ label: `Cut off the sustainer (${OVER})`, ask: 'step:cut:1' }],
+  AtlasAdapter: [
+    { label: 'Separate the spacecraft (he could: the capsule-separation switch; the sequence did it at 5:03.6)', ask: 'step:separate:1' },
+  ],
+  Retropack: [
+    { label: 'Fire the retrorockets by hand (he could: the retro switch, along the long axis)', ask: 'retro' },
+    { label: 'Jettison the retropack (he kept it on, as the ground asked)', ask: 'descent:retropack-off' },
+  ],
+  Afterbody: [{ label: 'Extend the periscope', back: 'Retract the periscope', ask: 'work:periscope' }],
+  AntennaCanister: [
+    {
+      label: 'Drogue parachute (its barostat; he was reaching for its switch when it came)',
+      ask: 'descent:mercury-capsule/drogue parachute',
+    },
+  ],
+  RecoveryCompartment: [{ label: 'Main parachute (its barostat, at 10,800 ft)', ask: 'descent:mercury-capsule/main parachute' }],
+};
+
 const vehicle = mercuryAtlasStack({
   // on the stand at Complex 14, the hatch on 240 degrees true (pad.ts, lc-14.parts.ts)
   stand: { over: LAUNCHER_TOP, rotationY: STAND_TURN },
   flight: 'ma-6-friendship-7',
-  parts: mercuryAtlasParts('ma-6-friendship-7', parts),
+  parts: mercuryAtlasParts(
+    'ma-6-friendship-7',
+    parts.map((p) => (COMMANDS[p.node] ? { ...p, commands: COMMANDS[p.node] } : p)),
+  ),
   // the periscope as it went on this flight (vehicles/periscope.ts)
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
   views: [
@@ -441,7 +474,7 @@ export const flight: Flight = {
     { t: 16388, event: 'Retrofire: three motors, five seconds apart' },
     { t: 17011, event: '0.05 g, switched by the pilot; the retropack is still on' },
     { t: 17017, event: '"A real fireball outside"' },
-    { t: 17357.2, event: 'Drogue parachute, at 28,000 ft: out by itself as the pilot reached to let it out early' },
+    { t: 17357.2, event: 'Drogue parachute, at 30,000 ft: out by itself as the pilot reached to let it out early' },
     { t: 17411, event: 'Main parachute' },
     { t: 17723, event: 'Landing, 21°26′ N 68°37′ W' },
   ],
@@ -627,6 +660,39 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig). One of the two in yaw stopped late in the first orbit, the other in the second',
     },
   }),
+  // the flight as the simulator flies it, from its record (orbital.ts; mission.md)
+  plan: { ...mercuryAtlasPlan(orbital), aloft: WEATHER.aloft },
+  // the flight in the scene: the stack off the pad, what leaves it, and the capsule down on its parachutes
+  flies: {
+    model: 'vehicle',
+    datum: BASE,
+    // each engine's fire from its own nozzles: the two booster chambers, the sustainer and its verniers, all on kerosene
+    // and oxygen; and the retrorockets' three, burning as the plan flies them, evenly from the first's lighting
+    fires: [
+      { node: 'BoosterEngines_Chambers', on: 'booster-engines', burns: 'kerosene-lox' },
+      { node: 'Sustainer_Chamber', radius: 24 * IN, on: 'sustainer', burns: 'kerosene-lox' },
+      { node: 'Verniers_Nozzles', on: 'sustainer', burns: 'kerosene-lox' },
+      { node: 'Retropack_RetroNozzles', on: 'retrorockets', burns: 'solid-perchlorate' },
+    ],
+    // each by the plan's joint that lets it go (vehicles/mercury-atlas-plan.ts), at the record's instant
+    drops: [
+      { at: orbital.atlas.booster.separation.value, nodes: ['AtlasBoosterSection', 'AtlasBoosterEngines'], on: 'booster-latch' },
+      { at: orbital.tower.separation.value, nodes: ['EscapeTower'], on: 'tower-clamp' },
+      {
+        at: orbital.separation.at.value,
+        nodes: ['AtlasAdapter', 'AtlasTank', 'AtlasSustainer', 'AtlasVerniers', 'AtlasPods'],
+        on: 'adapter-clamp',
+      },
+      // (kept on through the entry, and gone in pieces as its straps burned through)
+      { at: orbital.retro.gone.value, nodes: ['Retropack'], on: 'retropack-straps' },
+    ],
+    // the Redstone flights' drogue and main, the same canopies, on the capsule's own descent
+    chutes: [
+      { ...CHUTES[0]!, on: 'drogue parachute', body: 'mercury-capsule' },
+      { ...CHUTES[1]!, on: 'main parachute', body: 'mercury-capsule' },
+    ],
+    air: { shield: 'HeatShield', collar: 'HeatShield', frost: ['frost-lox'] },
+  },
   models: [vehicle, pad, crew],
   surroundings: 'models/usa/places/cape-canaveral/lc14/1962-02.glb',
 };

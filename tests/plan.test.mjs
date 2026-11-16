@@ -9,9 +9,9 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ballisticOf } from '../src/sim/fly.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { coastEvents } from '../src/sim/orbital.ts';
+import { coastEvents, coastOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
-import { byHand, givenUp } from '../src/sim/staged.ts';
+import { byHand, drawnFrom, givenUp, schedule, stagesOf } from '../src/sim/staged.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -105,7 +105,11 @@ for (const f of ballistic) {
   });
 }
 
-for (const f of orbital) {
+/** The Vostoks' records (vostok-record.ts: `stages`), and the Mercury-Atlases' (mercury-atlas-plan.ts: `atlas`). */
+const vostoks = orbital.filter((f) => 'stages' in recordFrom(f));
+const atlases = orbital.filter((f) => 'atlas' in recordFrom(f));
+
+for (const f of vostoks) {
   const o = recordFrom(f);
   const plan = f.plan;
   const c = craftOf(plan);
@@ -180,6 +184,83 @@ for (const f of orbital) {
     const never = coastEvents(givenUp(plan));
     for (const e of [never.command, never.on, never.off, never.parting].filter(Boolean))
       assert.equal(clockAt(givenUp(plan), e), Number.MAX_SAFE_INTEGER);
+  });
+}
+
+for (const f of atlases) {
+  const o = recordFrom(f);
+  const plan = f.plan;
+  const c = craftOf(plan);
+  test(`${f.id}: the Mercury-Atlas plan carries the record's figures, the Atlas a stage and a half on one tank`, () => {
+    assert.equal(c.mass, o.liftoffMass);
+    const [booster, sustainer] = stagesOf(plan);
+    assert.equal(booster.engine.thrust.seaLevel, o.atlas.booster.engine.thrust.seaLevel);
+    assert.equal(booster.engine.isp.vacuum, o.atlas.booster.engine.isp.vacuum);
+    assert.equal(sustainer.engine.thrust.vacuum, o.atlas.tank.engine.thrust.vacuum);
+    // both engines draw on the one tank, which the tank section carries: the booster section carries none, and leaves empty
+    assert.equal(booster.tank, sustainer.tank);
+    assert.equal(booster.tank.load, o.atlas.tank.propellant);
+    assert.deepEqual(
+      [booster.shares, sustainer.shares],
+      [
+        [0, 1],
+        [0, 1],
+      ],
+    );
+    assert.equal(booster.holder.id, sustainer.body.id);
+    assert.notEqual(booster.body.id, booster.holder.id);
+    assert.equal(booster.body.mass, o.atlas.booster.mass);
+    assert.equal(
+      drawnFrom(stagesOf(plan), booster.body.id, () => 1),
+      0,
+      'nothing is drawn from the booster section',
+    );
+    assert.equal(
+      drawnFrom(stagesOf(plan), sustainer.body.id, () => 1),
+      3,
+      'its tank is drawn on by three chambers',
+    );
+    // the booster section is dropped by a joint of its own, at the record's instant, after its engines' cut
+    const drop = plan.events.find((e) =>
+      e.do.some((a) => 'separate' in a && c.joints.find((j) => j.id === a.separate)?.gone.join() === booster.body.id),
+    );
+    assert.equal(drop.at, o.atlas.booster.separation);
+    const cut = plan.events.find((e) => e.do.some((a) => 'cut' in a && a.cut === booster.engine.id));
+    assert.equal(cut.at, o.atlas.booster.cutoff);
+    // the sustainer is cut on the ground guidance's speed, and its record instant is a mark
+    const seco = plan.events.find((e) => e.do.some((a) => 'cut' in a && a.cut === sustainer.engine.id));
+    assert.equal(seco.when[0].speed, o.atlas.tank.velocity.value);
+    assert.ok(plan.record.marks.some((m) => m.at.value === o.atlas.tank.cutoff.value));
+    // a shared tank runs dry for both at once, on both their flows: with the booster engines cut at their instant, later
+    const burns = schedule(plan);
+    assert.equal(burns[0].to, o.atlas.booster.cutoff.value);
+    assert.ok(burns[1].to > burns[0].to);
+    // every instant of the record is an event's or a mark, by its id; every event the clock sets off is set off at it to the bit
+    const named = new Set([...plan.events.flatMap((e) => (e.record ? [e.record.id] : [])), ...plan.record.marks.map((m) => m.id)]);
+    for (const e of o.events) assert.ok(named.has(e.id), `the record's ${e.id} is in the plan`);
+    for (const e of plan.events)
+      if (e.at && e.when.some((w) => 'time' in w || 'after' in w))
+        assert.equal(clockAt(plan, e), e.at.value, `${e.id} at its record instant`);
+    assert.equal(plan.checks.length, o.ascent.checks.length + o.checks.length + o.descent.checks.length);
+  });
+  test(`${f.id}: the retrofire is three solids as one burn, spent and not cut; the pack goes so long after, and a hand's burn is the same burn`, () => {
+    const k = coastEvents(plan);
+    assert.equal(k.burn.kind, 'solid');
+    assert.equal(k.burn.flown, o.retro.deltaV);
+    assert.equal(k.off, undefined, 'nothing cuts a solid');
+    const coast = coastOf(plan);
+    assert.equal(coast.on, o.retro.on.value);
+    assert.equal(coast.off, o.retro.on.value + o.retro.spacing.value * 2 + o.retro.burn.value, 'the first lit to the third spent');
+    assert.equal(coast.parted, o.retro.gone.value);
+    assert.equal(k.parting.when[0].after, k.on.id, 'the pack goes so long after retrofire');
+    assert.equal(byId(c.joints, 'retropack-straps').after, o.entry.mass);
+    assert.equal(downOf(plan).floor, o.descent.drogue.altitude.value, 'what comes down is let loose at the drogue');
+    const t = o.retro.on.value - 600;
+    const hand = coastOf(byHand(plan, t, [1, 0, 0]));
+    assert.equal(hand.on, t);
+    assert.equal(hand.off, t + coast.off - coast.on, 'a solid burns as long by hand');
+    assert.equal(hand.parted, t + plan.record.manual.parting.value);
+    assert.equal(coastOf(givenUp(plan)).on, Number.MAX_SAFE_INTEGER);
   });
 }
 

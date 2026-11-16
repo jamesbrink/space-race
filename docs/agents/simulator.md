@@ -69,9 +69,21 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - A Vostok's: missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, from its record (the flight's orbital.ts: a `VostokRecord`, vostok-record.ts, which only the Vostok modules read), which says
     the braking burn's command, timer and chain as events of their own; tests/plan.test.mjs holds it to the record's
     figures and instants, and tests that fly a changed record fly `vostokPlan` of it.
+  - A Mercury-Atlas's: missions/usa/mercury/vehicles/mercury-atlas-plan.ts `mercuryAtlasPlan`, from its record (the flight's
+    orbital.ts: a `MercuryAtlasRecord`). The Atlas is a stage and a half: one tank, on the tank section, drawn on by the
+    booster engines on the booster section and by the sustainer (its verniers flown as part of it), the booster section let
+    go by a joint of its own after its engines are cut. Its coast's burn is the retropack's three solids as one engine of
+    three, spent and not cut (`coastOf`: a solid nothing cuts burns for its `burn`, here the first's lighting to the third's
+    burning out), pushing against the motion pitched down by the record's attitude (`Hold.aim.below`); the pack goes so
+    long after retrofire (the coast's parting), and what comes down is let loose at its drogue's height (`Down.ejection`
+    is then a parachute's own event). tests/plan.test.mjs holds it to the record.
   - `EngineDef.flown` is the impulse the record's coast flies.
-  - A stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
+  - A stage's body, engine, tank and joint are `stage:<i>` in a Vostok's plan; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
+  - Several stages can draw on one tank (staged.ts `Stage.shares`, the tank on its own body, `holder`): it runs dry for all of
+    them at once on their summed flows (`schedule`, stagedlive.ts), and a body let go takes what it weighs less what has been
+    drawn from any tank on it (`drawnFrom`: an Atlas's booster section leaves empty). A stage on a tank of its own is flown by
+    the same arithmetic as before, to the bit.
   - Every simulator, deck and view flies `flight.plan`; a plan changed by a hand is an edit of it.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
   which events have happened and which are armed, and the attitude held. It is never changed in place.
@@ -596,7 +608,9 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
-  is flown again from that burn. Each is an edit of the plan (staged.ts `byHand`, `givenUp`, `partingAt`): the coast's
+  is flown again from that burn. A spacecraft whose hand controls had no lock (`PlanRecord.manual` without a `code`: Mercury's
+  fly-by-wire and manual proportional) is the hand's as soon as a key turns it once alone, its coast's burn then Space and
+  called by its plan label (`Retrorockets`); a descent event's `asked` is what the deck calls it. Each is an edit of the plan (staged.ts `byHand`, `givenUp`, `partingAt`): the coast's
   events set off at other instants (their `time` triggers; `at`, the record's instant, kept), the burn's impulse and its
   aim, and nothing else. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
   from that instant it is the user's ("Not the record's"), the live staged vehicle (below) is caught up to the record at
