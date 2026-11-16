@@ -643,6 +643,14 @@ export interface ModelDef {
   /** Which spec groups are this model's: they are listed first. */
   specGroups?: string[];
   /**
+   * The heading of its parts list (`Part.group`) under which stands what the spacecraft flew to meet: a docking
+   * target, a vehicle of its own, built into this model standing on the floor beside the launch vehicle (an
+   * exhibit's arrangement). It is neither the spacecraft nor what carried it: where the spacecraft stands alone (the
+   * Lineup's row of spacecraft, the gallery's Spacecraft choice) the target stands on the floor beside it, kept and
+   * not lowered with it (address.ts `targetNodes`).
+   */
+  target?: string;
+  /**
    * Lamps the model carries: cabin floodlights, so an interior seen through a window is not a
    * black hole. Positions in the model's own coordinates, metres; `reach` is where it fades out.
    */

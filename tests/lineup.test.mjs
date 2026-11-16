@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { MILESTONES, PEOPLE, PROGRAMMES, STORIES } from '../missions/history.ts';
-import { byDate, exhibit, programmeOf } from '../src/app/address.ts';
+import { byDate, exhibit, programmeOf, targetNodes } from '../src/app/address.ts';
 import {
   allot,
   claimsFirst,
@@ -108,8 +108,39 @@ test('the spacecraft alone is what rides on the launch vehicle: its own heading,
       e.headings.some((h) => h.id === 'spacecraft'),
       `${e.flight.id}: a Spacecraft heading`,
     );
-    assert.equal(e.headings.flatMap((h) => h.nodes).length, e.vehicle.parts.filter((p) => p.group).length);
+    // (what its spacecraft flew to meet is under no heading of the vehicle's: it is a third kind, and stands beside)
+    assert.equal(e.headings.flatMap((h) => h.nodes).length + e.beside.length, e.vehicle.parts.filter((p) => p.group).length);
+    assert.deepEqual(e.beside, targetNodes(e.vehicle));
+    assert.ok(
+      e.beside.every((n) => !e.headings.some((h) => h.nodes.includes(n))),
+      `${e.flight.id}: its target is no heading's`,
+    );
+    assert.equal(e.beside.length > 0, Boolean(e.vehicle.target), `${e.flight.id}: a target is stated in the model's data`);
   }
+  // a target is the model's to state (ModelDef.target), by its heading: with one, the spacecraft alone is still what
+  // rides on the launch vehicle, measured without it, and the target is beside
+  const stack = {
+    name: 'Vehicle',
+    target: 'Docking target',
+    parts: [
+      { node: 'Cabin', group: 'Spacecraft' },
+      { node: 'Adapter', group: 'Spacecraft' },
+      { node: 'Stage', group: 'Launch vehicle' },
+      { node: 'Cone', group: 'Docking target' },
+      { node: 'Engine', group: 'Docking target' },
+    ],
+  };
+  assert.deepEqual(
+    headingsOf(stack).map((h) => h.id),
+    ['spacecraft', 'launch-vehicle'],
+  );
+  const low = { Cabin: 30, Adapter: 27, Stage: 0, Cone: 7, Engine: 0 };
+  assert.deepEqual(
+    craftNodes(headingsOf(stack), (n) => low[n]),
+    ['Cabin', 'Adapter'],
+  );
+  assert.deepEqual(targetNodes(stack), ['Cone', 'Engine']);
+  assert.deepEqual(targetNodes({ ...stack, target: undefined }), [], 'none where the model states none');
 });
 
 test('a flight the history says nothing of speaks for itself: its line is what its summary says first', () => {

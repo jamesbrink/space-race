@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   aboutNoFlight,
   byDate,
+  craftNodes,
   entrances,
   exhibit,
   flightFor,
@@ -31,6 +32,8 @@ import {
   samePlace,
   scaleFigure,
   settle,
+  targetNodes,
+  vehicleHeadings,
   WHOLE_VIEW,
   write,
 } from '../src/app/address.ts';
@@ -215,6 +218,54 @@ test('a gallery address names a seat to sit in, by its node, and it is a choice 
   assert.equal(galleryAt({ ...vehicle, seats: undefined }, 'Seat_Pilot').seat, null);
   // a part's node is a part before it is anything else
   assert.equal(galleryAt(vehicle, 'CrewStation').part, 'CrewStation');
+});
+
+test('what a spacecraft flew to meet stands beside it where it stands alone: a third kind, stated in the model', () => {
+  const stack = {
+    name: 'Vehicle',
+    target: 'Docking target',
+    parts: [
+      { node: 'Cabin', group: 'Spacecraft' },
+      { node: 'Adapter', group: 'Spacecraft' },
+      { node: 'Stage', group: 'Launch vehicle' },
+      { node: 'Cone', group: 'Docking target' },
+      { node: 'Engine', group: 'Docking target' },
+    ],
+  };
+  const low = { Cabin: 30, Adapter: 27, Stage: 0, Cone: 7, Engine: 0 };
+  assert.deepEqual(targetNodes(stack), ['Cone', 'Engine']);
+  assert.deepEqual(
+    vehicleHeadings(stack).map((h) => h.id),
+    ['spacecraft', 'launch-vehicle'],
+    'the vehicle’s own headings: its target is not one',
+  );
+  // each heading can stand alone, the target among them; the Spacecraft is the spacecraft with its target beside it
+  for (const all of [plinths(stack), plinths(stack, (n) => low[n])]) {
+    assert.deepEqual(
+      all.map((p) => p.id),
+      ['whole', 'spacecraft', 'launch-vehicle', 'docking-target'],
+    );
+    assert.deepEqual(all[1].nodes, ['Cabin', 'Adapter', 'Cone', 'Engine']);
+    assert.deepEqual(all[2].nodes, ['Stage']);
+    assert.deepEqual(all[3].nodes, ['Cone', 'Engine']);
+  }
+  // the spacecraft alone is found without the target: on the floor it would make everything ride
+  assert.deepEqual(
+    craftNodes(vehicleHeadings(stack), (n) => low[n]),
+    ['Cabin', 'Adapter'],
+  );
+  // a model that states no target has none: the same heading is one like any other, and stays off the spacecraft
+  const plain = { ...stack, target: undefined };
+  assert.deepEqual(targetNodes(plain), []);
+  assert.deepEqual(plinths(plain, (n) => low[n])[1].nodes, ['Cabin', 'Adapter']);
+  // every flight that states one has parts under that heading, and its target can stand alone
+  for (const v of flights.map(exhibit).filter((v) => v?.target)) {
+    assert.ok(targetNodes(v).length > 0, `${v.url}: parts under its target’s heading`);
+    assert.ok(
+      plinths(v).some((p) => p.label === v.target),
+      `${v.url}: its target can stand alone`,
+    );
+  }
 });
 
 test('the views of what stands there are the vehicle`s own, of parts that are there', () => {

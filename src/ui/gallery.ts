@@ -1033,8 +1033,12 @@ export class Gallery {
     // (nobody is to think the rest is missing: what has been left out is named)
     const note = this.q('.alone');
     note.hidden = !plinth.nodes;
-    const others = this.choices.filter((p) => p.nodes && p !== plinth).map((p) => p.label.toLowerCase());
-    note.querySelector('b')!.textContent = `${plinth.label} alone`;
+    // (another heading that stands there with it is there to be seen: a spacecraft's target, beside it)
+    const there = (p: Plinth): boolean => Boolean(p.nodes?.every((n) => plinth.nodes?.includes(n)));
+    const rest = this.choices.filter((p) => p.nodes && p !== plinth);
+    const others = rest.filter((p) => !there(p)).map((p) => p.label.toLowerCase());
+    const beside = rest.filter(there).map((p) => p.label.toLowerCase());
+    note.querySelector('b')!.textContent = beside.length ? `${plinth.label} and its ${beside.join(', ')}` : `${plinth.label} alone`;
     note.querySelector('span')!.textContent = others.length ? `${others.join(', ')} not shown` : '';
     this.map(note.querySelector('svg')!, plinth);
     this.measure(); // (the note lies across the top of the view: what is clear under it has changed)

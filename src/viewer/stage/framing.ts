@@ -218,12 +218,14 @@ export class Framing {
     // the subject fills most of the frame above the controls, which sit over the bottom of it
     const fill = (1 - this.inset - this.head) * 0.9;
     const distance = span / 2 / Math.tan(THREE.MathUtils.degToRad(this.h.lens / 2)) / fill;
-    // a named view looks at the model's own axis; 'all' looks at the middle of everything
+    // a named view looks at the model's own axis; 'all' looks at the middle of everything. So does a view of a model
+    // whose axis is not in it: what is left of one when the rest is taken off the stage (`only`) and what is left
+    // stood beside the rest (a docking target beside its launch vehicle) is looked at where it stands
     const mid = box.getCenter(new THREE.Vector3());
-    const target =
-      named && !subjects.length
-        ? new THREE.Vector3(this.h.main()!.position.x, centreY, this.h.main()!.position.z)
-        : new THREE.Vector3(mid.x, centreY, mid.z);
+    const axis = this.h.main()?.position;
+    const onAxis =
+      named && !subjects.length && axis && axis.x >= box.min.x && axis.x <= box.max.x && axis.z >= box.min.z && axis.z <= box.max.z;
+    const target = onAxis ? new THREE.Vector3(axis.x, centreY, axis.z) : new THREE.Vector3(mid.x, centreY, mid.z);
     const lift = this.h.setting().floor ? 0.16 : span < 4 ? 0.22 : 0.1;
     // (the subject sits in the middle of the frame that the controls leave clear: the camera aims under it, camera/maths.ts aimBelow)
     // Framed again because the subject changed shape (the slider, a resize): from wherever the

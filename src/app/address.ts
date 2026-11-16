@@ -254,15 +254,36 @@ const slug = (s: string) =>
  * it has more than one. Nothing new is asked of a flight: `Part.group` is the heading the parts
  * are already listed under. Given how low each of the model's nodes reaches (`lowest`, once it has
  * arrived), the spacecraft alone is what rides on the launch vehicle, as the Lineup stands it
- * (`craftNodes`): Voskhod 2's airlock, listed under a heading of its own, with it.
+ * (`craftNodes`): Voskhod 2's airlock, listed under a heading of its own, with it. And what the
+ * spacecraft flew to meet (`ModelDef.target`) stands beside it there, as in the Lineup (`targetNodes`).
  */
-export function plinths(model: Pick<ModelDef, 'parts' | 'name'>, lowest?: (node: string) => number | null): Plinth[] {
+export function plinths(model: Pick<ModelDef, 'parts' | 'name' | 'target'>, lowest?: (node: string) => number | null): Plinth[] {
   const groups = [...new Set(model.parts.flatMap((p) => (p.group ? [p.group] : [])))];
   const whole: Plinth = { id: 'whole', label: `Whole ${model.name.toLowerCase()}`, nodes: null };
   if (groups.length < 2) return [whole];
   const each = groups.map((g) => ({ id: slug(g), label: g, nodes: model.parts.filter((p) => p.group === g).map((p) => p.node) }));
-  const craft = lowest ? craftNodes(each, lowest) : null;
-  return [whole, ...each.map((p) => (craft && p.id === SPACECRAFT ? { ...p, nodes: craft } : p))];
+  // (a target is no part of the spacecraft and rides on nothing: it is left out of what is measured, and stood beside)
+  const target = targetNodes(model);
+  const craft = lowest ? craftNodes(vehicleHeadings(model), lowest) : null;
+  return [whole, ...each.map((p) => (p.id === SPACECRAFT ? { ...p, nodes: [...(craft ?? p.nodes), ...target] } : p))];
+}
+
+/**
+ * The headings of the vehicle itself, in the order its parts list has them, each with the nodes listed under it: its
+ * spacecraft, its launch vehicle, an airlock. Not its target's (`ModelDef.target`), which is no part of it.
+ */
+export function vehicleHeadings(model: Pick<ModelDef, 'parts' | 'target'>): Heading[] {
+  const groups = [...new Set(model.parts.flatMap((p) => (p.group && p.group !== model.target ? [p.group] : [])))];
+  return groups.map((g) => ({ id: slug(g), nodes: model.parts.filter((p) => p.group === g).map((p) => p.node) }));
+}
+
+/**
+ * The nodes of what the vehicle's spacecraft flew to meet (`ModelDef.target`: the parts under that heading of its
+ * parts list): a third kind, neither the spacecraft nor what carried it. Where the spacecraft stands alone they
+ * stand on the floor beside it, kept and not lowered with it; none where the model says no target.
+ */
+export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[] {
+  return model.target ? model.parts.filter((p) => p.group === model.target).map((p) => p.node) : [];
 }
 
 /** The heading a vehicle's parts list puts its spacecraft under, as a choice of what stands in the gallery (`plinths`). */

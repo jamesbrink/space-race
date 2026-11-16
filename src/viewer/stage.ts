@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Target } from '../app/actions.ts';
+import { targetNodes } from '../app/address.ts';
 import { readingFor } from '../sim/mechanism.ts';
 import { bodyOf, gravityOn } from '../world/bodies.ts';
 import type { Flight as FlightData, ModelDef } from '../types.ts';
@@ -1362,6 +1363,10 @@ export class Stage {
     this.picker.treesOwed.clear();
     for (const { node, parent } of this.away.splice(0)) parent.add(node);
     this.stood = null;
+    // (what stood beside the model goes with it)
+    for (const node of [...this.beside.children]) this.beside.parent?.add(node);
+    this.beside.removeFromParent();
+    this.besideStood = null;
   }
 
   /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle, wherever it has got to. */
@@ -2210,6 +2215,13 @@ export class Stage {
   private readonly away: { node: THREE.Object3D; parent: THREE.Object3D }[] = [];
   /** The section's model stands on the floor, whatever is left of it and however far apart it is: how far it was lifted to stand there put together. */
   private stood: { lift: number; low: number } | null = null;
+  /**
+   * What of the section's model stands beside the rest on a floor of its own (`ModelDef.target`: what the spacecraft
+   * flew to meet), held together under the model and apart from the rest of it: the rest is lowered to the floor when
+   * part of it is taken away, and lifted as it comes apart downward, and this is not. `stood`: as `stood`, of it.
+   */
+  private readonly beside = new THREE.Group();
+  private besideStood: { lift: number; low: number } | null = null;
 
   /**
    * Leave on the stage only these parts of the section's model (their nodes; null: all of it
@@ -2225,7 +2237,9 @@ export class Stage {
     if (!found) return null;
     found.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(found, true);
-    return box.isEmpty() ? null : box.min.y;
+    // (in the model as built: what stands beside it is measured where the model has it, not where it has been stood)
+    const stoodAt = found.parent === this.beside ? this.beside.getWorldScale(new THREE.Vector3()).y * this.beside.position.y : 0;
+    return box.isEmpty() ? null : box.min.y - stoodAt;
   }
 
   only(nodes: readonly string[] | null): number {
@@ -2239,13 +2253,27 @@ export class Stage {
       this.away.push({ node, parent: node.parent });
       node.removeFromParent();
     }
+    // what the spacecraft flew to meet is held apart from the rest (once: it stays so)
+    this.beside.name = 'Beside';
+    this.beside.position.set(0, 0, 0);
+    if (this.beside.parent !== own.full) {
+      // (another model's: its parts go back under it)
+      for (const node of [...this.beside.children]) this.beside.parent?.add(node);
+      own.full.add(this.beside);
+    }
+    for (const name of targetNodes(def)) {
+      const node = own.full.getObjectByName(name);
+      if (node?.parent === own.full) this.beside.add(node);
+    }
     // put together and measured to the vertex (a box round boxes stands it a hair above the floor)
     const apart = this.apart[this.current] ?? 0;
     own.explode(0);
     own.group.position.y = 0;
     own.group.updateMatrixWorld(true);
-    const exact = new THREE.Box3().setFromObject(own.full, true);
-    this.stood = { lift: exact.isEmpty() ? 0 : -exact.min.y, low: new THREE.Box3().setFromObject(own.full).min.y };
+    const exact = this.restBox(own, true);
+    this.stood = { lift: exact.isEmpty() ? 0 : -exact.min.y, low: this.restBox(own).min.y };
+    const exactBeside = new THREE.Box3().setFromObject(this.beside, true);
+    this.besideStood = exactBeside.isEmpty() ? null : { lift: -exactBeside.min.y, low: new THREE.Box3().setFromObject(this.beside).min.y };
     own.explode(apart);
     this.ground();
     this.section(def.id);
@@ -2257,12 +2285,39 @@ export class Stage {
     const own = this.staged[this.current];
     if (!own || !this.stood) return;
     own.group.position.y = 0;
+    this.beside.position.y = 0;
     own.group.updateMatrixWorld(true);
-    const low = new THREE.Box3().setFromObject(own.full).min.y;
-    own.group.position.y = this.stood.lift + Math.max(0, this.stood.low - low);
+    const rest = this.restBox(own);
+    own.group.position.y = rest.isEmpty() ? 0 : this.stood.lift + Math.max(0, this.stood.low - rest.min.y);
+    this.standBeside(own);
     own.group.updateMatrixWorld(true);
     own.measure();
     this.lamps.place();
+  }
+
+  /** The box round the section's model without what stands beside it (`precise`: to the vertex). */
+  private restBox(own: { full: THREE.Object3D }, precise = false): THREE.Box3 {
+    const box = new THREE.Box3();
+    for (const child of own.full.children) if (child !== this.beside) box.expandByObject(child, precise);
+    return box;
+  }
+
+  /**
+   * Stand what is beside the model on the floor, wherever the model itself has been put (`own.group` lowered, or
+   * lifted as it comes apart): its own lowest part on the floor, as it stands now. Its holder is at nought while it
+   * is measured.
+   */
+  private standBeside(own: { full: THREE.Object3D; group: THREE.Object3D }): void {
+    this.beside.position.y = 0;
+    if (!this.besideStood || !this.beside.children.length) return;
+    const at = own.group.position.y;
+    own.group.position.y = 0;
+    own.group.updateMatrixWorld(true);
+    const low = new THREE.Box3().setFromObject(this.beside).min.y;
+    own.group.position.y = at;
+    const lift = this.besideStood.lift + Math.max(0, this.besideStood.low - low);
+    // (in the model's own measure: a model is drawn at a metre to the metre, but its holder's is the scale that counts)
+    this.beside.position.y = (lift - at) / own.full.getWorldScale(new THREE.Vector3()).y;
   }
 
   /**
@@ -2273,7 +2328,9 @@ export class Stage {
     const own = this.staged[this.current];
     if (!own) return [];
     const apart = this.apart[this.current] ?? 0;
+    const beside = this.beside.position.y;
     own.explode(0);
+    this.beside.position.y = 0; // (each part where the model has it: what stands beside too)
     own.group.updateMatrixWorld(true);
     const at = own.group.position;
     const out = [...this.parts].flatMap(([node, object]) => {
@@ -2288,6 +2345,8 @@ export class Stage {
       return [{ node, low: box.min.y - at.y, high: box.max.y - at.y, reach }];
     });
     own.explode(apart);
+    this.beside.position.y = beside;
+    own.group.updateMatrixWorld(true);
     return out;
   }
 
@@ -2298,12 +2357,15 @@ export class Stage {
     if (!own) return box;
     const apart = this.apart[this.current] ?? 0;
     const y = own.group.position.y;
+    const beside = this.beside.position.y;
     own.explode(0);
     if (this.stood) own.group.position.y = this.stood.lift;
+    if (this.stood) this.standBeside(own);
     own.group.updateMatrixWorld(true);
     box.setFromObject(own.full);
     own.explode(apart);
     own.group.position.y = y;
+    this.beside.position.y = beside;
     own.group.updateMatrixWorld(true);
     return box;
   }

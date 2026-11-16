@@ -1,6 +1,6 @@
 import type { FlightStory, Milestone, Person, Programme } from '../../../missions/history.ts';
 import type { Confidence, Flight, ModelDef, Spec } from '../../types.ts';
-import { byDate, exhibit, type Heading, plinths, programmeOf } from '../address.ts';
+import { byDate, exhibit, type Heading, programmeOf, targetNodes, vehicleHeadings } from '../address.ts';
 
 // (the spacecraft alone is one rule for the row and a flight's gallery: address.ts `craftNodes`)
 export { craftNodes, type Heading } from '../address.ts';
@@ -56,6 +56,8 @@ export interface Entry {
   craft: string[] | null;
   /** Its parts list's headings (`headingsOf`): what the spacecraft alone is found from. */
   headings: Heading[];
+  /** The nodes of what its spacecraft flew to meet (address.ts `targetNodes`): beside the spacecraft where that stands alone, on the floor. */
+  beside: string[];
   /** Which of the row's nations it flew for, and which of its programmes it is of: indexes into `nations` and `sections`. */
   nation: number;
   programme: number;
@@ -88,13 +90,17 @@ export interface Section {
 const SPACECRAFT = 'spacecraft';
 
 /** The parts listed under the vehicle's `Spacecraft` heading, where its parts list has one among others. */
-export function spacecraftNodes(model: Pick<ModelDef, 'parts' | 'name'>): string[] | null {
-  return plinths(model).find((p) => p.id === SPACECRAFT)?.nodes ?? null;
+export function spacecraftNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[] | null {
+  return headingsOf(model).find((h) => h.id === SPACECRAFT)?.nodes ?? null;
 }
 
-/** The headings of a vehicle's parts list, in the order they come, where it has more than one (address.ts `plinths`). */
-export function headingsOf(model: Pick<ModelDef, 'parts' | 'name'>): Heading[] {
-  return plinths(model).flatMap((p) => (p.nodes ? [{ id: p.id, nodes: p.nodes }] : []));
+/**
+ * The headings of a vehicle's parts list, in the order they come, where it has more than one (address.ts
+ * `vehicleHeadings`: the vehicle's own, without what it flew to meet).
+ */
+export function headingsOf(model: Pick<ModelDef, 'parts' | 'target'>): Heading[] {
+  const headings = vehicleHeadings(model);
+  return headings.length > 1 ? headings : [];
 }
 
 /**
@@ -135,6 +141,7 @@ export function entries(flights: readonly Flight[], history: History = NONE): En
       vehicle,
       craft: spacecraftNodes(vehicle),
       headings: headingsOf(vehicle),
+      beside: targetNodes(vehicle),
       nation,
       programme,
       tint: tintOf(nation, nth),
