@@ -10,8 +10,28 @@ import { chooseTier, tier } from '../viewer/tier.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
 import { Wheel } from './wheel.ts';
 import { $, esc } from '../util/dom.ts';
-import { capsOf, doesOf, is, isTyping, type KeyName, modified, which } from '../util/keys.ts';
+import { capsOf, doesOf, is, isTyping, KEYS, type KeyName, modified, which } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
+
+/**
+ * The walk bar's readout of something worked by hand (Ui.setWorking): its name and which way it is going, a travel bar
+ * between its two ends, why it will not move if it will not, and its keys as buttons (W and S held, E pressed).
+ */
+function workMarkup(): string {
+  // (each button presses the first key of its slot in the table, and shows that key's cap)
+  const key = (name: KeyName, slot: number): string => {
+    const s = (KEYS[name].slots as readonly (string | readonly string[])[])[slot]!;
+    return typeof s === 'string' ? s : s[0]!;
+  };
+  const [on, back] = capsOf('work.push');
+  const [done] = capsOf('work.done');
+  return `<div class="work" hidden role="group" aria-label="Working by hand">
+    <p class="work-what"><b class="work-name"></b><em class="work-way" aria-live="polite"></em><span class="work-pct"></span></p>
+    <div class="travel" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i class="track"><i class="fill"></i><i class="mark"></i></i><small class="end0"></small><small class="end1"></small></div>
+    <p class="work-why" hidden></p>
+    <div class="work-keys"><button class="work-back" data-hold="${key('work.push', 1)}" title="Hold to run it back"><kbd>${esc(back!)}</kbd><span></span></button><button class="work-on" data-hold="${key('work.push', 0)}" title="Hold to run it on"><kbd>${esc(on!)}</kbd><span></span></button><button data-press="${key('work.done', 0)}" title="Let go of the controls"><kbd>${esc(done!)}</kbd><span>Done</span></button></div>
+  </div>`;
+}
 
 export interface UiHandlers {
   model(id: string): void;
@@ -353,7 +373,7 @@ export class Ui {
         <p class="scale"></p>
       </footer>
       ${legendMarkup(f)}
-      <div class="walkbar" hidden><span></span><button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit title="Back to the camera (V or Esc)">Exit walk</button></div>
+      <div class="walkbar" hidden><span></span>${workMarkup()}<button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit title="Back to the camera (V or Esc)">Exit walk</button></div>
       <div class="visor" aria-hidden="true"></div>
       <div class="stick" aria-hidden="true"><i></i></div>
       <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump title="Jump">Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden title="What can be done with what you are looking at">Act</button></div>
@@ -503,6 +523,37 @@ export class Ui {
       });
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => on.walkPush(0));
     });
+    // (what hangs under the walk bar, the clock, hangs under it however tall the readout makes it)
+    const walkbar = $<HTMLElement>(root, '.walkbar');
+    this.scope.observer(() => root.style.setProperty('--walkbar-h', `${walkbar.offsetHeight}px`)).observe(walkbar);
+    // The readout's keys are buttons too (the deck's rule): one that is held is its key held for as long as the pointer is
+    // down on it, the other presses its key; whoever listens for the key does what the key does.
+    const press = (key: string, down: boolean) =>
+      window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { key, bubbles: true }));
+    root.querySelectorAll<HTMLButtonElement>('.work [data-hold]').forEach((b) => {
+      const set = (down: boolean) => {
+        if (b.classList.contains('down') === down) return;
+        b.classList.toggle('down', down);
+        press(b.dataset.hold!, down);
+      };
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); // (it takes no focus, so a key held next goes where it should)
+        try {
+          b.setPointerCapture(e.pointerId);
+        } catch {
+          // a pointer the browser no longer has: it lets go by itself
+        }
+        set(true);
+      });
+      for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => set(false));
+      this.scope.on(window, 'blur', () => set(false));
+    });
+    root.querySelectorAll<HTMLButtonElement>('.work [data-press]').forEach((b) =>
+      b.addEventListener('click', () => {
+        press(b.dataset.press!, true);
+        press(b.dataset.press!, false);
+      }),
+    );
     // The walking stick, for a finger: push it the way you want to go, further to go faster.
     const stick = $<HTMLElement>(root, '.stick');
     const knob = $<HTMLElement>(stick, 'i');
@@ -898,19 +949,68 @@ export class Ui {
   }
 
   /**
-   * Working something by hand (on foot, at its controls), or not (null): on a touch screen the
-   * jump button gives way to two that run it while a finger is on them, each named by the end of
-   * its travel it runs toward, and the act button says Done.
+   * Working something by hand (on foot, at its controls), or not (null). The walk bar becomes its readout: what is held,
+   * which way it is going and how far along its travel it is, between its two ends by name (`showWork`), with its keys,
+   * each also a button. On a touch screen the jump button gives way to two that run it while a finger is on them, each
+   * named by the end of its travel it runs toward, and the act button says Done.
    */
-  setWorking(ends: [string, string] | null): void {
+  setWorking(work: { name: string; ends?: [string, string] } | null): void {
+    const ends = work ? (work.ends ?? (['the start', 'the end'] as [string, string])) : null;
     const [back, on] = this.root.querySelectorAll<HTMLButtonElement>('[data-walk-push]');
     back!.hidden = on!.hidden = !ends;
     if (ends) [back!.textContent, on!.textContent] = ends;
     $<HTMLButtonElement>(this.root, '[data-walk-jump]').hidden = Boolean(ends);
     this.working = Boolean(ends);
     this.updateAct();
+    const bar = $<HTMLElement>(this.root, '.walkbar');
+    bar.classList.toggle('working', Boolean(work));
+    const panel = $<HTMLElement>(bar, '.work');
+    panel.hidden = !work;
+    if (!work || !ends) return;
+    this.workEnds = ends;
+    $(panel, '.work-name').textContent = work.name;
+    $(panel, '.end0').textContent = ends[0];
+    $(panel, '.end1').textContent = ends[1];
+    $(panel, '.work-back span').textContent = ends[0];
+    $(panel, '.work-on span').textContent = ends[1];
+    $(panel, '.travel').setAttribute('aria-label', `${work.name}: from ${ends[0]} to ${ends[1]}`);
+    this.shownWork = null;
+    this.showWork({ value: 0, way: 0, refused: null });
   }
   private working = false;
+  private workEnds: [string, string] = ['the start', 'the end'];
+  private shownWork: { value: number; way: number; refused: string | null } | null = null;
+
+  /** How what is being worked by hand stands: how far along its travel (0 to 1), which way it is going (1 toward its second end), and why it will not move. */
+  showWork(state: { value: number; way: -1 | 0 | 1; refused: string | null }): void {
+    if (!this.working) return;
+    const pct = Math.round(Math.min(1, Math.max(0, state.value)) * 100);
+    const was = this.shownWork;
+    if (was && Math.round(was.value * 100) === pct && was.way === state.way && was.refused === state.refused) return;
+    this.shownWork = { ...state };
+    const panel = $<HTMLElement>(this.root, '.walkbar .work');
+    const travel = $<HTMLElement>(panel, '.travel');
+    travel.setAttribute('aria-valuenow', String(pct));
+    travel.setAttribute('aria-valuetext', `${pct}% of the way to ${this.workEnds[1]}`);
+    travel.dataset.value = String(state.value);
+    travel.style.setProperty('--at', `${state.value * 100}%`);
+    $(panel, '.work-pct').textContent = `${pct}%`;
+    const way = $<HTMLElement>(panel, '.work-way');
+    way.dataset.way = String(state.way);
+    way.textContent =
+      state.way > 0
+        ? `▶ to ${this.workEnds[1]}`
+        : state.way < 0
+          ? `◀ to ${this.workEnds[0]}`
+          : pct >= 100
+            ? this.workEnds[1]
+            : pct <= 0
+              ? this.workEnds[0]
+              : 'stopped';
+    const why = $<HTMLElement>(panel, '.work-why');
+    why.hidden = !state.refused;
+    why.textContent = state.refused ? `Will not move: ${state.refused}` : '';
+  }
 
   /** While walking: the view is through the figure's eyes (not from outside it), so the visor's rim, if chosen, is round it. */
   setThroughEyes(on: boolean): void {

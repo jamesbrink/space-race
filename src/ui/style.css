@@ -148,6 +148,34 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .walkbar button { flex: none; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 8px 13px; color: var(--amber); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; white-space: nowrap; }
 .walkbar button:hover { color: var(--ink); border-color: var(--ink); }
 .walkbar [data-walk-motion] { color: var(--dim); border-color: var(--line); }
+/* working something by hand: the bar is its readout, on a row of its own above the bar's own buttons */
+.walkbar.working { flex-wrap: wrap; justify-content: flex-end; row-gap: 10px; padding: 10px 10px 8px 14px; width: min(640px, calc(100vw - 2 * var(--edge))); }
+.walkbar.working > span { display: none; }
+/* (the clock hangs under the bar, however tall the readout makes it; and E is Done, so the reticle's offer is put away) */
+#ui.walking:has(.walkbar.working) .timebar { top: calc(var(--edge) + var(--walkbar-h, 46px) + 8px); }
+#ui.walking:has(.walkbar.working) .reticle { display: none; }
+.work { flex: 1 1 100%; display: grid; gap: 7px; min-width: 0; }
+.work-what { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.work-name { font: 600 14px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.work-way { flex: 1; min-width: 0; font-style: normal; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.work-way[data-way='1'], .work-way[data-way='-1'] { color: var(--amber); }
+.work-pct { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.travel { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; }
+.travel .track { grid-column: 1 / -1; position: relative; display: block; height: 6px; border: 1px solid var(--faint); border-radius: 3px; background: rgba(243, 239, 230, 0.06); }
+.travel .track::before, .travel .track::after { content: ''; position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--faint); }
+.travel .track::before { left: -1px; }
+.travel .track::after { right: -1px; }
+.travel .fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--at, 0%); background: rgba(255, 196, 107, 0.55); border-radius: 2px; }
+.travel .mark { position: absolute; top: -4px; bottom: -4px; left: var(--at, 0%); width: 3px; margin-left: -1.5px; background: var(--amber); border-radius: 1px; box-shadow: 0 0 5px rgba(255, 196, 107, 0.7); }
+.travel small { font: 10px/1.35 var(--mono); letter-spacing: 0.08em; color: var(--faint); min-width: 0; overflow-wrap: anywhere; }
+.travel .end1 { text-align: right; }
+.work-why { color: var(--amber); font-size: 10px; letter-spacing: 0.08em; }
+.work[hidden], .work-why[hidden] { display: none; }
+.work-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.walkbar .work-keys button { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; color: var(--ink); border-color: var(--line); touch-action: none; white-space: normal; text-align: left; max-width: 100%; }
+.walkbar .work-keys button.down { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); background: rgba(255, 196, 107, 0.12); }
+.walkbar .work-keys button:hover { color: var(--ink); border-color: var(--ink); }
+.work-keys kbd { flex: none; }
 .buttons [data-walk] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
 .stick { display: none; position: absolute; left: calc(var(--edge) + 14px + env(safe-area-inset-left)); bottom: calc(var(--edge) + 22px + env(safe-area-inset-bottom)); width: 124px; height: 124px;
   border-radius: 50%; background: var(--glass); border: 1px solid var(--faint); touch-action: none; }
@@ -159,7 +187,8 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .walk-buttons [data-walk-push] { padding: 6px; line-height: 1.25; letter-spacing: 0.06em; overflow-wrap: anywhere; }
 .walk-buttons [data-walk-push='1']::before { content: '\25B2'; display: block; margin-bottom: 3px; }
 .walk-buttons [data-walk-push='-1']::before { content: '\25BC'; display: block; margin-bottom: 3px; }
-@media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } .walkbar [data-walk-visor] { display: none; } }
+@media (hover: none), (pointer: coarse) { #ui.walking .stick { display: block; } #ui.walking .walk-buttons { display: flex; } .walkbar [data-walk-visor] { display: none; } .work-keys { display: none; } }
+/* (a finger runs it from the round buttons under the thumb, named by the ends of its travel, and Act says Done: the bar only reads it out) */
 /* (with a mouse the bar has the visor's switch, and the round buttons are not shown) */
 /* on foot the view is the whole screen, whatever share a sheet had of it */
 body:has(#ui.walking) #stage { width: 100%; height: 100dvh; }

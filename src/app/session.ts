@@ -116,7 +116,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
     walkJump: () => stage.walk.jump(),
     walkAct: () => act(),
     walkPush: (push) => {
-      if (working) noteWorking(stage.hands.push(working.model, working.node, working.fn, push));
+      if (working) stage.hands.push(working.model, working.node, working.fn, push);
     },
     walkView: () => stage.walk.setThird(!stage.walk.third),
     walkMotion: () => setMotion(({ full: 'reduced', reduced: 'off', off: 'full' } as const)[motion()]),
@@ -638,7 +638,8 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   /**
    * A function of a part being worked by hand, on foot (Part.functions): while it is, the walker
    * stands at the controls, W (or the up arrow) runs it toward the end of its travel and S back
-   * for as long as it is held, and E or Escape lets go of the controls.
+   * for as long as it is held, and E or Escape lets go of the controls. The view goes to what it
+   * moves until the hands move it (OnFoot.operate, camera/foot.ts), and the walk bar reads it out.
    */
   let working: Extract<Choice['verb'], { do: 'operate' }> | null = null;
   function startWorking(verb: NonNullable<typeof working>): void {
@@ -646,27 +647,17 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
     // (onClose of the wheel releases the walker after this returns: take the controls on the next turn)
     setTimeout(() => {
       if (working !== verb) return;
-      stage.walk.hold(() => {}, stopWorking);
-      noteWorking(null);
-      ui.setWorking(verb.ends ?? ['Back', 'Run']);
+      stage.walk.hold(() => stage.onFoot.operateLooked(), stopWorking, true);
+      ui.setWalkNote(null);
+      ui.setWorking({ name: verb.name, ends: verb.ends });
+      stage.onFoot.operate(verb.model, verb.node, verb.fn, (state) => ui.showWork(state));
     });
-  }
-  function noteWorking(refused: string | null): void {
-    if (!working) return;
-    const [back, on] = working.ends ?? ['back', 'on'];
-    const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
-    ui.setWalkNote(
-      refused
-        ? `${working.name}: ${refused}`
-        : touch
-          ? `${working.name} · hold a button to run it`
-          : `${working.name} · hold W: ${on} · S: ${back} · E done`,
-    );
   }
   function stopWorking(): void {
     if (!working) return;
     stage.hands.push(working.model, working.node, working.fn, 0);
     working = null;
+    stage.onFoot.unoperate();
     stage.walk.release();
     ui.setWalkNote(null);
     ui.setWorking(null);
@@ -676,7 +667,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   scope.on(window, 'keydown', (e) => {
     if (!working || modified(e)) return;
     if (is(e, 'work.done')) stopWorking();
-    else if (pushKey(e) && !e.repeat) noteWorking(stage.hands.push(working.model, working.node, working.fn, pushKey(e)));
+    else if (pushKey(e) && !e.repeat) stage.hands.push(working.model, working.node, working.fn, pushKey(e));
   });
   scope.on(window, 'keyup', (e) => {
     if (working && pushKey(e)) stage.hands.push(working.model, working.node, working.fn, 0);
