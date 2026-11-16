@@ -2,7 +2,7 @@ import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
 import { automatic, coastEvents, coastOf, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
-import { clockAt, type FlightPlan } from '../sim/plan.ts';
+import { clockAt, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import { apart, Sheds } from '../sim/shed.ts';
@@ -202,8 +202,7 @@ export class OrbitDeck extends Deck {
   }
 
   get able(): boolean {
-    const plan = this.flight.plan;
-    return Boolean(plan?.kind === 'orbital' && plan.attitude.some((a) => 'law' in a.hold) && this.flight.flies);
+    return flownByHand(this.flight.plan) && Boolean(this.flight.flies);
   }
   /** No vehicle of sim/vehicle.ts's is flown here: the ballistic guidance's programme is not drawn ahead on the path. */
   get craft(): null {

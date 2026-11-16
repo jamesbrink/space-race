@@ -1,5 +1,6 @@
 import { type Upcoming, upcoming } from '../../missions/upcoming.ts';
 import type { Flight, ModelDef, ViewDef } from '../types.ts';
+import { flownByHand } from '../sim/plan.ts';
 
 /**
  * Where the page is: the address bar's fragment, and the places a flight is seen in.
@@ -199,11 +200,8 @@ export function lacks(flight: Placed, place: Place): string | null {
   if (place === 'gallery') return exhibit(flight) ? null : 'Gallery: no vehicle built yet';
   const sited = Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio');
   if (place === 'site') return sited ? null : 'Launch site: not built yet';
-  // (a flight into orbit is flown from its record's stages and ascent: sim/staged.ts, orbitdeck.ts)
-  // (a ballistic plan needs its rigid body to be steered; an orbital one an ascent on its steering law)
-  const plan = flight.plan;
-  const flown = plan && (plan.kind === 'ballistic' ? Boolean(plan.craft[0]!.rigid) : plan.attitude.some((a) => 'law' in a.hold));
-  if (!flown || !flight.flies) return 'Fly: no trajectory yet';
+  // (a ballistic plan needs its rigid body to be steered; an orbital one an ascent on its steering law: sim/plan.ts `flownByHand`)
+  if (!flownByHand(flight.plan) || !flight.flies) return 'Fly: no trajectory yet';
   return sited ? null : 'Fly: its launch site is not built yet';
 }
 

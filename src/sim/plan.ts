@@ -411,6 +411,15 @@ export function names(plan: FlightPlan) {
  * never happen. Empty when it is whole. A plan is checked before it is flown, so a mistake in the data is a sentence
  * and not a run that goes wrong.
  */
+/**
+ * Whether a plan can be flown by hand: a ballistic one has the rigid body its live vehicle steers (`Craft.rigid`); one into
+ * orbit an ascent on a steering law (an attitude held by `law`), which its live vehicle flies.
+ */
+export function flownByHand(plan: FlightPlan | undefined): boolean {
+  if (!plan) return false;
+  return plan.kind === 'ballistic' ? Boolean(plan.craft[0]?.rigid) : plan.attitude.some((a) => 'law' in a.hold);
+}
+
 export function problems(plan: FlightPlan): string[] {
   const out: string[] = [];
   const n = names(plan);
