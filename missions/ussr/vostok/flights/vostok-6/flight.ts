@@ -1,4 +1,5 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { sk1Crew } from '../../crew/sk-1.parts.ts';
 import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
@@ -426,6 +427,53 @@ const vehicle = site1Vehicle(
   BASE,
 );
 
+/**
+ * Tereshkova, suited, on her way to the stair (crew/sk-1.parts.ts; model/crew.py, sk_1.py `TERESHKOVA`): a labelled stand-in.
+ * The SK-2's differences that are sourced are built (its cut, the thinner gloves, the valve, no mirror, her height read off a
+ * photograph); the body under it is the module's man carried to her measures, and she walks with the one gait there is.
+ */
+const crew = sk1Crew({
+  url: 'models/ussr/vostok/vostok-6/crew.glb',
+  scale: 'Valentina V. Tereshkova · built 1.64 m, 1.715 m suited (her height estimated from a photograph) · to scale · a stand-in figure',
+  helmet: {
+    summary: 'White, part of the suit, lettered «СССР».',
+    detail:
+      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings up over ' +
+      'the crown, as she wore it to the pad. The red "СССР" on the brow is the photographs’ of 16 June 1963: no rank and no name.',
+    facts: [
+      ['Shell', 'fixed to the suit'],
+      ['Visor', 'double, closes by itself on loss of pressure'],
+      ['Lettering', '"СССР", red (the photographs of 16 June 1963)'],
+    ],
+  },
+  // the suit she wore that morning (crew/sk-1.md, "Who is in the suit"; model/crew.py builds it: sk_1.py `TERESHKOVA`)
+  suit: {
+    kind: {
+      value: 'SK-2',
+      confidence: 'documented',
+      source:
+        'Abramov and Skoog, Russian Spacesuits, p. 58: "a decreased shoulder breadth" and "an increased hip girth"; eight SK-2s made in 1962',
+    },
+    wearer: { name: 'Tereshkova', they: 'she', their: 'her' },
+    gloves: {
+      value: 'black',
+      confidence: 'estimated',
+      source:
+        'a colour film still of her parachute exercise in the suit has dark ones; the SK-1 at Zvezda’s museum has black leather (crew/sk-1.md)',
+    },
+    neck: { value: 'pale', confidence: 'estimated', source: 'her photograph at the hatch and her television frames (crew/sk-1.md)' },
+    mirror: {
+      value: false,
+      confidence: 'documented',
+      source: 'the photographs of 16 June 1963: her right forearm in plain view as she salutes at the pad, and nothing on it',
+    },
+    standsIn:
+      'The figure is a stand-in: the SK-2’s cut as its makers describe it (narrower at the shoulders, fuller at the hips, by amounts estimated), carried ' +
+      'on the suit module’s own man brought to her 1.64 m, which is read off a photograph. It is not a figure modelled as a woman’s, and on foot it walks with the one gait there is. ' +
+      'The white cloth covers over her boots in the photographs of the morning are not built.',
+  },
+});
+
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-6',
   nation: 'USSR',
@@ -608,6 +656,14 @@ export const flight: Flight = {
       note: 'east of north, for an orbit inclined 64.95° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
     ...SITE1_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Standing height, helmet and boots',
+      value: 1.715,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the stand-in figure’s, built to the 164 cm her proportion to her helmet gives in the photograph of her report at the pad (crew/sk-1.md): her own height was not found',
+    },
   ],
   motors: vostokMotors({
     strapOns: {
@@ -643,8 +699,7 @@ export const flight: Flight = {
     'Three days are flown round in the standard air; the braking burn’s instant is derived from the ground’s command at 09:39:40 and the cycle’s 71 minutes (mission.md).',
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
   flies: vostokFlies(orbital),
-  // (the crew to be walked as is not here yet: crew/sk_1.py's figure does not build at its coarser levels, issue #21)
-  models: [vehicle, pad],
+  models: [vehicle, pad, crew],
   // the place round the pad: as modelled for August 1961, nothing modelled having changed by June 1963 (the new room by the
   // bunker, Korolev's post and what the repairs after the fire of 1 June 1962 replaced are not built: places/tyuratam/site-1.md)
   surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
