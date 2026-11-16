@@ -33,6 +33,7 @@ import { P0 } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
+import { part } from './part.mjs';
 import { recordFrom } from './records.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -246,7 +247,8 @@ test('there is an orbital flight whose ascent can be flown', () => {
   assert.ok(flown.length > 0);
 });
 
-for (const f of flown) {
+// (each flight's are minutes of flying: CI takes them a part to a runner, SR_PART; part.mjs)
+for (const f of part(flown)) {
   const plan = f.plan;
   const record = plan.record;
   const seq = sequenceOf(plan);

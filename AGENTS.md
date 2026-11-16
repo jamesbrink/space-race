@@ -66,7 +66,7 @@ pnpm test:night       # needs `pnpm dev` running: both sites by night (stills wi
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
-fails the build; its tests are split over four runners) and builds every push and pull request, and
+fails the build; its tests are split over nine runners, the flights of `tests/staged.test.mjs` dealt out by `SR_PART`) and builds every push and pull request, and
 deploys `main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
 asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
 in `flight.ts`. A push that touches only documents (Markdown, `docs/`) runs

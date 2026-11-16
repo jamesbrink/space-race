@@ -71,7 +71,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm lint && pnpm format:check
 
-  # the fourth part, `pnpm test`, split over four runners: the flights of days make it a quarter of an hour on one
+  # the fourth part, `pnpm test`, on several runners. Every file but one, three ways (node's own sharding):
   test:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -79,7 +79,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -90,7 +90,31 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: node --test --test-shard=${{ matrix.shard }}/4 "tests/*.test.mjs"
+      - run: node --test --test-shard=${{ matrix.shard }}/3 $(ls tests/*.test.mjs | grep -v '^tests/staged\.test\.mjs$')
+
+  # and that one, tests/staged.test.mjs, which flies every flight into orbit through its ascent, its days round and its
+  # descent: two fifths of the whole run in one file, so its flights are dealt to six runners (SR_PART, tests/part.mjs)
+  flights:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test tests/staged.test.mjs
+        env:
+          SR_PART: ${{ matrix.part }}/6
 
   build:
     needs: changes
@@ -151,7 +175,7 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [lint, test, build]
+    needs: [lint, test, flights, build]
     runs-on: ubuntu-latest
     permissions:
       pages: write
