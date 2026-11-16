@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { makeAtmosphere, ownAtmosphere } from '../../viewer/atmosphere.ts';
 import { starsAlone } from '../../viewer/heavens.ts';
+import { MoonBody } from '../../viewer/moon.ts';
 import { tier } from '../../viewer/tier.ts';
 import { EARTH } from '../../world/bodies.ts';
 import { length, sub, unit } from '../../world/frames.ts';
 import { yearsFrom2000 } from '../../world/stars.ts';
 import { terrestrialTime } from '../../world/time.ts';
 import { FarEarth } from './earth.ts';
-import { FarMoon } from './moon.ts';
 import { cameraFor, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pathAt, skyAt } from './view.ts';
 
 /**
@@ -87,7 +87,7 @@ export class FrontScene {
   private readonly starCamera = new THREE.PerspectiveCamera(6, 1, 1, 200);
   private readonly stars: THREE.Points;
   private readonly earth: FarEarth;
-  private readonly moon: FarMoon;
+  private readonly moon: MoonBody;
   private readonly air = ownAtmosphere();
   private raf = 0;
   private last = 0;
@@ -124,8 +124,8 @@ export class FrontScene {
     const base = import.meta.env.BASE_URL;
     const lighter = tier().lighter;
     this.earth = new FarEarth(this.air, base, lighter);
-    this.moon = new FarMoon(
-      base,
+    this.moon = new MoonBody(
+      `${base}front/`,
       new THREE.Color(SUNLIGHT[0] / Math.PI, SUNLIGHT[1] / Math.PI, SUNLIGHT[2] / Math.PI),
       lighter,
       renderer.capabilities.getMaxAnisotropy(),

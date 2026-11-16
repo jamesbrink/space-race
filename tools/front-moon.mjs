@@ -1,4 +1,4 @@
-// Bakes the Moon as the front page sees it (src/app/front/moon.ts): its colour, and its relief at three sizes, finest
+// Bakes the Moon as the front page sees it (src/viewer/moon.ts): its colour, and its relief at three sizes, finest
 // where the camera starts.
 //   node tools/front-moon.mjs [--cache <dir>] [--only colour|whole|wide|near]
 //
@@ -343,7 +343,7 @@ function bakeColour(file) {
     '88',
     join(out, 'moon.colour.jpg'),
   ]);
-  // its mean, in linear light: the shader scales it so that the Moon is as bright as it is (front/moon.ts)
+  // its mean, in linear light: the shader scales it so that the Moon is as bright as it is (viewer/moon.ts)
   const mean = execFileSync('magick', [
     join(out, 'moon.colour.jpg'),
     '-colorspace',

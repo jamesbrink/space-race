@@ -821,7 +821,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 
 ## The front page's picture
 
-The Earth from out by the Moon (`src/front/`) is a scene of its own, on its own canvas and renderer, and not a
+The Earth from out by the Moon (`src/app/front/`, its Moon `viewer/moon.ts`) is a scene of its own, on its own canvas and renderer, and not a
 `Stage`: it has no models, no looks, no picking, no post-processing. What it keeps of this file's rules, in its own
 terms:
 
@@ -847,8 +847,9 @@ terms:
   air, the Moon's ground is scaled to the Moon's albedo and dimmed by its phase, and the exposure is set by the
   cloud. So the Moon is asphalt beside the Earth, as it is. Nothing is made larger or brighter to fill the frame:
   the lens is a stated one (500 mm on 70 mm film, 6.3 degrees) and the Earth is a third of the frame across.
-- **What is simplified** is listed in earth.ts and moon.ts: the cloud is a reanalysis's and has no detail under a
-  quarter of a degree; the night side has no lights; nothing on the Moon is finer than 481 m, and only the finest
+- **What is simplified** is listed in earth.ts and viewer/moon.ts (the Moon is a body of its own, `MoonBody`, which
+  the front page shows): the cloud is a reanalysis's and has no detail under a quarter of a degree; the night side has
+  no lights; nothing on the Moon is finer than 481 m, and only the finest
   map casts shadows; the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft.
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).

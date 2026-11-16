@@ -1,9 +1,11 @@
 import * as THREE from 'three';
-import type { Vec3 } from '../../world/frames.ts';
-import { MOON_RADIUS } from '../../world/moon.ts';
+import type { Vec3 } from '../world/frames.ts';
+import { MOON_RADIUS } from '../world/moon.ts';
 
 /**
- * The Moon under the camera: its real ground, lit by the real Sun, from 110 km up to 100,000.
+ * The Moon as a body: its real ground, lit by the real Sun, seen from 110 km up to 100,000 (the front page's, under its
+ * camera: app/front/scene.ts). It knows nothing of the page that shows it: it is handed the folder its bake is in, the
+ * Sun's light, the tier, and each frame the eye and the Sun in the Moon's own frame.
  *
  * **The ground** is the laser altimeter's heights and the wide-angle camera's colour (NASA's CGI
  * Moon Kit; tools/front-moon.mjs bakes them and says how each byte is read): the relief of the
@@ -257,7 +259,7 @@ function flat(): THREE.DataTexture {
 
 const SURFACING = 1200;
 
-export class FarMoon {
+export class MoonBody {
   readonly mesh: THREE.Mesh;
   private readonly uniforms: Record<string, THREE.IUniform>;
   private readonly textures: THREE.Texture[] = [];
@@ -266,8 +268,11 @@ export class FarMoon {
   /** Where the Sun stood over the Moon when the finest map's cast shadows were worked out. */
   private castFor: THREE.Vector3 | null = null;
 
-  /** `sunLight`: the Sun's light over pi, as the Earth is given it. `lighter`: half the rings and spokes, and the maps at half size (tier.ts). */
-  constructor(base: string, sunLight: THREE.Color, lighter: boolean, anisotropy: number) {
+  /**
+   * `dir`: the folder its bake is in (`moon.json` and its maps: tools/front-moon.mjs). `sunLight`: the Sun's light over
+   * pi, as the Earth is given it. `lighter`: half the rings and spokes, and the maps at half size (tier.ts).
+   */
+  constructor(dir: string, sunLight: THREE.Color, lighter: boolean, anisotropy: number) {
     this.uniforms = {
       uEyeAt: { value: new THREE.Vector3() },
       uSun: { value: new THREE.Vector3(1, 0, 0) },
@@ -293,7 +298,7 @@ export class FarMoon {
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 2;
     this.mesh.visible = false;
-    void this.load(base, lighter, anisotropy);
+    void this.load(dir, lighter, anisotropy);
   }
 
   private keep<T extends THREE.Texture>(texture: T): T {
@@ -301,8 +306,8 @@ export class FarMoon {
     return texture;
   }
 
-  private async load(base: string, lighter: boolean, anisotropy: number): Promise<void> {
-    const meta = (await (await fetch(`${base}front/moon.json`)).json()) as MoonMeta;
+  private async load(dir: string, lighter: boolean, anisotropy: number): Promise<void> {
+    const meta = (await (await fetch(`${dir}moon.json`)).json()) as MoonMeta;
     if (this.gone) return;
     const u = this.uniforms;
     const rows = (p: PlaneMeta): THREE.Matrix3 =>
@@ -332,11 +337,11 @@ export class FarMoon {
     };
     // what the first frame is of first: the ground under the camera, the whole Moon's colour; then the rest
     const [near, nearHeight, nearColour, colour, whole] = await Promise.all([
-      picture(`${base}front/${meta.near.file}`, false, most, anisotropy),
-      picture(`${base}front/${meta.near.height}`, false, most, 1),
-      picture(`${base}front/${meta.near.colour}`, true, most, anisotropy),
-      picture(`${base}front/${meta.colour.file}`, true, most, anisotropy),
-      picture(`${base}front/${meta.whole.file}`, false, most, anisotropy),
+      picture(`${dir}${meta.near.file}`, false, most, anisotropy),
+      picture(`${dir}${meta.near.height}`, false, most, 1),
+      picture(`${dir}${meta.near.colour}`, true, most, anisotropy),
+      picture(`${dir}${meta.colour.file}`, true, most, anisotropy),
+      picture(`${dir}${meta.whole.file}`, false, most, anisotropy),
     ]);
     put('tNear', near);
     put('tNearHeight', nearHeight);
@@ -345,7 +350,7 @@ export class FarMoon {
     put('tWhole', whole);
     this.mesh.visible = !this.gone;
     this.arrivedAt = performance.now();
-    put('tWide', await picture(`${base}front/${meta.wide.file}`, false, most, anisotropy));
+    put('tWide', await picture(`${dir}${meta.wide.file}`, false, most, anisotropy));
   }
 
   get ready(): boolean {

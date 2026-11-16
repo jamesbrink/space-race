@@ -92,7 +92,7 @@ src/
   app/front.ts  app/home.ts           the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
   app/front/view.ts                   the front page's view as numbers: the instant, the lens, the camera's path, the sky from the Moon (pure, tested)
   app/front/scene.ts                  its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
-  app/front/earth.ts  app/front/moon.ts  the Earth from the Moon (the globe's maps small, the day's cloud, the air) and the Moon under the camera (its relief at three sizes, its own light)
+  app/front/earth.ts                  the Earth from the Moon (the globe's maps small, the day's cloud, the air)
   app/front/front.css                 the front page's looks
   app/lineup.ts                       the Lineup's page (`#lineup`): every vehicle side by side; what the address says, what is chosen, what stands in the row, its keys, its show
   app/lineup/row.ts                   its arithmetic on the flights' data and the history: the row, the programmes' sections, the timeline, the key figures, where
@@ -181,6 +181,7 @@ src/
   viewer/onfoot/drive.ts              driving: a kinematic bicycle model and the vehicle contract's nodes
   viewer/onfoot/carry.ts              what a walking figure has in its hand, by the model's grip contract
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
+  viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, its own light; the front page's, under its camera
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
   viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
