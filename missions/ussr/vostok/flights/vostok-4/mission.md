@@ -29,9 +29,23 @@ third stage cut on Vostok 1's integrator setting; the target is Vostok 2's plann
 
 ## The orbit
 
-Siddiqi's heights and inclination (Table IB), with **88.3 min**, TASS's of 12:12 that day, for the period: the only period
-of this ship published, determined within its first revolution, chosen before it was flown. Russian Wikipedia's box repeats
-Vostok 3's 88.33 for it, and Siddiqi gives none. Read as mean elements with a nodal period; `orbit.radius` is not used.
+Every value of the period found, and where each comes from:
+
+| Period | With | From | What it is |
+| --- | --- | --- | --- |
+| 88.3 min | 177.9 by 234.8 km, 64°57′ | TASS, as of 12:12 Moscow time on 12 August 1962, an hour and ten minutes after the liftoff (*Flight International*, 23 August 1962, p. 289) | the only period of this ship from a primary source, determined within its first revolution |
+| 88.33 min | (Vostok 3's orbit) | Russian Wikipedia's box for «Восток-4», which repeats Vostok 3's orbit | an error |
+| 88.39 min | 179.8 by 236.7 km | recorded in this flight's README when it was first written as printed beside Siddiqi's heights; no page read now carries it | of unknown origin: not used |
+
+Siddiqi's heights and inclination (Table IB, p. 357; the Great Soviet Encyclopedia gives the same heights) with **TASS's
+88.3 min**, chosen before the flight was flown; Siddiqi gives no period. Read as mean elements with a nodal period;
+`orbit.radius` is not used. As on Vostok 3, the period and the heights are not one determination: the apogee as flown round
+is 225 km, 11.6 km under.
+
+**What rests on Russian Wikipedia** (a published figure of unknown origin, each `Measure` saying so): the landing place,
+48°09′ N 71°51′ E (spacefacts.de, also unsourced, 48°10′ N 71°53′30″ E; the Great Soviet Encyclopedia: "the region of the
+settlement of Atasu, Karaganda oblast"), and through it the landing ground's height and the checks across and along the
+track.
 
 ## The braking burn
 

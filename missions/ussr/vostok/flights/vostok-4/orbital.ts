@@ -53,6 +53,7 @@ const TABLE = `${SIDDIQI}, Table IB`;
 const FLIGHT =
   'TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md)';
 const CHERTOK = 'Chertok, Rockets and People, vol. 3 (NASA SP-2009-4110)';
+const BSE = 'the Great Soviet Encyclopedia, 3rd edition, «Восток (космический корабль)»';
 /** The type's ascent as Vostok 1's record flies it: the words for an instant this flight's record does not give. */
 const TYPE = (what: string) =>
   `NOT this flight’s: no cyclogram, flight task or range report of E103-22 has been found. The type’s ${what}, as Vostok 1’s record flies it (vostok-1/orbital.ts)`;
@@ -256,8 +257,8 @@ export const orbital: VostokRecord = {
       6_371_000,
       'not stated, and not used: with a period given, the period fixes the axis and the ball the heights are over is what is left (world/meanelements.ts). The mean Earth is written here',
     ),
-    perigee: doc(179_800, `${TABLE} and p. 357: 179.8 km. TASS of 12 August (12:12): 177.9 km`),
-    apogee: doc(236_700, `${TABLE} and p. 357: 236.7 km. TASS of 12 August: 234.8 km`),
+    perigee: doc(179_800, `${TABLE} and p. 357: 179.8 km; ${BSE}: «высота перигея 179,8 км». TASS of 12 August (12:12): 177.9 km`),
+    apogee: doc(236_700, `${TABLE} and p. 357: 236.7 km; ${BSE}: «236,7 км». TASS of 12 August: 234.8 km`),
     inclination: doc(64.95, `${TABLE}: 64.95°; TASS: 64°57′`),
     period: doc(
       88.3 * 60,
@@ -369,8 +370,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
-    latitude: doc(48 + 9 / 60, 'Russian Wikipedia, «Восток-4»: 48°09′ N (spacefacts.de: 48°10′00″, "193 km south-west of Karaganda")'),
-    longitude: doc(71 + 51 / 60, 'Russian Wikipedia: 71°51′ E (spacefacts.de: 71°53′30″)'),
+    latitude: doc(
+      48 + 9 / 60,
+      `Russian Wikipedia, «Восток-4»: 48°09′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°10′00″, "193 km south-west of Karaganda"). ${BSE}: «в районе посёлка Атасу Карагандинской области»`,
+    ),
+    longitude: doc(71 + 51 / 60, 'Russian Wikipedia: 71°51′ E, a published figure of unknown origin (spacefacts.de: 71°53′30″)'),
     at: doc(MSK(15, 9, 59), TABLE),
     near: 'Karaganda',
   },
@@ -428,5 +432,5 @@ export const NEAREST_VOSTOK_3 = {
   unit: 'm',
   tolerance: 1_500,
   confidence: 'documented' as const,
-  source: `"approximately 6.5 km" (TASS, as the encyclopedias repeat it; English Wikipedia, citing Gatland, Manned Spacecraft); "about five kilometres" (both pilots, 21 August 1962); ${SIDDIQI}, p. 358, n. 22: "Reports differ as to the closest approach, varying from five to six and a half kilometers". 1.5 km either way takes in both`,
+  source: `"approximately 6.5 km" (TASS, as the encyclopedias repeat it; English Wikipedia, citing Gatland, Manned Spacecraft); "about five kilometres" (both pilots, 21 August 1962); ${SIDDIQI}, p. 358, n. 22: "Reports differ as to the closest approach, varying from five to six and a half kilometers"; ${BSE}: «минимальное расстояние между кораблями около 5 км». 1.5 km either way takes in both`,
 };

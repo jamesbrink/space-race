@@ -142,8 +142,11 @@ Neither the minute nor the length of the braking burn was found for this ship.
 | Inclination | 64.95° | 64°57′ |
 | Period | 88.39 min | 88.3 min |
 
-"As printed since" is Siddiqi's text (p. 357) and Table IB for the heights and inclination, and
-the period Russian Wikipedia prints beside them. The first announcement's figures were not read.
+"As printed since" is Siddiqi's text (p. 357) and Table IB for the heights and inclination (the
+Great Soviet Encyclopedia gives the same heights). The 88.39 min beside them was taken, when this
+README was first written, as Russian Wikipedia's; its box now repeats Vostok 3's 88.33, and no page
+read carries 88.39: its origin is unknown and it is not used. The record flies TASS's 88.3
+(mission.md, "The orbit"). The first announcement's figures were not read.
 **No OKB-1 report of this flight has been read.** `flight.ts` quotes 179.8, 236.7, 64.95° and 88.3.
 Against Vostok 3's 180.7 by 234.6 km and 64.98° the difference is under a kilometre at perigee,
 two at apogee and 0.03° in inclination.
