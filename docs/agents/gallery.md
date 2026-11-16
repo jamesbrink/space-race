@@ -10,7 +10,7 @@ Every flight has the same three places, in the same order, and opens in the firs
 | --- | --- | --- |
 | **Gallery** | the vehicle alone on a plain floor under designed light: turned, taken apart, cut open, read | it has a vehicle (`exhibit`) |
 | **Launch site** | where it flew from: the pad, the place, the crew, the day's sky, the clock, walking. Its sections are the flight's models there (Vehicle, Launch pad, Crew) | it has `site` and a model whose `backdrop` is `'ground'` (its site's place), not `'studio'` |
-| **Fly** | the flight deck, at the site: the vehicle under your hands, and the recorded flight | it has the site, a `trajectory` with a `body`, and `flies` |
+| **Fly** | the flight deck, at the site: the vehicle under your hands, and the recorded flight | it has the site, a plan it can be steered on (a ballistic one's rigid body, an orbital one's steering law), and `flies` |
 
 - **The front page** is no flight's: it is what an address that names nothing shows (`front.ts`), the list of
   flights over a picture of its own, the Earth seen from out by the Moon ("The front page", below). It has one

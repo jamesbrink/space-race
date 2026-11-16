@@ -1,7 +1,7 @@
 // The plan model (src/sim/plan.ts): every flight that flies has a whole plan, which carries each figure of the record it
-// was written from as it was (a Mercury-Redstone's held equal to the plan src/sim/planof.ts makes of its trajectory; a
-// Vostok's, which says its braking burn's command, timer and chain as events of its own, to its record); and the model
-// can say a flight of a kind not flown yet (a Gemini on its Titan) without anything new in the code.
+// was written from as it was (a Mercury-Redstone's, its day's and its stack's hardware's; a Vostok's, which says its
+// braking burn's command, timer and chain as events of its own, its record's); and the model can say a flight of a kind
+// not flown yet (a Gemini on its Titan) without anything new in the code.
 import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -9,8 +9,9 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { coastEvents } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
-import { bodiesMass, planOfTrajectory, stageId } from '../src/sim/planof.ts';
 import { byHand, givenUp } from '../src/sim/staged.ts';
+import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
+import { dayOf } from './ballistic.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -18,17 +19,16 @@ const all = await Promise.all(
     async (file) => (await import(pathToFileURL(join(root, file)).href)).flight,
   ),
 );
-const ballistic = all.filter((f) => f.trajectory);
+const ballistic = all.filter((f) => f.plan?.kind === 'ballistic');
 const orbital = all.filter((f) => f.orbital);
 const craftOf = (plan) => plan.craft[0];
 const byId = (xs, id) => xs.find((x) => x.id === id);
+/** A stage's body, engine, tank and joint, by its place in the record (vostok-plan.ts). */
+const stageId = (i) => `stage:${i}`;
+/** What a plan's first craft weighs whole: each body's mass times its count. */
+const bodiesMass = (plan) => craftOf(plan).bodies.reduce((sum, b) => sum + b.count * b.mass.value, 0);
 /** Every action an event sets off, as `kind:id`. */
 const doing = (e) => e.do.map((a) => Object.entries(a)[0].join(':'));
-/** A plan with its engines' nozzles left out: they are the fire's (viewer/plume.ts), which the record's own plan does not carry. */
-const withoutNozzles = (plan) => ({
-  ...plan,
-  craft: plan.craft.map((c) => ({ ...c, engines: c.engines.map(({ nozzle, ...e }) => e) })),
-});
 
 test('there are flights of both kinds to make plans of', () => {
   assert.ok(ballistic.length >= 2, 'the Mercury-Redstones');
@@ -38,49 +38,58 @@ test('there are flights of both kinds to make plans of', () => {
 for (const f of [...ballistic, ...orbital]) {
   test(`${f.id}: its plan is whole, and is the flight's own`, () => {
     assert.deepEqual(problems(f.plan), []);
-    assert.equal(f.plan.kind, f.trajectory ? 'ballistic' : 'orbital');
-    if (f.trajectory)
-      assert.deepEqual(withoutNozzles(f.plan), planOfTrajectory(f.trajectory, f.checks), 'Flight.plan is the plan made of its trajectory');
+    assert.equal(f.plan.kind, f.orbital ? 'orbital' : 'ballistic');
     for (const e of craftOf(f.plan).engines.filter((e) => e.nozzle))
       assert.ok(e.nozzle.exit.value > 0 && e.nozzle.exit.source, `${e.id}'s nozzle`);
   });
 }
 
 for (const f of ballistic) {
-  const tr = f.trajectory;
-  const plan = planOfTrajectory(tr, f.checks);
+  const day = dayOf(f);
+  const hw = HARDWARE;
+  const plan = f.plan;
   const c = craftOf(plan);
-  test(`${f.id}: the ballistic plan carries the trajectory's figures`, () => {
-    assert.equal(c.mass, tr.liftoffMass);
-    assert.ok(Math.abs(bodiesMass(plan) - tr.liftoffMass.value) < 1e-6, 'the bodies sum to what leaves the pad');
+  test(`${f.id}: the ballistic plan carries its day's and its stack's figures`, () => {
+    assert.equal(c.mass, day.liftoffMass);
+    assert.ok(Math.abs(bodiesMass(plan) - day.liftoffMass.value) < 1e-6, 'the bodies sum to what leaves the pad');
     const main = byId(c.engines, 'main');
-    assert.equal(main.thrust.seaLevel, tr.engine.thrust);
-    assert.equal(main.isp.seaLevel, tr.engine.isp);
-    assert.equal(main.exitArea, tr.engine.exitArea);
+    assert.equal(main.thrust.seaLevel, day.thrust);
+    assert.equal(main.isp.seaLevel, day.isp);
+    assert.equal(main.exitArea, hw.exitArea);
+    assert.equal(main.depletion, hw.depletion);
     assert.equal(main.thrust.vacuum.confidence, 'derived');
-    assert.equal(eventOf(plan, 'cutoff').at, tr.engine.cutoff);
+    assert.equal(eventOf(plan, 'cutoff').at, day.cutoff);
     assert.deepEqual(doing(eventOf(plan, 'cutoff')), ['cut:main']);
     const sep = byId(c.joints, 'separation');
-    assert.equal(sep.push, tr.separation.speed);
-    assert.equal(sep.after, tr.separation.mass);
-    assert.equal(sep.leaves, tr.separation.boosterMass);
-    assert.equal(eventOf(plan, 'separation').when[0].time, tr.separation.at.value);
-    tr.retro.fires.forEach((fire, k) => {
+    assert.equal(sep.push, day.separation.speed);
+    assert.equal(sep.after, day.separation.mass);
+    assert.equal(sep.leaves, day.separation.boosterMass);
+    assert.equal(sep.heading, day.separation.heading);
+    assert.equal(eventOf(plan, 'separation').when[0].time, day.separation.at.value);
+    day.retro.fires.forEach((fire, k) => {
       const e = eventOf(plan, k === 0 ? 'retro' : `retro-${k + 1}`);
       assert.equal(e.at, fire);
-      assert.equal(byId(c.engines, `retro-${k + 1}`).burn, tr.retro.burn);
+      assert.equal(byId(c.engines, `retro-${k + 1}`).burn, hw.retro.burn);
+      assert.equal(byId(c.engines, `retro-${k + 1}`).thrust.vacuum, hw.retro.thrust);
     });
-    assert.equal(byId(c.joints, 'retropack').after, tr.retropack.mass);
+    assert.equal(byId(plan.attitude, 'retro').hold.retro, day.retro.pitch);
+    assert.equal(byId(c.joints, 'retropack').after, day.retropack.mass);
     const height = (id) => eventOf(plan, id).when.find((w) => 'height' in w).height;
-    assert.equal(height('drogue'), tr.drogue.altitude.value);
-    assert.equal(height('main'), tr.main.altitude.value);
-    assert.equal(byId(c.chutes, 'main').dragArea, tr.main.dragArea);
+    assert.equal(height('drogue'), day.drogue.value);
+    assert.equal(height('main'), day.main.value);
+    for (const id of ['drogue', 'main']) {
+      assert.equal(byId(c.chutes, id).dragArea, hw[id].dragArea);
+      assert.equal(byId(c.chutes, id).fills, hw[id].fills);
+    }
     assert.deepEqual(byId(c.chutes, 'main').instead, ['drogue']);
-    assert.equal(c.drag[0].curve, tr.ascentDrag);
-    assert.equal(byId(c.bodies, 'capsule').aero.drag, tr.entryDrag);
-    assert.equal(plan.attitude[0].hold.programme, tr.tilt);
+    assert.equal(c.drag[0].curve, hw.ascentDrag);
+    assert.equal(c.drag[0].area, hw.area);
+    assert.equal(byId(c.bodies, 'capsule').aero.drag, hw.entryDrag);
+    assert.equal(byId(c.bodies, 'capsule').aero.area, hw.area);
+    assert.equal(plan.attitude[0].hold.programme, hw.tilt);
+    assert.equal(plan.attitude[0].hold.azimuth, day.azimuth);
+    assert.equal(plan.winds, day.winds);
     assert.equal(plan.checks.length, (f.checks ?? []).length);
-    if (tr.body) assert.equal(c.rigid, tr.body);
   });
 }
 

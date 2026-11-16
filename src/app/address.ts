@@ -178,7 +178,7 @@ export function flightFor<F extends Dated>(flights: readonly F[], hash: string):
 }
 
 /**
- * The model the gallery shows: the flight's vehicle. It is the one the trajectory carries off the
+ * The model the gallery shows: the flight's vehicle. It is the one the run carries off the
  * pad where the flight says (`flies`); otherwise the first model that is hardware and not a person
  * (`walker`) or a place working through its morning (`sequence`). Null: nothing to exhibit.
  */
@@ -193,7 +193,7 @@ type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'plan'>;
  * Why a flight cannot be gone to at a place, or null if it can. It has a gallery when it has a
  * vehicle; a launch site when it says where that is (`site`) and has something that stands
  * there (a model whose backdrop is a place, not the studio); and it can be flown when it has that
- * site, a trajectory with a body to fly (or, into orbit, an ascent to fly), and says which model flies (`flies`).
+ * site, a plan with a rigid body to steer (or, into orbit, an ascent on its steering law), and says which model flies (`flies`).
  */
 export function lacks(flight: Placed, place: Place): string | null {
   if (place === 'gallery') return exhibit(flight) ? null : 'Gallery: no vehicle built yet';
@@ -312,21 +312,13 @@ export const WHOLE_VIEW = 'gallery-whole';
 /**
  * The flight as the gallery's stage is given it: the vehicle alone, at the origin of a studio, as
  * built (its slider at rest, nothing asked of anything else), with no site, no clock to follow,
- * no trajectory and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
+ * no plan and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
  * nobody standing outside them (`figure`): there is no one else in the gallery.
  */
 export function galleryFlight(flight: Flight): Flight {
   const vehicle = exhibit(flight);
   if (!vehicle) throw new Error(`${flight.id} has no vehicle to exhibit`);
-  const {
-    site: _site,
-    trajectory: _trajectory,
-    plan: _plan,
-    checks: _checks,
-    flies: _flies,
-    surroundings: _surroundings,
-    ...rest
-  } = flight;
+  const { site: _site, plan: _plan, checks: _checks, flies: _flies, surroundings: _surroundings, ...rest } = flight;
   const {
     sequence: _sequence,
     walker: _walker,

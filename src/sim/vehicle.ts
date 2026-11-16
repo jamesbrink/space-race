@@ -48,7 +48,7 @@
  * Mass, centre of mass and inertia follow the propellant down the tanks (rigid.ts: massOf). The
  * terms that come of mass leaving a turning body (jet damping) and of the centre of mass moving
  * along it are left out, and so are slosh, bending, thrust misalignment and the air rudders. The air
- * moves with the day's winds aloft where the trajectory gives them (`winds`, forces.ts: `blowOf`):
+ * moves with the day's winds aloft where the plan gives them (`winds`, forces.ts: `blowOf`):
  * one sounding over the pad, taken as the same all along the flight, with no gusts.
  *
  * Time. The flight is integrated in ticks of TICK seconds by fourth-order Runge-Kutta, whatever

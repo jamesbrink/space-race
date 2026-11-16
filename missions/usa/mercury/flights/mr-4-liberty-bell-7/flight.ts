@@ -1,4 +1,4 @@
-import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Trajectory, Winds } from '../../../../../src/types.ts';
+import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Winds } from '../../../../../src/types.ts';
 import {
   BY,
   HARDWARE_WORDS,
@@ -49,15 +49,7 @@ import {
   OBJECTIVE_OUT,
   sequenceLamp,
 } from '../../vehicles/cabin.ts';
-import {
-  CAPSULE_PLANE,
-  CHUTES,
-  cutoffMass,
-  type Day,
-  plan as mercuryRedstonePlan,
-  trajectory as mercuryRedstone,
-  PLR,
-} from '../../vehicles/mercury-redstone.ts';
+import { CAPSULE_PLANE, CHUTES, cutoffMass, type Day, plan as mercuryRedstonePlan, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
@@ -1224,7 +1216,6 @@ export const DAY: Day = {
     ),
   },
 };
-const TRAJECTORY: Trajectory = mercuryRedstone(DAY);
 
 export const flight: Flight = {
   id: 'usa/mercury/mr-4-liberty-bell-7',
@@ -1518,9 +1509,8 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig)',
     },
   }),
-  trajectory: TRAJECTORY,
   checks,
-  plan: mercuryRedstonePlan(DAY, checks, TRAJECTORY.body),
+  plan: mercuryRedstonePlan(DAY, checks),
   flownNote:
     'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
     'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +
@@ -1534,7 +1524,7 @@ export const flight: Flight = {
         on: 'separation',
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
-      { at: TRAJECTORY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
       // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it
       { at: 614, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
       // blown by hand, on a flight flown here (`hatch`, below): the record's run lands with it on, as the capsule did

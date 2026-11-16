@@ -1,12 +1,10 @@
 /**
  * A flight that goes into orbit, as the record has it and as far as the simulator can fly it.
  *
- * `Flight.orbital` (types.ts) is to an orbital flight what `Flight.trajectory` is to a ballistic
- * one: every number an input with its confidence and source, none fitted, and `checks` set before
+ * `Flight.orbital` (types.ts) is an orbital flight's record, which its plan is written from: every number an input with its confidence and source, none fitted, and `checks` set before
  * anything was run. It is a different shape because the flight is: several stages burning
  * together and in turn, an orbit that is published as heights and a period, a braking burn aimed
- * by the Sun, an entry from orbital speed. `Trajectory` (one engine, one tilt programme, a capsule
- * with retrorockets and two parachutes) is left as it is.
+ * by the Sun, an entry from orbital speed.
  *
  * What is flown here is the coast (`flyOrbit`, below): from the orbit as published, or from the
  * state the ascent flown left it in, round to the braking burn, down through the air to the height
@@ -802,8 +800,8 @@ export interface Ship {
 const ships = new WeakMap<FlightPlan, Ship>();
 
 /**
- * The coast's instants as the plan has them (sim/plan.ts, made of the record, or of the record as a hand changed it, by
- * planof.ts): the burn the record's coast flies (the engine with the record's impulse, `EngineDef.flown`) lit and cut, the
+ * The coast's instants as the plan has them (sim/plan.ts, written from the record by vostok-plan.ts, or that plan as a hand changed
+ * it): the burn the record's coast flies (the engine with the record's impulse, `EngineDef.flown`) lit and cut, the
  * body it is on let go, and the height at which what comes down is let loose after that (the event set off by height once
  * the parting has happened). Never: the largest safe integer, as a plan given up has it, or Infinity.
  */

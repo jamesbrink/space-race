@@ -84,14 +84,14 @@ figure of half an hour earlier and are kept as they were.
 
 ## The flight as flown
 
-`src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts) (thrust, specific
+`src/sim/fly.ts` integrates the flight from its plan, written from `DAY` in [flight.ts](flight.ts) (thrust, specific
 impulse, masses, the tilt programme, drag, retrofire, parachutes; nothing fitted) and
 `tests/sim.test.mjs` holds the result against `checks`, the figures the Postlaunch Report gives.
 The page's Flown panel (`src/deck/flown.ts`) shows the same run against the clock, and from liftoff to
 landing the vehicle in the scene flies it (`src/viewer/ascent.ts`; C to the chase camera), shedding
 the tower at 02:22.2, the booster at separation and the retropack at 06:13.6.
 
-What it sheds is flown too (`src/sim/shed.ts`, from `trajectory.body.sheds`): each a rigid body
+What it sheds is flown too (`src/sim/shed.ts`, from `Craft.sheds`): each a rigid body
 from the instant it leaves, under the same gravity and air. Flown from the run above (which is
 itself 4 % fast, so all of this is high and long with it):
 
@@ -113,7 +113,7 @@ booster struck is not in the Postlaunch Report's sections used here, so there is
 it against, and no check has been written. The real booster would also have broken up or burned
 at 187 kPa; that is not modelled.
 
-The structure has limits (`trajectory.body.limits`, `src/sim/loads.ts`), all `estimated`: a
+The structure has limits (`Craft.rigid.limits`, `src/sim/loads.ts`), all `estimated`: a
 bending load of 4,000 lb/sq ft degrees (dynamic pressure times angle of attack), and 7 kPa and
 5 kPa for opening the drogue and the main. On the record's programme, in the day's winds aloft, the
 bending load peaks at 26 % of its limit (83.8 s, climbing into the jet stream, 0.09 g across the
@@ -137,7 +137,7 @@ report gives, the capsule's half agrees to a per cent, except the entry's greate
 grows or goes away.
 
 **The day's wind.** Everything is flown through the winds over the Cape that morning
-(`trajectory.winds`): the Postlaunch Report's Figure 10.3-1, "Cape wind profile approximately 5
+(`FlightPlan.winds`): the Postlaunch Report's Figure 10.3-1, "Cape wind profile approximately 5
 minutes after launch", read off by hand at 64 heights from the surface to 60,000 ft, each to the
 knot and the few degrees its trace allows, and above it the Cape's 12Z sounding of 5 May 1961 (NOAA
 IGRA, station USM00074794, 2 h 34 min before liftoff) at 50 and 30 hPa. The figure meets the surface
@@ -170,7 +170,7 @@ between the heights read, and the air's density a standard year's, not the day's
 
 **Flown live.** `src/sim/vehicle.ts` flies the same inputs as a rigid body that is steered, by a
 hand or by an autopilot holding the tilt programme, and for that it needs figures the reports
-above do not give (`trajectory.body` in [flight.ts](flight.ts)):
+above do not give (`Craft.rigid` in [flight.ts](flight.ts)):
 
 | Input | Value | Confidence | Basis |
 | --- | --- | --- | --- |
@@ -288,7 +288,7 @@ reefed stage. The antenna canister leaves with the drogue when the main comes ou
 **Heating.** `src/sim/heating.ts` works the air's heat from the same run: the heat flux at the
 stagnation point of the 80 in heat shield by Sutton and Graves's equation (NASA TR R-376: the
 equation and its constant are quoted from memory, the report not opened), and the
-temperature of each surface `trajectory.heating` names as a lump that takes its share and radiates.
+temperature of each surface `Craft.heating` names as a lump that takes its share and radiates.
 These are the model's figures, for the whole flight as flown above (which is 4 % fast; flux goes as
 the cube of speed, so an eighth of the peak is that alone). The record's own, for the Mercury-Redstone
 flights as a class, are Hammack and Heberlig's (p. 5), beside them here. They are not `checks`: the

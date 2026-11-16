@@ -11,7 +11,7 @@ import { Scope } from '../util/scope.ts';
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
  * its keys and their buttons, the finger's stick and roll, how it tucks on a phone, the way in and out, the card that ends
- * a flight); what flies is a flight kind's (cockpit.ts for a flight on a `trajectory`, orbitdeck.ts for one into orbit),
+ * a flight); what flies is a flight kind's (cockpit.ts for a ballistic plan, orbitdeck.ts for one into orbit),
  * which says what goes in it as data: the middle panel's figures, the systems strip, the readings, the steps Space walks
  * through, what each key does and what the hands may do. Someone who has flown one flight knows where everything is on
  * the next.

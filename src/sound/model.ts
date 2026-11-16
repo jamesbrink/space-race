@@ -3,7 +3,7 @@
  * worked out from where the vehicle is, what it is doing and where the ears are. Nothing here
  * makes a sound (sound/engine.ts turns these numbers into Web Audio) and nothing here knows which
  * flight it is: thrust, exhaust speed, nozzle size, event times and the retrorockets' burn come
- * from the flight's `trajectory`, the air from sim/atmosphere.ts.
+ * from the flight's plan, the air from sim/atmosphere.ts.
  *
  * What is physics, and what is not:
  *
@@ -66,7 +66,7 @@ const BESIDE = 12;
 const CANOPY = [22, 12] as const;
 /** Pressure fluctuation on the skin under a turbulent boundary layer, over dynamic pressure. Estimated: the usual 0.006 for attached flow. */
 const SKIN = 0.006;
-/** The exhaust speed assumed for the small solid rockets and the jets, m/s, whose own is not in a trajectory. Estimated. */
+/** The exhaust speed assumed for the small solid rockets and the jets, m/s, whose own is not in a plan. Estimated. */
 const SMALL_EXHAUST = 2400;
 const JET_EXHAUST = 1000;
 /** Faster than this the flight is not played as it sounds but kept as a low bed, and its events are not played at all. */
@@ -230,7 +230,7 @@ export interface Craft {
   peak: number;
 }
 
-/** The engine a trajectory describes: exhaust speed from the specific impulse, the spectrum's peak at a Strouhal number of 0.02 on the nozzle's exit (estimated). */
+/** The engine a plan describes: exhaust speed from the specific impulse, the spectrum's peak at a Strouhal number of 0.02 on the nozzle's exit (estimated). */
 export function craft(thrust: number, isp: number, exitArea: number): Craft {
   const exhaustSpeed = isp * G0;
   const exit = Math.sqrt((4 * Math.max(1e-3, exitArea)) / Math.PI);

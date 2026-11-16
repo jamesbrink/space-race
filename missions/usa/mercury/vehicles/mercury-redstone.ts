@@ -9,7 +9,6 @@ import type {
   Measure,
   RcsSupply,
   Thruster,
-  Trajectory,
   Winds,
 } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
@@ -35,7 +34,7 @@ import { G0 } from '../../../../src/world/bodies.ts';
  * programme's curve, the drag curves, the escape rocket, the reaction control system, how the weight lies along the
  * stack, the parachutes, what the air heats) are here, each with its confidence and its source; a flight gives its own
  * day and vehicle (`Day`: the winds, the azimuth, the booster's measured thrust and weights, the spacecraft's weights,
- * when each thing happened) and `trajectory` puts the two together. Freedom 7 (MR-3) is the flight these were first
+ * when each thing happened) and `plan` puts the two together. Freedom 7 (MR-3) is the flight these were first
  * gathered for, and many were read from its reports: where a figure here cites "the Postlaunch Report" (`PLR`), that is
  * MR-3's, and it stands for the hardware on every flight of the stack. vehicles/redstone-mrlv.md and
  * mercury-capsule.md are the prose.
@@ -50,7 +49,7 @@ const TMX_491 = 'NASA TM X-491 (Brown and Moseley, 1961)';
 
 /**
  * MR-3's booster as measured (TM X-53107, Table 8-1) and its cutoff (its Postlaunch Report): the flight the A-7's nozzle
- * exit area is derived on (`EXIT_AREA`). Freedom 7's trajectory quotes the same figures as its own.
+ * exit area is derived on (`EXIT_AREA`). Freedom 7's day quotes the same figures as its own.
  */
 export const MR3 = { thrust: 78_860 * LBF, isp: 214.8, cutoff: 141.8, liftoff: 66_098 * LB };
 /** What is left at a cutoff: everything, less the propellant the engine has passed. */
@@ -893,32 +892,6 @@ const MAIN = {
 };
 
 /**
- * What the simulator flies a Mercury-Redstone flight from (src/sim/fly.ts): the flight's own day and figures and the
- * hardware's. Every figure is an input from a report; none was adjusted against any flight's results. Where a report
- * gives no figure the entry is `estimated` and says what it stands on: tests/sim.test.mjs prints how far each of those
- * moves each result, flight by flight. The old shape the viewers still read; the simulator flies `plan`, below.
- */
-export function trajectory(day: Day): Trajectory {
-  return {
-    winds: day.winds,
-    azimuth: day.azimuth,
-    liftoffMass: day.liftoffMass,
-    engine: { thrust: day.thrust, isp: day.isp, exitArea: EXIT_AREA, cutoff: day.cutoff, depletion: DEPLETION },
-    tilt: TILT,
-    area: AREA,
-    ascentDrag: ASCENT_DRAG,
-    separation: day.separation,
-    retro: { fires: day.retro.fires, thrust: RETRO_THRUST, burn: RETRO_BURN, pitch: day.retro.pitch },
-    retropack: day.retropack,
-    entryDrag: ENTRY_DRAG,
-    drogue: { altitude: day.drogue, ...DROGUE },
-    main: { altitude: day.main, ...MAIN },
-    body: stack(day.stack),
-    heating: heated(day.starts),
-  };
-}
-
-/**
  * The stack's own figures as `plan` flies them, the same on every flight of it: the A-7's exit area and how long it can
  * burn, the tilt programme, the area the drag is referred to and the drag curves, the retrorockets, the parachutes.
  * tests/sim.test.mjs weighs each that is not documented by flying a plan made of a changed copy.
@@ -1289,7 +1262,7 @@ export const CHUTES: ChuteDef[] = [
     cut: 'ringsail',
     diameter: doc(
       63 * FT,
-      'Hammack and Heberlig, "Landing system" (p. 9): "the main chute is a 63-foot, ring-sail chute" (as the trajectory’s `main` has it)',
+      'Hammack and Heberlig, "Landing system" (p. 9): "the main chute is a 63-foot, ring-sail chute" (as the plan’s `main` parachute has it)',
     ),
     gores: estimated(
       48,
@@ -1309,7 +1282,7 @@ export const CHUTES: ChuteDef[] = [
       until: derived(
         7,
         'Postlaunch Report, air-ground transcript: "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22: about seven seconds after it came out. ' +
-          'Drawn only: the simulator’s drag grows evenly over the nine seconds (`trajectory.main.fills`)',
+          'Drawn only: the simulator’s drag grows evenly over the nine seconds (`HARDWARE.main.fills`)',
       ),
     },
     stretch: estimated(

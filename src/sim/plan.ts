@@ -4,10 +4,11 @@
  * (each a set of triggers and the actions they set off), the attitudes it is held in, the gravity it flies through
  * and the record's figures it is held to. The machine that keeps a craft's state through its events is sim/craft.ts.
  *
- * It replaces two shapes that were each one kind of flight: `Trajectory` (types/sim.ts: one engine on a tilt
- * programme, a capsule with retrorockets and two parachutes) and `OrbitalFlight` (sim/orbital.ts: stages on a
- * steering law, a braking burn, a descent of separate bodies). Until every run reads a plan, sim/planof.ts makes one
- * from each (`planOfTrajectory`, `planOfOrbital`), and tests/plan.test.mjs holds the plans to what they were made from.
+ * It replaces two shapes that were each one kind of flight: one engine on a tilt programme with a capsule, its
+ * retrorockets and two parachutes, and stages on a steering law with a braking burn and a descent of separate bodies.
+ * A flight's launch vehicle's module writes its plan from the flight's own figures (missions/usa/mercury/vehicles/
+ * mercury-redstone.ts `plan`, missions/ussr/vostok/vehicles/vostok-plan.ts), and tests/plan.test.mjs holds each plan to
+ * what it was written from.
  *
  * Nothing in it is code: a new flight of a kind already flown (a Gemini on its Titan, with hot staging, translation
  * thrusters and a lifting entry) is a new plan, not a new branch in the simulator. Every figure is a `Measure` with

@@ -1,4 +1,4 @@
-/** What the simulator flies from: a trajectory's vehicle, its bodies, motors, thrusters, parachutes and limits. */
+/** What the simulator flies from: a ballistic stack as a rigid body, its bodies, motors, thrusters, parachutes and limits. */
 import type { Confidence, Measure } from '../measure.ts';
 
 /** The simulator's own results and orbital record, which a flight names (type-only: nothing here runs the simulator). */
@@ -47,72 +47,6 @@ export interface WindLevel {
 export interface Winds {
   levels: WindLevel[];
   calmAbove: Measure;
-}
-
-/**
- * What the simulator flies a ballistic flight from (src/sim/fly.ts): one engine burn on a stored
- * tilt programme, then a capsule that separates, fires its retrorockets and comes down under
- * parachutes. SI throughout; the source's own units are in each `source`. Every number here is an
- * input: none is fitted to make the result come out.
- */
-export interface Trajectory {
-  /** The bearing flown, degrees clockwise from true north. */
-  azimuth: Measure;
-  /** The day's winds aloft (sim/air.ts: `blowOf`): the air everything is flown through moves with them. Left out: the air turns with the Earth and no more. */
-  winds?: Winds;
-  /** Everything that leaves the pad, kg. */
-  liftoffMass: Measure;
-  engine: {
-    /** Thrust at sea level, N, and specific impulse there, s: the flow is their quotient over g0. */
-    thrust: Measure;
-    isp: Measure;
-    /** Nozzle exit area, m^2: thrust grows by this times the fall in air pressure. */
-    exitArea: Measure;
-    /** Seconds from liftoff at which it is shut down. */
-    cutoff: Measure;
-    /** How long it can burn before a propellant runs out, s: the live simulator (sim/vehicle.ts) stops it then if nobody has, unless the body gives the engine's `mixture`. */
-    depletion?: Measure;
-  };
-  /** The tilt programme: degrees from the vertical at launch against seconds, held in inertial space by the gyros, in the plane of the azimuth. */
-  tilt: Curve;
-  /** The area drag coefficients are referred to, m^2. */
-  area: Measure;
-  /** Drag coefficient against Mach number, going up on the booster. */
-  ascentDrag: Curve;
-  separation: {
-    /** Seconds from liftoff. */
-    at: Measure;
-    /** The capsule alone, kg, and what it leaves behind, kg. */
-    mass: Measure;
-    boosterMass: Measure;
-    /** How fast the two part, m/s, shared between them by their masses. */
-    speed: Measure;
-    /**
-     * The Earth-fixed heading at separation, degrees true, where the record gives one. Neither simulator reads it:
-     * tests/sim.test.mjs starts the capsule's half from the record's separation, and takes the run's own heading where this is missing.
-     */
-    heading?: Measure;
-  };
-  retro: {
-    /** When each retrorocket lights, seconds from liftoff. */
-    fires: Measure[];
-    /** Each one's thrust, N, and burning time, s. */
-    thrust: Measure;
-    burn: Measure;
-    /** How far below the local horizontal the thrust on the capsule points, degrees; horizontally it is against the motion. */
-    pitch: Measure;
-  };
-  /** The retropack is dropped: when, and the capsule's mass afterwards, kg. */
-  retropack: { at: Measure; mass: Measure };
-  /** Drag coefficient against Mach number, coming down heat shield first. */
-  entryDrag: Curve;
-  /** Each parachute: the height it is let out at, m, the drag area (coefficient times area) it adds once full, m^2, and how long it takes to fill, s. */
-  drogue: { altitude: Measure; dragArea: Measure; fills: Measure };
-  main: { altitude: Measure; dragArea: Measure; fills: Measure };
-  /** The vehicle as a body that turns: what the live simulator (src/sim/vehicle.ts) needs beyond the above. `fly` does not read it. */
-  body?: Body;
-  /** What the air's heat does to it (src/sim/heating.ts): neither simulator's flight depends on it. */
-  heating?: Heating;
 }
 
 /**
@@ -174,7 +108,7 @@ export interface MassPart {
 
 /**
  * Something the air pushes sideways on (a nose, the fins): the slope of its normal-force
- * coefficient against angle of attack, per radian, on the trajectory's `area`, acting at a
+ * coefficient against angle of attack, per radian, on the stack's drag `area` (plan.ts `Craft.drag`), acting at a
  * station. The whole vehicle's slope is their sum, its centre of pressure their mean, and its
  * damping follows from where each stands.
  */
@@ -378,7 +312,7 @@ export interface ShedBody {
   ahead: Measure;
   astern: Measure;
   side: Broadside;
-  /** What the air pushes sideways on in proportion to its angle (fins): stations from the base, slopes on the trajectory's `area`. */
+  /** What the air pushes sideways on in proportion to its angle (fins): stations from the base, slopes on the stack's drag `area`. */
   surfaces?: AeroSurface[];
   /** How fast it and the vehicle are pushed apart along the axis, m/s, shared between them by their masses. The 'separation' event's is `separation.speed`. */
   push?: Measure;
@@ -448,11 +382,11 @@ export interface Limits {
 
 /**
  * A parachute as it is drawn (viewer/chute.ts): a canopy of gores on suspension lines that meet on a riser. What it does
- * to the flight is the trajectory's (`drogue`, `main`: drag area and filling time); these are its looks, each with its
+ * to the flight is the plan's (its `ChuteDef`: drag area and filling time); these are its looks, each with its
  * confidence all the same.
  */
 export interface ChuteDef {
-  /** Which of the simulator's parachutes it is: the trajectory's 'drogue' or 'main', or with `body` that body's parachute's `name`. */
+  /** Which of the simulator's parachutes it is: the plan's parachute of that id, or with `body` that body's parachute's `name`. */
   on: 'drogue' | 'main' | (string & {});
   /**
    * A body of an orbital flight's descent (`orbital.descent.bodies[].id`, sim/orbital.ts flyDown) whose parachute this is:
@@ -478,7 +412,7 @@ export interface ChuteDef {
   colours: { value: string[]; confidence: Confidence; source: string };
   /**
    * A reefed stage: the mouth held to `mouth` of its full width until `until` seconds after coming out, then let open,
-   * full at the trajectory's `fills`. Left out, the mouth opens evenly from out to full.
+   * full at the plan's `fills`. Left out, the mouth opens evenly from out to full.
    */
   reefed?: { mouth: Measure; until: Measure };
   /**

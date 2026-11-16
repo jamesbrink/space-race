@@ -19,7 +19,7 @@ import { is, which } from '../util/keys.ts';
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
  * the keys, and read back on a strip of instruments. Nothing here knows which flight it is: the
- * vehicle is the flight's `trajectory`, the events offered are the ones its record has, and what
+ * vehicle is the flight's plan, the events offered are the ones its record has, and what
  * the scene sheds is `Flight.flies.drops`.
  *
  * The clock is the flight's own: stopped at liftoff until the engine is lit, then run. Each time
@@ -46,7 +46,7 @@ const STEPS: Record<Step, string> = {
   main: 'Main parachute',
   hatch: 'Blow the hatch',
 };
-/** The plan's event each step sets off (sim/planof.ts), asked of the vehicle as a hand's command. */
+/** The plan's event each step sets off (its plan's), asked of the vehicle as a hand's command. */
 const EVENTS: Partial<Record<Step, string>> = {
   tower: 'tower',
   separate: 'separation',
@@ -184,7 +184,7 @@ export class Cockpit extends Deck {
     };
   }
 
-  /** Whether this flight can be flown by hand: it has a trajectory with a body to steer, and a model to carry. */
+  /** Whether this flight can be flown by hand: it has a plan with a rigid body to steer, and a model to carry. */
   get able(): boolean {
     return this.vehicle !== null;
   }

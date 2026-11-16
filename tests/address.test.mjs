@@ -258,7 +258,7 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
       model.seats,
       exhibit(f).seats?.map(({ figure: _figure, ...seat }) => seat),
     );
-    for (const key of ['site', 'trajectory', 'plan', 'checks', 'flies', 'surroundings']) assert.equal(staged[key], undefined, key);
+    for (const key of ['site', 'plan', 'checks', 'flies', 'surroundings']) assert.equal(staged[key], undefined, key);
     // the parts, the slider and the cutaway are the vehicle's own, untouched
     assert.deepEqual(model.parts, exhibit(f).parts);
     assert.deepEqual(model.slider, exhibit(f).slider);

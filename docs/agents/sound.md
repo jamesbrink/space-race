@@ -12,7 +12,7 @@ plays until the page has been touched, and a hidden page is suspended.
   sample, the engine's burn and where the ears are; `score` and `cueShots` give the events.
   `engine.ts` only sets AudioParams to them, so the same code plays live and renders offline
   (`sr.sound.offline(seconds, from, ears, riding)`). A new sound is a number in the model first.
-- **It knows no flight.** The engine is the trajectory's thrust, specific impulse and exit area; the
+- **It knows no flight.** The engine is the plan's: its thrust, specific impulse and exit area; the
   events are the run's own times, `Flight.flies.drops` by their `on`, and the retrorockets'
   `fires`; the vehicle is where `viewer/ascent.ts` puts it, the ears where the scene was last
   drawn from (`uOrigin`), riding when the camera is the chase camera.

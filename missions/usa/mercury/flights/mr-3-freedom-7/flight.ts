@@ -1,4 +1,4 @@
-import type { Flight, FlightCheck, Keyframe, ModelDef, Part, Trajectory, Winds } from '../../../../../src/types.ts';
+import type { Flight, FlightCheck, Keyframe, ModelDef, Part, Winds } from '../../../../../src/types.ts';
 import {
   BY,
   HARDWARE_WORDS,
@@ -31,16 +31,7 @@ import {
 } from '../../vehicles/mercury-redstone-stack.ts';
 import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
-import {
-  CAPSULE_PLANE,
-  CHUTES,
-  cutoffMass,
-  MR3,
-  type Day,
-  plan as mercuryRedstonePlan,
-  trajectory as mercuryRedstone,
-  PLR,
-} from '../../vehicles/mercury-redstone.ts';
+import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, type Day, plan as mercuryRedstonePlan, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
@@ -303,7 +294,7 @@ const vehicleParts: StackWords[] = [
 const LIFTOFF = 0.8;
 
 /**
- * The flight's azimuth, degrees true (`trajectory.azimuth` has its sources), and how the vehicle therefore stood on
+ * The flight's azimuth, degrees true (`DAY.azimuth` has its sources), and how the vehicle therefore stood on
  * the launcher: the table turned until the pitch plane lay on the azimuth, the capsule's hatch 55 degrees round from
  * the site's +X toward the structure's side (places/cape-canaveral/lc-5.parts.ts `launcherTurn`; places/cape-canaveral/lc-5.md, "Which way round the
  * vehicle stood"). model/pad.py builds the launcher, the cable masts and the umbilical turned by the same figure.
@@ -1043,7 +1034,7 @@ const WINDS: Winds = {
   ),
 };
 
-/** How fast the spacecraft and the booster parted: the trajectory's figure, and the booster's own push as a body let go. */
+/** How fast the spacecraft and the booster parted: the day's figure, and the booster's own push as a body let go. */
 const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity approximately 30 plus or minus 3 ft/s, from AZUSA and radar`);
 
 /**
@@ -1120,7 +1111,6 @@ export const DAY: Day = {
     ),
   },
 };
-const trajectory: Trajectory = mercuryRedstone(DAY);
 
 /**
  * What the reports say happened, for the simulator to be held against. The tolerances were set
@@ -1472,9 +1462,8 @@ export const flight: Flight = {
       note: 'automatic system, all axes',
     },
   }),
-  trajectory,
   checks,
-  plan: mercuryRedstonePlan(DAY, checks, trajectory.body),
+  plan: mercuryRedstonePlan(DAY, checks),
   flownNote:
     'The powered flight ends 4 % too fast, and what follows from that is high and long: leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs).',
   flies: {
@@ -1482,11 +1471,11 @@ export const flight: Flight = {
     drops: [
       { at: TOWER_OFF, nodes: ['EscapeTower'], on: 'tower' },
       {
-        at: trajectory.separation.at.value,
+        at: DAY.separation.at.value,
         on: 'separation',
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
-      { at: trajectory.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
       // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it (the part's own text: "at main parachute deploy")
       { at: 614.8, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
     ],

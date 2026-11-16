@@ -2,8 +2,8 @@
 
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
-`src/sim/` flies a flight from the record, in doubles, with no three.js. `Flight.trajectory`
-(types.ts: `Trajectory`) is the input: masses, the engine's thrust, specific impulse, exit area and
+`src/sim/` flies a flight from the record, in doubles, with no three.js. `Flight.plan` (sim/plan.ts:
+`FlightPlan`, below) is the input: masses, the engines' thrust, specific impulse, exit area and
 cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
 `Measure` with its confidence and source, in SI with the source's own units in `source`.
 `fly(plan, site, seaLevel)` integrates its plan (`Flight.plan`, below; RK4 at 0.05 s, every step cut to end on the next
@@ -58,20 +58,20 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `problems(plan)` says in words what is wrong with a plan. A plan is checked before it is flown.
   - A flight of a kind already flown is a new plan, not new code. tests/plan.test.mjs holds a Gemini shape in it, with
     figures of 1.
-- **Plans from today's data** (`sim/planof.ts`). `planOfTrajectory` and `planOfOrbital` carry every figure over as it was.
-  - Where the plan wants a figure the old shape lacks, it is `derived` and says how: the booster's and tower's masses at
-    the pad, the retropack's, a vacuum specific impulse.
+- **Each flight that flies carries its plan** (`Flight.plan`), written by its launch vehicle's module from the flight's own
+  figures.
+  - A Mercury-Redstone's: mercury-redstone.ts `plan(day, checks, body, hw)`, from the flight's `Day` (flight.ts `DAY`) and
+    the stack's own figures (`HARDWARE`: the A-7's exit area, the tilt programme, the drag curves, the retrorockets, the
+    parachutes). Where the plan wants a figure the record does not give, it is `derived` and says how: the booster's and
+    tower's masses at the pad, the retropack's, a vacuum specific impulse. tests/plan.test.mjs holds the plan to the day's
+    and the hardware's figures; tests/sim.test.mjs weighs each undocumented one by writing the plan again from a changed copy.
+  - A Vostok's: missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, from its record (`Flight.orbital`), which says
+    the braking burn's command, timer and chain as events of their own; tests/plan.test.mjs holds it to the record's
+    figures and instants, and tests that fly a changed record fly `vostokPlan` of it.
   - `EngineDef.flown` is the impulse the record's coast flies.
-  - Ids are generated: a stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
+  - A stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
-  - Each flight that flies carries its plan, `Flight.plan`. A Mercury-Redstone's is written by its vehicle module
-    (mercury-redstone.ts `plan(day, checks)`, from the day and the hardware's figures; tests/plan.test.mjs holds it equal to
-    `planOfTrajectory` of the same flight's `trajectory` while that remains). A Vostok's is written from its record by
-    missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, which says the braking burn's command, timer and chain as
-    events of their own (planOfOrbital does not, and nothing is held to it now); tests/plan.test.mjs holds it to the
-    record's figures and instants, and tests that fly a changed record fly `vostokPlan` of it. The orbital batch, the live
-    staged vehicle, the decks and views fly `flight.plan`; a plan changed by a hand is an edit of it.
-  - These go when the flights' data says its plan itself.
+  - Every simulator, deck and view flies `flight.plan`; a plan changed by a hand is an edit of it.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
   which events have happened and which are armed, and the attitude held. It is never changed in place.
   - `act` does one action if the hardware lets it, and otherwise returns a `Refusal` for the simulator to word: an engine
@@ -98,7 +98,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
       first lets its body go; the drops; the record's instants by id.
     - `coastOf`: the burn the coast flies, the parting of the body it is on (each at its `clockAt`, chained or not), and
       the height what comes down is let loose at.
-    - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. The ballistic side takes the plan too: `fly`, `flownOnce`, `axisOf`, `dragArea`, `thrustIn`, the live vehicle (`vehicle(plan, …)`), its autopilot and `verdict`, the `ballistic` flier and `predict`, and what is shed (`Sheds`, `shedder`, `recordRelease`: the stack's drag area, the winds and `Craft.sheds`). Each finds its hardware by what it is, once per plan (fly.ts `ballisticOf`): the booster is the first body and its engine the lever's; the separation the joint that lets the booster go; the abort the event a hand's command sets off and the escape rocket the motor it lights; the retrorockets every other solid with a burn, begun by the event that lights the first and chained by their `after` triggers; the tower and pack the bodies of those motors and the joints that let them go; the main parachute the one with `instead`, each parachute's height its deploying event's; masses at the partings their joints' `after`. A live sample's `burning` names each engine by its plan id. Only the adapters (planof.ts) and the consumers outside src/sim read the record.
+    - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. The ballistic side takes the plan too: `fly`, `flownOnce`, `axisOf`, `dragArea`, `thrustIn`, the live vehicle (`vehicle(plan, …)`), its autopilot and `verdict`, the `ballistic` flier and `predict`, and what is shed (`Sheds`, `shedder`, `recordRelease`: the stack's drag area, the winds and `Craft.sheds`). Each finds its hardware by what it is, once per plan (fly.ts `ballisticOf`): the booster is the first body and its engine the lever's; the separation the joint that lets the booster go; the abort the event a hand's command sets off and the escape rocket the motor it lights; the retrorockets every other solid with a burn, begun by the event that lights the first and chained by their `after` triggers; the tower and pack the bodies of those motors and the joints that let them go; the main parachute the one with `instead`, each parachute's height its deploying event's; masses at the partings their joints' `after`. A live sample's `burning` names each engine by its plan id. Only vostok-plan.ts and the consumers outside src/sim read an orbital record.
   - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
@@ -160,12 +160,12 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 - **Level is the ellipsoid's.** Climb angles, the retro attitude and a landing's vertical speed
   are measured from the geodetic normal (the flight frame's `up`, world/earthframe.ts), not from the line to the Earth's
   centre, which leans a sixth of a degree from it at the Cape.
-- **The flight is shown as flown.** `Flight.flies` names the model the trajectory carries off the
+- **The flight is shown as flown.** `Flight.flies` names the model the run carries off the
   pad and the nodes it sheds on the way (tower, booster, retropack) at their times;
   `viewer/ascent.ts` puts that model where the run has it at the clock's instant (a cubic between
   the run's samples, in the Earth's turning axes, in the site's frame) and points it as the run
   does (the gyros' tilt going up, heat shield first after the turnaround). What it sheds is
-  flown (`sim/shed.ts`, `Ascent.shed`, `FlightShow.fall` in stage/flightshow.ts): each thing in `trajectory.body.sheds` is a
+  flown (`sim/shed.ts`, `Ascent.shed`, `FlightShow.fall` in stage/flightshow.ts): each thing in `Craft.sheds` is a
   rigid body of its own from the instant it leaves, and the full level's own node is carried by it,
   turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
   of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
@@ -227,7 +227,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   over, its shore lines (missions/usa/places/cape-canaveral/scenery.ts) follow the same coastline, so the two agree to tens of
   metres there; change one, change the other, and rebake (`pnpm globe:region`).
 - **The air is seen and felt.** `sim/heating.ts` works the heat flux at the stagnation point from a
-  sample's height and airspeed and carries each surface in `Trajectory.heating` (a `Measure` for
+  sample's height and airspeed and carries each surface in `Craft.heating` (a `Measure` for
   every figure) through the flight as a lump; nothing is held against it until a measured
   temperature is read, and the flight's README says so. `viewer/effects.ts` shows it at the clock's
   instant, from the run on show, record or live: surfaces glow by black-body colour on the real
@@ -248,9 +248,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 - **Getting it right is the work.** What each flight misses, by how much and why, is `src/sim/misses.ts`; the
   flight's README ("The flight as flown") states the numbers. An input made better moves them, and the list with it.
 - **A launch vehicle's flight data is said once** (`missions/<nation>/<programme>/vehicles/<stack>.ts`: the Mercury-Redstone's
-  is mercury-redstone.ts, `plan(day, checks)` and, for the viewers still on it, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
+  is mercury-redstone.ts, `plan(day, checks)`): the hardware's figures with their confidence (`HARDWARE`, the stack's rigid body), and each flight its own day
   (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
-  the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
+  the stack is data; tests/ballistic.mjs finds every flight with a ballistic plan (and its `Day`, `dayOf`), and tests/sim.test.mjs, vehicle, predict,
   turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
   its undocumented inputs listed; Freedom 7's own record figures are held on Freedom 7 alone). Every flight into orbit is
   held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
@@ -263,7 +263,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
   jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
   propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
-  `Trajectory.body`, each figure with its confidence; most are `estimated`, and
+  `Craft.rigid`, each figure with its confidence; most are `estimated`, and
   `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
   the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
   the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
@@ -296,7 +296,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   motor with a `station` turns it (the strap-on's oxidizer vent, back and out at 45 degrees from under its cone). So the
   four strap-ons fall back as a cross, each tumbling under the air on its own track, and the core flies exactly as it
   did: what leaves takes only its own mass, as before.
-- **The air moves.** `trajectory.winds` (types.ts: `Winds`) is the day's sounding over the pad,
+- **The air moves.** `FlightPlan.winds` (types.ts: `Winds`) is the day's sounding over the pad,
   each level's speed and bearing a `Measure`; `blowOf` (air.ts) turns it into the air's motion
   east and north at a height, straight lines between levels in those parts (so a swing through
   north is not a spin through south), the lowest held to the surface, falling evenly to nothing
@@ -354,7 +354,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   its rate is more than the deadband from it); an explosive hatch (`flies.hatch`: `Command` 'hatch', Space once down, a
   cabin control's `does`; nothing of it reaches the physics: blown in flight the debrief says what it meant, blown afloat
   the spacecraft is drawn going under in `under` seconds, `Run.sinks`, and the clock runs on until it has).
-- **Turned round, the spacecraft is rolled periscope side down.** `trajectory.body.capsule.earthward` names the side the
+- **Turned round, the spacecraft is rolled periscope side down.** `Craft.rigid.capsule.earthward` names the side the
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
   down range on the pad, since the launcher was turned until the vehicle's pitch plane lay on the azimuth and the
@@ -371,7 +371,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 ## Into orbit
 
 - **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
-  beside `trajectory`: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
+  beside the plan written from it: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in the flight's
   frame (of date, as every run's) on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its misses (src/sim/misses.ts) by the same rule as
@@ -492,8 +492,8 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
 ## The deck
 
 - **Every flight is flown on the one deck** (`src/deck/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
-  notes and card), with a flight kind's code behind it: `cockpit.ts` for a flight on a `trajectory`, `orbitdeck.ts` for
-  one into orbit (`orbital.ascent` and no `trajectory`; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
+  notes and card), with a flight kind's code behind it: `cockpit.ts` for a ballistic plan, `orbitdeck.ts` for
+  one into orbit (an orbital plan; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
   differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
   flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
@@ -533,7 +533,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   (`flies.chutes`, `viewer/chute.ts`, by way of `Ascent.chute` and `Run.out`), a drop can leave
   `under` one (`drops[].on: 'main'`), and the jets are seen (`viewer/jets.ts`, `Ascent.jets`,
   live runs only). The Flown panel draws the run in amber over the record's as it grows
-  (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `trajectory.body` and
+  (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `Craft.rigid` and
   `flies` can be flown without being told how.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
@@ -663,7 +663,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   the flier's next instant (nothing a flier is changes within a step), each height and the ground found on the step's
   cubic and the step flown again to there. The air's two marks are its own and every vehicle's: the first 0.05 g felt
   coming down once nothing burns and no burn is to come, and the greatest load from there before a parachute. The
-  vehicles: `ballistic` (a `Trajectory`'s: Freedom 7), `spacecraft` (an orbital spacecraft alone: flyOrbit's
+  vehicles: `ballistic` (a ballistic plan's: Freedom 7), `spacecraft` (an orbital spacecraft alone: flyOrbit's
   `shipPush` and `aimOf`), `stack` (a staged launch vehicle with its engines stopped). The differences between them are
   the vehicles': drag curves and areas, what is scheduled, the retrorockets' line (against the motion over the ground)
   against the braking engine's (fixed as it lights), parachutes. Each is a point mass with the attitude its forces need

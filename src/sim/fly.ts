@@ -1,7 +1,7 @@
 /**
  * Flying a ballistic flight: a booster that burns once on a stored tilt programme, and a capsule
  * that separates, fires its retrorockets and comes down under parachutes. The whole of it is
- * integrated from the flight's plan (sim/plan.ts, made from its `trajectory` by planof.ts), stepped
+ * integrated from the flight's plan (sim/plan.ts, written by its launch vehicle's module: mercury-redstone.ts `plan`), stepped
  * on the one machine (sim/craft.ts) by the record's pilot (`flyPlan`): nothing here knows which
  * flight it is or names a part, and nothing is adjusted to make a result come out.
  * tests/sim.test.mjs holds it against the flight's documented results.
@@ -15,7 +15,7 @@
  *             sea-level figure and the exit area) less the exit area times the air's pressure. The flow is thrust over (g0 times specific impulse), steady
  *             from liftoff to cutoff: no build-up, no tail-off.
  *   drag      half rho v^2 Cd A against the motion through the air, which turns with the Earth and
- *             moves over it with the day's winds aloft where the trajectory gives them (`winds`:
+ *             moves over it with the day's winds aloft where the plan gives them (`winds`:
  *             one sounding, the same all along the flight). Cd by Mach number at no angle of attack.
  *   air       atmosphere.ts.
  *   mass      what leaves the pad, less what each engine aboard has burned (thrust over g0 times

@@ -167,7 +167,7 @@ section 5). 52,000 is the nominal axial figure.
   bolted the hatch on with 70 bolts; the explosive hatch (23 lb, 70 bolts and a detonating fuse)
   arrived with No. 11.
 - A beryllium heat-sink shield, not the ablative shield of the orbital flights. As the simulator flies it the shield
-  warms by 13 K (`trajectory.heating` in `flight.ts`; the flight's README, "Heating"): it is one lump at
+  warms by 13 K (`Craft.heating` in `flight.ts`; the flight's README, "Heating"): it is one lump at
   one temperature there, 46.9 kg behind each square metre, and nothing measured is held against it.
 
 It did carry a landing bag, which worked.
@@ -255,7 +255,7 @@ Until November 2026 the model stood the vehicle square to the rails, the hatch b
 azimuth and the pilot partly on his side. What changed with the turn: the vehicle's `rotationY` in `flight.ts`
 (55 degrees, worked from the azimuth: `launcherTurn`), with this model and its angles round the cone untouched; the
 pad's launcher, masts, umbilical, platforms' cuts and cherry picker (`places/cape-canaveral/lc-5.md`); and
-`trajectory.body.capsule.earthward`, the side the automatic control keeps toward the Earth, which is now the down-range
+`Craft.rigid.capsule.earthward`, the side the automatic control keeps toward the Earth, which is now the down-range
 one, 180 degrees from the body's +Z (it was 125, and 80 before the hatch was moved round the cone). Flown live the
 recorded figures do not move (the tests that pin them to the Postlaunch Report pass unchanged); the live flight's
 apogee is 106 m lower than it was with 125 and its range 260 m shorter (of 202.7 km and 537 km), and it has 0.34 kg more of the automatic supply left
@@ -326,7 +326,7 @@ The same GLB also holds the launch vehicle's five nodes: see
   is by judgement.
 - **The periscope's objective is a lens over three inches of barrel**, with a stop and a mirror at the bottom, not the
   instrument's optics: the barrel does not run on to the screen in the cabin.
-- **After the turnaround the simulator rolls the capsule periscope side down** (`trajectory.body.capsule.earthward`,
+- **After the turnaround the simulator rolls the capsule periscope side down** (`Craft.rigid.capsule.earthward`,
   estimated: 125 degrees, from the model's own periscope and hatch bearings). The record has the yaw through 180 degrees
   and the 34 degrees; that the periscope faced the Earth is why it was there; the roll's own figure is not in anything read.
 - **Open: the paint is not worn in colour.** A paler ring round each screw head is all there is; edges are not
@@ -385,15 +385,15 @@ The same GLB also holds the launch vehicle's five nodes: see
   the line was set toward would be settled by the Mercury-Redstone abort analysis or the capsule's alignment
   record (McDonnell's weight and balance or thrust-alignment sheet for capsule 7; the Redstone range-safety
   study of where an aborted capsule falls): none has been found. The tower's and the retropack's drag areas, the retropack's centre of
-  mass and inertia, and the metre a second its spring is given are estimates (`trajectory.body.sheds`).
+  mass and inertia, and the metre a second its spring is given are estimates (`Craft.sheds`).
   The retropack is flown at the whole 276 lb the record's weights step by, burned propellant included.
 - **The spacecraft's drag off its axis is a model, not a measurement**: the zero-angle curves (TM X-491)
   along the axis by whichever end leads, falling as the cosine, and a cross-flow on its side of 3.6 sq m
-  (`trajectory.body.capsule.side`, estimated). Small end first it is given the curve of the capsule with
+  (`Craft.rigid.capsule.side`, estimated). Small end first it is given the curve of the capsule with
   its tower, the only nose-first curve read.
 - **No mass properties in the model.** The postlaunch report has the capsule's centre of gravity
   and moments of inertia; they have not been read. The simulator flies on estimates of them
-  (`trajectory.body.capsule` in `flight.ts`, labelled `estimated`): replace them from the report.
+  (`Craft.rigid.capsule` in `flight.ts`, labelled `estimated`): replace them from the report.
 - The parachutes are not in the model: the viewer draws them in flight from `flies.chutes` in `flight.ts`
   (gores, lines and colours estimated). The recovery aids are not modelled.
 - The attitude jets' nozzles are not placed from a drawing: the simulator's chambers stand where

@@ -2,7 +2,7 @@
  * The air at a point, for every simulator (fly.ts, vehicle.ts, shed.ts, staged.ts, stagedlive.ts, orbital.ts's coast,
  * fliers.ts) and the scene: where the point is over in the flight's frame (world/earthframe.ts), its height above the sea,
  * the 1976 standard air there (atmosphere.ts), and the motion through that air, which turns with the Earth and moves over
- * it as the day's winds aloft have it (`Trajectory.winds`, one sounding for the whole flight; calm where there is none).
+ * it as the day's winds aloft have it (`FlightPlan.winds`, one sounding for the whole flight; calm where there is none).
  */
 import type { Winds } from '../types.ts';
 import type { EarthFrame } from '../world/earthframe.ts';

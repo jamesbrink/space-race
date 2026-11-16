@@ -167,7 +167,7 @@ camera), and the panel rearranged, its needles and sequence lights reading the f
 with the platform off, the stack breaks up at T+42 on its bending limit and the escape rocket pulls the
 spacecraft clear.
 
-`src/sim/fly.ts` integrates the flight from `trajectory` in [flight.ts](flight.ts), which is this
+`src/sim/fly.ts` integrates the flight from its plan, written from `DAY` in [flight.ts](flight.ts), which is this
 flight's own day and figures on the Mercury-Redstone's hardware
 ([mercury-redstone.ts](../../vehicles/mercury-redstone.ts): the A-7's nozzle, the tilt programme's
 curve, the drag curves, the escape rocket, the jets, the parachutes, how the weight lies along the

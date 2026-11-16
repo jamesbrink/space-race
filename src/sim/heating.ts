@@ -1,7 +1,7 @@
 /**
  * What the air's heat does to a vehicle: the heat flux at the stagnation point from the air's
  * density and the speed through it, and the temperature of each surface a flight names
- * (`Trajectory.heating`, types.ts) as it takes its share of that flux and radiates. Pure, in
+ * (`Craft.heating`, types.ts) as it takes its share of that flux and radiates. Pure, in
  * doubles, with no three.js; it reads a simulator's samples (fly.ts's or vehicle.ts's) and changes
  * nothing in either flight.
  *
@@ -116,7 +116,7 @@ function shareOf(surface: HeatedSurface, blunt: number, under: boolean): number 
 /** The air's part of an instant: everything but the surfaces. */
 function outside(heating: Heating, sample: Sample): { flux: number; enthalpy: number; gas: number; blunt: number } {
   const air = atmosphere(sample.altitude);
-  // through the air: which turns with the Earth and, where the trajectory gives a wind, moves over it (the sample's
+  // through the air: which turns with the Earth and, where the plan gives a wind, moves over it (the sample's
   // dynamic pressure is that speed's, in this same air)
   const speed = air.density > 0 && sample.q > 0 ? Math.sqrt((2 * sample.q) / air.density) : sample.groundSpeed;
   return {

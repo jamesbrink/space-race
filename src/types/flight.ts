@@ -2,7 +2,7 @@
 import type { Confidence, Measure } from '../measure.ts';
 import type { ModelDef } from './model.ts';
 import type { FlightPlan } from '../sim/plan.ts';
-import type { Burns, ChuteDef, OrbitalFlight, Results, Trajectory } from './sim.ts';
+import type { Burns, ChuteDef, OrbitalFlight, Results } from './sim.ts';
 import type { SiteDef } from './site.ts';
 import type { DayWeather } from './weather.ts';
 
@@ -37,7 +37,7 @@ export interface TimelineEvent {
   event: string;
 }
 
-/** A result the reports give, for the simulator to be held against: tests/sim.test.mjs integrates the trajectory and compares. */
+/** A result the reports give, for the simulator to be held against: tests/sim.test.mjs flies the plan and compares. */
 export interface FlightCheck {
   /** What src/sim/fly.ts calls it, a field of its `Results`: 'apogee', 'range', 'separationSpeed'. */
   id: keyof Results;
@@ -87,27 +87,25 @@ export interface Flight {
   timeline: TimelineEvent[];
   specs: Spec[];
   motors: Motor[];
-  /** What the flight is integrated from, and what the result is checked against (src/sim). Left out: it cannot be flown yet. */
-  trajectory?: Trajectory;
+  /** What the flight's run is checked against (src/sim): the reports' figures. */
   checks?: FlightCheck[];
   /** What the Flown panel says under the checks: how the simulator's run stands against the reports today, and why. This flight's own verdict, in a sentence or three. */
   flownNote?: string;
   /**
    * A flight into orbit, as the record has it (src/sim/orbital.ts: stages, events, the orbit, the braking burn, the entry, with
-   * its own checks). Beside `trajectory`, not in it: a flight has whichever its kind of flight is, and one with only this is
-   * not offered to be flown by hand yet.
+   * its own checks), which its plan is written from (missions/ussr/vostok/vehicles/vostok-plan.ts).
    */
   orbital?: OrbitalFlight;
   /**
    * What the flight is flown from, one shape for every kind (src/sim/plan.ts): its craft, the events that change it, the
-   * attitudes it is held in, the checks. Left out: it cannot be flown yet. Made today from `trajectory` or `orbital` by
-   * src/sim/planof.ts, until the flight's data says it itself.
+   * attitudes it is held in, the checks. Left out: it cannot be flown yet. Written by the flight's launch vehicle's module
+   * from the flight's own figures (a Mercury-Redstone's by mercury-redstone.ts `plan`, a Vostok's by vostok-plan.ts).
    */
   plan?: FlightPlan;
   /**
-   * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
+   * The flight in the scene: which model the run carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from
-   * liftoff: each then flies on as a body of its own where `trajectory.body.sheds` gives one for its `on` (sim/shed.ts).
+   * liftoff: each then flies on as a body of its own where the plan's `Craft.sheds` gives one for its `on` (sim/shed.ts).
    */
   flies?: {
     model: string;
@@ -146,7 +144,7 @@ export interface Flight {
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
     datum?: number;
     /**
-     * A ballistic flight's one engine: the node whose lowest point is the nozzle's exit, its area the trajectory's. Its
+     * A ballistic flight's one engine: the node whose lowest point is the nozzle's exit, its area the plan engine's. Its
      * fire is drawn from there from liftoff to the cutoff.
      */
     engine?: string;

@@ -345,7 +345,7 @@ export interface ViewDef {
  * `elapsed` s from liftoff (nought before it); `timeOfDay` s since midnight by the site's clocks; `pitch`, `yaw`,
  * `roll` degrees as the spacecraft's own gyros had them (gauges.ts states the convention) and `pitchRate`, `yawRate`,
  * `rollRate` degrees a second; `supply0`, `supply1`... the fraction left in each reaction-control supply
- * (`trajectory.body.capsule.rcs.supplies`, in order). Anything else an instrument shows is not simulated: it is
+ * (`Craft.rigid.capsule.rcs.supplies`, in order). Anything else an instrument shows is not simulated: it is
  * given a `value` and says so.
  */
 export type Quantity =

@@ -1,5 +1,5 @@
 // src/sim: the air, gravity and the integrator against what is known in closed form, and then
-// every ballistic flight (tests/ballistic.mjs: Mercury-Redstone 3 and 4) flown from its flight.ts's `trajectory` against its `checks`.
+// every ballistic flight (tests/ballistic.mjs: Mercury-Redstone 3 and 4) flown from its plan against its `checks`.
 //
 // No input is fitted. Where the run misses a documented result by more than its tolerance, the
 // miss is written down in src/sim/misses.ts (the debrief reads it too) with the input most likely responsible, and the test holds

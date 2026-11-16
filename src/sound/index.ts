@@ -2,7 +2,7 @@
  * Sound for the page: the flight heard from wherever the ears are, the place's quiet, and the
  * walk. This file is the joinery: it asks the scene where the vehicle is and the clock what
  * time it is, gives them to sound/model.ts, and sets sound/engine.ts to the answer twenty times
- * a second. It knows no flight: the engine is the flight's `trajectory`, the events are the
+ * a second. It knows no flight: the engine is the flight's plan's, the events are the
  * run's own times and `Flight.flies.drops`.
  *
  * Sound follows the simulation clock and nothing else. What is heard at the clock's instant is

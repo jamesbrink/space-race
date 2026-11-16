@@ -169,7 +169,7 @@ What the simulator is to read (src/sim, not here; the note for whoever does it):
 (below the column's ground, above its top, a flight with no weather), the run saying which (a figure that leans on the
 column is `derived`, on the standard `estimated`). So that nothing steps at the top, the standard above it is scaled by
 the column's density over the standard's at the top, the ratio easing to 1 by 70 km. The wind aloft is the record's own
-sounding where it has one (`Trajectory.winds`, sim/air.ts `blowOf`: `documented`), else the column's (`aloftAt(...).wind`),
+sounding where it has one (`FlightPlan.winds`, sim/air.ts `blowOf`: `documented`), else the column's (`aloftAt(...).wind`),
 else calm; at the pad, the hour's surface wind (`hourAt(flight.weather.hours, liftoff)`). Nothing is fitted to it: a
 flight that misses more under ERA5's air than under the standard's says so in its MISSES.
 

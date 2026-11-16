@@ -1,6 +1,6 @@
 /**
  * What a structure is limited by, worked from the forces the simulator already has: nothing here
- * knows any flight, and the limits themselves are a flight's data (`Trajectory.body.limits`).
+ * knows any flight, and the limits themselves are a flight's data (`Craft.rigid.limits`).
  *
  *   q          dynamic pressure, Pa.
  *   q alpha    dynamic pressure times the angle between the long axis and the motion through the

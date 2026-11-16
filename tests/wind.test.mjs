@@ -1,4 +1,4 @@
-// The day's winds aloft (`trajectory.winds`: the Postlaunch Report's Figure 10.3-1) and what flying through them does.
+// The day's winds aloft (`FlightPlan.winds`: the Postlaunch Report's Figure 10.3-1) and what flying through them does.
 //
 // The wind is an input like any other: a sounding read off a figure, each level with its confidence. Nothing is fitted
 // to it. What it does to the flight against the record is stated here, improvements and worsenings both, and held, so

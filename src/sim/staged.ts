@@ -270,7 +270,7 @@ export function spentAt(burned: (t: number) => number, load: number, from: numbe
 }
 
 /**
- * The ascent's sequence as its plan has it (sim/plan.ts, made of the record by planof.ts): each stage's engine lit, cut (at
+ * The ascent's sequence as its plan has it (sim/plan.ts, written from the record by vostok-plan.ts): each stage's engine lit, cut (at
  * an instant, or on reaching a speed: space-fixed, or its integrator's apparent velocity) and its body let go, at the
  * instants the record's pilot sets them off; a drop's letting go; the record's instants by id. What happens when is read
  * from the plan's events, never from the stage records' own times. (The stages' engines are the plan's engines that draw

@@ -14,7 +14,7 @@ missions/                             the record: one folder per nation, program
     vehicles/  crew/                  hardware shared by several flights: <name>.py builds it,
                                       <name>.md records its dimensions, confidence, simplifications
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
-                                      (mercury-redstone.ts: `plan`, `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record;
+                                      (mercury-redstone.ts: `plan`, `Day`, `HARDWARE`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record;
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;
@@ -78,7 +78,7 @@ src/
   types/model.ts                      ModelDef, Part, Move, Runs, Drive, Action, Command, ViewDef, the cabin (CabinDef) and its mechanisms
   types/site.ts                       SiteDef, the place it is in (PlaceDef), what stands round it (SiteAround), its region (RegionDef, RegionSurface, LaterWork)
   types/weather.ts                    DayWeather: the wind, each layer of cloud, the visibility, the weather beyond the station
-  types/sim.ts                        what the simulator flies from: Trajectory, Body, MassPart, Thruster, ShedBody, ChuteDef, Limits, Curve
+  types/sim.ts                        what the simulator flies from: Body (a stack as a rigid body), MassPart, Thruster, ShedBody, ChuteDef, Limits, Curve
   measure.ts                          Confidence and Measure, and doc, derived, estimated: a figure with how far it can be trusted (imports nothing)
   util/math.ts                        smoothstep (GLSL's order), ease (smootherstep), clamp, lerp
   util/dom.ts                         esc, and `$(root, selector)`: an element the page's own markup must have, or an error naming it
@@ -123,7 +123,7 @@ src/
   ui/lineup.ts  ui/lineup.css         the Lineup's page: the card, the programmes, the timeline's strip and its words, and what is written on the picture
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
-  deck/cockpit.ts                     the deck's ballistic kind: a flight on a `trajectory` flown by hand, the live simulator stepped by the clock, the instruments
+  deck/cockpit.ts                     the deck's ballistic kind: a ballistic plan flown by hand, the live simulator stepped by the clock, the instruments
   deck/orbitdeck.ts                   the deck's orbital kind (`Flight.orbital`): the stages, the events and what the hands could reach, from the record
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
@@ -264,7 +264,6 @@ src/
   sim/predict.ts                      looking ahead from a state: one propagator for every vehicle (error-controlled, in slices), the path if nothing more is done, its apsides, events, impact or orbit (pure)
   sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
   sim/plan.ts                         what a flight is flown from, one shape for every kind: its craft (bodies, joints, engines on tanks, thrusters, parachutes, limits), events (triggers, actions), attitudes, checks; `problems` says what is wrong with one
-  sim/planof.ts                       a plan made from each of today's two shapes (`Trajectory`, `OrbitalFlight`), until the flights' data says its plan itself
   sim/craft.ts                        the one machine a craft is flown by: what is lit, let go and gone, what is out, which events have happened, as its plan's hardware allows
   sound/audio.ts                      what the walk and a driven vehicle are heard as (an interface, silent until something that plays is given), and the board every posed move that names a machine is told to (`machinery`)
   sound/model.ts                      what the flight sounds like, as numbers: levels, filter frequencies, delays and Doppler from the sample and where the ears are; and the works: engines, tyres and machines on the ground (pure, tested)

@@ -19,7 +19,7 @@
  *
  * Events. Nothing happens that is not asked for (`StagedControls.steps`, or the plan's `events`): a stage lit, cut off or
  * let go, a drop let go, the spacecraft parted. What is lit, let go and gone, and which of the plan's events have happened,
- * is kept by the one machine (sim/craft.ts) on the flight's plan (sim/plan.ts, made from the record by planof.ts), whose
+ * is kept by the one machine (sim/craft.ts) on the flight's plan (sim/plan.ts, written from the record by vostok-plan.ts), whose
  * hardware rules it applies; `stages` and `drops` are its view, which the forces read. The record's sequence (each at its
  * time, the stage cut on its integrator's apparent velocity) is the pilot's to give: `stagedPilot` with the sequencer on
  * gives each event of it as it comes due (craft.ts `due`), as sim/autopilot.ts gives a ballistic flight's. A stage
@@ -632,7 +632,7 @@ export function stagedVehicle(
     return stages.reduce((sum, _, i) => sum + (burning(s, i) ? pushOf(s, i, s.t, here.air.pressure) : 0), 0);
   };
 
-  // The record's sequence: the plan's events that light, cut or let go a stage or let go a drop, in its order (planof.ts:
+  // The record's sequence: the plan's events that light, cut or let go a stage or let go a drop, in its order (vostok-plan.ts:
   // each stage lit unless at liftoff, cut where that is not its separation, let go; each drop), at the record's instants
   const sequence = plan.events.flatMap((e) => {
     const step = e.at && e.do.length === 1 ? stepOf(e.do[0]!) : null;

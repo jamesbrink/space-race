@@ -37,7 +37,7 @@ export function edited(plan, change) {
 
 /**
  * The plan with nothing that gives: no limit on its structure's bending, no strength in its parachutes' cloth or lines,
- * no share a torn canopy keeps, and the rigid body with no limits of its own (the trajectory's `body.limits` gone).
+ * no share a torn canopy keeps, and the rigid body with no limits of its own (the plan's `Craft.rigid.limits` gone).
  */
 export function unlimited(plan) {
   return edited(plan, (p, craft) => {
