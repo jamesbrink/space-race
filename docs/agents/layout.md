@@ -181,7 +181,7 @@ src/
   viewer/onfoot/drive.ts              driving: a kinematic bicycle model and the vehicle contract's nodes
   viewer/onfoot/carry.ts              what a walking figure has in its hand, by the model's grip contract
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
-  viewer/space.ts                     Earth from apogee, stars; the wear texture
+  viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
   viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
   world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, figures, rotation, mean orbits; standard gravity (G0), what falls on each (gravityOn)

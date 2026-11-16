@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { disposeTree } from './dispose.ts';
+import type { FlightPlan } from '../sim/plan.ts';
 import type { BackdropKind, SitedFlight } from '../types.ts';
 import { skyFrom } from '../world/ephemeris.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
@@ -381,9 +382,18 @@ class DomeBackdrop implements Backdrop {
  * Where a setting is and the instant it is first shown at: a flight's site and launch. The Sun,
  * the Moon, the stars and the planets are put where they stood over that place (src/world/
  * ephemeris.ts), in the site's own frame, which is the models', and `Setting.at` moves them to
- * any other instant. Nothing in the sky is placed by hand.
+ * any other instant. Nothing in the sky is placed by hand. Its plan, where it has one, says how high it goes
+ * (`heightOf`).
  */
-export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'>;
+export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'> & Partial<Pick<SitedFlight, 'plan'>>;
+
+/**
+ * How high a flight goes, metres, as its record has it: its orbit's apogee as published, or the greatest height of a
+ * flight that goes up and comes down again (its `apogee` check). Undefined for one that says neither.
+ */
+export function heightOf(plan: FlightPlan | undefined): number | undefined {
+  return plan?.record?.orbit?.apogee.value ?? plan?.checks.find((c) => c.id === 'apogee')?.value;
+}
 
 /** The places built, by place, pad and day: a place is laid round its pad, and its season and sky are the day's. */
 const places = new Map<string, Place>();
@@ -756,19 +766,21 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
 /**
  * Above the Earth. Given a flight, the sky is the one over the flight's site, seen from above the
  * air: the Sun, the Moon and the planets where they stood, the stars turned to that place and
- * hour (the 187 km between the pad and apogee moves the Moon by 0.03 degrees and nothing else by
- * anything). With none (the stage before any flight is loaded) the Sun is a key light from
- * nowhere in particular and the stars are turned to no place.
+ * hour (the 187 km between the pad and Freedom 7's apogee moves the Moon by 0.03 degrees and nothing
+ * else by anything), and the Earth below in the reflections at the flight's height (`heightOf`). With
+ * none (the stage before any flight is loaded) the Sun is a key light from nowhere in particular, the
+ * stars are turned to no place and there is no Earth.
  */
 function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
   const site = when && siteFrame(when.site);
+  const height = heightOf(when?.plan);
   const h = site && new Heavens(site, false, renderer.getPixelRatio());
   if (h && when) h.at(skyFrom(siteFrame(when.site), julianDate(when.launch)));
   const sunDir = h ? h.sunDir : new THREE.Vector3(0.62, 0.42, 0.66).normalize();
   const backdrop = new OrbitBackdrop(sunDir, h ?? starsAlone(renderer.getPixelRatio()));
   const setting: Setting = {
     backdrop,
-    environment: orbitEnvironment(renderer, sunDir),
+    environment: orbitEnvironment(renderer, sunDir, height),
     environmentIntensity: 1.0,
     sunDir,
     sunColor: 0xfff4e6,
@@ -792,7 +804,7 @@ function orbit(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
       backdrop.place(h);
       if (sunDir.angleTo(bakedSun) > cadence.bakeStep * DEG) {
         setting.environment.dispose();
-        setting.environment = orbitEnvironment(renderer, sunDir);
+        setting.environment = orbitEnvironment(renderer, sunDir, height);
         bakedSun.copy(sunDir);
       }
       const shadows = sunDir.angleTo(shadowed) > cadence.shadowStep * DEG;

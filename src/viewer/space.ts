@@ -1,93 +1,26 @@
 import * as THREE from 'three';
-import { NOISE } from './glsl.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { Heavens, MOON_GLSL } from './heavens.ts';
 
-/** Altitude the backdrop is drawn from, in Earth radii: Freedom 7's apogee, 187.4 km. */
-const ALTITUDE = 187.4 / 6371;
-
 /**
- * What is behind the spacecraft: the Earth from apogee, its atmosphere, the Sun, the Moon and the
- * stars. It lives in its own scene, drawn first with a camera that copies the main camera's
- * rotation but never its position: the Earth is 6,371 km of backdrop, not a prop.
+ * What is behind the spacecraft above the air: the Sun, the Moon and the stars. It lives in its own scene, drawn first
+ * with a camera that copies the main camera's rotation but never its position.
  *
- * The sky is real (heavens.ts): given a flight's `Heavens` the Moon, the planets and the 518
- * brightest stars are where they stood over the flight's site at launch, +Y being straight up
- * there. The Earth below is not yet: its continents are noise, and it is not turned to the hour.
+ * The sky is real (heavens.ts): given a flight's `Heavens` the Moon, the planets and the 518 brightest stars are where
+ * they stood over the flight's site at launch, +Y being straight up there. The Earth below is not drawn here: what was
+ * (continents of noise, turned to no hour) was a stand-in, and the Earth seen from above the air is the globe's
+ * (globe.ts), which a flight's place on the ground draws all the way up. The reflections still have the Earth below at
+ * the flight's height (`orbitEnvironment`).
  */
 export class OrbitBackdrop {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(35, 1, 0.001, 200);
-  private readonly earth: THREE.Mesh;
   private readonly sun: THREE.Mesh;
   private moon: THREE.Mesh | null = null;
 
   /** `sky`: a flight's heavens, or just the stars for a setting with no flight. */
   constructor(sunDir: THREE.Vector3, sky: Heavens | THREE.Object3D) {
-    this.camera.position.set(0, 1 + ALTITUDE, 0);
-
-    this.earth = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 256, 128),
-      new THREE.ShaderMaterial({
-        uniforms: { uSun: { value: sunDir }, uCam: { value: this.camera.position } },
-        vertexShader: /* glsl */ `
-          varying vec3 vObj; varying vec3 vWorld;
-          void main() {
-            vObj = position;
-            vec4 w = modelMatrix * vec4(position, 1.0);
-            vWorld = w.xyz;
-            gl_Position = projectionMatrix * viewMatrix * w;
-          }`,
-        fragmentShader: /* glsl */ `
-          uniform vec3 uSun; uniform vec3 uCam;
-          varying vec3 vObj; varying vec3 vWorld;
-          ${NOISE}
-          void main() {
-            vec3 n = normalize(vWorld), p = normalize(vObj), v = normalize(uCam - vWorld);
-            float land = smoothstep(0.50, 0.56, fbm(p * 2.6 + 3.0));
-            float relief = fbm(p * 30.0);
-            vec3 ocean = mix(vec3(0.004, 0.022, 0.075), vec3(0.012, 0.07, 0.15), fbm(p * 12.0));
-            vec3 ground = mix(vec3(0.035, 0.075, 0.025), vec3(0.22, 0.17, 0.10), smoothstep(0.35, 0.7, relief));
-            vec3 albedo = mix(ocean, ground, land);
-            vec3 q = p * 22.0 + 0.9 * vec3(fbm(p * 9.0), fbm(p * 9.0 + 5.0), fbm(p * 9.0 + 11.0));
-            float cloud = smoothstep(0.52, 0.78, fbm(q) * 0.75 + fbm(p * 150.0) * 0.25);
-            albedo = mix(albedo, vec3(0.92), cloud);
-            float day = max(dot(n, uSun), 0.0);
-            vec3 col = albedo * day * 1.25;
-            float glint = pow(max(dot(reflect(-uSun, n), v), 0.0), 90.0);
-            col += vec3(1.0, 0.92, 0.8) * glint * 1.6 * (1.0 - land) * (1.0 - cloud);
-            // air between here and the ground: thin straight down, a blue wall toward the limb
-            float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-            col = mix(col, vec3(0.10, 0.30, 0.85) * (0.05 + day * 1.1), 0.12 + rim * 0.8);
-            gl_FragColor = vec4(col, 1.0);
-          }`,
-      }),
-    );
-    this.earth.rotation.set(0.6, 0, 0.3);
-    this.scene.add(this.earth);
-
-    const air = new THREE.Mesh(
-      new THREE.SphereGeometry(1.011, 256, 128),
-      new THREE.ShaderMaterial({
-        uniforms: { uSun: { value: sunDir }, uCam: { value: this.camera.position } },
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexShader: /* glsl */ `
-          varying vec3 vWorld;
-          void main() { vWorld = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-        fragmentShader: /* glsl */ `
-          uniform vec3 uSun; uniform vec3 uCam; varying vec3 vWorld;
-          void main() {
-            vec3 n = normalize(vWorld), v = normalize(uCam - vWorld);
-            float limb = pow(1.0 - abs(dot(n, v)), 5.0);
-            float day = smoothstep(-0.15, 0.4, dot(n, uSun));
-            gl_FragColor = vec4(vec3(0.25, 0.55, 1.0) * limb * day * 1.3, 1.0);
-          }`,
-      }),
-    );
-    this.scene.add(air);
-
-    // the stars and planets are points at infinity; the Earth, nearer, hides those behind it
+    // the stars and planets are points at infinity
     this.scene.add(sky instanceof Heavens ? sky.sky : sky);
     if (sky instanceof Heavens) this.scene.add((this.moon = moonCard(sky)));
 
@@ -109,16 +42,13 @@ export class OrbitBackdrop {
     (this.moon.material as THREE.ShaderMaterial).uniforms.uEye!.value = eye;
   }
 
-  /** The ground track sliding by underneath. */
-  update(dt: number): void {
-    this.earth.rotateX(dt * 0.004);
-  }
+  update(): void {}
 }
 
 /**
  * The Moon from above the air: a card facing the eye, a little larger than the disc, on which the
  * shader draws the lit part of a sphere (heavens.ts: MOON_GLSL) and adds it to the black behind.
- * It stands among the stars, 90 units off, so the Earth's limb hides it when it is below the horizon.
+ * It stands among the stars, 90 units off.
  */
 function moonCard(sky: Heavens): THREE.Mesh {
   return new THREE.Mesh(
@@ -144,27 +74,30 @@ function moonCard(sky: Heavens): THREE.Mesh {
 }
 
 /**
- * The light the spacecraft reflects: black sky, a soft Sun, and the Earth filling the lower
- * hemisphere with blue. Metal has no colour of its own; this is what it will look like.
+ * The light the spacecraft reflects: black sky, a soft Sun, and the Earth filling the lower hemisphere with blue below
+ * the horizon's dip from `height` metres up (the flight's: `heightOf` in backdrops.ts). Metal has no colour of its own;
+ * this is what it will look like. With no height (a setting with no flight) there is no Earth in it.
  */
-export function orbitEnvironment(renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3): THREE.Texture {
+export function orbitEnvironment(renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3, height?: number): THREE.Texture {
+  // the sine of the horizon's dip: 0.237 at Freedom 7's apogee, 187.4 km
+  const dip = height === undefined ? 0 : Math.sqrt(height * (2 * EARTH_SPHERE + height)) / (EARTH_SPHERE + height);
   const scene = new THREE.Scene();
   scene.add(
     new THREE.Mesh(
       new THREE.SphereGeometry(10, 64, 32),
       new THREE.ShaderMaterial({
         side: THREE.BackSide,
-        uniforms: { uSun: { value: sunDir } },
+        uniforms: { uSun: { value: sunDir }, uDip: { value: dip }, uEarth: { value: height === undefined ? 0 : 1 } },
         vertexShader: /* glsl */ `
           varying vec3 vDir;
           void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
         fragmentShader: /* glsl */ `
-          uniform vec3 uSun; varying vec3 vDir;
+          uniform vec3 uSun; uniform float uDip, uEarth; varying vec3 vDir;
           void main() {
             vec3 d = normalize(vDir);
-            float below = smoothstep(-0.22, -0.26, d.y);              // the horizon dips 13.7 degrees at apogee
+            float below = uEarth * smoothstep(0.015 - uDip, -0.025 - uDip, d.y);
             vec3 earth = mix(vec3(0.16, 0.34, 0.72), vec3(0.55, 0.62, 0.70), smoothstep(-0.3, -1.0, d.y)) * 0.9;
-            float limb = exp(-abs(d.y + 0.235) * 26.0);
+            float limb = uEarth * exp(-abs(d.y + uDip) * 26.0);
             float sun = smoothstep(0.985, 0.998, dot(d, uSun));
             vec3 col = vec3(0.004, 0.005, 0.008) + earth * below + vec3(0.3, 0.6, 1.0) * limb * 1.6 + vec3(1.0, 0.95, 0.86) * sun * 14.0;
             gl_FragColor = vec4(col, 1.0);

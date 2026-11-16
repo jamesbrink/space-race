@@ -767,7 +767,7 @@ export class Stage {
     this.underfoot = gravityOn(bodyOf(flight.site?.body));
     // (a flight with no site has no place and no hour: its models stand in a setting that needs neither)
     const kind = flight.models[0]!.backdrop;
-    const when = flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined;
+    const when = flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather, plan: flight.plan } : undefined;
     // Another place, or the same place on another day, is another setting: the one left is let go first, before the
     // next is built, so that what the place installs for its day (its air and weather: air.ts, weathermap.ts, the
     // atmosphere) is the next one's, and nothing of the last stays on the GPU.

@@ -203,8 +203,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - GLB materials are named in Blender (`shingle-rene41`, `tower-red`); the viewer keys on those
   names (`WORN` in `stage.ts`) rather than on mesh names.
 - A setting's sky is its own scene and camera (`backdrops.ts`), drawn first, so it never shares
-  depth with the model. The orbit setting (Earth at true angular size from 187.4 km) is not used
-  by Freedom 7 at present, which stands on its pad; it is kept for flights shown in space.
+  depth with the model. The orbit setting (the sky from above the air, and in the reflections the Earth
+  below at the flight's height, `heightOf`) draws no Earth of its own and is used by no flight at present:
+  each stands at its place, whose globe is drawn all the way up. It is kept for flights shown in space.
 - The page must work on a phone and a tablet: under 960 px wide (or 520 px tall) the data panel
   is a bottom sheet and the model keeps the space above it. Check 1280, 820 and 390 wide after
   changing `style.css`; nothing in the control block may be hidden at any of them.
