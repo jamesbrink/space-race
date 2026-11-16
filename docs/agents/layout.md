@@ -19,6 +19,8 @@ missions/                             the record: one folder per nation, program
                                       sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
+                                      voskhod-11a57.ts, a Voskhod on its 11A57: `voskhodStack`, `voskhodParts`, `VIEW`, `SPEC`,
+                                      `voskhodMotors`, `couch`, on the Vostok's (`ENGINE_WORDS` in each writes the engines' words from their Measures);
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)

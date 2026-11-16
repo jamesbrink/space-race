@@ -60,6 +60,8 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 
 ## Dimensions
 
+The flights quote these from [voskhod-11a57.ts](voskhod-11a57.ts) (`SPEC`, `THRUST`, `voskhodMotors`), which says each once for both flights and takes what is the Vostok's from [vostok-stack.ts](../../vostok/vehicles/vostok-stack.ts).
+
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Length | "five meters" in print; **5,480 mm in the model** | documented (the round figure); estimated (the model's) | S p. 412: "a length of five meters and maximum diameter of 2.43 meters". D-KV scales to 5.43 to 5.49 m from the braking nozzle to the reserve engine's face. The model is the Vostok's 4,180 mm to the sphere's pole plus the reserve engine. See "Length" |
@@ -182,7 +184,7 @@ wherever it quotes a length.
 
 ## Parts in the model
 
-Top-level nodes in the GLB. These names are the `node` fields in a flight's `flight.ts`.
+Top-level nodes in the GLB. These names are the `node` fields in [voskhod-11a57.ts](voskhod-11a57.ts), which says how each leaves for both flights (a couch and the airlock are the flight's own); a flight's `flight.ts` gives their words.
 
 | Node | Contains | Moves |
 | --- | --- | --- |

@@ -46,6 +46,8 @@ Keys used below; full entries in [docs/sources.md](../../../../docs/sources.md),
 
 ## Dimensions
 
+The flights quote these from [voskhod-11a57.ts](voskhod-11a57.ts) (`SPEC`, `THRUST`, `voskhodMotors`), which says each once for both flights and takes what is the Vostok's from [vostok-stack.ts](../../vostok/vehicles/vostok-stack.ts).
+
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | From the core's top to the fairing's tip, with a Voskhod | 16,665 mm | documented, secondary | Z: "the cylindrical section of its payload assembly was streched by 2,710 millimeters to 16,665 millimeters versus 13,955 millimeters on the 8K78 variant". **What the figure spans is not stated.** It is taken from the core's top, lattice included, because that makes the vehicle 44.155 m, which is B's 44.13 m to 25 mm, and leaves a fairing that D-KV and D-KD agree with |
@@ -119,7 +121,7 @@ possible" from the 27th to the 44th.
 
 ## Parts in the model
 
-Top-level nodes in the GLB. These names are the `node` fields in a flight's `flight.ts`.
+Top-level nodes in the GLB. These names are the `node` fields in [voskhod-11a57.ts](voskhod-11a57.ts), which says how each leaves for both flights (a couch and the airlock are the flight's own); a flight's `flight.ts` gives their words.
 
 | Node | Contains | Leaves as |
 | --- | --- | --- |
