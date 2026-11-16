@@ -83,6 +83,7 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
       at: sep.at,
       after: sep.mass,
       leaves: sep.boosterMass,
+      ...(sep.heading ? { heading: sep.heading } : {}),
     },
     { id: 'retropack', label: 'Retropack jettisoned', gone: ['retropack'], at: tr.retropack.at, after: tr.retropack.mass },
   ];

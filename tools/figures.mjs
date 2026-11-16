@@ -83,7 +83,7 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
     const at0 = b.separation.at.value;
     const place = { latitude: at.latitude, longitude: at.longitude, height: record('separationAltitude') + sea };
     // (the heading at separation where the record gives one: the record's, which no plan is flown from)
-    const heading = flight.trajectory.separation.heading?.value ?? headingOf(at, frame);
+    const heading = ballisticOf(flight.plan).separation.heading?.value ?? headingOf(at, frame);
     const moving = scale(
       enuToEcefDirection(place, fromHorizontal(heading * DEG, record('separationGroundClimb') * DEG)),
       want.separationGroundSpeed,

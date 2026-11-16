@@ -120,6 +120,11 @@ export interface JointDef {
   /** What the record has flying on once it has parted, kg, and what left, kg: the run takes these, not its bodies' sum. */
   after?: Measure;
   leaves?: Measure;
+  /**
+   * The record's Earth-fixed heading of the motion as it parted, degrees true, where the record gives one. Nothing is
+   * flown from it: tests/sim.test.mjs and tools/figures.mjs start the spacecraft's half from the record's state then.
+   */
+  heading?: Measure;
 }
 
 /** An engine: how many chambers alike, what each gives, what it draws on and how it can be worked. */

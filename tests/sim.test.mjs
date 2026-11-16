@@ -181,8 +181,8 @@ for (const flight of BALLISTIC) {
     // what it does not give (and where over the sea it was then) is the run's own, and the diagnostics say which
     const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
     // (the heading at separation, where the record gives one, is the record's: no plan is flown from it)
-    const tr = flight.trajectory;
-    const at0 = ballisticOf(flight.plan).separation.at.value;
+    const parting = ballisticOf(flight.plan).separation;
+    const at0 = parting.at.value;
     const run = fly(flight.plan, SITE, SEA).results;
     const at = sampleAt(fly(flight.plan, SITE, SEA).samples, at0);
     const own = [];
@@ -193,8 +193,8 @@ for (const flight of BALLISTIC) {
     };
     const turn = EARTH_ROTATION_RATE * at0;
     const place = { latitude: at.latitude, longitude: at.longitude, height: record('separationAltitude') + SEA };
-    if (!tr.separation.heading) own.push('heading');
-    const heading = tr.separation.heading?.value ?? headingOf(at);
+    if (!parting.heading) own.push('heading');
+    const heading = parting.heading?.value ?? headingOf(at);
     const climb = record('separationGroundClimb');
     const moving = scale(enuToEcefDirection(place, fromHorizontal(heading * DEG, climb * DEG)), want.separationGroundSpeed);
     const r = ecefToInertial(geodeticToEcef(place), turn);
