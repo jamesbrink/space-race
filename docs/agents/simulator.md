@@ -80,7 +80,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `part` parts a joint once the simulator's physics lets it go. Whether what is let go is still pressed on
     (staging.ts `pressed`) is physics, not the machine's. `heldBy` is a joint held on by another.
   - The live staged vehicle's `stages` and `drops` are the machine's state as its forces read them. The live ballistic
-    vehicle's `shed`, `ignited`, `cutoff`, `starts`, `throttle` and `retroAt` are the same: its engine is lit, throttled
+    vehicle's `ignited`, `cutoff`, `starts`, `throttle` and `retroAt` are the same, and what has left it is asked of the
+    machine (`hasLeft(craft, body)`, the body found by what it is): its engine is lit, throttled
     and cut on the machine (`act`; `burnOut` where it is spent or leaves with the booster), its motors lit by the plan's
     events, each after the first by its own timer (`chainedAt`) at its instant, whatever the switches say.
   - A hand's commands are the plan's actions and events (`Controls.do`, `Controls.events`; `StagedControls.events`).

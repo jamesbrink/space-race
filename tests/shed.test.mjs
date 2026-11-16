@@ -10,6 +10,7 @@
 //   - what the record gives (the parting speed, 30 ft/s give or take 3) is held to the arithmetic,
 //     since the simulator is given the figure.
 // Nothing in the simulator or in a flight's data was changed to bring a figure in.
+import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { join } from 'node:path';
@@ -568,8 +569,11 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     assert.equal(after.broke.joint, 'separation');
     assert.ok(after.broke.t > 70 && after.broke.t < 90, 'while it was leaned');
     assert.ok(after.broke.load > 1, 'over the limit');
-    assert.ok(after.cutoff && after.shed.booster, 'the engine is out and the booster gone its own way');
-    assert.ok(after.abortAt !== null && !after.shed.tower, 'the spacecraft is pulled clear on its escape rocket, the tower still aboard');
+    assert.ok(after.cutoff && hasLeft(after.craft, B.booster.id), 'the engine is out and the booster gone its own way');
+    assert.ok(
+      after.abortAt !== null && !hasLeft(after.craft, B.tower),
+      'the spacecraft is pulled clear on its escape rocket, the tower still aboard',
+    );
     // (the abort's own sequence drops the retropack as the spacecraft leaves: three pieces, not two)
     const booster = after.released.find((r) => r.on === 'separation');
     const pack = after.released.at(-1);
@@ -609,7 +613,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
       v,
       (s) => {
         const c = auto(s);
-        const q = s.shed.booster && s.enteredAt !== null ? v.sample(s).q : 0;
+        const q = hasLeft(s.craft, B.booster.id) && s.enteredAt !== null ? v.sample(s).q : 0;
         if (q > 2 * B.drogue.strength.value) early = true;
         return early ? blend(c, { do: [{ deploy: 'drogue' }, { deploy: 'main' }] }) : c;
       },
@@ -633,7 +637,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     let whole = 0; // how long it was out and whole
     const end = run(
       v,
-      (s) => (s.shed.retropack ? blend(auto(s), { do: [{ deploy: 'drogue' }] }) : auto(s)),
+      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: 'drogue' }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
@@ -658,7 +662,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     let predicted = null;
     const end = run(
       v,
-      (s) => (s.shed.retropack ? blend(auto(s), { do: [{ deploy: 'main' }] }) : auto(s)),
+      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: 'main' }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.mainAt === null) return;
@@ -715,7 +719,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
           if (s.abortAt !== null && s.t > s.abortAt + 3)
             c = blend(
               { ...c, automatic: false },
-              { do: [{ separate: 'tower' }, ...(chute && s.shed.tower ? [{ deploy: 'drogue' }] : [])] },
+              { do: [{ separate: 'tower' }, ...(chute && hasLeft(s.craft, B.tower) ? [{ deploy: 'drogue' }] : [])] },
             );
           return c;
         },

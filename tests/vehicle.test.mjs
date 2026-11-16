@@ -9,6 +9,7 @@
 //     of a degree or so and takes only drag), so they may differ, by an amount stated here and
 //     held: 1 per cent in speed, 2 per cent in height and range, half a degree in climb.
 // Nothing in either simulator or in the gains was changed to bring a figure in.
+import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
@@ -231,7 +232,7 @@ test('turning freely, the spacecraft keeps its angular momentum and energy, and 
     SEA,
   );
   let s = until(v, v.start(), autopilot(v), 200);
-  assert.ok(s.shed.booster && whole.sample(s).altitude > 130_000, 'the spacecraft alone, above the air');
+  assert.ok(hasLeft(s.craft, B.booster.id) && whole.sample(s).altitude > 130_000, 'the spacecraft alone, above the air');
   s = { ...s, w: [0.3, 0.2, -0.1] }; // tumbling, about no axis of its own
   const props = v.mass(s);
   const momentum = (x) => turn(x.q, [props.roll * x.w[0], props.across * x.w[1], props.across * x.w[2]]);
@@ -443,7 +444,11 @@ test('a pilot’s trim leans the programme the platform holds, by as much as ask
 
 test('the rest of the flight happens: tower, separation, turnaround, retrofire, the air, parachutes, the sea', (t) => {
   const s = live.state;
-  assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+  assert.deepEqual(
+    [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+    [true, true, true],
+    'the tower, the booster and the pack left, or not',
+  );
   near(s.separation.t, B.separation.at.value, 1e-9, 'separation on time');
   const share = B.separation.leaves.value / (B.separation.leaves.value + B.separation.after.value);
   const after = live.samples.find((x) => x.t > B.separation.at.value);
@@ -631,7 +636,11 @@ test('an abort on the pad: off on the escape rocket, the tower away at the top, 
     assert.ok(s.landing, `${what}: it came down`);
     near(s.abortAt, at, TICK, 'aborted when asked');
     assert.ok(s.cutoff, 'the engine is shut down, and stays so');
-    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+    assert.deepEqual(
+      [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+      [true, true, true],
+      'the tower, the booster and the pack left, or not',
+    );
     assert.deepEqual(phases.slice(-3), ['drogue', 'main', 'landed'], `${what}: ${phases.join(', ')}`);
     near(tally.abort.peakG, RATED, 0.5, 'the greatest load is the rocket’s on the spacecraft and tower');
     assert.ok(tally.results.apogee > 400 && tally.results.apogee < 1200, `carried to ${tally.results.apogee.toFixed(0)} m`);
@@ -652,7 +661,11 @@ test('an abort at the greatest pressure: the same, through the air', (t) => {
   assert.ok(phases.includes('escape') && phases.at(-2) === 'main', phases.join(', '));
   assert.ok(tally.abort.peakG > 5 && tally.abort.peakG < RATED, `the rocket’s load less the drag: ${tally.abort.peakG.toFixed(2)} g`);
   assert.ok(tally.results.apogee > worst.altitude, 'it went on up');
-  assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+  assert.deepEqual(
+    [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+    [true, true, true],
+    'the tower, the booster and the pack left, or not',
+  );
   assert.ok(s.drogueAt < s.mainAt, 'drogue, then main, at their heights');
   near(s.landing.vertical / DOWN, 1, 0.05, 'down at the main parachute’s speed');
   // what the scene needs of it: the booster left at the abort, the tower later, at the top
@@ -664,7 +677,7 @@ test('an abort at the greatest pressure: the same, through the air', (t) => {
 
 test('an abort is for a tower: without one aboard it is not there to be had, and the rocket cannot be cut or fired twice', () => {
   const later = until(whole, whole.start(), autopilot(whole), 145);
-  assert.ok(later.shed.tower);
+  assert.ok(hasLeft(later.craft, B.tower));
   assert.equal(whole.tick(later, { ...HANDS_OFF, events: ['abort'] }).abortAt, null, 'the tower has gone: no abort');
   // fired, it burns to its end whatever is asked: its impulse is the record's
   let s = until(whole, whole.start(), autopilot(whole), 20);
@@ -673,7 +686,7 @@ test('an abort is for a tower: without one aboard it is not there to be had, and
   const at = s.abortAt;
   s = until(whole, s, { ...HANDS_OFF, events: ['abort'], do: [{ separate: 'tower' }], throttle: 0 }, at + 3);
   assert.equal(s.abortAt, at, 'once');
-  assert.ok(s.shed.tower, 'the tower can be let go by hand once the rocket is out');
+  assert.ok(hasLeft(s.craft, B.tower), 'the tower can be let go by hand once the rocket is out');
   const burn = RIGID.escape.burn.value;
   const tail = (2 * (RIGID.escape.impulse.value - RIGID.escape.thrust.value * burn)) / RIGID.escape.thrust.value;
   near(
@@ -685,7 +698,7 @@ test('an abort is for a tower: without one aboard it is not there to be had, and
   // asked for the tower while the rocket still burns, it is kept
   let early = whole.tick(until(whole, whole.start(), autopilot(whole), 20), cut);
   early = until(whole, early, cut, early.abortAt + 1);
-  assert.ok(!early.shed.tower, 'the tower is not let go while its rocket burns');
+  assert.ok(!hasLeft(early.craft, B.tower), 'the tower is not let go while its rocket burns');
 });
 
 // --- the reaction control system as hardware -----------------------------------------------------
@@ -960,7 +973,7 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
     automatic: false,
     do: [{ deploy: 'drogue' }, { deploy: 'main' }],
   }));
-  assert.ok(!towered.state.shed.tower && towered.state.mainAt === null, 'tower on: no parachutes');
+  assert.ok(!hasLeft(towered.state.craft, B.tower) && towered.state.mainAt === null, 'tower on: no parachutes');
   assert.ok(towered.state.landing.vertical > 60, `and it comes down at ${towered.state.landing.vertical.toFixed(0)} m/s`);
   // the retropack kept through the entry: 276 lb heavier all the way down, so it falls faster under the same parachute
   const packed = flyLive(whole, (s) => {
@@ -978,7 +991,7 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
   // straight along the path; the booster's attitude is 40 degrees off the path by then and the answer is 3 km. The
   // test now asks only for what the physics must give: longer, by more than a kilometre.)
   const hold = autopilot(whole, { pitch: false, yaw: false, roll: false });
-  const wrong = flyLive(whole, (s) => (s.shed.booster && s.retroAt === null ? { ...hold(s) } : record(s)));
+  const wrong = flyLive(whole, (s) => (hasLeft(s.craft, B.booster.id) && s.retroAt === null ? { ...hold(s) } : record(s)));
   assert.ok(
     wrong.results.range > live.results.range + 1000,
     `fired the wrong way round: ${((wrong.results.range - live.results.range) / 1000).toFixed(1)} km long`,
@@ -1012,7 +1025,7 @@ test('a tower let go early is not propellant burned: the engine runs as long', (
     return s;
   };
   const [kept, early] = [runOut(Infinity), runOut(10)];
-  assert.ok(early.shed.tower && !kept.shed.tower && early.cutoff && kept.cutoff && !early.broke && !kept.broke);
+  assert.ok(hasLeft(early.craft, B.tower) && !hasLeft(kept.craft, B.tower) && early.cutoff && kept.cutoff && !early.broke && !kept.broke);
   near(early.t, kept.t, TICK, 'when the tanks run dry, tower or no tower');
 });
 
@@ -1085,7 +1098,11 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
 
   test(`${name}: the rest of the flight happens, on time and in order, as fly.ts has it`, (t) => {
     const s = run.state;
-    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+    assert.deepEqual(
+      [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+      [true, true, true],
+      'the tower, the booster and the pack left, or not',
+    );
     near(s.separation.t, rb.separation.at.value, 1e-9, 'separation on time');
     const after = run.samples.find((x) => x.t > rb.separation.at.value);
     near(after.mass, rb.separation.after.value, 1e-9, 'the capsule alone');

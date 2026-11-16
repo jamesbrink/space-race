@@ -13,6 +13,7 @@
 //     retrorockets (which Freedom 7 fired at apogee, as a test: about 150 m/s, taking 30 km off the
 //     range) and lift, so it is held to the flight flown hands off: 2 per cent in range and apogee.
 //     (Hands off, the live spacecraft still saves itself coming down: the range is held, the time is not.)
+import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
@@ -231,12 +232,12 @@ const planOf = (s, plan) => {
   const late = (at) => Math.max(at, s.t);
   const b = ballisticOf(plan);
   return {
-    tower: s.shed.tower ? undefined : late(b.towerJoint.at.value),
-    separation: s.shed.booster ? undefined : late(b.separation.at.value),
+    tower: hasLeft(s.craft, b.tower) ? undefined : late(b.towerJoint.at.value),
+    separation: hasLeft(s.craft, b.booster.id) ? undefined : late(b.separation.at.value),
     // (the stack's long axis as it lies now: the autopilot holds the programme's, which after the arrest does not turn)
     axis: turn(s.q, [1, 0, 0]),
-    retro: s.shed.retropack ? [] : b.retroWaits.map((o) => (s.retroAt ?? late(b.retroAt)) + o),
-    retropack: s.shed.retropack ? undefined : late(b.packJoint.at.value),
+    retro: hasLeft(s.craft, b.pack) ? [] : b.retroWaits.map((o) => (s.retroAt ?? late(b.retroAt)) + o),
+    retropack: hasLeft(s.craft, b.pack) ? undefined : late(b.packJoint.at.value),
     chutes: true,
   };
 };

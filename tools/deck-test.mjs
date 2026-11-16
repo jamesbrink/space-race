@@ -325,10 +325,20 @@ for (const [w, h, touch] of SIZES) {
     r = await read();
     if (!/still pushing/.test(r.notes)) fail(where, `Freedom 7 let go under thrust said nothing: "${r.notes}"`);
     await shot('mr3-pressed');
-    const apart = await page.evaluate(() => window.sr.cockpit.state?.shed.booster);
+    const apart = await page.evaluate(() =>
+      ((s, f) => s && Number.isFinite(s.craft.bodies[f.plan.craft[0].bodies[0].id] ?? Infinity))(window.sr.cockpit.state, window.sr.flight),
+    );
     if (apart) fail(where, 'Freedom 7 parted at once under thrust');
     await run(146);
-    if (!(await page.evaluate(() => window.sr.cockpit.state?.shed.booster))) fail(where, 'Freedom 7 had not parted after the cutoff');
+    if (
+      !(await page.evaluate(() =>
+        ((s, f) => s && Number.isFinite(s.craft.bodies[f.plan.craft[0].bodies[0].id] ?? Infinity))(
+          window.sr.cockpit.state,
+          window.sr.flight,
+        ),
+      ))
+    )
+      fail(where, 'Freedom 7 had not parted after the cutoff');
     console.log(`  ${where}: Freedom 7 let go at 100 s parted after its cutoff`);
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();

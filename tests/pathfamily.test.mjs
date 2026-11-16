@@ -231,7 +231,6 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
       cutoff: true,
       held: false,
       craft,
-      shed: { tower: true, booster: true, retropack: true },
     };
     while (!state.landing && state.t < 1000 + 3 * 3600) {
       const next = V.tick(state, HANDS_OFF);

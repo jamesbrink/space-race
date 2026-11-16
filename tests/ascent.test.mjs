@@ -1,5 +1,6 @@
 // src/viewer/ascent.ts: where the scene puts the flown vehicle. A flight flown by hand is placed by its own samples'
 // attitude; flown by the autopilot it is the record's flight, so the two placements must agree, and neither may jump.
+import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
@@ -274,7 +275,7 @@ for (const flight of BALLISTIC) {
         if (i % 10 === 9) samples.push(v.sample(state));
       }
       sheds.follow(state);
-      assert.ok(state.shed.booster && state.separation, 'the spacecraft has left the booster');
+      assert.ok(hasLeft(state.craft, B.booster.id) && state.separation, 'the spacecraft has left the booster');
       const when = { separation: state.separation.t };
       const run = {
         samples,

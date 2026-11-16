@@ -6,6 +6,7 @@
 // (fixtures/pad-abort), each with a tolerance set before the simulator flew it; a figure outside its tolerance is written
 // down in src/sim/misses.ts with why, and the test holds the run to that: an unrecorded miss fails, and so does a recorded one that
 // has gone away or moved.
+import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
@@ -45,7 +46,7 @@ function abort(flight, plan, options = {}, hand = {}) {
     const next = v.tick(state, (s) => blend(auto(s), { events: ['abort'], ...hand }));
     if (next.ticks === state.ticks) break;
     turned += Math.hypot(next.w[1], next.w[2]) * TICK;
-    if (!next.shed.tower) turnedByTower = turned;
+    if (!hasLeft(next.craft, ballisticOf(v.plan).tower)) turnedByTower = turned;
     state = next;
     const sample = v.sample(state);
     tally.note(sample, state, v);
@@ -174,7 +175,11 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
   test(`${name}: the sequence is the capsule’s own: retropack off as it leaves, tower at the top, drogue two seconds on, main two more`, () => {
     const { state: s, phases, tally } = upright;
     const seq = RIGID.escape.sequence;
-    assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
+    assert.deepEqual(
+      [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+      [true, true, true],
+      'the tower, the booster and the pack left, or not',
+    );
     assert.deepEqual(
       s.released.map((r) => r.on),
       ['separation', 'retropack', 'tower'],
@@ -222,7 +227,11 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
 
   test(`${name}: with the sequence off nothing follows the rocket: no tower let go, no parachute`, () => {
     const { state: s } = abort(flight, TR, {}, { automatic: false });
-    assert.deepEqual(s.shed, { tower: false, booster: true, retropack: false });
+    assert.deepEqual(
+      [B.tower, B.booster.id, B.pack].map((b) => hasLeft(s.craft, b)),
+      [false, true, false],
+      'the tower, the booster and the pack left, or not',
+    );
     assert.equal(s.drogueAt, null);
     assert.equal(s.mainAt, null);
     assert.ok(s.landing.vertical > 30, `it hits at ${s.landing.vertical.toFixed(0)} m/s`);
@@ -251,6 +260,6 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
     assert.ok(s.abortHeight > RIGID.escape.sequence.ceiling.value, `begun at ${(s.abortHeight / FT).toFixed(0)} ft`);
     assert.ok(s.landing && s.drogueAt !== null && s.mainAt !== null);
     assert.ok(s.drogueAt - s.towerAt > 10, 'the drogue waits for its height');
-    assert.ok(s.shed.retropack, 'the retropack went as it left');
+    assert.ok(hasLeft(s.craft, ballisticOf(v.plan).pack), 'the retropack went as it left');
   });
 }

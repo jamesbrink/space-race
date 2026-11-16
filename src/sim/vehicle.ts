@@ -188,11 +188,10 @@ export interface VehicleState {
   held: boolean;
   /**
    * What is lit and what has left it, which parachute is out and which of the plan's events have happened: the one
-   * machine's state (sim/craft.ts, on the plan planof.ts makes of the trajectory). `shed` is its view, as the forces
-   * read it, and so are the engine's fields above and `retroAt`.
+   * machine's state (sim/craft.ts). What has left is asked of it (craft.ts `hasLeft`); the engine's fields above and
+   * `retroAt` are its view, as the forces read it.
    */
   craft: CraftState;
-  shed: { tower: boolean; booster: boolean; retropack: boolean };
   /** The moment the spacecraft left: the stack's centre of mass and axis then, and how the booster went on. */
   separation: null | { t: number; r: Vec3; v: Vec3; axis: Vec3; booster: { r: Vec3; v: Vec3 } };
   /** Everything let go so far, each as it was the instant it left: sim/shed.ts flies them on. */
@@ -324,8 +323,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const stack = roles.craft;
   const body = stack.rigid;
   if (!body) throw new Error('this plan has no rigid body: it can be flown by fly(), not steered');
-  /** The booster: the body that stands on the pad. Its engine is the one the lever works. */
-  const booster = roles.booster.id;
+  /** The booster's engine (the booster is the body that stands on the pad): the one the lever works. */
   const engine = roles.engine;
   /** The escape rocket: the motor the abort lights, which the event a hand's command sets off. */
   const abortEvent = roles.abort;
@@ -334,9 +332,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const motors = roles.motors;
   const chained = roles.chained;
   const retroEvent = roles.retro?.id ?? null;
-  /** The tower (what the escape rocket is on) and the retropack (what the motors are on), and the joints that let each go and the booster. */
-  const towerBody = roles.tower;
-  const packBody = roles.pack;
+  /** The joints that let the tower (what the escape rocket is on) and the retropack (what the motors are on) go. */
   const towerJoint = roles.towerJoint?.id;
   const packJoint = roles.packJoint?.id;
   const separation = roles.separation.id;
@@ -349,16 +345,9 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const packless = roles.packJoint?.after?.value ?? alone;
   /** The stack's limit in bending, and the joint it breaks at, where the flight gives one. */
   const bend = stack.limits.find((l) => l.of === 'qAlpha') ?? null;
-  /** What has left it, as the forces read it: the machine's bodies. */
-  const shedOf = (c: CraftState) => ({
-    tower: towerBody !== undefined && !aboard(c, towerBody),
-    booster: !aboard(c, booster),
-    retropack: packBody !== undefined && !aboard(c, packBody),
-  });
   /** A joint let go and parted at once, on the machine (`s` is changed). */
   const parts = (s: VehicleState, joint: string): void => {
     s.craft = partJoint(plan, act(plan, s.craft, { separate: joint }, s.t, s.held).state, joint, s.t);
-    s.shed = shedOf(s.craft);
   };
   const eventById = new Map(plan.events.map((e) => [e.id, e]));
   /**
@@ -712,7 +701,6 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       starts: 0,
       throttle: 0,
       craft: startCraft(plan),
-      shed: { tower: false, booster: false, retropack: false },
       separation: null,
       released: [],
       strain: UNSTRAINED,
