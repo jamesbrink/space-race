@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { atmosphere, meanFreePath } from '../src/sim/atmosphere.ts';
 import { along } from '../src/sim/fly.ts';
-import { orbitDrag, rarefaction, shipOf } from '../src/sim/orbital.ts';
+import { decay, injectionState, ORBIT_DRAG, orbitDrag, rarefaction, shipOf } from '../src/sim/orbital.ts';
+import { frameOf } from '../src/world/earthframe.ts';
+import { siteFrame } from '../src/world/frames.ts';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 
 const near = (a, b, tolerance, what = '') => assert.ok(Math.abs(a - b) <= tolerance, `${what} ${a} is not within ${tolerance} of ${b}`);
@@ -59,5 +61,28 @@ test('Vostok in orbit: the joined ship’s free-molecule figure up there, the ba
     const a = orbitDrag(ship, true, h, 25);
     assert.ok(a <= last, `${h} m`);
     last = a;
+  }
+});
+
+test('the orbit’s life is flown on the coast’s own drag: shorter by about the ratio of the two', () => {
+  const frame = frameOf(flight);
+  const s = injectionState(flight.plan, siteFrame(flight.site), frame);
+  const from = { t: flight.plan.record.orbit.injection.at.value, r: s.r, v: s.v };
+  const was = ORBIT_DRAG.decay;
+  try {
+    const life = (on) => {
+      ORBIT_DRAG.decay = on;
+      return decay(flight.plan, frame, flight.site.seaLevel.value, from);
+    };
+    const [old, now] = [life(false), life(true)];
+    // the ball's 2.1 on its disc against the joined ship's 2.2 on 7.17 m^2: 1.8 times the drag, a life as much shorter
+    const ship = shipOf(flight.plan);
+    const ratio = (ship.rarefied.drag.value * ship.rarefied.area.value) / (ship.entry.aero.rarefied.value * ship.entry.aero.area.value);
+    console.log(
+      `  #   Vostok 1's orbit from its injection lasts ${(now / 86_400).toFixed(1)} days (${(old / 86_400).toFixed(1)} on the ball's 2.1 on its disc)`,
+    );
+    assert.ok(old / now > 0.8 * ratio && old / now < 1.2 * ratio, `${old / now} against ${ratio}`);
+  } finally {
+    ORBIT_DRAG.decay = was;
   }
 });

@@ -81,7 +81,7 @@ const SHORT_V3 =
 /** Vostok 3's four days: where the ship is at the burn is the published period carried round 64 times. */
 const PERIOD_64 =
   'Over 64 revolutions the published period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and the period is given to a hundredth of a minute (300 km). ' +
-  'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) with the joined ship’s free-molecule drag in the standard air, the ship is down 1,577 km long (on the ball’s continuum drag, until November 2026, 2,853 km short: ' +
+  'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) with the joined ship’s free-molecule drag in the standard air, the ship is down 1,576 km long (on the ball’s continuum drag, until November 2026, 2,853 km short: ' +
   'four days of the orbit’s decay are worth 4,400 km along the track here, so the drag in orbit and the day’s air are as much the landing as the period is). No published period is good enough to hold the landing over four days, and how fast the real orbit decayed in the air of August 1962 is not known. ' +
   'Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
@@ -213,7 +213,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'miss is 4 km. So `retro.aim` as the record words it (“the TDU was directed to the Sun”) cannot be the whole of how the engine’s axis lay: the sensor’s axis to the engine’s is the thing to find. Not adjusted',
       },
       alongTrack: {
-        by: 471_968,
+        by: 471_515,
         slack: 10_000,
         why:
           'It comes down 472 km beyond the record’s landing along its own track. Two inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 128 km a degree) and ' +
@@ -242,10 +242,10 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       ejectionAt: {
         by: 212.6,
         slack: 10,
-        why: `${PUBLISHED}. It reaches 7 km at 10:45:33, 3.6 minutes after the record’s 10:42: a minute and more of it is the landing being 499 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
+        why: `${PUBLISHED}. It reaches 7 km at 10:45:33, 3.6 minutes after the record’s 10:42: a minute and more of it is the landing being 498 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
       },
       alongTrack: {
-        by: 498_927,
+        by: 498_494,
         slack: 10_000,
         why:
           `${PUBLISHED}. It comes down 503 km beyond the record’s landing along the track and 10 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
@@ -318,7 +318,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 300,
         why: 'It goes round with its apogee 225 km up, 9.7 km under the published 234.6. Read as mean elements with 88.33 min node to node, the heights’ difference fixes the eccentricity and the period the axis, and that axis is lower than the heights give over any mean ball: the announced 88.5 min would give 233.5 km and hold it. So 88.33 and Siddiqi’s heights are not one determination. Not adjusted',
       },
-      alongTrack: { by: 1_577_033, slack: 20_000, why: PERIOD_64 },
+      alongTrack: { by: 1_575_811, slack: 20_000, why: PERIOD_64 },
     },
     ascent: {
       cutoffAt: {
@@ -341,8 +341,8 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 500,
         why: `${PUBLISHED}. Flown round from there its apogee is 219.6 km: the coast’s own miss (9.5 km under, on 88.33 min) and the place on the orbit the type’s ascent leaves it at`,
       },
-      crossTrack: { by: 28_074, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
-      alongTrack: { by: 1_554_185, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      crossTrack: { by: 28_067, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      alongTrack: { by: 1_553_204, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
     },
     descent: {
       'module.at': {

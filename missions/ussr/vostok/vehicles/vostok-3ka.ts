@@ -60,7 +60,7 @@ export const SHIP_RAREFIED: NonNullable<Craft['rarefied']> = {
   drag: assumed(
     2.2,
     'a satellite’s: “a value of 2.2 is recommended for perigee heights of 150-400 km”, on its mean cross-section perpendicular to the motion (King-Hele, The Prediction of Satellite Lifetimes, RAE TR 87030, 1987, §9.1, eq. 20, after Cook, “Satellite drag coefficients”, Planet. Space Sci. 13, 929-946, 1965, which was not read). ' +
-      'Nothing published for the Vostok itself; a ball alone in that flow is about 2 (RAREFIED)',
+      'Nothing published for the Vostok itself; a ball alone in that flow is 2.1 (RAREFIED)',
   ),
   area: estimated(
     7.17,
@@ -74,9 +74,11 @@ export const SHIP_RAREFIED: NonNullable<Craft['rarefied']> = {
 };
 
 /** What a ball in free-molecule flow drags, for how long an orbit lasts (orbital.ts `decay`). */
-export const RAREFIED: Measure = estimated(
-  2,
-  'a ball in free-molecule flow has a drag coefficient of about 2 (the entry curve’s own note: not read from a source, so estimated), on its disc; the joined ship on the ball’s disc as the coast flies it',
+export const RAREFIED: Measure = derived(
+  2.1,
+  'a sphere’s with diffuse re-emission, on its disc: Cook, The Aerodynamic Drag of Near Earth Satellites, ARC C.P. 523 (RAE TN G.W. 531, 1959), §7.2, eq. 27 (after Stalder and Zurick, NACA TN 2423), ' +
+    'C_D = 2(1 + 1/s² - 1/4s⁴) erf s + (2s² + 1) e^(-s²) / (√π s³) + 2√π / (3 s_r), at the speed ratio s of 7.8 km/s in the 1976 standard’s air at 200 km (855 K, 21.3 g/mol: 9.55) ' +
+    'and a wall of 300 K: 2.095. The ball alone flies it once the modules have parted, above the air the entry curve holds in (orbital.ts `orbitDrag`); the joined ship flies SHIP_RAREFIED',
 );
 
 /** The heat of entry on the ball's face (no surfaces: the ablator's figures have not been read). */

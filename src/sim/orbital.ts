@@ -305,9 +305,10 @@ export function flyDown(
 /**
  * How long an orbit lasts: from `from` (a state in `frame`, at seconds from liftoff) under J2
  * gravity and the standard air turning with the Earth, the ship (whole, or the entry body once the modules have parted)
- * on the ball's disc at `supplies.rarefied`, RK4 at 30 s, until it is down to 120 km (from there it comes down within the
- * revolution) or `days` have gone. Seconds from `from.t` to there, or Infinity. The standard atmosphere is the mean: the
- * day's Sun, which moves the density at 200 km several-fold, is not in it.
+ * on the coast's own drag (`orbitDrag`: free-molecular up there, the joined ship's figure until the modules part), RK4 at
+ * 30 s, until it is down to 120 km (from there it comes down within the revolution) or `days` have gone. Seconds from
+ * `from.t` to there, or Infinity. With `ORBIT_DRAG.decay` off, the ball's free-molecule figure on its disc whatever is
+ * flying, as until November 2026.
  */
 export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
   const spin = frame.spin;
@@ -318,9 +319,11 @@ export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, fro
   const cdA = cd * ship.entry.aero.area.value;
   const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const push = (q: State, at: number): Vec3 => {
-    const air = atmosphere(heightOf(q, at));
+    const h = heightOf(q, at);
+    const air = atmosphere(h);
     const wind = sub(q.v, cross(spin, q.r));
-    return scale(airDrag(wind, length(wind), air.density, cdA), 1 / mass);
+    const speed = length(wind);
+    return scale(airDrag(wind, speed, air.density, ORBIT_DRAG.decay ? orbitDrag(ship, !parted, h, speed / air.soundSpeed) : cdA), 1 / mass);
   };
   let s: State = { r: from.r, v: from.v };
   let t = from.t;
@@ -473,7 +476,7 @@ export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['or
  * which gives the old capture back to the bit: the coast the entry curve's continuum figure on the ball's disc whatever
  * the air, the decay the ball's free-molecule figure on its disc.
  */
-export const ORBIT_DRAG = { coast: true, decay: false };
+export const ORBIT_DRAG = { coast: true, decay: true };
 
 /**
  * The share of the free-molecule figure in a drag at a Knudsen number (the mean free path over the body's length):

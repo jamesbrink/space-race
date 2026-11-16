@@ -457,7 +457,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
   not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
   the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
-  a flight that stays up to `decay` (the orbit's life in the standard air on a free-molecule drag coefficient, against
+  a flight that stays up to `decay` (the orbit's life in the standard air on the coast's own drag, `orbitDrag`, against
   `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
   (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
   vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no

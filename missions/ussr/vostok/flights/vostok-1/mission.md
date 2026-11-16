@@ -361,8 +361,9 @@ the heavier stack meets 7 km faster and all three of the module's parachutes tea
 while he, ejected at 17 kPa, comes down at 4.5 m/s; ejected at 100 km, out in the air at 7.7 km/s; at
 1 km, his main canopy tears at 11 kPa and he lands at 26 m/s. **The orbit that stays up**: supplies for
 ten days, the orbit chosen to decay within them (planned two to seven; section 1, "What it cost");
-`decay` flies it on in the standard air on a free-molecule drag coefficient of 2 (estimated) on the
-ball's disc: a forward burn from the record's orbit lasts more than thirty days.
+`decay` flies it on in the standard air on the coast's own drag (orbital.ts `orbitDrag`: the joined ship's 2.2 on
+7.17 m², the ball's 2.1 on its disc once parted): the record's orbit with no burn lasts 24 days (44 on the ball's 2 on its
+disc, until November 2026), and a forward burn from it more than sixty.
 
 ### The verdict and the misses
 
@@ -644,7 +645,7 @@ stage as the sources give them do not agree with one another; which is wrong is 
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
 ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8): period 89.44 min (holds), apogee
-flown round 326 km (holds), 134 km at 10:36, 10:45:33 at 7 km, landing 499 km long and 9 km across (holds), module
+flown round 326 km (holds), 134 km at 10:36, 10:45:33 at 7 km, landing 498 km long and 9 km across (holds), module
 10:50:14, pilot 10:58:56 (on the ball's continuum drag in orbit, until November 2026: 10:45:34, 503 km, 10:50:16, 10:58:58). (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
 and 14 km across, module 10:50:21, pilot 10:59:03: the apogee came in and the landing went 51 km further out.) (Until November 2026 the braking
 burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
