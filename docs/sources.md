@@ -1405,3 +1405,11 @@ Known, not read:
 | D. Malashenkov, "Some Unknown Pages of the Living Organism's First Orbital Flight", World Space Congress, Houston, October 2002 | When Laika died: within hours (as reported) or on the fourth day (Siddiqi, 2000) |
 | The FAI's record files for Vostok 1 (record 9326 and the two beside it), and its own pages on archive.fai.org (not reached) | What the FAI was told of the landing, and what it ratified |
 | Anything on who chose the Vostok and Soyuz call signs, and why | Whether a cosmonaut picked his own. Some stayed with their man (Komarov's Рубин twice, Nikolayev's Сокол twice) and some did not (Shatalov was Амур, then Гранит twice) |
+
+## Apollo 7 — exterior study (November 2026)
+
+| Source | Link | Read / used | Limits |
+|---|---|---|---|
+| NASA, *Apollo 7 press kit*, release 68-168K, 6 October 1968 | [NASA PDF](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf) | pp. 25–33; illustrations 25a–25d and 31a: CSM-101 and SA-205 envelopes, five CM windows, four SM RCS quads, no LM, Saturn IB clustered tanks and eight fins | Preflight, rounded envelopes. Surface stations, panel patterns and nozzle profiles estimated from drawings; no flight physics derived from planned events |
+| NASA, *Apollo by the Numbers*, Apollo 7 summary | [NASA](https://www.nasa.gov/wp-content/uploads/static/history/SP-4029/Apollo_07a_Summary.htm) | Launch at 15:02:45 GMT on 11 October 1968; SA-205 and CSM-101 | Flight timeline not implemented |
+| NASA photograph S68-48788, Apollo 7 launch, 11 October 1968 | [NASA Apollo 50th photo gallery](https://www.nasa.gov/specials/apollo50th/photos.html) | White clustered tanks, black roll markings and instrument-unit band on SA-205 | Paint extents and lettering positions estimated; photograph is not a dimensioned drawing |

@@ -6,7 +6,7 @@ import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { flights } from '../missions/index.ts';
+import { flights as allFlights } from '../missions/index.ts';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
@@ -43,6 +43,9 @@ import {
 } from '../src/sound/model.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { BALLISTIC } from './ballistic.mjs';
+
+// Gallery-only flights have no place, grid or on-site machinery to sound.
+const flights = allFlights.filter((f) => f.site);
 
 /** What a ballistic flight is heard from: its engine, its record's run, a path straight up the site's +Y at the run's heights. */
 function heard(f) {

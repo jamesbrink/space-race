@@ -1,0 +1,302 @@
+import type { Flight, Part } from '../../../../../src/types.ts';
+
+const KIT = 'NASA Apollo 7 press kit, 68-168K (6 October 1968)';
+const IN = 0.0254;
+const parts: Part[] = [
+  {
+    node: 'CommandModule',
+    name: 'Command module 101',
+    group: 'Spacecraft',
+    order: 0,
+    explode: [0, 4, 0],
+    summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
+    detail:
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. This exterior study has five recessed window openings and a closed forward hatch; the cabin, glazing and hatch mechanism are not built. Surface stations and window outlines are estimated from the press kit’s Figure 25d. No docking probe is fitted.',
+    facts: [
+      ['Base diameter', '154 in · documented, press kit p. 25'],
+      ['Height', '12 ft · rounded published figure'],
+      ['Interior', 'Not built'],
+    ],
+  },
+  {
+    node: 'HeatShield',
+    name: 'Aft heat shield',
+    group: 'Spacecraft',
+    order: 1,
+    explode: [3, 2, 0],
+    summary: 'The broad face that brought the crew back through the atmosphere.',
+    detail:
+      'The command module alone returned to Earth. Its aft heat shield is a shallow curved surface here; the curvature, thickness and colour are estimated. This is an exterior study, without the internal structure, ablator cells or recovery equipment.',
+  },
+  {
+    node: 'ReactionControl',
+    name: 'Service-module reaction control',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [4, 1, 0],
+    summary: 'Four quads, each with four small engines, turn and translate the ship.',
+    detail:
+      'The four external quads are shown with open nozzle bells. Their arrangement follows the press kit’s spacecraft illustration; exact stations, bracket shapes and chamber profiles are estimated. Propellant plumbing and thermal details are not built.',
+    facts: [['Arrangement', '4 quads × 4 chambers · press kit p. 27']],
+  },
+  {
+    node: 'ServiceModule',
+    name: 'Service module 101',
+    group: 'Spacecraft',
+    order: 3,
+    explode: [0, 0, 0],
+    summary: 'Power, oxygen and propulsion behind the cabin.',
+    detail:
+      'A cylindrical service module with white radiator areas and aluminium equipment panels. The press kit gives a 154-inch diameter and 22-foot service-module length. This study interprets that length as including the projecting engine: the barrel/engine split and the radiator layout are estimated from Figure 25b. No internal tanks or fuel cells are built. Apollo 7’s exterior is being developed separately from the lunar ships.',
+    facts: [
+      ['Hull diameter', '154 in · documented'],
+      ['Length including engine', '22 ft · published envelope, partition estimated'],
+    ],
+  },
+  {
+    node: 'ServiceEngine',
+    name: 'Service propulsion engine',
+    group: 'Spacecraft',
+    order: 4,
+    explode: [0, -3, 0],
+    summary: 'The large engine Apollo 7 fired eight times in Earth orbit.',
+    detail:
+      'The nozzle is hollow with a finite rim. Its profile and extension below the barrel are estimated from the press kit’s Figure 25b; the injector, gimbal and feed system are not built. No flight physics is assigned to this geometry.',
+  },
+  {
+    node: 'LaunchEscape',
+    name: 'Launch escape tower',
+    group: 'Launch escape system',
+    order: 5,
+    explode: [0, 18, 0],
+    summary: 'A truss and solid rocket to pull the cabin clear in an abort.',
+    detail:
+      'Four legs carry the escape motor over the command module. The truss arrangement follows press-kit Figures 25b–25c; member lengths, diameters, nozzle cant and motor stations are estimated within the published 224-foot stack. Canards and abort motion are not built.',
+  },
+  {
+    node: 'BoostCover',
+    name: 'Boost protective cover',
+    group: 'Launch escape system',
+    order: 6,
+    explode: [-5, 9, 0],
+    summary: 'The white cover over the command module during ascent.',
+    detail:
+      'The cover protects the cabin from the escape-system exhaust. Its thickness and exact profile are estimated. Take the assembly apart to see the command module underneath. Cover windows, access hatch and penetrations are not built.',
+  },
+  {
+    node: 'SpacecraftAdapter',
+    name: 'Spacecraft–LM adapter',
+    group: 'Launch vehicle',
+    order: 7,
+    explode: [-8, 0, 0],
+    summary: 'The tapered adapter, empty of a lunar module on Apollo 7.',
+    detail:
+      'A 28-foot adapter tapers from 260 to 154 inches (press kit p. 26). Its four panels are closed here. The panel division into fixed aft skirt and hinged forward sections, the docking target, internal structure and opening mechanisms are not built; seam stations are estimated.',
+  },
+  {
+    node: 'InstrumentUnit',
+    name: 'Instrument unit',
+    group: 'Launch vehicle',
+    order: 8,
+    explode: [8, -1, 0],
+    summary: 'The launch vehicle’s guidance ring, above the S-IVB.',
+    detail:
+      'The press kit gives a 36-inch height and 260-inch diameter (p. 33). This first exterior has no internal electronics, access doors or antennas. Paint and stations are estimated from the launch photograph.',
+  },
+  {
+    node: 'SaturnSecondStage',
+    name: 'S-IVB second stage',
+    group: 'Launch vehicle',
+    order: 9,
+    explode: [0, -3, 0],
+    summary: 'The hydrogen–oxygen upper stage that Apollo 7 later rendezvoused with.',
+    detail:
+      'The 58.4-foot published stage envelope is partitioned here between barrel and aft interstage by estimate. The shell has raised stiffeners, cable conduits and simplified auxiliary-propulsion housings. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
+  },
+  {
+    node: 'SecondStageEngine',
+    name: 'J-2 engine',
+    group: 'Launch vehicle',
+    order: 10,
+    explode: [6, -4, 0],
+    summary: 'One hydrogen-burning engine inside the aft interstage.',
+    detail:
+      'The single J-2 has a hollow bell here; its profile, length, exit diameter and station are estimated. No thrust, mixture or burn duration is assigned to the model.',
+  },
+  {
+    node: 'SaturnInterstage',
+    name: 'S-IVB aft interstage',
+    group: 'Launch vehicle',
+    order: 11,
+    explode: [-7, -5, 0],
+    summary: 'The cylindrical skirt enclosing the upper stage’s engine.',
+    detail:
+      'Its 220-inch length is estimated within the press kit’s 58.4-foot stage envelope. Exterior roll markings are estimated from NASA photograph S68-48788. Interior structure and separation fittings are not built.',
+  },
+  {
+    node: 'SaturnFirstStage',
+    name: 'S-IB first stage',
+    group: 'Launch vehicle',
+    order: 12,
+    explode: [0, -6, 0],
+    summary: 'Nine clustered tanks and eight swept fins.',
+    detail:
+      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Eight solid wedge-shaped fins surround the thrust skirt. Tank end stations, cluster pitch radius, fin outlines, fittings and lettering positions are estimated.',
+  },
+  {
+    node: 'FirstStageEngines',
+    name: 'Eight H-1 engines',
+    group: 'Launch vehicle',
+    order: 13,
+    explode: [0, -11, 0],
+    summary: 'Four inboard and four outboard engines under the tank cluster.',
+    detail:
+      'Eight H-1 engines burn kerosene and liquid oxygen. Each has a hollow bell and simplified chamber; their profiles, positions and chamber dimensions are estimated from the press-kit vehicle drawing. Gimbal gear, turbopumps, plumbing and exhaust ducts are not built.',
+  },
+];
+
+export const flight: Flight = {
+  id: 'usa/apollo/apollo-7',
+  nation: 'USA',
+  agency: 'NASA',
+  program: 'Apollo',
+  designation: 'Apollo 7 · AS-205',
+  callsign: 'Apollo 7',
+  spacecraft: 'CSM-101 · Block II',
+  launchVehicle: 'Saturn IB · SA-205',
+  launch: '1968-10-11T15:02:45Z',
+  launchSite: 'Launch Complex 34, Cape Kennedy',
+  crew: ['Walter M. Schirra, Jr.', 'Donn F. Eisele', 'R. Walter Cunningham'],
+  summary:
+    'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Work in progress: an exterior model study; the launch site, cabin and flight simulation are not built yet.',
+  facts: [
+    { label: 'Spacecraft', value: 'CSM-101 · no lunar module' },
+    { label: 'Model status', value: 'Exterior study · surface detail estimated' },
+  ],
+  timeline: [],
+  specs: [
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB stage length',
+      value: 80.2 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 32: 80.2 ft; rounded envelope, tank and skirt stations estimated`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB outer tank diameter',
+      value: 70 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 32: eight 70-inch tanks, four fuel and four oxygen`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB central tank diameter',
+      value: 105 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 32: one 105-inch oxygen tank`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IVB stage envelope',
+      value: 58.4 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 32: 58.4 ft; interstage/barrel partition estimated`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Instrument unit height',
+      value: 36 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 33: 3 ft`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Instrument unit diameter',
+      value: 260 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 33: 260 in`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Spacecraft adapter length',
+      value: 28 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 26: 28 ft, tapering from 260 to 154 in`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'Height on the pad',
+      value: 224 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, Figure 25a: 224 ft; rounded overall envelope`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Length, command and service modules',
+      value: 408.7 * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Model envelope: 22 ft SM + 12 ft CM (press kit p. 25) + estimated 0.7 in forward hatch. Rounded published lengths, estimated barrel/engine partition; not an engineering overall station',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Command module, base diameter',
+      value: 154 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 25: 12 ft 10 in`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Command module, height',
+      value: 144 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 25: 12 ft, a rounded envelope; surface stations estimated from Figure 25d`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Service module, length',
+      value: 264 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: `${KIT}, p. 25: 22 ft; the model’s partition between barrel and engine is estimated from Figure 25b`,
+    },
+  ],
+  motors: [],
+  models: [
+    {
+      id: 'vehicle',
+      name: 'Apollo 7 · Saturn IB',
+      url: 'models/usa/apollo/apollo-7/vehicle.glb',
+      backdrop: 'studio',
+      scale: '224 ft / 68.2752 m stack · published rounded envelope · surface detail estimated',
+      slider: ['Assembled', 'Taken apart'],
+      views: [
+        {
+          id: 'launcher',
+          label: 'Saturn IB',
+          nodes: ['SaturnFirstStage', 'SaturnSecondStage', 'SaturnInterstage', 'FirstStageEngines', 'SecondStageEngine'],
+        },
+        { id: 'escape', label: 'Escape system', nodes: ['LaunchEscape', 'BoostCover'] },
+        {
+          id: 'spacecraft',
+          label: 'Spacecraft',
+          nodes: ['CommandModule', 'HeatShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
+        },
+        { id: 'cabin', label: 'Command module', nodes: ['CommandModule', 'HeatShield'], from: [1, 0.3, 0.3] },
+        { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
+      ],
+      parts,
+    },
+  ],
+};
