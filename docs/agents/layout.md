@@ -237,8 +237,8 @@ src/
   viewer/shake.ts                     the camera shaken: engine sound, buffet, load and jolts as levels, band-limited noise in the clock's time
   viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
   viewer/gauges.ts                    what an instrument reads and where that puts its needle: scales, counter wheels, attitude from axes (pure, tested)
-  viewer/path.ts                      the predicted path, drawn: a ribbon of constant width ahead of the vehicle and the line flown behind, its markers and the ring where it comes down; its switch and figures
-  viewer/pathline.ts                  the path's line as numbers: its ribbon's vertices, a prediction eased from the last by instant, the rules that keep it off the vehicle (pure)
+  viewer/path.ts                      the predicted path, drawn: a ribbon of constant width ahead of the vehicle and never behind it (an orbit stopped short of coming round), the line flown from far out only, its markers and the ring where it comes down; its switch and figures
+  viewer/pathline.ts                  the path's line as numbers: its ribbon's vertices, a prediction eased from the last by instant, the rules that keep it off the vehicle, how far round a path has gone and where an orbit's line ends short of the vehicle (pure)
   viewer/pathmarks.ts                 where the path's markers go on the page: by rank, off the panels, the vehicle and each other, and staying put; and the chips at the view's edge for those not in view (pure)
   viewer/lookouts.ts                  what can be looked out of from a cabin's seat, from its data: its windows by name, then its periscope
   viewer/fly.ts                       the free camera's flying: heading, pitch, speed by height (`Flyer`)

@@ -6,7 +6,24 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { apsides } from '../src/sim/predict.ts';
-import { clearOf, clipNear, curveAt, curveOf, ERROR_PX, fadeIn, limbPx, ribbon, SHORTEST_PX, sample } from '../src/viewer/pathline.ts';
+import {
+  clearOf,
+  clipNear,
+  curveAt,
+  curveOf,
+  ERROR_PX,
+  fadeIn,
+  limbPx,
+  overHorizon,
+  ribbon,
+  SHORTEST_PX,
+  sample,
+  sweepOf,
+  sweptTo,
+  tailOf,
+  turnsPast,
+  whenSwept,
+} from '../src/viewer/pathline.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -275,4 +292,77 @@ test('nothing within the outline on the screen, all of it a margin beyond', () =
   assert.equal(clearOf(56, 40, 16), 1);
   assert.ok(clearOf(48, 40, 16) > 0 && clearOf(48, 40, 16) < 1);
   assert.equal(clearOf(0, 0, 16), 1, 'with no outline (from inside the vehicle), nothing is held off');
+});
+
+// How far round a path has gone, and where an orbit's line ends: never back round to the vehicle (path.ts `endOf`).
+const anomaly = (p) => Math.atan2(p.r[1] * Math.cos(0.9) + p.r[2] * Math.sin(0.9), p.r[0]);
+const unwrap = (a, near) => a + 2 * Math.PI * Math.round((near - a) / (2 * Math.PI));
+
+test('how far round: a path`s turn round the Earth, counted on past half a turn, and when it has gone so far', () => {
+  for (const [a, e] of [
+    [R + 200e3, 0.01],
+    [R + 300e3, 0.2],
+  ]) {
+    const at = kepler(a, e, 0.9);
+    const P = 2 * Math.PI * Math.sqrt(a ** 3 / MU);
+    const c = curveOf(kept(at, 0, P, 30).concat([{ t: P, ...at(P), altitude: 0 }]));
+    const sw = sweepOf(c);
+    near(sw.at[c.n - 1], 2 * Math.PI, 1e-6, `once round (e ${e})`);
+    for (let t = 0; t < P; t += 97.3) {
+      const want = unwrap(anomaly(at(t)), sweptTo(c, sw, t));
+      near(sweptTo(c, sw, t), want, 1e-7, `at T+${t.toFixed(0)}`);
+    }
+    for (const angle of [0.3, Math.PI, 5.5]) {
+      const t = whenSwept(c, sw, angle);
+      near(unwrap(anomaly(at(t)), angle), angle, 1e-7, `${angle} rad round`);
+    }
+    assert.equal(whenSwept(c, sw, 2 * Math.PI + 0.1), Number.POSITIVE_INFINITY, 'past its end: never');
+  }
+});
+
+test('an orbit`s line stops short of coming round to the vehicle, and goes out before it stops', () => {
+  const at = kepler(R + 250e3, 0.005, 0.9);
+  const P = 2 * Math.PI * Math.sqrt((R + 250e3) ** 3 / MU);
+  const c = curveOf(kept(at, 0, P, 30).concat([{ t: P, ...at(P), altitude: 0 }]));
+  const sw = sweepOf(c);
+  const short = overHorizon(R + 250e3, R + 260e3, R) + (12 * Math.PI) / 180;
+  const fade = (30 * Math.PI) / 180;
+  const angle = (t, u) => {
+    const [p, q] = [at(t).r, at(u).r];
+    return Math.acos((p[0] * q[0] + p[1] * q[1] + p[2] * q[2]) / (Math.hypot(...p) * Math.hypot(...q)));
+  };
+  // (a prediction just made, and one the vehicle has gone on along a little)
+  for (const now of [0, 120, 300]) {
+    const { to, over } = tailOf(c, sw, now, short, fade);
+    near(angle(now, to), short, 1e-6, `from T+${now}: its end is short of the vehicle by the angle asked`);
+    near(sweptTo(c, sw, to) - sweptTo(c, sw, now), 2 * Math.PI - short, 1e-6, 'gone round all but that');
+    near(sweptTo(c, sw, to) - sweptTo(c, sw, to - over), fade, 1e-6, 'and it goes out over the turn asked');
+  }
+  // the vehicle gone on further than that along a curve made earlier: the line ends where the curve does, which is
+  // further behind it, and goes out over the curve's last stretch
+  const late = 0.25 * P;
+  const { to, over } = tailOf(c, sw, late, short, fade, 60);
+  assert.equal(to, P);
+  assert.ok(angle(late, to) > short, 'its end further behind the vehicle than the angle asked');
+  near(sweptTo(c, sw, to) - sweptTo(c, sw, to - over), fade, 1e-6, 'going out over the turn asked');
+  // near the curve's end (the clock ran on before a prediction from the vehicle was made), the line still comes from the
+  // vehicle at full strength: it goes out over half of what is left at most
+  const end = tailOf(c, sw, P - 400, short, fade, 60);
+  assert.equal(end.to, P);
+  assert.ok(end.over <= 200 + 1e-9, `it goes out over ${end.over} s of the 400 left`);
+  // nothing near the vehicle sees past its horizon: the two horizons meet where the line between them grazes the ball
+  const h = overHorizon(R + 250e3, R + 250e3, R);
+  near((R + 250e3) * Math.cos(h / 2), R, 1e-3, 'the chord between them touches the ball');
+  assert.equal(overHorizon(R, R, R), 0);
+});
+
+test('an orbit the clock has outrun is drawn from the same curve whole turns on, and no turns while it is within it', () => {
+  assert.equal(turnsPast(500, 100, 5500), 0);
+  assert.equal(turnsPast(5500, 100, 5500), 0);
+  assert.equal(turnsPast(5501, 100, 5500), 5400);
+  assert.equal(turnsPast(100 + 3 * 5400 + 7, 100, 5500), 3 * 5400);
+  for (const t of [5600, 20_000, 1e6]) {
+    const past = turnsPast(t, 100, 5500);
+    assert.ok(t - past >= 100 && t - past <= 5500, `T+${t} lands within the curve`);
+  }
 });

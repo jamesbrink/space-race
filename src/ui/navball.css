@@ -46,6 +46,9 @@
 .path-read .path-kind button { margin: 0; padding: 2px 7px; border-radius: 0; color: var(--faint); white-space: nowrap; }
 .path-read .path-kind button + button { border-left: 0; }
 .path-read .path-kind button[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); background: rgba(255, 196, 107, 0.08); }
+/* the line flown's key, while it is drawn (from far out): a stroke of its own grey (path.ts `pale`) */
+.path-read .path-flown b { color: var(--faint); font-weight: 400; }
+.path-read .path-flown i { display: inline-block; width: 18px; height: 0; margin: 0 6px 3px 0; vertical-align: middle; border-top: 1px solid #8e9cab; }
 /* (which frame the line is drawn in is what the Surface or Orbit switch above already says) */
 .path-read .path-frame { display: none; }
 

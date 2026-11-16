@@ -112,6 +112,126 @@ export function curveAt(c: Curve, t: number, out: Float64Array | number[], o = 0
   return i;
 }
 
+/**
+ * How far round the centre (the frame's origin) the curve has gone at each of its points, radians from its first, about
+ * the normal of its motion there and summed piece by piece (so past half a turn it goes on counting): kept with a
+ * prediction, so where the line ends (`sweptTo`, `whenSwept`) costs a search, not a walk round the orbit. An orbit drawn
+ * once round comes back to where it began: path.ts ends its line short of that, so it is never drawn behind the vehicle.
+ */
+export function sweepOf(c: Curve): Sweep {
+  const at = new Float64Array(c.n);
+  const normal: [number, number, number] = [0, 0, 1];
+  if (c.n < 2) return { at, normal };
+  const h = [c.r[1]! * c.v[2]! - c.r[2]! * c.v[1]!, c.r[2]! * c.v[0]! - c.r[0]! * c.v[2]!, c.r[0]! * c.v[1]! - c.r[1]! * c.v[0]!];
+  const hn = Math.hypot(h[0]!, h[1]!, h[2]!);
+  if (hn > 0) for (let k = 0; k < 3; k++) normal[k] = h[k]! / hn;
+  const sw = { at, normal };
+  const a = [0, 0, 0];
+  const b = [0, 0, 0];
+  for (let i = 1; i < c.n; i++) {
+    // (each piece in four: no step turns by more than a few degrees, so none is taken the short way round)
+    const t0 = c.t[i - 1]!;
+    const h = c.t[i]! - t0;
+    let turned = 0;
+    for (let k = 0; k < 3; k++) a[k] = c.r[(i - 1) * 3 + k]!;
+    for (let q = 1; q <= 4; q++) {
+      curveAt(c, t0 + (q / 4) * h, b, 0, i - 1);
+      turned += turnOf(sw, a, b);
+      a[0] = b[0]!;
+      a[1] = b[1]!;
+      a[2] = b[2]!;
+    }
+    at[i] = at[i - 1]! + turned;
+  }
+  return sw;
+}
+
+/** A curve's turn round the centre at each of its points (`sweepOf`), and the normal of its motion at its first, which the turns are taken about. */
+export interface Sweep {
+  at: Float64Array;
+  normal: readonly [number, number, number];
+}
+
+/** The angle from place `a` to place `b` round the centre, about the sweep's normal: signed, so a step that goes back counts back. */
+function turnOf(sw: Sweep, a: ArrayLike<number>, b: ArrayLike<number>): number {
+  const [nx, ny, nz] = sw.normal;
+  const x = a[1]! * b[2]! - a[2]! * b[1]!;
+  const y = a[2]! * b[0]! - a[0]! * b[2]!;
+  const z = a[0]! * b[1]! - a[1]! * b[0]!;
+  return Math.atan2(x * nx + y * ny + z * nz, a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!);
+}
+
+/** How far round the curve has gone at `t` (held at its ends), radians from its first point (`sweepOf`). */
+export function sweptTo(c: Curve, sw: Sweep, t: number, hint = 0): number {
+  if (c.n < 2 || t <= c.t[0]!) return 0;
+  if (t >= c.t[c.n - 1]!) return sw.at[c.n - 1]!;
+  const i = pieceOf(c, t, hint);
+  const m = [0, 0, 0];
+  curveAt(c, t, m, 0, i);
+  return sw.at[i]! + turnOf(sw, c.r.subarray(i * 3, i * 3 + 3), m);
+}
+
+/** The instant at which the curve has gone `angle` round (`sweepOf`, radians from its first point), or Infinity if it never does. */
+export function whenSwept(c: Curve, sw: Sweep, angle: number): number {
+  if (c.n < 2 || !(sw.at[c.n - 1]! >= angle)) return Number.POSITIVE_INFINITY;
+  if (angle <= 0) return c.t[0]!;
+  // (the first point at or past it, by halving: a coast's turn only grows; then the instant within the piece before it)
+  let lo = 0;
+  let hi = c.n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (sw.at[mid]! >= angle) hi = mid;
+    else lo = mid;
+  }
+  let a = c.t[lo]!;
+  let b = c.t[hi]!;
+  for (let n = 0; n < 48 && b - a > 1e-6; n++) {
+    const t = 0.5 * (a + b);
+    if (sweptTo(c, sw, t, lo) >= angle) b = t;
+    else a = t;
+  }
+  return b;
+}
+
+/**
+ * Where a line drawn along the curve from `now` ends, so that it does not come round to where the vehicle is: at the
+ * instant the curve has gone round a whole turn from `now` less `short` radians, going out over `fade` radians before
+ * that (`over`, seconds); or, the curve ending first, at its end, going out over its last `fade` radians, and over
+ * `least` seconds at the least. A curve that goes round less far than that ends where it ends, which is behind the
+ * vehicle by more than `short`.
+ */
+export function tailOf(c: Curve, sw: Sweep, now: number, short: number, fade: number, least = 0): { to: number; over: number } {
+  const t1 = c.t[c.n - 1]!;
+  if (c.n < 2) return { to: t1, over: least };
+  const from = sweptTo(c, sw, now);
+  const to = whenSwept(c, sw, from + 2 * Math.PI - short);
+  if (!Number.isFinite(to)) {
+    // (and over half of what is left at most: the line goes out at its end, and is not faint from the vehicle on)
+    const out = whenSwept(c, sw, Math.max(from, sw.at[c.n - 1]! - fade));
+    return { to: t1, over: Math.min(Math.max(Number.isFinite(out) ? t1 - out : 0, least), 0.5 * Math.max(0, t1 - now)) };
+  }
+  return { to, over: to - whenSwept(c, sw, Math.max(from, from + 2 * Math.PI - short - fade)) };
+}
+
+/**
+ * How far past a curve that goes once round from `t0` to `t1` the instant `t` is, in whole turns of it (seconds: 0 while
+ * it is within the curve). An orbit the clock has outrun before the next prediction is made is drawn from the same
+ * curve this much later, so the line still starts at the vehicle.
+ */
+export function turnsPast(t: number, t0: number, t1: number): number {
+  return t > t1 && t1 > t0 ? (t1 - t0) * Math.ceil((t - t1) / (t1 - t0)) : 0;
+}
+
+/**
+ * The angle round the centre, radians, beyond which a point at radius `far` cannot be seen from one at radius `near` over
+ * a ball of `radius`: each sees to its own horizon, and the two horizons meet. A path drawn once round that stops this
+ * far short of the vehicle (and a little more) ends below the vehicle's horizon, where nothing near it can see its end.
+ */
+export function overHorizon(near: number, far: number, radius: number): number {
+  const h = (r: number) => (r > radius ? Math.acos(radius / r) : 0);
+  return h(near) + h(far);
+}
+
 /** Where the eye is and how the screen sees: pixels to a radian at the middle of the view, and the near plane's distance. */
 export interface Lens {
   eye: readonly [number, number, number];

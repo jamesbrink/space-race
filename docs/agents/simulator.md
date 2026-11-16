@@ -755,22 +755,36 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's
   (../lunar-lift, js/predictor.js) is its model, with KSP's for what it shows: one clean line from the vehicle to where
-  the path ends, the whole orbit once round when there is one. Its rules are the screen's and the path's own, the same
+  the path ends, always ahead of the vehicle and never behind it (its owner's rule), an orbit most of the way round.
+  Its rules are the screen's and the path's own, the same
   for every path (`viewer/pathline.ts`, path.ts's header): the prediction is a curve (its points with their velocities,
   the cubic between them), cut each frame into chords until none strays more than 0.35 px from it as seen from the eye,
   wherever the eye is, at multiples of a power of two seconds so the chords stay put as the clock runs; it starts at the
-  instant on the curve nearest the vehicle as drawn and is taken onto the vehicle there; it is a ribbon of constant
+  instant on the curve nearest the vehicle as drawn, every frame, whatever the age of the prediction under it, and is
+  taken onto the vehicle there; an orbit the clock has outrun (hours a second, on rails) before a prediction from where
+  the vehicle is can be made is drawn from the same curve whole turns on (pathline.ts `turnsPast`), taken onto the
+  vehicle, so at every rate the line starts at it. A path once round comes back to where it began, which is behind the
+  vehicle (seen in Orbit, its square end was the line its owner saw behind his ship): the line stops short of that by
+  the angle beyond both horizons, the vehicle's and the path's highest point's (pathline.ts `overHorizon`), and 12° more,
+  turned round from where the vehicle is now (`sweepOf`, `tailOf`), so nothing near the vehicle sees its end, and goes
+  out over the 30° before; one cut off by its horizon of time goes out over its last stretch; only one that meets the
+  ground ends there, at its ring. It is a ribbon of constant
   width in pixels (each chord pushed out across its own direction on the screen and mitred to the next, never thinned
   with distance) with a soft core (in the cel look a flat line with an ink edge), drawn over the finished frame (viewer/overlay.ts
   `drawLast`), against the scene's depth and writing none, so the vehicle, the ground and the cabin's walls hide it and
   the smoke behind it does not, and under as much cloud as lies in front of it; the Earth hides it by its ellipsoid
-  tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (half its length and a
-  little, or a tenth of the view's height at it) and comes in over 40 px more as seen at the vehicle (lunar-lift's stops), a rule of the screen
-  so a short path near a big vehicle is still seen leave it, is kept off the vehicle's outline on the screen only where it passes in front
+  tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (a little more than half
+  its length, and 3 px) and comes in over the vehicle's length, or 40 px as seen at the vehicle where that is
+  more (lunar-lift's stops), a rule of the screen, the same at every zoom, so it is seen to leave the vehicle and is
+  never a hole round it; it is kept off the vehicle's outline on the screen only where it passes in front
   of the vehicle, and each chord is cut at a plane just past the near plane and fades in over the next doubling of the
   distance, so nothing is drawn behind the eye. A new prediction is eased in over 0.3 s from where the line was, instant
-  by instant, and a prediction made again of the same flight lies on the same curve, so nothing moves. The line flown is
-  drawn behind it, paler, the same way. Its markers are glyphs on the line with a name, a figure
+  by instant, its end with it, and a prediction made again of the same flight lies on the same curve, so nothing moves.
+  The line flown is not the path: from near the vehicle it is not drawn (a line behind the vehicle is read as the way it
+  goes, whatever it is drawn in); from 300 km out it comes in, all of it from 1,500 km (the whole flight seen from
+  space), a thin cool grey core with no casing or glow at half strength, the last revolution or so (points more than
+  6,000 s old let go when a thousand are kept, so a flight of days keeps its points close), its far end coming in from
+  nothing, and the path's figures say what it is while it is drawn (Flown). Its markers are glyphs on the line with a name, a figure
   and the time to it (the next apoapsis and periapsis, found in the path itself where its radial speed changes sign
   (predict.ts `apsides`), whatever it is; the events; where it comes down, with a ring on the surface there; one behind
   the Earth is laid on its place, dimmed), laid out together by

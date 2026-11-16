@@ -166,17 +166,26 @@ rules are the screen's, the same for every path, never tuned to a flight:
   fragment shader, under the march's cloud in front of it and over all cloud behind it. The smoke is marched as far as
   the scene's depth, which the line does not write: drawn with the scene, the line lay under the smoke behind it, and
   through the pad's dust and the trail it came out pale and in pieces.
-- **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or a
-  tenth of the view's height at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big
-  vehicle (on the pad, the first seconds of a climb) is seen leave it.
+- **Ahead of the vehicle, never behind it**: the line starts at the vehicle every frame, whatever the age of the
+  prediction under it (an orbit the clock has outrun is drawn from the same curve whole turns on, pathline.ts
+  `turnsPast`); a path once round stops short of coming back to the vehicle, below both horizons (`overHorizon`,
+  `tailOf`), and goes out before it stops; no end is cut square but one that meets the ground at its ring. The line
+  flown is not drawn from near the vehicle, and from far out is a thin cool grey with no glow, named beside the
+  path's figures.
+- **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, and
+  3 px), then in from nothing over the vehicle's length, or 40 px as seen at it where that is more: the
+  same at every zoom, so it is seen to leave the vehicle and is never a hole round it.
 - **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
   put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
   curve, its place and three times its velocity's over the time ahead), so a coast is not worked again and a burn is.
 - `tools/path-test.mjs` (`pnpm test:path`) holds it in the page, at 1280, 820 and 390 wide: from the vehicle, no chord
-  over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames, a
-  line flown behind every flight that has flown a minute (an orbital deck's from its run's own samples,
-  `PathSource.track`), chips off the panels and pointing at their places, the apsides where the path's radial speed
+  over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames;
+  the line first drawn ahead of the vehicle along its motion, within its clearance, nothing of it seen drawn behind
+  the vehicle from near it (from far out, nothing behind it nearer than 1,000 km), no far end cut square, every frame
+  of a run at life's rate and at ten and a hundred thousand times it, in Surface and in Orbit; the line flown never
+  drawn from near the vehicle, and owed from far out behind every flight that has flown a minute (an orbital deck's
+  from its run's own samples, `PathSource.track`), chips off the panels and pointing at their places, the apsides where the path's radial speed
   changes sign; and each flight taken over at seeded instants and flown by scripted hands, then run on to its end
   against where the path said (one that breaks up is held to where the path had it as it broke up, and must then show
   no path; one that stays up, to where the path has it as far ahead as it goes). It is deterministic, and is never
@@ -190,7 +199,7 @@ rules are the screen's, the same for every path, never tuned to a flight:
   (`performance.now` and the frames' times, switched on round the measure), so a loaded machine sees the frames a fast
   one does. Its pages run four at once (`--jobs`). The line flown is measured drawn in the line ahead's colour and
   strength (`FlightPath.flownAsAhead`): the same geometry and rules, told from a bright scene by the same threshold,
-  which its own pale, half-strength drawing over white cloud is not; the markers' glyphs are hidden with the page
+  which its own thin grey, half-strength drawing over white cloud is not; the markers' glyphs are hidden with the page
   while the line's own pixels are counted, since over the line they cut it into pieces.
 
 ## Drawing only what changed
