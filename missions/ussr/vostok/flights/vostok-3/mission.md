@@ -34,15 +34,30 @@ is Vostok 1's (`estimated`).
 
 ## The orbit
 
-Siddiqi's heights and inclination (Table IB), with **88.33 min** for the period, chosen before the flight was flown: it is
-the figure printed beside those heights, and it stands as far under what they give over a ball of 6,371 km (88.5 by
-Kepler's law) as Vostok 2's determined 88.46 does under its own (88.6), so it was taken to be of the same determination.
-The other two on record are the period announced on the day, 88.5 min (Nikolayev, 21 August, with 183 by 251 km), and
-TASS's of 12:12 on 12 August, 88.2 min (with 176.7 by 227.6 km, a day on). The orbit is read as mean elements with a
-nodal period (world/meanelements.ts), and `orbit.radius` is then not used.
+Over 64 revolutions the period sets where the ship is when the burn comes ("What the run gives"), so it matters more
+than any other number in the flight. Every value of it found, and where each comes from:
 
-Flown, 88.33 min and those heights are **not** one determination: the apogee as flown round is 225 km, 9.5 km under the
-published 234.6 (88.5 min would give 233.5 km). And over four days the period is everything: see "What the run gives".
+| Period | With | From | What it is |
+| --- | --- | --- | --- |
+| 88.5 min | 183 by 251 km, 65° | Nikolayev at the press conference of 21 August 1962, "the initial duration of Vostok 3's circuit" (*Flight International*, 30 August 1962, p. 305); the film *Звёздные братья* draws the same heights | the orbit as announced, a primary source; its heights are not the determined ones below |
+| 88.2 min | 176.7 by 227.6 km, 64°59′ | TASS, as of 12:12 Moscow time on 12 August (*Flight*, 23 August 1962, p. 289) | a determination a day into the flight, after a day's decay |
+| 88.33 min | 180.7 by 234.6 km, 64.98° | Russian Wikipedia's box, which names no source | **a published figure of unknown origin**: not in Siddiqi (Table IB gives no period), the Great Soviet Encyclopedia (heights only), TASS or Kamanin |
+| 88.5 min | 166 by 218 km | NASA NSSDC's catalogue, through English Wikipedia (its own page refused the connection) | the American tracking, at an epoch given before the launch: not used |
+
+No primary source read gives the period with the determined heights, 180.7 by 234.6 km at 64.98° (Siddiqi, Table IB and
+p. 356, "nominal"; the Great Soviet Encyclopedia, «Восток (космический корабль)», the same). **The record flies 88.33 min**,
+chosen before the flight was flown: the one value printed with the heights it flies, standing as far under what those
+heights give over a ball of 6,371 km (88.5 by Kepler's law) as Vostok 2's documented 88.46 does under its own (88.6). Its
+`Measure` is `documented` (a published figure) and says it is of unknown origin. Flown, it and those heights are **not**
+one determination: the apogee as flown round is 225 km, 9.5 km under the published 234.6 (88.5 min would give 233.5 km).
+To fly another value now that the run has been seen would be to choose it by the outcome; the miss says what each would
+do instead (src/sim/misses.ts `PERIOD_64`). The orbit is read as mean elements with a nodal period
+(world/meanelements.ts); `orbit.radius` is then not used.
+
+**What rests on Russian Wikipedia** (a published figure of unknown origin, each `Measure` saying so): the period, 88.33 min;
+the landing place, 48°02′ N 75°45′ E (spacefacts.de, also unsourced, has 48°03′32″ N 75°41′02″ E, 5 km off; the Great
+Soviet Encyclopedia says only "the region of Karkaralinsk, Karaganda oblast"); and through the landing place, the landing
+ground's height and the checks across and along the track.
 
 ## The braking burn
 

@@ -163,8 +163,10 @@ The braking burn's minute was not found. Its length is his: 42 seconds, by ear.
 | Inclination | 64.98° | 65° | 64°59′ |
 | Period | 88.33 min | 88.5 min | 88.2 min |
 
-"As printed since" is Siddiqi's text (p. 356) and Table IB for the heights and inclination, and
-the period Russian Wikipedia prints beside them; "announced on the day" is what Nikolayev read out
+"As printed since" is Siddiqi's text (p. 356) and Table IB for the heights and inclination (the
+Great Soviet Encyclopedia gives the same heights), and the period Russian Wikipedia prints beside
+them, a figure of unknown origin (mission.md, "The orbit", has every period found and why the
+record flies this one); "announced on the day" is what Nikolayev read out
 on 21 August as the initial orbit, and what the film *Звёздные братья* draws on its globe (Апогей
 251 км, Перигей 183 км). **No OKB-1 report of this flight has been read.** `flight.ts` and
 `orbital.ts` take 180.7, 234.6, 64.98° and 88.33 (mission.md, "The orbit").

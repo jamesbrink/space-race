@@ -51,7 +51,9 @@ export const MSK = (d: number, h: number, min: number, s = 0): number => ((d - 1
 
 const KAMANIN = 'Kamanin’s diary («Скрытый космос», book 1, 1962)';
 const TABLE = `${SIDDIQI}, Table IB`;
-const RUWIKI = 'Russian Wikipedia, «Восток-3», its infobox (which gives no source for it)';
+const RUWIKI =
+  'Russian Wikipedia, «Восток-3», its infobox: a published figure of unknown origin (the box names no source; it is not in Siddiqi, the Great Soviet Encyclopedia, TASS or Kamanin)';
+const BSE = 'the Great Soviet Encyclopedia, 3rd edition, «Восток (космический корабль)»';
 const CHERTOK = 'Chertok, Rockets and People, vol. 3 (NASA SP-2009-4110)';
 /** The type's ascent as Vostok 1's record flies it: the words for an instant this flight's record does not give. */
 const TYPE = (what: string) =>
@@ -325,8 +327,11 @@ export const orbital: VostokRecord = {
       6_371_000,
       'not stated, and not used: with a period given, the period fixes the axis and the ball the heights are over is what is left (world/meanelements.ts). The mean Earth is written here',
     ),
-    perigee: doc(180_700, `${TABLE} and p. 356: 180.7 km, "nominal". Announced on 21 August: 183 km; TASS of 12 August (12:12): 176.7 km`),
-    apogee: doc(234_600, `${TABLE} and p. 356: 234.6 km. Announced: 251 km; TASS of 12 August: 227.6 km`),
+    perigee: doc(
+      180_700,
+      `${TABLE} and p. 356: 180.7 km, "nominal"; ${BSE}: «высота перигея 180,7 км». Announced on 21 August: 183 km; TASS of 12 August (12:12): 176.7 km`,
+    ),
+    apogee: doc(234_600, `${TABLE} and p. 356: 234.6 km; ${BSE}: «234,6 км». Announced: 251 km; TASS of 12 August: 227.6 km`),
     inclination: doc(64.98, `${TABLE}: 64.98°. Announced: 65°; TASS: 64°59′`),
     period: doc(
       88.33 * 60,
@@ -446,9 +451,9 @@ export const orbital: VostokRecord = {
   landing: {
     latitude: doc(
       48 + 2 / 60,
-      `Russian Wikipedia, «Восток-3»: 48°02′ N (spacefacts.de: 48°03′32″); the landing was planned «в районе Караганды» (${KAMANIN}, 14 August)`,
+      `Russian Wikipedia, «Восток-3»: 48°02′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°03′32″). ${BSE}: «в районе г. Каркаралинск Карагандинской области»; the landing was planned «в районе Караганды» (${KAMANIN}, 14 August)`,
     ),
-    longitude: doc(75 + 45 / 60, 'Russian Wikipedia: 75°45′ E (spacefacts.de: 75°41′02″)'),
+    longitude: doc(75 + 45 / 60, 'Russian Wikipedia: 75°45′ E, a published figure of unknown origin (spacefacts.de: 75°41′02″)'),
     at: doc(MSK(15, 9, 52), TABLE),
     near: 'Karaganda',
   },
