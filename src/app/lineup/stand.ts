@@ -4,6 +4,7 @@ import { Crossfade, LOD_ABOVE, thresholdsOf } from '../../viewer/lod.ts';
 import { outline } from '../../viewer/studio.ts';
 import { tier } from '../../viewer/tier.ts';
 import type { Entry } from './row.ts';
+import { picturesOf, rawBytes } from './shelf.ts';
 
 /**
  * One vehicle of the Lineup's row, where it stands: its levels of detail, of which one is drawn (two while one gives way
@@ -29,7 +30,11 @@ import type { Entry } from './row.ts';
 /** The plate of the one chosen: the page's amber. */
 const CHOSEN = 0xffc46b;
 
-/** What a level not yet fetched is taken to cost, as a multiple of the coarsest's: measured over the fifteen vehicles of November 2026 (the most of each). */
+/**
+ * What a level not yet fetched is taken to cost, as a multiple of the coarsest's as it arrived: measured over the fifteen
+ * vehicles of November 2026 (the most of each). The finest is drawn as built and the coarser two joined (merge.ts), so
+ * the finest's guess is from what the coarsest took before it was joined (`Stand.builtRatio`).
+ */
 const COST_GUESS = [9, 3.2, 1] as const;
 
 /** Glass, as the row sees it: a pane has almost no colour of its own (the stage's window glass, without its glazing pass). */
@@ -47,11 +52,6 @@ function pane(own: THREE.Material): THREE.Material {
     side: THREE.DoubleSide,
     depthWrite: false,
   });
-}
-
-/** Every picture a material wears. */
-function* picturesOf(material: THREE.Material): Generator<THREE.Texture> {
-  for (const value of Object.values(material)) if ((value as THREE.Texture | null)?.isTexture) yield value as THREE.Texture;
 }
 
 /** What Blender's export cannot carry, for a level that has just arrived: glass, and sharp pictures seen edge on. */
@@ -116,27 +116,6 @@ export async function fitTo(root: THREE.Object3D, most: number): Promise<void> {
     }),
   );
   for (const [image, smaller] of made) if (await smaller) (image as Partial<ImageBitmap>).close?.();
-}
-
-/** Let a level go: its buffers, its pictures, its materials. (Its cel twins are the looks' to let go first: `Looks.remove`.) */
-export function release(root: THREE.Object3D): void {
-  const materials = new Set<THREE.Material>();
-  const geometries = new Set<THREE.BufferGeometry>();
-  root.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh) return;
-    geometries.add(mesh.geometry);
-    for (const m of [mesh.material].flat()) materials.add(m);
-  });
-  for (const g of geometries) g.dispose();
-  for (const m of materials) {
-    for (const picture of picturesOf(m)) {
-      picture.dispose();
-      (picture.image as Partial<ImageBitmap> | null)?.close?.();
-    }
-    m.dispose();
-  }
-  root.removeFromParent();
 }
 
 /** What the meshes under `root` that are drawn take on the GPU, bytes: their buffers, and their pictures with their smaller copies. */
@@ -205,6 +184,10 @@ export class Stand {
   above: readonly number[] = LOD_ABOVE;
   /** It is in the row (not left out of a comparison). */
   standing = true;
+  /** The top-level nodes of its spacecraft alone (null: it is not parted), as found when its coarsest level arrived. */
+  craft: string[] | null;
+  /** What its coarsest level took before it was joined, over what it takes joined. */
+  private builtRatio = 3;
 
   private readonly holder = new THREE.Group();
   private readonly fade = new Crossfade();
@@ -220,6 +203,7 @@ export class Stand {
 
   constructor(entry: Entry, figure: THREE.IUniform<THREE.Color>, shade: { strength: THREE.IUniform<number>; cel: THREE.IUniform<number> }) {
     this.entry = entry;
+    this.craft = entry.craft;
     this.shade = shade;
     this.group.name = entry.flight.id;
     this.plate = new THREE.Mesh(
@@ -290,17 +274,23 @@ export class Stand {
     this.person.visible = on;
   }
 
-  /** What of a level is drawn: all of it, or the spacecraft's nodes alone. */
+  /** What of a level is drawn: all of it, or the spacecraft's nodes alone (of a joined level, its spacecraft's pieces). */
   private part(root: THREE.Object3D): void {
-    const craft = this.row === 'spacecraft' ? this.entry.craft : null;
-    for (const child of root.children) child.visible = !craft || craft.includes(child.name);
+    const craft = this.row === 'spacecraft' ? this.craft : null;
+    const joined = Boolean(root.userData.joined);
+    for (const child of root.children) child.visible = !craft || (joined ? Boolean(child.userData.craft) : craft.includes(child.name));
+  }
+
+  /** What a level not yet here is guessed to take, bytes. */
+  private guess(level: number): number {
+    return this.cost[this.coarsest]! * COST_GUESS[level]! * (level === 0 ? this.builtRatio : 1);
   }
 
   /**
    * A level has arrived, dressed. `fade`: the row is on show, so if this is the level granted it comes in over the one
    * drawn, as any change of level does.
    */
-  add(level: number, root: THREE.Object3D, fade: boolean): void {
+  add(level: number, root: THREE.Object3D, fade: boolean, raw = 0): void {
     this.levels[level] = root;
     this.fetching[level] = false;
     this.part(root);
@@ -310,7 +300,8 @@ export class Stand {
     this.counted[level] = true;
     if (level === this.coarsest) {
       this.above = thresholdsOf(root.userData.lod_above);
-      for (let finer = 0; finer < level; finer++) if (!this.counted[finer]) this.cost[finer] = this.cost[level]! * COST_GUESS[finer]!;
+      if (raw) this.builtRatio = raw / Math.max(1, rawBytes(root));
+      for (let finer = 0; finer < level; finer++) if (!this.counted[finer]) this.cost[finer] = this.guess(finer);
       this.measure();
       this.show(level, false);
     } else if (level === this.granted) this.show(level, fade);
@@ -339,7 +330,7 @@ export class Stand {
   }
 
   /**
-   * A finer level that is no longer wanted is taken out, for whoever lets it go (`release`, after the looks have): not
+   * A finer level that is no longer wanted is taken out, for whoever lets it go (the shelf's `give`, after the looks have): not
    * the coarsest, and not one being drawn. Null if there is nothing of that level to take.
    */
   take(level: number): THREE.Object3D | null {
@@ -360,15 +351,14 @@ export class Stand {
       this.cost[level] = bytesOf(root);
     }
     if (this.here) {
-      for (let finer = 0; finer < this.coarsest; finer++)
-        if (!this.levels[finer]) this.cost[finer] = this.cost[this.coarsest]! * COST_GUESS[finer]!;
+      for (let finer = 0; finer < this.coarsest; finer++) if (!this.levels[finer]) this.cost[finer] = this.guess(finer);
       this.measure();
     }
   }
 
   /** Whether the row shows something of it that is not the whole vehicle: its spacecraft alone, parted from the rest. */
   get parted(): boolean {
-    return this.row === 'spacecraft' && Boolean(this.entry.craft);
+    return this.row === 'spacecraft' && Boolean(this.craft);
   }
 
   /** Stand what is on show on the floor about the group's origin, and furnish it: the plate under it, the person beside it. */

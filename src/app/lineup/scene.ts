@@ -15,7 +15,8 @@ import { type Tier, tier } from '../../viewer/tier.ts';
 import type { LineupRow } from '../address.ts';
 import { Hall } from './hall.ts';
 import { allot, type Entry, layOutRow } from './row.ts';
-import { dress, fitTo, release, Stand } from './stand.ts';
+import { Shelf } from './shelf.ts';
+import { dress, fitTo, Stand } from './stand.ts';
 
 /**
  * The Lineup's scene: every vehicle the flights have built, standing in one row on one floor at one scale, in the
@@ -31,6 +32,10 @@ import { dress, fitTo, release, Stand } from './stand.ts';
  *   can hold: `allot` gives the allowance (`ALLOWANCE`) to what is nearest the middle of the view first. A finer level
  *   is fetched only once the view has come to rest on wanting it, fades in over the coarser (`Crossfade`), and is let
  *   go whole a few seconds after it stops being wanted, or at once when another needs its room.
+ * - **Few draws, small, each file once.** Every level arrives joined by paint (merge.ts): its meshes in one material that is
+ *   only paint drawn as one, the finest part by part and the coarser two in as few pieces as can be, its corners in a
+ *   third of the bytes. Each file is fetched and joined once, whichever vehicles stand on it (shelf.ts). Nothing that
+ *   can be seen changes; the whole row is a couple of hundred draws where it was some two thousand.
  * - **Drawn only when the picture changes**: the camera moved, a level arrived or is fading, something was chosen or
  *   switched. A still row costs nothing.
  * - **No fixed near plane** (`fitDepth`): half the way to the nearest vehicle's box, never past the floor at the
@@ -114,6 +119,8 @@ export class LineupScene {
   private readonly ink = new InkPass();
   private readonly looks = new Looks();
   private readonly loader = new GLTFLoader();
+  /** Every file fetched once, and shared by every vehicle on it (shelf.ts). */
+  private readonly shelf = new Shelf((bytes, url) => this.parse(bytes, url));
   private readonly rowGroup = new THREE.Group();
   private readonly timer = new THREE.Timer();
   private readonly raycaster = new THREE.Raycaster();
@@ -269,22 +276,39 @@ export class LineupScene {
 
   // ----------------------------------------------------------------------------------------------- arriving
 
-  /** Fetch one level of one vehicle, dressed and in the look in force. */
-  private async fetch(stand: Stand, level: number, onProgress?: (loaded: number, total: number) => void): Promise<THREE.Object3D> {
-    const url = import.meta.env.BASE_URL + lodUrl(stand.entry.vehicle.url, level);
-    const gltf = await this.loader.loadAsync(url, (e) => onProgress?.(e.loaded, e.total));
-    await fitPictures(gltf.scene); // (the tier's sizes, before anything is sent to the GPU: pictures.ts)
+  /** A GLB's bytes made a scene, before anything of it is sent to the GPU: its pictures fitted, its glass dressed. */
+  private async parse(bytes: ArrayBuffer, url: string): Promise<THREE.Object3D> {
+    const gltf = await this.loader.parseAsync(bytes, THREE.LoaderUtils.extractUrlBase(url));
+    await fitPictures(gltf.scene); // (the tier's sizes: pictures.ts)
     await fitTo(gltf.scene, PICTURE_MOST);
     fitIndices(gltf.scene);
     dress(gltf.scene, this.renderer.capabilities.getMaxAnisotropy());
-    this.looks.add(gltf.scene);
     return gltf.scene;
   }
 
-  /** Let a level go: the looks' twins of its materials first, then all of it. */
+  /**
+   * One level of one vehicle, in the look in force, joined by paint (merge.ts): the finest part by part, so that each
+   * part is still a thing of its own; the coarser two in as few pieces as can be. From the shelf, which fetches each
+   * file once whoever asks for it. `slot`: the level it is drawn as.
+   */
+  private async fetch(
+    stand: Stand,
+    level: number,
+    slot = level,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<{ root: THREE.Object3D; raw: number }> {
+    const url = import.meta.env.BASE_URL + lodUrl(stand.entry.vehicle.url, level);
+    const craft = stand.entry.craft;
+    const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify(craft), of: () => craft }, onProgress);
+    if (slot === stand.coarsest) stand.craft = taken.craft;
+    this.looks.add(taken.root);
+    return taken;
+  }
+
+  /** Let a level go: the looks' twins of its materials first, then its own materials, and the level itself once no vehicle has it (shelf.ts). */
   private drop(root: THREE.Object3D): void {
     this.looks.remove(root);
-    release(root); // (it was not being drawn: the picture is as it was, and is not drawn again for this)
+    this.shelf.give(root); // (it was not being drawn: the picture is as it was, and is not drawn again for this)
   }
 
   /**
@@ -306,12 +330,12 @@ export class LineupScene {
         // the coarsest there is: a vehicle built without its coarser levels stands as the finest of what it has
         for (let level = stand.coarsest; level >= 0; level--) {
           try {
-            const root = await this.fetch(stand, level, (loaded, total) => {
+            const { root, raw } = await this.fetch(stand, level, stand.coarsest, (loaded, total) => {
               parts[i] = { loaded, total: total || parts[i]!.total };
               say();
             });
             if (level !== stand.coarsest) stand.finest = stand.coarsest; // (what it has is all there is to draw)
-            stand.add(stand.coarsest, root, false);
+            stand.add(stand.coarsest, root, false, raw);
             parts[i] = { loaded: parts[i]!.total, total: parts[i]!.total };
             say();
             return;
@@ -854,7 +878,7 @@ export class LineupScene {
       this.fetches++;
       stand.fetching[level] = true;
       this.fetch(stand, level)
-        .then((root) => {
+        .then(({ root }) => {
           // (wanted by the time it came? If not it is let go at once: its room is somebody else's now)
           if (stand.granted !== level) {
             stand.fetching[level] = false;
