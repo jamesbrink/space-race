@@ -16,6 +16,7 @@ import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { Effects } from './effects.ts';
 import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
+import { Eye } from './eye.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
 import { type Look, Looks } from './look.ts';
 import { refused, sayRefused } from './lost.ts';
@@ -104,6 +105,12 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
 const INDOORS_SECONDS = 0.9;
+/**
+ * The sky's light on level ground, in the scene's units, for each unit of the setting's fill: the hemisphere light gives
+ * its sky colour's 0.55 of it, and the reflections as much again and a little more (backdrops.ts: ENVIRONMENT). Measured
+ * on the day's look, to the tenth: it is what the lamps' light is set against (eye.ts).
+ */
+const SKY_ON_GROUND = 1.8;
 const INDOORS_REACH = 12;
 const ENCLOSING = [
   [0, 1, 0],
@@ -1053,6 +1060,8 @@ export class Stage {
     this.fill.color.set(s.fill[0]);
     this.fill.groundColor.set(s.fill[1]);
     this.light();
+    this.eye.reset();
+    this.eyeCut = true;
     this.expose();
     if (s.floor) this.scene.add(s.floor);
     s.floor?.traverse((o) => {
@@ -1658,6 +1667,7 @@ export class Stage {
       for (const s of this.staged) s.everyLevel(true, fading);
       for (const s of this.sceneries) s.everyLevel(true, fading);
       this.lamps.set(night, 1);
+      this.warming = true; // (the floods lit for their shaders' sake: no eye is to adapt to them)
       // Built for the buffer the scene is drawn into: a shader for the canvas (tone-mapped, in the screen's colours) is
       // another shader, and built for that every one of them was built again, one at a time, as the first frame was drawn.
       const target = this.renderer.getRenderTarget();
@@ -1689,6 +1699,8 @@ export class Stage {
     for (const [o, visible] of overlaid) o.visible = visible;
     if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
+    this.warming = false;
+    this.eyeCut = true;
     await frames(3);
     if (token !== this.loads) return void this.unculled(culled); // (another flight since: app/session.ts)
     onStep?.('settle', 1);
@@ -1857,6 +1869,7 @@ export class Stage {
       // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
       const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - this.grade;
       const change = this.setting.at?.(this.clock.jdUT, height, this.frozen);
+      if (change?.jumped) this.eyeCut = true;
       if (change) this.relight(change.shadows);
     }
     if (this.lamps.near(this.camera.position, false, this.frozen)) this.dirty = true; // the rooms nearest the eye are the ones lit
@@ -1864,6 +1877,13 @@ export class Stage {
 
   /** How far indoors the eye is, 0 in the open to 1 in a room: eased, never stepped (`adapt`). */
   private indoors = 0;
+  /** What the eye is adapted to beyond the sky's light: the lamps in front of it (eye.ts). */
+  readonly eye = new Eye();
+  /** The eye is to be settled at once on the next frame: the clock jumped, another place, on or off foot (a cut, not a walk). */
+  private eyeCut = true;
+  private eyeWalking = false;
+  /** `warm` is building the floods' shaders with them lit: what the eye would measure then is not the scene's. */
+  private warming = false;
   private readonly enclosed = { at: Number.NEGATIVE_INFINITY, share: 0 };
 
   /**
@@ -1877,9 +1897,38 @@ export class Stage {
    */
   private expose(): void {
     const s = this.setting;
-    const exposure = s.exposure + (INDOORS_EXPOSURE - s.exposure) * this.indoors;
+    const factor = this.eye.factor;
+    const outside = factor === 1 ? s.exposure : s.exposure * factor;
+    const exposure = outside + (INDOORS_EXPOSURE - outside) * this.indoors;
     this.renderer.toneMappingExposure = exposure;
     this.lamps.exposed(exposure);
+    s.eye?.(factor);
+    this.pipe.night(exposure);
+  }
+
+  /**
+   * The eye on what is in front of it (eye.ts): how much the lamps lit in view add to the sky's light, and a frame's
+   * worth of adapting to that, in the world's time (the clock's rate, at least the frame's). A cut is taken at once: a
+   * frozen stage, the clock put somewhere, another place, going on foot or coming off it.
+   */
+  private see(dt: number): void {
+    const s = this.setting;
+    if (this.walk.active !== this.eyeWalking) {
+      this.eyeWalking = this.walk.active;
+      this.eyeCut = true;
+    }
+    const lamps = this.lamps.shining();
+    const ground = s.sunIntensity * Math.max(s.sunDir.y, 0) + SKY_ON_GROUND * s.fill[2];
+    // (the camera as this frame draws it: its world matrix is otherwise brought up to date only just before the draw,
+    // and a view measured a frame late is a frozen frame that is not the same frame: test:frozen, "step")
+    if (lamps.length) this.camera.updateMatrixWorld();
+    const over = lamps.length && !this.warming ? this.eye.measure(this.camera, this.grade, ground, lamps) : 1;
+    const rate = this.clock?.running ? Math.max(1, Math.abs(this.clock.rate)) : 1;
+    if (this.eye.step(over, dt * rate, this.frozen || this.eyeCut || this.held || this.warming)) {
+      this.expose();
+      this.dirty = true;
+    }
+    this.eyeCut = false;
   }
 
   /**
@@ -2067,6 +2116,7 @@ export class Stage {
       this.attend();
       this.fitDepth(dt);
     }
+    this.see(dt);
     const { backdrop } = this.setting;
     if (!this.frozen) {
       backdrop.update(dt);

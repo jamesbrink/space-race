@@ -89,12 +89,21 @@ export interface Setting {
    * above the eye thins (`airAbove`). `atOnce` (a frozen stage): nothing is faded in or put off by the wall's clock, so
    * a frame drawn again is the same frame: a bake owed is made now and put in at once, and a fade under way is finished.
    */
-  at?: (jdUT: number, height?: number, atOnce?: boolean) => { shadows: boolean } | null;
+  at?: (jdUT: number, height?: number, atOnce?: boolean) => { shadows: boolean; jumped?: boolean } | null;
   /**
    * How far up the pad's floods are at the instant `at` was last given (0 out to 1 at full light: lamps.ts `lampsLit`, by
    * the site's `lamps`). Left out (the studio, orbit): as the Sun's light fails.
    */
   lamps?: number;
+  /** What there is at that instant (daysky.ts): the light on level ground, lux, and the luminance the eye adapts to in the open, cd/m². */
+  lux?: number;
+  adapted?: number;
+  /**
+   * The eye has adapted to more than the sky's light (eye.ts): the exposure is the setting's times `factor`. What the
+   * setting draws that is not lit and not in proportion to what is (the Moon's disc, the stars) is told, so the Moon
+   * stays as bright as it is to an eye among floodlights, and the faint stars go.
+   */
+  eye?: (factor: number) => void;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
@@ -640,6 +649,21 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const fillGround = new THREE.Color(setting.fill[1]).toArray();
   let shownAir = 1;
   let shownRung = 0;
+  // What the eye has adapted to beyond the sky's light (eye.ts), and what that changes here: the stars it no longer
+  // sees (a factor of light is 2.5 log10 of it in magnitudes) and the Moon's disc, kept as bright as it is to such an eye
+  // (far brighter than any lamp-lit ground), where the exposure would dim it with the rest.
+  let eyeFactor = 1;
+  let moonShine = 0;
+  let starsShown: [number, number, number, number] = [6.5, 1, 1, 0];
+  const seen = (): void => {
+    const [limit, gain, starAir, height] = starsShown;
+    h.show(eyeFactor < 1 ? limit + 2.5 * Math.log10(eyeFactor) : limit, gain, starAir, height);
+    h.moon.uMoonLight.value = eyeFactor < 1 ? moonShine / eyeFactor : moonShine;
+  };
+  setting.eye = (factor) => {
+    eyeFactor = factor;
+    seen();
+  };
   setting.at = (jdUT, height = 0, atOnce = false) => {
     // the wind at the clock's instant: a function of it, so it follows the clock with no step and a jump is shown at once
     const blowing = winds(jdUT);
@@ -672,20 +696,24 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       shownAt = jdUT;
       const sky = skyFrom(site, jdUT);
       h.at(sky);
+      moonShine = h.moon.uMoonLight.value as number;
       // the pad's floods: by the Sun's height and which way it is going (a minute on, from the ephemeris), so a function of the instant
       const rate = (skyFrom(site, jdUT + 60 / 86_400).sun.elevation - sky.sun.elevation) / DEG / 60;
       setting.lamps = lampsLit(when.site.lamps ?? DUTY, h.sunElevation, rate);
     }
     const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
+    setting.lux = light.lux;
+    setting.adapted = light.adapted;
     // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), and are
     // drawn brighter above it, though the Sun is up: the exposure there is still the sunlit ground's (for the look).
     const out = (1 - air) ** 1.5;
-    h.show(
+    starsShown = [
       starLimit(light.limitingMagnitude, Math.exp(-(rung * 500) / 8000)),
       (1 + 1.6 * out) / light.adaptation,
       Math.exp(-(rung * 500) / 8000),
       rung * 500,
-    );
+    ];
+    seen();
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
     const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
     const thin = ([r, g, b]: readonly number[], k: number) => [r! * k, g! * k, b! * k] as const;
@@ -787,7 +815,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     // faded in over as long as bakes are coming apart, so one fade runs into the next
     else if (stale && now - bakedAt >= cadence.bakeEvery) bake(look, Math.min(6000, Math.max(250, now - bakedAt)));
     source = light.light.from;
-    return { shadows };
+    return { shadows, jumped };
   };
   setting.at(julianDate(when.launch));
   placeOf.set(setting, key);

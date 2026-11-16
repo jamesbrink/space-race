@@ -222,7 +222,8 @@ src/
   viewer/pack.ts  units.ts            one-channel maps packed into one cube and one array texture on the GPU; the texture-unit budget and its check
   viewer/later.ts                     what the first view does not need, fetched once the scene is up
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
-  viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark
+  viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark; when a pad's are lit
+  viewer/eye.ts                       the eye by night: what the lamps in view add, adapted to over the eye's own times
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad

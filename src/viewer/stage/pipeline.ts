@@ -17,6 +17,11 @@ import { drawsLast } from '../overlay.ts';
 import { Quality } from '../quality.ts';
 import { tier } from '../tier.ts';
 
+/** The glow's threshold in the scene's light at a day's exposure. */
+const BLOOM_THRESHOLD = 2.4;
+/** The least exposure any day has (daysky.ts: 0.8 x 0.9). */
+const DAY_LEAST = 0.72;
+
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
 /** Seconds the near plane takes to go most of the way out to where it may stand (`fitDepth`); it comes in at once. */
@@ -104,7 +109,7 @@ export class Pipeline {
   readonly outline: Outline;
   readonly ink = new InkPass();
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
-  readonly bloom = new Bloom(0.14, 0.6, 2.4);
+  readonly bloom = new Bloom(0.14, 0.6, BLOOM_THRESHOLD);
   private bloomWas: UnrealBloomPass | null = null;
   /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
   readonly quality = new Quality();
@@ -202,6 +207,15 @@ export class Pipeline {
     if (this.bloomWas) this.bloomWas.enabled = on;
     this.bloom.enabled = !on;
     this.h.redraw();
+  }
+
+  /**
+   * The frame is to go to the screen at this exposure: what is set by the exposure in the scene's own light follows it.
+   * The glow's threshold is the scene's light and was set for the day's exposure: under any day's (`DAY_LEAST`) it is
+   * raised by as much, so what glows to an eye among floodlights is what glows by day.
+   */
+  night(exposure: number): void {
+    this.bloom.threshold = BLOOM_THRESHOLD * Math.max(1, DAY_LEAST / exposure);
   }
 
   /** The setting's sky is drawn first, a scene of its own: another setting, another sky. */

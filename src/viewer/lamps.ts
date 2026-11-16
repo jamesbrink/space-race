@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LampDuty } from '../types/site.ts';
 import { smoothstep } from '../util/math.ts';
+import type { Shining } from './eye.ts';
 
 /**
  * Lamps that light things. A model draws a floodlight as a lens of the material `lamp`; here
@@ -20,7 +21,13 @@ const ROOMS = 3;
 const KEEP = 1.25;
 /** Seconds for a room light to go out, or come on, when it is given to another room. */
 const HANDOVER = 0.6;
-/** Luminous intensity of one fitting, candela: a bank of 1,500 W incandescent floods is some hundred thousand; the scene's exposure at night is high, so far less is asked for. */
+/**
+ * Luminous intensity of one fitting as drawn. A bank of 1,500 W floods is some hundred thousand candela (`FLOOD_CANDELA`,
+ * estimated); on the scale a night is drawn at (daysky.ts: the eye has opened tens of thousands of times since sunset)
+ * that would be a pad tens of thousands of times brighter than the land round it, which no screen holds. So a fitting
+ * is drawn at this: a floodlit pad some tens of times the night round it, as the eye (eye.ts) sees it from either.
+ * Estimated.
+ */
 const CANDELA = 110;
 /** A flood's beam: wide, soft-edged. */
 const SPREAD = THREE.MathUtils.degToRad(48);
@@ -235,6 +242,35 @@ export class Lamps {
     this.level = -1; // (so the next `set` reaches them)
   }
 
+  /** The floods that are lit, as the eye measures them (eye.ts): kept, not made each frame. */
+  private readonly shown: Shining[] = [];
+  private readonly each: Shining[] = [];
+  shining(): readonly Shining[] {
+    this.shown.length = 0;
+    if (!(this.level > 0)) return this.shown;
+    this.lights.forEach((light, i) => {
+      if (!light.visible || light.intensity <= 0) return;
+      const s = (this.each[i] ??= {
+        position: new THREE.Vector3(),
+        facing: new THREE.Vector3(),
+        intensity: 0,
+        angle: 0,
+        penumbra: 0,
+        decay: 2,
+        distance: 0,
+      });
+      s.position.copy(light.position);
+      s.facing.copy(light.target.position).sub(light.position).normalize();
+      s.intensity = light.intensity;
+      s.angle = light.angle;
+      s.penumbra = light.penumbra;
+      s.decay = light.decay;
+      s.distance = light.distance;
+      this.shown.push(s);
+    });
+    return this.shown;
+  }
+
   /** How many lights there are: spotlights at fittings, and room lights. */
   get count(): number {
     return this.lights.length + this.roomPool.length;
@@ -339,9 +375,12 @@ export class Lamps {
 
   /** How dark it is, 0 by day to 1 at night. True if what is lit changed. */
   set(night: number, exposure = 1): boolean {
-    // followed closely: a lamp that came on in steps would be seen stepping as dusk falls quickly
+    // followed exactly: a lamp that came on in steps would be seen stepping as dusk falls quickly, and what the lenses
+    // glow at is a function of the level and the exposure as they are, never of how they got there (with a tolerance
+    // here, a frozen frame drawn from a pose and from that pose again after another kept the lenses of whichever
+    // exposure had last moved them far enough: test:frozen, "step", a pixel a level out by night)
     const level = THREE.MathUtils.clamp(night, 0, 1);
-    if (Math.abs(level - this.level) < 0.002 && Math.abs(exposure - this.exposure) < 0.004 * exposure) return false;
+    if (level === this.level && exposure === this.exposure) return false;
     this.level = level;
     this.exposure = exposure;
     this.lights.forEach((light, i) => {
