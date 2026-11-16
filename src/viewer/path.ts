@@ -785,9 +785,9 @@ export class FlightPath {
     return this.burning() && this.source.steering.guidance && this.source.craft !== null && (this.sample?.t ?? 0) < this.until();
   }
 
-  /** Whether the flight's plan is a ballistic one, whose path is predicted here (a flight into orbit's deck predicts its own). */
+  /** Whether the flight's path is predicted here, from the programme of its deck's vehicle (a deck that predicts its own, `PathSource.predict`, is one into orbit's). */
   private get ballistic(): boolean {
-    return this.flight.plan?.kind === 'ballistic';
+    return !this.source.predict;
   }
 
   /** When the engine stops if nobody stops it: the record's cutoff with the sequencer on; with it off, when it runs dry. */
