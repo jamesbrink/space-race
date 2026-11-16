@@ -1,6 +1,6 @@
 // The clouds stand in the air, not round the eye (rendering.md, "The weather is a day's": a cloud moves with the day's
 // wind and with nothing else). Checked in the running page, on the day of each flight with cloud:
-//   pnpm dev, then: node tools/clouds-test.mjs [url] [--shots <dir>] [--only <flight id>] [--sheets]
+//   pnpm dev, then: node tools/clouds-test.mjs [url] [--shots <dir>] [--only <flight id>] [--part climb|sheets|above|glow]
 // For each flight (Freedom 7's cumulus and deck, Liberty Bell 7's cumulus, deck and veil, Vostok 1's cirrus), in both looks:
 //  - the climb: the camera is flown straight up at a vehicle's speed (250 m/s, a frame every 0.1 s) through the cumulus
 //    layer, at a place a cloud stands, looking level, up and down. Each frame the march's own result (its opacity,
@@ -16,14 +16,20 @@
 //    levels on the mean, the climb is halved four times into the half that changed more, and what changed over the
 //    last 1.6 m must be no more than a quarter of it, or 2 levels. What the scene
 //    does over the same 1.6 m with the clouds left off is not theirs, and is taken off (and said).
+//  - from 300 m, 2, 8 and 25 km over each layer, straight down, the eye moved across by a hundredth of its height, two ways:
+//    under 1 % of the frame's edges may stay at the same pixel, the same (an edge kept round the eye).
+//  - the glow of entry round Freedom 7 hides nothing: from its wake at 5 m and beside it at 9 m, at 390 and 1280,
+//    no pixel darker with it than without it (it had cut the cloud behind it out of a disc round the view).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { checks, flag, launch, open, opt, url as urlOf } from './browser.mjs';
+import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const shots = opt(args, '--shots', null);
 const only = opt(args, '--only', null);
-const sheetsOnly = flag(args, '--sheets'); // (only the sheets: no climb through the cumulus)
+/** `--part climb|sheets|above|glow`: only that part (the climb through the cumulus, the sheets, straight down from over each layer, the glow). */
+const part = opt(args, '--part', null);
+const doing = (name) => !part || part === name;
 const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
@@ -229,7 +235,66 @@ for (const id of FLIGHTS) {
     await page.evaluate((look) => window.sr.stage.setLook(look), look);
     const where = `${name}, ${look}`;
 
-    if (day.cumulus && !sheetsOnly) {
+    // From high over each layer, straight down: the eye moved across by a hundredth of its height (one way, then
+    // another), everything on the ground and in the air moves across the view by four pixels or more. An edge (a step of 24 levels from one pixel to
+    // the next) that is drawn at the same pixel in both, the same, is one kept round the eye: the edge of a fade, a
+    // hand-over or a hole. Fewer than 1 % of the frame's edges may be.
+    const tops = [...(day.cumulus ? [['the cumulus', day.cumulus.top]] : []), ...layers.map((l) => [l.sheet, l.hi])];
+    for (const [layer, top] of doing('above') ? tops : [])
+      for (const gap of [300, 2000, 8000, 25000]) {
+        const got = await page.evaluate(
+          async ([top, gap, keep]) => {
+            const T = window.cloudsTest;
+            const h = top + gap;
+            await T.at(0, T.y(h), 0, -89.9);
+            const a = T.grab();
+            const picture = keep ? T.picture() : null;
+            // (moved two ways in turn, across and along: a straight edge lying the way the eye moved, a road, is drawn
+            // on itself after the move, and is not kept round the eye unless it is so after the other move as well)
+            await T.at(0.01 * h, T.y(h), 0, -89.9);
+            const b = T.grab();
+            await T.at(0, T.y(h), 0.01 * h, -89.9);
+            const c = T.grab();
+            const marks = [];
+            const lum = (d, i) => 0.2126 * d[4 * i] + 0.7152 * d[4 * i + 1] + 0.0722 * d[4 * i + 2];
+            const { w, h: hh } = a;
+            let edges = 0,
+              kept = 0;
+            for (let y = 2; y < hh - 2; y += 2)
+              for (let x = 2; x < w - 2; x += 2) {
+                const i = y * w + x;
+                const gx = lum(a.data, i + 1) - lum(a.data, i),
+                  gy = lum(a.data, i + w) - lum(a.data, i);
+                if (Math.max(Math.abs(gx), Math.abs(gy)) < 24) continue;
+                edges++;
+                const same = (o) =>
+                  Math.abs(lum(o.data, i) - lum(a.data, i)) <= 3 &&
+                  Math.abs(lum(o.data, i + 1) - lum(o.data, i) - gx) <= 4 &&
+                  Math.abs(lum(o.data, i + w) - lum(o.data, i) - gy) <= 4;
+                if (same(b) && same(c)) {
+                  kept++;
+                  if (keep) marks.push(x, y);
+                }
+              }
+            return { edges, kept, picture, marks };
+          },
+          [top, gap, Boolean(shots)],
+        );
+        if (shots) {
+          writeFileSync(
+            join(shots, `${name}-${look}-above-${Math.round(top)}-${gap}.png`),
+            Buffer.from(got.picture.split(',')[1], 'base64'),
+          );
+          writeFileSync(join(shots, `${name}-${look}-above-${Math.round(top)}-${gap}.kept.json`), JSON.stringify(got.marks));
+        }
+        const share = got.kept / Math.max(got.edges, 1);
+        check(
+          got.edges < 50 || share < 0.01,
+          `${where}: ${layer}, ${gap} m over it, straight down: ${got.kept} of ${got.edges} edges kept round the eye as it moved (${(100 * share).toFixed(2)} %)`,
+        );
+      }
+
+    if (day.cumulus && doing('climb')) {
       // a cloud to climb through: looked for from over the layer, straight down, nearest the middle of the view
       const spot = await page.evaluate(
         async ([top]) => {
@@ -304,7 +369,7 @@ for (const id of FLIGHTS) {
         }
     }
 
-    for (const layer of layers) {
+    for (const layer of doing('sheets') ? layers : []) {
       // the same place of the sheet from near and far, looking straight down at it from over the layer and straight up from under it
       for (const [side, el] of [
         ['over', -89.9],
@@ -441,6 +506,108 @@ for (const id of FLIGHTS) {
   check(errors.length === 0, `${name}: no errors on the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await close();
 }
+
+// A glow hides nothing: the glow of entry round Freedom 7 at T+510 (tools/glow-test.mjs's poses: in its wake at 5 m,
+// looking down the stream at the cloud far below, and beside it at 9 m), at a desk's width and a phone's, in both
+// looks. Light only adds: with the glow, no pixel may be darker than without it by 24 levels or more (fewer than
+// 0.2 % of them). It had hidden the cloud behind it and not the sea: a disc round the view with the cloud cut away.
+if (FLIGHTS.includes('usa/mercury/mr-3-freedom-7') && doing('glow'))
+  for (const [w, h] of [
+    [390, 844],
+    [1280, 800],
+  ]) {
+    const { page, errors, close } = await open(browser, `${url}#usa/mercury/mr-3-freedom-7/site/vehicle`, {
+      viewport: [w, h],
+      timeout: 240000,
+    });
+    await page.addStyleTag({ content: '#ui, #gallery, #title, .notes { display: none !important }' });
+    for (const look of LOOKS)
+      for (const pose of [
+        { name: 'in its wake at 5 m', down: 1, side: 0, distance: 5 },
+        { name: 'beside it at 9 m', down: 0.15, side: 1, distance: 9 },
+      ]) {
+        const got = await page.evaluate(
+          async ([look, pose, keep]) => {
+            const sr = window.sr;
+            const st = sr.stage;
+            const frame = () => new Promise((r) => requestAnimationFrame(r));
+            st.setAutoRotate(false);
+            st.setLook(look);
+            sr.clock.pause();
+            sr.clock.seek(510);
+            st.frame();
+            st.setCamera('chase');
+            for (let i = 0; i < 300 && (st.cam.chase.journey || st.cam.blend); i++) await frame();
+            const shock = st.effects?.shock;
+            if (!shock?.mesh.visible) return null;
+            const V = shock.mesh.position.constructor;
+            const down = new V(0, 1, 0).applyQuaternion(shock.mesh.getWorldQuaternion(shock.mesh.quaternion.clone()));
+            const side = new V().crossVectors(down, new V(0, 1, 0));
+            if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
+            side.normalize();
+            const dir = down.clone().multiplyScalar(pose.down).addScaledVector(side, pose.side).normalize();
+            const c = st.cam.chase;
+            c.calm = true;
+            c.min = 0.2;
+            const o = dir.clone().applyQuaternion(c.turn.clone().invert());
+            for (let i = 0; i < 2; i++) {
+              c.theta = Math.atan2(o.x, o.z);
+              c.phi = Math.acos(Math.max(-1, Math.min(1, o.y)));
+              c.zoom(Math.log(pose.distance / c.distance), null);
+              c.handSet = true;
+              await new Promise((r) => setTimeout(r, 1200));
+            }
+            c.calm = false;
+            st.frozen = true;
+            const src = document.querySelector('#stage');
+            const copy = document.createElement('canvas');
+            copy.width = src.width;
+            copy.height = src.height;
+            const pen = copy.getContext('2d', { willReadFrequently: true });
+            const grab = async () => {
+              for (let i = 0; i < 3; i++) {
+                st.dirty = true;
+                await frame();
+              }
+              pen.drawImage(src, 0, 0);
+              return pen.getImageData(0, 0, copy.width, copy.height).data;
+            };
+            const shown = await grab();
+            const picture = keep ? copy.toDataURL('image/png') : null;
+            shock.mesh.visible = false;
+            const bare = await grab();
+            shock.mesh.visible = true;
+            await grab();
+            st.frozen = false;
+            const lum = (d, k) => 0.2126 * d[k] + 0.7152 * d[k + 1] + 0.0722 * d[k + 2];
+            let darker = 0;
+            for (let k = 0; k < shown.length; k += 4) if (lum(shown, k) < lum(bare, k) - 24) darker++;
+            return { darker, all: shown.length / 4, picture, eyeH: st.pipe.clouds.uniforms.uEyeH.value };
+          },
+          [look, pose, Boolean(shots)],
+        );
+        const where = `freedom 7 at ${w}, T+510, ${look}, the glow of entry from ${pose.name}`;
+        if (!got) {
+          check(false, `${where}: the glow is on`);
+          continue;
+        }
+        if (shots && got.picture)
+          writeFileSync(
+            join(shots, `glow-${w}-${look}-${pose.name.replaceAll(' ', '-')}.png`),
+            Buffer.from(got.picture.split(',')[1], 'base64'),
+          );
+        const share = got.darker / got.all;
+        check(
+          share < 0.002,
+          `${where} (${(got.eyeH / 1000).toFixed(1)} km up): ${got.darker} pixels darker with it than without it (${(100 * share).toFixed(2)} %)`,
+        );
+      }
+    check(
+      errors.length === 0,
+      `freedom 7's glow at ${w}: no errors on the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`,
+    );
+    await close();
+  }
 
 await browser.close();
 console.log(failures.length ? `${failures.length} failed` : 'all passed');
