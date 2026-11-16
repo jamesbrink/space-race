@@ -3,6 +3,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Target } from '../app/actions.ts';
 import { readingFor } from '../sim/mechanism.ts';
+import { bodyOf, gravityOn } from '../world/bodies.ts';
 import type { Flight as FlightData, ModelDef } from '../types.ts';
 import type { Clock } from '../world/clock.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
@@ -249,6 +250,8 @@ export class Stage {
   private shadowsOwed = false;
   /** What is still on its way after `load` returns: coarser levels of detail, the place round the pad. */
   private arriving: Promise<unknown>[] = [];
+  /** What falls on foot at the flight's place falls by, m/s^2: the body its site stands on (world/bodies.ts). */
+  private underfoot = gravityOn(bodyOf(undefined));
   /** The floodlights the models carry: lit when the Sun is down. */
   private lamps = new Lamps();
   /** The flight is being flown by hand: the keys that steer it are not the camera's. */
@@ -650,6 +653,7 @@ export class Stage {
       onWalkTarget: (target) => this.onWalkTarget(target),
       onWalkEyes: (through) => this.onWalkEyes(through),
       onSeat: () => this.onSeat(),
+      gravity: () => this.underfoot,
     });
 
     new ResizeObserver(() => this.resize()).observe(canvas);
@@ -761,6 +765,7 @@ export class Stage {
           }),
         );
     });
+    this.underfoot = gravityOn(bodyOf(flight.site?.body));
     // (a flight with no site has no place and no hour: its models stand in a setting that needs neither)
     const kind = flight.models[0]!.backdrop;
     const when = flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined;

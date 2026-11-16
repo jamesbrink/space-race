@@ -189,6 +189,28 @@ test('a body hops to its jump height in the open, and under a soffit only as far
   assert.ok(Math.abs(under - (2.05 - body.height)) < 0.01 && body.grounded && body.position.y === 0, `under the soffit: ${under}`);
 });
 
+test('on a made-up site on the Moon the same hop goes about six times as high, and comes down as slowly', async () => {
+  const { MOON, bodyOf, gravityOn } = await import('../src/world/bodies.ts');
+  const { body } = site();
+  body.gravity = gravityOn(bodyOf('moon'));
+  assert.equal(bodyOf('moon'), MOON);
+  body.place(0, 0, 3);
+  let apex = 0;
+  let up = 0;
+  body.jump();
+  for (let i = 0; i < 120 * 6 && (i === 0 || !body.grounded); i++) {
+    body.move(0, 0, 1 / 120);
+    apex = Math.max(apex, body.position.y);
+    up += 1 / 120;
+  }
+  // the legs push off at the Earth's JUMP_SPEED; the Moon's 1.62 m/s^2 lets it rise to v^2 / 2g: 2.42 m, against 0.40
+  const want = (JUMP_SPEED * JUMP_SPEED) / (2 * body.gravity);
+  assert.ok(Math.abs(apex - want) < 0.03, `apex ${apex}, want ${want}`);
+  assert.ok(apex / JUMP_HEIGHT > 5.5 && apex / JUMP_HEIGHT < 6.5, `${(apex / JUMP_HEIGHT).toFixed(2)} times the Earth's hop`);
+  assert.ok(Math.abs(up - (2 * JUMP_SPEED) / body.gravity) < 0.05, `in the air ${up.toFixed(2)} s`);
+  assert.ok(body.grounded && body.position.y === 0, 'and it lands');
+});
+
 test('off the slab there is always the ground, and without ground the body goes back where it last stood', () => {
   const { body } = site();
   body.place(19, 0, 0);

@@ -20,7 +20,7 @@ export interface KeepOut {
   top: number;
 }
 
-/** How much of its motion the chain keeps from one tick to the next (a hose is not a pendulum: it settles); gravity pulls it by G0. */
+/** How much of its motion the chain keeps from one tick to the next (a hose is not a pendulum: it settles); gravity pulls it down (G0 on the Earth). */
 const KEEP = 0.9;
 /** How long a tick of the chain is, seconds, whatever the frames are, and the most ticks in one frame. */
 const TICK = 1 / 60;
@@ -45,6 +45,7 @@ export function relax(
   floor: number | null = null,
   keepOut: KeepOut | null = null,
   passes = 12,
+  gravity = G0,
 ): void {
   const n = points.length / 3;
   const last = n - 1;
@@ -54,7 +55,7 @@ export function relax(
       const at = points[i * 3 + k]!;
       const moved = (at - before[i * 3 + k]!) * KEEP;
       before[i * 3 + k] = at;
-      points[i * 3 + k] = at + moved - (k === 1 ? G0 * dt * dt : 0);
+      points[i * 3 + k] = at + moved - (k === 1 ? gravity * dt * dt : 0);
     }
   const pin = () => {
     for (let k = 0; k < 3; k++) {
@@ -123,6 +124,8 @@ export class Hose {
   private laid = false;
   /** The fastest any point of it moved in the last frame, m/s: under a few centimetres a second it has settled. */
   speed = 0;
+  /** What it hangs by, m/s^2: the body underfoot's (world/bodies.ts `gravityOn`), the Earth's standard gravity unless told. */
+  gravity = G0;
   private readonly curve = new THREE.CatmullRomCurve3(
     Array.from({ length: POINTS }, () => new THREE.Vector3()),
     false,
@@ -171,7 +174,20 @@ export class Hose {
       this.before.set(points);
       this.laid = true;
       for (let i = 0; i < 40; i++)
-        relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, TICK, floor, keepOut);
+        relax(
+          points,
+          this.before,
+          a.toArray(),
+          aOut.toArray(),
+          b.toArray(),
+          bOut.toArray(),
+          this.link,
+          TICK,
+          floor,
+          keepOut,
+          12,
+          this.gravity,
+        );
       this.scratch.set(points);
       this.ahead = 0;
     }
@@ -193,7 +209,20 @@ export class Hose {
     this.ahead = Math.max(this.ahead - dt, -MOST_TICKS * TICK);
     for (; this.ahead < 0; this.ahead += TICK) {
       was.set(points);
-      relax(points, this.before, a.toArray(), aOut.toArray(), b.toArray(), bOut.toArray(), this.link, TICK, floor, keepOut);
+      relax(
+        points,
+        this.before,
+        a.toArray(),
+        aOut.toArray(),
+        b.toArray(),
+        bOut.toArray(),
+        this.link,
+        TICK,
+        floor,
+        keepOut,
+        12,
+        this.gravity,
+      );
       let far = 0;
       for (let i = 0; i < points.length; i += 3)
         far = Math.max(far, Math.hypot(points[i]! - was[i]!, points[i + 1]! - was[i + 1]!, points[i + 2]! - was[i + 2]!));

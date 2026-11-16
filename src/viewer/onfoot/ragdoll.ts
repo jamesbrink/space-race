@@ -184,9 +184,9 @@ export class Limp {
     });
   }
 
-  /** A tick: gravity, what holds it together, the world. */
-  step(dt: number, collide: Collide, passes = 12): void {
-    const g = G0 * dt * dt;
+  /** A tick: gravity (`gravity`, m/s^2: G0 on the Earth), what holds it together, the world. */
+  step(dt: number, collide: Collide, passes = 12, gravity = G0): void {
+    const g = gravity * dt * dt;
     this.points.forEach((p, i) => {
       const was = this.before[i]!;
       const keep = this.touching[i] ? GRIP : AIR;
@@ -344,6 +344,8 @@ const AIMS: readonly [Joint, Point][] = [
  * rest are known; after that it can be thrown from any pose.
  */
 export class Ragdoll implements Tumbler {
+  /** What it falls by, m/s^2: the body underfoot's (world/bodies.ts `gravityOn`), the Earth's standard gravity unless told. */
+  gravity = G0;
   private readonly joints = new Map<Point, THREE.Object3D>();
   private readonly limp: Limp;
   /** Where each bone's aim lies from its joint at rest, in the joint's own frame. */
@@ -428,7 +430,7 @@ export class Ragdoll implements Tumbler {
     // in ticks of one length (TICK), kept up to a tick ahead of the frames, and drawn between the last two
     this.ahead = Math.max(this.ahead - dt, -MOST_TICKS * TICK);
     while (this.ahead < 0) {
-      this.limp.step(TICK, collide);
+      this.limp.step(TICK, collide, 12, this.gravity);
       this.ahead += TICK;
       this.still = this.limp.speed < STILL ? this.still + TICK : 0;
     }

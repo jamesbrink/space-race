@@ -50,11 +50,14 @@ export function gradePace(speed: number, grade: number): number {
   const most = STAIR_WALK + (STAIR_RUN - STAIR_WALK) * Math.min(1, Math.max(0, (speed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED)));
   return speed + (Math.min(speed, most) - speed) * k * k * (3 - 2 * k);
 }
-/** What a walker falls by, m/s^2: standard gravity (world/bodies.ts). */
+/** What a walker falls by on the Earth, m/s^2: standard gravity (world/bodies.ts). Elsewhere the body's (`Walker.gravity`). */
 export const GRAVITY = G0;
-/** How high a standing jump lifts the feet, metres: an ordinary hop, not an athlete's. */
+/** How high a standing jump lifts the feet on the Earth, metres: an ordinary hop, not an athlete's. */
 export const JUMP_HEIGHT = 0.4;
-/** The speed the feet leave the ground at to reach it: v² = 2gh. */
+/**
+ * The speed the feet leave the ground at to reach it on the Earth: v² = 2gh. It is the legs', so it is the same
+ * anywhere: where less pulls, the same push goes higher (on the Moon, six times).
+ */
 export const JUMP_SPEED = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT);
 /** Half the width of a clothed adult across the shoulders, metres: what a figure is given when its flight does not say (ModelDef.walker.radius). */
 export const RADIUS = 0.26;
@@ -88,7 +91,7 @@ export function pickFloor(heights: readonly number[], feet: number, riser = STEP
  * `down` is how far below the feet a floor may be and still be stepped down to, not fallen to;
  * `rate` is how fast the feet follow a floor that has stepped, m/s.
  */
-export function settle(from: Footing, floor: number | null, dt: number, down = STEP, rate = STEP_RATE): Footing {
+export function settle(from: Footing, floor: number | null, dt: number, down = STEP, rate = STEP_RATE, gravity = GRAVITY): Footing {
   if (floor === null) return { y: from.y, vy: 0, grounded: from.grounded };
   let { y, vy } = from;
   if (from.grounded) {
@@ -99,7 +102,7 @@ export function settle(from: Footing, floor: number | null, dt: number, down = S
     }
     vy = 0;
   }
-  vy -= GRAVITY * dt;
+  vy -= gravity * dt;
   y += vy * dt;
   return y <= floor ? { y: floor, vy: 0, grounded: true } : { y, vy, grounded: false };
 }
@@ -621,6 +624,8 @@ export class Body {
   readonly position = new THREE.Vector3();
   vy = 0;
   grounded = true;
+  /** What it falls by, m/s^2: the body underfoot's (world/bodies.ts `gravityOn`), the Earth's standard gravity unless told. */
+  gravity = GRAVITY;
   /** Standing height, metres: the top of whatever is on its head. */
   height = 1.89;
   /** Half its width, metres. */
@@ -918,7 +923,7 @@ export class Body {
       const down = STEP + Math.max(0, Math.min(this.sunk, -floor));
       // (and the feet keep up with the legs: run at a steep flight and they climb it as fast as it rises)
       const rate = Math.max(STEP_RATE, dt > 0 ? (1.3 * distance) / dt : 0);
-      let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides, down, rate);
+      let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides, down, rate, this.gravity);
       if (footing.vy > 0) footing = bump(footing, this.ceiling(), this.height); // a hop under a soffit
       p.y = footing.y;
       this.vy = footing.vy;
@@ -1048,6 +1053,13 @@ export class Walker {
   active = false;
   readonly solids = new Solids();
   readonly body = new Body(this.solids);
+  /** What the walker falls by, m/s^2: the body underfoot's (world/bodies.ts `gravityOn(bodyOf(site.body))`), set for a site. */
+  get gravity(): number {
+    return this.body.gravity;
+  }
+  set gravity(g: number) {
+    this.body.gravity = g;
+  }
   /** Which way the eyes point: radians about the vertical (0 looks along -Z), and above the horizon. */
   yaw = 0;
   pitch = 0;
@@ -1647,7 +1659,7 @@ export class Walker {
       const height = this.apex - p.y;
       if (height >= LIMP_FALL && this.motion > 0 && !this.seat) {
         // too far to land on the feet: the figure goes limp, and the stage's ragdoll has it until it lies still
-        this.fell = { height, velocity: new THREE.Vector3(this.vel.x, -Math.sqrt(2 * GRAVITY * height), this.vel.y) };
+        this.fell = { height, velocity: new THREE.Vector3(this.vel.x, -Math.sqrt(2 * this.gravity * height), this.vel.y) };
         this.down = 'limp';
         this.pinned.copy(p);
       } else {

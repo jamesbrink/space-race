@@ -1,3 +1,4 @@
+import { G0 } from '../../world/bodies.ts';
 import * as THREE from 'three';
 import { sameTarget, type Target, type Workings } from '../../app/actions.ts';
 import type { Action, ModelDef } from '../../types.ts';
@@ -70,6 +71,11 @@ export interface OnFootHost {
   onWalkEyes(through: boolean): void;
   /** A couch has been boarded on foot or left: what can be looked out of has changed. */
   onSeat(): void;
+  /**
+   * What falls at the place falls by, m/s^2: the body its site stands on (world/bodies.ts `gravityOn(bodyOf(site.body))`).
+   * Where the host does not say, the Earth's standard gravity.
+   */
+  gravity?(): number;
 }
 
 /**
@@ -94,6 +100,11 @@ export class OnFoot {
     this.satIn = null;
     this.driven.clear();
     this.works = new Works();
+  }
+
+  /** What falls here falls by (`OnFootHost.gravity`). */
+  private get gravity(): number {
+    return this.h.gravity?.() ?? G0;
   }
 
   private throughEyes: boolean | null = null;
@@ -172,6 +183,7 @@ export class OnFoot {
       }
     this.h.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.h.redraw();
+    this.h.walk.gravity = this.gravity;
     this.h.walk.start(feet, toward, eye, height, walker.radius);
     this.h.cam.foot(this.h.walk.view, this.h.walk.third); // (the camera is the walker's: camera/foot.ts)
     this.h.shadows.fitWalkShadows(true);
@@ -723,6 +735,7 @@ export class OnFoot {
     if (!made) {
       const defs = level.children.length ? (this.h.defs()[at]!.walker?.carries ?? []) : [];
       made = defs.map((def) => new Carry(level, def, (mesh) => this.h.looks.add(mesh)));
+      for (const carry of made) carry.gravity = this.gravity;
       this.carries.set(level, made);
     }
     return made;
@@ -937,10 +950,14 @@ export class OnFoot {
       }
       walk.gait.apply(root);
       group.updateMatrixWorld(true);
+      doll.gravity = this.gravity;
       doll.throw(velocity);
       this.tumble = doll;
       // what was in its hands goes as it hits, and lands on its own
-      for (const carry of this.carriesOf(root, at)) carry.drop(velocity);
+      for (const carry of this.carriesOf(root, at)) {
+        carry.gravity = this.gravity;
+        carry.drop(velocity);
+      }
     }
     const doll = this.tumble;
     if (!doll) return false;

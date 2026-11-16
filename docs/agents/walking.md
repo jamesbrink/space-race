@@ -137,8 +137,11 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
   `STEP` above the feet to the top of the head is pushed sideways out of whatever it meets. So
   a model's stairs need risers of 0.3 m or less. Space (a
-  button on a touch screen) is a standing jump: 0.4 m under gravity, from the ground only, and
-  the head stops at whatever is over it (`jump`, `bump`).
+  button on a touch screen) is a standing jump: 0.4 m under the Earth's gravity, from the ground only, and
+  the head stops at whatever is over it (`jump`, `bump`). The legs' push is the same anywhere, so where less pulls it goes
+  higher: what falls falls by the body underfoot (`Walker.gravity`, `Ragdoll.gravity`, `Carry.gravity`, `Hose.gravity`,
+  set from `OnFootHost.gravity`: world/bodies.ts `gravityOn(bodyOf(site.body))`; G0 where the host does not say), and
+  on the Moon the hop is 2.4 m. The gait, the stride and the stairs are not told it: walking is not retuned.
 - **Plants are walked round.** They are instances the `Solids` never see, so the body asks the setting
   (`WalkHost.plantsOut`, `Setting.plantsOut`, `Flora.out`): after each stride it is moved out of any
   leaf mass taller than 0.9 m (a column as wide as the plant's leaves reach, plus `LEAF_CLEAR`), and a

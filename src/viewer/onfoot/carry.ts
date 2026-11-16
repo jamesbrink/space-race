@@ -35,6 +35,16 @@ export class Carry {
   private readonly from: THREE.Object3D | undefined;
   private readonly to: THREE.Object3D | undefined;
   private hose: Hose | null = null;
+  private falls = G0;
+  /** What it falls and hangs by, m/s^2: the body underfoot's (world/bodies.ts `gravityOn`), the Earth's standard gravity unless told. */
+  get gravity(): number {
+    return this.falls;
+  }
+  set gravity(g: number) {
+    this.falls = g;
+    if (this.hose) this.hose.gravity = g;
+    if (this.loose) this.loose.gravity = g;
+  }
   /** Where the item belongs when it is not in the hand. */
   private readonly home: { parent: THREE.Object3D | null; position: THREE.Vector3; quaternion: THREE.Quaternion } | null = null;
   private readonly relaxed = new THREE.Quaternion();
@@ -70,6 +80,7 @@ export class Carry {
         (like?.material as THREE.Material | undefined) ??
         new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
       this.hose = new Hose(length, radius, material);
+      this.hose.gravity = this.falls;
       this.hose.mesh.name = 'CarriedHose';
       this.hose.mesh.visible = false;
       root.add(this.hose.mesh);
@@ -109,6 +120,7 @@ export class Carry {
     if (!this.item || !this.held || this.loose) return;
     this.item.updateWorldMatrix(true, true);
     this.loose = new Tossed(this.item, velocity);
+    this.loose.gravity = this.falls;
   }
 
   /** Is it lying where it was dropped? */
@@ -193,6 +205,8 @@ const v4 = new THREE.Vector3();
  * under its own hips when it gets up), the box stays where it lies.
  */
 export class Tossed {
+  /** What it falls by, m/s^2 (the carrier's: `Carry.gravity`). */
+  gravity = G0;
   private readonly corners: THREE.Vector3[] = [];
   private readonly points: THREE.Vector3[] = [];
   private readonly before: THREE.Vector3[] = [];
@@ -241,7 +255,7 @@ export class Tossed {
         const v = v1.subVectors(p, was).multiplyScalar(this.grounded ? 0.6 : 0.995);
         was.copy(p);
         this.start[i]!.copy(p);
-        p.add(v).setY(p.y - G0 * h * h);
+        p.add(v).setY(p.y - this.gravity * h * h);
       });
       for (let pass = 0; pass < 8; pass++) {
         for (const [i, j, length] of this.sticks) {
