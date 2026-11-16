@@ -23,6 +23,7 @@
     "test:places": "node tools/places-test.mjs",
     "test:fires": "node tools/fires-test.mjs",
     "test:chute": "node tools/chute-test.mjs",
+    "test:clouds": "node tools/clouds-test.mjs",
     "test:glow": "node tools/glow-test.mjs",
     "test:winds": "node tools/winds-test.mjs",
     "test:history": "node tools/history-test.mjs",

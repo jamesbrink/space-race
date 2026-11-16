@@ -303,6 +303,7 @@ tools/
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be
   chute-test.mjs                      browser check that a parachute's lines are drawn over the land, the sea, the air and the cloud behind them, from the chase view, at 1280 and 390, in both looks
+  clouds-test.mjs                     browser check that the clouds stand in the air and not round the eye: a camera flown up through each flight's cumulus, deck and high cloud at a vehicle's speed, in both looks
   glow-test.mjs                       browser check that the glow of entry is a glow from the chase view at 5, 9 and 20 m and from inside its box: no straight-edged step in what it adds, at 1280 and 390, in both looks
   winds-test.mjs                      browser check that the wind drawn (the plants, the low cloud's drift, the sea's waves) follows a flight's hours with the clock, and is the record's at liftoff
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig and from far out, measured frozen, on pages run at once
