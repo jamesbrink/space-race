@@ -1,13 +1,12 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
-import { ballisticOf, type Sample } from '../sim/fly.ts';
+import type { Sample } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
-import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame } from '../world/frames.ts';
-import { recordOf, type Run } from '../sim/run.ts';
+import { brakingOf, liftoffOf, recordOf, type Run } from '../sim/run.ts';
 import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry.ts';
 import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake.ts';
 
@@ -181,15 +180,13 @@ export class Effects {
     const drops = this.flight.flies?.drops ?? [];
     const dropped = this.live ? this.live.dropped : drops.map((d) => d.at);
     drops.forEach((d, i) => void (d.under || named.push({ at: dropped[i] ?? Infinity, strength: 0.4 })));
-    if (!this.live && plan.kind === 'ballistic') {
-      // each retrorocket as it lights, the three together felt as their thrust on the spacecraft without its pack
-      const b = ballisticOf(plan);
-      const motor = b.motors[0];
-      const alone = b.packJoint?.after?.value;
-      if (motor && alone)
-        for (const w of b.retroWaits)
-          named.push({ at: b.retroAt + w, strength: joltStrength((motor.thrust.vacuum.value / alone / G0) * 3) });
-    }
+    // the record's braking burn (sim/run.ts `brakingOf`): each motor as it lights, all of them together felt as their thrust
+    // on what they brake (a ballistic spacecraft without its pack; a flight into orbit's spacecraft, its one engine)
+    const record = this.live ? null : recordOf(this.flight);
+    const braking = record ? brakingOf(this.flight, record) : null;
+    if (braking?.mass)
+      for (const at of braking.fires)
+        named.push({ at, strength: joltStrength((braking.thrust / braking.mass / G0) * braking.fires.length) });
     if (this.live && Number.isFinite(this.live.duration)) named.push({ at: this.live.duration, strength: 0.8 });
     const all = this.jolts.slice();
     for (const n of named) {
@@ -208,16 +205,8 @@ export class Effects {
   felt(t: number, eye: THREE.Vector3, riding: number): Felt {
     const plan = this.flight.plan;
     const felt: Felt & { jolts: { since: number; strength: number }[] } = { sound: 0, buffet: 0, load: 1, jolts: [] };
-    // (an orbital flight's engines as one: those lit on the ground, sim/staged.ts)
-    const booster = plan?.kind === 'ballistic' ? ballisticOf(plan).engine : null;
-    const engine = booster
-      ? {
-          thrust: (booster.thrust.seaLevel ?? booster.thrust.vacuum).value,
-          exhaustSpeed: (booster.isp!.seaLevel ?? booster.isp!.vacuum).value * G0,
-        }
-      : plan?.kind === 'orbital'
-        ? liftoffEngine(plan)
-        : null;
+    // (the engines lit on the ground, as one: sim/run.ts `liftoffOf`)
+    const engine = liftoffOf(plan);
     if (!engine || !this.flying) return felt;
     // the engine, as it was when the sound now arriving left it
     const from = new THREE.Vector3();
