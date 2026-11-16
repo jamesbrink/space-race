@@ -774,6 +774,17 @@ pages (404); Nikolayev's *Встретимся на орбите* and Popovich's
 Vostok 3 descent module, and NPP Zvezda's of Vostok 4's.
 
 
+Read again for Vostok 3's launch site and flight deck, 16 November 2026, each checked against its text before a figure
+went in:
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Kamanin, *Skrytyi kosmos*, the diary for 1962 (the entry above), 22 June, 3, 10, 12 to 16 August | [militera.lib.ru/db/kamanin_np/62.html](http://militera.lib.ru/db/kamanin_np/62.html), its text downloaded and searched | **The fire**: «При третьем пуске [Зенита] — отказала первая ступень, и ракета упала в 300-х метрах от старта. Одна из четырех боковушек осталась на старте и сгорела ... восстановление займет около месяца» (22 June). The «Львов» bus ordered for the cosmonauts (3 August); the rollout at 21:00 on the 9th (10 August); **the morning of the 11th** (12 August): the State Commission at 7:30 «в новом помещении по соседству с бункером», the forecast «антициклон, ясно, скорость ветра 6–7 метров в секунду», Korolev's post «в 10 метрах от ракеты ... небольшой бетонированный козырек», «В 11:30 подъехал специальный автобус с двумя космонавтами, одетыми в скафандры», the report to Smirnov, the lift; the 687 and 720 s and the 0.5 s (14 August); 26 °C and 50 % before liftoff; the 65th orbit; Nikolayev's report (16 August) | Its clock at the pad is the range's, two hours ahead of Moscow's (derived: an 11:30 bus cannot be at the 11:30 liftoff). Says nothing of the morning of the 12th but that it "differed little" |
+| Siddiqi, *Challenge to Apollo* (the entry above), pp. 355 to 360, Tables IA and IB | [history.nasa.gov/SP-4408pt1.pdf](https://history.nasa.gov/SP-4408pt1.pdf), its text extracted | **1 June 1962**: "from the launch pad at site 1 ... the rocket landed 300 meters from the launch site, while one of the strap-ons remained at the pad, seriously damaging the structure as a result of a fire" (p. 355); T+687 s and "nominal" (p. 356); sleep at 2200 (p. 357); "as close as five kilometers", n. 22 "from five to six and a half" (p. 358); the module's times from Glushko, n. 29 (p. 360) | Table IB gives no period |
+| NOAA Integrated Surface Database, 1962: stations 35849099999 (Kazaly), 35953099999 (Zhosaly), 38062099999 (Kzyl-Orda), 35746099999 (Aralsk), 38069099999 (Shieli), 11 and 12 August | [noaa-global-hourly-pds](https://noaa-global-hourly-pds.s3.amazonaws.com/1962/35849099999.csv) (and the others by their numbers) | Every row issue #15 quoted for the two days checked against the files: no cloud at Kazaly, Zhosaly or Kzyl-Orda on the 11th through noon UTC, the wind 020° to 050° at 1 to 10 m/s, 25 to 33 °C; one okta of cumulus at Aralsk at 09:00; on the 12th clear, 070° to 090° at 3 to 9 m/s, 30 to 34 °C | Stations 74 to 220 km from the pad, none at the range; Kazaly reports 20 km as its furthest visibility |
+| SRTM, 90 m, through the OpenTopoData API | api.opentopodata.org, dataset srtm90m | The landing grounds' heights: 738 and 693 m at Vostok 3's two printed places, 601 and 592 m at Vostok 4's | Of the year 2000; the printed places themselves differ by 5 km |
+| Russian Wikipedia, «Восток-3» and «Восток-4» (the entry above) | their wikitext, downloaded | 88.33 min beside 180.7 by 234.6 km; the landing places | No source for the period; «Восток-4»'s box repeats Vostok 3's orbit |
+
 ### Vostok 5 and Vostok 6
 
 Read for [Vostok 5](../missions/ussr/vostok/flights/vostok-5/README.md) and

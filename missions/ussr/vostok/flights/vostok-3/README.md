@@ -15,14 +15,58 @@ module and landing by parachute. Backup: Valeriy Bykovskiy; reserve for both shi
 | Spacecraft (3KA No. 5) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have carried that can be drawn: the two television cameras as the Seliger camera was photographed, and a hand-held film camera |
 | Launch vehicle (8K72K No. E103-23) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
-| Launch site (Site 1 as it stood in August 1962, rebuilt after the fire of 1 June) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what the repairs changed has not been looked for |
-| Crew to be walked as | not built |
-| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: the forecast given to the State Commission at 07:30 on the 11th, an anticyclone, clear, wind 6 to 7 m/s (Kamanin). No station's report was looked for |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 as it stood on 11 August 1962, repaired after the fire of 1 June) | **built**: [model/pad.py](model/pad.py), the site's modules at that date; the morning in [pad.ts](pad.ts). The launching structure is built as it stood in 1961: what the repair changed is not in anything read. What of this morning is built and what not, below ("The morning at the pad") |
+| Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Nikolayev's height not found) |
+| The day's weather as data | **written**: [weather.ts](weather.ts), clear, from the range forecaster's word and the stations either side on the railway; ERA5's air over the pad ([aloft.ts](aloft.ts)) |
+| The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md): the ascent on the type's instants but for the two Kamanin heard counted (687 and 720 s), the orbit Siddiqi gives, the burn (its instant derived from the landing), the descent. Fly is lit: the record as flown by default, everything a hand can do on Vostok 1 |
+| The cabin | the plain stand-in board of Vostoks 2 to 6 ([vostok-3ka.md](../../vehicles/vostok-3ka.md)): no instrument reads the flight; this ship's board, its Globus and the television cameras' picture are not built |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+So the flight has all three places: the Gallery; the Launch site on the morning of 11 August 1962; and
+Fly, on the shared flight deck (src/deck/orbitdeck.ts), with nothing in its code that is this flight's.
+
+## The morning at the pad
+
+What the record gives of the morning, and so what the launch site shows (the site's record is in
+[site-1.md](../../../places/tyuratam/site-1.md), "What stood when"):
+
+- **The times are Kamanin's**, by the range's clock, two hours ahead of Moscow's (derived: the
+  liftoff was at 11:30 Moscow time): the State Commission at 07:30 in a new room beside the bunker,
+  the bus at 11:30 with Nikolayev and Bykovskiy suited (09:30 Moscow time), the report to Smirnov,
+  the lift. No transcript of the exchanges before liftoff and no roster of the pad were read: the
+  erector, the trusses and the cable mast are given Vostok 1's intervals before its liftoff,
+  **estimated**, and say so. When he was in the seat is ours (09:40, after the lift).
+- **What stood**: the launching structure as in 1961 (it burnt on 1 June 1962, when a Zenit-2's
+  rocket fell 300 m away and a strap-on was left burning on it, and was repaired: Kamanin, 22 June;
+  Siddiqi, p. 355), the bus (that it was the same LAZ-695B is taken: Kamanin had the cosmonauts
+  driven that summer in the «Львов»; its place April 1961's). No fillers: neither an account nor
+  a photograph of the morning has them.
+- **Not built**: the people at the bus (Smirnov, Korolev, Keldysh, Rudenko, Gagarin and Titov,
+  "more than a dozen" more; summer dress, which the figures do not have); Korolev's post, a small
+  concrete canopy ten metres from the rocket with the means of communication, where Gagarin,
+  Smirnov, Barmin, Kirillov and Kamanin stood with him; the new room beside the bunker. Each is
+  documented and none is placed or measured: listed for a modelling agent (issue #21).
+- **The land is the summer's** (steppe.ts, `SEASONS`), the place round the pad August 1961's: nothing
+  later has been looked for.
+- **The weather**: [weather.ts](weather.ts): clear, the wind from the north-east at 6 to 7 m/s.
+
+## The flight as flown
+
+[mission.md](mission.md) has every input's argument and each check against the run. In short: the
+type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
+where the bunker waited for 687; the published orbit flown from where it left the ship goes round
+four days with the entry's load (8.8 g) and the pilot's landing time (09:51:17, not independent) in,
+and comes down **2,480 km short** of the record's landing: over 64 revolutions a second of period is
+470 km, and no published period is good to better than a hundredth of a minute. The misses are in
+src/sim/misses.ts.
+
+## What is simplified
+
+- The ascent's instants but two, its integrator setting, the aiming azimuth and the burn's minute
+  are not this flight's (mission.md).
+- The launching structure is 1961's; Korolev's post, the room by the bunker and the morning's
+  people are not built (issue #21).
+- The pilot is the figure built to Gagarin's height in Gagarin's suit; the reserve canopy is not
+  drawn, Nikolayev having locked it.
 
 ## What happened
 
@@ -73,8 +117,7 @@ said he felt excellent and could go on (Kamanin, judging by his voice, thought h
 At 07:00 on the 14th it was settled: Vostok 3 down on its 65th orbit, Vostok 4 on its 49th, both on
 the morning of the 15th. The wind at the landing ground that day was up to 20 m/s.
 
-On the last orbit the landing systems switched themselves on; six minutes later Popovich reported
-the same from his ship. He felt the braking engine's push and heard it run for 42 seconds. The ball
+The two ships fired their braking engines within six minutes of each other (Siddiqi, p. 360). He felt the braking engine's push and heard it run for 42 seconds. The ball
 turned at changing rates in the thick air; he saw smoke, then flame of several colours, heard the
 shield crackle, and took 8 to 9 g. He ejected, locked his reserve parachute once the main was
 open, and landed at 09:52 on a level patch two metres square in ground strewn with rocks, south of
@@ -122,8 +165,8 @@ The braking burn's minute was not found. Its length is his: 42 seconds, by ear.
 "As printed since" is Siddiqi's text (p. 356) and Table IB for the heights and inclination, and
 the period Russian Wikipedia prints beside them; "announced on the day" is what Nikolayev read out
 on 21 August as the initial orbit, and what the film *Звёздные братья* draws on its globe (Апогей
-251 км, Перигей 183 км). **No OKB-1 report of this flight has been read.** `flight.ts` quotes
-180.7, 234.6, 64.98° and 88.5.
+251 км, Перигей 183 км). **No OKB-1 report of this flight has been read.** `flight.ts` and
+`orbital.ts` take 180.7, 234.6, 64.98° and 88.33 (mission.md, "The orbit").
 
 ## Where the sources disagree
 
