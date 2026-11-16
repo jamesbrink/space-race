@@ -10,7 +10,7 @@ import { chooseTier, tier } from '../viewer/tier.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
 import { Wheel } from './wheel.ts';
 import { $, esc } from '../util/dom.ts';
-import { isTyping } from '../util/keys.ts';
+import { capsOf, doesOf, is, isTyping, type KeyName, modified, which } from '../util/keys.ts';
 
 export interface UiHandlers {
   model(id: string): void;
@@ -99,14 +99,20 @@ interface LegendDef {
   main: LegendRow[];
   more: [group: string, rows: LegendRow[]][];
 }
-const ARROWS = ['↑', '←', '↓', '→'];
-const WASD = ['W', 'A', 'S', 'D'];
+/** A row of keys from the table (util/keys.ts): their caps, in turn, and what they do (the first one's words, or `does`). */
+const keyRow = (does: string | null, ...names: KeyName[]): LegendRow => [capsOf(...names), does ?? doesOf(names[0]!)];
+/** A cluster of keys as they lie on the keyboard, from the table. */
+const pad = (shape: LegendDef['pads'][number][0], name: KeyName, does = doesOf(name)): LegendDef['pads'][number] => [
+  shape,
+  capsOf(name),
+  does,
+];
 
 /**
  * The legend (bottom left): every key and gesture, for whichever rig has the camera or for the walker. It is shut to a
  * "? Keys" tab until asked for; open, it shows the keys and the few things to know, and "More" unfolds the rest by purpose.
- * Keep it in step with the handlers: viewer/camera/input.ts and the rigs, timebar.ts (P [ ]), sound (U), cockpit.ts (L),
- * main.ts (V, Escape), and the keys handled in this file (C H T ?).
+ * Every key in it is drawn from the table (util/keys.ts) its handler asks, so the two cannot drift; the gestures are
+ * written here.
  */
 function legendMarkup(f: Flight): string {
   const walker = f.models.find((m) => m.walker);
@@ -116,19 +122,9 @@ function legendMarkup(f: Flight): string {
   // and the cabin's own lights, if it has a switch for them (CabinDef.lighting)
   const lighting = f.models.find((m) => m.id === f.flies?.model)?.cabin?.lighting;
   // what is the same whoever has the camera
-  const go: LegendRow[] = [
-    ...(walker ? [[['V'], 'walk as crew'] as LegendRow] : []),
-    ...(flies ? [[['L'], 'fly it yourself'] as LegendRow] : []),
-  ];
-  const clock: LegendRow[] = [
-    [['P'], 'run · stop'],
-    [['[', ']'], 'slower · faster'],
-    [['U'], 'sound on · off'],
-  ];
-  const page: LegendRow[] = [
-    [['T'], 'cel shading'],
-    [['?'], 'this list'],
-  ];
+  const go: LegendRow[] = [...(walker ? [keyRow(null, 'walk.go')] : []), ...(flies ? [keyRow(null, 'deck.toggle')] : [])];
+  const clock: LegendRow[] = [keyRow(null, 'clock.run'), keyRow(null, 'clock.rate'), keyRow(null, 'sound.toggle')];
+  const page: LegendRow[] = [keyRow(null, 'page.cel'), keyRow(null, 'page.legend')];
   const rest = (first: [string, LegendRow[]][]): LegendDef['more'] => [
     ...first,
     ...(go.length ? [['Go', go] as [string, LegendRow[]]] : []),
@@ -136,25 +132,20 @@ function legendMarkup(f: Flight): string {
     ['Page', page],
   ];
   const camera = (reset: string): LegendRow[] => [
-    [['C'], 'next camera'],
-    [['0'], reset],
-    [['Y'], 'skin off · on'],
-    [['H'], 'hide panels'],
+    keyRow(null, 'cam.next'),
+    keyRow(reset, 'cam.home'),
+    keyRow(null, 'cut.toggle'),
+    keyRow(null, 'page.bare'),
   ];
   const defs: Record<string, LegendDef> = {
     '': {
-      pads: [
-        ['wasd', WASD, 'move'],
-        ['arrows', ARROWS, 'orbit · tilt'],
-        ['pair', ['E', 'Q'], 'up · down'],
-        ['pair', ['R', 'F'], 'zoom'],
-      ],
+      pads: [pad('wasd', 'orbit.move'), pad('arrows', 'orbit.turn'), pad('pair', 'orbit.rise'), pad('pair', 'orbit.zoom')],
       main: [
         ['drag', 'orbit'],
         ['scroll · pinch', 'zoom to pointer'],
         ['click', 'go to it'],
-        [['Esc'], 'back a step'],
-        ...camera('reset view'),
+        keyRow(null, 'page.back'),
+        ...camera(doesOf('cam.home')),
       ],
       more: rest([
         [
@@ -170,20 +161,12 @@ function legendMarkup(f: Flight): string {
       ]),
     },
     'in-flight': {
-      pads: [
-        ['wasd', WASD, 'fly'],
-        ['arrows', ARROWS, 'look'],
-        ['pair', ['E', 'Q'], 'up · down'],
-        ['key', ['Shift'], 'faster'],
-      ],
-      main: [['drag', 'look round'], ['scroll · pinch', 'to pointer · back'], ['click', 'go to it'], ...camera('reset view')],
+      pads: [pad('wasd', 'free.fly'), pad('arrows', 'free.look'), pad('pair', 'orbit.rise'), pad('key', 'free.faster')],
+      main: [['drag', 'look round'], ['scroll · pinch', 'to pointer · back'], ['click', 'go to it'], ...camera(doesOf('cam.home'))],
       more: rest([['Mouse', [['right-drag', 'slide']]]]),
     },
     chasing: {
-      pads: [
-        ['arrows', ARROWS, 'orbit · tilt'],
-        ['pair', ['R', 'F'], 'zoom'],
-      ],
+      pads: [pad('arrows', 'orbit.turn'), pad('pair', 'orbit.zoom')],
       main: [['drag', 'turn round it'], ['scroll · pinch', 'closer · further'], ...camera('centre the vehicle')],
       more: rest([
         [
@@ -196,15 +179,17 @@ function legendMarkup(f: Flight): string {
       ]),
     },
     aboard: {
-      pads: [
-        ['arrows', ARROWS, 'look'],
-        ['pair', ['R', 'F'], 'zoom'],
-      ],
+      pads: [pad('arrows', 'free.look'), pad('pair', 'orbit.zoom')],
       main: [
         ['drag', 'look round'],
         ['scroll · pinch', 'zoom'],
         ...(lookouts.length
-          ? [[lookouts.map((_, i) => String(i + 1)), `lean to: ${lookouts.map((l) => l.name.toLowerCase()).join(' · ')}`] as LegendRow]
+          ? [
+              [
+                capsOf('seat.lean').slice(0, lookouts.length),
+                `${doesOf('seat.lean')}: ${lookouts.map((l) => l.name.toLowerCase()).join(' · ')}`,
+              ] as LegendRow,
+            ]
           : []),
         ['click', lighting ? `work a control · the ${lighting.name.toLowerCase()} switch` : 'work a control'],
         ...camera('look ahead'),
@@ -212,29 +197,21 @@ function legendMarkup(f: Flight): string {
       more: rest([]),
     },
     tracking: {
-      pads: [
-        ['arrows', ARROWS, 'frame it'],
-        ['pair', ['R', 'F'], 'zoom'],
-      ],
+      pads: [pad('arrows', 'pad.frame'), pad('pair', 'orbit.zoom')],
       main: [['drag', 'move it in the frame'], ['scroll · pinch', 'tighter · wider'], ...camera('centre the vehicle')],
       more: rest([]),
     },
     'on-foot': {
-      pads: [
-        ['wasd', WASD, 'walk'],
-        ['arrows', ARROWS, 'walk · turn'],
-        ['key', ['Shift'], 'run'],
-        ['key', ['Space'], 'jump'],
-      ],
+      pads: [pad('wasd', 'foot.walk'), pad('arrows', 'foot.turn'), pad('key', 'foot.run'), pad('key', 'foot.jump')],
       main: [
         ['mouse', 'look round'],
-        [['E'], 'act on what you face'],
-        [['C'], 'eyes · over the shoulder'],
-        [['V', 'Esc'], 'back to the camera'],
-        [['H'], 'hide panels'],
+        keyRow(null, 'foot.act'),
+        keyRow(null, 'foot.view'),
+        keyRow(doesOf('foot.leave'), 'walk.go', 'foot.leave'),
+        keyRow(null, 'page.bare'),
       ],
       more: [
-        ['On a ladder', [['W · S', 'up · down']]],
+        ['On a ladder', [keyRow(null, 'foot.climb')]],
         ['Clock', clock],
         ['Page', page],
       ],
@@ -454,12 +431,12 @@ export class Ui {
     if (name) fitName(name);
     window.addEventListener('keydown', (e) => {
       const typing = isTyping(e);
-      if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-      if (e.key.toLowerCase() === 'h') bare(!root.classList.contains('bare'));
-      if (e.key.toLowerCase() === 't') this.setCel(!prefs.get('cel'));
+      if (modified(e) || typing) return;
+      if (is(e, 'page.bare')) bare(!root.classList.contains('bare'));
+      if (is(e, 'page.cel')) this.setCel(!prefs.get('cel'));
       // C is the camera: it steps through the ways of moving the view (on foot it is the walker's, between first and third person)
-      if (e.key.toLowerCase() === 'c' && !root.classList.contains('walking')) this.nextCamera();
-      if (e.key === '?') showLegend(legendKeys.classList.contains('folded'));
+      if (is(e, 'cam.next') && !root.classList.contains('walking')) this.nextCamera();
+      if (is(e, 'page.legend')) showLegend(legendKeys.classList.contains('folded'));
     });
     // On a phone the panel is a sheet a finger moves between its stops (sheet.ts: the gallery's is the same one). At
     // rest again, the part being read is in view in it.
@@ -543,11 +520,11 @@ export class Ui {
     $(root, '.loading button').addEventListener('click', () => on.model(this.model.id));
     root.querySelectorAll<HTMLButtonElement>('[data-model]').forEach((b) => b.addEventListener('click', () => on.model(b.dataset.model!)));
     $(root, '.tabs').addEventListener('keydown', (e) => {
-      const key = (e as KeyboardEvent).key;
-      if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
+      const step = which(e as KeyboardEvent, 'tabs.step');
+      if (step < 0) return;
       const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
       const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      const next = tabs[(at + (key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
+      const next = tabs[(at + (step ? 1 : tabs.length - 1)) % tabs.length]!;
       this.tab(next.dataset.tab!);
       next.focus();
     });
@@ -1057,7 +1034,7 @@ export class Ui {
       window.removeEventListener('keydown', key, true);
     };
     const away = (e: Event) => !menu.contains(e.target as Node) && close();
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    const key = (e: KeyboardEvent) => is(e, 'menu.close') && close();
     document.body.append(menu); // on the page itself, not among the panels: it is there when they are hidden
     // kept on the page: opened near an edge, it opens the other way
     menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - 8)}px`;

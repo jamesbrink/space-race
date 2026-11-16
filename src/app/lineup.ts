@@ -3,7 +3,6 @@ import { flights } from '../../missions/index.ts';
 import { Callout } from '../ui/callout.ts';
 import { LineupUi, type LineupView } from '../ui/lineup.ts';
 import { reducedMotion, scripted, unattended } from '../util/env.ts';
-import { isTyping } from '../util/keys.ts';
 import { RIGS } from '../viewer/camera/index.ts';
 import { chooseTier } from '../viewer/tier.ts';
 import { formatAddress, formatLineup, namesLineup, onMoved, parseLineup, programmeOf, settle, where } from './address.ts';
@@ -13,6 +12,7 @@ import { goHome } from './home.ts';
 import { day, entries, sections, showCard, timeline } from './lineup/row.ts';
 import { LineupScene } from './lineup/scene.ts';
 import { prefs } from './prefs.ts';
+import { is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
 
 /**
  * The Lineup: every vehicle the flights have built, side by side on one floor at one scale, in the order they flew
@@ -355,7 +355,7 @@ for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermo
     touch,
     (e) => {
       if (e.type === 'pointermove' && touring) return; // (the mouse merely moving does not end a show that is on)
-      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      if (e instanceof KeyboardEvent && modifierOnly(e)) return;
       touched();
     },
     { capture: true, passive: true },
@@ -375,20 +375,19 @@ window.setInterval(() => {
 // ----------------------------------------------------------------------------------------------- the keys
 
 window.addEventListener('keydown', (e) => {
-  if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || isTyping(e) || !ready) return;
-  const key = e.key.toLowerCase();
-  if (key === 'n') step(1);
-  else if (key === 'b') step(-1);
-  else if (key === 'o' && view.chosen) openGallery(view.chosen);
-  else if (key === 'x') pick(!view.picking);
-  else if (key === 'p') show({ ...view, row: view.row === 'spacecraft' ? 'vehicles' : 'spacecraft' });
-  else if (key === 'g') setScale(!scene.scaled);
-  else if (key === 'l') setLight(scene.hall.tone !== 'light');
-  else if (key === 't') setCel(scene.look !== 'cel');
-  else if (key === 'c') scene.cam.set(scene.cam.next());
-  else if (key === 'h') ui.toggleBare();
-  else if (e.key === '?') ui.toggleKeys();
-  else if (key === 'escape') back();
+  if (modified(e) || e.repeat || isTyping(e) || !ready) return;
+  const next = which(e, 'lineup.next');
+  if (next >= 0) step(next ? -1 : 1);
+  else if (is(e, 'lineup.open') && view.chosen) openGallery(view.chosen);
+  else if (is(e, 'lineup.pick')) pick(!view.picking);
+  else if (is(e, 'lineup.row')) show({ ...view, row: view.row === 'spacecraft' ? 'vehicles' : 'spacecraft' });
+  else if (is(e, 'lineup.scale')) setScale(!scene.scaled);
+  else if (is(e, 'lineup.light')) setLight(scene.hall.tone !== 'light');
+  else if (is(e, 'page.cel')) setCel(scene.look !== 'cel');
+  else if (is(e, 'cam.next')) scene.cam.set(scene.cam.next());
+  else if (is(e, 'page.bare')) ui.toggleBare();
+  else if (is(e, 'page.legend')) ui.toggleKeys();
+  else if (is(e, 'lineup.back')) back();
 });
 
 // Back and Forward: within the Lineup the address is followed in place; one that is somewhere else's (the front page,

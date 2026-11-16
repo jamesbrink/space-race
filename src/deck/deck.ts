@@ -4,8 +4,8 @@ import type { Command, SitedFlight } from '../types.ts';
 import type { Run } from '../viewer/ascent.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
-import { isTyping } from '../util/keys.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { capOf, capsOf, is, isTyping, kbd, type KeyName, keyOf, KEYS, keysOf, modified } from '../util/keys.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -57,8 +57,19 @@ export interface DeckSpec {
   enter: string;
 }
 
-/** The keys that steer: W S pitch, A D yaw, Q E roll. Held, each is a hand on its axis. */
-export const STEER = ['w', 'a', 's', 'd', 'q', 'e'];
+/** The keys that steer: W S pitch, A D yaw, Q E roll (keys.ts `deck.steer`). Held, each is a hand on its axis. */
+export const STEER = [...keysOf('deck.steer')];
+
+/** The deck's keys that are commands, and the command each gives (`command`). */
+const COMMANDS: [KeyName, string][] = [
+  ['deck.next', 'next'],
+  ['deck.guidance', 'guidance'],
+  ['deck.sequence', 'sequence'],
+  ['deck.again', 'again'],
+  ['deck.leave', 'leave'],
+  ['deck.toggle', 'leave'],
+  ['deck.abort', 'abort'],
+];
 
 export type Watcher = (sample: LiveSample, live: VehicleState | null, news?: DeckNews) => void;
 
@@ -95,54 +106,66 @@ export abstract class Deck {
     root.setAttribute('aria-label', 'Flight instruments');
     // a key that steers, as a button: held, it is the key held (W S A D Q E)
     const hold = (key: string, about: string) =>
-      `<button data-hold="${key}" title="${about} (${key.toUpperCase()})"><kbd>${key.toUpperCase()}</kbd></button>`;
+      `<button data-hold="${key}" title="${about} (${capOf(key)})"><kbd>${capOf(key)}</kbd></button>`;
+    // the keys of the deck's steering, in the table's order (keys.ts `deck.steer`: W S A D Q E)
+    const [pitchDown, pitchUp, yawLeft, yawRight, rollLeft, rollRight] = STEER as [string, string, string, string, string, string];
+    // a slot of a key in the table as a button that presses it: held (`data-held`) for the camera's turning and zooming
+    const slot = (name: KeyName, i: number) => KEYS[name].slots[i] as string;
+    const turn = (i: number, about: string) =>
+      `<button data-press="${slot('orbit.turn', i)}" data-held title="${about}"><kbd>${capOf(slot('orbit.turn', i))}</kbd></button>`;
+    const zoom = (i: number, about: string) => {
+      const key = (KEYS['orbit.zoom'].slots[i] as readonly string[])[0]!;
+      return `<button data-press="${key}" data-held title="${about} (${capOf(key)})"><kbd>${capOf(key)}</kbd></button>`;
+    };
+    const rate = (i: number, about: string, label: string) =>
+      `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd>${label}</button>`;
     // The deck is three panels: the navball's (navball.ts puts it in), this one in the middle, the systems on the right.
     root.innerHTML = `
       <section class="deck-main">
         <div class="cockpit-card" hidden></div>
         <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span>
           <span class="deck-modes">
-            <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (G)"><kbd>G</kbd>Guidance</button>
-            <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (B)"><kbd>B</kbd>Sequencer</button>
+            <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}Guidance</button>
+            <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}Sequencer</button>
           </span></p>
         <div class="gauges"></div>
         <div class="deck-act">
-          <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (Space)"><kbd>Space</kbd><span data-cell="next"></span></button>
+          <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (${capsOf('deck.next').join(' ')})">${kbd('deck.next')}<span data-cell="next"></span></button>
           <p class="cockpit-prompt" data-cell="prompt" role="status" hidden></p>
-          <button data-do="abort" class="cockpit-abort" title="Abort on the escape rocket, while the tower is aboard: press twice (X, X)"><kbd>X</kbd><kbd>X</kbd><span data-cell="abort">Abort</span></button>
+          <button data-do="abort" class="cockpit-abort" title="Abort on the escape rocket, while the tower is aboard: press twice (${capsOf('deck.abort').join(' ')}, ${capsOf('deck.abort').join(' ')})">${kbd('deck.abort')}${kbd('deck.abort')}<span data-cell="abort">Abort</span></button>
         </div>
         <p class="deck-foot">
-          <span class="deck-steer for-keys">${hold('w', 'Pitch the nose downrange')}${hold('s', 'Pitch the nose back')}<em>pitch</em>${hold('a', 'Yaw left')}${hold('d', 'Yaw right')}<em>yaw</em>${hold('q', 'Roll left')}${hold('e', 'Roll right')}<em>roll</em></span>
+          <span class="deck-steer for-keys">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
           <span class="for-touch">Stick steers · ⟲ ⟳ roll</span>
-          <button data-do="leave" class="for-keys" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
+          <button data-do="leave" class="for-keys" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
           <button data-do="keys" aria-expanded="false" title="Every key and control of the flight deck"><span class="for-keys">Keys</span><span class="for-touch">More</span><i class="chevron"></i></button>
         </p>
         <div class="cockpit-keys" hidden>
           <div><h4>Show</h4><p>
-            <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
-            <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (I)"><kbd>I</kbd>Navball</button>
-            <button data-press="y" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (Y)"><kbd>Y</kbd>Skin off · on</button>
-            <button data-press="o" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (O)"><kbd>O</kbd>Surface · orbit</button>
-            ${spec.choose ? `<button data-press="k" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)"><kbd>K</kbd>Path · to cutoff · cut now</button>` : ''}
+            <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (${capsOf('path.show').join(' ')})">${kbd('path.show')}Path</button>
+            <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (${capsOf('navball.show').join(' ')})">${kbd('navball.show')}Navball</button>
+            <button data-press="${KEYS['cut.toggle'].slots[0]}" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (${capsOf('cut.toggle').join(' ')})">${kbd('cut.toggle')}Skin off · on</button>
+            <button data-press="${KEYS['navball.frame'].slots[0]}" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (${capsOf('navball.frame').join(' ')})">${kbd('navball.frame')}Surface · orbit</button>
+            ${spec.choose ? `<button data-press="${KEYS['path.choose'].slots[0]}" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (${capsOf('path.choose').join(' ')})">${kbd('path.choose')}Path · to cutoff · cut now</button>` : ''}
           </p></div>
           <div><h4>Camera</h4><p>
-            <button data-press="c" title="The next camera (C)"><kbd>C</kbd>Next view</button>
-            <button data-press="0" title="Centre the vehicle (0)"><kbd>0</kbd>Centre</button>
-            <span class="deck-turn" title="Turn and tilt the view (the arrow keys)"><button data-press="arrowleft" data-held title="Turn the view left"><kbd>←</kbd></button><button data-press="arrowup" data-held title="Tilt the view up"><kbd>↑</kbd></button><button data-press="arrowdown" data-held title="Tilt the view down"><kbd>↓</kbd></button><button data-press="arrowright" data-held title="Turn the view right"><kbd>→</kbd></button><em>turn · tilt</em></span>
-            <span class="deck-turn"><button data-press="r" data-held title="Zoom in (R)"><kbd>R</kbd></button><button data-press="f" data-held title="Zoom out (F)"><kbd>F</kbd></button><em>zoom</em></span>
-            <button data-press="t" title="Cel shading (T)"><kbd>T</kbd>Cel</button>
-            <button data-press="h" class="for-keys" title="Hide every panel; H shows them again (H)"><kbd>H</kbd>Hide panels</button>
+            <button data-press="${KEYS['cam.next'].slots[0]}" title="The next camera (${capsOf('cam.next').join(' ')})">${kbd('cam.next')}Next view</button>
+            <button data-press="${KEYS['cam.home'].slots[0]}" title="Centre the vehicle (${capsOf('cam.home').join(' ')})">${kbd('cam.home')}Centre</button>
+            <span class="deck-turn" title="Turn and tilt the view (the arrow keys)">${turn(1, 'Turn the view left')}${turn(0, 'Tilt the view up')}${turn(2, 'Tilt the view down')}${turn(3, 'Turn the view right')}<em>turn · tilt</em></span>
+            <span class="deck-turn">${zoom(0, 'Zoom in')}${zoom(1, 'Zoom out')}<em>zoom</em></span>
+            <button data-press="${KEYS['page.cel'].slots[0]}" title="Cel shading (${capsOf('page.cel').join(' ')})">${kbd('page.cel')}Cel</button>
+            <button data-press="${KEYS['page.bare'].slots[0]}" class="for-keys" title="Hide every panel; ${capsOf('page.bare').join(' ')} shows them again (${capsOf('page.bare').join(' ')})">${kbd('page.bare')}Hide panels</button>
           </p></div>
           <div><h4>Clock</h4><p>
-            <button data-press="p" title="Run or stop the clock, and the flight with it (P)"><kbd>P</kbd>Run · stop</button>
-            <button data-press="[" title="Time runs slower ([)"><kbd>[</kbd>Slower</button>
-            <button data-press="]" title="Time runs faster (])"><kbd>]</kbd>Faster</button>
-            <button data-press="u" title="Sound on or off (U)"><kbd>U</kbd>Sound</button>
+            <button data-press="${KEYS['clock.run'].slots[0]}" title="Run or stop the clock, and the flight with it (${capsOf('clock.run').join(' ')})">${kbd('clock.run')}Run · stop</button>
+            ${rate(0, 'Time runs slower', 'Slower')}
+            ${rate(1, 'Time runs faster', 'Faster')}
+            <button data-press="${KEYS['sound.toggle'].slots[0]}" title="Sound on or off (${capsOf('sound.toggle').join(' ')})">${kbd('sound.toggle')}Sound</button>
           </p></div>
           <div><h4>Flight</h4><p>
             ${spec.flightKeys}
-            <button data-do="again" title="A new flight: back to the pad (N)"><kbd>N</kbd>New flight</button>
-            <button data-do="leave" title="Leave the flight deck (Esc)"><kbd>Esc</kbd>Leave</button>
+            <button data-do="again" title="A new flight: back to the pad (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}New flight</button>
+            <button data-do="leave" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
           </p></div>
         </div>
         <label class="cockpit-lever" hidden>Throttle <input type="range" min="0" max="1" step="0.01" value="1" data-lever title="The throttle lever (the up and down arrows; Z for full)" /></label>
@@ -361,10 +384,10 @@ export abstract class Deck {
 
   private key(e: KeyboardEvent, down: boolean): void {
     const typing = isTyping(e);
-    if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-    const key = e.key.toLowerCase();
+    if (modified(e) || typing) return;
+    const key = keyOf(e);
     if (!this.on) {
-      if (down && key === 'l' && !e.repeat && this.able && !this.button.hidden) this.enter();
+      if (down && is(key, 'deck.toggle') && !e.repeat && this.able && !this.button.hidden) this.enter();
       return;
     }
     if (STEER.includes(key)) {
@@ -377,9 +400,7 @@ export abstract class Deck {
     }
     if (!down || e.repeat) return;
     if (this.extraKey(key, e)) return;
-    const what = (
-      { ' ': 'next', g: 'guidance', b: 'sequence', n: 'again', escape: 'leave', l: 'leave', x: 'abort' } as Record<string, string>
-    )[key];
+    const what = COMMANDS.find(([name]) => is(key, name))?.[1];
     if (!what) return;
     e.preventDefault();
     e.stopPropagation();

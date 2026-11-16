@@ -7,6 +7,7 @@ import { ChaseRig, OrbitRig } from './orbit.ts';
 import { looking, type Pose, type Rig, type RigId, type World } from './rig.ts';
 import { TrackRig } from './track.ts';
 import { ease } from '../../util/math.ts';
+import { is, which } from '../../util/keys.ts';
 
 export { RIGS, type RigId } from './rig.ts';
 
@@ -614,9 +615,9 @@ export class Cameras {
         if (!first) return;
         // Tilting and zooming adjust the view and leave it drifting; a tilt even keeps it framed on what was chosen.
         // Moving or turning it by hand takes it over.
-        const tilt = key === 'arrowup' || key === 'arrowdown';
-        const zoom = ['r', 'f', '+', '=', '-'].includes(key);
-        const steers = this.active === this.orbit || this.active === this.free || key.startsWith('arrow');
+        const tilt = which(key, 'orbit.turn') % 2 === 0; // (up and down: the turn's first and third)
+        const zoom = is(key, 'orbit.zoom');
+        const steers = this.active === this.orbit || this.active === this.free || is(key, 'orbit.turn');
         if (zoom || tilt || steers) this.told.taken(tilt ? 'tilt' : zoom ? 'zoom' : 'move');
       },
       shift: (on) => {

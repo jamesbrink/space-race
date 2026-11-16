@@ -256,8 +256,11 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   shortcut needs no guard of its own, and must not be given a way round this one.
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
-- The legend (bottom left, `legendMarkup` in `ui.ts`: one small table per rig) lists every key and gesture: keep it in step with the handlers
-  in `viewer/camera/input.ts` and each rig's `keys`. It is a "? Keys" tab until asked for, then the essentials, with the rest
+- Every key is one table, `src/util/keys.ts` (`KEYS`: what it is pressed as, what it does, where): a listener asks it
+  (`is`, `which`) and never compares a key itself, and the legends and the deck's buttons draw their caps and words from
+  it, so the two cannot drift (`tests/keys.test.mjs` holds the page to that). A new key is an entry there first.
+- The legend (bottom left, `legendMarkup` in `ui.ts`: one small table per rig) lists every key and gesture, its keys
+  drawn from that table and its gestures written beside them. It is a "? Keys" tab until asked for, then the essentials, with the rest
   behind "More" by purpose; a row wraps and is never cut short. The line under it is diagnostics: loop rate, frames drawn, triangles, draw calls,
   and each model's level of detail.
 - Selection has one rule: choosing a part flies to it; choosing an `inside` part also opens the

@@ -47,8 +47,8 @@ import {
   type Vec,
   Works,
 } from './model.ts';
-import { isTyping } from '../util/keys.ts';
 import { frameOf } from '../world/earthframe.ts';
+import { is, isTyping, modified } from '../util/keys.ts';
 
 export interface SoundHost {
   /** Where the ears are, in the scene's frame: the camera. */
@@ -164,8 +164,8 @@ export class Sound {
     for (const touch of TOUCHES) window.addEventListener(touch, wake, { capture: true, passive: true });
     window.addEventListener('keydown', (e) => {
       const typing = isTyping(e);
-      if (e.metaKey || e.ctrlKey || e.altKey || typing || e.repeat) return;
-      if (e.key.toLowerCase() === 'u') this.set(!this.enabled);
+      if (modified(e) || typing || e.repeat) return;
+      if (is(e, 'sound.toggle')) this.set(!this.enabled);
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) void this.ctx?.suspend();

@@ -40,6 +40,7 @@ import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
+import { is } from '../util/keys.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (`Flight.orbital` with an `ascent`): the deck (deck.ts) is the one every
@@ -477,7 +478,7 @@ export class OrbitDeck extends Deck {
 
   /** The lock's digits are keys of this kind's. */
   protected override extraKey(key: string): boolean {
-    if (!/^[0-9]$/.test(key)) return false;
+    if (!is(key, 'deck.code')) return false;
     this.digit(key);
     return true;
   }

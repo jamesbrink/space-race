@@ -28,6 +28,7 @@ import { tier } from '../viewer/tier.ts';
 import { dock, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
 import { type Sheet, sheet } from './sheet.ts';
 import { dot, legend } from './ui.ts';
+import { capsOf, doesOf, kbd, keyRows, padCaps, which } from '../util/keys.ts';
 
 /**
  * The Lineup's page (app/lineup.ts is what works it; app/lineup/scene.ts what it is laid over). Its panels are the
@@ -239,29 +240,23 @@ export class LineupUi {
       </footer>
 
       <aside class="legend-keys folded" aria-label="Keys and gestures">
-        <button class="legend-toggle" aria-expanded="false" title="Keys and gestures: show or hide (?)"><kbd>?</kbd><span>Keys</span><i class="chevron"></i></button>
+        <button class="legend-toggle" aria-expanded="false" title="Keys and gestures: show or hide (${capsOf('page.legend').join(' ')})">${kbd('page.legend')}<span>Keys</span><i class="chevron"></i></button>
         <div class="legend-body">
           <div class="clusters">
-            <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>turn · tilt</em></div>
-            <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-            <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>along the row</em></div>
-            <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
+            <div class="cluster"><span class="pad arrows">${padCaps('orbit.turn')}</span><em>turn · tilt</em></div>
+            <div class="cluster"><span class="pad pair">${padCaps('orbit.zoom')}</span><em>${doesOf('orbit.zoom')}</em></div>
+            <div class="cluster"><span class="pad wasd">${padCaps('lineup.along')}</span><em>${doesOf('lineup.along')}</em></div>
+            <div class="cluster"><span class="pad pair">${padCaps('orbit.rise')}</span><em>${doesOf('orbit.rise')}</em></div>
           </div>
           <dl>
             <div><dt>drag</dt><dd>turn the view</dd></div>
             <div><dt>right-drag · two fingers</dt><dd>slide along the row</dd></div>
             <div><dt>scroll · pinch</dt><dd>zoom to the pointer</dd></div>
             <div><dt>click a vehicle</dt><dd>go to it, and read it</dd></div>
-            <div><dt><kbd>N</kbd> <kbd>B</kbd></dt><dd>the next · the one before</dd></div>
-            <div><dt><kbd>O</kbd></dt><dd>open the chosen one’s gallery</dd></div>
-            <div><dt><kbd>X</kbd></dt><dd>stand another beside it, to compare</dd></div>
-            <div><dt><kbd>P</kbd></dt><dd>spacecraft alone · whole vehicles</dd></div>
-            <div><dt><kbd>G</kbd></dt><dd>people and heights, for scale</dd></div>
-            <div><dt><kbd>L</kbd></dt><dd>light · dark hall</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>C</kbd></dt><dd>camera: orbit · free</dd></div>
-            <div><dt><kbd>0</kbd> <kbd>Esc</kbd></dt><dd>back a step: to the whole row</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+            ${keyRows('lineup.next', 'lineup.open', 'lineup.pick', 'lineup.row', 'lineup.scale', 'lineup.light', 'page.cel')}
+            <div><dt>${kbd('cam.next')}</dt><dd>camera: orbit · free</dd></div>
+            <div><dt>${kbd('cam.home', 'lineup.back')}</dt><dd>${doesOf('lineup.back')}</dd></div>
+            ${keyRows('page.bare')}
           </dl>
         </div>
       </aside>
@@ -360,11 +355,11 @@ export class LineupUi {
     );
     this.q('.close').addEventListener('click', () => tuckPanel(!panel.classList.contains('tucked')));
     this.q('.tabs').addEventListener('keydown', (e) => {
-      const key = (e as KeyboardEvent).key;
-      if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
+      const step = which(e as KeyboardEvent, 'tabs.step');
+      if (step < 0) return;
       const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')].filter((t) => t.offsetParent !== null);
       const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      const next = tabs[(at + (key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
+      const next = tabs[(at + (step ? 1 : tabs.length - 1)) % tabs.length]!;
       this.tab(next.dataset.tab as Tab);
       next.focus();
     });

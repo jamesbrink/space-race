@@ -30,7 +30,7 @@ import {
   unseen,
   type Words,
 } from './pathmarks.ts';
-import { isTyping } from '../util/keys.ts';
+import { is, isTyping, modified } from '../util/keys.ts';
 
 /**
  * The predicted path, drawn: where the vehicle goes from here if nothing more is done (sim/predict.ts, or the deck's own
@@ -665,10 +665,9 @@ export class FlightPath {
     this.button?.addEventListener('click', () => this.show(!this.on));
     window.addEventListener('keydown', (e) => {
       const typing = isTyping(e);
-      if (!source.active || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing) return;
-      const key = e.key.toLowerCase();
-      if (key === 'j') this.show(!this.on); // (J: M is kept for the map)
-      if (key === 'k' && this.choosing()) this.setGuided(!this.guided);
+      if (!source.active || e.repeat || modified(e) || typing) return;
+      if (is(e, 'path.show')) this.show(!this.on); // (J: M is kept for the map)
+      if (is(e, 'path.choose') && this.choosing()) this.setGuided(!this.guided);
     });
     source.listen((sample, live) => {
       this.sample = sample;

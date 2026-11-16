@@ -37,8 +37,8 @@ import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
 import { Stage, type Thing, type WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
-import { isTyping } from '../util/keys.ts';
 import { scripted, unattended } from '../util/env.ts';
+import { is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
 
 /** What the address bar's fragment says is on show: the flight, which of its two places, and what there (address.ts). */
 const address = () => parseAddress(where());
@@ -199,8 +199,8 @@ stage.onLean = lookouts;
 stage.onSeat = lookouts;
 window.addEventListener('keydown', (e) => {
   const typing = isTyping(e);
-  if (!/^[1-9]$/.test(e.key) || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || ui.wheel.isOpen) return;
-  const n = Number(e.key) - 1;
+  const n = which(e, 'seat.lean');
+  if (n < 0 || e.repeat || typing || modified(e) || ui.wheel.isOpen) return;
   if (n >= stage.seats.lookouts().length) return;
   leanTo(n);
   e.preventDefault();
@@ -391,7 +391,7 @@ function thingWithin(node: string, thing: Thing): boolean {
   return false;
 }
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && told && !demo.active) {
+  if (is(e, 'page.back') && told && !demo.active) {
     told = null;
     callout.hide();
   }
@@ -491,7 +491,7 @@ function panelOnly(): void {
 window.addEventListener(
   'keydown',
   (e) => {
-    if (e.key !== 'Escape' || !stage.seats.lookingOut) return;
+    if (!is(e, 'page.back') || !stage.seats.lookingOut) return;
     stage.seats.leanTo(null);
     e.stopImmediatePropagation();
     e.preventDefault();
@@ -500,7 +500,7 @@ window.addEventListener(
 );
 window.addEventListener('keydown', (e) => {
   const typing = isTyping(e);
-  if (e.key.toLowerCase() !== 'p' || e.repeat || typing || e.metaKey || e.ctrlKey || e.altKey || stage.cameraMode !== 'onboard') return;
+  if (!is(e, 'seat.deck') || e.repeat || typing || modified(e) || stage.cameraMode !== 'onboard') return;
   prefs.set('deckAboard', !prefs.get('deckAboard'));
   panelOnly();
 });
@@ -583,7 +583,7 @@ function act(): void {
     list,
     (id) => perform(on, list.find((c) => c.id === id)!),
     () => stage.walk.release(),
-    'e',
+    'foot.act',
   );
 }
 
@@ -660,15 +660,15 @@ function stopWorking(): void {
   ui.setWalkNote(null);
   ui.setWorking(null);
 }
-const pushKey = (key: string): number => (key === 'w' || key === 'arrowup' ? 1 : key === 's' || key === 'arrowdown' ? -1 : 0);
+/** W (or up) runs the function on, S (or down) back: 1, -1, or 0 for any other key. */
+const pushKey = (e: KeyboardEvent): number => [1, -1][which(e, 'work.push')] ?? 0;
 window.addEventListener('keydown', (e) => {
-  if (!working || e.metaKey || e.ctrlKey || e.altKey) return;
-  const key = e.key.toLowerCase();
-  if (key === 'e') stopWorking();
-  else if (pushKey(key) && !e.repeat) noteWorking(stage.hands.push(working.model, working.node, working.fn, pushKey(key)));
+  if (!working || modified(e)) return;
+  if (is(e, 'work.done')) stopWorking();
+  else if (pushKey(e) && !e.repeat) noteWorking(stage.hands.push(working.model, working.node, working.fn, pushKey(e)));
 });
 window.addEventListener('keyup', (e) => {
-  if (working && pushKey(e.key.toLowerCase())) stage.hands.push(working.model, working.node, working.fn, 0);
+  if (working && pushKey(e)) stage.hands.push(working.model, working.node, working.fn, 0);
 });
 
 // with the mouse captured a click lands on no button: it chooses what the wheel is pointing at
@@ -677,16 +677,16 @@ document.addEventListener('mousedown', () => {
 });
 stage.onHome = () => (selected ? select(null) : show(current.id));
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && selected) select(null);
+  if (is(e, 'page.back') && selected) select(null);
   // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
   const typing = isTyping(e);
   // Y takes the skin off whatever is on show that can be opened (ModelDef.cutaway), and puts it back: cut open where it
   // stands, the whole skin off the vehicle in flight, from outside it or from its seat
-  if (e.key.toLowerCase() === 'y' && ready && !typing && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if (is(e, 'cut.toggle') && ready && !typing && !e.repeat && !modified(e)) {
     if (current.cutaway && !stage.walk.active && !gallery.active) cut(!stage.cutaway);
     return;
   }
-  if (e.key.toLowerCase() === 'v' && ready && !typing && !cockpit.active && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  if (is(e, 'walk.go') && ready && !typing && !cockpit.active && !modified(e)) {
     // with several figures to walk as, V goes on to the next of them, and back to the camera after the last
     const walkers = flight.models.filter((m) => m.walker).map((m) => m.id);
     const next = walkers[walkers.indexOf(stage.onFoot.walkingAs ?? '') + 1];
@@ -906,7 +906,7 @@ for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermo
     (e) => {
       // the mouse moving is someone there: the show does not start under them (it does not end a show that is on: a press does)
       if (e.type === 'pointermove' && demo.active) return;
-      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      if (e instanceof KeyboardEvent && modifierOnly(e)) return;
       demo.stop(Boolean((e.target as HTMLElement | null)?.closest?.('.timebar')));
     },
     { capture: true, passive: true },

@@ -14,6 +14,7 @@ import type { Run } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
+import { is, which } from '../util/keys.ts';
 
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
@@ -601,8 +602,9 @@ export class Cockpit extends Deck {
 
   /** An engine with a lever: the up and down arrows move it a notch, Z puts it full. */
   protected override extraKey(key: string, e: KeyboardEvent): boolean {
-    if (!this.lever || !['arrowup', 'arrowdown', 'z'].includes(key)) return false;
-    this.setLever(key === 'z' ? this.lever.most : this.lever.at + (key === 'arrowup' ? NOTCH : -NOTCH));
+    const notch = which(key, 'deck.lever');
+    if (!this.lever || (notch < 0 && !is(key, 'deck.full'))) return false;
+    this.setLever(notch < 0 ? this.lever.most : this.lever.at + (notch === 0 ? NOTCH : -NOTCH));
     e.preventDefault();
     e.stopPropagation();
     return true;

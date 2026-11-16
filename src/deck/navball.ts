@@ -2,7 +2,7 @@ import { prefs } from '../app/prefs.ts';
 import { type Quat, turn } from '../sim/rigid.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { cross, DEG, dot, enuAxes, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { isTyping } from '../util/keys.ts';
+import { is, isTyping, modified } from '../util/keys.ts';
 
 /**
  * The navball: the vehicle's attitude against the local horizon, and on it the directions that
@@ -256,10 +256,9 @@ export class Navball {
     this.button = button ?? null;
     window.addEventListener('keydown', (e) => {
       const typing = isTyping(e);
-      if (!source.active || e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing) return;
-      const key = e.key.toLowerCase();
-      if (key === 'i') this.tuck(!this.tucked);
-      if (key === 'o') this.setFrame(this.mode === 'surface' ? 'orbit' : 'surface');
+      if (!source.active || e.repeat || modified(e) || typing) return;
+      if (is(e, 'navball.show')) this.tuck(!this.tucked);
+      if (is(e, 'navball.frame')) this.setFrame(this.mode === 'surface' ? 'orbit' : 'surface');
     });
     new ResizeObserver(() => this.draw(true)).observe(this.canvas);
     source.listen((s) => {

@@ -1,5 +1,5 @@
 import { wheelZoom } from './maths.ts';
-import { isTyping } from '../../util/keys.ts';
+import { CAMERA_HELD, is, isTyping, keyOf, keysOf, modified } from '../../util/keys.ts';
 
 /**
  * The hands: what a mouse, a trackpad, fingers and keys do to the view, read off the page and handed
@@ -48,7 +48,9 @@ const FLING_LEAST = 220;
 const TWIST_SLOP = 0.1;
 
 /** The keys the camera reads while held. The legend in the corner of the page (ui.ts) lists them. */
-export const KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f', '+', '=', '-', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+
+/** The keys that are another's while it has them (the flight flown by hand steers on W A S D Q E: deck.steer). */
+const SPOKEN = keysOf('deck.steer');
 
 export function listen(canvas: HTMLElement, hands: Hands): void {
   canvas.style.touchAction = 'none'; // the page does not scroll or zoom under a finger on the view
@@ -156,21 +158,21 @@ export function listen(canvas: HTMLElement, hands: Hands): void {
   });
 
   window.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
+    const key = keyOf(e);
     hands.shift(e.shiftKey);
     const el = e.target as HTMLElement;
     const typing = isTyping(e);
-    const widget = key.startsWith('arrow') && el.closest?.('[role=tablist], input');
-    if (e.metaKey || e.ctrlKey || e.altKey || typing || widget || !hands.on()) return;
-    if (hands.spoken() && 'wasdqe'.includes(key)) return;
-    if (key === '0') return hands.home(); // 0, since a laptop has no Home key
-    if (!KEYS.has(key)) return;
+    const widget = is(key, 'orbit.turn') && el.closest?.('[role=tablist], input');
+    if (modified(e) || typing || widget || !hands.on()) return;
+    if (hands.spoken() && SPOKEN.has(key)) return;
+    if (is(key, 'cam.home')) return hands.home(); // 0, since a laptop has no Home key
+    if (!CAMERA_HELD.has(key)) return;
     e.preventDefault();
     hands.key(key, true, !e.repeat);
   });
   window.addEventListener('keyup', (e) => {
     hands.shift(e.shiftKey);
-    hands.key(e.key.toLowerCase(), false, false);
+    hands.key(keyOf(e), false, false);
   });
   window.addEventListener('blur', () => {
     points.clear();

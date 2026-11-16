@@ -1,3 +1,4 @@
+import { is, type KeyName, modified, which } from '../util/keys.ts';
 /**
  * A radial menu: a few choices set round a centre, picked by the direction you push toward
  * them. It is one component, used wherever a handful of verbs apply to one thing (today: what a
@@ -98,7 +99,7 @@ export class Wheel {
   private onPick: (id: string) => void = () => {};
   private onClose: () => void = () => {};
   /** The key that opened it also shuts it. */
-  private toggleKey = '';
+  private toggleKey: KeyName | null = null;
   private openedAt = 0;
 
   constructor(parent: HTMLElement) {
@@ -128,18 +129,25 @@ export class Wheel {
     window.addEventListener(
       'keydown',
       (e) => {
-        if (!this.isOpen || e.metaKey || e.ctrlKey || e.altKey) return;
-        const key = e.key.toLowerCase();
-        const arrows: Record<string, [number, number]> = { arrowup: [0, -1], arrowright: [1, 0], arrowdown: [0, 1], arrowleft: [-1, 0] };
-        if (arrows[key] && this.listed)
-          this.point((this.at + (arrows[key][0] + arrows[key][1] > 0 ? 1 : this.items.length - 1)) % this.items.length);
-        else if (arrows[key]) this.aim(...arrows[key]);
-        else if (key === 'enter' || key === ' ') this.pick(this.at);
-        else if (key === 'tab') this.point((this.at + (e.shiftKey ? this.items.length - 1 : 1)) % this.items.length);
-        else if (/^[1-9]$/.test(key) && Number(key) <= this.items.length) this.pick(Number(key) - 1);
-        else if (key === this.toggleKey) this.close();
-        else if (key !== 'escape') return; // Escape is left to whoever has the controls: it may arrive as a lost pointer instead
-        if (key !== 'escape') {
+        if (!this.isOpen || modified(e)) return;
+        // (the arrows in the table's order: up, left, down, right)
+        const arrow = (
+          [
+            [0, -1],
+            [-1, 0],
+            [0, 1],
+            [1, 0],
+          ] as [number, number][]
+        )[which(e, 'wheel.aim')];
+        const digit = which(e, 'wheel.choose');
+        if (arrow && this.listed) this.point((this.at + (arrow[0] + arrow[1] > 0 ? 1 : this.items.length - 1)) % this.items.length);
+        else if (arrow) this.aim(...arrow);
+        else if (is(e, 'wheel.pick')) this.pick(this.at);
+        else if (is(e, 'wheel.step')) this.point((this.at + (e.shiftKey ? this.items.length - 1 : 1)) % this.items.length);
+        else if (digit >= 0 && digit < this.items.length) this.pick(digit);
+        else if (this.toggleKey && is(e, this.toggleKey)) this.close();
+        else if (!is(e, 'wheel.close')) return; // Escape is left to whoever has the controls: it may arrive as a lost pointer instead
+        if (!is(e, 'wheel.close')) {
           e.preventDefault();
           e.stopImmediatePropagation();
         }
@@ -159,9 +167,9 @@ export class Wheel {
 
   /**
    * Show these choices under a title. `onPick` gets the id chosen; `onClose` is called however it
-   * shuts, chosen or not, after `onPick`. `toggleKey` (lower case) is the key that opened it.
+   * shuts, chosen or not, after `onPick`. `toggleKey` is the key that opened it (keys.ts), which shuts it again.
    */
-  open(title: string, items: WheelItem[], onPick: (id: string) => void, onClose: () => void, toggleKey = ''): void {
+  open(title: string, items: WheelItem[], onPick: (id: string) => void, onClose: () => void, toggleKey: KeyName | null = null): void {
     if (!items.length) return;
     this.items = items;
     this.onPick = onPick;

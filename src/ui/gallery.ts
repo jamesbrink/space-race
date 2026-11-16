@@ -34,8 +34,23 @@ import { Stage } from '../viewer/stage.ts';
 import { asStudio, type Studio } from '../viewer/studio.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
 import { smoothstep } from '../util/math.ts';
-import { isTyping } from '../util/keys.ts';
 import { scripted, unattended } from '../util/env.ts';
+import {
+  CAMERA_HELD,
+  capsOf,
+  doesOf,
+  is,
+  isTyping,
+  kbd,
+  kbdOf,
+  keyOf,
+  keyRows,
+  keysOf,
+  modified,
+  modifierOnly,
+  padCaps,
+  which,
+} from '../util/keys.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -175,24 +190,7 @@ const TABS = ['View', 'Parts', 'Specs', 'Motors', 'History'] as const;
 /** What the history tells, as the gallery is given it. */
 const HISTORY = { milestones: MILESTONES, stories: STORIES, people: PEOPLE, programmes: PROGRAMMES };
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
-const CAMERA_KEYS = new Set([
-  'w',
-  'a',
-  's',
-  'd',
-  'q',
-  'e',
-  'r',
-  'f',
-  '+',
-  '=',
-  '-',
-  'arrowup',
-  'arrowdown',
-  'arrowleft',
-  'arrowright',
-  '0',
-]);
+const CAMERA_KEYS = new Set([...CAMERA_HELD, ...keysOf('cam.home')]);
 /** Seconds without a touch before the gallery shows itself, the first time and after it has been stopped. */
 const IDLE_FIRST = 40;
 const IDLE_AGAIN = 150;
@@ -502,29 +500,27 @@ export class Gallery {
       </footer>
 
       <aside class="legend-keys folded" aria-label="Keys and gestures">
-        <button class="legend-toggle" aria-expanded="false" title="Keys and gestures: show or hide (?)"><kbd>?</kbd><span>Keys</span><i class="chevron"></i></button>
+        <button class="legend-toggle" aria-expanded="false" title="Keys and gestures: show or hide (${capsOf('page.legend').join(' ')})">${kbd('page.legend')}<span>Keys</span><i class="chevron"></i></button>
         <div class="legend-body">
           <div class="clusters">
-            <div class="cluster"><span class="pad arrows"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>turn · tilt</em></div>
-            <div class="cluster"><span class="pad pair"><kbd>R</kbd><kbd>F</kbd></span><em>zoom</em></div>
-            <div class="cluster"><span class="pad wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><em>slide</em></div>
-            <div class="cluster"><span class="pad pair"><kbd>E</kbd><kbd>Q</kbd></span><em>up · down</em></div>
+            <div class="cluster"><span class="pad arrows">${padCaps('orbit.turn')}</span><em>turn · tilt</em></div>
+            <div class="cluster"><span class="pad pair">${padCaps('orbit.zoom')}</span><em>${doesOf('orbit.zoom')}</em></div>
+            <div class="cluster"><span class="pad wasd">${padCaps('gallery.slide')}</span><em>${doesOf('gallery.slide')}</em></div>
+            <div class="cluster"><span class="pad pair">${padCaps('orbit.rise')}</span><em>${doesOf('orbit.rise')}</em></div>
           </div>
           <dl>
             <div><dt>drag</dt><dd>turn it</dd></div>
             <div><dt>scroll · pinch</dt><dd>zoom to the pointer</dd></div>
             <div><dt>click a part</dt><dd>go to it</dd></div>
             <div><dt>click a window</dt><dd>look inside</dd></div>
-            <div><dt><kbd>N</kbd> <kbd>B</kbd></dt><dd>next part · the one before</dd></div>
-            ${m.seats?.length ? `<div><dt><kbd>C</kbd></dt><dd>sit in the cabin${m.seats.length > 1 ? `: each of its ${m.seats.length} seats in turn, then out` : ', and out again'}</dd></div>` : ''}
-            ${seen.length ? `<div><dt>${seen.map((_, i) => `<kbd>${i + 1}</kbd>`).join(' ')}</dt><dd>from the seat, lean to: ${esc(seen.map((l) => l.name.toLowerCase()).join(' · '))}</dd></div>` : ''}
-            ${m.seats?.length ? '<div><dt><kbd>0</kbd></dt><dd>from the seat, look ahead</dd></div><div><dt><kbd>Esc</kbd></dt><dd>from the seat, sit back · get up</dd></div>' : ''}
-            ${m.cutaway ? '<div><dt><kbd>Y</kbd></dt><dd>cutaway</dd></div>' : ''}
-            <div><dt><kbd>G</kbd></dt><dd>a person for scale</dd></div>
-            <div><dt><kbd>L</kbd></dt><dd>light · dark room</dd></div>
-            <div><dt><kbd>T</kbd></dt><dd>cel shading</dd></div>
-            <div><dt><kbd>0</kbd> <kbd>Esc</kbd></dt><dd>back to the whole of it</dd></div>
-            <div><dt><kbd>H</kbd></dt><dd>hide panels</dd></div>
+            <div><dt>${kbd('gallery.next')}</dt><dd>${doesOf('gallery.next')}</dd></div>
+            ${m.seats?.length ? `<div><dt>${kbd('gallery.sit')}</dt><dd>${doesOf('gallery.sit')}${m.seats.length > 1 ? `: each of its ${m.seats.length} seats in turn, then out` : ', and out again'}</dd></div>` : ''}
+            ${seen.length ? `<div><dt>${kbdOf(capsOf('seat.lean').slice(0, seen.length))}</dt><dd>from the seat, ${doesOf('seat.lean')}: ${esc(seen.map((l) => l.name.toLowerCase()).join(' · '))}</dd></div>` : ''}
+            ${m.seats?.length ? `<div><dt>${kbd('cam.home')}</dt><dd>from the seat, look ahead</dd></div><div><dt>${kbd('gallery.back')}</dt><dd>from the seat, sit back · get up</dd></div>` : ''}
+            ${m.cutaway ? `<div><dt>${kbd('gallery.cut')}</dt><dd>${doesOf('gallery.cut')}</dd></div>` : ''}
+            ${keyRows('gallery.scale', 'gallery.light', 'page.cel')}
+            <div><dt>${kbd('cam.home', 'gallery.back')}</dt><dd>${doesOf('gallery.back')}</dd></div>
+            ${keyRows('page.bare')}
           </dl>
         </div>
       </aside>
@@ -678,11 +674,11 @@ export class Gallery {
       this.apartTo = this.apart > 0 ? 0 : 1;
     });
     this.q('.tabs').addEventListener('keydown', (e) => {
-      const key = (e as KeyboardEvent).key;
-      if (key !== 'ArrowRight' && key !== 'ArrowLeft') return;
+      const step = which(e as KeyboardEvent, 'tabs.step');
+      if (step < 0) return;
       const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-tab]')];
       const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      const next = tabs[(at + (key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]!;
+      const next = tabs[(at + (step ? 1 : tabs.length - 1)) % tabs.length]!;
       this.tab(next.dataset.tab!);
       next.focus();
     });
@@ -812,7 +808,7 @@ export class Gallery {
         (e) => {
           if (!this.open) return;
           if (e.type === 'pointermove' && this.touring) return;
-          if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+          if (e instanceof KeyboardEvent && modifierOnly(e)) return;
           this.idle = 0;
           if (this.touring && !this.host.covered()) this.endShow();
         },
@@ -830,31 +826,31 @@ export class Gallery {
       (e) => {
         if (!this.open) return;
         const typing = isTyping(e);
-        if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-        const key = e.key.toLowerCase();
-        if (CAMERA_KEYS.has(key)) return;
+        if (modified(e) || typing) return;
+        if (CAMERA_KEYS.has(keyOf(e))) return;
         e.stopImmediatePropagation();
         if (this.host.covered() || e.repeat || !this.ready) return;
         const seated = this.seat !== null;
-        if (key === 'escape' && seated) {
+        const lean = which(e, 'seat.lean');
+        const next = which(e, 'gallery.next');
+        if (is(e, 'gallery.back') && seated) {
           // (from the seat: back from a lean first, then up out of the seat)
           if (this.made!.stage.seats.leaning !== null) this.leanTo(null);
           else this.sitIn(null);
-        } else if (key === 'escape') this.select(null);
-        else if (key === 'c') this.camera();
-        else if (seated && /^[1-9]$/.test(key)) this.leanTo(Number(key) - 1);
-        else if (key === 'n') this.step(1);
-        else if (key === 'b') this.step(-1);
+        } else if (is(e, 'gallery.back')) this.select(null);
+        else if (is(e, 'gallery.sit')) this.camera();
+        else if (seated && lean >= 0) this.leanTo(lean);
+        else if (next >= 0) this.step(next ? -1 : 1);
         // (Y, as everywhere a skin comes off; X is kept, having been the gallery's key for it)
-        else if ((key === 'y' || key === 'x') && this.vehicle.cutaway) this.setCutaway(!this.cut, true);
-        else if (key === 'g') this.setMeasure(!this.studio.measured);
-        else if (key === 'l') this.setLight(this.studio.tone !== 'light');
-        else if (key === 't') this.setCel(!prefs.get('cel'));
-        else if (key === 'h') {
+        else if (is(e, 'gallery.cut') && this.vehicle.cutaway) this.setCutaway(!this.cut, true);
+        else if (is(e, 'gallery.scale')) this.setMeasure(!this.studio.measured);
+        else if (is(e, 'gallery.light')) this.setLight(this.studio.tone !== 'light');
+        else if (is(e, 'page.cel')) this.setCel(!prefs.get('cel'));
+        else if (is(e, 'page.bare')) {
           const bare = !root.classList.contains('bare');
           root.classList.toggle('bare', bare);
           prefs.set('bare', bare);
-        } else if (e.key === '?') this.showKeys(keys.classList.contains('folded'));
+        } else if (is(e, 'page.legend')) this.showKeys(keys.classList.contains('folded'));
       },
       true,
     );

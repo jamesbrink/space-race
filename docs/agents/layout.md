@@ -71,7 +71,7 @@ src/
   measure.ts                          Confidence and Measure, and doc, derived, estimated: a figure with how far it can be trusted (imports nothing)
   util/math.ts                        smoothstep (GLSL's order), ease (smootherstep), clamp, lerp
   util/dom.ts                         esc, and `$(root, selector)`: an element the page's own markup must have, or an error naming it
-  util/keys.ts                        isTyping: whether a key is going into a field (a range input is not one)
+  util/keys.ts                        every key as data (`KEYS`: pressed as, does, where); `is`/`which` for the listeners, caps and words for the legends; isTyping
   util/env.ts                         scripted, unattended, reducedMotion: what the page is being run by and asked for
   app/enter.ts                        the way in: front.ts for an address that names nothing, main.ts for a flight with a site, only.ts for one that is only its vehicle
   app/debug.ts                        the debug handle, `window.sr`: what each page puts on it (a flight's, the vehicle-only, the front page, the Lineup), typed, installed in one place

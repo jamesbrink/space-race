@@ -4,8 +4,8 @@ import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 import { type Driving, type Sounds, silent } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
-import { isTyping } from '../../util/keys.ts';
 import { G0 } from '../../world/bodies.ts';
+import { is, isTyping, keyOf, keysOf, modified } from '../../util/keys.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -976,7 +976,8 @@ export interface WalkHost {
   locked(on: boolean): void;
 }
 
-const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ']);
+/** The keys the walker reads as held: walking, turning, running, jumping. */
+const WALK_KEYS = keysOf('foot.walk', 'foot.turn', 'foot.run', 'foot.jump');
 /** Radians of turn per pixel of mouse or finger. */
 const LOOK = 0.0023;
 /** Radians per second the left and right arrows turn the view. */
@@ -1171,19 +1172,19 @@ export class Walker {
     this.rest = camera.fov;
     window.addEventListener('keydown', (e) => {
       if (!this.active) return;
-      const key = e.key.toLowerCase();
+      const key = keyOf(e);
       const typing = isTyping(e);
-      if (e.metaKey || e.ctrlKey || e.altKey || typing) return;
-      if (key === 'escape') return this.modal ? this.modal.cancel() : this.host.leave();
+      if (modified(e) || typing) return;
+      if (is(key, 'foot.leave')) return this.modal ? this.modal.cancel() : this.host.leave();
       if (this.modal) return; // the keys are the menu's
-      if (key === 'e' && !e.repeat) return this.down ? undefined : this.host.act();
-      if (key === 'c' && !e.repeat) return this.setThird(!this.third);
+      if (is(key, 'foot.act') && !e.repeat) return this.down ? undefined : this.host.act();
+      if (is(key, 'foot.view') && !e.repeat) return this.setThird(!this.third);
       if (!WALK_KEYS.has(key)) return;
       e.preventDefault();
-      if (key === ' ' && !e.repeat) this.jump();
+      if (is(key, 'foot.jump') && !e.repeat) this.jump();
       this.held.add(key);
     });
-    window.addEventListener('keyup', (e) => this.held.delete(e.key.toLowerCase()));
+    window.addEventListener('keyup', (e) => this.held.delete(keyOf(e)));
     window.addEventListener('blur', () => this.held.clear());
     // captured, the mouse turns the head
     document.addEventListener('mousemove', (e) => {
