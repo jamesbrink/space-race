@@ -20,6 +20,7 @@ import { autopilot, blend, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { stack, spacecraft, guided, apparentBy } from '../src/sim/fliers.ts';
 import { fly, sampleAt } from '../src/sim/fly.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { predict, propagate } from '../src/sim/predict.ts';
 import { Sheds } from '../src/sim/shed.ts';
 import { flyWhole, published, steer } from '../src/sim/staged.ts';
@@ -235,7 +236,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= o.retro.on.value - 2400) : null;
     const from = late ?? sep;
     const start = { t: from.t, r: from.r, v: from.v };
-    const job = propagate(spacecraft(o, dated, site, sea, start), start, where);
+    const job = propagate(spacecraft(planOfOrbital(o), dated, site, sea, start), start, where);
     job.run();
     put(flight, 'predict:spacecraft', pathFigures(job.result));
   }

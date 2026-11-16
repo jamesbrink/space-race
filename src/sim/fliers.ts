@@ -32,11 +32,12 @@ import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } f
 import { airDrag, blowing, blowOf } from './air.ts';
 import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
-import { Descent, type DescentContext } from './descent.ts';
+import { Descent, type DescentContext, type DownBody, downOf } from './descent.ts';
 import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, type DescentBody, type DescentFlown, type DescentHands, type OrbitalFlight, shipPush } from './orbital.ts';
+import { aimOf, type DescentFlown, type DescentHands, type OrbitalFlight, shipOf, shipPush } from './orbital.ts';
+import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
 import { planOfOrbital } from './planof.ts';
@@ -244,7 +245,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
 }
 
 /**
- * A spacecraft alone (`OrbitalFlight`: Vostok 1's ship) from any instant after it has parted: the coast's forces
+ * A spacecraft alone (an orbital plan's: Vostok 1's ship) from any instant after it has parted: the coast's forces
  * (orbital.ts `shipPush`: the air on the entry body, the whole ship's mass until the modules part), the braking burn as the
  * plan has it (the timer's, a hand's, or none: `on` at or past `Number.MAX_SAFE_INTEGER` is none), its line fixed as it
  * lights (`aimOf`), and the modules' parting; and it stops where its pilot leaves, at the ejection height, burn or no burn,
@@ -253,7 +254,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
  * state and the Sun then, `aimOf`); without it, the line it would have lit along from the state at the start.
  */
 export function spacecraft(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   frame: EarthFrame,
   site: Geodetic,
   seaLevel: number,
@@ -262,9 +263,10 @@ export function spacecraft(
 ): Flier {
   // (the Sun is of date: turned into the frame the state is in)
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
-  const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
+  const ship = shipOf(plan);
+  const [on, off, parted] = [ship.on, ship.off, ship.parted];
   const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
-  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(planOfOrbital(o), r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(plan, r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
@@ -280,13 +282,13 @@ export function spacecraft(
     get chute() {
       return down?.chute ?? false;
     },
-    radius: o.orbit.radius.value,
+    radius: ship.orbit.radius.value,
     ground: (here) => (down ? down.ground(here) : ground(here)),
     burning: () => !down && burning,
     push: (at, p, u, altitude) =>
-      down ? down.push(at, p, u, altitude) : shipPush(planOfOrbital(o), since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+      down ? down.push(at, p, u, altitude) : shipPush(plan, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
     next: (t) => (down ? down.next(t) : after(marks, t)),
-    below: () => (down ? down.below() : o.ejection.altitude.value),
+    below: () => (down ? down.below() : ship.floor),
     settle(t, r, v, altitude, falling) {
       down?.settle?.(t, r, v, altitude, falling);
     },
@@ -294,7 +296,7 @@ export function spacecraft(
       if (down) return down.arrive(t, r, v, altitude, by);
       if (by === 'height') {
         if (!options.descend) return { end: true };
-        down = descending(o, frame, seaLevel, { t }, options.descend);
+        down = descending(plan, frame, seaLevel, { t }, options.descend);
         return down.arrive(t, r, v, altitude, 'time');
       }
       since = t;
@@ -317,7 +319,7 @@ export function spacecraft(
   };
 }
 
-/** What a prediction of a descent follows: the body (`DescentRecord.bodies[].id`), the hands' commands, and the run, for a start part-way down. */
+/** What a prediction of a descent follows: the body (`Down.bodies[].id`, descent.ts), the hands' commands, and the run, for a start part-way down. */
 export interface Descend {
   follow: string;
   hands?: DescentHands;
@@ -333,24 +335,24 @@ export interface Descend {
  * over, everything is as flyDown begins it; begun part-way down, each body is as the run had it at its last change
  * before the start (`DescentFlown.states`). Down to the descent's ground.
  */
-export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, start: { t: number }, options: Descend): Flier {
-  const d = o.descent;
-  if (!d) throw new Error('this orbital record has no `descent`');
+export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number, start: { t: number }, options: Descend): Flier {
+  const d = downOf(plan);
+  if (!d) throw new Error('this orbital plan has no descent');
   const [first, ...rest] = d.bodies;
   if (!first) throw new Error('a descent needs its entry body');
   const given = Object.values(options.hands?.given ?? {});
   const switched = (options.hands?.switched ?? []).map((x) => x.t);
-  const parted = o.entry.separation.value;
-  let handover: { body: DescentBody; t: number; s: { r: Vec3; v: Vec3 } } | null = null;
+  const parted = d.parted;
+  let handover: { body: DownBody; t: number; s: { r: Vec3; v: Vec3 } } | null = null;
   const ctx: DescentContext = {
-    o,
+    down: d,
     frame,
     seaLevel,
     ...(options.hands ? { hands: options.hands } : {}),
     ejected: { at: Number.NaN },
     loose: (event, t, s) => {
       for (const body of rest) {
-        if (body.id !== options.follow || !(body.with ?? ['ejection']).includes(event)) continue;
+        if (body.id !== options.follow || !body.with.includes(event)) continue;
         // (thrown clear against its motion through the air, as flyDown throws it)
         const wind = flying.airOf(s);
         const speed = length(wind);
@@ -380,8 +382,8 @@ export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number
     get chute() {
       return flying.filling !== null || flying.kept.size > 0;
     },
-    radius: o.orbit.radius.value,
-    ground: () => d.ground.value,
+    radius: shipOf(plan).orbit.radius.value,
+    ground: () => d.ground,
     burning: () => false,
     push: (t, r, v) => flying.push(s(r, v), t),
     next(t) {
@@ -389,7 +391,7 @@ export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number
       const marks = [...given, ...switched, parted, ...(f ? [f.at + f.fills] : [])];
       if (Number.isFinite(ctx.ejected.at))
         flying.body.chutes.forEach((c, i) => {
-          if (!flying.out.has(i) && c.after) marks.push(ctx.ejected.at + c.after.value);
+          if (!flying.out.has(i) && c.after !== undefined) marks.push(ctx.ejected.at + c.after);
         });
       return after(
         marks.filter((x) => Number.isFinite(x)).sort((a, b) => a - b),
@@ -413,7 +415,7 @@ export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number
       fresh = false;
       const events = marked(before);
       if (!handover) return { events };
-      const h = handover as { body: DescentBody; t: number; s: { r: Vec3; v: Vec3 } };
+      const h = handover as { body: DownBody; t: number; s: { r: Vec3; v: Vec3 } };
       handover = null;
       flying = new Descent(ctx, h.body, false, t);
       begin(flying, h.s, dot(flying.airOf(h.s), h.s.r) < 0);
@@ -658,7 +660,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
         if (p.step.kind === 'separate' && p.step.stage === last) {
           events.push('separation');
           since = t;
-          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: u });
+          alone = spacecraft(planOfOrbital(now.plan), v.frame, site, seaLevel, { t, r, v: u });
           const then = alone.arrive(t, r, u, altitude, 'time');
           return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
         }

@@ -21,7 +21,7 @@ import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, s
 import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
-import { Descent, type DescentContext, type DescentSnapshot } from './descent.ts';
+import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import type { Action, AeroDef, EventDef, FlightPlan, Hold } from './plan.ts';
 import { planOfOrbital } from './planof.ts';
 import { along } from './fly.ts';
@@ -439,17 +439,17 @@ export interface DescentFlown {
  * the distance between the first two, m.
  */
 export function flyDown(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   frame: EarthFrame,
   seaLevel: number,
   from: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
 ): DescentFlown {
-  const d = o.descent;
-  if (!d) throw new Error('this orbital record has no `descent`');
+  const d = downOf(plan);
+  if (!d) throw new Error('this orbital plan has no descent');
   const spin = frame.spin;
-  const ground = d.ground.value;
-  const parted = o.entry.separation.value;
+  const ground = d.ground;
+  const parted = d.parted;
   const given = hands?.given ?? {};
   const landed: Record<string, Landed> = {};
   const tracks: Record<string, { t: number; r: Vec3; v: Vec3 }[]> = {};
@@ -467,10 +467,10 @@ export function flyDown(
   if (!first) throw new Error('a descent needs its entry body');
   const loose = new Set<string>();
   /** The bodies an event sets loose from the first, each from its state then, thrown clear against its motion through the air. */
-  const queue: { body: DescentBody; t: number; s: State }[] = [{ body: first, t: from.t, s: { r: from.r, v: from.v } }];
+  const queue: { body: DownBody; t: number; s: State }[] = [{ body: first, t: from.t, s: { r: from.r, v: from.v } }];
   const letLoose = (event: string, t: number, s: State) => {
     for (const body of rest) {
-      if (loose.has(body.id) || !(body.with ?? ['ejection']).includes(event)) continue;
+      if (loose.has(body.id) || !body.with.includes(event)) continue;
       loose.add(body.id);
       const wind = airOf(s);
       const speed = length(wind);
@@ -481,7 +481,7 @@ export function flyDown(
   // the instants a hand gave, and the modules' parting, which a step ends on
   const cuts = [...Object.values(given), parted].filter(Number.isFinite).sort((p, q) => p - q);
   const ctx: DescentContext = {
-    o,
+    down: d,
     frame,
     seaLevel,
     ...(hands ? { hands } : {}),
@@ -770,11 +770,13 @@ export interface Ship {
   orbit: NonNullable<NonNullable<FlightPlan['record']>['orbit']>;
   /** The spacecraft in orbit, kg. */
   mass: number;
-  /** The burn lit and cut, the body it is on let go, the height what comes down is let loose at (`coastOf`), s and m. */
+  /** The burn lit and cut, the body it is on let go, the height what comes down is let loose at, and the events of the last two (`coastOf`). */
   on: number;
   off: number;
   parted: number;
   floor: number;
+  parting: string | null;
+  loose: string | null;
   /** The impulse the record's coast flies, m/s, evenly from `on` to `off`, along `aim`. */
   flown: number;
   aim: Extract<Hold, { aim: unknown }>;
@@ -790,7 +792,7 @@ const ships = new WeakMap<FlightPlan, Ship>();
  * body it is on let go, and the height at which what comes down is let loose after that (the event set off by height once
  * the parting has happened). Never: the largest safe integer, as a plan given up has it, or Infinity.
  */
-export function coastOf(plan: FlightPlan): { on: number; off: number; parted: number; floor: number } {
+export function coastOf(plan: FlightPlan): Coast {
   const c = plan.craft[0]!;
   const timeOf = (e: EventDef | undefined): number => {
     const w = e?.when.find((x) => 'time' in x);
@@ -808,7 +810,19 @@ export function coastOf(plan: FlightPlan): { on: number; off: number; parted: nu
     off: timeOf(burn && doing((a) => 'cut' in a && a.cut === burn.id)),
     parted: timeOf(parting),
     floor: height && 'height' in height ? height.height : Number.NEGATIVE_INFINITY,
+    parting: parting?.id ?? null,
+    loose: down?.id ?? null,
   };
+}
+export interface Coast {
+  /** The burn lit and cut, the body it is on let go, the height what comes down is let loose at, s and m. */
+  on: number;
+  off: number;
+  parted: number;
+  floor: number;
+  /** The events that let the burn's body go and that set what comes down loose at `floor`, by id. */
+  parting: string | null;
+  loose: string | null;
 }
 
 /**

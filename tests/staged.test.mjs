@@ -303,7 +303,7 @@ for (const f of flown) {
     const sep = published(o, whole.ascent.separation);
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= o.retro.on.value - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
-    const job = propagate(spacecraft(o, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
+    const job = propagate(spacecraft(planOfOrbital(o), dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
     job.run();
     const p = job.result;
     assert.equal(p.outcome, 'impact');
@@ -344,7 +344,7 @@ for (const f of flown) {
     assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
     const from = { t: mid.t, r: mid.r, v: mid.v };
     const within = (options) => {
-      const j = propagate(spacecraft(o, dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
+      const j = propagate(spacecraft(planOfOrbital(o), dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
       j.run();
       return j.result.impact;
     };

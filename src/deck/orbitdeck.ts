@@ -1,6 +1,7 @@
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from '../sim/orbital.ts';
+import { planOfOrbital } from '../sim/planof.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import { apart, Sheds } from '../sim/shed.ts';
@@ -274,7 +275,7 @@ export class OrbitDeck extends Deck {
     const descend = first
       ? { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } }
       : {};
-    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
+    return propagate(spacecraft(planOfOrbital(plan), this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
   }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under

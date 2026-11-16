@@ -78,7 +78,7 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const s = stateOver(frame, site, 300);
   const air = airAt(frame, s.r, s.v, s.t, sea);
   // the spacecraft alone, its engine not lit: the coast's own push (orbital.ts shipPush, which flyOrbit flies)
-  const ship = spacecraft(o, frame, site, sea, s);
+  const ship = spacecraft(planOfOrbital(o), frame, site, sea, s);
   same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(planOfOrbital(o), s.t, air.wind, air.altitude, null), 'the spacecraft');
   // the stack with its engines stopped: the ascent's drag area for the shape it has, over its mass
   const gone = o.stages[0].separation.value;

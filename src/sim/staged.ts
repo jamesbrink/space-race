@@ -697,7 +697,7 @@ export function flyWhole(
   const ascent = ascend(o, site, frame, seaLevel, x);
   const coast = flyOrbit(o, site, frame, seaLevel, every, handover === 'published' ? published(o, ascent.separation) : ascent.separation);
   const end = coast.samples[coast.samples.length - 1]!;
-  const down = o.descent && end.phase === 'down' ? flyDown(o, frame, seaLevel, end) : null;
+  const down = o.descent && end.phase === 'down' ? flyDown(planOfOrbital(o), frame, seaLevel, end) : null;
   return { ascent, coast, down };
 }
 
@@ -718,7 +718,7 @@ export function flyOn(
 ): FlownWhole {
   const coast = flyOrbit(o, site, frame, seaLevel, every, from, hands);
   const end = coast.samples[coast.samples.length - 1]!;
-  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(o, frame, seaLevel, end, hands) : null };
+  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(planOfOrbital(o), frame, seaLevel, end, hands) : null };
 }
 
 /**

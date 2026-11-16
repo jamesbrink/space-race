@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import { spacecraft } from '../sim/fliers.ts';
+import { planOfOrbital } from '../sim/planof.ts';
 import { elements, propagate } from '../sim/predict.ts';
 import { byHand } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
@@ -184,7 +185,7 @@ export function burnNow(flight: Flight): LandingFinder | null {
       plan = byHand(o, start.t + 1, [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]);
     }
     const sea = site.seaLevel.value;
-    const flown = propagate(spacecraft(plan, shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
+    const flown = propagate(spacecraft(planOfOrbital(plan), shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
     return {
       run: (budget) => flown.run(budget),
       get result() {
