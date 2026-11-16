@@ -87,13 +87,16 @@ const PERIOD_64 =
 /** Vostok 5's ascent is Vostok 1's, as Vostok 2's is: it falls short of an orbit for the same reasons. */
 const SHORT_V5 =
   'Vostok 5’s ascent is Vostok 1’s, flown on its instants and its third stage’s integrator setting (no document of E103-24’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
-  'at the last cutoff it is level at the 181 km asked for with 7,683 m/s, where 174.7 by 222.1 km needs some 7,810. That the stage fell short on the day (Siddiqi, no source) is not what this is: the type’s run falls shorter still';
-/** Five days flown round: the orbit falls a quarter as fast as the record's, and why is not established. */
-const AIR_V5 =
-  'Five days are flown round and the orbit falls a quarter as fast as the record’s: on 18 June at 15:00 (T+96 h) the run has 174.7 by 222.5 km over the sea and 88.17 min node to node where TASS has 159 by 193 km and 87.8 min, ' +
-  'so the ship comes round later each orbit than it did, and at the braking burn’s instant (derived from the pilot’s landing) it is over the Southern Ocean at 60° S. The same coast with four times the drag area has TASS’s figures at T+96 h and comes down 30 km short, ' +
-  'which says the miss is the coast’s drag and not its place on the orbit; what in the drag is not established (mission.md, "Five days in the air"). Found so far: the coast drags the ball alone (4.155 m²) at its continuum 0.92, where a ship in free-molecule flow has 2.0 to 2.4 on 4.6 m² (held along the motion) to some 6 (tumbling): 2.7 to 3.8 times; ' +
-  'it flies 4 to 7 km higher over the sea than the published perigee, 1.3 times thinner air there; the air above 200 km is the 1976 table’s last slope carried on, some 11 per cent thin at 220 km. Against that, June 1963 was near the solar minimum, when the air at 200 km is thinner than the 1976 standard’s. Not adjusted';
+  'at the last cutoff it is level at the 181 km asked for with 7,671 m/s in the day’s air, where 174.7 by 222.1 km needs some 7,810. That the stage fell short on the day (Siddiqi, no source) is not what this is: the type’s run falls shorter still';
+/**
+ * Five days flown round in the day's thermosphere on a ship's free-molecular drag: the orbit now falls as TASS's did to
+ * within 4 km, and what is left of the landing's miss is its last tenth of a minute carried round.
+ */
+const COAST_V5 =
+  'Five days are flown round (81 revolutions) in the thermosphere of the days’ own Sun (Jacchia 1971 on 13 to 19 June 1963’s indices) on the ship’s free-molecular drag, to a burn derived from the pilot’s landing (13:38:06). ' +
+  'The orbit falls as TASS’s did: at 15:00 on 18 June it is 163.3 by 197.4 km where TASS has 159 by 193 (both within 5 km), so the earlier reading, that the miss was the day’s air, is superseded: in the 1976 mean air on the ball’s continuum drag the run had 174.7 by 222.5 km there and came down 5,647 km short. ' +
+  'What is left is the period: at that instant the run goes round in 87.91 min where TASS has 87.8, so over the last days the ship comes round a little late each time; as a diagnosis, the published period 0.05 min shorter (88.22 for 88.27) brings it down 86 km beyond the record’s landing, and the burn five minutes later 813 km short. ' +
+  'The period is published to a hundredth of a minute (TASS, 22:12 on 14 June), so a twentieth is not its rounding, and read as anomalistic or Keplerian the nodal period flown would be longer still. What owns the rest (the drag area, the thermosphere’s model, the burn’s derived minute) is not established. Not adjusted';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -369,26 +372,41 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'ussr/vostok/vostok-5': inUnits({
     coast: {
-      crossTrack: { by: -1_262_880, slack: 10_000, why: `It comes down 1,263 km across the track. ${AIR_V5}` },
-      alongTrack: { by: -5_646_922, slack: 30_000, why: `It comes down 5,647 km short along the track. ${AIR_V5}` },
+      crossTrack: { by: -252_667, slack: 5_000, why: `It comes down 253 km across the track. ${COAST_V5}` },
+      alongTrack: { by: -3_313_660, slack: 20_000, why: `It comes down 3,314 km short along the track, over Arabia. ${COAST_V5}` },
+      'tass18.period': {
+        by: 6.387,
+        slack: 1,
+        why: `At 15:00 on 18 June it goes round in 87.91 min where TASS has 87.8: 6.4 s against a tolerance of a tenth of a minute. Its heights then hold. ${COAST_V5}`,
+      },
     },
     ascent: {
-      perigee: { by: -376_252, slack: 2_000, why: SHORT_V5 },
+      perigee: { by: -412_674, slack: 2_000, why: SHORT_V5 },
       apogee: {
         by: -41_100,
         slack: 300,
         why: `The cutoff is level at the 181 km asked for and too slow, so 181 km is the orbit’s top: ${SHORT_V5}`,
       },
-      period: { by: -249.98, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V5}` },
+      period: { by: -271.65, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V5}` },
     },
     shown: {
       apogee: {
-        by: -8_848,
+        by: -8_890,
         slack: 500,
-        why: `${PUBLISHED}. Begun 3 km lower than the type’s cutoff left Vostok 2 (189 km up at 677 s), the published orbit’s apogee flown round from there is 213 km where the record has 222.1; from the estimated injection it is 220.8 km and holds`,
+        why: `${PUBLISHED}. Begun 4 km lower than the estimated injection (189 km up at 677 s), the published orbit’s apogee flown round from there is 213 km where the record has 222.1; from the estimated injection it is 220.8 km and holds`,
       },
-      crossTrack: { by: -1_096_590, slack: 10_000, why: `${PUBLISHED}. ${AIR_V5}` },
-      alongTrack: { by: -5_658_350, slack: 30_000, why: `${PUBLISHED}. ${AIR_V5}` },
+      'tass18.perigee': {
+        by: 11_629,
+        slack: 500,
+        why: `${PUBLISHED}. Begun lower, its apogee 9 km down, it drags less at perigee over four days and is 170.6 km up at 15:00 on 18 June where TASS has 159; from the estimated injection it is 163.3 and holds`,
+      },
+      'tass18.period': {
+        by: 9.243,
+        slack: 1,
+        why: `${PUBLISHED}. At 15:00 on 18 June it goes round in 87.95 min where TASS has 87.8. ${COAST_V5}`,
+      },
+      crossTrack: { by: -262_689, slack: 5_000, why: `${PUBLISHED}. ${COAST_V5}` },
+      alongTrack: { by: -3_853_480, slack: 20_000, why: `${PUBLISHED}. ${COAST_V5}` },
     },
   }),
   // the Langley trial of 1959 (tests/fixtures/pad-abort): not a flight, flown from its own weights off its own launcher

@@ -50,76 +50,65 @@ Vostok 1's 19 minutes from burn to ejection is a burn about 13:36. The two readi
 
 ## What the run gives
 
-On the type's ascent (tests/staged.test.mjs), then the published orbit from where it left the spacecraft (the handover
-the scene shows), then the descent; and the coast from the estimated injection (tests/orbital.test.mjs). Tolerances were
-set before anything was flown (the commit that added them flew nothing).
+On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the published orbit from where it left the
+spacecraft (the handover the scene shows), then the descent; and the coast from the estimated injection. The coast flies
+the ship's free-molecular drag in the thermosphere of the days' own Sun (Jacchia 1971 on 13 to 19 June 1963's indices).
+Tolerances were set before anything was flown (the commit that added them flew nothing); TASS's orbit four days on was
+added as a check after the physics agent's probe of that instant had been seen, and says so.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 174.7 km ± 5 | −201.6 km | **miss** (−376 km) | the type's ascent falls short of an orbit, as Vostok 1's and 2's (`SHORT_V5`) |
+| Perigee at the last cutoff | 174.7 km ± 5 | −238.0 km | **miss** (−413 km) | the type's ascent falls short of an orbit, as Vostok 1's and 2's (`SHORT_V5`) |
 | Apogee at the last cutoff | 222.1 km ± 10 | 181.0 km | **miss** (−41 km) | the same: level at the 181 km asked for, and slow |
-| Inclination | 64.96° ± 0.05 | 64.99° | yes | |
-| Period at the last cutoff | 88.27 min ± 15 s | 84.10 min | **miss** (−250 s) | the same |
-| Period, node to node, of the orbit begun | 88.27 min ± 2 s | 88.27 | yes | not independent: the orbit is read with this nodal period |
+| Inclination | 64.96° ± 0.05 | 64.975° | yes | |
+| Period at the last cutoff | 88.27 min ± 15 s | 83.74 min | **miss** (−272 s) | the same |
+| Period, node to node, of the orbit begun | 88.27 min ± 2 s | 88.27 | yes | not independent |
 | Apogee as flown round, from the injection | 222.1 km ± 5 | 220.8 km | yes | |
-| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 213.3 km | **miss** (−8.8 km) | begun 3 km lower, where the type's ascent left the ship |
-| Landing across the track (coast; shown) | 0 ± 25 km | −1,263; −1,097 km | **miss** | five days in the air: below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −5,647; −5,658 km | **miss** | five days in the air: below |
-| Bykovskiy down | 14:06 ± 3 min | 14:08:06 | yes | not independent: the burn is timed from it |
-| Descent module down | 13:58 ± 5 min (derived) | 14:02:04 | yes | |
+| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 213.2 km | **miss** (−8.9 km) | begun 4 km lower, where the type's ascent left the ship |
+| TASS, 15:00 on 18 June: perigee (coast; shown) | 159 km ± 5 | 163.3; 170.6 km | yes; **miss** (+11.6 km) | the shown run begun lower drags less at perigee |
+| TASS, 15:00 on 18 June: apogee (coast; shown) | 193 km ± 5 | 197.4; 194.8 km | yes; yes | |
+| TASS, 15:00 on 18 June: period (coast; shown) | 87.8 min ± 6 s | 87.91; 87.95 min | **miss** (+6.4 s); **miss** (+9.2 s) | below |
+| Landing across the track (coast; shown) | 0 ± 25 km | −253; −263 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −3,314; −3,853 km | **miss** | below |
+| Bykovskiy down | 14:06 ± 3 min | 14:03:52 | yes | not independent: the burn is timed from it |
+| Descent module down | 13:58 ± 5 min (derived) | 13:57:51 | yes | |
 
-The descent comes down at 2.2° S 27.2° E, in the Congo basin: what the descent itself gives (the 14:08 landing, 0.25 km
-between the ball and the pilot) is the type's, flown from wherever the coast left it.
+The descent comes down at 22° N 40° E, in Arabia: what the descent itself gives (its times, 0.25 km between the ball and
+the pilot) is the type's, flown from wherever the coast left it.
 
 ## Five days in the air
 
-Eighty-one revolutions are flown, not one: the coast runs to six hours past the last thing planned, from the injection
-to the burn 4 d 22 h 39 min later, on RK4 at 10 s above 150 km under J2 and the 1976 standard atmosphere (sim/orbital.ts
-`flyOrbit`; no wind, no lift). The deck's clock goes up to an hour a second; faster than that the coast is flown on rails
-(world.md, "Faster than an hour a second"). The record's run is some 43,000 samples of the coast at ten seconds.
+Eighty-one revolutions are flown: RK4 at 10 s above 150 km, J2, the thermosphere of the days' Sun, the ship's
+free-molecular drag. The deck's clock goes up to an hour a second; faster than that the coast is flown on rails (world.md).
 
-**The orbit falls about a quarter as fast as the record's, and why is not established.** Reported, not checked: no check
-of the orbit at an instant exists yet (issue #15 says what one would hold).
+| | Run now | Run before (1976 mean air, the ball's continuum drag) | Record |
+| --- | --- | --- | --- |
+| 15:00, 18 June (T+96 h) | 163.3 × 197.4 km, 87.91 min | 174.7 to 222.5 km over the sea, 88.17 min | TASS: 159 × 193 km, 87.8 min |
+| Landing | 3,314 km short, 253 km across | 5,647 km short, 1,263 km across | 53°24′ N 67°37′ E |
 
-| | Run | Record |
-| --- | --- | --- |
-| T+7 h (22:12, 14 June) | 178.3 to 228.6 km over the sea, 88.26 min node to node | TASS: 175 × 222 km, 88.27 min |
-| T+24 h (15:00, 15 June) | 177.7 to 227.5 km, 88.25 min | TASS: 173 × 219 km, 88.2 min |
-| T+96 h (15:00, 18 June) | 174.7 to 222.5 km, 88.17 min | TASS: 159 × 193 km, 87.8 min |
-| The orbit's life, from the injection (`decay`) | 10.1 days | Kamanin, 14 June: «до 11 суток»; Chertok: "did not exceed 10 to 11 days"; Kamanin, 18 June: «орбита „Востока-5“ быстро снижается, и полет более 5 суток небезопасен» |
+**The earlier reading is superseded.** Before, the coast flew the ball's disc at its continuum coefficient (Cd·A/m 8.1e-4
+m²/kg) in the 1976 mean air with its table's last slope carried on above 200 km, and the orbit fell a quarter as fast as
+TASS's; the checks of November 2026 (issue #15) found the coefficient, the area and the table, and the physics agent
+corrected them: the ship's free-molecular drag on its own area, the 1976 table's upper rows, and the thermosphere of the
+days' indices. With them the orbit at T+96 h is TASS's to 4 km in both heights.
 
-So the ship comes round later each orbit than it did, and at the burn's instant it is over the Southern Ocean at 60° S.
+**What is left is a tenth of a minute.** At T+96 h the run goes round in 87.91 min where TASS has 87.8, a miss of 6.4 s
+against its tolerance, and that slowness carried round the last days is the landing's miss. As diagnoses, not inputs:
 
-The same coast flown with its drag area two, three, four times as great, **as a diagnosis and not as an input**, has at T+96
-h 170.5 to 215.0, 165.1 to 205.7, and 157.5 to 193.2 km and 87.72 min (TASS's), and comes down 5,191, 3,784 and 30 km
-short. So the miss is the coast's drag. What in it, checked so far:
+- the published period 0.05 min shorter (88.22 for 88.27) brings the landing to 86 km beyond the record's, and 0.05 min
+  longer puts it 4,984 km short. The period is published to a hundredth of a minute (TASS, 22:12 on 14 June), so a
+  twentieth is not its rounding; read as anomalistic or Keplerian rather than nodal, the nodal period flown would be
+  longer still (88.277 or 88.308 min), the wrong way;
+- the burn a minute later lands 408 km nearer, five minutes later 2,501 km (the burn's instant is derived from the pilot's
+  landing: mission.md, "The braking burn").
 
-- **The drag the coast flies.** Cd 0.92 (the entry curve's continuum value above Mach 6) on the ball's disc alone,
-  4.155 m², on the whole ship's 4,720 kg: Cd·A/m 8.1e-4 m²/kg. In free-molecule flow a body has Cd 2.0 to 2.4 on its
-  projected area, which for the ship is some 4.6 m² held along the motion and some 6 m² tumbling: 2.0e-3 to 3.1e-3, 2.4
-  to 3.8 times the coast's. `decay` uses another figure again: `supplies.rarefied`, 2.0, on the ball's disc, 1.76e-3.
-- **The density.** The 1976 table's own rows to 200 km (2.076e-9 kg/m³ at 150, 5.194e-10 at 180, 2.541e-10 at 200);
-  above that its last slope carried on, 1.243e-10 at 220 km against the standard's some 1.4e-10, 11 per cent thin, and 18
-  per cent at 230. Not a factor of four, and at apogee.
-- **The heights flown.** The least radius is 6,542.4 km at 63.1° N, 173.4 km over the 6,369 km ball and 181.3 km over
-  the sea there; the lowest point over the sea 178.5 km at 36.9° N. So the perigee flies 4 to 7 km above a published
-  174.7 km read as over the ground: some 1.3 times thinner air at perigee.
-- **The published orbit is the initial one**: TASS's 175 by 222 km is at 22:12 on the first day, Siddiqi's figures are
-  "initial orbital parameters", and TASS's 181 by 235 at liftoff is the orbit asked for.
-- **The Sun points the other way.** June 1963 was near the solar minimum, when the air at 160 to 220 km is thinner than
-  the 1976 standard's mean, by something like a third to a half. With the standard's air the drag and the heights above
-  would account for 3.1 to 5 times the run's decay; with the day's air thinner, 1.6 to 3.4. What is left is not found.
-
-Nothing is adjusted; the misses are recorded (src/sim/misses.ts) at their sizes with the cause not established.
-
-**What waits on the simulator.** The drag of a ship in orbit is being corrected (its coefficient, its area, the
-1976 table above 200 km: the faults the checks above found). That will move the coast's and the shown run's landing across and along the track, and the decay figures in the table above; the figures here are as flown
-before it, and are restated with it.
+What owns the rest (the drag area, the thermosphere's model on the day, the burn's derived minute) is not established.
+Nothing is adjusted.
 
 ## What is simplified
 
 - The ascent is Vostok 1's, not this flight's; the third stage's shortfall on the day is not flown.
-- The coast drags the ball's disc on its continuum coefficient for five days (above); the day's air is not modelled.
+- The thermosphere is Jacchia 1971 on the days' indices; the ship's drag area is the physics agent's, not measured.
 - The hatches leave with the seat at 6,500 m, not 500 m before it.
 - What made the ball tumble before the modules parted, and when they parted, is not flown: they part ten seconds after
   the burn.
