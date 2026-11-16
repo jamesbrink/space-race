@@ -11,15 +11,15 @@
  *      69.18 s since 2017. Before 1960 it is UT + delta-T from Espenak and Meeus's fits
  *      (`deltaT`), good to a second; nothing here flies then, and the hand-over on 1 January 1960
  *      is a step of 0.5 s that no flight crosses.
- * UT1  The angle the Earth has turned through. It is taken to be UTC: no table of UT1 - UTC is
- *      carried. Since 1972 UTC is kept within 0.9 s of UT1 by its leap seconds; from 1961 to 1971
- *      it was steered to within about 0.1 s of it (of UT2, within 0.03 s of UT1). What that costs
- *      is all in the Earth's angle and none in the Sun's or the Moon's place: 0.1 s of turn is 1.5
- *      arcseconds, 46 m at the equator, through the 1960s; 0.9 s is 13.5 arcseconds, 420 m, the
- *      sky turned 0.004 degrees about the pole, at worst since. TT does not inherit it, because TT
- *      is made from UTC by the table and not from UT1 by delta-T: a second of TT is a kilometre of
- *      the Moon along its orbit (it is 35 to 42 s of TT - UT1 from 1961 to 1972), a second of UT1
- *      moves no body at all.
+ * UT1  The angle the Earth has turned through: UTC + (UT1 - UTC) (`universalTime`), from the
+ *      IERS's measured UT1 - TAI every 0.05 year since 1956 (ut1.ts, `pnpm ut1`), within 4 ms of
+ *      its daily series (C04) since 1962: 0.06 arcseconds of turn, 2 m at the equator. Outside the
+ *      table UT1 is taken to be UTC (before 1960 there was no UTC, and an instant given then is
+ *      read as UT1 already), which is within 0.9 s since 1972 and 0.1 s through the 1960s: 13.5
+ *      and 1.5 arcseconds of turn. After the table's last value its UT1 - TAI is held, drifting by
+ *      a millisecond or two a day. None of it moves a body's place: TT is made from UTC by the
+ *      table, not from UT1 by delta-T, and a second of TT is a kilometre of the Moon along its
+ *      orbit (it is 35 to 42 s of TT - UT1 from 1961 to 1972); a second of UT1 is none of it.
  * TDB  What JPL's ephemerides are argued in: TT to within 1.7 ms (`barycentricTime`).
  *
  * The Earth's orientation is the IAU's of 2006: its precession (frames.ts), the IAU 2000B
@@ -32,6 +32,8 @@
  * clock keep seconds from an epoch instead (the launch) and add them to a Julian date only when an
  * ephemeris is asked for.
  */
+
+import { UT1_TAI_CHANGES, UT1_TAI_FROM, UT1_TAI_STEP } from './ut1.ts';
 
 /** The Julian date of 1 January 2000, 12:00: the epoch every series here is counted from. */
 export const J2000 = 2_451_545.0;
@@ -196,15 +198,46 @@ export function earthRotationAngle(jdUT: number): number {
   return anp(turns * 2 * Math.PI);
 }
 
+/** UT1 - TAI, seconds, at each step of the IERS's table (ut1.ts). */
+const UT1_TAI = (() => {
+  const out = new Float64Array(UT1_TAI_CHANGES.length);
+  let sum = 0;
+  UT1_TAI_CHANGES.forEach((c, i) => {
+    sum += c;
+    out[i] = sum / 1e4;
+  });
+  return out;
+})();
+
+/**
+ * UT1 - UTC, seconds, at a Julian date in UTC: the IERS's UT1 - TAI (EOP C01, ut1.ts) interpolated, plus TAI - UTC.
+ * Nothing before 1960, when there was no UTC to differ from (an instant then is taken to be UT1 already); after the
+ * table's last value, its last UT1 - TAI.
+ */
+export function ut1MinusUtc(jdUTC: number): number {
+  const leap = taiMinusUtc(jdUTC);
+  if (Number.isNaN(leap)) return 0;
+  const x = (1900 + (jdUTC - 2_415_020.31352) / 365.242198781 - UT1_TAI_FROM) / UT1_TAI_STEP;
+  const last = UT1_TAI.length - 1;
+  if (!(x >= 0)) return 0;
+  if (x >= last) return UT1_TAI[last]! + leap;
+  const i = Math.floor(x);
+  return UT1_TAI[i]! + (UT1_TAI[i + 1]! - UT1_TAI[i]!) * (x - i) + leap;
+}
+
+/** UT1 as a Julian date, from a Julian date in UTC (`ut1MinusUtc`). */
+export const universalTime = (jdUTC: number): number => jdUTC + ut1MinusUtc(jdUTC) / 86_400;
+
 /**
  * Greenwich mean sidereal time, radians in [0, 2 pi): the angle from the mean equinox of date to the Greenwich
  * meridian. The IAU 2006 expression on the Earth rotation angle (Capitaine et al. 2003, A&A 412:567; SOFA iauGmst06),
- * whose precession in right ascension is argued in TT, made here from `jdUT` by the table. `jdUT` is a Julian date in UT.
+ * whose precession in right ascension is argued in TT, made here from `jdUT` by the table. `jdUT` is a Julian date in
+ * UTC, and the Earth's angle is UT1's (`universalTime`) unless `jdUT1` is given.
  */
-export function greenwichMeanSiderealTime(jdUT: number): number {
+export function greenwichMeanSiderealTime(jdUT: number, jdUT1 = universalTime(jdUT)): number {
   const t = centuries(terrestrialTime(jdUT));
   const precession = 0.014506 + (4612.156534 + (1.3915817 + (-0.00000044 + (-0.000029956 + -0.0000000368 * t) * t) * t) * t) * t;
-  return anp(earthRotationAngle(jdUT) + precession * ARCSEC);
+  return anp(earthRotationAngle(jdUT1) + precession * ARCSEC);
 }
 
 /**
@@ -340,10 +373,10 @@ export function nutation(jdTT: number): { longitude: number; obliquity: number; 
  * nutation in longitude on the mean obliquity, and the two largest of its complementary terms (IERS Conventions 2003,
  * eq. 5.36; SOFA iauEect00: 2.6 and 0.06 milliarcseconds, the rest under 0.02 each).
  */
-export function greenwichSiderealTime(jdUT: number): number {
+export function greenwichSiderealTime(jdUT: number, jdUT1 = universalTime(jdUT)): number {
   const jdTT = terrestrialTime(jdUT);
   const n = nutation(jdTT);
   const om = nodeOf(centuries(jdTT));
   const complementary = (2640.96e-6 * Math.sin(om) + 63.52e-6 * Math.sin(2 * om)) * ARCSEC;
-  return anp(greenwichMeanSiderealTime(jdUT) + n.longitude * Math.cos(n.meanObliquity) + complementary);
+  return anp(greenwichMeanSiderealTime(jdUT, jdUT1) + n.longitude * Math.cos(n.meanObliquity) + complementary);
 }

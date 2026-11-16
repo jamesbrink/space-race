@@ -44,6 +44,8 @@ import {
   J2000,
   meanObliquity,
   taiMinusUtc,
+  universalTime,
+  ut1MinusUtc,
   greenwichSiderealTime,
   isoDate,
   julianDate,
@@ -80,6 +82,28 @@ test('delta-T against the measured values (Astronomical Almanac, table K9)', () 
   near((terrestrialTime(LIFTOFF) - LIFTOFF) * 86400, 33.7, 0.3, 'TT - UT at liftoff');
 });
 
+test('UT1 from UTC by the IERS’s UT1 - TAI: against its daily series (EOP C04), across leap seconds and UTC’s old steps', () => {
+  // EOP 20 C04 (Paris Observatory), UT1 - UTC at 0h UTC on each day, seconds
+  const C04 = [
+    ['1962-06-15', -0.016211],
+    ['1965-03-01', 0.0376433],
+    ['1968-12-21', 0.0332503],
+    ['1972-01-01', -0.0454859],
+    ['1987-04-10', -0.2910986],
+    ['1998-12-31', -0.2823296],
+    ['1999-01-01', 0.7166654],
+    ['2000-01-01', 0.3554724],
+    ['2006-01-01', 0.3387931],
+    ['2016-12-31', -0.4077697],
+    ['2017-01-01', 0.591287],
+  ];
+  for (const [day, want] of C04) near(ut1MinusUtc(julianDate(day)), want, 0.005, `UT1 - UTC on ${day}`);
+  // the Earth's angle does not step where UTC does: a second before and after the end of 2016, UT1 is two seconds on
+  const [before, after] = [julianDate('2016-12-31T23:59:59Z'), julianDate('2017-01-01T00:00:00Z')];
+  near((universalTime(after) - universalTime(before)) * 86400, 2, 1e-3, 'UT1 across the leap second');
+  assert.equal(ut1MinusUtc(julianDate('1957-10-04')), 0, 'before UTC, an instant is UT1');
+});
+
 test('TT from UTC by the leap seconds: SOFA’s iauDat test values, and the drift UTC was steered by in 1961', () => {
   // t_sofa_c.c, t_dat: 2003 June 1, 2008 January 17 and 2017 September 1, 0h UTC
   assert.equal(taiMinusUtc(julianDate('2003-06-01')), 32);
@@ -111,15 +135,22 @@ test('sidereal time: SOFA’s test values, Meeus examples 12.a and 12.b, and Hor
   // here TT is made from the date by the table, 65.184 s later, which adds 4612.16 arcseconds a century of it)
   near(earthRotationAngle(2400000.5 + 54388.0), 0.4022837240028158, 1e-12, 'the Earth rotation angle');
   const later = ((4612.156534 * 65.184) / (86400 * 36525)) * (DEG / 3600);
-  near(greenwichMeanSiderealTime(2400000.5 + 53736.0) - later, 1.7541749718700912, 1e-12, 'IAU 2006 mean sidereal time');
+  near(
+    greenwichMeanSiderealTime(2400000.5 + 53736.0, 2400000.5 + 53736.0) - later,
+    1.7541749718700912,
+    1e-12,
+    'IAU 2006 mean sidereal time',
+  );
   // iauGst06a has the full IAU 2000A nutation; the 2000B here is within a milliarcsecond of it (5e-9 rad)
-  near(greenwichSiderealTime(2400000.5 + 53736.0), 1.754166137675019, 5e-9, 'apparent sidereal time');
+  near(greenwichSiderealTime(2400000.5 + 53736.0, 2400000.5 + 53736.0), 1.754166137675019, 5e-9, 'apparent sidereal time');
   const midnight = julianDate('1987-04-10T00:00:00Z');
   // Meeus's are the IAU 1982 expression, which the IAU 2006 one departs from by 0.05 arcseconds (3.3 ms of time) in 1987
-  near(greenwichMeanSiderealTime(midnight), hours(13, 10, 46.3668), hours(0, 0, 0.004), 'mean, 10 April 1987 0h');
-  near(greenwichMeanSiderealTime(julianDate('1987-04-10T19:21:00Z')), hours(8, 34, 57.0896), hours(0, 0, 0.004), 'mean, 19:21');
+  // (Meeus's instants are UT1: given as such)
+  near(greenwichMeanSiderealTime(midnight, midnight), hours(13, 10, 46.3668), hours(0, 0, 0.004), 'mean, 10 April 1987 0h');
+  const later1921 = julianDate('1987-04-10T19:21:00Z');
+  near(greenwichMeanSiderealTime(later1921, later1921), hours(8, 34, 57.0896), hours(0, 0, 0.004), 'mean, 19:21');
   // apparent: 13h10m46.1351s, on the full IAU 1980 nutation
-  near(greenwichSiderealTime(midnight), hours(13, 10, 46.1351), hours(0, 0, 0.005), 'apparent');
+  near(greenwichSiderealTime(midnight, midnight), hours(13, 10, 46.1351), hours(0, 0, 0.005), 'apparent');
   // Horizons, local apparent sidereal time at LC-5 at liftoff: 0.0802662402 h
   const local = (greenwichSiderealTime(LIFTOFF) / DEG + LC5.longitude + 360) % 360;
   near(local / 15, 0.0802662402, 0.05 / 3600, 'local apparent sidereal time at the pad');

@@ -19,9 +19,12 @@ symmetric about the pole, so a flight is the same flight in either to rounding (
 
 Time and the Earth's turn (`time.ts`, `frames.ts`; the header of each states it once). An instant is UTC, as a launch is
 recorded. TT is made from it by the leap seconds (`taiMinusUtc`: SOFA's table, with UTC's steps and rate offsets of 1960
-to 1971), so it is exact from 1960; JPL's ephemerides want TDB, TT to 1.7 ms (`barycentricTime`). UT1 is taken to be UTC:
-within 0.1 s through the 1960s and 0.9 s since, which is 46 m and 420 m of the Earth's turn at the equator and moves no
-body's place (a second of TT is a kilometre of the Moon; a second of UT1 is nothing of it). The Earth's orientation is the
+to 1971), so it is exact from 1960; JPL's ephemerides want TDB, TT to 1.7 ms (`barycentricTime`). UT1, the Earth's
+turn, is UTC plus the IERS's measured UT1 - UTC (`universalTime`: EOP C01's UT1 - TAI every 0.05 year since 1956, baked
+by `pnpm ut1` into `ut1.ts`, interpolated, plus TAI - UTC), within 4 ms of the IERS's daily series since 1962: 0.06
+arcseconds of turn, 2 m at the equator. Before 1960 an instant is taken to be UT1 already; after the table's end its last
+UT1 - TAI is held, drifting a millisecond or two a day. It moves no body's place (a second of TT is a kilometre of the
+Moon; a second of UT1 is nothing of it), only where the ground is under the sky. The Earth's orientation is the
 IAU's of 2006: the frame bias and the IAU 2006 precession (`icrfToDate`), the IAU 2000B nutation, and sidereal time from
 the Earth rotation angle, to a milliarcsecond (2 m at the Moon), each held to SOFA's own test values. A flight is flown in
 the frame of date at its liftoff (below), which turns against the ICRF by about an arcsecond in a week.
@@ -46,8 +49,11 @@ eye and say so.
 Two ephemerides answer, and each answer says which (`ephemerisOf`, `stateOf(...).source`). JPL's DE440 is baked
 for 1957 to 2035 (`pnpm ephemeris`: tools/ephemeris-bake.mjs reads JPL's de440s.bsp and refits each body as Chebyshev
 segments, measured against the kernel at points it did not fit; public/ephemeris/de440.bin, 0.9 MB; `world/jpl.ts`
-reads it). It is fetched only when something asks (`loadEphemeris`: a flight that leaves the Earth), and a test hands it
-in (`useEphemeris`). Then `stateOf(body, jdTT, centre)` gives a position and velocity in the ICRF, geometric, from the
+reads it). It is fetched only when something asks, and a test hands it in (`useEphemeris`). Who asks: whatever makes a
+flight's gravity terms with the Moon or the Sun in them, and any flight that leaves low Earth orbit, awaits
+`loadEphemeris()` before it makes them (the terms take DE440 only if it is loaded then, and say `estimated` otherwise:
+core/gravity.ts); nothing on the ground needs it. Once it is here the sky answers from it too, since the step is under a
+third of a pixel (below). Then `stateOf(body, jdTT, centre)` gives a position and velocity in the ICRF, geometric, from the
 Earth's centre or any body's or the solar system's barycentre; `toDate` turns one into the frame of date, and
 `sunPosition`, `moonPosition` and `planetPosition` (what the sky and everything else asks) answer from it, apparent to
 first order. Fitted accuracy against DE440: the Moon 6 m and 0.08 mm/s, the Earth-Moon barycentre 35 m, the Sun 0.4 km,

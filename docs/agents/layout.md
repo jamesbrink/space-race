@@ -183,6 +183,7 @@ src/
   world/earthframe.ts                 the frame a flight is flown in (of date, or fixed at liftoff), made once from its liftoff: the Earth's angle in it and every turn between it and the Earth
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are (`stateOf`, the sky from a site): DE440 when loaded, Meeus else; the 518 brightest stars
   world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF
+  world/ut1.ts                        UT1 - TAI from the IERS (tools/ut1-bake.mjs): what the Earth's turn is behind atomic time, every 0.05 year since 1956
   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
   world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
@@ -289,6 +290,7 @@ tools/
   globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and each place's region's (`region.surface`), finer; needs GDAL
   globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
   ephemeris-bake.mjs                  bakes public/ephemeris/de440.bin from JPL's DE440 kernel (de440s.bsp): each body refitted and measured against it
+  ut1-bake.mjs                        bakes src/world/ut1.ts from the IERS's EOP C01 series: UT1 - TAI since 1956
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
   figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)

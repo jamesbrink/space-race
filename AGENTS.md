@@ -35,6 +35,7 @@ pnpm model <id>       # rebuild one flight's or site's GLBs from its Blender scr
 pnpm models           # rebuild every flight's and site's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region every site's region; pnpm globe:weather every flight's day's weather map
 pnpm ephemeris        # bake public/ephemeris/de440.bin from JPL's DE440 (fetches de440s.bsp, 31 MB, once into ~/.cache)
+pnpm ut1              # bake src/world/ut1.ts, UT1 - TAI, from the IERS's EOP C01 (fetched once into ~/.cache)
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser

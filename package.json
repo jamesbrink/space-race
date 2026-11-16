@@ -39,6 +39,7 @@
     "globe:region": "node tools/globe-region.mjs",
     "globe:surface": "node tools/globe-surface.mjs",
     "ephemeris": "node tools/ephemeris-bake.mjs",
+    "ut1": "node tools/ut1-bake.mjs",
     "stars": "node tools/stars.mjs",
     "front:earth": "node tools/front-earth.mjs",
     "front:moon": "node tools/front-moon.mjs",

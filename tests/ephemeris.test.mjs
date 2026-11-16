@@ -10,13 +10,18 @@ import { test } from 'node:test';
 import { AU, C, EARTH, MOON } from '../src/world/bodies.ts';
 import { ephemerisOf, loadEphemeris, moonPosition, skyFrom, stateOf, sunPosition, toDate, useEphemeris } from '../src/world/ephemeris.ts';
 import { angleBetween, DEG, dot, fromHorizontal, length, scale, sub } from '../src/world/frames.ts';
-import { julianDate, terrestrialTime } from '../src/world/time.ts';
+import { julianDate, terrestrialTime, ut1MinusUtc } from '../src/world/time.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 const apart = (seen, az, el) => angleBetween(fromHorizontal(seen.azimuth, seen.elevation), fromHorizontal(az * DEG, el * DEG)) / DEG;
 const bytes = new Uint8Array(readFileSync(join(import.meta.dirname, '../public/ephemeris/de440.bin'))).slice().buffer;
 const tt = (iso) => terrestrialTime(julianDate(iso));
+/** An instant Horizons was asked for, as UTC: before 1962 Horizons reads "UT" as UT1, so the UTC of that UT1. */
+const horizonsUT = (iso) => {
+  const jd = julianDate(iso);
+  return iso < '1962' ? jd - ut1MinusUtc(jd) / 86_400 : jd;
+};
 
 test('with nothing loaded the answer is Meeus’s, and says so; loading needs a page to fetch from', async () => {
   useEphemeris(null);
@@ -186,11 +191,10 @@ const astrometric = (seen, body, jdTT) => {
 for (const [name, place, iso, sunAz, sunEl, sunAu, moonAz, moonEl, moonAu, lit] of SKIES) {
   test(`the Sun and the Moon from ${name}, against JPL Horizons, with DE440`, (t) => {
     useEphemeris(bytes);
-    const sky = skyFrom({ bearingX: 0, ...place }, julianDate(iso));
+    const sky = skyFrom({ bearingX: 0, ...place }, horizonsUT(iso));
     assert.equal(ephemerisOf(sky.jdTT), 'DE440');
-    // UT1 is taken to be UTC (time.ts). At J2000 UT1 - UTC was +0.355 s (IERS Bulletin B): 5.3 arcseconds of the Earth's
-    // turn, which is all of the 4.6 seen there; elsewhere under half an arcsecond is left
-    const turn = iso.startsWith('2000') ? 0.0015 : 0.00015;
+    // (what is left is under half an arcsecond: the observer's own aberration, 0.3 at the equator, is left out)
+    const turn = 0.00015;
     const [s, m] = [apart(sky.sun, sunAz, sunEl), apart(sky.moon, moonAz, moonEl)];
     t.diagnostic(`the Sun ${(s * 3600).toFixed(2)}" and the Moon ${(m * 3600).toFixed(2)}" from Horizons`);
     near(s, 0, turn, 'the Sun’s direction, degrees');
@@ -215,7 +219,7 @@ test('the planets from LC-5 at Freedom 7’s liftoff, with DE440: to half an arc
     uranus: [44.270993, -33.78521],
     neptune: [286.554493, -52.493323],
   };
-  const sky = skyFrom({ latitude: 28.439426, longitude: -80.573292, height: 3, bearingX: 295 }, julianDate('1961-05-05T14:34:13Z'));
+  const sky = skyFrom({ latitude: 28.439426, longitude: -80.573292, height: 3, bearingX: 295 }, horizonsUT('1961-05-05T14:34:13Z'));
   for (const p of sky.planets) near(apart(p, ...want[p.body.id]) * 3600, 0, 0.5, `${p.body.name}’s direction, arcseconds`);
 });
 
