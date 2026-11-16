@@ -492,7 +492,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await handFly(page, id);
       await stop(page);
       const before = await read(page);
-      if (!/Not the record|Hands only/.test(before.mode)) fail(at, `not taken over: "${before.mode}"`);
+      if (!/Not the record|Hands only|leaned/.test(before.mode)) fail(at, `not taken over: "${before.mode}"`);
       if (!before.warns) fail(at, 'the browser is not set to ask while a flight flown by hand is going on');
       await out(page);
       await page.waitForTimeout(1200);
@@ -548,7 +548,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.click('.cockpit-kept [data-do=again]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.card || r.t > 1 || /Not the record|Hands only/.test(r.mode)) fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
+      if (r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode)) fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
       if (r.warns) fail(at, 'after Start over, nothing is flown by hand and the browser still asks');
       console.log(`  ${at}: the mark ended it; Start over began again from the pad`);
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
@@ -561,14 +561,17 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
         'the Space Race crumb',
         (page) => page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click()),
         (hash) => !hash.includes(id),
+        0,
       ],
       [
         "another flight's address",
         (page) => page.evaluate((o) => (location.hash = `#${o}/gallery`), other),
         (hash) => hash.includes(other),
+        // (an address typed or followed is an entry the browser has made, which cannot be taken from the history: it stays one Forward on)
+        1,
       ],
     ];
-    for (const [name, out, gone] of beyond) {
+    for (const [name, out, gone, left] of beyond) {
       const at = `${where} by ${name}`;
       const { page, errors, context: ctx } = await fly(id, w, h, false);
       trap(page);
@@ -615,7 +618,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
         r = await read(page);
         if (r.asking) fail(at, `${how}: the question is still up`);
         if (!r.active || !r.hash.includes('/fly') || !r.hash.includes(id)) fail(at, `${how}: not still in Fly: ${r.hash}`);
-        if (r.length !== before.length) fail(at, `${how}: the history was ${before.length} entries and is ${r.length}`);
+        if (r.length !== before.length + left) fail(at, `${how}: the history was ${before.length} entries and is ${r.length}`);
         if (!(await page.evaluate(() => window.__run === window.sr.cockpit.run))) fail(at, `${how}: not the same run`);
         same(at, before, r, how);
         await stop(page);
