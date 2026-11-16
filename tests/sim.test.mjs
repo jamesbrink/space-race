@@ -28,8 +28,8 @@ import {
   sub,
   unit,
 } from '../src/world/frames.ts';
-import { planOfTrajectory } from '../src/sim/planof.ts';
-import { BALLISTIC, edited } from './ballistic.mjs';
+import { HARDWARE, plan as planOf } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
+import { BALLISTIC, dayOf, edited } from './ballistic.mjs';
 import { holdChecks, missesOf } from './misses.mjs';
 
 const near = (got, want, tolerance, what) =>
@@ -224,37 +224,41 @@ for (const flight of BALLISTIC) {
   });
 
   test(`${name}: which inputs are not documented, and how far each moves the results`, (t) => {
-    const tr0 = flight.trajectory;
-    const base = fly(planOfTrajectory(tr0), SITE, SEA).results;
+    // the inputs are the flight's day and the stack's hardware, which its plan is written from (mercury-redstone.ts `plan`):
+    // each changed in a copy, and the plan written again from it, so what is derived from it moves with it
+    const d0 = dayOf(flight);
+    const body = flight.plan.craft[0].rigid;
+    const base = fly(flight.plan, SITE, SEA).results;
     const c = (m) => m.confidence;
     const inputs = [
-      ['ascentDrag', (tr) => tr.ascentDrag.points.forEach((p) => (p[1] *= 1.05)), c(tr0.ascentDrag)],
-      ['tilt', (tr) => tr.tilt.points.forEach((p) => (p[1] *= 1.05)), c(tr0.tilt)],
-      ['engine.exitArea', (tr) => (tr.engine.exitArea.value *= 1.05), c(tr0.engine.exitArea)],
-      ['separation.mass', (tr) => (tr.separation.mass.value *= 1.05), c(tr0.separation.mass)],
-      ['separation.boosterMass', (tr) => (tr.separation.boosterMass.value *= 1.05), c(tr0.separation.boosterMass)],
-      ['separation.speed', (tr) => (tr.separation.speed.value *= 1.05), c(tr0.separation.speed)],
-      ['retro.fires', (tr) => tr.retro.fires.forEach((f) => (f.value *= 1.05)), c(tr0.retro.fires.at(-1))],
-      ['retro.pitch', (tr) => (tr.retro.pitch.value *= 1.05), c(tr0.retro.pitch)],
-      ['retropack.mass', (tr) => (tr.retropack.mass.value *= 1.05), c(tr0.retropack.mass)],
-      ['drogue.dragArea', (tr) => (tr.drogue.dragArea.value *= 1.05), c(tr0.drogue.dragArea)],
-      ['main.dragArea', (tr) => (tr.main.dragArea.value *= 1.05), c(tr0.main.dragArea)],
-      ['area', (tr) => (tr.area.value *= 1.05), c(tr0.area)],
-      ['drogue.fills', (tr) => (tr.drogue.fills.value *= 1.05), c(tr0.drogue.fills)],
-      ['main.fills', (tr) => (tr.main.fills.value *= 1.05), c(tr0.main.fills)],
-      ['engine.thrust', (tr) => (tr.engine.thrust.value *= 1.05), c(tr0.engine.thrust)],
-      ['engine.isp', (tr) => (tr.engine.isp.value *= 1.05), c(tr0.engine.isp)],
-      ['liftoffMass', (tr) => (tr.liftoffMass.value *= 1.05), c(tr0.liftoffMass)],
-      ['winds', (tr) => tr.winds.levels.forEach((l) => (l.speed.value *= 1.05)), c(tr0.winds.levels[0].speed)],
-      ['winds.calmAbove', (tr) => (tr.winds.calmAbove.value *= 1.05), c(tr0.winds.calmAbove)],
+      ['ascentDrag', (d, h) => h.ascentDrag.points.forEach((p) => (p[1] *= 1.05)), c(HARDWARE.ascentDrag)],
+      ['tilt', (d, h) => h.tilt.points.forEach((p) => (p[1] *= 1.05)), c(HARDWARE.tilt)],
+      ['exitArea', (d, h) => (h.exitArea.value *= 1.05), c(HARDWARE.exitArea)],
+      ['separation.mass', (d) => (d.separation.mass.value *= 1.05), c(d0.separation.mass)],
+      ['separation.boosterMass', (d) => (d.separation.boosterMass.value *= 1.05), c(d0.separation.boosterMass)],
+      ['separation.speed', (d) => (d.separation.speed.value *= 1.05), c(d0.separation.speed)],
+      ['retro.fires', (d) => d.retro.fires.forEach((f) => (f.value *= 1.05)), c(d0.retro.fires.at(-1))],
+      ['retro.pitch', (d) => (d.retro.pitch.value *= 1.05), c(d0.retro.pitch)],
+      ['retropack.mass', (d) => (d.retropack.mass.value *= 1.05), c(d0.retropack.mass)],
+      ['drogue.dragArea', (d, h) => (h.drogue.dragArea.value *= 1.05), c(HARDWARE.drogue.dragArea)],
+      ['main.dragArea', (d, h) => (h.main.dragArea.value *= 1.05), c(HARDWARE.main.dragArea)],
+      ['area', (d, h) => (h.area.value *= 1.05), c(HARDWARE.area)],
+      ['drogue.fills', (d, h) => (h.drogue.fills.value *= 1.05), c(HARDWARE.drogue.fills)],
+      ['main.fills', (d, h) => (h.main.fills.value *= 1.05), c(HARDWARE.main.fills)],
+      ['thrust', (d) => (d.thrust.value *= 1.05), c(d0.thrust)],
+      ['isp', (d) => (d.isp.value *= 1.05), c(d0.isp)],
+      ['liftoffMass', (d) => (d.liftoffMass.value *= 1.05), c(d0.liftoffMass)],
+      ['winds', (d) => d.winds.levels.forEach((l) => (l.speed.value *= 1.05)), c(d0.winds.levels[0].speed)],
+      ['winds.calmAbove', (d) => (d.winds.calmAbove.value *= 1.05), c(d0.winds.calmAbove)],
     ];
     const shown = ['separationSpeed', 'apogee', 'range', 'entryG', 'duration'];
     t.diagnostic(`a 5 % rise in each input moves, in per cent: ${shown.join(', ')}`);
     const moved = {};
     for (const [name, change, confidence] of inputs) {
-      const tr = structuredClone(tr0);
-      change(tr);
-      const r = fly(planOfTrajectory(tr), SITE, SEA).results;
+      const d = structuredClone(d0);
+      const h = structuredClone(HARDWARE);
+      change(d, h);
+      const r = fly(planOf(d, flight.checks, body, h), SITE, SEA).results;
       moved[name] = shown.map((id) => (r[id] / base[id] - 1) * 100);
       t.diagnostic(
         `${`${name} (${confidence})`.padEnd(34)} ${moved[name].map((x) => `${x >= 0 ? '+' : ''}${x.toFixed(1)}`.padStart(7)).join('')}`,
@@ -270,24 +274,25 @@ for (const flight of BALLISTIC) {
       moved['winds.calmAbove'].every((x) => Math.abs(x) < 0.1),
       'the calm above the sounding has no say',
     );
-    // nothing in the trajectory is marked documented that the record calls a guess
+    // nothing in the day or the hardware is marked documented that the record calls a guess
     const estimated = [];
     const walk = (o, path) => {
       if (o && typeof o === 'object') {
         if (o.confidence && o.confidence !== 'documented') estimated.push(`${path} (${o.confidence})`);
-        // `body` is the live simulator's (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
-        // `heating` is sim/heating.ts's: fly() does not read it either, and tests/heating.test.mjs holds every figure in it to a confidence and weighs the judgements
-        for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'body' && k !== 'heating') walk(v, path ? `${path}.${k}` : k);
+        // `stack` is the live simulator's rigid body (sim/vehicle.ts): fly() does not read it, and tests/vehicle.test.mjs lists what in it is not documented
+        // `starts` is sim/heating.ts's: fly() does not read it either, and tests/heating.test.mjs holds every figure in it to a confidence and weighs the judgements
+        for (const [k, v] of Object.entries(o)) if (k !== 'points' && k !== 'stack' && k !== 'starts') walk(v, path ? `${path}.${k}` : k);
       }
     };
-    walk(tr0, '');
+    walk(d0, '');
+    walk(HARDWARE, '');
     t.diagnostic(`not documented: ${estimated.join(', ')}`);
     // every one of them is weighed above (but the engine's run-dry time, which only the live simulator reads); a retrorocket's
     // time is weighed with the others
     const weighed = new Set(inputs.map(([name]) => name));
     const names = [...new Set(estimated.map((e) => e.split(' ')[0].replace(/^retro\.fires\.\d+$/, 'retro.fires')))].sort();
     for (const name of names)
-      assert.ok(weighed.has(name) || name === 'engine.depletion', `${flight.callsign}: ${name} is not documented and is not weighed`);
+      assert.ok(weighed.has(name) || name === 'depletion', `${flight.callsign}: ${name} is not documented and is not weighed`);
     assert.deepEqual(names, NOT_DOCUMENTED[flight.id], `${flight.callsign}: the inputs that are not documented`);
   });
 }
@@ -297,10 +302,10 @@ const NOT_DOCUMENTED = {
   [FREEDOM_7]: [
     'area',
     'ascentDrag',
+    'depletion',
     'drogue.dragArea',
     'drogue.fills',
-    'engine.depletion',
-    'engine.exitArea',
+    'exitArea',
     'main.dragArea',
     'main.fills',
     'retro.pitch',
@@ -312,10 +317,10 @@ const NOT_DOCUMENTED = {
   'usa/mercury/mr-4-liberty-bell-7': [
     'area',
     'ascentDrag',
+    'depletion',
     'drogue.dragArea',
     'drogue.fills',
-    'engine.depletion',
-    'engine.exitArea',
+    'exitArea',
     'main.dragArea',
     'main.fills',
     'retro.fires',

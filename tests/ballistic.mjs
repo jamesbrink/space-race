@@ -9,9 +9,15 @@ import { ballisticOf } from '../src/sim/fly.ts';
 
 const root = join(import.meta.dirname, '..');
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
-const flights = await Promise.all(files.map(async (f) => (await import(pathToFileURL(join(root, f)).href)).flight));
+const modules = await Promise.all(files.map(async (f) => await import(pathToFileURL(join(root, f)).href)));
 /** In the order they flew. */
-export const BALLISTIC = flights.filter((f) => f.plan?.kind === 'ballistic').sort((a, b) => a.launch.localeCompare(b.launch));
+export const BALLISTIC = modules
+  .map((m) => m.flight)
+  .filter((f) => f.plan?.kind === 'ballistic')
+  .sort((a, b) => a.launch.localeCompare(b.launch));
+const days = new Map(modules.map((m) => [m.flight, m.DAY]));
+/** A ballistic flight's day (its flight.ts's `DAY`, a mercury-redstone.ts `Day`): what its plan is written from with the stack's hardware. */
+export const dayOf = (flight) => days.get(flight);
 
 /**
  * A copy of `plan` changed by `change`, which is handed the copy, its craft and the plan's hardware by role: `ballisticOf`

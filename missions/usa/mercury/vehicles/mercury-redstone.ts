@@ -762,9 +762,25 @@ export interface Day {
   thrust: Measure;
   isp: Measure;
   cutoff: Measure;
-  separation: Trajectory['separation'];
+  /** The capsule let go: when, s from liftoff. */
+  separation: {
+    at: Measure;
+    /** The capsule alone, kg, and the booster it leaves behind, kg. */
+    mass: Measure;
+    boosterMass: Measure;
+    /** How fast the two part, m/s, shared between them by their masses. */
+    speed: Measure;
+    /**
+     * The Earth-fixed heading at separation, degrees true, where the record gives one. No simulator reads it:
+     * tests/sim.test.mjs starts the capsule's half from the record's separation, and takes the run's own heading where this is missing.
+     */
+    heading?: Measure;
+  };
+  /** When each retrorocket lights, s from liftoff, and how far below the local horizontal their thrust points, degrees. */
   retro: { fires: Measure[]; pitch: Measure };
-  retropack: Trajectory['retropack'];
+  /** The retropack dropped: when, s, and the capsule's mass afterwards, kg. */
+  retropack: { at: Measure; mass: Measure };
+  /** The heights the drogue and the main parachute are let out at, m. */
   drogue: Measure;
   main: Measure;
   /** What the shield and skin stood at on the pad, K. */
@@ -902,6 +918,35 @@ export function trajectory(day: Day): Trajectory {
   };
 }
 
+/**
+ * The stack's own figures as `plan` flies them, the same on every flight of it: the A-7's exit area and how long it can
+ * burn, the tilt programme, the area the drag is referred to and the drag curves, the retrorockets, the parachutes.
+ * tests/sim.test.mjs weighs each that is not documented by flying a plan made of a changed copy.
+ */
+export interface Hardware {
+  exitArea: Measure;
+  depletion: Measure;
+  tilt: Curve;
+  area: Measure;
+  ascentDrag: Curve;
+  entryDrag: Curve;
+  retro: { thrust: Measure; burn: Measure };
+  drogue: { dragArea: Measure; fills: Measure };
+  main: { dragArea: Measure; fills: Measure };
+}
+
+export const HARDWARE: Hardware = {
+  exitArea: EXIT_AREA,
+  depletion: DEPLETION,
+  tilt: TILT,
+  area: AREA,
+  ascentDrag: ASCENT_DRAG,
+  entryDrag: ENTRY_DRAG,
+  retro: { thrust: RETRO_THRUST, burn: RETRO_BURN },
+  drogue: DROGUE,
+  main: MAIN,
+};
+
 const atTime = (at: Measure) => [{ time: at.value }];
 
 /**
@@ -909,10 +954,11 @@ const atTime = (at: Measure) => [{ time: at.value }];
  * escape tower, the retropack, the capsule), the joints between them, the A-7 on the booster's propellant, the three
  * retrorockets and the escape rocket, the capsule's attitude jets, its two parachutes, the record's sequence by the
  * clock and the abort a hand's command sets off. Where the plan wants a figure the record does not give it is worked
- * from those it does, `derived`, and says how. `body` is the stack as a rigid body (types.ts `Body`), as `stack` makes it.
+ * from those it does, `derived`, and says how. `body` is the stack as a rigid body (types.ts `Body`), as `stack` makes it;
+ * `hw` the stack's own figures (`HARDWARE`).
  */
-export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stack(day.stack)): FlightPlan {
-  const e = { thrust: day.thrust, isp: day.isp, exitArea: EXIT_AREA, cutoff: day.cutoff, depletion: DEPLETION };
+export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stack(day.stack), hw: Hardware = HARDWARE): FlightPlan {
+  const e = { thrust: day.thrust, isp: day.isp, exitArea: hw.exitArea, cutoff: day.cutoff, depletion: hw.depletion };
   const flow = e.thrust.value / (G0 * e.isp.value);
   const cutoff = e.cutoff.value;
   const vacuum = vacuumOf(e);
@@ -947,7 +993,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
       count: 1,
       mass: derived(sep.mass.value - day.retropack.mass.value, 'the capsule at separation less the capsule once the retropack has gone'),
     },
-    { id: 'capsule', label: 'Capsule', count: 1, mass: day.retropack.mass, aero: { area: AREA, drag: ENTRY_DRAG } },
+    { id: 'capsule', label: 'Capsule', count: 1, mass: day.retropack.mass, aero: { area: hw.area, drag: hw.entryDrag } },
   ];
   const joints: JointDef[] = [
     ...(hasTower ? [{ id: 'tower', label: 'Tower jettisoned', gone: ['tower'], ...(body.tower ? { at: body.tower.at } : {}) }] : []),
@@ -996,9 +1042,9 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
         body: 'retropack',
         count: 1,
         tanks: [],
-        thrust: { vacuum: RETRO_THRUST },
+        thrust: { vacuum: hw.retro.thrust },
         kind: 'solid',
-        burn: RETRO_BURN,
+        burn: hw.retro.burn,
         starts: { count: 1, ground: false, confidence: 'documented', source: 'a solid motor: lit once' },
       }),
     ),
@@ -1055,14 +1101,14 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
       id: 'drogue',
       label: 'Drogue',
       body: 'capsule',
-      ...DROGUE,
+      ...hw.drogue,
       ...(lim ? { strength: lim.drogue, ...(lim.pull?.drogue ? { pull: lim.pull.drogue } : {}) } : {}),
     },
     {
       id: 'main',
       label: 'Main parachute',
       body: 'capsule',
-      ...MAIN,
+      ...hw.main,
       instead: ['drogue'],
       ...(lim ? { strength: lim.main, ...(lim.pull?.main ? { pull: lim.pull.main } : {}) } : {}),
     },
@@ -1082,13 +1128,13 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     thrusters,
     chutes,
     limits,
-    drag: [{ until: sep.at, area: AREA, curve: ASCENT_DRAG }],
+    drag: [{ until: sep.at, area: hw.area, curve: hw.ascentDrag }],
     rigid: body,
     heating: heated(day.starts),
     ...(body.sheds ? { sheds: body.sheds } : {}),
   };
   const attitude: AttitudeDef[] = [
-    { id: 'programme', label: 'Tilt programme', hold: { programme: TILT, azimuth: day.azimuth }, source: TILT.source },
+    { id: 'programme', label: 'Tilt programme', hold: { programme: hw.tilt, azimuth: day.azimuth }, source: hw.tilt.source },
     { id: 'retro', label: 'Retro attitude', hold: { retro: day.retro.pitch }, source: day.retro.pitch.source },
     {
       id: 'blunt',

@@ -1121,7 +1121,7 @@ const CAPSULE_LAUNCH = 4040.28 - HATCH_SAVED;
 const CAPSULE_ORBIT = 2855.14 - HATCH_SAVED;
 const CAPSULE_ENTRY = 2579.0 - HATCH_SAVED;
 const NO11 = `No. 11’s weights are in its Postlaunch Memorandum Report, which has not been found: taken as No. 7’s (${PLR}, 3.1) less the ${HATCH_SAVED} lb its explosive hatch saved (${RESULTS}, p. 4). The window, the rate command system and the new panel are not counted`;
-const DAY: Day = {
+export const DAY: Day = {
   winds: WINDS,
   azimuth: doc(
     AZIMUTH,
