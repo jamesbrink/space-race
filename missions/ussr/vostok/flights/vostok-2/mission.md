@@ -56,6 +56,18 @@ coast's error, which put 09:57 nearer, not the record's vindication. What is lef
 left the spacecraft and the burn's aim along the line from the Sun (`retro.aim`); it is recorded (tests/staged.test.mjs
 `PHASE`), not tuned. The 09:57 run above was flown as osculating and has not been run again.
 
+**The bundle's height at 10:07** (issue #23) is 61 km on the coast and 58 km on the run shown, against the reckoned 80
+to 100. It is not the drag. Up to the parting the joined ship flies its free-molecule figure (`SHIP_RAREFIED`, 2.2 on
+7.17 m²) bridged by the Knudsen number on its 2.43 m to the ball's continuum curve, at the whole ship's mass; what parts
+flies only after the instant measured (the ball on its own figure, the instrument module not at all). Taking away the
+free-molecule figure lifts it 3.6 km, the coast's drag until November 2026 2.8 km, and the mean air for the day's lowers
+it 1.4 km. At a fixed instant the height belongs to the burn: 9 km for each minute it came later, 11 km lower if pushed
+straight against the motion (the line from the Sun is 0.72 against it, 0.26 down and 0.65 across), 14 km higher on
+120 m/s in place of the type's 136 (estimated). No instant of the burn meets the height and the landing together (0 along
+the track wants it 69 s later, 71 km at 10:07; 90 km wants it 194 s later, 800 km long), and 10:07 is by the clock that
+read the command at 09:57: by that clock the parting came 10 minutes after the command, where the run is at 126 km. No
+physical correction has been found; the miss stands.
+
 ## The two periods by hand
 
 `manual.periods`: 10:00 (the lock on in the shadow, the ship still in twenty seconds, the handle from 10:05, oriented by
@@ -80,7 +92,7 @@ scene shows), then the descent. Tolerances were set before anything was flown.
 | Period at the last cutoff | 88.46 min ± 15 s | 83.97 min | **miss** | the same as the perigee |
 | Period, node to node, of the orbit begun | 88.46 min ± 2 s | 88.46 | yes | not independent: the published orbit is read as mean elements with this nodal period (issue #8) |
 | Apogee as flown round | 244 km ± 5 | 245 km | yes | (read as osculating, as until November 2026: 265 km, a miss) |
-| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 58 km | **miss** | not found: the burn's aim the first suspect (as osculating: 79 km, within) |
+| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 58 km | **miss** | not the drag (3.6 km at most): the burn's instant, line and impulse, and Titov's clock (above; as osculating: 79 km, within) |
 | Greatest load in the entry | about 10 g ± 2 | 8.38 g | yes | |
 | Landing across the track | 0 ± 25 km | −11 km | yes | (as osculating: −95 km, a miss: four minutes early on the coast) |
 | Landing along the track | 0 ± 100 km | −422 km | **miss** | PHASE (as osculating: −1,493 km) |

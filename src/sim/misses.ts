@@ -353,7 +353,13 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       separationAltitude: {
         by: -29_188,
         slack: 1_500,
-        why: 'At 10:07, the instant the record has the cable bundle burn through, it is at 61 km where the record’s research has 80 to 100 (a reckoning). Read as osculating, as until November 2026, it was at 81 km and within, the burn then coming at another place on that orbit (PHASE); read as mean it was 18 km lower, and the joined ship’s free-molecule drag (orbitDrag) in the day’s air (world/thermosphere.ts) brings it down 2 km sooner again. What owns it is not found: the burn’s aim along the line from the Sun (`retro.aim`, Vostok 1’s separationAltitude miss) is the first suspect. Not adjusted',
+        why:
+          'At 10:07, the instant the record has the cable bundle burn through, it is at 61 km where the record’s research has 80 to 100 (a reckoning), 16 minutes after the burn’s command. ' +
+          'Not the drag: up to the parting the joined ship flies its free-molecule figure (SHIP_RAREFIED) bridged on its 2.43 m to the ball’s continuum curve, at the whole ship’s mass; without the free-molecule figure it would be 3.6 km higher, on the coast’s drag until November 2026 2.8 km higher, in the mean air 1.4 km lower (what parts flies only after it: the ball on its own figure, the instrument module not at all). ' +
+          'At a fixed instant the height is the burn’s: 9 km for each minute it came later, 11 km lower straight against the motion (the line from the Sun is 0.72 against it, 0.26 down, 0.65 across), 14 km higher on 120 m/s for the type’s 136 (estimated). ' +
+          'No instant of the burn meets this and the landing together: 0 along the track wants it 69 s later (71 km here), 90 km wants 194 s (800 km long). ' +
+          'And 10:07 is by the clock that read the command at 09:57, which the orbit rules out: by it the parting came 10 minutes after the command, where the run is at 126 km. ' +
+          'Read as osculating, as until November 2026, it was at 81 km (PHASE). No physical correction found (issue #23). Not adjusted',
       },
       crossTrack: {
         by: -68_089,
@@ -375,7 +381,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       separationAltitude: {
         by: -32_096,
         slack: 1_500,
-        why: `${PUBLISHED}. At 10:07, the instant the record has the cable bundle burn through, it is at 58 km where the record’s research has 80 to 100, as the coast from the injection (61 km): see the coast's miss. Read as osculating it was at 79 km and within`,
+        why: `${PUBLISHED}. At 10:07, the instant the record has the cable bundle burn through, it is at 58 km where the record’s research has 80 to 100, as the coast from the injection (61 km): the burn’s instant, line and impulse and the record’s clock own it, not the drag (the coast’s miss). Read as osculating it was at 79 km and within`,
       },
       alongTrack: {
         by: -421_725,
