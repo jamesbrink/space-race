@@ -13,7 +13,7 @@ import { watchContext } from '../lost.ts';
 import type { Solids } from '../onfoot/walk.ts';
 import { Origin } from '../origin.ts';
 import { Outline } from '../outline.ts';
-import { drawsLast, OverlayPass } from '../overlay.ts';
+import { drawsLast } from '../overlay.ts';
 import { Quality } from '../quality.ts';
 import { tier } from '../tier.ts';
 
@@ -75,8 +75,6 @@ export interface PipelineHost {
   backdrop: { scene: THREE.Scene; camera: THREE.Camera };
   /** What is drawn without depth and may stand in front of cloud (read live: clouds.ts `veils`). */
   veils: THREE.Object3D[];
-  /** What is drawn over the flight (overlay.ts). */
-  overlays: () => THREE.Object3D[];
   /** What hides a part from the outline although it writes no depth (outline.ts). */
   screens: () => readonly THREE.Object3D[];
   /** The cutaway's planes, in the scene's frame. */
@@ -90,9 +88,8 @@ export interface PipelineHost {
 
 /**
  * A stage's frame, from the scene to the screen: the passes (the sky, the scene, the clouds' depth, the ink, the fire
- * and smoke, what is drawn over the flight, the clouds, the outline, the glow, the output, and over that what is drawn
- * last: overlay.ts `drawLast`), drawn from the eye
- * (origin.ts); the drawing's resolution and the net under the frame rate; the near and far planes fitted to what is
+ * and smoke, the clouds, the outline, the glow, the output, and over that what is drawn last: overlay.ts `drawLast`),
+ * drawn from the eye (origin.ts); the drawing's resolution and the net under the frame rate; the near and far planes fitted to what is
  * there (`fitDepth`); and the counts the diagnostics read.
  */
 export class Pipeline {
@@ -159,8 +156,6 @@ export class Pipeline {
     this.ink.enabled = false; // straight after the scene, while the frame's depth is still the scene's
     this.composer.addPass(this.ink);
     this.composer.addPass(new ExhaustPass(scene, this.camera, this.clouds)); // the engine's fire and its smoke, marched (exhaust.ts): over the ink, under the clouds and the bloom
-    // what is drawn over the flight (the predicted path): over the fire and the smoke, under the clouds (overlay.ts)
-    this.composer.addPass(new OverlayPass(scene, this.camera, h.overlays, () => this.clouds.mark.texture));
     this.composer.addPass(this.clouds);
     // (the frame's depth says where a part is hidden; glass and what the cutaway has opened are not in it)
     this.outline = new Outline(scene, this.camera, () => this.clouds.mark.texture, h.screens);
@@ -176,7 +171,8 @@ export class Pipeline {
     this.bloom.adopt(output); // (and the glow added under them, in the same pass)
     if (h.plain) this.bloomOld = true;
     this.composer.addPass(output);
-    // (and over all of it, as it goes to the canvas, what is nearer than any cloud and thinner than a pixel: overlay.ts `drawLast`)
+    // (and over all of it, as it goes to the canvas, what is no part of the frame: a parachute's lines, the predicted path,
+    // hidden by the scene's depth and the cloud in front of them: overlay.ts `drawLast`)
     drawsLast(
       output,
       scene,

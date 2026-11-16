@@ -171,6 +171,22 @@ test('behind the Earth: hidden past the limb, seen in front of it, and nothing o
   const past = 3 * R * Math.cos(limb) + 1e6;
   assert.ok(limbPx(eye, ray(limb + 2 / px, past), centre, R, px) > 1.5, 'two pixels outside the limb');
   assert.ok(limbPx(eye, ray(limb - 2 / px, past), centre, R, px) < -1.5, 'two pixels inside it');
+  // the Earth's own shape, flattened at the poles: seen across the equator its limb is the equator's radius, seen
+  // across a pole the polar one; a point on the ground at either, seen from above, is not hidden
+  const A = 6378137;
+  const B = A * (1 - 1 / 298.257223563);
+  const pole = [0, 1, 0];
+  const across = (r) => {
+    const e = [0, 0, 3 * A];
+    const a = Math.asin(r / (3 * A));
+    return { e, at: (d) => [0, Math.sin(d) * past, 3 * A - Math.cos(d) * past], a };
+  };
+  const polarView = across(B);
+  assert.ok(limbPx(polarView.e, polarView.at(polarView.a + 1 / px), centre, A, px, pole, B) > 0.5, 'a pixel past the polar limb');
+  assert.ok(limbPx(polarView.e, polarView.at(polarView.a - 1 / px), centre, A, px, pole, B) < -0.5, 'and a pixel inside it');
+  // (the polar limb is 21 km inside the equator's: a sphere of the equator's radius would hide what is just past it)
+  assert.ok(limbPx(polarView.e, polarView.at(polarView.a + 1 / px), centre, A, px) < 0);
+  assert.equal(limbPx([0, B + 10e3, 0], [50e3, Math.sqrt(B ** 2 - 50e3 ** 2), 0], centre, A, px, pole, B), Number.POSITIVE_INFINITY);
 });
 
 test('the apsides of any path: an orbit has its two, a lob its one, a fall none, each where it is', () => {

@@ -133,11 +133,16 @@ a hemisphere light's direction). So:
 
 ## Drawn last
 
-**A line held at a least width in pixels (a parachute's lines) is in no buffer the frame is made from**: it writes
-no depth and is drawn after everything, over the clouds, the air and the glow, into the canvas (overlay.ts `drawLast`),
-hidden by the scene's depth and by the march's cloud in front of it. In the scene it wrote depth while it let most of the
-pixel through, so the clouds and the air laid over the frame were left out under it and it came through cloud as
-threads of bare sea (GitHub issue #1); `pnpm test:chute` holds it.
+**A line held at a least width in pixels (a parachute's lines) and an instrument's line drawn over the scene (the
+predicted path) are in no buffer the frame is made from**: they write no depth and are drawn after everything, over the
+fire and smoke, the clouds, the air, the outline and the glow, into the canvas (overlay.ts `drawLast`), hidden by the
+scene's depth and by as much of the march's cloud as lies in front of them (the cloud pass's `laid()`). In the scene the
+parachute's lines wrote depth while they let most of the pixel through, so the clouds and the air laid over the frame
+were left out under them and they came through cloud as threads of bare sea (GitHub issue #1); drawn under the clouds as
+a veil, the path had the cloud behind it cut by as much as it let through, so its faint edge and glow over cloud let the
+ground through in dashes (#7). Whatever is drawn last is tone-mapped by its own material (`tonemapping_fragment`,
+`colorspace_fragment`) and built for the canvas in `Stage.warm` (overlay.ts `compileLast`). `pnpm test:chute` and
+`pnpm test:path` hold it.
 
 ## The predicted path
 
@@ -152,13 +157,15 @@ rules are the screen's, the same for every path, never tuned to a flight:
   pixel wide breaks into dots, so it is faded, never thinned.
 - **Never at the eye**: each chord is cut at a plane just past the near plane in the vertex shader, and fades in over the
   next doubling of the distance; nothing behind the eye is ever a vertex.
-- **Behind the Earth to a pixel**: a sphere (the polar radius) is tested for every pixel of the ribbon in the view's own
-  frame, worked out in doubles, so the line ends at the limb however long its chords.
-- **Over the fire and smoke, under the clouds**: it is drawn in a pass of its own (overlay.ts `OverlayPass`, on its own
-  layer) after the engines' fire and smoke are laid over the frame and before the clouds, tested against the scene's
-  depth in its fragment shader (in the cel look the frame by then is the ink's, with no depth of its own). The smoke is
-  marched as far as the scene's depth, which the line does not write: drawn with the scene, the line lay under the smoke
-  behind it, and through the pad's dust and the trail it came out pale and in pieces.
+- **Behind the Earth to a pixel**: the globe's ellipsoid (WGS 84) is tested for every pixel of the ribbon in the view's
+  own frame, worked out in doubles (stretched along the pole it is a sphere, pathline.ts `limbPx`), so the line ends at
+  the limb however long its chords; it is faded over the pixel and a half before the limb, so a line that comes down
+  to the ground behind it is gone before the globe's depth, which there is nearer than the line by little more than the
+  1 % the line is drawn nearer by, can cut it in steps.
+- **Over everything, hidden by what is in front of it**: drawn last (above), tested against the scene's depth in its
+  fragment shader, under the march's cloud in front of it and over all cloud behind it. The smoke is marched as far as
+  the scene's depth, which the line does not write: drawn with the scene, the line lay under the smoke behind it, and
+  through the pad's dust and the trail it came out pale and in pieces.
 - **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, or a
   tenth of the view's height at it), then in from nothing over 40 px as seen at the vehicle, so a short path near a big
   vehicle (on the pad, the first seconds of a climb) is seen leave it.

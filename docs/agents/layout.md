@@ -136,7 +136,7 @@ src/
   viewer/stage/shadows.ts             the Sun's shadows: the fine map and where it is spent (the section, the gallery's focus, the walker, the vehicle), its maps by size, the far map under it
   viewer/pick.ts                      what a ray meets, through each mesh's bounding volume hierarchy
   viewer/outline.ts                   the line round what is hovered or selected (three's OutlinePass from its mask on)
-  viewer/overlay.ts                   what is drawn over the flight that is no part of it (the predicted path), in a pass of its own; and what is drawn last, over the finished frame (a parachute's lines)
+  viewer/overlay.ts                   what is drawn over the flight that is no part of it (a parachute's lines, the predicted path): drawn last, over the finished frame, under the cloud in front of it
   viewer/backdrops.ts                 the settings: orbit, studio, and a place's ground under its sky, round the flight's pad, on its day
   viewer/scenery/ground.ts            a place's ground as data (`GroundSpec`) laid out round one of its pads on a day (`groundPlace`): the land, its plants,
                                       what stood there that day (`stood`), turned to lie round the pad model

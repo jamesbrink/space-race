@@ -12,11 +12,11 @@ import {
   type Start,
 } from '../sim/predict.ts';
 import type { SitedFlight } from '../types.ts';
-import { WGS84_B } from '../world/bodies.ts';
+import { WGS84_A, WGS84_B } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
-import { sceneDepthGlsl, uDepthRange, uSceneDepth } from './overlay.ts';
+import { cloudAheadGlsl, sceneDepthGlsl, uDepthRange, uLast, uSceneDepth } from './overlay.ts';
 import { type Curve, curveAt, curveOf, limbPx, type Ribbon, ribbon, sample, slope } from './pathline.ts';
 import {
   type Box,
@@ -68,14 +68,16 @@ import { disposeTree } from './dispose.ts';
  *   across the screen); the line fades in over the next doubling of the distance from the eye, so where it passes the
  *   camera it is seen leaving, not cut. From inside the vehicle nothing within its radius of the eye is drawn, so the
  *   line is seen through the windows even while the vehicle drawn catches up with the flight after the clock has run fast.
- * - **Hidden by what is in front of it**: drawn in a pass of its own after the scene and after the engines' fire and
- *   smoke (overlay.ts: the smoke is marched to the scene's depth, which the line does not write, so drawn with the scene
- *   it lay under the smoke behind it and came through the pad's dust and the trail pale and broken), tested against the
- *   scene's depth in its own fragment shader and writing none, a hundredth of the way nearer than it is (so the sea it
- *   comes down to does not hide its end); the clouds, laid over last, cover it where they are in front of it; and the
- *   Earth hides it by a sphere, tested for every pixel of the ribbon (pathline.ts `limbPx`) with a pixel's soft edge, so
- *   where the line goes behind the limb it ends at the limb. The sphere is the Earth's polar radius: inside the surface
- *   everywhere, so it never hides what is on the ground.
+ * - **Hidden by what is in front of it, and by nothing behind it**: drawn over the finished frame (overlay.ts
+ *   `drawLast`: after the fire and smoke, the clouds, the air and the glow), tested against the scene's depth in its own
+ *   fragment shader and writing none, a hundredth of the way nearer than it is (so the sea it comes down to does not
+ *   hide its end), and covered by as much of the clouds' march as lies in front of it. (Drawn under the clouds, as it
+ *   was, the clouds' composite cut the cloud behind it by as much as it let through, and its faint glow and edge over
+ *   cloud let the ground under the cloud through in dashes; drawn with the scene, it lay under the smoke behind it.) The
+ *   Earth hides it by its ellipsoid, tested for every pixel of the ribbon (pathline.ts `limbPx`), faded over the pixel
+ *   and a half before the limb, so where the line goes behind the limb it ends at the limb, cleanly however it grazes
+ *   it, and a line that comes down to the ground there is gone before the globe's own depth can cut it in steps. The
+ *   ellipsoid is the globe's (WGS 84): a point on the ground seen from above is never behind it.
  * - **Still when nothing changes, eased when it does**: a new prediction is eased in from where the last one had each
  *   instant over `EASE` seconds; a prediction made again of the same flight lies on the same curve, so nothing moves.
  * - **Drawn from the eye** (origin.ts): points are kept in doubles and given to the GPU as offsets from the vehicle,
@@ -212,22 +214,27 @@ const VERT = /* glsl */ `
   }`;
 
 const FRAG = /* glsl */ `
+  #include <common>
   ${sceneDepthGlsl}
+  ${cloudAheadGlsl}
   uniform vec3 uColour, uInk;
   uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio;
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
   uniform vec4 uShipSeg;      // and on the target: its long axis from end to end, pixels
   uniform float uShipW;       // and how far round that the line keeps off, pixels (0: not at all)
   uniform vec3 uCentre;       // the Earth's centre in the view's frame
-  uniform float uRadius;      // the sphere that hides the line, m
+  uniform vec3 uPole;         // and its axis, north
+  uniform float uRadius;      // the ellipsoid that hides the line: its equator's radius, m
+  uniform float uStretch;     // and how much longer than its polar radius that is (a/b - 1)
   uniform float uPxPerRad;    // pixels to a radian of the view
   uniform vec2 uView;         // the target's size, pixels
   varying float vSide, vT;
   varying vec3 vView;
   void main() {
     // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
-    // sea it comes down to does not hide its end (overlay.ts: in the cel look the frame it is drawn into has no depth)
+    // sea it comes down to does not hide its end (overlay.ts: the finished frame it is drawn over has no depth of its own)
     if (behindScene(-vView.z * 0.99, uView)) discard;
+    float eye = length(vView);
     float px = abs(vSide) * uHalf;
     float c = uCore;
     vec3 colour = uColour;
@@ -249,7 +256,6 @@ const FRAG = /* glsl */ `
       a = body + behind * (1.0 - body);
       colour = (uColour * body + under * (1.0 - body)) / max(a, 1e-4);
     }
-    float eye = length(vView);
   #ifndef RING
     // clear of the vehicle: along the line in the scene, coming in from nothing over a span that is so many pixels at the
     // vehicle (pathline.ts fadeIn); and on the screen, outside its ring
@@ -267,18 +273,26 @@ const FRAG = /* glsl */ `
   #endif
     // never at the eye: in from the plane over the next doubling of the distance
     a *= smoothstep(uClip, 2.0 * uClip, eye);
-    // behind the Earth: the ray from the eye to here passes inside its sphere first (by how many pixels: pathline.ts limbPx)
-    float k = dot(uCentre, vView) / max(eye * eye, 1e-6);
-    if (k > 0.0 && k < 1.0) a *= smoothstep(-0.7, 0.7, (length(uCentre - vView * k) - uRadius) / max(eye * k, 1e-3) * uPxPerRad);
+    // behind the Earth: the ray from the eye to here passes inside its ellipsoid first (by how many pixels: pathline.ts
+    // limbPx; stretched along the pole, it is a sphere), faded over the pixel and a half before the limb, so a line that
+    // goes down behind it, to the ground, has gone before the globe's own depth, which is nearer by only the 1 % the
+    // line is drawn nearer by where the ray grazes it, can cut it as a step or a speckle
+    vec3 e = -uCentre + uPole * dot(-uCentre, uPole) * uStretch;
+    vec3 f = vView + uPole * dot(vView, uPole) * uStretch;
+    float k = -dot(e, f) / max(dot(f, f), 1e-6);
+    if (k > 0.0 && k < 1.0) a *= smoothstep(0.0, 1.4, (length(e + f * k) - uRadius) / max(length(f) * k, 1e-3) * uPxPerRad);
   #if !defined(FLOWN) && !defined(RING)
     if (vT < uCut) {
       float dash = fract(vT / 3.0);                                     // under power: dashes, three seconds of flight each
       a *= mix(0.25, 1.0, smoothstep(0.0, 0.04, dash) * (1.0 - smoothstep(0.6, 0.64, dash)));
     }
   #endif
-    a *= uOpacity;
+    // under the cloud in front of it, by as much as that cloud is opaque (overlay.ts: it is drawn over the finished frame)
+    a *= uOpacity * (1.0 - cloudAhead(gl_FragCoord.xy / uView, eye));
     if (a < 0.004) discard;
     gl_FragColor = vec4(colour, a);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }`;
 
 /** What draws it in the scene and says where things are on it (viewer/stage.ts). */
@@ -494,9 +508,11 @@ export class FlightPath {
   private readonly marksEl: HTMLElement;
   private readonly readout: HTMLElement;
   private readonly button: HTMLElement | null;
-  /** The Earth's centre in the site's frame, and the columns of the turn from the Earth's frame into the site's. */
+  /** The Earth's centre in the site's frame, and the columns of the turn from the Earth's frame into the site's; its axis, north, in the site's frame. */
   private readonly centre: THREE.Vector3;
   private readonly basis: number[];
+  private readonly pole: THREE.Vector3;
+  private readonly poleAt: number[];
 
   private on = !prefs.get('pathOff');
   private guided = prefs.get('pathGuided');
@@ -567,17 +583,22 @@ export class FlightPath {
       ...ecefToSiteDirection(this.site, [0, 1, 0]),
       ...ecefToSiteDirection(this.site, [0, 0, 1]),
     ];
+    this.poleAt = this.basis.slice(6, 9);
+    this.pole = new THREE.Vector3(...this.poleAt);
 
     this.uniforms = {
       uOrigin,
       tSceneDepth: uSceneDepth,
       uDepthRange,
+      ...uLast,
       uView: { value: new THREE.Vector2(1, 1) },
       uHalf: { value: HALF },
       uClip: { value: 1 },
       uRing: { value: 1 },
       uCentre: { value: new THREE.Vector3() },
-      uRadius: { value: WGS84_B },
+      uPole: { value: new THREE.Vector3(0, 1, 0) },
+      uRadius: { value: WGS84_A },
+      uStretch: { value: WGS84_A / WGS84_B - 1 },
       uPxPerRad: { value: 1000 },
       uColour: { value: new THREE.Color() },
       uInk: { value: new THREE.Color() },
@@ -616,14 +637,14 @@ export class FlightPath {
         defines,
         transparent: true,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         side: THREE.DoubleSide,
       });
       this.materials.push(material);
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = name;
       mesh.frustumCulled = false;
-      mesh.renderOrder = order; // after the fire, the trail of smoke and the air (globe.ts: 10), which would haze an instrument's line
+      mesh.renderOrder = order; // (the line flown under the line ahead, among what is drawn last)
       mesh.raycast = () => {}; // not a thing to pick
       mesh.visible = false;
       // the frame's own camera and the vehicle where this frame has it: the clear gap, the ring, the labels (`prepare`)
@@ -1428,6 +1449,7 @@ export class FlightPath {
     // the Earth's centre and the vehicle in the view's frame, worked out in doubles
     this.unturn.copy(camera.quaternion).invert();
     (u.uCentre!.value as THREE.Vector3).copy(this.centre).sub(eye).applyQuaternion(this.unturn);
+    (u.uPole!.value as THREE.Vector3).copy(this.pole).applyQuaternion(this.unturn);
     if (vessel) (u.uShip!.value as THREE.Vector3).copy(ship).sub(eye).applyQuaternion(this.unturn);
     else (u.uShip!.value as THREE.Vector3).set(0, 0, 1e20);
     // ...and on the target: its outline as a capsule, its long axis from end to end and as broad as it is, with a margin
@@ -1489,7 +1511,7 @@ export class FlightPath {
       if (m.t <= now) continue;
       const scene = m.at;
       // behind the Earth? (laid on its place all the same, dimmed: it is in view, the Earth is in front of it)
-      const hidden = limbPx(eyeAt, scene.toArray(), centre, WGS84_B, pxPerRad) < 0;
+      const hidden = limbPx(eyeAt, scene.toArray(), centre, WGS84_A, pxPerRad, this.poleAt, WGS84_B) < 0;
       m.el.classList.toggle('behind', hidden);
       // on the target, as it is before it is divided: its way from the middle of the view holds wherever it lies, behind the eye too
       const view = this.q.copy(scene).sub(eye).applyQuaternion(this.unturn);

@@ -1,26 +1,21 @@
 import * as THREE from 'three';
-import { Pass } from 'three/addons/postprocessing/Pass.js';
+import type { Pass } from 'three/addons/postprocessing/Pass.js';
 
 /**
- * What is drawn over the flight that is no part of it (the predicted path, path.ts: an instrument's line), drawn in a
- * pass of its own after the engines' fire and smoke and before the clouds (Stage's composer).
+ * What is drawn over the flight that is no part of it: a parachute's lines (chute.ts) and the predicted path (path.ts,
+ * an instrument's line). Each is drawn over the finished frame (`drawLast`), into the canvas as it goes to the screen,
+ * after the fire and smoke, the clouds, the air, the outline and the glow; hidden by the scene's surfaces, tested against
+ * the scene's depth as the scene left it (`sceneDepthGlsl`), and by as much of the clouds' march as lies in front of it
+ * (`cloudAheadGlsl`).
  *
- * The fire and the smoke are marched as far as the scene's depth and laid over the frame (exhaust.ts). The line writes
- * no depth, so drawn with the scene it was under them: the smoke behind it, between it and the ground, was laid over it
- * as if in front, and the line came through the pad's dust and the trail pale and in pieces. Drawn after them it is an
- * instrument's line over the fire, the smoke and the air, as it was meant to be; the clouds, laid over last, still cover
- * it where they are in front of it and show through it where they are behind, by how much it lets through (clouds.ts
- * `veils`).
- *
- * The scene's surfaces still hide it: it is tested against the scene's depth as the scene left it (`sceneDepthGlsl`),
- * in its own fragment shader, because in the cel look the frame it is drawn into by then is one the ink drew into, which
- * has no depth of its own.
+ * Why last. The fire and the smoke are marched as far as the scene's depth and laid over the frame (exhaust.ts): a line
+ * that writes no depth, drawn with the scene, lay under the smoke behind it and came through the pad's dust and the trail
+ * pale and in pieces. Drawn after them and before the clouds (as the path was), the clouds' composite cut the cloud
+ * behind it by as much as it let through (clouds.ts `veils`): a faint line, or the faint glow and edge of one, over cloud
+ * let the ground under the cloud through in dashes (GitHub issue #7). Over the finished frame nothing behind it is cut.
  */
 
-/** The layer what is overlaid is on, and nothing else: the scene's own draw does not see it. */
-export const OVERLAY_LAYER = 6;
-
-/** The scene's depth as it stood straight after the scene was drawn, and the near and far planes it was drawn with: for every overlay's shader. */
+/** The scene's depth as it stood straight after the scene was drawn, and the near and far planes it was drawn with: for the shader of everything drawn last. */
 export const uSceneDepth: THREE.IUniform<THREE.Texture | null> = { value: null };
 export const uDepthRange: THREE.IUniform<THREE.Vector2> = { value: new THREE.Vector2(1, 2) };
 
@@ -43,13 +38,14 @@ export const sceneDepthGlsl = /* glsl */ `
 
 /**
  * What is drawn over the finished frame (`drawLast`): a line held at a least width in pixels and faded by as much as it
- * is thinner than that (a parachute's lines, chute.ts). Drawn with the scene, such a line wrote the scene's depth at
+ * is thinner than that (a parachute's lines, chute.ts), and an instrument's line drawn over the scene (the predicted
+ * path, path.ts). Drawn with the scene, such a line wrote the scene's depth at
  * full strength while it let most of what was behind it through, and the clouds and the air, laid over the frame from
  * that depth, were left out at its pixels: what showed there was the bare sea or land under the cloud, so the lines
  * came through a cloud as threads of the ground behind it, and where the multisampled depth missed the line the cloud
  * was laid over it instead. So such a line is in no buffer the frame is made from: it is drawn last, over the clouds,
  * the air and the glow, into the canvas as it goes to the screen (tone-mapped there by three, as the output pass maps
- * the frame), hidden by the scene's surfaces as the overlays are (`behindScene`), and by as much of the clouds' march
+ * the frame), hidden by the scene's surfaces (`behindScene`), and by as much of the clouds' march
  * as lies in front of it (`cloudAhead`). It is on a layer of its own (`LAST_LAYER`), which nothing else draws.
  */
 export const LAST_LAYER = 8;
@@ -63,6 +59,28 @@ export function drawLast(object: THREE.Object3D): void {
 
 export function undrawLast(object: THREE.Object3D): void {
   lasts.delete(object);
+}
+
+/**
+ * Build the shaders of what is drawn last in `scene` for the canvas, as it will be drawn (Stage.warm: everything else
+ * is built for the buffer the scene is drawn into, and a shader for the canvas, tone-mapped in the screen's colours, is
+ * another shader, which would otherwise be built in front of whoever first sees the line).
+ */
+export function compileLast(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): Promise<THREE.Object3D> {
+  const alone = Object.assign(new THREE.Scene(), { matrixAutoUpdate: false, matrixWorldAutoUpdate: false });
+  alone.children = [...lasts].filter((o) => {
+    let p: THREE.Object3D = o;
+    while (p.parent) p = p.parent;
+    return p === scene;
+  });
+  alone.fog = scene.fog;
+  const target = renderer.getRenderTarget();
+  renderer.setRenderTarget(null);
+  const built = renderer.compileAsync(alone, camera);
+  renderer.setRenderTarget(target);
+  return built.finally(() => {
+    alone.children = [];
+  });
 }
 
 /**
@@ -148,50 +166,4 @@ export function drawsLast(
       alone.children = [];
     }
   };
-}
-
-/**
- * The pass: draws whatever is on `OVERLAY_LAYER` among `objects` into the frame where it stands, with the scene's depth
- * from `depth` (DepthMark's, clouds.ts). The objects stay where they are in the scene (their world matrices are the
- * frame's, made in the scene's draw just before), drawn through a scene of their own that holds them, as the clouds draw
- * their veils.
- */
-export class OverlayPass extends Pass {
-  private readonly scene: THREE.Scene;
-  private readonly camera: THREE.PerspectiveCamera;
-  private readonly objects: () => THREE.Object3D[];
-  private readonly depth: () => THREE.Texture | null;
-  private readonly alone = Object.assign(new THREE.Scene(), { matrixAutoUpdate: false, matrixWorldAutoUpdate: false });
-
-  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, objects: () => THREE.Object3D[], depth: () => THREE.Texture | null) {
-    super();
-    this.scene = scene;
-    this.camera = camera;
-    this.objects = objects;
-    this.depth = depth;
-    this.needsSwap = false;
-  }
-
-  render(renderer: THREE.WebGLRenderer, _write: THREE.WebGLRenderTarget, frame: THREE.WebGLRenderTarget): void {
-    const shown = this.objects().filter((o) => o.parent === this.scene && o.visible);
-    const depth = this.depth();
-    if (!shown.length || !depth) return;
-    uSceneDepth.value = depth;
-    uDepthRange.value.set(this.camera.near, this.camera.far);
-    const alone = this.alone;
-    alone.children = shown;
-    alone.fog = this.scene.fog;
-    const mask = this.camera.layers.mask;
-    const autoClear = renderer.autoClear;
-    renderer.autoClear = false;
-    this.camera.layers.set(OVERLAY_LAYER);
-    try {
-      renderer.setRenderTarget(this.renderToScreen ? null : frame);
-      renderer.render(alone, this.camera);
-    } finally {
-      this.camera.layers.mask = mask;
-      renderer.autoClear = autoClear;
-      alone.children = [];
-    }
-  }
 }

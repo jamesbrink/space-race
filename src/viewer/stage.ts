@@ -18,7 +18,7 @@ import { Lamps } from './lamps.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
 import { type Look, Looks } from './look.ts';
 import { refused, sayRefused } from './lost.ts';
-import { OVERLAY_LAYER } from './overlay.ts';
+import { compileLast, drawLast, undrawLast } from './overlay.ts';
 import { Panes } from './panes.ts';
 import { through } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
@@ -484,7 +484,6 @@ export class Stage {
     this.pipe = new Pipeline(this.renderer, this.scene, this.camera, {
       backdrop: this.setting.backdrop,
       veils: this.veils,
-      overlays: () => this.overlays,
       screens: () => this.screens(),
       cutPlanes: this.cutPlanes,
       plain: this.plain,
@@ -1236,19 +1235,15 @@ export class Stage {
   }
 
   /**
-   * Something drawn over the flight that is no part of it (the predicted path, path.ts): put in the scene, drawn in a
-   * pass of its own after the fire and smoke (overlay.ts), where cloud behind it shows through it as through the fire.
-   * Given again, it has changed: the frame is drawn again.
+   * Something drawn over the flight that is no part of it (the predicted path, path.ts): put in the scene and drawn over
+   * the finished frame (overlay.ts `drawLast`), hidden by the scene's surfaces and by the cloud in front of it, never
+   * cut by the cloud behind it. Given again, it has changed: the frame is drawn again.
    */
   overlay(object: THREE.Object3D): void {
     if (object.parent !== this.scene) {
       this.scene.add(object);
-      object.traverse((o) => {
-        o.layers.disable(0);
-        o.layers.enable(OVERLAY_LAYER);
-      });
+      drawLast(object);
     }
-    if (!this.veils.includes(object)) this.veils.push(object);
     if (!this.overlays.includes(object)) this.overlays.push(object);
     this.dirty = true;
   }
@@ -1258,10 +1253,9 @@ export class Stage {
   /** Take back something put over the flight (`overlay`): whoever put it there is gone (a flight's page left: app/session.ts). */
   unoverlay(object: THREE.Object3D): void {
     object.removeFromParent();
-    for (const list of [this.veils, this.overlays]) {
-      const at = list.indexOf(object);
-      if (at >= 0) list.splice(at, 1);
-    }
+    undrawLast(object);
+    const at = this.overlays.indexOf(object);
+    if (at >= 0) this.overlays.splice(at, 1);
     this.dirty = true;
   }
 
@@ -1646,6 +1640,8 @@ export class Stage {
       // (and the sky's, which is a scene of its own drawn into the same buffer)
       if (!this.plain) built.push(this.renderer.compileAsync(this.setting.backdrop.scene, this.setting.backdrop.camera));
       this.renderer.setRenderTarget(target);
+      // (and what is drawn last, over the finished frame, for the canvas it is drawn into: overlay.ts)
+      built.push(compileLast(this.renderer, this.scene, this.camera));
       await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
       if (token !== this.loads) return void this.unculled(culled); // (another flight since: app/session.ts)
       if (!tier().warmLevels) drawAll(false);

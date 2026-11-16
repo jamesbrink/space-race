@@ -311,19 +311,37 @@ export function clipNear(a: readonly number[], b: readonly number[], plane: numb
  * By how many pixels the ray from the eye to `p` clears a sphere (`centre`, `radius`) on its way: positive when it
  * passes outside it, negative when the sphere hides `p`; Infinity when the ray comes nearest the centre at `p` itself
  * or beyond (nothing of the sphere is between them: a point on the ground, seen from above, is never hidden by it).
- * The fragment shader in path.ts works out the same for every pixel of the ribbon.
+ * Given a `pole` (a unit vector) and a `polar` radius, the body is the spheroid of those radii, `radius` round its
+ * equator (the Earth's WGS 84 ellipsoid): every point is stretched along the pole by `radius / polar` first, which makes
+ * it the sphere and keeps the ray straight, and the miss is measured there (the distances it is divided by change by
+ * the flattening, a third of a percent, at most). The fragment shader in path.ts works out the same for every pixel of
+ * the ribbon.
  */
-export function limbPx(eye: readonly number[], p: readonly number[], centre: readonly number[], radius: number, pxPerRad: number): number {
-  const fx = p[0]! - eye[0]!;
-  const fy = p[1]! - eye[1]!;
-  const fz = p[2]! - eye[2]!;
-  const cx = centre[0]! - eye[0]!;
-  const cy = centre[1]! - eye[1]!;
-  const cz = centre[2]! - eye[2]!;
+export function limbPx(
+  eye: readonly number[],
+  p: readonly number[],
+  centre: readonly number[],
+  radius: number,
+  pxPerRad: number,
+  pole: readonly number[] | null = null,
+  polar = radius,
+): number {
+  const stretch = pole ? radius / polar - 1 : 0;
+  const along = (x: number, y: number, z: number): [number, number, number] => {
+    if (!pole) return [x, y, z];
+    const d = (x * pole[0]! + y * pole[1]! + z * pole[2]!) * stretch;
+    return [x + d * pole[0]!, y + d * pole[1]!, z + d * pole[2]!];
+  };
+  // (from the centre, stretched: the eye `e` and the ray `f` from it to `p`)
+  const e = along(eye[0]! - centre[0]!, eye[1]! - centre[1]!, eye[2]! - centre[2]!);
+  const q = along(p[0]! - centre[0]!, p[1]! - centre[1]!, p[2]! - centre[2]!);
+  const fx = q[0] - e[0];
+  const fy = q[1] - e[1];
+  const fz = q[2] - e[2];
   const ff = fx * fx + fy * fy + fz * fz;
-  const k = (cx * fx + cy * fy + cz * fz) / Math.max(ff, 1e-12);
+  const k = -(e[0] * fx + e[1] * fy + e[2] * fz) / Math.max(ff, 1e-12);
   if (k >= 1 || k <= 0) return Number.POSITIVE_INFINITY;
-  const miss = Math.hypot(cx - fx * k, cy - fy * k, cz - fz * k);
+  const miss = Math.hypot(e[0] + fx * k, e[1] + fy * k, e[2] + fz * k);
   return ((miss - radius) / Math.max(Math.sqrt(ff) * k, 1e-6)) * pxPerRad;
 }
 

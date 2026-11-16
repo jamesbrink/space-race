@@ -689,10 +689,10 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   wherever the eye is, at multiples of a power of two seconds so the chords stay put as the clock runs; it starts at the
   instant on the curve nearest the vehicle as drawn and is taken onto the vehicle there; it is a ribbon of constant
   width in pixels (each chord pushed out across its own direction on the screen and mitred to the next, never thinned
-  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn in a pass of its own after the
-  engines' fire and smoke and before the clouds (viewer/overlay.ts), against the scene's depth and writing none, so the
-  vehicle, the ground and the cabin's walls hide it and the smoke behind it does not; the Earth hides it by a sphere
-  (the polar radius) tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (half its length and a
+  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn over the finished frame (viewer/overlay.ts
+  `drawLast`), against the scene's depth and writing none, so the vehicle, the ground and the cabin's walls hide it and
+  the smoke behind it does not, and under as much cloud as lies in front of it; the Earth hides it by its ellipsoid
+  tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (half its length and a
   little, or a tenth of the view's height at it) and comes in over 40 px more as seen at the vehicle (lunar-lift's stops), a rule of the screen
   so a short path near a big vehicle is still seen leave it, is kept off the vehicle's outline on the screen only where it passes in front
   of the vehicle, and each chord is cut at a plane just past the near plane and fades in over the next doubling of the
