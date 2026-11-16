@@ -335,5 +335,5 @@ export function flyLive(
     if (due || changed(s, before)) samples.push(s);
     if (due) kept = state.t;
   }
-  return { samples, results: tally.results, state };
+  return { samples, results: tally.results, craft: state.craft, state };
 }

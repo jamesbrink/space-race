@@ -112,6 +112,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   panel show of a flight is a `Run`: the record's (`recordOf(flight)`, made once a flight, whichever kind it is: a
   ballistic plan as fly.ts flies it, an orbital one as staged.ts flies it with its samples' own attitude), or a deck's live
   one as it grows. A consumer asks it, not the kind of flight.
+  - Every run says the same things: its `frame`; its sample at an instant (`at`); what happened on it (`events`: the plan's
+    events by id, each with the record's own event at it, and the record's marks); when each body left (`bodies`, by the
+    plan's id); its burns (`fires`, one for each of `flies.fires`); what it gave for each of the record's checks (`results`;
+    a run flown by hand gives `held`); its line flown (`track`). `runOf` makes one from its fields.
+  - A deck's run grows from its vehicle's machine (`grown`): an event fired, or one the machine shows done (every deed it
+    reads there done: the live ballistic vehicle's sequence works the actions itself), at the last of its deeds; never one
+    only a command sets off unless it was. tests/flightrun.test.mjs holds the autopilot's to the record's.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
   - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.

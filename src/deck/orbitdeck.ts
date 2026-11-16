@@ -38,7 +38,7 @@ import {
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import { downVerdict } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
-import { descentRecords, firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
+import { descentRecords, firesOf, grown, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
@@ -286,9 +286,9 @@ export class OrbitDeck extends Deck {
       : {};
     return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
   }
-  /** The run's own samples, in order of time: the predicted path draws the line flown from them (viewer/path.ts `PathSource.track`). */
+  /** The run's line flown (sim/run.ts `Run.track`): the predicted path draws the line flown from it (viewer/path.ts `PathSource.track`). */
   track(): readonly LiveSample[] {
-    return (this.run?.samples ?? []) as readonly LiveSample[];
+    return (this.run?.track() ?? []) as readonly LiveSample[];
   }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
@@ -706,6 +706,8 @@ export class OrbitDeck extends Deck {
       live: true,
       kept: true,
       descent: null,
+      ...grown(this.flight.plan!, s.craft),
+      results: [],
     };
     this.kept = this.run.samples.length;
     this.heard = s.said.length;
@@ -1316,6 +1318,7 @@ export class OrbitDeck extends Deck {
     if (ahead > MOST) this.clock.seek(s.t);
     this.dropsFrom(s);
     run.fires = this.fires();
+    Object.assign(run, grown(this.flight.plan!, s.craft));
     // the engines lit on the pad burn until the last of them stops (the sound's burn, and the trail's: viewer/ascent.ts `cutoff`)
     const staged = recordStages(this.flight.plan!);
     const engine = staged.reduce((last, st, i) => (st.from <= 0 && (last < 0 || st.cut > staged[last]!.cut) ? i : last), -1);

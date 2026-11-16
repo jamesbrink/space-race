@@ -56,7 +56,7 @@ import {
 import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
-import { aboard, act, due, lit, part, type Sense, startCraft } from './craft.ts';
+import { aboard, act, type CraftState, due, lit, part, type Sense, startCraft } from './craft.ts';
 import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
 import type { BodyDef, ChuteDef, Craft, EngineDef, EventDef, FlightPlan, Hold, JointDef } from './plan.ts';
@@ -178,6 +178,8 @@ export interface Results {
 export interface Flown {
   samples: Sample[];
   results: Results;
+  /** The machine as the run left it (sim/craft.ts): when each event happened and each body left. */
+  craft: CraftState;
 }
 
 interface State {
@@ -528,7 +530,7 @@ export function fly(
       kept = t;
     }
   }
-  return { samples, results };
+  return { samples, results, craft };
 }
 
 /**

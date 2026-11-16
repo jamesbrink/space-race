@@ -4,20 +4,44 @@
  * made a run its samples' own attitude places), or one being flown by hand, which the decks give as it grows. Nothing
  * here is drawn: viewer/ascent.ts places it in the scene.
  */
+import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
-import { ballisticOf, flownOnce, type Sample } from './fly.ts';
+import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { coastEvents, coastOf } from './orbital.ts';
-import { type EventDef, eventOf, type FlightPlan } from './plan.ts';
+import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import { apart, Sheds } from './shed.ts';
-import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples, sequenceOf, stagesOf } from './staged.ts';
+import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, type Held, held, recordSamples, sequenceOf, stagesOf } from './staged.ts';
 import type { SitedFlight } from '../types.ts';
-import { frameOf } from '../world/earthframe.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 
+/**
+ * Something that happened on a run, and when (seconds from liftoff; Infinity for one that has not): one of the plan's
+ * events (`event`, its id) with the record's own event at it (`record`, its id) where the plan names one, or an instant
+ * of the record's that sets nothing off (a mark: `record` alone).
+ */
+export interface RunEvent {
+  event?: string;
+  record?: string;
+  t: number;
+}
+
 /** A flight for the scene to show: the record's, or one being flown. */
 export interface Run {
+  /** The frame its samples are in: the flight's (world/earthframe.ts `frameOf`). */
+  frame: EarthFrame;
+  /** The sample on show at `t`: the last at or before it (the first, before the run's start). */
+  at(t: number): Sample;
+  /** What happened on it, in order of time: the plan's events by their ids, and the record's instants (`RunEvent`). */
+  events: readonly RunEvent[];
+  /** When each of the plan's bodies left the vehicle on it, by the body's id: Infinity for one still aboard. */
+  bodies: Readonly<Record<string, number>>;
+  /** Each of the record's checks with what this run gave for it (the record's run's; a run flown by hand gives `held`). */
+  results: readonly Held[];
+  /** The line it has flown: its samples, in order of time (viewer/path.ts draws the line flown from them). */
+  track(): readonly Sample[];
   /** In order of time. A live run's are `LiveSample`s. */
   samples: readonly Sample[];
   /** When it came down, seconds from liftoff: Infinity until it has. */
@@ -52,6 +76,81 @@ export interface Run {
   descent?: DrawnDescent | null;
   /** A flight flown by hand: what it gave for each of the record's checks (by check id), for the Flown panel to set beside the record's run. */
   held?: Record<string, number>;
+}
+
+/** What every run answers the same way from its own samples. */
+const asked = {
+  at(this: Run, t: number): Sample {
+    return sampleAt(this.samples, t);
+  },
+  track(this: Run): readonly Sample[] {
+    return this.samples;
+  },
+};
+
+/** What a run is made of before what it answers is put on it (`runOf`). */
+export type RunFields = Omit<Run, 'frame' | 'at' | 'track' | 'events' | 'bodies' | 'results'> &
+  Partial<Pick<Run, 'events' | 'bodies' | 'results'>>;
+
+/**
+ * A run of a flight from its fields, answering what every run answers: the record's (`recordOf`), or a deck's flight by
+ * hand, which grows its samples and sets what has happened as the machine says (`grown`).
+ */
+export function runOf(flight: SitedFlight, fields: RunFields): Run {
+  return { frame: frameOf(flight), events: [], bodies: {}, results: [], ...fields, ...asked };
+}
+
+/**
+ * What has happened on a flight by its machine's state (sim/craft.ts `CraftState`): each of the plan's events that has
+ * fired, when, with the record's event at it, and when each body left. A deck's run is told it as it grows. An event the
+ * machine shows done without its having been set off (the live ballistic vehicle's own sequence works its actions) has
+ * happened when the last of its deeds was done: every engine it lights lit, every one it cuts out, every joint it parts
+ * gone, every parachute it puts out out (an attitude, a throttle or an arming leaves nothing to read, and is not waited
+ * for); but never one only a hand's command sets off, one that follows another that has not happened, or one with no
+ * deed to read.
+ */
+export function grown(plan: FlightPlan, craft: CraftState): Pick<Run, 'events' | 'bodies'> {
+  const seen: Record<string, number> = { ...craft.fired };
+  const done = (a: Action): number[] => {
+    if ('ignite' in a) return [craft.engines[a.ignite]?.lit ?? Infinity];
+    if ('cut' in a) return [craft.engines[a.cut]?.out ?? Infinity];
+    if ('separate' in a) return [craft.joints[a.separate]?.gone ?? Infinity];
+    if ('deploy' in a) return [craft.chutes[a.deploy]?.out ?? Infinity];
+    if ('release' in a) return [craft.chutes[a.release]?.off ?? Infinity];
+    return [];
+  };
+  for (const e of plan.events) {
+    if (seen[e.id] !== undefined) continue;
+    if (e.when.some((w) => 'command' in w || ('after' in w && seen[w.after] === undefined))) continue;
+    const deeds = e.do.flatMap(done);
+    const at = deeds.length ? Math.max(...deeds) : Infinity;
+    if (Number.isFinite(at)) seen[e.id] = at;
+  }
+  const events = plan.events
+    .filter((e) => seen[e.id] !== undefined)
+    .map((e) => ({ event: e.id, ...(e.record ? { record: e.record.id } : {}), t: seen[e.id]! }));
+  return { events: events.sort((a, b) => a.t - b.t), bodies: craft.bodies };
+}
+
+/** When each of the plan's bodies left, from when the events that part its joints happened: the first of them. */
+function bodiesOf(plan: FlightPlan, events: readonly RunEvent[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const b of plan.craft[0]!.bodies) out[b.id] = Infinity;
+  for (const e of events) {
+    const def = e.event === undefined ? undefined : eventOf(plan, e.event);
+    for (const a of def?.do ?? []) {
+      if (!('separate' in a)) continue;
+      for (const b of plan.craft[0]!.joints.find((j) => j.id === a.separate)?.gone ?? []) out[b] = Math.min(out[b] ?? Infinity, e.t);
+    }
+  }
+  return out;
+}
+
+/** The record's events by the record's ids, when each happened on a run (`Run.events`): what a cabin's lamps read. */
+export function recordTimes(events: readonly RunEvent[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of events) if (e.record !== undefined) out[e.record] = e.t;
+  return out;
 }
 
 /** The two samples either side of `t`, and how far between them it is: both the last, at or past the end. */
@@ -187,7 +286,19 @@ export function orbitalRecord(flight: SitedFlight): Run {
   // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn; a stage's end is the record's cut, or its letting go where it has no cut of its own)
   const stages = sequenceOf(plan).stages;
   const first = stages[1] ?? stages[0]!;
-  const run: Run = {
+  // (what happened: each of the plan's events at the record's instant of it, or the run's own where it decides it; the record's marks)
+  const times = orbitalEvents(flight, whole);
+  const events: RunEvent[] = [];
+  const told = new Set<string>();
+  for (const e of plan.events) {
+    const t = e.record ? times[e.record.id] : e.at?.value;
+    if (t === undefined) continue;
+    events.push({ event: e.id, ...(e.record ? { record: e.record.id } : {}), t });
+    if (e.record) told.add(e.record.id);
+  }
+  for (const m of plan.record?.marks ?? []) if (!told.has(m.id)) events.push({ record: m.id, t: times[m.id] ?? m.at.value });
+  events.sort((a, b) => a.t - b.t);
+  const run = runOf(flight, {
     samples,
     duration: end.t,
     cutoff: first.cutAt ?? first.sep,
@@ -197,7 +308,10 @@ export function orbitalRecord(flight: SitedFlight): Run {
     sheds,
     fires: firesOf(flight, whole),
     descent: descentOf(whole, centre, plan.record?.ground?.value),
-  };
+    events,
+    bodies: bodiesOf(plan, events),
+    results: held(plan, whole),
+  });
   orbitalRuns.set(plan, run);
   return run;
 }
@@ -268,10 +382,10 @@ export function recordOf(flight: SitedFlight): Run | null {
   const had = ballisticRuns.get(plan);
   if (had) return had;
   const roles = ballisticOf(plan);
-  const { samples, results } = flownOnce(plan, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
+  const { samples, results, craft } = flownOnce(plan, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
   const when = (t: number): number => (Number.isFinite(t) ? t : Infinity);
   const out = { drogue: when(results.drogueAt), main: when(results.mainAt) };
-  const run: Run = {
+  const run = runOf(flight, {
     samples,
     duration: results.duration,
     cutoff: roles.cutoff,
@@ -279,7 +393,16 @@ export function recordOf(flight: SitedFlight): Run | null {
     dropped: (flight.flies?.drops ?? []).map((d) => (d.on === roles.drogue.id ? out.drogue : d.on === roles.main.id ? out.main : d.at)),
     live: false,
     out,
-  };
+    ...grown(plan, craft),
+    results: (flight.checks ?? []).map((c) => ({
+      id: c.id,
+      label: c.label,
+      value: c.value,
+      unit: c.unit,
+      tolerance: c.tolerance,
+      got: results[c.id],
+    })),
+  });
   ballisticRuns.set(plan, run);
   return run;
 }

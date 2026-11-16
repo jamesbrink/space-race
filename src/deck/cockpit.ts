@@ -11,7 +11,7 @@ import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
-import type { Run } from '../sim/run.ts';
+import { grown, type Run, runOf } from '../sim/run.ts';
 import type { Clock } from '../world/clock.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
@@ -106,15 +106,15 @@ export class Cockpit extends Deck {
   private readonly flow: number;
 
   private state: VehicleState | null = null;
-  private run: Run & { samples: LiveSample[] } = {
-    samples: [],
+  private run: Run & { samples: LiveSample[] } = runOf(this.flight, {
+    samples: [] as LiveSample[],
     duration: Infinity,
     cutoff: Infinity,
     dropped: [],
     live: true,
     kept: true,
     out: { drogue: Infinity, main: Infinity },
-  };
+  }) as Run & { samples: LiveSample[] };
   private tally = new Tally();
   /** How many of the run's samples are kept: one past them is the head, replaced each frame. */
   private kept = 0;
@@ -268,7 +268,7 @@ export class Cockpit extends Deck {
     this.towerAt = this.retropackAt = this.hatchAt = Infinity;
     this.hands.clear();
     this.unsequenced = this.sequence ? [] : [{ from: Number.NEGATIVE_INFINITY, to: Infinity }];
-    this.run = {
+    this.run = runOf(this.flight, {
       samples: [v.sample(this.state)],
       duration: Infinity,
       cutoff: Infinity,
@@ -279,7 +279,7 @@ export class Cockpit extends Deck {
       sheds: new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
         frame: frameOf(this.flight),
       }),
-    };
+    }) as Run & { samples: LiveSample[] };
     this.maxQ = 0;
     this.kept = 1;
     this.card(null);
@@ -413,6 +413,7 @@ export class Cockpit extends Deck {
     if (hasLeft(state.craft, this.roles.tower) && !hasLeft(before.craft, this.roles.tower)) this.towerAt = state.t;
     if (hasLeft(state.craft, this.roles.pack) && !hasLeft(before.craft, this.roles.pack)) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
+    Object.assign(run, grown(this.flight.plan!, state.craft));
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     // (each drop as what lets it go, by the plan's id: the tower's, the booster's and the pack's joints, the parachutes; the hatch by its node)
     const roles = this.roles;
