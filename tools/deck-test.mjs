@@ -12,6 +12,7 @@ const FLIGHTS = {
   'usa/mercury/mr-4-liberty-bell-7': ['Ignition', 'Engine cutoff'],
   'ussr/vostok/vostok-1': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-2': ['Ignition', 'Drop the strap-ons'],
+  'ussr/vostok/vostok-3': ['Ignition', 'Drop the strap-ons'],
 };
 const SIZES = [
   [1280, 800, false],
@@ -163,6 +164,35 @@ for (const [w, h, touch] of SIZES) {
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
+  // each flight into orbit as flown, untouched: in orbit with its apogee on the deck once the ship is alone, and down at the
+  // run's end with the deck and the navball at nought
+  if (w === 1280)
+    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/'))) {
+      const where = `${id} as flown at ${w}`;
+      const { page, errors, context: ctx } = await fly(id, w, h, touch);
+      const seek = async (t) => {
+        await page.evaluate((x) => window.sr.clock.seek(x), t);
+        await page.waitForTimeout(500);
+      };
+      await seek(1800);
+      const up = await page.evaluate(() => ({
+        mode: document.querySelector('[data-cell=mode]').textContent,
+        apogee: Number(document.querySelector('.deck-main [data-cell=apogee]')?.textContent.replace(/[^\d.-]/g, '')),
+      }));
+      if (!/As flown/.test(up.mode)) fail(where, `in orbit the deck says "${up.mode}", not as flown`);
+      if (!(up.apogee > 150 && up.apogee < 400)) fail(where, `in orbit the deck's apogee is ${up.apogee} km`);
+      await seek(1e7);
+      const down = await page.evaluate(() => ({
+        mode: document.querySelector('[data-cell=mode]').textContent,
+        ball: document.querySelector('.navball [data-cell=speed]').textContent,
+        deck: document.querySelector('.deck-main [data-cell=speed]')?.textContent ?? '0',
+      }));
+      if (!/As flown/.test(down.mode) || down.ball !== '0' || down.deck !== '0')
+        fail(where, `at the run's end: "${down.mode}", the navball ${down.ball} m/s, the deck ${down.deck}`);
+      if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+      console.log(`  ${where}: in orbit at T+1800 with an apogee of ${up.apogee} km, down at the end, "${down.mode}"`);
+      await ctx.close();
+    }
   // the descent by hand (orbitdeck.ts `descent:` commands): offered when the simulator would hear it, B its sequencer, Space its steps
   {
     const where = `vostok-1's descent at ${w}`;

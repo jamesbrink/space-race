@@ -70,6 +70,11 @@ const FLIGHTS = {
     id: 'ussr/vostok/vostok-2',
     instants: [5, 60, 125, 330, 700, 3000, 4000, 30_600, 60_000, 87_000, 89_400, 89_480, 90_000, 90_400, 90_800],
   },
+  // (four days: the first revolutions, Vostok 4's launch below on the second day, the burn at 09:24 on the 15th and the descent)
+  v3: {
+    id: 'ussr/vostok/vostok-3',
+    instants: [5, 60, 125, 330, 700, 3000, 84_200, 200_000, 336_000, 338_000, 338_080, 338_600, 339_000, 339_300, 339_600],
+  },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
 /** The window sizes: a laptop's, a tablet's upright and a phone's. */

@@ -63,6 +63,19 @@ const INPUTS = {
     ['entry', 'area'],
     ['ejection', 'altitude'],
   ],
+  // Vostok 3's injection is documented (Kamanin's 687 s) and its modules' parting is not (the type's ten seconds)
+  'ussr/vostok/vostok-3': [
+    ['orbit', 'radius'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['retro', 'deltaV'],
+    ['entry', 'separation'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+    ['ejection', 'altitude'],
+  ],
 };
 
 test('there is an orbital flight to fly', () => {
