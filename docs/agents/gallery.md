@@ -45,16 +45,19 @@ Every flight has the same three places, in the same order, and opens in the firs
   `#…/site/pad`, a flight named with no place its gallery) and anything the idle show does. So Back is never pressed
   twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Fly it, L, Esc)
   is going between places, so a step too; following an address (Back, Forward, a link) is never one, whatever the
-  page passes through on its way there (`following` in main.ts). Within a flight, Back and Forward between its places are followed in
-  place (`onMoved`), with no load: the site as it was left, the gallery as it was left. The front page and a flight
+  page passes through on its way there (`following` in session.ts). Within a flight, Back and Forward between its places are followed in
+  place (`onMoved`), with no load: the site as it was left, the gallery as it was left. Between two flights there is no
+  load either: `main.ts` lets the last flight's session go (`dispose`: its panels, listeners, sound and deck, its models
+  off the GPU, its place if the next is at another place or on another day) and opens the next on the same two stages
+  (the site's and the gallery's, each loaded again: `Stage.load`, `Stage.unload`). The front page and a flight
   are two pages' worth of state, so Back or Forward across that line opens the page again at the address it lands on
   (`home.ts`; `front.ts` for an address that names a flight), the same as a reload or a pasted link. The Space Race
   crumb is a step like any other: Back comes into the flight again. `pnpm test:history` (tools/history-test.mjs)
   goes through it with real clicks.
 - **Which page comes up** is decided in `enter.ts` by what the address names: `front.ts` for one
-  that names nothing; otherwise, by the flight it is about (`flightFor`), `main.ts` for a flight
-  with a site (the gallery beside it) and `only.ts` for one without (the gallery alone, and none
-  of the code that needs a site). The front page brings a flight's page up itself when one is chosen.
+  that names nothing; otherwise `main.ts`, which opens a session for the flight it is about (`flightFor`):
+  `session.ts` for a flight with a site (the gallery beside it) and `only.ts` for one without (the gallery alone, and
+  none of the code that needs a site). The front page brings a flight's page up itself when one is chosen.
 
 A flight with only a vehicle is complete enough to ship: it is in the gallery, and its site and
 Fly light up as they are built.

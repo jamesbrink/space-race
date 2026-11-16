@@ -3,6 +3,7 @@ import { prefs } from '../app/prefs.ts';
 import type { Flight, SitedFlight } from '../types.ts';
 import { type Clock, localTime, missionTime, RATES } from '../world/clock.ts';
 import { is, isTyping, modified, which } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 /**
  * The clock's face: what time it is at the site, where that is in the count, and the means to
@@ -27,6 +28,9 @@ export class TimeBar {
   private readonly flightScrub: HTMLInputElement | null;
   private readonly rates: HTMLButtonElement[];
   private readonly home: HTMLButtonElement;
+
+  /** What it hangs on the window (util/scope.ts): let go of with the page it is on. */
+  private readonly scope = new Scope();
 
   constructor(parent: HTMLElement, clock: Clock, flight: SitedFlight) {
     this.clock = clock;
@@ -80,7 +84,7 @@ export class TimeBar {
       clock.seek(Number(this.scrub.value) - this.launchAt);
     });
     // P runs and stops the clock from anywhere (the camera legend lists it)
-    window.addEventListener('keydown', (e) => {
+    this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (modified(e) || typing || e.repeat) return;
       if (is(e, 'clock.run')) clock.play(!clock.running);
@@ -90,6 +94,11 @@ export class TimeBar {
     });
     clock.listen(() => this.render());
     this.render();
+  }
+
+  /** The page it is on has gone: off the window. */
+  dispose(): void {
+    this.scope.dispose();
   }
 
   private render(): void {

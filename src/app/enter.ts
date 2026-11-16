@@ -1,13 +1,13 @@
 import { flights } from '../../missions/index.ts';
-import { entrances, flightFor, namesLineup, namesNothing, where } from './address.ts';
+import { namesLineup, namesNothing, where } from './address.ts';
 
 /**
  * The way in. The front page (front.ts) is what an address that names nothing shows, and the Lineup (lineup.ts) what
  * `#lineup` does. A flight is shown at its site (main.ts: the pad, the crew, the day, the clock, the
  * flight itself, with the gallery beside it) or, while only its vehicle is built, in the gallery
- * alone (only.ts). Which page is brought up is decided here, by the flight the address names, so
- * that a flight with no site never meets code that needs one. Another flight is another page's
- * worth of state: both pages reload to change flight.
+ * alone (only.ts). main.ts brings up whichever is the flight's, by the flight the address names, so that a flight with
+ * no site never meets code that needs one; and going to another flight opens its page on the same stages, with no
+ * reload.
  */
 
 // While developing, `?fixture` adds the flight that is only a vehicle (tests/fixtures/vehicle-only), so that path can be
@@ -23,4 +23,4 @@ if (new URLSearchParams(location.search).has('mem')) (await import('./mem.ts')).
 if (namesNothing(where())) void import('./front.ts');
 // the Lineup is no flight's either: every vehicle side by side, on a stage of its own (lineup.ts)
 else if (namesLineup(where())) void import('./lineup.ts');
-else void (entrances(flightFor(flights, where())).site ? import('./main.ts') : import('./only.ts'));
+else void import('./main.ts');

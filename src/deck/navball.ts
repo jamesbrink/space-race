@@ -3,6 +3,7 @@ import { type Quat, turn } from '../sim/rigid.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { cross, DEG, dot, enuAxes, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { is, isTyping, modified } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 /**
  * The navball: the vehicle's attitude against the local horizon, and on it the directions that
@@ -207,6 +208,8 @@ export class Navball {
   private readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D | null;
   private readonly marks = new Map<Mark, HTMLElement>();
+  /** What it hangs on the window and the frame (util/scope.ts): let go of with the page it is on. */
+  private readonly scope = new Scope();
   private readonly cells = new Map<string, HTMLElement>();
   private readonly source: NavSource;
   private readonly watchers: ((frame: Frame) => void)[] = [];
@@ -254,13 +257,13 @@ export class Navball {
     });
     button?.addEventListener('click', () => this.tuck(!this.tucked));
     this.button = button ?? null;
-    window.addEventListener('keydown', (e) => {
+    this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (!source.active || e.repeat || modified(e) || typing) return;
       if (is(e, 'navball.show')) this.tuck(!this.tucked);
       if (is(e, 'navball.frame')) this.setFrame(this.mode === 'surface' ? 'orbit' : 'surface');
     });
-    new ResizeObserver(() => this.draw(true)).observe(this.canvas);
+    this.scope.observer(() => this.draw(true)).observe(this.canvas);
     source.listen((s) => {
       this.last = s;
       this.draw(false);
@@ -272,6 +275,11 @@ export class Navball {
   private readonly button: HTMLElement | null;
 
   /** Surface or Orbit: which velocity the markers and the speed are of. */
+  /** The page has gone to another flight: off the window. */
+  dispose(): void {
+    this.scope.dispose();
+  }
+
   get frame(): Frame {
     return this.mode;
   }

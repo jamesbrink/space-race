@@ -61,6 +61,12 @@ export class Curtain {
   private progress = 0;
 
   /** It is up and on the page to be seen (one covering something that is itself put away is in nobody's way). */
+  /** Its page has gone (to another flight) while it was up: it is no longer up, and nothing waits on it. */
+  dismiss(): void {
+    if (!up.delete(this)) return;
+    if (!up.size) for (const then of waiting.splice(0)) then();
+  }
+
   get showing(): boolean {
     return up.has(this) && this.el.getClientRects().length > 0;
   }

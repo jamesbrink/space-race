@@ -49,6 +49,7 @@ import {
 } from './model.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { is, isTyping, modified } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 export interface SoundHost {
   /** Where the ears are, in the scene's frame: the camera. */
@@ -78,6 +79,8 @@ export class Sound {
   private readonly slider: HTMLInputElement;
 
   private ctx: AudioContext | null = null;
+  /** What it hangs on the window and the frame (util/scope.ts). */
+  private readonly scope = new Scope();
   private engine: Engine | null = null;
   private analyser: AnalyserNode | null = null;
   private enabled = !prefs.get('soundOff');
@@ -161,21 +164,21 @@ export class Sound {
       if (this.enabled) this.start();
       if (this.ctx?.state === 'running') for (const touch of TOUCHES) window.removeEventListener(touch, wake, true);
     };
-    for (const touch of TOUCHES) window.addEventListener(touch, wake, { capture: true, passive: true });
-    window.addEventListener('keydown', (e) => {
+    for (const touch of TOUCHES) this.scope.on(window, touch, wake, { capture: true, passive: true });
+    this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (modified(e) || typing || e.repeat) return;
       if (is(e, 'sound.toggle')) this.set(!this.enabled);
     });
-    document.addEventListener('visibilitychange', () => {
+    this.scope.on(document, 'visibilitychange', () => {
       if (document.hidden) void this.ctx?.suspend();
       else if (this.enabled) this.start();
     });
     const frame = (): void => {
-      requestAnimationFrame(frame);
+      this.scope.frame(frame);
       this.update();
     };
-    requestAnimationFrame(frame);
+    this.scope.frame(frame);
   }
 
   get on(): boolean {
@@ -187,6 +190,15 @@ export class Sound {
   }
 
   /** Switch sound on or off: remembered, and faded either way. */
+  /** The page has gone to another flight: off the window, no more frames, and the sound's context closed. */
+  dispose(): void {
+    this.scope.dispose();
+    this.button.remove();
+    void this.ctx?.close();
+    this.ctx = null;
+    this.engine = null;
+  }
+
   set(on: boolean): void {
     this.enabled = on;
     prefs.set('soundOff', !on);

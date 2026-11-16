@@ -62,6 +62,12 @@ export class Callout {
     this.clock.textContent = text;
   }
 
+  /** The page it is on has gone: nothing more is said, and the card leaves the page. */
+  dispose(): void {
+    this.hide();
+    this.root.remove();
+  }
+
   hide(): void {
     clearTimeout(this.swap);
     cancelAnimationFrame(this.frame);

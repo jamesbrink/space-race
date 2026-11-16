@@ -2,6 +2,7 @@ import './fold.css';
 import { prefs } from '../app/prefs.ts';
 import type { Sheet } from './sheet.ts';
 import { scripted } from '../util/env.ts';
+import type { Scope } from '../util/scope.ts';
 
 /**
  * How a place folds on a phone (under 960 px wide or 520 px tall). The gallery is the first place built this way; the
@@ -27,7 +28,7 @@ export const narrow = (): boolean => typeof matchMedia === 'function' && matchMe
  * card. It is fitted again when the card changes width or comes back from being tucked away. On a narrow page the top
  * line has its own rule (fold.css) and the name is left to it.
  */
-export function fitName(name: HTMLElement): void {
+export function fitName(name: HTMLElement, scope?: Scope): void {
   const card = name.parentElement;
   if (!card || typeof ResizeObserver !== 'function') return;
   let was = '';
@@ -41,19 +42,21 @@ export function fitName(name: HTMLElement): void {
     const size = parseFloat(getComputedStyle(name).fontSize);
     name.style.fontSize = `${Math.floor(((size * name.clientWidth) / name.scrollWidth) * 10 - 1) / 10}px`;
   };
-  new ResizeObserver(fit).observe(card);
+  (scope ? scope.observer(fit) : new ResizeObserver(fit)).observe(card);
   // (the face it is measured in arrives after the card does, and is asked for only once the name is on the page)
-  document.fonts?.addEventListener('loadingdone', () => {
+  const again = () => {
     was = '';
     fit();
-  });
+  };
+  if (scope && document.fonts) scope.on(document.fonts, 'loadingdone', again);
+  else document.fonts?.addEventListener('loadingdone', again);
 }
 
 /**
  * While the page is narrow each block lives in its slot (a place in a pane of the sheet); while it is wide it is back
  * where it was made. `changed` is told each time they move, and once at the start.
  */
-export function dock(pairs: [block: HTMLElement, slot: HTMLElement][], changed: (narrow: boolean) => void = () => {}): void {
+export function dock(pairs: [block: HTMLElement, slot: HTMLElement][], changed: (narrow: boolean) => void = () => {}, scope?: Scope): void {
   const homes = pairs.map(([el]) => ({ el, parent: el.parentNode!, next: el.nextSibling }));
   const query = matchMedia(NARROW);
   const put = (): void => {
@@ -61,7 +64,8 @@ export function dock(pairs: [block: HTMLElement, slot: HTMLElement][], changed: 
     else for (const { el, parent, next } of [...homes].reverse()) parent.insertBefore(el, next?.parentNode === parent ? next : null);
     changed(query.matches);
   };
-  query.addEventListener('change', put);
+  if (scope) scope.on(query, 'change', put);
+  else query.addEventListener('change', put);
   put();
 }
 

@@ -11,6 +11,7 @@ import { lookoutsOf } from '../viewer/lookouts.ts';
 import { Wheel } from './wheel.ts';
 import { $, esc } from '../util/dom.ts';
 import { capsOf, doesOf, is, isTyping, type KeyName, modified, which } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 export interface UiHandlers {
   model(id: string): void;
@@ -250,6 +251,12 @@ export class Ui {
   private captured = false;
   /** The radial menu of things to do with what a walker is looking at (wheel.ts). */
   readonly wheel: Wheel;
+  /** What the panels hang on the window (util/scope.ts): let go of with the page (`dispose`). */
+  private readonly scope = new Scope();
+  /** Shut the right click's menu, if one is open (it is on the page itself: `menu`). */
+  private closeMenu: () => void = () => {};
+  /** The classes the root had before the panels were written into it, for `dispose` to leave it as it found it. */
+  private readonly rootClass: string;
   private selected: string | null = null;
   private cameraMode: RigId = 'orbit';
 
@@ -264,6 +271,7 @@ export class Ui {
     private readonly flight: Flight,
     private readonly on: UiHandlers,
   ) {
+    this.rootClass = root.className;
     const f = flight;
     this.model = f.models[0]!;
     const date = new Date(f.launch).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -428,10 +436,10 @@ export class Ui {
     showFacts(prefs.get('factsOpen'));
     factsToggle.addEventListener('click', () => showFacts(!title.classList.contains('facts-open')));
     // the legend is never taller than the room under the title card
-    new ResizeObserver(() => root.style.setProperty('--title-h', `${title.offsetHeight}px`)).observe(title);
+    this.scope.observer(() => root.style.setProperty('--title-h', `${title.offsetHeight}px`)).observe(title);
     const name = title.querySelector<HTMLElement>(':scope > h1');
-    if (name) fitName(name);
-    window.addEventListener('keydown', (e) => {
+    if (name) fitName(name, this.scope);
+    this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (modified(e) || typing) return;
       if (is(e, 'page.bare')) bare(!root.classList.contains('bare'));
@@ -564,14 +572,14 @@ export class Ui {
       }
     });
     // the label that follows the pointer over the model
-    window.addEventListener('pointermove', (e) => {
+    this.scope.on(window, 'pointermove', (e) => {
       this.pointer = [e.clientX, e.clientY];
       this.placeTip();
     });
     // the phone layout stacks the switcher on the control block, whose height depends on wrapping
     const controls = $<HTMLElement>(root, '.controls');
     const switcher = $<HTMLElement>(root, '.models');
-    this.measure = new ResizeObserver(() => {
+    this.measure = this.scope.observer(() => {
       root.style.setProperty('--controls-h', `${controls.offsetHeight}px`);
       // whatever sits over the lower half of the 3D view hides that much of it: views are framed above
       const view = stage.getBoundingClientRect();
@@ -621,8 +629,9 @@ export class Ui {
         if (!on) panel.classList.remove('full');
         this.tuckPanel(prefs.get('panelTucked'), false);
       },
+      this.scope,
     );
-    new ResizeObserver(() => this.sized()).observe(slot('buttons'));
+    this.scope.observer(() => this.sized()).observe(slot('buttons'));
     this.setModel(this.model.id);
   }
 
@@ -788,11 +797,21 @@ export class Ui {
         `${Math.round(Math.max(bar.bottom, notes.height ? notes.bottom : 0) + 10)}px`,
       );
     };
-    const watch = new ResizeObserver(under);
+    const watch = this.scope.observer(under);
     watch.observe(el);
     if (clock) watch.observe(clock);
-    window.addEventListener('resize', under);
+    this.scope.on(window, 'resize', under);
     return el;
+  }
+
+  /** The page has gone to another flight: off the window, the menu and the wheel shut, and the root left as it was found. */
+  dispose(): void {
+    this.scope.dispose();
+    this.curtain.dismiss();
+    this.closeMenu();
+    this.wheel.dispose();
+    this.root.innerHTML = '';
+    this.root.className = this.rootClass;
   }
 
   /** The vehicle is in the air and the camera is not with it: a button that goes to it is on show. */
@@ -1031,6 +1050,7 @@ export class Ui {
       menu.append(b);
     }
     const close = () => {
+      this.closeMenu = () => {};
       menu.remove();
       window.removeEventListener('pointerdown', away, true);
       window.removeEventListener('keydown', key, true);
@@ -1042,8 +1062,10 @@ export class Ui {
     menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - 8)}px`;
     menu.style.top = `${Math.min(y, window.innerHeight - menu.offsetHeight - 8)}px`;
     menu.querySelector('button')?.focus();
-    window.addEventListener('pointerdown', away, true);
-    window.addEventListener('keydown', key, true);
+    this.closeMenu();
+    this.closeMenu = close;
+    this.scope.on(window, 'pointerdown', away, true);
+    this.scope.on(window, 'keydown', key, true);
   }
 
   /**

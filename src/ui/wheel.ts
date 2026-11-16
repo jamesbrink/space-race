@@ -1,4 +1,5 @@
 import { is, type KeyName, modified, which } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 /**
  * A radial menu: a few choices set round a centre, picked by the direction you push toward
  * them. It is one component, used wherever a handful of verbs apply to one thing (today: what a
@@ -101,6 +102,8 @@ export class Wheel {
   /** The key that opened it also shuts it. */
   private toggleKey: KeyName | null = null;
   private openedAt = 0;
+  /** What it hangs on the window (util/scope.ts): let go of with the page it is on. */
+  private readonly scope = new Scope();
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement('div');
@@ -112,7 +115,7 @@ export class Wheel {
     this.title = this.el.querySelector('.wheel-title')!;
     this.ring = this.el.querySelector('.wheel-ring')!;
     parent.append(this.el);
-    window.addEventListener('resize', () => this.place());
+    this.scope.on(window, 'resize', () => this.place());
     this.ring.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-item]');
       if (b) this.pick(Number(b.dataset.item));
@@ -126,7 +129,8 @@ export class Wheel {
       if (e.target === this.el && performance.now() - this.openedAt > 400) this.close();
     });
     // capture: while it is open the keys are its own, whatever else is listening
-    window.addEventListener(
+    this.scope.on(
+      window,
       'keydown',
       (e) => {
         if (!this.isOpen || modified(e)) return;
@@ -154,6 +158,12 @@ export class Wheel {
       },
       true,
     );
+  }
+
+  /** The page it is on has gone: off the window, out of the page. */
+  dispose(): void {
+    this.scope.dispose();
+    this.el.remove();
   }
 
   get isOpen(): boolean {

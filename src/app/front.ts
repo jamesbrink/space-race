@@ -1,6 +1,6 @@
 import './front/front.css';
 import { flights } from '../../missions/index.ts';
-import { entrances, formatAddress, formatLineup, namesNothing, onMoved, where, write } from './address.ts';
+import { formatAddress, formatLineup, namesNothing, onMoved, where, write } from './address.ts';
 import { whenLifted } from './curtain.ts';
 import { installDebug, keepFront } from './debug.ts';
 import { IDLE_TITLE } from './demo.ts';
@@ -69,7 +69,7 @@ addEventListener('resize', compose);
 /** Go into a flight: its page is brought up under the picture, which is let go when the flight is there to be seen. */
 async function enter(id: string): Promise<void> {
   const flight = flights.find((f) => f.id === id);
-  if (flight) await go(formatAddress(id, 'gallery'), () => (entrances(flight).site ? import('./main.ts') : import('./only.ts')));
+  if (flight) await go(formatAddress(id, 'gallery'), () => import('./main.ts').then((page) => page.opened));
 }
 
 /**

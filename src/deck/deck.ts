@@ -6,6 +6,7 @@ import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { capOf, capsOf, is, isTyping, kbd, type KeyName, keyOf, KEYS, keysOf, modified } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -92,6 +93,8 @@ export abstract class Deck {
   protected on = false;
   /** The keys held (W S A D Q E), by the keyboard or their buttons. */
   protected readonly held = new Set<string>();
+  /** What the deck hangs on the window (util/scope.ts). */
+  protected readonly scope = new Scope();
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
   protected readonly finger = { pitch: 0, yaw: 0, roll: 0 };
   private figureKey = '';
@@ -274,7 +277,7 @@ export abstract class Deck {
         set(true);
       });
       for (const end of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(end, () => set(false));
-      window.addEventListener('blur', () => set(false));
+      this.scope.on(window, 'blur', () => set(false));
     }
     this.showKeys(false);
 
@@ -286,10 +289,17 @@ export abstract class Deck {
     this.button.addEventListener('click', () => (this.on ? this.leave() : this.enter()));
     (parent.querySelector('.time-row') ?? parent).append(this.button);
 
-    window.addEventListener('keydown', (e) => this.key(e, true));
-    window.addEventListener('keyup', (e) => this.key(e, false));
-    window.addEventListener('blur', () => this.held.clear());
+    this.scope.on(window, 'keydown', (e) => this.key(e, true));
+    this.scope.on(window, 'keyup', (e) => this.key(e, false));
+    this.scope.on(window, 'blur', () => this.held.clear());
     clock.listen(() => this.follow());
+  }
+
+  /** The page has gone to another flight: off the window, and out of the page. */
+  dispose(): void {
+    this.scope.dispose();
+    this.root.remove();
+    this.button.remove();
   }
 
   /** The frame the samples it hands on are in (world/earthframe.ts `frameOf`). */

@@ -81,11 +81,13 @@ src/
   measure.ts                          Confidence and Measure, and doc, derived, estimated: a figure with how far it can be trusted (imports nothing)
   util/math.ts                        smoothstep (GLSL's order), ease (smootherstep), clamp, lerp
   util/dom.ts                         esc, and `$(root, selector)`: an element the page's own markup must have, or an error naming it
+  util/scope.ts                       what one owner hangs on the page (listeners, observers, timers, frames), let go of at once: a flight's page and its panels
   util/keys.ts                        every key as data (`KEYS`: pressed as, does, where); `is`/`which` for the listeners, caps and words for the legends; isTyping
   util/env.ts                         scripted, unattended, reducedMotion: what the page is being run by and asked for
-  app/enter.ts                        the way in: front.ts for an address that names nothing, main.ts for a flight with a site, only.ts for one that is only its vehicle
+  app/enter.ts                        the way in: front.ts for an address that names nothing, the Lineup for `#lineup`, main.ts for a flight
   app/debug.ts                        the debug handle, `window.sr`: what each page puts on it (a flight's, the vehicle-only, the front page, the Lineup), typed, installed in one place
-  app/main.ts                         the page of a flight with a site: the stage, the panels, the clock, the deck, wired together
+  app/main.ts                         a flight's page: the stages it keeps, a session for the flight on show, the next opened on them with no reload
+  app/session.ts                      the session of a flight with a site: the panels, the clock, the sound, the deck, the gallery, wired to the stage; `dispose`
   app/front.ts  app/home.ts           the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
   app/front/view.ts                   the front page's view as numbers: the instant, the lens, the camera's path, the sky from the Moon (pure, tested)
   app/front/scene.ts                  its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
@@ -98,7 +100,7 @@ src/
   app/lineup/stand.ts                 one vehicle of the row: its levels and their fade, its spacecraft alone, its plate, its person, its own shadow drawn once
   app/lineup/hall.ts                  the hall it stands in: the gallery's studio made long, ruled in height, with a tape along the floor
   app/address.ts                      the address bar, the two places a flight is seen in, and what the gallery is given to show
-  app/only.ts                         the page of a flight with no site: its gallery alone
+  app/only.ts                         the session of a flight with no site: its gallery alone
   app/curtain.ts                      the curtain shown while something loads: what is coming, a bar that never goes back, the steps; it takes every key while it shows
   app/actions.ts                      on foot: what can be done with the thing being looked at (from flight data)
   app/prefs.ts                        what is remembered between visits
@@ -121,6 +123,8 @@ src/
   deck/orbitdeck.ts                   the deck's orbital kind (`Flight.orbital`): the stages, the events and what the hands could reach, from the record
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
+  viewer/dispose.ts                   letting go of a tree's geometries, materials and pictures on the GPU (a flight or a place the stage has left)
+  viewer/programs.ts                  the place's number in every program's key: another place or day is built again under its own shaders' text
   viewer/stage.ts                     the stage: one scene of a flight's models in their setting, the camera, the clock; it owns the pieces below and keeps
                                       the one API the page uses (`window.sr.stage`)
   viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there

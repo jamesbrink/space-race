@@ -50,6 +50,7 @@ import {
   padCaps,
   which,
 } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 
 /**
  * The gallery: a flight's vehicle and nothing else, on a plain floor under designed light
@@ -90,7 +91,7 @@ const PLACE_SAYS: Record<Place, string> = {
  * and in every place. One the flight does not have yet is there all the same, dimmed, and says why
  * when it is pointed at or pressed. `go` is told a place the flight has that is not this one.
  */
-export function placesNav(flight: Flight, here: Place, go: (to: Place) => void): HTMLElement {
+export function placesNav(flight: Flight, here: Place, go: (to: Place) => void, scope: Scope): HTMLElement {
   const nav = document.createElement('nav');
   nav.className = 'places';
   nav.setAttribute('aria-label', 'Places');
@@ -108,7 +109,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
   // (on a phone the switch is one control that says where you are, and opens to the three: fold.ts)
   const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${shortName(here)}</span><i class="chevron"></i></button>`;
   nav.innerHTML = `${now}${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
-  fitPlaceName(nav);
+  fitPlaceName(nav, scope);
   const says = nav.querySelector('p')!;
   const toggle = nav.querySelector<HTMLElement>('.places-now')!;
   const unfold = (open: boolean): void => {
@@ -117,7 +118,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
   };
   toggle.addEventListener('click', () => unfold(!nav.classList.contains('open')));
   // (open, it shuts on a press anywhere else: it is a menu)
-  window.addEventListener('pointerdown', (e) => nav.classList.contains('open') && !nav.contains(e.target as Node) && unfold(false), true);
+  scope.on(window, 'pointerdown', (e) => nav.classList.contains('open') && !nav.contains(e.target as Node) && unfold(false), true);
   let away = 0;
   nav.addEventListener('click', (e) => {
     const to = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-place]');
@@ -137,7 +138,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void):
  * "Launch site" is "site" only where the whole name does not fit on the top line beside the flight's name (`short`: fold.css
  * hides the "Launch " in the button and in the menu's list alike, so the one word is used in both). Wherever it fits it is whole.
  */
-function fitPlaceName(nav: HTMLElement): void {
+function fitPlaceName(nav: HTMLElement, scope: Scope): void {
   const fit = (): void => {
     const title = nav.parentElement;
     const now = nav.querySelector<HTMLElement>('.places-now');
@@ -158,7 +159,7 @@ function fitPlaceName(nav: HTMLElement): void {
     if (need > title.clientWidth) nav.classList.add('short');
   };
   // (its own size changes with the words in it, and the title's with the page)
-  const watch = new ResizeObserver(() => {
+  const watch = scope.observer(() => {
     fit();
     if (nav.parentElement) watch.observe(nav.parentElement);
   });
@@ -206,6 +207,12 @@ const MANY_VIEWS = 5;
 /** Milliseconds its canvas takes to fade in over the site's, or out (gallery.css has the same). */
 const FADE = 450;
 
+/** What one flight's gallery hands on to the next: its canvas, and its stage once it has made one. */
+export interface GalleryKept {
+  canvas: HTMLCanvasElement;
+  stage: Stage | null;
+}
+
 export class Gallery {
   private readonly root: HTMLElement;
   private readonly canvas: HTMLCanvasElement;
@@ -243,8 +250,14 @@ export class Gallery {
   /** The idle show (app/demo.ts), on the gallery's own vehicle, with no clock to run. */
   private readonly demo: Demo;
   private settling = 0;
+  /** What the gallery hangs on the window and the frame (util/scope.ts): let go of when the page goes to another flight. */
+  private readonly scope = new Scope();
 
-  constructor(parent: HTMLElement, flight: Flight, host: GalleryHost) {
+  /**
+   * `kept`: the canvas and the stage of the gallery before this one (another flight's), which this one takes on: a
+   * stage is made once and shows flight after flight (app/session.ts), and its renderer with it.
+   */
+  constructor(parent: HTMLElement, flight: Flight, host: GalleryHost, kept?: GalleryKept) {
     this.flight = flight;
     this.host = host;
     this.vehicle = exhibit(flight)!;
@@ -252,8 +265,9 @@ export class Gallery {
     this.model = this.staged.models[0]!;
     this.choices = plinths(this.vehicle);
     this.plinth = this.choices[0]!;
-    this.canvas = document.createElement('canvas');
+    this.canvas = kept?.canvas ?? document.createElement('canvas');
     this.canvas.id = 'gallery-stage';
+    this.own = kept?.stage ?? null;
     this.root = document.createElement('div');
     this.root.id = 'gallery';
     this.root.hidden = true;
@@ -266,6 +280,26 @@ export class Gallery {
     this.callout = new Callout(document.body);
     this.demo = this.idleShow();
     this.listen();
+  }
+
+  /**
+   * The page has gone to another flight: the show stopped, off the window, its panels out of the page, its stage asleep
+   * and its flight let go. What is handed back (the canvas, the stage) is for the next flight's gallery to take on.
+   */
+  dispose(): GalleryKept {
+    if (this.touring) this.demo.stop();
+    this.open = false;
+    this.scope.dispose();
+    this.frame = 0;
+    clearTimeout(this.settling);
+    this.callout.dispose();
+    this.root.remove();
+    this.canvas.classList.remove('on', 'ready');
+    document.body.classList.remove('in-gallery', 'gallery-settled', 'gallery-show');
+    this.made?.studio.person(null); // (the studio stays with the stage; who stood in it for scale was this flight's)
+    this.own?.sleep(true);
+    this.own?.unload();
+    return { canvas: this.canvas, stage: this.own };
   }
 
   /** It is the place on show. */
@@ -301,7 +335,7 @@ export class Gallery {
     this.stopped = prefs.get('orbitOff');
     this.demo.touch();
     this.made?.stage.sleep(false);
-    if (!this.frame) this.frame = requestAnimationFrame(() => this.tick());
+    if (!this.frame) this.frame = this.scope.frame(() => this.tick());
     if (!this.ready) {
       // (asked for while it loads, by this or by `go`: the last asked for is the one gone to, and trying again keeps it)
       if (what !== undefined) this.wanted = what;
@@ -527,7 +561,7 @@ export class Gallery {
       <div class="notes"></div>
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
-    this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to)));
+    this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to), this.scope));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();
@@ -664,6 +698,7 @@ export class Gallery {
         tuckPanel(prefs.get('panelTucked'), false);
         this.measure();
       },
+      this.scope,
     );
     hintOnce(this.q('.notes'), 'The bar at the foot', 'Tap or pull it up: take it apart, the views, every part');
     // taking it apart from the handle: all the way, or together again, at the pace the show does it
@@ -787,21 +822,22 @@ export class Gallery {
       if (by && this.ready) this.step(Number(by));
     });
     this.q('.loading button').addEventListener('click', () => void this.enter());
-    window.addEventListener('pointermove', (e) => {
+    this.scope.on(window, 'pointermove', (e) => {
       this.pointer = [e.clientX, e.clientY];
       this.placeTip();
     });
     // what the controls cover of the view, and the room the labels have: measured, since the control block wraps
     const controls = this.q('.controls');
-    const measure = new ResizeObserver(() => this.measure());
+    const measure = this.scope.observer(() => this.measure());
     for (const el of [controls, this.q('.models'), panel, title, this.canvas]) measure.observe(el);
-    fitName(this.q('.title > h1'));
-    new ResizeObserver(() => this.sized()).observe(this.q('[data-pane=View]'));
+    fitName(this.q('.title > h1'), this.scope);
+    this.scope.observer(() => this.sized()).observe(this.q('[data-pane=View]'));
 
     // Any touch ends the show and puts off the next one (the mouse merely moving does not end one that is on). It is
     // listened for before the keys below, which let nothing go further: a key of the gallery's own is a touch too.
     for (const touch of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'pointermove'] as const)
-      window.addEventListener(
+      this.scope.on(
+        window,
         touch,
         (e) => {
           if (!this.open) return;
@@ -819,7 +855,8 @@ export class Gallery {
      * on, and nothing goes any further, so no key of the site's (the clock, the flight deck,
      * going on foot) can reach a site that is not on show.
      */
-    window.addEventListener(
+    this.scope.on(
+      window,
       'keydown',
       (e) => {
         if (!this.open) return;
@@ -869,10 +906,12 @@ export class Gallery {
     });
     try {
       const stage = (this.own ??= new Stage(this.canvas));
+      stage.sleep(false); // (one handed on from the last flight's gallery was put to sleep with it)
       stage.fullDetail = true;
       stage.exhibit = true; // (its seats can be sat in where it stands)
       stage.setLook(prefs.get('cel') ? 'cel' : 'real');
       await stage.load(this.staged, (f, parts) => said.arrive(f, parts));
+      if (!this.scope.live) return void curtain.dismiss(); // (the page has gone to another flight meanwhile)
       said.arrive(1);
       const studio = asStudio(stage.place);
       if (!studio) throw new Error('the gallery is shown in the studio');
@@ -896,6 +935,7 @@ export class Gallery {
           })
           .catch((e) => console.warn('the figure for scale did not arrive: an outline stands in', e));
       await stage.warm(4000, (step, f) => said.step(step, f));
+      if (!this.scope.live) return void curtain.dismiss();
       said.end();
       this.ready = true;
       this.measure();
@@ -1254,7 +1294,7 @@ export class Gallery {
 
   /** Every frame while it is up: the names on the parts and the measure's figures follow the picture, and the show goes on. */
   private tick(): void {
-    this.frame = requestAnimationFrame(() => this.tick());
+    this.frame = this.scope.frame(() => this.tick());
     const now = performance.now();
     const dt = Math.min(0.25, (now - this.last) / 1000);
     this.last = now;

@@ -31,6 +31,8 @@ import {
   type Words,
 } from './pathmarks.ts';
 import { is, isTyping, modified } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
+import { disposeTree } from './dispose.ts';
 
 /**
  * The predicted path, drawn: where the vehicle goes from here if nothing more is done (sim/predict.ts, or the deck's own
@@ -507,6 +509,8 @@ export class FlightPath {
   private wantedAt = 0;
   private doneAt = 0;
   private raf = 0;
+  /** What it hangs on the window and the frame (util/scope.ts): let go of with the page it is on. */
+  private readonly scope = new Scope();
   /** The instant on the path the vehicle is drawn at, and what the line was last sampled for. */
   private now = 0;
   private sampledFor = '';
@@ -663,7 +667,7 @@ export class FlightPath {
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space, the next event's key, would press it again
     });
     this.button?.addEventListener('click', () => this.show(!this.on));
-    window.addEventListener('keydown', (e) => {
+    this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (!source.active || e.repeat || modified(e) || typing) return;
       if (is(e, 'path.show')) this.show(!this.on); // (J: M is kept for the map)
@@ -696,6 +700,13 @@ export class FlightPath {
   }
 
   /** Draw the path, or put it away. Remembered. */
+  /** The page has gone to another flight: off the window, no more frames, and the line's buffers let go (the stage takes it out: Stage.unoverlay). */
+  dispose(): void {
+    this.scope.dispose();
+    this.raf = 0;
+    disposeTree(this.mesh);
+  }
+
   show(on: boolean, remember = true): void {
     this.on = on;
     if (remember) prefs.set('pathOff', !on);
@@ -721,7 +732,7 @@ export class FlightPath {
   }
 
   private wake(): void {
-    if (!this.raf) this.raf = requestAnimationFrame(() => this.tick());
+    if (!this.raf) this.raf = this.scope.frame(() => this.tick());
   }
 
   /** On the pad, waiting to be lit. (Not: gone from it unlit on the escape rocket, whose engine is shut down and has no programme left to fly.) */
@@ -822,7 +833,7 @@ export class FlightPath {
       this.say(null);
       return; // (asleep until the next sample, or a switch)
     }
-    this.raf = requestAnimationFrame(() => this.tick());
+    this.raf = this.scope.frame(() => this.tick());
     const tr = this.flight.trajectory;
     // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
