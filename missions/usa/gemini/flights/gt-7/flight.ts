@@ -21,6 +21,8 @@ import {
   type PartWords,
   geminiTitanStack,
   titanEngines,
+  lb,
+  THRUST,
 } from '../../vehicles/gemini-titan.ts';
 
 const KIT = KIT_7_6;
@@ -734,13 +736,13 @@ export const flight: Flight = {
         burnS: 155.61,
         // the burn is this flight's own; the thrust is the type's nominal, taken for this vehicle
         confidence: 'assumed',
-        note: `a combined 430,000 lb of thrust for the two is the Gemini Launch Vehicle's nominal (NASA release 65-158, the Gemini-Titan 4 press kit), taken for GLV-7: "Thrust levels for the first-stage and second-stage engines were nominal" (${GVII}, 4.1). The burn is liftoff to the shutdown signal, 155.61 s, with the ignition signal 3.51 s before liftoff (Table 4.2-I)`,
+        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two is the Gemini Launch Vehicle's nominal (NASA release 65-158, the Gemini-Titan 4 press kit), taken for GLV-7: "Thrust levels for the first-stage and second-stage engines were nominal" (${GVII}, 4.1). The burn is liftoff to the shutdown signal, 155.61 s, with the ignition signal 3.51 s before liftoff (Table 4.2-I)`,
       },
       {
         burnS: 181.4,
         // the thrust is the type's nominal and the burn is a difference of two documented times: the entry takes the weaker
         confidence: 'derived',
-        note: `100,000 lb of thrust at altitude is the type's nominal (the same press kit), and nominal on the day (${GVII}, 4.1). The burn is the ignition signal at 155.61 s to the shutdown signal at 337.01 s (Table 4.2-I): 181.40 s`,
+        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude is the type's nominal (the same press kit), and nominal on the day (${GVII}, 4.1). The burn is the ignition signal at 155.61 s to the shutdown signal at 337.01 s (Table 4.2-I): 181.40 s`,
       },
     ),
     ...thrusters(

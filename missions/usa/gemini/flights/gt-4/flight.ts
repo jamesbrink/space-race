@@ -19,6 +19,8 @@ import {
   type PartWords,
   geminiTitanStack,
   titanEngines,
+  lb,
+  THRUST,
 } from '../../vehicles/gemini-titan.ts';
 
 const DEG = Math.PI / 180;
@@ -656,13 +658,13 @@ export const flight: Flight = {
       {
         burnS: 152.43,
         confidence: 'documented',
-        note: `a combined 430,000 lb of thrust for the two, as the nominal (${KIT}); on the day it was "higher than expected" (${GIV}, 4.1), by how much is in section 5.2, not transcribed. The burn is liftoff to the shutdown signal, 152.43 s, with the start signal 3.24 s before liftoff (Table 4-I)`,
+        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two, as the nominal (${KIT}); on the day it was "higher than expected" (${GIV}, 4.1), by how much is in section 5.2, not transcribed. The burn is liftoff to the shutdown signal, 152.43 s, with the start signal 3.24 s before liftoff (Table 4-I)`,
       },
       {
         burnS: 181.32,
         // the thrust is the nominal and the burn is a difference of two documented times: the entry takes the weaker
         confidence: 'derived',
-        note: `100,000 lb of thrust at altitude, as the nominal (${KIT}); "higher than nominal" on the day (${GIV}, 4.1). The burn is the start signal at 152.43 s to the shutdown signal at 333.75 s (Table 4-I): 181.32 s`,
+        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude, as the nominal (${KIT}); "higher than nominal" on the day (${GIV}, 4.1). The burn is the start signal at 152.43 s to the shutdown signal at 333.75 s (Table 4-I): 181.32 s`,
       },
     ),
     ...thrusters('spacecraft 4'),

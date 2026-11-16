@@ -477,6 +477,10 @@ export const THRUST = {
   reentryControl: doc(25 * LBF, 'sixteen chambers of 25 lb in two rings (SEDR 300 vol. 1, Section VIII, pp. 8-281 to 8-284)'),
 } satisfies Record<string, Measure>;
 
+const thousands = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+/** A thrust in pounds, as the American reports print them (`430,000`): a note writes its figure from the Measure with this. */
+export const lb = (newtons: number): string => thousands.format(newtons / LBF);
+
 const STORABLE = 'Aerozine 50 / nitrogen tetroxide';
 /** What a flight says of one of its Titan's burns: how long (where it is known) and how sure, and its note. */
 export type Burn = Pick<Motor, 'confidence' | 'note'> & { burnS?: number };

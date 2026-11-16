@@ -19,6 +19,8 @@ import {
   type PartWords,
   geminiTitanStack,
   titanEngines,
+  lb,
+  THRUST,
 } from '../../vehicles/gemini-titan.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
@@ -640,11 +642,11 @@ export const flight: Flight = {
         burnS: 156,
         // neither figure is this vehicle's own: the thrust is the type's nominal and the burn is the plan
         confidence: 'assumed',
-        note: `a combined 430,000 lb of thrust for the two is the Gemini Launch Vehicle's nominal (${KIT}, p. 64), taken for GLV-6. The burn is the plan, cutoff 2 min 36 s after liftoff (the same, p. 29): the flown time is in the mission report that has not been found`,
+        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two is the Gemini Launch Vehicle's nominal (${KIT}, p. 64), taken for GLV-6. The burn is the plan, cutoff 2 min 36 s after liftoff (the same, p. 29): the flown time is in the mission report that has not been found`,
       },
       {
         confidence: 'assumed',
-        note: `100,000 lb of thrust at altitude is the type's nominal (${KIT}, p. 64), taken for GLV-6. No burn time is given: the cutoff was 338.728 s after liftoff by the ship's computer (${SUPP5}, the ascent report, Table 5, read on the page) and 338.737 s by radio guidance, a preliminary figure quoted there, but when the engine started is not in what was read`,
+        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude is the type's nominal (${KIT}, p. 64), taken for GLV-6. No burn time is given: the cutoff was 338.728 s after liftoff by the ship's computer (${SUPP5}, the ascent report, Table 5, read on the page) and 338.737 s by radio guidance, a preliminary figure quoted there, but when the engine started is not in what was read`,
       },
     ),
     ...thrusters(
