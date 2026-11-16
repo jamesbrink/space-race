@@ -169,6 +169,7 @@ export class InkPass extends ShaderPass {
         uFar: { value: 1000 },
         uTan: { value: new THREE.Vector2(1, 1) },
         uInk: { value: INK.clone() },
+        uInkUnder: { value: 1e6 },
       },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
@@ -179,6 +180,7 @@ export class InkPass extends ShaderPass {
         uniform float uNear, uFar;
         uniform vec2 uTan;
         uniform vec3 uInk;
+        uniform float uInkUnder;
         varying vec2 vUv;
         // metres from the camera
         float depthAt(vec2 uv) {
@@ -243,7 +245,8 @@ export class InkPass extends ShaderPass {
           // way, and lines a threshold apart moved all over the picture.)
           vec2 inward = min(vUv, 1.0 - vUv);
           ink *= step(uTexel.x, inward.x) * step(uTexel.y, inward.y);
-          gl_FragColor = vec4(mix(colour.rgb, uInk, ink * 0.92), colour.a);
+          // (by night no lighter than a share of what it is drawn on: Pipeline.night)
+          gl_FragColor = vec4(mix(colour.rgb, min(uInk, colour.rgb * uInkUnder), ink * 0.92), colour.a);
         }`,
     });
   }

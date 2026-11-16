@@ -8,7 +8,7 @@ import { Bloom } from '../bloom.ts';
 import { CloudPass } from '../clouds.ts';
 import { ExhaustPass } from '../exhaust.ts';
 import type { Staged } from '../lod.ts';
-import { InkPass } from '../look.ts';
+import { INK, InkPass } from '../look.ts';
 import { watchContext } from '../lost.ts';
 import type { Solids } from '../onfoot/walk.ts';
 import { Origin } from '../origin.ts';
@@ -21,6 +21,44 @@ import { tier } from '../tier.ts';
 const BLOOM_THRESHOLD = 2.4;
 /** The least exposure any day has (daysky.ts: 0.8 x 0.9). */
 const DAY_LEAST = 0.72;
+/** The exposure over which the ink is darkened with it: above every day's and under sunset's (daysky.ts: 1.6 there). */
+const INK_DAY = 1.1;
+
+/**
+ * Have the output draw the frame toward what the rods see, by `rods` (0: not at all, and not worked out), where nothing
+ * lights it but the night: `land` is a white surface's light under the night's own sky and Moon (scene's units), and what
+ * is drawn up to 0.8 of that is the rods', from there to two and a half times it less so, and over it the cones' (the
+ * lamps are drawn only some tens of times the night: lamps.ts, so a painted face in the floods is a few times a white one
+ * under the stars). It is
+ * judged on a pixel's brightest channel, not its luminance, so that what a lamp lights is seen in colour whatever its
+ * paint: a red face in the floods has little luminance and much red (a structure lit red and white from over the pad
+ * went grey and dark when it was judged on luminance against the land's own fifth). Their luminance
+ * from the colour's XYZ (Larson, Rushmeier and Piatko, "A visibility matching tone reproduction operator for high
+ * dynamic range scenes", IEEE TVCG 3 (1997) 291: V = Y (1.33 (1 + (Y + Z) / X) - 1.68), over the 2.574 a white's comes
+ * to, so a white keeps its brightness), in the blue a white looks in the dark (Hunt's, as Durand and Dorsey give it:
+ * 1.05, 0.97, 1.27). How much of the eye is the rods' is the stage's (stage.ts `rods`).
+ */
+function scotopic(output: OutputPass, rods: { value: number }, land: { value: number }): void {
+  const material = output.material;
+  const at = '// tone mapping';
+  if (!material.fragmentShader.includes(at)) throw new Error('pipeline: the output pass has changed its shader');
+  material.fragmentShader = material.fragmentShader
+    .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float uRods, uRodsLand;')
+    .replace(
+      at,
+      `if (uRods > 0.0) {
+        vec3 xyz = mat3(0.4124, 0.2126, 0.0193, 0.3576, 0.7152, 0.1192, 0.1805, 0.0722, 0.9505) * max(gl_FragColor.rgb, vec3(0.0));
+        float v = xyz.y * (1.33 * (1.0 + (xyz.y + xyz.z) / max(xyz.x, 1e-6)) - 1.68) / 2.574;
+        vec3 c = max(gl_FragColor.rgb, vec3(0.0));
+        float rods = uRods * (1.0 - smoothstep(0.8, 2.5, max(c.r, max(c.g, c.b)) / uRodsLand));
+        gl_FragColor.rgb = mix(gl_FragColor.rgb, max(v, 0.0) * vec3(1.05, 0.97, 1.27), rods);
+      }
+      ${at}`,
+    );
+  material.uniforms.uRods = rods;
+  material.uniforms.uRodsLand = land;
+  material.needsUpdate = true;
+}
 
 /** The nearest the orbiting camera's near plane ever comes, metres (the eye itself stops 5 cm short of a surface: camera/maths.ts NEAREST). */
 const NEAR_LEAST = 0.03;
@@ -110,6 +148,9 @@ export class Pipeline {
   readonly ink = new InkPass();
   /** The glow (bloom.ts): strength, radius and threshold as three's pass had them. */
   readonly bloom = new Bloom(0.14, 0.6, BLOOM_THRESHOLD);
+  /** How much of the eye is the rods' (`night`), and the land's light under the sky alone: the frame is drawn toward what they see. */
+  private readonly rods = { value: 0 };
+  private readonly land = { value: 1 };
   private bloomWas: UnrealBloomPass | null = null;
   /** The net under the frame rate: the drawing's resolution, lowered only while the machine cannot keep up (quality.ts). */
   readonly quality = new Quality();
@@ -174,6 +215,7 @@ export class Pipeline {
     const output = new OutputPass();
     this.clouds.adopt(output); // (the clouds are laid over the frame as it goes to the screen)
     this.bloom.adopt(output); // (and the glow added under them, in the same pass)
+    scotopic(output, this.rods, this.land); // (and, by night, what the rods make of it all: after the glow and the clouds, before the tone mapping)
     if (h.plain) this.bloomOld = true;
     this.composer.addPass(output);
     // (and over all of it, as it goes to the canvas, what is no part of the frame: a parachute's lines, the predicted path,
@@ -210,12 +252,22 @@ export class Pipeline {
   }
 
   /**
-   * The frame is to go to the screen at this exposure: what is set by the exposure in the scene's own light follows it.
-   * The glow's threshold is the scene's light and was set for the day's exposure: under any day's (`DAY_LEAST`) it is
-   * raised by as much, so what glows to an eye among floodlights is what glows by day.
+   * The frame is to go to the screen at this exposure, with this much of the eye the rods' (0 by day, 1 deep in the
+   * night): what is set by the exposure in the scene's own light follows it. The glow's threshold is the scene's light
+   * and was set for the day's exposure: under any day's (`DAY_LEAST`) it is raised by as much, so what glows to an eye
+   * among floodlights is what glows by day. The ink is a colour in the scene's light and was set for the day: as the
+   * night's exposure goes over twilight's (`INK_DAY`) it is taken down by as much, and where what is under it is darker
+   * still it is a share of that (`uInkUnder`), so it never stands lighter than the land it is drawn on.
    */
-  night(exposure: number): void {
+  night(exposure: number, rods: number, land: number, outdoors = 1): void {
     this.bloom.threshold = BLOOM_THRESHOLD * Math.max(1, DAY_LEAST / exposure);
+    const u = this.ink.uniforms;
+    // (indoors the room's exposure is the day's look of a lit room, and its ink is as it was: `outdoors` 0)
+    const inkAt = INK_DAY + (Math.max(exposure, INK_DAY) - INK_DAY) * outdoors;
+    (u.uInk!.value as THREE.Color).copy(INK).multiplyScalar(Math.min(1, INK_DAY / inkAt));
+    u.uInkUnder!.value = Math.exp(THREE.MathUtils.lerp(Math.log(1e6), Math.log(0.45), THREE.MathUtils.smoothstep(inkAt, INK_DAY, 3)));
+    this.rods.value = rods;
+    this.land.value = Math.max(land, 1e-9);
   }
 
   /** The setting's sky is drawn first, a scene of its own: another setting, another sky. */

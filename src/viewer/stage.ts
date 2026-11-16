@@ -111,6 +111,13 @@ const INDOORS_SECONDS = 0.9;
  * on the day's look, to the tenth: it is what the lamps' light is set against (eye.ts).
  */
 const SKY_ON_GROUND = 1.8;
+/**
+ * The eye's colour vision goes as the light does, between these (cd/m²): all the cones' above the second, all the rods'
+ * under the first. The mesopic range, 0.01 to 3 cd/m² (CIE 41, 1978). How far toward the rods' sight the night is drawn
+ * at the bottom is for the look (`RODS_MOST`): estimated.
+ */
+const MESOPIC = [0.01, 3] as const;
+const RODS_MOST = 0.8;
 const INDOORS_REACH = 12;
 const ENCLOSING = [
   [0, 1, 0],
@@ -1903,7 +1910,19 @@ export class Stage {
     this.renderer.toneMappingExposure = exposure;
     this.lamps.exposed(exposure);
     s.eye?.(factor);
-    this.pipe.night(exposure);
+    const ground = s.sunIntensity * Math.max(s.sunDir.y, 0) + SKY_ON_GROUND * s.fill[2];
+    this.pipe.night(exposure, this.rods() * (1 - this.indoors), ground / Math.PI, 1 - this.indoors);
+  }
+
+  /**
+   * How much of the eye is the rods' (0 by day), by the luminance of the night's own land and sky (the setting's,
+   * daysky.ts): what is lit far brighter than that (a lamp's patch) is seen in colour all the same (Pipeline.night).
+   */
+  private rods(): number {
+    const s = this.setting;
+    if (s.adapted === undefined) return 0;
+    const at = Math.log10(Math.max(s.adapted, 1e-9));
+    return RODS_MOST * (1 - THREE.MathUtils.smoothstep(at, Math.log10(MESOPIC[0]), Math.log10(MESOPIC[1])));
   }
 
   /**

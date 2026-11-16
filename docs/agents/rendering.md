@@ -425,6 +425,33 @@ on what it reaches (lamps.ts), or a room's lamp draws rings on its walls. A buil
 is not recorded is not offered empty: its door is built shut and its windows dark (sitelib
 `door(works=False)`, building kinds "shut" and "blind").
 
+**The night is the light there is, and the eye adapts to what it looks at.** From sunset on, daysky.ts puts the light
+on level ground in lux (USNO Circular 171's twilight, the Moon by Krisciunas and Schaefer's phase law, the night sky's
+own 0.8 millilux: docs/sources.md, "The light at night") into the scene in its true proportions, land, sea and sky
+alike, and the eye's law (`opening`: it makes up all but `NIGHT_KEEP` of each tenfold fall, down to the rods' limit,
+`EYE_LEAST`, under which it opens no more) says how bright that is drawn. The tone mapping's exposure takes that as far
+as eightfold; what more the eye has opened is put into the natural light's own levels (`DayLight.lifted`), so a night's
+light is not lost in the frame's half floats. Above the horizon the day is the tuned day, to the bit. The lamps are on
+the scene's own scale, far dimmer against the night than they are (a pad 10^5 times the steppe round it would be white
+on black), and come on by the place's data (`SiteDef.lamps`, lamps.ts `lampsLit`: switched on as the Sun goes down
+past a height, warming up over minutes, as a function of the instant). **The eye** (eye.ts) measures, every frame and
+on the CPU (no frame is read back), what the lamps in view add to the sky's light: rays over the view to the ground,
+each lit as three's spotlights light it, their log-mean, and the lamps in view as a veil of glare (Stiles and
+Holladay). It follows that quickly into more light (`LIGHT_SECONDS`, the rods' 0.4 s) and slowly into less
+(`DARK_SECONDS`, the cones' 110 s), in the world's time (the clock's rate, at least the frame's), and multiplies the
+exposure by what it has come to (`VIEW_KEEP`); a frozen stage, a jump of the clock, another place and going on or off
+foot settle it at once, and `warm`, which lights the floods to build their shaders, is not seen by it (left to adapt
+from that, a day's first minutes were drawn a per cent dark). It measures the camera as the frame draws it. What is set in the scene's light for the day's exposure follows the exposure as it goes
+(Pipeline.night): the glow's threshold under any day's exposure, the ink over twilight's (and never lighter than what
+it is drawn on), and the Moon's disc and the stars by the eye's factor (Setting.eye). By night the output draws what
+nothing lights but the night toward what the rods see (scotopic luminance and Hunt's blue, by the mesopic range): what
+it draws is judged on each pixel's brightest channel against a white surface's light under the night's own sky and Moon
+(none of the rods' over two and a half times that), so whatever a lamp lights keeps its colour whatever its paint (judged on
+luminance against the land, a red structure in the floods went grey and dark from over the pad; `pnpm test:night`,
+"lit"). How far toward the rods is for the look (`RODS_MOST`). Indoors the room's exposure still
+wins. `pnpm test:night` takes the stills (two sites, deep night, dusk and a quarter Moon, both looks, over, across and
+on foot), runs the clock through dusk and dawn checking nothing jumps, and walks off the floodlit apron and back.
+
 A mesh is a draw call, and another in every shadow-map redraw, so each build joins meshes nobody
 can tell apart before it exports (`srlib.merge_static`, at every level, after the clearance
 check). The node tree is never changed: every empty keeps its name, transform and extras. Only
@@ -476,7 +503,8 @@ build) narrow it; the header of the file lists the rest.
   identical to the last bit, a few (cloud from above) wander by a level or two.
 - **A frozen stage draws the same frame twice** (`stage.frozen`; `pnpm test:frozen` checks it in both looks, still
   and with every level of detail thrown to another and back). Every tool that compares pictures stands on it, so
-  nothing may reach a frozen frame from the wall's clock or from an earlier frame. What did, and is now cut while
+  nothing may reach a frozen frame from the wall's clock or from an earlier frame (the eye's adaptation is settled at once
+  there: eye.ts). What did, and is now cut while
   frozen: a room's lamp handed from one room to the next over 0.6 s of `performance.now()` (lamps.ts `atOnce`: a lit
   room changed for frames after every move of the eye); the clouds' blend with their last frames (clouds.ts `frozen`); and the Sun's maps, kept from
   whenever something last asked (a plant's shadow in the form the eye was then near enough for), which a frozen
