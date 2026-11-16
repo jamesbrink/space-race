@@ -505,11 +505,11 @@ set in orbital.ts before the simulator was written.
 | Perigee after the burn | -39 km | | | no figure in the record |
 | Height at 10:36 | 133 km | 150 to 160 (L); 150 to 170 (S15) | 15 km about 155 | **misses by -22 km** (as osculating: -18) |
 | Through 100 km | 10:38:48, 7,677 m/s through the air, 1.44° below level | | | no figure in the record |
-| Greatest load | 8.54 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
+| Greatest load | 8.55 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
 | Greatest dynamic pressure | 54 kPa | | | |
-| At 7 km | 10:45:36, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +216 s** (as osculating: +224) |
+| At 7 km | 10:45:35, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +215 s** (as osculating: +224) |
 | Place, across the track | 64 km left | 51°16′ N 45°59′ E (R) | 25 km | **misses** (as osculating: 69) |
-| Place, along the track | 478 km beyond (54.87° N, 50.02° E) | the same | 100 km | **misses** (as osculating: 448: 30 km worse) |
+| Place, along the track | 472 km beyond (54.82° N, 49.95° E) | the same | 100 km | **misses** (as osculating: 448: 24 km worse; on the ball's continuum drag in orbit, until November 2026: 478) |
 
 What the misses say, in order of what is learned:
 
@@ -524,7 +524,7 @@ What the misses say, in order of what is learned:
 3. **Along the track has two owners**, each worth hundreds of kilometres: the injection point
    (128 km a degree, estimated to 3°) and the aim. It is not to be tuned; the ascent flown replaces the first.
    (Read as mean, the landing is 30 km further out than it was read as osculating: nothing is fitted.)
-4. **The time at 7 km** is late partly because the place is long (478 km is a minute) and partly
+4. **The time at 7 km** is late partly because the place is long (472 km is a minute) and partly
    because the descent is slower than the flight's was, which is the aim again.
 5. **The load does not depend on any of this**: 8.4 to 9.1 g across every variation tried. Gagarin's
    "beyond 10" is a sensation; "about 8", in print without a source, is what a ballistic sphere gives.
@@ -644,8 +644,8 @@ stage as the sources give them do not agree with one another; which is wrong is 
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
 ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8): period 89.44 min (holds), apogee
-flown round 326 km (holds), 134 km at 10:36, 10:45:34 at 7 km, landing 503 km long and 10 km across (holds), module
-10:50:16, pilot 10:58:58. (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
+flown round 326 km (holds), 134 km at 10:36, 10:45:33 at 7 km, landing 499 km long and 9 km across (holds), module
+10:50:14, pilot 10:58:56 (on the ball's continuum drag in orbit, until November 2026: 10:45:34, 503 km, 10:50:16, 10:58:58). (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
 and 14 km across, module 10:50:21, pilot 10:59:03: the apogee came in and the landing went 51 km further out.) (Until November 2026 the braking
 burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
 10:59:04. orbital.ts `flyOrbit`, `pushAs`.)

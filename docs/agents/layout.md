@@ -250,7 +250,7 @@ src/
   viewer/camera/watch.ts              watching what is worked by hand, pure and tested: the head turned within a neck's reach, the camera stepped aside and back off the figure
   viewer/camera/head.ts               a head in a seat, pure and tested: its limits, the eyes round the neck, the lean to a port or a screen and back
   viewer/camera/input.ts              the hands: mouse, trackpad, fingers and keys in one vocabulary (drag, slide, zoom, twist, pivot here)
-  sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from its plan, whose hardware it finds by role (`ballisticOf`); the 1976 standard air
+  sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from its plan, whose hardware it finds by role (`ballisticOf`); the 1976 standard air (its Table I to 1,000 km, `UPPER_ROWS`; its mean free path, `meanFreePath`)
   sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
   sim/air.ts                          the air at a point for every simulator: where it is over, its height, the plan's air (`skyOf`: the day's column over the pad, the standard outside it, `DAY_AIR`), the motion through it with the day's wind (`airAt`, `blowOf`)
   sim/core/gravity.ts                 gravity as terms: the Earth with J2 (the default), a third body as a point mass, the central body switched
@@ -259,7 +259,7 @@ src/
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
-  sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`)
+  sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance
   sim/staging.ts                      what happens when a hand stages a vehicle: the rules every vehicle is held to, whatever it is

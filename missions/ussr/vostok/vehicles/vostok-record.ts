@@ -7,7 +7,7 @@
 import type { Confidence, Curve, Heating, Measure, ShedBody } from '../../../../src/types.ts';
 import type { Vec3 } from '../../../../src/world/frames.ts';
 import type { DescentCrew, Guidance, OrbitResults } from '../../../../src/sim/orbital.ts';
-import type { Nozzle } from '../../../../src/sim/plan.ts';
+import type { Craft, Nozzle } from '../../../../src/sim/plan.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -203,6 +203,8 @@ export interface VostokRecord {
    * decays (the entry's curve is for the air it enters, not for days at 180 km).
    */
   supplies?: { days: Measure; rarefied: Measure };
+  /** The joined ship in the free-molecule flow of its orbit (plan.ts `Craft.rarefied`). Left out: the 3KA's (vostok-3ka.ts `SHIP_RAREFIED`). */
+  rarefied?: NonNullable<Craft['rarefied']>;
   /** The height above the sea at which the pilot left, m: the coast is flown down to it. */
   ejection: { altitude: Measure };
   /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */

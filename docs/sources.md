@@ -839,6 +839,19 @@ NASA ADS scans, the equations from page images at 260 dpi.
 | AVISO, "Sentinel-3 orbit" | [aviso.altimetry.fr](https://www.aviso.altimetry.fr/en/missions/current-missions/sentinel-3a/orbit.html) | a 7,177.926540 km, e 0.001148, i 98.65 deg, w 90 deg, nodal period 100.987 min, 385 revolutions in 27 days: a Sun-synchronous orbit with its period | Does not say the elements are mean ones; the inclination is given to 0.01 degree |
 | Brykov, A. V., memoir of NII-4's ballistics group and Sputnik 1 (RGANTD f. 227, op. 1, d. 6), at second hand from the research comment on issue #8 | [rvsn.info](https://rvsn.info/library/docs/doc_1_1056.html) | The period found from tracked passes and the height from the period: why the published period is read as a nodal one (`CONVENTION.kind`, estimated) | Sputnik 1 in 1957, not Vostok; a memoir |
 
+### The air in orbit and the drag in it (issue #31)
+
+Read 16 November 2026 for `src/sim/atmosphere.ts` (`meanFreePath`) and `src/sim/orbital.ts` (`orbitDrag`, `rarefaction`),
+and Vostok's figure (vostok-3ka.ts `SHIP_RAREFIED`).
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| *U.S. Standard Atmosphere, 1976* (entry under "The flight as flown"), Table II | [NTRS 19770009539](https://ntrs.nasa.gov/api/citations/19770009539/downloads/19770009539.pdf), pp. 92 and 93 (the scan's pages 107 and 108) | The mean free path from 86 to 200 km: 1.17e-2 m at 86 km, 0.142 at 100, 3.31 at 120, 33 at 150, 240 at 200 | Its first column is headed "H" and holds the geometric heights |
+| King-Hele, D. G., *The Prediction of Satellite Lifetimes*, RAE Technical Report 87030, May 1987 | DTIC ADA189710 | §9.1, eq. 20: δ = F S C_D / m, S "its mean cross-sectional area perpendicular to the direction of motion", "a value of 2.2 is recommended for perigee heights of 150-400 km" (after Cook 1965); §8: the coefficient falls below 130 km and is about half its free-molecule value by 90 km | A satellite's figure in general, not the Vostok's |
+| Wilmoth, R. G., Mitcheltree, R. A. and Moss, J. N., "Low-density aerodynamics of the Stardust sample return capsule", *J. Spacecraft and Rockets* 36(3), 436-441, 1999 | NTRS 20040105522 | Kn = λ / D; continuum below Kn 0.01 and free-molecular above 10 "as general guidelines", 0.001 and 10 taken for Stardust; the bridge C = C_cont + (C_fm - C_cont) sin^2 π(a1 + a2 log10 Kn) (eqs. 1 and 2) | The constants a1 = 3/8 and a2 = 1/8 are not printed: they are what the limits 0.001 and 10 give (derived here) |
+| Kamanin, *Skrytyi kosmos*, the diary for 4 August 1962 | [militera.lib.ru/db/kamanin_np/62.html](http://militera.lib.ru/db/kamanin_np/62.html) | Rauschenbach to the State Commission: after orienting the ship turns at 0.06°/s, once in 1.8 hours; the pilot as a rule spins it to 0.5°/s, once in twelve minutes, so the Sun warms it evenly; Korolev let Vostoks 3 and 4 do without the spin | Read by search, at second hand through a research note; the print page was not had |
+| Siddiqi, *Challenge to Apollo* (entry under "Vostok"), pp. 195, 197, 293, 357, 358, 368 | the same PDF | The ship's 4.4 m and 2.43 m and the 2.3 m ball; the instrument module "two cone-shaped compartments with their blunt ends facing each other"; the pilots' orientations by hand; Bykovsky's "thermal roll mode at one revolution per eight minutes" (p. 368) | The cones' end diameters are in nothing read: the model's are scaled off a cutaway |
+
 ### Fires by what they burn, and where the exhaust goes at Site 1
 
 Read for [viewer/flames.ts](../src/viewer/flames.ts) and trail.ts `pitBlast` (rendering.md, "A fire looks as what it burns").
@@ -888,6 +901,7 @@ tail-off, the swing, the vent or the timing between them was found.
 | A survey of Site 1 as it stood in April 1961, and the launch azimuth as flown | The pad model and the trajectory |
 | Lissov's articles on the flight in *Novosti Kosmonavtiki*; *Pervyi pilotiruemyi polet* (2011), the tracking and ballistics documents | The node, the argument of perigee, where and when the spacecraft was injected, the drop zones: none is in anything read, and the coast's landing along the track hangs on them |
 | Anything on the Vostok's solar orientation system that gives the sensor's axis against the braking engine's (Raushenbakh; Chertok vol. 3; Legostaev) | The record says the engine was pointed at the Sun; the Sun was 41° out of the orbit's plane, and the landing says the push was not |
+| Cook, G. E., "Satellite drag coefficients", *Planet. Space Sci.* 13(10), 929-946, 1965, doi:10.1016/0032-0633(65)90150-9 | The source of the 2.2 a satellite's drag is flown on (through King-Hele, 1987): its sphere and cylinder figures and the 2.0 to 2.4 range. ScienceDirect, DTIC (AD0464391) and ADS refused it in November 2026 |
 | Bailey and Hiatt, "Sphere drag coefficients for a broad range of Mach and Reynolds numbers", *AIAA Journal* 10 (1972); Hoerner, *Fluid-Dynamic Drag* | The sphere's drag curve in `orbital.ts` is set down from memory of them |
 | Vallado, *Fundamentals of Astrodynamics and Applications*, 4th ed., ch. 9 (mean elements, J2's secular rates) and its worked examples | A textbook's worked case of osculating to mean elements, to hold `src/world/meanelements.ts` to beside Kozai's own forms; not to hand on 16 November 2026 |
 

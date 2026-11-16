@@ -18,7 +18,7 @@ import type { State } from '../world/orbit.ts';
 import { airDrag, blowing, type Sky, STANDARD } from './air.ts';
 import { along, chuteArea } from './fly.ts';
 import { tearOf } from './loads.ts';
-import { automatic, type DescentHands, type DescentTear, shipOf } from './orbital.ts';
+import { automatic, type DescentHands, type DescentTear, ORBIT_DRAG, orbitDrag, shipOf } from './orbital.ts';
 import type { ChuteDef, FlightPlan } from './plan.ts';
 
 /**
@@ -37,8 +37,8 @@ export interface Down {
   /** When the modules part, s from liftoff; what hangs on the entry body until then, kg. */
   parted: number;
   joined: number;
-  /** The entry body with the pilot aboard, kg, and its air above the ejection height (the coast's). */
-  entry: { mass: number; area: number; drag: Curve };
+  /** The entry body with the pilot aboard, kg, and its air above the ejection height (the coast's: `dragArea`, joined or not, at a height and Mach number, orbital.ts `orbitDrag`). */
+  entry: { mass: number; area: number; drag: Curve; dragArea: (joined: boolean, height: number, mach: number) => number };
   bodies: DownBody[];
 }
 
@@ -137,7 +137,12 @@ function makeDown(plan: FlightPlan): Down | null {
     floor: ship.floor,
     parted: ship.parted,
     joined: ship.mass - ship.entry.mass,
-    entry: { mass: ship.entry.mass, area: ship.entry.aero.area.value, drag: ship.entry.aero.drag },
+    entry: {
+      mass: ship.entry.mass,
+      area: ship.entry.aero.area.value,
+      drag: ship.entry.aero.drag,
+      dragArea: (joined, height, mach) => orbitDrag(ship, joined, height, mach),
+    },
     bodies,
   };
 }
@@ -232,7 +237,9 @@ export class Descent {
     const e = this.ctx.down.entry;
     const f = this.filling;
     return (
-      (this.entry && h > this.floor + 1 ? e.area * along(e.drag, mach) - this.body.dragArea.value : 0) +
+      (this.entry && h > this.floor + 1
+        ? (ORBIT_DRAG.coast ? e.dragArea(this.as < this.parted, h, mach) : e.area * along(e.drag, mach)) - this.body.dragArea.value
+        : 0) +
       this.base +
       (f ? chuteArea({ full: f.area, was: 0, at: f.at, fills: f.fills }, at) : 0)
     );

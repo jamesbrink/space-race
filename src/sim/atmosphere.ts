@@ -137,5 +137,37 @@ export function atmosphere(height: number): Air {
   return { density, pressure: 0, temperature: 186.87, soundSpeed: 274.1 };
 }
 
+/**
+ * The mean free path of the air at a height above the sea, m: the standard's Table II (NOAA-S/T 76-1562, pp. 92 and 93)
+ * from 86 to 200 km, straight in its logarithm between its rows; outside them carried by the density (the path goes as
+ * one over the number of molecules), with the molecular weight of 86 km below it, where it is the same at every height,
+ * and of 200 km above, where the path is hundreds of metres and the flow round any spacecraft free-molecular.
+ */
+export function meanFreePath(height: number): number {
+  const km = height / 1000;
+  const [first, last] = [FREE_PATHS[0]!, FREE_PATHS[FREE_PATHS.length - 1]!];
+  if (km <= first[0]) return (first[1] * atmosphere(first[0] * 1000).density) / atmosphere(height).density;
+  if (km >= last[0]) return (last[1] * atmosphere(last[0] * 1000).density) / atmosphere(height).density;
+  let i = 1;
+  while (km > FREE_PATHS[i]![0]) i++;
+  const [h0, l0] = FREE_PATHS[i - 1]!;
+  const [h1, l1] = FREE_PATHS[i]!;
+  return l0 * (l1 / l0) ** ((km - h0) / (h1 - h0));
+}
+/** [geometric height, km; mean free path, m], the standard's Table II. */
+const FREE_PATHS: readonly [number, number][] = [
+  [86, 1.17e-2],
+  [90, 2.37e-2],
+  [100, 1.42e-1],
+  [110, 7.88e-1],
+  [120, 3.31],
+  [130, 8.8],
+  [140, 18],
+  [150, 33],
+  [160, 53],
+  [180, 120],
+  [200, 240],
+];
+
 /** Above this height, m, the predicted path leaves the air out (sim/fliers.ts): at 200 km its drag on a spacecraft is under a ten-thousandth of a millimetre a second squared. */
 export const AIR_TOP = 200_000;

@@ -447,8 +447,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   while the sequencer is on (`switched`); what a hand gives (`given`, at the clock's instant) acts whatever it is. flyOrbit
   hands over to flyDown at a hand's first event if that comes before the ejection height, and the modules' parting ends a
   braking burn (the engine is on the instrument module). The entry body flies the coast's drag above the ejection height
-  and its own figure below; joined, it is heavier by the instrument module and no draggier (the coast's convention: no
-  figure for the joined ship's drag, nor for the heat that burned its cables through on the day). Every parachute is held
+  and its own figure below. **The coast's drag** (orbital.ts `orbitDrag`, `ORBIT_DRAG`): in the free-molecule flow of the
+  orbit the joined ship's figure (`Craft.rarefied`: Vostok's 2.2, assumed, on the 7.17 m² a ship turning every way shows,
+  estimated: vostok-3ka.ts `SHIP_RAREFIED`) until the modules part and the entry body's (`AeroDef.rarefied`) after; in the
+  continuum the entry body's curve on its disc, joined or not (no figure for the joined ship's there, nor for the heat that
+  burned its cables through on the day); between, bridged by the Knudsen number on the standard's mean free path
+  (atmosphere.ts `meanFreePath`, `rarefaction`: Wilmoth, Mitcheltree and Moss 1999, continuum below Kn 0.001,
+  free-molecular above 10). Every parachute is held
   to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
   not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
   the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and

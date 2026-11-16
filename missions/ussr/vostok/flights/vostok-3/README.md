@@ -54,9 +54,10 @@ What the record gives of the morning, and so what the launch site shows (the sit
 [mission.md](mission.md) has every input's argument and each check against the run. In short: the
 type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
 where the bunker waited for 687; the published orbit flown from where it left the ship goes round
-four days with the entry's load (8.8 g) and the pilot's landing time (09:51:21, not independent) in,
-and comes down **2,434 km short** of the record's landing: over 64 revolutions a second of period is
-470 km, and no published period is good to better than a hundredth of a minute. The misses are in
+four days with the entry's load (8.5 g) and the pilot's landing time (09:50:17, not independent) in,
+and comes down **1,554 km beyond** the record's landing: over 64 revolutions a second of period is
+470 km, no published period is good to better than a hundredth of a minute, and four days of decay in air whose
+day is not known are worth thousands of kilometres. The misses are in
 src/sim/misses.ts.
 
 ## What is simplified

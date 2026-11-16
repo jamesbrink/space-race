@@ -243,7 +243,7 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
 
 /**
  * A spacecraft alone (an orbital plan's: Vostok 1's ship) from any instant after it has parted: the coast's forces
- * (orbital.ts `shipPush`: the air on the entry body, the whole ship's mass until the modules part), the braking burn as the
+ * (orbital.ts `shipPush`: the air on the joined ship until the modules part and on the entry body after, `orbitDrag`), the braking burn as the
  * plan has it (the timer's, a hand's, or none: `on` at or past `Number.MAX_SAFE_INTEGER` is none), its line fixed as it
  * lights (`aimOf`), and the modules' parting; and it stops where its pilot leaves, at the ejection height, burn or no burn,
  * as flyOrbit does. Begun within the burn, the burn in progress goes on as it is: along the line it was fixed on as it

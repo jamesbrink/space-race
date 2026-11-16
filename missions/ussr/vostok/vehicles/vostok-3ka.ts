@@ -9,6 +9,7 @@
 
 import type { DescentBody, DescentChute, DescentRecord, VostokRecord } from './vostok-record.ts';
 import type { Curve, Measure } from '../../../../src/types.ts';
+import type { Craft } from '../../../../src/sim/plan.ts';
 import { BOBKOV, G0, GCTC, SIDDIQI } from './vostok-8k72k.ts';
 import { assumed, derived, doc, estimated } from '../../../../src/measure.ts';
 
@@ -36,7 +37,7 @@ export const ENTRY_DRAG: Curve = {
   source:
     'a smooth sphere’s drag coefficient against Mach number as the textbooks plot it (Hoerner, Fluid-Dynamic Drag; Bailey and Hiatt, AIAA Journal 1972), set down from memory: neither was opened, ' +
     'so it is an estimate until one is. 0.92 above Mach 6 is the figure that matters (it sets the load and how far the ball carries); below Mach 1 a ball this size may be past its drag crisis ' +
-    'and lower than 0.47. Nothing published for the Vostok ball itself, charred and with its straps’ stubs, was found. Free-molecule drag above 120 km (about 2) is left out: it is worth nothing in ten minutes',
+    'and lower than 0.47. Nothing published for the Vostok ball itself, charred and with its straps’ stubs, was found. In the thin air above some 80 km it gives way to the free-molecule figure (RAREFIED; orbital.ts `orbitDrag`)',
 };
 
 /** The hand controller's rate, the braking engine's thrust, and how long after a burn the integrator ends the modules part. */
@@ -49,6 +50,28 @@ export const PARTING: Measure = estimated(
   10,
   'the modules part ten to twelve seconds after a burn the integrator ends (the sequencer as planned: Siddiqi, The Space Review, 2015); ten taken',
 );
+
+/**
+ * The joined ship in the free-molecule flow of its orbit (src/sim/plan.ts `Craft.rarefied`): what the coast's drag is up
+ * there, where the flow round it is of single molecules (a mean free path of 33 m at 150 km, 240 m at 200, against its
+ * 2.43 m), and the entry curve's continuum figure does not hold.
+ */
+export const SHIP_RAREFIED: NonNullable<Craft['rarefied']> = {
+  drag: assumed(
+    2.2,
+    'a satellite’s: “a value of 2.2 is recommended for perigee heights of 150-400 km”, on its mean cross-section perpendicular to the motion (King-Hele, The Prediction of Satellite Lifetimes, RAE TR 87030, 1987, §9.1, eq. 20, after Cook, “Satellite drag coefficients”, Planet. Space Sci. 13, 929-946, 1965, which was not read). ' +
+      'Nothing published for the Vostok itself; a ball alone in that flow is about 2 (RAREFIED)',
+  ),
+  area: estimated(
+    7.17,
+    'm²: the mean area a body shows turning every way, a quarter of its convex surface (Cauchy), 28.7 m² for the ball and the instrument module’s two cones as vostok_3ka.py draws them ' +
+      '(the 2.3 m ball and the 2.43 m frame documented, Siddiqi pp. 195, 197; the cones’ ends scaled off RKK Energia’s cutaway, estimated, so the area is). ' +
+      'Turning, because in orbit the ship was held only while it was being oriented: after orienting it turned at 0.06°/s, once in 1.8 hours, and the pilot as a rule spun it to 0.5°/s, once in twelve minutes, to warm it evenly in the Sun ' +
+      '(Rauschenbach to the State Commission, Kamanin’s diary, 4 August 1962, which also has Korolev letting Vostoks 3 and 4 do without the spin); Bykovsky’s “thermal roll” at once in eight minutes (Siddiqi p. 368). ' +
+      'Held along the motion it would show its 4.64 m² frame, broadside 7.96 m²: those are its bounds',
+  ),
+  length: doc(2.43, `the instrument module’s greatest diameter (${SIDDIQI}, p. 195): the length its Knudsen number is taken on`),
+};
 
 /** What a ball in free-molecule flow drags, for how long an orbit lasts (orbital.ts `decay`). */
 export const RAREFIED: Measure = estimated(

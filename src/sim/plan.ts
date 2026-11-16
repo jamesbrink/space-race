@@ -65,6 +65,12 @@ export interface Craft {
   rigid?: Body;
   /** What the air's heat does to it (sim/heating.ts). */
   heating?: Heating;
+  /**
+   * The craft joined as it flies in orbit, in the free-molecule flow of the air there: its drag coefficient on `area`, its
+   * projected area held along the motion or turning as the record has it, and the length its Knudsen number is taken
+   * on (sim/orbital.ts `orbitDrag`). Left out, the coast flies the body that comes down's continuum figure.
+   */
+  rarefied?: { drag: Measure; area: Measure; length: Measure };
   /** The crew in it: where they ride and what they are held to. */
   crew?: DescentCrew;
   /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. */

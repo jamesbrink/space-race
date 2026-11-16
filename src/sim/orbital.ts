@@ -20,13 +20,14 @@ import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, s
 import { fromPublished, meanOf, meanOrbitOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
-import { atmosphere } from './atmosphere.ts';
+import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import {
   type Action,
   type AeroDef,
   type AttitudeDef,
   clockAt,
+  type Craft,
   type EngineDef,
   type EventDef,
   eventOf,
@@ -467,8 +468,46 @@ export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['or
 }
 
 /**
+ * The drag of a body in orbit, switched by where it is flown: the coast's (flyOrbit, the predicted path, the descent's
+ * entry body above the ejection height) and the orbit's life (`decay`). Off, each flies what it did until November 2026,
+ * which gives the old capture back to the bit: the coast the entry curve's continuum figure on the ball's disc whatever
+ * the air, the decay the ball's free-molecule figure on its disc.
+ */
+export const ORBIT_DRAG = { coast: true, decay: false };
+
+/**
+ * The share of the free-molecule figure in a drag at a Knudsen number (the mean free path over the body's length):
+ * Wilmoth, Mitcheltree and Moss, "Low-density aerodynamics of the Stardust sample return capsule", J. Spacecraft and
+ * Rockets 36(3), 436-441, 1999, eqs. 1 and 2, sin^2 pi (a1 + a2 log10 Kn), with the limits they took, the continuum at
+ * Kn 0.001 and the free-molecule at 10, so a1 = 3/8 and a2 = 1/8 (derived from those limits). For the 2.43 m ship in the
+ * standard air: free-molecular above about 145 km, half and half at 103, continuum below about 76 km.
+ */
+export function rarefaction(knudsen: number): number {
+  if (!(knudsen > 0.001)) return 0;
+  if (knudsen >= 10) return 1;
+  return Math.sin(Math.PI * (3 / 8 + Math.log10(knudsen) / 8)) ** 2;
+}
+
+/**
+ * What a spacecraft in orbit drags, its drag coefficient times area, m^2, at a height above the sea and a Mach number:
+ * the joined ship (`joined`, until the modules part) or the body that comes down. In continuum flow the body that comes
+ * down's curve on its own area, joined or not (no figure for the joined ship's has been read: it is the coast's
+ * convention, and on the record the modules part above the air that matters); in free-molecule flow the joined craft's
+ * figure (`Craft.rarefied`) or the body's own (`AeroDef.rarefied`) on its area; between, bridged by the Knudsen number
+ * (`rarefaction`) on the joined craft's length or the body's diameter. Without a free-molecule figure, the continuum's.
+ */
+export function orbitDrag(ship: Ship, joined: boolean, height: number, mach: number): number {
+  const e = ship.entry.aero;
+  const continuum = e.area.value * along(e.drag, mach);
+  const free = joined ? ship.rarefied : e.rarefied && { drag: e.rarefied, area: e.area, length: null };
+  if (!free) return continuum;
+  const length = free.length ? free.length.value : 2 * Math.sqrt(e.area.value / Math.PI);
+  return continuum + (free.drag.value * free.area.value - continuum) * rarefaction(meanFreePath(height) / length);
+}
+
+/**
  * What pushes the spacecraft on its own, but gravity, m/s^2 (the coast's forces: flyOrbit's, and the predicted path's,
- * sim/fliers.ts): the air on `entry`'s body (the whole ship's mass until the modules part, the entry body's after), at an
+ * sim/fliers.ts): the air on what flies (`orbitDrag`: the joined ship's figure and mass until the modules part, the entry body's after), at an
  * instant, its motion through the air `wind` (m/s, in any frame: the push comes back in the same one) and its height above
  * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
  */
@@ -478,7 +517,10 @@ export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: num
   const airspeed = length(wind);
   const mach = airspeed / air.soundSpeed;
   const mass = at >= ship.parted ? ship.entry.mass : ship.mass;
-  const drag = scale(airDrag(wind, airspeed, air.density, ship.entry.aero.area.value * along(ship.entry.aero.drag, mach)), 1 / mass);
+  const area = ORBIT_DRAG.coast
+    ? orbitDrag(ship, at < ship.parted, altitude, mach)
+    : ship.entry.aero.area.value * along(ship.entry.aero.drag, mach);
+  const drag = scale(airDrag(wind, airspeed, air.density, area), 1 / mass);
   // (the braking engine is on the instrument module: parted, it pushes no more)
   return aim ? add(drag, scale(aim, ship.flown / (ship.off - ship.on))) : drag;
 }
@@ -518,6 +560,7 @@ export function shipOf(plan: FlightPlan): Ship {
     aim: aim!.hold as Extract<Hold, { aim: unknown }>,
     aimId: aim!.id,
     entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
+    ...(c.rarefied ? { rarefied: c.rarefied } : {}),
     landing: plan.record!.landing!,
   };
   ships.set(plan, ship);
@@ -541,6 +584,8 @@ export interface Ship {
   aimId: string;
   /** What comes down: its id, its mass once parted, kg, and its own air. */
   entry: { id: string; mass: number; aero: AeroDef };
+  /** The joined ship in the free-molecule flow of its orbit (`Craft.rarefied`), where the plan gives it. */
+  rarefied?: NonNullable<Craft['rarefied']>;
   landing: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
 }
 const ships = new WeakMap<FlightPlan, Ship>();
@@ -619,9 +664,8 @@ export interface Coast {
  * over to flyDown at the first event of the descent a hand gave, if that comes before the height.
  *
  * Forces: gravity with J2 (world/orbit.ts); the air of atmosphere.ts turning with the Earth, on
- * `entry`'s body throughout (before the modules part the whole ship is heavier and no rounder:
- * no figure for the joined ship's drag has been read, and on the record it is above the air that
- * matters); the braking burn as an even acceleration, which the modules' parting ends (the
+ * what flies (`orbitDrag`: in the free-molecule flow of the orbit the joined ship's figure until the modules part and
+ * the entry body's after, in the continuum below the entry body's curve, bridged between by the Knudsen number); the braking burn as an even acceleration, which the modules' parting ends (the
  * engine is on the instrument module). No lift, no wind.
  * Fixed steps of fourth-order Runge-Kutta: 10 s above 150 km, 1 s to 100 km and through the
  * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.

@@ -8,6 +8,7 @@
 import { derived, estimated, type Measure } from '../../../../src/measure.ts';
 import { chuteEvent } from '../../../../src/sim/orbital.ts';
 import type { VostokRecord } from './vostok-record.ts';
+import { SHIP_RAREFIED } from './vostok-3ka.ts';
 import type {
   AttitudeDef,
   BodyDef,
@@ -193,6 +194,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     limits,
     drag: a?.drag ?? [],
     ...(o.heating ? { heating: o.heating } : {}),
+    rarefied: o.rarefied ?? SHIP_RAREFIED,
     ...(d?.crew ? { crew: d.crew } : {}),
     ...(a?.sheds ? { sheds: a.sheds } : {}),
   };
