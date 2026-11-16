@@ -157,6 +157,10 @@ export class Stage {
   private shownT = 0;
   /** The clock moved hardware this frame: something operated by hand gives way to the script. */
   scripted = false;
+  /** Is the hardware catching the clock up after a jump (`follow`: the last stretch at CATCH_UP_PACE times life), not in step with it? */
+  get catchingUp(): boolean {
+    return this.clock !== null && this.shownT !== this.clock.t;
+  }
   onHover: (node: string | null) => void = () => {};
   onSelect: (node: string | null) => void = () => {};
   onInteract: () => void = () => {};

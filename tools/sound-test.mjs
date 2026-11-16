@@ -4,7 +4,8 @@
 // It checks: at the wheel the footfalls stop and an engine and tyres are heard, the engine turning faster as it gathers
 // speed, the tyres on what is under them; out again the footfalls come back and the vehicle runs down to silence; a
 // machine worked by hand is heard while it moves and is silent once it has stopped; a vehicle on the clock is heard
-// while the clock drives it and is silent with the clock stopped.
+// while the clock drives it and is silent with the clock stopped; the clock put back, the hardware's replay of the stretch
+// before it (at four times life) is not heard.
 import { launch, open, opt, url as urlOf, checks } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -173,8 +174,25 @@ try {
   // ---- #4: a vehicle on the clock: the bus coming in, 06:49 to 06:50 ----
   // (put a minute back, the hardware glides there, and is heard doing it: let it arrive first, then run the clock at life)
   await page.evaluate(({ at }) => window.sr.clock.seek(at), { at: MSK(6, 49, 20) });
-  // (the hardware's instant chases the clock's: stage.ts `follow`)
-  await page.waitForFunction(() => Math.abs(window.sr.stage.shownT - window.sr.clock.t) < 1e-6, null, { timeout: 60000 });
+  // (the hardware's instant chases the clock's: stage.ts `follow`, the last 20 s at four times life, which the bus drives
+  // in through: #29, that replay is seen and not heard)
+  let replay = { gain: 0, what: '', polls: 0 };
+  for (let i = 0; i < 600; i++) {
+    const now = await page.evaluate(() => ({
+      catching: Math.abs(window.sr.stage.shownT - window.sr.clock.t) >= 1e-6,
+      shown: window.sr.stage.shownT,
+      list: window.sr.sound.voices.filter(Boolean),
+    }));
+    if (!now.catching) break;
+    replay.polls++;
+    for (const v of now.list) if (v.gain > replay.gain) replay = { ...replay, gain: v.gain, what: `${v.what} ${v.part}` };
+    await wait(100);
+  }
+  console.log(
+    `    the catch-up: ${replay.polls} looks, the loudest of the works ${replay.gain.toPrecision(3)}${replay.what ? ` (${replay.what})` : ''}`,
+  );
+  check(replay.polls > 3, 'the hardware caught the clock up over a while');
+  check(replay.gain < 1e-3, `the replay is not heard: at the most ${replay.gain.toPrecision(3)}`);
   await wait(2500);
   const settled = await voices();
   say('the clock put back, settled', settled);

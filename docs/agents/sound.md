@@ -20,7 +20,10 @@ plays until the page has been touched, and a hidden page is suspended.
   over the speed of sound earlier (`heardAt`), so the roar trails the flame, an event sounds when
   the heard instant passes it, and Doppler is how fast that instant runs. Stopped, the flight is
   silent and the place is not; above twice life it is a low bed without events (`gate`,
-  `FASTEST`); a jump plays nothing it passed over. Nothing is scheduled against wall time.
+  `FASTEST`); a jump plays nothing it passed over, and the hardware's catch-up after one (the stretch before
+  the new instant replayed at four times life: stage.ts `follow`, `catchingUp`) is seen and not heard: the site's
+  machines fade out over 0.15 s as it starts and back in over half a second once it is done, their one-shots unplayed, the
+  vehicle being driven heard throughout. Nothing is scheduled against wall time.
 - **What is physics and what is not.** The path is physics: inverse-square, the air's absorption
   (ISO 9613-2, highs first), the delay, Doppler, the ground's reflection, and nothing airborne
   where there is no air (`carries`), so in space only what the structure carries to someone

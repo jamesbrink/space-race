@@ -57,6 +57,11 @@ export interface SoundHost {
   ears(): { x: number; y: number; z: number };
   /** Whether the view is going with the flown vehicle (the chase camera) rather than standing somewhere. */
   riding(): boolean;
+  /**
+   * Whether the scene's hardware is catching the clock up after a jump (viewer/stage.ts `catchingUp`: the last stretch
+   * replayed at several times life). That replay is seen and not heard: the site's machines are held silent through it.
+   */
+  catchingUp?(): boolean;
   /** What the land is painted as at (x, z) in the scene's frame (a road, an apron: Setting.paintedAt), or null where it is the land's own. */
   painted?(x: number, z: number): string | null;
 }
@@ -403,9 +408,20 @@ export class Sound {
       });
     }
     const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind);
+    // a catch-up after a jump is the hardware hurrying to where the clock was put: what it does then is not heard at that
+    // pace. The machines fade out over a moment as it starts and come back in over half a second once it is done (by then
+    // whatever it moved is running down at its own rate), so neither end is a step; their one-shots are not played
+    // meanwhile. The vehicle being driven is the driver's, not the clock's, and is heard throughout.
+    this.held = this.host.catchingUp?.() ? Math.max(0, this.held - dt / HUSH) : Math.min(1, this.held + dt / UNHUSH);
+    for (let i = 0; i < voices.length; i++) {
+      const v = voices[i];
+      if (v && this.works.playing[i]?.key !== DRIVEN) voices[i] = { ...v, gain: v.gain * this.held };
+    }
     this.engine!.works(voices, now);
-    for (const shot of shots) this.engine!.shot(shot, now);
+    if (this.held >= 1) for (const shot of shots) this.engine!.shot(shot, now);
   }
+  /** How much of the site's machines is let through, 0 to 1: nought through a catch-up (`hearWorks`). */
+  private held = 1;
 
   /** The place's hum's tones, Hz (its mains and twice it: engine.ts `humOf`), as the engine was built; empty before it is. */
   get hum(): number[] {
@@ -416,7 +432,15 @@ export class Sound {
   get voices(): ({ what: string; kind: string; part: string; gain: number; metres: number; rpm?: number; tread?: string } | null)[] {
     return this.works.playing.map((p) =>
       p
-        ? { what: this.labels.get(p.key) ?? '?', kind: p.kind, part: p.part, gain: p.gain, metres: p.metres, rpm: p.rpm, tread: p.tread }
+        ? {
+            what: this.labels.get(p.key) ?? '?',
+            kind: p.kind,
+            part: p.part,
+            gain: p.key === DRIVEN ? p.gain : p.gain * this.held,
+            metres: p.metres,
+            rpm: p.rpm,
+            tread: p.tread,
+          }
         : null,
     );
   }
@@ -530,3 +554,6 @@ export class Sound {
 const TOUCHES = ['pointerdown', 'keydown', 'touchend'] as const;
 /** The key the vehicle being driven is heard by (there is one at a time). */
 const DRIVEN = Symbol('driven');
+/** How long the site's machines take to fade out as a catch-up begins, and to come back once it is over, s. */
+const HUSH = 0.15;
+const UNHUSH = 0.5;
