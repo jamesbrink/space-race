@@ -178,14 +178,14 @@ src/
   viewer/space.ts                     Earth from apogee, stars; the wear texture
   viewer/explode.ts                   exploded-view motion
   viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
-  world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits; standard gravity (G0), surfaceGravity
+  world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, figures, rotation, mean orbits; standard gravity (G0), what falls on each (gravityOn)
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/earthframe.ts                 the frame a flight is flown in (of date, or fixed at liftoff), made once from its liftoff: the Earth's angle in it and every turn between it and the Earth
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are (`stateOf`, the sky from a site): DE440 when loaded, Meeus else; the 518 brightest stars
   world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF
   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
-  world/surface.ts                    the sea as a shape: the ellipsoid at a site's sea level, radii of curvature, the horizon
+  world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
   world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run

@@ -53,6 +53,12 @@ export interface Body {
   rotationPeriod: Quantity;
   /** Right ascension and declination of the north pole, degrees, ICRF at J2000. */
   pole: { ra: number; dec: number; confidence: Confidence; source: string };
+  /**
+   * Where its prime meridian stands, degrees east along its equator from the node of that equator on the ICRF's, at J2000
+   * TDB (`at`), and how fast it turns, degrees a day (`rate`): the IAU's W = W0 + rate d, its periodic terms left out (the
+   * Moon's are 0.03 degrees; world/moon.ts carries its librations). The Earth's is its sidereal time (time.ts).
+   */
+  meridian?: { at: number; rate: number; confidence: Confidence; source: string };
   /** Its mean orbit round the Sun. The Earth's is the Earth-Moon barycentre's; the Sun and the Moon have none here. */
   elements?: Elements;
   /**
@@ -182,6 +188,7 @@ export const MOON: Body = {
   polarRadius: km(1737.4, WGCCRE),
   rotationPeriod: days(27.321661, 'Astronomical Almanac, section D: the sidereal month, which the Moon’s rotation is locked to'),
   pole: pole(269.9949, 66.5392),
+  meridian: { at: 38.3213, rate: 13.17635815, confidence: 'documented', source: WGCCRE },
 };
 
 /** The planets other than the Earth: placeholders. GM is the whole system's (planet and moons) where it has moons. */
@@ -230,10 +237,11 @@ export const MARS: Body = {
   name: 'Mars',
   parent: 'sun',
   gm: gmKm3(42828.375816, DE440, 'the Mars system'),
-  equatorialRadius: km(3396.19, JPL_PHYS),
+  equatorialRadius: km(3396.19, `${WGCCRE}; ${JPL_PHYS}`),
   polarRadius: km(3376.2, WGCCRE, 'the mean of the north and south polar radii'),
   rotationPeriod: days(1.02595676, JPL_PHYS),
   pole: pole(317.269202, 54.432516),
+  meridian: { at: 176.049863, rate: 350.891982443297, confidence: 'documented', source: WGCCRE },
   elements: elements([
     [1.52371034, 0.00001847],
     [0.0933941, 0.00007882],
@@ -325,13 +333,63 @@ export const NEPTUNE: Body = {
   magnitude: mag(-7.05),
 };
 
-/** The planets seen in the sky from the Earth, nearest the Sun first. */
 /**
  * A body's gravity at its equator from its GM and radius alone, m/s^2 (derived: GM / a^2; no rotation, no oblateness). The
  * Earth's is 9.798, the Moon's 1.62.
  */
 export const surfaceGravity = (body: Body): number => body.gm.value / body.equatorialRadius.value ** 2;
 
+/**
+ * What a thing dropped on a body's surface falls by, m/s^2: what walking, a body gone limp, a hanging hose and a thing
+ * carried fall by on the ground there. On the Earth it is standard gravity (`G0`, by definition), which every such thing
+ * has fallen by and which the Earth's own differs from by under 0.3 per cent; elsewhere it is derived, the pull at the
+ * equator less the turning's (GM / a^2 - w^2 a, oblateness left out): the Moon's 1.624 (NASA's fact sheet: 1.62), Mars's
+ * 3.696 (3.69).
+ */
+export function gravityOn(body: Body): number {
+  if (body.id === 'earth') return G0;
+  const w = (2 * Math.PI) / body.rotationPeriod.value;
+  return surfaceGravity(body) - w * w * body.equatorialRadius.value;
+}
+
+/**
+ * A body's figure: its equatorial and polar radii and its first eccentricity squared, metres, what frames.ts's geodetic
+ * functions and surface.ts work on. The Earth's is WGS 84's exactly (`WGS84_FIGURE`); the Moon's a sphere of its mean
+ * radius; the others' ellipsoids from their two radii (bodies' `equatorialRadius`, `polarRadius`).
+ */
+export interface Figure {
+  readonly a: number;
+  readonly b: number;
+  readonly e2: number;
+}
+
+/** The WGS 84 ellipsoid as a figure: e^2 = f (2 - f), as WGS 84 states it. */
+export const WGS84_FIGURE: Figure = {
+  a: WGS84_A,
+  b: WGS84_B,
+  e2: (1 / WGS84_INVERSE_FLATTENING) * (2 - 1 / WGS84_INVERSE_FLATTENING),
+};
+
+const figures = new Map<string, Figure>([['earth', WGS84_FIGURE]]);
+/** The figure of a body (`Figure`), made once. */
+export function figureOf(body: Body): Figure {
+  let f = figures.get(body.id);
+  if (!f) {
+    const [a, b] = [body.equatorialRadius.value, body.polarRadius.value];
+    figures.set(body.id, (f = { a, b, e2: 1 - (b * b) / (a * a) }));
+  }
+  return f;
+}
+
+/** The planets seen in the sky from the Earth, nearest the Sun first. */
 export const PLANETS: readonly Body[] = [MERCURY, VENUS, MARS, JUPITER, SATURN, URANUS, NEPTUNE];
 /** Every body, the Sun first. */
 export const BODIES: readonly Body[] = [SUN, MERCURY, VENUS, EARTH, MOON, MARS, JUPITER, SATURN, URANUS, NEPTUNE];
+
+/** A body by its id (`Body.id`, as a site names the body it stands on: types.ts `SiteDef.body`); the Earth when none is named. */
+export function bodyOf(id: string | undefined): Body {
+  if (id === undefined) return EARTH;
+  const body = BODIES.find((b) => b.id === id);
+  if (!body) throw new Error(`no body ${id}`);
+  return body;
+}

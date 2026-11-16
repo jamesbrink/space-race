@@ -26,6 +26,16 @@ IAU's of 2006: the frame bias and the IAU 2006 precession (`icrfToDate`), the IA
 the Earth rotation angle, to a milliarcsecond (2 m at the Moon), each held to SOFA's own test values. A flight is flown in
 the frame of date at its liftoff (below), which turns against the ICRF by about an arcsecond in a week.
 
+Bodies are general (`bodies.ts`). Each has its GM, its two radii, its pole and turn, and for the Moon and Mars its prime
+meridian (`meridian`, IAU WGCCRE 2015: W = W0 + rate d, the periodic terms left out); `figureOf(body)` is the figure
+frames.ts's geodetic functions and surface.ts work on when handed one (the Earth's is WGS 84's exactly and is the
+default, so nothing on the Earth moves; the Moon is a sphere of 1737.4 km, Mars an ellipsoid of 3396.19 by 3376.20 km).
+A site names the body it stands on (`SiteDef.body`, an id: `bodyOf`, the Earth unless given), and what falls there falls
+by `gravityOn(body)`: standard gravity on the Earth, as everything on foot has fallen by, and GM / a^2 - w^2 a elsewhere
+(the Moon 1.624, Mars 3.696: NASA's fact sheets give 1.62 and 3.69). On foot that is not yet so: walk.ts (`GRAVITY = G0`,
+line 54), ragdoll.ts (`G0 * dt * dt`, 189), hose.ts (57) and carry.ts (244) take `G0` as a module constant, and are to take
+`gravityOn(bodyOf(site.body))` from whoever makes them for a site.
+
 Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
 `missions/<nation>/places/<place>/<site>.ts`) and the clock's instant give the Sun, the Moon
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and

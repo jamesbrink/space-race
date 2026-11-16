@@ -25,7 +25,8 @@
  *            crosses the equator, +Y 90 degrees east. It is the inertial frame turned about +Z by
  *            the Greenwich apparent sidereal time (time.ts). Polar motion (under 15 m at the
  *            surface) is left out.
- * geodetic   Latitude, longitude and height above the WGS 84 ellipsoid: what a map gives. Height
+ * geodetic   Latitude, longitude and height above the WGS 84 ellipsoid: what a map gives (on another
+ *            body, above its own figure: bodies.ts `figureOf`, given to the geodetic functions). Height
  *            is above the ellipsoid, not sea level; at Cape Canaveral the sea is 29 m below it.
  * ENU        East, north, up at a place: up is the ellipsoid's normal there (the plumb line, to
  *            a hundredth of a degree), so this is the frame "level" means something in.
@@ -38,7 +39,7 @@
  * is 8 cm above the ellipsoid; at 10 km, 7.8 m. siteToEcef and ecefToSite are exact, so that is a
  * fact about flat scenery, not an error in the transform.
  */
-import { EARTH_ROTATION_RATE, WGS84_A, WGS84_INVERSE_FLATTENING } from './bodies.ts';
+import { EARTH_ROTATION_RATE, type Figure, WGS84_FIGURE } from './bodies.ts';
 import { centuries, meanObliquity, nutation } from './time.ts';
 
 export type Vec3 = readonly [number, number, number];
@@ -83,25 +84,27 @@ export const siteFrame = (def: Record<keyof Site, { value: number }>): Site => (
   bearingX: def.bearingX.value,
 });
 
-const F = 1 / WGS84_INVERSE_FLATTENING;
-/** First eccentricity squared of the WGS 84 ellipsoid. */
-const E2 = F * (2 - F);
-
-export function geodeticToEcef(g: Geodetic): Vec3 {
+/**
+ * A place on a body as a point in its body-fixed frame: on the Earth's WGS 84 ellipsoid unless another body's figure is
+ * given (bodies.ts `figureOf`: the Moon's sphere, Mars's ellipsoid), latitude geodetic, height along the normal.
+ */
+export function geodeticToEcef(g: Geodetic, figure: Figure = WGS84_FIGURE): Vec3 {
+  const { a: A, e2: E2 } = figure;
   const lat = g.latitude * DEG;
   const lon = g.longitude * DEG;
   const sin = Math.sin(lat);
   const cos = Math.cos(lat);
-  const N = WGS84_A / Math.sqrt(1 - E2 * sin * sin); // the normal's length from the surface to the polar axis
+  const N = A / Math.sqrt(1 - E2 * sin * sin); // the normal's length from the surface to the polar axis
   return [(N + g.height) * cos * Math.cos(lon), (N + g.height) * cos * Math.sin(lon), (N * (1 - E2) + g.height) * sin];
 }
 
 /**
  * The inverse, by iteration on the latitude: it converges to under a micrometre in four or five
  * rounds anywhere from the Earth's core to beyond the Moon. Height is found as the distance
- * along the normal, which stays well conditioned at the poles.
+ * along the normal, which stays well conditioned at the poles. On a sphere it is done in one.
  */
-export function ecefToGeodetic(p: Vec3): Geodetic {
+export function ecefToGeodetic(p: Vec3, figure: Figure = WGS84_FIGURE): Geodetic {
+  const { a: A, e2: E2 } = figure;
   const [x, y, z] = p;
   const rho = Math.hypot(x, y);
   const longitude = Math.atan2(y, x) / DEG;
@@ -110,7 +113,7 @@ export function ecefToGeodetic(p: Vec3): Geodetic {
   for (let i = 0; i < 12; i++) {
     const sin = Math.sin(lat);
     const cos = Math.cos(lat);
-    const N = WGS84_A / Math.sqrt(1 - E2 * sin * sin);
+    const N = A / Math.sqrt(1 - E2 * sin * sin);
     height = rho * cos + z * sin - N * (1 - E2 * sin * sin);
     const next = Math.atan2(z, rho * (1 - (E2 * N) / (N + height)));
     const moved = Math.abs(next - lat);

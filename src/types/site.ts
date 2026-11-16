@@ -10,6 +10,11 @@ import type { DayWeather } from './weather.ts';
  */
 export interface SiteDef {
   name: string;
+  /**
+   * The body it stands on, by its id in src/world/bodies.ts (`bodyOf`): the Earth unless given. Its figure is what the
+   * latitude, longitude and height are on (`figureOf`), and what falls there falls by its `gravityOn`.
+   */
+  body?: string;
   /** The place the site is in (missions/<nation>/places/<place>/place.ts): its country, its usual sky, its quiet, its ground. */
   place: PlaceDef;
   /** Degrees north, WGS 84. */

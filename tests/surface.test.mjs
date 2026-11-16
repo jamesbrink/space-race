@@ -48,3 +48,26 @@ test('horizon and drop', () => {
   // 487 km downrange of the Cape the sea is 18.6 km below the pad's level (the flight's README)
   near(drop(487_000, gaussianRadius(28.44)) / 1000, 18.6, 0.05, 'drop at the landing');
 });
+
+test('another body’s figure: the Moon a sphere of 1737.4 km, Mars an ellipsoid of 3396.19 by 3376.20 (IAU WGCCRE 2015)', async () => {
+  const { MARS, MOON, EARTH, WGS84_FIGURE, figureOf, gravityOn, bodyOf, G0 } = await import('../src/world/bodies.ts');
+  assert.equal(figureOf(EARTH), WGS84_FIGURE, 'the Earth’s is WGS 84’s');
+  const moon = figureOf(MOON);
+  assert.deepEqual(geodeticToEcef({ latitude: 0, longitude: 0, height: 0 }, moon), [1_737_400, 0, 0]);
+  near(length(geodeticToEcef({ latitude: 37, longitude: -120, height: 15_000 }, moon)), 1_752_400, 1e-6, 'a sphere: up is out');
+  const back = ecefToGeodetic(geodeticToEcef({ latitude: 0.674, longitude: 23.473, height: -1_950 }, moon), moon);
+  near(back.latitude, 0.674, 1e-12, 'Tranquility Base’s latitude, there and back');
+  near(back.height, -1_950, 1e-6, 'and height');
+  const mars = figureOf(MARS);
+  near(geodeticToEcef({ latitude: 90, longitude: 0, height: 0 }, mars)[2], 3_376_200, 1e-6, 'Mars’s pole at its polar radius');
+  near(curvatureRadii(0, mars).primeVertical, 3_396_190, 1e-6, 'and its equator at the equatorial');
+  near(seaPoint([0, 0, 1], 0, mars)[2], 3_376_200, 1e-6, 'its datum under the pole');
+  near(gaussianRadius(0, moon), 1_737_400, 1e-6, 'a sphere’s every radius is its radius');
+  // what falls there: NASA's planetary fact sheets, surface acceleration at the equator: the Moon 1.62, Mars 3.69 m/s^2
+  near(gravityOn(MOON), 1.62, 0.005, 'the Moon');
+  near(gravityOn(MARS), 3.69, 0.01, 'Mars');
+  assert.equal(gravityOn(EARTH), G0, 'the Earth: standard gravity, what everything on it has fallen by');
+  assert.equal(bodyOf(undefined), EARTH, 'a site that names none is on the Earth');
+  assert.equal(bodyOf('moon'), MOON);
+  assert.throws(() => bodyOf('vulcan'), /no body/);
+});
