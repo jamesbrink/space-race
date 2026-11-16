@@ -1,10 +1,13 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
-import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, vostokMotors } from '../../vehicles/vostok-stack.ts';
+import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
 import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
-
-/** Moscow time on a day of June 1963, as seconds from liftoff at 14:58:58 on the 14th. */
-const MSK = (day: number, h: number, m: number, s = 0) => ((day - 14) * 24 + h - 14) * 3600 + (m - 58) * 60 + (s - 58);
+import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
+import { MSK, orbital } from './orbital.ts';
+import { vostokPlan } from '../../vehicles/vostok-plan.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const parts: PartWords[] = [
   {
@@ -410,16 +413,28 @@ const launcherParts: PartWords[] = [
   ),
 ];
 
-// The vehicle alone, in the gallery: Site 1 as it stood that day is not built for this flight yet.
-const vehicle = vostokStack({
-  flight: 'vostok-5',
-  parts: vostokParts('vostok-5', [...launcherParts, ...parts]),
-  // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
-  // not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
-  // (the helmet's hose and its valve, crew/sk_1.py: each mesh by name, since a mesh the data names is a node of its own)
-  seats: [vostokSeat([-3 * 3600, -3600], ['Hose', 'ValveRim', 'ValveSlots'])],
-  cabin: vostokCabin(),
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const COMMANDS = vostokCommands({
+  parted: 'on the day the ball tumbled fast and without order until they parted, how late is not settled (mission.md)',
+  reserve: null,
+  pilot: { they: 'he', theirs: 'his' },
 });
+
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
+const vehicle = site1Vehicle(
+  vostokStack({
+    flight: 'vostok-5',
+    parts: commanded(vostokParts('vostok-5', [...launcherParts, ...parts]), COMMANDS),
+    // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
+    // through hatch No. 1 from 09:50, after the bus stopped at 09:45 (Kamanin), until the hatch was closed again over the seat's
+    // lanyard at about 11:50 (Kamanin: half an hour lost from the 40-minute readiness). The minutes he went in and it was first
+    // closed are ours (estimated).
+    // (the helmet's hose and its valve, crew/sk_1.py: each mesh by name, since a mesh the data names is a node of its own)
+    seats: [vostokSeat([MSK(14, 9, 50), MSK(14, 11, 50)], ['Hose', 'ValveRim', 'ValveSlots'])],
+    cabin: vostokCabin(),
+  }),
+  BASE,
+);
 
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-5',
@@ -436,6 +451,10 @@ export const flight: Flight = {
   launch: '1963-06-14T11:58:58Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens as the bus has stopped by the pad, 09:45 (Kamanin): this afternoon's people are not built, so the bus
+  // is what there is to see. Opened at liftoff, the deck is empty
+  opens: { at: MSK(14, 9, 45), model: 'pad', view: 'bus' },
+  weather: WEATHER,
   crew: ['Valeriy F. Bykovskiy'],
   summary:
     'Five days alone in orbit, which nobody has matched since. Eighty-one orbits from Tyuratam after a countdown that ' +
@@ -610,6 +629,7 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.96° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    ...SITE1_SPECS,
   ],
   motors: vostokMotors({
     strapOns: {
@@ -636,5 +656,18 @@ export const flight: Flight = {
       note: 'Bykovskiy’s report calls the store “air”: ten minutes of orienting by hand took 10 atmospheres off it and the descent attitude 5 more; the type’s record has nitrogen',
     },
   }),
-  models: [vehicle],
+  // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the entry, each with its
+  // source (orbital.ts; mission.md)
+  plan: vostokPlan(orbital),
+  flownNote:
+    'The ascent is Vostok 1’s, flown on its instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'Five days are flown round in the standard air, not the day’s; the braking burn’s instant is derived from the pilot’s landing (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
+  flies: vostokFlies(orbital),
+  // (the crew to be walked as is not here yet: crew/sk_1.py's figure does not build at its coarser levels, issue #21)
+  models: [vehicle, pad],
+  // the place round the pad: as modelled for August 1961, nothing modelled having changed by June 1963 (Korolev's post under its
+  // canopy, the new room by the bunker and what the repairs after the fire of 1 June 1962 replaced are not built: places/tyuratam/site-1.md)
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };

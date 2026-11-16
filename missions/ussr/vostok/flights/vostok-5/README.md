@@ -16,14 +16,41 @@ Backup: Boris Volynov.
 | Spacecraft (3KA No. 7) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have had that can be drawn: its pilot in the suit of that morning, the cabin's white lining as the flown article shows it, the two television cameras as the Seliger camera was photographed, and a hand-held film camera |
 | Launch vehicle (8K72K No. E103-24) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's to look at. What its third stage did is in the record below, not in the model |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)) with what the photographs of 14 June show of his suit, "СССР" on the helmet. His height is in [spacecraft.md](spacecraft.md) |
-| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in two years has not been looked for |
-| Crew to be walked as | not built |
-| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: no figure for the 14th. The meteorologists' charts shown at the pad before 06:00 Moscow time were "favourable to the launch" (Kamanin). The press at the pad: dry, sandy winds for several days, "now it is still, a few small clouds in the blue, the Sun beating down", the pad's slabs too hot to stand on, yet "much cooler today" than the forty degrees the place can reach (TASS's pool, in *Заря Востока*, 16 June). Before it: cloud, gusts of 15 to 20 m/s and no more than 25 °C from 1 to 5 June; 34 °C and still on the 7th; rain and 14 °C on the 12th; "a wonderful, sunny, still morning" on the 13th (Kamanin). No station's report was looked for |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 as it stood on 14 June 1963) | **built**: [model/pad.py](model/pad.py), the site's modules at that date, with the bus; the surroundings are those modelled for August 1961, nothing modelled having changed (the new room beside the bunker, Korolev's post and what the repairs after the fire of 1 June 1962 replaced are not built: [site-1.md](../../../places/tyuratam/site-1.md), "What stood when"). The afternoon in [pad.ts](pad.ts), below ("The afternoon at the pad") |
+| Crew to be walked as | **not built yet**: [crew/sk_1.py](../../crew/sk_1.py) builds Bykovskiy's figure at full detail (1.725 m in helmet and boots) but fails the clearance check at its coarser levels (Helmet_Fittings against itself, issue #21); it goes in when the module builds |
+| The day's weather (`weather.ts`) | **written**: Dzhusaly at 12:00 UTC, two oktas of altocumulus floccus, an east wind of 2 m/s, 29 °C; Kamanin's «Погода на полигоне и в возможных районах приземления благоприятствовала старту»; TASS's pool «в синеве неба редкие облачка. Палит солнце». ERA5's air over the pad in [aloft.ts](aloft.ts) |
+| The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md). The ascent is Vostok 1's (none of this flight's was found); the burn's instant is derived from the landing; five days are flown round. Fly is lit. What the run makes of it is below ("The flight as flown") |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+So the flight has its Gallery, its Launch site and Fly.
+
+## The afternoon at the pad
+
+What the record gives of the day ([pad.ts](pad.ts); Kamanin keeps the range's clock, Moscow's plus two, and counts the
+readiness from a launch set for 14:00 by it, so his times are converted and `derived`):
+
+- 05:30, Kamanin at the rocket; 06:00 to 06:40, the State Commission at the pad, the launch set for 12:00, five hours'
+  schedule. 09:45, the bus at the rocket, «за 2 часа 15 минут до старта»; Bykovskiy up by the lift. Within minutes both
+  VHF transmitters found dead; they decide to fly.
+- 11:20, at the 40-minute readiness, the seat's lanyard found cut under the closed hatch; the hatch off again, half an
+  hour lost. 12:25, at the 5-minute readiness, the lamp for the third stage dark: a gyro horizon changed on the fuelled
+  rocket with him aboard; "2 to 3 hours" more; no launch possible after 17:00 by the range's clock.
+- The cable mast did not swing away when the ground-to-board command failed seconds before the engines lit; as the
+  preliminary stage lit and the rocket shook its plug jumped out and it swung back (Golovanov). The site swings it in the
+  five seconds before liftoff (estimated).
+- **Estimated, and said so**: the erector and the trusses are drawn off at Vostok 1's intervals before its liftoff, put
+  before this one; what the hold did to them is not recorded. No filler is built: none is recorded. The people (the
+  Commission, the farewell, Volynov suited) are not built: the figures have no summer dress.
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent on the type's figures falls short of an orbit, as Vostok 1's and 2's do: what is
+shown from the separation is the published orbit begun where the ascent left the ship. Its period holds (88.27 min, not
+independent) and so does its apogee from the injection (220.8 km); the pilot comes down at 14:08:06, two minutes after
+the record (not independent: the burn is timed from his landing), the ball at 14:02. **It comes down 5,647 km short and
+1,263 km across the record's landing**: over five days the orbit falls a quarter as fast as TASS's figures have it (174.7
+by 222.5 km on 18 June where TASS has 159 by 193), and the ship is behind its place at the burn. The coast's drag is what
+owns it (with four times the drag area it lands 30 km out); which part of the drag is not established (mission.md, "Five
+days in the air").
 
 ## What happened
 

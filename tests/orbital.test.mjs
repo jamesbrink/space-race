@@ -76,6 +76,20 @@ const INPUTS = {
     ['entry', 'area'],
     ['ejection', 'altitude'],
   ],
+  // Vostok 5's: Vostok 2's, and the modules' parting (the type's ten seconds after the burn)
+  'ussr/vostok/vostok-5': [
+    ['orbit', 'radius'],
+    ['injection', 'at'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['retro', 'deltaV'],
+    ['entry', 'separation'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+    ['ejection', 'altitude'],
+  ],
 };
 
 test('there is an orbital flight to fly', () => {

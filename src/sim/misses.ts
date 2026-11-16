@@ -84,6 +84,16 @@ const PERIOD_64 =
   'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) with the joined ship’s free-molecule drag in the air of the day’s Sun (world/thermosphere.ts), the ship is down 1,083 km short; in the mean standard air it was 1,576 km long, and on the ball’s continuum drag, until November 2026, 2,853 km short: ' +
   'four days of the orbit’s decay are worth thousands of kilometres along the track here, so the drag in orbit and the day’s air are as much the landing as the period is. No published period is good enough to hold the landing over four days, and how fast the real orbit decayed in the air of August 1962 is not known. ' +
   'Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
+/** Vostok 5's ascent is Vostok 1's, as Vostok 2's is: it falls short of an orbit for the same reasons. */
+const SHORT_V5 =
+  'Vostok 5’s ascent is Vostok 1’s, flown on its instants and its third stage’s integrator setting (no document of E103-24’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
+  'at the last cutoff it is level at the 181 km asked for with 7,683 m/s, where 174.7 by 222.1 km needs some 7,810. That the stage fell short on the day (Siddiqi, no source) is not what this is: the type’s run falls shorter still';
+/** Five days flown round: the orbit falls a quarter as fast as the record's, and why is not established. */
+const AIR_V5 =
+  'Five days are flown round and the orbit falls a quarter as fast as the record’s: on 18 June at 15:00 (T+96 h) the run has 174.7 by 222.5 km over the sea and 88.17 min node to node where TASS has 159 by 193 km and 87.8 min, ' +
+  'so the ship comes round later each orbit than it did, and at the braking burn’s instant (derived from the pilot’s landing) it is over the Southern Ocean at 60° S. The same coast with four times the drag area has TASS’s figures at T+96 h and comes down 30 km short, ' +
+  'which says the miss is the coast’s drag and not its place on the orbit; what in the drag is not established (mission.md, "Five days in the air"). Found so far: the coast drags the ball alone (4.155 m²) at its continuum 0.92, where a ship in free-molecule flow has 2.0 to 2.4 on 4.6 m² (held along the motion) to some 6 (tumbling): 2.7 to 3.8 times; ' +
+  'it flies 4 to 7 km higher over the sea than the published perigee, 1.3 times thinner air there; the air above 200 km is the 1976 table’s last slope carried on, some 11 per cent thin at 220 km. Against that, June 1963 was near the solar minimum, when the air at 200 km is thinner than the 1976 standard’s. Not adjusted';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -355,6 +365,30 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 10,
         why: 'The module comes down at 09:44:36, 5.7 minutes before the pilot (who holds, 102 s early); the record has twelve minutes between them (09:39:59 and 09:52). From 7 km the module takes six minutes on the type’s three parachutes, as on Vostok 1 (its module five minutes before Gagarin). What put this flight’s down so long before him is not in anything read: not adjusted',
       },
+    },
+  }),
+  'ussr/vostok/vostok-5': inUnits({
+    coast: {
+      crossTrack: { by: -1_262_880, slack: 10_000, why: `It comes down 1,263 km across the track. ${AIR_V5}` },
+      alongTrack: { by: -5_646_922, slack: 30_000, why: `It comes down 5,647 km short along the track. ${AIR_V5}` },
+    },
+    ascent: {
+      perigee: { by: -376_252, slack: 2_000, why: SHORT_V5 },
+      apogee: {
+        by: -41_100,
+        slack: 300,
+        why: `The cutoff is level at the 181 km asked for and too slow, so 181 km is the orbit’s top: ${SHORT_V5}`,
+      },
+      period: { by: -249.98, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V5}` },
+    },
+    shown: {
+      apogee: {
+        by: -8_848,
+        slack: 500,
+        why: `${PUBLISHED}. Begun 3 km lower than the type’s cutoff left Vostok 2 (189 km up at 677 s), the published orbit’s apogee flown round from there is 213 km where the record has 222.1; from the estimated injection it is 220.8 km and holds`,
+      },
+      crossTrack: { by: -1_096_590, slack: 10_000, why: `${PUBLISHED}. ${AIR_V5}` },
+      alongTrack: { by: -5_658_350, slack: 30_000, why: `${PUBLISHED}. ${AIR_V5}` },
     },
   }),
   // the Langley trial of 1959 (tests/fixtures/pad-abort): not a flight, flown from its own weights off its own launcher
