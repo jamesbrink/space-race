@@ -12,9 +12,11 @@ import type { Looks } from '../look.ts';
 import type { CabinView } from '../stage/cabinview.ts';
 import type { Picker } from '../stage/picker.ts';
 import type { Shadows } from '../stage/shadows.ts';
+import { NECK, type Watched } from '../camera/watch.ts';
 import { Carry } from './carry.ts';
 import { Vehicle } from './drive.ts';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait.ts';
+import { boxAt, leadOf, movesOf, sweptBox, wayOf } from './operate.ts';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll.ts';
 import { EYE_FRACTION, type Hit, type Walker } from './walk.ts';
 import { Works } from './works.ts';
@@ -25,6 +27,20 @@ const EMERGE_CLEAR = 0.12;
 const DOOR_SECONDS = 1.05;
 const UP = new THREE.Vector3(0, 1, 0);
 const DOWN = new THREE.Vector3(0, -1, 0);
+/** How far from the figure what it is working must be over the ground before it turns round to it, metres (nearer, the head looks up or down at it). */
+const TURN_BEYOND = 1.5;
+/** How far round from the way it faces it must be before the body turns to it, as a share of the neck's reach (watch.ts NECK). */
+const TURN_SHARE = 0.85;
+/** How much room round the head the camera watching from beside it may need to find clear, metres (Solids.gather). */
+const WATCH_ROOM = 9;
+
+/** How a function worked by hand stands, for the readout (the walk bar: Ui.showWork): how far along, which way it is going, why it will not move. */
+export interface WorkState {
+  /** How far along its travel, 0 (its first end) to 1 (its second). */
+  value: number;
+  way: -1 | 0 | 1;
+  refused: string | null;
+}
 const spin = new THREE.Quaternion();
 
 /** What being on foot at a place asks of the stage it is on. */
@@ -51,8 +67,8 @@ export interface OnFootHost {
   setting(): Setting;
   clock(): Clock | null;
   cabin(): Cabin | null;
-  /** The functions of a part of a model, each with why it will not move, if it will not (onfoot/handworks.ts). */
-  functions(model: string, node: string): { fn: Fn; refused: string | null }[];
+  /** The functions of a part of a model, each with how far along its travel it is and why it will not move, if it will not (onfoot/handworks.ts). */
+  functions(model: string, node: string): { fn: Fn; value: number; refused: string | null }[];
   /** The clock moved hardware this frame: something operated by hand gives way to the script. */
   scripted(): boolean;
   /** The open ground under a point; null where there is none. */
@@ -100,6 +116,7 @@ export class OnFoot {
     this.satIn = null;
     this.driven.clear();
     this.works = new Works();
+    this.operating = null;
   }
 
   /** What falls here falls by (`OnFootHost.gravity`). */
@@ -1057,10 +1074,168 @@ export class OnFoot {
     return Boolean(figure && this.h.walk.active && this.h.walk.third && !this.h.walk.gait.jointed(figure.shown));
   }
 
+  /**
+   * A function of a part being worked by hand from where the walker stands (walking.md: Operate), and what is watched of
+   * it: where its nodes are, will be and can go (operate.ts, from the moves' data), the figure working it, and what is
+   * solid round it. `tell` hears how it stands, every frame it changes.
+   */
+  private operating: {
+    model: string;
+    node: string;
+    fn: string;
+    at: number;
+    seconds: number;
+    nodes: string[];
+    watched: Watched & { now: THREE.Box3; ahead: THREE.Box3; travel: THREE.Box3; feet: THREE.Vector3; height: number; radius: number };
+    /** The way the body faced when it was taken: turned round to watch it, it turns back to there when it is let go. */
+    facing: number;
+    turned: boolean;
+    was: number;
+    told: WorkState | null;
+    taken: boolean;
+    tell(state: WorkState): void;
+  } | null = null;
+
+  /**
+   * Work a function by hand (Part.functions; handworks.ts runs it): the view goes to what it moves (camera/foot.ts
+   * `FootRig.watch`), the body turns to it if it is beyond the neck, and `tell` hears how it stands each frame it
+   * changes. False if there is no such function.
+   */
+  operate(model: string, node: string, fn: string, tell: (state: WorkState) => void): boolean {
+    const at = this.h.defs().findIndex((m) => m.id === model);
+    const found = this.h.functions(model, node).find((f) => f.fn.id === fn);
+    if (at < 0 || !found || !this.h.walk.active) return false;
+    const walk = this.h.walk;
+    const watched = {
+      now: new THREE.Box3(),
+      ahead: new THREE.Box3(),
+      travel: new THREE.Box3(),
+      feet: new THREE.Vector3(),
+      height: walk.body.height,
+      radius: walk.body.radius,
+      // (what is solid round the camera's place beside the head was gathered for it this frame: watchWork)
+      clear: (from: THREE.Vector3, dir: THREE.Vector3, far: number) =>
+        walk.solids.cast(from, dir, far)?.distance ?? Number.POSITIVE_INFINITY,
+    };
+    this.operating = {
+      model,
+      node,
+      fn,
+      at,
+      seconds: found.fn.seconds,
+      nodes: found.fn.nodes,
+      watched,
+      facing: walk.heading,
+      turned: false,
+      was: found.value,
+      told: null,
+      taken: false,
+      tell,
+    };
+    this.watchWork();
+    this.h.cam.watch(watched);
+    return true;
+  }
+
+  /**
+   * Let go of what is being worked by hand: the view comes back to the walker's (as it eases: camera/foot.ts), and a body
+   * that turned round to watch it turns back the way it faced, unless the hands had taken the view.
+   */
+  unoperate(): void {
+    const work = this.operating;
+    if (!work) return;
+    this.operating = null;
+    this.h.walk.turnTo(work.turned && !work.taken && this.h.walk.active ? work.facing : null);
+    this.h.cam.watch(null, !this.h.walk.active);
+  }
+
+  /**
+   * The hands have moved the view while something is being worked by hand: it is theirs from now on. The walker looks
+   * where the camera was looking, so the view goes on from there (over the shoulder it comes back in behind the head as
+   * it turns), and nothing turns it to what is being worked again until Operate is taken again.
+   */
+  operateLooked(): void {
+    const work = this.operating;
+    if (!work || work.taken) return;
+    work.taken = true;
+    this.h.walk.turnTo(null);
+    if (!this.h.cam.watchingWork) return;
+    this.h.walk.lookAlong(this.h.camera.quaternion);
+    this.h.cam.watch(null, !this.h.walk.third);
+  }
+
+  /** How the function being worked by hand stands now, or null: what the readout shows. */
+  get working(): (WorkState & { model: string; node: string; fn: string }) | null {
+    const work = this.operating;
+    if (!work) return null;
+    return { model: work.model, node: work.node, fn: work.fn, ...(work.told ?? { value: work.was, way: 0, refused: null }) };
+  }
+
+  /** A frame of something being worked by hand: where it is and is going, the body turned to it if need be, and the readout told. */
+  private watchWork(): void {
+    const work = this.operating;
+    if (!work) return;
+    const found = this.h.functions(work.model, work.node).find((f) => f.fn.id === work.fn);
+    const staged = this.h.staged()[work.at];
+    const part = this.h.defs()[work.at]?.parts.find((p) => p.node === work.node);
+    if (!found || !staged || !part) return;
+    const { fn, value, refused } = found;
+    const way = wayOf(work.was, value);
+    work.was = value;
+    const state: WorkState = { value, way, refused };
+    const told = work.told;
+    if (!told || told.way !== state.way || told.refused !== state.refused || Math.abs(told.value - state.value) > 1e-4) {
+      work.told = state;
+      work.tell(state);
+    }
+    // where its nodes are, as drawn now, and where they will be and can go, from their moves
+    staged.shown.updateWorldMatrix(true, true);
+    const nodes = fn.nodes.flatMap((name) => {
+      const object = staged.part(name);
+      return object ? [{ object, moves: movesOf(part.moves, name, part.node) }] : [];
+    });
+    if (!nodes.length) return;
+    const w = work.watched;
+    boxAt(nodes, fn, value, value, w.now);
+    boxAt(nodes, fn, value, THREE.MathUtils.clamp(value + way * leadOf(fn.seconds), 0, 1), w.ahead);
+    sweptBox(nodes, fn, value, w.travel);
+    const walk = this.h.walk;
+    w.feet.copy(walk.stands);
+    w.height = walk.body.height;
+    w.radius = walk.body.radius;
+    // what is solid round the head, as far as the camera beside it may stand (the walker gathered only within its own reach)
+    const head = this.headAt.set(w.feet.x, w.feet.y + w.height, w.feet.z);
+    if (walk.third && this.h.cam.watchingWork) walk.solids.gather(head, WATCH_ROOM, w.height + 1, WATCH_ROOM);
+    // beyond what a neck turns to, the body turns round to it
+    if (work.taken) return;
+    const centre = w.now.getCenter(new THREE.Vector3());
+    const dx = centre.x - head.x;
+    const dz = centre.z - head.z;
+    if (Math.hypot(dx, dz) < TURN_BEYOND) return;
+    const toward = Math.atan2(-dx, -dz);
+    const off = Math.atan2(Math.sin(toward - walk.heading), Math.cos(toward - walk.heading));
+    if (Math.abs(off) > NECK.side * TURN_SHARE) {
+      walk.turnTo(toward);
+      work.turned = true;
+    }
+  }
+
+  private readonly headAt = new THREE.Vector3();
+
+  private readonly lastView = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() };
+
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   stepWalk(dt: number): void {
     if (this.h.walk.update(dt)) this.h.redraw();
+    this.watchWork();
     this.h.cam.update(dt); // (the walker has said where its view is: the camera is put there, camera/foot.ts)
+    // (the camera may move with the walker still: watching something worked by hand)
+    const camera = this.h.camera;
+    if (!camera.position.equals(this.lastView.position) || !camera.quaternion.equals(this.lastView.quaternion)) {
+      this.lastView.position.copy(camera.position);
+      this.lastView.quaternion.copy(camera.quaternion);
+      this.h.redraw();
+    }
     this.h.adapt(dt, true);
     const through = !this.h.walk.outside;
     if (through !== this.throughEyes) this.h.onWalkEyes((this.throughEyes = through));

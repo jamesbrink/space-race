@@ -1154,7 +1154,7 @@ export class Walker {
    * Where the walker's view is from and how it is turned, worked out each frame (`update`): the eyes, carried by the
    * stride, or over the shoulder. The camera is put there by the camera's rigs for being on foot (camera/foot.ts).
    */
-  readonly view = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() };
+  readonly view = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), motion: 1 };
   private readonly aim = new THREE.Matrix4();
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
@@ -1174,8 +1174,12 @@ export class Walker {
   /**
    * Something on the page has taken the controls (a menu is open): the figure stands still, the
    * mouse goes to `mouse` and not to the head, and Escape goes to `cancel` and does not stop the walk.
+   * `looks`: the mouse (or a finger's drag) still turns the head, and `mouse` is told first (something
+   * worked by hand: the view is the user's again the moment they move it).
    */
-  private modal: { mouse(dx: number, dy: number): void; cancel(): void } | null = null;
+  private modal: { mouse(dx: number, dy: number): void; cancel(): void; looks: boolean } | null = null;
+  /** Which way the body is to turn to where it stands, as `yaw` is measured (`turnTo`): null, none. A step lets it go. */
+  private facingTo: number | null = null;
   /** Leaning in to look through a window: where the eyes go, and how far there they are (0 to 1). */
   private peekAt: THREE.Vector3 | null = null;
   private peekK = 0;
@@ -1208,7 +1212,7 @@ export class Walker {
     document.addEventListener('mousemove', (e) => {
       if (!this.active || document.pointerLockElement !== canvas) return;
       if (this.modal) this.modal.mouse(e.movementX, e.movementY);
-      else this.look(e.movementX * LOOK, -e.movementY * LOOK);
+      if (!this.modal || this.modal.looks) this.look(e.movementX * LOOK, -e.movementY * LOOK);
     });
     // Escape lets a captured pointer go before any key event is sent, so letting go is how
     // Escape is heard. Losing the window (another app) lets go too: that is not leaving.
@@ -1240,7 +1244,8 @@ export class Walker {
         }, HOLD_MS);
     });
     canvas.addEventListener('pointermove', (e) => {
-      if (!this.active || this.drag?.id !== e.pointerId || this.modal) return;
+      if (!this.active || this.drag?.id !== e.pointerId || (this.modal && !this.modal.looks)) return;
+      this.modal?.mouse(e.clientX - this.drag.x, e.clientY - this.drag.y);
       // the view follows the finger: drag right to look right
       this.look((e.clientX - this.drag.x) * LOOK * 1.6, -(e.clientY - this.drag.y) * LOOK * 1.6);
       this.drag.x = e.clientX;
@@ -1302,6 +1307,7 @@ export class Walker {
     this.moved = true;
     this.wasLocked = document.pointerLockElement === this.canvas; // already captured when one figure is left for another
     this.modal = null;
+    this.facingTo = null;
     this.peekAt = null;
     this.peekK = 0;
     this.aimed = null;
@@ -1315,15 +1321,34 @@ export class Walker {
     this.update(0);
   }
 
-  /** Hand the controls to something on the page (a menu) until `release`: see `modal`. */
-  hold(mouse: (dx: number, dy: number) => void, cancel: () => void): void {
-    this.modal = { mouse, cancel };
+  /** Hand the controls to something on the page (a menu, a function worked by hand) until `release`: see `modal`. */
+  hold(mouse: (dx: number, dy: number) => void, cancel: () => void, looks = false): void {
+    this.modal = { mouse, cancel, looks };
     this.held.clear();
     this.stickAt.set(0, 0);
   }
 
   release(): void {
     this.modal = null;
+  }
+
+  /**
+   * Turn the body where it stands to face this way (radians, as `yaw` is measured), at the pace a figure turns, its feet
+   * stepping round, and at once with Motion off (null: stay as it is). Something behind the shoulder is watched by
+   * turning round to it, as a person does when the neck will not go so far, and turned back from when it is let go.
+   * Through the eyes the view goes round with the body. A step, a seat, a ladder or a fall lets it go.
+   */
+  turnTo(yaw: number | null): void {
+    this.facingTo = yaw;
+  }
+
+  /** Look the way a view is turned (the camera's, as the user takes it back from something watched): the eyes' yaw and pitch from it. */
+  lookAlong(q: THREE.Quaternion): void {
+    if (this.seat?.frame) return;
+    this.euler.setFromQuaternion(q, 'YXZ');
+    this.yaw = this.euler.y;
+    this.pitch = THREE.MathUtils.clamp(this.euler.x, -1.45, 1.45);
+    this.moved = true;
   }
 
   /**
@@ -1612,6 +1637,7 @@ export class Walker {
     }
     const length = Math.hypot(forward, right);
     if (length || !this.body.grounded) this.peekAt = null; // a step, or a hop, and the eyes come back from the window
+    if (length || body.on || this.seat || this.down) this.facingTo = null; // (and a turn on the spot is let go)
     const sin = Math.sin(this.yaw),
       cos = Math.cos(this.yaw);
     const p = this.body.position;
@@ -1721,6 +1747,14 @@ export class Walker {
       this.heading = this.seatFaced - Math.PI / 2; // sitting, it faces the way the seat does
     else if (this.down) {
       // (lying, or getting up: it faces the way it fell, which the stage has set)
+    } else if (this.facingTo !== null && body.grounded && !length) {
+      // turning round where it stands (turnTo): to something it is working, or back from it; the eyes go round with the body
+      const off = Math.atan2(Math.sin(this.facingTo - this.heading), Math.cos(this.facingTo - this.heading));
+      const rate = this.motion > 0 ? FACE_STILL * dt : Number.POSITIVE_INFINITY;
+      this.heading += Math.abs(off) <= rate ? off : Math.sign(off) * rate;
+      if (Math.abs(off) <= rate) this.facingTo = null;
+      if (!this.third) this.yaw = this.heading;
+      this.moved = true;
     } else if (!this.third) this.heading = this.yaw;
     else if (length) {
       const to = Math.atan2(sin * forward - cos * right, cos * forward + sin * right);
@@ -1735,6 +1769,7 @@ export class Walker {
 
     const camera = this.camera;
     const sight = this.view;
+    sight.motion = this.motion;
     // The eyes are carried by the body: they rise and fall and sway with the stride, tip toward
     // the planted foot, drop with the knees on a landing, and come up a riser a moment after the
     // feet. All of it is scaled by `motion`, and fades out as the camera pulls back over the
