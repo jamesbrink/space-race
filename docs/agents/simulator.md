@@ -119,6 +119,12 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - A deck's run grows from its vehicle's machine (`grown`): an event fired, or one the machine shows done (every deed it
     reads there done: the live ballistic vehicle's sequence works the actions itself), at the last of its deeds; never one
     only a command sets off unless it was. tests/flightrun.test.mjs holds the autopilot's to the record's.
+  - Nothing outside src/sim and the deck registry (src/deck/decks.ts, which picks a flight's deck by `plan.kind`) asks what
+    kind of flight it has: tests/kinds.test.mjs holds that. What a consumer needs of a plan that differs by kind src/sim
+    answers for any plan: run.ts `liftoffOf` (the engines lit on the ground, as one), `brakingOf` (the spacecraft's braking
+    burn on a run), `partingOf` (what a joint's parting lets go, for a drop's sound), `signalsOf` (when a cabin's signals
+    came on), `chuteOf` (which of a run's two parachutes one is), `bearingOf` (the bearing flown); plan.ts `flownByHand`
+    (whether a plan can be flown on its deck). A path whose deck predicts its own (`PathSource.predict`) is drawn from it.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
   - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.

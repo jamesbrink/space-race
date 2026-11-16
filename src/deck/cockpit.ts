@@ -78,7 +78,8 @@ const doingWords = (s: Doing, chutes: readonly { id: string; label: string }[]):
             ? 'Re-entry'
             : 'Spacecraft alone';
 /** A ballistic flight's hardware by role (sim/fly.ts), or null for one of another kind. */
-const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan?.kind === 'ballistic' ? ballisticOf(f.plan) : null);
+// (this deck flies only a ballistic plan: deck/decks.ts gives every other kind its own)
+const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan ? ballisticOf(f.plan) : null);
 
 /** The clock runs on this long after the landing, at life's pace, for what is still moving to come to rest (the parachute lying down: viewer/chute.ts), and then stops. */
 const AFTER = 12;
