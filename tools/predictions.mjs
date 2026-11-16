@@ -106,6 +106,7 @@ export function predictions(flight) {
   });
   for (const t0 of [40, 150, 400]) {
     const s = a.samples.find((p) => p.t >= t0);
+    if (!s || s.t >= a.separation.t) continue; // (an ascent over before it: a Mercury-Atlas's, five minutes)
     list.push({
       run: `predict:guided@${t0}`,
       make: ({ nudge = 0, turn = 0 } = {}) => {

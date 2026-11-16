@@ -557,9 +557,15 @@ export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: num
  * place, asked for only when the aim is at the Sun), all in the flight's frame (world/earthframe.ts): flyOrbit's, and
  * the predicted path's.
  */
-export function aimOf(plan: FlightPlan, r: Vec3, v: Vec3, sun: () => Vec3): Vec3 {
+export function aimOf(plan: FlightPlan, r: Vec3, v: Vec3, sun: () => Vec3, up: () => Vec3 = () => unit(r)): Vec3 {
   const a = shipOf(plan).aim;
-  return scale(unit(a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : v), a.sense);
+  const along = scale(unit(a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : v), a.sense);
+  if (!a.below || a.aim !== 'velocity') return along;
+  // (along or against the motion, laid level and then pitched down below the level by `below`: the plumb line where it is)
+  const u = up();
+  const level = unit(sub(along, scale(u, dot(along, u))));
+  const b = a.below.value * DEG;
+  return add(scale(level, Math.cos(b)), scale(u, -Math.sin(b)));
 }
 
 /**
@@ -625,13 +631,15 @@ const ships = new WeakMap<FlightPlan, Ship>();
  */
 export function coastOf(plan: FlightPlan): Coast {
   const timeOf = (e: EventDef | undefined): number => clockAt(plan, e);
-  const { on, off, parting } = coastEvents(plan);
+  const { burn, on, off, parting } = coastEvents(plan);
+  // (a solid nothing cuts burns until it is spent: so long after it is lit)
+  const spent = !off && burn?.kind === 'solid' && burn.burn ? timeOf(on) + burn.burn.value : Number.POSITIVE_INFINITY;
   const down =
     parting && plan.events.find((e) => e.when.some((w) => 'after' in w && w.after === parting.id) && e.when.some((w) => 'height' in w));
   const height = down?.when.find((w) => 'height' in w);
   return {
     on: timeOf(on),
-    off: timeOf(off),
+    off: off ? timeOf(off) : spent,
     parted: timeOf(parting),
     floor: height && 'height' in height ? height.height : Number.NEGATIVE_INFINITY,
     parting: parting?.id ?? null,
@@ -716,7 +724,14 @@ export function flyOrbit(
   let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => aimOf(plan, s.r, s.v, () => sunAt(at));
+  const aimAt = (s: State, at: number): Vec3 =>
+    aimOf(
+      plan,
+      s.r,
+      s.v,
+      () => sunAt(at),
+      () => frame.upOver(frame.place(s.r, at), at),
+    );
 
   // (no wind: none has been read for the coast's places)
   // (the coast and what comes down from it are far from the pad, hours on: the standard air, and calm: air.ts `skyOf`)

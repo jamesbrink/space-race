@@ -57,6 +57,7 @@ import {
   type Mode,
   type Solved,
   sequenceOf,
+  drawnFrom,
   stagesOf,
   spentAt,
   stackOf,
@@ -163,8 +164,8 @@ export interface StagedVehicle {
   left(state: StagedState): number[];
   burning(state: StagedState, i: number, at?: number): boolean;
   thrust(state: StagedState): number;
-  /** When a stage lit at `from` runs dry, s. */
-  dry(i: number, from: number): number;
+  /** When a stage lit at `from` runs dry, s: of a tank it shares with others (`Stage.shares`), as they stand in `state`, where it is given. */
+  dry(i: number, from: number, state?: StagedState): number;
   /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff), each the plan's `event`. */
   readonly sequence: readonly { step: Step; at: number; label: string; event: string }[];
   /**
@@ -249,8 +250,32 @@ export function stagedVehicle(
     if (at === undefined) dries.set(key, (at = dry(i, from)));
     return at;
   };
+  /** Whether a stage draws alone on a tank its own body carries (every stage of a Vostok's): its figures are its own. */
+  const own = stages.map((st) => st.shares.length === 1 && st.holder.id === st.body.id);
+  /**
+   * When a tank several stages draw on is empty (an Atlas's, its boosters' and its sustainer's), as they stand: each
+   * burning from its lighting to its cut or its going, whichever first. Infinity: not before they all stop.
+   */
+  const sharedDry = (s: StagedState, i: number): number => {
+    const shares = stages[i]!.shares;
+    const key = shares.map((j) => `${s.stages[j]!.from},${s.stages[j]!.to},${s.stages[j]!.gone}`).join('|');
+    let at = dries.get(key);
+    if (at !== undefined) return at;
+    const load = full[i]! * stages[i]!.holder.count;
+    const lit = shares.filter((j) => Number.isFinite(s.stages[j]!.from));
+    const end = (j: number) => Math.min(s.stages[j]!.to, s.stages[j]!.gone);
+    const drawn = (t: number) =>
+      lit.reduce((sum, j) => sum + stages[j]!.count * stack.burned(j, s.stages[j]!.from, Math.min(t, end(j))), 0);
+    const from = Math.min(...lit.map((j) => s.stages[j]!.from));
+    const most = lit.reduce((sum, j) => sum + stages[j]!.count * stack.flows[j]!, 0);
+    const hi = Math.min(Math.max(...lit.map(end)), from + (10 * load) / most);
+    at = !lit.length || drawn(hi) <= load ? Infinity : spentAt(drawn, load, from, hi);
+    dries.set(key, at);
+    return at;
+  };
   /** When a stage stops: cut, or dry. */
-  const stop = (s: StagedState, i: number) => Math.min(s.stages[i]!.to, dryOf(i, s.stages[i]!.from));
+  const stop = (s: StagedState, i: number) =>
+    Math.min(s.stages[i]!.to, own[i] || stages[i]!.shares.length === 1 ? dryOf(i, s.stages[i]!.from) : sharedDry(s, i));
   const burning = (s: StagedState, i: number, at = s.t) => {
     const st = s.stages[i]!;
     return st.gone > at && at >= st.from && at < stop(s, i);
@@ -263,7 +288,15 @@ export function stagedVehicle(
   const massAt = (s: StagedState, at: number): number => {
     let m = def.mass.value;
     stages.forEach((st, i) => {
-      m -= Number.isFinite(s.stages[i]!.gone) ? st.count * st.body.mass.value : st.count * burnedBy(s, i, at);
+      const gone = Number.isFinite(s.stages[i]!.gone);
+      if (own[i]) m -= gone ? st.count * st.body.mass.value : st.count * burnedBy(s, i, at);
+      else {
+        // (what it burned has gone from the tank it draws on, wherever that is; its body, once gone, takes what it weighs
+        // less what has been drawn from any tank on it: a body two stages are on is taken once)
+        m -= st.count * burnedBy(s, i, at);
+        if (gone && stages.findIndex((x) => x.body.id === st.body.id) === i)
+          m -= st.body.count * (st.body.mass.value - drawnFrom(stages, st.body.id, (j) => burnedBy(s, j, at)));
+      }
     });
     for (const d of seq.drops) if (Number.isFinite(s.drops[d.joint] ?? Infinity)) m -= d.body.count * d.body.mass.value;
     return m;
@@ -322,7 +355,8 @@ export function stagedVehicle(
       .replace(/^Core$/, 'core')
       .replace(/^Strap-on boosters$/, 'strap-ons')}`;
   /** What one unit of a stage weighs now, kg, and what the spacecraft does. */
-  const unitMass = (s: StagedState, i: number, at: number) => stages[i]!.body.mass.value - burnedBy(s, i, at);
+  const unitMass = (s: StagedState, i: number, at: number) =>
+    stages[i]!.body.mass.value - (own[i] ? burnedBy(s, i, at) : drawnFrom(stages, stages[i]!.body.id, (j) => burnedBy(s, j, at)));
   const qAlpha = def.limits.find((l) => l.of === 'qAlpha');
   const axialLimit = def.limits.find((l) => l.of === 'axial');
   const lim = qAlpha && axialLimit ? { qAlpha: qAlpha.value, axial: axialLimit.value } : null;
@@ -705,10 +739,18 @@ export function stagedVehicle(
       return { ...s, carry: s.landed || s.parted || s.broke ? 0 : carry };
     },
     mass: (s, at = s.t) => massAt(s, at),
-    left: (s) => stages.map((st, i) => (Number.isFinite(s.stages[i]!.gone) ? 0 : st.count * Math.max(0, full[i]! - burnedBy(s, i, s.t)))),
+    left: (s) =>
+      stages.map((st, i) =>
+        Number.isFinite(s.stages[i]!.gone)
+          ? 0
+          : own[i]
+            ? st.count * Math.max(0, full[i]! - burnedBy(s, i, s.t))
+            : // (a tank several stages draw on: what is left in it)
+              st.holder.count * Math.max(0, full[i]! - drawnFrom(stages, st.holder.id, (j) => burnedBy(s, j, s.t))),
+      ),
     burning,
     thrust: thrustNow,
-    dry: dryOf,
+    dry: (i, from, s) => (s && !own[i] && stages[i]!.shares.length > 1 ? sharedDry(s, i) : dryOf(i, from)),
     sequence,
     sample,
     shape,

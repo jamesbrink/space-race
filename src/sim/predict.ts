@@ -160,8 +160,13 @@ export interface Flier {
   next(t: number): number;
   /** The height above the sea at which it next does something coming down through it (-Infinity: none). */
   below(): number;
-  /** What it does at an instant it scheduled (`next`'s, or the start's: what is due already happens at once), or at its height. */
-  arrive(t: number, r: Vec3, v: Vec3, altitude: number, by: 'time' | 'height'): Arrival;
+  /**
+   * The space-fixed speed at which it next does something, speeding up through it (a stage its guidance cuts on its speed:
+   * a Mercury-Atlas's sustainer). Left out or Infinity: none. Found as a height is, where the step crosses it.
+   */
+  faster?(): number;
+  /** What it does at an instant it scheduled (`next`'s, or the start's: what is due already happens at once), at its height or at its speed. */
+  arrive(t: number, r: Vec3, v: Vec3, altitude: number, by: 'time' | 'height' | 'speed'): Arrival;
   /** After each step: what the state does to it (a shape that gives way as it falls, a parachute torn). */
   settle?(t: number, r: Vec3, v: Vec3, altitude: number, falling: boolean): void;
   /** Whether anything aboard burns now. */
@@ -499,7 +504,7 @@ export function propagate(
     events.push({ kind, t: at.t, r: at.r, v: at.v, altitude: at.altitude, ...(value !== undefined ? { value } : {}) });
   };
   /** What the flier does at an instant or a height now reached. */
-  const arrive = (by: 'time' | 'height'): boolean => {
+  const arrive = (by: 'time' | 'height' | 'speed'): boolean => {
     const a = flier.arrive(t, r, v, altitude, by);
     for (const k of a.events ?? []) note(k);
     if (a.v) {
@@ -608,6 +613,20 @@ export function propagate(
     if (to > 1e-9) points.push({ t, r, v, altitude });
   };
 
+  /** Back along the step just taken to where its speed reaches `at` (m/s, space-fixed), flown again to there: the instant to the last bit, at or past it. */
+  const backToSpeed = (before: PathPoint, h0: number, at: number): void => {
+    [t, r, v, altitude] = [before.t, before.r, before.v, before.altitude];
+    const a0 = accel(t, r, v, altitude);
+    const to = bisect(0, h0, (x) => length(pair(x, a0).v) >= at);
+    const s = pair(to, a0);
+    t = before.t + to;
+    r = s.r;
+    v = s.v;
+    altitude = place(r, t).height - seaLevel;
+    points.pop();
+    points.push({ t, r, v, altitude });
+  };
+
   const advance = (): void => {
     const a0 = accel(t, r, v, altitude);
     const load = pushed / G0;
@@ -675,6 +694,13 @@ export function propagate(
     if (falling && altitude <= ground) {
       back(before, t - before.t, ground);
       end();
+      return;
+    }
+    // what it does at a speed, speeding up through it, where the step's cubic crosses it (short of any instant it was to reach)
+    const fast = flier.faster?.() ?? Number.POSITIVE_INFINITY;
+    if (fast < Number.POSITIVE_INFINITY && length(v) >= fast && length(before.v) < fast) {
+      backToSpeed(before, t - before.t, fast);
+      if (arrive('speed')) end();
       return;
     }
     if (reaches && arrive('time')) {

@@ -263,7 +263,14 @@ export function spacecraft(
   const ship = shipOf(plan);
   const [on, off, parted] = [ship.on, ship.off, ship.parted];
   const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
-  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(plan, r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
+    aimOf(
+      plan,
+      r,
+      v,
+      () => frame.fromDate(sunPosition(frame.jdTT(t))),
+      () => frame.upOver(frame.place(r, t), t),
+    );
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
@@ -538,6 +545,15 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   // apparent velocity found by summing the integrator over the time ahead with the steps before it applied. Worked out in
   // slices (`prepare`, which the propagator runs in its own: a few milliseconds in one go was a phone's whole frame).
   const plan: { at: number; step: Step }[] = [];
+  /** A stage's space-fixed speed its guidance cuts it at (a Mercury-Atlas's sustainer), or null: found as the path reaches it (`faster`). */
+  const speedOf = (i: number): number | null => {
+    const speed = seq.stages[i]!.speed;
+    return speed && !speed.apparent ? speed.value : null;
+  };
+  /** The steps cut on a space-fixed speed still ahead, while the sequence is on. */
+  const spaced: Step[] = now.sequence
+    ? v.sequence.filter((k) => !doneIn(k.step, cur) && k.step.kind === 'cut' && speedOf(k.step.stage) !== null).map((k) => k.step)
+    : [];
   /** One more piece of the sweep ahead; false when there is no more. */
   let sweepOn: () => boolean = () => false;
   if (now.sequence) {
@@ -545,7 +561,9 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       const speed = seq.stages[i]!.speed;
       return speed?.apparent ? speed.value : null;
     };
-    const ahead = v.sequence.filter((k) => !doneIn(k.step, cur)).map((k) => ({ at: Math.max(k.at, start.t), step: k.step }));
+    const ahead = v.sequence
+      .filter((k) => !doneIn(k.step, cur) && !spaced.includes(k.step))
+      .map((k) => ({ at: Math.max(k.at, start.t), step: k.step }));
     const summed = ahead.filter((k) => k.step.kind === 'cut' && setting(k.step.stage) !== null);
     const timed = ahead.filter((k) => !summed.includes(k)).sort((a, b) => a.at - b.at);
     const sweep: StagedState = { ...cur, stages: cur.stages.map((x) => ({ ...x })), drops: { ...cur.drops } };
@@ -614,7 +632,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   const lit = (): boolean => stages.some((_, i) => v.burning(cur, i, since));
   return {
     get kind() {
-      return lastCut !== null ? 'guided' : 'coast';
+      return lastCut !== null || spaced.some((k) => (k as { stage: number }).stage === last) ? 'guided' : 'coast';
     },
     get cutoff() {
       return lastCut;
@@ -647,15 +665,35 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       let n = after(marks, t);
       for (let i = 0; i < stages.length; i++) {
         if (!v.burning(cur, i, since)) continue;
-        const dry = v.dry(i, cur.stages[i]!.from);
+        const dry = v.dry(i, cur.stages[i]!.from, cur);
         if (dry > t + 1e-9 && dry < n) n = dry;
       }
       return n;
     },
     below: () => (alone ? alone.below() : Number.NEGATIVE_INFINITY),
+    faster() {
+      if (alone) return alone.faster?.() ?? Number.POSITIVE_INFINITY;
+      let most = Number.POSITIVE_INFINITY;
+      for (const k of spaced) {
+        const i = (k as { stage: number }).stage;
+        if (!doneIn(k, cur) && v.burning(cur, i, since)) most = Math.min(most, speedOf(i)!);
+      }
+      return most;
+    },
     arrive(t, r, u, altitude, by): Arrival {
       if (alone) return alone.arrive(t, r, u, altitude, by);
       const events: EventKind[] = [];
+      // a stage cut on its speed, reached: cut now (the step was flown again to the instant it reached it)
+      if (by === 'speed')
+        for (const k of spaced) {
+          const i = (k as { stage: number }).stage;
+          if (doneIn(k, cur) || speedOf(i)! > length(u) + 1e-9) continue;
+          apply(k, t, cur);
+          if (i === last) {
+            lastCut = t;
+            events.push('cutoff');
+          }
+        }
       // the law's own change: the tangent takes over from the axis it had then (staged.ts `ascend`)
       if (thetaTurn === null && law.modeAt(t) === 'tangent') {
         const s = { r, v: u };

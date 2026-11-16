@@ -327,8 +327,12 @@ export type Hold =
   | { programme: Curve; azimuth: Measure }
   /** A stated steering law, solved for its targets (sim/staged.ts `steer`). */
   | { law: Guidance }
-  /** Along or against the line to the Sun, the motion, or a fixed line in the flight's frame. */
-  | { aim: 'sun' | 'velocity' | 'fixed'; sense: 1 | -1; vector?: Vec3; confidence: Confidence }
+  /**
+   * Along or against the line to the Sun, the motion, or a fixed line in the flight's frame. Along the motion, `below`
+   * pitches it down from the level (the plumb line's) by so many degrees, in the plane of the motion: a Mercury capsule's
+   * retrofire attitude, its blunt end up 34 degrees, so the push is back along the motion and down.
+   */
+  | { aim: 'sun' | 'velocity' | 'fixed'; sense: 1 | -1; vector?: Vec3; below?: Measure; confidence: Confidence }
   /** Against the motion over the ground, pitched below the horizontal, degrees (retrorockets). */
   | { retro: Measure }
   /** Blunt end first, its roll kept so a side faces the Earth (degrees about the long axis from the body's +Z). */

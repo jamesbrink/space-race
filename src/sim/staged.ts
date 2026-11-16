@@ -49,6 +49,7 @@ import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { downOf } from './descent.ts';
 import {
+  aimOf,
   chuteEvent,
   coastEvents,
   type DescentHands,
@@ -197,17 +198,23 @@ export const flowOf = (e: Pick<EngineDef, 'thrust' | 'isp'>): number => e.thrust
 
 /**
  * A stage of an orbital plan: an engine that draws on a tank, with the body it is on and its tank, in the plan's order,
- * base first. Every figure is one unit's, and `count` of them are alike.
+ * base first. Every figure is one unit's, and `count` of them are alike. A tank can be drawn on by several stages (an
+ * Atlas's booster engines and its sustainer, both fed from the one tank, the boosters on a section that is dropped
+ * with them): `shares` names them, and the tank is on its own body (`holder`), which need not be the stage's.
  */
 export interface Stage {
   engine: EngineDef;
   body: BodyDef;
   tank: TankDef;
   count: number;
-  /** What one unit's engine can burn, kg: its tank's usable load, or the whole of it. */
+  /** What one unit's engine can burn, kg: its tank's usable load, or the whole of it (one unit of the tank's body's). */
   load: number;
   /** Its throttle setting against seconds from liftoff, where the record gives one. */
   throttle?: Curve;
+  /** The stages that draw on its tank, itself among them, by index: `[i]` for a tank of its own. */
+  shares: number[];
+  /** The body its tank is on, and how many units of it there are. */
+  holder: { id: string; count: number };
 }
 const stagesCache = new WeakMap<FlightPlan, Stage[]>();
 /** An orbital plan's stages, base first. */
@@ -215,21 +222,36 @@ export function stagesOf(plan: FlightPlan): Stage[] {
   let out = stagesCache.get(plan);
   if (out) return out;
   const c = plan.craft[0]!;
-  out = c.engines
-    .filter((e) => e.tanks.length)
-    .map((engine) => {
-      const tank = c.tanks.find((t) => t.id === engine.tanks[0])!;
-      return {
-        engine,
-        body: c.bodies.find((b) => b.id === engine.body)!,
-        tank,
-        count: engine.count,
-        load: (tank.usable ?? tank.load).value,
-        ...(engine.throttle?.curve ? { throttle: engine.throttle.curve } : {}),
-      };
-    });
+  const tanked = c.engines.filter((e) => e.tanks.length);
+  out = tanked.map((engine) => {
+    const tank = c.tanks.find((t) => t.id === engine.tanks[0])!;
+    const holder = c.bodies.find((b) => b.id === tank.body)!;
+    return {
+      engine,
+      body: c.bodies.find((b) => b.id === engine.body)!,
+      tank,
+      count: engine.count,
+      load: (tank.usable ?? tank.load).value,
+      ...(engine.throttle?.curve ? { throttle: engine.throttle.curve } : {}),
+      shares: tanked.flatMap((e, j) => (e.tanks[0] === tank.id ? [j] : [])),
+      holder: { id: holder.id, count: holder.count },
+    };
+  });
   stagesCache.set(plan, out);
   return out;
+}
+
+/**
+ * What has been drawn from the tanks a body carries by one unit of it, kg: each stage that draws on them, at its share
+ * (its chambers over the body's units) of what one unit of it burned (`burned(j)`). For a stage's own tank, drawn by it
+ * alone, this is that stage's own burned propellant to the bit (its share is one).
+ */
+export function drawnFrom(stages: readonly Stage[], body: string, burned: (j: number) => number): number {
+  let sum = 0;
+  stages.forEach((s, j) => {
+    if (s.holder.id === body) sum += (s.count / s.holder.count) * burned(j);
+  });
+  return sum;
 }
 
 /** The steering law an orbital plan's ascent is flown on: the attitude held by a stated law. */
@@ -254,12 +276,34 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
  * speed, and that is its stop if it comes first.
  */
 export function schedule(plan: FlightPlan, seq = sequenceOf(plan)): { from: number; to: number; dry: boolean }[] {
-  return stagesOf(plan).map((s, i) => {
+  const stages = stagesOf(plan);
+  // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there
+  // is, past that; one with no cut of its own is shut down as it is let go)
+  const cutoffOf = (i: number) => {
+    const k = seq.stages[i]!;
+    return k.speed ? k.from + (10 * stages[i]!.load) / flowOf(stages[i]!.engine) : (k.cut ?? k.sep);
+  };
+  /** When a tank several stages draw on is empty, each burning from its lighting to its own cut: Infinity if it never is. */
+  const sharedDry = (shares: number[]): number => {
+    const holder = stages[shares[0]!]!.holder;
+    const load = stages[shares[0]!]!.load * holder.count;
+    const drawn = (t: number) =>
+      shares.reduce((sum, j) => {
+        const from = seq.stages[j]!.from;
+        return sum + stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.throttle, from, Math.min(t, cutoffOf(j)));
+      }, 0);
+    const from = Math.min(...shares.map((j) => seq.stages[j]!.from));
+    const hi = Math.max(...shares.map((j) => cutoffOf(j)));
+    return drawn(hi) <= load ? Infinity : spentAt(drawn, load, from, hi);
+  };
+  return stages.map((s, i) => {
     const k = seq.stages[i]!;
     const from = k.from;
-    // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there
-    // is, past that; one with no cut of its own is shut down as it is let go)
-    const cutoff = k.speed ? from + (10 * s.load) / flowOf(s.engine) : (k.cut ?? k.sep);
+    const cutoff = cutoffOf(i);
+    if (s.shares.length > 1) {
+      const dry = sharedDry(s.shares);
+      return dry < cutoff ? { from, to: Math.max(from, dry), dry: true } : { from, to: cutoff, dry: false };
+    }
     const load = s.load;
     const burned = (t: number) => flowOf(s.engine) * integral(s.throttle, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
@@ -459,7 +503,10 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   const droppedBy = (t: number) => {
     let m = 0;
     stages.forEach((s, i) => {
-      if (stageSep[i]! <= t && i < stages.length - 1) m += s.count * (s.body.mass.value - burned(i, stageSep[i]!));
+      if (stageSep[i]! <= t && i < stages.length - 1) {
+        const sep = stageSep[i]!;
+        m += s.body.count * (s.body.mass.value - drawnFrom(stages, s.body.id, (j) => burned(j, sep)));
+      }
     });
     for (const d of drops) if (d.at <= t) m += d.mass;
     return m;
@@ -615,7 +662,8 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   // (`burned` is one unit's: a stage's count multiplies it)
   // (and the last stage, as it lets the spacecraft go, takes what it weighed fuelled less what it burned)
   const last = stages.length - 1;
-  const lastLeft = stages[last]!.count * (stages[last]!.body.mass.value - burned(last, tPart));
+  const lastBody = stages[last]!.body;
+  const lastLeft = lastBody.count * (lastBody.mass.value - drawnFrom(stages, lastBody.id, (j) => burned(j, tPart)));
   summary.massLeft = liftoff - droppedBy(tPart - 1e-9) - stages.reduce((sum, st, i) => sum + st.count * burned(i, tPart), 0) - lastLeft;
   return {
     samples,
@@ -623,7 +671,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
     summary,
     solved: x,
     stops: plan.map((p) => p.to),
-    left: stages.map((s, i) => s.load - burned(i, plan[i]!.to)),
+    left: stages.map((s, i) => s.load - drawnFrom(stages, s.holder.id, (j) => burned(j, plan[i]!.to))),
     separation: { t: tPart, r: state.r, v: state.v },
     plane: n,
     thetaTurn,
@@ -839,8 +887,20 @@ export function recordSamples(
   const turned = plan.events.find((e) => e.automatic && e.do.some((a) => 'attitude' in a && a.attitude === ship.aimId));
   const turnedAt = turned?.when.find((w) => 'time' in w);
   const oriented = turnedAt && 'time' in turnedAt && turnedAt.time < ship.on ? turnedAt.time : ship.on - 60;
+  // (over a minute, or as long as there is before the burn: a Mercury capsule's retrosequence is thirty seconds)
+  const turning = Math.min(60, ship.on - oriented);
   const burnAt = whole.coast.samples.find((x) => x.t >= ship.on) ?? whole.coast.samples[0]!;
-  const aimed = lie(scale(ship.aim.aim === 'sun' ? unit(sub(sunAt(ship.on), burnAt.r)) : unit(burnAt.v), ship.aim.sense));
+  const aimed = lie(
+    ship.aim.aim === 'fixed'
+      ? scale(unit(burnAt.v), ship.aim.sense)
+      : aimOf(
+          plan,
+          burnAt.r,
+          burnAt.v,
+          () => sunAt(ship.on),
+          () => frame.upOver(burnAt, burnAt.t),
+        ),
+  );
   const parts = ship.parted;
   const toward = (from: Quat, to: Quat, k: number): Quat => {
     const sign = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3] < 0 ? -1 : 1;
@@ -886,7 +946,7 @@ export function recordSamples(
     }
     if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
-    else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / 60));
+    else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
@@ -987,7 +1047,11 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   const k = coastEvents(out);
   const deltaV = k.burn?.deltaV;
   if (!parting || !k.burn || !deltaV) throw new Error('this plan says nothing of what a hand could do');
-  const burn = (shipOf(plan).mass * deltaV.value) / k.burn.thrust.vacuum.value;
+  // (a solid burns for as long as it burns; a liquid until its integrator has the impulse, at its chambers' thrust)
+  const burn =
+    k.burn.kind === 'solid' && k.burn.burn
+      ? k.burn.burn.value
+      : (shipOf(plan).mass * deltaV.value) / (k.burn.count * k.burn.thrust.vacuum.value);
   // (the chain kept where the plan has one, each so long after the one before: t, t + burn and t + burn + parting all the same)
   if (k.command) {
     setOff(k.command, t);
