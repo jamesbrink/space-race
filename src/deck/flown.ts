@@ -1,11 +1,8 @@
 import '../ui/time.css';
-import { type Doing, flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
-import { held } from '../sim/staged.ts';
+import { type Doing, type Sample, sampleAt } from '../sim/fly.ts';
 import type { SitedFlight } from '../types.ts';
-import { orbitalFlown, orbitalRecord, type Run } from '../sim/run.ts';
+import { recordOf, type Run } from '../sim/run.ts';
 import { type Clock, missionTime } from '../world/clock.ts';
-import { siteFrame } from '../world/frames.ts';
-import { frameOf } from '../world/earthframe.ts';
 
 /**
  * The flight as the simulator flies it (sim/fly.ts), beside what the reports say happened: four
@@ -167,25 +164,13 @@ export class Flown {
 
   private build(): void {
     const { flight, root } = this;
-    // a ballistic flight's run and checks (sim/fly.ts), or an orbital one's: the whole record flown (sim/staged.ts), and every
-    // check its record sets, the ascent's, the coast's and the descent's, as one list
-    let samples: Sample[];
-    let rowsOf: { label: string; value: number; unit: string; tolerance: number; got: number }[];
-    let checks: { id: string; value: number }[];
-    if (flight.plan!.kind === 'ballistic') {
-      const flown = flownOnce(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
-      samples = flown.samples;
-      this.duration = flown.results.duration;
-      checks = flight.checks ?? [];
-      rowsOf = (flight.checks ?? []).map((c) => ({ ...c, got: flown.results[c.id] }));
-    } else {
-      const run = orbitalRecord(flight);
-      samples = run.samples as Sample[];
-      this.duration = run.duration;
-      const all = held(flight.plan!, orbitalFlown(flight));
-      rowsOf = all;
-      checks = all.map((c) => ({ id: c.id, value: c.value }));
-    }
+    // the record's run, whatever kind of flight it is (sim/run.ts `recordOf`), and every check the record sets with what the
+    // run gave for it (an orbital flight's the ascent's, the coast's and the descent's, as one list)
+    const run = recordOf(flight)!;
+    const samples = run.samples as Sample[];
+    this.duration = run.duration;
+    const rowsOf = run.results;
+    const checks = rowsOf.map((c) => ({ id: c.id, value: c.value }));
     this.samples = samples;
     const x = (t: number) => (t / this.duration) * W;
     const traces = TRACES.map((trace) => {
