@@ -38,8 +38,10 @@ missions/                             the record: one folder per nation, program
     place.ts                          the place (`PlaceDef`): its region (the globe's finer maps), its usual sky, its quiet
     <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
     <site>.parts.ts                   a pad's parts as flight data, said once for every flight from it, each giving its own
-                                      morning (lc-5.parts.ts: `lc5Parts`, `PadDay`; site-1.parts.ts)
-    <site>.md  <site>.py  <package>/  a pad's record and its Blender build, a package of modules (lc5/, site1/); what stands round it
+                                      morning (lc-5.parts.ts: `lc5Parts`, `PadDay`; lc-14.parts.ts; site-1.parts.ts)
+    <site>.ground.ts                  a pad's own ground where it is the origin (the Cape's ground.ts `PadGround`: lc-14.ground.ts): its clearing,
+                                      roads, what is kept bare, where the land is let down for a pit or a flume
+    <site>.md  <site>.py  <package>/  a pad's record and its Blender build, a package of modules (lc5/, lc14/, site1/); what stands round it
                                       the same (complexes/: the Cape's neighbouring complexes; site2/: Site 2's assembly building)
     <package>/model/<date>.py         a dated state of what stood there, built to public/models/<nation>/places/<place>/<package>/<date>.glb
     tyuratam-*.ts  aral-1960.ts       the land round Site 1 as data: its ground (takyr, salt), its lie (SRTM), the builders' works; the Aral Sea's 1960 shore
@@ -61,7 +63,8 @@ missions/                             the record: one folder per nation, program
       orbital.ts  mission.md          an orbital flight's record as data, which its plan is written from, and the mission's record and plan in words
       weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
-      pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962)
+      pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962;
+                                      ma-6-friendship-7: Complex 14 on 20 February 1962, with its pilot at the structure's foot)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
       model/<name>.lod.json           its own level-of-detail thresholds, measured (tools/lod-thresholds.mjs); a site's dated models have theirs too
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)

@@ -24,8 +24,8 @@ test('every pad says where its model frame sits on the land, with its confidence
   // the two pads drawn so far stand where they stood before the grade was theirs (the place's -0.12 m), to the bit
   assert.equal(LC5.grade.value, -0.12);
   assert.equal(SITE1.grade.value, -0.12);
-  // Complex 14's deck is the ramp's top, 22 ft over the ground (HAER FL-8-7, p. 20)
-  assert.equal(LC14.grade.value, -22 * FT);
+  // Complex 14's deck is the ramp's top, 22 ft over the paving at its foot (HAER FL-8-7, p. 20), and the land 12 cm under that
+  assert.equal(LC14.grade.value, -(22 * FT + 0.12));
   assert.equal(LC14.grade.confidence, 'derived');
   // Complex 19's three storeys: the storey's height is not read
   assert.equal(LC19.grade.confidence, 'estimated');
@@ -102,10 +102,11 @@ test('Tyuratam: what stands round Site 1 stands on the same land round another p
   assert.deepEqual(built.objects[0].position.toArray(), [at.x, 0, at.z]);
 });
 
-test('the bearings: Complex 14’s hatch on its documented pitch line less 45 degrees; Complex 19’s line square to its stand', () => {
-  // the pitch line on 105 degrees (Results of the First United States Manned Orbital Space Flight, p. 46), the hatch 45 round (estimated)
-  assert.equal((LC14.bearingX.value + 45) % 180, 105);
-  assert.equal(LC14.bearingX.confidence, 'estimated'); // 60 or 240: the documents do not settle which
+test('the bearings: Complex 14’s frame on its documented pitch line; Complex 19’s line square to its stand', () => {
+  // the pitch line on 105 degrees (Results of the First United States Manned Orbital Space Flight, p. 46): the frame's +X, and the vehicle
+  // stands turned in it, its hatch on 240 (lc-14.parts.ts HATCH_TURN: estimated, from the photographs)
+  assert.equal(LC14.bearingX.value, 105);
+  assert.equal(LC14.bearingX.confidence, 'documented');
   // the flight azimuth, 72, and Gemini IV's roll, 12.9; the stand on 175/355 (OpenStreetMap), so the line on 85 within a degree
   assert.ok(Math.abs(LC19.bearingX.value - (72 + 12.9)) < 1e-9);
   assert.ok(Math.abs(((LC19.bearingX.value - 175 + 360) % 180) - 90) < 1);
