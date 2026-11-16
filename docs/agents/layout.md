@@ -198,6 +198,7 @@ src/
   world/ut1.ts                        UT1 - TAI from the IERS (tools/ut1-bake.mjs): what the Earth's turn is behind atomic time, every 0.05 year since 1956
   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
+  world/meanelements.ts               mean elements under J2 (Kozai 1959): published heights and period to the osculating state and back, the nodal, anomalistic and Kepler periods
   world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
   world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them

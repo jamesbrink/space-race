@@ -19,7 +19,8 @@
  *
  * The elements here are osculating: the Kepler orbit that fits the position and velocity at one
  * instant. Under J2 they wobble round each revolution (the semi-major axis by some ten kilometres
- * in a low orbit); `secularRates` gives the steady drift of the mean ones.
+ * in a low orbit); `secularRates` gives the steady drift of the mean ones, and meanelements.ts goes between the two
+ * (a published orbit is mean elements: Kozai's first-order theory).
  */
 import { EARTH, EARTH_J2, EARTH_ROTATION_RATE, SUN, WGS84_A } from './bodies.ts';
 import {
