@@ -2219,6 +2219,15 @@ export class Stage {
    * full (`fullDetail`): the coarser levels know nothing of it. Returns how far up the model's own
    * origin now is, put together: what a height measured in the model's frame is to be raised by.
    */
+  /** How low a part's node of the model on show reaches, metres in the world (null: it has none, or nothing drawn under it). */
+  lowest(node: string): number | null {
+    const found = this.staged[this.current]?.full.getObjectByName(node);
+    if (!found) return null;
+    found.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(found, true);
+    return box.isEmpty() ? null : box.min.y;
+  }
+
   only(nodes: readonly string[] | null): number {
     const own = this.staged[this.current];
     const def = this.def;

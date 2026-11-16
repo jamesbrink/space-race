@@ -1,6 +1,9 @@
 import type { FlightStory, Milestone, Person, Programme } from '../../../missions/history.ts';
 import type { Confidence, Flight, ModelDef, Spec } from '../../types.ts';
-import { byDate, exhibit, plinths, programmeOf } from '../address.ts';
+import { byDate, exhibit, type Heading, plinths, programmeOf } from '../address.ts';
+
+// (the spacecraft alone is one rule for the row and a flight's gallery: address.ts `craftNodes`)
+export { craftNodes, type Heading } from '../address.ts';
 
 /**
  * The Lineup's row, as arithmetic on the flights' data: who stands in it and in what order, what is said of each, where
@@ -89,35 +92,9 @@ export function spacecraftNodes(model: Pick<ModelDef, 'parts' | 'name'>): string
   return plinths(model).find((p) => p.id === SPACECRAFT)?.nodes ?? null;
 }
 
-/** A heading of a vehicle's parts list, and the top-level nodes listed under it. */
-export interface Heading {
-  id: string;
-  nodes: string[];
-}
-
 /** The headings of a vehicle's parts list, in the order they come, where it has more than one (address.ts `plinths`). */
 export function headingsOf(model: Pick<ModelDef, 'parts' | 'name'>): Heading[] {
   return plinths(model).flatMap((p) => (p.nodes ? [{ id: p.id, nodes: p.nodes }] : []));
-}
-
-/** How far under the spacecraft's own lowest point another heading's lowest may be and still stand on it, metres: what a model's levels differ by. */
-const STANDS_ON = 0.05;
-
-/**
- * The spacecraft alone, as the row stands it: what rides on the launch vehicle. That is the parts under the
- * `Spacecraft` heading, and the parts of any other heading that stands wholly on it, its lowest point no lower than the
- * spacecraft's own (an airlock folded against the cabin: Voskhod 2's is listed under a heading of its own). A heading
- * that reaches below the spacecraft is the launch vehicle's (a stage, its boosters, the fairing that stands on the
- * third stage). `lowest`: how low a node reaches in the model, metres (null for one it does not have). Null where the
- * parts list has no `Spacecraft` heading among others: nothing is parted.
- */
-export function craftNodes(headings: readonly Heading[], lowest: (node: string) => number | null): string[] | null {
-  const craft = headings.find((h) => h.id === SPACECRAFT);
-  if (!craft) return null;
-  const least = (h: Heading): number => Math.min(...h.nodes.map((n) => lowest(n) ?? Number.POSITIVE_INFINITY));
-  const floor = least(craft);
-  if (!Number.isFinite(floor)) return [...craft.nodes];
-  return headings.filter((h) => h === craft || least(h) >= floor - STANDS_ON).flatMap((h) => h.nodes);
 }
 
 /**

@@ -460,3 +460,25 @@ test('the Lineup is one place, and no flight’s', () => {
   // no model may be called `lineup`, as none may be called by a place's name: the word is the Lineup's
   for (const f of flights) for (const m of f.models) assert.notEqual(m.id, 'lineup', `${f.id}: a model called lineup`);
 });
+
+test('a flight gallery’s own Spacecraft is the Lineup’s: what rides on the launch vehicle, Voskhod 2’s airlock with it (#24)', async () => {
+  const { flight: voskhod2 } = await import('../missions/ussr/voskhod/flights/voskhod-2/flight.ts');
+  const { craftNodes } = await import('../src/app/lineup/row.ts');
+  const vehicle = exhibit(voskhod2);
+  // how low each heading reaches as the model stands it (the shape of it: the spacecraft and its airlock on top of the
+  // third stage, the airlock folded against the cabin no lower than it; the stages below)
+  const low = { spacecraft: 40, airlock: 40.4, 'third-stage': 30, 'core-block-a': 0.5, 'strap-on-boosters': 0 };
+  const headingOf = new Map(plinths(vehicle).flatMap((p) => (p.nodes ? p.nodes.map((n) => [n, p.id]) : [])));
+  const lowest = (node) => low[headingOf.get(node)] ?? null;
+  const spacecraft = plinths(vehicle, lowest).find((p) => p.id === 'spacecraft');
+  for (const n of ['Airlock', 'AirlockRing', 'AirlockHatch', 'DescentModule']) assert.ok(spacecraft.nodes.includes(n), n);
+  assert.ok(!spacecraft.nodes.includes('BlockI'), 'not the third stage it stands on');
+  // one rule: the Lineup's own
+  const headings = plinths(vehicle).flatMap((p) => (p.nodes ? [{ id: p.id, nodes: p.nodes }] : []));
+  assert.deepEqual(spacecraft.nodes, craftNodes(headings, lowest));
+  // before the model has arrived the choices are the parts list's, and the same ones
+  assert.deepEqual(
+    plinths(vehicle).map((p) => p.id),
+    plinths(vehicle, lowest).map((p) => p.id),
+  );
+});

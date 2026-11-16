@@ -121,8 +121,8 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
 - **What stands there** is the whole row, one programme's section of it, or two or more standing together to be
   compared; each whole on its launch vehicle, or the spacecraft alone: what rides on the launch vehicle, which is the
   parts under the vehicle's `Spacecraft` heading and those of any other heading that stands wholly on it, no lower than
-  the spacecraft's own lowest point (Voskhod 2's airlock, listed under a heading of its own; `craftNodes`, measured on
-  the model: no new field). Forming the row again is a dip of the picture, never things sliding through each other.
+  the spacecraft's own lowest point (Voskhod 2's airlock, listed under a heading of its own; address.ts `craftNodes`, measured on
+  the model: no new field; a flight's gallery stands its spacecraft by the same rule). Forming the row again is a dip of the picture, never things sliding through each other.
 - **One thing is chosen**, by a click on it, its name, its mark on the timeline, or N and B: the camera goes to it and its
   card comes up (its story, why it has its name, its crew, each of whom opens to their own, the way into its gallery,
   its figures). With nothing chosen a click on nothing does nothing; Escape and 0 go back a step (out of a comparison,
@@ -198,7 +198,9 @@ turntable, which panels are tucked.
 Nothing new is asked of a flight. Everything comes from what a vehicle already declares:
 
 - **What stands there** (`plinths`): the whole vehicle, or the parts under one heading of its parts
-  list (`Part.group`: the spacecraft without its booster). `Stage.only` takes the rest out of the
+  list (`Part.group`: the spacecraft without its booster). The spacecraft alone is the Lineup's, by
+  the same rule (address.ts `craftNodes`): once the model has arrived, the parts of any other heading
+  that stands wholly on it are with it (Voskhod 2's airlock; `Stage.lowest` measures them). `Stage.only` takes the rest out of the
   model and stands what is left on the floor; its slider is then the stretch of the vehicle's
   slider over which those parts move.
 - **Views**: the vehicle's own named views whose parts are all there, as `nodes` only (a `centreY`

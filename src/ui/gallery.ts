@@ -226,7 +226,7 @@ export class Gallery {
   private readonly vehicle: ModelDef;
   private readonly staged: Flight;
   private readonly model: ModelDef;
-  private readonly choices: Plinth[];
+  private choices: Plinth[];
   private plinth: Plinth;
   private made: { stage: Stage; studio: Studio } | null = null;
   /** The stage, from the first time it is wanted: made once, whether or not what it was to load arrived. */
@@ -928,6 +928,9 @@ export class Gallery {
       this.wire(stage);
       studio.setTone(prefs.get('galleryLight') ? 'light' : 'dark');
       this.outlines = stage.outlines();
+      // the spacecraft alone is what rides on the launch vehicle, found on the model as the Lineup finds it (address.ts `plinths`)
+      this.choices = plinths(this.vehicle, (node) => stage.lowest(node));
+      this.plinth = this.choices.find((p) => p.id === this.plinth.id) ?? this.choices[0]!;
       this.stand(this.plinth, true);
       this.setMeasure(prefs.get('galleryMeasure'));
       this.setNames(!prefs.get('galleryNamesOff'));
