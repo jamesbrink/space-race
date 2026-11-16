@@ -42,6 +42,7 @@ import type { Run } from '../viewer/ascent.ts';
 import { descentRecords, firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from '../viewer/ascent.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
@@ -1370,7 +1371,7 @@ export class OrbitDeck extends Deck {
     const landing = this.flight.plan!.record!.landing!;
     const [la, lo] = [landing.latitude.value * DEG, landing.longitude.value * DEG];
     const [pa, po] = [at.latitude * DEG, at.longitude * DEG];
-    return 6_371 * Math.acos(Math.min(1, Math.sin(la) * Math.sin(pa) + Math.cos(la) * Math.cos(pa) * Math.cos(po - lo)));
+    return (EARTH_SPHERE / KM) * Math.acos(Math.min(1, Math.sin(la) * Math.sin(pa) + Math.cos(la) * Math.cos(pa) * Math.cos(po - lo)));
   }
   /** A time of the flight as a clock on the wall read it that day. */
   private wall(at: number): string {
