@@ -878,7 +878,17 @@ export class FlightPath {
       const run = tr
         ? predictor(this.flight.plan!, this.site, this.flight.site.seaLevel.value, start, options)
         : this.source.predict!(start, MOST - 2, want.guided === true);
-      if (!run) return;
+      if (!run) {
+        // (the source has no future to give from here, a vehicle in pieces: the one on show was another flight's, and goes)
+        this.doneAt = performance.now();
+        this.wantedAt = 0;
+        if (this.shown) {
+          this.shown = null;
+          this.sampledFor = '';
+        }
+        this.place();
+        return;
+      }
       this.job = {
         run,
         key: want.key,

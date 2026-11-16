@@ -211,7 +211,7 @@ export class OrbitDeck extends Deck {
   }
   /** What the predicted path is made from (viewer/path.ts): this flight's plan, as it stands. */
   get plan(): string {
-    return `${this.mine === null ? 'record' : `mine ${this.mine}`}|${this.fired !== null ? `hand ${this.fired}` : this.free ? 'free' : 'timer'}`;
+    return `${this.mine === null ? 'record' : `mine ${this.mine}`}|${this.fired !== null ? `hand ${this.fired}` : this.free ? 'free' : 'timer'}${this.state?.broke ? '|broke' : ''}`;
   }
 
   /**
