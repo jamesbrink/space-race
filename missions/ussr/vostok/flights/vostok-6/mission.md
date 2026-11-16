@@ -64,55 +64,54 @@ programme set wrong or put right from the ground (README, "Where the sources dis
 
 ## What the run gives
 
-On the type's ascent, then the published orbit from where it left the ship, then the descent; and the coast from the
-estimated injection. Tolerances were set before anything was flown.
+On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the published orbit from where it left the ship,
+then the descent; and the coast from the estimated injection, on the ship's free-molecular drag in the thermosphere of
+the days' Sun (Jacchia 1971 on 16 to 19 June 1963's indices). Tolerances were set before anything was flown; TASS's orbit
+two days on was added as a check after the physics agent's probe of that instant had been seen, and says so.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Greatest load, first stage | under five, 4.5 ± 1 | 4.72 g | yes | |
-| Perigee at the last cutoff | 180.9 km ± 5 | −189.0 km | **miss** (−370 km) | the type's ascent falls short of an orbit (`SHORT_V6`, as Vostok 1's) |
+| Greatest load, first stage | under five, 4.5 ± 1 | 4.71 g | yes | |
+| Perigee at the last cutoff | 180.9 km ± 5 | −216.8 km | **miss** (−398 km) | the type's ascent falls short of an orbit (`SHORT_V6`, as Vostok 1's) |
 | Apogee at the last cutoff | 231.1 km ± 10 | 183.0 km | **miss** (−48 km) | the same |
-| Inclination | 64.95° ± 0.05 | 64.99° | yes | |
-| Period at the last cutoff | 88.3 min ± 15 s | 84.13 min | **miss** (−250 s) | the same |
+| Inclination | 64.95° ± 0.05 | 64.98° | yes | |
+| Period at the last cutoff | 88.3 min ± 15 s | 83.85 min | **miss** (−267 s) | the same |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
 | Apogee as flown round (coast; shown) | 231.1 km ± 5 | 229.7; 226.2 km | yes | |
-| Greatest load in the entry | no more than 8, 8 ± 2 | 8.88 g | yes | |
-| Landing across the track (coast; shown) | 0 ± 25 km | −305; −228 km | **miss** | three days in the air: below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −3,757; −3,668 km | **miss** | three days in the air: below |
-| Tereshkova down | 11:20 ± 2 min | 11:17:34 | **miss** (−146 s) | the burn's derived minute: she takes 26.9 min from it to the ground |
-| Descent module down | 11:13 ± 5 min (derived) | 11:11:26 | yes | |
+| TASS, 15:00 on 18 June: perigee (coast; shown) | 174 km ± 5 | 176.5; 179.8 km | yes; **miss** (+5.8 km) | the shown run begun lower drags less at perigee |
+| TASS, 15:00 on 18 June: apogee (coast; shown) | 218 km ± 5 | 220.3; 217.9 km | yes | |
+| TASS, 15:00 on 18 June: period (coast; shown) | 88.1 min ± 6 s | 88.15; 88.16 min | yes | |
+| Greatest load in the entry | no more than 8, 8 ± 2 | 8.70 g | yes | |
+| Landing across the track (coast; shown) | 0 ± 25 km | −176; −117 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −2,726; −2,704 km | **miss** | below |
+| Tereshkova down | 11:20 ± 2 min | 11:16:46 | **miss** (−194 s) | the burn's derived minute: she takes 26.1 min from it to the ground |
+| Descent module down | 11:13 ± 5 min (derived) | 11:10:31 | yes | |
 | The two landings apart | 400 m ± 3 km | 251 m | yes | no wind is flown |
 
 ## Three days in the air
 
-Forty-eight revolutions are flown, on the coast of Vostok 5's: RK4 at 10 s above 150 km, J2, the 1976 standard
-atmosphere. The record's run comes down at 23° N 53° E, over Oman, 3,757 km short of the Altai. What owns it is **not
-established**. These are reported, not checked (no check of the orbit at an instant exists yet), and each is a diagnosis
-made by changing one thing, not an input:
+Forty-eight revolutions are flown, on the coast of Vostok 5's.
 
-| | Run | Record |
-| --- | --- | --- |
-| T+10.5 h (22:00, 16 June) | 178.6 to 231.3 km over the sea, 88.29 min node to node | TASS: 181 × 231 km, 88.3 min |
-| T+24 h | 178.1 to 230.4 km, 88.28 min | |
-| T+50.5 h (15:00, 18 June) | 177.1 to 228.7 km, 88.25 min | TASS: 174 × 218 km, 88.1 min |
+| | Run now | Run before (1976 mean air, the ball's continuum drag) | Record |
+| --- | --- | --- | --- |
+| 15:00, 18 June (T+50.5 h) | 176.5 × 220.3 km, 88.15 min | 177.1 to 228.7 km over the sea, 88.25 min | TASS: 174 × 218 km, 88.1 min |
+| Landing | 2,726 km short, 176 km across, over Iran | 3,757 km short, 305 km across | 53°16′ N 80°28′ E |
 
-- **The published period is to a tenth of a minute.** 0.05 min less brings the landing 760 km nearer, and 0.05 min more
-  puts it 590 km further short. Over 48 revolutions the last digit is worth more than the tolerance several times over.
-- **The burn's minute.** It is derived from an "approximately". A minute later lands 300 km nearer, and five minutes
-  later 1,800 km nearer.
-- **The coast's drag.** This is the same as Vostok 5's (its mission.md): the ball's disc on its continuum coefficient,
-  and the 1976 air.
-  - With four times the drag area the orbit at T+50.5 h is 171.3 to 217.5 km and 88.09 min, which matches TASS's.
-  - That gives back 1,370 km of the miss, not all of it.
+The ship's free-molecular drag in the days' thermosphere (the physics agent's correction, from the checks on Vostok 5:
+issue #15) brings the orbit two days on to TASS's within every tolerance, and gives back 1,031 km of the landing's miss.
+What is left is **not established**. As diagnoses, not inputs:
 
-**What waits on the simulator.** The drag of a ship in orbit is being corrected (its coefficient, its area, the
-1976 table above 200 km: the faults the checks above found). That will move the coast's and the shown run's landing across and along the track, her landing's time, and the decay figures above; the figures here are as flown
-before it, and are restated with it.
+- **The published period is to a tenth of a minute.** 0.05 min less brings the landing 1,211 km nearer; 0.05 min more
+  puts it 923 km further short.
+- **The burn's minute is derived from an "approximately".** A minute later lands 401 km nearer; five minutes later
+  2,381 km nearer, but she would then be down 20 to 25 minutes after the burn, where Vostok 1's pilot took 28.
+
+Nothing is adjusted.
 
 ## What is simplified
 
 - The ascent is Vostok 1's, not this flight's.
-- The coast drags the ball's disc on its continuum coefficient for three days; the day's air is not modelled.
+- The thermosphere is Jacchia 1971 on the days' indices; the ship's drag area is the physics agent's, not measured.
 - The hatches leave with the seat at 6,500 m, not 500 m before it.
 - Her two orientations by hand that failed in pitch on 17 and 18 June are not in the record's periods: their times
   were not found.

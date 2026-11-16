@@ -40,12 +40,14 @@ What the record gives of it ([pad.ts](pad.ts); Kamanin keeps the range's clock, 
 
 From [mission.md](mission.md). The ascent on the type's figures falls short of an orbit, as Vostok 1's does: what is
 shown from the separation is the published orbit begun where the ascent left the ship. Its period holds (88.3 min, not
-independent), its apogee holds (229.7 km), the load in the entry holds (8.88 g against her "no more than 8"), and the ball
+independent), its apogee holds (229.7 km), the orbit two days on holds against TASS's (176.5 by 220.3 km and 88.15 min
+where TASS has 174 by 218 and 88.1), the load in the entry holds (8.70 g against her "no more than 8"), and the ball
 lands 251 m from her where she put it at 400. The burn is derived from the ground's command at 09:39:40 and the cycle's
-"approximately" 71 minutes, not from the landing, so the landing is a check of it: **it comes down 3,757 km short and 305
-km across**, over Oman, and she is down at 11:17:34, two and a half minutes before TASS's 11:20. What owns it is not
-established: the period published to a tenth of a minute is worth 760 km either way over 48 revolutions, the burn's
-minute 300 km a minute, and the coast's drag, the same as Vostok 5's, some 1,370 km (mission.md, "Three days in the air").
+"approximately" 71 minutes, not from the landing, so the landing is a check of it: **it comes down 2,726 km short and
+176 km across**, over Iran, and she is down at 11:16:46, three minutes before TASS's 11:20. What owns it is not
+established: the period published to a tenth of a minute is worth some 1,000 km either way over 48 revolutions, the
+burn's minute 400 km a minute (mission.md, "Three days in the air"). Before the drag was corrected it came down 3,757 km
+short.
 
 ## What happened
 
