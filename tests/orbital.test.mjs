@@ -7,7 +7,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { coastOf, flyOrbit, injectionState } from '../src/sim/orbital.ts';
+import { coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
@@ -16,7 +16,7 @@ import { julianDate, terrestrialTime } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { recordFrom } from './records.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
-import { meanOf, periodsOf } from '../src/world/meanelements.ts';
+import { meanOf, meanOrbitOf, periodsOf } from '../src/world/meanelements.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -241,3 +241,53 @@ for (const f of orbiters) {
     console.log(`  #   the planned orbit (180 by 230 km) and burn (136 m/s) on the same clock: ${moved(planned)}`);
   });
 }
+
+test('a check of the orbit at an instant reads the coast there as mean elements, and costs a flight that states none nothing', () => {
+  const f = orbiters.find((x) => x.id === 'ussr/vostok/vostok-1');
+  const o = recordFrom(f);
+  const start = o.injection.at.value;
+  const check = (name, at, field, value) => ({
+    id: `${name}.${field}`,
+    label: `${name} ${field}`,
+    value,
+    unit: field === 'period' ? 's' : 'm',
+    tolerance: 1,
+    confidence: 'estimated',
+    source: 'a test',
+    at,
+  });
+  const asked = structuredClone(o);
+  // one instant just after the orbit begins, one between two of the coast's steps, one after it is down
+  asked.checks.push(
+    check('begun', start + 10, 'perigee', o.orbit.perigee.value),
+    check('begun', start + 10, 'apogee', o.orbit.apogee.value),
+    check('begun', start + 10, 'period', o.orbit.period.value),
+    check('later', start + 1234.5, 'perigee', 0),
+    check('down', 86_400, 'apogee', 0),
+  );
+  const plain = fly(f, structuredClone(o));
+  const read = fly(f, asked);
+  // ten seconds on, the mean orbit is the published one: its heights over its ball, its nodal period
+  const r = read.results;
+  assert.ok(Math.abs(r['begun.perigee'] - o.orbit.perigee.value) < 50, `perigee ${r['begun.perigee']}`);
+  assert.ok(Math.abs(r['begun.apogee'] - o.orbit.apogee.value) < 50, `apogee ${r['begun.apogee']}`);
+  assert.ok(Math.abs(r['begun.period'] - o.orbit.period.value) < 0.05, `period ${r['begun.period']}`);
+  // between two of the coast's steps: read off a state stepped there from the step's start, as the samples either side are
+  const [before, after] = [read.samples.findLast((s) => s.t <= start + 1234.5), read.samples.find((s) => s.t > start + 1234.5)];
+  const perigeeOf = (s) => {
+    const m = meanOf({ r: frameOf(f).toDate(s.r), v: frameOf(f).toDate(s.v) });
+    return m.a * (1 - m.e);
+  };
+  const ball = meanOrbitOf(publishedOf(f.plan.record.orbit)).radius;
+  for (const s of [before, after]) assert.ok(Math.abs(perigeeOf(s) - ball - r['later.perigee']) < 5, `at ${s.t} s`);
+  // after the coast has ended there is nothing to read
+  assert.equal(r['down.apogee'], undefined);
+  // the run itself is the plain one's to the last bit, and the plain one has no readings
+  const { 'begun.perigee': _a, 'begun.apogee': _b, 'begun.period': _c, 'later.perigee': _d, ...rest } = r;
+  assert.deepEqual(rest, plain.results);
+  assert.deepEqual(read.samples, plain.samples);
+  assert.equal(
+    Object.keys(plain.results).some((k) => k.includes('.')),
+    false,
+  );
+});

@@ -356,7 +356,15 @@ export interface PlanCheck {
   when?: CheckWhen;
 }
 
-export type CheckWhen = { at: number; reading: 'g' } | { most: 'g'; aboard: string[]; gone?: string[] } | { most: 'g'; burning: string };
+/**
+ * Where a check is read, where it is not an event's state or a result of the whole run: the g at an instant; the most g
+ * with given bodies aboard or a stage burning; or the orbit at an instant (`reading: 'orbit'`: the check's id is
+ * `<name>.perigee`, `.apogee` or `.period`, the coast's state then read as mean elements: orbital.ts `flyOrbit`).
+ */
+export type CheckWhen =
+  | { at: number; reading: 'g' | 'orbit' }
+  | { most: 'g'; aboard: string[]; gone?: string[] }
+  | { most: 'g'; burning: string };
 
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {

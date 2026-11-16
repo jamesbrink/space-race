@@ -405,7 +405,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
   const actionAt = new Set(events.flatMap((e) => (e.at && e.when.some((w) => 'time' in w || 'after' in w) ? [e.at.value] : [])));
   const checks: PlanCheck[] = [
     ...(a?.checks ?? []).map((c): PlanCheck => ({ ...c, of: 'ascent', ...ascentWhen(c.id, o) })),
-    ...o.checks.map((c): PlanCheck => ({ ...c, of: 'orbit' })),
+    ...o.checks.map(({ at, ...c }): PlanCheck => ({ ...c, of: 'orbit', ...(at === undefined ? {} : { when: { at, reading: 'orbit' } }) })),
     ...(d?.checks ?? []).map((c): PlanCheck => ({ ...c, of: 'descent' })),
   ];
   return {

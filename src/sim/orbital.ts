@@ -17,7 +17,7 @@ import { G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { fromPublished, meanOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
+import { fromPublished, meanOf, meanOrbitOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
@@ -370,6 +370,24 @@ export interface OrbitResults {
   /** That place against the record's landing, m: along its own track over the ground (beyond is positive) and to the right of it. */
   alongTrack: number;
   crossTrack: number;
+  /**
+   * The orbit at an instant a check states (`CheckWhen` `reading: 'orbit'`), by the check's id: only those a plan's checks
+   * ask for are here. The coast's state at the instant read as mean elements (world/meanelements.ts `meanOf`), as the
+   * published orbit is read (`fromPublished`): perigee and apogee a(1 - e) and a(1 + e) less the ball the published
+   * orbit's heights are over (`meanOrbitOf`'s `radius`), m, and the nodal period with the perigee where it stands, s.
+   */
+  [reading: `${string}.${OrbitReading}`]: number;
+}
+/** What a check of the orbit at an instant reads. */
+export type OrbitReading = 'perigee' | 'apogee' | 'period';
+
+/** The plan's checks of the orbit at an instant, grouped by instant, earliest first. */
+function readingsOf(plan: FlightPlan): { at: number; ids: string[] }[] {
+  const by = new Map<number, string[]>();
+  for (const c of plan.checks)
+    if (c.of === 'orbit' && c.when && 'reading' in c.when && c.when.reading === 'orbit')
+      by.set(c.when.at, [...(by.get(c.when.at) ?? []), c.id]);
+  return [...by].map(([at, ids]) => ({ at, ids })).sort((a, b) => a.at - b.at);
 }
 
 export type OrbitPhase = 'orbit' | 'braking' | 'descent' | 'entry' | 'down';
@@ -697,6 +715,23 @@ export function flyOrbit(
     crossTrack: Number.NaN,
   };
 
+  // (the orbit at the instants the checks ask for: read off a state stepped there from the step's start, so the run is flown
+  // as it would be without them)
+  const readings = readingsOf(plan).filter((x) => x.at >= t);
+  const ball = readings.length ? meanOrbitOf(publishedOf(ship.orbit)).radius : 0;
+  const read = (s: State, ids: string[]): void => {
+    const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
+    const got: Record<OrbitReading, number> = {
+      perigee: m.a * (1 - m.e) - ball,
+      apogee: m.a * (1 + m.e) - ball,
+      period: periodsOf(m.a, m.e, m.i, m.argp).nodal,
+    };
+    for (const id of ids) {
+      const field = id.slice(id.lastIndexOf('.') + 1) as OrbitReading;
+      if (field in got) results[id as `${string}.${OrbitReading}`] = got[field];
+    }
+  };
+
   /** What happens at the instant now reached. */
   const arrive = (): void => {
     if (t === on) {
@@ -736,6 +771,10 @@ export function flyOrbit(
     const as = t;
     state = step(state, t, h, (s, at) => pushAs(s, at, as));
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    while (readings.length && readings[0]!.at <= t) {
+      const x = readings.shift()!;
+      read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
+    }
     arrive();
     let now = sample();
     phase = phaseAt(t, now.g, phase);

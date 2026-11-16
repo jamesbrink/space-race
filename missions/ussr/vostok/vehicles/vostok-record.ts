@@ -136,6 +136,12 @@ export interface OrbitCheck {
   tolerance: number;
   confidence: Confidence;
   source: string;
+  /**
+   * The orbit at a stated instant, s from liftoff, as a later published orbit gives it: `id` is then `<name>.perigee`,
+   * `<name>.apogee` (m above the ball the published orbit's heights are over) or `<name>.period` (nodal, s), the coast's
+   * state at that instant read as mean elements, as the published orbit is (orbital.ts `flyOrbit`). Left out: a result of the coast.
+   */
+  at?: number;
 }
 
 export interface VostokRecord {

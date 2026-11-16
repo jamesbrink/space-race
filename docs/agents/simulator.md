@@ -415,7 +415,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit (read as mean elements with a nodal period: world/meanelements.ts, orbital.ts `publishedOf`) round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in the flight's
   frame (of date, as every run's) on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its misses (src/sim/misses.ts) by the same rule as
-  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
+  below and prints what each undocumented input is worth. The flight's `mission.md` is the plan. A check can read the orbit at a
+  stated instant (vostok-record.ts `OrbitCheck.at`, the plan's `when: { at, reading: 'orbit' }`; ids `<name>.perigee`, `.apogee`,
+  `.period`), as a later published orbit gives it: the coast's state then read as mean elements (`meanOf`), the heights over
+  the ball the published orbit's are over and the nodal period, off a state stepped to the instant from its step's start, so
+  the run is flown as it is without it.
 - **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from the plan's stages and steering law: stages
   burning together and in turn (each `count` alike; its throttle of its vacuum thrust less exit area times the air's pressure, the exit area
   derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
