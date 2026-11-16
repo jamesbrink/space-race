@@ -1258,6 +1258,19 @@ export class Stage {
   /** What has been put over the flight (`overlay`): drawn unseen in `warm`, so its shaders are built with the rest. */
   private readonly overlays: THREE.Object3D[] = [];
 
+  /**
+   * Be told in every frame that is drawn, once the camera and the vehicle stand where this frame has them and before
+   * anything is drawn: what is laid out for the view over the flight (the predicted path's line, which starts at the
+   * vehicle) is laid out for this frame's, not the last one's. (Laid in a frame callback of its own, it ran after the
+   * draw, and the line drawn started where the vehicle had been a frame before: 130 m behind a ship in orbit at life's
+   * rate, 1,300 km at ten thousand times it.) Returns what lets it go.
+   */
+  beforeDraw(fn: () => void): () => void {
+    this.laying.add(fn);
+    return () => this.laying.delete(fn);
+  }
+  private readonly laying = new Set<() => void>();
+
   /** Take back something put over the flight (`overlay`): whoever put it there is gone (a flight's page left: app/session.ts). */
   unoverlay(object: THREE.Object3D): void {
     object.removeFromParent();
@@ -2080,6 +2093,7 @@ export class Stage {
     if (this.frozen) this.renderer.shadowMap.needsUpdate = true;
     this.lastView.copy(this.camera.matrixWorld);
     this.lastProjection.copy(this.camera.projectionMatrix);
+    for (const lay of this.laying) lay();
     this.dirty = false;
     this.pipe.begin();
     this.setting.view?.(this.camera);

@@ -166,8 +166,9 @@ rules are the screen's, the same for every path, never tuned to a flight:
   fragment shader, under the march's cloud in front of it and over all cloud behind it. The smoke is marched as far as
   the scene's depth, which the line does not write: drawn with the scene, the line lay under the smoke behind it, and
   through the pad's dust and the trail it came out pale and in pieces.
-- **Ahead of the vehicle, never behind it**: the line starts at the vehicle every frame, whatever the age of the
-  prediction under it (an orbit the clock has outrun is drawn from the same curve whole turns on, pathline.ts
+- **Ahead of the vehicle, never behind it**: the line starts at the vehicle every frame, laid out in the frame it is
+  drawn in from where that frame has the vehicle (`Stage.beforeDraw`: laid after the draw, it started where the
+  vehicle had been a frame before, 130 m behind a ship in orbit), whatever the age of the prediction under it (an orbit the clock has outrun is drawn from the same curve whole turns on, pathline.ts
   `turnsPast`); a path once round stops short of coming back to the vehicle, below both horizons (`overHorizon`,
   `tailOf`), and goes out before it stops; no end is cut square but one that meets the ground at its ring. The line
   flown is not drawn from near the vehicle, and from far out is a thin cool grey with no glow, named beside the

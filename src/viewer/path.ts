@@ -375,6 +375,11 @@ export interface PathHost {
   readonly look: 'real' | 'cel';
   /** The view is from inside the vehicle, at its panel: nothing is labelled over the cabin. */
   aboard?(): boolean;
+  /**
+   * Be told in each frame drawn, with the camera and the vehicle where that frame has them, before it is drawn (Stage.beforeDraw):
+   * the line is laid out for the frame it is drawn in. Returns what lets it go.
+   */
+  beforeDraw?(fn: () => void): () => void;
 }
 
 /** A sample of the flight as the flight deck shows it (sim/vehicle.ts: LiveSample), and the live state it came from, or null when looking back. */
@@ -610,6 +615,8 @@ export class FlightPath {
   private raf = 0;
   /** What it hangs on the window and the frame (util/scope.ts): let go of with the page it is on. */
   private readonly scope = new Scope();
+  /** What lets go of the stage's call before each draw (`PathHost.beforeDraw`). */
+  private readonly unlay: (() => void) | null;
   /**
    * The instant on the path the vehicle is drawn at (the curve's), and what the line was last sampled for; and how far
    * the flight's instants are past the curve's (whole revolutions of an orbit the clock has outrun: `lay`), 0 but then.
@@ -795,6 +802,13 @@ export class FlightPath {
       this.wake();
     });
     host.overlay(this.mesh); // in the scene from the first, unseen, so its shaders are built with the rest (Stage.warm)
+    // (laid out again in the frame it is drawn in, from where the vehicle is drawn: laid only in a frame of its own, after
+    // the draw, it started where the vehicle had been a frame before, behind it)
+    this.unlay =
+      host.beforeDraw?.(() => {
+        const shown = this.shown;
+        if (shown && this.mesh.visible && shown.curve.n > 1) this.lay(shown, this.mixOf(shown));
+      }) ?? null;
     this.show(this.on, false);
     this.setGuided(this.guided, false);
   }
@@ -818,6 +832,7 @@ export class FlightPath {
   /** The page has gone to another flight: off the window, no more frames, and the line's buffers let go (the stage takes it out: Stage.unoverlay). */
   dispose(): void {
     this.scope.dispose();
+    this.unlay?.();
     this.raf = 0;
     disposeTree(this.mesh);
   }

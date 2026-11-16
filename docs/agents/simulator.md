@@ -760,8 +760,8 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   for every path (`viewer/pathline.ts`, path.ts's header): the prediction is a curve (its points with their velocities,
   the cubic between them), cut each frame into chords until none strays more than 0.35 px from it as seen from the eye,
   wherever the eye is, at multiples of a power of two seconds so the chords stay put as the clock runs; it starts at the
-  instant on the curve nearest the vehicle as drawn, every frame, whatever the age of the prediction under it, and is
-  taken onto the vehicle there; an orbit the clock has outrun (hours a second, on rails) before a prediction from where
+  instant on the curve nearest the vehicle as drawn, every frame (laid out in the frame it is drawn in, `Stage.beforeDraw`),
+  whatever the age of the prediction under it, and is taken onto the vehicle there; an orbit the clock has outrun (hours a second, on rails) before a prediction from where
   the vehicle is can be made is drawn from the same curve whole turns on (pathline.ts `turnsPast`), taken onto the
   vehicle, so at every rate the line starts at it. A path once round comes back to where it began, which is behind the
   vehicle (seen in Orbit, its square end was the line its owner saw behind his ship): the line stops short of that by

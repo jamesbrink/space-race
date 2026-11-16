@@ -264,6 +264,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
         return stage.look;
       },
       aboard: () => stage.seats.aboard(),
+      beforeDraw: (fn) => stage.beforeDraw(fn),
     },
     deck.querySelector<HTMLElement>('[data-do=path]'),
   );
