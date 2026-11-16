@@ -27,8 +27,9 @@ test('every pad says where its model frame sits on the land, with its confidence
   // Complex 14's deck is the ramp's top, 22 ft over the paving at its foot (HAER FL-8-7, p. 20), and the land 12 cm under that
   assert.equal(LC14.grade.value, -(22 * FT + 0.12));
   assert.equal(LC14.grade.confidence, 'derived');
-  // Complex 19's three storeys: the storey's height is not read
-  assert.equal(LC19.grade.confidence, 'estimated');
+  // Complex 19's stand is "28 feet tall" (Martin's press handbook, p. 7-8)
+  assert.equal(LC19.grade.value, -28 * FT);
+  assert.equal(LC19.grade.confidence, 'documented');
 });
 
 // A made-up pad on the steppe 3 km north-east of Site 1 (not a real site): the place's ground laid round it must put
@@ -102,15 +103,16 @@ test('Tyuratam: what stands round Site 1 stands on the same land round another p
   assert.deepEqual(built.objects[0].position.toArray(), [at.x, 0, at.z]);
 });
 
-test('the bearings: Complex 14’s frame on its documented pitch line; Complex 19’s line square to its stand', () => {
+test('the bearings: Complex 14’s frame on its documented pitch line; Complex 19’s frame along its stand', () => {
   // the pitch line on 105 degrees (Results of the First United States Manned Orbital Space Flight, p. 46): the frame's +X, and the vehicle
   // stands turned in it, its hatch on 240 (lc-14.parts.ts HATCH_TURN: estimated, from the photographs)
   assert.equal(LC14.bearingX.value, 105);
   assert.equal(LC14.bearingX.confidence, 'documented');
-  // the flight azimuth, 72, and Gemini IV's roll, 12.9; the stand on 175/355 (OpenStreetMap), so the line on 85 within a degree
-  assert.ok(Math.abs(LC19.bearingX.value - (72 + 12.9)) < 1e-9);
-  assert.ok(Math.abs(((LC19.bearingX.value - 175 + 360) % 180) - 90) < 1);
-  assert.equal(LC19.bearingX.confidence, 'estimated');
+  // the stand's centre line "five degrees west of north" (Martin's press handbook, p. 7-2): +X along it to the south, the way the
+  // erector was laid down and the hatches faced. The launch vehicle's pitch plane, 72 + 12.9 by Gemini IV's roll, is square to it
+  assert.equal(LC19.bearingX.value, 175);
+  assert.ok(Math.abs(((72 + 12.9 - LC19.bearingX.value + 360) % 180) - 90) < 1);
+  assert.equal(LC19.bearingX.confidence, 'derived');
 });
 
 // What stood round the Cape's pads on 5 May 1961, as drawn before the neighbours were dated past it: Freedom 7's and
