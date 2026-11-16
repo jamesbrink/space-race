@@ -1,4 +1,5 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
@@ -436,6 +437,40 @@ const vehicle = site1Vehicle(
   BASE,
 );
 
+/** Bykovskiy, suited, on his way to the stair (crew/sk-1.parts.ts): the last SK-1 made, as the photographs of 14 June show it (model/crew.py), the man in it not measured. */
+const crew = sk1Crew({
+  url: 'models/ussr/vostok/vostok-5/crew.glb',
+  scale: 'Valeriy F. Bykovskiy · built 1.65 m, 1.72 m suited (his height not found) · to scale',
+  helmet: {
+    summary: 'White, part of the suit, lettered «СССР».',
+    detail:
+      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings up over ' +
+      'the crown, as he wore it to the pad. The red "СССР" on the brow is the photographs’ of 14 June 1963, as on every Vostok ' +
+      'pilot’s since Gagarin’s.',
+    facts: [
+      ['Shell', 'fixed to the suit'],
+      ['Visor', 'double, closes by itself on loss of pressure'],
+      ['Lettering', '"СССР", red (the photographs of 14 June 1963)'],
+    ],
+  },
+  // the suit he wore that morning (crew/sk-1.md, "Who is in the suit"; model/crew.py builds it: sk_1.py `BYKOVSKY`)
+  suit: {
+    kind: {
+      value: 'SK-1',
+      confidence: 'documented',
+      source: 'Abramov and Skoog, Russian Spacesuits: "the last units of the SK-1 suit (used by Bykovsky)"',
+    },
+    wearer: { name: 'Bykovskiy', they: 'he', their: 'his' },
+    gloves: {
+      value: 'black',
+      confidence: 'estimated',
+      source: 'his were not seen; the SK-1 at Zvezda’s museum has black leather gloves with tan gauntlets (crew/sk-1.md)',
+    },
+    neck: { value: 'pale', confidence: 'estimated', source: 'the film still of him strapped in (crew/sk-1.md)' },
+    mirror: { value: true, confidence: 'assumed', source: 'Gagarin’s, documented by the Smithsonian’s label, taken for his: not seen' },
+  },
+});
+
 export const flight: Flight = {
   id: 'ussr/vostok/vostok-5',
   nation: 'USSR',
@@ -630,6 +665,15 @@ export const flight: Flight = {
       note: 'east of north, for an orbit inclined 64.96° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
     ...SITE1_SPECS,
+    ...SK1_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Standing height, helmet and boots',
+      value: 1.725,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the figure’s, built to Gagarin’s 165 cm with a 2.6 cm heel and the helmet over the crown as his: Bykovskiy’s own height was not found',
+    },
   ],
   motors: vostokMotors({
     strapOns: {
@@ -665,8 +709,7 @@ export const flight: Flight = {
     'Five days are flown round in the standard air, not the day’s; the braking burn’s instant is derived from the pilot’s landing (mission.md).',
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
   flies: vostokFlies(orbital),
-  // (the crew to be walked as is not here yet: crew/sk_1.py's figure does not build at its coarser levels, issue #21)
-  models: [vehicle, pad],
+  models: [vehicle, pad, crew],
   // the place round the pad: as modelled for August 1961, nothing modelled having changed by June 1963 (Korolev's post under its
   // canopy, the new room by the bunker and what the repairs after the fire of 1 June 1962 replaced are not built: places/tyuratam/site-1.md)
   surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
