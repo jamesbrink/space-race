@@ -111,7 +111,13 @@ onMoved(() => {
   if (entering !== namesNothing(where())) return;
   // (Back out of a flight flown by hand asks first, and puts the address back if the answer is to keep flying: stake.ts)
   const steps = moved();
-  if (!guarded(() => location.reload(), () => undo(steps))) location.reload();
+  if (
+    !guarded(
+      () => location.reload(),
+      () => undo(steps),
+    )
+  )
+    location.reload();
 });
 
 /** Seconds the page has been left alone; past IDLE_TITLE the words make way for the picture. */

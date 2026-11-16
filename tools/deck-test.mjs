@@ -548,7 +548,8 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.click('.cockpit-kept [data-do=again]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode)) fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
+      if (r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode))
+        fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
       if (r.warns) fail(at, 'after Start over, nothing is flown by hand and the browser still asks');
       console.log(`  ${at}: the mark ended it; Start over began again from the pad`);
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
