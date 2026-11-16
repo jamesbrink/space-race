@@ -1,6 +1,7 @@
 import './front/front.css';
 import { flights } from '../../missions/index.ts';
-import { formatAddress, formatLineup, namesNothing, onMoved, where, write } from './address.ts';
+import { formatAddress, formatLineup, moved, namesNothing, onMoved, undo, where, write } from './address.ts';
+import { guarded } from './stake.ts';
 import { whenLifted } from './curtain.ts';
 import { installDebug, keepFront } from './debug.ts';
 import { IDLE_TITLE } from './demo.ts';
@@ -107,7 +108,10 @@ async function go(address: string, page: () => Promise<unknown>): Promise<void> 
 // an address typed or gone back or forward to that names a flight is that flight's page; and Back while a flight is
 // on its way in is this page again, as it was before the flight was chosen
 onMoved(() => {
-  if (entering === namesNothing(where())) location.reload();
+  if (entering !== namesNothing(where())) return;
+  // (Back out of a flight flown by hand asks first, and puts the address back if the answer is to keep flying: stake.ts)
+  const steps = moved();
+  if (!guarded(() => location.reload(), () => undo(steps))) location.reload();
 });
 
 /** Seconds the page has been left alone; past IDLE_TITLE the words make way for the picture. */
