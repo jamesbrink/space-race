@@ -18,14 +18,14 @@
 import { Quaternion, Vector3 } from 'three';
 import { type Driving, type Footfall, machinery, type Sounds, type Underfoot } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
-import { ballisticOf, flownOnce } from '../sim/fly.ts';
+import { ballisticOf } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight, TreadKind } from '../types.ts';
-import { Ascent, orbitalRecord, type Run } from '../viewer/ascent.ts';
+import { recordOf, type Run } from '../sim/run.ts';
+import { Ascent } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
-import { siteFrame } from '../world/frames.ts';
 import { Engine } from './engine.ts';
 import {
   breath,
@@ -48,7 +48,6 @@ import {
   type Vec,
   Works,
 } from './model.ts';
-import { frameOf } from '../world/earthframe.ts';
 import { is, isTyping, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 
@@ -236,7 +235,7 @@ export class Sound {
   }
   private hushed = false;
 
-  /** A flight being flown by hand is on show (viewer/ascent.ts `Run`), or the record's again (null). */
+  /** A flight being flown by hand is on show (sim/run.ts `Run`), or the record's again (null). */
   fly(run: Run | null): void {
     this.live = run;
     this.retroAt = null;
@@ -460,19 +459,12 @@ export class Sound {
 
   /** The run on show as sound needs it. */
   private hearing(t: number, rate: number, running: boolean, ears: Vec, riding: number): Hearing {
-    const tr = this.flight.plan?.kind === 'ballistic';
     let samples: readonly Moment[] = [];
     let out = { drogue: Infinity, main: Infinity };
     let duration = Infinity;
-    if (this.live) ({ samples, out, duration } = this.live);
-    else if (!tr && this.ascent && this.flight.plan?.kind === 'orbital') ({ samples, duration } = orbitalRecord(this.flight));
-    else if (tr && this.ascent) {
-      const flown = flownOnce(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, frameOf(this.flight));
-      samples = flown.samples;
-      const when = (v: number): number => (Number.isFinite(v) ? v : Infinity);
-      out = { drogue: when(flown.results.drogueAt), main: when(flown.results.mainAt) };
-      duration = flown.results.duration;
-    }
+    // (the run on show: the one being flown, or the record's, whichever kind of flight it is: sim/run.ts `recordOf`)
+    const run = this.live ?? (this.ascent ? recordOf(this.flight) : null);
+    if (run) ({ samples, out, duration } = run);
     return {
       t,
       rate,

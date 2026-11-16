@@ -266,6 +266,7 @@ src/
   sim/verdict.ts                      how a flight flown by hand ended, said plainly, and whether it was survivable by the flight's stated limits
   sim/predict.ts                      looking ahead from a state: one propagator for every vehicle (error-controlled, in slices), the path if nothing more is done, its apsides, events, impact or orbit (pure)
   sim/fliers.ts                       the vehicles it flies: a ballistic flight's, an orbital spacecraft alone, a staged stack with its engines stopped; each with its own simulator's forces (pure)
+  sim/run.ts                          a flight's run as the scene, sound, cabin, effects and decks show it (`Run`), the record's for any kind (`recordOf`), an orbital record's (`orbitalFlown`, `orbitalRecord`, `orbitalEvents`)
   sim/plan.ts                         what a flight is flown from, one shape for every kind: its craft (bodies, joints, engines on tanks, thrusters, parachutes, limits), events (triggers, actions), attitudes, checks; `problems` says what is wrong with one
   sim/craft.ts                        the one machine a craft is flown by: what is lit, let go and gone, what is out, which events have happened, as its plan's hardware allows
   sound/audio.ts                      what the walk and a driven vehicle are heard as (an interface, silent until something that plays is given), and the board every posed move that names a machine is told to (`machinery`)

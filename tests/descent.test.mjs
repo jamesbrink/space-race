@@ -9,7 +9,7 @@ import { coastOf, decay } from '../src/sim/orbital.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { byHand, flyOn, partingAt, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
-import { orbitalFlown } from '../src/viewer/ascent.ts';
+import { orbitalFlown } from '../src/sim/run.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 

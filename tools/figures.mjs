@@ -23,7 +23,7 @@ import { Sheds } from '../src/sim/shed.ts';
 import { flyWhole, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
-import { orbitalRecord } from '../src/viewer/ascent.ts';
+import { orbitalRecord } from '../src/sim/run.ts';
 import { DEG, dot, enuToEcefDirection, fromHorizontal, geodeticToEcef, length, scale, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { frameOf } from '../src/world/earthframe.ts';

@@ -13,7 +13,7 @@ import { atmosphere } from '../src/sim/atmosphere.ts';
 import { ballisticOf, flownOnce } from '../src/sim/fly.ts';
 import { G0 } from '../src/world/bodies.ts';
 import { liftoffEngine } from '../src/sim/staged.ts';
-import { orbitalRecord } from '../src/viewer/ascent.ts';
+import { orbitalRecord } from '../src/sim/run.ts';
 import {
   absorbed,
   absorption,
@@ -366,7 +366,7 @@ for (const each of BALLISTIC) {
   });
 }
 
-// A flight into orbit is heard from its record's run as the scene shows it (viewer/ascent.ts `orbitalRecord`), the engines lit
+// A flight into orbit is heard from its record's run as the scene shows it (sim/run.ts `orbitalRecord`), the engines lit
 // on the ground as one (sim/staged.ts `liftoffEngine`), as sound/index.ts hears it.
 const ORBITERS = (
   await Promise.all(

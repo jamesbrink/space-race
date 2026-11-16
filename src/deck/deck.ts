@@ -1,7 +1,7 @@
 import '../ui/cockpit.css';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { Command, SitedFlight } from '../types.ts';
-import type { Run } from '../viewer/ascent.ts';
+import type { Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';

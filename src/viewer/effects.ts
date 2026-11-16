@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
-import { ballisticOf, flownOnce, type Sample } from '../sim/fly.ts';
+import { ballisticOf, type Sample } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame } from '../world/frames.ts';
-import { orbitalRecord, type Run } from './ascent.ts';
+import { recordOf, type Run } from '../sim/run.ts';
 import { Collar, collarOf, Incandescence, ShockGlow, wakeOf } from './entry.ts';
 import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressure, still } from './shake.ts';
 
@@ -73,7 +73,7 @@ export class Effects {
     this.glow = heating ? new Incandescence(heating.surfaces.map((s) => s.materials)) : null;
   }
 
-  /** Show a flight being flown by hand (ascent.ts `Run`), or (null) the record's again. */
+  /** Show a flight being flown by hand (sim/run.ts `Run`), or (null) the record's again. */
   use(run: Run | null): void {
     this.live = run;
     this.joltsOf = null;
@@ -81,16 +81,12 @@ export class Effects {
 
   private samples(): readonly Sample[] {
     if (this.live) return this.live.samples;
-    const kind = this.flight.plan?.kind;
-    if (kind === 'orbital' && this.flight.flies) return orbitalRecord(this.flight).samples;
-    return kind === 'ballistic' ? flownOnce(this.flight.plan!, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
+    return recordOf(this.flight)?.samples ?? [];
   }
 
   private cutoff(): number {
     if (this.live) return this.live.cutoff;
-    const plan = this.flight.plan;
-    if (plan?.kind === 'orbital' && this.flight.flies) return orbitalRecord(this.flight).cutoff;
-    return plan?.kind === 'ballistic' ? ballisticOf(plan).cutoff : 0;
+    return recordOf(this.flight)?.cutoff ?? 0;
   }
 
   /** The heating at `t` on the run on show, or null for a flight with none to work out. */

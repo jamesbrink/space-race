@@ -10,7 +10,8 @@ import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
-import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
+import { firesOf, orbitalFlown } from '../src/sim/run.ts';
+import { Ascent } from '../src/viewer/ascent.ts';
 import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
 import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { plumeShape } from '../src/viewer/plume.ts';

@@ -9,7 +9,7 @@ import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
-import { orbitalEvents, orbitalFlown, orbitalRecord } from './ascent.ts';
+import { orbitalEvents, orbitalFlown, orbitalRecord } from '../sim/run.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
 

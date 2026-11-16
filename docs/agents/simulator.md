@@ -108,6 +108,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     events, the record's instants, what drops and fires go by) to never being a literal in src/sim, src/deck, src/sound or
     viewer/{ascent,path,effects,cabin}.ts. A data id is the hardware's or the event's own name (`adapter-clamp`,
     `main-chute`, `retrofire`, `tdu-1`), never a word the code uses for its own ends; the code finds each by what it is.
+- **One run for every consumer** (`sim/run.ts` `Run`). What the scene, the sound, the cabin, the effects and the Flown
+  panel show of a flight is a `Run`: the record's (`recordOf(flight)`, made once a flight, whichever kind it is: a
+  ballistic plan as fly.ts flies it, an orbital one as staged.ts flies it with its samples' own attitude), or a deck's live
+  one as it grows. A consumer asks it, not the kind of flight.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
   - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.
@@ -516,7 +520,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   second (the vanes at full throw turn the stack end over end in four seconds); with it off, and
   on the spacecraft alone, the keys are the controls themselves; Q E roll. The sequencer (B)
   sets events off at the record's times. The scene shows it through the same `Ascent`, given the
-  live run (`FlightShow.flyRun`, ascent.ts `Run`), at the clock's instant (the last tick carried on by its own motion for the
+  live run (`FlightShow.flyRun`, sim/run.ts `Run`), at the clock's instant (the last tick carried on by its own motion for the
   part of a tick the clock is past it, as what it has shed is flown to that instant): placed by each sample's own attitude, the spacecraft
   turning about its centre of mass (on the record's run too: the model's origin is `flies.datum` up
   the stack and the centre of mass `capsule.centre`, and `tests/ascent.test.mjs` holds the model's
@@ -544,7 +548,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `Craft.rigid` and
   `flies` can be flown without being told how.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
-  record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
+  record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, sim/run.ts
   `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
@@ -580,7 +584,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   engine), between its stage's instants on the run on show and at its stage's throttle (`Ascent.fireLevels`, the
   arithmetic in viewer/fires.ts, tests/fires.test.mjs): the strap-ons at their intermediate stage before they part and
   gone with them, the core on its steering chambers alone through its final stage; a cabin control's `does` of `code:` and a numeral is a key of the deck's lock, and the
-  deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; ascent.ts
+  deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; sim/run.ts
   `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
   events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
   and the hand controller moves with the keys. Because

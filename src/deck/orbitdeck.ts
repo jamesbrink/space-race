@@ -38,8 +38,7 @@ import {
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import { downVerdict } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
-import type { Run } from '../viewer/ascent.ts';
-import { descentRecords, firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff } from '../viewer/ascent.ts';
+import { descentRecords, firesOf, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import type { Clock } from '../world/clock.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
@@ -113,7 +112,7 @@ const ENTER = 'Fly this flight: as flown, or take it over (L)';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export class OrbitDeck extends Deck {
-  /** When each of the record's events happens on the run on show (viewer/ascent.ts `orbitalEvents`): what the cabin's lamps read. */
+  /** When each of the record's events happens on the run on show (sim/run.ts `orbitalEvents`): what the cabin's lamps read. */
   private times: Record<string, number> = {};
   /** The record's run, and the one on show (the record's, the user's, or either with a burn by hand). */
   private record: Run | null = null;

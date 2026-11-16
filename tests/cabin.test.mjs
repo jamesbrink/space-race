@@ -480,7 +480,7 @@ test('a landing worked out in slices: the present place shown until it is done, 
 
 test('the simulator’s answer for a burn now: a Vostok fired against its way comes down, and one coming down already is let come', async () => {
   const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
-  const { orbitalRecord } = await import('../src/viewer/ascent.ts');
+  const { orbitalRecord } = await import('../src/sim/run.ts');
   const { sampleAt } = await import('../src/sim/fly.ts');
   // (a flight flown down, worked out in slices: Predictor.run's budget)
   const job = burnNow(flight);

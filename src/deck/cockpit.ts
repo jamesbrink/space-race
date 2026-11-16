@@ -11,7 +11,7 @@ import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
-import type { Run } from '../viewer/ascent.ts';
+import type { Run } from '../sim/run.ts';
 import type { Clock } from '../world/clock.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';

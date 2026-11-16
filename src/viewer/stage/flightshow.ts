@@ -5,7 +5,8 @@ import { exitAreaOf } from '../../sim/staged.ts';
 import type { Burns, Flight as FlightData, JetDef, ModelDef, SitedFlight } from '../../types.ts';
 import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
-import { Ascent, type Run } from '../ascent.ts';
+import type { Run } from '../../sim/run.ts';
+import { Ascent } from '../ascent.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
 import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
@@ -392,7 +393,7 @@ export class FlightShow {
   }
 
   /**
-   * Show a flight being flown by hand (ascent.ts `Run`) in place of the record's, or the record's again (null).
+   * Show a flight being flown by hand (sim/run.ts `Run`) in place of the record's, or the record's again (null).
    * The trail starts afresh: the one laid belongs to the flight before.
    */
   flyRun(run: Run | null): void {

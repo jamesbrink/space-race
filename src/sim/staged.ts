@@ -743,7 +743,7 @@ export function flyOn(
  * semi-major axis, over the record's reference ball) along the way the ascent flown left it going. For a flight whose
  * ascent as flown does not reach the published orbit: the coast and what follows are then the record's orbit's, begun from
  * the place and instant the ascent gives instead of the estimated `injection`. What the scene and the deck show
- * (viewer/ascent.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
+ * (sim/run.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
  */
 export function published(plan: FlightPlan, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
   const o = plan.record!.orbit!;
