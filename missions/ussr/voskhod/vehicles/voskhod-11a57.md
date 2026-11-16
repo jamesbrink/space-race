@@ -84,7 +84,7 @@ the cap. So the first reading is taken. It is a reading, not a statement of the 
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Liftoff thrust | 413.3 tf (4,053 kN) | documented | S, Table VI. B's table sums to 4,054.2 kN |
-| Liftoff mass | not settled | | 298.4 t (Russian Wikipedia; A: both uncited); 309.8 t (B). The cell is illegible in the copy of S read. Not used |
+| Liftoff mass | not settled | | 298.4 t (Russian Wikipedia; A: both uncited); 309.8 t (B); 305.1 t (McDowell's table of launch vehicles); S's Table VI prints "—". Voskhod 1's record takes the sum of its own figures, 305.8 t (derived) |
 | Payload | "c. 7.5 to LEO" | documented | S, Table VI. A: 5.9 t |
 | Strap-on's engine | 819.1 kN each at the ground | documented, secondary | B: 3,276.4 kN for the four; burn 120.5 s |
 | Core's engine | 777.8 kN at the ground | documented, secondary | B; burn 287.4 s |
@@ -150,6 +150,14 @@ boosters, their engines and the lattice, and besides:
 - **The shield under the engine stays with the stage**, where the description has thermal
   protection on the bottom of the aft section, which leaves.
 - **The aft section's cuts, locks and stiffeners are ours.**
+- **Block I's tanks are today's order, not 1964's.** Varfolomeyev (*Spaceflight* 40, 1998, Part 4) has the 8K78's
+  Block I with "the lengthened oxidiser tank ... at the lower end of Block I with a ball-shaped fuel tank positioned
+  above it". The model and its stations follow today's stage.
+- **The crewed fairing's extra spring ejectors and its two pairs of small solid motors** atop the halves, to part and
+  turn them away if the springs failed (Varfolomeyev, Part 10), are not built.
+- **As flown** (voskhod-11a57-flown.ts): the blocks are the Vostok-K's (assumed), on the 8D728's and the 8D727K's figures
+  (Energomash's table as Brügge copies it); Block I at its maker's thrust and impulse on Brügge's 22.98 t; its aft section
+  a drop of 250 kg (estimated) ten seconds after the core (estimated).
 - **The fairing's opening is the Vostok's round one**, and its fittings the Vostok's.
 - **The blister is a faired shape of our own** over a round hole: its real outline, how it was
   fastened and how far along the fairing it ran were not found. The one description is "protruding".
