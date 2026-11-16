@@ -156,14 +156,15 @@ export interface VostokRecord {
   /**
    * The orbit as published: heights of perigee and apogee in metres above a ball of `radius`
    * (the convention is the publisher's and is recorded with it), inclination in degrees, period
-   * in seconds. Taken as the osculating orbit at `injection.at`.
+   * in seconds, read as mean elements (orbital.ts `publishedOf`). Left out where no period is traceable: the axis is then
+   * the heights' mean over `radius`, and the period the coast reports is the derived nodal one of that mean orbit.
    */
   orbit: {
     radius: Measure;
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;
-    period: Measure;
+    period?: Measure;
   };
   /**
    * Where on that orbit the spacecraft was, and when. The orbit's plane is the one of the

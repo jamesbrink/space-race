@@ -451,7 +451,8 @@ export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFra
 
 /**
  * A record's published orbit as world/meanelements.ts reads it: its heights, inclination and period, the period of the
- * kind its `CONVENTION` takes (nodal, estimated), the ball the heights are over only where that is wanted. `kind`
+ * kind its `CONVENTION` takes (nodal, estimated; a record with none gives none, and the heights' mean over its ball is then
+ * the axis), the ball the heights are over only where that is wanted. `kind`
  * 'osculating' reads it as every run here read it before: the heights over the record's ball as the osculating orbit.
  */
 export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['orbit']>, kind?: PeriodKind): PublishedOrbit {
@@ -459,7 +460,7 @@ export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['or
     perigee: o.perigee.value,
     apogee: o.apogee.value,
     inclination: o.inclination.value * DEG,
-    period: o.period.value,
+    ...(o.period ? { period: o.period.value } : {}),
     radius: o.radius.value,
     ...(kind ? { kind } : {}),
   };

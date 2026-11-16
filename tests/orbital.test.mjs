@@ -126,7 +126,12 @@ for (const f of orbiters) {
     const s = injectionState(f.plan, siteFrame(f.site), frame);
     const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
     assert.ok(Math.abs(m.i / DEG - orbit.inclination.value) < 1e-6, 'inclination');
-    assert.ok(Math.abs(periodsOf(m.a, m.e, m.i, m.argp).nodal - orbit.period.value) < 1e-3, 'the period, node to node');
+    if (orbit.period) assert.ok(Math.abs(periodsOf(m.a, m.e, m.i, m.argp).nodal - orbit.period.value) < 1e-3, 'the period, node to node');
+    else
+      assert.ok(
+        Math.abs(m.a - orbit.radius.value - (orbit.perigee.value + orbit.apogee.value) / 2) < 1,
+        'no period: the axis is the heights’ mean over the ball',
+      );
     assert.ok(Math.abs(2 * m.a * m.e - (orbit.apogee.value - orbit.perigee.value)) < 1, 'the heights apart');
     // how far the Sun stands out of the orbit's plane: it sets how much of a Sun-aimed push is across the track
     const jd = julianDate(f.launch) + coast.on / 86_400;
@@ -290,4 +295,22 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
     Object.keys(plain.results).some((k) => k.includes('.')),
     false,
   );
+});
+
+test('a record with no period flies the mean orbit of its heights over its ball, and its period is that orbit’s, derived', () => {
+  const f = orbiters.find((x) => x.id === 'ussr/vostok/vostok-1');
+  const o = structuredClone(recordFrom(f));
+  delete o.orbit.period;
+  o.checks = o.checks.filter((c) => c.id !== 'period');
+  const plan = vostokPlan(o);
+  assert.equal(plan.record.orbit.period, undefined);
+  assert.equal('period' in publishedOf(plan.record.orbit), false);
+  const run = fly(f, o);
+  // the period the coast reports is the nodal one of the mean orbit the heights give over the record's ball
+  const mean = meanOrbitOf(publishedOf(plan.record.orbit));
+  assert.equal(mean.a, o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2);
+  assert.ok(Math.abs(run.results.period - mean.periods.nodal) < 0.05, `${run.results.period} against ${mean.periods.nodal}`);
+  // and it goes round and comes down
+  assert.ok(Number.isFinite(run.results.ejectionAt));
+  assert.ok(Math.abs(run.results.apogee - o.orbit.apogee.value) < 15_000, `apogee ${run.results.apogee}`);
 });

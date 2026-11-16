@@ -368,13 +368,17 @@ export type CheckWhen =
 
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
-  /** The orbit as published: heights above a ball of `radius`, inclination, period; the injection on it. */
+  /**
+   * The orbit as published: heights above a ball of `radius`, inclination, period; the injection on it. Without a period
+   * (none traceable), the mean orbit's axis is the heights' mean over `radius` (world/meanelements.ts `meanOrbitOf`), and
+   * its period is the derived nodal one the coast reports (`OrbitResults.period`).
+   */
   orbit?: {
     radius: Measure;
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;
-    period: Measure;
+    period?: Measure;
     injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };
     /** The spacecraft in orbit, kg. */
     mass: Measure;

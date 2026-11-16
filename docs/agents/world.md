@@ -161,7 +161,9 @@ from its ascent: 88.66 min against the published 88.46). The theory is Kozai's f
 The conventions, each a choice (`CONVENTION`): the period is nodal, **estimated** (no source states it; TASS's equator
 crossings for Vostok 2 are four of its periods apart, and NII-4's ballistics group found the period from tracked passes);
 the heights are over a ball of 6,371 km where no period is given, **estimated**; the state that results is **derived**,
-its `method` saying how. Nothing is fitted to a landing.
+its `method` saying how. Nothing is fitted to a landing. A flight record may leave the period out where none is traceable
+(`VostokRecord.orbit.period` is optional; src/sim/orbital.ts `publishedOf` then passes none): the axis is the heights' mean
+over the record's `radius`, and the period the coast reports is that mean orbit's nodal one, **derived**.
 
 What holds it (tests/meanelements.test.mjs): eq. 12 is the average of eq. 10 to 1e-10 of each term; on a circle the
 radius and the argument of latitude are Kozai's eq. 13 (his second derivation) to 19 and 10 m, J2 squared; Jason-3's
