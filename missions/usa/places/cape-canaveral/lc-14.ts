@@ -31,6 +31,14 @@ export const LC14: SiteDef = {
       'about 2 m above mean sea level, as at Complex 5, and mean sea level at the Cape is about 29 m below the WGS 84 ellipsoid ' +
       '(EGM96, to the nearest metre). The ground’s own height there has not been read. It moves the Sun by nothing that can be measured',
   },
+  grade: {
+    value: -22 * 0.3048,
+    confidence: 'derived',
+    source:
+      'the deck stands 22 ft over the ground: the ramp "gradually increased to a height of 22\' over the northern six bays" and the stand ' +
+      'is the bay north of them, its deck the ramp’s top (HAER FL-8-7, p. 20: documented; that the deck is at the ramp’s top is derived). ' +
+      'The NHL nomination (Item 7, p. 9) rounds it to "a 20-foot ramp"; the Cape Canaveral Space Force Museum gives 22 ft',
+  },
   // Eastern Standard Time: Florida kept no daylight time in February 1962, and the reports of the flights give their times in EST
   zone: { name: 'EST', utcOffset: -5 },
   seaLevel: {

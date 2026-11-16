@@ -43,4 +43,12 @@ export const LC5: SiteDef = {
       'cherry picker’s truck are (TM X-53107 Figure 7-6; liftoff photograph 6100884). It is not the way the capsule’s hatch faced: the ' +
       'vehicle stood turned to its azimuth on the launcher, the hatch 55 or 60 degrees round from here (lc-5.md, "Which way round the vehicle stood")',
   },
+  grade: {
+    value: -0.12,
+    confidence: 'estimated',
+    source:
+      'the hardstand and the roads were laid at grade (the photographs of July 1961: lc-5.md, "The land"), so the sand is a hand’s ' +
+      'breadth under the concrete: 12 cm is chosen, more than the 5 to 6 cm at which parallel faces seen from across the site ' +
+      'flicker (docs/agents/rendering.md). lc5/site.py GROUND is the same in feet, and the neighbouring complexes are built on it: change them together',
+  },
 };

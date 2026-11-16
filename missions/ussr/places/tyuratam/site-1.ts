@@ -65,6 +65,14 @@ export const SITE1: SiteDef = {
     },
     width: { value: 33.5, confidence: 'documented', source: 'the retaining walls 110 ft apart (PIC/JR-2/61 Figure 1, measured)' },
   },
+  grade: {
+    value: -0.12,
+    confidence: 'estimated',
+    source:
+      'the deck’s level is the model’s zero, and the tracks and the ground south of them come onto the platform at that level ' +
+      '(site-1.md, "The lie of the land"); the land a hand’s breadth under it, 12 cm, is chosen so that no face lies close above ' +
+      'the terrain (docs/agents/rendering.md). site1/site.py GROUND is the same figure: change both together',
+  },
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },

@@ -282,7 +282,7 @@ export class Stage {
   /** Its levels of detail, chosen building by building (lod.ts): `surroundings` is its level 0. */
   private scenery: Scenery | null = null;
   /** What chooses its own levels of detail beyond the models: the place round the pad, and the setting's scenery round that (lod.ts `Levelled`). */
-  /** The terrain's height under the models' zero (the place's grade: backdrops.ts `Setting.grade`). */
+  /** The terrain's height under the models' zero (the pad's grade, SiteDef.grade: backdrops.ts `Setting.grade`). */
   private get grade(): number {
     return this.setting.grade ?? GROUND_Y;
   }

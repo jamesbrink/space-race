@@ -13,8 +13,6 @@ import { type Compass, compassAt } from './compass.ts';
  * has one, in its own folder (missions/<nation>/places/<place>/ground.ts), and `GROUNDS` (places.ts) names them.
  */
 export interface GroundSpec {
-  /** The land's height under the model's zero round the pad, metres (negative: the land is under it): the pads and roads at grade. */
-  grade: number;
   /** The land on a day (its season), laid out on the compass round the pad (compass.ts). */
   land(day: Day, compass: Compass): LandSpec;
   /** What grows on it on a day (its wind). */
@@ -71,7 +69,7 @@ export interface Place {
   /** How far from the pad there is something to walk to, and how far away the furthest thing placed is, metres (Setting). */
   reach: number;
   horizon: number;
-  /** The land's height under the model's zero (GroundSpec.grade). */
+  /** The land's height under the model's zero: the origin pad's (SiteDef.grade). */
   grade: number;
   /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts). */
   tone?: THREE.Color;
@@ -82,11 +80,12 @@ export interface Place {
 /**
  * Lay a place's ground out round `origin`, one of its pads, under `day`'s sky: the haze installed for the day (air.ts),
  * the land and its plants on the compass round the pad, what stands on it, and the whole turned to lie round the pad
- * model, whose frame is at an angle to the compass (its +X on the site's bearing).
+ * model, whose frame is at an angle to the compass (its +X on the site's bearing), and set at the pad's grade under it.
  */
 export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, origin: SiteDef, day: Day): Place {
   const compass = compassAt(origin);
-  const groundY = spec.grade;
+  // (the pad's own: where its model's zero stands over the land, a hand's breadth at a pad laid at grade, a deck's height on a stand)
+  const groundY = origin.grade.value;
   const landSpec = spec.land(day, compass);
   // the haze lies in the lowest air, from the sea where there is one, under the cumulus, and thins upward (air.ts)
   const air: Air = { scale: day.haze, base: groundY + (landSpec.sea ?? 0), ...(day.cumulus ? { clouds: day.cumulus } : {}), day };

@@ -7,6 +7,7 @@ import { stood } from '../../../../src/viewer/scenery/ground.ts';
 import { Kit } from '../../../../src/viewer/scenery/kit.ts';
 import { LC14 } from './lc-14.ts';
 import { LC19 } from './lc-19.ts';
+import { LC5 } from './lc-5.ts';
 
 /**
  * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
@@ -494,8 +495,11 @@ const WORN_BY_NEIGHBOURS = [
   'shell-gravel',
   'window-void',
 ];
-/** How far above the terrain a model's zero stands: the pad's surface over the ground round it (ground.ts: `grade`; lc5/site.py: GROUND). */
-const PAD_OVER_GROUND = 0.12;
+/**
+ * How far above the terrain a near complex's zero stands: the pad's surface over the ground round it, Complex 5's, which
+ * their models are built on (complexes/site.py takes lc5/site.py's GROUND; lc-5.ts `grade`).
+ */
+const PAD_OVER_GROUND = -LC5.grade.value;
 
 /**
  * The near complexes, each where it stood on its own ground and at the level of detail its size on screen calls for

@@ -60,7 +60,7 @@ export interface Setting {
   arrived?: () => boolean;
   /** The camera as it is about to draw, for a place that leaves out what it cannot see. */
   view?: (camera: THREE.Camera) => void;
-  /** The terrain's height under the model's zero round the pad, metres (GroundSpec.grade); left out, GROUND_Y. */
+  /** The terrain's height under the model's zero round the pad, metres (the pad's: SiteDef.grade); left out, GROUND_Y. */
   grade?: number;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
   groundAt?: (x: number, z: number) => number;
@@ -90,11 +90,11 @@ export interface Setting {
 }
 
 /**
- * Height of the terrain under the model's zero, metres, where a setting gives none of its own (`Setting.grade`: a
- * place's, GroundSpec.grade). At both places so far the pads and roads were at grade, so the sand is only a hand's
- * breadth under the concrete: 12 cm, which is more than the 5 to 6 cm at which parallel faces seen from across the site
- * began to flicker (AGENTS.md, "No flicker"). Models that stand on the ground reach down past it (site.py: FOOTING), and
- * the site's builders take it as `GROUND`: change them together.
+ * Height of the terrain under the model's zero, metres, where a setting gives none of its own (`Setting.grade`: the
+ * pad's, SiteDef.grade, on the ground; the studio and the gallery have this). At the two pads drawn so far the pads and
+ * roads were at grade, so the sand is only a hand's breadth under the concrete: 12 cm, which is more than the 5 to 6 cm
+ * at which parallel faces seen from across the site began to flicker (AGENTS.md, "No flicker"). Models that stand on
+ * the ground reach down past it (site.py: FOOTING), and the site's builders take it as `GROUND`: change them together.
  */
 export const GROUND_Y = -0.12;
 

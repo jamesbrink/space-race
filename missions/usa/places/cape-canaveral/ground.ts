@@ -81,7 +81,7 @@ const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${
  * and a flight that has none stands under the place's default (place.ts), which is an estimate.
  */
 
-/** The sea's surface, metres above the ground at the complex (`grade`, below): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
+/** The sea's surface, metres above the ground at the complex (under the pad by its `grade`: lc-5.ts): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
 const SEA = -2.9;
 
 /**
@@ -728,9 +728,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
 
 /** The Cape, as viewer/scenery/ground.ts lays it out round any of its pads. */
 export const CAPE_GROUND: GroundSpec = {
-  // the pads and roads were at grade, so the sand is a hand's breadth under the concrete (ground.ts: `grade`;
-  // lc5/site.py: GROUND, the same in feet: change both together)
-  grade: -0.12,
+  // (the land is laid at the origin pad's grade under its model's zero: lc-5.ts, lc-14.ts, lc-19.ts `grade`)
   land: (day, compass) => landSpec(compass, day.date),
   flora: floraSpec,
   reach: 2000, // the beach is 1.4 to 1.8 km east of pad 5: walkable

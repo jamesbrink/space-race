@@ -34,6 +34,15 @@ export const LC19: SiteDef = {
       'been read), and mean sea level at the Cape about 29 m below the WGS 84 ellipsoid (EGM96, to the nearest metre). It moves the ' +
       'Sun by nothing that can be measured',
   },
+  grade: {
+    value: -3 * 10 * 0.3048,
+    confidence: 'estimated',
+    source:
+      'the stand was "65 feet wide, 450 feet long, and three stories high" (the NHL nomination of Cape Canaveral AFS, Item 7, p. 9: ' +
+      'documented); a storey’s height is not given, and 10 ft is taken, so 30 ft. With the deck about 7 m above mean sea level (`height`) ' +
+      'that would put the ground under the sea, which it is not (about 2 m above it at Complex 5): one of the two is wrong, and neither ' +
+      'has been read. The complex’s drawings (issue #25: not cleared for release) would settle both',
+  },
   // Eastern Standard Time: Florida kept no daylight time in March 1965, and the programme's tables give the launch in e.s.t.
   // (NASA SP-4002, Appendix 1, Table A)
   zone: { name: 'EST', utcOffset: -5 },

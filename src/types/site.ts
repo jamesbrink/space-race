@@ -22,6 +22,14 @@ export interface SiteDef {
   seaLevel: Measure;
   /** The bearing of the site frame's +X, degrees clockwise from true north. +Y is up; +Z bears 90 degrees more. */
   bearingX: Measure;
+  /**
+   * Where the pad's model frame sits on the land: the land's height under the model's zero, metres (negative: the land is
+   * under it). A hand's breadth where the pad was laid at grade (Complex 5, Site 1); the deck's height where it stands
+   * up on a stand (Complex 14's 22 ft). The place's ground is laid at it (viewer/scenery/ground.ts), and the near plane,
+   * the walker and the eye's height over the ground read it from there (backdrops.ts `Setting.grade`); a neighbour's
+   * model is stood on the land by its own. The pad's builders take the same figure (`GROUND` in its site.py): change both together.
+   */
+  grade: Measure;
   /** The civil time kept there on the day: what its clocks were called, and their hours ahead of UTC (negative west of Greenwich). */
   zone: { name: string; utcOffset: number };
   /**

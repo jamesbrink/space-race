@@ -798,8 +798,6 @@ const NEIGHBOURS: SiteAround[] = [
  * Cape's ground does with Complex 5's (missions/usa/places/cape-canaveral/ground.ts: `pad5`).
  */
 export const TYURATAM_GROUND: GroundSpec = {
-  // the deck's level is the model's zero, and the land round it a hand's breadth under (site1/site.py: GROUND)
-  grade: -0.12,
   land: (day, compass) => {
     if (compass.origin !== SITE1) throw new Error(`the steppe is drawn round Site 1 alone, not ${compass.origin.name}`);
     // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)

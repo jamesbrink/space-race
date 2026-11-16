@@ -78,8 +78,8 @@ different one per pixel per frame. Three things stop it, and all three must stay
   off), and the site far below is drawn in steps of centimetres to decimetres.
 - **Nothing lies close above the terrain.** Depth interpolated across a triangle kilometres long
   is coarse: concrete 6 cm above such terrain flickered. So the terrain is finely divided (`land.ts`:
-  half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (the place's `grade`, GroundSpec, and `GROUND` in
-  the site's builders: the pads and roads were at grade), and anything standing on the ground goes down past that (`FOOTING`
+  half-metre cells near the eye, never more than 64 m), it sits 12 cm below the pad's surface (the pad's `grade`, SiteDef, and `GROUND` in
+  the site's builders: the pads and roads were at grade; a pad on a stand has its deck's height there instead), and anything standing on the ground goes down past that (`FOOTING`
   in `site.py`). Change the two together and rebuild the pad and the place.
 - **A mesh without a `normal` attribute is flat-shaded.** Three decides that by the geometry, whatever the shader
   writes: the land's patches have none, so each triangle is lit by its own plane unless the site's `LandSpec` asks
@@ -618,8 +618,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   A region is its place's (`PlaceDef.region`, with the bounds, month and `banks` the surface bake reads in
   `region.surface`: pale sand under clear water): the sea's colour is worked from depth (`globeWater`), bright only there.
 - **A place's ground is data, laid round the flight's pad.** Each place's `ground.ts` (`GroundSpec`) gives its land,
-  plants, what stood round it (dated: drawn only on a day it stood) and its grade; `groundPlace` lays it on the compass
-  round whichever pad is the origin (`compass.ts`: latitude and longitude through `frames.ts`) and the setting is kept
+  plants and what stood round it (dated: drawn only on a day it stood); `groundPlace` lays it on the compass
+  round whichever pad is the origin, at that pad's `grade` under its model's zero (SiteDef: a hand's breadth at a pad laid
+  at grade, the deck's 22 ft at Complex 14) (`compass.ts`: latitude and longitude through `frames.ts`) and the setting is kept
   by place, pad and day. The globe leaves each place's ground its square (`Hole`, one for each ground there is, each at
   its own height): the site's first.
 - **The weather is a day's, and the day is the flight's.** A flight's `weather` (types.ts: `DayWeather`; a
