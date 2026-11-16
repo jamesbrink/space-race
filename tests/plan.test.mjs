@@ -100,6 +100,9 @@ for (const f of orbital) {
     // every instant of the record is either an event's or a mark
     const instants = new Set([...plan.events.flatMap((e) => (e.at ? [e.at.value] : [])), ...plan.record.marks.map((m) => m.at.value)]);
     for (const e of o.events) assert.ok(instants.has(e.at.value), `${e.id} at ${e.at.value} s`);
+    // ...and by its id: each record event is the record of an event the plan sets off, or a mark (none is lost at an instant it shares)
+    const named = new Set([...plan.events.flatMap((e) => (e.record ? [e.record.id] : [])), ...plan.record.marks.map((m) => m.id)]);
+    for (const e of o.events) assert.ok(named.has(e.id), `the record's ${e.id} is in the plan`);
     assert.equal(eventOf(plan, 'retro-on').at, o.retro.on);
     assert.equal(eventOf(plan, 'retro-off').at, o.retro.off);
     assert.equal(byId(c.engines, 'braking').flown, o.retro.deltaV);
