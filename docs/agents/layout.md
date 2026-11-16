@@ -268,6 +268,7 @@ tools/
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   flicker-test.mjs                    browser check for z-fighting
+  flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
