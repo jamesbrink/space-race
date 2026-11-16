@@ -77,7 +77,10 @@ for (const f of columned) {
     if (f.plan.winds) assert.deepEqual(sky.blow(10_000), blowOf(f.plan.winds)(10_000));
     else {
       const mid = levels[Math.floor(levels.length / 2)];
-      assert.deepEqual(sky.blow(mid.height.value), windParts(mid.wind), `${f.id}: the column's wind at ${mid.height.value} m`);
+      // (to a nanometre a second: read at a level, the interpolation can round in the last bit)
+      const [blown, given] = [sky.blow(mid.height.value), windParts(mid.wind)];
+      for (const i of [0, 1])
+        assert.ok(Math.abs(blown[i] - given[i]) < 1e-9, `${f.id}: the column's wind at ${mid.height.value} m: ${blown} against ${given}`);
       assert.deepEqual(sky.blow(COLUMN_EASED + 1), [0, 0]);
     }
   });

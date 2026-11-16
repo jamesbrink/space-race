@@ -82,24 +82,26 @@ in each moves.
 
 ## What the run gives
 
-Tolerances were set before anything was flown (the record's own commit flew nothing). On the type's ascent, then the
+Tolerances were set before anything was flown (the record's own commit flew nothing). The ascent flies the day's air over
+the pad (ERA5's column at the hour, `aloft.ts`, and the 1976 standard above it; the coast and the descent the standard and
+calm). On the type's ascent, then the
 published orbit from where it left the spacecraft (the handover the scene shows), then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Third stage cut off | 687 s ± 3 | 676.35 s | **miss** (−10.65 s) | cut on Vostok 1's integrator setting, as Vostok 1's was: this flight's setting or start differed |
-| Greatest load going up | 6 to 7 g (by feel) ± 1 | 4.72 g | **miss** (−1.78 g) | the type's most, on the first stage; Titov felt no more than five |
-| Perigee at the last cutoff | 180.7 km ± 5 | −205 km | **miss** | the type's ascent falls short, as Vostok 1's and 2's (135 m/s slow) |
+| Greatest load going up | 6 to 7 g (by feel) ± 1 | 4.71 g | **miss** (−1.78 g) | the type's most, on the first stage; Titov felt no more than five |
+| Perigee at the last cutoff | 180.7 km ± 5 | −265 km | **miss** | the type's ascent falls short, as Vostok 1's and 2's (155 m/s slow) |
 | Apogee at the last cutoff | 234.6 km ± 10 | 180 km | **miss** | the same |
-| Inclination | 64.98° ± 0.05 | 64.99° | yes | on Vostok 1's aiming azimuth |
-| Period at the last cutoff | 88.33 min ± 15 s | 84.10 min | **miss** | the same as the perigee |
+| Inclination | 64.98° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
+| Period at the last cutoff | 88.33 min ± 15 s | 83.51 min | **miss** | the same as the perigee |
 | Period, node to node, of the orbit begun | 88.33 min ± 2 s | 88.33 | yes | not independent: the orbit is read with it |
-| Apogee as flown round | 234.6 km ± 5 | 218.8 km | **miss** (−15.8 km) | 88.33 min and the heights are not one determination; and where the type's ascent leaves the ship |
-| Greatest load in the entry | 8 to 9 g ± 2 | 8.80 g | yes | |
-| Landing across the track | 0 ± 25 km | −227 km | **miss** | the burn in the wrong place on the orbit (below) |
-| Landing along the track | 0 ± 100 km | −2,480 km | **miss** | the period over 64 revolutions (below) |
-| Descent module down | 09:39:59 ± 60 s | 09:45:35 | **miss** (+336 s) | it comes down 5.7 minutes before him where the record has twelve |
-| Nikolayev down | 09:52 ± 2 min | 09:51:17 | yes | not independent: the burn is derived from it |
+| Apogee as flown round | 234.6 km ± 5 | 219.8 km | **miss** (−14.8 km) | 88.33 min and the heights are not one determination; and where the type's ascent leaves the ship |
+| Greatest load in the entry | 8 to 9 g ± 2 | 8.81 g | yes | |
+| Landing across the track | 0 ± 25 km | −225 km | **miss** | the burn in the wrong place on the orbit (below) |
+| Landing along the track | 0 ± 100 km | −2,441 km | **miss** | the period over 64 revolutions (below) |
+| Descent module down | 09:39:59 ± 60 s | 09:45:40 | **miss** (+341 s) | it comes down 5.7 minutes before him where the record has twelve |
+| Nikolayev down | 09:52 ± 2 min | 09:51:21 | yes | not independent: the burn is derived from it |
 
 The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −9.5 km), the entry's 8.79 g
 (holds), and down 2,861 km short and 325 km across (misses).

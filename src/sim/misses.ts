@@ -77,7 +77,7 @@ const PHASE =
 /** Vostok 3's ascent is the type's but for the third stage's cutoff, which Kamanin heard counted. */
 const SHORT_V3 =
   'Vostok 3’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no cyclogram or flight task of E103-23 was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
-  'at the last cutoff it is level at the planned 180 km with 7,681 m/s where 180.7 by 234.6 km needs some 7,817';
+  'at the last cutoff it is level at the planned 180 km with 7,662 m/s where 180.7 by 234.6 km needs some 7,817';
 /** Vostok 3's four days: where the ship is at the burn is the published period carried round 64 times. */
 const PERIOD_64 =
   'Over 64 revolutions the published period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and the period is given to a hundredth of a minute (300 km). ' +
@@ -334,26 +334,26 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       firstG: {
         by: -1.78,
         slack: 0.05,
-        why: 'The most the type’s ascent gives is 4.72 g, on the first stage before the strap-ons throttle back (3.98 on the core alone, 0.91 on the last). Nikolayev’s 6 to 7 g is by feel and said of the whole ascent; Titov felt no more than five on the same vehicle (Vostok 2’s check, which holds). Either the feeling or the type’s thrust and masses: not adjusted',
+        why: 'The most the type’s ascent gives is 4.71 g, on the first stage before the strap-ons throttle back (3.98 on the core alone, 0.91 on the last). Nikolayev’s 6 to 7 g is by feel and said of the whole ascent; Titov felt no more than five on the same vehicle (Vostok 2’s check, which holds). Either the feeling or the type’s thrust and masses: not adjusted',
       },
-      perigee: { by: -385_935, slack: 2_000, why: SHORT_V3 },
+      perigee: { by: -445_353, slack: 2_000, why: SHORT_V3 },
       apogee: { by: -54_600, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_V3}` },
-      period: { by: -253.99, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V3}` },
+      period: { by: -289.31, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V3}` },
     },
     shown: {
       apogee: {
-        by: -15_824,
+        by: -14_834,
         slack: 500,
-        why: `${PUBLISHED}. Flown round from there its apogee is 218.8 km: the coast’s own miss (9.5 km under, on 88.33 min) and the place on the orbit the type’s ascent leaves it at`,
+        why: `${PUBLISHED}. Flown round from there its apogee is 219.8 km: the coast’s own miss (9.5 km under, on 88.33 min) and the place on the orbit the type’s ascent leaves it at`,
       },
-      crossTrack: { by: -227_047, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
-      alongTrack: { by: -2_479_990, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      crossTrack: { by: -224_516, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      alongTrack: { by: -2_440_761, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
     },
     descent: {
       'module.at': {
-        by: 336.1,
+        by: 341.0,
         slack: 10,
-        why: 'The module comes down at 09:45:35, 5.7 minutes before the pilot (who holds, 43 s early); the record has twelve minutes between them (09:39:59 and 09:52). From 7 km the module takes six minutes on the type’s three parachutes, as on Vostok 1 (its module five minutes before Gagarin). What put this flight’s down so long before him is not in anything read: not adjusted',
+        why: 'The module comes down at 09:45:40, 5.7 minutes before the pilot (who holds, 39 s early); the record has twelve minutes between them (09:39:59 and 09:52). From 7 km the module takes six minutes on the type’s three parachutes, as on Vostok 1 (its module five minutes before Gagarin). What put this flight’s down so long before him is not in anything read: not adjusted',
       },
     },
   }),
