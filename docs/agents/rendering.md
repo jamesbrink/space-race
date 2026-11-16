@@ -742,7 +742,18 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   - **The air over the pad is a day's too.** `DayWeather.aloft` is a column (pressure, height, temperature and wind at
     each level) and `DayWeather.hours` the surface hour by hour round liftoff: a sounding from the record where one has
     been read (`documented`), else ERA5's at the hour nearest liftoff (`derived`: `aloft.ts` beside weather.ts, baked by
-    `pnpm era5:aloft`). They are for the simulator (world.md, "The air aloft"); nothing drawn reads them yet.
+    `pnpm era5:aloft`). They are for the simulator (world.md, "The air aloft"), and the hours move the wind drawn.
+  - **The wind follows the clock through the day's hours** (day.ts `windsOf`, given the clock's instant by `Setting.at`
+    every frame). The record's wind is the liftoff hour's; the hours' wind (ERA5's cell, not the station) is turned and
+    scaled once into it at liftoff, and the wind drawn at any instant is the hours' then, so turned and scaled: the
+    plants lean in it (flora.ts `blow`, through `breeze`), the low cloud drifts on its own wind turned alike
+    (`PlaceAir.blow`), and the sea's waves and glint are its (`Globe.seaWind`: `uGlobeSea`, a uniform, not text, since it
+    changes by the frame, each figure rounded as the text had it). It is a function of the instant, straight between the
+    hours, so it never steps as the clock runs and a jump of the clock is shown at once; at liftoff it is the record's to
+    the bit, so the picture at T-0 is what it was. Outside the hours the nearest holds (`Setting.blowing.held`). The hours
+    give no cloud: the cover, the decks and the high cloud stay the record's all day, and the map's streets lie along the
+    liftoff hour's wind. `pnpm test:winds` reads the plants', the cloud's and the sea's uniforms at the first hour,
+    liftoff and the last for every flight with hours, against day.ts worked outside the page.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
   the march's bake, the far cover (`farCumulus`) and the globe's shadows (`globeShade`): change one, change
   all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's

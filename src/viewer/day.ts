@@ -11,8 +11,9 @@
  * No three.js here: tools/globe-weather.mjs and the tests run it.
  */
 import type { DayWeather, SiteDef } from '../types.ts';
-import { aloftAt } from '../world/aloft.ts';
+import { aloftAt, hourAt } from '../world/aloft.ts';
 import { DEG } from '../world/frames.ts';
+import { julianDate } from '../world/time.ts';
 
 /** The cumulus as air.ts takes them (its `Clouds`): bases and depth in metres, cover 0 to 1, a cloud's breadth, the wind toward (the scene's x and z), m/s. */
 export interface Cumulus {
@@ -183,10 +184,80 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
  * The wind at the ground as the plants take it (flora.ts: the bearing it blows toward, and a strength that is 1 for
  * the breeze their sway was drawn in, the 10 knots of 5 May 1961), up to twice that.
  */
-export const breeze = (day: Day): { toward: number; strength: number } => ({
+export const breeze = (day: Pick<Day, 'wind'>): { toward: number; strength: number } => ({
   toward: day.wind.toward,
   strength: Math.min(2, day.wind.speed / 5.1),
 });
+
+/** The wind at an instant of the day, as drawn (`windsOf`). */
+export interface Blowing {
+  /** At the ground: the bearing it blows toward, radians clockwise from north, and its speed, m/s (as `Day.wind`). */
+  wind: { toward: number; speed: number };
+  /** The low cloud's, toward (the scene's x and z), m/s (as `Cumulus.wind`); null on a day with no low cloud. */
+  cloud: [number, number] | null;
+  /** Outside the recorded hours the hour nearest is held: which side of them the instant is; null within them, or on a day with none. */
+  held: 'before' | 'after' | null;
+}
+
+const UNIX_EPOCH = 2_440_587.5;
+
+/**
+ * The wind through the day as drawn, at a Julian date (UT, the clock's `jdUT`). The record's wind is for the hour of
+ * liftoff (`DayWeather.wind`, and the low cloud's `low.wind`); the surface's hours (`DayWeather.hours`, ERA5's 10 m wind
+ * between the four cells round the pad, world/aloft.ts `hourAt`, straight between the hours) say how it changed
+ * through the day. Their own figure is a quarter-degree cell's, not the station's: at Freedom 7's liftoff ERA5 had
+ * 3.7 m/s from 099 where the Skid Strip had 5.1 from 090, and at Vostok 1's 3.6 from 235 where Tyuratam had 2.1 from
+ * 140. So it is their change that is taken, not their value: the hours' wind is turned and scaled once, by what turns
+ * and scales theirs at liftoff into the record's, and the wind drawn at any instant is theirs then, so turned and
+ * scaled. The record's wind turns as theirs turns and strengthens as theirs strengthens; at liftoff it is the record's
+ * exactly, and it follows the clock with no step (it is the hours, straight between them, times one number). Where the
+ * hours were all but calm at liftoff (under 1 m/s), that would multiply their every gust, so their change is added
+ * instead. Outside the hours the nearest is held, and `held` says so. The low cloud's wind is turned and scaled alike
+ * (estimated: the hours are at 10 m, the bases hundreds of metres up). The hours give no cloud, so the cover is the
+ * record's all day. Derived from the hours; `Day.wind` and `Cumulus.wind` are the liftoff hour's.
+ */
+export function windsOf(when: { site: SiteDef; launch: string; weather?: DayWeather }, day: Day): (jdUT: number) => Blowing {
+  const w = weatherOf(when);
+  const hours = w.hours ?? [];
+  const times = hours.map((h) => Date.parse(h.at));
+  const first = Math.min(...times);
+  const last = Math.max(...times);
+  // (the instant as the clock has it: its epoch is the launch as a Julian date, so at T-0 this is the same number twice)
+  const msOf = (jd: number): number => Math.min(last, Math.max(first, (jd - UNIX_EPOCH) * DAY_MS));
+  const zero = hours.length ? hourAt(hours, msOf(julianDate(when.launch)))?.wind : null;
+  const record = { wind: day.wind, cloud: day.cumulus?.wind ?? null };
+  if (!zero) return () => ({ ...record, held: null });
+  const bearing = when.site.bearingX.value * DEG;
+  const ground = blowing(w.wind.from.value, w.wind.speed.value);
+  const low = w.low ? blowing(w.low.wind.from.value, w.low.wind.speed.value) : null;
+  // what takes the hours' wind at liftoff to the record's, as a complex number (east the real part, north the imaginary)
+  const calm = Math.hypot(zero[0], zero[1]) < 1;
+  const turn = (to: readonly [number, number]): [number, number] => {
+    const h = zero[0] * zero[0] + zero[1] * zero[1];
+    return [(to[0] * zero[0] + to[1] * zero[1]) / h, (to[1] * zero[0] - to[0] * zero[1]) / h];
+  };
+  const groundTurn = calm ? null : turn(ground);
+  const lowTurn = calm || !low ? null : turn(low);
+  const drawn = (now: readonly [number, number], k: [number, number] | null, own: readonly [number, number]): [number, number] =>
+    k ? [k[0] * now[0] - k[1] * now[1], k[0] * now[1] + k[1] * now[0]] : [own[0] + now[0] - zero[0], own[1] + now[1] - zero[1]];
+  return (jdUT) => {
+    const ms = (jdUT - UNIX_EPOCH) * DAY_MS;
+    const held = ms < first ? 'before' : ms > last ? 'after' : null;
+    const now = hourAt(hours, msOf(jdUT))?.wind ?? zero;
+    if (now[0] === zero[0] && now[1] === zero[1]) return { ...record, held };
+    const [e, n] = drawn(now, groundTurn, ground);
+    const cloud = low && drawn(now, lowTurn, low);
+    return {
+      wind: { toward: Math.atan2(e, n), speed: Math.hypot(e, n) },
+      // (east and north to the scene's x and z, as `dayOf` turns the cloud's)
+      cloud: cloud && [
+        cloud[0] * Math.sin(bearing) + cloud[1] * Math.cos(bearing),
+        cloud[0] * Math.cos(bearing) - cloud[1] * Math.sin(bearing),
+      ],
+      held,
+    };
+  };
+}
 
 /**
  * How far from a station its report of a layer is taken to hold, metres: an observer judges how much of the sky is

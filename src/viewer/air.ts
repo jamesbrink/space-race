@@ -133,9 +133,22 @@ export class PlaceAir {
   private x = 0;
   private z = 0;
   private rise = 0;
+  /** The wind the clouds drift on now (the scene's x and z, m/s): the day's at liftoff until the hour's is given (`blow`). */
+  private wind: readonly [number, number];
 
   constructor(air: Air) {
     this.air = air;
+    this.wind = air.clouds?.wind ?? [0, 0];
+  }
+
+  /** The low cloud's wind at the clock's hour (day.ts `windsOf`): what they drift on from now. */
+  blow(wind: readonly [number, number] | null): void {
+    this.wind = wind ?? this.air.clouds?.wind ?? [0, 0];
+  }
+
+  /** The wind the clouds drift on now (`blow`). */
+  get drifting(): readonly [number, number] {
+    return this.wind;
   }
 
   /** Write the day into three's chunks (the text is the day's: programs.ts) and its clouds where they stand into the slots. */
@@ -146,9 +159,9 @@ export class PlaceAir {
 
   /** Move the clouds on by `dt` seconds of wind. */
   tick(dt: number): void {
-    const wind = this.air.clouds?.wind ?? [0, 0];
-    this.x += wind[0] * dt;
-    this.z += wind[1] * dt;
+    const wind = this.air.clouds ? this.wind : [0, 0];
+    this.x += wind[0]! * dt;
+    this.z += wind[1]! * dt;
     this.rise = (this.rise + 0.4 * dt) % 1024; // (the billows' noise repeats every 1,024 m: clouds.ts)
     this.put();
   }

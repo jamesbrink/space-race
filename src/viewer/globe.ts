@@ -144,7 +144,7 @@ const EARTH = EARTH_SPHERE;
  * Uniforms uGlobeMaps, uGlobeFlat (pack.ts), the colours, and the region's placings (`regionUniforms`).
  * `drawn`: the land's one tone in the cel look (in two shades), the site's country seen whole: the Cape's green unless said.
  */
-const colourGlsl = (drawn: THREE.Color, slopes: number) => /* glsl */ `
+const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
   // (packed, to leave texture units for lights: pack.ts)
   uniform samplerCube uGlobeMaps;   // red: the land's distance to the shore; green: the ice's; blue: the relief
   uniform highp sampler2DArray uGlobeFlat;   // the region's maps, each in its layer's corner: 0 near, 1 wide, 2 the surface's relief
@@ -152,6 +152,7 @@ const colourGlsl = (drawn: THREE.Color, slopes: number) => /* glsl */ `
   uniform mat3 uGlobeNearPlane, uGlobeWidePlane;   // rows: the plane's east, north and middle (world/region.ts)
   uniform vec4 uGlobeNearBox, uGlobeWideBox;   // what each covers on its plane: x0, y0, x1, y1
   uniform float uGlobeAbove;   // how far the eye has risen out of the air, 0 to 1
+  uniform vec3 uGlobeSea;   // the sea's waves at the hour's wind (seaSlopes): their slopes' mean square, that times pi, and three's roughness for it
   uniform float uGlobeSurfaced;   // how far the relief and the land's colours have come in since they arrived, 0 to 1
   uniform float uGlobeLift;   // how far the ground round the site has gone from the site's tones to the map's with the eye's height, 0 to 1
   uniform vec3 uGlobeOwn;   // the site's own ground seen whole (the Globe's tone)
@@ -280,16 +281,16 @@ const colourGlsl = (drawn: THREE.Color, slopes: number) => /* glsl */ `
     vec3 c = mix(water, ground, land);
     c = mix(c, ${vec3(ICE)}, ice);
     globeSea = 1.0 - max(land, ice);
-    rough = mix(mix(0.32, ${seaRough(slopes).toFixed(3)}, uGlobeAbove), 0.95, max(land, ice));
+    rough = mix(mix(0.32, uGlobeSea.z, uGlobeAbove), 0.95, max(land, ice));
     return c;
   }`;
 
 /**
  * GLSL: the Sun's glint on the sea (`globeGlint`) and how much of a light's own lobe it stands in for
  * (`globeGlinting`). The globe's sea and the site's own water (land.ts, through `beyond`) both use it, so the
- * highlight is one patch across where they meet. Needs uGlobeAbove (colourGlsl declares it).
+ * highlight is one patch across where they meet. Needs uGlobeAbove and uGlobeSea (colourGlsl declares them).
  */
-const glintGlsl = (slopes: number) => /* glsl */ `
+const glintGlsl = () => /* glsl */ `
   // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
   // eye, for each unit of the Sun's light falling squarely. Cox and Munk's law (1954): the waves' slopes are
   // spread as a bell (a Gaussian) whose mean square is the day's (seaSlopes), and a facet tilted to mirror the Sun into the
@@ -303,7 +304,7 @@ const glintGlsl = (slopes: number) => /* glsl */ `
     float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
     if (nl <= 0.0 || nh <= 1e-3) return 0.0;
     float nh2 = nh * nh;
-    float spread = exp(-(1.0 - nh2) / (nh2 * ${slopes.toFixed(5)})) / (${(Math.PI * slopes).toFixed(5)} * nh2 * nh2);
+    float spread = exp(-(1.0 - nh2) / (nh2 * uGlobeSea.x)) / (uGlobeSea.y * nh2 * nh2);
     float away = 1.0 - vh;
     float fresnel = 0.02 + 0.98 * away * away * away * away * away;
     float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
@@ -577,11 +578,9 @@ export class Globe {
     /** The land's tone in the cel look, from height (`colourGlsl`): the Cape's green unless said. */
     celLand: THREE.Color = LAND,
   ) {
-    // (the sea's waves are the day's wind's: seaSlopes)
-    const slopes = seaSlopes(haze?.day?.wind.speed ?? 0);
-    this.colour = colourGlsl(celLand, slopes);
-    this.glint = glintGlsl(slopes);
-    this.drawnKey = `${celLand === LAND ? '' : `:${celLand.getHexString()}`}:${slopes.toFixed(5)}`;
+    this.colour = colourGlsl(celLand);
+    this.glint = glintGlsl();
+    this.drawnKey = celLand === LAND ? '' : `:${celLand.getHexString()}`;
     this.site = site;
     this.renderer = renderer;
     this.seaLevel = seaLevel;
@@ -631,6 +630,7 @@ export class Globe {
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
+      uGlobeSea: { value: new THREE.Vector3() },
       uGlobeLift: { value: 0 },
       uGlobeOwn: { value: tone.clone() },
       uGlobeSurfaced: { value: 0 },
@@ -647,6 +647,8 @@ export class Globe {
       uGlobeSurfFade: { value: 0 },
       uGlobeBanks: { value: Array.from({ length: BANKS }, () => new THREE.Vector4(0, 0, 1, 2)) },
     };
+    // (the sea's waves are the day's wind's, and follow its hours: seaWind)
+    this.seaWind(haze?.day?.wind.speed ?? 0);
 
     const material = new THREE.MeshStandardMaterial({ name: 'globe', roughness: 1, metalness: 0 });
     this.shade(material);
@@ -882,6 +884,17 @@ export class Globe {
     // (together; one at a time on the lighter tier, where a decoded map is 64 MiB on the page's side until it is copied in)
     if (tier().globeEager) await Promise.all(meta.levels.map(each));
     else for (const level of meta.levels) await each(level);
+  }
+
+  /**
+   * The sea's waves for a wind at the ground, m/s (`seaSlopes`): the day's as the globe is made, then the hour's as the
+   * clock runs (day.ts `windsOf`). Each figure is rounded as it was when it was written into the shader's text (five
+   * places, and three for the roughness), so the day's own wind draws what it drew then.
+   */
+  seaWind(speed: number): void {
+    const slopes = seaSlopes(speed);
+    const round = (v: number, places: number) => Number(v.toFixed(places));
+    (this.uniforms.uGlobeSea!.value as THREE.Vector3).set(round(slopes, 5), round(Math.PI * slopes, 5), round(seaRough(slopes), 3));
   }
 
   /** GLSL and uniforms for the site's ground to hand over to the globe across its last stretch (land.ts: Land.meet). */

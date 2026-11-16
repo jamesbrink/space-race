@@ -217,7 +217,9 @@ ARCO-ERA5 copy through tools/era5.mjs, which the front page's tools/front-earth.
 column at any height (`aloftAt`: temperature straight in geopotential height between levels, pressure on the power law
 that meets both levels, which gives the 1976 standard back from its own layer bases to 1e-9; dry density; the wind in
 its east and north parts) and the hours at any instant (`hourAt`); outside a column it answers nothing. Each column's
-layers hold to the hypsometric equation within 2 per cent (tests/aloft.test.mjs).
+layers hold to the hypsometric equation within 2 per cent (tests/aloft.test.mjs). The drawn wind follows the hours
+with the clock (viewer/day.ts `windsOf`: the record's at liftoff, turned and scaled as the hours' is; rendering.md,
+"The wind follows the clock"), a function of the instant like the light, so it never steps either.
 
 What the simulator is to read (src/sim, not here; the note for whoever does it): the air at a height above the sea is
 `aloftAt(flight.weather.aloft, height)` where that answers, and the 1976 standard's (`atmosphere`) where it does not

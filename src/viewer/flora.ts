@@ -622,6 +622,11 @@ export class Flora {
     this.shared.time.value += dt;
   }
 
+  /** The breeze now (as `FloraSpec.wind`): the plants lean and bob in it from their next frame. */
+  blow(wind: FloraSpec['wind']): void {
+    this.shared.wind.value.set(Math.sin(wind.toward), 0, -Math.cos(wind.toward)).multiplyScalar(0.05 * wind.strength);
+  }
+
   /** The cel look: the same forms, drawn (the toon twin of each material makes them flat tones: see plantMaterial). */
   simplify(_on: boolean): void {}
 

@@ -8,7 +8,7 @@ import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
-import { dayOf, VEIL_DOWN, veilShade } from './day.ts';
+import { type Blowing, dayOf, VEIL_DOWN, veilShade, windsOf } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
@@ -97,6 +97,8 @@ export interface Setting {
   air?: PlaceAir;
   /** And its weather's map (weathermap.ts): let go with the setting. */
   weather?: WeatherMap;
+  /** The wind drawn at the instant `at` was last given (day.ts `windsOf`): the plants, the low cloud's drift and the sea's waves follow it. */
+  blowing?: Blowing;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
   simplify?: (on: boolean) => void;
   /** How soft the edge of the direct light's shadow is, in texels of its map (default 1: the Sun's, which is sharp). */
@@ -466,6 +468,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const key = [place.name, when.site.name, when.launch.slice(0, 10)].join(' ');
   const site = siteFrame(when.site);
   const today = dayOf(when);
+  // the wind through the day: the record's at liftoff, changed as its hours change (day.ts)
+  const winds = windsOf(when, today);
   // High cloud over the site, by the record: it dims the Sun for everything under it and gives most of what it takes
   // back as the sky's light (day.ts: veilShade, VEIL_DOWN). Null on a day whose record has none there.
   const veil =
@@ -631,6 +635,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   let shownAir = 1;
   let shownRung = 0;
   setting.at = (jdUT, height = 0, atOnce = false) => {
+    // the wind at the clock's instant: a function of it, so it follows the clock with no step and a jump is shown at once
+    const blowing = winds(jdUT);
+    setting.blowing = blowing;
+    here.blow(blowing);
+    globe.seaWind(blowing.wind.speed);
     const air = airAbove(height);
     globe.thin = 1 - air;
     setHazeAbove(globe.thin); // the haze seen from above, on the globe and the land round the site alike (air.ts)

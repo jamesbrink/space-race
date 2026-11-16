@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Dated, SiteDef } from '../../types.ts';
 import { PlaceAir } from '../air.ts';
-import type { Day } from '../day.ts';
+import { type Blowing, breeze, type Day } from '../day.ts';
 import { Flora, type FloraSpec } from '../flora.ts';
 import { Land, type LandSpec } from '../land.ts';
 import type { Levelled } from '../lod.ts';
@@ -53,7 +53,8 @@ export const stood = (thing: Dated, date: string): boolean => (!thing.from || th
 
 /**
  * The ground of a place on the Earth, built round one of its pads for one day: its land and what stands and grows on
- * it, which a ground setting puts under its sky (backdrops.ts). The same at any hour of that day.
+ * it, which a ground setting puts under its sky (backdrops.ts). The same at any hour of that day, but for the wind,
+ * which follows the hours (`blow`).
  */
 export interface Place {
   floor: THREE.Mesh;
@@ -68,6 +69,8 @@ export interface Place {
   arrived: () => boolean;
   /** Its air on its day: the haze, the clouds and their drift (air.ts). */
   air: PlaceAir;
+  /** The wind at the clock's hour (day.ts `windsOf`): the plants lean in it and the low cloud drifts on it. */
+  blow: (wind: Blowing) => void;
   /** The camera as it is about to draw: the ground out of its sight is not drawn. */
   view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at the grade wherever anything is built. */
@@ -128,6 +131,11 @@ export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, ori
     ...(spec.tone ? { tone: spec.tone(day) } : {}),
     ...(spec.drawn ? { drawn: spec.drawn(day) } : {}),
     air,
+    blow: (wind) => {
+      // (the plants take it as each place's flora takes the day's: day.ts `breeze`)
+      flora.blow(breeze(wind));
+      air.blow(wind.cloud);
+    },
     tick: (dt) => {
       air.tick(dt);
       land.tick(dt);
