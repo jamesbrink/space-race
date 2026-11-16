@@ -1536,7 +1536,8 @@ export const flight: Flight = {
       label: 'Blow the hatch',
       aloft:
         'The hatch is gone and the cabin is open to space. Grissom’s suit would have held him at 4.6 psi; the hatch was not made to come off in flight, ' +
-        'and what an entry with a hole in the side does to the cabin is not in anything read: the flight is flown on as if it were closed.',
+        'and what an entry with a hole in the side does to the cabin is not in anything read: the flight is flown on as if it were closed, its 23 lb still aboard. ' +
+        'Down in the sea with the hatch gone, the capsule fills at once.',
       afloat:
         'The hatch is gone, the sea comes in over the sill, and the spacecraft fills and goes down. Grissom went out through the hatch in a moment; ' +
         'the helicopter already hooked on to it could not lift it full of water, and let it go.',

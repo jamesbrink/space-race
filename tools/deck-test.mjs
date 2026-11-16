@@ -379,6 +379,46 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     )
       fail(where, 'Freedom 7 had not parted after the cutoff');
     console.log(`  ${where}: Freedom 7 let go at 100 s parted after its cutoff`);
+    // Freedom 7: the tower let go on the pad, unlit: it goes on its rockets, the clock runs, and the stack stands to be lit
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    const padTower = await page.evaluate(() => window.sr.cockpit.can('tower'));
+    if (!padTower) fail(where, 'Freedom 7: the tower is not offered on the pad');
+    await ask('tower');
+    await page.waitForTimeout(1500);
+    const pad = await page.evaluate(() => ({
+      towerAt: window.sr.cockpit.state?.towerAt ?? null,
+      held: window.sr.cockpit.state?.held,
+      t: window.sr.cockpit.state?.t ?? 0,
+    }));
+    if (pad.towerAt === null || !pad.held || !(pad.t > 0.5)) fail(where, `Freedom 7: the tower on the pad: ${JSON.stringify(pad)}`);
+    console.log(`  ${where}: Freedom 7's tower let go on the pad, the stack standing at T+${pad.t.toFixed(1)} s`);
+    // Freedom 7: retrofire with the spacecraft still on its booster, after the cutoff: fired, and said
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(145);
+    await ask('retro');
+    await run(146);
+    r = await read();
+    if (!/Retrofire on the booster/.test(r.notes)) fail(where, `Freedom 7's retrofire on the booster said nothing: "${r.notes}"`);
+    console.log(`  ${where}: Freedom 7's retrofire on the booster said so`);
+    // Liberty Bell 7: the hatch blown in flight, and down in the sea the capsule fills and goes under
+    await goTo('usa/mercury/mr-4-liberty-bell-7');
+    await page.keyboard.press('Space');
+    await run(200);
+    await ask('hatch');
+    let down = null;
+    for (let i = 0; i < 20 && !down; i++) {
+      await run(400 + 100 * i);
+      down = await page.evaluate(() => window.sr.cockpit.state?.landing?.t ?? null);
+    }
+    await run((down ?? 0) + 2);
+    const sank = await page.evaluate(() => window.sr.cockpit.run?.sinks ?? null);
+    r = await read();
+    if (!down || !sank || Math.abs(sank.at - down) > 1e-6 || !/lost with its hatch blown/.test(r.card))
+      fail(where, `Liberty Bell 7's hatch blown in flight: down ${down}, sinks ${JSON.stringify(sank)}, card "${r.card.slice(0, 80)}"`);
+    else console.log(`  ${where}: Liberty Bell 7's hatch blown at 200 s: down at T+${down.toFixed(0)} s, it fills and goes under`);
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }

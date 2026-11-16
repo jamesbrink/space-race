@@ -382,6 +382,12 @@ export class Cockpit extends Deck {
     // a frame's fraction of a tick is left for the next frame: the scene is shown at the flight's own instant
     this.show(this.run.samples[this.run.samples.length - 1]!);
     if (state.landing) {
+      // down with its hatch blown on the way: the sea comes in at once, as it came in over Liberty Bell 7's sill
+      const hatch = this.flight.flies?.hatch;
+      if (hatch && this.hatchAt <= state.landing.t && !this.run.sinks) {
+        this.run.sinks = { at: state.landing.t, under: hatch.under.value };
+        this.host.say?.(hatch.label, hatch.afloat);
+      }
       // down: the flight is over at this instant, and the clock goes on from it at life's pace for a few seconds more (`AFTER`)
       this.run.duration = state.landing.t;
       this.clock.setRate(1);
@@ -966,7 +972,8 @@ export class Cockpit extends Deck {
     });
     // the hatch, where it was blown: what it meant, and on a spacecraft afloat what the record has after
     const hatch = this.flight.flies?.hatch;
-    const blown = !hatch || this.hatchAt === Infinity ? [] : this.run.sinks ? [hatch.afloat, hatch.record] : [hatch.aloft];
+    const aloft = hatch && this.hatchAt < (this.state?.landing?.t ?? Infinity) ? [hatch.aloft] : [];
+    const blown = !hatch || this.hatchAt === Infinity ? [] : this.run.sinks ? [...aloft, hatch.afloat, hatch.record] : aloft;
     const kept = hatch && this.hatchAt === Infinity ? [`The hatch stayed on. ${hatch.record}`] : [];
     el.innerHTML = `
       <h3>${end.how}${this.run.sinks ? '; lost with its hatch blown' : ''}</h3>

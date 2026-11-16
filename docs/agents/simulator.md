@@ -549,6 +549,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
 | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
+| Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it goes and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea it fills at once and goes under (`Run.sinks`), and the card says so |
 
 Where the two kinds still differ for no physical reason: the orbital deck has no abort; it is left as it was and said
 here.
