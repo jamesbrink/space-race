@@ -255,7 +255,17 @@ the braking engine's `RetroEngine_Nozzle` has it.
   tail-off that swings each tail out, the swing before the ball leaves its socket, the vent's thrust and time. The swing
   itself (about a second) is not drawn: each leaves as it stood, with the rate and speed the swing gave it. The vent is
   taken as steady; it falls as the tank empties. The vent nozzle, the ball and the socket are nodes ("Parts in the
-  model"); nothing is drawn leaving the vent yet.
+  model"). The vent's push is flown (the strap-on's motor `oxidizer tank vent`: 3 kN for 6 s, 135° from the block's
+  +X toward its outward +Z, at 16 m from its base, all estimated) from the instant the strap-on is let go, not from when
+  the ball leaves its socket; what the simulator would need to fly it as the record has it is the tank's ullage
+  pressure at the cut, the vent's bore and how the pressure falls (so the push falls with it), and when the valve opens.
+- **The vents' and the turbines' jets are drawn, their looks estimated** (`LAUNCHER_JETS`, vostok-8k72k.ts; viewer/jets.ts):
+  each vent from its node as long and as hard as the simulator flies its push, cold vapour from an 80 mm mouth at 2.4
+  bar (estimated); each turbine's exhaust from the two duct mouths found in the ducts' geometry while its engine runs,
+  as hard as the engine works, steam at 7 kN, 8.8 kg/s and 450 m/s (lpre.de; that 8.8 kg/s at 450 m/s is only 4 kN of
+  momentum is as given) at the sea's pressure (estimated). Block E's RD-0109 has a turbine too: no node for its exhaust,
+  so nothing is drawn. Neither jet strikes anything: a vent's, before its strap-on has swung clear, goes through the
+  core's skin 48 mm away; and the gas a vent leaves behind as the strap-on falls back is not drawn.
 
 - **Every station along the core and the boosters is estimated**, as set out above. The overall
   lengths, the three diameters and the lattice's length are the only documented dimensions in it.
@@ -287,7 +297,8 @@ the braking engine's `RetroEngine_Nozzle` has it.
   at 45° to the axis, sunk in the cone; how many there were, their size and their station are
   not known to us.
 - **The turbine's exhaust is two plain ducts down the middle.** Where the real pipes run and end
-  was not read off a drawing; nothing is drawn leaving them (7 kN an engine, by lpre.de).
+  was not read off a drawing; what leaves them is drawn (7 kN an engine, by lpre.de), and goes into the middle of the
+  engine's own fire, where it is lost from the pad's camera as it is in launch film.
 - **Nothing holds it up.** On the pad the vehicle hangs by the boosters' load-bearing fittings in
   the four arms of the launch system; the pad is not built, so in the viewer it stands on nothing.
 - **Frost is one clean white**, with a lower edge that wanders by a hand's breadth or two and a

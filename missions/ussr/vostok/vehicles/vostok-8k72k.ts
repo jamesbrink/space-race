@@ -8,7 +8,7 @@
  */
 
 import type { AscentCheck, AscentRecord, Guidance, StageRecord } from '../../../../src/sim/orbital.ts';
-import type { Curve, Measure, ShedBody } from '../../../../src/types.ts';
+import type { Curve, JetDef, Measure, ShedBody } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
 import { G0 } from '../../../../src/world/bodies.ts';
 
@@ -513,3 +513,46 @@ function sheds(left: Left): ShedBody[] {
     },
   ];
 }
+
+const LPRE = 'lpre.de, the RD-107 and RD-108, citing Gakhun';
+
+/**
+ * An engine's turbine exhaust: the spent steam and oxygen of the peroxide gas generator, out through two ducts down the
+ * middle between the chambers (vostok-8k72k.md, "Parts in the model": that there are two, and where, is estimated; the
+ * viewer finds each mouth in the ducts' geometry). Its figures are lpre.de's for the engine; 8.8 kg/s at 450 m/s is
+ * 4.0 kN of the gas's momentum, so the 7 kN given takes its pressure at the mouth too, or a faster gas: as given.
+ */
+const TURBINE: Omit<JetDef, 'node' | 'when'> = {
+  gas: 'steam',
+  thrust: doc(7_000, `N: ${LPRE}: the turbine’s exhaust gives 7 kN`),
+  flow: doc(8.8, `kg/s: ${LPRE}`),
+  speed: doc(450, `m/s: ${LPRE}`),
+  exit: estimated(
+    101_325,
+    'Pa: NOT FOUND. At 450 m/s steam at some 400 °C is under the speed of sound in it (about 620 m/s), so a pipe lets it out at the pressure round it, the sea’s; as the air thins the pipe chokes and holds it near that',
+  ),
+};
+
+/**
+ * What leaves the 8K72K that is not an engine's fire (`ModelDef.jets`, viewer/jets.ts), from the nodes the model gives
+ * them (vostok-8k72k.md, "Parts in the model"): each engine's turbine exhaust while its engine runs, and each strap-on's
+ * oxygen vent from its separation, for as long and as hard as the simulator flies the vent's push (`sheds`: the
+ * strap-on's motor, whose thrust and burn the viewer reads there). The plan's ids are vehicles/vostok-plan.ts's: a
+ * stage's engine is `stage:<i>`, base first.
+ */
+export const LAUNCHER_JETS: JetDef[] = [
+  ...BOOSTERS.map(([letter]): JetDef => ({ node: `RD107_${letter}_TurbineExhaust`, ...TURBINE, when: { with: 'stage:0' } })),
+  { node: 'RD108_TurbineExhaust', ...TURBINE, when: { with: 'stage:1' } },
+  ...BOOSTERS.map(
+    ([letter]): JetDef => ({
+      node: `Booster_${letter}_Vent`,
+      gas: 'oxygen',
+      radius: estimated(0.04, 'm: half the bore, 80 mm (vostok-8k72k.md, "Parts in the model"): NOT FOUND'),
+      exit: estimated(
+        240_000,
+        'Pa: NOT FOUND. A plain nozzle lets its gas out at about half the pressure behind it; the 3 kN the simulator gives a vent through the 80 mm bore is some 4.6 bar in the tank at a thrust coefficient of 1.3, so 2.4 bar at the mouth',
+      ),
+      when: { shed: `boosters/${letter}`, motor: 'oxidizer tank vent' },
+    }),
+  ),
+];

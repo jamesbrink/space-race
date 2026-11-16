@@ -4,7 +4,7 @@ import { G0 } from '../../../../src/world/bodies.ts';
 import { vostokLights } from './cabin.ts';
 import { TDU_THRUST } from './vostok-3ka.ts';
 import { BASE } from './vostok-flies.ts';
-import { BLOCK_E, BOOSTERS, CORE, STRAP_ONS } from './vostok-8k72k.ts';
+import { BLOCK_E, BOOSTERS, CORE, LAUNCHER_JETS, STRAP_ONS } from './vostok-8k72k.ts';
 
 /**
  * A Vostok (3KA) on its 8K72K as flight data, said once: what the type gives every flight of it (Vostoks 1 to 6). How
@@ -243,6 +243,8 @@ export const vostokStack = (ship: { flight: string; parts: Part[]; seats: NonNul
   views: vostokViews(ship.parts),
   seats: ship.seats,
   cabin: ship.cabin,
+  // what leaves the launcher that is not an engine's fire: its turbines' exhausts and its strap-ons' vents (viewer/jets.ts)
+  jets: LAUNCHER_JETS,
 });
 
 const SIDDIQI = 'Siddiqi, Challenge to Apollo';
