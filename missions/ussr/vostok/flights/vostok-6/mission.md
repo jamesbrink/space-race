@@ -105,6 +105,10 @@ made by changing one thing, not an input:
   - With four times the drag area the orbit at T+50.5 h is 171.3 to 217.5 km and 88.09 min, which matches TASS's.
   - That gives back 1,370 km of the miss, not all of it.
 
+**What waits on the simulator.** The drag of a ship in orbit is being corrected (its coefficient, its area, the
+1976 table above 200 km: the faults the checks above found). That will move the coast's and the shown run's landing across and along the track, her landing's time, and the decay figures above; the figures here are as flown
+before it, and are restated with it.
+
 ## What is simplified
 
 - The ascent is Vostok 1's, not this flight's.
