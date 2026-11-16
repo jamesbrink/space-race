@@ -7,19 +7,20 @@ import { test } from 'node:test';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { decay } from '../src/sim/orbital.ts';
 import { planOfOrbital } from '../src/sim/planof.ts';
-import { byHand, flyOn, published } from '../src/sim/staged.ts';
+import { byHand, flyOn, partingAt, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/viewer/ascent.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 
 const o = flight.orbital;
+const record = planOfOrbital(o);
 const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
 const from = published(planOfOrbital(o), shown.ascent.separation);
-const fly = (plan, hands) => flyOn(planOfOrbital(plan), site, dated, sea, shown.ascent, from, hands);
+const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, hands);
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {
   const r = Math.PI / 180;
@@ -31,7 +32,7 @@ const field = (at) => {
     )
   );
 };
-const say = (name, whole, decayed, plan = o) => {
+const say = (name, whole, decayed, plan = record) => {
   const v = downVerdict(plan, whole, wall, field, decayed);
   console.log(`  # ${name}: ${v.how}. ${v.why.join(' ')} Survivable: ${v.survivable}`);
   return v;
@@ -46,7 +47,7 @@ const through = (whole, height) => {
 const off = (t) => ({ given: {}, switched: [{ t, on: false }] });
 
 test('nothing given: the record’s descent to the last bit', () => {
-  const again = fly(o, { given: {}, switched: [] });
+  const again = fly(record, { given: {}, switched: [] });
   assert.deepEqual(again.down.landed, shown.down.landed);
   assert.deepEqual(again.down.opened, shown.down.opened);
   assert.equal(again.down.ejected, shown.coast.results.ejectionAt);
@@ -57,7 +58,7 @@ test('nothing given: the record’s descent to the last bit', () => {
 });
 
 test('the sequencer off and nothing given: no ejection, no parachute, the ball with him in it into the ground', () => {
-  const w = fly(o, off(o.retro.off.value + 60));
+  const w = fly(record, off(o.retro.off.value + 60));
   assert.ok(Number.isNaN(w.down.ejected));
   assert.deepEqual(w.down.opened.module, {});
   assert.ok(w.down.landed.module.speed > 50, `${w.down.landed.module.speed.toFixed(0)} m/s`);
@@ -66,14 +67,14 @@ test('the sequencer off and nothing given: no ejection, no parachute, the ball w
 
 test('never ejected: he rides the ball down on its parachutes, given by hand at their heights, and lands at its 10 m/s', () => {
   let hands = off(o.retro.off.value + 60);
-  let w = fly(o, hands);
+  let w = fly(record, hands);
   for (const [name, h] of [
     ['pilot parachute', 7000],
     ['braking parachute', 4000],
     ['main parachute', 2500],
   ]) {
     hands = { ...hands, given: { ...hands.given, [`module/${name}`]: through(w, h) } };
-    w = fly(o, hands);
+    w = fly(record, hands);
   }
   assert.ok(Number.isNaN(w.down.ejected), 'never ejected');
   assert.ok(w.down.tracks.cover, 'the cover goes as the module’s first parachute is let out');
@@ -85,8 +86,7 @@ test('never ejected: he rides the ball down on its parachutes, given by hand at 
 });
 
 test('the modules never parted: the ball comes down with the instrument module hanging on, and its main parachute gives', () => {
-  const plan = structuredClone(o);
-  plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  const plan = partingAt(record, Number.MAX_SAFE_INTEGER);
   const w = fly(plan);
   assert.ok(Number.isNaN(w.down.parted));
   assert.ok(w.down.torn.module['main parachute'], 'twice the mass on the main');
@@ -97,14 +97,14 @@ test('the modules never parted: the ball comes down with the instrument module h
 
 test('a parachute let out too fast tears: the module’s main at 7 km', () => {
   const at = shown.coast.results.ejectionAt;
-  const w = fly(o, { given: { 'module/main parachute': at }, switched: [] });
+  const w = fly(record, { given: { 'module/main parachute': at }, switched: [] });
   assert.equal(w.down.torn.module['main parachute']?.by, 'pressure');
   say('main at 7 km', w);
 });
 
 test('ejected above the air: he meets the entry on his own, and its blast is past any man', () => {
   const at = shown.coast.results.interfaceAt;
-  const w = fly(o, { given: { ejection: at }, switched: [] });
+  const w = fly(record, { given: { ejection: at }, switched: [] });
   assert.ok(Math.abs(w.down.ejected - at) < 1e-6);
   assert.ok(w.down.peak.pilot.speed > o.descent.crew.fastest.value, 'out in the air at the speed of the entry');
   assert.equal(say('ejected at 100 km', w).survivable, false);
@@ -112,9 +112,9 @@ test('ejected above the air: he meets the entry on his own, and its blast is pas
 
 test('ejected low: the canopy has no time to fill', () => {
   // the sequencer off above 7 km, he goes at 1 km and his main canopy with him
-  let w = fly(o, off(o.retro.off.value + 60));
+  let w = fly(record, off(o.retro.off.value + 60));
   const at = through(w, 1000);
-  w = fly(o, { given: { ejection: at, 'pilot/main canopy': at }, switched: [{ t: o.retro.off.value + 60, on: false }] });
+  w = fly(record, { given: { ejection: at, 'pilot/main canopy': at }, switched: [{ t: o.retro.off.value + 60, on: false }] });
   assert.ok(w.down.landed.pilot.speed > o.descent.crew.landing.alone.value);
   assert.equal(say('ejected at 1 km', w).survivable, false);
 });
@@ -123,14 +123,14 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
   const at = o.retro.on.value;
   const s = shown.coast.samples.find((p) => p.t >= at);
   const plan = byHand(
-    o,
+    record,
     s.t,
     s.v.map((c) => c / Math.hypot(...s.v)),
   );
   const w = fly(plan);
   assert.equal(w.down, null);
   const end = w.coast.samples.at(-1);
-  const lasts = decay(planOfOrbital(plan), dated, sea, end);
+  const lasts = decay(plan, dated, sea, end);
   assert.ok(lasts > 0);
   say('forward burn from the record’s orbit', w, lasts, plan);
 });

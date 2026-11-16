@@ -271,7 +271,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
           state,
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? a.thetaTurn : null,
-          plan: o,
+          plan: planOfOrbital(o),
         }),
         start,
         where,

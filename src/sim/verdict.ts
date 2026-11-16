@@ -5,7 +5,9 @@
  */
 import type { Trajectory } from '../types.ts';
 import type { Results } from './fly.ts';
-import type { OrbitalFlight } from './orbital.ts';
+import { downOf } from './descent.ts';
+import { shipOf } from './orbital.ts';
+import type { FlightPlan } from './plan.ts';
 import type { FlownWhole } from './staged.ts';
 import type { VehicleState } from './vehicle.ts';
 
@@ -69,26 +71,27 @@ export function verdict(state: VehicleState, results: Results, trajectory: Traje
 }
 
 /**
- * How an orbital flight's descent ended for its pilot, in the same manner (sim/orbital.ts flyDown, with the flight's
- * `descent.crew` limits): where he came down and how fast, aboard the module or under his own canopy; the air he met out of
+ * How an orbital flight's descent ended for its pilot, in the same manner (sim/orbital.ts flyDown, with its plan's crew
+ * limits, `Craft.crew`): where he came down and how fast, aboard the module or under his own canopy; the air he met out of
  * it; each parachute torn or never let out; the modules parted late or never. `wall` writes an instant of the flight as the
  * clocks read it that day; `km(at)` is how far a landing is from the record's. A flight that stays up says how long its orbit
  * lasts (`decayed`, s, from orbital.ts `decay`) against the days its supplies last.
  */
 export function downVerdict(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   whole: FlownWhole,
   wall: (t: number) => string,
   km: (at: { latitude: number; longitude: number }) => number,
   decayed?: number,
 ): Verdict {
-  const d = o.descent;
-  const crew = d?.crew;
+  const d = downOf(plan);
+  const crew = plan.craft[0]!.crew;
+  const ship = shipOf(plan);
   const down = whole.down;
   const why: string[] = [];
   const days = (s: number) => (s / 86_400).toFixed(1);
   if (!down || !d || !crew) {
-    const supplies = o.supplies?.days;
+    const supplies = plan.record?.supplies;
     const lasts =
       decayed === undefined
         ? ''
@@ -125,13 +128,14 @@ export function downVerdict(
   const module = down.landed[first.id];
   const ejected = Number.isFinite(down.ejected);
   // the modules: parted in the air, in orbit, or never
-  const parted = o.entry.separation.value;
+  const parted = ship.parted;
   if (!(parted < (module?.at ?? Number.POSITIVE_INFINITY)))
     why.push(
-      `The instrument module was never parted: the ball came down with its ${(o.mass.value - o.entry.mass.value).toFixed(0)} kg hanging on (flown as weight without drag: the joined ship’s drag, and the heat that burned the cables through on the day, are not modelled).`,
+      `The instrument module was never parted: the ball came down with its ${(ship.mass - ship.entry.mass).toFixed(0)} kg hanging on (flown as weight without drag: the joined ship’s drag, and the heat that burned the cables through on the day, are not modelled).`,
     );
   else {
-    const record = o.events.find((e) => e.id === 'modules')?.at.value;
+    // (the record's instant of the parting: a plan changed by a hand keeps it, `at`)
+    const record = plan.events.find((e) => e.id === ship.parting)?.at?.value;
     if (record !== undefined && Math.abs(parted - record) > 1)
       why.push(`The modules parted at ${wall(parted)}, where the record has ${wall(record)}.`);
   }

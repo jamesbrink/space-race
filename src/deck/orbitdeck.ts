@@ -1,6 +1,8 @@
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
-import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from '../sim/orbital.ts';
+import { downOf } from '../sim/descent.ts';
+import { automatic, chuteEvent, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
+import type { FlightPlan } from '../sim/plan.ts';
 import { planOfOrbital } from '../sim/planof.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
@@ -13,8 +15,10 @@ import {
   type FlownWhole,
   flowOf,
   flyOn,
+  givenUp,
   held,
   integral,
+  partingAt,
   published,
   recordSamples,
 } from '../sim/staged.ts';
@@ -125,8 +129,8 @@ export class OrbitDeck extends Deck {
   private byPlan: number | null = null;
   private planBase: readonly LiveSample[] | null = null;
   private fired: number | null = null;
-  /** The record as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
-  private planned: OrbitalFlight | null = null;
+  /** The plan as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
+  private planned: FlightPlan | null = null;
   /** How it is flown: the two switches, and how far the hands have leaned the law. */
   private guidance = true;
   private sequence = true;
@@ -158,7 +162,7 @@ export class OrbitDeck extends Deck {
   private downMine: number | null = null;
   private lasts: { of: FlownWhole; s: number } | null = null;
   /** The plan the flight on show was last flown on (`refly`), and how many times it has been: the card is made again when it is. */
-  private flownPlan: OrbitalFlight | null = null;
+  private flownPlan: FlightPlan | null = null;
   private flownAt = 0;
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
@@ -227,7 +231,7 @@ export class OrbitDeck extends Deck {
     const where = { site, seaLevel: sea, frame: this.frame };
     const options = points ? { points } : {};
     if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
-    const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? o);
+    const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? planOfOrbital(o));
     if (start.t < this.parting && underGuidance && this.guidable) {
       const v = this.vehicleOf();
       const flown = orbitalFlown(this.flight).ascent;
@@ -262,20 +266,21 @@ export class OrbitDeck extends Deck {
     }
     if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
     // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
-    const on = plan.retro.on.value;
+    const ship = shipOf(plan);
+    const on = ship.on;
     const was =
-      start.t > on && start.t < plan.retro.off.value
+      start.t > on && start.t < ship.off
         ? (this.run?.samples as readonly LiveSample[] | undefined)?.find((x) => Math.abs(x.t - on) < 1e-6)
         : undefined;
     const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
     // (and on from the height the pilot leaves at, the descent module the run on show follows, with what the hands gave,
     // to its landing: begun part-way down, from the run's own state of it)
-    const first = plan.descent?.bodies[0];
+    const first = downOf(plan)?.bodies[0];
     const down = (this.flown ?? orbitalFlown(this.flight)).down;
     const descend = first
       ? { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } }
       : {};
-    return propagate(spacecraft(planOfOrbital(plan), this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
+    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
   }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
@@ -420,11 +425,9 @@ export class OrbitDeck extends Deck {
   private get day(): string {
     return new Date(this.flight.launch).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
   }
-  /** The record with its timer's burn given up: nothing fires until a hand does. */
-  private givenUp(): OrbitalFlight {
-    const plan = structuredClone(this.flight.orbital!);
-    plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
-    return plan;
+  /** The plan with its timer's burn given up: nothing fires until a hand does. */
+  private givenUp(): FlightPlan {
+    return givenUp(planOfOrbital(this.flight.orbital!));
   }
 
   /** The systems strip: what each stage has left, the braking engine, the lock, and what is burning. */
@@ -792,23 +795,15 @@ export class OrbitDeck extends Deck {
   }
 
   /** The coast and what follows on this flight with `plan`: from where the user's ascent left the spacecraft, or the record's whole flight. */
-  private whole(plan: OrbitalFlight, hands?: DescentHands): FlownWhole {
+  private whole(plan: FlightPlan, hands?: DescentHands): FlownWhole {
     const site = siteFrame(this.flight.site);
     const sea = this.flight.site.seaLevel.value;
     // (the record's ascent as the scene has it, then the published orbit from where it left the spacecraft: staged.ts flyWhole's 'published')
     if (this.mine === null || !this.ascended) {
       const record = orbitalFlown(this.flight);
-      return flyOn(
-        planOfOrbital(plan),
-        site,
-        this.frame,
-        sea,
-        record.ascent,
-        published(planOfOrbital(plan), record.ascent.separation),
-        hands,
-      );
+      return flyOn(plan, site, this.frame, sea, record.ascent, published(plan, record.ascent.separation), hands);
     }
-    return flyOn(planOfOrbital(plan), site, this.frame, sea, this.ascended, this.ascended.separation, hands);
+    return flyOn(plan, site, this.frame, sea, this.ascended, this.ascended.separation, hands);
   }
 
   /** What this flight gave for each of the record's checks (sim/staged.ts `held`): the ascent's only where the ascent was the user's. */
@@ -827,11 +822,11 @@ export class OrbitDeck extends Deck {
   }
 
   /** Samples the scene can show of a whole flight from `plan`: the user's ascent's own, then the coast's. */
-  private samplesOf(plan: OrbitalFlight, whole: FlownWhole): LiveSample[] {
+  private samplesOf(plan: FlightPlan, whole: FlownWhole): LiveSample[] {
     const o = this.flight.orbital!;
     const jd = julianDate(this.flight.launch);
     const centre = (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-    const all = recordSamples(planOfOrbital(plan), whole, this.frame, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
+    const all = recordSamples(plan, whole, this.frame, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
     if (this.mine === null) return all;
     const mine = (this.run!.samples as LiveSample[]).filter((x) => x.t <= this.ascended!.separation.t + 1e-9);
     return [...mine, ...all.slice(1)];
@@ -879,8 +874,8 @@ export class OrbitDeck extends Deck {
     this.turnTo(t);
     // the long axis, in the flight's frame
     const aim: Vec3 = turn(this.hand!.q, [1, 0, 0]);
-    const plan = byHand(o, t, aim);
-    const burn = plan.retro.off.value - t;
+    const plan = byHand(planOfOrbital(o), t, aim);
+    const burn = shipOf(plan).off - t;
     this.planned = plan;
     this.fired = t;
     this.refly();
@@ -901,16 +896,15 @@ export class OrbitDeck extends Deck {
    * descent: the modules part when a hand parted them, or when the sequence would (the timer after a burn, or the record's
    * instant) if it was on then, or never.
    */
-  private descentPlan(): { plan: OrbitalFlight; hands: DescentHands } {
-    const plan = structuredClone(this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.flight.orbital!));
-    plan.entry.separation.value = this.parts;
-    return { plan, hands: { given: this.given, switched: this.switched } };
+  private descentPlan(): { plan: FlightPlan; hands: DescentHands } {
+    const base = this.planned ?? (this.free || this.mine !== null ? this.givenUp() : planOfOrbital(this.flight.orbital!));
+    return { plan: partingAt(base, this.parts), hands: { given: this.given, switched: this.switched } };
   }
 
   /** When the modules part on the flight as it now stands, s from liftoff (`descentPlan`), or never (the largest safe integer). */
   private get parts(): number {
-    const base = this.planned ?? (this.free || this.mine !== null ? null : this.flight.orbital!);
-    const auto = base?.entry.separation.value ?? Number.MAX_SAFE_INTEGER;
+    const base = this.planned ?? (this.free || this.mine !== null ? null : planOfOrbital(this.flight.orbital!));
+    const auto = base ? shipOf(base).parted : Number.MAX_SAFE_INTEGER;
     return this.partedBy ?? (automatic({ given: {}, switched: this.switched }, auto) ? auto : Number.MAX_SAFE_INTEGER);
   }
 
@@ -926,9 +920,10 @@ export class OrbitDeck extends Deck {
     this.flownPlan = plan;
     this.flownAt++;
     const samples = this.samplesOf(plan, this.flown);
-    const parts = plan.entry.separation.value;
+    const ship = shipOf(plan);
+    const parts = ship.parted;
     const t = this.fired;
-    const burn = t === null ? null : { on: t, off: Math.min(plan.retro.off.value, parts) };
+    const burn = t === null ? null : { on: t, off: Math.min(ship.off, parts) };
     if (t !== null && this.hand) {
       // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there
       // over half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
@@ -959,7 +954,7 @@ export class OrbitDeck extends Deck {
           ? (down?.tracks[d.rides[0]!.body]?.[0]?.t ?? Number.POSITIVE_INFINITY)
           : run.dropped[i]!,
     );
-    const timer = !this.free && this.mine === null ? { on: plan.retro.on.value, off: Math.min(plan.retro.off.value, parts) } : undefined;
+    const timer = !this.free && this.mine === null ? { on: ship.on, off: Math.min(ship.off, parts) } : undefined;
     this.run = {
       ...run,
       samples,
@@ -1009,7 +1004,7 @@ export class OrbitDeck extends Deck {
 
   /** Whether a braking burn is still to come or burning on the flight on show at `t`: the timer's on the record's, or a hand's. */
   private burnPending(t: number): boolean {
-    if (this.fired !== null) return t < this.planned!.retro.off.value;
+    if (this.fired !== null) return t < shipOf(this.planned!).off;
     if (this.free || this.mine !== null) return false;
     return t < this.flight.orbital!.retro.off.value;
   }
@@ -1055,7 +1050,7 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const d = o.descent!;
     const down = this.flown?.down;
-    if (id === 'modules') return t >= (this.planned ?? o).entry.separation.value;
+    if (id === 'modules') return t >= shipOf(this.planned ?? planOfOrbital(o)).parted;
     const first = d.bodies[0]!.id;
     const [body, name] = id === 'ejection' ? [first, ''] : id.split('/');
     // the body's height now: its track's, or the run's own sample's for the entry body
@@ -1433,7 +1428,7 @@ export class OrbitDeck extends Deck {
     const burning = o.stages.filter((_, i) => stages[i]!.burning).map((st) => short(st.name));
     const retro =
       this.fired !== null
-        ? { on: this.fired, off: this.planned!.retro.off.value }
+        ? { on: this.fired, off: shipOf(this.planned!).off }
         : this.free
           ? null
           : this.mine === null
@@ -1641,13 +1636,13 @@ export class OrbitDeck extends Deck {
       return;
     }
     // how it ended for him, in the record's terms (sim/verdict.ts downVerdict), and how long an orbit that stays up lasts
-    const plan = this.flownPlan ?? o;
+    const plan = this.flownPlan ?? planOfOrbital(o);
     let decayed: number | undefined;
     if (stays) {
       if (this.lasts?.of !== whole)
         this.lasts = {
           of: whole,
-          s: decay(planOfOrbital(plan), this.frame, this.flight.site.seaLevel.value, whole.coast.samples[whole.coast.samples.length - 1]!),
+          s: decay(plan, this.frame, this.flight.site.seaLevel.value, whole.coast.samples[whole.coast.samples.length - 1]!),
         };
       decayed = this.lasts.s;
     }

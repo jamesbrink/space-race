@@ -390,7 +390,7 @@ for (const f of flown) {
           state,
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? whole.ascent.thetaTurn : null,
-          plan: o,
+          plan: planOfOrbital(o),
         }),
         start,
         { site, seaLevel: sea, frame: dated },
@@ -431,11 +431,15 @@ for (const f of flown) {
     state.apparent = apparentBy(o, vehicle, state, s.t);
     const make = () => {
       const start = { t: s.t, r: s.r, v: s.v };
-      return propagate(guided(o, site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: o }), start, {
-        site,
-        seaLevel: sea,
-        frame: dated,
-      });
+      return propagate(
+        guided(o, site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: planOfOrbital(o) }),
+        start,
+        {
+          site,
+          seaLevel: sea,
+          frame: dated,
+        },
+      );
     };
     const once = make();
     once.run();
@@ -459,20 +463,18 @@ for (const f of flown) {
       const at = o.retro.on.value;
       const s = shown.coast.samples.find((p) => p.t >= at);
       const back = byHand(
-        o,
+        planOfOrbital(o),
         s.t,
         s.v.map((c) => -c / Math.hypot(...s.v)),
       );
-      const down = flyWhole(planOfOrbital(back), site, dated, sea, x, 10, 'published');
+      const down = flyWhole(back, site, dated, sea, x, 10, 'published');
       assert.equal(down.coast.samples.at(-1).phase, 'down', 'straight against the motion at the record’s instant, it comes down');
       assert.ok(down.down?.landed.pilot, 'and the pilot lands');
       const along = flyWhole(
-        planOfOrbital(
-          byHand(
-            o,
-            s.t,
-            s.v.map((c) => c / Math.hypot(...s.v)),
-          ),
+        byHand(
+          planOfOrbital(o),
+          s.t,
+          s.v.map((c) => c / Math.hypot(...s.v)),
         ),
         site,
         dated,

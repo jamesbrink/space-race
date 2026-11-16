@@ -353,8 +353,8 @@ export interface PlanRecord {
   torn?: Measure;
   /** What did each event of the descent on the day: said where a hand is offered one. */
   automatic?: string;
-  /** What a pilot could do by hand: the code that frees the controls, the record's periods of orientation by hand. */
-  manual?: { code: Measure; periods?: { from: Measure; to: Measure; what: string }[] };
+  /** What a pilot could do by hand: the code that frees the controls, how long after a burn by hand the modules part (s), the record's periods of orientation by hand. */
+  manual?: { code: Measure; parting?: Measure; periods?: { from: Measure; to: Measure; what: string }[] };
   /** What the spacecraft's escape did if the launch vehicle failed, by the time it failed: said, not flown. */
   aborts?: { until: Measure; does: string }[];
   /** The spacecraft's centre of mass above the flown model's origin, m. */

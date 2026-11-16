@@ -4,7 +4,7 @@ import { travelAt } from '../sim/mechanism.ts';
 import { spacecraft } from '../sim/fliers.ts';
 import { planOfOrbital } from '../sim/planof.ts';
 import { elements, propagate } from '../sim/predict.ts';
-import { byHand } from '../sim/staged.ts';
+import { byHand, givenUp } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
@@ -173,8 +173,7 @@ export function burnNow(flight: Flight): LandingFinder | null {
   // (the states, and the aim by hand, are in the flight's frame)
   const shown = frameOf(flight);
   const where = siteFrame(site);
-  const never = structuredClone(o);
-  never.retro.on.value = never.retro.off.value = never.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  const never = givenUp(planOfOrbital(o));
   return (start) => {
     const el = elements(start.r, start.v, o.orbit.radius.value);
     const down = !(el.periapsisHeight > LANDING_AIR);
@@ -182,10 +181,10 @@ export function burnNow(flight: Flight): LandingFinder | null {
     if (!down) {
       // (against the way it goes)
       const n = Math.hypot(...start.v);
-      plan = byHand(o, start.t + 1, [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]);
+      plan = byHand(planOfOrbital(o), start.t + 1, [-start.v[0] / n, -start.v[1] / n, -start.v[2] / n]);
     }
     const sea = site.seaLevel.value;
-    const flown = propagate(spacecraft(planOfOrbital(plan), shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
+    const flown = propagate(spacecraft(plan, shown, where, sea, start), start, { site: where, seaLevel: sea, frame: shown });
     return {
       run: (budget) => flown.run(budget),
       get result() {

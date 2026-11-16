@@ -48,7 +48,7 @@ import { elementsOf, period, planeThrough, type State, step } from '../world/orb
 import { along, MEAN_RADIUS } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { downOf } from './descent.ts';
-import { type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitalFlight, type OrbitFlown, shipOf } from './orbital.ts';
+import { coastEvents, type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitFlown, shipOf } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
@@ -153,7 +153,7 @@ export interface AscentSummary {
 
 export interface Ascended {
   samples: AscentSample[];
-  /** At each event of the record (`OrbitalFlight.events`) that falls within the ascent, by id: the instant before anything changes. */
+  /** At each of the record's instants (`sequenceOf(plan).instants`) that falls within the ascent, by id: the instant before anything changes. */
   at: Record<string, AscentSample>;
   summary: AscentSummary;
   solved: Solved;
@@ -942,21 +942,44 @@ export function descentOf(whole: FlownWhole, centre: number, ground = 0): DrawnD
 }
 
 /**
- * The record with the braking burn made by hand (`OrbitalFlight.manual`): lit at `t`, pushing along `aim` (a unit vector in
- * the flight's frame, world/earthframe.ts) for as long as the engine takes to give its integrator's impulse, and the modules
- * parting `manual.parting` after. What the flight deck flies from a hand's burn (orbitdeck.ts); the rest is the record's.
+ * The plan with its coast's burn made by hand (`PlanRecord.manual`, and the burn's `EngineDef.deltaV`): lit at `t`, pushing
+ * along `aim` (a unit vector in the flight's frame, world/earthframe.ts) for as long as the engine takes to give its
+ * integrator's impulse, and the modules parting `manual.parting` after. What the flight deck flies from a hand's burn
+ * (orbitdeck.ts); the rest is the plan's. Each event keeps the record's instant (`at`): only when it is set off changes.
  */
-export function byHand(o: OrbitalFlight, t: number, aim: Vec3): OrbitalFlight {
-  const m = o.manual;
-  if (!m) throw new Error('this record says nothing of what a hand could do');
-  const burn = (o.mass.value * m.deltaV.value) / m.thrust.value;
-  const plan = structuredClone(o);
-  plan.retro.on.value = t;
-  plan.retro.off.value = t + burn;
-  plan.retro.deltaV.value = m.deltaV.value;
-  plan.retro.aim = { ...plan.retro.aim, along: 'fixed', sense: 1, vector: aim };
-  plan.entry.separation.value = t + burn + m.parting.value;
-  return plan;
+export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
+  const parting = plan.record?.manual?.parting;
+  const out = structuredClone(plan);
+  const k = coastEvents(out);
+  const deltaV = k.burn?.deltaV;
+  if (!parting || !k.burn || !deltaV) throw new Error('this plan says nothing of what a hand could do');
+  const burn = (shipOf(plan).mass * deltaV.value) / k.burn.thrust.vacuum.value;
+  setOff(k.on, t);
+  setOff(k.off, t + burn);
+  k.burn.flown = { ...k.burn.flown!, value: deltaV.value };
+  for (const a of out.attitude) if ('aim' in a.hold) a.hold = { ...a.hold, aim: 'fixed', sense: 1, vector: aim };
+  setOff(k.parting, t + burn + parting.value);
+  return out;
+}
+
+/** The plan with its coast's burn given up: nothing lit, cut or parted by the clock (all three at the largest safe integer), until a hand does. */
+export function givenUp(plan: FlightPlan): FlightPlan {
+  const out = structuredClone(plan);
+  const k = coastEvents(out);
+  for (const e of [k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
+  return out;
+}
+
+/** The plan with the burn's body let go at `t` (the modules' parting, as a hand or the timer has it). */
+export function partingAt(plan: FlightPlan, t: number): FlightPlan {
+  const out = structuredClone(plan);
+  setOff(coastEvents(out).parting, t);
+  return out;
+}
+
+/** An event set off by the clock at another instant: its `time` trigger moved; `at`, the record's instant, kept. */
+function setOff(e: EventDef | undefined, t: number): void {
+  if (e) e.when = e.when.map((w) => ('time' in w ? { time: t } : w));
 }
 
 /** A check of an orbital flight's, with what the run gave for it: the ascent's, the coast's and the descent's in turn. */

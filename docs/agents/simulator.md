@@ -522,7 +522,9 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
-  is flown again from that burn. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
+  is flown again from that burn. Each is an edit of the plan (staged.ts `byHand`, `givenUp`, `partingAt`): the coast's
+  events set off at other instants (their `time` triggers; `at`, the record's instant, kept), the burn's impulse and its
+  aim, and nothing else. G, B or Space in the ascent (or either switch thrown on the pad) takes the flight over:
   from that instant it is the user's ("Not the record's"), the live staged vehicle (below) is caught up to the record at
   that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
   second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed

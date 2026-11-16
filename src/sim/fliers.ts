@@ -472,7 +472,7 @@ export interface GuidedNow {
   trim?: { pitch: number; yaw: number };
   thetaTurn?: number | null;
   /** The plan the spacecraft flies once parted (its braking burn). */
-  plan: OrbitalFlight;
+  plan: FlightPlan;
 }
 
 /**
@@ -660,7 +660,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
         if (p.step.kind === 'separate' && p.step.stage === last) {
           events.push('separation');
           since = t;
-          alone = spacecraft(planOfOrbital(now.plan), v.frame, site, seaLevel, { t, r, v: u });
+          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: u });
           const then = alone.arrive(t, r, u, altitude, 'time');
           return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
         }

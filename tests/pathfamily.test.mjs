@@ -16,6 +16,7 @@ import { flyOrbit } from '../src/sim/orbital.ts';
 import { planOfOrbital } from '../src/sim/planof.ts';
 import { apsides, between, predict, propagate } from '../src/sim/predict.ts';
 import { fromAxes } from '../src/sim/rigid.ts';
+import { givenUp } from '../src/sim/staged.ts';
 import { HANDS_OFF, vehicle } from '../src/sim/vehicle.ts';
 import { curveAt, curveOf, ERROR_PX, sample } from '../src/viewer/pathline.ts';
 import { siteFrame } from '../src/world/frames.ts';
@@ -163,8 +164,7 @@ test('the ballistic deck`s predictor on a family of states: the same invariants 
 });
 
 test('the orbital deck`s predictor on the same family: one result, the same invariants', () => {
-  const plan = structuredClone(vostok1.orbital);
-  plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  const plan = givenUp(planOfOrbital(vostok1.orbital));
   const site = siteFrame(vostok1.site);
   const frame = frameOf(vostok1);
   const rand = seeded(12);
@@ -172,7 +172,7 @@ test('the orbital deck`s predictor on the same family: one result, the same inva
     // (the orbital deck's coast flies from above the air: a lob from low down is the ballistic deck's)
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const p = propagate(spacecraft(planOfOrbital(plan), frame, site, vostok1.site.seaLevel.value, start), start, {
+    const p = propagate(spacecraft(plan, frame, site, vostok1.site.seaLevel.value, start), start, {
       site,
       seaLevel: vostok1.site.seaLevel.value,
       frame,
@@ -248,18 +248,17 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
 });
 
 test('prediction against outcome: the orbital spacecraft, predicted, then flown by its coast from the same state', () => {
-  const plan = structuredClone(vostok1.orbital);
-  plan.retro.on.value = plan.retro.off.value = plan.entry.separation.value = Number.MAX_SAFE_INTEGER;
+  const plan = givenUp(planOfOrbital(vostok1.orbital));
   const site = siteFrame(vostok1.site);
   const sea = vostok1.site.seaLevel.value;
   const frame = frameOf(vostok1);
   for (const [name, s] of family(1961)) {
     if (Math.hypot(...s.r) - R < 100e3) continue;
     const start = { t: 1000, r: s.r, v: s.v };
-    const job = propagate(spacecraft(planOfOrbital(plan), frame, site, sea, start), start, { site, seaLevel: sea, frame });
+    const job = propagate(spacecraft(plan, frame, site, sea, start), start, { site, seaLevel: sea, frame });
     job.run();
     const p = job.result;
-    const run = flyOrbit(planOfOrbital(plan), site, frame, sea, 10, start);
+    const run = flyOrbit(plan, site, frame, sea, 10, start);
     let miss;
     let flownAt;
     let end;
