@@ -131,6 +131,9 @@ export class FlightShow {
 
   /** Take up another flight: its run, nothing shed, its fires hung afresh (the last flight's parachutes and jets taken away). */
   load(flight: FlightData): void {
+    this.followed = null;
+    this.shedCraft = null;
+    this.crafted = null;
     this.ascent = Ascent.of(flight);
     this.lifted.t = Number.NaN;
     this.debris.length = 0; // (their holders were under the last flight's root)

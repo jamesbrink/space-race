@@ -81,6 +81,21 @@ export interface OnFootHost {
 export class OnFoot {
   constructor(private readonly h: OnFootHost) {}
 
+  /** Another flight is on the stage (the walk has been ended): nothing of the last is walked as, driven, boarded or worked. */
+  reset(): void {
+    this.walked = -1;
+    this.tumble = null;
+    this.wheel = null;
+    this.boarding = null;
+    this.boarded = null;
+    this.aim = null;
+    this.emerging = -1;
+    this.unseen = false;
+    this.satIn = null;
+    this.driven.clear();
+    this.works = new Works();
+  }
+
   private throughEyes: boolean | null = null;
 
   /** Which model is being walked as: an index into `staged`, or -1. */
@@ -99,7 +114,7 @@ export class OnFoot {
   private readonly carries = new WeakMap<THREE.Object3D, Carry[]>();
 
   /** The doors and lifts of the flight's models, as they stand (works.ts). */
-  private readonly works = new Works();
+  private works = new Works();
 
   private walkDt = 0;
 

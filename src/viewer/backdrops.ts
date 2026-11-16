@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeTree } from './dispose.ts';
 import type { BackdropKind, SitedFlight } from '../types.ts';
 import { skyFrom } from '../world/ephemeris.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
@@ -371,6 +372,8 @@ export type Occasion = Pick<SitedFlight, 'site' | 'launch' | 'weather'>;
 
 /** The places built, by place, pad and day: a place is laid round its pad, and its season and sky are the day's. */
 const places = new Map<string, Place>();
+/** Which of `places` each ground setting is laid on (`Settings.drop` lets the place go with it). */
+const placeOf = new WeakMap<Setting, string>();
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
 const SKY_STEP = 4;
@@ -725,6 +728,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     return { shadows };
   };
   setting.at(julianDate(when.launch));
+  placeOf.set(setting, key);
   return setting;
 }
 
@@ -794,16 +798,20 @@ export class Settings {
   private readonly cache = new Map<string, Setting>();
   constructor(private readonly renderer: THREE.WebGLRenderer) {}
 
+  /** Which setting `get` gives for a kind and a flight: one for each pad and day. */
+  keyOf(kind: BackdropKind, when?: Occasion): string {
+    const { site } = when ?? {};
+    return when && site && kind !== 'studio'
+      ? [kind, site.place.name, site.name, site.latitude.value, site.longitude.value, site.bearingX.value, when.launch].join(' ')
+      : kind;
+  }
+
   /**
    * The setting of a kind for a flight: its site, first shown at its launch. Leave the flight out for a setting with no
    * place. One for each pad and day: the place is laid round the pad, and its sky and season are the day's.
    */
   get(kind: BackdropKind, when?: Occasion): Setting {
-    const { site } = when ?? {};
-    const key =
-      when && site && kind !== 'studio'
-        ? [kind, site.place.name, site.name, site.latitude.value, site.longitude.value, site.bearingX.value, when.launch].join(' ')
-        : kind;
+    const key = this.keyOf(kind, when);
     let s = this.cache.get(key);
     if (!s) {
       s = SETTINGS[kind](this.renderer, when);
@@ -812,5 +820,18 @@ export class Settings {
       this.cache.set(key, s);
     }
     return s;
+  }
+
+  /**
+   * Let a setting go (the stage has gone to another flight's place: Stage.load): what it put on the GPU, and the place
+   * it was laid on, so that going back to it builds it again under its own day, with its own air installed (air.ts).
+   * The caller has taken it out of the scene.
+   */
+  drop(setting: Setting): void {
+    for (const [key, s] of this.cache) if (s === setting) this.cache.delete(key);
+    const place = placeOf.get(setting);
+    if (place !== undefined) places.delete(place);
+    for (const o of [setting.backdrop.scene, setting.floor, ...setting.scenery, setting.globe?.group]) if (o) disposeTree(o);
+    setting.environment?.dispose();
   }
 }

@@ -22,6 +22,7 @@ import { Panes } from './panes.ts';
 import { through } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
 import { Surfaces } from './runs.ts';
+import { disposeTree } from './dispose.ts';
 import { makeRenderer, Pipeline } from './stage/pipeline.ts';
 import { CabinView } from './stage/cabinview.ts';
 import { FlightShow } from './stage/flightshow.ts';
@@ -687,6 +688,8 @@ export class Stage {
 
   /** Put all of a flight's models on the stage, each where it stands. Rejects if any cannot be fetched. */
   async load(flight: FlightData, onProgress?: (fraction: number, parts?: LoadPart[]) => void): Promise<void> {
+    // (a load asked for after this one, or the flight let go meanwhile, supersedes it: it stops where it is)
+    const token = ++this.loads;
     // The bar is weighted by bytes once every model's size is known (the fetch's Content-Length); until then it is their average.
     const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
     const scenes = await Promise.all(
@@ -700,10 +703,13 @@ export class Stage {
         }),
       ),
     );
+    if (token !== this.loads) return;
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
     if (this.setting.globe) this.scene.remove(this.setting.globe.group);
+    // (another flight than the one on show: what is the last one's alone is let go, and every piece forgets it)
+    if (this.root) this.forget(flight);
     this.defs = flight.models;
     this.surfaces.set([]);
     this.staged = flight.models.map((def, i) => {
@@ -735,7 +741,7 @@ export class Stage {
     for (const s of this.staged) s.measure();
     this.shadows.far.refit();
     this.lamps.clear();
-    this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => o.parent)); // (the last flight's are gone with its models)
+    this.veils.splice(0, this.veils.length, ...this.veils.filter((o) => this.shows(o))); // (the last flight's are gone with its models)
     this.show.load(flight);
     this.lamps = new Lamps();
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
@@ -756,10 +762,14 @@ export class Stage {
         );
     });
     // (a flight with no site has no place and no hour: its models stand in a setting that needs neither)
-    this.setting = this.settings.get(
-      flight.models[0]!.backdrop,
-      flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined,
-    );
+    const kind = flight.models[0]!.backdrop;
+    const when = flight.site ? { site: flight.site, launch: flight.launch, weather: flight.weather } : undefined;
+    // Another place, or the same place on another day, is another setting: the one left is let go first, before the
+    // next is built, so that what the place installs for its day (its air and weather: air.ts, weathermap.ts, the
+    // atmosphere) is the next one's, and nothing of the last stays on the GPU.
+    if (this.settings.keyOf(kind, when) !== this.settingKey) this.settings.drop(this.setting);
+    this.setting = this.settings.get(kind, when);
+    this.settingKey = this.settings.keyOf(kind, when);
     this.applySetting();
     // (what slides or drives stands on the models and the land: the place's rails and roads too once it has come)
     this.surfaces.set(this.staged.map((s) => s.full));
@@ -1230,6 +1240,114 @@ export class Stage {
   /** What has been put over the flight (`overlay`): drawn unseen in `warm`, so its shaders are built with the rest. */
   private readonly overlays: THREE.Object3D[] = [];
 
+  /** Take back something put over the flight (`overlay`): whoever put it there is gone (a flight's page left: app/session.ts). */
+  unoverlay(object: THREE.Object3D): void {
+    object.removeFromParent();
+    for (const list of [this.veils, this.overlays]) {
+      const at = list.indexOf(object);
+      if (at >= 0) list.splice(at, 1);
+    }
+    this.dirty = true;
+  }
+
+  /** Whether `o` is in the scene (under it, however deep). */
+  private shows(o: THREE.Object3D): boolean {
+    for (let at: THREE.Object3D | null = o; at; at = at.parent) if (at === this.scene) return true;
+    return false;
+  }
+
+  /**
+   * The page that drove this stage has gone (to another flight: app/session.ts), and the next has yet to load its own:
+   * a load or a warm on its way stops where it is, nothing is drawn until the next flight has been loaded and warmed,
+   * and whoever was told of what happens on it is told no more (the next page tells it whom to tell). What is on it
+   * stays, for `load` to keep what the next flight shares with it and let go of the rest.
+   */
+  quiet(): void {
+    this.loads++;
+    this.held = true;
+    const self = this as unknown as Record<string, unknown>;
+    for (const key of Object.keys(self)) if (/^on[A-Z]/.test(key) && typeof self[key] === 'function') self[key] = () => {};
+  }
+
+  /**
+   * Let go of the flight on show, with none to follow on this stage (its page has gone, and the next has no use for
+   * it): everything it fetched and the place round its pad leave the scene and the GPU. The setting stays, for a next
+   * flight at the same place and day.
+   */
+  unload(): void {
+    this.quiet();
+    if (this.root) {
+      this.scene.remove(this.root);
+      for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);
+      this.forget(null);
+    }
+    // (and what else it fetched for the flight: a figure for scale, a crew to walk as)
+    for (const fetched of this.loaded.values()) void fetched.then(disposeTree, () => {});
+    this.loaded.clear();
+    this.shellMaterials.clear();
+    this.lamps.clear();
+    this.root = null;
+    this.surroundings = null;
+    this.scenery = null;
+    this.staged = [];
+    this.defs = [];
+    this.parts = new Map();
+    this.dirty = true;
+  }
+
+  /** A warm stopped part way (another flight since): what it drew whatever its frustum is culled again. */
+  private unculled(culled: THREE.Object3D[]): void {
+    for (const o of culled) o.frustumCulled = true;
+  }
+
+  /** Loads asked for (and flights let go): a load or a warm that finds another asked for since stops where it is. */
+  private loads = 0;
+
+  /** The key of the setting on show (`Settings.keyOf`): another flight at another place or day is another setting. */
+  private settingKey = 'orbit';
+
+  /**
+   * Let go of the flight on show as another comes on (`load`): its models and what they wore on the GPU (a model the
+   * next flight also has is kept), the place round its pad if the next has another, and every piece's state of it (the
+   * cabin, a walk, what is worked by hand, a seat, what was followed and framed). The renderer, the camera, the passes
+   * and the shadow maps stay: a stage is made once and shows flight after flight (app/session.ts).
+   */
+  private forget(next: FlightData | null): void {
+    if (this.walk.active) this.onFoot.exitWalk();
+    if (this.cam.rig !== 'orbit') this.cam.set('orbit', true);
+    this.cabin?.dispose();
+    this.cabin = null;
+    const kept = new Set(next?.models.map((m) => m.url) ?? []);
+    const levels = (url: string) => [url, ...LOD_ABOVE.map((_, i) => lodUrl(url, i + 1))];
+    this.defs.forEach((def, i) => {
+      if (kept.has(def.url)) return;
+      const group = this.staged[i]?.group;
+      if (group) {
+        this.looks.remove(group);
+        disposeTree(group);
+      }
+      for (const url of levels(def.url)) {
+        this.loaded.delete(url);
+        this.shellMaterials.delete(url);
+      }
+    });
+    const place = this.show.flightData?.surroundings;
+    if (place && place !== next?.surroundings) {
+      for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) {
+        this.looks.remove(o);
+        disposeTree(o);
+      }
+      for (const url of levels(place)) this.loaded.delete(url);
+    }
+    this.hands.reset();
+    this.onFoot.reset();
+    this.seats.reset();
+    this.framing.following = this.framing.watched = null;
+    this.picker.treesOwed.clear();
+    for (const { node, parent } of this.away.splice(0)) parent.add(node);
+    this.stood = null;
+  }
+
   /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle, wherever it has got to. */
   refind(): void {
     if (this.show.followed !== null) return void this.show.followShed(null);
@@ -1393,6 +1511,7 @@ export class Stage {
    * so that whoever lifts the curtain afterwards sees motion that is already steady.
    */
   async warm(patience = 9000, onStep?: (step: WarmStep, fraction: number) => void): Promise<void> {
+    const token = this.loads;
     // (made a little at a time while the rest arrives; a setting with no air has no clouds to make)
     const clouds = this.setting.fog ? this.pipe.clouds.warm() : Promise.resolve();
     const settled = Promise.allSettled(this.arriving);
@@ -1415,6 +1534,7 @@ export class Stage {
     count();
     onStep?.('place', 0);
     await Promise.race([settled, new Promise((done) => setTimeout(done, patience))]);
+    if (token !== this.loads) return; // (another flight since: app/session.ts)
     onStep?.('place', 1);
     onStep?.('clouds', 0);
     const frames = async (n: number) => {
@@ -1424,6 +1544,7 @@ export class Stage {
       }
     };
     await clouds;
+    if (token !== this.loads) return; // (another flight since: app/session.ts)
     onStep?.('clouds', 1);
     onStep?.('shaders', 0);
     // Everything that will ever be drawn is drawn now, unseen: every level of detail, whether
@@ -1511,11 +1632,13 @@ export class Stage {
       if (!this.plain) built.push(this.renderer.compileAsync(this.setting.backdrop.scene, this.setting.backdrop.camera));
       this.renderer.setRenderTarget(target);
       await Promise.all(built).catch(() => {}); // (a browser without parallel compile builds them as they are drawn)
+      if (token !== this.loads) return void this.unculled(culled); // (another flight since: app/session.ts)
       if (!tier().warmLevels) drawAll(false);
       this.held = false; // (the first frame is drawn now, with its shaders ready)
       this.pipe.quality.rest(performance.now(), 8000); // (and the first seconds are slow for reasons that pass: maps arriving, the other look's shaders)
       this.renderer.shadowMap.needsUpdate = true;
       await frames(2);
+      if (token !== this.loads) return void this.unculled(culled); // (another flight since: app/session.ts)
       onStep?.('shaders', (i + 1) / passes.length);
     }
     onStep?.('settle', 0);
@@ -1529,6 +1652,7 @@ export class Stage {
     if (globe && shown) [globe.mesh.visible, globe.air.visible] = shown;
     this.relight(true);
     await frames(3);
+    if (token !== this.loads) return void this.unculled(culled); // (another flight since: app/session.ts)
     onStep?.('settle', 1);
     // (an allocation the GPU refused while all that was made: said, with the way back in the lighter tier; lost.ts)
     if (refused(this.renderer, [this.pipe.frameTarget])) sayRefused();

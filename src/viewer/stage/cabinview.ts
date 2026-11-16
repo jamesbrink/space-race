@@ -55,6 +55,15 @@ export interface CabinViewHost {
 export class CabinView {
   constructor(private readonly h: CabinViewHost) {}
 
+  /** Another flight is on the stage: no seat of the last is sat in, leant from or found. */
+  reset(): void {
+    this.seatAt = 0;
+    this.leanAt = null;
+    this.exhibitCraft = null;
+    this.shownKey = '';
+    this.shownPlace = null;
+  }
+
   /** Back from a lean by another way than asking (0, another camera, out of the seat): the page's buttons are told. */
   unleant(): void {
     if (this.leanAt !== null && this.leaning === null) {

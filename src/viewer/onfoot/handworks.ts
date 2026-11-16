@@ -31,6 +31,11 @@ export interface HandWorksHost {
 export class HandWorks {
   constructor(private readonly h: HandWorksHost) {}
 
+  /** Another flight is on the stage: nothing of the last is held by hand (what is held is by model index). */
+  reset(): void {
+    this.handset.clear();
+  }
+
   /**
    * Functions being worked by hand (explode.ts: Fn), by `<model index>/<function id>`: how far
    * along its travel each has been put (0 to 1), and how fast it is moving (in travels a second
