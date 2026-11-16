@@ -46,6 +46,8 @@ document.title = 'The Lineup · Space Race';
 const IDLE_FIRST = 40;
 const IDLE_AGAIN = 150;
 const DWELL = 9;
+/** Milliseconds before the show's card has its new words and is as tall as it will be (callout.ts changes them over in 450). */
+const CARD_SWAP = 520;
 /** Milliseconds the picture takes to dip while the row is formed again (lineup.css has the same). */
 const DIP = 220;
 
@@ -337,6 +339,7 @@ function next(): void {
       },
       null,
     );
+    window.setTimeout(() => touring && showClear(), CARD_SWAP);
     return;
   }
   const e = row.find((x) => x.flight.id === standing[shot - 1])!;
@@ -349,6 +352,8 @@ function next(): void {
     { eyebrow: `${parts[e.programme]!.name} · ${day(e.flight.launch)}`, title: e.flight.callsign, lead: card.lead, text: card.text },
     () => scene.topOf(e.flight.id),
   );
+  // (its words are written as the last card fades: then it is as tall as it will be, and what it leaves is known)
+  window.setTimeout(() => touring && showClear(), CARD_SWAP);
 }
 
 function startShow(): void {
@@ -357,15 +362,24 @@ function startShow(): void {
   before = scene.viewNow();
   ui.mark(null);
   document.body.classList.add('demo');
-  // the panels are away while it shows, and the card that says what each is stands low on the left (callout.css; across
-  // the foot of a narrow page): the picture is framed in what the card leaves
-  const { width, height } = canvas.getBoundingClientRect();
-  const clear =
-    width > 700
-      ? { left: Math.min(0.42 * width, 440), top: 16, right: width - 16, bottom: height - 16 }
-      : { left: 8, top: 8, right: width - 8, bottom: height - 250 };
-  scene.setClear(clear, clear);
+  showClear();
   next();
+}
+
+/**
+ * What the show leaves clear of the picture, for the camera to frame in: the panels are away, and the card that says
+ * what each is stands low on the left (callout.css), or across the foot of a narrow page, where it is as tall as its
+ * words: there the picture is framed above the card as it is, measured once its words are in.
+ */
+function showClear(): void {
+  const { width, height } = canvas.getBoundingClientRect();
+  let clear = { left: Math.min(0.42 * width, 440), top: 16, right: width - 16, bottom: height - 16 };
+  if (width <= 700) {
+    const card = document.querySelector('.callout.showing .callout-card')?.getBoundingClientRect();
+    const foot = card?.height ? card.top - 12 : height - 250;
+    clear = { left: 8, top: 8, right: width - 8, bottom: Math.max(160, Math.min(height - 250, foot)) };
+  }
+  scene.setClear(clear, clear);
 }
 
 function endShow(): void {
@@ -466,5 +480,11 @@ installDebug({
     choose,
     step,
     whole,
+    /** Start the show now, as if left alone, or go on to its next (for tests: a script is never left alone, nor waits to read). */
+    tour: () => {
+      if (!ready) return;
+      if (touring) next();
+      else startShow();
+    },
   },
 });

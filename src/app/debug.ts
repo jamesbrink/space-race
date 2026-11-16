@@ -70,6 +70,8 @@ export interface LineupDebug {
     choose: (id: string | null) => void;
     step: (by: number) => void;
     whole: () => void;
+    /** Start the show now, as if left alone, or go on to its next. */
+    tour: () => void;
   };
 }
 
