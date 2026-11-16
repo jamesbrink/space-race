@@ -1,5 +1,14 @@
 import type { Flight, Keyframe, ModelDef, Part } from '../../../../../src/types.ts';
-import { HARDWARE_WORDS, HATCH_TURN, lc14Pad, lc14Parts, type PadDay, type PadStops } from '../../../places/cape-canaveral/lc-14.parts.ts';
+import {
+  HARDWARE_WORDS,
+  LC14_SPECS,
+  lc14Pad,
+  lc14Parts,
+  lc14Pilot,
+  type PadDay,
+  type PadStops,
+} from '../../../places/cape-canaveral/lc-14.parts.ts';
+import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 
 /**
  * Launch Complex 14 on the morning of 20 February 1962, as Friendship 7's pad.glb has it (model/pad.py: the place's
@@ -88,7 +97,7 @@ const MORNING: Keyframe[] = [
     confidence: 'assumed',
     source:
       'not recorded for this flight: fourteen minutes from first motion to stowed, Mercury-Atlas 7’s (first motion at T-47, stowed at T-33: ' +
-      'issue #25’s reading of its report), put after this morning’s T-55',
+      'NASA TN D-3814, p. 17), put after this morning’s T-55',
   },
   {
     at: -35.01,
@@ -161,23 +170,6 @@ export const pad: ModelDef = lc14Pad({
   sequence: MORNING,
   parts: padParts,
 });
-
-/** How the vehicle stood on the stand: the hatch on 240 degrees true (lc-14.parts.ts `HATCH_TURN`). */
-export const STAND_TURN = HATCH_TURN * (Math.PI / 180);
-
-const FT = 0.3048;
-/**
- * Where the pilot stands: on the paving east of the service structure's foot, a few steps from its lift, his back to
- * it so that it stands up behind him. Where he actually stood is not the point: he came from the transfer van and
- * went up. Estimated.
- */
-const PILOT_FACING = Math.PI / 2; // toward +X, away from the structure
-const PILOT = { position: [62 * FT, -22 * FT, 0.6] as [number, number, number], rotationY: PILOT_FACING };
-const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
-  Math.sin(PILOT_FACING + aside),
-  lift,
-  Math.cos(PILOT_FACING + aside),
-];
 
 const crewParts: Part[] = [
   {
@@ -259,32 +251,14 @@ const crewParts: Part[] = [
   },
 ];
 
-export const crew: ModelDef = {
-  id: 'crew',
-  name: 'Crew',
+export const crew: ModelDef = lc14Pilot({
   url: 'models/usa/mercury/ma-6-friendship-7/crew.glb',
   scale: 'John H. Glenn, Jr. · suited · to scale',
-  backdrop: 'ground',
   parts: crewParts,
-  ...PILOT,
-  walker: {
-    eyes: 'Helmet_Eyes',
-    forward: [0, 1],
-    carries: [{ node: 'Ventilator', hand: 'R', hose: { mesh: 'Ventilator_Hose', from: 'Ventilator_HosePort', to: 'Inlet' } }],
-  },
-  wide: false,
-  specGroups: ['Pressure suit'],
-  home: 'walkout',
-  views: [
-    { id: 'walkout', label: 'At the gantry', centreY: -22 * FT + 2.6, span: 7, from: facingPilot(-0.3) },
-    { id: 'figure', label: 'Pilot', centreY: -22 * FT + 0.98, span: 2.5, from: facingPilot(0.05) },
-    { id: 'helmet', label: 'Helmet', centreY: -22 * FT + 1.72, span: 0.62, from: facingPilot(0.05) },
-  ],
-  // as he went up: the structure round the vehicle, its lift at the ground
-  with: [{ model: 'pad', at: UP_THE_GANTRY }],
-};
+  at: UP_THE_GANTRY,
+});
 
-/** The pad's figures (the specs' 'Launch pad' group): the place's, the same for every flight from it. */
+/** The flight's figures for the pad and the pilot: his own, the suit's, and the place's (lc-14.parts.ts `LC14_SPECS`). */
 export const PAD_SPECS: Flight['specs'] = [
   {
     group: 'Pressure suit',
@@ -294,68 +268,6 @@ export const PAD_SPECS: Flight['specs'] = [
     confidence: 'documented',
     note: '171 lb 7 oz; 166 lb 2 oz that evening, on another scale (Results of the First United States Manned Orbital Space Flight, p. 85 and Table 8-III)',
   },
-  {
-    group: 'Pressure suit',
-    label: 'Suit pressure if the cabin fails',
-    value: 4.6 * 6894.757,
-    unit: 'Pa',
-    confidence: 'assumed',
-    note: '4.6 psi: the suit regulator’s setting in SEDR 104 (4.6 ± 0.2 psia), the type’s, taken for this suit (crew/mark-iv-suit.md)',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Stand, deck above the ground',
-    value: 22 * FT,
-    unit: 'm',
-    confidence: 'documented',
-    note: '22 ft: the ramp "gradually increased to a height of 22\'" (HAER FL-8-7, p. 20); the NHL nomination has "a 20-foot ramp"',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Stand and ramp, length',
-    value: 432 * FT,
-    unit: 'm',
-    confidence: 'documented',
-    note: '"approximately 432\' long", twelve bays, the stand the northernmost, 60 ft by 78 (HAER FL-8-7, p. 20)',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Service structure, height',
-    value: (154 + 8 / 12) * FT,
-    unit: 'm',
-    confidence: 'documented',
-    note: '154 ft 8 in (HAER FL-8-7, p. 22); the NHL nomination has 145 ft. Taken from its rails to its top deck’s rail',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Umbilical mast, height above the stand',
-    value: 84.5 * FT,
-    unit: 'm',
-    confidence: 'assumed',
-    note: '84 ft 6 in, ten levels (HAER FL-8-7, p. 22): the mast’s, taken for the tapered egress tower that stood in its place by January 1962',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Service structure’s parking place, east of the stand',
-    value: 300 * FT,
-    unit: 'm',
-    confidence: 'documented',
-    note: '"approximately 300\' east of the Launch Stand" on a rail-mounted transfer table (HAER FL-8-7, p. 22)',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Blockhouse, from the vehicle',
-    value: 246.7,
-    unit: 'm',
-    confidence: 'derived',
-    note: '809 ft on 286 degrees: OpenStreetMap’s outline of the dome (way 685951471); "approximately 750\' west" in HAER FL-8-7, p. 24',
-  },
-  {
-    group: 'Launch pad',
-    label: 'Engines’ exit plane above the deck',
-    value: 8 * FT,
-    unit: 'm',
-    confidence: 'estimated',
-    note: 'about 8 ft, 2 ft either way, off NASA GPN-2000-000998 (lc-14.md, "The stand")',
-  },
+  CAPSULE_SPEC.suitPressure,
+  ...LC14_SPECS,
 ];

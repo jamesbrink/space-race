@@ -90,4 +90,12 @@ export const SPEC = {
     confidence: 'documented',
     note: '21.00 in along the cone, 11.254 in wide at the heat shield’s end and 7.511 in at the nose’s (NASA SP-45, Figure 19-1: the Mercury spacecraft window)',
   },
+  suitPressure: {
+    group: 'Pressure suit',
+    label: 'Suit pressure if the cabin fails',
+    value: 4.6 * 6894.757,
+    unit: 'Pa',
+    confidence: 'assumed',
+    note: '4.6 psi: the suit regulator’s setting in SEDR 104 (4.6 ± 0.2 psia), the type’s, taken for this suit (crew/mark-iv-suit.md)',
+  },
 } satisfies Record<string, Spec>;

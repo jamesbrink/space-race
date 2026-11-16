@@ -16,8 +16,8 @@ import {
 import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles/mercury-capsule.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
-import { LAUNCHER_TOP } from '../../../places/cape-canaveral/lc-14.parts.ts';
-import { crew, pad, PAD_SPECS, STAND_TURN } from './pad.ts';
+import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
+import { crew, pad, PAD_SPECS } from './pad.ts';
 import { WEATHER } from './weather.ts';
 import { BASE } from '../../vehicles/mercury-atlas.ts';
 import { mercuryAtlasPlan } from '../../vehicles/mercury-atlas-plan.ts';

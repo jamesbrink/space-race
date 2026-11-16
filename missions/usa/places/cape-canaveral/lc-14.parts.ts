@@ -1,4 +1,4 @@
-import type { Action, Keyframe, Machine, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
+import type { Action, Flight, Keyframe, Machine, ModelDef, Move, Part, Runs } from '../../../../src/types.ts';
 
 /**
  * Launch Complex 14's pad as a flight's data: the parts of pad.glb (places/cape-canaveral/lc_14.py), what each does and how
@@ -22,6 +22,8 @@ const Z: [number, number, number] = [0, 0, 1];
  * degrees true (estimated, from the photographs: lc-14.md, "Which way the hatch faced"). lc14/site.py `HATCH_TURN`.
  */
 export const HATCH_TURN = 225;
+/** The same in radians: how every flight's vehicle stands turned on the stand (its `ModelDef.rotationY`). */
+export const STAND_TURN = HATCH_TURN * DEG;
 /** The engines' exit plane over the stand's deck, metres (estimated: lc14/site.py `LAUNCHER_TOP`): what the vehicle stands on. */
 export const LAUNCHER_TOP = 8 * FT;
 
@@ -367,3 +369,103 @@ export const lc14Pad = (m: { url: string; slider: [string, string]; sequence: Ke
     { id: 'launcher', label: 'Launcher', nodes: ['Launcher'] },
   ],
 });
+
+/**
+ * Where a flight's pilot is shown standing: on the paving east of the service structure's foot, a few steps from its lift,
+ * his back to it so that it stands up behind him. Where each man actually stood is not the point: he came from the transfer
+ * van and went up. Estimated. A flight gives its own figure (`url`, `scale`, its words for the suit's parts) and the instant
+ * he is shown at (`at`, seconds from liftoff), which is when its record has him go up the gantry.
+ */
+const PILOT_FACING = Math.PI / 2; // toward +X, away from the structure
+const PILOT = { position: [62 * FT, -22 * FT, 0.6] as [number, number, number], rotationY: PILOT_FACING };
+const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
+  Math.sin(PILOT_FACING + aside),
+  lift,
+  Math.cos(PILOT_FACING + aside),
+];
+
+/** A flight's pilot as a model, standing at the structure's foot as he went up. */
+export const lc14Pilot = (m: { url: string; scale: string; parts: Part[]; at: number }): ModelDef => ({
+  id: 'crew',
+  name: 'Crew',
+  url: m.url,
+  scale: m.scale,
+  backdrop: 'ground',
+  parts: m.parts,
+  ...PILOT,
+  walker: {
+    eyes: 'Helmet_Eyes',
+    forward: [0, 1],
+    carries: [{ node: 'Ventilator', hand: 'R', hose: { mesh: 'Ventilator_Hose', from: 'Ventilator_HosePort', to: 'Inlet' } }],
+  },
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'walkout',
+  views: [
+    { id: 'walkout', label: 'At the gantry', centreY: -22 * FT + 2.6, span: 7, from: facingPilot(-0.3) },
+    { id: 'figure', label: 'Pilot', centreY: -22 * FT + 0.98, span: 2.5, from: facingPilot(0.05) },
+    { id: 'helmet', label: 'Helmet', centreY: -22 * FT + 1.72, span: 0.62, from: facingPilot(0.05) },
+  ],
+  // as he went up: the structure round the vehicle, its lift at the ground
+  with: [{ model: 'pad', at: m.at }],
+});
+
+/** The pad's figures (the specs' 'Launch pad' group): the place's, the same for every flight from it. */
+export const LC14_SPECS: Flight['specs'] = [
+  {
+    group: 'Launch pad',
+    label: 'Stand, deck above the ground',
+    value: 22 * FT,
+    unit: 'm',
+    confidence: 'documented',
+    note: '22 ft: the ramp "gradually increased to a height of 22\'" (HAER FL-8-7, p. 20); the NHL nomination has "a 20-foot ramp"',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Stand and ramp, length',
+    value: 432 * FT,
+    unit: 'm',
+    confidence: 'documented',
+    note: '"approximately 432\' long", twelve bays, the stand the northernmost, 60 ft by 78 (HAER FL-8-7, p. 20)',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Service structure, height',
+    value: (154 + 8 / 12) * FT,
+    unit: 'm',
+    confidence: 'documented',
+    note: '154 ft 8 in (HAER FL-8-7, p. 22); the NHL nomination has 145 ft. Taken from its rails to its top deck’s rail',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Umbilical mast, height above the stand',
+    value: 84.5 * FT,
+    unit: 'm',
+    confidence: 'assumed',
+    note: '84 ft 6 in, ten levels (HAER FL-8-7, p. 22): the mast’s, taken for the tapered egress tower that stood in its place by January 1962',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Service structure’s parking place, east of the stand',
+    value: 300 * FT,
+    unit: 'm',
+    confidence: 'documented',
+    note: '"approximately 300\' east of the Launch Stand" on a rail-mounted transfer table (HAER FL-8-7, p. 22)',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Blockhouse, from the vehicle',
+    value: 246.7,
+    unit: 'm',
+    confidence: 'derived',
+    note: '809 ft on 286 degrees: OpenStreetMap’s outline of the dome (way 685951471); "approximately 750\' west" in HAER FL-8-7, p. 24',
+  },
+  {
+    group: 'Launch pad',
+    label: 'Engines’ exit plane above the deck',
+    value: 8 * FT,
+    unit: 'm',
+    confidence: 'estimated',
+    note: 'about 8 ft, 2 ft either way, off NASA GPN-2000-000998 (lc-14.md, "The stand")',
+  },
+];
