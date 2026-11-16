@@ -9,7 +9,7 @@ import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
-import { between, either, recordOf, type Run } from '../sim/run.ts';
+import { bearingOf, between, chuteOf, either, recordOf, type Run } from '../sim/run.ts';
 import { fireLevel } from './fires.ts';
 
 /**
@@ -98,7 +98,8 @@ export class Ascent {
     const datum = flight.flies!.datum ?? this.home.y;
     this.along.set(0, datum, 0);
     this.stand.copy(this.home).sub(this.along);
-    const body = flight.plan?.kind === 'ballistic' ? flight.plan.craft[0]!.rigid : undefined;
+    // (the craft's rigid body, where the plan gives one to steer)
+    const body = flight.plan?.craft[0]?.rigid;
     if (body) this.centre.set(0, body.capsule.centre.value - datum, 0);
   }
 
@@ -125,7 +126,8 @@ export class Ascent {
     if (this.live) return this.live;
     if (!this.record) {
       this.record = recordOf(this.flight)!;
-      if (this.flight.plan?.kind === 'ballistic') this.axis = axisOf(this.flight.plan, this.site, this.frame);
+      // (a run not placed by its samples' own attitude is placed along the record's axis: the gyros' going up, then heat shield first)
+      if (!this.record.live) this.axis = axisOf(this.flight.plan!, this.site, this.frame);
     }
     return this.record;
   }
@@ -216,12 +218,8 @@ export class Ascent {
   /** What leaves the vehicle on the way, in order (`Flight.flies.drops`), each at the time it left on the run on show. */
   get drops(): readonly { at: number; nodes: string[]; under?: 'drogue' | 'main' }[] {
     const { dropped } = this.flown();
-    // (what a drop leaves hanging under: the plan's parachute it names, by which of the two it is)
-    const plan = this.flight.plan;
-    const roles = plan?.kind === 'ballistic' ? ballisticOf(plan) : null;
-    const under = (id: string | undefined) =>
-      !roles || !id ? undefined : id === roles.main.id ? 'main' : id === roles.drogue.id ? 'drogue' : undefined;
-    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes, under: under(d.under) }));
+    // (what a drop leaves hanging under: the plan's parachute it names, by which of the run's two it is: sim/run.ts `chuteOf`)
+    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes, under: chuteOf(this.flight.plan, d.under) }));
   }
 
   /** The parachutes this flight has to draw (`Flight.flies.chutes`). */
@@ -292,7 +290,8 @@ export class Ascent {
 
   /** Body `id` of the orbital flight's descent, as the plan gives it (one with its own air), with its parachutes in the plan's order. */
   private descentBody(id: string) {
-    const craft = this.flight.plan?.kind === 'orbital' ? this.flight.plan.craft[0]! : undefined;
+    // (`id` is one of the run's descent's: `Run.descent`)
+    const craft = this.flight.plan?.craft[0];
     const body = craft?.bodies.find((b) => b.id === id && b.aero);
     if (!craft || !body) return undefined;
     const chutes = craft.chutes.filter((c) => c.body === id).map((c) => ({ name: c.label, fills: c.fills, replaces: c.replaces }));
@@ -442,7 +441,7 @@ export class Ascent {
    */
   bodyFrame(padTurn: THREE.Quaternion): THREE.Matrix4 | null {
     const plan = this.flight.plan;
-    const body = plan?.kind === 'ballistic' ? plan.craft[0]!.rigid : undefined;
+    const body = plan?.craft[0]?.rigid;
     if (!plan || !body) return null;
     const live = this.live?.samples[0] as LiveSample | undefined;
     const into = padTurn.clone().invert();
@@ -451,7 +450,7 @@ export class Ascent {
       axes = BODY.map((b) => toThree(ecefToSiteDirection(this.site, this.frame.toFixed(turn(live.attitude, b), live.t))));
     } else {
       // on the pad the nose is up, +Z against the azimuth: the site frame's +X bears `bearingX`, +Z a quarter turn clockwise of it
-      const bearing = THREE.MathUtils.degToRad(ballisticOf(plan).programme.azimuth.value - this.flight.site.bearingX.value);
+      const bearing = THREE.MathUtils.degToRad(bearingOf(plan) - this.flight.site.bearingX.value);
       const downrange = new THREE.Vector3(Math.cos(bearing), 0, Math.sin(bearing));
       axes = [Y.clone(), Y.clone().cross(downrange), downrange.clone().negate()];
     }
@@ -654,10 +653,9 @@ export class Ascent {
    */
   private keel(): THREE.Vector3 | null {
     const plan = this.flight.plan;
-    const roles = plan?.kind === 'ballistic' ? ballisticOf(plan) : null;
-    const side = roles?.craft.rigid?.capsule.earthward;
-    if (!roles || !side) return null;
-    const bearing = THREE.MathUtils.degToRad(roles.programme.azimuth.value - this.flight.site.bearingX.value);
+    const side = plan?.craft[0]?.rigid?.capsule.earthward;
+    if (!side) return null;
+    const bearing = THREE.MathUtils.degToRad(bearingOf(plan) - this.flight.site.bearingX.value);
     const downrange = new THREE.Vector3(Math.cos(bearing), 0, Math.sin(bearing));
     const a = THREE.MathUtils.degToRad(side.value);
     // (the body's +Y is the plumb line crossed with the way down range, its +Z the way back up range: `bodyFrame`)
@@ -753,8 +751,8 @@ export class Ascent {
    */
   private underCanopy(t: number, middle: THREE.Vector3, position: THREE.Vector3, quaternion: THREE.Quaternion): void {
     const d = this.flown().descent;
-    // (the first body to come down on its own air: the descent module)
-    const id = this.flight.plan?.kind === 'orbital' ? this.flight.plan.craft[0]!.bodies.find((b) => b.aero)?.id : undefined;
+    // (the first body to come down on its own air: the descent module; only a run with a descent of its own has one to hang)
+    const id = this.flight.plan?.craft[0]?.bodies.find((b) => b.aero)?.id;
     if (!this.hangsFrom || !d || !id) return;
     const first = Math.min(...Object.values(d.opened[id] ?? {}));
     if (!(t >= first)) return;

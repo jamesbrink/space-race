@@ -514,3 +514,13 @@ export function bearingOf(plan: FlightPlan | undefined): number {
   return plan?.kind === 'ballistic' ? ballisticOf(plan).programme.azimuth.value : 0;
 }
 
+/**
+ * Which of a run's two parachutes (`Run.out`) a parachute of the plan is: a ballistic flight's drogue, or its main (the one
+ * that takes the drogue's place: fly.ts `ballisticOf`); nothing for any other (a flight into orbit's descent draws its
+ * own: `Run.descent`).
+ */
+export function chuteOf(plan: FlightPlan | undefined, id: string | undefined): 'drogue' | 'main' | undefined {
+  if (!plan || !id || plan.kind !== 'ballistic') return undefined;
+  const b = ballisticOf(plan);
+  return id === b.main.id ? 'main' : id === b.drogue.id ? 'drogue' : undefined;
+}
