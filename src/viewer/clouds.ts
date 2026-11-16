@@ -24,6 +24,8 @@ import { EARTH_SPHERE } from '../world/bodies.ts';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
 const VEIL_LAYER = 7;
+/** How a material blends: what a veil's own draw changes for a moment (`CloudPass.split`). */
+type Blend = 'blending' | 'blendSrc' | 'blendDst' | 'blendSrcAlpha' | 'blendDstAlpha';
 
 /**
  * The cumulus as a volume: air.ts's cloud field, heaped into clouds and marched through.
@@ -75,8 +77,9 @@ const VEIL_LAYER = 7;
  * the first march's neighbours differ in light), only there, so neither is in the first march's
  * steps or its blur. How far off the scene's surface is, is read with the depth buffer's own
  * coarseness allowed for (`sceneDistance`): from orbit one step of it is kilometres. The fire and
- * its trail write no depth (`veils`): they are drawn again on their own, and cloud behind them is
- * seen through them only as much as they let through. In the cel look the cloud is a drawing: its
+ * its trail write no depth (`veils`, with glass and the glow of entry): they are drawn again on their own, and cloud
+ * behind them is seen through them only as much as they let through, with what light they add given back over it (a
+ * glow adds light and hides nothing: `split`). In the cel look the cloud is a drawing: its
  * opacity is cut at one half and its light in two flat tones, at the frame's resolution, so the
  * edge is clean.
  *
@@ -1215,11 +1218,13 @@ ${
 
   float w4(int k, vec2 fr) { return ((k & 1) == 1 ? fr.x : 1.0 - fr.x) * ((k >> 1) == 1 ? fr.y : 1.0 - fr.y); }
   // one of the march's pixels, laid on a pixel of the frame: only the cloud this pixel's own surface lies beyond, and
-  // of that, behind the fire or smoke, what shows through it
-  void lay(vec4 c, vec4 info, float w, float d, float dv, float veil, inout vec4 cloud, inout vec2 tone) {
-    w *= smoothstep(info.x, info.y, d) * mix(1.0 - veil, 1.0, smoothstep(info.x, info.y, dv));
+  // of that, behind the fire or smoke, what shows through it (and \`ahead\`: how much of it is in front of them)
+  void lay(vec4 c, vec4 info, float w, float d, float dv, float veil, inout vec4 cloud, inout vec2 tone, inout float ahead) {
+    float before = smoothstep(info.x, info.y, dv);
+    w *= smoothstep(info.x, info.y, d) * mix(1.0 - veil, 1.0, before);
     cloud += w * c;
     tone += w * c.a * info.zw;
+    ahead += w * c.a * before;
   }
   // The clouds over a pixel of the frame. The volume is brought up from the march's pixels: where a cloud's outline
   // was marched again at twice the size (tFine: where it was, its second texture says how far off, and 0 elsewhere),
@@ -1257,19 +1262,26 @@ ${
     sharp *= finer;
     vec3 ray = viewRay(uv), dir = normalize(uTurn * ray);
     float d = sceneDistance(texture(tDepth, uv).x, ray);
-    // fire and smoke, which write no depth and were drawn with the scene: what of them is in front of the scene here,
-    // and how far off. Cloud behind them is seen through them, so only as much as they let through
+    // fire, smoke, glass and glow, which write no depth and were drawn with the scene: what of them is in front of the
+    // scene here, and how far off; how much of what is behind them they hide, and the light they give (drawVeils).
+    // Cloud behind them is seen through them, so only as much as they let through, and under their light: the frame
+    // has their light in it already, and the clouds laid over it would cover that, so it is given back over them
     float veil = 0.0, dv = 1e9;
+    vec3 given = vec3(0.0);
     if (uVeils > 0.5) {
       dv = sceneDistance(texture(tVeilDepth, uv).x, ray);
-      veil = dv < d ? texture(tVeil, uv).a : 0.0;
+      vec4 v = dv < d ? texture(tVeil, uv) : vec4(0.0);
+      veil = v.a;
+      given = v.rgb;
     }
     vec4 cloud = vec4(0.0);
     vec2 tone = vec2(0.0);   // its light (cel) and haze, by opacity
+    float ahead = 0.0;       // how much of it lies in front of them
     for (int k = 0; k < 4; k++) {
-      if (fi[k].x > 0.0 && finer > 0.0) lay(texelFetch(tFine, fat[k], 0), fi[k], finer * w4(k, fq), d, dv, veil, cloud, tone);
-      if (sharp < 0.999 && c[k].a > 0.0) lay(c[k], texelFetch(tInfo, at[k], 0), (1.0 - sharp) * w4(k, fr), d, dv, veil, cloud, tone);
+      if (fi[k].x > 0.0 && finer > 0.0) lay(texelFetch(tFine, fat[k], 0), fi[k], finer * w4(k, fq), d, dv, veil, cloud, tone, ahead);
+      if (sharp < 0.999 && c[k].a > 0.0) lay(c[k], texelFetch(tInfo, at[k], 0), (1.0 - sharp) * w4(k, fr), d, dv, veil, cloud, tone, ahead);
     }
+    ahead /= max(cloud.a, 1e-4);
     if (uCel > 0.5) {
       // drawn: cut at half opacity, in two tones, at this resolution
       float a = cloud.a;
@@ -1277,6 +1289,7 @@ ${
       float l = tone.x / max(a, 1e-4);
       cloud = vec4(celTone(l, max(fwidth(l), 1e-3), tone.y / max(a, 1e-4)), 1.0) * alpha;
     }
+    float front = cloud.a * ahead;   // (of the march's, what is in front of the veils)
     cloud += (1.0 - cloud.a) * farCumulus(dir, d, dv, veil);
     // the sheets: whichever of them the eye is over the foot of lie in front of the cumulus, the rest behind
     vec4 deck = sheet(dir, 0, d, dv, veil), cirrus = sheet(dir, 1, d, dv, veil);
@@ -1285,6 +1298,8 @@ ${
     all += (1.0 - all.a) * cloud;
     if (uEyeH <= ${deckLo}) all += (1.0 - all.a) * deck;
     if (uEyeH <= ${highLo}) all += (1.0 - all.a) * cirrus;
+    // (the veils' light, given back over as much of the clouds as lies behind them: all but the march's in front)
+    all.rgb += given * max(all.a - front, 0.0);
     return all;
   }`;
 };
@@ -1452,7 +1467,10 @@ export class CloudPass extends Pass {
   };
   private sharpen: THREE.RawShaderMaterial | null = null;
   /** Fire and smoke in front of the scene (`veils`), drawn again on their own: how much they cover, and how far off the nearest is. */
-  private readonly veil = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType) });
+  private readonly veil = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType, // (their light, as the frame has it: far over 1 in a glow, and faint at its rim)
+    depthTexture: new THREE.DepthTexture(1, 1, THREE.UnsignedIntType),
+  });
   /** The veils' materials that do not write depth, made to for the veils' own draw (`drawVeils`). */
   private readonly lent: THREE.Material[] = [];
   private readonly cleared = new THREE.Color();
@@ -1549,6 +1567,7 @@ export class CloudPass extends Pass {
   /** The stage has another setting (Stage.applySetting): the clouds are its air's, and baked again by its weather's map. */
   setAir(air: Air | null, weather: WeatherMap | null): void {
     if (air === this.air && weather === this.weather) return;
+    this.found = undefined; // (another setting: another globe and its air, looked for again: `ball`)
     this.air = air;
     this.weather = weather;
     this.unweather?.();
@@ -1894,17 +1913,63 @@ export class CloudPass extends Pass {
     m.layers.enable(VEIL_LAYER);
     const material = (m as THREE.Mesh).material;
     if (!material) return;
-    if (Array.isArray(material)) {
-      for (const each of material) {
-        if (each.depthWrite) continue;
-        each.depthWrite = true;
-        this.lent.push(each);
-      }
-    } else if (!material.depthWrite) {
-      material.depthWrite = true;
-      this.lent.push(material);
+    for (const each of Array.isArray(material) ? material : [material]) {
+      this.split(each);
+      if (each.depthWrite) continue;
+      each.depthWrite = true;
+      this.lent.push(each);
     }
   };
+
+  /** The veils' materials as they blend in the scene, while their own draw has them blend otherwise (`split`). */
+  private readonly blended: { m: THREE.Material; was: Pick<THREE.Material, Blend> }[] = [];
+
+  /**
+   * Have a veil write, in its own draw, how much of what is behind it it hides (alpha) and, apart, the light it adds
+   * to what is behind it without hiding any (colour). A glow is light only: it hides nothing (the scene behind it is
+   * drawn whole, and so is the cloud), and its light is given back over the cloud laid over it (cloudsOver). Fire,
+   * smoke and glass hide as much as they cover and give nothing back: cloud behind them is seen through them, as it
+   * was. (Taken as hiding up to six tenths of what is behind it, the glow of entry took the cloud behind it out of
+   * the frame and left the sea it lies over: from the wake, a disc round the view with the cloud cut away.)
+   */
+  private split(m: THREE.Material): void {
+    if (this.blended.some((b) => b.m === m)) return;
+    const was = {
+      blending: m.blending,
+      blendSrc: m.blendSrc,
+      blendDst: m.blendDst,
+      blendSrcAlpha: m.blendSrcAlpha,
+      blendDstAlpha: m.blendDstAlpha,
+    };
+    this.blended.push({ m, was });
+    const custom = m.blending === THREE.CustomBlending;
+    const light = m.blending === THREE.AdditiveBlending || (custom && m.blendDst === THREE.OneFactor);
+    const alpha: [THREE.BlendingSrcFactor, THREE.BlendingDstFactor] = light
+      ? [THREE.ZeroFactor, THREE.OneFactor]
+      : m.blending === THREE.NoBlending
+        ? [THREE.OneFactor, THREE.ZeroFactor]
+        : custom
+          ? [m.blendSrcAlpha ?? m.blendSrc, (m.blendDstAlpha ?? m.blendDst) as THREE.BlendingDstFactor]
+          : [THREE.OneFactor, THREE.OneMinusSrcAlphaFactor];
+    const colour: [THREE.BlendingSrcFactor, THREE.BlendingDstFactor] = !light
+      ? [THREE.ZeroFactor, THREE.OneFactor]
+      : custom
+        ? [m.blendSrc, m.blendDst]
+        : [m.premultipliedAlpha ? THREE.OneFactor : THREE.SrcAlphaFactor, THREE.OneFactor];
+    m.blending = THREE.CustomBlending;
+    [m.blendSrc, m.blendDst] = colour;
+    [m.blendSrcAlpha, m.blendDstAlpha] = alpha;
+  }
+
+  /** The air seen from above, the globe's (`ball`): undefined until looked for, null if there was none (looked for again now and then). */
+  private found: THREE.Object3D | null | undefined = undefined;
+  private looked = 0;
+  private ball(): THREE.Object3D | null {
+    const again =
+      this.found === undefined || (this.found !== null && !this.found.parent) || (this.found === null && ++this.looked % 60 === 0);
+    if (again) this.found = this.scene.getObjectByName('air') ?? null;
+    return this.found ?? null;
+  }
 
   /** The scene as the veils' own draw sees it: its children, under a scene with a lighting state of its own (`drawVeils`). */
   private readonly veiled = Object.assign(new THREE.Scene(), { matrixAutoUpdate: false, matrixWorldAutoUpdate: false });
@@ -1925,6 +1990,35 @@ export class CloudPass extends Pass {
       else this.lend(o);
     }
     if (!any) return false;
+    // The air seen from above (globe.ts: the ball named 'air') is drawn in the frame after them and over them, and
+    // takes from their light what it takes from the sea under it: so it is drawn over them here too, taking the same
+    // and adding nothing, so that the light given back over the clouds is the light the frame has of them (given back
+    // as it was before the air took from it, it laid a bright line along the limb wherever the clouds are there)
+    const ball = this.ball();
+    let shown: THREE.Object3D | null = ball;
+    for (; shown?.parent; shown = shown.parent) if (!shown.visible) break;
+    const over = ball && shown === this.scene ? ((ball as THREE.Mesh).material as THREE.Material) : null;
+    const overWas = over
+      ? {
+          blending: over.blending,
+          blendSrc: over.blendSrc,
+          blendDst: over.blendDst,
+          blendSrcAlpha: over.blendSrcAlpha,
+          blendDstAlpha: over.blendDstAlpha,
+          depthTest: over.depthTest,
+        }
+      : null;
+    if (over && ball) {
+      ball.layers.enable(VEIL_LAYER);
+      Object.assign(over, {
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.ZeroFactor,
+        blendDst: THREE.SrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        depthTest: false, // (the veils' own depth is in the way here, which is not in the frame's)
+      });
+    }
     if (this.veil.width !== frame.width || this.veil.height !== frame.height) this.veil.setSize(frame.width, frame.height);
     const clear = renderer.getClearColor(this.cleared),
       alpha = renderer.getClearAlpha(),
@@ -1960,6 +2054,12 @@ export class CloudPass extends Pass {
       this.camera.layers.mask = mask;
       for (const m of lent) m.depthWrite = false;
       lent.length = 0;
+      for (const { m, was } of this.blended) Object.assign(m, was);
+      this.blended.length = 0;
+      if (over && ball && overWas) {
+        Object.assign(over, overWas);
+        ball.layers.disable(VEIL_LAYER);
+      }
     }
     renderer.autoClear = autoClear;
     renderer.setClearColor(clear, alpha);

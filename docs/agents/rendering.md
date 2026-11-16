@@ -859,6 +859,15 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   frame's march has it, 0.5 % at most drawn unchanged at the pixel it was at), looks at each sheet from 300 m and 2 km
   off (the same), and crosses each layer looking level and down (a change from one frame to the next must shrink as
   the climb between them is halved: a step does not).
+- **A glow hides nothing.** What writes no depth and stands in front of cloud (fire, smoke, glass, the glow of entry:
+  clouds.ts `veils`) is drawn again on its own, writing how much of what is behind it it hides and, apart, the light it
+  adds (`CloudPass.split`). Cloud behind it is laid over the frame through what it hides, and its light is given back
+  over that cloud (`cloudsOver`): its light as the frame has it, so the air seen from above (globe.ts), which the frame
+  draws over them, is drawn over them there as well (given back whole, it laid a bright line along the limb wherever
+  cloud was there: Vostok 2 at T+90400 from beside). Fire, smoke and glass hide as they cover and give nothing back; a glow is light only.
+  Taken as hiding up to six tenths of what was behind it, the glow of entry took the cloud behind it out of the frame
+  and left the sea under it: from Freedom 7's wake at T+510 a disc round the view with the cloud cut away (tools/glow-test.mjs's
+  failing pose). `pnpm test:clouds` holds that no pixel is darker with the glow than without it, there and beside it.
 - **The deck's shadow is its patches', on everything, from above.** `deckShadeAt` (weather.ts) is the deck where the
   ray to the Sun crosses it, as its patches with the share of each that is cloud, not its cloudlets (whose shadows the
   Sun's disc blurs by 33 m): a soft grey dapple 3 km from each patch away from the Sun at liftoff (Sun at 50 degrees).
