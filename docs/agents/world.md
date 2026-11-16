@@ -4,7 +4,8 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
 `src/world/` is pure TypeScript in doubles with no three.js, and everything in it is tested against
 published values (`tests/world.test.mjs`: Meeus's worked examples and JPL Horizons; `tests/orbit.test.mjs`: Vallado's
-examples and published orbits, for `orbit.ts`; the Earth's shadow there is held to geometry only, no published case having been found). Read the header
+examples and published orbits, for `orbit.ts`; `tests/meanelements.test.mjs`: Kozai's own forms, published mean orbits
+and the J2 coast, for `meanelements.ts`; the Earth's shadow there is held to geometry only, no published case having been found). Read the header
 of `frames.ts` before using a frame: it states every convention once. Lengths are metres and angles
 radians, except that a place is recorded in degrees as published. A site's frame is the viewer's
 and the model's: +Y up, +X on the site's stated bearing, +Z a quarter turn clockwise from it.
@@ -129,6 +130,60 @@ builds it):
   simulation goes on as it does now.
 - Back off rails the state is handed to the live simulation as it stands at the clock's instant, so the hand-over is in
   place and velocity exactly where the coast left it.
+
+A published orbit is mean elements, not osculating ones (`world/meanelements.ts`, GitHub issue #8). Heights, an
+inclination and a period are averages over a revolution: under J2 the osculating semi-major axis of a low orbit goes round
+by 8 km either side of its mean (cos 2u, u the argument of latitude), so a state built as if the published figures were
+osculating where the ascent cut off flies a period 8 s short to 10 s long according to where that was (Vostok 2 flown so
+from its ascent: 88.66 min against the published 88.46). The theory is Kozai's first-order one (Astronomical Journal 64,
+367, 1959, read from the NASA ADS scan; every formula names its equation), with Brouwer's secular rates (AJ 64, 378,
+1959, section 9) agreeing with it to first order:
+
+- `shortPeriodic` is eq. 10's six short-periodic terms less their averages over M (eq. 12), carried in a, e cos w,
+  e sin w, i, the node and M + w, where the 1/e of de, dw and dM cancels (Kozai p. 377; Brouwer p. 393). `osculatingOf`
+  and `stateOfMean` add them; `meanOf` takes them off a state by iteration. A mean element here is the osculating one
+  averaged over a revolution, the long-periodic part left in (Kozai's eqs. 25 to 30 are singular at the critical
+  inclination, 63.4 degrees, two degrees from Vostok's; over a flight of hours they are a constant).
+- The mean `a` is the average of the osculating one (eq. 10's da averages to zero), Kozai's a0 and Brouwer's a'', which
+  vis-viva gives the speed from. Kozai's own "mean semi-major axis" a-bar (p. 372, eq. 14; `kozaiAxis`) is 2 km less in
+  low orbit and is the one his eqs. 13 and 31 place the satellite by: it is not to be fed to vis-viva.
+- `meanRates`: Kozai p. 372, n-bar = n0 (1 + A2/p^2 (1 - 3/2 sin^2 i) sqrt(1 - e^2)), dw/dt = A2/p^2 n-bar (2 - 5/2
+  sin^2 i), dOmega/dt = -A2/p^2 n-bar cos i, A2 = 3/2 J2 R^2 (eq. 1). `periodsOf`: anomalistic 2 pi / n-bar, Kepler
+  2 pi / n0, nodal 2 pi / (n-bar + dw/dt) over a turn of the perigee, and from one node to the next while the perigee
+  stands at w, 2 pi / (n-bar + dw/dt (1 - e^2)^(3/2) / (1 + e cos w)^2) (the node is passed at v = -w).
+- `fromPublished(orbit, { node, latitude, anomaly })` and `alongPublished(orbit, r, v)`: the osculating state of a
+  published orbit at a place on it, or the speed that puts a spacecraft left at r going along v on it. `meanOrbitOf`
+  chooses the mean axis whose period of the stated kind is the published one, e from the heights' difference over twice
+  it, the inclination as published. Where the heights' sum and the period disagree, the period stands and `radius`
+  reports the ball the heights would be over (Vostok 1: 6,369.05 km; Vostok 2: 6,361.06). Kind `osculating` is the old
+  reading, given to the bit, so a run can be compared.
+
+The conventions, each a choice (`CONVENTION`): the period is nodal, **estimated** (no source states it; TASS's equator
+crossings for Vostok 2 are four of its periods apart, and NII-4's ballistics group found the period from tracked passes);
+the heights are over a ball of 6,371 km where no period is given, **estimated**; the state that results is **derived**,
+its `method` saying how. Nothing is fitted to a landing.
+
+What holds it (tests/meanelements.test.mjs): eq. 12 is the average of eq. 10 to 1e-10 of each term; on a circle the
+radius and the argument of latitude are Kozai's eq. 13 (his second derivation) to 19 and 10 m, J2 squared; Jason-3's
+handbook mean orbit (issue 1.5, 2018, Tables 5 and 6) gives its published nodal period, 6,745.7605 s, to 2 ms, and its
+node rate, -2.07707 deg/day, to 0.08 % (J2 squared and J4 are not in the first order); Sentinel-3A's (AVISO) its 100.987
+min to 8 ms and its node the Sun's to 0.5 %. And the proof: Vostok 1's and Vostok 2's published orbits read
+as mean with a nodal period, turned into a state from 0, 45, 70 or 135 degrees past the node and flown round by orbit.ts's
+J2 `coast`, cross the equator every published period to 0.02 s (read as osculating, -7.9 to +10.3 s); the mean axis of
+the flown state holds to 21 m while the osculating one goes over 16.6 km; Kozai's second-order secular terms, not in
+it, are the 0.02 s. Vostok 2 so read, from its record's estimated injection, crosses northbound at 11:48:44 and 17:42:34
+Moscow time where TASS has 11:48 and 17:42 (as osculating, 11:49:08 and 17:43:45): a check, not a target. Vallado's
+worked examples of mean elements were not to hand and none is used.
+
+What src/sim is to do with it (the note for whoever does it; nothing there is changed by this module): where the published
+orbit becomes a state, call it instead. `sim/orbital.ts` `injectionState`: in place of `stateOf({ a, e, i, node, argp:
+latitudeArgument - nu, nu })`, `fromPublished({ perigee, apogee, inclination: i, period, radius }, { node, latitude:
+latitudeArgument, anomaly: nu }).state`. `sim/staged.ts` `published`: in place of vis-viva on `a`, `alongPublished(same,
+at.r, at.v).state.v` (the flight's frame has the pole for +Z, which is all it needs). With `kind: 'osculating'` both give
+today's states to the bit. Flown so (a scratch run, not a test), Vostok 2's coast from the ascent flown crosses at 11:48:45
+and 17:42:35, its node opening the eighteenth orbit at 09:55:39 (the record's, derived, 09:54.9), and with the burn at
+09:51:00 it comes down 501 km short where it was 1,493; Vostok 1's apogee flown round is 326.1 km (record 327, was
+346.2), its landing 503 km beyond where it was 452. The record's `orbit.radius` then only labels heights.
 
 Light must never step, at any clock rate (the idle show runs the night at 1200 times life).
 Everything cheap (the light's strength and colour, exposure, the sky, the fog, the lamps) is set

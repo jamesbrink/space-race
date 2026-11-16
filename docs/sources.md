@@ -812,6 +812,19 @@ Kosmonavtiki*; the press conference of 25 June in Russian; part 2 of Siddiqi's *
 article; zvezda-npp.ru; Encyclopedia Astronautica's suit pages; the Russian edition of Abramov and
 Skoog (2005); *Flight International* for June and July 1963; epizodsspace's own hosts.
 
+### The published orbit as mean elements (issue #8)
+
+Read 16 November 2026 for `src/world/meanelements.ts` (docs/agents/world.md). The two 1959 papers were read from the
+NASA ADS scans, the equations from page images at 260 dpi.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Kozai, Y., "The motion of a close earth satellite", *Astronomical Journal* 64, 367-377 (1959), doi:10.1086/107957 | [ADS 1959AJ.....64..367K](https://articles.adsabs.harvard.edu/pdf/1959AJ.....64..367K) | Eq. 1 (the potential, A2 = 3/2 J2 R^2), eq. 10 (the first-order short-periodic terms in a, e, w, i, the node and e M), eq. 11 and 12 (their averages over M), eq. 13 (r and the argument of latitude, his second derivation: the check), p. 372 (the secular rates, a0 and a-bar, eq. 14), eqs. 25 to 31 (long-periodic terms, the results), p. 377 (small e: use r and v + w) | His a-bar (eq. 14) places the satellite (eqs. 13, 31) and is not the average of the osculating a; p. 371 prints da = -a0 (...) where carrying it through eq. 13 for a circle over the equator wants +a0. The long-periodic terms divide by 4 - 5 sin^2 i |
+| Brouwer, D., "Solution of the problem of artificial satellite theory without drag", *AJ* 64, 378-397 (1959) | [ADS 1959AJ.....64..378B](https://articles.adsabs.harvard.edu/pdf/1959AJ.....64..378B) | Section 9, pp. 393-394 only: a'' and n0, the secular rates of l'', g'' and h'' (to first order Kozai's, with Kozai's a0 for a''), the long-periodic terms' (1 - 5 cos^2 I) divisor, and that g + l carries no 1/e | The rest of the paper (the von Zeipel transformation, its short-periodic terms) was not read |
+| Jason-3 Products Handbook, issue 1.5, 17 September 2018 (CNES, EUMETSAT, NASA, NOAA) | [ospo.noaa.gov hdbk_j3.pdf](https://www.ospo.noaa.gov/Products/documents/hdbk_j3.pdf), Tables 5 and 6, p. 17 | A published mean orbit with its nodal period and node rate beside it: a 7,714.432 km, e 0.000098, i 66.042 deg, w 90 deg; nodal period 6,745.7605 s, inertial nodal rate -2.07707 deg/day, 127 revolutions in 9.91564 days | "Mean classical orbit elements": the theory is not named. That the first-order nodal period of a = a0 comes within 2 ms says the axis is the averaged one (Kozai's a-bar would be 2.2 km less, 2.8 s) |
+| AVISO, "Sentinel-3 orbit" | [aviso.altimetry.fr](https://www.aviso.altimetry.fr/en/missions/current-missions/sentinel-3a/orbit.html) | a 7,177.926540 km, e 0.001148, i 98.65 deg, w 90 deg, nodal period 100.987 min, 385 revolutions in 27 days: a Sun-synchronous orbit with its period | Does not say the elements are mean ones; the inclination is given to 0.01 degree |
+| Brykov, A. V., memoir of NII-4's ballistics group and Sputnik 1 (RGANTD f. 227, op. 1, d. 6), at second hand from the research comment on issue #8 | [rvsn.info](https://rvsn.info/library/docs/doc_1_1056.html) | The period found from tracked passes and the height from the period: why the published period is read as a nodal one (`CONVENTION.kind`, estimated) | Sputnik 1 in 1957, not Vostok; a memoir |
+
 ### Fires by what they burn, and where the exhaust goes at Site 1
 
 Read for [viewer/flames.ts](../src/viewer/flames.ts) and trail.ts `pitBlast` (rendering.md, "A fire looks as what it burns").
@@ -862,7 +875,7 @@ tail-off, the swing, the vent or the timing between them was found.
 | Lissov's articles on the flight in *Novosti Kosmonavtiki*; *Pervyi pilotiruemyi polet* (2011), the tracking and ballistics documents | The node, the argument of perigee, where and when the spacecraft was injected, the drop zones: none is in anything read, and the coast's landing along the track hangs on them |
 | Anything on the Vostok's solar orientation system that gives the sensor's axis against the braking engine's (Raushenbakh; Chertok vol. 3; Legostaev) | The record says the engine was pointed at the Sun; the Sun was 41° out of the orbit's plane, and the landing says the push was not |
 | Bailey and Hiatt, "Sphere drag coefficients for a broad range of Mach and Reynolds numbers", *AIAA Journal* 10 (1972); Hoerner, *Fluid-Dynamic Drag* | The sphere's drag curve in `orbital.ts` is set down from memory of them |
-| Kozai, "The motion of a close Earth satellite", *Astronomical Journal* 64 (1959), or Vallado's section on mean elements | A stated conversion from mean to osculating elements, for reading the published orbit |
+| Vallado, *Fundamentals of Astrodynamics and Applications*, 4th ed., ch. 9 (mean elements, J2's secular rates) and its worked examples | A textbook's worked case of osculating to mean elements, to hold `src/world/meanelements.ts` to beside Kozai's own forms; not to hand on 16 November 2026 |
 
 ## Voskhod
 
