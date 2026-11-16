@@ -94,6 +94,8 @@ export interface LineupHandlers {
   light(on: boolean): void;
   cel(on: boolean): void;
   lighter(on: boolean): void;
+  /** The row framed by its height was gone along to `x` metres (under the thumb), or (`done`) let go there. */
+  pan(x: number, done: boolean): void;
   /** What the panels leave clear of the picture has changed. */
   measured(): void;
   retry(): void;
@@ -137,6 +139,8 @@ export class LineupUi {
   private covered: Rect[] = [];
   /** Which person's and which programme's words are open. */
   private openPerson: string | null = null;
+  /** The row in miniature, under a row framed by its height: where along it each stands, metres, and how tall. */
+  private along: { from: number; to: number; stands: { id: string; x: number; height: number }[] } | null = null;
 
   constructor(root: HTMLElement, data: LineupData, handlers: LineupHandlers) {
     this.root = root;
@@ -262,6 +266,7 @@ export class LineupUi {
       </aside>
       <p class="stats" aria-hidden="true"></p>
       <div class="lu-marks"><p class="lu-section" hidden></p></div>
+      <div class="lu-pan" role="slider" aria-label="Along the row" aria-valuemin="0" aria-valuemax="100" tabindex="-1" hidden><div class="lu-pan-row"></div><i class="lu-pan-window"></i></div>
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
     const marks = this.q('.lu-marks');
@@ -333,6 +338,37 @@ export class LineupUi {
   private listen(): void {
     const root = this.root;
     const panel = this.q('.panel');
+    // the row in miniature: a finger or the pointer on it goes along the row, and lets go on the one nearest
+    const bar = this.q('.lu-pan');
+    const alongAt = (e: PointerEvent): number | null => {
+      const r = bar.getBoundingClientRect();
+      const a = this.along;
+      return a && r.width ? a.from + Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * (a.to - a.from) : null;
+    };
+    let sliding = false;
+    bar.addEventListener('pointerdown', (e) => {
+      const x = alongAt(e);
+      if (x === null) return;
+      sliding = true;
+      try {
+        bar.setPointerCapture(e.pointerId); // (the thumb goes on along it off its ends)
+      } catch {
+        // (a pointer that is already gone cannot be captured)
+      }
+      this.on.pan(x, false);
+    });
+    bar.addEventListener('pointermove', (e) => {
+      const x = sliding ? alongAt(e) : null;
+      if (x !== null) this.on.pan(x, false);
+    });
+    const letGo = (e: PointerEvent): void => {
+      if (!sliding) return;
+      sliding = false;
+      const x = alongAt(e);
+      if (x !== null) this.on.pan(x, true);
+    };
+    bar.addEventListener('pointerup', letGo);
+    bar.addEventListener('pointercancel', letGo);
     const tuckPanel = (tucked: boolean, remember = true): void => {
       panel.classList.toggle('tucked', tucked && !narrow());
       this.q('.close').setAttribute('aria-expanded', String(!tucked));
@@ -829,8 +865,9 @@ export class LineupUi {
    * What the panels leave clear of the picture, for the camera to frame in: beside the title card (the whole height
    * under the bar across the top) and under it (the whole width), each down to whatever lies across the foot. In CSS
    * pixels from the canvas's corner. Also notes what covers the picture, so that nothing is written under a panel.
+   * `room`: what of the foot the row in miniature takes, which is there only because the row is gone along.
    */
-  clear(canvas: HTMLCanvasElement): { beside: Rect; under: Rect } {
+  clear(canvas: HTMLCanvasElement): { beside: Rect; under: Rect; room: number } {
     const view = canvas.getBoundingClientRect();
     const bare = this.root.classList.contains('bare');
     const shown = (el: HTMLElement): boolean => el.offsetParent !== null && !bare;
@@ -874,6 +911,16 @@ export class LineupUi {
       }
     }
     const air = narrow() ? 6 : 14;
+    // the row in miniature lies across the foot of what is clear, the whole breadth of it
+    const bar = this.q('.lu-pan');
+    let room = 0;
+    if (!bar.hidden && !bare) {
+      const tall = bar.offsetHeight;
+      room = tall + air;
+      foot -= tall + air;
+      Object.assign(bar.style, { left: `${left + air}px`, width: `${Math.max(40, right - left - 2 * air)}px`, top: `${foot}px` });
+      this.covered.push({ left: left + air, top: foot, right: right - air, bottom: foot + tall });
+    }
     // (room under the row's feet for what is written there: each one's name and height)
     if (this.names && !bare) foot -= narrow() ? 40 : 46;
     const rect = (l: number, t: number): Rect => ({
@@ -882,7 +929,41 @@ export class LineupUi {
       right: Math.max(l - view.left + air + 40, right - view.left - air),
       bottom: Math.max(t - view.top + air + 40, foot - view.top - air),
     });
-    return { beside: rect(Math.max(left, cardRight), head), under: rect(left, Math.max(head, cardBottom)) };
+    return { beside: rect(Math.max(left, cardRight), head), under: rect(left, Math.max(head, cardBottom)), room };
+  }
+
+  /**
+   * The row in miniature, for a row framed by its height and gone along (scene.ts `pan`): each vehicle a mark of its
+   * height in its programme's tint, and over them the part of the row in the picture. Null puts it away. True if it
+   * came or went (what is clear of the picture has changed).
+   */
+  panBar(along: { from: number; to: number; stands: { id: string; x: number; height: number }[] } | null): boolean {
+    const bar = this.q('.lu-pan');
+    const was = !bar.hidden;
+    const same = JSON.stringify(along) === JSON.stringify(this.along);
+    this.along = along;
+    bar.hidden = !along;
+    if (along && !same) {
+      const tallest = Math.max(1, ...along.stands.map((s) => s.height));
+      const span = Math.max(1e-6, along.to - along.from);
+      this.q('.lu-pan-row').innerHTML = along.stands
+        .map((s) => {
+          const tint = css(this.entry(s.id)?.tint ?? [0, 0, 0.7]);
+          return `<b style="left: ${(((s.x - along.from) / span) * 100).toFixed(2)}%; height: ${((s.height / tallest) * 100).toFixed(1)}%; --tint: ${tint}"></b>`;
+        })
+        .join('');
+    }
+    return was !== Boolean(along);
+  }
+
+  /** Where the part of the row in the picture is on the row in miniature. */
+  panWindow(at: { from: number; to: number; at: number; width: number } | null): void {
+    if (!at || this.q('.lu-pan').hidden) return;
+    const span = Math.max(1e-6, at.to - at.from);
+    const win = this.q('.lu-pan-window');
+    win.style.left = `${(((at.at - at.width / 2 - at.from) / span) * 100).toFixed(2)}%`;
+    win.style.width = `${((at.width / span) * 100).toFixed(2)}%`;
+    this.q('.lu-pan').setAttribute('aria-valuenow', String(Math.round(((at.at - at.from) / span) * 100)));
   }
 
   /**

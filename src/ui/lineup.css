@@ -137,6 +137,13 @@ body.demo #ui.lineup .lu-marks { visibility: visible; }
 body.demo #ui.lineup .lu-label { display: none; }
 .lu-marks > * { position: absolute; left: 0; top: 0; margin: 0; opacity: 0; pointer-events: none; transition: opacity 0.18s ease; }
 .lu-marks > .on { opacity: 1; }
+/* the row in miniature, under a row framed by its height (scene.ts pan): each vehicle a mark of its height, the part in the picture framed; the thumb goes along it */
+#ui.lineup > .lu-pan { position: fixed; z-index: 3; height: 34px; padding: 0; box-sizing: border-box; background: rgba(10, 11, 14, 0.62); border: 1px solid var(--line); border-radius: 3px; touch-action: none; cursor: ew-resize; }
+#ui.lineup > .lu-pan[hidden] { display: none; }
+#ui.lineup.bare > .lu-pan, body.demo #ui.lineup > .lu-pan { visibility: hidden; }
+.lu-pan-row { position: absolute; inset: 5px 0; }
+.lu-pan-row b { position: absolute; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--tint); opacity: 0.85; border-radius: 1px 1px 0 0; }
+.lu-pan-window { position: absolute; top: 2px; bottom: 2px; box-sizing: border-box; border: 1.5px solid var(--amber); border-radius: 2px; background: rgba(255, 196, 107, 0.08); pointer-events: none; transition: left 0.08s linear; }
 .lu-label { display: grid; justify-items: center; gap: 1px; padding: 3px 8px 4px; text-align: center; white-space: nowrap; background: rgba(10, 11, 14, 0.62); border-top: 2px solid var(--tint); border-radius: 0 0 2px 2px; }
 .lu-label.on { pointer-events: auto; }
 .lu-label b { font: 600 12px/1.25 var(--sans); color: var(--ink); }

@@ -92,6 +92,13 @@ const NEAR_LEAST = 0.05;
 const NEAR_EASE = 0.25;
 /** How much of the clear part of the picture a subject is framed to fill. */
 const FILL = 0.86;
+/**
+ * A row too long for the picture: framed whole, its tallest would be drawn under this much of the clear part's height (a
+ * phone held upright: 390 pixels for two hundred metres). It is framed by its height instead, the tallest filling
+ * `PAN_FILL` of it, and the picture goes along the row under the thumb (`pan`).
+ */
+const PAN_BELOW = 0.3;
+const PAN_FILL = 0.55;
 /** The row as it is first seen: square on from the front and a little above, as a drawing of it would be. Pivot to eye. */
 const HOME = new THREE.Vector3(0, 0.09, 1).normalize();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -149,10 +156,17 @@ export class LineupScene {
   /** The middle of the row and how far it reaches, for the camera's limits and the depth range. */
   private readonly bounds = new THREE.Sphere(new THREE.Vector3(), 30);
   private extent = { from: -10, to: 10, front: 2, back: -2, tallest: 10 };
+  /**
+   * The whole row framed by its height and gone along (`PAN_BELOW`): where along the row the middle of what is framed
+   * is, metres, and what of the row that is (null: the whole row fits, or none is framed). `panAt` is where it was put,
+   * and is kept while the row stands as it is.
+   */
+  private panAt: number | null = null;
+  private panned: { from: number; to: number; at: number; width: number } | null = null;
   /** What the camera was last sent to frame (null: all that stands), until the hands take the view. */
   private following: { ids: string[] | null } | null = null;
   /** Where nothing covers the picture: beside the title card (the whole height) and under it (the whole width). */
-  private clear: { beside: Rect; under: Rect } | null = null;
+  private clear: { beside: Rect; under: Rect; room: number } | null = null;
   /** How far to one side of the middle the pivot is seen (-1 to 1 across), so that it is in the middle of what is clear; where it is now, and where it is going. */
   private aside = 0;
   private asideNow = 0;
@@ -415,6 +429,7 @@ export class LineupScene {
     this.bounds.center.set(0, tallest / 2, 0);
     this.bounds.radius = Math.hypot(length / 2, tallest / 2, deepest / 2);
     for (const stand of standing) stand.cast(this.renderer, this.hall.toKey);
+    this.panAt = null; // (a row formed again is gone along from its first end)
     this.settled = 0;
     this.dirty = true;
   }
@@ -428,9 +443,9 @@ export class LineupScene {
   // ----------------------------------------------------------------------------------------------- the view
 
   /** Where nothing covers the picture (CSS pixels from the canvas's corner): beside the title card, and under it. */
-  setClear(beside: Rect, under: Rect): void {
+  setClear(beside: Rect, under: Rect, room = 0): void {
     const was = JSON.stringify(this.clear);
-    this.clear = { beside, under };
+    this.clear = { beside, under, room };
     if (JSON.stringify(this.clear) === was) return;
     this.refollow();
   }
@@ -456,7 +471,28 @@ export class LineupScene {
     // whichever clear part shows it larger: beside the title card for a tall thing, under it for a long row
     const rects = this.clear ? [this.clear.beside, this.clear.under] : [whole];
     const fits = (r: Rect): number => Math.min(Math.max(1, r.right - r.left) / size.x, Math.max(1, r.bottom - r.top) / size.y);
-    const rect = rects.reduce((best, r) => (fits(r) > fits(best) ? r : best));
+    let rect = rects.reduce((best, r) => (fits(r) > fits(best) ? r : best));
+    // the whole row, too long to be seen whole at a size that reads: framed by its height, at the part of it gone to
+    this.panned = null;
+    if (!ids) {
+      const tall = (r: Rect): number => Math.max(1, r.bottom - r.top);
+      // (decided as if the row in miniature were not at the foot: it is there because the row is gone along, and its
+      // coming must not undo the decision that brought it)
+      const room = this.clear?.room ?? 0;
+      const grown = (r: Rect): Rect => ({ ...r, bottom: r.bottom + room });
+      const seen = rects.map(grown).reduce((best, r) => (fits(r) > fits(best) ? r : best));
+      if (fits(seen) * size.y < PAN_BELOW * tall(seen)) {
+        // (framed by its height, in whichever clear part is the tallest)
+        rect = rects.reduce((best, r) => (tall(r) > tall(best) ? r : best));
+        const width = Math.min(size.x, (Math.max(1, rect.right - rect.left) * size.y) / (PAN_FILL * tall(rect)));
+        const [from, to] = [box.min.x, box.max.x];
+        const at = THREE.MathUtils.clamp(this.panAt ?? from + width / 2, from + width / 2, to - width / 2);
+        this.panned = { from, to, at, width };
+        box.min.x = at - width / 2;
+        box.max.x = at + width / 2;
+        size.x = width;
+      }
+    }
     // pixels a metre at the distance asked, by the lens: the subject fills FILL of the clear part, and its front
     // (half its depth nearer than its middle) is what must fit
     const tan = Math.tan(THREE.MathUtils.degToRad(LENS / 2));
@@ -482,6 +518,27 @@ export class LineupScene {
     });
     if (snap || this.frozen || this.cam.calm) this.asideNow = this.aside;
     this.dirty = true;
+  }
+
+  /**
+   * Go along a row framed by its height (`PAN_BELOW`) to `x` metres along it: an explicit act, as the reset key is, so it
+   * takes the view back from the hands. `snap`: at once, as under a moving thumb; otherwise flown.
+   */
+  pan(x: number, snap: boolean): void {
+    if (!this.panned) return;
+    this.panAt = x;
+    this.frame(null, snap || this.frozen);
+  }
+
+  /** Where along the row the one nearest the middle of what is framed stands, metres. */
+  nearestTo(x: number): number {
+    const along = this.standing.map((s) => s.group.position.x);
+    return along.reduce((best, a) => (Math.abs(a - x) < Math.abs(best - x) ? a : best), along[0] ?? x);
+  }
+
+  /** The row as it is gone along, if it is framed by its height: where it starts and ends, and the middle and breadth of what is framed, metres. */
+  get panning(): { from: number; to: number; at: number; width: number } | null {
+    return this.panned;
   }
 
   /** Frame again whatever the camera was last sent to, if the hands have not taken the view since: the picture has changed shape. */

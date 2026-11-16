@@ -104,6 +104,7 @@ const ui = new LineupUi(
       chooseTier(on);
       location.reload();
     },
+    pan: (x, done) => scene.pan(done ? scene.nearestTo(x) : x, !done),
     measured: () => measure(),
     retry: () => void arrive(),
   },
@@ -124,17 +125,52 @@ const scene = new LineupScene(canvas, row, {
   drawn: () => place(),
 });
 
-/** Put what is written on the picture where the picture has it. */
-function place(): void {
-  if (ready) ui.place(scene);
+/**
+ * The row in miniature, under a row framed by its height (scene.ts `pan`), shown or put away as the framing has it.
+ * True if it came or went: what is clear of the picture has changed.
+ */
+function syncAlong(): boolean {
+  if (touring) return false;
+  const panning = scene.panning;
+  const along = panning
+    ? {
+        from: panning.from,
+        to: panning.to,
+        stands: scene.standing.map((s) => ({ id: s.entry.flight.id, x: Math.round(s.group.position.x * 100) / 100, height: s.height })),
+      }
+    : null;
+  const changed = ui.panBar(along);
+  ui.panWindow(panning);
+  return changed;
 }
 
-/** What the panels leave clear of the picture: the camera frames in it, and nothing is written under them. */
+/** Put what is written on the picture where the picture has it. */
+function place(): void {
+  if (!ready) return;
+  if (syncAlong())
+    measure(); // (and so placed again)
+  else ui.place(scene);
+}
+
+/**
+ * What the panels leave clear of the picture: the camera frames in it, and nothing is written under them. The row in
+ * miniature comes or goes with the framing, and takes room at the foot: measured again until it stays (it does at once:
+ * whether the row is gone along is decided as if it were not there).
+ */
+let measuring = false;
 function measure(): void {
-  if (!ready) return; // (asked while the page is being made: it is measured when the row has arrived)
-  const { beside, under } = ui.clear(canvas);
-  scene.setClear(beside, under);
-  place();
+  if (!ready || measuring) return; // (asked while the page is being made: it is measured when the row has arrived)
+  measuring = true;
+  try {
+    for (let i = 0; i < 3; i++) {
+      const { beside, under, room } = ui.clear(canvas);
+      scene.setClear(beside, under, room);
+      if (!syncAlong()) break;
+    }
+  } finally {
+    measuring = false;
+  }
+  ui.place(scene);
 }
 
 /** What the camera is sent to for a view: the one chosen, or (null) all that stands. */
