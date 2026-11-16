@@ -1,85 +1,17 @@
-import type { Flight, ModelDef, Move, Part } from '../../../../../src/types.ts';
+import type { Flight } from '../../../../../src/types.ts';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
-import { vostokCabin, vostokLights, vostokSeat } from '../../vehicles/cabin.ts';
+import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
+import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
 import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
-const DEG = Math.PI / 180;
-const KGF = 9.80665;
-
-// Where things are on the model, as vehicles/vostok_3ka.py has them: azimuths about the long axis from the model's +X,
-// latitudes on the sphere above the plane square to that axis. The numbers live there; these are quoted for the motions.
-const ENTRY = { az: 135, lat: 24 }; // hatch No. 1, and the line of the seat's rails
-const PARACHUTE = { az: 45, lat: 30 }; // hatch No. 2
-const STRAPS = [0, 90, 180, 270];
-const MAST_AZ = 202.5;
-/** The pilot's right, where the viewer's cutaway opens the ball: the film camera hangs on this side. */
-const RIGHT = 225;
-/** A direction on the model in the viewer's axes (+Y is the model's long axis; the model's +Y is the viewer's -Z). */
-const along = (az: number, lat: number, by: number): [number, number, number] => [
-  by * Math.cos(lat * DEG) * Math.cos(az * DEG),
-  by * Math.sin(lat * DEG),
-  -by * Math.cos(lat * DEG) * Math.sin(az * DEG),
-];
-/** A swing outward about a hinge at the foot of something standing on the model at this azimuth. */
-const outward = (node: string, az: number, degrees: number, from: number, to: number): Move => ({
-  kind: 'swing',
-  node,
-  axis: [-Math.sin(az * DEG), 0, -Math.cos(az * DEG)],
-  angle: degrees * DEG,
-  from,
-  to,
-});
-
-/** How far the descent module is lifted off the instrument module at full explode, m. */
-const LIFT = 1.5;
-
-// The launch vehicle, as vehicles/vostok_8k72k/ has it (heights above the main nozzles' exits; the spacecraft's own
-// station 0 is 30.53 m up). Quoted here for the views; the numbers live there.
-/** The main nozzles' exits below the model's origin (the spacecraft's braking nozzle), m. */
-const BASE = 30.53;
-
-/** Which way each strap-on stands, degrees about the long axis. Which block stood where is not known to us. */
-const BOOSTERS: [letter: string, block: string, az: number][] = [
-  ['B', 'Б', 0],
-  ['V', 'В', 90],
-  ['G', 'Г', 180],
-  ['D', 'Д', 270],
-];
-/**
- * The instrument module's ten antennas are built stowed under the fairing (vostok_3ka.py: STOWED) and slide out as
- * the vehicle is taken apart: each by this much, m, in the viewer's axes. They were really folded, which is not modelled.
- */
-const ANTENNAS: [number, number, number][] = [
-  ...[-35, 0, 40].map((rake) => along(67.5, rake, 1.33)),
-  ...(
-    [
-      [22.5, 18, 1.72],
-      [202.5, 18, 1.72],
-      [112.5, 45, 1.9],
-    ] as const
-  ).map(([az, spread, by]) => along(az, spread - 90, by)),
-  ...[0, 1, 2, 3].map((): [number, number, number] => [0, -0.7, 0]),
-];
-
-/**
- * The slider takes the launch vehicle apart first and the spacecraft after it, as Vostok 1's does. Every part of the
- * launch vehicle is of order 0, so it is away by half way; the spacecraft's parts are of orders SHIP to SHIP + 2 of
- * SHIP + 2 (explode.ts: partProgress). Between about 0.4 and 0.45 the spacecraft stands alone and whole with its
- * antennas out: as it was in orbit.
- */
-const SHIP = 9;
-/** A reading of the spacecraft's own sequence (0 to 1) on the whole vehicle's slider. */
-const later = (t: number) => (SHIP / (SHIP + 2)) * 0.5 + (1 - (SHIP / (SHIP + 2)) * 0.5) * t;
-
-const parts: Part[] = [
+const parts: PartWords[] = [
   {
     node: 'DescentModule',
-    group: 'Spacecraft',
     name: 'Descent module',
     summary: 'The ball a man lived in for a day; this one was later dropped from an aeroplane and lost.',
     detail:
@@ -98,12 +30,9 @@ const parts: Part[] = [
       ['Landed', 'about 10:11 Moscow time, 7 August, without its pilot'],
       ['Lost', '1964, in a drop test for Voskhod'],
     ],
-    explode: [0, LIFT, 0],
-    order: SHIP + 1,
   },
   {
     node: 'EntryHatch',
-    group: 'Spacecraft',
     name: 'Hatch No. 1',
     summary: 'The way in on the pad and the way out at 7 km.',
     detail:
@@ -118,14 +47,9 @@ const parts: Part[] = [
       ['Screws', '30 (counted on Vostok 1’s)'],
       ['Released', 'at about 7 km'],
     ],
-    explode: [0, LIFT, 0],
-    // (thrown well clear: the seat comes out along the same line)
-    moves: [{ kind: 'slide', by: along(ENTRY.az, ENTRY.lat, 3.6), from: later(0.5), to: later(0.74) }],
-    order: SHIP + 1,
   },
   {
     node: 'ParachuteHatch',
-    group: 'Spacecraft',
     name: 'Hatch No. 2',
     summary: 'Covers the capsule’s own parachute.',
     detail:
@@ -138,14 +62,9 @@ const parts: Part[] = [
       ['Parachute', '574 m², from a 330 litre container (the type)'],
       ['Landing speed', '10 m/s (the type)'],
     ],
-    explode: [0, LIFT, 0],
-    moves: [{ kind: 'slide', by: along(PARACHUTE.az, PARACHUTE.lat, 1.0), from: later(0.6), to: later(0.78) }],
-    order: SHIP + 1,
   },
   {
     node: 'Cabin',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Cabin',
     summary: 'A day’s housekeeping: two television cameras, a wireless set, and a cabin that fell to 10 °C.',
     detail:
@@ -166,13 +85,9 @@ const parts: Part[] = [
       ['Supplies', 'for 10 days'],
       ['Manual control', 'orbits 1 and 7; nitrogen 160 down to 102 atm'],
     ],
-    explode: [0, LIFT, 0],
-    order: SHIP + 1,
   },
   {
     node: 'EjectionSeat',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Ejection seat and pilot',
     summary: 'Titov, 25, the first person to sleep in orbit, and the first to be sick there.',
     detail:
@@ -190,14 +105,9 @@ const parts: Part[] = [
       ['Ejection', 'about 7 km up'],
       ['Landed', '10:18 Moscow time, 7 August, 25 h 18 min after liftoff'],
     ],
-    explode: [0, LIFT, 0],
-    moves: [{ kind: 'slide', by: along(ENTRY.az, ENTRY.lat, 2.3), from: later(0.72), to: 1 }],
-    order: SHIP + 1,
   },
   {
     node: 'FilmCamera',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Film camera',
     summary: 'A newsreel man’s Konvas: the first camera worked by hand in orbit.',
     detail:
@@ -215,12 +125,9 @@ const parts: Part[] = [
       ['Magazine', '60 m of film'],
       ['Film brought back', 'about 10 minutes, black-and-white and colour'],
     ],
-    explode: [0, LIFT, 0],
-    order: SHIP + 1,
   },
   {
     node: 'RetainingStraps',
-    group: 'Spacecraft',
     name: 'Retaining straps',
     summary: 'Four steel bands and one lock held the ball on, and this time let go on time.',
     detail:
@@ -232,13 +139,9 @@ const parts: Part[] = [
       ['Straps', '4, joined by one pyrotechnic lock'],
       ['Released', 'about 10 s after the braking burn, as planned'],
     ],
-    explode: [0, 0, 0],
-    moves: STRAPS.map((az, i) => outward(`Strap_${i + 1}`, az, 58, later(0.02 + 0.02 * i), later(0.2 + 0.02 * i))),
-    order: SHIP,
   },
   {
     node: 'CableMast',
-    group: 'Spacecraft',
     name: 'Cable mast',
     summary: 'The lights stayed on: for ten minutes the two modules fell together on their cables.',
     detail:
@@ -254,13 +157,9 @@ const parts: Part[] = [
       ['Cables burned through', 'about 10:07 Moscow time, ten minutes late'],
       ['Cause', 'the plate’s firing wire cut before the command (Chertok)'],
     ],
-    explode: [0, 0, 0],
-    moves: [outward('CableMast_Arm', MAST_AZ, 40, later(0.06), later(0.24))],
-    order: SHIP,
   },
   {
     node: 'GasBottles',
-    group: 'Spacecraft',
     name: 'Gas bottles',
     summary: 'Nitrogen to turn the ship by hand, twice, and oxygen for the cabin.',
     detail:
@@ -275,13 +174,9 @@ const parts: Part[] = [
       ['Nitrogen', '160 atm at first use; 102 after the second'],
       ['Limit he was given', '100 atm'],
     ],
-    explode: [0, 0.5, 0],
-    order: SHIP + 2,
   },
   {
     node: 'InstrumentModule',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Instrument module',
     summary: 'Two cones base to base: everything that did not need to come home.',
     detail:
@@ -298,12 +193,9 @@ const parts: Part[] = [
       ['Attitude jets', '2 sets of 8, 1.5 kgf each, nitrogen'],
       ['Radio', '15.765, 20.006, 143.625 MHz; Signal 19.995 MHz'],
     ],
-    explode: [0, 0, 0],
-    order: SHIP + 2,
   },
   {
     node: 'Antennas',
-    group: 'Spacecraft',
     name: 'Antennas',
     summary: 'Ten of the eleven, folded under the fairing and let out in orbit.',
     detail:
@@ -318,15 +210,9 @@ const parts: Part[] = [
       ['On the type', '11: 3 Signal, 4 Zarya, 2 telemetry, 2 command'],
       ['Long whips', '2.1 m (off the drawing)'],
     ],
-    explode: [0, 0, 0],
-    // out once the ship is clear of its fairing and its third stage, and before anything of the ship itself moves
-    moves: ANTENNAS.map((by, i): Move => ({ kind: 'slide', node: `Antenna_${i + 1}`, by, from: 0.3, to: 0.4 })),
-    order: SHIP,
   },
   {
     node: 'RetroEngine',
-    group: 'Spacecraft',
-    inside: true,
     name: 'TDU-1 braking engine',
     summary: 'One engine with no spare, lit once, on the seventeenth orbit.',
     detail:
@@ -342,8 +228,6 @@ const parts: Part[] = [
       ['Burn', '45 s at most; 40 or 45 s flown (accounts differ)'],
       ['Lit', 'about 09:57 Moscow time, 7 August'],
     ],
-    explode: [0, -0.9, 0],
-    order: SHIP + 2,
   },
 ];
 
@@ -355,10 +239,9 @@ const BOOSTER_DETAIL =
   'its engine is throttled back the ties are let go, and what thrust is left swings the foot outward until the ball drops ' +
   'out of its cup. Four doing this at once draw a cross in the sky. The triangle at the foot is an air rudder.';
 
-const launcherParts: Part[] = [
+const launcherParts: PartWords[] = [
   {
     node: 'Fairing',
-    group: 'Third stage',
     name: 'Fairing',
     summary: 'Two halves, and a round hole to be thrown out through.',
     detail:
@@ -373,20 +256,9 @@ const launcherParts: Part[] = [
       ['Mass', 'about 0.8 t'],
       ['Opening', 'over hatch No. 1, for boarding and ejection'],
     ],
-    explode: [0, 0, 0],
-    // the halves part square to the hatch (documented: two halves; how they hinge and how far is ours)
-    moves: [
-      outward('Fairing_Left', ENTRY.az, 26, 0.0, 0.16),
-      outward('Fairing_Right', ENTRY.az + 180, 26, 0.0, 0.16),
-      { kind: 'slide', node: 'Fairing_Left', by: along(ENTRY.az, -25, 7), from: 0.1, to: 0.36 },
-      { kind: 'slide', node: 'Fairing_Right', by: along(ENTRY.az + 180, -25, 7), from: 0.1, to: 0.36 },
-    ],
-    order: 0,
   },
   {
     node: 'BlockE',
-    group: 'Third stage',
-    inside: true,
     name: 'Block E, the third stage',
     summary: 'The stage that had left Gagarin too high put Titov where he was meant to be.',
     detail:
@@ -405,12 +277,9 @@ const launcherParts: Part[] = [
       ['Steering', '8 nozzles on the turbine’s exhaust: 4 fixed, 4 turning'],
       ['Orbit reached', '183 × 244 km (TASS on the day: 178 × 257)'],
     ],
-    explode: [0, -2.6, 0],
-    order: 0,
   },
   {
     node: 'Interstage',
-    group: 'Third stage',
     name: 'Lattice and deflector',
     summary: 'Open on purpose: the third stage lights while the second is still pushing.',
     detail:
@@ -423,13 +292,9 @@ const launcherParts: Part[] = [
       ['Struts', '24 drawn, in 12 V’s (count from photographs)'],
       ['Staging', 'hot: upper engine on before the lower is off'],
     ],
-    explode: [0, -5.6, 0],
-    order: 0,
   },
   {
     node: 'CoreStage',
-    group: 'Core, Block A',
-    inside: true,
     name: 'Block A, the core',
     summary: 'Second stage, though it lights first; this one sprang a leak before the launch.',
     detail:
@@ -446,13 +311,9 @@ const launcherParts: Part[] = [
       ['Mass', 'about 100 t at liftoff, 7 to 8 t empty'],
       ['Propellant', '90 t'],
     ],
-    explode: [0, -9.5, 0],
-    order: 0,
   },
   {
     node: 'CoreEngine',
-    group: 'Core, Block A',
-    inside: true,
     name: 'RD-108',
     summary: 'Four big chambers that cannot move and four small ones that steer.',
     detail:
@@ -468,14 +329,10 @@ const launcherParts: Part[] = [
       ['Propellants', 'kerosene T-1 and liquid oxygen'],
       ['Turbopump', 'one, driven by decomposed hydrogen peroxide'],
     ],
-    explode: [0, -13.5, 0],
-    order: 0,
   },
   ...BOOSTERS.map(
-    ([letter, block, az], i): Part => ({
+    ([letter, block], i): PartWords => ({
       node: `Booster_${letter}`,
-      group: 'Strap-on boosters',
-      inside: true,
       name: `Block ${letter} (${block})`,
       summary: i === 0 ? 'First stage, one of four: held on by nothing but its own thrust.' : 'First stage, one of four, as Block B.',
       detail: BOOSTER_DETAIL,
@@ -486,10 +343,6 @@ const launcherParts: Part[] = [
         ['Engine', 'RD-107: 816 kN at the ground, 998 kN in vacuum'],
         ['Chambers', '4 fixed, 2 steering'],
       ],
-      explode: [0, 0, 0],
-      // it swings out about its tip ball (documented; the angle is ours: far enough to show the joint), then falls behind
-      moves: [outward(`Booster_${letter}`, az, -14, 0.0, 0.2), { kind: 'slide', by: along(az, -52, 9), from: 0.14, to: 0.5 }],
-      order: 0,
     }),
   ),
 ];
@@ -500,50 +353,20 @@ const COMMANDS = vostokCommands({
   reserve: 'by itself after the main, as the type’s was',
 });
 
-const SPACECRAFT = ['DescentModule', 'InstrumentModule', 'RetroEngine', 'Antennas'];
-
-/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's supports (`site1Vehicle`). */
-const built: ModelDef = {
-  id: 'vehicle',
-  name: 'Vehicle',
-  url: 'models/ussr/vostok/vostok-2/vehicle.glb',
-  scale: '38.36 m on the pad · 10.3 m across the rudders · to scale',
-  backdrop: 'studio',
-  slider: ['On the pad', 'Taken apart'],
-  cutaway: true,
-  specGroups: ['Launch vehicle', 'Spacecraft'],
-  parts: commanded([...launcherParts, ...parts], COMMANDS),
-  // the cabin's two lamps (../../vehicles/cabin.ts)
-  lights: vostokLights(),
-  home: 'stack',
-  views: [
-    { id: 'stack', label: 'Full stack' },
-    // (heights are from the model's origin, the spacecraft's braking nozzle: the main nozzles' exits are BASE below it)
-    { id: 'base', label: 'Engines', centreY: 1.0 - BASE, span: 9.5, from: along(35, 4, 1) },
-    { id: 'booster', label: 'Strap-on', nodes: ['Booster_B'], from: along(-55, 6, 1) },
-    { id: 'tips', label: 'Tip joints', centreY: 19.6 - BASE, span: 4.6, from: along(-40, 14, 1) },
-    { id: 'third', label: 'Third stage', nodes: ['Interstage', 'BlockE'], from: along(60, 4, 1) },
-    { id: 'fairing', label: 'Fairing', nodes: ['Fairing'], from: along(ENTRY.az, 10, 1) },
-    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
-    { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
-    { id: 'descent', label: 'Descent module', nodes: ['DescentModule'] },
-    { id: 'hatch', label: 'Entry hatch', nodes: ['EntryHatch'], from: along(ENTRY.az, 12, 1) },
-    // (from a little aft of his right side, through the cutaway's opening: the turret, the magazine and the viewfinder all show)
-    { id: 'konvas', label: 'Film camera', nodes: ['FilmCamera'], from: along(RIGHT - 32, 24, 1) },
-    { id: 'instrument', label: 'Instrument module', nodes: ['InstrumentModule', 'GasBottles', 'Antennas'] },
-    { id: 'engine', label: 'Braking engine', nodes: ['RetroEngine'], from: along(250, -32, 1) },
-  ],
-};
-
-// on the pad it hangs in the launch system's four supports, its tail below the deck; the gallery stands it on its nozzles
-const vehicle = site1Vehicle(built, BASE);
-
-// The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
-// through hatch No. 1 from 07:00, when the plan has him in the seat, until 07:40, when it has the hatch closing («График
-// подготовки космонавтов ... в день старта», 4 August 1961: «Первый пилотируемый полёт», 2011, book 2, doc 190, pp. 179-181).
-// Planned, not recorded: Titov's report says the day went to it.
-vehicle.seats = [vostokSeat([MSK(7, 0), MSK(7, 40)])];
-vehicle.cabin = vostokCabin();
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
+const vehicle = site1Vehicle(
+  vostokStack({
+    flight: 'vostok-2',
+    parts: commanded(vostokParts('vostok-2', [...launcherParts, ...parts]), COMMANDS),
+    // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
+    // through hatch No. 1 from 07:00, when the plan has him in the seat, until 07:40, when it has the hatch closing («График
+    // подготовки космонавтов ... в день старта», 4 August 1961: «Первый пилотируемый полёт», 2011, book 2, doc 190, pp. 179-181).
+    // Planned, not recorded: Titov's report says the day went to it.
+    seats: [vostokSeat([MSK(7, 0), MSK(7, 40)])],
+    cabin: vostokCabin(),
+  }),
+  BASE,
+);
 
 /** Titov, suited, on his way to the stair (crew/sk-1.parts.ts): the SK-1 as Gagarin's, the man in it not measured. */
 const crew = sk1Crew({
@@ -615,46 +438,11 @@ export const flight: Flight = {
     { t: MSK(34, 18), event: 'Titov lands by parachute beside the railway, 10:18' },
   ],
   specs: [
-    {
-      group: 'Spacecraft',
-      label: 'Length, without antennas',
-      value: 4.4,
-      unit: 'm',
-      confidence: 'documented',
-      note: '4.4 m, the type (Siddiqi, Challenge to Apollo, p. 195; the Soviet encyclopedia text: «длина (без антенн) 4,4 м»)',
-    },
-    {
-      group: 'Spacecraft',
-      label: 'Greatest diameter',
-      value: 2.43,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.43 m, the instrument module where its two cones meet (Siddiqi p. 195)',
-    },
-    {
-      group: 'Spacecraft',
-      label: 'Descent module diameter',
-      value: 2.3,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.3 m over the heat shield; the pressure hull is 2.2 m (Siddiqi p. 195; the encyclopedia text)',
-    },
-    {
-      group: 'Spacecraft',
-      label: 'Instrument module length',
-      value: 2.25,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.25 m (the encyclopedia text; Siddiqi). The model’s hull is 2.24 m from the nozzle to its forward rim',
-    },
-    {
-      group: 'Spacecraft',
-      label: 'Hatch clear diameter',
-      value: 1.0,
-      unit: 'm',
-      confidence: 'documented',
-      note: 'three hatches of 1 m (Siddiqi p. 195; «три люка диаметром "в свету" 1 м»)',
-    },
+    SPEC.length,
+    SPEC.diameter,
+    SPEC.descentDiameter,
+    SPEC.instrumentLength,
+    SPEC.hatch,
     {
       group: 'Spacecraft',
       label: 'Mass in orbit',
@@ -671,14 +459,7 @@ export const flight: Flight = {
       confidence: 'assumed',
       note: '2.46 t for the type (Siddiqi p. 195). No. 4’s own figure has not been found',
     },
-    {
-      group: 'Spacecraft',
-      label: 'Instrument module mass',
-      value: 2270,
-      unit: 'kg',
-      confidence: 'assumed',
-      note: '2.27 t for the type (Siddiqi p. 195)',
-    },
+    SPEC.instrumentMass,
     {
       group: 'Spacecraft',
       label: 'Perigee',
@@ -735,22 +516,8 @@ export const flight: Flight = {
       confidence: 'estimated',
       note: 'assumed: the figure in the seat is the one built to Gagarin’s recorded 165 cm. No document with Titov’s height was found; 163 cm is printed on biography pages that name no source',
     },
-    {
-      group: 'Launch vehicle',
-      label: 'Length on the pad',
-      value: 38.36,
-      unit: 'm',
-      confidence: 'documented',
-      note: '38.36 m with the fairing, the type (Minakov, «Ракета, поднявшая в космос Ю. Гагарина», Modelist-Konstruktor, table; Siddiqi, Challenge to Apollo, table of launch vehicles)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Width over the air rudders',
-      value: 10.3,
-      unit: 'm',
-      confidence: 'documented',
-      note: '10.3 m (Minakov; Siddiqi)',
-    },
+    SPEC.padLength,
+    SPEC.rudders,
     {
       group: 'Launch vehicle',
       label: 'Liftoff mass',
@@ -759,54 +526,12 @@ export const flight: Flight = {
       confidence: 'assumed',
       note: '287 t, the type’s figure and Vostok 1’s (RKK Energia 1946–1996; Minakov; Siddiqi). No. E103-17’s own was not found; its spacecraft was 6 kg heavier',
     },
-    {
-      group: 'Launch vehicle',
-      label: 'Core with the lattice',
-      value: 28.75,
-      unit: 'm',
-      confidence: 'documented',
-      note: '28.75 m (Minakov: «Длина 2-й ступени с переходной фермой»), taken from the nozzles’ exits; the lattice is 1.26 m of it',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Core, greatest diameter',
-      value: 2.95,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.95 m (Minakov; RussianSpaceWeb). It is 2.05 m at the foot (Brügge’s tables) and 2.58 m at the top (estimated)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Strap-on length',
-      value: 19.2,
-      unit: 'm',
-      confidence: 'documented',
-      note: '19.2 m without the nozzles (Minakov); 19.8 m with them (RussianSpaceWeb; Brügge)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Strap-on diameter',
-      value: 2.68,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.68 m at its foot (Minakov; RussianSpaceWeb)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Third stage with its adapter',
-      value: 2.98,
-      unit: 'm',
-      confidence: 'documented',
-      note: '2.98 m long, 2.58 m across (Minakov). Brügge has 2.86 m by 2.47; Encyclopedia Astronautica 2.84 by 2.56',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Fairing',
-      value: 6.63,
-      unit: 'm',
-      confidence: 'documented',
-      note: '6.6 m long and 2.7 m across (Minakov); 6.63 is his 9.61 m for stage and fairing less 2.98. Its shape is estimated, and assumed the same as Vostok 1’s',
-    },
+    SPEC.core,
+    SPEC.coreDiameter,
+    SPEC.strapOn,
+    SPEC.strapOnDiameter,
+    SPEC.third,
+    SPEC.fairing,
     {
       group: 'Launch vehicle',
       label: 'Launch azimuth',
@@ -826,55 +551,31 @@ export const flight: Flight = {
       note: 'the figure’s, built to Gagarin’s 165 cm with a 2.6 cm heel and the helmet over the crown as his: Titov’s own height was not found',
     },
   ],
-  motors: [
-    {
-      name: 'RD-107 (8D74), one in each strap-on',
-      count: 4,
-      thrustN: 815900,
+  motors: vostokMotors({
+    strapOns: {
       burnS: 118,
-      propellant: 'kerosene T-1 / liquid oxygen',
-      kind: 'liquid',
       confidence: 'assumed',
       note: '815.9 kN at the ground, 997.7 kN in vacuum; 256 and 313 s (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s)',
     },
-    {
-      name: 'RD-108 (8D75), core',
-      count: 1,
-      thrustN: 744300,
+    core: {
       burnS: 290,
-      propellant: 'kerosene T-1 / liquid oxygen',
-      kind: 'liquid',
       confidence: 'assumed',
       note: '744.3 kN at the ground, 945.4 kN in vacuum; 248 and 315 s (the same table). The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
     },
-    {
-      name: 'RD-0109 (8D719), third stage',
-      count: 1,
-      thrustN: 54500,
-      propellant: 'kerosene / liquid oxygen',
-      kind: 'liquid',
+    third: {
       confidence: 'documented',
       note: '54.5 kN in vacuum, 323.5 s (Brügge; Encyclopedia Astronautica 54.52 kN, 324 s). No burn time is given: rated burns in print run from 365 to 440 s and this flight’s was not found (Vostok 1’s ran 376 s and left it too high)',
     },
-    {
-      name: 'TDU-1 (Isaev S5.4) braking engine',
-      count: 1,
-      thrustN: 1614 * KGF,
+    braking: {
       burnS: 45,
-      propellant: 'amine fuel (TG-02) / nitric acid (AK-20F)',
-      kind: 'liquid',
       confidence: 'documented',
       note: '1.614 tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant. Flown: on at about 09:57 Moscow time on 7 August for 40 s (RussianSpaceWeb) or 45 s (Pervushin)',
     },
-    {
-      name: 'Attitude jet',
-      count: 16,
-      thrustN: 1.5 * KGF,
-      propellant: 'compressed nitrogen',
+    jets: {
       confidence: 'documented',
       note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N). Worked by hand on this flight, on orbits 1 and 7',
     },
-  ],
+  }),
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
   flownNote:

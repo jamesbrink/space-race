@@ -33,6 +33,8 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 
 ## Dimensions
 
+The flights quote these from [vostok-stack.ts](vostok-stack.ts) (`SPEC`, `vostokMotors`), which says each once for every flight of the type.
+
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Descent module, outer diameter | 2,300 mm | documented | S p. 195; K: «включая теплозащиту ... диаметром 2,3 м»; D: Ø2300. (E prints 2,430, which is the spacecraft's greatest diameter) |
@@ -72,7 +74,7 @@ Keys used below; full entries are in [docs/sources.md](../../../../docs/sources.
 
 ## Parts in the model
 
-Top-level nodes in the GLB. These names are the `node` fields in a flight's `flight.ts`.
+Top-level nodes in the GLB. These names are the `node` fields in [vostok-stack.ts](vostok-stack.ts), which says how each leaves for every flight of the type; a flight's `flight.ts` gives their words.
 
 | Node | Contains | Moves |
 | --- | --- | --- |

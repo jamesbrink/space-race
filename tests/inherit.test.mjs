@@ -10,7 +10,7 @@ import { test } from 'node:test';
 const root = join(import.meta.dirname, '..');
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).sort();
 /** Programmes whose flights do not inherit yet: each comes off as it is done. */
-const NOT_YET = ['missions/ussr/vostok/', 'missions/ussr/voskhod/', 'missions/usa/mercury/'];
+const NOT_YET = ['missions/ussr/voskhod/', 'missions/usa/mercury/'];
 
 /** A number typed out: digits, the units' names in capitals, and arithmetic (`215000 * LBF`, `30.4 * 1000 * KGF`). */
 const LITERAL = /^[\d.\s*/+\-()]*\d[\d.\s*/+\-()]*(\s*\*\s*[A-Z][A-Z_0-9]*)*\s*,?$/;

@@ -17,6 +17,8 @@ missions/                             the record: one folder per nation, program
                                       (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
                                       sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
+                                      vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
+                                      the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)

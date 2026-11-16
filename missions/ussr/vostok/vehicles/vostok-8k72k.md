@@ -49,6 +49,8 @@ launch vehicle".
 
 ## Dimensions
 
+The flights quote these from [vostok-stack.ts](vostok-stack.ts) (`SPEC`, `vostokMotors`), which says each once for every flight of the type.
+
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Length on the pad, with fairing | 38,360 mm | documented | M (table); S; the Soviet encyclopedia text as carried by Russian Wikipedia. Z also quotes 41 m from another source; Russian Wikipedia's box says 38.2 |
@@ -215,7 +217,7 @@ Gagarin's liftoff is of the launch of 28 July 1960.
 
 ## Parts in the model
 
-Top-level nodes in the GLB. These names are the `node` fields in a flight's `flight.ts`.
+Top-level nodes in the GLB. These names are the `node` fields in [vostok-stack.ts](vostok-stack.ts), which says how each leaves for every flight of the type; a flight's `flight.ts` gives their words.
 
 | Node | Contains | Leaves as |
 | --- | --- | --- |
