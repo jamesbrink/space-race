@@ -45,10 +45,10 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
-import { along, MEAN_RADIUS } from './fly.ts';
+import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { downOf } from './descent.ts';
-import { coastEvents, type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitFlown, shipOf } from './orbital.ts';
+import { chuteEvent, coastEvents, type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitFlown, shipOf } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
@@ -795,7 +795,8 @@ export function recordSamples(
     out.push({
       ...blank,
       t: s.t,
-      phase: s.thrust > 0 ? 'powered' : 'coast',
+      ...RIDING,
+      powered: s.thrust > 0,
       altitude: s.altitude,
       range: s.downrange,
       speed: s.speed,
@@ -835,7 +836,18 @@ export function recordSamples(
     return normalizeQ([0, 1, 2, 3].map((i) => from[i]! + (sign * to[i]! - from[i]!) * k) as unknown as Quat);
   };
   // (the first body as it is drawn, at rest on the drawn surface: `settled`; its figures are the flight's own)
-  const track = whole.down ? (Object.values(whole.down.tracks)[0] ?? []) : [];
+  const followed = whole.down ? Object.keys(whole.down.tracks)[0] : undefined;
+  const track = whole.down && followed ? (whole.down.tracks[followed] ?? []) : [];
+  /** The plan's id of the followed body's parachute out at `t` (the last let out and not let go), or null. */
+  const outAt = (t: number): string | null => {
+    if (!whole.down || !followed) return null;
+    const opened = whole.down.opened[followed] ?? {};
+    const gone = whole.down.gone[followed] ?? {};
+    let last: string | null = null;
+    for (const [name, at] of Object.entries(opened))
+      if (at <= t && !((gone[name] ?? Infinity) <= t) && (last === null || at >= opened[last]!)) last = name;
+    return last === null ? null : chuteEvent(followed, last);
+  };
   // (lowered by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
   const lift = track.length ? dot(offset, unit(track[track.length - 1]!.r)) : 0;
   const drawn = settled(track, (downOf(plan)?.ground ?? 0) + lift);
@@ -844,7 +856,8 @@ export function recordSamples(
     ...whole.coast.samples
       .filter((s) => s.t > parted.t)
       .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry', drawn: s.r })),
-    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: false, drawn: s.drawn })),
+    // (come through the entry, as the descent's bodies have)
+    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: true, drawn: s.drawn })),
   ];
   // the record's own periods by hand (`manual.periods`): turned over a minute to the orbital orientation the Vzor gives
   // (the long axis back along the motion, the braking engine's push against it), held so as the ship goes round, and left
@@ -871,7 +884,9 @@ export function recordSamples(
     out.push({
       ...blank,
       t: s.t,
-      phase: s.down ? 'main' : s.entering ? 'entry' : 'capsule',
+      ...ALONE,
+      entered: s.entering,
+      out: s.down ? outAt(s.t) : null,
       altitude: here.height,
       range: angleBetween(frame.toFixed(s.r, s.t), frame.toFixed(pad, 0)) * MEAN_RADIUS,
       speed: length(s.v),

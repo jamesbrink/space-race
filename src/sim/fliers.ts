@@ -107,11 +107,12 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
   let massAt = start.t;
   let retros = lit(start.t);
   // what the air sees: the stack (or the spacecraft with its tower on), nose first; or the spacecraft alone, with whatever parachute is out
-  let riding = start.phase === 'powered' || start.phase === 'coast' || start.phase === 'escape';
-  let alone = start.phase !== 'powered' && start.phase !== 'coast';
+  let riding = Boolean(start.riding || start.escaping);
+  let alone = !start.riding;
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
-  let drogue = start.phase === 'drogue' || start.phase === 'main';
-  let main = start.phase === 'main';
+  // (a parachute out: the first, or the one let out instead of it)
+  let main = start.out === b.main.id;
+  let drogue = main || start.out === b.drogue.id;
   if (main) chute = start.chute ?? { full: b.main.dragArea.value, was: b.main.dragArea.value, at: start.t, fills: 1 };
   else if (drogue) chute = start.chute ?? { full: b.drogue.dragArea.value, was: b.drogue.dragArea.value, at: start.t, fills: 1 };
   // what the parachutes can take (vehicle.ts `worn`): one that is out tears in more air than its cloth or its lines hold

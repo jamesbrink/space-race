@@ -156,7 +156,7 @@ test('the ballistic deck`s predictor on a family of states: the same invariants 
   const site = siteFrame(freedom7.site);
   const rand = seeded(7);
   for (const [name, s] of family(1961)) {
-    const start = { t: 1000, r: s.r, v: s.v, mass: 1300, phase: 'capsule' };
+    const start = { t: 1000, r: s.r, v: s.v, mass: 1300 };
     const result = predict(freedom7.plan, site, freedom7.site.seaLevel.value, start, { sequence: { chutes: false } });
     const curve = holds(`predict.ts, ${name}`, start, result);
     if (curve) drawn(`predict.ts, ${name}`, curve, rand);
@@ -206,7 +206,7 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
   for (const [name, s] of family(1961)) {
     const h = Math.hypot(...s.r) - R;
     if (h > 130e3 && !name.startsWith('lob') && name !== 'falling') continue;
-    const start = { t: 1000, r: s.r, v: s.v, mass: alone, phase: 'capsule' };
+    const start = { t: 1000, r: s.r, v: s.v, mass: alone };
     // (alone, the spacecraft lets its parachutes out at their heights by itself, in the live simulator and in the path)
     const p = predict(plan, site, sea, start);
     if (p.outcome !== 'impact') continue;

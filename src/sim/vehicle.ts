@@ -100,7 +100,7 @@ import { airAt, airDrag, blowOf } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { rk4Body } from './core/rk4.ts';
 import { aboard, act, burnOut, type CraftState, chainedAt, fire, hasLeft, part as partJoint, startCraft } from './craft.ts';
-import { along, axisOf, ballisticOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
+import { along, axisOf, ballisticOf, chuteArea, type Doing, MEAN_RADIUS, type Sample } from './fly.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
 import { ENTRY_G, loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
 import type { Action, ChuteDef, FlightPlan } from './plan.ts';
@@ -1155,13 +1155,16 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     return s;
   };
 
-  const phaseOf = (s: VehicleState): Phase => {
-    if (s.landing) return 'landed';
-    if (!hasLeft(s.craft, roles.booster.id)) return burning(s) ? 'powered' : 'coast';
-    if (!hasLeft(s.craft, roles.tower)) return 'escape';
-    if (s.mainAt !== null) return 'main';
-    if (s.drogueAt !== null) return 'drogue';
-    return s.enteredAt !== null ? 'entry' : 'capsule';
+  const doingOf = (s: VehicleState): Doing => {
+    const riding = !hasLeft(s.craft, roles.booster.id);
+    return {
+      riding,
+      powered: riding && burning(s),
+      escaping: !riding && !hasLeft(s.craft, roles.tower),
+      entered: s.enteredAt !== null,
+      out: s.mainAt !== null ? mainChute : s.drogueAt !== null ? drogueChute : null,
+      landed: Boolean(s.landing),
+    };
   };
 
   const sample = (s: VehicleState): LiveSample => {
@@ -1177,7 +1180,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(clamp(dot(v, up) / length(v), -1, 1)) / DEG : 90);
     return {
       t: s.t,
-      phase: phaseOf(s),
+      ...doingOf(s),
       altitude: here.height - seaLevel,
       range: rangeOf(s.separation ? s.r : point, s.t),
       speed: length(s.v),

@@ -42,7 +42,7 @@ function atPerigee(perigee, apogee, i = 0) {
   const speed = Math.sqrt(MU * (2 / rp - 1 / a));
   return { r: [rp, 0, 0], v: [0, speed * Math.cos(i * DEG), speed * Math.sin(i * DEG)], a, rp, ra };
 }
-const state = (o, mass = 1300) => ({ t: 0, r: o.r, v: o.v, mass, phase: 'capsule' });
+const state = (o, mass = 1300) => ({ t: 0, r: o.r, v: o.v, mass });
 
 test('elements: a circular orbit at 200 km', () => {
   const o = atPerigee(200_000, 200_000, 32.5);
@@ -116,7 +116,7 @@ test('a state short of orbit comes down: an impact, with its range from the pad'
   const up = pad.r.map((x) => x / length(pad.r));
   const r = pad.r.map((x, i) => x + up[i] * 200_000);
   const east = [-r[1] / Math.hypot(r[0], r[1]), r[0] / Math.hypot(r[0], r[1]), 0];
-  const p = predict(PLAN, SITE, SEA, { t: 0, r, v: east.map((x) => x * 6000), mass: 1300, phase: 'capsule' });
+  const p = predict(PLAN, SITE, SEA, { t: 0, r, v: east.map((x) => x * 6000), mass: 1300 });
   assert.equal(p.outcome, 'impact');
   assert.equal(p.orbit, null);
   assert.equal(p.apogee, null, 'it is already coming down');
@@ -128,7 +128,7 @@ test('a state short of orbit comes down: an impact, with its range from the pad'
 
 test('standing on the pad there is nothing to predict; with the engine to burn, the flight', () => {
   const s = V.sample(V.start());
-  const start = { t: 0, r: s.centre, v: s.v, mass: s.mass, phase: s.phase };
+  const start = { t: 0, r: s.centre, v: s.v, mass: s.mass, riding: s.riding, escaping: s.escaping, out: s.out };
   assert.equal(predict(PLAN, SITE, SEA, start).outcome, 'none');
   const guided = predict(PLAN, SITE, SEA, start, { burn: { axis: (t) => programmeAxis(V, t), until: ballisticOf(PLAN).cutoff } });
   assert.equal(guided.kind, 'guided');
@@ -158,7 +158,7 @@ test('Freedom 7: a coast predicted after cutoff is the coast then flown', () => 
   const flownRange = run.results.range;
   for (const t of [150, 250, 400]) {
     const s = at(t);
-    const p = predict(PLAN, SITE, SEA, { t: s.t, r: s.centre, v: s.v, mass: s.mass, phase: s.phase });
+    const p = predict(PLAN, SITE, SEA, { t: s.t, r: s.centre, v: s.v, mass: s.mass, riding: s.riding, escaping: s.escaping, out: s.out });
     assert.equal(p.outcome, 'impact');
     near(
       p.impact.range / flownRange,
@@ -181,7 +181,7 @@ test('Freedom 7 as the record flies it: the guided plan from the pad, and the co
     PLAN,
     SITE,
     SEA,
-    { t: 0, r: s0.centre, v: s0.v, mass: s0.mass, phase: s0.phase },
+    { t: 0, r: s0.centre, v: s0.v, mass: s0.mass, riding: s0.riding, escaping: s0.escaping, out: s0.out },
     {
       burn: { axis: (t) => programmeAxis(V, t), until: ballisticOf(PLAN).cutoff },
     },
@@ -190,7 +190,15 @@ test('Freedom 7 as the record flies it: the guided plan from the pad, and the co
   near(plan.apogee.t, run.results.apogeeAt, 3, 'and when');
   // after retrofire and the pack's going, what is left is the spacecraft falling: the prediction is the landing
   const late = run.samples.find((s) => s.t >= 400);
-  const p = predict(PLAN, SITE, SEA, { t: late.t, r: late.centre, v: late.v, mass: late.mass, phase: late.phase });
+  const p = predict(PLAN, SITE, SEA, {
+    t: late.t,
+    r: late.centre,
+    v: late.v,
+    mass: late.mass,
+    riding: late.riding,
+    escaping: late.escaping,
+    out: late.out,
+  });
   near(
     p.impact.range / run.results.range,
     1,
@@ -204,7 +212,7 @@ test('Freedom 7 as the record flies it: the guided plan from the pad, and the co
 test('it can be worked out in slices, to the same answer', (t) => {
   const run = flyLive(V, autopilot(V), 0.5, 210);
   const s = run.samples[run.samples.length - 1];
-  const start = { t: s.t, r: s.centre, v: s.v, mass: s.mass, phase: s.phase };
+  const start = { t: s.t, r: s.centre, v: s.v, mass: s.mass, riding: s.riding, escaping: s.escaping, out: s.out };
   const whole = predict(PLAN, SITE, SEA, start);
   for (let warm = 0; warm < 3; warm++) predict(PLAN, SITE, SEA, start);
   const job = predictor(PLAN, SITE, SEA, start);
@@ -267,7 +275,7 @@ for (const flight of BALLISTIC) {
         PLAN,
         SITE,
         SEA,
-        { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
+        { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, riding: sample.riding, escaping: sample.escaping, out: sample.out },
         { sequence: planOf(s, PLAN) },
       );
       assert.equal(p.outcome, 'impact');
@@ -295,7 +303,7 @@ for (const flight of BALLISTIC) {
       PLAN,
       SITE,
       SEA,
-      { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
+      { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, riding: sample.riding, escaping: sample.escaping, out: sample.out },
       { sequence: { chutes: false } },
     );
     assert.ok(bare.impact.range > flown.range + 10_000, 'with no retrofire it lands further on');
@@ -307,8 +315,8 @@ test('the path is given at instants of its own: two predictions a moment apart l
   const run = flyLive(V, autopilot(V), 0.5, 260);
   const a = run.samples.find((s) => s.t >= 200);
   const b = run.samples.find((s) => s.t >= 200.5);
-  const p = predict(PLAN, SITE, SEA, { t: a.t, r: a.centre, v: a.v, mass: a.mass, phase: a.phase });
-  const q = predict(PLAN, SITE, SEA, { t: b.t, r: b.centre, v: b.v, mass: b.mass, phase: b.phase });
+  const p = predict(PLAN, SITE, SEA, { t: a.t, r: a.centre, v: a.v, mass: a.mass, riding: a.riding, escaping: a.escaping, out: a.out });
+  const q = predict(PLAN, SITE, SEA, { t: b.t, r: b.centre, v: b.v, mass: b.mass, riding: b.riding, escaping: b.escaping, out: b.out });
   const byTime = new Map(p.points.map((x) => [x.t, x]));
   let shared = 0;
   let worst = 0;

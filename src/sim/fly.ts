@@ -89,14 +89,41 @@ export function along(curve: Curve, x: number): number {
   return p[p.length - 1]![1];
 }
 
-/** `escape` is the live simulator's only (sim/vehicle.ts): the spacecraft pulled off by its escape rocket, the tower still on. */
-export type Phase = 'powered' | 'coast' | 'escape' | 'capsule' | 'entry' | 'drogue' | 'main' | 'landed';
+/**
+ * What a flight is at an instant, as its machine has it (sim/craft.ts): the launch vehicle still aboard (`riding`) and an
+ * engine of it burning (`powered`); the launch vehicle gone and the escape tower still on, the spacecraft pulled clear on
+ * its rocket (`escaping`: the live simulator's only, sim/vehicle.ts); the first 0.05 g felt coming down with nothing
+ * burning (`entered`); the plan's id of the parachute out (`out`: the last let out, null for none); down (`landed`).
+ */
+export interface Doing {
+  riding: boolean;
+  powered: boolean;
+  escaping: boolean;
+  entered: boolean;
+  out: string | null;
+  landed: boolean;
+}
+
+/** On its launch vehicle, its engines out; and the spacecraft alone, nothing out: what a run that gives no machine's state (a staged run's summary) says it is doing. */
+export const RIDING: Doing = { riding: true, powered: false, escaping: false, entered: false, out: null, landed: false };
+export const ALONE: Doing = { riding: false, powered: false, escaping: false, entered: false, out: null, landed: false };
+
+/** The spacecraft in free flight: its launch vehicle and its tower gone, no parachute out, not down. */
+export const free = (s: Doing): boolean => !s.landed && !s.riding && !s.escaping && s.out === null;
+
+/** Whether what a flight is doing differs between two instants (`Doing`): where a run keeps the instant a change happened at. */
+export const changed = (a: Doing, b: Doing): boolean =>
+  a.riding !== b.riding ||
+  a.powered !== b.powered ||
+  a.escaping !== b.escaping ||
+  a.entered !== b.entered ||
+  a.out !== b.out ||
+  a.landed !== b.landed;
 
 /** The flight at one instant. */
-export interface Sample {
+export interface Sample extends Doing {
   /** Seconds from liftoff. */
   t: number;
-  phase: Phase;
   /** Height above the sea, m; distance over the ground from the pad, m. */
   altitude: number;
   range: number;
@@ -297,13 +324,19 @@ export function fly(
     rk4(s, at, h, (q, tt) => acceleration(gravity(q.r), scale(forces(q, tt, at).force, 1 / massAt(tt))));
 
   const outNow = (id: string) => Number.isFinite(craft.chutes[id]!.out) && !Number.isFinite(craft.chutes[id]!.off);
-  const phaseNow = (): Phase => {
-    if (landed) return 'landed';
-    if (riding()) return engines.some((_, i) => burning(i, t)) ? 'powered' : 'coast';
+  const doingNow = (): Doing => {
+    const aboard = riding();
+    // (the parachute out: one let out instead of another is the later)
     const out = c.chutes.filter((ch) => outNow(ch.id));
-    if (out.some((ch) => ch.instead?.length)) return 'main';
-    if (out.length) return 'drogue';
-    return entered ? 'entry' : 'capsule';
+    const last = out.find((ch) => ch.instead?.length) ?? out[0];
+    return {
+      riding: aboard,
+      powered: aboard && engines.some((_, i) => burning(i, t)),
+      escaping: false,
+      entered,
+      out: last ? last.id : null,
+      landed,
+    };
   };
 
   const sample = (): Sample => {
@@ -315,7 +348,7 @@ export function fly(
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(Math.max(-1, Math.min(1, dot(v, up) / length(v)))) / DEG : 90);
     return {
       t,
-      phase: phaseNow(),
+      ...doingNow(),
       altitude: f.altitude,
       range: angleBetween(fixed(state.r, t), pad) * MEAN_RADIUS,
       speed: length(state.v),
@@ -361,7 +394,7 @@ export function fly(
     if (goingUp) {
       results.exitQ = Math.max(results.exitQ, s.q);
       results.exitG = Math.max(results.exitG, s.g);
-    } else if (s.phase === 'capsule' || s.phase === 'entry') {
+    } else if (free(s)) {
       results.entryQ = Math.max(results.entryQ, s.q);
       // the retrorockets are felt too, but the reports' re-entry figure is the air's
       if (!retroWindows.some(([on, off]) => s.t >= on && s.t <= off)) results.entryG = Math.max(results.entryG, s.g);
@@ -485,7 +518,7 @@ export function fly(
       results.range = s.range;
       results.duration = t;
       landed = true;
-      samples.push({ ...s, phase: 'landed' });
+      samples.push({ ...s, landed: true });
       break;
     }
     const s = sample();

@@ -16,7 +16,7 @@ import { G0 } from '../src/world/bodies.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC, calm, edited } from './ballistic.mjs';
+import { BALLISTIC, calm, doing, edited } from './ballistic.mjs';
 import { ELEVATION, padAbort, RECORD } from './fixtures/pad-abort/plan.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
@@ -51,7 +51,7 @@ function abort(flight, plan, options = {}, hand = {}) {
     const sample = v.sample(state);
     tally.note(sample, state, v);
     speed = Math.max(speed, sample.groundSpeed);
-    if (phases.at(-1) !== sample.phase) phases.push(sample.phase);
+    if (phases.at(-1) !== doing(sample, v.plan)) phases.push(doing(sample, v.plan));
   }
   const got = {
     apogee: tally.results.apogee - pad,

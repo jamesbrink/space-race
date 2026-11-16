@@ -52,6 +52,19 @@ export function unlimited(plan) {
   });
 }
 
+/**
+ * What a ballistic run's sample is doing (fly.ts `Doing`), in the one word the tests compare: 'powered' or 'coast' on the
+ * booster, 'escape' on the escape rocket, 'drogue' or 'main' under the plan's first parachute or the one let out instead
+ * of it, 'entry' or 'capsule' in free flight after or before the 0.05 g, 'landed'.
+ */
+export function doing(s, plan) {
+  if (s.landed) return 'landed';
+  if (s.riding) return s.powered ? 'powered' : 'coast';
+  if (s.escaping) return 'escape';
+  if (s.out !== null) return s.out === ballisticOf(plan).main.id ? 'main' : 'drogue';
+  return s.entered ? 'entry' : 'capsule';
+}
+
 /** The plan with no winds aloft: the air turns with the Earth and no more. */
 export const calm = (plan) => ({ ...plan, winds: undefined });
 

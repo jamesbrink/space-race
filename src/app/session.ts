@@ -232,7 +232,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   const navball = new Navball(deck, cockpit, deck.querySelector<HTMLElement>('[data-do=navball]'));
   // (guidance's own aim is shown while it has something to steer with: the booster, burning)
   navball.target = (s) =>
-    cockpit.craft && cockpit.steering.guidance && s.phase === 'powered' ? programmeAxis(cockpit.craft, s.t, cockpit.steering.trim) : null;
+    cockpit.craft && cockpit.steering.guidance && s.powered ? programmeAxis(cockpit.craft, s.t, cockpit.steering.trim) : null;
   const path = new FlightPath(
     document.querySelector<HTMLElement>('#ui')!,
     navball.aside,

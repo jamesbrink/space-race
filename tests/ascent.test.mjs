@@ -4,7 +4,7 @@ import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, doing } from './ballistic.mjs';
 import { ballisticOf } from '../src/sim/fly.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
@@ -125,7 +125,7 @@ for (const flight of BALLISTIC) {
     const run = live();
     const ascent = Ascent.of(flight);
     ascent.use(run);
-    const first = run.samples.find((s) => s.phase !== 'powered' && s.phase !== 'coast').t;
+    const first = run.samples.find((s) => !s.riding).t;
     // a microsecond either side of every sample round the parting: the origin moves no further than its speed allows
     for (const s of run.samples.filter((x) => Math.abs(x.t - first) < 1)) {
       const moved = at(ascent, s.t - 1e-6).p.distanceTo(at(ascent, s.t + 1e-6).p);
@@ -216,12 +216,15 @@ for (const flight of BALLISTIC) {
     const run = live();
     const ascent = Ascent.of(flight);
     ascent.use(run);
-    const alone = run.samples.filter((s) => s.phase !== 'powered' && s.phase !== 'coast');
+    const alone = run.samples.filter((s) => !s.riding);
     assert.ok(alone.length > 100);
     for (const s of alone.filter((_, i) => i % 25 === 0)) {
       const sim = new THREE.Vector3(...ecefToSite(site, frameOf(flight).toFixed(s.centre, s.t)));
       const off = landmark(at(ascent, s.t)).distanceTo(sim);
-      assert.ok(off < 0.01, `at ${s.t.toFixed(1)} s (${s.phase}) the model’s centre of mass is ${off.toFixed(3)} m from the simulator’s`);
+      assert.ok(
+        off < 0.01,
+        `at ${s.t.toFixed(1)} s (${doing(s, flight.plan)}) the model’s centre of mass is ${off.toFixed(3)} m from the simulator’s`,
+      );
     }
     // so it comes down with that centre on the surface, and its parachute lies down on that surface: not on one as far
     // above it as the model's origin stands above the pad
@@ -309,7 +312,7 @@ for (const flight of BALLISTIC) {
     ascent.use(run);
     const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
     // once it is full and the spacecraft has stopped swinging under it: the last minutes of the descent
-    const hanging = run.samples.filter((s) => s.phase === 'main' && s.t > run.out.main + 60 && s.t < run.duration - 1);
+    const hanging = run.samples.filter((s) => doing(s, flight.plan) === 'main' && s.t > run.out.main + 60 && s.t < run.duration - 1);
     assert.ok(hanging.length > 100);
     let worst = 0;
     let drift = 0;

@@ -98,14 +98,13 @@ export interface Thermal {
 /** How a sample lies to the air: 0 nose first, 1 blunt end first. A live sample says (`alpha`); the record's rides its booster nose first and comes down blunt end first. */
 function bluntness(sample: Sample): number {
   const alpha = (sample as { alpha?: number }).alpha;
-  const riding = sample.phase === 'powered' || sample.phase === 'coast';
-  if (riding) return 0;
+  if (sample.riding) return 0;
   if (typeof alpha === 'number') return (1 - Math.cos((alpha * Math.PI) / 180)) / 2;
-  return sample.phase === 'escape' ? 0 : 1;
+  return sample.escaping ? 0 : 1;
 }
 
 /** Whether what is out of the air under the booster (a surface with no `up` share) is still covered. */
-const covered = (sample: Sample): boolean => sample.phase === 'powered' || sample.phase === 'coast';
+const covered = (sample: Sample): boolean => sample.riding;
 
 /** A surface's share of the stagnation flux as the vehicle lies. */
 function shareOf(surface: HeatedSurface, blunt: number, under: boolean): number {

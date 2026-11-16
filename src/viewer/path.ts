@@ -317,8 +317,11 @@ export interface PathSample {
   r: Vec3;
   v: Vec3;
   mass: number;
-  /** What it is doing, as the predictor starts from it (sim/predict.ts `Start`). */
-  phase: Start['phase'];
+  /** What it is doing (sim/fly.ts `Doing`), as the predictor starts from it (sim/predict.ts `Start`). */
+  riding: boolean;
+  escaping: boolean;
+  out: string | null;
+  landed: boolean;
   centre?: Vec3;
   /** The long axis (the body's +X) in the frame, where the sample says how it lies. */
   axis?: Vec3;
@@ -708,7 +711,7 @@ export class FlightPath {
       this.sample = sample;
       this.live = live;
       if (source.track) this.follow(source.track(sample.t), sample.t);
-      else if (live && sample.phase !== 'landed') this.keep(sample.t, sample.centre ?? sample.r);
+      else if (live && !sample.landed) this.keep(sample.t, sample.centre ?? sample.r);
       this.wake();
     });
     host.overlay(this.mesh); // in the scene from the first, unseen, so its shaders are built with the rest (Stage.warm)
@@ -849,7 +852,7 @@ export class FlightPath {
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
   private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined; guided?: boolean } | null {
     const s = this.sample;
-    if (!s || !this.on || !this.source.active || s.phase === 'landed') return null;
+    if (!s || !this.on || !this.source.active || s.landed) return null;
     // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
     if (!this.ballistic) {
       if (!this.source.predict || !(s.t > 0)) return null;
@@ -896,7 +899,16 @@ export class FlightPath {
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
     if (this.shown?.key !== want.key && !this.wantedAt) this.wantedAt = performance.now();
     if (!this.job && this.shown?.key !== want.key && performance.now() - this.doneAt >= EVERY) {
-      const start = { t: s.t, r: s.centre ?? s.r, v: s.v, mass: s.mass, phase: s.phase, ...(s.chute ? { chute: s.chute } : {}) };
+      const start = {
+        t: s.t,
+        r: s.centre ?? s.r,
+        v: s.v,
+        mass: s.mass,
+        riding: s.riding,
+        escaping: s.escaping,
+        out: s.out,
+        ...(s.chute ? { chute: s.chute } : {}),
+      };
       const options = {
         points: MOST - 2,
         ...(want.burn ? { burn: want.burn } : {}),

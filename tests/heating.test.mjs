@@ -55,7 +55,7 @@ test('a wall takes no heat from air it is as hot as', () => {
 });
 
 /** A sample that is only what the heating reads. */
-const at = (t, altitude, groundSpeed, phase = 'entry') => ({ t, altitude, groundSpeed, phase });
+const at = (t, altitude, groundSpeed, riding = false) => ({ t, altitude, groundSpeed, riding, escaping: false });
 /** One surface to try: 10 kg/m^2 of something with water's quarter of a specific heat. */
 const lump = (emissivity, share = 1) => ({
   noseRadius: { value: 1 },
@@ -101,13 +101,13 @@ test('left hot in no air it cools by radiation alone, toward where it started', 
   const hot = state.surfaces[0].temperature;
   assert.ok(hot > 900, `it got hot: ${hot} K`);
   // out of the air at once (the flux between two samples is read evenly, so the second is given the same instant)
-  state = advance(model, state, at(10, 400_000, 0, 'capsule'));
+  state = advance(model, state, at(10, 400_000, 0, false));
   const before = { ...state.surfaces[0] };
-  state = advance(model, state, at(11, 400_000, 0, 'capsule'));
+  state = advance(model, state, at(11, 400_000, 0, false));
   // over a second: sigma T^4 / (m c), within what the fall in temperature over that second changes it
   const rate = (STEFAN_BOLTZMANN * (hot ** 4 - 300 ** 4)) / 10_000;
   near(before.temperature - state.surfaces[0].temperature, rate, 0.08 * rate, 'the first second of cooling');
-  for (let t = 12; t < 40_000; t += 20) state = advance(model, state, at(t, 400_000, 0, 'capsule'));
+  for (let t = 12; t < 40_000; t += 20) state = advance(model, state, at(t, 400_000, 0, false));
   near(state.surfaces[0].temperature, 300, 5, 'and in the end, where it began');
   assert.ok(state.surfaces[0].temperature >= 300, 'never colder than its surroundings');
 });
@@ -115,8 +115,8 @@ test('left hot in no air it cools by radiation alone, toward where it started', 
 test('what is under the booster is out of the air, and what flies nose first takes the `up` share', () => {
   const model = lump(0);
   model.surfaces.push({ ...model.surfaces[0], name: 'skin', share: { up: { value: 0.5 } } });
-  let state = begin(model, at(0, 30_000, 2000, 'powered'));
-  state = advance(model, state, at(5, 30_000, 2000, 'powered'));
+  let state = begin(model, at(0, 30_000, 2000, true));
+  state = advance(model, state, at(5, 30_000, 2000, true));
   assert.equal(state.surfaces[0].temperature, 300, 'the shield, covered, stays cold');
   assert.ok(state.surfaces[1].temperature > 300, 'the skin warms');
   // a live sample says how it lies: blunt end first is 180 degrees off the wind

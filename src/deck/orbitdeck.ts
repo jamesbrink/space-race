@@ -1495,6 +1495,9 @@ export class OrbitDeck extends Deck {
     for (const lamp of this.root.querySelectorAll<HTMLElement>('[data-digit]'))
       lamp.classList.toggle('on', this.free || Number(lamp.dataset.digit) < this.typed.length);
     set('motors', thrust > 0 ? `${burning.join(' + ') || 'braking'} ${(thrust / 1000).toFixed(0)} kN` : '–');
+    // (the run as flown, and the instant its coast hands over to the descent: from there it comes down on its own bodies)
+    const whole = this.flown ?? orbitalFlown(this.flight);
+    const handed = whole.down ? whole.coast.samples[whole.coast.samples.length - 1]!.t : Number.POSITIVE_INFINITY;
     const phase =
       t <= 0
         ? 'On the pad'
@@ -1502,25 +1505,21 @@ export class OrbitDeck extends Deck {
           ? 'Down'
           : this.state?.broke && t >= this.state.broke.t
             ? 'Broken up'
-            : s.phase === 'powered'
+            : s.powered
               ? 'Powered flight'
-              : s.phase === 'coast'
+              : s.riding
                 ? alone
                   ? 'Spacecraft alone'
                   : 'Coasting on the launch vehicle'
-                : s.phase === 'capsule'
+                : t <= handed && !s.entered
                   ? orbit && el.a * (1 - el.e) > ball + 100_000
                     ? 'In orbit'
                     : 'Spacecraft alone'
-                  : s.phase === 'entry'
+                  : t <= handed
                     ? 'Re-entry'
                     : t >= this.run.duration
                       ? 'Down'
-                      : Math.min(
-                            ...Object.values(
-                              (this.flown ?? orbitalFlown(this.flight)).down?.opened[downOf(plan)?.bodies[0]?.id ?? ''] ?? {},
-                            ),
-                          ) <= t
+                      : Math.min(...Object.values(whole.down?.opened[downOf(plan)?.bodies[0]?.id ?? ''] ?? {})) <= t
                         ? 'Under the parachutes'
                         : 'Falling';
     set('phase', phase);

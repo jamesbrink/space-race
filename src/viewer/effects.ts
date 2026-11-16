@@ -402,7 +402,7 @@ export class Effects {
     }
     if (this.collar) {
       let on = 0;
-      if (pair && (pair[0].phase === 'powered' || pair[0].phase === 'coast')) {
+      if (pair?.[0].riding) {
         const [a, b, k] = pair;
         on = collarOf(a.mach + (b.mach - a.mach) * k, a.altitude + (b.altitude - a.altitude) * k);
       }

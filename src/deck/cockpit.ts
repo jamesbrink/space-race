@@ -1,7 +1,7 @@
 import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
-import { type Ballistic, ballisticOf, type Results } from '../sim/fly.ts';
+import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
@@ -55,16 +55,21 @@ const EVENTS: Partial<Record<Step, string>> = {
   drogue: 'drogue',
   main: 'main',
 };
-const PHASES: Record<LiveSample['phase'], string> = {
-  powered: 'Powered flight',
-  coast: 'Coasting on the booster',
-  escape: 'Abort: on the escape rocket',
-  capsule: 'Spacecraft alone',
-  entry: 'Re-entry',
-  drogue: 'Under the drogue',
-  main: 'Under the main parachute',
-  landed: 'Down',
-};
+/** What the flight is doing (fly.ts `Doing`), in the deck's words: a parachute by the plan's own name for it. */
+const doingWords = (s: Doing, chutes: readonly { id: string; label: string }[]): string =>
+  s.landed
+    ? 'Down'
+    : s.riding
+      ? s.powered
+        ? 'Powered flight'
+        : 'Coasting on the booster'
+      : s.escaping
+        ? 'Abort: on the escape rocket'
+        : s.out !== null
+          ? `Under the ${(chutes.find((c) => c.id === s.out)?.label ?? 'parachute').toLowerCase()}`
+          : s.entered
+            ? 'Re-entry'
+            : 'Spacecraft alone';
 /** How often a sample is kept for the scene to replay, s, and the longest stretch of flight one frame may step, s. */
 /** A ballistic flight's hardware by role (sim/fly.ts), or null for one of another kind. */
 const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan?.kind === 'ballistic' ? ballisticOf(f.plan) : null);
@@ -396,7 +401,7 @@ export class Cockpit extends Deck {
     const event =
       state.cutoff !== before.cutoff ||
       Object.keys(state.craft.bodies).some((k) => state.craft.bodies[k] !== before.craft.bodies[k]) ||
-      s.phase !== last.phase ||
+      changed(s, last) ||
       Boolean(state.landing);
     run.samples.length = this.kept;
     run.samples.push(s);
@@ -660,7 +665,7 @@ export class Cockpit extends Deck {
     const burnable = this.flow * roles.cutoff;
     const state = this.state!;
     // (the greatest dynamic pressure is called as it comes and goes: within 3 per cent of the most so far, and no longer rising by a per cent of it a second)
-    const riding = s.phase === 'powered' || s.phase === 'coast';
+    const riding = s.riding;
     const maxQ = riding && s.mach > 0.5 && s.q >= 0.97 * this.maxQ && s.q - this.at(s.t - 1).q < 0.01 * this.maxQ;
     set(
       'phase',
@@ -668,7 +673,7 @@ export class Cockpit extends Deck {
         ? 'Down'
         : !state.ignited && state.abortAt === null
           ? 'On the pad'
-          : `${PHASES[s.phase]}${maxQ ? ' · MAX Q' : ''}`,
+          : `${doingWords(s, roles.craft.chutes)}${maxQ ? ' · MAX Q' : ''}`,
     );
     const load = this.cells.get('load')!;
     load.hidden = !riding || !(s.strain > 0.02);

@@ -41,7 +41,7 @@ import { type State, step } from '../world/orbit.ts';
 import { airDrag } from './air.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
-import { MEAN_RADIUS } from './fly.ts';
+import { MEAN_RADIUS, RIDING } from './fly.ts';
 import { floorAt } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
 import type { Action, FlightPlan } from './plan.ts';
@@ -651,7 +651,8 @@ export function stagedVehicle(
     const r0 = s.r;
     return {
       t: s.t,
-      phase: thrust > 0 ? 'powered' : 'coast',
+      ...RIDING,
+      powered: thrust > 0,
       altitude: here.altitude,
       range: angleBetween(frame.toFixed(s.r, s.t), pad0) * MEAN_RADIUS,
       speed: length(s.v),

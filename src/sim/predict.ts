@@ -48,7 +48,7 @@ import {
 } from '../world/frames.ts';
 import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
-import { MEAN_RADIUS, type Phase } from './fly.ts';
+import { type Doing, MEAN_RADIUS } from './fly.ts';
 import type { FlightPlan } from './plan.ts';
 import { G0 } from '../world/bodies.ts';
 import { aboutAxis, turn } from './rigid.ts';
@@ -58,13 +58,16 @@ import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
 
 export { AIR_TOP };
 
-/** Where a prediction starts: a `Sample`'s own fields (fly.ts), so any sample will do. `r` is best the centre of mass. */
-export interface Start {
+/**
+ * Where a prediction starts: a `Sample`'s own fields (fly.ts), so any sample will do. `r` is best the centre of mass. What it
+ * is doing (fly.ts `Doing`: on its launch vehicle, pulled clear on its escape rocket, the parachute out) left out, it is
+ * the spacecraft alone with nothing out.
+ */
+export interface Start extends Partial<Pick<Doing, 'riding' | 'escaping' | 'out'>> {
   t: number;
   r: Vec3;
   v: Vec3;
   mass: number;
-  phase: Phase;
   /** The parachute out at the start as it is (a live state's: still filling, or torn). Without it, one that is out is full and whole. */
   chute?: { full: number; was: number; at: number; fills: number };
 }

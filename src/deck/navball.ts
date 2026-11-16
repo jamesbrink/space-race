@@ -153,9 +153,11 @@ export interface NavSample {
   v: Vec3;
   attitude: Quat;
   centre?: Vec3;
-  phase?: string;
-  /** At the run's end, on the ground or in the sea: standing still on the turning Earth, in no orbit (the orbital deck says so; a ballistic sample's phase is 'landed'). */
+  /** At the run's end, on the ground or in the sea: standing still on the turning Earth, in no orbit (the orbital deck says so; a ballistic sample is `landed`). */
   down?: boolean;
+  landed?: boolean;
+  /** Its launch vehicle's engines burning (fly.ts `Doing`): what guidance has to steer with. */
+  powered?: boolean;
 }
 
 const SVG = (body: string, box = '0 0 24 24'): string =>
@@ -316,7 +318,7 @@ export class Navball {
     const ball = ballOf(s.centre ?? s.r, s.v, s.attitude, s.t, this.target(s), this.source.frame);
     // down (the run's end: on the ground, or in the sea), standing still on the turning Earth and in no orbit, as the deck's
     // figures say: no speed in either frame and no way it is going, whatever the last moment of the descent's motion was
-    const down = Boolean(s.down) || s.phase === 'landed';
+    const down = Boolean(s.down) || Boolean(s.landed);
     const side = down ? STILL : this.mode === 'orbit' ? ball.orbit : ball.surface;
     const set = (id: string, text: string) => {
       const el = this.cells.get(id)!;

@@ -675,7 +675,9 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
             r: m.centre,
             v: after.v,
             mass: m.mass,
-            phase: m.phase,
+            riding: m.riding,
+            escaping: m.escaping,
+            out: m.out,
             chute: m.chute,
           });
         }

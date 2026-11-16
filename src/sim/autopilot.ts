@@ -10,7 +10,7 @@
  */
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { due, hasLeft } from './craft.ts';
-import { ballisticOf, type Flown, type Results } from './fly.ts';
+import { ballisticOf, changed, type Flown, free, type Results } from './fly.ts';
 import type { EventDef } from './plan.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
 import { type Controls, HANDS_OFF, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState } from './vehicle.ts';
@@ -281,12 +281,12 @@ export class Tally {
     if (!state.landing) this.peakG = Math.max(this.peakG, s.g);
     if (state.abortAt !== null) {
       this.abort ??= { at: state.abortAt, peakG: 0 };
-      if (s.phase === 'escape') this.abort.peakG = Math.max(this.abort.peakG, s.g);
+      if (s.escaping) this.abort.peakG = Math.max(this.abort.peakG, s.g);
     }
     if (s.t <= r.apogeeAt) {
       r.exitQ = Math.max(r.exitQ, s.q);
       r.exitG = Math.max(r.exitG, s.g);
-    } else if (s.phase === 'capsule' || s.phase === 'entry') {
+    } else if (free(s)) {
       r.entryQ = Math.max(r.entryQ, s.q);
       const first = state.retroAt;
       const last = ballisticOf(vehicle.plan).retroEnd;
@@ -309,7 +309,7 @@ export class Tally {
 /**
  * A whole flight, flown tick by tick by a pilot (the autopilot, unless another is given): the
  * live simulator's answer in fly.ts's own terms, to be laid beside it. A sample is kept every
- * `every` seconds and either side of every change of phase. It stops at the landing, or after `limit` seconds.
+ * `every` seconds and either side of every change in what it is doing (fly.ts `changed`). It stops at the landing, or after `limit` seconds.
  */
 export function flyLive(
   vehicle: Vehicle,
@@ -330,9 +330,9 @@ export function flyLive(
     s = vehicle.sample(state);
     tally.note(s, state, vehicle);
     const due = state.t - kept >= every - TICK / 2;
-    // at a change of phase, the instant it happened at (the tick before) is kept too, as fly.ts keeps its events
-    if (s.phase !== before.phase && samples[samples.length - 1] !== before) samples.push(before);
-    if (due || s.phase !== before.phase) samples.push(s);
+    // at a change in what it is doing, the instant it happened at (the tick before) is kept too, as fly.ts keeps its events
+    if (changed(s, before) && samples[samples.length - 1] !== before) samples.push(before);
+    if (due || changed(s, before)) samples.push(s);
     if (due) kept = state.t;
   }
   return { samples, results: tally.results, state };

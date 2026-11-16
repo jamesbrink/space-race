@@ -13,7 +13,7 @@ import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { BALLISTIC, calm, edited, natured, unlimited } from './ballistic.mjs';
+import { BALLISTIC, calm, doing, edited, natured, unlimited } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { ballisticOf, coast, fly, sampleAt } from '../src/sim/fly.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
@@ -145,13 +145,13 @@ test('it stands on the pad until lit, and until its thrust is more than its weig
 test('the engine: cut by command it stays cut, and left alone it runs until a tank is dry', () => {
   const run = { ...HANDS_OFF, throttle: 1 };
   let s = until(whole, whole.start(), run, 30);
-  assert.equal(whole.sample(s).phase, 'powered');
+  assert.equal(doing(whole.sample(s), PLAN), 'powered');
   s = whole.tick(s, HANDS_OFF);
   assert.ok(s.cutoff, 'cut');
   const mass = s.mass;
   s = until(whole, s, run, 32);
   assert.equal(s.mass, mass, 'and asking again does not light it: nothing more is burned');
-  assert.equal(whole.sample(s).phase, 'coast');
+  assert.equal(doing(whole.sample(s), PLAN), 'coast');
   assert.ok(whole.sample(s).g < 0.2, 'only the air is felt');
 
   let dry = until(whole, whole.start(), autopilot(whole, { sequence: false }), 150);
@@ -311,14 +311,14 @@ test('under the autopilot the angle of attack stays small through the greatest p
   let worst = 0;
   let off = 0;
   for (const s of live.samples) {
-    if (s.phase !== 'powered') continue;
+    if (!s.powered) continue;
     if (s.t > 30 && s.t < 120) worst = Math.max(worst, s.alpha);
     if (s.t > 2) off = Math.max(off, angleBetween(s.axis, whole.programme(s.t)) / DEG);
   }
   t.diagnostic(`greatest angle of attack between 30 and 120 s: ${worst.toFixed(2)} deg; furthest off the programme: ${off.toFixed(3)} deg`);
   assert.ok(worst < 3, `angle of attack ${worst}`);
   assert.ok(off < 0.5, `off the programme by ${off} deg`);
-  const q = Math.max(...live.samples.map((s) => (s.phase === 'powered' ? s.q : 0)));
+  const q = Math.max(...live.samples.map((s) => (s.powered ? s.q : 0)));
   near(q / batch.results.exitQ, 1, 0.02, 'and the greatest dynamic pressure is fly.ts’s');
 });
 
@@ -452,7 +452,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   near(s.separation.t, B.separation.at.value, 1e-9, 'separation on time');
   const share = B.separation.leaves.value / (B.separation.leaves.value + B.separation.after.value);
   const after = live.samples.find((x) => x.t > B.separation.at.value);
-  assert.equal(after.phase, 'capsule');
+  assert.equal(doing(after, PLAN), 'capsule');
   near(after.mass, B.separation.after.value, 1e-9, 'the capsule alone');
   near(
     dot(sub(after.v, s.separation.v), s.separation.axis),
@@ -471,7 +471,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   near(angleBetween(firing.axis, wanted) / DEG, 0, 2, 'the retro attitude');
   near(firing.g, (B.motors[0].thrust.vacuum.value * 1) / (B.separation.after.value * G0), 0.01, 'one retrorocket, a third of a g');
   // through the air it rides heat shield first without being told to
-  const peak = live.samples.reduce((a, b) => (b.phase === 'entry' && b.q > a.q ? b : a), { q: 0 });
+  const peak = live.samples.reduce((a, b) => (doing(b, PLAN) === 'entry' && b.q > a.q ? b : a), { q: 0 });
   assert.ok(peak.alpha > 175, `blunt end first at the greatest pressure: ${peak.alpha.toFixed(1)} deg`);
   assert.ok(peak.g > 9, `${peak.g.toFixed(1)} g`);
   assert.ok(s.drogueAt < s.mainAt && s.mainAt < s.landing.t, 'drogue, then main, then the sea');
@@ -483,7 +483,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   // carried along by the day's surface wind: 12 knots (Postlaunch Report, section 10.3)
   near(s.landing.horizontal, (12 * 1852) / 3600, 0.5, 'moving over the sea with the surface wind');
   assert.ok(s.landing.lean < 2, 'hanging upright under the parachute');
-  assert.equal(live.samples.at(-1).phase, 'landed');
+  assert.ok(live.samples.at(-1).landed);
   t.diagnostic(
     `landed at ${s.landing.t.toFixed(1)} s, ${s.landing.vertical.toFixed(2)} m/s down, leaning ${s.landing.lean.toFixed(2)} deg`,
   );
@@ -491,7 +491,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   // (in still air: hands off from the pad the day's wind breaks the stack before it is ever up there)
   const calm = vehicle(CALM, SITE, SEA);
   const loose = flyLive(calm, autopilot(calm, { pitch: false, yaw: false, roll: false }));
-  const worst = loose.samples.reduce((a, x) => (x.phase === 'entry' && x.q > a.q ? x : a), { q: 0 });
+  const worst = loose.samples.reduce((a, x) => (doing(x, PLAN) === 'entry' && x.q > a.q ? x : a), { q: 0 });
   assert.ok(worst.alpha > 150, `left small end first, the air turns it round by the greatest pressure: ${worst.alpha.toFixed(0)} deg`);
   assert.ok(loose.state.landing, 'and it comes down');
 });
@@ -620,7 +620,7 @@ const aborting = (v, at, options = {}) => {
     state = next;
     const sample = v.sample(state);
     tally.note(sample, state, v);
-    if (phases.at(-1) !== sample.phase) phases.push(sample.phase);
+    if (phases.at(-1) !== doing(sample, v.plan)) phases.push(doing(sample, v.plan));
   }
   return { state, tally, phases };
 };
@@ -654,7 +654,7 @@ test('an abort on the pad: off on the escape rocket, the tower away at the top, 
 });
 
 test('an abort at the greatest pressure: the same, through the air', (t) => {
-  const worst = live.samples.reduce((a, b) => (b.phase === 'powered' && b.q > a.q ? b : a));
+  const worst = live.samples.reduce((a, b) => (b.powered && b.q > a.q ? b : a));
   const { state: s, tally, phases } = aborting(whole, worst.t);
   assert.ok(s.landing, 'it came down');
   near(s.abortAt, worst.t, TICK, 'aborted at the greatest pressure');
@@ -1113,7 +1113,7 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
     const level = unit(sub(wind, scale(up, dot(wind, up))));
     const pitch = rb.retroPitch.value * DEG;
     near(angleBetween(firing.axis, sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)))) / DEG, 0, 2, 'the retro attitude');
-    const peak = run.samples.reduce((a, b) => (b.phase === 'entry' && b.q > a.q ? b : a), { q: 0 });
+    const peak = run.samples.reduce((a, b) => (doing(b, PLAN) === 'entry' && b.q > a.q ? b : a), { q: 0 });
     assert.ok(peak.alpha > 175, `blunt end first at the greatest pressure: ${peak.alpha.toFixed(1)} deg`);
     assert.ok(s.drogueAt < s.mainAt && s.mainAt < s.landing.t, 'drogue, then main, then the sea');
     for (const k of ['entryAt', 'drogueAt', 'mainAt', 'duration'])

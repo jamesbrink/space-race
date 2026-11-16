@@ -85,6 +85,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     and cut on the machine (`act`; `burnOut` where it is spent or leaves with the booster), its motors lit by the plan's
     events, each after the first by its own timer (`chainedAt`) at its instant, whatever the switches say.
   - A hand's commands are the plan's actions and events (`Controls.do`, `Controls.events`; `StagedControls.events`).
+  - What a run's sample says it is doing is the machine's state, never a phase (fly.ts `Doing`): on its launch vehicle
+    (`riding`) and an engine of it burning (`powered`), pulled clear on the escape rocket (`escaping`), the 0.05 g felt
+    (`entered`), the parachute out by its plan id (`out`), down (`landed`); `free` is the spacecraft alone with nothing out.
+    The predictor starts from the same fields (predict.ts `Start`), and the decks word them, a parachute by its plan label.
 - **A record's run is its plan flown by the record's pilot.**
   - `fly` flies the plan: the craft on the machine, every automatic event set off as it comes due (by the clock, or at a
     height coming down). Each instant one is due at, and each solid motor's burning out, ends a step.
@@ -341,7 +345,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   what carries the spacecraft clear of its booster (it tumbles; nothing steers it until the tower
   has gone). What follows is the flight's `escape.sequence` (retropack dropped at once, parachutes
   by the clock after the tower for an abort begun under its `ceiling`) or, without one, the usual
-  descent. Phase `escape`; `Tally.abort` has the greatest load. `escape.record` and
+  descent. Its samples say `escaping` (fly.ts `Doing`); `Tally.abort` has the greatest load. `escape.record` and
   `tests/fixtures/pad-abort` (a trial flown from its own weights off its own leaning launcher:
   `VehicleOptions.elevation`) are what `tests/abort.test.mjs` holds it to, its misses under `abort:<test>`.
 - **Manual means manual.** `Controls.automatic: false` switches off the spacecraft's own sequence

@@ -4,7 +4,7 @@
 // to it. What it does to the flight against the record is stated here, improvements and worsenings both, and held, so
 // that a change to the wind or to how it is flown shows.
 import assert from 'node:assert/strict';
-import { calm } from './ballistic.mjs';
+import { calm, doing } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
@@ -82,7 +82,7 @@ const still = fly(CALM, SITE, SEA);
 
 test('under its parachute the spacecraft goes with the wind', (t) => {
   const drift = (run) => {
-    const main = run.samples.find((s) => s.phase === 'main');
+    const main = run.samples.find((s) => doing(s, PLAN) === 'main');
     const end = run.samples.at(-1);
     const a = geodeticToEcef({ latitude: main.latitude, longitude: main.longitude, height: 0 });
     const b = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
@@ -136,8 +136,7 @@ test('the report’s angle of attack going up (Figure 4.2-8) is the wind’s doi
   // The record, read off the figure to 0.3 of a degree and 2 s: near nothing to 00:25, a peak of about +1.5 degrees at
   // about 01:32, inside a measurement band the figure draws at about a degree. The tolerance, a degree and ten seconds,
   // was set from that band before either run was looked at.
-  const peak = (run) =>
-    run.samples.filter((s) => s.phase === 'powered' && s.t >= 25 && s.t <= 120).reduce((a, b) => (gyro(b) > gyro(a) ? b : a));
+  const peak = (run) => run.samples.filter((s) => s.powered && s.t >= 25 && s.t <= 120).reduce((a, b) => (gyro(b) > gyro(a) ? b : a));
   const day = peak(liveDay);
   const calm = peak(liveCalm);
   near(gyro(day), 1.5, 1, 'the greatest, in the day’s wind');
@@ -150,7 +149,7 @@ test('the report’s angle of attack going up (Figure 4.2-8) is the wind’s doi
 });
 
 test('the wind bends the stack more, and it stands: the load through the jet against the limit', (t) => {
-  const most = (run) => run.samples.filter((s) => s.phase === 'powered').reduce((a, b) => (b.strain > a.strain ? b : a));
+  const most = (run) => run.samples.filter((s) => s.powered).reduce((a, b) => (b.strain > a.strain ? b : a));
   const day = most(liveDay);
   const calm = most(liveCalm);
   assert.ok(day.strain > 1.5 * calm.strain, 'more than in calm air');
@@ -168,7 +167,7 @@ test('the autopilot holds the programme through it: the attitude stays the gyros
   const v = vehicle(PLAN, SITE, SEA);
   let worst = 0;
   for (const s of liveDay.samples) {
-    if (s.phase !== 'powered' || s.t < 10 || s.t > 140) continue;
+    if (!s.powered || s.t < 10 || s.t > 140) continue;
     worst = Math.max(worst, Math.acos(Math.min(1, dot(s.axis, v.programme(s.t)))) / DEG);
   }
   assert.ok(worst < 0.2, `never more than ${worst.toFixed(3)} degrees off the programme`);
@@ -177,8 +176,8 @@ test('the autopilot holds the programme through it: the attitude stays the gyros
 
 test('the predicted path is flown through the same wind', () => {
   // from the top of the drogue's fall: where it will come down, with and without the wind
-  const at = windy.samples.find((s) => s.phase === 'main');
-  const start = { t: at.t, r: at.r, v: at.v, mass: at.mass, phase: 'main' };
+  const at = windy.samples.find((s) => doing(s, PLAN) === 'main');
+  const start = { t: at.t, r: at.r, v: at.v, mass: at.mass, out: at.out };
   const day = predict(PLAN, SITE, SEA, start);
   const calm = predict(CALM, SITE, SEA, start);
   assert.ok(day.impact && calm.impact, 'both come down');

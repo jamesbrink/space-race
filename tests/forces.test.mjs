@@ -39,14 +39,14 @@ test('a ballistic flight: the predictor’s flier is the simulator’s air, drag
   const s = stateOver(frame, site, 100);
   const air = airAt(frame, s.r, s.v, s.t, sea);
   // the stack going up, coasting: drag on the ascent's curve over the mass
-  const coasting = ballistic(plan, site, sea, { ...s, mass: 5000, phase: 'coast' }, { frame });
+  const coasting = ballistic(plan, site, sea, { ...s, mass: 5000, riding: true }, { frame });
   same(
     coasting.push(s.t, s.r, s.v, air.altitude),
     scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, true, air.mach)), 1 / 5000),
     'the stack coasting',
   );
   // the spacecraft alone: the entry's curve
-  const alone = ballistic(plan, site, sea, { ...s, mass: 1300, phase: 'capsule' }, { frame });
+  const alone = ballistic(plan, site, sea, { ...s, mass: 1300, riding: false }, { frame });
   same(
     alone.push(s.t, s.r, s.v, air.altitude),
     scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, false, air.mach)), 1 / 1300),
@@ -54,7 +54,7 @@ test('a ballistic flight: the predictor’s flier is the simulator’s air, drag
   );
   // and burning: the one law of thrust along the axis given
   const axis = scale(s.r, 1 / length(s.r));
-  const burning = ballistic(plan, site, sea, { ...s, mass: 20_000, phase: 'powered' }, { frame, burn: { axis: () => axis, until: 140 } });
+  const burning = ballistic(plan, site, sea, { ...s, mass: 20_000, riding: true }, { frame, burn: { axis: () => axis, until: 140 } });
   const thrust = nozzleThrust(1, engine.thrust.vacuum.value, 1, engine.exitArea.value, air.air.pressure);
   assert.ok(Math.abs(thrustIn(plan, air.air.pressure) - thrust) <= 1e-9, 'fly.ts thrustIn is thrust.ts');
   same(

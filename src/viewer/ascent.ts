@@ -844,7 +844,7 @@ const BODY: readonly Vec3[] = [
   [0, 0, 1],
 ];
 /** A sample's part of the flight: on the booster, or the spacecraft alone. */
-const riding = (s: Sample): boolean => s.phase === 'powered' || s.phase === 'coast';
+const riding = (s: Sample): boolean => s.riding;
 /** Something left behind under a parachute: the drift it slows to, m/s, in how many seconds, and by when it is lost to sight, s. Drawn, not flown. */
 const DRIFT = new THREE.Vector3(0, -25, 0);
 /** Seconds over which a piece come down on a descent's body (`rides`) turns from how it left to hanging against the air: drawn, chosen. */

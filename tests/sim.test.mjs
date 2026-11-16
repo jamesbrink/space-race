@@ -142,7 +142,7 @@ for (const flight of BALLISTIC) {
     const b = ballisticOf(plan);
     const [thrust, isp, liftoff] = [b.engine.thrust.seaLevel.value, b.engine.isp.seaLevel.value, b.craft.mass.value];
     const cutoff = b.cutoff;
-    const burn = samples.filter((s) => s.t <= cutoff && s.phase === 'powered');
+    const burn = samples.filter((s) => s.t <= cutoff && s.powered);
     let felt = 0;
     for (let i = 1; i < burn.length; i++) felt += ((burn[i].g + burn[i - 1].g) / 2) * G0 * (burn[i].t - burn[i - 1].t);
     const flow = thrust / (G0 * isp);
@@ -159,7 +159,7 @@ for (const flight of BALLISTIC) {
     near(a.samples[0].speed, EARTH_ROTATION_RATE * Math.hypot(...geodeticToEcef(SITE).slice(0, 2)), 1e-9, '409 m/s eastward');
     assert.equal(a.samples[0].groundSpeed, 0);
     assert.deepEqual(a.results, b.results);
-    assert.equal(a.samples.at(-1).phase, 'landed');
+    assert.ok(a.samples.at(-1).landed);
     const tilt = ballisticOf(flight.plan).programme.programme;
     near(along(tilt, 0), 0, 0, 'upright at liftoff');
     near(along(tilt, 200), 41, 1e-9, 'and held at 41 degrees after the arrest');

@@ -1,5 +1,5 @@
 import '../ui/time.css';
-import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { type Doing, flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { held } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
 import { orbitalFlown, orbitalRecord } from '../viewer/ascent.ts';
@@ -256,18 +256,23 @@ export class Flown {
       const el = this.values[i];
       if (el && el.textContent !== text) el.textContent = text;
     });
-    const said = t < 0 ? 'Before liftoff.' : t > this.duration ? 'Down.' : `Now: ${PHASES[s.phase]}.`;
+    const said = t < 0 ? 'Before liftoff.' : t > this.duration ? 'Down.' : `Now: ${doingWords(s, this.flight.plan!.craft[0]!.chutes)}.`;
     if (this.phase && this.phase.textContent !== said) this.phase.textContent = said;
   }
 }
 
-const PHASES: Record<Sample['phase'], string> = {
-  powered: 'under power',
-  coast: 'coasting on the booster',
-  escape: 'on the escape rocket',
-  capsule: 'capsule in free flight',
-  entry: 'entry',
-  drogue: 'on the drogue',
-  main: 'on the main parachute',
-  landed: 'down',
-};
+/** What the flight is doing (fly.ts `Doing`), in the panel's words: a parachute by the plan's own name for it. */
+const doingWords = (s: Doing, chutes: readonly { id: string; label: string }[]): string =>
+  s.landed
+    ? 'down'
+    : s.riding
+      ? s.powered
+        ? 'under power'
+        : 'coasting on the booster'
+      : s.escaping
+        ? 'on the escape rocket'
+        : s.out !== null
+          ? `on the ${(chutes.find((c) => c.id === s.out)?.label ?? 'parachute').toLowerCase()}`
+          : s.entered
+            ? 'entry'
+            : 'capsule in free flight';
