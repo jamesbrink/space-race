@@ -18,6 +18,20 @@ import { heightMarks } from './row.ts';
  * Brightnesses are the studio's design, fitted by eye.
  */
 
+/**
+ * The light hall's wall and floor, linear: a step darker than the studio's light tone (studio.ts PALETTE.light), which is
+ * made for one vehicle filling the picture. Here a row of white and pale grey vehicles stands small against it, and
+ * the ruled heights cross it: on the studio's near-white wall neither read. A design, fitted by eye: the wall a light
+ * grey that white paint stands out from, the floor a little darker than the wall's foot, as the studio's is.
+ */
+const LIGHT_HALL: Pick<Palette, 'floor' | 'band' | 'top'> = {
+  floor: [0.22, 0.22, 0.215],
+  band: [0.28, 0.28, 0.275],
+  top: [0.21, 0.21, 0.21],
+};
+/** How strong the ruled lines and the tape are drawn, in the dark hall and in a light one (or on paper): a dark line on a light wall needs more. */
+const RULE = { dark: { major: 0.26, minor: 0.09, tape: 0.36 }, light: { major: 0.5, minor: 0.2, tape: 0.6 } } as const;
+
 /** How much stronger the sky's fill is in a drawing, whose shade is a flat tone and not black (the stage's own figure: stage.ts CEL_FILL). */
 const CEL_FILL = 4.5;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -174,16 +188,26 @@ export class Hall {
     const p = this.palette;
     const cel = this.look === 'cel';
     const sweep = this.backdrop.uniforms;
-    sweep.uFloor.value.setRGB(...p.floor);
-    sweep.uBand.value.setRGB(...p.band);
-    sweep.uTop.value.setRGB(...p.top);
+    const light = !cel && this.tone === 'light';
+    sweep.uFloor.value.setRGB(...(light ? LIGHT_HALL.floor : p.floor));
+    sweep.uBand.value.setRGB(...(light ? LIGHT_HALL.band : p.band));
+    sweep.uTop.value.setRGB(...(light ? LIGHT_HALL.top : p.top));
     // (the wall's light is behind whatever is in the middle of the picture: softer here, where the picture is a row)
     sweep.uSpot.value = cel ? 0 : this.tone === 'light' ? 0.25 : 0.7;
     this.colours.figure.value.setRGB(...p.figure);
     this.colours.ink.value.setRGB(...p.ink);
     this.colours.pool.value.setRGB(...p.pool);
     // (a line's material keeps a colour of its own)
-    for (const drawn of [this.major, this.minor, this.tape]) (drawn.material as THREE.LineBasicMaterial).color.copy(this.colours.ink.value);
+    const rule = RULE[this.tone === 'light' || cel ? 'light' : 'dark'];
+    for (const [drawn, opacity] of [
+      [this.major, rule.major],
+      [this.minor, rule.minor],
+      [this.tape, rule.tape],
+    ] as const) {
+      const material = drawn.material as THREE.LineBasicMaterial;
+      material.color.copy(this.colours.ink.value);
+      material.opacity = opacity;
+    }
     this.shadow.strength.value = cel ? 0.2 : this.tone === 'light' ? 0.36 : 0.62;
     this.shadow.cel.value = cel ? 1 : 0;
     this.exposure = p.exposure;
