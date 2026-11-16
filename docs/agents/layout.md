@@ -158,7 +158,7 @@ src/
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
   viewer/onfoot/onfoot.ts             being at the place on foot, as the stage has it: the figure walked as, what it aims at, drives, boards and carries, doors and lifts, a fall it goes limp in, the figure posed
   viewer/onfoot/handworks.ts          the functions of a model's parts worked by hand (a tower raised, a jib lowered), held until the script moves the hardware, and their levers
-  viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the camera at the eyes or over the shoulder
+  viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the view at the eyes or over the shoulder (the camera put there by camera/foot.ts)
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them
   viewer/onfoot/works.ts              things that work when worked: doors (toggles) and lifts, from a part's actions
@@ -213,6 +213,7 @@ src/
   viewer/camera/rig.ts                what a rig is (`Rig`), the rigs there are (`RigId`, `RIGS`), and what one may ask of the world (`World`, `Craft`)
   viewer/camera/orbit.ts              turning about a pivot (`OrbitRig`), and about a vehicle that carries it (`ChaseRig`: level with the horizon, or locked to the vehicle)
   viewer/camera/free.ts  onboard.ts  track.ts   the free camera; first person from a seat; the pad camera that stands still and follows with a long lens
+  viewer/camera/foot.ts               the rigs on foot (`eyes`, `shoulder`): the camera put where the walker's view is
   viewer/camera/head.ts               a head in a seat, pure and tested: its limits, the eyes round the neck, the lean to a port or a screen and back
   viewer/camera/input.ts              the hands: mouse, trackpad, fingers and keys in one vocabulary (drag, slide, zoom, twist, pivot here)
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air

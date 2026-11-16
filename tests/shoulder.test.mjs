@@ -42,12 +42,12 @@ function site(more = () => {}) {
 
 test('taking hold of a ladder and stepping off its top, the eyes and the figure follow the body: they are not put there', () => {
   for (const third of [false, true]) {
-    const { walker, camera } = site();
+    const { walker } = site();
     // beside the ladder's line, so that taking hold of it is a step sideways as well as forward
     walker.start(new THREE.Vector3(5, 0, 0.3), new THREE.Vector3(0, 0, 0.3), 1.7, 1.85);
     walker.third = third;
     walker.stick(0, 1);
-    let eye = camera.position.clone();
+    let eye = walker.view.position.clone();
     let figure = (walker.stands ?? walker.body.position).clone();
     let facing = walker.heading;
     let mounted = false;
@@ -60,10 +60,10 @@ test('taking hold of a ladder and stepping off its top, the eyes and the figure 
       walker.update(DT);
       const stands = walker.stands ?? walker.body.position;
       // (over the shoulder the camera is on its boom, which a wall behind it brings in at once: there it is the figure that is watched)
-      most = Math.max(most, third ? 0 : camera.position.distanceTo(eye), stands.distanceTo(figure));
+      most = Math.max(most, third ? 0 : walker.view.position.distanceTo(eye), stands.distanceTo(figure));
       body = Math.max(body, walker.body.position.distanceTo(at));
       turned = Math.max(turned, Math.abs(Math.atan2(Math.sin(walker.heading - facing), Math.cos(walker.heading - facing))));
-      eye = camera.position.clone();
+      eye = walker.view.position.clone();
       figure = stands.clone();
       facing = walker.heading;
       at = walker.body.position.clone();
@@ -75,8 +75,8 @@ test('taking hold of a ladder and stepping off its top, the eyes and the figure 
       walker.update(DT);
       const stands = walker.stands ?? walker.body.position;
       // (over the shoulder the camera is on its boom, which a wall behind it brings in at once: there it is the figure that is watched)
-      most = Math.max(most, third ? 0 : camera.position.distanceTo(eye), stands.distanceTo(figure));
-      eye = camera.position.clone();
+      most = Math.max(most, third ? 0 : walker.view.position.distanceTo(eye), stands.distanceTo(figure));
+      eye = walker.view.position.clone();
       figure = stands.clone();
     }
     const view = third ? 'over the shoulder' : 'through the eyes';
@@ -90,12 +90,12 @@ test('taking hold of a ladder and stepping off its top, the eyes and the figure 
 
 test('over the shoulder, something thin crossing behind the head brings the camera in at once and lets it out by degrees', () => {
   // a handrail's post two metres behind where the figure stands, off to one side of the camera's line
-  const { walker, camera } = site((box) => box(0.05, 3, 0.05, 11.2, 0, 12.0));
+  const { walker } = site((box) => box(0.05, 3, 0.05, 11.2, 0, 12.0));
   walker.start(new THREE.Vector3(10, 0, 10), new THREE.Vector3(10, 0, 0), 1.7, 1.85);
   walker.setThird(true);
   for (let i = 0; i < 40; i++) walker.update(DT); // pulled back
   const head = () => new THREE.Vector3(walker.body.position.x, walker.body.position.y + 1.7, walker.body.position.z);
-  const full = camera.position.distanceTo(head());
+  const full = walker.view.position.distanceTo(head());
   assert.ok(full > 3 && walker.outside, `pulled back ${full} m`);
   // the head turns: the line to the camera sweeps across the post
   let least = full;
@@ -105,7 +105,7 @@ test('over the shoulder, something thin crossing behind the head brings the came
   for (let i = 0; i < 240; i++) {
     walker.look(i < 120 ? -0.006 : 0, 0);
     walker.update(DT);
-    const far = camera.position.distanceTo(head());
+    const far = walker.view.position.distanceTo(head());
     if (far < full - 0.5) crossed++;
     least = Math.min(least, far);
     out = Math.max(out, far - last);

@@ -158,6 +158,7 @@ export class OnFoot {
     this.h.renderer.shadowMap.needsUpdate = true; // its shadow goes with it
     this.h.redraw();
     this.h.walk.start(feet, toward, eye, height, walker.radius);
+    this.h.cam.foot(this.h.walk.view, this.h.walk.third); // (the camera is the walker's: camera/foot.ts)
     this.h.shadows.fitWalkShadows(true);
   }
 
@@ -225,7 +226,7 @@ export class OnFoot {
     this.walked = -1;
     this.h.shadows.walkEnded = performance.now();
     // the camera takes the view up from this very place, turning about a point a few steps ahead, so the flight back starts from here
-    this.h.cam.adopt(this.h.camera.position.clone().add(this.h.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3)));
+    this.h.cam.unfoot(this.h.camera.position.clone().add(this.h.camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(3)));
     this.h.renderer.shadowMap.needsUpdate = true;
     this.h.redraw();
     this.h.onWalk(false, this.h.defs()[at]?.id ?? '');
@@ -1027,6 +1028,7 @@ export class OnFoot {
   /** A frame on foot. None of the orbiting camera's rules apply: no drift, no bounds, no picking, its own depth range. */
   stepWalk(dt: number): void {
     if (this.h.walk.update(dt)) this.h.redraw();
+    this.h.cam.update(dt); // (the walker has said where its view is: the camera is put there, camera/foot.ts)
     this.h.adapt(dt, true);
     const through = !this.h.walk.outside;
     if (through !== this.throughEyes) this.h.onWalkEyes((this.throughEyes = through));

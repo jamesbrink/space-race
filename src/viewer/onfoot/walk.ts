@@ -1138,6 +1138,12 @@ export class Walker {
   private wasOn = false;
   private readonly lastAt = new THREE.Vector3();
   private readonly pivot = new THREE.Vector3();
+  /**
+   * Where the walker's view is from and how it is turned, worked out each frame (`update`): the eyes, carried by the
+   * stride, or over the shoulder. The camera is put there by the camera's rigs for being on foot (camera/foot.ts).
+   */
+  readonly view = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() };
+  private readonly aim = new THREE.Matrix4();
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly host: WalkHost;
@@ -1716,6 +1722,7 @@ export class Walker {
     this.spun = Math.atan2(Math.sin(this.heading - facing), Math.cos(this.heading - facing));
 
     const camera = this.camera;
+    const sight = this.view;
     // The eyes are carried by the body: they rise and fall and sway with the stride, tip toward
     // the planted foot, drop with the knees on a landing, and come up a riser a moment after the
     // feet. All of it is scaled by `motion`, and fades out as the camera pulls back over the
@@ -1754,7 +1761,7 @@ export class Walker {
     const urge = ((wantX - this.vel.x) * -sin + (wantZ - this.vel.y) * -cos) / WALK_SPEED;
     const roll = (seen.roll - 0.022 * THREE.MathUtils.clamp(sideways, -1.5, 1.5)) * felt;
     const nod = (seen.pitch - 0.014 * THREE.MathUtils.clamp(urge, -1, 1)) * felt;
-    camera.position.set(
+    sight.position.set(
       p.x + this.hop.x + cos * seen.x * felt,
       p.y + this.hop.y + (this.feltY - p.y) * (1 - this.viewK) + this.eye - this.low + seen.y * felt,
       p.z + this.hop.z - sin * seen.x * felt,
@@ -1767,7 +1774,7 @@ export class Walker {
     const k = this.peekK;
     this.peekK = THREE.MathUtils.clamp(k + (this.peekAt ? dt : -dt) / PEEK_SECONDS, 0, 1);
     if (this.peekK !== k) this.moved = true;
-    camera.quaternion.setFromEuler(this.euler.set(this.pitch + nod, this.yaw, roll));
+    sight.quaternion.setFromEuler(this.euler.set(this.pitch + nod, this.yaw, roll));
     // in a couch the head is a strapped-in person's: about the neck, within limits, in the couch's own frame (head.ts)
     const couch = this.seat?.frame ? this.seat.frame(this.couchFrame) : null;
     if (couch) {
@@ -1775,15 +1782,15 @@ export class Walker {
       this.couch.step(dt);
       if (this.couch.moving) this.moved = true;
       const pose = this.couch.pose(this.couchOwnLens(), this.couchPose);
-      couch.decompose(camera.position, camera.quaternion, this.couchScale);
-      camera.position.add(this.couchScale.copy(pose.eye).applyQuaternion(camera.quaternion));
-      camera.quaternion.multiply(pose.quaternion);
+      couch.decompose(sight.position, sight.quaternion, this.couchScale);
+      sight.position.add(this.couchScale.copy(pose.eye).applyQuaternion(sight.quaternion));
+      sight.quaternion.multiply(pose.quaternion);
       this.couchLens = pose.lens;
     }
-    const gaze = camera.getWorldDirection(this.gaze);
+    const gaze = this.gaze.set(0, 0, -1).applyQuaternion(sight.quaternion);
     // what the body could touch was gathered for its move; what the eyes, the hand and the camera can reach is gathered now
     const far = REACH + BOOM + 0.5;
-    this.solids.gather(camera.position, far, far);
+    this.solids.gather(sight.position, far, far);
     // Over the shoulder: back along the line of sight, to the right and up a little. If there is
     // a wall between the head and there, the camera comes in to just short of it.
     const pulled = this.viewK;
@@ -1798,16 +1805,16 @@ export class Walker {
         ? this.boom.set(0, chase.up, 0).addScaledVector(gaze, -chase.back)
         : this.boom.set(cos * SHOULDER, OVER, -sin * SHOULDER).addScaledVector(gaze, -BOOM);
       const length = boom.length();
-      const wall = this.solids.cast(camera.position, boom.divideScalar(length), length + BOOM_CLEAR);
+      const wall = this.solids.cast(sight.position, boom.divideScalar(length), length + BOOM_CLEAR);
       // (in at once to whatever is behind the head, out again by degrees: boomTo)
       const clear = Math.max(0, Math.min(length, (wall?.distance ?? Infinity) - BOOM_CLEAR));
       this.reached = boomTo(this.reached, clear, dt);
       if (this.reached < clear) this.moved = true; // still going out
       const reach = this.reached * ease;
       // (a chase view looks at the vehicle, a little ahead of the driver's eyes, not level over its roof)
-      if (chase) this.pivot.copy(camera.position).addScaledVector(gaze, 6);
-      camera.position.addScaledVector(boom, reach);
-      if (chase && reach > 0) camera.lookAt(this.pivot);
+      if (chase) this.pivot.copy(sight.position).addScaledVector(gaze, 6);
+      sight.position.addScaledVector(boom, reach);
+      if (chase && reach > 0) sight.quaternion.setFromRotationMatrix(this.aim.lookAt(sight.position, this.pivot, camera.up));
       back = (reach / length) * (chase?.back ?? BOOM);
       const outside = boomOutside(this.outside, reach);
       if (outside !== this.outside) this.moved = true;
@@ -1817,11 +1824,11 @@ export class Walker {
       this.reached = Number.POSITIVE_INFINITY;
     }
     if (this.peekK > 0 && this.peekTo) {
-      camera.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
+      sight.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
       back *= 1 - this.peekK;
     }
     // what is straight ahead, within arm's reach of the figure: from behind it, the ray starts level with its head
-    this.aimed = this.solids.cast(this.eyes.copy(camera.position).addScaledVector(gaze, back), gaze, REACH);
+    this.aimed = this.solids.cast(this.eyes.copy(sight.position).addScaledVector(gaze, back), gaze, REACH);
     if (couch && this.viewK === 0) {
       // (the couch's lens: the walker's own, or what a lean has it at)
       if (Math.abs(camera.fov - this.couchLens) > 1e-6) {
@@ -1835,9 +1842,9 @@ export class Walker {
     // camera and for the same reason (depth resolution across the site), but never past the
     // corner of the frame reaching that thing: indoors it comes in to a few centimetres.
     const corner = Math.hypot(1, Math.tan(THREE.MathUtils.degToRad(fov / 2)) * Math.hypot(1, camera.aspect));
-    let clear = this.solids.nearest(camera.position, 0.6);
-    const under = this.body.level(camera.position.x, camera.position.z);
-    if (under !== null) clear = Math.min(clear, camera.position.y - under);
+    let clear = this.solids.nearest(sight.position, 0.6);
+    const under = this.body.level(sight.position.x, sight.position.z);
+    if (under !== null) clear = Math.min(clear, sight.position.y - under);
     // (seated, what is nearest is the cab round the head, which is left out of the solids: keep the plane close)
     const near = this.seat ? 0.06 : THREE.MathUtils.clamp((0.85 * clear) / corner, 0.05, 0.3);
     if (Math.abs(near - camera.near) > near * 0.05) {

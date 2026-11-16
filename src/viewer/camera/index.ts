@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FootRig, type FootView } from './foot.ts';
 import { FreeRig } from './free.ts';
 import { type Hands, listen } from './input.ts';
 import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
@@ -71,6 +72,11 @@ export class Cameras {
   readonly onboard: OnboardRig;
   readonly pad: TrackRig;
   readonly free: FreeRig;
+  /** On foot: the walker's view, through the eyes or over the shoulder (foot.ts). Never offered by C: the walker's C is its own. */
+  readonly eyes = new FootRig('eyes');
+  readonly shoulder = new FootRig('shoulder');
+  /** The rig that had the camera when the walk began: it takes the view up again when the walk ends. */
+  private beforeFoot: Rig | null = null;
   /** Keys being held down, lower case, and whether Shift is. */
   readonly keys = new Set<string>();
   private fast = false;
@@ -221,6 +227,26 @@ export class Cameras {
     this.handOver(from, snap);
     if (id === 'orbit') this.showPivot();
     this.told.rig(id);
+  }
+
+  /**
+   * On foot (walking.md): the walker's view is the camera, through the eyes or over the shoulder (`third`). It is taken
+   * up as the walker has it, with no handover: the walker eases its own way between the two, and into the figure's eyes.
+   */
+  foot(view: FootView, third: boolean): void {
+    if (!(this.active instanceof FootRig)) this.beforeFoot = this.active;
+    this.eyes.follow(view);
+    this.shoulder.follow(view);
+    this.active = third ? this.shoulder : this.eyes;
+    this.blend = null;
+  }
+
+  /** Off foot again: the rig the walk was taken from takes the view up from where the walker left it, turning about `pivot`. */
+  unfoot(pivot: THREE.Vector3): void {
+    if (!(this.active instanceof FootRig)) return;
+    this.active = this.beforeFoot ?? this.orbit;
+    this.beforeFoot = null;
+    this.adopt(pivot);
   }
 
   /** The view an exhibit's seat was taken from (`set`): where leaving the seat goes back to, as it was left. */

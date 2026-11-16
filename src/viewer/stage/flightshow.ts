@@ -6,7 +6,7 @@ import type { Clock } from '../../world/clock.ts';
 import { Ascent, type Run } from '../ascent.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
-import type { Craft } from '../camera/rig.ts';
+import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
 import { Chute } from '../chute.ts';
 import type { Effects } from '../effects.ts';
 import { type Cluster, clusterOf, exitsOf } from '../fires.ts';
@@ -458,8 +458,7 @@ export class FlightShow {
     // its shadow is drawn again only while it can fall inside the shadow map (which goes with it under the chase camera):
     // a rocket long gone from a map fitted to the pad casts nothing there
     const box = this.h.sun.shadow.camera;
-    const within =
-      (this.h.cam.rig !== 'orbit' && this.h.cam.rig !== 'free') || g.position.distanceTo(this.h.sun.target.position) < 2 * box.right + 60;
+    const within = !ABOUT_PLACE.has(this.h.cam.rig) || g.position.distanceTo(this.h.sun.target.position) < 2 * box.right + 60;
     if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.h.oweShadows();
     this.lifted.shrank = false;
     this.lifted.shadowed = within;

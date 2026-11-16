@@ -596,7 +596,10 @@ export class Stage {
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.onFoot.exitWalk(),
       act: () => this.onWalkAct(),
-      viewed: (third) => this.onWalkView(third),
+      viewed: (third) => {
+        if (this.walk.active) this.cam.foot(this.walk.view, third); // (through the eyes or over the shoulder: camera/foot.ts)
+        this.onWalkView(third);
+      },
       locked: (on) => this.onWalkLook(on),
     });
 

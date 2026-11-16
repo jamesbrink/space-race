@@ -3,7 +3,7 @@
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
 `src/viewer/camera/` is the camera: `Stage` owns one `Cameras` (`stage.cam`) and asks it for
-everything; nothing else moves the view when nobody is being walked as. It knows no flight: what
+everything; nothing else moves the view, on foot or off. It knows no flight: what
 there is to turn about, sit in and follow comes through `Scene` (the ground's height, the plumb
 line, what is solid under a pointer, the flown vehicle as a `Craft`), which `Stage.world()` answers.
 
@@ -18,6 +18,7 @@ time, is told what the hands did, and says where the camera is. One is in charge
 | `locked` | the chase view measured in the vehicle's own frame: it holds still and the world turns | the same |
 | `onboard` | first person from a seat in the vehicle (`ModelDef.seats[0]`: `node`, whose +Z looks ahead and +Y is overhead, and `eye` in its frame) | drag and arrows turn the head within limits, wheel changes the lens, 1 2 3 (and the lookouts' buttons) lean to a port or the periscope and back |
 | `pad` | stands at one place on the ground and follows the vehicle, closing its lens as it goes (to a quarter of a degree) | wheel asks for a tighter or wider frame, drag puts the vehicle off the middle |
+| `eyes`, `shoulder` | on foot (`foot.ts`): the walker's view, through the figure's eyes or over its shoulder, which the walker works out (stride, boom, lean, couch: walking.md) and the rig puts the camera at; `Cameras.foot` as a walk starts or C changes it, `unfoot` hands back to the rig the walk was taken from | the walker's own (walking.md); C offers neither |
 
 C goes to the next of the rigs there are as things stand (`Cameras.available`): on the pad, orbit
 and free; with a flight in the air, chase, locked, on board (if the vehicle has a seat), pad and

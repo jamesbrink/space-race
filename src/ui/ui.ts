@@ -58,6 +58,8 @@ const CAMERA_LABEL: Record<RigId, string> = {
   locked: 'Camera · chase, locked',
   onboard: 'Camera · on board',
   pad: 'Camera · pad',
+  eyes: 'On foot · through the eyes',
+  shoulder: 'On foot · over the shoulder',
 };
 /** On the button the word "camera" is a picture of one: the rig's own name is what changes. */
 const cameraName = (mode: RigId) => CAMERA_LABEL[mode].replace('Camera · ', '');

@@ -7,8 +7,8 @@ import * as THREE from 'three';
  * nothing of any flight: what it turns about, sits in or follows comes through `World`.
  */
 
-/** The rigs there are. `locked` is the chase view held in the vehicle's own frame. */
-export type RigId = 'orbit' | 'free' | 'chase' | 'locked' | 'onboard' | 'pad';
+/** The rigs there are. `locked` is the chase view held in the vehicle's own frame; `eyes` and `shoulder` are on foot (foot.ts). */
+export type RigId = 'orbit' | 'free' | 'chase' | 'locked' | 'onboard' | 'pad' | 'eyes' | 'shoulder';
 
 /** What each is called on the screen, and what it does, in a line. */
 export const RIGS: Record<RigId, { name: string; says: string }> = {
@@ -18,7 +18,12 @@ export const RIGS: Record<RigId, { name: string; says: string }> = {
   locked: { name: 'Chase view · locked', says: 'Turns with the vehicle: it holds still and the world moves' },
   onboard: { name: 'On board', says: 'From the couch · drag to look round · wheel zooms' },
   pad: { name: 'Pad camera', says: 'Stands on the ground and follows the vehicle with a long lens · wheel zooms' },
+  eyes: { name: 'Through the eyes', says: 'On foot · W A S D walk · the mouse looks round' },
+  shoulder: { name: 'Over the shoulder', says: 'On foot · the figure seen from behind · W A S D walk' },
 };
+
+/** The rigs that are about the place and not the flown vehicle: no shadow map goes with the vehicle while one has the camera. */
+export const ABOUT_PLACE: ReadonlySet<RigId> = new Set(['orbit', 'free', 'eyes', 'shoulder']);
 
 /** Where the camera is and how it is turned; `fov` in degrees, vertical. */
 export interface Pose {

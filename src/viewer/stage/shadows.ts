@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
+import { ABOUT_PLACE } from '../camera/rig.ts';
 import { ShadowCache } from '../shadowcache.ts';
 import { BAND, depthBias, FarShadow } from '../shadows.ts';
 import { tier } from '../tier.ts';
@@ -105,7 +106,7 @@ export class Shadows {
   /** While a rig that is about the vehicle is in charge, the Sun's shadow map goes with the vehicle, so it shades itself all the way up. */
   shadeCraft(): void {
     // (or with the stage that has left, while the view is following that)
-    const c = this.h.cam.rig === 'orbit' || this.h.cam.rig === 'free' ? null : this.h.craft();
+    const c = ABOUT_PLACE.has(this.h.cam.rig) ? null : this.h.craft();
     if (!c) return;
     // (put where the vehicle is, not moved by how far it went: a sum of moves is a last bit out, and the map of a
     // vehicle that went and came back would not be the map it had)
