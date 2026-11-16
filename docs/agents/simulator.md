@@ -139,7 +139,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     came on), `chuteOf` (which of a run's two parachutes one is), `bearingOf` (the bearing flown); plan.ts `flownByHand`
     (whether a plan can be flown on its deck). A path whose deck predicts its own (`PathSource.predict`) is drawn from it.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
-  their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
+  their tearing, and its motors, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
+  - A motor is a solid engine of the plan on the body, lit by an event set off by height once a parachute of the body is
+    out (`DownMotor`: a soft-landing rocket fired by its probe); it pushes against the motion through the air while it
+    burns, as it was at the step's start. flyDown cuts a step to come down through its height and to end at its burnout;
+    the path ahead has both as its instants.
+  - A crew that lands in the ship (`DescentCrew.alone` left out) leaves at no height: the event the coast hands over at is
+    then the descent's own first (the parachute container's cover), and the verdict holds the landing aboard alone.
   - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.
   - fliers.ts `descending` flies the same object for the path ahead, handing over to the followed body as it is let loose,
     and begins part-way down from the run's `states`. `spacecraft` with `descend` goes on into it; without it the

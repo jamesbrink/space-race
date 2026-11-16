@@ -145,6 +145,8 @@ export interface OrbitCheck {
 }
 
 export interface VostokRecord {
+  /** The stack as one craft of the plan: its id and words. Left out: the Vostok-K's, `vostok-8k72k`. */
+  craft?: { id: string; label: string };
   /** The launch vehicle as flown, for the record and for the ascent when it is flown. */
   stages: StageRecord[];
   /** Everything that left the pad, kg. */
@@ -205,8 +207,12 @@ export interface VostokRecord {
   supplies?: { days: Measure; rarefied: Measure };
   /** The joined ship in the free-molecule flow of its orbit (plan.ts `Craft.rarefied`). Left out: the 3KA's (vostok-3ka.ts `SHIP_RAREFIED`). */
   rarefied?: NonNullable<Craft['rarefied']>;
-  /** The height above the sea at which the pilot left, m: the coast is flown down to it. */
-  ejection: { altitude: Measure };
+  /**
+   * The height above the sea at which the pilot left, m: the coast is flown down to it. `event`: what happened there, where
+   * it was not an ejection (a ship whose crew landed in it begins its own sequence at that height, the parachute container's
+   * cover shot off): its id and words, and what a hand asking for it is called on the deck. Left out: the seat's ejection.
+   */
+  ejection: { altitude: Measure; event?: { id: string; label: string; asked: string } };
   /** What comes down from there, each body on its own (`flyDown`). Left out: the flight ends at the ejection height. */
   descent?: DescentRecord;
   /**
@@ -283,6 +289,24 @@ export interface DescentBody {
   /** The events that set it loose from the first body, the first of them (`DescentHands.given`'s names). Left out: the ejection. */
   with?: string[];
   chutes: DescentChute[];
+  /** The solid rockets it fires coming down (a soft-landing motor in the parachute's lines, set off by a probe at the ground). */
+  motors?: DescentMotor[];
+}
+
+/**
+ * A solid motor a descent body fires as it comes down through a height, once a parachute of its own is out: it pushes
+ * against the body's motion through the air (sim/descent.ts `DownMotor`) at `thrust` for `burn`.
+ */
+export interface DescentMotor {
+  /** The engine's id in the plan, and its words. */
+  id: string;
+  label: string;
+  /** The parachute of the same body that must be out first (its `name`). */
+  after: string;
+  /** The height above the sea it is set off at, falling, m. */
+  altitude: Measure;
+  thrust: Measure;
+  burn: Measure;
 }
 
 /** A parachute of a descent body. */

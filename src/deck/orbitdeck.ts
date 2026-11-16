@@ -1,7 +1,7 @@
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
-import { automatic, coastEvents, coastOf, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
+import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
 import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
@@ -186,10 +186,8 @@ export class OrbitDeck extends Deck {
           about: 'How far the long axis (the braking engine’s push) is from straight against the motion: 0 is retrograde',
         },
       ],
-      guidance:
-        'Guidance: the automatic flight, the ascent on its steering law, and a key held leans it. Off, the hands fly alone: the record’s pilot had no such control, so switching it takes the flight over',
-      sequence:
-        'Sequencer: the record’s events at their times. Off, each is set off by hand with Space: the record’s pilot could not, so switching it takes the flight over',
+      guidance: `Guidance: the automatic flight, the ascent on its steering law, and a key held leans it. Off, the hands fly alone: nobody aboard on the day had such a control, so switching it takes the flight over`,
+      sequence: `Sequencer: the record’s events at their times. Off, each is set off by hand with Space: nobody aboard on the day could, so switching it takes the flight over`,
       choose: false,
       flightKeys: code
         ? `<span class="deck-turn" title="The lock on the hand controls: its code, typed in order, frees them once the spacecraft is alone">${[
@@ -750,7 +748,10 @@ export class OrbitDeck extends Deck {
 
   /** The note that the flight is now the user's, with what the record's pilot could do. */
   private say(): void {
-    this.host.say?.('Your flight', `Not the flight of ${this.day}: its pilot had no controls going up, and ${this.reach}`);
+    this.host.say?.(
+      'Your flight',
+      `Not the flight of ${this.day}: ${crewWords(this.flight.plan!.craft[0]!.crew).they} had no controls going up, and ${this.reach}`,
+    );
   }
 
   /** The instant each of `flies.drops` leaves on this flight, and its body put in the scene as it leaves. */
@@ -930,7 +931,8 @@ export class OrbitDeck extends Deck {
     const t = this.clock.t;
     if (this.parts <= t) return 'Gone with the instrument module: the modules have parted';
     const down = this.flown?.down;
-    if (down && down.ejected <= t) return 'He has left the ship';
+    if (down && down.ejected <= t && this.flight.plan!.craft[0]!.crew?.alone)
+      return `${crewWords(this.flight.plan!.craft[0]!.crew).who} has left the ship`;
     return null;
   }
 
@@ -1087,13 +1089,21 @@ export class OrbitDeck extends Deck {
     if (t >= landed(first) && (parting || id === d.ejection || b?.id === first)) return 'Down';
     if (parting) return this.parts <= t ? 'Parted already' : null;
     if (this.burnPending(t)) return 'The braking burn is still to come: the descent follows it';
-    if (id === d.ejection && !chute) return (down?.ejected ?? Number.NaN) <= t ? 'He has left the ship already' : null;
+    if (id === d.ejection && !chute)
+      return (down?.ejected ?? Number.NaN) <= t
+        ? plan.craft[0]!.crew?.alone === undefined
+          ? 'Done already'
+          : `${crewWords(plan.craft[0]!.crew).who} has left the ship already`
+        : null;
     if (!b || !chute) return 'No such parachute';
     const i = b.chutes.indexOf(chute);
     const body = b.id;
     const name = chute.name;
     const began = body === first ? Number.NEGATIVE_INFINITY : (down?.tracks[body]?.[0]?.t ?? Number.POSITIVE_INFINITY);
-    if (!(t >= began)) return body === plan.craft[0]!.crew?.alone ? 'He is still in the ship: eject first' : 'Still on the ship';
+    if (!(t >= began))
+      return body === plan.craft[0]!.crew?.alone
+        ? `${crewWords(plan.craft[0]!.crew).who} is still in the ship: eject first`
+        : 'Still on the ship';
     if (t >= landed(body)) return 'Down';
     if ((down?.opened[body]?.[name] ?? Number.POSITIVE_INFINITY) <= t) return 'Out already';
     const j = b.chutes.findIndex((c) => c.replaces?.leaves);
@@ -1639,7 +1649,7 @@ export class OrbitDeck extends Deck {
           ? this.mine === null
             ? hot
               ? `Next, ${step!.label.toLowerCase()}: ${hot}`
-              : `Its pilot had no controls going up; ${this.flight.plan!.record?.manual?.code ? 'behind the lock, orientation and the braking burn' : this.reach}. G, B or Space takes it over`
+              : `${crewWords(this.flight.plan!.craft[0]!.crew).who} had no controls going up; ${this.flight.plan!.record?.manual?.code ? 'behind the lock, orientation and the braking burn' : this.reach}. G, B or Space takes it over`
             : due && step
               ? `${step.label} is due: Space${hot ? `. ${hot}` : ''}`
               : hot
@@ -1751,8 +1761,14 @@ export class OrbitDeck extends Deck {
       (at) => this.apart(at),
       decayed,
     );
+    // (in the words the flight's data gives for whoever rode it: sim/orbital.ts `crewWords`)
+    const { who, many } = crewWords(plan.craft[0]!.crew);
     const lives =
-      stays || v.survivable === null ? '' : v.survivable ? ' He lives, by the limits taken.' : ' He does not live, by the limits taken.';
+      stays || v.survivable === null
+        ? ''
+        : v.survivable
+          ? ` ${who} ${many ? 'live' : 'lives'}, by the limits taken.`
+          : ` ${who} ${many ? 'do' : 'does'} not live, by the limits taken.`;
     // the record's own landings: each body's time (its check) and the place the record gives
     const when = (id: string) => plan.checks.find((c) => c.of === 'descent' && c.id === `${id}.at`);
     const landing = record.landing!;

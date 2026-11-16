@@ -75,14 +75,34 @@ export interface Guidance {
  * landing under his own canopy, and the air's blast (the greatest dynamic pressure) once he is out in it.
  */
 export interface DescentCrew {
-  alone: string;
-  landing: { aboard: Measure; alone: Measure };
-  blast: Measure;
-  /** The fastest he can be out in the air, m/s: past it, the heat (which is not modelled) is taken to kill him. */
-  fastest: Measure;
+  /** The body the pilot comes down as once he has left the ship. Left out: the crew land in it, and nobody leaves. */
+  alone?: string;
+  /**
+   * The words for whoever rode it, from the flight's own data: as a sentence begins with them ("He", "She", "The crew"),
+   * as a sentence goes on ("he", "they"), what was theirs ("his", "their"), and whether a verb takes them as many.
+   * Left out: one man's.
+   */
+  words?: CrewWords;
+  /** The fastest landing lived through aboard the module, and (with `alone`) under his own canopy, m/s. */
+  landing: { aboard: Measure; alone?: Measure };
+  /** With `alone`: the most air he lives through out of the ship on his seat, Pa. */
+  blast?: Measure;
+  /** With `alone`: the fastest he can be out in the air, m/s: past it, the heat (which is not modelled) is taken to kill him. */
+  fastest?: Measure;
   /** What a landing aboard meant, in the record's words: said beside the verdict on one. */
   aboard: string;
 }
+
+/** How the verdict and the deck speak of a crew (`DescentCrew.words`). */
+export interface CrewWords {
+  who: string;
+  they: string;
+  their: string;
+  many: boolean;
+}
+/** The words for a descent's crew, as its plan's data gives them: one man's where it gives none. */
+export const crewWords = (crew: { words?: CrewWords } | undefined): CrewWords =>
+  crew?.words ?? { who: 'He', they: 'he', their: 'his', many: false };
 
 /**
  * What a hand gave in the descent (the flight deck, orbitdeck.ts): each event at an instant, seconds from liftoff, by id
@@ -135,6 +155,8 @@ export interface DescentFlown {
   /** Each parachute that tore, by body and name; and the most dynamic pressure, Pa, and pull, N, each met while out. */
   torn: Record<string, Record<string, DescentTear>>;
   worst: Record<string, Record<string, { q: number; pull: number }>>;
+  /** When each body's motors were lit (a soft-landing rocket), seconds from liftoff, by body and engine id. */
+  fired: Record<string, Record<string, number>>;
   /** When the pilot left (the ejection), s from liftoff: NaN, never. */
   ejected: number;
   /** When the modules parted, s from liftoff (the plan's `entry.separation`, if it came before the first body landed): NaN, never. */
@@ -178,6 +200,7 @@ export function flyDown(
   const gone: Record<string, Record<string, number>> = {};
   const torn: Record<string, Record<string, DescentTear>> = {};
   const worst: Record<string, Record<string, { q: number; pull: number }>> = {};
+  const fired: Record<string, Record<string, number>> = {};
   const peak: Record<string, { q: number; g: number; speed: number }> = {};
   const up: string[] = [];
   const box = { at: Number.NaN };
@@ -219,6 +242,7 @@ export function flyDown(
     gone[body.id] = desc.gone;
     torn[body.id] = desc.torn;
     worst[body.id] = desc.worst;
+    fired[body.id] = desc.lit;
     const states: { t: number; state: DescentSnapshot }[] = (snapshots[body.id] = []);
     let t = t0;
     let s: State = s0;
@@ -241,8 +265,13 @@ export function flyDown(
     while (h > ground && t < limit) {
       const was = { s, t, h };
       const most_step = h > 150_000 ? 10 : h > 100_000 ? 1 : 0.05;
-      const cut = cuts.find((c) => c > t + 1e-9);
-      const dt = cut !== undefined && cut - t < most_step ? cut - t : most_step;
+      const cut = [...cuts, ...desc.ends(t)].filter((c) => c > t + 1e-9).sort((p, q) => p - q)[0];
+      let dt = cut !== undefined && cut - t < most_step ? cut - t : most_step;
+      // (a motor set off at a height is lit where the body comes down through it, not a step past it: the step is cut short
+      // to reach it, as the descent's falling speed has it, and goes a hair past so that it is crossed)
+      const motor = desc.nextMotor();
+      const sinking = -dot(airOf(s), unit(s.r));
+      if (h > motor && sinking > 0 && (h - motor) / sinking < dt) dt = (h - motor) / sinking + 1e-6;
       desc.as = t;
       s = step(s, t, dt, push);
       t = cut !== undefined && Math.abs(t + dt - cut) < 1e-9 ? cut : t + dt;
@@ -295,6 +324,7 @@ export function flyDown(
     gone,
     torn,
     worst,
+    fired,
     ejected: box.at,
     parted: parted < down ? parted : Number.NaN,
     peak,

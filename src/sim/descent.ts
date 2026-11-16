@@ -54,6 +54,23 @@ export interface DownBody {
   /** The events that set it loose from the first body: the first of them to happen does. */
   with: string[];
   chutes: DownChute[];
+  /** The rockets it fires on the way down (a soft-landing motor set off by a probe at the ground), each lit at its height. */
+  motors: DownMotor[];
+}
+
+/**
+ * A solid motor a descent body fires at a height coming down (the plan's engine on the body, lit by an event set off by
+ * height): it pushes along the body's motion through the air, against it (the lines it hangs in stream that way), at its
+ * thrust for its burn. `after`: the body's parachutes, by name, that must be out before it can be set off.
+ */
+export interface DownMotor {
+  id: string;
+  label: string;
+  event: string;
+  altitude: number;
+  after: string[];
+  thrust: number;
+  burn: number;
 }
 
 /** A parachute of a descent body: `name` is its label (what a descent flown keys its times on), `event` the plan's event that puts it out. */
@@ -128,6 +145,33 @@ function makeDown(plan: FlightPlan): Down | null {
               ...(ch.pull ? { pull: ch.pull } : {}),
             };
           }),
+        motors: c.engines
+          .filter((e) => e.body === b.id && e.kind === 'solid')
+          .flatMap((e): DownMotor[] => {
+            const lit = plan.events.find((x) => x.do.some((a) => 'ignite' in a && a.ignite === e.id));
+            const height = lit?.when.find((w) => 'height' in w);
+            if (!lit || !height || !('height' in height)) return [];
+            if (!e.burn) throw new Error(`the descent's motor '${e.id}' has nothing to say how long it burns`);
+            const after = lit.when.flatMap((w) => {
+              if (!('after' in w)) return [];
+              const ch = c.chutes.find(
+                (x) => x.body === b.id && plan.events.find((y) => y.id === w.after)?.do.some((a) => 'deploy' in a && a.deploy === x.id),
+              );
+              if (!ch) throw new Error(`the descent's motor '${e.id}' waits on '${w.after}', which puts out none of its body's parachutes`);
+              return [ch.label];
+            });
+            return [
+              {
+                id: e.id,
+                label: e.label,
+                event: lit.id,
+                altitude: height.height,
+                after,
+                thrust: e.thrust.vacuum.value * e.count,
+                burn: e.burn.value,
+              },
+            ];
+          }),
       }),
     );
   return {
@@ -176,6 +220,8 @@ export interface DescentSnapshot {
   torn: Record<string, DescentTear>;
   worst: Record<string, { q: number; pull: number }>;
   ejected: number;
+  /** When each of its motors was lit, s from liftoff, by id. */
+  lit: Record<string, number>;
 }
 
 export class Descent {
@@ -187,6 +233,8 @@ export class Descent {
   readonly gone: Record<string, number> = {};
   readonly torn: Record<string, DescentTear> = {};
   readonly worst: Record<string, { q: number; pull: number }> = {};
+  /** When each of its motors was lit, s from liftoff, by id. */
+  readonly lit: Record<string, number> = {};
   /** The pilot is aboard (the entry body, until the ejection). */
   aboard: boolean;
   mass: number;
@@ -250,12 +298,39 @@ export class Descent {
     const air = (this.ctx.sky ?? STANDARD).air(h);
     const wind = this.airOf(q, at);
     const speed = length(wind);
-    return speed > 0
-      ? scale(
-          airDrag(wind, speed, air.density * solarAt(this.ctx.frame, q.r, at, h), this.areaAt(at, h, speed / air.soundSpeed)),
-          1 / this.massAt(at),
-        )
-      : [0, 0, 0];
+    const drag: Vec3 =
+      speed > 0
+        ? scale(
+            airDrag(wind, speed, air.density * solarAt(this.ctx.frame, q.r, at, h), this.areaAt(at, h, speed / air.soundSpeed)),
+            1 / this.massAt(at),
+          )
+        : [0, 0, 0];
+    // (a motor burns as it was at the step's start: lit, and not yet out)
+    const thrust = this.thrustAt(this.as);
+    return thrust > 0 && speed > 0 ? sub(drag, scale(wind, thrust / this.massAt(at) / speed)) : drag;
+  }
+  /** What its motors push with at `at`, N: each lit by then and not yet burnt out. */
+  thrustAt(at: number): number {
+    let sum = 0;
+    for (const m of this.body.motors) {
+      const t = this.lit[m.id];
+      if (t !== undefined && at >= t - 1e-9 && at < t + m.burn - 1e-9) sum += m.thrust;
+    }
+    return sum;
+  }
+  /** The instants after `t` at which a motor of it burns out. */
+  ends(t: number): number[] {
+    return this.body.motors.flatMap((m) => {
+      const lit = this.lit[m.id];
+      return lit !== undefined && lit + m.burn > t + 1e-9 ? [lit + m.burn] : [];
+    });
+  }
+  /** The height of the next motor that can be set off coming down (its parachutes out), or -Infinity. */
+  nextMotor(): number {
+    let most = Number.NEGATIVE_INFINITY;
+    for (const m of this.body.motors)
+      if (this.lit[m.id] === undefined && m.after.every((n) => this.times[n] !== undefined)) most = Math.max(most, m.altitude);
+    return most;
   }
   pressure(q: State, h: number, at?: number): number {
     return 0.5 * (this.ctx.sky ?? STANDARD).air(h).density * length(this.airOf(q, at)) ** 2;
@@ -280,6 +355,7 @@ export class Descent {
             dragArea: leaves.dragArea,
             with: [],
             chutes: [],
+            motors: [],
           },
           t,
           q,
@@ -363,6 +439,16 @@ export class Descent {
             : false);
       if (hand || auto) this.letOut(c, i, q, h, t);
     });
+    // (a motor at its height, once its parachutes are out: a probe at the ground)
+    for (const m of this.body.motors) {
+      if (this.lit[m.id] !== undefined) continue;
+      const hand = (given[m.event] ?? Number.POSITIVE_INFINITY) <= t + 1e-9;
+      const auto = !begun && automatic(hands, t) && falling && h <= m.altitude && m.after.every((n) => this.times[n] !== undefined);
+      if (hand || auto) {
+        this.lit[m.id] = t;
+        this.ctx.loose(m.event, t, q);
+      }
+    }
   }
 
   /** The heights it will next do something coming down through, highest first: the ejection, each parachute's own still to come. */
@@ -372,13 +458,15 @@ export class Descent {
     this.body.chutes.forEach((c, i) => {
       if (!this.out.has(i) && c.altitude !== undefined) out.push(c.altitude);
     });
+    const motor = this.nextMotor();
+    if (Number.isFinite(motor)) out.push(motor);
     return out.sort((a, b) => b - a);
   }
 
   /** What changes only at an event or a tear, as a word: a snapshot is kept where it changes. */
   key(): string {
     const f = this.filling;
-    return `${this.aboard}|${this.mass}|${this.base}|${f?.name}|${f?.area}|${this.out.size}|${Object.keys(this.torn).length}|${Object.keys(this.gone).length}`;
+    return `${this.aboard}|${this.mass}|${this.base}|${f?.name}|${f?.area}|${this.out.size}|${Object.keys(this.torn).length}|${Object.keys(this.gone).length}|${Object.keys(this.lit).length}`;
   }
 
   snapshot(): DescentSnapshot {
@@ -394,6 +482,7 @@ export class Descent {
       torn: { ...this.torn },
       worst: Object.fromEntries(Object.entries(this.worst).map(([k, v]) => [k, { ...v }])),
       ejected: this.ctx.ejected.at,
+      lit: { ...this.lit },
     };
   }
 
@@ -410,6 +499,7 @@ export class Descent {
     Object.assign(d.gone, s.gone);
     Object.assign(d.torn, s.torn);
     for (const [k, v] of Object.entries(s.worst)) d.worst[k] = { ...v };
+    Object.assign(d.lit, s.lit ?? {});
     ctx.ejected.at = s.ejected;
     return d;
   }

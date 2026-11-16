@@ -129,6 +129,20 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     ...(o.manual ? { deltaV: o.manual.deltaV } : {}),
     flown: o.retro.deltaV,
   });
+  // the descent's own rockets, each a solid on its body (a soft-landing motor)
+  for (const b of dbodies)
+    for (const m of b.motors ?? [])
+      engines.push({
+        id: m.id,
+        label: m.label,
+        body: b.id,
+        count: 1,
+        tanks: [],
+        thrust: { vacuum: m.thrust },
+        kind: 'solid',
+        burn: m.burn,
+        starts: { count: 1, ground: false, confidence: 'documented', source: 'a solid: fired once, by its probe' },
+      });
   const tanks: TankDef[] = o.stages.map((s, i) => ({
     id: stageId(i),
     label: `${s.name.split(',')[0]} propellant`,
@@ -174,16 +188,18 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
   const limits: LimitDef[] = [];
   if (a?.limits)
     limits.push({ of: 'qAlpha', value: a.limits.qAlpha, at: stageId(0) }, { of: 'axial', value: a.limits.axial, at: stageId(0) });
-  if (d?.crew)
+  if (d?.crew) {
+    const { landing, blast, fastest } = d.crew;
     limits.push(
-      { of: 'landing-speed', value: d.crew.landing.aboard, at: 'aboard' },
-      { of: 'landing-speed', value: d.crew.landing.alone, at: 'alone' },
-      { of: 'blast', value: d.crew.blast },
-      { of: 'fastest', value: d.crew.fastest },
+      { of: 'landing-speed', value: landing.aboard, at: 'aboard' },
+      ...(landing.alone ? [{ of: 'landing-speed' as const, value: landing.alone, at: 'alone' }] : []),
+      ...(blast ? [{ of: 'blast' as const, value: blast }] : []),
+      ...(fastest ? [{ of: 'fastest' as const, value: fastest }] : []),
     );
+  }
   const craft: Craft = {
-    id: 'vostok-8k72k',
-    label: 'The stack',
+    id: o.craft?.id ?? 'vostok-8k72k',
+    label: o.craft?.label ?? 'The stack',
     mass: o.liftoffMass,
     bodies,
     joints,
@@ -237,7 +253,10 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
   // the braking burn's command (the timer's, where the record has it), the timer that shut the engine down, the ejection
   const command = o.events.find((e) => e.id === 'retro-command');
   const timer = o.events.find((e) => e.id === 'retro-timer');
-  const ejected = o.events.find((e) => e.id === 'seat-ejected');
+  // (the record's own event at the height the coast hands over at: the seat's ejection, or what the record says happened there)
+  const ejected = o.events.find((e) => e.id === (o.ejection.event?.id ?? 'seat-ejected'));
+  // the event at the height the coast hands over at: the seat's ejection, or what the record says happened there
+  const loose = o.ejection.event ?? { id: 'seat-ejection', label: 'Ejection' };
   const record = (at: Measure) => {
     const e = o.events.find((x) => Math.abs(x.at.value - at.value) < 1e-6);
     return e ? { record: { id: e.id, label: e.label } } : {};
@@ -374,10 +393,11 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       source: o.entry.separation.source,
     },
     {
-      id: 'seat-ejection',
-      label: 'Ejection',
+      id: loose.id,
+      label: loose.label,
+      ...('asked' in loose ? { asked: loose.asked } : {}),
       when: [{ after: 'modules' }, { height: o.ejection.altitude.value, going: 'down' }],
-      do: dbodies.slice(1).flatMap((b) => ((b.with ?? ['seat-ejection']).includes('seat-ejection') ? [{ separate: b.id }] : [])),
+      do: dbodies.slice(1).flatMap((b) => ((b.with ?? [loose.id]).includes(loose.id) ? [{ separate: b.id }] : [])),
       automatic: true,
       ...(ejected ? { record: { id: ejected.id, label: ejected.label } } : {}),
       source: o.ejection.altitude.source,
@@ -391,15 +411,26 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
         id,
         label: `${b.label}: ${c.name}`,
         when: [
-          ...(b === module ? [{ after: 'modules' }] : [{ after: 'seat-ejection' }]),
+          ...(b === module ? [{ after: 'modules' }] : [{ after: loose.id }]),
           ...(c.altitude ? [{ height: c.altitude.value, going: 'down' as const }] : []),
-          ...(c.after ? [{ after: 'seat-ejection', wait: c.after.value }] : []),
+          ...(c.after ? [{ after: loose.id, wait: c.after.value }] : []),
         ],
         do: [{ deploy: id }, ...leaving.map((x) => ({ separate: x.id }))],
         automatic: true,
         source: (c.altitude ?? c.after)?.source ?? 'with what it follows',
       });
     }
+  // each of the descent's rockets, lit as its body comes down through its height once its parachute is out
+  for (const b of dbodies)
+    for (const m of b.motors ?? [])
+      events.push({
+        id: `${m.id}:ignite`,
+        label: `${b.label}: ${m.label}`,
+        when: [{ after: chuteEvent(b.id, m.after) }, { height: m.altitude.value, going: 'down' }],
+        do: [{ ignite: m.id }],
+        automatic: true,
+        source: m.altitude.source,
+      });
   // the record's own events at the instants the plan's others are set off at (the braking burn, the modules' parting)
   for (const e of events) if (e.at && !e.record) Object.assign(e, record(e.at));
   // (an instant is an event's only where the clock sets it off, at a time or so long after another: one a stage is cut at

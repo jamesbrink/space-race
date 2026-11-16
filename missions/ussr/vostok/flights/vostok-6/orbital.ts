@@ -407,7 +407,8 @@ export const orbital: VostokRecord = {
     automatic:
       'Tereshkova had no say in the descent but the orientation she gave beforehand by hand: the burn by the automatic programme on the ground’s command, the modules’ parting, the hatches, the seat and every parachute were the automatic system’s. She reported each by the telegraph key, and the ground heard none of it',
     torn: TORN,
-    crew: CREW,
+    // (in her words: the verdict and the deck speak of whoever rode it as the flight's data does)
+    crew: { ...CREW, words: { who: 'She', they: 'she', their: 'her', many: false } },
     checks: [
       {
         id: 'pilot.at',

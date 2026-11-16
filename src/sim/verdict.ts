@@ -6,7 +6,7 @@
 import { hasLeft } from './craft.ts';
 import { ballisticOf, type Results } from './fly.ts';
 import { downOf } from './descent.ts';
-import { shipOf } from './orbital.ts';
+import { crewWords, shipOf } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { FlownWhole } from './staged.ts';
 import type { VehicleState } from './vehicle.ts';
@@ -130,7 +130,7 @@ export function downVerdict(
       const met = x.by === 'pressure' ? `${(x.q / 1000).toFixed(1)} kPa on its cloth` : `${(x.pull / 1000).toFixed(1)} kN on its lines`;
       const limit =
         x.by === 'pressure' ? `${((c?.strength?.value ?? 0) / 1000).toFixed(1)} kPa` : `${((c?.pull?.value ?? 0) / 1000).toFixed(1)} kN`;
-      return `${body === d.bodies[0]?.id ? 'The module’s' : body === crew.alone ? 'His' : 'The'} ${name} tore at ${wall(x.t)}: ${met}, past the ${limit} taken (${(x.by === 'pressure' ? c?.strength : c?.pull)?.confidence ?? 'estimated'}).`;
+      return `${body === d.bodies[0]?.id ? 'The module’s' : body === crew.alone ? `${crewWords(crew).their[0]!.toUpperCase()}${crewWords(crew).their.slice(1)}` : 'The'} ${name} tore at ${wall(x.t)}: ${met}, past the ${limit} taken (${(x.by === 'pressure' ? c?.strength : c?.pull)?.confidence ?? 'estimated'}).`;
     });
   const never = (body: string) => {
     const b = d.bodies.find((x) => x.id === body);
@@ -138,7 +138,8 @@ export function downVerdict(
   };
   const first = d.bodies[0]!;
   const module = down.landed[first.id];
-  const ejected = Number.isFinite(down.ejected);
+  // (a crew that lands in the ship leaves it at no height: its descent's first event at a height is its own sequence's)
+  const ejected = crew.alone !== undefined && Number.isFinite(down.ejected);
   // the modules: parted in the air, in orbit, or never
   const parted = ship.parted;
   if (!(parted < (module?.at ?? Number.POSITIVE_INFINITY)))
@@ -154,34 +155,35 @@ export function downVerdict(
   let how: string;
   let landing: { speed: number; limit: number; confidence: string } | null = null;
   let blast = false;
-  if (!ejected) {
+  const { who, they, their } = crewWords(crew);
+  if (!ejected || crew.alone === undefined) {
     how = module
-      ? `He rode the descent module down: on the ground at ${wall(module.at)}, ${km(module).toFixed(0)} km from the record’s landing, at ${module.speed.toFixed(1)} m/s`
-      : 'He rode the descent module, and it is still up';
-    why.push(`Never ejected: ${crew.aboard}.`);
+      ? `${who} rode the descent module down: on the ground at ${wall(module.at)}, ${km(module).toFixed(0)} km from the record’s landing, at ${module.speed.toFixed(1)} m/s`
+      : `${who} rode the descent module, and it is still up`;
+    why.push(crew.alone === undefined ? `${crew.aboard}.` : `Never ejected: ${crew.aboard}.`);
     if (module) landing = { speed: module.speed, limit: crew.landing.aboard.value, confidence: crew.landing.aboard.confidence };
   } else {
     const alone = down.landed[crew.alone];
     const peak = down.peak[crew.alone]?.q ?? 0;
     const fast = down.peak[crew.alone]?.speed ?? 0;
-    const hot = fast > crew.fastest.value;
-    blast = peak > crew.blast.value || hot;
+    const hot = fast > crew.fastest!.value;
+    blast = peak > crew.blast!.value || hot;
     how = alone
-      ? `He came down under his own canopy: on the ground at ${wall(alone.at)}, ${km(alone).toFixed(0)} km from the record’s landing, at ${alone.speed.toFixed(1)} m/s`
+      ? `${who} came down under ${their} own canopy: on the ground at ${wall(alone.at)}, ${km(alone).toFixed(0)} km from the record’s landing, at ${alone.speed.toFixed(1)} m/s`
       : down.up.includes(crew.alone)
-        ? 'He left the ship in orbit: nothing brings a man in his suit down'
-        : 'He left the ship';
+        ? `${who} left the ship in orbit: nothing brings anyone in a suit down`
+        : `${who} left the ship`;
     why.push(
-      `Out of the ball at ${wall(down.ejected)}, he met at most ${(peak / 1000).toFixed(1)} kPa of the air${peak > crew.blast.value ? `: past the ${(crew.blast.value / 1000).toFixed(0)} kPa taken (${crew.blast.confidence}) as what a man on the open seat lives through` : ''}.`,
+      `Out of the ball at ${wall(down.ejected)}, ${they} met at most ${(peak / 1000).toFixed(1)} kPa of the air${peak > crew.blast!.value ? `: past the ${(crew.blast!.value / 1000).toFixed(0)} kPa taken (${crew.blast!.confidence}) as what a man on the open seat lives through` : ''}.`,
     );
     if (hot)
       why.push(
-        `He was out in the air at ${fast.toFixed(0)} m/s: past the ${crew.fastest.value.toFixed(0)} m/s taken (${crew.fastest.confidence}) as the fastest a man in his suit comes through. Its heat is not modelled; nothing here says he lived.`,
+        `${who} was out in the air at ${fast.toFixed(0)} m/s: past the ${crew.fastest!.value.toFixed(0)} m/s taken (${crew.fastest!.confidence}) as the fastest a man in a suit comes through. Its heat is not modelled; nothing here says he lived.`,
       );
     const left = never(crew.alone);
-    if (left.length) why.push(`Never let out: his ${left.join(', ')}.`);
+    if (left.length) why.push(`Never let out: ${their} ${left.join(', ')}.`);
     why.push(...tear(crew.alone));
-    if (alone) landing = { speed: alone.speed, limit: crew.landing.alone.value, confidence: crew.landing.alone.confidence };
+    if (alone) landing = { speed: alone.speed, limit: crew.landing.alone!.value, confidence: crew.landing.alone!.confidence };
     if (down.up.includes(crew.alone)) blast = true;
   }
   // the module's own parachutes
@@ -202,6 +204,9 @@ export function downVerdict(
     how,
     why,
     survivable,
-    against: `Held to a landing of ${crew.landing.aboard.value.toFixed(0)} m/s aboard the module and ${crew.landing.alone.value.toFixed(0)} m/s under his canopy, and ${(crew.blast.value / 1000).toFixed(0)} kPa and ${crew.fastest.value.toFixed(0)} m/s out in the air: each ${crew.blast.confidence}, none found in the record.`,
+    against:
+      crew.alone === undefined
+        ? `Held to a landing of ${crew.landing.aboard.value.toFixed(1)} m/s aboard the module (${crew.landing.aboard.confidence}): not a figure found in the record.`
+        : `Held to a landing of ${crew.landing.aboard.value.toFixed(0)} m/s aboard the module and ${crew.landing.alone!.value.toFixed(0)} m/s under ${their} canopy, and ${(crew.blast!.value / 1000).toFixed(0)} kPa and ${crew.fastest!.value.toFixed(0)} m/s out in the air: each ${crew.blast!.confidence}, none found in the record.`,
   };
 }

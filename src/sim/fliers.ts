@@ -390,11 +390,11 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
     },
     radius: shipOf(plan).orbit.radius.value,
     ground: () => d.ground,
-    burning: () => false,
+    burning: () => flying.thrustAt(flying.as) > 0,
     push: (t, r, v) => flying.push(s(r, v), t),
     next(t) {
       const f = flying.filling;
-      const marks = [...given, ...switched, parted, ...(f ? [f.at + f.fills] : [])];
+      const marks = [...given, ...switched, parted, ...(f ? [f.at + f.fills] : []), ...flying.ends(t)];
       if (Number.isFinite(ctx.ejected.at))
         flying.body.chutes.forEach((c, i) => {
           if (!flying.out.has(i) && c.after !== undefined) marks.push(ctx.ejected.at + c.after);
