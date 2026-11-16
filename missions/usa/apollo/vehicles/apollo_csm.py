@@ -78,6 +78,11 @@ def build(offset=0):
             mesh = MeshBuilder()
             mesh.lathe(prof([(RADIUS, lo), (RADIUS, hi)]), segs=4, arc=(a0, a1))
             mesh.build(f"SM_Panel_{i}_{lo}", paint, sm)
+    # Apollo 7 press kit, p. 26: 1-inch aluminium honeycomb shell.
+    # A real inner wall and annular edges, not a two-sided paint sheet.
+    lathe_obj("SM_InnerWall", prof([(RADIUS - 1, SM_HEIGHT), (RADIUS - 1, z0)]), white, sm)
+    lathe_obj("SM_LowerRim", prof([(RADIUS - 1, z0), (RADIUS, z0)]), silver, sm)
+    lathe_obj("SM_UpperRim", prof([(RADIUS, SM_HEIGHT), (RADIUS - 1, SM_HEIGHT)]), silver, sm)
     for i in range(6):
         a = TAU * i / 6
         tube(f"SM_Seam_{i}", radial(77.2, a, z0 + 1), radial(77.2, a, SM_HEIGHT - 1), 0.18, seam, sm)

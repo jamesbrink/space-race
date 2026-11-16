@@ -122,9 +122,9 @@ def build():
         a = TAU * i / 64
         for j, (lo, hi) in enumerate(((INTERSTAGE_TOP + 4, INTERSTAGE_TOP + 49), (SIVB_TOP - 60, SIVB_TOP - 5))):
             tube(f"SIVB_Rib_{i}_{j}", radial(130, a, lo), radial(130, a, hi), 0.8, black if j == 0 and (i // 4) % 4 in (0, 1) else white, sivb)
+    # No guessed cable tunnels: the initial four were unsourced and covered the USA paint.
     for i in range(4):
         a = TAU * i / 4
-        tube(f"SIVB_Conduit_{i}", radial(130, a, INTERSTAGE_TOP + 65), radial(130, a, SIVB_TOP - 75), 2.5, white, sivb)
         lettering("UNITEDSTATES", a, SIB_TOP - 130, 128.8, 31, red, sib, vertical=True)
         lettering("USA", a, SIVB_TOP - 175, 130.8, 25, red, sivb, vertical=True)
     cylinder("IU_Skin", RADIUS, SIVB_TOP, IU_TOP, black, groups["InstrumentUnit"])

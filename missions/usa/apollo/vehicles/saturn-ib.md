@@ -46,3 +46,12 @@ of the hardware’s departure. No simulator or launch site is provided.
 - Adapter is one closed shell; no hinged forward panels, internal structure or rendezvous target yet.
 - No LC-34 pedestal, umbilical tower, service structure or site scenery.
 - No mass, thrust, aerodynamic or flight sequence data; the stack cannot be flown yet.
+
+## Corrections after the first preview
+
+The initial four S-IVB conduits were unsourced and lay directly over the USA lettering.
+They have been removed, not moved to another guessed azimuth. The actual main and auxiliary
+tunnels await their documented layout. The exploded exhibit now separates along the vehicle
+axis, with higher parts moving first and farther, so the cover and adjacent modules clear
+one another rather than crossing skins on diagonal paths. These offsets are an exhibit
+layout, not historical dimensions or separation trajectories.

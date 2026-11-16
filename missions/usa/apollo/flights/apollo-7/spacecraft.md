@@ -45,3 +45,10 @@ from Figures 25a–25c. The cover comes aside in the exploded exhibit to reveal 
 
 Additional omissions: cover windows and access hatch, penetrations, thermal seals,
 canards, pitch-control and jettison nozzles, detailed tower attachment fittings and abort motion.
+
+## Shell correction
+
+The SM now has an inward-facing wall and annular edges at the published one-inch shell
+thickness (Apollo 7 press kit, p. 26; also Apollo Operations Handbook, Block II, volume 1,
+p. 1-49). This replaces the single surface which disappeared from behind in the first
+exploded preview. Tankage and internal structure are still pending.
