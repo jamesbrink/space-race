@@ -7,6 +7,7 @@ import { OnboardRig } from './onboard.ts';
 import { ChaseRig, OrbitRig } from './orbit.ts';
 import { looking, type Pose, type Rig, type RigId, type World } from './rig.ts';
 import { TrackRig } from './track.ts';
+import type { Watched } from './watch.ts';
 import { ease } from '../../util/math.ts';
 import { is, which } from '../../util/keys.ts';
 
@@ -241,9 +242,24 @@ export class Cameras {
     this.blend = null;
   }
 
+  /**
+   * On foot, something is being run by hand (walking.md): the on-foot rigs watch it (foot.ts `FootRig.watch`) until it
+   * is let go (null), and come back to the walker's view; `now`, at once (the hands have taken the view).
+   */
+  watch(watched: Watched | null, now = false): void {
+    this.eyes.watch(watched, now);
+    this.shoulder.watch(watched, now);
+  }
+
+  /** Is the view on foot watching something being run by hand (and not yet handed back)? */
+  get watchingWork(): boolean {
+    return this.active instanceof FootRig && this.active.watching;
+  }
+
   /** Off foot again: the rig the walk was taken from takes the view up from where the walker left it, turning about `pivot`. */
   unfoot(pivot: THREE.Vector3): void {
     if (!(this.active instanceof FootRig)) return;
+    this.watch(null, true);
     this.active = this.beforeFoot ?? this.orbit;
     this.beforeFoot = null;
     this.adopt(pivot);
@@ -526,7 +542,7 @@ export class Cameras {
     // The vehicle has gone below the pad camera's horizon (or out of its reach) while it was being watched from there:
     // the camera would look into the ground, so the chase takes over with the usual handover (C no longer offers it).
     if (this.active === this.pad && flying && !this.pad.sees(this.pad.at)) this.set('chase');
-    this.pad.aspect = this.camera.aspect;
+    this.pad.aspect = this.eyes.aspect = this.shoulder.aspect = this.camera.aspect;
     const keys = this.scene.piloted() ? this.unspoken() : this.keys;
     this.active.update(dt, keys, this.fast);
     const now = this.now;
