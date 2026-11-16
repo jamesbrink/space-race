@@ -128,6 +128,8 @@ src/
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
   deck/decks.ts                       which deck flies a flight: one for each kind of plan (`DECKS[plan.kind]`, `deckOf`); the decks' shared settings are deck.ts's
+  deck/leaving.ts  deck/ask.ts        when leaving a flight flown by hand loses it (the pure rule: kept within the flight, asked about beyond it), and the question asked
+  app/stake.ts                        the one guard on every way out that cannot keep a flight flown by hand: `guarded`, called by `goHome` and `main.ts`
   deck/cockpit.ts                     the deck's ballistic kind: a ballistic plan flown by hand, the live simulator stepped by the clock, the instruments
   deck/orbitdeck.ts                   the deck's orbital kind (an orbital plan): the stages, the events and what the hands could reach, from the plan
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
