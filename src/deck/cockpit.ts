@@ -46,6 +46,15 @@ const STEPS: Record<Step, string> = {
   main: 'Main parachute',
   hatch: 'Blow the hatch',
 };
+/** The plan's event each step sets off (sim/planof.ts), asked of the vehicle as a hand's command. */
+const EVENTS: Partial<Record<Step, string>> = {
+  tower: 'tower',
+  separate: 'separation',
+  retro: 'retro',
+  retropack: 'retropack',
+  drogue: 'drogue',
+  main: 'main',
+};
 const PHASES: Record<LiveSample['phase'], string> = {
   powered: 'Powered flight',
   coast: 'Coasting on the booster',
@@ -101,7 +110,7 @@ export class Cockpit extends Deck {
   private sequence = true;
   /** The capsule's rate command mode, where it has one (types.ts `rcs.rate`): on, the stick asks for rates on the spacecraft alone. */
   private rate = false;
-  /** What the hands are asking: axes while keys are held, events once asked for. */
+  /** What the hands are asking: axes while keys are held, the plan's events once asked for (each asked every tick until it is done). */
   private hand: Partial<Controls> = {};
   private eventAt = Number.NEGATIVE_INFINITY;
   /** How far the hands have leaned the programme guidance flies, radians (sim/autopilot.ts `trim`). */
@@ -398,9 +407,19 @@ export class Cockpit extends Deck {
     };
     run.dropped = this.flight.flies!.drops.map((d) => (d.on ? ((when as Record<string, number>)[d.on] ?? Infinity) : Infinity));
     // an event asked for has happened: the hand lets go of it
-    if (state.abortAt !== null) delete this.hand.abort;
+    if (state.abortAt !== null) this.hand.events = this.hand.events?.filter((e) => e !== this.abortEvent);
     if (state.ignited) delete this.hand.throttle;
     if (state.cutoff && this.hand.throttle === 0) delete this.hand.throttle;
+  }
+
+  /** A hand asks for one of the plan's events: the vehicle sets it off as soon as it can. */
+  private asks(event: string): void {
+    if (!this.hand.events?.includes(event)) this.hand.events = [...(this.hand.events ?? []), event];
+  }
+
+  /** The abort: the plan's event a hand's command sets off. */
+  private get abortEvent(): string | undefined {
+    return this.vehicle?.plan.events.find((e) => e.when.some((w) => 'command' in w))?.id;
   }
 
   /** The flight as it was at `t`: the kept sample at or before it. */
@@ -450,7 +469,7 @@ export class Cockpit extends Deck {
       if (!s.ignited || s.cutoff) return;
       if (this.lever) this.setLever(0);
       else this.hand.throttle = 0;
-    } else if (['tower', 'separate', 'retro', 'retropack', 'drogue', 'main'].includes(what)) this.hand[what as 'tower'] = true;
+    } else if (EVENTS[what as Step]) this.asks(EVENTS[what as Step]!);
     else return;
     if (!this.clock.running && s.ignited) this.clock.play(true);
   }
@@ -566,7 +585,7 @@ export class Cockpit extends Deck {
       if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
       else {
         this.abortArmed = Number.NEGATIVE_INFINITY;
-        this.hand.abort = true;
+        if (this.abortEvent) this.asks(this.abortEvent);
         delete this.hand.throttle;
         if (!s.ignited) {
           this.state = this.tick(s, this.pilot()); // off the pad unlit: the clock has a flight to run from this instant
@@ -594,7 +613,7 @@ export class Cockpit extends Deck {
         if (this.lever) this.setLever(0);
         else this.hand.throttle = 0;
       } else if (step === 'hatch') return void this.blow();
-      else this.hand[step] = true;
+      else if (EVENTS[step]) this.asks(EVENTS[step]!);
       if (!this.clock.running && step !== 'ignite') this.clock.play(true);
     }
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));
