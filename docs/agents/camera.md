@@ -109,7 +109,10 @@ browser's check below for the page):
   view fades on top of it (`blendPose`), so it answers the hands at once and nothing jumps. With
   Motion off (`Cameras.calm`) nothing eases or coasts.
 - **The eye never goes under the ground or the sea** (`World.clearance`: the site's terrain as a
-  height, the globe beyond it): it comes up round the pivot at the same distance, never in.
+  height, the globe beyond it): it comes up round the pivot at the same distance, never in. The
+  ground is the paving where there is one: the models' zero at a pad laid at grade, and under it by
+  the site's `grade` at a pad whose zero is a deck on a stand (Complex 14), so the eye can go down
+  to the foot of the stand.
 - **The pivot is in the middle of the clear part of the frame**, by tipping the camera where it
   stands (`aimBelow`), so the controls never cover what is being turned about. `Framing.setInset`
   takes what the controls cover at the bottom and, as a second figure, what is covered at the top;

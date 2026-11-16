@@ -684,12 +684,18 @@ export class Body {
     return this.groundAt?.(x, z) ?? this.ground;
   }
   /**
-   * How far the open ground lies under the surface the models stand on (y = 0): the sand a hand's
-   * breadth under the concrete at grade (the pad's `grade`: types/site.ts SiteDef). It is not a kerb, and a riser
-   * met from down there is measured from the surface, not from the feet.
+   * The paving's level against the models' zero: 0 at a pad laid at grade, which is every pad whose zero is its own
+   * surface; at one whose zero is a deck on a stand, the paving at the stand's foot (Complex 14's is 22 ft down).
+   */
+  paved = 0;
+  /**
+   * How far the open ground lies under the paving it meets: the sand a hand's breadth under the concrete at grade
+   * (the pad's `grade`: types/site.ts SiteDef). It is not a kerb, and a riser met from down there is measured from
+   * the paving, not from the feet. (Measured from the models' zero, at Complex 14 it was the stand's whole height, and a
+   * walker on the paving could step up on to a lift's roof or a landing two storeys over his head.)
    */
   get sunk(): number {
-    return this.ground === null ? 0 : Math.max(0, -this.ground);
+    return this.ground === null ? 0 : Math.max(0, this.paved - this.ground);
   }
   readonly solids: Solids;
   /** The ladder it is on, if it is on one: gravity has no say, and the only way is up or down. */
@@ -727,9 +733,9 @@ export class Body {
     this.good.copy(this.position);
   }
 
-  /** The tallest riser that can be taken from where the feet are now: a step, measured from the models' surface while the feet are below it. */
+  /** The tallest riser that can be taken from where the feet are now: a step, measured from the paving while the feet are below it. */
   private riser(): number {
-    return STEP + Math.max(0, Math.min(this.sunk, -this.position.y));
+    return STEP + Math.max(0, Math.min(this.sunk, this.paved - this.position.y));
   }
 
   private floor(riser: number): number | null {
@@ -953,8 +959,8 @@ export class Body {
         this.grounded = true;
         return;
       }
-      // (a step down is as deep as a step up is tall: onto ground that lies below the models' surface, deeper by that much)
-      const down = STEP + Math.max(0, Math.min(this.sunk, -floor));
+      // (a step down is as deep as a step up is tall: onto ground that lies below the paving, deeper by that much)
+      const down = STEP + Math.max(0, Math.min(this.sunk, this.paved - floor));
       // (and the feet keep up with the legs: run at a steep flight and they climb it as fast as it rises)
       const rate = Math.max(STEP_RATE, dt > 0 ? (1.3 * distance) / dt : 0);
       let footing = settle({ y: p.y, vy: this.vy, grounded: this.grounded }, floor, dt / strides, down, rate, this.gravity);
@@ -1001,6 +1007,8 @@ export interface WalkHost {
   ground(): number | null;
   /** The land's height under a point, where it has relief (Setting.groundAt). */
   groundAt?(x: number, z: number): number | null;
+  /** The paving's level against the models' zero, where it is not that zero (`Body.paved`). */
+  paved?(): number;
   /** Move a point at the feet out of the plants it is in, and say how far in it still is, metres (Setting.plantsOut). */
   plantsOut?(at: THREE.Vector3, margin: number): number;
   /** How far from the middle of the site there is anything to walk to, metres. */
@@ -1322,6 +1330,7 @@ export class Walker {
     this.body.height = height;
     this.body.radius = radius;
     this.body.ground = this.host.ground();
+    this.body.paved = this.host.paved?.() ?? 0;
     this.body.groundAt = this.host.groundAt ? (x, z) => this.host.groundAt!(x, z) : null;
     this.body.plantsOut = this.host.plantsOut ? (at, margin) => this.host.plantsOut!(at, margin) : null;
     this.body.place(at.x, at.y, at.z);

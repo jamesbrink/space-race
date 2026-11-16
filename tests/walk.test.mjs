@@ -226,6 +226,32 @@ test('off the slab there is always the ground, and without ground the body goes 
   assert.deepEqual(empty.position.toArray(), [0, 0, 0]);
 });
 
+test('at a pad whose zero is a deck on a stand, a riser is measured from the paving at its foot, not from the zero', () => {
+  // (Complex 14: the deck 6.7 m over a paving that lies 12 cm over the land. Measured from the zero, the land was 6.8 m
+  // under the surface, and a walker on the paving could step up on to whatever was over his head)
+  const root = new THREE.Group();
+  const box = (w, h, d, x, top, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d));
+    mesh.position.set(x, top - h / 2, z);
+    root.add(mesh);
+  };
+  box(20, 0.5, 20, 0, -6.7, 0); // the paving
+  box(2, 0.2, 2, 6, -6.0, 0); // a landing 0.7 m over it: more than a step
+  root.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([root]);
+  const body = new Body(solids);
+  body.ground = -6.82;
+  body.paved = -6.7;
+  assert.ok(Math.abs(body.sunk - 0.12) < 1e-9, `the land lies ${body.sunk} m under the paving`);
+  body.place(3, -6.7, 0);
+  walk(body, 1, 0, 3);
+  assert.ok(
+    body.grounded && Math.abs(body.position.y + 6.7) < 1e-6 && body.position.x < 5,
+    `still on the paving: ${body.position.toArray()}`,
+  );
+});
+
 test('a body gathers its speed and loses it: most of the way in a quarter of a second, never past what was asked, and then truly at rest', () => {
   let v = [0, 0];
   let t = 0;

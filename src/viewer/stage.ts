@@ -309,6 +309,14 @@ export class Stage {
   private get grade(): number {
     return this.setting.grade ?? GROUND_Y;
   }
+  /**
+   * The paving's level against the models' zero: the zero itself at a pad laid at grade, and under it at one whose zero
+   * is a deck on a stand (Complex 14's is 22 ft up). The land is drawn its 12 cm under a paving everywhere, so it is
+   * the grade less those.
+   */
+  private get paved(): number {
+    return Math.min(0, this.grade - GROUND_Y);
+  }
 
   private get sceneries(): Levelled[] {
     return [...(this.scenery ? [this.scenery] : []), ...(this.setting.levels ?? [])];
@@ -616,6 +624,7 @@ export class Stage {
       // a setting's floor is one level plane: its height is asked for, not its triangles
       ground: () => this.setting.floor?.position.y ?? null,
       groundAt: (x, z) => this.groundAt(x, z),
+      paved: () => this.paved,
       plantsOut: (at, margin) => this.setting.plantsOut?.(at, margin) ?? 0,
       reach: () => Math.max(this.bounds.radius, this.setting.reach ?? 0),
       leave: () => this.onFoot.exitWalk(),
@@ -1140,7 +1149,8 @@ export class Stage {
 
   /** What the camera may ask of the scene (camera/index.ts: Scene). */
   private world(): Scene {
-    const UNDER = (x: number, z: number) => Math.max(0, this.setting.groundAt?.(x, z) ?? this.grade);
+    // What there is to stay above: the land, and the paving laid over it (`paved`: the models' zero at a pad laid at grade)
+    const UNDER = (x: number, z: number) => Math.max(this.paved, this.setting.groundAt?.(x, z) ?? this.grade);
     const clearance = (p: THREE.Vector3): number => {
       // Wherever the site's ground is drawn (out to its horizon) there is ground to stay above; beyond it, the globe's
       // sea (the site's level is not the sea's 100 km off); with neither, nothing.

@@ -156,8 +156,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
 - **The terrain is a height, not a mesh.** It lies at `Setting.groundAt(x, z)` (dunes, the beach,
   the land falling to the river; the setting's floor where it has none), and cannot be fallen
   through: the walker, the ragdoll and a driven vehicle's `Road` all stand on it. Where that is below the models' surface (the place's `grade`)
-  it is so only for the depth buffer's sake, so from down there a riser is measured from y = 0:
-  the edge of a pad is not a kerb.
+  it is so only for the depth buffer's sake, so from down there a riser is measured from the paving:
+  the edge of a pad is not a kerb. The paving is y = 0 at a pad laid at grade; at a pad whose zero is a deck on a
+  stand (Complex 14) the stage says where it is (`WalkHost.paved`, the grade less the 12 cm the land lies under it).
 - **Ladders are climbed.** A ladder is its own mesh with `userData.climb` (a Blender custom
   property, like `shell`), one per run, near vertical, with a floor within 0.3 m of its top and
   standing room at both ends. It is not a wall or a floor: walking forward into its face takes
