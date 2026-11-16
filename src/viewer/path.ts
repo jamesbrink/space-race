@@ -1279,7 +1279,11 @@ export class FlightPath {
     const tanHalf = Math.tan((camera.fov * Math.PI) / 360) / Math.max(camera.zoom, 1e-6);
     const toShip = vessel ? this.vessel.distanceTo(eye) : Number.POSITIVE_INFINITY;
     const gap = vessel ? this.gapOf(vessel.half, toShip, tanHalf) : 0;
-    // the instant on the path nearest the vehicle as it is drawn (Newton's steps along the line from the sample's instant)
+    // the instant on the path nearest the vehicle as it is drawn (Newton's steps along the line from the sample's instant),
+    // its way along the line taken from instants on it: at its ends, from one side. (Taken from both sides at its start,
+    // the instant before was off the curve, its place held where the curve begins while the Earth under it was turned on,
+    // so over the turning Earth the way was the Earth's turn, hundreds of metres a second, and a vehicle drawn a moment
+    // past the sample, under a parachute going a few metres a second, was found at the start and left metres off it.)
     let now = Math.min(t1, Math.max(t0, s.t));
     const p = this.at3b;
     const q = new Float64Array(3);
@@ -1288,11 +1292,14 @@ export class FlightPath {
       for (let k = 0; k < 4; k++) {
         this.now = now;
         const h = 0.05;
-        this.alongAt(shown, now + h, p, 0, mix);
-        this.alongAt(shown, now - h, q, 0, mix);
-        const dx = (p[0]! - q[0]!) / (2 * h);
-        const dy = (p[1]! - q[1]!) / (2 * h);
-        const dz = (p[2]! - q[2]!) / (2 * h);
+        const before = Math.max(t0, now - h);
+        const after = Math.min(t1, now + h);
+        if (!(after > before)) break;
+        this.alongAt(shown, after, p, 0, mix);
+        this.alongAt(shown, before, q, 0, mix);
+        const dx = (p[0]! - q[0]!) / (after - before);
+        const dy = (p[1]! - q[1]!) / (after - before);
+        const dz = (p[2]! - q[2]!) / (after - before);
         const vv = dx * dx + dy * dy + dz * dz;
         if (vv < 1e-6) break;
         this.alongAt(shown, now, p, 0, mix);
