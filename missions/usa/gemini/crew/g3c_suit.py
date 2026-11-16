@@ -12,9 +12,10 @@ tag and the NASA insignia, the electrical connector and the two gas connectors, 
 forearm, pockets on the upper arms and the shins, the pressure zip up the back with a blue strap either side, gloves
 on wrist rings (his right red), white laced boots with red straps, and over it the personal parachute harness.
 
-It is built only seated, for a cabin (`build_seated`): every mesh a child of the caller's node, carried to the pose
-of a Gemini ejection seat, visor down. Mesh names begin Helmet_, Torso_, Arms_, Gloves_, Legs_ and Boots_, which is
-how figurelib knows which joints carry each. The seat's own restraint (the reel's straps, the lap belt) is the
+It is built seated, for a cabin (`build_seated`): every mesh a child of the caller's node, carried to the pose
+of a Gemini ejection seat, visor down; and standing, jointed, for a launch site (`build`). Mesh names begin
+Helmet_, Torso_, Arms_, Gloves_, Legs_ and Boots_, which is how figurelib knows which joints carry each. The seat's
+own restraint (the reel's straps, the lap belt) is the
 seat's: `build_seated` returns where it has to run (`worn`) and ../vehicles/gemini_cabin.py lays it.
 
 The straps are laid on the cloth as built with the Mercury suit module's `strap`, and the insignia is that module's
@@ -134,6 +135,7 @@ def wear(who: Wearer) -> None:
 
 
 _seated_points: dict[str, dict[float, dict[str, list[Vector]]]] = {}
+_STAND = 0.0  # centimetres let out for the standing figure (`build`); nothing for the seated one, which is as it was
 _cloth = mk.Cloth()
 wear(GRISSOM)
 
@@ -303,7 +305,9 @@ def build_helmet(M: dict) -> None:
     hc = B.head
     build_head(head, eyes, dark, hair, lips)
     head.tube((0, 1.0, B.neck_z - 7.0), (0, 0.4, hc.z - 6.0), 5.6, 24)  # neck
-    bowl = Matrix.Diagonal((B.skull[0] + 0.25, B.skull[1] + 0.3, B.skull[2] + 0.35, 1.0)) @ Matrix.Rotation(math.radians(-58), 4, "X")
+    bowl = Matrix.Diagonal((B.skull[0] + 0.25 + _STAND, B.skull[1] + 0.3 + _STAND, B.skull[2] + 0.35 + _STAND, 1.0)) @ Matrix.Rotation(
+        math.radians(-58), 4, "X"
+    )
     crop.lathe(arc_profile(0, 0, 1.0, 8, 90, 14), 40, matrix=Matrix.Translation(hc) @ bowl)
 
     emit(white, "Helmet_Shell", M["shell"], g)
@@ -490,7 +494,7 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     # a pocket on each upper arm
     for sx in (1, -1):
         a = arms[sx]
-        keys = [a.at(dd, a.toward((sx, -0.25, 0), dd), 0.8) for dd in (15.0, 18.0, 21.0, 24.0, 26.5)]
+        keys = [a.at(dd, a.toward((sx, -0.25, 0), dd), 0.8 + 2.5 * _STAND) for dd in (15.0, 18.0, 21.0, 24.0, 26.5)]
         mk._cloth = _cloth
         mk.strap(pocket, keys, 7.2, 0.3, dive=(0.0, 0.0), sink=0.3)
     pocket.share = [_cloth.share_at(v) for v in pocket.verts]
@@ -662,7 +666,8 @@ def build_legs(M: dict, torso: Tube) -> None:
 def build_boots(M: dict) -> None:
     g = group("Boots")
     uppers, soles, laces, eyelets, tongue, straps, buckles = (MeshBuilder() for _ in range(7))
-    fl.laced_boots(uppers, soles, laces, eyelets, tongue, BOOT_TOP, BOOT_LENGTH, SIZE, lace_lift=0.05)
+    size = SIZE * (1.0 + _STAND / 6.0)  # the boot, and the straps on it
+    fl.laced_boots(uppers, soles, laces, eyelets, tongue, BOOT_TOP, BOOT_LENGTH, size, lace_lift=0.05)
     for sx in (1, -1):  # two red straps over the laces: one round the ankle, one round the instep, a buckle on the outside of each
         x0, y0 = sx * B.stance, B.ankle_y
         first = [len(straps.verts), len(buckles.verts)]
@@ -701,11 +706,11 @@ def build_boots(M: dict) -> None:
                 band(straps, trace, 1.7, 0.22, sink=0.15, closed=True)
             th = tube.toward((sx, 0, 0.2), dd)
             buckles.box((1.5, 2.3, 0.9), frame(tube.at(dd, th, 0.4), tube.normal(dd, th)))
-        if SIZE != 1.0:
+        if size != 1.0:
             foot_at = Vector((x0, y0, 0.0))
             for mb, i0 in zip((straps, buckles), first):
                 for i in range(i0, len(mb.verts)):
-                    mb.verts[i] = tuple(foot_at + (Vector(mb.verts[i]) - foot_at) * SIZE)
+                    mb.verts[i] = tuple(foot_at + (Vector(mb.verts[i]) - foot_at) * size)
     emit(uppers, "Boots_Uppers", M["boot"], g)
     emit(tongue, "Boots_Tongues", M["boot"], g)
     emit(soles, "Boots_Soles", M["sole"], g, sharp_angle=30)
@@ -727,6 +732,32 @@ def build_figure() -> None:
     build_legs(M, torso)
     build_boots(M)
     build_harness(M, torso)
+
+
+def build(who: Wearer | None = None) -> float:
+    """Builds the standing figure in `who`'s suit (Grissom's unless told), visor down, hung on the joints every crew
+    figure has so that the viewer can walk it (figurelib.rig_standing), and returns its height in metres."""
+    global _STAND
+    wear(who or GRISSOM)
+    fl.use(B)
+    fl.start()
+    # Standing, three things lie within a millimetre of what is under them, which seated they do not (the hair on the
+    # skull, the arm pockets on the sleeves, the boots' tops on the trousers): each is let out by a millimetre or so.
+    _STAND = 0.12
+    try:
+        build_figure()
+    finally:
+        _STAND = 0.0
+    if srlib.DETAIL < 0.75:
+        # the coarser levels are for a figure a few pixels tall: what is laid on the cloth (the arm pockets, the harness's
+        # webbing, the gauge's patch) is not seen there, and thinned it lies within a millimetre of the cloth under it
+        rig = fl.rig()
+        for obj, follows in list(rig.skins):
+            if obj.name in ("Torso_ArmPockets", "Torso_HarnessWebbing", "Arms_GaugePatch"):
+                rig.skins.remove((obj, follows))
+                bpy.data.objects.remove(obj, do_unlink=True)
+    fl.rig_standing()
+    return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
 
 
 class Turn:

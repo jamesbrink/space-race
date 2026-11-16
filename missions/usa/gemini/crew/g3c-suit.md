@@ -142,6 +142,10 @@ down.
 - **The watches** each man wore over his left cuff are not built.
 - **Cloth**: a few modelled creases at the elbows, the knees and the sides. The real suit
   wrinkles everywhere.
-- **The standing figure has no skeleton.** `build_figure` builds it standing (that is how it
-  was set beside the Smithsonian's photographs); nothing yet hangs it on joints for the viewer
-  to walk, as the Mercury and Vostok figures are.
+- **The standing figure** (`build`: jointed, for a launch site to be walked as) is the same suit let out by
+  about a millimetre in three places where, standing, a piece lay within a millimetre of what is under it: the
+  hair on the skull, the arm pockets on the sleeves, the boots (and their straps) on the trousers. Its two
+  coarser levels leave out the arm pockets, the harness's webbing and the gauge's patch. The seated figure is
+  as it was.
+- **What he had with him at the pad is not built**: the portable ventilator in his hand with its two hoses,
+  and the yellow overshoes worn to the hatch (NASA S65-20994).
