@@ -15,6 +15,9 @@ missions/                             the record: one folder per nation, program
                                       <name>.md records its dimensions, confidence, simplifications
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
                                       (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
+                                      mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
+                                      `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
+                                      `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
                                       sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,

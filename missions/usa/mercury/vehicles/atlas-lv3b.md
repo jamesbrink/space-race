@@ -18,6 +18,8 @@ Convair's stations run in inches from the nose toward the tail; the model keeps 
 
 ## Dimensions
 
+The orbital flights quote these from [mercury-atlas.ts](mercury-atlas.ts) (`SPEC`, `ATLAS`, `mercuryAtlasMotors`; how each part leaves, `HARDWARE`), which says each once for MA-6 to MA-9.
+
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | Height with spacecraft and tower | 95 ft 4 in (29.06 m) | documented | *Results of the First United States Manned Orbital Space Flight* (Results), Figure 4-11, p. 49; model: 29.067 m (1,144.36 in: 808 in of Atlas and SEDR 104's stations above it) |

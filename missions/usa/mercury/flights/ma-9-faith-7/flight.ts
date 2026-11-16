@@ -1,45 +1,36 @@
-import type { Flight, ModelDef, Part } from '../../../../../src/types.ts';
+import type { Flight } from '../../../../../src/types.ts';
 import { LC14 } from '../../../places/cape-canaveral/lc-14.ts';
-import { mercuryCabin, mercurySeat } from '../../vehicles/cabin.ts';
+import {
+  SPEC,
+  STAND,
+  mercuryAtlasStack,
+  mercuryAtlasParts,
+  VIEW,
+  along,
+  LB,
+  IN,
+  NMI,
+  FT,
+  LBF,
+  mercuryAtlasMotors,
+  ATLAS,
+} from '../../vehicles/mercury-atlas.ts';
+import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles/mercury-capsule.ts';
+import { mercuryCabin } from '../../vehicles/cabin.ts';
 
-const IN = 0.0254;
-const FT = 0.3048;
-const LB = 0.45359237;
-const LBF = 4.4482216;
-const NMI = 1852;
-const DEG = Math.PI / 180;
-
-// Where things are round the vehicle, as model/vehicle.py and vehicles/atlas_lv3b.py have them: degrees about the
-// long axis. The capsule's are from the pilot's right; it stands turned so that its hatch is on +X, as a launch
-// site's frame has it (mercury_capsule.stand): STAND is that turn. The numbers live there; these are quoted for the
-// views and for how the parts come away.
-const STAND = -315;
-const WINDOW_AZ = 270 + STAND;
-const HATCH_AZ = 315 + STAND;
 /** The side of the pilot's feet: where every earlier capsule had its periscope, and this one a door for the umbilical. */
 const FEET_AZ = 90 + STAND;
 /** UNITED STATES to the left of the window, under the three white squares. */
 const PATCHES_AZ = 200 + STAND;
-/** The long equipment pod, and the booster engine under it: under the capsule's window. */
-const POD_AZ = WINDOW_AZ;
-/** The vernier beside which the vehicle's number is painted, and UNITED STATES down the tank. */
-const VERNIER_AZ = POD_AZ + 90;
-/** A direction on the model in the viewer's axes (+Y is the model's long axis; the model's +Y is the viewer's -Z). */
-const along = (az: number, lift: number, by = 1): [number, number, number] => [
-  by * Math.cos(az * DEG),
-  by * lift,
-  -by * Math.sin(az * DEG),
-];
 
 const SUMMARY = 'NASA SP-45';
 
 // No periscope: this capsule flew without one (NASA SP-45, Table 3-II, p. 52), so there is nothing here of what the
 // earlier Mercury flights carry (vehicles/periscope.ts): no `clocked` moves on the afterbody, no mechanism.
 
-const parts: Part[] = [
+const parts: PartWords[] = [
   {
     node: 'EscapeTower',
-    group: 'Spacecraft',
     name: 'Launch escape tower',
     summary: 'Pulls the capsule off a failing Atlas. No manned flight ever needed it, and this was the last to carry one.',
     detail:
@@ -58,12 +49,9 @@ const parts: Part[] = [
       ['Released', 'T+2:34, at 289,399 ft'],
       ['Fired by', 'the pilot, the ground, or the Atlas’s abort sensing system'],
     ],
-    explode: [0, 7.6, 0],
-    order: 1,
   },
   {
     node: 'AntennaCanister',
-    group: 'Spacecraft',
     name: 'Antenna canister',
     summary: 'Bicone antenna, horizon scanners, drogue parachute, and a balloon that never left its can.',
     detail:
@@ -83,12 +71,9 @@ const parts: Part[] = [
       ['Balloon', 'tried at 09:00:20 and again; did not deploy'],
       ['Drogue', 'by hand at 34:14:31, 42,000 ft'],
     ],
-    explode: [0, 6.6, 0],
-    order: 2,
   },
   {
     node: 'RecoveryCompartment',
-    group: 'Spacecraft',
     name: 'Recovery compartment',
     summary: 'Main and reserve parachutes, and the pitch and yaw thrusters that had to be fired by hand.',
     detail:
@@ -106,12 +91,9 @@ const parts: Part[] = [
       ['Main parachute', '63 ft ring-sail; out at 34:16:03'],
       ['Thrusters', 'pitch and yaw: 24 lbf and 1 lbf'],
     ],
-    explode: [0, 5.8, 0],
-    order: 3,
   },
   {
     node: 'Hatch',
-    group: 'Spacecraft',
     name: 'Explosive hatch',
     summary: 'Seventy bolts and a fuse to break them: blown on the carrier’s deck, forty minutes after landing.',
     detail:
@@ -128,12 +110,9 @@ const parts: Part[] = [
       ['First closed', '14 May, for a launch that was put off'],
       ['Blown', 'on the deck of USS Kearsarge'],
     ],
-    explode: along(HATCH_AZ, 4.26, 1.15),
-    order: 4,
   },
   {
     node: 'Window',
-    group: 'Spacecraft',
     name: 'Window',
     summary: 'The only way to see out, and at the end the only instrument he had to steer by.',
     detail:
@@ -152,12 +131,9 @@ const parts: Part[] = [
       ['Periscope', 'none on this capsule'],
       ['In flight', 'an oily film on the outer pane from the second orbit'],
     ],
-    explode: along(WINDOW_AZ, 4.9, 1.0),
-    order: 4,
   },
   {
     node: 'Afterbody',
-    group: 'Spacecraft',
     name: 'Conical afterbody',
     summary: 'René 41 shingles, a white star that says FAITH 7, three squares of white paint, and no periscope.',
     detail:
@@ -180,13 +156,9 @@ const parts: Part[] = [
       ['White patches', 'three 6 in squares on one shingle'],
       ['Periscope', 'deleted: 76 lb saved'],
     ],
-    explode: [0, 4.9, 0],
-    order: 4,
   },
   {
     node: 'CrewCabin',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Crew cabin',
     summary: 'A day and a half of air, water and power, a panel where the periscope was, and a television camera.',
     detail:
@@ -209,13 +181,9 @@ const parts: Part[] = [
       ['Cameras', 'a 70 mm Hasselblad, a 35 mm and a 16 mm'],
       ['Changes for the flight', '183'],
     ],
-    explode: [0, 3.9, 0],
-    order: 5,
   },
   {
     node: 'HeatShield',
-    inside: true,
-    group: 'Spacecraft',
     name: 'Heat shield',
     summary: 'Glass fibre and resin, made to char away. Flown down by hand.',
     detail:
@@ -232,13 +200,9 @@ const parts: Part[] = [
       ['Entry', 'flown by hand; 0.05 g at about 34:09'],
       ['Landing bag', '"down and green" at 34:16:14'],
     ],
-    explode: [0, 3.3, 0],
-    order: 6,
   },
   {
     node: 'Retropack',
-    inside: true,
-    group: 'Spacecraft',
     name: 'Retropack',
     summary: 'Three rockets to come home on, a flashing ball to throw away, and two Geiger tubes.',
     detail:
@@ -261,12 +225,9 @@ const parts: Part[] = [
       ['HF aerial', 'two tapes of 14 ft, let out in orbit'],
       ['Jettisoned', '34:01:01, by hand'],
     ],
-    explode: [0, 2.6, 0],
-    order: 7,
   },
   {
     node: 'AtlasAdapter',
-    group: 'Launch vehicle',
     name: 'Spacecraft adapter',
     summary: 'A ribbed titanium ring between a capsule and a balloon. The first Mercury-Atlas broke here.',
     detail:
@@ -285,13 +246,9 @@ const parts: Part[] = [
       ['Mated', '22 April 1963'],
       ['Stays with', 'the Atlas, into orbit'],
     ],
-    explode: [0, 1.6, 0],
-    order: 8,
   },
   {
     node: 'AtlasSustainer',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Sustainer engine',
     summary: 'One engine on the centreline, alight from the pad to orbit.',
     detail:
@@ -308,12 +265,9 @@ const parts: Part[] = [
       ['Cutoff', 'T+5:03.03, about 1 s early'],
       ['Pumps', 'its own; they feed the verniers too'],
     ],
-    explode: [0, -3, 0],
-    order: 9,
   },
   {
     node: 'AtlasVerniers',
-    group: 'Launch vehicle',
     name: 'Vernier engines',
     summary: 'Two small engines on the tank’s sides: they roll it.',
     detail:
@@ -330,12 +284,9 @@ const parts: Part[] = [
       ['Number', '130 D, either side of the fairing above one'],
       ['Roll programme', 'T+2 s to T+15 s, to 72°'],
     ],
-    explode: [0, 0, 0],
-    order: 10,
   },
   {
     node: 'AtlasPods',
-    group: 'Launch vehicle',
     name: 'Equipment pods',
     summary: 'What cannot go inside a balloon rides outside it.',
     detail:
@@ -352,12 +303,9 @@ const parts: Part[] = [
       ['Unplanned hold', '4 min at T-11:30'],
       ['Stay with', 'the tank, when the booster section goes'],
     ],
-    explode: [0, 0, 0],
-    order: 10,
   },
   {
     node: 'AtlasTank',
-    group: 'Launch vehicle',
     name: 'Tank section',
     summary: 'A stainless steel balloon ten feet across, thinner than a coin. The last to carry a Mercury.',
     detail:
@@ -376,12 +324,9 @@ const parts: Part[] = [
       ['Insulation bulkhead', 'none: deleted in production'],
       ['Marked', 'UNITED STATES; 130 D'],
     ],
-    explode: [0, 0, 0],
-    order: 11,
   },
   {
     node: 'AtlasBoosterSection',
-    group: 'Launch vehicle',
     name: 'Booster section',
     summary: 'The half of a stage and a half: it is dropped two minutes up, with both booster engines in it.',
     detail:
@@ -399,13 +344,9 @@ const parts: Part[] = [
       ['Held by', 'a latch at the tank’s thrust ring'],
       ['Leaves on', 'jettison tracks, sliding aft'],
     ],
-    explode: [0, -8.5, 0],
-    order: 0,
   },
   {
     node: 'AtlasBoosterEngines',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'Booster engines',
     summary: 'Two chambers of 154,000 lbf each, set a little askew on purpose.',
     detail:
@@ -428,56 +369,30 @@ const parts: Part[] = [
       ['Burn', 'ignition to T+2:12.5'],
       ['New for this vehicle', 'alignment offset against the liftoff roll'],
     ],
-    explode: [0, -13, 0],
-    order: 0,
   },
 ];
 
-/** The booster engines' exit plane below the model's origin (the capsule's plane of maximum diameter), m: 67 ft 4 in of Atlas, the adapter and 1.06 in. */
-const BASE = (808 + 50.75 + 1.06) * IN;
-/** The spacecraft without its tower. */
-const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Window', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
-
-const vehicle: ModelDef = {
-  id: 'vehicle',
-  name: 'Vehicle',
-  url: 'models/usa/mercury/ma-9-faith-7/vehicle.glb',
-  scale: '29.07 m tall · spacecraft 7.91 m · to scale',
-  // only the vehicle is built: it stands in the gallery, on its engines. Its launch site (Complex 14) is not built yet.
-  backdrop: 'studio',
-  slider: ['Assembled', 'Taken apart'],
-  cutaway: true,
-  specGroups: ['Spacecraft', 'Launch vehicle'],
-  parts,
-  position: [0, BASE, 0],
-  // the two cabin lights, as Liberty Bell 7's: either side of the pilot's head, in the frame the capsule stands in
-  lights: [
-    { position: [0.304, 0.55, 0.092], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
-    { position: [0.092, 0.55, 0.304], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
-  ],
-  home: 'stack',
+const vehicle = mercuryAtlasStack({
+  flight: 'ma-9-faith-7',
+  parts: mercuryAtlasParts('ma-9-faith-7', parts),
   views: [
     // as it was photographed on the pad the day before: a vernier and the number toward the eye, the pods at either hand
-    { id: 'stack', label: 'Full stack', from: along(VERNIER_AZ - 22, 0.1) },
-    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
-    { id: 'spacecraft', label: 'Spacecraft', nodes: [...CAPSULE, 'EscapeTower'], from: along(WINDOW_AZ + 25, 0.1) },
-    { id: 'capsule', label: 'Capsule', nodes: CAPSULE, from: along(WINDOW_AZ + 20, 0.15) },
-    { id: 'emblem', label: 'Emblem', nodes: ['Window', 'Afterbody'], from: along(WINDOW_AZ + 4, 0.2) },
+    VIEW.stack,
+    VIEW.spacecraft,
+    VIEW.capsule,
+    VIEW.painted('emblem', 'Emblem'),
     { id: 'patches', label: 'White patches', nodes: ['Afterbody'], from: along(PATCHES_AZ, 0.2) },
-    { id: 'hatch', label: 'Hatch', nodes: ['Hatch'], from: along(HATCH_AZ + 8, 0.3) },
+    VIEW.hatch,
     { id: 'umbilical', label: 'Where the periscope was', nodes: ['Afterbody'], from: along(FEET_AZ + 22, 0.2) },
     { id: 'retropack', label: 'Retropack', nodes: ['Retropack', 'HeatShield'], from: along(FEET_AZ - 30, -0.45) },
-    { id: 'adapter', label: 'Adapter', nodes: ['AtlasAdapter'], from: along(WINDOW_AZ - 20, 0.15) },
-    { id: 'pod', label: 'Long pod', nodes: ['AtlasPods'], from: along(POD_AZ + 35, 0.1) },
-    { id: 'booster', label: 'Booster section', nodes: ['AtlasBoosterSection', 'AtlasBoosterEngines'], from: along(VERNIER_AZ - 15, 0.05) },
-    { id: 'engines', label: 'Engines', nodes: ['AtlasBoosterEngines', 'AtlasSustainer'], from: along(VERNIER_AZ - 30, -0.7) },
+    VIEW.adapter,
+    VIEW.pod,
+    VIEW.booster,
+    VIEW.engines,
   ],
-};
-
-// The couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
-// not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
-vehicle.seats = [mercurySeat([-4 * 3600, -3600])];
-vehicle.cabin = mercuryCabin({ window: 'Window' });
+  // the couch as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes)
+  cabin: mercuryCabin({ window: 'Window' }),
+});
 
 export const flight: Flight = {
   id: 'usa/mercury/ma-9-faith-7',
@@ -529,31 +444,13 @@ export const flight: Flight = {
     { t: 123589, event: 'Landing, 27°22.6′ N 176°35.3′ W' },
   ],
   specs: [
+    SPEC.heatShield,
+    CAPSULE_SPEC.afterbodyHalfAngle,
     {
-      group: 'Spacecraft',
-      label: 'Heat shield diameter',
-      value: 74.5 * IN,
-      unit: 'm',
-      confidence: 'documented',
-      note: '74.5 in (NASA CR-649): the capsule’s mould line, the same for the ablation shield as for the heat sink',
-    },
-    { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented', note: 'NASA CR-649' },
-    {
-      group: 'Spacecraft',
-      label: 'Length, retro nozzles to canister top',
-      value: 131.57 * IN,
-      unit: 'm',
-      confidence: 'documented',
+      ...SPEC.capsuleLength,
       note: '131.57 in: Z77.50 to Z209.07 (SEDR 104, Figure 1-3). The MA-9 press kit gives "nine and one-half feet tall", which is from the heat shield',
     },
-    {
-      group: 'Spacecraft',
-      label: 'Length with escape tower',
-      value: 311.55 * IN,
-      unit: 'm',
-      confidence: 'documented',
-      note: '311.55 in: Z77.50 to Z389.05 (SEDR 104, Figure 1-3)',
-    },
+    SPEC.towerLength,
     {
       group: 'Spacecraft',
       label: 'Weight in orbit',
@@ -594,14 +491,7 @@ export const flight: Flight = {
       confidence: 'documented',
       note: 'three 6 in squares "baked onto a single test shingle located at the small end of the conical section" (The Triumph of Astronaut L. Gordon Cooper, Jr. and the Faith 7, p. 21)',
     },
-    {
-      group: 'Spacecraft',
-      label: 'Window, outer pane length',
-      value: 21.0 * IN,
-      unit: 'm',
-      confidence: 'documented',
-      note: '21.00 in along the cone, 11.254 in wide at the heat shield’s end and 7.511 in at the nose’s (NASA SP-45, Figure 19-1: the Mercury spacecraft window)',
-    },
+    CAPSULE_SPEC.windowPane,
     {
       group: 'Spacecraft',
       label: 'Window, middle of the outer pane above the widest plane',
@@ -674,46 +564,11 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '95 ft 4 in, engines to the tower’s tip: the figure for Atlas 109-D and capsule 13 (Results of the First United States Manned Orbital Space Flight, Figure 4-11, p. 49); nothing read gives another for this vehicle; model: 29.067 m (1,144.36 in, by SEDR 104’s stations)',
     },
-    {
-      group: 'Launch vehicle',
-      label: 'Atlas, engines to the adapter’s foot',
-      value: 67 * FT + 4 * IN,
-      unit: 'm',
-      confidence: 'documented',
-      note: '67 ft 4 in (the same figure, and Figure 4-3)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Tank diameter',
-      value: 10 * FT,
-      unit: 'm',
-      confidence: 'documented',
-      note: '10 ft; "approximately 70 inches" at the top of the forward cone (NASA SP-45, p. 85)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Width across the booster fairings',
-      value: 16 * FT,
-      unit: 'm',
-      confidence: 'documented',
-      note: '16 ft (Results of the First United States Manned Orbital Space Flight, Figures 4-3 and 4-11); model: 16 ft 4 in, scaled off NASA SP-45, Figure 5-4',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Adapter length',
-      value: 50.75 * IN,
-      unit: 'm',
-      confidence: 'derived',
-      note: '50.75 in: Z52.69 to Z103.44 (SEDR 104, Figure 1-3); the report draws 4 ft 3 in (Results, Figure 4-11)',
-    },
-    {
-      group: 'Launch vehicle',
-      label: 'Tank skin, thickest',
-      value: 0.048 * IN,
-      unit: 'm',
-      confidence: 'documented',
-      note: 'stainless steel sheet from 0.048 in to 0.015 in (NASA SP-45, p. 85); the four forward skins were thickened for Mercury after MA-1 (p. 95)',
-    },
+    SPEC.atlasLength,
+    SPEC.tank,
+    SPEC.fairings,
+    SPEC.adapter,
+    SPEC.skin,
     {
       group: 'Launch vehicle',
       label: 'Thrust at liftoff',
@@ -731,101 +586,54 @@ export const flight: Flight = {
       note: `"130D rolled toward its climbout heading of 72°" between 2 and 15 seconds (${SUMMARY}, p. 103). On the pad the vehicle’s pitch axis lay on 105° (Results of the First United States Manned Orbital Space Flight, p. 46, of the same pad)`,
     },
   ],
-  motors: [
-    {
-      name: 'Rocketdyne MA-2, booster chamber',
-      count: 2,
-      thrustN: 154000 * LBF,
+  motors: mercuryAtlasMotors({
+    booster: {
       burnS: 132.5,
-      propellant: 'RP-1 / liquid oxygen',
-      kind: 'liquid',
       confidence: 'documented',
-      note: `154,000 lbf each, rated (${SUMMARY}, p. 85); this flight’s press kit gives 150,000 (p. 46). Cutoff at 132.5 s (${SUMMARY}, p. 103). No figure measured on Atlas 130-D has been read`,
+      note: `${lb(ATLAS.booster)} lbf each, rated (${SUMMARY}, p. 85); this flight’s press kit gives 150,000 (p. 46). Cutoff at 132.5 s (${SUMMARY}, p. 103). No figure measured on Atlas 130-D has been read`,
     },
-    {
-      name: 'Rocketdyne MA-2, sustainer',
-      count: 1,
-      thrustN: 57000 * LBF,
+    sustainer: {
       burnS: 303.03,
-      propellant: 'RP-1 / liquid oxygen',
-      kind: 'liquid',
       confidence: 'documented',
-      note: `57,000 lbf, rated (${SUMMARY}, p. 88); the press kit gives 60,000. Cutoff at 303.03 s, "approximately 1 second earlier than planned" (p. 103)`,
+      note: `${lb(ATLAS.sustainer)} lbf, rated (${SUMMARY}, p. 88); the press kit gives 60,000. Cutoff at 303.03 s, "approximately 1 second earlier than planned" (p. 103)`,
     },
-    {
-      name: 'Rocketdyne MA-2, vernier',
-      count: 2,
-      thrustN: 1000 * LBF,
+    verniers: {
       burnS: 303.03,
-      propellant: 'RP-1 / liquid oxygen',
-      kind: 'liquid',
       confidence: 'documented',
-      note: `1,000 lbf each (${SUMMARY}, p. 88). Mercury’s Atlas had no vernier solo: they stopped with the sustainer`,
+      note: `${lb(ATLAS.vernier)} lbf each (${SUMMARY}, p. 88). Mercury’s Atlas had no vernier solo: they stopped with the sustainer`,
     },
-    {
-      name: 'Escape motor',
-      count: 1,
-      thrustN: 52000 * LBF,
+    escape: {
       burnS: 1,
-      propellant: 'solid',
-      kind: 'solid',
       confidence: 'assumed',
-      note: `52,000 lb for 1 s, nominal (${SUMMARY}, Table 3-III, p. 53)`,
+      note: `${lb(THRUST.escape)} lb for 1 s, nominal (${SUMMARY}, Table 3-III, p. 53)`,
     },
-    {
-      name: 'Tower jettison motor',
-      count: 1,
-      thrustN: 800 * LBF,
+    jettison: {
       burnS: 1.5,
-      propellant: 'solid',
-      kind: 'solid',
       confidence: 'assumed',
-      note: '800 lb for 1.5 s, nominal (the same table)',
+      note: `${lb(THRUST.towerJettison)} lb for 1.5 s, nominal (the same table)`,
     },
-    {
-      name: 'Posigrade motor',
-      count: 3,
-      thrustN: 400 * LBF,
+    posigrade: {
       burnS: 1,
-      propellant: 'solid',
-      kind: 'solid',
       confidence: 'assumed',
-      note: `400 lb for 1 s, nominal (the same table). On the missile these were retrorockets on the Atlas; Mercury moved them to the capsule (${SUMMARY}, p. 93)`,
+      note: `${lb(THRUST.posigrade)} lb for 1 s, nominal (the same table). On the missile these were retrorockets on the Atlas; Mercury moved them to the capsule (${SUMMARY}, p. 93)`,
     },
-    {
-      name: 'Retrograde motor',
-      count: 3,
-      thrustN: 1000 * LBF,
+    retrograde: {
       burnS: 10,
-      propellant: 'solid',
-      kind: 'solid',
       confidence: 'assumed',
-      note: `1,000 lb for 10 s, nominal (the same table). Fired by hand at 33:59:53 by the capsule communicator’s count (${SUMMARY}, the air-ground transcript, p. 440)`,
+      note: `${lb(THRUST.retrograde)} lb for 10 s, nominal (the same table). Fired by hand at 33:59:53 by the capsule communicator’s count (${SUMMARY}, the air-ground transcript, p. 440)`,
     },
-    {
-      name: 'Pitch and yaw thruster, high',
-      count: 4,
-      thrustN: 24 * LBF,
-      propellant: '90% hydrogen peroxide',
+    pitchYaw: {
       confidence: 'documented',
       note: `automatic system (Hammack and Heberlig). The rate stabilization control system, which had shared the manual system’s fuel, was taken out of this capsule (${SUMMARY}, p. 54)`,
     },
-    {
-      name: 'Roll thruster, high',
-      count: 2,
-      thrustN: 6 * LBF,
-      propellant: '90% hydrogen peroxide',
+    roll: {
       confidence: 'documented',
       note: `automatic system (Hammack and Heberlig). The 6 lb chambers were of a new design for this capsule (${SUMMARY}, p. 54 and Table 3-II)`,
     },
-    {
-      name: 'Attitude thruster, low',
-      count: 6,
-      thrustN: 1 * LBF,
-      propellant: '90% hydrogen peroxide',
+    low: {
       confidence: 'documented',
       note: `automatic system, all axes (Hammack and Heberlig). A new 1 lb chamber, proved in the Project Orbit chamber runs, was fitted for this flight (${SUMMARY}, p. 54 and Figure 3-10). All worked`,
     },
-  ],
+  }),
   models: [vehicle],
 };

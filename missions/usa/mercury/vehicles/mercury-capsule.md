@@ -48,6 +48,8 @@ seams, the same two all round (`rows`), as its photographs have them. From [merc
 it takes the balloon's container without Aurora 7's liners and the dipole antenna's two units; the beacon's canister and the
 Geiger tubes on its retropack are its own script's. Its record is [Faith 7's spacecraft.md](../flights/ma-9-faith-7/spacecraft.md).
 
+The capsule's flight data that does not depend on its launch vehicle (where things are round it, `along`, its motors' and thrusters' thrusts, the figures common to every flight) is said once in [mercury-capsule.ts](mercury-capsule.ts); each stack's module (mercury-atlas.ts, mercury-redstone-stack.ts) says how its parts leave.
+
 ## Where the window stands
 
 One figure for every capsule that has the window (Nos. 11, 13, 16, 18 and 20): the middle of the outer pane at
