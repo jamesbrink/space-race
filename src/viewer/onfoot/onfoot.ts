@@ -14,7 +14,7 @@ import type { Picker } from '../stage/picker.ts';
 import type { Shadows } from '../stage/shadows.ts';
 import { NECK, type Watched } from '../camera/watch.ts';
 import { Carry } from './carry.ts';
-import { Vehicle } from './drive.ts';
+import { roadOn, Vehicle } from './drive.ts';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait.ts';
 import { boxAt, leadOf, movesOf, sweptBox, wayOf } from './operate.ts';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll.ts';
@@ -544,10 +544,8 @@ export class OnFoot {
       this.headEye.z += 0.09; // (in front of the neck's pivot)
     } else this.headEye = null;
     walk.solids.without = root;
-    const road = {
-      ground: (x: number, z: number, near: number) => walk.solids.below(x, near + 0.6, z, this.h.groundAt(x, z)),
-      ahead: (from: THREE.Vector3, way: THREE.Vector3, far: number) => walk.solids.cast(from, way, far)?.distance ?? null,
-    };
+    // (a gather of its own round it each frame: not whatever the walker's camera or the near plane last gathered)
+    const road = roadOn(walk.solids, (x, z) => this.h.groundAt(x, z));
     const driven = vehicle;
     // a part of a model (a truck the script drives off) is taken out of the slider's hands while it is driven, and left where it is driven to
     const owner = this.ownerOf(root);

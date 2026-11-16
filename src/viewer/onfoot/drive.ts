@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Driving } from '../../sound/audio.ts';
 import type { Part } from '../../types.ts';
+import type { Solids } from './walk.ts';
 
 /**
  * Driving. Any vehicle built to the contract (tools/blender/vehicles.py: one node with its
@@ -81,10 +82,29 @@ export function roll(from: Motion, pedal: number, wheel: number, dt: number, cha
 
 /** What a vehicle asks of the world it drives in. */
 export interface Road {
+  /**
+   * What could be under it or in its way this frame: the world round `centre` within `reach` metres sideways, `below` under
+   * it and `above` over it, gathered before it asks `ground` and `ahead` (left out: they are asked of the whole world).
+   */
+  around?(centre: THREE.Vector3, reach: number, below: number, above: number): void;
   /** The height of the ground under a point, looked for from a little above `near`; null where there is none. */
   ground(x: number, z: number, near: number): number | null;
   /** How far ahead the first solid thing is along a way over the ground, from a point, within `far` metres; null if nothing. */
   ahead(from: THREE.Vector3, way: THREE.Vector3, far: number): number | null;
+}
+
+/**
+ * A road on the walker's solids (walk.ts `Solids`) and the open ground (`land`): with a gather of its own, made round the
+ * vehicle each frame (`around`), so what it stands on and what is in its way are asked of what is round it and not of
+ * whatever the solids last gathered for someone else (the walker's camera, the stage's indoors check, the near plane).
+ */
+export function roadOn(solids: Solids, land: (x: number, z: number) => number | null): Road {
+  const own = solids.gathering();
+  return {
+    around: (centre, reach, below, above) => solids.within(own, () => solids.gather(centre, reach, below, above)),
+    ground: (x, z, near) => solids.within(own, () => solids.below(x, near + 0.6, z, land(x, z))),
+    ahead: (from, way, far) => solids.within(own, () => solids.cast(from, way, far)?.distance ?? null),
+  };
 }
 
 const find = (root: THREE.Object3D, name: string): THREE.Object3D | undefined => {
@@ -308,6 +328,10 @@ export class Vehicle {
     let next = roll(was, pedal, wheel, dt, this.chassis);
     // (the throttle is what drives it: forward, or the brake pedal once it has stopped and backs; braking is not)
     this.throttle = pedal > 0 && was.speed >= 0 ? pedal : pedal < 0 && next.speed < 0 ? -pedal : 0;
+    // what is round it, gathered for itself: under it, ahead of its nose and behind its tail as far as it can go this frame
+    const most = Math.max(this.nose, this.tail) + Math.abs(next.speed) * dt + 1;
+    const middle = new THREE.Vector3(was.x, this.y + this.top / 2, was.z);
+    road.around?.(middle, most + this.half, this.top / 2 + 3, this.top / 2 + 1);
     const going = Math.sign(next.speed);
     if (going) {
       const way = new THREE.Vector3(Math.cos(was.heading) * going, 0, -Math.sin(was.heading) * going);

@@ -261,6 +261,14 @@ interface Near {
   stale: boolean;
 }
 
+/** What a gather chose (Solids `gathering`, `within`): the meshes questions are put to, the ladders, those taken as their boxes, and the region. */
+export interface Gathered {
+  near: Near[];
+  rungs: Near[];
+  boxed: Near[];
+  region: THREE.Box3;
+}
+
 const DOWN = new THREE.Vector3(0, -1, 0);
 const under = (o: THREE.Object3D, root: THREE.Object3D): boolean => {
   for (let p: THREE.Object3D | null = o; p; p = p.parent) if (p === root) return true;
@@ -510,22 +518,48 @@ export class Solids {
     }));
   }
 
+  /** A gather of one's own, for `within`: empty until something is gathered into it. */
+  gathering(): Gathered {
+    return { near: [], rungs: [], boxed: [], region: new THREE.Box3() };
+  }
+
+  /**
+   * Ask questions of a gather of one's own (`own`: a driven vehicle's round itself), leaving the shared one (the walker's,
+   * the camera's, the near plane's) as it was: `ask` runs with `own` as what was gathered, and whatever it gathers stays
+   * in `own` for next time.
+   */
+  within<T>(own: Gathered, ask: () => T): T {
+    this.swap(own);
+    try {
+      return ask();
+    } finally {
+      this.swap(own);
+    }
+  }
+
+  private swap(g: Gathered): void {
+    [this.near, g.near] = [g.near, this.near];
+    [this.rungs, g.rungs] = [g.rungs, this.rungs];
+    const boxed = [...this.boxed];
+    this.boxed.length = 0;
+    this.boxed.push(...g.boxed);
+    g.boxed = boxed;
+    const region = this.region.clone();
+    this.region.copy(g.region);
+    g.region.copy(region);
+  }
+
+  private readonly below1 = this.gathering();
+
   /**
    * The first surface straight down from a point within `far` metres, among everything solid, leaving what was gathered
    * as it was: what a driven vehicle stands on, for its tyres' sound (it is asked of whatever is there, wherever it is).
    */
   beneath(origin: THREE.Vector3, far: number): Hit | null {
-    const kept = { near: this.near, rungs: this.rungs, boxed: [...this.boxed], region: this.region.clone() };
-    this.near = [];
-    this.rungs = [];
-    this.gather(origin, 0.25, far, 0.25);
-    const hit = this.cast(origin, DOWN, far);
-    this.near = kept.near;
-    this.rungs = kept.rungs;
-    this.boxed.length = 0;
-    this.boxed.push(...kept.boxed);
-    this.region.copy(kept.region);
-    return hit;
+    return this.within(this.below1, () => {
+      this.gather(origin, 0.25, far, 0.25);
+      return this.cast(origin, DOWN, far);
+    });
   }
 
   /** The first surface along a ray, within `far` metres, or null. The normal is turned to face the ray's origin. */

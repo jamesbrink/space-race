@@ -191,3 +191,43 @@ test('a part its flight drives off is marked a vehicle from its drive, if it is 
   const { back, up } = vehicle.chase(eyes);
   assert.ok(back > 2.2 + 1.15 && up > 0, `behind its tail and above: ${back}, ${up}`);
 });
+
+test('it gathers what is round it for itself: a wall ahead stops it wherever the walker’s camera last gathered (#29)', async () => {
+  globalThis.window ??= { addEventListener() {}, setTimeout, clearTimeout };
+  globalThis.document ??= { addEventListener() {}, pointerLockElement: null, hasFocus: () => true, exitPointerLock() {} };
+  globalThis.matchMedia ??= () => ({ matches: false });
+  const { Solids } = await import('../src/viewer/onfoot/walk.ts');
+  const { roadOn } = await import('../src/viewer/onfoot/drive.ts');
+  const { site, root } = truck();
+  const scene = new THREE.Scene();
+  scene.add(site);
+  // a wall square across its way, 6 m ahead of its rear axle (its nose is 4.35 m ahead of that), and the ground a slab
+  const start = root.getWorldPosition(new THREE.Vector3());
+  const nose = new THREE.Vector3(1, 0, 0).transformDirection(root.matrixWorld);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 8));
+  wall.position.copy(start).addScaledVector(nose, 6).setY(1.5);
+  wall.rotation.y = Math.atan2(-nose.z, nose.x);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(200, 0.2, 200));
+  slab.position.set(start.x, -0.1, start.z);
+  scene.add(wall, slab);
+  scene.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([scene]);
+  solids.without = root; // (as onfoot.ts has it while it is driven)
+  const vehicle = new Vehicle(root);
+  const road = roadOn(solids, () => null);
+  // the walker's camera gathers far off, every frame, as it might from a chase view or a flight back
+  const far = start.clone().add(new THREE.Vector3(150, 0, 150));
+  for (let i = 0; i < 300; i++) {
+    solids.gather(far, 1, 0.5, 2.5);
+    vehicle.drive(1, 0, 1 / 60, road);
+  }
+  const went = root.getWorldPosition(new THREE.Vector3()).sub(start).dot(nose);
+  assert.ok(
+    vehicle.motion.speed === 0 && went > 0.5 && went < 6 - 4.35,
+    `held by the wall after ${went.toFixed(2)} m, its nose short of it`,
+  );
+  assert.ok(Math.abs(root.getWorldPosition(new THREE.Vector3()).y) < 1e-6, 'on the slab it found under itself');
+  // and the camera's gather is as the camera left it: nothing near the far point
+  assert.equal(solids.cast(far.clone().setY(1), nose, 50), null, 'the shared gather is not the vehicle’s');
+});

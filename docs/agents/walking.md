@@ -248,7 +248,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   under it) offers "Get in and drive" on the wheel. `viewer/onfoot/drive.ts` is kinematic for now:
   `roll` is a bicycle model (pure), `Vehicle` puts the node where it says, rolls and steers the
   wheels, stops short of what is in its way and stays on the ground under its axles. What it
-  asks of the world goes through `Road`, so a physics engine can replace `roll` later. Seated
+  asks of the world goes through `Road`, so a physics engine can replace `roll` later; the walker's
+  (`roadOn`) gathers the solids round the vehicle for itself each frame (`Solids.within`, a gather of its
+  own), so what is in its way is not whatever the camera or the near plane last gathered. Seated
   (`Walker.sit`), W and S are the throttle and the brake (then reverse), A and D steer, C
   changes between the seat and a chase view, E gets out beside the door. Getting in and out
   go through the driver's door, which opens and shuts by the same working the wheel's Open uses.
