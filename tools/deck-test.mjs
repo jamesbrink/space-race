@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, and Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space.
-//   pnpm dev, then: node tools/deck-test.mjs [url]
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving for the leaving section alone)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -57,7 +57,8 @@ const layout = (page) =>
     };
   });
 
-for (const [w, h, touch] of SIZES) {
+// (SR_ONLY=leaving: only the last of it, the way out of a flight flown by hand)
+for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
   const seen = {};
   for (const [id, steps] of Object.entries(FLIGHTS)) {
     const where = `${id} at ${w}`;
@@ -445,7 +446,7 @@ for (const [w, h, touch] of SIZES) {
     await page.waitForTimeout(300);
   };
   const toFly = async (page) => {
-    await page.click('#ui .places [data-place=fly]');
+    await page.locator('.places [data-place=fly]:visible').first().click();
     await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
     await page.waitForTimeout(800);
   };
@@ -530,9 +531,9 @@ for (const [w, h, touch] of SIZES) {
       await handFly(page, id);
       await stop(page);
       await page.click('#ui .places [data-place=gallery]');
-      await page.waitForSelector('.kept-mark');
+      await page.waitForSelector('.kept-mark', { state: 'visible' });
       await page.waitForTimeout(800);
-      await page.click('.kept-mark');
+      await page.locator('.kept-mark:visible').first().click();
       await page.waitForTimeout(300);
       let r = await read(page);
       if (r.keeping || r.warns || (await page.$('.kept-mark'))) fail(at, `the mark did not end it: kept ${r.keeping}, asks ${r.warns}`);
