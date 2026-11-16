@@ -204,7 +204,8 @@ export function vostokFlies(orbital: VostokRecord, crew = 'crew'): NonNullable<F
     ],
     // and from 4 km the pilot himself, the figure in his suit, hanging in his harness under his own canopy
     hangs: [{ model: crew, body: 'pilot', from: 'main canopy' }],
-    chutes: CHUTES,
+    // (the record's own parachutes only: a pilot who put out no reserve, or locked it, draws none)
+    chutes: CHUTES.filter((c) => !c.body || orbital.descent?.bodies.some((b) => b.id === c.body && b.chutes.some((p) => p.name === c.on))),
     // the shock layer stands off the ball's face: its brightness is the heat flux worked on its 1.15 m radius (orbital.ts `heating`)
     air: { shield: 'DescentModule' },
   };
