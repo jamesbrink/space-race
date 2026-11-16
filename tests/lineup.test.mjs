@@ -116,12 +116,21 @@ test('the spacecraft alone is what rides on the launch vehicle: its own heading,
       `${e.flight.id}: its target is no heading's`,
     );
     assert.equal(e.beside.length > 0, Boolean(e.vehicle.target), `${e.flight.id}: a target is stated in the model's data`);
+    // (with its own name and its own length, which is one of the flight's figures under the target's heading)
+    const target = e.vehicle.target;
+    if (target) {
+      assert.ok(target.name.length > 2, `${e.flight.id}: its target has a name`);
+      assert.ok(
+        e.flight.specs.some((s) => s.group === target.heading && s.unit === 'm' && s.value === target.length.value),
+        `${e.flight.id}: its target's length is a figure of the flight's`,
+      );
+    }
   }
   // a target is the model's to state (ModelDef.target), by its heading: with one, the spacecraft alone is still what
   // rides on the launch vehicle, measured without it, and the target is beside
   const stack = {
     name: 'Vehicle',
-    target: 'Docking target',
+    target: { heading: 'Docking target', name: 'Target', length: { value: 8, confidence: 'documented', source: 'a drawing' } },
     parts: [
       { node: 'Cabin', group: 'Spacecraft' },
       { node: 'Adapter', group: 'Spacecraft' },

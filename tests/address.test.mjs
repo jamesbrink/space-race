@@ -223,7 +223,7 @@ test('a gallery address names a seat to sit in, by its node, and it is a choice 
 test('what a spacecraft flew to meet stands beside it where it stands alone: a third kind, stated in the model', () => {
   const stack = {
     name: 'Vehicle',
-    target: 'Docking target',
+    target: { heading: 'Docking target', name: 'Target', length: { value: 8, confidence: 'documented', source: 'a drawing' } },
     parts: [
       { node: 'Cabin', group: 'Spacecraft' },
       { node: 'Adapter', group: 'Spacecraft' },
@@ -262,7 +262,7 @@ test('what a spacecraft flew to meet stands beside it where it stands alone: a t
   for (const v of flights.map(exhibit).filter((v) => v?.target)) {
     assert.ok(targetNodes(v).length > 0, `${v.url}: parts under its target’s heading`);
     assert.ok(
-      plinths(v).some((p) => p.label === v.target),
+      plinths(v).some((p) => p.label === v.target.heading),
       `${v.url}: its target can stand alone`,
     );
   }

@@ -1,3 +1,4 @@
+import { measure } from '../../../../src/measure.ts';
 import type { ModelDef, Motor, Part, Spec } from '../../../../src/types.ts';
 import { IN, LBF } from './gemini-titan.ts';
 
@@ -329,12 +330,13 @@ export const atdaParts = (says: TargetWords[]): Part[] => targetParts('ATDA', AT
  * A Gemini's stack (gemini-titan.ts `geminiTitanStack`) with its target standing beside it: the target's heading among
  * the figures (and what the model says its target is: `ModelDef.target`), and its size in the line that says what
  * is to scale (`says`: 'Agena 7.95 m'). The target's parts are under `TARGET_GROUP` (`agenaParts`, `atdaParts`).
+ * `target`: what it is called by itself and how long it was (`AGENA_TARGET`, `ATDA_TARGET`).
  */
-export const withTarget = (stack: ModelDef, says: string): ModelDef => ({
+export const withTarget = (stack: ModelDef, says: string, target: Pick<NonNullable<ModelDef['target']>, 'name' | 'length'>): ModelDef => ({
   ...stack,
   scale: stack.scale?.replace(' · to scale', ` · ${says} · to scale`),
   specGroups: [...(stack.specGroups ?? []), TARGET_GROUP],
-  target: TARGET_GROUP,
+  target: { heading: TARGET_GROUP, ...target },
 });
 
 /** The docking adapter's dimensions, which are the type's. `carrier`: what it is bolted to, for the notes. */
@@ -543,3 +545,14 @@ export const atdaMotors = (): Motor[] => [
     note: '"identical to the Gemini spacecraft reentry control system ... Each system had eight thrust chamber assemblies (TCA’s), rated at 23.5 pounds nominal thrust", two systems (Gemini IX-A mission report, 3.7.2.5)',
   },
 ];
+
+/** A target's own length among its dimensions, as a Measure: the figure written with its name where it is named by itself. */
+const lengthOf = (specs: Spec[], label: string): ReturnType<typeof measure> => {
+  const spec = specs.find((x) => x.label === label);
+  if (!spec) throw new Error(`no such dimension of the target: ${label}`);
+  return measure(spec.value, spec.confidence, spec.note ?? '');
+};
+/** The Agena as a model names its target (`withTarget`): its length in orbit, from the cone's lip run out to the nozzle. */
+export const AGENA_TARGET = { name: 'Agena target vehicle', length: lengthOf(agenaDimensions(), 'Length in orbit, cone run out') };
+/** The ATDA: its length in orbit as it was meant to fly, without the shroud that stayed on it. */
+export const ATDA_TARGET = { name: 'ATDA', length: lengthOf(atdaDimensions(), 'Length in orbit') };

@@ -25,11 +25,12 @@ import {
 } from '../../vehicles/gemini-titan.ts';
 import {
   AGENA,
-  TARGET_GROUP,
-  type TargetWords,
+  AGENA_TARGET,
   agenaDimensions,
   agenaMotors,
   agenaParts,
+  TARGET_GROUP,
+  type TargetWords,
   withTarget,
 } from '../../vehicles/gemini-targets.ts';
 
@@ -593,6 +594,7 @@ const vehicle = withTarget(
     }),
   }),
   'Agena 7.95 m',
+  AGENA_TARGET,
 );
 
 export const flight: Flight = {

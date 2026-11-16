@@ -125,7 +125,9 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
   the model: no new field; a flight's gallery stands its spacecraft by the same rule). What the spacecraft flew to meet
   (`ModelDef.target`: a docking target) is neither: it is kept, on the floor beside the spacecraft and not lowered with it
   (joined apart from both, merge.ts `BESIDE`; raised in the model by as much as the spacecraft is lowered, stand.ts), and
-  how tall the stand stands is the spacecraft's own height. Forming the row again is a dip of the picture, never things sliding through each other.
+  how tall the stand stands is the spacecraft's own height. Each is named under its own foot: the vehicle's label, with
+  its length, under the vehicle (under its spacecraft, where that stands alone), and its target's own name and length,
+  which the model states (`ModelDef.target`: "Agena target vehicle", 7.95 m), under the target. Forming the row again is a dip of the picture, never things sliding through each other.
 - **One thing is chosen**, by a click on it, its name, its mark on the timeline, or N and B: the camera goes to it and its
   card comes up (its story, why it has its name, its crew, each of whom opens to their own, the way into its gallery,
   its figures). With nothing chosen a click on nothing does nothing; Escape and 0 go back a step (out of a comparison,

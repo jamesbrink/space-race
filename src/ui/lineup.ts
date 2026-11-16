@@ -107,6 +107,8 @@ export interface Picture {
   /** Where a vehicle's foot and top are on the page (the middle of its box's front edge on the floor, and of its top), CSS pixels; null if it is not standing or is behind the eye. */
   footOf(id: string): { x: number; y: number } | null;
   topOf(id: string): { x: number; y: number } | null;
+  /** Where the foot of what its spacecraft flew to meet is, standing beside it; null where there is none. */
+  targetFootOf(id: string): { x: number; y: number } | null;
   /** The ruled heights that carry a figure, metres, and where each crosses a column of the page. */
   marks(): number[];
   markAt(y: number, x: number): number | null;
@@ -135,6 +137,8 @@ export class LineupUi {
   private sheet: Sheet | null = null;
   private names = !prefs.get('lineupNamesOff');
   private readonly labels = new Map<string, HTMLElement>();
+  /** The label under what a vehicle's spacecraft flew to meet, for those that have one (ModelDef.target). */
+  private readonly targetLabels = new Map<string, HTMLElement>();
   private readonly figures: HTMLElement[] = [];
   private covered: Rect[] = [];
   /** Which person's and which programme's words are open. */
@@ -278,6 +282,17 @@ export class LineupUi {
       label.innerHTML = `<b>${esc(e.flight.callsign)}</b><span></span>`;
       marks.append(label);
       this.labels.set(e.flight.id, label);
+      // what its spacecraft flew to meet stands beside it, and is named by itself: its own name and its own length,
+      // from the model's data (ModelDef.target)
+      const target = e.vehicle.target;
+      if (!target) continue;
+      const beside = document.createElement('button');
+      beside.className = 'lu-label target';
+      beside.dataset.flight = e.flight.id;
+      beside.style.setProperty('--tint', css(e.tint));
+      beside.innerHTML = `<b>${esc(target.name)}</b><span>${dot(target.length.confidence)}${target.length.value.toFixed(2)} m</span>`;
+      marks.append(beside);
+      this.targetLabels.set(e.flight.id, beside);
     }
     this.tab(narrow() ? 'View' : 'Vehicle');
   }
@@ -1017,6 +1032,15 @@ export class LineupUi {
       put(label, { left: at.x - w / 2, top: at.y + 10, right: at.x + w / 2, bottom: at.y + 10 + h });
     }
     for (const [id, label] of this.labels) if (!placed.has(id)) label.classList.remove('on');
+    // and what each one's spacecraft flew to meet, under its own foot: after every vehicle's name, the chosen one's first
+    for (const { id } of feet) {
+      const label = this.targetLabels.get(id);
+      if (!label) continue;
+      const at = this.names ? picture.targetFootOf(id) : null;
+      const [w, h] = [label.offsetWidth, label.offsetHeight];
+      put(label, at && { left: at.x - w / 2, top: at.y + 10, right: at.x + w / 2, bottom: at.y + 10 + h });
+    }
+    for (const [id, label] of this.targetLabels) if (!placed.has(id)) label.classList.remove('on');
     // the heights: a figure where each ruled line that carries one crosses the picture's left edge (or, past the title card, the edge of what is clear)
     const marks = picture.marks();
     const host = this.q('.lu-marks');

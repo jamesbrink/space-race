@@ -665,16 +665,27 @@ export class LineupScene {
     return this.measured ? this.hall.marks.filter((m) => m.major).map((m) => m.y) : [];
   }
 
-  /** Where a vehicle's foot is on the page (the middle of its front edge on the floor), CSS pixels; null if it is not standing, or is behind the eye. */
+  /**
+   * Where a vehicle's foot is on the page (the middle of its own front edge on the floor: its launch vehicle's, or its
+   * spacecraft's alone, and not what it flew to meet, which stands beside it and has a foot of its own), CSS pixels;
+   * null if it is not standing, or is behind the eye.
+   */
   footOf(id: string): { x: number; y: number } | null {
     const stand = this.stand(id);
-    return stand?.standing ? this.screenOf(new THREE.Vector3(stand.group.position.x, 0, stand.box.max.z)) : null;
+    return stand?.standing ? this.screenOf(new THREE.Vector3(stand.group.position.x + stand.own.x, 0, stand.own.front)) : null;
+  }
+
+  /** Where the foot of what a vehicle's spacecraft flew to meet is on the page, as `footOf`; null where it has none standing by it. */
+  targetFootOf(id: string): { x: number; y: number } | null {
+    const stand = this.stand(id);
+    const at = stand?.standing ? stand.beside : null;
+    return at && stand ? this.screenOf(new THREE.Vector3(stand.group.position.x + at.x, 0, at.front)) : null;
   }
 
   /** Where a vehicle's top is on the page. */
   topOf(id: string): { x: number; y: number } | null {
     const stand = this.stand(id);
-    return stand?.standing ? this.screenOf(new THREE.Vector3(stand.group.position.x, stand.height, 0)) : null;
+    return stand?.standing ? this.screenOf(new THREE.Vector3(stand.group.position.x + stand.own.x, stand.height, 0)) : null;
   }
 
   /** Where one of the ruled heights begins, at the row's first end, on the page. */

@@ -193,6 +193,12 @@ export class Stand {
   private raise = 0;
   /** How tall what stands there itself is, without what it flew to meet, metres. */
   private tall = 0;
+  /**
+   * Where what stands there itself is about its stand's axis, and where what it flew to meet is (null: it has none,
+   * or none on show): the middle of each across the row and the front of each, metres. A name is written under each.
+   */
+  own = { x: 0, front: 0 };
+  beside: { x: number; front: number } | null = null;
   /** What its coarsest level took before it was joined, over what it takes joined. */
   private builtRatio = 3;
 
@@ -413,6 +419,13 @@ export class Stand {
     // (how tall it stands is its own height: what it flew to meet, beside it, may be taller than a spacecraft alone)
     const own = boxOf(this.levels[this.coarsest]!, (child) => child.visible && !this.isBeside(child));
     this.tall = own.isEmpty() ? this.size.y : own.max.y - local.min.y;
+    const met = boxOf(this.levels[this.coarsest]!, (child) => child.visible && this.isBeside(child));
+    const at = (box: THREE.Box3): { x: number; front: number } => ({
+      x: (box.min.x + box.max.x) / 2 - centre.x,
+      front: box.max.z - centre.z,
+    });
+    this.own = own.isEmpty() ? { x: 0, front: this.size.z / 2 } : at(own);
+    this.beside = met.isEmpty() ? null : at(met);
     const reach = Math.hypot(this.size.x, this.size.z) / 2;
     this.plate.scale.setScalar(reach + Math.max(0.5, 0.12 * reach) + 0.6);
     // the person stands in front of it and to one side, clear of it, on its plate

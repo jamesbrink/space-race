@@ -647,9 +647,11 @@ export interface ModelDef {
    * target, a vehicle of its own, built into this model standing on the floor beside the launch vehicle (an
    * exhibit's arrangement). It is neither the spacecraft nor what carried it: where the spacecraft stands alone (the
    * Lineup's row of spacecraft, the gallery's Spacecraft choice) the target stands on the floor beside it, kept and
-   * not lowered with it (address.ts `targetNodes`).
+   * not lowered with it (address.ts `targetNodes`). `name`: what it is called where it is named by itself (the
+   * Lineup's label under it); `length`: how long it was, metres, which is written with its name: its own figure,
+   * not a measure of what stands there (a target may stand with more on it than it flew free with).
    */
-  target?: string;
+  target?: { heading: string; name: string; length: Measure };
   /**
    * Lamps the model carries: cabin floodlights, so an interior seen through a window is not a
    * black hole. Positions in the model's own coordinates, metres; `reach` is where it fades out.

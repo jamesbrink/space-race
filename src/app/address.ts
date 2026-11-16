@@ -273,7 +273,7 @@ export function plinths(model: Pick<ModelDef, 'parts' | 'name' | 'target'>, lowe
  * spacecraft, its launch vehicle, an airlock. Not its target's (`ModelDef.target`), which is no part of it.
  */
 export function vehicleHeadings(model: Pick<ModelDef, 'parts' | 'target'>): Heading[] {
-  const groups = [...new Set(model.parts.flatMap((p) => (p.group && p.group !== model.target ? [p.group] : [])))];
+  const groups = [...new Set(model.parts.flatMap((p) => (p.group && p.group !== model.target?.heading ? [p.group] : [])))];
   return groups.map((g) => ({ id: slug(g), nodes: model.parts.filter((p) => p.group === g).map((p) => p.node) }));
 }
 
@@ -283,7 +283,8 @@ export function vehicleHeadings(model: Pick<ModelDef, 'parts' | 'target'>): Head
  * stand on the floor beside it, kept and not lowered with it; none where the model says no target.
  */
 export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[] {
-  return model.target ? model.parts.filter((p) => p.group === model.target).map((p) => p.node) : [];
+  const heading = model.target?.heading;
+  return heading ? model.parts.filter((p) => p.group === heading).map((p) => p.node) : [];
 }
 
 /** The heading a vehicle's parts list puts its spacecraft under, as a choice of what stands in the gallery (`plinths`). */

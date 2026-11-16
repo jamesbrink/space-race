@@ -24,7 +24,16 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
-import { ATDA, TARGET_GROUP, type TargetWords, atdaDimensions, atdaMotors, atdaParts, withTarget } from '../../vehicles/gemini-targets.ts';
+import {
+  ATDA,
+  ATDA_TARGET,
+  atdaDimensions,
+  atdaMotors,
+  atdaParts,
+  TARGET_GROUP,
+  type TargetWords,
+  withTarget,
+} from '../../vehicles/gemini-targets.ts';
 
 const DEG = Math.PI / 180;
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
@@ -577,6 +586,7 @@ const vehicle = withTarget(
     }),
   }),
   'ATDA 3.73 m and its shroud',
+  ATDA_TARGET,
 );
 
 export const flight: Flight = {

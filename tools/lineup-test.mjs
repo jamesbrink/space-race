@@ -13,6 +13,8 @@
 //                joined by paint: lineup/merge.ts), triangles, programs; nothing drawn of what is out of the picture
 //   alone        the spacecraft alone is what rides on the launch vehicle (an airlock under a heading of its own too), with what
 //                it flew to meet on the floor beside it
+//   target       a spacecraft and what it flew to meet, chosen in the row of spacecraft at 1280: each has its own label under it,
+//                its own name and length, and neither is under a panel
 //   tab          the gallery's open tab is kept: History, into the Lineup by its link, and Back finds History open
 //   along        at 390 and 820 wide the whole row is framed by its height and gone along under the thumb, on the one nearest
 //   show         left alone on a phone, the show frames each vehicle above its card, however long the card's words
@@ -410,6 +412,94 @@ await scenario('cost', async () => {
     `  one framed: ${framed.calls} calls, ${(framed.triangles / 1e6).toFixed(2)} M triangles, ${inView} vehicles in the picture (levels ${framed.levels})`,
   );
   check(inView < row.length && framed.calls < whole.calls + 60 * inView, 'one framed: what is out of the picture is not drawn');
+  check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+  await close();
+});
+
+await scenario('target', async () => {
+  // (the first flight in the row whose model states a target: its spacecraft alone, chosen, on a page 1280 wide)
+  const first = await open(browser, `${url}#lineup`, { viewport: [1280, 800], wait: up, timeout: 180000 });
+  const id = await first.page.evaluate(() => window.sr.lineup.entries.find((e) => e.vehicle.target)?.flight.id ?? null);
+  await first.close();
+  check(Boolean(id), `a flight in the row has a target (${id})`);
+  if (!id) return;
+  const { page, errors, close } = await open(browser, `${url}#lineup/spacecraft/${id}`, {
+    viewport: [1280, 800],
+    wait: up,
+    timeout: 180000,
+  });
+  await page.waitForTimeout(4000);
+  const got = await page.evaluate((id) => {
+    const e = window.sr.lineup.entries.find((x) => x.flight.id === id);
+    const rect = (el) => {
+      const r = el?.getBoundingClientRect();
+      return r ? { left: r.left, right: r.right, top: r.top, bottom: r.bottom } : null;
+    };
+    const of = (sel) => {
+      const el = document.querySelector(sel);
+      return {
+        on: Boolean(el?.classList.contains('on')),
+        text: el ? [...el.children].map((c) => c.textContent.trim()) : [],
+        rect: rect(el),
+      };
+    };
+    return {
+      callsign: e.flight.callsign,
+      target: { name: e.vehicle.target.name, length: e.vehicle.target.length.value },
+      own: of(`.lu-label[data-flight="${id}"]:not(.target)`),
+      met: of(`.lu-label.target[data-flight="${id}"]`),
+      foot: window.sr.stage.footOf(id),
+      targetFoot: window.sr.stage.targetFootOf(id),
+      height: window.sr.stage.report().find((r) => r.id === id).height,
+      panels: [...document.querySelectorAll('#ui .title, #ui .panel, #ui .controls, #ui .lu-top .models')].map(rect).filter(Boolean),
+      title: rect(document.querySelector('#ui .title')),
+      card: rect(document.querySelector('#ui .panel')),
+      canvas: rect(document.querySelector('canvas')),
+    };
+  }, id);
+  const under = (label, foot) =>
+    Boolean(label.rect && foot) &&
+    Math.abs((label.rect.left + label.rect.right) / 2 - foot.x) <= 2 &&
+    label.rect.top - foot.y > 4 &&
+    label.rect.top - foot.y < 16;
+  check(got.own.on && got.met.on, 'the spacecraft and its target each have a label on the picture');
+  check(
+    got.own.text[0] === got.callsign &&
+      /^\d+\.\d\d m$/.test(got.own.text[1] ?? '') &&
+      Math.abs(parseFloat(got.own.text[1]) - got.height) < 0.05,
+    `the spacecraft's says its own name and length (${got.own.text.join(' · ')}; it stands ${got.height.toFixed(2)} m)`,
+  );
+  check(
+    got.met.text[0] === got.target.name && got.met.text[1] === `${got.target.length.toFixed(2)} m`,
+    `the target's says its own, from the model's data (${got.met.text.join(' · ')})`,
+  );
+  check(under(got.own, got.foot), `the spacecraft's label is under the spacecraft (${got.foot?.x.toFixed(0)}, ${got.foot?.y.toFixed(0)})`);
+  check(
+    under(got.met, got.targetFoot),
+    `the target's label is under the target (${got.targetFoot?.x.toFixed(0)}, ${got.targetFoot?.y.toFixed(0)})`,
+  );
+  check(Boolean(got.foot && got.targetFoot) && Math.abs(got.foot.x - got.targetFoot.x) > 80, 'and they are two places on the page');
+  // neither is under a panel: each foot, and each label, clear of every panel's box
+  const inside = (p, r) => p.x > r.left && p.x < r.right && p.y > r.top && p.y < r.bottom;
+  const meets = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const clear =
+    got.panels.length > 0 &&
+    [got.foot, got.targetFoot].every((p) => p && !got.panels.some((r) => inside(p, r))) &&
+    [got.own.rect, got.met.rect].every((l) => l && !got.panels.some((r) => meets(l, r)));
+  check(clear, `neither is covered by a panel at 1280 (${got.panels.length} panels on the page)`);
+  // and the two are centred as a pair in what the panels leave clear: the middle between their feet is nearer the
+  // middle of the clear part than either foot is
+  // (between the title card on the left and the vehicle's card on the right)
+  const left = got.title?.right ?? got.canvas.left;
+  const right = got.card?.left ?? got.canvas.right;
+  const middle = (left + right) / 2;
+  const pair = got.foot && got.targetFoot ? (got.foot.x + got.targetFoot.x) / 2 : Number.NaN;
+  check(
+    Math.abs(pair - middle) < Math.abs(got.foot.x - middle) &&
+      Math.abs(pair - middle) < Math.abs(got.targetFoot.x - middle) &&
+      Math.abs(pair - middle) < 0.2 * (right - left),
+    `the pair is framed about the middle of what is clear (${pair.toFixed(0)} against ${middle.toFixed(0)}, clear from ${left.toFixed(0)} to ${right.toFixed(0)})`,
+  );
   check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
   await close();
 });
