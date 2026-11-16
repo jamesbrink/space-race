@@ -7,16 +7,16 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
+import { coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
+import { meanOf, meanOrbitOf, periodsOf } from '../src/world/meanelements.ts';
 import { nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { recordFrom } from './records.mjs';
-import { frameOf } from '../src/world/earthframe.ts';
-import { meanOf, meanOrbitOf, periodsOf } from '../src/world/meanelements.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -102,6 +102,20 @@ const INPUTS = {
     ['entry', 'separation'],
     ['entry', 'mass'],
     ['entry', 'area'],
+  ],
+  // Vostok 4's are Vostok 2's, with its modules' parting the type's
+  'ussr/vostok/vostok-4': [
+    ['orbit', 'radius'],
+    ['injection', 'at'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['retro', 'deltaV'],
+    ['entry', 'separation'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+    ['ejection', 'altitude'],
   ],
 };
 

@@ -17,9 +17,11 @@ import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const rounds = Math.max(3, Number(opt(args, '--rounds', '3')));
-const FLIGHTS = opt(args, '--flights', 'usa/mercury/mr-3-freedom-7,ussr/vostok/vostok-1,ussr/vostok/vostok-2,ussr/vostok/vostok-3').split(
-  ',',
-);
+const FLIGHTS = opt(
+  args,
+  '--flights',
+  'usa/mercury/mr-3-freedom-7,ussr/vostok/vostok-1,ussr/vostok/vostok-2,ussr/vostok/vostok-3,ussr/vostok/vostok-4',
+).split(',');
 const [A, B] = FLIGHTS.slice(-2);
 const url = urlOf(args);
 /**

@@ -36,7 +36,7 @@
 // the page's own that gives every frame a sixtieth of a second (`VIRTUAL`), so a slow or busy machine sees the same
 // frames as a fast one. The views are measured on --jobs pages at once (default 4), each flight
 // and size, and each pair of hands, a page of its own, its lines printed together when it is done.
-//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1|v2|v3|v5] [--quick] [--at 60,700] [--seed n]
+//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1|v2|v3|v4|v5|v6] [--quick] [--at 60,700] [--seed n]
 //                   [--hands: the hands alone] [--jobs n]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -107,6 +107,11 @@ const FLIGHTS = {
   v6: {
     id: 'ussr/vostok/vostok-6',
     instants: [5, 60, 125, 330, 700, 3000, 86_400, 200_000, 242_000, 253_000, 253_260, 253_300, 254_000, 254_300, 254_600],
+  },
+  // (three days: the first revolutions beside Vostok 3, the night, the burn at 09:31 on the 15th and the descent)
+  v4: {
+    id: 'ussr/vostok/vostok-4',
+    instants: [5, 60, 125, 330, 700, 3000, 6000, 100_000, 252_000, 253_800, 253_860, 254_300, 254_700, 255_000, 255_300],
   },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];

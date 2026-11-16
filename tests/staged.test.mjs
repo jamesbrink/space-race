@@ -8,11 +8,11 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
-import { stagedVehicle } from '../src/sim/stagedlive.ts';
-import { P0 } from '../src/world/bodies.ts';
-import { between, propagate } from '../src/sim/predict.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
+import { downOf } from '../src/sim/descent.ts';
+import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
+import { coastOf } from '../src/sim/orbital.ts';
+import { between, propagate } from '../src/sim/predict.ts';
 import {
   ascend,
   byHand,
@@ -28,12 +28,12 @@ import {
   stagesOf,
   steer,
 } from '../src/sim/staged.ts';
-import { coastOf } from '../src/sim/orbital.ts';
-import { downOf } from '../src/sim/descent.ts';
+import { stagedVehicle } from '../src/sim/stagedlive.ts';
+import { P0 } from '../src/world/bodies.ts';
+import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { recordFrom } from './records.mjs';
-import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -170,6 +170,39 @@ const UNDOCUMENTED = {
     'stages.2.start',
   ],
   'ussr/vostok/vostok-6': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drag.1.until',
+    'ascent.drops.0.at',
+    'ascent.drops.0.q',
+    'ascent.guidance.azimuth',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.altitude',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.turn',
+    'ascent.guidance.vertical',
+    'ascent.limits.axial',
+    'ascent.limits.qAlpha',
+    'ascent.steering.authority',
+    'stages.0.cutoff',
+    'stages.0.ignition',
+    'stages.0.propellant',
+    'stages.0.throttle',
+    'stages.1.cutoff',
+    'stages.1.ignition',
+    'stages.1.propellant',
+    'stages.1.throttle',
+    'stages.2.cutoff',
+    'stages.2.hot',
+    'stages.2.ignition',
+    'stages.2.propellant',
+    'stages.2.start',
+  ],
+  // Vostok 4's as Vostok 2's, with its target height Vostok 2's plan (assumed)
+  'ussr/vostok/vostok-4': [
     'ascent.drag.0.area',
     'ascent.drag.0.curve',
     'ascent.drag.0.until',
