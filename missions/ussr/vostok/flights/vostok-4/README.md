@@ -39,13 +39,13 @@ April 1961's place, no fillers. Not built: the people, Korolev's post and the ro
 ## The flight as flown
 
 [mission.md](mission.md) has every input's argument and each check against the run, and the misses
-are in src/sim/misses.ts. In short: the type's ascent falls short of an orbit as Vostoks 1 to 3's do;
-the published orbit flown from where it left the ship goes round three days and comes down across the
-track within a kilometre of the record's landing but **1,070 km long**, the period carried round 48
-times (a second a revolution is some 350 km); the pilot's landing time holds (not independent), the
-module comes down six minutes before him where the record has twelve. Flown together, the two
-records' orbits bring the ships no nearer than 234 km where TASS has 6.5: the records cannot hold
-kilometres over a day (mission.md, "Beside Vostok 3").
+are in src/sim/misses.ts. In short: the type's ascent, in the day's air, falls short of an orbit as
+Vostoks 1 to 3's do; the published orbit flown from where it left the ship goes round three days and
+comes down across the track within the region of Atasu (36 km) but **2,398 km long**, the period
+carried round 48 times (a second a revolution is some 350 km); the pilot's landing time holds (not
+independent), the module comes down six minutes before him where the record has twelve. Flown
+together, the two records' orbits bring the ships no nearer than 1,768 km where TASS has 6.5: the
+records cannot hold kilometres over a day (mission.md, "Beside Vostok 3").
 
 ## What is simplified
 

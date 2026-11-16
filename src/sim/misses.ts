@@ -80,10 +80,13 @@ const SHORT_V3 =
   'at the last cutoff it is level at the planned 180 km with 7,662 m/s where 180.7 by 234.6 km needs some 7,817';
 /** Vostok 3's four days: where the ship is at the burn is the published period carried round 64 times. */
 const PERIOD_64 =
-  'Over 64 revolutions the published period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and the period is given to a hundredth of a minute (300 km). ' +
-  'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) with the joined ship’s free-molecule drag in the air of the day’s Sun (world/thermosphere.ts), the ship is down 1,083 km short; in the mean standard air it was 1,576 km long, and on the ball’s continuum drag, until November 2026, 2,853 km short: ' +
-  'four days of the orbit’s decay are worth thousands of kilometres along the track here, so the drag in orbit and the day’s air are as much the landing as the period is. No published period is good enough to hold the landing over four days, and how fast the real orbit decayed in the air of August 1962 is not known. ' +
-  'Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
+  'Over 64 revolutions the period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and no period is known to better than a hundredth of a minute (300 km). ' +
+  'No published period with this flight’s heights has a traceable source, so it is flown on the period the heights give over the mean Earth, 88.54 min (derived: mission.md, "The orbit"), with the joined ship’s free-molecule drag in the air of the day’s Sun (world/thermosphere.ts): the burn comes over 63 degrees south and the ship is down 4,664 km short. ' +
+  'On the untraced 88.33 min it was 1,083 km short; weighed before the drag in orbit was corrected, 88.2 min landed 874 km long and 88.5 min 4,636 km short. ' +
+  'More decay over four days would shorten the period and bring the landing forward: TASS’s orbit of the 12th, held as a check at 12:12 that day, is 18 s shorter than the one flown there, which points that way, and is an expectation to be tested, not a target. Not adjusted';
+/** Vostok 3's orbit a day on, as TASS gave it, against the coast flown there. */
+const TASS_12AUG =
+  'TASS’s orbit at 12:12 on 12 August, a day on: flown from the initial heights on their own period, the coast keeps a period 18 s longer there and an apogee higher. The orbit decays too little in a day, or began lower than the heights over the mean Earth say: the drag in orbit and the air of the day are the first suspects (PERIOD_64). An expectation to be tested, not a target: not adjusted';
 /** Vostok 5's ascent is Vostok 1's, as Vostok 2's is: it falls short of an orbit for the same reasons. */
 const SHORT_V5 =
   'Vostok 5’s ascent is Vostok 1’s, flown on its instants and its third stage’s integrator setting (no document of E103-24’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
@@ -112,8 +115,8 @@ const SHORT_V4 =
   'at the last cutoff it is level at the planned 180 km with 7,681 m/s where 179.8 by 236.7 km needs some 7,817';
 /** Vostok 4's three days, as Vostok 3's four. */
 const PERIOD_48 =
-  'Over 48 revolutions the published period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min is given to a tenth of a minute. ' +
-  'On it the ship comes down long; no published period is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
+  'Over 48 revolutions the period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min, the one traceable period of this ship, is given to a tenth of a minute (2,100 km). ' +
+  'On it, with the joined ship’s free-molecule drag in the air of the day’s Sun, the ship comes down 2,344 km long (633 km long on the ball’s continuum drag, until November 2026): no period published is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -343,17 +346,13 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'ussr/vostok/vostok-3': inUnits({
     coast: {
-      apogee: {
-        by: -9_671,
-        slack: 300,
-        why: 'It goes round with its apogee 225 km up, 9.7 km under the published 234.6. Read as mean elements with 88.33 min node to node, the heights’ difference fixes the eccentricity and the period the axis, and that axis is lower than the heights give over any mean ball: the announced 88.5 min would give 233.5 km and hold it. So 88.33 and Siddiqi’s heights are not one determination. Not adjusted',
-      },
+      'tass-12aug.period': { by: 18.34, slack: 1, why: TASS_12AUG },
       crossTrack: {
-        by: -151_299,
-        slack: 5_000,
-        why: `It comes down 151 km to the left of the record’s landing: the burn is in the wrong place on the orbit and the Earth has turned under it by the minutes the ship is out. ${PERIOD_64}`,
+        by: -785_001,
+        slack: 10_000,
+        why: `It comes down 785 km to the left of the record’s landing: the burn is in the wrong place on the orbit (over 63 degrees south) and the Earth has turned under it by the minutes the ship is out. ${PERIOD_64}`,
       },
-      alongTrack: { by: -1_083_123, slack: 20_000, why: PERIOD_64 },
+      alongTrack: { by: -4_664_090, slack: 30_000, why: PERIOD_64 },
     },
     ascent: {
       cutoffAt: {
@@ -362,28 +361,33 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: 'Block E is cut where Vostok 1’s integrator was set (2,283.52 m/s of apparent velocity: estimated here), and that comes at 676.4 s, as on Vostok 1; the bunker waited for 687 s, the end of this flight’s burn as planned. So this flight’s setting, or its third stage’s start, or both, differed from Vostok 1’s by some ten seconds of burn: neither was found. Not adjusted',
       },
       firstG: {
-        by: -1.78,
+        by: -1.786,
         slack: 0.05,
         why: 'The most the type’s ascent gives is 4.71 g, on the first stage before the strap-ons throttle back (3.98 on the core alone, 0.91 on the last). Nikolayev’s 6 to 7 g is by feel and said of the whole ascent; Titov felt no more than five on the same vehicle (Vostok 2’s check, which holds). Either the feeling or the type’s thrust and masses: not adjusted',
       },
       perigee: { by: -445_353, slack: 2_000, why: SHORT_V3 },
       apogee: { by: -54_600, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_V3}` },
-      period: { by: -289.31, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V3}` },
     },
     shown: {
-      apogee: {
-        by: -15_017,
+      'tass-12aug.apogee': {
+        by: 7_979,
         slack: 500,
-        why: `${PUBLISHED}. Flown round from there its apogee is 219.6 km: the coast’s own miss (9.5 km under, on 88.33 min) and the place on the orbit the type’s ascent leaves it at`,
+        why: `${PUBLISHED}, so its apogee is higher than the coast’s from the injection (239.5 km flown round). ${TASS_12AUG}`,
       },
-      crossTrack: { by: -92_358, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
-      alongTrack: { by: -915_562, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      'tass-12aug.period': { by: 18.19, slack: 1, why: `${PUBLISHED}. ${TASS_12AUG}` },
+      crossTrack: { by: -626_241, slack: 10_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      alongTrack: { by: -4_500_720, slack: 30_000, why: `${PUBLISHED}. ${PERIOD_64}` },
     },
     descent: {
       'module.at': {
-        by: 278.7,
+        by: 670.1,
         slack: 10,
-        why: 'The module comes down at 09:44:36, 5.7 minutes before the pilot (who holds, 102 s early); the record has twelve minutes between them (09:39:59 and 09:52). From 7 km the module takes six minutes on the type’s three parachutes, as on Vostok 1 (its module five minutes before Gagarin). What put this flight’s down so long before him is not in anything read: not adjusted',
+        why: 'The module comes down at 09:51:09, 5.7 minutes before the pilot; the record has twelve minutes between them (09:39:59 and 09:52), as on Vostok 4. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read. The rest is the pilot’s own miss: not adjusted',
+      },
+      'pilot.at': {
+        by: 290.9,
+        slack: 10,
+        why: 'Nikolayev comes down at 09:56:51, 4.8 minutes late. The burn is timed from his landing (derived), but on the orbit the heights give it comes over 63 degrees south and the entry from there is longer than Vostok 1’s 27.9 minutes from command to landing. That follows from the period (PERIOD_64): not adjusted',
       },
     },
   }),
@@ -460,42 +464,37 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'ussr/vostok/vostok-4': inUnits({
     coast: {
       apogee: {
-        by: -11_632,
+        by: -11_705,
         slack: 300,
-        why: 'It goes round with its apogee 225 km up, 11.6 km under the published 236.7: read as mean elements with TASS’s 88.3 min node to node, the axis is lower than Siddiqi’s heights give, as Vostok 3’s 88.33 is under its own (Vostok 3’s coast miss). So the period and the heights are not one determination. Not adjusted',
+        why: 'It goes round with its apogee 225 km up, 11.7 km under the published 236.7: read as mean elements with TASS’s 88.3 min node to node, the axis is lower than Siddiqi’s heights give over the mean Earth, the two not being one determination (mission.md, "The orbit"). Not adjusted',
       },
-      crossTrack: {
-        by: -60_664,
-        slack: 3_000,
-        why: `It comes down 61 km to the left of the record’s landing: the burn is in another place on the orbit (over the equator) and the Earth has turned under it by the minutes the ship is ahead. ${PERIOD_48}`,
-      },
-      alongTrack: { by: 633_393, slack: 15_000, why: PERIOD_48 },
+      alongTrack: { by: 2_343_960, slack: 30_000, why: PERIOD_48 },
     },
     ascent: {
-      perigee: { by: -385_035, slack: 2_000, why: SHORT_V4 },
+      perigee: { by: -426_259, slack: 2_000, why: SHORT_V4 },
       apogee: { by: -56_700, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_V4}` },
-      period: { by: -252.19, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V4}` },
+      period: { by: -276.7, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V4}` },
     },
     shown: {
       apogee: {
-        by: -23_469,
+        by: -23_502,
         slack: 500,
-        why: `${PUBLISHED}. Flown round from there its apogee is 213.2 km: the coast’s own miss (11.6 km under, on 88.3 min) and the place on the orbit the type’s ascent leaves it at`,
+        why: `${PUBLISHED}. Flown round from there its apogee is 213.2 km: the coast’s own miss (11.7 km under, on 88.3 min) and the place on the orbit the type’s ascent leaves it at`,
       },
-      alongTrack: { by: 1_069_630, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_48}` },
+      alongTrack: { by: 2_398_480, slack: 30_000, why: `${PUBLISHED}. ${PERIOD_48}` },
     },
     descent: {
       'module.at': {
-        by: 368,
+        by: 402.9,
         slack: 10,
-        why: 'The module comes down at 09:52:41, 5.8 minutes before the pilot (who holds, 30 s early); the record has twelve minutes between them (09:46:33 and 09:59), as on Vostok 3. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read: not adjusted',
+        why: 'The module comes down at 09:53:16, 5.8 minutes before the pilot (who holds, 4 s late); the record has twelve minutes between them (09:46:33 and 09:59), as on Vostok 3. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read: not adjusted',
       },
     },
     group: {
       closest: {
-        by: 227_265,
-        slack: 2_000,
-        why: 'Flown from the two published orbits, Vostok 4 comes no nearer Vostok 3 than 234 km in its first two revolutions (47 minutes in), where TASS has 6.5 km and the pilots about 5. The records cannot hold a check of kilometres: Vostok 3’s place a day on is its published period carried round sixteen times (a hundredth of a minute is 75 km), and Vostok 4’s place at its cutoff is the type’s reckoning (`injection.arc`, 144 km a degree). That the second launch was timed to put it beside the first is the record; where each ship was, to that precision, is in nothing read. Not adjusted',
+        by: 1_761_360,
+        slack: 5_000,
+        why: 'Flown from the two records, Vostok 4 comes no nearer Vostok 3 than 1,768 km in its first two revolutions, where TASS has 6.5 km and the pilots about 5. The records cannot hold a check of kilometres: Vostok 3’s place a day on is its period carried round sixteen times (a hundredth of a minute is 75 km), now the one its heights give, 88.54 min, with no traceable published period (on the untraced 88.33 min it was 234 km), and Vostok 4’s place at its cutoff is the type’s reckoning (`injection.arc`, 144 km a degree). That the second launch was timed to put it beside the first is the record; where each ship was, to that precision, is in nothing read. Not adjusted',
       },
     },
   }),

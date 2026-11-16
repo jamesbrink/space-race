@@ -33,19 +33,22 @@ Every value of the period found, and where each comes from:
 
 | Period | With | From | What it is |
 | --- | --- | --- | --- |
-| 88.3 min | 177.9 by 234.8 km, 64°57′ | TASS, as of 12:12 Moscow time on 12 August 1962, an hour and ten minutes after the liftoff (*Flight International*, 23 August 1962, p. 289) | the only period of this ship from a primary source, determined within its first revolution |
+| 88.3 min | 177.9 by 234.8 km, 64°57′ | TASS, as of 12:12 Moscow time on 12 August 1962, an hour and ten minutes after the liftoff (*Flight International*, 23 August 1962, p. 289) | the only period of this ship from a traceable source, determined within its first revolution: **flown** |
 | 88.33 min | (Vostok 3's orbit) | Russian Wikipedia's box for «Восток-4», which repeats Vostok 3's orbit | an error |
-| 88.39 min | 179.8 by 236.7 km | recorded in this flight's README when it was first written as printed beside Siddiqi's heights; no page read now carries it | of unknown origin: not used |
+| 88.39 min | 179.8 by 236.7 km | recorded in this flight's README when it was first written as printed beside Siddiqi's heights; no page read now carries it | origin unknown: not used |
 
 Siddiqi's heights and inclination (Table IB, p. 357; the Great Soviet Encyclopedia gives the same heights) with **TASS's
-88.3 min**, chosen before the flight was flown; Siddiqi gives no period. Read as mean elements with a nodal period;
-`orbit.radius` is not used. As on Vostok 3, the period and the heights are not one determination: the apogee as flown round
-is 225 km, 11.6 km under.
+88.3 min**, chosen before the flight was flown; Siddiqi gives no period. Under the source rule Vostok 3's record now keeps
+(its mission.md, "The orbit"), this one stays: the same communique that is a day on for Vostok 3 is seventy minutes after
+this ship's launch, its first determination, so it is the initial orbit's period and an input, not a check. Read as mean
+elements with a nodal period; `orbit.radius` is not used. As on Vostok 3 before, the period and the heights are not one
+determination (the apogee as flown round comes out under the published one).
 
-**What rests on Russian Wikipedia** (a published figure of unknown origin, each `Measure` saying so): the landing place,
-48°09′ N 71°51′ E (spacefacts.de, also unsourced, 48°10′ N 71°53′30″ E; the Great Soviet Encyclopedia: "the region of the
-settlement of Atasu, Karaganda oblast"), and through it the landing ground's height and the checks across and along the
-track.
+**The landing place** rests on Russian Wikipedia, 48°09′ N 71°51′ E, a published figure of unknown origin (spacefacts.de,
+also unsourced, 48°10′ N 71°53′30″ E). Its one traceable source, the Great Soviet Encyclopedia, gives only "the region of
+the settlement of Atasu, Karaganda oblast", and the printed point lies 61 km south of it: the latitude and longitude are
+`estimated`, the check across the track holds them to 60 km and the one along it to the 100 km set first, no tighter than
+that region allows. Through them rests the landing ground's height. A traceable source, when one turns up, replaces them.
 
 ## The braking burn
 
@@ -62,31 +65,39 @@ and so is `injection.at`; the burn's end is Vostok 1's 38.5 s (`estimated`) wher
 
 ## What the run gives
 
-Tolerances were set before anything was flown (the record's own commit flew nothing). On the type's ascent, the published
-orbit from where it left the ship, then the descent:
+Tolerances were set before anything was flown (the record's own commit flew nothing). The ascent flies the day's air
+over the pad (ERA5's column at 08:00 UTC, `aloft.ts`, and the 1976 standard above it); the coast the joined ship's
+free-molecule drag in the air of the days' Sun (world/thermosphere.ts), the descent the standard and calm. On the type's
+ascent, the published orbit from where it left the ship, then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 179.8 km ± 5 | −205 km | **miss** | the type's ascent falls short, as Vostok 1's, 2's and 3's (136 m/s slow) |
+| Perigee at the last cutoff | 179.8 km ± 5 | −246 km | **miss** | the type's ascent falls short, as Vostoks 1 to 3's (149 m/s slow) |
 | Apogee at the last cutoff | 236.7 km ± 10 | 180 km | **miss** | the same |
-| Inclination | 64.95° ± 0.05 | 64.99° | yes | on Vostok 1's aiming azimuth |
-| Period at the last cutoff | 88.3 min ± 15 s | 84.10 min | **miss** | the same as the perigee |
+| Inclination | 64.95° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
+| Period at the last cutoff | 88.3 min ± 15 s | 83.69 min | **miss** | the same as the perigee |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
-| Apogee as flown round | 236.7 km ± 5 | 213.2 km | **miss** (−23.5 km) | 88.3 min and the heights are not one determination (11.6 km of it, as on the coast), and where the type's ascent leaves the ship |
-| Landing across the track | 0 ± 25 km | +0.8 km | yes | |
-| Landing along the track | 0 ± 100 km | +1,070 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`) |
-| Descent module down | 09:46:33 ± 90 s | 09:52:41 | **miss** (+368 s) | down 5.8 minutes before him where the record has twelve, as Vostok 3's |
-| Popovich down | 09:59:00 ± 2 min | 09:58:30 | yes | not independent: the burn is derived from it |
+| Apogee as flown round | 236.7 km ± 5 | 213.2 km | **miss** (−23.5 km) | 88.3 min and the heights are not one determination (11.7 km of it, as on the coast), and where the type's ascent leaves the ship |
+| Landing across the track | 0 ± 60 km (the region of Atasu) | +36 km | yes | |
+| Landing along the track | 0 ± 100 km | +2,398 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`, `PERIOD_48`) |
+| Descent module down | 09:46:33 ± 90 s | 09:53:16 | **miss** (+403 s) | down 5.8 minutes before him where the record has twelve, as Vostok 3's |
+| Popovich down | 09:59:00 ± 2 min | 09:59:04 | yes | not independent: the burn is derived from it |
 
-The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −11.6 km), down 633 km long and 61 km
-across (misses).
+The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −11.7 km), down 2,344 km long and
+8 km across (across holds; along misses).
+
+**Before and after** (verify-s12's drag and air in orbit, and the day's air on the ascent): the landing along the track
+went from 1,070 km long to 2,398 km long (the coast's from 633 to 2,344), worse, by the drag in orbit now flown; across
+it holds as before (+36 km against +0.8, and now within 60 km where it was held to 25); the ascent at cutoff is 13 m/s
+slower in the day's air (perigee −246 km, was −205); the module 35 s later; Popovich 4 s late where he was 30 s early.
 
 ## Beside Vostok 3
 
 The record has the two ships about 6.5 km apart (TASS) or about 5 km (both pilots) early in Vostok 4's flight; the check
 (`NEAREST_VOSTOK_3`, set with this record) is 6.5 km ± 1.5, flown in tests/group.test.mjs from both records' coasts put in
-one frame by the clock. Flown, the nearest in Vostok 4's first two revolutions is **234 km**, 47 minutes into its orbit: a
-recorded miss (src/sim/misses.ts, Vostok 4's `group`). The records cannot hold kilometres: Vostok 3's place a day on is its
-published period carried round sixteen times, and a hundredth of a minute of it is 75 km; Vostok 4's place at its cutoff is
+one frame by the clock. Flown, the nearest in Vostok 4's first two revolutions is **1,768 km**, as its orbit begins: a recorded
+miss (src/sim/misses.ts, Vostok 4's `group`). On Vostok 3's untraced 88.33 min it was 234 km, 47 minutes in. The records
+cannot hold kilometres: Vostok 3's place a day on is its period carried round sixteen times, now the one its heights give
+(88.54 min), and a hundredth of a minute of it is 75 km; Vostok 4's place at its cutoff is
 the type's reckoning, 144 km a degree. That the second launch was timed to put it beside the first is the record; where each
 ship was to that precision is in nothing read. Nothing is changed to bring it in.

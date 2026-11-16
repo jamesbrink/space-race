@@ -53,12 +53,14 @@ What the record gives of the morning, and so what the launch site shows (the sit
 
 [mission.md](mission.md) has every input's argument and each check against the run. In short: the
 type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
-where the bunker waited for 687; the published orbit flown from where it left the ship goes round
-four days with the entry's load (8.6 g) and the pilot's landing time (09:50:19, not independent) in,
-and comes down **916 km short** of the record's landing: over 64 revolutions a second of period is
-470 km, no published period is good to better than a hundredth of a minute, and four days of decay in air whose
-day is not known are worth thousands of kilometres. The misses are in
-src/sim/misses.ts.
+where the bunker waited for 687. The orbit is begun from the heights Siddiqi and the Great Soviet
+Encyclopedia give, on the period they give over the mean Earth (88.54 min, derived: the 88.33 printed
+beside them has no traceable source). It goes round four days with the entry's load (9.0 g) in, its
+apogee as published, and comes down **4,501 km short** of the record's landing and 626 km across it,
+Nikolayev 4.8 minutes late: over 64 revolutions a second of period is 470 km, and no period is known to
+better than a hundredth of a minute. TASS's orbit a day on is held as a check at 12:12 on the 12th:
+its perigee holds, its apogee and period do not (8 km and 18 s), which says the orbit flown decays too
+little or began too high. The misses are in src/sim/misses.ts.
 
 ## What is simplified
 
@@ -161,15 +163,16 @@ The braking burn's minute was not found. Its length is his: 42 seconds, by ear.
 | Perigee | 180.7 km | 183 km | 176.7 km |
 | Apogee | 234.6 km | 251 km | 227.6 km |
 | Inclination | 64.98° | 65° | 64°59′ |
-| Period | 88.33 min | 88.5 min | 88.2 min |
+| Period | 88.33 min (origin unknown) | 88.5 min | 88.2 min |
 
 "As printed since" is Siddiqi's text (p. 356) and Table IB for the heights and inclination (the
 Great Soviet Encyclopedia gives the same heights), and the period Russian Wikipedia prints beside
-them, a figure of unknown origin (mission.md, "The orbit", has every period found and why the
-record flies this one); "announced on the day" is what Nikolayev read out
+them, a figure of unknown origin that is not flown (mission.md, "The orbit", has every period found); "announced on the day" is what Nikolayev read out
 on 21 August as the initial orbit, and what the film *Звёздные братья* draws on its globe (Апогей
 251 км, Перигей 183 км). **No OKB-1 report of this flight has been read.** `flight.ts` and
-`orbital.ts` take 180.7, 234.6, 64.98° and 88.33 (mission.md, "The orbit").
+`orbital.ts` take 180.7, 234.6 and 64.98°, and no published period: the period flown is the one those
+heights give over the mean Earth, 88.54 min (derived), beside the announced 88.5 and the American
+tracking's 88.5. TASS's figures of the 12th are held as a check of the orbit at 12:12 that day.
 
 ## Where the sources disagree
 

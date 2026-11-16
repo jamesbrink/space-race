@@ -39,25 +39,36 @@ than any other number in the flight. Every value of it found, and where each com
 
 | Period | With | From | What it is |
 | --- | --- | --- | --- |
-| 88.5 min | 183 by 251 km, 65° | Nikolayev at the press conference of 21 August 1962, "the initial duration of Vostok 3's circuit" (*Flight International*, 30 August 1962, p. 305); the film *Звёздные братья* draws the same heights | the orbit as announced, a primary source; its heights are not the determined ones below |
-| 88.2 min | 176.7 by 227.6 km, 64°59′ | TASS, as of 12:12 Moscow time on 12 August (*Flight*, 23 August 1962, p. 289) | a determination a day into the flight, after a day's decay |
-| 88.33 min | 180.7 by 234.6 km, 64.98° | Russian Wikipedia's box, which names no source | **a published figure of unknown origin**: not in Siddiqi (Table IB gives no period), the Great Soviet Encyclopedia (heights only), TASS or Kamanin |
+| 88.5 min | 183 by 251 km, 65° | Nikolayev at the press conference of 21 August 1962, "the initial duration of Vostok 3's circuit" (*Flight International*, 30 August 1962, p. 305); the film *Звёздные братья* draws the same heights | the orbit as announced; its heights are not the determined ones below |
+| 88.2 min | 176.7 by 227.6 km, 64°59′ | TASS, as of 12:12 Moscow time on 12 August (*Flight*, 23 August 1962, p. 289) | the orbit a day on, lower and faster by its decay: **a check at that instant**, not an input |
+| 88.33 min | 180.7 by 234.6 km, 64.98° | Russian Wikipedia's box, which names no source | **ru.wikipedia, origin unknown, not flown**: not in Siddiqi, the Great Soviet Encyclopedia, TASS or Kamanin |
 | 88.5 min | 166 by 218 km | NASA NSSDC's catalogue, through English Wikipedia (its own page refused the connection) | the American tracking, at an epoch given before the launch: not used |
+| 88.54 min | 180.7 by 234.6 km, 64.98° | derived: the nodal period of the mean orbit whose axis is the heights' mean over the mean Earth (world/meanelements.ts `meanOrbitOf`, no period) | **what is flown** |
 
-No primary source read gives the period with the determined heights, 180.7 by 234.6 km at 64.98° (Siddiqi, Table IB and
-p. 356, "nominal"; the Great Soviet Encyclopedia, «Восток (космический корабль)», the same). **The record flies 88.33 min**,
-chosen before the flight was flown: the one value printed with the heights it flies, standing as far under what those
-heights give over a ball of 6,371 km (88.5 by Kepler's law) as Vostok 2's documented 88.46 does under its own (88.6). Its
-`Measure` is `documented` (a published figure) and says it is of unknown origin. Flown, it and those heights are **not**
-one determination: the apogee as flown round is 225 km, 9.5 km under the published 234.6 (88.5 min would give 233.5 km).
-To fly another value now that the run has been seen would be to choose it by the outcome; the miss says what each would
-do instead (src/sim/misses.ts `PERIOD_64`). The orbit is read as mean elements with a nodal period
-(world/meanelements.ts); `orbit.radius` is then not used.
+**A change of source rule (November 2026).** A load-bearing number is `documented` only with a source that can be
+traced, and 88.33 min has none. So the orbit is begun from what a traceable source gives for the initial orbit, the
+heights and inclination (Siddiqi, *Challenge to Apollo*, Table IB and p. 356, "nominal"; the Great Soviet Encyclopedia,
+«Восток (космический корабль)», the same heights), and no published period: the record leaves `period` out, its axis is
+the heights' mean over `orbit.radius` (the mean Earth, estimated: no source says how a Soviet orbit of 1962 was reduced),
+and its period is that mean orbit's, **88.54 min, derived**. Three independent readings stand near it: the announced
+88.5 min, the American tracking's 88.5, and this one from the heights; one unsourced 88.33 stands apart. The record's
+checks of a period (at the last cutoff, and node to node of the orbit begun) went with 88.33: with no published period
+there is none to hold.
 
-**What rests on Russian Wikipedia** (a published figure of unknown origin, each `Measure` saying so): the period, 88.33 min;
-the landing place, 48°02′ N 75°45′ E (spacefacts.de, also unsourced, has 48°03′32″ N 75°41′02″ E, 5 km off; the Great
-Soviet Encyclopedia says only "the region of Karkaralinsk, Karaganda oblast"); and through the landing place, the landing
-ground's height and the checks across and along the track.
+**What each value does to the landing** (weighed on the coast in November 2026, before the drag in orbit was corrected):
+88.2 min lands 874 km long, 88.3 min 2,212 km short, 88.33 min 2,861 km short, 88.5 min 4,636 km short. Over 64
+revolutions a second a revolution is some 470 km along the track, and no period is known to better than a hundredth of
+a minute (300 km): **the landing cannot be held by any period published**, and stays a recorded miss with that
+sensitivity whatever it comes to (src/sim/misses.ts). How fast the orbit decayed is the other half: more decay over four
+days shortens the period and brings the landing forward along the track. That is an expectation to be tested by the
+TASS check at 12:12 on 12 August, not a target, and nothing is tuned to it.
+
+**The landing place** rests on Russian Wikipedia, 48°02′ N 75°45′ E, a published figure of unknown origin (spacefacts.de,
+also unsourced, has 48°03′32″ N 75°41′02″ E, 5 km off). Its one traceable source, the Great Soviet Encyclopedia, gives
+only "the region of Karkaralinsk, Karaganda oblast", and the printed point lies 154 km south of the town: the latitude and
+longitude are `estimated`, and the checks across and along the track hold them to 150 km either way, no tighter than that
+region allows. Through them rest the landing ground's height. If a traceable source turns up (the FAI file, a Soviet atlas
+of the landings), it replaces them.
 
 ## The braking burn
 
@@ -97,42 +108,43 @@ in each moves.
 
 ## What the run gives
 
-Tolerances were set before anything was flown (the record's own commit flew nothing). The ascent flies the day's air over
-the pad (ERA5's column at the hour, `aloft.ts`, and the 1976 standard above it; the coast and the descent the standard and
-calm). On the type's ascent, then the
-published orbit from where it left the spacecraft (the handover the scene shows), then the descent:
+Tolerances were set before anything was flown (the record's own commit flew nothing; the TASS check of 12 August with
+the source rule of November 2026, before it was flown). The ascent flies the day's air over the pad (ERA5's column at the
+hour, `aloft.ts`, and the 1976 standard above it); the coast the joined ship's free-molecule drag in the air of the days'
+Sun (world/thermosphere.ts), the descent the standard and calm. On the type's ascent, then the published orbit from where
+it left the spacecraft (the handover the scene shows), then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Third stage cut off | 687 s ± 3 | 676.35 s | **miss** (−10.65 s) | cut on Vostok 1's integrator setting, as Vostok 1's was: this flight's setting or start differed |
-| Greatest load going up | 6 to 7 g (by feel) ± 1 | 4.71 g | **miss** (−1.78 g) | the type's most, on the first stage; Titov felt no more than five |
+| Greatest load going up | 6 to 7 g (by feel) ± 1 | 4.71 g | **miss** (−1.79 g) | the type's most, on the first stage; Titov felt no more than five |
 | Perigee at the last cutoff | 180.7 km ± 5 | −265 km | **miss** | the type's ascent falls short, as Vostok 1's and 2's (155 m/s slow) |
 | Apogee at the last cutoff | 234.6 km ± 10 | 180 km | **miss** | the same |
 | Inclination | 64.98° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
-| Period at the last cutoff | 88.33 min ± 15 s | 83.51 min | **miss** | the same as the perigee |
-| Period, node to node, of the orbit begun | 88.33 min ± 2 s | 88.33 | yes | not independent: the orbit is read with it |
-| Apogee as flown round | 234.6 km ± 5 | 219.6 km | **miss** (−15.0 km) | 88.33 min and the heights are not one determination; and where the type's ascent leaves the ship |
-| Greatest load in the entry | 8 to 9 g ± 2 | 8.64 g | yes | |
-| Landing across the track | 0 ± 25 km | −92 km | **miss** | the burn in the wrong place on the orbit (below) |
-| Landing along the track | 0 ± 100 km | −916 km | **miss** | the period over 64 revolutions and four days of decay (below) |
-| Descent module down | 09:39:59 ± 60 s | 09:44:37 | **miss** (+279 s) | it comes down 5.7 minutes before him where the record has twelve |
-| Nikolayev down | 09:52 ± 2 min | 09:50:19 | yes | not independent: the burn is derived from it |
+| Perigee at 12:12 on 12 August (TASS) | 176.7 km ± 5 | 175.8 km | yes | |
+| Apogee at 12:12 on 12 August (TASS) | 227.6 km ± 5 | 235.6 km | **miss** (+8.0 km) | the orbit flown decays too little in a day, or began lower |
+| Period at 12:12 on 12 August (TASS) | 88.2 min ± 6 s | 88.50 min | **miss** (+18 s) | the same: the first test of the decay in orbit |
+| Apogee as flown round | 234.6 km ± 5 | 239.5 km | yes | |
+| Greatest load in the entry | 8 to 9 g ± 2 | 9.03 g | yes | |
+| Landing across the track | 0 ± 150 km (the region of Karkaralinsk) | −626 km | **miss** | the burn in the wrong place on the orbit (below) |
+| Landing along the track | 0 ± 150 km | −4,501 km | **miss** | the period over 64 revolutions and four days of decay (below) |
+| Descent module down | 09:39:59 ± 60 s | 09:51:09 | **miss** (+670 s) | it comes down 5.7 minutes before him where the record has twelve, and he is late |
+| Nikolayev down | 09:52 ± 2 min | 09:56:51 | **miss** (+291 s) | the burn, timed from his landing, comes over 63° S, and the way down from there is longer than Vostok 1's |
 
-The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −9.7 km), the entry's 8.59 g
-(holds), and down 1,083 km short and 151 km across (misses). In the mean standard air it was down 1,576 km long and 16 km
-across, and on the ball's continuum drag in orbit, until November 2026, 2,853 km short and 324 km across: four days of the
-orbit's decay are worth thousands of kilometres along the track.
+The coast from the estimated injection (tests/orbital.test.mjs): TASS's perigee and apogee at 12:12 on the 12th hold
+(179.7 and 231.9 km), its period misses by 18 s; apogee as flown round 235.6 km (holds), the entry's 8.95 g (holds),
+and down 4,664 km short and 785 km across (misses).
 
-**Over 64 revolutions the period is everything.** Where the ship is when the burn comes is the published period carried
-round 64 times, and a second a revolution is some 470 km along the track by the landing; the period is given to a hundredth
-of a minute, 300 km. Flown on 88.33 min, on the ball's continuum drag in orbit, the
-burn came over 30° S and the ship was down 2,853 km short; on TASS's 88.2 min of the next day it would have been 874 km long,
-on 88.3 min 2,212 km short, on the announced 88.5 min 4,636 km short (weighed on the coast, November 2026, before the
-joined ship's free-molecule drag: with it the record's 88.33 min comes down 1,083 km short in the day's air). No published
-period holds the landing over four days. The air of August 1962 is flown as Jacchia's 1971 models give it from the days'
-10.7 cm flux and Kp (world/thermosphere.ts: near the solar minimum, 0.55 to 0.9 of the 1976 standard's at 200 km); no
-measure of that summer's air at these heights was read (King-Hele and Quinn 1965 is the one to read). Nothing is changed to bring it in (src/sim/misses.ts,
-`PERIOD_64`).
+**Before and after the source rule** (the same drag and air): on the untraced 88.33 min the ship came down 1,083 km short
+and 151 km across, its apogee as flown round 9.7 km under the published, and Nikolayev 102 s early; on the heights' own
+88.54 min it comes down 4,664 km short and 785 km across, its apogee within 1 km, and he is 4.8 minutes late. The along-
+track figure got worse and the apogee better; neither is chosen by: the landing over 64 revolutions cannot be held by
+any period known to a hundredth of a minute, and stays a recorded miss with its sensitivity (src/sim/misses.ts,
+`PERIOD_64`). TASS's period a day on, 18 s shorter than the one flown there, says the real orbit decayed faster or began
+lower than flown: more decay would bring the landing forward along the track. That is to be tested when the drag in
+orbit is next corrected, and nothing is tuned to it. The air of August 1962 is flown as Jacchia's 1971 models give it
+from the days' 10.7 cm flux and Kp; no measure of that summer's air at these heights was read (King-Hele and Quinn 1965
+is the one to read).
 
 ## Four days in orbit
 
