@@ -357,7 +357,7 @@ export class Cockpit extends Deck {
     const t = this.clock.t;
     if (t < 0) this.clock.seek(0); // there is no countdown to fly
     const ahead = t - state.t;
-    const begun = state.ignited || state.abortAt !== null;
+    const begun = state.ignited || state.abortAt !== null || state.towerAt !== null;
     if (ahead <= 0 || !begun || state.landing) {
       // put back, or waiting on the pad, or down: show the moment the clock is at, as it was flown
       if (!begun && t > 0) this.clock.seek(0);
@@ -515,6 +515,13 @@ export class Cockpit extends Deck {
       const event = eventOf(this.roles, what as Step);
       if (!event) return;
       this.asks(event.id);
+      // (the tower let go on the pad unlit: its rockets start the clock, as an abort's does)
+      if (what === 'tower' && !s.ignited && s.abortAt === null) {
+        this.state = this.tick(s, this.pilot());
+        this.clock.setRate(1);
+        this.clock.play(true);
+        return;
+      }
     }
     if (!this.clock.running && s.ignited) this.clock.play(true);
   }
@@ -603,10 +610,19 @@ export class Cockpit extends Deck {
         this.hatchAt === Infinity &&
         this.clock.t >= s.t - TICK
       );
+    // (the tower, on the pad as in flight: sim/vehicle.ts lets it go wherever the stack stands)
+    if (what === 'tower')
+      return (
+        this.on &&
+        !!s &&
+        !s.landing &&
+        this.clock.t >= s.t - TICK &&
+        Boolean(rolesOf(this.flight)?.towerJoint?.at) &&
+        !hasLeft(s.craft, this.roles.tower)
+      );
     if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
     const alone = hasLeft(s.craft, this.roles.booster.id);
     if (what === 'cutoff') return s.ignited && !s.cutoff;
-    if (what === 'tower') return Boolean(rolesOf(this.flight)?.towerJoint?.at) && !hasLeft(s.craft, this.roles.tower);
     if (what === 'separate') return !alone;
     if (what === 'retro') return alone && s.retroAt === null && !hasLeft(s.craft, this.roles.pack);
     if (what === 'retropack') return alone && !hasLeft(s.craft, this.roles.pack);

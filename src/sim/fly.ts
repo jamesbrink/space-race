@@ -538,20 +538,31 @@ export function fly(
  * by the plan's programme (the attitude held from liftoff), as the gyro platform holds it. Both directions are fixed in
  * inertial space at liftoff.
  */
-export function axisOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
+export function axisOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number, from?: number) => Vec3 {
   const { programme } = ballisticOf(plan);
   return programmeAxis(programme.programme, programme.azimuth.value, site, frame);
 }
 
-/** A tilt programme's axis (`Hold.programme`): degrees from the launch vertical toward `azimuth` (degrees true) against seconds. */
-export function programmeAxis(tilt: Curve, azimuth: number, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
+/**
+ * A tilt programme's axis (`Hold.programme`): degrees from the launch vertical toward `azimuth` (degrees true) against
+ * seconds from the lighting. `from`: when it lit, s on the flight's clock, where the vertical it is held to was taken (the
+ * clock's start, unless something began it earlier: a tower let go on the pad, sim/vehicle.ts).
+ */
+export function programmeAxis(
+  tilt: Curve,
+  azimuth: number,
+  site: Geodetic,
+  frame: EarthFrame = LIFTOFF,
+): (t: number, from?: number) => Vec3 {
   const axes = enuAxes(site);
   const [e, n] = fromHorizontal(azimuth * DEG, 0);
+  const level = unit(add(scale(axes.east, e), scale(axes.north, n)));
   const up0 = frame.toInertial(axes.up, 0);
-  const downrange0 = frame.toInertial(unit(add(scale(axes.east, e), scale(axes.north, n))), 0);
-  return (t) => {
+  const downrange0 = frame.toInertial(level, 0);
+  return (t, from = 0) => {
     const angle = along(tilt, t) * DEG;
-    return add(scale(up0, Math.cos(angle)), scale(downrange0, Math.sin(angle)));
+    const [up, downrange] = from === 0 ? [up0, downrange0] : [frame.toInertial(axes.up, from), frame.toInertial(level, from)];
+    return add(scale(up, Math.cos(angle)), scale(downrange, Math.sin(angle)));
   };
 }
 

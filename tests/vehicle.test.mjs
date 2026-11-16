@@ -20,6 +20,7 @@ import { skyOf } from '../src/sim/air.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
+import { shedder } from '../src/sim/shed.ts';
 import { add, angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 
 const near = (got, want, tolerance, what) =>
@@ -1036,6 +1037,41 @@ test('a tower let go early is not propellant burned: the engine runs as long', (
   const [kept, early] = [runOut(Infinity), runOut(10)];
   assert.ok(hasLeft(early.craft, B.tower) && !hasLeft(kept.craft, B.tower) && early.cutoff && kept.cutoff && !early.broke && !kept.broke);
   near(early.t, kept.t, TICK, 'when the tanks run dry, tower or no tower');
+});
+
+test('the tower let go on the pad: it leaves on both its rockets, the stack stands, and lit later flies the record from its lighting', () => {
+  // MR-1's tower went from its pad on 21 November 1960 with the stack standing under it: the clamp ring let go, both
+  // rockets fired (Hammack and Heberlig, p. 15: "both the escape and pylon jettison rockets fired to remove the tower")
+  const v = vehicle(flight.plan, SITE, SEA);
+  let s = v.tick(v.start(), { ...HANDS_OFF, do: [{ separate: R.towerJoint.id }] });
+  assert.ok(hasLeft(s.craft, B.tower) && s.held && !s.ignited, 'the tower is gone and the stack still stands, unlit');
+  const [tower] = s.released;
+  assert.equal(tower?.on, R.towerJoint.id, 'and the tower is let go as a body of its own');
+  near(v.start().mass - s.mass, tower.mass, 1e-6, 'the stack lighter by the tower');
+  // its rockets start the clock, as an abort's do: the stack stands on through it, and the tower climbs away from it
+  s = until(v, s, () => HANDS_OFF, 5);
+  near(s.t, 5, TICK, 'the clock runs with nothing lit');
+  assert.ok(s.held && !s.ignited, 'standing');
+  const def = flight.plan.craft[0].sheds.find((d) => d.on === R.towerJoint.id);
+  const body = shedder(flight.plan, SITE, SEA, def, tower);
+  let b = body.start();
+  for (let i = 0; i < 5 / TICK; i++) b = body.tick(b);
+  const up = dot(sub(b.r, s.r), unit(s.r));
+  assert.ok(up > 200, `five seconds on the tower is ${up.toFixed(0)} m over the stack`);
+  // lit now, the record's pilot flies the programme and sequence from the lighting: as a stack whose tower went as it lit
+  const record = autopilot(v);
+  const later = flyLive(v, (x) =>
+    x.t < 5 - TICK / 2 ? { ...HANDS_OFF, do: x.t === 0 ? [{ separate: R.towerJoint.id }] : [] } : record(x),
+  );
+  const atOnce = flyLive(v, (x) => ({ ...record(x), do: x.t === 0 ? [{ separate: R.towerJoint.id }] : [] }));
+  assert.ok(later.state.ignited && atOnce.state.ignited);
+  // (its programme held to the vertical where it lit: held to the clock's start instead, five seconds of the Earth's turning
+  // put it 91 m higher and 201 m shorter)
+  near(later.results.apogee, atOnce.results.apogee, 1, 'the same apogee, lit five seconds after the tower went');
+  near(later.results.range, atOnce.results.range, 2, 'and the same range');
+  console.log(
+    `# the tower off the pad: ${up.toFixed(0)} m up in 5 s; lit 5 s later the flight tops at ${(later.results.apogee / 1000).toFixed(2)} km (${(atOnce.results.apogee / 1000).toFixed(2)} lit with it)`,
+  );
 });
 
 test('a programme that never tilts still has a launch azimuth: no attitude is lost', () => {

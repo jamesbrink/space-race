@@ -126,15 +126,24 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
     ),
   );
   const timed = (ev: EventDef) => ev.automatic && ev.when.length > 0 && ev.when.every((w) => 'time' in w) && !works(ev);
+  /**
+   * The record's clock, which is from the engine's lighting: a stack whose clock began before it (its tower let go on the
+   * pad: sim/vehicle.ts) flies its programme and its sequence from the lighting all the same.
+   */
+  const litAt = (s: VehicleState): number => {
+    const lit = s.craft.engines[lever]!.lit;
+    return Number.isFinite(lit) ? lit : 0;
+  };
+  const since = (s: VehicleState): number => s.t - litAt(s);
 
   return (s: VehicleState): Controls => {
     const c: Controls = { ...HANDS_OFF, throttle: s.ignited && !s.cutoff ? 1 : 0 };
     if (want.launch && !s.ignited) c.throttle = 1;
     // (after an abort the record's times are for a flight that is no longer being flown: the spacecraft's own sequence has it)
     if (want.sequence && s.abortAt === null) {
-      if (late(cutAt, s.t)) c.throttle = 0;
+      if (late(cutAt, since(s))) c.throttle = 0;
       // every one due and not yet done, asked again each tick until it is
-      const now = due(plan, s.craft, { t: s.t, height: 0, falling: false, speed: 0, apparent: () => 0, g: 0, held: s.held }, timed);
+      const now = due(plan, s.craft, { t: since(s), height: 0, falling: false, speed: 0, apparent: () => 0, g: 0, held: s.held }, timed);
       if (now.length) c.events = now.map((e) => e.id);
     }
     if (s.held || s.landing) return c;
@@ -149,10 +158,10 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       const { left: port, downrange } = vehicle.launch;
       const leaned = (at: number): Vec3 =>
         trim
-          ? turn(aboutAxis(scale(downrange, -1), trim.yaw), turn(aboutAxis(port, trim.pitch), vehicle.programme(at)))
-          : vehicle.programme(at);
-      const axis = leaned(s.t);
-      const turning = scale(cross(axis, leaned(s.t + 0.1)), 1 / 0.1);
+          ? turn(aboutAxis(scale(downrange, -1), trim.yaw), turn(aboutAxis(port, trim.pitch), vehicle.programme(at, litAt(s))))
+          : vehicle.programme(at, litAt(s));
+      const axis = leaned(since(s));
+      const turning = scale(cross(axis, leaned(since(s) + 0.1)), 1 / 0.1);
       const left = unturn(s.q, vehicle.launch.left);
       error = [Math.atan2(left[2], left[1]), ...turnTo(unturn(s.q, axis)).slice(1)] as unknown as Vec3;
       rate = sub(s.w, unturn(s.q, turning));

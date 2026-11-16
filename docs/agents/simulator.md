@@ -541,7 +541,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
 | --- | --- | --- | --- | --- |
 | Separate under thrust (100 s) | in flight | the Redstone's engine cut by it and the capsule off at once | the booster's push holds the capsule on its adapter | rides on to the cutoff, 141.8 s, and parts then (`pressed`) |
-| Tower let go on the pad | not offered, ignored | | MR-1's escape rocket fired on its pad (21 November 1960) | not modelled: still not offered |
+| Tower let go on the pad | any time | not offered, ignored | MR-1's left its pad on both rockets (21 November 1960; Hammack and Heberlig, p. 15: both fire at the clamp ring's release) | it goes on both, 1.5 km up in 5 s, and the stack stands; the rockets start the clock as an abort's do, and lit later the programme and sequence run from the lighting, the programme held to the vertical there (autopilot.ts `since`) |
 | Tower let go at max q | in flight | leaves; the flight goes on | as that | the same |
 | Retrofire, retropack before separation | not offered, ignored | | into the adapter; interlocks not read | not modelled |
 | Retrofire in the air | once alone | fires; the physics | as that | the same |
@@ -549,8 +549,8 @@ Before is what it did ahead of `sim/staging.ts`.
 | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
 
-Where the two kinds still differ for no physical reason: the ballistic deck offers nothing on the pad but ignition
-(the tower could have gone), and the orbital deck has no abort; both are left as they were and said here.
+Where the two kinds still differ for no physical reason: the orbital deck has no abort; it is left as it was and said
+here.
 
 ## The deck
 

@@ -269,8 +269,8 @@ export interface Vehicle {
   readonly frame: EarthFrame;
   /** The launch axes in the frame that does not turn: up, level along the azimuth, and level to its left. */
   readonly launch: { up: Vec3; downrange: Vec3; left: Vec3 };
-  /** The tilt programme's axis at `t`, in the same frame (fly.ts: axisOf). */
-  programme(t: number): Vec3;
+  /** The tilt programme's axis `t` from the lighting, in the same frame, held to the vertical at `from` (fly.ts: axisOf). */
+  programme(t: number, from?: number): Vec3;
   /** Standing on the pad, engine off. */
   start(): VehicleState;
   /** One tick. */
@@ -761,10 +761,11 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     ) {
       s = pullOff(s);
     }
-    if (s.held) return s;
-    // (the escape rocket takes the tower with it only once it is out: until then the tower is what is pulling)
+    // (the escape rocket takes the tower with it only once it is out: until then the tower is what is pulling. On the pad
+    // too: the clamp ring lets go and both its rockets fire, as MR-1's did on its pad, and the stack stands on without it)
     if (ask.separate(towerJoint) && !hasLeft(s.craft, roles.tower) && (s.abortAt === null || s.t >= s.abortAt + escapeOver))
       s = dropTower(s);
+    if (s.held) return s;
     // let go while the booster still pushes, the spacecraft stays pressed on its adapter and rides it until the push ends
     if (ask.separate(separation) && !hasLeft(s.craft, roles.booster.id) && s.loose === null) {
       s.loose = s.t;
@@ -1041,7 +1042,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const advance = (state: VehicleState, controls: Controls | Pilot): VehicleState => {
     if (state.landing) return state;
     let s = command(state, typeof controls === 'function' ? controls(state) : controls);
-    if (!Number.isFinite(engineOf(s).lit) && s.abortAt === null) return s; // the clock starts with the engine, or with an abort before it
+    if (!Number.isFinite(engineOf(s).lit) && s.abortAt === null && s.towerAt === null) return s; // the clock starts with the engine, or with an abort or the tower's rockets before it
     const h = TICK;
     const ticks = s.ticks + 1;
     const t = ticks * h;
