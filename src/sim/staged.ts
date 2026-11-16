@@ -47,14 +47,14 @@ import {
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { along, MEAN_RADIUS } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
-import { type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitalFlight, type OrbitFlown } from './orbital.ts';
+import { downOf } from './descent.ts';
+import { type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitalFlight, type OrbitFlown, shipOf } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
 import { integrate, sensed } from './apparent.ts';
 import type { Action, BodyDef, EngineDef, EventDef, FlightPlan, TankDef } from './plan.ts';
-import { planOfOrbital } from './planof.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -298,6 +298,14 @@ export function sequenceOf(plan: FlightPlan) {
       };
     });
   const drop = (id: string): number => timeOf(doing((a) => 'separate' in a && a.separate === id)) ?? Infinity;
+  // what leaves that is no stage and no spacecraft (a fairing): a body that carries no engine and has no air of its own,
+  // let go by a joint of its own
+  const drops = c.bodies
+    .filter((b) => !b.aero && !c.engines.some((e) => e.body === b.id))
+    .flatMap((body) => {
+      const joint = c.joints.find((j) => j.gone.length === 1 && j.gone[0] === body.id);
+      return joint ? [{ body, joint: joint.id, at: drop(joint.id) }] : [];
+    });
   const instants = [
     ...plan.events.flatMap((e) => (e.record && e.at ? [{ id: e.record.id, at: e.at.value }] : [])),
     ...(plan.record?.marks ?? []).map((m) => ({ id: m.id, at: m.at.value })),
@@ -308,7 +316,7 @@ export function sequenceOf(plan: FlightPlan) {
     if (!x) throw new Error(`no event '${id}' in the record`);
     return x.at;
   };
-  return { stages, drop, instants, instant };
+  return { stages, drop, drops, instants, instant };
 }
 
 export type Mode = 'vertical' | 'turn' | 'tangent';
@@ -402,10 +410,7 @@ export function stackOf(plan: FlightPlan) {
  * Fly the ascent with the law's unknowns as given. `site` and `frame` as flyOrbit's; `every`: how often a sample is
  * kept, s. Ends at the spacecraft's separation from the last stage.
  */
-export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel: number, x: Solved, every = 0.5): Ascended {
-  const a = o.ascent;
-  if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
-  const fp = planOfOrbital(o);
+export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, x: Solved, every = 0.5): Ascended {
   const stages = stagesOf(fp);
   const liftoff = fp.craft[0]!.mass.value;
   const g = guidanceOf(fp);
@@ -434,7 +439,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     return integrate(pushAt, plan[i]!.from, plan[i]!.to, 0.01, cutAt[i]!).at;
   };
   const stageSep = seq.stages.map((k) => k.sep);
-  const drops = a.drops.map((d) => ({ at: seq.drop(d.id), mass: d.mass.value }));
+  const drops = seq.drops.map((d) => ({ at: d.at, mass: d.body.count * d.body.mass.value }));
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own
   const droppedBy = (t: number) => {
     let m = 0;
@@ -616,13 +621,14 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
  * pitch-over of eight degrees and a tangent falling a thousandth a second. Throws if it does not converge:
  * a law that cannot reach its target is a finding, not something to paper over.
  */
-export function steer(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
-  const g = o.ascent!.guidance;
-  const want = [o.orbit.radius.value + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
-  if (g.azimuth) return steer2(o, site, frame, seaLevel, want);
+export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
+  const g = guidanceOf(plan);
+  const radius = plan.record!.orbit!.radius.value;
+  const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
+  if (g.azimuth) return steer2(plan, site, frame, seaLevel, want);
   const miss = (x: Solved): number[] => {
-    const s = ascend(o, site, frame, seaLevel, x, Infinity).summary;
-    return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
+    const s = ascend(plan, site, frame, seaLevel, x, Infinity).summary;
+    return [(s.cutoffAltitude + radius - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
   };
   const vec = (x: Solved) => [x.plane, x.kick, x.rate];
   const of = (v: number[]): Solved => ({ plane: v[0]!, kick: v[1]!, rate: v[2]! });
@@ -650,10 +656,11 @@ export function steer(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLe
 }
 
 /** The law with its plane given by the aiming azimuth: two unknowns, the pitch-over and the tangent's rate, for height and climb. */
-function steer2(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel: number, want: number[]): Solved {
+function steer2(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, want: number[]): Solved {
+  const radius = plan.record!.orbit!.radius.value;
   const miss = (v: number[]): number[] => {
-    const s = ascend(o, site, frame, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
-    return [(s.cutoffAltitude + o.orbit.radius.value - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
+    const s = ascend(plan, site, frame, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
+    return [(s.cutoffAltitude + radius - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
   };
   let v = [8 * DEG, 1e-3];
   const eps = [1e-6, 1e-9];
@@ -685,7 +692,7 @@ function solve3(A: number[][], b: number[]): number[] {
 
 /** Fly the whole flight: the ascent on its solved law, then the coast from the spacecraft's separation (orbital.ts: flyOrbit). */
 export function flyWhole(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   site: Geodetic,
   frame: EarthFrame,
   seaLevel = 0,
@@ -693,21 +700,28 @@ export function flyWhole(
   every = 10,
   handover: 'flown' | 'published' = 'flown',
 ): FlownWhole {
-  const x = solved ?? steer(o, site, frame, seaLevel);
-  const ascent = ascend(o, site, frame, seaLevel, x);
-  const coast = flyOrbit(o, site, frame, seaLevel, every, handover === 'published' ? published(o, ascent.separation) : ascent.separation);
+  const x = solved ?? steer(plan, site, frame, seaLevel);
+  const ascent = ascend(plan, site, frame, seaLevel, x);
+  const coast = flyOrbit(
+    plan,
+    site,
+    frame,
+    seaLevel,
+    every,
+    handover === 'published' ? published(plan, ascent.separation) : ascent.separation,
+  );
   const end = coast.samples[coast.samples.length - 1]!;
-  const down = o.descent && end.phase === 'down' ? flyDown(planOfOrbital(o), frame, seaLevel, end) : null;
+  const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
   return { ascent, coast, down };
 }
 
 /**
- * The coast and the descent flown again from `from` (where the spacecraft parted, on the run on show) on `o` (the record as
- * the flight now has it: its burn, its modules' parting) with what a hand gave in the descent (orbital.ts `DescentHands`):
+ * The coast and the descent flown again from `from` (where the spacecraft parted, on the run on show) on `plan` (as the
+ * flight now has it: its burn, its modules' parting) with what a hand gave in the descent (orbital.ts `DescentHands`):
  * the flight deck's, after each event a hand gives (orbitdeck.ts). `ascent` is kept as it was.
  */
 export function flyOn(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   site: Geodetic,
   frame: EarthFrame,
   seaLevel: number,
@@ -716,9 +730,9 @@ export function flyOn(
   hands?: DescentHands,
   every = 1,
 ): FlownWhole {
-  const coast = flyOrbit(o, site, frame, seaLevel, every, from, hands);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands);
   const end = coast.samples[coast.samples.length - 1]!;
-  return { ascent, coast, down: o.descent && end.phase === 'down' ? flyDown(planOfOrbital(o), frame, seaLevel, end, hands) : null };
+  return { ascent, coast, down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null };
 }
 
 /**
@@ -728,8 +742,9 @@ export function flyOn(
  * the place and instant the ascent gives instead of the estimated `injection`. What the scene and the deck show
  * (viewer/ascent.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
  */
-export function published(o: OrbitalFlight, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
-  const a = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
+export function published(plan: FlightPlan, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
+  const o = plan.record!.orbit!;
+  const a = o.radius.value + (o.perigee.value + o.apogee.value) / 2;
   const speed = Math.sqrt(EARTH.gm.value * (2 / length(at.r) - 1 / a));
   return { t: at.t, r: at.r, v: scale(unit(at.v), speed) };
 }
@@ -748,7 +763,7 @@ export function published(o: OrbitalFlight, at: { t: number; r: Vec3; v: Vec3 })
  * motion through the air. The tumbles of the record (2 to 3 deg/s before orientation, 6 or 30 after the burn) are not.
  */
 export function recordSamples(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   whole: FlownWhole,
   frame: EarthFrame,
   centre: number,
@@ -800,10 +815,14 @@ export function recordSamples(
   const parted = out[out.length - 1]!;
   const offset = sub(parted.centre, parted.r); // (the coast flies the point the ascent left, drawn as the centre of mass)
   const held = parted.attitude;
-  const oriented = o.events.find((e) => e.id === 'orientation')?.at.value ?? o.retro.on.value - 60;
-  const burnAt = whole.coast.samples.find((x) => x.t >= o.retro.on.value) ?? whole.coast.samples[0]!;
-  const aimed = lie(scale(o.retro.aim.along === 'sun' ? unit(sub(sunAt(o.retro.on.value), burnAt.r)) : unit(burnAt.v), o.retro.aim.sense));
-  const parts = o.entry.separation.value;
+  const ship = shipOf(plan);
+  // (turned to the burn's line from where the plan turns it to its aim, where that comes before the burn; else a minute before)
+  const turned = plan.events.find((e) => e.automatic && e.do.some((a) => 'attitude' in a && a.attitude === ship.aimId));
+  const turnedAt = turned?.when.find((w) => 'time' in w);
+  const oriented = turnedAt && 'time' in turnedAt && turnedAt.time < ship.on ? turnedAt.time : ship.on - 60;
+  const burnAt = whole.coast.samples.find((x) => x.t >= ship.on) ?? whole.coast.samples[0]!;
+  const aimed = lie(scale(ship.aim.aim === 'sun' ? unit(sub(sunAt(ship.on), burnAt.r)) : unit(burnAt.v), ship.aim.sense));
+  const parts = ship.parted;
   const toward = (from: Quat, to: Quat, k: number): Quat => {
     const sign = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3] < 0 ? -1 : 1;
     return normalizeQ([0, 1, 2, 3].map((i) => from[i]! + (sign * to[i]! - from[i]!) * k) as unknown as Quat);
@@ -812,7 +831,7 @@ export function recordSamples(
   const track = whole.down ? (Object.values(whole.down.tracks)[0] ?? []) : [];
   // (lowered by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
   const lift = track.length ? dot(offset, unit(track[track.length - 1]!.r)) : 0;
-  const drawn = settled(track, (o.descent?.ground.value ?? 0) + lift);
+  const drawn = settled(track, (downOf(plan)?.ground ?? 0) + lift);
   const descent = track.slice(1).map((s, i) => ({ ...s, drawn: drawn[i + 1]!.r }));
   const ending = [
     ...whole.coast.samples
@@ -823,7 +842,7 @@ export function recordSamples(
   // the record's own periods by hand (`manual.periods`): turned over a minute to the orbital orientation the Vzor gives
   // (the long axis back along the motion, the braking engine's push against it), held so as the ship goes round, and left
   // there when the period ends; the slow turning that followed is not drawn
-  const periods = o.manual?.periods ?? [];
+  const periods = plan.record?.manual?.periods ?? [];
   let rest = held;
   let left: Quat | null = null;
   for (const s of ending) {
@@ -836,7 +855,7 @@ export function recordSamples(
     }
     if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
-    else if (s.t <= o.retro.off.value) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / 60));
+    else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / 60));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
@@ -855,7 +874,7 @@ export function recordSamples(
       g: s.g,
       q: s.q,
       mach: s.mach,
-      mass: s.t >= parts ? o.entry.mass.value : o.mass.value,
+      mass: s.t >= parts ? ship.entry.mass : ship.mass,
       latitude: here.latitude,
       longitude: here.longitude,
       r: sub(at, scale(axis, centre)),
@@ -863,7 +882,7 @@ export function recordSamples(
       axis,
       attitude: q,
       alpha: 0,
-      burning: s.t >= o.retro.on.value && s.t < o.retro.off.value ? [{ name: 'retro', thrust: 0 }] : [],
+      burning: s.t >= ship.on && s.t < ship.off ? [{ name: 'retro', thrust: 0 }] : [],
       centre: at,
     });
   }
@@ -950,8 +969,8 @@ export interface Held {
   got: number;
 }
 
-/** Every check an orbital record sets, against a whole flight flown (`flyWhole`): for the Flown panel and the debrief. */
-export function held(o: OrbitalFlight, whole: FlownWhole): Held[] {
+/** Every check an orbital plan sets, against a whole flight flown (`flyWhole`): for the Flown panel and the debrief. */
+export function held(plan: FlightPlan, whole: FlownWhole): Held[] {
   const ascent = (id: string): number => {
     const [event, field] = id.split('.');
     if (!field) return (whole.ascent.summary as unknown as Record<string, number>)[id] ?? Number.NaN;
@@ -970,19 +989,23 @@ export function held(o: OrbitalFlight, whole: FlownWhole): Held[] {
     tolerance: c.tolerance,
     got,
   });
-  return [
-    ...(o.ascent?.checks ?? []).map((c) => of(c, ascent(c.id))),
-    ...o.checks.map((c) => of(c, whole.coast.results[c.id])),
-    ...(o.descent?.checks ?? []).map((c) => of(c, down(c.id))),
-  ];
+  const results = whole.coast.results as unknown as Record<string, number>;
+  return plan.checks.flatMap((c) =>
+    c.of === 'ascent'
+      ? [of(c, ascent(c.id))]
+      : c.of === 'orbit'
+        ? [of(c, results[c.id] ?? Number.NaN)]
+        : c.of === 'descent'
+          ? [of(c, down(c.id))]
+          : [],
+  );
 }
 
 /**
  * The engines lit at liftoff as one, for what the ear and the eye are given of them (viewer/effects.ts, sound/): their
  * summed sea-level thrust, N; the exhaust speed of that thrust over their summed flow, m/s; and their summed exit area, m^2.
  */
-export function liftoffEngine(o: OrbitalFlight): { thrust: number; exhaustSpeed: number; exitArea: number } {
-  const plan = planOfOrbital(o);
+export function liftoffEngine(plan: FlightPlan): { thrust: number; exhaustSpeed: number; exitArea: number } {
   const seq = sequenceOf(plan);
   const lit = stagesOf(plan).filter((s, i) => seq.stages[i]!.from <= 0 && s.engine.thrust.seaLevel);
   const thrust = lit.reduce((sum, s) => sum + s.count * s.engine.thrust.seaLevel!.value, 0);

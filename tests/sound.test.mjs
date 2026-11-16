@@ -12,6 +12,7 @@ import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
 import { flownOnce } from '../src/sim/fly.ts';
 import { G0 } from '../src/world/bodies.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { liftoffEngine } from '../src/sim/staged.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
 import {
@@ -374,7 +375,7 @@ const ORBITERS = (
 ).filter((f) => f.orbital?.ascent && f.site);
 for (const each of ORBITERS) {
   const run = orbitalRecord(each);
-  const lit = liftoffEngine(each.orbital);
+  const lit = liftoffEngine(planOfOrbital(each.orbital));
   const samples = run.samples;
   const where = (t) => [0, Math.max(0, stateAt(samples, t).altitude), 0];
   const burn = (t) => {

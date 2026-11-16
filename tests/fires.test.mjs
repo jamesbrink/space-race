@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
@@ -167,7 +168,7 @@ test('Vostok 1 flown by hand: its fires burn when its own stages do, not when th
   const site = siteFrame(vostok1.site);
   const dated = frameOf(vostok1);
   const sea = vostok1.site.seaLevel.value;
-  const x = steer(o, site, dated, sea);
+  const x = steer(planOfOrbital(o), site, dated, sea);
   const v = stagedVehicle(o, site, dated, sea, x);
   // no guidance: the pilot's sequence, but the attitude held as it was, so the path and each stage's stop are its own
   const pilot = stagedPilot(v, x, site, dated, sea, { guidance: false, sequence: true });

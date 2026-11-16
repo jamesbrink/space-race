@@ -1,5 +1,6 @@
 import '../ui/time.css';
 import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { planOfOrbital } from '../sim/planof.ts';
 import { held } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
 import { orbitalFlown, orbitalRecord } from '../viewer/ascent.ts';
@@ -183,7 +184,7 @@ export class Flown {
       const run = orbitalRecord(flight);
       samples = run.samples as Sample[];
       this.duration = run.duration;
-      const all = held(flight.orbital!, orbitalFlown(flight));
+      const all = held(planOfOrbital(flight.orbital!), orbitalFlown(flight));
       rowsOf = all;
       checks = all.map((c) => ({ id: c.id, value: c.value }));
     }

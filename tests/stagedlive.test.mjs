@@ -8,6 +8,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { ascend, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -26,8 +27,8 @@ const o = flight.orbital;
 const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
-const x = steer(o, site, dated, sea);
-const batch = ascend(o, site, dated, sea, x);
+const x = steer(planOfOrbital(o), site, dated, sea);
+const batch = ascend(planOfOrbital(o), site, dated, sea, x);
 const last = o.stages.length - 1;
 
 /**

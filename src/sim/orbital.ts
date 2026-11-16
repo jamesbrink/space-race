@@ -22,8 +22,7 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } f
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
-import type { Action, AeroDef, EventDef, FlightPlan, Hold } from './plan.ts';
-import { planOfOrbital } from './planof.ts';
+import type { Action, AeroDef, AttitudeDef, EventDef, FlightPlan, Hold } from './plan.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
 
@@ -589,9 +588,9 @@ export function flyDown(
  * revolution) or `days` have gone. Seconds from `from.t` to there, or Infinity. The standard atmosphere is the mean: the
  * day's Sun, which moves the density at 200 km several-fold, is not in it.
  */
-export function decay(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
+export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
   const spin = frame.spin;
-  const ship = shipOf(planOfOrbital(o));
+  const ship = shipOf(plan);
   const cd = ship.entry.aero.rarefied?.value ?? along(ship.entry.aero.drag, 25);
   const parted = from.t >= ship.parted;
   const mass = parted ? ship.entry.mass : ship.mass;
@@ -752,14 +751,15 @@ export function shipOf(plan: FlightPlan): Ship {
   const burn = c.engines.find((e) => e.flown)!;
   const joint = c.joints.find((j) => j.gone.includes(burn.body))!;
   const entry = c.bodies.find((b) => b.aero)!;
-  let aim: Extract<Hold, { aim: unknown }> | undefined;
-  for (const a of plan.attitude) if ('aim' in a.hold) aim = a.hold;
+  let aim: AttitudeDef | undefined;
+  for (const a of plan.attitude) if ('aim' in a.hold) aim = a;
   ship = {
     orbit,
     mass: orbit.mass.value,
     ...coast,
     flown: burn.flown!.value,
-    aim: aim!,
+    aim: aim!.hold as Extract<Hold, { aim: unknown }>,
+    aimId: aim!.id,
     entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
     landing: plan.record!.landing!,
   };
@@ -780,6 +780,8 @@ export interface Ship {
   /** The impulse the record's coast flies, m/s, evenly from `on` to `off`, along `aim`. */
   flown: number;
   aim: Extract<Hold, { aim: unknown }>;
+  /** The attitude that holds it, by id. */
+  aimId: string;
   /** What comes down: its id, its mass once parted, kg, and its own air. */
   entry: { id: string; mass: number; aero: AeroDef };
   landing: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
@@ -842,7 +844,7 @@ export interface Coast {
  * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.
  */
 export function flyOrbit(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   site: Geodetic,
   frame: EarthFrame,
   seaLevel = 0,
@@ -851,7 +853,6 @@ export function flyOrbit(
   hands?: DescentHands,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
-  const plan = planOfOrbital(o);
   const ship = shipOf(plan);
   const { on, off, parted, floor } = ship;
   const radius = ship.orbit.radius.value;

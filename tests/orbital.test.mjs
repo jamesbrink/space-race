@@ -23,7 +23,7 @@ const all = await Promise.all(
   ),
 );
 const orbiters = all.filter((f) => f.orbital && f.site);
-const fly = (f, orbital = f.orbital) => flyOrbit(orbital, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
+const fly = (f, orbital = f.orbital) => flyOrbit(planOfOrbital(orbital), siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);

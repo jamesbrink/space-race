@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
 import { along, axisOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { airAt, blowOf } from '../sim/air.ts';
+import { planOfOrbital } from '../sim/planof.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
@@ -912,7 +913,7 @@ export function orbitalFlown(flight: SitedFlight): FlownWhole {
   if (!whole)
     orbitalWholes.set(
       o,
-      (whole = flyWhole(o, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
+      (whole = flyWhole(planOfOrbital(o), siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
     );
   return whole;
 }
@@ -924,7 +925,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const jd = julianDate(flight.launch);
   const whole = orbitalFlown(flight);
   const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-  const samples = recordSamples(o, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  const samples = recordSamples(planOfOrbital(o), whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));

@@ -798,16 +798,24 @@ export class OrbitDeck extends Deck {
     // (the record's ascent as the scene has it, then the published orbit from where it left the spacecraft: staged.ts flyWhole's 'published')
     if (this.mine === null || !this.ascended) {
       const record = orbitalFlown(this.flight);
-      return flyOn(plan, site, this.frame, sea, record.ascent, published(plan, record.ascent.separation), hands);
+      return flyOn(
+        planOfOrbital(plan),
+        site,
+        this.frame,
+        sea,
+        record.ascent,
+        published(planOfOrbital(plan), record.ascent.separation),
+        hands,
+      );
     }
-    return flyOn(plan, site, this.frame, sea, this.ascended, this.ascended.separation, hands);
+    return flyOn(planOfOrbital(plan), site, this.frame, sea, this.ascended, this.ascended.separation, hands);
   }
 
   /** What this flight gave for each of the record's checks (sim/staged.ts `held`): the ascent's only where the ascent was the user's. */
   private heldOf(): Record<string, number> | undefined {
     const o = this.flight.orbital!;
     if (!this.flown) return undefined;
-    const all = held(o, this.flown).slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0));
+    const all = held(planOfOrbital(o), this.flown).slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0));
     return Object.fromEntries(all.map((c) => [c.id, c.got]));
   }
 
@@ -823,7 +831,7 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const jd = julianDate(this.flight.launch);
     const centre = (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-    const all = recordSamples(plan, whole, this.frame, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
+    const all = recordSamples(planOfOrbital(plan), whole, this.frame, centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
     if (this.mine === null) return all;
     const mine = (this.run!.samples as LiveSample[]).filter((x) => x.t <= this.ascended!.separation.t + 1e-9);
     return [...mine, ...all.slice(1)];
@@ -1639,7 +1647,7 @@ export class OrbitDeck extends Deck {
       if (this.lasts?.of !== whole)
         this.lasts = {
           of: whole,
-          s: decay(plan, this.frame, this.flight.site.seaLevel.value, whole.coast.samples[whole.coast.samples.length - 1]!),
+          s: decay(planOfOrbital(plan), this.frame, this.flight.site.seaLevel.value, whole.coast.samples[whole.coast.samples.length - 1]!),
         };
       decayed = this.lasts.s;
     }
@@ -1664,7 +1672,7 @@ export class OrbitDeck extends Deck {
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
     // (the coast's and the descent's: what a pilot's hand can change; the ascent's too, on a flight that was the user's going up)
-    const rows = held(o, whole)
+    const rows = held(planOfOrbital(o), whole)
       .slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0))
       .filter((c) => Number.isFinite(c.got) && c.id !== 'period' && !(stays && c.got === 0))
       .map(

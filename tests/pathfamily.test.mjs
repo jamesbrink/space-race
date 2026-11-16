@@ -259,7 +259,7 @@ test('prediction against outcome: the orbital spacecraft, predicted, then flown 
     const job = propagate(spacecraft(planOfOrbital(plan), frame, site, sea, start), start, { site, seaLevel: sea, frame });
     job.run();
     const p = job.result;
-    const run = flyOrbit(plan, site, frame, sea, 10, start);
+    const run = flyOrbit(planOfOrbital(plan), site, frame, sea, 10, start);
     let miss;
     let flownAt;
     let end;

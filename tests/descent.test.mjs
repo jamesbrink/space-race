@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { decay } from '../src/sim/orbital.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { byHand, flyOn, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/viewer/ascent.ts';
@@ -17,8 +18,8 @@ const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
-const from = published(o, shown.ascent.separation);
-const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, hands);
+const from = published(planOfOrbital(o), shown.ascent.separation);
+const fly = (plan, hands) => flyOn(planOfOrbital(plan), site, dated, sea, shown.ascent, from, hands);
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {
   const r = Math.PI / 180;
@@ -129,7 +130,7 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
   const w = fly(plan);
   assert.equal(w.down, null);
   const end = w.coast.samples.at(-1);
-  const lasts = decay(plan, dated, sea, end);
+  const lasts = decay(planOfOrbital(plan), dated, sea, end);
   assert.ok(lasts > 0);
   say('forward burn from the record’s orbit', w, lasts, plan);
 });
