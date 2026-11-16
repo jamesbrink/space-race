@@ -73,7 +73,8 @@ onMoved(() => {
   // it: asked first (stake.ts). The address has moved already, so Keep flying moves it back to the entry it was on, which
   // is one the history still holds: no step is added and the page is not touched.
   const to = parseAddress(where());
-  const beyond = aboutNoFlight(where()) || Boolean(to.flightId && to.flightId !== session?.flight.id && flights.some((f) => f.id === to.flightId));
+  const beyond =
+    aboutNoFlight(where()) || Boolean(to.flightId && to.flightId !== session?.flight.id && flights.some((f) => f.id === to.flightId));
   if (beyond && guarded(follow, () => undo(steps))) return;
   follow();
 });

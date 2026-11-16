@@ -421,7 +421,10 @@ for (const [w, h, touch] of SIZES) {
   const same = (where, a, b, what) => {
     const keys = [...new Set([...Object.keys(a.cells), ...Object.keys(b.cells)])].filter((k) => a.cells[k] !== b.cells[k]);
     if (a.t !== b.t || keys.length)
-      fail(where, `${what}: not the same flight: t ${a.t} to ${b.t}; ${keys.map((k) => `${k} "${a.cells[k]}" to "${b.cells[k]}"`).join(', ')}`);
+      fail(
+        where,
+        `${what}: not the same flight: t ${a.t} to ${b.t}; ${keys.map((k) => `${k} "${a.cells[k]}" to "${b.cells[k]}"`).join(', ')}`,
+      );
   };
   const handFly = async (page, id) => {
     await page.keyboard.press('Space');
@@ -467,7 +470,8 @@ for (const [w, h, touch] of SIZES) {
       await page.click('#ui > .cockpit .deck-foot [data-do=leave]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.active || r.keeping || r.asking) fail(where, `watched as flown, leaving: active ${r.active}, kept ${r.keeping}, asking ${r.asking}`);
+      if (r.active || r.keeping || r.asking)
+        fail(where, `watched as flown, leaving: active ${r.active}, kept ${r.keeping}, asking ${r.asking}`);
       if (await page.$('.kept-mark')) fail(where, 'a flight only watched is marked as kept');
       if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
       await ctx.close();
@@ -552,8 +556,16 @@ for (const [w, h, touch] of SIZES) {
     // beyond the flight: the Space Race crumb, and another flight's address, ask; Keep flying changes nothing
     const other = id === 'usa/mercury/mr-3-freedom-7' ? 'ussr/vostok/vostok-2' : 'usa/mercury/mr-3-freedom-7';
     const beyond = [
-      ['the Space Race crumb', (page) => page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click()), (hash) => !hash.includes(id)],
-      ["another flight's address", (page) => page.evaluate((o) => (location.hash = `#${o}/gallery`), other), (hash) => hash.includes(other)],
+      [
+        'the Space Race crumb',
+        (page) => page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click()),
+        (hash) => !hash.includes(id),
+      ],
+      [
+        "another flight's address",
+        (page) => page.evaluate((o) => (location.hash = `#${o}/gallery`), other),
+        (hash) => hash.includes(other),
+      ],
     ];
     for (const [name, out, gone] of beyond) {
       const at = `${where} by ${name}`;
@@ -614,7 +626,9 @@ for (const [w, h, touch] of SIZES) {
       await page.waitForTimeout(3000);
       const to = await page.evaluate(() => decodeURIComponent(location.hash));
       if (!gone(to)) fail(at, `Leave: the address is "${to}"`);
-      console.log(`  ${at}: asked each time; Keep flying by the button, Escape, the backdrop and Enter changed nothing (history ${before.length}); Leave went to "${to}"`);
+      console.log(
+        `  ${at}: asked each time; Keep flying by the button, Escape, the backdrop and Enter changed nothing (history ${before.length}); Leave went to "${to}"`,
+      );
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
       await ctx.close();
     }

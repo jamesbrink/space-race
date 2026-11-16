@@ -240,7 +240,10 @@ await scenario('flown', async (page) => {
   await page.goBack();
   const site = await arrive(page, 'site', MR3);
   let f = await figures();
-  check(!f.asking && f.keeping && site.length === fly.length, `Back to the site, flying by hand: no question, the flight kept (${site.length} entries)`);
+  check(
+    !f.asking && f.keeping && site.length === fly.length,
+    `Back to the site, flying by hand: no question, the flight kept (${site.length} entries)`,
+  );
   await page.goBack();
   const gallery = await arrive(page, 'gallery', MR3);
   f = await figures();
@@ -264,7 +267,10 @@ await scenario('flown', async (page) => {
   const again = await arrive(page, 'fly', MR3);
   await page.waitForTimeout(600);
   f = await figures();
-  check(f.card && f.t === before.t && f.cells === before.cells, `Forward to Fly: the kept flight, at the same instant and figures (T${f.t.toFixed(1)})`);
+  check(
+    f.card && f.t === before.t && f.cells === before.cells,
+    `Forward to Fly: the kept flight, at the same instant and figures (T${f.t.toFixed(1)})`,
+  );
   check(again.length === fly.length, `no step was added along the way (${again.length} entries)`);
   // out again, this time for good: Leave
   await page.goBack();

@@ -433,7 +433,8 @@ export function write(hash: string): void {
 const STEP = 'sr';
 const index = (): number => ((history.state as Record<string, unknown> | null | undefined)?.[STEP] as number | undefined) ?? 0;
 let on = typeof history === 'undefined' ? 0 : index();
-if (typeof history !== 'undefined' && history.state?.[STEP] === undefined) history.replaceState({ ...(history.state ?? {}), [STEP]: 0 }, '');
+if (typeof history !== 'undefined' && history.state?.[STEP] === undefined)
+  history.replaceState({ ...(history.state ?? {}), [STEP]: 0 }, '');
 
 /**
  * How many entries the address was moved by since the page last settled (`landed`): negative for Back, positive for Forward;
