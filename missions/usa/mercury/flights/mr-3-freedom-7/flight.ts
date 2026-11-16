@@ -1469,15 +1469,15 @@ export const flight: Flight = {
   flies: {
     model: 'vehicle',
     drops: [
-      { at: TOWER_OFF, nodes: ['EscapeTower'], on: 'tower' },
+      { at: TOWER_OFF, nodes: ['EscapeTower'], on: 'tower-clamp' },
       {
         at: DAY.separation.at.value,
-        on: 'separation',
+        on: 'adapter-clamp',
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
-      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack-straps' },
       // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it (the part's own text: "at main parachute deploy")
-      { at: 614.8, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
+      { at: 614.8, nodes: ['AntennaCanister'], on: 'main-chute', under: 'drogue-chute' },
     ],
     turned: TURNED,
     datum: CAPSULE_PLANE * IN,

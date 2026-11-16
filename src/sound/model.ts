@@ -1120,17 +1120,14 @@ export class Works {
 }
 
 /**
- * The one-shot a drop makes as it leaves (sound/model.ts `Cue`), by what the event it leaves at lets go (fly.ts
- * `ballisticOf`): the tower jettisoned, the booster parting, the retropack let go; none for anything else.
+ * The one-shot a drop makes as it leaves (`Cue`), by the joint that lets it go (`flies.drops[].on`, found by what it is:
+ * fly.ts `ballisticOf`): the tower jettisoned, the booster parting, the retropack let go; none for anything else.
  */
 export function dropCue(plan: FlightPlan, on: string | undefined): 'tower' | 'separation' | 'release' | undefined {
   if (!on || plan.kind !== 'ballistic') return undefined;
   const b = ballisticOf(plan);
-  const event = plan.events.find((e) => e.id === on);
-  const parts = (joint: string | undefined) =>
-    joint !== undefined && Boolean(event?.do.some((a) => 'separate' in a && a.separate === joint));
-  if (parts(b.towerJoint?.id)) return 'tower';
-  if (parts(b.separation.id)) return 'separation';
-  if (parts(b.packJoint?.id)) return 'release';
+  if (on === b.towerJoint?.id) return 'tower';
+  if (on === b.separation.id) return 'separation';
+  if (on === b.packJoint?.id) return 'release';
   return undefined;
 }

@@ -7,6 +7,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { ballisticOf } from '../src/sim/fly.ts';
 import { coastEvents } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { byHand, givenUp } from '../src/sim/staged.ts';
@@ -53,40 +54,49 @@ for (const f of ballistic) {
   test(`${f.id}: the ballistic plan carries its day's and its stack's figures`, () => {
     assert.equal(c.mass, day.liftoffMass);
     assert.ok(Math.abs(bodiesMass(plan) - day.liftoffMass.value) < 1e-6, 'the bodies sum to what leaves the pad');
-    const main = byId(c.engines, 'main');
+    // (each found by what it is, as every simulator finds it: fly.ts `ballisticOf`)
+    const b = ballisticOf(plan);
+    const main = b.engine;
     assert.equal(main.thrust.seaLevel, day.thrust);
     assert.equal(main.isp.seaLevel, day.isp);
     assert.equal(main.exitArea, hw.exitArea);
     assert.equal(main.depletion, hw.depletion);
     assert.equal(main.thrust.vacuum.confidence, 'derived');
-    assert.equal(eventOf(plan, 'cutoff').at, day.cutoff);
-    assert.deepEqual(doing(eventOf(plan, 'cutoff')), ['cut:main']);
-    const sep = byId(c.joints, 'separation');
+    const cut = plan.events.find((e) => doing(e).includes(`cut:${main.id}`) && e.automatic);
+    assert.equal(cut.at, day.cutoff);
+    assert.equal(b.cutoff, day.cutoff.value);
+    const sep = b.separation;
     assert.equal(sep.push, day.separation.speed);
     assert.equal(sep.after, day.separation.mass);
     assert.equal(sep.leaves, day.separation.boosterMass);
     assert.equal(sep.heading, day.separation.heading);
-    assert.equal(eventOf(plan, 'separation').when[0].time, day.separation.at.value);
+    assert.equal(b.parting.when[0].time, day.separation.at.value);
+    // the retrorockets: the first lit at its instant, each other so long after it, all as the record has them
+    const lights = [b.retro, ...b.chained];
+    assert.equal(lights.length, day.retro.fires.length);
     day.retro.fires.forEach((fire, k) => {
-      const e = eventOf(plan, k === 0 ? 'retro' : `retro-${k + 1}`);
-      assert.equal(e.at, fire);
-      assert.equal(byId(c.engines, `retro-${k + 1}`).burn, hw.retro.burn);
-      assert.equal(byId(c.engines, `retro-${k + 1}`).thrust.vacuum, hw.retro.thrust);
+      assert.equal(lights[k].at, fire);
+      assert.equal(b.motors[k].burn, hw.retro.burn);
+      assert.equal(b.motors[k].thrust.vacuum, hw.retro.thrust);
+      assert.deepEqual(doing(lights[k]), [`ignite:${b.motors[k].id}`]);
     });
-    assert.equal(byId(plan.attitude, 'retro').hold.retro, day.retro.pitch);
-    assert.equal(byId(c.joints, 'retropack').after, day.retropack.mass);
-    const height = (id) => eventOf(plan, id).when.find((w) => 'height' in w).height;
-    assert.equal(height('drogue'), day.drogue.value);
-    assert.equal(height('main'), day.main.value);
-    for (const id of ['drogue', 'main']) {
-      assert.equal(byId(c.chutes, id).dragArea, hw[id].dragArea);
-      assert.equal(byId(c.chutes, id).fills, hw[id].fills);
+    assert.equal(b.retroPitch, day.retro.pitch);
+    assert.equal(b.packJoint.after, day.retropack.mass);
+    assert.equal(b.packOff.at, day.retropack.at);
+    assert.equal(b.drogueHeight, day.drogue.value);
+    assert.equal(b.mainHeight, day.main.value);
+    for (const [chute, own] of [
+      [b.drogue, hw.drogue],
+      [b.main, hw.main],
+    ]) {
+      assert.equal(chute.dragArea, own.dragArea);
+      assert.equal(chute.fills, own.fills);
     }
-    assert.deepEqual(byId(c.chutes, 'main').instead, ['drogue']);
+    assert.deepEqual(b.main.instead, [b.drogue.id]);
     assert.equal(c.drag[0].curve, hw.ascentDrag);
     assert.equal(c.drag[0].area, hw.area);
-    assert.equal(byId(c.bodies, 'capsule').aero.drag, hw.entryDrag);
-    assert.equal(byId(c.bodies, 'capsule').aero.area, hw.area);
+    assert.equal(b.spacecraft.aero.drag, hw.entryDrag);
+    assert.equal(b.spacecraft.aero.area, hw.area);
     assert.equal(plan.attitude[0].hold.programme, hw.tilt);
     assert.equal(plan.attitude[0].hold.azimuth, day.azimuth);
     assert.equal(plan.winds, day.winds);

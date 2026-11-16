@@ -1,5 +1,6 @@
 // src/viewer/chute.ts: how a parachute opens against the simulator's seconds, the cloth's line, how it is cut, and
 // that what is built from them hangs together. The looks are judged by eye; these are the parts that are arithmetic.
+import { R } from './ballistic.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
@@ -184,7 +185,7 @@ test('built from each flight’s data: every line is its length, nothing is not 
 });
 
 test('it breathes on the simulator’s seconds: the same instant is the same cloth', () => {
-  const def = CHUTES.find((c) => c.on === 'main');
+  const def = CHUTES.find((c) => c.on === R.main.id);
   const chute = new Chute(def, new THREE.Group());
   const cloth = chute.group.children[0].children[0].geometry.getAttribute('position');
   const at = (since) => {

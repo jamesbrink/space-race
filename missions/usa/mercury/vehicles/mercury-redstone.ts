@@ -378,7 +378,7 @@ export function stack(o: Stack): Body {
       ),
       part('escape tower', CANISTER_TOP, SPIKE_TIP, o.capsuleLaunch - o.capsuleOrbit, o.towerWeight.confidence, o.towerWeight.source, {
         radius: 0.2,
-        sheds: 'tower',
+        sheds: 'tower-clamp',
       }),
     ],
     surfaces: [
@@ -494,7 +494,7 @@ export function stack(o: Stack): Body {
     },
     sheds: [
       {
-        on: 'tower',
+        on: 'tower-clamp',
         name: 'Escape tower',
         from: doc(CANISTER_TOP * IN, 'SEDR 104, Figure 1-3: the tower stands on the canister’s top'),
         to: doc(SPIKE_TIP * IN, 'SEDR 104, Figure 1-3: spike tip at 284.55 in above the capsule’s widest plane'),
@@ -533,7 +533,7 @@ export function stack(o: Stack): Body {
         ],
       },
       {
-        on: 'separation',
+        on: 'adapter-clamp',
         name: 'Redstone booster',
         from: doc(0, 'the fins’ trailing edges'),
         to: doc(BOOSTER_TOP * IN, `${TMX_4}, Figure 4-1: the booster’s top, 708 in`),
@@ -566,7 +566,7 @@ export function stack(o: Stack): Body {
         push: o.push,
       },
       {
-        on: 'retropack',
+        on: 'retropack-straps',
         name: 'Retropack',
         from: doc(
           (CAPSULE_PLANE - 27) * IN,
@@ -606,7 +606,7 @@ export function stack(o: Stack): Body {
         'not in anything read: no bending strength, design angle of attack or load factor of the Mercury-Redstone is in the reports here. 4,000 lb/sq ft degrees (3,340 Pa rad) is of the order ' +
           'launch vehicles of the time are credited with, and at Freedom 7’s greatest dynamic pressure (586 lb/sq ft: Postlaunch Report 4.2) it is 6.8 degrees off the wind. Ours',
       ),
-      joint: 'separation',
+      joint: 'adapter-clamp',
       drogue: estimated(
         7000,
         'not in anything read. Opened at Mach 1.5 at 70,000 ft, the most remembered of the Mercury drogue’s qualification, it would meet 7.0 kPa (0.7 times 4.44 kPa times 1.5 squared); ' +
@@ -941,7 +941,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   const hasTower = Boolean(body.tower || body.escape);
   const bodies: BodyDef[] = [
     {
-      id: 'booster',
+      id: 'redstone',
       label: 'Booster',
       count: 1,
       mass: derived(
@@ -953,7 +953,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     ...(hasTower
       ? [
           {
-            id: 'tower',
+            id: 'escape-tower',
             label: 'Escape tower',
             count: 1,
             mass: derived(towerMass, 'what leaves the pad less the booster at liftoff and the capsule at separation'),
@@ -961,35 +961,37 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
         ]
       : []),
     {
-      id: 'retropack',
+      id: 'retro-package',
       label: 'Retropack',
       count: 1,
       mass: derived(sep.mass.value - day.retropack.mass.value, 'the capsule at separation less the capsule once the retropack has gone'),
     },
-    { id: 'capsule', label: 'Capsule', count: 1, mass: day.retropack.mass, aero: { area: hw.area, drag: hw.entryDrag } },
+    { id: 'mercury-capsule', label: 'Capsule', count: 1, mass: day.retropack.mass, aero: { area: hw.area, drag: hw.entryDrag } },
   ];
   const joints: JointDef[] = [
-    ...(hasTower ? [{ id: 'tower', label: 'Tower jettisoned', gone: ['tower'], ...(body.tower ? { at: body.tower.at } : {}) }] : []),
+    ...(hasTower
+      ? [{ id: 'tower-clamp', label: 'Tower jettisoned', gone: ['escape-tower'], ...(body.tower ? { at: body.tower.at } : {}) }]
+      : []),
     {
-      id: 'separation',
+      id: 'adapter-clamp',
       label: 'Capsule separation',
-      gone: ['booster'],
+      gone: ['redstone'],
       push: sep.speed,
       at: sep.at,
       after: sep.mass,
       leaves: sep.boosterMass,
       ...(sep.heading ? { heading: sep.heading } : {}),
     },
-    { id: 'retropack', label: 'Retropack jettisoned', gone: ['retropack'], at: day.retropack.at, after: day.retropack.mass },
+    { id: 'retropack-straps', label: 'Retropack jettisoned', gone: ['retro-package'], at: day.retropack.at, after: day.retropack.mass },
   ];
   const nature = body.engine;
   const engines: EngineDef[] = [
     {
-      id: 'main',
+      id: 'a-7',
       label: 'Booster engine',
-      body: 'booster',
+      body: 'redstone',
       count: 1,
-      tanks: ['booster'],
+      tanks: ['redstone-propellant'],
       thrust: { seaLevel: e.thrust, vacuum },
       isp: {
         seaLevel: e.isp,
@@ -1010,9 +1012,9 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     },
     ...day.retro.fires.map(
       (_, k): EngineDef => ({
-        id: `retro-${k + 1}`,
+        id: `retrorocket-${k + 1}`,
         label: `Retrorocket ${k + 1}`,
-        body: 'retropack',
+        body: 'retro-package',
         count: 1,
         tanks: [],
         thrust: { vacuum: hw.retro.thrust },
@@ -1024,9 +1026,9 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     ...(body.escape
       ? [
           {
-            id: 'escape',
+            id: 'escape-motor',
             label: 'Escape rocket',
-            body: 'tower',
+            body: 'escape-tower',
             count: 1,
             tanks: [],
             thrust: { vacuum: body.escape.thrust },
@@ -1041,9 +1043,9 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   ];
   const tanks: TankDef[] = [
     {
-      id: 'booster',
+      id: 'redstone-propellant',
       label: 'Booster propellant',
-      body: 'booster',
+      body: 'redstone',
       load: derived(
         flow * e.depletion.value,
         'the flow (thrust over g0 times specific impulse) for the time it can burn before a propellant runs out',
@@ -1053,12 +1055,12 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   ];
   const rcs = body.capsule.rcs;
   for (const s of rcs?.supplies ?? [])
-    tanks.push({ id: `rcs:${s.name}`, label: s.name, body: 'capsule', load: s.propellant, holds: 'control', isp: s.isp });
+    tanks.push({ id: `rcs:${s.name}`, label: s.name, body: 'mercury-capsule', load: s.propellant, holds: 'control', isp: s.isp });
   const thrusters: ThrusterSet[] = rcs
     ? rcs.supplies.map((s) => ({
-        id: s.name,
+        id: `${s.name}-rcs`,
         label: s.name,
-        body: 'capsule',
+        body: 'mercury-capsule',
         does: ['rotation'],
         tank: `rcs:${s.name}`,
         mode: s.mode,
@@ -1066,23 +1068,32 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
         ...(rcs.rate && s.mode === 'manual' ? { rate: rcs.rate.full } : {}),
       }))
     : body.capsule.jets
-      ? [{ id: 'jets', label: 'Attitude jets', body: 'capsule', does: ['rotation'], mode: 'automatic', torque: body.capsule.jets }]
+      ? [
+          {
+            id: 'attitude-jets',
+            label: 'Attitude jets',
+            body: 'mercury-capsule',
+            does: ['rotation'],
+            mode: 'automatic',
+            torque: body.capsule.jets,
+          },
+        ]
       : [];
   const lim = body.limits;
   const chutes: PlanChute[] = [
     {
-      id: 'drogue',
+      id: 'drogue-chute',
       label: 'Drogue',
-      body: 'capsule',
+      body: 'mercury-capsule',
       ...hw.drogue,
       ...(lim ? { strength: lim.drogue, ...(lim.pull?.drogue ? { pull: lim.pull.drogue } : {}) } : {}),
     },
     {
-      id: 'main',
+      id: 'main-chute',
       label: 'Main parachute',
-      body: 'capsule',
+      body: 'mercury-capsule',
       ...hw.main,
-      instead: ['drogue'],
+      instead: ['drogue-chute'],
       ...(lim ? { strength: lim.main, ...(lim.pull?.main ? { pull: lim.pull.main } : {}) } : {}),
     },
   ];
@@ -1091,7 +1102,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   const crewLimits = body.capsule.limits;
   if (crewLimits) limits.push({ of: 'landing-speed', value: crewLimits.landingSpeed }, { of: 'load', value: crewLimits.load });
   const craft: Craft = {
-    id: 'stack',
+    id: 'mercury-redstone',
     label: 'The stack',
     mass: day.liftoffMass,
     bodies,
@@ -1107,10 +1118,10 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     ...(body.sheds ? { sheds: body.sheds } : {}),
   };
   const attitude: AttitudeDef[] = [
-    { id: 'programme', label: 'Tilt programme', hold: { programme: hw.tilt, azimuth: day.azimuth }, source: hw.tilt.source },
-    { id: 'retro', label: 'Retro attitude', hold: { retro: day.retro.pitch }, source: day.retro.pitch.source },
+    { id: 'tilt-programme', label: 'Tilt programme', hold: { programme: hw.tilt, azimuth: day.azimuth }, source: hw.tilt.source },
+    { id: 'retro-attitude', label: 'Retro attitude', hold: { retro: day.retro.pitch }, source: day.retro.pitch.source },
     {
-      id: 'blunt',
+      id: 'shield-first',
       label: 'Heat shield first',
       hold: { blunt: true, ...(body.capsule.earthward ? { earthward: body.capsule.earthward } : {}) },
       source: 'the capsule comes down heat shield first',
@@ -1118,18 +1129,18 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   ];
   const events: EventDef[] = [
     {
-      id: 'ignition',
+      id: 'a-7-ignition',
       label: 'Ignition',
       when: [{ time: 0 }],
-      do: [{ ignite: 'main' }],
+      do: [{ ignite: 'a-7' }],
       automatic: true,
       source: 'the clock starts with the engine',
     },
     {
-      id: 'cutoff',
+      id: 'a-7-cutoff',
       label: 'Cutoff',
       when: atTime(e.cutoff),
-      do: [{ cut: 'main' }],
+      do: [{ cut: 'a-7' }],
       automatic: true,
       at: e.cutoff,
       source: e.cutoff.source,
@@ -1137,10 +1148,10 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   ];
   if (body.tower)
     events.push({
-      id: 'tower',
+      id: 'tower-jettison',
       label: 'Tower jettisoned',
       when: atTime(body.tower.at),
-      do: [{ separate: 'tower' }],
+      do: [{ separate: 'tower-clamp' }],
       automatic: true,
       at: body.tower.at,
       source: body.tower.at.source,
@@ -1148,10 +1159,10 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
   const fires = day.retro.fires;
   events.push(
     {
-      id: 'separation',
+      id: 'capsule-separation',
       label: 'Capsule separation',
       when: atTime(sep.at),
-      do: [{ separate: 'separation' }, { attitude: 'retro' }],
+      do: [{ separate: 'adapter-clamp' }, { attitude: 'retro-attitude' }],
       automatic: true,
       at: sep.at,
       source: sep.at.source,
@@ -1159,56 +1170,56 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     // the retrorockets' sequence: begun with the first, each other so long after it (a hand may begin it at any time)
     ...fires.map(
       (f, k): EventDef => ({
-        id: k === 0 ? 'retro' : `retro-${k + 1}`,
+        id: k === 0 ? 'retrofire' : `retrofire-${k + 1}`,
         label: k === 0 ? 'Retrorocket sequence: the first fires' : `Retrorocket ${k + 1} fires`,
-        when: k === 0 ? atTime(f) : [{ after: 'retro', wait: f.value - fires[0]!.value }],
-        do: [{ ignite: `retro-${k + 1}` }],
+        when: k === 0 ? atTime(f) : [{ after: 'retrofire', wait: f.value - fires[0]!.value }],
+        do: [{ ignite: `retrorocket-${k + 1}` }],
         automatic: true,
         at: f,
         source: f.source,
       }),
     ),
     {
-      id: 'retropack',
+      id: 'retropack-jettison',
       label: 'Retropack jettisoned',
       when: atTime(day.retropack.at),
-      do: [{ separate: 'retropack' }, { attitude: 'blunt' }],
+      do: [{ separate: 'retropack-straps' }, { attitude: 'shield-first' }],
       automatic: true,
       at: day.retropack.at,
       source: day.retropack.at.source,
     },
     {
-      id: 'drogue',
+      id: 'drogue-deploy',
       label: 'Drogue out',
-      when: [{ after: 'separation' }, { height: day.drogue.value, going: 'down' }],
-      do: [{ deploy: 'drogue' }],
+      when: [{ after: 'capsule-separation' }, { height: day.drogue.value, going: 'down' }],
+      do: [{ deploy: 'drogue-chute' }],
       automatic: true,
       source: day.drogue.source,
     },
     {
-      id: 'main',
+      id: 'main-deploy',
       label: 'Main parachute out',
-      when: [{ after: 'drogue' }, { height: day.main.value, going: 'down' }],
-      do: [{ deploy: 'main' }],
+      when: [{ after: 'drogue-deploy' }, { height: day.main.value, going: 'down' }],
+      do: [{ deploy: 'main-chute' }],
       automatic: true,
       source: day.main.source,
     },
   );
   if (body.escape)
     events.push({
-      id: 'abort',
+      id: 'escape-abort',
       label: 'Abort',
-      when: [{ command: 'abort' }],
-      do: [{ cut: 'main' }, { ignite: 'escape' }, { separate: 'separation' }],
+      when: [{ command: 'abort-handle' }],
+      do: [{ cut: 'a-7' }, { ignite: 'escape-motor' }, { separate: 'adapter-clamp' }],
       automatic: false,
       source: 'the abort handle, or the sequencer’s abort signal',
     });
   if (body.escape?.sequence?.retropack)
     events.push({
-      id: 'abort-retropack',
+      id: 'abort-retropack-drop',
       label: 'Retropack dropped as the spacecraft leaves',
-      when: [{ after: 'abort' }],
-      do: [{ separate: 'retropack' }],
+      when: [{ after: 'escape-abort' }],
+      do: [{ separate: 'retropack-straps' }],
       automatic: true,
       source: body.escape.sequence.ceiling.source,
     });
@@ -1236,7 +1247,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
 /** The drogue and the main as drawn (viewer/chute.ts; `Flight.flies.chutes`): the same canopies on every flight of the stack. */
 export const CHUTES: ChuteDef[] = [
   {
-    on: 'drogue',
+    on: 'drogue-chute',
     at: 'AntennaCanister',
     cut: 'ribbon',
     diameter: doc(6 * FT, 'Hammack and Heberlig, p. 9: a 6 ft conical ribbon drogue parachute'),
@@ -1257,7 +1268,7 @@ export const CHUTES: ChuteDef[] = [
     ),
   },
   {
-    on: 'main',
+    on: 'main-chute',
     at: 'RecoveryCompartment',
     cut: 'ringsail',
     diameter: doc(

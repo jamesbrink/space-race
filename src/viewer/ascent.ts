@@ -171,9 +171,7 @@ export class Ascent {
         duration: results.duration,
         cutoff: roles.cutoff,
         // (what a parachute lets go leaves when this run has the parachute out, which is not to the second when the record does)
-        dropped: this.flight.flies!.drops.map((d) =>
-          d.on && d.on === roles.drogueOut?.id ? out.drogue : d.on && d.on === roles.mainOut?.id ? out.main : d.at,
-        ),
+        dropped: this.flight.flies!.drops.map((d) => (d.on === roles.drogue.id ? out.drogue : d.on === roles.main.id ? out.main : d.at)),
         live: false,
         out,
       };

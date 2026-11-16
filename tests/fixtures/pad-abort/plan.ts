@@ -59,7 +59,7 @@ export function padAbort(): FlightPlan {
   day.separation.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb`);
   // (the model had no retropack: the weight after it is the same weight)
   day.retropack.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb; the model carried no retropack`);
-  const tower = body.parts.find((p) => p.sheds === 'tower')!;
+  const tower = body.parts.find((p) => p.sheds === 'tower-clamp')!;
   const centre = plane + X_TOWER * IN;
   tower.mass = TOWER * LB;
   tower.from = centre - TOWER_LENGTH / 2;

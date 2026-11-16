@@ -420,14 +420,19 @@ export class Cockpit extends Deck {
     if (hasLeft(state.craft, this.roles.pack) && !hasLeft(before.craft, this.roles.pack)) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
-    const when = {
-      tower: this.towerAt,
-      separation: state.separation?.t ?? Infinity,
-      retropack: this.retropackAt,
-      hatch: this.hatchAt,
-      ...run.out,
-    };
-    run.dropped = this.flight.flies!.drops.map((d) => (d.on ? ((when as Record<string, number>)[d.on] ?? Infinity) : Infinity));
+    // (each drop as what lets it go, by the plan's id: the tower's, the booster's and the pack's joints, the parachutes; the hatch by its node)
+    const roles = this.roles;
+    const when = new Map<string | undefined, number>([
+      [roles.towerJoint?.id, this.towerAt],
+      [roles.separation.id, state.separation?.t ?? Infinity],
+      [roles.packJoint?.id, this.retropackAt],
+      [roles.drogue.id, run.out.drogue],
+      [roles.main.id, run.out.main],
+    ]);
+    const hatch = this.flight.flies?.hatch?.node;
+    run.dropped = this.flight.flies!.drops.map((d) =>
+      hatch && d.nodes.includes(hatch) ? this.hatchAt : d.on ? (when.get(d.on) ?? Infinity) : Infinity,
+    );
     // an event asked for has happened: the hand lets go of it
     if (state.abortAt !== null) this.hand.events = this.hand.events?.filter((e) => e !== this.abortEvent);
     if (state.ignited) delete this.hand.throttle;

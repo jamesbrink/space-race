@@ -16,7 +16,7 @@ import { G0 } from '../src/world/bodies.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC, calm, doing, edited } from './ballistic.mjs';
+import { BALLISTIC, calm, doing, edited, R } from './ballistic.mjs';
 import { ELEVATION, padAbort, RECORD } from './fixtures/pad-abort/plan.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
@@ -43,7 +43,7 @@ function abort(flight, plan, options = {}, hand = {}) {
   let turned = 0;
   let turnedByTower = 0;
   while (!state.landing && state.t < 600) {
-    const next = v.tick(state, (s) => blend(auto(s), { events: ['abort'], ...hand }));
+    const next = v.tick(state, (s) => blend(auto(s), { events: [R.abort.id], ...hand }));
     if (next.ticks === state.ticks) break;
     turned += Math.hypot(next.w[1], next.w[2]) * TICK;
     if (!hasLeft(next.craft, ballisticOf(v.plan).tower)) turnedByTower = turned;
@@ -87,7 +87,7 @@ test('the Langley trial of 1959, flown from its own weights off its own launcher
   // the fixture is the report's: 3,109 lb at take-off, about station 77.8, 6,100 slug-ft2 in pitch
   const { site, sea } = placeOf(freedom7);
   const v = vehicle(plan, site, sea, { elevation: ELEVATION });
-  const off = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
+  const off = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: [R.abort.id] });
   const props = v.mass({ ...off, mass: 3109 * LB, t: 0 });
   near(props.mass / LB, 3109, 1e-6, 'the weight that leaves');
   near(
@@ -182,7 +182,7 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
     );
     assert.deepEqual(
       s.released.map((r) => r.on),
-      ['separation', 'retropack', 'tower'],
+      [R.separation.id, R.packJoint.id, R.towerJoint.id],
     );
     near(s.released[1].t, 0, TICK, 'the retropack goes as the spacecraft leaves');
     assert.ok(s.released[1].stands, 'onto the top of the booster it sat on, which stands: it stays there');
@@ -197,7 +197,7 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
     assert.ok(s.landing.lean < 5, 'hanging upright');
     // the rocket burns what it carries: the tower left lighter by it
     const tower = s.released[2];
-    const stood = RIGID.parts.find((p) => p.sheds === 'tower').mass;
+    const stood = RIGID.parts.find((p) => p.sheds === R.towerJoint.id).mass;
     near(stood - tower.mass, RIGID.escape.propellant.value, 0.5, 'the tower is lighter by the rocket’s propellant');
   });
 
@@ -205,7 +205,7 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
     const { tally } = upright;
     const curve = RIGID.escape.curve.points;
     const peak = Math.max(...curve.map((p) => p[1]));
-    const pulled = B.packJoint.after.value + RIGID.parts.find((p) => p.sheds === 'tower').mass;
+    const pulled = B.packJoint.after.value + RIGID.parts.find((p) => p.sheds === R.towerJoint.id).mass;
     // (set from the inputs: the curve's greatest thrust on the spacecraft and tower, the pack gone and a third of the propellant burned by then)
     near(tally.abort.peakG, peak / (pulled * G0), 0.6, 'the greatest load');
     assert.ok(tally.abort.peakG < RIGID.capsule.limits.load.value, 'under the load the pilot is taken to live through');
@@ -253,7 +253,7 @@ for (const flight of BALLISTIC.filter((f) => f.plan.craft[0].rigid?.escape)) {
     let s = v.start();
     // 100 s up the record's flight is above 42,000 ft
     while (!s.landing && s.t < 3600) {
-      const next = v.tick(s, (x) => blend(auto(x), { events: x.t >= 100 ? ['abort'] : undefined }));
+      const next = v.tick(s, (x) => blend(auto(x), { events: x.t >= 100 ? [R.abort.id] : undefined }));
       if (next.ticks === s.ticks) break;
       s = next;
     }

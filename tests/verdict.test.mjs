@@ -1,7 +1,7 @@
 // src/sim/verdict.ts: how a flight flown by hand ended, in words, against the limits the flight's data gives.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALLISTIC, edited } from './ballistic.mjs';
+import { BALLISTIC, edited, R } from './ballistic.mjs';
 import { autopilot, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
@@ -43,7 +43,7 @@ for (const flight of BALLISTIC) {
   });
 
   test(named('an abort off the pad says so, and is survivable by the limits taken'), () => {
-    const end = ended((s) => ({ ...record(s), events: ['abort'] }));
+    const end = ended((s) => ({ ...record(s), events: [R.abort.id] }));
     assert.match(end.why[0], /^Aborted on the escape rocket 0\.0 s after ignition\.$/);
     assert.match(end.why[1], /^It came down \d+ m from the pad, \d+ m at its highest\.$/);
     assert.ok(!end.why.some((w) => /retropack/.test(w)), 'the abort’s own sequence dropped the retropack');
@@ -52,7 +52,7 @@ for (const flight of BALLISTIC) {
 
   test(named('an abort off the pad with the engine never lit does not speak of an ignition'), () => {
     // as the flight deck does it: X twice before Space (cockpit.ts)
-    const end = ended(() => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] }));
+    const end = ended(() => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: [R.abort.id] }));
     assert.equal(end.why[0], 'Aborted off the pad on the escape rocket: the engine was never lit.');
     assert.match(end.how, /^Down under the main parachute/);
   });

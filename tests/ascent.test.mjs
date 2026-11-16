@@ -4,7 +4,7 @@ import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BALLISTIC, doing } from './ballistic.mjs';
+import { BALLISTIC, doing, R } from './ballistic.mjs';
 import { ballisticOf } from '../src/sim/fly.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
@@ -231,7 +231,7 @@ for (const flight of BALLISTIC) {
     const end = run.samples.at(-1);
     // (the surface is under its blunt end, `capsule.base` below the centre of mass: sim/vehicle.ts)
     const surface = ecefToSite(site, frameOf(flight).toFixed(end.centre, end.t))[1] - (RIGID.capsule.base?.value ?? 0);
-    const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
+    const main = flight.flies.chutes.findIndex((c) => c.on === R.main.id);
     const down = ascent.chute(main, run.duration + 30, PAD);
     assert.ok(down && down.down > 0, 'the main parachute is down');
     assert.ok(
@@ -272,14 +272,14 @@ for (const flight of BALLISTIC) {
       let state = v.start();
       const samples = [v.sample(state)];
       const sheds = new Sheds(PLAN, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
-      const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
+      const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: [R.abort.id] });
       for (let i = 0; i < 300; i++) {
         state = v.tick(state, pilot);
         if (i % 10 === 9) samples.push(v.sample(state));
       }
       sheds.follow(state);
       assert.ok(hasLeft(state.craft, B.booster.id) && state.separation, 'the spacecraft has left the booster');
-      const when = { separation: state.separation.t };
+      const when = { [R.separation.id]: state.separation.t };
       const run = {
         samples,
         duration: Infinity,
@@ -291,7 +291,7 @@ for (const flight of BALLISTIC) {
       };
       const ascent = Ascent.of(flight);
       ascent.use(run);
-      const i = flight.flies.drops.findIndex((d) => d.on === 'separation');
+      const i = flight.flies.drops.findIndex((d) => d.on === R.separation.id);
       const p = new THREE.Vector3();
       const q = new THREE.Quaternion();
       assert.ok(ascent.shed(i, 2.5, PAD, p, q), 'the booster is placed (it is not lost for having left at the very start)');
@@ -310,7 +310,7 @@ for (const flight of BALLISTIC) {
     const run = live();
     const ascent = Ascent.of(flight);
     ascent.use(run);
-    const main = flight.flies.chutes.findIndex((c) => c.on === 'main');
+    const main = flight.flies.chutes.findIndex((c) => c.on === R.main.id);
     // once it is full and the spacecraft has stopped swinging under it: the last minutes of the descent
     const hanging = run.samples.filter((s) => doing(s, flight.plan) === 'main' && s.t > run.out.main + 60 && s.t < run.duration - 1);
     assert.ok(hanging.length > 100);

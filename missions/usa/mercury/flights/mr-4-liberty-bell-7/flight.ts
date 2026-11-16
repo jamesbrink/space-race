@@ -1518,17 +1518,17 @@ export const flight: Flight = {
   flies: {
     model: 'vehicle',
     drops: [
-      { at: CUTOFF, nodes: ['EscapeTower'], on: 'tower' },
+      { at: CUTOFF, nodes: ['EscapeTower'], on: 'tower-clamp' },
       {
         at: SEPARATION,
-        on: 'separation',
+        on: 'adapter-clamp',
         nodes: ['RedstoneAdapter', 'RedstoneAftUnit', 'RedstoneCenterUnit', 'RedstoneTailUnit', 'RedstoneEngine'],
       },
-      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack' },
+      { at: DAY.retropack.at.value, nodes: ['Retropack'], on: 'retropack-straps' },
       // the drogue pulls the antenna canister off, and the canister draws the main parachute out after it
-      { at: 614, nodes: ['AntennaCanister'], on: 'main', under: 'drogue' },
+      { at: 614, nodes: ['AntennaCanister'], on: 'main-chute', under: 'drogue-chute' },
       // blown by hand, on a flight flown here (`hatch`, below): the record's run lands with it on, as the capsule did
-      { at: Number.POSITIVE_INFINITY, nodes: ['Hatch'], on: 'hatch' },
+      { at: Number.POSITIVE_INFINITY, nodes: ['Hatch'] },
     ],
     hatch: {
       node: 'Hatch',

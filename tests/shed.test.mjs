@@ -28,7 +28,7 @@ import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { recordRelease, ShedRun, Sheds, shedder } from '../src/sim/shed.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
-import { BALLISTIC, unlimited } from './ballistic.mjs';
+import { BALLISTIC, R, unlimited } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -85,7 +85,7 @@ test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () =
   const r = scale(unit([1, 0.2, 0.5]), 6.678e6);
   const v = scale(unit(cross([0, 0, 1], r)), 2000);
   const release = {
-    on: 'separation',
+    on: R.separation.id,
     t: 0,
     r,
     v,
@@ -96,7 +96,7 @@ test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () =
     across: 180_000,
     centre: 8,
   };
-  const body = shedder(PLAN, SITE, SEA, def('separation'), release);
+  const body = shedder(PLAN, SITE, SEA, def(R.separation.id), release);
   let s = body.start();
   while (s.t < 60 - TICK / 2) s = body.tick(s);
   const want = coast(r, v, 60, 0.05);
@@ -106,14 +106,14 @@ test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () =
 });
 test('in air a tumbling body comes to the terminal speed its weight and drag areas give', (t) => {
   // the retropack let go broadside and turning, 12 km up at 300 m/s straight down
-  const d = def('retropack');
+  const d = def(R.packJoint.id);
   const up = unit([1, 0.3, 0.4]);
   const r = scale(up, 6.378e6 + 12_000);
   const earth = cross([0, 0, 7.292115e-5], r);
   const side = unit(cross(up, [0, 0, 1]));
   const mass = d.mass.value;
   const release = {
-    on: 'retropack',
+    on: R.packJoint.id,
     t: 0,
     r,
     v: add(earth, scale(up, -300)),
@@ -296,7 +296,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
   test(`${name}: every parting of the flight keeps the momentum of the two: tower, booster, retropack`, (t) => {
     assert.deepEqual(
       partings.flatMap((p) => p.gone.map((g) => g.on)),
-      ['tower', 'separation', 'retropack'],
+      [R.towerJoint.id, R.separation.id, R.packJoint.id],
     );
     for (const { before, gone } of partings) {
       // (a tick's commands take effect at its start: `before` is the vehicle at the event, whole, and the release carries both pieces as they were made)
@@ -329,7 +329,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     }
   });
   test(`${name}: the booster and the spacecraft part at the record’s parting speed, shared by their masses`, () => {
-    const { before, gone } = partings.find((p) => p.gone[0].on === 'separation');
+    const { before, gone } = partings.find((p) => p.gone[0].on === R.separation.id);
     const [booster] = gone;
     const speed = B.separation.push.value;
     const m = B.separation.after.value;
@@ -351,9 +351,9 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
       let s = run(v, auto, (x) => x.t >= t);
       s = { ...s, w };
       // (the engine cut in the same tick: let go while the booster still pushes, the spacecraft rides on: tests/vehicle.test.mjs)
-      const after = v.tick(s, { ...auto(s), throttle: 0, do: [{ separate: 'separation' }] });
+      const after = v.tick(s, { ...auto(s), throttle: 0, do: [{ separate: R.separation.id }] });
       const pieces = after.released.filter((g) => g.t === s.t);
-      assert.ok(pieces.length >= 1 && pieces.at(-1).on === 'separation', what);
+      assert.ok(pieces.length >= 1 && pieces.at(-1).on === R.separation.id, what);
       // every piece let go in that tick and the spacecraft that went on (the last release's rest): together the stack
       const all = [...pieces, pieces.at(-1).rest];
       const mass = all.reduce((sum, p) => sum + p.mass, 0);
@@ -373,12 +373,12 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
       const [g] = gone;
       const [was, is] = [whole.mass(before), whole.mass(after)];
       assert.ok(is.mass < was.mass && is.across < was.across && is.roll <= was.roll, `${g.on}: lighter, and easier to turn`);
-      if (g.on === 'tower') {
+      if (g.on === R.towerJoint.id) {
         near(was.mass - is.mass, g.mass, 0.02, 'the tower’s weight goes (and a tick’s propellant, none: the engine is out)');
         assert.ok(is.centre < was.centre, 'the centre of mass moves down the stack');
         near(was.mass * was.centre, is.mass * is.centre + g.mass * g.centre, 1e-6 * was.mass * was.centre, 'by the tower’s own moment');
       }
-      if (g.on === 'retropack') {
+      if (g.on === R.packJoint.id) {
         near(
           is.centre,
           (g.mass * (CRAFT.rigid.capsule.centre.value - g.centre)) / is.mass,
@@ -389,8 +389,8 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     }
   });
   test(`${name}: the tower leaves on both its rockets, ahead of the stack, and does not come back to it`, (t) => {
-    const { before, gone } = partings.find((p) => p.gone[0].on === 'tower');
-    const body = shedder(PLAN, SITE, SEA, def('tower'), gone[0]);
+    const { before, gone } = partings.find((p) => p.gone[0].on === R.towerJoint.id);
+    const body = shedder(PLAN, SITE, SEA, def(R.towerJoint.id), gone[0]);
     let s = body.start();
     // the stack coasts on from the event (its engine is out by then: the record's order)
     // (Freedom 7's tower went 0.4 s after the cutoff; Liberty Bell 7's at it, the same instant: the record's order either way)
@@ -399,7 +399,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     let last = length(sub(gone[0].r, rest.r));
     const first = last;
     // the same tower with no air on it, for the arithmetic of its rocket
-    const bare = structuredClone(def('tower'));
+    const bare = structuredClone(def(R.towerJoint.id));
     bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
     const airless = shedder(PLAN, SITE, SEA, bare, gone[0]);
     let a = airless.start();
@@ -416,7 +416,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     // The record's flight fires both: the escape rocket (thrust for its burn, then the rest of its impulse falling evenly
     // to nothing) and the jettison rocket (a plain burn). Each gives its impulse over the tower's mass, and in no air the
     // distance gained is each rocket's share as if given at the middle of its own impulse.
-    const motors = def('tower').motors;
+    const motors = def(R.towerJoint.id).motors;
     assert.deepEqual(
       motors.map((m) => m.name),
       ['escape rocket', 'tower jettison rocket'],
@@ -441,8 +441,8 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     assert.ok(last - first < gained && last - first > 0.9 * gained, 'and in the thin air there, a little less');
   });
   test(`${name}: after an abort the escape rocket is spent: the tower goes on its jettison rocket alone`, () => {
-    const { gone } = partings.find((p) => p.gone[0].on === 'tower');
-    const bare = structuredClone(def('tower'));
+    const { gone } = partings.find((p) => p.gone[0].on === R.towerJoint.id);
+    const bare = structuredClone(def(R.towerJoint.id));
     bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
     const speedGained = (release) => {
       const body = shedder(PLAN, SITE, SEA, bare, release);
@@ -479,14 +479,17 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     }
     // the retropack is light for its size: it is the slowest of the three at the sea
     const speed = (on) => sheds.get(on).now.landing.speed;
-    assert.ok(speed('retropack') < speed('tower') && speed('retropack') < speed('separation'), 'the retropack falls slowest');
+    assert.ok(
+      speed(R.packJoint.id) < speed(R.towerJoint.id) && speed(R.packJoint.id) < speed(R.separation.id),
+      'the retropack falls slowest',
+    );
     t.diagnostic(
       `the spacecraft itself: down at ${landed.landing.t.toFixed(1)} s at ${landed.landing.latitude.toFixed(3)} N, ${(-landed.landing.longitude).toFixed(3)} W`,
     );
   });
   test(`${name}: a shed body’s flight is the same however it is asked for, and is kept for showing again`, () => {
-    const release = partings.find((p) => p.gone[0].on === 'separation').gone[0];
-    const make = () => new ShedRun(shedder(PLAN, SITE, SEA, def('separation'), release));
+    const release = partings.find((p) => p.gone[0].on === R.separation.id).gone[0];
+    const make = () => new ShedRun(shedder(PLAN, SITE, SEA, def(R.separation.id), release));
     const [a, b] = [make(), make()];
     a.upTo(release.t + 400);
     for (let t = release.t; t < release.t + 400; t += 0.0166) b.upTo(t); // a frame at a time
@@ -501,7 +504,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     same(fresh.at(release.t + 37.3), then);
     assert.equal(a.at(release.t - 1), null, 'it is nowhere before it left');
     // between kept states the cubic is within a centimetre of the flight itself
-    const body = shedder(PLAN, SITE, SEA, def('separation'), release);
+    const body = shedder(PLAN, SITE, SEA, def(R.separation.id), release);
     let s = body.start();
     while (s.t < release.t + 37.3 - TICK / 2) s = body.tick(s);
     near(length(sub(then.r, s.r)), 0, 0.01, 'the kept flight against the flight');
@@ -509,13 +512,13 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
   test(`${name}: let go standing on the pad, the booster stays where it stands`, () => {
     // an abort before the engine is lit
     const v = vehicle(PLAN, SITE, SEA);
-    const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
+    const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: [R.abort.id] });
     // (the booster, and the retropack the abort's own sequence drops with it)
     assert.deepEqual(
       s.released.map((r) => r.on),
-      ['separation', 'retropack'],
+      [R.separation.id, R.packJoint.id],
     );
-    const body = new ShedRun(shedder(PLAN, SITE, SEA, def('separation'), s.released[0]));
+    const body = new ShedRun(shedder(PLAN, SITE, SEA, def(R.separation.id), s.released[0]));
     assert.ok(body.now.landing, 'it is down from the first');
     const later = body.at(600);
     assert.ok(later.down);
@@ -530,11 +533,11 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     const at = B.separation.at.value;
     const s = batch.samples.find((x) => x.t === at);
     const axis = whole.programme(at);
-    const release = recordRelease(PLAN, def('separation'), at, s.r, s.v, axis, true);
+    const release = recordRelease(PLAN, def(R.separation.id), at, s.r, s.v, axis, true);
     near(dot(sub(s.v, release.v), axis), B.separation.push.value, 1e-9, 'slower along the axis by the parting speed');
     near(release.mass, B.separation.leaves.value, 0.02 * release.mass, 'the booster’s mass, from the parts, against the trajectory’s');
     near(dot(turn(release.q, [1, 0, 0]), axis), 1, 1e-12, 'pointing as the programme has the stack');
-    const tower = recordRelease(PLAN, def('tower'), B.towerJoint.at.value, s.r, s.v, axis, true);
+    const tower = recordRelease(PLAN, def(R.towerJoint.id), B.towerJoint.at.value, s.r, s.v, axis, true);
     near(length(sub(tower.v, s.v)), 0, 1e-12, 'the tower leaves with the stack’s own velocity: its rocket does the rest');
   });
   test(`${name}: on the record’s programme the stack goes through the greatest pressure with room to spare`, (t) => {
@@ -566,7 +569,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     t.diagnostic(
       `broke at ${after.broke.t.toFixed(2)} s: bending load ${(100 * after.broke.load).toFixed(0)} per cent of the limit at ${(after.broke.q / 1000).toFixed(1)} kPa, ${after.broke.alpha.toFixed(1)} degrees off the wind`,
     );
-    assert.equal(after.broke.joint, 'separation');
+    assert.equal(after.broke.joint, R.separation.id);
     assert.ok(after.broke.t > 70 && after.broke.t < 90, 'while it was leaned');
     assert.ok(after.broke.load > 1, 'over the limit');
     assert.ok(after.cutoff && hasLeft(after.craft, B.booster.id), 'the engine is out and the booster gone its own way');
@@ -575,9 +578,9 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
       'the spacecraft is pulled clear on its escape rocket, the tower still aboard',
     );
     // (the abort's own sequence drops the retropack as the spacecraft leaves: three pieces, not two)
-    const booster = after.released.find((r) => r.on === 'separation');
+    const booster = after.released.find((r) => r.on === R.separation.id);
     const pack = after.released.at(-1);
-    assert.equal(pack.on, 'retropack');
+    assert.equal(pack.on, R.packJoint.id);
     // The break is found at the end of a tick and made of the stack as that tick left it: the same tick flown by a stack
     // that cannot break is the whole the two pieces must add up to.
     const unbreakable = vehicle(unlimited(PLAN), SITE, SEA);
@@ -615,7 +618,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
         const c = auto(s);
         const q = hasLeft(s.craft, B.booster.id) && s.enteredAt !== null ? v.sample(s).q : 0;
         if (q > 2 * B.drogue.strength.value) early = true;
-        return early ? blend(c, { do: [{ deploy: 'drogue' }, { deploy: 'main' }] }) : c;
+        return early ? blend(c, { do: [{ deploy: R.drogue.id }, { deploy: R.main.id }] }) : c;
       },
       () => false,
     );
@@ -637,7 +640,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     let whole = 0; // how long it was out and whole
     const end = run(
       v,
-      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: 'drogue' }] }) : auto(s)),
+      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: R.drogue.id }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
@@ -662,7 +665,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
     let predicted = null;
     const end = run(
       v,
-      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: 'main' }] }) : auto(s)),
+      (s) => (hasLeft(s.craft, B.pack) ? blend(auto(s), { do: [{ deploy: R.main.id }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.mainAt === null) return;
@@ -717,11 +720,11 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].sheds?.length)) {
         v,
         (s) => {
           let c = auto(s);
-          if (s.t >= 20 && s.abortAt === null) c = blend(c, { events: ['abort'] });
+          if (s.t >= 20 && s.abortAt === null) c = blend(c, { events: [R.abort.id] });
           if (s.abortAt !== null && s.t > s.abortAt + 3)
             c = blend(
               { ...c, automatic: false },
-              { do: [{ separate: 'tower' }, ...(chute && hasLeft(s.craft, B.tower) ? [{ deploy: 'drogue' }] : [])] },
+              { do: [{ separate: R.towerJoint.id }, ...(chute && hasLeft(s.craft, B.tower) ? [{ deploy: R.drogue.id }] : [])] },
             );
           return c;
         },

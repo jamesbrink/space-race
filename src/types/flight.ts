@@ -104,7 +104,11 @@ export interface Flight {
    */
   flies?: {
     model: string;
-    /** `on`: which of the simulator's events lets them go, for a flight flown by hand (sim/vehicle.ts), where it happens when the pilot says. */
+    /**
+     * `on`: what in the plan lets them go, by its id (a joint, or a parachute that pulls it off as it comes out; a body among
+     * several a joint lets go after a slash, `<joint>/<name>`), for a flight flown by hand (sim/vehicle.ts), where it happens
+     * when the pilot says.
+     */
     drops: {
       at: number;
       nodes: string[];

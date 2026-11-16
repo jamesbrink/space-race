@@ -13,7 +13,7 @@ import { hasLeft } from '../src/sim/craft.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { BALLISTIC, calm, doing, edited, natured, unlimited } from './ballistic.mjs';
+import { BALLISTIC, calm, doing, edited, natured, R, unlimited } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { ballisticOf, coast, fly, sampleAt } from '../src/sim/fly.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
@@ -165,7 +165,7 @@ test('the engine: cut by command it stays cut, and left alone it runs until a ta
   near(dry.mass, PLAN.craft[0].mass.value - liquids, flow * TICK * 1.5, 'it burned everything in the tanks');
   const tanks = whole.sample(dry).tanks;
   assert.ok(tanks.oxidizer < flow * TICK && tanks.fuel < flow * TICK, 'both tanks empty');
-  dry = whole.tick(dry, { ...HANDS_OFF, do: [{ separate: 'tower' }] });
+  dry = whole.tick(dry, { ...HANDS_OFF, do: [{ separate: R.towerJoint.id }] });
   near(dry.mass, PLAN.craft[0].mass.value - liquids - (4040.28 - 2855.14) * LB, flow * TICK * 1.5, 'and the tower takes 1,185 lb with it');
 
   // each propellant is its own quantity: with a tenth less alcohol aboard the fuel runs out first, oxygen still in its tank
@@ -613,7 +613,7 @@ const aborting = (v, at, options = {}) => {
   const tally = new Tally();
   let state = v.start();
   const phases = [];
-  const pilot = (s) => blend(auto(s), { events: s.t >= at - 1e-9 ? ['abort'] : undefined });
+  const pilot = (s) => blend(auto(s), { events: s.t >= at - 1e-9 ? [R.abort.id] : undefined });
   while (!state.landing && state.t < 3600) {
     const next = v.tick(state, pilot);
     if (next.ticks === state.ticks) break;
@@ -678,13 +678,13 @@ test('an abort at the greatest pressure: the same, through the air', (t) => {
 test('an abort is for a tower: without one aboard it is not there to be had, and the rocket cannot be cut or fired twice', () => {
   const later = until(whole, whole.start(), autopilot(whole), 145);
   assert.ok(hasLeft(later.craft, B.tower));
-  assert.equal(whole.tick(later, { ...HANDS_OFF, events: ['abort'] }).abortAt, null, 'the tower has gone: no abort');
+  assert.equal(whole.tick(later, { ...HANDS_OFF, events: [R.abort.id] }).abortAt, null, 'the tower has gone: no abort');
   // fired, it burns to its end whatever is asked: its impulse is the record's
   let s = until(whole, whole.start(), autopilot(whole), 20);
-  const cut = { ...HANDS_OFF, events: ['abort'], do: [{ separate: 'tower' }] };
+  const cut = { ...HANDS_OFF, events: [R.abort.id], do: [{ separate: R.towerJoint.id }] };
   s = whole.tick(s, cut);
   const at = s.abortAt;
-  s = until(whole, s, { ...HANDS_OFF, events: ['abort'], do: [{ separate: 'tower' }], throttle: 0 }, at + 3);
+  s = until(whole, s, { ...HANDS_OFF, events: [R.abort.id], do: [{ separate: R.towerJoint.id }], throttle: 0 }, at + 3);
   assert.equal(s.abortAt, at, 'once');
   assert.ok(hasLeft(s.craft, B.tower), 'the tower can be let go by hand once the rocket is out');
   const burn = RIGID.escape.burn.value;
@@ -896,7 +896,7 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
 
   // the retrorockets: fired, they burn their time whatever the command does next, and their impulse is thrust times time
   let c = until(whole, whole.start(), autopilot(whole), 200);
-  c = whole.tick(c, { ...HANDS_OFF, events: ['retro'] });
+  c = whole.tick(c, { ...HANDS_OFF, events: [R.retro.id] });
   const fired = c.retroAt;
   let impulse = 0;
   const lit = new Set();
@@ -905,7 +905,7 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
       impulse += m.thrust * TICK;
       lit.add(m.engine);
     }
-    c = whole.tick(c, { ...HANDS_OFF, events: c.t < fired + 1 ? ['retro'] : [] });
+    c = whole.tick(c, { ...HANDS_OFF, events: c.t < fired + 1 ? [R.retro.id] : [] });
   }
   assert.equal(c.retroAt, fired, 'fired once');
   assert.deepEqual(
@@ -916,7 +916,7 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
   near(impulse / (3 * B.motors[0].thrust.vacuum.value * B.motors[0].burn.value), 1, 0.002, 'three motors’ thrust for their burning time');
 
   // the escape rocket: the integral of its thrust is its recorded impulse
-  let a = whole.tick(until(whole, whole.start(), autopilot(whole), 20), { ...HANDS_OFF, events: ['abort'] });
+  let a = whole.tick(until(whole, whole.start(), autopilot(whole), 20), { ...HANDS_OFF, events: [R.abort.id] });
   let pull = 0;
   while (a.t < a.abortAt + 2) {
     pull += (whole.sample(a).burning.find((m) => m.engine === ballisticOf(whole.plan).escape.id)?.thrust ?? 0) * TICK;
@@ -943,7 +943,7 @@ test('with the spacecraft’s own sequence off and nobody commanding, there are 
   const drogueOnly = flyLive(whole, (x) => ({
     ...record(x),
     automatic: false,
-    do: x.enteredAt !== null && x.t > 600 ? [{ deploy: 'drogue' }] : [],
+    do: x.enteredAt !== null && x.t > 600 ? [{ deploy: R.drogue.id }] : [],
   }));
   assert.ok(drogueOnly.state.drogueAt !== null && drogueOnly.state.mainAt === null);
   assert.ok(drogueOnly.state.landing.vertical > 40, `under the drogue alone: ${drogueOnly.state.landing.vertical.toFixed(0)} m/s`);
@@ -956,7 +956,7 @@ test('commanded by hand at the times the automatic flight did them, the events g
   const hand = flyLive(whole, (s) => ({
     ...record(s),
     automatic: false,
-    do: [...(s.t >= drogueAt - 1e-9 ? [{ deploy: 'drogue' }] : []), ...(s.t >= mainAt - 1e-9 ? [{ deploy: 'main' }] : [])],
+    do: [...(s.t >= drogueAt - 1e-9 ? [{ deploy: R.drogue.id }] : []), ...(s.t >= mainAt - 1e-9 ? [{ deploy: R.main.id }] : [])],
   }));
   near(hand.state.drogueAt, drogueAt, 1e-9, 'the drogue when it was');
   near(hand.state.mainAt, mainAt, 1e-9, 'the main when it was');
@@ -969,16 +969,16 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
   // the tower kept: no parachute can come out past it, so asked for or not there is none
   const towered = flyLive(whole, (s) => ({
     ...record(s),
-    events: s.t >= 100 ? ['abort'] : [],
+    events: s.t >= 100 ? [R.abort.id] : [],
     automatic: false,
-    do: [{ deploy: 'drogue' }, { deploy: 'main' }],
+    do: [{ deploy: R.drogue.id }, { deploy: R.main.id }],
   }));
   assert.ok(!hasLeft(towered.state.craft, B.tower) && towered.state.mainAt === null, 'tower on: no parachutes');
   assert.ok(towered.state.landing.vertical > 60, `and it comes down at ${towered.state.landing.vertical.toFixed(0)} m/s`);
   // the retropack kept through the entry: 276 lb heavier all the way down, so it falls faster under the same parachute
   const packed = flyLive(whole, (s) => {
     const c = record(s);
-    return { ...c, events: c.events?.filter((e) => e !== 'retropack') };
+    return { ...c, events: c.events?.filter((e) => e !== R.packOff.id) };
   });
   near(
     packed.state.landing.vertical / live.state.landing.vertical,
@@ -1004,7 +1004,7 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
 test('the spacecraft let go while the booster still burns rides it until the engine stops, and parts then (staging.ts `pressed`)', () => {
   const record = autopilot(whole);
   const live = flyLive(whole, record);
-  const early = flyLive(whole, (s) => ({ ...record(s), do: s.t >= 100 ? [{ separate: 'separation' }] : [] }));
+  const early = flyLive(whole, (s) => ({ ...record(s), do: s.t >= 100 ? [{ separate: R.separation.id }] : [] }));
   const cut = live.state.separation.t;
   assert.ok(early.state.loose !== null && Math.abs(early.state.loose - 100) < 0.02, `let go at ${early.state.loose}`);
   // it parted at the cutoff, not at 100 s: the booster's push held it on its adapter, and its engine was not cut by it
@@ -1021,7 +1021,7 @@ test('a tower let go early is not propellant burned: the engine runs as long', (
   const runOut = (towerAt) => {
     let s = v.start();
     while (!s.cutoff && !s.landing && s.t < 200)
-      s = v.tick(s, { ...auto(s), throttle: 1, do: s.t >= towerAt ? [{ separate: 'tower' }] : [] });
+      s = v.tick(s, { ...auto(s), throttle: 1, do: s.t >= towerAt ? [{ separate: R.towerJoint.id }] : [] });
     return s;
   };
   const [kept, early] = [runOut(Infinity), runOut(10)];

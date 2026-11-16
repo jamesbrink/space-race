@@ -15,6 +15,8 @@ export const BALLISTIC = modules
   .map((m) => m.flight)
   .filter((f) => f.plan?.kind === 'ballistic')
   .sort((a, b) => a.launch.localeCompare(b.launch));
+/** The ballistic plan's hardware by role (fly.ts `ballisticOf`) of the first flight: every Mercury-Redstone's ids are its module's. */
+export const R = ballisticOf(BALLISTIC[0].plan);
 const days = new Map(modules.map((m) => [m.flight, m.DAY]));
 /** A ballistic flight's day (its flight.ts's `DAY`, a mercury-redstone.ts `Day`): what its plan is written from with the stack's hardware. */
 export const dayOf = (flight) => days.get(flight);
