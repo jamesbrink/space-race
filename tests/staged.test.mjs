@@ -12,6 +12,7 @@ import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
 import { between, propagate } from '../src/sim/predict.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, lawOf, published, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
@@ -140,7 +141,7 @@ for (const f of flown) {
       }
     }
     // (a stage cut on its velocity stops when the run says: shown with the run, below)
-    const plan = schedule(o);
+    const plan = schedule(planOfOrbital(o));
     o.stages.forEach((s, i) => {
       if (s.velocity) return;
       const used = flowOf(s) * integral(s.throttle, plan[i].from, plan[i].to);
@@ -198,7 +199,7 @@ for (const f of flown) {
     // (the turn's tilt is measured between the plumb line in the plane and the level square to it: until November 2026 the
     // level was square to the line to the Earth's centre, 0.16 degrees off at Tyuratam, and the axis up to 0.14 % long)
     const [site, dated] = where(f);
-    const law = lawOf(o, site, dated, whole.ascent.solved);
+    const law = lawOf(planOfOrbital(o), site, dated, whole.ascent.solved);
     const upIn = unit(sub(law.up0, scale(law.n, dot(law.n, law.up0))));
     assert.ok(Math.abs(dot(upIn, law.down0)) < 1e-15, `level square to the plumb line: ${dot(upIn, law.down0)}`);
     assert.ok(Math.abs(dot(law.n, law.down0)) < 1e-15, 'and in the launch plane');

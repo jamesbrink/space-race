@@ -39,6 +39,7 @@ import { tearOf } from './loads.ts';
 import { aimOf, type DescentBody, type DescentFlown, type DescentHands, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
+import { planOfOrbital } from './planof.ts';
 import { airOf as airOfStack, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
@@ -433,7 +434,7 @@ export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number
  * let go and nothing lit, down to the ground or once round. What the deck shows on the launch vehicle (orbitdeck.ts).
  */
 export function stack(o: OrbitalFlight, site: Geodetic, seaLevel: number, mass: number, gone: number): Flier {
-  const drag = stackOf(o).dragArea;
+  const drag = stackOf(planOfOrbital(o)).dragArea;
   return {
     kind: 'coast',
     cutoff: null,
@@ -483,9 +484,9 @@ export interface GuidedNow {
  */
 export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
   const v = now.vehicle;
-  const stack = stackOf(o);
+  const stack = stackOf(planOfOrbital(o));
   // (the law, the air and the path are all in the vehicle's frame)
-  const law = lawOf(o, site, v.frame, now.solved);
+  const law = lawOf(planOfOrbital(o), site, v.frame, now.solved);
   const airOf = airOfStack(seaLevel, v.frame);
   const last = o.stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
@@ -674,7 +675,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
  * live vehicle would have it. Whole seconds, by the trapezoid (as `guided` sums it).
  */
 export function apparentBy(o: OrbitalFlight, v: StagedVehicle, state: Pick<StagedState, 'stages' | 'drops'>, t: number): number[] {
-  const stack = stackOf(o);
+  const stack = stackOf(planOfOrbital(o));
   const s = { ...v.start(), stages: state.stages, drops: state.drops } as StagedState;
   return o.stages.map((st, i) => {
     const from = state.stages[i]!.from;

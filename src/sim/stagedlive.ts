@@ -199,8 +199,8 @@ export function stagedVehicle(
   const a = o.ascent;
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
   const spinE = frame.spin;
-  const law = lawOf(o, site, frame, x);
-  const stack = stackOf(o);
+  const law = lawOf(planOfOrbital(o), site, frame, x);
+  const stack = stackOf(planOfOrbital(o));
   const air = airOf(seaLevel, frame);
   const authority = authorityOverride ?? (a.steering?.authority.value ?? 0) * DEG;
   const last = o.stages.length - 1;
@@ -745,7 +745,7 @@ export function stagedPilot(
   options: StagedPilotOptions,
 ): StagedPilot {
   const o = v.flight;
-  const law = lawOf(o, site, frame, x);
+  const law = lawOf(planOfOrbital(o), site, frame, x);
   const air = airOf(seaLevel, frame);
   const memo = (options.memo ??= { thetaTurn: null });
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
@@ -889,7 +889,7 @@ export class StagedTally {
       if (did) this.at[m.id] = a;
     }
     const last = o.stages.length - 1;
-    if (v.burning(before, last) && !v.burning(s, last)) Object.assign(sum, atCutoff(o, before.t, before, v.start().r));
+    if (v.burning(before, last) && !v.burning(s, last)) Object.assign(sum, atCutoff(planOfOrbital(o), before.t, before, v.start().r));
   }
 }
 

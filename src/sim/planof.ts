@@ -344,8 +344,18 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
 /** A stage's body, engine, tank and joint id: by its place in the record's list, base first. */
 export const stageId = (i: number) => `stage:${i}`;
 
-/** An orbital flight's plan: its stages, drops and spacecraft, the record's sequence, its braking burn, entry and descent. */
+const orbitalPlans = new WeakMap<OrbitalFlight, FlightPlan>();
+/**
+ * An orbital flight's plan: its stages, drops and spacecraft, the record's sequence, its braking burn, entry and descent.
+ * Made once for a record, so every run of it reads the one plan.
+ */
 export function planOfOrbital(o: OrbitalFlight): FlightPlan {
+  let plan = orbitalPlans.get(o);
+  if (!plan) orbitalPlans.set(o, (plan = makeOrbitalPlan(o)));
+  return plan;
+}
+
+function makeOrbitalPlan(o: OrbitalFlight): FlightPlan {
   const a = o.ascent;
   const last = o.stages.length - 1;
   const d = o.descent;

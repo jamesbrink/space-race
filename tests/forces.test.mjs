@@ -9,6 +9,7 @@ import { airAt, airDrag } from '../src/sim/air.ts';
 import { ballistic, spacecraft, stack } from '../src/sim/fliers.ts';
 import { dragArea, thrustIn } from '../src/sim/fly.ts';
 import { shipPush } from '../src/sim/orbital.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { stackOf } from '../src/sim/staged.ts';
 import { nozzleThrust, vacuumOf } from '../src/sim/thrust.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -84,7 +85,7 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const stopped = stack(o, site, sea, 30_000, gone);
   same(
     stopped.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(o).dragArea(gone, air.mach)), 1 / 30_000),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(planOfOrbital(o)).dragArea(gone, air.mach)), 1 / 30_000),
     'the stopped stack',
   );
 });

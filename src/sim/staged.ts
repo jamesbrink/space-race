@@ -47,13 +47,13 @@ import {
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { along, MEAN_RADIUS } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
-import { type DescentHands, flyDown, flyOrbit, type OrbitalFlight, type OrbitFlown, type StageRecord } from './orbital.ts';
+import { type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitalFlight, type OrbitFlown } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
 import { integrate, sensed } from './apparent.ts';
-import type { Action, EventDef } from './plan.ts';
+import type { Action, BodyDef, EngineDef, EventDef, FlightPlan, TankDef } from './plan.ts';
 import { planOfOrbital } from './planof.ts';
 
 /** The integration step, s. */
@@ -99,7 +99,7 @@ export interface AscentSample {
  * batch run (`ascend`) and the live vehicle (stagedlive.ts `StagedTally`).
  */
 export function atCutoff(
-  o: OrbitalFlight,
+  plan: FlightPlan,
   t: number,
   s: { r: Vec3; v: Vec3 },
   pad: Vec3,
@@ -107,7 +107,7 @@ export function atCutoff(
   AscentSummary,
   'cutoffAt' | 'perigee' | 'apogee' | 'inclination' | 'period' | 'cutoffAltitude' | 'cutoffSpeed' | 'cutoffClimb' | 'arc' | 'anomaly'
 > {
-  const radius = o.orbit.radius.value;
+  const radius = plan.record!.orbit!.radius.value;
   const el = elementsOf(s.r, s.v);
   return {
     cutoffAt: t,
@@ -177,13 +177,56 @@ export interface FlownWhole {
 }
 
 /** One unit's nozzle exit area, m^2: given, or (vacuum less sea-level thrust) over one atmosphere. Nothing for an engine with no sea-level figure. */
-export function exitAreaOf(s: StageRecord): number {
-  if (s.exitArea) return s.exitArea.value;
-  return s.thrust.seaLevel ? (s.thrust.vacuum.value - s.thrust.seaLevel.value) / P0 : 0;
+export function exitAreaOf(e: Pick<EngineDef, 'exitArea' | 'thrust'>): number {
+  if (e.exitArea) return e.exitArea.value;
+  return e.thrust.seaLevel ? (e.thrust.vacuum.value - e.thrust.seaLevel.value) / P0 : 0;
 }
 
 /** One unit's rated propellant flow, kg/s. */
-export const flowOf = (s: StageRecord): number => s.thrust.vacuum.value / (G0 * s.isp.vacuum.value);
+export const flowOf = (e: Pick<EngineDef, 'thrust' | 'isp'>): number => e.thrust.vacuum.value / (G0 * e.isp!.vacuum.value);
+
+/**
+ * A stage of an orbital plan: an engine that draws on a tank, with the body it is on and its tank, in the plan's order,
+ * base first. Every figure is one unit's, and `count` of them are alike.
+ */
+export interface Stage {
+  engine: EngineDef;
+  body: BodyDef;
+  tank: TankDef;
+  count: number;
+  /** What one unit's engine can burn, kg: its tank's usable load, or the whole of it. */
+  load: number;
+  /** Its throttle setting against seconds from liftoff, where the record gives one. */
+  throttle?: Curve;
+}
+const stagesCache = new WeakMap<FlightPlan, Stage[]>();
+/** An orbital plan's stages, base first. */
+export function stagesOf(plan: FlightPlan): Stage[] {
+  let out = stagesCache.get(plan);
+  if (out) return out;
+  const c = plan.craft[0]!;
+  out = c.engines
+    .filter((e) => e.tanks.length)
+    .map((engine) => {
+      const tank = c.tanks.find((t) => t.id === engine.tanks[0])!;
+      return {
+        engine,
+        body: c.bodies.find((b) => b.id === engine.body)!,
+        tank,
+        count: engine.count,
+        load: (tank.usable ?? tank.load).value,
+        ...(engine.throttle?.curve ? { throttle: engine.throttle.curve } : {}),
+      };
+    });
+  stagesCache.set(plan, out);
+  return out;
+}
+
+/** The steering law an orbital plan's ascent is flown on: the attitude held by a stated law. */
+export function guidanceOf(plan: FlightPlan): Guidance {
+  for (const a of plan.attitude) if ('law' in a.hold) return a.hold.law;
+  throw new Error('this plan has no steering law: its ascent cannot be flown');
+}
 
 /** The integral of a curve's value (or of 1 with none) from a to b: straight lines between its points, flat beyond its ends. */
 export function integral(curve: Curve | undefined, a: number, b: number): number {
@@ -200,15 +243,15 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
  * stage cut on its velocity (`StageRecord.velocity`) stops here only when it runs dry: the run finds when it reaches its
  * speed, and that is its stop if it comes first.
  */
-export function schedule(o: OrbitalFlight, seq = sequenceOf(o)): { from: number; to: number; dry: boolean }[] {
-  return o.stages.map((s, i) => {
+export function schedule(plan: FlightPlan, seq = sequenceOf(plan)): { from: number; to: number; dry: boolean }[] {
+  return stagesOf(plan).map((s, i) => {
     const k = seq.stages[i]!;
     const from = k.from;
     // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there
     // is, past that; one with no cut of its own is shut down as it is let go)
-    const cutoff = k.speed ? from + (10 * (s.usable ?? s.propellant).value) / flowOf(s) : (k.cut ?? k.sep);
-    const load = (s.usable ?? s.propellant).value;
-    const burned = (t: number) => flowOf(s) * integral(s.throttle, from, t);
+    const cutoff = k.speed ? from + (10 * s.load) / flowOf(s.engine) : (k.cut ?? k.sep);
+    const load = s.load;
+    const burned = (t: number) => flowOf(s.engine) * integral(s.throttle, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
     return { from, to: spentAt(burned, load, from, cutoff), dry: true };
   });
@@ -233,8 +276,7 @@ export function spentAt(burned: (t: number) => number, load: number, from: numbe
  * from the plan's events, never from the stage records' own times. (The stages' engines are the plan's engines that draw
  * on tanks, in order; a stage's joint is the one that first lets its body go.)
  */
-export function sequenceOf(o: OrbitalFlight) {
-  const plan = planOfOrbital(o);
+export function sequenceOf(plan: FlightPlan) {
   const c = plan.craft[0]!;
   const timeOf = (e: EventDef | undefined): number | null => {
     const w = e?.when.find((x) => 'time' in x);
@@ -276,8 +318,8 @@ export type Mode = 'vertical' | 'turn' | 'tangent';
  * frames.ts's inertial frame of date. What the batch run flies (`ascend`) and what the live vehicle's guidance steers to
  * (sim/stagedlive.ts): one law. `thetaTurn` is the axis's angle above the local level as the tangent takes over.
  */
-export function lawOf(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, x: Solved) {
-  const g = o.ascent!.guidance;
+export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: Solved) {
+  const g = guidanceOf(plan);
   const pad = frame.toInertial(geodeticToEcef(site), 0);
   const up0 = frame.toInertial(enuAxes(site).up, 0); // the plumb line at liftoff, held by the gyros
   // the launch plane: through the plumb line and the aiming azimuth, where the record gives it; else the one solved for
@@ -288,7 +330,7 @@ export function lawOf(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, x: So
     const bearing = frame.toInertial(add(scale(east, Math.sin(a)), scale(north, Math.cos(a))), 0);
     return unit(cross(up0, bearing));
   })();
-  const n = aimed ?? planeThrough(pad, x.plane, o.injection.heading === 'north');
+  const n = aimed ?? planeThrough(pad, x.plane, plan.record!.orbit!.injection.heading === 'north');
   if (!n) throw new Error(`no plane inclined ${x.plane / DEG} degrees passes over the pad`);
   const upIn = unit(sub(up0, scale(n, dot(n, up0)))); // the same, in the launch plane
   // level in the plane, the way it will go: square to the plumb line in the plane, so that the two are the axes the turn's
@@ -336,20 +378,21 @@ export const airOf =
  * lit from `from` to `to`, and the drag area for the shape that flies at a record instant `at` (`ascent.drag`'s piece
  * for it) and a Mach number. The batch run and the live vehicle both fly on these.
  */
-export function stackOf(o: OrbitalFlight) {
-  const a = o.ascent!;
-  const flows = o.stages.map(flowOf);
-  const areas = o.stages.map(exitAreaOf);
-  const throttle = (i: number, t: number) => (o.stages[i]!.throttle ? along(o.stages[i]!.throttle!, t) : 1);
+export function stackOf(plan: FlightPlan) {
+  const stages = stagesOf(plan);
+  const drags = plan.craft[0]!.drag;
+  const flows = stages.map((s) => flowOf(s.engine));
+  const areas = stages.map((s) => exitAreaOf(s.engine));
+  const throttle = (i: number, t: number) => (stages[i]!.throttle ? along(stages[i]!.throttle!, t) : 1);
   return {
     flows,
     areas,
     throttle,
-    burned: (i: number, from: number, t: number) => flows[i]! * integral(o.stages[i]!.throttle, from, t),
+    burned: (i: number, from: number, t: number) => flows[i]! * integral(stages[i]!.throttle, from, t),
     thrust: (i: number, t: number, pressure: number) =>
-      nozzleThrust(o.stages[i]!.count, o.stages[i]!.thrust.vacuum.value, throttle(i, t), areas[i]!, pressure),
+      nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, throttle(i, t), areas[i]!, pressure),
     dragArea: (at: number, mach: number) => {
-      const drag = a.drag.find((d) => at < d.until.value) ?? a.drag[a.drag.length - 1]!;
+      const drag = drags.find((d) => at < d.until.value) ?? drags[drags.length - 1]!;
       return drag.area.value * along(drag.curve, mach);
     },
   };
@@ -362,14 +405,17 @@ export function stackOf(o: OrbitalFlight) {
 export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaLevel: number, x: Solved, every = 0.5): Ascended {
   const a = o.ascent;
   if (!a) throw new Error('this orbital record has no `ascent`: only its coast can be flown');
-  const g = a.guidance;
+  const fp = planOfOrbital(o);
+  const stages = stagesOf(fp);
+  const liftoff = fp.craft[0]!.mass.value;
+  const g = guidanceOf(fp);
   const spin = frame.spin;
-  const law = lawOf(o, site, frame, x);
+  const law = lawOf(fp, site, frame, x);
   const { pad, n } = law;
-  const stack = stackOf(o);
+  const stack = stackOf(fp);
 
-  const seq = sequenceOf(o);
-  const plan = schedule(o, seq);
+  const seq = sequenceOf(fp);
+  const plan = schedule(fp, seq);
   // a stage cut on its velocity: the space-fixed speed its integrator stops it at (the design's, and the error it had)
   const cutAt = seq.stages.map((k) => k.speed?.value ?? Infinity);
   const burned = (i: number, t: number) => stack.burned(i, plan[i]!.from, Math.min(t, plan[i]!.to));
@@ -382,9 +428,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   // (the rocket's own thrust over its mass, summed from its ignition; in vacuum, with nothing else pushing, that is all an
   // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
   const apparentCut = (i: number): number => {
-    const st = o.stages[i]!;
-    const massAt = (t: number) => o.liftoffMass.value - droppedBy(t) - o.stages.reduce((m, s, j) => m + s.count * burned(j, t), 0);
-    const pushAt = (t: number) => sensed(st.count, throttle(i, t), st.thrust.vacuum.value, massAt(t));
+    const st = stages[i]!;
+    const massAt = (t: number) => liftoff - droppedBy(t) - stages.reduce((m, s, j) => m + s.count * burned(j, t), 0);
+    const pushAt = (t: number) => sensed(st.count, throttle(i, t), st.engine.thrust.vacuum.value, massAt(t));
     return integrate(pushAt, plan[i]!.from, plan[i]!.to, 0.01, cutAt[i]!).at;
   };
   const stageSep = seq.stages.map((k) => k.sep);
@@ -392,8 +438,8 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own
   const droppedBy = (t: number) => {
     let m = 0;
-    o.stages.forEach((s, i) => {
-      if (stageSep[i]! <= t && i < o.stages.length - 1) m += s.count * (s.mass.value - burned(i, stageSep[i]!));
+    stages.forEach((s, i) => {
+      if (stageSep[i]! <= t && i < stages.length - 1) m += s.count * (s.body.mass.value - burned(i, stageSep[i]!));
     });
     for (const d of drops) if (d.at <= t) m += d.mass;
     return m;
@@ -416,8 +462,8 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   const forces = (s: State, t: number, m: Mode, gone: number, as = t) => {
     const air = airHere(s, t);
     let thrust = 0;
-    let mass = o.liftoffMass.value - gone;
-    o.stages.forEach((st, i) => {
+    let mass = liftoff - gone;
+    stages.forEach((st, i) => {
       mass -= st.count * burned(i, t);
       if (as >= plan[i]!.from && as < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
     });
@@ -464,7 +510,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
       ...plan.flatMap((p) => [p.from, p.to]),
       ...stageSep.filter(Number.isFinite),
       ...drops.map((d) => d.at),
-      ...a.drag.map((d) => d.until.value),
+      ...fp.craft[0]!.drag.map((d) => d.until.value),
       ...seq.instants.map((x) => x.at),
     ]),
   ]
@@ -532,7 +578,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
     for (const x of seq.instants) if (x.at === t) at[x.id] = s;
-    if (t === plan[plan.length - 1]!.to) Object.assign(summary, atCutoff(o, t, state, pad));
+    if (t === plan[plan.length - 1]!.to) Object.assign(summary, atCutoff(fp, t, state, pad));
     // the law's own changes, at the end of a step
     if (mode === 'vertical' && t >= tVertical) mode = 'turn';
     if (mode === 'turn' && t >= tTurn) {
@@ -548,17 +594,16 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   }
   // (`burned` is one unit's: a stage's count multiplies it)
   // (and the last stage, as it lets the spacecraft go, takes what it weighed fuelled less what it burned)
-  const last = o.stages.length - 1;
-  const lastLeft = o.stages[last]!.count * (o.stages[last]!.mass.value - burned(last, tPart));
-  summary.massLeft =
-    o.liftoffMass.value - droppedBy(tPart - 1e-9) - o.stages.reduce((sum, st, i) => sum + st.count * burned(i, tPart), 0) - lastLeft;
+  const last = stages.length - 1;
+  const lastLeft = stages[last]!.count * (stages[last]!.body.mass.value - burned(last, tPart));
+  summary.massLeft = liftoff - droppedBy(tPart - 1e-9) - stages.reduce((sum, st, i) => sum + st.count * burned(i, tPart), 0) - lastLeft;
   return {
     samples,
     at,
     summary,
     solved: x,
     stops: plan.map((p) => p.to),
-    left: o.stages.map((s, i) => (s.usable ?? s.propellant).value - burned(i, plan[i]!.to)),
+    left: stages.map((s, i) => s.load - burned(i, plan[i]!.to)),
     separation: { t: tPart, r: state.r, v: state.v },
     plane: n,
     thetaTurn,
@@ -937,8 +982,14 @@ export function held(o: OrbitalFlight, whole: FlownWhole): Held[] {
  * summed sea-level thrust, N; the exhaust speed of that thrust over their summed flow, m/s; and their summed exit area, m^2.
  */
 export function liftoffEngine(o: OrbitalFlight): { thrust: number; exhaustSpeed: number; exitArea: number } {
-  const lit = o.stages.filter((s) => s.ignition.value <= 0 && s.thrust.seaLevel);
-  const thrust = lit.reduce((sum, s) => sum + s.count * s.thrust.seaLevel!.value, 0);
-  const flow = lit.reduce((sum, s) => sum + s.count * flowOf(s), 0);
-  return { thrust, exhaustSpeed: flow > 0 ? thrust / flow : 0, exitArea: lit.reduce((sum, s) => sum + s.count * exitAreaOf(s), 0) };
+  const plan = planOfOrbital(o);
+  const seq = sequenceOf(plan);
+  const lit = stagesOf(plan).filter((s, i) => seq.stages[i]!.from <= 0 && s.engine.thrust.seaLevel);
+  const thrust = lit.reduce((sum, s) => sum + s.count * s.engine.thrust.seaLevel!.value, 0);
+  const flow = lit.reduce((sum, s) => sum + s.count * flowOf(s.engine), 0);
+  return {
+    thrust,
+    exhaustSpeed: flow > 0 ? thrust / flow : 0,
+    exitArea: lit.reduce((sum, s) => sum + s.count * exitAreaOf(s.engine), 0),
+  };
 }
