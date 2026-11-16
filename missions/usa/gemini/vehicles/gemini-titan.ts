@@ -148,8 +148,8 @@ const HARDWARE: Record<string, Pick<Part, 'group' | 'inside' | 'explode' | 'orde
  * The stack as a model (types.ts: ModelDef), from what the flight says: its GLB's folder (`flight`, as under
  * public/models/usa/gemini/), its parts' words in the order the parts list gives them (a part of the stack takes its
  * place and how it comes away from `HARDWARE`; one the flight carried alone, a pod, says all of it), its seats, its
- * views after the stack's own, and its cabin. Only the vehicle is built: it stands in the gallery, on its engines. Its
- * launch site (Complex 19) is not built yet.
+ * views after the stack's own, and its cabin. It stands in the gallery, on its engines; a flight whose
+ * launch site is built stands it on Complex 19's thrust mount (places/cape-canaveral/lc-19.parts.ts `lc19Vehicle`).
  */
 export const geminiTitanStack = (ship: {
   flight: string;
