@@ -4,6 +4,7 @@ import { smoothstep } from '../../../../src/util/math.ts';
 import { buildAround } from '../../../../src/viewer/around.ts';
 import { fbm2 } from '../../../../src/viewer/field.ts';
 import type { LandSpec } from '../../../../src/viewer/land.ts';
+import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
 import { type GroundSpec, stood } from '../../../../src/viewer/scenery/ground.ts';
 import { SITE1 } from './site-1.ts';
 import { CENTRE_TRACK, RAILS } from './tracks.ts';
@@ -25,9 +26,11 @@ import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, works
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
- * out to the horizon. The site's frame lies on the compass (missions/ussr/places/tyuratam/site-1.ts:
- * its +X is due east), so the land's frame is the scene's: +X east, -Z north, metres from the
- * rocket's axis.
+ * out to the horizon. Everything here is given in Site 1's own frame, which lies on the compass
+ * (missions/ussr/places/tyuratam/site-1.ts: its +X is due east): +X east, -Z north, metres from the
+ * rocket's axis. Round Site 1 that is the land's frame itself; round any other pad here it is put where
+ * Site 1 lies from that pad (viewer/scenery/compass.ts `frame`, through world/frames.ts), as the Cape's
+ * ground puts what is given in Complex 5's frame (`inSite1`, below).
  *
  * The pad, the flame pit and the launch system are not here: they are modelled in Blender, in the
  * same frame (places/tyuratam/site1/). The land has the pit's outline cut out of it, where the pit's own model
@@ -341,6 +344,86 @@ const RELIEF = /* glsl */ `
     float own = siteRelief(vec2(p.x, -p.y)) + 0.6 * (fbm2(p * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, r);
     return w > 0.0 ? own + (heightsAt(vec2(p.x, -p.y)) - own) * w : own;
   }`;
+
+/**
+ * Where Site 1's frame lies on the compass round the origin pad, metres east and south: (0, 0) round Site 1 itself.
+ * Site 1's frame is the compass's at Site 1 (its +X due east), so another pad's compass holds it unturned: the meridians'
+ * convergence between two pads of the place is left out (compass.ts `frame`), 0.02 degrees over the 3 km to a pad beside it.
+ */
+const site1In = (compass: Compass): { x: number; z: number } => {
+  const at = compass.frame(SITE1);
+  return { x: at.x, z: at.z };
+};
+
+/**
+ * The lie of the land round another pad of the place, `at` the place of Site 1's frame on its compass: Site 1's own
+ * (`relief`) where it is drawn round Site 1, put where Site 1 lies; SRTM's lie faded out toward the edge of this pad's
+ * land as well as of Site 1's (SRTM_TO, along each one's axes), so the land's edge meets the globe level here too; and
+ * the whole let down by the ground's height under this pad, so that the land is at its grade under its model's zero
+ * (`base`), faded out with SRTM's toward the edge. Round Site 1 it is not used: `relief` is, to the last bit.
+ */
+function reliefRound(at: { x: number; z: number }): { relief: (x: number, z: number) => number; base: number; glsl: string } {
+  const edge = (x: number, z: number) => 1 - smoothstep(SRTM_TO[0], SRTM_TO[1], Math.max(Math.abs(x), Math.abs(z)));
+  const lie = (x: number, z: number): number => {
+    const qx = x - at.x,
+      qz = z - at.z;
+    const r = Math.hypot(qx, qz);
+    const w = smoothstep(SRTM_FROM[0], SRTM_FROM[1], r) * edge(qx, qz) * edge(x, z);
+    const own = siteRelief(qx, -qz) + 0.6 * (fbm2(qx * 0.0025, qz * 0.0025, 61, 3) - 0.45) * smoothstep(400, 900, r);
+    return w > 0 ? own + (heightsAt(qx, -qz) - own) * w : own;
+  };
+  const base = lie(0, 0);
+  const v = `vec2(${at.x.toFixed(3)}, ${at.z.toFixed(3)})`;
+  return {
+    relief: (x, z) => lie(x, z) - base * edge(x, z),
+    base,
+    glsl: /* glsl */ `
+  ${SITE_RELIEF_GLSL}
+  float relief(vec2 p) {
+    vec2 q = p - ${v};
+    float r = length(q);
+    float edge = 1.0 - smoothstep(${glsl(SRTM_TO[0])}, ${glsl(SRTM_TO[1])}, max(abs(p.x), abs(p.y)));
+    float w = smoothstep(${glsl(SRTM_FROM[0])}, ${glsl(SRTM_FROM[1])}, r) * (1.0 - smoothstep(${glsl(SRTM_TO[0])}, ${glsl(SRTM_TO[1])}, max(abs(q.x), abs(q.y)))) * edge;
+    float own = siteRelief(vec2(q.x, -q.y)) + 0.6 * (fbm2(q * 0.0025, 61, 3) - 0.45) * smoothstep(400.0, 900.0, r);
+    return (w > 0.0 ? own + (heightsAt(vec2(q.x, -q.y)) - own) * w : own) - ${base.toFixed(4)} * edge;
+  }`,
+  };
+}
+
+/**
+ * The land's GLSL laid round another pad: each function the land calls with a point (land.ts: `coverA`, `coverB`,
+ * `paint`, `ground`, `groundCel`) renamed, and called by the land's name with the point put into Site 1's frame, so
+ * that everything drawn at Site 1's figures (and every noise of it) lands where it was round Site 1.
+ */
+const ENTRIES: ['cover' | 'paint' | 'ground' | 'cel', string, string][] = [
+  ['cover', 'vec4 coverA(vec2 p) {', 'vec4 coverA(vec2 p) { return coverAInSite1(p - AT); }'],
+  ['cover', 'vec4 coverB(vec2 p) {', 'vec4 coverB(vec2 p) { return coverBInSite1(p - AT); }'],
+  [
+    'paint',
+    'void paint(vec2 p, vec4 A, vec4 B, inout Ground g) {',
+    'void paint(vec2 p, vec4 A, vec4 B, inout Ground g) { paintInSite1(p - AT, A, B, g); }',
+  ],
+  ['ground', 'Ground ground(vec2 p, vec4 A, vec4 B) {', 'Ground ground(vec2 p, vec4 A, vec4 B) { return groundInSite1(p - AT, A, B); }'],
+  [
+    'cel',
+    'vec3 groundCel(vec2 p, vec4 A, vec4 B, float roofed) {',
+    'vec3 groundCel(vec2 p, vec4 A, vec4 B, float roofed) { return groundCelInSite1(p - AT, A, B, roofed); }',
+  ],
+];
+function inSite1(spec: LandSpec, at: { x: number; z: number }): LandSpec {
+  const out = { ...spec };
+  const v = `vec2(${at.x.toFixed(3)}, ${at.z.toFixed(3)})`;
+  for (const [key, head, call] of ENTRIES) {
+    const text = out[key] ?? '';
+    const name = head.slice(head.indexOf(' ') + 1, head.indexOf('('));
+    if (text.split(head).length !== 2) throw new Error(`ground.ts: ${name} is not defined once in the land's ${key}`);
+    out[key] = `${text.replace(head, head.replace(`${name}(`, `${name}InSite1(`))}\n  ${call.replace('AT', v)}`;
+  }
+  const round = reliefRound(at);
+  out.relief = round.relief;
+  out.reliefGlsl = round.glsl;
+  return out;
+}
 
 /**
  * The mapped ground (missions/ussr/places/tyuratam/tyuratam-ground.ts) as a table the cover's bake reads (`mappedKinds`),
@@ -721,9 +804,10 @@ const PAINT = /* glsl */ `
     }
   }`;
 
-/** The ground, as land.ts takes it. */
-function landSpec(season: SteppeSeason): LandSpec {
-  return {
+/** The ground, as land.ts takes it, round the pad the compass is laid round (Site 1, or another: `inSite1`). */
+function landSpec(season: SteppeSeason, compass: Compass): LandSpec {
+  const at = site1In(compass);
+  const spec: LandSpec = {
     near: 1024,
     texels: 1024,
     far: FAR,
@@ -754,6 +838,7 @@ function landSpec(season: SteppeSeason): LandSpec {
     // the scarp, the ramp and the plots are graded earth: smooth, not faceted
     smooth: true,
   };
+  return at.x === 0 && at.z === 0 ? spec : inSite1(spec, at);
 }
 
 /** How far inside the flame pit's rim a point is, metres (negative outside it): as `inPit` in the shader. */
@@ -792,35 +877,54 @@ const NEIGHBOURS: SiteAround[] = [
 ];
 
 /**
- * The steppe round Site 1, as viewer/scenery/ground.ts lays it out. Everything here is in Site 1's own frame (its +X due
- * east, so the compass frame round it), so it is laid round Site 1 alone: a second pad at Tyuratam needs what is drawn
- * at Site 1's figures (the rim, the tracks, the apron, the relief, the worked ground) put where Site 1 lies from it, as the
- * Cape's ground does with Complex 5's (missions/usa/places/cape-canaveral/ground.ts: `pad5`).
+ * How what is built in Site 1's frame is stood on the land round the origin pad: where that frame lies on the compass
+ * (`x`, `z`: its zero is put there, at the compass's height zero), and how far to raise a thing whose middle is (x, z)
+ * in Site 1's frame and which reaches `half` metres from it over where its model has it: onto the highest of the land
+ * drawn under it, less the site's relief at its middle, which its model stands on (site1/relief.py), and less the
+ * difference of the two pads' grades (each model is built at Site 1's). Its walls go down 0.48 m into the land. Round
+ * Site 1 the frame is the land's and the lift is the land's height less the relief, to the last bit.
+ */
+export function standsInSite1(compass: Compass, land: { heightAt(x: number, z: number): number }) {
+  const at = site1In(compass);
+  const grades = compass.origin.grade.value - SITE1.grade.value;
+  return {
+    x: at.x,
+    z: at.z,
+    lift: (x: number, z: number, half: number): number => {
+      let top = Number.NEGATIVE_INFINITY;
+      for (let i = -1; i <= 1; i++)
+        for (let j = -1; j <= 1; j++) top = Math.max(top, land.heightAt(x + 0.7 * half * i + at.x, z + 0.7 * half * j + at.z));
+      return top - siteRelief(x, -z) + grades;
+    },
+  };
+}
+
+/**
+ * The steppe round any pad at Tyuratam, as viewer/scenery/ground.ts lays it out. Everything here is in Site 1's own frame
+ * (its +X due east, so the compass frame round it), and round another pad it is put where Site 1 lies from it: the rim,
+ * the tracks, the apron, the relief and the worked ground (`inSite1`), the open ground under the pit (`under`) and what
+ * stands round (`standsInSite1`). What that pad's own ground is (its lie, its tracks, its pit) is its own to give.
  */
 export const TYURATAM_GROUND: GroundSpec = {
-  land: (day, compass) => {
-    if (compass.origin !== SITE1) throw new Error(`the steppe is drawn round Site 1 alone, not ${compass.origin.name}`);
-    // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
-    return landSpec(seasonOf(day.date));
-  },
+  // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
+  land: (day, compass) => landSpec(seasonOf(day.date), compass),
   flora: steppeFlora,
   reach: 1500,
   horizon: FAR,
-  // (the building round the site: each on the highest of the land drawn under it, over the site's relief at its middle,
-  // which its model stands on (site1/relief.py); its walls go down 0.48 m into the land)
-  scenery: ({ land, day }) => {
-    const far = NEIGHBOURS.filter((n) => stood(n, day.date)).map((n) =>
-      buildAround(n, (x, z, half) => {
-        let top = Number.NEGATIVE_INFINITY;
-        for (let i = -1; i <= 1; i++)
-          for (let j = -1; j <= 1; j++) top = Math.max(top, land.heightAt(x + 0.7 * half * i, z + 0.7 * half * j));
-        return top - siteRelief(x, -z);
-      }),
-    );
+  scenery: ({ land, day, compass }) => {
+    const stands = standsInSite1(compass, land);
+    const far = NEIGHBOURS.filter((n) => stood(n, day.date)).map((n) => {
+      const around = buildAround(n, stands.lift);
+      around.group.position.set(stands.x, 0, stands.z);
+      return around;
+    });
     return { objects: far.map((a) => a.group), levels: far, arrived: () => far.map((a) => a.arrived()).some(Boolean) };
   },
   // inside the flame pit's rim the open ground is far down, and what is walked on is the pit's own model
-  under: (x, z) => (inPit(x, z) > OVERLAP ? UNDER_PIT : null),
+  under: (x, z, compass) => {
+    const at = site1In(compass);
+    return inPit(x - at.x, z - at.z) > OVERLAP ? UNDER_PIT : null;
+  },
   /** The ground's own tone, for the land beyond it on the globe (globe.ts): the steppe's, not the Cape's green; and in the cel look. */
   tone: (day) => steppeTone(seasonOf(day.date)),
   drawn: (day) => steppeCel(seasonOf(day.date)),

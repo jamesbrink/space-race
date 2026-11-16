@@ -26,8 +26,8 @@ export interface GroundSpec {
    * casts a shadow has come since it was last asked.
    */
   scenery?(at: Placing): { objects: THREE.Object3D[]; levels: Levelled[]; arrived: () => boolean };
-  /** Where the ground walked on is not the land's (a pit the pad's own model is the ground of): its height there, or null. Compass frame. */
-  under?(x: number, z: number): number | null;
+  /** Where the ground walked on is not the land's (a pit the pad's own model is the ground of): its height there, or null. On `compass`. */
+  under?(x: number, z: number, compass: Compass): number | null;
   /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts); and in the cel look. */
   tone?(day: Day): THREE.Color;
   drawn?(day: Day): THREE.Color;
@@ -147,7 +147,7 @@ export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, ori
       // the world point on the compass: the inverse of the place's turn
       const cx = x * COS - z * SIN,
         cz = x * SIN + z * COS;
-      return spec.under?.(cx, cz) ?? groundY + land.heightAt(cx, cz);
+      return spec.under?.(cx, cz, compass) ?? groundY + land.heightAt(cx, cz);
     },
   };
 }

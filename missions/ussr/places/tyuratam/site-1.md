@@ -1099,6 +1099,10 @@ rocket can leave the erector out by its date.
 - The plants are eight species as designed forms in three variants each; the river's floodplain plants (tamarisk,
   reeds, the tugai) are not drawn, being 30 km off and on the region's map from height. How many tulips stood to a
   square metre is not recorded.
-- The land is drawn in Site 1's own frame (ground.ts: the rim, the tracks, the apron, the relief and the worked
-  ground at Site 1's figures), so the place's ground can be laid round Site 1 alone: a flight from another pad at
-  Tyuratam needs them put where Site 1 lies from it, as the Cape's are from Complex 5 (cape-canaveral/ground.ts).
+- The land is given in Site 1's own frame (ground.ts: the rim, the tracks, the apron, the relief and the worked
+  ground at Site 1's figures). Round another pad at Tyuratam it is put where Site 1 lies from that pad (ground.ts
+  `inSite1`, `standsInSite1`: the compass through world/frames.ts, as the Cape's are from Complex 5), with SRTM's lie
+  let down to that pad's ground and faded to the edge of its own land; the meridians' convergence between the two
+  (0.02 degrees over 3 km) is left out. A pad laid there has nothing of its own yet (its lie, tracks, pit): that is its
+  own to give. No flight leaves from another pad here yet; tests/places.test.mjs lays the ground round a made-up one
+  3 km off and holds the land, the pit and Site 2's building to where they are round Site 1.
