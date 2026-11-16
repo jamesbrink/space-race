@@ -20,7 +20,8 @@ const SIZES = [
   [390, 844, true],
 ];
 /** The deck's own keys and the command each is (deck.ts `key`). */
-const COMMANDS = { Space: 'next', G: 'guidance', B: 'sequence', N: 'again', Esc: 'leave', X: 'abort' };
+const COMMANDS = { Space: ['next', 'resume'], G: 'guidance', B: 'sequence', N: 'again', Esc: 'leave', X: 'abort' };
+const isCommand = (key, command) => [COMMANDS[key]].flat().includes(command);
 let failed = 0;
 const fail = (where, what) => {
   failed++;
@@ -86,7 +87,7 @@ for (const [w, h, touch] of SIZES) {
     for (const k of keys) {
       if (!k.button) fail(where, `the key ${k.key} is shown with no button`);
       else if (!k.do && !k.press && !k.hold && !k.work) fail(where, `the key ${k.key}'s button does nothing`);
-      else if (k.do && COMMANDS[k.key] && COMMANDS[k.key] !== k.do) fail(where, `${k.key} is ${COMMANDS[k.key]} but its button is ${k.do}`);
+      else if (k.do && COMMANDS[k.key] && !isCommand(k.key, k.do)) fail(where, `${k.key} is ${COMMANDS[k.key]} but its button is ${k.do}`);
       else if (k.hold && k.hold.toUpperCase() !== k.key) fail(where, `${k.key}'s button holds ${k.hold}`);
       else if (k.press && k.press.length === 1 && k.press.toUpperCase() !== k.key.toUpperCase())
         fail(where, `${k.key}'s button presses ${k.press}`);
@@ -386,6 +387,235 @@ for (const [w, h, touch] of SIZES) {
   }
   if (a.foot.join(' ') !== b.foot.join(' ')) fail(`${w}`, `the key lines differ: "${a.foot.join(' ')}" against "${b.foot.join(' ')}"`);
   console.log(`${w} x ${h}${touch ? ' (touch)' : ''}: checked`);
+}
+// Leaving a flight (src/deck/leaving.ts, ask.ts, app/stake.ts): watched as flown, it asks nothing and nothing is kept. Flown by
+// hand, a way out within the flight (the deck's Leave, the Gallery and Launch site tabs, the flight's crumb) keeps it, parked
+// with the clock stopped, and Fly resumes it to the digit; a way out beyond it (the Space Race crumb, another flight's address)
+// asks first: Keep flying changes nothing, Leave lets it go. The browser's own question is set only while a hand-flown flight
+// would be lost, and the page uses no alert, confirm or prompt of its own.
+{
+  const HAND = ['ussr/vostok/vostok-1', 'usa/mercury/mr-3-freedom-7'];
+  const read = (page) =>
+    page.evaluate(() => ({
+      t: window.sr.clock.t,
+      running: window.sr.clock.running,
+      cells: Object.fromEntries(
+        [...document.querySelectorAll('#ui > .cockpit [data-cell]')]
+          .filter((c) => c.dataset.cell !== 'kept-at')
+          .map((c) => [c.dataset.cell, c.textContent]),
+      ),
+      mode: document.querySelector('[data-cell=mode]')?.textContent ?? '',
+      active: window.sr.cockpit.active,
+      keeping: window.sr.cockpit.keeping,
+      warns: (() => {
+        const e = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(e);
+        return e.defaultPrevented;
+      })(),
+      hash: decodeURIComponent(location.hash),
+      length: history.length,
+      asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
+      focus: document.activeElement?.dataset?.ask ?? '',
+      card: Boolean(document.querySelector('.cockpit-kept:not([hidden])')),
+    }));
+  const same = (where, a, b, what) => {
+    const keys = [...new Set([...Object.keys(a.cells), ...Object.keys(b.cells)])].filter((k) => a.cells[k] !== b.cells[k]);
+    if (a.t !== b.t || keys.length)
+      fail(where, `${what}: not the same flight: t ${a.t} to ${b.t}; ${keys.map((k) => `${k} "${a.cells[k]}" to "${b.cells[k]}"`).join(', ')}`);
+  };
+  const handFly = async (page, id) => {
+    await page.keyboard.press('Space');
+    if (id.startsWith('ussr')) {
+      for (let i = 0; i < 100 && (await page.evaluate(() => window.sr.clock.t)) < 50; i++) {
+        await page.evaluate(() => window.sr.clock.seek(Math.min(50, window.sr.clock.t + 4)));
+        await page.waitForTimeout(50);
+      }
+      await page.keyboard.press('KeyG');
+    } else await page.waitForTimeout(1200);
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(700);
+    await page.keyboard.up('KeyW');
+    await page.waitForTimeout(300);
+  };
+  const stop = async (page) => {
+    await page.evaluate(() => window.sr.clock.pause());
+    await page.waitForTimeout(300);
+  };
+  const toFly = async (page) => {
+    await page.click('#ui .places [data-place=fly]');
+    await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
+    await page.waitForTimeout(800);
+  };
+  const dialogs = [];
+  const trap = (page) => page.on('dialog', (d) => (dialogs.push(d.type()), d.dismiss()));
+  for (const id of HAND) {
+    const w = 1280;
+    const h = 800;
+    const where = `${id} leaving`;
+    // watched as flown: nothing at stake, nothing asked, nothing kept, no browser question
+    {
+      const { page, errors, context: ctx } = await fly(id, w, h, false);
+      trap(page);
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(1500);
+      let r = await read(page);
+      if (r.warns) fail(where, 'the browser is set to ask while the flight is only watched as flown');
+      await page.click('#ui > .cockpit .deck-foot [data-do=leave]');
+      await page.waitForTimeout(500);
+      r = await read(page);
+      if (r.active || r.keeping || r.asking) fail(where, `watched as flown, leaving: active ${r.active}, kept ${r.keeping}, asking ${r.asking}`);
+      if (await page.$('.kept-mark')) fail(where, 'a flight only watched is marked as kept');
+      if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+    // flown by hand, each way out within the flight keeps it, and Fly resumes it to the digit
+    const within = [
+      ["the deck's Leave button", (page) => page.click('#ui > .cockpit .deck-foot [data-do=leave]')],
+      ['Esc', (page) => page.keyboard.press('Escape')],
+      ['the Gallery tab', (page) => page.click('#ui .places [data-place=gallery]')],
+      ['the Launch site tab', (page) => page.click('#ui .places [data-place=site]')],
+      ['the flight crumb', (page) => page.evaluate(() => document.querySelector('#ui [data-flight-home]').click())],
+    ];
+    for (const [name, out] of within) {
+      const at = `${where} by ${name}`;
+      const { page, errors, context: ctx } = await fly(id, w, h, false);
+      trap(page);
+      await handFly(page, id);
+      await stop(page);
+      const before = await read(page);
+      if (!/Not the record|Hands only/.test(before.mode)) fail(at, `not taken over: "${before.mode}"`);
+      if (!before.warns) fail(at, 'the browser is not set to ask while a flight flown by hand is going on');
+      await out(page);
+      await page.waitForTimeout(1200);
+      let r = await read(page);
+      if (r.asking) fail(at, 'asked, though the flight is kept within the flight');
+      if (r.active || !r.keeping) fail(at, `not kept: active ${r.active}, kept ${r.keeping}`);
+      if (!r.warns) fail(at, 'a kept flight is lost by closing the page and the browser does not ask');
+      if (!(await page.$('.places .kept-mark'))) fail(at, 'the Fly tab does not say a flight is kept');
+      const note = await page.evaluate(() => document.querySelector('.notes')?.textContent ?? '');
+      if (!/kept/i.test(note)) fail(at, `no note that it is kept: "${note}"`);
+      const here = r.hash;
+      // back to Fly: the card, the clock stopped where it was, and the figures to the digit
+      await toFly(page);
+      r = await read(page);
+      if (!r.card) fail(at, 'resumed with no card saying it is kept');
+      if (r.running) fail(at, 'the clock runs before the visitor has chosen');
+      same(at, before, r, 'resumed');
+      // a hand to the stick under the card does nothing
+      await page.keyboard.down('KeyW');
+      await page.waitForTimeout(400);
+      await page.keyboard.up('KeyW');
+      r = await read(page);
+      same(at, before, r, 'a steering key under the card');
+      await page.click('.cockpit-kept [data-do=resume]');
+      await page.waitForTimeout(300);
+      r = await read(page);
+      if (r.card) fail(at, 'the card is still there after Resume');
+      console.log(`  ${at}: kept at T${before.t.toFixed(1)} (${here}), resumed to the digit`);
+      if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+    // a kept flight ended from the Fly tab's mark is gone; started over from its card it is a new one
+    {
+      const at = `${where} ended`;
+      const { page, errors, context: ctx } = await fly(id, w, h, false);
+      await handFly(page, id);
+      await stop(page);
+      await page.click('#ui .places [data-place=gallery]');
+      await page.waitForSelector('.kept-mark');
+      await page.waitForTimeout(800);
+      await page.click('.kept-mark');
+      await page.waitForTimeout(300);
+      let r = await read(page);
+      if (r.keeping || r.warns || (await page.$('.kept-mark'))) fail(at, `the mark did not end it: kept ${r.keeping}, asks ${r.warns}`);
+      await toFly(page);
+      r = await read(page);
+      if (r.card || r.t > 1) fail(at, `ending it left something to resume: card ${r.card}, t ${r.t}`);
+      await handFly(page, id);
+      await stop(page);
+      await page.click('#ui .places [data-place=site]');
+      await page.waitForTimeout(800);
+      await toFly(page);
+      await page.click('.cockpit-kept [data-do=again]');
+      await page.waitForTimeout(500);
+      r = await read(page);
+      if (r.card || r.t > 1 || /Not the record|Hands only/.test(r.mode)) fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
+      if (r.warns) fail(at, 'after Start over, nothing is flown by hand and the browser still asks');
+      console.log(`  ${at}: the mark ended it; Start over began again from the pad`);
+      if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+    // beyond the flight: the Space Race crumb, and another flight's address, ask; Keep flying changes nothing
+    const other = id === 'usa/mercury/mr-3-freedom-7' ? 'ussr/vostok/vostok-2' : 'usa/mercury/mr-3-freedom-7';
+    const beyond = [
+      ['the Space Race crumb', (page) => page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click()), (hash) => !hash.includes(id)],
+      ["another flight's address", (page) => page.evaluate((o) => (location.hash = `#${o}/gallery`), other), (hash) => hash.includes(other)],
+    ];
+    for (const [name, out, gone] of beyond) {
+      const at = `${where} by ${name}`;
+      const { page, errors, context: ctx } = await fly(id, w, h, false);
+      trap(page);
+      await handFly(page, id);
+      await stop(page);
+      const before = await read(page);
+      await page.evaluate(() => (window.__run = window.sr.cockpit.run));
+      for (const how of ['the button', 'Escape', 'the backdrop', 'Enter']) {
+        await out(page);
+        await page.waitForTimeout(500);
+        let r = await read(page);
+        if (!r.asking) {
+          fail(at, 'did not ask');
+          break;
+        }
+        if (r.focus !== 'stay') fail(at, `the question's focus is "${r.focus}", not Keep flying`);
+        const dlg = await page.evaluate(() => {
+          const d = document.querySelector('.deck-ask [role=alertdialog]');
+          return {
+            label: document.getElementById(d.getAttribute('aria-labelledby'))?.textContent,
+            modal: d.getAttribute('aria-modal'),
+            text: d.textContent,
+          };
+        });
+        if (!/Leave this flight\?/.test(dlg.label) || dlg.modal !== 'true' || !/by hand; it will not be kept/.test(dlg.text))
+          fail(at, `the question: ${JSON.stringify(dlg)}`);
+        // the clock holds and no key of the flight acts under it
+        await page.evaluate(() => window.sr.clock.play(true));
+        await page.keyboard.press('KeyG');
+        await page.keyboard.press('KeyN');
+        await page.waitForTimeout(300);
+        r = await read(page);
+        if (r.running) fail(at, 'the clock runs under the question');
+        same(at, before, r, 'a key under the question');
+        await page.keyboard.press('Tab');
+        const tabbed = await page.evaluate(() => document.activeElement?.dataset?.ask);
+        if (tabbed !== 'leave') fail(at, `Tab went to "${tabbed}"`);
+        await page.keyboard.press('Tab');
+        if (how === 'the button') await page.click('.deck-ask [data-ask=stay]');
+        else if (how === 'Escape') await page.keyboard.press('Escape');
+        else if (how === 'the backdrop') await page.mouse.click(6, 6);
+        else await page.keyboard.press('Enter'); // (Enter is Keep flying, not Leave: the safe answer is the default)
+        await page.waitForTimeout(1200);
+        r = await read(page);
+        if (r.asking) fail(at, `${how}: the question is still up`);
+        if (!r.active || !r.hash.includes('/fly') || !r.hash.includes(id)) fail(at, `${how}: not still in Fly: ${r.hash}`);
+        if (r.length !== before.length) fail(at, `${how}: the history was ${before.length} entries and is ${r.length}`);
+        if (!(await page.evaluate(() => window.__run === window.sr.cockpit.run))) fail(at, `${how}: not the same run`);
+        same(at, before, r, how);
+        await stop(page);
+      }
+      // Leave: gone to where it was asked, and the browser does not ask
+      await out(page);
+      await page.waitForTimeout(500);
+      await page.keyboard.press('KeyL');
+      await page.waitForTimeout(3000);
+      const to = await page.evaluate(() => decodeURIComponent(location.hash));
+      if (!gone(to)) fail(at, `Leave: the address is "${to}"`);
+      console.log(`  ${at}: asked each time; Keep flying by the button, Escape, the backdrop and Enter changed nothing (history ${before.length}); Leave went to "${to}"`);
+      if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+  }
+  if (dialogs.length) fail('leaving', `the browser showed a dialog: ${dialogs.join(', ')}`);
 }
 await browser.close();
 console.log(failed ? `deck: ${failed} failed` : 'deck: every promise kept');

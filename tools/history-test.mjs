@@ -11,6 +11,8 @@
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 //   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
 //                chosen, Back to the front page, Forward to the Lineup
+//   flown        Freedom 7 flown by hand: Back within its places keeps the flight and asks nothing, Back out to the front page
+//                asks (Keep flying puts the address back, no step added; Leave goes), Forward to Fly resumes it
 //   story        Freedom 7's gallery, its History tab (the story, why it has its name, the pilot's own story, at 1280
 //                and at 390 wide), See it in the Lineup (a step, Freedom 7 chosen there); Back to the gallery
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
@@ -194,6 +196,84 @@ await scenario('lineup', async (page) => {
   await page.locator('#ui .crumbs [data-home]').click();
   const out = await arrive(page, 'front');
   check(out.hash === '' && out.length === fwd.length, `its Space Race crumb: the front page (${out.length} entries)`);
+});
+
+/**
+ * A flight flown by hand and the history. Back and Forward within the flight keep it (no question, one entry back each time,
+ * Forward to Fly resumes it); Back out of the flight (to the front page) asks: Keep flying puts the address back where it was
+ * with no entry added and no loop, and Leave goes on to the front page. Asked at the first way beyond, not before.
+ */
+await scenario('flown', async (page) => {
+  const dialogs = [];
+  page.on('dialog', (d) => (dialogs.push(d.type()), d.dismiss()));
+  await page.goto(url);
+  await arrive(page, 'front');
+  await page.locator(`#title [data-flight="${MR3}"]`).click();
+  await arrive(page, 'gallery', MR3);
+  await mark(page);
+  await page.locator('#gallery .places [data-place="site"]').click();
+  await arrive(page, 'site', MR3);
+  await page.locator('#ui .places [data-place="fly"]').click();
+  const fly = await arrive(page, 'fly', MR3);
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(1200);
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(600);
+  await page.keyboard.up('KeyW');
+  await page.evaluate(() => window.sr.clock.pause());
+  await page.waitForTimeout(300);
+  const figures = () =>
+    page.evaluate(() => ({
+      t: window.sr.clock.t,
+      cells: [...document.querySelectorAll('#ui > .cockpit [data-cell]')]
+        .filter((c) => c.dataset.cell !== 'kept-at')
+        .map((c) => c.textContent)
+        .join('|'),
+      keeping: window.sr.cockpit.keeping,
+      asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
+      card: Boolean(document.querySelector('.cockpit-kept:not([hidden])')),
+    }));
+  const before = await figures();
+  await page.goBack();
+  const site = await arrive(page, 'site', MR3);
+  let f = await figures();
+  check(!f.asking && f.keeping && site.length === fly.length, `Back to the site, flying by hand: no question, the flight kept (${site.length} entries)`);
+  await page.goBack();
+  const gallery = await arrive(page, 'gallery', MR3);
+  f = await figures();
+  check(!f.asking && f.keeping && gallery.length === fly.length, 'Back to the gallery: no question, still kept');
+  // out of the flight: asked, and Keep flying puts the address back with no step added
+  await page.goBack();
+  await page.waitForSelector('.deck-ask [role=alertdialog]', { timeout: 10000 });
+  await page.locator('.deck-ask [data-ask=stay]').click();
+  const stayed = await arrive(page, 'gallery', MR3);
+  await page.waitForTimeout(800);
+  f = await figures();
+  check(
+    stayed.hash === `#${MR3}/gallery` && stayed.length === fly.length && stayed.kept,
+    `Back to the front page: asked; Keep flying: the gallery again, ${stayed.length} entries, the page not loaded again`,
+  );
+  check(!f.asking && f.keeping, 'and the flight is still kept');
+  // Forward goes on as before, and Fly resumes it to the digit
+  await page.goForward();
+  await arrive(page, 'site', MR3);
+  await page.goForward();
+  const again = await arrive(page, 'fly', MR3);
+  await page.waitForTimeout(600);
+  f = await figures();
+  check(f.card && f.t === before.t && f.cells === before.cells, `Forward to Fly: the kept flight, at the same instant and figures (T${f.t.toFixed(1)})`);
+  check(again.length === fly.length, `no step was added along the way (${again.length} entries)`);
+  // out again, this time for good: Leave
+  await page.goBack();
+  await arrive(page, 'site', MR3);
+  await page.goBack();
+  await arrive(page, 'gallery', MR3);
+  await page.goBack();
+  await page.waitForSelector('.deck-ask [role=alertdialog]', { timeout: 10000 });
+  await page.keyboard.press('KeyL');
+  const front = await arrive(page, 'front');
+  check(front.hash === '', `Leave: the front page (${front.hash || 'the bare address'})`);
+  check(dialogs.length === 0, `no browser dialog on the way (${dialogs.join(', ') || 'none'})`);
 });
 
 /** Freedom 7's History tab: what it says, a person opened, and the way to the Lineup and Back. */
