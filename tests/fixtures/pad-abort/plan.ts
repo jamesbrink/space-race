@@ -1,5 +1,5 @@
 /**
- * A pad abort that was flown, as a thing the simulator can fly: the Langley full-scale model of
+ * A pad abort that was flown, as a plan the simulator can fly: the Langley full-scale model of
  * the Mercury capsule and its escape system, fired off the beach at Wallops Island on the Grand
  * Central escape motor (Blanchard and Raper, NASA TM X-422, 1960). It is the only abort whose
  * weights, inertias, launcher and trajectory have all been read, so it is the one the simulator's
@@ -11,10 +11,14 @@
  * motor, from the same report), the shapes the air pushes on and their drag, the parachutes (the
  * model's were a 72 in drogue and a 64 ft ring-sail; Freedom 7's are 6 ft and 63 ft) and the
  * sequence (the model's was two g-switched timers whose settings are not given; it let its tower
- * go at 1,850 ft going up, Freedom 7's lets it go at the top). Nothing here is fitted.
+ * go at 1,850 ft going up, Freedom 7's lets it go at the top). Nothing here is fitted. The plan is the Mercury-Redstone's
+ * (vehicles/mercury-redstone.ts `plan`), written from Freedom 7's day with the model's weights and on Freedom 7's stack
+ * with the model's capsule, tower and motor.
  */
-import { flight } from '../../../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import type { AbortRecord, Trajectory } from '../../../src/types.ts';
+import { DAY, flight } from '../../../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { plan } from '../../../missions/usa/mercury/vehicles/mercury-redstone.ts';
+import type { FlightPlan } from '../../../src/sim/plan.ts';
+import type { AbortRecord } from '../../../src/types.ts';
 import { derived, doc } from '../../../src/measure.ts';
 
 const IN = 0.0254;
@@ -42,11 +46,9 @@ const I_TOWER =
   I_TAKE_OFF - I_CAPSULE - CAPSULE * LB * ((X_TAKE_OFF - X_CAPSULE) * IN) ** 2 - TOWER * LB * ((X_TOWER - X_TAKE_OFF) * IN) ** 2;
 const TOWER_LENGTH = Math.sqrt((12 * I_TOWER) / (TOWER * LB));
 
-export function padAbort(): Trajectory {
-  const tr = structuredClone(flight.trajectory);
-  // in still air: the trial's wind is not in the report, and MR-3's two years later is no part of it
-  delete tr.winds;
-  const body = tr.body!;
+export function padAbort(): FlightPlan {
+  const day = structuredClone(DAY);
+  const body = structuredClone(flight.plan!.craft[0]!.rigid!);
   // where the capsule's greatest diameter is on Freedom 7's stack: the fixture keeps the stack under it, which an abort off the pad leaves behind
   const plane = body.capsule.centre.value - (25 - 9.2) * IN;
   body.capsule.centre = doc(plane + X_CAPSULE * IN, `${TMX_422}, Table I: capsule alone, centre of gravity at station 19.5 in`);
@@ -54,9 +56,9 @@ export function padAbort(): Trajectory {
     roll: derived(Math.sqrt(I_CAPSULE_ROLL / (CAPSULE * LB)), `${TMX_422}, Table I: capsule alone, 236 slug-ft2 in roll on 2,169 lb`),
     across: derived(Math.sqrt(I_CAPSULE / (CAPSULE * LB)), `${TMX_422}, Table I: capsule alone, 485 slug-ft2 in pitch or yaw on 2,169 lb`),
   };
-  tr.separation.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb`);
+  day.separation.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb`);
   // (the model had no retropack: the weight after it is the same weight)
-  tr.retropack.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb; the model carried no retropack`);
+  day.retropack.mass = doc(CAPSULE * LB, `${TMX_422}, Table I: capsule alone, 2,169 lb; the model carried no retropack`);
   const tower = body.parts.find((p) => p.sheds === 'tower')!;
   const centre = plane + X_TOWER * IN;
   tower.mass = TOWER * LB;
@@ -70,7 +72,10 @@ export function padAbort(): Trajectory {
   const rocket = body.escape!;
   rocket.offset = doc(0.78 * IN, `${TMX_422}, p. 5: "a misalinement of the thrust vector of 0.78 inch"`);
   rocket.sequence = { ...rocket.sequence!, retropack: false };
-  return tr;
+  const out = plan(day, [], body);
+  // in still air: the trial's wind is not in the report, and MR-3's two years later is no part of it
+  delete out.winds;
+  return out;
 }
 
 /** What the trial did, each with how near the simulator must come: set before the simulator flew it. */

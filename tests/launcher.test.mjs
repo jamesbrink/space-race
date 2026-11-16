@@ -56,7 +56,9 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
   if (!pad || !vehicle || !existsSync(padGlb)) continue;
   const turn = placed(padGlb).get('LaunchPedestal')?.extras.turn;
   if (turn === undefined) continue; // a launcher that was not turned to an azimuth
-  const azimuth = flight.trajectory?.azimuth.value ?? flight.specs.find((s) => s.label === 'Launch azimuth')?.value;
+  const azimuth =
+    flight.plan?.attitude.find((a) => 'programme' in a.hold)?.hold.azimuth.value ??
+    flight.specs.find((s) => s.label === 'Launch azimuth')?.value;
 
   test(`${flight.id}: the vehicle stands as its launcher is turned`, () => {
     assert.ok(
@@ -94,7 +96,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
     const bears = flight.site.bearingX.value - (round(objective) + (vehicle.rotationY ?? 0) / DEG);
     assert.ok(apart(bears, azimuth) < ON_AZIMUTH, `the periscope bears ${((bears % 360) + 360) % 360}, the azimuth is ${azimuth}`);
     // and the side the simulator keeps toward the Earth is then the one that lay down range: half a turn from the body's +Z
-    const earthward = flight.trajectory?.body?.capsule.earthward;
+    const earthward = flight.plan?.craft[0].rigid?.capsule.earthward;
     if (earthward) assert.equal(earthward.value, 180);
   });
 }

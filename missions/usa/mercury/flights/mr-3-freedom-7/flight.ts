@@ -1050,7 +1050,7 @@ const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity ap
  * What the simulator flies Freedom 7 from (src/sim/fly.ts): this flight's own day and figures, on the stack's hardware
  * (vehicles/mercury-redstone.ts). Every figure is an input from a report; none was adjusted against the results below.
  */
-const DAY: Day = {
+export const DAY: Day = {
   winds: WINDS,
   azimuth: doc(
     AZIMUTH,

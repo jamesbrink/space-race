@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { fly } from '../src/sim/fly.ts';
+import { ballisticOf, fly } from '../src/sim/fly.ts';
 import {
   advance,
   begin,
@@ -21,7 +21,7 @@ import {
   wallFactor,
 } from '../src/sim/heating.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC, planFor } from './ballistic.mjs';
+import { BALLISTIC } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -127,8 +127,8 @@ test('what is under the booster is out of the air, and what flies nose first tak
 });
 
 test('Mercury-Redstone 3: the heating its record’s run gives', () => {
-  const heating = flight.trajectory.heating;
-  const run = fly(planFor(flight.trajectory), siteFrame(flight.site), flight.site.seaLevel.value);
+  const heating = flight.plan.craft[0].heating;
+  const run = fly(flight.plan, siteFrame(flight.site), flight.site.seaLevel.value);
   const started = performance.now();
   const { states, results } = heatRun(heating, run.samples);
   const took = performance.now() - started;
@@ -149,7 +149,7 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
   near(results.load / 1e6, 2.62, 0.08, 'heat load at the stagnation point, MJ/m2');
   near(shield.temperature, 313.3, 1, 'the heat shield at its hottest, K');
   near(afterbody.temperature, 394, 4, 'the afterbody shingles at their hottest, K');
-  assert.ok(afterbody.at < flight.trajectory.separation.at.value, 'which is going up, on the booster, not coming down');
+  assert.ok(afterbody.at < ballisticOf(flight.plan).separation.at.value, 'which is going up, on the booster, not coming down');
   near(booster.temperature, 310, 2, 'the booster skin at its hottest, K');
   assert.ok(cylinder.temperature < 310);
   // a suborbital flight asks almost nothing of a heat sink made for more: a rise of 13 K against the 1,260 K to melting
@@ -170,10 +170,10 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
 });
 
 // Every ballistic flight with heating: the arithmetic held on its own run.
-for (const each of BALLISTIC.filter((f) => f.trajectory.heating)) {
+for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
   const name = `${each.designation} (${each.callsign})`;
-  const heating = each.trajectory.heating;
-  const run = fly(planFor(each.trajectory), siteFrame(each.site), each.site.seaLevel.value);
+  const heating = each.plan.craft[0].heating;
+  const run = fly(each.plan, siteFrame(each.site), each.site.seaLevel.value);
 
   test(`${name}: the same heating whether worked all at once or kept up sample by sample, as a flight being flown is`, () => {
     const whole = heatRun(heating, run.samples);

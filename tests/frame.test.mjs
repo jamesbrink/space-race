@@ -2,7 +2,6 @@
 // agrees with frames.ts and time.ts (the sidereal time it turns the Earth by is time.ts's), and the frame fixed at liftoff
 // is the frame of date turned back about the pole by that sidereal time, so a flight flown in either is the same flight.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
@@ -153,12 +152,12 @@ test('Freedom 7 flown whole and live in the frame fixed at liftoff and in the fr
   const site = siteFrame(freedom7.site);
   const sea = freedom7.site.seaLevel.value;
   const turn = between(DATED, FIXED);
-  const a = fly(planFor(freedom7.trajectory), site, sea, undefined, undefined, undefined, FIXED);
-  const b = fly(planFor(freedom7.trajectory), site, sea, undefined, undefined, undefined, DATED);
+  const a = fly(freedom7.plan, site, sea, undefined, undefined, undefined, FIXED);
+  const b = fly(freedom7.plan, site, sea, undefined, undefined, undefined, DATED);
   t.diagnostic(`whole: samples at most ${sameRun(a.samples, b.samples, turn, 'fly').toExponential(2)} m apart`);
   sameResults(a.results, b.results, 'fly');
-  const la = flyLive(vehicle(planFor(freedom7.trajectory), site, sea, { frame: FIXED }));
-  const lb = flyLive(vehicle(planFor(freedom7.trajectory), site, sea, { frame: DATED }));
+  const la = flyLive(vehicle(freedom7.plan, site, sea, { frame: FIXED }));
+  const lb = flyLive(vehicle(freedom7.plan, site, sea, { frame: DATED }));
   t.diagnostic(`live: samples at most ${sameRun(la.samples, lb.samples, turn, 'live').toExponential(2)} m apart`);
   sameResults(la.results, lb.results, 'live');
 });

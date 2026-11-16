@@ -7,13 +7,13 @@
 // and, drawn from eyes placed at random (beside the vehicle, beside the path, far out), no chord strays more than the
 // stated pixels from it and the chords are as coarse as the view allows.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { act, part } from '../src/sim/craft.ts';
 import { spacecraft } from '../src/sim/fliers.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
+import { ballisticOf } from '../src/sim/fly.ts';
 import { apsides, between, predict, propagate } from '../src/sim/predict.ts';
 import { fromAxes } from '../src/sim/rigid.ts';
 import { givenUp } from '../src/sim/staged.ts';
@@ -157,7 +157,7 @@ test('the ballistic deck`s predictor on a family of states: the same invariants 
   const rand = seeded(7);
   for (const [name, s] of family(1961)) {
     const start = { t: 1000, r: s.r, v: s.v, mass: 1300, phase: 'capsule' };
-    const result = predict(planFor(freedom7.trajectory), site, freedom7.site.seaLevel.value, start, { sequence: { chutes: false } });
+    const result = predict(freedom7.plan, site, freedom7.site.seaLevel.value, start, { sequence: { chutes: false } });
     const curve = holds(`predict.ts, ${name}`, start, result);
     if (curve) drawn(`predict.ts, ${name}`, curve, rand);
   }
@@ -199,14 +199,16 @@ const table = [];
 test('prediction against outcome: the ballistic flight`s spacecraft, predicted, then flown live from the same state', () => {
   const site = siteFrame(freedom7.site);
   const sea = freedom7.site.seaLevel.value;
-  const tr = freedom7.trajectory;
-  const V = vehicle(planFor(tr), site, sea);
+  const plan = freedom7.plan;
+  const V = vehicle(plan, site, sea);
+  /** The spacecraft alone: its mass once the retropack has gone. */
+  const alone = ballisticOf(plan).packJoint.after.value;
   for (const [name, s] of family(1961)) {
     const h = Math.hypot(...s.r) - R;
     if (h > 130e3 && !name.startsWith('lob') && name !== 'falling') continue;
-    const start = { t: 1000, r: s.r, v: s.v, mass: tr.retropack.mass.value, phase: 'capsule' };
+    const start = { t: 1000, r: s.r, v: s.v, mass: alone, phase: 'capsule' };
     // (alone, the spacecraft lets its parachutes out at their heights by itself, in the live simulator and in the path)
-    const p = predict(planFor(tr), site, sea, start);
+    const p = predict(plan, site, sea, start);
     if (p.outcome !== 'impact') continue;
     // the capsule alone, heat shield first into the wind, not turning, nothing to do
     const wind = s.v.map((x, k) => x - [-7.292115e-5 * s.r[1], 7.292115e-5 * s.r[0], 0][k]);
@@ -224,7 +226,7 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
       v: s.v,
       q: fromAxes(x, y, cross(x, y)),
       w: [0, 0, 0],
-      mass: tr.retropack.mass.value,
+      mass: alone,
       ignited: true,
       cutoff: true,
       held: false,

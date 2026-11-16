@@ -7,6 +7,7 @@ import { globSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { downOf } from '../src/sim/descent.ts';
 import { bands, Chute, FILLED, mouth, paid, profile, STREAM, TEARS, tornMouth } from '../src/viewer/chute.ts';
 
 const near = (got, want, tolerance, what) =>
@@ -22,11 +23,13 @@ const FLIGHTS = (
 )
   .filter((f) => f.flies?.chutes?.length)
   .sort((a, b) => a.launch.localeCompare(b.launch));
-/** How long a drawn parachute takes to fill, as the simulator flies it: a ballistic flight's trajectory, or the descent body's own. */
+/** How long a drawn parachute takes to fill, as the simulator flies it: the plan's parachute it names, or the descent body's own. */
 const fillsOf = (f, def) =>
   def.body
-    ? f.orbital.descent.bodies.find((b) => b.id === def.body).chutes.find((p) => p.name === def.on).fills.value
-    : f.trajectory[def.on].fills.value;
+    ? downOf(f.plan)
+        .bodies.find((b) => b.id === def.body)
+        .chutes.find((p) => p.name === def.on).fills.value
+    : f.plan.craft[0].chutes.find((c) => c.id === def.on).fills.value;
 const moment = (since, fills, more = {}) => ({
   since,
   fills,

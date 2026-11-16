@@ -2,7 +2,7 @@
 // attitude in the simulator's frame. Held against the geometry they must come out as, on states
 // built from the flight's own site and launch axes.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
+import { ballisticOf } from '../src/sim/fly.ts';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { ballOf, ballPoint } from '../src/deck/navball.ts';
@@ -14,8 +14,8 @@ import { add, angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, unit
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 const SITE = siteFrame(flight.site);
-const V = vehicle(planFor(flight.trajectory), SITE, flight.site.seaLevel.value);
-const AZIMUTH = flight.trajectory.azimuth.value;
+const V = vehicle(flight.plan, SITE, flight.site.seaLevel.value);
+const AZIMUTH = ballisticOf(flight.plan).programme.azimuth.value;
 const { up, downrange, left } = V.launch;
 const SPIN = [0, 0, EARTH_ROTATION_RATE];
 const NOSE = [0, 0, 1];

@@ -1,9 +1,10 @@
 // src/sim/lever.ts: the flight deck's throttle lever, driven against a vehicle that throttles. Freedom 7's A-7 is
-// fixed thrust, so its deck hides the lever; the fixture is its trajectory with an engine that has a range and two
+// fixed thrust, so its deck hides the lever; the fixture is its plan with an engine that has a range and two
 // starts (not a real engine, and it says so). What is held: the lever's figure is the engine's throttle the tick
 // after it is moved, through the same autopilot and `blend` the cockpit flies by.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
+import { natured } from './ballistic.mjs';
+import { ballisticOf } from '../src/sim/fly.ts';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
@@ -12,22 +13,27 @@ import { Lever, NOTCH } from '../src/sim/lever.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { vacuumOf } from '../src/sim/thrust.ts';
 
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 
-const tr = structuredClone(flight.trajectory);
-tr.body.engine = { kind: 'liquid', throttle: [0.4, 1], starts: 2, confidence: 'estimated', source: 'a test fixture: not a real engine' };
-const v = vehicle(planFor(tr), SITE, SEA);
-const FLOW = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
+const plan = natured(flight.plan, {
+  kind: 'liquid',
+  throttle: [0.4, 1],
+  starts: 2,
+  confidence: 'estimated',
+  source: 'a test fixture: not a real engine',
+});
+const v = vehicle(plan, SITE, SEA);
+const { engine, cutoff } = ballisticOf(plan);
+const FLOW = engine.thrust.seaLevel.value / (G0 * engine.isp.seaLevel.value);
 
 /** The cockpit's pilot, as cockpit.ts makes it: the autopilot that does not light the engine, the lever laid over it. */
 function deck(lever, sequence = true) {
   const auto = autopilot(v, { launch: false, sequence });
-  const cut = (s) => sequence && s.abortAt === null && s.t >= tr.engine.cutoff.value - 1e-9;
+  const cut = (s) => sequence && s.abortAt === null && s.t >= cutoff - 1e-9;
   return (s) => blend(auto(s), { throttle: lever.asks(cut(s)) });
 }
 function until(state, pilot, t) {
@@ -40,7 +46,7 @@ function until(state, pilot, t) {
 }
 
 test('the lever is only being set until the engine is asked to start', () => {
-  const lever = new Lever(tr.body.engine.throttle);
+  const lever = new Lever(engine.throttle.range);
   assert.equal(lever.at, 1, 'it starts at the engine’s most');
   lever.move(0.7);
   assert.equal(lever.asks(), undefined, 'nothing is asked');
@@ -49,7 +55,7 @@ test('the lever is only being set until the engine is asked to start', () => {
 });
 
 test('lit, the engine runs at the lever, and follows it the tick after it moves', () => {
-  const lever = new Lever(tr.body.engine.throttle);
+  const lever = new Lever(engine.throttle.range);
   lever.move(0.7);
   lever.lit = true;
   const pilot = deck(lever);
@@ -60,7 +66,7 @@ test('lit, the engine runs at the lever, and follows it the tick after it moves'
   const atPad = atmosphere(v.sample(s).altitude).pressure;
   near(
     v.sample(s).burning.find((m) => m.engine === v.engine).thrust,
-    0.7 * vacuumOf(tr.engine).value - tr.engine.exitArea.value * atPad,
+    0.7 * engine.thrust.vacuum.value - engine.exitArea.value * atPad,
     1e-6,
     'seven tenths of the vacuum thrust, less the air on the exit',
   );
@@ -78,7 +84,7 @@ test('lit, the engine runs at the lever, and follows it the tick after it moves'
 });
 
 test('under its least the engine is off; the lever up again starts it once more, and no more than it can be started', () => {
-  const lever = new Lever(tr.body.engine.throttle);
+  const lever = new Lever(engine.throttle.range);
   lever.lit = true;
   const pilot = deck(lever);
   let s = until(v.start(), pilot, 20);
@@ -98,13 +104,13 @@ test('under its least the engine is off; the lever up again starts it once more,
 });
 
 test('the sequencer’s cutoff is not undone by a lever left where it was; with the sequencer off the lever has it', () => {
-  const at = tr.engine.cutoff.value;
-  const lever = new Lever(tr.body.engine.throttle);
+  const at = cutoff;
+  const lever = new Lever(engine.throttle.range);
   lever.lit = true;
   let s = until(v.start(), deck(lever), at + 2);
   assert.ok(s.cutoff && s.starts === 1, 'cut off at the record’s time, and not lit again by the lever standing at full');
   near(v.sample(until(v.start(), deck(lever), at - 1)).burning.length, 1, 0, 'burning until then');
-  const hand = new Lever(tr.body.engine.throttle);
+  const hand = new Lever(engine.throttle.range);
   hand.lit = true;
   s = until(v.start(), deck(hand, false), at + 2);
   assert.ok(!s.cutoff, 'nobody cut it: it burns on');

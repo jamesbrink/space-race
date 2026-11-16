@@ -10,7 +10,7 @@ import { flights } from '../missions/index.ts';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { TYURATAM } from '../missions/ussr/places/tyuratam/place.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
-import { flownOnce } from '../src/sim/fly.ts';
+import { ballisticOf, flownOnce } from '../src/sim/fly.ts';
 import { G0 } from '../src/world/bodies.ts';
 import { liftoffEngine } from '../src/sim/staged.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
@@ -40,17 +40,17 @@ import {
   Works,
 } from '../src/sound/model.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC, planFor } from './ballistic.mjs';
+import { BALLISTIC } from './ballistic.mjs';
 
 /** What a ballistic flight is heard from: its engine, its record's run, a path straight up the site's +Y at the run's heights. */
 function heard(f) {
-  const TR = f.trajectory;
-  const CRAFT = craft(TR.engine.thrust.value, TR.engine.isp.value, TR.engine.exitArea.value);
-  const { samples, results } = flownOnce(planFor(TR), siteFrame(f.site), f.site.seaLevel.value);
+  const B = ballisticOf(f.plan);
+  const CRAFT = craft(B.engine.thrust.seaLevel.value, B.engine.isp.seaLevel.value, B.engine.exitArea.value);
+  const { samples, results } = flownOnce(f.plan, siteFrame(f.site), f.site.seaLevel.value);
   /** A flight straight up the site's +Y at the record's heights: enough of a path to hear along. */
   const where = (t) => [0, Math.max(0, stateAt(samples, t).altitude), 0];
   /** As viewer/ascent.ts has it: up over half a second, and half a second dying at cutoff. */
-  const burn = (t) => Math.max(0, Math.min(1, t / 0.5, 1 - (t - TR.engine.cutoff.value) / 0.5));
+  const burn = (t) => Math.max(0, Math.min(1, t / 0.5, 1 - (t - B.cutoff) / 0.5));
   const hearing = (over = {}) => ({
     t: 5,
     rate: 1,
@@ -68,7 +68,7 @@ function heard(f) {
     place: f.site.place.quiet,
     ...over,
   });
-  return { TR, CRAFT, samples, results, where, burn, hearing };
+  return { B, CRAFT, samples, results, where, burn, hearing };
 }
 // (what is the model's alone is held on Freedom 7's; what a flight's own run is heard as is held for every ballistic flight, below)
 const { CRAFT, results, where, hearing } = heard(flight);
@@ -251,7 +251,9 @@ test('the jets hiss only while one fires, and only for someone aboard', () => {
 
 for (const each of BALLISTIC) {
   const name = `${each.designation} (${each.callsign})`;
-  const { TR, samples, results, where, hearing } = heard(each);
+  const { B, samples, results, where, hearing } = heard(each);
+  /** The retrorockets' instants, as the plan's sequence has them: the first at the record's, each other so long after it. */
+  const fires = B.retroWaits.map((w) => B.retroAt + w);
 
   test(`${name}: at liftoff from the pad view it is loud and low; further off it is quieter, duller and later`, () => {
     const near = mix(hearing());
@@ -273,7 +275,7 @@ for (const each of BALLISTIC) {
     assert.ok(at(5).engine.cutoff < 2000);
     assert.ok(at(120).engine.gain < at(5).engine.gain, 'less at 30 km than at the pad');
     assert.ok(at(120).engine.gain > 0, 'but not gone');
-    assert.equal(at(TR.engine.cutoff.value + 2).engine.gain, 0, 'and gone at cutoff');
+    assert.equal(at(B.cutoff + 2).engine.gain, 0, 'and gone at cutoff');
   });
   test(`${name}: whoever rides hears the vehicle's own instant, however far behind its sound in the air has fallen`, () => {
     const t = 120; // well past Mach 1
@@ -285,9 +287,9 @@ for (const each of BALLISTIC) {
   });
   test(`${name}: the air: loudest at the greatest dynamic pressure going up, silent in space, a roar again at entry`, () => {
     const at = (t) => mix(hearing({ t, riding: 1, ears: [30, where(t)[1], 0] })).air;
-    const maxQ = samples.filter((s) => s.t < TR.engine.cutoff.value).reduce((a, b) => (b.q > a.q ? b : a));
+    const maxQ = samples.filter((s) => s.t < B.cutoff).reduce((a, b) => (b.q > a.q ? b : a));
     const entry = samples.filter((s) => s.t > results.apogeeAt).reduce((a, b) => (b.q > a.q ? b : a));
-    assert.ok(at(maxQ.t).gain > at(10).gain && at(maxQ.t).gain > at(TR.engine.cutoff.value).gain);
+    assert.ok(at(maxQ.t).gain > at(10).gain && at(maxQ.t).gain > at(B.cutoff).gain);
     assert.equal(at(results.apogeeAt).gain, 0);
     assert.ok(at(entry.t).gain > 0.03, String(at(entry.t).gain));
     assert.ok(at(entry.t).gain > at(maxQ.t).gain * 0.5);
@@ -318,7 +320,7 @@ for (const each of BALLISTIC) {
         const now = [m.engine.gain, m.engine.sub, m.engine.crackle, m.air.gain, m.jets, m.place.wind, m.place.water, m.place.hum];
         // (the engine's own start and stop are quick, as they were: half a second each, and a gain goes as the fourth root of the power)
         const te = m.heard.emitted;
-        const lit = [0, TR.engine.cutoff.value].some((e) => te > e - 0.1 && te < e + 0.7);
+        const lit = [0, B.cutoff].some((e) => te > e - 0.1 && te < e + 0.7);
         const most = lit ? 0.3 : 0.09;
         if (was)
           now.forEach((v, i) =>
@@ -331,7 +333,7 @@ for (const each of BALLISTIC) {
   test(`${name}: the events are the record's own, in order, and what has not happened is not among them`, () => {
     const plan = {
       drops: each.flies.drops.map((d) => ({ at: d.at, on: d.on })),
-      retro: { fires: TR.retro.fires.map((f) => f.value), burn: TR.retro.burn.value, thrust: TR.retro.thrust.value },
+      retro: { fires, burn: B.motors[0].burn.value, thrust: B.motors[0].thrust.vacuum.value },
       out: { drogue: results.drogueAt, main: results.mainAt },
       duration: results.duration,
     };
@@ -343,7 +345,7 @@ for (const each of BALLISTIC) {
     for (let i = 1; i < cues.length; i++) assert.ok(cues[i].at >= cues[i - 1].at);
     assert.deepEqual(
       cues.filter((c) => c.kind === 'retro').map((c) => c.at),
-      TR.retro.fires.map((f) => f.value),
+      fires,
     );
     const early = score({ ...plan, retro: null, out: { drogue: Infinity, main: Infinity }, duration: Infinity });
     assert.ok(!early.some((c) => ['retro', 'mortar', 'canopy', 'splash'].includes(c.kind)));
@@ -371,7 +373,7 @@ const ORBITERS = (
       async (f) => (await import(pathToFileURL(join(import.meta.dirname, '..', f)).href)).flight,
     ),
   )
-).filter((f) => f.orbital?.ascent && f.site);
+).filter((f) => f.plan?.kind === 'orbital' && f.site);
 for (const each of ORBITERS) {
   const run = orbitalRecord(each);
   const lit = liftoffEngine(each.plan);

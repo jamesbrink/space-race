@@ -12,29 +12,27 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, calm, edited, natured, unlimited } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { ballisticOf, coast, fly, sampleAt } from '../src/sim/fly.ts';
-import { planOfTrajectory } from '../src/sim/planof.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
 import { add, angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
-import { vacuumOf } from '../src/sim/thrust.ts';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
-const TR = flight.trajectory;
-const CALM = { ...TR, winds: undefined };
+const PLAN = flight.plan;
+const CALM = calm(PLAN);
+const B = ballisticOf(PLAN);
+const RIGID = PLAN.craft[0].rigid;
 const LB = 0.45359237;
 
-/** The flight's plan, made of its trajectory changed for a test: the day's, or `still` (the day's less its wind). */
+/** The flight's plan changed for a test (tests/ballistic.mjs `edited`): the day's, or `still` (the day's less its wind). */
 function with_(change, still = false) {
-  const tr = structuredClone(still ? CALM : TR);
-  change(tr);
-  return planOfTrajectory(tr);
+  return edited(still ? CALM : PLAN, change);
 }
 /** Tick a vehicle on under a pilot until `t`. */
 function until(v, state, pilot, t) {
@@ -50,7 +48,6 @@ const whole = vehicle(flight.plan, SITE, SEA);
 const live = flyLive(whole);
 const batch = fly(flight.plan, SITE, SEA);
 // (the defaults `beside` takes: Freedom 7's, which most of this file is about)
-const TR_ = TR;
 const batch_ = batch;
 
 test('quaternions turn vectors the way the axes say', () => {
@@ -85,7 +82,7 @@ test('quaternions turn vectors the way the axes say', () => {
 test('the mass model: the parts are the liftoff weight, and the centre of mass and inertia follow the propellant', () => {
   const start = whole.start();
   const full = whole.mass(start);
-  near(full.mass, TR.liftoffMass.value, 1e-6, 'the parts sum to the liftoff mass');
+  near(full.mass, PLAN.craft[0].mass.value, 1e-6, 'the parts sum to the liftoff mass');
   near(full.mass / LB, 66_098, 1e-6, 'which is 66,098 lb');
   // a single uniform cylinder, by hand: m (R^2/4 + L^2/12) across, m R^2 / 2 about its axis
   const one = massOf([{ name: 'rod', from: 2, to: 6, mass: 10, confidence: 'documented', source: '' }], 0.5, 1, new Set());
@@ -121,7 +118,11 @@ test('it stands on the pad until lit, and until its thrust is more than its weig
 
   // an engine too weak to lift it burns where it stands
   const weak = vehicle(
-    with_((tr) => (tr.engine.thrust.value *= 0.8)),
+    with_((_, c, b, mine) => {
+      const e = mine(b.engine);
+      e.thrust.seaLevel.value *= 0.8;
+      e.thrust.vacuum.value = e.thrust.seaLevel.value + P0 * e.exitArea.value;
+    }),
     SITE,
     SEA,
   );
@@ -135,7 +136,7 @@ test('it stands on the pad until lit, and until its thrust is more than its weig
   // the real one leaves at once, at thrust over weight
   const lit = whole.tick(start, { ...HANDS_OFF, throttle: 1 });
   assert.ok(!lit.held, 'off the pad on the first tick');
-  near(whole.sample(lit).g, TR.engine.thrust.value / (TR.liftoffMass.value * G0), 1e-3, 'at 1.19 g');
+  near(whole.sample(lit).g, B.engine.thrust.seaLevel.value / (PLAN.craft[0].mass.value * G0), 1e-3, 'at 1.19 g');
   const second = whole.step(start, { ...HANDS_OFF, throttle: 1 }, 1);
   assert.ok(whole.sample(second).altitude > s0.altitude + 0.5, 'and climbing a second later');
 });
@@ -154,27 +155,27 @@ test('the engine: cut by command it stays cut, and left alone it runs until a ta
 
   let dry = until(whole, whole.start(), autopilot(whole, { sequence: false }), 150);
   assert.ok(dry.cutoff, 'it ran out');
-  const flow = TR.engine.thrust.value / (G0 * TR.engine.isp.value);
+  const flow = B.engine.thrust.seaLevel.value / (G0 * B.engine.isp.seaLevel.value);
   // The two tanks are drawn down at the engine's mixture ratio (`body.mixture`, estimated: the ratio of the tanks' own
   // loads), so by this flight's figures they empty together when every liquid aboard has gone: 147.0 s. Before the tanks
   // were separate the burn was ended at TM X-53107's nominal 143.5 s (`engine.depletion`); that figure no longer does it.
-  const liquids = TR.body.parts.reduce((sum, p) => sum + (p.fluid ? p.mass : 0), 0);
+  const liquids = RIGID.parts.reduce((sum, p) => sum + (p.fluid ? p.mass : 0), 0);
   near(liquids / flow, 147.0, 0.05, 'the liquids aboard last 147.0 s');
-  near(dry.mass, TR.liftoffMass.value - liquids, flow * TICK * 1.5, 'it burned everything in the tanks');
+  near(dry.mass, PLAN.craft[0].mass.value - liquids, flow * TICK * 1.5, 'it burned everything in the tanks');
   const tanks = whole.sample(dry).tanks;
   assert.ok(tanks.oxidizer < flow * TICK && tanks.fuel < flow * TICK, 'both tanks empty');
   dry = whole.tick(dry, { ...HANDS_OFF, do: [{ separate: 'tower' }] });
-  near(dry.mass, TR.liftoffMass.value - liquids - (4040.28 - 2855.14) * LB, flow * TICK * 1.5, 'and the tower takes 1,185 lb with it');
+  near(dry.mass, PLAN.craft[0].mass.value - liquids - (4040.28 - 2855.14) * LB, flow * TICK * 1.5, 'and the tower takes 1,185 lb with it');
 
   // each propellant is its own quantity: with a tenth less alcohol aboard the fuel runs out first, oxygen still in its tank
-  const short = with_((tr) => {
-    const fuel = tr.body.parts.find((p) => p.propellant === 'fuel');
-    tr.liftoffMass.value -= fuel.mass * 0.1;
+  const short = with_((_, c) => {
+    const fuel = c.rigid.parts.find((p) => p.propellant === 'fuel');
+    c.mass.value -= fuel.mass * 0.1;
     fuel.mass *= 0.9;
   });
   const lean = vehicle(short, SITE, SEA);
   const half = whole.sample(until(whole, whole.start(), autopilot(whole, { sequence: false }), 60)).tanks;
-  const mix = TR.body.mixture.value;
+  const mix = RIGID.mixture.value;
   near((whole.tanks.oxidizer - half.oxidizer) / (whole.tanks.fuel - half.fuel), mix, 1e-9, 'drawn at the mixture ratio');
   near(whole.tanks.oxidizer - half.oxidizer + whole.tanks.fuel - half.fuel, flow * 60, flow * TICK * 1.5, 'and together they are the flow');
   let out = until(lean, lean.start(), autopilot(lean, { sequence: false }), 150);
@@ -222,9 +223,9 @@ test('a flight is the same flight at any frame rate', () => {
 test('turning freely, the spacecraft keeps its angular momentum and energy, and coasts as fly.ts coasts', () => {
   // no air on its sides (neither the heat shield's push nor the cross-flow along its length), so nothing turns it: the drag still acts, through the centre of mass
   const v = vehicle(
-    with_((tr) => {
-      tr.body.capsule.surfaces.forEach((s) => (s.slope = 0));
-      delete tr.body.capsule.side;
+    with_((_, c) => {
+      c.rigid.capsule.surfaces.forEach((s) => (s.slope = 0));
+      delete c.rigid.capsule.side;
     }),
     SITE,
     SEA,
@@ -248,8 +249,9 @@ test('turning freely, the spacecraft keeps its angular momentum and energy, and 
 });
 
 /** The live run beside fly.ts's, at the instants and in the figures the powered flight is judged by. */
-function beside(t, run, tolerance, what, TR = TR_, batch = batch_) {
+function beside(t, run, tolerance, what, plan = PLAN, batch = batch_) {
   const report = [];
+  const b = ballisticOf(plan);
   const rows = [
     ['speed', 'm/s', tolerance.speed, true],
     ['groundSpeed', 'm/s', tolerance.speed, true],
@@ -260,15 +262,15 @@ function beside(t, run, tolerance, what, TR = TR_, batch = batch_) {
   ];
   // at separation fly.ts's kept sample already has the push the two part with, so its figures are the ones its results hold
   const parting = (flown) => ({
-    t: TR.separation.at.value,
+    t: b.separation.at.value,
     speed: flown.results.separationSpeed,
     groundSpeed: flown.results.separationGroundSpeed,
     altitude: flown.results.separationAltitude,
-    range: sampleAt(flown.samples, TR.separation.at.value).range,
+    range: sampleAt(flown.samples, b.separation.at.value).range,
     groundClimb: flown.results.separationGroundClimb,
     climb: flown.results.separationClimb,
   });
-  const cutoff = TR.engine.cutoff.value;
+  const cutoff = b.cutoff;
   for (const [a, b] of [
     [sampleAt(batch.samples, cutoff), sampleAt(run.samples, cutoff)],
     [parting(batch), parting(run)],
@@ -290,7 +292,7 @@ function beside(t, run, tolerance, what, TR = TR_, batch = batch_) {
 
 test('the autopilot on the tilt programme, with no push from the air’s side, is fly.ts’s powered flight', (t) => {
   const v = vehicle(
-    with_((tr) => tr.body.surfaces.forEach((s) => (s.slope = 0))),
+    with_((_, c) => c.rigid.surfaces.forEach((s) => (s.slope = 0))),
     SITE,
     SEA,
   );
@@ -327,10 +329,11 @@ test('hands off, the stack does what its static margin says: it is stable, and w
   // the margin is the airframe's, and a crosswind would turn the nose before the margin had its say (the day's wind is
   // asked at the end).
   const slender = vehicle(
-    with_((tr) => {
-      delete tr.body.side;
-      delete tr.body.limits;
-    }, true),
+    unlimited(
+      with_((_, c) => {
+        delete c.rigid.side;
+      }, true),
+    ),
     SITE,
     SEA,
   );
@@ -365,7 +368,7 @@ test('hands off, the stack does what its static margin says: it is stable, and w
     while (w.t < 140 && !w.broke) w = v.tick(w, w.t < from ? on : off);
     return w;
   };
-  const still = vehicle(planOfTrajectory(CALM), SITE, SEA);
+  const still = vehicle(CALM, SITE, SEA);
   const w = handsOffFrom(still, 60);
   assert.ok(w.broke && w.broke.t > 65 && w.broke.t < 95, 'hands off, the whole of it breaks up in the greatest pressure');
   t.diagnostic(
@@ -382,10 +385,11 @@ test('hands off, the stack does what its static margin says: it is stable, and w
   );
   // the same body with its fins taken off has its centre of pressure ahead: it will not hold its nose to the air
   const finless = vehicle(
-    with_((tr) => {
-      tr.body.surfaces = tr.body.surfaces.filter((f) => f.name !== 'fins');
-      delete tr.body.limits;
-    }, true),
+    unlimited(
+      with_((_, c) => {
+        c.rigid.surfaces = c.rigid.surfaces.filter((f) => f.name !== 'fins');
+      }, true),
+    ),
     SITE,
     SEA,
   );
@@ -440,27 +444,27 @@ test('a pilot’s trim leans the programme the platform holds, by as much as ask
 test('the rest of the flight happens: tower, separation, turnaround, retrofire, the air, parachutes, the sea', (t) => {
   const s = live.state;
   assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
-  near(s.separation.t, TR.separation.at.value, 1e-9, 'separation on time');
-  const share = TR.separation.boosterMass.value / (TR.separation.boosterMass.value + TR.separation.mass.value);
-  const after = live.samples.find((x) => x.t > TR.separation.at.value);
+  near(s.separation.t, B.separation.at.value, 1e-9, 'separation on time');
+  const share = B.separation.leaves.value / (B.separation.leaves.value + B.separation.after.value);
+  const after = live.samples.find((x) => x.t > B.separation.at.value);
   assert.equal(after.phase, 'capsule');
-  near(after.mass, TR.separation.mass.value, 1e-9, 'the capsule alone');
+  near(after.mass, B.separation.after.value, 1e-9, 'the capsule alone');
   near(
     dot(sub(after.v, s.separation.v), s.separation.axis),
-    TR.separation.speed.value * share,
+    B.separation.push.value * share,
     0.2,
     'pushed off along the axis with its share of 30 ft/s',
   );
-  near(s.retroAt, TR.retro.fires[0].value, 1e-9, 'retrofire on time');
+  near(s.retroAt, B.retroAt, 1e-9, 'retrofire on time');
   // by retrofire it has turned blunt end first and is holding the retro attitude: the small end back and 20 degrees down
-  const firing = live.samples.find((x) => x.t >= TR.retro.fires[0].value + 2);
+  const firing = live.samples.find((x) => x.t >= B.retroAt + 2);
   const wind = sub(firing.v, cross([0, 0, 7.292115e-5], firing.centre));
   const up = unit(firing.centre);
   const level = unit(sub(wind, scale(up, dot(wind, up))));
-  const pitch = TR.retro.pitch.value * DEG;
+  const pitch = B.retroPitch.value * DEG;
   const wanted = sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
   near(angleBetween(firing.axis, wanted) / DEG, 0, 2, 'the retro attitude');
-  near(firing.g, (TR.retro.thrust.value * 1) / (TR.separation.mass.value * G0), 0.01, 'one retrorocket, a third of a g');
+  near(firing.g, (B.motors[0].thrust.vacuum.value * 1) / (B.separation.after.value * G0), 0.01, 'one retrorocket, a third of a g');
   // through the air it rides heat shield first without being told to
   const peak = live.samples.reduce((a, b) => (b.phase === 'entry' && b.q > a.q ? b : a), { q: 0 });
   assert.ok(peak.alpha > 175, `blunt end first at the greatest pressure: ${peak.alpha.toFixed(1)} deg`);
@@ -480,7 +484,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   );
   // nobody turning it round, it still comes through the air blunt end first: the shield's pressure is behind its centre of mass
   // (in still air: hands off from the pad the day's wind breaks the stack before it is ever up there)
-  const calm = vehicle(planOfTrajectory(CALM), SITE, SEA);
+  const calm = vehicle(CALM, SITE, SEA);
   const loose = flyLive(calm, autopilot(calm, { pitch: false, yaw: false, roll: false }));
   const worst = loose.samples.reduce((a, x) => (x.phase === 'entry' && x.q > a.q ? x : a), { q: 0 });
   assert.ok(worst.alpha > 150, `left small end first, the air turns it round by the greatest pressure: ${worst.alpha.toFixed(0)} deg`);
@@ -505,7 +509,7 @@ test('which of the body’s inputs are not documented', (t) => {
       for (const [k, v] of Object.entries(o)) walk(v, path ? `${path}.${k}` : k);
     }
   };
-  walk(TR.body, 'body');
+  walk(RIGID, 'body');
   for (const f of found) t.diagnostic(f);
   assert.deepEqual(found, [
     'body.parts.3 "engine and tail equipment" (estimated)',
@@ -572,10 +576,18 @@ test('which of the body’s inputs are not documented', (t) => {
   // how far the ones that steer and the ones that lift move the flight: a 5 % rise in each
   const base = live.results;
   for (const [name, change] of [
-    ['surfaces: nose slope', (tr) => (tr.body.surfaces[0].slope *= 1.05)],
-    ['surfaces: fins slope', (tr) => (tr.body.surfaces[1].slope *= 1.05)],
-    ['control.deflection', (tr) => (tr.body.control.deflection.value *= 1.05)],
-    ['parts: engine and tail equipment', (tr) => (tr.body.parts[3].to *= 1.05)],
+    ['surfaces: nose slope', (_, c) => (c.rigid.surfaces[0].slope *= 1.05)],
+    ['surfaces: fins slope', (_, c) => (c.rigid.surfaces[1].slope *= 1.05)],
+    [
+      'control.deflection',
+      (_, c, b, mine) => {
+        // (the body's deflection, and the engine's gimbal that carries it)
+        const gimbal = mine(b.engine).gimbal;
+        c.rigid.control.deflection.value *= 1.05;
+        if (gimbal.deflection !== c.rigid.control.deflection) gimbal.deflection.value = c.rigid.control.deflection.value;
+      },
+    ],
+    ['parts: engine and tail equipment', (_, c) => (c.rigid.parts[3].to *= 1.05)],
   ]) {
     const r = flyLive(vehicle(with_(change), SITE, SEA)).results;
     t.diagnostic(
@@ -608,7 +620,7 @@ const aborting = (v, at, options = {}) => {
   return { state, tally, phases };
 };
 const DOWN = 29 * 0.3048;
-const RATED = Math.max(...TR.body.escape.curve.points.map((p) => p[1])) / ((TR.retropack.mass.value + (4040.28 - 2855.14) * LB) * G0);
+const RATED = Math.max(...RIGID.escape.curve.points.map((p) => p[1])) / ((B.packJoint.after.value + (4040.28 - 2855.14) * LB) * G0);
 
 test('an abort on the pad: off on the escape rocket, the tower away at the top, and down under the main parachute', (t) => {
   for (const [what, options, at] of [
@@ -662,8 +674,8 @@ test('an abort is for a tower: without one aboard it is not there to be had, and
   s = until(whole, s, { ...HANDS_OFF, events: ['abort'], do: [{ separate: 'tower' }], throttle: 0 }, at + 3);
   assert.equal(s.abortAt, at, 'once');
   assert.ok(s.shed.tower, 'the tower can be let go by hand once the rocket is out');
-  const burn = TR.body.escape.burn.value;
-  const tail = (2 * (TR.body.escape.impulse.value - TR.body.escape.thrust.value * burn)) / TR.body.escape.thrust.value;
+  const burn = RIGID.escape.burn.value;
+  const tail = (2 * (RIGID.escape.impulse.value - RIGID.escape.thrust.value * burn)) / RIGID.escape.thrust.value;
   near(
     burn + tail,
     1.393,
@@ -677,8 +689,8 @@ test('an abort is for a tower: without one aboard it is not there to be had, and
 });
 
 // --- the reaction control system as hardware -----------------------------------------------------
-const RCS = TR.body.capsule.rcs;
-const alone = () => until(whole, whole.start(), autopilot(whole), TR.separation.at.value + 1);
+const RCS = RIGID.capsule.rcs;
+const alone = () => until(whole, whole.start(), autopilot(whole), B.separation.at.value + 1);
 const burnRate = (i) => 1 / (G0 * RCS.supplies.find((u) => u.name === RCS.thrusters[i].supply).isp.value);
 
 test('each chamber turns and pushes the spacecraft as its place and line say', () => {
@@ -738,9 +750,14 @@ test('the jets burn their thrust over g0 Isp, the spacecraft is lighter by it, a
 
   // nearly empty: the big chambers burn what there is and stop
   // (in still air: flown hands off from the pad, the day's wind would break the stack before it got there)
-  const tr = with_((x) => (x.body.capsule.rcs.supplies[0].propellant.value = 0.05), true);
-  const dry = vehicle(tr, SITE, SEA);
-  let d = until(dry, dry.start(), autopilot(dry, { pitch: false, yaw: false, roll: false }), TR.separation.at.value + 1);
+  const low = with_((_, c) => {
+    // (the automatic supply nearly empty: on the body, and the tank of it the plan carries)
+    const supply = c.rigid.capsule.rcs.supplies[0];
+    supply.propellant.value = 0.05;
+    for (const k of c.tanks) if (k.holds === 'control' && k.label === supply.name) k.load.value = 0.05;
+  }, true);
+  const dry = vehicle(low, SITE, SEA);
+  let d = until(dry, dry.start(), autopilot(dry, { pitch: false, yaw: false, roll: false }), B.separation.at.value + 1);
   d = until(dry, d, { ...HANDS_OFF, pitch: 1 }, d.t + 5);
   assert.ok(
     d.rcs.left[0] >= 0 && d.rcs.left[0] < 24 * 4.4482216 * burnRate(0) * TICK,
@@ -757,7 +774,7 @@ test('the jets burn their thrust over g0 Isp, the spacecraft is lighter by it, a
   // the other system has its own tank
   d = until(dry, d, { ...HANDS_OFF, pitch: -1, manual: { pitch: true } }, d.t + 1);
   assert.ok(d.w[1] < rate - 0.1, 'the manual system still answers');
-  assert.ok(d.rcs.left[1] < tr.craft[0].rigid.capsule.rcs.supplies[1].propellant.value, 'from its own supply');
+  assert.ok(d.rcs.left[1] < low.craft[0].rigid.capsule.rcs.supplies[1].propellant.value, 'from its own supply');
 });
 
 test('with the jets as hardware a flight is still the same flight at any frame rate', () => {
@@ -786,10 +803,10 @@ test('the autopilot’s whole flight is flown within the peroxide aboard', (t) =
   assert.ok(end[0] > 0, 'the automatic supply lasts the flight');
   assert.equal(end[1], full[1], 'the manual supply is untouched');
   const marks = [
-    ['the turnaround, to 02:37', TR.separation.at.value, 157],
-    ['holding attitude to retrofire', 157, TR.retro.fires[0].value],
-    ['retrofire and after, to the pack’s jettison', TR.retro.fires[0].value, TR.retropack.at.value],
-    ['to the first of the air', TR.retropack.at.value, live.results.entryAt],
+    ['the turnaround, to 02:37', B.separation.at.value, 157],
+    ['holding attitude to retrofire', 157, B.retroAt],
+    ['retrofire and after, to the pack’s jettison', B.retroAt, B.packJoint.at.value],
+    ['to the first of the air', B.packJoint.at.value, live.results.entryAt],
     ['through the entry to the drogue', live.results.entryAt, live.results.drogueAt],
   ];
   for (const [what, from, to] of marks) t.diagnostic(`${what.padEnd(46)} ${(at(from) - at(to)).toFixed(3)} kg`);
@@ -799,25 +816,25 @@ test('the autopilot’s whole flight is flown within the peroxide aboard', (t) =
 });
 
 // --- engines behave as their kind does -----------------------------------------------------------
-// No flight in the record has an engine that throttles, so the lever is proved on a fixture: this flight's trajectory
+// No flight in the record has an engine that throttles, so the lever is proved on a fixture: this flight's plan
 // with an engine nature it never had. It is a test's invention and is not data.
 const FIXTURE = (nature) =>
   vehicle(
     // (in still air: these are flown hands off from the pad, which the day's wind does not allow)
-    with_((tr) => (tr.body.engine = { confidence: 'estimated', source: 'a test fixture: not a real engine', ...nature }), true),
+    natured(CALM, { confidence: 'estimated', source: 'a test fixture: not a real engine', ...nature }),
     SITE,
     SEA,
   );
-const FLOW = TR.engine.thrust.value / (G0 * TR.engine.isp.value);
+const FLOW = B.engine.thrust.seaLevel.value / (G0 * B.engine.isp.seaLevel.value);
 
 test('a fixed-thrust engine (the A-7) is on or off: any lever above nothing is full thrust', () => {
   const full = until(whole, whole.start(), { ...HANDS_OFF, throttle: 1 }, 5);
   const some = until(whole, whole.start(), { ...HANDS_OFF, throttle: 0.3 }, 5);
   assert.equal(some.throttle, 1, 'it does not throttle');
   assert.deepEqual(some.r, full.r, 'the same flight');
-  assert.equal(TR.body.engine.kind, 'liquid');
-  assert.equal(TR.body.engine.throttle, undefined);
-  assert.equal(TR.body.engine.starts, 1);
+  assert.equal(RIGID.engine.kind, 'liquid');
+  assert.equal(RIGID.engine.throttle, undefined);
+  assert.equal(RIGID.engine.starts, 1);
 });
 
 test('a throttled engine (a fixture) follows its lever within its range, burns in proportion, and is off below its least', () => {
@@ -833,7 +850,7 @@ test('a throttled engine (a fixture) follows its lever within its range, burns i
   // (eight tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
   near(
     sea,
-    0.8 * vacuumOf(TR.engine).value - TR.engine.exitArea.value * P0,
+    0.8 * B.engine.thrust.vacuum.value - B.engine.exitArea.value * P0,
     50,
     'eight tenths of the vacuum thrust at the pad, less one atmosphere on the exit (and 10 N for the pad’s few metres of height)',
   );
@@ -859,8 +876,8 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
   let s = until(v, v.start(), { ...HANDS_OFF, throttle: 1 }, 2);
   s = until(v, s, HANDS_OFF, 150);
   assert.ok(s.cutoff, 'it burned out');
-  const liquids = TR.body.parts.reduce((sum, p) => sum + (p.fluid ? p.mass : 0), 0);
-  near(s.mass, TR.liftoffMass.value - liquids, FLOW * TICK * 1.5, 'having burned all there was, the lever at nothing all the while');
+  const liquids = RIGID.parts.reduce((sum, p) => sum + (p.fluid ? p.mass : 0), 0);
+  near(s.mass, PLAN.craft[0].mass.value - liquids, FLOW * TICK * 1.5, 'having burned all there was, the lever at nothing all the while');
   s = until(v, s, { ...HANDS_OFF, throttle: 1 }, 151);
   assert.equal(s.starts, 1, 'and it is not lit twice');
 
@@ -883,7 +900,7 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
     ballisticOf(whole.plan).motors.map((m) => m.id),
     'the three motors',
   );
-  near(impulse / (3 * TR.retro.thrust.value * TR.retro.burn.value), 1, 0.002, 'three motors’ thrust for their burning time');
+  near(impulse / (3 * B.motors[0].thrust.vacuum.value * B.motors[0].burn.value), 1, 0.002, 'three motors’ thrust for their burning time');
 
   // the escape rocket: the integral of its thrust is its recorded impulse
   let a = whole.tick(until(whole, whole.start(), autopilot(whole), 20), { ...HANDS_OFF, events: ['abort'] });
@@ -893,7 +910,7 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
     a = whole.tick(a, HANDS_OFF);
   }
   // (by the motor's own curve, which encloses 3 per cent more than the nominal figure: tests/abort.test.mjs holds it to its figure's legend)
-  near(pull / TR.body.escape.impulse.value, 1.03, 0.005, 'the escape rocket’s impulse: its curve’s, against the nominal 56,500 lb-s');
+  near(pull / RIGID.escape.impulse.value, 1.03, 0.005, 'the escape rocket’s impulse: its curve’s, against the nominal 56,500 lb-s');
 });
 
 // --- manual means manual --------------------------------------------------------------------------
@@ -903,7 +920,7 @@ test('with the spacecraft’s own sequence off and nobody commanding, there are 
   const s = none.state;
   assert.ok(s.landing && s.drogueAt === null && s.mainAt === null, 'down, with nothing out');
   // the speed at which the air's drag on the blunt end is its weight, at sea level: set from the inputs, to 2 per cent
-  const terminal = Math.sqrt((2 * TR.retropack.mass.value * G0) / (1.225 * TR.area.value * 1.0));
+  const terminal = Math.sqrt((2 * B.packJoint.after.value * G0) / (1.225 * B.entry.area.value * 1.0));
   near(s.landing.vertical / terminal, 1, 0.03, 'terminal speed, heat shield first');
   assert.ok(s.landing.vertical > 80, `${s.landing.vertical.toFixed(0)} m/s`);
   t.diagnostic(
@@ -952,7 +969,7 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
   });
   near(
     packed.state.landing.vertical / live.state.landing.vertical,
-    Math.sqrt(TR.separation.mass.value / TR.retropack.mass.value),
+    Math.sqrt(B.separation.after.value / B.packJoint.after.value),
     0.01,
     'heavier under the main',
   );
@@ -1001,8 +1018,8 @@ test('a tower let go early is not propellant burned: the engine runs as long', (
 
 test('a programme that never tilts still has a launch azimuth: no attitude is lost', () => {
   const v = vehicle(
-    with_((tr) => {
-      tr.tilt.points = [
+    with_((p) => {
+      p.attitude.find((a) => 'programme' in a.hold).hold.programme.points = [
         [0, 0],
         [100, 0],
       ];
@@ -1035,7 +1052,7 @@ test('level is the ellipsoid’s: straight up along the plumb line at the pad is
 
 // --- every other ballistic flight -----------------------------------------------------------------
 // What is said above of Freedom 7's live vehicle that is the simulator's and not that flight's own record, held for each
-// flight flown on a trajectory (tests/ballistic.mjs), with the same tolerances: the live run beside fly.ts's, its events in
+// ballistic flight (tests/ballistic.mjs), with the same tolerances: the live run beside fly.ts's, its events in
 // order and on time, its attitude through retrofire and the air, its jets within their tanks, and what in its body is not documented.
 
 /** Where a ballistic flight's body is less sure than Freedom 7's, or surer: an argued list, as tests/sim.test.mjs's is. */
@@ -1050,38 +1067,34 @@ const BODY_DIFFERS = {
 for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
   const site = siteFrame(other.site);
   const sea = other.site.seaLevel.value;
-  const tr = other.trajectory;
+  const plan = other.plan;
+  const rb = ballisticOf(plan);
+  const rigid = plan.craft[0].rigid;
   const flown = fly(other.plan, site, sea);
   const v = vehicle(other.plan, site, sea);
   const run = flyLive(v);
   const name = `${other.designation} (${other.callsign})`;
 
   test(`${name}: the autopilot with no push from the air’s side is fly.ts’s powered flight, and with it a little off by its lift`, (t) => {
-    const flat = structuredClone(tr);
-    for (const x of flat.body.surfaces) x.slope = 0;
-    beside(
-      t,
-      flyLive(vehicle(planOfTrajectory(flat), site, sea)),
-      { speed: 0.002, height: 0.005, climb: 0.1 },
-      'the same forces',
-      tr,
-      flown,
-    );
-    beside(t, run, { speed: 0.01, height: 0.02, climb: 0.5 }, 'with lift', tr, flown);
+    const flat = edited(plan, (_, c) => {
+      for (const x of c.rigid.surfaces) x.slope = 0;
+    });
+    beside(t, flyLive(vehicle(flat, site, sea)), { speed: 0.002, height: 0.005, climb: 0.1 }, 'the same forces', plan, flown);
+    beside(t, run, { speed: 0.01, height: 0.02, climb: 0.5 }, 'with lift', plan, flown);
   });
 
   test(`${name}: the rest of the flight happens, on time and in order, as fly.ts has it`, (t) => {
     const s = run.state;
     assert.deepEqual(s.shed, { tower: true, booster: true, retropack: true });
-    near(s.separation.t, tr.separation.at.value, 1e-9, 'separation on time');
-    const after = run.samples.find((x) => x.t > tr.separation.at.value);
-    near(after.mass, tr.separation.mass.value, 1e-9, 'the capsule alone');
-    near(s.retroAt, tr.retro.fires[0].value, 1e-9, 'retrofire on time');
-    const firing = run.samples.find((x) => x.t >= tr.retro.fires[0].value + 2);
+    near(s.separation.t, rb.separation.at.value, 1e-9, 'separation on time');
+    const after = run.samples.find((x) => x.t > rb.separation.at.value);
+    near(after.mass, rb.separation.after.value, 1e-9, 'the capsule alone');
+    near(s.retroAt, rb.retroAt, 1e-9, 'retrofire on time');
+    const firing = run.samples.find((x) => x.t >= rb.retroAt + 2);
     const wind = sub(firing.v, cross([0, 0, 7.292115e-5], firing.centre));
     const up = unit(firing.centre);
     const level = unit(sub(wind, scale(up, dot(wind, up))));
-    const pitch = tr.retro.pitch.value * DEG;
+    const pitch = rb.retroPitch.value * DEG;
     near(angleBetween(firing.axis, sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)))) / DEG, 0, 2, 'the retro attitude');
     const peak = run.samples.reduce((a, b) => (b.phase === 'entry' && b.q > a.q ? b : a), { q: 0 });
     assert.ok(peak.alpha > 175, `blunt end first at the greatest pressure: ${peak.alpha.toFixed(1)} deg`);
@@ -1097,19 +1110,19 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
   });
 
   test(`${name}: the autopilot’s whole flight is flown within the peroxide aboard, the manual supply untouched`, (t) => {
-    const full = tr.body.capsule.rcs.supplies.map((u) => u.propellant.value);
+    const full = rigid.capsule.rcs.supplies.map((u) => u.propellant.value);
     const end = run.state.rcs.left;
     assert.ok(end[0] > 0, 'the automatic supply lasts the flight');
     assert.equal(end[1], full[1], 'the manual supply is untouched');
     t.diagnostic(`in all ${(full[0] - end[0]).toFixed(3)} kg of ${full[0].toFixed(2)} kg`);
   });
 
-  if (tr.body.capsule.rcs.rate)
+  if (rigid.capsule.rcs.rate)
     test(`${name}: rate command holds the rate the stick asks for, within its deadband, and damps to none let go`, (t) => {
-      const rate = tr.body.capsule.rcs.rate;
+      const rate = rigid.capsule.rcs.rate;
       const full = rate.full.value * DEG;
       const dead = rate.deadband.value * DEG;
-      let s = until(v, v.start(), autopilot(v), tr.separation.at.value + 40);
+      let s = until(v, v.start(), autopilot(v), rb.separation.at.value + 40);
       const auto = s.rcs.left[0];
       const manual = s.rcs.left[1];
       // the stick full forward for twenty seconds: the pitch rate comes to what it asks and stays within the deadband of it
@@ -1139,8 +1152,8 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
       }
       return found;
     };
-    const mine = list(tr.body, 'body');
-    const theirs = list(TR.body, 'body');
+    const mine = list(rigid, 'body');
+    const theirs = list(RIGID, 'body');
     const more = mine.filter((x) => !theirs.includes(x));
     const fewer = theirs.filter((x) => !mine.includes(x));
     t.diagnostic(`not documented here and documented on Freedom 7: ${more.join(', ') || 'none'}`);

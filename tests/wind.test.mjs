@@ -4,7 +4,7 @@
 // to it. What it does to the flight against the record is stated here, improvements and worsenings both, and held, so
 // that a change to the wind or to how it is flown shows.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
+import { calm } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
@@ -18,8 +18,8 @@ import { LIFTOFF } from '../src/world/earthframe.ts';
 
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
-const TR = flight.trajectory;
-const CALM = { ...TR, winds: undefined };
+const PLAN = flight.plan;
+const CALM = calm(PLAN);
 const FT = 0.3048;
 const KT = 1852 / 3600;
 const NMI = 1852;
@@ -27,7 +27,7 @@ const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
 
 test('the sounding: every level a measure with its source, in order of height, the surface as the report’s text has it', () => {
-  const { levels, calmAbove } = TR.winds;
+  const { levels, calmAbove } = PLAN.winds;
   assert.ok(levels.length > 60);
   for (const [i, l] of levels.entries()) {
     assert.ok(l.speed.source && l.from.source && l.speed.confidence && l.from.confidence, `level ${i} says where it is from`);
@@ -68,7 +68,7 @@ test('standing on the pad, the air goes by at the surface wind; with no sounding
   const r = geodeticToEcef(SITE);
   const v = cross([0, 0, EARTH_ROTATION_RATE], r);
   near(airAt(LIFTOFF, r, v, 0, SEA).airspeed, 0, 1e-9, 'calm');
-  const air = airAt(LIFTOFF, r, v, 0, SEA, blowOf(TR.winds));
+  const air = airAt(LIFTOFF, r, v, 0, SEA, blowOf(PLAN.winds));
   near(air.airspeed / KT, 12, 0.3, 'twelve knots over the pad');
   near(length(air.ground), 0, 1e-9, 'and it is not moving over the ground');
   // from 070: the air comes at it from east of north
@@ -77,8 +77,8 @@ test('standing on the pad, the air goes by at the surface wind; with no sounding
   assert.ok(Math.abs(dot(air.wind, LIFTOFF.up(r, 0))) < 1e-9, 'level');
 });
 
-const windy = fly(planFor(TR), SITE, SEA);
-const still = fly(planFor(CALM), SITE, SEA);
+const windy = fly(PLAN, SITE, SEA);
+const still = fly(CALM, SITE, SEA);
 
 test('under its parachute the spacecraft goes with the wind', (t) => {
   const drift = (run) => {
@@ -127,8 +127,8 @@ test('what the day’s wind does to the flight, against the record: stated, both
   near(windy.results.separationSpeed - still.results.separationSpeed, 2.9, 1, 'and it separates 3 m/s faster: worse');
 });
 
-const liveDay = flyLive(vehicle(planFor(TR), SITE, SEA));
-const liveCalm = flyLive(vehicle(planFor(CALM), SITE, SEA));
+const liveDay = flyLive(vehicle(PLAN, SITE, SEA));
+const liveCalm = flyLive(vehicle(CALM, SITE, SEA));
 /** What the Postlaunch Report plots as its angle of attack (Figure 4.2-8): the gyros' pitch less the Earth-fixed flight-path angle, degrees. */
 const gyro = (s) => Math.asin(dot(s.axis, LIFTOFF.up(s.r, s.t))) / DEG - s.groundClimb;
 
@@ -165,7 +165,7 @@ test('the wind bends the stack more, and it stands: the load through the jet aga
 });
 
 test('the autopilot holds the programme through it: the attitude stays the gyros’, the path is what gives', () => {
-  const v = vehicle(planFor(TR), SITE, SEA);
+  const v = vehicle(PLAN, SITE, SEA);
   let worst = 0;
   for (const s of liveDay.samples) {
     if (s.phase !== 'powered' || s.t < 10 || s.t > 140) continue;
@@ -179,8 +179,8 @@ test('the predicted path is flown through the same wind', () => {
   // from the top of the drogue's fall: where it will come down, with and without the wind
   const at = windy.samples.find((s) => s.phase === 'main');
   const start = { t: at.t, r: at.r, v: at.v, mass: at.mass, phase: 'main' };
-  const day = predict(planFor(TR), SITE, SEA, start);
-  const calm = predict(planFor(CALM), SITE, SEA, start);
+  const day = predict(PLAN, SITE, SEA, start);
+  const calm = predict(CALM, SITE, SEA, start);
   assert.ok(day.impact && calm.impact, 'both come down');
   const a = geodeticToEcef({ latitude: day.impact.latitude, longitude: day.impact.longitude, height: 0 });
   const b = geodeticToEcef({ latitude: calm.impact.latitude, longitude: calm.impact.longitude, height: 0 });

@@ -8,6 +8,13 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { attitudeOf, drumAt, ratesOf, scaleAt, signalsAt } from '../src/viewer/gauges.ts';
 
+/** The ids of a flight's record's events, as its plan keeps them: each the record of an event of the plan's, or one of its marks. */
+const recordIds = (flight) =>
+  new Set([
+    ...(flight.plan?.events ?? []).flatMap((e) => (e.record ? [e.record.id] : [])),
+    ...(flight.plan?.record?.marks ?? []).map((m) => m.id),
+  ]);
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const near = (a, b, by = 1e-6) => assert.ok(Math.abs(a - b) <= by, `${a} is not ${b} (within ${by})`);
 
@@ -153,19 +160,18 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
         assert.ok(i.reads || /not simulated/i.test(i.about), `${i.node} reads nothing, and does not say it is not simulated`);
         // (a history read off the record: each reading's event is one of the record's)
         for (const h of i.history ?? [])
-          if (h.from)
-            assert.ok(
-              (flight.orbital?.events ?? []).some((e) => e.id === h.from),
-              `${i.node}: no event ${h.from} in the record`,
-            );
+          if (h.from) assert.ok(recordIds(flight).has(h.from), `${i.node}: no event ${h.from} in the record`);
         if (i.reads?.startsWith('supply'))
-          assert.ok(flight.trajectory?.body?.capsule.rcs?.supplies[Number(i.reads.slice(6))], `${i.node}: no such supply as ${i.reads}`);
+          assert.ok(
+            flight.plan?.craft[0].rigid?.capsule.rcs?.supplies[Number(i.reads.slice(6))],
+            `${i.node}: no such supply as ${i.reads}`,
+          );
       }
       for (const l of cabin.lamps ?? []) {
         assert.ok(nodes.has(l.node), `lamp ${l.node} is not in ${model.url}`);
         assert.ok(l.shows || /not simulated|stays dark|not aboard/i.test(l.about), `${l.node} shows nothing, and does not say so`);
         // (an event of an orbital flight's record, by its id; and what puts it out, likewise)
-        const ids = new Set((flight.orbital?.events ?? []).map((e) => e.id));
+        const ids = recordIds(flight);
         if (l.shows?.startsWith('event:')) assert.ok(ids.has(l.shows.slice(6)), `${l.node}: no event ${l.shows} in the record`);
         if (l.until) assert.ok(ids.has(l.until), `${l.node}: no event ${l.until} in the record`);
       }
@@ -213,7 +219,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
               `globe: no lamp ${m.lamp}`,
             );
         if (cabin.globe.modes.some((m) => m.shows === 'landing'))
-          assert.ok(flight.orbital?.manual, 'globe: a landing-place mode on a flight whose record says nothing of a burn by hand');
+          assert.ok(flight.plan?.record?.manual, 'globe: a landing-place mode on a flight whose record says nothing of a burn by hand');
       }
       if (cabin.periscope?.ring)
         assert.ok(nodes.has(cabin.periscope.ring.mesh), `ring ${cabin.periscope.ring.mesh} is not in ${model.url}`);

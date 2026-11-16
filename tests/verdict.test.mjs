@@ -1,17 +1,17 @@
 // src/sim/verdict.ts: how a flight flown by hand ended, in words, against the limits the flight's data gives.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALLISTIC, planFor } from './ballistic.mjs';
+import { BALLISTIC, edited } from './ballistic.mjs';
 import { autopilot, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';
 
-// every flight flown on a trajectory (tests/ballistic.mjs), each held as Freedom 7 was first
+// every ballistic flight (tests/ballistic.mjs), each held as Freedom 7 was first
 for (const flight of BALLISTIC) {
   const named = (what) => (flight.id === 'usa/mercury/mr-3-freedom-7' ? what : `${flight.callsign}: ${what}`);
-  const TR = flight.trajectory;
-  const v = vehicle(planFor(TR), siteFrame(flight.site), flight.site.seaLevel.value);
+  const PLAN = flight.plan;
+  const v = vehicle(PLAN, siteFrame(flight.site), flight.site.seaLevel.value);
   const record = autopilot(v);
   /** Fly a whole flight under a pilot and say how it ended. */
   function ended(pilot) {
@@ -23,7 +23,7 @@ for (const flight of BALLISTIC) {
       state = next;
       tally.note(v.sample(state), state, v);
     }
-    return verdict(state, tally.results, planFor(TR), tally.peakG);
+    return verdict(state, tally.results, PLAN, tally.peakG);
   }
 
   test(named('the record’s flight is down under the main parachute, and survivable'), () => {
@@ -58,10 +58,13 @@ for (const flight of BALLISTIC) {
   });
 
   test(named('a flight with no limits given is not judged'), () => {
-    const tr = structuredClone(TR);
-    delete tr.body.capsule.limits;
-    const bare = vehicle(planFor(tr), siteFrame(flight.site), flight.site.seaLevel.value);
+    // (the crew's limits gone: from the plan's, and from the spacecraft's own)
+    const plan = edited(PLAN, (_, c) => {
+      c.limits = c.limits.filter((l) => l.of !== 'landing-speed' && l.of !== 'load');
+      delete c.rigid.capsule.limits;
+    });
+    const bare = vehicle(plan, siteFrame(flight.site), flight.site.seaLevel.value);
     const flown = flyLive(bare);
-    assert.equal(verdict(flown.state, flown.results, planFor(tr), 11).survivable, null);
+    assert.equal(verdict(flown.state, flown.results, plan, 11).survivable, null);
   });
 }

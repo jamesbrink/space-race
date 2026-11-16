@@ -119,8 +119,8 @@ test('every flight has the same three places, and opens in its gallery', () => {
   }
 });
 
-test('Vostok 1 has all three places: its flight deck is lit by its ascent to orbit, with no trajectory', () => {
-  assert.equal(vostok.trajectory, undefined);
+test('Vostok 1 has all three places: its flight deck is lit by its ascent to orbit, its plan an orbital one', () => {
+  assert.equal(vostok.plan.kind, 'orbital');
   assert.deepEqual(entrances(vostok), { gallery: true, site: true, fly: true });
   assert.equal(opensIn(vostok), 'gallery');
   assert.equal(opensIn(vostok, 'site'), 'site');
@@ -137,7 +137,7 @@ test('Freedom 7 has all three places', () => {
 
 test('a flight that is only its vehicle has the gallery, and says why it has no more', () => {
   assert.equal(fixture.site, undefined);
-  assert.equal(fixture.trajectory, undefined);
+  assert.equal(fixture.plan, undefined);
   assert.equal(fixture.models.length, 1);
   assert.deepEqual(entrances(fixture), { gallery: true, site: false, fly: false });
   assert.equal(lacks(fixture, 'gallery'), null);
@@ -266,7 +266,7 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
     assert.deepEqual(entrances(staged), { gallery: true, site: false, fly: false });
   }
   // the flight it was made from is not changed by it
-  assert.ok(mr3.site && mr3.trajectory && exhibit(mr3).position);
+  assert.ok(mr3.site && mr3.plan && exhibit(mr3).position);
 });
 
 test('the front page lists the flights there are and those to come, in the order they flew', async () => {

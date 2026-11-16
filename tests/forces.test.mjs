@@ -2,16 +2,16 @@
 // push a point by the same air (src/sim/air.ts airAt), the same drag (airDrag), the same thrust (src/sim/thrust.ts) and the
 // same gravity (world/orbit.ts), so at one state they agree to rounding: a part in 10^12 of the push.
 import assert from 'node:assert/strict';
-import { planFor } from './ballistic.mjs';
+import { calm } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { airAt, airDrag } from '../src/sim/air.ts';
 import { ballistic, spacecraft, stack } from '../src/sim/fliers.ts';
-import { dragArea, thrustIn } from '../src/sim/fly.ts';
+import { ballisticOf, dragArea, thrustIn } from '../src/sim/fly.ts';
 import { shipPush } from '../src/sim/orbital.ts';
-import { stackOf } from '../src/sim/staged.ts';
-import { nozzleThrust, vacuumOf } from '../src/sim/thrust.ts';
+import { sequenceOf, stackOf } from '../src/sim/staged.ts';
+import { nozzleThrust } from '../src/sim/thrust.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { geodeticToEcef, length, scale, siteFrame, sub } from '../src/world/frames.ts';
 
@@ -31,44 +31,39 @@ function stateOver(frame, place, t) {
 }
 
 test('a ballistic flight: the predictor’s flier is the simulator’s air, drag and thrust', () => {
-  const tr = { ...freedom7.trajectory, winds: undefined };
+  const plan = calm(freedom7.plan);
+  const engine = ballisticOf(plan).engine;
   const site = siteFrame(freedom7.site);
   const sea = freedom7.site.seaLevel.value;
   const frame = frameOf(freedom7);
   const s = stateOver(frame, site, 100);
   const air = airAt(frame, s.r, s.v, s.t, sea);
   // the stack going up, coasting: drag on the ascent's curve over the mass
-  const coasting = ballistic(planFor(tr), site, sea, { ...s, mass: 5000, phase: 'coast' }, { frame });
+  const coasting = ballistic(plan, site, sea, { ...s, mass: 5000, phase: 'coast' }, { frame });
   same(
     coasting.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach)), 1 / 5000),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, true, air.mach)), 1 / 5000),
     'the stack coasting',
   );
   // the spacecraft alone: the entry's curve
-  const alone = ballistic(planFor(tr), site, sea, { ...s, mass: 1300, phase: 'capsule' }, { frame });
+  const alone = ballistic(plan, site, sea, { ...s, mass: 1300, phase: 'capsule' }, { frame });
   same(
     alone.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), false, air.mach)), 1 / 1300),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, false, air.mach)), 1 / 1300),
     'the spacecraft alone',
   );
   // and burning: the one law of thrust along the axis given
   const axis = scale(s.r, 1 / length(s.r));
-  const burning = ballistic(
-    planFor(tr),
-    site,
-    sea,
-    { ...s, mass: 20_000, phase: 'powered' },
-    { frame, burn: { axis: () => axis, until: 140 } },
-  );
-  const thrust = nozzleThrust(1, vacuumOf(tr.engine).value, 1, tr.engine.exitArea.value, air.air.pressure);
-  assert.ok(Math.abs(thrustIn(planFor(tr), air.air.pressure) - thrust) <= 1e-9, 'fly.ts thrustIn is thrust.ts');
+  const burning = ballistic(plan, site, sea, { ...s, mass: 20_000, phase: 'powered' }, { frame, burn: { axis: () => axis, until: 140 } });
+  const thrust = nozzleThrust(1, engine.thrust.vacuum.value, 1, engine.exitArea.value, air.air.pressure);
+  assert.ok(Math.abs(thrustIn(plan, air.air.pressure) - thrust) <= 1e-9, 'fly.ts thrustIn is thrust.ts');
   same(
     burning.push(s.t, s.r, s.v, air.altitude),
     scale(
       [
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[0] + axis[0] * thrust,
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[1] + axis[1] * thrust,
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[2] + axis[2] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, true, air.mach))[0] + axis[0] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, true, air.mach))[1] + axis[1] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(plan, true, air.mach))[2] + axis[2] * thrust,
       ],
       1 / 20_000,
     ),
@@ -77,7 +72,6 @@ test('a ballistic flight: the predictor’s flier is the simulator’s air, drag
 });
 
 test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers are the coast’s and the ascent’s air and drag', () => {
-  const o = vostok1.orbital;
   const site = siteFrame(vostok1.site);
   const sea = vostok1.site.seaLevel.value;
   const frame = frameOf(vostok1);
@@ -87,7 +81,7 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const ship = spacecraft(vostok1.plan, frame, site, sea, s);
   same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(vostok1.plan, s.t, air.wind, air.altitude, null), 'the spacecraft');
   // the stack with its engines stopped: the ascent's drag area for the shape it has, over its mass
-  const gone = o.stages[0].separation.value;
+  const gone = sequenceOf(vostok1.plan).stages[0].sep;
   const stopped = stack(vostok1.plan, site, sea, 30_000, gone);
   same(
     stopped.push(s.t, s.r, s.v, air.altitude),
