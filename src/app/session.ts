@@ -133,6 +133,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   const sound = new Sound(document.querySelector<HTMLElement>('#ui .timebar')!, flight, clock, {
     ears: () => uOrigin.value, // the eye the scene was last drawn from (viewer/origin.ts)
     riding: () => stage.cameraMode === 'chase',
+    painted: (x, z) => stage.paintedAt(x, z), // what the land is painted as under a tyre (a road, an apron)
   });
   stage.walk.sounds = sound.walk;
   // the flight flown by hand: the live simulator at the keys, shown in the scene in place of the record's run

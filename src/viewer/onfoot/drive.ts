@@ -343,20 +343,23 @@ export class Vehicle {
   }
 
   /**
-   * It as it is heard (sound/audio.ts), but for what is under it, which the walker asks of the solids: its engine over
-   * its front axle, by the name its model gives it (`engine` from a drive's machine, else its `vehicle`).
+   * It as it is heard (sound/audio.ts), but for what is under each of its wheels, which the walker asks of the solids:
+   * its engine over its front axle, by the name its model gives it (`engine` from a drive's machine, else its `vehicle`),
+   * and where each of its wheels is.
    */
   driving(): Omit<Driving, 'under'> {
     const m = this.motion;
     const u = this.root.userData;
     const name = typeof u.engine === 'string' ? u.engine : typeof u.vehicle === 'string' ? u.vehicle : null;
     const ahead = this.chassis.wheelbase;
+    const hub = new THREE.Vector3();
     return {
       at: [m.x + Math.cos(m.heading) * ahead, this.y + this.radius, m.z - Math.sin(m.heading) * ahead],
       speed: m.speed,
       top: this.chassis.top,
       throttle: this.throttle,
       engine: name,
+      wheels: this.rolling.map((w) => w.getWorldPosition(hub).toArray()),
     };
   }
 

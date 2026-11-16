@@ -28,6 +28,12 @@ export interface GroundSpec {
   scenery?(at: Placing): { objects: THREE.Object3D[]; levels: Levelled[]; arrived: () => boolean };
   /** Where the ground walked on is not the land's (a pit the pad's own model is the ground of): its height there, or null. On `compass`. */
   under?(x: number, z: number, compass: Compass): number | null;
+  /**
+   * The made surface the land is painted as at a point on `compass` (a road, an apron, a track's bed), by the name the
+   * place's tread gives it (PlaceDef.tread `painted`), or null where it is the land's own: worked from the same lines as the
+   * land's shader draws them, so what a tyre is heard on is what is seen under it.
+   */
+  painted?(x: number, z: number, compass: Compass): string | null;
   /** The tone of its ground seen whole, which the globe keeps round the site until the eye is well up (globe.ts); and in the cel look. */
   tone?(day: Day): THREE.Color;
   drawn?(day: Day): THREE.Color;
@@ -66,6 +72,8 @@ export interface Place {
   view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at the grade wherever anything is built. */
   groundAt: (x: number, z: number) => number;
+  /** The made surface the land is painted as at a point in the world (GroundSpec.painted), or null. */
+  paintedAt: (x: number, z: number) => string | null;
   plantsClear: (at: THREE.Vector3, within: number) => number;
   plantsOut: (at: THREE.Vector3, margin: number) => number;
   /** How far from the pad there is something to walk to, and how far away the furthest thing placed is, metres (Setting). */
@@ -152,5 +160,6 @@ export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, ori
         cz = x * SIN + z * COS;
       return spec.under?.(cx, cz, compass) ?? groundY + land.heightAt(cx, cz);
     },
+    paintedAt: (x, z) => spec.painted?.(x * COS - z * SIN, x * SIN + z * COS, compass) ?? null,
   };
 }

@@ -20,7 +20,7 @@ export const TYURATAM: PlaceDef = {
     land: {
       kind: 'steppe',
       confidence: 'derived',
-      source: 'the steppe’s clay crust over grey-brown loam (steppe.ts); a road or a track painted on it is not told apart',
+      source: 'the steppe’s clay crust over grey-brown loam (steppe.ts)',
     },
     materials: [
       { prefix: 'concrete', kind: 'concrete' },
@@ -30,6 +30,26 @@ export const TYURATAM: PlaceDef = {
       { prefix: 'galvanised', kind: 'steel' },
       { prefix: 'timber', kind: 'timber' },
     ],
+    // what the land is painted as round Site 1 (ground.ts `paintedInSite1`): the ways further out (works.ts) are the steppe's
+    painted: {
+      apron: {
+        kind: 'concrete',
+        confidence: 'documented',
+        source:
+          'concrete slabs west of the platform, the rails flush in them: the film «Первый рейс к звёздам», 43:26 to 43:29 (site-1.md, “The apron”)',
+      },
+      road: {
+        kind: 'concrete',
+        confidence: 'estimated',
+        source:
+          'the roads’ lines are the CIA’s drawing of 1959 (PIC/JR-2/60 Figure 5); that they were concrete slabs is estimated (ground.ts, `ROADS`)',
+      },
+      ballast: {
+        kind: 'gravel',
+        confidence: 'estimated',
+        source: 'the tracks’ beds beyond the modelled rails, drawn as crushed stone (ground.ts, `paint`): ordinary practice',
+      },
+    },
     source: 'derived: each material’s name says what it is (concrete, gravel, clay, a steel rail or deck, a timber tie)',
   },
   // The engines of the vehicles at the pad, by the name a vehicle's model gives itself (its extras' `vehicle`) or a move

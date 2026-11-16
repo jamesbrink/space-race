@@ -72,6 +72,8 @@ export interface Setting {
   grade?: number;
   /** The ground's height at (x, z) in the world, where the setting's floor is not level: the walker stands on it. */
   groundAt?: (x: number, z: number) => number;
+  /** The made surface the land is painted as at (x, z) in the world (a road, an apron: scenery/ground.ts `GroundSpec.painted`), or null. */
+  paintedAt?: (x: number, z: number) => string | null;
   /** How far a point is from the nearest plant, if under `within` metres (plants are not solid: the near plane asks). */
   plantsClear?: (at: THREE.Vector3, within: number) => number;
   /** Move a point at someone's feet out of the plants it is in (sideways), and say how far in it still is, metres: plants are walked round. */
@@ -596,6 +598,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     },
     arrived: here.arrived,
     groundAt: here.groundAt,
+    paintedAt: here.paintedAt,
     plantsClear: here.plantsClear,
     plantsOut: here.plantsOut,
     view: here.view,

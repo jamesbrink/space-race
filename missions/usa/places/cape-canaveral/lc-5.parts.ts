@@ -176,27 +176,23 @@ export const BY: Record<
     confidence: 'estimated',
     source: 'its folding and driving off are how such a tower travels, not something the record shows (the part’s words)',
     engine: 'International Harvester R-series truck',
-    tread: 'concrete',
   },
   tractor: {
     kind: 'road',
     confidence: 'estimated',
     source: 'an Army M275 of the kind photographed coupled to the trailer (the part’s words); that it drove the trailer off is ours',
     engine: 'M275 2-1/2-ton 6x6 truck tractor, NASA',
-    tread: 'concrete',
   },
   pickup: {
     kind: 'road',
     confidence: 'estimated',
     source: 'nothing records how the huts were moved: a pickup is ours',
     engine: '1957-60 Ford F-100 Flareside',
-    tread: 'concrete',
   },
   trailer: {
     kind: 'towed',
     confidence: 'estimated',
     source: 'taken away behind its tractor (estimated: lc-5.md, “Moving parts”)',
-    tread: 'concrete',
   },
   skids: {
     kind: 'skids',

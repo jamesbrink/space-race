@@ -40,9 +40,13 @@ plays until the page has been touched, and a hidden page is suspended.
   `machinery` how far along it is, and the sound hears the change: the slider, a hand and the clock alike. Still is
   silent; starting, running and stopping are a kind's own (`MACHINES`). At the wheel the walker makes no footfalls and
   no breath and reports `driving`; the engine is the vehicle's own (`PlaceDef.engines`, by the name its model or its
-  move gives), its tyres on what is under them (`PlaceDef.tread`: the models' material names, else the land). A move
-  with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance, absorption and delay are the
-  launch's path; every level and timbre is estimated. A road painted on the land is the land's.
+  move gives), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
+  the land is painted as there, a road, an apron, a track's bed, by the name its ground gives it, `GroundSpec.painted`,
+  worked from the lines its shader draws, each with its confidence; else the land), a voice for each surface its
+  wheels are on, as that surface's share of them. A driven vehicle's wheels are asked of the solids under each hub;
+  one the slider or the clock moves is stood on what it runs on by `viewer/runs.ts`, which says what each wheel bears
+  on (`Rider.under`). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance,
+  absorption and delay are the launch's path; every level and timbre is estimated.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works
   play, slot by slot (`pnpm test:sound` reads it while driving and while machines run). After changing a

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
+import type { Underfoot } from '../sound/audio.ts';
 import type { Runs } from '../types.ts';
 
 /**
@@ -34,6 +35,8 @@ export class Surfaces {
   private readonly point = new THREE.Vector3();
   /** What has been asked lately, and the answer. */
   private readonly answers = new Map<string, number | null>();
+  /** And for each of the `top`s among those, the name of the material of what it found (its first). */
+  private readonly materials = new Map<string, string | null>();
   /** Changes whenever the roots do: what a move stood on before may not be what it stands on now. */
   version = 0;
 
@@ -46,6 +49,7 @@ export class Surfaces {
     this.roots = roots;
     this.found.clear();
     this.answers.clear();
+    this.materials.clear();
     this.version++;
   }
 
@@ -78,8 +82,12 @@ export class Surfaces {
     const key = `${on.join(',')}|${Math.round(x * 1e4)}|${Math.round(y * 1e2)}|${Math.round(z * 1e4)}`;
     const known = this.answers.get(key);
     if (known !== undefined) return known;
-    if (this.answers.size > ANSWERS) this.answers.clear();
+    if (this.answers.size > ANSWERS) {
+      this.answers.clear();
+      this.materials.clear();
+    }
     let best: number | null = null;
+    let material: string | null = null;
     for (const { mesh, box, inverse } of this.meshes(on)) {
       if (x < box.min.x || x > box.max.x || z < box.min.z || z > box.max.z || box.min.y > y || (best !== null && box.max.y <= best))
         continue;
@@ -95,10 +103,23 @@ export class Surfaces {
       const hit = tree.raycastFirst(this.ray, THREE.DoubleSide);
       if (!hit) continue;
       const h = this.point.copy(hit.point).applyMatrix4(mesh.matrixWorld).y;
-      if (h <= y + 1e-6 && (best === null || h > best)) best = h;
+      if (h <= y + 1e-6 && (best === null || h > best)) {
+        best = h;
+        const m = (mesh.userData.real ?? mesh.material) as THREE.Material | THREE.Material[];
+        material = (Array.isArray(m) ? m[0] : m)?.name ?? null;
+      }
     }
     this.answers.set(key, best);
+    this.materials.set(key, material);
     return best;
+  }
+
+  /** The name of the material of what `top` finds from (x, y, z): the same question, and its answer's surface (null: none). */
+  material(on: readonly string[] | undefined, x: number, y: number, z: number): string | null {
+    if (!on?.length) return null;
+    const key = `${on.join(',')}|${Math.round(x * 1e4)}|${Math.round(y * 1e2)}|${Math.round(z * 1e4)}`;
+    if (!this.materials.has(key)) this.top(on, x, y, z);
+    return this.materials.get(key) ?? null;
   }
 
   /** The land's height at (x, z) (asked at any height: a road climbs where a move was built level). */
@@ -155,11 +176,12 @@ export function fitPlane(
  * Where a tread bears, of its rim's points (each its lowest `low`, and what is under it: `on`, what the move names, and
  * `land`): the point that must rise most to be on what is under it, so that none is in it. Where the highest of what is
  * under the tread is something named (a rail's head), only what is named counts: the land beside it is not what it runs
- * on (a flange over a flangeway the land only paints). Null where nothing is under any of it.
+ * on (a flange over a flangeway the land only paints). Null where nothing is under any of it; `named`: it bears on
+ * what the move names there, and not on the land.
  */
 export function bearing(
   at: readonly { x: number; z: number; low: number; on: number | null; land: number | null }[],
-): { x: number; y: number; z: number; d: number } | null {
+): { x: number; y: number; z: number; d: number; named: boolean } | null {
   let high = -Infinity;
   let named = false;
   for (const p of at) {
@@ -169,11 +191,12 @@ export function bearing(
       named = p.on !== null && p.on >= h;
     }
   }
-  let best: { x: number; y: number; z: number; d: number } | null = null;
+  let best: { x: number; y: number; z: number; d: number; named: boolean } | null = null;
   for (const p of at) {
     const h = named ? p.on : p.on === null ? p.land : p.land === null ? p.on : Math.max(p.on, p.land);
     if (h === null) continue;
-    if (best === null || h - p.low > best.d) best = { x: p.x, y: p.low, z: p.z, d: h - p.low };
+    // (what it bears on there: the named surface, or the land)
+    if (best === null || h - p.low > best.d) best = { x: p.x, y: p.low, z: p.z, d: h - p.low, named: h === p.on };
   }
   return best;
 }
@@ -309,6 +332,11 @@ export class Rider {
   private readonly rolls: boolean;
   /** How far it has slid this instant, in the frame of what carries it: its wheels turn by as much. */
   readonly slid = new THREE.Vector3();
+  /**
+   * What each of its wheels was last stood on (sound/audio.ts `Underfoot`): where its tread bears, and the material of
+   * what it bears on there, or null where that is the land. A thing with no wheels has none.
+   */
+  readonly under: Underfoot[] = [];
   /** The last instant's answer, kept while nothing that went into it has changed. */
   private kept: { key: number[]; position: THREE.Vector3; quaternion: THREE.Quaternion; lifts: number[] } | null = null;
 
@@ -529,9 +557,9 @@ export class Rider {
   }
 
   /** Each of its wheels' treads' bearing and each of its feet, from where it stands now: where, and how far it must rise (or fall) to be on what is under it. */
-  private contacts(surfaces: Surfaces, fine = false): { x: number; y: number; z: number; d: number; of: number }[] {
+  private contacts(surfaces: Surfaces, fine = false): { x: number; y: number; z: number; d: number; of: number; named?: boolean }[] {
     const o = this.object;
-    const contacts: { x: number; y: number; z: number; d: number; of: number }[] = [];
+    const contacts: { x: number; y: number; z: number; d: number; of: number; named?: boolean }[] = [];
     const on = this.runs.on;
     this.wheels.forEach((wh, of) => {
       const frame = wh.hub.matrixWorld;
@@ -568,7 +596,7 @@ export class Rider {
         });
         if (this.runs.ground) for (const p of at) p.land = surfaces.land(p.x, p.z);
         const best = bearing(at);
-        if (best) contacts.push({ ...(best as { x: number; y: number; z: number; d: number }), of });
+        if (best) contacts.push({ ...best, of });
       });
     });
     for (const f of this.feet) {
@@ -590,12 +618,18 @@ export class Rider {
     this.object.updateWorldMatrix(true, true);
     const need = this.wheels.map(() => -Infinity);
     let feet = -Infinity;
+    // (each wheel's bearing: the point of its treads that must rise most, and what it is on there)
+    const bears: ({ x: number; y: number; z: number; d: number; named?: boolean } | null)[] = this.wheels.map(() => null);
     for (const c of this.contacts(surfaces, true)) {
       // (a rail wagon's wheel set is left as settled: its rails are smooth, and it bears on both at once)
       if (c.of >= 0) {
         if (this.wheels[c.of]!.span < ROAD_WHEEL) need[c.of] = Math.max(need[c.of]!, c.d);
+        if (!bears[c.of] || c.d > bears[c.of]!.d) bears[c.of] = c;
       } else feet = Math.max(feet, c.d);
     }
+    this.under.length = 0;
+    for (const c of bears)
+      if (c) this.under.push({ material: c.named ? surfaces.material(this.runs.on, c.x, c.y + REACH, c.z) : null, x: c.x, z: c.z });
     if (Number.isFinite(feet)) {
       const o = this.object;
       v.set(0, feet, 0);

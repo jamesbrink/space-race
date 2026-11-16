@@ -317,11 +317,8 @@ function floraSpec(day: Day): FloraSpec {
   };
 }
 
-/**
- * The Cape's ground round a pad on a day (ISO date), as land.ts takes it: the shore, the clearings and the ways placed
- * round that pad (compass.ts), and the complexes that stood that day kept clear.
- */
-function landSpec(compass: Compass, date: string): LandSpec {
+/** Where pad 5 lies on `compass`, and the two ways of giving a point round it there. */
+function aroundPad5(compass: Compass) {
   const pad5 = compass.frame(LC5);
   const COS = Math.cos(pad5.turn);
   const SIN = Math.sin(pad5.turn);
@@ -332,18 +329,17 @@ function landSpec(compass: Compass, date: string): LandSpec {
   };
   /** A point given in pad 5's own frame, in feet as its scripts have it (x toward the hatch side, y along the rails to the south-south-west), on the compass. */
   const site = (x: number, y: number): [number, number] => [x * FT * COS + y * FT * SIN + pad5.x, x * FT * SIN - y * FT * COS + pad5.z];
-  // (a point on the compass from pad 5, in the shaders: written only where pad 5 is not the origin, so pad 5's own are its own to the last bit)
-  const moved = pad5.x !== 0 || pad5.z !== 0;
-  const shift = moved ? `p -= vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)});` : '';
-  const fromPad5 = moved ? `(p - vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)}))` : 'p';
-  const { COAST, RIVER, RIVER_WEST, INDIAN, HARBOR_WEST, HARBOR_EAST, HARBOUR } = shoresAt(compass);
-  const CLEARINGS = clearingsAt(compass, date);
-  const PAVED = pavedAt(compass, date);
-  /** The neighbouring pads, each in its own clearing. */
-  const NEAR = CLEARINGS.filter(([x, z]) => Math.hypot(x, z) < 4000);
+  return { pad5, COS, SIN, bearing, site };
+}
 
-  /** Made ways, as [x0, z0, x1, z1, half-width, kind]: 0 the rail line's ballast, 1 shell road. Drawn in the terrain's shader: no geometry to fight with. */
-  const TRACKS: [number, number, number, number, number, number][] = [
+/**
+ * The made ways the land is painted with round a pad (`compass`), as [x0, z0, x1, z1, half-width, kind] on it: kind 0 the
+ * rail line's ballast, 1 a shell road. Drawn in the terrain's shader (no geometry to fight with), and asked of by a tyre
+ * (`CAPE_GROUND.painted`).
+ */
+function waysOn(compass: Compass): [number, number, number, number, number, number][] {
+  const { bearing, site } = aroundPad5(compass);
+  return [
     [...bearing(RAIL + 180, 95), ...bearing(RAIL, 700), 4.2, 0], // the rail line's ballast, on past pad 6 to Complex 26's two pads
     [...site(166, 0), ...site(404, 0), 4.0, 1], // the stub road from the foot of the apron's ramp
     // the perimeter road just inside the fence, all round: TM X-53107 Figure 7-6 (the MR site plan), which matches
@@ -365,6 +361,25 @@ function landSpec(compass: Compass, date: string): LandSpec {
     [238, -444, 668, -690, 3.6, 1], // from Complex 26's pad B east-north-east to Complex 17's pad B,
     [716, -745, 776, -838, 3.4, 1], // and on to pad A
   ];
+}
+
+/**
+ * The Cape's ground round a pad on a day (ISO date), as land.ts takes it: the shore, the clearings and the ways placed
+ * round that pad (compass.ts), and the complexes that stood that day kept clear.
+ */
+function landSpec(compass: Compass, date: string): LandSpec {
+  const { pad5, COS, SIN, site } = aroundPad5(compass);
+  // (a point on the compass from pad 5, in the shaders: written only where pad 5 is not the origin, so pad 5's own are its own to the last bit)
+  const moved = pad5.x !== 0 || pad5.z !== 0;
+  const shift = moved ? `p -= vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)});` : '';
+  const fromPad5 = moved ? `(p - vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)}))` : 'p';
+  const { COAST, RIVER, RIVER_WEST, INDIAN, HARBOR_WEST, HARBOR_EAST, HARBOUR } = shoresAt(compass);
+  const CLEARINGS = clearingsAt(compass, date);
+  const PAVED = pavedAt(compass, date);
+  /** The neighbouring pads, each in its own clearing. */
+  const NEAR = CLEARINGS.filter(([x, z]) => Math.hypot(x, z) < 4000);
+
+  const TRACKS = waysOn(compass);
 
   /** GLSL both the cover's bake and the terrain's shader use: the shore, the ways, the clearings. */
   const SHARED = /* glsl */ `
@@ -735,4 +750,29 @@ export const CAPE_GROUND: GroundSpec = {
   horizon: 11000, // Complex 34, the furthest pad placed, is 9.2 km up the coast
   // (the other complexes and the lighthouse, where they stood, each on its own ground: scenery.ts)
   scenery: ({ groundAt, compass, day }) => buildScenery(groundAt, compass, day.date),
+  // a tyre on a way the land is painted with (the shader's `way`, inside its edge): the rail line's ballast or a shell road
+  // (place.ts: `tread.painted`, what each is heard as)
+  painted: (x, z, compass) => {
+    let best = Number.POSITIVE_INFINITY;
+    let kind = 1;
+    for (const [x0, z0, x1, z1, half, k] of waysCached(compass)) {
+      const dx = x1 - x0;
+      const dz = z1 - z0;
+      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+      const d = Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - half;
+      if (d < best) {
+        best = d;
+        kind = k;
+      }
+    }
+    return best < 0 ? (kind === 0 ? 'ballast' : 'shell-road') : null;
+  },
 };
+
+/** The ways round each pad, worked out once (`painted` is asked many times a second). */
+const WAYS = new WeakMap<Compass, ReturnType<typeof waysOn>>();
+function waysCached(compass: Compass): ReturnType<typeof waysOn> {
+  let ways = WAYS.get(compass);
+  if (!ways) WAYS.set(compass, (ways = waysOn(compass)));
+  return ways;
+}

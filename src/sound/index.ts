@@ -16,13 +16,13 @@
  * suspended.
  */
 import { Quaternion, Vector3 } from 'three';
-import { type Driving, type Footfall, machinery, type Sounds } from './audio.ts';
+import { type Driving, type Footfall, machinery, type Sounds, type Underfoot } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
 import { ballisticOf, flownOnce } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { SitedFlight } from '../types.ts';
+import type { SitedFlight, TreadKind } from '../types.ts';
 import { Ascent, orbitalRecord, type Run } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame } from '../world/frames.ts';
@@ -57,6 +57,8 @@ export interface SoundHost {
   ears(): { x: number; y: number; z: number };
   /** Whether the view is going with the flown vehicle (the chase camera) rather than standing somewhere. */
   riding(): boolean;
+  /** What the land is painted as at (x, z) in the scene's frame (a road, an apron: Setting.paintedAt), or null where it is the land's own. */
+  painted?(x: number, z: number): string | null;
 }
 
 /** Seconds between settings of the engine, and how long a start or a stop fades over. */
@@ -362,11 +364,15 @@ export class Sound {
   /** Set the works' voices to what moves now (sound/audio.ts `machinery`) and what is being driven, and play their one-shots. */
   private hearWorks(ears: Vec, dt: number, now: number): void {
     const place = this.flight.site.place;
+    // what a tyre is on: the material under it, else what the land is painted as there, else the land
+    const tread = (u: Underfoot): TreadKind =>
+      treadOf(u.material, place.tread, u.material ? null : (this.host.painted?.(u.x, u.z) ?? null));
     const sources: Source[] = [];
     for (const [key, w] of machinery.working()) {
       if (w.machine.kind === 'none') continue;
       w.node.getWorldPosition(this.node);
       if (!this.labels.has(key)) this.labels.set(key, w.node.name);
+      const tyres = w.machine.kind === 'road' || w.machine.kind === 'towed';
       sources.push({
         key,
         kind: w.machine.kind,
@@ -374,7 +380,10 @@ export class Sound {
         travel: w.travel,
         where: [this.node.x, this.node.y, this.node.z],
         engine: w.machine.engine ? place.engines[w.machine.engine] : null,
-        tread: w.machine.tread,
+        // (each wheel's own, as its rider last stood it; with none, what is under the move's node)
+        ...(tyres
+          ? { treads: w.wheels?.under.length ? w.wheels.under.map(tread) : [tread({ material: null, x: this.node.x, z: this.node.z })] }
+          : {}),
       });
     }
     // (a driver nobody has reported for a while has got out: the walk has ended)
@@ -389,7 +398,7 @@ export class Sound {
         where: d.at,
         driven: { speed: d.speed, top: d.top, throttle: d.throttle },
         engine: d.engine ? (place.engines[d.engine] ?? null) : null,
-        tread: treadOf(d.under, place.tread),
+        treads: d.under.map(tread),
       });
     }
     const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind);

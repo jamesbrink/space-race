@@ -483,7 +483,7 @@ test('seated at the wheel, the walker makes no footfalls and no breath and says 
   assert.ok(heard.driving.length >= 290, `driving said each frame: ${heard.driving.length}`);
   const last = heard.driving.at(-1);
   assert.ok(last.speed > 7 && last.throttle === 1 && last.engine === 'test', JSON.stringify(last));
-  assert.equal(last.under, 'concrete-joint', 'and what is under it is the slab’s material');
+  assert.equal(last.under[0].material, 'concrete-joint', 'and what is under it is the slab’s material');
   // out again, and walking
   walker.sit(null, new THREE.Vector3(at.x, 0, at.z + 2));
   walker.stick(0, 1);
@@ -551,6 +551,14 @@ test('tyres follow the surface: silent standing, 35 dB a decade of speed, each s
   assert.equal(treadOf('concrete-apron-band', tyuratam), 'concrete');
   assert.equal(treadOf(null, tyuratam), 'steppe');
   assert.equal(treadOf('paint-auto-black', tyuratam), 'steppe', 'what is not a surface is the land');
+  // and on the land, what it is painted as there: a road, an apron, a track's bed (the place's own, each with its confidence)
+  assert.equal(treadOf(null, tyuratam, 'road'), 'concrete');
+  assert.equal(treadOf(null, tyuratam, 'apron'), 'concrete');
+  assert.equal(treadOf(null, cape, 'shell-road'), 'gravel');
+  assert.equal(treadOf(null, cape, 'nothing-painted'), 'sand', 'what the place does not name is its land');
+  assert.equal(treadOf('concrete-joint', tyuratam, 'ballast'), 'concrete', 'a modelled surface over the paint is the model’s');
+  for (const place of [cape, tyuratam])
+    for (const [name, p] of Object.entries(place.painted)) assert.ok(p.confidence && p.source, `${name}: says how sure, and why`);
   // heard: a driven vehicle's tyres are what is under it
   const on = (tread) =>
     hearings(
@@ -563,7 +571,7 @@ test('tyres follow the surface: silent standing, 35 dB a decade of speed, each s
           where: [0, 0.5, 0],
           driven: { speed: 8, top: 11, throttle: 0.4 },
           engine: ENGINE,
-          tread,
+          treads: [tread, tread, tread, tread],
         }),
       ],
       2,
@@ -573,6 +581,79 @@ test('tyres follow the surface: silent standing, 35 dB a decade of speed, each s
   assert.equal(on('gravel').tread, 'gravel');
   assert.equal(on('steppe').tread, 'steppe');
   assert.ok(on('gravel').gain > on('steppe').gain);
+  // each wheel its own: two on the road and two off it are a voice for each, each half of the four (3 dB under)
+  const split = hearings(
+    [
+      () => ({
+        key: 'v',
+        kind: 'road',
+        along: 0,
+        travel: Infinity,
+        where: [0, 0.5, 0],
+        driven: { speed: 8, top: 11, throttle: 0.4 },
+        engine: ENGINE,
+        treads: ['concrete', 'concrete', 'steppe', 'steppe'],
+      }),
+    ],
+    2,
+  ).at(-1);
+  const tyres = split.playing.filter((p) => p?.part === 'tyres');
+  assert.deepEqual(tyres.map((p) => p.tread).sort(), ['concrete', 'steppe']);
+  const whole = (tread) =>
+    hearings(
+      [
+        () => ({
+          key: 'v',
+          kind: 'road',
+          along: 0,
+          travel: Infinity,
+          where: [0, 0.5, 0],
+          driven: { speed: 8, top: 11, throttle: 0.4 },
+          engine: ENGINE,
+          treads: [tread, tread, tread, tread],
+        }),
+      ],
+      2,
+    )
+      .at(-1)
+      .voices.find((_, i) => split.playing[i]?.part === 'tyres' && split.playing[i]?.tread === tread);
+  const half = split.voices.find((_, i) => split.playing[i]?.tread === 'concrete');
+  assert.ok(
+    half && Math.abs(half.gain / (whole('concrete')?.gain ?? Number.NaN) - 1) > 0.05,
+    'half the wheels are not as loud as all four',
+  );
+});
+
+test('a road painted on the land sounds like the road: each place’s ground says what is painted where its shader draws it', async () => {
+  const { TYURATAM_GROUND, paintedInSite1 } = await import('../missions/ussr/places/tyuratam/ground.ts');
+  const { CAPE_GROUND } = await import('../missions/usa/places/cape-canaveral/ground.ts');
+  const { SITE1 } = await import('../missions/ussr/places/tyuratam/site-1.ts');
+  const { LC5 } = await import('../missions/usa/places/cape-canaveral/lc-5.ts');
+  const { compassAt } = await import('../src/viewer/scenery/compass.ts');
+  const round1 = compassAt(SITE1);
+  // the apron west of the platform, the road in from the south-west (at 600 m west, 25 m south), a track's bed, the steppe
+  assert.equal(TYURATAM_GROUND.painted(-50, 0, round1), 'apron');
+  assert.equal(TYURATAM_GROUND.painted(-603.8, 25.3, round1), 'road');
+  assert.equal(TYURATAM_GROUND.painted(-603.8, 25.3 + 4, round1), null, 'off the road, the steppe');
+  assert.equal(TYURATAM_GROUND.painted(300, -300, round1), null);
+  assert.equal(paintedInSite1(-150, 0), 'ballast', 'the centre track’s bed west of the apron');
+  assert.equal(paintedInSite1(-150, 3), null, 'and the steppe between the tracks');
+  // the Cape: Complex 5's perimeter road, and the scrub inside it
+  const round5 = compassAt(LC5);
+  const named = new Set();
+  let road = 0;
+  for (let x = -600; x <= 600; x += 3)
+    for (let z = -600; z <= 600; z += 3) {
+      const p = CAPE_GROUND.painted(x, z, round5);
+      if (p) named.add(p);
+      if (p === 'shell-road') road++;
+    }
+  assert.ok(road > 100 && named.has('ballast'), `${road} points on a shell road, ${[...named]}`);
+  assert.equal(CAPE_GROUND.painted(60, 60, round5), null, 'the scrub is the land');
+  // every name a ground gives is one its place hears
+  const cape = flights.find((f) => f.site.place.name === 'cape-canaveral').site.place.tread;
+  for (const n of named) assert.ok(cape.painted[n], `the Cape names ${n}`);
+  for (const n of ['apron', 'road', 'ballast']) assert.ok(TYURATAM.tread.painted[n], `Tyuratam names ${n}`);
 });
 
 /** A move of `travel` that goes from 0 to the whole of it over `from`..`to` seconds (eased, as the slider eases it), `metres` from the ears. */

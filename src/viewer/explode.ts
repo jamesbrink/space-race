@@ -316,9 +316,12 @@ export function refusal(fn: Fn, value: (id: string) => number): string | null {
   return null;
 }
 
-/** Tell the sound how far along a move that names a machine now is (sound/audio.ts `machinery`): `u` of its `travel`. */
-function heard(move: Move, object: THREE.Object3D, u: number, travel: number): void {
-  if (move.machine && move.machine.kind !== 'none') machinery.posed(move, move.machine, object, u * travel, travel);
+/**
+ * Tell the sound how far along a move that names a machine now is (sound/audio.ts `machinery`): `u` of its `travel`; and,
+ * for what runs on something, what stands it there (`rider`), which says what each of its wheels is on.
+ */
+function heard(move: Move, object: THREE.Object3D, u: number, travel: number, rider?: Rider): void {
+  if (move.machine && move.machine.kind !== 'none') machinery.posed(move, move.machine, object, u * travel, travel, rider);
 }
 
 const RUN_BY = new THREE.Vector3();
@@ -431,6 +434,7 @@ export class Sequence {
         object,
         u,
         move.kind === 'swing' ? Math.abs(move.angle) : move.kind === 'slide' ? Math.hypot(...move.by) : (driver?.length ?? 0),
+        this.riders.get(object),
       );
       if (move.kind === 'swing') {
         // in the parent's frame, so it goes before whatever turn the node already has

@@ -2147,6 +2147,11 @@ export class Stage {
     return this.setting.groundAt?.(x, z) ?? this.setting.floor?.position.y ?? null;
   }
 
+  /** The made surface the land is painted as at (x, z) in the world (Setting.paintedAt: a road, an apron), or null where it is the land's own. */
+  paintedAt(x: number, z: number): string | null {
+    return this.setting.paintedAt?.(x, z) ?? null;
+  }
+
   // --- a stage that is a room and not a place: what the gallery asks of its own (src/ui/gallery.ts) ---
 
   /**

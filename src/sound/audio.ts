@@ -19,6 +19,16 @@ export interface Footfall {
   height?: number;
 }
 
+/**
+ * What one wheel is on: the name of the material of what is under its tread (its models' own), or null where that is the
+ * land, and where it touches, in the scene's frame (x, z), for what the land is painted as there (a road, an apron).
+ */
+export interface Underfoot {
+  material: string | null;
+  x: number;
+  z: number;
+}
+
 /** A vehicle being driven, as it is heard: told each frame someone is at its wheel. */
 export interface Driving {
   /** Where its engine is (over its front axle), in the scene's frame. */
@@ -30,8 +40,10 @@ export interface Driving {
   throttle: number;
   /** Its engine, by the name its place lists it under (PlaceDef.engines), or null if it gives none. */
   engine: string | null;
-  /** The name of the material under it (its models' own), or null where it is on the land. */
-  under: string | null;
+  /** Where each of its wheels is (its hub), in the scene's frame; left out, it is asked under its engine. */
+  wheels?: [number, number, number][];
+  /** What each of its wheels is on. */
+  under: Underfoot[];
 }
 
 export interface Sounds {
@@ -63,6 +75,8 @@ export interface Working {
   node: Object3D;
   along: number;
   travel: number;
+  /** What runs on something (viewer/runs.ts `Rider`): what each of its wheels was last stood on. */
+  wheels?: { readonly under: readonly Underfoot[] };
 }
 
 /**
@@ -74,14 +88,15 @@ export interface Working {
 export class Machinery {
   private readonly all = new Map<object, Working>();
 
-  /** A move has just been posed. */
-  posed(key: object, machine: Machine, node: Object3D, along: number, travel: number): void {
+  /** A move has just been posed (`wheels`: what stands it on what it runs on, which says what each of its wheels is on). */
+  posed(key: object, machine: Machine, node: Object3D, along: number, travel: number, wheels?: Working['wheels']): void {
     const was = this.all.get(key);
     if (was) {
       was.node = node;
       was.along = along;
       was.travel = travel;
-    } else this.all.set(key, { machine, node, along, travel });
+      was.wheels = wheels;
+    } else this.all.set(key, { machine, node, along, travel, wheels });
   }
 
   /** Every move posed so far, by its key; one whose node has left the scene is forgotten. */

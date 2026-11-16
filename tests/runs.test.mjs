@@ -362,3 +362,45 @@ test("a rail wagon's bogies swing over their wheel sets: turned to the track und
   near(pitchOf(2), 1 / 50, 2e-3, 'the front bogie on the grade');
   near(pitchOf(1), 0, 2e-3, 'the rear bogie on the level');
 });
+
+test('a rider says what each of its wheels is on: the material of what it names there, or the land (sound/audio.ts Underfoot)', async () => {
+  const { root, body } = wagon();
+  // a slab under the front wheel set only, its top at the land's level; the land everywhere else
+  const pad = new THREE.Group();
+  pad.name = 'Pad';
+  pad.add(new THREE.Mesh(new THREE.BoxGeometry(10, 0.3, 4).translate(5, -0.15, 0), new THREE.MeshBasicMaterial({ name: 'concrete-slab' })));
+  root.add(pad);
+  root.updateMatrixWorld(true);
+  const surfaces = new Surfaces(() => 0);
+  surfaces.set([root]);
+  const runs = { on: ['Pad'], ground: true, wheels: 'Wagon_Wheel_', wheelRadius: 0.5, axle: 'z' };
+  const move = {
+    kind: 'slide',
+    by: [-8, 0, 0],
+    from: 0,
+    to: 1,
+    runs,
+    machine: { kind: 'towed', confidence: 'estimated', source: 'a test' },
+  };
+  const seq = new Sequence(body, body.position.clone(), [move], surfaces);
+  const { machinery } = await import('../src/sound/audio.ts');
+  const scene = new THREE.Scene();
+  scene.add(root);
+  seq.set(0);
+  const under = machinery.working().find(([key]) => key === move)?.[1].wheels?.under;
+  assert.ok(under, 'the sound is told what stands it on what it runs on');
+  const sorted = [...under].sort((a, b) => a.x - b.x);
+  assert.deepEqual(
+    sorted.map((u) => u.material),
+    [null, 'concrete-slab'],
+    'the rear set on the land, the front on the slab',
+  );
+  near(sorted[0].x, -3, 0.6, 'the rear set’s place');
+  // slid back 8 m: both are on the land
+  seq.set(1);
+  assert.deepEqual(
+    under.map((u) => u.material),
+    [null, null],
+    'both on the land',
+  );
+});

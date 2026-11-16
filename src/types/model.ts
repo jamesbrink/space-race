@@ -1,7 +1,6 @@
 /** A model and its parts: what each is, how it moves, its views, its cabin and its mechanisms. */
 import type { Confidence, Measure } from '../measure.ts';
 import type { Burns } from './sim.ts';
-import type { TreadKind } from './site.ts';
 
 /**
  * How a wheeled vehicle drives. All lengths in metres, viewer space (+Y up); positions are in
@@ -113,7 +112,7 @@ export type Move = { from: number; to: number; node?: string; machine?: Machine 
  * hydraulic   a pump and its rams: an aerial tower's jib, an erector's boom
  * rails       a structure on its own powered rail trucks: motors, and steel wheels on its rails
  * locomotive  a wagon drawn or pushed along its track by a diesel locomotive, which is not drawn (`engine`)
- * road        a road vehicle under its own engine (`engine`), its tyres on its `tread`
+ * road        a road vehicle under its own engine (`engine`), its tyres on what is under each of its wheels
  * towed       a trailer behind something: its tyres and its rattle, no engine of its own
  * skids       dragged over the ground on runners
  * hand        pushed, wheeled or folded by hand
@@ -147,8 +146,6 @@ export interface Machine {
   source: string;
   /** A `road` vehicle's or a `locomotive`'s engine: the name its place lists it under (PlaceDef.engines). */
   engine?: string;
-  /** What a `road` or `towed` move's tyres run on, where it is not the place's land (PlaceDef.tread). */
-  tread?: TreadKind;
 }
 
 /**

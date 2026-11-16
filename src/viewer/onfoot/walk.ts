@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
-import { type Driving, type Sounds, silent } from '../../sound/audio.ts';
+import { type Driving, type Sounds, silent, type Underfoot } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 import { G0 } from '../../world/bodies.ts';
@@ -1540,7 +1540,7 @@ export class Walker {
     const driving = this.seat?.driving?.();
     if (driving) {
       gait.landed = null;
-      this.sounds.driving({ ...driving, under: this.underWheels(driving.at) });
+      this.sounds.driving({ ...driving, under: this.underWheels(driving.wheels?.length ? driving.wheels : [driving.at]) });
       this.wasDriving = true;
       return;
     }
@@ -1559,26 +1559,29 @@ export class Walker {
   }
   private breathed = -1;
   private wasDriving = false;
-  /** What the driven vehicle was last found standing on, and when it was looked for (it is asked a few times a second). */
-  private under: { name: string | null; at: number } = { name: null, at: -1 };
+  /** What the driven vehicle's wheels were last found standing on, and when they were looked for (it is asked a few times a second). */
+  private under: { wheels: Underfoot[]; at: number } = { wheels: [], at: -1 };
 
   /**
-   * The name of the material under a driven vehicle at `at` (its engine, over its front axle: the vehicle is left out of
-   * the solids), or null where what is under it is the land.
+   * What each of a driven vehicle's wheels is on, its hubs at `hubs` (the vehicle is left out of the solids): the name of
+   * the material under it, or null where what is under it is the land, and where.
    */
-  private underWheels(at: readonly [number, number, number]): string | null {
+  private underWheels(hubs: readonly (readonly [number, number, number])[]): Underfoot[] {
     const now = performance.now();
-    if (now - this.under.at < 250) return this.under.name;
-    const hit = this.solids.beneath(new THREE.Vector3(at[0], at[1] + 0.5, at[2]), 4);
-    const land = this.body.level(at[0], at[2]);
-    // (the land is what it is on where nothing modelled is under it, or what is lies below the land: paint the land covers)
-    let name: string | null = null;
-    if (hit && (land === null || hit.point.y > land - 0.05)) {
-      const m = (hit.mesh.userData.real ?? hit.mesh.material) as THREE.Material | THREE.Material[];
-      name = (Array.isArray(m) ? m[0] : m)?.name ?? null;
-    }
-    this.under = { name, at: now };
-    return name;
+    if (now - this.under.at < 250 && this.under.wheels.length === hubs.length) return this.under.wheels;
+    const wheels = hubs.map(([x, y, z]) => {
+      const hit = this.solids.beneath(new THREE.Vector3(x, y + 0.5, z), 4);
+      const land = this.body.level(x, z);
+      // (the land is what it is on where nothing modelled is under it, or what is lies below the land: paint the land covers)
+      let material: string | null = null;
+      if (hit && (land === null || hit.point.y > land - 0.05)) {
+        const m = (hit.mesh.userData.real ?? hit.mesh.material) as THREE.Material | THREE.Material[];
+        material = (Array.isArray(m) ? m[0] : m)?.name ?? null;
+      }
+      return { material, x, z };
+    });
+    this.under = { wheels, at: now };
+    return wheels;
   }
 
   /** Hop (Space, or the page's button). */

@@ -79,12 +79,15 @@ export type TreadKind = 'concrete' | 'gravel' | 'earth' | 'sand' | 'steppe' | 's
 
 /**
  * What a place's ground is to a tyre: the land off its made surfaces (the terrain, which is a height and has no
- * material), and each made surface by the name its material has in the models (the first `prefix` its name begins
- * with). A road painted on the land is the land's.
+ * material), each made surface by the name its material has in the models (the first `prefix` its name begins with),
+ * and each made surface the place paints on its land (a road, an apron, a track's bed) by the name its ground gives it
+ * (viewer/scenery/ground.ts `GroundSpec.painted`, which finds it where the land's shader draws it).
  */
 export interface Tread {
   land: { kind: TreadKind; confidence: Confidence; source: string };
   materials: { prefix: string; kind: TreadKind }[];
+  /** What each surface the land paints is to a tyre, by its name, with how sure that is and why. */
+  painted: Record<string, { kind: TreadKind; confidence: Confidence; source: string }>;
   /** How the materials were sorted. */
   source: string;
 }

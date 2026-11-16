@@ -899,6 +899,30 @@ export function standsInSite1(compass: Compass, land: { heightAt(x: number, z: n
   };
 }
 
+/** How far (x, z) is from the nearest of `segments` ([x0, z0, x1, z1] in Site 1's frame), metres: the shader's `segment`. */
+function nearest(segments: readonly [number, number, number, number][], x: number, z: number): number {
+  let best = Number.POSITIVE_INFINITY;
+  for (const [x0, z0, x1, z1] of segments) {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+    best = Math.min(best, Math.hypot(x - x0 - dx * t, z - z0 - dz * t));
+  }
+  return best;
+}
+
+/**
+ * What the land is painted as at (x, z) in Site 1's frame, as `paint` draws it: the apron's slabs, a road, a track's bed
+ * of ballast (its 1.85 m either side of the track's middle), or null for the steppe's own ground.
+ */
+export function paintedInSite1(x: number, z: number): 'apron' | 'road' | 'ballast' | null {
+  const north = -z;
+  if (x <= SLABS.east && x >= SLABS.west && north <= SLABS.north && north >= SLABS.south) return 'apron';
+  if (x > -1880 && x < 270 && z > -280 && z < 800 && nearest(ROAD_SEGMENTS, x, z) < ROAD_HALF) return 'road';
+  if (nearest(SEGMENTS, x, z) < 1.85) return 'ballast';
+  return null;
+}
+
 /**
  * The steppe round any pad at Tyuratam, as viewer/scenery/ground.ts lays it out. Everything here is in Site 1's own frame
  * (its +X due east, so the compass frame round it), and round another pad it is put where Site 1 lies from it: the rim,
@@ -919,6 +943,12 @@ export const TYURATAM_GROUND: GroundSpec = {
       return around;
     });
     return { objects: far.map((a) => a.group), levels: far, arrived: () => far.map((a) => a.arrived()).some(Boolean) };
+  },
+  // a tyre on what the land is painted as (the shader's `apron`, `road` and the tracks' beds, inside their edges), by the
+  // names place.ts's `tread.painted` hears them as; the ways further out (works.ts) are not asked, and are heard as the steppe
+  painted: (x, z, compass) => {
+    const at = site1In(compass);
+    return paintedInSite1(x - at.x, z - at.z);
   },
   // inside the flame pit's rim the open ground is far down, and what is walked on is the pit's own model
   under: (x, z, compass) => {

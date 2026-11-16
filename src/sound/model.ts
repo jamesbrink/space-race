@@ -701,10 +701,14 @@ export function tyreVoice(on: TreadKind, speed: number): Timbre {
   return { level, buzz: NO_BUZZ, tone: t.tone, hiss: { ...t.hiss, hertz: t.hiss.hertz * (0.8 + 0.4 * clamp(v / 14, 0, 1)) }, grit: t.grit };
 }
 
-/** What a place's material (a model's own name for it) is to a tyre: the first of the place's prefixes it begins with, else the land. */
-export function treadOf(material: string | null, tread: Tread): TreadKind {
+/**
+ * What is under a tyre: a place's material (a model's own name for it) by the first of the place's prefixes it begins
+ * with; else, on the land, what the land is painted as there (`painted`: a road, an apron, by the name the place's ground
+ * gives it), else the land.
+ */
+export function treadOf(material: string | null, tread: Tread, painted: string | null = null): TreadKind {
   if (material) for (const m of tread.materials) if (material.startsWith(m.prefix)) return m.kind;
-  return tread.land.kind;
+  return (painted && tread.painted[painted]?.kind) || tread.land.kind;
 }
 
 /** A one-shot of a machine's: a Shot's recipe with its level at a metre (dB) in place of its gain. */
@@ -928,9 +932,9 @@ export interface Source {
   where: Vec;
   /** A vehicle driven by hand: its own speed and pedal (it runs whether it moves or not), not how far along it has gone. */
   driven?: { speed: number; top: number; throttle: number };
-  /** Its engine (`road`, `locomotive`), and what its tyres are on (`road`, `towed`; else the place's land). */
+  /** Its engine (`road`, `locomotive`), and what each of its tyres is on (`road`, `towed`; none given: the place's land). */
   engine?: Engine | null;
-  tread?: TreadKind;
+  treads?: readonly TreadKind[];
 }
 
 /** What a voice of the works is playing, for the diagnostics: which source, which part of it, how loud and how far. */
@@ -957,7 +961,7 @@ interface Run {
   kind: Exclude<MachineKind, 'none'>;
   where: Vec;
   engine: Engine | null;
-  tread: TreadKind;
+  treads: readonly TreadKind[];
   driven: Source['driven'];
   /** The last rail joint it was over, for a wagon. */
   joint: number;
@@ -1008,7 +1012,7 @@ export class Works {
           kind: src.kind,
           where: src.where,
           engine: src.engine ?? null,
-          tread: src.tread ?? land,
+          treads: src.treads?.length ? src.treads : [land],
           driven: src.driven,
           joint: Math.floor(src.along / (m.joints ?? Number.POSITIVE_INFINITY)),
           n: this.count++,
@@ -1019,7 +1023,7 @@ export class Works {
       const jumped = Number.isFinite(src.travel) && src.travel > 0 && gone > JUMP * src.travel;
       run.where = src.where;
       run.engine = src.engine ?? run.engine;
-      run.tread = src.tread ?? land;
+      run.treads = src.treads?.length ? src.treads : [land];
       run.driven = src.driven;
       if (jumped) {
         // put somewhere else at once: nothing it passed over is heard, and it stands as it was left
@@ -1065,15 +1069,15 @@ export class Works {
         continue;
       }
       const metres = distance(ears, run.where);
-      for (const [part, timbre] of this.timbres(run)) {
+      for (const [part, timbre, tread] of this.timbres(run)) {
         if (!timbre) continue;
         const voice = voiceOf(timbre, metres);
         voice.gain *= run.spin;
         if (!(voice.gain > 1e-4)) continue;
         const rpm = 'rpm' in timbre ? (timbre.rpm as number) : undefined;
         const playing: Playing = { key, kind: run.kind, part, gain: voice.gain, metres, ...(rpm ? { rpm } : {}) };
-        if (part === 'tyres') playing.tread = run.tread;
-        wanted.push({ name: `${run.n}/${part}`, voice, playing });
+        if (tread) playing.tread = tread;
+        wanted.push({ name: `${run.n}/${part}${tread ? `/${tread}` : ''}`, voice, playing });
       }
     }
     // the loudest, each kept in the slot it has
@@ -1085,29 +1089,32 @@ export class Works {
     return { voices: this.slots.map((name) => (name ? chosen.get(name)!.voice : null)), shots };
   }
 
-  /** A run's timbres at a metre: its machine's, or its engine's and its tyres'. */
-  private timbres(run: Run): [Playing['part'], Timbre | null][] {
+  /**
+   * A run's timbres at a metre: its machine's, or its engine's and its tyres'. The tyres are a voice for each surface its
+   * wheels are on, each that surface's share of them (two wheels of four on concrete: 3 dB under all four), with it named.
+   */
+  private timbres(run: Run): [Playing['part'], Timbre | null, TreadKind?][] {
+    const tyres = (speed: number): [Playing['part'], Timbre, TreadKind][] => {
+      const count = new Map<TreadKind, number>();
+      for (const t of run.treads) count.set(t, (count.get(t) ?? 0) + 1);
+      return [...count].map(([on, n]): [Playing['part'], Timbre, TreadKind] => {
+        const t = tyreVoice(on, speed);
+        return ['tyres', { ...t, level: t.level + 10 * Math.log10(n / run.treads.length) }, on];
+      });
+    };
     const m = MACHINES[run.kind];
     const speed = run.driven ? run.driven.speed : run.pace;
     const top = run.driven?.top ?? ROAD_TOP;
     // (one the slider or the clock drives is taken to have its pedal half down while it gathers pace, and let up as it stops)
     const throttle = run.driven ? run.driven.throttle : 0.5 * clamp(run.pace / 3, 0, 1);
-    if (run.kind === 'road')
-      return [
-        ['engine', run.engine ? engineVoice(run.engine, speed, top, throttle) : null],
-        ['tyres', tyreVoice(run.tread, speed)],
-      ];
+    if (run.kind === 'road') return [['engine', run.engine ? engineVoice(run.engine, speed, top, throttle) : null], ...tyres(speed)];
     // a locomotive's engine works at a notch while it draws, and its wheels rumble on the rails by its pace
     if (run.kind === 'locomotive')
       return [
         ['engine', run.engine ? engineVoice(run.engine, 0.5 * ROAD_TOP, ROAD_TOP, 0.6) : null],
         ['machine', { ...m, level: m.level + 20 * Math.log10(clamp(run.pace / 2, 0.2, 2)) }],
       ];
-    if (run.kind === 'towed')
-      return [
-        ['tyres', tyreVoice(run.tread, speed)],
-        ['machine', m],
-      ];
+    if (run.kind === 'towed') return [...tyres(speed), ['machine', m]];
     // a motor's pitch comes up as it does; friction's is where it is
     const k = m.spins ? 0.35 + 0.65 * run.spin : 1;
     return [

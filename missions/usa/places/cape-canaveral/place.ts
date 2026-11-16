@@ -207,7 +207,7 @@ export const CAPE_CANAVERAL: PlaceDef = {
     land: {
       kind: 'sand',
       confidence: 'estimated',
-      source: 'the Cape’s sand under its grass and scrub (lc-5.md, “The land”); a road painted on it is not told apart',
+      source: 'the Cape’s sand under its grass and scrub (lc-5.md, “The land”)',
     },
     materials: [
       { prefix: 'concrete', kind: 'concrete' },
@@ -218,6 +218,21 @@ export const CAPE_CANAVERAL: PlaceDef = {
       { prefix: 'galvanised-deck', kind: 'steel' },
       { prefix: 'timber', kind: 'timber' },
     ],
+    // the ways the land is painted with (ground.ts `waysOn`, `CAPE_GROUND.painted`)
+    painted: {
+      'shell-road': {
+        kind: 'gravel',
+        confidence: 'estimated',
+        source:
+          'the roads round the pads are drawn as crushed shell (ground.ts, `PAINT`): a loose aggregate, heard as gravel. That they were ' +
+          'shell and not asphalt in 1961 is the drawing’s estimate; the site plan (TM X-53107 Figure 7-6) gives their lines, not their surface',
+      },
+      ballast: {
+        kind: 'gravel',
+        confidence: 'derived',
+        source: 'the rail line’s bed beyond the modelled track: crushed stone (lc-5.md, “Track off the pad”)',
+      },
+    },
     source: 'derived: each material’s name says what it is (concrete, gravel, a steel rail or deck, a timber tie)',
   },
   // The engines of the vehicles at the pads, by the name each vehicle's model gives itself (its extras' `vehicle`) or a
