@@ -187,7 +187,7 @@ export function exhibit(flight: Pick<Flight, 'models' | 'flies'>): ModelDef | nu
   return hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
 }
 
-type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'trajectory'> & { orbital?: { ascent?: unknown } };
+type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'plan'>;
 
 /**
  * Why a flight cannot be gone to at a place, or null if it can. It has a gallery when it has a
@@ -200,7 +200,10 @@ export function lacks(flight: Placed, place: Place): string | null {
   const sited = Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio');
   if (place === 'site') return sited ? null : 'Launch site: not built yet';
   // (a flight into orbit is flown from its record's stages and ascent: sim/staged.ts, orbitdeck.ts)
-  if (!(flight.trajectory?.body || flight.orbital?.ascent) || !flight.flies) return 'Fly: no trajectory yet';
+  // (a ballistic plan needs its rigid body to be steered; an orbital one an ascent on its steering law)
+  const plan = flight.plan;
+  const flown = plan && (plan.kind === 'ballistic' ? Boolean(plan.craft[0]!.rigid) : plan.attitude.some((a) => 'law' in a.hold));
+  if (!flown || !flight.flies) return 'Fly: no trajectory yet';
   return sited ? null : 'Fly: its launch site is not built yet';
 }
 
@@ -315,7 +318,15 @@ export const WHOLE_VIEW = 'gallery-whole';
 export function galleryFlight(flight: Flight): Flight {
   const vehicle = exhibit(flight);
   if (!vehicle) throw new Error(`${flight.id} has no vehicle to exhibit`);
-  const { site: _site, trajectory: _trajectory, checks: _checks, flies: _flies, surroundings: _surroundings, ...rest } = flight;
+  const {
+    site: _site,
+    trajectory: _trajectory,
+    plan: _plan,
+    checks: _checks,
+    flies: _flies,
+    surroundings: _surroundings,
+    ...rest
+  } = flight;
   const {
     sequence: _sequence,
     walker: _walker,

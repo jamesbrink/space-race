@@ -125,7 +125,7 @@ export class Flown {
     this.root = root;
     this.clock = clock;
     this.flight = flight;
-    if (!flight.trajectory && !flight.orbital?.ascent) return;
+    if (!flight.plan) return;
     root.innerHTML = '<p class="fine flown-wait">Flying it…</p>';
     // a fifteen-minute flight is integrated in a tenth of a second, but not in the middle of the page opening
     setTimeout(() => this.build(), 300);
@@ -173,7 +173,7 @@ export class Flown {
     let samples: Sample[];
     let rowsOf: { label: string; value: number; unit: string; tolerance: number; got: number }[];
     let checks: { id: string; value: number }[];
-    if (flight.trajectory) {
+    if (flight.plan!.kind === 'ballistic') {
       const flown = flownOnce(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
       samples = flown.samples;
       this.duration = flown.results.duration;

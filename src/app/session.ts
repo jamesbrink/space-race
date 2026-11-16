@@ -146,7 +146,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   // it stands where the programme, the hands and the sequencer have it (cockpit.travel), not where the record's clock does.
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
   // (a flight into orbit has its own deck, orbitdeck.ts: what its pilot could do, which is not a ballistic flight's)
-  const Deck = !flight.trajectory && flight.orbital?.ascent ? OrbitDeck : Cockpit;
+  const Deck = flight.plan?.kind === 'orbital' ? OrbitDeck : Cockpit;
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),

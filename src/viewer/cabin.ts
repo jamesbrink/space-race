@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { ballisticOf, flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import { spacecraft } from '../sim/fliers.ts';
 import { elements, propagate } from '../sim/predict.ts';
@@ -158,7 +158,7 @@ export interface Landing {
 }
 
 /**
- * The simulator's answer for "fire the braking engine now" on a flight into orbit (`Flight.orbital` with `manual`, the
+ * The simulator's answer for "fire the braking engine now" on a flight into orbit (a plan whose record has `manual`, the
  * burn a hand can fire): the record's flight with its burn moved to a second from `start`, the engine pushing straight
  * against the way the spacecraft goes (as it was turned to fire), flown on from `start` by the one coast the record and
  * the predicted path are flown by (sim/predict.ts `propagate` on sim/fliers.ts `spacecraft`; sim/staged.ts `byHand`). Where the orbit already
@@ -166,15 +166,15 @@ export interface Landing {
  * on as it is, with no burn added. Null for a flight with no such record.
  */
 export function burnNow(flight: Flight): LandingFinder | null {
-  const o = flight.orbital;
+  const orbit = flight.plan?.record?.orbit;
   const site = flight.site;
-  if (!o?.manual || !site) return null;
+  if (!flight.plan?.record?.manual || !orbit || !site) return null;
   // (the states, and the aim by hand, are in the flight's frame)
   const shown = frameOf(flight);
   const where = siteFrame(site);
   const never = givenUp(flight.plan!);
   return (start) => {
-    const el = elements(start.r, start.v, o.orbit.radius.value);
+    const el = elements(start.r, start.v, orbit.radius.value);
     const down = !(el.periapsisHeight > LANDING_AIR);
     let plan = never;
     if (!down) {
@@ -1012,10 +1012,9 @@ export class Cabin {
     times: Partial<Record<Signal, number>>;
     events?: Readonly<Record<string, number>>;
   } | null {
-    const tr = this.flight.trajectory;
-    const o = this.flight.orbital;
     const f = this.flight;
-    if (!tr && o?.ascent && f.flies && f.site) {
+    const plan = f.plan;
+    if (plan?.kind === 'orbital' && f.flies && f.site) {
       // a flight into orbit: its record flown (viewer/ascent.ts, the same run the scene shows), and its events' instants
       if (!this.recorded) {
         const sited = { ...f, site: f.site };
@@ -1024,16 +1023,17 @@ export class Cabin {
       return this.recorded;
     }
     const site = this.flight.site;
-    if (!tr || !site) return null;
+    if (!plan || !site) return null;
     if (!this.recorded) {
+      const b = ballisticOf(plan);
       const { samples, results } = flownOnce(this.flight.plan!, siteFrame(site), site.seaLevel.value, frameOf(this.flight));
       this.recorded = {
         samples,
         times: {
-          tower: tr.body?.tower?.at.value ?? tr.engine.cutoff.value,
-          separated: tr.separation.at.value,
-          retro: tr.retro.fires[0]?.value ?? Infinity,
-          retropack: tr.retropack.at.value,
+          tower: b.towerJoint?.at?.value ?? b.cutoff,
+          separated: b.separation.at?.value ?? Infinity,
+          retro: b.retroAt,
+          retropack: b.packJoint?.at?.value ?? Infinity,
           entry: results.entryAt,
           drogue: results.drogueAt,
           main: results.mainAt,
@@ -1062,7 +1062,7 @@ export class Cabin {
     if (site) r.timeOfDay = ((((jdUT + 0.5 + site.zone.utcOffset / 24) % 1) + 1) % 1) * 86400;
     this.attitude(r, sample?.t ?? t);
     const left = (sample as LiveSample | null)?.rcs?.left;
-    const supplies = this.flight.trajectory?.body?.capsule.rcs?.supplies ?? [];
+    const supplies = this.flight.plan?.craft[0]?.rigid?.capsule.rcs?.supplies ?? [];
     supplies.forEach((s, i) => {
       r[`supply${i}`] = left?.[i] !== undefined ? left[i]! / s.propellant.value : 1;
     });
@@ -1311,7 +1311,10 @@ export class Cabin {
       .toArray();
     const up = this.host.upAt(g.position, new THREE.Vector3());
     // level along the bearing flown: the site's +X is its stated bearing, +Z a quarter turn clockwise of it
-    const bearing = THREE.MathUtils.degToRad((this.flight.trajectory?.azimuth.value ?? 0) - (this.flight.site?.bearingX.value ?? 0));
+    const bearing = THREE.MathUtils.degToRad(
+      (this.flight.plan?.kind === 'ballistic' ? ballisticOf(this.flight.plan).programme.azimuth.value : 0) -
+        (this.flight.site?.bearingX.value ?? 0),
+    );
     const a = attitudeOf(nose, head, up.toArray(), [Math.cos(bearing), 0, Math.sin(bearing)]);
     Object.assign(r, a);
     const dt = t - this.last.t;

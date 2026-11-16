@@ -577,7 +577,7 @@ export class FlightShow {
    */
   hang(ascent: Ascent, s: Staged, pad: THREE.Quaternion, t: number, flying: boolean): void {
     // the attitude jets: a cone at each chamber that is open, on the model in the body's own axes
-    const thrusters = this.flightData?.trajectory?.body?.capsule.rcs?.thrusters;
+    const thrusters = this.flightData?.plan?.craft[0]?.rigid?.capsule.rcs?.thrusters;
     const frame = thrusters && !this.jets ? ascent.bodyFrame(pad) : null;
     if (thrusters && frame) {
       this.jets = new Jets(thrusters);
@@ -596,7 +596,8 @@ export class FlightShow {
     if (!this.chutes) {
       s.group.updateMatrixWorld(true);
       const into = new THREE.Matrix4().copy(s.group.matrixWorld).invert();
-      const own = this.flightData?.orbital?.descent?.bodies[0]?.id;
+      // (the first body of an orbital plan's own that comes down on its own air: the descent module)
+      const own = this.flightData?.plan?.kind === 'orbital' ? this.flightData.plan.craft[0]!.bodies.find((b) => b.aero)?.id : undefined;
       this.chutes = ascent.chutes.map((def) => {
         // (the node may be away already, carried off in `fall`'s holder, or on a figure carried down)
         const node =
@@ -778,12 +779,13 @@ export class FlightShow {
     let level = 0;
     if (flight.flies.engine) {
       const engine = s.full.getObjectByName(flight.flies.engine);
-      const exitArea =
-        flight.trajectory?.engine.exitArea.value ??
-        (() => {
-          const stage = flight.orbital?.stages.find((st) => st.nodes.includes(flight.flies?.engine ?? ''));
-          return stage ? exitAreaOf(stage) : undefined;
-        })();
+      // (the engine on the body whose model nodes hold it, or on a ballistic plan the booster's)
+      const craft = flight.plan?.craft[0];
+      const body =
+        craft?.bodies.find((b) => b.nodes?.includes(flight.flies?.engine ?? '')) ??
+        (flight.plan?.kind === 'ballistic' ? craft?.bodies[0] : undefined);
+      const lit = craft?.engines.find((e) => e.body === body?.id);
+      const exitArea = lit ? exitAreaOf(lit) : undefined;
       if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null, flight.flies.burns);
       level++;
     }

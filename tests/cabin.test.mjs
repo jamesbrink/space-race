@@ -500,5 +500,5 @@ test('the simulator’s answer for a burn now: a Vostok fired against its way co
   const late = sampleAt(samples, flight.orbital.retro.off.value + 60);
   const begun = find({ t: late.t, r: late.r, v: late.v });
   assert.ok(begun?.begun, 'coming down: the descent under way, nothing added');
-  assert.equal(burnNow({ ...flight, orbital: undefined }), null, 'no orbit, no answer');
+  assert.equal(burnNow({ ...flight, plan: undefined }), null, 'no orbit, no answer');
 });

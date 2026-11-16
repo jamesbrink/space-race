@@ -18,7 +18,7 @@
 import { Quaternion, Vector3 } from 'three';
 import { type Driving, type Footfall, machinery, type Sounds } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
-import { flownOnce } from '../sim/fly.ts';
+import { ballisticOf, flownOnce } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
@@ -106,11 +106,11 @@ export class Sound {
     this.clock = clock;
     this.host = host;
     this.ascent = Ascent.of(flight);
-    const tr = flight.trajectory;
+    const b = flight.plan?.kind === 'ballistic' ? ballisticOf(flight.plan).engine : null;
     // (an orbital flight's engines lit on the ground, heard as one: sim/staged.ts)
-    const lit = !tr && flight.orbital?.ascent ? liftoffEngine(flight.plan!) : null;
-    this.craft = tr
-      ? craft(tr.engine.thrust.value, tr.engine.isp.value, tr.engine.exitArea.value)
+    const lit = flight.plan?.kind === 'orbital' ? liftoffEngine(flight.plan) : null;
+    this.craft = b
+      ? craft((b.thrust.seaLevel ?? b.thrust.vacuum).value, (b.isp!.seaLevel ?? b.isp!.vacuum).value, b.exitArea?.value ?? 0)
       : lit
         ? craft(lit.thrust, lit.exhaustSpeed / G0, lit.exitArea)
         : null;
@@ -420,12 +420,12 @@ export class Sound {
 
   /** The run on show as sound needs it. */
   private hearing(t: number, rate: number, running: boolean, ears: Vec, riding: number): Hearing {
-    const tr = this.flight.trajectory;
+    const tr = this.flight.plan?.kind === 'ballistic';
     let samples: readonly Moment[] = [];
     let out = { drogue: Infinity, main: Infinity };
     let duration = Infinity;
     if (this.live) ({ samples, out, duration } = this.live);
-    else if (!tr && this.ascent && this.flight.orbital?.ascent) ({ samples, duration } = orbitalRecord(this.flight));
+    else if (!tr && this.ascent && this.flight.plan?.kind === 'orbital') ({ samples, duration } = orbitalRecord(this.flight));
     else if (tr && this.ascent) {
       const flown = flownOnce(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, frameOf(this.flight));
       samples = flown.samples;
@@ -453,39 +453,41 @@ export class Sound {
 
   /** The run's events, at its own times: the record's retrorockets at the record's times, a hand-flown flight's from when its first was lit. */
   private cues(h: Hearing): Cue[] {
-    const tr = this.flight.trajectory;
-    if (!this.ascent) return [];
+    const plan = this.flight.plan;
+    if (!this.ascent || !plan) return [];
     // An orbital flight's drops, and its braking engine when the run on show burns it (`Run.fires`: the record's timer, a
     // hand's, or none): heard as the retrorockets' cue is, one burn of its length at its thrust (the TDU-1's 1,614 kgf where the
     // record gives it, else the impulse over the burn); its own timbre, a pressure-fed liquid engine's, is not synthesised apart
-    if (!tr) {
-      const o = this.flight.orbital;
+    if (plan.kind === 'orbital') {
+      // (the coast's burn: the engine the record's impulse is flown on)
+      const braking = plan.craft[0]!.engines.find((e) => e.flown);
+      const mass = plan.record?.orbit?.mass.value ?? 0;
       const k = (this.flight.flies?.fires ?? []).findIndex((f) => f.on === 'retro');
       const burn = k >= 0 ? this.live?.fires?.[k] : undefined;
       const lit = burn && Number.isFinite(burn.from) && burn.to > burn.from ? burn : null;
       return score({
         drops: this.ascent.drops.map((d, i) => ({ at: this.live?.dropped[i] ?? d.at, on: this.flight.flies!.drops[i]?.on })),
         retro:
-          lit && o
+          lit && braking
             ? {
                 fires: [lit.from],
                 burn: lit.to - lit.from,
-                thrust: o.manual?.thrust.value ?? (o.mass.value * o.retro.deltaV.value) / (lit.to - lit.from),
+                thrust: braking.thrust.vacuum.value || (mass * braking.flown!.value) / (lit.to - lit.from),
               }
             : null,
         out: h.out,
         duration: h.duration,
       });
     }
-    const fires = tr.retro.fires.map((f) => f.value);
-    const lit = this.live ? this.retroAt : fires[0]!;
+    const b = ballisticOf(plan);
+    const lit = this.live ? this.retroAt : b.retroAt;
     const drops = this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on }));
     return score({
       drops,
       retro:
         lit === null || lit === undefined
           ? null
-          : { fires: fires.map((f) => f - fires[0]! + lit), burn: tr.retro.burn.value, thrust: tr.retro.thrust.value },
+          : { fires: b.retroWaits.map((w) => lit + w), burn: b.motors[0]!.burn!.value, thrust: b.motors[0]!.thrust.vacuum.value },
       out: h.out,
       duration: h.duration,
     });

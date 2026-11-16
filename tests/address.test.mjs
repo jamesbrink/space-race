@@ -126,8 +126,8 @@ test('Vostok 1 has all three places: its flight deck is lit by its ascent to orb
   assert.equal(opensIn(vostok, 'site'), 'site');
   assert.equal(opensIn(vostok, 'fly'), 'fly');
   // without its ascent it would not be
-  const { orbital, ...rest } = vostok;
-  assert.equal(lacks({ ...rest, orbital: { ...orbital, ascent: undefined } }, 'fly'), 'Fly: no trajectory yet');
+  const ascentless = { ...vostok.plan, attitude: vostok.plan.attitude.filter((a) => !('law' in a.hold)) };
+  assert.equal(lacks({ ...vostok, plan: ascentless }, 'fly'), 'Fly: no trajectory yet');
 });
 
 test('Freedom 7 has all three places', () => {
@@ -152,8 +152,8 @@ test('a flight that is only its vehicle has the gallery, and says why it has no 
   );
   // a trajectory with no site to fly from is not to be flown either, and says which it lacks
   assert.equal(lacks({ ...mr3, site: undefined }, 'fly'), 'Fly: its launch site is not built yet');
-  assert.equal(lacks({ ...mr3, trajectory: undefined }, 'fly'), 'Fly: no trajectory yet');
-  assert.equal(lacks({ ...mr3, trajectory: undefined }, 'site'), null);
+  assert.equal(lacks({ ...mr3, plan: undefined }, 'fly'), 'Fly: no trajectory yet');
+  assert.equal(lacks({ ...mr3, plan: undefined }, 'site'), null);
   // and a flight with nothing to exhibit has no gallery: it opens at its site
   const bare = { ...mr3, models: mr3.models.filter((m) => m.walker || m.sequence), flies: undefined };
   assert.equal(lacks(bare, 'gallery'), 'Gallery: no vehicle built yet');
@@ -258,7 +258,7 @@ test('the gallery`s stage is given the vehicle alone, in the studio, with nothin
       model.seats,
       exhibit(f).seats?.map(({ figure: _figure, ...seat }) => seat),
     );
-    for (const key of ['site', 'trajectory', 'checks', 'flies', 'surroundings']) assert.equal(staged[key], undefined, key);
+    for (const key of ['site', 'trajectory', 'plan', 'checks', 'flies', 'surroundings']) assert.equal(staged[key], undefined, key);
     // the parts, the slider and the cutaway are the vehicle's own, untouched
     assert.deepEqual(model.parts, exhibit(f).parts);
     assert.deepEqual(model.slider, exhibit(f).slider);

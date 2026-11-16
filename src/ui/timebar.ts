@@ -47,7 +47,7 @@ export class TimeBar {
       </div>
       <div class="time-body">
         <label class="time-scrub"><span>00:00</span><input type="range" min="0" max="86400" step="30" aria-label="Time of day at the site" /><span>24:00</span></label>
-        ${flight.trajectory ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
+        ${flight.plan?.kind === 'ballistic' ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
         <div class="time-rates" role="group" aria-label="How fast time runs">
           ${RATES.map((r) => `<button data-rate="${r}" aria-pressed="false" title="${rateTitle(r)}">${r}×</button>`).join('')}
           <button class="time-home" title="Back to liftoff, stopped">Liftoff</button>

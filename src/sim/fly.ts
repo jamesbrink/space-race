@@ -584,6 +584,9 @@ export interface Ballistic {
   chained: EventDef[];
   /** From the first motor's lighting to the last one's burning out, as the plan's sequence has them, s. */
   retroEnd: number;
+  /** The record clock's instant the sequence begins at, s from liftoff (Infinity: it has none), and each motor's wait after the first, s, in the sequence's order. */
+  retroAt: number;
+  retroWaits: number[];
   /** The tower (what the escape rocket is on) and the pack (what the motors are on), and the joints that let each go. */
   tower: string | undefined;
   towerJoint: JointDef | undefined;
@@ -626,11 +629,13 @@ function findRoles(plan: FlightPlan): Ballistic {
   const chained = plan.events.filter((ev) => lights(ev) && ev.when.every((w) => 'after' in w));
   const retro = plan.events.find((ev) => lights(ev) && !chained.includes(ev));
   // each motor's wait after the first and its burn: the last one out ends the sequence
-  const ends = [retro, ...chained].flatMap((ev) => {
+  const lit = [retro, ...chained].flatMap((ev) => {
     if (!ev) return [];
     const wait = ev.when.reduce((w, x) => ('after' in x ? (x.wait ?? 0) : w), 0);
-    return ev.do.flatMap((a) => ('ignite' in a ? [wait + motors.find((m) => m.id === a.ignite)!.burn!.value] : []));
+    return ev.do.flatMap((a) => ('ignite' in a ? [{ wait, burn: motors.find((m) => m.id === a.ignite)!.burn!.value }] : []));
   });
+  const ends = lit.map((m) => m.wait + m.burn);
+  const first = retro?.when.find((w) => 'time' in w);
   const letting = (body: string | undefined) => (body === undefined ? undefined : craft.joints.find((j) => j.gone.includes(body)));
   const separation = letting(booster.id)!;
   const tower = rocket?.body;
@@ -661,6 +666,8 @@ function findRoles(plan: FlightPlan): Ballistic {
     retro,
     chained,
     retroEnd: ends.length ? Math.max(...ends) : 0,
+    retroAt: first && 'time' in first ? first.time : Number.POSITIVE_INFINITY,
+    retroWaits: lit.map((m) => m.wait),
     tower,
     towerJoint: letting(tower),
     pack,

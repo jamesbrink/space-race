@@ -119,7 +119,7 @@ const pad = (shape: LegendDef['pads'][number][0], name: KeyName, does = doesOf(n
  */
 function legendMarkup(f: Flight): string {
   const walker = f.models.find((m) => m.walker);
-  const flies = Boolean((f.trajectory?.body || f.orbital?.ascent) && f.flies);
+  const flies = Boolean(f.plan && (f.plan.kind === 'orbital' || f.plan.craft[0]!.rigid) && f.flies);
   // from the seat of what is flown: what can be looked out of, each by its digit (lookouts.ts)
   const lookouts = lookoutsOf(f.models.find((m) => m.id === f.flies?.model)?.cabin);
   // and the cabin's own lights, if it has a switch for them (CabinDef.lighting)
