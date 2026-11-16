@@ -3,13 +3,21 @@
 // vehicle, from the seat, and from far enough out to see the whole Earth (where a player goes to read an orbit), in the
 // real look and at some instants the cel look, at 1280 wide (and every third instant from the chase camera and far out
 // at 820 and 390, where the panels take more of the view). At each it fails on
-//   - a line that does not start at the vehicle (taken onto it within two gaps, pathline.ts),
+//   - a line that does not start at the vehicle (taken onto it within two reaches, path.ts `reachOf`),
+//   - a line not first drawn ahead of the vehicle along its motion within its clearance (the gap and fade round it),
+//     any of it seen drawn behind the vehicle from near it (from far out, any of it behind the vehicle nearer than
+//     1,000 km), or a far end cut square that can be seen (but one that meets the ground at its ring): its owner's
+//     rule, "the path should always cleanly be ahead of the ship, never behind it"; held every frame as the clock runs
+//     at life's rate from the chase camera, and at ten and a hundred thousand times it (a coast on rails) for a flight
+//     that goes round, which is besides looked at with the path drawn as the orbit lies among the stars (O),
 //   - a chord that strays from the curve it stands for by more than CHORD_PX as seen from the eye, the line ahead's or the
 //     line flown's,
 //   - either line breaking into dots or fragments, or spreading into a sheet (its own pixels: the frame drawn with it
 //     and without it, the stage frozen, the difference),
-//   - no line flown behind a vehicle that has flown a minute, whatever deck flies it (GitHub issue #6),
-//   - a point of the line jumping between frames as the clock runs at life's rate,
+//   - the line flown drawn from near the vehicle (where it is read as the path); and from far out, none behind a vehicle
+//     that has flown a minute, whatever deck flies it (GitHub issue #6),
+//   - a point of the line jumping between frames as the clock runs at life's rate (at instants from seconds to half an
+//     hour ahead),
 //   - a marker away from its place, a chip for a place that is in view, a chip that points elsewhere than its place,
 //     or one that overlaps a panel or another chip,
 //   - an apsis marked where the path's radial speed does not change sign, a path that does not end where it comes down.
@@ -28,9 +36,9 @@
 // the page's own that gives every frame a sixtieth of a second (`VIRTUAL`), so a slow or busy machine sees the same
 // frames as a fast one. The views are measured on --jobs pages at once (default 4), each flight
 // and size, and each pair of hands, a page of its own, its lines printed together when it is done.
-//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1|v2] [--quick] [--at 60,700] [--seed n]
+//   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1|v2|v3|v5] [--quick] [--at 60,700] [--seed n]
 //                   [--hands: the hands alone] [--jobs n]
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { flag, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
@@ -61,19 +69,39 @@ const EDGE = 24;
 /** Seconds of flight after which a line flown is owed. */
 const FLOWN_AFTER = 60;
 
+// Each flight: the instants of the record's flight looked at; for one that goes round, `orbit`, instants it is looked at
+// with the path drawn as the orbit lies among the stars (the navball's O: where a path once round comes back to the
+// vehicle, and where its owner saw it drawn behind his ship), and `coast`, the instant its clock is run from at the
+// rates of a coast on rails. A flight not yet on this branch (`missing`) is passed over, and says so.
 const FLIGHTS = {
   f7: { id: 'usa/mercury/mr-3-freedom-7', ballistic: true, instants: [5, 60, 142, 200, 300, 420, 560, 700] },
   lb7: { id: 'usa/mercury/mr-4-liberty-bell-7', ballistic: true, instants: [5, 60, 143, 200, 310, 420, 580, 700] },
-  v1: { id: 'ussr/vostok/vostok-1', instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500] },
+  v1: {
+    id: 'ussr/vostok/vostok-1',
+    instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500],
+    orbit: [1500, 3000],
+    coast: 1500,
+  },
   // (a day in orbit: the first revolutions, the periods by hand, the night, the burn at 09:51 on the 7th and the descent)
   v2: {
     id: 'ussr/vostok/vostok-2',
     instants: [5, 60, 125, 330, 700, 3000, 4000, 30_600, 60_000, 87_000, 89_400, 89_480, 90_000, 90_400, 90_800],
+    orbit: [3000, 4000, 30_600, 60_000],
+    coast: 4000,
   },
   // (four days: the first revolutions, Vostok 4's launch below on the second day, the burn at 09:24 on the 15th and the descent)
   v3: {
     id: 'ussr/vostok/vostok-3',
     instants: [5, 60, 125, 330, 700, 3000, 84_200, 200_000, 336_000, 338_000, 338_080, 338_600, 339_000, 339_300, 339_600],
+    orbit: [3000, 200_000],
+    coast: 3000,
+  },
+  // (five days in orbit: the first revolutions, a day, two, four, the burn at 13:38 on the 19th and the descent)
+  v5: {
+    id: 'ussr/vostok/vostok-5',
+    instants: [5, 60, 125, 330, 700, 3000, 86_400, 200_000, 345_600, 427_000, 427_160, 427_250, 427_900, 428_200, 428_500],
+    orbit: [3000, 427_000, 427_900],
+    coast: 3000,
   },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
@@ -114,6 +142,153 @@ const VIRTUAL = () => {
       v.offset = v.now - real();
       v.running = false;
     },
+  };
+};
+
+/**
+ * Before the page's own scripts: `__side(ship, camera)`, where the line ahead is drawn about the vehicle as last sampled
+ * (path.ts), every chord looked at in eight places as its fragment shader fades it (the gap and fade round the vehicle,
+ * pathline.ts `fadeIn`, and its ends, `uEnds`): how far from the vehicle the nearest of it drawn ahead (along the
+ * vehicle's motion) and behind lie, how many pixels of it drawn behind can be seen (in front of the eye, on the page, not
+ * behind the Earth), and how much of its far end is drawn and whether it can be seen.
+ */
+const SIDE = () => {
+  window.__side = (ship, cam) => {
+    const p = window.sr.path;
+    const s = p.sample;
+    const shown = p.shown;
+    if (!s || !shown) return {};
+    const V = cam.position.constructor;
+    const q = cam.quaternion.clone().invert();
+    const W = innerWidth;
+    const H = innerHeight;
+    const toView = (x, y, z) => new V(x, y, z).sub(cam.position).applyQuaternion(q);
+    const toPage = (v) => {
+      const c = v.clone().applyMatrix4(cam.projectionMatrix);
+      return { x: ((c.x + 1) / 2) * W, y: ((1 - c.y) / 2) * H };
+    };
+    // the vehicle's way in the frame the line is drawn in: the prediction's own velocity at the instant the vehicle is
+    // drawn at (its state there is the vehicle's), a second on, in the scene as the line is (over the ground at its own
+    // instant, or as the orbit lies at the instant on show)
+    const shift = p.shift ?? 0;
+    const c = shown.curve;
+    const now = Math.min(c.t[c.n - 1], Math.max(c.t[0], p.drawn?.now ?? s.t));
+    const r = [0, 0, 0];
+    const vel = [0, 0, 0];
+    let i = 0;
+    while (i + 2 < c.n && c.t[i + 1] <= now) i++;
+    {
+      const h = c.t[i + 1] - c.t[i];
+      const u = Math.min(1, Math.max(0, (now - c.t[i]) / h));
+      const [u2, u3] = [u * u, u * u * u];
+      const w = [2 * u3 - 3 * u2 + 1, (u3 - 2 * u2 + u) * h, -2 * u3 + 3 * u2, (u3 - u2) * h];
+      const dw = [(6 * u2 - 6 * u) / h, 3 * u2 - 4 * u + 1, (-6 * u2 + 6 * u) / h, 3 * u2 - 2 * u];
+      for (let k = 0; k < 3; k++) {
+        const [ra, va, rb, vb] = [c.r[i * 3 + k], c.v[i * 3 + k], c.r[i * 3 + 3 + k], c.v[i * 3 + 3 + k]];
+        r[k] = w[0] * ra + w[1] * va + w[2] * rb + w[3] * vb;
+        vel[k] = dw[0] * ra + dw[1] * va + dw[2] * rb + dw[3] * vb;
+      }
+    }
+    const a = [0, 0, 0];
+    const b = [0, 0, 0];
+    p.sceneOf(r, 0, now + shift, shown.frame, now + shift, a, 0);
+    p.sceneOf([r[0] + vel[0], r[1] + vel[1], r[2] + vel[2]], 0, now + shift + 1, shown.frame, now + shift, b, 0);
+    const way = new V(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize();
+    const d = p.drawn;
+    const gap = p.uniforms.uGap.value;
+    const fade = p.uniforms.uFade.value;
+    const E = p.mesh.material.uniforms.uEnds?.value ?? { x: 0, y: 0, z: 0, w: 0 };
+    const zero = shown.result.from;
+    const smooth = (x) => {
+      const k = Math.min(1, Math.max(0, x));
+      return k * k * (3 - 2 * k);
+    };
+    const alpha = (t, dist) => {
+      const x = Math.min(1, Math.max(0, 0.631 * Math.log2(1 + (2 * Math.max(dist - gap, 0)) / Math.max(fade, 1e-9))));
+      let k = x * x * (3 - 2 * x);
+      if (E.w > 0) k *= 1 - smooth((t - zero - (E.z - E.w)) / E.w);
+      return k;
+    };
+    const C = p.centre;
+    const pole = p.pole;
+    const A = 6378137;
+    const stretch = 1 / (1 - 1 / 298.257223563) - 1;
+    const along = (v) => v.addScaledVector(pole, v.dot(pole) * stretch);
+    const hidden = (x, y, z) => {
+      const f = along(new V(x, y, z).sub(cam.position));
+      const e = along(cam.position.clone().sub(C));
+      const k = -e.dot(f) / f.lengthSq();
+      return k > 0 && k < 1 && e.addScaledVector(f, k).length() < A;
+    };
+    const near = 1.02 * cam.near;
+    const seen = (v, x, y, z) => {
+      if (v.z > -near || hidden(x, y, z)) return null;
+      const pg = toPage(v);
+      return pg.x >= 0 && pg.x <= W && pg.y >= 0 && pg.y <= H ? pg : null;
+    };
+    const L = p.line();
+    const n = L.t.length;
+    const out = { aheadNear: null, behindNear: null, behindPx: 0, endAlpha: null, endSeen: false, outcome: shown.result.outcome, shift };
+    let last = null;
+    // (a path that turns back on itself, straight up and down from the pad or a lob seen end on, comes back past the vehicle
+    // honestly: what is behind is looked for until its way has turned more than a right angle from the vehicle's, but in
+    // an orbit, which goes round, and whose coming round is what is looked for)
+    const round = shown.result.outcome === 'orbit' || shown.result.outcome === 'limit';
+    let turned = false;
+    out.aheadReach = 0;
+    const clear = gap + fade;
+    for (let i = 0; i < n; i++) {
+      const j = Math.min(i + 1, n - 1);
+      const dx = L.p[j * 3] - L.p[i * 3];
+      const dy = L.p[j * 3 + 1] - L.p[i * 3 + 1];
+      const dz = L.p[j * 3 + 2] - L.p[i * 3 + 2];
+      if (!round && j > i && dx * way.x + dy * way.y + dz * way.z < 0) turned = true;
+      if (turned) break;
+      // (a chord that passes near the vehicle in steps of an eighth of the clearance at most, so the first of it drawn is
+      // found to that; the rest in eight)
+      const len2 = dx * dx + dy * dy + dz * dz;
+      const k =
+        len2 > 0
+          ? Math.min(1, Math.max(0, ((ship.x - L.p[i * 3]) * dx + (ship.y - L.p[i * 3 + 1]) * dy + (ship.z - L.p[i * 3 + 2]) * dz) / len2))
+          : 0;
+      const by = Math.hypot(L.p[i * 3] + dx * k - ship.x, L.p[i * 3 + 1] + dy * k - ship.y, L.p[i * 3 + 2] + dz * k - ship.z);
+      const steps = j === i ? 1 : by < 4 * clear ? Math.min(2048, Math.max(8, Math.ceil(Math.sqrt(len2) / (clear / 8)))) : 8;
+      for (let u = 0; u < steps; u++) {
+        const f = u / steps;
+        const x = L.p[i * 3] + dx * f;
+        const y = L.p[i * 3 + 1] + dy * f;
+        const z = L.p[i * 3 + 2] + dz * f;
+        const t = L.t[i] + (L.t[j] - L.t[i]) * f;
+        const dist = Math.hypot(x - ship.x, y - ship.y, z - ship.z);
+        const ahead = (x - ship.x) * way.x + (y - ship.y) * way.y + (z - ship.z) * way.z >= 0;
+        if (ahead) out.aheadReach = Math.max(out.aheadReach, dist);
+        const pg = seen(toView(x, y, z), x, y, z);
+        if (alpha(t, dist) < 0.02) {
+          last = null;
+          continue;
+        }
+        if (ahead) out.aheadNear = out.aheadNear === null ? dist : Math.min(out.aheadNear, dist);
+        else {
+          out.behindNear = out.behindNear === null ? dist : Math.min(out.behindNear, dist);
+          if (pg && last) out.behindPx += Math.hypot(pg.x - last.x, pg.y - last.y);
+        }
+        last = !ahead && pg ? pg : null;
+      }
+    }
+    if (n) {
+      const e = n - 1;
+      const [x, y, z] = [L.p[e * 3], L.p[e * 3 + 1], L.p[e * 3 + 2]];
+      out.endAlpha = alpha(L.t[e], Math.hypot(x - ship.x, y - ship.y, z - ship.z));
+      out.endSeen = Boolean(seen(toView(x, y, z), x, y, z));
+    }
+    // (named apart from `measure`'s `fade`, the ball round the vehicle on the page the pixel count leaves to the line's soft start)
+    out.clearGap = gap;
+    out.clearFade = fade;
+    out.reach = d.reach;
+    out.headOff = n ? Math.hypot(L.p[0] - ship.x, L.p[1] - ship.y, L.p[2] - ship.z) : null;
+    // (as the line is drawn now: before it had a strength of its own, by whether it was shown)
+    out.flownOpacity = d.flownOpacity ?? (p.flownMesh.visible ? p.flownMesh.material.uniforms.uOpacity.value : 0);
+    return out;
   };
 };
 
@@ -187,10 +362,16 @@ const measure = (page) =>
     // the ball of the gap and the fade round the vehicle (path.ts: so many pixels at it), where the line comes in from nothing, as it is seen
     if (vessel && p.drawn && out.ship.front) {
       const d = ship.distanceTo(cam.position);
+      // (and the vehicle's outline on the screen, which the line keeps off where it passes in front: its long axis and
+      // a breadth round it, with the margin it comes in over, path.ts `uShipSeg`, `uShipW`; device pixels)
+      const u = p.uniforms;
+      const ratio = u.uRatio?.value ?? 1;
+      const seg = u.uShipSeg?.value;
+      const outline = seg && u.uShipW.value > 0 ? (Math.hypot(seg.z - seg.x, seg.w - seg.y) / 2 + u.uShipW.value + 16 * ratio) / ratio : 0;
       out.fade = {
         x: out.ship.x,
         y: out.ship.y,
-        r: Math.atan2(p.drawn.gap + p.drawn.fade, Math.max(d - p.drawn.gap - p.drawn.fade, 1e-3)) * pxPerRad,
+        r: Math.max(Math.atan2(p.drawn.gap + p.drawn.fade, Math.max(d - p.drawn.gap - p.drawn.fade, 1e-3)) * pxPerRad, outline),
       };
     }
     if (out.probe) {
@@ -209,8 +390,8 @@ const measure = (page) =>
           }
         if (vessel) {
           const off = Math.hypot(L.p[0] - ship.x, L.p[1] - ship.y, L.p[2] - ship.z);
-          if (off > Math.max(2 * d.gap, 0.01))
-            out.issues.push(`the line starts ${off.toFixed(1)} m from the vehicle (gap ${d.gap.toFixed(1)} m)`);
+          if (off > Math.max(2 * (d.reach ?? d.gap), 0.01))
+            out.issues.push(`the line starts ${off.toFixed(1)} m from the vehicle (reach ${(d.reach ?? d.gap).toFixed(1)} m)`);
         }
         // every chord against the curve it was cut from, as an angle from the eye
         let worst = 0;
@@ -264,6 +445,9 @@ const measure = (page) =>
         }
         out.expect = expect;
         if (worst > CHORD_PX) out.issues.push(`chord ${at} of ${n - 1} strays ${worst.toFixed(2)} px from its curve`);
+        // ahead of the vehicle, never behind it (the owner's rule): where the line is drawn at all (its gap and fade round
+        // the vehicle, pathline.ts fadeIn; its ends, uEnds), against the vehicle's way along its motion
+        if (vessel) Object.assign(out, window.__side(ship, cam));
         // the line flown, against the curve it was cut from, the same way
         const FT = L.flownT ?? [];
         out.flownChords = Math.max(0, FT.length - 1);
@@ -370,7 +554,10 @@ class Run {
     const opened = await openPage(browser, `${url}#${f.id}/fly`, {
       viewport: [W, H],
       console: [],
-      before: (page) => page.addInitScript(VIRTUAL),
+      before: async (page) => {
+        await page.addInitScript(VIRTUAL);
+        await page.addInitScript(SIDE);
+      },
       wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
       timeout: 120000,
     });
@@ -418,8 +605,18 @@ class Run {
         st.pose(60, 35, 2.6e7, c.y, c.x, c.z);
         await went();
         if (v !== 'far') {
-          st.setCamera(v);
+          // (a rig and, after an @, how far off the vehicle it is held: the chase a kilometre and a half off, where its owner
+          // saw the vehicle small in the middle of the view)
+          const [rig, off] = v.split('@');
+          st.setCamera(rig);
           await went();
+          if (off) {
+            const r = st.cam[rig];
+            r.zoomer.set(Math.log(Number(off)));
+            r.distance = Number(off);
+            r.handSet = true;
+            for (let i = 0; i < 5; i++) await new Promise((r) => requestAnimationFrame(r));
+          }
         }
         // (frozen: the vehicle drawn where the flight is, at once, and nothing of an earlier frame kept: Stage.frozen)
         st.frozen = true;
@@ -647,54 +844,148 @@ class Run {
   }
 
   /**
-   * As the clock runs at life's rate for forty frames, how far the line's point a minute ahead moves from one frame to
-   * the next, in pixels from the eye: on the page's own clock (`VIRTUAL`), a sixtieth of a second a frame however long
-   * the frame took, so the same frames are measured on any machine; the stage let go of its freeze.
+   * As the clock runs at `rate` times life's for `frames` frames, frame by frame: how far points of the line at instants a
+   * little, a minute and up to half an hour ahead move from one frame to the next, in pixels from the eye; and where the
+   * line is drawn about the vehicle (`__side`), each frame. On the page's own clock (`VIRTUAL`), a sixtieth of a second a
+   * frame however long the frame took, so the same frames are measured on any machine; the stage let go of its freeze. At
+   * a rate past an hour a second the clock is held at each of the record's instants and goes back to life's rate there
+   * (world/clock.ts `hold`): it is asked again, as a visitor would.
    */
-  jumps() {
-    return this.page.evaluate(async () => {
-      const sr = window.sr;
-      const p = sr.path;
-      if (typeof p.where !== 'function') return null;
-      const cam = sr.stage.camera;
-      sr.stage.frozen = false;
-      window.__virtual.on();
-      const T = sr.clock.t + 60;
-      sr.clock.setRate(1);
-      sr.clock.play(true);
-      let last = null;
-      const moves = [];
-      try {
-        for (let i = 0; i < 40; i++) {
-          await new Promise((r) => requestAnimationFrame(r));
-          const end = p.line().t.at(-1);
-          if (!(end > T)) {
-            last = null;
-            continue;
+  jumps(rate = 1, frames = 40) {
+    return this.page.evaluate(
+      async ([rate, frames]) => {
+        const sr = window.sr;
+        const p = sr.path;
+        if (typeof p.where !== 'function') return null;
+        const cam = sr.stage.camera;
+        sr.stage.frozen = false;
+        window.__virtual.on();
+        const T = [20, 60, 180, 600, 1800].map((x) => sr.clock.t + x);
+        sr.clock.setRate(rate);
+        sr.clock.play(true);
+        const last = T.map(() => null);
+        const moves = T.map(() => []);
+        const sides = [];
+        const ship = new cam.position.constructor();
+        try {
+          for (let i = 0; i < frames; i++) {
+            await new Promise((r) => requestAnimationFrame(r));
+            if (sr.clock.rate !== rate) sr.clock.setRate(rate);
+            const line = p.line().t;
+            const vessel = sr.stage.show.vessel(ship);
+            if (vessel && line.length > 1 && p.shown) sides.push({ t: sr.clock.t, ...window.__side(ship, cam), chords: line.length - 1 });
+            if (rate !== 1) continue;
+            const pxPerRad = innerHeight / 2 / (Math.tan((cam.fov * Math.PI) / 360) / cam.zoom);
+            T.forEach((t, k) => {
+              if (!(line.at(-1) > t)) {
+                last[k] = null;
+                return;
+              }
+              const w = p.where(t);
+              const d = Math.hypot(w[0] - cam.position.x, w[1] - cam.position.y, w[2] - cam.position.z);
+              if (last[k]) moves[k].push((Math.hypot(w[0] - last[k][0], w[1] - last[k][1], w[2] - last[k][2]) / d) * pxPerRad);
+              last[k] = w;
+            });
           }
-          const w = p.where(T);
-          const d = Math.hypot(w[0] - cam.position.x, w[1] - cam.position.y, w[2] - cam.position.z);
-          const pxPerRad = innerHeight / 2 / (Math.tan((cam.fov * Math.PI) / 360) / cam.zoom);
-          if (last) moves.push((Math.hypot(w[0] - last[0], w[1] - last[1], w[2] - last[2]) / d) * pxPerRad);
-          last = w;
+        } finally {
+          sr.clock.pause();
+          sr.clock.setRate(1);
+          window.__virtual.off();
         }
-      } finally {
-        sr.clock.pause();
-        window.__virtual.off();
+        // a leap: a frame that moves a point more than JUMP_PX and three times as far as the frames round it do (under
+        // power the future itself moves, eased, frame by frame: that is motion, not a jump)
+        let worst = 0;
+        const all = [];
+        for (const m of moves) {
+          all.push(...m);
+          for (let i = 0; i < m.length; i++) {
+            const round = m
+              .slice(Math.max(0, i - 4), i + 5)
+              .filter((_, k) => k !== Math.min(i, 4))
+              .sort((a, b) => a - b);
+            const usual = round.length ? round[Math.floor(round.length / 2)] : 0;
+            if (m[i] > 3 * usual) worst = Math.max(worst, m[i]);
+          }
+        }
+        return { worst, usual: all.length ? [...all].sort((a, b) => a - b)[Math.floor(all.length / 2)] : 0, sides };
+      },
+      [rate, frames],
+    );
+  }
+
+  /**
+   * The line ahead about the vehicle (`__side`): it is drawn from within its clearance of the vehicle (the gap and the
+   * fade, a few of the vehicle's lengths or `FADE_PX`: path.ts), along the vehicle's motion; nothing of it drawn behind
+   * the vehicle can be seen (from far out, where the whole orbit is in view, nothing of it drawn behind it nearer than the
+   * vehicle's horizon); and its far end is not a square cut, unless it meets the ground (its ring) or cannot be seen.
+   */
+  side(where, v, m) {
+    if (m.aheadNear === undefined || !m.chords) return;
+    const clear = m.clearGap + m.clearFade;
+    // (a path whose way ahead lies all within the clearance, on the pad a moment after it was lit, has nothing there to draw)
+    if (m.aheadNear === null) {
+      if (m.aheadReach > 1.05 * clear + 1)
+        this.fail(where, `nothing of the line is drawn ahead of the vehicle (it reaches ${m.aheadReach.toFixed(0)} m ahead)`);
+    } else if (m.aheadNear > 1.05 * clear + 1)
+      this.fail(where, `the line is first drawn ${m.aheadNear.toFixed(1)} m ahead of the vehicle (its clearance ${clear.toFixed(1)} m)`);
+    if (v !== 'far' && m.behindPx > 2) this.fail(where, `${m.behindPx.toFixed(0)} px of the line ahead are drawn behind the vehicle`);
+    if (v === 'far' && m.behindNear !== null && m.behindNear < 1_000_000)
+      this.fail(where, `the line ahead is drawn ${(m.behindNear / 1000).toFixed(0)} km behind the vehicle`);
+    if (m.outcome !== 'impact' && m.endSeen && m.endAlpha > 0.02)
+      this.fail(where, `the line's far end is cut square, at ${(100 * m.endAlpha).toFixed(0)} % (${m.outcome})`);
+  }
+
+  /** The same of every frame of a run (`jumps`), each failure said once with the first instant it was seen at and how many frames. */
+  frames(where, v, sides) {
+    const seen = new Map();
+    for (const s of sides) {
+      const before = this.failed;
+      const lines = this.lines.length;
+      this.side(`${where} T+${s.t.toFixed(0)}`, v, s);
+      // (the head where it is taken onto the vehicle: within two reaches of it, path.ts `PIN_WITHIN`)
+      if (s.headOff !== null && s.reach && s.headOff > 2 * s.reach + 0.01)
+        this.fail(`${where} T+${s.t.toFixed(0)}`, `the line starts ${s.headOff.toFixed(1)} m from the vehicle`);
+      for (const line of this.lines.splice(lines)) {
+        const what = line.replace(/T\+\d+: /, '').replace(/[\d.]+/g, '#');
+        const had = seen.get(what);
+        if (had) had.n++;
+        else seen.set(what, { line, n: 1 });
       }
-      // a leap: a frame that moves it more than JUMP_PX and three times as far as the frames round it do (under power the
-      // future itself moves, eased, frame by frame: that is motion, not a jump)
-      let worst = 0;
-      for (let i = 0; i < moves.length; i++) {
-        const round = moves
-          .slice(Math.max(0, i - 4), i + 5)
-          .filter((_, k) => k !== Math.min(i, 4))
-          .sort((a, b) => a - b);
-        const usual = round.length ? round[Math.floor(round.length / 2)] : 0;
-        if (moves[i] > 3 * usual) worst = Math.max(worst, moves[i]);
+      this.failed = before;
+    }
+    for (const { line, n } of seen.values()) {
+      this.failed++;
+      this.lines.push(`${line}${n > 1 ? ` (and ${n - 1} frames more)` : ''}`);
+    }
+    return sides.length;
+  }
+
+  /**
+   * At the rates of a coast on rails (ten thousand and a hundred thousand times life's: world/clock.ts `COAST_RATES`),
+   * from the chase camera a kilometre and a half off and from far out: the line starts at the vehicle and runs ahead of
+   * it every frame, though a frame is half an hour of the flight and a prediction a few frames' work.
+   */
+  async coasting(where) {
+    for (const [v, distance] of [
+      ['chase', 1500],
+      ['far', 0],
+    ])
+      for (const rate of [10_000, 100_000]) {
+        await this.view(v);
+        if (distance)
+          await this.page.evaluate((d) => {
+            const r = window.sr.stage.cam.chase;
+            r.zoomer.set(Math.log(d));
+            r.distance = d;
+            r.handSet = true;
+          }, distance);
+        const j = await this.jumps(rate, 24);
+        const n = this.frames(`${where} ${v} at ${rate}x`, v, j?.sides ?? []);
+        this.cases++;
+        this.log(
+          `  ${where} ${v} at ${rate}x: ${n} frames with a line, T+${(j?.sides?.[0]?.t ?? 0).toFixed(0)} to T+${(j?.sides?.at(-1)?.t ?? 0).toFixed(0)}`,
+        );
       }
-      return { worst, usual: moves.length ? [...moves].sort((a, b) => a - b)[Math.floor(moves.length / 2)] : 0 };
-    });
   }
 
   /** Everything checked of what is drawn now, from view `v`: the line ahead, the line flown, the markers and the chips. */
@@ -710,11 +1001,19 @@ class Run {
     if (px.frac > 0.2) this.fail(where, `the line covers ${(px.frac * 100).toFixed(0)} % of the view: a sheet`);
     if (px.dots > 2) this.fail(where, `the line breaks into dots: ${px.dots} pieces under ${DOT} px`);
     if (px.bits.length > 1) this.fail(where, `fragments of line: ${px.bits.join(', ')}`);
-    // the line flown: owed behind a vehicle that has flown a while, whatever deck flies it (#6)
-    if (t !== null && t >= FLOWN_AFTER && m.chords > 0 && !(m.flownChords > 0))
-      this.fail(where, `no line flown behind the vehicle at T+${t}`);
-    // the line flown, drawn alone: the same rules (it is paler, so fewer of its pixels pass the threshold: no count of them)
-    const fl = m.flownChords > 1 ? await this.pixels(shots ? `${where.replaceAll(/[ +]/g, '-')}-flown` : null, m.fade, 'flown') : null;
+    // ahead of the vehicle and never behind it (the owner's rule: "the path should always cleanly be ahead of the ship")
+    this.side(where, v, m);
+    // the line flown: never from near the vehicle, where a line behind it is read as the path; from far out, owed behind a
+    // vehicle that has flown a while, whatever deck flies it (#6), in its own quiet style
+    const far = v === 'far';
+    if (!far && m.flownOpacity > 0) this.fail(where, `the line flown is drawn from near the vehicle (at ${m.flownOpacity.toFixed(2)})`);
+    if (far && t !== null && t >= FLOWN_AFTER && m.chords > 0 && !(m.flownChords > 0 && m.flownOpacity > 0))
+      this.fail(where, `no line flown behind the vehicle from far out at T+${t}`);
+    // the line flown, drawn alone where it is drawn: the same rules (drawn as the line ahead for the measure: `flownAsAhead`)
+    const fl =
+      far && m.flownChords > 1 && m.flownOpacity > 0
+        ? await this.pixels(shots ? `${where.replaceAll(/[ +]/g, '-')}-flown` : null, m.fade, 'flown')
+        : null;
     if (fl) {
       if (fl.frac > 0.2) this.fail(where, `the line flown covers ${(fl.frac * 100).toFixed(0)} % of the view: a sheet`);
       if (fl.dots > 2) this.fail(where, `the line flown breaks into dots: ${fl.dots} pieces under ${DOT} px`);
@@ -747,7 +1046,7 @@ class Run {
       }
     }
     let jump = null;
-    if (v === 'chase' && look === 'real') {
+    if (v.startsWith('chase') && look === 'real') {
       const j = await this.jumps();
       jump = j?.worst ?? null;
       if (j && j.worst > JUMP_PX)
@@ -755,6 +1054,7 @@ class Run {
           where,
           `a point of the line leaps ${j.worst.toFixed(1)} px in a frame (it moves ${j.usual.toFixed(1)} px a frame round it)`,
         );
+      this.frames(`${where} running`, v, j?.sides ?? []);
     }
     this.log(
       `  ${where}: ${m.chords ?? '?'} chords, ${m.expect !== undefined ? `${(px.area / 8).toFixed(0)}/${m.expect.toFixed(0)} px drawn, ` : ''}${m.worst !== undefined ? ` (worst ${m.worst.toFixed(2)} px)` : ''}, ${px.pieces} pieces, ${px.dots} dots, ${(px.frac * 100).toFixed(1)} % covered${fl ? `; flown ${m.flownChords} chords (worst ${m.flownWorst.toFixed(2)} px), ${fl.pieces} pieces` : ''}${m.drawn ? `, ${m.drawn.ms.toFixed(1)} ms` : ''}${jump !== null ? `, jump ${jump.toFixed(2)} px` : ''}, ${m.chips.length} chips`,
@@ -995,6 +1295,60 @@ class Run {
 
 const browser = await launch();
 const tasks = [];
+
+// (a flight whose Fly is not on this branch yet: its flight.ts has no plan)
+for (const [key, f] of Object.entries(FLIGHTS)) {
+  const [nation, programme, flight] = f.id.split('/');
+  const file = join('missions', nation, programme, 'flights', flight, 'flight.ts');
+  if (!existsSync(file) || !readFileSync(file, 'utf8').includes('plan:')) {
+    console.log(`${key}: ${f.id} cannot be flown on this branch: passed over`);
+    delete FLIGHTS[key];
+  }
+}
+
+// A flight that goes round, with the path drawn as the orbit lies among the stars (O), at its `orbit` instants: at 1280
+// from every view outside the vehicle, at 820 and 390 from the chase camera and far out; and at the rates of a coast on
+// rails from its `coast` instant (at 1280).
+for (const [W, H] of handsOnly || at ? [] : quick ? [SIZES[0]] : SIZES) {
+  for (const [key, f] of Object.entries(FLIGHTS)) {
+    if ((only && only !== key) || !f.orbit) continue;
+    const wide = W === 1280;
+    tasks.push({
+      name: `${key} ${W} orbit`,
+      weight: f.orbit.length * (wide ? 3 : 2) + (wide ? 8 : 0),
+      run: async (r) => {
+        await r.open(W, H, f);
+        await r.page.evaluate(() => window.sr.navball.setFrame('orbit', false));
+        for (const t of f.orbit) {
+          for (const v of wide ? ['chase', 'chase@1500', 'locked', 'far'] : ['chase@1500', 'far']) {
+            const where = `${key} ${W} orbit T+${t} ${v}`;
+            r.cases++;
+            const s = await r.seek(t);
+            await r.view(v);
+            await r.turn();
+            if (!s.shown) {
+              r.log(`  ${where}: no path`);
+              continue;
+            }
+            await r.inspect(where, v, 'real', W, H, t);
+          }
+        }
+      },
+    });
+    // (a page of its own: the clock only goes forward, and the coast is run from early in the flight)
+    if (wide && f.coast)
+      tasks.push({
+        name: `${key} ${W} coast`,
+        weight: 10,
+        run: async (r) => {
+          await r.open(W, H, f);
+          await r.page.evaluate(() => window.sr.navball.setFrame('orbit', false));
+          await r.seek(f.coast);
+          await r.coasting(`${key} ${W} orbit from T+${f.coast}`);
+        },
+      });
+  }
+}
 
 // The record's flight through its instants: at 1280 wide every instant and view; at 820 and 390 (the tablet and the
 // phone, where the panels take more of the view) every third instant from the chase camera and from far out.
