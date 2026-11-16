@@ -268,7 +268,13 @@ const u = {
   uCel: { value: 0 },
 };
 
+/**
+ * The scene's depth, as clouds.ts reads it, and at full precision as there (clouds.ts DEPTH): read in the lowp a raw
+ * shader's samplers have by default, the ground under the cloud over the pad stood in steps of a quarter of a metre from
+ * 60 m, which moved with the near plane, and the march's end and its laying over the frame moved with them (`pnpm test:frozen`, "near").
+ */
 const DEPTH = /* glsl */ `
+  precision highp sampler2D;
   uniform sampler2D tDepth;
   uniform mat4 uProjInv;
   uniform vec2 uRange;

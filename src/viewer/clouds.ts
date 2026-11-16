@@ -254,8 +254,14 @@ const REDUCE = /* glsl */ `
     oValue = vec4(m, 0.0, 0.0, 1.0);
   }`;
 
-/** What the march and the composite share: the scene's depth, as distance along the ray. */
+/**
+ * What the march and the composite share: the scene's depth, as distance along the ray. Read at full precision: a raw
+ * shader's samplers are lowp unless it says otherwise (GLSL ES 3.00's default in a fragment shader), and a GPU that takes
+ * it at its word (ANGLE's relaxed precision on the Vulkan drivers, a phone's half floats) hands back the depth in 11 bits:
+ * 60 m off, with the near plane at 7.5 m, steps of a quarter of a metre, which change with the near plane (exhaust.ts DEPTH; #28).
+ */
 const DEPTH = /* glsl */ `
+  precision highp sampler2D;
   uniform sampler2D tDepth;
   uniform mat4 uProjInv;
   uniform vec2 uRange;
