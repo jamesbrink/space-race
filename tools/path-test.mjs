@@ -867,13 +867,26 @@ class Run {
         const moves = T.map(() => []);
         const sides = [];
         const ship = new cam.position.constructor();
+        // (where the line drawn starts, in the draw itself: the anchor it was laid from, against the vehicle as the draw has it)
+        if (!p.__drawnAt) {
+          const prepare = p.prepare.bind(p);
+          const at = new cam.position.constructor();
+          p.prepare = (renderer, camera) => {
+            p.__drawnOff = sr.stage.show.vessel(at) && p.mesh.visible ? p.mesh.position.distanceTo(at) : null;
+            prepare(renderer, camera);
+          };
+          p.__drawnAt = true;
+        }
+        p.__drawnOff = null;
         try {
           for (let i = 0; i < frames; i++) {
             await new Promise((r) => requestAnimationFrame(r));
-            if (sr.clock.rate !== rate) sr.clock.setRate(rate);
             const line = p.line().t;
             const vessel = sr.stage.show.vessel(ship);
-            if (vessel && line.length > 1 && p.shown) sides.push({ t: sr.clock.t, ...window.__side(ship, cam), chords: line.length - 1 });
+            if (vessel && line.length > 1 && p.shown)
+              sides.push({ t: sr.clock.t, ...window.__side(ship, cam), chords: line.length - 1, drawnOff: p.__drawnOff });
+            // (after the frame is measured: asked between the draw and the measure, the frame measured was not the one drawn)
+            if (sr.clock.rate !== rate) sr.clock.setRate(rate);
             if (rate !== 1) continue;
             const pxPerRad = innerHeight / 2 / (Math.tan((cam.fov * Math.PI) / 360) / cam.zoom);
             T.forEach((t, k) => {
@@ -942,6 +955,9 @@ class Run {
       const before = this.failed;
       const lines = this.lines.length;
       this.side(`${where} T+${s.t.toFixed(0)}`, v, s);
+      // (the line as drawn starts where the draw has the vehicle: laid out for the frame it is drawn in, Stage.beforeDraw)
+      if (s.drawnOff !== null && s.drawnOff !== undefined && s.drawnOff > Math.max(0.01, 0.5 * s.clearGap))
+        this.fail(`${where} T+${s.t.toFixed(0)}`, `the line drawn starts ${s.drawnOff.toFixed(1)} m from where the vehicle is drawn`);
       // (the head where it is taken onto the vehicle: within two reaches of it, path.ts `PIN_WITHIN`)
       if (s.headOff !== null && s.reach && s.headOff > 2 * s.reach + 0.01)
         this.fail(`${where} T+${s.t.toFixed(0)}`, `the line starts ${s.headOff.toFixed(1)} m from the vehicle`);
