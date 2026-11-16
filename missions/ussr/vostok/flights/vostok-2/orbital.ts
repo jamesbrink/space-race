@@ -1,5 +1,5 @@
 /**
- * Vostok 2 as an orbital flight: what `flight.ts` gives as `Flight.orbital` (src/sim/orbital.ts). The record with its
+ * Vostok 2 as an orbital flight: its record (vostok-record.ts `VostokRecord`), which `flight.ts` writes its plan from (vostok-plan.ts). The record with its
  * sources and disagreements is set out in mission.md beside this file; the numbers live here. The launch vehicle and the
  * ship are the type's (vehicles/vostok-8k72k.ts, vehicles/vostok-3ka.ts); what is here is this flight's.
  *
@@ -13,7 +13,7 @@
  * the record gives, Titov's 09:57, the orbit rules out.
  */
 
-import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
+import type { VostokRecord } from '../../vehicles/vostok-record.ts';
 import {
   CREW,
   ENTRY_AREA,
@@ -65,7 +65,7 @@ const TYPE = (what: string) =>
 /** The braking engine's command, derived (mission.md, "The braking burn"); everything about the burn is timed from it. */
 const TDU = MSK(33, 51);
 
-export const orbital: OrbitalFlight = {
+export const orbital: VostokRecord = {
   liftoffMass: estimated(
     287_000,
     `${TYPE('liftoff mass')}: 287 t (RKK Energia 1946–1996; Minakov). This vehicle’s own was not found; its spacecraft was 6 kg heavier`,

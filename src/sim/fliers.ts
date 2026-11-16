@@ -9,7 +9,7 @@
  *               heat shield first once it is alone and falling (fly.ts `dragArea`), through the day's wind (forces.ts
  *               `blowing`); what its sequencer will do (separation and its push, the retrorockets as fly.ts fires them,
  *               the pack); its parachutes at their heights, filling (`chuteArea`) and torn as vehicle.ts tears them.
- *   spacecraft  an orbital flight's spacecraft alone (`OrbitalFlight`: Vostok 1's ship): flyOrbit's forces (orbital.ts
+ *   spacecraft  an orbital flight's spacecraft alone (Vostok 1's ship): flyOrbit's forces (orbital.ts
  *               `shipPush`), the braking burn as planned along its line (`aimOf`), the modules' parting; it stops at the
  *               height its pilot left at, as flyOrbit does.
  *   stack       an orbital flight's staged launch vehicle with its engines stopped now: what it carries, on the drag of

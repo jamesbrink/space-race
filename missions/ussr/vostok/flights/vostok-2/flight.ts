@@ -577,8 +577,8 @@ export const flight: Flight = {
       note: 'Worked by hand on this flight, on orbits 1 and 7',
     },
   }),
-  // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
-  orbital,
+  // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the entry, each with its
+  // source (orbital.ts; mission.md)
   plan: vostokPlan(orbital),
   flownNote:
     'The ascent is the type’s, flown on Vostok 1’s instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +

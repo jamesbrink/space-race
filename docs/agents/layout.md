@@ -14,7 +14,7 @@ missions/                             the record: one folder per nation, program
     vehicles/  crew/                  hardware shared by several flights: <name>.py builds it,
                                       <name>.md records its dimensions, confidence, simplifications
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
-                                      (mercury-redstone.ts: `plan`, `Day`, `HARDWARE`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record;
+                                      (mercury-redstone.ts: `plan`, `Day`, `HARDWARE`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record; vostok-record.ts, the record's shape;
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;
@@ -54,7 +54,7 @@ missions/                             the record: one folder per nation, program
       README.md                       the flight: what happened, timeline, sources
       spacecraft.md                   the ship: every dimension, how sure we are, what is simplified
       flight.ts                       the same facts as typed data (src/types.ts: Flight)
-      orbital.ts  mission.md          an orbital flight's record as data (`Flight.orbital`), and the mission's record and plan in words
+      orbital.ts  mission.md          an orbital flight's record as data, which its plan is written from, and the mission's record and plan in words
       weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
       pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961)
@@ -124,7 +124,7 @@ src/
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
   deck/cockpit.ts                     the deck's ballistic kind: a ballistic plan flown by hand, the live simulator stepped by the clock, the instruments
-  deck/orbitdeck.ts                   the deck's orbital kind (`Flight.orbital`): the stages, the events and what the hands could reach, from the record
+  deck/orbitdeck.ts                   the deck's orbital kind (an orbital plan): the stages, the events and what the hands could reach, from the plan
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
   viewer/dispose.ts                   letting go of a tree's geometries, materials and pictures on the GPU (a flight or a place the stage has left)
@@ -250,7 +250,7 @@ src/
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
-  sim/orbital.ts                      a flight into orbit: its record as data (`Flight.orbital`: stages, events, the orbit, the braking burn, the entry) and the coast flown from it (`flyOrbit`)
+  sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`)
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance
   sim/staging.ts                      what happens when a hand stages a vehicle: the rules every vehicle is held to, whatever it is

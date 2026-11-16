@@ -1,12 +1,12 @@
 /**
- * The powered ascent of an orbital flight (`Flight.orbital`: orbital.ts), flown: stages burning together and in turn,
+ * The powered ascent of an orbital flight (its plan's stages and steering law), flown: stages burning together and in turn,
  * each dropped when the record says it left, on a stated steering law; then handed to the coast (orbital.ts: flyOrbit)
  * at the spacecraft's separation, so the whole flight is flown from the pad. Nothing here knows which flight it is:
- * every stage, event and figure is the flight's data, and the law is `AscentRecord.guidance`.
+ * every stage, event and figure is the flight's plan, and the law is its attitude held by a stated law (`{ law }`).
  *
  * Forces, in the flight's frame (world/earthframe.ts: of date, as the coast's), on a point that is the vehicle:
  *   gravity  world/orbit.ts's, with J2.
- *   thrust   each stage burning, `count` of them alike: its throttle (`StageRecord.throttle`, rated where none is
+ *   thrust   each stage burning, `count` of them alike: its throttle (its engine's `throttle.curve`, rated where none is
  *            given) of its vacuum thrust, less its nozzles' exit area times the air's pressure (sim/thrust.ts). Flow is the vacuum
  *            thrust over g0 times the vacuum specific impulse, times the throttle: so the engine's propellant flow is
  *            the same in air as out of it, and sea-level thrust and impulse come out as the record has them when the
@@ -123,7 +123,7 @@ export function atCutoff(
   };
 }
 
-/** What the ascent gives figures for: the summary's fields, by name, for `AscentCheck` ids. */
+/** What the ascent gives figures for: the summary's fields, by name, for the ascent's check ids. */
 export interface AscentSummary {
   /** The greatest dynamic pressure, Pa, and when. */
   maxQ: number;
@@ -240,7 +240,7 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
 
 /**
  * When each stage burns: its ignition, and when it stops (its cutoff, or when its usable propellant is gone if sooner). A
- * stage cut on its velocity (`StageRecord.velocity`) stops here only when it runs dry: the run finds when it reaches its
+ * stage cut on its velocity (a `speed` trigger) stops here only when it runs dry: the run finds when it reaches its
  * speed, and that is its stop if it comes first.
  */
 export function schedule(plan: FlightPlan, seq = sequenceOf(plan)): { from: number; to: number; dry: boolean }[] {
@@ -757,7 +757,7 @@ export function published(plan: FlightPlan, at: { t: number; r: Vec3; v: Vec3 })
  * the frame it was flown in (world/earthframe.ts), every `LiveSample` field filled. `centre` is the spacecraft's centre of mass, metres up the
  * stack from the base, which is the point the ascent flies; from the spacecraft's separation the coast's point is that
  * centre (carried on by the offset it had then, so nothing jumps). After the ejection height, the first of the
- * descent's bodies (`DescentRecord.bodies`) is the one followed.
+ * descent's bodies (descent.ts `downOf`) is the one followed.
  *
  * How it lies is the law's going up: the long axis (+X) along the thrust, +Y the launch plane's pole (its left, as it
  * stood on the pad), +Z back up range. After separation the record's attitudes are drawn, not flown: held as at

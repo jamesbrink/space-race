@@ -1589,8 +1589,8 @@ export const flight: Flight = {
       confidence: 'documented',
     },
   }),
-  // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
-  orbital,
+  // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the entry, each with its
+  // source (orbital.ts; mission.md)
   plan: vostokPlan(orbital),
   flownNote:
     'The ascent as simulated falls 162 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +

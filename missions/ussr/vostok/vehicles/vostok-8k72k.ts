@@ -7,7 +7,8 @@
  * (vostok-8k72k.md has the dimensions; the flight's mission.md each input's argument).
  */
 
-import type { AscentCheck, AscentRecord, Guidance, StageRecord } from '../../../../src/sim/orbital.ts';
+import type { Guidance } from '../../../../src/sim/orbital.ts';
+import type { AscentCheck, AscentRecord, StageRecord } from './vostok-record.ts';
 import type { Curve, JetDef, Measure, ShedBody } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
 import { G0 } from '../../../../src/world/bodies.ts';

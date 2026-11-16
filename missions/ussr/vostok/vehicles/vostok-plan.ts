@@ -1,12 +1,13 @@
 /**
- * A Vostok flight's plan (src/sim/plan.ts), written from its record (`OrbitalFlight`: the flight's orbital.ts, on the
+ * A Vostok flight's plan (src/sim/plan.ts), written from its record (`VostokRecord`, vostok-record.ts: the flight's orbital.ts, on the
  * 8K72K's and the 3KA's figures): its stages, drops and spacecraft, the record's sequence, its braking burn, entry and
  * descent. Every figure is carried over as the record has it, with its confidence and source; where the plan wants one
  * the record does not give, it is worked from those it does, `derived`, and says how. The ids are this module's: a
  * stage's body, engine, tank and joint are `stage:<i>` (base first), a descent parachute is `<body>/<name>`.
  */
 import { derived, estimated, type Measure } from '../../../../src/measure.ts';
-import { chuteEvent, type OrbitalFlight } from '../../../../src/sim/orbital.ts';
+import { chuteEvent } from '../../../../src/sim/orbital.ts';
+import type { VostokRecord } from './vostok-record.ts';
 import type {
   AttitudeDef,
   BodyDef,
@@ -28,7 +29,7 @@ const atTime = (at: Measure) => [{ time: at.value }];
 export const stageId = (i: number) => `stage:${i}`;
 
 /** A Vostok flight's plan, from its record. */
-export function vostokPlan(o: OrbitalFlight): FlightPlan {
+export function vostokPlan(o: VostokRecord): FlightPlan {
   const a = o.ascent;
   const last = o.stages.length - 1;
   const d = o.descent;
@@ -435,7 +436,7 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
 }
 
 /** Where an ascent check is read, for the ones that are not an event's state or the summary's own result. */
-function ascentWhen(id: string, o: OrbitalFlight): Pick<PlanCheck, 'when'> {
+function ascentWhen(id: string, o: VostokRecord): Pick<PlanCheck, 'when'> {
   const n = o.stages.length;
   if (id === 'minuteG') return { when: { at: 60, reading: 'g' } };
   if (id === 'firstG') return { when: { most: 'g', aboard: [stageId(0)] } };

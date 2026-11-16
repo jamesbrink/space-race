@@ -65,7 +65,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     parachutes). Where the plan wants a figure the record does not give, it is `derived` and says how: the booster's and
     tower's masses at the pad, the retropack's, a vacuum specific impulse. tests/plan.test.mjs holds the plan to the day's
     and the hardware's figures; tests/sim.test.mjs weighs each undocumented one by writing the plan again from a changed copy.
-  - A Vostok's: missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, from its record (`Flight.orbital`), which says
+  - A Vostok's: missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, from its record (the flight's orbital.ts: a `VostokRecord`, vostok-record.ts, which only the Vostok modules read), which says
     the braking burn's command, timer and chain as events of their own; tests/plan.test.mjs holds it to the record's
     figures and instants, and tests that fly a changed record fly `vostokPlan` of it.
   - `EngineDef.flown` is the impulse the record's coast flies.
@@ -370,13 +370,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 
 ## Into orbit
 
-- **An orbital flight has its own record and its own coast.** `Flight.orbital` (`sim/orbital.ts`: `OrbitalFlight`) stands
-  beside the plan written from it: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
+- **An orbital flight has its own record and its own coast.** The flight's orbital.ts (a Vostok's `VostokRecord`,
+  missions/ussr/vostok/vehicles/vostok-record.ts) is what its plan is written from: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
   and `checks` with tolerances set first. `flyOrbit` flies from the published orbit round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in the flight's
   frame (of date, as every run's) on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its misses (src/sim/misses.ts) by the same rule as
   below and prints what each undocumented input is worth. The flight's `mission.md` is the plan.
-- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from `orbital.stages` and `orbital.ascent`: stages
+- **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from the plan's stages and steering law: stages
   burning together and in turn (each `count` alike; its throttle of its vacuum thrust less exit area times the air's pressure, the exit area
   derived from the two published thrusts unless given; flow from the vacuum figures; a `throttle` curve where one is
   known; stopped at its cutoff or when its `usable` load is gone), each dropped at its `separation` as what it weighed
@@ -385,7 +385,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   axis is a unit vector: tests/staged.test.mjs), not a stored programme, because none has been found: `Guidance` (orbital.ts) says it, and `steer`
   solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
   cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
-  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
+  separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of the plan's descent bodies (a module, a
   pilot) down from the ejection height on its own parachutes, each body one `Descent` (sim/descent.ts: its mass, its
   drag, what it puts out and when, the air's tearing) which the path ahead flies too (fliers.ts `descending`;
   tests/descending.test.mjs holds the predicted landings to flyDown's). `tests/staged.test.mjs` holds the ascent's, the coast's and
@@ -413,7 +413,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
   vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no
   burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
-  what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes `orbital.heating` (a `round` body is blunt at any attitude): the flux on the
+  what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes the plan's `Craft.heating` (a `round` body is blunt at any attitude): the flux on the
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
   (`TRAIL_TOP` in stage/flightshow.ts): laid round the Earth, its marched volume stalled the page.
 - **A staged vehicle is flown live on the same physics** (`sim/stagedlive.ts`, `stagedVehicle`): staged.ts's stages,

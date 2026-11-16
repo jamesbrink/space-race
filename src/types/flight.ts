@@ -2,7 +2,7 @@
 import type { Confidence, Measure } from '../measure.ts';
 import type { ModelDef } from './model.ts';
 import type { FlightPlan } from '../sim/plan.ts';
-import type { Burns, ChuteDef, OrbitalFlight, Results } from './sim.ts';
+import type { Burns, ChuteDef, Results } from './sim.ts';
 import type { SiteDef } from './site.ts';
 import type { DayWeather } from './weather.ts';
 
@@ -92,11 +92,6 @@ export interface Flight {
   /** What the Flown panel says under the checks: how the simulator's run stands against the reports today, and why. This flight's own verdict, in a sentence or three. */
   flownNote?: string;
   /**
-   * A flight into orbit, as the record has it (src/sim/orbital.ts: stages, events, the orbit, the braking burn, the entry, with
-   * its own checks), which its plan is written from (missions/ussr/vostok/vehicles/vostok-plan.ts).
-   */
-  orbital?: OrbitalFlight;
-  /**
    * What the flight is flown from, one shape for every kind (src/sim/plan.ts): its craft, the events that change it, the
    * attitudes it is held in, the checks. Left out: it cannot be flown yet. Written by the flight's launch vehicle's module
    * from the flight's own figures (a Mercury-Redstone's by mercury-redstone.ts `plan`, a Vostok's by vostok-plan.ts).
@@ -118,7 +113,7 @@ export interface Flight {
       /** It leaves hanging under that parachute, which goes with it, instead of falling free. */
       under?: 'drogue' | 'main';
       /**
-       * It comes down on bodies of the orbital flight's descent (`orbital.descent`, sim/orbital.ts flyDown) rather than as a
+       * It comes down on bodies of the orbital flight's descent (the plan's descent bodies, sim/orbital.ts flyDown) rather than as a
        * shed body: carried along each body's track in turn, each from where that body's track begins (a body left behind
        * begins where it was left), turning as it goes to lie with its +Y against its motion through the air (where its
        * parachute is made fast). `hide`: nodes of it not drawn from then on (the pilot, gone from the seat he left).

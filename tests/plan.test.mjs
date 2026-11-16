@@ -12,6 +12,7 @@ import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { byHand, givenUp } from '../src/sim/staged.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
+import { recordFrom } from './records.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -20,7 +21,7 @@ const all = await Promise.all(
   ),
 );
 const ballistic = all.filter((f) => f.plan?.kind === 'ballistic');
-const orbital = all.filter((f) => f.orbital);
+const orbital = all.filter((f) => f.plan?.kind === 'orbital');
 const craftOf = (plan) => plan.craft[0];
 const byId = (xs, id) => xs.find((x) => x.id === id);
 /** A stage's body, engine, tank and joint, by its place in the record (vostok-plan.ts). */
@@ -38,7 +39,7 @@ test('there are flights of both kinds to make plans of', () => {
 for (const f of [...ballistic, ...orbital]) {
   test(`${f.id}: its plan is whole, and is the flight's own`, () => {
     assert.deepEqual(problems(f.plan), []);
-    assert.equal(f.plan.kind, f.orbital ? 'orbital' : 'ballistic');
+    assert.ok(['ballistic', 'orbital'].includes(f.plan.kind));
     for (const e of craftOf(f.plan).engines.filter((e) => e.nozzle))
       assert.ok(e.nozzle.exit.value > 0 && e.nozzle.exit.source, `${e.id}'s nozzle`);
   });
@@ -94,7 +95,7 @@ for (const f of ballistic) {
 }
 
 for (const f of orbital) {
-  const o = f.orbital;
+  const o = recordFrom(f);
   const plan = f.plan;
   const c = craftOf(plan);
   test(`${f.id}: the orbital plan carries the record's figures`, () => {

@@ -32,6 +32,7 @@ import { coastOf } from '../src/sim/orbital.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
+import { recordFrom } from './records.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -238,7 +239,7 @@ for (const f of flown) {
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every input the ascent reads that is not documented, by where it is in the record (the Vostok module's own, which
     // vostokPlan writes the plan from): a new one must be added here
-    const o = f.orbital;
+    const o = recordFrom(f);
     const read = [];
     const walk = (x, at) => {
       // (the checks are not inputs; `sheds` and `centre` are the scene's alone: staged.ts does not read them)

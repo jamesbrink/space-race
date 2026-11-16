@@ -1,7 +1,7 @@
 /**
  * One law of thrust for every engine the simulators fly: `count` alike, each at `throttle` (0 to 1) of its vacuum thrust,
  * less its nozzle's exit area times the air's pressure there. A stage's record gives its vacuum figure (orbital.ts
- * `StageRecord.thrust.vacuum`); a ballistic flight's engine its sea-level one (the plan engine's `thrust.seaLevel`), whose vacuum
+ * an orbital stage's `EngineDef.thrust.vacuum`); a ballistic flight's engine its sea-level one (the plan engine's `thrust.seaLevel`), whose vacuum
  * figure is derived here from it and the exit area (`vacuumOf`), and labelled so. The throttle is on the jet's own thrust;
  * the air's push back on the nozzle's exit is the same whatever the chamber does.
  */

@@ -7,7 +7,7 @@
  * the ship; the flight's mission.md each input's argument).
  */
 
-import type { DescentBody, DescentChute, DescentRecord, OrbitalFlight } from '../../../../src/sim/orbital.ts';
+import type { DescentBody, DescentChute, DescentRecord, VostokRecord } from './vostok-record.ts';
 import type { Curve, Measure } from '../../../../src/types.ts';
 import { BOBKOV, G0, GCTC, SIDDIQI } from './vostok-8k72k.ts';
 import { assumed, derived, doc, estimated } from '../../../../src/measure.ts';
@@ -57,7 +57,7 @@ export const RAREFIED: Measure = estimated(
 );
 
 /** The heat of entry on the ball's face (no surfaces: the ablator's figures have not been read). */
-export const HEATING: NonNullable<OrbitalFlight['heating']> = {
+export const HEATING: NonNullable<VostokRecord['heating']> = {
   noseRadius: doc(1.15, 'the 2.3 m ball (Siddiqi p. 195; RKK Energia’s drawing: Ø2300): a sphere’s face is its own radius'),
   starts: estimated(290, 'not read: the cabin’s temperature at launch taken for the outside; it is not used, there being no surface'),
   // (no surfaces: the ablator's thickness, density, heat of ablation and the shield's temperatures have not been read)

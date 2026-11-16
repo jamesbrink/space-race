@@ -405,7 +405,7 @@ export interface CabinDef {
   }[];
   /**
    * Lamps: lit, in `colour`, while the signal holds. One with no signal shows something not simulated: it stays dark and says so.
-   * On a flight into orbit a lamp can show an event of its record (`event:` and the id of one of `orbital.events`), lit
+   * On a flight into orbit a lamp can show an event of its record (`event:` and the record's id of one: a plan event's `record.id`, or a mark's), lit
    * from its instant as the run on show has it (a burn by hand moves the burn's events) until the instant of `until`'s, if given.
    */
   lamps?: { node: string; name: string; about: string; shows?: Signal | `event:${string}`; until?: string; colour?: number }[];

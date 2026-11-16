@@ -1,5 +1,5 @@
 /**
- * A staged vehicle flown live: the ascent of an orbital flight (`Flight.orbital`) stepped a tick at a time and steered by
+ * A staged vehicle flown live: the ascent of an orbital flight's plan stepped a tick at a time and steered by
  * hand or by guidance, where staged.ts's `ascend` flies it whole with its attitude prescribed by the law. The same flight:
  * the same stages, engines, throttle curves, propellant, drops and drag (staged.ts `stackOf`), the same air (`airAt`),
  * the same gravity and integrator (world/orbit.ts `step`), in the same frame (world/earthframe.ts). What it adds is the body's
@@ -110,7 +110,7 @@ export interface StagedState {
   parted: null | { t: number; r: Vec3; v: Vec3 };
   /** Back on the ground. */
   landed: null | { t: number; speed: number };
-  /** Each stage's jet fired into the stage it stands on while joined (`StageRecord.hot`): seconds at full thrust, s. */
+  /** Each stage's jet fired into the stage it stands on while joined (the joint's `hot`, plan.ts): seconds at full thrust, s. */
   scorch: readonly number[];
   /** The structure against `ascent.limits` (sim/loads.ts): its bending load (q alpha) and its load along the axis. */
   strain: Strain;

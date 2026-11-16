@@ -1,9 +1,8 @@
 /** What the simulator flies from: a ballistic stack as a rigid body, its bodies, motors, thrusters, parachutes and limits. */
 import type { Confidence, Measure } from '../measure.ts';
 
-/** The simulator's own results and orbital record, which a flight names (type-only: nothing here runs the simulator). */
+/** The simulator's own results, which a flight names (type-only: nothing here runs the simulator). */
 export type { Results } from '../sim/fly.ts';
-export type { OrbitalFlight } from '../sim/orbital.ts';
 
 /** What an engine burns, for its fire's look (viewer/flames.ts: each one's colours, light and opacity, with their sources). */
 export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
@@ -389,7 +388,7 @@ export interface ChuteDef {
   /** Which of the simulator's parachutes it is: the plan's parachute of that id, or with `body` that body's parachute's `name`. */
   on: 'drogue' | 'main' | (string & {});
   /**
-   * A body of an orbital flight's descent (`orbital.descent.bodies[].id`, sim/orbital.ts flyDown) whose parachute this is:
+   * A body of an orbital flight's descent (a plan body with its own `aero`, sim/orbital.ts flyDown) whose parachute this is:
    * out when flyDown lets it out, filling over its `fills`, gone when it is let go (`instead`, `replaces`), streaming
    * against the motion through the air of whatever it is made fast to.
    */

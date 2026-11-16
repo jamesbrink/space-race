@@ -2,7 +2,7 @@
  * A stage's apparent-velocity integrator, the one way every simulator keeps it: what an accelerometer along the axis
  * senses of the stage's own thrust (its vacuum thrust over the stack's mass: lit above the air, with nothing else pushing,
  * that is all it reads), summed by the trapezoid from its ignition, the stage cut when the sum reaches its setting
- * (`StageRecord.velocity`, `apparent`). The batch ascent finds the instant before it flies (staged.ts), the live vehicle
+ * (the plan's cut on an engine's `apparent` velocity). The batch ascent finds the instant before it flies (staged.ts), the live vehicle
  * sums a trapezoid every tick (stagedlive.ts), and the guided flier sums ahead over whole seconds (fliers.ts).
  */
 

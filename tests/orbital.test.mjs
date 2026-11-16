@@ -1,5 +1,5 @@
 // The coast of an orbital flight (src/sim/orbital.ts: flyOrbit) against the record. As tests/sim.test.mjs does for a
-// ballistic flight: every check in a flight's `orbital.checks` is flown; one outside its tolerance must be in src/sim/misses.ts with
+// ballistic flight: every check of a flight's coast is flown; one outside its tolerance must be in src/sim/misses.ts with
 // how far out it is and why; the test fails on a miss nobody recorded, on one that has moved past its slack, and on one
 // that has come within tolerance. Nothing in a flight's inputs is adjusted to bring a check in.
 import assert from 'node:assert/strict';
@@ -14,6 +14,7 @@ import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
+import { recordFrom } from './records.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -86,7 +87,7 @@ for (const f of orbiters) {
       }
       for (const [key, value] of Object.entries(x)) walk(value, `${where}.${key}`);
     };
-    const o = f.orbital;
+    const o = recordFrom(f);
     walk(o, 'orbital');
     assert.ok(count > 40, `${count} sourced figures`);
     const times = o.events.map((e) => e.at.value);
@@ -164,7 +165,7 @@ for (const f of orbiters) {
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
-    const o = f.orbital;
+    const o = recordFrom(f);
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'radius'],

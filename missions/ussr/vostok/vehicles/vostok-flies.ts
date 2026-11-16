@@ -1,4 +1,4 @@
-import type { OrbitalFlight } from '../../../../src/sim/orbital.ts';
+import type { VostokRecord } from './vostok-record.ts';
 import type { ChuteDef, Command, Flight, Measure, Part } from '../../../../src/types.ts';
 import { BOOSTERS } from './vostok-8k72k.ts';
 
@@ -159,7 +159,7 @@ export const CHUTES: ChuteDef[] = [
  * (orbital.ts `ascent.sheds`) or, for the hatch and the seat, let go unseen: what comes down with the pilot is not flown
  * as a body. Every instant is the flight's own record's. `crew`: the model of the pilot who hangs under his canopy.
  */
-export function vostokFlies(orbital: OrbitalFlight, crew = 'crew'): NonNullable<Flight['flies']> {
+export function vostokFlies(orbital: VostokRecord, crew = 'crew'): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
   const EJECTION = at('ejection');
   return {

@@ -1,5 +1,5 @@
 /**
- * Vostok 1 as an orbital flight: what `flight.ts` gives as `Flight.orbital` (src/sim/orbital.ts). The record with its
+ * Vostok 1 as an orbital flight: its record (vostok-record.ts `VostokRecord`), which `flight.ts` writes its plan from (vostok-plan.ts). The record with its
  * sources and disagreements is set out in mission.md beside this file; the numbers live here.
  *
  * SI throughout, with the source's own units in each `source`. Times are seconds from liftoff, 09:06:59.7 Moscow time
@@ -7,7 +7,7 @@
  * `flyOrbit` existed (the commit that added this file has no simulator in it).
  */
 
-import type { OrbitalFlight } from '../../../../../src/sim/orbital.ts';
+import type { VostokRecord } from '../../vehicles/vostok-record.ts';
 import {
   CREW,
   ENTRY_AREA,
@@ -60,7 +60,7 @@ const BATURIN =
 /** The command to the braking engine (OKB-1: "the TDU was turned on at 1025:04.2"), which everything about the burn is timed from. */
 const TDU = MSK(10, 25, 4.2);
 
-export const orbital: OrbitalFlight = {
+export const orbital: VostokRecord = {
   liftoffMass: doc(
     287_000,
     `RKK Energia 1946–1996, of this flight: «со стартовой массой 287 т»; Minakov; Siddiqi. ${NK}, p. 9: «Масса заправленного изделия 8К72 с кораблем 3КА №3 составила 291 619 кг»: not flown yet, being 4.9 t more than the blocks' figures add to (mission.md, "The 2011 documents"). Also in print: 290.5 t (Zak), 291.15 t (Brügge), 281.4 t (Astronautix)`,

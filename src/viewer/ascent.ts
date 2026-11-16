@@ -208,7 +208,7 @@ export class Ascent {
   /**
    * How every fire of the flight burns at `t`, in the order stage.ts hangs them: `flies.engine`'s first if it names one
    * (lit from liftoff to the cutoff, as `burn` has it), then each of `flies.fires` between the instants the run has it
-   * burn (`Run.fires`), at its stage's throttle where it is a stage's (`stage:<index>`: StageRecord.throttle). Each
+   * burn (`Run.fires`), at its stage's throttle where it is a stage's (its engine's `throttle.curve`, plan.ts). Each
    * fire's `steeringShare` is its steering chambers' share of its thrust, which the model knows (fires.ts `clusterOf`):
    * a stage throttled to that or less runs on them alone (fires.ts `fireLevel`). `vacuum` as `burn` has it.
    */
