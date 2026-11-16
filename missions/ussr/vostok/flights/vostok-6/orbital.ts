@@ -498,5 +498,18 @@ export const orbital: VostokRecord = {
       confidence: 'documented',
       source: `spacefacts.de. Independent of the landing’s time (the burn is from the cycle’s command). Both ships landed «на два градуса севернее расчетной точки» (${KAMANIN}, 19 June): the record’s own aim missed by some 220 km along the track`,
     },
+    // TASS's orbit announced at 15:00 on 18 June, two days on (T+50.5 h), read as the published orbit is: mean elements over
+    // its ball. Tolerances as every Vostok's apogee check (5 km) and to a tenth of a minute (6 s); set after the physics
+    // agent's probe of these instants had been seen (176.5 by 220.6 km, 88.15 min), which is said here
+    ...(['perigee', 'apogee', 'period'] as const).map((field) => ({
+      id: `tass18.${field}` as const,
+      label: `${field === 'period' ? 'Period' : field === 'perigee' ? 'Perigee' : 'Apogee'} at 15:00 on 18 June, two days on`,
+      value: field === 'perigee' ? 174_000 : field === 'apogee' ? 218_000 : 88.1 * 60,
+      unit: field === 'period' ? 's' : 'm',
+      tolerance: field === 'period' ? 6 : 5_000,
+      confidence: 'documented' as const,
+      source: `${TASS}: «Заря Востока», 19 June 1963, the orbit at 15:00 Moscow time on 18 June: 174 by 218 km, 88.1 min. Its ball not stated: taken as the published orbit’s`,
+      at: MSK(18, 15, 0),
+    })),
   ],
 };
