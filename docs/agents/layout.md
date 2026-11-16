@@ -61,7 +61,7 @@ missions/                             the record: one folder per nation, program
       orbital.ts  mission.md          an orbital flight's record as data, which its plan is written from, and the mission's record and plan in words
       weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
-      pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3: on 11 August 1962)
+      pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
       model/<name>.lod.json           its own level-of-detail thresholds, measured (tools/lod-thresholds.mjs); a site's dated models have theirs too
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)

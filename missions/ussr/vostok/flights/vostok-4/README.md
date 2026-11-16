@@ -15,14 +15,46 @@ minutes after Nikolayev. Backup: Vladimir Komarov; reserve for both ships: Boris
 | Spacecraft (3KA No. 6) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with the two television cameras as the Seliger camera was photographed, and a hand-held film camera. **Nothing was found in which No. 6 differed from No. 5 that can be drawn**, so the two ships' models are the same geometry |
 | Launch vehicle (8K72K No. E103-22) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's, or from the one that had left the day before |
 | Pilot in the seat | built: the SK-1 figure ([sk-1.md](../../crew/sk-1.md)), "СССР" on the helmet. His height was not found, so the figure is the one built to Gagarin's |
-| Launch site (Site 1 as it stood on 12 August 1962, a day after a launch) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)) |
-| Crew to be walked as | not built |
-| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. Nothing was read of the weather at Tyuratam on the 12th beyond the heat (35 °C in Kamanin's account of the two days) |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 as it stood on 12 August 1962, a day after a launch) | **built**: [model/pad.py](model/pad.py), the site's modules at that date (the same as the day before: the pad.glb is Vostok 3's to the byte); the morning in [pad.ts](pad.ts). **No time of this morning was found**: the bus two hours before liftoff as the day before, the erector, trusses and cable mast on Vostok 1's intervals, all estimated |
+| Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Popovich's height not found) |
+| The day's weather as data | **written**: [weather.ts](weather.ts), clear, from the stations either side on the railway (no forecast for the 12th was read); ERA5's air over the pad ([aloft.ts](aloft.ts)) |
+| The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md): the ascent on the type's instants (none of this flight's was found), the orbit Siddiqi gives with TASS's period, the burn (its instant derived from the landing), the descent; and how near the two ships came, flown from both records together (tests/group.test.mjs). Fly is lit: the record as flown by default, everything a hand can do on Vostok 1 |
+| The cabin | the plain stand-in board of Vostoks 2 to 6 ([vostok-3ka.md](../../vehicles/vostok-3ka.md)): no instrument reads the flight |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+So the flight has all three places: the Gallery; the Launch site on the morning of 12 August 1962; and
+Fly, on the shared flight deck (src/deck/orbitdeck.ts), with nothing in its code that is this flight's.
+
+## The morning at the pad
+
+Kamanin wrote nothing of this morning but that it «мало чем отличались» from the day before, everyone
+working to a tighter clock and more tired (14 August); the pad had been cleared after Vostok 3 and
+the second rocket brought out through the night (Siddiqi, p. 357). So **every time of the morning is
+estimated**: the bus two hours before liftoff, as Vostok 3's, and the erector, the trusses and the
+cable mast at Vostok 1's intervals before its liftoff. That a bus brought him is the film's
+(«Звёздные братья»). What stands is the day before's: the launching structure as in 1961, the bus in
+April 1961's place, no fillers. Not built: the people, Korolev's post and the room by the bunker
+(issue #21). The weather: [weather.ts](weather.ts), clear, the wind from the east-north-east at some
+6 m/s, 30 to 34 °C at the stations.
+
+## The flight as flown
+
+[mission.md](mission.md) has every input's argument and each check against the run, and the misses
+are in src/sim/misses.ts. In short: the type's ascent falls short of an orbit as Vostoks 1 to 3's do;
+the published orbit flown from where it left the ship goes round three days and comes down across the
+track within a kilometre of the record's landing but **1,070 km long**, the period carried round 48
+times (a second a revolution is some 350 km); the pilot's landing time holds (not independent), the
+module comes down six minutes before him where the record has twelve. Flown together, the two
+records' orbits bring the ships no nearer than 234 km where TASS has 6.5: the records cannot hold
+kilometres over a day (mission.md, "Beside Vostok 3").
+
+## What is simplified
+
+- Every instant of the ascent, its integrator setting, the aiming azimuth, the burn's minute and its
+  length are not this flight's (mission.md); so is every time of the morning at the pad.
+- The launching structure is 1961's; Korolev's post, the room by the bunker and the morning's
+  people are not built (issue #21).
+- The pilot is the figure built to Gagarin's height in Gagarin's suit; the reserve canopy is not
+  drawn, Popovich having locked it.
 
 ## What happened
 

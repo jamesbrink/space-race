@@ -1,10 +1,14 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
-import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, vostokMotors } from '../../vehicles/vostok-stack.ts';
+import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
 import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
-
-/** Moscow time on a day of August 1962, as seconds from liftoff at 11:02:33 on the 12th. */
-const MSK = (day: number, h: number, m: number, s = 0) => ((day - 12) * 24 + h - 11) * 3600 + (m - 2) * 60 + (s - 33);
+import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
+import { vostokPlan } from '../../vehicles/vostok-plan.ts';
+import { MSK, orbital } from './orbital.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const parts: PartWords[] = [
   {
@@ -385,14 +389,59 @@ const launcherParts: PartWords[] = [
   ),
 ];
 
-// The vehicle alone, in the gallery: Site 1 as it stood that day is not built for this flight yet.
-const vehicle = vostokStack({
-  flight: 'vostok-4',
-  parts: vostokParts('vostok-4', [...launcherParts, ...parts]),
-  // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). When he went aboard is
-  // not in this flight's data and there is no launch site to board it at yet: the span is a placeholder (estimated).
-  seats: [vostokSeat([-3 * 3600, -3600])],
-  cabin: vostokCabin(),
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since he could do none of them.
+const COMMANDS = vostokCommands({
+  parted: 'the sequence, ten seconds after the burn (not recorded)',
+  reserve: null,
+  pilot: { they: 'he', theirs: 'his' },
+});
+
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
+const vehicle = site1Vehicle(
+  vostokStack({
+    flight: 'vostok-4',
+    parts: commanded(vostokParts('vostok-4', [...launcherParts, ...parts]), COMMANDS),
+    // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
+    // through hatch No. 1 from 09:12, ten minutes after the bus, until 09:39, Vostok 1's interval from its hatch's closing to its
+    // liftoff put before this one: neither is recorded for this flight (estimated).
+    seats: [vostokSeat([MSK(12, 9, 12, 33), MSK(12, 9, 39, 33)])],
+    cabin: vostokCabin(),
+  }),
+  BASE,
+);
+
+/** Popovich, suited, on his way to the lift (crew/sk-1.parts.ts): the SK-1 as Gagarin's, the man in it not measured. */
+const crew = sk1Crew({
+  url: 'models/ussr/vostok/vostok-4/crew.glb',
+  scale: 'Pavel R. Popovich · built 1.65 m, 1.72 m suited (his height not found) · to scale',
+  helmet: {
+    summary: 'White, part of the suit, lettered «СССР».',
+    detail:
+      'The helmet does not come off: it is one piece with the suit, and the head turns inside it. Its visor swings up over ' +
+      'the crown, as he wore it to the pad. The red "СССР" on the brow is the film of the flight’s («Звёздные братья», 1962), ' +
+      'on both men’s helmets.',
+    facts: [
+      ['Shell', 'fixed to the suit'],
+      ['Visor', 'double, closes by itself on loss of pressure'],
+      ['Lettering', '"СССР", red (the film of the flight)'],
+    ],
+  },
+  suit: {
+    kind: { value: 'SK-1', confidence: 'documented', source: 'Abramov and Skoog, Russian Spacesuits, pp. 41 to 44' },
+    wearer: { name: 'Popovich', they: 'he', their: 'his' },
+    gloves: {
+      value: 'cover',
+      confidence: 'estimated',
+      source:
+        'as built for Gagarin: the cover’s orange backs. Their colour on this morning is in nothing read, and no photograph of it was looked at for it. Probably wrong: the SK-1s kept since have black leather gloves (crew/sk-1.md)',
+    },
+    neck: { value: 'grey', confidence: 'estimated', source: 'as Gagarin’s (crew/sk-1.md): not checked for this morning' },
+    mirror: {
+      value: true,
+      confidence: 'assumed',
+      source: 'Gagarin’s, documented by the Smithsonian’s label, taken for his: nothing read says whether his sleeve had one',
+    },
+  },
 });
 
 export const flight: Flight = {
@@ -409,6 +458,10 @@ export const flight: Flight = {
   launch: '1962-08-12T08:02:33Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens as the bus has stopped on the apron (about 09:02: not recorded, two hours before liftoff as the day
+  // before): the morning's people are not built, so the bus is what there is to see. Opened at liftoff, the deck is empty
+  opens: { at: MSK(12, 9, 2, 33), model: 'pad', view: 'bus' },
+  weather: WEATHER,
   crew: ['Pavel R. Popovich'],
   summary:
     'The second ship of the first group flight. Forty-eight orbits from the pad Vostok 3 had left a day before, into an orbit ' +
@@ -571,6 +624,16 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.95° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    ...SITE1_SPECS,
+    ...SK1_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Standing height, helmet and boots',
+      value: 1.725,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the figure’s, built to Gagarin’s 165 cm with a 2.6 cm heel and the helmet over the crown as his: Popovich’s own height was not found',
+    },
   ],
   motors: vostokMotors({
     strapOns: {
@@ -597,5 +660,17 @@ export const flight: Flight = {
       note: 'The store was worth 2 to 3 hours of orienting (Kamanin, 26 July 1962); worked by hand in the Earth’s shadow (Popovich’s report to the State Commission, as Kamanin wrote it down)',
     },
   }),
-  models: [vehicle],
+  // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the entry, each with its
+  // source (orbital.ts; mission.md)
+  plan: vostokPlan(orbital),
+  flownNote:
+    'The ascent is the type’s, flown on Vostok 1’s instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The braking burn’s instant is derived from the pilot’s landing (mission.md): its minute was not found.',
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record above (vehicles/vostok-flies.ts)
+  flies: vostokFlies(orbital),
+  models: [vehicle, pad, crew],
+  // the place round the pad as modelled for August 1961 (places/tyuratam/site1/model/1961-08.py): nothing later has been
+  // looked for, and what was new by August 1962 (Korolev's post, the room by the bunker) is not built
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };
