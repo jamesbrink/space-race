@@ -6,6 +6,8 @@ import {
   formatLineup,
   galleryAt,
   galleryFlight,
+  keep,
+  kept,
   lacks,
   PLACE_NAME,
   PLACES,
@@ -187,6 +189,8 @@ export const crumbs = (flight: Flight, here: Place): string =>
 
 /** (View is the control block, which on a phone lives in the sheet: fold.ts; History is there only for a flight the history has a story for) */
 const TABS = ['View', 'Parts', 'Specs', 'Motors', 'History'] as const;
+/** The tab chosen by hand, kept with the history's entry (address.ts `keep`): Back to the gallery opens it again. */
+const TAB_KEPT = 'galleryTab';
 /** What the history tells, as the gallery is given it. */
 const HISTORY = { milestones: MILESTONES, stories: STORIES, people: PEOPLE, programmes: PROGRAMMES };
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
@@ -349,6 +353,9 @@ export class Gallery {
       this.wanted = null;
     }
     if (this.open && what !== undefined) this.go(what, true);
+    // the tab that was open when this entry of the history was left (the History tab, gone from into the Lineup and come Back from)
+    const tab = kept(TAB_KEPT);
+    if (this.open && this.ready && tab && this.root.querySelector(`[data-tab="${tab}"]`)) this.tab(tab);
   }
 
   /** What is on show, as an address names it: the seat sat in, else the part chosen, else what stands there, '' for the whole vehicle. */
@@ -655,6 +662,7 @@ export class Gallery {
         const same = b.getAttribute('aria-selected') === 'true';
         tuckPanel(false);
         this.tab(b.dataset.tab!);
+        keep(TAB_KEPT, b.dataset.tab!);
         // (on a phone the open tab pressed again puts the sheet away, as its handle does)
         if (narrow()) this.sheet?.set(same && panel.classList.contains('open') ? 0 : this.sheet.stop || 1);
         else panel.classList.add('open');
@@ -713,6 +721,7 @@ export class Gallery {
       const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
       const next = tabs[(at + (step ? 1 : tabs.length - 1)) % tabs.length]!;
       this.tab(next.dataset.tab!);
+      keep(TAB_KEPT, next.dataset.tab!);
       next.focus();
     });
     const title = this.q('.title');

@@ -373,13 +373,29 @@ const bar = (hash: string): string => hash || location.pathname + location.searc
  */
 export function write(hash: string): void {
   if (hash === where()) return;
-  if (samePlace(where(), hash)) history.replaceState(null, '', bar(hash));
+  if (samePlace(where(), hash)) history.replaceState(history.state, '', bar(hash));
   else history.pushState(null, '', bar(hash));
 }
 
 /** Rewrite the entry the page is on, whatever it names: an address settled into its own form (`#pad`, a flight with no place), never a step of the visitor's. */
 export function settle(hash: string): void {
-  if (hash !== where()) history.replaceState(null, '', bar(hash));
+  if (hash !== where()) history.replaceState(history.state, '', bar(hash));
+}
+
+/**
+ * Keep something of how a place was left with the entry the page is on (the gallery's open tab), so that coming Back to
+ * it finds it as it was. The address is not changed. Rewriting the entry (`write` within a place, `settle`) keeps what
+ * is kept; a new entry starts with nothing.
+ */
+export function keep(name: string, value: string | null): void {
+  const state = { ...((history.state as Record<string, unknown> | null) ?? {}), [name]: value };
+  history.replaceState(state, '');
+}
+
+/** What was kept with the entry the page is on (`keep`), or null. */
+export function kept(name: string): string | null {
+  const value = (history.state as Record<string, unknown> | null)?.[name];
+  return typeof value === 'string' ? value : null;
 }
 
 /** `then` is called when the address is changed under the page: Back, Forward, or one typed or followed. (Not for `write` or `settle`.) */
