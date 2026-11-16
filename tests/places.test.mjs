@@ -98,3 +98,13 @@ test('Tyuratam: what stands round Site 1 stands on the same land round another p
   assert.equal(built.objects.length, 1);
   assert.deepEqual(built.objects[0].position.toArray(), [at.x, 0, at.z]);
 });
+
+test('the bearings: Complex 14’s hatch on its documented pitch line less 45 degrees; Complex 19’s line square to its stand', () => {
+  // the pitch line on 105 degrees (Results of the First United States Manned Orbital Space Flight, p. 46), the hatch 45 round (estimated)
+  assert.equal((LC14.bearingX.value + 45) % 180, 105);
+  assert.equal(LC14.bearingX.confidence, 'estimated'); // 60 or 240: the documents do not settle which
+  // the flight azimuth, 72, and Gemini IV's roll, 12.9; the stand on 175/355 (OpenStreetMap), so the line on 85 within a degree
+  assert.ok(Math.abs(LC19.bearingX.value - (72 + 12.9)) < 1e-9);
+  assert.ok(Math.abs(((LC19.bearingX.value - 175 + 360) % 180) - 90) < 1);
+  assert.equal(LC19.bearingX.confidence, 'estimated');
+});
