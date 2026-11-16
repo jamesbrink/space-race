@@ -7,6 +7,9 @@ import type { FloraSpec } from '../../../../src/viewer/flora.ts';
 import type { LandSpec, Palette } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
 import type { GroundSpec } from '../../../../src/viewer/scenery/ground.ts';
+import type { SiteDef } from '../../../../src/types.ts';
+import { LC14_GROUND } from './lc-14.ground.ts';
+import { LC14 } from './lc-14.ts';
 import { LC5 } from './lc-5.ts';
 import { buildScenery, clearingsAt, pavedAt, shoreAt, shoresAt } from './scenery.ts';
 
@@ -54,6 +57,75 @@ const STRIPS: [number, number, number, number, number][] = [
   [-40, -290, -95, -360, 26],
   [-95, -360, -150, -410, 26],
 ];
+
+/**
+ * A pad's own ground, where that pad is the origin: what its own model stands on and what is laid round it, which the
+ * Cape's shared ground (the shore, the scrub, Complex 5/6's clearing) knows nothing of. Everything is in the PAD'S OWN
+ * FRAME, IN FEET, as its Blender scripts have it (x along the frame's +X, y along Blender's +Y, which is the viewer's
+ * -Z), but `clear`, metres. Each pad's is a file beside its SiteDef (lc-14.ground.ts) and one line in `OWN`. Seen from
+ * another pad a complex keeps what its COMPLEXES entry gives it (scenery.ts `clear`, `paved`): this is read only for
+ * the origin, so Complex 5's ground is not touched by it.
+ */
+export interface PadGround {
+  /** How far round the origin the land is a mown clearing, and level: metres (the scrub begins some 75 m beyond). */
+  clear: number;
+  /** More clearings off the middle, the same way: [x, y, radius], feet. */
+  cleared?: [x: number, y: number, r: number][];
+  /** Ground the models stand on, where nothing grows: discs [x, y, radius], feet. */
+  kept: [x: number, y: number, r: number][];
+  /** And strips kept the same way: [x0, y0, x1, y1, half-width], feet. */
+  strips: [x0: number, y0: number, x1: number, y1: number, half: number][];
+  /** Made ways the land is painted with: [x0, y0, x1, y1, half-width, kind], feet; kind 0 ballast, 1 a shell road. */
+  ways: [x0: number, y0: number, x1: number, y1: number, half: number, kind: number][];
+  /**
+   * Where the land is let down for something built below it (a pit, a flume, a basin), whose own concrete lines it:
+   * rectangles square to the frame, [x0, y0, x1, y1, depth], feet. The land is down by the depth and a little more
+   * inside, and comes back up over 0.8 m outside the edge, under the model's wall or coping.
+   */
+  sunk: [x0: number, y0: number, x1: number, y1: number, depth: number][];
+}
+
+/** Each pad's own ground, by its SiteDef. */
+const OWN = new Map<SiteDef, PadGround>([[LC14, LC14_GROUND]]);
+
+/** The origin pad's own ground laid on `compass` (metres, x east and z south of it), or null where it has none. */
+function ownGround(compass: Compass) {
+  const own = OWN.get(compass.origin);
+  if (!own) return null;
+  const turn = compass.frame(compass.origin).turn;
+  const COS = Math.cos(turn);
+  const SIN = Math.sin(turn);
+  const site = (x: number, y: number): [number, number] => [x * FT * COS + y * FT * SIN, x * FT * SIN - y * FT * COS];
+  return {
+    COS,
+    SIN,
+    clear: [[0, 0, own.clear], ...(own.cleared ?? []).map(([x, y, r]) => [...site(x, y), r * FT])] as [number, number, number][],
+    kept: own.kept.map(([x, y, r]) => [...site(x, y), r * FT]) as [number, number, number][],
+    strips: own.strips.map(([x0, y0, x1, y1, half]) => [...site(x0, y0), ...site(x1, y1), half * FT]) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+    ][],
+    ways: own.ways.map(([x0, y0, x1, y1, half, kind]) => [...site(x0, y0), ...site(x1, y1), half * FT, kind]) as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ][],
+    // (in the pad's frame, metres: middle x, middle y, half x, half y, how far down)
+    sunk: own.sunk.map(([x0, y0, x1, y1, depth]) => [
+      ((x0 + x1) / 2) * FT,
+      ((y0 + y1) / 2) * FT,
+      (Math.abs(x1 - x0) / 2) * FT,
+      (Math.abs(y1 - y0) / 2) * FT,
+      depth * FT + 0.25,
+    ]),
+  };
+}
 
 const FAR = 11000; // how far the ground is drawn: past Complex 34, 9.2 km up the coast
 
@@ -340,6 +412,7 @@ function aroundPad5(compass: Compass) {
 function waysOn(compass: Compass): [number, number, number, number, number, number][] {
   const { bearing, site } = aroundPad5(compass);
   return [
+    ...(ownGround(compass)?.ways ?? []),
     [...bearing(RAIL + 180, 95), ...bearing(RAIL, 700), 4.2, 0], // the rail line's ballast, on past pad 6 to Complex 26's two pads
     [...site(166, 0), ...site(404, 0), 4.0, 1], // the stub road from the foot of the apron's ramp
     // the perimeter road just inside the fence, all round: TM X-53107 Figure 7-6 (the MR site plan), which matches
@@ -374,8 +447,11 @@ function landSpec(compass: Compass, date: string): LandSpec {
   const shift = moved ? `p -= vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)});` : '';
   const fromPad5 = moved ? `(p - vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)}))` : 'p';
   const { COAST, RIVER, RIVER_WEST, INDIAN, HARBOR_WEST, HARBOR_EAST, HARBOUR } = shoresAt(compass);
-  const CLEARINGS = clearingsAt(compass, date);
-  const PAVED = pavedAt(compass, date);
+  const own = ownGround(compass);
+  const CLEARINGS = [...clearingsAt(compass, date), ...(own?.clear ?? [])];
+  const PAVED = [...pavedAt(compass, date), ...(own?.kept ?? [])];
+  const OWN_STRIPS = own?.strips ?? [];
+  const NSTRIPS = STRIPS.length + OWN_STRIPS.length;
   /** The neighbouring pads, each in its own clearing. */
   const NEAR = CLEARINGS.filter(([x, z]) => Math.hypot(x, z) < 4000);
 
@@ -394,8 +470,8 @@ function landSpec(compass: Compass, date: string): LandSpec {
     uniform vec3 uClear[${NEAR.length}];    // the neighbouring pads: (x, z, radius of the pad itself)
     uniform vec3 uSites[${CLEARINGS.length}];   // every complex placed, and the lighthouse: the ground is flat round each
     uniform vec3 uKept[${KEPT.length + PAVED.length}];     // ground the complex's models stand on: (x, z, radius), metres
-    uniform vec4 uStrips[${STRIPS.length}];
-    uniform float uStripWidth[${STRIPS.length}];
+    uniform vec4 uStrips[${NSTRIPS}];
+    uniform float uStripWidth[${NSTRIPS}];
     float coastAt(float north) {
       float x = uCoast[0].y;
       for (int i = 0; i < ${COAST.length - 1}; i++)
@@ -494,7 +570,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
       float d = max(abs(pad.x), abs(pad.y)) - 44.0;
       d = min(d, max(abs(pad.x), abs(pad.y - 158.5)) - 40.0);
       for (int i = 0; i < ${KEPT.length + PAVED.length}; i++) d = min(d, length(p - uKept[i].xy) - uKept[i].z);
-      for (int i = 0; i < ${STRIPS.length}; i++) d = min(d, segment(p, uStrips[i]) - uStripWidth[i]);
+      for (int i = 0; i < ${NSTRIPS}; i++) d = min(d, segment(p, uStrips[i]) - uStripWidth[i]);
       return d;
     }`;
 
@@ -589,7 +665,15 @@ function landSpec(compass: Compass, date: string): LandSpec {
     h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smoothstep(-8, 70, r);
     let d = Math.min(lc56At(x, z) - 25, wayAt(x, z) - 6);
     for (const [cx, cz, cr] of CLEARINGS) d = Math.min(d, Math.hypot(x - cx, z - cz) - cr - 85);
-    return Math.min(h * smoothstep(0, 40, d), 0.05) - BED_DOWN * (1 - smoothstep(0.3, 2.8, trackAt(x, z)));
+    let out = Math.min(h * smoothstep(0, 40, d), 0.05) - BED_DOWN * (1 - smoothstep(0.3, 2.8, trackAt(x, z)));
+    // where the origin pad's own model is built below the ground (its `sunk`: a pit, a flume), in its frame
+    if (own)
+      for (const [cx, cy, hx, hy, down] of own.sunk) {
+        const qx = Math.abs(x * own.COS + z * own.SIN - cx) - hx,
+          qy = Math.abs(x * own.SIN - z * own.COS - cy) - hy;
+        out -= down * (1 - smoothstep(0, 0.8, Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0)));
+      }
+    return out;
   };
 
   const RELIEF = /* glsl */ `
@@ -620,7 +704,14 @@ function landSpec(compass: Compass, date: string): LandSpec {
       float kind;
       float d = min(lc56(p) - 25.0, way(p, kind) - 6.0);
       for (int i = 0; i < ${CLEARINGS.length}; i++) d = min(d, length(p - uSites[i].xy) - uSites[i].z - 85.0);
-      return min(h * smoothstep(0.0, 40.0, d), 0.05) - ${BED_DOWN.toFixed(2)} * (1.0 - smoothstep(0.3, 2.8, track(p)));
+      float land = min(h * smoothstep(0.0, 40.0, d), 0.05) - ${BED_DOWN.toFixed(2)} * (1.0 - smoothstep(0.3, 2.8, track(p)));
+      ${(own?.sunk ?? [])
+        .map(
+          ([cx, cy, hx, hy, down]) =>
+            `{ vec2 q = abs(vec2(p.x * ${own!.COS.toFixed(6)} + p.y * ${own!.SIN.toFixed(6)}, p.x * ${own!.SIN.toFixed(6)} - p.y * ${own!.COS.toFixed(6)}) - vec2(${cx.toFixed(3)}, ${cy.toFixed(3)})) - vec2(${hx.toFixed(3)}, ${hy.toFixed(3)}); land -= ${down.toFixed(3)} * (1.0 - smoothstep(0.0, 0.8, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0))); }`,
+        )
+        .join('\n      ')}
+      return land;
     }`;
 
   /**
@@ -734,8 +825,13 @@ function landSpec(compass: Compass, date: string): LandSpec {
       uKept: {
         value: [...KEPT.map(([x, y, r]) => new THREE.Vector3(...site(x, y), r * FT)), ...PAVED.map((k) => new THREE.Vector3(...k))],
       },
-      uStrips: { value: STRIPS.map(([x0, y0, x1, y1]) => new THREE.Vector4(...site(x0, y0), ...site(x1, y1))) },
-      uStripWidth: { value: STRIPS.map((s) => s[4] * FT) },
+      uStrips: {
+        value: [
+          ...STRIPS.map(([x0, y0, x1, y1]) => new THREE.Vector4(...site(x0, y0), ...site(x1, y1))),
+          ...OWN_STRIPS.map(([x0, z0, x1, z1]) => new THREE.Vector4(x0, z0, x1, z1)),
+        ],
+      },
+      uStripWidth: { value: [...STRIPS.map((s) => s[4] * FT), ...OWN_STRIPS.map((s) => s[4])] },
     },
     palette: PALETTE,
   };
