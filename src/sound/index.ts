@@ -41,6 +41,7 @@ import {
   type Moment,
   mix,
   score,
+  dropCue,
   type Source,
   stepShots,
   treadOf,
@@ -466,7 +467,10 @@ export class Sound {
       const burn = k >= 0 ? this.live?.fires?.[k] : undefined;
       const lit = burn && Number.isFinite(burn.from) && burn.to > burn.from ? burn : null;
       return score({
-        drops: this.ascent.drops.map((d, i) => ({ at: this.live?.dropped[i] ?? d.at, on: this.flight.flies!.drops[i]?.on })),
+        drops: this.ascent.drops.map((d, i) => ({
+          at: this.live?.dropped[i] ?? d.at,
+          cue: dropCue(this.flight.plan!, this.flight.flies!.drops[i]?.on),
+        })),
         retro:
           lit && braking
             ? {
@@ -481,7 +485,7 @@ export class Sound {
     }
     const b = ballisticOf(plan);
     const lit = this.live ? this.retroAt : b.retroAt;
-    const drops = this.ascent.drops.map((d, i) => ({ at: d.at, on: this.flight.flies!.drops[i]?.on }));
+    const drops = this.ascent.drops.map((d, i) => ({ at: d.at, cue: dropCue(this.flight.plan!, this.flight.flies!.drops[i]?.on) }));
     return score({
       drops,
       retro:

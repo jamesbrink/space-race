@@ -30,6 +30,7 @@ import {
   mix,
   NEAR,
   score,
+  dropCue,
   soundSpeed,
   spl,
   stateAt,
@@ -332,7 +333,7 @@ for (const each of BALLISTIC) {
   });
   test(`${name}: the events are the record's own, in order, and what has not happened is not among them`, () => {
     const plan = {
-      drops: each.flies.drops.map((d) => ({ at: d.at, on: d.on })),
+      drops: each.flies.drops.map((d) => ({ at: d.at, cue: dropCue(each.plan, d.on) })),
       retro: { fires, burn: B.motors[0].burn.value, thrust: B.motors[0].thrust.vacuum.value },
       out: { drogue: results.drogueAt, main: results.mainAt },
       duration: results.duration,

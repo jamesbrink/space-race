@@ -126,7 +126,7 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
     const tally = new Tally();
     let state = av.start();
     while (!state.landing && state.t < 600) {
-      const next = av.tick(state, (x) => blend(auto(x), { events: ['abort'] }));
+      const next = av.tick(state, (x) => blend(auto(x), { events: [b.abort.id] }));
       if (next.ticks === state.ticks) break;
       state = next;
       tally.note(av.sample(state), state, av);

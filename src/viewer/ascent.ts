@@ -5,6 +5,7 @@ import { airAt, blowOf } from '../sim/air.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { coastEvents, coastOf } from '../sim/orbital.ts';
+import { downOf } from '../sim/descent.ts';
 import { type EventDef, eventOf, type FlightPlan } from '../sim/plan.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples, sequenceOf, stagesOf } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
@@ -170,7 +171,9 @@ export class Ascent {
         duration: results.duration,
         cutoff: roles.cutoff,
         // (what a parachute lets go leaves when this run has the parachute out, which is not to the second when the record does)
-        dropped: this.flight.flies!.drops.map((d) => (d.on === 'drogue' ? out.drogue : d.on === 'main' ? out.main : d.at)),
+        dropped: this.flight.flies!.drops.map((d) =>
+          d.on && d.on === roles.drogueOut?.id ? out.drogue : d.on && d.on === roles.mainOut?.id ? out.main : d.at,
+        ),
         live: false,
         out,
       };
@@ -249,7 +252,12 @@ export class Ascent {
   /** What leaves the vehicle on the way, in order (`Flight.flies.drops`), each at the time it left on the run on show. */
   get drops(): readonly { at: number; nodes: string[]; under?: 'drogue' | 'main' }[] {
     const { dropped } = this.flown();
-    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes, under: d.under }));
+    // (what a drop leaves hanging under: the plan's parachute it names, by which of the two it is)
+    const plan = this.flight.plan;
+    const roles = plan?.kind === 'ballistic' ? ballisticOf(plan) : null;
+    const under = (id: string | undefined) =>
+      !roles || !id ? undefined : id === roles.main.id ? 'main' : id === roles.drogue.id ? 'drogue' : undefined;
+    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes, under: under(d.under) }));
   }
 
   /** The parachutes this flight has to draw (`Flight.flies.chutes`). */
@@ -266,10 +274,11 @@ export class Ascent {
     if (!def || !this.flying(t)) return null;
     if (def.body) return this.descentChute(def, t);
     const run = this.flown();
-    const on = def.on as 'drogue' | 'main';
+    const roles = ballisticOf(this.flight.plan!);
+    // (which of the run's two parachutes it is: the plan's it names)
+    const on = def.on === roles.main.id ? 'main' : 'drogue';
     const at = run.out[on];
     if (!(t >= at)) return null;
-    const roles = ballisticOf(this.flight.plan!);
     const end = run.samples[run.samples.length - 1]!;
     const landed = run.live && Number.isFinite(run.duration);
     const moment: ChuteMoment = {
@@ -942,7 +951,9 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const samples = recordSamples(plan, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
-  const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
+  // (what is let go at the pilot's ejection leaves at the run's own)
+  const ejection = downOf(plan)?.ejection;
+  const dropped = flight.flies!.drops.map((d) => (d.on && d.on === ejection && Number.isFinite(ejected) ? ejected : d.at));
   const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
   const mass = plan.record!.orbit!.mass.value;
   for (const def of plan.craft[0]!.sheds ?? []) {

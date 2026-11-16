@@ -2,6 +2,7 @@ import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
+import type { EventDef } from '../sim/plan.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
@@ -46,15 +47,21 @@ const STEPS: Record<Step, string> = {
   main: 'Main parachute',
   hatch: 'Blow the hatch',
 };
-/** The plan's event each step sets off (its plan's), asked of the vehicle as a hand's command. */
-const EVENTS: Partial<Record<Step, string>> = {
-  tower: 'tower',
-  separate: 'separation',
-  retro: 'retro',
-  retropack: 'retropack',
-  drogue: 'drogue',
-  main: 'main',
-};
+/** The plan's event a step sets off, found by what it does (fly.ts `ballisticOf`), asked of the vehicle as a hand's command. */
+const eventOf = (b: Ballistic, step: Step): EventDef | undefined =>
+  step === 'tower'
+    ? b.towerOff
+    : step === 'separate'
+      ? b.parting
+      : step === 'retro'
+        ? b.retro
+        : step === 'retropack'
+          ? b.packOff
+          : step === 'drogue'
+            ? b.drogueOut
+            : step === 'main'
+              ? b.mainOut
+              : undefined;
 /** What the flight is doing (fly.ts `Doing`), in the deck's words: a parachute by the plan's own name for it. */
 const doingWords = (s: Doing, chutes: readonly { id: string; label: string }[]): string =>
   s.landed
@@ -489,8 +496,11 @@ export class Cockpit extends Deck {
       if (!s.ignited || s.cutoff) return;
       if (this.lever) this.setLever(0);
       else this.hand.throttle = 0;
-    } else if (EVENTS[what as Step]) this.asks(EVENTS[what as Step]!);
-    else return;
+    } else {
+      const event = eventOf(this.roles, what as Step);
+      if (!event) return;
+      this.asks(event.id);
+    }
     if (!this.clock.running && s.ignited) this.clock.play(true);
   }
 
@@ -522,7 +532,8 @@ export class Cockpit extends Deck {
     if (!hatch || !s || !this.can('hatch')) return;
     const afloat = Boolean(s.landing);
     this.hatchAt = afloat ? Math.max(this.clock.t, s.landing!.t) : s.t;
-    const i = this.flight.flies!.drops.findIndex((d) => d.on === 'hatch');
+    // (the drop that is the hatch: the one of its node)
+    const i = this.flight.flies!.drops.findIndex((d) => d.nodes.includes(hatch.node));
     if (i >= 0) this.run.dropped[i] = this.hatchAt;
     if (afloat) this.run.sinks = { at: this.hatchAt, under: hatch.under.value };
     this.host.say?.(hatch.label, afloat ? hatch.afloat : hatch.aloft);
@@ -638,7 +649,10 @@ export class Cockpit extends Deck {
         if (this.lever) this.setLever(0);
         else this.hand.throttle = 0;
       } else if (step === 'hatch') return void this.blow();
-      else if (EVENTS[step]) this.asks(EVENTS[step]!);
+      else {
+        const event = eventOf(this.roles, step);
+        if (event) this.asks(event.id);
+      }
       if (!this.clock.running && step !== 'ignite') this.clock.play(true);
     }
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));

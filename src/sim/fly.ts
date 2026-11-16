@@ -625,9 +625,14 @@ export interface Ballistic {
   towerJoint: JointDef | undefined;
   pack: string | undefined;
   packJoint: JointDef | undefined;
-  /** The parachutes: the main takes the drogue's place (`instead`); the height each comes out at coming down, m. */
+  /** The events the record's sequence lets the tower and the pack go at (the first automatic event doing each). */
+  towerOff: EventDef | undefined;
+  packOff: EventDef | undefined;
+  /** The parachutes: the main takes the drogue's place (`instead`); the event that puts each out; the height each comes out at coming down, m. */
   drogue: ChuteDef;
   main: ChuteDef;
+  drogueOut: EventDef | undefined;
+  mainOut: EventDef | undefined;
   drogueHeight: number;
   mainHeight: number;
   /** What a torn canopy keeps of its drag area, where the flight says. */
@@ -675,11 +680,13 @@ function findRoles(plan: FlightPlan): Ballistic {
   const pack = motors[0]?.body;
   const main = craft.chutes.find((ch) => ch.instead?.length)!;
   const drogue = craft.chutes.find((ch) => ch !== main)!;
+  const deploying = (ch: ChuteDef) => plan.events.find((e) => e.do.some((a) => 'deploy' in a && a.deploy === ch.id));
   const heightOf = (ch: ChuteDef): number => {
-    const ev = plan.events.find((e) => e.do.some((a) => 'deploy' in a && a.deploy === ch.id));
-    for (const w of ev?.when ?? []) if ('height' in w) return w.height;
+    for (const w of deploying(ch)?.when ?? []) if ('height' in w) return w.height;
     return Number.NEGATIVE_INFINITY;
   };
+  const parts = (joint: JointDef | undefined) =>
+    joint && plan.events.find((ev) => ev.automatic && ev.do.some((a) => 'separate' in a && a.separate === joint.id));
   return {
     craft,
     booster,
@@ -705,8 +712,12 @@ function findRoles(plan: FlightPlan): Ballistic {
     towerJoint: letting(tower),
     pack,
     packJoint: letting(pack),
+    towerOff: parts(letting(tower)),
+    packOff: parts(letting(pack)),
     drogue,
     main,
+    drogueOut: deploying(drogue),
+    mainOut: deploying(main),
     drogueHeight: heightOf(drogue),
     mainHeight: heightOf(main),
     torn: plan.record?.torn,

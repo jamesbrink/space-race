@@ -109,9 +109,9 @@ export interface Flight {
       at: number;
       nodes: string[];
       /** A parachute's coming out can let something go too: for those, `at` is the record's time and the run on show gives its own. */
-      on?: 'tower' | 'separation' | 'retropack' | 'drogue' | 'main' | (string & {});
-      /** It leaves hanging under that parachute, which goes with it, instead of falling free. */
-      under?: 'drogue' | 'main';
+      on?: string;
+      /** It leaves hanging under that parachute (the plan's id of it), which goes with it, instead of falling free. */
+      under?: string;
       /**
        * It comes down on bodies of the orbital flight's descent (the plan's descent bodies, sim/orbital.ts flyDown) rather than as a
        * shed body: carried along each body's track in turn, each from where that body's track begins (a body left behind

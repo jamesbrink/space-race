@@ -35,6 +35,8 @@
  *   timbre is `estimated`: impressions of the kind of machine, in proportion to one another, nothing measured.
  */
 import { atmosphere } from '../sim/atmosphere.ts';
+import { ballisticOf } from '../sim/fly.ts';
+import type { FlightPlan } from '../sim/plan.ts';
 import type { Engine, MachineKind, Tread, TreadKind } from '../types.ts';
 import { clamp, lerp, smoothstep } from '../util/math.ts';
 import { EARTH_SPHERE, G0 } from '../world/bodies.ts';
@@ -405,8 +407,8 @@ export interface Cue {
 
 /** What a flight's record says happens, for `score`: times in seconds from liftoff, Infinity for what has not happened. */
 export interface Plan {
-  /** What leaves the vehicle, and at which of the simulator's events. */
-  drops: readonly { at: number; on?: string }[];
+  /** What leaves the vehicle, and the one-shot its leaving makes, where it makes one (sound/index.ts `dropCue`). */
+  drops: readonly { at: number; cue?: 'tower' | 'separation' | 'release' }[];
   /** Each retrorocket's firing, its burning time and thrust. */
   retro: { fires: readonly number[]; burn: number; thrust: number } | null;
   out: { drogue: number; main: number };
@@ -416,8 +418,7 @@ export interface Plan {
 /** The flight's one-shots, in order: ignition at liftoff, what its drops and its retrorockets and parachutes give, and the landing. */
 export function score(plan: Plan): Cue[] {
   const cues: Cue[] = [{ at: 0, kind: 'ignition' }];
-  const kinds: Record<string, Cue['kind']> = { tower: 'tower', separation: 'separation', retropack: 'release' };
-  for (const d of plan.drops) if (d.on && kinds[d.on]) cues.push({ at: d.at, kind: kinds[d.on]! });
+  for (const d of plan.drops) if (d.cue) cues.push({ at: d.at, kind: d.cue });
   for (const at of plan.retro?.fires ?? []) cues.push({ at, kind: 'retro', seconds: plan.retro!.burn, thrust: plan.retro!.thrust });
   cues.push({ at: plan.out.drogue, kind: 'mortar' }, { at: plan.out.main, kind: 'canopy' }, { at: plan.duration, kind: 'splash' });
   return cues.filter((c) => Number.isFinite(c.at)).sort((a, b) => a.at - b.at);
@@ -1116,4 +1117,20 @@ export class Works {
       ],
     ];
   }
+}
+
+/**
+ * The one-shot a drop makes as it leaves (sound/model.ts `Cue`), by what the event it leaves at lets go (fly.ts
+ * `ballisticOf`): the tower jettisoned, the booster parting, the retropack let go; none for anything else.
+ */
+export function dropCue(plan: FlightPlan, on: string | undefined): 'tower' | 'separation' | 'release' | undefined {
+  if (!on || plan.kind !== 'ballistic') return undefined;
+  const b = ballisticOf(plan);
+  const event = plan.events.find((e) => e.id === on);
+  const parts = (joint: string | undefined) =>
+    joint !== undefined && Boolean(event?.do.some((a) => 'separate' in a && a.separate === joint));
+  if (parts(b.towerJoint?.id)) return 'tower';
+  if (parts(b.separation.id)) return 'separation';
+  if (parts(b.packJoint?.id)) return 'release';
+  return undefined;
 }
