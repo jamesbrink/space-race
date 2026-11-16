@@ -347,7 +347,6 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
     seaLevel,
     ...(options.hands ? { hands: options.hands } : {}),
     ejected: { at: Number.NaN },
-    sky: skyOf(plan),
     loose: (event, t, s) => {
       for (const body of rest) {
         if (body.id !== options.follow || !body.with.includes(event)) continue;
