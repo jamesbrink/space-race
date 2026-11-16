@@ -101,7 +101,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - the fixed step: core/rk4.ts `rk4` (a point) and `rk4Body` (a rigid body), and `acceleration`, gravity plus the push.
     The predictor's DP45 takes the same;
   - gravity as terms: core/gravity.ts. The Earth with J2 is the default; a third body is a point mass; the central body
-    can be switched; the Moon and Sun are on Meeus and estimated;
+    can be switched; the Moon and Sun are DE440's (derived) when it is loaded before the terms are made
+    (world/ephemeris.ts `loadEphemeris`), Meeus's (estimated) otherwise; a coast faster than an hour a second is
+    flown on rails (world.md, "Faster than an hour a second": what the simulator is to provide);
   - G0, J2 and P0: world/bodies.ts;
   - the tear rule: loads.ts `tearOf`; the 0.05 g mark: `ENTRY_G`; a parachute's filling: `chuteArea`;
   - the apparent-velocity integrator: apparent.ts; when a load is spent: `spentAt`; one separation, along the joint's
