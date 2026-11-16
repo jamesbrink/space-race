@@ -14,7 +14,7 @@ import type { Tone } from '../../viewer/studio.ts';
 import { type Tier, tier } from '../../viewer/tier.ts';
 import type { LineupRow } from '../address.ts';
 import { Hall } from './hall.ts';
-import { allot, type Entry, layOutRow } from './row.ts';
+import { allot, craftNodes, type Entry, layOutRow } from './row.ts';
 import { Shelf } from './shelf.ts';
 import { dress, fitTo, Stand } from './stand.ts';
 
@@ -96,6 +96,15 @@ const FILL = 0.86;
 const HOME = new THREE.Vector3(0, 0.09, 1).normalize();
 const UP = new THREE.Vector3(0, 1, 0);
 const MIB = 2 ** 20;
+
+/** How low a top-level node of a level reaches, metres in the level's frame (null: it has no such node, or nothing drawn under it). */
+function lowestOf(root: THREE.Object3D, node: string): number | null {
+  const found = root.children.find((c) => c.name === node);
+  if (!found) return null;
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(found, true);
+  return box.isEmpty() ? null : box.min.y;
+}
 
 export class LineupScene {
   readonly canvas: HTMLCanvasElement;
@@ -298,8 +307,10 @@ export class LineupScene {
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<{ root: THREE.Object3D; raw: number }> {
     const url = import.meta.env.BASE_URL + lodUrl(stand.entry.vehicle.url, level);
-    const craft = stand.entry.craft;
-    const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify(craft), of: () => craft }, onProgress);
+    // (the spacecraft alone is found on the model: what rides on the launch vehicle, row.ts `craftNodes`)
+    const headings = stand.entry.headings;
+    const of = (root: THREE.Object3D): string[] | null => craftNodes(headings, (node) => lowestOf(root, node));
+    const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify(headings), of }, onProgress);
     if (slot === stand.coarsest) stand.craft = taken.craft;
     this.looks.add(taken.root);
     return taken;

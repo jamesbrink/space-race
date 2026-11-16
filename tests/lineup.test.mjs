@@ -11,12 +11,14 @@ import { byDate, exhibit, programmeOf } from '../src/app/address.ts';
 import {
   allot,
   claimsFirst,
+  craftNodes,
   crewOf,
   css,
   entries,
   figureText,
   headline,
   heightMarks,
+  headingsOf,
   heightSpec,
   keyFigures,
   layOutRow,
@@ -65,6 +67,49 @@ test('every vehicle says which of its parts are the spacecraft alone, and they a
       );
   }
   assert.equal(spacecraftNodes({ name: 'Vehicle', parts: [{ node: 'A', group: 'Only' }] }), null, 'one heading: nothing to part');
+});
+
+test('the spacecraft alone is what rides on the launch vehicle: its own heading, and any other that stands wholly on it', () => {
+  // as Voskhod 2's parts list has it: the airlock folded against the cabin under a heading of its own, and the fairing
+  // listed with the third stage it stands on
+  const headings = [
+    { id: 'third-stage', nodes: ['Fairing', 'BlockI'] },
+    { id: 'strap-on-boosters', nodes: ['Booster_B'] },
+    { id: 'spacecraft', nodes: ['DescentModule', 'InstrumentModule'] },
+    { id: 'airlock', nodes: ['Airlock', 'AirlockHatch'] },
+  ];
+  const lowest = {
+    Fairing: 34.2,
+    BlockI: 27.5,
+    Booster_B: 0,
+    DescentModule: 37.1,
+    InstrumentModule: 35.0,
+    Airlock: 36.3,
+    AirlockHatch: 38.9,
+  };
+  const craft = craftNodes(headings, (n) => lowest[n] ?? null);
+  assert.deepEqual(craft, ['DescentModule', 'InstrumentModule', 'Airlock', 'AirlockHatch'], 'the airlock rides with the spacecraft');
+  // (a heading that reaches below the spacecraft is the launch vehicle's, even where some of it stands higher)
+  assert.ok(!craft.includes('Fairing') && !craft.includes('Booster_B'));
+  // a node the model does not have says nothing; with none known, the heading alone
+  assert.deepEqual(
+    craftNodes(headings, () => null),
+    ['DescentModule', 'InstrumentModule'],
+  );
+  assert.equal(
+    craftNodes([{ id: 'launch-vehicle', nodes: ['A'] }], () => 0),
+    null,
+    'no Spacecraft heading: nothing parted',
+  );
+  // every vehicle's headings are its parts list's, each part under one
+  for (const e of row) {
+    assert.deepEqual(e.headings, headingsOf(e.vehicle));
+    assert.ok(
+      e.headings.some((h) => h.id === 'spacecraft'),
+      `${e.flight.id}: a Spacecraft heading`,
+    );
+    assert.equal(e.headings.flatMap((h) => h.nodes).length, e.vehicle.parts.filter((p) => p.group).length);
+  }
 });
 
 test('a flight the history says nothing of speaks for itself: its line is what its summary says first', () => {

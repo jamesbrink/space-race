@@ -49,8 +49,10 @@ export interface Entry {
   flight: Flight;
   /** The model that stands there: the flight's vehicle (`exhibit`). */
   vehicle: ModelDef;
-  /** The nodes of the spacecraft alone (the parts under the vehicle's `Spacecraft` heading); null where its parts list does not part them. */
+  /** The nodes under the vehicle's `Spacecraft` heading; null where its parts list does not part them. What rides with them is found on the model (`craftNodes`). */
   craft: string[] | null;
+  /** Its parts list's headings (`headingsOf`): what the spacecraft alone is found from. */
+  headings: Heading[];
   /** Which of the row's nations it flew for, and which of its programmes it is of: indexes into `nations` and `sections`. */
   nation: number;
   programme: number;
@@ -82,9 +84,40 @@ export interface Section {
 /** The heading a vehicle's parts list puts its spacecraft under, as a choice of what stands in the gallery (address.ts `plinths`). */
 const SPACECRAFT = 'spacecraft';
 
-/** The parts that are the spacecraft without its launch vehicle, where the vehicle's parts list says which they are. */
+/** The parts listed under the vehicle's `Spacecraft` heading, where its parts list has one among others. */
 export function spacecraftNodes(model: Pick<ModelDef, 'parts' | 'name'>): string[] | null {
   return plinths(model).find((p) => p.id === SPACECRAFT)?.nodes ?? null;
+}
+
+/** A heading of a vehicle's parts list, and the top-level nodes listed under it. */
+export interface Heading {
+  id: string;
+  nodes: string[];
+}
+
+/** The headings of a vehicle's parts list, in the order they come, where it has more than one (address.ts `plinths`). */
+export function headingsOf(model: Pick<ModelDef, 'parts' | 'name'>): Heading[] {
+  return plinths(model).flatMap((p) => (p.nodes ? [{ id: p.id, nodes: p.nodes }] : []));
+}
+
+/** How far under the spacecraft's own lowest point another heading's lowest may be and still stand on it, metres: what a model's levels differ by. */
+const STANDS_ON = 0.05;
+
+/**
+ * The spacecraft alone, as the row stands it: what rides on the launch vehicle. That is the parts under the
+ * `Spacecraft` heading, and the parts of any other heading that stands wholly on it, its lowest point no lower than the
+ * spacecraft's own (an airlock folded against the cabin: Voskhod 2's is listed under a heading of its own). A heading
+ * that reaches below the spacecraft is the launch vehicle's (a stage, its boosters, the fairing that stands on the
+ * third stage). `lowest`: how low a node reaches in the model, metres (null for one it does not have). Null where the
+ * parts list has no `Spacecraft` heading among others: nothing is parted.
+ */
+export function craftNodes(headings: readonly Heading[], lowest: (node: string) => number | null): string[] | null {
+  const craft = headings.find((h) => h.id === SPACECRAFT);
+  if (!craft) return null;
+  const least = (h: Heading): number => Math.min(...h.nodes.map((n) => lowest(n) ?? Number.POSITIVE_INFINITY));
+  const floor = least(craft);
+  if (!Number.isFinite(floor)) return [...craft.nodes];
+  return headings.filter((h) => h === craft || least(h) >= floor - STANDS_ON).flatMap((h) => h.nodes);
 }
 
 /**
@@ -124,6 +157,7 @@ export function entries(flights: readonly Flight[], history: History = NONE): En
       flight,
       vehicle,
       craft: spacecraftNodes(vehicle),
+      headings: headingsOf(vehicle),
       nation,
       programme,
       tint: tintOf(nation, nth),
