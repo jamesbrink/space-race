@@ -41,7 +41,7 @@ function abort(flight, tr, options = {}, hand = {}) {
   let turned = 0;
   let turnedByTower = 0;
   while (!state.landing && state.t < 600) {
-    const next = v.tick(state, (s) => blend(auto(s), { abort: true, ...hand }));
+    const next = v.tick(state, (s) => blend(auto(s), { events: ['abort'], ...hand }));
     if (next.ticks === state.ticks) break;
     turned += Math.hypot(next.w[1], next.w[2]) * TICK;
     if (!next.shed.tower) turnedByTower = turned;
@@ -84,7 +84,7 @@ test('the Langley trial of 1959, flown from its own weights off its own launcher
   // the fixture is the report's: 3,109 lb at take-off, about station 77.8, 6,100 slug-ft2 in pitch
   const { site, sea } = placeOf(freedom7);
   const v = vehicle(tr, site, sea, { elevation: ELEVATION });
-  const off = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
+  const off = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
   const props = v.mass({ ...off, mass: 3109 * LB, t: 0 });
   near(props.mass / LB, 3109, 1e-6, 'the weight that leaves');
   near(
@@ -237,7 +237,7 @@ for (const flight of BALLISTIC.filter((f) => f.trajectory.body?.escape)) {
     let s = v.start();
     // 100 s up the record's flight is above 42,000 ft
     while (!s.landing && s.t < 3600) {
-      const next = v.tick(s, (x) => blend(auto(x), { abort: x.t >= 100 ? true : undefined }));
+      const next = v.tick(s, (x) => blend(auto(x), { events: x.t >= 100 ? ['abort'] : undefined }));
       if (next.ticks === s.ticks) break;
       s = next;
     }

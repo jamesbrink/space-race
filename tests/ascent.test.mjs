@@ -265,7 +265,7 @@ for (const flight of BALLISTIC) {
       let state = v.start();
       const samples = [v.sample(state)];
       const sheds = new Sheds(TR, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
-      const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
+      const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
       for (let i = 0; i < 300; i++) {
         state = v.tick(state, pilot);
         if (i % 10 === 9) samples.push(v.sample(state));

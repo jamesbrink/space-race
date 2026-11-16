@@ -364,7 +364,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
       let s = run(v, auto, (x) => x.t >= t);
       s = { ...s, w };
       // (the engine cut in the same tick: let go while the booster still pushes, the spacecraft rides on: tests/vehicle.test.mjs)
-      const after = v.tick(s, { ...auto(s), throttle: 0, separate: true });
+      const after = v.tick(s, { ...auto(s), throttle: 0, do: [{ separate: 'separation' }] });
       const pieces = after.released.filter((g) => g.t === s.t);
       assert.ok(pieces.length >= 1 && pieces.at(-1).on === 'separation', what);
       // every piece let go in that tick and the spacecraft that went on (the last release's rest): together the stack
@@ -525,7 +525,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   test(`${name}: let go standing on the pad, the booster stays where it stands`, () => {
     // an abort before the engine is lit
     const v = vehicle(TR, SITE, SEA);
-    const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, abort: true });
+    const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
     // (the booster, and the retropack the abort's own sequence drops with it)
     assert.deepEqual(
       s.released.map((r) => r.on),
@@ -639,7 +639,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
         const c = auto(s);
         const q = s.shed.booster && s.enteredAt !== null ? v.sample(s).q : 0;
         if (q > 2 * TR.body.limits.drogue.value) early = true;
-        return early ? blend(c, { drogue: true, main: true }) : c;
+        return early ? blend(c, { do: [{ deploy: 'drogue' }, { deploy: 'main' }] }) : c;
       },
       () => false,
     );
@@ -661,7 +661,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     let whole = 0; // how long it was out and whole
     const end = run(
       v,
-      (s) => (s.shed.retropack ? blend(auto(s), { drogue: true }) : auto(s)),
+      (s) => (s.shed.retropack ? blend(auto(s), { do: [{ deploy: 'drogue' }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.drogueAt !== null && !after.torn.drogue && after.mainAt === null) whole = after.t - after.drogueAt;
@@ -686,7 +686,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     let predicted = null;
     const end = run(
       v,
-      (s) => (s.shed.retropack ? blend(auto(s), { main: true }) : auto(s)),
+      (s) => (s.shed.retropack ? blend(auto(s), { do: [{ deploy: 'main' }] }) : auto(s)),
       () => false,
       (_, after) => {
         if (after.mainAt === null) return;
@@ -732,9 +732,12 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
         v,
         (s) => {
           let c = auto(s);
-          if (s.t >= 20 && s.abortAt === null) c = blend(c, { abort: true });
+          if (s.t >= 20 && s.abortAt === null) c = blend(c, { events: ['abort'] });
           if (s.abortAt !== null && s.t > s.abortAt + 3)
-            c = blend({ ...c, automatic: false }, { tower: true, ...(chute && s.shed.tower ? { drogue: true } : {}) });
+            c = blend(
+              { ...c, automatic: false },
+              { do: [{ separate: 'tower' }, ...(chute && s.shed.tower ? [{ deploy: 'drogue' }] : [])] },
+            );
           return c;
         },
         () => false,

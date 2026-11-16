@@ -125,7 +125,7 @@ for (const flight of flights.filter((f) => f.trajectory)) {
     const tally = new Tally();
     let state = av.start();
     while (!state.landing && state.t < 600) {
-      const next = av.tick(state, (x) => blend(auto(x), { abort: true }));
+      const next = av.tick(state, (x) => blend(auto(x), { events: ['abort'] }));
       if (next.ticks === state.ticks) break;
       state = next;
       tally.note(av.sample(state), state, av);

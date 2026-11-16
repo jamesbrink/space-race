@@ -235,9 +235,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
 - **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
   (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
-  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,
-  pitch, yaw and roll from -1 to 1, and the events (tower, separation, retrofire, retropack,
-  parachutes) as commands. To fly.ts's forces it adds the body's turning: thrust turned by the
+  the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine's
+  lever, pitch, yaw and roll from -1 to 1, and the plan's actions and events as commands (`do`,
+  `events`: each event its actions, but for the abort and the motors' sequence, which it does whole;
+  it finds its tower, booster, retropack and parachutes in the plan by what they are). To fly.ts's forces it adds the body's turning: thrust turned by the
   vanes, the air's push on nose and fins (so it weathercocks, lifts and damps), the spacecraft's
   jets, a parachute pulling at its attachment, with mass, centre of mass and inertia following the
   propellant down the tanks (`sim/rigid.ts`). What it needs beyond fly.ts's inputs is
@@ -251,7 +252,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   programme leaned by a pilot's `trim`. It is held
   to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
   with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.
-  A new force goes in `forces`, a new event in `command` and `Controls`.
+  A new force goes in `forces`; a new event goes in the plan, and what the vehicle does with a new kind of action in `command`.
 - **Staging is physics, and so is what is shed.** One force model flies everything
   (`sim/forces.ts`): drag along the body's axis by whichever end leads, falling off as the cosine
   and nothing broadside; each `AeroSurface`'s normal force; and the cross-flow on the body's side

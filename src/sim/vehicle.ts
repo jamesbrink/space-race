@@ -143,27 +143,16 @@ export interface Controls {
   yaw: number;
   roll: number;
   /**
-   * What a hand sets off at this tick, as the plan (sim/plan.ts) says it: actions on its hardware (`{ separate }` a joint,
-   * `{ deploy }` a parachute), and its events by id (the retrorockets' sequence, an abort). Each is done as far as the
-   * vehicle lets it, as the switches below are; the switches are the same commands under their old names.
+   * What a hand or the sequencer sets off at this tick, as the plan (sim/plan.ts) says it: actions on its hardware
+   * (`{ separate }` a joint, `{ deploy }` a parachute), and its events by id, each its actions. Two the vehicle does whole:
+   * the motors' sequence (the first lit now, the rest by their timer) and the abort (the event a hand's command sets off:
+   * while the tower is aboard, the engine is shut down and the spacecraft pulled off the booster on the escape rocket).
+   * Each is done as far as the vehicle lets it, so one asked again every tick until it is done is done once.
    */
   do?: readonly Action[];
   events?: readonly string[];
-  /** Let the escape tower go. */
-  tower?: boolean;
-  /** Part the spacecraft from the booster. */
-  separate?: boolean;
-  /** Start the retrorockets' sequence. */
-  retro?: boolean;
-  /** Drop the retropack. */
-  retropack?: boolean;
-  /** Let a parachute out before its height. */
-  drogue?: boolean;
-  main?: boolean;
   /** On the spacecraft: the axes the hand has, worked through the manual system's chambers and its supply; the rest are the automatic system's. */
   manual?: { pitch?: boolean; yaw?: boolean; roll?: boolean };
-  /** Abort on the escape rocket, while the tower is aboard: the engine is shut down and the spacecraft pulled off the booster. */
-  abort?: boolean;
 }
 
 /** The automatic chambers' valve logic: the least command that opens one, and the least that opens the axis's biggest. Chosen, not recorded. */
@@ -310,7 +299,6 @@ export interface Vehicle {
 
 const X: Vec3 = [1, 0, 0];
 const NONE: ReadonlySet<string> = new Set();
-const TOWER: ReadonlySet<string> = new Set(['tower']);
 
 /** What changes smoothly: what Runge-Kutta carries. */
 interface Dyn {
@@ -336,9 +324,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const body = tr.body;
   if (!body) throw new Error('this trajectory has no `body`: it can be flown by fly(), not steered');
   const plan = planOfTrajectory(tr);
+  // What the vehicle's hardware is in the plan, found by what it is and not by name.
   const stack = plan.craft[0]!;
-  /** The booster's engine, which the lever works: the one on the body that stands on the pad. */
-  const engine = stack.engines.find((e) => e.body === stack.bodies[0]!.id)!;
+  /** The booster: the body that stands on the pad. Its engine is the one the lever works. */
+  const booster = stack.bodies[0]!.id;
+  const engine = stack.engines.find((e) => e.body === booster)!;
   /** The escape rocket: the motor the abort lights, which the event a hand's command sets off. */
   const abortEvent = plan.events.find((e) => e.when.some((w) => 'command' in w));
   const escapeMotor = abortEvent?.do.flatMap((a) => ('ignite' in a && a.ignite !== engine.id ? [a.ignite] : []))[0];
@@ -349,8 +339,24 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const chained = plan.events.filter((ev) => lights(ev) && ev.when.every((w) => 'after' in w));
   /** The motors' sequence begun: the event that lights the first. */
   const retroEvent = plan.events.find((ev) => lights(ev) && !chained.includes(ev))?.id ?? null;
+  /** The joint that lets a body go. */
+  const letting = (b: string | undefined) => (b === undefined ? undefined : stack.joints.find((j) => j.gone.includes(b))?.id);
+  /** The tower (what the escape rocket is on) and the retropack (what the motors are on), and the joints that let each go and the booster. */
+  const towerBody = stack.engines.find((e) => e.id === escapeMotor)?.body;
+  const packBody = motors[0]?.body;
+  const towerJoint = letting(towerBody);
+  const packJoint = letting(packBody);
+  const separation = letting(booster)!;
+  const TOWER: ReadonlySet<string> = new Set(towerJoint === undefined ? [] : [towerJoint]);
+  /** The parachutes: the main takes the drogue's place. */
+  const mainChute = stack.chutes.find((ch) => ch.instead?.length)!.id;
+  const drogueChute = stack.chutes.find((ch) => ch.id !== mainChute)!.id;
   /** What has left it, as the forces read it: the machine's bodies. */
-  const shedOf = (c: CraftState) => ({ tower: !aboard(c, 'tower'), booster: !aboard(c, 'booster'), retropack: !aboard(c, 'retropack') });
+  const shedOf = (c: CraftState) => ({
+    tower: towerBody !== undefined && !aboard(c, towerBody),
+    booster: !aboard(c, booster),
+    retropack: packBody !== undefined && !aboard(c, packBody),
+  });
   /** A joint let go and parted at once, on the machine (`s` is changed). */
   const parts = (s: VehicleState, joint: string): void => {
     s.craft = partJoint(plan, act(plan, s.craft, { separate: joint }, s.t, s.held).state, joint, s.t);
@@ -358,24 +364,19 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   };
   const eventById = new Map(plan.events.map((e) => [e.id, e]));
   /**
-   * What a hand asks at this tick, the plan's commands and the switches alike: a joint let go, a parachute out, an event
-   * set off. An event is its actions, but for the abort and the motors' sequence, which the vehicle does whole.
+   * What a hand or the sequencer asks at this tick: a joint let go, a parachute out, an event set off. An event is its
+   * actions, but for the abort and the motors' sequence, which the vehicle does whole.
    */
   const asks = (c: Controls) => {
+    const events = new Set(c.events ?? []);
     const actions: Action[] = [
       ...(c.do ?? []),
-      ...(c.events ?? []).flatMap((id) => (id === abortEvent?.id || id === retroEvent ? [] : (eventById.get(id)?.do ?? []))),
-      ...(c.tower ? [{ separate: 'tower' }] : []),
-      ...(c.separate ? [{ separate: 'separation' }] : []),
-      ...(c.retropack ? [{ separate: 'retropack' }] : []),
-      ...(c.drogue ? [{ deploy: 'drogue' }] : []),
-      ...(c.main ? [{ deploy: 'main' }] : []),
+      ...[...events].flatMap((id) => (id === abortEvent?.id || id === retroEvent ? [] : (eventById.get(id)?.do ?? []))),
     ];
-    const events = new Set([...(c.events ?? []), ...(c.retro ? ['retro'] : []), ...(c.abort ? ['abort'] : [])]);
     return {
-      separate: (joint: string) => actions.some((x) => 'separate' in x && x.separate === joint),
+      separate: (joint: string | undefined) => joint !== undefined && actions.some((x) => 'separate' in x && x.separate === joint),
       deploy: (chute: string) => actions.some((x) => 'deploy' in x && x.deploy === chute),
-      event: (id: string) => events.has(id),
+      event: (id: string | null | undefined) => !!id && events.has(id),
     };
   };
   const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
@@ -406,7 +407,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const towerless = fixedAndFluid(body.parts, TOWER);
   const towerMass = whole.fixed - towerless.fixed;
   // the tower by itself, and how far up the axis from the spacecraft's own centre of mass its centre is
-  const towerParts = body.parts.filter((p) => p.sheds === 'tower');
+  const towerParts = body.parts.filter((p) => p.sheds !== undefined && p.sheds === towerJoint);
   const towerAlone = towerParts.length ? massOf(towerParts, radius, 0, NONE) : null;
   const rocket = body.escape && towerAlone ? body.escape : null;
   /** How long the escape rocket takes to die away after its burn, s: what is left of its impulse at a thrust falling evenly to nothing. */
@@ -480,7 +481,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     ? { dragArea: capsule.side.dragArea.value, from: capsule.side.from.value, to: capsule.side.to.value }
     : null;
   // the tower's own side, for the spacecraft pulled off with it on: stations from the spacecraft's centre of mass, as its own side's are
-  const towerShed = sheds.find((d) => d.on === 'tower') ?? null;
+  const towerShed = sheds.find((d) => d.on === towerJoint) ?? null;
   const towerSide = towerShed
     ? {
         dragArea: towerShed.side.dragArea.value,
@@ -489,7 +490,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       }
     : null;
   // the retropack, where the flight gives it as a body: what it weighs, and how far below the spacecraft's centre of mass its own is
-  const pack = sheds.find((d) => d.on === 'retropack' && d.mass && d.centre) ?? null;
+  const pack = sheds.find((d) => d.on === packJoint && d.mass && d.centre) ?? null;
   const packMoment = pack ? pack.mass!.value * (capsule.centre.value - pack.centre!.value) : 0;
   /** How full each of the booster's tanks is, with `mass` aboard. */
   const filling = (s: VehicleState, mass: number): number | ((p: MassPart) => number) => {
@@ -766,16 +767,16 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     if (burning(s) && engineOf(s).throttle !== lever) s.craft = act(plan, s.craft, { throttle: engine.id, to: lever }, s.t, s.held).state;
     if (s.landing) return s;
     const ask = asks(c);
-    if (ask.event('abort') && rocket && s.abortAt === null && !s.shed.tower && !s.shed.booster) {
+    if (ask.event(abortEvent?.id) && rocket && s.abortAt === null && !s.shed.tower && !s.shed.booster) {
       s = pullOff(s);
     }
     if (s.held) return s;
     // (the escape rocket takes the tower with it only once it is out: until then the tower is what is pulling)
-    if (ask.separate('tower') && !s.shed.tower && (s.abortAt === null || s.t >= s.abortAt + escapeOver)) s = dropTower(s);
+    if (ask.separate(towerJoint) && !s.shed.tower && (s.abortAt === null || s.t >= s.abortAt + escapeOver)) s = dropTower(s);
     // let go while the booster still pushes, the spacecraft stays pressed on its adapter and rides it until the push ends
-    if (ask.separate('separation') && !s.shed.booster && s.loose === null) {
+    if (ask.separate(separation) && !s.shed.booster && s.loose === null) {
       s.loose = s.t;
-      s.craft = act(plan, s.craft, { separate: 'separation' }, s.t, s.held).state;
+      s.craft = act(plan, s.craft, { separate: separation }, s.t, s.held).state;
     }
     if (s.loose !== null && !s.shed.booster) {
       const capsule = capsuleMass(s);
@@ -787,10 +788,10 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       if (retroEvent && ask.event(retroEvent) && s.craft.fired[retroEvent] === undefined && !s.shed.retropack)
         s.craft = fire(plan, s.craft, retroEvent, s.t, s.held).state;
       byTimer(s, s.t);
-      if (ask.separate('retropack') && !s.shed.retropack) dropPack(s);
+      if (ask.separate(packJoint) && !s.shed.retropack) dropPack(s);
       // (no parachute comes out past a tower)
-      if (ask.deploy('drogue') && s.shed.tower && s.drogueAt === null && s.mainAt === null) s = drogue(s);
-      if (ask.deploy('main') && s.shed.tower && s.mainAt === null) s = main(s);
+      if (ask.deploy(drogueChute) && s.shed.tower && s.drogueAt === null && s.mainAt === null) s = drogue(s);
+      if (ask.deploy(mainChute) && s.shed.tower && s.mainAt === null) s = main(s);
     }
     const firing = valves(s, c);
     if (firing !== s.rcs.firing) s.rcs = { left: s.rcs.left, firing };
@@ -824,7 +825,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       s.r = two.kept.r;
       s.v = two.kept.v;
     }
-    parts(s, 'retropack');
+    parts(s, packJoint!);
     s.mass -= lighter;
   };
   /** Which chambers are open for this tick, and how hard each pushes, N: the commands through each system's own logic, and no more than its supply can feed. */
@@ -888,16 +889,16 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   /** The tower goes. What is left has its centre of mass further down the axis: `r` goes to it. */
   const dropTower = (state: VehicleState): VehicleState => {
     const s: VehicleState = { ...state, towerAt: state.t };
-    parts(s, 'tower');
+    parts(s, towerJoint!);
     if (!towerAlone) return s;
     // (off the booster the centres are measured from the spacecraft's own, and the tower is what is aboard beyond the spacecraft: its rocket may have burned)
     const datum = state.shed.booster ? capsule.centre.value : 0;
     const gone = state.shed.booster ? Math.max(0, state.mass - capsuleMass(state)) : towerMass;
     const share = gone / towerMass;
-    const def = sheds.find((d) => d.on === 'tower');
+    const def = sheds.find((d) => d.on === towerJoint);
     letGo(
       s,
-      'tower',
+      towerJoint!,
       massNow(state, state.mass).centre,
       { mass: gone, centre: towerAlone.centre - datum },
       towerAlone.centre,
@@ -917,7 +918,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const all = massNow(s, s.mass);
     const mass = s.mass - taken;
     const gone = { mass, centre: (s.mass * all.centre - taken * takenCentre) / mass };
-    const def = sheds.find((d) => d.on === 'separation');
+    const def = sheds.find((d) => d.on === separation);
     const piece = def ? pieceOf(body, def, filling(s, s.mass)) : null;
     // (without the flight's word on it, a uniform rod of the length below the spacecraft)
     return { gone, inertia: piece ?? { roll: (mass * radius * radius) / 2, across: (mass * (2 * gone.centre) ** 2) / 12 } };
@@ -928,11 +929,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const axis = turn(s.q, X);
     const { gone, inertia } = boosterOf(s, tr.separation.mass.value, capsule.centre.value);
     s.separation = { t: s.t, r: s.r, v: s.v, axis, booster: { r: s.r, v: s.v } };
-    letGo(s, 'separation', massNow(s, s.mass).centre, gone, gone.centre, inertia, speed);
+    letGo(s, separation, massNow(s, s.mass).centre, gone, gone.centre, inertia, speed);
     const booster = s.released[s.released.length - 1]!;
     s.separation.booster = { r: booster.r, v: booster.v };
     s.mass = tr.separation.mass.value;
-    parts(s, 'separation');
+    parts(s, separation);
     s.craft = burnOut(s.craft, engine.id, s.t); // the engine stays with the booster
     return s;
   };
@@ -940,7 +941,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const pullOff = (state: VehicleState): VehicleState => {
     const s: VehicleState = { ...state };
     // (the abort, on the machine: what it records of the plan's event; the escape rocket's burn is the vehicle's `escapeThrust`)
-    s.craft = fire(plan, s.craft, 'abort', s.t, s.held).state;
+    s.craft = fire(plan, s.craft, abortEvent!.id, s.t, s.held).state;
     const axis = turn(s.q, X);
     const taken = tr.separation.mass.value + towerMass;
     // the two that leave together: their centre of mass on the stack
@@ -952,11 +953,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     s.craft = burnOut(s.craft, engine.id, s.t);
     s.held = false;
     s.separation = { t: s.t, r: s.r, v: s.v, axis, booster: { r: s.r, v: s.v } };
-    letGo(s, 'separation', massNow(s, s.mass).centre, gone, gone.centre, inertia, 0);
+    letGo(s, separation, massNow(s, s.mass).centre, gone, gone.centre, inertia, 0);
     const booster = s.released[s.released.length - 1]!;
     s.separation.booster = { r: booster.r, v: booster.v };
     s.mass = taken;
-    parts(s, 'separation');
+    parts(s, separation);
     // the abort's own sequence drops the retropack as the spacecraft leaves; off a stack still standing on its pad, onto the booster's top, where it stays
     if (afterAbort?.retropack && s.controls.automatic !== false) {
       dropPack(s);
@@ -973,7 +974,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const torn = tears(s, 'drogue');
     return {
       ...s,
-      craft: act(plan, s.craft, { deploy: 'drogue' }, s.t, s.held).state,
+      craft: act(plan, s.craft, { deploy: drogueChute }, s.t, s.held).state,
       drogueAt: s.t,
       torn: torn ? { ...s.torn, drogue: true } : s.torn,
       tore: torn ? { ...s.tore, drogue: torn } : s.tore,
@@ -1009,7 +1010,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const torn = tears(s, 'main');
     return {
       ...s,
-      craft: act(plan, s.craft, { deploy: 'main' }, s.t, s.held).state,
+      craft: act(plan, s.craft, { deploy: mainChute }, s.t, s.held).state,
       mainAt: s.t,
       torn: torn ? { ...s.torn, main: true } : s.torn,
       tore: torn ? { ...s.tore, main: torn } : s.tore,
