@@ -264,7 +264,7 @@ export function spacecraft(
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
   const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
   const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
-  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(o, r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
+  const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 => aimOf(planOfOrbital(o), r, v, () => frame.fromDate(sunPosition(frame.jdTT(t))));
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
@@ -284,7 +284,7 @@ export function spacecraft(
     ground: (here) => (down ? down.ground(here) : ground(here)),
     burning: () => !down && burning,
     push: (at, p, u, altitude) =>
-      down ? down.push(at, p, u, altitude) : shipPush(o, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+      down ? down.push(at, p, u, altitude) : shipPush(planOfOrbital(o), since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
     next: (t) => (down ? down.next(t) : after(marks, t)),
     below: () => (down ? down.below() : o.ejection.altitude.value),
     settle(t, r, v, altitude, falling) {

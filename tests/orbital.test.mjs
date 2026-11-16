@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { flyOrbit, injectionState } from '../src/sim/orbital.ts';
+import { planOfOrbital } from '../src/sim/planof.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
@@ -100,7 +101,7 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
-    const s = injectionState(o, siteFrame(f.site), frameOf(f));
+    const s = injectionState(planOfOrbital(o), siteFrame(f.site), frameOf(f));
     const el = elementsOf(s.r, s.v);
     assert.ok(Math.abs(el.i / DEG - o.orbit.inclination.value) < 1e-9, 'inclination');
     assert.ok(Math.abs(el.a * (1 - el.e) - o.orbit.radius.value - o.orbit.perigee.value) < 1e-3, 'perigee');

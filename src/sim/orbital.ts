@@ -22,7 +22,7 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } f
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot } from './descent.ts';
-import type { Action, EventDef } from './plan.ts';
+import type { Action, AeroDef, EventDef, FlightPlan, Hold } from './plan.ts';
 import { planOfOrbital } from './planof.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
@@ -591,10 +591,11 @@ export function flyDown(
  */
 export function decay(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
   const spin = frame.spin;
-  const cd = o.supplies?.rarefied.value ?? along(o.entry.drag, 25);
-  const parted = from.t >= o.entry.separation.value;
-  const mass = parted ? o.entry.mass.value : o.mass.value;
-  const cdA = cd * o.entry.area.value;
+  const ship = shipOf(planOfOrbital(o));
+  const cd = ship.entry.aero.rarefied?.value ?? along(ship.entry.aero.drag, 25);
+  const parted = from.t >= ship.parted;
+  const mass = parted ? ship.entry.mass : ship.mass;
+  const cdA = cd * ship.entry.aero.area.value;
   const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const push = (q: State, at: number): Vec3 => {
     const air = atmosphere(heightOf(q, at));
@@ -690,11 +691,12 @@ const INTERFACE = 100_000;
  * the elements are of date and are worked in the frame of date, then turned into it. The plane is the one of the
  * published inclination through the launch site's place at liftoff; the place on it and the perigee are `injection`'s.
  */
-export function injectionState(o: OrbitalFlight, site: Geodetic, frame: EarthFrame): State {
+export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFrame): State {
+  const o = shipOf(plan).orbit;
   const pad = frame.toDate(frame.toInertial(geodeticToEcef(site), 0));
-  const i = o.orbit.inclination.value * DEG;
+  const i = o.inclination.value * DEG;
   const n = planeThrough(pad, i, o.injection.heading === 'north');
-  if (!n) throw new Error(`no orbit inclined ${o.orbit.inclination.value} degrees passes over latitude ${site.latitude}`);
+  if (!n) throw new Error(`no orbit inclined ${o.inclination.value} degrees passes over latitude ${site.latitude}`);
   const arc = o.injection.arc.value * DEG;
   const from = unit(pad);
   const at = add(scale(from, Math.cos(arc)), scale(cross(n, from), Math.sin(arc)));
@@ -702,8 +704,8 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, frame: EarthFra
   const toNode: Vec3 = [Math.cos(node), Math.sin(node), 0];
   const latitudeArgument = Math.atan2(dot(at, cross(n, toNode)), dot(at, toNode));
   const nu = o.injection.anomaly.value * DEG;
-  const a = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
-  const e = (o.orbit.apogee.value - o.orbit.perigee.value) / (2 * a);
+  const a = o.radius.value + (o.perigee.value + o.apogee.value) / 2;
+  const e = (o.apogee.value - o.perigee.value) / (2 * a);
   const s = stateOf({ a, e, i, node, argp: latitudeArgument - nu, nu });
   return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
 }
@@ -714,14 +716,15 @@ export function injectionState(o: OrbitalFlight, site: Geodetic, frame: EarthFra
  * instant, its motion through the air `wind` (m/s, in any frame: the push comes back in the same one) and its height above
  * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
  */
-export function shipPush(o: OrbitalFlight, at: number, wind: Vec3, altitude: number, aim: Vec3 | null): Vec3 {
+export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: number, aim: Vec3 | null): Vec3 {
+  const ship = shipOf(plan);
   const air = atmosphere(altitude);
   const airspeed = length(wind);
   const mach = airspeed / air.soundSpeed;
-  const mass = at >= o.entry.separation.value ? o.entry.mass.value : o.mass.value;
-  const drag = scale(airDrag(wind, airspeed, air.density, o.entry.area.value * along(o.entry.drag, mach)), 1 / mass);
+  const mass = at >= ship.parted ? ship.entry.mass : ship.mass;
+  const drag = scale(airDrag(wind, airspeed, air.density, ship.entry.aero.area.value * along(ship.entry.aero.drag, mach)), 1 / mass);
   // (the braking engine is on the instrument module: parted, it pushes no more)
-  return aim ? add(drag, scale(aim, o.retro.deltaV.value / (o.retro.off.value - o.retro.on.value))) : drag;
+  return aim ? add(drag, scale(aim, ship.flown / (ship.off - ship.on))) : drag;
 }
 
 /**
@@ -729,10 +732,57 @@ export function shipPush(o: OrbitalFlight, at: number, wind: Vec3, altitude: num
  * place, asked for only when the aim is at the Sun), all in the flight's frame (world/earthframe.ts): flyOrbit's, and
  * the predicted path's.
  */
-export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3): Vec3 {
-  const a = o.retro.aim;
-  return scale(unit(a.along === 'fixed' && a.vector ? a.vector : a.along === 'sun' ? sub(sun(), r) : v), a.sense);
+export function aimOf(plan: FlightPlan, r: Vec3, v: Vec3, sun: () => Vec3): Vec3 {
+  const a = shipOf(plan).aim;
+  return scale(unit(a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : v), a.sense);
 }
+
+/**
+ * The spacecraft in orbit as its plan has it, for the coast: the published orbit and the ship's mass on it; the burn the
+ * record's coast flies (the engine with the record's impulse, `EngineDef.flown`), lit and cut at its instants and pushing
+ * along the attitude held by an aim (`Hold.aim`); the body that comes down (the first with its own air, `BodyDef.aero`),
+ * at the mass the parting joint leaves (`JointDef.after`) from the instant it parts; and where the record has it land.
+ */
+export function shipOf(plan: FlightPlan): Ship {
+  let ship = ships.get(plan);
+  if (ship) return ship;
+  const c = plan.craft[0]!;
+  const orbit = plan.record!.orbit!;
+  const coast = coastOf(plan);
+  const burn = c.engines.find((e) => e.flown)!;
+  const joint = c.joints.find((j) => j.gone.includes(burn.body))!;
+  const entry = c.bodies.find((b) => b.aero)!;
+  let aim: Extract<Hold, { aim: unknown }> | undefined;
+  for (const a of plan.attitude) if ('aim' in a.hold) aim = a.hold;
+  ship = {
+    orbit,
+    mass: orbit.mass.value,
+    ...coast,
+    flown: burn.flown!.value,
+    aim: aim!,
+    entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
+    landing: plan.record!.landing!,
+  };
+  ships.set(plan, ship);
+  return ship;
+}
+export interface Ship {
+  orbit: NonNullable<NonNullable<FlightPlan['record']>['orbit']>;
+  /** The spacecraft in orbit, kg. */
+  mass: number;
+  /** The burn lit and cut, the body it is on let go, the height what comes down is let loose at (`coastOf`), s and m. */
+  on: number;
+  off: number;
+  parted: number;
+  floor: number;
+  /** The impulse the record's coast flies, m/s, evenly from `on` to `off`, along `aim`. */
+  flown: number;
+  aim: Extract<Hold, { aim: unknown }>;
+  /** What comes down: its id, its mass once parted, kg, and its own air. */
+  entry: { id: string; mass: number; aero: AeroDef };
+  landing: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
+}
+const ships = new WeakMap<FlightPlan, Ship>();
 
 /**
  * The coast's instants as the plan has them (sim/plan.ts, made of the record, or of the record as a hand changed it, by
@@ -740,8 +790,7 @@ export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3): Vec3
  * body it is on let go, and the height at which what comes down is let loose after that (the event set off by height once
  * the parting has happened). Never: the largest safe integer, as a plan given up has it, or Infinity.
  */
-export function coastOf(o: OrbitalFlight): { on: number; off: number; parted: number; floor: number } {
-  const plan = planOfOrbital(o);
+export function coastOf(plan: FlightPlan): { on: number; off: number; parted: number; floor: number } {
   const c = plan.craft[0]!;
   const timeOf = (e: EventDef | undefined): number => {
     const w = e?.when.find((x) => 'time' in x);
@@ -788,14 +837,17 @@ export function flyOrbit(
   hands?: DescentHands,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
-  const { on, off, parted, floor } = coastOf(o);
+  const plan = planOfOrbital(o);
+  const ship = shipOf(plan);
+  const { on, off, parted, floor } = ship;
+  const radius = ship.orbit.radius.value;
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
-  let t = from ? from.t : o.injection.at.value;
-  let state: State = from ? { r: from.r, v: from.v } : injectionState(o, site, frame);
+  let t = from ? from.t : ship.orbit.injection.at.value;
+  let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
-  const aimAt = (s: State, at: number): Vec3 => aimOf(o, s.r, s.v, () => sunAt(at));
+  const aimAt = (s: State, at: number): Vec3 => aimOf(plan, s.r, s.v, () => sunAt(at));
 
   // (no wind: none has been read for the coast's places)
   const airOf = (s: State, at: number) => airAt(frame, s.r, s.v, at, seaLevel);
@@ -808,7 +860,7 @@ export function flyOrbit(
    */
   const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airOf(s, at);
-    return shipPush(o, as, air.wind, air.altitude, as >= on && as < off && as < parted ? aim : null);
+    return shipPush(plan, as, air.wind, air.altitude, as >= on && as < off && as < parted ? aim : null);
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
@@ -835,7 +887,7 @@ export function flyOrbit(
     };
   };
 
-  const a0 = o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2;
+  const a0 = radius + (ship.orbit.perigee.value + ship.orbit.apogee.value) / 2;
   const results: OrbitResults = {
     period: period(from ? elementsOf(from.r, from.v).a : a0),
     apogee: 0,
@@ -872,7 +924,7 @@ export function flyOrbit(
     }
     if (t === off) {
       const el = elementsOf(state.r, state.v);
-      results.retroPerigee = el.a * (1 - el.e) - o.orbit.radius.value;
+      results.retroPerigee = el.a * (1 - el.e) - radius;
     }
     if (t === parted) results.separationAltitude = airOf(state, t).altitude;
   };
@@ -889,7 +941,7 @@ export function flyOrbit(
   let gate: Vec3 | null = null;
   // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn)
   const LIMIT = Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600;
-  const target = geodeticToEcef({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value, height: 0 });
+  const target = geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
   while (t < LIMIT) {
     const mark = marks.find((m) => m > t + 1e-9);
@@ -905,7 +957,7 @@ export function flyOrbit(
     phase = phaseAt(t, now.g, phase);
     now = { ...now, phase };
 
-    if (t <= on) results.apogee = Math.max(results.apogee, length(state.r) - o.orbit.radius.value);
+    if (t <= on) results.apogee = Math.max(results.apogee, length(state.r) - radius);
     // the shadow's edge, where half the Sun is hidden: placed along the step
     if (before.sunlit >= 0.5 !== now.sunlit >= 0.5) {
       const at = before.t + ((0.5 - before.sunlit) / (now.sunlit - before.sunlit)) * (now.t - before.t);
@@ -948,7 +1000,7 @@ export function flyOrbit(
         results.ejectionSpeed = -dot(airOf(state, t).wind, upAt(end));
         const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
         if (gate) {
-          const axes = enuAxes({ latitude: o.landing.latitude.value, longitude: o.landing.longitude.value });
+          const axes = enuAxes({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value });
           const level = (d: Vec3): Vec3 => sub(d, scale(axes.up, dot(d, axes.up)));
           const track = unit(level(sub(under, gate)));
           const miss = level(sub(under, target));
