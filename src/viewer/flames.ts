@@ -18,7 +18,7 @@
  * photographs (named on each), against the alcohol flame, whose look was the first judged (plume.ts) and is the unit.
  */
 
-import type { Burns } from '../types.ts';
+import type { Burns, Gas } from '../types.ts';
 import { vec3 } from './glsl.ts';
 
 export type { Burns };
@@ -164,4 +164,67 @@ export const FLAME_TABLES = [
   table('FLAME_HOT', (f) => f.hot),
   table('FLAME_CORE', (f) => f.core),
   table('FLAME_VACUUM', (f) => f.vacuum),
+].join('\n  ');
+
+/**
+ * What a jet that is not a fire looks like by what it is (jets.ts; `JetDef.gas`): a gas that gives no light of its own,
+ * seen by the light it scatters, as the smoke is (exhaust.ts `smokeLit`). Its shape is the air's and the mouth's, as a
+ * fire's is (it opens by the pressure it leaves at against the air's: plume.ts `plumeShape`); how thick it is, where it
+ * is seen and how far are the gas's. Everything here is estimated, and says what it was judged on.
+ */
+export interface GasLook {
+  name: string;
+  /** How far it is seen: so many metres times the root of its thrust in newtons (fires.ts `gasLength`). */
+  reach: number;
+  /** How much light it takes back a metre at its mouth, over the mouth's radius. */
+  thick: number;
+  /** How many mouth radii it is clear for, from the mouth: a hot gas is seen only once it has cooled into droplets. */
+  clear: number;
+  /** What of it is still seen with no air round it, against what is seen in the air at the sea. */
+  vacuum: number;
+  /** How deep the billows cut it: 0 smooth, 1 torn to wisps. */
+  torn: number;
+  /** Its colour as it scatters the light, linear. */
+  albedo: Rgb;
+  /** What the look was judged on. */
+  look: string;
+}
+
+export const GASES: Record<Exclude<Gas, 'solid'>, GasLook> = {
+  oxygen: {
+    name: 'cold oxygen gas from a tank’s vent',
+    reach: 0.15,
+    thick: 2.5,
+    clear: 0,
+    vacuum: 0.8,
+    torn: 0.6,
+    albedo: [0.92, 0.94, 0.97],
+    look: 'a tank venting cold gas, as an R-7’s oxygen tanks are seen venting white on the pad; in thin air the gas expands and its cold freezes it to a fog that thins and is gone (estimated: no picture of the strap-ons’ vents at separation was found). Its length: 8.2 m for the 3 kN the simulator gives a vent, a white puff two or three metres across off each strap-on’s tip, seen from the chase camera',
+  },
+  steam: {
+    name: 'steam and oxygen from decomposed hydrogen peroxide, a turbine’s exhaust',
+    reach: 0.1,
+    thick: 0.35,
+    clear: 4,
+    vacuum: 0.3,
+    torn: 0.45,
+    albedo: [0.86, 0.87, 0.88],
+    look: 'superheated steam from a pipe: clear for a few of the pipe’s widths, where it is too hot to condense, then a thin white veil that thins as it mixes (estimated: no picture of an R-7’s turbine exhaust on its own was found; in launch film it is lost in the fires)',
+  },
+};
+
+/** The order the march's tables hold the gases in (`gasKindOf`). */
+export const GAS_KINDS: readonly Exclude<Gas, 'solid'>[] = ['oxygen', 'steam'];
+
+/** A gas jet's entry in the march's tables. */
+export function gasKindOf(gas: Exclude<Gas, 'solid'>): number {
+  return Math.max(0, GAS_KINDS.indexOf(gas));
+}
+
+const gasRow = (g: GasLook): string => `vec4(${[g.thick, g.clear, g.vacuum, g.torn].map((x) => x.toFixed(3)).join(', ')})`;
+
+/** The march's tables for the gases, by `gasKindOf`: each one's thickness, clear stretch, what is seen of it in no air and how torn (`GAS_LOOK`), and its colour (`GAS_ALBEDO`). */
+export const GAS_TABLES = [
+  `const vec4 GAS_LOOK[${GAS_KINDS.length}] = vec4[${GAS_KINDS.length}](${GAS_KINDS.map((k) => gasRow(GASES[k])).join(', ')});`,
+  `const vec3 GAS_ALBEDO[${GAS_KINDS.length}] = vec3[${GAS_KINDS.length}](${GAS_KINDS.map((k) => vec3(GASES[k].albedo, 3)).join(', ')});`,
 ].join('\n  ');

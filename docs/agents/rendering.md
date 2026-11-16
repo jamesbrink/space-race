@@ -263,6 +263,25 @@ Redstone's fire was first drawn, which is the unit and is unchanged. Each fire c
 fires' one light takes the colour and strength of what burns, by area. The temperatures in the table are the reason the
 entries differ and are cited; every look is estimated and says what film or photograph it was judged on.
 
+**What is not a fire is a jet of its own** (`ModelDef.jets`; viewer/jets.ts, exhaust.ts `gasLayer`). A tank's vent, a
+turbine's exhaust and a solid's burst leave from nodes the model gives them, each with its origin on the jet's axis in
+the mouth's plane and its own +Z (the file's +Y) the way it pushes: the jet is hung on the node and goes along its -Y in
+the viewer at every instant, so a strap-on tumbling away carries its vent's jet with it. When it blows is the plan's
+(`JetDef.when`): `with` an engine, as hard as that engine works (fires.ts `engineWork`); from a shed body's leaving, as
+long and as hard as the simulator flies that body's motor (sim/shed.ts; fires.ts `shedLevel`), so a vent is drawn
+exactly while its push is flown; or as an engine of its own, which with no run to fire it (the Voskhods' reserve engine)
+is drawn only in the gallery, while its part is chosen, as it would have burned in orbit. A gas gives no light: it is
+marched with the smoke, up to ten jets (`GAS_JETS`, the strongest first) in the same pass and the same layer, lit as the
+smoke is and cut in the cel look as it is, cold vapour white and thinning to nothing, a turbine's steam clear for a few
+widths and then a thin veil (flames.ts `GASES`, every look estimated). It opens by its own mouth's exit pressure against
+the air's, by the plume's rule (`plumeShape`): a column at the sea, a fan at separation. A solid's burst is a fire
+(`Plume`, its look by what it burns) and lights nothing. Each mouth of a node with no `radius` is found in its geometry
+as an engine's nozzles are (`exitsOf`). What it costs: nothing with none blowing; with some, at most twenty steps through
+each one's own cylinder at the pixels it covers. The uniforms stay under WebGL 2's 224 vectors by keeping the trail's
+second vector two nodes to a vector. Not drawn: a jet's push on anything (the simulator's), the gas left behind once a
+body has moved on, a jet striking what is in its way (a vent's on the core's skin before the strap-on has swung out),
+and the heat's shimmer.
+
 **Where the exhaust goes is the site's** (`SiteDef.exhaust`, trail.ts `blast`). Left out, it strikes a deflector under
 the stand and is thrown out over the concrete (LC-5's cloud, read off its photographs). Site 1's is a flame pit: the
 fires go down through the opening in the deck, along the pit's floor between its retaining walls and up out of its open

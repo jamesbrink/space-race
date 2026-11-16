@@ -172,3 +172,46 @@ export function mergeOf(edge: (x: number) => number, gap: number): { start: numb
   }
   return { start: 0.7 * hi, end: 3 * hi + 1 };
 }
+
+/**
+ * How hard an engine works at an instant, 0 (out) to 1 (rated), from how its fire burns (`fireLevel`): its main chambers
+ * at `main` give all but `steeringShare` of its thrust, its steering chambers at `steering` the rest. Run on its steering
+ * chambers alone it works at their share of what they are asked. What a jet that blows while an engine runs (a turbine's
+ * exhaust, jets.ts) blows by: the gas generator's flow goes as the pumps' work, which goes as the thrust (estimated).
+ */
+export function engineWork(level: { main: number; steering: number }, steeringShare = 0): number {
+  return Math.min(Math.max(level.main * (1 - steeringShare) + level.steering * steeringShare, 0), 1);
+}
+
+/**
+ * How hard a shed body's motor pushes at `t`, 0 to 1 of its thrust, as the simulator flies it (sim/shed.ts): from `at`,
+ * the instant the body left, steady for `burn` seconds, then falling evenly to nothing over `tail` (what is left of its
+ * impulse). With no tail the simulator stops it at once; drawn, it comes up over a fifth of a second and dies over the
+ * half second an engine's fire takes (`fireLevel`: neither is in a record).
+ */
+export function shedLevel(t: number, at: number, burn: number, tail = 0): number {
+  const since = t - at;
+  if (since < 0) return 0;
+  const on = smoothstep(0, 0.2, since);
+  if (since < burn) return on;
+  if (tail > 0) return on * Math.max(0, 1 - (since - burn) / tail);
+  return on * (1 - smoothstep(burn, burn + 0.5, since));
+}
+
+/**
+ * A gas jet's length, in its mouth's radii: `reach` metres times the root of its `thrust` in newtons, as the attitude jets'
+ * length goes (jets.ts `jetLength`), over its mouth's `radius`, and at least a dozen radii. What `reach` each gas has is
+ * estimated (flames.ts `GASES`).
+ */
+export function gasLength(thrust: number, radius: number, reach: number): number {
+  return Math.max((reach * Math.sqrt(Math.max(thrust, 0))) / Math.max(radius, 1e-3), 12);
+}
+
+/**
+ * A gas jet's edge `x` mouth radii out, in mouth radii, the march's own (exhaust.ts `gasEdge`): it swells to `width` as
+ * the air lets it, as a fire's free jet does (`jetEdge`), and spreads as it mixes, faster where there is `air` to mix with.
+ */
+export function gasEdge(x: number, width: number, air: number): number {
+  const at = Math.max(x, 0);
+  return 1 + (width - 1) * (1 - Math.exp(-at / (1.5 * width))) + (0.05 + 0.1 * air) * at;
+}

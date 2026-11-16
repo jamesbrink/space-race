@@ -468,6 +468,8 @@ export class Stage {
       setCutaway: (on) => this.setCutaway(on),
       fitBounds: () => this.fitBounds(),
       exhibited: () => this.seats.exhibited(),
+      exhibit: () => this.exhibit,
+      selected: () => this.selected,
       seatNode: (at, seat) => this.seats.seatNode(at, seat),
       redraw: () => {
         this.dirty = true;
@@ -1572,6 +1574,7 @@ export class Stage {
     this.show.rehearse();
     const covered = this.uncover(true);
     for (const h of this.show.plumes) h.plume.mesh.visible = true; // the engines' fires too: they are first seen at liftoff
+    for (const m of this.show.jetMeshes()) m.visible = true; // (and the jets that are not fires: the same march)
     if (this.show.trail) this.show.trail.mesh.visible = true; // (and its trail: drawn empty, its shader is built)
     // (and what is drawn over the flight, the predicted path: each of its meshes, empty, so its shaders are built. It
     // wears no picture and its buffers are a few hundred kilobytes, so on either tier, tier.ts, this sends nothing to speak of)
@@ -1658,6 +1661,7 @@ export class Stage {
     for (const s of this.staged) s.everyLevel(false);
     for (const s of this.sceneries) s.everyLevel(false);
     for (const h of this.show.plumes) h.plume.mesh.visible = false;
+    for (const m of this.show.jetMeshes()) m.visible = false;
     if (this.show.trail) this.show.trail.mesh.visible = false;
     this.uncover(false, covered);
     for (const [o, visible] of overlaid) o.visible = visible;

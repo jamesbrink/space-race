@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import type { Thruster } from '../types.ts';
+import { tendGas, type Vapour } from './exhaust.ts';
+import { gasLength } from './fires.ts';
+import { GAS_KINDS, GASES } from './flames.ts';
+import { plumeShape } from './plume.ts';
 
 /**
  * The attitude jets, seen: a short pale cone at the nozzle of each chamber that is open, from the
@@ -13,6 +17,9 @@ import type { Thruster } from '../types.ts';
  * length, as long as nine centimetres times the root of its thrust in newtons (0.9 m for a 24 lbf
  * chamber, 0.2 m for a 1 lbf one: chosen to read from the chase camera's distance). It is its own
  * shader in both looks, like the engine's fire.
+ *
+ * Below them, `GasJet`: a jet that is not a main engine's fire and is drawn as a volume (`ModelDef.jets`: a tank's vent,
+ * a turbine's exhaust), marched with the smoke (exhaust.ts `gasLayer`).
  */
 
 const VERT = /* glsl */ `
@@ -106,5 +113,64 @@ export class Jets {
   dispose(): void {
     this.cones[0]?.geometry.dispose();
     this.material.dispose();
+  }
+}
+
+/**
+ * A jet that is not a fire (`ModelDef.jets` of a gas: a tank's vent, a turbine's exhaust): marched with the smoke and lit
+ * as it is (exhaust.ts `gasLayer`), white vapour or a thin veil of steam by what it is (flames.ts `GASES`). Here are its
+ * place (`mesh`, at its mouth, the gas along its -Y, which is the node's own way out) and its state (`set`). It opens by
+ * the pressure it leaves at against the air's, as an engine's fire does (plume.ts `plumeShape`).
+ */
+export class GasJet implements Vapour {
+  /** At the mouth; nothing is drawn with it. Shown while it blows. */
+  readonly mesh: THREE.Mesh;
+  on = 0;
+  width = 1;
+  length: number;
+  air = 1;
+  time = 0;
+  /** Its length at full strength, mouth radii (fires.ts `gasLength`). */
+  private readonly full: number;
+
+  /**
+   * `radius`: the mouth's, m; `kind`: its entry in the march's tables (flames.ts `gasKindOf`); `thrust`: N, which its
+   * length goes by; `exit`: the pressure it leaves at, atmospheres.
+   */
+  constructor(
+    readonly radius: number,
+    readonly kind: number,
+    thrust: number,
+    private readonly exit: number,
+  ) {
+    this.full = gasLength(thrust, radius, GASES[GAS_KINDS[kind] ?? 'oxygen'].reach);
+    this.length = this.full;
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ visible: false }));
+    this.mesh.name = 'GasJet';
+    this.mesh.frustumCulled = false;
+    this.mesh.raycast = () => {}; // (gas is not picked or stood on)
+    this.mesh.visible = false;
+    tendGas(this);
+  }
+
+  /** How it blows now: `on` 0 to 1, in the air `vacuum` gives (0 at the sea, 1 none), at the clock's `time`. True if what is drawn changed. */
+  set(on: number, vacuum: number, time: number): boolean {
+    const showing = on > 0.001;
+    const changed = showing || this.mesh.visible;
+    this.mesh.visible = showing;
+    this.on = showing ? on : 0;
+    const shape = plumeShape(vacuum, this.exit);
+    this.width = shape.width;
+    this.air = shape.air;
+    this.length = this.full * (0.35 + 0.65 * this.on); // (a weaker jet is a shorter one, as a fire is: exhaust.ts `fire`)
+    this.time = time;
+    return changed;
+  }
+
+  dispose(): void {
+    tendGas(this, false);
+    this.mesh.removeFromParent();
+    this.mesh.geometry.dispose();
+    (this.mesh.material as THREE.Material).dispose();
   }
 }

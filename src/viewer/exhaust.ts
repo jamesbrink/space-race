@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import type { Air } from './air.ts';
 import { hash2 } from './field.ts';
-import { type Cluster, jetEdge, mergeOf } from './fires.ts';
+import { type Cluster, gasEdge, jetEdge, mergeOf } from './fires.ts';
 import { uOrigin } from './origin.ts';
-import { FLAME_TABLES, FLAMES, KINDS } from './flames.ts';
+import { FLAME_TABLES, FLAMES, GAS_TABLES, KINDS } from './flames.ts';
 import type { Blast } from './trail.ts';
 import { smoothstep } from '../util/math.ts';
 
@@ -90,8 +90,33 @@ export interface Smoke {
   blast(): Blast;
 }
 
-/** The fires that can be drawn, in the order they were made. */
+/** The most gas jets drawn at once (jets.ts `GasJet`): a vent's, a turbine's exhaust. */
+export const GAS_JETS = 10;
+
+/**
+ * A jet that is not a fire, as jets.ts keeps it (`GasJet`): a gas that gives no light, marched with the smoke and lit
+ * as it is. Its shape is worked out where it is set, in the air it is in.
+ */
+export interface Vapour {
+  /** At its mouth, the gas along its -Y; shown while it blows. */
+  readonly mesh: THREE.Object3D;
+  /** The mouth's radius, metres. */
+  readonly radius: number;
+  /** How hard it blows, 0 to 1. */
+  on: number;
+  /** Its entry in the march's tables (flames.ts `gasKindOf`). */
+  readonly kind: number;
+  /** How wide the free jet swells and how long it is, in mouth radii, and how much air there is round it, 0 to 1. */
+  width: number;
+  length: number;
+  air: number;
+  /** The clock's seconds, which its billows run out by. */
+  time: number;
+}
+
+/** The fires that can be drawn, in the order they were made; and the gas jets. */
 const flames = new Set<Flame>();
+const vapours = new Set<Vapour>();
 let smoke: Smoke | null = null;
 
 /** Have a fire or the smoke drawn (every fire so told, the last smoke to say so), or no longer. */
@@ -102,24 +127,39 @@ export function tend(source: Flame | Smoke, on = true): void {
   } else smoke = on ? source : smoke === source ? null : smoke;
 }
 
-/** The fires in the scene and shown, burning or (`all`) not. */
-function shownFires(all = false): Flame[] {
+/** Have a gas jet drawn, or no longer. */
+export function tendGas(source: Vapour, on = true): void {
+  if (on) vapours.add(source);
+  else vapours.delete(source);
+}
+
+/** The fires in `scene` and shown, burning or (`all`) not. (Each stage has a pass and a scene: the site's fires are not the gallery's.) */
+function shownFires(scene: THREE.Scene, all = false): Flame[] {
   const out: Flame[] = [];
-  for (const f of flames) if (shown(f.mesh) && (all || f.on > 0.001 || f.steering > 0.001)) out.push(f);
+  for (const f of flames) if (shown(f.mesh, scene) && (all || f.on > 0.001 || f.steering > 0.001)) out.push(f);
   return out;
 }
 
-/** In the scene and shown all the way up. */
-function shown(o: THREE.Object3D): boolean {
+/** The gas jets in `scene` and shown, blowing or (`all`) not: the strongest first. */
+function shownGases(scene: THREE.Scene, all = false): Vapour[] {
+  const out: Vapour[] = [];
+  for (const g of vapours) if (shown(g.mesh, scene) && (all || g.on > 0.001)) out.push(g);
+  return out.sort((a, b) => b.on - a.on);
+}
+
+/** In the scene (`scene`, if given) and shown all the way up. */
+function shown(o: THREE.Object3D, scene?: THREE.Scene): boolean {
   let p: THREE.Object3D | null = o;
   for (; p?.parent; p = p.parent) if (!p.visible) return false;
-  return !!p && p.visible && (p as THREE.Scene).isScene === true;
+  return !!p && p.visible && (p as THREE.Scene).isScene === true && (!scene || p === scene);
 }
 
 /** How fast the fire's eddies run aft, metres a second: what film shows of the skirt's billows, not the gas itself, which at 2 km/s would be another fire every frame (estimated). */
 const FLOW = 16;
 /** How much of the Sun's light a shadow of the thickest smoke takes. */
 const SHADE = 0.8;
+/** How fast a gas jet's billows run out from its mouth, metres a second: slow enough to be seen as billows, not the gas, which leaves at hundreds (estimated). */
+const GAS_FLOW = 6;
 
 /**
  * The noise everything is cut from: 48 texels a side, repeating. Red: three octaves of smooth
@@ -261,11 +301,24 @@ const u = {
   uBlastD: { value: new THREE.Vector4() },
   /** Where a flame pit sends it (trail.ts `Blast.mouth`, `fan`, `deep`): nought for a stand over a deck. */
   uBlastE: { value: new THREE.Vector4(0, 0, -2, 0) },
-  /** The trail's nodes, oldest first: place and spread; extinction on the path and metres along it. */
+  /**
+   * The trail's nodes, oldest first: place and spread; extinction on the path and metres along it, two nodes to a
+   * vector (so that the march stays under the 224 uniform vectors WebGL 2 promises with the gas jets beside the fires).
+   */
   uNodeP: { value: new Float32Array(NODES * 4) },
-  uNodeQ: { value: new Float32Array(NODES * 4) },
+  uNodeQ: { value: new Float32Array(NODES * 2) },
   uNodes: { value: 0 },
   uCel: { value: 0 },
+  /**
+   * The gas jets (jets.ts): how many (at most GAS_JETS), and each one's mouth from the eye and its radius; the way its gas
+   * goes and how hard it blows; how wide it swells and how long it is (mouth radii), its entry in the tables, the air round it.
+   */
+  uGases: { value: 0 },
+  uGasP: { value: Array.from({ length: GAS_JETS }, () => new THREE.Vector4()) },
+  uGasA: { value: Array.from({ length: GAS_JETS }, () => new THREE.Vector4()) },
+  uGasS: { value: Array.from({ length: GAS_JETS }, () => new THREE.Vector4(1, 12, 0, 1)) },
+  /** The clock's seconds, which the gas's billows run out by. */
+  uGasT: { value: 0 },
 };
 
 /**
@@ -338,8 +391,13 @@ const SMOKE = /* glsl */ `
   uniform vec3 uPad;
   uniform vec4 uBlast, uBlastB, uBlastC, uBlastD, uBlastE;
   uniform vec4 uNodeP[NODES];
-  uniform vec4 uNodeQ[NODES];
+  uniform vec4 uNodeQ[NODES / 2];
   uniform int uNodes;
+  // a node's extinction on the path and metres along it (two to a vector)
+  vec2 nodeQ(int i) {
+    vec4 c = uNodeQ[i / 2];
+    return (i - 2 * (i / 2)) == 0 ? c.xy : c.zw;
+  }
   // round lumps of three sizes: 1 at a lump's heart
   float billow(vec3 c, float lod) { return dot(textureLod(tNoise, c, lod).gba, vec3(0.5, 0.3, 0.2)); }
 
@@ -377,7 +435,7 @@ const SMOKE = /* glsl */ `
 
   // The stretch of the trail between two nodes (a: the older; pa, pb: place and spread; qa, qb: extinction, metres along
   // the path), along u for len metres: thickest on the path, cut into billows that are as big as the smoke has spread.
-  float trailDensity(vec3 p, vec4 pa, vec4 pb, vec4 qa, vec4 qb, vec3 u, float len, float lod) {
+  float trailDensity(vec3 p, vec4 pa, vec4 pb, vec2 qa, vec2 qb, vec3 u, float len, float lod) {
     float h = clamp(dot(p - pa.xyz, u) / len, 0.0, 1.0);
     float sigma = mix(qa.x, qb.x, h);
     if (sigma <= 0.0) return 0.0;
@@ -438,6 +496,11 @@ const MARCH = /* glsl */ `
   uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS], uJetF[JETS];
   ${FLAME_TABLES}
   uniform vec4 uChamber[${CHAMBERS / 2}];
+  #define GASES ${GAS_JETS}
+  uniform int uGases;
+  uniform vec4 uGasP[GASES], uGasA[GASES], uGasS[GASES];
+  uniform float uGasT;
+  ${GAS_TABLES}
   in vec2 vUv;
   layout(location = 0) out vec4 oColour;   // light sent toward the eye (premultiplied), and cover
   layout(location = 1) out vec4 oInfo;     // where along the ray it begins and ends; the fire's brightness; the smoke's light
@@ -727,7 +790,8 @@ const MARCH = /* glsl */ `
     for (int k = 0; k < NODES - 1; k++) {
       if (k >= uNodes - 1 || T < 0.02) break;
       int i = forward ? k : uNodes - 2 - k;
-      vec4 pa = uNodeP[i], pb = uNodeP[i + 1], qa = uNodeQ[i], qb = uNodeQ[i + 1];
+      vec4 pa = uNodeP[i], pb = uNodeP[i + 1];
+      vec2 qa = nodeQ(i), qb = nodeQ(i + 1);
       if (max(qa.x, qb.x) <= 0.0) continue;
       vec3 u = pb.xyz - pa.xyz;
       float len = length(u);
@@ -768,6 +832,79 @@ const MARCH = /* glsl */ `
     return l;
   }
 
+  // ---- the gas jets (jets.ts): a tank's vent, a turbine's exhaust ---------------------------------------------------
+  // A gas jet's edge x mouth radii out, in mouth radii: it swells to its width as the air lets it (as a fire's does,
+  // \`edge\`), and spreads as it mixes, faster where there is air to mix with.
+  float gasEdge(float x, float w, float air) {
+    x = max(x, 0.0);
+    return 1.0 + (w - 1.0) * (1.0 - exp(-x / (1.5 * w))) + (0.05 + 0.1 * air) * x;
+  }
+  // How much light gas jet j takes back a metre at p (from the eye), its billows read at lod; in up, how far up across
+  // the jet p is (0 under it, 1 over it). The same gas over more of the jet's breadth is thinner; a vapour's droplets grow
+  // as it cools, so it thins more slowly than its breadth grows (estimated). It is seen once it has cooled (its clear
+  // stretch) and is gone again toward its end, and less of it is seen with no air round it (flames.ts \`GASES\`).
+  float gasDensity(int j, vec3 p, float lod, out float up) {
+    vec4 P = uGasP[j], A = uGasA[j], S = uGasS[j];
+    vec4 G = GAS_LOOK[int(S.z + 0.5)];
+    float R = P.w;
+    vec3 q = p - P.xyz;
+    float x = dot(q, A.xyz) / R;
+    up = 0.5;
+    if (x < 0.0 || x > S.y) return 0.0;
+    float b = gasEdge(x, S.x, S.w);
+    vec3 rad = q - A.xyz * (x * R);
+    float r = length(rad) / (b * R);
+    if (r >= 1.4) return 0.0;
+    up = clamp(0.5 + 0.5 * rad.y / (b * R), 0.0, 1.0);
+    float across = exp(-r * r * 2.2);
+    float along = smoothstep(0.5 * G.y, G.y + 1.0, x) * (1.0 - smoothstep(0.4 * S.y, S.y, x));
+    float seen = mix(G.z, 1.0, S.w);
+    // billows as big as the jet is broad there (a dozen mouths' breadth at the least: smaller, they are grain at the march's
+    // half size, not billows), run out with the gas
+    float tile = 2.4 * max(b, 12.0) * R;
+    float n = billow((rad + A.xyz * (x * R - uGasT * ${GAS_FLOW.toFixed(1)})) / tile, lod);
+    float k = 1.0 + G.w;
+    return A.w * (G.x / (R * b * sqrt(b))) * seen * cutBy(across * along, n, k, k * lostSpread(lod));
+  }
+  Layer gasLayer(vec3 dir, float far, float toSun) {
+    Layer l = Layer(vec4(0.0), 0.0, 1e9, 0.0);
+    if (uGases <= 0) return l;
+    float T = 1.0, weight = 0.0;
+    vec3 col = vec3(0.0);
+    for (int j = 0; j < GASES; j++) {
+      if (j >= uGases || T < 0.02) break;
+      vec4 P = uGasP[j], A = uGasA[j], S = uGasS[j];
+      float R = P.w;
+      vec2 hit = inCylinder(vec3(0.0), dir, P.xyz, A.xyz, S.y * R, 1.4 * gasEdge(S.y, S.x, S.w) * R);
+      float t0 = max(hit.x, 0.0), t1 = min(hit.y, far);
+      if (t1 <= t0) continue;
+      vec3 albedo = GAS_ALBEDO[int(S.z + 0.5)];
+      const int STEPS = 20;
+      float ds = (t1 - t0) / float(STEPS);
+      for (int i = 0; i < STEPS; i++) {
+        float t = t0 + (float(i) + 0.5) * ds;
+        vec3 p = dir * t;
+        float b = gasEdge(dot(p - P.xyz, A.xyz) / R, S.x, S.w) * R;
+        float up;
+        float d = gasDensity(j, p, lodFor(t, 2.4 * max(b, 12.0 * R)), up);
+        if (d <= 0.0) continue;
+        // (a step longer than the jet is broad there takes no more than crossing it would: the mouth is a few centimetres)
+        float a = 1.0 - exp(-d * min(ds, 2.0 * b));
+        float w = T * a;
+        col += w * albedo * smokeLit(p, d * b * 0.8, up, toSun);   // (about its own breadth of it between here and the Sun)
+        l.at += w * t;
+        weight += w;
+        l.front = min(l.front, t - 0.5 * ds);
+        l.back = max(l.back, t + 0.5 * ds);
+        T *= 1.0 - a;
+      }
+    }
+    if (weight <= 0.0) return l;
+    l.at /= weight;
+    l.c = vec4(col, 1.0 - T);
+    return l;
+  }
+
   // one layer over another, whichever is nearer in front: where they are about as far off, something of both orders
   Layer over(Layer a, Layer b) {
     if (a.front > 1e8) return b;
@@ -790,7 +927,7 @@ const MARCH = /* glsl */ `
     vec3 dir = normalize(uTurn * ray);
     float toSun = dot(dir, uSun);
     Layer f = fireLayer(dir, far);
-    Layer s = over(blastLayer(dir, far, toSun), trailLayer(dir, far, toSun));
+    Layer s = over(over(blastLayer(dir, far, toSun), trailLayer(dir, far, toSun)), gasLayer(dir, far, toSun));
     float smokeLight = s.c.a > 0.0 ? dot(s.c.rgb, LUMA) / (s.c.a * max(dot(uSunLight + uSkyLight, LUMA), 1e-5)) : 0.0;
     // the haze between: the smoke is seen through it as anything is, the fire dimmed by it
     if (s.front < 1e8) s.c = vec4(mix(s.c.rgb, uHaze * s.c.a, hazeLost(dir.y * s.at, s.at)), s.c.a);
@@ -1043,13 +1180,13 @@ const v = new THREE.Vector3();
 const nodes = new Float64Array(NODES * 6);
 
 /** Say where the fire, the blast and the trail are from the eye, as they stand now. Called before the march. */
-function place(camera: THREE.Camera): void {
+function place(camera: THREE.Camera, scene: THREE.Scene): void {
   u.tNoise.value ??= noiseMade();
   // (in the draw the scene is moved by minus the eye and the camera is at the origin: origin.ts. A place taken off
   // the camera's is from the eye either way)
   const o = uOrigin.value;
   eye.set(camera.position.x + o.x, camera.position.y + o.y, camera.position.z + o.z);
-  const fires = shownFires().slice(0, JETS);
+  const fires = shownFires(scene).slice(0, JETS);
   u.uFlame.value.y = 0;
   u.uGlow.value.setScalar(0);
   u.uJets.value = fires.length;
@@ -1110,6 +1247,17 @@ function place(camera: THREE.Camera): void {
       chamber += main.length + steering.length;
     });
   }
+  // the gas jets blowing, the strongest first: each at its mouth, along its node's -Y as it stands now
+  const gases = shownGases(scene).slice(0, GAS_JETS);
+  u.uGases.value = gases.length;
+  u.uGasT.value = gases[0]?.time ?? 0;
+  gases.forEach((g, j) => {
+    const m = g.mesh.matrixWorld.elements;
+    u.uGasP.value[j]!.set(m[12]! - camera.position.x, m[13]! - camera.position.y, m[14]! - camera.position.z, g.radius);
+    const a = v.set(-m[4]!, -m[5]!, -m[6]!).normalize();
+    u.uGasA.value[j]!.set(a.x, a.y, a.z, g.on);
+    u.uGasS.value[j]!.set(g.width, g.length, g.kind, g.air);
+  });
   const s = smoke && smoke.now !== null && shown(smoke.mesh) ? smoke : null;
   u.uBlastD.value.z = 0;
   u.uNodes.value = 0;
@@ -1132,8 +1280,8 @@ function place(camera: THREE.Camera): void {
       P[i * 4 + 1] = nodes[i * 6 + 1]! - eye.y;
       P[i * 4 + 2] = nodes[i * 6 + 2]! - eye.z;
       P[i * 4 + 3] = nodes[i * 6 + 3]!;
-      Q[i * 4] = nodes[i * 6 + 4]!;
-      Q[i * 4 + 1] = nodes[i * 6 + 5]!;
+      Q[i * 2] = nodes[i * 6 + 4]!;
+      Q[i * 2 + 1] = nodes[i * 6 + 5]!;
     }
     u.uNodes.value = n;
   }
@@ -1202,23 +1350,27 @@ export class ExhaustPass extends Pass {
 
   render(renderer: THREE.WebGLRenderer, _write: THREE.WebGLRenderTarget, frame: THREE.WebGLRenderTarget): void {
     u.uRect.value.set(0, 0, 0, 0);
-    const burning = shownFires().length > 0;
+    const burning = shownFires(this.scene).length > 0;
+    const gassing = shownGases(this.scene).length > 0;
     const smoking = !!smoke && smoke.now !== null && shown(smoke.mesh);
     const depth = this.clouds.mark.texture;
     if (!depth) return;
-    if (!burning && !smoking) {
+    if (!burning && !smoking && !gassing) {
       // Before anyone is looking (Stage.warm shows the fire and the trail for a frame, with nothing burning) the
       // shaders are built, on one pixel: not at liftoff, in front of everyone.
-      if (!this.built && (shownFires(true).length > 0 || (smoke && shown(smoke.mesh)))) {
+      if (
+        !this.built &&
+        (shownFires(this.scene, true).length > 0 || shownGases(this.scene, true).length > 0 || (smoke && shown(smoke.mesh)))
+      ) {
         this.built = true;
-        place(this.camera);
+        place(this.camera, this.scene);
         this.draw(renderer, frame, depth, new THREE.Vector4(-1, -1, -1, -1));
         u.uRect.value.set(0, 0, 0, 0);
       }
       return;
     }
     const camera = this.camera;
-    place(camera);
+    place(camera, this.scene);
     this.light();
 
     // the part of the frame they can be in
@@ -1238,13 +1390,20 @@ export class ExhaustPass extends Pass {
         half + Math.max(1.3 * R * (shape.x + 0.05 * shape.y), u.uJetB.value[j]!.x),
       );
     }
+    for (let j = 0; j < u.uGases.value; j++) {
+      const P = u.uGasP.value[j]!,
+        A = u.uGasA.value[j]!,
+        S = u.uGasS.value[j]!;
+      const half = 0.5 * S.y * P.w;
+      ball(v.set(P.x, P.y, P.z).addScaledVector(this.at.set(A.x, A.y, A.z), half), half + 1.4 * gasEdge(S.y, S.x, S.w) * P.w);
+    }
     const D = u.uBlastD.value;
     const deep = u.uBlastE.value.w;
     if (D.z > 0) ball(v.copy(u.uPad.value).add(this.at.set(D.x, 0.5 * (D.w - deep), D.y)), Math.hypot(D.z, 0.5 * (D.w + deep) + 0.5));
     const P = u.uNodeP.value,
       Q = u.uNodeQ.value;
     for (let i = 0; i < u.uNodes.value; i++)
-      if (Q[i * 4]! > 0 || Q[Math.max(i - 1, 0) * 4]! > 0 || Q[Math.min(i + 1, u.uNodes.value - 1) * 4]! > 0)
+      if (Q[i * 2]! > 0 || Q[Math.max(i - 1, 0) * 2]! > 0 || Q[Math.min(i + 1, u.uNodes.value - 1) * 2]! > 0)
         ball(v.set(P[i * 4]!, P[i * 4 + 1]!, P[i * 4 + 2]!), P[i * 4 + 3]!);
     rect.set(Math.max(rect.x, -1), Math.max(rect.y, -1), Math.min(rect.z, 1), Math.min(rect.w, 1));
     if (rect.z <= rect.x || rect.w <= rect.y) return;

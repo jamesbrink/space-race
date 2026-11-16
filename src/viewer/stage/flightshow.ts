@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
 import type { EngineDef } from '../../sim/plan.ts';
 import { exitAreaOf } from '../../sim/staged.ts';
-import type { Burns, Flight as FlightData, ModelDef, SitedFlight } from '../../types.ts';
+import type { Burns, Flight as FlightData, JetDef, ModelDef, SitedFlight } from '../../types.ts';
 import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import { Ascent, type Run } from '../ascent.ts';
@@ -11,9 +11,9 @@ import type { Cameras } from '../camera/index.ts';
 import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
 import { Chute } from '../chute.ts';
 import type { Effects } from '../effects.ts';
-import { type Cluster, clusterOf, exitsOf } from '../fires.ts';
-import { kindOf } from '../flames.ts';
-import { Jets } from '../jets.ts';
+import { type Cluster, clusterOf, type Exit, engineWork, exitsOf, shedLevel } from '../fires.ts';
+import { gasKindOf, kindOf } from '../flames.ts';
+import { GasJet, Jets } from '../jets.ts';
 import type { Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import { jointKey } from '../onfoot/gait.ts';
@@ -67,6 +67,24 @@ function hangerOf(full: THREE.Object3D): { root: THREE.Object3D; harness: THREE.
   return { root, harness: at, foot: Math.max(0, at.y - Math.min(...feet)) + 0.08 };
 }
 
+/**
+ * The mouths of the nozzles under `node`, in its own frame (the gas along its -Y): every vertex of its meshes taken
+ * into that frame and told apart into pieces as an engine's bells are (fires.ts `exitsOf`).
+ */
+function mouthsOf(node: THREE.Object3D): Exit[] {
+  node.updateWorldMatrix(true, true);
+  const into = new THREE.Matrix4().copy(node.matrixWorld).invert();
+  const points: number[] = [];
+  const p = new THREE.Vector3();
+  node.traverse((o) => {
+    const position = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh).geometry.getAttribute('position') : undefined;
+    if (!position) return;
+    const m = new THREE.Matrix4().multiplyMatrices(into, o.matrixWorld);
+    for (let i = 0; i < position.count; i++) points.push(...p.fromBufferAttribute(position, i).applyMatrix4(m).toArray());
+  });
+  return exitsOf(points);
+}
+
 /** A node that rides a descent's body, as `Ascent.rideAt` needs it: the middle of its meshes and its +Y, in the flown model's frame (`rel`: its parent's place there). */
 function pieceOf(node: THREE.Object3D, rel: THREE.Matrix4): { centre: THREE.Vector3; lie: THREE.Vector3 } {
   const own = rel.clone().multiply(node.matrix);
@@ -113,6 +131,9 @@ export interface FlightShowHost {
   fitBounds(): void;
   /** The exhibit as the camera needs it (stage/cabinview.ts), where nothing flies. */
   exhibited(): Craft | null;
+  /** Whether this stage shows an exhibit (the gallery's), and the part chosen there, if one is. */
+  exhibit(): boolean;
+  selected(): string | null;
   /** The node a seat is (stage/cabinview.ts). */
   seatNode(at: number, seat: NonNullable<ModelDef['seats']>[number]): THREE.Object3D | null;
   redraw(): void;
@@ -142,6 +163,8 @@ export class FlightShow {
     this.flightData = flight;
     this.unhang();
     this.hangPlume(flight);
+    // (in the gallery nothing flies: what leaves the exhibit that is an engine of its own is shown while its part is chosen)
+    if (!this.ascent && this.h.exhibit()) this.h.defs().forEach((def, i) => this.hangJets(this.h.staged()[i], def));
   }
 
   /** The flight off the pad (ascent.ts), and what has been done to the model that flies: the clock's instant it was put at, the nodes it has shed, how far it moved this frame. */
@@ -164,6 +187,17 @@ export class FlightShow {
 
   /** The trail it leaves in the air while the engine burns (trail.ts), in the scene's frame. */
   trail: Trail | null = null;
+
+  /**
+   * What leaves the vehicle that is not a main engine's fire (`ModelDef.jets`, jets.ts), a jet a mouth: each hung on its
+   * node (`node`) at `at` in the node's own frame, so that it goes along the node's -Y (the model's own way out) as the
+   * node stands at every instant, a tumbling booster's with it. A gas is a `GasJet`, a solid's burst a fire (`Plume`).
+   * `def` is its entry, `part` the top-level part that carries it.
+   */
+  gases: { jet: GasJet | Plume; node: THREE.Object3D; at: THREE.Matrix4; def: JetDef; part: string }[] = [];
+
+  /** The light a solid's burst is given and never lights (plume.ts: a fire takes a light; the gas jets' fires throw none). */
+  private readonly unlit = new THREE.PointLight(0xffffff, 0, 0, 2);
 
   readonly lifted = {
     t: Number.NaN,
@@ -416,6 +450,7 @@ export class FlightShow {
     const ascent = this.ascent;
     const s = this.flier;
     const clock = this.h.clock();
+    if (!ascent && this.gases.length) this.showChosen();
     if (!ascent || !s || !clock) return;
     const t = clock.t;
     if (t === this.lifted.t) return;
@@ -675,11 +710,11 @@ export class FlightShow {
    */
   burnFires(ascent: Ascent, t: number): void {
     const root = this.h.root();
-    if (!root || !this.plumes.length) return;
+    if (!root || (!this.plumes.length && !this.gases.length)) return;
     const { vacuum, levels } = ascent.fireLevels(
       t,
       Array.from(
-        { length: Math.max(...this.plumes.map((h) => h.level)) + 1 },
+        { length: this.plumes.length ? Math.max(...this.plumes.map((h) => h.level)) + 1 : 0 },
         (_, i) => this.plumes.find((h) => h.level === i)?.share ?? 0,
       ),
     );
@@ -697,6 +732,144 @@ export class FlightShow {
         this.fireLight,
         this.plumes.map((h) => h.plume),
       );
+    this.blowJets(ascent, t, vacuum, levels);
+  }
+
+  /**
+   * Hang what leaves `def`'s model that is not a main engine's fire (`ModelDef.jets`, jets.ts) on its nodes in `s`, a jet
+   * a mouth: the one round mouth `radius` gives at the node's origin, or each found in the node's geometry as an engine's
+   * nozzles are (fires.ts `exitsOf`), in the node's own frame, the gas along its -Y. A jet's thrust is shared among its
+   * mouths by their areas; with `when.shed` it is the simulator's motor's (`flight`'s plan). Each is in the scene, out.
+   */
+  private hangJets(s: Staged | undefined, def: ModelDef, flight?: FlightData): void {
+    const root = this.h.root();
+    if (!s || !root || !def.jets?.length) return;
+    s.group.updateMatrixWorld(true);
+    for (const j of def.jets) {
+      const node = s.full.getObjectByName(j.node);
+      if (!node) continue;
+      let part = node;
+      while (part.parent && part.parent !== s.full) part = part.parent;
+      const mouths: Exit[] = j.radius ? [{ x: 0, y: 0, z: 0, radius: j.radius.value }] : mouthsOf(node);
+      const motor =
+        'shed' in j.when
+          ? flight?.plan?.craft[0]?.sheds
+              ?.find((b) => b.on === (j.when as { shed: string }).shed)
+              ?.motors?.find((m) => m.name === (j.when as { motor: string }).motor)
+          : undefined;
+      const thrust = (motor?.thrust ?? j.thrust)?.value ?? 0;
+      const exit = j.exit.value / P0;
+      const area = mouths.reduce((a, m) => a + m.radius ** 2, 0);
+      for (const m of mouths) {
+        const jet =
+          j.gas === 'solid'
+            ? new Plume(m.radius, exit, null, this.unlit, kindOf(j.burns ?? 'solid-perchlorate'))
+            : new GasJet(m.radius, gasKindOf(j.gas), (thrust * m.radius ** 2) / area, exit);
+        jet.mesh.matrixAutoUpdate = false;
+        root.add(jet.mesh);
+        this.gases.push({ jet, node, at: new THREE.Matrix4().makeTranslation(m.x, m.y, m.z), def: j, part: part.name });
+        this.h.veils.push(jet.mesh); // (cloud behind it shows through it: clouds.ts)
+      }
+    }
+  }
+
+  /**
+   * Blow each jet as the run on show has it at `t`, where its node is now. One that blows `with` an engine, or is an
+   * engine of its own that a fire of the flight names, as hard as that engine works (fires.ts `engineWork`: `levels` are
+   * `Ascent.fireLevels`'); one from a shed body, as the simulator flies its motor from the instant the body left on this
+   * run (fires.ts `shedLevel`). `vacuum`: the air the vehicle is in.
+   */
+  private blowJets(ascent: Ascent, t: number, vacuum: number, levels: readonly { main: number; steering: number }[]): void {
+    const flies = this.flightData?.flies;
+    if (!this.gases.length || !flies) return;
+    const flying = ascent.flying(t);
+    const first = flies.engine ? 1 : 0;
+    // how hard the plan's engine `id` works now: the hardest of the fires that name it
+    const works = (id: string): number => {
+      let most = 0;
+      (flies.fires ?? []).forEach((f, k) => {
+        if (f.on !== id) return;
+        const share = this.plumes.find((h) => h.level === first + k)?.share ?? 0;
+        most = Math.max(most, engineWork(levels[first + k] ?? { main: 0, steering: 0 }, share));
+      });
+      return most;
+    };
+    const motors = this.flightData?.plan?.craft[0]?.sheds ?? [];
+    const on = (w: JetDef['when']): number => {
+      if (!flying) return 0;
+      if ('with' in w) return works(w.with);
+      if ('engine' in w) return works(w.engine);
+      const i = flies.drops.findIndex((d) => d.on === w.shed);
+      const at = ascent.drops[i]?.at ?? Infinity;
+      const motor = motors.find((b) => b.on === w.shed)?.motors?.find((m) => m.name === w.motor);
+      if (!motor || !Number.isFinite(at)) return 0;
+      const tail = motor.impulse
+        ? Math.max(0, (2 * (motor.impulse.value - motor.thrust.value * motor.burn.value)) / motor.thrust.value)
+        : 0;
+      return shedLevel(t, at, motor.burn.value, tail);
+    };
+    for (const g of this.gases) this.blow(g, on(g.def.when), vacuum, t);
+  }
+
+  /** Put jet `g` where its node is now and set it blowing at `level` in the air `vacuum` gives, at the clock's `time`. */
+  private blow(g: (typeof this.gases)[number], level: number, vacuum: number, time: number): boolean {
+    const root = this.h.root();
+    if (!root) return false;
+    // (not drawn where its node is not: a strap-on gone from sight, shed past SHED_SIGHT; the level of detail it is in aside)
+    let seen = true;
+    const staged = this.h.staged();
+    for (let o: THREE.Object3D | null = g.node; o && o !== root; o = o.parent)
+      if (!o.visible && !staged.some((st) => st.full === o)) seen = false;
+    const on = seen ? level : 0;
+    if (on > 0.001) {
+      g.node.updateWorldMatrix(true, false);
+      root.updateWorldMatrix(true, false);
+      g.jet.mesh.matrix.copy(root.matrixWorld).invert().multiply(g.node.matrixWorld).multiply(g.at);
+      g.jet.mesh.matrixWorldNeedsUpdate = true;
+    }
+    return g.jet instanceof GasJet ? g.jet.set(on, vacuum, time) : g.jet.set(on, vacuum, time, this.h.renderer.toneMappingExposure);
+  }
+
+  /**
+   * In the gallery, where nothing flies: each jet that is an engine of its own burns as rated while the part that carries
+   * it is chosen, in no air (as it would have fired in orbit), so the way it fires can be seen; every other is out.
+   */
+  private showChosen(): void {
+    const chosen = this.h.selected();
+    const time = performance.now() / 1000;
+    let changed = false;
+    for (const g of this.gases) changed = this.blow(g, 'engine' in g.def.when && chosen === g.part ? 1 : 0, 1, time) || changed;
+    if (changed) this.h.redraw(); // (it flickers by the time: drawn again each frame while it burns, and once as it goes out)
+  }
+
+  /** Every jet's mesh, for `Stage.warm` to show for a frame, so that the march's shader is built before anyone looks. */
+  jetMeshes(): THREE.Object3D[] {
+    return this.gases.map((g) => g.jet.mesh);
+  }
+
+  /**
+   * For tests (tools/fires-test.mjs): each jet hung, as it stands: its node, its gas, how hard it blows, whether it is
+   * drawn, its mouth and the way its gas goes in the world, and its node's origin and -Y there.
+   */
+  jetReport(): { node: string; gas: string; on: number; drawn: boolean; mouth: number[]; axis: number[]; at: number[]; out: number[] }[] {
+    return this.gases.map((g) => {
+      g.jet.mesh.updateWorldMatrix(true, false);
+      g.node.updateWorldMatrix(true, false);
+      let drawn = g.jet.mesh.visible;
+      for (let o = g.jet.mesh.parent; o; o = o.parent) drawn &&= o.visible;
+      const m = g.jet.mesh.matrixWorld.elements;
+      const n = g.node.matrixWorld.elements;
+      return {
+        node: g.def.node,
+        gas: g.def.gas,
+        on: g.jet.on,
+        drawn,
+        mouth: new THREE.Vector3().setFromMatrixPosition(g.jet.mesh.matrixWorld).toArray(),
+        axis: new THREE.Vector3(-m[4]!, -m[5]!, -m[6]!).normalize().toArray(),
+        at: new THREE.Vector3().setFromMatrixPosition(g.node.matrixWorld).toArray(),
+        out: new THREE.Vector3(-n[4]!, -n[5]!, -n[6]!).normalize().toArray(),
+      };
+    });
   }
 
   /**
@@ -739,7 +912,9 @@ export class FlightShow {
    * several chambers, main and steering). Each is carried by the top-level part of the model that holds its node.
    */
   hangPlume(flight: FlightData): void {
-    const gone = [...this.plumes.map((h) => h.plume.mesh), this.trail?.mesh];
+    const gone = [...this.plumes.map((h) => h.plume.mesh), ...this.gases.map((g) => g.jet.mesh), this.trail?.mesh];
+    for (const g of this.gases) g.jet.dispose();
+    this.gases = [];
     this.h.veils.splice(0, this.h.veils.length, ...this.h.veils.filter((o) => !gone.includes(o as THREE.Mesh)));
     // (their meshes draw nothing, but the clouds' pass has drawn them among the veils, so the renderer holds their geometry)
     for (const h of this.plumes) h.plume.dispose();
@@ -835,6 +1010,8 @@ export class FlightShow {
       }
       level++;
     }
+    const def = this.h.defs().find((m) => m.id === this.ascent?.model);
+    if (def) this.hangJets(s, def, flight);
     if (!this.plumes.length) return;
     s.group.add(light); // (in the scene at no strength until a fire burns: lighting it builds no shader)
     this.fireLight = light;

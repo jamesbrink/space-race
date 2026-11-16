@@ -1,5 +1,6 @@
 /** A model and its parts: what each is, how it moves, its views, its cabin and its mechanisms. */
-import type { Confidence } from '../measure.ts';
+import type { Confidence, Measure } from '../measure.ts';
+import type { Burns } from './sim.ts';
 import type { TreadKind } from './site.ts';
 
 /**
@@ -627,4 +628,54 @@ export interface ModelDef {
    * or shown as built.
    */
   with?: ({ model: string; exploded: number } | { model: string; at: number })[];
+  /**
+   * What leaves the model's nozzles that is not a main engine's fire (viewer/jets.ts): a tank's vent, a turbine's exhaust,
+   * a solid's burst. The model's because its nodes are, and because the gallery shows the model without its flight's
+   * `flies`; when each blows is the flight's plan's (`JetDef.when`).
+   */
+  jets?: JetDef[];
 }
+
+/** What a jet is made of, which is how it looks (viewer/jets.ts `GASES`). */
+export type Gas =
+  /** Cold oxygen gas from a tank's vent: white vapour that thins and is gone. */
+  | 'oxygen'
+  /** Steam and oxygen from decomposed hydrogen peroxide, a turbine's exhaust: clear at the mouth, a thin white veil aft. */
+  | 'steam'
+  /** A solid motor's burst: a fire (viewer/plume.ts), of what `burns` says. */
+  | 'solid';
+
+/**
+ * A jet that is not a main engine's fire: what leaves a node of the model, of what, how hard and when (viewer/jets.ts).
+ * The node's origin is on the jet's axis in the mouth's plane and its own +Z (the exported file's +Y) the way the jet
+ * pushes: the gas leaves along its -Z, at every instant, so a booster tumbling away carries its vent's jet with it.
+ */
+export interface JetDef {
+  node: string;
+  gas: Gas;
+  /** What a solid burns, for its fire's look (viewer/flames.ts). Left out, the era's polysulphide and perchlorate. */
+  burns?: Burns;
+  /** The mouth's radius, m. Left out, the mouths are found in the node's geometry (viewer/fires.ts `exitsOf`), each a jet. */
+  radius?: Measure;
+  /** Its thrust, N, all its mouths together; with `when.shed`, the simulator's motor's thrust is read instead. */
+  thrust?: Measure;
+  /** Its mass flow, kg/s, and the speed the gas leaves at, m/s, where known: for the reader, nothing draws by them. */
+  flow?: Measure;
+  speed?: Measure;
+  /** The pressure the gas leaves at, Pa: the jet opens by it against the air's, as an engine's fire does (plume.ts `plumeShape`). */
+  exit: Measure;
+  when: JetWhen;
+}
+
+/** When a jet blows, by the flight's plan (sim/plan.ts). */
+export type JetWhen =
+  /** While the plan's engine of this id burns, as hard as it does (a turbine's exhaust while its engine runs). */
+  | { with: string }
+  /** From when the plan's shed body `shed` (`ShedBody.on`) leaves, as long and as hard as the simulator flies its motor `motor` (sim/shed.ts). */
+  | { shed: string; motor: string }
+  /**
+   * As an engine of its own: while the plan's engine of this id burns on the run on show, read off the flight's fire that
+   * names it. With no run that fires it (a flight with no plan), it is drawn in the gallery while its part is chosen,
+   * burning as rated in no air, so the way it fires can be seen.
+   */
+  | { engine: string };

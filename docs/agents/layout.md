@@ -215,12 +215,12 @@ src/
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad
-  viewer/flames.ts                    what a fire looks like by what it burns: its colours, its light, how much it hides (each with its source)
-  viewer/fires.ts                     which fires burn when and how hard, an engine's chambers found in its geometry, the jet's edge and where a cluster's jets merge (pure: tests/fires.test.mjs)
+  viewer/flames.ts                    what a fire looks like by what it burns: its colours, its light, how much it hides (each with its source); and a gas jet by what it is (`GASES`)
+  viewer/fires.ts                     which fires burn when and how hard, an engine's chambers found in its geometry, the jet's edge and where a cluster's jets merge; how hard a jet that is not a fire blows, and its shape (pure: tests/fires.test.mjs)
   viewer/trail.ts                     the smoke it leaves as data: the trail along the path flown (steam low down, a contrail in the cold), the cloud over the pad at liftoff
   viewer/exhaust.ts                   fire and smoke drawn as volumes (the one thing here meant to look real): marched at a quarter of the pixels, laid over the frame; the smoke's shadow
   viewer/chute.ts                     the parachutes, drawn from Flight.flies.chutes: out, filling, reefed, full, and down on the sea
-  viewer/jets.ts                      the attitude jets, seen: a pale cone at each chamber that is open, from the thruster data
+  viewer/jets.ts                      the attitude jets, seen: a pale cone at each chamber that is open, from the thruster data; and `GasJet`, a vent's or a turbine exhaust's jet (`ModelDef.jets`), marched with the smoke
   viewer/effects.ts                   what the air does, seen and felt, at the clock's instant: fed by FlightShow.lift, and the camera's shake for the draw
   viewer/entry.ts                     incandescence by black-body colour, the shock layer's glow as a marched volume, the collar of cloud at Mach 1
   viewer/shake.ts                     the camera shaken: engine sound, buffet, load and jolts as levels, band-limited noise in the clock's time
