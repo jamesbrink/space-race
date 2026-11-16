@@ -114,9 +114,15 @@ export class Vehicle {
   private tiller: { node: THREE.Object3D; rest: THREE.Quaternion } | undefined;
   /** The driver's door, if it has one: the first door there is. */
   door: THREE.Object3D | undefined;
+  /** Every door it has: left out of its size (`measure`), which is the body's however they stand. */
+  private readonly doors: THREE.Object3D[] = [];
   private readonly seat: THREE.Object3D | undefined;
   private readonly stand: THREE.Object3D | undefined;
-  /** How far its body reaches ahead of and behind the rear axle, and to each side, metres, as it stands when it is got into (a tower folded or not). */
+  /**
+   * How far its body reaches ahead of and behind the rear axle, and to each side, metres, as it stands when it is got into
+   * (a tower folded or not), its doors left out: it is got into with the driver's open, and measured with it the GAZ-21 at
+   * Site 1 was 3.8 m wide, its far side a metre off its flank, and would not go forward past a wall's corner it cleared.
+   */
   private nose = 0;
   private tail = 0;
   private half = 0;
@@ -147,7 +153,9 @@ export class Vehicle {
       // (the driver's is the seat called so, or the first there is)
       if (o.userData.seat && (!seat || /driver/i.test(o.name)) && !/driver/i.test(seat?.name ?? '')) seat = o;
       if (o.userData.stand && (!stand || /driver/i.test(o.name)) && !/driver/i.test(stand?.name ?? '')) stand = o;
-      if ((o.userData.door || /^_Door_\d+$/.test(tail)) && (!this.door || /_Door_1$/.test(o.name))) this.door = o;
+      const door = o.userData.door || /^_Door_\d+$/.test(tail);
+      if (door) this.doors.push(o);
+      if (door && (!this.door || /_Door_1$/.test(o.name))) this.door = o;
     });
     // a front wheel without a knuckle of its own is steered as it is, about its hub
     if (!this.knuckles.length) for (const o of this.rolling) if (/_SteerWheel_\d+$/.test(o.name)) this.knuckles.push(o);
@@ -156,7 +164,7 @@ export class Vehicle {
     this.read();
   }
 
-  /** Its length and width as it stands now, in its own frame. */
+  /** Its length and width as it stands now, in its own frame, but for its doors. */
   private measure(): void {
     const root = this.root;
     const wheelbase = this.chassis.wheelbase;
@@ -164,9 +172,13 @@ export class Vehicle {
     const inverse = root.matrixWorld.clone().invert();
     const box = new THREE.Box3();
     const corner = new THREE.Vector3();
+    const inDoor = (o: THREE.Object3D): boolean => {
+      for (let p: THREE.Object3D | null = o; p && p !== root; p = p.parent) if (this.doors.includes(p)) return true;
+      return false;
+    };
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh || inDoor(mesh)) return;
       if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
       const b = mesh.geometry.boundingBox!;
       for (const x of [b.min.x, b.max.x])

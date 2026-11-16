@@ -99,29 +99,28 @@ try {
   );
   const steps0 = await page.evaluate(() => window.heardWalk);
   const speed = () => page.evaluate(() => window.sr.stage.onFoot.wheel?.motion.speed ?? Number.NaN);
-  // forward, or if something stands in the way, backward (the brake pedal is reverse once it has stopped)
-  // (it stands by a building's corner with the bus beside it: it goes off to the right, as it did at 08:05)
-  let key = 'w';
-  await page.keyboard.down(key);
+  const place = () => page.evaluate(() => ({ ...window.sr.stage.onFoot.wheel?.motion }));
+  // forward, off to the right as it went at 08:05: it stands by a building's corner with the bus beside it, and clears
+  // the corner (#29: measured with its door open as it was got into, it was a metre wider on that side and would not)
+  const from = await place();
+  await page.keyboard.down('w');
   await page.keyboard.down('d');
-  await wait(1200);
-  if (Math.abs(await speed()) < 0.3) {
-    await page.keyboard.up(key);
-    key = 's';
-    await page.keyboard.down(key);
-    console.log('    (something is ahead of it: backing instead)');
-  }
   const going = [];
-  for (let i = 0; i < 6; i++) {
+  /** How far it has got along the way its nose first pointed (held on the right lock it goes round, and comes back). */
+  let ahead = 0;
+  for (let i = 0; i < 8; i++) {
     await wait(700);
     going.push({ list: await voices(), speed: await speed() });
+    const to = await place();
+    ahead = Math.max(ahead, (to.x - from.x) * Math.cos(from.heading) - (to.z - from.z) * Math.sin(from.heading));
   }
-  await page.keyboard.up(key);
+  await page.keyboard.up('w');
   await page.keyboard.up('d');
+  check(ahead > 3, `it drives forward from where it stood: ${ahead.toFixed(1)} m along its nose`);
   for (const { list, speed: v } of going) say(`driving at ${v.toFixed(1)} m/s`, list);
   const rpm = going.map(({ list }) => list.find((v) => v.part === 'engine')?.rpm ?? 0);
   const fastest = going.reduce((a, b) => (Math.abs(b.speed) > Math.abs(a.speed) ? b : a));
-  check(Math.abs(fastest.speed) > 2, `it goes: up to ${fastest.speed.toFixed(1)} m/s`);
+  check(fastest.speed > 2, `it goes: up to ${fastest.speed.toFixed(1)} m/s`);
   check(
     rpm.at(-1) > (idle.find((v) => v.part === 'engine')?.rpm ?? Infinity),
     `the engine turns faster as it goes: ${rpm.map(Math.round).join(', ')} rpm`,

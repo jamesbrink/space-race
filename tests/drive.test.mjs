@@ -130,6 +130,30 @@ test('it stops short of what is in its way, stays on the ground under it, and no
   assert.ok(Math.abs(hill.root.rotation.z - Math.atan(0.1)) < 0.02, `nose up by the slope: ${hill.root.rotation.z}`);
 });
 
+test('its open door is not part of its width: got into with the door open, it goes past what the door would have struck', () => {
+  const { root } = truck();
+  // the driver's door on its left (-Z) flank, hinged at its front edge, swung open: its back edge 0.93 m out from the flank
+  const door = new THREE.Group();
+  door.name = 'Truck_Door_1';
+  door.position.set(2.2, 0.9, -1);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(1, 0.9, 0.05));
+  panel.position.set(-0.5, 0, 0);
+  door.add(panel);
+  root.add(door);
+  door.rotation.y = -1.2;
+  root.updateMatrixWorld(true);
+  const vehicle = new Vehicle(root);
+  vehicle.read(); // (as onfoot.ts takes the wheel: the door still open behind the driver)
+  // a post just ahead and to its left, clear of its body (1 m to a side) but where the open door reached
+  const start = root.getWorldPosition(new THREE.Vector3());
+  const side = new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld);
+  const post = { ground: () => 0, ahead: (from, _way, far) => (from.clone().sub(start).dot(side) < -1.3 && far > 1 ? 1 : null) };
+  door.rotation.y = 0; // (shut once he is in)
+  for (let i = 0; i < 120; i++) vehicle.drive(1, 0, 1 / 60, post);
+  const went = root.getWorldPosition(new THREE.Vector3()).distanceTo(start);
+  assert.ok(went > 4, `it drove on past the post: ${went.toFixed(2)} m`);
+});
+
 test('a part its flight drives off is marked a vehicle from its drive, if it is built to the contract; a chase view clears it', async () => {
   const { markDriven } = await import('../src/viewer/onfoot/drive.ts');
   const { root } = truck();

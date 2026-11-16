@@ -237,7 +237,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   The figure sits (`Moment.sit`): its hips on the seat's hip point, its hands on the wheel and
   going round with it; the steering wheel turns sixteen times as far as the road wheels. The
   vehicle's pieces are found by their extras (`steer`, `seat`, `stand`, `steering`, `door`)
-  before their names. The vehicle is left out of the solids while it is driven. A part the
+  before their names. The vehicle is left out of the solids while it is driven, and its size (how far its nose,
+  tail and flanks reach, which is where it looks for what is in its way) is its body's without its doors, which
+  stand open as it is got into. A part the
   flight drives off (a `drive` move on its own node, to the same contract) is marked a vehicle
   from that move (`markDriven`); driven by hand it is let loose from the slider (`Exploder.loosen`)
   until the script next moves it, its other levels of detail follow it, and its driving
