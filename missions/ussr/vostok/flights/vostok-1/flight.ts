@@ -1315,6 +1315,26 @@ const crew = sk1Crew({
   url: 'models/ussr/vostok/vostok-1/crew.glb',
   scale: 'Yuri A. Gagarin · 1.65 m, 1.72 m suited · to scale',
   helmet: HELMET_WORDS,
+  // the suit he wore that morning (crew/sk-1.md, "Who is in the suit"; model/crew.py builds it)
+  suit: {
+    kind: {
+      value: 'SK-1',
+      confidence: 'documented',
+      source: 'Abramov and Skoog, Russian Spacesuits, pp. 41 to 44; the Smithsonian’s label',
+    },
+    wearer: { name: 'Gagarin', they: 'he', their: 'his' },
+    gloves: {
+      value: 'cover',
+      confidence: 'estimated',
+      source: 'as built: the cover’s orange backs. Probably wrong: the SK-1s kept since have black leather gloves (crew/sk-1.md)',
+    },
+    neck: { value: 'grey', confidence: 'estimated', source: 'the photographs and film of the morning (crew/sk-1.md)' },
+    mirror: {
+      value: true,
+      confidence: 'documented',
+      source: 'the Smithsonian’s label: "mirror sewn into the sleeve to help the cosmonaut locate hard-to-see switches and gauges"',
+    },
+  },
 });
 
 export const flight: Flight = {

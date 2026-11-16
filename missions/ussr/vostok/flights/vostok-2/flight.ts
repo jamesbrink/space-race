@@ -385,6 +385,19 @@ const crew = sk1Crew({
       ['Lettering', '"СССР", red (the reports of 6 August 1961)'],
     ],
   },
+  // the suit he wore that morning: Gagarin's as built, the man in it not measured (crew/sk-1.md, "Who is in the suit")
+  suit: {
+    kind: { value: 'SK-1', confidence: 'documented', source: 'Abramov and Skoog, Russian Spacesuits, pp. 41 to 44' },
+    wearer: { name: 'Titov', they: 'he', their: 'his' },
+    gloves: {
+      value: 'cover',
+      confidence: 'estimated',
+      source:
+        'as built for Gagarin: the cover’s orange backs. Probably wrong: the SK-1s kept since have black leather gloves (crew/sk-1.md)',
+    },
+    neck: { value: 'grey', confidence: 'estimated', source: 'as Gagarin’s (crew/sk-1.md)' },
+    mirror: { value: true, confidence: 'assumed', source: 'Gagarin’s, documented by the Smithsonian’s label, taken for his' },
+  },
 });
 
 const PRAVDA = 'Pravda and Izvestiya, 7 to 12 August 1961 (JPL Astronautics Information Translation No. 24)';
