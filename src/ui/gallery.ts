@@ -20,7 +20,7 @@ import { Callout } from './callout.ts';
 import { crewMarkup, momentMarkup, namedMarkup, programmeMarkup, storyMarkup } from './history.ts';
 import { type Told, toldOf } from '../app/lineup/row.ts';
 import { CURTAIN, Curtain, follow } from '../app/curtain.ts';
-import { type Shot, tour } from '../app/demo.ts';
+import { Demo, type Pacing, type Shot } from '../app/demo.ts';
 import { dock, fitName, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
 import { prefs } from '../app/prefs.ts';
 import { type Sheet, sheet } from './sheet.ts';
@@ -33,7 +33,6 @@ import { type Anchor, cleared, covers, type Frame, Labels, layOut } from '../vie
 import { Stage } from '../viewer/stage.ts';
 import { asStudio, type Studio } from '../viewer/studio.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
-import { smoothstep } from '../util/math.ts';
 import { scripted, unattended } from '../util/env.ts';
 import {
   CAMERA_HELD,
@@ -191,17 +190,21 @@ const TABS = ['View', 'Parts', 'Specs', 'Motors', 'History'] as const;
 const HISTORY = { milestones: MILESTONES, stories: STORIES, people: PEOPLE, programmes: PROGRAMMES };
 /** The keys that are the camera's (viewer/camera/input.ts): they go on to it. Every other key is the gallery's, or nobody's while it is up. */
 const CAMERA_KEYS = new Set([...CAMERA_HELD, ...keysOf('cam.home')]);
-/** Seconds without a touch before the gallery shows itself, the first time and after it has been stopped. */
-const IDLE_FIRST = 40;
-const IDLE_AGAIN = 150;
-/** Seconds on each thing in the show, and to take the vehicle apart or put it together. */
-const DWELL: Record<Shot['kind'], number> = { whole: 8, apart: 8, part: 8.5, window: 8 };
+/**
+ * The gallery's pace for the idle show (app/demo.ts): eight seconds on each thing, from higher and lower by turns, and
+ * forty seconds alone before it starts (two and a half minutes after it has been stopped).
+ */
+const PACING: Pacing = {
+  dwell: { whole: 8, apart: 8, part: 8.5, window: 8 },
+  rise: (n) => [0.2, 0.36, 0.12, 0.3][n % 4]!,
+  idle: [40, 150],
+};
+/** Seconds to take the vehicle apart or put it together, from its button (half this). */
 const APART = 5;
 /** More views than this are folded behind one button. */
 const MANY_VIEWS = 5;
 /** Milliseconds its canvas takes to fade in over the site's, or out (gallery.css has the same). */
 const FADE = 450;
-const TURN = 0.5;
 
 export class Gallery {
   private readonly root: HTMLElement;
@@ -237,14 +240,8 @@ export class Gallery {
   private pointer: [number, number] = [0, 0];
   private frame = 0;
   private last = performance.now();
-  /** The show: which shot it is on (-1: not running), how long it has left, how long since anyone touched the page. */
-  private shots: Shot[] = [];
-  private shot = -1;
-  private left = 0;
-  private idle = 0;
-  private wait = IDLE_FIRST;
-  private count = 0;
-  private apartGoal = 0;
+  /** The idle show (app/demo.ts), on the gallery's own vehicle, with no clock to run. */
+  private readonly demo: Demo;
   private settling = 0;
 
   constructor(parent: HTMLElement, flight: Flight, host: GalleryHost) {
@@ -267,6 +264,7 @@ export class Gallery {
       hover: (node) => this.hover(node, false),
     });
     this.callout = new Callout(document.body);
+    this.demo = this.idleShow();
     this.listen();
   }
 
@@ -282,7 +280,7 @@ export class Gallery {
 
   /** The show is running. */
   get touring(): boolean {
-    return this.shot >= 0;
+    return this.demo.active;
   }
 
   /**
@@ -291,7 +289,7 @@ export class Gallery {
    * the vehicle is fetched.
    */
   async enter(what?: string): Promise<void> {
-    this.endShow(); // (coming in is taking over, if it was showing itself behind the front page)
+    if (this.touring) this.demo.stop(); // (coming in is taking over, if it was showing itself behind the front page)
     this.open = true;
     // its canvas fades in over the site's last frame, which is put away once it is covered
     this.root.hidden = false;
@@ -301,7 +299,7 @@ export class Gallery {
     this.settling = window.setTimeout(() => document.body.classList.add('gallery-settled'), FADE);
     this.setCel(prefs.get('cel'), false); // (it may have been changed at the site)
     this.stopped = prefs.get('orbitOff');
-    this.idle = 0;
+    this.demo.touch();
     this.made?.stage.sleep(false);
     if (!this.frame) this.frame = requestAnimationFrame(() => this.tick());
     if (!this.ready) {
@@ -334,7 +332,7 @@ export class Gallery {
   /** Go out: it sleeps as it stands, and is as it was left when next come into. */
   leave(): void {
     if (!this.open) return;
-    this.endShow();
+    if (this.touring) this.demo.stop();
     this.open = false;
     // (and fades out over the site, which is awake and drawn under it by then)
     this.root.hidden = true;
@@ -809,8 +807,8 @@ export class Gallery {
           if (!this.open) return;
           if (e.type === 'pointermove' && this.touring) return;
           if (e instanceof KeyboardEvent && modifierOnly(e)) return;
-          this.idle = 0;
-          if (this.touring && !this.host.covered()) this.endShow();
+          if (this.touring && !this.host.covered()) this.demo.stop();
+          else this.demo.touch();
         },
         { capture: true, passive: true },
       );
@@ -1268,7 +1266,9 @@ export class Gallery {
       this.q<HTMLInputElement>('.explode input').value = String(this.apart);
       if (this.apart === this.apartTo) this.apartTo = null;
     }
-    this.show(dt);
+    // (nor while someone is sitting in it: the view is theirs, however long they sit still)
+    if (!this.touring && this.seat !== null) this.demo.touch();
+    this.demo.tick(dt);
     this.name();
     this.figures();
   }
@@ -1364,120 +1364,103 @@ export class Gallery {
   /*
    * The show. Left alone, the gallery goes through the vehicle by itself: the whole of it, taken
    * apart, each part in turn with a card saying what it is, together again, then what is inside
-   * through the cutaway and the glass. The same tour the idle show makes of a section at the site
-   * (demo.ts `tour`), with no clock to run. Any touch ends it and puts everything back.
+   * through the cutaway and the glass. It is the site's idle show (app/demo.ts), given this room
+   * and no clock to run. Any touch ends it and puts everything back.
    */
-  private show(dt: number): void {
-    // not for a browser driven by a script (unless it asks: ?demo), nor for anyone who has asked their system for less motion
-    if (unattended() && !this.touring) return;
-    // (nor while someone is sitting in it: the view is theirs, however long they sit still)
-    if (!this.touring && this.seat !== null) return void (this.idle = 0);
-    if (!this.touring) {
-      this.idle += dt;
+  private idleShow(): Demo {
+    const stage = () => this.made!.stage;
+    const f = this.flight;
+    const eyebrow = `${f.callsign} · Gallery`;
+    return new Demo(this.staged, {
+      pacing: PACING,
+      show: () => {},
+      whole: (turn, rise) => {
+        this.setCutaway(false);
+        stage().framing.view(WHOLE_VIEW);
+        stage().framing.swing(turn, rise);
+        stage().setAutoRotate(true);
+      },
+      part: (node, inside, turn, rise) => {
+        this.setCutaway(inside);
+        stage().framing.focus(node, false, { turn, rise });
+        stage().setAutoRotate(true);
+      },
+      apart: (t, raw) => {
+        this.apart = raw;
+        stage().setExplode(this.stretchAt(t));
+        this.q<HTMLInputElement>('.explode input').value = String(raw);
+      },
+      apartNow: () => this.apart,
+      window: (n) => {
+        const panes = stage().panes();
+        const to = panes[n % Math.max(1, panes.length)];
+        if (!to) return false;
+        this.setCutaway(false);
+        this.pane = to.point;
+        stage().framing.lookIn(to.point, to.normal);
+        stage().setAutoRotate(false);
+        return true;
+      },
+      // (behind the front page the show says nothing)
+      say: (text, at) => {
+        if (this.host.covered()) return;
+        this.callout.show(
+          text,
+          at === null ? null : () => (at === 'window' ? this.pane && stage().screenOf(this.pane) : stage().screenOf(at)),
+        );
+      },
+      words: (shot: Shot) => {
+        if (shot.kind === 'whole') return { eyebrow, title: f.callsign, text: `${f.spacecraft}. ${this.vehicle.scale}.` };
+        if (shot.kind === 'apart')
+          return {
+            eyebrow,
+            title: shot.to ? 'Taken apart' : 'Together again',
+            text: shot.to ? 'Every part, in the order it comes off.' : this.vehicle.scale,
+          };
+        if (shot.kind === 'part') {
+          const part = this.vehicle.parts.find((p) => p.node === shot.node);
+          return part ? { eyebrow, title: part.name, text: part.summary } : null;
+        }
+        return { eyebrow, title: 'Through the window', text: 'What is inside is modelled too: every window is glass over an opening.' };
+      },
+      dark: () => false,
+      // not for a browser driven by a script (unless it asks: ?demo), nor for anyone who has asked their system for less
+      // motion, nor while someone sits in it, nor in a page nobody can see
+      busy: () => !this.ready || unattended() || this.seat !== null || (document.hidden && !this.touring),
       // behind the front page it plays at once; in front of someone, only once they have left it alone a while
-      if (document.hidden || (!this.host.covered() && this.idle < this.wait)) return;
-      this.startShow();
-    }
-    if (this.apart !== this.apartGoal) {
-      const step = dt / APART;
-      const far = this.apartGoal - this.apart;
-      this.apart = Math.abs(far) <= step ? this.apartGoal : this.apart + Math.sign(far) * step;
-      this.made!.stage.setExplode(this.stretchAt(smoothstep(0, 1, this.apart)));
-      this.q<HTMLInputElement>('.explode input').value = String(this.apart);
-    }
-    this.left -= dt;
-    if (this.left <= 0) this.next();
+      eager: () => this.host.covered() && !document.hidden,
+      running: (on) => {
+        const s = stage();
+        if (on) {
+          if (this.plinth !== this.choices[0]) this.stand(this.choices[0]!);
+          this.select(null);
+          document.body.classList.add('gallery-show');
+          s.inert = true;
+          s.framing.setDrift(2.2);
+          s.setAutoRotate(true);
+          this.labels.clear();
+          return;
+        }
+        document.body.classList.remove('gallery-show');
+        this.callout.hide();
+        s.inert = false;
+        s.framing.setDrift(1);
+        // handed back as it is studied: together, closed, the whole of it
+        this.setApart(0);
+        this.q<HTMLInputElement>('.explode input').value = '0';
+        this.autoCut = false;
+        this.setCutaway(false);
+        this.selected = null;
+        s.highlight(null, null);
+        this.whole();
+      },
+    });
   }
 
   /** The vehicle's slider reading for the show's, which eases in and out. */
   private stretchAt(k: number): number {
     const [from, to] = this.stretch;
     return k <= 0 ? 0 : from + (to - from) * k;
-  }
-
-  private startShow(): void {
-    if (this.plinth !== this.choices[0]) this.stand(this.choices[0]!);
-    this.select(null);
-    this.shots = tour(this.staged, 'day');
-    this.shot = 0;
-    this.count = 0;
-    this.apartGoal = this.apart;
-    document.body.classList.add('gallery-show');
-    const stage = this.made!.stage;
-    stage.inert = true;
-    stage.framing.setDrift(2.2);
-    stage.setAutoRotate(true);
-    this.labels.clear();
-    this.take(this.shots[0]!);
-  }
-
-  private endShow(): void {
-    if (!this.touring) return;
-    this.shot = -1;
-    this.wait = IDLE_AGAIN;
-    this.idle = 0;
-    document.body.classList.remove('gallery-show');
-    this.callout.hide();
-    const stage = this.made!.stage;
-    stage.inert = false;
-    stage.framing.setDrift(1);
-    // handed back as it is studied: together, closed, the whole of it
-    this.setApart(0);
-    this.q<HTMLInputElement>('.explode input').value = '0';
-    this.apartGoal = 0;
-    this.autoCut = false;
-    this.setCutaway(false);
-    this.selected = null;
-    stage.highlight(null, null);
-    this.whole();
-  }
-
-  private next(): void {
-    this.shot = (this.shot + 1) % this.shots.length;
-    this.take(this.shots[this.shot]!);
-  }
-
-  private take(shot: Shot): void {
-    const stage = this.made!.stage;
-    this.left = DWELL[shot.kind];
-    const f = this.flight;
-    const eyebrow = `${f.callsign} · Gallery`;
-    // each new thing is seen from further round, and from higher and lower by turns
-    const rise = [0.2, 0.36, 0.12, 0.3][this.count++ % 4]!;
-    const quiet = this.host.covered();
-    const say = (title: string, text: string, at: string | null): void => {
-      if (quiet) return; // (behind the front page the show says nothing)
-      this.callout.show(
-        { eyebrow, title, text },
-        at === null ? null : () => (at === 'window' ? this.pane && stage.screenOf(this.pane) : stage.screenOf(at)),
-      );
-    };
-    if (shot.kind === 'whole') {
-      this.setCutaway(false);
-      stage.framing.view(WHOLE_VIEW);
-      stage.framing.swing(TURN, rise);
-      say(f.callsign, `${f.spacecraft}. ${this.vehicle.scale}.`, null);
-    } else if (shot.kind === 'apart') {
-      this.apartGoal = shot.to;
-      this.setCutaway(false);
-      stage.framing.view(WHOLE_VIEW);
-      stage.framing.swing(TURN, rise);
-      say(shot.to ? 'Taken apart' : 'Together again', shot.to ? 'Every part, in the order it comes off.' : this.vehicle.scale, null);
-    } else if (shot.kind === 'part') {
-      const part = this.vehicle.parts.find((p) => p.node === shot.node);
-      this.setCutaway(Boolean(part?.inside));
-      stage.framing.focus(shot.node, false, { turn: TURN, rise });
-      if (part) say(part.name, part.summary, part.node);
-    } else {
-      const panes = stage.panes();
-      const to = panes[shot.n % Math.max(1, panes.length)];
-      if (!to) return void this.next();
-      this.setCutaway(false);
-      this.pane = to.point;
-      stage.framing.lookIn(to.point, to.normal);
-      say('Through the window', 'What is inside is modelled too: every window is glass over an opening.', 'window');
-    }
-    stage.setAutoRotate(shot.kind !== 'window');
   }
   private pane: Vector3 | null = null;
 
@@ -1495,7 +1478,7 @@ export class Gallery {
     if (!stage || !this.ready) return;
     if (n === null) return void stage.seats.sit(null);
     if (this.seat === null) {
-      if (this.touring) this.endShow();
+      if (this.touring) this.demo.stop();
       // what is sat in stands there, together and closed: from inside the cabin is the cabin, not the room through a cut
       const node = stage.seats.seatName(n);
       const part = node ? stage.partOf(node) : null;

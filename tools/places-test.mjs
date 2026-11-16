@@ -105,21 +105,21 @@ const cases = {
     await galleryReady(page);
     const fails = [];
     for (const key of ['n', 'b', 'Escape', 'g', 'l', 'h', 'x', 't']) {
-      await page.evaluate(() => (window.sr.gallery.idle = 1e6)); // (left alone a long while)
+      await page.evaluate(() => (window.sr.gallery.demo.idle = 1e6)); // (left alone a long while: the idle show's count, app/demo.ts)
       await page.waitForFunction(() => window.sr.gallery.touring, null, { timeout: 10000 });
       await page.waitForTimeout(150);
       await page.keyboard.press(key);
       await page.waitForTimeout(150);
-      const after = await page.evaluate(() => ({ touring: window.sr.gallery.touring, idle: window.sr.gallery.idle }));
+      const after = await page.evaluate(() => ({ touring: window.sr.gallery.touring, idle: window.sr.gallery.demo.idle }));
       if (after.touring) fails.push(`${key} was pressed during the tour and the tour went on`);
       else if (after.idle > 5) fails.push(`${key} ended the tour and the page still counts ${after.idle.toFixed(0)} s left alone`);
-      await page.evaluate(() => window.sr.gallery.endShow());
+      await page.evaluate(() => window.sr.gallery.demo.stop());
     }
     // used by its keys alone, it is not left alone: the count starts again at each
-    await page.evaluate(() => (window.sr.gallery.idle = 10));
+    await page.evaluate(() => (window.sr.gallery.demo.idle = 10));
     await page.keyboard.press('n');
     await page.waitForTimeout(100);
-    const idle = await page.evaluate(() => window.sr.gallery.idle);
+    const idle = await page.evaluate(() => window.sr.gallery.demo.idle);
     if (idle > 5) fails.push(`N was pressed with no tour on and the page still counts ${idle.toFixed(0)} s left alone`);
     await close();
     return fails;

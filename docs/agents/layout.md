@@ -93,7 +93,7 @@ src/
   app/actions.ts                      on foot: what can be done with the thing being looked at (from flight data)
   app/prefs.ts                        what is remembered between visits
   app/mem.ts                          `?mem`: every GPU allocation the page makes, counted by bytes and by who asked (`srMem.report()`)
-  app/demo.ts                         the idle show: the day run round, a tour of the flight, a callout on each thing
+  app/demo.ts                         the idle show: the day run round, a tour of the flight, a callout on each thing; given a host, the site's or the gallery's
   ui/ui.ts  ui/style.css              the panels: one class that renders from the flight's data, and the page's looks
   ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own, its History tab; the switch between the places
   ui/history.ts  ui/history.css       the history's words as the page writes them, the same on the Lineup's card and in a gallery's History tab: the story, the name, the crew, a programme, a moment

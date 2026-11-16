@@ -11,24 +11,44 @@ import { sliderAt } from '../world/sequence.ts';
  * flight's own data (its models, their parts, a model's slider and `sequence`).
  */
 
-/** What the show asks of the page. Angles are radians: `turn` round from where the camera is, `rise` above the level. */
+/** What the show says of one thing: the callout's three lines. */
+export interface Said {
+  eyebrow: string;
+  title: string;
+  text: string;
+}
+
+/**
+ * What the show asks of the page it runs on: a flight's site (main.ts) or the gallery's room (ui/gallery.ts). Angles are
+ * radians: `turn` round from where the camera is, `rise` above the level.
+ */
 export interface DemoHost {
+  /** The flight's clock, which the show runs through the day; a room with none (the gallery) has no day to show. */
+  readonly clock?: Clock;
   /** Go to a section (a model of the flight). */
   show(model: string): void;
   /** The section as a whole. */
   whole(turn: number, rise: number): void;
   /** One part of the section; `inside` parts are seen with the section cut open. */
   part(node: string, inside: boolean, turn: number, rise: number): void;
-  /** Take the section this far apart (0 to 1): only asked of a section whose slider is not the clock. */
-  apart(t: number): void;
+  /** Take the section this far apart (0 to 1, eased at both ends; `raw`: as far along its own easing as the show is): only asked of a section whose slider is not the clock. */
+  apart(t: number, raw: number): void;
+  /** How far apart the section stands as the show begins, which it goes on from (the gallery's slider); left out, together. */
+  apartNow?(): number;
   /** Go up to the section's `n`th window and look in. False if it has no windows. */
   window(n: number): boolean;
   /** Say this about what is on show; `at` is the part it is about, 'window', or null for nothing in particular. */
-  say(text: { eyebrow: string; title: string; text: string }, at: string | 'window' | null): void;
+  say(text: Said, at: string | 'window' | null): void;
+  /** What to say of a shot, where the page puts it its own way (the gallery); left out, the show's own words. */
+  words?(shot: Shot, model: ModelDef): Said | null;
   /** It is dark: the Sun is down and what is seen is what the lamps light. */
   dark(): boolean;
   /** Nothing must start the show now: someone is on foot, a page is in front, the scene is not ready. */
   busy(): boolean;
+  /** Start now, without waiting to be left alone (the gallery behind the front page, where nobody is in front of it). */
+  eager?(): boolean;
+  /** The page's own pace, where it differs from the site's: seconds on each kind of shot, how high each comes from, how long it waits. */
+  readonly pacing?: Partial<Pacing>;
   /** The show began or ended. */
   running(on: boolean): void;
 }
@@ -39,8 +59,12 @@ export type Shot =
   | { model: string; kind: 'part'; node: string }
   | { model: string; kind: 'window'; n: number };
 
-/** Seconds on one thing before going to the next. */
-const DWELL: Record<Shot['kind'], number> = { whole: 7, apart: 7, part: 8.5, window: 8 };
+/** How the show moves: seconds on each kind of thing, how high the camera comes from for the `n`th thing of a show (and of all shows), how long it waits to be left alone. */
+export interface Pacing {
+  dwell: Record<Shot['kind'], number>;
+  rise(n: number, all: number, kind: Shot['kind']): number;
+  idle: [first: number, again: number];
+}
 /**
  * What the show is doing: watching hardware at work, going through everything in daylight, or
  * waiting out the night over the lit pad. Each runs the clock at its own pace, seconds of the
@@ -56,6 +80,15 @@ const APART = 5;
 /** Seconds without a touch before the show starts by itself: the first time, and after it has been stopped. */
 export const IDLE_FIRST = 20;
 export const IDLE_AGAIN = 120;
+/**
+ * The site's pace: seven seconds on the whole and on taking it apart, a little longer on a part; the camera rising and
+ * sinking slowly over several shots (one walk round the subject, not a series of cuts), level with the work as it comes apart.
+ */
+const SITE: Pacing = {
+  dwell: { whole: 7, apart: 7, part: 8.5, window: 8 },
+  rise: (_n, all, kind) => (kind === 'apart' ? 0.2 : 0.2 + 0.1 * Math.sin(all * 0.9)),
+  idle: [IDLE_FIRST, IDLE_AGAIN],
+};
 /** Seconds the front page waits, untouched, before its words make way for its own picture (front.ts). */
 export const IDLE_TITLE = 30;
 const DAY = 86_400;
@@ -144,17 +177,22 @@ export class Demo {
   /** Seconds until the next shot, and since the page was last touched. */
   private left = 0;
   private idle = 0;
-  private wait = IDLE_FIRST;
+  private wait: number;
+  /** Things shown in this show, and in all of them. */
+  private taken = 0;
   private readonly working: [number, number] | null;
   private readonly flight: Flight;
-  private readonly clock: Clock;
+  private readonly clock: Clock | null;
   private readonly host: DemoHost;
+  private readonly pacing: Pacing;
 
-  constructor(flight: Flight, clock: Clock, host: DemoHost) {
+  constructor(flight: Flight, host: DemoHost) {
     this.flight = flight;
-    this.clock = clock;
     this.host = host;
-    this.working = workingHours(flight);
+    this.clock = host.clock ?? null;
+    this.pacing = { ...SITE, ...host.pacing };
+    this.wait = this.pacing.idle[0];
+    this.working = this.clock ? workingHours(flight) : null;
   }
 
   get active(): boolean {
@@ -168,20 +206,28 @@ export class Demo {
     this.left = 0;
     this.shots = [];
     this.doing = null;
+    this.taken = 0;
     this.apartNow = this.apartGoal = 0;
     // begin a little before the hardware starts to move, so the first thing seen is something happening
-    if (this.working) this.clock.seek(this.working[0]);
-    this.clock.play();
+    if (this.working) this.clock?.seek(this.working[0]);
+    this.clock?.play();
     this.host.running(true);
+    // (and goes on from however far apart the section stands then)
+    this.apartNow = this.apartGoal = this.host.apartNow?.() ?? 0;
+  }
+
+  /** Someone is there (sitting still in the gallery's seat): the wait to be left alone starts again. Nothing else changes. */
+  touch(): void {
+    this.idle = 0;
   }
 
   /** The page was touched. `keepClock`: the touch was on the clock itself, which is left as it is. */
   stop(keepClock = false): void {
     this.idle = 0;
-    this.wait = IDLE_AGAIN;
+    this.wait = this.pacing.idle[1];
     if (!this.on) return;
     this.on = false;
-    if (!keepClock) this.clock.reset(); // back to liftoff, stopped: the inventory as it is studied
+    if (!keepClock) this.clock?.reset(); // back to liftoff, stopped: the inventory as it is studied
     this.host.running(false);
   }
 
@@ -189,7 +235,7 @@ export class Demo {
   tick(dt: number): void {
     if (!this.on) {
       this.idle += dt;
-      if (this.idle >= this.wait) this.start();
+      if (this.idle >= this.wait || this.host.eager?.()) this.start();
       return;
     }
     if (this.host.busy()) {
@@ -197,15 +243,19 @@ export class Demo {
       return;
     }
     const { clock } = this;
-    // the day goes round: a day after it began, it begins again
-    const from = this.working ? this.working[0] : -DAY / 2;
-    if (clock.t > from + DAY) clock.seek(from);
-    const doing = programme(clock.t, this.working, this.host.dark());
-    // eased toward, so a change of pace is a slowing and a quickening, never a lurch
-    const want = watchablePace(this.flight, clock.t, this.doing ?? doing);
-    const k = Math.min(1, dt * 2.5);
-    clock.setRate(Math.exp(Math.log(clock.rate > 0 ? clock.rate : want) * (1 - k) + Math.log(want) * k));
-    if (!clock.running) clock.play();
+    // (a room with no clock has no day: it is shown as by day, the whole of it)
+    let doing: Programme = 'day';
+    if (clock) {
+      // the day goes round: a day after it began, it begins again
+      const from = this.working ? this.working[0] : -DAY / 2;
+      if (clock.t > from + DAY) clock.seek(from);
+      doing = programme(clock.t, this.working, this.host.dark());
+      // eased toward, so a change of pace is a slowing and a quickening, never a lurch
+      const want = watchablePace(this.flight, clock.t, this.doing ?? doing);
+      const k = Math.min(1, dt * 2.5);
+      clock.setRate(Math.exp(Math.log(clock.rate > 0 ? clock.rate : want) * (1 - k) + Math.log(want) * k));
+      if (!clock.running) clock.play();
+    }
     // a section coming apart, or going together, does so over a few seconds
     if (this.apartNow !== this.apartGoal) {
       const step = dt / APART;
@@ -214,13 +264,16 @@ export class Demo {
           ? this.apartGoal
           : this.apartNow + Math.sign(this.apartGoal - this.apartNow) * step;
       const k = this.apartNow;
-      this.host.apart(k * k * (3 - 2 * k)); // eased at both ends
+      this.host.apart(k * k * (3 - 2 * k), k); // eased at both ends
     }
     this.left -= dt;
     if (doing !== this.doing) {
-      // a change of programme: whatever is apart goes together first, then the new tour begins
-      this.apartGoal = 0;
-      if (this.apartNow !== 0) return;
+      // a change of programme: whatever is apart goes together first, then the new tour begins (the first tour of a room
+      // with no day goes on from however it stands)
+      if (clock || this.doing !== null) {
+        this.apartGoal = 0;
+        if (this.apartNow !== 0) return;
+      }
       this.doing = doing;
       this.shots = tour(this.flight, doing);
       this.at = -1;
@@ -242,13 +295,17 @@ export class Demo {
     const model = this.flight.models.find((m) => m.id === shot.model)!;
     // The camera keeps going round the same way, a steady step each time, rising and sinking
     // slowly over several shots: one continuous walk round the subject, not a series of cuts.
-    const n = this.count++;
+    const n = this.taken++;
     const turn = TURN;
-    const rise = 0.2 + 0.1 * Math.sin(n * 0.9);
+    const rise = this.pacing.rise(n, this.count++, shot.kind);
+    const say = (said: Said | null, at: string | 'window' | null) => {
+      const words = this.host.words ? this.host.words(shot, model) : said;
+      if (words) this.host.say(words, at);
+    };
     this.host.show(shot.model);
     if (shot.kind === 'whole') {
       this.host.whole(turn, rise);
-      this.host.say(
+      say(
         {
           eyebrow: this.flight.designation,
           title: this.flight.callsign === model.name ? model.name : `${this.flight.callsign} · ${model.name}`,
@@ -258,8 +315,8 @@ export class Demo {
       );
     } else if (shot.kind === 'apart') {
       this.apartGoal = shot.to;
-      this.host.whole(turn, 0.2);
-      this.host.say(
+      this.host.whole(turn, rise);
+      say(
         shot.to
           ? { eyebrow: model.name, title: 'Taken apart', text: 'Every part, in the order it goes together.' }
           : { eyebrow: model.name, title: 'And together again', text: model.scale },
@@ -268,10 +325,10 @@ export class Demo {
     } else if (shot.kind === 'part') {
       const part = model.parts.find((p) => p.node === shot.node)!;
       this.host.part(part.node, Boolean(part.inside), turn, rise);
-      this.host.say({ eyebrow: model.name, title: part.name, text: part.summary }, part.node);
+      say({ eyebrow: model.name, title: part.name, text: part.summary }, part.node);
     } else {
       if (!this.host.window(shot.n)) return false;
-      this.host.say(
+      say(
         {
           eyebrow: model.name,
           title: 'Through the glass',
@@ -280,7 +337,7 @@ export class Demo {
         'window',
       );
     }
-    this.left = DWELL[shot.kind];
+    this.left = this.pacing.dwell[shot.kind];
     return true;
   }
 }

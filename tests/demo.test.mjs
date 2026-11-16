@@ -64,7 +64,8 @@ test('left alone it starts, goes from one thing to the next, and a touch ends it
   const clock = new Clock(flight.launch);
   const seen = [];
   let on = false;
-  const demo = new Demo(flight, clock, {
+  const demo = new Demo(flight, {
+    clock,
     show: (m) => seen.push(m),
     whole() {},
     part: (n) => seen.push(n),
@@ -89,7 +90,8 @@ test('left alone it starts, goes from one thing to the next, and a touch ends it
 
 test('a touch on the clock itself leaves the clock where it is', () => {
   const clock = new Clock(flight.launch);
-  const demo = new Demo(flight, clock, {
+  const demo = new Demo(flight, {
+    clock,
     show() {},
     whole() {},
     part() {},
@@ -104,4 +106,37 @@ test('a touch on the clock itself leaves the clock where it is', () => {
   demo.tick(1);
   demo.stop(true);
   assert.notEqual(clock.t, 0);
+});
+
+test('a room with no clock (the gallery) is shown as by day, at its own pace and in its own words, from however it stands', () => {
+  const seen = [];
+  const apart = [];
+  let covered = true;
+  const demo = new Demo(flight, {
+    pacing: { dwell: { whole: 8, apart: 8, part: 8.5, window: 8 }, rise: (n) => [0.2, 0.36][n % 2], idle: [40, 150] },
+    show() {},
+    whole: (_turn, rise) => seen.push(['whole', rise]),
+    part: (n, _inside, _turn, rise) => seen.push([n, rise]),
+    apart: (_t, raw) => apart.push(raw),
+    apartNow: () => 0.5,
+    window: () => true,
+    say: (t) => seen.push(t.title),
+    words: (shot) => ({ eyebrow: 'Gallery', title: `of ${shot.kind}`, text: '' }),
+    dark: () => false,
+    busy: () => false,
+    eager: () => covered,
+    running() {},
+  });
+  demo.tick(0.1); // behind the front page it starts at once, without waiting to be left alone
+  assert.ok(demo.active);
+  demo.tick(0.1);
+  assert.deepEqual(seen.slice(0, 2), [['whole', 0.2], 'of whole'], 'its own words and its own height');
+  assert.equal(apart.length, 0, 'it goes on from however far apart it stood: nothing is put together first');
+  covered = false;
+  demo.stop();
+  assert.ok(!demo.active);
+  demo.tick(149);
+  assert.ok(!demo.active, 'stopped, it waits its own while again');
+  demo.tick(2);
+  assert.ok(demo.active);
 });

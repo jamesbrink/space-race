@@ -194,8 +194,8 @@ Nothing new is asked of a flight. Everything comes from what a vehicle already d
   a range pole banded in metres as tall as what stands there. The pole's figure is the flight's
   own spec where one matches the model's height to a hundredth, with its confidence; otherwise
   "as modelled".
-- **Part by part**: N and B step through the parts in order; left alone, the gallery tours itself
-  with the same shots the idle show takes of a section (`tour` in `demo.ts`).
+- **Part by part**: N and B step through the parts in order; left alone, the gallery tours itself:
+  it is the site's idle show (`Demo` in `demo.ts`), given the room as its host, no clock and a pace and words of its own.
 - **History** (the last tab; on a phone a tab of the sheet): what `missions/history.ts` tells of the flight
   (`toldOf` in `lineup/row.ts`), written as the Lineup's card writes it (`ui/history.ts`): its headline, story and
   firsts, why it has its name (with its source and confidence), the crew (each opens to their own story, dates and

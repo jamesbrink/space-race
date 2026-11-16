@@ -835,7 +835,8 @@ const callout = new Callout(document.body);
 const zone = flight.site.zone;
 /** The window the show is looking in at, for its callout to point to. */
 let pane: Vector3 | null = null;
-const demo = new Demo(flight, clock, {
+const demo = new Demo(flight, {
+  clock,
   show: (id) => {
     if (id !== current.id) show(id);
   },
