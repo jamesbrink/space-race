@@ -169,6 +169,16 @@ A dated photograph of Complex 26 from the third week of July 1961 would settle t
 seen from pad 5. Until then a July state of this model would be May's under another name, and none
 is built.
 
+## The neighbours of the later flights
+
+The flights from Complexes 14 and 19 (1962 to 1965) are shown the same model, 6 km and more away. Each complex in it is
+drawn only on a day it stood (`scenery.ts`, each entry's `stood`, with how sure and on what): Complex 26 from its first
+launch, 28 August 1957 (it is the museum's from 20 November 1964, the gantry kept); Complex 30 from its acceptance, 10
+February 1960, until its tower came down, 14 February 1968; Complexes 25 and 29 from 1957 and 1959, 25 until both pads
+were dismantled in September 1969; Complex 17 until its towers were raised in 1968 (HAER FL-8-5, p. 27). Nothing found
+changed what stood on any of them before March 1965, except Complex 29's closed tower of "about 1963" (a caption, not
+established), which is not built. Where each movable tower stood on those days is not known: estimated, as for May.
+
 ## Ways on foot
 
 The track runs from pad 5 through pad 6 to Complex 26 (documented: *A Noble Endeavor*). To the others a

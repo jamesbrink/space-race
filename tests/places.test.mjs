@@ -4,6 +4,8 @@ import { test } from 'node:test';
 import { LC5 } from '../missions/usa/places/cape-canaveral/lc-5.ts';
 import { LC14 } from '../missions/usa/places/cape-canaveral/lc-14.ts';
 import { LC19 } from '../missions/usa/places/cape-canaveral/lc-19.ts';
+import { COMPLEXES, neighboursOn, ownFrame } from '../missions/usa/places/cape-canaveral/scenery.ts';
+import { flights } from '../missions/index.ts';
 import { standsInSite1, TYURATAM_GROUND } from '../missions/ussr/places/tyuratam/ground.ts';
 import { SITE1 } from '../missions/ussr/places/tyuratam/site-1.ts';
 import { compassAt } from '../src/viewer/scenery/compass.ts';
@@ -107,4 +109,107 @@ test('the bearings: Complex 14’s hatch on its documented pitch line less 45 de
   assert.ok(Math.abs(LC19.bearingX.value - (72 + 12.9)) < 1e-9);
   assert.ok(Math.abs(((LC19.bearingX.value - 175 + 360) % 180) - 90) < 1);
   assert.equal(LC19.bearingX.confidence, 'estimated');
+});
+
+// What stood round the Cape's pads on 5 May 1961, as drawn before the neighbours were dated past it: Freedom 7's and
+// Liberty Bell 7's must stand among exactly these, in this order (their ground is laid from the list).
+const MAY_1961 = [
+  'LC-26B',
+  'LC-26A',
+  'LC-26 blockhouse',
+  'LC-30A',
+  'LC-30B',
+  'LC-30 blockhouse',
+  'LC-25A',
+  'LC-25B',
+  'LC-25 blockhouse',
+  'LC-17B',
+  'LC-29A',
+  'LC-29 blockhouse',
+  'LC-17A',
+  'LC-17 blockhouse',
+  'LC-18B',
+  'LC-18A',
+  'LC-9',
+  'LC-31A',
+  'LC-32A',
+  'LC-21',
+  'LC-11',
+  'LC-12',
+  'LC-13',
+  'LC-14',
+  'LC-15',
+  'LC-16',
+  'LC-19',
+  'LC-20',
+  'LC-34',
+];
+
+test('the Cape: each built flight stands among what the data says stood on its day, and never beside itself', () => {
+  for (const c of COMPLEXES) {
+    assert.ok(['documented', 'derived', 'estimated'].includes(c.stood.confidence), c.name);
+    assert.ok(c.stood.source.length > 20, `${c.name}: its dates have no source`);
+    assert.ok(!c.stood.until || !c.stood.from || c.stood.from < c.stood.until, `${c.name}: gone before it came`);
+  }
+  const cape = flights.filter((f) => f.site?.place.name === 'cape-canaveral');
+  assert.ok(cape.length >= 11, 'the Cape’s flights are not all here');
+  for (const f of cape) {
+    const date = f.launch.slice(0, 10);
+    const names = neighboursOn(compassAt(f.site), date);
+    // what the data says: every entry whose dates hold that day, but the pad itself
+    const said = COMPLEXES.filter(
+      (c) => c.pad !== f.site && (!c.stood.from || c.stood.from <= date) && (!c.stood.until || date < c.stood.until),
+    ).map((c) => c.name);
+    assert.deepEqual(names, said, f.id);
+    // the origin pad is never its own neighbour, under any of its names
+    for (const c of COMPLEXES.filter((c) => c.pad === f.site)) assert.ok(!names.includes(c.name), `${f.id} stands beside ${c.name}`);
+    // and no two states of one complex stand on one day
+    const at = names.map((n) => COMPLEXES.find((c) => c.name === n)).map((c) => `${c.lat},${c.lon}`);
+    assert.equal(new Set(at).size, at.length, `${f.id}: two states of a complex at once`);
+  }
+  const on = (id) => {
+    const f = flights.find((x) => x.id === id);
+    return neighboursOn(compassAt(f.site), f.launch.slice(0, 10));
+  };
+  // Freedom 7 and Liberty Bell 7: the May 1961 set, as before
+  assert.deepEqual(on('usa/mercury/mr-3-freedom-7'), MAY_1961);
+  assert.deepEqual(on('usa/mercury/mr-4-liberty-bell-7'), MAY_1961);
+  // Friendship 7 from Complex 14: Complex 5 is a neighbour now, Complex 19 still Titan I's, Complex 13's old tower and Complex 34's stub still up
+  const ma6 = on('usa/mercury/ma-6-friendship-7');
+  for (const n of ['LC-5', 'LC-19', 'LC-13', 'LC-34', 'LC-12, a tower again', 'LC-20']) assert.ok(ma6.includes(n), `MA-6 without ${n}`);
+  for (const n of ['LC-14', 'LC-12', 'LC-13, its new tower building']) assert.ok(!ma6.includes(n), `MA-6 with ${n}`);
+  // Faith 7: Complex 19 a building site, Complex 34 past its stub, Complex 13 without its old tower
+  const ma9 = on('usa/mercury/ma-9-faith-7');
+  for (const n of ['LC-19', 'LC-34', 'LC-13']) assert.ok(!ma9.includes(n), `MA-9 with ${n}`);
+  for (const n of ['LC-5', 'LC-34, its new umbilical tower', 'LC-13, its new tower building'])
+    assert.ok(ma9.includes(n), `MA-9 without ${n}`);
+  // Gemini 3 from Complex 19: Complex 14 rebuilt for Atlas-Agena, Complex 20 rebuilt (no stand-in), and not itself
+  const gt3 = on('usa/gemini/gt-3');
+  for (const n of ['LC-5', 'LC-14 for Atlas-Agena', 'LC-11']) assert.ok(gt3.includes(n), `GT-3 without ${n}`);
+  for (const n of ['LC-19', 'LC-14', 'LC-20']) assert.ok(!gt3.includes(n), `GT-3 with ${n}`);
+});
+
+test('the Cape: Complex 5 seen from Complex 14 stands in its own frame, at its own grade over the land there', () => {
+  const round = compassAt(LC14);
+  const flat = () => LC14.grade.value; // the land kept level at the clearing
+  const frame = ownFrame(LC5, flat, round);
+  const at = round.frame(LC5);
+  const origin = { x: 0, y: 0, z: 0 };
+  const o = [origin.x, origin.y, origin.z];
+  const e = frame.elements;
+  const apply = ([x, y, z]) => [
+    e[0] * x + e[4] * y + e[8] * z + e[12],
+    e[1] * x + e[5] * y + e[9] * z + e[13],
+    e[2] * x + e[6] * y + e[10] * z + e[14],
+  ];
+  const zero = apply(o);
+  assert.ok(Math.abs(zero[0] - at.x) < 1e-9 && Math.abs(zero[2] - at.z) < 1e-9);
+  // its zero is the pad's surface, 12 cm over the land, which is Complex 14's deck less 22 ft
+  assert.ok(Math.abs(zero[1] - (LC14.grade.value - LC5.grade.value)) < 1e-9);
+  // and its +X (square to the rails, toward the blockhouse) bears 295 degrees on the compass: east and south of it
+  const x = apply([1, 0, 0]);
+  const bearing = (Math.atan2(x[0] - zero[0], -(x[2] - zero[2])) * 180) / Math.PI;
+  assert.ok(Math.abs(((bearing + 360) % 360) - LC5.bearingX.value) < 0.05, `its +X bears ${bearing}`);
+  // 6.2 km off on 205 degrees: Complex 5 lies south-south-west of Complex 14
+  assert.ok(Math.abs(Math.hypot(at.x, at.z) - 6230) < 100, `${Math.hypot(at.x, at.z)}`);
 });

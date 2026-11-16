@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Dated, SiteDef } from '../../../../src/types.ts';
+import type { SiteDef, Stood } from '../../../../src/types.ts';
 import { Around } from '../../../../src/viewer/around.ts';
 import type { Levelled } from '../../../../src/viewer/lod.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
@@ -10,8 +10,9 @@ import { LC19 } from './lc-19.ts';
 import { LC5 } from './lc-5.ts';
 
 /**
- * Cape Canaveral beyond Complex 5/6 on 5 May 1961: the other launch complexes that stood that
- * day, the lighthouse, and the shore, each at its real place.
+ * Cape Canaveral beyond the pad a flight left from: the other launch complexes that stood on its day
+ * (each drawn as it stood on 5 May 1961, and dated from then to 1965: `COMPLEXES`, `stood`), Complex 5's
+ * own place where another pad is the origin, the lighthouse, and the shore, each at its real place.
  *
  * Places are documented: every position is a published coordinate (OpenStreetMap's outline of
  * the pad or its ruin, checked against Wikipedia's), put on the ground round whichever pad a flight left from
@@ -293,9 +294,10 @@ const KINDS = {
    * above the stand; a service structure 154 ft 8 in tall, which left the stand on rails onto a transfer table that
    * carried it 300 ft east. (The museum's "92 ft" ramp is not the ramp's length: HAER's and OpenStreetMap's agree.)
    * Where each tower stood that day is not known: it is drawn part of the way off the stand. Complex 14's was red;
-   * the others are taken to be.
+   * the others are taken to be. `mast`: the umbilical mast's or tower's height above the stand, feet (Complex 14's 101 ft
+   * tower of 1964 for Atlas-Agena replaced the 84 ft 6 in mast: HAER FL-8-7, pp. 27 and 28).
    */
-  atlas(k: Kit, tower = true) {
+  atlas(k: Kit, tower = true, mast = 84.5) {
     const up = 22 * FT,
       w = 60 * FT,
       d = 78 * FT,
@@ -307,7 +309,7 @@ const KINDS = {
     const low = (432 - 78 - 6 * bay) * FT;
     slab(k, 24 * FT + 4, low + 6 * bay * FT, 0.45, 0, d / 2 + (6 * bay * FT + low) / 2); // (its foot, under the steps too)
     k.box('concrete', 24 * FT, up / 7, low, 0, 0.45, d / 2 + 6 * bay * FT + low / 2);
-    k.lattice('steel', 2.4, 2.4, 84.5 * FT, w / 2 - 2, up + 0.45, -d / 4, 5.2, 0.35);
+    k.lattice('steel', 2.4, 2.4, mast * FT, w / 2 - 2, up + 0.45, -d / 4, 5.2, 0.35);
     if (!tower) return;
     const h = 154.67 * FT,
       back = -60; // drawn back along its rails, short of the full 300 ft
@@ -342,9 +344,10 @@ const KINDS = {
   /**
    * Complex 34, for Saturn, five months before its first launch (Moonport, ch. 2): the service structure, an inverted U
    * 310 ft high on a base 70 by 130 ft, standing 185 m west of the pad (it first moved on its rails on 26 March 1961);
-   * the launch pedestal, 42 ft square and 27 ft high; and the umbilical tower, stopped at 27 ft. All documented.
+   * the launch pedestal, 42 ft square and 27 ft high; and the umbilical tower, stopped at 27 ft. All documented. Without
+   * `stub`, the umbilical tower is left out: its stub gave way to a new tower from May 1962 whose height is not established.
    */
-  saturn(k: Kit) {
+  saturn(k: Kit, stub = true) {
     slab(k, 130, 130);
     const p = 42 * FT;
     for (const [sx, sz] of [
@@ -355,7 +358,7 @@ const KINDS = {
     ] as const)
       k.box('concrete', 2.4, 27 * FT, 2.4, (sx * p) / 2, 0.45, (sz * p) / 2);
     k.box('concrete', p + 2.4, 2, p + 2.4, 0, 27 * FT - 1.55, 0);
-    k.lattice('red', 7, 7, 27 * FT, 16, 0.45, 0, 4.1, 0.5); // the umbilical tower's first 27 ft
+    if (stub) k.lattice('red', 7, 7, 27 * FT, 16, 0.45, 0, 4.1, 0.5); // the umbilical tower's first 27 ft
     const h = 310 * FT,
       bw = 130 * FT,
       bd = 70 * FT,
@@ -380,76 +383,511 @@ interface Complex {
   draw?: (k: Kit) => void;
   /** A near one: the name of its node in the neighbours' model, built in its own frame (its +Y along `heading`). */
   node?: string;
+  /** A pad with a model of its own place (`pad`'s, in its frame): drawn whole where its frame lies round the origin, at its own grade. */
+  own?: { model: string; nodes: string[]; wears: string[] };
   /** How much ground is kept clear and level round it, metres: a pad's own 45 m unless said. */
   clear?: number;
   /** How far from its middle its concrete and buildings reach, metres: nothing grows there (a near one's). */
   paved?: number;
   /**
-   * When it stood as drawn (`Dated`: ISO dates): from when, if known, until when, if it changed. Each is drawn as it stood
-   * on 5 May 1961, so a flight on another day shows it only where this says it stood so then.
+   * When it stood as drawn (`Stood`: ISO dates, how sure and on what): from when, if known, until when it changed, if
+   * known. Each far one is drawn as it stood on 5 May 1961: a flight on another day shows it only where this says it
+   * stood so then, and where nothing says it changed it is drawn so and the confidence says that was assumed.
    */
-  stood: Dated;
+  stood: Stood;
   /** The pad's own record, where it has one (lc-14.ts, lc-19.ts): round that pad it is not drawn, its own model stands there. */
   pad?: SiteDef;
 }
 
-/** What every complex here is drawn as: as it stood on 5 May 1961, and not known to have changed since unless it says. */
-const MAY_1961: Dated = { from: '1961-05-05' };
+/**
+ * Complex 5/6 seen from another pad: its place's own model in its last dated state (lc5/model/1961-07.py; lc-5.md, "The
+ * rest of the complex"): the blockhouse and ready rooms, pad 6 with its launch ring and gantry, the track, the road, the
+ * cable trenches, the yard, the poles and the outbuildings, in Complex 5's frame. July 1961's cars are left out. Pad 5's
+ * own hardware (the hardstand, the launcher, the service structure) is in each flight's pad model, not the place's, and
+ * is not drawn: that it be is a modeller's to do (lc-5.md).
+ */
+const LC5_PLACE = {
+  model: 'models/usa/places/cape-canaveral/lc5/1961-07.glb',
+  nodes: [
+    'Blockhouse',
+    'ReadyRoom',
+    'Pad6',
+    'Pad6Launcher',
+    'Pad6Gantry',
+    'Track',
+    'Road',
+    'CableTrenches',
+    'Yard',
+    'Poles',
+    'Outbuildings',
+  ],
+  // every material those nodes wear (the model's own names: lc5/site.py)
+  wears: [
+    'ballast-gravel',
+    'cable',
+    'canvas-sandbag',
+    'chrome',
+    'concrete',
+    'concrete-block-painted',
+    'concrete-joint',
+    'concrete-painted',
+    'concrete-scorched',
+    'concrete-stained',
+    'galvanised-corrugated',
+    'galvanised-deck',
+    'galvanised-mesh',
+    'galvanised-steel',
+    'glass',
+    'interior-dark',
+    'lamp',
+    'lamp-amber',
+    'lamp-green',
+    'lamp-red',
+    'lamp-room',
+    'paint-console-green',
+    'paint-launcher-black',
+    'paint-panel-grey',
+    'paint-sign-red',
+    'paint-sign-white',
+    'paint-structure-grey',
+    'paint-structure-red',
+    'paint-structure-white',
+    'paint-trailer-white',
+    'roof-tar',
+    'shell-gravel',
+    'steel-blast-door',
+    'steel-chassis',
+    'steel-rail',
+    'steel-scorched',
+    'steel-window-frame',
+    'timber-plank',
+    'timber-pole',
+    'timber-tie',
+    'window-void',
+  ],
+};
 
 /**
- * What stood on 5 May 1961, nearest first. Coordinates: OpenStreetMap (the way or relation of each pad).
- * Left out because nothing above the ground can be shown for that day: Complexes 1 to 4 (flat pads, inactive),
- * 10 (demolished 1959), 22 (a revetment), the two Minuteman silos, 36 (finished that year; whether its tower
- * stood by May is not established), 37, 43 and the Polaris pads 25C/D (not begun).
+ * When each was drawn from and until, and how sure: complexes.md (the near ones), lc-5.md "Beyond the complex" (the far
+ * ones: what each was on 5 May 1961, and what changed before the later flights' days, with each source). GCAT is Jonathan
+ * McDowell's launch list (planet4589.org), read for the first and last launch from each pad; CCSFM the Cape Canaveral
+ * Space Force Museum's page for the complex.
  */
-const COMPLEXES: Complex[] = [
+const known = (from: string, until: string | undefined, confidence: Stood['confidence'], source: string): Stood => ({
+  from,
+  ...(until ? { until } : {}),
+  confidence,
+  source,
+});
+/** A far one drawn as it stood on 5 May 1961, where nothing read says it changed before the last flight drawn here (March 1965). */
+const UNCHANGED = (what: string): Stood =>
+  known(
+    '1961-05-05',
+    undefined,
+    'estimated',
+    `drawn as it stood on 5 May 1961; ${what}: not known to have changed by a later flight's day`,
+  );
+
+/**
+ * What stood round the pads from 5 May 1961 to March 1965, nearest Complex 5 first, each drawn as it stood on its days
+ * (`stood`). Coordinates: OpenStreetMap (the way or relation of each pad). Left out because nothing above the ground can
+ * be shown for 5 May 1961: Complexes 1 to 4 (flat pads, inactive), 10 (demolished 1959), 22 (a revetment), the two
+ * Minuteman silos, 37, 43 and the Polaris pads 25C/D (not begun). Stood and not drawn, for want of a stand-in of their
+ * form: Complex 36A (completed February 1961: CCSFM), 36B (1963 to 1964), 37 (its service structure from 1963: Moonport,
+ * ch. 10), the Titan III complexes 40 and 41 and their buildings (from 1963), Complex 13's new tower (1962 to 1963),
+ * Complex 19 as rebuilt for Gemini and Complex 20 as rebuilt for Titan IIIA, Complex 34's second umbilical tower, the
+ * Vehicle Assembly Building's frame across the Banana River (to its full height by March 1965: Moonport, ch. 12): lc-5.md.
+ */
+export const COMPLEXES: Complex[] = [
   // The near ones: each a model in a frame of its own (places/cape-canaveral/complexes/<complex>.py says where its origin is and which way its +Y runs).
   // A complex's other pad and its blockhouse are listed for the ground kept clear round them; the blockhouses' places are
   // OpenStreetMap's outlines of what survives.
-  { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46, stood: MAY_1961 },
-  { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72, paved: 46, stood: MAY_1961 },
-  { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34, paved: 24, stood: MAY_1961 },
-  { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 202, node: 'LC30', clear: 60, paved: 44, stood: MAY_1961 },
-  { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 202, clear: 60, paved: 44, stood: MAY_1961 },
-  { name: 'LC-30 blockhouse', lat: 28.439487, lon: -80.58086, heading: 202, clear: 34, paved: 24, stood: MAY_1961 },
-  { name: 'LC-25A', lat: 28.432267, lon: -80.575857, heading: 213, node: 'LC25', clear: 50, paved: 34, stood: MAY_1961 },
-  { name: 'LC-25B', lat: 28.431423, lon: -80.576437, heading: 213, clear: 45, paved: 28, stood: MAY_1961 },
-  { name: 'LC-25 blockhouse', lat: 28.432062, lon: -80.576976, heading: 213, clear: 34, paved: 24, stood: MAY_1961 },
-  { name: 'LC-17B', lat: 28.44589, lon: -80.565898, heading: 24, node: 'LC17', clear: 80, paved: 62, stood: MAY_1961 },
-  { name: 'LC-29A', lat: 28.429859, lon: -80.577142, heading: 203, node: 'LC29', clear: 50, paved: 34, stood: MAY_1961 },
-  { name: 'LC-29 blockhouse', lat: 28.429512, lon: -80.578231, heading: 203, clear: 34, paved: 24, stood: MAY_1961 },
-  { name: 'LC-17A', lat: 28.447223, lon: -80.565274, heading: 24, clear: 80, paved: 62, stood: MAY_1961 },
-  { name: 'LC-17 blockhouse', lat: 28.447197, lon: -80.566933, heading: 24, clear: 34, paved: 24, stood: MAY_1961 },
-  { name: 'LC-18B', lat: 28.449016, lon: -80.561774, heading: 115, draw: KINDS.bare, stood: MAY_1961 },
-  { name: 'LC-18A', lat: 28.450785, lon: -80.562232, heading: 115, draw: KINDS.bare, stood: MAY_1961 },
-  { name: 'LC-9', lat: 28.452227, lon: -80.559383, heading: 115, draw: KINDS.navaho, stood: MAY_1961 },
-  { name: 'LC-31A', lat: 28.45184, lon: -80.556222, heading: 115, draw: KINDS.minuteman, stood: MAY_1961 },
-  { name: 'LC-32A', lat: 28.453741, lon: -80.555625, heading: 115, draw: KINDS.minuteman, stood: MAY_1961 },
-  { name: 'LC-21', lat: 28.460544, lon: -80.540238, heading: 115, draw: KINDS.mace, stood: MAY_1961 },
-  { name: 'LC-11', lat: 28.475282, lon: -80.539523, heading: 60, draw: (k) => KINDS.atlas(k), stood: MAY_1961 },
-  { name: 'LC-12', lat: 28.480713, lon: -80.541926, heading: 60, draw: (k) => KINDS.atlas(k, false), stood: MAY_1961 }, // its tower burned in September 1959; what replaced it by May 1961 is not established
-  { name: 'LC-13', lat: 28.485852, lon: -80.544441, heading: 60, draw: (k) => KINDS.atlas(k), stood: MAY_1961 },
+  ...[
+    { name: 'LC-26B', lat: 28.443346, lon: -80.571204, heading: 25, node: 'LC26', clear: 72, paved: 46 },
+    { name: 'LC-26A', lat: 28.44464, lon: -80.570521, heading: 25, clear: 72, paved: 46 },
+    { name: 'LC-26 blockhouse', lat: 28.444422, lon: -80.571863, heading: 25, clear: 34, paved: 24 },
+  ].map((c) => ({
+    ...c,
+    stood: known(
+      '1957-08-28',
+      undefined,
+      'documented',
+      'first launch 28 August 1957; the pads, track, blockhouse and gantry stand today, the museum’s since 20 November 1964 (CCSFM; ' +
+        'complexes.md). Where the gantry stood on any day is estimated',
+    ),
+  })),
+  ...[
+    { name: 'LC-30A', lat: 28.439738, lon: -80.579498, heading: 202, node: 'LC30', clear: 60, paved: 44 },
+    { name: 'LC-30B', lat: 28.438427, lon: -80.580212, heading: 202, clear: 60, paved: 44 },
+    { name: 'LC-30 blockhouse', lat: 28.439487, lon: -80.58086, heading: 202, clear: 34, paved: 24 },
+  ].map((c) => ({
+    ...c,
+    stood: known(
+      '1960-02-10',
+      '1968-02-14',
+      'documented',
+      'accepted by the Army 10 February 1960; the mobile service tower taken down 14 February 1968 (CCSFM; Spaceline: complexes.md); ' +
+        'its last Pershing 24 April 1963 (GCAT). Where the tower stood on any day is estimated',
+    ),
+  })),
+  {
+    name: 'LC-25A',
+    lat: 28.432267,
+    lon: -80.575857,
+    heading: 213,
+    node: 'LC25',
+    clear: 50,
+    paved: 34,
+    stood: known(
+      '1957-12',
+      '1969-09',
+      'documented',
+      'complete December 1957, Polaris to 5 March 1965 (the museum; GCAT); both pads dismantled September 1969 (CCSFM). Its closed tower is as photographed in 1960 and about 1963',
+    ),
+  },
+  {
+    name: 'LC-25B',
+    lat: 28.431423,
+    lon: -80.576437,
+    heading: 213,
+    clear: 45,
+    paved: 28,
+    stood: known(
+      '1959-08-14',
+      '1969-09',
+      'documented',
+      'the ship motion simulator, first used 14 August 1959 and mothballed October 1961 (Spaceline), its pit head covered as drawn; dismantled September 1969 (CCSFM)',
+    ),
+  },
+  {
+    name: 'LC-25 blockhouse',
+    lat: 28.432062,
+    lon: -80.576976,
+    heading: 213,
+    clear: 34,
+    paved: 24,
+    stood: known('1957-12', undefined, 'documented', 'with the pads (the museum, Launch Complex 25)'),
+  },
+  {
+    name: 'LC-17B',
+    lat: 28.44589,
+    lon: -80.565898,
+    heading: 24,
+    node: 'LC17',
+    clear: 80,
+    paved: 62,
+    stood: known(
+      '1956-09',
+      '1968',
+      'documented',
+      '17B accepted September 1956, 17A April 1957 (the museum); Thor-Delta and ASSET flew on through 1965 with no change to what stood ' +
+        'found (CCSFM; Cleary, ch. IV §2); the towers were raised 14 ft 6 in in 1968 (HAER FL-8-5, p. 27), so drawn as before until then',
+    ),
+  },
+  {
+    name: 'LC-29A',
+    lat: 28.429859,
+    lon: -80.577142,
+    heading: 203,
+    node: 'LC29',
+    clear: 50,
+    paved: 34,
+    stood: known(
+      '1959',
+      undefined,
+      'estimated',
+      'built 1958 to 1959 (the museum); Polaris to 14 April 1965 (GCAT). A closed tower of its own is first seen about 1963 (complexes.md: ' +
+        'a caption only, not established) and is not drawn: so after 1962 it is drawn as in 1961, not known to be right',
+    ),
+  },
+  {
+    name: 'LC-29 blockhouse',
+    lat: 28.429512,
+    lon: -80.578231,
+    heading: 203,
+    clear: 34,
+    paved: 24,
+    stood: known('1959', undefined, 'documented', 'with the pad (the museum, Launch Complex 29)'),
+  },
+  {
+    name: 'LC-17A',
+    lat: 28.447223,
+    lon: -80.565274,
+    heading: 24,
+    clear: 80,
+    paved: 62,
+    stood: known('1957-04', '1968', 'documented', 'accepted April 1957 (the museum); unchanged to 1965 and raised in 1968, as LC-17B'),
+  },
+  {
+    name: 'LC-17 blockhouse',
+    lat: 28.447197,
+    lon: -80.566933,
+    heading: 24,
+    clear: 34,
+    paved: 24,
+    stood: known('1956-09', undefined, 'documented', 'with pad 17B (HAER FL-8-5); its earth bank of 1964 is not built'),
+  },
+  {
+    name: 'LC-18B',
+    lat: 28.449016,
+    lon: -80.561774,
+    heading: 115,
+    draw: KINDS.bare,
+    stood: UNCHANGED('its concrete; its last launch 12 April 1962 (GCAT)'),
+  },
+  {
+    name: 'LC-18A',
+    lat: 28.450785,
+    lon: -80.562232,
+    heading: 115,
+    draw: KINDS.bare,
+    stood: UNCHANGED(
+      'its concrete; modified for Blue Scout Junior by June 1963, and two buildings beside it accepted 13 March 1963, not drawn (Cleary, ch. IV §2)',
+    ),
+  },
+  {
+    name: 'LC-9',
+    lat: 28.452227,
+    lon: -80.559383,
+    heading: 115,
+    draw: KINDS.navaho,
+    stood: UNCHANGED('its pedestal; no launch from it after 1959 (GCAT)'),
+  },
+  {
+    name: 'LC-31A',
+    lat: 28.45184,
+    lon: -80.556222,
+    heading: 115,
+    draw: KINDS.minuteman,
+    stood: UNCHANGED('its towers; its last launch 27 July 1961 (GCAT)'),
+  },
+  {
+    name: 'LC-32A',
+    lat: 28.453741,
+    lon: -80.555625,
+    heading: 115,
+    draw: KINDS.minuteman,
+    stood: UNCHANGED('its towers; no launch from it (GCAT)'),
+  },
+  {
+    name: 'LC-21',
+    lat: 28.460544,
+    lon: -80.540238,
+    heading: 115,
+    draw: KINDS.mace,
+    stood: UNCHANGED('its launch building; Mace to 17 July 1963 (GCAT)'),
+  },
+  {
+    name: 'LC-11',
+    lat: 28.475282,
+    lon: -80.539523,
+    heading: 60,
+    draw: (k) => KINDS.atlas(k),
+    stood: known(
+      '1961-05-05',
+      '1967-06-13',
+      'documented',
+      'drawn as it stood on 5 May 1961; its last launch 1 April 1964, deactivated 1964, its tower sold for salvage 13 June 1967 (GCAT; Cleary, ch. IV; CCSFM)',
+    ),
+  },
+  {
+    name: 'LC-12',
+    lat: 28.480713,
+    lon: -80.541926,
+    heading: 60,
+    draw: (k) => KINDS.atlas(k, false),
+    // its tower burned in September 1959; what replaced it by May 1961 is not established
+    stood: known(
+      '1961-05-05',
+      '1961-08-23',
+      'estimated',
+      'its tower burned on 24 September 1959; Ranger 1 left it on an Atlas-Agena on 23 August 1961 (GCAT), by when it very probably had a tower again (complexes.md)',
+    ),
+  },
+  {
+    name: 'LC-12, a tower again',
+    lat: 28.480713,
+    lon: -80.541926,
+    heading: 60,
+    draw: (k) => KINDS.atlas(k),
+    stood: known(
+      '1961-08-23',
+      undefined,
+      'estimated',
+      'Atlas-Agenas from 23 August 1961 (GCAT), and a mobile service tower photographed there on 3 October 1966 (CCSFM): that one stood ' +
+        'from the first is estimated, and when it was built is not found; its form is the Atlas stand-in’s',
+    ),
+  },
+  {
+    name: 'LC-13',
+    lat: 28.485852,
+    lon: -80.544441,
+    heading: 60,
+    draw: (k) => KINDS.atlas(k),
+    stood: known(
+      '1961-05-05',
+      '1962-07-24',
+      'derived',
+      'its A-frame tower’s last launch 13 February 1962 (GCAT); a larger square tower photographed under construction on 24 July 1962 ' +
+        '(CCSFM), so the old one was gone by then. When it came down after 13 February is not found: drawn until the photograph, estimated for MA-6 and MA-7',
+    ),
+  },
+  {
+    name: 'LC-13, its new tower building',
+    lat: 28.485852,
+    lon: -80.544441,
+    heading: 60,
+    draw: (k) => KINDS.atlas(k, false),
+    stood: known(
+      '1962-07-24',
+      undefined,
+      'derived',
+      'the stand and ramp stood on; the new square tower (under construction 24 July 1962 and 14 February 1963, CCSFM; in use by the first ' +
+        'Atlas-Agena from it, 17 October 1963, GCAT) has no stand-in of its form and is not drawn',
+    ),
+  },
   // Complexes 14 and 19 where their own records put them (lc-14.ts, lc-19.ts), each turned to the long axis of its stand
-  // and ramp on OpenStreetMap, the ramp to the south (issue #25: derived). Complex 14 was in use from January 1957 (HAER
-  // FL-8-7, pp. 13 and 19) and is drawn as it was for Mercury
+  // and ramp on OpenStreetMap, the ramp to the south (issue #25: derived)
   {
     name: 'LC-14',
     lat: LC14.latitude.value,
     lon: LC14.longitude.value,
     heading: 15,
     draw: (k) => KINDS.atlas(k),
-    stood: { from: '1957-01' },
+    stood: known(
+      '1957-01',
+      '1964-01-01',
+      'estimated',
+      'in use from January 1957 (HAER FL-8-7, pp. 13 and 19), drawn as it was for Mercury, unchanged to Faith 7 (issue #25). The Atlas-Agena ' +
+        'work was to begin on 1 January 1964 (NASA SP-4002, entry of 27 April 1963): its real start is not found',
+    ),
     pad: LC14,
   },
-  { name: 'LC-15', lat: 28.496278, lon: -80.549362, heading: 60, draw: KINDS.titan, stood: MAY_1961 }, // 15 and 16 were being converted for Titan II: their state that day is not established
-  { name: 'LC-16', lat: 28.501676, lon: -80.551796, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
-  { name: 'LC-19', lat: LC19.latitude.value, lon: LC19.longitude.value, heading: 355, draw: KINDS.titan, stood: MAY_1961, pad: LC19 },
-  { name: 'LC-20', lat: 28.512176, lon: -80.556704, heading: 60, draw: KINDS.titan, stood: MAY_1961 },
-  { name: 'LC-34', lat: 28.521839, lon: -80.561182, heading: 0, draw: KINDS.saturn, stood: MAY_1961 },
+  {
+    name: 'LC-14 for Atlas-Agena',
+    lat: LC14.latitude.value,
+    lon: LC14.longitude.value,
+    heading: 15,
+    draw: (k) => KINDS.atlas(k, true, 101),
+    stood: known(
+      '1964-06-24',
+      undefined,
+      'documented',
+      '"Construction of Gemini-Agena facilities at complex 14 was completed" on 24 June 1964 (NASA SP-4002, Part II(B)): the egress tower ' +
+        'gone and a 101 ft umbilical tower in the mast’s place (HAER FL-8-7, pp. 27 and 28; the NHL nomination, Item 7)',
+    ),
+    pad: LC14,
+  },
+  {
+    name: 'LC-15',
+    lat: 28.496278,
+    lon: -80.549362,
+    heading: 60,
+    draw: KINDS.titan,
+    stood: known(
+      '1961-05-05',
+      '1967-06',
+      'estimated',
+      'converted for Titan II from 1961, which flew from it 7 June 1962 to 9 April 1964; dismantled June 1967 (CCSFM; GCAT). What the conversion changed of what stood is not found: drawn as on 5 May 1961',
+    ),
+  },
+  {
+    name: 'LC-16',
+    lat: 28.501676,
+    lon: -80.551796,
+    heading: 60,
+    draw: KINDS.titan,
+    stood: known(
+      '1961-05-05',
+      undefined,
+      'estimated',
+      'Titan II from 16 March 1962 to 29 May 1963; NASA’s for static firing from January 1965, when a test stand was built, its date not found ' +
+        '(CCSFM; GCAT). Drawn as on 5 May 1961 throughout: not known to be right after 1961',
+    ),
+  },
+  {
+    name: 'LC-19',
+    lat: LC19.latitude.value,
+    lon: LC19.longitude.value,
+    heading: 355,
+    draw: KINDS.titan,
+    stood: known(
+      '1959-06-16',
+      '1962-09',
+      'documented',
+      'accepted 16 June 1959 (CCSFM); its last Titan I 29 January 1962 (GCAT); the Gemini erector’s construction began in September 1962 ' +
+        'and was complete on 17 October 1963 (NASA SP-4002, entry of 21 May 1962; Cleary, ch. IV §3, has the remodelling done in August 1963). ' +
+        'Rebuilt, it has no stand-in: lc-19.md',
+    ),
+    pad: LC19,
+  },
+  {
+    name: 'LC-20',
+    lat: 28.512176,
+    lon: -80.556704,
+    heading: 60,
+    draw: KINDS.titan,
+    stood: known(
+      '1961-05-05',
+      '1963-09',
+      'estimated',
+      'its last Titan I 14 December 1961 (GCAT); modified for Titan IIIA, beneficially occupied September 1963, first Titan IIIA 1 September 1964 ' +
+        '(Cleary, ch. IV §4). When the work began is not found: drawn as on 5 May 1961 until the occupancy, and the rebuilt complex has no stand-in',
+    ),
+  },
+  {
+    name: 'LC-34',
+    lat: 28.521839,
+    lon: -80.561182,
+    heading: 0,
+    draw: KINDS.saturn,
+    stood: known(
+      '1961-05-05',
+      '1962-05-09',
+      'derived',
+      'its umbilical tower stopped at 27 ft (Moonport, ch. 2), through SA-1 and SA-2; a new one begun two weeks after SA-2 of 25 April 1962 ' +
+        '(Moonport, ch. 2-7): so until about 9 May 1962',
+    ),
+  },
+  {
+    name: 'LC-34, its new umbilical tower',
+    lat: 28.521839,
+    lon: -80.561182,
+    heading: 0,
+    draw: (k) => KINDS.saturn(k, false),
+    clear: 110, // (as the first's: the service structure's track and base)
+    stood: known(
+      '1962-05-09',
+      undefined,
+      'estimated',
+      'the service structure and pedestal stood on (Saturn I to 28 March 1963, then rebuilt for Saturn IB through 1965: CCSFM; Moonport, ch. 17); ' +
+        'the new umbilical tower, its arm in use by SA-3 on 16 November 1962, is not drawn: its height is not established',
+    ),
+  },
+  // Complex 5/6 itself, seen from another pad: its place's own model in its last dated state (`LC5_PLACE`)
+  {
+    name: 'LC-5',
+    lat: LC5.latitude.value,
+    lon: LC5.longitude.value,
+    heading: 25,
+    stood: known(
+      '1961-07-21',
+      undefined,
+      'estimated',
+      'its place as built for 21 July 1961 (lc5/model/1961-07.py), its last launch (GCAT). Deactivated in 1962, when a gantry of the complex was ' +
+        'scrapped (CCSFM: which is not said; pad 5’s own is not drawn here), and the Air Force Space Museum’s from 31 January 1964 (CCSFM). ' +
+        'The blockhouse and pad 6’s slab stand today (lc-5.md); the rest is not known to have changed',
+    ),
+    own: LC5_PLACE,
+    pad: LC5,
+  },
 ];
 
 /** The complexes that stood on a day (ISO date), round a pad: each but the pad itself. */
 const standing = (compass: Compass, date: string): Complex[] => COMPLEXES.filter((c) => c.pad !== compass.origin && stood(c.stood, date));
+
+/** What stands round a pad on a day, by name, as `standing` has it: for a test to hold to the data. */
+export const neighboursOn = (compass: Compass, date: string): string[] => standing(compass, date).map((c) => c.name);
 
 /** Ground the near complexes' models stand on, where nothing grows: [x, z, radius], compass metres from the pad. */
 export const pavedAt = (compass: Compass, date: string): [number, number, number][] =>
@@ -473,7 +911,15 @@ export const clearingsAt = (compass: Compass, date: string): [number, number, nu
  * The complexes a walker can reach, as built by missions/usa/places/cape-canaveral/complexes/model/1961-05.py: one node a complex,
  * each in its own frame. It is small (places/cape-canaveral/complexes.md gives its size), so it is fetched with the scene.
  */
-const NEIGHBOURS: Dated & { model: string } = { model: 'models/usa/places/cape-canaveral/complexes/1961-05.glb', from: '1961-05-05' };
+const NEIGHBOURS: Stood & { model: string } = {
+  model: 'models/usa/places/cape-canaveral/complexes/1961-05.glb',
+  from: '1961-05-05',
+  confidence: 'estimated',
+  source:
+    'the model is of 5 May 1961 (complexes.md); for 21 July 1961 nothing read says anything permanent on those complexes changed ' +
+    '("The neighbours on 21 July 1961"), and for the later flights, 6 km and more away at Complexes 14 and 19, it is drawn the same, ' +
+    'not known to have changed: where each movable tower stood on those days is not known',
+};
 /**
  * The materials that model may wear, by the names its script gives them (the pad's own: places/cape-canaveral/lc5/site.py). Each is
  * one mesh here from the start, empty until the model arrives, so that the look in force (look.ts) and the walker
@@ -557,9 +1003,30 @@ export function buildScenery(
     .drum('black', 1.9, 0.2, 2.2, 0, tower + 3.6, 0, 12);
   k.box('red', 4, 3, 6, 9, 0, 0).box('dark', 4.4, 0.5, 6.4, 9, 3, 0); // the oil house
   const near = neighbours(groundAt, compass, date);
+  const pads = standing(compass, date).flatMap((c) => (c.own && c.pad ? [ownPlace(c.own, c.pad, groundAt, compass)] : []));
+  const around = [...(near ? [near] : []), ...pads];
   return {
-    objects: [...k.meshes(), ...(near ? [near.group] : [])],
-    levels: near ? [near] : [],
-    arrived: () => near?.arrived() ?? false,
+    objects: [...k.meshes(), ...around.map((a) => a.group)],
+    levels: around,
+    arrived: () => around.map((a) => a.arrived()).some(Boolean),
   };
+}
+
+/**
+ * Another pad's own place, seen from the origin: its model (built in its frame, feet and all, as its flights stand in it)
+ * put where that frame lies round the origin (compass.ts `frame`): turned from its frame to the compass, and its zero at
+ * its own grade over the land there, read off its clearing beside the pad, which the land keeps level (ground.ts).
+ */
+function ownPlace(own: NonNullable<Complex['own']>, pad: SiteDef, groundAt: (x: number, z: number) => number, compass: Compass): Around {
+  const frame = ownFrame(pad, groundAt, compass);
+  const things = own.nodes.map((node) => ({ node, place: (o: THREE.Object3D) => o.applyMatrix4(frame) }));
+  return new Around(own.model, things, own.wears, 'cape-canaveral/scenery.ts');
+}
+
+/** Where another pad's frame lies round the origin: its frame turned to the compass, its zero at its grade over the land there. */
+export function ownFrame(pad: SiteDef, groundAt: (x: number, z: number) => number, compass: Compass): THREE.Matrix4 {
+  const at = compass.frame(pad);
+  // (its frame's +X on the compass, 25 m along which the land is the clearing's, off the track that runs under the pad)
+  const level = groundAt(at.x + 25 * Math.cos(at.turn), at.z + 25 * Math.sin(at.turn)) - pad.grade.value;
+  return new THREE.Matrix4().makeRotationY(-at.turn).setPosition(at.x, level, at.z);
 }

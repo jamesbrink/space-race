@@ -96,6 +96,16 @@ export interface Dated {
 }
 
 /**
+ * A `Dated` that says how sure its dates are and on what they rest: what a place draws round a pad on a flight's day
+ * (missions/usa/places/cape-canaveral/scenery.ts `COMPLEXES`). Where a date is not known it is left out and the
+ * confidence says what was assumed (drawn as it stood on the one day it is known for, and not known to have changed).
+ */
+export interface Stood extends Dated {
+  confidence: Confidence;
+  source: string;
+}
+
+/**
  * A model of things round a site (a path under public/, as a flight's model urls are), built in the site's frame with
  * each thing's node origin at its middle on the ground; the nodes to draw; every material it wears, by name; and when
  * it stood so. A place's ground lists them (missions/<nation>/places/<place>/ground.ts).

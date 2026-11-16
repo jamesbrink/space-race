@@ -894,6 +894,51 @@ rail line, Complexes 14 and 19 along their stands' and ramps' axes on OpenStreet
 355°: issue #25, derived; until November 2026 both were set square to the shore at 060°), and the rest square to their
 stretch of shore.
 
+**Found since: Complex 36A was completed in February 1961** (the Cape Canaveral Space Force Museum, *Launch Complex
+36*: "February 1961 – Completed"; its first launch 8 May 1962, GCAT), so it stood on 5 May 1961 and should be in this
+scene. It has no stand-in yet and is not drawn: that is a gap in both flights from here, recorded and not mended here
+(a stand-in of its form changes what Freedom 7 and Liberty Bell 7 show, which wants its own look).
+
+### After 1961: the later flights' Cape
+
+The same Cape stands round the flights from Complexes 14 and 19 (1962 to 1965), each thing as it stood on the flight's
+day (`scenery.ts`: each of `COMPLEXES` has its `stood`, from and until with how sure and on what; `neighboursOn` gives
+the list a pad has on a day, and tests/places.test.mjs holds every built flight's to the data). Complex 5 itself is
+one of them, seen from the other pads: the place's model of 21 July 1961 (`lc5/model/1961-07.py`, its last dated
+state), put in its own frame round the origin and stood at its own grade (`ownFrame`); its cars are left out.
+**Pad 5's own hardware is not drawn from there**: the hardstand, the launcher and the service structure are in each
+flight's pad model, not the place's (a gantry of the complex was scrapped on its deactivation in 1962, which one is
+not said: CCSFM). The research is issue #25's and a search of 15 November 2026: GCAT is McDowell's launch log, read for
+each pad's first and last launch; CCSFM the museum's page for each complex.
+
+| Complex | What changed after 21 July 1961 | Drawn | Confidence | Source |
+| --- | --- | --- | --- | --- |
+| 5/6 | last launch 21 July 1961 (MR-4); deactivated 1962; the Air Force Space Museum's from 31 January 1964 | the place as of 21 July 1961, from other pads | estimated past 1961 (the blockhouse and pad 6's slab stand today) | GCAT; CCSFM |
+| 26 | 26A's last Jupiter 23 January 1963; deactivated 1964, the museum's from 20 November 1964 | as on 5 May 1961 throughout | documented (that it stood); the gantry's place estimated | CCSFM; GCAT |
+| 30 | its last Pershing 24 April 1963; the tower taken down 14 February 1968 | until then | documented | CCSFM; GCAT |
+| 25 | the ship motion simulator mothballed October 1961; both pads dismantled September 1969 | until then | documented | CCSFM; Spaceline |
+| 29A | a closed tower of its own "about 1963" (a caption only) | as in 1961: the tower is not drawn | estimated | complexes.md |
+| 17 | Delta and ASSET through 1965; the towers raised 14 ft 6 in in 1968 | until 1968 | documented | CCSFM; Cleary, ch. IV §2; HAER FL-8-5 |
+| 18 | 18B's last launch 12 April 1962; 18A modified for Blue Scout Junior by June 1963, two buildings by it from March 1963 (not drawn) | the pads' concrete throughout | estimated | GCAT; Cleary, ch. IV §2 |
+| 9, 31A, 32A, 21 | no change found (21's last Mace 17 July 1963) | as on 5 May 1961 | estimated | GCAT |
+| 11 | last launch 1 April 1964; tower sold for salvage 13 June 1967 | until then | documented | GCAT; Cleary, ch. IV; CCSFM |
+| 12 | Atlas-Agenas from 23 August 1961; a mobile service tower photographed in 1966; when it was rebuilt is not found | without a tower until 23 August 1961, with the Atlas stand-in's from then | estimated | GCAT; CCSFM |
+| 13 | the A-frame tower's last launch 13 February 1962; a larger square tower under construction 24 July 1962 and 14 February 1963, in use 17 October 1963 | the old tower until 24 July 1962 (estimated for MA-6 and MA-7, when it came down not being found); then the stand and ramp only | derived | GCAT; CCSFM |
+| 14 | the Atlas-Agena work: planned from 1 January 1964, complete 24 June 1964; the egress tower gone, a 101 ft umbilical tower for the mast | the Mercury state until 1 January 1964 (estimated); the 101 ft tower from 24 June 1964 (documented) | as said | NASA SP-4002, entry of 27 April 1963 and Part II(B); HAER FL-8-7, pp. 27 and 28 |
+| 15 | Titan II from 7 June 1962 to 9 April 1964; dismantled June 1967 | as on 5 May 1961 until then: what the conversion changed is not found | estimated | CCSFM; GCAT |
+| 16 | Titan II 16 March 1962 to 29 May 1963; a NASA static test stand from January 1965, its date not found | as on 5 May 1961 throughout | estimated | CCSFM; GCAT |
+| 19 | last Titan I 29 January 1962; the Gemini erector built from September 1962, complete 17 October 1963 | Titan I's until September 1962; rebuilt, no stand-in | documented | GCAT; NASA SP-4002, entry of 21 May 1962; Cleary, ch. IV §3 (August 1963) |
+| 20 | last Titan I 14 December 1961; rebuilt for Titan IIIA, beneficially occupied September 1963, first Titan IIIA 1 September 1964 | Titan I's until September 1963 (when the work began is not found); rebuilt, no stand-in | estimated | GCAT; Cleary, ch. IV §4 |
+| 34 | the umbilical tower's 27 ft stub through SA-1 and SA-2; a new tower begun about 9 May 1962, its arm in use by 16 November 1962; rebuilt for Saturn IB 1963 to 1965 | the stub until 9 May 1962; then the service structure and pedestal without the umbilical tower, whose height is not established | derived, then estimated | Moonport, ch. 2 and ch. 17; CCSFM |
+
+**Stood by March 1965 and not drawn**, for want of a stand-in of their form: Complex 36A (from February 1961) and 36B
+(built February 1963 to July 1964); Complex 37, its 92 m service structure from 1963 the tallest thing on the Cape
+(pads complete August 1963: Moonport, ch. 10); the Titan III complexes 40 and 41 and their assembly buildings (built from
+1963); Hangar AF (1962); Complex 13's new tower; Complex 19 as rebuilt for Gemini (seen only from other pads, and no
+flight left another pad after October 1963 here); Complex 20 as rebuilt; Complex 34's second umbilical tower; and across
+the Banana River the Vehicle Assembly Building's frame, at its full height by the end of March 1965 (Moonport, ch. 12),
+and Complex 39's sites. A flight from the Cape after 1963 sees a fuller Cape than is drawn.
+
 The shore is today's, from OpenStreetMap, thinned to 31 points for the Atlantic and 22 for the
 Banana River's east shore, 42 for its west, 12 for the Indian River's east and 11 for each of
 Newfound Harbor's two: not 1961's exactly (the Cape's point has moved and the port has grown).

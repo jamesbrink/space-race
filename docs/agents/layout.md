@@ -42,8 +42,9 @@ missions/                             the record: one folder per nation, program
     ground.ts                         the place's ground as data (viewer/scenery/ground.ts `GroundSpec`): its land and plants, what stands round its pads
                                       (the Cape's: plant communities, clearings, roads, palette, sea; Tyuratam's: where the steppe lies low, the builders'
                                       ground, the tracks and roads painted, the flame pit cut out, Site 2's building)
-    scenery.ts                        the Cape's shore and its other launch complexes as they stood in May 1961, in latitude and longitude: the near ones
-                                      a model of their own (complexes/, `pnpm model:cape`), the far ones stand-ins, the lighthouse
+    scenery.ts                        the Cape's shore and its other launch complexes, each dated (`stood`: from, until, how sure) from May 1961 to
+                                      1965, in latitude and longitude: the near ones a model of their own (complexes/, `pnpm model:cape`), the far
+                                      ones stand-ins, Complex 5's own place seen from the other pads, the lighthouse
     steppe.ts  relief.ts  works.ts    Tyuratam's: the steppe in April as a kind of country (its ground, cel ground, palette, plants); how high the ground
                                       is round Site 1 in JavaScript and GLSL (as site1/relief.py; tests/tyuratam.test.mjs); SRTM's lie and the Corona
                                       frames' railways, roads and tracks past Site 1's own ground
