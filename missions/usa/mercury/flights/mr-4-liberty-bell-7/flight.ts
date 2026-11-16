@@ -49,11 +49,18 @@ import {
   OBJECTIVE_OUT,
   sequenceLamp,
 } from '../../vehicles/cabin.ts';
-import { CAPSULE_PLANE, CHUTES, cutoffMass, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
+import {
+  CAPSULE_PLANE,
+  CHUTES,
+  cutoffMass,
+  type Day,
+  plan as mercuryRedstonePlan,
+  trajectory as mercuryRedstone,
+  PLR,
+} from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
-import { planOfTrajectory } from '../../../../../src/sim/planof.ts';
 
 /**
  * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -1114,7 +1121,7 @@ const CAPSULE_LAUNCH = 4040.28 - HATCH_SAVED;
 const CAPSULE_ORBIT = 2855.14 - HATCH_SAVED;
 const CAPSULE_ENTRY = 2579.0 - HATCH_SAVED;
 const NO11 = `No. 11’s weights are in its Postlaunch Memorandum Report, which has not been found: taken as No. 7’s (${PLR}, 3.1) less the ${HATCH_SAVED} lb its explosive hatch saved (${RESULTS}, p. 4). The window, the rate command system and the new panel are not counted`;
-const TRAJECTORY: Trajectory = mercuryRedstone({
+const DAY: Day = {
   winds: WINDS,
   azimuth: doc(
     AZIMUTH,
@@ -1216,7 +1223,8 @@ const TRAJECTORY: Trajectory = mercuryRedstone({
       `the same pack as Freedom 7’s: ${PLR}, section 3.1, its "orbit" weight less its re-entry weight, 276.14 lb, burned propellant with it (so the pack as it fell was lighter): flown at the whole figure`,
     ),
   },
-});
+};
+const TRAJECTORY: Trajectory = mercuryRedstone(DAY);
 
 export const flight: Flight = {
   id: 'usa/mercury/mr-4-liberty-bell-7',
@@ -1512,7 +1520,7 @@ export const flight: Flight = {
   }),
   trajectory: TRAJECTORY,
   checks,
-  plan: planOfTrajectory(TRAJECTORY, checks),
+  plan: mercuryRedstonePlan(DAY, checks, TRAJECTORY.body),
   flownNote:
     'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
     'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +

@@ -3,6 +3,7 @@ import type {
   Body,
   ChuteDef,
   Curve,
+  FlightCheck,
   Heating,
   MassPart,
   Measure,
@@ -12,6 +13,21 @@ import type {
   Winds,
 } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
+import type {
+  AttitudeDef,
+  BodyDef,
+  Craft,
+  EngineDef,
+  EventDef,
+  FlightPlan,
+  JointDef,
+  LimitDef,
+  ChuteDef as PlanChute,
+  TankDef,
+  ThrusterSet,
+} from '../../../../src/sim/plan.ts';
+import { vacuumOf } from '../../../../src/sim/thrust.ts';
+import { G0 } from '../../../../src/world/bodies.ts';
 
 /**
  * The Mercury-Redstone as the simulator flies it (src/sim: fly.ts, vehicle.ts, shed.ts, heating.ts): what is the same on
@@ -764,102 +780,420 @@ export const EXIT_AREA = derived(
     'The nozzle’s, so the same on every flight of the A-7',
 );
 
+/** How long the A-7 can burn before a propellant runs out, s: an estimate on a documented burning time. */
+const DEPLETION = estimated(
+  143.5,
+  `${TMX_4}: a nominal burning time of 143.5 s, taken as when a propellant would have run out, which the report does not say (on MR-3’s figures 1,285 lb of liquids are then still aboard by our count). ` +
+    'The 143.5 s is documented as a burning time; that it is depletion is our reading of it, so as this input it is an estimate',
+);
+
+/** The tilt programme: degrees from the launch vertical against seconds, in the plane of the azimuth. */
+const TILT: Curve = {
+  points: TILT_FIGURE.map(([t, tilt]) => [TILT_BEGINS + ((t - 24.3) * (TILT_ARREST - TILT_BEGINS)) / (TILT_ARREST - 24.3), tilt]),
+  confidence: 'estimated',
+  source:
+    'documented: begins 15.0 s (MR-BD, MR-3 and MR-4), arrested 131.7 s (NASA TM X-53107, Table 3-1), 41 degrees at the end (Figure 4-9; Table 8-1). ' +
+    'Estimated: the curve between, which is Figure 4-9 (read to about half a degree) stretched from its 24.3 s beginning to 15.0 s',
+};
+
+/** The area the drag coefficients are referred to, m^2. */
+const AREA = derived(CAPSULE_AREA, 'the capsule is 74.5 in across at its widest (CR-649): 30.27 sq ft');
+
+/** Drag coefficient against Mach number going up on the booster, and coming down heat shield first. */
+const ASCENT_DRAG: Curve = {
+  points: [
+    [0, 0.52],
+    [0.5, 0.56],
+    [0.8, 0.66],
+    [1.0, 0.9],
+    [1.1, 0.92],
+    [1.5, 0.8],
+    [2, 0.7],
+    [2.5, 0.58],
+    [3, 0.48],
+    [4, 0.36],
+    [5, 0.31],
+    [6, 0.3],
+    [7, 0.3],
+  ],
+  confidence: 'estimated',
+  source:
+    `${TMX_491}, Figure 20: drag coefficient at no angle of attack of the capsule with its escape tower, alone in the tunnel, read to about 0.02. ` +
+    'On the booster the capsule has no wake of its own and the Redstone adds its skin, fins and base: the two are taken to cancel, which nobody measured for us. No drag figure for the whole vehicle was found',
+};
+const ENTRY_DRAG: Curve = {
+  points: [
+    [0, 1.0],
+    [0.5, 1.05],
+    [0.8, 1.2],
+    [1, 1.3],
+    [1.5, 1.42],
+    [2, 1.52],
+    [3, 1.57],
+    [4, 1.6],
+    [20, 1.6],
+  ],
+  confidence: 'documented',
+  source: `${TMX_491}, Figure 22: drag coefficient at no angle of attack of the re-entry configuration, Mach 0.5 to 20, read to about 0.03; "above Mach 4 it remains constant"`,
+};
+
+/** Each retrorocket's thrust, N, and burning time, s. */
+const RETRO_THRUST = doc(992 * LBF, 'McDonnell SEDR 104: 992 lbf (SP-45 has a nominal 1,000 lbf for 10 s, a quarter less impulse)');
+const RETRO_BURN = doc(13.2, 'McDonnell SEDR 104: 13.2 s');
+
+/** The parachutes as the simulator has them: the drag area each adds once full, m^2, and how long it takes to fill, s. */
+const DROGUE = {
+  dragArea: estimated(
+    0.5 * Math.PI * (3 * FT) ** 2,
+    'a 6 ft conical ribbon parachute (Hammack p. 9) at a drag coefficient of 0.5, the usual figure for the type: no measured figure found',
+  ),
+  fills: estimated(1, 'a small ribbon parachute fills in about a second: not recorded'),
+};
+const MAIN = {
+  dragArea: derived(
+    (2 * 2579.0 * LB * 9.80665) / (1.225 * (29 * FT) ** 2) - 1.0 * CAPSULE_AREA,
+    'what brings Freedom 7’s re-entry weight (2,579.0 lb: the Postlaunch Report, 3.1) down at 29 ft/s at sea level ("descent velocities of 28 to 30 feet per second were always achieved", Hammack p. 25), less the capsule’s own drag: ' +
+      '0.82 on a 63 ft canopy. The canopy’s, so the same on every flight',
+  ),
+  fills: estimated(
+    9,
+    'it comes out reefed and then opens: Shepard reports "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22 and "good" at 10:28 (Postlaunch Report, air-ground transcript). Nine seconds from out to full, evenly, is ours',
+  ),
+};
+
 /**
  * What the simulator flies a Mercury-Redstone flight from (src/sim/fly.ts): the flight's own day and figures and the
  * hardware's. Every figure is an input from a report; none was adjusted against any flight's results. Where a report
  * gives no figure the entry is `estimated` and says what it stands on: tests/sim.test.mjs prints how far each of those
- * moves each result, flight by flight.
+ * moves each result, flight by flight. The old shape the viewers still read; the simulator flies `plan`, below.
  */
 export function trajectory(day: Day): Trajectory {
   return {
     winds: day.winds,
     azimuth: day.azimuth,
     liftoffMass: day.liftoffMass,
-    engine: {
-      thrust: day.thrust,
-      isp: day.isp,
-      exitArea: EXIT_AREA,
-      cutoff: day.cutoff,
-      depletion: estimated(
-        143.5,
-        `${TMX_4}: a nominal burning time of 143.5 s, taken as when a propellant would have run out, which the report does not say (on MR-3’s figures 1,285 lb of liquids are then still aboard by our count). ` +
-          'The 143.5 s is documented as a burning time; that it is depletion is our reading of it, so as this input it is an estimate',
-      ),
-    },
-    tilt: {
-      points: TILT_FIGURE.map(([t, tilt]) => [TILT_BEGINS + ((t - 24.3) * (TILT_ARREST - TILT_BEGINS)) / (TILT_ARREST - 24.3), tilt]),
-      confidence: 'estimated',
-      source:
-        'documented: begins 15.0 s (MR-BD, MR-3 and MR-4), arrested 131.7 s (NASA TM X-53107, Table 3-1), 41 degrees at the end (Figure 4-9; Table 8-1). ' +
-        'Estimated: the curve between, which is Figure 4-9 (read to about half a degree) stretched from its 24.3 s beginning to 15.0 s',
-    },
-    area: derived(CAPSULE_AREA, 'the capsule is 74.5 in across at its widest (CR-649): 30.27 sq ft'),
-    ascentDrag: {
-      points: [
-        [0, 0.52],
-        [0.5, 0.56],
-        [0.8, 0.66],
-        [1.0, 0.9],
-        [1.1, 0.92],
-        [1.5, 0.8],
-        [2, 0.7],
-        [2.5, 0.58],
-        [3, 0.48],
-        [4, 0.36],
-        [5, 0.31],
-        [6, 0.3],
-        [7, 0.3],
-      ],
-      confidence: 'estimated',
-      source:
-        `${TMX_491}, Figure 20: drag coefficient at no angle of attack of the capsule with its escape tower, alone in the tunnel, read to about 0.02. ` +
-        'On the booster the capsule has no wake of its own and the Redstone adds its skin, fins and base: the two are taken to cancel, which nobody measured for us. No drag figure for the whole vehicle was found',
-    },
+    engine: { thrust: day.thrust, isp: day.isp, exitArea: EXIT_AREA, cutoff: day.cutoff, depletion: DEPLETION },
+    tilt: TILT,
+    area: AREA,
+    ascentDrag: ASCENT_DRAG,
     separation: day.separation,
-    retro: {
-      fires: day.retro.fires,
-      thrust: doc(992 * LBF, 'McDonnell SEDR 104: 992 lbf (SP-45 has a nominal 1,000 lbf for 10 s, a quarter less impulse)'),
-      burn: doc(13.2, 'McDonnell SEDR 104: 13.2 s'),
-      pitch: day.retro.pitch,
-    },
+    retro: { fires: day.retro.fires, thrust: RETRO_THRUST, burn: RETRO_BURN, pitch: day.retro.pitch },
     retropack: day.retropack,
-    entryDrag: {
-      points: [
-        [0, 1.0],
-        [0.5, 1.05],
-        [0.8, 1.2],
-        [1, 1.3],
-        [1.5, 1.42],
-        [2, 1.52],
-        [3, 1.57],
-        [4, 1.6],
-        [20, 1.6],
-      ],
-      confidence: 'documented',
-      source: `${TMX_491}, Figure 22: drag coefficient at no angle of attack of the re-entry configuration, Mach 0.5 to 20, read to about 0.03; "above Mach 4 it remains constant"`,
-    },
-    drogue: {
-      altitude: day.drogue,
-      dragArea: estimated(
-        0.5 * Math.PI * (3 * FT) ** 2,
-        'a 6 ft conical ribbon parachute (Hammack p. 9) at a drag coefficient of 0.5, the usual figure for the type: no measured figure found',
-      ),
-      fills: estimated(1, 'a small ribbon parachute fills in about a second: not recorded'),
-    },
-    main: {
-      altitude: day.main,
-      dragArea: derived(
-        (2 * 2579.0 * LB * 9.80665) / (1.225 * (29 * FT) ** 2) - 1.0 * CAPSULE_AREA,
-        'what brings Freedom 7’s re-entry weight (2,579.0 lb: the Postlaunch Report, 3.1) down at 29 ft/s at sea level ("descent velocities of 28 to 30 feet per second were always achieved", Hammack p. 25), less the capsule’s own drag: ' +
-          '0.82 on a 63 ft canopy. The canopy’s, so the same on every flight',
-      ),
-      fills: estimated(
-        9,
-        'it comes out reefed and then opens: Shepard reports "main on green" at 10:15, "main chute is reefed" at 10:18, "coming unreefed" at 10:22 and "good" at 10:28 (Postlaunch Report, air-ground transcript). Nine seconds from out to full, evenly, is ours',
-      ),
-    },
+    entryDrag: ENTRY_DRAG,
+    drogue: { altitude: day.drogue, ...DROGUE },
+    main: { altitude: day.main, ...MAIN },
     body: stack(day.stack),
     heating: heated(day.starts),
+  };
+}
+
+const atTime = (at: Measure) => [{ time: at.value }];
+
+/**
+ * A Mercury-Redstone flight's plan (src/sim/plan.ts): what the simulators fly. Its bodies base first (the booster, the
+ * escape tower, the retropack, the capsule), the joints between them, the A-7 on the booster's propellant, the three
+ * retrorockets and the escape rocket, the capsule's attitude jets, its two parachutes, the record's sequence by the
+ * clock and the abort a hand's command sets off. Where the plan wants a figure the record does not give it is worked
+ * from those it does, `derived`, and says how. `body` is the stack as a rigid body (types.ts `Body`), as `stack` makes it.
+ */
+export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stack(day.stack)): FlightPlan {
+  const e = { thrust: day.thrust, isp: day.isp, exitArea: EXIT_AREA, cutoff: day.cutoff, depletion: DEPLETION };
+  const flow = e.thrust.value / (G0 * e.isp.value);
+  const cutoff = e.cutoff.value;
+  const vacuum = vacuumOf(e);
+  const sep = day.separation;
+  const burned = flow * cutoff;
+  const towerMass = day.liftoffMass.value - burned - sep.boosterMass.value - sep.mass.value;
+  const hasTower = Boolean(body.tower || body.escape);
+  const bodies: BodyDef[] = [
+    {
+      id: 'booster',
+      label: 'Booster',
+      count: 1,
+      mass: derived(
+        sep.boosterMass.value + burned,
+        `its mass at separation (${sep.boosterMass.value} kg) and what its engine burns to cutoff, thrust over g0 times specific impulse for ${cutoff} s`,
+      ),
+      dry: sep.boosterMass,
+    },
+    ...(hasTower
+      ? [
+          {
+            id: 'tower',
+            label: 'Escape tower',
+            count: 1,
+            mass: derived(towerMass, 'what leaves the pad less the booster at liftoff and the capsule at separation'),
+          },
+        ]
+      : []),
+    {
+      id: 'retropack',
+      label: 'Retropack',
+      count: 1,
+      mass: derived(sep.mass.value - day.retropack.mass.value, 'the capsule at separation less the capsule once the retropack has gone'),
+    },
+    { id: 'capsule', label: 'Capsule', count: 1, mass: day.retropack.mass, aero: { area: AREA, drag: ENTRY_DRAG } },
+  ];
+  const joints: JointDef[] = [
+    ...(hasTower ? [{ id: 'tower', label: 'Tower jettisoned', gone: ['tower'], ...(body.tower ? { at: body.tower.at } : {}) }] : []),
+    {
+      id: 'separation',
+      label: 'Capsule separation',
+      gone: ['booster'],
+      push: sep.speed,
+      at: sep.at,
+      after: sep.mass,
+      leaves: sep.boosterMass,
+    },
+    { id: 'retropack', label: 'Retropack jettisoned', gone: ['retropack'], at: day.retropack.at, after: day.retropack.mass },
+  ];
+  const nature = body.engine;
+  const engines: EngineDef[] = [
+    {
+      id: 'main',
+      label: 'Booster engine',
+      body: 'booster',
+      count: 1,
+      tanks: ['booster'],
+      thrust: { seaLevel: e.thrust, vacuum },
+      isp: {
+        seaLevel: e.isp,
+        vacuum: derived(
+          vacuum.value / (flow * G0),
+          'the vacuum thrust over the flow (sea-level thrust over g0 times specific impulse) and g0',
+        ),
+      },
+      exitArea: e.exitArea,
+      kind: nature?.kind ?? 'liquid',
+      ...(nature?.throttle ? { throttle: { range: nature.throttle } } : {}),
+      gimbal: { deflection: body.control.deflection, station: body.control.station },
+      starts: nature
+        ? { count: nature.starts, ground: false, confidence: nature.confidence, source: nature.source }
+        : { count: 1, ground: false, confidence: 'estimated' },
+      depletion: e.depletion,
+    },
+    ...day.retro.fires.map(
+      (_, k): EngineDef => ({
+        id: `retro-${k + 1}`,
+        label: `Retrorocket ${k + 1}`,
+        body: 'retropack',
+        count: 1,
+        tanks: [],
+        thrust: { vacuum: RETRO_THRUST },
+        kind: 'solid',
+        burn: RETRO_BURN,
+        starts: { count: 1, ground: false, confidence: 'documented', source: 'a solid motor: lit once' },
+      }),
+    ),
+    ...(body.escape
+      ? [
+          {
+            id: 'escape',
+            label: 'Escape rocket',
+            body: 'tower',
+            count: 1,
+            tanks: [],
+            thrust: { vacuum: body.escape.thrust },
+            kind: 'solid' as const,
+            burn: body.escape.burn,
+            impulse: body.escape.impulse,
+            ...(body.escape.curve ? { curve: body.escape.curve } : {}),
+            starts: { count: 1, ground: false, confidence: 'documented' as const, source: 'a solid motor: lit once' },
+          },
+        ]
+      : []),
+  ];
+  const tanks: TankDef[] = [
+    {
+      id: 'booster',
+      label: 'Booster propellant',
+      body: 'booster',
+      load: derived(
+        flow * e.depletion.value,
+        'the flow (thrust over g0 times specific impulse) for the time it can burn before a propellant runs out',
+      ),
+      holds: 'propellant',
+    },
+  ];
+  const rcs = body.capsule.rcs;
+  for (const s of rcs?.supplies ?? [])
+    tanks.push({ id: `rcs:${s.name}`, label: s.name, body: 'capsule', load: s.propellant, holds: 'control', isp: s.isp });
+  const thrusters: ThrusterSet[] = rcs
+    ? rcs.supplies.map((s) => ({
+        id: s.name,
+        label: s.name,
+        body: 'capsule',
+        does: ['rotation'],
+        tank: `rcs:${s.name}`,
+        mode: s.mode,
+        chambers: rcs.thrusters.filter((t) => t.supply === s.name),
+        ...(rcs.rate && s.mode === 'manual' ? { rate: rcs.rate.full } : {}),
+      }))
+    : body.capsule.jets
+      ? [{ id: 'jets', label: 'Attitude jets', body: 'capsule', does: ['rotation'], mode: 'automatic', torque: body.capsule.jets }]
+      : [];
+  const lim = body.limits;
+  const chutes: PlanChute[] = [
+    {
+      id: 'drogue',
+      label: 'Drogue',
+      body: 'capsule',
+      ...DROGUE,
+      ...(lim ? { strength: lim.drogue, ...(lim.pull?.drogue ? { pull: lim.pull.drogue } : {}) } : {}),
+    },
+    {
+      id: 'main',
+      label: 'Main parachute',
+      body: 'capsule',
+      ...MAIN,
+      instead: ['drogue'],
+      ...(lim ? { strength: lim.main, ...(lim.pull?.main ? { pull: lim.pull.main } : {}) } : {}),
+    },
+  ];
+  const limits: LimitDef[] = [];
+  if (lim) limits.push({ of: 'qAlpha', value: lim.qAlpha, at: lim.joint });
+  const crewLimits = body.capsule.limits;
+  if (crewLimits) limits.push({ of: 'landing-speed', value: crewLimits.landingSpeed }, { of: 'load', value: crewLimits.load });
+  const craft: Craft = {
+    id: 'stack',
+    label: 'The stack',
+    mass: day.liftoffMass,
+    bodies,
+    joints,
+    engines,
+    tanks,
+    thrusters,
+    chutes,
+    limits,
+    drag: [{ until: sep.at, area: AREA, curve: ASCENT_DRAG }],
+    rigid: body,
+    heating: heated(day.starts),
+    ...(body.sheds ? { sheds: body.sheds } : {}),
+  };
+  const attitude: AttitudeDef[] = [
+    { id: 'programme', label: 'Tilt programme', hold: { programme: TILT, azimuth: day.azimuth }, source: TILT.source },
+    { id: 'retro', label: 'Retro attitude', hold: { retro: day.retro.pitch }, source: day.retro.pitch.source },
+    {
+      id: 'blunt',
+      label: 'Heat shield first',
+      hold: { blunt: true, ...(body.capsule.earthward ? { earthward: body.capsule.earthward } : {}) },
+      source: 'the capsule comes down heat shield first',
+    },
+  ];
+  const events: EventDef[] = [
+    {
+      id: 'ignition',
+      label: 'Ignition',
+      when: [{ time: 0 }],
+      do: [{ ignite: 'main' }],
+      automatic: true,
+      source: 'the clock starts with the engine',
+    },
+    {
+      id: 'cutoff',
+      label: 'Cutoff',
+      when: atTime(e.cutoff),
+      do: [{ cut: 'main' }],
+      automatic: true,
+      at: e.cutoff,
+      source: e.cutoff.source,
+    },
+  ];
+  if (body.tower)
+    events.push({
+      id: 'tower',
+      label: 'Tower jettisoned',
+      when: atTime(body.tower.at),
+      do: [{ separate: 'tower' }],
+      automatic: true,
+      at: body.tower.at,
+      source: body.tower.at.source,
+    });
+  const fires = day.retro.fires;
+  events.push(
+    {
+      id: 'separation',
+      label: 'Capsule separation',
+      when: atTime(sep.at),
+      do: [{ separate: 'separation' }, { attitude: 'retro' }],
+      automatic: true,
+      at: sep.at,
+      source: sep.at.source,
+    },
+    // the retrorockets' sequence: begun with the first, each other so long after it (a hand may begin it at any time)
+    ...fires.map(
+      (f, k): EventDef => ({
+        id: k === 0 ? 'retro' : `retro-${k + 1}`,
+        label: k === 0 ? 'Retrorocket sequence: the first fires' : `Retrorocket ${k + 1} fires`,
+        when: k === 0 ? atTime(f) : [{ after: 'retro', wait: f.value - fires[0]!.value }],
+        do: [{ ignite: `retro-${k + 1}` }],
+        automatic: true,
+        at: f,
+        source: f.source,
+      }),
+    ),
+    {
+      id: 'retropack',
+      label: 'Retropack jettisoned',
+      when: atTime(day.retropack.at),
+      do: [{ separate: 'retropack' }, { attitude: 'blunt' }],
+      automatic: true,
+      at: day.retropack.at,
+      source: day.retropack.at.source,
+    },
+    {
+      id: 'drogue',
+      label: 'Drogue out',
+      when: [{ after: 'separation' }, { height: day.drogue.value, going: 'down' }],
+      do: [{ deploy: 'drogue' }],
+      automatic: true,
+      source: day.drogue.source,
+    },
+    {
+      id: 'main',
+      label: 'Main parachute out',
+      when: [{ after: 'drogue' }, { height: day.main.value, going: 'down' }],
+      do: [{ deploy: 'main' }],
+      automatic: true,
+      source: day.main.source,
+    },
+  );
+  if (body.escape)
+    events.push({
+      id: 'abort',
+      label: 'Abort',
+      when: [{ command: 'abort' }],
+      do: [{ cut: 'main' }, { ignite: 'escape' }, { separate: 'separation' }],
+      automatic: false,
+      source: 'the abort handle, or the sequencer’s abort signal',
+    });
+  if (body.escape?.sequence?.retropack)
+    events.push({
+      id: 'abort-retropack',
+      label: 'Retropack dropped as the spacecraft leaves',
+      when: [{ after: 'abort' }],
+      do: [{ separate: 'retropack' }],
+      automatic: true,
+      source: body.escape.sequence.ceiling.source,
+    });
+  return {
+    kind: 'ballistic',
+    craft: [craft],
+    events,
+    attitude,
+    winds: day.winds,
+    checks: checks.map((c) => ({ ...c, of: 'flight' as const })),
+    record: {
+      ...(lim ? { torn: lim.torn } : {}),
+      ...(body.escape
+        ? {
+            abort: {
+              ...(body.escape.sequence ? { sequence: body.escape.sequence } : {}),
+              ...(body.escape.record ? { record: body.escape.record } : {}),
+            },
+          }
+        : {}),
+    },
   };
 }
 

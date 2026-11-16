@@ -14,7 +14,7 @@ missions/                             the record: one folder per nation, program
     vehicles/  crew/                  hardware shared by several flights: <name>.py builds it,
                                       <name>.md records its dimensions, confidence, simplifications
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
-                                      (mercury-redstone.ts: `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
+                                      (mercury-redstone.ts: `plan`, `trajectory`, `Day`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft;
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;

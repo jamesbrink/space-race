@@ -31,11 +31,19 @@ import {
 } from '../../vehicles/mercury-redstone-stack.ts';
 import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
-import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
+import {
+  CAPSULE_PLANE,
+  CHUTES,
+  cutoffMass,
+  MR3,
+  type Day,
+  plan as mercuryRedstonePlan,
+  trajectory as mercuryRedstone,
+  PLR,
+} from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
-import { planOfTrajectory } from '../../../../../src/sim/planof.ts';
 
 /**
  * Freedom 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -1042,7 +1050,7 @@ const trajectoryPush = doc(30 * FT, `${PLR}, section 4.2: separation velocity ap
  * What the simulator flies Freedom 7 from (src/sim/fly.ts): this flight's own day and figures, on the stack's hardware
  * (vehicles/mercury-redstone.ts). Every figure is an input from a report; none was adjusted against the results below.
  */
-const trajectory: Trajectory = mercuryRedstone({
+const DAY: Day = {
   winds: WINDS,
   azimuth: doc(
     AZIMUTH,
@@ -1111,7 +1119,8 @@ const trajectory: Trajectory = mercuryRedstone({
         'so the pack as it fell away was lighter than this (by some 170 lb, if the motors’ 13,000 lb-s each came at a specific impulse of 230 s, which is not recorded): it is flown at the whole figure',
     ),
   },
-});
+};
+const trajectory: Trajectory = mercuryRedstone(DAY);
 
 /**
  * What the reports say happened, for the simulator to be held against. The tolerances were set
@@ -1465,7 +1474,7 @@ export const flight: Flight = {
   }),
   trajectory,
   checks,
-  plan: planOfTrajectory(trajectory, checks),
+  plan: mercuryRedstonePlan(DAY, checks, trajectory.body),
   flownNote:
     'The powered flight ends 4 % too fast, and what follows from that is high and long: leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs).',
   flies: {

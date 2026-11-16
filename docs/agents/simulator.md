@@ -53,7 +53,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `EngineDef.flown` is the impulse the record's coast flies.
   - Ids are generated: a stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
-  - Each flight that flies carries its plan, `Flight.plan`, made by these from its `trajectory` or `orbital` (one object:
+  - Each flight that flies carries its plan, `Flight.plan`. A Mercury-Redstone's is written by its vehicle module
+    (mercury-redstone.ts `plan(day, checks)`, from the day and the hardware's figures; tests/plan.test.mjs holds it equal to
+    `planOfTrajectory` of the same flight's `trajectory` while that remains). The others' are made by these from `orbital` (one object:
     `planOfOrbital` is cached per record). The orbital batch, the live staged vehicle, the decks and views fly
     `flight.plan`; a plan changed by a hand is an edit of it.
   - These go when the flights' data says its plan itself.
@@ -232,7 +234,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 - **Getting it right is the work.** What each flight misses, by how much and why, is `src/sim/misses.ts`; the
   flight's README ("The flight as flown") states the numbers. An input made better moves them, and the list with it.
 - **A launch vehicle's flight data is said once** (`missions/<nation>/<programme>/vehicles/<stack>.ts`: the Mercury-Redstone's
-  is mercury-redstone.ts, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
+  is mercury-redstone.ts, `plan(day, checks)` and, for the viewers still on it, `trajectory(day)`): the hardware's figures with their confidence, and each flight its own day
   (`Day`: winds, azimuth, the booster's measured thrust and weights, the spacecraft's weights, its events). A new flight of
   the stack is data; tests/ballistic.mjs finds every flight on a `trajectory`, and tests/sim.test.mjs, vehicle, predict,
   turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
