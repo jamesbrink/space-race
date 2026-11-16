@@ -802,12 +802,12 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   (0.35, none). `pnpm test:frozen`, "step": a pose drawn from 8 % further and put back must be the picture on its
   first frame (it was 117,000 pixels out, by up to 182 levels).
 - **The Sun's glint is Cox and Munk's.** From above the air the sea's highlight is not the material's lobe (GGX,
-  whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the record's wind
-  (`globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From
+  whose tail put a pale glare over the whole sea) but a Gaussian spread of wave slopes for the day's wind at the ground
+  (`seaSlopes`, `globeGlint`): a bounded patch round the mirror point, at its heart a quarter as bright as a white surface in the same Sun. From
   the ground the Cape's water keeps the look it was tuned to; the two are mixed by `uGlobeAbove`. The site's own
   water (land.ts) takes the same glint by the same height through `Beyond` (`beyondGlint`, `beyondGlinting`), and its
   waves and polish give way to the globe's sea at that rate, so the highlight is one patch across the edge of the
-  site's ground at every height: change the glint in `GLINT` (globe.ts) and both follow.
+  site's ground at every height: change the glint in `glintGlsl` (globe.ts) and both follow.
 - **One coast from every height.** The globe's region map (tools/globe-region.mjs, with the works built since the
   site's day undone: `region.later`, along a line or, for a sea that has shrunk, over a `ring` from a source of the
   time; a region with no coastline in it is land, and its `rivers` are drawn as channels along their middle lines) is the coast seen from above; the site's own ground has its own, finer, from the

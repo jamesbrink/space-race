@@ -104,15 +104,15 @@ const DEEP = new THREE.Color().setRGB(0.003, 0.016, 0.045);
 const SEA_ABOVE = new THREE.Color().setRGB(0.012, 0.085, 0.27);
 /**
  * The sea's waves, for the Sun's glint seen from above: their slopes have a mean square of 0.003 + 0.00512 U for a
- * wind of U m/s (Cox and Munk 1954), 0.039 at the record's 7 m/s (derived). The glint itself is `globeGlint`.
+ * wind of U m/s at mast height (Cox and Munk 1954), which is the station's wind at the ground (day.ts `wind.speed`):
+ * 0.029 for Freedom 7's 5.1 m/s (derived). The glint itself is `globeGlint`.
  */
-const SEA_SLOPES = 0.003 + 0.00512 * 7;
+export const seaSlopes = (wind: number): number => 0.003 + 0.00512 * wind;
 /**
- * The same as three's roughness, for what else reads it (the sky's reflection in the sea): the slopes' spread is
- * 0.2, and three's roughness is the square root of that. From the ground it is 0.32, the look the Cape's water was
- * tuned to.
+ * The same as three's roughness, for what else reads it (the sky's reflection in the sea): the slopes' spread, and
+ * three's roughness is the square root of that. From the ground it is 0.32, the look the Cape's water was tuned to.
  */
-const SEA_ROUGH = Math.sqrt(Math.sqrt(SEA_SLOPES));
+const seaRough = (slopes: number): number => Math.sqrt(Math.sqrt(slopes));
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: missions/usa/places/cape-canaveral/ground.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
@@ -144,7 +144,7 @@ const EARTH = EARTH_SPHERE;
  * Uniforms uGlobeMaps, uGlobeFlat (pack.ts), the colours, and the region's placings (`regionUniforms`).
  * `drawn`: the land's one tone in the cel look (in two shades), the site's country seen whole: the Cape's green unless said.
  */
-const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
+const colourGlsl = (drawn: THREE.Color, slopes: number) => /* glsl */ `
   // (packed, to leave texture units for lights: pack.ts)
   uniform samplerCube uGlobeMaps;   // red: the land's distance to the shore; green: the ice's; blue: the relief
   uniform highp sampler2DArray uGlobeFlat;   // the region's maps, each in its layer's corner: 0 near, 1 wide, 2 the surface's relief
@@ -280,7 +280,7 @@ const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
     vec3 c = mix(water, ground, land);
     c = mix(c, ${vec3(ICE)}, ice);
     globeSea = 1.0 - max(land, ice);
-    rough = mix(mix(0.32, ${SEA_ROUGH.toFixed(3)}, uGlobeAbove), 0.95, max(land, ice));
+    rough = mix(mix(0.32, ${seaRough(slopes).toFixed(3)}, uGlobeAbove), 0.95, max(land, ice));
     return c;
   }`;
 
@@ -289,10 +289,10 @@ const colourGlsl = (drawn: THREE.Color) => /* glsl */ `
  * (`globeGlinting`). The globe's sea and the site's own water (land.ts, through `beyond`) both use it, so the
  * highlight is one patch across where they meet. Needs uGlobeAbove (colourGlsl declares it).
  */
-const GLINT = /* glsl */ `
+const glintGlsl = (slopes: number) => /* glsl */ `
   // The Sun's glint on the sea, seen from above the air: the light a sea of waves sends from the Sun to the
   // eye, for each unit of the Sun's light falling squarely. Cox and Munk's law (1954): the waves' slopes are
-  // spread as a bell (a Gaussian) whose mean square is SEA_SLOPES, and a facet tilted to mirror the Sun into the
+  // spread as a bell (a Gaussian) whose mean square is the day's (seaSlopes), and a facet tilted to mirror the Sun into the
   // eye sends back Fresnel's share (2 % squarely, all of it at a graze). So the glint is a bounded patch
   // round the mirror point, 40 degrees from straight down with the Sun 50 up, and a sixth of the way across
   // it is all but gone. (Three's own lobe for a rough surface, GGX, has a far longer tail: with the same
@@ -303,7 +303,7 @@ const GLINT = /* glsl */ `
     float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
     if (nl <= 0.0 || nh <= 1e-3) return 0.0;
     float nh2 = nh * nh;
-    float spread = exp(-(1.0 - nh2) / (nh2 * ${SEA_SLOPES.toFixed(5)})) / (${(Math.PI * SEA_SLOPES).toFixed(5)} * nh2 * nh2);
+    float spread = exp(-(1.0 - nh2) / (nh2 * ${slopes.toFixed(5)})) / (${(Math.PI * slopes).toFixed(5)} * nh2 * nh2);
     float away = 1.0 - vh;
     float fresnel = 0.02 + 0.98 * away * away * away * away * away;
     float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
@@ -577,8 +577,11 @@ export class Globe {
     /** The land's tone in the cel look, from height (`colourGlsl`): the Cape's green unless said. */
     celLand: THREE.Color = LAND,
   ) {
-    this.colour = colourGlsl(celLand);
-    this.drawnKey = celLand === LAND ? '' : `:${celLand.getHexString()}`;
+    // (the sea's waves are the day's wind's: seaSlopes)
+    const slopes = seaSlopes(haze?.day?.wind.speed ?? 0);
+    this.colour = colourGlsl(celLand, slopes);
+    this.glint = glintGlsl(slopes);
+    this.drawnKey = `${celLand === LAND ? '' : `:${celLand.getHexString()}`}:${slopes.toFixed(5)}`;
     this.site = site;
     this.renderer = renderer;
     this.seaLevel = seaLevel;
@@ -769,6 +772,8 @@ export class Globe {
   private readonly region: string | null;
   /** The globe's colour (`colourGlsl`) as this site has it, and what tells its program from another site's. */
   private readonly colour: string;
+  /** Its glint on the sea (`glintGlsl`), for the day's wind. */
+  private readonly glint: string;
   private readonly drawnKey: string;
 
   /**
@@ -896,7 +901,7 @@ export class Globe {
         uniform vec3 uGlobeOrigin, uGlobeSun;
         uniform mat3 uGlobeAxes;
         ${this.colour}
-        ${GLINT}
+        ${this.glint}
         vec3 beyondAlbedo(vec3 p, out float rough, out float sea) {
           vec3 c = globeAlbedo(normalize(uGlobeOrigin + uGlobeAxes * p), rough);
           sea = globeSea;
@@ -1117,7 +1122,7 @@ export class Globe {
           ${ATMOSPHERE_GLSL}
           float globeRough;
           ${this.colour}
-          ${GLINT}
+          ${this.glint}
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;

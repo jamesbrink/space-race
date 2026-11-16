@@ -33,12 +33,13 @@ import { RELIEF_GLSL } from '../../world/relief.ts';
  * is all there is: the limb's glow, a pixel or less of it at this distance.
  *
  * Estimated, for the look: the snow's whiteness on land (trees stand through it), the cloud's
- * whiteness, the haze (a clean ocean's). The sea's own colours and the waves' slopes are the
+ * whiteness, the haze (a clean ocean's), and the waves' slopes, which a launch site takes from its day's
+ * wind and this Earth, which has no station's day, from a fair 7 m/s. The sea's own colours are the
  * globe's figures, restated here because the globe's module is a launch site's and is not brought
  * into the front page: change them in both.
  */
 
-/** Deep water's own colour, and what the slopes of its waves come to at 7 m/s (globe.ts: DEEP, SEA_SLOPES). */
+/** Deep water's own colour (globe.ts: DEEP), and what the slopes of its waves come to at 7 m/s (globe.ts `seaSlopes`: estimated). */
 const DEEP = [0.003, 0.016, 0.045] as const;
 const SEA_SLOPES = 0.003 + 0.00512 * 7;
 /** Ice and snow seen whole (globe.ts: ICE, 0xe4eaee, in linear light). */
