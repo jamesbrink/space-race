@@ -370,11 +370,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
-    latitude: doc(
+    latitude: estimated(
       48 + 9 / 60,
       `Russian Wikipedia, «Восток-4»: 48°09′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°10′00″, "193 km south-west of Karaganda"). ${BSE}: «в районе посёлка Атасу Карагандинской области»`,
     ),
-    longitude: doc(71 + 51 / 60, 'Russian Wikipedia: 71°51′ E, a published figure of unknown origin (spacefacts.de: 71°53′30″)'),
+    longitude: estimated(71 + 51 / 60, 'Russian Wikipedia: 71°51′ E, a published figure of unknown origin (spacefacts.de: 71°53′30″)'),
     at: doc(MSK(15, 9, 59), TABLE),
     near: 'Karaganda',
   },
@@ -402,10 +402,10 @@ export const orbital: VostokRecord = {
       label: 'Landing, across the track',
       value: 0,
       unit: 'm',
-      tolerance: 25_000,
-      confidence: 'documented',
+      tolerance: 60_000,
+      confidence: 'estimated',
       source:
-        'Russian Wikipedia: 48°09′ N 71°51′ E (spacefacts.de 3 km off it). The plane is flown from an estimated azimuth; no wind on the parachutes. Independent of the burn’s instant',
+        'Russian Wikipedia: 48°09′ N 71°51′ E, of unknown origin (spacefacts.de 3 km off it); the Great Soviet Encyclopedia gives only «в районе посёлка Атасу», and the printed point lies 61 km south of the settlement: 60 km either way is what that region allows. The plane is flown from an estimated azimuth; no wind on the parachutes. Independent of the burn’s instant',
     },
     {
       id: 'alongTrack',
@@ -413,9 +413,9 @@ export const orbital: VostokRecord = {
       value: 0,
       unit: 'm',
       tolerance: 100_000,
-      confidence: 'documented',
+      confidence: 'estimated',
       source:
-        'Russian Wikipedia: 48°09′ N 71°51′ E. Not wholly independent: the burn’s instant is derived from the pilot’s landing time (mission.md), though not from this place',
+        'Russian Wikipedia: 48°09′ N 71°51′ E, of unknown origin; the Great Soviet Encyclopedia gives only «в районе посёлка Атасу», and the printed point lies 61 km south of the settlement: 60 km either way is what that region allows. Along the track the 100 km set first is the wider. Not wholly independent: the burn’s instant is derived from the pilot’s landing time (mission.md), though not from this place',
     },
   ],
 };

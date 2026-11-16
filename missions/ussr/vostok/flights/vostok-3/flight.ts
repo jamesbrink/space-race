@@ -571,10 +571,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Period',
-      value: 88.33,
+      value: 88.54,
       unit: 'min',
-      confidence: 'documented',
-      note: '88.33 min, printed beside 180.7 × 234.6 km (Russian Wikipedia, giving no source), and flown (orbital.ts: mission.md, "The orbit"). Announced: 88.5 min, “the initial duration of Vostok 3’s circuit” (Nikolayev, 21 August 1962, in Flight International, 30 August, p. 305), which is what 180.7 × 234.6 km give over a sphere of 6,371 km by Kepler’s law; TASS at 12:12 on 12 August: 88.2 min',
+      confidence: 'derived',
+      note: '88.54 min, node to node: what 180.7 × 234.6 km at 64.98° give over the mean Earth as a mean orbit, and flown (orbital.ts: mission.md, "The orbit"). No published period with these heights has a traceable source: 88.33 is printed beside them only by Russian Wikipedia, origin unknown, not flown. Announced: 88.5 min, “the initial duration of Vostok 3’s circuit” (Nikolayev, 21 August 1962, in Flight International, 30 August, p. 305), which is what 180.7 × 234.6 km give over a sphere of 6,371 km by Kepler’s law; TASS at 12:12 on 12 August: 88.2 min',
     },
     {
       group: 'Spacecraft',

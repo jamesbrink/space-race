@@ -75,6 +75,8 @@ const INPUTS = {
     ['entry', 'mass'],
     ['entry', 'area'],
     ['ejection', 'altitude'],
+    ['landing', 'latitude'],
+    ['landing', 'longitude'],
   ],
   // Vostok 5's: Vostok 2's, and the modules' parting (the type's ten seconds after the burn)
   'ussr/vostok/vostok-5': [
@@ -116,6 +118,8 @@ const INPUTS = {
     ['entry', 'mass'],
     ['entry', 'area'],
     ['ejection', 'altitude'],
+    ['landing', 'latitude'],
+    ['landing', 'longitude'],
   ],
 };
 

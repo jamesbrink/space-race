@@ -51,8 +51,6 @@ export const MSK = (d: number, h: number, min: number, s = 0): number => ((d - 1
 
 const KAMANIN = 'Kamanin’s diary («Скрытый космос», book 1, 1962)';
 const TABLE = `${SIDDIQI}, Table IB`;
-const RUWIKI =
-  'Russian Wikipedia, «Восток-3», its infobox: a published figure of unknown origin (the box names no source; it is not in Siddiqi, the Great Soviet Encyclopedia, TASS or Kamanin)';
 const BSE = 'the Great Soviet Encyclopedia, 3rd edition, «Восток (космический корабль)»';
 const CHERTOK = 'Chertok, Rockets and People, vol. 3 (NASA SP-2009-4110)';
 /** The type's ascent as Vostok 1's record flies it: the words for an instant this flight's record does not give. */
@@ -311,21 +309,12 @@ export const orbital: VostokRecord = {
         confidence: 'documented',
         source: `${TABLE}: 64.98°. On Vostok 1’s aiming azimuth (estimated), so it checks that the two orbits’ planes were alike`,
       },
-      {
-        id: 'period',
-        label: 'Period at the last cutoff',
-        value: 88.33 * 60,
-        unit: 's',
-        tolerance: 15,
-        confidence: 'documented',
-        source: `${RUWIKI}: 88.33 min. 15 s is some 5 km on the semi-major axis`,
-      },
     ],
   }),
   orbit: {
     radius: estimated(
       6_371_000,
-      'not stated, and not used: with a period given, the period fixes the axis and the ball the heights are over is what is left (world/meanelements.ts). The mean Earth is written here',
+      'the ball the published heights are taken to be over, which sets the orbit’s axis now that no period is flown: the mean Earth to the kilometre (world/meanelements.ts CONVENTION.radius). No source states how a Soviet orbit of 1962 was reduced. Over it the heights give a nodal period of 88.54 min (derived: mission.md, "The orbit")',
     ),
     perigee: doc(
       180_700,
@@ -333,10 +322,8 @@ export const orbital: VostokRecord = {
     ),
     apogee: doc(234_600, `${TABLE} and p. 356: 234.6 km; ${BSE}: «234,6 км». Announced: 251 km; TASS of 12 August: 227.6 km`),
     inclination: doc(64.98, `${TABLE}: 64.98°. Announced: 65°; TASS: 64°59′`),
-    period: doc(
-      88.33 * 60,
-      `${RUWIKI}: 88.33 min, printed beside Siddiqi’s heights. Announced on 21 August: 88.5 min; TASS of 12 August: 88.2 min. 88.33 stands as far under what the heights give over a ball of 6,371 km as Vostok 2’s determined 88.46 does under its own (mission.md, "The orbit")`,
-    ),
+    // (no period: none published with these heights has a traceable source. The orbit's axis is the heights' mean over
+    // `radius`, and its period the mean orbit's, derived: mission.md, "The orbit", has every value found)
   },
   injection: {
     at: doc(687, `${KAMANIN}, 14 August; ${SIDDIQI}, p. 356: the orbit is taken to begin at the third stage’s cutoff`),
@@ -449,23 +436,44 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
-    latitude: doc(
+    latitude: estimated(
       48 + 2 / 60,
       `Russian Wikipedia, «Восток-3»: 48°02′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°03′32″). ${BSE}: «в районе г. Каркаралинск Карагандинской области»; the landing was planned «в районе Караганды» (${KAMANIN}, 14 August)`,
     ),
-    longitude: doc(75 + 45 / 60, 'Russian Wikipedia: 75°45′ E, a published figure of unknown origin (spacefacts.de: 75°41′02″)'),
+    longitude: estimated(75 + 45 / 60, 'Russian Wikipedia: 75°45′ E, a published figure of unknown origin (spacefacts.de: 75°41′02″)'),
     at: doc(MSK(15, 9, 52), TABLE),
     near: 'Karaganda',
   },
   checks: [
     {
-      id: 'period',
-      label: 'Period, node to node, of the orbit begun',
-      value: 88.33 * 60,
-      unit: 's',
-      tolerance: 2,
+      id: 'tass-12aug.perigee',
+      label: 'Perigee at 12:12 on 12 August',
+      value: 176_700,
+      unit: 'm',
+      tolerance: 5_000,
       confidence: 'documented',
-      source: `${RUWIKI}: 88.33 min. NOT independent: the published orbit is read as mean elements with this nodal period`,
+      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 176.7 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it`,
+      at: MSK(12, 12, 12),
+    },
+    {
+      id: 'tass-12aug.apogee',
+      label: 'Apogee at 12:12 on 12 August',
+      value: 227_600,
+      unit: 'm',
+      tolerance: 5_000,
+      confidence: 'documented',
+      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 227.6 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it`,
+      at: MSK(12, 12, 12),
+    },
+    {
+      id: 'tass-12aug.period',
+      label: 'Period at 12:12 on 12 August',
+      value: 88.2 * 60,
+      unit: 's',
+      tolerance: 6,
+      confidence: 'documented',
+      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 88.2 min, node to node as the convention reads it (world/meanelements.ts). 6 s is its last figure, a tenth of a minute`,
+      at: MSK(12, 12, 12),
     },
     {
       id: 'apogee',
@@ -490,20 +498,20 @@ export const orbital: VostokRecord = {
       label: 'Landing, across the track',
       value: 0,
       unit: 'm',
-      tolerance: 25_000,
-      confidence: 'documented',
+      tolerance: 150_000,
+      confidence: 'estimated',
       source:
-        'Russian Wikipedia: 48°02′ N 75°45′ E (spacefacts.de 5 km off it). The plane is flown from an estimated azimuth; no wind on the parachutes. Independent of the burn’s instant',
+        'Russian Wikipedia: 48°02′ N 75°45′ E, of unknown origin (spacefacts.de 5 km off it); the Great Soviet Encyclopedia gives only «в районе г. Каркаралинск», and the printed point lies 154 km south of the town: 150 km either way is what that region allows. The plane is flown from an estimated azimuth; no wind on the parachutes. Independent of the burn’s instant',
     },
     {
       id: 'alongTrack',
       label: 'Landing, along the track',
       value: 0,
       unit: 'm',
-      tolerance: 100_000,
-      confidence: 'documented',
+      tolerance: 150_000,
+      confidence: 'estimated',
       source:
-        'Russian Wikipedia: 48°02′ N 75°45′ E. Not wholly independent: the burn’s instant is derived from the pilot’s landing time (mission.md), though not from this place',
+        'Russian Wikipedia: 48°02′ N 75°45′ E, of unknown origin; the Great Soviet Encyclopedia gives only «в районе г. Каркаралинск», and the printed point lies 154 km south of the town: 150 km either way is what that region allows. Not wholly independent: the burn’s instant is derived from the pilot’s landing time (mission.md), though not from this place',
     },
   ],
 };
