@@ -282,6 +282,10 @@ export class OrbitDeck extends Deck {
       : {};
     return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
   }
+  /** The run's own samples, in order of time: the predicted path draws the line flown from them (viewer/path.ts `PathSource.track`). */
+  track(): readonly LiveSample[] {
+    return (this.run?.samples ?? []) as readonly LiveSample[];
+  }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
    * guidance, with an engine burning and the last stage's cutoff still to come.

@@ -346,6 +346,13 @@ export interface PathSource {
   readonly guidable?: boolean;
   readonly plan?: string;
   readonly pathAs?: { short: string; long: string } | null;
+  /**
+   * A flight whose deck flies a run of its own and hands on no live state (orbitdeck.ts): the run's own samples from its
+   * start, in order of time, at least through `until` (the instant on show: none later is read), from which the line
+   * flown is drawn. Without it the line flown is gathered from the samples heard with live state; either way it is kept
+   * and drawn by the one rule (`keep`, `flownNow`).
+   */
+  track?(until: number): readonly { t: number; r: Vec3; centre?: Vec3 }[];
 }
 
 const clock = (seconds: number): string => {
@@ -697,7 +704,8 @@ export class FlightPath {
     source.listen((sample, live) => {
       this.sample = sample;
       this.live = live;
-      if (live) this.fly(sample);
+      if (source.track) this.follow(source.track(sample.t), sample.t);
+      else if (live && sample.phase !== 'landed') this.keep(sample.t, sample.centre ?? sample.r);
       this.wake();
     });
     host.overlay(this.mesh); // in the scene from the first, unseen, so its shaders are built with the rest (Stage.warm)
@@ -1084,12 +1092,15 @@ export class FlightPath {
     return { el, want: null, px: 0, py: 0, angle: 0, at: { px: 0, py: 0, angle: 0 }, written: '' };
   }
 
-  /** The line flown: a point for every second or so heard from the flight deck, kept in the frame that does not turn. */
-  private fly(s: PathSample): void {
+  /**
+   * The line flown, one rule whatever it is heard from: a point for every second or so of the flight, kept in the frame
+   * that does not turn; full, every other point let go. An instant before the last is a new flight.
+   */
+  private keep(t: number, r: Vec3): void {
     const f = this.flown;
     const last = f.n ? f.t[f.n - 1]! : Number.NEGATIVE_INFINITY;
-    if (s.t < last - 1e-6) f.n = 0; // a new flight
-    if (s.phase === 'landed' || s.t - last < 1) return;
+    if (t < last - 1e-6) f.n = 0; // a new flight
+    if (t - last < 1) return;
     if (f.n === FLOWN) {
       // full: every other point let go
       for (let i = 1; i < FLOWN / 2; i++) {
@@ -1098,17 +1109,47 @@ export class FlightPath {
       }
       f.n = FLOWN / 2;
     }
-    const r = s.centre ?? s.r;
-    f.t[f.n] = s.t;
+    f.t[f.n] = t;
     f.r.set(r, f.n * 3);
     f.n++;
   }
+
+  /**
+   * The line flown from a run's own samples (`PathSource.track`), through the instant on show: each sample not yet taken
+   * is kept by the same rule as a sample heard (`keep`), all but the last (the run's head, which a deck flying it puts
+   * in place again every frame until it keeps one; the sample on show ends the line, `flownNow`). If the last one taken
+   * is no longer where it was, or the instant has gone back before it, the run is another (flown again, or from earlier)
+   * and its line is taken again from the start.
+   */
+  private follow(track: readonly { t: number; r: Vec3; centre?: Vec3 }[], until: number): void {
+    const was = this.taken;
+    const at = was.n > 0 ? track[was.n - 1] : undefined;
+    const p = at ? (at.centre ?? at.r) : null;
+    if (was.n > 0 && (!at || !p || at.t !== was.t || p[0] !== was.r[0] || p[1] !== was.r[1] || p[2] !== was.r[2] || until < was.t)) {
+      this.flown.n = 0;
+      was.n = 0;
+    }
+    for (let i = was.n; i < track.length - 1; i++) {
+      const x = track[i]!;
+      if (x.t > until) break;
+      const r = x.centre ?? x.r;
+      this.keep(x.t, r);
+      was.n = i + 1;
+      was.t = x.t;
+      was.r = r;
+    }
+    this.tracked = true;
+  }
+  /** How much of the run's samples has been taken into the line flown, and the last of them (its instant and place). */
+  private readonly taken: { n: number; t: number; r: Vec3 } = { n: 0, t: Number.NEGATIVE_INFINITY, r: [0, 0, 0] };
+  /** Whether the line flown is the run's (`follow`): drawn with no live state. */
+  private tracked = false;
 
   /** The line flown as a curve: the points kept, and the sample on show after them (the flight as it is now). */
   private flownNow(): Curve | null {
     const f = this.flown;
     const s = this.sample;
-    if (f.n < 1 || !s || !this.live) return null;
+    if (f.n < 1 || !s || (!this.live && !this.tracked)) return null;
     const c = this.flownCurve;
     const last = f.t[f.n - 1]!;
     if (c.kept === f.n && c.last === last && c.at === s.t) return c.curve.n > 1 ? c.curve : null;
@@ -1156,7 +1197,7 @@ export class FlightPath {
     const seen = shown !== null && shown.curve.n > 1;
     const changed = this.mesh.visible !== seen;
     this.mesh.visible = seen;
-    this.flownMesh.visible = seen && this.flown.n > 0 && this.live !== null;
+    this.flownMesh.visible = seen && this.flown.n > 0 && (this.live !== null || this.tracked);
     this.ringMesh.visible = seen && shown?.result.impact !== null && shown?.frame === 'surface';
     if (changed) this.host.overlay(this.mesh);
     if (performance.now() - this.panelsRead > 200) {
