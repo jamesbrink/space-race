@@ -185,6 +185,13 @@ never adjusted to bring a check in.
   turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
   its undocumented inputs listed; Freedom 7's own record figures are held on Freedom 7 alone). Every flight into orbit is
   held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
+- **The record's run is the plan flown by the record's pilot.** `fly` is `flyPlan` on the plan made of the trajectory:
+  the craft on the one machine, every automatic event set off as it comes due (by the clock, or at a height coming
+  down), each instant one is due at and each solid motor's burning out ending a step. What burns is what is lit and
+  still aboard, along the attitude held; the air meets the stack's drag while the body it stood on is aboard and the
+  last body's with its parachutes after; the mass is the record's at a parting that gives one and otherwise less what
+  leaves. So the escape tower leaves the record's run at its jettison (Freedom 7's 0.4 s after cutoff, Liberty Bell 7's
+  at it), where before it rode to separation: the coast between is lighter by it.
 - **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
   (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
   the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine,

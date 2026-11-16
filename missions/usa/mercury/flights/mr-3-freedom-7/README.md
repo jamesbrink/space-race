@@ -122,12 +122,12 @@ axis; in still air 10 % at 75.5 s) and the parachutes open in 4.2 and 2.8 kPa.
 | | Report | Flown whole | Capsule flown from the report's separation |
 | --- | --- | --- | --- |
 | Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,344.6 m/s, +4.1 % | (the report's, as the start) |
-| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,046.3 m/s, +4.7 % | (the report's) |
+| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,046.2 m/s, +4.7 % | (the report's) |
 | Apogee | 187.4 km | 202.1 km, +7.8 % | 187.0 km |
 | Range | 487.3 km | 538.0 km, +10.4 % | 492.1 km |
 | Greatest dynamic pressure going up | 28.1 kPa (586 lb/sq ft) | 26.6 kPa, -5.0 % | |
 | Load going up, entry load | 6.3 g, 11.0 g | 6.29 g, 11.7 g | 10.8 g |
-| Landing | 15:22.0, 27°13.7′N 75°53′W | 15:38.1, 58.4 km from it | 15:22.1 |
+| Landing | 15:22.0, 27°13.7′N 75°53′W | 15:38.0, 58.4 km from it | 15:22.1 |
 
 The powered flight ends 4 % fast, and everything after follows from that: leaving the pad at
 1.19 g, one per cent in thrust or weight is three to four in speed, and the engine is two figures
@@ -155,7 +155,7 @@ changes nothing to a hundredth of a per cent). The westerly is mostly behind the
 | Greatest dynamic pressure going up | -3.27 % | -5.05 % (a miss, recorded) |
 | Speed at separation | +3.99 % | +4.12 % |
 | Entry load | +6.17 % | +6.49 % |
-| Landing | 15:37.9, 56.3 km from the record's point | 15:38.1, 58.4 km from it |
+| Landing | 15:37.9, 56.3 km from the record's point | 15:38.0, 58.4 km from it |
 
 So the wind takes each figure a little further from the record, and is kept: it is the day's, and
 nothing is fitted. It earns its place where the record shows it: the report's angle of attack going

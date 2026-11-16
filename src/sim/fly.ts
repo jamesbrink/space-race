@@ -1,9 +1,10 @@
 /**
  * Flying a ballistic flight: a booster that burns once on a stored tilt programme, and a capsule
  * that separates, fires its retrorockets and comes down under parachutes. The whole of it is
- * integrated from the inputs in a flight's `trajectory` (types.ts): nothing here knows which
- * flight it is, and nothing is adjusted to make a result come out. tests/sim.test.mjs holds it
- * against the flight's documented results.
+ * integrated from the flight's plan (sim/plan.ts, made from its `trajectory` by planof.ts), stepped
+ * on the one machine (sim/craft.ts) by the record's pilot (`flyPlan`): nothing here knows which
+ * flight it is or names a part, and nothing is adjusted to make a result come out.
+ * tests/sim.test.mjs holds it against the flight's documented results.
  *
  * The state is position and velocity in an Earth-centred frame that does not turn (the flight's, world/earthframe.ts:
  * of date, or fixed at liftoff with the Greenwich meridian on +X then), in doubles, with the mass.
@@ -17,6 +18,10 @@
  *             moves over it with the day's winds aloft where the trajectory gives them (`winds`:
  *             one sounding, the same all along the flight). Cd by Mach number at no angle of attack.
  *   air       atmosphere.ts.
+ *   mass      what leaves the pad, less what each engine aboard has burned (thrust over g0 times
+ *             specific impulse, from its lighting); at a parting the record gives a figure for
+ *             (`JointDef.after`: the capsule at separation, and once its retropack has gone) that
+ *             figure, and at any other (the escape tower, at its jettison) less what leaves.
  *
  * Attitude is prescribed, not flown. Going up, the axis is tilted from the launch vertical toward
  * the launch azimuth by the programme, in inertial space, as a gyro platform holds it. The
@@ -28,9 +33,8 @@
  * so a run is the same run every time.
  */
 import type { Curve, Trajectory } from '../types.ts';
+import { EARTH_J2, G0 } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
-import { EARTH_J2 } from '../world/bodies.ts';
-import { gravity } from '../world/orbit.ts';
 import {
   add,
   angleBetween,
@@ -48,12 +52,15 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
-import { G0 } from '../world/bodies.ts';
-import { nozzleThrust, vacuumOf } from './thrust.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
+import { aboard, act, due, lit, part, type Sense, startCraft } from './craft.ts';
 import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
+import type { EventDef, FlightPlan, Hold } from './plan.ts';
+import { planOfTrajectory } from './planof.ts';
+import { nozzleThrust, vacuumOf } from './thrust.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -170,23 +177,64 @@ export function fly(
   from?: { r: Vec3; v: Vec3 },
   frame: EarthFrame = LIFTOFF,
 ): Flown {
-  const tr = trajectory;
-  const cutoff = tr.engine.cutoff.value;
-  const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
-  const vacuum = vacuumOf(tr.engine).value;
-  const separation = tr.separation.at.value;
-  const retroBurn = tr.retro.burn.value;
-  const fires = tr.retro.fires.map((f) => f.value);
-  const capsuleDrag = tr.area.value;
-  const spin = frame.spin;
+  return flyPlan(planOfTrajectory(trajectory), site, seaLevel, step, every, from, frame);
+}
 
+/**
+ * A ballistic plan flown whole: the craft (sim/craft.ts) stepped by the record's pilot, who sets off each of the plan's
+ * automatic events as it comes due. Nothing here names a part or an event: what burns is what the machine has lit and
+ * still aboard, what the air meets is the stack (its `drag`) while the body it stood on is aboard and the last body (its
+ * `aero`) with its parachutes out after, the mass is the record's at each parting that gives one (`JointDef.after`) and
+ * otherwise the bodies' less what their engines have burned. The thrust lies along the attitude held (`AttitudeDef`): a
+ * tilt programme in inertial space, or the retro attitude against the motion over the ground. Every instant an event is
+ * due at, and every solid motor's burning out, ends a step.
+ */
+export function flyPlan(
+  plan: FlightPlan,
+  site: Geodetic,
+  seaLevel = 0,
+  step = 0.05,
+  every = 0.5,
+  from?: { r: Vec3; v: Vec3 },
+  frame: EarthFrame = LIFTOFF,
+): Flown {
+  const c = plan.craft[0]!;
+  const base0 = c.bodies[0]!.id;
+  const last = c.bodies[c.bodies.length - 1]!;
+  const lastAero = last.aero!;
+  const spin = frame.spin;
   const pad = geodeticToEcef(site);
-  const axisAt = axisOf(tr, site, frame);
-  const blow = blowOf(tr.winds);
+  const blow = blowOf(plan.winds);
+  const engines = c.engines.map((e) => ({
+    e,
+    flow: e.isp ? e.count * ((e.thrust.seaLevel ?? e.thrust.vacuum).value / (G0 * (e.isp.seaLevel ?? e.isp.vacuum).value)) : 0,
+  }));
+  const bodyMass = new Map(c.bodies.map((b) => [b.id, b.mass.value]));
+  const jointOf = new Map(c.joints.map((j) => [j.id, j]));
+  const chuteOf = new Map(c.chutes.map((ch) => [ch.id, ch]));
+  const holdOf = new Map(plan.attitude.map((a) => [a.id, a.hold]));
+  // the tilt programme's axis, made once per programme
+  const programmes = new Map<Hold, (t: number) => Vec3>();
+  /** The joint that parts the last body from what it stood on: the record's separation figures are read as it goes. */
+  const leaving = c.joints.find((j) => j.gone.includes(base0));
+  /** Each solid motor the record's events light at their instants: its burning, from then for its burn (the entry's mark waits for them). */
+  const retroWindows = plan.events.flatMap((ev) =>
+    ev.at
+      ? ev.do.flatMap((a) => {
+          if (!('ignite' in a)) return [];
+          const e = c.engines.find((x) => x.id === a.ignite);
+          return e?.kind === 'solid' && e.burn ? [[ev.at!.value, ev.at!.value + e.burn.value] as const] : [];
+        })
+      : [],
+  );
+  const lastBurnout = Math.max(...retroWindows.map((w) => w[1]));
 
   let t = 0;
-  let phase: Phase = 'powered';
-  let mass = tr.liftoffMass.value;
+  let craft = startCraft(plan);
+  /** The mass less what the engines aboard have burned (`massAt`), kg. */
+  let base = c.mass.value;
+  let entered = false;
+  let landed = false;
   // the parachute now out: the drag area it has when full, the area the one before it had, when it was let out and how long it takes to fill
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
   const pad0 = frame.toInertial(pad, 0);
@@ -194,40 +242,84 @@ export function fly(
 
   /** Where the Earth-fixed axes have turned to. */
   const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);
+  const riding = () => aboard(craft, base0);
+  const burning = (i: number, as: number): boolean => {
+    const { e } = engines[i]!;
+    if (!aboard(craft, e.body) || !lit(craft, e.id, as)) return false;
+    return e.kind === 'solid' && e.burn ? as < craft.engines[e.id]!.lit + e.burn.value : true;
+  };
+  const thrustOf = (i: number, pressure: number): number => {
+    const { e } = engines[i]!;
+    return e.exitArea ? nozzleThrust(e.count, e.thrust.vacuum.value, 1, e.exitArea.value, pressure) : e.count * e.thrust.vacuum.value;
+  };
+  /** The line the engines push along under the attitude held, at a state and an instant, with the air there. */
+  const axisUnder = (s: State, at: number, ground: Vec3): Vec3 => {
+    const hold = holdOf.get(craft.attitude)!;
+    if ('programme' in hold) {
+      let p = programmes.get(hold);
+      if (!p) programmes.set(hold, (p = programmeAxis(hold.programme, hold.azimuth.value, site, frame)));
+      return p(at);
+    }
+    if ('retro' in hold) {
+      // against the motion over the ground, pitched below the level
+      const up = frame.up(s.r, at);
+      const level = unit(sub(ground, scale(up, dot(ground, up))));
+      const pitch = hold.retro.value * DEG;
+      return sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
+    }
+    return scale(unit(ground), -1);
+  };
 
   /**
-   * Every force but gravity, N, and what the air is doing, at a state at `at`, with the retrorockets lit as they are from
-   * instant `as` (a step's start: a step ends on each one's lighting and burning out, so within it what burns is fixed).
-   * Read at each stage's own instant, the stage that ends a step on a lighting had that rocket lit and the one that ends a
-   * step on its burning out had it out: each burn began a sixth of a step early and ended as much short.
+   * Every force but gravity, N, and what the air is doing, at a state at `at`, with what burns as it is from instant `as`
+   * (a step's start: a step ends on each lighting and burning out, so within it what burns is fixed).
    */
   const forces = (s: State, at: number, as = at): { force: Vec3; q: number; mach: number; altitude: number } => {
     // the air there, and the motion over the ground and through the air (air.ts)
     const { altitude, air, ground, wind, airspeed, mach, q } = airAt(frame, s.r, s.v, at, seaLevel, blow);
-    const riding = phase === 'powered' || phase === 'coast';
-    const area = riding ? tr.area.value * along(tr.ascentDrag, mach) : capsuleDrag * along(tr.entryDrag, mach) + chuteArea(chute, at);
+    const piece = riding() ? dragPiece() : null;
+    const area = piece
+      ? piece.area.value * along(piece.curve, mach)
+      : lastAero.area.value * along(lastAero.drag, mach) + chuteArea(chute, at);
     let force: Vec3 = airDrag(wind, airspeed, air.density, area);
-    if (phase === 'powered') {
-      const thrust = nozzleThrust(1, vacuum, 1, tr.engine.exitArea.value, air.pressure);
-      force = add(force, scale(axisAt(at), thrust));
-    }
-    // each retrorocket pushes against the motion over the ground, pitched below the level
-    const burning = fires.filter((f) => as >= f && as < f + retroBurn).length;
-    if (burning > 0 && !riding) {
-      const up = frame.up(s.r, at);
-      const level = unit(sub(ground, scale(up, dot(ground, up))));
-      const pitch = tr.retro.pitch.value * DEG;
-      const push = sub(scale(level, -Math.cos(pitch)), scale(up, Math.sin(pitch)));
-      force = add(force, scale(push, burning * tr.retro.thrust.value));
-    }
+    let thrust = 0;
+    engines.forEach((_, i) => {
+      if (burning(i, as)) thrust += thrustOf(i, air.pressure);
+    });
+    if (thrust > 0) force = add(force, scale(axisUnder(s, at, ground), thrust));
     return { force, q, mach, altitude };
+  };
+  /** The stack's drag while it rides: the piece for the configuration it is in (the latest record instant among what has parted). */
+  const dragPiece = () => {
+    let shape = 0;
+    for (const j of c.joints) if (Number.isFinite(craft.joints[j.id]!.gone)) shape = Math.max(shape, j.at?.value ?? 0);
+    return c.drag.find((d) => shape < d.until.value) ?? c.drag[c.drag.length - 1]!;
   };
 
   const nudge = (s: State, d: State, h: number): State => ({ r: add(s.r, scale(d.r, h)), v: add(s.v, scale(d.v, h)) });
-  const massAt = (at: number): number => (phase === 'powered' ? tr.liftoffMass.value - flow * Math.min(at, cutoff) : mass);
+  const burnedBy = (at: number): number => {
+    let burned = 0;
+    engines.forEach(({ e, flow }) => {
+      if (!flow || !aboard(craft, e.body)) return;
+      const k = craft.engines[e.id]!;
+      if (Number.isFinite(k.lit)) burned += flow * (Math.min(at, k.out) - k.lit);
+    });
+    return burned;
+  };
+  const massAt = (at: number): number => base - burnedBy(at);
   /** A step from `at` (core/rk4.ts), with what burns as it is from the step's start. */
   const stepOf = (s: State, at: number, h: number): State =>
     rk4(s, at, h, (q, tt) => acceleration(gravity(q.r), scale(forces(q, tt, at).force, 1 / massAt(tt))));
+
+  const outNow = (id: string) => Number.isFinite(craft.chutes[id]!.out) && !Number.isFinite(craft.chutes[id]!.off);
+  const phaseNow = (): Phase => {
+    if (landed) return 'landed';
+    if (riding()) return engines.some((_, i) => burning(i, t)) ? 'powered' : 'coast';
+    const out = c.chutes.filter((ch) => outNow(ch.id));
+    if (out.some((ch) => ch.instead?.length)) return 'main';
+    if (out.length) return 'drogue';
+    return entered ? 'entry' : 'capsule';
+  };
 
   const sample = (): Sample => {
     const m = massAt(t);
@@ -238,7 +330,7 @@ export function fly(
     const climb = (v: Vec3): number => (length(v) > 1e-9 ? Math.asin(Math.max(-1, Math.min(1, dot(v, up) / length(v)))) / DEG : 90);
     return {
       t,
-      phase,
+      phase: phaseNow(),
       altitude: f.altitude,
       range: angleBetween(fixed(state.r, t), pad) * MEAN_RADIUS,
       speed: length(state.v),
@@ -256,11 +348,6 @@ export function fly(
     };
   };
 
-  // the instants at which something changes, in order: a step never crosses one
-  const marks = [...new Set([cutoff, separation, tr.retropack.at.value, ...fires, ...fires.map((f) => f + retroBurn)])].sort(
-    (a, b) => a - b,
-  );
-  const samples: Sample[] = [sample()];
   const results: Results = {
     apogee: 0,
     apogeeAt: 0,
@@ -289,90 +376,136 @@ export function fly(
     if (goingUp) {
       results.exitQ = Math.max(results.exitQ, s.q);
       results.exitG = Math.max(results.exitG, s.g);
-    } else if (phase === 'capsule' || phase === 'entry') {
+    } else if (s.phase === 'capsule' || s.phase === 'entry') {
       results.entryQ = Math.max(results.entryQ, s.q);
       // the retrorockets are felt too, but the reports' re-entry figure is the air's
-      if (!fires.some((f) => s.t >= f && s.t <= f + retroBurn)) results.entryG = Math.max(results.entryG, s.g);
-      if (Number.isNaN(results.entryAt) && s.t > fires[fires.length - 1]! + retroBurn && s.g >= ENTRY_G) {
+      if (!retroWindows.some(([on, off]) => s.t >= on && s.t <= off)) results.entryG = Math.max(results.entryG, s.g);
+      if (Number.isNaN(results.entryAt) && s.t > lastBurnout && s.g >= ENTRY_G) {
         results.entryAt = s.t;
-        phase = 'entry';
+        entered = true;
       }
     }
   };
 
-  /** What happens at the instant now reached, if anything does. */
-  const arrive = (): void => {
-    if (t === cutoff) {
-      mass = tr.liftoffMass.value - flow * cutoff;
-      phase = 'coast';
+  /** When an event not yet happened is due by the clock, where its triggers say: its time, or so long after one that has happened. */
+  const timeOf = (ev: EventDef): number | null => {
+    let at: number | null = null;
+    for (const w of ev.when) {
+      if ('time' in w) at = Math.max(at ?? -Infinity, w.time);
+      else if ('after' in w) {
+        const was = craft.fired[w.after];
+        if (was === undefined) return null;
+        at = Math.max(at ?? -Infinity, was + (w.wait ?? 0));
+      } else return null;
     }
-    if (t === separation) {
+    return at;
+  };
+  /** The next instant something is due by the clock after `t`: an event's, or a solid motor's burning out. */
+  const nextMark = (): number | undefined => {
+    let next = Infinity;
+    for (const ev of plan.events) {
+      if (craft.fired[ev.id] !== undefined || !ev.automatic) continue;
+      const at = timeOf(ev);
+      if (at !== null && at > t + 1e-9) next = Math.min(next, at);
+    }
+    engines.forEach(({ e }) => {
+      const k = craft.engines[e.id]!;
+      if (e.kind === 'solid' && e.burn && Number.isFinite(k.lit) && k.lit + e.burn.value > t + 1e-9)
+        next = Math.min(next, k.lit + e.burn.value);
+    });
+    return Number.isFinite(next) ? next : undefined;
+  };
+
+  /** A joint parts: the mass is the record's after it where it gives one, else less the bodies that leave; a push shared by the masses, along the axis. */
+  const parting = (id: string): void => {
+    const j = jointOf.get(id)!;
+    const goneMass = j.gone.reduce((m, b) => m + (aboard(craft, b, t) ? bodyMass.get(b)! : 0), 0);
+    const kick = j.push ? keptShare(j.push.value, j.after?.value ?? massAt(t) - goneMass, j.leaves?.value ?? goneMass) : 0;
+    if (j === leaving) {
       const s = sample();
       results.separationSpeed = s.speed;
       results.separationGroundSpeed = s.groundSpeed;
       results.separationClimb = s.climb;
       results.separationGroundClimb = s.groundClimb;
       results.separationAltitude = s.altitude;
-      // the two are pushed apart along the joint's axis; the capsule's share is the booster's part of the whole (forces.ts)
-      const kick = keptShare(tr.separation.speed.value, tr.separation.mass.value, tr.separation.boosterMass.value);
-      state = { r: state.r, v: add(state.v, scale(axisAt(t), kick)) };
-      mass = tr.separation.mass.value;
-      phase = 'capsule';
     }
-    if (t === tr.retropack.at.value) mass = tr.retropack.mass.value;
+    // the two are pushed apart along the joint's axis, which is the line held; the kept side's share is the other's part of the whole (forces.ts)
+    if (kick) state = { r: state.r, v: add(state.v, scale(axisUnder(state, t, sub(state.v, cross(spin, state.r))), kick)) };
+    craft = part(plan, act(plan, craft, { separate: id }, t, false).state, id, t);
+    base = j.after ? j.after.value + burnedBy(t) : base - j.gone.reduce((m, b) => m + (craft.bodies[b] === t ? bodyMass.get(b)! : 0), 0);
   };
+  /** The record's pilot: every automatic event due now, each at its own instant (one passed over by a start part-way, at its), until none is. */
+  const arrive = (sense: Omit<Sense, 't'>): void => {
+    for (let again = true; again; ) {
+      again = false;
+      const ready = due(plan, craft, { ...sense, t }, (ev) => ev.automatic);
+      for (const ev of ready) {
+        if (craft.fired[ev.id] !== undefined) continue;
+        craft = { ...craft, fired: { ...craft.fired, [ev.id]: t } };
+        for (const a of ev.do) {
+          if ('separate' in a) {
+            if (jointOf.has(a.separate) && !Number.isFinite(craft.joints[a.separate]!.gone)) parting(a.separate);
+          } else if ('deploy' in a) {
+            const ch = chuteOf.get(a.deploy)!;
+            const was = (ch.instead ?? []).reduce((m, x) => m + (outNow(x) ? chuteOf.get(x)!.dragArea.value : 0), 0);
+            craft = act(plan, craft, a, t, false).state;
+            chute = { full: ch.dragArea.value, was, at: t, fills: ch.fills.value };
+            if (Number.isNaN(results.drogueAt)) results.drogueAt = t;
+            else results.mainAt = t;
+          } else craft = act(plan, craft, a, at(ev), false).state;
+        }
+        again = true;
+      }
+    }
+  };
+  /** The instant an event is set off at: its own, where the clock says it and it is past (a start part-way), else now. */
+  const at = (ev: EventDef): number => {
+    const when = timeOf(ev);
+    return when !== null && when < t ? when : t;
+  };
+  const sensed = (height: number, falling: boolean) => ({ height, falling, speed: length(state.v), apparent: () => 0, g: 0, held: false });
+
+  arrive(sensed(forces(state, t).altitude, false));
+  const samples: Sample[] = [sample()];
   if (from) {
-    t = separation;
+    // from the parting, with the position and velocity given: everything before it happened as the record has it
+    const ev = plan.events.find((e) => e.do.some((a) => 'separate' in a && a.separate === leaving?.id));
+    t = (ev && timeOf(ev)) ?? 0;
     state = { r: from.r, v: from.v };
-    phase = 'coast';
-    mass = tr.liftoffMass.value - flow * cutoff;
     samples.length = 0;
-    arrive();
+    arrive(sensed(forces(state, t).altitude, false));
     samples.push(sample());
   }
 
   let kept = t;
   const LIMIT = 4 * 3600; // a flight that has not come down in four hours is not this kind of flight
-  for (let landed = false; !landed && t < LIMIT; ) {
-    const mark = marks.find((m) => m > t + 1e-9);
+  while (!landed && t < LIMIT) {
+    const mark = nextMark();
     const h = Math.min(step, mark === undefined ? step : mark - t);
     const before = state;
     const heightBefore = forces(state, t).altitude;
     state = stepOf(state, t, h);
-    t = Math.abs(t + h - (mark ?? Number.NaN)) < 1e-9 ? mark! : t + h;
-
-    arrive();
-
-    // and what happens at a height, coming down
+    const onMark = Math.abs(t + h - (mark ?? Number.NaN)) < 1e-9;
+    t = onMark ? mark! : t + h;
+    // what is due now, by the clock or at a height coming down
     const height = forces(state, t).altitude;
-    const falling = height < heightBefore;
-    if (falling && Number.isNaN(results.drogueAt) && height <= tr.drogue.altitude.value && phase !== 'powered' && phase !== 'coast') {
-      results.drogueAt = t;
-      chute = { full: tr.drogue.dragArea.value, was: 0, at: t, fills: tr.drogue.fills.value };
-      phase = 'drogue';
-    }
-    if (falling && Number.isNaN(results.mainAt) && height <= tr.main.altitude.value && phase === 'drogue') {
-      results.mainAt = t;
-      chute = { full: tr.main.dragArea.value, was: tr.drogue.dragArea.value, at: t, fills: tr.main.fills.value };
-      phase = 'main';
-    }
+    arrive(sensed(height, height < heightBefore));
     if (height <= 0 && t > 1) {
       // back to the instant it reached the sea, along the last step
       const part = heightBefore / (heightBefore - height);
       state = nudge(before, { r: scale(sub(state.r, before.r), 1 / h), v: scale(sub(state.v, before.v), 1 / h) }, h * part);
       t = t - h + h * part;
-      const last = sample();
+      const s = sample();
       results.landingSpeed = -dot(sub(state.v, cross(spin, state.r)), frame.up(state.r, t));
-      results.range = last.range;
+      results.range = s.range;
       results.duration = t;
-      phase = 'landed';
-      samples.push({ ...last, phase });
       landed = true;
+      samples.push({ ...s, phase: 'landed' });
       break;
     }
     const s = sample();
     note(s);
-    if (t - kept >= every - 1e-9 || marks.includes(t)) {
+    if (t - kept >= every - 1e-9 || onMark) {
       samples.push(s);
       kept = t;
     }
@@ -386,13 +519,18 @@ export function fly(
  * fixed in inertial space at liftoff.
  */
 export function axisOf(trajectory: Trajectory, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
+  return programmeAxis(trajectory.tilt, trajectory.azimuth.value, site, frame);
+}
+
+/** A tilt programme's axis (`Hold.programme`): degrees from the launch vertical toward `azimuth` (degrees true) against seconds. */
+export function programmeAxis(tilt: Curve, azimuth: number, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
   const axes = enuAxes(site);
-  const [e, n] = fromHorizontal(trajectory.azimuth.value * DEG, 0);
+  const [e, n] = fromHorizontal(azimuth * DEG, 0);
   const up0 = frame.toInertial(axes.up, 0);
   const downrange0 = frame.toInertial(unit(add(scale(axes.east, e), scale(axes.north, n))), 0);
   return (t) => {
-    const tilt = along(trajectory.tilt, t) * DEG;
-    return add(scale(up0, Math.cos(tilt)), scale(downrange0, Math.sin(tilt)));
+    const angle = along(tilt, t) * DEG;
+    return add(scale(up0, Math.cos(angle)), scale(downrange0, Math.sin(angle)));
   };
 }
 
