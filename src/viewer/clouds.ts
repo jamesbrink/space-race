@@ -1395,6 +1395,8 @@ export class CloudPass extends Pass {
   private readonly clearAir = target(SIDE / (CELL / TEXEL), false);
   private bakeMaterial: THREE.RawShaderMaterial | null = null;
   private march: THREE.RawShaderMaterial | null = null;
+  /** The cumulus the march and its sharpening are written for (`render`). */
+  private marchedFor: Clouds | null = null;
   private readonly reduce = raw(REDUCE, {
     tFrom: { value: null },
     uMode: { value: 0 },
@@ -1497,6 +1499,9 @@ export class CloudPass extends Pass {
   private adopted = false;
   private output: OutputPass | null = null;
   private dressed = false;
+  /** The day the output's shader was given the clouds of, and the shader as three wrote it, for another day's (`dress`). */
+  private dressedFor: Day | null | undefined = undefined;
+  private plain: { vertex: string; fragment: string; glsl: THREE.GLSLVersion | null } | null = null;
 
   /**
    * Give whoever lays the clouds over the frame its shader, for the day the air is the air of (air.ts: `Air.day`):
@@ -1504,11 +1509,14 @@ export class CloudPass extends Pass {
    * shader is compiled again with them in it; that is under the curtain, where the scene is being warmed.
    */
   private dress(day: Day | null | undefined): void {
-    if (this.dressed) return;
+    // (once a day: another flight's day, on the same stage, dresses it again from three's own: app/session.ts)
+    if (this.dressed && this.dressedFor === day) return;
     this.dressed = true;
+    this.dressedFor = day;
     const over = overGlsl(day);
     const output = this.output;
     if (!output) {
+      this.composite?.dispose();
       const pass = (this.composite = raw(composite(over), this.uniforms));
       pass.blending = THREE.CustomBlending;
       pass.blendSrc = THREE.OneFactor;
@@ -1519,6 +1527,10 @@ export class CloudPass extends Pass {
       return;
     }
     const material = output.material;
+    this.plain ??= { vertex: material.vertexShader, fragment: material.fragmentShader, glsl: material.glslVersion };
+    material.vertexShader = this.plain.vertex;
+    material.fragmentShader = this.plain.fragment;
+    material.glslVersion = this.plain.glsl;
     // (in GLSL ES 3.00, which the clouds' lookups need)
     material.glslVersion = THREE.GLSL3;
     material.vertexShader = material.vertexShader.replaceAll('attribute ', 'in ').replaceAll('varying ', 'out ');
@@ -1609,6 +1621,7 @@ export class CloudPass extends Pass {
     const fog = this.scene.fog as THREE.FogExp2 | null;
     this.uniforms.uClouds.value = 0;
     if (!air || !(clouds || sheets) || !fog || !this.mark.texture) return;
+    if (this.dressed && this.dressedFor !== air.day) this.forget(renderer);
     this.dress(air.day);
     this.fit(renderer, readBuffer);
     const u = this.uniforms;
@@ -1668,6 +1681,13 @@ export class CloudPass extends Pass {
     }
 
     // (the march's Sun is the scene's through the high cloud over the site, where the record has any: `light`)
+    // (their text is the day's cumulus: another day's, after the stage has gone to another flight, is built again)
+    if (this.marchedFor !== clouds) {
+      this.march?.dispose();
+      this.sharpen?.dispose();
+      this.march = this.sharpen = null;
+      this.marchedFor = clouds;
+    }
     this.march ??= raw(marchShader(clouds, false), { ...u, uSunLight: this.sunUnder, uSkyLight: this.skyUnder });
     this.sharpen ??= raw(marchShader(clouds, true), { ...u, ...this.finer, uSunLight: this.sunUnder, uSkyLight: this.skyUnder });
     // (not warmed yet: made now, all at once)
@@ -1724,6 +1744,28 @@ export class CloudPass extends Pass {
     this.quad.render(renderer);
     renderer.autoClear = autoClear;
     readBuffer.resolveDepthBuffer = resolve;
+  }
+
+  /**
+   * Another day than the one marched (the stage has gone to another flight: app/session.ts): what the march left in its
+   * targets is the last day's cloud, so they are emptied, as they were made, and the field is baked again for this one.
+   */
+  private forget(renderer: THREE.WebGLRenderer): void {
+    const was = renderer.getRenderTarget();
+    const colour = renderer.getClearColor(new THREE.Color());
+    const alpha = renderer.getClearAlpha();
+    renderer.setClearColor(0x000000, 0);
+    for (const t of [this.low, ...this.history, ...this.fine]) {
+      renderer.setRenderTarget(t);
+      renderer.clear(true, false, false);
+    }
+    renderer.setClearColor(colour, alpha);
+    renderer.setRenderTarget(was);
+    const u = this.uniforms;
+    u.tCloud.value = this.low.textures[0]!;
+    u.tInfo.value = this.low.textures[1]!;
+    this.settled = false;
+    this.baked = null;
   }
 
   /** Blend the march's results into the history (see `history`), and have the composite read the blend. True if the eye was still. */

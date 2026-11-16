@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { placeKeyed } from './programs.ts';
 
 /**
  * The two ways the stage can be drawn. `real` is the physically based look every model is built
@@ -97,6 +98,8 @@ export class Looks {
   private dress(root: THREE.Object3D): void {
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
+      // (every material drawn is built under the place's text, and keyed so: programs.ts)
+      for (const m of mesh.material ? [mesh.material].flat() : []) placeKeyed(m);
       if (!mesh.isMesh || Array.isArray(mesh.material)) return;
       // a material that is all its own shader (the engine's fire, the trail) draws itself in both looks: it has no twin
       if ((mesh.material as THREE.ShaderMaterial).isShaderMaterial) return;
@@ -140,6 +143,7 @@ export class Looks {
       toon.customProgramCacheKey = () => `cel:${real.customProgramCacheKey()}`;
     }
     follow(toon, real);
+    placeKeyed(toon);
     this.twins.set(real, toon);
     return toon;
   }

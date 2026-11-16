@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Day } from './day.ts';
 import { fieldAs, noise2 } from './field.ts';
 import { deckPatchGlsl } from './weather.ts';
+import { newPlace } from './programs.ts';
 
 /**
  * The air between the eye and what it sees, for every material that takes the scene's fog.
@@ -108,6 +109,10 @@ export const setVeilLight = (left: number, height: number, glow: readonly [numbe
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uVeilLight = veilLightUniform;
 
 let installed: Air | null = null;
+/** Where the air's part of lights_fragment_end begins and ends (`installAir`): one day's, put in place of the last's. */
+const AIR_OPEN = '\n    // the air: the shadows of its clouds and its veil';
+const AIR_CLOSE = '\n    // the air ends';
+const AIR_SHADE = /\n {4}\/\/ the air: the shadows of its clouds and its veil[\s\S]*?\n {4}\/\/ the air ends/;
 let wind: [number, number] = [0, 0];
 
 /** How far the billows of a cumulus have risen through it, metres: they churn upward as the cloud drifts (clouds.ts). */
@@ -247,6 +252,10 @@ export function installAir(air: Air): void {
   )
     return;
   installed = air;
+  newPlace(); // (the chunks' text is another day's: programs.ts)
+  // (and its clouds stand where a page opened on it has them: drifted and churned from nothing, not on from the last day's)
+  DRIFT.x = DRIFT.z = 0;
+  cloudRise.value = 0;
   const c = air.clouds;
   const deck = air.day?.deck ?? { cover: 0, height: 0 };
   // (the record has high cloud over the site: its light is dimmed for what is under it)
@@ -304,28 +313,28 @@ export function installAir(air: Air): void {
     ? /* glsl */ `
         airShade *= mix(uVeilLight.x, 1.0, smoothstep(uVeilLight.y - 400.0, uVeilLight.y + 400.0, vFogWorld.y));`
     : '';
-  // (added once: a page has one day. exhaust.ts adds the smoke's shadow to the same chunk)
-  const shaded = chunks.lights_fragment_end.includes('airShade');
-  if (c && !shaded)
-    chunks.lights_fragment_end = /* glsl */ `${chunks.lights_fragment_end}
+  // (the air's own part of the chunk, between its marks, is the day's: another place on another day puts its own in its
+  // place, so that what the chunk calls is what fog_pars_fragment above defines. exhaust.ts adds the smoke's shadow to
+  // the same chunk, outside the marks)
+  const own =
+    c || veiled
+      ? /* glsl */ `
     #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
-      {
+      {${
+        c
+          ? /* glsl */ `
         vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
         airShade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
         // and the middle deck's, from above (deckShadeUniform): its patches near the site, where its cover is the record's
-        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);${veil}
+        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);`
+          : ''
+      }${veil}
         reflectedLight.directDiffuse *= airShade;
         reflectedLight.directSpecular *= airShade;
       }
-    #endif`;
-  else if (veiled && !shaded)
-    chunks.lights_fragment_end = /* glsl */ `${chunks.lights_fragment_end}
-    #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
-      {${veil}
-        reflectedLight.directDiffuse *= airShade;
-        reflectedLight.directSpecular *= airShade;
-      }
-    #endif`;
+    #endif`
+      : '';
+  chunks.lights_fragment_end = `${chunks.lights_fragment_end.replace(AIR_SHADE, '')}${AIR_OPEN}${own}${AIR_CLOSE}`;
   chunks.fog_fragment = /* glsl */ `
     #ifdef USE_FOG
       #ifdef FOG_EXP2

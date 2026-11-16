@@ -598,6 +598,13 @@ JavaScript heap and 125 MB of decoded pictures.
   test:lineup` holds it to 240 with the row up and with one framed, and to 280 at any moment while the row is stepped
   through (measured: 202, 197, 202; with seventeen, 207 with the row up). The row's own share grows with every flight added: at some forty vehicles it would
   be the budget by itself, and a level coarser still, or one model for vehicles of a type, is owed before then.
+- **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not
+  loaded again: the site's stage is loaded again (`Stage.load`), and lets go of every model the next flight has not
+  got and the place round its pad if the next is at another place or on another day (`Settings.drop`: the place's
+  trees, its own uniforms' maps and bakes, its reflections; viewer/dispose.ts). What every place reads alike (the
+  atmosphere's tables, the weather's map, the clouds' march) stays with whoever made it. The air a place installs in
+  three's chunks (air.ts) is that day's, put in place of the last's. `pnpm test:flights` holds each place, after the
+  first round, to what it held the round before.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
   good and puts up a word with "Reload with lighter graphics" (which chooses the lighter tier and remembers it) and
   "Reload"; nothing reloads by itself, so there is no loop for the browser to give up on. An allocation the GPU

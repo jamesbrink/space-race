@@ -18,7 +18,9 @@ import { GROUNDS } from './scenery/places.ts';
 import { NOISE, OrbitBackdrop, orbitEnvironment } from './space.ts';
 import { studio } from './studio.ts';
 import { checkUnits } from './units.ts';
-import { placeWeather } from './weathermap.ts';
+import { uLast } from './overlay.ts';
+import { newPlace } from './programs.ts';
+import { placeWeather, weatherUniforms } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {
@@ -40,6 +42,8 @@ export interface Setting {
   fill: [number, number, number];
   /** A surface under the model that takes its shadow, or null in orbit. */
   floor: THREE.Mesh | null;
+  /** Let go of what it holds on the GPU outside the scene (its reflections' bakes: Settings.drop). */
+  release?: () => void;
   /** How far below the horizon the camera may orbit, radians from straight up. */
   maxPolar: number;
   /** How near overhead it may orbit, radians from straight up (default: overhead). */
@@ -262,6 +266,15 @@ class Reflections {
     this.pane.add(mesh);
     this.pane.matrixAutoUpdate = false;
     this.pane.matrixWorldAutoUpdate = false;
+  }
+
+  /** Let go of every bake and the pane they are mixed on (the setting is let go: Settings.drop). */
+  dispose(): void {
+    for (const target of [this.shown, this.from, this.to]) target?.dispose();
+    this.shown = this.from = this.to = null;
+    this.fading = false;
+    this.mix.dispose();
+    for (const o of this.pane.children) (o as THREE.Mesh).geometry?.dispose();
   }
 
   /** What the scene reflects: always the same texture, so materials never notice a bake. */
@@ -571,6 +584,12 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   };
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
+  setting.release = () => {
+    reflections.dispose();
+    gen.dispose();
+    disposeTree(envScene);
+  };
+
   const bake = (look: number[], fade: number): void => {
     reflections.take(gen.fromScene(envScene, 0, 0.1, 200) as THREE.WebGLCubeRenderTarget, fade);
     setting.environment = reflections.texture;
@@ -825,13 +844,22 @@ export class Settings {
   /**
    * Let a setting go (the stage has gone to another flight's place: Stage.load): what it put on the GPU, and the place
    * it was laid on, so that going back to it builds it again under its own day, with its own air installed (air.ts).
-   * The caller has taken it out of the scene.
+   * The caller has taken it out of the scene. A setting laid on no place (orbit, the studio) has no day of its own to
+   * install and is kept, as it was when a page showed one flight.
    */
   drop(setting: Setting): void {
-    for (const [key, s] of this.cache) if (s === setting) this.cache.delete(key);
     const place = placeOf.get(setting);
-    if (place !== undefined) places.delete(place);
-    for (const o of [setting.backdrop.scene, setting.floor, ...setting.scenery, setting.globe?.group]) if (o) disposeTree(o);
+    if (place === undefined) return;
+    for (const [key, s] of this.cache) if (s === setting) this.cache.delete(key);
+    places.delete(place);
+    // (what every place reads alike stays: its makers keep it, and the next place has it made for its own day)
+    const keep = new Set<THREE.Texture>();
+    for (const shared of [atmosphereUniforms, weatherUniforms, uLast])
+      for (const u of Object.values(shared)) if ((u.value as THREE.Texture | null)?.isTexture) keep.add(u.value as THREE.Texture);
+    for (const o of [setting.backdrop.scene, setting.floor, ...setting.scenery, setting.globe?.group])
+      if (o) disposeTree(o, { keep, renderer: this.renderer });
     setting.environment?.dispose();
+    setting.release?.();
+    newPlace(); // (what is built from now on is another place's: programs.ts)
   }
 }

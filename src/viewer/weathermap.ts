@@ -27,6 +27,9 @@ export const weatherUniforms = {
   uWeatherHigh: { value: new THREE.Vector2(1, 0) },
 };
 
+/** Places and days the weather has been placed for (`placeWeather`): a map that arrives for one before the last is let go. */
+let placed = 0;
+
 /** Ask for the map now (the eye has risen to where the weather is seen). */
 export let wantWeather: () => void = () => {};
 
@@ -49,6 +52,18 @@ const HIGH_WIND = 70;
  * the shaders that draw them: weather.ts, `highOf`.)
  */
 export function placeWeather(bearingX: number, day: Day): void {
+  // (another place or day than the last: the last one's map is let go, and one of it still on its way is not taken up)
+  const placing = ++placed;
+  const was = weatherUniforms.tWeather.value;
+  if (was !== blank || weatherUniforms.uWeatherIn.value !== 0) {
+    weatherUniforms.tWeather.value = blank;
+    weatherUniforms.uWeatherIn.value = 0;
+    if (was !== blank) {
+      was.dispose();
+      (was.image as ImageBitmap | null)?.close?.();
+    }
+    for (const then of arrived) then();
+  }
   const b = bearingX * DEG;
   const cover = day.cumulus?.cover ?? 0;
   const wind = day.cumulus?.wind ?? [1, 0];
@@ -69,6 +84,7 @@ export function placeWeather(bearingX: number, day: Day): void {
   const load = async (): Promise<void> => {
     const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${map}.weather.png`)).blob();
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
+    if (placing !== placed) return bitmap.close();
     const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
     texture.colorSpace = THREE.NoColorSpace;
     texture.flipY = false;
@@ -78,12 +94,14 @@ export function placeWeather(bearingX: number, day: Day): void {
     texture.needsUpdate = true;
     // (taken up in a frame of its own: its upload is not to land with another map's: pack.ts)
     await queued(() => {
-      weatherUniforms.tWeather.value = texture;
+      if (placing === placed) weatherUniforms.tWeather.value = texture;
     });
+    if (placing !== placed) return;
     // It comes in over a second and a half, in a dozen steps (each has the clouds' field baked again: clouds.ts), so
     // the far cloud and its shadows change shape under the eye instead of jumping. At once where there are no frames.
     const began = performance.now();
     const step = (): void => {
+      if (placing !== placed) return;
       const k = typeof requestAnimationFrame === 'undefined' ? 1 : Math.min(1, Math.ceil(((performance.now() - began) / 1500) * 12) / 12);
       if (k !== weatherUniforms.uWeatherIn.value) {
         weatherUniforms.uWeatherIn.value = k;

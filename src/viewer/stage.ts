@@ -767,10 +767,20 @@ export class Stage {
     // Another place, or the same place on another day, is another setting: the one left is let go first, before the
     // next is built, so that what the place installs for its day (its air and weather: air.ts, weathermap.ts, the
     // atmosphere) is the next one's, and nothing of the last stays on the GPU.
-    if (this.settings.keyOf(kind, when) !== this.settingKey) this.settings.drop(this.setting);
+    const another = this.settings.keyOf(kind, when) !== this.settingKey;
+    if (another) {
+      for (const o of [this.setting.floor, ...this.setting.scenery, this.setting.globe?.mesh]) if (o) this.looks.remove(o);
+      this.settings.drop(this.setting);
+    }
     this.setting = this.settings.get(kind, when);
     this.settingKey = this.settings.keyOf(kind, when);
     this.applySetting();
+    // (what stays on the stage, a model the two flights share and the stage's own, is built again under the new place's
+    // text: programs.ts)
+    if (another)
+      this.scene.traverse((o) => {
+        for (const m of (o as THREE.Mesh).material ? [(o as THREE.Mesh).material].flat() : []) (m as THREE.Material).needsUpdate = true;
+      });
     // (what slides or drives stands on the models and the land: the place's rails and roads too once it has come)
     this.surfaces.set(this.staged.map((s) => s.full));
     for (const s of this.staged) s.resurface();
