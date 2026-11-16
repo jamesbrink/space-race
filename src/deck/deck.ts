@@ -560,7 +560,7 @@ export abstract class Deck {
     this.held.clear();
     this.finger.pitch = this.finger.yaw = this.finger.roll = 0;
     ask({
-      parent: this.root.parentElement ?? document.body,
+      parent: document.body, // (not the deck's own page: that is put away while the gallery is up, and a flight kept is asked about there too)
       clock: this.clock,
       line: this.parked
         ? 'Your flight is kept, but only while this page is open: leaving will not keep it.'

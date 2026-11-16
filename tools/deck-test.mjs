@@ -531,7 +531,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await handFly(page, id);
       await stop(page);
       await page.click('#ui .places [data-place=gallery]');
-      await page.waitForSelector('.kept-mark', { state: 'visible' });
+      await page.locator('.kept-mark:visible').first().waitFor();
       await page.waitForTimeout(800);
       await page.locator('.kept-mark:visible').first().click();
       await page.waitForTimeout(300);
