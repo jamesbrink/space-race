@@ -26,6 +26,12 @@ export interface Asking {
 let count = 0;
 /** The question that is up, if any. */
 let open: HTMLElement | null = null;
+/** What the one that is up does with a key. */
+let hear: ((e: KeyboardEvent) => void) | null = null;
+
+// One listener, taken when this module is: before the page's own listeners are made (the gallery's, the deck's), so that none
+// of them is ahead of it at the window, as the curtain's is (app/curtain.ts).
+if (typeof window !== 'undefined') window.addEventListener('keydown', (e) => hear?.(e), true);
 
 /** Whether a question is up. */
 export const asking = (): boolean => open !== null;
@@ -53,7 +59,7 @@ export function ask(o: Asking): void {
   const [stay, leave] = buttons as [HTMLButtonElement, HTMLButtonElement];
 
   const close = (): void => {
-    window.removeEventListener('keydown', gate, true);
+    hear = null;
     unhold();
     back.remove();
     open = null;
@@ -96,7 +102,7 @@ export function ask(o: Asking): void {
     if (b) answer(b.dataset.ask === 'leave');
     else if (e.target === back) answer(false); // (a press anywhere else is the safe answer)
   });
-  window.addEventListener('keydown', gate, true);
+  hear = gate;
   o.parent.append(back);
   stay.focus();
 }
