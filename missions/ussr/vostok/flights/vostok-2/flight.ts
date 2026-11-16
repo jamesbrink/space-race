@@ -6,7 +6,7 @@ import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokM
 import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
 import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
-import { planOfOrbital } from '../../../../../src/sim/planof.ts';
+import { vostokPlan } from '../../vehicles/vostok-plan.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -579,7 +579,7 @@ export const flight: Flight = {
   }),
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
-  plan: planOfOrbital(orbital),
+  plan: vostokPlan(orbital),
   flownNote:
     'The ascent is the type’s, flown on Vostok 1’s instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
     'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +

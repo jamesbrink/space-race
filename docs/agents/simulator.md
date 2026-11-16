@@ -55,8 +55,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
   - Each flight that flies carries its plan, `Flight.plan`. A Mercury-Redstone's is written by its vehicle module
     (mercury-redstone.ts `plan(day, checks)`, from the day and the hardware's figures; tests/plan.test.mjs holds it equal to
-    `planOfTrajectory` of the same flight's `trajectory` while that remains). The others' are made by these from `orbital` (one object:
-    `planOfOrbital` is cached per record). The orbital batch, the live staged vehicle, the decks and views fly
+    `planOfTrajectory` of the same flight's `trajectory` while that remains). A Vostok's is written from its record by
+    missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan` (held equal to `planOfOrbital` likewise; that one is cached per
+    record, for tests that fly a changed record). The orbital batch, the live staged vehicle, the decks and views fly
     `flight.plan`; a plan changed by a hand is an edit of it.
   - These go when the flights' data says its plan itself.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
