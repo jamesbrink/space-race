@@ -3,7 +3,6 @@ import { along } from '../sim/fly.ts';
 import { downOf } from '../sim/descent.ts';
 import { automatic, chuteEvent, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
 import type { FlightPlan } from '../sim/plan.ts';
-import { planOfOrbital } from '../sim/planof.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import { apart, Sheds } from '../sim/shed.ts';
@@ -231,7 +230,7 @@ export class OrbitDeck extends Deck {
     const where = { site, seaLevel: sea, frame: this.frame };
     const options = points ? { points } : {};
     if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
-    const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? planOfOrbital(o));
+    const plan = this.free && this.fired === null ? this.givenUp() : (this.planned ?? this.flight.plan!);
     if (start.t < this.parting && underGuidance && this.guidable) {
       const v = this.vehicleOf();
       const flown = orbitalFlown(this.flight).ascent;
@@ -247,10 +246,10 @@ export class OrbitDeck extends Deck {
         drops: Object.fromEntries(o.ascent!.drops.filter((d) => d.at.value <= start.t).map((d) => [d.id, d.at.value])),
         apparent: [] as number[],
       };
-      const state = live ? live : { ...stood, apparent: apparentBy(planOfOrbital(o), v, stood, start.t) };
+      const state = live ? live : { ...stood, apparent: apparentBy(this.flight.plan!, v, stood, start.t) };
       const turned = start.t > o.ascent!.guidance.turn.value;
       return propagate(
-        guided(planOfOrbital(o), site, sea, start, {
+        guided(this.flight.plan!, site, sea, start, {
           vehicle: v,
           solved: flown.solved,
           state,
@@ -265,7 +264,7 @@ export class OrbitDeck extends Deck {
       );
     }
     if (start.t < this.parting)
-      return propagate(stack(planOfOrbital(o), site, sea, start.mass, this.goneAt(start.t)), start, where, options);
+      return propagate(stack(this.flight.plan!, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
     // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
     const ship = shipOf(plan);
     const on = ship.on;
@@ -428,7 +427,7 @@ export class OrbitDeck extends Deck {
   }
   /** The plan with its timer's burn given up: nothing fires until a hand does. */
   private givenUp(): FlightPlan {
-    return givenUp(planOfOrbital(this.flight.orbital!));
+    return givenUp(this.flight.plan!);
   }
 
   /** The systems strip: what each stage has left, the braking engine, the lock, and what is burning. */
@@ -589,9 +588,8 @@ export class OrbitDeck extends Deck {
 
   private vehicleOf(): StagedVehicle {
     if (!this.vehicle) {
-      const o = this.flight.orbital!;
       this.vehicle = stagedVehicle(
-        planOfOrbital(o),
+        this.flight.plan!,
         siteFrame(this.flight.site),
         this.frame,
         this.flight.site.seaLevel.value,
@@ -811,7 +809,7 @@ export class OrbitDeck extends Deck {
   private heldOf(): Record<string, number> | undefined {
     const o = this.flight.orbital!;
     if (!this.flown) return undefined;
-    const all = held(planOfOrbital(o), this.flown).slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0));
+    const all = held(this.flight.plan!, this.flown).slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0));
     return Object.fromEntries(all.map((c) => [c.id, c.got]));
   }
 
@@ -875,7 +873,7 @@ export class OrbitDeck extends Deck {
     this.turnTo(t);
     // the long axis, in the flight's frame
     const aim: Vec3 = turn(this.hand!.q, [1, 0, 0]);
-    const plan = byHand(planOfOrbital(o), t, aim);
+    const plan = byHand(this.flight.plan!, t, aim);
     const burn = shipOf(plan).off - t;
     this.planned = plan;
     this.fired = t;
@@ -898,13 +896,13 @@ export class OrbitDeck extends Deck {
    * instant) if it was on then, or never.
    */
   private descentPlan(): { plan: FlightPlan; hands: DescentHands } {
-    const base = this.planned ?? (this.free || this.mine !== null ? this.givenUp() : planOfOrbital(this.flight.orbital!));
+    const base = this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.flight.plan!);
     return { plan: partingAt(base, this.parts), hands: { given: this.given, switched: this.switched } };
   }
 
   /** When the modules part on the flight as it now stands, s from liftoff (`descentPlan`), or never (the largest safe integer). */
   private get parts(): number {
-    const base = this.planned ?? (this.free || this.mine !== null ? null : planOfOrbital(this.flight.orbital!));
+    const base = this.planned ?? (this.free || this.mine !== null ? null : this.flight.plan!);
     const auto = base ? shipOf(base).parted : Number.MAX_SAFE_INTEGER;
     return this.partedBy ?? (automatic({ given: {}, switched: this.switched }, auto) ? auto : Number.MAX_SAFE_INTEGER);
   }
@@ -1051,7 +1049,7 @@ export class OrbitDeck extends Deck {
     const o = this.flight.orbital!;
     const d = o.descent!;
     const down = this.flown?.down;
-    if (id === 'modules') return t >= shipOf(this.planned ?? planOfOrbital(o)).parted;
+    if (id === 'modules') return t >= shipOf(this.planned ?? this.flight.plan!).parted;
     const first = d.bodies[0]!.id;
     const [body, name] = id === 'ejection' ? [first, ''] : id.split('/');
     // the body's height now: its track's, or the run's own sample's for the entry body
@@ -1637,7 +1635,7 @@ export class OrbitDeck extends Deck {
       return;
     }
     // how it ended for him, in the record's terms (sim/verdict.ts downVerdict), and how long an orbit that stays up lasts
-    const plan = this.flownPlan ?? planOfOrbital(o);
+    const plan = this.flownPlan ?? this.flight.plan!;
     let decayed: number | undefined;
     if (stays) {
       if (this.lasts?.of !== whole)
@@ -1668,7 +1666,7 @@ export class OrbitDeck extends Deck {
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
     // (the coast's and the descent's: what a pilot's hand can change; the ascent's too, on a flight that was the user's going up)
-    const rows = held(planOfOrbital(o), whole)
+    const rows = held(this.flight.plan!, whole)
       .slice(this.mine !== null ? 0 : (o.ascent?.checks.length ?? 0))
       .filter((c) => Number.isFinite(c.got) && c.id !== 'period' && !(stays && c.got === 0))
       .map(

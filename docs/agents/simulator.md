@@ -53,6 +53,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `EngineDef.flown` is the impulse the record's coast flies.
   - Ids are generated: a stage's body, engine, tank and joint are `stage:<i>`; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
+  - Each flight that flies carries its plan, `Flight.plan`, made by these from its `trajectory` or `orbital` (one object:
+    `planOfOrbital` is cached per record). The orbital batch, the live staged vehicle, the decks and views fly
+    `flight.plan`; a plan changed by a hand is an edit of it.
   - These go when the flights' data says its plan itself.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
   which events have happened and which are armed, and the attitude held. It is never changed in place.

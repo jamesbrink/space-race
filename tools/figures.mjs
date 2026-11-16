@@ -20,7 +20,6 @@ import { autopilot, blend, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { stack, spacecraft, guided, apparentBy } from '../src/sim/fliers.ts';
 import { fly, sampleAt } from '../src/sim/fly.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
 import { predict, propagate } from '../src/sim/predict.ts';
 import { Sheds } from '../src/sim/shed.ts';
 import { flyWhole, published, steer } from '../src/sim/staged.ts';
@@ -149,7 +148,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   const dated = frameOf(flight);
   const sea = flight.site.seaLevel.value;
 
-  const plan = planOfOrbital(o);
+  const plan = flight.plan;
   put(flight, 'coast', flyOrbit(plan, site, dated, sea).results);
   if (!o.ascent) continue;
 
@@ -170,7 +169,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
 
   // the live staged vehicle, from the pad, by its pilot: steered, and with the law's attitude placed
   for (const prescribed of [false, true]) {
-    const sv = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
+    const sv = stagedVehicle(flight.plan, site, dated, sea, x);
     const pilot = stagedPilot(sv, x, site, dated, sea, { guidance: true, sequence: true, prescribed });
     let s = sv.start();
     s = sv.tick(s, {
@@ -233,11 +232,11 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
     // before it (as tests/staged.test.mjs)
-    const sep = published(planOfOrbital(o), a.separation);
+    const sep = published(flight.plan, a.separation);
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= o.retro.on.value - 2400) : null;
     const from = late ?? sep;
     const start = { t: from.t, r: from.r, v: from.v };
-    const job = propagate(spacecraft(planOfOrbital(o), dated, site, sea, start), start, where);
+    const job = propagate(spacecraft(flight.plan, dated, site, sea, start), start, where);
     job.run();
     put(flight, 'predict:spacecraft', pathFigures(job.result));
   }
@@ -245,12 +244,12 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     const s = a.samples.find((p) => p.t >= 100);
     const start = { t: s.t, r: s.r, v: s.v };
     const gone = o.stages.filter((st) => (st.separation?.value ?? Infinity) <= s.t).reduce((m, st) => Math.max(m, st.separation.value), 0);
-    const job = propagate(stack(planOfOrbital(o), site, sea, s.mass, gone), start, where);
+    const job = propagate(stack(flight.plan, site, sea, s.mass, gone), start, where);
     job.run();
     put(flight, 'predict:stack@100', pathFigures(job.result));
   }
   {
-    const sv = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
+    const sv = stagedVehicle(flight.plan, site, dated, sea, x);
     for (const t0 of [40, 150, 400]) {
       const s = a.samples.find((p) => p.t >= t0);
       const state = {
@@ -262,16 +261,16 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
         })),
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };
-      state.apparent = apparentBy(planOfOrbital(o), sv, state, s.t);
+      state.apparent = apparentBy(flight.plan, sv, state, s.t);
       const start = { t: s.t, r: s.r, v: s.v };
       const job = propagate(
-        guided(planOfOrbital(o), site, sea, start, {
+        guided(flight.plan, site, sea, start, {
           vehicle: sv,
           solved: x,
           state,
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? a.thetaTurn : null,
-          plan: planOfOrbital(o),
+          plan: flight.plan,
         }),
         start,
         where,

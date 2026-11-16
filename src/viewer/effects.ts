@@ -3,7 +3,6 @@ import { atmosphere } from '../sim/atmosphere.ts';
 import { flownOnce, type Sample } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
-import { planOfOrbital } from '../sim/planof.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { SitedFlight } from '../types.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
@@ -211,7 +210,7 @@ export class Effects {
     const engine = tr
       ? { thrust: tr.engine.thrust.value, exhaustSpeed: tr.engine.isp.value * G0 }
       : this.flight.orbital?.ascent
-        ? liftoffEngine(planOfOrbital(this.flight.orbital))
+        ? liftoffEngine(this.flight.plan!)
         : null;
     if (!engine || !this.flying) return felt;
     // the engine, as it was when the sound now arriving left it

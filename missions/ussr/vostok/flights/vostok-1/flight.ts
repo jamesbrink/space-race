@@ -20,6 +20,7 @@ import { DUTY } from '../../vehicles/cabin.ts';
 import { BOOSTERS } from '../../vehicles/vostok-8k72k.ts';
 import { BASE, commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
+import { planOfOrbital } from '../../../../../src/sim/planof.ts';
 import { WEATHER } from './weather.ts';
 
 const parts: StackWords[] = [
@@ -1590,6 +1591,7 @@ export const flight: Flight = {
   }),
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)
   orbital,
+  plan: planOfOrbital(orbital),
   flownNote:
     'The ascent as simulated falls 162 m/s short of the orbit Vostok 1 reached, because two stages of engine thrust the record documents only in kind, the strap-ons’ last seconds and the core’s last ten on its steering chambers, are flown at estimated levels, and each is worth more than the whole miss. ' +
     'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result.',

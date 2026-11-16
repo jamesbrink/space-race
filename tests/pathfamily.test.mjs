@@ -13,7 +13,6 @@ import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flig
 import { act, part } from '../src/sim/craft.ts';
 import { spacecraft } from '../src/sim/fliers.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
 import { apsides, between, predict, propagate } from '../src/sim/predict.ts';
 import { fromAxes } from '../src/sim/rigid.ts';
 import { givenUp } from '../src/sim/staged.ts';
@@ -164,7 +163,7 @@ test('the ballistic deck`s predictor on a family of states: the same invariants 
 });
 
 test('the orbital deck`s predictor on the same family: one result, the same invariants', () => {
-  const plan = givenUp(planOfOrbital(vostok1.orbital));
+  const plan = givenUp(vostok1.plan);
   const site = siteFrame(vostok1.site);
   const frame = frameOf(vostok1);
   const rand = seeded(12);
@@ -248,7 +247,7 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
 });
 
 test('prediction against outcome: the orbital spacecraft, predicted, then flown by its coast from the same state', () => {
-  const plan = givenUp(planOfOrbital(vostok1.orbital));
+  const plan = givenUp(vostok1.plan);
   const site = siteFrame(vostok1.site);
   const sea = vostok1.site.seaLevel.value;
   const frame = frameOf(vostok1);

@@ -53,6 +53,7 @@ import { CAPSULE_PLANE, CHUTES, cutoffMass, trajectory as mercuryRedstone, PLR }
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
+import { planOfTrajectory } from '../../../../../src/sim/planof.ts';
 
 /**
  * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -1511,6 +1512,7 @@ export const flight: Flight = {
   }),
   trajectory: TRAJECTORY,
   checks,
+  plan: planOfTrajectory(TRAJECTORY, checks),
   flownNote:
     'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
     'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +

@@ -123,7 +123,6 @@ const { fly } = await import('../src/sim/fly.ts');
 const { flyLive } = await import('../src/sim/autopilot.ts');
 const { vehicle } = await import('../src/sim/vehicle.ts');
 const { flyWhole, steer } = await import('../src/sim/staged.ts');
-const { planOfOrbital } = await import('../src/sim/planof.ts');
 const { siteFrame } = await import('../src/world/frames.ts');
 const { flight: vostok1 } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
 
@@ -168,7 +167,7 @@ test('Vostok 1 flown whole in both frames: the law solved, the ascent, the coast
   const sea = vostok1.site.seaLevel.value;
   const jd = julianDate(vostok1.launch);
   const [fixed, dated] = [earthFrame(jd, false), earthFrame(jd, true)];
-  const plan = planOfOrbital(vostok1.orbital);
+  const plan = vostok1.plan;
   const xa = steer(plan, site, fixed, sea);
   const xb = steer(plan, site, dated, sea);
   near(xa.kick, xb.kick, 1e-12, 'the law solved the same: its pitch-over');

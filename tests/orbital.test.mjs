@@ -101,7 +101,7 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
-    const s = injectionState(planOfOrbital(o), siteFrame(f.site), frameOf(f));
+    const s = injectionState(f.plan, siteFrame(f.site), frameOf(f));
     const el = elementsOf(s.r, s.v);
     assert.ok(Math.abs(el.i / DEG - o.orbit.inclination.value) < 1e-9, 'inclination');
     assert.ok(Math.abs(el.a * (1 - el.e) - o.orbit.radius.value - o.orbit.perigee.value) < 1e-3, 'perigee');

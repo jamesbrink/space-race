@@ -11,7 +11,6 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { descending, spacecraft } from '../src/sim/fliers.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
 import { propagate } from '../src/sim/predict.ts';
 import { flyWhole } from '../src/sim/staged.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -41,7 +40,7 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
   const site = siteFrame(f.site);
   const sea = f.site.seaLevel.value;
   const where = { site, seaLevel: sea, frame: dated };
-  const whole = flyWhole(planOfOrbital(o), site, dated, sea, undefined, 10, 'published');
+  const whole = flyWhole(f.plan, site, dated, sea, undefined, 10, 'published');
   const down = whole.down;
   const predicted = (flier, start) => {
     const p = propagate(flier, start, where);
@@ -63,11 +62,7 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
     const begun = down.tracks[o.descent.bodies[0].id][0];
     for (const b of o.descent.bodies.slice(0, 2)) {
       const want = down.landed[b.id];
-      held(
-        predicted(descending(planOfOrbital(o), dated, sea, { t: begun.t }, { follow: b.id }), begun),
-        want,
-        `${b.id} from the handing over`,
-      );
+      held(predicted(descending(f.plan, dated, sea, { t: begun.t }, { follow: b.id }), begun), want, `${b.id} from the handing over`);
     }
   });
   test(`${f.id}: begun part-way down, from the run's own state of each body`, () => {
@@ -77,7 +72,7 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
     for (const at of [Object.values(down.opened[first.id])[0] + 30, down.landed[first.id].at - 120]) {
       const s = track.findLast((x) => x.t <= at);
       held(
-        predicted(descending(planOfOrbital(o), dated, sea, { t: s.t }, { follow: first.id, from: down }), s),
+        predicted(descending(f.plan, dated, sea, { t: s.t }, { follow: first.id, from: down }), s),
         down.landed[first.id],
         `${first.id} from ${s.t.toFixed(0)} s`,
       );
@@ -88,13 +83,13 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
     const samples = whole.coast.samples;
     const s = samples.findLast((x) => x.t <= down.tracks[first.id][0].t - 300);
     const start = { t: s.t, r: s.r, v: s.v };
-    const short = predicted(spacecraft(planOfOrbital(o), dated, site, sea, start), start);
+    const short = predicted(spacecraft(f.plan, dated, site, sea, start), start);
     assert.ok(
       short.impact && Math.abs(short.impact.altitude - o.ejection.altitude.value) < 1,
       'without it, it stops where the pilot leaves',
     );
     held(
-      predicted(spacecraft(planOfOrbital(o), dated, site, sea, start, { descend: { follow: first.id } }), start),
+      predicted(spacecraft(f.plan, dated, site, sea, start, { descend: { follow: first.id } }), start),
       down.landed[first.id],
       `${first.id} from the coast`,
     );

@@ -216,12 +216,11 @@ test('a canopy that tears lets its air go and streams, from the mouth it had', (
 for (const v of FLIGHTS.filter((f) => f.orbital?.descent)) {
   test(`${v.designation}’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies`, async () => {
     const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
-    const { planOfOrbital } = await import('../src/sim/planof.ts');
     const { siteFrame } = await import('../src/world/frames.ts');
     const { frameOf } = await import('../src/world/earthframe.ts');
     const o = v.orbital;
     const dated = frameOf(v);
-    const whole = flyWhole(planOfOrbital(o), siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10, 'published');
+    const whole = flyWhole(v.plan, siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10, 'published');
     const drawn = descentOf(whole, dated, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
     assert.ok(drawn, 'the record’s run comes down from the ejection height');
     for (const c of v.flies.chutes.filter((c) => c.body)) {

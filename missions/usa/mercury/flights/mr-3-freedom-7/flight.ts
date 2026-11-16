@@ -35,6 +35,7 @@ import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, trajectory as mercuryRedstone, 
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
+import { planOfTrajectory } from '../../../../../src/sim/planof.ts';
 
 /**
  * Freedom 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -1464,6 +1465,7 @@ export const flight: Flight = {
   }),
   trajectory,
   checks,
+  plan: planOfTrajectory(trajectory, checks),
   flownNote:
     'The powered flight ends 4 % too fast, and what follows from that is high and long: leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs).',
   flies: {

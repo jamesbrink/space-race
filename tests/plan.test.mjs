@@ -29,9 +29,10 @@ test('there are flights of both kinds to make plans of', () => {
 
 for (const f of [...ballistic, ...orbital]) {
   const plan = f.trajectory ? planOfTrajectory(f.trajectory, f.checks) : planOfOrbital(f.orbital);
-  test(`${f.id}: its plan is whole`, () => {
+  test(`${f.id}: its plan is whole, and is the flight's own`, () => {
     assert.deepEqual(problems(plan), []);
     assert.equal(plan.kind, f.trajectory ? 'ballistic' : 'orbital');
+    assert.deepEqual(f.plan, plan, 'Flight.plan is the plan made of its record');
   });
 }
 

@@ -9,7 +9,6 @@ import { airAt, airDrag } from '../src/sim/air.ts';
 import { ballistic, spacecraft, stack } from '../src/sim/fliers.ts';
 import { dragArea, thrustIn } from '../src/sim/fly.ts';
 import { shipPush } from '../src/sim/orbital.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
 import { stackOf } from '../src/sim/staged.ts';
 import { nozzleThrust, vacuumOf } from '../src/sim/thrust.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -78,14 +77,14 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const s = stateOver(frame, site, 300);
   const air = airAt(frame, s.r, s.v, s.t, sea);
   // the spacecraft alone, its engine not lit: the coast's own push (orbital.ts shipPush, which flyOrbit flies)
-  const ship = spacecraft(planOfOrbital(o), frame, site, sea, s);
-  same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(planOfOrbital(o), s.t, air.wind, air.altitude, null), 'the spacecraft');
+  const ship = spacecraft(vostok1.plan, frame, site, sea, s);
+  same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(vostok1.plan, s.t, air.wind, air.altitude, null), 'the spacecraft');
   // the stack with its engines stopped: the ascent's drag area for the shape it has, over its mass
   const gone = o.stages[0].separation.value;
-  const stopped = stack(planOfOrbital(o), site, sea, 30_000, gone);
+  const stopped = stack(vostok1.plan, site, sea, 30_000, gone);
   same(
     stopped.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(planOfOrbital(o)).dragArea(gone, air.mach)), 1 / 30_000),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(vostok1.plan).dragArea(gone, air.mach)), 1 / 30_000),
     'the stopped stack',
   );
 });

@@ -141,7 +141,7 @@ for (const f of flown) {
       }
     }
     // (a stage cut on its velocity stops when the run says: shown with the run, below)
-    const plan = schedule(planOfOrbital(o));
+    const plan = schedule(f.plan);
     o.stages.forEach((s, i) => {
       if (s.velocity) return;
       const used = flowOf(s) * integral(s.throttle, plan[i].from, plan[i].to);
@@ -154,13 +154,13 @@ for (const f of flown) {
 
   test(`${f.designation}: the steering law reaches its target, and the flight is the same flight every time`, () => {
     const [site, dated, sea] = where(f);
-    const x = steer(planOfOrbital(o), site, dated, sea);
+    const x = steer(f.plan, site, dated, sea);
     console.log(
       `  #   solved: ${o.ascent.guidance.azimuth ? `the plane through the aiming azimuth, ${o.ascent.guidance.azimuth.value.toFixed(4)} deg (given)` : `the launch plane inclined ${(x.plane / DEG).toFixed(3)} deg`}; pitched over ${(x.kick / DEG).toFixed(3)} deg; tangent falling ${(x.rate * 1000).toFixed(4)} per 1000 s`,
     );
-    whole = flyWhole(planOfOrbital(o), site, dated, sea, x);
-    shown = flyWhole(planOfOrbital(o), site, dated, sea, x, 10, 'published');
-    const again = ascend(planOfOrbital(o), site, dated, sea, x);
+    whole = flyWhole(f.plan, site, dated, sea, x);
+    shown = flyWhole(f.plan, site, dated, sea, x, 10, 'published');
+    const again = ascend(f.plan, site, dated, sea, x);
     assert.deepEqual(again.summary, whole.ascent.summary);
     const s = whole.ascent.summary;
     const g = o.ascent.guidance.target;
@@ -199,7 +199,7 @@ for (const f of flown) {
     // (the turn's tilt is measured between the plumb line in the plane and the level square to it: until November 2026 the
     // level was square to the line to the Earth's centre, 0.16 degrees off at Tyuratam, and the axis up to 0.14 % long)
     const [site, dated] = where(f);
-    const law = lawOf(planOfOrbital(o), site, dated, whole.ascent.solved);
+    const law = lawOf(f.plan, site, dated, whole.ascent.solved);
     const upIn = unit(sub(law.up0, scale(law.n, dot(law.n, law.up0))));
     assert.ok(Math.abs(dot(upIn, law.down0)) < 1e-15, `level square to the plumb line: ${dot(upIn, law.down0)}`);
     assert.ok(Math.abs(dot(law.n, law.down0)) < 1e-15, 'and in the launch plane');
@@ -300,10 +300,10 @@ for (const f of flown) {
     const [site, dated, sea] = where(f);
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
-    const sep = published(planOfOrbital(o), whole.ascent.separation);
+    const sep = published(f.plan, whole.ascent.separation);
     const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= o.retro.on.value - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
-    const job = propagate(spacecraft(planOfOrbital(o), dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
+    const job = propagate(spacecraft(f.plan, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
     job.run();
     const p = job.result;
     assert.equal(p.outcome, 'impact');
@@ -344,7 +344,7 @@ for (const f of flown) {
     assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
     const from = { t: mid.t, r: mid.r, v: mid.v };
     const within = (options) => {
-      const j = propagate(spacecraft(planOfOrbital(o), dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
+      const j = propagate(spacecraft(f.plan, dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
       j.run();
       return j.result.impact;
     };
@@ -367,7 +367,7 @@ for (const f of flown) {
   test(`${f.designation}: the path if guidance carries on is the ascent flown: from the record's state it parts where the batch run does`, () => {
     const [site, dated, sea] = where(f);
     const x = whole.ascent.solved;
-    const vehicle = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
+    const vehicle = stagedVehicle(f.plan, site, dated, sea, x);
     const stops = whole.ascent.stops;
     for (const t0 of [40, 150, 400]) {
       const s = whole.ascent.samples.find((p) => p.t >= t0);
@@ -381,16 +381,16 @@ for (const f of flown) {
         })),
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };
-      state.apparent = apparentBy(planOfOrbital(o), vehicle, state, s.t);
+      state.apparent = apparentBy(f.plan, vehicle, state, s.t);
       const start = { t: s.t, r: s.r, v: s.v };
       const job = propagate(
-        guided(planOfOrbital(o), site, sea, start, {
+        guided(f.plan, site, sea, start, {
           vehicle,
           solved: x,
           state,
           sequence: true,
           thetaTurn: s.t > o.ascent.guidance.turn.value ? whole.ascent.thetaTurn : null,
-          plan: planOfOrbital(o),
+          plan: f.plan,
         }),
         start,
         { site, seaLevel: sea, frame: dated },
@@ -416,7 +416,7 @@ for (const f of flown) {
   test(`${f.designation}: the guided path worked out in slices is the path worked out at once, its steps ahead swept in the slices too`, () => {
     const [site, dated, sea] = where(f);
     const x = whole.ascent.solved;
-    const vehicle = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
+    const vehicle = stagedVehicle(f.plan, site, dated, sea, x);
     const s = whole.ascent.samples.find((p) => p.t >= 40);
     const stops = whole.ascent.stops;
     const state = {
@@ -428,11 +428,11 @@ for (const f of flown) {
       })),
       drops: {},
     };
-    state.apparent = apparentBy(planOfOrbital(o), vehicle, state, s.t);
+    state.apparent = apparentBy(f.plan, vehicle, state, s.t);
     const make = () => {
       const start = { t: s.t, r: s.r, v: s.v };
       return propagate(
-        guided(planOfOrbital(o), site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: planOfOrbital(o) }),
+        guided(f.plan, site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: f.plan }),
         start,
         {
           site,
@@ -459,11 +459,11 @@ for (const f of flown) {
   if (o.manual)
     test(`${f.designation}: a burn by hand is the same physics: against the motion it comes down, along it it stays up`, () => {
       const [site, dated, sea] = where(f);
-      const x = steer(planOfOrbital(o), site, dated, sea);
+      const x = steer(f.plan, site, dated, sea);
       const at = o.retro.on.value;
       const s = shown.coast.samples.find((p) => p.t >= at);
       const back = byHand(
-        planOfOrbital(o),
+        f.plan,
         s.t,
         s.v.map((c) => -c / Math.hypot(...s.v)),
       );
@@ -472,7 +472,7 @@ for (const f of flown) {
       assert.ok(down.down?.landed.pilot, 'and the pilot lands');
       const along = flyWhole(
         byHand(
-          planOfOrbital(o),
+          f.plan,
           s.t,
           s.v.map((c) => c / Math.hypot(...s.v)),
         ),

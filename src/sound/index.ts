@@ -20,7 +20,6 @@ import { type Driving, type Footfall, machinery, type Sounds } from './audio.ts'
 import { prefs } from '../app/prefs.ts';
 import { flownOnce } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { planOfOrbital } from '../sim/planof.ts';
 import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight } from '../types.ts';
@@ -106,7 +105,7 @@ export class Sound {
     this.ascent = Ascent.of(flight);
     const tr = flight.trajectory;
     // (an orbital flight's engines lit on the ground, heard as one: sim/staged.ts)
-    const lit = !tr && flight.orbital?.ascent ? liftoffEngine(planOfOrbital(flight.orbital)) : null;
+    const lit = !tr && flight.orbital?.ascent ? liftoffEngine(flight.plan!) : null;
     this.craft = tr
       ? craft(tr.engine.thrust.value, tr.engine.isp.value, tr.engine.exitArea.value)
       : lit

@@ -1,6 +1,7 @@
 /** What a flight is as data (missions/<nation>/<programme>/flights/<flight>/flight.ts): its record, its figures and checks, and its models. */
 import type { Confidence, Measure } from '../measure.ts';
 import type { ModelDef } from './model.ts';
+import type { FlightPlan } from '../sim/plan.ts';
 import type { Burns, ChuteDef, OrbitalFlight, Results, Trajectory } from './sim.ts';
 import type { SiteDef } from './site.ts';
 import type { DayWeather } from './weather.ts';
@@ -97,6 +98,12 @@ export interface Flight {
    * not offered to be flown by hand yet.
    */
   orbital?: OrbitalFlight;
+  /**
+   * What the flight is flown from, one shape for every kind (src/sim/plan.ts): its craft, the events that change it, the
+   * attitudes it is held in, the checks. Left out: it cannot be flown yet. Made today from `trajectory` or `orbital` by
+   * src/sim/planof.ts, until the flight's data says it itself.
+   */
+  plan?: FlightPlan;
   /**
    * The flight in the scene: which model the trajectory carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from
