@@ -1,3 +1,4 @@
+import { ALOFT, HOURS } from './aloft.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 
 const ISD = 'NOAA Integrated Surface Database';
@@ -64,4 +65,8 @@ export const WEATHER: DayWeather = {
     source: `50 km at Zhosaly at 03:00 UTC and at Kzyl-Orda at 06:00 (${ISD}); Kazaly reports 20 km at every hour of the day, which reads as the furthest mark it had. 50 km taken`,
   },
   haze: { value: 1500, confidence: 'estimated', source: 'not recorded: the dry air of the steppe in April, taken to thin over 1.5 km' },
+  // the air over the pad and the surface's hours round liftoff: ERA5's (aloft.ts, tools/era5-aloft.mjs); a sounding of the
+  // record's, when one is read, goes here in their place
+  aloft: ALOFT,
+  hours: HOURS,
 };

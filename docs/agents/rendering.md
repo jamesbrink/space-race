@@ -682,6 +682,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     the sheets are laid over the frame, and the chunk and the globe carry only the veil's shade.
   - A new figure of a day goes in the flight's `weather.ts` with its source; a new way of drawing one goes in
     day.ts as a stated rule. Never a constant in a place's file.
+  - **The air over the pad is a day's too.** `DayWeather.aloft` is a column (pressure, height, temperature and wind at
+    each level) and `DayWeather.hours` the surface hour by hour round liftoff: a sounding from the record where one has
+    been read (`documented`), else ERA5's at the hour nearest liftoff (`derived`: `aloft.ts` beside weather.ts, baked by
+    `pnpm era5:aloft`). They are for the simulator (world.md, "The air aloft"); nothing drawn reads them yet.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
   the march's bake, the far cover (`farCumulus`) and the globe's shadows (`globeShade`): change one, change
   all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's

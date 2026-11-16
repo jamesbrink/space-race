@@ -69,4 +69,38 @@ export interface DayWeather {
   haze: Measure;
   /** What the record says of the sky away from the station. */
   beyond?: WeatherBeyond[];
+  /**
+   * The air over the site at the hour, from the ground up: a sounding's levels where the record has one (`documented`),
+   * else ERA5's at the hour nearest liftoff (tools/era5-aloft.mjs: `derived`). world/aloft.ts reads it at any height
+   * between its lowest level and its top; outside that, and where there is none, the air is the standard atmosphere's.
+   */
+  aloft?: Aloft;
+  /** The weather at the surface hour by hour round liftoff, earliest first: what changed through the count. */
+  hours?: WeatherHour[];
+}
+
+/** The air at one height over a site: a level of a sounding, or of a reanalysis. */
+export interface AloftLevel {
+  /** Pa. */
+  pressure: Measure;
+  /** Metres above mean sea level, geometric. */
+  height: Measure;
+  /** Kelvin. */
+  temperature: Measure;
+  /** The wind there; left out where the record does not give it. */
+  wind?: Wind;
+}
+
+/** A column of air over a site: where and when it was observed or worked out, and its levels from the lowest up. */
+export interface Aloft {
+  observed: { where: string; at: string; source: string };
+  levels: AloftLevel[];
+}
+
+/** The surface's weather at one hour (ISO 8601, UTC): the wind at 10 m, the air's temperature at 2 m (K), the pressure at the ground (Pa). */
+export interface WeatherHour {
+  at: string;
+  wind?: Wind;
+  temperature?: Measure;
+  pressure?: Measure;
 }

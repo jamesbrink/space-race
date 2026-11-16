@@ -150,6 +150,26 @@ climbs (3 levels a minute at most, 7 in the cel look's flat tones). The veil and
 Sun's own direction, not the scene's one light's: that light is the Moon by night and points nowhere when
 neither is up, and a veil lit by it had its glow in the wrong place until sunrise and then stepped.
 
+The air aloft. A day's weather has its column (`DayWeather.aloft`: each level's pressure, height, temperature and wind,
+each a Measure) and the surface's hours round liftoff (`DayWeather.hours`: wind, temperature, pressure). A sounding the
+record has goes there `documented`; where none has been read, ERA5's at the hour nearest liftoff stands in, `derived`
+(`pnpm era5:aloft`: tools/era5-aloft.mjs bakes `aloft.ts` beside each flight's weather.ts, the ground and the 37
+pressure levels to 1 hPa, some 48 km, between the four quarter-degree cells round the pad, read by HTTP range from the
+ARCO-ERA5 copy through tools/era5.mjs, which the front page's tools/front-earth.mjs shares). `world/aloft.ts` reads a
+column at any height (`aloftAt`: temperature straight in geopotential height between levels, pressure on the power law
+that meets both levels, which gives the 1976 standard back from its own layer bases to 1e-9; dry density; the wind in
+its east and north parts) and the hours at any instant (`hourAt`); outside a column it answers nothing. Each column's
+layers hold to the hypsometric equation within 2 per cent (tests/aloft.test.mjs).
+
+What the simulator is to read (src/sim, not here; the note for whoever does it): the air at a height above the sea is
+`aloftAt(flight.weather.aloft, height)` where that answers, and the 1976 standard's (`atmosphere`) where it does not
+(below the column's ground, above its top, a flight with no weather), the run saying which (a figure that leans on the
+column is `derived`, on the standard `estimated`). So that nothing steps at the top, the standard above it is scaled by
+the column's density over the standard's at the top, the ratio easing to 1 by 70 km. The wind aloft is the record's own
+sounding where it has one (`Trajectory.winds`, sim/air.ts `blowOf`: `documented`), else the column's (`aloftAt(...).wind`),
+else calm; at the pad, the hour's surface wind (`hourAt(flight.weather.hours, liftoff)`). Nothing is fitted to it: a
+flight that misses more under ERA5's air than under the standard's says so in its MISSES.
+
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and
 source. The times are the record; where they fall on the slider is layout. Such a model is on the

@@ -1,3 +1,4 @@
+import { ALOFT, HOURS } from './aloft.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 
 const ISD = 'NOAA Integrated Surface Database';
@@ -63,4 +64,8 @@ export const WEATHER: DayWeather = {
     confidence: 'estimated',
     source: 'not recorded: the dry air of the steppe, taken as Vostok 1’s, to thin over 1.5 km',
   },
+  // the air over the pad and the surface's hours round liftoff: ERA5's (aloft.ts, tools/era5-aloft.mjs); a sounding of the
+  // record's, when one is read, goes here in their place
+  aloft: ALOFT,
+  hours: HOURS,
 };

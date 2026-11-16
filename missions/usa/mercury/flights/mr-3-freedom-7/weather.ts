@@ -1,3 +1,4 @@
+import { ALOFT, HOURS } from './aloft.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 5 km north of the pad)';
@@ -78,4 +79,8 @@ export const WEATHER: DayWeather = {
     confidence: 'estimated',
     source: 'the Cape’s May mornings are mixed up to the cumulus bases, 720 m: the haze is taken to fall off over about twice that',
   },
+  // the air over the pad and the surface's hours round liftoff: ERA5's (aloft.ts, tools/era5-aloft.mjs); a sounding of the
+  // record's, when one is read, goes here in their place
+  aloft: ALOFT,
+  hours: HOURS,
 };

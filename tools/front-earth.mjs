@@ -34,6 +34,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { INSTANT } from '../src/app/front/view.ts';
+import { ARCO, COLS, ROWS, unblosc } from './era5.mjs';
 import { readGreyPng, writeRgbPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -112,71 +113,6 @@ function colour() {
 }
 
 // --- the day, from ERA5 ---
-
-const ARCO = 'https://storage.googleapis.com/gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3';
-const ROWS = 721;
-const COLS = 1440;
-
-/** An LZ4 block, decompressed to `size` bytes. */
-function lz4(src, size) {
-  const dst = Buffer.alloc(size);
-  let s = 0,
-    d = 0;
-  while (s < src.length) {
-    const token = src[s++];
-    let literals = token >> 4;
-    if (literals === 15) for (let b = 255; b === 255; ) literals += b = src[s++];
-    src.copy(dst, d, s, s + literals);
-    s += literals;
-    d += literals;
-    if (s >= src.length) break;
-    const offset = src[s] | (src[s + 1] << 8);
-    s += 2;
-    let match = token & 15;
-    if (match === 15) for (let b = 255; b === 255; ) match += b = src[s++];
-    match += 4;
-    for (let k = 0; k < match; k++, d++) dst[d] = dst[d - offset];
-  }
-  if (d !== size) throw new Error(`LZ4: ${d} bytes, not ${size}`);
-  return dst;
-}
-
-/** A Blosc 1 buffer of little-endian floats (LZ4, bytes shuffled), as Zarr keeps a chunk: the floats. */
-function unblosc(buf) {
-  const flags = buf[2],
-    typesize = buf[3];
-  const nbytes = buf.readUInt32LE(4),
-    blocksize = buf.readUInt32LE(8);
-  if (flags >> 5 !== 1) throw new Error('not LZ4 inside Blosc');
-  const out = Buffer.alloc(nbytes);
-  if (flags & 2) buf.copy(out, 0, 16, 16 + nbytes);
-  else {
-    const blocks = Math.ceil(nbytes / blocksize);
-    for (let b = 0; b < blocks; b++) {
-      const size = Math.min(blocksize, nbytes - b * blocksize);
-      // a full block is kept as one stream for each byte of the type; the last, short one as a single stream
-      const streams = !(flags & 16) && typesize <= 16 && blocksize / typesize >= 128 && size === blocksize ? typesize : 1;
-      const each = size / streams;
-      const block = Buffer.alloc(size);
-      let at = buf.readUInt32LE(16 + 4 * b);
-      for (let k = 0; k < streams; k++) {
-        const c = buf.readUInt32LE(at);
-        at += 4;
-        if (c === each) buf.copy(block, k * each, at, at + c);
-        else lz4(buf.subarray(at, at + c), each).copy(block, k * each);
-        at += c;
-      }
-      // unshuffle: the block holds every value's first byte, then every value's second, and so on
-      const dst = b * blocksize;
-      if (flags & 1) {
-        const n = Math.floor(size / typesize);
-        for (let k = 0; k < typesize; k++) for (let i = 0; i < n; i++) out[dst + i * typesize + k] = block[k * n + i];
-        block.copy(out, dst + n * typesize, n * typesize);
-      } else block.copy(out, dst);
-    }
-  }
-  return new Float32Array(out.buffer, out.byteOffset, nbytes / 4);
-}
 
 /** One of ERA5's fields at an hour (hours since 1900-01-01 00:00 UTC), 721 rows from the north pole by 1440 from Greenwich eastward. */
 async function field(name, hour) {

@@ -36,6 +36,7 @@ pnpm models           # rebuild every flight's and site's GLBs
 pnpm globe            # bake public/globe/ again; pnpm globe:region every site's region; pnpm globe:weather every flight's day's weather map
 pnpm ephemeris        # bake public/ephemeris/de440.bin from JPL's DE440 (fetches de440s.bsp, 31 MB, once into ~/.cache)
 pnpm ut1              # bake src/world/ut1.ts, UT1 - TAI, from the IERS's EOP C01 (fetched once into ~/.cache)
+pnpm era5:aloft       # bake each flight's aloft.ts: ERA5's air over its pad at liftoff and the surface's hours round it
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
@@ -183,7 +184,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
    `flight.ts` from it, and state the computed Sun and Moon in the flight's README. Record the weather
    it stood under in a `weather.ts` beside `flight.ts` (types.ts: `DayWeather`: each layer of cloud, the
    wind, the visibility, at the station and hour nearest liftoff, each figure with its confidence and
-   source), set `weather` from it and bake its map (`pnpm globe:weather`, which finds every flight with a weather.ts): the
+   source), set `weather` from it and bake its map (`pnpm globe:weather`, which finds every flight with a weather.ts) and its air aloft (`pnpm era5:aloft`: `aloft.ts`, which weather.ts hands on as `aloft` and `hours`): the
    site's sky is drawn from it ([rendering.md](docs/agents/rendering.md), "The weather is a day's").
    Without one the flight stands under its place's default sky, which is an estimate.
 2. In each model script, name every top-level node (`srlib.group`) for a part; those names are
