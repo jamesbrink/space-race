@@ -107,7 +107,7 @@ HB = "Martin, Gemini-Titan II Air Force Launch Vehicle Press Handbook, chapter 7
 # from the ground to the deck" (the handbook, p. 7-8): documented. The viewer's terrain is there (../lc-19.ts `grade`).
 GROUND = -28.0
 FOOTING = GROUND - 3.0  # how far down anything standing on the land goes: past the terrain
-PAVED = GROUND + 0.4  # paving laid on the land: 12 cm over the terrain, as every pad's is (docs/agents/rendering.md)
+PAVED = GROUND + 0.12 / 0.3048  # paving laid on the land: 12 cm over the terrain, as every pad's is (docs/agents/rendering.md)
 APRON = -26.0  # the flume's concrete apron under the deck's north end, two feet over the land (S65-43447: estimated)
 
 # The stand: 65 ft wide (documented). The vehicle did not stand on its middle line: in S65-43447 the deck's west edge
