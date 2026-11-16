@@ -402,6 +402,11 @@ export class Cockpit extends Deck {
       );
     else if (state.loose !== null && hasLeft(state.craft, this.roles.booster.id) && !hasLeft(before.craft, this.roles.booster.id))
       this.host.say?.('Parted', 'The spacecraft parted at last, the booster’s push gone');
+    if (state.retroAt !== null && before.retroAt === null && !hasLeft(state.craft, this.roles.booster.id))
+      this.host.say?.(
+        'Retrofire on the booster',
+        'The retrorockets fire into the adapter: their push is on the whole stack, through the clamp ring. What their jets do to the adapter is not modelled',
+      );
     if (state.ticks === before.ticks) return state;
     const s = v.sample(state);
     this.tally.note(s, state, v);
@@ -624,7 +629,7 @@ export class Cockpit extends Deck {
     const alone = hasLeft(s.craft, this.roles.booster.id);
     if (what === 'cutoff') return s.ignited && !s.cutoff;
     if (what === 'separate') return !alone;
-    if (what === 'retro') return alone && s.retroAt === null && !hasLeft(s.craft, this.roles.pack);
+    if (what === 'retro') return s.retroAt === null && !hasLeft(s.craft, this.roles.pack);
     if (what === 'retropack') return alone && !hasLeft(s.craft, this.roles.pack);
     if (what === 'drogue') return alone && hasLeft(s.craft, this.roles.tower) && s.drogueAt === null && s.mainAt === null;
     return alone && hasLeft(s.craft, this.roles.tower) && s.mainAt === null;

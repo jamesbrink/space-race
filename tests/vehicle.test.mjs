@@ -1074,6 +1074,51 @@ test('the tower let go on the pad: it leaves on both its rockets, the stack stan
   );
 });
 
+test('retrofire before separation: the motors fire into the adapter and push the whole stack; the retropack stays in it', () => {
+  // the record's pilot, asked for retrofire after the cutoff with the spacecraft still on its adapter
+  const record = autopilot(whole);
+  const asked = 145;
+  const span = [asked, 150];
+  const asking = (s) => {
+    const c = record(s);
+    return s.t >= asked && !hasLeft(s.craft, B.booster.id) ? { ...c, events: [...(c.events ?? []), R.retro.id] } : c;
+  };
+  /** The vehicle under a pilot at each instant of `span`. */
+  const states = (pilot) => {
+    let s = whole.start();
+    const out = [];
+    for (const t of span) {
+      s = until(whole, s, pilot, t);
+      out.push(s);
+    }
+    return out;
+  };
+  const [a, b] = [states(record), states(asking)];
+  assert.ok(!hasLeft(b[1].craft, B.booster.id), 'still on its adapter');
+  near(b[1].craft.fired[R.retro.id], asked, TICK, 'the first motor lit as asked, on the booster');
+  // what the stack gains over the record's coast along its axis is the motors' impulse in the span over its mass
+  const impulse = R.motors.reduce((sum, m) => {
+    const lit = b[1].craft.engines[m.id].lit;
+    return sum + m.thrust.vacuum.value * Math.max(0, Math.min(span[1], lit + m.burn.value) - Math.max(span[0], lit));
+  }, 0);
+  const extra = sub(sub(b[1].v, b[0].v), sub(a[1].v, a[0].v));
+  const along = dot(extra, whole.sample(b[0]).axis);
+  near(along, impulse / b[0].mass, 0.002 * along, 'the stack pushed on along its axis by the motors’ impulse over its mass');
+  near(length(extra), along, 1e-3, 'and only along it');
+  // the retropack asked for on the booster: it sits inside the adapter and stays until the spacecraft has left it
+  const packed = flyLive(whole, (s) => {
+    const c = record(s);
+    return s.t >= asked && !hasLeft(s.craft, B.booster.id) ? { ...c, do: [{ separate: R.packJoint.id }] } : c;
+  });
+  assert.ok(!(packed.state.craft.fired[R.packOff.id] < live.state.separation.t), 'the retropack not let go on the booster');
+  // spent on the booster, nothing is left to bring the spacecraft down short: it lands beyond the record's
+  const early = flyLive(whole, asking);
+  assert.ok(early.results.range > live.results.range, `${((early.results.range - live.results.range) / 1000).toFixed(1)} km long`);
+  console.log(
+    `# retrofire on the booster at T+${asked}: the stack ${along.toFixed(3)} m/s faster by T+${span[1]} (${(impulse / b[0].mass).toFixed(3)} by the impulse), landing ${((early.results.range - live.results.range) / 1000).toFixed(1)} km beyond the record's`,
+  );
+});
+
 test('a programme that never tilts still has a launch azimuth: no attitude is lost', () => {
   const v = vehicle(
     with_((p) => {

@@ -646,9 +646,10 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       } else if (s.mainAt === null && capsule.jets) {
         torque = add(torque, [capsule.jets.roll.value * c.roll, capsule.jets.pitch.value * c.pitch, capsule.jets.yaw.value * c.yaw]);
       }
-      const lit = retros(s, as);
-      if (lit.count > 0) push([lit.thrust, 0, 0], 0);
     }
+    // (the motors push along the axis through the centre of mass: the spacecraft's alone, or with it on its booster the stack's)
+    const lit = retros(s, as);
+    if (lit.count > 0) push([lit.thrust, 0, 0], 0);
     if (escaping) {
       const pull = escapeThrust(at - s.abortAt!);
       // its line passes beside the centre of mass, so it turns the spacecraft as it pulls: that carries it aside, and it does not come down where it left
@@ -779,11 +780,13 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       };
       if (!pressed(booster, { thrust: 0, mass: capsule })) s = leave(s, roles.separation.push?.value ?? 0);
     }
+    // the motors' sequence begun: the first lit now, the rest by their timer (`byTimer`). On the booster too: nothing read
+    // stops them there, and they fire into the adapter, their push on the whole stack through the clamp ring
+    if (retroEvent && ask.event(retroEvent) && s.craft.fired[retroEvent] === undefined && !hasLeft(s.craft, roles.pack))
+      s.craft = fire(plan, s.craft, retroEvent, s.t, s.held).state;
+    byTimer(s, s.t);
     if (hasLeft(s.craft, roles.booster.id)) {
-      // the motors' sequence begun: the first lit now, the rest by their timer (`byTimer`)
-      if (retroEvent && ask.event(retroEvent) && s.craft.fired[retroEvent] === undefined && !hasLeft(s.craft, roles.pack))
-        s.craft = fire(plan, s.craft, retroEvent, s.t, s.held).state;
-      byTimer(s, s.t);
+      // (the retropack sits inside the adapter: it goes only once the spacecraft has left it)
       if (ask.separate(packJoint) && !hasLeft(s.craft, roles.pack)) dropPack(s);
       // (no parachute comes out past a tower)
       if (ask.deploy(drogueChute) && hasLeft(s.craft, roles.tower) && s.drogueAt === null && s.mainAt === null) s = drogue(s);

@@ -543,7 +543,8 @@ Before is what it did ahead of `sim/staging.ts`.
 | Separate under thrust (100 s) | in flight | the Redstone's engine cut by it and the capsule off at once | the booster's push holds the capsule on its adapter | rides on to the cutoff, 141.8 s, and parts then (`pressed`) |
 | Tower let go on the pad | any time | not offered, ignored | MR-1's left its pad on both rockets (21 November 1960; Hammack and Heberlig, p. 15: both fire at the clamp ring's release) | it goes on both, 1.5 km up in 5 s, and the stack stands; the rockets start the clock as an abort's do, and lit later the programme and sequence run from the lighting, the programme held to the vertical there (autopilot.ts `since`) |
 | Tower let go at max q | in flight | leaves; the flight goes on | as that | the same |
-| Retrofire, retropack before separation | not offered, ignored | | into the adapter; interlocks not read | not modelled |
+| Retrofire before separation (145 s) | any time | not offered, ignored | the motors on the heat shield, their nozzles into the adapter; no interlock read | they fire, and their push is on the whole stack through the clamp ring: 4.011 m/s in 5 s, their impulse over its mass; spent there, it lands 14.1 km beyond the record's; said. What the jets do to the adapter: not modelled |
+| Retropack before separation | not offered, ignored | | it sits inside the adapter (redstone-mrlv.md) | held there until the spacecraft has left it: still not offered |
 | Retrofire in the air | once alone | fires; the physics | as that | the same |
 | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
 | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
