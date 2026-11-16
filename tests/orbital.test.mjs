@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { flyOrbit, injectionState } from '../src/sim/orbital.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
+import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
@@ -23,7 +23,8 @@ const all = await Promise.all(
   ),
 );
 const orbiters = all.filter((f) => f.orbital && f.site);
-const fly = (f, orbital = f.orbital) => flyOrbit(planOfOrbital(orbital), siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
+/** The coast of a flight's plan, or of the plan of its record with an input changed (its Vostok's: every orbiter is one). */
+const fly = (f, orbital) => flyOrbit(orbital ? vostokPlan(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);

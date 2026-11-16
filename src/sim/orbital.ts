@@ -22,7 +22,17 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } f
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
-import type { Action, AeroDef, AttitudeDef, EngineDef, EventDef, FlightPlan, Hold } from './plan.ts';
+import {
+  type Action,
+  type AeroDef,
+  type AttitudeDef,
+  clockAt,
+  type EngineDef,
+  type EventDef,
+  eventOf,
+  type FlightPlan,
+  type Hold,
+} from './plan.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
 
@@ -795,10 +805,7 @@ const ships = new WeakMap<FlightPlan, Ship>();
  * the parting has happened). Never: the largest safe integer, as a plan given up has it, or Infinity.
  */
 export function coastOf(plan: FlightPlan): Coast {
-  const timeOf = (e: EventDef | undefined): number => {
-    const w = e?.when.find((x) => 'time' in x);
-    return w && 'time' in w ? w.time : Infinity;
-  };
+  const timeOf = (e: EventDef | undefined): number => clockAt(plan, e);
   const { on, off, parting } = coastEvents(plan);
   const down =
     parting && plan.events.find((e) => e.when.some((w) => 'after' in w && w.after === parting.id) && e.when.some((w) => 'height' in w));
@@ -812,17 +819,38 @@ export function coastOf(plan: FlightPlan): Coast {
     loose: down?.id ?? null,
   };
 }
-/** The events the coast's instants are read from: the burn the record's coast flies, lit and cut, and its body let go (the automatic events that do them). */
-export function coastEvents(plan: FlightPlan): { burn?: EngineDef; on?: EventDef; off?: EventDef; parting?: EventDef } {
+/**
+ * The events the coast's instants are read from: the burn the record's coast flies, lit and cut, and its body let go (the
+ * automatic events that do them); the command its lighting follows (the event it is set off `after`), where it has one,
+ * and what that command arms (a timer it starts).
+ */
+export function coastEvents(plan: FlightPlan): {
+  burn?: EngineDef;
+  command?: EventDef;
+  armed: EventDef[];
+  on?: EventDef;
+  off?: EventDef;
+  parting?: EventDef;
+} {
   const c = plan.craft[0]!;
   const doing = (test: (a: Action) => boolean) => plan.events.find((e) => e.automatic && e.do.some(test));
   const burn = c.engines.find((e) => e.flown);
-  if (!burn) return {};
+  if (!burn) return { armed: [] };
   const joint = c.joints.find((j) => j.gone.includes(burn.body));
   const on = doing((a) => 'ignite' in a && a.ignite === burn.id);
   const off = doing((a) => 'cut' in a && a.cut === burn.id);
   const parting = joint && doing((a) => 'separate' in a && a.separate === joint.id);
-  return { burn, ...(on ? { on } : {}), ...(off ? { off } : {}), ...(parting ? { parting } : {}) };
+  const follows = on?.when.find((w) => 'after' in w);
+  const command = follows && 'after' in follows ? eventOf(plan, follows.after) : undefined;
+  const armed = (command?.do ?? []).flatMap((a) => ('arm' in a ? [eventOf(plan, a.arm)!] : []));
+  return {
+    burn,
+    ...(command ? { command } : {}),
+    armed,
+    ...(on ? { on } : {}),
+    ...(off ? { off } : {}),
+    ...(parting ? { parting } : {}),
+  };
 }
 export interface Coast {
   /** The burn lit and cut, the body it is on let go, the height what comes down is let loose at, s and m. */

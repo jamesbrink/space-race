@@ -949,10 +949,11 @@ export function descentOf(whole: FlownWhole, centre: number, ground = 0): DrawnD
 }
 
 /**
- * The plan with its coast's burn made by hand (`PlanRecord.manual`, and the burn's `EngineDef.deltaV`): lit at `t`, pushing
- * along `aim` (a unit vector in the flight's frame, world/earthframe.ts) for as long as the engine takes to give its
- * integrator's impulse, and the modules parting `manual.parting` after. What the flight deck flies from a hand's burn
- * (orbitdeck.ts); the rest is the plan's. Each event keeps the record's instant (`at`): only when it is set off changes.
+ * The plan with its coast's burn made by hand (`PlanRecord.manual`, and the burn's `EngineDef.deltaV`): commanded and lit
+ * at `t`, pushing along `aim` (a unit vector in the flight's frame, world/earthframe.ts) for as long as the engine takes to
+ * give its integrator's impulse, and the modules parting `manual.parting` after. The hand's command starts nothing the
+ * automatic one would (a timer it arms is never armed). What the flight deck flies from a hand's burn (orbitdeck.ts); the
+ * rest is the plan's. Each event keeps the record's instant (`at`): only when it is set off changes.
  */
 export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   const parting = plan.record?.manual?.parting;
@@ -961,19 +962,24 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   const deltaV = k.burn?.deltaV;
   if (!parting || !k.burn || !deltaV) throw new Error('this plan says nothing of what a hand could do');
   const burn = (shipOf(plan).mass * deltaV.value) / k.burn.thrust.vacuum.value;
-  setOff(k.on, t);
-  setOff(k.off, t + burn);
+  // (the chain kept where the plan has one, each so long after the one before: t, t + burn and t + burn + parting all the same)
+  if (k.command) {
+    setOff(k.command, t);
+    k.command.do = k.command.do.filter((a) => !('arm' in a));
+  }
+  if (!waits(k.on, 0)) setOff(k.on, t);
+  if (!waits(k.off, burn)) setOff(k.off, t + burn);
   k.burn.flown = { ...k.burn.flown!, value: deltaV.value };
   for (const a of out.attitude) if ('aim' in a.hold) a.hold = { ...a.hold, aim: 'fixed', sense: 1, vector: aim };
-  setOff(k.parting, t + burn + parting.value);
+  if (!waits(k.parting, parting.value)) setOff(k.parting, t + burn + parting.value);
   return out;
 }
 
-/** The plan with its coast's burn given up: nothing lit, cut or parted by the clock (all three at the largest safe integer), until a hand does. */
+/** The plan with its coast's burn given up: nothing commanded, lit, cut or parted by the clock (each at the largest safe integer), until a hand does. */
 export function givenUp(plan: FlightPlan): FlightPlan {
   const out = structuredClone(plan);
   const k = coastEvents(out);
-  for (const e of [k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
+  for (const e of [k.command, k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
   return out;
 }
 
@@ -984,9 +990,18 @@ export function partingAt(plan: FlightPlan, t: number): FlightPlan {
   return out;
 }
 
-/** An event set off by the clock at another instant: its `time` trigger moved; `at`, the record's instant, kept. */
+/** An event set off so long after the one it follows (its `after`'s wait made `wait`), if it follows one: whether it does. */
+function waits(e: EventDef | undefined, wait: number): boolean {
+  if (!e?.when.some((w) => 'after' in w)) return false;
+  e.when = e.when.map((w) => ('after' in w ? { ...w, wait } : w));
+  return true;
+}
+
+/** An event set off by the clock at another instant: its `time` trigger (or the event it followed, and its wait) made that instant; `at`, the record's instant, kept. */
 function setOff(e: EventDef | undefined, t: number): void {
-  if (e) e.when = e.when.map((w) => ('time' in w ? { time: t } : w));
+  if (!e) return;
+  const rest = e.when.filter((w) => !('time' in w) && !('after' in w));
+  e.when = rest.length < e.when.length ? [{ time: t }, ...rest] : e.when;
 }
 
 /** A check of an orbital flight's, with what the run gave for it: the ascent's, the coast's and the descent's in turn. */

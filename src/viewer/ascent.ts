@@ -5,6 +5,7 @@ import { airAt, blowOf } from '../sim/air.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { coastEvents, coastOf } from '../sim/orbital.ts';
+import { type EventDef, eventOf, type FlightPlan } from '../sim/plan.ts';
 import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples, sequenceOf, stagesOf } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
@@ -987,32 +988,54 @@ export function orbitalRecord(flight: SitedFlight): Run {
 }
 
 /**
- * When each event of an orbital flight's record (by its id: the plan's events' `record` and its marks) happens on a run of it: the record's instants,
- * but for what the run itself decides. The ejection is when the run came down through its height, and each body's
- * landing (`<id>-down`, for the descent's bodies by id) where flyDown put it. With `hand` (a braking burn fired by hand,
- * from `on` to `off`), the burn's own events are the hand's, the timer's never comes, and the modules part when the plan
- * has them part (`parting`).
+ * When each event of an orbital flight's record happens on a run of it, by the record's ids (the plan's events' `record`
+ * and its marks): the record's instants, but for what the run itself decides. The event that sets the pilot loose is when
+ * the run came down through its height, and a body's landing (a mark that `lands` it) where the run put it down. With
+ * `hand`, the descent as a hand has it: the modules parting at `parting`; and its braking burn, `burn` (left out, the
+ * timer's as recorded; null, none; or the hand's, from `on` to `off`), whose command and lighting come at its start and
+ * what that command arms (the timer) never.
  */
 export function orbitalEvents(
   flight: SitedFlight,
   whole: FlownWhole,
-  hand?: { on: number; off: number; parting: number },
+  hand?: { burn?: { on: number; off: number } | null; parting: number },
 ): Record<string, number> {
   const plan = flight.plan!;
   const out: Record<string, number> = {};
+  const put = (e: EventDef | undefined, t: number) => {
+    if (e?.record) out[e.record.id] = t;
+  };
   for (const e of plan.events) if (e.record && e.at) out[e.record.id] = e.at.value;
   for (const m of plan.record?.marks ?? []) out[m.id] = m.at.value;
+  const k = coastEvents(plan);
   if (hand) {
-    const k = coastEvents(plan);
-    out['retro-command'] = hand.on;
-    if (k.on?.record) out[k.on.record.id] = hand.on;
-    if (k.off?.record) out[k.off.record.id] = hand.off;
-    out['retro-timer'] = Infinity;
-    if (k.parting?.record) out[k.parting.record.id] = hand.parting;
+    if (hand.burn !== undefined) {
+      for (const e of [k.command, k.on]) put(e, hand.burn?.on ?? Infinity);
+      put(k.off, hand.burn?.off ?? Infinity);
+      for (const e of k.armed) put(e, Infinity);
+    }
+    put(k.parting, hand.parting);
   }
-  // (the ejection is when the descent had it: the barometric switch's height on the record's run, or when a hand gave it)
+  // (the pilot set loose when the descent had it: the barometric switch's height on the record's run, or when a hand gave it)
   const ejected = whole.down ? whole.down.ejected : whole.coast.results.ejectionAt;
-  out.ejection = Number.isFinite(ejected) ? ejected : Infinity;
-  for (const [id, landed] of Object.entries(whole.down?.landed ?? {})) out[`${id}-down`] = landed.at;
+  put(eventOf(plan, coastOf(plan).loose ?? ''), Number.isFinite(ejected) ? ejected : Infinity);
+  for (const m of plan.record?.marks ?? []) {
+    const landed = m.lands ? whole.down?.landed[m.lands] : undefined;
+    if (landed) out[m.id] = landed.at;
+  }
   return out;
+}
+
+/**
+ * The record's events a hand's taking the descent puts off, by their ids in the record (as `orbitalEvents` gives them):
+ * the braking burn's command, lighting and cut and what the command arms, the modules' parting, the event that sets the
+ * pilot loose, and the landings.
+ */
+export function descentRecords(plan: FlightPlan): string[] {
+  const k = coastEvents(plan);
+  const loose = eventOf(plan, coastOf(plan).loose ?? '');
+  return [
+    ...[k.command, k.on, k.off, ...k.armed, k.parting, loose].flatMap((e) => (e?.record ? [e.record.id] : [])),
+    ...(plan.record?.marks ?? []).flatMap((m) => (m.lands ? [m.id] : [])),
+  ];
 }

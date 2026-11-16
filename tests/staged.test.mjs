@@ -12,7 +12,7 @@ import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
 import { between, propagate } from '../src/sim/predict.ts';
-import { planOfOrbital } from '../src/sim/planof.ts';
+import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, lawOf, published, schedule, steer } from '../src/sim/staged.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
@@ -238,7 +238,8 @@ for (const f of flown) {
       change(copy);
       let s;
       try {
-        s = ascend(planOfOrbital(copy), site, dated, sea, steer(planOfOrbital(copy), site, dated, sea)).summary;
+        const plan = vostokPlan(copy);
+        s = ascend(plan, site, dated, sea, steer(plan, site, dated, sea)).summary;
       } catch (e) {
         console.log(`  #   ${label.padEnd(58)} ${e.message}`);
         return null;

@@ -38,10 +38,19 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     - Every trigger in `when` must hold: `time`, `after` another event (+`wait`), `height` going up or down, `speed`
       (space-fixed, or an engine's `apparent` velocity), `g`, a hand's `command`, `falling`.
     - `do` lists the actions, in order: `ignite`, `cut`, `throttle`, `separate`, `deploy`, `release`, `attitude`, `arm`.
-    - `at` is the record's instant; `record` names the record's own event at that instant (set on every timed event at one).
+    - `at` is the record's instant; `record` names the record's own event at that instant (set on every timed event at one),
+      or the one it is where the record gives it no instant of the clock's (the pilot set loose at a height).
     - An event marked `armed: false` waits for an `arm`.
+    - `clockAt(plan, event)` is when the clock sets it off: its `time`, or so long after the event it follows, down the chain.
   - `record.marks` are the record's instants that set nothing off. An instant counts as an event's only where the clock sets
-    that event off, so a stage cut on its velocity leaves its record instant a mark.
+    that event off (at a time, or after another), so a stage cut on its velocity leaves its record instant a mark. A mark
+    that `lands` a body is that body's landing: a run has its own instant for it.
+  - What the record's sequence did is said as events, never as a list of the record's ids in code: a Vostok's braking burn
+    is commanded at its instant, lit, cut and the modules parted each so long `after` the one before (the record's
+    instants again, to the bit), and the timer that shut the engine down (Vostok 1's) is an event the command `arm`s.
+    orbital.ts `coastEvents` finds them by what they do: the coast's burn, its lighting and cut, the command the lighting
+    follows, what that command arms, and the parting of the burn's body. A hand's burn (staged.ts `byHand`) is that chain
+    re-timed: commanded and lit at its instant, cut by its integrator, the modules parting after, and no timer started.
   - `PlanCheck.when` says where a figure is read: an instant, the most while some bodies are aboard, the most while an
     engine burns.
   - `problems(plan)` says in words what is wrong with a plan. A plan is checked before it is flown.
@@ -56,9 +65,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - Each flight that flies carries its plan, `Flight.plan`. A Mercury-Redstone's is written by its vehicle module
     (mercury-redstone.ts `plan(day, checks)`, from the day and the hardware's figures; tests/plan.test.mjs holds it equal to
     `planOfTrajectory` of the same flight's `trajectory` while that remains). A Vostok's is written from its record by
-    missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan` (held equal to `planOfOrbital` likewise; that one is cached per
-    record, for tests that fly a changed record). The orbital batch, the live staged vehicle, the decks and views fly
-    `flight.plan`; a plan changed by a hand is an edit of it.
+    missions/ussr/vostok/vehicles/vostok-plan.ts `vostokPlan`, which says the braking burn's command, timer and chain as
+    events of their own (planOfOrbital does not, and nothing is held to it now); tests/plan.test.mjs holds it to the
+    record's figures and instants, and tests that fly a changed record fly `vostokPlan` of it. The orbital batch, the live
+    staged vehicle, the decks and views fly `flight.plan`; a plan changed by a hand is an edit of it.
   - These go when the flights' data says its plan itself.
 - **One machine** (`sim/craft.ts`). `CraftState` holds what is lit and out, what is let go and gone, which parachute is out,
   which events have happened and which are armed, and the attitude held. It is never changed in place.
@@ -83,8 +93,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - The orbital batch reads what happens when from the plan's events: staged.ts `sequenceOf` and orbital.ts `coastOf`.
     - `sequenceOf`: each stage lit, cut (at an instant, on a speed, on its apparent velocity) and let go by the joint that
       first lets its body go; the drops; the record's instants by id.
-    - `coastOf`: the burn the coast flies, the parting of the body it is on, and the height what comes down is let loose
-      at.
+    - `coastOf`: the burn the coast flies, the parting of the body it is on (each at its `clockAt`, chained or not), and
+      the height what comes down is let loose at.
     - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. The ballistic side takes the plan too: `fly`, `flownOnce`, `axisOf`, `dragArea`, `thrustIn`, the live vehicle (`vehicle(plan, …)`), its autopilot and `verdict`, the `ballistic` flier and `predict`, and what is shed (`Sheds`, `shedder`, `recordRelease`: the stack's drag area, the winds and `Craft.sheds`). Each finds its hardware by what it is, once per plan (fly.ts `ballisticOf`): the booster is the first body and its engine the lever's; the separation the joint that lets the booster go; the abort the event a hand's command sets off and the escape rocket the motor it lights; the retrorockets every other solid with a burn, begun by the event that lights the first and chained by their `after` triggers; the tower and pack the bodies of those motors and the joints that let them go; the main parachute the one with `instead`, each parachute's height its deploying event's; masses at the partings their joints' `after`. A live sample's `burning` names each engine by its plan id. Only the adapters (planof.ts) and the consumers outside src/sim read the record.
   - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and

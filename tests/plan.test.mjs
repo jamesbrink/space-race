@@ -1,13 +1,16 @@
-// The plan model (src/sim/plan.ts) and the plans made from today's two shapes (src/sim/planof.ts): every flight that
-// flies has a whole plan, which carries each figure of what it was made from as it was; and the model can say a flight
-// of a kind not flown yet (a Gemini on its Titan) without anything new in the code.
+// The plan model (src/sim/plan.ts): every flight that flies has a whole plan, which carries each figure of the record it
+// was written from as it was (a Mercury-Redstone's held equal to the plan src/sim/planof.ts makes of its trajectory; a
+// Vostok's, which says its braking burn's command, timer and chain as events of its own, to its record); and the model
+// can say a flight of a kind not flown yet (a Gemini on its Titan) without anything new in the code.
 import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { eventOf, problems } from '../src/sim/plan.ts';
-import { bodiesMass, planOfOrbital, planOfTrajectory, stageId } from '../src/sim/planof.ts';
+import { coastEvents } from '../src/sim/orbital.ts';
+import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
+import { bodiesMass, planOfTrajectory, stageId } from '../src/sim/planof.ts';
+import { byHand, givenUp } from '../src/sim/staged.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -28,11 +31,10 @@ test('there are flights of both kinds to make plans of', () => {
 });
 
 for (const f of [...ballistic, ...orbital]) {
-  const plan = f.trajectory ? planOfTrajectory(f.trajectory, f.checks) : planOfOrbital(f.orbital);
   test(`${f.id}: its plan is whole, and is the flight's own`, () => {
-    assert.deepEqual(problems(plan), []);
-    assert.equal(plan.kind, f.trajectory ? 'ballistic' : 'orbital');
-    assert.deepEqual(f.plan, plan, 'Flight.plan is the plan made of its record');
+    assert.deepEqual(problems(f.plan), []);
+    assert.equal(f.plan.kind, f.trajectory ? 'ballistic' : 'orbital');
+    if (f.trajectory) assert.deepEqual(f.plan, planOfTrajectory(f.trajectory, f.checks), 'Flight.plan is the plan made of its trajectory');
   });
 }
 
@@ -76,7 +78,7 @@ for (const f of ballistic) {
 
 for (const f of orbital) {
   const o = f.orbital;
-  const plan = planOfOrbital(o);
+  const plan = f.plan;
   const c = craftOf(plan);
   test(`${f.id}: the orbital plan carries the record's figures`, () => {
     assert.equal(c.mass, o.liftoffMass);
@@ -105,6 +107,10 @@ for (const f of orbital) {
     for (const e of o.events) assert.ok(named.has(e.id), `the record's ${e.id} is in the plan`);
     assert.equal(eventOf(plan, 'retro-on').at, o.retro.on);
     assert.equal(eventOf(plan, 'retro-off').at, o.retro.off);
+    // every event the clock sets off at a record instant is set off at it to the bit, chained or not
+    for (const e of plan.events)
+      if (e.at && e.when.some((w) => 'time' in w || 'after' in w))
+        assert.equal(clockAt(plan, e), e.at.value, `${e.id} at its record instant`);
     assert.equal(byId(c.engines, 'braking').flown, o.retro.deltaV);
     assert.equal(byId(c.joints, 'modules').after, o.entry.mass);
     assert.equal(eventOf(plan, 'ejection').when.find((w) => 'height' in w).height, o.ejection.altitude.value);
@@ -114,6 +120,37 @@ for (const f of orbital) {
     }
     assert.equal(plan.checks.length, (o.ascent?.checks.length ?? 0) + o.checks.length + (o.descent?.checks.length ?? 0));
     assert.equal(plan.record.orbit.period, o.orbit.period);
+  });
+  test(`${f.id}: the braking burn is commanded, lit, cut and the modules parted in a chain; a timer is started by the command`, () => {
+    const k = coastEvents(plan);
+    const has = (id) => o.events.some((e) => e.id === id);
+    assert.equal(k.command?.record?.id, has('retro-command') ? 'retro-command' : undefined, 'the lighting follows the command');
+    assert.equal(k.on.when[0].after, k.command?.id);
+    assert.equal(k.off.when[0].after, k.on.id, 'the cut follows the lighting');
+    assert.equal(k.parting.when[0].after, k.off.id, 'the parting follows the cut');
+    assert.deepEqual(
+      k.armed.map((e) => [e.record?.id, e.armed]),
+      has('retro-timer') ? [['retro-timer', false]] : [],
+      'the timer waits for the command to start it',
+    );
+    // the pilot set loose and the landings carry the record's names for them
+    assert.equal(eventOf(plan, 'ejection').record?.id, 'ejection');
+    assert.deepEqual(
+      plan.record.marks.filter((m) => m.lands).map((m) => [m.id, m.lands]),
+      (o.descent?.bodies ?? []).filter((b) => has(`${b.id}-down`)).map((b) => [`${b.id}-down`, b.id]),
+    );
+    // a hand's burn: commanded and lit at its instant, cut by its integrator, the modules parting after; no timer started
+    const t = o.retro.on.value - 600;
+    const hand = byHand(plan, t, [1, 0, 0]);
+    const h = coastEvents(hand);
+    assert.equal(clockAt(hand, h.command), k.command ? t : Infinity);
+    assert.equal(clockAt(hand, h.on), t);
+    assert.ok(clockAt(hand, h.off) > t && clockAt(hand, h.parting) === clockAt(hand, h.off) + plan.record.manual.parting.value);
+    assert.deepEqual(h.armed, [], 'a hand’s command starts no timer');
+    // given up: nothing on the clock
+    const never = coastEvents(givenUp(plan));
+    for (const e of [never.command, never.on, never.off, never.parting].filter(Boolean))
+      assert.equal(clockAt(givenUp(plan), e), Number.MAX_SAFE_INTEGER);
   });
 }
 

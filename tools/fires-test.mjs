@@ -31,7 +31,8 @@ const burning = (t) =>
     const { flies, plan } = window.sr.flight;
     const c = plan?.craft[0];
     const doing = (test) => plan?.events.find((e) => e.automatic && e.do.some(test));
-    const clock = (e) => e?.when.find((w) => 'time' in w)?.time ?? Number.NaN;
+    // (the record's instant of an event, or the clock's where it has none: what is lit at liftoff)
+    const clock = (e) => e?.at?.value ?? e?.when.find((w) => 'time' in w)?.time ?? Number.NaN;
     const span = (id, what) => {
       const engine = c?.engines.find((e) => e.id === id);
       const lit = doing((a) => a.ignite === id);

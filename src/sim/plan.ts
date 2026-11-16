@@ -364,8 +364,11 @@ export interface PlanRecord {
   centre?: Measure;
   /** What the spacecraft's own sequence does after an abort, and what pad aborts flown did (types/sim.ts `Body.escape`). */
   abort?: { sequence?: AbortSequence; record?: AbortRecord[] };
-  /** The record's instants that set nothing off (the orbit reached, the module down), by id: for the timeline and the checks. */
-  marks?: { id: string; label: string; at: Measure; also?: string }[];
+  /**
+   * The record's instants that set nothing off (the orbit reached, the module down), by id: for the timeline and the checks.
+   * `lands` names the body whose landing an instant is: a run has its own instant for it, where it put that body down.
+   */
+  marks?: { id: string; label: string; at: Measure; also?: string; lands?: string }[];
 }
 
 /** Everything in a plan that can be named, by kind, for the checks below and the machine's look-ups. */
@@ -495,6 +498,20 @@ export function problems(plan: FlightPlan): string[] {
 /** The plan's event by id. */
 export function eventOf(plan: FlightPlan, id: string): EventDef | undefined {
   return plan.events.find((e) => e.id === id);
+}
+
+/**
+ * When the clock sets an event off on a plan, s from liftoff: at its `time`, or so long after the event it follows
+ * (`after`, plus its `wait`), the latest where it has several; never (Infinity) for one nothing on the clock sets off.
+ * Its other triggers (a height, a speed) are not the clock's, and are not read here.
+ */
+export function clockAt(plan: FlightPlan, e: EventDef | undefined, seen: ReadonlySet<string> = new Set()): number {
+  if (!e || seen.has(e.id)) return Infinity;
+  let at = Number.NEGATIVE_INFINITY;
+  for (const w of e.when)
+    if ('time' in w) at = Math.max(at, w.time);
+    else if ('after' in w) at = Math.max(at, clockAt(plan, eventOf(plan, w.after), new Set([...seen, e.id])) + (w.wait ?? 0));
+  return at === Number.NEGATIVE_INFINITY ? Infinity : at;
 }
 
 /** The first event that sets off an action, as the record has it: when the record does it, if it does. */

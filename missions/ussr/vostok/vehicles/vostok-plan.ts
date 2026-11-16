@@ -223,6 +223,10 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
   ];
   // turned to its braking attitude at the record's orientation, where it has one, or as the engine lights
   const oriented = o.events.find((e) => e.id === 'orientation')?.at ?? o.retro.on;
+  // the braking burn's command (the timer's, where the record has it), the timer that shut the engine down, the ejection
+  const command = o.events.find((e) => e.id === 'retro-command');
+  const timer = o.events.find((e) => e.id === 'retro-timer');
+  const ejected = o.events.find((e) => e.id === 'ejection');
   const record = (at: Measure) => {
     const e = o.events.find((x) => Math.abs(x.at.value - at.value) < 1e-6);
     return e ? { record: { id: e.id, label: e.label } } : {};
@@ -290,6 +294,38 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
     });
   sequence.sort((p, q) => p.at!.value - q.at!.value || p.order - q.order);
   for (const { order: _, ...e } of sequence) events.push(e);
+  // The braking burn as the record has it: commanded at the record's instant, where it has the command, and then lit, cut
+  // and the modules parted, each so long after the one before. Those are the record's instants again, to the bit: the
+  // difference of two instants within a factor of two of each other is exact, and so is the sum back. Where the record has
+  // the timer that shut the engine down, the command starts it and it comes at its own instant.
+  const after = (e: EventDef | undefined, at: Measure) => (e?.at ? [{ after: e.id, wait: at.value - e.at.value }] : atTime(at));
+  const commanded: EventDef | undefined = command && {
+    id: 'braking-command',
+    label: 'Braking engine commanded on',
+    when: atTime(command.at),
+    do: timer ? [{ arm: 'braking-timer' }] : [],
+    automatic: true,
+    at: command.at,
+    source: command.at.source,
+  };
+  const on: EventDef = {
+    id: 'retro-on',
+    label: 'Braking engine on',
+    when: after(commanded, o.retro.on),
+    do: [{ ignite: 'braking' }],
+    automatic: true,
+    at: o.retro.on,
+    source: o.retro.on.source,
+  };
+  const off: EventDef = {
+    id: 'retro-off',
+    label: 'Braking engine off',
+    when: after(on, o.retro.off),
+    do: [{ cut: 'braking' }],
+    automatic: true,
+    at: o.retro.off,
+    source: o.retro.off.source,
+  };
   events.push(
     {
       id: 'braking-attitude',
@@ -300,28 +336,27 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
       at: oriented,
       source: oriented.source,
     },
-    {
-      id: 'retro-on',
-      label: 'Braking engine on',
-      when: atTime(o.retro.on),
-      do: [{ ignite: 'braking' }],
-      automatic: true,
-      at: o.retro.on,
-      source: o.retro.on.source,
-    },
-    {
-      id: 'retro-off',
-      label: 'Braking engine off',
-      when: atTime(o.retro.off),
-      do: [{ cut: 'braking' }],
-      automatic: true,
-      at: o.retro.off,
-      source: o.retro.off.source,
-    },
+    ...(commanded ? [commanded] : []),
+    on,
+    off,
+    ...(timer
+      ? [
+          {
+            id: 'braking-timer',
+            label: 'Braking engine shut down by its timer',
+            when: atTime(timer.at),
+            do: [{ cut: 'braking' }],
+            automatic: true,
+            at: timer.at,
+            source: timer.at.source,
+            armed: false as const,
+          },
+        ]
+      : []),
     {
       id: 'modules',
       label: 'The modules part',
-      when: atTime(o.entry.separation),
+      when: after(off, o.entry.separation),
       do: [{ separate: 'modules' }],
       automatic: true,
       at: o.entry.separation,
@@ -333,6 +368,7 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
       when: [{ after: 'modules' }, { height: o.ejection.altitude.value, going: 'down' }],
       do: dbodies.slice(1).flatMap((b) => ((b.with ?? ['ejection']).includes('ejection') ? [{ separate: b.id }] : [])),
       automatic: true,
+      ...(ejected ? { record: { id: ejected.id, label: ejected.label } } : {}),
       source: o.ejection.altitude.source,
     },
   );
@@ -355,8 +391,9 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
     }
   // the record's own events at the instants the plan's others are set off at (the braking burn, the modules' parting)
   for (const e of events) if (e.at && !e.record) Object.assign(e, record(e.at));
-  // (an instant is an event's only where the clock sets it off: one a stage is cut at on its velocity stays a mark, the record's instant of what the integrator did)
-  const actionAt = new Set(events.flatMap((e) => (e.at && e.when.some((w) => 'time' in w) ? [e.at.value] : [])));
+  // (an instant is an event's only where the clock sets it off, at a time or so long after another: one a stage is cut at
+  // on its velocity stays a mark, the record's instant of what the integrator did)
+  const actionAt = new Set(events.flatMap((e) => (e.at && e.when.some((w) => 'time' in w || 'after' in w) ? [e.at.value] : [])));
   const checks: PlanCheck[] = [
     ...(a?.checks ?? []).map((c): PlanCheck => ({ ...c, of: 'ascent', ...ascentWhen(c.id, o) })),
     ...o.checks.map((c): PlanCheck => ({ ...c, of: 'orbit' })),
@@ -378,9 +415,13 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
         : {}),
       ...(a?.aborts ? { aborts: a.aborts } : {}),
       ...(a?.centre ? { centre: a.centre } : {}),
+      // (a body's landing, by the record's name for it: `<body>-down`)
       marks: o.events
         .filter((e) => !actionAt.has(e.at.value))
-        .map((e) => ({ id: e.id, label: e.label, at: e.at, ...(e.also ? { also: e.also } : {}) })),
+        .map((e) => {
+          const lands = dbodies.find((b) => e.id === `${b.id}-down`);
+          return { id: e.id, label: e.label, at: e.at, ...(e.also ? { also: e.also } : {}), ...(lands ? { lands: lands.id } : {}) };
+        }),
     },
   };
 }
