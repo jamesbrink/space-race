@@ -62,7 +62,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `part` parts a joint once the simulator's physics lets it go. Whether what is let go is still pressed on
     (staging.ts `pressed`) is physics, not the machine's. `heldBy` is a joint held on by another.
   - The live staged vehicle's `stages` and `drops` are the machine's state as its forces read them. The live ballistic
-    vehicle's `shed` is the same.
+    vehicle's `shed`, `ignited`, `cutoff`, `starts`, `throttle` and `retroAt` are the same: its engine is lit, throttled
+    and cut on the machine (`act`; `burnOut` where it is spent or leaves with the booster), its motors lit by the plan's
+    events, each after the first by its own timer (`chainedAt`) at its instant, whatever the switches say.
   - A hand's commands are the plan's actions and events (`Controls.do`, `Controls.events`; `StagedControls.events`).
 - **A record's run is its plan flown by the record's pilot.**
   - `fly` is `flyPlan`: the craft on the machine, every automatic event set off as it comes due (by the clock, or at a

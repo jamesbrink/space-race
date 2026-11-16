@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
+import { act, part } from '../src/sim/craft.ts';
 import { spacecraft } from '../src/sim/fliers.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
 import { apsides, between, predict, propagate } from '../src/sim/predict.ts';
@@ -210,6 +211,10 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
     const wind = s.v.map((x, k) => x - [-7.292115e-5 * s.r[1], 7.292115e-5 * s.r[0], 0][k]);
     const x = unit(wind.map((w) => -w));
     const y = unit(cross(x, Math.abs(x[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]));
+    // on the machine: the engine lit and out, and every joint parted, the spacecraft alone
+    let craft = act(V.plan, V.start().craft, { ignite: V.engine }, 0, true).state;
+    craft = act(V.plan, craft, { cut: V.engine }, 1, false).state;
+    for (const j of V.plan.craft[0].joints) craft = part(V.plan, craft, j.id, 2);
     let state = {
       ...V.start(),
       t: 1000,
@@ -222,6 +227,7 @@ test('prediction against outcome: the ballistic flight`s spacecraft, predicted, 
       ignited: true,
       cutoff: true,
       held: false,
+      craft,
       shed: { tower: true, booster: true, retropack: true },
     };
     while (!state.landing && state.t < 1000 + 3 * 3600) {

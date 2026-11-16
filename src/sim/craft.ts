@@ -171,6 +171,16 @@ export function act(plan: FlightPlan, s: CraftState, action: Action, t: number, 
   return { state, refused };
 }
 
+/**
+ * An engine stops by itself at `t`: what it burns is spent, or it has left with what it is on. Not a command, so a solid
+ * stops so too; the simulator says when, as it says when a joint is pressed on.
+ */
+export function burnOut(s: CraftState, engine: string, t: number): CraftState {
+  const e = s.engines[engine];
+  if (!e || !Number.isFinite(e.lit) || Number.isFinite(e.out)) return s;
+  return { ...s, engines: { ...s.engines, [engine]: { ...e, out: t } } };
+}
+
 /** A body that has left the craft and flies on by itself (a seat, a pilot): its own parachutes are its own to put out. */
 const free = (plan: FlightPlan, s: CraftState, body: string) =>
   plan.craft[0]!.joints.some((j) => j.gone.includes(body) && j.gone.length === 1 && Number.isFinite(s.joints[j.id]?.gone ?? Infinity));
@@ -183,6 +193,21 @@ export function part(plan: FlightPlan, s: CraftState, joint: string, t: number):
   const bodies = { ...s.bodies };
   for (const b of def.gone) if (!Number.isFinite(bodies[b] ?? Infinity)) bodies[b] = t;
   return { ...s, bodies, joints: { ...s.joints, [joint]: { loose: Math.min(j.loose, t), gone: t } } };
+}
+
+/**
+ * When an event set off only by others (every trigger `after`) is due, s: so long after the last of them. Null while any
+ * of them has not happened, or where it has a trigger of another kind.
+ */
+export function chainedAt(ev: EventDef, s: CraftState): number | null {
+  let at = Number.NEGATIVE_INFINITY;
+  for (const w of ev.when) {
+    if (!('after' in w)) return null;
+    const was = s.fired[w.after];
+    if (was === undefined) return null;
+    at = Math.max(at, was + (w.wait ?? 0));
+  }
+  return ev.when.length ? at : null;
 }
 
 /** Whether one trigger holds now. */
