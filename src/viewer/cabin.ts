@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { hasLeft } from '../sim/craft.ts';
-import { ballisticOf, flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
+import { ballisticOf, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import { spacecraft } from '../sim/fliers.ts';
 import { elements, propagate } from '../sim/predict.ts';
@@ -9,7 +9,7 @@ import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
-import { orbitalEvents, orbitalFlown, orbitalRecord } from '../sim/run.ts';
+import { bearingOf, recordOf, recordTimes, signalsOf } from '../sim/run.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { tier } from './tier.ts';
 
@@ -987,9 +987,8 @@ export class Cabin {
       if (news.holds) this.holding = news.holds;
     }
     if (!state) return;
-    // (what has left, on the machine: the plan's tower, booster and pack by what each is)
-    if (this.flight.plan?.kind !== 'ballistic') return;
-    const roles = ballisticOf(this.flight.plan);
+    // (what has left, on the machine: the plan's tower, booster and pack by what each is; only a ballistic deck has a state)
+    const roles = ballisticOf(this.flight.plan!);
     const mark = (key: Signal, at: number | null | false): void => {
       if (at === null || at === false) delete this.times[key];
       else if (this.times[key] === undefined || at < this.times[key]) this.times[key] = at;
@@ -1016,33 +1015,13 @@ export class Cabin {
     times: Partial<Record<Signal, number>>;
     events?: Readonly<Record<string, number>>;
   } | null {
-    const f = this.flight;
-    const plan = f.plan;
-    if (plan?.kind === 'orbital' && f.flies && f.site) {
-      // a flight into orbit: its record flown (viewer/ascent.ts, the same run the scene shows), and its events' instants
-      if (!this.recorded) {
-        const sited = { ...f, site: f.site };
-        this.recorded = { samples: orbitalRecord(sited).samples, times: {}, events: orbitalEvents(sited, orbitalFlown(sited)) };
-      }
-      return this.recorded;
-    }
-    const site = this.flight.site;
-    if (!plan || !site) return null;
-    if (!this.recorded) {
-      const b = ballisticOf(plan);
-      const { samples, results } = flownOnce(this.flight.plan!, siteFrame(site), site.seaLevel.value, frameOf(this.flight));
-      this.recorded = {
-        samples,
-        times: {
-          tower: b.towerJoint?.at?.value ?? b.cutoff,
-          separated: b.separation.at?.value ?? Infinity,
-          retro: b.retroAt,
-          retropack: b.packJoint?.at?.value ?? Infinity,
-          entry: results.entryAt,
-          drogue: results.drogueAt,
-          main: results.mainAt,
-        },
-      };
+    // the record's run (sim/run.ts `recordOf`, the same run the scene shows): its samples, when each signal came on, and the
+    // instants of the record's events
+    if (!this.recorded && this.flight.site) {
+      const sited = { ...this.flight, site: this.flight.site };
+      const run = recordOf(sited);
+      if (run && this.flight.plan)
+        this.recorded = { samples: run.samples, times: signalsOf(this.flight.plan, run), events: recordTimes(run.events) };
     }
     return this.recorded;
   }
@@ -1315,10 +1294,7 @@ export class Cabin {
       .toArray();
     const up = this.host.upAt(g.position, new THREE.Vector3());
     // level along the bearing flown: the site's +X is its stated bearing, +Z a quarter turn clockwise of it
-    const bearing = THREE.MathUtils.degToRad(
-      (this.flight.plan?.kind === 'ballistic' ? ballisticOf(this.flight.plan).programme.azimuth.value : 0) -
-        (this.flight.site?.bearingX.value ?? 0),
-    );
+    const bearing = THREE.MathUtils.degToRad(bearingOf(this.flight.plan) - (this.flight.site?.bearingX.value ?? 0));
     const a = attitudeOf(nose, head, up.toArray(), [Math.cos(bearing), 0, Math.sin(bearing)]);
     Object.assign(r, a);
     const dt = t - this.last.t;

@@ -22,7 +22,7 @@ import {
   sequenceOf,
   stagesOf,
 } from './staged.ts';
-import type { SitedFlight } from '../types.ts';
+import type { Signal, SitedFlight } from '../types.ts';
 import { G0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
@@ -72,6 +72,8 @@ export interface Run {
   kept?: boolean;
   /** When each parachute came out: Infinity for one that has not. */
   out: { drogue: number; main: number };
+  /** When it first felt a twentieth of a g coming down (sim/loads.ts `ENTRY_G`), where the run says: Infinity, or nothing, for one that has not. */
+  entered?: number;
   /**
    * A spacecraft flown by hand that floods afloat (its hatch blown: `Flight.flies.hatch`): from `at` it goes down evenly to
    * out of sight in `under` seconds, and is drawn no deeper (the cameras that follow it stay above the sea; how far it
@@ -405,6 +407,7 @@ export function recordOf(flight: SitedFlight): Run | null {
     dropped: (flight.flies?.drops ?? []).map((d) => (d.on === roles.drogue.id ? out.drogue : d.on === roles.main.id ? out.main : d.at)),
     live: false,
     out,
+    entered: when(results.entryAt),
     ...grown(plan, craft),
     results: (flight.checks ?? []).map((c) => ({
       id: c.id,
@@ -482,5 +485,32 @@ export function partingOf(plan: FlightPlan, joint: string | undefined): 'tower' 
   if (joint === b.separation.id) return 'vehicle';
   if (joint === b.packJoint?.id) return 'pack';
   return undefined;
+}
+
+/**
+ * When each of a cabin's signals (types.ts `Signal`) came on on a run: the tower gone, the spacecraft parted from its
+ * launch vehicle, the retrorockets fired, the pack gone, the entry felt, each parachute out, the abort. A ballistic
+ * flight's, by its hardware found by what it is (fly.ts `ballisticOf`); a flight into orbit lights its lamps by the
+ * record's events (`recordTimes`) and has none of these.
+ */
+export function signalsOf(plan: FlightPlan, run: Run): Partial<Record<Signal, number>> {
+  if (plan.kind !== 'ballistic') return {};
+  const b = ballisticOf(plan);
+  const happened = (e: EventDef | undefined): number => (e ? (run.events.find((x) => x.event === e.id)?.t ?? Infinity) : Infinity);
+  return {
+    tower: b.tower ? (run.bodies[b.tower] ?? Infinity) : Infinity,
+    separated: run.bodies[b.booster.id] ?? Infinity,
+    retro: happened(b.retro),
+    retropack: b.pack ? (run.bodies[b.pack] ?? Infinity) : Infinity,
+    entry: run.entered ?? Infinity,
+    drogue: run.out.drogue,
+    main: run.out.main,
+    abort: happened(b.abort),
+  };
+}
+
+/** The bearing the plan flies along, degrees from north: a ballistic flight's tilt programme's; 0 for a plan that gives none. */
+export function bearingOf(plan: FlightPlan | undefined): number {
+  return plan?.kind === 'ballistic' ? ballisticOf(plan).programme.azimuth.value : 0;
 }
 

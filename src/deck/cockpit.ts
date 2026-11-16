@@ -414,6 +414,7 @@ export class Cockpit extends Deck {
     if (hasLeft(state.craft, this.roles.pack) && !hasLeft(before.craft, this.roles.pack)) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
     Object.assign(run, grown(this.flight.plan!, state.craft));
+    run.entered = state.enteredAt ?? Infinity;
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     // (each drop as what lets it go, by the plan's id: the tower's, the booster's and the pack's joints, the parachutes; the hatch by its node)
     const roles = this.roles;
