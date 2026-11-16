@@ -55,7 +55,7 @@ What the record gives of the morning, and so what the launch site shows (the sit
 type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
 where the bunker waited for 687; the published orbit flown from where it left the ship goes round
 four days with the entry's load (8.8 g) and the pilot's landing time (09:51:21, not independent) in,
-and comes down **2,441 km short** of the record's landing: over 64 revolutions a second of period is
+and comes down **2,434 km short** of the record's landing: over 64 revolutions a second of period is
 470 km, and no published period is good to better than a hundredth of a minute. The misses are in
 src/sim/misses.ts.
 

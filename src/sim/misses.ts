@@ -81,7 +81,7 @@ const SHORT_V3 =
 /** Vostok 3's four days: where the ship is at the burn is the published period carried round 64 times. */
 const PERIOD_64 =
   'Over 64 revolutions the published period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and the period is given to a hundredth of a minute (300 km). ' +
-  'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) the burn comes over 30 degrees south and the ship is down 2,861 km short; on TASS’s 88.2 min of the next day it would be 874 km long, ' +
+  'Flown on the record’s 88.33 min (Russian Wikipedia, beside Siddiqi’s heights; its source not given) the burn comes over 30 degrees south and the ship is down 2,853 km short; on TASS’s 88.2 min of the next day it would be 874 km long, ' +
   'on 88.3 min 2,212 km short, on the announced 88.5 min 4,636 km short (the coast’s own weighing, November 2026). No published period is good enough to hold the landing over four days, and how fast the real orbit decayed in the air of August 1962 is not known. ' +
   'Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
@@ -281,9 +281,9 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: 'It comes down 75 km across the track from the record’s landing. The Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s). Read as osculating it was 154 km: the coast then fell four minutes behind the record’s orbit (PHASE) and the Earth had turned less under the track',
       },
       alongTrack: {
-        by: -452_416,
+        by: -452_581,
         slack: 10_000,
-        why: 'It comes down 452 km short along the track. Read as mean elements (PHASE) the coast keeps the record’s period, where read as osculating it fell four minutes behind and came down 1,427 km short; what is left is `injection.arc` (no source: 97 km a degree here) and `retro.aim` (straight against the motion: 421 km shorter)',
+        why: 'It comes down 453 km short along the track. Read as mean elements (PHASE) the coast keeps the record’s period, where read as osculating it fell four minutes behind and came down 1,427 km short; what is left is `injection.arc` (no source: 97 km a degree here) and `retro.aim` (straight against the motion: 421 km shorter)',
       },
     },
     ascent: {
@@ -319,11 +319,11 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: 'It goes round with its apogee 225 km up, 9.5 km under the published 234.6. Read as mean elements with 88.33 min node to node, the heights’ difference fixes the eccentricity and the period the axis, and that axis is lower than the heights give over any mean ball: the announced 88.5 min would give 233.5 km and hold it. So 88.33 and Siddiqi’s heights are not one determination. Not adjusted',
       },
       crossTrack: {
-        by: -325_134,
+        by: -324_027,
         slack: 5_000,
-        why: `It comes down 325 km to the left of the record’s landing: the burn is in the wrong place on the orbit and the Earth has turned under it by the minutes the ship is behind. On TASS’s 88.2 min it would be 49 km. ${PERIOD_64}`,
+        why: `It comes down 324 km to the left of the record’s landing: the burn is in the wrong place on the orbit and the Earth has turned under it by the minutes the ship is behind. On TASS’s 88.2 min it would be 49 km. ${PERIOD_64}`,
       },
-      alongTrack: { by: -2_860_550, slack: 20_000, why: PERIOD_64 },
+      alongTrack: { by: -2_852_797, slack: 20_000, why: PERIOD_64 },
     },
     ascent: {
       cutoffAt: {
@@ -346,8 +346,8 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 500,
         why: `${PUBLISHED}. Flown round from there its apogee is 219.8 km: the coast’s own miss (9.5 km under, on 88.33 min) and the place on the orbit the type’s ascent leaves it at`,
       },
-      crossTrack: { by: -224_516, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
-      alongTrack: { by: -2_440_761, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      crossTrack: { by: -223_838, slack: 5_000, why: `${PUBLISHED}. ${PERIOD_64}` },
+      alongTrack: { by: -2_434_488, slack: 20_000, why: `${PUBLISHED}. ${PERIOD_64}` },
     },
     descent: {
       'module.at': {

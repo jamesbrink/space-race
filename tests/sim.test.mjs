@@ -58,6 +58,22 @@ test('the air is the 1976 standard atmosphere', () => {
   near(atmosphere(100_000).density, 5.604e-7, 1e-10, '100 km');
   near(atmosphere(150_000).density, 2.076e-9, 1e-12, '150 km');
   assert.ok(atmosphere(300_000).density < atmosphere(200_000).density / 5, 'and thinning beyond the table');
+  // the table's own rows to its end (NOAA-S/T 76-1562, Table I, pp. 69 to 73), and its rows between those carried
+  for (const [km, rho] of [
+    [170, 7.815e-10],
+    [220, 1.367e-10],
+    [250, 6.073e-11],
+    [300, 1.916e-11],
+    [500, 5.215e-13],
+    [1000, 3.561e-15],
+  ])
+    near(atmosphere(km * 1000).density / rho, 1, 1e-12, `${km} km`);
+  for (const [km, rho] of [
+    [165, 9.75e-10],
+    [175, 6.339e-10],
+    [245, 6.898e-11],
+  ])
+    near(atmosphere(km * 1000).density / rho, 1, 0.007, `${km} km, between the rows`);
   let last = Infinity;
   for (let h = -100; h < 400_000; h += 500) {
     const d = atmosphere(h).density;

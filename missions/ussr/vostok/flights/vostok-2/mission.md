@@ -87,7 +87,7 @@ scene shows), then the descent. Tolerances were set before anything was flown.
 | Descent module down | about 10:15 ± 4 min (derived) | 10:15:09 | yes | |
 | Titov down | 10:18 ± 2 min | 10:22:21 | **miss** (+261 s) | the type's descent is slower than the record's clocks, as Vostok 1's |
 
-The coast from the estimated injection (tests/orbital.test.mjs): apogee 243 km (holds), across −75 km, along −452 km
+The coast from the estimated injection (tests/orbital.test.mjs): apogee 243 km (holds), across −75 km, along −453 km
 (misses), the bundle at 63 km (miss); read as osculating it was 262 km, −154 km, −1,427 km and 81 km.
 
 The along-track figures above are as flown since the integrator's correction of 14 November 2026 (a burn that ends inside a

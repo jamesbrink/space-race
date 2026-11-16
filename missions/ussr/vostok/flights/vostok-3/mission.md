@@ -98,17 +98,17 @@ published orbit from where it left the spacecraft (the handover the scene shows)
 | Period, node to node, of the orbit begun | 88.33 min ± 2 s | 88.33 | yes | not independent: the orbit is read with it |
 | Apogee as flown round | 234.6 km ± 5 | 219.8 km | **miss** (−14.8 km) | 88.33 min and the heights are not one determination; and where the type's ascent leaves the ship |
 | Greatest load in the entry | 8 to 9 g ± 2 | 8.81 g | yes | |
-| Landing across the track | 0 ± 25 km | −225 km | **miss** | the burn in the wrong place on the orbit (below) |
-| Landing along the track | 0 ± 100 km | −2,441 km | **miss** | the period over 64 revolutions (below) |
+| Landing across the track | 0 ± 25 km | −224 km | **miss** | the burn in the wrong place on the orbit (below) |
+| Landing along the track | 0 ± 100 km | −2,434 km | **miss** | the period over 64 revolutions (below) |
 | Descent module down | 09:39:59 ± 60 s | 09:45:40 | **miss** (+341 s) | it comes down 5.7 minutes before him where the record has twelve |
 | Nikolayev down | 09:52 ± 2 min | 09:51:21 | yes | not independent: the burn is derived from it |
 
 The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −9.5 km), the entry's 8.79 g
-(holds), and down 2,861 km short and 325 km across (misses).
+(holds), and down 2,853 km short and 324 km across (misses).
 
 **Over 64 revolutions the period is everything.** Where the ship is when the burn comes is the published period carried
 round 64 times, and a second a revolution is some 470 km along the track by the landing; the period is given to a hundredth
-of a minute, 300 km. Flown on 88.33 min the burn comes over 30° S and the ship is down 2,861 km short; on TASS's 88.2 min of
+of a minute, 300 km. Flown on 88.33 min the burn comes over 30° S and the ship is down 2,853 km short; on TASS's 88.2 min of
 the next day it would be 874 km long, on 88.3 min 2,212 km short, on the announced 88.5 min 4,636 km short (weighed on the
 coast, November 2026). No published period holds the landing over four days, and how fast the real orbit decayed in the air
 of August 1962 is not known: the 1976 standard air is flown. Nothing is changed to bring it in (src/sim/misses.ts,
