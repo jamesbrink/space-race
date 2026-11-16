@@ -702,7 +702,7 @@ export const flight: Flight = {
   }),
   // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the entry, each with its
   // source (orbital.ts; mission.md)
-  plan: vostokPlan(orbital),
+  plan: { ...vostokPlan(orbital), aloft: WEATHER.aloft },
   flownNote:
     'The ascent is Vostok 1’s, flown on its instants (none of this flight’s was found), and like Vostok 1’s it falls short of the orbit reached. ' +
     'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
