@@ -11,8 +11,11 @@
 //   falls   a drop of this many metres in one frame on the way is meant (a kerb, the last rung): default 0.45; and no leg
 //           may be more than 0.7 s in the air, which is a fall whatever it lands on
 // --shots writes a still from the walker's eyes at the end of every leg.
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+// The ways are a site's, and walked at any flight from it: each is walked at a reading of the place's slider (`slider`, the
+// hardware where the way wants it), put on the clock by that flight's own morning (its model's `sequence`).
+import { globSync, mkdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -21,18 +24,43 @@ const only = opt(args, '--only', null);
 const shots = opt(args, '--shots', null);
 const url = urlOf(args);
 
-/** Seconds from Vostok 1's liftoff (09:06:59.7 Moscow time) of 07:10 that morning: the erector at the rocket, the trusses up. */
-const V1_MORNING = -(1 * 3600 + 56 * 60 + 59.7);
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const { timeAt } = await import(pathToFileURL(join(root, 'src/world/sequence.ts')).href);
+const flown = await (async () => {
+  for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
+    const { flight: f } = await import(pathToFileURL(join(root, file)).href);
+    if (f.id === flight) return f;
+  }
+  return null;
+})();
+if (!flown) {
+  console.error(`walk-test: no flight ${flight}`);
+  process.exit(2);
+}
 
 /**
- * The ways walked, by flight. Site 1 is in the site's own frame: x east, z south, y up from the deck (places/tyuratam/site-1.md);
- * where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
+ * Readings of Site 1's pad slider (the layout every flight from it lays its morning out on: the bus stops at 0.03, the pilot
+ * is in his seat at 0.1, the fillers are off the pad at 0.136, the erector is drawn off from 0.19): where the hardware is
+ * for a way, whatever the flight. On Vostok 1's morning they are 06:55, 07:10 and 08:20.
+ */
+const SITE1 = {
+  /** The bus has stopped and nobody has gone up yet: the concrete round its door. */
+  arrived: 0.045,
+  /** The pilot in his seat: the erector at the rocket, its lift at the landing, the trusses up. */
+  seated: 0.1,
+  /** The fillers have left the north and south tracks; the erector still stands. */
+  fillersGone: 0.15,
+};
+
+/**
+ * The ways walked, by site (SiteDef.name). Site 1 is in the site's own frame: x east, z south, y up from the deck
+ * (places/tyuratam/site-1.md); where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
  */
 const ROUTES = {
-  'ussr/vostok/vostok-1': [
+  'Tyuratam (Baikonur), Site 1': [
     {
       name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',
-      at: V1_MORNING - 15 * 60, // 06:55: the bus has stopped, the send-off and the Commission stand on the concrete
+      slider: SITE1.arrived, // the bus has stopped; on Vostok 1's morning the send-off and the Commission stand on the concrete
       from: [-46.4, -0.12, 17.6],
       legs: [
         { to: [-38.6, 17.5], y: -0.12, tol: 0.2, note: 'east from the door to the Commission, ten metres off' },
@@ -44,7 +72,7 @@ const ROUTES = {
     },
     {
       name: 'the erector: fifteen steps, the lift, the upper platform at the hatch',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       // (the stair and the lift are on the erector's south side: the film of the morning)
       from: [-19, 0, 3.25],
       legs: [
@@ -60,7 +88,7 @@ const ROUTES = {
     },
     {
       name: 'round the deck: the abutment, the three sides over the pit, the rails',
-      at: V1_MORNING + 70 * 60, // 08:20: the fillers have left the north and south tracks, the erector still stands
+      slider: SITE1.fillersGone,
       from: [-19.5, 0, 6.5],
       legs: [
         { to: [-17, 14], y: 0 },
@@ -75,7 +103,7 @@ const ROUTES = {
     },
     {
       name: 'down the road into the pit, the sump, the pit base, a trench and out again',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       from: [248, -5.7, 0],
       legs: [
         { to: [236, 0], run: true, tol: 0.8, y: -5.3, note: 'off the road round the pit’s point' },
@@ -95,7 +123,7 @@ const ROUTES = {
     },
     {
       name: 'the cut in the north rim: from the steppe down into the pit and back',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       from: [0, -8, -124],
       legs: [
         { to: [0, -112], y: -8.12, tol: 0.4, note: 'into the cut’s head' },
@@ -109,7 +137,7 @@ const ROUTES = {
     },
     {
       name: 'from the pad down the road’s ramp to the bunker and round the buildings',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       from: [-30, 0, -20],
       legs: [
         { to: [-78, -20], run: true, y: -0.12, tol: 0.2, note: 'west along the apron, between the spurs' },
@@ -139,7 +167,7 @@ const ROUTES = {
     {
       // (site1/south.py: what one photograph of July 1959 shows south of the tracks, inside the inner fence)
       name: 'south of the embankment: round the two buildings to the pump hut',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       from: [-60, -0.12, 30],
       legs: [
         { to: [-150, 45], run: true, y: -0.12, tol: 0.3, note: 'south-west off the apron' },
@@ -153,7 +181,7 @@ const ROUTES = {
     },
     {
       name: 'outside the south fence: the vehicle shed, the building with a mast, the tents, the yard',
-      at: V1_MORNING,
+      slider: SITE1.seated,
       from: [-60, -0.12, 240],
       legs: [
         { to: [-92, 250.4], run: true, y: -0.12, tol: 0.3, note: 'to the shed’s doors, along its north side' },
@@ -171,12 +199,14 @@ const ROUTES = {
   ],
 };
 
-// Vostok 2's morning at the same pad (6 August 1961): the same ways, at the same minutes before its liftoff as Vostok 1's are
-// walked before its own (07:10 then is 07:00 now); the bus stands where April's did and no crowd stands round it
-ROUTES['ussr/vostok/vostok-2'] = ROUTES['ussr/vostok/vostok-1'].map((r) => ({ ...r, at: r.at - V1_MORNING - 2 * 3600 }));
-const routes = (ROUTES[flight] ?? []).filter((r) => !only || new RegExp(only).test(r.name));
+/** The instant a way is walked at on this flight: its reading of the slider on the flight's own morning. */
+const atOf = (route) => {
+  const sequence = flown.models.find((m) => m.id === (route.model ?? 'pad'))?.sequence;
+  return sequence ? timeAt(sequence, route.slider) : 0;
+};
+const routes = (ROUTES[flown.site?.name] ?? []).filter((r) => !only || new RegExp(only).test(r.name));
 if (!routes.length) {
-  console.error(`walk-test: no routes for ${flight}${only ? ` matching ${only}` : ''}`);
+  console.error(`walk-test: no routes for ${flight}'s site (${flown.site?.name ?? 'none'})${only ? ` matching ${only}` : ''}`);
   process.exit(2);
 }
 if (shots) mkdirSync(shots, { recursive: true });
@@ -201,9 +231,9 @@ for (const [n, route] of routes.entries()) {
       sr.stage.enterWalk(walker, { x: from[0], y: from[1], z: from[2] });
       await new Promise((done) => setTimeout(done, 1500));
     },
-    { at: route.at ?? 0, from: route.from },
+    { at: atOf(route), from: route.from },
   );
-  console.log(`${route.name}`);
+  console.log(`${route.name} (T${atOf(route) < 0 ? '' : '+'}${Math.round(atOf(route))} s)`);
   let ok = true;
   for (const [k, leg] of route.legs.entries()) {
     if (leg.lift) {

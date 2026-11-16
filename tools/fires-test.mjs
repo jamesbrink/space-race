@@ -2,7 +2,7 @@
 //   node tools/fires-test.mjs [url] [--flight <id>] [--shots <dir>] [--cams pad,chase,far] [--looks real,cel] [--at 2,60,118]
 //                                                                    (default url: http://localhost:5180/, flight: Vostok 1)
 // At each instant (T+2, 60, 118, 125, 200 and 400 s) it counts the fires drawn (FlightShow.fireReport, sr.stage.show) against the engines the
-// record has burning then, and checks that each hangs at the part that carries it: on the vehicle, or on a strap-on as
+// record has burning then (the flight's own figures: `burning`), and checks that each hangs at the part that carries it: on the vehicle, or on a strap-on as
 // it swings away. --shots also writes a picture of each instant from each camera (the pad's, the chase's, and from 5 km)
 // in each look; with a page that has no fireReport (an older build) it only takes the pictures.
 import { mkdirSync } from 'node:fs';
@@ -17,17 +17,28 @@ const looks = opt(args, '--looks', 'real').split(',');
 const instants = opt(args, '--at', '2,60,118,125,200,400').split(',').map(Number);
 const url = urlOf(args);
 
-// The engines burning at each instant on the record, by the part that carries each (the flight's own data says so: these are what it says)
-const EXPECTED = {
-  'ussr/vostok/vostok-1': (t) =>
-    t < 119.5 ? ['Booster_B', 'Booster_V', 'Booster_G', 'Booster_D', 'CoreEngine'] : t < 300 ? ['CoreEngine'] : t < 677 ? ['BlockE'] : [],
-  // (the type's instants as Vostok 1's record flies them: Vostok 2's own are not recorded)
-  'ussr/vostok/vostok-2': (t) =>
-    t < 119.5 ? ['Booster_B', 'Booster_V', 'Booster_G', 'Booster_D', 'CoreEngine'] : t < 300 ? ['CoreEngine'] : t < 677 ? ['BlockE'] : [],
-  'usa/mercury/mr-3-freedom-7': (t) => (t < 142 ? ['RedstoneEngine'] : []),
-  // cut off at 02:23 (Results of the Second U.S. Manned Suborbital Space Flight, p. 6)
-  'usa/mercury/mr-4-liberty-bell-7': (t) => (t < 143 ? ['RedstoneEngine'] : []),
-};
+/**
+ * The engines burning at an instant on the record, worked in the page from the flight's own data (no table: a flight that
+ * flies needs none here): `flies.engine` from liftoff to its trajectory's cutoff, and each of `flies.fires` by the event
+ * it names, a stage (`stage:<i>`) from its record's ignition to its cutoff, the braking engine (`retro`) between the record's
+ * instants of thrust. Each is told by its place among the flight's fires (FlightShow.fireReport `level`). The viewer
+ * draws each from where its own run stops it, not from the record's figures: so this is a check of the one against the other.
+ */
+const burning = (t) =>
+  page.evaluate((t) => {
+    const { flies, trajectory, orbital } = window.sr.flight;
+    const spans = [];
+    if (flies?.engine) spans.push({ what: flies.engine, from: 0, to: trajectory?.engine.cutoff.value ?? Number.NaN });
+    for (const f of flies?.fires ?? []) {
+      if (f.on === 'retro')
+        spans.push({ what: f.node, from: orbital?.retro.on.value ?? Number.NaN, to: orbital?.retro.off.value ?? Number.NaN });
+      else {
+        const stage = orbital?.stages[Number(f.on.replace('stage:', ''))];
+        spans.push({ what: f.node, from: stage?.ignition.value ?? Number.NaN, to: stage?.cutoff.value ?? Number.NaN });
+      }
+    }
+    return spans.map((s, level) => ({ ...s, level })).filter((s) => t >= s.from && t < s.to);
+  }, t);
 
 const { check, failures } = checks();
 if (shots) mkdirSync(shots, { recursive: true });
@@ -51,13 +62,11 @@ for (const look of looks) {
     if (reports && look === looks[0]) {
       const fires = await page.evaluate(() => (window.sr.stage.show ?? window.sr.stage).fireReport());
       const drawn = fires.filter((f) => f.drawn && (f.on > 0.001 || f.steering > 0.001));
-      const want = EXPECTED[flight]?.(t) ?? [];
+      const want = await burning(t);
+      const levels = (list) => list.map((f) => f.level).sort((a, b) => a - b);
       check(
-        drawn
-          .map((f) => f.owner)
-          .sort()
-          .join() === [...want].sort().join(),
-        `T+${t}: ${drawn.length} fires drawn (${drawn.map((f) => `${f.owner} ${f.on.toFixed(2)}${f.steering ? `/${f.steering.toFixed(2)}` : ''} [${f.chambers.join('+')}]`).join(', ') || 'none'}); the record has ${want.length} burning`,
+        levels(drawn).join() === levels(want).join(),
+        `T+${t}: ${drawn.length} fires drawn (${drawn.map((f) => `${f.owner} ${f.on.toFixed(2)}${f.steering ? `/${f.steering.toFixed(2)}` : ''} [${f.chambers.join('+')}]`).join(', ') || 'none'}); the record has ${want.length} burning (${want.map((f) => f.what).join(', ') || 'none'})`,
       );
       for (const f of drawn) {
         const [lo, hi] = f.box;

@@ -277,7 +277,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
 - **A site is walked by a test.** `pnpm test:walk` (tools/walk-test.mjs; needs the dev server) goes on foot in the
   running page with the real W key held, steering for one point after another along ways a person could really have
   gone, and fails a leg that does not arrive, that falls, that never takes hold of its ladder, or that ends with the
-  feet somewhere other than the floor or the ground is said to be. Its routes are data at its head, by flight: today
+  feet somewhere other than the floor or the ground is said to be. Its routes are data at its head, by site, each walked at a
+  reading of the pad's slider (where the hardware is for that way) put on the clock by the flight's own sequence, so
+  every flight from the site walks it on its own morning: today
   Site 1's (the erector's stair and lift to the hatch, round the deck, down the road into the pit and its trenches,
   the cut in the north rim, the road's ramp to the bunker and the buildings). A structure built or changed gets a
   leg; a new site gets its routes.

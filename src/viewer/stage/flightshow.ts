@@ -695,10 +695,12 @@ export class FlightShow {
   }
 
   /**
-   * For tests (tools/fires-test.mjs): each fire hung, as it stands: the part that carries it, how hard it burns, whether
-   * it is drawn, its exit's middle and the part's bounds in the world, and how many chambers of each kind it has.
+   * For tests (tools/fires-test.mjs): each fire hung, as it stands: which of the flight's it is (`level`: `flies.engine`
+   * first if there is one, then each of `flies.fires` in order), the part that carries it, how hard it burns, whether it
+   * is drawn, its exit's middle and the part's bounds in the world, and how many chambers of each kind it has.
    */
   fireReport(): {
+    level: number;
     owner: string;
     on: number;
     steering: number;
@@ -713,6 +715,7 @@ export class FlightShow {
       let shown = h.plume.mesh.visible;
       for (let o = h.plume.mesh.parent; o; o = o.parent) shown &&= o.visible;
       return {
+        level: h.level,
         owner: h.owner.name,
         on: h.plume.on,
         steering: h.plume.steering,
