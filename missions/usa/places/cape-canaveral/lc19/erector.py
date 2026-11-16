@@ -257,9 +257,12 @@ def white_room(parts: Parts) -> None:
     grey = parts(g, "grey", True)
     box(grey, (-1.0, -W + 1.9, BRIDGE_CRANE + 0.02), (1.0, W - 1.9, BRIDGE_CRANE + 1.8))
     box(grey, (-1.4, -1.4, BRIDGE_CRANE - 2.2), (1.4, 1.4, BRIDGE_CRANE))  # the hoist's trolley, over the spacecraft
-    # a lamp over each floor, and a light for the viewer where each is (strengths in fittings: estimated)
-    for k in range(len(ROOM_LEVELS)):
-        head = (ROOM_LEVELS[k + 1] if k < 3 else BRIDGE_CRANE - 1.0) - FLOOR_T - 0.3
+    # a lamp over each of the three floors the crew's elevator serves, and a light for the viewer where each is
+    # (strengths in fittings: estimated). Three, which is as many rooms as the viewer lights at once (lamps.ts): with a
+    # fourth, which three were lit from across the pad went by where the eye had been. The top level, under the crane,
+    # has none of its own.
+    for k in range(3):
+        head = ROOM_LEVELS[k + 1] - FLOOR_T - 0.3
         box(parts(g, "lamp-room"), (XS - 4.5, -3.0, head - 0.2), (XS - 3.5, 3.0, head))
         parts.node(f"Light_WhiteRoom{k + 1}", g, (XS - 6.0, 0.0, head - 1.5), intensity=1.6 * interiors.FITTING, reach=9.0)
 
@@ -380,7 +383,9 @@ def build(parts: Parts) -> None:
     handrail(rails, [(STAIR_X[0] - 1.5, -W + 2.0, BASE), (XS - SOUTH_WALK, -W + 2.0, BASE)], 3.5)
     for n, z in enumerate(LEVELS, 1):
         room = n > len(WORK_LEVELS)
-        level_floor(parts, n, z, ROOM_NORTH if room else XN, ROOM_R[n - len(WORK_LEVELS) - 1] if room else VEHICLE_R, "roomfloor" if room else "reddeck")
+        level_floor(
+            parts, n, z, ROOM_NORTH if room else XN, ROOM_R[n - len(WORK_LEVELS) - 1] if room else VEHICLE_R, "roomfloor" if room else "reddeck"
+        )
         if not room:  # a rail across the open north end of each side floor
             for s in (-1, 1):
                 handrail(rails, [(XN + 0.15, s * (SLOT + 0.2), z), (XN + 0.15, s * (W - 1.7), z)], 3.5)
