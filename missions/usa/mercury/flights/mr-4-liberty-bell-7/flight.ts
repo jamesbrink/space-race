@@ -1510,7 +1510,8 @@ export const flight: Flight = {
     },
   }),
   checks,
-  plan: mercuryRedstonePlan(DAY, checks),
+  // (flown through the day's air over the pad where its column reaches: sim/air.ts `skyOf`)
+  plan: { ...mercuryRedstonePlan(DAY, checks), aloft: WEATHER.aloft },
   flownNote:
     'The powered flight ends 4 % too fast, as Freedom 7’s does and for the same reason (the booster’s modelled burn), and what follows is high and long: 12 % on the apogee, 16 % on the range. ' +
     'Flown from the record’s speed at separation (its height and climb there are not in the record read, so the run’s own are taken), the capsule comes to its top on the record’s second and lets its parachutes out within nine seconds of it; ' +

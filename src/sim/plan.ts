@@ -15,7 +15,7 @@
  * its confidence, as everywhere; ids are for code to find things by and a flight's own words go in `label`.
  */
 import type { Confidence, Measure } from '../measure.ts';
-import type { AbortRecord, AbortSequence, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
+import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
 import type { Vec3 } from '../world/frames.ts';
 import type { DescentCrew, Guidance } from './orbital.ts';
 
@@ -34,6 +34,11 @@ export interface FlightPlan {
   gravity?: GravityDef;
   /** The day's winds aloft over the pad (sim/air.ts `blowOf`). Left out: the air turns with the Earth and no more. */
   winds?: Winds;
+  /**
+   * The day's column of air over the pad (types.ts `DayWeather.aloft`: a sounding's, or ERA5's at the hour nearest
+   * liftoff), which the simulator flies through where it reaches (sim/air.ts `skyOf`). Left out: the 1976 standard.
+   */
+  aloft?: Aloft;
   /** The record's figures, to hold a run to: set before anything was flown. */
   checks: PlanCheck[];
   /** What the record has that is not flown from but held to or shown: the published orbit, where it came down. */

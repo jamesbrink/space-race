@@ -35,7 +35,7 @@
  * (remembered, not looked up), and it is used for colour only.
  */
 import type { HeatedSurface, Heating } from '../types.ts';
-import { atmosphere } from './atmosphere.ts';
+import { type Air, atmosphere } from './atmosphere.ts';
 import type { Sample } from './fly.ts';
 
 /** Sutton and Graves's constant for air, kg^0.5 / m, as commonly quoted from NASA TR R-376 (1971): from memory, the report not opened, unverified. */
@@ -113,8 +113,12 @@ function shareOf(surface: HeatedSurface, blunt: number, under: boolean): number 
 }
 
 /** The air's part of an instant: everything but the surfaces. */
-function outside(heating: Heating, sample: Sample): { flux: number; enthalpy: number; gas: number; blunt: number } {
-  const air = atmosphere(sample.altitude);
+function outside(
+  heating: Heating,
+  sample: Sample,
+  airAt: (altitude: number) => Air,
+): { flux: number; enthalpy: number; gas: number; blunt: number } {
+  const air = airAt(sample.altitude);
   // through the air: which turns with the Earth and, where the plan gives a wind, moves over it (the sample's
   // dynamic pressure is that speed's, in this same air)
   const speed = air.density > 0 && sample.q > 0 ? Math.sqrt((2 * sample.q) / air.density) : sample.groundSpeed;
@@ -127,8 +131,8 @@ function outside(heating: Heating, sample: Sample): { flux: number; enthalpy: nu
 }
 
 /** The heating as a flight begins: nothing taken in, everything at `heating.starts`. */
-export function begin(heating: Heating, sample: Sample): Thermal {
-  const out = outside(heating, sample);
+export function begin(heating: Heating, sample: Sample, air: (altitude: number) => Air = atmosphere): Thermal {
+  const out = outside(heating, sample, air);
   const under = covered(sample);
   return {
     t: sample.t,
@@ -144,8 +148,8 @@ export function begin(heating: Heating, sample: Sample): Thermal {
 }
 
 /** The heating a sample later: `before` carried on to `sample`, the air between the two taken as changing evenly. */
-export function advance(heating: Heating, before: Thermal, sample: Sample): Thermal {
-  const out = outside(heating, sample);
+export function advance(heating: Heating, before: Thermal, sample: Sample, air: (altitude: number) => Air = atmosphere): Thermal {
+  const out = outside(heating, sample, air);
   const dt = sample.t - before.t;
   const under = covered(sample);
   if (!(dt > 0)) return { ...before, ...out, t: sample.t };
@@ -191,8 +195,12 @@ export interface HeatResults {
 }
 
 /** A whole flight's heating: the state at every sample, and what it came to. */
-export function heatRun(heating: Heating, samples: readonly Sample[]): { states: Thermal[]; results: HeatResults } {
-  const log = new HeatLog(heating);
+export function heatRun(
+  heating: Heating,
+  samples: readonly Sample[],
+  air: (altitude: number) => Air = atmosphere,
+): { states: Thermal[]; results: HeatResults } {
+  const log = new HeatLog(heating, air);
   const states = [...log.upTo(samples)];
   return { states, results: log.results };
 }
@@ -204,6 +212,7 @@ export function heatRun(heating: Heating, samples: readonly Sample[]): { states:
  */
 export class HeatLog {
   private readonly heating: Heating;
+  private readonly air: (altitude: number) => Air;
   private readonly states: Thermal[] = [];
   private readonly seen: Sample[] = [];
   private source: readonly Sample[] | null = null;
@@ -212,8 +221,10 @@ export class HeatLog {
   private settled: HeatResults;
   private settledTo = -1;
 
-  constructor(heating: Heating) {
+  /** `air`: the air the samples were flown through (sim/air.ts `skyOf(plan).air`; the standard where none is given). */
+  constructor(heating: Heating, air: (altitude: number) => Air = atmosphere) {
     this.heating = heating;
+    this.air = air;
     this.results = blank(heating.surfaces.length);
     this.settled = this.results;
   }
@@ -241,7 +252,7 @@ export class HeatLog {
         this.settled = copy(this.results);
         this.settledTo = i;
       }
-      const state = i === 0 ? begin(this.heating, sample) : advance(this.heating, states[i - 1]!, sample);
+      const state = i === 0 ? begin(this.heating, sample, this.air) : advance(this.heating, states[i - 1]!, sample, this.air);
       states.push(state);
       seen.push(sample);
       note(this.results, state, sample, states[i - 1]);

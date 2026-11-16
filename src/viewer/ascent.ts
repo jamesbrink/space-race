@@ -1,7 +1,6 @@
 import * as THREE from 'three';
-import { atmosphere } from '../sim/atmosphere.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
-import { airAt, blowOf } from '../sim/air.ts';
+import { airAt, skyOf } from '../sim/air.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
@@ -166,7 +165,7 @@ export class Ascent {
     if (on <= 0) return { on: 0, vacuum: 1, fire };
     const { r } = between(this.flown().samples, t);
     const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
-    return { on, vacuum: 1 - (atmosphere(height).pressure / P0) ** 0.25, fire };
+    return { on, vacuum: 1 - (skyOf(this.flight.plan).air(height).pressure / P0) ** 0.25, fire };
   }
 
   /**
@@ -197,7 +196,7 @@ export class Ascent {
     if (!levels.some((l) => l.main > 0 || l.steering > 0)) return out(1, levels);
     const { r } = between(this.flown().samples, t);
     const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
-    return out(1 - (atmosphere(height).pressure / P0) ** 0.25, levels);
+    return out(1 - (skyOf(this.flight.plan).air(height).pressure / P0) ** 0.25, levels);
   }
 
   /** The parts that have left the vehicle by `t`. */
@@ -273,7 +272,7 @@ export class Ascent {
     const here = this.frame.toFixed(r, clamped);
     // (its motion through the air, as the simulator pulls on it: in the day's wind it drifts with the air, and a canopy drawn
     // against its motion over the ground stood off to one side of a spacecraft hanging plumb)
-    const through = airAt(this.frame, r, v, clamped, this.flight.site.seaLevel.value, blowOf(this.flight.plan!.winds)).wind;
+    const through = airAt(this.frame, r, v, clamped, this.flight.site.seaLevel.value, skyOf(this.flight.plan)).wind;
     moment.air.copy(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(through, clamped))));
     moment.up.copy(toThree(ecefToSiteDirection(this.site, unit(here))));
     if (moment.down >= 0) {

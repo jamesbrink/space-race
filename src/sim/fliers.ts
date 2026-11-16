@@ -28,9 +28,9 @@ import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { airDrag, blowing, blowOf } from './air.ts';
+import { airDrag, blowing, skyOf } from './air.ts';
 import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
-import { AIR_TOP, atmosphere } from './atmosphere.ts';
+import { AIR_TOP } from './atmosphere.ts';
 import { Descent, type DescentContext, type DownBody, downOf } from './descent.ts';
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
@@ -68,7 +68,8 @@ export interface BallisticOptions {
 /** A ballistic flight's vehicle from `start`, as its live simulator has it (above). `site` and `seaLevel` as fly.ts's. */
 export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, start: Start, options: BallisticOptions = {}): Flier {
   const b = ballisticOf(plan);
-  const blow = blowOf(plan.winds);
+  const sky = skyOf(plan);
+  const blow = sky.blow;
   const burn = options.burn && start.t < options.burn.until ? options.burn : null;
   const flow = b.flow;
   const floor = floorOf(site, seaLevel);
@@ -142,7 +143,7 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
     push(at, p, u, altitude) {
       let a: Vec3 = [0, 0, 0];
       const m = weight(at);
-      const air = altitude < AIR_TOP || burning ? atmosphere(altitude) : null;
+      const air = altitude < AIR_TOP || burning ? sky.air(altitude) : null;
       if (air && altitude < AIR_TOP) {
         const wind = windOf(p, u, at, altitude);
         const speed = length(wind);
@@ -223,7 +224,7 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
       const out = main ? b.main : b.drogue;
       if (out.strength && b.torn && !riding && !torn && (drogue || main) && altitude < AIR_TOP) {
         const wind = windOf(p, u, t, altitude);
-        const q = 0.5 * atmosphere(altitude).density * dot(wind, wind);
+        const q = 0.5 * sky.air(altitude).density * dot(wind, wind);
         const area = chuteArea(chute, t);
         const tear = tearOf(q, area, out.dragArea.value, {
           strength: out.strength.value,
@@ -346,6 +347,7 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
     seaLevel,
     ...(options.hands ? { hands: options.hands } : {}),
     ejected: { at: Number.NaN },
+    sky: skyOf(plan),
     loose: (event, t, s) => {
       for (const body of rest) {
         if (body.id !== options.follow || !body.with.includes(event)) continue;
@@ -442,7 +444,7 @@ export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: 
     ground: floorOf(site, seaLevel),
     burning: () => false,
     push(_at, p, u, altitude) {
-      const air = atmosphere(altitude);
+      const air = skyOf(plan).air(altitude);
       const wind = sub(u, cross(SPIN, p));
       const airspeed = length(wind);
       if (!(airspeed > 0)) return [0, 0, 0];
@@ -487,7 +489,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   const stack = stackOf(fp);
   // (the law, the air and the path are all in the vehicle's frame)
   const law = lawOf(fp, site, v.frame, now.solved);
-  const airOf = airOfStack(seaLevel, v.frame);
+  const airOf = airOfStack(seaLevel, v.frame, skyOf(fp));
   const last = stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
@@ -621,7 +623,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     burning: () => (alone ? alone.burning() : lit()),
     push(at, p, u, altitude) {
       if (alone) return alone.push(at, p, u, altitude);
-      const air = atmosphere(altitude);
+      const air = skyOf(fp).air(altitude);
       const wind = sub(u, cross(SPIN, p));
       const airspeed = length(wind);
       let thrust = 0;

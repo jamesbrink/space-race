@@ -38,7 +38,7 @@ import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { type State, step } from '../world/orbit.ts';
-import { airDrag } from './air.ts';
+import { airDrag, skyOf } from './air.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { MEAN_RADIUS, RIDING } from './fly.ts';
@@ -201,7 +201,7 @@ export function stagedVehicle(
   const spinE = frame.spin;
   const law = lawOf(plan, site, frame, x);
   const stack = stackOf(plan);
-  const air = airOf(seaLevel, frame);
+  const air = airOf(seaLevel, frame, skyOf(plan));
   const steering = def.thrusters.find((t) => t.authority);
   const authority = authorityOverride ?? (steering?.authority?.value ?? 0) * DEG;
   const last = stages.length - 1;
@@ -751,7 +751,7 @@ export function stagedPilot(
   options: StagedPilotOptions,
 ): StagedPilot {
   const law = lawOf(v.plan, site, frame, x);
-  const air = airOf(seaLevel, frame);
+  const air = airOf(seaLevel, frame, skyOf(v.plan));
   const memo = (options.memo ??= { thetaTurn: null });
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
   const inSequence = new Set(v.sequence.map((k) => k.event));

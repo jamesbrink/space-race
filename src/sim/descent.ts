@@ -15,8 +15,7 @@ import type { Curve } from '../types.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { cross, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import type { State } from '../world/orbit.ts';
-import { airDrag } from './air.ts';
-import { atmosphere } from './atmosphere.ts';
+import { airDrag, blowing, type Sky, STANDARD } from './air.ts';
 import { along, chuteArea } from './fly.ts';
 import { tearOf } from './loads.ts';
 import { automatic, type DescentHands, type DescentTear, shipOf } from './orbital.ts';
@@ -151,6 +150,8 @@ export interface DescentContext {
   hands?: DescentHands;
   /** When the pilot left, s from liftoff (NaN: not yet): one for every body. */
   ejected: { at: number };
+  /** The air it comes down through (air.ts `skyOf`): the standard and calm where none is given. */
+  sky?: Sky;
   /** An event happened at `t` with the body at `s`: what leaves on it. */
   loose(event: string, t: number, s: State): void;
   /** A canopy that replaces its body leaves this behind, from `s` at `t`. */
@@ -216,8 +217,13 @@ export class Descent {
   heightOf(q: State, at: number): number {
     return this.ctx.frame.place(q.r, at).height - this.ctx.seaLevel;
   }
-  airOf(q: State): Vec3 {
-    return sub(q.v, cross(this.spin, q.r));
+  /** Its motion through the air: over the ground, less the day's wind where it is (at `at`; left out, the air that turns with the Earth and no more). */
+  airOf(q: State, at?: number): Vec3 {
+    const over = sub(q.v, cross(this.spin, q.r));
+    const blow = this.ctx.sky?.blow;
+    if (!blow || at === undefined) return over;
+    const place = this.ctx.frame.place(q.r, at);
+    return sub(over, blowing(this.ctx.frame, blow, place, place.height - this.ctx.seaLevel, at));
   }
   massAt(_at: number): number {
     return this.mass + (this.entry && this.as < this.parted ? this.joined : 0);
@@ -234,15 +240,15 @@ export class Descent {
   /** Everything but gravity on it at a state, over its mass, m/s^2. */
   push(q: State, at: number): Vec3 {
     const h = this.heightOf(q, at);
-    const air = atmosphere(h);
-    const wind = this.airOf(q);
+    const air = (this.ctx.sky ?? STANDARD).air(h);
+    const wind = this.airOf(q, at);
     const speed = length(wind);
     return speed > 0
       ? scale(airDrag(wind, speed, air.density, this.areaAt(at, h, speed / air.soundSpeed)), 1 / this.massAt(at))
       : [0, 0, 0];
   }
-  pressure(q: State, h: number): number {
-    return 0.5 * atmosphere(h).density * length(this.airOf(q)) ** 2;
+  pressure(q: State, h: number, at?: number): number {
+    return 0.5 * (this.ctx.sky ?? STANDARD).air(h).density * length(this.airOf(q, at)) ** 2;
   }
 
   /** Parachute `c` (the `i`th of the body) out at `t`, torn at once in more air than its cloth takes. */
@@ -277,7 +283,7 @@ export class Descent {
       this.base += this.filling.area;
       this.kept.set(this.filling.name, this.filling.area);
     }
-    const p = this.pressure(q, h);
+    const p = this.pressure(q, h, t);
     const tears = tearOf(p, 0, 0, { strength: c.strength?.value, torn: 0 }) !== null;
     if (tears) this.torn[c.name] = { t, by: 'pressure', q: p, pull: 0 };
     this.worst[c.name] = { q: p, pull: 0 };
@@ -295,7 +301,7 @@ export class Descent {
   /** The air on what is out at `t`: a parachute in more than its cloth takes, or pulled harder than its lines take, tears. */
   wear(q: State, h: number, t: number): void {
     const d = this.ctx.down;
-    const p = this.pressure(q, h);
+    const p = this.pressure(q, h, t);
     this.body.chutes.forEach((c, i) => {
       if (!this.out.has(i) || this.gone[c.name] !== undefined) return;
       const now = this.filling?.name === c.name ? this.filling : null;

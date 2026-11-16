@@ -40,7 +40,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airAt, blowOf } from './air.ts';
+import { airAt, skyOf } from './air.ts';
 import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
 import { ballisticOf, MEAN_RADIUS } from './fly.ts';
 import type { FlightPlan } from './plan.ts';
@@ -134,9 +134,9 @@ export function shedder(
   const pad = geodeticToEcef(site);
   const source = sourceOf(plan);
   // (the day's wind, as the vehicle that let it go flies through)
-  const blow = blowOf(source.winds);
+  const sky = skyOf(source);
   const frame = options.frame ?? LIFTOFF;
-  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, sky);
   const floor = options.floor ?? floorAt(site, seaLevel);
   const { mass, roll, across, centre } = release;
   const shape: Shape = {

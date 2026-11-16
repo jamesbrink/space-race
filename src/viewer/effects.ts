@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { atmosphere } from '../sim/atmosphere.ts';
+import { skyOf } from '../sim/air.ts';
 import type { Sample } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
@@ -68,7 +68,7 @@ export class Effects {
     this.site = siteFrame(flight.site);
     this.frame = frameOf(flight);
     const heating = flight.plan?.craft[0]?.heating;
-    this.log = heating ? new HeatLog(heating) : null;
+    this.log = heating ? new HeatLog(heating, skyOf(flight.plan).air) : null;
     this.glow = heating ? new Incandescence(heating.surfaces.map((s) => s.materials)) : null;
   }
 
@@ -217,7 +217,7 @@ export class Effects {
     if (on > 0) {
       const pair = this.either(then);
       const height = pair ? pair[0].altitude + (pair[1].altitude - pair[0].altitude) * pair[2] : 0;
-      felt.sound = on * soundPressure(engine.thrust, engine.exhaustSpeed, from.distanceTo(eye), atmosphere(height).density);
+      felt.sound = on * soundPressure(engine.thrust, engine.exhaustSpeed, from.distanceTo(eye), skyOf(plan).air(height).density);
     }
     if (riding > 0) {
       const pair = this.either(t);

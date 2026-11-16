@@ -54,7 +54,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { gravity } from '../world/orbit.ts';
-import { airAt, airDrag, blowOf } from './air.ts';
+import { airAt, airDrag, skyOf } from './air.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
 import { aboard, act, type CraftState, due, lit, part, type Sense, startCraft } from './craft.ts';
 import { keptShare } from './forces.ts';
@@ -218,7 +218,7 @@ export function fly(
   const lastAero = last.aero!;
   const spin = frame.spin;
   const pad = geodeticToEcef(site);
-  const blow = blowOf(plan.winds);
+  const sky = skyOf(plan);
   const engines = c.engines.map((e) => ({
     e,
     flow: e.isp ? e.count * ((e.thrust.seaLevel ?? e.thrust.vacuum).value / (G0 * (e.isp.seaLevel ?? e.isp.vacuum).value)) : 0,
@@ -290,7 +290,7 @@ export function fly(
    */
   const forces = (s: State, at: number, as = at): { force: Vec3; q: number; mach: number; altitude: number } => {
     // the air there, and the motion over the ground and through the air (air.ts)
-    const { altitude, air, ground, wind, airspeed, mach, q } = airAt(frame, s.r, s.v, at, seaLevel, blow);
+    const { altitude, air, ground, wind, airspeed, mach, q } = airAt(frame, s.r, s.v, at, seaLevel, sky);
     const piece = riding() ? dragPiece() : null;
     const area = piece
       ? piece.area.value * along(piece.curve, mach)

@@ -61,7 +61,7 @@ import {
 } from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
-import { type AirHere, airAt, airDrag } from './air.ts';
+import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
 import { integrate, sensed } from './apparent.ts';
 import type { Action, BodyDef, EngineDef, EventDef, FlightPlan, TankDef } from './plan.ts';
@@ -387,11 +387,11 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
   return { n, pad, up0, down0, localAt, axisAt, modeAt, tVertical, tKicked, tTurn };
 }
 
-/** The air at a state of the ascent (air.ts, no wind: the day's winds aloft at Tyuratam have not been read). */
+/** The air at a state of the ascent, in the plan's air (air.ts `skyOf`: the day's column and its wind where it has one). */
 export const airOf =
-  (seaLevel: number, frame: EarthFrame) =>
+  (seaLevel: number, frame: EarthFrame, sky: Sky = STANDARD) =>
   (s: State, t: number): AirHere =>
-    airAt(frame, s.r, s.v, t, seaLevel);
+    airAt(frame, s.r, s.v, t, seaLevel, sky);
 
 /**
  * The stack's engines and drag, as the record has them: one stage's thrust at an instant and a pressure (each `count`
@@ -469,7 +469,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
   const localAt = law.localAt;
-  const airHere = airOf(seaLevel, frame);
+  const airHere = airOf(seaLevel, frame, skyOf(fp));
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
   /**
    * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that

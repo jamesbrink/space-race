@@ -1463,7 +1463,8 @@ export const flight: Flight = {
     },
   }),
   checks,
-  plan: mercuryRedstonePlan(DAY, checks),
+  // (flown through the day's air over the pad where its column reaches: sim/air.ts `skyOf`)
+  plan: { ...mercuryRedstonePlan(DAY, checks), aloft: WEATHER.aloft },
   flownNote:
     'The powered flight ends 4 % too fast, and what follows from that is high and long: leaving the pad at 1.19 g, one per cent in thrust or weight is four in speed, and the engine is two figures from a summary table. Flown from the separation the report gives, the capsule’s half agrees: height and range within a per cent, the landing within a second (tests/sim.test.mjs).',
   flies: {

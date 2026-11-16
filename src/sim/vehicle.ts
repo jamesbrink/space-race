@@ -96,8 +96,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { gravity } from '../world/orbit.ts';
-import { airAt, airDrag, blowOf } from './air.ts';
-import { atmosphere } from './atmosphere.ts';
+import { airAt, airDrag, skyOf } from './air.ts';
 import { rk4Body } from './core/rk4.ts';
 import { aboard, act, burnOut, type CraftState, chainedAt, fire, hasLeft, part as partJoint, startCraft } from './craft.ts';
 import { along, axisOf, ballisticOf, chuteArea, type Doing, MEAN_RADIUS, type Sample } from './fly.ts';
@@ -373,8 +372,8 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const earth = frame.spin;
   const pad = geodeticToEcef(site);
   // the day's wind: everything the air does here is done by air that moves with it
-  const blow = blowOf(plan.winds);
-  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
+  const sky = skyOf(plan);
+  const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, sky);
   const programme = axisOf(plan, site, frame);
   const up0 = programme(-1e9);
   // (level along the launch azimuth, from the azimuth itself: a programme that never tilts has no direction to give)
@@ -1208,7 +1207,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
           ? [
               {
                 engine: engine.id,
-                thrust: nozzleThrust(1, vacuum, throttleOf(s), exitArea, atmosphere(here.height - seaLevel).pressure),
+                thrust: nozzleThrust(1, vacuum, throttleOf(s), exitArea, sky.air(here.height - seaLevel).pressure),
               },
             ]
           : []),

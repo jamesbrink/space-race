@@ -19,8 +19,7 @@ import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { fromPublished, meanOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
-import { airAt, airDrag } from './air.ts';
-import { atmosphere } from './atmosphere.ts';
+import { airAt, airDrag, skyOf } from './air.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import {
   type Action,
@@ -205,6 +204,7 @@ export function flyDown(
     seaLevel,
     ...(hands ? { hands } : {}),
     ejected: box,
+    sky: skyOf(plan),
     loose: letLoose,
     leaves: (body, t, s) => queue.push({ body, t, s }),
   };
@@ -221,7 +221,7 @@ export function flyDown(
     let t = t0;
     let s: State = s0;
     const most = (peak[body.id] = {
-      q: 0.5 * atmosphere(heightOf(s0, t0)).density * length(airOf(s0)) ** 2,
+      q: desc.pressure(s0, heightOf(s0, t0), t0),
       g: 0,
       speed: length(airOf(s0)),
     });
@@ -260,7 +260,7 @@ export function flyDown(
         track.push({ t, r: s.r, v: s.v });
         keptAt = t;
       }
-      most.q = Math.max(most.q, desc.pressure(s, h));
+      most.q = Math.max(most.q, desc.pressure(s, h, t));
       most.g = Math.max(most.g, length(push(s, t)) / G0);
       most.speed = Math.max(most.speed, length(airOf(s)));
       after(() => {
@@ -310,6 +310,7 @@ export function flyDown(
  */
 export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, from: { t: number; r: Vec3; v: Vec3 }, days = 60): number {
   const spin = frame.spin;
+  const sky = skyOf(plan);
   const ship = shipOf(plan);
   const cd = ship.entry.aero.rarefied?.value ?? along(ship.entry.aero.drag, 25);
   const parted = from.t >= ship.parted;
@@ -317,7 +318,7 @@ export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, fro
   const cdA = cd * ship.entry.aero.area.value;
   const heightOf = (q: State, at: number) => frame.place(q.r, at).height - seaLevel;
   const push = (q: State, at: number): Vec3 => {
-    const air = atmosphere(heightOf(q, at));
+    const air = sky.air(heightOf(q, at));
     const wind = sub(q.v, cross(spin, q.r));
     return scale(airDrag(wind, length(wind), air.density, cdA), 1 / mass);
   };
@@ -455,7 +456,7 @@ export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['or
  */
 export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: number, aim: Vec3 | null): Vec3 {
   const ship = shipOf(plan);
-  const air = atmosphere(altitude);
+  const air = skyOf(plan).air(altitude);
   const airspeed = length(wind);
   const mach = airspeed / air.soundSpeed;
   const mass = at >= ship.parted ? ship.entry.mass : ship.mass;
@@ -629,7 +630,8 @@ export function flyOrbit(
   const aimAt = (s: State, at: number): Vec3 => aimOf(plan, s.r, s.v, () => sunAt(at));
 
   // (no wind: none has been read for the coast's places)
-  const airOf = (s: State, at: number) => airAt(frame, s.r, s.v, at, seaLevel);
+  const sky = skyOf(plan);
+  const airOf = (s: State, at: number) => airAt(frame, s.r, s.v, at, seaLevel, sky);
   /**
    * Everything but gravity, m/s^2, with the ship as it is from instant `as` (the engine lit or not, the modules joined or
    * not) at a state at `at`. A step ends on every instant the ship changes at, so within a step it is as it was at the

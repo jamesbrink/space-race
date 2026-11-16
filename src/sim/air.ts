@@ -4,7 +4,8 @@
  * the 1976 standard air there (atmosphere.ts), and the motion through that air, which turns with the Earth and moves over
  * it as the day's winds aloft have it (`FlightPlan.winds`, one sounding for the whole flight; calm where there is none).
  */
-import type { Winds } from '../types.ts';
+import type { Aloft, Winds } from '../types.ts';
+import { aloftAt } from '../world/aloft.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, cross, enuAxes, type Geodetic, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { type Air, atmosphere } from './atmosphere.ts';
@@ -48,6 +49,89 @@ export function blowOf(winds: Winds | undefined | null): Blow | null {
   };
 }
 
+/**
+ * Whether the simulator flies the day's air (`FlightPlan.aloft`, the column over the pad: docs/agents/world.md, "The air
+ * aloft") where a plan has one. Off, every plan flies the 1976 standard atmosphere and its record's sounding (or calm),
+ * as it did before the day's air was read: for weighing what the day's air does (tools/figures.mjs, tests/air.test.mjs).
+ */
+export const DAY_AIR = { on: false };
+
+/** Above this height, m, the standard's air is the standard's own: between the column's top and here it is scaled by the column's density over the standard's at the top, eased to 1. */
+export const COLUMN_EASED = 70_000;
+
+/**
+ * The air a plan flies through: its properties at a height above the sea (`air`), the air's own motion over the ground
+ * (`blow`), and whether either leans on the day's column (`column`: figures that do are `derived`, on the standard alone
+ * `estimated`).
+ */
+export interface Sky {
+  air(altitude: number): Air;
+  blow: Blow | null;
+  column: boolean;
+}
+
+/** The 1976 standard atmosphere and calm air: a plan with no air of its own. */
+export const STANDARD: Sky = { air: atmosphere, blow: null, column: false };
+
+/**
+ * The air a plan flies through (`Sky`). Where the plan carries the day's column (`FlightPlan.aloft`) and `DAY_AIR` is on,
+ * the column's air within it (world/aloft.ts `aloftAt`); below its lowest level and above its top, the standard's scaled by
+ * the column's density over the standard's at that end, the ratio held below the ground and eased to 1 by `COLUMN_EASED`
+ * above the top, so nothing steps; the temperature, and so the speed of sound, the standard's there. The wind is the
+ * record's own sounding where it has one (`FlightPlan.winds`, documented), else the column's, held below its lowest level
+ * and falling evenly to nothing at `COLUMN_EASED`, else calm. Without a column it is the standard and the record's
+ * sounding, as every plan flew before the day's air was read.
+ */
+export function skyOf(plan: { winds?: Winds; aloft?: Aloft } | null | undefined): Sky {
+  if (!plan) return STANDARD;
+  const had = skies.get(plan);
+  if (had && had.on === DAY_AIR.on) return had.sky;
+  const sky = skyFrom(plan);
+  skies.set(plan, { on: DAY_AIR.on, sky });
+  return sky;
+}
+const skies = new WeakMap<object, { on: boolean; sky: Sky }>();
+function skyFrom(plan: { winds?: Winds; aloft?: Aloft }): Sky {
+  const sounding = blowOf(plan?.winds);
+  const aloft = DAY_AIR.on ? plan.aloft : undefined;
+  if (!aloft || aloft.levels.length < 2) return sounding ? { air: atmosphere, blow: sounding, column: false } : STANDARD;
+  const levels = aloft.levels;
+  const [low, top] = [levels[0]!.height.value, levels[levels.length - 1]!.height.value];
+  const ratio = (h: number): number => aloftAt(aloft, h)!.density / atmosphere(h).density;
+  const [below, above] = [ratio(low), ratio(top)];
+  const scaled = (a: Air, k: number): Air => (k === 1 ? a : { ...a, density: a.density * k, pressure: a.pressure * k });
+  const air = (altitude: number): Air => {
+    const day = aloftAt(aloft, altitude);
+    if (day)
+      return {
+        density: day.density,
+        pressure: day.pressure,
+        temperature: day.temperature,
+        soundSpeed: Math.sqrt(1.4 * 287.053 * day.temperature),
+      };
+    const standard = atmosphere(altitude);
+    if (altitude < low) return scaled(standard, below);
+    if (altitude >= COLUMN_EASED) return standard;
+    return scaled(standard, 1 + ((above - 1) * (COLUMN_EASED - altitude)) / (COLUMN_EASED - top));
+  };
+  const winds = levels.filter((l) => l.wind);
+  const own = aloftAt(aloft, low)?.wind;
+  const highest = winds.length ? aloftAt(aloft, winds[winds.length - 1]!.height.value)?.wind : null;
+  const column: Blow | null =
+    own && highest
+      ? (altitude) => {
+          if (altitude <= low) return own;
+          const day = aloftAt(aloft, altitude)?.wind;
+          if (day) return day;
+          const h = winds[winds.length - 1]!.height.value;
+          if (altitude >= COLUMN_EASED) return [0, 0];
+          const k = (COLUMN_EASED - altitude) / (COLUMN_EASED - h);
+          return [highest[0] * k, highest[1] * k];
+        }
+      : null;
+  return { air, blow: sounding ?? column, column: true };
+}
+
 /** The air at a place and what a body moving through it there meets: `r` and `v` in the flight's frame (world/earthframe.ts), `at` seconds from liftoff. */
 export interface AirHere {
   /** Where it is over, and its height above the sea, m. */
@@ -64,11 +148,12 @@ export interface AirHere {
   q: number;
 }
 
-/** The air at a point `r` moving at `v` (the flight's frame), `at` seconds from liftoff, the sea `seaLevel` m above the ellipsoid. */
-export function airAt(frame: EarthFrame, r: Vec3, v: Vec3, at: number, seaLevel: number, blow: Blow | null = null): AirHere {
+/** The air at a point `r` moving at `v` (the flight's frame), `at` seconds from liftoff, the sea `seaLevel` m above the ellipsoid, in the plan's `sky` (`skyOf`; the standard and calm where none is given). */
+export function airAt(frame: EarthFrame, r: Vec3, v: Vec3, at: number, seaLevel: number, sky: Sky = STANDARD): AirHere {
   const place = frame.place(r, at);
   const altitude = place.height - seaLevel;
-  const air = atmosphere(altitude);
+  const air = sky.air(altitude);
+  const blow = sky.blow;
   const ground = sub(v, cross(frame.spin, r));
   const wind = blow ? sub(ground, blowing(frame, blow, place, altitude, at)) : ground;
   const airspeed = length(wind);

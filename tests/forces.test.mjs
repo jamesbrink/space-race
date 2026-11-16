@@ -6,7 +6,7 @@ import { calm } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
-import { airAt, airDrag } from '../src/sim/air.ts';
+import { airAt, airDrag, skyOf } from '../src/sim/air.ts';
 import { ballistic, spacecraft, stack } from '../src/sim/fliers.ts';
 import { ballisticOf, dragArea, thrustIn } from '../src/sim/fly.ts';
 import { shipPush } from '../src/sim/orbital.ts';
@@ -37,7 +37,7 @@ test('a ballistic flight: the predictor’s flier is the simulator’s air, drag
   const sea = freedom7.site.seaLevel.value;
   const frame = frameOf(freedom7);
   const s = stateOver(frame, site, 100);
-  const air = airAt(frame, s.r, s.v, s.t, sea);
+  const air = airAt(frame, s.r, s.v, s.t, sea, skyOf(plan));
   // the stack going up, coasting: drag on the ascent's curve over the mass
   const coasting = ballistic(plan, site, sea, { ...s, mass: 5000, riding: true }, { frame });
   same(
@@ -76,7 +76,7 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const sea = vostok1.site.seaLevel.value;
   const frame = frameOf(vostok1);
   const s = stateOver(frame, site, 300);
-  const air = airAt(frame, s.r, s.v, s.t, sea);
+  const air = airAt(frame, s.r, s.v, s.t, sea, skyOf(vostok1.plan));
   // the spacecraft alone, its engine not lit: the coast's own push (orbital.ts shipPush, which flyOrbit flies)
   const ship = spacecraft(vostok1.plan, frame, site, sea, s);
   same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(vostok1.plan, s.t, air.wind, air.altitude, null), 'the spacecraft');
