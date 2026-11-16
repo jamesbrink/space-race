@@ -25,22 +25,22 @@
  * came down nearer than drawn); and a burn's end falling on a stage of the step that had it off.
  */
 import type { Trajectory } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { AIR_TOP, atmosphere } from './atmosphere.ts';
-import { chuteArea, dragArea, thrustIn } from './fly.ts';
-import { G0 } from '../world/bodies.ts';
 import { airDrag, blowing, blowOf } from './air.ts';
+import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
+import { AIR_TOP, atmosphere } from './atmosphere.ts';
+import { Descent, type DescentContext } from './descent.ts';
+import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, type OrbitalFlight, shipPush } from './orbital.ts';
+import { aimOf, type DescentBody, type DescentFlown, type DescentHands, type OrbitalFlight, shipPush } from './orbital.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
 import { airOf as airOfStack, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
-import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 
@@ -257,7 +257,7 @@ export function spacecraft(
   site: Geodetic,
   seaLevel: number,
   start: { t: number; r: Vec3; v: Vec3 },
-  options: { lit?: { r: Vec3; v: Vec3 } } = {},
+  options: { lit?: { r: Vec3; v: Vec3 }; descend?: Descend } = {},
 ): Flier {
   // (the Sun is of date: turned into the frame the state is in)
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
@@ -269,19 +269,33 @@ export function spacecraft(
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
   // there and not at a step's own instants, the last of which is the parting itself)
   let since = start.t;
+  // (with `descend`, at the height the pilot leaves at the descent flies on from there, the followed body down to the ground)
+  let down: Flier | null = null;
+  const ground = floorOf(site, seaLevel);
   return {
     kind: 'coast',
     cutoff: null,
     quiet: never(on) ? Number.NEGATIVE_INFINITY : off,
-    chute: false,
+    get chute() {
+      return down?.chute ?? false;
+    },
     radius: o.orbit.radius.value,
-    ground: floorOf(site, seaLevel),
-    burning: () => burning,
-    push: (_at, p, u, altitude) => shipPush(o, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
-    next: (t) => after(marks, t),
-    below: () => o.ejection.altitude.value,
-    arrive(t, r, v, _altitude, by): Arrival {
-      if (by === 'height') return { end: true };
+    ground: (here) => (down ? down.ground(here) : ground(here)),
+    burning: () => !down && burning,
+    push: (at, p, u, altitude) =>
+      down ? down.push(at, p, u, altitude) : shipPush(o, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+    next: (t) => (down ? down.next(t) : after(marks, t)),
+    below: () => (down ? down.below() : o.ejection.altitude.value),
+    settle(t, r, v, altitude, falling) {
+      down?.settle?.(t, r, v, altitude, falling);
+    },
+    arrive(t, r, v, altitude, by): Arrival {
+      if (down) return down.arrive(t, r, v, altitude, by);
+      if (by === 'height') {
+        if (!options.descend) return { end: true };
+        down = descending(o, frame, seaLevel, { t }, options.descend);
+        return down.arrive(t, r, v, altitude, 'time');
+      }
       since = t;
       const events: EventKind[] = [];
       if (t === on && t < parted) {
@@ -298,6 +312,116 @@ export function spacecraft(
         events.push('separation');
       }
       return { events };
+    },
+  };
+}
+
+/** What a prediction of a descent follows: the body (`DescentRecord.bodies[].id`), the hands' commands, and the run, for a start part-way down. */
+export interface Descend {
+  follow: string;
+  hands?: DescentHands;
+  /** The descent flown on show (orbital.ts `flyDown`): each body's state from each instant it changed, to begin from part-way down. */
+  from?: DescentFlown;
+}
+
+/**
+ * One body of an orbital flight's descent from any instant of it, by the descent's own object (sim/descent.ts `Descent`,
+ * which flyDown flies): its mass and drag, what it puts out by height, by time after the ejection and by hand, the
+ * air's tearing. It follows `follow`: until that body is let loose it flies the one that carries it (the entry body),
+ * and from the event that lets it go (thrown clear as flyDown throws it) it is that body. Begun at the coast's handing
+ * over, everything is as flyDown begins it; begun part-way down, each body is as the run had it at its last change
+ * before the start (`DescentFlown.states`). Down to the descent's ground.
+ */
+export function descending(o: OrbitalFlight, frame: EarthFrame, seaLevel: number, start: { t: number }, options: Descend): Flier {
+  const d = o.descent;
+  if (!d) throw new Error('this orbital record has no `descent`');
+  const [first, ...rest] = d.bodies;
+  if (!first) throw new Error('a descent needs its entry body');
+  const given = Object.values(options.hands?.given ?? {});
+  const switched = (options.hands?.switched ?? []).map((x) => x.t);
+  const parted = o.entry.separation.value;
+  let handover: { body: DescentBody; t: number; s: { r: Vec3; v: Vec3 } } | null = null;
+  const ctx: DescentContext = {
+    o,
+    frame,
+    seaLevel,
+    ...(options.hands ? { hands: options.hands } : {}),
+    ejected: { at: Number.NaN },
+    loose: (event, t, s) => {
+      for (const body of rest) {
+        if (body.id !== options.follow || !(body.with ?? ['ejection']).includes(event)) continue;
+        // (thrown clear against its motion through the air, as flyDown throws it)
+        const wind = flying.airOf(s);
+        const speed = length(wind);
+        handover = { body, t, s: { r: s.r, v: body.thrown && speed > 0 ? sub(s.v, scale(wind, body.thrown.value / speed)) : s.v } };
+      }
+    },
+    leaves: (body, t, s) => {
+      if (body.id === options.follow) handover = { body, t, s };
+    },
+  };
+  // the body flown from the start: the followed one where it had begun by then, else the one that carries it
+  const states = options.from?.states;
+  const begunBy = (id: string) => states?.[id]?.filter((x) => x.t <= start.t + 1e-9).at(-1);
+  const own = begunBy(options.follow);
+  const body = own ? (d.bodies.find((b) => b.id === options.follow) ?? first) : first;
+  const was = own ?? begunBy(first.id);
+  let flying = was ? Descent.restore(ctx, body, body === first, start.t, was.state) : new Descent(ctx, first, true, start.t);
+  let fresh = !was;
+  const out = () => flying.out.size;
+  const s = (r: Vec3, v: Vec3) => ({ r, v });
+  /** What `events` did, as the path marks it: the followed body's first parachute out, and any after it. */
+  const marked = (before: number): EventKind[] => (out() > before ? [before === 0 ? 'drogue' : 'main'] : []);
+  return {
+    kind: 'coast',
+    cutoff: null,
+    quiet: Number.NEGATIVE_INFINITY,
+    get chute() {
+      return flying.filling !== null || flying.kept.size > 0;
+    },
+    radius: o.orbit.radius.value,
+    ground: () => d.ground.value,
+    burning: () => false,
+    push: (t, r, v) => flying.push(s(r, v), t),
+    next(t) {
+      const f = flying.filling;
+      const marks = [...given, ...switched, parted, ...(f ? [f.at + f.fills] : [])];
+      if (Number.isFinite(ctx.ejected.at))
+        flying.body.chutes.forEach((c, i) => {
+          if (!flying.out.has(i) && c.after) marks.push(ctx.ejected.at + c.after.value);
+        });
+      return after(
+        marks.filter((x) => Number.isFinite(x)).sort((a, b) => a - b),
+        t,
+      );
+    },
+    below: () => flying.heights()[0] ?? Number.NEGATIVE_INFINITY,
+    arrive(t, r, v, _altitude, by): Arrival {
+      const q = s(r, v);
+      flying.as = t;
+      const before = out();
+      const falling = by === 'height' || dot(flying.airOf(q), r) < 0;
+      // (a body begins as flyDown begins it, with only what a hand gave; what is due at that instant by itself, a
+      // parachute 0 s after the ejection, follows at once: flyDown has it a step later, this flier at no later step)
+      const begin = (d: Descent, at: { r: Vec3; v: Vec3 }, f: boolean) => {
+        d.events(at, d.heightOf(at, t), f, true, t);
+        d.events(at, d.heightOf(at, t), f, false, t);
+      };
+      if (fresh) begin(flying, q, falling);
+      else flying.events(q, flying.heightOf(q, t), falling, false, t);
+      fresh = false;
+      const events = marked(before);
+      if (!handover) return { events };
+      const h = handover as { body: DescentBody; t: number; s: { r: Vec3; v: Vec3 } };
+      handover = null;
+      flying = new Descent(ctx, h.body, false, t);
+      begin(flying, h.s, dot(flying.airOf(h.s), h.s.r) < 0);
+      return { events, v: h.s.v };
+    },
+    settle(t, r, v) {
+      const q = s(r, v);
+      flying.as = t;
+      flying.wear(q, flying.heightOf(q, t), t);
     },
   };
 }

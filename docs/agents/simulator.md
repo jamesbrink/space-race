@@ -321,7 +321,9 @@ never adjusted to bring a check in.
   solves its three unknowns (launch plane, pitch-over, the linear tangent's rate) for the design conditions at the last
   cutoff (height, climb, inclination), so those three are targets and not checks. `flyWhole` hands the spacecraft at
   separation to `flyOrbit` (`from`), and `flyDown` (orbital.ts) brings each of `orbital.descent`'s bodies (a module, a
-  pilot) down from the ejection height on its own parachutes. `tests/staged.test.mjs` holds the ascent's, the coast's and
+  pilot) down from the ejection height on its own parachutes, each body one `Descent` (sim/descent.ts: its mass, its
+  drag, what it puts out and when, the air's tearing) which the path ahead flies too (fliers.ts `descending`;
+  tests/descending.test.mjs holds the predicted landings to flyDown's). `tests/staged.test.mjs` holds the ascent's, the coast's and
   the descent's checks against their misses (src/sim/misses.ts), lists every input that is not documented and prints what each moves, the
   law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
   A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
@@ -491,9 +493,11 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
   each stage dry when its load is gone, drawn dashed to the last cutoff, and from the parting the spacecraft as planned,
   round the orbit or down (tests/staged.test.mjs holds where it parts to the batch run); alone, its coast as planned (`spacecraft`: flyOrbit's forces), once round with Ap and Pe,
-  or down to the ejection height with the burn, its end, the modules' parting and the entry marked (it stops there
-  whether a burn was made or not, as flyOrbit does; begun within the burn, the burn goes on along the line it lit on,
-  from the run's own state then: `lit`). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
+  or down with the burn, its end, the modules' parting and the entry marked (begun within the burn, the burn goes on
+  along the line it lit on, from the run's own state then: `lit`), and from the ejection height on down the descent
+  (`descend`: fliers.ts `descending`, the descent module the run on show follows, with what the hands gave) to where it
+  lands, its parachutes marked; begun part-way down, each body is as the run had it (flyDown's `states`). Without
+  `descend` the spacecraft stops at the ejection height, as flyOrbit does (the cabin's `burnNow` asks for that). The Flown panel holds every check the orbital record sets (staged.ts `held`) against the record's run;
   the deck's card holds the coast's and the descent's against the flight on show, and on the user's own flight the
   ascent's too (`StagedTally`). Sound and shake take the first stages lit at liftoff as one engine (`liftoffEngine`); the
   braking engine is heard when the run on show burns it (its `fires`), as one burn of its length. Every engine burns

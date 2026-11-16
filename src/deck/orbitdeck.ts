@@ -1,9 +1,8 @@
-import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck.ts';
-import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from '../sim/orbital.ts';
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
+import { along } from '../sim/fly.ts';
+import { automatic, chuteEvent, type DescentHands, decay, type OrbitalFlight } from '../sim/orbital.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
-import { along } from '../sim/fly.ts';
 import { apart, Sheds } from '../sim/shed.ts';
 import {
   type Ascended,
@@ -41,6 +40,7 @@ import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/fr
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { is } from '../util/keys.ts';
+import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (`Flight.orbital` with an `ascent`): the deck (deck.ts) is the one every
@@ -212,7 +212,8 @@ export class OrbitDeck extends Deck {
 
   /**
    * The path ahead from a sample, by the one propagator (sim/predict.ts): with the spacecraft alone, its coast as planned
-   * (the timer's burn, a hand's, or none: sim/fliers.ts `spacecraft`), to the ejection height or once round; on the launch
+   * (the timer's burn, a hand's, or none: sim/fliers.ts `spacecraft`) and on down the descent the run on show follows
+   * (`descending`: the descent module, with what the hands gave) to its landing, or once round; on the launch
    * vehicle, where it goes if the engines stopped now (`stack`: what it still carries, on the drag of the shape it has), to
    * the ground or once round; or, under guidance with a cutoff to come and asked for (`guided`, K on the path), where the
    * guidance would take it (`guided`: the law, the record's steps while the sequencer is on, to the parting, then the
@@ -266,7 +267,14 @@ export class OrbitDeck extends Deck {
         ? (this.run?.samples as readonly LiveSample[] | undefined)?.find((x) => Math.abs(x.t - on) < 1e-6)
         : undefined;
     const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
-    return propagate(spacecraft(plan, this.frame, site, sea, start, lit), start, where, options);
+    // (and on from the height the pilot leaves at, the descent module the run on show follows, with what the hands gave,
+    // to its landing: begun part-way down, from the run's own state of it)
+    const first = plan.descent?.bodies[0];
+    const down = (this.flown ?? orbitalFlown(this.flight)).down;
+    const descend = first
+      ? { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } }
+      : {};
+    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
   }
   /**
    * Whether the path can show where guidance would take the launch vehicle (viewer/path.ts, K): before the parting, under
@@ -289,11 +297,11 @@ export class OrbitDeck extends Deck {
     if (this.free && this.fired === null)
       return {
         short: 'hands off',
-        long: 'The hands are free and nothing is planned: the coast with no burn, down to the height the pilot leaves at or once round',
+        long: 'The hands are free and nothing is planned: the coast with no burn, down to where the descent module lands or once round',
       };
     return {
       short: this.fired !== null ? 'as fired' : 'as planned',
-      long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to the height the pilot leaves at`,
+      long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to where the descent module lands`,
     };
   }
   /** The shape the stack flies at `t` on the flight on show (StagedVehicle.shape): the latest record separation among the stages let go by then. */
