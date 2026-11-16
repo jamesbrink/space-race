@@ -3,8 +3,13 @@
 What [flight_suit.py](flight_suit.py) builds, and how far to trust it. Voskhod 1's three men flew
 without pressure suits. The figure is [figurelib](../../../../tools/blender/figurelib.py)'s man,
 carried to each man's stature, in a garment module of its own: a wool suit, soft shoes and the
-headset's cloth cap. It is built only seated, in a Voskhod couch (`build_seated`), as the cabin's
-crew; there is no standing figure to walk as yet.
+headset's cloth cap. It is built seated, in a Voskhod couch (`build_seated`), as the cabin's crew;
+and standing, with figurelib's skeleton, as Komarov to walk as at Voskhod 1's launch site
+(../flights/voskhod-1/model/crew.py; [flight-suit.parts.ts](flight-suit.parts.ts)). The standing
+figure is built at every level of detail, so two things are held fixed below full detail that the
+seated one never needed: the cap's grid (48 round, else its stepped cut comes within a millimetre of
+the opening's edge) and, at the coarsest, no slack over the belt (else the pullover sinks onto the
+trousers). At full detail both are as they were, so the cabin's figures are unchanged.
 
 **Confidence**: *documented* is a published statement; *estimated* was read off photographs, or
 chosen to look right.
@@ -49,4 +54,6 @@ Grey or "dark" is the only disagreement. So in the cabin: the wool suit, no jack
 - **The hands are figurelib's gloved hand in skin**: four fingers and a thumb, no nails or knuckle
   creases.
 - **The blue quilted jackets and the boots** they wore to the lift are not built: they were left at
-  the hatch.
+  the hatch. So the standing Komarov walks the pad as he was in the cabin, in the wool suit and
+  slippers, which he was not.
+- **The standing figure's arms hang in** by the couch's `ELBOWS_IN`, drawn for three men abreast.

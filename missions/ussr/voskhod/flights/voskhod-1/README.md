@@ -17,7 +17,7 @@ Georgiy Katys, Aleksey Sorokin and Vasiliy Lazarev.
 | Launch vehicle (11A57 No. R15000-04) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md). The Vostok launcher's core and boosters under the larger third stage, Block I, with its aft section, adapter and a fairing with a conical nose |
 | Crew in the couches | **built**: three figures in what the crew flew in, a grey wool suit and the headset's white cap ([flight-suit.md](../../crew/flight-suit.md)). One build for all three: none of their heights was found |
 | Launch site (Site 1 on 12 October 1964) | **built**: [pad.ts](pad.ts), [model/pad.py](model/pad.py), the site's modules at that date, with the morning's bus. The pad is built as it stood for the Vostoks: what was raised or added for a vehicle 5.8 m taller is not found, so the lift stops short of the ship's hatch ([site-1.md](../../../places/tyuratam/site-1.md), "What stood when"). The surroundings are the site's of August 1961 |
-| Crew to be walked as | not built: the figures in the couches have no standing form yet |
+| Crew to be walked as | **built**: Komarov, the couches' figure standing ([model/crew.py](model/crew.py), [flight-suit.parts.ts](../../crew/flight-suit.parts.ts)), 1.70 m as all three are (estimated). He walks the pad in the cabin's wool suit, cap and slippers: the blue jacket and the boots he wore to the lift are not built |
 | The day's weather as data | **written**: [weather.ts](weather.ts), the range's own figures as Kamanin gives them and NOAA ISD at Kazalinsk and Aralsk; the air over the pad from ERA5 ([aloft.ts](aloft.ts)) |
 | Trajectory, the orbit as data, the flight as flown | **written**: [orbital.ts](orbital.ts), flown as [mission.md](mission.md) says; below |
 

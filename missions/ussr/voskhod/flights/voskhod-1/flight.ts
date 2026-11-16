@@ -19,6 +19,7 @@ import {
   voskhodMotors,
 } from '../../vehicles/voskhod-11a57.ts';
 import { voskhodCabin, voskhodSeat } from '../../vehicles/cabin.ts';
+import { flightSuitCrew } from '../../crew/flight-suit.parts.ts';
 
 const parts: PartWords[] = [
   {
@@ -490,6 +491,16 @@ const vehicle = site1Vehicle(
   BASE,
 );
 
+/**
+ * Komarov, standing in what he flew in, on his way to the lift (crew/flight-suit.parts.ts; model/crew.py): the cabin's figure
+ * of him built standing, without the blue jacket and the boots he wore to the hatch. His height is the three men's estimate.
+ */
+const crew = flightSuitCrew({
+  url: 'models/ussr/voskhod/voskhod-1/crew.glb',
+  scale: 'Vladimir M. Komarov · 1.70 m (estimated: no height of his was found) · to scale · in the cabin’s wool suit and cap',
+  who: 'Komarov',
+});
+
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-1',
   nation: 'USSR',
@@ -723,7 +734,7 @@ export const flight: Flight = {
     'Sixteen revolutions are flown round to the braking burn at 10:18:58 on 13 October, and the crew comes down in the ball (mission.md).',
   // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record (vehicles/voskhod-flies.ts)
   flies: voskhodFlies(orbital, CHUTES),
-  models: [vehicle, pad],
+  models: [vehicle, pad, crew],
   // the place round the pad: as modelled for August 1961, nothing modelled being known to have changed by October 1964 (what
   // was raised for the taller 11A57 is not found: places/tyuratam/site-1.md, "What stood when")
   surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',

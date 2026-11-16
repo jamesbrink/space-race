@@ -122,7 +122,9 @@ def build_headset(M: dict) -> None:
     build_head(head, eyes, dark, hair, lips)
     head.tube((0, 1.0, B.neck_z - 7.0), (0, 0.4, hc.z - 6.0), 5.6, 24)  # neck
     half, mid, tall = FACE
-    n = fl.sides(48)
+    # (the cap's grid at every level of detail: coarser, its stepped cut round the face comes within a millimetre of the
+    # opening's bound edge laid over it, which the clearance check refuses; the standing figure is built at every level)
+    n = 48
     phis = [TAU * i / n for i in range(n)]
     low = math.radians(-58)
     lifts = [low + (math.pi / 2 - 0.02 - low) * j / 22 for j in range(23)]
@@ -207,9 +209,11 @@ def torso_tube() -> Tube:
         return smooth(abs(azimuth(th)) * 0.3, 2.4, 4.2)
 
     t.fold = fold
-    # a loose pullover: slack over the belt, and under the chest
+    # a loose pullover: slack over the belt, and under the chest (the slack over the belt not at the coarsest level, where
+    # its rows are too few for it and the shell sinks onto the trousers under it: only the standing figure is built there)
+    belt = 0.5 if srlib.DETAIL >= 0.5 else 0.0
     t.relief = [
-        Folds(B.waist_z + 2.0 - B.torso_z0, B.waist_z + 12.0 - B.torso_z0, 5, 0.5, 0.9, spread=3.0, mask=flat),
+        Folds(B.waist_z + 2.0 - B.torso_z0, B.waist_z + 12.0 - B.torso_z0, 5, belt, 0.9, spread=3.0, mask=flat),
         Folds(B.z_pit - 9.0 - B.torso_z0, B.z_pit - 2.0 - B.torso_z0, 4, 0.35, 2.7, -TAU / 4, spread=1.6, width=0.7, mask=flat),
     ]
     return t
