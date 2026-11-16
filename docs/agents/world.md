@@ -17,6 +17,15 @@ through `fromDate`, so no two of them can take the Earth's angle differently. Tw
 date, and that frame turned back about the pole to the Earth's axes at liftoff; gravity with J2, the air and the ground are
 symmetric about the pole, so a flight is the same flight in either to rounding (tests/frame.test.mjs).
 
+Time and the Earth's turn (`time.ts`, `frames.ts`; the header of each states it once). An instant is UTC, as a launch is
+recorded. TT is made from it by the leap seconds (`taiMinusUtc`: SOFA's table, with UTC's steps and rate offsets of 1960
+to 1971), so it is exact from 1960; JPL's ephemerides want TDB, TT to 1.7 ms (`barycentricTime`). UT1 is taken to be UTC:
+within 0.1 s through the 1960s and 0.9 s since, which is 46 m and 420 m of the Earth's turn at the equator and moves no
+body's place (a second of TT is a kilometre of the Moon; a second of UT1 is nothing of it). The Earth's orientation is the
+IAU's of 2006: the frame bias and the IAU 2006 precession (`icrfToDate`), the IAU 2000B nutation, and sidereal time from
+the Earth rotation angle, to a milliarcsecond (2 m at the Moon), each held to SOFA's own test values. A flight is flown in
+the frame of date at its liftoff (below), which turns against the ICRF by about an arcsecond in a week.
+
 Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, defined once in
 `missions/<nation>/places/<place>/<site>.ts`) and the clock's instant give the Sun, the Moon
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and

@@ -9,14 +9,18 @@
  *   longitude positive east and bearings clockwise from true north.
  * - All frames are right-handed.
  *
- * J2000      The sky's own frame, where a star catalogue lives: origin at the Earth's centre, +Z
- *            the mean pole and +X the mean equinox of 1 January 2000, 12:00 TT (the ICRF, to a
- *            fiftieth of an arcsecond).
+ * J2000      The sky's own frame, where a star catalogue and JPL's ephemerides live: the ICRF,
+ *            origin at the Earth's centre, +Z and +X within a fiftieth of an arcsecond of the mean
+ *            pole and equinox of 1 January 2000, 12:00 TT. That fiftieth (the frame bias) is
+ *            allowed for in the turn to date (`icrfToDate`).
  * inertial   "Of date": +Z the Earth's true pole now, +X the true equinox now. It differs from
  *            J2000 by precession (50 arcseconds a year: half a degree by 1961) and nutation
- *            (17 arcseconds), and it is the frame ephemeris.ts answers in, because the Earth turns
- *            about its +Z by exactly the sidereal time. It does not rotate; its pole drifts, slowly
- *            enough that a flight of days may integrate in it as if it were fixed.
+ *            (17 arcseconds), by the IAU 2006 precession and the IAU 2000B nutation (time.ts), to
+ *            a milliarcsecond, 2 m at the Moon. It is the frame ephemeris.ts answers in, because
+ *            the Earth turns about its +Z by exactly the sidereal time. It does not rotate; its pole
+ *            drifts, slowly enough that a flight of days may integrate in it as if it were fixed
+ *            (about an arcsecond in a week: a flight's frame is the one at its liftoff,
+ *            earthframe.ts).
  * ECEF       Earth-centred, Earth-fixed: +Z the north pole, +X where the Greenwich meridian
  *            crosses the equator, +Y 90 degrees east. It is the inertial frame turned about +Z by
  *            the Greenwich apparent sidereal time (time.ts). Polar motion (under 15 m at the
@@ -35,7 +39,7 @@
  * fact about flat scenery, not an error in the transform.
  */
 import { EARTH_ROTATION_RATE, WGS84_A, WGS84_INVERSE_FLATTENING } from './bodies.ts';
-import { centuries, nutation } from './time.ts';
+import { centuries, meanObliquity, nutation } from './time.ts';
 
 export type Vec3 = readonly [number, number, number];
 /** A rotation, as its three rows: applied to a vector by `rotate`. */
@@ -169,14 +173,6 @@ const aboutZ = (v: Vec3, angle: number): Vec3 => {
   const [sin, cos] = [Math.sin(angle), Math.cos(angle)];
   return [v[0] * cos - v[1] * sin, v[0] * sin + v[1] * cos, v[2]];
 };
-const aboutX = (v: Vec3, angle: number): Vec3 => {
-  const [sin, cos] = [Math.sin(angle), Math.cos(angle)];
-  return [v[0], v[1] * cos - v[2] * sin, v[1] * sin + v[2] * cos];
-};
-const aboutY = (v: Vec3, angle: number): Vec3 => {
-  const [sin, cos] = [Math.sin(angle), Math.cos(angle)];
-  return [v[0] * cos + v[2] * sin, v[1], -v[0] * sin + v[2] * cos];
-};
 
 /** A position or direction in ECEF, in the inertial frame of date. `gast` is time.ts's greenwichSiderealTime. */
 export const ecefToInertial = (v: Vec3, gast: number): Vec3 => aboutZ(v, gast);
@@ -209,30 +205,82 @@ export function fromHorizontal(azimuth: number, elevation: number): Vec3 {
 
 const ARCSEC = DEG / 3600;
 
+/** A matrix product, `a` after `b`. */
+export const multiply = (a: Mat3, b: Mat3): Mat3 => {
+  const t = transpose(b);
+  return [
+    [dot(a[0], t[0]), dot(a[0], t[1]), dot(a[0], t[2])],
+    [dot(a[1], t[0]), dot(a[1], t[1]), dot(a[1], t[2])],
+    [dot(a[2], t[0]), dot(a[2], t[1]), dot(a[2], t[2])],
+  ];
+};
+/** A turn of the axes about +X and about +Z by `angle` (SOFA's iauRx and iauRz): a vector's coordinates in the turned axes. */
+const axesX = (angle: number): Mat3 => {
+  const [s, c] = [Math.sin(angle), Math.cos(angle)];
+  return [
+    [1, 0, 0],
+    [0, c, s],
+    [0, -s, c],
+  ];
+};
+const axesZ = (angle: number): Mat3 => {
+  const [s, c] = [Math.sin(angle), Math.cos(angle)];
+  return [
+    [c, s, 0],
+    [-s, c, 0],
+    [0, 0, 1],
+  ];
+};
+
 /**
- * J2000 to the mean equator and equinox of a date: precession, by the IAU 1976 angles (Lieske et
- * al. 1977; Meeus equation 21.2 with the starting epoch at J2000). `jdTT` is a Julian date in TT.
+ * The IAU 2006 precession's Fukushima-Williams angles, with the ICRF's frame bias in them (SOFA iauPfw06): radians.
+ * `jdTT` is a Julian date in TT.
  */
-function precess(v: Vec3, jdTT: number, back: boolean): Vec3 {
+export function precessionAngles(jdTT: number): { gamma: number; phi: number; psi: number; epsilon: number } {
   const t = centuries(jdTT);
-  const zeta = (2306.2181 * t + 0.30188 * t ** 2 + 0.017998 * t ** 3) * ARCSEC;
-  const z = (2306.2181 * t + 1.09468 * t ** 2 + 0.018203 * t ** 3) * ARCSEC;
-  const theta = (2004.3109 * t - 0.42665 * t ** 2 - 0.041833 * t ** 3) * ARCSEC;
-  // forward: Rz(z) Ry(-theta) Rz(zeta), in the sense of turning the vector
-  return back ? aboutZ(aboutY(aboutZ(v, -z), theta), -zeta) : aboutZ(aboutY(aboutZ(v, zeta), -theta), z);
+  return {
+    gamma: (-0.052928 + (10.556378 + (0.4932044 + (-0.00031238 + (-0.000002788 + 0.000000026 * t) * t) * t) * t) * t) * ARCSEC,
+    phi: (84381.412819 + (-46.811016 + (0.0511268 + (0.00053289 + (-0.00000044 + -0.0000000176 * t) * t) * t) * t) * t) * ARCSEC,
+    psi: (-0.041775 + (5038.481484 + (1.5584175 + (-0.00018522 + (-0.000026452 + -0.0000000148 * t) * t) * t) * t) * t) * ARCSEC,
+    epsilon: meanObliquity(jdTT),
+  };
 }
 
-/** The mean equator and equinox of date to the true ones: nutation (time.ts). */
-function nutate(v: Vec3, jdTT: number, back: boolean): Vec3 {
-  const n = nutation(jdTT);
-  return back
-    ? aboutX(aboutZ(aboutX(v, -n.trueObliquity), -n.longitude), n.meanObliquity)
-    : aboutX(aboutZ(aboutX(v, -n.meanObliquity), n.longitude), n.trueObliquity);
+/** The rotation from the ICRF to the equator and equinox of the angles' date (SOFA iauFw2m). */
+const fukushimaWilliams = (gamma: number, phi: number, psi: number, epsilon: number): Mat3 =>
+  multiply(axesX(-epsilon), multiply(axesZ(-psi), multiply(axesX(phi), axesZ(gamma))));
+
+let lastDate = Number.NaN;
+let lastMatrix: Mat3 = [
+  [1, 0, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+];
+/**
+ * The rotation that takes a direction or position in the ICRF (J2000 here) into the inertial frame of date: frame
+ * bias, the IAU 2006 precession and the IAU 2000B nutation in one matrix (SOFA iauPnm06a, which has the full IAU 2000A
+ * nutation: within a milliarcsecond of it, 2 m at the Moon). `jdTT` is a Julian date in TT. The last one asked for is
+ * kept: a frame asks for the same instant many times.
+ */
+export function icrfToDate(jdTT: number): Mat3 {
+  if (jdTT !== lastDate) {
+    const a = precessionAngles(jdTT);
+    const n = nutation(jdTT);
+    lastMatrix = fukushimaWilliams(a.gamma, a.phi, a.psi + n.longitude, a.epsilon + n.obliquity);
+    lastDate = jdTT;
+  }
+  return lastMatrix;
 }
 
-/** A direction or position in J2000, in the inertial frame of date. `jdTT` is a Julian date in TT. */
-export const j2000ToInertial = (v: Vec3, jdTT: number): Vec3 => nutate(precess(v, jdTT, false), jdTT, false);
-export const inertialToJ2000 = (v: Vec3, jdTT: number): Vec3 => precess(nutate(v, jdTT, true), jdTT, true);
+/** The same without the nutation: the ICRF to the mean equator and equinox of date (SOFA iauPmat06). */
+export function icrfToMean(jdTT: number): Mat3 {
+  const a = precessionAngles(jdTT);
+  return fukushimaWilliams(a.gamma, a.phi, a.psi, a.epsilon);
+}
+
+/** A direction or position in J2000 (the ICRF), in the inertial frame of date, and back. `jdTT` is a Julian date in TT. */
+export const j2000ToInertial = (v: Vec3, jdTT: number): Vec3 => rotate(icrfToDate(jdTT), v);
+export const inertialToJ2000 = (v: Vec3, jdTT: number): Vec3 => rotate(transpose(icrfToDate(jdTT)), v);
 
 /** The unit vector toward a right ascension and declination. */
 export function fromEquatorial(ra: number, dec: number): Vec3 {

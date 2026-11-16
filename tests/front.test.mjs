@@ -183,7 +183,9 @@ test('what is baked for the page was baked for these figures', () => {
   const moon = JSON.parse(readFileSync(join(root, 'public/front/moon.json'), 'utf8'));
   assert.equal(moon.for.instant, INSTANT, 'the Moon’s maps are for the instant (pnpm front:moon)');
   assert.equal(moon.for.limb, PATH.limb, 'and for the limb the camera looks across');
-  near(angleBetween(moon.for.sun, sky0.sun) / DEG, 0, 1e-6, 'its cast shadows are for the Sun as it stood');
+  // (to a third of an arcsecond: the bake's Sun moved 0.03 arcseconds when the Earth's orientation became the IAU's of
+  // 2006, under a thousandth of the shadows' soft edge, 0.26 degrees; a bake for another instant would be degrees off)
+  near(angleBetween(moon.for.sun, sky0.sun) / DEG, 0, 1e-4, 'its cast shadows are for the Sun as it stood');
   // the finest map lies under where the camera starts and reaches the limb point
   const onNear = (p) => {
     const d = unit(p);

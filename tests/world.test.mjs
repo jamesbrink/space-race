@@ -18,6 +18,9 @@ import {
   enuToSite,
   equatorial,
   fromEquatorial,
+  icrfToDate,
+  icrfToMean,
+  precessionAngles,
   fromHorizontal,
   geodeticToEcef,
   horizontal,
@@ -34,8 +37,13 @@ import {
 } from '../src/world/frames.ts';
 import { STAR_STRIDE, STARS, starDirection, yearsFrom2000 } from '../src/world/stars.ts';
 import {
+  barycentricTime,
   deltaT,
+  earthRotationAngle,
   greenwichMeanSiderealTime,
+  J2000,
+  meanObliquity,
+  taiMinusUtc,
   greenwichSiderealTime,
   isoDate,
   julianDate,
@@ -72,23 +80,81 @@ test('delta-T against the measured values (Astronomical Almanac, table K9)', () 
   near((terrestrialTime(LIFTOFF) - LIFTOFF) * 86400, 33.7, 0.3, 'TT - UT at liftoff');
 });
 
-test('sidereal time: Meeus examples 12.a and 12.b, and Horizons at the pad', () => {
+test('TT from UTC by the leap seconds: SOFA’s iauDat test values, and the drift UTC was steered by in 1961', () => {
+  // t_sofa_c.c, t_dat: 2003 June 1, 2008 January 17 and 2017 September 1, 0h UTC
+  assert.equal(taiMinusUtc(julianDate('2003-06-01')), 32);
+  assert.equal(taiMinusUtc(julianDate('2008-01-17')), 33);
+  assert.equal(taiMinusUtc(julianDate('2017-09-01')), 37);
+  // either side of a leap second: the end of 1998
+  assert.equal(taiMinusUtc(julianDate('1998-12-31T23:59:59Z')), 31);
+  assert.equal(taiMinusUtc(julianDate('1999-01-01T00:00:00Z')), 32);
+  // USNO tai-utc.dat: from 1961 January 1, 1.4228180 s + (MJD - 37300) x 0.001296 s; Freedom 7 lifted off on MJD 37424.607
+  near(taiMinusUtc(LIFTOFF), 1.422818 + (LIFTOFF - 2400000.5 - 37300) * 0.001296, 1e-9, 'TAI - UTC at liftoff');
+  near((terrestrialTime(LIFTOFF) - LIFTOFF) * 86400, 1.584305 + 32.184, 1e-4, 'TT - UTC at liftoff: the table and 32.184 s');
+  // from 1968 February 1, 4.2131700 s + (MJD - 39126) x 0.002592 s
+  const apollo11 = julianDate('1969-07-16T13:32:00Z');
+  near(
+    (terrestrialTime(apollo11) - apollo11) * 86400,
+    4.21317 + (apollo11 - 2400000.5 - 39126) * 0.002592 + 32.184,
+    1e-4,
+    'Apollo 11: a Julian date holds 40 microseconds',
+  );
+  near((terrestrialTime(julianDate('2024-04-08T18:00:00Z')) - julianDate('2024-04-08T18:00:00Z')) * 86400, 69.184, 1e-4, 'since 2017');
+  assert.ok(Number.isNaN(taiMinusUtc(julianDate('1957-10-04T19:28:34Z'))), 'no UTC before 1960');
+  near((terrestrialTime(julianDate('1957-10-04')) - julianDate('1957-10-04')) * 86400, deltaT(1957.76), 0.01, 'delta-T before');
+  // TDB - TT: 1.66 ms at most, on the Earth's anomaly (zero near perihelion, early January)
+  near((barycentricTime(J2000 + 91) - (J2000 + 91)) * 86400, 0.00166, 0.00005, 'TDB - TT in April');
+});
+
+test('sidereal time: SOFA’s test values, Meeus examples 12.a and 12.b, and Horizons at the pad', () => {
+  // t_sofa_c.c: iauEra00 at MJD 54388.0, iauGmst06 and iauGst06a at MJD 53736.0 (UT1 and TT given the same date there:
+  // here TT is made from the date by the table, 65.184 s later, which adds 4612.16 arcseconds a century of it)
+  near(earthRotationAngle(2400000.5 + 54388.0), 0.4022837240028158, 1e-12, 'the Earth rotation angle');
+  const later = ((4612.156534 * 65.184) / (86400 * 36525)) * (DEG / 3600);
+  near(greenwichMeanSiderealTime(2400000.5 + 53736.0) - later, 1.7541749718700912, 1e-12, 'IAU 2006 mean sidereal time');
+  // iauGst06a has the full IAU 2000A nutation; the 2000B here is within a milliarcsecond of it (5e-9 rad)
+  near(greenwichSiderealTime(2400000.5 + 53736.0), 1.754166137675019, 5e-9, 'apparent sidereal time');
   const midnight = julianDate('1987-04-10T00:00:00Z');
-  near(greenwichMeanSiderealTime(midnight), hours(13, 10, 46.3668), hours(0, 0, 0.0001), 'mean, 10 April 1987 0h');
-  near(greenwichMeanSiderealTime(julianDate('1987-04-10T19:21:00Z')), hours(8, 34, 57.0896), hours(0, 0, 0.0001), 'mean, 19:21');
-  // apparent: 13h10m46.1351s. The four-term nutation is good to half an arcsecond, 0.03 s of time
-  near(greenwichSiderealTime(midnight), hours(13, 10, 46.1351), hours(0, 0, 0.03), 'apparent');
+  // Meeus's are the IAU 1982 expression, which the IAU 2006 one departs from by 0.05 arcseconds (3.3 ms of time) in 1987
+  near(greenwichMeanSiderealTime(midnight), hours(13, 10, 46.3668), hours(0, 0, 0.004), 'mean, 10 April 1987 0h');
+  near(greenwichMeanSiderealTime(julianDate('1987-04-10T19:21:00Z')), hours(8, 34, 57.0896), hours(0, 0, 0.004), 'mean, 19:21');
+  // apparent: 13h10m46.1351s, on the full IAU 1980 nutation
+  near(greenwichSiderealTime(midnight), hours(13, 10, 46.1351), hours(0, 0, 0.005), 'apparent');
   // Horizons, local apparent sidereal time at LC-5 at liftoff: 0.0802662402 h
   const local = (greenwichSiderealTime(LIFTOFF) / DEG + LC5.longitude + 360) % 360;
   near(local / 15, 0.0802662402, 0.05 / 3600, 'local apparent sidereal time at the pad');
 });
 
-test('nutation and obliquity: Meeus example 22.a', () => {
+test('nutation and obliquity: SOFA’s test values, and Meeus example 22.a', () => {
+  // t_sofa_c.c, iauNut00b at MJD 53736.0: here scaled to the IAU 2006 precession (by 5e-7 of itself, as iauNut06a does)
+  const sofa = nutation(2400000.5 + 53736.0);
+  near(sofa.longitude, -0.000009632552291148363, 1e-11, 'in longitude, rad');
+  near(sofa.obliquity, 0.00004063197106621159, 1e-11, 'in obliquity, rad');
+  near(meanObliquity(2400000.5 + 54388.0), 0.4090749229387258, 1e-14, 'iauObl06');
   const n = nutation(2446895.5); // 10 April 1987, 0h TD
   const arcsec = DEG / 3600;
-  near(n.longitude / arcsec, -3.788, 0.5, 'in longitude');
-  near(n.obliquity / arcsec, 9.443, 0.1, 'in obliquity');
-  near(n.meanObliquity / DEG, 23 + 26 / 60 + 27.407 / 3600, 1e-6, 'mean obliquity');
+  // Meeus's are the full IAU 1980 series: IAU 2000B is within a few milliarcseconds of them here
+  near(n.longitude / arcsec, -3.788, 0.01, 'in longitude');
+  near(n.obliquity / arcsec, 9.443, 0.01, 'in obliquity');
+  // and the IAU 1980 mean obliquity, which the IAU 2006 one is 0.042 arcseconds under at J2000
+  near(n.meanObliquity / DEG, 23 + 26 / 60 + 27.407 / 3600, 0.05 / 3600, 'mean obliquity');
+});
+
+test('precession and nutation: SOFA’s test values for the IAU 2006 angles and the whole matrix', () => {
+  // t_sofa_c.c, iauPfw06 at MJD 50123.9999
+  const a = precessionAngles(2400000.5 + 50123.9999);
+  near(a.gamma, -0.0000022433876709979958, 1e-16, 'gamma bar');
+  near(a.phi, 0.4091014602391313, 1e-12, 'phi bar');
+  near(a.psi, -0.0009501954178013031, 1e-14, 'psi bar');
+  near(a.epsilon, 0.40910143165873675, 1e-12, 'epsilon A');
+  // iauPnm06a, the same date: bias, precession and the full IAU 2000A nutation; 2000B is within a milliarcsecond (5e-9)
+  const want = [
+    [0.9999995832794205, 0.0008372382772630962, 0.0003639684771140623],
+    [-0.0008372533744743683, 0.9999996486492861, 0.000041329059446110195],
+    [-0.0003639337469629465, -0.00004163377605910664, 0.999999932909426],
+  ];
+  const m = icrfToDate(2400000.5 + 50123.9999);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) near(m[i][j], want[i][j], 5e-9, `element ${i + 1}${j + 1}`);
 });
 
 test('geodetic to Earth-fixed and back', () => {
@@ -155,9 +221,14 @@ test('Earth-fixed to inertial: the turn is the sidereal time, and the ground has
 test('precession: Meeus example 21.b, Theta Persei from J2000 to 2028', () => {
   // mean place at J2000 with proper motion applied: 41.054063, 49.227750; at 2028 November 13.19 TD: 41.547214, 49.348483
   const jd = 2462088.69;
+  // Meeus's is the IAU 1976 precession without the frame bias, whose rate in longitude was 0.3 arcseconds a century too
+  // fast (IAU 2000 Resolution B1.6): the IAU 2006 precession with the bias is 0.09 arcseconds from it by 2028
+  const precessed = equatorial(rotate(icrfToMean(jd), fromEquatorial(41.054063 * DEG, 49.22775 * DEG)));
+  near(precessed.ra / DEG, 41.547214, 0.12 / 3600, 'right ascension, mean equinox of date');
+  near(precessed.dec / DEG, 49.348483, 0.05 / 3600, 'declination');
   const mean = j2000ToInertial(fromEquatorial(41.054063 * DEG, 49.22775 * DEG), jd);
   const { ra, dec } = equatorial(mean);
-  // the result here also carries nutation (under 0.006 degrees), which the example leaves out
+  // the true place also carries nutation (under 0.006 degrees), which the example leaves out
   near(ra / DEG, 41.547214, 0.008, 'right ascension');
   near(dec / DEG, 49.348483, 0.004, 'declination');
   const back = equatorial(inertialToJ2000(mean, jd));
