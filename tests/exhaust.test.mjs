@@ -1,27 +1,40 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
+import { STRAP_ONS } from '../missions/ussr/vostok/vehicles/vostok-8k72k.ts';
 import { Plume, plumeShape } from '../src/viewer/plume.ts';
+import { P0 } from '../src/world/bodies.ts';
+
+/** The A-7's exit pressure and an RD-107's, atmospheres: each engine's own (sim/plan.ts `Nozzle`). */
+const A7 = A7_NOZZLE.exit.value / P0;
+const RD107 = STRAP_ONS.nozzle.exit.value / P0;
 
 // The engine's fire as data: what the air lets it be, and what it is told (the drawing is exhaust.ts's, on the GPU).
 
 test('the jet is nearly matched at sea level and opens as the air thins, without a step', () => {
-  const sea = plumeShape(0);
+  const sea = plumeShape(0, A7);
   assert.equal(sea.width, 1, 'the exit is at nine tenths of an atmosphere: the jet does not swell');
   assert.equal(sea.air, 1);
   assert.ok(sea.length * 0.366 > 12 && sea.length * 0.366 < 16, 'about 14 m of fire under a 25 m vehicle');
   let last = sea;
   for (let v = 0.005; v <= 1; v += 0.005) {
-    const s = plumeShape(v);
+    const s = plumeShape(v, A7);
     assert.ok(s.width >= last.width && s.length >= last.length && s.air <= last.air && s.cell >= last.cell, `it only opens (${v})`);
     assert.ok(s.width - last.width < 6 && s.air - last.air > -0.03, `without a step (${v})`); // (fastest near vacuum: a tenth of its width in 0.005)
     last = s;
   }
-  assert.ok(plumeShape(0.5).width > 3 && plumeShape(1).width >= 30, 'a wide balloon in near vacuum');
-  assert.ok(plumeShape(1).air < 1e-3, 'with nothing to burn in or to stand shocks up');
+  assert.ok(plumeShape(0.5, A7).width > 3 && plumeShape(1, A7).width >= 30, 'a wide balloon in near vacuum');
+  assert.ok(plumeShape(1, A7).air < 1e-3, 'with nothing to burn in or to stand shocks up');
+});
+
+test('each engine opens by its own nozzle: a jet that leaves at a third of an atmosphere opens higher than one at nine tenths', () => {
+  assert.equal(plumeShape(0, RD107).width, 1, 'over-expanded at the sea: a column');
+  for (const v of [0.1, 0.2, 0.3, 0.5]) assert.ok(plumeShape(v, RD107).width < plumeShape(v, A7).width, `narrower at ${v}`);
+  assert.equal(plumeShape(1, RD107).width, plumeShape(1, A7).width, 'and as wide as a jet is drawn in vacuum');
 });
 
 test("the fire is the clock's: the same instant is the same fire, and its light is in the scene at no strength when it is out", () => {
-  const plume = new Plume(0.366);
+  const plume = new Plume(0.366, A7);
   assert.equal(plume.light.intensity, 0);
   assert.equal(plume.set(0, 0, -5, 1), false, 'nothing to draw before it lights');
   assert.equal(plume.mesh.visible, false);

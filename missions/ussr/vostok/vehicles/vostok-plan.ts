@@ -5,7 +5,7 @@
  * the record does not give, it is worked from those it does, `derived`, and says how. The ids are this module's: a
  * stage's body, engine, tank and joint are `stage:<i>` (base first), a descent parachute is `<body>/<name>`.
  */
-import { derived, type Measure } from '../../../../src/measure.ts';
+import { derived, estimated, type Measure } from '../../../../src/measure.ts';
 import { chuteEvent, type OrbitalFlight } from '../../../../src/sim/orbital.ts';
 import type {
   AttitudeDef,
@@ -103,6 +103,7 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
     thrust: s.thrust,
     isp: s.isp,
     ...(s.exitArea ? { exitArea: s.exitArea } : {}),
+    ...(s.nozzle ? { nozzle: s.nozzle } : {}),
     kind: 'liquid',
     ...(s.throttle ? { throttle: { curve: s.throttle } } : {}),
     starts: s.start ?? { count: 1, ground: false, confidence: 'estimated' },
@@ -115,6 +116,13 @@ export function vostokPlan(o: OrbitalFlight): FlightPlan {
     tanks: [],
     thrust: { vacuum: o.manual?.thrust ?? derived(0, 'not given: the record’s burn is flown as its impulse, evenly') },
     kind: 'liquid',
+    // (only its fire reads this: viewer/plume.ts)
+    nozzle: {
+      exit: estimated(
+        4_390,
+        'not found for the TDU-1: taken as the RD-0109’s, a few hundredths of an atmosphere, as any engine made to fire above the air leaves its gas at; it fires only there, where its jet is drawn as wide as a jet is drawn whatever this is',
+      ),
+    },
     starts: { count: 1, ground: false, confidence: 'documented', source: 'fired once, on the way down' },
     ...(o.manual ? { deltaV: o.manual.deltaV } : {}),
     flown: o.retro.deltaV,

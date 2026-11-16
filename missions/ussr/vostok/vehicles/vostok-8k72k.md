@@ -143,6 +143,7 @@ trunnions through which their propellants arrive (E).
 | Specific impulse, sea level | 2,510 N·s/kg (256 s) | 2,432 (248 s) | |
 | Specific impulse, vacuum | 3,069 N·s/kg (313 s) | 3,089 (315 s) | 3,172 (323.5 s) |
 | Chamber pressure | 5.85 MPa | 5.10 MPa | 5.0 MPa (A); 5.85 (Russian Wikipedia) |
+| Expansion, exit pressure (the fire's shape only) | 18.4:1, 0.32 atm (estimated) | 18.9:1, 0.27 atm (estimated) | 79.4:1 (A), 0.043 atm (estimated) |
 | Burn | 118 to 120.5 s | 290 to 301 s | 365 to 440 s in print |
 | Dry mass | | | 121 kg |
 

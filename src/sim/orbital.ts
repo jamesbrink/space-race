@@ -32,6 +32,7 @@ import {
   eventOf,
   type FlightPlan,
   type Hold,
+  type Nozzle,
 } from './plan.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
@@ -60,6 +61,8 @@ export interface StageRecord {
    * this times the air's pressure. Left out, it is (vacuum less sea-level thrust) over one atmosphere, as `exitAreaOf` says.
    */
   exitArea?: Measure;
+  /** Its nozzle's pressures, for its fire's shape (plan.ts `Nozzle`): handed on to the plan's engine. */
+  nozzle?: Nozzle;
   /** What of `propellant` goes through the chambers (less the turbopump's peroxide and the tanks' pressurising gas), kg: the engine stops when it is gone. Left out: all of it. */
   usable?: Measure;
   /** The fraction of its rated thrust and flow it runs at, against seconds from liftoff: straight lines between. Left out: rated throughout. */

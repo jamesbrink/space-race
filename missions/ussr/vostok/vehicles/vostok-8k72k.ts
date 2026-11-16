@@ -39,6 +39,16 @@ export const MOLODTSOV =
 export const BOBKOV = 'Bobkov (OKB-1), «Космический корабль "Восток"», Krylya Rodiny 1991 No. 4 and 6: secondary';
 export const GCTC = 'Gagarin Cosmonaut Training Centre, «Корабль "Восток"» (gctc.ru): secondary, unsigned';
 
+/**
+ * How an RD-107's or RD-108's expansion was reached, none being found in print: from Energomash's own figures in the table
+ * (`ENERGOMASH`), the exits' area `exits` m^2, the flow `flow` kg/s and the throat `throat` m^2 that give `ratio`. For the
+ * nozzle's figures (plan.ts `Nozzle`), which only the fire's shape reads (viewer/plume.ts).
+ */
+const nozzleWork = (exits: number, flow: number, throat: number, ratio: number): string =>
+  `worked out from the table’s own figures: the exits’ area is the thrust lost at sea level over one atmosphere (${exits} m^2), ` +
+  `the throat’s is the flow (${flow} kg/s, vacuum thrust over specific impulse) times an estimated c* of 1,750 m/s over the chamber’s pressure (${throat} m^2), ` +
+  `so ${ratio}:1. Estimated: c* is kerosene and oxygen’s in general, not this engine’s, and the steering chambers are counted in with the main ones`;
+
 /** A stage's own: what it was, what it held and what its engine gives; the flight gives when it was lit, cut and let go, and how it was throttled. */
 type Hardware = Omit<StageRecord, 'cutoff' | 'separation' | 'throttle' | 'velocity'>;
 
@@ -57,6 +67,11 @@ export const STRAP_ONS: Hardware = {
       'thrust over kerosene, oxygen and peroxide together (lpre.de, from Gakhun et al. 1989: 1,000.3 kN over 326.2 kg/s is 3,066.5 m/s, the published 3,067); the 0.28 t of nitrogen (militaryrussia.ru) is not burned and is left in. ' +
       'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
   ),
+  nozzle: {
+    chamber: doc(5_850_000, `${ENERGOMASH}: 5.85 MPa`),
+    expansion: estimated(18.4, nozzleWork(1.794, 325.1, 0.0972, 18.4)),
+    exit: estimated(32_900, 'the chamber’s 5.85 MPa expanded isentropically, gamma 1.2, through the estimated 18.4:1: 0.32 atmosphere'),
+  },
   thrust: {
     seaLevel: doc(815_900, `${ENERGOMASH}: 815.9 kN. Minakov’s table: 82 tf (804 kN)`),
     vacuum: doc(997_700, `${ENERGOMASH}: 997.7 kN`),
@@ -91,6 +106,11 @@ export const CORE: Hardware = {
     '100.4 t fuelled less 6.8 t dry (both Astronautix, of the 8K72K’s core): all that is not structure, peroxide and nitrogen with the kerosene and oxygen, drawn at the engine’s whole flow (see the strap-ons). ' +
       'Brügge’s figures (b14643.eu) are not this vehicle’s: his block masses for every R-7 are Soyuz-ST’s, from Arianespace’s Soyuz CSG User’s Manual, issue 2, 2012, Fig. 1.5.1a, where a strap-on carries 27,900 kg of oxygen and 11,260 of kerosene (39.16 t) and a core 63,800 and 26,300 (90.10 t), the peroxide and nitrogen outside those (1.47 and 3.12 t)',
   ),
+  nozzle: {
+    chamber: doc(5_100_000, `${ENERGOMASH}: 5.10 MPa`),
+    expansion: estimated(18.9, nozzleWork(1.985, 306.1, 0.105, 18.9)),
+    exit: estimated(27_800, 'the chamber’s 5.10 MPa expanded isentropically, gamma 1.2, through the estimated 18.9:1: 0.27 atmosphere'),
+  },
   thrust: {
     seaLevel: doc(744_300, `${ENERGOMASH}: 744.3 kN. Minakov’s table: 81.2 tf`),
     vacuum: doc(945_400, `${ENERGOMASH}: 945.4 kN`),
@@ -122,6 +142,14 @@ export const BLOCK_E: Omit<Hardware, 'ignition'> = {
   ),
   dry: doc(1_472, `${MINAKOV}: 1,472 kg burnt out. ${NK}: 1,210 kg dry, not flown yet. Astronautix 1,440 kg; Zak 1.34 t dry`),
   propellant: derived(6_512, 'Minakov’s two figures, 7,984 less 1,472 kg. Brügge has 6.93 t; NK 6,576 kg'),
+  nozzle: {
+    chamber: doc(5_000_000, `${ASTRONAUTIX}: 5.0 MPa. Russian Wikipedia has 5.85 (vostok-8k72k.md, Engines)`),
+    expansion: doc(79.4, `${ASTRONAUTIX}: area ratio 79.4 (vostok-8k72k.md, the RD-0109)`),
+    exit: estimated(
+      4_390,
+      'the chamber’s 5.0 MPa expanded isentropically through 79.4:1 as a gas of gamma 1.2 (kerosene and oxygen’s in general, not this engine’s): 0.043 atmosphere. It burns above the air, where its jet is drawn as wide as a jet is drawn whatever this is',
+    ),
+  },
   thrust: { vacuum: doc(54_500, 'Brügge: 54.5 kN; Astronautix 54.52 kN: secondary') },
   isp: { vacuum: doc(3172 / G0, 'Brügge: 3,172 N·s/kg (323.5 s); Astronautix 324 s: secondary') },
   start: {

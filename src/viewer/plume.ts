@@ -10,28 +10,26 @@ import { FLAMES, type FlameLook, KINDS } from './flames.ts';
  *
  * The Redstone's A-7 burned alcohol and liquid oxygen: a clean, pale yellow fire you can see
  * through, with an orange skirt where the fuel-rich gas along the wall burns in the air, and no
- * soot. Its nozzle (3.61 to 1, 318 psi in the chamber) let the gas out at about nine tenths of an
- * atmosphere, so at sea level the jet is very nearly matched: a narrow column with faint shock
- * diamonds. As the air thins the same jet is more and more under-expanded and opens into a wide,
- * faint balloon (`plumeShape`). The exit's size is the trajectory's (derived) exit area; the rest is
- * estimated, from film and from the nozzle's figures.
+ * soot. Each engine's nozzle lets its gas out at its own pressure (the plan's `EngineDef.nozzle`, sim/plan.ts: the
+ * A-7's at about nine tenths of an atmosphere, an RD-107's at a third): where that is under the air's the jet is a narrow
+ * column with faint shock diamonds; as the air thins below it the jet is more and more under-expanded and opens into a
+ * wide, faint balloon (`plumeShape`). The exit's size is the engine's (its exit area, or its bells in the model); the
+ * length is estimated, from film.
  */
 
-/** The pressure at the nozzle's exit, atmospheres: the A-7's chamber pressure over its nozzle's pressure ratio (estimated). */
-const EXIT_PRESSURE = 0.9;
-/** The fire's length at sea level, in exit radii: 14 m, a little over half the vehicle's length, as film of the launch has it (estimated). */
+/** The fire's length at sea level, in exit radii: 14 m, a little over half the vehicle's length, as film of the A-7's launches has it (estimated), for every engine. */
 const LENGTH = 38;
 
 /**
  * The jet's shape for `vacuum` (0 in sea-level air to 1 in none; ascent.ts: one minus the fourth
- * root of the pressure): how wide the free jet swells, in exit radii (the root of the exit's
+ * root of the pressure) from a nozzle whose gas leaves at `exit` atmospheres: how wide the free jet swells, in exit radii (the root of the exit's
  * pressure over the air's: a jet's area grows as the pressure it must come down to falls); its
  * length in exit radii; how much air there is to burn in and stand shocks up in (0 to 1); and the
  * length of a shock cell, exit radii.
  */
-export function plumeShape(vacuum: number): { width: number; length: number; air: number; cell: number } {
+export function plumeShape(vacuum: number, exit: number): { width: number; length: number; air: number; cell: number } {
   const pressure = Math.max(1 - Math.min(Math.max(vacuum, 0), 1), 1e-3) ** 4;
-  const width = Math.min(Math.max(Math.sqrt(EXIT_PRESSURE / pressure), 1), 60);
+  const width = Math.min(Math.max(Math.sqrt(exit / pressure), 1), 60);
   return { width, length: LENGTH * (1 + 0.5 * Math.sqrt(width - 1)), air: pressure ** 0.35, cell: 3.4 * width ** 0.8 };
 }
 
@@ -72,9 +70,12 @@ export class Plume implements Flame {
   /** `exitRadius` in metres; the jet leaves the mesh's origin along its -Y. `light`: one shared with other fires (`lightFires`). */
   /** What it burns, as the fire's tables hold it (flames.ts `kindOf`): the alcohol flame unless told. */
   readonly kind: number;
+  /** The pressure its gas leaves the nozzle at, atmospheres (sim/plan.ts `Nozzle.exit`). */
+  readonly exit: number;
 
-  constructor(exitRadius: number, cluster: Cluster | null = null, light?: THREE.PointLight, kind = 0) {
+  constructor(exitRadius: number, exit: number, cluster: Cluster | null = null, light?: THREE.PointLight, kind = 0) {
     this.radius = exitRadius;
+    this.exit = exit;
     this.cluster = cluster;
     this.kind = kind;
     this.own = !light;
@@ -99,7 +100,7 @@ export class Plume implements Flame {
 
   /** The jet's shape in the air it is in now. */
   shape(): ReturnType<typeof plumeShape> {
-    return plumeShape(this.vacuum);
+    return plumeShape(this.vacuum, this.exit);
   }
 
   /**
@@ -123,7 +124,7 @@ export class Plume implements Flame {
     this.light.position.y -= 8 * this.radius;
     const look = lookOf(this);
     this.light.color.setRGB(...look.light, THREE.SRGBColorSpace);
-    this.light.intensity = CANDELA * look.luminous * this.on * this.bright * (0.25 + 0.75 * plumeShape(vacuum).air);
+    this.light.intensity = CANDELA * look.luminous * this.on * this.bright * (0.25 + 0.75 * plumeShape(vacuum, this.exit).air);
     return changed;
   }
 }
@@ -171,7 +172,7 @@ export function lightFires(light: THREE.PointLight, plumes: readonly Plume[]): v
     now += a.now;
     all += a.all;
     bright = p.bright;
-    air = plumeShape(p.vacuum).air;
+    air = p.shape().air;
   }
   if (now <= 0) {
     light.intensity = 0;

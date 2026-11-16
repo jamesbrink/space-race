@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
+import type { EngineDef } from '../../sim/plan.ts';
 import { exitAreaOf } from '../../sim/staged.ts';
 import type { Burns, Flight as FlightData, ModelDef, SitedFlight } from '../../types.ts';
+import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import { Ascent, type Run } from '../ascent.ts';
 import type { Setting } from '../backdrops.ts';
@@ -760,7 +762,19 @@ export class FlightShow {
       const b = new THREE.Box3().setFromObject(node);
       return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
     };
-    const hang = (node: THREE.Object3D, level: number, radius: number, at: THREE.Vector3, cluster: Cluster | null, burns?: Burns): void => {
+    // the pressure each engine's gas leaves its nozzle at, atmospheres, by the plan's engine (sim/plan.ts `Nozzle`); an engine
+    // whose plan gives none is drawn matched to the air at the sea, widening only as the air thins below that
+    const engines = flight.plan?.craft[0]?.engines ?? [];
+    const exitOf = (engine: EngineDef | undefined): number => (engine?.nozzle ? engine.nozzle.exit.value / P0 : 1);
+    const hang = (
+      node: THREE.Object3D,
+      level: number,
+      radius: number,
+      exit: number,
+      at: THREE.Vector3,
+      cluster: Cluster | null,
+      burns?: Burns,
+    ): void => {
       let owner = node;
       while (owner.parent && owner.parent !== s.full) owner = owner.parent;
       if (!owner.parent) owner = s.group;
@@ -770,7 +784,7 @@ export class FlightShow {
         .invert()
         .multiply(fromGroup)
         .multiply(new THREE.Matrix4().makeTranslation(at));
-      const plume = new Plume(radius, cluster, light, kindOf(burns));
+      const plume = new Plume(radius, exit, cluster, light, kindOf(burns));
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
       root.add(plume.mesh);
@@ -786,12 +800,14 @@ export class FlightShow {
         (flight.plan?.kind === 'ballistic' ? craft?.bodies[0] : undefined);
       const lit = craft?.engines.find((e) => e.body === body?.id);
       const exitArea = lit ? exitAreaOf(lit) : undefined;
-      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lowest(engine), null, flight.flies.burns);
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), exitOf(lit), lowest(engine), null, flight.flies.burns);
       level++;
     }
     for (const f of flight.flies.fires ?? []) {
       const node = s.full.getObjectByName(f.node);
-      if (node && f.radius) hang(node, level, f.radius, lowest(node), null, f.burns);
+      // (its engine by the id it burns by; the braking burn's is the plan's braking engine)
+      const exit = exitOf(engines.find((e) => e.id === (f.on === 'retro' ? 'braking' : f.on)));
+      if (node && f.radius) hang(node, level, f.radius, exit, lowest(node), null, f.burns);
       else if (node) {
         // every vertex under it, in the vehicle's frame as it stands
         const points: number[] = [];
@@ -810,6 +826,7 @@ export class FlightShow {
             node,
             level,
             cluster.radius,
+            exit,
             new THREE.Vector3(x, y, z),
             cluster.main.length > 1 || cluster.steering.length ? cluster : null,
             f.burns,

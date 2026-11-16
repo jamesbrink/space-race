@@ -253,7 +253,9 @@ square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from 
 as broad as they are spread.
 
 **A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
-the nozzle's; the colours, the light given and how much of what is behind it a fire hides are the chemistry's, one entry
+the nozzle's (the pressure the engine's gas leaves at, `EngineDef.nozzle` in its plan, read by the fire's engine id: under
+the air's a column, over it a balloon; documented where it was found, estimated in the data where not, never in
+plume.ts); the colours, the light given and how much of what is behind it a fire hides are the chemistry's, one entry
 a propellant pair: kerosene and oxygen glow with soot (yellow-white, opaque for their first lengths, far brighter than
 the alcohol flame), the hydrazines and nitrogen tetroxide hardly at all (peach, seen through), alcohol and oxygen as the
 Redstone's fire was first drawn, which is the unit and is unchanged. Each fire carries its entry to the march

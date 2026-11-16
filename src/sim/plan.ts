@@ -154,6 +154,8 @@ export interface EngineDef {
    * source nothing read says: it is then taken to start once, anywhere, and that is an estimate.
    */
   starts: { count: number; ground: boolean; confidence: Confidence; source?: string };
+  /** Its nozzle's pressures, for the shape its fire takes in the air (viewer/plume.ts). Nothing in the simulator reads it. */
+  nozzle?: Nozzle;
   /** What it burns, for its fire's look (viewer/flames.ts). */
   burns?: Burns;
   /** The impulse its integrator shuts it down at, m/s, where the record gives one (a braking engine). */
@@ -162,6 +164,18 @@ export interface EngineDef {
   flown?: Measure;
   /** How long it can burn before a propellant runs out, s, where that is all the record gives of its tanks. */
   depletion?: Measure;
+}
+
+/**
+ * An engine's nozzle as its fire needs it (viewer/plume.ts): the pressure in its chambers, Pa; how far its nozzle
+ * expands the gas, exit area over throat; and the pressure the gas leaves at, Pa, which is what the free jet comes down
+ * from to the air's (an exit below the air's is a narrow column, one above it a balloon). Each a Measure: where the
+ * figures are not documented they are estimated here, in the data, and say how they were reached.
+ */
+export interface Nozzle {
+  chamber?: Measure;
+  expansion?: Measure;
+  exit: Measure;
 }
 
 /** What an engine or a thruster set draws on. */

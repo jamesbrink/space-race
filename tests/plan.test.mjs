@@ -24,6 +24,11 @@ const craftOf = (plan) => plan.craft[0];
 const byId = (xs, id) => xs.find((x) => x.id === id);
 /** Every action an event sets off, as `kind:id`. */
 const doing = (e) => e.do.map((a) => Object.entries(a)[0].join(':'));
+/** A plan with its engines' nozzles left out: they are the fire's (viewer/plume.ts), which the record's own plan does not carry. */
+const withoutNozzles = (plan) => ({
+  ...plan,
+  craft: plan.craft.map((c) => ({ ...c, engines: c.engines.map(({ nozzle, ...e }) => e) })),
+});
 
 test('there are flights of both kinds to make plans of', () => {
   assert.ok(ballistic.length >= 2, 'the Mercury-Redstones');
@@ -34,7 +39,10 @@ for (const f of [...ballistic, ...orbital]) {
   test(`${f.id}: its plan is whole, and is the flight's own`, () => {
     assert.deepEqual(problems(f.plan), []);
     assert.equal(f.plan.kind, f.trajectory ? 'ballistic' : 'orbital');
-    if (f.trajectory) assert.deepEqual(f.plan, planOfTrajectory(f.trajectory, f.checks), 'Flight.plan is the plan made of its trajectory');
+    if (f.trajectory)
+      assert.deepEqual(withoutNozzles(f.plan), planOfTrajectory(f.trajectory, f.checks), 'Flight.plan is the plan made of its trajectory');
+    for (const e of craftOf(f.plan).engines.filter((e) => e.nozzle))
+      assert.ok(e.nozzle.exit.value > 0 && e.nozzle.exit.source, `${e.id}'s nozzle`);
   });
 }
 

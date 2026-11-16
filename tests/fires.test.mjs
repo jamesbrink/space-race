@@ -9,7 +9,11 @@ import { steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
 import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
+import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { plumeShape } from '../src/viewer/plume.ts';
+import { P0 } from '../src/world/bodies.ts';
+
+const A7 = A7_NOZZLE.exit.value / P0;
 import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 
@@ -70,8 +74,8 @@ test("an engine's chambers are found in its geometry: each bell apart from the o
 
 test("a cluster's chambers merge where their jets have widened to touch: low down in air, at once where there is none", () => {
   const gap = 0.891 / 0.36;
-  const sea = mergeOf((x) => jetEdge(plumeShape(0), x), gap);
-  const thin = mergeOf((x) => jetEdge(plumeShape(0.6), x), gap);
+  const sea = mergeOf((x) => jetEdge(plumeShape(0, A7), x), gap);
+  const thin = mergeOf((x) => jetEdge(plumeShape(0.6, A7), x), gap);
   assert.ok(sea.start > 1 && sea.start < 4, `at sea level they touch about a metre down (${(sea.start * 0.36).toFixed(2)} m)`);
   assert.ok(thin.start < 0.5 * sea.start && thin.end > thin.start, 'and sooner as the air thins and each swells');
 });

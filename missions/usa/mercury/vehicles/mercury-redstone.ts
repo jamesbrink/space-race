@@ -772,6 +772,21 @@ export interface Day {
   stack: Stack;
 }
 
+/**
+ * The A-7's nozzle as its fire's shape takes it (plan.ts `Nozzle`; only viewer/plume.ts reads it): the same engine on
+ * every flight. The exit's pressure is the figure the fire was first drawn by, judged against film of the launches with
+ * the chamber's pressure: expanded isentropically through 3.61:1 as a gas of gamma 1.22 the chamber's 318 psia would leave
+ * at 1.09 atmospheres, and at sea level the jet is very nearly matched either way.
+ */
+export const A7_NOZZLE = {
+  chamber: doc(318 * 6894.757, 'Aircraft Engine Historical Society, "The Redstone Engine": 318 psia (secondary)'),
+  expansion: estimated(3.61, 'not found in anything read: the area ratio the fire was first drawn with'),
+  exit: estimated(
+    0.9 * 101_325,
+    'about nine tenths of an atmosphere: the chamber’s 318 psia over the nozzle’s pressure ratio, as first estimated for the fire',
+  ),
+};
+
 /** The A-7's nozzle exit area, derived on MR-3's cutoff: the same engine on every flight. */
 export const EXIT_AREA = derived(
   (6.3 * 9.80665 * MR3_CUTOFF_MASS - MR3.thrust) / 101_325,
@@ -964,6 +979,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
         ),
       },
       exitArea: e.exitArea,
+      nozzle: A7_NOZZLE,
       kind: nature?.kind ?? 'liquid',
       ...(nature?.throttle ? { throttle: { range: nature.throttle } } : {}),
       gimbal: { deflection: body.control.deflection, station: body.control.station },
