@@ -581,25 +581,25 @@ export const flight: Flight = {
     strapOns: {
       burnS: 118,
       confidence: 'assumed',
-      note: '815.9 kN at the ground, 997.7 kN in vacuum; 256 and 313 s (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s)',
+      note: 'The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s)',
     },
     core: {
       burnS: 290,
       confidence: 'assumed',
-      note: '744.3 kN at the ground, 945.4 kN in vacuum; 248 and 315 s (the same table). The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
+      note: 'The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
     },
     third: {
       confidence: 'documented',
-      note: '54.5 kN in vacuum, 323.5 s (Brügge; Encyclopedia Astronautica 54.52 kN, 324 s). No burn time is given: rated burns in print run from 365 to 440 s. On this flight the bunker waited for the count of 687 s from liftoff as the end of its burn and the ship parted at 720 s (Kamanin’s diary, 14 August 1962); when it lit was not found',
+      note: 'No burn time is given: rated burns in print run from 365 to 440 s. On this flight the bunker waited for the count of 687 s from liftoff as the end of its burn and the ship parted at 720 s (Kamanin’s diary, 14 August 1962); when it lit was not found',
     },
     braking: {
       burnS: 45,
       confidence: 'documented',
-      note: '1.614 tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant. Flown: 42 s by Nikolayev’s ear («была слышна в течение 42-х секунд ее работа»: his report to the State Commission, 16 August, as Kamanin wrote it down), on the morning of 15 August; the minute was not found',
+      note: 'Flown: 42 s by Nikolayev’s ear («была слышна в течение 42-х секунд ее работа»: his report to the State Commission, 16 August, as Kamanin wrote it down), on the morning of 15 August; the minute was not found',
     },
     jets: {
       confidence: 'documented',
-      note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N). The store was worth 2 to 3 hours of orienting (Kamanin, 26 July 1962); worked by hand to look for the third stage and for Vostok 4’s launch',
+      note: 'The store was worth 2 to 3 hours of orienting (Kamanin, 26 July 1962); worked by hand to look for the third stage and for Vostok 4’s launch',
     },
   }),
   models: [vehicle],

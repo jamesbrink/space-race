@@ -615,26 +615,25 @@ export const flight: Flight = {
     strapOns: {
       burnS: 118,
       confidence: 'assumed',
-      note: '815.9 kN at the ground, 997.7 kN in vacuum; 256 and 313 s (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s). Bykovskiy “hardly noticed” them go',
+      note: 'The burn is the type’s, 118 s (Minakov): the time the strap-ons left on this flight was not found (Vostok 1: 119 s). Bykovskiy “hardly noticed” them go',
     },
     core: {
       burnS: 290,
       confidence: 'assumed',
-      note: '744.3 kN at the ground, 945.4 kN in vacuum; 248 and 315 s (the same table). The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
+      note: 'The burn is the type’s, 290 s (Minakov; others print up to 301): this flight’s cutoff was not found (Vostok 1: 300 s)',
     },
     third: {
       confidence: 'documented',
-      note: '54.5 kN in vacuum, 323.5 s (Brügge; Encyclopedia Astronautica 54.52 kN, 324 s). No burn time is given: rated burns in print run from 365 to 440 s, and this flight’s times were not found. The stage left the ship in an orbit lower than asked for (Chertok, vol. 3, p. 223; Siddiqi, p. 368: “less-than-nominal performance”); by how much it fell short, and why, is in nothing read. A gyroscope of its guidance was changed on the pad that afternoon (Chertok, p. 222)',
+      note: 'No burn time is given: rated burns in print run from 365 to 440 s, and this flight’s times were not found. The stage left the ship in an orbit lower than asked for (Chertok, vol. 3, p. 223; Siddiqi, p. 368: “less-than-nominal performance”); by how much it fell short, and why, is in nothing read. A gyroscope of its guidance was changed on the pad that afternoon (Chertok, p. 222)',
     },
     braking: {
       burnS: 45,
       confidence: 'documented',
-      note: '1.614 tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant. Flown: 39 s by Bykovskiy’s count («ТДУ включилась плавно, работала 39 секунд»: his report to the State Commission, 20 June, as Kamanin wrote it down), on 19 June on the 82nd orbit; the minute was not found',
+      note: 'Flown: 39 s by Bykovskiy’s count («ТДУ включилась плавно, работала 39 секунд»: his report to the State Commission, 20 June, as Kamanin wrote it down), on 19 June on the 82nd orbit; the minute was not found',
     },
     jets: {
-      propellant: 'compressed gas',
       confidence: 'documented',
-      note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N). Bykovskiy’s report calls the store “air”: ten minutes of orienting by hand took 10 atmospheres off it and the descent attitude 5 more; the type’s record has nitrogen',
+      note: 'Bykovskiy’s report calls the store “air”: ten minutes of orienting by hand took 10 atmospheres off it and the descent attitude 5 more; the type’s record has nitrogen',
     },
   }),
   models: [vehicle],

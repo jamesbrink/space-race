@@ -1567,26 +1567,25 @@ export const flight: Flight = {
     strapOns: {
       burnS: 119,
       confidence: 'documented',
-      note: '815.9 kN at the ground, 997.7 kN in vacuum; 256 and 313 s; chamber pressure 5.85 MPa (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). Four fixed chambers and two steering chambers on one turbopump; the figures include the steering chambers. Minakov’s table has 82 tf (804 kN). Flown: separated at 119 s (Siddiqi)',
+      note: 'Chamber pressure 5.85 MPa, in the same table. Four fixed chambers and two steering chambers on one turbopump; the figures include the steering chambers. Minakov’s table has 82 tf (804 kN). Flown: separated at 119 s (Siddiqi)',
     },
     core: {
       burnS: 300,
       confidence: 'documented',
-      note: '744.3 kN at the ground, 945.4 kN in vacuum; 248 and 315 s; 5.10 MPa (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge). Four fixed chambers and four steering chambers of 2.5 tf each (RKK Energia 1946–1996). Flown: cutoff at 300 s (Siddiqi; RussianSpaceWeb 299 s)',
+      note: 'Chamber pressure 5.10 MPa, in the same table. Four fixed chambers and four steering chambers of 2.5 tf each (RKK Energia 1946–1996). Flown: cutoff at 300 s (Siddiqi; RussianSpaceWeb 299 s)',
     },
     third: {
       burnS: 376,
       confidence: 'documented',
-      note: '54.5 kN in vacuum, 323.5 s (Brügge; Encyclopedia Astronautica 54.52 kN, 324 s). One fixed chamber; steered by turbine exhaust through small nozzles. The burn is as flown, about 300 to 676 s (Siddiqi): rated burns in print run from 365 to 440 s',
+      note: 'One fixed chamber; steered by turbine exhaust through small nozzles. The burn is as flown, about 300 to 676 s (Siddiqi): rated burns in print run from 365 to 440 s',
     },
     braking: {
       burnS: 45,
       confidence: 'documented',
-      note: '1.614 tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant. Flown: on at 10:25:04.2, off by the timer at 10:25:48.2 (OKB-1 report)',
+      note: 'Flown: on at 10:25:04.2, off by the timer at 10:25:48.2 (OKB-1 report)',
     },
     jets: {
       confidence: 'documented',
-      note: 'two independent sets of eight, 1.5 kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N)',
     },
   }),
   // the flight as an orbit: stages, events, the orbit, the braking burn and the entry, each with its source (orbital.ts; mission.md)

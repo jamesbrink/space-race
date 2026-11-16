@@ -77,23 +77,19 @@ export type PartWords = Pick<Part, 'node' | 'name' | 'summary' | 'detail'> & Par
 /** How a part comes away, which is the type's: its heading in the parts list, whether it is inside, where it goes and when. */
 export type Hardware = Pick<Part, 'group' | 'inside' | 'explode' | 'moves' | 'order'>;
 
-/** The core and the four strap-ons, which the Voskhods' 11A57 kept (voskhod/vehicles/voskhod-11a57.ts). */
-export const CORE_AND_STRAP_ONS: Record<string, Hardware> = {
-  CoreStage: { group: 'Core, Block A', inside: true, explode: [0, -9.5, 0], order: 0 },
-  CoreEngine: { group: 'Core, Block A', inside: true, explode: [0, -13.5, 0], order: 0 },
-  ...Object.fromEntries(
-    BOOSTERS.map(([letter, , az]): [string, Hardware] => [
-      `Booster_${letter}`,
-      {
-        group: 'Strap-on boosters',
-        inside: true,
-        explode: [0, 0, 0],
-        moves: [outward(`Booster_${letter}`, az, -14, 0.0, 0.2), { kind: 'slide', by: along(az, -52, 9), from: 0.14, to: 0.5 }],
-        order: 0,
-      },
-    ]),
-  ),
-};
+/** The four strap-ons, which the Voskhods' 11A57 kept (voskhod/vehicles/voskhod-11a57.ts). */
+export const STRAP_ON_PARTS: Record<string, Hardware> = Object.fromEntries(
+  BOOSTERS.map(([letter, , az]): [string, Hardware] => [
+    `Booster_${letter}`,
+    {
+      group: 'Strap-on boosters',
+      inside: true,
+      explode: [0, 0, 0],
+      moves: [outward(`Booster_${letter}`, az, -14, 0.0, 0.2), { kind: 'slide', by: along(az, -52, 9), from: 0.14, to: 0.5 }],
+      order: 0,
+    },
+  ]),
+);
 
 /**
  * The launch vehicle's parts, the 8K72K's (vehicles/vostok_8k72k/): the fairing's halves part square to the hatch
@@ -114,7 +110,9 @@ export const LAUNCHER: Record<string, Hardware> = {
   },
   BlockE: { group: 'Third stage', inside: true, explode: [0, -2.6, 0], order: 0 },
   Interstage: { group: 'Third stage', explode: [0, -5.6, 0], order: 0 },
-  ...CORE_AND_STRAP_ONS,
+  CoreStage: { group: 'Core, Block A', inside: true, explode: [0, -9.5, 0], order: 0 },
+  CoreEngine: { group: 'Core, Block A', inside: true, explode: [0, -13.5, 0], order: 0 },
+  ...STRAP_ON_PARTS,
 };
 
 /**
@@ -379,18 +377,43 @@ export const SPEC = {
 /** The attitude jets, sixteen in two independent sets of eight. */
 export const ATTITUDE_JET: Measure = doc(1.5 * KGF, `${SIDDIQI}, p. 197: two independent sets of eight, 1.5 kgf each`);
 
-/** What a flight says of one of its engines: how long it burnt (where it is known), how sure, its note, and anything that differed. */
-export type Burn = Pick<Motor, 'confidence' | 'note'> & Partial<Motor>;
+/** What a flight says of one of its engines: how long it burnt (where it is known), how sure, what it adds to the type's words, and anything that differed. */
+export type Burn = Pick<Motor, 'confidence'> & Partial<Motor>;
 
 /** A figure the stage table gives, which a motor quotes: it must be there. */
 export const given = (m: Measure | undefined): number => {
-  if (!m) throw new Error('a thrust the stage table does not give');
+  if (!m) throw new Error('a figure the stage table does not give');
   return m.value;
+};
+
+const tenths = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const upTo3 = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 3 });
+/** A force in kilonewtons to a tenth, as the tables print them: `815.9 kN`, `3,276.4 kN`. */
+export const kN = (newtons: number): string => `${tenths.format(newtons / 1000)} kN`;
+/** A specific impulse to the second, or to a tenth. */
+export const seconds = (s: number, digits = 0): string => (digits ? tenths.format(s) : String(Math.round(s)));
+/** A force in tonnes-force or kilograms-force, as the Soviet sources give them: `1.614` tf, `1.5` kgf. */
+export const tf = (newtons: number): string => upTo3.format(newtons / KGF / 1000);
+export const kgf = (newtons: number): string => upTo3.format(newtons / KGF);
+/** The type's words for a motor, then the flight's own after them. */
+export const says = (type: string, own: string | undefined): string => (own ? `${type}. ${own}` : type);
+
+/**
+ * What the type's sources say of each engine, its figures written from the Measures the motor quotes, so that the
+ * words cannot drift from the number. A flight's note adds its own after them.
+ */
+export const ENGINE_WORDS = {
+  strapOns: `${kN(given(STRAP_ONS.thrust.seaLevel))} at the ground, ${kN(STRAP_ONS.thrust.vacuum.value)} in vacuum; ${seconds(given(STRAP_ONS.isp.seaLevel))} and ${seconds(STRAP_ONS.isp.vacuum.value)} s (NPO Energomash’s table by vehicle (row 8K72K), as reproduced by Brügge)`,
+  core: `${kN(given(CORE.thrust.seaLevel))} at the ground, ${kN(CORE.thrust.vacuum.value)} in vacuum; ${seconds(given(CORE.isp.seaLevel))} and ${seconds(CORE.isp.vacuum.value)} s (the same table)`,
+  third: `${kN(BLOCK_E.thrust.vacuum.value)} in vacuum, ${seconds(BLOCK_E.isp.vacuum.value, 1)} s (Brügge; Encyclopedia Astronautica 54.52 kN, 324 s)`,
+  braking: `${tf(TDU_THRUST.value)} tf, 45 s at most (Siddiqi p. 197); 280 kg of propellant`,
+  jets: `two independent sets of eight, ${kgf(ATTITUDE_JET.value)} kgf each (Siddiqi p. 197; the encyclopedia text gives 14.7 N)`,
 };
 
 /**
  * The stack's engines at the type's thrust (vostok-8k72k.ts, vostok-3ka.ts): the strap-ons' and the core's at the
- * ground, the third stage's in vacuum, the braking engine's and the attitude jets'. A flight gives each its burn.
+ * ground, the third stage's in vacuum, the braking engine's and the attitude jets'. A flight gives each its burn, its
+ * confidence and what its note says beyond the type's words (`ENGINE_WORDS`).
  */
 export const vostokMotors = (burns: { strapOns: Burn; core: Burn; third: Burn; braking: Burn; jets: Burn }): Motor[] => [
   {
@@ -400,6 +423,7 @@ export const vostokMotors = (burns: { strapOns: Burn; core: Burn; third: Burn; b
     propellant: 'kerosene T-1 / liquid oxygen',
     kind: 'liquid',
     ...burns.strapOns,
+    note: says(ENGINE_WORDS.strapOns, burns.strapOns.note),
   },
   {
     name: 'RD-108 (8D75), core',
@@ -408,6 +432,7 @@ export const vostokMotors = (burns: { strapOns: Burn; core: Burn; third: Burn; b
     propellant: 'kerosene T-1 / liquid oxygen',
     kind: 'liquid',
     ...burns.core,
+    note: says(ENGINE_WORDS.core, burns.core.note),
   },
   {
     name: 'RD-0109 (8D719), third stage',
@@ -416,6 +441,7 @@ export const vostokMotors = (burns: { strapOns: Burn; core: Burn; third: Burn; b
     propellant: 'kerosene / liquid oxygen',
     kind: 'liquid',
     ...burns.third,
+    note: says(ENGINE_WORDS.third, burns.third.note),
   },
   {
     name: 'TDU-1 (Isaev S5.4) braking engine',
@@ -424,6 +450,14 @@ export const vostokMotors = (burns: { strapOns: Burn; core: Burn; third: Burn; b
     propellant: 'amine fuel (TG-02) / nitric acid (AK-20F)',
     kind: 'liquid',
     ...burns.braking,
+    note: says(ENGINE_WORDS.braking, burns.braking.note),
   },
-  { name: 'Attitude jet', count: 16, thrustN: ATTITUDE_JET.value, propellant: 'compressed nitrogen', ...burns.jets },
+  {
+    name: 'Attitude jet',
+    count: 16,
+    thrustN: ATTITUDE_JET.value,
+    propellant: 'compressed nitrogen',
+    ...burns.jets,
+    note: says(ENGINE_WORDS.jets, burns.jets.note),
+  },
 ];
