@@ -6,7 +6,7 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 (types.ts: `Trajectory`) is the input: masses, the engine's thrust, specific impulse, exit area and
 cutoff, the tilt programme, drag against Mach number, separation, retrofire, the parachutes, each a
 `Measure` with its confidence and source, in SI with the source's own units in `source`.
-`fly(trajectory, site, seaLevel)` integrates it (RK4 at 0.05 s, every step cut to end on the next
+`fly(plan, site, seaLevel)` integrates its plan (`Flight.plan`, below; RK4 at 0.05 s, every step cut to end on the next
 event, so one input gives one flight to the last bit; within a step what burns and what is attached are as they are
 from the step's start, so a burn that ends on a step's end is pushed through all of it and one that lights there is
 not felt in it: every integrator here, batch, live and predicting, keeps that rule, and a live tick that holds a burn's
@@ -70,7 +70,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     events, each after the first by its own timer (`chainedAt`) at its instant, whatever the switches say.
   - A hand's commands are the plan's actions and events (`Controls.do`, `Controls.events`; `StagedControls.events`).
 - **A record's run is its plan flown by the record's pilot.**
-  - `fly` is `flyPlan`: the craft on the machine, every automatic event set off as it comes due (by the clock, or at a
+  - `fly` flies the plan: the craft on the machine, every automatic event set off as it comes due (by the clock, or at a
     height coming down). Each instant one is due at, and each solid motor's burning out, ends a step.
     - What burns is what is lit and still aboard, along the attitude held: the tilt programme (`programmeAxis`), or the
       retro attitude.
@@ -82,7 +82,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
       first lets its body go; the drops; the record's instants by id.
     - `coastOf`: the burn the coast flies, the parting of the body it is on, and the height what comes down is let loose
       at.
-    - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. Only the adapters (planof.ts) and the consumers outside src/sim read the record.
+    - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. The ballistic side takes the plan too: `fly`, `flownOnce`, `axisOf`, `dragArea`, `thrustIn`, the live vehicle (`vehicle(plan, …)`), its autopilot and `verdict`, the `ballistic` flier and `predict`, and what is shed (`Sheds`, `shedder`, `recordRelease`: the stack's drag area, the winds and `Craft.sheds`). Each finds its hardware by what it is, once per plan (fly.ts `ballisticOf`): the booster is the first body and its engine the lever's; the separation the joint that lets the booster go; the abort the event a hand's command sets off and the escape rocket the motor it lights; the retrorockets every other solid with a burn, begun by the event that lights the first and chained by their `after` triggers; the tower and pack the bodies of those motors and the joints that let them go; the main parachute the one with `instead`, each parachute's height its deploying event's; masses at the partings their joints' `after`. A live sample's `burning` names each engine by its plan id. Only the adapters (planof.ts) and the consumers outside src/sim read the record.
   - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
@@ -238,7 +238,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   turnaround, ascent, verdict, abort, shed, heating, chute and sound hold each as they hold Freedom 7 (its misses in `MISSES`,
   its undocumented inputs listed; Freedom 7's own record figures are held on Freedom 7 alone). Every flight into orbit is
   held likewise by orbital, staged, shed (the strap-ons), chute (the descent's parachutes) and sound.
-- **The live simulator is the same flight, steered.** `vehicle(trajectory, site, seaLevel)`
+- **The live simulator is the same flight, steered.** `vehicle(plan, site, seaLevel)`
   (`sim/vehicle.ts`) is stepped by the frame (`step(state, controls, dt)`: whole ticks of 0.01 s,
   the remainder kept, so a flight is the same at any frame rate) and takes `Controls`: the engine's
   lever, pitch, yaw and roll from -1 to 1, and the plan's actions and events as commands (`do`,

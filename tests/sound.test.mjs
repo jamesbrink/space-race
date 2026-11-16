@@ -40,13 +40,13 @@ import {
   Works,
 } from '../src/sound/model.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 
 /** What a ballistic flight is heard from: its engine, its record's run, a path straight up the site's +Y at the run's heights. */
 function heard(f) {
   const TR = f.trajectory;
   const CRAFT = craft(TR.engine.thrust.value, TR.engine.isp.value, TR.engine.exitArea.value);
-  const { samples, results } = flownOnce(TR, siteFrame(f.site), f.site.seaLevel.value);
+  const { samples, results } = flownOnce(planFor(TR), siteFrame(f.site), f.site.seaLevel.value);
   /** A flight straight up the site's +Y at the record's heights: enough of a path to hear along. */
   const where = (t) => [0, Math.max(0, stateAt(samples, t).altitude), 0];
   /** As viewer/ascent.ts has it: up over half a second, and half a second dying at cutoff. */

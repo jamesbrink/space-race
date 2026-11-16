@@ -31,7 +31,6 @@
  * `propagate` does the work in slices (`run(budget)`), so a page can spread it over frames; `predict` and `predictor`
  * are a ballistic flight's (sim/fliers.ts `ballistic`) for those who have one.
  */
-import type { Trajectory } from '../types.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
@@ -50,6 +49,7 @@ import {
 import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
 import { MEAN_RADIUS, type Phase } from './fly.ts';
+import type { FlightPlan } from './plan.ts';
 import { G0 } from '../world/bodies.ts';
 import { aboutAxis, turn } from './rigid.ts';
 import { acceleration } from './core/rk4.ts';
@@ -790,13 +790,13 @@ export function propagate(
 }
 
 /** A ballistic flight's prediction to be worked out in slices (sim/fliers.ts `ballistic`). `site` and `seaLevel` as in fly.ts. */
-export function predictor(trajectory: Trajectory, site: Geodetic, seaLevel: number, start: Start, options: PredictOptions = {}): Predictor {
-  return propagate(ballistic(trajectory, site, seaLevel, start, options), start, { site, seaLevel, frame: options.frame }, options);
+export function predictor(plan: FlightPlan, site: Geodetic, seaLevel: number, start: Start, options: PredictOptions = {}): Predictor {
+  return propagate(ballistic(plan, site, seaLevel, start, options), start, { site, seaLevel, frame: options.frame }, options);
 }
 
 /** A ballistic flight's prediction, worked out at once. */
-export function predict(trajectory: Trajectory, site: Geodetic, seaLevel: number, start: Start, options: PredictOptions = {}): Prediction {
-  const p = predictor(trajectory, site, seaLevel, start, options);
+export function predict(plan: FlightPlan, site: Geodetic, seaLevel: number, start: Start, options: PredictOptions = {}): Prediction {
+  const p = predictor(plan, site, seaLevel, start, options);
   p.run();
   return p.result;
 }

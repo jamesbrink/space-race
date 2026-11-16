@@ -83,7 +83,7 @@ export class Effects {
     if (this.live) return this.live.samples;
     const tr = this.flight.trajectory;
     if (!tr && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).samples;
-    return tr ? flownOnce(tr, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
+    return tr ? flownOnce(this.flight.plan!, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
   }
 
   private cutoff(): number {

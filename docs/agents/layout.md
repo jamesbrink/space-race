@@ -234,7 +234,7 @@ src/
   viewer/camera/foot.ts               the rigs on foot (`eyes`, `shoulder`): the camera put where the walker's view is
   viewer/camera/head.ts               a head in a seat, pure and tested: its limits, the eyes round the neck, the lean to a port or a screen and back
   viewer/camera/input.ts              the hands: mouse, trackpad, fingers and keys in one vocabulary (drag, slide, zoom, twist, pivot here)
-  sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from Flight.trajectory; the 1976 standard air
+  sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from its plan, whose hardware it finds by role (`ballisticOf`); the 1976 standard air
   sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
   sim/air.ts                          the air at a point for every simulator: where it is over, its height, the standard air, the motion through it with the day's wind (`airAt`, `blowOf`)
   sim/core/gravity.ts                 gravity as terms: the Earth with J2 (the default), a third body as a point mass, the central body switched

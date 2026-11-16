@@ -1,9 +1,8 @@
 /**
  * How a flight flown by hand ended, said plainly: what it came down under and how fast, why, and
  * whether the pilot aboard could have lived through the loads and the landing by the limits the
- * flight's data gives (`Body.capsule.limits`, each with its confidence). No score: what happened.
+ * flight's plan gives (its `LimitDef`s: the landing speed and the load, each with its confidence). No score: what happened.
  */
-import type { Trajectory } from '../types.ts';
 import type { Results } from './fly.ts';
 import { downOf } from './descent.ts';
 import { shipOf } from './orbital.ts';
@@ -22,7 +21,7 @@ export interface Verdict {
   against: string;
 }
 
-export function verdict(state: VehicleState, results: Results, trajectory: Trajectory, peakG: number): Verdict {
+export function verdict(state: VehicleState, results: Results, plan: FlightPlan, peakG: number): Verdict {
   const landing = state.landing!;
   const speed = Math.hypot(landing.vertical, landing.horizontal);
   const why: string[] = [];
@@ -56,7 +55,10 @@ export function verdict(state: VehicleState, results: Results, trajectory: Traje
         : 'Aborted off the pad on the escape rocket: the engine was never lit.',
     );
   }
-  const limits = trajectory.body?.capsule.limits;
+  const held = plan.craft[0]!.limits;
+  const landingSpeed = held.find((l) => l.of === 'landing-speed')?.value;
+  const load = held.find((l) => l.of === 'load')?.value;
+  const limits = landingSpeed && load ? { landingSpeed, load } : null;
   if (!limits) return { how, why: why.filter(Boolean), survivable: null, against: '' };
   const hard = speed > limits.landingSpeed.value;
   const heavy = peakG > limits.load.value;

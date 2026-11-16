@@ -787,6 +787,8 @@ export function recordSamples(
     lateral: 0,
   };
   const pad = whole.ascent.samples[0]!.r;
+  // (the summary has the stack's whole thrust and not each engine's: it is the craft's)
+  const stack = plan.craft[0]!.id;
   const out: LiveSample[] = [];
   for (const s of whole.ascent.samples) {
     const axis = s.axis;
@@ -811,7 +813,7 @@ export function recordSamples(
       axis,
       attitude: lie(s.axis),
       alpha: angleBetween(s.axis, sub(s.v, cross(spin, s.r))) / DEG,
-      burning: s.thrust > 0 ? [{ name: 'main', thrust: s.thrust }] : [],
+      burning: s.thrust > 0 ? [{ engine: stack, thrust: s.thrust }] : [],
       centre: add(s.r, scale(axis, centre)),
     });
   }
@@ -819,6 +821,8 @@ export function recordSamples(
   const offset = sub(parted.centre, parted.r); // (the coast flies the point the ascent left, drawn as the centre of mass)
   const held = parted.attitude;
   const ship = shipOf(plan);
+  const lights = coastEvents(plan).on?.do.find((a) => 'ignite' in a);
+  const braking = lights && 'ignite' in lights ? lights.ignite : null;
   // (turned to the burn's line from where the plan turns it to its aim, where that comes before the burn; else a minute before)
   const turned = plan.events.find((e) => e.automatic && e.do.some((a) => 'attitude' in a && a.attitude === ship.aimId));
   const turnedAt = turned?.when.find((w) => 'time' in w);
@@ -885,7 +889,7 @@ export function recordSamples(
       axis,
       attitude: q,
       alpha: 0,
-      burning: s.t >= ship.on && s.t < ship.off ? [{ name: 'retro', thrust: 0 }] : [],
+      burning: s.t >= ship.on && s.t < ship.off && braking ? [{ engine: braking, thrust: 0 }] : [],
       centre: at,
     });
   }

@@ -14,7 +14,7 @@ import { G0 } from '../src/world/bodies.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { ELEVATION, padAbort, RECORD } from './fixtures/pad-abort/trajectory.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
@@ -32,7 +32,7 @@ const placeOf = (flight) => {
 /** An abort off the pad, the engine never lit, flown to the ground by the spacecraft's own sequence. */
 function abort(flight, tr, options = {}, hand = {}) {
   const { site, sea, pad } = placeOf(flight);
-  const v = vehicle(tr, site, sea, options);
+  const v = vehicle(planFor(tr), site, sea, options);
   const auto = autopilot(v, { launch: false });
   const tally = new Tally();
   let state = v.start();
@@ -83,7 +83,7 @@ test('the Langley trial of 1959, flown from its own weights off its own launcher
   const tr = padAbort();
   // the fixture is the report's: 3,109 lb at take-off, about station 77.8, 6,100 slug-ft2 in pitch
   const { site, sea } = placeOf(freedom7);
-  const v = vehicle(tr, site, sea, { elevation: ELEVATION });
+  const v = vehicle(planFor(tr), site, sea, { elevation: ELEVATION });
   const off = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
   const props = v.mass({ ...off, mass: 3109 * LB, t: 0 });
   near(props.mass / LB, 3109, 1e-6, 'the weight that leaves');
@@ -223,7 +223,7 @@ for (const flight of BALLISTIC.filter((f) => f.trajectory.body?.escape)) {
 
   test(`${name}: the verdict says what happened: aborted off the pad, how high, how far from it, under what`, () => {
     const { state, tally, got } = upright;
-    const end = verdict(state, tally.results, TR, tally.peakG);
+    const end = verdict(state, tally.results, planFor(TR), tally.peakG);
     assert.equal(end.why[0], 'Aborted off the pad on the escape rocket: the engine was never lit.');
     assert.equal(end.why[1], `It came down ${got.range.toFixed(0)} m from the pad, ${tally.results.apogee.toFixed(0)} m at its highest.`);
     assert.match(end.how, /^Down under the main parachute at \d+\.\d m\/s$/);
@@ -232,7 +232,7 @@ for (const flight of BALLISTIC.filter((f) => f.trajectory.body?.escape)) {
   });
 
   test(`${name}: an abort begun above the sequence’s ceiling has its parachutes at their heights`, () => {
-    const v = vehicle(TR, site, sea);
+    const v = vehicle(planFor(TR), site, sea);
     const auto = autopilot(v);
     let s = v.start();
     // 100 s up the record's flight is above 42,000 ft

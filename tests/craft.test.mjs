@@ -1,6 +1,7 @@
 // The one machine (src/sim/craft.ts): what a plan's hardware lets be done, and when its events come due. On a small
 // plan of its own, so that each rule is seen alone; the flights' plans fly on it in stagedlive.test.mjs and the rest.
 import assert from 'node:assert/strict';
+import { planFor } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as mr3 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
@@ -191,7 +192,7 @@ test('events come due on their triggers, once; an armed one waits for its arming
 });
 
 test('the live ballistic vehicle takes a hand’s commands as the plan’s: its events, and the same events as their actions, fly the same flight', () => {
-  const v = vehicle(mr3.trajectory, siteFrame(mr3.site), mr3.site.seaLevel.value);
+  const v = vehicle(planFor(mr3.trajectory), siteFrame(mr3.site), mr3.site.seaLevel.value);
   const plain = flyLive(v, autopilot(v));
   const byId = new Map(v.plan.events.map((e) => [e.id, e]));
   // each event the sequencer gives, given instead as what it does: the joints let go; one that lights a motor stays an event, done whole

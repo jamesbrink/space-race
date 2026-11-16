@@ -847,7 +847,7 @@ export class FlightPath {
         frame: this.earth,
       };
       const run = tr
-        ? predictor(tr, this.site, this.flight.site.seaLevel.value, start, options)
+        ? predictor(this.flight.plan!, this.site, this.flight.site.seaLevel.value, start, options)
         : this.source.predict!(start, MOST - 2, want.guided === true);
       if (!run) return;
       this.job = {

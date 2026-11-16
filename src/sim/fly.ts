@@ -32,7 +32,8 @@
  * Fixed-step fourth-order Runge-Kutta, with each step cut short to end exactly on the next event,
  * so a run is the same run every time.
  */
-import type { Curve, Trajectory } from '../types.ts';
+import type { Measure } from '../measure.ts';
+import type { Curve } from '../types.ts';
 import { EARTH_J2, G0 } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
@@ -58,9 +59,8 @@ import { acceleration, rk4 } from './core/rk4.ts';
 import { aboard, act, due, lit, part, type Sense, startCraft } from './craft.ts';
 import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
-import type { EventDef, FlightPlan, Hold } from './plan.ts';
-import { planOfTrajectory } from './planof.ts';
-import { nozzleThrust, vacuumOf } from './thrust.ts';
+import type { BodyDef, ChuteDef, Craft, EngineDef, EventDef, FlightPlan, Hold, JointDef } from './plan.ts';
+import { nozzleThrust } from './thrust.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
 export const MEAN_RADIUS = 6_371_008.8;
@@ -159,28 +159,6 @@ interface State {
 }
 
 /**
- * Fly it. `site` is where it stands at liftoff, and `seaLevel` where the sea is there, in metres
- * above the ellipsoid (the geoid's height, taken as the same all along the flight): heights are
- * above the sea. `step` is the integration step in seconds and `every` how often a sample is kept.
- * The same inputs give the same flight to the last bit.
- *
- * `from` starts the flight at capsule separation instead, with the position and velocity given
- * (in `frame`, the flight's: world/earthframe.ts, fixed at liftoff unless given): the capsule's half of
- * the flight can then be flown from the separation the reports give, whatever the booster did.
- */
-export function fly(
-  trajectory: Trajectory,
-  site: Geodetic,
-  seaLevel = 0,
-  step = 0.05,
-  every = 0.5,
-  from?: { r: Vec3; v: Vec3 },
-  frame: EarthFrame = LIFTOFF,
-): Flown {
-  return flyPlan(planOfTrajectory(trajectory), site, seaLevel, step, every, from, frame);
-}
-
-/**
  * A ballistic plan flown whole: the craft (sim/craft.ts) stepped by the record's pilot, who sets off each of the plan's
  * automatic events as it comes due. Nothing here names a part or an event: what burns is what the machine has lit and
  * still aboard, what the air meets is the stack (its `drag`) while the body it stood on is aboard and the last body (its
@@ -188,8 +166,15 @@ export function fly(
  * otherwise the bodies' less what their engines have burned. The thrust lies along the attitude held (`AttitudeDef`): a
  * tilt programme in inertial space, or the retro attitude against the motion over the ground. Every instant an event is
  * due at, and every solid motor's burning out, ends a step.
+ *
+ * `site` is where it stands at liftoff, and `seaLevel` where the sea is there, in metres above the ellipsoid (the geoid's
+ * height, taken as the same all along the flight): heights are above the sea. `step` is the integration step in seconds
+ * and `every` how often a sample is kept. The same inputs give the same flight to the last bit. `from` starts the flight
+ * at the spacecraft's separation instead, with the position and velocity given (in `frame`, the flight's:
+ * world/earthframe.ts, fixed at liftoff unless given): its half of the flight can then be flown from the separation the
+ * reports give, whatever the booster did.
  */
-export function flyPlan(
+export function fly(
   plan: FlightPlan,
   site: Geodetic,
   seaLevel = 0,
@@ -514,12 +499,13 @@ export function flyPlan(
 }
 
 /**
- * The vehicle's axis going up, in the frame that does not turn: tilted from the launch vertical
- * toward the launch azimuth by the programme, as the gyro platform holds it. Both directions are
- * fixed in inertial space at liftoff.
+ * The vehicle's axis going up, in the frame that does not turn: tilted from the launch vertical toward the launch azimuth
+ * by the plan's programme (the attitude held from liftoff), as the gyro platform holds it. Both directions are fixed in
+ * inertial space at liftoff.
  */
-export function axisOf(trajectory: Trajectory, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
-  return programmeAxis(trajectory.tilt, trajectory.azimuth.value, site, frame);
+export function axisOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame = LIFTOFF): (t: number) => Vec3 {
+  const { programme } = ballisticOf(plan);
+  return programmeAxis(programme.programme, programme.azimuth.value, site, frame);
 }
 
 /** A tilt programme's axis (`Hold.programme`): degrees from the launch vertical toward `azimuth` (degrees true) against seconds. */
@@ -534,15 +520,15 @@ export function programmeAxis(tilt: Curve, azimuth: number, site: Geodetic, fram
   };
 }
 
-const runs = new WeakMap<Trajectory, Map<string, Flown>>();
+const runs = new WeakMap<FlightPlan, Map<string, Flown>>();
 /** The flight flown once, whoever asks first: the readout and the scene show the same run. */
-export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0, frame: EarthFrame = LIFTOFF): Flown {
+export function flownOnce(plan: FlightPlan, site: Geodetic, seaLevel = 0, frame: EarthFrame = LIFTOFF): Flown {
   // (the same hardware flown from another place, over another sea, or in another frame, is another flight)
   const where = `${site.latitude},${site.longitude},${site.height},${seaLevel},${frame.gast0},${frame.jd0}`;
-  let from = runs.get(trajectory);
-  if (!from) runs.set(trajectory, (from = new Map()));
+  let from = runs.get(plan);
+  if (!from) runs.set(plan, (from = new Map()));
   let run = from.get(where);
-  if (!run) from.set(where, (run = fly(trajectory, site, seaLevel, undefined, undefined, undefined, frame)));
+  if (!run) from.set(where, (run = fly(plan, site, seaLevel, undefined, undefined, undefined, frame)));
   return run;
 }
 
@@ -551,8 +537,9 @@ export function flownOnce(trajectory: Trajectory, site: Geodetic, seaLevel = 0, 
  * stack going up nose first (`riding`), or the spacecraft alone, heat shield first. Parachutes are
  * `chuteArea`'s. For what looks ahead from a state (predict.ts): the same curves the flight is flown from.
  */
-export function dragArea(trajectory: Trajectory, riding: boolean, mach: number): number {
-  return trajectory.area.value * along(riding ? trajectory.ascentDrag : trajectory.entryDrag, mach);
+export function dragArea(plan: FlightPlan, riding: boolean, mach: number): number {
+  const b = ballisticOf(plan);
+  return riding ? b.stack.area.value * along(b.stack.curve, mach) : b.entry.area.value * along(b.entry.drag, mach);
 }
 
 /** A parachute's drag area at `at`, m^2: growing evenly from the one before it (`was`) to its own (`full`) over the time it takes to fill. */
@@ -560,9 +547,130 @@ export function chuteArea(chute: { full: number; was: number; at: number; fills:
   return chute.was + (chute.full - chute.was) * Math.min(1, Math.max(0, (at - chute.at) / chute.fills));
 }
 
-/** The engine's thrust in air of a pressure, N (thrust.ts: its vacuum figure derived from the sea-level one, less exit area times pressure). */
-export function thrustIn(trajectory: Trajectory, pressure: number): number {
-  return nozzleThrust(1, vacuumOf(trajectory.engine).value, 1, trajectory.engine.exitArea.value, pressure);
+/** The booster's engine's thrust in air of a pressure, N (thrust.ts: its vacuum figure less exit area times pressure). */
+export function thrustIn(plan: FlightPlan, pressure: number): number {
+  const { engine } = ballisticOf(plan);
+  return nozzleThrust(1, engine.thrust.vacuum.value, 1, engine.exitArea?.value ?? 0, pressure);
+}
+
+/**
+ * A ballistic plan's hardware and events, found by what they are and never by their ids: what every ballistic simulator
+ * (the batch above, the live vehicle, the flier ahead of it, what it sheds, its autopilot) reads the plan by.
+ */
+export interface Ballistic {
+  craft: Craft;
+  /** The body that stands on the pad, the engine on it (the one a hand's lever works) and its flow, kg/s: its sea-level thrust over g0 times its specific impulse there. */
+  booster: BodyDef;
+  engine: EngineDef;
+  flow: number;
+  /** The instant the record's clock cuts it, s from liftoff. */
+  cutoff: number;
+  /** The tilt programme held from liftoff; the retro attitude's pitch below the level, degrees. */
+  programme: { programme: Curve; azimuth: Measure };
+  retroPitch: Measure;
+  /** The stack's drag going up, and the last body (the spacecraft) and its own air, heat shield first. */
+  stack: { area: Measure; curve: Curve };
+  spacecraft: BodyDef;
+  entry: { area: Measure; drag: Curve };
+  /** The joint that lets the booster go (the spacecraft's separation), and the event that lets it go by the record's clock. */
+  separation: JointDef;
+  parting: EventDef | undefined;
+  /** The abort: the event a hand's command sets off, and the escape rocket it lights. */
+  abort: EventDef | undefined;
+  escape: EngineDef | undefined;
+  /** The spacecraft's motors (its retrorockets): every solid that burns for a time but the escape rocket; the event that begins their sequence, and the events their own timer sets off. */
+  motors: EngineDef[];
+  retro: EventDef | undefined;
+  chained: EventDef[];
+  /** From the first motor's lighting to the last one's burning out, as the plan's sequence has them, s. */
+  retroEnd: number;
+  /** The tower (what the escape rocket is on) and the pack (what the motors are on), and the joints that let each go. */
+  tower: string | undefined;
+  towerJoint: JointDef | undefined;
+  pack: string | undefined;
+  packJoint: JointDef | undefined;
+  /** The parachutes: the main takes the drogue's place (`instead`); the height each comes out at coming down, m. */
+  drogue: ChuteDef;
+  main: ChuteDef;
+  drogueHeight: number;
+  mainHeight: number;
+  /** What a torn canopy keeps of its drag area, where the flight says. */
+  torn: Measure | undefined;
+}
+
+const roles = new WeakMap<FlightPlan, Ballistic>();
+/** A ballistic plan's hardware by what it is (above): found once for a plan. */
+export function ballisticOf(plan: FlightPlan): Ballistic {
+  let b = roles.get(plan);
+  if (!b) roles.set(plan, (b = findRoles(plan)));
+  return b;
+}
+
+function findRoles(plan: FlightPlan): Ballistic {
+  const craft = plan.craft[0]!;
+  const booster = craft.bodies[0]!;
+  const spacecraft = craft.bodies[craft.bodies.length - 1]!;
+  const engine = craft.engines.find((e) => e.body === booster.id)!;
+  const sea = engine.thrust.seaLevel ?? engine.thrust.vacuum;
+  const isp = engine.isp!.seaLevel ?? engine.isp!.vacuum;
+  const cuts = (ev: EventDef) => ev.automatic && ev.do.some((a) => 'cut' in a && a.cut === engine.id);
+  const cutoff = Math.min(...plan.events.flatMap((ev) => (cuts(ev) ? ev.when.flatMap((w) => ('time' in w ? [w.time] : [])) : [])));
+  const holdOf = (test: (h: Hold) => boolean) => plan.attitude.find((a) => test(a.hold))?.hold;
+  const programme = holdOf((h) => 'programme' in h) as { programme: Curve; azimuth: Measure };
+  const retroHold = holdOf((h) => 'retro' in h) as { retro: Measure } | undefined;
+  const abort = plan.events.find((ev) => ev.when.some((w) => 'command' in w));
+  const escapeId = abort?.do.flatMap((a) => ('ignite' in a && a.ignite !== engine.id ? [a.ignite] : []))[0];
+  const rocket = craft.engines.find((e) => e.id === escapeId);
+  const motors = craft.engines.filter((e) => e.kind === 'solid' && e.burn && e.id !== escapeId);
+  const lights = (ev: EventDef) => ev.do.length > 0 && ev.do.every((a) => 'ignite' in a && motors.some((m) => m.id === a.ignite));
+  const chained = plan.events.filter((ev) => lights(ev) && ev.when.every((w) => 'after' in w));
+  const retro = plan.events.find((ev) => lights(ev) && !chained.includes(ev));
+  // each motor's wait after the first and its burn: the last one out ends the sequence
+  const ends = [retro, ...chained].flatMap((ev) => {
+    if (!ev) return [];
+    const wait = ev.when.reduce((w, x) => ('after' in x ? (x.wait ?? 0) : w), 0);
+    return ev.do.flatMap((a) => ('ignite' in a ? [wait + motors.find((m) => m.id === a.ignite)!.burn!.value] : []));
+  });
+  const letting = (body: string | undefined) => (body === undefined ? undefined : craft.joints.find((j) => j.gone.includes(body)));
+  const separation = letting(booster.id)!;
+  const tower = rocket?.body;
+  const pack = motors[0]?.body;
+  const main = craft.chutes.find((ch) => ch.instead?.length)!;
+  const drogue = craft.chutes.find((ch) => ch !== main)!;
+  const heightOf = (ch: ChuteDef): number => {
+    const ev = plan.events.find((e) => e.do.some((a) => 'deploy' in a && a.deploy === ch.id));
+    for (const w of ev?.when ?? []) if ('height' in w) return w.height;
+    return Number.NEGATIVE_INFINITY;
+  };
+  return {
+    craft,
+    booster,
+    engine,
+    flow: sea.value / (G0 * isp.value),
+    cutoff,
+    programme,
+    retroPitch: retroHold?.retro ?? { value: 0, confidence: 'estimated', source: 'not given: level' },
+    stack: { area: craft.drag[0]!.area, curve: craft.drag[0]!.curve },
+    spacecraft,
+    entry: { area: spacecraft.aero!.area, drag: spacecraft.aero!.drag },
+    separation,
+    parting: plan.events.find((ev) => ev.automatic && ev.do.some((a) => 'separate' in a && a.separate === separation.id)),
+    abort,
+    escape: rocket,
+    motors,
+    retro,
+    chained,
+    retroEnd: ends.length ? Math.max(...ends) : 0,
+    tower,
+    towerJoint: letting(tower),
+    pack,
+    packJoint: letting(pack),
+    drogue,
+    main,
+    drogueHeight: heightOf(drogue),
+    mainHeight: heightOf(main),
+    torn: plan.record?.torn,
+  };
 }
 
 /** The flight at an instant between samples: the nearest kept sample at or before `t`. */

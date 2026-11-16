@@ -16,7 +16,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { coast } from '../src/sim/fly.ts';
 import { AIR_TOP, elements, HORIZONS, predict, predictor, programmeAxis } from '../src/sim/predict.ts';
@@ -31,7 +31,7 @@ const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
 const TR = flight.trajectory;
 const MU = EARTH.gm.value;
-const V = vehicle(TR, SITE, SEA);
+const V = vehicle(planFor(TR), SITE, SEA);
 
 /** A state at the perigee of an orbit with these heights above the equatorial radius, inclined `i` degrees, over the equator. */
 function atPerigee(perigee, apogee, i = 0) {
@@ -75,7 +75,7 @@ test('elements: an eccentric orbit, from any point of it', () => {
 
 test('a circular 200 km state is predicted as a closed orbit, once round', () => {
   const o = atPerigee(200_000, 200_000, 32.5);
-  const p = predict(TR, SITE, SEA, state(o));
+  const p = predict(planFor(TR), SITE, SEA, state(o));
   assert.equal(p.outcome, 'orbit');
   assert.equal(p.impact, null);
   assert.ok(p.orbit, 'it has elements');
@@ -93,7 +93,7 @@ test('a circular 200 km state is predicted as a closed orbit, once round', () =>
 
 test("an eccentric orbit: apogee and perigee where Kepler has them, and the path is coast()'s", () => {
   const o = atPerigee(AIR_TOP + 50_000, 4_000_000, 51.6);
-  const p = predict(TR, SITE, SEA, state(o));
+  const p = predict(planFor(TR), SITE, SEA, state(o));
   assert.equal(p.outcome, 'orbit');
   near(p.orbit.apoapsisHeight, 4_000_000, 1e-2, 'apoapsis height from the elements');
   near(p.orbit.periapsisHeight, AIR_TOP + 50_000, 1e-2, 'periapsis height from the elements');
@@ -115,7 +115,7 @@ test('a state short of orbit comes down: an impact, with its range from the pad'
   const up = pad.r.map((x) => x / length(pad.r));
   const r = pad.r.map((x, i) => x + up[i] * 200_000);
   const east = [-r[1] / Math.hypot(r[0], r[1]), r[0] / Math.hypot(r[0], r[1]), 0];
-  const p = predict(TR, SITE, SEA, { t: 0, r, v: east.map((x) => x * 6000), mass: 1300, phase: 'capsule' });
+  const p = predict(planFor(TR), SITE, SEA, { t: 0, r, v: east.map((x) => x * 6000), mass: 1300, phase: 'capsule' });
   assert.equal(p.outcome, 'impact');
   assert.equal(p.orbit, null);
   assert.equal(p.apogee, null, 'it is already coming down');
@@ -128,13 +128,13 @@ test('a state short of orbit comes down: an impact, with its range from the pad'
 test('standing on the pad there is nothing to predict; with the engine to burn, the flight', () => {
   const s = V.sample(V.start());
   const start = { t: 0, r: s.centre, v: s.v, mass: s.mass, phase: s.phase };
-  assert.equal(predict(TR, SITE, SEA, start).outcome, 'none');
-  const guided = predict(TR, SITE, SEA, start, { burn: { axis: (t) => programmeAxis(V, t), until: TR.engine.cutoff.value } });
+  assert.equal(predict(planFor(TR), SITE, SEA, start).outcome, 'none');
+  const guided = predict(planFor(TR), SITE, SEA, start, { burn: { axis: (t) => programmeAxis(V, t), until: TR.engine.cutoff.value } });
   assert.equal(guided.kind, 'guided');
   assert.equal(guided.outcome, 'impact');
   near(guided.apogee.altitude, 201_000, 6000, 'apogee of the plan');
   // a pilot's trim leans it: two degrees further downrange is a lower, longer flight
-  const leaned = predict(TR, SITE, SEA, start, {
+  const leaned = predict(planFor(TR), SITE, SEA, start, {
     burn: { axis: (t) => programmeAxis(V, t, { pitch: 2 * DEG, yaw: 0 }), until: TR.engine.cutoff.value },
   });
   assert.ok(
@@ -157,7 +157,7 @@ test('Freedom 7: a coast predicted after cutoff is the coast then flown', () => 
   const flownRange = run.results.range;
   for (const t of [150, 250, 400]) {
     const s = at(t);
-    const p = predict(TR, SITE, SEA, { t: s.t, r: s.centre, v: s.v, mass: s.mass, phase: s.phase });
+    const p = predict(planFor(TR), SITE, SEA, { t: s.t, r: s.centre, v: s.v, mass: s.mass, phase: s.phase });
     assert.equal(p.outcome, 'impact');
     near(
       p.impact.range / flownRange,
@@ -177,7 +177,7 @@ test('Freedom 7 as the record flies it: the guided plan from the pad, and the co
   const run = flyLive(V, autopilot(V), 0.5);
   const s0 = run.samples[0];
   const plan = predict(
-    TR,
+    planFor(TR),
     SITE,
     SEA,
     { t: 0, r: s0.centre, v: s0.v, mass: s0.mass, phase: s0.phase },
@@ -189,7 +189,7 @@ test('Freedom 7 as the record flies it: the guided plan from the pad, and the co
   near(plan.apogee.t, run.results.apogeeAt, 3, 'and when');
   // after retrofire and the pack's going, what is left is the spacecraft falling: the prediction is the landing
   const late = run.samples.find((s) => s.t >= 400);
-  const p = predict(TR, SITE, SEA, { t: late.t, r: late.centre, v: late.v, mass: late.mass, phase: late.phase });
+  const p = predict(planFor(TR), SITE, SEA, { t: late.t, r: late.centre, v: late.v, mass: late.mass, phase: late.phase });
   near(
     p.impact.range / run.results.range,
     1,
@@ -204,9 +204,9 @@ test('it can be worked out in slices, to the same answer', (t) => {
   const run = flyLive(V, autopilot(V), 0.5, 210);
   const s = run.samples[run.samples.length - 1];
   const start = { t: s.t, r: s.centre, v: s.v, mass: s.mass, phase: s.phase };
-  const whole = predict(TR, SITE, SEA, start);
-  for (let warm = 0; warm < 3; warm++) predict(TR, SITE, SEA, start);
-  const job = predictor(TR, SITE, SEA, start);
+  const whole = predict(planFor(TR), SITE, SEA, start);
+  for (let warm = 0; warm < 3; warm++) predict(planFor(TR), SITE, SEA, start);
+  const job = predictor(planFor(TR), SITE, SEA, start);
   assert.throws(() => job.result, /not finished/);
   let slices = 0;
   let longest = 0;
@@ -246,7 +246,7 @@ for (const flight of BALLISTIC) {
     const TR = flight.trajectory;
     const SITE = siteFrame(flight.site);
     const SEA = flight.site.seaLevel.value;
-    const V = vehicle(TR, SITE, SEA);
+    const V = vehicle(planFor(TR), SITE, SEA);
     // the record's flight, sequencer and guidance on; the prediction from each instant is told what the sequencer will do
     const live = [];
     const pilot = autopilot(V);
@@ -263,7 +263,7 @@ for (const flight of BALLISTIC) {
       const s = live.find((x) => x.t >= t);
       const sample = V.sample(s);
       const p = predict(
-        TR,
+        planFor(TR),
         SITE,
         SEA,
         { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
@@ -290,7 +290,7 @@ for (const flight of BALLISTIC) {
     const s = live.find((x) => x.t >= 200);
     const sample = V.sample(s);
     const bare = predict(
-      TR,
+      planFor(TR),
       SITE,
       SEA,
       { t: s.t, r: sample.centre, v: s.v, mass: sample.mass, phase: sample.phase },
@@ -305,8 +305,8 @@ test('the path is given at instants of its own: two predictions a moment apart l
   const run = flyLive(V, autopilot(V), 0.5, 260);
   const a = run.samples.find((s) => s.t >= 200);
   const b = run.samples.find((s) => s.t >= 200.5);
-  const p = predict(TR, SITE, SEA, { t: a.t, r: a.centre, v: a.v, mass: a.mass, phase: a.phase });
-  const q = predict(TR, SITE, SEA, { t: b.t, r: b.centre, v: b.v, mass: b.mass, phase: b.phase });
+  const p = predict(planFor(TR), SITE, SEA, { t: a.t, r: a.centre, v: a.v, mass: a.mass, phase: a.phase });
+  const q = predict(planFor(TR), SITE, SEA, { t: b.t, r: b.centre, v: b.v, mass: b.mass, phase: b.phase });
   const byTime = new Map(p.points.map((x) => [x.t, x]));
   let shared = 0;
   let worst = 0;
@@ -329,11 +329,11 @@ test('the path is given at instants of its own: two predictions a moment apart l
 
 test('how far ahead it looks is the horizons’: twice round when asked, and the time and the steps as limits', () => {
   const o = atPerigee(300_000, 300_000, 51.6);
-  const once = predict(TR, SITE, SEA, state(o));
-  const twice = predict(TR, SITE, SEA, state(o), { horizons: { turns: 2 } });
+  const once = predict(planFor(TR), SITE, SEA, state(o));
+  const twice = predict(planFor(TR), SITE, SEA, state(o), { horizons: { turns: 2 } });
   assert.equal(twice.outcome, 'orbit');
   near(twice.points.at(-1).t / once.points.at(-1).t, 2, 0.01, 'twice round takes twice as long');
-  const short = predict(TR, SITE, SEA, state(o), { horizons: { limit: 600 } });
+  const short = predict(planFor(TR), SITE, SEA, state(o), { horizons: { limit: 600 } });
   assert.equal(short.outcome, 'limit');
   assert.ok(short.points.at(-1).t <= 700, 'stopped at the time given');
   assert.deepEqual(HORIZONS, { limit: 6 * 3600, turns: 1, steps: 60_000 });

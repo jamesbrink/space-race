@@ -1,6 +1,6 @@
 /**
  * What a vehicle lets go, flown: the tower, the spent booster, the retropack, whatever a flight's
- * `Trajectory.body.sheds` lists. Each is a rigid body of its own from the instant it leaves, in
+ * plan lists (`Craft.sheds`). Each is a rigid body of its own from the instant it leaves, in
  * the same frame that does not turn, under the same gravity (world/orbit.ts, with J2), the same air
  * (atmosphere.ts) and the same force model as the vehicle (forces.ts): axial drag by which end
  * leads, the push on its fins, the cross-flow on its side, so it flies end on, weathercocks or
@@ -22,7 +22,7 @@
  * stands under it (`Release.stands`): nothing else of one shed body on another is flown. A body that has come down is not
  * integrated again. Its mass does not change: a motor's propellant is not taken off it.
  */
-import type { ShedBody, Trajectory } from '../types.ts';
+import type { ShedBody } from '../types.ts';
 import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
@@ -42,7 +42,8 @@ import {
 } from '../world/frames.ts';
 import { airAt, blowOf } from './air.ts';
 import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
-import { MEAN_RADIUS } from './fly.ts';
+import { ballisticOf, MEAN_RADIUS } from './fly.ts';
+import type { FlightPlan } from './plan.ts';
 import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
@@ -113,18 +114,17 @@ interface Dyn {
 }
 
 /**
- * What flying a shed body needs of the flight that let it go: the area its drag figures are referred to, the day's winds,
- * and the bodies it lets go. A ballistic flight's `Trajectory` is one; an orbital flight's ascent gives its own (sim/staged.ts).
+ * What flying a shed body needs of the flight that let it go, from its plan: the area its drag figures are referred to (the
+ * stack's going up), the day's winds, and the bodies it lets go (`Craft.sheds`).
  */
-export interface ShedSource {
-  area: Trajectory['area'];
-  winds?: Trajectory['winds'];
-  body?: { sheds?: ShedBody[] };
-}
+const sourceOf = (plan: FlightPlan) => {
+  const craft = plan.craft[0]!;
+  return { area: craft.drag[0]!.area, winds: plan.winds, sheds: craft.sheds ?? [] };
+};
 
 /** One body, ready to be flown from its release. */
 export function shedder(
-  trajectory: ShedSource,
+  plan: FlightPlan,
   site: Geodetic,
   seaLevel: number,
   def: ShedBody,
@@ -132,14 +132,15 @@ export function shedder(
   options: ShedOptions = {},
 ): Shedder {
   const pad = geodeticToEcef(site);
+  const source = sourceOf(plan);
   // (the day's wind, as the vehicle that let it go flies through)
-  const blow = blowOf(trajectory.winds);
+  const blow = blowOf(source.winds);
   const frame = options.frame ?? LIFTOFF;
   const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
   const floor = options.floor ?? floorAt(site, seaLevel);
   const { mass, roll, across, centre } = release;
   const shape: Shape = {
-    area: trajectory.area.value,
+    area: source.area.value,
     ahead: def.ahead.value,
     astern: def.astern.value,
     surfaces: def.surfaces ?? [],
@@ -385,13 +386,13 @@ export class ShedRun {
 /** Everything one flight has let go, each flown: by the event that let it go. */
 export class Sheds {
   private readonly runs = new Map<string, ShedRun>();
-  private readonly trajectory: ShedSource;
+  private readonly plan: FlightPlan;
   private readonly site: Geodetic;
   private readonly seaLevel: number;
   private readonly options: ShedOptions;
 
-  constructor(trajectory: ShedSource, site: Geodetic, seaLevel = 0, options: ShedOptions = {}) {
-    this.trajectory = trajectory;
+  constructor(plan: FlightPlan, site: Geodetic, seaLevel = 0, options: ShedOptions = {}) {
+    this.plan = plan;
     this.site = site;
     this.seaLevel = seaLevel;
     this.options = options;
@@ -401,9 +402,9 @@ export class Sheds {
   add(release: Release): ShedRun | undefined {
     const had = this.runs.get(release.on);
     if (had) return had;
-    const def = this.trajectory.body?.sheds?.find((d) => d.on === release.on);
+    const def = sourceOf(this.plan).sheds.find((d) => d.on === release.on);
     if (!def) return undefined;
-    const run = new ShedRun(shedder(this.trajectory, this.site, this.seaLevel, def, release, this.options));
+    const run = new ShedRun(shedder(this.plan, this.site, this.seaLevel, def, release, this.options));
     this.runs.set(release.on, run);
     return run;
   }
@@ -430,13 +431,12 @@ export class Sheds {
  * way the long axis (+X, the small end) points then. `riding`: the point is the stack's base; otherwise it is the
  * spacecraft's own centre of mass. Nothing is turning. The liquids are what the flow has left at `t`, shared evenly.
  */
-export function recordRelease(trajectory: Trajectory, def: ShedBody, t: number, r: Vec3, v: Vec3, axis: Vec3, riding: boolean): Release {
-  const tr = trajectory;
-  const body = tr.body;
-  if (!body) throw new Error('this trajectory has no `body`: what it sheds cannot be flown');
+export function recordRelease(plan: FlightPlan, def: ShedBody, t: number, r: Vec3, v: Vec3, axis: Vec3, riding: boolean): Release {
+  const b = ballisticOf(plan);
+  const body = b.craft.rigid;
+  if (!body) throw new Error('this plan has no rigid body: what it sheds cannot be flown');
   const whole = fixedAndFluid(body.parts, NONE);
-  const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
-  const left = tr.liftoffMass.value - flow * Math.min(t, tr.engine.cutoff.value) - whole.fixed;
+  const left = b.craft.mass.value - b.flow * Math.min(t, b.cutoff) - whole.fixed;
   const piece = pieceOf(body, def, whole.fluid > 0 ? left / whole.fluid : 0);
   const from = riding ? 0 : body.capsule.centre.value;
   // the spacecraft is ahead of what it leaves behind, and behind what leaves it forward

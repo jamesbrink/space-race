@@ -1026,7 +1026,7 @@ export class Cabin {
     const site = this.flight.site;
     if (!tr || !site) return null;
     if (!this.recorded) {
-      const { samples, results } = flownOnce(tr, siteFrame(site), site.seaLevel.value, frameOf(this.flight));
+      const { samples, results } = flownOnce(this.flight.plan!, siteFrame(site), site.seaLevel.value, frameOf(this.flight));
       this.recorded = {
         samples,
         times: {

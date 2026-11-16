@@ -1,10 +1,11 @@
 /**
  * A vehicle flown live: stepped a frame at a time and steered, where fly.ts runs a whole flight
  * with its attitude prescribed. The same Newtonian flight (fly.ts's gravity, air, thrust and
- * drag, in the same frame that does not turn, from the same `Flight.trajectory`), and with it the
+ * drag, in the same frame that does not turn, from the same plan), and with it the
  * body's turning: a rigid body under the torques of its turned thrust, of the air on its nose and
- * fins, and of its attitude jets. Nothing here knows which flight it is; what a flight adds for it
- * is `Trajectory.body` (types.ts), each figure with its confidence.
+ * fins, and of its attitude jets. Nothing here knows which flight it is or names a part: its hardware
+ * is found in the plan by what it is (fly.ts `ballisticOf`), and what a flight adds for the turning
+ * is the plan's rigid body (`Craft.rigid`, types.ts `Body`), each figure with its confidence.
  *
  * Axes. The body's +X is its long axis, nose forward. On the pad +X is up, +Z points against the
  * launch azimuth and +Y is level, to the left of the azimuth; so a positive turn about +Y (pitch)
@@ -28,7 +29,7 @@
  *             place, so the spacecraft hangs. In more air than it can take, as it is let out or after, it tears (`worn`).
  *   staging   whatever leaves (tower, booster, retropack) is one body made two (forces.ts: `part`),
  *             momentum kept, and is put in `released` for shed.ts to fly.
- *   loads     the stack's bending load (q alpha) against `body.limits` (loads.ts): past it the
+ *   loads     the stack's bending load (q alpha) against the plan's limit (`LimitDef` qAlpha; loads.ts): past it the
  *             stack breaks at its joint.
  *   jets      the spacecraft's reaction control system, chamber by chamber (`capsule.rcs`): each one that is
  *             open pushes at its own nozzle along its own line, so it turns the spacecraft and shoves it
@@ -73,7 +74,7 @@
  * a few parts in a thousand, is left out), the tower's centre of mass and inertia are scaled with
  * its weight as the propellant goes, not moved, and the booster is left to itself.
  */
-import type { MassPart, Trajectory } from '../types.ts';
+import type { MassPart } from '../types.ts';
 import { clamp } from '../util/math.ts';
 import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
@@ -99,11 +100,10 @@ import { airAt, airDrag, blowOf } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { rk4Body } from './core/rk4.ts';
 import { aboard, act, burnOut, type CraftState, chainedAt, fire, part as partJoint, startCraft } from './craft.ts';
-import { along, axisOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
+import { along, axisOf, ballisticOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
 import { ENTRY_G, loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
-import type { Action, EventDef, FlightPlan } from './plan.ts';
-import { planOfTrajectory } from './planof.ts';
+import type { Action, ChuteDef, FlightPlan } from './plan.ts';
 import {
   aboutAxis,
   euler,
@@ -118,7 +118,7 @@ import {
   unturn,
 } from './rigid.ts';
 import { pressed } from './staging.ts';
-import { nozzleThrust, vacuumOf } from './thrust.ts';
+import { nozzleThrust } from './thrust.ts';
 
 /** The integration step, s. */
 export const TICK = 0.01;
@@ -128,7 +128,7 @@ const ON_TICK = 1e-6;
 /** What the pilot, or an autopilot, asks of the vehicle. Steering is -1 to 1 about each body axis. */
 export interface Controls {
   /**
-   * The engine's lever, 0 to 1 of rated thrust. What it does is the engine's nature (`body.engine`): one that does
+   * The engine's lever, 0 to 1 of rated thrust. What it does is the engine's nature (its `EngineDef`: kind, throttle, starts): one that does
    * not throttle runs at its rated thrust for anything above 0; one that does follows the lever between its least and
    * its most, and below its least it is off; 0 shuts a liquid engine down, and it starts again only as often as it
    * can be started; a solid, once lit, hears none of it. There is no lag: no figure for one is in any record read.
@@ -197,11 +197,11 @@ export interface VehicleState {
   separation: null | { t: number; r: Vec3; v: Vec3; axis: Vec3; booster: { r: Vec3; v: Vec3 } };
   /** Everything let go so far, each as it was the instant it left: sim/shed.ts flies them on. */
   released: readonly Release[];
-  /** The stack's bending load against its limit (`body.limits.qAlpha`; sim/loads.ts): all nothing where the flight gives none. */
+  /** The stack's bending load against its limit (the plan's qAlpha `LimitDef`; sim/loads.ts): all nothing where the flight gives none. */
   strain: Strain;
   /** The stack broke: when, at what fraction of the limit, in what dynamic pressure (Pa) and how far off the wind (degrees), and at which joint. */
   broke: null | { t: number; load: number; q: number; alpha: number; joint: string };
-  /** A parachute torn by more air than it can take (`limits`), as it was let out or after. */
+  /** A parachute torn by more air than it can take (its `ChuteDef.strength` and `pull`), as it was let out or after. */
   torn: { drogue: boolean; main: boolean };
   /** When each tore and by what: the dynamic pressure on its cloth, Pa, or the pull on its lines, N. */
   tore: { drogue: Tear | null; main: Tear | null };
@@ -247,8 +247,8 @@ export interface LiveSample extends Sample {
   rates: Vec3;
   /** The angle between the long axis and the motion through the air, degrees: 0 nose first, 180 heat shield first. */
   alpha: number;
-  /** Every motor burning at this instant, with its thrust, N: the engine ('main'), the escape rocket, each retrorocket. */
-  burning: { name: string; thrust: number }[];
+  /** Every motor burning at this instant, by its engine's id in the plan, with its thrust, N: the booster's engine, the escape rocket, each retrorocket (an orbital record's summary, which has only the stack's whole thrust, gives it as the craft's). */
+  burning: { engine: string; thrust: number }[];
   /** The reaction control system, as the state has it: kg left in each supply, N from each chamber. */
   rcs: { left: readonly number[]; firing: readonly number[] };
   /** What is left in the booster's tanks, kg, where the flight gives the engine's mixture ratio: null once the booster has gone. */
@@ -263,7 +263,6 @@ export interface LiveSample extends Sample {
 export type Pilot = (state: VehicleState) => Controls;
 
 export interface Vehicle {
-  readonly trajectory: Trajectory;
   /** The plan it is flown on (sim/plan.ts), whose machine (sim/craft.ts) its states' `craft` is; and the engine its lever works, by the plan's id. */
   readonly plan: FlightPlan;
   readonly engine: string;
@@ -319,38 +318,37 @@ export interface VehicleOptions {
 }
 
 /** A flight's vehicle, ready to be flown. `seaLevel` as in fly.ts. */
-export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, options: VehicleOptions = {}): Vehicle {
-  const tr = trajectory;
-  const body = tr.body;
-  if (!body) throw new Error('this trajectory has no `body`: it can be flown by fly(), not steered');
-  const plan = planOfTrajectory(tr);
-  // What the vehicle's hardware is in the plan, found by what it is and not by name.
-  const stack = plan.craft[0]!;
+export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options: VehicleOptions = {}): Vehicle {
+  // What the vehicle's hardware is in the plan, found by what it is and not by name (fly.ts).
+  const roles = ballisticOf(plan);
+  const stack = roles.craft;
+  const body = stack.rigid;
+  if (!body) throw new Error('this plan has no rigid body: it can be flown by fly(), not steered');
   /** The booster: the body that stands on the pad. Its engine is the one the lever works. */
-  const booster = stack.bodies[0]!.id;
-  const engine = stack.engines.find((e) => e.body === booster)!;
+  const booster = roles.booster.id;
+  const engine = roles.engine;
   /** The escape rocket: the motor the abort lights, which the event a hand's command sets off. */
-  const abortEvent = plan.events.find((e) => e.when.some((w) => 'command' in w));
-  const escapeMotor = abortEvent?.do.flatMap((a) => ('ignite' in a && a.ignite !== engine.id ? [a.ignite] : []))[0];
-  /** The spacecraft's motors (its retrorockets): every solid but the escape rocket, each lit by an event of the plan and burning for its `burn`. */
-  const motors = stack.engines.filter((e) => e.kind === 'solid' && e.burn && e.id !== escapeMotor);
-  const lights = (ev: EventDef) => ev.do.length > 0 && ev.do.every((a) => 'ignite' in a && motors.some((m) => m.id === a.ignite));
-  /** The motors' own timer: each lit so long after another (every trigger `after`), the hardware's sequence once begun, whatever the switches say. */
-  const chained = plan.events.filter((ev) => lights(ev) && ev.when.every((w) => 'after' in w));
-  /** The motors' sequence begun: the event that lights the first. */
-  const retroEvent = plan.events.find((ev) => lights(ev) && !chained.includes(ev))?.id ?? null;
-  /** The joint that lets a body go. */
-  const letting = (b: string | undefined) => (b === undefined ? undefined : stack.joints.find((j) => j.gone.includes(b))?.id);
+  const abortEvent = roles.abort;
+  const escapeMotor = roles.escape?.id;
+  /** The spacecraft's motors (its retrorockets), each lit by an event of the plan and burning for its `burn`; their own timer's events, the hardware's sequence once begun, whatever the switches say; and the event that begins it. */
+  const motors = roles.motors;
+  const chained = roles.chained;
+  const retroEvent = roles.retro?.id ?? null;
   /** The tower (what the escape rocket is on) and the retropack (what the motors are on), and the joints that let each go and the booster. */
-  const towerBody = stack.engines.find((e) => e.id === escapeMotor)?.body;
-  const packBody = motors[0]?.body;
-  const towerJoint = letting(towerBody);
-  const packJoint = letting(packBody);
-  const separation = letting(booster)!;
+  const towerBody = roles.tower;
+  const packBody = roles.pack;
+  const towerJoint = roles.towerJoint?.id;
+  const packJoint = roles.packJoint?.id;
+  const separation = roles.separation.id;
   const TOWER: ReadonlySet<string> = new Set(towerJoint === undefined ? [] : [towerJoint]);
   /** The parachutes: the main takes the drogue's place. */
-  const mainChute = stack.chutes.find((ch) => ch.instead?.length)!.id;
-  const drogueChute = stack.chutes.find((ch) => ch.id !== mainChute)!.id;
+  const mainChute = roles.main.id;
+  const drogueChute = roles.drogue.id;
+  /** The spacecraft alone as it leaves the booster, and once its pack has gone, kg: the record's figures at those partings. */
+  const alone = roles.separation.after!.value;
+  const packless = roles.packJoint?.after?.value ?? alone;
+  /** The stack's limit in bending, and the joint it breaks at, where the flight gives one. */
+  const bend = stack.limits.find((l) => l.of === 'qAlpha') ?? null;
   /** What has left it, as the forces read it: the machine's bodies. */
   const shedOf = (c: CraftState) => ({
     tower: towerBody !== undefined && !aboard(c, towerBody),
@@ -379,18 +377,19 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       event: (id: string | null | undefined) => !!id && events.has(id),
     };
   };
-  const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
-  const vacuum = vacuumOf(tr.engine).value;
+  const flow = roles.flow;
+  const vacuum = engine.thrust.vacuum.value;
+  const exitArea = engine.exitArea?.value ?? 0;
   const frame = options.frame ?? LIFTOFF;
   const earth = frame.spin;
   const pad = geodeticToEcef(site);
   // the day's wind: everything the air does here is done by air that moves with it
-  const blow = blowOf(tr.winds);
+  const blow = blowOf(plan.winds);
   const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, blow);
-  const programme = axisOf(tr, site, frame);
+  const programme = axisOf(plan, site, frame);
   const up0 = programme(-1e9);
   // (level along the launch azimuth, from the azimuth itself: a programme that never tilts has no direction to give)
-  const [east, north] = fromHorizontal(tr.azimuth.value * DEG, 0);
+  const [east, north] = fromHorizontal(roles.programme.azimuth.value * DEG, 0);
   const downrange0 = frame.toInertial(unit(add(scale(enuAxes(site).east, east), scale(enuAxes(site).north, north))), 0);
   const left0 = cross(up0, downrange0);
   // (as it stands: upright, unless the launcher leans it along the azimuth)
@@ -463,19 +462,18 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const escapeBurn = rocket?.propellant && escapeImpulse > 0 ? rocket.propellant.value / escapeImpulse : 0;
   const afterAbort = rocket?.sequence ?? null;
   const dryOut = tanks
-    ? tr.liftoffMass.value - tanks.burnable
-    : tr.engine.depletion
-      ? tr.liftoffMass.value - flow * tr.engine.depletion.value
+    ? stack.mass.value - tanks.burnable
+    : engine.depletion
+      ? stack.mass.value - flow * engine.depletion.value
       : whole.fixed;
   const deflection = Math.sin(body.control.deflection.value * DEG);
-  const retroEnd = tr.retro.fires[tr.retro.fires.length - 1]!.value - tr.retro.fires[0]!.value + tr.retro.burn.value;
+  const retroEnd = roles.retroEnd;
 
   const fixed = (r: Vec3, at: number): Vec3 => frame.toFixed(r, at);
   const rangeOf = (r: Vec3, at: number): number => angleBetween(fixed(r, at), pad) * MEAN_RADIUS;
   const floor = options.floor ?? floorAt(site, seaLevel);
 
   const sheds = body.sheds ?? [];
-  const limits = body.limits ?? null;
   const stackSide = body.side ? { dragArea: body.side.dragArea.value, from: body.side.from.value, to: body.side.to.value } : null;
   const capsuleSide = capsule.side
     ? { dragArea: capsule.side.dragArea.value, from: capsule.side.from.value, to: capsule.side.to.value }
@@ -500,7 +498,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     return (p) => (p.propellant === 'oxidizer' ? left.oxidizer / tanks.oxidizer : p.propellant === 'fuel' ? left.fuel / tanks.fuel : 1);
   };
   /** What the spacecraft itself weighs once it has left the booster, tower or no tower: the record's weights, less what the jets have burned. */
-  const capsuleMass = (s: VehicleState): number => (s.shed.retropack ? tr.retropack.mass.value : tr.separation.mass.value) - rcsUsed(s);
+  const capsuleMass = (s: VehicleState): number => (s.shed.retropack ? packless : alone) - rcsUsed(s);
   const massNow = (s: VehicleState, mass: number): MassProperties => {
     if (s.shed.booster) {
       if (s.shed.tower || !towerAlone) {
@@ -530,12 +528,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const engineOf = (s: VehicleState) => s.craft.engines[engine.id]!;
   const burning = (s: VehicleState): boolean => Number.isFinite(engineOf(s).lit) && !Number.isFinite(engineOf(s).out);
   const throttleOf = (s: VehicleState): number => (burning(s) ? engineOf(s).throttle : 0);
-  const nature = body.engine;
-  const solid = nature?.kind === 'solid';
+  const solid = engine.kind === 'solid';
   /** The fraction of rated thrust the engine gives for a lever at `u`: what its nature allows. */
   const allowed = (u: number): number => {
     if (!(u > 0)) return 0;
-    const range = solid ? undefined : nature?.throttle;
+    const range = solid ? undefined : engine.throttle?.range;
     if (!range) return 1;
     return u < range[0] - 1e-12 ? 0 : Math.min(u, range[1]);
   };
@@ -613,10 +610,10 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       const through = unturn(d.q, wind);
       // (only the leading end's curve is read)
       const leads = riding || through[0] > 0;
-      const end = tr.area.value * along(leads ? tr.ascentDrag : tr.entryDrag, mach);
+      const end = leads ? roles.stack.area.value * along(roles.stack.curve, mach) : roles.entry.area.value * along(roles.entry.drag, mach);
       const f = airForces(
         {
-          area: tr.area.value,
+          area: roles.stack.area.value,
           ahead: end,
           astern: end,
           surfaces: riding ? body.surfaces : capsule.surfaces,
@@ -640,7 +637,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     if (burning(s)) {
       // (throttled, the chamber's thrust goes with the lever and the nozzle's gain from thinner air is held as at full: no record says otherwise)
-      const thrust = nozzleThrust(1, vacuum, throttleOf(s), tr.engine.exitArea.value, air.pressure);
+      const thrust = nozzleThrust(1, vacuum, throttleOf(s), exitArea, air.pressure);
       const c = s.controls;
       const [py, pz] = [-deflection * c.yaw, deflection * c.pitch];
       push([thrust * Math.sqrt(1 - py * py - pz * pz), thrust * py, thrust * pz], body.control.station.value - props.centre);
@@ -708,7 +705,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       v: [0, 0, 0],
       q: q0,
       w: [0, 0, 0],
-      mass: tr.liftoffMass.value,
+      mass: stack.mass.value,
       ignited: false,
       cutoff: false,
       held: true,
@@ -758,8 +755,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     // a solid, lit, burns on whatever the lever says
     const lever = solid && burning(s) ? 1 : allowed(c.throttle);
     // (what has gone through the engine, not what the stack weighs: a tower let go early is not propellant burned)
-    const spent =
-      !s.shed.booster && (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass >= tr.liftoffMass.value - dryOut - 1e-6;
+    const spent = !s.shed.booster && (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass >= stack.mass.value - dryOut - 1e-6;
     // lit on the machine, which holds it to its starts and to the booster it is on
     if (!burning(s) && lever > 0 && !spent && s.abortAt === null) s.craft = act(plan, s.craft, { ignite: engine.id }, s.t, s.held).state;
     if (burning(s) && (lever === 0 || spent))
@@ -780,8 +776,11 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     if (s.loose !== null && !s.shed.booster) {
       const capsule = capsuleMass(s);
-      const booster = { thrust: burning(s) ? tr.engine.thrust.value * throttleOf(s) : 0, mass: s.mass - capsule };
-      if (!pressed(booster, { thrust: 0, mass: capsule })) s = leave(s, tr.separation.speed.value);
+      const booster = {
+        thrust: burning(s) ? (engine.thrust.seaLevel ?? engine.thrust.vacuum).value * throttleOf(s) : 0,
+        mass: s.mass - capsule,
+      };
+      if (!pressed(booster, { thrust: 0, mass: capsule })) s = leave(s, roles.separation.push?.value ?? 0);
     }
     if (s.shed.booster) {
       // the motors' sequence begun: the first lit now, the rest by their timer (`byTimer`)
@@ -800,7 +799,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   /** The retropack goes, from a spacecraft that has left its booster (`s` is changed): with its tower still on, in an abort, as without. */
   const dropPack = (s: VehicleState): void => {
     // what the spacecraft is lighter by: the record's weights either side of it
-    const lighter = tr.separation.mass.value - tr.retropack.mass.value;
+    const lighter = alone - packless;
     if (pack) {
       // it leaves from under the spacecraft with the velocity that place had; what is left is lighter by it, about a centre of mass further up
       const two = part(
@@ -927,12 +926,12 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   const leave = (state: VehicleState, speed: number): VehicleState => {
     const s = state.shed.tower ? { ...state } : dropTower(state);
     const axis = turn(s.q, X);
-    const { gone, inertia } = boosterOf(s, tr.separation.mass.value, capsule.centre.value);
+    const { gone, inertia } = boosterOf(s, alone, capsule.centre.value);
     s.separation = { t: s.t, r: s.r, v: s.v, axis, booster: { r: s.r, v: s.v } };
     letGo(s, separation, massNow(s, s.mass).centre, gone, gone.centre, inertia, speed);
     const booster = s.released[s.released.length - 1]!;
     s.separation.booster = { r: booster.r, v: booster.v };
-    s.mass = tr.separation.mass.value;
+    s.mass = alone;
     parts(s, separation);
     s.craft = burnOut(s.craft, engine.id, s.t); // the engine stays with the booster
     return s;
@@ -943,9 +942,9 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     // (the abort, on the machine: what it records of the plan's event; the escape rocket's burn is the vehicle's `escapeThrust`)
     s.craft = fire(plan, s.craft, abortEvent!.id, s.t, s.held).state;
     const axis = turn(s.q, X);
-    const taken = tr.separation.mass.value + towerMass;
+    const taken = alone + towerMass;
     // the two that leave together: their centre of mass on the stack
-    const takenCentre = (tr.separation.mass.value * capsule.centre.value + towerMass * towerAlone!.centre) / taken;
+    const takenCentre = (alone * capsule.centre.value + towerMass * towerAlone!.centre) / taken;
     const { gone, inertia } = boosterOf(s, taken, takenCentre);
     s.abortAt = s.t;
     s.abortHeight = heightOf(s.r, s.t).height;
@@ -965,37 +964,39 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     }
     return s;
   };
-  /** A parachute let out in more dynamic pressure than it can take tears as it comes out: `limits.torn` of its drag area is left. */
-  const tears = (s: VehicleState, which: 'drogue' | 'main'): Tear | null => {
+  /** A parachute let out in more dynamic pressure than it can take tears as it comes out: what the plan says a torn canopy keeps of its drag area is left. */
+  const tears = (s: VehicleState, ch: ChuteDef): Tear | null => {
     const q = windAt(s.r, s.v, s.t, seaLevel).q;
-    return limits !== null && tearOf(q, 0, 0, { strength: limits[which].value, torn: 0 }) ? { t: s.t, by: 'pressure', q, pull: 0 } : null;
+    return ch.strength && tearOf(q, 0, 0, { strength: ch.strength.value, torn: 0 }) ? { t: s.t, by: 'pressure', q, pull: 0 } : null;
   };
+  const tornKeeps = roles.torn?.value ?? 1;
   const drogue = (s: VehicleState): VehicleState => {
-    const torn = tears(s, 'drogue');
+    const torn = tears(s, roles.drogue);
     return {
       ...s,
       craft: act(plan, s.craft, { deploy: drogueChute }, s.t, s.held).state,
       drogueAt: s.t,
       torn: torn ? { ...s.torn, drogue: true } : s.torn,
       tore: torn ? { ...s.tore, drogue: torn } : s.tore,
-      chute: { full: tr.drogue.dragArea.value * (torn ? limits!.torn.value : 1), was: 0, at: s.t, fills: tr.drogue.fills.value },
+      chute: { full: roles.drogue.dragArea.value * (torn ? tornKeeps : 1), was: 0, at: s.t, fills: roles.drogue.fills.value },
     };
   };
   /**
    * The parachute that is out, torn by the air it has since come into (`s` is as the step left it): by more dynamic
    * pressure than its cloth takes, or by more pull than its lines do, which is that pressure times the area it has
    * filled to. One let out where there is no air and carried full into the air goes this way. What is left streams:
-   * `limits.torn` of its drag area, or what it had filled to if that was less.
+   * what the plan says a torn canopy keeps of its drag area, or what it had filled to if that was less.
    */
   const worn = (s: VehicleState): VehicleState => {
     const which = s.mainAt !== null ? 'main' : s.drogueAt !== null ? 'drogue' : null;
-    if (limits === null || which === null || s.torn[which]) return s;
+    const ch = which === 'main' ? roles.main : roles.drogue;
+    if (which === null || !ch.strength || !roles.torn || s.torn[which]) return s;
     const q = windAt(s.r, s.v, s.t, seaLevel).q;
     const area = chuteArea(s.chute, s.t);
-    const tear = tearOf(q, area, tr[which].dragArea.value, {
-      strength: limits[which].value,
-      pull: limits.pull?.[which]?.value,
-      torn: limits.torn.value,
+    const tear = tearOf(q, area, ch.dragArea.value, {
+      strength: ch.strength.value,
+      pull: ch.pull?.value,
+      torn: roles.torn.value,
     });
     if (tear === null) return s;
     const { by, pull, left } = tear;
@@ -1007,7 +1008,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     };
   };
   const main = (s: VehicleState): VehicleState => {
-    const torn = tears(s, 'main');
+    const torn = tears(s, roles.main);
     return {
       ...s,
       craft: act(plan, s.craft, { deploy: mainChute }, s.t, s.held).state,
@@ -1015,10 +1016,10 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       torn: torn ? { ...s.torn, main: true } : s.torn,
       tore: torn ? { ...s.tore, main: torn } : s.tore,
       chute: {
-        full: tr.main.dragArea.value * (torn ? limits!.torn.value : 1),
+        full: roles.main.dragArea.value * (torn ? tornKeeps : 1),
         was: s.drogueAt === null ? 0 : s.chute.full,
         at: s.t,
-        fills: tr.main.fills.value,
+        fills: roles.main.fills.value,
       },
     };
   };
@@ -1062,7 +1063,7 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     let dries = Number.POSITIVE_INFINITY;
     if (burning(s) && throttleOf(s) > 0) {
       const burned = (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass;
-      const at = s.t + (tr.liftoffMass.value - dryOut - burned) / (flow * throttleOf(s));
+      const at = s.t + (stack.mass.value - dryOut - burned) / (flow * throttleOf(s));
       if (at > s.t + ON_TICK && at < t - ON_TICK) dries = at;
     }
     const ends = [...(Number.isFinite(dries) ? [dries] : []), ...retroMarks(s, s.t, t)].sort((a, b) => a - b);
@@ -1116,14 +1117,14 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
       };
     }
     s = { ...s, ...after, t, ticks };
-    if (limits && !s.shed.booster) {
+    if (bend && !s.shed.booster) {
       const loads = bending(after, t);
-      const next = strain(s.strain, (loads.q * loads.alpha) / limits.qAlpha.value, h);
+      const next = strain(s.strain, (loads.q * loads.alpha) / bend.value.value, h);
       s.strain = next.strain;
       if (next.fails) {
         // It breaks at its joint: the booster goes its own way, engine out. A spacecraft with its escape rocket still aboard is
         // pulled clear by it, taken as fired by the break itself (what the abort system watched is not in anything read).
-        s.broke = { t, load: next.strain.load, q: loads.q, alpha: loads.alpha / DEG, joint: limits.joint };
+        s.broke = { t, load: next.strain.load, q: loads.q, alpha: loads.alpha / DEG, joint: bend.at ?? separation };
         s = rocket && !s.shed.tower && s.abortAt === null ? pullOff(s) : leave(s, 0);
       }
     }
@@ -1142,18 +1143,13 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     const timed = afterAbort !== null && s.abortHeight !== null && s.abortHeight < afterAbort.ceiling.value;
     if (automatic && timed && s.shed.tower && s.towerAt !== null) {
       if (s.drogueAt === null && s.mainAt === null && t >= s.towerAt + afterAbort.drogue.value - 1e-9) s = drogue(s);
-      if (
-        s.drogueAt !== null &&
-        s.mainAt === null &&
-        t >= s.drogueAt + afterAbort.main.value - 1e-9 &&
-        now.height <= tr.main.altitude.value
-      )
+      if (s.drogueAt !== null && s.mainAt === null && t >= s.drogueAt + afterAbort.main.value - 1e-9 && now.height <= roles.mainHeight)
         s = main(s);
     }
     if (s.shed.booster && s.shed.tower && falling) {
       // what happens at a height, coming down (fly.ts), where the spacecraft's own sequence is left to do it
-      if (automatic && !timed && s.drogueAt === null && s.mainAt === null && now.height <= tr.drogue.altitude.value) s = drogue(s);
-      if (automatic && !timed && s.drogueAt !== null && s.mainAt === null && now.height <= tr.main.altitude.value) s = main(s);
+      if (automatic && !timed && s.drogueAt === null && s.mainAt === null && now.height <= roles.drogueHeight) s = drogue(s);
+      if (automatic && !timed && s.drogueAt !== null && s.mainAt === null && now.height <= roles.mainHeight) s = main(s);
       const retroAt = retroEvent ? s.craft.fired[retroEvent] : undefined;
       if (s.enteredAt === null && retros(s, t).count === 0 && (retroAt === undefined || t > retroAt + retroEnd)) {
         if (length(forces(after, t, s).force) / after.mass / G0 >= ENTRY_G) s.enteredAt = t;
@@ -1211,18 +1207,18 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
         ...(burning(s)
           ? [
               {
-                name: 'main',
-                thrust: nozzleThrust(1, vacuum, throttleOf(s), tr.engine.exitArea.value, atmosphere(here.height - seaLevel).pressure),
+                engine: engine.id,
+                thrust: nozzleThrust(1, vacuum, throttleOf(s), exitArea, atmosphere(here.height - seaLevel).pressure),
               },
             ]
           : []),
         ...(s.abortAt !== null && !s.shed.tower && escapeThrust(s.t - s.abortAt) > 0
-          ? [{ name: 'escape', thrust: escapeThrust(s.t - s.abortAt) }]
+          ? [{ engine: escapeMotor!, thrust: escapeThrust(s.t - s.abortAt) }]
           : []),
-        ...motors.flatMap((m, i) => {
+        ...motors.flatMap((m) => {
           const lit = s.craft.engines[m.id]!.lit;
           return aboard(s.craft, m.body) && s.t >= lit && s.t < lit + m.burn!.value
-            ? [{ name: `retro ${i + 1}`, thrust: m.thrust.vacuum.value }]
+            ? [{ engine: m.id, thrust: m.thrust.vacuum.value }]
             : [];
         }),
       ],
@@ -1232,7 +1228,6 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
   };
 
   return {
-    trajectory: tr,
     plan,
     engine: engine.id,
     site,

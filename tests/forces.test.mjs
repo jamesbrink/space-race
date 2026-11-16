@@ -2,6 +2,7 @@
 // push a point by the same air (src/sim/air.ts airAt), the same drag (airDrag), the same thrust (src/sim/thrust.ts) and the
 // same gravity (world/orbit.ts), so at one state they agree to rounding: a part in 10^12 of the push.
 import assert from 'node:assert/strict';
+import { planFor } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
@@ -37,31 +38,37 @@ test('a ballistic flight: the predictor’s flier is the simulator’s air, drag
   const s = stateOver(frame, site, 100);
   const air = airAt(frame, s.r, s.v, s.t, sea);
   // the stack going up, coasting: drag on the ascent's curve over the mass
-  const coasting = ballistic(tr, site, sea, { ...s, mass: 5000, phase: 'coast' }, { frame });
+  const coasting = ballistic(planFor(tr), site, sea, { ...s, mass: 5000, phase: 'coast' }, { frame });
   same(
     coasting.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(tr, true, air.mach)), 1 / 5000),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach)), 1 / 5000),
     'the stack coasting',
   );
   // the spacecraft alone: the entry's curve
-  const alone = ballistic(tr, site, sea, { ...s, mass: 1300, phase: 'capsule' }, { frame });
+  const alone = ballistic(planFor(tr), site, sea, { ...s, mass: 1300, phase: 'capsule' }, { frame });
   same(
     alone.push(s.t, s.r, s.v, air.altitude),
-    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(tr, false, air.mach)), 1 / 1300),
+    scale(airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), false, air.mach)), 1 / 1300),
     'the spacecraft alone',
   );
   // and burning: the one law of thrust along the axis given
   const axis = scale(s.r, 1 / length(s.r));
-  const burning = ballistic(tr, site, sea, { ...s, mass: 20_000, phase: 'powered' }, { frame, burn: { axis: () => axis, until: 140 } });
+  const burning = ballistic(
+    planFor(tr),
+    site,
+    sea,
+    { ...s, mass: 20_000, phase: 'powered' },
+    { frame, burn: { axis: () => axis, until: 140 } },
+  );
   const thrust = nozzleThrust(1, vacuumOf(tr.engine).value, 1, tr.engine.exitArea.value, air.air.pressure);
-  assert.ok(Math.abs(thrustIn(tr, air.air.pressure) - thrust) <= 1e-9, 'fly.ts thrustIn is thrust.ts');
+  assert.ok(Math.abs(thrustIn(planFor(tr), air.air.pressure) - thrust) <= 1e-9, 'fly.ts thrustIn is thrust.ts');
   same(
     burning.push(s.t, s.r, s.v, air.altitude),
     scale(
       [
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(tr, true, air.mach))[0] + axis[0] * thrust,
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(tr, true, air.mach))[1] + axis[1] * thrust,
-        airDrag(air.wind, air.airspeed, air.air.density, dragArea(tr, true, air.mach))[2] + axis[2] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[0] + axis[0] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[1] + axis[1] * thrust,
+        airDrag(air.wind, air.airspeed, air.air.density, dragArea(planFor(tr), true, air.mach))[2] + axis[2] * thrust,
       ],
       1 / 20_000,
     ),

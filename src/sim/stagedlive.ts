@@ -670,7 +670,7 @@ export function stagedVehicle(
       attitude,
       rates: s.w,
       alpha: here.airspeed > 1e-6 ? angleBetween(axisIn, here.wind) / DEG : 0,
-      burning: thrust > 0 ? [{ name: 'main', thrust }] : [],
+      burning: stages.flatMap((st, i) => (burning(s, i) ? [{ engine: st.engine.id, thrust: pushOf(s, i, s.t, here.air.pressure) }] : [])),
       centre: [r0[0] + axis[0] * centre, r0[1] + axis[1] * centre, r0[2] + axis[2] * centre],
       chute: { full: 0, was: 0, at: 0, fills: 1 },
       rcs: { left: [], firing: [] },

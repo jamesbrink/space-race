@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { unturn } from '../src/sim/rigid.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
@@ -26,7 +26,7 @@ for (const flight of BALLISTIC) {
   test(`${flight.callsign}: turned round, the periscope side is rolled to the Earth and held there until the air takes it`, () => {
     const tr = flight.trajectory;
     const side = tr.body.capsule.earthward.value;
-    const v = vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value);
+    const v = vehicle(planFor(tr), siteFrame(flight.site), flight.site.seaLevel.value);
     const run = flyLive(v, autopilot(v), 0.5);
     // going up it is where the pad left it: down range, which is underneath once the stack has tilted
     for (const t of [30, 60, 120])
@@ -51,7 +51,7 @@ for (const flight of BALLISTIC) {
 test('a spacecraft that names no such side keeps the roll it had', () => {
   const tr = structuredClone(flight.trajectory);
   delete tr.body.capsule.earthward;
-  const v = vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value);
+  const v = vehicle(planFor(tr), siteFrame(flight.site), flight.site.seaLevel.value);
   const run = flyLive(v, autopilot(v), 0.5);
   const side = flight.trajectory.body.capsule.earthward.value;
   assert.ok(off(at(run, run.results.apogeeAt), side) > 45);

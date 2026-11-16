@@ -164,7 +164,7 @@ export class Ascent {
     if (!this.record && !this.flight.trajectory) this.record = orbitalRecord(this.flight);
     if (!this.record) {
       const tr = this.flight.trajectory!;
-      const { samples, results } = flownOnce(tr, this.site, this.flight.site.seaLevel.value, this.frame);
+      const { samples, results } = flownOnce(this.flight.plan!, this.site, this.flight.site.seaLevel.value, this.frame);
       const when = (t: number): number => (Number.isFinite(t) ? t : Infinity);
       const out = { drogue: when(results.drogueAt), main: when(results.mainAt) };
       this.record = {
@@ -176,7 +176,7 @@ export class Ascent {
         live: false,
         out,
       };
-      this.axis = axisOf(tr, this.site, this.frame);
+      this.axis = axisOf(this.flight.plan!, this.site, this.frame);
     }
     return this.record;
   }
@@ -555,7 +555,7 @@ export class Ascent {
     const on = this.flight.flies!.drops[i]?.on;
     if (run.live) return run.sheds?.get(on);
     const tr = this.flight.trajectory!;
-    this.sheds ??= new Sheds(tr, this.site, this.flight.site.seaLevel.value, { frame: this.frame });
+    this.sheds ??= new Sheds(this.flight.plan!, this.site, this.flight.site.seaLevel.value, { frame: this.frame });
     const had = this.sheds.get(on);
     const def = tr.body?.sheds?.find((d) => d.on === on);
     if (had || !def) return had;
@@ -565,7 +565,7 @@ export class Ascent {
     const riding = at <= tr.separation.at.value;
     const through = sub(v, cross(this.frame.spin, r));
     const axis = riding || length(through) < 1e-6 ? this.axis!(at) : scale(unit(through), -1);
-    return this.sheds.add(recordRelease(tr, def, at, r, v, axis, riding));
+    return this.sheds.add(recordRelease(this.flight.plan!, def, at, r, v, axis, riding));
   }
 
   /** A place in the frame that does not turn, at `t`, in the scene's frame. */
@@ -928,9 +928,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
-  const sheds = new Sheds({ area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } }, site, flight.site.seaLevel.value, {
-    frame: frameOf(flight),
-  });
+  const sheds = new Sheds(flight.plan!, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
   for (const def of o.ascent!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
     if (i < 0 || !def.mass || !def.centre || !def.gyration) continue;

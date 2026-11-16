@@ -427,7 +427,7 @@ export class Sound {
     if (this.live) ({ samples, out, duration } = this.live);
     else if (!tr && this.ascent && this.flight.orbital?.ascent) ({ samples, duration } = orbitalRecord(this.flight));
     else if (tr && this.ascent) {
-      const flown = flownOnce(tr, siteFrame(this.flight.site), this.flight.site.seaLevel.value, frameOf(this.flight));
+      const flown = flownOnce(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, frameOf(this.flight));
       samples = flown.samples;
       const when = (v: number): number => (Number.isFinite(v) ? v : Infinity);
       out = { drogue: when(flown.results.drogueAt), main: when(flown.results.mainAt) };

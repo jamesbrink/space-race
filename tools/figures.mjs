@@ -72,7 +72,7 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   // (in the frame the app flies it in: world/earthframe.ts frameOf)
   const frame = frameOf(flight);
 
-  const whole = fly(tr, site, sea, undefined, undefined, undefined, frame);
+  const whole = fly(flight.plan, site, sea, undefined, undefined, undefined, frame);
   put(flight, 'whole', { ...whole.results, samples: whole.samples.length });
 
   // the capsule's half from the separation the record gives (as tests/sim.test.mjs builds it)
@@ -89,15 +89,15 @@ for (const flight of flights.filter((f) => f.trajectory)) {
     );
     const r = frame.toInertial(geodeticToEcef(place), at0);
     const v = frame.velocityToInertial(geodeticToEcef(place), moving, at0);
-    put(flight, 'capsule', fly(tr, site, sea, 0.05, 0.5, { r, v }, frame).results);
+    put(flight, 'capsule', fly(flight.plan, site, sea, 0.05, 0.5, { r, v }, frame).results);
   }
 
   // the live vehicle, by the autopilot, and what it sheds
-  const v = vehicle(tr, site, sea, { frame });
+  const v = vehicle(flight.plan, site, sea, { frame });
   const live = flyLive(v);
   const end = live.state.landing;
   put(flight, 'live', { ...live.results, landingT: end?.t, landingLatitude: end?.latitude, landingLongitude: end?.longitude });
-  const sheds = new Sheds(tr, site, sea, { frame });
+  const sheds = new Sheds(flight.plan, site, sea, { frame });
   sheds.follow(live.state);
   for (const body of sheds.all) {
     const l = body.finish();
@@ -114,12 +114,12 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   // the predictor from the record's run at fixed instants
   for (const t0 of [60, 200, 400]) {
     const s = sampleAt(whole.samples, t0);
-    put(flight, `predict:T+${t0}`, pathFigures(predict(tr, site, sea, s, { frame })));
+    put(flight, `predict:T+${t0}`, pathFigures(predict(flight.plan, site, sea, s, { frame })));
   }
 
   // an abort off the pad, the engine never lit, in still air
   if (tr.body?.escape) {
-    const still = { ...tr, winds: undefined };
+    const still = { ...flight.plan, winds: undefined };
     const av = vehicle(still, site, sea, { frame });
     const auto = autopilot(av, { launch: false });
     const tally = new Tally();

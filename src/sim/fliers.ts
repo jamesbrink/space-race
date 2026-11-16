@@ -4,7 +4,7 @@
  * its state as the simulator holds it, and pushes with the force functions its own simulator calls; the propagator adds
  * gravity, steps them all alike and finds the marks.
  *
- *   ballistic   a ballistic flight's vehicle (a `Trajectory`: Freedom 7's Redstone and capsule) from any instant: the
+ *   ballistic   a ballistic plan's vehicle (Freedom 7's Redstone and capsule; fly.ts `ballisticOf`) from any instant: the
  *               engine burning on a given axis to a given cutoff, or not; the stack's drag going up and the capsule's
  *               heat shield first once it is alone and falling (fly.ts `dragArea`), through the day's wind (forces.ts
  *               `blowing`); what its sequencer will do (separation and its push, the retrorockets as fly.ts fires them,
@@ -24,8 +24,7 @@
  * stopping rules; the orbital coast's drag on the launch vehicle (it was the spacecraft's ball's, so a vehicle cut low
  * came down nearer than drawn); and a burn's end falling on a stage of the step that had it off.
  */
-import type { Trajectory } from '../types.ts';
-import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
@@ -33,7 +32,7 @@ import { airDrag, blowing, blowOf } from './air.ts';
 import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 import { AIR_TOP, atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DownBody, downOf } from './descent.ts';
-import { chuteArea, dragArea, thrustIn } from './fly.ts';
+import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
 import { aimOf, type DescentFlown, type DescentHands, shipOf, shipPush } from './orbital.ts';
@@ -67,10 +66,11 @@ export interface BallisticOptions {
 }
 
 /** A ballistic flight's vehicle from `start`, as its live simulator has it (above). `site` and `seaLevel` as fly.ts's. */
-export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, start: Start, options: BallisticOptions = {}): Flier {
-  const blow = blowOf(tr.winds);
+export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, start: Start, options: BallisticOptions = {}): Flier {
+  const b = ballisticOf(plan);
+  const blow = blowOf(plan.winds);
   const burn = options.burn && start.t < options.burn.until ? options.burn : null;
-  const flow = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
+  const flow = b.flow;
   const floor = floorOf(site, seaLevel);
   const frame = options.frame ?? LIFTOFF;
 
@@ -83,7 +83,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
   const separationAxis = seq?.axis ?? null;
   if (separationAt !== null && !separationAxis) throw new Error('a separation to come needs the joint’s axis (Sequence.axis)');
   const packAt = ahead(seq?.retropack);
-  const retroBurn = tr.retro.burn.value;
+  const retroBurn = b.motors[0]?.burn?.value ?? 0;
   const fires = (seq?.retro ?? []).filter((f) => f + retroBurn > start.t && (packAt === null || f < packAt));
   const retroEnd = fires.length ? Math.max(...fires.map((f) => f + retroBurn)) : Number.NEGATIVE_INFINITY;
   /** How many retrorockets burn from `at` until the next instant (none once the pack has gone). */
@@ -112,14 +112,13 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
   let chute = { full: 0, was: 0, at: 0, fills: 1 };
   let drogue = start.phase === 'drogue' || start.phase === 'main';
   let main = start.phase === 'main';
-  if (main) chute = start.chute ?? { full: tr.main.dragArea.value, was: tr.main.dragArea.value, at: start.t, fills: 1 };
-  else if (drogue) chute = start.chute ?? { full: tr.drogue.dragArea.value, was: tr.drogue.dragArea.value, at: start.t, fills: 1 };
+  if (main) chute = start.chute ?? { full: b.main.dragArea.value, was: b.main.dragArea.value, at: start.t, fills: 1 };
+  else if (drogue) chute = start.chute ?? { full: b.drogue.dragArea.value, was: b.drogue.dragArea.value, at: start.t, fills: 1 };
   // what the parachutes can take (vehicle.ts `worn`): one that is out tears in more air than its cloth or its lines hold
-  const limits = tr.body?.limits ?? null;
   // (one that is out at the start with nothing said of how far it has filled is taken as it is and held to nothing: full at once
   // in the air it was let out in, it would be torn by a pull it never had)
   let torn = start.chute
-    ? (main && chute.full < tr.main.dragArea.value) || (drogue && !main && chute.full < tr.drogue.dragArea.value)
+    ? (main && chute.full < b.main.dragArea.value) || (drogue && !main && chute.full < b.drogue.dragArea.value)
     : drogue || main;
 
   const place = (p: Vec3, at: number): Geodetic => frame.place(p, at);
@@ -147,11 +146,11 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         const wind = windOf(p, u, at, altitude);
         const speed = length(wind);
         if (speed > 0) {
-          const area = dragArea(tr, riding, speed / air.soundSpeed) + (riding ? 0 : chuteArea(chute, at));
+          const area = dragArea(plan, riding, speed / air.soundSpeed) + (riding ? 0 : chuteArea(chute, at));
           a = scale(airDrag(wind, speed, air.density, area), 1 / m);
         }
       }
-      if (burning && burn) a = add(a, scale(burn.axis(at), thrustIn(tr, air ? air.pressure : 0) / m));
+      if (burning && burn) a = add(a, scale(burn.axis(at), thrustIn(plan, air ? air.pressure : 0) / m));
       if (retros > 0) {
         // each retrorocket against the motion over the ground, pitched below the level (fly.ts)
         const up = frame.up(p, at);
@@ -159,9 +158,9 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
         const level = sub(over, scale(up, dot(over, up)));
         const across = length(level);
         if (across > 0) {
-          const pitch = tr.retro.pitch.value * (Math.PI / 180);
+          const pitch = b.retroPitch.value * (Math.PI / 180);
           const push = sub(scale(level, -Math.cos(pitch) / across), scale(up, Math.sin(pitch)));
-          a = add(a, scale(push, (retros * tr.retro.thrust.value) / m));
+          a = add(a, scale(push, (retros * b.motors[0]!.thrust.vacuum.value) / m));
         }
       }
       return a;
@@ -173,7 +172,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
     },
     below() {
       if (!alone || !chutes) return Number.NEGATIVE_INFINITY;
-      return !drogue ? tr.drogue.altitude.value : !main ? tr.main.altitude.value : Number.NEGATIVE_INFINITY;
+      return !drogue ? b.drogueHeight : !main ? b.mainHeight : Number.NEGATIVE_INFINITY;
     },
     arrive(t, _r, v, _altitude, by): Arrival {
       const events: EventKind[] = [];
@@ -181,11 +180,11 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
       if (by === 'height') {
         if (!drogue) {
           drogue = true;
-          chute = { full: tr.drogue.dragArea.value, was: 0, at: t, fills: tr.drogue.fills.value };
+          chute = { full: b.drogue.dragArea.value, was: 0, at: t, fills: b.drogue.fills.value };
           events.push('drogue');
         } else {
           main = true;
-          chute = { full: tr.main.dragArea.value, was: chute.full, at: t, fills: tr.main.fills.value };
+          chute = { full: b.main.dragArea.value, was: chute.full, at: t, fills: b.main.fills.value };
           events.push('main');
         }
         torn = false;
@@ -201,11 +200,8 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
       if (t === separationAt && !alone) {
         // the two are pushed apart along the joint's axis, as every simulator parts them (fly.ts; vehicle.ts by forces.ts
         // `part`); the spacecraft's share is the booster's part of the whole
-        dv = add(
-          v,
-          scale(separationAxis!, keptShare(tr.separation.speed.value, tr.separation.mass.value, tr.separation.boosterMass.value)),
-        );
-        mass = tr.separation.mass.value;
+        dv = add(v, scale(separationAxis!, keptShare(b.separation.push!.value, b.separation.after!.value, b.separation.leaves!.value)));
+        mass = b.separation.after!.value;
         massAt = t;
         alone = true;
         events.push('separation');
@@ -213,7 +209,7 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
       if (fires.length && t === fires[0]) events.push('retro');
       if (fires.length && t === retroEnd) events.push('burnout');
       if (t === packAt) {
-        mass = tr.retropack.mass.value;
+        mass = b.packJoint!.after!.value;
         massAt = t;
         events.push('retropack');
       }
@@ -223,15 +219,15 @@ export function ballistic(tr: Trajectory, site: Geodetic, seaLevel: number, star
     settle(t, p, u, altitude, falling) {
       // what a spacecraft alone does by itself, coming down (vehicle.ts): the tower's shape gives way to the heat shield
       if (alone && falling) riding = false;
-      if (limits && !riding && !torn && (drogue || main) && altitude < AIR_TOP) {
-        const which = main ? 'main' : 'drogue';
+      const out = main ? b.main : b.drogue;
+      if (out.strength && b.torn && !riding && !torn && (drogue || main) && altitude < AIR_TOP) {
         const wind = windOf(p, u, t, altitude);
         const q = 0.5 * atmosphere(altitude).density * dot(wind, wind);
         const area = chuteArea(chute, t);
-        const tear = tearOf(q, area, tr[which].dragArea.value, {
-          strength: limits[which].value,
-          pull: limits.pull?.[which]?.value,
-          torn: limits.torn.value,
+        const tear = tearOf(q, area, out.dragArea.value, {
+          strength: out.strength.value,
+          pull: out.pull?.value,
+          torn: b.torn.value,
         });
         if (tear) {
           const left = tear.left;

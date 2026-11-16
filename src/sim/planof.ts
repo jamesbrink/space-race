@@ -328,13 +328,18 @@ export function planOfTrajectory(tr: Trajectory, checks: readonly FlightCheck[] 
     attitude,
     ...(tr.winds ? { winds: tr.winds } : {}),
     checks: checks.map((c) => ({ ...c, of: 'flight' as const })),
-    ...(body?.escape
+    ...(body?.escape || lim
       ? {
           record: {
-            abort: {
-              ...(body.escape.sequence ? { sequence: body.escape.sequence } : {}),
-              ...(body.escape.record ? { record: body.escape.record } : {}),
-            },
+            ...(lim ? { torn: lim.torn } : {}),
+            ...(body?.escape
+              ? {
+                  abort: {
+                    ...(body.escape.sequence ? { sequence: body.escape.sequence } : {}),
+                    ...(body.escape.record ? { record: body.escape.record } : {}),
+                  },
+                }
+              : {}),
           },
         }
       : {}),

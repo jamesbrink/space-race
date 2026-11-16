@@ -14,7 +14,8 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { BALLISTIC } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
-import { coast, fly, sampleAt } from '../src/sim/fly.ts';
+import { ballisticOf, coast, fly, sampleAt } from '../src/sim/fly.ts';
+import { planOfTrajectory } from '../src/sim/planof.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
@@ -29,12 +30,11 @@ const TR = flight.trajectory;
 const CALM = { ...TR, winds: undefined };
 const LB = 0.45359237;
 
-/** The flight's trajectory with something changed. */
-/** The trajectory changed for a test: the day's, or `still` (the day's less its wind). */
+/** The flight's plan, made of its trajectory changed for a test: the day's, or `still` (the day's less its wind). */
 function with_(change, still = false) {
   const tr = structuredClone(still ? CALM : TR);
   change(tr);
-  return tr;
+  return planOfTrajectory(tr);
 }
 /** Tick a vehicle on under a pilot until `t`. */
 function until(v, state, pilot, t) {
@@ -46,9 +46,9 @@ function until(v, state, pilot, t) {
   return state;
 }
 
-const whole = vehicle(TR, SITE, SEA);
+const whole = vehicle(flight.plan, SITE, SEA);
 const live = flyLive(whole);
-const batch = fly(TR, SITE, SEA);
+const batch = fly(flight.plan, SITE, SEA);
 // (the defaults `beside` takes: Freedom 7's, which most of this file is about)
 const TR_ = TR;
 const batch_ = batch;
@@ -183,7 +183,7 @@ test('the engine: cut by command it stays cut, and left alone it runs until a ta
   near((lean.tanks.fuel * (1 + mix)) / flow, 132.3, 0.05, 'the alcohol lasts 132.3 s');
   assert.ok(before.fuel > 0 && before.oxidizer > before.fuel, 'at 130 s both are still there');
   out = until(lean, out, HANDS_OFF, 151);
-  near(out.mass, short.liftoffMass.value - lean.tanks.fuel * (1 + mix), flow * TICK * 1.5, 'the engine stopped when the alcohol did');
+  near(out.mass, short.craft[0].mass.value - lean.tanks.fuel * (1 + mix), flow * TICK * 1.5, 'the engine stopped when the alcohol did');
 });
 
 test('a flight is the same flight at any frame rate', () => {
@@ -365,7 +365,7 @@ test('hands off, the stack does what its static margin says: it is stable, and w
     while (w.t < 140 && !w.broke) w = v.tick(w, w.t < from ? on : off);
     return w;
   };
-  const still = vehicle(CALM, SITE, SEA);
+  const still = vehicle(planOfTrajectory(CALM), SITE, SEA);
   const w = handsOffFrom(still, 60);
   assert.ok(w.broke && w.broke.t > 65 && w.broke.t < 95, 'hands off, the whole of it breaks up in the greatest pressure');
   t.diagnostic(
@@ -418,7 +418,7 @@ test('a hand on the stick turns it the way the axes say, and the law is the law'
 
 test('a pilot’s trim leans the programme the platform holds, by as much as asked and the way the axes say', () => {
   // (the cockpit's stick on the booster: 12 degrees downrange and 5 to the left, put on over four seconds from T+8)
-  const v = vehicle(TR, SITE, SEA);
+  const v = vehicle(flight.plan, SITE, SEA);
   let trim = { pitch: 0, yaw: 0 };
   const pilot = autopilot(v, { trim: () => trim });
   let s = v.start();
@@ -480,7 +480,7 @@ test('the rest of the flight happens: tower, separation, turnaround, retrofire, 
   );
   // nobody turning it round, it still comes through the air blunt end first: the shield's pressure is behind its centre of mass
   // (in still air: hands off from the pad the day's wind breaks the stack before it is ever up there)
-  const calm = vehicle(CALM, SITE, SEA);
+  const calm = vehicle(planOfTrajectory(CALM), SITE, SEA);
   const loose = flyLive(calm, autopilot(calm, { pitch: false, yaw: false, roll: false }));
   const worst = loose.samples.reduce((a, x) => (x.phase === 'entry' && x.q > a.q ? x : a), { q: 0 });
   assert.ok(worst.alpha > 150, `left small end first, the air turns it round by the greatest pressure: ${worst.alpha.toFixed(0)} deg`);
@@ -757,7 +757,7 @@ test('the jets burn their thrust over g0 Isp, the spacecraft is lighter by it, a
   // the other system has its own tank
   d = until(dry, d, { ...HANDS_OFF, pitch: -1, manual: { pitch: true } }, d.t + 1);
   assert.ok(d.w[1] < rate - 0.1, 'the manual system still answers');
-  assert.ok(d.rcs.left[1] < tr.body.capsule.rcs.supplies[1].propellant.value, 'from its own supply');
+  assert.ok(d.rcs.left[1] < tr.craft[0].rigid.capsule.rcs.supplies[1].propellant.value, 'from its own supply');
 });
 
 test('with the jets as hardware a flight is still the same flight at any frame rate', () => {
@@ -828,7 +828,7 @@ test('a throttled engine (a fixture) follows its lever within its range, burns i
   s = until(v, s, at(0.8), 12);
   assert.equal(s.throttle, 0.8);
   near(mass - s.mass, FLOW * 0.8 * 2, FLOW * TICK * 1.01, 'the flow is the thrust over g0 Isp: eight tenths of it');
-  const main = v.sample(s).burning.find((m) => m.name === 'main').thrust;
+  const main = v.sample(s).burning.find((m) => m.engine === v.engine).thrust;
   const sea = v.sample(until(v, v.start(), at(0.8), 0.02)).burning[0].thrust;
   // (eight tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
   near(
@@ -873,19 +873,23 @@ test('a solid, lit, burns to its end whatever is asked; and so do this flight’
   while (c.t < fired + 40) {
     for (const m of whole.sample(c).burning) {
       impulse += m.thrust * TICK;
-      lit.add(m.name);
+      lit.add(m.engine);
     }
     c = whole.tick(c, { ...HANDS_OFF, events: c.t < fired + 1 ? ['retro'] : [] });
   }
   assert.equal(c.retroAt, fired, 'fired once');
-  assert.deepEqual([...lit], ['retro 1', 'retro 2', 'retro 3']);
+  assert.deepEqual(
+    [...lit],
+    ballisticOf(whole.plan).motors.map((m) => m.id),
+    'the three motors',
+  );
   near(impulse / (3 * TR.retro.thrust.value * TR.retro.burn.value), 1, 0.002, 'three motors’ thrust for their burning time');
 
   // the escape rocket: the integral of its thrust is its recorded impulse
   let a = whole.tick(until(whole, whole.start(), autopilot(whole), 20), { ...HANDS_OFF, events: ['abort'] });
   let pull = 0;
   while (a.t < a.abortAt + 2) {
-    pull += (whole.sample(a).burning.find((m) => m.name === 'escape')?.thrust ?? 0) * TICK;
+    pull += (whole.sample(a).burning.find((m) => m.engine === ballisticOf(whole.plan).escape.id)?.thrust ?? 0) * TICK;
     a = whole.tick(a, HANDS_OFF);
   }
   // (by the motor's own curve, which encloses 3 per cent more than the nominal figure: tests/abort.test.mjs holds it to its figure's legend)
@@ -982,7 +986,7 @@ test('the spacecraft let go while the booster still burns rides it until the eng
 
 test('a tower let go early is not propellant burned: the engine runs as long', () => {
   // the programme flown by the autopilot, the engine never cut by anyone, and the tower let go at ten seconds or not at all
-  const v = vehicle(TR, SITE, SEA);
+  const v = vehicle(flight.plan, SITE, SEA);
   const auto = autopilot(v, { sequence: false });
   const runOut = (towerAt) => {
     let s = v.start();
@@ -1015,7 +1019,7 @@ test('a programme that never tilts still has a launch azimuth: no attitude is lo
 
 test('turning in still air, a body is damped by the air on its fins', () => {
   // the stack held still in the pad's air (which moves with the ground), turning about an axis across it
-  const v = vehicle(TR, SITE, SEA);
+  const v = vehicle(flight.plan, SITE, SEA);
   const s = until(v, v.start(), autopilot(v), 2);
   const still = { ...s, v: cross([0, 0, 7.292115e-5], s.r), w: [0, 0.3, 0], cutoff: true, throttle: 0 };
   const after = v.tick(still, HANDS_OFF);
@@ -1023,7 +1027,7 @@ test('turning in still air, a body is damped by the air on its fins', () => {
 });
 
 test('level is the ellipsoid’s: straight up along the plumb line at the pad is a climb of 90 degrees', () => {
-  const v = vehicle(TR, SITE, SEA);
+  const v = vehicle(flight.plan, SITE, SEA);
   const s = until(v, v.start(), autopilot(v), 1);
   const rising = { ...s, v: add(cross([0, 0, 7.292115e-5], s.r), scale(v.launch.up, 50)) };
   near(v.sample(rising).groundClimb, 90, 0.01, 'the climb angle of a rise along geodetic up');
@@ -1047,15 +1051,22 @@ for (const other of BALLISTIC.filter((f) => f.id !== flight.id)) {
   const site = siteFrame(other.site);
   const sea = other.site.seaLevel.value;
   const tr = other.trajectory;
-  const flown = fly(tr, site, sea);
-  const v = vehicle(tr, site, sea);
+  const flown = fly(other.plan, site, sea);
+  const v = vehicle(other.plan, site, sea);
   const run = flyLive(v);
   const name = `${other.designation} (${other.callsign})`;
 
   test(`${name}: the autopilot with no push from the air’s side is fly.ts’s powered flight, and with it a little off by its lift`, (t) => {
     const flat = structuredClone(tr);
     for (const x of flat.body.surfaces) x.slope = 0;
-    beside(t, flyLive(vehicle(flat, site, sea)), { speed: 0.002, height: 0.005, climb: 0.1 }, 'the same forces', tr, flown);
+    beside(
+      t,
+      flyLive(vehicle(planOfTrajectory(flat), site, sea)),
+      { speed: 0.002, height: 0.005, climb: 0.1 },
+      'the same forces',
+      tr,
+      flown,
+    );
     beside(t, run, { speed: 0.01, height: 0.02, climb: 0.5 }, 'with lift', tr, flown);
   });
 

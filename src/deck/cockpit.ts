@@ -129,7 +129,9 @@ export class Cockpit extends Deck {
     super(parent, flight, clock, host, Cockpit.spec(flight));
     const tr = flight.trajectory;
     this.vehicle =
-      tr?.body && flight.flies ? vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) }) : null;
+      tr?.body && flight.flies && flight.plan
+        ? vehicle(flight.plan, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) })
+        : null;
     this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
     this.systems();
@@ -260,7 +262,7 @@ export class Cockpit extends Deck {
       dropped: this.flight.flies!.drops.map(() => Infinity),
       live: true,
       out: { drogue: Infinity, main: Infinity },
-      sheds: new Sheds(this.flight.trajectory!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
+      sheds: new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
         frame: frameOf(this.flight),
       }),
     };
@@ -423,6 +425,11 @@ export class Cockpit extends Deck {
   }
 
   /** The flight as it was at `t`: the kept sample at or before it. */
+  /** What the plan calls an engine, said short (a sample's motors are by the plan's id). */
+  private engineLabel(id: string): string {
+    return this.vehicle!.plan.craft[0]!.engines.find((e) => e.id === id)?.label.toLowerCase() ?? id;
+  }
+
   private at(t: number): LiveSample {
     const samples = this.run.samples;
     let lo = 0;
@@ -729,7 +736,7 @@ export class Cockpit extends Deck {
     };
     // the engine: its kind, and what it is doing
     const nature = tr.body?.engine;
-    const main = s.burning.find((m) => m.name === 'main');
+    const main = s.burning.find((m) => m.engine === this.vehicle!.engine);
     const range = nature?.throttle;
     set(
       'engine-kind',
@@ -780,7 +787,9 @@ export class Cockpit extends Deck {
     }
     set(
       'motors',
-      s.burning.length ? s.burning.map((m) => `${m.name} ${(m.thrust / 1000).toFixed(m.thrust < 20_000 ? 1 : 0)} kN`).join(' · ') : '–',
+      s.burning.length
+        ? s.burning.map((m) => `${this.engineLabel(m.engine)} ${(m.thrust / 1000).toFixed(m.thrust < 20_000 ? 1 : 0)} kN`).join(' · ')
+        : '–',
     );
 
     // the abort: there while the tower is, and armed between its two presses
@@ -846,7 +855,7 @@ export class Cockpit extends Deck {
           : '';
       return `<tr><th>${label}${note}</th><td>${(flown / per).toFixed(digits)} ${unit}</td><td>${record === undefined ? '' : `${(record / per).toFixed(digits)} ${unit}`}</td></tr>`;
     };
-    const end = verdict(this.state!, results, this.flight.trajectory!, this.tally.peakG);
+    const end = verdict(this.state!, results, this.flight.plan!, this.tally.peakG);
     const lived =
       end.survivable === null
         ? ''

@@ -21,7 +21,7 @@ import {
   wallFactor,
 } from '../src/sim/heating.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -128,7 +128,7 @@ test('what is under the booster is out of the air, and what flies nose first tak
 
 test('Mercury-Redstone 3: the heating its record’s run gives', () => {
   const heating = flight.trajectory.heating;
-  const run = fly(flight.trajectory, siteFrame(flight.site), flight.site.seaLevel.value);
+  const run = fly(planFor(flight.trajectory), siteFrame(flight.site), flight.site.seaLevel.value);
   const started = performance.now();
   const { states, results } = heatRun(heating, run.samples);
   const took = performance.now() - started;
@@ -173,7 +173,7 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
 for (const each of BALLISTIC.filter((f) => f.trajectory.heating)) {
   const name = `${each.designation} (${each.callsign})`;
   const heating = each.trajectory.heating;
-  const run = fly(each.trajectory, siteFrame(each.site), each.site.seaLevel.value);
+  const run = fly(planFor(each.trajectory), siteFrame(each.site), each.site.seaLevel.value);
 
   test(`${name}: the same heating whether worked all at once or kept up sample by sample, as a flight being flown is`, () => {
     const whole = heatRun(heating, run.samples);

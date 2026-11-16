@@ -174,7 +174,7 @@ export class Flown {
     let rowsOf: { label: string; value: number; unit: string; tolerance: number; got: number }[];
     let checks: { id: string; value: number }[];
     if (flight.trajectory) {
-      const flown = flownOnce(flight.trajectory, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
+      const flown = flownOnce(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, frameOf(flight));
       samples = flown.samples;
       this.duration = flown.results.duration;
       checks = flight.checks ?? [];

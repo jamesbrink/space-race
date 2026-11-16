@@ -3,6 +3,7 @@
 // starts (not a real engine, and it says so). What is held: the lever's figure is the engine's throttle the tick
 // after it is moved, through the same autopilot and `blend` the cockpit flies by.
 import assert from 'node:assert/strict';
+import { planFor } from './ballistic.mjs';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
@@ -20,7 +21,7 @@ const near = (got, want, tolerance, what) =>
 
 const tr = structuredClone(flight.trajectory);
 tr.body.engine = { kind: 'liquid', throttle: [0.4, 1], starts: 2, confidence: 'estimated', source: 'a test fixture: not a real engine' };
-const v = vehicle(tr, SITE, SEA);
+const v = vehicle(planFor(tr), SITE, SEA);
 const FLOW = tr.engine.thrust.value / (G0 * tr.engine.isp.value);
 
 /** The cockpit's pilot, as cockpit.ts makes it: the autopilot that does not light the engine, the lever laid over it. */
@@ -58,7 +59,7 @@ test('lit, the engine runs at the lever, and follows it the tick after it moves'
   // (seven tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
   const atPad = atmosphere(v.sample(s).altitude).pressure;
   near(
-    v.sample(s).burning.find((m) => m.name === 'main').thrust,
+    v.sample(s).burning.find((m) => m.engine === v.engine).thrust,
     0.7 * vacuumOf(tr.engine).value - tr.engine.exitArea.value * atPad,
     1e-6,
     'seven tenths of the vacuum thrust, less the air on the exit',

@@ -10,7 +10,7 @@
  */
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { due } from './craft.ts';
-import type { Flown, Results } from './fly.ts';
+import { ballisticOf, type Flown, type Results } from './fly.ts';
 import type { EventDef } from './plan.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
 import { type Controls, HANDS_OFF, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState } from './vehicle.ts';
@@ -108,8 +108,8 @@ function turnBoth(wanted: Vec3, keel: Vec3, down: Vec3): Vec3 {
 
 /** An autopilot for a vehicle: a `Pilot`, asked every tick. */
 export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pilot {
-  const tr = vehicle.trajectory;
-  const body = tr.body!;
+  const roles = ballisticOf(vehicle.plan);
+  const body = roles.craft.rigid!;
   const want = { pitch: true, yaw: true, roll: true, launch: true, sequence: true, ...options };
   const boosterGains = options.booster ?? BOOSTER_GAINS;
   const capsuleGains = options.capsule ?? CAPSULE_GAINS;
@@ -167,7 +167,7 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       if (s.enteredAt === null && s.shed.tower && length(wind) > 1) {
         // blunt end first: for retrofire, pitched as the record has it; after the pack has gone, straight into the air
         const level = sub(wind, scale(up, dot(wind, up)));
-        const pitch = tr.retro.pitch.value * DEG;
+        const pitch = roles.retroPitch.value * DEG;
         const wanted =
           s.shed.retropack || length(level) < 1
             ? scale(unit(wind), -1)
@@ -262,7 +262,6 @@ export class Tally {
 
   note(s: LiveSample, state: VehicleState, vehicle: Vehicle): void {
     const r = this.results;
-    const tr = vehicle.trajectory;
     if (s.altitude > r.apogee) {
       r.apogee = s.altitude;
       r.apogeeAt = s.t;
@@ -290,7 +289,7 @@ export class Tally {
     } else if (s.phase === 'capsule' || s.phase === 'entry') {
       r.entryQ = Math.max(r.entryQ, s.q);
       const first = state.retroAt;
-      const last = tr.retro.fires[tr.retro.fires.length - 1]!.value - tr.retro.fires[0]!.value + tr.retro.burn.value;
+      const last = ballisticOf(vehicle.plan).retroEnd;
       // the retrorockets are felt too, but the reports' re-entry figure is the air's
       if (first === null || s.t < first || s.t > first + last) r.entryG = Math.max(r.entryG, s.g);
     }

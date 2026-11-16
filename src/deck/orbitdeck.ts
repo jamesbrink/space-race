@@ -684,12 +684,7 @@ export class OrbitDeck extends Deck {
     const record = this.record!;
     const before = (record.samples as LiveSample[]).filter((x) => x.t < from - 1e-9);
     const sample = v.sample(s, (this.flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0));
-    const sheds = new Sheds(
-      { area: o.ascent!.drag[0]!.area, body: { sheds: o.ascent!.sheds ?? [] } },
-      siteFrame(this.flight.site),
-      this.flight.site.seaLevel.value,
-      { frame: this.frame },
-    );
+    const sheds = new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, { frame: this.frame });
     this.run = {
       ...record,
       samples: [...before, sample],

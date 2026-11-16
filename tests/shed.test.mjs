@@ -27,7 +27,7 @@ import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { recordRelease, ShedRun, Sheds, shedder } from '../src/sim/shed.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -95,7 +95,7 @@ test('a body let go in no air coasts as fly.ts coasts, and keeps its spin', () =
     across: 180_000,
     centre: 8,
   };
-  const body = shedder(TR, SITE, SEA, def('separation'), release);
+  const body = shedder(planFor(TR), SITE, SEA, def('separation'), release);
   let s = body.start();
   while (s.t < 60 - TICK / 2) s = body.tick(s);
   const want = coast(r, v, 60, 0.05);
@@ -123,7 +123,7 @@ test('in air a tumbling body comes to the terminal speed its weight and drag are
     across: mass * d.gyration.across.value ** 2,
     centre: d.centre.value,
   };
-  const body = shedder(TR, SITE, SEA, d, release);
+  const body = shedder(planFor(TR), SITE, SEA, d, release);
   let s = body.start();
   let first = null;
   // (it turns as it falls, showing the air now one area and now another: what holds it up is taken over the last ten seconds)
@@ -278,10 +278,10 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   const with_ = (change) => {
     const tr = structuredClone(TR);
     change(tr);
-    return tr;
+    return planFor(tr);
   };
 
-  const whole = vehicle(TR, SITE, SEA);
+  const whole = vehicle(planFor(TR), SITE, SEA);
   /** The record's programme flown by the autopilot, to the sea: every parting on the way, with the vehicle just before and just after. */
   const partings = [];
   let peak = { load: 0, t: 0, lateral: 0 };
@@ -403,7 +403,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   });
   test(`${name}: the tower leaves on both its rockets, ahead of the stack, and does not come back to it`, (t) => {
     const { before, gone } = partings.find((p) => p.gone[0].on === 'tower');
-    const body = shedder(TR, SITE, SEA, def('tower'), gone[0]);
+    const body = shedder(planFor(TR), SITE, SEA, def('tower'), gone[0]);
     let s = body.start();
     // the stack coasts on from the event (its engine is out by then: the record's order)
     // (Freedom 7's tower went 0.4 s after the cutoff; Liberty Bell 7's at it, the same instant: the record's order either way)
@@ -417,7 +417,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     // the same tower with no air on it, for the arithmetic of its rocket
     const bare = structuredClone(def('tower'));
     bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
-    const airless = shedder(TR, SITE, SEA, bare, gone[0]);
+    const airless = shedder(planFor(TR), SITE, SEA, bare, gone[0]);
     let a = airless.start();
     for (let i = 1; i <= 800; i++) {
       s = body.tick(s);
@@ -461,7 +461,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     const bare = structuredClone(def('tower'));
     bare.ahead.value = bare.astern.value = bare.side.dragArea.value = 0;
     const speedGained = (release) => {
-      const body = shedder(TR, SITE, SEA, bare, release);
+      const body = shedder(planFor(TR), SITE, SEA, bare, release);
       let s = body.start();
       for (let i = 1; i <= 800; i++) s = body.tick(s);
       const stack = coast(release.rest.r, release.rest.v, s.t - release.t, TICK);
@@ -480,7 +480,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     );
   });
   test(`${name}: the shed bodies of the record’s programme come down, and say where`, (t) => {
-    const sheds = new Sheds(TR, SITE, SEA);
+    const sheds = new Sheds(planFor(TR), SITE, SEA);
     sheds.follow(landed);
     assert.equal(sheds.all.length, 3);
     for (const body of sheds.all) {
@@ -502,7 +502,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   });
   test(`${name}: a shed body’s flight is the same however it is asked for, and is kept for showing again`, () => {
     const release = partings.find((p) => p.gone[0].on === 'separation').gone[0];
-    const make = () => new ShedRun(shedder(TR, SITE, SEA, def('separation'), release));
+    const make = () => new ShedRun(shedder(planFor(TR), SITE, SEA, def('separation'), release));
     const [a, b] = [make(), make()];
     a.upTo(release.t + 400);
     for (let t = release.t; t < release.t + 400; t += 0.0166) b.upTo(t); // a frame at a time
@@ -517,21 +517,21 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     same(fresh.at(release.t + 37.3), then);
     assert.equal(a.at(release.t - 1), null, 'it is nowhere before it left');
     // between kept states the cubic is within a centimetre of the flight itself
-    const body = shedder(TR, SITE, SEA, def('separation'), release);
+    const body = shedder(planFor(TR), SITE, SEA, def('separation'), release);
     let s = body.start();
     while (s.t < release.t + 37.3 - TICK / 2) s = body.tick(s);
     near(length(sub(then.r, s.r)), 0, 0.01, 'the kept flight against the flight');
   });
   test(`${name}: let go standing on the pad, the booster stays where it stands`, () => {
     // an abort before the engine is lit
-    const v = vehicle(TR, SITE, SEA);
+    const v = vehicle(planFor(TR), SITE, SEA);
     const s = v.tick(v.start(), { throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
     // (the booster, and the retropack the abort's own sequence drops with it)
     assert.deepEqual(
       s.released.map((r) => r.on),
       ['separation', 'retropack'],
     );
-    const body = new ShedRun(shedder(TR, SITE, SEA, def('separation'), s.released[0]));
+    const body = new ShedRun(shedder(planFor(TR), SITE, SEA, def('separation'), s.released[0]));
     assert.ok(body.now.landing, 'it is down from the first');
     const later = body.at(600);
     assert.ok(later.down);
@@ -542,11 +542,11 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     near(moved, 2 * Math.hypot(from[0], from[1]) * Math.sin((7.292115e-5 * 600) / 2), 0.01, 'it has gone round with the ground');
   });
   test(`${name}: a release made from the record’s run starts the booster where the spacecraft left it, slower along the axis by the parting speed`, () => {
-    const batch = fly(TR, SITE, SEA);
+    const batch = fly(planFor(TR), SITE, SEA);
     const at = TR.separation.at.value;
     const s = batch.samples.find((x) => x.t === at);
     const axis = whole.programme(at);
-    const release = recordRelease(TR, def('separation'), at, s.r, s.v, axis, true);
+    const release = recordRelease(planFor(TR), def('separation'), at, s.r, s.v, axis, true);
     near(dot(sub(s.v, release.v), axis), TR.separation.speed.value, 1e-9, 'slower along the axis by the parting speed');
     near(
       release.mass,
@@ -555,7 +555,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
       'the booster’s mass, from the parts, against the trajectory’s',
     );
     near(dot(turn(release.q, [1, 0, 0]), axis), 1, 1e-12, 'pointing as the programme has the stack');
-    const tower = recordRelease(TR, def('tower'), TR.body.tower.at.value, s.r, s.v, axis, true);
+    const tower = recordRelease(planFor(TR), def('tower'), TR.body.tower.at.value, s.r, s.v, axis, true);
     near(length(sub(tower.v, s.v)), 0, 1e-12, 'the tower leaves with the stack’s own velocity: its rocket does the rest');
   });
   test(`${name}: on the record’s programme the stack goes through the greatest pressure with room to spare`, (t) => {
@@ -567,7 +567,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     assert.ok(peak.load < CAUTION, `no warning is raised: the most is ${peak.load} of the limit`);
   });
   test(`${name}: a programme leaned 15 degrees through the greatest pressure breaks the stack at its joint, and the pieces keep its momentum`, (t) => {
-    const v = vehicle(TR, SITE, SEA);
+    const v = vehicle(planFor(TR), SITE, SEA);
     const lean = { pitch: 0, yaw: 0 };
     const auto = autopilot(v, { trim: () => lean });
     let event = null;
@@ -615,7 +615,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     for (const i of [0, 1, 2]) near(p[i], stack.mass * stack.v[i], 1e-12 * scaleOf, `linear momentum, axis ${i}`);
     // and it is the same break every time
     const again = run(
-      vehicle(TR, SITE, SEA),
+      vehicle(planFor(TR), SITE, SEA),
       (() => {
         const l = { pitch: 0, yaw: 0 };
         const a = autopilot(v, { trim: () => l });
@@ -630,7 +630,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   });
   test(`${name}: a parachute let out in more pressure than it can take tears, and does not save the flight`, (t) => {
     // the drogue let out by hand as the air comes on hard, well above its height
-    const v = vehicle(TR, SITE, SEA);
+    const v = vehicle(planFor(TR), SITE, SEA);
     const auto = autopilot(v);
     let early = false;
     const end = run(
@@ -656,7 +656,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   //   - a streaming canopy keeps a twentieth of its area (`limits.torn`), so a spacecraft under one falls at several times
   //     the speed a whole main gives it, and a main that never tore would be the record's landing to the centimetre a second.
   test(`${name}: a drogue let out above the air is torn by the air it is carried into; the main still saves it`, () => {
-    const v = vehicle(TR, SITE, SEA);
+    const v = vehicle(planFor(TR), SITE, SEA);
     const auto = autopilot(v);
     let whole = 0; // how long it was out and whole
     const end = run(
@@ -680,7 +680,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
     near(end.landing.vertical, landed.landing.vertical, 0.01, 'and the landing is the record’s');
   });
   test(`${name}: a main let out above the air pulls its lines apart as the air comes on, and the landing is not survivable`, (t) => {
-    const v = vehicle(TR, SITE, SEA);
+    const v = vehicle(planFor(TR), SITE, SEA);
     const auto = autopilot(v);
     let most = 0;
     let predicted = null;
@@ -694,7 +694,14 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
         // what the path ahead is told, a minute after it is out, full and whole and still above the air
         if (predicted === null && after.t >= after.mainAt + 60) {
           const m = v.sample(after);
-          predicted = predict(TR, SITE, SEA, { t: after.t, r: m.centre, v: after.v, mass: m.mass, phase: m.phase, chute: m.chute });
+          predicted = predict(planFor(TR), SITE, SEA, {
+            t: after.t,
+            r: m.centre,
+            v: after.v,
+            mass: m.mass,
+            phase: m.phase,
+            chute: m.chute,
+          });
         }
       },
     );
@@ -724,7 +731,7 @@ for (const each of BALLISTIC.filter((f) => f.trajectory.body?.sheds?.length)) {
   test(`${name}: a drogue let out going up, inside what it can take, pulls against the climb`, (t) => {
     // an abort at T+20 s; the tower let go by hand once its rocket is out, and then, or not, the drogue, while it is still climbing
     const fly = (chute) => {
-      const v = vehicle(TR, SITE, SEA);
+      const v = vehicle(planFor(TR), SITE, SEA);
       const auto = autopilot(v);
       let top = 0;
       let out = null;

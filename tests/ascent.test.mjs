@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
@@ -19,7 +19,7 @@ for (const flight of BALLISTIC) {
     flight.models.find((m) => m.id === flight.flies.model).rotationY ?? 0,
   );
   const live = () => {
-    const v = vehicle(TR, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) });
+    const v = vehicle(planFor(TR), siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) });
     const flown = flyLive(v, autopilot(v), 0.1);
     return {
       samples: flown.samples,
@@ -167,9 +167,9 @@ for (const flight of BALLISTIC) {
   test(named('the batch run is cached by where it flew from, not by the hardware alone'), async () => {
     const { flownOnce } = await import('../src/sim/fly.ts');
     const site = siteFrame(flight.site);
-    const here = flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight));
-    assert.equal(flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight)), here);
-    const there = flownOnce(TR, { ...site, latitude: site.latitude + 0.1 }, flight.site.seaLevel.value, frameOf(flight));
+    const here = flownOnce(planFor(TR), site, flight.site.seaLevel.value, frameOf(flight));
+    assert.equal(flownOnce(planFor(TR), site, flight.site.seaLevel.value, frameOf(flight)), here);
+    const there = flownOnce(planFor(TR), { ...site, latitude: site.latitude + 0.1 }, flight.site.seaLevel.value, frameOf(flight));
     assert.notEqual(there, here);
     assert.notEqual(there.samples[0].latitude, here.samples[0].latitude);
   });
@@ -186,7 +186,7 @@ for (const flight of BALLISTIC) {
       const { ecefToSite } = await import('../src/world/frames.ts');
       const site = siteFrame(flight.site);
       const record = Ascent.of(flight);
-      const { samples } = flownOnce(TR, site, flight.site.seaLevel.value, frameOf(flight));
+      const { samples } = flownOnce(planFor(TR), site, flight.site.seaLevel.value, frameOf(flight));
       const separation = TR.separation.at.value;
       // from the point flown (the run's own samples, at their own instants) the centre of mass stays where it was at
       // separation, all through the turnaround and after it; the model's origin, 0.4 m from it, is what goes round
@@ -260,11 +260,11 @@ for (const flight of BALLISTIC) {
     async () => {
       const { Sheds } = await import('../src/sim/shed.ts');
       const site = siteFrame(flight.site);
-      const v = vehicle(TR, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
+      const v = vehicle(planFor(TR), site, flight.site.seaLevel.value, { frame: frameOf(flight) });
       // unlit, the escape rocket fired: as the flight deck does it (cockpit.ts)
       let state = v.start();
       const samples = [v.sample(state)];
-      const sheds = new Sheds(TR, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
+      const sheds = new Sheds(planFor(TR), site, flight.site.seaLevel.value, { frame: frameOf(flight) });
       const pilot = () => ({ throttle: 0, pitch: 0, yaw: 0, roll: 0, events: ['abort'] });
       for (let i = 0; i < 300; i++) {
         state = v.tick(state, pilot);

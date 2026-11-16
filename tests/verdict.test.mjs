@@ -1,7 +1,7 @@
 // src/sim/verdict.ts: how a flight flown by hand ended, in words, against the limits the flight's data gives.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { autopilot, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { verdict } from '../src/sim/verdict.ts';
@@ -11,7 +11,7 @@ import { siteFrame } from '../src/world/frames.ts';
 for (const flight of BALLISTIC) {
   const named = (what) => (flight.id === 'usa/mercury/mr-3-freedom-7' ? what : `${flight.callsign}: ${what}`);
   const TR = flight.trajectory;
-  const v = vehicle(TR, siteFrame(flight.site), flight.site.seaLevel.value);
+  const v = vehicle(planFor(TR), siteFrame(flight.site), flight.site.seaLevel.value);
   const record = autopilot(v);
   /** Fly a whole flight under a pilot and say how it ended. */
   function ended(pilot) {
@@ -23,7 +23,7 @@ for (const flight of BALLISTIC) {
       state = next;
       tally.note(v.sample(state), state, v);
     }
-    return verdict(state, tally.results, TR, tally.peakG);
+    return verdict(state, tally.results, planFor(TR), tally.peakG);
   }
 
   test(named('the record’s flight is down under the main parachute, and survivable'), () => {
@@ -60,8 +60,8 @@ for (const flight of BALLISTIC) {
   test(named('a flight with no limits given is not judged'), () => {
     const tr = structuredClone(TR);
     delete tr.body.capsule.limits;
-    const bare = vehicle(tr, siteFrame(flight.site), flight.site.seaLevel.value);
+    const bare = vehicle(planFor(tr), siteFrame(flight.site), flight.site.seaLevel.value);
     const flown = flyLive(bare);
-    assert.equal(verdict(flown.state, flown.results, tr, 11).survivable, null);
+    assert.equal(verdict(flown.state, flown.results, planFor(tr), 11).survivable, null);
   });
 }

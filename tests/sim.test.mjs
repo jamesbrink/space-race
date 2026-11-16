@@ -28,7 +28,7 @@ import {
   sub,
   unit,
 } from '../src/world/frames.ts';
-import { BALLISTIC } from './ballistic.mjs';
+import { BALLISTIC, planFor } from './ballistic.mjs';
 import { holdChecks, missesOf } from './misses.mjs';
 
 const near = (got, want, tolerance, what) =>
@@ -134,7 +134,7 @@ for (const flight of BALLISTIC) {
 
   test(`${name}: the rocket equation: what the accelerometer adds up to is exhaust speed times the log of the mass ratio`, () => {
     const tr = plain(flight);
-    const { samples } = fly(tr, SITE, SEA, 0.05, 0.05);
+    const { samples } = fly(planFor(tr), SITE, SEA, 0.05, 0.05);
     const cutoff = tr.engine.cutoff.value;
     const burn = samples.filter((s) => s.t <= cutoff && s.phase === 'powered');
     let felt = 0;
@@ -148,8 +148,8 @@ for (const flight of BALLISTIC) {
   });
 
   test(`${name}: standing on the pad it has the ground’s speed, and the same inputs give the same flight`, () => {
-    const a = fly(flight.trajectory, SITE, SEA);
-    const b = fly(flight.trajectory, SITE, SEA);
+    const a = fly(planFor(flight.trajectory), SITE, SEA);
+    const b = fly(planFor(flight.trajectory), SITE, SEA);
     near(a.samples[0].speed, EARTH_ROTATION_RATE * Math.hypot(...geodeticToEcef(SITE).slice(0, 2)), 1e-9, '409 m/s eastward');
     assert.equal(a.samples[0].groundSpeed, 0);
     assert.deepEqual(a.results, b.results);
@@ -159,7 +159,7 @@ for (const flight of BALLISTIC) {
   });
 
   test(`${name}, flown whole from its inputs, against the record`, (t) => {
-    const { results, samples } = fly(flight.trajectory, SITE, SEA);
+    const { results, samples } = fly(planFor(flight.trajectory), SITE, SEA);
     holdChecks(flight.checks, (id) => results[id], missesOf(flight.id, 'whole'), { name: flight.callsign, log: (l) => t.diagnostic(l) });
     // what the run gets right going up is the shape: the climb angles at separation, and the two loads (Freedom 7's report has the figures)
     if (flight.id !== FREEDOM_7) return;
@@ -174,8 +174,8 @@ for (const flight of BALLISTIC) {
     // what it does not give (and where over the sea it was then) is the run's own, and the diagnostics say which
     const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
     const tr = flight.trajectory;
-    const run = fly(tr, SITE, SEA).results;
-    const at = sampleAt(fly(tr, SITE, SEA).samples, tr.separation.at.value);
+    const run = fly(planFor(tr), SITE, SEA).results;
+    const at = sampleAt(fly(planFor(tr), SITE, SEA).samples, tr.separation.at.value);
     const own = [];
     const record = (id) => {
       if (want[id] !== undefined) return want[id];
@@ -191,7 +191,7 @@ for (const flight of BALLISTIC) {
     const r = ecefToInertial(geodeticToEcef(place), turn);
     const v = add(ecefToInertial(moving, turn), cross([0, 0, EARTH_ROTATION_RATE], r));
     if (own.length) t.diagnostic(`the record gives no ${own.join(', ')} at separation: the run’s own are taken`);
-    const { results } = fly(tr, SITE, SEA, 0.05, 0.5, { r, v });
+    const { results } = fly(planFor(tr), SITE, SEA, 0.05, 0.5, { r, v });
     // the space-fixed figures follow from the Earth-fixed ones, which is a check on the record and on the frames
     if (want.separationClimb !== undefined) {
       near(results.separationSpeed, want.separationSpeed, 1, 'space-fixed speed from Earth-fixed');
@@ -216,7 +216,7 @@ for (const flight of BALLISTIC) {
 
   test(`${name}: which inputs are not documented, and how far each moves the results`, (t) => {
     const tr0 = flight.trajectory;
-    const base = fly(tr0, SITE, SEA).results;
+    const base = fly(planFor(tr0), SITE, SEA).results;
     const c = (m) => m.confidence;
     const inputs = [
       ['ascentDrag', (tr) => tr.ascentDrag.points.forEach((p) => (p[1] *= 1.05)), c(tr0.ascentDrag)],
@@ -245,7 +245,7 @@ for (const flight of BALLISTIC) {
     for (const [name, change, confidence] of inputs) {
       const tr = structuredClone(tr0);
       change(tr);
-      const r = fly(tr, SITE, SEA).results;
+      const r = fly(planFor(tr), SITE, SEA).results;
       moved[name] = shown.map((id) => (r[id] / base[id] - 1) * 100);
       t.diagnostic(
         `${`${name} (${confidence})`.padEnd(34)} ${moved[name].map((x) => `${x >= 0 ? '+' : ''}${x.toFixed(1)}`.padStart(7)).join('')}`,
