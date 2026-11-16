@@ -11,8 +11,16 @@
  */
 import { julianDate } from './time.ts';
 
-/** How many seconds of the world pass in one of ours, from real time up to an hour a second: the steps `faster` and `slower` take. */
+/** How many seconds of the world pass in one of ours, from real time up to an hour a second: the steps `faster` and `slower` take, and the time bar's. */
 export const RATES: readonly number[] = [1, 10, 60, 600, 3600];
+
+/**
+ * And beyond, for a coast of days between the Earth and the Moon (a day in nine seconds, then in under one): reached only
+ * once something has let the clock go that fast (`allow`), and that something flies the coast on rails, not frame by frame
+ * (docs/agents/world.md, "Faster than an hour a second"). On the ground they are not offered: at 100,000 times the Sun
+ * crosses the sky in a third of a second.
+ */
+export const COAST_RATES: readonly number[] = [10_000, 100_000];
 
 export class Clock {
   /** The Julian date (UT) of t = 0. */
@@ -20,6 +28,8 @@ export class Clock {
   private seconds = 0;
   private speed = 1;
   private going = false;
+  private most = RATES[RATES.length - 1]!;
+  private due = Number.NaN;
   private readonly listeners = new Set<() => void>();
 
   /** `epoch`: an ISO 8601 instant, as flight.ts records a launch. */
@@ -46,10 +56,44 @@ export class Clock {
     return this.speed;
   }
 
+  /** The fastest it may run, either way: an hour a second unless something has allowed more. */
+  get fastest(): number {
+    return this.most;
+  }
+
+  /**
+   * Let it run as fast as `fastest` seconds a second (one of COAST_RATES, for a coast flown on rails), or bring it back to
+   * RATES's last. A rate past the new limit comes down to it.
+   */
+  allow(fastest: number): void {
+    this.most = Math.max(1, fastest);
+    if (Math.abs(this.speed) > this.most) this.setRate(Math.sign(this.speed) * this.most);
+  }
+
+  /** The next instant that must be lived through and not skipped (an engine to light, an arrival), or NaN for none. */
+  get dueAt(): number {
+    return this.due;
+  }
+
+  /**
+   * The clock will not run past `t` (seconds from the epoch) faster than real time: a frame that would cross it stops on
+   * it and the rate goes back to 1, still running, and the instant is forgotten. NaN for none. Whatever flies a coast on
+   * rails sets the next thing it must not skip.
+   */
+  hold(t: number): void {
+    this.due = t;
+  }
+
   /** A frame has passed: `dt` seconds of ours. True if the instant moved. */
   advance(dt: number): boolean {
     if (!this.going || this.speed === 0 || dt === 0) return false;
-    this.seconds += dt * this.speed;
+    const to = this.seconds + dt * this.speed;
+    const d = this.due;
+    if (Math.abs(this.speed) > 1 && !Number.isNaN(d) && (to - d) * (this.seconds - d) <= 0 && this.seconds !== d) {
+      this.seconds = d;
+      this.due = Number.NaN;
+      this.speed = Math.sign(this.speed);
+    } else this.seconds = to;
     this.tell();
     return true;
   }
@@ -71,27 +115,32 @@ export class Clock {
     this.play(false);
   }
 
+  /** Seconds of the world a second, held to `fastest`. */
   setRate(rate: number): void {
-    if (rate === this.speed) return;
-    this.speed = rate;
+    const held = Math.max(-this.most, Math.min(this.most, rate));
+    if (held === this.speed) return;
+    this.speed = held;
     this.tell();
   }
 
-  /** The next step up or down RATES from the nearest one to the present rate. */
+  /** The next step up or down the rates it may run at (RATES, and COAST_RATES as far as allowed) from the nearest to the present one. */
   step(direction: 1 | -1): void {
+    const rates = [...RATES, ...COAST_RATES.filter((r) => r <= this.most)];
     const size = Math.abs(this.speed);
     let nearest = 0;
-    RATES.forEach((r, i) => {
-      if (Math.abs(r - size) < Math.abs(RATES[nearest]! - size)) nearest = i;
+    rates.forEach((r, i) => {
+      if (Math.abs(r - size) < Math.abs(rates[nearest]! - size)) nearest = i;
     });
-    this.setRate(RATES[Math.max(0, Math.min(RATES.length - 1, nearest + direction))]! * (this.speed < 0 ? -1 : 1));
+    this.setRate(rates[Math.max(0, Math.min(rates.length - 1, nearest + direction))]! * (this.speed < 0 ? -1 : 1));
   }
 
-  /** Back to the epoch, stopped, at real time: as it started. */
+  /** Back to the epoch, stopped, at real time, an hour a second at most and nothing held: as it started. */
   reset(): void {
     this.going = false;
     this.speed = 1;
     this.seconds = 0;
+    this.most = RATES[RATES.length - 1]!;
+    this.due = Number.NaN;
     this.tell();
   }
 

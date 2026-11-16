@@ -98,6 +98,29 @@ clock costs nothing and a running one redraws only as fast as the sky visibly mo
 that depends on the hour takes its instant from the clock and reports change the same way; it does
 not read `flight.launch` or keep its own time.
 
+Faster than an hour a second. `RATES` (1 to 3600, the time bar's) is what the clock steps through unless something lets
+it go further: `clock.allow(100_000)` opens `COAST_RATES` (10,000 and 100,000: Apollo 11's 73 hours from injection to
+the Moon in 2.6 s), and `clock.allow(3600)` or a reset closes them; `setRate` is held to `fastest`. At those rates a frame
+is 170 s to half an hour of the world, so nothing may integrate the frame's span as one step: what is flown is flown on
+rails, and the clock is told the next instant that must not be skipped (`clock.hold(t)`: a frame that would cross it
+stops on it, and the rate goes back to 1, still running). On the ground they are not for offering: at 100,000x the day
+passes in under a second. What the simulator must provide for a coast on rails (src/sim, not here; the note for whoever
+builds it):
+
+- `coast(state, t0, t1, gravity): state`: the adaptive propagator (sim/predict.ts `propagate`, a quiet flier: nothing
+  burning, nothing scheduled) from `state` at `t0` to exactly `t1`, in the flight's frame, with the flight's gravity terms
+  (core/gravity.ts, the Moon and the Sun from DE440: `loadEphemeris` resolved first). Called once a frame with the clock's
+  span, however long; it steps by its own error, not by the frame, so 1,667 s in one frame at 100,000x costs a few dozen
+  steps (it is a step of seconds to minutes in cislunar space), and it must end on `t1`, not past it.
+- `due(t): number`: the next instant from `t` that must be lived at real time or flown in fixed steps (a burn's start, a
+  separation, the Moon's sphere of influence if the central body is to switch, an entry interface), handed to
+  `clock.hold`; NaN when there is none.
+- `onRails(t): boolean`: whether the vehicle may be coasted now (no engine burning, no pilot input pending, above the
+  air); while it is false the clock must not be allowed past 3600 (`clock.allow(3600)`), and the live fixed-step
+  simulation goes on as it does now.
+- Back off rails the state is handed to the live simulation as it stands at the clock's instant, so the hand-over is in
+  place and velocity exactly where the coast left it.
+
 Light must never step, at any clock rate (the idle show runs the night at 1200 times life).
 Everything cheap (the light's strength and colour, exposure, the sky, the fog, the lamps) is set
 every frame; of the two things that cost, the shadow map is drawn again whenever the light has

@@ -188,7 +188,7 @@ src/
   world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
   world/region.ts                     a piece of the Earth laid flat: the gnomonic plane a region's map is baked on and read from
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
-  world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run
+  world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run; its rates, the coast's when let, and an instant held
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
   viewer/globe.ts                     the Earth to scale under the site: coasts from Natural Earth, the land's colours (Blue Marble) and relief and the
                                       sea by its depth (ETOPO), the weather's shadows, the Sun's glint; the air seen from above, drawn on a ball

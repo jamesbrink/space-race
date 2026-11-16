@@ -85,3 +85,38 @@ test('local time at the Cape: liftoff was at 09:34:13 EST', () => {
   assert.equal(localTime(julianDate('1961-05-05T05:00:00Z'), -5).text, '00:00:00');
   assert.equal(localTime(julianDate('1961-04-12T06:07:00Z'), 3).text, '09:07:00', 'Moscow time at Vostok 1');
 });
+
+test('faster than an hour a second only when let, for a coast flown on rails, and never past what is due', async () => {
+  const { COAST_RATES } = await import('../src/world/clock.ts');
+  const clock = new Clock('1969-07-16T13:32:00Z');
+  clock.setRate(100_000);
+  assert.equal(clock.rate, 3600, 'held to an hour a second until something lets it go faster');
+  for (let i = 0; i < 4; i++) clock.step(1);
+  assert.equal(clock.rate, 3600, 'and the steps stop there');
+  clock.allow(COAST_RATES.at(-1));
+  clock.step(1);
+  assert.equal(clock.rate, 10_000);
+  clock.step(1);
+  assert.equal(clock.rate, 100_000, 'a day in under a second');
+  clock.step(1);
+  assert.equal(clock.rate, 100_000, 'and no further');
+  // the coast to the Moon from Apollo 11's translunar injection to its lunar orbit insertion, 73 hours, in 2.6 s
+  clock.seek(10_213.2);
+  clock.hold(272_990.4);
+  clock.play();
+  let frames = 0;
+  while (clock.t < 272_990.4 && frames < 1000) {
+    clock.advance(1 / 60);
+    frames++;
+  }
+  assert.equal(clock.t, 272_990.4, 'it stops on the instant held, not a frame past it');
+  assert.equal(clock.rate, 1, 'and goes on at real time');
+  assert.ok(Number.isNaN(clock.dueAt), 'the instant is let go');
+  assert.equal(frames, 158, 'in 158 frames at 60 a second');
+  clock.allow(3600);
+  assert.equal(clock.fastest, 3600);
+  clock.setRate(-100_000);
+  assert.equal(clock.rate, -3600, 'brought back, a rate past the limit comes down to it');
+  clock.reset();
+  assert.equal(clock.fastest, 3600, 'and a reset forgets what was let');
+});
