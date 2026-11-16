@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { hash2, noise2, sequence } from './field.ts';
-import { NOISE } from './glsl.ts';
+import { FADE_DITHER, NOISE } from './glsl.ts';
 import { due, type Kind, type Lists, type Placed, pack, sort, type Tile } from './plantsort.ts';
 
 /**
@@ -450,12 +450,8 @@ const PLANT_FRAGMENT = /* glsl */ `
   varying float vFade;
   varying vec3 vPlant;
   ${NOISE}
-  // a threshold for each pixel, with no pattern to it: where a plant is half faded, half its pixels are drawn
-  float plantDither() {
-    vec2 q = fract(gl_FragCoord.xy * vec2(0.1031, 0.1030));
-    q += dot(q, q.yx + 33.33);
-    return fract((q.x + q.y) * q.x);
-  }
+  // a threshold for each pixel, as a level of detail's fade has (glsl.ts): where a plant is half faded, half its pixels are drawn
+  float plantDither() { return ${FADE_DITHER}; }
 `;
 
 /** How far `Flora.clear` looks at the least, metres: further than it is asked, so that the eye can come some way before it must look again. */

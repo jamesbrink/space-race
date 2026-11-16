@@ -3,6 +3,7 @@ import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vect
 import type { Part } from '../types.ts';
 import { markDriven } from './onfoot/drive.ts';
 import { Exploder } from './explode.ts';
+import { FADE_DITHER } from './glsl.ts';
 import type { Surfaces } from './runs.ts';
 
 /**
@@ -71,9 +72,9 @@ export function distanceTo(box: Box3, eye: Vector3): number {
 
 /**
  * The shader's side of a cross-fade. A material that is fading is compiled with `LOD_FADE` and discards the pixels
- * the other level is to have: each pixel of the screen has a threshold of its own (interleaved gradient noise: no
- * pattern the eye picks out, and the same every frame, so nothing shimmers), the level coming in is drawn where the
- * fade has passed the threshold and the one going out where it has not. Where the two levels are the same surface
+ * the other level is to have: each pixel of the screen has a threshold of its own (glsl.ts `FADE_DITHER`, which the
+ * plants fade by too: no pattern the eye picks out, and the same every frame, so nothing shimmers), the level coming in
+ * is drawn where the fade has passed the threshold and the one going out where it has not. Where the two levels are the same surface
  * every pixel is drawn by one of them and nothing shows; where they differ the difference comes in pixel by pixel.
  * The same test runs in the shadow map's texels, so a shadow is handed over as its caster is. Only materials that
  * are fading carry the test: a shader that may discard gives up the GPU's early depth test, which the rest keep.
@@ -86,7 +87,7 @@ ${ShaderChunk.clipping_planes_pars_fragment}`;
 ShaderChunk.clipping_planes_fragment = /* glsl */ `
 #ifdef LOD_FADE
   {
-    float lodNoise = fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))));
+    float lodNoise = ${FADE_DITHER};
     if (uLodFade.y > 0.0 ? lodNoise >= uLodFade.x : lodNoise < uLodFade.x) discard;
   }
 #endif

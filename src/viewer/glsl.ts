@@ -45,3 +45,12 @@ export const NOISE = /* glsl */ `
     return s;
   }
 `;
+
+/**
+ * GLSL: a threshold for this pixel between 0 and 1, the same every frame, for whatever fades by drawing a share of its
+ * pixels (a level of detail handed to the next, lod.ts; a plant coming into or out of its band, flora.ts): where a
+ * thing is half faded, the pixels under half are drawn. Interleaved gradient noise (Jimenez, "Next Generation Post
+ * Processing in Call of Duty: Advanced Warfare", SIGGRAPH 2014): no pattern the eye picks out, so nothing shimmers. An
+ * expression, so that it can stand in a chunk that may be read twice.
+ */
+export const FADE_DITHER = /* glsl */ `fract(52.9829189 * fract(dot(floor(gl_FragCoord.xy), vec2(0.06711056, 0.00583715))))`;
