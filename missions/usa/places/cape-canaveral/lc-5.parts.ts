@@ -464,6 +464,8 @@ export function lc5Parts(day: PadDay): Part[] {
       ...day.words.UmbilicalMast,
       explode: [0, 0, 0],
       order: 0,
+      // (the mast and the umbilical that goes down with it are one thing to work, named by where the text has them)
+      functions: [{ nodes: ['UmbilicalMast', 'UmbilicalMast_Cable'], name: 'Mast', ends: ['at the capsule', 'down on the pad'] }],
       moves: [
         // straight out from the vehicle about the pin, until its head is on the pad (masts.py: resting)
         swing('UmbilicalMast', fallAxis(MAST_AT.capsule + turn), 94.9, T.umbilical, T.umbilical + 0.035, BY.bungee),
@@ -477,6 +479,7 @@ export function lc5Parts(day: PadDay): Part[] {
       ...day.words.BoosterMast,
       explode: [0, 0, 0],
       order: 0,
+      functions: [{ nodes: ['BoosterMast'], name: 'Boom drop', ends: ['at the booster', 'down on the pad'] }],
       moves: [swing('BoosterMast', fallAxis(MAST_AT.booster + turn), 93.7, T.boom, T.boom + 0.035, BY.boom)],
     },
     {
