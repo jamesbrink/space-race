@@ -47,7 +47,7 @@ export class TimeBar {
       </div>
       <div class="time-body">
         <label class="time-scrub"><span>00:00</span><input type="range" min="0" max="86400" step="30" aria-label="Time of day at the site" /><span>24:00</span></label>
-        ${flight.plan?.kind === 'ballistic' ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
+        ${flightSpan(flight) !== null ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
         <div class="time-rates" role="group" aria-label="How fast time runs">
           ${RATES.map((r) => `<button data-rate="${r}" aria-pressed="false" title="${rateTitle(r)}">${r}×</button>`).join('')}
           <button class="time-home" title="Back to liftoff, stopped">Liftoff</button>
@@ -123,7 +123,15 @@ export class TimeBar {
 }
 
 /** How far a flight's own scrub runs past liftoff, seconds: a minute past its documented landing, or seventeen minutes where that is not recorded. */
-const flightSpan = (flight: Flight): number => Math.ceil(((flight.checks?.find((c) => c.id === 'duration')?.value ?? 960) + 60) / 10) * 10;
+/**
+ * How far the flight's own scrub reaches, s from liftoff: a minute past the landing, where the record gives how long the
+ * flight lasted (its `duration` check) and that is short enough to scrub by the half second (under an hour). Null for a
+ * flight with none, which scrubs by the time of day alone.
+ */
+const flightSpan = (flight: Flight): number | null => {
+  const lasted = flight.checks?.find((c) => c.id === 'duration')?.value;
+  return lasted !== undefined && lasted < 3600 ? Math.ceil((lasted + 60) / 10) * 10 : null;
+};
 
 /** Only touch the page when what it says has changed: the clock may tell us sixty times a second. */
 function set(el: HTMLElement, text: string): void {
