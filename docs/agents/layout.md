@@ -185,6 +185,7 @@ src/
   viewer/onfoot/drive.ts              driving: a kinematic bicycle model and the vehicle contract's nodes
   viewer/onfoot/carry.ts              what a walking figure has in its hand, by the model's grip contract
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
+  viewer/onfoot/going.ts              people walking off a site or onto it (types.ts Going): where each figure is at an instant of the clock, pure; not yet walked (#24)
   viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, its own light; the front page's, under its camera
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion

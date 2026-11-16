@@ -110,6 +110,32 @@ export type Move = { from: number; to: number; node?: string; machine?: Machine 
 );
 
 /**
+ * People of a group walking off a site, or onto it, each figure along a way a person could take, on the gait
+ * (viewer/onfoot/going.ts `goneAt`): where the record says they went, or else away along the nearest road until out of
+ * sight, and said so. Not yet a field of a part: it waits for the people to be built as figures that can walk (a
+ * `<group>_Person_<n>` node each, jointed to the crew contract, srlib.FIGURE; issue #24), and until then a group that
+ * leaves is taken out of sight on the clock (site-1.parts.ts `leaves`).
+ *
+ * leaves  each figure stands where it was built until `at` (and its place in the group's `stagger`), then walks from its
+ *         spot to the way's first point and on along it to its end, which is out of sight; there it is gone.
+ * comes   the same backward: in from the way's far end at `at`, along it, to its own spot, where it stands as built.
+ */
+export interface Going {
+  kind: 'leaves' | 'comes';
+  /** When the first sets off, seconds from launch on the flight's clock. */
+  at: Measure;
+  /** How much later each next figure of the group sets off than the one before, s. */
+  stagger: number;
+  /** The way, metres (x, z) in the model's frame, from near the group to out of sight (`leaves`) or the reverse order's start. */
+  way: [number, number][];
+  /** Its walking pace, m/s (left out: an unhurried walk, going.ts `PACE`). */
+  pace?: Measure;
+  /** Where they went and why this way: the record's, or the nearest road out of sight (estimated). */
+  confidence: Confidence;
+  source: string;
+}
+
+/**
  * What drives a move, for what it is heard as while it moves (sound/model.ts `MACHINES`, each kind's timbre and level):
  *
  * motor       an electric motor through a gearbox: a platform's drive, a periscope's door
