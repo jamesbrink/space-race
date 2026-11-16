@@ -18,7 +18,6 @@ export interface Upcoming {
 }
 
 export const upcoming: Upcoming[] = [
-  { id: 'usa/gemini/gt-9a', nation: 'USA', name: 'Gemini 9A', line: 'Gemini-Titan 9A · Tom Stafford · Gene Cernan', launch: '1966-06-03' },
   {
     id: 'usa/gemini/gt-10',
     nation: 'USA',
