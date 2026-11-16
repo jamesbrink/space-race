@@ -35,7 +35,7 @@ import { Descent, type DescentContext, type DownBody, downOf } from './descent.t
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, type DescentFlown, type DescentHands, shipOf, shipPush } from './orbital.ts';
+import { aimOf, type DescentFlown, type DescentHands, shipOf, shipPush, solarAt } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
@@ -283,7 +283,9 @@ export function spacecraft(
     ground: (here) => (down ? down.ground(here) : ground(here)),
     burning: () => !down && burning,
     push: (at, p, u, altitude) =>
-      down ? down.push(at, p, u, altitude) : shipPush(plan, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null),
+      down
+        ? down.push(at, p, u, altitude)
+        : shipPush(plan, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null, solarAt(frame, p, at, altitude)),
     next: (t) => (down ? down.next(t) : after(marks, t)),
     below: () => (down ? down.below() : ship.floor),
     settle(t, r, v, altitude, falling) {

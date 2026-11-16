@@ -453,7 +453,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   continuum the entry body's curve on its disc, joined or not (no figure for the joined ship's there, nor for the heat that
   burned its cables through on the day); between, bridged by the Knudsen number on the standard's mean free path
   (atmosphere.ts `meanFreePath`, `rarefaction`: Wilmoth, Mitcheltree and Moss 1999, continuum below Kn 0.001,
-  free-molecular above 10). Every parachute is held
+  free-molecular above 10). In orbit the air is the standard's by the day's Sun (`solarAt`, `SOLAR_AIR`: world/thermosphere.ts,
+  Jacchia 1971 on the days flown's 10.7 cm flux and Kp, at the place and instant), in the coast, the predicted path, `decay`
+  and the descent's bodies. Every parachute is held
   to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
   not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
   the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and

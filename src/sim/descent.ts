@@ -18,7 +18,7 @@ import type { State } from '../world/orbit.ts';
 import { airDrag, blowing, type Sky, STANDARD } from './air.ts';
 import { along, chuteArea } from './fly.ts';
 import { tearOf } from './loads.ts';
-import { automatic, type DescentHands, type DescentTear, ORBIT_DRAG, orbitDrag, shipOf } from './orbital.ts';
+import { automatic, type DescentHands, type DescentTear, ORBIT_DRAG, orbitDrag, shipOf, solarAt } from './orbital.ts';
 import type { ChuteDef, FlightPlan } from './plan.ts';
 
 /**
@@ -251,7 +251,10 @@ export class Descent {
     const wind = this.airOf(q, at);
     const speed = length(wind);
     return speed > 0
-      ? scale(airDrag(wind, speed, air.density, this.areaAt(at, h, speed / air.soundSpeed)), 1 / this.massAt(at))
+      ? scale(
+          airDrag(wind, speed, air.density * solarAt(this.ctx.frame, q.r, at, h), this.areaAt(at, h, speed / air.soundSpeed)),
+          1 / this.massAt(at),
+        )
       : [0, 0, 0];
   }
   pressure(q: State, h: number, at?: number): number {

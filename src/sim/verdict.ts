@@ -108,7 +108,10 @@ export function downVerdict(
           ? `its orbit lasts ${days(decayed)} days`
           : 'its orbit lasts more than sixty days';
     const enough = supplies && decayed !== undefined ? decayed < supplies.value * 86_400 : null;
-    if (lasts) why.push(`As flown here ${lasts}, in the standard air (the day’s Sun, which moves that air several-fold, is not modelled).`);
+    if (lasts)
+      why.push(
+        `As flown here ${lasts}, in the standard air as the Sun moved it on the days flown (Jacchia 1971) and the mean standard after them.`,
+      );
     if (supplies)
       why.push(
         `The ship carried supplies for ${supplies.value.toFixed(0)} days (${supplies.confidence}): the orbit was chosen to come down within them if the braking engine failed.`,

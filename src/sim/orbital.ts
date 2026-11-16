@@ -20,6 +20,7 @@ import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, s
 import { fromPublished, meanOf, meanOrbitOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
+import { ratioOf } from '../world/thermosphere.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import {
@@ -323,7 +324,8 @@ export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, fro
     const air = atmosphere(h);
     const wind = sub(q.v, cross(spin, q.r));
     const speed = length(wind);
-    return scale(airDrag(wind, speed, air.density, ORBIT_DRAG.decay ? orbitDrag(ship, !parted, h, speed / air.soundSpeed) : cdA), 1 / mass);
+    const density = air.density * solarAt(frame, q.r, at, h);
+    return scale(airDrag(wind, speed, density, ORBIT_DRAG.decay ? orbitDrag(ship, !parted, h, speed / air.soundSpeed) : cdA), 1 / mass);
   };
   let s: State = { r: from.r, v: from.v };
   let t = from.t;
@@ -479,6 +481,27 @@ export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['or
 export const ORBIT_DRAG = { coast: true, decay: true };
 
 /**
+ * The upper air by the day's Sun (world/thermosphere.ts: Jacchia 1971 on the day's 10.7 cm flux and Kp), switched. Off,
+ * the 1976 standard's mean air everywhere, as until November 2026 (the old capture to the bit).
+ */
+export const SOLAR_AIR = { on: true };
+
+/**
+ * The factor the day's Sun puts on the standard's density at a place in the flight's frame (`r`, at `at` seconds from
+ * liftoff, `height` m above the sea): world/thermosphere.ts `ratioOf` at the place's latitude and the Sun's declination
+ * and local hour angle there, derived from the day's indices (documented). 1 below 90 km, with `SOLAR_AIR` off, and on a
+ * day whose indices are not held (the standard flown, and said by `solarDay`).
+ */
+export function solarAt(frame: EarthFrame, r: Vec3, at: number, height: number): number {
+  if (!SOLAR_AIR.on || height <= 90_000) return 1;
+  const sun = sunPosition(frame.jdTT(at));
+  const p = frame.toDate(r);
+  const declination = Math.asin(sun[2] / length(sun));
+  const hourAngle = Math.atan2(p[1], p[0]) - Math.atan2(sun[1], sun[0]);
+  return ratioOf(height, frame.jdUT(at), frame.place(r, at).latitude * DEG, declination, hourAngle) ?? 1;
+}
+
+/**
  * The share of the free-molecule figure in a drag at a Knudsen number (the mean free path over the body's length):
  * Wilmoth, Mitcheltree and Moss, "Low-density aerodynamics of the Stardust sample return capsule", J. Spacecraft and
  * Rockets 36(3), 436-441, 1999, eqs. 1 and 2, sin^2 pi (a1 + a2 log10 Kn), with the limits they took, the continuum at
@@ -513,8 +536,9 @@ export function orbitDrag(ship: Ship, joined: boolean, height: number, mach: num
  * sim/fliers.ts): the air on what flies (`orbitDrag`: the joined ship's figure and mass until the modules part, the entry body's after), at an
  * instant, its motion through the air `wind` (m/s, in any frame: the push comes back in the same one) and its height above
  * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
+ * `sun`: the factor the day's Sun puts on the standard's density there (`solarAt`).
  */
-export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: number, aim: Vec3 | null): Vec3 {
+export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: number, aim: Vec3 | null, sun = 1): Vec3 {
   const ship = shipOf(plan);
   const air = atmosphere(altitude);
   const airspeed = length(wind);
@@ -523,7 +547,7 @@ export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: num
   const area = ORBIT_DRAG.coast
     ? orbitDrag(ship, at < ship.parted, altitude, mach)
     : ship.entry.aero.area.value * along(ship.entry.aero.drag, mach);
-  const drag = scale(airDrag(wind, airspeed, air.density, area), 1 / mass);
+  const drag = scale(airDrag(wind, airspeed, air.density * sun, area), 1 / mass);
   // (the braking engine is on the instrument module: parted, it pushes no more)
   return aim ? add(drag, scale(aim, ship.flown / (ship.off - ship.on))) : drag;
 }
@@ -706,7 +730,14 @@ export function flyOrbit(
    */
   const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airOf(s, at);
-    return shipPush(plan, as, air.wind, air.altitude, as >= on && as < off && as < parted ? aim : null);
+    return shipPush(
+      plan,
+      as,
+      air.wind,
+      air.altitude,
+      as >= on && as < off && as < parted ? aim : null,
+      solarAt(frame, s.r, at, air.altitude),
+    );
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>

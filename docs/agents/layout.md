@@ -203,6 +203,7 @@ src/
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are (`stateOf`, the sky from a site): DE440 when loaded, Meeus else; the 518 brightest stars
   world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF
   world/aloft.ts                      a day's column of air (DayWeather.aloft) read at any height, and its hours at any instant
+  world/thermosphere.ts               the upper air by the Sun's activity: Jacchia 1971's exosphere from the days flown's 10.7 cm flux and Kp (`DAYS`), as a factor on the 1976 standard (`ratioOf`)
   world/ut1.ts                        UT1 - TAI from the IERS (tools/ut1-bake.mjs): what the Earth's turn is behind atomic time, every 0.05 year since 1956
   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow

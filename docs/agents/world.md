@@ -232,6 +232,21 @@ pad's at liftoff: a flight into orbit flies it only in its ascent. Not yet read:
 (`hourAt(flight.weather.hours, liftoff)`), which the column's lowest level stands for. Nothing is fitted to it: a flight
 that misses more under ERA5's air than under the standard's says so in its MISSES.
 
+The upper air by the Sun (`world/thermosphere.ts`). The 1976 standard is a mean year, its exosphere at 1000 K; above
+about 150 km the day's density is several times more or less with the Sun's ultraviolet and the geomagnetic storms.
+Jacchia's 1971 models (SAO Special Report 332, adopted as CIRA 1972) carry it: the night's exospheric temperature from the
+day before's 10.7 cm flux and its 81-day mean (eq. 14), the day's bulge round the Sun's place two hours behind it (eqs. 15
+to 17), the storms' heating from Kp 6.7 hours before (eq. 18), and the semiannual variation (eqs. 21 to 23); the density
+at that temperature from the report's own tables (Tables 6 and 7, 120 to 400 km, 600 to 1400 K). It is read as a factor on
+the standard (`ratioOf`: J71 at the day's temperature over J71 at 1000 K), so the standard's own air is kept and nothing
+steps where it is defined below; under 120 km the factor's logarithm is taken straight down to nothing at 90 km
+(estimated). The indices are the days flown's (`DAYS`: GFZ Potsdam's definitive Kp and the Ottawa observed flux,
+documented; the 81-day means derived), and a day not held gets no factor. Left out, and said in the module: the
+seasonal-latitudinal term (under 0.01 in the logarithm above 150 km), eq. 20's hybrid below 200 km, Jacchia's smoothing
+of Kp. What it is to the flights: June 1963 and August 1962 were near the solar minimum, and at 200 km the air comes out
+0.55 to 1.0 of the standard's from night to day (tests/thermosphere.test.mjs). The simulator flies it in orbit (sim/orbital.ts
+`solarAt`, `SOLAR_AIR`: the coast, the predicted path, `decay` and the descent's bodies), at the place and instant.
+
 What src/sim is still to do with the air, the ephemeris and the fast clock is tracked as GitHub issue #31.
 
 Baking again. Each bake fetches its source once into a cache under ~/.cache/space-race (never committed; `--cache` moves

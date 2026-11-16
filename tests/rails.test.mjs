@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { airAt } from '../src/sim/air.ts';
-import { coastOf, flyOrbit, shipPush } from '../src/sim/orbital.ts';
+import { coastOf, flyOrbit, shipPush, solarAt } from '../src/sim/orbital.ts';
 import { apart, coast, coastBy, due, onRails, RAILS_FLOOR } from '../src/sim/rails.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { siteFrame } from '../src/world/frames.ts';
@@ -19,7 +19,7 @@ const first = quiet[0];
 const last = quiet.at(-1);
 const drag = (t, r, v) => {
   const a = airAt(frame, r, v, t, sea);
-  return shipPush(flight.plan, t, a.wind, a.altitude, null);
+  return shipPush(flight.plan, t, a.wind, a.altitude, null, solarAt(frame, r, t, a.altitude));
 };
 
 test('on rails the coast is the one the simulator flies: within 10 cm and a tenth of a millimetre a second over most of a revolution', () => {
