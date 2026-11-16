@@ -607,15 +607,19 @@ JavaScript heap and 125 MB of decoded pictures.
   to 90 MiB as a phone, and the most at any moment while a flight's gallery arrives over it to 350: the picture is let go only when the flight is there to be seen, so for those
   seconds the page holds both. A context that has been
   let go is counted as holding nothing (mem.ts), which is what losing it means.
-- **The Lineup holds every vehicle, coarsest first** (app/lineup/scene.ts; gallery.md, "The Lineup"). As a phone, with
-  fifteen vehicles: 106 MiB with the row at its coarsest (their buffers 7 MiB a vehicle, the frame 34, each one's
-  shadow and the hall's room the rest), and at most 96 more of finer levels (`ALLOWANCE`: one vehicle in full, or a
-  few at the middle level), given to what is looked at (`allot`); a level that is let go is released whole, its
-  pictures closed. A vehicle's pictures are sent no larger than 1024 a side there, on every device (a cabin's panel is
-  read from its couch, not from across a hall: with them whole, six Mercury vehicles in full were 890 MiB). `pnpm
-  test:lineup` holds it to 240 with the row up and with one framed, and to 280 at any moment while the row is stepped
-  through (measured: 202, 197, 202; with seventeen, 207 with the row up). The row's own share grows with every flight added: at some forty vehicles it would
-  be the budget by itself, and a level coarser still, or one model for vehicles of a type, is owed before then.
+- **The Lineup holds every vehicle, coarsest first** (app/lineup/scene.ts; gallery.md, "The Lineup"). Every level is
+  drawn joined by paint (app/lineup/merge.ts): a corner in ten bytes where the GLB's took thirty-two (the position in
+  shorts across its piece's box, the normal in bytes, its paint's number in one), triangles listed in two bytes, and each
+  file fetched and joined once and shared by every vehicle on it (shelf.ts: Vostok 3 to 6 are one coarsest file). As a
+  phone, with nineteen vehicles: 149 MiB with the row up, of which the row's own share, which grows with every flight,
+  is 1.55 MiB a vehicle (its coarsest level and its shadow; 3.60 before the levels were joined, and 1.66 for 4.18 at
+  1280); the rest is the frame (34), the hall's room, and up to 96 of finer levels (`ALLOWANCE`, given to what is looked
+  at: `allot`). A level that is let go is released whole, its pictures closed, once no vehicle has it. A vehicle's pictures
+  are sent no larger than 1024 a side there, on every device (a cabin's panel is read from its couch, not from across a
+  hall: with them whole, six Mercury vehicles in full were 890 MiB). `pnpm test:lineup` holds it to 180 with the row up,
+  190 with one framed and 200 at any moment while the row is stepped through (measured: 149, 169, 169), and the row's
+  share to 1.8 a vehicle: at 1.55 the 240 it was held to would hold some seventy-eight vehicles (twenty-six before), and
+  the launch site's 350 some hundred and forty-nine.
 - **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not
   loaded again: the site's stage is loaded again (`Stage.load`), and lets go of every model the next flight has not
   got and the place round its pad if the next is at another place or on another day (`Settings.drop`: the place's

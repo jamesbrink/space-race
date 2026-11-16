@@ -96,8 +96,11 @@ src/
   app/front/front.css                 the front page's looks
   app/lineup.ts                       the Lineup's page (`#lineup`): every vehicle side by side; what the address says, what is chosen, what stands in the row, its keys, its show
   app/lineup/row.ts                   its arithmetic on the flights' data and the history: the row, the programmes' sections, the timeline, the key figures, where
-                                      each stands, which level of detail each is granted, the show's card, what a gallery's History tab is told (pure, tested)
+                                      each stands, which level of detail each is granted, the show's card, what a gallery's History tab is told, what of a
+                                      vehicle is its spacecraft alone (pure, tested)
   app/lineup/scene.ts                 its scene: a renderer of its own, the row formed, each vehicle coarsest first and finest where the eye is, the camera's rigs, drawn only when it changes
+  app/lineup/merge.ts                 a level joined by paint: its meshes in a few draws, corners in ten bytes, each wearing its paint by number (pure, tested)
+  app/lineup/shelf.ts                 every file fetched once, known by its bytes, joined once and shared by every vehicle on it, let go with the last
   app/lineup/stand.ts                 one vehicle of the row: its levels and their fade, its spacecraft alone, its plate, its person, its own shadow drawn once
   app/lineup/hall.ts                  the hall it stands in: the gallery's studio made long, ruled in height, with a tape along the floor
   app/address.ts                      the address bar, the two places a flight is seen in, and what the gallery is given to show
@@ -281,7 +284,8 @@ tools/
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
-  lineup-test.mjs                     browser check of the Lineup: every flight in the row at one scale, the card, the way into a gallery and back, the levels of detail, what it holds as a phone
+  lineup-test.mjs                     browser check of the Lineup: every flight in the row at one scale, the card, the way into a gallery and back, the levels of detail,
+                                      draw calls, the spacecraft alone, the gallery's tab kept, going along the row on a phone, the show's card, what it holds as a phone
   around-test.mjs                     browser check that what stands round a site is drawn at the level its size on screen calls for
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be

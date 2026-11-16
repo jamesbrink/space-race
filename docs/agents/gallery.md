@@ -45,7 +45,9 @@ Every flight has the same three places, in the same order, and opens in the firs
   `#…/site/pad`, a flight named with no place its gallery) and anything the idle show does. So Back is never pressed
   twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Fly it, L, Esc)
   is going between places, so a step too; following an address (Back, Forward, a link) is never one, whatever the
-  page passes through on its way there (`following` in session.ts). Within a flight, Back and Forward between its places are followed in
+  page passes through on its way there (`following` in session.ts). How a place was left that the address does not say
+  is kept with its entry (`keep`, `kept` in address.ts): the gallery's tab, chosen by hand, is open again on coming Back
+  to it (from the Lineup by its History tab's link, say). Within a flight, Back and Forward between its places are followed in
   place (`onMoved`), with no load: the site as it was left, the gallery as it was left. Between two flights there is no
   load either: `main.ts` lets the last flight's session go (`dispose`: its panels, listeners, sound and deck, its models
   off the GPU, its place if the next is at another place or on another day) and opens the next on the same two stages
@@ -117,8 +119,10 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
   of the vehicles' axes, so a top meets its line from any view; a person 1.8 m tall stands by each; a tape runs along the
   floor. `pnpm test:lineup` holds every vehicle's height to its flight's own figure.
 - **What stands there** is the whole row, one programme's section of it, or two or more standing together to be
-  compared; each whole on its launch vehicle, or the spacecraft alone (the parts under the vehicle's `Spacecraft`
-  heading: no new field). Forming the row again is a dip of the picture, never things sliding through each other.
+  compared; each whole on its launch vehicle, or the spacecraft alone: what rides on the launch vehicle, which is the
+  parts under the vehicle's `Spacecraft` heading and those of any other heading that stands wholly on it, no lower than
+  the spacecraft's own lowest point (Voskhod 2's airlock, listed under a heading of its own; `craftNodes`, measured on
+  the model: no new field). Forming the row again is a dip of the picture, never things sliding through each other.
 - **One thing is chosen**, by a click on it, its name, its mark on the timeline, or N and B: the camera goes to it and its
   card comes up (its story, why it has its name, its crew, each of whom opens to their own, the way into its gallery,
   its figures). With nothing chosen a click on nothing does nothing; Escape and 0 go back a step (out of a comparison,
@@ -133,18 +137,26 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
 - **Coarsest first, finest where the eye is** (rendering.md's rule; `scene.ts`). The page opens on the coarsest level of
   every vehicle, a fifth of the bytes. Each is then drawn at the level its size on screen calls for, the nearest to what
   is looked at first, as far as the device's allowance goes (`allot`, `ALLOWANCE`); a finer level is fetched once the
-  view has rested on wanting it, fades in, and is let go whole when it is no longer wanted. It is not a `Stage`: a stage
+  view has rested on wanting it, fades in, and is let go whole when it is no longer wanted. Every level is drawn joined
+  by paint (`merge.ts`: the meshes in a material that is only paint in one draw, each corner carrying its paint's number;
+  nothing that can be seen changes), the finest part by part so that each part is still a thing of its own, the coarser
+  two in as few pieces as can be: the whole row is under two hundred draw calls. Each file is fetched and joined once,
+  known by its bytes, and shared by every vehicle on it (`shelf.ts`: Vostok 3 to 6 stand on one coarsest file). It is not a `Stage`: a stage
   holds one flight in full. It shares the stages' camera (`viewer/camera`: every promise in camera.md holds), their two
   looks, their levels' fade and the studio's light. A vehicle's shadow is a picture of its own, drawn once (`stand.ts`).
 - **The view is framed in what the panels leave clear**: beside the title card for a tall thing, under it for a long
   row, the pivot seen in the middle of that part (the rig tips the camera for what is covered at the foot; the scene
-  turns it for what is covered at the side). Once the hands take the view only an explicit act moves it.
+  turns it for what is covered at the side). Once the hands take the view only an explicit act moves it. A row too long
+  to be read whole (its tallest under a third of the clear height: a phone held upright, a tablet) is framed by its
+  height instead, and gone along: the row in miniature lies across the foot, each vehicle a mark of its height in its
+  programme's tint and the part in the picture framed; a thumb on it goes along the row and lets go on the one nearest.
 - **Its panels are the site's**, in the page's own `#ui`: the same glass, chevrons, H, legend and prefs, and on a phone
   the same top line, handle and sheet (fold.css). Names and heights are written on the picture, never under a panel
   or on each other, and are left out where there is no room.
 - **Left alone it shows itself** (after 40 s; not for a script or anyone who has asked for less motion): the camera
   goes down the row, one vehicle at a time, a card saying what each was (the history's headline over the first part of
-  its story, or its own summary where the history has none; on each as long as that takes to read: `showCard`). Any
+  its story, or its own summary where the history has none; on each as long as that takes to read: `showCard`), on a
+  narrow page framed above the card as tall as its words come out (`showClear`). Any
   touch ends it and the view goes back to where it was left.
 - **The history's words are written once** (`ui/history.ts`, `history.css`): the card's story, name, crew, programme
   and moments are the same markup and look as a flight's gallery's History tab.
