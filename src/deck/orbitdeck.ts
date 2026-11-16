@@ -410,12 +410,21 @@ export class OrbitDeck extends Deck {
   enter(): void {
     if (!this.able || this.on) return;
     this.opened();
-    this.fresh();
+    if (this.keeping) this.resume();
+    else this.fresh();
   }
 
-  leave(): void {
-    if (!this.on) return;
-    this.closed(ENTER);
+  /** Taken over: not the record's flight any more (a hand on the ascent, the lock opened, a burn, a descent given). */
+  protected get byHand(): boolean {
+    return !this.recorded;
+  }
+  protected get runOver(): boolean {
+    const run = this.run;
+    return run !== null && Number.isFinite(run.duration) && this.clock.t >= run.duration - 1e-6;
+  }
+  protected restore(): void {
+    this.host.fly(this.run);
+    this.show();
   }
 
   /** When the spacecraft leaves the last stage on the flight on show, s. */

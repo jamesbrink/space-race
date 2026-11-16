@@ -3,10 +3,12 @@ import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { Command, SitedFlight } from '../types.ts';
 import type { Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import type { Clock } from '../world/clock.ts';
+import { type Clock, missionTime } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { capOf, capsOf, is, isTyping, kbd, type KeyName, keyOf, KEYS, keysOf, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
+import { ask } from './ask.ts';
+import { type Stake, verdict } from './leaving.ts';
 import { DEG } from '../world/frames.ts';
 
 /**
@@ -30,8 +32,17 @@ export interface CockpitHost {
   piloting(on: boolean): void;
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
   say?(title: string, line: string): void;
+  /** A flight flown by hand is kept, parked while the visitor is elsewhere in its page (the clock's instant), or is no longer (null): the Fly tab says so. */
+  kept?(at: number | null): void;
   /** The heat shield at `t` (viewer/effects.ts `reading`): its temperature and limit, K, and the stagnation-point heat flux, W/m2. */
   heat?(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null;
+}
+
+/** A flight kept as it stood: the clock's instant and pace, and whether it was running. */
+interface Kept {
+  t: number;
+  rate: number;
+  running: boolean;
 }
 
 /** A figure of the middle panel, or a reading of the right one: its cell's id, its name, its unit and what it is. */
@@ -107,9 +118,25 @@ export abstract class Deck {
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
   protected readonly finger = { pitch: 0, yaw: 0, roll: 0 };
   private figureKey = '';
+  /** What the deck's own enter button says while the deck is not taken. */
+  private readonly enterTip: string;
+  /** A flight flown by hand, kept while the deck is left: where the clock stood, how fast it ran, and whether it was running. */
+  private parked: Kept | null = null;
+  /** The same, taken back up and not yet resumed (or started over): the clock is held where it was until one is chosen. */
+  private pending: Kept | null = null;
+  /** When the run on the deck was first seen to have ended, page time in ms; null while it goes on. */
+  private endedAt: number | null = null;
+  /** The browser is to ask before the page is closed or loaded again (`sync`). */
+  private warned = false;
+  private readonly unload = (e: BeforeUnloadEvent): void => {
+    if (!this.stakes) return;
+    e.preventDefault();
+    e.returnValue = '';
+  };
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost, spec: DeckSpec) {
     this.flight = flight;
+    this.enterTip = spec.enter;
     this.clock = clock;
     this.host = host;
     const root = (this.root = document.createElement('aside'));
@@ -135,6 +162,14 @@ export abstract class Deck {
     root.innerHTML = `
       <section class="deck-main">
         <div class="cockpit-card" hidden></div>
+        <div class="cockpit-card cockpit-kept" role="group" aria-labelledby="deck-kept-t" hidden>
+          <h3 id="deck-kept-t">Your flight, kept at <span data-cell="kept-at"></span></h3>
+          <span class="cockpit-why">You left the deck with it still going. The clock is stopped where you left it until you choose.</span>
+          <p>
+            <button data-do="resume" title="Fly on from where it was left (${capsOf('deck.resume').join(' ')})">${kbd('deck.resume')}Resume</button>
+            <button data-do="again" title="Throw it away and start again from the pad (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}Start over</button>
+          </p>
+        </div>
         <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span>
           <span class="deck-modes">
             <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}Guidance</button>
@@ -258,12 +293,13 @@ export abstract class Deck {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.do === 'keys') this.showKeys(!root.classList.contains('keys-open'));
       else if (b?.dataset.work) this.work(b.dataset.work);
-      else if (b?.dataset.do) this.command(b.dataset.do);
+      else if (b?.dataset.do) this.act(b.dataset.do);
       else if (b?.dataset.press && !('held' in b.dataset)) {
         press(b.dataset.press, true);
         press(b.dataset.press, false);
       }
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button again
+      this.sync();
     });
     for (const b of root.querySelectorAll<HTMLButtonElement>('[data-hold], [data-held]')) {
       const key = b.dataset.hold ?? b.dataset.press!;
@@ -301,11 +337,23 @@ export abstract class Deck {
     this.scope.on(window, 'keydown', (e) => this.key(e, true));
     this.scope.on(window, 'keyup', (e) => this.key(e, false));
     this.scope.on(window, 'blur', () => this.held.clear());
-    clock.listen(() => this.follow());
+    clock.listen(() => {
+      // (kept and not yet resumed: the clock stays where it was left, whoever touches it)
+      const p = this.pending;
+      if (p && this.on) {
+        if (clock.running) clock.pause();
+        if (clock.t !== p.t) clock.seek(p.t);
+      }
+      this.follow();
+      this.watch();
+    });
   }
 
   /** The page has gone to another flight: off the window, and out of the page. */
   dispose(): void {
+    this.parked = this.pending = null;
+    this.sync();
+    this.host.kept?.(null);
     this.scope.dispose();
     this.root.remove();
     this.button.remove();
@@ -337,7 +385,12 @@ export abstract class Deck {
   abstract headed(id: string): boolean | null;
   abstract travel(id: string, t: number): number | null;
   abstract enter(): void;
-  abstract leave(): void;
+  /** Whether the flight has been taken over (the deck's mode is no longer "as flown"). */
+  protected abstract get byHand(): boolean;
+  /** Whether the run on the deck has ended: landed, or broken up. */
+  protected abstract get runOver(): boolean;
+  /** The deck is taken back up with the run it kept: show it to the scene and the instant the clock is at. */
+  protected abstract restore(): void;
   /** The clock has moved: bring the flight up to it and show it. */
   protected abstract follow(): void;
   /** A command of the deck's: a button's `data-do`, or a key's (next, guidance, sequence, abort, again, leave). */
@@ -389,6 +442,131 @@ export abstract class Deck {
     this.button.title = 'Leave the flight deck (Esc)';
     this.host.piloting(true);
   }
+
+  /** What is on the deck, as leaving.ts weighs it. */
+  get stake(): Stake {
+    const over = this.on && this.runOver;
+    return { byHand: this.byHand, over, since: over && this.endedAt !== null ? (performance.now() - this.endedAt) / 1000 : 0 };
+  }
+
+  /**
+   * Whether leaving the page would lose a flight: a run flown by hand that is going on at the deck, or kept while the visitor
+   * is elsewhere in the page (a kept flight is a hand-flown one that was going on).
+   */
+  get stakes(): boolean {
+    return this.parked !== null || (this.on && verdict(this.stake, 'beyond') === 'ask');
+  }
+
+  /** A flight is kept: the Fly tab says so, and where. */
+  get keeping(): boolean {
+    return this.parked !== null;
+  }
+
+  /**
+   * Leave the deck, going to another place of the same flight (its Gallery, its Launch site, or just the deck put away). A
+   * flight flown by hand that is going on is kept, parked as it stands with the clock stopped, and Fly resumes it; anything
+   * else is let go as it always was.
+   */
+  leave(): void {
+    if (!this.on) return;
+    if (verdict(this.stake, 'within') === 'keep') {
+      const at = this.pending ?? { t: this.clock.t, rate: this.clock.rate, running: this.clock.running };
+      this.pending = null;
+      this.hideKept();
+      this.closed(this.enterTip);
+      this.parked = at;
+      this.host.kept?.(at.t);
+      this.host.say?.('Your flight is kept', `Fly resumes it where you left it, at ${missionTime(at.t)}`);
+      this.sync();
+    } else this.end();
+  }
+
+  /** Let the flight go, whatever it is: the deck is put away, and what was kept is dropped. */
+  end(): void {
+    this.pending = null;
+    this.hideKept();
+    if (this.on) this.closed(this.enterTip);
+    this.parked = null;
+    this.host.kept?.(null);
+    this.sync();
+  }
+
+  /** Take up the flight that was kept, stopped where it was left, with the choice to resume or start over. */
+  protected resume(): void {
+    const at = this.parked!;
+    this.parked = null;
+    this.pending = at;
+    this.host.kept?.(null);
+    this.clock.seek(at.t);
+    this.restore();
+    this.cells.get('kept-at')!.textContent = missionTime(at.t);
+    this.root.querySelector<HTMLElement>('.cockpit-kept')!.hidden = false;
+    this.root.querySelector<HTMLElement>('.cockpit-kept [data-do=resume]')!.focus({ preventScroll: true });
+    this.sync();
+  }
+
+  /** The kept flight, resumed (the clock runs again as it did when it was left) or started over. */
+  private settle(resume: boolean): void {
+    const at = this.pending!;
+    this.pending = null;
+    this.hideKept();
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    if (!resume) return;
+    this.clock.setRate(at.rate);
+    if (at.running) this.clock.play(true);
+  }
+
+  private hideKept(): void {
+    this.root.querySelector<HTMLElement>('.cockpit-kept')!.hidden = true;
+  }
+
+  /** What a command asks for, with a kept flight waiting to be resumed: only that, starting over, or leaving it again. */
+  private act(what: string): void {
+    if (this.pending) {
+      if (what === 'resume') return this.settle(true);
+      if (what === 'again') this.settle(false);
+      else if (what !== 'leave') return;
+    } else if (what === 'resume') return;
+    this.command(what);
+    this.sync();
+  }
+
+  /** The run's end is noted as the clock moves, for the moment's grace that leaving.ts gives it. */
+  private watch(): void {
+    if (this.on && this.runOver) this.endedAt ??= performance.now();
+    else this.endedAt = null;
+    this.sync();
+  }
+
+  /** The browser's own question as the page is closed or loaded again: set while a flight flown by hand would be lost by it, and not otherwise. */
+  private sync(): void {
+    const want = this.stakes;
+    if (want === this.warned) return;
+    this.warned = want;
+    if (want) window.addEventListener('beforeunload', this.unload);
+    else window.removeEventListener('beforeunload', this.unload);
+  }
+
+  /** Whether the browser is set to ask before the page goes (the test reads it). */
+  get warning(): boolean {
+    return this.warned;
+  }
+
+  /** Put the question that stands before a way out that loses the flight (ask.ts), over the deck. */
+  question(leave: () => void, stay: () => void): void {
+    this.held.clear();
+    this.finger.pitch = this.finger.yaw = this.finger.roll = 0;
+    ask({
+      parent: this.root.parentElement ?? document.body,
+      clock: this.clock,
+      line: this.parked
+        ? 'Your flight is kept, but only while this page is open: leaving will not keep it.'
+        : 'You are flying it by hand; it will not be kept.',
+      leave,
+      stay,
+    });
+  }
+
   protected closed(enter: string): void {
     this.on = false;
     this.root.hidden = true;
@@ -409,6 +587,17 @@ export abstract class Deck {
       if (down && is(key, 'deck.toggle') && !e.repeat && this.able && !this.button.hidden) this.enter();
       return;
     }
+    // a kept flight waiting to be resumed: its one action, starting over, or leaving it again; nothing else of the deck acts
+    if (this.pending) {
+      if (!down || e.repeat) return;
+      const what = is(key, 'deck.resume') ? 'resume' : is(key, 'deck.again') ? 'again' : is(key, 'deck.leave') ? 'leave' : null;
+      if (what) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.act(what);
+      } else if (STEER.includes(key)) e.preventDefault();
+      return;
+    }
     if (STEER.includes(key)) {
       if (down) this.held.add(key);
       else this.held.delete(key);
@@ -423,6 +612,7 @@ export abstract class Deck {
     if (!what) return;
     e.preventDefault();
     e.stopPropagation();
-    this.command(what);
+    this.act(what);
+    this.sync();
   }
 }

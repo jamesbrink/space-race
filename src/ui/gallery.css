@@ -29,6 +29,11 @@ body.gallery-settled #stage { visibility: hidden; }
 .places button[aria-pressed='true'] { color: var(--amber); border-bottom-color: var(--amber); background: rgba(255, 196, 107, 0.08); }
 /* a place the flight does not have yet: there, dimmed, and it says why when pointed at or pressed */
 .places button[aria-disabled='true'] { color: var(--faint); opacity: 0.55; cursor: help; }
+/* a flight flown by hand and kept (deck.ts leave): a lamp on Fly, and its time beside it with the way to end it */
+.places button.kept::before { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 7px 1px 0; border-radius: 50%; background: var(--amber); }
+.places .kept-mark { display: inline-flex; align-items: center; gap: 7px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.places .kept-mark i { color: var(--dim); font-size: 13px; line-height: 1; }
+.places .kept-mark:hover i, .places .kept-mark:focus-visible i { color: var(--ink); }
 .places { position: relative; }
 .places p { position: absolute; left: -1px; top: calc(100% + 6px); z-index: 3; width: max-content; max-width: 260px; padding: 6px 10px 7px; font-size: 12px; color: var(--ink); background: rgba(10, 11, 14, 0.94); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px; }
 .crumbs span { color: var(--amber); }

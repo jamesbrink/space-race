@@ -7,8 +7,9 @@ import { follow } from './curtain.ts';
 import { installDebug } from './debug.ts';
 import { Demo } from './demo.ts';
 import { Flown } from '../deck/flown.ts';
-import { crumbs, Gallery, type GalleryKept, markPlace, placesNav } from '../ui/gallery.ts';
+import { crumbs, Gallery, type GalleryKept, markKept, markPlace, placesNav } from '../ui/gallery.ts';
 import { goHome } from './home.ts';
+import { holds } from './stake.ts';
 import '../ui/navball.css';
 import { Navball } from '../deck/navball.ts';
 import { prefs } from './prefs.ts';
@@ -151,6 +152,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),
+    kept: (at) => markKept(at === null ? null : missionTime(at), () => cockpit.end()),
     fly: (run) => {
       stage.show.flyRun(run);
       flown.fly(run); // its traces over the record's, as it grows
@@ -170,6 +172,21 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
       if (!on) show(current.id);
       placed(on ? 'fly' : 'site');
     },
+  });
+  // The way out that cannot keep a flight flown by hand (another flight, the Lineup, the front page) asks first (stake.ts); the
+  // ways within the flight keep it (deck.ts `leave`). Letting it go says nothing of where the flight is: the page is going.
+  holds({
+    stakes: () => cockpit.stakes,
+    end: () => {
+      const was = leaving;
+      leaving = true;
+      try {
+        cockpit.end();
+      } finally {
+        leaving = was;
+      }
+    },
+    ask: (leave, stay) => cockpit.question(leave, stay),
   });
   cockpit.listen((sample, state) => sound.follow(sample, state));
   cockpit.listen((sample) => {
@@ -976,8 +993,9 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
     follow: followAddress,
     dispose(): GalleryKept {
       gone = true;
+      holds(null);
       if (demo.active) demo.stop(true);
-      if (cockpit.active) cockpit.leave();
+      cockpit.end();
       if (stage.walk.active) stage.onFoot.exitWalk();
       scope.dispose();
       stage.unoverlay(path.mesh);

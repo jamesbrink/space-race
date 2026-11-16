@@ -1,4 +1,5 @@
 import { write } from './address.ts';
+import { guarded } from './stake.ts';
 import { reducedMotion, scripted } from '../util/env.ts';
 
 /**
@@ -11,8 +12,10 @@ import { reducedMotion, scripted } from '../util/env.ts';
  * `to`: the address the page is opened again at, for the other pages that hold nothing of each other and are left the
  * same way: the Lineup (lineup.ts), and a flight gone into from it.
  */
-export function goHome(to = ''): void {
+export function goHome(to = '', sure = false): void {
   if (document.body.classList.contains('going-home')) return; // (a crumb is heard by its place and by the page)
+  // (a flight flown by hand is lost by this, the page being opened again: stake.ts asks first, once, whichever way out it is)
+  if (!sure && guarded(() => goHome(to, true))) return;
   document.body.classList.add('going-home');
   const go = (): void => {
     write(to);

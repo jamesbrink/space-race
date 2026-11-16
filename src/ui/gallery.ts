@@ -133,7 +133,35 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void, 
     if (to.dataset.why) away = window.setTimeout(() => (says.hidden = true), 4000);
     else if (to.getAttribute('aria-pressed') !== 'true') go(to.dataset.place as Place);
   });
+  paintKept(nav);
   return nav;
+}
+
+/** The flight kept by hand (deck.ts `leave`), as the places' switches say it: its mission time, and the way to end it. Null: none is kept. */
+let keptMark: { at: string; end: () => void } | null = null;
+
+/** Say, in every switch of places there is and in those made after, that a flight is kept (or no longer): a mark beside Fly that ends it. */
+export function markKept(at: string | null, end: () => void): void {
+  keptMark = at === null ? null : { at, end };
+  for (const nav of document.querySelectorAll('nav.places')) paintKept(nav);
+}
+
+function paintKept(nav: Element): void {
+  nav.querySelector('.kept-mark')?.remove();
+  const fly = nav.querySelector<HTMLElement>('[data-place=fly]');
+  fly?.classList.toggle('kept', keptMark !== null);
+  if (!fly || !keptMark) return;
+  const mark = document.createElement('button');
+  mark.className = 'kept-mark';
+  mark.title = `Your flight is kept at ${keptMark.at}: Fly resumes it. This ends it`;
+  mark.setAttribute('aria-label', `End the kept flight, at ${keptMark.at}`);
+  mark.innerHTML = `<span>${keptMark.at}</span><i aria-hidden="true">×</i>`;
+  const { end } = keptMark;
+  mark.addEventListener('click', (e) => {
+    e.stopPropagation();
+    end();
+  });
+  fly.after(mark);
 }
 
 /**

@@ -543,6 +543,10 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
   deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
   both, Space is the next thing on both.
+- **Leaving the deck with a hand-flown run going on keeps it** (`Deck.leave`, `deck/leaving.ts`; gallery.md has the ways out): the
+  deck's state, run and samples stay as data, the clock is reset for the site and put back where it was on Resume, which
+  waits for a touch. A deck supplies `byHand` (taken over: not "as flown"), `runOver` and `restore`. Ending (`Deck.end`) drops
+  it; `dispose` always does.
 - **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
   deck (`src/deck/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
   camera's, the page out of the way. Space lights the engine and after that sets off the next

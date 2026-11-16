@@ -244,12 +244,24 @@ export class Cockpit extends Deck {
   enter(): void {
     if (!this.vehicle || this.on) return;
     this.opened();
-    this.fresh();
+    if (this.keeping) this.resume();
+    else this.fresh();
   }
 
-  leave(): void {
-    if (!this.on) return;
-    this.closed('Fly this flight yourself (L)');
+  /** Taken over: guidance or the sequencer off, or a hand to the controls (the stick, a key of the six, the abort). */
+  protected get byHand(): boolean {
+    return !this.guidance || !this.sequence || this.touched;
+  }
+  protected get runOver(): boolean {
+    return Boolean(this.state?.landing);
+  }
+  protected restore(): void {
+    this.host.fly(this.run);
+    this.follow();
+  }
+  private touched = false;
+  protected override steered(): void {
+    this.touched = true;
   }
 
   /** A new flight: back on the pad. */
@@ -263,6 +275,7 @@ export class Cockpit extends Deck {
     this.lever = range ? new Lever(range) : null;
     if (this.lever) this.setLever(this.lever.at);
     this.trim = { pitch: 0, yaw: 0 };
+    this.touched = false;
     this.abortArmed = Number.NEGATIVE_INFINITY;
     this.kept = 0;
     this.eventAt = Number.NEGATIVE_INFINITY;
@@ -623,6 +636,7 @@ export class Cockpit extends Deck {
       if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
       else {
         this.abortArmed = Number.NEGATIVE_INFINITY;
+        this.touched = true;
         if (this.abortEvent) this.asks(this.abortEvent);
         delete this.hand.throttle;
         if (!s.ignited) {

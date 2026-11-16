@@ -2,9 +2,10 @@ import { flights } from '../../missions/index.ts';
 import type { Flight, SitedFlight } from '../types.ts';
 import type { GalleryKept } from '../ui/gallery.ts';
 import { Stage } from '../viewer/stage.ts';
-import { aboutNoFlight, entrances, flightFor, onMoved, parseAddress, where } from './address.ts';
+import { aboutNoFlight, entrances, flightFor, landed, moved, onMoved, parseAddress, undo, where } from './address.ts';
 import { goHome } from './home.ts';
 import { prefs } from './prefs.ts';
+import { guarded } from './stake.ts';
 import type { Session } from './session.ts';
 
 /**
@@ -53,12 +54,23 @@ opening = open(flightFor(flights, where()));
 /** The first flight's page is up (its session made, its debug handle put on the window): for the front page (front.ts). */
 export const opened: Promise<void> = opening;
 onMoved(() => {
-  if (aboutNoFlight(where())) return goHome(where()); // (the front page's or the Lineup's: no flight's)
-  opening = opening.then(() => {
-    const to = parseAddress(where());
-    // another flight is another session on the same stages; within this one, its session follows the address
-    if (to.flightId && to.flightId !== session?.flight.id && flights.some((f) => f.id === to.flightId))
-      return open(flightFor(flights, where()));
-    session?.follow();
-  });
+  const steps = moved();
+  const follow = (): void => {
+    landed();
+    if (aboutNoFlight(where())) return goHome(where(), true); // (the front page's or the Lineup's: no flight's)
+    opening = opening.then(() => {
+      const to = parseAddress(where());
+      // another flight is another session on the same stages; within this one, its session follows the address
+      if (to.flightId && to.flightId !== session?.flight.id && flights.some((f) => f.id === to.flightId))
+        return open(flightFor(flights, where()));
+      session?.follow();
+    });
+  };
+  // Going out of the flight (to another, to the Lineup, to the front page) lets a flight flown by hand go, and nothing keeps
+  // it: asked first (stake.ts). The address has moved already, so Keep flying moves it back to the entry it was on, which
+  // is one the history still holds: no step is added and the page is not touched.
+  const to = parseAddress(where());
+  const beyond = aboutNoFlight(where()) || Boolean(to.flightId && to.flightId !== session?.flight.id && flights.some((f) => f.id === to.flightId));
+  if (beyond && guarded(follow, () => undo(steps))) return;
+  follow();
 });

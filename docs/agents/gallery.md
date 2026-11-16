@@ -38,6 +38,19 @@ Every flight has the same three places, in the same order, and opens in the firs
   Earth's maps and the Moon's). Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
+- **Leaving a flight flown by hand** (`deck/leaving.ts` holds the rule): watching a flight as flown loses nothing and is never
+  asked about. Once the visitor has taken it over and the run has not ended (or ended under four seconds ago), a way out
+  *within the flight* (the deck's Leave, Esc, the Gallery and Launch site tabs, the flight's crumb, Back and Forward between its
+  places) keeps it: the deck parks the run as it stands with the clock stopped, a passing note says so, the Fly tab shows a
+  lamp and its mission time with a button that ends it, and Fly resumes it behind a card (Resume, Start over) before the clock
+  runs again. A way *beyond* the flight (another flight, the Lineup, the front page, each of which lets the page go) cannot
+  keep it, and asks first: one guard, `app/stake.ts` `guarded`, called by `goHome` and by `main.ts`'s `onMoved`, whatever the
+  way out. By Back, Forward or a typed address the entry has moved already, so Keep flying moves it back
+  (`address.ts` `moved`, `undo`: each entry the page makes carries its number), which adds no step and loops no further.
+  The question (`deck/ask.ts`) holds the clock, takes every key at the window, and is `role="alertdialog"` with its focus
+  kept: Keep flying is the default (Esc, Enter, a press elsewhere), Leave is L or a deliberate press. The browser's own
+  `beforeunload` question is set only while a flight would be lost (going on by hand, or kept); the page uses no alert,
+  confirm or prompt. A kept flight lives in the page's memory only, as data: it does not survive a reload.
 - **Back and Forward** go where the visitor was. One rule, in `address.ts` (`write`, `samePlace`): going to another
   flight or another place (the front page, a flight's Gallery, Launch site, Fly) is a new entry in the history;
   anything chosen within a place (a part, a section of the site, what stands in the gallery) rewrites the entry it is

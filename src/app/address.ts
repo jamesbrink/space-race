@@ -419,7 +419,41 @@ const bar = (hash: string): string => hash || location.pathname + location.searc
 export function write(hash: string): void {
   if (hash === where()) return;
   if (samePlace(where(), hash)) history.replaceState(history.state, '', bar(hash));
-  else history.pushState(null, '', bar(hash));
+  else {
+    history.pushState({ [STEP]: index() + 1 }, '', bar(hash));
+    on = index();
+  }
+}
+
+/**
+ * Where the page is in the history, so that a step the visitor took can be taken back: each entry the page makes is numbered
+ * one more than the one before it (in its state, which rewriting the entry keeps), and the page knows the number it is on. A
+ * move that is not one of its own (a link followed, an address typed) lands on an entry with no number.
+ */
+const STEP = 'sr';
+const index = (): number => ((history.state as Record<string, unknown> | null | undefined)?.[STEP] as number | undefined) ?? 0;
+let on = typeof history === 'undefined' ? 0 : index();
+if (typeof history !== 'undefined' && history.state?.[STEP] === undefined) history.replaceState({ ...(history.state ?? {}), [STEP]: 0 }, '');
+
+/**
+ * How many entries the address was moved by since the page last settled (`landed`): negative for Back, positive for Forward;
+ * a move onto an entry that is not the page's (a link, an address typed) is one step on.
+ */
+export function moved(): number {
+  const to = (history.state as Record<string, unknown> | null | undefined)?.[STEP] as number | undefined;
+  return (to ?? on + 1) - on;
+}
+
+/** The page is at the entry it has been moved to: that is where it is now. */
+export function landed(): void {
+  const to = (history.state as Record<string, unknown> | null | undefined)?.[STEP] as number | undefined;
+  on = to ?? on + 1;
+  if (to === undefined) history.replaceState({ ...(history.state ?? {}), [STEP]: on }, '');
+}
+
+/** Undo a move the page has not taken (`moved`): the entry it was on, which the history still holds. No step is added. */
+export function undo(steps: number): void {
+  if (steps) history.go(-steps);
 }
 
 /** Rewrite the entry the page is on, whatever it names: an address settled into its own form (`#pad`, a flight with no place), never a step of the visitor's. */
