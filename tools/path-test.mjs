@@ -108,6 +108,11 @@ const FLIGHTS = {
     id: 'ussr/vostok/vostok-5',
     instants: [5, 60, 125, 330, 700, 3000, 86_400, 200_000, 345_600, 427_000, 427_160, 427_250, 427_900, 428_200, 428_500],
   },
+  // (three days: the first revolutions, a day, two, her orientation by hand on the last morning, the burn about 10:50 and the descent)
+  v6: {
+    id: 'ussr/vostok/vostok-6',
+    instants: [5, 60, 125, 330, 700, 3000, 86_400, 200_000, 242_000, 253_000, 253_260, 253_300, 254_000, 254_300, 254_600],
+  },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
 /** The window sizes: a laptop's, a tablet's upright and a phone's. */

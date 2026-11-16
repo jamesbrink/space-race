@@ -90,6 +90,19 @@ const INPUTS = {
     ['entry', 'area'],
     ['ejection', 'altitude'],
   ],
+  // Vostok 6's: Vostok 5's, but the ejection's height, which is its own report's (the design's)
+  'ussr/vostok/vostok-6': [
+    ['orbit', 'radius'],
+    ['injection', 'at'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['retro', 'on'],
+    ['retro', 'off'],
+    ['retro', 'deltaV'],
+    ['entry', 'separation'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+  ],
 };
 
 test('there is an orbital flight to fly', () => {

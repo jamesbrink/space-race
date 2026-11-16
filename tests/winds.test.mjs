@@ -17,6 +17,7 @@ const WITH_HOURS = await Promise.all(
     'ussr/vostok/flights/vostok-2/flight.ts',
     'ussr/vostok/flights/vostok-3/flight.ts',
     'ussr/vostok/flights/vostok-5/flight.ts',
+    'ussr/vostok/flights/vostok-6/flight.ts',
   ].map(load),
 );
 const name = (f) => f.name ?? f.id;

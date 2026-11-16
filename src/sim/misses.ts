@@ -97,6 +97,15 @@ const COAST_V5 =
   'The orbit falls as TASS’s did: at 15:00 on 18 June it is 163.3 by 197.4 km where TASS has 159 by 193 (both within 5 km), so the earlier reading, that the miss was the day’s air, is superseded: in the 1976 mean air on the ball’s continuum drag the run had 174.7 by 222.5 km there and came down 5,647 km short. ' +
   'What is left is the period: at that instant the run goes round in 87.91 min where TASS has 87.8, so over the last days the ship comes round a little late each time; as a diagnosis, the published period 0.05 min shorter (88.22 for 88.27) brings it down 86 km beyond the record’s landing, and the burn five minutes later 813 km short. ' +
   'The period is published to a hundredth of a minute (TASS, 22:12 on 14 June), so a twentieth is not its rounding, and read as anomalistic or Keplerian the nodal period flown would be longer still. What owns the rest (the drag area, the thermosphere’s model, the burn’s derived minute) is not established. Not adjusted';
+/** Vostok 6's ascent is Vostok 1's, as Vostok 5's is. */
+const SHORT_V6 =
+  'Vostok 6’s ascent is Vostok 1’s, flown on its instants and its third stage’s integrator setting (no document of E103-25’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
+  'at the last cutoff it is level at the 183 km taken as asked for with 7,679 m/s in the day’s air, where 180.9 by 231.1 km needs some 7,820';
+/** Three days flown round to a burn derived from the ground's command: the landing's miss, and what it is worth in each thing not known. */
+const COAST_V6 =
+  'Three days are flown round (48 revolutions) in the days’ own thermosphere (Jacchia 1971) on the ship’s free-molecular drag, to a burn at 10:50:40 derived from the cycle’s command at 09:39:40 and “approximately” its 71st minute (Kogutenko). ' +
+  'The orbit falls as TASS’s did: at 15:00 on 18 June it is 176.5 by 220.3 km and 88.15 min where TASS has 174 by 218 km and 88.1 (all within tolerance). In the 1976 mean air on the ball’s continuum drag it came down 3,757 km short. ' +
+  'What each thing not known is worth, as diagnoses and not inputs: the published period is to a tenth of a minute, and 0.05 min less brings it 1,211 km nearer, 0.05 min more 923 km further; the burn a minute later 401 km nearer, five minutes later 2,381 km (it would then land 20 to 25 minutes after the burn, where Vostok 1’s pilot took 28). Not established which. Not adjusted';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -407,6 +416,37 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
       crossTrack: { by: -262_689, slack: 5_000, why: `${PUBLISHED}. ${COAST_V5}` },
       alongTrack: { by: -3_853_480, slack: 20_000, why: `${PUBLISHED}. ${COAST_V5}` },
+    },
+  }),
+  'ussr/vostok/vostok-6': inUnits({
+    coast: {
+      crossTrack: { by: -175_679, slack: 5_000, why: `It comes down 176 km across the track. ${COAST_V6}` },
+      alongTrack: { by: -2_726_340, slack: 20_000, why: `It comes down 2,726 km short along the track, over Iran. ${COAST_V6}` },
+    },
+    ascent: {
+      perigee: { by: -397_690, slack: 2_000, why: SHORT_V6 },
+      apogee: {
+        by: -48_100,
+        slack: 300,
+        why: `The cutoff is level at the 183 km taken as asked for and too slow, so 183 km is the orbit’s top: ${SHORT_V6}`,
+      },
+      period: { by: -266.8, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_V6}` },
+    },
+    shown: {
+      'tass18.perigee': {
+        by: 5_830,
+        slack: 500,
+        why: `${PUBLISHED}. Begun from the ascent’s handover, with its apogee 5 km lower, it drags less at perigee over two days and is 179.8 km up at 15:00 on 18 June where TASS has 174; from the estimated injection it is 176.5 and holds`,
+      },
+      crossTrack: { by: -117_019, slack: 5_000, why: `${PUBLISHED}. ${COAST_V6}` },
+      alongTrack: { by: -2_703_900, slack: 20_000, why: `${PUBLISHED}. ${COAST_V6}` },
+    },
+    descent: {
+      'pilot.at': {
+        by: -193.7,
+        slack: 10,
+        why: 'Down at 11:16:46, 3 min 14 s before TASS’s 11:20: from the burn, derived from the cycle’s command and its “approximately” 71 minutes (Kogutenko), she takes 26.1 min to the ground. The minute of the burn is the owner: Vostok 1’s 27.9 min from command to pilot would have it at 10:52:06. Not adjusted',
+      },
     },
   }),
   // the Langley trial of 1959 (tests/fixtures/pad-abort): not a flight, flown from its own weights off its own launcher

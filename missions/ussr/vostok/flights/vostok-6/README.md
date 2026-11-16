@@ -16,14 +16,36 @@ parachute. Backups: Irina Solovyeva and Valentina Ponomareva.
 | Spacecraft (3KA No. 8) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The type's model ([vostok-3ka.md](../../vehicles/vostok-3ka.md)) with what this flight is known to have had that can be drawn: its pilot in the suit made for her, the cabin's white lining as the flown article shows it, the two television cameras as the Seliger camera was photographed, and a hand-held film camera. **Apart from the pilot it cannot be told from Vostok 5's on the record read** |
 | Launch vehicle (8K72K No. E103-25) | **built**, as the type ([vostok-8k72k.md](../../vehicles/vostok-8k72k.md)): nothing read says how this vehicle differed from Vostok 1's |
 | Pilot in the seat | built: the figure of [sk-1.md](../../crew/sk-1.md) as a woman of her height in the SK-2, the SK-1 cut again for women, as the photographs of 16 June show it: white boots, the black breathing valve at the collar, "СССР" on the helmet |
-| Launch site (Site 1 as it stood in June 1963) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in two years has not been looked for |
-| Crew to be walked as | not built |
-| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read: no figure for the 16th. The press at the pad saw the rocket "shining in the Sun" and vanish "into the blue of the sky" (TASS's pool, in *Заря Востока*, 18 June); the colour photograph of her reporting at the pad shows hard sunlight and short shadows. Round it: "a wonderful, sunny, still morning" on the 13th; a clear starry sky at 20:07 on the 17th, when the ship was watched going over; about 40 °C at the range on the 17th and 18th (Kamanin). No station's report was looked for |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 as it stood on 16 June 1963) | **built**: [model/pad.py](model/pad.py), the site's modules at that date, with the bus; the surroundings are those modelled for August 1961, nothing modelled having changed ([site-1.md](../../../places/tyuratam/site-1.md), "What stood when"). The morning in [pad.ts](pad.ts), below ("The morning at the pad") |
+| Crew to be walked as | **not built yet**: [crew/sk_1.py](../../crew/sk_1.py) builds her figure at full detail (1.715 m in helmet and boots) but fails the clearance check at its coarser levels (Helmet_Fittings against itself; the gloves' palms against their shell: issue #21). When it builds she stands at the site as a labelled stand-in: the SK-2's sourced differences built (narrower shoulders, wider hips, thinner gloves, the black valve, no mirror, 1.64 m estimated from a photograph), the body under it figurelib's man carried to her measures, and the one gait |
+| The day's weather (`weather.ts`) | **written**: Dzhusaly at 09:00 UTC, two oktas of cumulus at the 1,500 to 2,000 m class and an okta of high cloud, an east-north-east wind of 6 to 10 m/s, 34 °C; the press's rocket "shining in the Sun". ERA5's air over the pad in [aloft.ts](aloft.ts) |
+| The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md). The ascent is Vostok 1's (none of this flight's was found); the burn's instant is derived from the ground's command at 09:39:40 and the cycle's 71 minutes, not from the landing; her orientation by hand on the last morning is the record's period by hand. Fly is lit. What the run makes of it is below ("The flight as flown") |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+So the flight has its Gallery, its Launch site and Fly.
+
+## The morning at the pad
+
+What the record gives of it ([pad.ts](pad.ts); Kamanin keeps the range's clock, Moscow's plus two, converted here):
+
+- The rocket and ship on the pad since the morning of the 15th; the State Commission set 12:30 the afternoon before.
+- 10:15 exactly, the bus at the pad; her report to the chairman, «космонавт Терешкова к полету готова»; flowers, handed
+  to Korolev; up to the lift "rather heavily", into the ship with a pulse of 140; the radio up ten or fifteen minutes
+  later. "The preparation of the rocket, the ship and every operation went exceptionally cleanly": Kamanin thought it
+  Gagarin's morning again. Four minutes before liftoff her pulse was 84 (Golovanov).
+- **Estimated, and said so**: the erector, the trusses and the cable mast at Vostok 1's intervals before its liftoff,
+  put before this one; the minutes she was seated and the hatch closed; when the bus left. No filler is built: none is
+  recorded. The people are not built: the figures have no summer dress.
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent on the type's figures falls short of an orbit, as Vostok 1's does: what is
+shown from the separation is the published orbit begun where the ascent left the ship. Its period holds (88.3 min, not
+independent), its apogee holds (229.7 km), the load in the entry holds (8.88 g against her "no more than 8"), and the ball
+lands 251 m from her where she put it at 400. The burn is derived from the ground's command at 09:39:40 and the cycle's
+"approximately" 71 minutes, not from the landing, so the landing is a check of it: **it comes down 3,757 km short and 305
+km across**, over Oman, and she is down at 11:17:34, two and a half minutes before TASS's 11:20. What owns it is not
+established: the period published to a tenth of a minute is worth 760 km either way over 48 revolutions, the burn's
+minute 300 km a minute, and the coast's drag, the same as Vostok 5's, some 1,370 km (mission.md, "Three days in the air").
 
 ## What happened
 
@@ -114,7 +136,7 @@ out in tears (Chertok). She did not fly again. No woman did for nineteen years.
 | 19 June, 07:40 to 08:05 | | The ship turned by hand to the attitude for descent, and held | the transcript of her exchanges, as Siddiqi (2009) gives it: on the 47th orbit. Her report: the 45th, twenty minutes. Kamanin: held fifteen |
 | 09:39:40 | 2 d 21 h 9 min 48 s | Command for the automatic descent | Kamanin; Siddiqi, p. 372 |
 | 09:42, 09:51 | | By her key: the first and second stages of the descent programme on | the same transcript |
-| | | Braking engine. **The minute and the length of the burn were not found** | |
+| about 10:50:40 | about 2 d 22 h 21 min | Braking engine, 39 s; the modules part ten seconds after it, with a jerk. **The minute is derived**, not found: the cycle's command and its about 71 minutes to the engine's control | her report in the State Commission's typescript (RGANTD), p. 53: «/39 секунд ТДУ работала/ … Через 10 секунд произошло разделение»; Kogutenko (2013) for the 71 minutes |
 | 11:10:40 | 2 d 22 h 40 min 48 s | The flight's end as the FAI's record has it | Siddiqi, p. 372, note 65, from Glushko's encyclopedia: the descent module's landing. See [Vostok 5](../vostok-5/README.md#where-the-sources-disagree) for what it may measure instead |
 | 11:20 | 2 d 22 h 50 min | Tereshkova lands, about 53°16′ N 80°28′ E | TASS; Siddiqi, Table IB (02:22:50:08). The place: spacefacts.de and RussianSpaceWeb |
 
