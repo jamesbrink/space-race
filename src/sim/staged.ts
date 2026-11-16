@@ -53,6 +53,8 @@ import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
 import { integrate, sensed } from './apparent.ts';
+import type { Action, EventDef } from './plan.ts';
+import { planOfOrbital } from './planof.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -198,11 +200,13 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
  * stage cut on its velocity (`StageRecord.velocity`) stops here only when it runs dry: the run finds when it reaches its
  * speed, and that is its stop if it comes first.
  */
-export function schedule(o: OrbitalFlight): { from: number; to: number; dry: boolean }[] {
-  return o.stages.map((s) => {
-    const from = s.ignition.value;
-    // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there is, past that)
-    const cutoff = s.velocity ? from + (10 * (s.usable ?? s.propellant).value) / flowOf(s) : s.cutoff.value;
+export function schedule(o: OrbitalFlight, seq = sequenceOf(o)): { from: number; to: number; dry: boolean }[] {
+  return o.stages.map((s, i) => {
+    const k = seq.stages[i]!;
+    const from = k.from;
+    // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there
+    // is, past that; one with no cut of its own is shut down as it is let go)
+    const cutoff = k.speed ? from + (10 * (s.usable ?? s.propellant).value) / flowOf(s) : (k.cut ?? k.sep);
     const load = (s.usable ?? s.propellant).value;
     const burned = (t: number) => flowOf(s) * integral(s.throttle, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
@@ -222,18 +226,48 @@ export function spentAt(burned: (t: number) => number, load: number, from: numbe
   return lo;
 }
 
-/** The event instant a guidance target names. */
-const instant = (o: OrbitalFlight, id: string): number => {
-  const e = o.events.find((x) => x.id === id);
-  if (!e) throw new Error(`no event '${id}' in the record`);
-  return e.at.value;
-};
-
-/** The spacecraft's separation from the last stage: the last stage's separation time. */
-const parting = (o: OrbitalFlight): number => {
-  const last = o.stages[o.stages.length - 1]!;
-  return (last.separation ?? last.cutoff).value;
-};
+/**
+ * The ascent's sequence as its plan has it (sim/plan.ts, made of the record by planof.ts): each stage's engine lit, cut (at
+ * an instant, or on reaching a speed: space-fixed, or its integrator's apparent velocity) and its body let go, at the
+ * instants the record's pilot sets them off; a drop's letting go; the record's instants by id. What happens when is read
+ * from the plan's events, never from the stage records' own times. (The stages' engines are the plan's engines that draw
+ * on tanks, in order; a stage's joint is the one that first lets its body go.)
+ */
+export function sequenceOf(o: OrbitalFlight) {
+  const plan = planOfOrbital(o);
+  const c = plan.craft[0]!;
+  const timeOf = (e: EventDef | undefined): number | null => {
+    const w = e?.when.find((x) => 'time' in x);
+    return w && 'time' in w ? w.time : null;
+  };
+  const doing = (test: (a: Action) => boolean) => plan.events.find((e) => e.automatic && e.do.some(test));
+  const firstJoint = (body: string) => c.joints.filter((j) => j.gone.includes(body)).sort((a, b) => a.gone.length - b.gone.length)[0];
+  const stages = c.engines
+    .filter((e) => e.tanks.length)
+    .map((e) => {
+      const cut = doing((a) => 'cut' in a && a.cut === e.id);
+      const joint = firstJoint(e.body);
+      const speed = cut?.when.find((w) => 'speed' in w);
+      return {
+        from: timeOf(doing((a) => 'ignite' in a && a.ignite === e.id)) ?? Infinity,
+        cut: cut && !speed ? timeOf(cut) : null,
+        speed: speed && 'speed' in speed ? { value: speed.speed, apparent: Boolean(speed.apparent) } : null,
+        sep: (joint && timeOf(doing((a) => 'separate' in a && a.separate === joint.id))) ?? Infinity,
+      };
+    });
+  const drop = (id: string): number => timeOf(doing((a) => 'separate' in a && a.separate === id)) ?? Infinity;
+  const instants = [
+    ...plan.events.flatMap((e) => (e.record && e.at ? [{ id: e.record.id, at: e.at.value }] : [])),
+    ...(plan.record?.marks ?? []).map((m) => ({ id: m.id, at: m.at.value })),
+  ];
+  /** The record's instant an id names (a guidance target). */
+  const instant = (id: string): number => {
+    const x = instants.find((k) => k.id === id);
+    if (!x) throw new Error(`no event '${id}' in the record`);
+    return x.at;
+  };
+  return { stages, drop, instants, instant };
+}
 
 export type Mode = 'vertical' | 'turn' | 'tangent';
 
@@ -334,14 +368,16 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
   const { pad, n } = law;
   const stack = stackOf(o);
 
-  const plan = schedule(o);
+  const seq = sequenceOf(o);
+  const plan = schedule(o, seq);
   // a stage cut on its velocity: the space-fixed speed its integrator stops it at (the design's, and the error it had)
-  const cutAt = o.stages.map((st) => (st.velocity ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : Infinity));
+  const cutAt = seq.stages.map((k) => k.speed?.value ?? Infinity);
   const burned = (i: number, t: number) => stack.burned(i, plan[i]!.from, Math.min(t, plan[i]!.to));
   const throttle = stack.throttle;
   const { tVertical, tKicked, tTurn } = law;
-  const tEnd = instant(o, g.target.at);
-  const tPart = parting(o);
+  const tEnd = seq.instant(g.target.at);
+  // the spacecraft parts from the last stage as it is let go
+  const tPart = seq.stages[seq.stages.length - 1]!.sep;
   // a stage cut on its apparent velocity: the instant its integrator reaches its setting, found here from the mass flown
   // (the rocket's own thrust over its mass, summed from its ignition; in vacuum, with nothing else pushing, that is all an
   // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
@@ -351,18 +387,19 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     const pushAt = (t: number) => sensed(st.count, throttle(i, t), st.thrust.vacuum.value, massAt(t));
     return integrate(pushAt, plan[i]!.from, plan[i]!.to, 0.01, cutAt[i]!).at;
   };
-  const stageSep = o.stages.map((s) => (s.separation ? s.separation.value : Infinity));
+  const stageSep = seq.stages.map((k) => k.sep);
+  const drops = a.drops.map((d) => ({ at: seq.drop(d.id), mass: d.mass.value }));
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own
   const droppedBy = (t: number) => {
     let m = 0;
     o.stages.forEach((s, i) => {
       if (stageSep[i]! <= t && i < o.stages.length - 1) m += s.count * (s.mass.value - burned(i, stageSep[i]!));
     });
-    for (const d of a.drops) if (d.at.value <= t) m += d.mass.value;
+    for (const d of drops) if (d.at <= t) m += d.mass;
     return m;
   };
-  o.stages.forEach((st, i) => {
-    if (st.velocity?.apparent) plan[i]!.to = Math.min(plan[i]!.to, apparentCut(i));
+  seq.stages.forEach((k, i) => {
+    if (k.speed?.apparent) plan[i]!.to = Math.min(plan[i]!.to, apparentCut(i));
   });
 
   let mode: Mode = 'vertical';
@@ -426,9 +463,9 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
       60,
       ...plan.flatMap((p) => [p.from, p.to]),
       ...stageSep.filter(Number.isFinite),
-      ...a.drops.map((d) => d.at.value),
+      ...drops.map((d) => d.at),
       ...a.drag.map((d) => d.until.value),
-      ...o.events.map((e) => e.at.value),
+      ...seq.instants.map((x) => x.at),
     ]),
   ]
     .filter((m) => m > 0 && m <= tPart)
@@ -472,8 +509,8 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
-    const crossing = o.stages.findIndex(
-      (st, i) => st.velocity && !st.velocity.apparent && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!,
+    const crossing = seq.stages.findIndex(
+      (k, i) => k.speed && !k.speed.apparent && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!,
     );
     if (crossing >= 0 && length(before.v) < cutAt[crossing]!) {
       const want = cutAt[crossing]!;
@@ -494,7 +531,7 @@ export function ascend(o: OrbitalFlight, site: Geodetic, frame: EarthFrame, seaL
     else if (t <= coreOff) summary.coreG = Math.max(summary.coreG, s.g);
     else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
-    for (const e of o.events) if (e.at.value === t) at[e.id] = s;
+    for (const x of seq.instants) if (x.at === t) at[x.id] = s;
     if (t === plan[plan.length - 1]!.to) Object.assign(summary, atCutoff(o, t, state, pad));
     // the law's own changes, at the end of a step
     if (mode === 'vertical' && t >= tVertical) mode = 'turn';

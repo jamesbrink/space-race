@@ -22,6 +22,8 @@ import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } f
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot } from './descent.ts';
+import type { Action, EventDef } from './plan.ts';
+import { planOfOrbital } from './planof.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
 
@@ -733,6 +735,34 @@ export function aimOf(o: OrbitalFlight, r: Vec3, v: Vec3, sun: () => Vec3): Vec3
 }
 
 /**
+ * The coast's instants as the plan has them (sim/plan.ts, made of the record, or of the record as a hand changed it, by
+ * planof.ts): the burn the record's coast flies (the engine with the record's impulse, `EngineDef.flown`) lit and cut, the
+ * body it is on let go, and the height at which what comes down is let loose after that (the event set off by height once
+ * the parting has happened). Never: the largest safe integer, as a plan given up has it, or Infinity.
+ */
+export function coastOf(o: OrbitalFlight): { on: number; off: number; parted: number; floor: number } {
+  const plan = planOfOrbital(o);
+  const c = plan.craft[0]!;
+  const timeOf = (e: EventDef | undefined): number => {
+    const w = e?.when.find((x) => 'time' in x);
+    return w && 'time' in w ? w.time : Infinity;
+  };
+  const doing = (test: (a: Action) => boolean) => plan.events.find((e) => e.automatic && e.do.some(test));
+  const burn = c.engines.find((e) => e.flown);
+  const joint = burn && c.joints.find((j) => j.gone.includes(burn.body));
+  const parting = joint && doing((a) => 'separate' in a && a.separate === joint.id);
+  const down =
+    parting && plan.events.find((e) => e.when.some((w) => 'after' in w && w.after === parting.id) && e.when.some((w) => 'height' in w));
+  const height = down?.when.find((w) => 'height' in w);
+  return {
+    on: timeOf(burn && doing((a) => 'ignite' in a && a.ignite === burn.id)),
+    off: timeOf(burn && doing((a) => 'cut' in a && a.cut === burn.id)),
+    parted: timeOf(parting),
+    floor: height && 'height' in height ? height.height : Number.NEGATIVE_INFINITY,
+  };
+}
+
+/**
  * Fly the coast: from the published orbit round to the braking burn, and down through the air to
  * the height the pilot left at. `site` is where it was launched from and `frame` the flight's (world/earthframe.ts:
  * made from the instant of liftoff), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
@@ -758,7 +788,7 @@ export function flyOrbit(
   hands?: DescentHands,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
-  const [on, off, parted] = [o.retro.on.value, o.retro.off.value, o.entry.separation.value];
+  const { on, off, parted, floor } = coastOf(o);
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : o.injection.at.value;
@@ -900,7 +930,6 @@ export function flyOrbit(
     }
     {
       // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
-      const floor = o.ejection.altitude.value;
       if (t === handover) {
         phase = 'down';
         samples.push({ ...now, phase });

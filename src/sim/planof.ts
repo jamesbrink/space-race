@@ -670,7 +670,10 @@ export function planOfOrbital(o: OrbitalFlight): FlightPlan {
         source: (c.altitude ?? c.after)?.source ?? 'with what it follows',
       });
     }
-  const actionAt = new Set(events.flatMap((e) => (e.at ? [e.at.value] : [])));
+  // the record's own events at the instants the plan's others are set off at (the braking burn, the modules' parting)
+  for (const e of events) if (e.at && !e.record) Object.assign(e, record(e.at));
+  // (an instant is an event's only where the clock sets it off: one a stage is cut at on its velocity stays a mark, the record's instant of what the integrator did)
+  const actionAt = new Set(events.flatMap((e) => (e.at && e.when.some((w) => 'time' in w) ? [e.at.value] : [])));
   const checks: PlanCheck[] = [
     ...(a?.checks ?? []).map((c): PlanCheck => ({ ...c, of: 'ascent', ...ascentWhen(c.id, o) })),
     ...o.checks.map((c): PlanCheck => ({ ...c, of: 'orbit' })),

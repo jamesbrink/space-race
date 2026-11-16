@@ -325,7 +325,7 @@ never adjusted to bring a check in.
   drag, what it puts out and when, the air's tearing) which the path ahead flies too (fliers.ts `descending`;
   tests/descending.test.mjs holds the predicted landings to flyDown's). `tests/staged.test.mjs` holds the ascent's, the coast's and
   the descent's checks against their misses (src/sim/misses.ts), lists every input that is not documented and prints what each moves, the
-  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage.
+  law solved afresh each time. A new orbital flight flies on this with its own data: nothing in staged.ts names a stage. What happens when is read from the plan's events (staged.ts `sequenceOf`: each stage lit, cut at an instant or on a speed, let go; the drops; the record's instants by id; orbital.ts `coastOf`: the burn the coast flies, the parting, the height what comes down is let loose at), not from the stage records' times; the figures are still the records' until the flights say their plans.
   A stage with `velocity` is cut as its integrator cut it, when its speed (or with `apparent`, the acceleration it has
   sensed since its ignition) reaches the setting (found within the step by the secant, so the instant is smooth in the
   inputs), and its recorded `cutoff` becomes a check (Vostok 1's Block E, on the flight task's apparent velocity). How
