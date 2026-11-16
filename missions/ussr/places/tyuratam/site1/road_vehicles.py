@@ -626,8 +626,9 @@ def build(parts: Parts) -> None:
     # alone: a dark car stood beyond the crowd in August, where is not known, and the August truck's place is not known.
     # On 11 and 12 August 1962 a bus brought each pilot and his back-up, suited: that it was the same LAZ-695B, and where
     # it stopped, are taken (assumed), Kamanin having ordered the cosmonauts carried that summer in the «Львов», a LAZ.
-    # In June 1963 Kamanin has the bus at the rocket for both pilots; where it stood is April's place again, taken.
-    bus_days = ("1961-04-12", "1961-08-06", "1962-08-11", "1962-08-12", "1963-06-14", "1963-06-16")
+    # In June 1963 Kamanin has the bus at the rocket for both pilots; where it stood is April's place again, taken. On
+    # 12 October 1964 he has the bus at the pad with Voskhod 1's three, in wool suits: the same LAZ-695B, assumed.
+    bus_days = ("1961-04-12", "1961-08-06", "1962-08-11", "1962-08-12", "1963-06-14", "1963-06-16", "1964-10-12")
     if stood(
         "On the apron: the cosmonauts' bus",
         since=bus_days[0],
@@ -640,7 +641,8 @@ def build(parts: Parts) -> None:
         "космонавтами, одетыми в скафандры» at 11:30 local on the 11th); the film «Звёздные братья» (1962): the bus on each morning; "
         "Kamanin's diary, 14 June 1963 («За 2 часа 15 минут до старта автобус с космонавтами прибыл к ракете»: 09:45 Moscow time, Vostok 5) and "
         "16 June 1963 («Ровно в 12 часов 15 минут автобус доставил Терешкову на старт», by the range's clock: 10:15 Moscow time, "
-        "Vostok 6); its place on both days April's, taken",
+        "Vostok 6); its place on both days April's, taken; Kamanin's diary, 12 October 1964 (the bus at the pad at 10:15 by the range's "
+        "clock, 08:15 Moscow time, Voskhod 1: that it was the same LAZ-695B is assumed, and its place April's, taken)",
     ) and (sitelib.AS_OF is None or sitelib.AS_OF in bus_days):
         bus(parts)
     if stood(
