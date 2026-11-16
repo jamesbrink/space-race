@@ -258,7 +258,8 @@ for (const flight of BALLISTIC) {
       const d = structuredClone(d0);
       const h = structuredClone(HARDWARE);
       change(d, h);
-      const r = fly(planOf(d, flight.checks, body, h), SITE, SEA).results;
+      // (flown through the same day's air as the flight: its column, sim/air.ts `skyOf`)
+      const r = fly({ ...planOf(d, flight.checks, body, h), aloft: flight.plan.aloft }, SITE, SEA).results;
       moved[name] = shown.map((id) => (r[id] / base[id] - 1) * 100);
       t.diagnostic(
         `${`${name} (${confidence})`.padEnd(34)} ${moved[name].map((x) => `${x >= 0 ? '+' : ''}${x.toFixed(1)}`.padStart(7)).join('')}`,

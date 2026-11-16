@@ -99,7 +99,7 @@ export function predictions(flight) {
     make: ({ nudge = 0, turn = 0 } = {}) => {
       const start = { t: s100.t, r: out(s100.r, nudge), v: s100.v };
       const gone = seq.stages.filter((k) => k.sep <= s100.t).reduce((m, k) => Math.max(m, k.sep), 0);
-      const job = propagate(stack(plan, site, sea, s100.mass, gone), start, where(turn));
+      const job = propagate(stack(plan, site, sea, s100.mass, gone, turned(frame, turn)), start, where(turn));
       job.run();
       return pathFigures(job.result);
     },

@@ -267,7 +267,7 @@ export class OrbitDeck extends Deck {
       );
     }
     if (start.t < this.parting)
-      return propagate(stack(this.flight.plan!, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
+      return propagate(stack(this.flight.plan!, site, sea, start.mass, this.goneAt(start.t), this.frame), start, where, options);
     // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
     const ship = shipOf(plan);
     const on = ship.on;

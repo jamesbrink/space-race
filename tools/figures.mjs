@@ -16,6 +16,7 @@
 import { globSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { STILL } from '../src/sim/air.ts';
 import { autopilot, blend, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { ballisticOf, fly, sampleAt } from '../src/sim/fly.ts';
 import { flyOrbit } from '../src/sim/orbital.ts';
@@ -104,7 +105,7 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
 
   // an abort off the pad, the engine never lit, in still air
   if (b.craft.rigid?.escape) {
-    const still = { ...flight.plan, winds: undefined };
+    const still = { ...flight.plan, winds: STILL };
     const av = vehicle(still, site, sea, { frame });
     const auto = autopilot(av, { launch: false });
     const tally = new Tally();

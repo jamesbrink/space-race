@@ -16,6 +16,7 @@ import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts
 import { BALLISTIC, calm, doing, edited, natured, R, unlimited } from './ballistic.mjs';
 import { autopilot, BOOSTER_GAINS, blend, flyLive, rateCommand, steer, Tally } from '../src/sim/autopilot.ts';
 import { ballisticOf, coast, fly, sampleAt } from '../src/sim/fly.ts';
+import { skyOf } from '../src/sim/air.ts';
 import { G0, P0 } from '../src/world/bodies.ts';
 import { aboutAxis, fromAxes, massOf, multiply, turn, unturn } from '../src/sim/rigid.ts';
 import { HANDS_OFF, TICK, vehicle } from '../src/sim/vehicle.ts';
@@ -28,6 +29,8 @@ const SEA = flight.site.seaLevel.value;
 const PLAN = flight.plan;
 const CALM = calm(PLAN);
 const B = ballisticOf(PLAN);
+/** The air's pressure at the pad on the day the plan flies (sim/air.ts `skyOf`: its column's, where it has one), Pa. */
+const PAD_P = skyOf(PLAN).air(flight.site.height.value - SEA).pressure;
 const RIGID = PLAN.craft[0].rigid;
 const LB = 0.45359237;
 
@@ -137,7 +140,13 @@ test('it stands on the pad until lit, and until its thrust is more than its weig
   // the real one leaves at once, at thrust over weight
   const lit = whole.tick(start, { ...HANDS_OFF, throttle: 1 });
   assert.ok(!lit.held, 'off the pad on the first tick');
-  near(whole.sample(lit).g, B.engine.thrust.seaLevel.value / (PLAN.craft[0].mass.value * G0), 1e-3, 'at 1.19 g');
+  // (the thrust against the day's air at the pad: the vacuum figure less its pressure on the exit)
+  near(
+    whole.sample(lit).g,
+    (B.engine.thrust.vacuum.value - B.engine.exitArea.value * PAD_P) / (PLAN.craft[0].mass.value * G0),
+    1e-3,
+    'at 1.19 g',
+  );
   const second = whole.step(start, { ...HANDS_OFF, throttle: 1 }, 1);
   assert.ok(whole.sample(second).altitude > s0.altitude + 0.5, 'and climbing a second later');
 });
@@ -863,9 +872,9 @@ test('a throttled engine (a fixture) follows its lever within its range, burns i
   // (eight tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
   near(
     sea,
-    0.8 * B.engine.thrust.vacuum.value - B.engine.exitArea.value * P0,
+    0.8 * B.engine.thrust.vacuum.value - B.engine.exitArea.value * PAD_P,
     50,
-    'eight tenths of the vacuum thrust at the pad, less one atmosphere on the exit (and 10 N for the pad’s few metres of height)',
+    'eight tenths of the vacuum thrust at the pad, less the day’s air at the pad on the exit',
   );
   assert.ok(main > sea, 'and the thinner air’s gain on top of it');
   s = v.tick(s, at(2));

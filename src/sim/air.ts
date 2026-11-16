@@ -56,7 +56,7 @@ export function blowOf(winds: Winds | undefined | null): Blow | null {
  */
 export const DAY_AIR = { on: false };
 
-/** Above this height, m, the standard's air is the standard's own: between the column's top and here it is scaled by the column's density over the standard's at the top, eased to 1. */
+/** Above this height, m, the standard's air is the standard's own: between the column's top and here it is scaled by the column's density and temperature over the standard's at the top, eased to 1. */
 export const COLUMN_EASED = 70_000;
 
 /**
@@ -70,16 +70,22 @@ export interface Sky {
   column: boolean;
 }
 
+/**
+ * No wind at all, said as a sounding (`FlightPlan.winds`): a plan that gives it flies air that turns with the Earth and no
+ * more, whatever its column's wind. (A plan that gives no sounding flies its column's wind, where it has a column.)
+ */
+export const STILL: Winds = { levels: [], calmAbove: { value: 0, confidence: 'documented', source: 'no wind: still air' } };
+
 /** The 1976 standard atmosphere and calm air: a plan with no air of its own. */
 export const STANDARD: Sky = { air: atmosphere, blow: null, column: false };
 
 /**
  * The air a plan flies through (`Sky`). Where the plan carries the day's column (`FlightPlan.aloft`) and `DAY_AIR` is on,
  * the column's air within it (world/aloft.ts `aloftAt`); below its lowest level and above its top, the standard's scaled by
- * the column's density over the standard's at that end, the ratio held below the ground and eased to 1 by `COLUMN_EASED`
+ * the column's density and temperature over the standard's at that end (the pressure by the gas law), the ratios held below the ground and eased to 1 by `COLUMN_EASED`
  * above the top, so nothing steps; the temperature, and so the speed of sound, the standard's there. The wind is the
- * record's own sounding where it has one (`FlightPlan.winds`, documented), else the column's, held below its lowest level
- * and falling evenly to nothing at `COLUMN_EASED`, else calm. Without a column it is the standard and the record's
+ * record's own sounding where it has one (`FlightPlan.winds`, documented; `STILL` for none at all), else the column's,
+ * held below its lowest level and falling evenly to nothing at `COLUMN_EASED`, else calm. Without a column it is the standard and the record's
  * sounding, as every plan flew before the day's air was read.
  */
 export function skyOf(plan: { winds?: Winds; aloft?: Aloft } | null | undefined): Sky {
@@ -97,9 +103,18 @@ function skyFrom(plan: { winds?: Winds; aloft?: Aloft }): Sky {
   if (!aloft || aloft.levels.length < 2) return sounding ? { air: atmosphere, blow: sounding, column: false } : STANDARD;
   const levels = aloft.levels;
   const [low, top] = [levels[0]!.height.value, levels[levels.length - 1]!.height.value];
-  const ratio = (h: number): number => aloftAt(aloft, h)!.density / atmosphere(h).density;
+  // (the column's density and temperature over the standard's at an end; the pressure follows, by the gas law, so the air
+  // outside the column is the standard's with the column's departure from it at that end carried on)
+  const ratio = (h: number): [density: number, temperature: number] => {
+    const [day, standard] = [aloftAt(aloft, h)!, atmosphere(h)];
+    return [day.density / standard.density, day.temperature / standard.temperature];
+  };
   const [below, above] = [ratio(low), ratio(top)];
-  const scaled = (a: Air, k: number): Air => (k === 1 ? a : { ...a, density: a.density * k, pressure: a.pressure * k });
+  const scaled = (a: Air, [d, t]: readonly [number, number]): Air => {
+    if (d === 1 && t === 1) return a;
+    const temperature = a.temperature * t;
+    return { density: a.density * d, pressure: a.pressure * d * t, temperature, soundSpeed: a.soundSpeed * Math.sqrt(t) };
+  };
   const air = (altitude: number): Air => {
     const day = aloftAt(aloft, altitude);
     if (day)
@@ -112,7 +127,8 @@ function skyFrom(plan: { winds?: Winds; aloft?: Aloft }): Sky {
     const standard = atmosphere(altitude);
     if (altitude < low) return scaled(standard, below);
     if (altitude >= COLUMN_EASED) return standard;
-    return scaled(standard, 1 + ((above - 1) * (COLUMN_EASED - altitude)) / (COLUMN_EASED - top));
+    const k = (COLUMN_EASED - altitude) / (COLUMN_EASED - top);
+    return scaled(standard, [1 + (above[0] - 1) * k, 1 + (above[1] - 1) * k]);
   };
   const winds = levels.filter((l) => l.wind);
   const own = aloftAt(aloft, low)?.wind;
@@ -129,7 +145,7 @@ function skyFrom(plan: { winds?: Winds; aloft?: Aloft }): Sky {
           return [highest[0] * k, highest[1] * k];
         }
       : null;
-  return { air, blow: sounding ?? column, column: true };
+  return { air, blow: plan.winds ? sounding : column, column: true };
 }
 
 /** The air at a place and what a body moving through it there meets: `r` and `v` in the flight's frame (world/earthframe.ts), `at` seconds from liftoff. */

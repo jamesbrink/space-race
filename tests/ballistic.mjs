@@ -6,6 +6,7 @@ import { globSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ballisticOf } from '../src/sim/fly.ts';
+import { STILL } from '../src/sim/air.ts';
 
 const root = join(import.meta.dirname, '..');
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
@@ -68,7 +69,7 @@ export function doing(s, plan) {
 }
 
 /** The plan with no winds aloft: the air turns with the Earth and no more. */
-export const calm = (plan) => ({ ...plan, winds: undefined });
+export const calm = (plan) => ({ ...plan, winds: STILL });
 
 /**
  * The plan with its booster's engine of another nature (a test's fixture, never data): its kind, the range its throttle

@@ -430,10 +430,13 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
  * A staged launch vehicle with its engines stopped now (an orbital plan's stages: Vostok 1's R-7 with what it still
  * carries): a point mass of `mass` kg on the drag of the shape it has (staged.ts `stackOf`'s area for the record instant
  * `gone`, the latest separation among what has been let go: `StagedVehicle.shape`), through the same air, nothing more
- * let go and nothing lit, down to the ground or once round. What the deck shows on the launch vehicle (orbitdeck.ts).
+ * let go and nothing lit, down to the ground or once round. What the deck shows on the launch vehicle (orbitdeck.ts). In
+ * `frame` (the flight's: world/earthframe.ts) it goes with the plan's wind (air.ts `skyOf`); left out, through still air.
  */
-export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: number, gone: number): Flier {
+export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: number, gone: number, frame?: EarthFrame): Flier {
   const drag = stackOf(plan).dragArea;
+  const sky = skyOf(plan);
+  const blow = frame ? sky.blow : null;
   return {
     kind: 'coast',
     cutoff: null,
@@ -442,9 +445,10 @@ export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: 
     radius: plan.record!.orbit!.radius.value,
     ground: floorOf(site, seaLevel),
     burning: () => false,
-    push(_at, p, u, altitude) {
-      const air = skyOf(plan).air(altitude);
-      const wind = sub(u, cross(SPIN, p));
+    push(at, p, u, altitude) {
+      const air = sky.air(altitude);
+      const over = sub(u, cross(SPIN, p));
+      const wind = blow && frame ? sub(over, blowing(frame, blow, frame.place(p, at), altitude, at)) : over;
       const airspeed = length(wind);
       if (!(airspeed > 0)) return [0, 0, 0];
       return scale(airDrag(wind, airspeed, air.density, drag(gone, airspeed / air.soundSpeed)), 1 / mass);
@@ -488,7 +492,8 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   const stack = stackOf(fp);
   // (the law, the air and the path are all in the vehicle's frame)
   const law = lawOf(fp, site, v.frame, now.solved);
-  const airOf = airOfStack(seaLevel, v.frame, skyOf(fp));
+  const sky = skyOf(fp);
+  const airOf = airOfStack(seaLevel, v.frame, sky);
   const last = stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
@@ -622,8 +627,9 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     burning: () => (alone ? alone.burning() : lit()),
     push(at, p, u, altitude) {
       if (alone) return alone.push(at, p, u, altitude);
-      const air = skyOf(fp).air(altitude);
-      const wind = sub(u, cross(SPIN, p));
+      const air = sky.air(altitude);
+      const over = sub(u, cross(SPIN, p));
+      const wind = sky.blow ? sub(over, blowing(v.frame, sky.blow, v.frame.place(p, at), altitude, at)) : over;
       const airspeed = length(wind);
       let thrust = 0;
       for (let i = 0; i < stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);

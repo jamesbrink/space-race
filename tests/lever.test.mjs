@@ -12,7 +12,7 @@ import { G0 } from '../src/world/bodies.ts';
 import { Lever, NOTCH } from '../src/sim/lever.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { siteFrame } from '../src/world/frames.ts';
-import { atmosphere } from '../src/sim/atmosphere.ts';
+import { skyOf } from '../src/sim/air.ts';
 
 const SITE = siteFrame(flight.site);
 const SEA = flight.site.seaLevel.value;
@@ -63,7 +63,7 @@ test('lit, the engine runs at the lever, and follows it the tick after it moves'
   assert.ok(s.ignited && !s.cutoff);
   assert.equal(s.throttle, 0.7, 'lit at seven tenths');
   // (seven tenths of the jet's vacuum thrust, less the air's push on the nozzle's exit, which no throttle takes off: sim/thrust.ts)
-  const atPad = atmosphere(v.sample(s).altitude).pressure;
+  const atPad = skyOf(plan).air(v.sample(s).altitude).pressure;
   near(
     v.sample(s).burning.find((m) => m.engine === v.engine).thrust,
     0.7 * engine.thrust.vacuum.value - engine.exitArea.value * atPad,

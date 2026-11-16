@@ -76,13 +76,15 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   const sea = vostok1.site.seaLevel.value;
   const frame = frameOf(vostok1);
   const s = stateOver(frame, site, 300);
+  // (the ascent flies the day's column over the pad, the coast the standard air and calm: sim/air.ts `skyOf`)
   const air = airAt(frame, s.r, s.v, s.t, sea, skyOf(vostok1.plan));
+  const still = airAt(frame, s.r, s.v, s.t, sea);
   // the spacecraft alone, its engine not lit: the coast's own push (orbital.ts shipPush, which flyOrbit flies)
   const ship = spacecraft(vostok1.plan, frame, site, sea, s);
-  same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(vostok1.plan, s.t, air.wind, air.altitude, null), 'the spacecraft');
+  same(ship.push(s.t, s.r, s.v, still.altitude), shipPush(vostok1.plan, s.t, still.wind, still.altitude, null), 'the spacecraft');
   // the stack with its engines stopped: the ascent's drag area for the shape it has, over its mass
   const gone = sequenceOf(vostok1.plan).stages[0].sep;
-  const stopped = stack(vostok1.plan, site, sea, 30_000, gone);
+  const stopped = stack(vostok1.plan, site, sea, 30_000, gone, frame);
   same(
     stopped.push(s.t, s.r, s.v, air.altitude),
     scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(vostok1.plan).dragArea(gone, air.mach)), 1 / 30_000),
