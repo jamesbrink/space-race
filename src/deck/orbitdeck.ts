@@ -40,7 +40,8 @@ import { downVerdict } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
 import { descentRecords, firesOf, grown, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import type { Clock } from '../world/clock.ts';
+import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
+import { due, onRails } from '../sim/rails.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
@@ -1270,7 +1271,20 @@ export class OrbitDeck extends Deck {
       this.clock.pause();
       this.clock.seek(this.over() + 12);
     }
+    this.rails(t);
     this.show();
+  }
+
+  /**
+   * A coast on rails (sim/rails.ts): with nothing burning above the air and nothing asked of the hands, the clock may run
+   * past an hour a second (world/clock.ts `COAST_RATES`), and it is held at the next of the run's events and the record's
+   * instants as this flight has them, which are lived at real time. Otherwise it is held to an hour a second.
+   */
+  private rails(t: number): void {
+    const run = this.run!;
+    const on = run.samples.length > 0 && onRails(run.at(t) as LiveSample, this.asked.length > 0);
+    this.clock.allow(on ? COAST_RATES[COAST_RATES.length - 1]! : RATES[RATES.length - 1]!);
+    this.clock.hold(on ? due([...run.events.map((e) => e.t), ...Object.values(this.times), run.duration], t) : Number.NaN);
   }
 
   /** The user's launch vehicle stepped up to the clock (as the ballistic deck steps its own: every tick noted, kept every tenth of a second). */

@@ -153,8 +153,14 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     The predictor's DP45 takes the same;
   - gravity as terms: core/gravity.ts. The Earth with J2 is the default; a third body is a point mass; the central body
     can be switched; the Moon and Sun are DE440's (derived) when it is loaded before the terms are made
-    (world/ephemeris.ts `loadEphemeris`), Meeus's (estimated) otherwise; a coast faster than an hour a second is
-    flown on rails (world.md, "Faster than an hour a second": what the simulator is to provide);
+    (world/ephemeris.ts `loadEphemeris`), Meeus's (estimated) otherwise (no flight's plan names a third body yet, so
+    nothing waits for DE440);
+  - a coast faster than an hour a second: rails.ts. `coast(state, t0, t1, gravity, push)` flies it by an adaptive
+    Dormand-Prince 5(4) pair ending exactly on `t1`, the same in one span or in a fast clock's frames; tests/rails.test.mjs
+    holds Vostok 1's coast to flyOrbit's within 10 cm and 0.1 mm/s over 3,400 s, in under a hundred steps. `onRails` (nothing
+    burning, above `RAILS_FLOOR`, 120 km, nothing asked of the hands) lets the clock go to `COAST_RATES`, and `due` holds it
+    at the next of the run's events and the record's instants (orbitdeck.ts `rails`). The orbital deck's coast after the
+    parting is a run flown ahead (flyOrbit), so on rails it is played, not flown frame by frame;
   - G0, J2 and P0: world/bodies.ts;
   - the tear rule: loads.ts `tearOf`; the 0.05 g mark: `ENTRY_G`; a parachute's filling: `chuteArea`;
   - the apparent-velocity integrator: apparent.ts; when a load is spent: `spentAt`; one separation, along the joint's

@@ -114,8 +114,8 @@ the Moon in 2.6 s), and `clock.allow(3600)` or a reset closes them; `setRate` is
 is 170 s to half an hour of the world, so nothing may integrate the frame's span as one step: what is flown is flown on
 rails, and the clock is told the next instant that must not be skipped (`clock.hold(t)`: a frame that would cross it
 stops on it, and the rate goes back to 1, still running). On the ground they are not for offering: at 100,000x the day
-passes in under a second. What the simulator must provide for a coast on rails (src/sim, not here; the note for whoever
-builds it):
+passes in under a second. What the simulator provides for a coast on rails (sim/rails.ts: `coast`, `due`, `onRails`;
+simulator.md, "The core"), to this note:
 
 - `coast(state, t0, t1, gravity): state`: the adaptive propagator (sim/predict.ts `propagate`, a quiet flier: nothing
   burning, nothing scheduled) from `state` at `t0` to exactly `t1`, in the flight's frame, with the flight's gravity terms
