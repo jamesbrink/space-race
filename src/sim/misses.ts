@@ -79,9 +79,9 @@ const SHORT_TYPE =
   'Vostok 2’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-17’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
   'at the last cutoff it is level at the planned 180 km with 7,693 m/s where 183 by 244 km needs some 7,840';
 const PHASE =
-  'The published orbit flown round from where the ascent left the spacecraft, as osculating elements under J2, crosses the equator northbound every 88.66 min: at 11:49:09 and 17:43:46, where TASS’s crossings are 11:48 and 17:42, 88.5 min apart. ' +
-  'Over seventeen orbits it falls four minutes behind the record’s orbit (its node opening the eighteenth at 09:58:55 against 09:54.9 reckoned from TASS and Titov’s Globus fixes: mission.md), and the burn, at the instant derived from the record, is four minutes early on it. ' +
-  'What owns it is how the published elements are read (Vostok 1’s apogee miss is the same thing) and the place on the orbit at cutoff, which is the type’s ascent and not this flight’s';
+  'The published orbit read as mean elements with a nodal period (world/meanelements.ts, issue #8) and flown round under J2 from where the ascent left the spacecraft crosses the equator northbound every 88.45 min, ' +
+  'the published period: at 11:48:45 and 17:42:34, where TASS’s crossings are 11:48 and 17:42 (read as osculating, as until November 2026, it went round in 88.66 min and was four minutes behind the record’s orbit by the burn). ' +
+  'What is left is the place on the orbit at cutoff, which is the type’s ascent and not this flight’s, and the burn’s aim along the line from the Sun (`retro.aim`)';
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -208,44 +208,35 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   },
   'ussr/vostok/vostok-1': inUnits({
     coast: {
-      apogee: {
-        by: 18_000,
-        slack: 500,
-        why:
-          'Flown round, the orbit tops out at 345 km over the report’s 6,371 km ball, not 327. The blame is how `orbit` is read: the published heights are taken as the osculating orbit at cutoff, ' +
-          'at 62 degrees north, where the oblateness has the osculating semi-major axis some kilometres under its mean. The report’s figures are evidently mean ones, or heights measured round the ' +
-          'orbit; the last test prints what both heights 9 km lower would move (the flown apogee is then 336 km, so it is not the semi-major axis alone). The cure is a stated conversion from mean ' +
-          'to osculating elements, not a number changed: not done yet',
-      },
       separationAltitude: {
-        by: -17_900,
+        by: -22_037,
         slack: 1_500,
         why:
-          'At 10:36 it is at 137 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170. Theirs are reckonings too. Ours rests on the push lying along the line from the Sun, 30 degrees ' +
-          'below level, which brings it down early: `retro.aim`',
+          'At 10:36 it is at 133 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170. Theirs are reckonings too. Ours rests on the push lying along the line from the Sun, 30 degrees ' +
+          'below level, which brings it down early: `retro.aim`. (Read as osculating, the published orbit flew 18 km high and this was 137 km: read as mean it is 4 km worse)',
       },
       ejectionAt: {
         by: 225,
         slack: 10,
         why:
-          'It reaches 7 km at 10:45:43 Moscow time, where the record has the hatch going at 10:42 (to the minute) and the module on the ground at 10:48. A minute of it is the landing being 448 km long; ' +
-          'the rest is a descent that takes longer than the flight’s did, which points at `retro.aim` and `retro.deltaV` (a push only 59 per cent of which is against the motion) and at the orbit being read too high',
+          'It reaches 7 km at 10:45:35 Moscow time, where the record has the hatch going at 10:42 (to the minute) and the module on the ground at 10:48. A minute of it is the landing being 478 km long; ' +
+          'the rest is a descent that takes longer than the flight’s did, which points at `retro.aim` and `retro.deltaV` (a push only 59 per cent of which is against the motion)',
       },
       crossTrack: {
-        by: -68_800,
+        by: -64_128,
         slack: 3_000,
         why:
-          'It comes down 69 km to the left of the record’s landing. All of it is the braking burn’s sideways part: the Sun stood 41 degrees out of the orbit’s plane that morning (derived from the site, ' +
+          'It comes down 64 km to the left of the record’s landing. All of it is the braking burn’s sideways part: the Sun stood 41 degrees out of the orbit’s plane that morning (derived from the site, ' +
           'the hour and the inclination, and not in doubt), so a push straight along the line from the Sun has 65 per cent of itself across the track. With the same burn straight against the motion the ' +
-          'miss is 9 km. So `retro.aim` as the record words it (“the TDU was directed to the Sun”) cannot be the whole of how the engine’s axis lay: the sensor’s axis to the engine’s is the thing to find. Not adjusted',
+          'miss is 4 km. So `retro.aim` as the record words it (“the TDU was directed to the Sun”) cannot be the whole of how the engine’s axis lay: the sensor’s axis to the engine’s is the thing to find. Not adjusted',
       },
       alongTrack: {
-        by: 448_300,
+        by: 478_287,
         slack: 10_000,
         why:
-          'It comes down 448 km beyond the record’s landing along its own track. Three inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 129 km a degree), ' +
-          '`retro.aim` (straight against the motion it lands 450 km shorter, 2 km short of the record: which is no proof, given the first) and the reading of `orbit` (see apogee). Not adjusted: ' +
-          'the ascent flown is what replaces the first, a source on the solar sensor the second',
+          'It comes down 478 km beyond the record’s landing along its own track. Two inputs are each worth as much: `injection.arc` (no source; reckoned by hand to 3 degrees, 128 km a degree) and ' +
+          '`retro.aim` (straight against the motion it lands 439 km shorter, 39 km beyond the record: which is no proof, given the first). Not adjusted: the ascent flown is what replaces the first, ' +
+          'a source on the solar sensor the second. Read as osculating, as until November 2026, the published orbit flew 18 km high and this was 448 km: read as mean (world/meanelements.ts, issue #8) it is 30 km worse',
       },
     },
     ascent: {
@@ -261,27 +252,23 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       period: { by: -320.47, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
     },
     shown: {
-      apogee: {
-        by: 19_184,
-        slack: 300,
-        why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 346 km, not 327: the same miss as the coast from the published orbit in tests/orbital.test.mjs (345 km), which is how the published elements are read`,
-      },
       separationAltitude: {
-        by: -16_923,
+        by: -21_117,
         slack: 1_500,
-        why: `${PUBLISHED}. At 10:36 it is at 138 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170 (reckonings). The burn is aimed along the line from the Sun, 30 degrees below level, which brings it down early: \`retro.aim\`, as in the coast’s own misses`,
+        why: `${PUBLISHED}. At 10:36 it is at 134 km, where Lissov reckons 150 to 160 and Siddiqi 150 to 170 (reckonings). The burn is aimed along the line from the Sun, 30 degrees below level, which brings it down early: \`retro.aim\`, as in the coast’s own misses`,
       },
       ejectionAt: {
         by: 219.2,
         slack: 10,
-        why: `${PUBLISHED}. It reaches 7 km at 10:45:39, 3.7 minutes after the record’s 10:42: a minute and more of it is the landing being 452 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
+        why: `${PUBLISHED}. It reaches 7 km at 10:45:33, 3.6 minutes after the record’s 10:42: a minute and more of it is the landing being 503 km long, the rest a descent slower than the flight’s, which points at \`retro.aim\` again`,
       },
       alongTrack: {
-        by: 452_400,
+        by: 503_298,
         slack: 10_000,
         why:
-          `${PUBLISHED}. It comes down 452 km beyond the record’s landing along the track and 14 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
-          'The place on the orbit is now the ascent’s (27.82 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 450 km shorter in the coast from the published orbit) and how the published elements are read (both heights 9 km lower: 301 km shorter)',
+          `${PUBLISHED}. It comes down 503 km beyond the record’s landing along the track and 10 km across it (which holds: the plane flown from the flight task’s aiming azimuth is the record’s). ` +
+          'The place on the orbit is the ascent’s (27.82 degrees round from the pad, where the estimate was 27.5), so what owns the rest is the burn’s aim along the line from the Sun (straight against the motion it lands 439 km shorter in the coast from the published orbit). ' +
+          'Read as osculating, as until November 2026, it was 452 km: the published orbit read as mean (world/meanelements.ts, issue #8) puts the apogee where the record has it and the landing 51 km further out. Nothing is fitted',
       },
     },
     descent: {
@@ -313,20 +300,20 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'ussr/vostok/vostok-2': inUnits({
     coast: {
-      apogee: {
-        by: 17_816,
-        slack: 500,
-        why: 'Flown round, the orbit tops out at 262 km, not 244: Vostok 1’s miss, the published heights taken as the osculating orbit at the cutoff. The cure is a stated conversion from mean to osculating elements, not a number changed',
+      separationAltitude: {
+        by: -26_698,
+        slack: 1_500,
+        why: 'At 10:07, the instant the record has the cable bundle burn through, it is at 63 km where the record’s research has 80 to 100 (a reckoning). Read as osculating, as until November 2026, it was at 81 km and within, the burn then coming at another place on that orbit (PHASE); read as mean it is 18 km lower. What owns it is not found: the burn’s aim along the line from the Sun (`retro.aim`, Vostok 1’s separationAltitude miss) is the first suspect. Not adjusted',
       },
       crossTrack: {
-        by: -153_276,
+        by: -74_815,
         slack: 3_000,
-        why: 'From the estimated injection (Vostok 1’s place at cutoff) the coast falls behind the record’s orbit over seventeen revolutions, as the coast from the ascent flown does (tests/staged.test.mjs, PHASE: the published elements read as osculating), and the Earth has turned less under the track; the Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s)',
+        why: 'It comes down 75 km across the track from the record’s landing. The Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s). Read as osculating it was 154 km: the coast then fell four minutes behind the record’s orbit (PHASE) and the Earth had turned less under the track',
       },
       alongTrack: {
-        by: -1_426_770,
+        by: -452_416,
         slack: 10_000,
-        why: 'It comes down 1,427 km short along the track: the coast reaches the landing latitude some four minutes after the record’s orbit does (tests/staged.test.mjs, PHASE), so the burn, at the instant derived from the record, is four minutes early on it. `injection.arc` (no source) is worth 129 km a degree; the reading of `orbit` is the rest',
+        why: 'It comes down 452 km short along the track. Read as mean elements (PHASE) the coast keeps the record’s period, where read as osculating it fell four minutes behind and came down 1,427 km short; what is left is `injection.arc` (no source: 97 km a degree here) and `retro.aim` (straight against the motion: 421 km shorter)',
       },
     },
     ascent: {
@@ -340,25 +327,20 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       period: { by: -258.65, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
     },
     shown: {
-      apogee: {
-        by: 20_943,
-        slack: 300,
-        why: `${PUBLISHED}. Flown round under J2 the published orbit taken as osculating where the ascent cut off tops out at 265 km, not 244: Vostok 1’s miss, the same reading of the published elements`,
-      },
-      crossTrack: {
-        by: -94_571,
-        slack: 3_000,
-        why: `${PUBLISHED}. ${PHASE}: four minutes early the Earth has turned a degree less under the track, and the plane flown is Vostok 1’s, 0.06° steeper`,
+      separationAltitude: {
+        by: -29_506,
+        slack: 1_500,
+        why: `${PUBLISHED}. At 10:07, the instant the record has the cable bundle burn through, it is at 60 km where the record’s research has 80 to 100, as the coast from the injection (63 km): see the coast's miss. Read as osculating it was at 79 km and within`,
       },
       alongTrack: {
-        by: -1_493_390,
+        by: -500_944,
         slack: 10_000,
-        why: `${PUBLISHED}. It comes down over Anatolia, 1,493 km short along the track: ${PHASE}. Flown at Titov’s own 09:57, which the record’s orbit rules out, it would come down 395 km beyond (mission.md, "The braking burn")`,
+        why: `${PUBLISHED}. It comes down 501 km short along the track and 19 km across it (which holds): ${PHASE}. Read as osculating, as until November 2026, it came down over Anatolia, 1,493 km short`,
       },
     },
     descent: {
       'pilot.at': {
-        by: 339.85,
+        by: 261.2,
         slack: 10,
         why: 'Late by the type’s descent, as Vostok 1’s is: from the burn he is 32.6 min to the ground where the record’s 09:51 to 10:18 is 27, and four kilometres under a canopy at 5 m/s is 13 minutes by itself (Vostok 1’s miss)',
       },

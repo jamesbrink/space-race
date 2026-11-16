@@ -46,13 +46,15 @@ marked so; across the track, the burn-through's height and the entry's load are.
 
 Flown once at Titov's 09:57 on the same record, as the evidence: the modules part at 123 km at 10:07 (against the 80 to
 100 km the entry then implies), 7 km at 10:15:56, the pilot down at 10:27:52 over 53.83° N 50.28° E, 395 km beyond the
-record's landing. Flown at 09:51: the modules part at 79 km, 7 km at 10:11:41 over 40.00° N 35.34° E, **1,493 km short**
-(the pilot down some twelve minutes later). The simulator's coast puts 09:57 nearer, and that is the coast's error, not the record's
-vindication: flown round from where the ascent left it, the published orbit crosses the equator northbound every 88.66
-minutes (at 11:49:09 and 17:43:46, where TASS has 11:48 and 17:42, 88.5 apart), and over seventeen orbits falls four
-minutes behind the record's (its node opening the eighteenth at 09:58:55 against 09:54.9). That is how the published
-elements are read (taken as osculating at the cutoff, under J2: Vostok 1's apogee miss is the same thing) and where the
-type's ascent left the spacecraft, and it is a recorded miss (tests/staged.test.mjs `PHASE`), not tuned.
+record's landing. Flown at 09:51, the published orbit read as mean elements with a nodal period (world/meanelements.ts,
+issue #8): the modules part at 60 km, 7 km at 10:10:25 over 47.31° N 42.76° E, **501 km short** (the pilot down at
+10:22:21). Flown round from where the ascent left it, the orbit so read crosses the equator northbound every 88.45 minutes,
+the published period: at 11:48:45 and 17:42:34, where TASS has 11:48 and 17:42. Read as osculating at the cutoff, as until
+November 2026, it went round in 88.66 minutes (11:49:09 and 17:43:46), fell four minutes behind the record's orbit over
+seventeen orbits (its node opening the eighteenth at 09:58:55 against 09:54.9) and came down 1,493 km short; that was the
+coast's error, which put 09:57 nearer, not the record's vindication. What is left of the miss is where the type's ascent
+left the spacecraft and the burn's aim along the line from the Sun (`retro.aim`); it is recorded (tests/staged.test.mjs
+`PHASE`), not tuned. The 09:57 run above was flown as osculating and has not been run again.
 
 ## The two periods by hand
 
@@ -76,17 +78,17 @@ scene shows), then the descent. Tolerances were set before anything was flown.
 | Apogee at the last cutoff | 244 km ± 10 | 180 km | **miss** | the same |
 | Inclination | 64°56′ ± 0.05° | 64.99° | **miss** (0.06) | Vostok 1's aiming azimuth, estimated |
 | Period at the last cutoff | 88.46 min ± 15 s | 84.15 min | **miss** | the same as the perigee |
-| Period, from the published heights | 88.46 min ± 2 s | 88.46 | yes | not independent (the reference ball is derived from it) |
-| Apogee as flown round | 244 km ± 5 | 265 km | **miss** | the published heights read as osculating (Vostok 1's) |
-| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 79 km | yes | |
-| Greatest load in the entry | about 10 g ± 2 | 8.71 g | yes | |
-| Landing across the track | 0 ± 25 km | −95 km | **miss** | four minutes early on the coast (PHASE), Vostok 1's azimuth |
-| Landing along the track | 0 ± 100 km | −1,493 km | **miss** | PHASE |
-| Descent module down | about 10:15 ± 4 min (derived) | 10:16:27 | yes | |
-| Titov down | 10:18 ± 2 min | 10:23:39 | **miss** (+340 s) | the type's descent is slower than the record's clocks, as Vostok 1's |
+| Period, node to node, of the orbit begun | 88.46 min ± 2 s | 88.46 | yes | not independent: the published orbit is read as mean elements with this nodal period (issue #8) |
+| Apogee as flown round | 244 km ± 5 | 245 km | yes | (read as osculating, as until November 2026: 265 km, a miss) |
+| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 60 km | **miss** | not found: the burn's aim the first suspect (as osculating: 79 km, within) |
+| Greatest load in the entry | about 10 g ± 2 | 8.42 g | yes | |
+| Landing across the track | 0 ± 25 km | −19 km | yes | (as osculating: −95 km, a miss: four minutes early on the coast) |
+| Landing along the track | 0 ± 100 km | −501 km | **miss** | PHASE (as osculating: −1,493 km) |
+| Descent module down | about 10:15 ± 4 min (derived) | 10:15:09 | yes | |
+| Titov down | 10:18 ± 2 min | 10:22:21 | **miss** (+261 s) | the type's descent is slower than the record's clocks, as Vostok 1's |
 
-The coast from the estimated injection (tests/orbital.test.mjs): apogee 262 km (miss, the same reading), across −153 km,
-along −1,427 km (misses, PHASE).
+The coast from the estimated injection (tests/orbital.test.mjs): apogee 243 km (holds), across −75 km, along −452 km
+(misses), the bundle at 63 km (miss); read as osculating it was 262 km, −154 km, −1,427 km and 81 km.
 
 The along-track figures above are as flown since the integrator's correction of 14 November 2026 (a burn that ends inside a
 step delivers its whole impulse: docs/agents/simulator.md), which brought both landings some 17 km shorter. The 09:57 run's

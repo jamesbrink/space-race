@@ -17,7 +17,8 @@ import { G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { elementsOf, period, planeThrough, type State, stateOf, step, sunlit } from '../world/orbit.ts';
+import { fromPublished, meanOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
+import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
@@ -333,7 +334,10 @@ export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, fro
 
 /** What the record gives figures for, as the coast has them. */
 export interface OrbitResults {
-  /** Once round the published orbit by Kepler's law, s: the published heights against the published period. */
+  /**
+   * Node to node on the orbit the coast begins on, s: the nodal period of its mean elements with the perigee where it
+   * stands (world/meanelements.ts `meanOf`, `periodsOf`: Kozai's first order), which is what the published period is.
+   */
   period: number;
   /** The greatest height above the orbit's reference ball before the braking burn, m. */
   apogee: number;
@@ -422,10 +426,25 @@ export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFra
   const toNode: Vec3 = [Math.cos(node), Math.sin(node), 0];
   const latitudeArgument = Math.atan2(dot(at, cross(n, toNode)), dot(at, toNode));
   const nu = o.injection.anomaly.value * DEG;
-  const a = o.radius.value + (o.perigee.value + o.apogee.value) / 2;
-  const e = (o.apogee.value - o.perigee.value) / (2 * a);
-  const s = stateOf({ a, e, i, node, argp: latitudeArgument - nu, nu });
+  // (the published orbit read as mean elements, its period nodal: world/meanelements.ts; the place on it is the mean orbit's)
+  const s = fromPublished(publishedOf(o), { node, latitude: latitudeArgument, anomaly: nu }).state;
   return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
+}
+
+/**
+ * A record's published orbit as world/meanelements.ts reads it: its heights, inclination and period, the period of the
+ * kind its `CONVENTION` takes (nodal, estimated), the ball the heights are over only where that is wanted. `kind`
+ * 'osculating' reads it as every run here read it before: the heights over the record's ball as the osculating orbit.
+ */
+export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['orbit']>, kind?: PeriodKind): PublishedOrbit {
+  return {
+    perigee: o.perigee.value,
+    apogee: o.apogee.value,
+    inclination: o.inclination.value * DEG,
+    period: o.period.value,
+    radius: o.radius.value,
+    ...(kind ? { kind } : {}),
+  };
 }
 
 /**
@@ -647,9 +666,13 @@ export function flyOrbit(
     };
   };
 
-  const a0 = radius + (ship.orbit.perigee.value + ship.orbit.apogee.value) / 2;
+  /** The nodal period of the orbit a state is on (in the frame of date, whose +Z is the pole), by its mean elements. */
+  const nodalOf = (s: State): number => {
+    const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
+    return periodsOf(m.a, m.e, m.i, m.argp).nodal;
+  };
   const results: OrbitResults = {
-    period: period(from ? elementsOf(from.r, from.v).a : a0),
+    period: nodalOf(state),
     apogee: 0,
     shadowIn: Number.NaN,
     shadowOut: Number.NaN,

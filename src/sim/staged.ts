@@ -27,7 +27,6 @@
  * flight to the last bit.
  */
 import type { Curve } from '../types.ts';
-import { EARTH } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import {
   add,
@@ -44,11 +43,22 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { alongPublished } from '../world/meanelements.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { G0, P0 } from '../world/bodies.ts';
 import { downOf } from './descent.ts';
-import { chuteEvent, coastEvents, type DescentHands, flyDown, flyOrbit, type Guidance, type OrbitFlown, shipOf } from './orbital.ts';
+import {
+  chuteEvent,
+  coastEvents,
+  type DescentHands,
+  flyDown,
+  flyOrbit,
+  type Guidance,
+  type OrbitFlown,
+  publishedOf,
+  shipOf,
+} from './orbital.ts';
 import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag } from './air.ts';
@@ -746,10 +756,9 @@ export function flyOn(
  * (sim/run.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
  */
 export function published(plan: FlightPlan, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
-  const o = plan.record!.orbit!;
-  const a = o.radius.value + (o.perigee.value + o.apogee.value) / 2;
-  const speed = Math.sqrt(EARTH.gm.value * (2 / length(at.r) - 1 / a));
-  return { t: at.t, r: at.r, v: scale(unit(at.v), speed) };
+  // (the speed that puts it on the published orbit read as mean elements, its period nodal: world/meanelements.ts)
+  const s = alongPublished(publishedOf(plan.record!.orbit!), at.r, at.v).state;
+  return { t: at.t, r: at.r, v: s.v };
 }
 
 /**

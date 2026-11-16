@@ -548,7 +548,7 @@ export const orbital: VostokRecord = {
   checks: [
     {
       id: 'period',
-      label: 'Period, from the published heights',
+      label: 'Period, node to node, of the orbit begun',
       value: 89.44 * 60,
       unit: 's',
       tolerance: 2,

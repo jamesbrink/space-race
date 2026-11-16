@@ -175,15 +175,13 @@ it, are the 0.02 s. Vostok 2 so read, from its record's estimated injection, cro
 Moscow time where TASS has 11:48 and 17:42 (as osculating, 11:49:08 and 17:43:45): a check, not a target. Vallado's
 worked examples of mean elements were not to hand and none is used.
 
-What src/sim is to do with it (the note for whoever does it; nothing there is changed by this module): where the published
-orbit becomes a state, call it instead. `sim/orbital.ts` `injectionState`: in place of `stateOf({ a, e, i, node, argp:
-latitudeArgument - nu, nu })`, `fromPublished({ perigee, apogee, inclination: i, period, radius }, { node, latitude:
-latitudeArgument, anomaly: nu }).state`. `sim/staged.ts` `published`: in place of vis-viva on `a`, `alongPublished(same,
-at.r, at.v).state.v` (the flight's frame has the pole for +Z, which is all it needs). With `kind: 'osculating'` both give
-today's states to the bit. Flown so (a scratch run, not a test), Vostok 2's coast from the ascent flown crosses at 11:48:45
-and 17:42:35, its node opening the eighteenth orbit at 09:55:39 (the record's, derived, 09:54.9), and with the burn at
-09:51:00 it comes down 501 km short where it was 1,493; Vostok 1's apogee flown round is 326.1 km (record 327, was
-346.2), its landing 503 km beyond where it was 452. The record's `orbit.radius` then only labels heights.
+src/sim reads every published orbit so (`sim/orbital.ts` `publishedOf`): `injectionState` places the coast's start with
+`fromPublished`, and `sim/staged.ts` `published` gives a spacecraft left where the ascent cut off the speed `alongPublished`
+gives (the flight's frame has the pole for +Z, which is all it needs); `kind: 'osculating'` gives the old states to the
+bit. The coast's `period` result is the nodal period of the orbit it begins on, by `meanOf` and `periodsOf`. Flown so,
+Vostok 2's coast from the ascent flown crosses at 11:48:45 and 17:42:34 and, with the burn at 09:51:00, comes down 501
+km short where it was 1,493; Vostok 1's apogee flown round is 326.1 km (record 327, was 346.2), its landing 503 km
+beyond where it was 452 (src/sim/misses.ts, the flights' mission.md). The record's `orbit.radius` then only labels heights.
 
 Light must never step, at any clock rate (the idle show runs the night at 1200 times life).
 Everything cheap (the light's strength and colour, exposure, the sky, the fog, the lamps) is set

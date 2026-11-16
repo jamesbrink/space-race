@@ -11,11 +11,12 @@ import { coastOf, flyOrbit, injectionState } from '../src/sim/orbital.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
-import { elementsOf, nodalPeriod } from '../src/world/orbit.ts';
+import { nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { recordFrom } from './records.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
+import { meanOf, periodsOf } from '../src/world/meanelements.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const all = await Promise.all(
@@ -107,11 +108,13 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
-    const s = injectionState(f.plan, siteFrame(f.site), frameOf(f));
-    const el = elementsOf(s.r, s.v);
-    assert.ok(Math.abs(el.i / DEG - orbit.inclination.value) < 1e-9, 'inclination');
-    assert.ok(Math.abs(el.a * (1 - el.e) - orbit.radius.value - orbit.perigee.value) < 1e-3, 'perigee');
-    assert.ok(Math.abs(el.a * (1 + el.e) - orbit.radius.value - orbit.apogee.value) < 1e-3, 'apogee');
+    // (read as mean elements with a nodal period, world/meanelements.ts: the state's mean orbit is the published one)
+    const frame = frameOf(f);
+    const s = injectionState(f.plan, siteFrame(f.site), frame);
+    const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
+    assert.ok(Math.abs(m.i / DEG - orbit.inclination.value) < 1e-6, 'inclination');
+    assert.ok(Math.abs(periodsOf(m.a, m.e, m.i, m.argp).nodal - orbit.period.value) < 1e-3, 'the period, node to node');
+    assert.ok(Math.abs(2 * m.a * m.e - (orbit.apogee.value - orbit.perigee.value)) < 1, 'the heights apart');
     // how far the Sun stands out of the orbit's plane: it sets how much of a Sun-aimed push is across the track
     const jd = julianDate(f.launch) + coast.on / 86_400;
     const beta = Math.asin(dot(unit(sunPosition(terrestrialTime(jd))), unit(cross(s.r, s.v)))) / DEG;

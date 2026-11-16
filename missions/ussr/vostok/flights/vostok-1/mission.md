@@ -449,7 +449,7 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 | --- | --- | --- |
 | **Launch azimuth as flown** | **found**: 34°37′59″.2, the aiming line's, in Gagarin's flight task (section 6) | Flown: the orbit comes out at 64.99° against 64.95° |
 | **The solar sensor's axis against the engine's** | not found | The record's words are flown as written (push straight from the Sun) and the miss recorded. Research first; no angle is to be chosen to bring the landing in |
-| **What kind of elements the published orbit is** | not stated | Flown as osculating at cutoff, which the flown apogee shows to be wrong by 18 km. Next: read them as mean elements, through a stated first-order conversion (Kozai's, tested against a published case), and say so |
+| **What kind of elements the published orbit is** | not stated | **Read as mean elements, the period nodal** (world/meanelements.ts, Kozai's first order, tested against Jason-3's and Sentinel-3A's published mean orbits; the period's kind is estimated: issue #8). Flown so, the apogee flown round is 326 km against 327 (read as osculating at cutoff, as until November 2026: 345, 18 km high) |
 | **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
 | **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
 | **Pitch programme** | not found for the 8K72K (searched: Chertok vols 2 and 3, Siddiqi, Zak, K, B21, the 1957 reports of Sputnik's launch). Soyuz's from Baikonur is published (Starsem's manual, Fig. 2-4), a different vehicle | **A stated law**, `ascent.guidance` (src/sim/staged.ts): vertical for 15 s (estimated, from Soyuz's), a pitch-over over 10 s (estimated) to an angle that is solved, no angle of attack through the air to the strap-ons' separation, then the linear-tangent law to the last cutoff; the launch plane, the pitch-over's angle and the tangent's rate solved so that at 676 s it is level at the planned 180 km in a plane of 64.95°. So perigee and inclination are targets, not checks; **apogee, period, speeds and loads are results**. It is not the stored programme, which had radio corrections until 156 s |
@@ -496,33 +496,35 @@ set in orbital.ts before the simulator was written.
 
 | | Coast | Record | Tolerance | |
 | --- | --- | --- | --- | --- |
-| Period, from the published heights | 89.44 min | 89.44 min (R) | 2 s | holds (it is how the 6,371 km ball was found: a check on the record, not on the flying) |
-| Apogee, flown round | 345.0 km | 327 km (R) | 5 km | **misses by +18 km** |
-| Into the Earth's shadow | 09:35:18 | "before" the orientation of about 09:50 (G, Z) | | not held: no time in the record |
-| Out of it | 10:09:30 | before the burn; orientation complete after it (G) | | not held |
-| Burn begins over | 12.0° S, 9.3° E (off Angola) | "over Africa" (G) | | not held; agrees |
+| Period, node to node, of the orbit begun | 89.44 min | 89.44 min (R) | 2 s | holds: the published orbit is read as mean elements with this nodal period (issue #8), so this holds the reading, not the flying |
+| Apogee, flown round | 326.1 km | 327 km (R) | 5 km | holds (read as osculating at cutoff, as until November 2026: 345.0 km, a miss of +18) |
+| Into the Earth's shadow | 09:35:12 | "before" the orientation of about 09:50 (G, Z) | | not held: no time in the record |
+| Out of it | 10:09:32 | before the burn; orientation complete after it (G) | | not held |
+| Burn begins over | 11.3° S, 9.6° E (off Angola) | "over Africa" (G) | | not held; agrees |
 | Push off retrograde | 54° | | | see section 1 |
-| Perigee after the burn | -38 km | | | no figure in the record |
-| Height at 10:36 | 137 km | 150 to 160 (L); 150 to 170 (S15) | 15 km about 155 | **misses by -18 km** |
-| Through 100 km | 10:39:02, 7,683 m/s through the air, 1.48° below level | | | no figure in the record |
-| Greatest load | 8.56 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
+| Perigee after the burn | -39 km | | | no figure in the record |
+| Height at 10:36 | 133 km | 150 to 160 (L); 150 to 170 (S15) | 15 km about 155 | **misses by -22 km** (as osculating: -18) |
+| Through 100 km | 10:38:48, 7,677 m/s through the air, 1.44° below level | | | no figure in the record |
+| Greatest load | 8.54 g | "beyond 10" (G); 10 to 12 (S15) | 2 g about 10 | holds, at the low edge. A sphere with no lift from this orbit gives 8 to 9 g whatever else is changed |
 | Greatest dynamic pressure | 54 kPa | | | |
-| At 7 km | 10:45:43, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +224 s** |
-| Place, across the track | 69 km left | 51°16′ N 45°59′ E (R) | 25 km | **misses** |
-| Place, along the track | 448 km beyond (54.70° N, 49.64° E) | the same | 100 km | **misses** |
+| At 7 km | 10:45:36, falling 209 m/s | 10:42 (Z) | 60 s | **misses by +216 s** (as osculating: +224) |
+| Place, across the track | 64 km left | 51°16′ N 45°59′ E (R) | 25 km | **misses** (as osculating: 69) |
+| Place, along the track | 478 km beyond (54.87° N, 50.02° E) | the same | 100 km | **misses** (as osculating: 448: 30 km worse) |
 
 What the misses say, in order of what is learned:
 
-1. **Across the track is the burn's aim.** All 69 km is the sideways part of a push along the Sun's
-   line. With the same impulse straight against the motion the miss across is 9 km (and along, 2 km
-   short, which the uncertain injection point makes no proof of anything). The plane derived from the
+1. **Across the track is the burn's aim.** All 64 km is the sideways part of a push along the Sun's
+   line. With the same impulse straight against the motion the miss across is 4 km (and along, 39 km
+   beyond, which the uncertain injection point makes no proof of anything). The plane derived from the
    inclination and the pad is therefore good to about 10 km at the landing, and the record's "TDU
    directed to the Sun" is not the whole of the geometry.
-2. **The apogee is how the orbit is read.** The published heights are not osculating at cutoff.
-3. **Along the track has three owners**, each worth hundreds of kilometres: the injection point
-   (129 km a degree, estimated to 3°), the aim, and the reading of the orbit (both heights 9 km lower:
-   301 km shorter). It is not to be tuned; the ascent flown replaces the first.
-4. **The time at 7 km** is late partly because the place is long (448 km is a minute) and partly
+2. **The apogee was how the orbit is read.** The published heights are not osculating at cutoff: read as mean
+   elements with a nodal period (world/meanelements.ts, issue #8) the apogee flown round is the record's to a
+   kilometre, and the heights' sum no longer sets the axis (the period does).
+3. **Along the track has two owners**, each worth hundreds of kilometres: the injection point
+   (128 km a degree, estimated to 3°) and the aim. It is not to be tuned; the ascent flown replaces the first.
+   (Read as mean, the landing is 30 km further out than it was read as osculating: nothing is fitted.)
+4. **The time at 7 km** is late partly because the place is long (478 km is a minute) and partly
    because the descent is slower than the flight's was, which is the aim again.
 5. **The load does not depend on any of this**: 8.4 to 9.1 g across every variation tried. Gagarin's
    "beyond 10" is a sensation; "about 8", in print without a source, is what a ballistic sphere gives.
@@ -641,8 +643,10 @@ stage as the sources give them do not agree with one another; which is wrong is 
 **What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
-ascent puts it at 27.82°). Flown so: period 89.44 min (holds), apogee flown round 346 km (+19), 138 km at 10:36, 10:45:39 at
-7 km, landing 452 km long and 14 km across (holds), module 10:50:21, pilot 10:59:03. (Until November 2026 the braking
+ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8): period 89.44 min (holds), apogee
+flown round 326 km (holds), 134 km at 10:36, 10:45:34 at 7 km, landing 503 km long and 10 km across (holds), module
+10:50:16, pilot 10:58:58. (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
+and 14 km across, module 10:50:21, pilot 10:59:03: the apogee came in and the landing went 51 km further out.) (Until November 2026 the braking
 burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
 10:59:04. orbital.ts `flyOrbit`, `pushAs`.)
 
