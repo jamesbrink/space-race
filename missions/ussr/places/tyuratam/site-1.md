@@ -801,6 +801,14 @@ opens: what was behind each is not recorded.
 | The railway fillers on 6 August 1961 | with the rocket | not recorded for this flight (Vostok 1's interval before liftoff is taken: estimated) | documented that a filler stood on the south track at the farewell | RussianSpaceWeb's photographs of Smirnov and Titov, and of Korolev; tank_cars.py `DAYS` |
 | The people: the State Commission, the send-off, the launch crews | 12 April 1961 | each at its own time ("The morning's people and vehicles") | documented | the film; the roster. Of the day itself |
 | The people of 6 August 1961: some hundred at the bus, forty with him to the stair, in summer dress; Smirnov (now chairman) in a white jacket and straw hat; Korolev, Barmin; Nikolayev suited | 6 August 1961 | not recorded | documented (the film; a photograph; Titov, 1973), the counts estimated | **not built**: the figures have no summer dress ("What the model gets wrong or leaves out") |
+| The bus on 14 June 1963 (Vostok 5) | 09:45 Moscow time, "2 hours 15 minutes before the launch" set for 14:00 by the range's clock (converted) | not recorded (Vostok 5's pad.ts: 11:30, estimated) | documented that it came; its place April 1961's, taken | Kamanin, 14 June 1963: «За 2 часа 15 минут до старта автобус с космонавтами прибыл к ракете»; road_vehicles.py `bus_days` |
+| The bus on 16 June 1963 (Vostok 6) | 10:15 Moscow time («Ровно в 12 часов 15 минут» by the range's clock: converted) | not recorded | documented that it came; its place April 1961's, taken | Kamanin, 16 June 1963; road_vehicles.py `bus_days` |
+| The railway fillers on 14 and 16 June 1963 | not recorded | not recorded | **not found** | nothing read has a filler beside the rocket on either day: not built (tank_cars.py `DAYS` is unchanged) |
+| The cable mast on 14 June 1963 | as every day | swung back only as the preliminary stage lit, seconds before liftoff: the ground-to-board command had not passed | documented (secondary) | Golovanov, «Королёв: факты и мифы»: «кабель-мачта не откинулась … едва включилась предварительная ступень и ракета задрожала … штеккер выскочил и кабель-мачта откинулась». A flight's data, not the model's: Vostok 5's pad.ts times the swing |
+| The people of 14 and 16 June 1963: the State Commission at the pad, the farewells, the back-ups suited (Volynov; Solovyeva) | each morning | not recorded | documented that they were there (Kamanin) | **not built**: the figures have no summer dress |
+| The launch system after the fire of 1 June 1962 | repaired within about a month | | documented that it was damaged and repaired; **what was replaced is not recorded** | Kamanin, 22 June 1962: «В результате пожара сильно пострадала стартовая установка, и ее восстановление займет около месяца» (issue #15). Built for 1962 and 1963 as it stood in 1961 |
+| A new room beside the bunker, where the State Commission met | by 11 August 1962 | not known | documented that it stood; where and how big, not | Kamanin, 12 August 1962: «в новом помещении по соседству с бункером». **Not built** |
+| Korolev's post under a small concrete canopy, 10 m from the rocket | by 11 August 1962 (whether it stood in 1961 is not said) | not known | documented | Kamanin, 12 August 1962 (issue #15). **Not built** |
 | Support building | between August 1957 and 1959 | today | documented | PIC/JR-2/60 ("has been added"); OpenStreetMap |
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
 | South of the embankment: two gable-roofed buildings, a pump hut, two pairs of tanks; outside the south fence: a vehicle shed, a building with a mast (items 1 to 7) | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | NPIC/B-24/61 |
@@ -831,6 +839,14 @@ rocket can leave the erector out by its date.
   figures are dressed for April. The fence's extension north round Site 51 and the two new buildings by the check-out
   shop (PIC/JR-8/61) are not built, being unmeasured; Site 51's burnt pad is left out, its look not recorded. The bus
   stands in April's place; the fillers' and the erector's times are Vostok 1's intervals before liftoff.
+
+- **14 and 16 June 1963** (Vostok 5's and Vostok 6's mornings, `flights/vostok-5/model/pad.py`, `flights/vostok-6/model/pad.py`):
+  built as the modules have Site 1 for 1961, with the bus in April's place. Nothing modelled is known to have changed
+  in two years, so each flight's surroundings are `site1/model/1961-08.py`'s, said so in its flight.ts; what is known to
+  have changed is not built: what the repairs after the fire of 1 June 1962 replaced (not recorded), the new room beside
+  the bunker and Korolev's post under its canopy (unmeasured). The crowds, the State Commission and the back-ups in summer
+  dress are not built. The erector's and the trusses' times are Vostok 1's intervals before liftoff on both days, which
+  leaves out what Vostok 5's hold of two and a half hours did to them.
 
 - The pit's section is not published: its terraces, slot and floor are drawn from the CIA's front
   elevation, which is itself an interpretation of shadows.
