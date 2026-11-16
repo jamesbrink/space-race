@@ -79,7 +79,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
       first lets its body go; the drops; the record's instants by id.
     - `coastOf`: the burn the coast flies, the parting of the body it is on, and the height what comes down is let loose
       at.
-    - Its stage figures are still the records'.
+    - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down). The drops, the descent (descent.ts) and the live staged vehicle still read the record.
   - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
