@@ -17,18 +17,17 @@ import { globSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { autopilot, blend, flyLive, Tally } from '../src/sim/autopilot.ts';
-import { stack, spacecraft, guided, apparentBy } from '../src/sim/fliers.ts';
 import { ballisticOf, fly, sampleAt } from '../src/sim/fly.ts';
-import { coastOf, flyOrbit } from '../src/sim/orbital.ts';
-import { predict, propagate } from '../src/sim/predict.ts';
+import { flyOrbit } from '../src/sim/orbital.ts';
 import { Sheds } from '../src/sim/shed.ts';
-import { flyWhole, guidanceOf, published, sequenceOf, steer } from '../src/sim/staged.ts';
+import { flyWhole, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
 import { DEG, dot, enuToEcefDirection, fromHorizontal, geodeticToEcef, length, scale, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { frameOf } from '../src/world/earthframe.ts';
+import { predictions } from './predictions.mjs';
 
 const root = join(import.meta.dirname, '..');
 // (`--against <file>`: another capture, such as one made on this machine before a change)
@@ -51,18 +50,6 @@ const put = (flight, run, values) => {
     else if (v === null || v === undefined) figures[`${flight.id} ${run} ${k}`] = null;
   }
 };
-const pathFigures = (p) => ({
-  outcome: { impact: 0, orbit: 1, none: 2 }[p.outcome] ?? 3,
-  points: p.points.length,
-  impactT: p.impact?.t ?? null,
-  impactLatitude: p.impact?.latitude ?? null,
-  impactLongitude: p.impact?.longitude ?? null,
-  impactSpeed: p.impact?.speed ?? null,
-  apogee: p.apogee?.altitude ?? null,
-  apogeeT: p.apogee?.t ?? null,
-  events: p.events.length,
-  lastEventT: p.events.at(-1)?.t ?? null,
-});
 
 // ---- ballistic flights ----
 for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
@@ -112,11 +99,8 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
     });
   }
 
-  // the predictor from the record's run at fixed instants
-  for (const t0 of [60, 200, 400]) {
-    const s = sampleAt(whole.samples, t0);
-    put(flight, `predict:T+${t0}`, pathFigures(predict(flight.plan, site, sea, s, { frame })));
-  }
+  // the predictor from the record's run at fixed instants (tools/predictions.mjs)
+  for (const p of predictions(flight)) put(flight, p.run, p.make());
 
   // an abort off the pad, the engine never lit, in still air
   if (b.craft.rigid?.escape) {
@@ -228,68 +212,8 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)
     }
   }
 
-  // the predictor from fixed states (in fly.ts's frame, as the deck gives them)
-  const where = { site, seaLevel: sea, frame: dated };
-  {
-    // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
-    // before it (as tests/staged.test.mjs)
-    const sep = published(flight.plan, a.separation);
-    const on = coastOf(plan).on;
-    const late = on - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= on - 2400) : null;
-    const from = late ?? sep;
-    const start = { t: from.t, r: from.r, v: from.v };
-    const job = propagate(spacecraft(flight.plan, dated, site, sea, start), start, where);
-    job.run();
-    put(flight, 'predict:spacecraft', pathFigures(job.result));
-  }
-  {
-    const s = a.samples.find((p) => p.t >= 100);
-    const start = { t: s.t, r: s.r, v: s.v };
-    const gone = seq.stages.filter((k) => k.sep <= s.t).reduce((m, k) => Math.max(m, k.sep), 0);
-    const job = propagate(stack(flight.plan, site, sea, s.mass, gone), start, where);
-    job.run();
-    put(flight, 'predict:stack@100', pathFigures(job.result));
-  }
-  {
-    const sv = stagedVehicle(flight.plan, site, dated, sea, x);
-    for (const t0 of [40, 150, 400]) {
-      const s = a.samples.find((p) => p.t >= t0);
-      const state = {
-        stages: seq.stages.map((k, i) => ({
-          from: k.from <= s.t ? k.from : Infinity,
-          to: a.stops[i] <= s.t ? a.stops[i] : Infinity,
-          gone: k.sep <= s.t ? k.sep : Infinity,
-          loose: k.sep <= s.t ? k.sep : Infinity,
-        })),
-        drops: Object.fromEntries(seq.drops.filter((d) => d.at <= s.t).map((d) => [d.joint, d.at])),
-      };
-      state.apparent = apparentBy(flight.plan, sv, state, s.t);
-      const start = { t: s.t, r: s.r, v: s.v };
-      const job = propagate(
-        guided(flight.plan, site, sea, start, {
-          vehicle: sv,
-          solved: x,
-          state,
-          sequence: true,
-          thetaTurn: s.t > guidanceOf(plan).turn.value ? a.thetaTurn : null,
-          plan: flight.plan,
-        }),
-        start,
-        where,
-      );
-      job.run();
-      const p = job.result;
-      const parted = p.events.find((e) => e.kind === 'separation');
-      const cut = p.events.find((e) => e.kind === 'cutoff');
-      put(flight, `predict:guided@${t0}`, {
-        ...pathFigures(p),
-        cutoffT: cut?.t,
-        partedT: parted?.t,
-        partedRadius: parted ? length(parted.r) : null,
-        partedSpeed: parted ? length(parted.v) : null,
-      });
-    }
-  }
+  // the predictor from fixed states (in fly.ts's frame, as the deck gives them: tools/predictions.mjs)
+  for (const p of predictions(flight)) put(flight, p.run, p.make());
 }
 
 /** The heading over the ground of a sample's motion in `frame`, degrees true (as tests/sim.test.mjs has it). */
