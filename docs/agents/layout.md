@@ -293,6 +293,7 @@ tools/
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be
   chute-test.mjs                      browser check that a parachute's lines are drawn over the land, the sea, the air and the cloud behind them, from the chase view, at 1280 and 390, in both looks
+  glow-test.mjs                       browser check that the glow of entry is a glow from the chase view at 5, 9 and 20 m and from inside its box: no straight-edged step in what it adds, at 1280 and 390, in both looks
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig and from far out, measured frozen, on pages run at once
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock

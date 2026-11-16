@@ -215,6 +215,18 @@ object scaled to nothing draws no pixels and is safe. To check, read the frame b
 and count half floats whose exponent is all ones (`& 0x7c00`): none, through a whole flight, an
 abort and a break-up, in both looks.
 
+## A volume marched in a box
+
+The glow of entry (entry.ts `ShockGlow`) is light marched through a box from the eye, and no wall of the box may ever
+be seen (GitHub issue #33: within 9 m of Vostok 2 the chase view showed a large translucent square). So: the light goes
+to nothing inside the box, before its side walls and its far end; the box is drawn over the whole screen, each pixel
+marching its own ray, while the eye is in it or nearer its walls than twice the near plane, which would otherwise cut
+them; the march stops at the body's own profile, read once from the model's skin (`profileOf`: a sphere is a sphere, a
+whip aerial is not body), turned as the body is and stood where it meets the air first, not at a cone as long as its
+aerials; its steps are fine by the body and longer down the wake, each pixel begun a fixed share of a step on from the
+next so they do not line up into rings; and faint light is let go over a span, not cut at a level. `pnpm test:glow`
+looks for a straight-edged step in what the glow adds, from the chase view at 5, 9 and 20 m and from inside the box.
+
 ## Two looks
 
 The stage draws in one of two looks (`viewer/look.ts`), switched by the Cel shading button or T

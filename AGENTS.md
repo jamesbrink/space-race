@@ -47,6 +47,7 @@ pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same 
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:fires       # needs `pnpm dev` running: every engine burning on the record's flight has its fire, hung where it should be
 pnpm test:chute       # needs `pnpm dev` running: a parachute's lines drawn over the land, the sea and the cloud behind them, both looks, 1280 and 390
+pnpm test:glow        # needs `pnpm dev` running: the glow of entry from the chase view at 5, 9 and 20 m and inside its box, no box edge, both looks, 1280 and 390
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks
 pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat in from the gallery, by the control and by C, at 1280 and 390
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")

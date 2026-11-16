@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FADE_DITHER } from './glsl.ts';
 
 /**
  * What the air's heat looks like (sim/heating.ts works out how much there is): a surface hot
@@ -19,8 +20,11 @@ import * as THREE from 'three';
  * of light: a thin cap standing off the face (0.14 of the body's radius, which is about where the
  * shock stands off a blunt body at high Mach number), a sheet shed from the shoulder that closes
  * to a neck a little behind the body's end, and a core streaming back from there. Rays are marched
- * through it from the eye and stop at the body (a cap and a cone: a stand-in for the model, which
- * the march cannot see). Its colour is a black body's at the gas's temperature (sim/heating.ts
+ * through it from the eye and stop at the body: the march cannot see the model, so it has the
+ * body's profile, read once from the model's own skin (`profileOf`: a sphere is a sphere, and an
+ * aerial is not body). The light fades to nothing inside the box it is marched in, and the box is
+ * drawn over the whole screen when the eye is in it or near it, so that neither the box's walls
+ * nor the near plane is ever seen as an edge (GitHub issue #33). Its colour is a black body's at the gas's temperature (sim/heating.ts
  * `shockTemperature`); its brightness is the stagnation-point heat flux over 250 kW/m2, in the
  * scene's linear light, times how squarely the blunt end meets the air. So Mercury-Redstone's
  * 79 kW/m2 at 2.3 km/s is a faint orange wake at a third, a Mercury coming back from orbit (some
@@ -163,26 +167,206 @@ export class Incandescence {
   }
 }
 
+/** How many stations along the body its profile is taken at (`profileOf`). */
+export const RINGS = 48;
+/** How much skin a station must have at a radius to be body there: this share of a whole ring at that radius. */
+const SOLID = 0.5;
+/** The profile's radii are read in steps of this many of the body's radii, out to RADIAL of them. */
+const RADIAL_STEP = 0.02;
+const RADIAL = 3;
+/** A body is never thinner than this, radii: less is a bundle of aerials or wires. */
+const THIN = 0.25;
+
+/** The body as the march stops at it: how far out its skin stands at each station along its axis, in its radii. */
+export interface Profile {
+  /** The skin's radius at each of RINGS stations, the first at `from`, `step` apart (radii along the axis from the face); 0 where there is no body. */
+  rings: Float32Array;
+  from: number;
+  step: number;
+  /** Where along the axis it is widest (the shoulder the sheet is shed from), and where its last station with body ends: radii from the face. */
+  shoulder: number;
+  end: number;
+}
+
+/**
+ * A body's profile from its surface (`triangles`: nine numbers to a triangle, in its radii, its axis +y back from the
+ * face's middle, which is the origin), over `length` radii behind the face. At each station it is the largest radius at
+ * which the skin there would make at least half a ring (`SOLID`): the hull and the heat shield are body, and so is
+ * whatever is closed round the axis; a whip aerial, a rod or a wire, which has next to no skin, is not; and what is
+ * inside the skin (the cabin) is never reached. Each triangle is read at points spread over it (a long shingle of a
+ * cone lies across many stations), each point carrying its share of the area. `weight` multiplies every area (a
+ * caller that read only every n-th triangle gives n).
+ */
+export function profileOf(triangles: ArrayLike<number>, length: number, weight = 1): Profile {
+  const from = -0.1;
+  const step = (Math.max(length, 0.5) + 0.2 - from) / RINGS;
+  const radial = Math.round(RADIAL / RADIAL_STEP);
+  const area = new Float64Array(RINGS * radial);
+  const put = (x: number, y: number, z: number, a: number): void => {
+    const k = Math.floor((y - from) / step);
+    if (k < 0 || k >= RINGS) return;
+    const b = Math.min(radial - 1, Math.floor(Math.hypot(x, z) / RADIAL_STEP));
+    area[k * radial + b]! += a;
+  };
+  // each triangle is halved across its longest side until none is longer than half a station, and each piece read at
+  // its middle with its area: a long shingle of a cone lies across many stations, and is in each of them
+  const most = 0.5 * Math.min(step, 4 * RADIAL_STEP);
+  let stack = new Float64Array(9 * 64);
+  for (let t = 0; t + 8 < triangles.length; t += 9) {
+    for (let i = 0; i < 9; i++) stack[i] = triangles[t + i]!;
+    let top = 9;
+    while (top) {
+      top -= 9;
+      const o = top;
+      const ab = Math.hypot(stack[o + 3]! - stack[o]!, stack[o + 4]! - stack[o + 1]!, stack[o + 5]! - stack[o + 2]!);
+      const bc = Math.hypot(stack[o + 6]! - stack[o + 3]!, stack[o + 7]! - stack[o + 4]!, stack[o + 8]! - stack[o + 5]!);
+      const ca = Math.hypot(stack[o]! - stack[o + 6]!, stack[o + 1]! - stack[o + 7]!, stack[o + 2]! - stack[o + 8]!);
+      const longest = Math.max(ab, bc, ca);
+      if (longest > most) {
+        // (the corners taken so the longest side runs from p to q, and cut at its middle into two)
+        const [p, q, r] = ab === longest ? [0, 3, 6] : bc === longest ? [3, 6, 0] : [6, 0, 3];
+        if (stack.length < top + 18) {
+          const more = new Float64Array(stack.length * 2);
+          more.set(stack);
+          stack = more;
+        }
+        const c = stack.slice(o, o + 9);
+        for (let i = 0; i < 3; i++) {
+          const m = 0.5 * (c[p + i]! + c[q + i]!);
+          stack[top + i] = c[p + i]!;
+          stack[top + 3 + i] = m;
+          stack[top + 6 + i] = c[r + i]!;
+          stack[top + 9 + i] = m;
+          stack[top + 12 + i] = c[q + i]!;
+          stack[top + 15 + i] = c[r + i]!;
+        }
+        top += 18;
+        continue;
+      }
+      const ux = stack[o + 3]! - stack[o]!,
+        uy = stack[o + 4]! - stack[o + 1]!,
+        uz = stack[o + 5]! - stack[o + 2]!,
+        vx = stack[o + 6]! - stack[o]!,
+        vy = stack[o + 7]! - stack[o + 1]!,
+        vz = stack[o + 8]! - stack[o + 2]!;
+      const share = 0.5 * Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) * weight;
+      if (share > 0)
+        put(
+          (stack[o]! + stack[o + 3]! + stack[o + 6]!) / 3,
+          (stack[o + 1]! + stack[o + 4]! + stack[o + 7]!) / 3,
+          (stack[o + 2]! + stack[o + 5]! + stack[o + 8]!) / 3,
+          share,
+        );
+    }
+  }
+  const rings = new Float32Array(RINGS);
+  for (let k = 0; k < RINGS; k++) {
+    let held = 0;
+    for (let b = radial - 1; b >= 0; b--) {
+      held += area[k * radial + b]!;
+      const r = (b + 0.5) * RADIAL_STEP;
+      // (half a ring's skin at this radius over the station's length, and never less than half a ring of a quarter of
+      // the radius: a flat face across the axis has it many times over, a bundle of aerials near the axis has not)
+      if (held >= SOLID * 2 * Math.PI * Math.max(r, THIN) * step) {
+        rings[k] = r < THIN / 2 ? 0 : r;
+        break;
+      }
+    }
+  }
+  return shaped(rings, from, step);
+}
+
+/** A profile's shoulder and end, from its rings. */
+function shaped(rings: Float32Array, from: number, step: number): Profile {
+  let widest = 0;
+  for (const r of rings) widest = Math.max(widest, r);
+  // (the shoulder the middle of the stations within 2 per cent of the widest: a sphere is widest at its equator)
+  let at = 0;
+  let wide = 0;
+  let end = 0;
+  rings.forEach((r, k) => {
+    if (widest > 0 && r >= 0.98 * widest) {
+      at += from + (k + 0.5) * step;
+      wide++;
+    }
+    if (r > 0) end = from + (k + 1) * step;
+  });
+  const shoulder = wide ? Math.max(at / wide, 0) : 0;
+  return { rings, from, step, shoulder, end: Math.max(end, shoulder) };
+}
+
+/**
+ * The body as `fit` describes it, before its own surface has been read (`ShockGlow.place`): a blunt face whose rim is
+ * `depth` radii behind its middle (a paraboloid), then a cone narrowing evenly to 0.45 of the radius at `length`.
+ */
+export function profileFit(depth: number, length: number): Profile {
+  const from = -0.1;
+  const end = Math.max(depth + 0.5, length);
+  const step = (end + 0.2 - from) / RINGS;
+  const rings = new Float32Array(RINGS);
+  for (let k = 0; k < RINGS; k++) {
+    const y = from + (k + 0.5) * step;
+    rings[k] =
+      y < 0 || y > end
+        ? 0
+        : y < depth
+          ? Math.sqrt(y / Math.max(depth, 1e-3))
+          : 1 + (0.45 - 1) * ((y - depth) / Math.max(end - depth, 1e-3));
+  }
+  return { rings, from, step, shoulder: depth, end };
+}
+
 const VOLUME_VERT = /* glsl */ `
   uniform vec3 uHalf, uMid;
+  uniform float uWhole;
   varying vec3 vAt, vEye;
   void main() {
-    // in the volume's own frame, metres: +Y is downstream, the origin the middle of the blunt face
+    // in the volume's own frame, metres: +Y is downstream, the origin where the body meets the air first
+    mat4 toBox = inverse(modelViewMatrix);
+    vEye = (toBox * vec4(0.0, 0.0, 0.0, 1.0)).xyz * uHalf + uMid;
+    if (uWhole > 0.5) {
+      // The eye is in the box, or near enough to it that the near plane would cut its walls (a hole with straight edges
+      // in the glow: #33). So it is drawn over the whole screen instead: the box's face toward -Z spread over it and the
+      // other five drawn to nothing, each pixel looking along its own ray (the march finds where that ray is in the box).
+      if (normal.z > -0.5) {
+        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+        vAt = vEye;
+        return;
+      }
+      vec4 view = inverse(projectionMatrix) * vec4(position.xy, 0.0, 1.0);
+      vAt = (toBox * vec4(view.xyz / view.w, 1.0)).xyz * uHalf + uMid;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+      return;
+    }
     vAt = position * uHalf + uMid;
-    vEye = (inverse(modelViewMatrix) * vec4(0.0, 0.0, 0.0, 1.0)).xyz * uHalf + uMid;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 
 const VOLUME_FRAG = /* glsl */ `
   uniform vec3 uHalf, uMid, uGas, uFront;
-  uniform float uR, uGlow, uTime, uCap, uTop, uTopR, uLong;
+  uniform float uR, uGlow, uTime, uCap, uTop, uLong;
+  uniform float uRing[${RINGS}];
+  uniform vec2 uRingAt;
+  uniform mat3 uToBody;
+  uniform vec3 uBodyAt;
   uniform mat4 uToClip;
   varying vec3 vAt, vEye;
-  const int STEPS = 72;
-  // lengths below are in radii of the body: y downstream from the middle of the face, r from the axis
-  bool inside(float y, float r) {
-    float side = mix(1.0, uTopR, clamp((y - uCap) / max(uTop - uCap, 1e-3), 0.0, 1.0));
-    return y > uCap * r * r && y < uTop && r < side;
+  const int STEPS = 160;
+  // lengths below are in radii of the body: y downstream from where it meets the air first, r from the axis through there
+  // How far out the body's skin stands at y along its own axis (0: none there): its profile, read from the model (profileOf)
+  float skin(float y) {
+    float f = (y - uRingAt.x) / uRingAt.y - 0.5;
+    if (f < -0.5 || f > ${(RINGS - 0.5).toFixed(1)}) return 0.0;
+    int i = int(clamp(floor(f), 0.0, ${(RINGS - 1).toFixed(1)}));
+    return mix(uRing[i], uRing[min(i + 1, ${RINGS - 1})], clamp(f - float(i), 0.0, 1.0));
+  }
+  // Is a point (radii, the volume's frame) inside the body? The body lies along its own axis, which the stream need not
+  // (uToBody turns the one into the other), and its frame's origin is the middle of its face, which the volume's is only
+  // when it comes down face first (uBodyAt: the volume's origin in the body's frame).
+  bool inside(vec3 p) {
+    vec3 b = uToBody * p + uBodyAt;
+    float s = skin(b.y);
+    return s > 0.0 && dot(b.xz, b.xz) < s * s;
   }
   vec3 light(float y, float r) {
     // the cap: brightest just behind the shock, which stands 0.14 off the face and opens more slowly than it
@@ -196,11 +380,17 @@ const VOLUME_FRAG = /* glsl */ `
     float neck = mix(1.04, 0.45, smoothstep(0.0, end, aft)) + 0.035 * max(aft - end, 0.0);
     float width = 0.06 + 0.035 * max(aft, 0.0);
     float sheetR = (r - neck) / width;
-    float sheet = step(0.0, aft) * exp(-sheetR * sheetR) * exp(-max(aft, 0.0) / 2.2);
+    float sheet = smoothstep(-0.2, 0.2, aft) * exp(-sheetR * sheetR) * exp(-max(aft, 0.0) / 2.2);
     float coreR = r / max(0.34 + 0.045 * aft, 0.05);
     float core = smoothstep(end - 1.1, end + 1.0, aft) * exp(-coreR * coreR) * exp(-max(aft - end, 0.0) / max(uLong, 1e-3));
     float runs = 1.0 + 0.14 * sin(aft * 4.0 - uTime * 26.0) * smoothstep(1.0, 4.0, aft);   // it streams: the clock's time, not the wall's
     return uFront * (3.2 * cap) + uGas * ((0.2 * sheet + 1.5 * core) * runs);
+  }
+  // The light goes to nothing before the box's side walls and its far end, so that no wall of the box is ever seen as
+  // an edge where the light is cut off (#33): out from the axis, and down the stream over its last quarter.
+  float within(vec3 p) {
+    float wall = uHalf.x / uR, far = (uMid.y + uHalf.y) / uR;
+    return (1.0 - smoothstep(0.6 * wall, 0.95 * wall, length(p.xz))) * (1.0 - smoothstep(0.75 * far, 0.97 * far, p.y));
   }
   void main() {
     vec3 dir = vAt - vEye;
@@ -213,31 +403,60 @@ const VOLUME_FRAG = /* glsl */ `
     vec3 a = min(lo, hi), b = max(lo, hi);
     float t0 = max(max(a.x, a.y), max(a.z, 0.0)), t1 = min(b.x, min(b.y, b.z));
     if (t1 <= t0) discard;
-    float dt = (t1 - t0) / float(STEPS);
+    // Steps fine near the body, where the shock layer is a few hundredths of a radius thick, and longer down the wake,
+    // where nothing changes over less than a radius; each pixel's begun a share of a step on from the next pixel's (a
+    // fixed pattern, the same every frame), so the steps do not line up across the screen into rings.
+    float t = t0 + ${FADE_DITHER} * 0.04 * uR;
     vec3 sum = vec3(0.0);
     float first = -1.0;
     for (int i = 0; i < STEPS; i++) {
-      float t = t0 + (float(i) + 0.5) * dt;
+      if (t >= t1) break;
       vec3 p = (vEye + dir * t) / uR;
+      if (inside(p)) break;                    // the body is in the way of everything behind it
       float r = length(p.xz);
-      if (inside(p.y, r)) break;                // the body is in the way of everything behind it
-      vec3 e = light(p.y, r);
+      // how far the point is from the body (its axis, from the face to its end)
+      float off = length(vec2(r, max(max(-p.y, p.y - uTop), 0.0)));
+      // (and never more than a quarter of the wake's core across, where it is far down the stream)
+      float stride = uR * clamp(0.04 + 0.1 * (off - 1.3), 0.04, 0.12 + 0.02 * max(p.y, 0.0));
+      vec3 e = light(p.y, r) * within(p);
       if (first < 0.0 && max(e.r, max(e.g, e.b)) > 0.05) first = t;
-      sum += e * (dt / uR);
+      sum += e * (min(stride, t1 - t) / uR);
+      t += stride;
     }
     sum *= uGlow;
     float most = max(sum.r, max(sum.g, sum.b));
-    if (!(most >= 0.002) || most > 6.0e4) discard;   // (nothing to see, or not a number: never into the frame, where the bloom would spread it)
-    // (for the clouds' own draw of what has no depth: where the light begins)
-    vec4 clip = uToClip * vec4((vEye + dir * (first < 0.0 ? t0 : first) - uMid) / uHalf, 1.0);
-    gl_FragDepth = clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 1.0);
+    if (!(most >= 0.0) || most > 6.0e4) discard;   // (not a number: never into the frame, where the bloom would spread it)
+    // faint light let go over a span, not cut at a level: a cut is an edge
+    float kept = smoothstep(0.0005, 0.004, most);
+    if (kept <= 0.0) discard;
+    sum *= kept;
+    most *= kept;
+    // (for the clouds' own draw of what has no depth: where the light begins; never the eye itself, which has no depth)
+    vec4 clip = uToClip * vec4((vEye + dir * max(first < 0.0 ? t0 : first, 1e-3) - uMid) / uHalf, 1.0);
+    gl_FragDepth = clip.w > 0.0 ? clamp(clip.z / clip.w * 0.5 + 0.5, 0.0, 1.0) : 0.0;
     gl_FragColor = vec4(sum, min(0.6, most * 0.8));
   }`;
+
+/** Triangles a body's profile is read from at the most: a finer model is read every n-th triangle (`ShockGlow.place`). */
+const PROFILE_TRIANGLES = 20_000;
 
 /** The glowing gas round a blunt body coming down: see the header. */
 export class ShockGlow {
   readonly mesh: THREE.Mesh;
   private readonly uniforms: Record<string, THREE.IUniform>;
+  /** The body's length behind its face as `fit` was given it, radii: how far back its surface is read. */
+  private length = 1;
+  /** The model the body's profile was read from, since the last `fit` (null: not yet), and how many nodes were under it then. */
+  private profiled: THREE.Object3D | null = null;
+  private counted = 0;
+  private readonly eye = new THREE.Vector3();
+  private readonly toBox = new THREE.Matrix4();
+  private readonly turn = new THREE.Quaternion();
+  private readonly parentTurn = new THREE.Quaternion();
+  private readonly rotation = new THREE.Matrix4();
+  private readonly along = new THREE.Vector3();
+  /** The body the march stops at (`profile`). */
+  private body: Profile = profileFit(0.25, 3.4);
 
   constructor() {
     this.uniforms = {
@@ -248,8 +467,12 @@ export class ShockGlow {
       uTime: { value: 0 },
       uCap: { value: 0.25 },
       uTop: { value: 3.4 },
-      uTopR: { value: 0.45 },
       uLong: { value: 5 },
+      uRing: { value: new Float32Array(RINGS) },
+      uRingAt: { value: new THREE.Vector2(0, 1) },
+      uToBody: { value: new THREE.Matrix3() },
+      uBodyAt: { value: new THREE.Vector3() },
+      uWhole: { value: 0 },
       uGas: { value: new THREE.Color(1, 0.5, 0.2) },
       uFront: { value: new THREE.Color(1, 0.7, 0.4) },
       uToClip: { value: new THREE.Matrix4() },
@@ -277,7 +500,15 @@ export class ShockGlow {
     this.mesh.renderOrder = 4;
     this.mesh.onBeforeRender = (_renderer, _scene, camera) => {
       (this.uniforms.uToClip!.value as THREE.Matrix4).multiplyMatrices(camera.projectionMatrix, this.mesh.modelViewMatrix);
+      // the eye in the box's own frame (the box is -1 to 1 each way): drawn over the whole screen while it is in the box
+      // or nearer its walls than twice the near plane, which would otherwise cut them
+      const eye = this.eye.set(0, 0, 0).applyMatrix4(this.toBox.copy(this.mesh.modelViewMatrix).invert());
+      const half = this.uniforms.uHalf!.value as THREE.Vector3;
+      const near = 2 * ((camera as THREE.PerspectiveCamera).near ?? 0);
+      const close = Math.abs(eye.x) < 1 + near / half.x && Math.abs(eye.y) < 1 + near / half.y && Math.abs(eye.z) < 1 + near / half.z;
+      this.uniforms.uWhole!.value = close ? 1 : 0;
     };
+    this.profile(profileFit(0.25, 3.4));
   }
 
   private readonly face = new THREE.Vector3();
@@ -288,32 +519,134 @@ export class ShockGlow {
     return this.face.clone();
   }
 
+  /** Stop the march at a body of this profile, and shed the wake from its shoulder and close it behind its end. */
+  private profile(p: Profile): void {
+    const u = this.uniforms;
+    this.body = p;
+    (u.uRing!.value as Float32Array).set(p.rings);
+    (u.uRingAt!.value as THREE.Vector2).set(p.from, p.step);
+    u.uCap!.value = p.shoulder;
+    u.uTop!.value = Math.max(p.end, p.shoulder + 0.5);
+  }
+
   /**
    * The body it stands round, in the model's own frame: `face` the middle of the blunt face,
    * `radius` the body's, `depth` how far the face's rim lies behind its middle and `length` how
-   * long the body is behind the face, all metres. The body is taken to narrow evenly to 0.45
-   * of its radius.
+   * long the body is behind the face, all metres. Until `place` has read the model's own surface
+   * (`profileOf`), the body is taken to narrow evenly to 0.45 of its radius (`profileFit`).
    */
   fit(face: THREE.Vector3, radius: number, depth: number, length: number): void {
     const u = this.uniforms;
     this.face.copy(face);
     u.uR!.value = radius;
-    u.uCap!.value = depth / radius;
-    u.uTop!.value = Math.max(depth / radius + 0.5, length / radius);
+    this.length = length / radius;
+    this.profile(profileFit(depth / radius, length / radius));
+    this.profiled = null;
     const reach = 26 * radius; // how far back the box goes: the core has faded to nothing well before
     (u.uHalf!.value as THREE.Vector3).set(2.4 * radius, (reach + 0.6 * radius) / 2, 2.4 * radius);
     (u.uMid!.value as THREE.Vector3).set(0, (reach - 0.6 * radius) / 2, 0);
     this.mesh.scale.copy(u.uHalf!.value as THREE.Vector3);
   }
 
-  /** Stand it on the face of `model` (whose frame `fit` was given the face in), streaming `downstream`: a direction in the frame of the mesh's own parent. */
+  /**
+   * The model's surface in the body's frame (its radii, its axis +y from the face's middle), from every mesh of it on
+   * show: what a craft has shed is not in it. At most PROFILE_TRIANGLES are read, every n-th of a finer model.
+   */
+  private surfaceOf(model: THREE.Object3D): { triangles: Float64Array; weight: number } {
+    const radius = this.uniforms.uR!.value as number;
+    const meshes: THREE.Mesh[] = [];
+    let count = 0;
+    model.updateWorldMatrix(true, true);
+    const shown = (o: THREE.Object3D | null): boolean => !o || o === model || (o.visible && shown(o.parent));
+    model.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || (mesh as THREE.InstancedMesh).isInstancedMesh || !mesh.geometry?.getAttribute('position') || !shown(mesh)) return;
+      meshes.push(mesh);
+      const g = mesh.geometry;
+      count += (g.index ? g.index.count : g.getAttribute('position').count) / 3;
+    });
+    const every = Math.max(1, Math.ceil(count / PROFILE_TRIANGLES));
+    const out: number[] = [];
+    const into = new THREE.Matrix4().copy(model.matrixWorld).invert();
+    const m = new THREE.Matrix4();
+    const v = new THREE.Vector3();
+    let n = 0;
+    for (const mesh of meshes) {
+      m.multiplyMatrices(into, mesh.matrixWorld);
+      const g = mesh.geometry;
+      const position = g.getAttribute('position');
+      const index = g.index;
+      const triangles = (index ? index.count : position.count) / 3;
+      for (let t = 0; t < triangles; t++, n++) {
+        if (n % every) continue;
+        for (let k = 0; k < 3; k++) {
+          v.fromBufferAttribute(position, index ? index.getX(3 * t + k) : 3 * t + k).applyMatrix4(m);
+          out.push((v.x - this.face.x) / radius, (v.y - this.face.y) / radius, (v.z - this.face.z) / radius);
+        }
+      }
+    }
+    return { triangles: Float64Array.from(out), weight: every };
+  }
+
+  /**
+   * Stand it on the face of `model` (whose frame `fit` was given the face in), streaming `downstream`: a direction in
+   * the frame of the mesh's own parent. The first time after a `fit`, and whenever the model has shed something since,
+   * the body's profile is read from the model.
+   */
   place(model: THREE.Object3D, downstream: THREE.Vector3): void {
-    this.at.copy(this.face);
+    // (read again when what is under the model has changed: a craft sheds what it lets go into holders of their own, so
+    // Vostok 2's instrument module, let go at T+90420, takes its part of the body with it)
+    let count = 0;
+    model.traverse(() => void count++);
+    if (this.profiled !== model || count !== this.counted) {
+      const { triangles, weight } = this.surfaceOf(model);
+      if (triangles.length) this.profile(profileOf(triangles, this.length, weight));
+      this.profiled = model;
+      this.counted = count;
+    }
+    const u = this.uniforms;
+    this.mesh.quaternion.setFromUnitVectors(Y, downstream);
+    // from the box's frame (the stream's) to the body's own: the model's turn in the box's parent, undone
+    const turn = model.getWorldQuaternion(this.turn);
+    if (this.mesh.parent) turn.premultiply(this.mesh.parent.getWorldQuaternion(this.parentTurn).invert());
+    turn.invert().multiply(this.mesh.quaternion);
+    (u.uToBody!.value as THREE.Matrix3).setFromMatrix4(this.rotation.makeRotationFromQuaternion(turn));
+    // The shock stands off whatever of the body meets the air first, which is the face only when the body comes down
+    // face first: a sphere meets it wherever it is turned, and a craft still joined to what it will shed meets it as the
+    // two do. So the box's axis runs down the stream through the point of the body furthest up it, the cap stands off
+    // that point, the sheet is shed from the body's shoulder and closes behind its end, all as seen along the stream.
+    const d = this.along.set(0, 1, 0).applyQuaternion(turn); // (downstream, in the body's frame)
+    const across = Math.hypot(d.x, d.z);
+    const { rings, from, step, shoulder } = this.body;
+    let front = Number.POSITIVE_INFINITY;
+    let back = Number.NEGATIVE_INFINITY;
+    let foremost = -1;
+    rings.forEach((s, k) => {
+      if (!(s > 0)) return;
+      const y = from + (k + 0.5) * step;
+      if (d.y * y - s * across < front) {
+        front = d.y * y - s * across;
+        foremost = k;
+      }
+      back = Math.max(back, d.y * y + s * across);
+    });
+    const bodyAt = u.uBodyAt!.value as THREE.Vector3;
+    if (foremost >= 0) {
+      const s = rings[foremost]!;
+      // (the foremost point: on its station's ring, on the side the stream comes from)
+      bodyAt.set(across > 1e-6 ? (-s * d.x) / across : 0, from + (foremost + 0.5) * step, across > 1e-6 ? (-s * d.z) / across : 0);
+      u.uCap!.value = Math.max(d.y * shoulder - front, 0);
+      u.uTop!.value = Math.max(back - front, (u.uCap!.value as number) + 0.5);
+    } else bodyAt.set(0, 0, 0);
+    // the box's origin there, in the model's frame, then in the box's parent's
+    this.at
+      .copy(bodyAt)
+      .multiplyScalar(u.uR!.value as number)
+      .add(this.face);
     model.localToWorld(this.at);
     this.mesh.parent?.worldToLocal(this.at);
-    this.mesh.quaternion.setFromUnitVectors(Y, downstream);
-    // (the box's middle is off the face along the stream)
-    this.mesh.position.copy(this.at).addScaledVector(downstream, (this.uniforms.uMid!.value as THREE.Vector3).y);
+    // (the box's middle is off its origin along the stream)
+    this.mesh.position.copy(this.at).addScaledVector(downstream, (u.uMid!.value as THREE.Vector3).y);
   }
 
   /**
