@@ -4,7 +4,8 @@ import { along, axisOf, ballisticOf, flownOnce, type Sample } from '../sim/fly.t
 import { airAt, blowOf } from '../sim/air.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { apart, recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
-import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples } from '../sim/staged.ts';
+import { coastEvents, coastOf } from '../sim/orbital.ts';
+import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, recordSamples, sequenceOf, stagesOf } from '../sim/staged.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { P0 } from '../world/bodies.ts';
@@ -890,18 +891,27 @@ export function pushedOff(def: { push?: { value: number }; mass?: { value: numbe
 /**
  * An orbital flight's record, flown (sim/staged.ts: the ascent on its law, the coast, the first body of the descent) and
  * made a run the scene places by its samples' own attitude, as a flight flown by hand is: so it is `live`, and stays
- * where it came down. What it drops is flown from the instant each leaves, as the flight's `orbital.ascent.sheds` give
+ * where it came down. What it drops is flown from the instant each leaves, as the plan's `Craft.sheds` give
  * them, from the stack's base along the long axis to each one's centre of mass; the ejection's drop leaves when the run
  * comes down through the ejection height, not at the record's minute. Made once a flight: it takes a second or so.
  */
 const orbitalRuns = new WeakMap<object, Run>();
-/** When each of `flies.fires` burns on an orbital flight's run: a stage's from its ignition to where the run stopped it; the braking engine's between the record's instants of thrust. */
+/**
+ * When each of `flies.fires` burns on an orbital flight's run, by the plan's engine it names: a stage's from its lighting
+ * to where the run stopped it; the coast's burn (the engine the record's impulse is flown on) between the plan's instants
+ * of it, or `retro`'s.
+ */
 export function firesOf(flight: SitedFlight, whole: FlownWhole, retro?: { on: number; off: number }): { from: number; to: number }[] {
-  const o = flight.orbital!;
+  const plan = flight.plan!;
+  const stages = stagesOf(plan);
+  const lit = sequenceOf(plan).stages;
   return (flight.flies?.fires ?? []).map((f) => {
-    if (f.on === 'retro') return retro ? { from: retro.on, to: retro.off } : { from: o.retro.on.value, to: o.retro.off.value };
-    const i = Number(f.on.replace('stage:', ''));
-    return { from: o.stages[i]?.ignition.value ?? Infinity, to: whole.ascent.stops[i] ?? Infinity };
+    if (plan.craft[0]!.engines.find((e) => e.id === f.on)?.flown) {
+      const coast = coastOf(plan);
+      return retro ? { from: retro.on, to: retro.off } : { from: coast.on, to: coast.off };
+    }
+    const i = stages.findIndex((s) => s.engine.id === f.on);
+    return { from: lit[i]?.from ?? Infinity, to: whole.ascent.stops[i] ?? Infinity };
   });
 }
 const orbitalWholes = new WeakMap<object, FlownWhole>();
@@ -911,29 +921,30 @@ const orbitalWholes = new WeakMap<object, FlownWhole>();
  * since the ascent as flown falls short of it (the flight's mission.md, section 6).
  */
 export function orbitalFlown(flight: SitedFlight): FlownWhole {
-  const o = flight.orbital!;
-  let whole = orbitalWholes.get(o);
+  const plan = flight.plan!;
+  let whole = orbitalWholes.get(plan);
   if (!whole)
     orbitalWholes.set(
-      o,
-      (whole = flyWhole(flight.plan!, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
+      plan,
+      (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
     );
   return whole;
 }
 export function orbitalRecord(flight: SitedFlight): Run {
-  const o = flight.orbital!;
-  const had = orbitalRuns.get(o);
+  const plan = flight.plan!;
+  const had = orbitalRuns.get(plan);
   if (had) return had;
   const site = siteFrame(flight.site);
   const jd = julianDate(flight.launch);
   const whole = orbitalFlown(flight);
-  const centre = (flight.flies?.datum ?? 0) + (o.ascent!.centre?.value ?? 0);
-  const samples = recordSamples(flight.plan!, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  const centre = (flight.flies?.datum ?? 0) + (plan.record?.centre?.value ?? 0);
+  const samples = recordSamples(plan, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   const dropped = flight.flies!.drops.map((d) => (d.on === 'ejection' && Number.isFinite(ejected) ? ejected : d.at));
-  const sheds = new Sheds(flight.plan!, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
-  for (const def of o.ascent!.sheds ?? []) {
+  const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
+  const mass = plan.record!.orbit!.mass.value;
+  for (const def of plan.craft[0]!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
     if (i < 0 || !def.mass || !def.centre || !def.gyration) continue;
     const at = dropped[i]!;
@@ -947,7 +958,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
         on: def.on,
         t: at,
         r: add(r, scale(s.axis, def.centre.value)),
-        v: pushedOff(def, v, s.axis, o.mass.value),
+        v: pushedOff(def, v, s.axis, mass),
         q: s.attitude,
         w: [0, 0, 0],
         mass: m,
@@ -957,24 +968,26 @@ export function orbitalRecord(flight: SitedFlight): Run {
       }),
     );
   }
+  // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn; a stage's end is the record's cut, or its letting go where it has no cut of its own)
+  const stages = sequenceOf(plan).stages;
+  const first = stages[1] ?? stages[0]!;
   const run: Run = {
     samples,
     duration: end.t,
-    // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn)
-    cutoff: o.stages[1]?.cutoff.value ?? o.stages[0]!.cutoff.value,
+    cutoff: first.cutAt ?? first.sep,
     dropped,
     live: true,
     out: { drogue: Infinity, main: Infinity },
     sheds,
     fires: firesOf(flight, whole),
-    descent: descentOf(whole, centre, o.descent?.ground.value),
+    descent: descentOf(whole, centre, plan.record?.ground?.value),
   };
-  orbitalRuns.set(o, run);
+  orbitalRuns.set(plan, run);
   return run;
 }
 
 /**
- * When each event of an orbital flight's record (`orbital.events`, by id) happens on a run of it: the record's instants,
+ * When each event of an orbital flight's record (by its id: the plan's events' `record` and its marks) happens on a run of it: the record's instants,
  * but for what the run itself decides. The ejection is when the run came down through its height, and each body's
  * landing (`<id>-down`, for the descent's bodies by id) where flyDown put it. With `hand` (a braking burn fired by hand,
  * from `on` to `off`), the burn's own events are the hand's, the timer's never comes, and the modules part when the plan
@@ -985,15 +998,17 @@ export function orbitalEvents(
   whole: FlownWhole,
   hand?: { on: number; off: number; parting: number },
 ): Record<string, number> {
-  const o = flight.orbital!;
+  const plan = flight.plan!;
   const out: Record<string, number> = {};
-  for (const e of o.events) out[e.id] = e.at.value;
+  for (const e of plan.events) if (e.record && e.at) out[e.record.id] = e.at.value;
+  for (const m of plan.record?.marks ?? []) out[m.id] = m.at.value;
   if (hand) {
+    const k = coastEvents(plan);
     out['retro-command'] = hand.on;
-    out['retro-on'] = hand.on;
-    out['retro-off'] = hand.off;
+    if (k.on?.record) out[k.on.record.id] = hand.on;
+    if (k.off?.record) out[k.off.record.id] = hand.off;
     out['retro-timer'] = Infinity;
-    out.modules = hand.parting;
+    if (k.parting?.record) out[k.parting.record.id] = hand.parting;
   }
   // (the ejection is when the descent had it: the barometric switch's height on the record's run, or when a hand gave it)
   const ejected = whole.down ? whole.down.ejected : whole.coast.results.ejectionAt;

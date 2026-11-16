@@ -19,24 +19,31 @@ const url = urlOf(args);
 
 /**
  * The engines burning at an instant on the record, worked in the page from the flight's own data (no table: a flight that
- * flies needs none here): `flies.engine` from liftoff to its trajectory's cutoff, and each of `flies.fires` by the event
- * it names, a stage (`stage:<i>`) from its record's ignition to its cutoff, the braking engine (`retro`) between the record's
- * instants of thrust. Each is told by its place among the flight's fires (FlightShow.fireReport `level`). The viewer
- * draws each from where its own run stops it, not from the record's figures: so this is a check of the one against the other.
+ * flies needs none here), read off its plan's events: `flies.engine` (the engine on the first body) from liftoff to the
+ * record's instant of its cut, and each of `flies.fires` by the plan's engine it names, from the event that lights it to
+ * the record's instant of its cut (or of its body's letting go, where nothing cuts it first), the coast's burn (the engine
+ * with `flown`) between its events' instants. Each is told by its place among the flight's fires (FlightShow.fireReport
+ * `level`). The viewer draws each from where its own run stops it, not from the record's figures: so this is a check of
+ * the one against the other.
  */
 const burning = (t) =>
   page.evaluate((t) => {
-    const { flies, trajectory, orbital } = window.sr.flight;
+    const { flies, plan } = window.sr.flight;
+    const c = plan?.craft[0];
+    const doing = (test) => plan?.events.find((e) => e.automatic && e.do.some(test));
+    const clock = (e) => e?.when.find((w) => 'time' in w)?.time ?? Number.NaN;
+    const span = (id, what) => {
+      const engine = c?.engines.find((e) => e.id === id);
+      const lit = doing((a) => a.ignite === id);
+      const cut = doing((a) => a.cut === id);
+      if (engine?.flown) return { what, from: clock(lit), to: clock(cut) };
+      const joint = c?.joints.filter((j) => j.gone.includes(engine?.body)).sort((a, b) => a.gone.length - b.gone.length)[0];
+      const gone = joint && doing((a) => a.separate === joint.id);
+      return { what, from: clock(lit), to: (cut ?? gone)?.at?.value ?? Number.NaN };
+    };
     const spans = [];
-    if (flies?.engine) spans.push({ what: flies.engine, from: 0, to: trajectory?.engine.cutoff.value ?? Number.NaN });
-    for (const f of flies?.fires ?? []) {
-      if (f.on === 'retro')
-        spans.push({ what: f.node, from: orbital?.retro.on.value ?? Number.NaN, to: orbital?.retro.off.value ?? Number.NaN });
-      else {
-        const stage = orbital?.stages[Number(f.on.replace('stage:', ''))];
-        spans.push({ what: f.node, from: stage?.ignition.value ?? Number.NaN, to: stage?.cutoff.value ?? Number.NaN });
-      }
-    }
+    if (flies?.engine) spans.push(span(c?.engines.find((e) => e.body === c.bodies[0]?.id)?.id, flies.engine));
+    for (const f of flies?.fires ?? []) spans.push(span(f.on, f.node));
     return spans.map((s, level) => ({ ...s, level })).filter((s) => t >= s.from && t < s.to);
   }, t);
 

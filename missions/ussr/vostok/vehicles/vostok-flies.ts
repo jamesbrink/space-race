@@ -175,7 +175,7 @@ export function vostokFlies(orbital: OrbitalFlight, crew = 'crew'): NonNullable<
       ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0', burns: 'kerosene-lox' as const })),
       { node: 'RD108_Bells', on: 'stage:1', burns: 'kerosene-lox' },
       { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2', burns: 'kerosene-lox' },
-      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'retro', burns: 'amine-nitric' },
+      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'braking', burns: 'amine-nitric' },
     ],
     drops: [
       // each strap-on a body of its own (orbital.ts `ascent.sheds`: 'boosters/' and its letter), leaving at the stage's separation

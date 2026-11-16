@@ -157,8 +157,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
   of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
   the landing it stands on its pad, whole: the inventory, which the idle show tours. While an engine burns its fire stands
-  under its nozzles (a ballistic flight's one engine under the node `flies.engine` names; every other in `flies.fires`,
-  a cluster's main and steering chambers found in its bells' geometry, viewer/fires.ts), carried by the part that holds
+  under its nozzles (a ballistic flight's one engine under the node `flies.engine` names; every other in `flies.fires`, each by
+  the plan's engine it is, `on`, and burning while the run has that engine burn; a cluster's main and steering chambers found in its bells' geometry, viewer/fires.ts), carried by the part that holds
   it, so a strap-on's dying fire swings away with it; the fires and their smoke are the one thing here meant to look
   real, not designed: volumes, marched in one pass (`viewer/exhaust.ts`: after the ink, before the
   clouds, at a quarter of the pixels and only in the part of the frame they can be in; nothing
@@ -524,7 +524,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   `flies` can be flown without being told how.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, ascent.ts
-  `orbitalRecord`); what it drops is flown from `orbital.ascent.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
+  `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest

@@ -462,7 +462,7 @@ export class Sound {
       // (the coast's burn: the engine the record's impulse is flown on)
       const braking = plan.craft[0]!.engines.find((e) => e.flown);
       const mass = plan.record?.orbit?.mass.value ?? 0;
-      const k = (this.flight.flies?.fires ?? []).findIndex((f) => f.on === 'retro');
+      const k = braking ? (this.flight.flies?.fires ?? []).findIndex((f) => f.on === braking.id) : -1;
       const burn = k >= 0 ? this.live?.fires?.[k] : undefined;
       const lit = burn && Number.isFinite(burn.from) && burn.to > burn.from ? burn : null;
       return score({

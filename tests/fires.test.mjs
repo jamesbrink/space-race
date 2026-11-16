@@ -266,7 +266,7 @@ test('a fire looks as what it burns: the Redstone’s alcohol flame as it always
   assert.equal(freedom7.flies.burns, 'alcohol-lox');
   const fires = vostok1.flies.fires;
   assert.ok(fires.filter((f) => f.on.startsWith('stage:')).every((f) => f.burns === 'kerosene-lox'));
-  assert.equal(fires.find((f) => f.on === 'retro').burns, 'amine-nitric');
+  assert.equal(fires.find((f) => vostok1.plan.craft[0].engines.find((e) => e.id === f.on)?.flown).burns, 'amine-nitric');
 });
 
 test('at Site 1 the exhaust goes down into the flame pit and its cloud rises out of the pit’s open side, away from the rocket', async () => {

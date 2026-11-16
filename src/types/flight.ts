@@ -152,9 +152,9 @@ export interface Flight {
     engine?: string;
     /**
      * Every other fire, each an engine (viewer/fires.ts), drawn while it burns: each engine of a stage (all of them,
-     * strap-ons and core alike), an upper stage, a braking engine. `on` names the event of the flight's record whose
-     * instants it burns between where the run has them (an orbital flight's: `stage:<index>` for a stage, at its
-     * throttle, or `retro` for the braking burn). `node`: with `radius` (the exit's, m), a node whose lowest point is
+     * strap-ons and core alike), an upper stage, a braking engine. `on` names the plan's engine it is (`EngineDef.id`):
+     * it burns between the instants the run has that engine burn, a stage's at its throttle, the coast's burn (the engine
+     * with the record's impulse, `EngineDef.flown`) between the plan's instants of it or a hand's. `node`: with `radius` (the exit's, m), a node whose lowest point is
      * one round exit; without, a node holding only the engine's nozzles (its bells), whose every chamber, main or
      * steering, is found in the model's geometry and drawn from its own exit. `burns`: what it burns, which gives the
      * fire its colours, its light and how much of what is behind it it hides (viewer/flames.ts); left out, alcohol and oxygen.
