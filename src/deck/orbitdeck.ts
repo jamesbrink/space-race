@@ -247,10 +247,10 @@ export class OrbitDeck extends Deck {
         drops: Object.fromEntries(o.ascent!.drops.filter((d) => d.at.value <= start.t).map((d) => [d.id, d.at.value])),
         apparent: [] as number[],
       };
-      const state = live ? live : { ...stood, apparent: apparentBy(o, v, stood, start.t) };
+      const state = live ? live : { ...stood, apparent: apparentBy(planOfOrbital(o), v, stood, start.t) };
       const turned = start.t > o.ascent!.guidance.turn.value;
       return propagate(
-        guided(o, site, sea, start, {
+        guided(planOfOrbital(o), site, sea, start, {
           vehicle: v,
           solved: flown.solved,
           state,
@@ -264,7 +264,8 @@ export class OrbitDeck extends Deck {
         options,
       );
     }
-    if (start.t < this.parting) return propagate(stack(o, site, sea, start.mass, this.goneAt(start.t)), start, where, options);
+    if (start.t < this.parting)
+      return propagate(stack(planOfOrbital(o), site, sea, start.mass, this.goneAt(start.t)), start, where, options);
     // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
     const ship = shipOf(plan);
     const on = ship.on;
@@ -590,7 +591,7 @@ export class OrbitDeck extends Deck {
     if (!this.vehicle) {
       const o = this.flight.orbital!;
       this.vehicle = stagedVehicle(
-        o,
+        planOfOrbital(o),
         siteFrame(this.flight.site),
         this.frame,
         this.flight.site.seaLevel.value,

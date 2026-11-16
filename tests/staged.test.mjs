@@ -367,7 +367,7 @@ for (const f of flown) {
   test(`${f.designation}: the path if guidance carries on is the ascent flown: from the record's state it parts where the batch run does`, () => {
     const [site, dated, sea] = where(f);
     const x = whole.ascent.solved;
-    const vehicle = stagedVehicle(o, site, dated, sea, x);
+    const vehicle = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
     const stops = whole.ascent.stops;
     for (const t0 of [40, 150, 400]) {
       const s = whole.ascent.samples.find((p) => p.t >= t0);
@@ -381,10 +381,10 @@ for (const f of flown) {
         })),
         drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
       };
-      state.apparent = apparentBy(o, vehicle, state, s.t);
+      state.apparent = apparentBy(planOfOrbital(o), vehicle, state, s.t);
       const start = { t: s.t, r: s.r, v: s.v };
       const job = propagate(
-        guided(o, site, sea, start, {
+        guided(planOfOrbital(o), site, sea, start, {
           vehicle,
           solved: x,
           state,
@@ -416,7 +416,7 @@ for (const f of flown) {
   test(`${f.designation}: the guided path worked out in slices is the path worked out at once, its steps ahead swept in the slices too`, () => {
     const [site, dated, sea] = where(f);
     const x = whole.ascent.solved;
-    const vehicle = stagedVehicle(o, site, dated, sea, x);
+    const vehicle = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
     const s = whole.ascent.samples.find((p) => p.t >= 40);
     const stops = whole.ascent.stops;
     const state = {
@@ -428,11 +428,11 @@ for (const f of flown) {
       })),
       drops: {},
     };
-    state.apparent = apparentBy(o, vehicle, state, s.t);
+    state.apparent = apparentBy(planOfOrbital(o), vehicle, state, s.t);
     const make = () => {
       const start = { t: s.t, r: s.r, v: s.v };
       return propagate(
-        guided(o, site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: planOfOrbital(o) }),
+        guided(planOfOrbital(o), site, sea, start, { vehicle, solved: x, state, sequence: true, thetaTurn: null, plan: planOfOrbital(o) }),
         start,
         {
           site,

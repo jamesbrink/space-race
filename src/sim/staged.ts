@@ -295,6 +295,9 @@ export function sequenceOf(plan: FlightPlan) {
         cut: cut && !speed ? timeOf(cut) : null,
         speed: speed && 'speed' in speed ? { value: speed.speed, apparent: Boolean(speed.apparent) } : null,
         sep: (joint && timeOf(doing((a) => 'separate' in a && a.separate === joint.id))) ?? Infinity,
+        /** The joint that lets it go, and the record's instant of its own cut, where it has one. */
+        joint: joint?.id ?? null,
+        cutAt: cut?.at?.value ?? null,
       };
     });
   const drop = (id: string): number => timeOf(doing((a) => 'separate' in a && a.separate === id)) ?? Infinity;

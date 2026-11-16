@@ -169,7 +169,7 @@ test('Vostok 1 flown by hand: its fires burn when its own stages do, not when th
   const dated = frameOf(vostok1);
   const sea = vostok1.site.seaLevel.value;
   const x = steer(planOfOrbital(o), site, dated, sea);
-  const v = stagedVehicle(o, site, dated, sea, x);
+  const v = stagedVehicle(planOfOrbital(o), site, dated, sea, x);
   // no guidance: the pilot's sequence, but the attitude held as it was, so the path and each stage's stop are its own
   const pilot = stagedPilot(v, x, site, dated, sea, { guidance: false, sequence: true });
   const centre = (vostok1.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0);

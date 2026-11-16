@@ -82,7 +82,7 @@ test('a flight into orbit: the spacecraft’s and the stopped stack’s fliers a
   same(ship.push(s.t, s.r, s.v, air.altitude), shipPush(planOfOrbital(o), s.t, air.wind, air.altitude, null), 'the spacecraft');
   // the stack with its engines stopped: the ascent's drag area for the shape it has, over its mass
   const gone = o.stages[0].separation.value;
-  const stopped = stack(o, site, sea, 30_000, gone);
+  const stopped = stack(planOfOrbital(o), site, sea, 30_000, gone);
   same(
     stopped.push(s.t, s.r, s.v, air.altitude),
     scale(airDrag(air.wind, air.airspeed, air.air.density, stackOf(planOfOrbital(o)).dragArea(gone, air.mach)), 1 / 30_000),

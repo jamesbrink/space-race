@@ -36,12 +36,11 @@ import { Descent, type DescentContext, type DownBody, downOf } from './descent.t
 import { chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, type DescentFlown, type DescentHands, type OrbitalFlight, shipOf, shipPush } from './orbital.ts';
+import { aimOf, type DescentFlown, type DescentHands, shipOf, shipPush } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
-import { planOfOrbital } from './planof.ts';
-import { airOf as airOfStack, lawOf, type Mode, type Solved, stackOf } from './staged.ts';
+import { airOf as airOfStack, lawOf, type Mode, type Solved, sequenceOf, stackOf, stagesOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -430,19 +429,19 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
 }
 
 /**
- * A staged launch vehicle with its engines stopped now (`OrbitalFlight.ascent`: Vostok 1's R-7 with what it still
+ * A staged launch vehicle with its engines stopped now (an orbital plan's stages: Vostok 1's R-7 with what it still
  * carries): a point mass of `mass` kg on the drag of the shape it has (staged.ts `stackOf`'s area for the record instant
  * `gone`, the latest separation among what has been let go: `StagedVehicle.shape`), through the same air, nothing more
  * let go and nothing lit, down to the ground or once round. What the deck shows on the launch vehicle (orbitdeck.ts).
  */
-export function stack(o: OrbitalFlight, site: Geodetic, seaLevel: number, mass: number, gone: number): Flier {
-  const drag = stackOf(planOfOrbital(o)).dragArea;
+export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: number, gone: number): Flier {
+  const drag = stackOf(plan).dragArea;
   return {
     kind: 'coast',
     cutoff: null,
     quiet: Number.NEGATIVE_INFINITY,
     chute: false,
-    radius: o.orbit.radius.value,
+    radius: plan.record!.orbit!.radius.value,
     ground: floorOf(site, seaLevel),
     burning: () => false,
     push(_at, p, u, altitude) {
@@ -484,13 +483,15 @@ export interface GuidedNow {
  * keeps the record's instant: no stage of the record's is cut so. The attitude is the law's, placed (the live vehicle's
  * steering lag, a few hundredths of a degree, is not stepped), as the batch run places it.
  */
-export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
+export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
   const v = now.vehicle;
-  const stack = stackOf(planOfOrbital(o));
+  const stages = stagesOf(fp);
+  const seq = sequenceOf(fp);
+  const stack = stackOf(fp);
   // (the law, the air and the path are all in the vehicle's frame)
-  const law = lawOf(planOfOrbital(o), site, v.frame, now.solved);
+  const law = lawOf(fp, site, v.frame, now.solved);
   const airOf = airOfStack(seaLevel, v.frame);
-  const last = o.stages.length - 1;
+  const last = stages.length - 1;
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
   const cur: StagedState = {
@@ -536,8 +537,8 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
   let sweepOn: () => boolean = () => false;
   if (now.sequence) {
     const setting = (i: number): number | null => {
-      const st = o.stages[i]!;
-      return st.velocity?.apparent ? st.velocity.speed.value + (st.velocity.over?.value ?? 0) : null;
+      const speed = seq.stages[i]!.speed;
+      return speed?.apparent ? speed.value : null;
     };
     const ahead = v.sequence.filter((k) => !doneIn(k.step, cur)).map((k) => ({ at: Math.max(k.at, start.t), step: k.step }));
     const summed = ahead.filter((k) => k.step.kind === 'cut' && setting(k.step.stage) !== null);
@@ -545,7 +546,9 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
     const sweep: StagedState = { ...cur, stages: cur.stages.map((x) => ({ ...x })), drops: { ...cur.drops } };
     const sums = [...cur.apparent];
     const pushOf = (i: number, at: number) =>
-      v.burning(sweep, i, at) ? sensed(o.stages[i]!.count, stack.throttle(i, at), o.stages[i]!.thrust.vacuum.value, v.mass(sweep, at)) : 0;
+      v.burning(sweep, i, at)
+        ? sensed(stages[i]!.count, stack.throttle(i, at), stages[i]!.engine.thrust.vacuum.value, v.mass(sweep, at))
+        : 0;
     // (the sum's step, s: the live vehicle sums every tick by the trapezoid; this is the same sum over whole seconds, whose
     // error on a thrust over a mass that change smoothly is a few millimetres a second (a quarter of a millisecond on the cut); and only while a stage cut
     // on it burns: before, the sweep goes from one step to the next)
@@ -603,7 +606,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
     if (trim.yaw) axis = turn(aboutAxis(unit(s.r), trim.yaw), axis);
     return axis;
   };
-  const lit = (): boolean => o.stages.some((_, i) => v.burning(cur, i, since));
+  const lit = (): boolean => stages.some((_, i) => v.burning(cur, i, since));
   return {
     get kind() {
       return lastCut !== null ? 'guided' : 'coast';
@@ -616,7 +619,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       return alone ? alone.quiet : Number.POSITIVE_INFINITY;
     },
     chute: false,
-    radius: o.orbit.radius.value,
+    radius: fp.record!.orbit!.radius.value,
     ground: floorOf(site, seaLevel),
     burning: () => (alone ? alone.burning() : lit()),
     push(at, p, u, altitude) {
@@ -625,7 +628,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       const wind = sub(u, cross(SPIN, p));
       const airspeed = length(wind);
       let thrust = 0;
-      for (let i = 0; i < o.stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
+      for (let i = 0; i < stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
       const mass = v.mass(cur, at);
       let f: Vec3 = thrust > 0 ? scale(axisAt(p, u, at), thrust / mass) : [0, 0, 0];
       if (airspeed > 0)
@@ -636,7 +639,7 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
       if (alone) return alone.next(t);
       // (and each stage running dry, where its load runs out before its cut)
       let n = after(marks, t);
-      for (let i = 0; i < o.stages.length; i++) {
+      for (let i = 0; i < stages.length; i++) {
         if (!v.burning(cur, i, since)) continue;
         const dry = v.dry(i, cur.stages[i]!.from);
         if (dry > t + 1e-9 && dry < n) n = dry;
@@ -676,13 +679,15 @@ export function guided(o: OrbitalFlight, site: Geodetic, seaLevel: number, start
  * it every tick), for a vehicle whose stages stood as `state` has them: the record's run, which keeps no such sum, as the
  * live vehicle would have it. Whole seconds, by the trapezoid (as `guided` sums it).
  */
-export function apparentBy(o: OrbitalFlight, v: StagedVehicle, state: Pick<StagedState, 'stages' | 'drops'>, t: number): number[] {
-  const stack = stackOf(planOfOrbital(o));
+export function apparentBy(plan: FlightPlan, v: StagedVehicle, state: Pick<StagedState, 'stages' | 'drops'>, t: number): number[] {
+  const stack = stackOf(plan);
+  const seq = sequenceOf(plan);
   const s = { ...v.start(), stages: state.stages, drops: state.drops } as StagedState;
-  return o.stages.map((st, i) => {
+  return stagesOf(plan).map((st, i) => {
     const from = state.stages[i]!.from;
-    if (!Number.isFinite(from) || !st.velocity?.apparent) return 0;
-    const push = (at: number) => (v.burning(s, i, at) ? sensed(st.count, stack.throttle(i, at), st.thrust.vacuum.value, v.mass(s, at)) : 0);
+    if (!Number.isFinite(from) || !seq.stages[i]!.speed?.apparent) return 0;
+    const push = (at: number) =>
+      v.burning(s, i, at) ? sensed(st.count, stack.throttle(i, at), st.engine.thrust.vacuum.value, v.mass(s, at)) : 0;
     return integrate(push, from, t, 1).sum;
   });
 }
