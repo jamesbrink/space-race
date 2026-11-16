@@ -14,8 +14,8 @@ Aircraft built in St. Louis, all on Martin's Titan II from Launch Complex 19.
 | Gemini V | No. 5 | Gordon Cooper, Charles Conrad | 21 August 1965 | 190 h 55 min 14 s | [flight](flights/gt-5/README.md): the vehicle, in the Gallery |
 | Gemini VII | No. 7 | Frank Borman, James Lovell | 4 December 1965 | 330 h 35 min 1 s | [flight](flights/gt-7/README.md): the vehicle, in the Gallery |
 | Gemini VI-A | No. 6 | Walter Schirra, Thomas Stafford | 15 December 1965 | 25 h 51 min 24 s | [flight](flights/gt-6a/README.md): the vehicle, in the Gallery |
-| Gemini VIII | No. 8 | Neil Armstrong, David Scott | 16 March 1966 | 10 h 41 min 26 s | |
-| Gemini IX-A | No. 9 | Thomas Stafford, Eugene Cernan | 3 June 1966 | 72 h 20 min 50 s | |
+| Gemini VIII | No. 8 | Neil Armstrong, David Scott | 16 March 1966 | 10 h 41 min 26 s | [flight](flights/gt-8/README.md): the vehicle, in the Gallery, with the Agena it docked with beside it |
+| Gemini IX-A | No. 9 | Thomas Stafford, Eugene Cernan | 3 June 1966 | 72 h 20 min 50 s | [flight](flights/gt-9a/README.md): the vehicle, in the Gallery, with the target it could not dock with beside it |
 | Gemini X | No. 10 | John Young, Michael Collins | 18 July 1966 | 70 h 46 min 39 s | |
 | Gemini XI | No. 11 | Charles Conrad, Richard Gordon | 12 September 1966 | 71 h 17 min 8 s | |
 | Gemini XII | No. 12 | James Lovell, Edwin Aldrin | 11 November 1966 | 94 h 34 min 31 s | |
@@ -24,10 +24,9 @@ Crews, dates and durations are the programme's own summary table (*Project Gemin
 Operations, a Chronology*, NASA SP-4002, Appendix 1, Table A), read for this page. Its table prints
 "Nov. 1, 1966" for the last launch, which its own Table B and every other account have as the 11th.
 Two unmanned flights came first: Gemini-Titan 1 (8 April 1964, into orbit, not recovered) and
-Gemini-Titan 2 (19 January 1965, a ballistic test of the heat shield). Gemini-Titan 3 to 7 have
+Gemini-Titan 2 (19 January 1965, a ballistic test of the heat shield). Gemini-Titan 3 to 9A have
 been researched beyond that table, each from its own mission report where one was found (Gemini
-VI-A's was not); what is said below of the ships after spacecraft 7 is to be checked when each is
-built.
+VI-A's was not).
 
 ## The spacecraft, in general
 
@@ -57,18 +56,48 @@ spacecraft 6. The spacecraft's module
 takes each difference as an argument ([gemini-spacecraft.md](vehicles/gemini-spacecraft.md), "One
 ship from the next").
 
+Then the ships that were to dock and to put a man outside to work:
+
+| | No. 8 | No. 9 |
+| --- | --- | --- |
+| Power | two fuel cell sections, with the small tanks of a short flight | the same |
+| Rendezvous radar | fitted, and used | fitted, and used three times |
+| For docking | three latch receptacles and an index bar: used, once | the same: never used |
+| OAMS tanks | two of each, and a reserve tank of fuel | the same |
+| Drinking water | a 42 lb tank in each section of the adapter | the same |
+| Going outside | two handrails, Velcro, a light; at the back of the adapter, hand bars, a foot rail and the Extravehicular Support Package. Not used: the flight ended first | the same, with the Astronaut Maneuvering Unit, and stirrups on the foot rail. Used, and the unit not flown |
+| Hatch windows | bare | under covers thrown off in orbit |
+| Adapter's inside | aluminium foil | gold |
+| Suit | G4C | G4C, the pilot's legs covered against the unit's exhaust |
+
+Each in its own record: [No. 8](flights/gt-8/spacecraft.md), [No. 9](flights/gt-9a/spacecraft.md).
+
+## Targets
+
+| Vehicle | Flights | In this repo |
+| --- | --- | --- |
+| Gemini Agena Target Vehicle (Lockheed's Agena D with McDonnell's docking adapter) | Gemini VIII (GATV-5003), X, XI, XII; lost on the way up for Gemini VI and IX | [agena-target-vehicle.md](vehicles/agena-target-vehicle.md): a flight chooses its unit; GATV-5003 is built, as it was in orbit, and what 5005, 5006 and 5001 differed in is tabulated; [target-docking-adapter.md](vehicles/target-docking-adapter.md) |
+| Augmented Target Docking Adapter | Gemini IX-A | [atda.md](vehicles/atda.md), as the crew found it, its shroud still on |
+
+A target is a vehicle of its own, with its own module, record and parts. It is shown in its flight's
+gallery in the vehicle's model, standing on the floor beside the launch vehicle under its own heading
+("Docking target"), where it can be chosen and looked at alone; beside the spacecraft where that
+stands alone; and so in the Lineup. That is an exhibit's arrangement, since each went up from Complex
+14 on an Atlas, which is not built, and docking is not flown
+([gt-8's README](flights/gt-8/README.md), "How the target is shown").
+
 ## Launch vehicle
 
 | Vehicle | Flights | In this repo |
 | --- | --- | --- |
-| Gemini Launch Vehicle (Titan II, two stages) | all | [titan-ii-glv.md](vehicles/titan-ii-glv.md): as GLV-3 flew Gemini-Titan 3, and what GLV-4 to GLV-7 changed |
+| Gemini Launch Vehicle (Titan II, two stages) | all | [titan-ii-glv.md](vehicles/titan-ii-glv.md): as GLV-3 flew Gemini-Titan 3, and what GLV-4 to GLV-9 changed |
 
 ## Pads and crew
 
 | | In this repo |
 | --- | --- |
 | Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](../places/cape-canaveral/lc-19.ts) |
-| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch. The G4C suit of Gemini IV, V and VI-A and the G5C of Gemini VII are not built: those ships' seats are empty |
+| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch. The G4C suit of Gemini IV, V, VI-A, VIII and IX-A and the G5C of Gemini VII are not built: those ships' seats are empty |
 
 ## Sources
 
