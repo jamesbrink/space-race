@@ -1,6 +1,8 @@
-import type { CabinDef, Flight } from '../../../../../src/types.ts';
+import type { CabinDef, Flight, ModelDef, Part } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   GIV,
   IN,
@@ -18,6 +20,8 @@ import {
   lamp,
   titanEngines,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const KIT = 'NASA release 65-81, the Gemini-Titan 3 press kit (17 March 1965)';
 
@@ -479,34 +483,128 @@ const HELMET = [
   'NeckRingJoint',
 ];
 
-const vehicle = geminiTitanStack({
-  flight: 'gt-3',
-  parts,
-  // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
-  // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
-  // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
-  // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
-  // man's helmet and head are not drawn (`hide`): the eyes are inside them.
-  seats: [
-    {
-      node: 'Seat_CommandPilot',
-      label: 'the command pilot’s seat',
-      from: 'Hatches',
-      open: [-7200, -6000],
-      egress: ['pad'],
-      hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
-    },
-    {
-      node: 'Seat_Pilot',
-      label: 'the pilot’s seat',
-      from: 'Hatches',
-      open: [-7200, -6000],
-      egress: ['pad'],
-      hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
-    },
+/**
+ * When the hatches stood open with the crew going aboard, seconds from liftoff: from their coming up in the elevator,
+ * "shortly after 7" (07:10 is taken: estimated), to 07:30, when "they were inside with the hatches sealed" (On the
+ * Shoulders of Titans, pp. 232 to 237).
+ */
+const BOARDING: [number, number] = [-(2 * 3600 + 14 * 60), -(3600 + 54 * 60)];
+
+/** The vehicle as built, in its own frame; at Complex 19 it stands on the thrust mount (`lc19Vehicle`); the gallery stands it on its engines. */
+const vehicle = lc19Vehicle(
+  geminiTitanStack({
+    flight: 'gt-3',
+    parts,
+    // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
+    // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
+    // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
+    // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
+    // man's helmet and head are not drawn (`hide`): the eyes are inside them.
+    seats: [
+      {
+        node: 'Seat_CommandPilot',
+        label: 'the command pilot’s seat',
+        from: 'Hatches',
+        open: BOARDING,
+        egress: ['pad'],
+        hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
+      },
+      {
+        node: 'Seat_Pilot',
+        label: 'the pilot’s seat',
+        from: 'Hatches',
+        open: BOARDING,
+        egress: ['pad'],
+        hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
+      },
+    ],
+    cabin,
+  }),
+  BASE,
+);
+
+/** What is said of the suit's parts, the same for both men (crew/g3c-suit.md: nothing of its size is in print; every part is placed from photographs). */
+const suitParts = (who: string): Part[] => [
+  {
+    node: 'Helmet',
+    name: 'Helmet',
+    summary: 'A white shell with a clear visor on side pivots.',
+    detail: `${who} wore it to the pad with the visor down and the suit on a portable ventilator’s air. The neck ring is blue anodised aluminium; the visor swings up on a pivot at each temple.`,
+    explode: [0, 0.5, 0],
+    order: 0,
+  },
+  {
+    node: 'Torso',
+    name: 'Suit',
+    summary: 'The G3C: a pressure suit under a white outer layer.',
+    detail:
+      'David Clark’s G3C was a rubberised bladder held to a man’s shape by a net, under an outer layer of white nylon: a suit to sit in, not to walk in space in. Over it is the personal parachute harness. The name tag, the insignia and the three connectors on the chest are placed from the photographs of the two flown suits.',
+    explode: [0, 0, 0],
+    order: 1,
+  },
+  {
+    node: 'Arms',
+    name: 'Sleeves',
+    summary: 'A pocket on each upper arm; a gauge on the left forearm.',
+    detail: 'The gauge showed the suit’s pressure.',
+    explode: [0, 0, 0],
+    order: 1,
+  },
+  {
+    node: 'Gloves',
+    name: 'Gloves',
+    summary: 'Locked on at wrist rings.',
+    detail: 'Each glove turned on to a ring at the cuff.',
+    explode: [0, 0, 0],
+    order: 1,
+  },
+  {
+    node: 'Legs',
+    name: 'Trousers',
+    summary: 'A pocket on each shin.',
+    detail: 'The pockets held what he would want to hand in his seat.',
+    explode: [0, 0, 0],
+    order: 1,
+  },
+  {
+    node: 'Boots',
+    name: 'Boots',
+    summary: 'White, laced, with two red straps.',
+    detail:
+      'To the foot of the spacecraft he wore yellow overshoes over them, which were taken off at the hatch so that nothing from the pad went aboard. The overshoes are not built.',
+    explode: [0, 0, 0],
+    order: 1,
+  },
+];
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector. Where each
+ * stood is ours: NASA S65-20994 has one of them walking up the ramp, the other is not in it. Each is a figure the site
+ * can be walked as. The portable ventilator each carried and his yellow overshoes are not built (crew/g3c-suit.md).
+ */
+const man = (id: string, name: string, who: string, scale: string, at: [number, number, number]): ModelDef => ({
+  id,
+  name,
+  url: `models/usa/gemini/gt-3/${id}.glb`,
+  scale,
+  backdrop: 'ground',
+  parts: suitParts(who),
+  position: at,
+  rotationY: -Math.PI / 2,
+  walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
+  wide: false,
+  specGroups: ['Pressure suit'],
+  home: 'figure',
+  views: [
+    { id: 'figure', label: 'Figure', centreY: 0.95, span: 2.5, from: [-0.75, 0.08, -0.66] },
+    { id: 'helmet', label: 'Helmet', centreY: 1.62, span: 0.62, from: [-0.75, 0.08, -0.66] },
+    { id: 'walkout', label: 'At the ramp', centreY: 3.2, span: 9, from: [0.86, 0.02, -0.5] },
   ],
-  cabin,
+  // as they went up: the erector standing, its platforms down
+  with: [{ model: 'pad', at: BOARDING[0] }],
 });
+const crew = man('crew', 'Command pilot', 'Grissom', 'Virgil I. Grissom · 1.70 m, 1.76 m suited · to scale', [9.6, 0, -2.5]);
+const pilot = man('pilot', 'Pilot', 'Young', 'John W. Young · 1.75 m, 1.81 m suited · to scale', [10.6, 0, -3.5]);
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-3',
@@ -523,6 +621,7 @@ export const flight: Flight = {
   launch: '1965-03-23T14:24:00.064Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['Virgil I. Grissom', 'John W. Young'],
   summary:
     'The first Gemini with a crew, and the first spacecraft whose crew changed its orbit. Three times round the ' +
@@ -599,6 +698,23 @@ export const flight: Flight = {
     { t: 17551, event: 'Landing, 22°26′ N 70°51′ W' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Grissom, in helmet and boots',
+      value: 1.763,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g3c_suit.py): a man of 1.702 m, which is the 5 ft 7 in secondary sources give him; no primary figure for his height has been found (crew/g3c-suit.md)',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Young, in helmet and boots',
+      value: 1.807,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built: a man of 1.753 m, 5 ft 9 in by a search’s report of NASA’s biographical sheet, which could not be opened (crew/g3c-suit.md)',
+    },
     {
       group: 'Spacecraft',
       label: 'Length at launch',
@@ -910,5 +1026,7 @@ export const flight: Flight = {
       note: `sixteen thrust chamber assemblies of 25 lb in two rings, burning monomethylhydrazine and nitrogen tetroxide (SEDR 300, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12)`,
     },
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that March (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

@@ -6,7 +6,7 @@ spacecraft changed the orbit they were in.
 | | |
 | --- | --- |
 | Liftoff | 23 March 1965, 14:24:00.064 UTC (9:24:00.064 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that morning |
 | Crew | Virgil I. Grissom, command pilot; John W. Young, pilot (backup: Walter M. Schirra, Jr., and Thomas P. Stafford) |
 | Spacecraft | Gemini No. 3, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 3, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -18,9 +18,11 @@ spacecraft changed the orbit they were in.
 | Landing | 19:16:31 UTC, 22°26′ N 70°51′ W, 60 nautical miles short of the planned point |
 | Recovery | USS *Intrepid*; the crew aboard by helicopter at 3:28 p.m. EST, the spacecraft at 5:03 |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 3 on GLV-3 as they left the pad can
-be turned, taken apart as they staged, and cut open. Its launch site, its crew and the flight
-itself are not built: see "What is not built" below.
+**In this repo: the vehicle in the gallery, and its launch site.** Spacecraft No. 3 on GLV-3 as they
+left the pad can be turned, taken apart as they staged, and cut open. At Complex 19 it stands on the
+thrust mount on the morning of the flight: the erector raised while the crew go up and laid down at
+T−35, Grissom and Young at the foot of the ramp, each a figure to walk the site as, under that
+morning's sky. The flight itself is not built: see "What is not built" below.
 
 ## The flight's id, and the name
 
@@ -205,16 +207,21 @@ transcript: at 3 h 08 min the ground passed up the weather for area 4-1, "broken
 indicated 2,000 ft, Grissom said "We're coming through the lower layer" (p. 104). `documented` as
 said; the sea and the sky at the landing itself are in the mission report.
 
-No `weather.ts` is written for this flight yet: it has no site model for a sky to stand over.
-These are the figures one would be written from.
+`weather.ts` is written from these figures (a tenth of cumulus at 480 m, two oktas of altocumulus at
+3,300 m, a fifth of thin cirrostratus, the wind 140° at 5.7 m/s), each with its confidence, and the
+site's sky is drawn from it; the air aloft is ERA5's (`aloft.ts`). The National Weather Service's
+summary of Gemini launch weather has "SCT110" and "Isolated Cu over Cape, SC over water" for this
+launch, which agree. The mission report's own table has not been found.
 
 ## What is not built
 
-- **The launch site.** Complex 19 is [a site as numbers](../../../places/cape-canaveral/lc-19.ts): where it was, and
-  which way the vehicle is taken to have faced on it, which is not settled.
-- **The crew.** Grissom and Young are in their seats in the G3C suits they wore
-  ([g3c-suit.md](../../crew/g3c-suit.md)), posed as for the launch; nothing moves them, and
-  there is no figure of either man standing outside the ship.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the morning but the two who flew; the stand's rooms and the blockhouse's inside; the crew's van; the
+  ventilator each man carried and his yellow overshoes. The complex is built as Martin's handbook of late
+  1965 describes it. The hatches are taken to have faced the erector, to the south, which puts the
+  spacecraft's top a quarter turn from the plane the launch vehicle pitched over in: not settled.
+- **The crew in their seats** are posed as for the launch and nothing moves them; outside the ship each man
+  is a figure the site is walked as ([g3c-suit.md](../../crew/g3c-suit.md)).
 - **A flight deck.** The crew station is built as spacecraft 3 flew it, from McDonnell's drawing of
   this ship's panels, and its needles, pointers, lamps and controls are each a node of the model;
   nothing reads them yet, the cabin has no lights of its own, and its shadows are not baked. The
