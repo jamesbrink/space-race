@@ -11,6 +11,7 @@
  * No three.js here: tools/globe-weather.mjs and the tests run it.
  */
 import type { DayWeather, SiteDef } from '../types.ts';
+import { aloftAt } from '../world/aloft.ts';
 import { DEG } from '../world/frames.ts';
 
 /** The cumulus as air.ts takes them (its `Clouds`): bases and depth in metres, cover 0 to 1, a cloud's breadth, the wind toward (the scene's x and z), m/s. */
@@ -30,9 +31,10 @@ export interface Day {
   /**
    * The high cloud. `cover`: how much of the sky it hides at the site, or null where the record has none there and
    * the map's own stands; `height`: metres above the sea; `veil`: it is a sheet (cirrostratus), not fibres (cirrus);
-   * `depth`: its optical depth looked straight up through, where it covers.
+   * `depth`: its optical depth looked straight up through, where it covers; `toward`: the bearing the wind at its height
+   * blows toward, radians from north, which its fibres and streaks lie along (`highToward`).
    */
-  high: { cover: number | null; height: number; veil: boolean; depth: number };
+  high: { cover: number | null; height: number; veil: boolean; depth: number; toward: number };
   /** How far the eye sees at the ground, metres, and the height over which the haze thins by e. */
   visibility: number;
   haze: number;
@@ -56,6 +58,17 @@ export interface Day {
  */
 export const DECK_HEIGHT = 3600;
 export const HIGH_HEIGHT = 10_500;
+
+/**
+ * The bearing the wind blows toward at the high cloud's height, radians from north: the day's column's (`DayWeather.aloft`,
+ * world/aloft.ts) where it reaches that height and gives a wind there; else from the west-south-west, toward 070, as
+ * the upper westerlies are over Florida in May and over the Syr Darya in April on the whole (estimated: the way the high
+ * cloud's fibres were first drawn).
+ */
+export function highToward(w: DayWeather, height: number): number {
+  const wind = w.aloft && aloftAt(w.aloft, height)?.wind;
+  return wind && Math.hypot(wind[0], wind[1]) > 0 ? Math.atan2(wind[0], wind[1]) : 70 * DEG;
+}
 
 /**
  * How much of the sky the middle deck's patches must cover for its cloud to cover each share of it: the cloudlets
@@ -152,6 +165,7 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
       height: w.high?.base.value ?? HIGH_HEIGHT,
       veil: w.high?.kind === 'cirrostratus',
       depth: w.high?.depth.value ?? 0,
+      toward: highToward(w, w.high?.base.value ?? HIGH_HEIGHT),
     },
     visibility: w.visibility.value,
     haze: w.haze.value,

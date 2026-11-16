@@ -1209,8 +1209,9 @@ The rest of the complex:
   33 m), and is drawn only once the eye is over 1 km up (all of it from 3 km): from the ground the deck casts no
   shadow on the site. On 5 May the cirrus (the map's own: the record has none at the Cape) casts none on the site's
   own ground, only on the globe beyond it; on 21 July the veil dims the Sun evenly for everything under it, on the
-  site and the globe alike, and its streaks cast no shadows of their own. The high cloud's height (10.5 km) and the
-  high wind (the way its fibres and streaks lie) are estimated on both days.
+  site and the globe alike, and its streaks cast no shadows of their own. The high cloud's height (10.5 km) is estimated on
+  both days; the way its fibres and streaks lie is the wind at that height in each day's ERA5 column (day.ts
+  `highToward`: derived), not anything seen.
 - **Paving stands a hand's breadth proud.** The viewer's ground is 0.12 m under the pad's
   surface (it was 0.45 m until November 2026, and the pads stood like table tops), and nothing may
   lie closer above it than that: parallel faces 5 to 6 cm apart flicker from across the site. So the

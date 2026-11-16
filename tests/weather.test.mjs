@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { cloudCutAt } from '../src/viewer/air.ts';
 import { breeze, dayOf, deckPatches, reportReach, veilShade } from '../src/viewer/day.ts';
+import { aloftAt } from '../src/world/aloft.ts';
 import {
   believed,
   coverNear,
@@ -155,7 +156,10 @@ test('Freedom 7’s day is the sky the Cape was first drawn under, figure for fi
     Math.abs(day.cumulus.wind[0] - -7 * Math.cos(compass)) < 1e-12 && Math.abs(day.cumulus.wind[1] - 7 * Math.sin(compass)) < 1e-12,
   );
   assert.deepEqual(day.deck, { cover: 0.3, height: 3600 }); // one okta of altocumulus is patches over 0.30 of the sky
-  assert.deepEqual(day.high, { cover: null, height: 10_500, veil: false, depth: 0 }); // no high cloud in the record: the map's own
+  assert.deepEqual({ ...day.high, toward: null }, { cover: null, height: 10_500, veil: false, depth: 0, toward: null }); // no high cloud in the record: the map's own
+  // its fibres lie along the day's column's wind at its height (ERA5's), not the old estimate toward 070
+  const [e, n] = aloftAt(mr3.weather.aloft, 10_500).wind;
+  assert.ok(Math.abs(day.high.toward - Math.atan2(e, n)) < 1e-12 && Math.abs(day.high.toward - 70 * RAD) > 0.1);
   assert.equal(day.visibility, 80_000);
   assert.equal(day.haze, 1400);
   assert.deepEqual(breeze(day), { toward: 270 * RAD, strength: 1 });
@@ -179,7 +183,9 @@ test('Liberty Bell 7’s day is its own: the record’s three layers, wind and a
   assert.ok(Math.abs(day.cumulus.wind[0] - x) < 1e-9 && Math.abs(day.cumulus.wind[1] - z) < 1e-9);
   assert.equal(day.deck.height, 5400);
   assert.equal(day.deck.cover, deckPatches(0.25));
-  assert.deepEqual(day.high, { cover: 1, height: 10_500, veil: true, depth: 0.4 });
+  assert.deepEqual({ ...day.high, toward: null }, { cover: 1, height: 10_500, veil: true, depth: 0.4, toward: null });
+  const [e, n] = aloftAt(mr4.weather.aloft, 10_500).wind;
+  assert.ok(Math.abs(day.high.toward - Math.atan2(e, n)) < 1e-12);
   assert.equal(day.map, 'cape-canaveral.1961-07-21');
   assert.equal(day.apart, 77);
   assert.ok(day.visibility < dayOf(mr3).visibility);

@@ -28,13 +28,6 @@ export const weatherUniforms = {
 };
 
 /**
- * The high wind's way, as a bearing it blows toward, degrees: from the west-south-west, as the upper westerlies
- * are over Florida in May and over the Syr Darya in April on the whole. Estimated: no sounding at the cirrus's height
- * has been read for any day, and it is only the way the high cloud's fibres and streaks lie.
- */
-const HIGH_WIND = 70;
-
-/**
  * A site's weather on a day, as its setting holds it (backdrops.ts `Setting.weather`): its frame's bearing (degrees) and
  * the day (day.ts), the record's cumulus cover there and the low wind's way, written into the slots as it is made; and
  * the day's map, if it has one, fetched when it is wanted (`want`) and brought in over a second and a half. Whoever
@@ -62,8 +55,8 @@ export class WeatherMap {
     weatherUniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
     const speed = Math.hypot(wind[0], wind[1]) || 1;
     weatherUniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
-    // (east, north) to the scene's (x, z): frames.ts, enuToSite
-    const h = HIGH_WIND * DEG;
+    // the high wind's way (day.ts `highToward`), (east, north) to the scene's (x, z): frames.ts, enuToSite
+    const h = day.high.toward;
     weatherUniforms.uWeatherHigh.value.set(
       Math.sin(h) * Math.sin(b) + Math.cos(h) * Math.cos(b),
       Math.sin(h) * Math.cos(b) - Math.cos(h) * Math.sin(b),

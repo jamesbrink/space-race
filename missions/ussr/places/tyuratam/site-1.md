@@ -1099,7 +1099,8 @@ rocket can leave the erector out by its date.
   from where the map has it, and the three beside it by up to 4 m ("The site's frame").
 - **The sky is the neighbouring stations', not the range's own** ("The land", above: the sky), and against an
   earlier reading of the film as clear. The cirrus is drawn as fibres lying one way over seven eighths of the sky, the
-  same everywhere: which way they lay, how thick they were and whether there were gaps over the pad are not recorded.
+  same everywhere, along the wind at their height in the day's ERA5 column (day.ts `highToward`: derived, not seen); how
+  thick they were and whether there were gaps over the pad are not recorded.
   They dim the Sun evenly (their own streaks cast no shadows). In the cel look, from under them, they are one flat paler tone over the
   sky. From height the record's cirrus holds over the site as far as the stations saw it (60 km, gone by 90: day.ts
   `reportReach`) and the day's map, estimated, lies beyond ("The country round, from height"). Where the report gives
