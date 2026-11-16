@@ -38,6 +38,12 @@ try {
   await page.mouse.click(640, 120);
   await page.waitForFunction(() => window.sr.sound.meter().state === 'running', null, { timeout: 15000 });
   check(true, 'the sound is running');
+  // the place's far hum at its own mains (#29: it was 60 and 120 Hz everywhere)
+  const hum = await page.evaluate(() => ({ hum: window.sr.sound.hum, mains: window.sr.flight.site.place.mains?.value }));
+  check(
+    hum.hum?.length === 2 && hum.hum[0] === hum.mains && hum.hum[1] === 2 * hum.mains,
+    `the far hum is at the place's mains: ${hum.hum?.join(' and ')} Hz (${hum.mains} Hz)`,
+  );
 
   // ---- #2: drive the saloon car that stood by the bus, before it left at 08:05 ----
   const start = await page.evaluate(

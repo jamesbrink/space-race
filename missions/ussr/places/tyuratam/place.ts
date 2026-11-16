@@ -14,6 +14,14 @@ export const TYURATAM: PlaceDef = {
   // morning of 12 April 1961 (the flight's weather.ts) against the Cape's 5.1 m/s on 5 May, so 0.05 x 2.1 / 5.1; the
   // hum is the Cape's own.
   quiet: { wind: 0.02, surf: 0, hum: 0.006, sea: 0 },
+  // the mains its far hum is at (sound/engine.ts `humOf`)
+  mains: {
+    value: 50,
+    confidence: 'documented',
+    source:
+      'the Soviet grid’s 50 Hz, as across Europe and Asia and still in Kazakhstan and Russia (Wikipedia, “Utility frequency”; “Mains electricity ' +
+      'by country”): that the site’s own power stations ran at it is taken from that. The hum’s level is estimated (quiet)',
+  },
   // What a tyre runs on at Site 1: the land is the steppe's clay crust over loam (steppe.ts, "The ground"); the made
   // surfaces are known by their materials' names in the models (site1/), which say what each is
   tread: {

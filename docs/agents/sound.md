@@ -29,7 +29,7 @@ plays until the page has been touched, and a hidden page is suspended.
   every timbre is a synthesised impression: all `estimated`, and said so at the top of both files.
   A loudspeaker cannot do 140 dB and surf together, so levels are compressed two decibels to one
   (`loudness`): exact in `spl`, squeezed in what is heard.
-- **The place's bed is the place's** (`PlaceDef.quiet`, which every place gives: wind, surf, a far hum, and the
+- **The place's bed is the place's** (`PlaceDef.quiet`, which every place gives: wind, surf, a far hum at its own mains, `PlaceDef.mains`, 60 Hz at the Cape and 50 at Tyuratam, and the
   water round a spacecraft that has come down): the same anywhere
   on the site's ground and fading with height, and the surf is no louder toward the beach. A site
   inland has no surf and no sea: Tyuratam's was the Cape's until November 2026, and its surf was

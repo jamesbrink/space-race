@@ -813,3 +813,22 @@ test('every swing, slide and drive at a site names its machine, every vehicle an
   }
   assert.deepEqual([...unlisted], [], 'vehicles whose engine their place does not list');
 });
+
+test('a place’s far hum is at its own mains: 60 Hz at the Cape, 50 Hz at Tyuratam, each documented (sound/engine.ts humOf)', async () => {
+  const { humOf } = await import('../src/sound/engine.ts');
+  const cape = flights.find((f) => f.site.place.name === 'cape-canaveral').site.place;
+  for (const [place, hertz] of [
+    [cape, 60],
+    [TYURATAM, 50],
+  ]) {
+    assert.equal(place.mains.value, hertz, place.name);
+    assert.equal(place.mains.confidence, 'documented');
+    assert.ok(/Hz/.test(place.mains.source), 'it says whose grid');
+    assert.deepEqual(
+      humOf(place.mains.value).map(([h]) => h),
+      [hertz, 2 * hertz],
+      'the mains and its second harmonic',
+    );
+  }
+  for (const f of flights) assert.ok(f.site.place.mains, `${f.id}: its place says its mains`);
+});

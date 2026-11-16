@@ -281,7 +281,7 @@ export class Sound {
   async offline(seconds: number, from: number, ears: Vec, riding = false): Promise<Float32Array> {
     const rate = 48_000;
     const ctx = new OfflineAudioContext(1, Math.round(seconds * rate), rate);
-    const engine = new Engine(ctx);
+    const engine = new Engine(ctx, undefined, this.flight.site.place.mains.value);
     engine.out.connect(ctx.destination);
     engine.setVolume(this.level, 0);
     let heard = Number.NaN;
@@ -317,7 +317,7 @@ export class Sound {
       const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
       if (session) session.type = 'playback';
       const ctx = (this.ctx = new AudioContext({ latencyHint: 'balanced' }));
-      const engine = (this.engine = new Engine(ctx));
+      const engine = (this.engine = new Engine(ctx, undefined, this.flight.site.place.mains.value));
       this.analyser = ctx.createAnalyser();
       this.analyser.fftSize = 2048;
       engine.out.connect(this.analyser);
@@ -404,6 +404,11 @@ export class Sound {
     const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind);
     this.engine!.works(voices, now);
     for (const shot of shots) this.engine!.shot(shot, now);
+  }
+
+  /** The place's hum's tones, Hz (its mains and twice it: engine.ts `humOf`), as the engine was built; empty before it is. */
+  get hum(): number[] {
+    return this.engine?.hum ?? [];
   }
 
   /** What the works are playing now, slot by slot (null: silent): for measuring what cannot be heard (`sr.sound.voices`). */

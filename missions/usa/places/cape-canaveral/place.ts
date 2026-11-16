@@ -201,6 +201,14 @@ export const CAPE_CANAVERAL: PlaceDef = {
   // hum of machinery, and the sea round a spacecraft that has come down in it. Estimated, as every place's bed is
   // (sound/model.ts: the levels are impressions, not measured).
   quiet: { wind: 0.05, surf: 0.035, hum: 0.006, sea: 0.12 },
+  // the mains its far hum is at (sound/engine.ts `humOf`)
+  mains: {
+    value: 60,
+    confidence: 'documented',
+    source:
+      'the United States’ mains, 60 Hz since Westinghouse chose it in 1890 (Wikipedia, “Utility frequency”; “Mains electricity by country”): the ' +
+      'Cape’s grid and its generators were American equipment at it. The hum’s level is estimated (quiet)',
+  },
   // What a tyre runs on round the pads: the land is the Cape's sand under grass and scrub (lc-5.md, "The land"); the made
   // surfaces are known by their materials' names in the models (lc5/, complexes/), which say what each is
   tread: {

@@ -68,6 +68,8 @@ export interface PlaceDef {
    * a surf that is not there.
    */
   quiet: { wind: number; surf: number; hum: number; sea: number };
+  /** The frequency its mains ran at, Hz: what its far hum of machinery hums at, with its second harmonic (sound/engine.ts `humOf`). */
+  mains: Measure;
   /** What a tyre runs on here (sound/model.ts `tyreVoice`): the land, and the made surfaces by their material. */
   tread: Tread;
   /** The engines of the road vehicles and locomotives that worked here, by the name a vehicle's model or a move's machine gives (types/model.ts Machine). */

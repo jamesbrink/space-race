@@ -265,6 +265,7 @@ sea and the air were like (`missions/usa/places/cape-canaveral/ground.ts`; `lc-5
 | Kraft, "Flight plan for the MR-3 manned flight", in *Proceedings of a Conference on Results of the First U.S. Manned Suborbital Space Flight*, June 1961, p. 8, and the countdown, p. 77 | [NTRS 19720065957](https://ntrs.nasa.gov/citations/19720065957) | Low cloud blowing into the launch area at T-15 minutes, visibility expected to improve; a hold for weather at 07:13 | |
 | USGS 3D Elevation Program, point queries along 28.4394° N | [epqs.nationalmap.gov](https://epqs.nationalmap.gov) | Ground near Complex 5 about 9.5 ft above NAVD 88; inland 5 to 9.5 ft rippling 1 to 3 ft; dune crest 6 to 8 ft about 60 m from the water | Today's ground, not 1961's |
 | NOAA NDBC buoy 41009 (20 nautical miles east of the Cape), May 2010 to 2019 | [ndbc.noaa.gov](https://www.ndbc.noaa.gov) | May swell: significant height median 0.95 m, period 7.7 s | Modern record |
+| Wikipedia, *Utility frequency* and *Mains electricity by country* | [Utility frequency](https://en.wikipedia.org/wiki/Utility_frequency), [by country](https://en.wikipedia.org/wiki/Mains_electricity_by_country) | The mains a place's far hum is at (`PlaceDef.mains`): 60 Hz in the United States since Westinghouse chose it about 1890; 50 Hz in Kazakhstan and Russia, as across Europe and Asia | Secondary; nothing read says what the Cape's or Site 1's own generators ran at, only the national grids' |
 
 ### The Earth and the sky
 

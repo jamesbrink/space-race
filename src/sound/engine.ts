@@ -20,7 +20,7 @@
  *   white   -> band-pass 3.2 kHz                               -> jets  -> flight
  *   white   -> band-pass 380 Hz -> wind (wanders)   -> place
  *   white   -> low-pass 650 Hz  -> water (swells)   -> place
- *   60 and 120 Hz                -> hum             -> place
+ *   the mains and twice it       -> hum             -> place (the place's grid: 60 Hz at the Cape, 50 at Tyuratam)
  *   white   -> band-pass         -> breath          -> walk
  *   one-shots (model.ts `Shot`): a stretch of a buffer -> filter -> envelope -> flight, walk or works
  *   six voices of the works (model.ts `Voice`: a machine, an engine, tyres), each:
@@ -34,6 +34,12 @@
  * than its negative ones, as a supersonic jet's pressure is.
  */
 import { type Mix, type Shot, type Voice, WORK_VOICES } from './model.ts';
+
+/** What the place's far hum is made of: its mains frequency at full share and its second harmonic at half (estimated shares). */
+export const humOf = (mains: number): [number, number][] => [
+  [mains, 1],
+  [2 * mains, 0.5],
+];
 
 /** Seconds of each noise buffer. */
 const LOOP = 5;
@@ -167,7 +173,11 @@ export class Engine {
     delay: AudioParam;
   }[] = [];
 
-  constructor(ctx: BaseAudioContext, seed = 1961) {
+  /** The hum's tones, Hz, as built (`humOf` the place's mains), for the diagnostics. */
+  readonly hum: number[];
+
+  /** `mains`: the place's grid frequency, Hz (PlaceDef.mains), which its hum is at. */
+  constructor(ctx: BaseAudioContext, seed = 1961, mains = 60) {
     this.ctx = ctx;
     this.rnd = random(seed + 1);
     this.buffers = noises(ctx, seed);
@@ -261,10 +271,8 @@ export class Engine {
       breathBand,
     ]);
     const hum = gain(0, place);
-    for (const [hertz, level] of [
-      [60, 1],
-      [120, 0.5],
-    ] as const) {
+    this.hum = humOf(mains).map(([hertz]) => hertz);
+    for (const [hertz, level] of humOf(mains)) {
       const osc = ctx.createOscillator();
       osc.frequency.value = hertz;
       osc.connect(gain(level, hum));
