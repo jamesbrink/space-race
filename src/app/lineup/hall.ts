@@ -112,7 +112,8 @@ export class Hall {
   private readonly major = lines(this.colours.ink.value, 0.26);
   private readonly minor = lines(this.colours.ink.value, 0.09);
   private readonly tape = lines(this.colours.ink.value, 0.36);
-  private readonly environments = new Map<string, THREE.Texture>();
+  /** Each room baked, as the target it was baked into: let go whole (a target's texture let go alone keeps its GPU picture). */
+  private readonly environments = new Map<string, THREE.WebGLRenderTarget>();
   private readonly renderer: THREE.WebGLRenderer;
   private look: Look = 'real';
 
@@ -166,14 +167,14 @@ export class Hall {
   private bake(p: Palette): THREE.Texture {
     const key = `${p.wall}/${p.boxes}`;
     let made = this.environments.get(key);
-    if (made) return made;
+    if (made) return made.texture;
     if (tier().lighter) {
       for (const old of this.environments.values()) old.dispose();
       this.environments.clear();
     }
     const gen = new THREE.PMREMGenerator(this.renderer);
     const baked = room(p.wall, p.boxes);
-    made = gen.fromScene(baked, 0.02, 0.1, 200).texture;
+    made = gen.fromScene(baked, 0.02, 0.1, 200);
     gen.dispose();
     baked.traverse((o) => {
       const mesh = o as THREE.Mesh;
@@ -181,7 +182,7 @@ export class Hall {
       for (const m of [mesh.material ?? []].flat()) m.dispose();
     });
     this.environments.set(key, made);
-    return made;
+    return made.texture;
   }
 
   private apply(): void {
