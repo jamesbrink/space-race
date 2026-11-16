@@ -1,7 +1,6 @@
 import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
-import type { Results } from '../sim/fly.ts';
-import { G0 } from '../world/bodies.ts';
+import { type Ballistic, ballisticOf, type Results } from '../sim/fly.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
@@ -66,6 +65,9 @@ const PHASES: Record<LiveSample['phase'], string> = {
   landed: 'Down',
 };
 /** How often a sample is kept for the scene to replay, s, and the longest stretch of flight one frame may step, s. */
+/** A ballistic flight's hardware by role (sim/fly.ts), or null for one of another kind. */
+const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan?.kind === 'ballistic' ? ballisticOf(f.plan) : null);
+
 const KEEP = 0.1;
 const MOST = 5;
 /** The clock runs on this long after the landing, at life's pace, for what is still moving to come to rest (the parachute lying down: viewer/chute.ts), and then stops. */
@@ -127,12 +129,12 @@ export class Cockpit extends Deck {
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost) {
     super(parent, flight, clock, host, Cockpit.spec(flight));
-    const tr = flight.trajectory;
+    const roles = rolesOf(flight);
     this.vehicle =
-      tr?.body && flight.flies && flight.plan
-        ? vehicle(flight.plan, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) })
+      roles?.craft.rigid && flight.flies
+        ? vehicle(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) })
         : null;
-    this.flow = tr ? tr.engine.thrust.value / (G0 * tr.engine.isp.value) : 0;
+    this.flow = roles ? roles.flow : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
     this.systems();
     this.button.hidden = !this.vehicle;
@@ -148,9 +150,9 @@ export class Cockpit extends Deck {
           `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event">${m.name}</button>`,
       )
       .join('');
-    const throttles = Boolean(flight.trajectory?.body?.engine?.throttle);
+    const throttles = Boolean(rolesOf(flight)?.engine.throttle?.range);
     // (a capsule with a rate command mode has its switch among the deck's keys: it has no key, every letter being taken)
-    const rate = flight.trajectory?.body?.capsule.rcs?.rate;
+    const rate = rolesOf(flight)?.craft.rigid?.capsule.rcs?.rate;
     const rated = rate
       ? `<button data-do="rate" class="switch" aria-pressed="false" title="Rate command: on the spacecraft alone the stick asks for a rate of turn, ${rate.full.value} degrees a second at full throw, and the manual jets hold it to ${rate.deadband.value}; let go, they damp the rates and hold no attitude. Off, the stick works the jets as it is pushed">Rate command</button>`
       : '';
@@ -204,11 +206,12 @@ export class Cockpit extends Deck {
 
   /** The strip of what the pilot has to fly with, built from the flight's data: the engine and its tanks, each jet supply, the jets, the motors. */
   private systems(): void {
-    const tr = this.flight.trajectory;
+    const roles = rolesOf(this.flight);
+    const body = roles?.craft.rigid;
     const el = this.cells.get('systems') ?? this.root.querySelector<HTMLElement>('[data-cell=systems]')!;
-    if (!tr?.body) return;
-    const supplies = tr.body.capsule.rcs?.supplies ?? [];
-    const axes = tr.body.capsule.rcs ? ['pitch', 'yaw', 'roll'] : [];
+    if (!roles || !body) return;
+    const supplies = body.capsule.rcs?.supplies ?? [];
+    const axes = body.capsule.rcs ? ['pitch', 'yaw', 'roll'] : [];
     el.innerHTML = `
       <div class="tank engine" title="The engine: what it is doing, and what kind it is"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
       <div class="tank burn" title="Propellant left of what the engine burns before its cutoff"><span>Burn left</span><u class="bar"></u><b><u data-cell="fuel"></u></b><i></i></div>
@@ -223,7 +226,7 @@ export class Cockpit extends Deck {
       }
       <div class="tank motors" title="Every motor burning now, with its thrust"><span>Burning</span><b data-cell="motors"></b></div>`;
     for (const cell of el.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(cell.dataset.cell!, cell);
-    this.root.querySelector<HTMLElement>('.cockpit-lever')!.hidden = !tr.body?.engine?.throttle;
+    this.root.querySelector<HTMLElement>('.cockpit-lever')!.hidden = !roles.engine.throttle?.range;
   }
 
   /** Take the flight deck: the vehicle stands on its pad, the clock stopped at liftoff, waiting for ignition. */
@@ -245,7 +248,7 @@ export class Cockpit extends Deck {
     this.state = v.start();
     this.tally = new Tally();
     this.hand = {};
-    const range = this.flight.trajectory?.body?.engine?.throttle;
+    const range = rolesOf(this.flight)?.engine.throttle?.range;
     this.lever = range ? new Lever(range) : null;
     if (this.lever) this.setLever(this.lever.at);
     this.trim = { pitch: 0, yaw: 0 };
@@ -301,9 +304,9 @@ export class Cockpit extends Deck {
       }
       const own = (v: number): number | undefined => (v !== 0 ? v : this.guidance ? undefined : 0);
       // an engine with a lever runs where the lever stands, from the moment it is lit; the sequencer's cutoff at the record's time is not undone by it
-      const cut = this.sequence && s.abortAt === null && s.t >= this.flight.trajectory!.engine.cutoff.value - 1e-9;
+      const cut = this.sequence && s.abortAt === null && s.t >= rolesOf(this.flight)!.cutoff - 1e-9;
       // rate command, on the spacecraft alone: the stick is a rate asked for on every axis, held through the manual jets
-      const rated = this.rate && s.shed.booster ? this.flight.trajectory!.body!.capsule.rcs?.rate : undefined;
+      const rated = this.rate && s.shed.booster ? rolesOf(this.flight)!.craft.rigid!.capsule.rcs?.rate : undefined;
       if (rated) return blend(auto(s), { ...this.hand, ...rateCommand(s, { pitch, yaw, roll }, rated), automatic: this.sequence });
       return blend(auto(s), {
         ...this.hand,
@@ -445,13 +448,13 @@ export class Cockpit extends Deck {
   /** What Space would do now, or null when there is nothing left to set off. */
   private next(): Step | null {
     const s = this.state;
-    const tr = this.flight.trajectory!;
+    const roles = rolesOf(this.flight)!;
     // (down, all that is left is a hatch to blow, where there is one)
     if (s?.landing) return this.can('hatch') ? 'hatch' : null;
     if (!s) return null;
     if (!s.ignited && s.abortAt === null) return 'ignite';
     if (!s.cutoff) return 'cutoff';
-    if (tr.body?.tower && !s.shed.tower) return 'tower';
+    if (roles.towerJoint?.at && !s.shed.tower) return 'tower';
     if (!s.shed.booster) return 'separate';
     // (after an abort the retrorockets are not part of what is left to do: the parachutes are next)
     if (s.abortAt === null && s.retroAt === null) return 'retro';
@@ -562,7 +565,7 @@ export class Cockpit extends Deck {
     if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
     const alone = s.shed.booster;
     if (what === 'cutoff') return s.ignited && !s.cutoff;
-    if (what === 'tower') return Boolean(this.flight.trajectory?.body?.tower) && !s.shed.tower;
+    if (what === 'tower') return Boolean(rolesOf(this.flight)?.towerJoint?.at) && !s.shed.tower;
     if (what === 'separate') return !alone;
     if (what === 'retro') return alone && s.retroAt === null && !s.shed.retropack;
     if (what === 'retropack') return alone && !s.shed.retropack;
@@ -575,7 +578,7 @@ export class Cockpit extends Deck {
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
-    else if (what === 'rate' && this.flight.trajectory?.body?.capsule.rcs?.rate) this.rate = !this.rate;
+    else if (what === 'rate' && rolesOf(this.flight)?.craft.rigid?.capsule.rcs?.rate) this.rate = !this.rate;
     else if (what === 'sequence') {
       this.sequence = !this.sequence;
       // (when in this flight it was off: a mechanism's programme is not heard then, and is taken up again where it is switched on)
@@ -587,7 +590,7 @@ export class Cockpit extends Deck {
       // guarded: the first press arms it and says so, the second within two seconds fires the rocket
       const s = this.state;
       const now = performance.now() / 1000;
-      if (!s || s.landing || s.shed.tower || s.abortAt !== null || !this.flight.trajectory?.body?.escape) return;
+      if (!s || s.landing || s.shed.tower || s.abortAt !== null || !rolesOf(this.flight)?.escape) return;
       if (this.clock.t < s.t - TICK) return; // (looking back at what was flown)
       if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
       else {
@@ -638,13 +641,13 @@ export class Cockpit extends Deck {
 
   /** Put a sample on the instruments. Only what has changed touches the page. */
   private show(s: LiveSample): void {
-    const tr = this.flight.trajectory!;
+    const roles = rolesOf(this.flight)!;
     const set = (id: string, text: string) => {
       const el = this.cells.get(id)!;
       if (el.textContent !== text) el.textContent = text;
     };
     const up = s.r;
-    const burnable = this.flow * tr.engine.cutoff.value;
+    const burnable = this.flow * roles.cutoff;
     const state = this.state!;
     // (the greatest dynamic pressure is called as it comes and goes: within 3 per cent of the most so far, and no longer rising by a per cent of it a second)
     const riding = s.phase === 'powered' || s.phase === 'coast';
@@ -674,7 +677,7 @@ export class Cockpit extends Deck {
     set('mach', s.mach.toFixed(2));
     set('pitch', (90 - angleBetween(s.axis, up) / DEG).toFixed(0));
     set('alpha', s.groundSpeed > 5 && s.q > 1 ? s.alpha.toFixed(1) : '–');
-    const toBurn = Math.max(0, Math.min(100, (100 * (s.mass - (tr.liftoffMass.value - burnable))) / burnable));
+    const toBurn = Math.max(0, Math.min(100, (100 * (s.mass - (roles.craft.mass.value - burnable))) / burnable));
     set('fuel', riding ? `${toBurn.toFixed(0)} %` : '–');
     const burn = this.cells.get('fuel')!.closest<HTMLElement>('.tank')!;
     burn.style.setProperty('--left', `${riding ? toBurn.toFixed(0) : 0}%`);
@@ -719,8 +722,8 @@ export class Cockpit extends Deck {
 
   /** The systems strip and the prompt: what there is left to fly with, what is firing, and what is due. */
   private gauges(s: LiveSample, state: VehicleState, replay: boolean): void {
-    const tr = this.flight.trajectory!;
-    const body = tr.body!;
+    const roles = rolesOf(this.flight)!;
+    const body = roles.craft.rigid!;
     const set = (id: string, text: string, low = false) => {
       const el = this.cells.get(id);
       if (!el) return;
@@ -735,12 +738,12 @@ export class Cockpit extends Deck {
       this.cells.get(id)?.parentElement?.style.setProperty('--left', `${(100 * Math.max(0, Math.min(1, part))).toFixed(0)}%`);
     };
     // the engine: its kind, and what it is doing
-    const nature = tr.body?.engine;
+    const nature = roles.engine;
     const main = s.burning.find((m) => m.engine === this.vehicle!.engine);
-    const range = nature?.throttle;
+    const range = nature.throttle?.range;
     set(
       'engine-kind',
-      nature?.kind === 'solid'
+      nature.kind === 'solid'
         ? 'solid: burns out'
         : range
           ? `throttle ${(range[0] * 100).toFixed(0)} to ${(range[1] * 100).toFixed(0)} %`
@@ -759,7 +762,7 @@ export class Cockpit extends Deck {
           : s.tanks === null
             ? 'Gone'
             : spent
-              ? nature?.kind === 'solid'
+              ? nature.kind === 'solid'
                 ? 'Burnt out'
                 : 'Out of propellant'
               : 'Cut off',
@@ -808,17 +811,19 @@ export class Cockpit extends Deck {
     const feet = (m: number) => `${Math.round(m / FT / 100) * 100} ft`.replace(/(\d)(\d{3}) /, '$1,$2 ');
     if (coming && state.shed.tower && state.mainAt === null) {
       const which = state.drogueAt === null ? ('drogue' as const) : ('main' as const);
-      const at = tr[which].altitude.value;
+      const at = which === 'drogue' ? roles.drogueHeight : roles.mainHeight;
       cues.push(`${which === 'drogue' ? 'Drogue' : 'Main'}: ${feet(at)} (${(at / 1000).toFixed(1)} km)`);
       if (!this.sequence && s.altitude <= at) due.push(`${which === 'drogue' ? 'Drogue' : 'Main'} parachute is due: Space`);
     }
     if (!this.sequence && !replay && !state.landing && state.ignited && state.abortAt === null) {
       const late = (at: number) => s.t >= at;
-      if (!state.cutoff && late(tr.engine.cutoff.value)) due.push('Cutoff is due');
-      else if (state.cutoff && body.tower && !state.shed.tower && late(body.tower.at.value)) due.push('Tower jettison is due');
-      else if (state.shed.tower && !state.shed.booster && late(tr.separation.at.value)) due.push('Separation is due');
-      else if (state.shed.booster && state.retroAt === null && late(tr.retro.fires[0]!.value)) due.push('Retrofire is due');
-      else if (state.retroAt !== null && !state.shed.retropack && late(tr.retropack.at.value)) due.push('Retropack jettison is due');
+      const towerAt = roles.towerJoint?.at?.value;
+      if (!state.cutoff && late(roles.cutoff)) due.push('Cutoff is due');
+      else if (state.cutoff && towerAt !== undefined && !state.shed.tower && late(towerAt)) due.push('Tower jettison is due');
+      else if (state.shed.tower && !state.shed.booster && late(roles.separation.at?.value ?? Infinity)) due.push('Separation is due');
+      else if (state.shed.booster && state.retroAt === null && late(roles.retroAt)) due.push('Retrofire is due');
+      else if (state.retroAt !== null && !state.shed.retropack && late(roles.packJoint?.at?.value ?? Infinity))
+        due.push('Retropack jettison is due');
     }
     if (state.abortAt !== null && !state.shed.tower && !this.sequence && coming)
       due.push('Tower jettison is due: no parachute comes out past it');

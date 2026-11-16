@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { atmosphere } from '../sim/atmosphere.ts';
-import { flownOnce, type Sample } from '../sim/fly.ts';
+import { ballisticOf, flownOnce, type Sample } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
 import { HeatLog, type HeatResults, type Thermal, thermalAt } from '../sim/heating.ts';
 import { liftoffEngine } from '../sim/staged.ts';
@@ -16,7 +16,7 @@ import { buffetPressure, type Felt, joltStrength, type Shake, shake, soundPressu
  * clock's instant: the heated surfaces' glow and the shock layer's (entry.ts, from sim/heating.ts),
  * the collar of cloud at Mach 1, the ice off a cold tank at liftoff, and the camera shaken by the
  * engine's sound, the air's buffet, the load and the jolts of events (shake.ts). Only the flight's
- * data is read: `trajectory` (and its `heating`) and `flies` (and its `air`). The stage feeds it
+ * data is read: `plan` (and its craft's `heating`) and `flies` (and its `air`). The stage feeds it
  * from `lift` and asks it for the shake just before the draw; neither knows what is in it.
  *
  * Everything is a function of the clock's time and the run on show, so the same instant looks and
@@ -68,7 +68,7 @@ export class Effects {
     this.flight = flight;
     this.site = siteFrame(flight.site);
     this.frame = frameOf(flight);
-    const heating = flight.trajectory?.heating ?? flight.orbital?.heating;
+    const heating = flight.plan?.craft[0]?.heating;
     this.log = heating ? new HeatLog(heating) : null;
     this.glow = heating ? new Incandescence(heating.surfaces.map((s) => s.materials)) : null;
   }
@@ -81,15 +81,16 @@ export class Effects {
 
   private samples(): readonly Sample[] {
     if (this.live) return this.live.samples;
-    const tr = this.flight.trajectory;
-    if (!tr && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).samples;
-    return tr ? flownOnce(this.flight.plan!, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
+    const kind = this.flight.plan?.kind;
+    if (kind === 'orbital' && this.flight.flies) return orbitalRecord(this.flight).samples;
+    return kind === 'ballistic' ? flownOnce(this.flight.plan!, this.site, this.flight.site.seaLevel.value, this.frame).samples : [];
   }
 
   private cutoff(): number {
     if (this.live) return this.live.cutoff;
-    if (!this.flight.trajectory && this.flight.orbital?.ascent && this.flight.flies) return orbitalRecord(this.flight).cutoff;
-    return this.flight.trajectory?.engine.cutoff.value ?? 0;
+    const plan = this.flight.plan;
+    if (plan?.kind === 'orbital' && this.flight.flies) return orbitalRecord(this.flight).cutoff;
+    return plan?.kind === 'ballistic' ? ballisticOf(plan).cutoff : 0;
   }
 
   /** The heating at `t` on the run on show, or null for a flight with none to work out. */
@@ -110,7 +111,7 @@ export class Effects {
    * four fifths of the limit.
    */
   reading(t: number): { name: string; temperature: number; limit: number; flux: number; warm: boolean; hot: boolean } | null {
-    const heating = this.flight.trajectory?.heating ?? this.flight.orbital?.heating;
+    const heating = this.flight.plan?.craft[0]?.heating;
     const now = this.thermal(t);
     const surface = heating?.surfaces[0];
     if (!heating || !now || !surface) return null;
@@ -154,8 +155,8 @@ export class Effects {
   /** The events of the run on show that jolt whoever rides it, in order of time. */
   private events(): readonly Jolt[] {
     const samples = this.samples();
-    const tr = this.flight.trajectory;
-    if (!tr && !this.flight.orbital?.ascent) return [];
+    const plan = this.flight.plan;
+    if (!plan) return [];
     const fresh = samples !== this.joltsOf || samples.length < this.scanned;
     if (fresh) {
       this.joltsOf = samples;
@@ -184,9 +185,14 @@ export class Effects {
     const drops = this.flight.flies?.drops ?? [];
     const dropped = this.live ? this.live.dropped : drops.map((d) => d.at);
     drops.forEach((d, i) => void (d.under || named.push({ at: dropped[i] ?? Infinity, strength: 0.4 })));
-    if (!this.live && tr) {
-      for (const f of tr.retro.fires)
-        named.push({ at: f.value, strength: joltStrength((tr.retro.thrust.value / tr.retropack.mass.value / G0) * 3) });
+    if (!this.live && plan.kind === 'ballistic') {
+      // each retrorocket as it lights, the three together felt as their thrust on the spacecraft without its pack
+      const b = ballisticOf(plan);
+      const motor = b.motors[0];
+      const alone = b.packJoint?.after?.value;
+      if (motor && alone)
+        for (const w of b.retroWaits)
+          named.push({ at: b.retroAt + w, strength: joltStrength((motor.thrust.vacuum.value / alone / G0) * 3) });
     }
     if (this.live && Number.isFinite(this.live.duration)) named.push({ at: this.live.duration, strength: 0.8 });
     const all = this.jolts.slice();
@@ -204,13 +210,17 @@ export class Effects {
    * the ground, 1 for one carried with the vehicle.
    */
   felt(t: number, eye: THREE.Vector3, riding: number): Felt {
-    const tr = this.flight.trajectory;
+    const plan = this.flight.plan;
     const felt: Felt & { jolts: { since: number; strength: number }[] } = { sound: 0, buffet: 0, load: 1, jolts: [] };
     // (an orbital flight's engines as one: those lit on the ground, sim/staged.ts)
-    const engine = tr
-      ? { thrust: tr.engine.thrust.value, exhaustSpeed: tr.engine.isp.value * G0 }
-      : this.flight.orbital?.ascent
-        ? liftoffEngine(this.flight.plan!)
+    const booster = plan?.kind === 'ballistic' ? ballisticOf(plan).engine : null;
+    const engine = booster
+      ? {
+          thrust: (booster.thrust.seaLevel ?? booster.thrust.vacuum).value,
+          exhaustSpeed: (booster.isp!.seaLevel ?? booster.isp!.vacuum).value * G0,
+        }
+      : plan?.kind === 'orbital'
+        ? liftoffEngine(plan)
         : null;
     if (!engine || !this.flying) return felt;
     // the engine, as it was when the sound now arriving left it
@@ -294,7 +304,7 @@ export class Effects {
     };
     group.updateMatrixWorld(true);
     const shield = air?.shield ? boxOf(() => true, full.getObjectByName(air.shield)) : null;
-    if (shield && !shield.isEmpty() && (this.flight.trajectory?.heating ?? this.flight.orbital?.heating)) {
+    if (shield && !shield.isEmpty() && this.flight.plan?.craft[0]?.heating) {
       const radius = (shield.max.x - shield.min.x) / 2;
       this.shock = new ShockGlow();
       this.shield = shield;
@@ -350,7 +360,7 @@ export class Effects {
     const dim = 1 / Math.max(1, exposure / 0.8) ** 0.7; // (as the engine's fire: not a white blot by night)
     const light = Math.min(1, sun / 3 + 0.1);
     const now = flying ? this.thermal(t) : null;
-    const heating = this.flight.trajectory?.heating ?? this.flight.orbital?.heating;
+    const heating = this.flight.plan?.craft[0]?.heating;
     if (this.glow && heating) {
       const cold = heating.starts.value;
       if (this.glow.set(group, now ? now.surfaces.map((s) => s.temperature) : heating.surfaces.map(() => cold), dim)) changed = true;
