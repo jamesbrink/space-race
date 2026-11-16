@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { prefs } from '../app/prefs.ts';
-import type { Phase } from '../sim/fly.ts';
+import { type CraftState, hasLeft } from '../sim/craft.ts';
+import { ballisticOf } from '../sim/fly.ts';
+import { clockAt } from '../sim/plan.ts';
 import {
   apsides,
   type Burn,
@@ -315,20 +317,21 @@ export interface PathSample {
   r: Vec3;
   v: Vec3;
   mass: number;
-  phase: Phase;
+  /** What it is doing, as the predictor starts from it (sim/predict.ts `Start`). */
+  phase: Start['phase'];
   centre?: Vec3;
   /** The long axis (the body's +X) in the frame, where the sample says how it lies. */
   axis?: Vec3;
   /** The parachute out, as the live state has it (filling, or torn). */
   chute?: { full: number; was: number; at: number; fills: number };
 }
-/** What of the live state (sim/vehicle.ts: VehicleState) the path reads: what is lit and done, and what has been let go. */
+/** What of the live state (sim/vehicle.ts: VehicleState) the path reads: what is lit and done, and the machine's state (what has left). */
 export interface PathLive {
   ignited: boolean;
   cutoff: boolean;
   abortAt?: number | null;
   retroAt?: number | null;
-  shed?: { tower?: boolean; booster?: boolean; retropack?: boolean };
+  craft?: CraftState;
 }
 export interface PathSource {
   readonly active: boolean;
@@ -337,7 +340,7 @@ export interface PathSource {
   readonly steering: { guidance: boolean; sequence?: boolean; trim: { pitch: number; yaw: number } };
   listen(fn: (sample: PathSample, live: PathLive | null) => void): void;
   /**
-   * A flight with no `trajectory` (one into orbit: orbitdeck.ts) predicts its own path from a sample, with whatever its
+   * A flight whose plan is not ballistic (one into orbit: orbitdeck.ts) predicts its own path from a sample, with whatever its
    * deck has planned, in at most `points` points, and says what that plan is (`plan`: when it changes, the path is made
    * again) and, while engines burn, which future it shows (`pathAs`).
    */
@@ -775,34 +778,61 @@ export class FlightPath {
 
   /** Whether there is a choice of future to make (K): the engine burns, under guidance, with a programme left to fly. */
   private choosing(): boolean {
-    const tr = this.flight.trajectory;
-    if (!tr) return this.source.guidable === true;
+    if (!this.ballistic) return this.source.guidable === true;
     return this.burning() && this.source.steering.guidance && this.source.craft !== null && (this.sample?.t ?? 0) < this.until();
+  }
+
+  /** Whether the flight's plan is a ballistic one, whose path is predicted here (a flight into orbit's deck predicts its own). */
+  private get ballistic(): boolean {
+    return this.flight.plan?.kind === 'ballistic';
   }
 
   /** When the engine stops if nobody stops it: the record's cutoff with the sequencer on; with it off, when it runs dry. */
   private until(): number {
-    const e = this.flight.trajectory!.engine;
-    return this.source.steering.sequence === false ? (e.depletion?.value ?? e.cutoff.value) : e.cutoff.value;
+    const b = ballisticOf(this.flight.plan!);
+    return this.source.steering.sequence === false ? (b.engine.depletion?.value ?? b.cutoff) : b.cutoff;
   }
 
-  /** What the sequencer will do from the live state: nothing if it is off, or after an abort but the parachutes. */
+  /**
+   * What the sequencer will do from the live state: nothing if it is off, or after an abort but the parachutes. Otherwise
+   * one rule for any ballistic plan, from its events in the plan's order: each the sequencer sets off on the clock, by what
+   * it does as the predictor flies it (sim/predict.ts `Sequence`). A joint let go (the tower's, the booster's, the pack's:
+   * sim/fly.ts `ballisticOf`) comes at the instant the clock sets it off, unless what it lets go has left already; the
+   * motors are lit so long after the first as the plan's waits say, the first at the instant the live vehicle lit it (or
+   * the plan's), unless what they are on has left. The first event to do a thing is the one that does it.
+   */
   private sequence(): Sequence | undefined {
-    const tr = this.flight.trajectory!;
+    const plan = this.flight.plan!;
     const live = this.live;
     if (!live) return undefined;
     const on = this.source.steering.sequence !== false;
     if (!on) return { chutes: false };
     if (live.abortAt !== null && live.abortAt !== undefined) return { chutes: true };
-    const shed = live.shed ?? {};
-    const offsets = tr.retro.fires.map((f) => f.value - tr.retro.fires[0]!.value);
-    const retroAt = live.retroAt ?? tr.retro.fires[0]!.value;
-    return {
-      ...(tr.body?.tower && !shed.tower ? { tower: tr.body.tower.at.value } : {}),
-      ...(!shed.booster ? { separation: tr.separation.at.value, axis: this.jointAxis(tr.separation.at.value) } : {}),
-      ...(!shed.retropack ? { retro: offsets.map((o) => retroAt + o), retropack: tr.retropack.at.value } : {}),
-      chutes: true,
-    };
+    const b = ballisticOf(plan);
+    const left = (body: string): boolean => live.craft !== undefined && hasLeft(live.craft, body);
+    const retroAt = live.retroAt ?? b.retroAt;
+    const out: Omit<Sequence, 'chutes'> = {};
+    for (const e of plan.events) {
+      const at = e.automatic ? clockAt(plan, e) : Infinity;
+      if (!Number.isFinite(at)) continue;
+      for (const a of e.do) {
+        if ('separate' in a) {
+          const joint = b.craft.joints.find((j) => j.id === a.separate);
+          if (!joint || joint.gone.some(left)) continue;
+          if (joint === b.towerJoint) out.tower ??= at;
+          else if (joint === b.separation && out.separation === undefined) {
+            out.separation = at;
+            out.axis = this.jointAxis(at);
+          } else if (joint === b.packJoint) out.retropack ??= at;
+        } else if ('ignite' in a) {
+          const motor = b.motors.find((m) => m.id === a.ignite);
+          if (!motor || left(motor.body)) continue;
+          const wait = e.when.reduce((w, x) => ('after' in x ? (x.wait ?? 0) : w), 0);
+          (out.retro ??= []).push(retroAt + wait);
+        }
+      }
+    }
+    return { ...out, chutes: true };
   }
 
   /**
@@ -819,10 +849,9 @@ export class FlightPath {
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
   private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined; guided?: boolean } | null {
     const s = this.sample;
-    const tr = this.flight.trajectory;
     if (!s || !this.on || !this.source.active || s.phase === 'landed') return null;
     // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
-    if (!tr) {
+    if (!this.ballistic) {
       if (!this.source.predict || !(s.t > 0)) return null;
       // (and under guidance, whichever future was asked for: K)
       const guided = this.choosing() && this.guided;
@@ -863,7 +892,6 @@ export class FlightPath {
       return; // (asleep until the next sample, or a switch)
     }
     this.raf = this.scope.frame(() => this.tick());
-    const tr = this.flight.trajectory;
     // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
     if (this.shown?.key !== want.key && !this.wantedAt) this.wantedAt = performance.now();
@@ -875,7 +903,7 @@ export class FlightPath {
         ...(want.sequence ? { sequence: want.sequence } : {}),
         frame: this.earth,
       };
-      const run = tr
+      const run = this.ballistic
         ? predictor(this.flight.plan!, this.site, this.flight.site.seaLevel.value, start, options)
         : this.source.predict!(start, MOST - 2, want.guided === true);
       if (!run) {
@@ -1705,7 +1733,7 @@ export class FlightPath {
       b.setAttribute('aria-pressed', String((b.dataset.path === 'guided') === this.guided));
     const sequencer = this.source.steering.sequence !== false;
     // (a deck that predicts for itself says what its path is)
-    const own = !this.flight.trajectory ? (this.source.pathAs ?? null) : null;
+    const own = !this.ballistic ? (this.source.pathAs ?? null) : null;
     set(
       'as',
       !this.on
