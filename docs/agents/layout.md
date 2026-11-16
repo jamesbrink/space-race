@@ -69,7 +69,7 @@ public/front/                         the front page's picture (committed): the 
                                       (earth.surface.png, earth.colour.jpg from public/globe/; earth.day.jpg, the hour's cloud, sea ice and
                                       snow from ERA5; earth.json: tools/front-earth.mjs), and the Moon (moon.colour.jpg, moon.whole.jpg,
                                       moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.json: tools/front-moon.mjs)
-public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; tools/ephemeris-bake.mjs): fetched only when
+public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; `pnpm ephemeris`, world.md "Baking again"): fetched only when
                                       something asks for it (world/ephemeris.ts `loadEphemeris`)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/

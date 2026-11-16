@@ -170,6 +170,24 @@ sounding where it has one (`Trajectory.winds`, sim/air.ts `blowOf`: `documented`
 else calm; at the pad, the hour's surface wind (`hourAt(flight.weather.hours, liftoff)`). Nothing is fitted to it: a
 flight that misses more under ERA5's air than under the standard's says so in its MISSES.
 
+What src/sim is still to do with the air, the ephemeris and the fast clock is tracked as GitHub issue #31.
+
+Baking again. Each bake fetches its source once into a cache under ~/.cache/space-race (never committed; `--cache` moves
+it), with a generic client name, and is deterministic, so a bake of the same source changes nothing:
+
+- `pnpm ephemeris` (tools/ephemeris-bake.mjs): JPL's de440s.bsp, 31 MB, from ssd.jpl.nasa.gov, into `ephemeris/`;
+  writes public/ephemeris/de440.bin (896 kB) and prints each series's fit, which the file's header keeps
+  (tests/jpl.test.mjs holds them to the targets). `--check` fits and reports without writing; `--try id:days:degree`
+  tries another segment length and degree. A longer span or another body is a change to its PLAN.
+- `pnpm ut1` (tools/ut1-bake.mjs): the IERS's EOP C01 series, 330 kB, from hpiers.obspm.fr, into `eop/`; writes
+  src/world/ut1.ts (8.7 kB). Run it now and then to carry UT1 past the table's last value (2026.80 when last baked).
+  Should the IERS have revised a value under a flown date, it turns the Earth's angle at that liftoff, and `pnpm
+  figures` moves (the predictor's figures at rounding, a Sun-aimed retrofire's landing by as much as the turn): run it
+  on hal9000 and bless the fixture in the same commit.
+- `pnpm era5:aloft [<flight id> ...]` (tools/era5-aloft.mjs): ERA5 from the ARCO-ERA5 copy on storage.googleapis.com,
+  some 40 MB a flight read by HTTP range a Blosc block at a time (a whole pressure-level field is 85 MB an hour), into
+  `era5/`; writes each flight's aloft.ts beside its weather.ts. A new flight's weather.ts imports it (`aloft`, `hours`).
+
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and
 source. The times are the record; where they fall on the slider is layout. Such a model is on the
