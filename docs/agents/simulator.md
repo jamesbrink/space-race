@@ -49,8 +49,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     is commanded at its instant, lit, cut and the modules parted each so long `after` the one before (the record's
     instants again, to the bit), and the timer that shut the engine down (Vostok 1's) is an event the command `arm`s.
     orbital.ts `coastEvents` finds them by what they do: the coast's burn, its lighting and cut, the command the lighting
-    follows, what that command arms, and the parting of the burn's body. A hand's burn (staged.ts `byHand`) is that chain
-    re-timed: commanded and lit at its instant, cut by its integrator, the modules parting after, and no timer started.
+    follows, what that command arms, and the parting of the burn's body. The command is set off by its `time`, not by a
+    `command` trigger: every trigger of an event must hold, so one that only a hand's command could set off would never be
+    set off by the record's pilot. A hand's burn (staged.ts `byHand`) is that chain re-timed instead: commanded and lit at
+    its instant, cut by its integrator, the modules parting after, and no timer started.
   - `PlanCheck.when` says where a figure is read: an instant, the most while some bodies are aboard, the most while an
     engine burns.
   - `problems(plan)` says in words what is wrong with a plan. A plan is checked before it is flown.
