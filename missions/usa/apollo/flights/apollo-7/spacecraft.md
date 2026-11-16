@@ -41,7 +41,14 @@ The boost protective cover is a separate white shell over the CM; its estimated 
 radial stand-off prevents coincident surfaces and is not a sourced construction thickness.
 The escape tower has four legs, three braced bays, four simplified motor nozzles and a
 motor ending at the 224-foot full-stack envelope. Its structure and motor stations are estimates
-from Figures 25a–25c. The cover comes aside in the exploded exhibit to reveal the CM.
+from Figures 25a–25c. The tower and cover lift as one assembly in the exploded exhibit,
+as the cover did with the tower during jettison. The RCS quads stay attached to the SM:
+sliding them axially along its skin made their mounts pass through the wall.
+
+The exhibit offsets are chosen presentation distances in metres, not spacecraft dimensions
+or a simulation of historical separation trajectories. The tower's provisional lower bay
+intersects the provisional CM skin at assembly; this remains a geometry defect to resolve
+against dimensioned drawings, not an accurate attachment reconstruction.
 
 Additional omissions: cover windows and access hatch, penetrations, thermal seals,
 canards, pitch-control and jettison nozzles, detailed tower attachment fittings and abort motion.

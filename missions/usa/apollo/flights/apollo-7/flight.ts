@@ -32,11 +32,11 @@ const parts: Part[] = [
     node: 'ReactionControl',
     name: 'Service-module reaction control',
     group: 'Spacecraft',
-    order: 4,
-    explode: [0, 39, 0],
+    order: 5,
+    explode: [0, 34, 0],
     summary: 'Four quads, each with four small engines, turn and translate the ship.',
     detail:
-      'The four external quads are shown with open nozzle bells. Their arrangement follows the press kit’s spacecraft illustration; exact stations, bracket shapes and chamber profiles are estimated. Propellant plumbing and thermal details are not built.',
+      'The four external quads are shown with open nozzle bells. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their arrangement follows the press kit’s spacecraft illustration; exact stations, bracket shapes and chamber profiles are estimated. Propellant plumbing and thermal details are not built.',
     facts: [['Arrangement', '4 quads × 4 chambers · press kit p. 27']],
   },
   {
@@ -47,7 +47,7 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Power, oxygen and propulsion behind the cabin.',
     detail:
-      'A cylindrical service module with white radiator areas and aluminium equipment panels. The press kit gives a 154-inch diameter and 22-foot service-module length. This study interprets that length as including the projecting engine: the barrel/engine split and the radiator layout are estimated from Figure 25b. No internal tanks or fuel cells are built. Apollo 7’s exterior is being developed separately from the lunar ships.',
+      'A cylindrical service module with white radiator areas and aluminium equipment panels. An inner wall and annular rims close its one-inch honeycomb skin (press kit p. 26). The press kit gives a 154-inch diameter and 22-foot service-module length. This study interprets that length as including the projecting engine: the barrel/engine split and the radiator layout are estimated from Figure 25b. No internal tanks or fuel cells are built. Apollo 7’s exterior is being developed separately from the lunar ships.',
     facts: [
       ['Hull diameter', '154 in · documented'],
       ['Length including engine', '22 ft · published envelope, partition estimated'],
@@ -77,11 +77,11 @@ const parts: Part[] = [
     node: 'BoostCover',
     name: 'Boost protective cover',
     group: 'Launch escape system',
-    order: 1,
-    explode: [0, 46, 0],
+    order: 0,
+    explode: [0, 52, 0],
     summary: 'The white cover over the command module during ascent.',
     detail:
-      'The cover protects the cabin from the escape-system exhaust. Its thickness and exact profile are estimated. Take the assembly apart to see the command module underneath. Cover windows, access hatch and penetrations are not built.',
+      'The cover protects the cabin from the escape-system exhaust and leaves with the escape tower. They move together in the exploded exhibit, exposing the command module without pulling the truss through the cover. Its thickness and exact profile are estimated. Cover windows, access hatch and penetrations are not built.',
   },
   {
     node: 'SpacecraftAdapter',
@@ -111,7 +111,7 @@ const parts: Part[] = [
     explode: [0, 15, 0],
     summary: 'The hydrogen–oxygen upper stage that Apollo 7 later rendezvoused with.',
     detail:
-      'The 58.4-foot published stage envelope is partitioned here between barrel and aft interstage by estimate. The shell has raised stiffeners, cable conduits and simplified auxiliary-propulsion housings. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
+      'The 58.4-foot published stage envelope is partitioned here between barrel and aft interstage by estimate. The shell has raised stiffeners and simplified auxiliary-propulsion housings. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
   },
   {
     node: 'SecondStageEngine',
