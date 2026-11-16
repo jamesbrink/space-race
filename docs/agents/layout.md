@@ -177,6 +177,7 @@ src/
   viewer/panes.ts                     panes of glass as two meshes each, so three does not look their shader up again twice a draw
   viewer/onfoot/onfoot.ts             being at the place on foot, as the stage has it: the figure walked as, what it aims at, drives, boards and carries, doors and lifts, a fall it goes limp in, the figure posed
   viewer/onfoot/handworks.ts          the functions of a model's parts worked by hand (a tower raised, a jib lowered), held until the script moves the hardware, and their levers
+  viewer/onfoot/operate.ts            what a function worked by hand looks like from where it is run, from its moves' data (pure): where it is, will be and can go; how far along it is
   viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the view at the eyes or over the shoulder (the camera put there by camera/foot.ts)
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them
@@ -236,7 +237,8 @@ src/
   viewer/camera/rig.ts                what a rig is (`Rig`), the rigs there are (`RigId`, `RIGS`), and what one may ask of the world (`World`, `Craft`)
   viewer/camera/orbit.ts              turning about a pivot (`OrbitRig`), and about a vehicle that carries it (`ChaseRig`: level with the horizon, or locked to the vehicle)
   viewer/camera/free.ts  onboard.ts  track.ts   the free camera; first person from a seat; the pad camera that stands still and follows with a long lens
-  viewer/camera/foot.ts               the rigs on foot (`eyes`, `shoulder`): the camera put where the walker's view is
+  viewer/camera/foot.ts               the rigs on foot (`eyes`, `shoulder`): the camera put where the walker's view is, or watching what is worked by hand
+  viewer/camera/watch.ts              watching what is worked by hand, pure and tested: the head turned within a neck's reach, the camera stepped aside and back off the figure
   viewer/camera/head.ts               a head in a seat, pure and tested: its limits, the eyes round the neck, the lean to a port or a screen and back
   viewer/camera/input.ts              the hands: mouse, trackpad, fingers and keys in one vocabulary (drag, slide, zoom, twist, pivot here)
   sim/fly.ts  sim/atmosphere.ts       the simulator: a ballistic flight integrated from its plan, whose hardware it finds by role (`ballisticOf`); the 1976 standard air
@@ -283,6 +285,7 @@ tools/
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
+  operate-test.mjs                    browser check of working something by hand on foot at each site, through the eyes and over the shoulder, at 1280 and 390: it is in view, off the figure, read out, and the view comes back
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone
   lineup-test.mjs                     browser check of the Lineup: every flight in the row at one scale, the card, the way into a gallery and back, the levels of detail,
                                       draw calls, the spacecraft alone, the gallery's tab kept, going along the row on a phone, the show's card, what it holds as a phone

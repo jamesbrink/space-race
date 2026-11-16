@@ -54,6 +54,7 @@ pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each 
 pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig and from far out, its line, the line flown and chips checked (four pages at once)
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
+pnpm test:operate     # needs `pnpm dev` running: something worked by hand on foot at each site, in view and read out, through the eyes and over the shoulder, at 1280 and 390
 pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, working a machine by hand and on the clock, read off sr.sound.voices
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 pnpm test:lineup      # needs `pnpm dev` running: the Lineup: every flight in the row to scale, the card, its gallery and back, the levels of detail, what it holds as a phone

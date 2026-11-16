@@ -227,6 +227,21 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   slider for each function. A function's `at` puts it at its controls and its `lever` (a node
   the model marks `lever` with `swing` and `axis`) is held over while it runs. A function set by hand holds while the script is
   still and goes back to it when the script next moves the hardware (`Stage.scripted`).
+- **What is being worked can be seen, and is read out.** Taking Operate hands the view to the thing (`OnFoot.operate`): what
+  is watched is where its nodes are, where they will be a few seconds on the way they are going (`LEAD_SECONDS`), and their
+  whole travel, all from the moves' own data (`onfoot/operate.ts`: each slide and swing played from where the node is, not by
+  posing the model; a `drive` or a baked `run` is not followed). Through the eyes the head turns to it, as far as a neck goes
+  (`camera/watch.ts` `NECK`: 80 degrees each way, 55 down, 66 up, estimated); beyond the neck the body turns round to it where
+  it stands (`Walker.turnTo`, its feet stepping round). Over the shoulder the camera steps aside and back, to the nearest of a
+  few places a person standing by could be (`BACKS`, `ASIDES`, `RISE`: up to 6.5 m back and 2.5 m aside, estimated), from
+  which nothing of the figure is on the line to it, nothing solid is between the head and the camera, and it is framed
+  (`shoulderSpot`); failing the frame, the furthest back with the figure out of the way. It goes there and comes back over
+  0.9 s (0.3 s with Motion reduced, a cut with it off), and the moment the mouse or a finger moves the view it is the
+  user's again: the walker looks where the camera was looking, and nothing turns it to the thing until Operate is taken
+  again. Both are modes of the on-foot rigs (`FootRig.watch`); nothing on foot moves the camera. The walk bar reads it out
+  while it is held (`Ui.setWorking`, `showWork`): its name, which way it is going, a travel bar between its two ends by
+  name (`Part.functions`' `ends`; "the start" and "the end" where the flight names none), how far along it is, why it will not
+  move, and its keys, each a button (W and S held while pressed, E pressed). `pnpm test:operate` works one at each site.
 - **Vehicles are driven.** Anything built to the vehicle contract (`tools/blender/vehicles.py`:
   a node marked `vehicle` with `wheelbase`, `wheel_radius` and `turning_circle`, its origin under
   the rear axle, and `_Wheel_n`, `_Knuckle_n`/`_SteerWheel_n`, `_Seat_Driver` and `_Stand_Driver`
