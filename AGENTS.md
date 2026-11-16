@@ -62,6 +62,7 @@ pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, w
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 pnpm test:lineup      # needs `pnpm dev` running: the Lineup: every flight in the row to scale, the card, its gallery and back, the levels of detail, what it holds as a phone
 pnpm test:flights     # needs `pnpm dev` running: flight to flight and back with no reload: the right flight each time, memory and listeners back to their level
+pnpm test:night       # needs `pnpm dev` running: both sites by night (stills with --shots), the light through dusk and dawn without a jump, the eye off a floodlit apron and back
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB

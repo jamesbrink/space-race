@@ -307,6 +307,7 @@ tools/
   chute-test.mjs                      browser check that a parachute's lines are drawn over the land, the sea, the air and the cloud behind them, from the chase view, at 1280 and 390, in both looks
   clouds-test.mjs                     browser check that the clouds stand in the air and not round the eye: a camera flown up through each flight's cumulus, deck and high cloud at a vehicle's speed, in both looks
   glow-test.mjs                       browser check that the glow of entry is a glow from the chase view at 5, 9 and 20 m and from inside its box: no straight-edged step in what it adds, at 1280 and 390, in both looks
+  night-test.mjs                      browser check of the sites by night: stills, the light through dusk and dawn without a jump, and the eye walking off a floodlit apron and back
   winds-test.mjs                      browser check that the wind drawn (the plants, the low cloud's drift, the sea's waves) follows a flight's hours with the clock, and is the record's at liftoff
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig and from far out, measured frozen, on pages run at once
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
