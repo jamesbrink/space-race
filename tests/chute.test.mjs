@@ -216,18 +216,17 @@ test('a canopy that tears lets its air go and streams, from the mouth it had', (
 
 // An orbital flight's descent drawn (types.ts ChuteDef.body, flies.drops[].rides, flies.hangs): each parachute and each piece
 // names what the simulator flies, and the seat left at the pilot's canopy comes down as a body of its own.
-for (const v of FLIGHTS.filter((f) => f.orbital?.descent)) {
+for (const v of FLIGHTS.filter((f) => f.plan?.kind === 'orbital' && downOf(f.plan))) {
   test(`${v.designation}’s descents: every parachute and every piece drawn names a body and a parachute flyDown flies`, async () => {
     const { flyWhole, descentOf } = await import('../src/sim/staged.ts');
     const { siteFrame } = await import('../src/world/frames.ts');
     const { frameOf } = await import('../src/world/earthframe.ts');
-    const o = v.orbital;
     const dated = frameOf(v);
     const whole = flyWhole(v.plan, siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10, 'published');
-    const drawn = descentOf(whole, dated, (v.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0));
+    const drawn = descentOf(whole, dated, (v.flies.datum ?? 0) + (v.plan.record.centre?.value ?? 0));
     assert.ok(drawn, 'the record’s run comes down from the ejection height');
     for (const c of v.flies.chutes.filter((c) => c.body)) {
-      const body = o.descent.bodies.find((b) => b.id === c.body);
+      const body = downOf(v.plan).bodies.find((b) => b.id === c.body);
       assert.ok(
         body?.chutes.some((p) => p.name === c.on),
         `${c.on} is a parachute of ${c.body}`,

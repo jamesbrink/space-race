@@ -7,7 +7,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { flyOrbit, injectionState } from '../src/sim/orbital.ts';
+import { coastOf, flyOrbit, injectionState } from '../src/sim/orbital.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
@@ -22,7 +22,7 @@ const all = await Promise.all(
     async (file) => (await import(pathToFileURL(join(root, file)).href)).flight,
   ),
 );
-const orbiters = all.filter((f) => f.orbital && f.site);
+const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
 /** The coast of a flight's plan, or of the plan of its record with an input changed (its Vostok's: every orbiter is one). */
 const fly = (f, orbital) => flyOrbit(orbital ? vostokPlan(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
@@ -68,7 +68,10 @@ test('there is an orbital flight to fly', () => {
 });
 
 for (const f of orbiters) {
-  const o = f.orbital;
+  // the published orbit and the coast's instants, as the plan has them; the record itself only where the record's own
+  // figures are what is held (their sources, their order) or weighed (the Vostok module's, vostokPlan flying each change)
+  const orbit = f.plan.record.orbit;
+  const coast = coastOf(f.plan);
   let run;
 
   test(`${f.designation}: every figure in the orbital record has a confidence and a source, and its times are in order`, () => {
@@ -83,6 +86,7 @@ for (const f of orbiters) {
       }
       for (const [key, value] of Object.entries(x)) walk(value, `${where}.${key}`);
     };
+    const o = f.orbital;
     walk(o, 'orbital');
     assert.ok(count > 40, `${count} sourced figures`);
     const times = o.events.map((e) => e.at.value);
@@ -104,11 +108,11 @@ for (const f of orbiters) {
   test(`${f.designation}: the orbit begins as published`, () => {
     const s = injectionState(f.plan, siteFrame(f.site), frameOf(f));
     const el = elementsOf(s.r, s.v);
-    assert.ok(Math.abs(el.i / DEG - o.orbit.inclination.value) < 1e-9, 'inclination');
-    assert.ok(Math.abs(el.a * (1 - el.e) - o.orbit.radius.value - o.orbit.perigee.value) < 1e-3, 'perigee');
-    assert.ok(Math.abs(el.a * (1 + el.e) - o.orbit.radius.value - o.orbit.apogee.value) < 1e-3, 'apogee');
+    assert.ok(Math.abs(el.i / DEG - orbit.inclination.value) < 1e-9, 'inclination');
+    assert.ok(Math.abs(el.a * (1 - el.e) - orbit.radius.value - orbit.perigee.value) < 1e-3, 'perigee');
+    assert.ok(Math.abs(el.a * (1 + el.e) - orbit.radius.value - orbit.apogee.value) < 1e-3, 'apogee');
     // how far the Sun stands out of the orbit's plane: it sets how much of a Sun-aimed push is across the track
-    const jd = julianDate(f.launch) + o.retro.on.value / 86_400;
+    const jd = julianDate(f.launch) + coast.on / 86_400;
     const beta = Math.asin(dot(unit(sunPosition(terrestrialTime(jd))), unit(cross(s.r, s.v)))) / DEG;
     console.log(`  # ${f.designation}: the Sun is ${Math.abs(beta).toFixed(1)} deg out of the orbit’s plane at the braking burn`);
   });
@@ -118,7 +122,7 @@ for (const f of orbiters) {
     const again = fly(f);
     assert.deepEqual(run.results, again.results);
     assert.equal(run.samples.at(-1).phase, 'down');
-    assert.ok(Math.abs(run.samples.at(-1).altitude - o.ejection.altitude.value) < 1, 'ends at the ejection height');
+    assert.ok(Math.abs(run.samples.at(-1).altitude - coast.floor) < 1, 'ends at the ejection height');
     const r = run.results;
     const clock = (t) => {
       const s = Date.parse(f.launch) / 1000 + t;
@@ -126,7 +130,7 @@ for (const f of orbiters) {
     };
     console.log(`  # ${f.designation}: the coast (times UTC)`);
     console.log(
-      `  #   period by Kepler ${(r.period / 60).toFixed(2)} min; nodal ${(nodalPeriod(o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2, (o.orbit.apogee.value - o.orbit.perigee.value) / (2 * (o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2)), o.orbit.inclination.value * DEG) / 60).toFixed(2)} min; apogee as flown ${(r.apogee / 1000).toFixed(1)} km`,
+      `  #   period by Kepler ${(r.period / 60).toFixed(2)} min; nodal ${(nodalPeriod(orbit.radius.value + (orbit.perigee.value + orbit.apogee.value) / 2, (orbit.apogee.value - orbit.perigee.value) / (2 * (orbit.radius.value + (orbit.perigee.value + orbit.apogee.value) / 2)), orbit.inclination.value * DEG) / 60).toFixed(2)} min; apogee as flown ${(r.apogee / 1000).toFixed(1)} km`,
     );
     console.log(
       `  #   into shadow ${clock(r.shadowIn)} (T+${r.shadowIn.toFixed(0)} s), out ${clock(r.shadowOut)} (T+${r.shadowOut.toFixed(0)} s)`,
@@ -142,7 +146,7 @@ for (const f of orbiters) {
       `  #   greatest load ${r.entryG.toFixed(2)} g at ${clock(r.entryGAt)}; greatest dynamic pressure ${(r.entryQ / 1000).toFixed(1)} kPa`,
     );
     console.log(
-      `  #   at ${(o.ejection.altitude.value / 1000).toFixed(0)} km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E, falling ${r.ejectionSpeed.toFixed(0)} m/s`,
+      `  #   at ${(coast.floor / 1000).toFixed(0)} km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E, falling ${r.ejectionSpeed.toFixed(0)} m/s`,
     );
     console.log(
       `  #   against the record’s landing: ${(r.alongTrack / 1000).toFixed(1)} km along the track, ${(r.crossTrack / 1000).toFixed(1)} km to its right`,
@@ -150,11 +154,17 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the coast against the record; every miss is recorded`, () => {
-    holdChecks(o.checks, (id) => run.results[id], missesOf(f.id, 'coast'), { name: f.designation });
+    holdChecks(
+      f.plan.checks.filter((c) => c.of === 'orbit'),
+      (id) => run.results[id],
+      missesOf(f.id, 'coast'),
+      { name: f.designation },
+    );
   });
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
+    const o = f.orbital;
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'radius'],

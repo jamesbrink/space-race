@@ -13,6 +13,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { descending, spacecraft } from '../src/sim/fliers.ts';
 import { propagate } from '../src/sim/predict.ts';
 import { flyWhole } from '../src/sim/staged.ts';
+import { downOf } from '../src/sim/descent.ts';
+import { coastOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { geodeticToEcef, length, siteFrame, sub } from '../src/world/frames.ts';
 
@@ -34,8 +36,8 @@ const apart = (a, b) =>
     ),
   );
 
-for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
-  const o = f.orbital;
+for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) && x.site)) {
+  const bodies = downOf(f.plan).bodies;
   const dated = frameOf(f);
   const site = siteFrame(f.site);
   const sea = f.site.seaLevel.value;
@@ -59,14 +61,14 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
   };
   test(`${f.id}: each body's predicted descent lands where the descent flown lands it`, () => {
     assert.ok(down, 'the record’s run comes down');
-    const begun = down.tracks[o.descent.bodies[0].id][0];
-    for (const b of o.descent.bodies.slice(0, 2)) {
+    const begun = down.tracks[bodies[0].id][0];
+    for (const b of bodies.slice(0, 2)) {
       const want = down.landed[b.id];
       held(predicted(descending(f.plan, dated, sea, { t: begun.t }, { follow: b.id }), begun), want, `${b.id} from the handing over`);
     }
   });
   test(`${f.id}: begun part-way down, from the run's own state of each body`, () => {
-    const first = o.descent.bodies[0];
+    const first = bodies[0];
     const track = down.tracks[first.id];
     // after its first parachute is out, and again under its last
     for (const at of [Object.values(down.opened[first.id])[0] + 30, down.landed[first.id].at - 120]) {
@@ -79,15 +81,12 @@ for (const f of all.filter((x) => x.orbital?.descent && x.site)) {
     }
   });
   test(`${f.id}: the spacecraft's path, with the descent asked for, goes on from the ejection height to the followed body's landing`, () => {
-    const first = o.descent.bodies[0];
+    const first = bodies[0];
     const samples = whole.coast.samples;
     const s = samples.findLast((x) => x.t <= down.tracks[first.id][0].t - 300);
     const start = { t: s.t, r: s.r, v: s.v };
     const short = predicted(spacecraft(f.plan, dated, site, sea, start), start);
-    assert.ok(
-      short.impact && Math.abs(short.impact.altitude - o.ejection.altitude.value) < 1,
-      'without it, it stops where the pilot leaves',
-    );
+    assert.ok(short.impact && Math.abs(short.impact.altitude - coastOf(f.plan).floor) < 1, 'without it, it stops where the pilot leaves');
     held(
       predicted(spacecraft(f.plan, dated, site, sea, start, { descend: { follow: first.id } }), start),
       down.landed[first.id],

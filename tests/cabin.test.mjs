@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
+import { coastOf } from '../src/sim/orbital.ts';
 import { burnNow, Cabin, historyAt } from '../src/viewer/cabin.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 
@@ -497,7 +498,7 @@ test('the simulator’s answer for a burn now: a Vostok fired against its way co
   assert.ok(down.t > 4000 + 600 && down.t < 4000 + 3600, `it comes down some minutes on: ${down.t - 4000} s`);
   assert.ok(Math.hypot(...down.r) < Math.hypot(...s.r) - 150e3, 'far below where it was');
   // after the record's own burn, the descent under way
-  const late = sampleAt(samples, flight.orbital.retro.off.value + 60);
+  const late = sampleAt(samples, coastOf(flight.plan).off + 60);
   const begun = find({ t: late.t, r: late.r, v: late.v });
   assert.ok(begun?.begun, 'coming down: the descent under way, nothing added');
   assert.equal(burnNow({ ...flight, plan: undefined }), null, 'no orbit, no answer');

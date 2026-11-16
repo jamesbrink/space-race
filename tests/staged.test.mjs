@@ -13,7 +13,23 @@ import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
 import { between, propagate } from '../src/sim/predict.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
-import { ascend, byHand, exitAreaOf, flowOf, flyWhole, integral, lawOf, published, schedule, steer } from '../src/sim/staged.ts';
+import {
+  ascend,
+  byHand,
+  exitAreaOf,
+  flowOf,
+  flyWhole,
+  guidanceOf,
+  integral,
+  lawOf,
+  published,
+  schedule,
+  sequenceOf,
+  stagesOf,
+  steer,
+} from '../src/sim/staged.ts';
+import { coastOf } from '../src/sim/orbital.ts';
+import { downOf } from '../src/sim/descent.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -24,7 +40,7 @@ const all = await Promise.all(
     async (file) => (await import(pathToFileURL(join(root, file)).href)).flight,
   ),
 );
-const flown = all.filter((f) => f.orbital?.ascent && f.site);
+const flown = all.filter((f) => f.plan?.kind === 'orbital' && f.plan.attitude.some((a) => 'law' in a.hold) && f.site);
 const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
 
 /**
@@ -102,7 +118,14 @@ test('there is an orbital flight whose ascent can be flown', () => {
 });
 
 for (const f of flown) {
-  const o = f.orbital;
+  const plan = f.plan;
+  const record = plan.record;
+  const seq = sequenceOf(plan);
+  const stages = stagesOf(plan);
+  const guidance = guidanceOf(plan);
+  const checksOf = (of) => plan.checks.filter((c) => c.of === of);
+  /** The record's events' ids, as the plan keeps them: each an event's `record`, or a mark. */
+  const recordIds = new Set([...plan.events.flatMap((e) => (e.record ? [e.record.id] : [])), ...record.marks.map((m) => m.id)]);
   // `whole`: the flight flown from the pad, ascent and coast and descent, as the physics has it; `shown`: the ascent flown,
   // then the published orbit from where it left the spacecraft (staged.ts `published`), which is what the scene shows and
   // what the coast's and the descent's checks are held to, since the ascent as flown does not reach the published orbit
@@ -120,34 +143,30 @@ for (const f of flown) {
       }
       for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
     };
-    walk(o.ascent, 'ascent');
-    walk(o.stages, 'stages');
+    walk(plan.craft, 'craft');
+    walk(plan.checks, 'checks');
     assert.ok(count > 20, `${count} sourced figures`);
-    for (const c of o.ascent.checks) assert.ok(c.tolerance > 0, `${c.id}: a tolerance`);
-    assert.ok(
-      o.events.some((e) => e.id === o.ascent.guidance.target.at),
-      'the law’s target is an event of the record',
-    );
+    for (const c of checksOf('ascent')) assert.ok(c.tolerance > 0, `${c.id}: a tolerance`);
+    assert.ok(recordIds.has(guidance.target.at), 'the law’s target is an event of the record');
   });
 
   test(`${f.designation}: each engine gives its own sea-level figures back, and burns what it holds`, () => {
-    for (const s of o.stages) {
-      if (s.thrust.seaLevel) {
+    for (const { engine: e, body } of stages) {
+      if (e.thrust.seaLevel) {
         // flow is the vacuum figures'; at one atmosphere the thrust and impulse must be the sea-level ones
-        const thrust = s.thrust.vacuum.value - P0 * exitAreaOf(s);
-        assert.ok(Math.abs(thrust / s.thrust.seaLevel.value - 1) < 1e-9, `${s.name}: sea-level thrust`);
-        const isp = thrust / (flowOf(s) * 9.80665);
-        assert.ok(Math.abs(isp / s.isp.seaLevel.value - 1) < 0.002, `${s.name}: sea-level impulse ${isp.toFixed(1)} s`);
+        const thrust = e.thrust.vacuum.value - P0 * exitAreaOf(e);
+        assert.ok(Math.abs(thrust / e.thrust.seaLevel.value - 1) < 1e-9, `${body.label}: sea-level thrust`);
+        const isp = thrust / (flowOf(e) * 9.80665);
+        assert.ok(Math.abs(isp / e.isp.seaLevel.value - 1) < 0.002, `${body.label}: sea-level impulse ${isp.toFixed(1)} s`);
       }
     }
     // (a stage cut on its velocity stops when the run says: shown with the run, below)
-    const plan = schedule(f.plan);
-    o.stages.forEach((s, i) => {
-      if (s.velocity) return;
-      const used = flowOf(s) * integral(s.throttle, plan[i].from, plan[i].to);
-      const load = (s.usable ?? s.propellant).value;
+    const burns = schedule(plan);
+    stages.forEach((s, i) => {
+      if (seq.stages[i].speed) return;
+      const used = flowOf(s.engine) * integral(s.throttle, burns[i].from, burns[i].to);
       console.log(
-        `  #   ${s.name}: burns ${plan[i].from.toFixed(1)} to ${plan[i].to.toFixed(1)} s${plan[i].dry ? ' (RUNS DRY before its cutoff)' : ''}, ${(used / 1000).toFixed(2)} of ${(load / 1000).toFixed(2)} t each`,
+        `  #   ${s.body.label}: burns ${burns[i].from.toFixed(1)} to ${burns[i].to.toFixed(1)} s${burns[i].dry ? ' (RUNS DRY before its cutoff)' : ''}, ${(used / 1000).toFixed(2)} of ${(s.load / 1000).toFixed(2)} t each`,
       );
     });
   });
@@ -156,17 +175,17 @@ for (const f of flown) {
     const [site, dated, sea] = where(f);
     const x = steer(f.plan, site, dated, sea);
     console.log(
-      `  #   solved: ${o.ascent.guidance.azimuth ? `the plane through the aiming azimuth, ${o.ascent.guidance.azimuth.value.toFixed(4)} deg (given)` : `the launch plane inclined ${(x.plane / DEG).toFixed(3)} deg`}; pitched over ${(x.kick / DEG).toFixed(3)} deg; tangent falling ${(x.rate * 1000).toFixed(4)} per 1000 s`,
+      `  #   solved: ${guidance.azimuth ? `the plane through the aiming azimuth, ${guidance.azimuth.value.toFixed(4)} deg (given)` : `the launch plane inclined ${(x.plane / DEG).toFixed(3)} deg`}; pitched over ${(x.kick / DEG).toFixed(3)} deg; tangent falling ${(x.rate * 1000).toFixed(4)} per 1000 s`,
     );
     whole = flyWhole(f.plan, site, dated, sea, x);
     shown = flyWhole(f.plan, site, dated, sea, x, 10, 'published');
     const again = ascend(f.plan, site, dated, sea, x);
     assert.deepEqual(again.summary, whole.ascent.summary);
     const s = whole.ascent.summary;
-    const g = o.ascent.guidance.target;
+    const g = guidance.target;
     assert.ok(Math.abs(s.cutoffAltitude - g.altitude.value) < 1, 'at the target height');
     assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
-    if (!o.ascent.guidance.azimuth) assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+    if (!guidance.azimuth) assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
     const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
     console.log(`  #   ${f.designation}: the ascent flown (times UTC)`);
     for (const [id, e] of Object.entries(whole.ascent.at))
@@ -179,13 +198,13 @@ for (const f of flown) {
     console.log(
       `  #   at the last cutoff: ${(s.perigee / 1000).toFixed(1)} by ${(s.apogee / 1000).toFixed(1)} km, ${s.inclination.toFixed(3)} deg, ${(s.period / 60).toFixed(2)} min; ${s.cutoffSpeed.toFixed(1)} m/s; ${s.arc.toFixed(2)} deg round from the pad, true anomaly ${s.anomaly.toFixed(1)} deg`,
     );
-    o.stages.forEach((st, i) =>
+    stages.forEach((st, i) =>
       console.log(
-        `  #   ${st.name}: flown ${o.stages[i].ignition.value.toFixed(1)} to ${whole.ascent.stops[i].toFixed(1)} s${st.velocity ? ' (cut on its velocity)' : ''}, ${whole.ascent.left[i].toFixed(0)} kg left a unit`,
+        `  #   ${st.body.label}: flown ${seq.stages[i].from.toFixed(1)} to ${whole.ascent.stops[i].toFixed(1)} s${seq.stages[i].speed ? ' (cut on its velocity)' : ''}, ${whole.ascent.left[i].toFixed(0)} kg left a unit`,
       ),
     );
     console.log(
-      `  #   the spacecraft leaves weighing ${s.massLeft.toFixed(0)} kg by the stages' figures (published: ${o.mass.value} kg); propellant left: ${whole.ascent.left.map((l) => l.toFixed(0)).join(', ')} kg a unit`,
+      `  #   the spacecraft leaves weighing ${s.massLeft.toFixed(0)} kg by the stages' figures (published: ${record.orbit.mass.value} kg); propellant left: ${whole.ascent.left.map((l) => l.toFixed(0)).join(', ')} kg a unit`,
     );
     if (s.perigee < 0)
       console.log(`  #   flown on from it, it does not go round: its perigee is ${(s.perigee / 1000).toFixed(0)} km, under the ground`);
@@ -209,15 +228,17 @@ for (const f of flown) {
   });
 
   test(`${f.designation}: the ascent against the record; every miss is recorded`, () => {
-    holdChecks(o.ascent.checks, ascentValue(whole.ascent), missesOf(f.id, 'ascent'), { name: `${f.designation}, ascent` });
+    holdChecks(checksOf('ascent'), ascentValue(whole.ascent), missesOf(f.id, 'ascent'), { name: `${f.designation}, ascent` });
   });
 
   test(`${f.designation}: the coast flown on from the ascent against the record; every miss is recorded`, () => {
-    holdChecks(o.checks, (id) => shown.coast.results[id], missesOf(f.id, 'shown'), { name: `${f.designation}, coast` });
+    holdChecks(checksOf('orbit'), (id) => shown.coast.results[id], missesOf(f.id, 'shown'), { name: `${f.designation}, coast` });
   });
 
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
-    // every input the ascent reads that is not documented, by where it is in the record: a new one must be added here
+    // every input the ascent reads that is not documented, by where it is in the record (the Vostok module's own, which
+    // vostokPlan writes the plan from): a new one must be added here
+    const o = f.orbital;
     const read = [];
     const walk = (x, at) => {
       // (the checks are not inputs; `sheds` and `centre` are the scene's alone: staged.ts does not read them)
@@ -288,7 +309,8 @@ for (const f of flown) {
     // the speed the record's orbit needs at the planned perigee, and when the run reaches it: how long Block E burns past it
     const need = Math.sqrt(
       3.986004418e14 *
-        (2 / (o.orbit.radius.value + 180_000) - 1 / (o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2)),
+        (2 / (record.orbit.radius.value + 180_000) -
+          1 / (record.orbit.radius.value + (record.orbit.perigee.value + record.orbit.apogee.value) / 2)),
     );
     console.log(
       `  #   at the last cutoff ${base.cutoffSpeed.toFixed(1)} m/s, ${(base.cutoffSpeed - need).toFixed(1)} m/s against what the record's orbit needs there (${need.toFixed(1)})`,
@@ -302,7 +324,7 @@ for (const f of flown) {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
     const sep = published(f.plan, whole.ascent.separation);
-    const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= o.retro.on.value - 2400) : null;
+    const late = coastOf(plan).on - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
     const job = propagate(spacecraft(f.plan, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
     job.run();
@@ -325,7 +347,7 @@ for (const f of flown) {
         (p.impact.longitude - at.ejectionLongitude) * Math.cos(at.ejectionLatitude * DEG),
       );
     assert.ok(apart < 0.01, `and ${(apart * 1000).toFixed(1)} m from its place`);
-    const before = shown.coast.samples.find((x) => x.t >= o.retro.on.value - 30);
+    const before = shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 30);
     const i = p.points.findIndex((x) => x.t > before.t);
     const [a, b] = [p.points[i - 1], p.points[i]];
     const there = between(a.t, a.r, a.v, b.t, b.r, b.v, before.t).r;
@@ -339,9 +361,9 @@ for (const f of flown) {
     // Begun within the burn, the burn in progress goes on along the line it lit on (from the run's own state as it lit):
     // the same landing as the run. Without that state, the line is the one it would light on from the start, which is not
     // the run's.
-    const on = o.retro.on.value;
+    const on = coastOf(plan).on;
     const lit = shown.coast.samples.find((x) => x.t === on);
-    const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < o.retro.off.value);
+    const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < coastOf(plan).off);
     assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
     const from = { t: mid.t, r: mid.r, v: mid.v };
     const within = (options) => {
@@ -374,13 +396,13 @@ for (const f of flown) {
       const s = whole.ascent.samples.find((p) => p.t >= t0);
       // the record's vehicle as it stood then: each stage lit, stopped and let go at the run's instants, the drops gone
       const state = {
-        stages: o.stages.map((st, i) => ({
-          from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
+        stages: seq.stages.map((st, i) => ({
+          from: st.from <= s.t ? st.from : Infinity,
           to: stops[i] <= s.t ? stops[i] : Infinity,
-          gone: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
-          loose: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
+          gone: st.sep <= s.t ? st.sep : Infinity,
+          loose: st.sep <= s.t ? st.sep : Infinity,
         })),
-        drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
+        drops: Object.fromEntries(seq.drops.filter((d) => d.at <= s.t).map((d) => [d.joint, d.at])),
       };
       state.apparent = apparentBy(f.plan, vehicle, state, s.t);
       const start = { t: s.t, r: s.r, v: s.v };
@@ -390,7 +412,7 @@ for (const f of flown) {
           solved: x,
           state,
           sequence: true,
-          thetaTurn: s.t > o.ascent.guidance.turn.value ? whole.ascent.thetaTurn : null,
+          thetaTurn: s.t > guidance.turn.value ? whole.ascent.thetaTurn : null,
           plan: f.plan,
         }),
         start,
@@ -421,8 +443,8 @@ for (const f of flown) {
     const s = whole.ascent.samples.find((p) => p.t >= 40);
     const stops = whole.ascent.stops;
     const state = {
-      stages: o.stages.map((st, i) => ({
-        from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
+      stages: seq.stages.map((st, i) => ({
+        from: st.from <= s.t ? st.from : Infinity,
         to: stops[i] <= s.t ? stops[i] : Infinity,
         gone: Infinity,
         loose: Infinity,
@@ -457,11 +479,11 @@ for (const f of flown) {
     );
   });
 
-  if (o.manual)
+  if (record.manual)
     test(`${f.designation}: a burn by hand is the same physics: against the motion it comes down, along it it stays up`, () => {
       const [site, dated, sea] = where(f);
       const x = steer(f.plan, site, dated, sea);
-      const at = o.retro.on.value;
+      const at = coastOf(plan).on;
       const s = shown.coast.samples.find((p) => p.t >= at);
       const back = byHand(
         f.plan,
@@ -491,7 +513,7 @@ for (const f of flown) {
       );
     });
 
-  if (o.descent)
+  if (downOf(plan))
     test(`${f.designation}: the two bodies down from the ejection against the record; every miss is recorded`, () => {
       assert.ok(shown.down, 'the coast reached the ejection height');
       const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
@@ -505,13 +527,13 @@ for (const f of flown) {
         const [body, field] = id.split('.');
         return shown.down.landed[body]?.[field];
       };
-      holdChecks(o.descent.checks, value, missesOf(f.id, 'descent'), { name: `${f.designation}, descent` });
+      holdChecks(checksOf('descent'), value, missesOf(f.id, 'descent'), { name: `${f.designation}, descent` });
     });
 }
 
 test('Vostok 1’s lock: the code is the one Kamanin checked on the ship that morning, and the other the histories give is named beside it', async () => {
   const { flight: v } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
-  const code = v.orbital.manual.code;
+  const code = v.plan.record.manual.code;
   assert.equal(code.value, 145);
   assert.equal(code.confidence, 'documented');
   assert.match(code.source, /шифр \(145\) логического замка/, 'in the diary’s own words');

@@ -18,11 +18,11 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { autopilot, blend, flyLive, Tally } from '../src/sim/autopilot.ts';
 import { stack, spacecraft, guided, apparentBy } from '../src/sim/fliers.ts';
-import { fly, sampleAt } from '../src/sim/fly.ts';
-import { flyOrbit } from '../src/sim/orbital.ts';
+import { ballisticOf, fly, sampleAt } from '../src/sim/fly.ts';
+import { coastOf, flyOrbit } from '../src/sim/orbital.ts';
 import { predict, propagate } from '../src/sim/predict.ts';
 import { Sheds } from '../src/sim/shed.ts';
-import { flyWhole, published, steer } from '../src/sim/staged.ts';
+import { flyWhole, guidanceOf, published, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { orbitalRecord } from '../src/viewer/ascent.ts';
@@ -65,8 +65,8 @@ const pathFigures = (p) => ({
 });
 
 // ---- ballistic flights ----
-for (const flight of flights.filter((f) => f.trajectory)) {
-  const tr = flight.trajectory;
+for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
+  const b = ballisticOf(flight.plan);
   const site = siteFrame(flight.site);
   const sea = flight.site.seaLevel.value;
   // (in the frame the app flies it in: world/earthframe.ts frameOf)
@@ -78,11 +78,12 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   // the capsule's half from the separation the record gives (as tests/sim.test.mjs builds it)
   {
     const want = Object.fromEntries(flight.checks.map((c) => [c.id, c.value]));
-    const at = sampleAt(whole.samples, tr.separation.at.value);
+    const at = sampleAt(whole.samples, b.separation.at.value);
     const record = (id) => want[id] ?? whole.results[id];
-    const at0 = tr.separation.at.value;
+    const at0 = b.separation.at.value;
     const place = { latitude: at.latitude, longitude: at.longitude, height: record('separationAltitude') + sea };
-    const heading = tr.separation.heading?.value ?? headingOf(at, frame);
+    // (the heading at separation where the record gives one: the record's, which no plan is flown from)
+    const heading = flight.trajectory.separation.heading?.value ?? headingOf(at, frame);
     const moving = scale(
       enuToEcefDirection(place, fromHorizontal(heading * DEG, record('separationGroundClimb') * DEG)),
       want.separationGroundSpeed,
@@ -118,7 +119,7 @@ for (const flight of flights.filter((f) => f.trajectory)) {
   }
 
   // an abort off the pad, the engine never lit, in still air
-  if (tr.body?.escape) {
+  if (b.craft.rigid?.escape) {
     const still = { ...flight.plan, winds: undefined };
     const av = vehicle(still, site, sea, { frame });
     const auto = autopilot(av, { launch: false });
@@ -142,15 +143,15 @@ for (const flight of flights.filter((f) => f.trajectory)) {
 }
 
 // ---- orbital flights ----
-for (const flight of flights.filter((f) => f.orbital && f.site)) {
-  const o = flight.orbital;
+for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)) {
   const site = siteFrame(flight.site);
   const dated = frameOf(flight);
   const sea = flight.site.seaLevel.value;
 
   const plan = flight.plan;
   put(flight, 'coast', flyOrbit(plan, site, dated, sea).results);
-  if (!o.ascent) continue;
+  if (!plan.attitude.some((a) => 'law' in a.hold)) continue; // (only the coast: no ascent on a law to fly)
+  const seq = sequenceOf(plan);
 
   const x = steer(plan, site, dated, sea);
   put(flight, 'solved', x);
@@ -181,7 +182,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
         { kind: 'ignite', stage: 1 },
       ],
     });
-    const last = o.stages.length - 1;
+    const last = seq.stages.length - 1;
     let cut = null;
     while (!s.parted && !s.landed && s.t < 2000) {
       const was = s;
@@ -233,7 +234,8 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
     // before it (as tests/staged.test.mjs)
     const sep = published(flight.plan, a.separation);
-    const late = o.retro.on.value - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= o.retro.on.value - 2400) : null;
+    const on = coastOf(plan).on;
+    const late = on - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= on - 2400) : null;
     const from = late ?? sep;
     const start = { t: from.t, r: from.r, v: from.v };
     const job = propagate(spacecraft(flight.plan, dated, site, sea, start), start, where);
@@ -243,7 +245,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
   {
     const s = a.samples.find((p) => p.t >= 100);
     const start = { t: s.t, r: s.r, v: s.v };
-    const gone = o.stages.filter((st) => (st.separation?.value ?? Infinity) <= s.t).reduce((m, st) => Math.max(m, st.separation.value), 0);
+    const gone = seq.stages.filter((k) => k.sep <= s.t).reduce((m, k) => Math.max(m, k.sep), 0);
     const job = propagate(stack(flight.plan, site, sea, s.mass, gone), start, where);
     job.run();
     put(flight, 'predict:stack@100', pathFigures(job.result));
@@ -253,13 +255,13 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
     for (const t0 of [40, 150, 400]) {
       const s = a.samples.find((p) => p.t >= t0);
       const state = {
-        stages: o.stages.map((st, i) => ({
-          from: st.ignition.value <= s.t ? st.ignition.value : Infinity,
+        stages: seq.stages.map((k, i) => ({
+          from: k.from <= s.t ? k.from : Infinity,
           to: a.stops[i] <= s.t ? a.stops[i] : Infinity,
-          gone: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
-          loose: (st.separation?.value ?? Infinity) <= s.t ? st.separation.value : Infinity,
+          gone: k.sep <= s.t ? k.sep : Infinity,
+          loose: k.sep <= s.t ? k.sep : Infinity,
         })),
-        drops: Object.fromEntries(o.ascent.drops.filter((d) => d.at.value <= s.t).map((d) => [d.id, d.at.value])),
+        drops: Object.fromEntries(seq.drops.filter((d) => d.at <= s.t).map((d) => [d.joint, d.at])),
       };
       state.apparent = apparentBy(flight.plan, sv, state, s.t);
       const start = { t: s.t, r: s.r, v: s.v };
@@ -269,7 +271,7 @@ for (const flight of flights.filter((f) => f.orbital && f.site)) {
           solved: x,
           state,
           sequence: true,
-          thetaTurn: s.t > o.ascent.guidance.turn.value ? a.thetaTurn : null,
+          thetaTurn: s.t > guidanceOf(plan).turn.value ? a.thetaTurn : null,
           plan: flight.plan,
         }),
         start,

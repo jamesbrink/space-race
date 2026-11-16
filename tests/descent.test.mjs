@@ -5,15 +5,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
-import { decay } from '../src/sim/orbital.ts';
+import { coastOf, decay } from '../src/sim/orbital.ts';
+import { downOf } from '../src/sim/descent.ts';
 import { byHand, flyOn, partingAt, published } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/viewer/ascent.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 
-const o = flight.orbital;
 const record = flight.plan;
+const down = downOf(record);
+const timed = coastOf(record);
 const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
@@ -23,7 +25,7 @@ const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, h
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {
   const r = Math.PI / 180;
-  const [la, lo] = [o.landing.latitude.value * r, o.landing.longitude.value * r];
+  const [la, lo] = [record.record.landing.latitude.value * r, record.record.landing.longitude.value * r];
   return (
     6371 *
     Math.acos(
@@ -39,8 +41,8 @@ const say = (name, whole, decayed, plan = record) => {
 /** When the entry body first falls through `height` after the burn on a run: on the coast, or on its own track below. */
 const heightOf = (p) => dated.place(p.r, p.t).height - sea;
 const through = (whole, height) => {
-  const coast = whole.coast.samples.filter((x) => x.t > o.retro.off.value && x.phase !== 'down');
-  const track = whole.down?.tracks[o.descent.bodies[0].id] ?? [];
+  const coast = whole.coast.samples.filter((x) => x.t > timed.off && x.phase !== 'down');
+  const track = whole.down?.tracks[down.bodies[0].id] ?? [];
   return [...coast, ...track].find((p) => heightOf(p) <= height)?.t ?? Number.NaN;
 };
 const off = (t) => ({ given: {}, switched: [{ t, on: false }] });
@@ -57,7 +59,7 @@ test('nothing given: the record’s descent to the last bit', () => {
 });
 
 test('the sequencer off and nothing given: no ejection, no parachute, the ball with him in it into the ground', () => {
-  const w = fly(record, off(o.retro.off.value + 60));
+  const w = fly(record, off(timed.off + 60));
   assert.ok(Number.isNaN(w.down.ejected));
   assert.deepEqual(w.down.opened.module, {});
   assert.ok(w.down.landed.module.speed > 50, `${w.down.landed.module.speed.toFixed(0)} m/s`);
@@ -65,7 +67,7 @@ test('the sequencer off and nothing given: no ejection, no parachute, the ball w
 });
 
 test('never ejected: he rides the ball down on its parachutes, given by hand at their heights, and lands at its 10 m/s', () => {
-  let hands = off(o.retro.off.value + 60);
+  let hands = off(timed.off + 60);
   let w = fly(record, hands);
   for (const [name, h] of [
     ['pilot parachute', 7000],
@@ -105,21 +107,21 @@ test('ejected above the air: he meets the entry on his own, and its blast is pas
   const at = shown.coast.results.interfaceAt;
   const w = fly(record, { given: { ejection: at }, switched: [] });
   assert.ok(Math.abs(w.down.ejected - at) < 1e-6);
-  assert.ok(w.down.peak.pilot.speed > o.descent.crew.fastest.value, 'out in the air at the speed of the entry');
+  assert.ok(w.down.peak.pilot.speed > record.craft[0].crew.fastest.value, 'out in the air at the speed of the entry');
   assert.equal(say('ejected at 100 km', w).survivable, false);
 });
 
 test('ejected low: the canopy has no time to fill', () => {
   // the sequencer off above 7 km, he goes at 1 km and his main canopy with him
-  let w = fly(record, off(o.retro.off.value + 60));
+  let w = fly(record, off(timed.off + 60));
   const at = through(w, 1000);
-  w = fly(record, { given: { ejection: at, 'pilot/main canopy': at }, switched: [{ t: o.retro.off.value + 60, on: false }] });
-  assert.ok(w.down.landed.pilot.speed > o.descent.crew.landing.alone.value);
+  w = fly(record, { given: { ejection: at, 'pilot/main canopy': at }, switched: [{ t: timed.off + 60, on: false }] });
+  assert.ok(w.down.landed.pilot.speed > record.craft[0].crew.landing.alone.value);
   assert.equal(say('ejected at 1 km', w).survivable, false);
 });
 
 test('a forward burn stays up, and the card says how long its orbit lasts against the supplies', () => {
-  const at = o.retro.on.value;
+  const at = timed.on;
   const s = shown.coast.samples.find((p) => p.t >= at);
   const plan = byHand(
     record,
@@ -136,8 +138,8 @@ test('a forward burn stays up, and the card says how long its orbit lasts agains
 
 test('as drawn, each body comes to rest on the drawn surface (the globe at the sea), not the ground’s 43 m above it', async () => {
   const { descentOf } = await import('../src/sim/staged.ts');
-  const centre = (flight.flies?.datum ?? 0) + (o.ascent.centre?.value ?? 0);
-  const drawn = descentOf(shown, centre, o.descent.ground.value);
+  const centre = (flight.flies?.datum ?? 0) + (record.record.centre?.value ?? 0);
+  const drawn = descentOf(shown, centre, record.record.ground.value);
   const plain = descentOf(shown, centre, 0);
   // (the drawn point's height over the sea)
   const height = heightOf;

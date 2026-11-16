@@ -8,7 +8,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ascend, steer } from '../src/sim/staged.ts';
+import { ascend, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -22,13 +22,15 @@ const all = await Promise.all(
   ),
 );
 const flight = all.find((f) => f.id === 'ussr/vostok/vostok-1');
-const o = flight.orbital;
+const plan = flight.plan;
+const stages = stagesOf(plan);
+const seq = sequenceOf(plan);
 const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const x = steer(flight.plan, site, dated, sea);
 const batch = ascend(flight.plan, site, dated, sea, x);
-const last = o.stages.length - 1;
+const last = stages.length - 1;
 
 /**
  * Fly the live vehicle from the pad with a pilot until `until` (s) or the spacecraft parts. `hands` and `steps` let a test
@@ -53,7 +55,7 @@ function fly({ guidance = true, sequence = true, steps, hands, prescribed = fals
     const was = s;
     s = v.tick(s, pilot);
     if (s.ticks === was.ticks && !s.parted) break;
-    o.stages.forEach((_, i) => {
+    stages.forEach((_, i) => {
       if (v.burning(was, i) && !v.burning(s, i) && stops[i] === undefined) stops[i] = was;
     });
     if (stops[last] && !lastCut) lastCut = stops[last];
@@ -64,7 +66,7 @@ function fly({ guidance = true, sequence = true, steps, hands, prescribed = fals
 /** The orbit and the cutoff's height, speed and climb as staged.ts's summary has them, from a state. */
 function cutoff(s) {
   const el = elementsOf(s.r, s.v);
-  const radius = o.orbit.radius.value;
+  const radius = plan.record.orbit.radius.value;
   return {
     at: s.t,
     altitude: length(s.r) - radius,
@@ -124,7 +126,7 @@ test('the live staged vehicle, steered by its guidance on the record’s sequenc
 
 test('the live staged vehicle: the strap-ons let go while they burn take their thrust and propellant with them', () => {
   const early = 60;
-  const sep = o.stages[0].separation.value;
+  const sep = seq.stages[0].sep;
   const v = stagedVehicle(flight.plan, site, dated, sea, x);
   const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true });
   let s = v.tick(v.start(), {
@@ -147,7 +149,7 @@ test('the live staged vehicle: the strap-ons let go while they burn take their t
   );
   assert.ok(v.thrust(s) < thrust * 0.3, 'the strap-ons’ thrust left with them');
   // (less the core's hundredth of a second of burning in the tick it left on)
-  const gone = 4 * o.stages[0].mass.value - (4 * o.stages[0].propellant.value - aboard);
+  const gone = 4 * stages[0].body.mass.value - (4 * stages[0].tank.load.value - aboard);
   assert.ok(
     Math.abs(before - after - gone) < 5,
     `what they weighed, with what was left in them, left too: ${before - after} against ${gone}`,
@@ -229,7 +231,7 @@ test('the live staged vehicle: by hand, the steering turns it while the engines 
 
 test('the live staged vehicle: what the estimated steering acceleration is worth (5 per cent more)', () => {
   const base = cutoff(fly().lastCut);
-  const v = stagedVehicle(flight.plan, site, dated, sea, x, o.ascent.steering.authority.value * 1.05 * DEG);
+  const v = stagedVehicle(flight.plan, site, dated, sea, x, plan.craft[0].thrusters.find((t) => t.authority).authority.value * 1.05 * DEG);
   const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true });
   let s = v.tick(v.start(), {
     pitch: 0,
@@ -290,9 +292,14 @@ function asked({ asks = [], sequence = true, guidance = true, hands, until = 200
   return { v, s, at };
 }
 const said = (s, title) => s.said.find((n) => n.title === title);
+/** Stage `i`'s engine's thrust, and how it is lit hot into the stage below (the joint below's `hot`, this engine's). */
+const hotStage = (i) => ({
+  thrust: stages[i].engine.thrust,
+  hot: plan.craft[0].joints.find((j) => j.hot?.engine === stages[i].engine.id).hot,
+});
 
 test('hot staging at the record’s moment: the third stage lit with the core on fires into it, a share of its push reaching the stack, and the core let go a second later parts clean', () => {
-  const E = o.stages[2];
+  const E = hotStage(2);
   const share = E.hot.open.value * Math.sin(E.hot.turn.value * DEG);
   // lit a second before the core goes, as the cyclogram had it (start 311.74 s, the core's main command 312.74 s)
   const { v, s, at } = asked({ asks: [{ at: 299, steps: [{ kind: 'ignite', stage: 2 }] }], look: [299.5, 300.5] });
@@ -310,7 +317,7 @@ test('hot staging at the record’s moment: the third stage lit with the core on
 });
 
 test('hot staging a minute early: the jet plays on the core’s top past what it stands, and the stack breaks up there', () => {
-  const E = o.stages[2];
+  const E = hotStage(2);
   const { s } = asked({ asks: [{ at: 240, steps: [{ kind: 'ignite', stage: 2 }] }] });
   assert.ok(s.broke, 'it broke up');
   console.log(`# lit at 240 s with the core on: ${s.broke.text}`);
@@ -338,7 +345,7 @@ test('the spacecraft cannot leave while the fairing is over it, nor the core whi
   const { s } = asked({ asks: [{ at: 60, steps: [{ kind: 'separate', stage: 1 }] }], until: 130 });
   assert.ok(said(s, 'Let go, still pushing'));
   assert.ok(Math.abs(s.stages[1].to - 60) < 0.02, `${s.stages[1].to}`);
-  assert.ok(Math.abs(s.stages[1].gone - o.stages[0].separation.value) < 0.02, `${s.stages[1].gone}`);
+  assert.ok(Math.abs(s.stages[1].gone - seq.stages[0].sep) < 0.02, `${s.stages[1].gone}`);
 });
 
 test('the structure: turned across the wind at its greatest dynamic pressure it breaks up by its bending load; an engine lit only on the pad is not lit again', () => {
@@ -412,9 +419,7 @@ test('the sequencer taken and handed back: off and on again with nothing due bet
   const between = fly(100, 110);
   assert.deepEqual(between.parted, record.parted, 'off and on with nothing due: the same flight');
   const over = fly(115, 125);
-  console.log(
-    `# the sequencer off from 115 to 125 s: the strap-ons went at ${over.stages[0].gone.toFixed(2)} s, not ${o.stages[0].separation.value}`,
-  );
+  console.log(`# the sequencer off from 115 to 125 s: the strap-ons went at ${over.stages[0].gone.toFixed(2)} s, not ${seq.stages[0].sep}`);
   assert.ok(Math.abs(over.stages[0].gone - 125) < 0.02);
   assert.ok(over.stages[0].to <= 125 + 1e-9);
 });

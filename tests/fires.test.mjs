@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
-import { steer } from '../src/sim/staged.ts';
+import { sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { Ascent, firesOf, orbitalFlown } from '../src/viewer/ascent.ts';
 import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
@@ -124,11 +124,11 @@ function everyStageHasItsFire(ascent, burning, until, label) {
 
 test("Vostok 1's record: the four strap-ons and the core from the pad, the strap-ons out at their cutoff, the core on its steering chambers at the last, then Block E", () => {
   const ascent = Ascent.of(vostok1);
-  const o = vostok1.orbital;
+  const lit = sequenceOf(vostok1.plan).stages.map((k) => k.from);
   const whole = orbitalFlown(vostok1);
   const when = firesOf(vostok1, whole);
   const burning = (i, t) => {
-    const from = o.stages[i].ignition.value,
+    const from = lit[i],
       to = whole.ascent.stops[i];
     if (Math.abs(t - from) < 0.5 || Math.abs(t - to) < 0.5) return null;
     return t > from && t < to;
@@ -154,7 +154,7 @@ test("Vostok 1's record: the four strap-ons and the core from the pad, the strap
   );
   // the core's final stage, and the third stage
   assert.ok(at(295)[4].main === 0 && at(295)[4].steering > 0.9, 'T+295: the RD-108 on its four steering chambers alone');
-  assert.equal(when[5].from, o.stages[2].ignition.value);
+  assert.equal(when[5].from, lit[2]);
   assert.ok(
     at(400)[5].main === 1 &&
       at(400)
@@ -167,7 +167,6 @@ test("Vostok 1's record: the four strap-ons and the core from the pad, the strap
 });
 
 test('Vostok 1 flown by hand: its fires burn when its own stages do, not when the record has them', () => {
-  const o = vostok1.orbital;
   const site = siteFrame(vostok1.site);
   const dated = frameOf(vostok1);
   const sea = vostok1.site.seaLevel.value;
@@ -175,7 +174,7 @@ test('Vostok 1 flown by hand: its fires burn when its own stages do, not when th
   const v = stagedVehicle(vostok1.plan, site, dated, sea, x);
   // no guidance: the pilot's sequence, but the attitude held as it was, so the path and each stage's stop are its own
   const pilot = stagedPilot(v, x, site, dated, sea, { guidance: false, sequence: true });
-  const centre = (vostok1.flies.datum ?? 0) + (o.ascent.centre?.value ?? 0);
+  const centre = (vostok1.flies.datum ?? 0) + (vostok1.plan.record.centre?.value ?? 0);
   let s = v.start();
   s = v.tick(s, {
     pitch: 0,
