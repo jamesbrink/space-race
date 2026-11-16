@@ -84,8 +84,11 @@ export const VIEW = {
 
 /**
  * The stack as a model, from the flight's parts, views, cabin and periscope (`mechanisms`: none on MA-9, which flew
- * without one). Only the vehicle is built: it stands in the gallery, on its engines. Its launch site (Complex 14) is not
- * built yet. The couch's span is a placeholder (estimated): there is no launch site to board it at.
+ * without one). A flight whose launch site is built gives `stand`: how high over the site's zero its engines' exit plane
+ * stood on the launcher, and how the vehicle was turned in the site's frame (radians about the vertical, from the
+ * frame's +X to the hatch's middle: places/cape-canaveral/lc-14.parts.ts); it then stands at Complex 14, shown with the pad as it was
+ * at liftoff. Without one only the vehicle is built: it stands in the gallery, on its engines. The couch's span is a
+ * placeholder (estimated).
  */
 export const mercuryAtlasStack = (ship: {
   flight: string;
@@ -93,18 +96,20 @@ export const mercuryAtlasStack = (ship: {
   views: ViewDef[];
   cabin: CabinDef;
   mechanisms?: MechanismDef[];
+  stand?: { over: number; rotationY: number };
 }): ModelDef => ({
   id: 'vehicle',
   name: 'Vehicle',
   url: `models/usa/mercury/${ship.flight}/vehicle.glb`,
   scale: '29.07 m tall · spacecraft 7.91 m · to scale',
-  backdrop: 'studio',
+  backdrop: ship.stand ? 'ground' : 'studio',
   slider: ['Assembled', 'Taken apart'],
   cutaway: true,
   specGroups: ['Spacecraft', 'Launch vehicle'],
   parts: ship.parts,
   ...(ship.mechanisms ? { mechanisms: ship.mechanisms } : {}),
-  position: [0, BASE, 0],
+  position: [0, (ship.stand?.over ?? 0) + BASE, 0],
+  ...(ship.stand ? { rotationY: ship.stand.rotationY, with: [{ model: 'pad', at: 0 }] } : {}),
   // the two cabin lights, as Liberty Bell 7's: either side of the pilot's head, in the frame the capsule stands in
   lights: [
     { position: [0.304, 0.55, 0.092], colour: 0xfffaf2, intensity: 0.7, reach: 3 },

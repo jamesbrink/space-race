@@ -158,8 +158,8 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 - **The panel is No. 11's drawing**, and three instruments known to be on this capsule are not on
   it. Its faces are capsule 7's, as on No. 11's model.
 - **The pilot is Shepard's figure with Glenn's name.** His gloves, their lights, his wrist gauge
-  and his boots are not modelled; his height has not been found. There is no model of Glenn
-  standing: the gallery's figure for scale is an outline.
+  and his boots are not modelled; his height has not been found (the standing figure at the launch
+  site, `model/crew.py`, takes 5 ft 10½ in as commonly given, and has his wrist rings and mirror).
 - **Nothing of the orbit's own equipment**: the window's filters, the hand camera, the personal
   equipment container, the new couch, the horizon scanners' blankets.
 - **The retropack's straps do not meet under the pack**, as on the other two capsules, and their

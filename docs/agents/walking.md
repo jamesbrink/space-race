@@ -308,8 +308,10 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   reading of the pad's slider (where the hardware is for that way) put on the clock by the flight's own sequence, so
   every flight from the site walks it on its own morning: today
   Site 1's (the erector's stair and lift to the hatch, round the deck, down the road into the pit and its trenches,
-  the cut in the north rim, the road's ramp to the bunker and the buildings). A structure built or changed gets a
-  leg; a new site gets its routes.
+  the cut in the north rim, the road's ramp to the bunker and the buildings) and Complex 14's (`--flight
+  usa/mercury/ma-6-friendship-7`: the ramp, the service structure's stair, gangway, lift and ladders to its top deck, the
+  egress tower's stair to the bascule and the top, the transfer table's pit, the blockhouse's roof). A structure built or
+  changed gets a leg; a new site gets its routes.
 - **The camera's rigs are off while walking** (`OnFoot.stepWalk`): no drift, bounds,
   picking or `fitDepth`, and the hands on the page are the walker's (`Scene.free`). When the walk ends
   the rig in charge takes the view up from where the walker's eyes were (`Cameras.adopt`). The walker sets its own near plane from the nearest surface (5 cm

@@ -53,10 +53,156 @@ const SITE1 = {
 };
 
 /**
+ * Readings of Complex 14's pad slider (places/cape-canaveral/lc-14.parts.ts `PadStops`, as a flight's pad.ts lays its morning out):
+ * the service structure round the vehicle with its lift at the ground, and the structure parked 300 ft east.
+ */
+const LC14 = { serviced: 0, away: 0.78 };
+const FT = 0.3048;
+/** A place in Complex 14's own frame (feet: x along 105 degrees, y along 015; lc14/site.py) as the viewer's [x, z], metres. */
+const at14 = (x, y) => [Number((x * FT).toFixed(3)), Number((-y * FT).toFixed(3))];
+/** A height in feet above Complex 14's deck, metres. */
+const up14 = (z) => Number((z * FT).toFixed(3));
+/**
+ * The legs of a switchback stair in that frame: from each of `floors` (feet over the deck) up to the next by two half
+ * flights along y, the first at x = `xa` from `ya` to `yb`, the second at `xb` back from `yb` to `ya`; `on` is how far
+ * past a flight's end the landing's middle is.
+ */
+const switchback = (floors, xa, xb, ya, yb, on = 1.1) => {
+  const out = [];
+  const far = yb + Math.sign(yb - ya) * on;
+  const near = ya - Math.sign(yb - ya) * on;
+  for (let k = 0; k + 1 < floors.length; k++) {
+    const mid = (floors[k] + floors[k + 1]) / 2;
+    out.push({ to: at14(xa, near), y: up14(floors[k]), within: 0.35 });
+    out.push({ to: at14(xa, far), y: up14(mid), within: 0.35 });
+    out.push({ to: at14(xb, far), y: up14(mid), within: 0.35 });
+    out.push({ to: at14(xb, near), y: up14(floors[k + 1]), within: 0.35 });
+  }
+  return out;
+};
+/** The egress tower's ten levels over the deck, feet (lc14/tower.py `LEVELS`). */
+const TOWER14 = [0, 9.74, 19.48, 29.22, 38.96, 48.7, 55.86, 63.02, 70.18, 77.34, 84.5];
+/**
+ * Complex 14's ways, in the site's own frame (x along 105 degrees true, z along 195, y up from the deck; the paving is
+ * 22 ft under it): where each thing stands is from the modules that build it (missions/usa/places/cape-canaveral/lc14/).
+ */
+const LC14_ROUTES = [
+  {
+    name: 'up the ramp from its foot to the stand’s deck',
+    slider: LC14.away,
+    from: [...at14(0, -412).slice(0, 1), up14(-22), at14(0, -412)[1]],
+    legs: [
+      { to: at14(0, -280), y: up14(-10.98), tol: 0.4, note: 'half way up the slope' },
+      { to: at14(0, -150), y: 0, note: 'over the knee on to the level' },
+      { to: at14(0, -56), y: 0 },
+      { to: at14(-10, -30), y: 0, note: 'on to the stand, between the huts and the tower' },
+    ],
+  },
+  {
+    name: 'the stair down the ramp’s west side to the paving',
+    slider: LC14.away,
+    from: [at14(-9, -84)[0], 0, at14(-9, -84)[1]],
+    legs: [
+      { to: at14(-14.6, -84.5), y: 0, tol: 0.4, note: 'over the coping on to the stair’s head' },
+      { to: at14(-14.6, -105.6), y: up14(-11), note: 'the first flight, to the half landing' },
+      { to: at14(-14.6, -128.5), y: up14(-22), note: 'the second, to the paving' },
+    ],
+  },
+  {
+    name: 'the service structure’s stair from the paving, and its gangway on to the stand’s deck',
+    slider: LC14.serviced,
+    from: [at14(-48, 9)[0], up14(-22), at14(-48, 9)[1]],
+    legs: [
+      ...switchback([-22, -11, 0], -41, -37.8, 6.6, 1.4, 1.6),
+      { to: at14(-35.2, 9), y: 0, note: 'off the landing on to the gangway' },
+      { to: at14(-31.5, 9), y: 0, note: 'through the leg along it' },
+      { to: at14(-27, 9), y: 0, note: 'on to the deck, through the gap in its rail' },
+    ],
+  },
+  {
+    name: 'on up that stair to the first level, and the tower’s stair to the second',
+    slider: LC14.serviced,
+    from: [at14(-39, 9)[0], 0, at14(-39, 9)[1]],
+    legs: [
+      ...switchback([0, 10, 20], -41, -37.8, 6.6, 1.4, 1.6),
+      { to: at14(-33.5, 9), y: up14(20), note: 'over the bridge on to the first level' },
+      { to: at14(-29, 8), y: up14(20) },
+      ...switchback([20, 29.84], -20.44, -23.54, 2.6, -2.6, 1.2),
+    ],
+  },
+  {
+    name: 'the lift to the sixth level, round behind the vehicle, the stair to the white room’s roof and the ladders to the top deck',
+    slider: LC14.serviced,
+    from: [at14(62, -2)[0], up14(-22), at14(62, -2)[1]],
+    legs: [
+      { to: at14(37.55, 7.5), y: up14(-22), note: 'round the car to the gap between it and the leg' },
+      { to: at14(37.55, 0), y: up14(-21.7), tol: 0.2, note: 'on to the step' },
+      { to: at14(41.3, 0), y: up14(-21.4), tol: 0.2, note: 'into the car' },
+      { lift: { model: 'pad', part: 'ServiceStructure', action: 'lift', stop: 6 }, y: up14(69.21), note: 'the lift, to the sixth level' },
+      { to: at14(24, 0), y: up14(69.21), note: 'out of the car on to the east tower’s floor' },
+      { to: at14(12, 6.85), y: up14(69.21) },
+      { to: at14(-12, 6.85), y: up14(69.21), note: 'over the bridge behind the vehicle' },
+      ...switchback([69.21, 79.05], -20.44, -23.54, 2.6, -2.6, 1.2),
+      ...switchback([79.05, 90.35], -20.44, -23.54, 2.6, -2.6, 1.2),
+      { to: at14(-23.4, 3.7), y: up14(90.35), note: 'along the roof to the ladder’s foot' },
+      { climb: up14(114), to: at14(-19.2, 3.7), note: 'the ladder up the head’s west face' },
+      { to: at14(-15.5, 0), y: up14(114), note: 'across the head to the crown' },
+      { climb: up14(129.17), to: at14(-10.8, 0), note: 'the ladder up the crown to the top deck' },
+    ],
+  },
+  {
+    name: 'the egress tower: its stair from the deck to the bascule’s level, and out to where the bascule is boarded',
+    slider: LC14.away,
+    from: [at14(5, -29.5)[0], 0, at14(5, -29.5)[1]],
+    legs: [
+      ...switchback(TOWER14.slice(0, 9), 10.9, 13.9, -28.3, -24.5, 1.1),
+      { to: at14(7.9, -29.5), y: up14(70.18), note: 'out through the tower’s west face' },
+      { to: at14(7.9, -32.6), y: up14(70.18), note: 'to the stage behind the bascule’s hinge' },
+    ],
+  },
+  {
+    name: 'on up the egress tower to its top platform',
+    slider: LC14.away,
+    from: [at14(13.9, -29.5)[0], up14(70.18), at14(13.9, -29.5)[1]],
+    legs: [
+      ...switchback(TOWER14.slice(8), 10.9, 13.9, -28.3, -24.5, 1.1),
+      { to: at14(26, -29.5), y: up14(84.5), note: 'out along the platform' },
+    ],
+  },
+  {
+    name: 'down into the transfer table’s pit, over its two rails and up the other side',
+    slider: LC14.serviced,
+    from: [at14(62, 27)[0], up14(-22), at14(62, 27)[1]],
+    legs: [
+      { to: at14(62, 38), y: up14(-25), note: 'down the steps on the south wall' },
+      { to: at14(62, 71), y: up14(-25), note: 'across, over the near rail' },
+      { to: at14(62, 80), y: up14(-22), note: 'up the steps on the north wall' },
+    ],
+  },
+  {
+    name: 'across the service structure’s rail and under the stand',
+    slider: LC14.away,
+    from: [at14(-46, 6)[0], up14(-22), at14(-46, 6)[1]],
+    legs: [{ to: at14(-24, 6), y: up14(-22), note: 'over the west rail, between the stand’s columns' }],
+  },
+  {
+    name: 'the blockhouse: the ladder up its wall and the two flights to its platforms',
+    slider: LC14.away,
+    from: [at14(-722.6, 26.3)[0], up14(-22), at14(-722.6, 26.3)[1]],
+    legs: [
+      { climb: up14(-11.8), to: at14(-735.9, 22.7), note: 'the ladder up the retaining wall' },
+      { to: at14(-748.6, 19.3), y: up14(-0.1), tol: 0.4, note: 'up the dome to the lower platform' },
+      { to: at14(-765.1, 14.9), y: up14(6.3), tol: 0.4, note: 'and to the upper' },
+    ],
+  },
+];
+
+/**
  * The ways walked, by site (SiteDef.name). Site 1 is in the site's own frame: x east, z south, y up from the deck
  * (places/tyuratam/site-1.md); where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
  */
 const ROUTES = {
+  'Cape Canaveral, Launch Complex 14': LC14_ROUTES,
   'Tyuratam (Baikonur), Site 1': [
     {
       name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',

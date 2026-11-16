@@ -46,6 +46,16 @@ const SITES = [
     fn: 'Mast',
     hold: 4,
   },
+  {
+    name: 'Complex 14: the bascule, from the stage behind its hinge on the egress tower',
+    flight: 'usa/mercury/ma-6-friendship-7',
+    at: -1800, // the service structure parked: the tower stands alone beside the vehicle, the bascule upright
+    from: [1.52, 21.391, 10.0],
+    look: [0.762, 23.7, 9.17], // (its west stringer, where it stands upright: the same from the eyes and from over the shoulder)
+    part: 'Umbilical and egress tower',
+    fn: 'Bascule',
+    hold: 4,
+  },
 ];
 const WIDTHS = [
   { w: 1280, h: 800, input: 'keys' },

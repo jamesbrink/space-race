@@ -16,6 +16,8 @@ import {
 import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles/mercury-capsule.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
+import { LAUNCHER_TOP } from '../../../places/cape-canaveral/lc-14.parts.ts';
+import { crew, pad, PAD_SPECS, STAND_TURN } from './pad.ts';
 
 const RESULTS = 'Results of the First United States Manned Orbital Space Flight (NASA MSC, 1962)';
 
@@ -365,6 +367,8 @@ const parts: PartWords[] = [
 ];
 
 const vehicle = mercuryAtlasStack({
+  // on the stand at Complex 14, the hatch on 240 degrees true (pad.ts, lc-14.parts.ts)
+  stand: { over: LAUNCHER_TOP, rotationY: STAND_TURN },
   flight: 'ma-6-friendship-7',
   parts: mercuryAtlasParts('ma-6-friendship-7', parts),
   // the periscope as it went on this flight (vehicles/periscope.ts)
@@ -440,6 +444,7 @@ export const flight: Flight = {
     { t: 17723, event: 'Landing, 21°26′ N 68°37′ W' },
   ],
   specs: [
+    ...PAD_SPECS,
     SPEC.heatShield,
     CAPSULE_SPEC.afterbodyHalfAngle,
     SPEC.capsuleLength,
@@ -620,5 +625,6 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig). One of the two in yaw stopped late in the first orbit, the other in the second',
     },
   }),
-  models: [vehicle],
+  models: [vehicle, pad, crew],
+  surroundings: 'models/usa/places/cape-canaveral/lc14/1962-02.glb',
 };

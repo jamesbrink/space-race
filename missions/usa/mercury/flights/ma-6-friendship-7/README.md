@@ -145,14 +145,26 @@ show a blue sky. In the landing area: three-foot waves, a tenth of cloud, ten mi
 (the transcript, 04:42:27); the air 76 °F (*Results*, p. 34). The hourly observations of the Cape's
 weather station have not been looked up, as they were for Liberty Bell 7.
 
+## The launch site
+
+Complex 14 as it stood that morning: [places/cape-canaveral/lc-14.md](../../../places/cape-canaveral/lc-14.md) has
+every dimension with its source. The morning at the pad is `pad.ts`: Glenn at the foot of the service structure at
+5:58, the white room opened and the structure rolled off the stand and carried east from about 8:10 (derived: the
+record gives T−55, not a time by the clock), the umbilical's boom clear at T−35 seconds, the launcher's arms letting
+go at liftoff. The vehicle stands with its pitch axis on 105° (documented) and its hatch on 240° (estimated from
+photographs). The bascule, the emergency bridge to the hatch, stood upright all morning and can be lowered by hand
+from the tower.
+
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
-  which way the vehicle faced on it. Its stand, ramp, umbilical tower and service structure are
-  drawn as scenery from Complex 5, 5.8 km away (`places/cape-canaveral/complexes.md`), and are not a place to stand in.
-- **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
-  be boarded. The figure on the couch is the suit as modelled for Shepard with Glenn's name on it
-  ([spacecraft.md](spacecraft.md), "The pilot").
+- **Much of the launch site's detail.** Complex 14 is built
+  ([lc-14.md](../../../places/cape-canaveral/lc-14.md): the stand and ramp, the service structure on its rails and
+  transfer table, the egress tower, the blockhouse, the storage), and can be walked; but only its
+  published sizes are documented, and that record ends with a long list of what is estimated or
+  left out (every room is shut; the fences, the vehicles and the people are not there).
+- **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with
+  Glenn's name, his wrist rings and his chest mirror ([spacecraft.md](spacecraft.md), "The pilot");
+  the same figure lies on the couch.
 - **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
   programme, which have not been read (the launch vehicle's own report for 109-D, if it survives);
   an orbit and an entry as data (`Flight.orbital`, as Vostok 1 has); the control modes, with a jet

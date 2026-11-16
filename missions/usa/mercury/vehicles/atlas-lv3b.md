@@ -56,6 +56,7 @@ The orbital flights quote these from [mercury-atlas.ts](mercury-atlas.ts) (`SPEC
 | The vernier with the number beside it | 90° round from the long pod, toward the hatch | estimated | the same photographs, and the liftoff |
 | The pressurisation line | up the tank from the other vernier | estimated (which side) | NASA S62-00380; that there is one is Figure 5-4's |
 | The oxygen duct | 30° from that vernier toward the long pod | estimated | Figure 5-4's end view; the launch preparation photograph |
+| The hatch on the stand | on 240° true, the window toward the blockhouse on 285° | estimated | the photographs read in places/cape-canaveral/lc-14.md, "Which way the hatch faced" |
 | On the pad | the pitch axis lay on 105° true; the flight's heading was about 75°, and the vehicle rolled to it between T+2 s and T+15 s | documented | Results, p. 46 |
 
 ## Mass and propulsion
