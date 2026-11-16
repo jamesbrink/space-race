@@ -13,8 +13,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # typecheck, lint, format check, tests: the same `pnpm check` people run before a commit
-  check:
+  # What the push touched. A change to the documents alone (Markdown, docs/) changes nothing the site ships and nothing
+  # a simulator test reads, so it gets the documents' own test and no more: no test run, no build, no deploy.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          code=true
+          from="${BASE:-$BEFORE}"
+          if [ -n "$from" ] && git cat-file -e "$from^{commit}" 2>/dev/null; then
+            git diff --name-only "$from" HEAD > changed.txt
+            if [ -s changed.txt ] && ! grep -qvE '(\.md$|^docs/)' changed.txt; then code=false; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  # the documents alone: layout.md still names every file (tests/layout.test.mjs reads only the tree and that file)
+  docs:
+    needs: changes
+    if: needs.changes.outputs.code == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test tests/layout.test.mjs
+
+  # typecheck, lint, format check: the first three parts of the `pnpm check` people run before a commit
+  lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +69,32 @@ jobs:
           version: 0.17.3
           args: --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - run: pnpm typecheck && pnpm lint && pnpm format:check
+
+  # the fourth part, `pnpm test`, split over four runners: the flights of days make it a quarter of an hour on one
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node --test --test-shard=${{ matrix.shard }}/4 "tests/*.test.mjs"
 
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +151,7 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: [check, build]
+    needs: [lint, test, build]
     runs-on: ubuntu-latest
     permissions:
       pages: write

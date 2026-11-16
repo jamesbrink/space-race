@@ -65,10 +65,11 @@ pnpm test:flights     # needs `pnpm dev` running: flight to flight and back with
 ```
 
 CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is missing from its GLB
-fails the build) and builds every push and pull request, and
+fails the build; its tests are split over four runners) and builds every push and pull request, and
 deploys `main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
 asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
-in `flight.ts`. The GLBs are committed, so CI needs no Blender.
+in `flight.ts`. A push that touches only documents (Markdown, `docs/`) runs
+`tests/layout.test.mjs` and nothing else: no test run, no build, no deploy. The GLBs are committed, so CI needs no Blender.
 
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
 It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful flags on
