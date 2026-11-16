@@ -179,7 +179,8 @@ for (const [w, h, touch] of SIZES) {
         mode: document.querySelector('[data-cell=mode]').textContent,
         apogee: Number(document.querySelector('.deck-main [data-cell=apogee]')?.textContent.replace(/[^\d.-]/g, '')),
       }));
-      if (!/As flown/.test(up.mode)) fail(where, `in orbit the deck says "${up.mode}", not as flown`);
+      // (as flown, in orbit it is the published orbit begun where the ascent left the ship, and says so)
+      if (/Not the record/.test(up.mode)) fail(where, `in orbit the deck says "${up.mode}": taken over`);
       if (!(up.apogee > 150 && up.apogee < 400)) fail(where, `in orbit the deck's apogee is ${up.apogee} km`);
       await seek(1e7);
       const down = await page.evaluate(() => ({
@@ -187,7 +188,7 @@ for (const [w, h, touch] of SIZES) {
         ball: document.querySelector('.navball [data-cell=speed]').textContent,
         deck: document.querySelector('.deck-main [data-cell=speed]')?.textContent ?? '0',
       }));
-      if (!/As flown/.test(down.mode) || down.ball !== '0' || down.deck !== '0')
+      if (/Not the record/.test(down.mode) || down.ball !== '0' || down.deck !== '0')
         fail(where, `at the run's end: "${down.mode}", the navball ${down.ball} m/s, the deck ${down.deck}`);
       if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
       console.log(`  ${where}: in orbit at T+1800 with an apogee of ${up.apogee} km, down at the end, "${down.mode}"`);
