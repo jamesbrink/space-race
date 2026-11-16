@@ -31,8 +31,27 @@ Nothing in the sky is placed by hand. A flight's `site` (types.ts: `SiteDef`, de
 with its phase, the planets and the stars (`ephemeris.ts`); `viewer/heavens.ts` draws them and
 `viewer/daysky.ts` derives the light's colour and strength, the sky's colours and the exposure
 from the Sun's height. Positions, sizes and phase are computed; brightnesses are a model fitted by
-eye and say so. Stated accuracy: Sun 0.006 degrees, Moon 0.008, planets 0.01 to 0.13; do not
-quote better.
+eye and say so.
+
+Two ephemerides answer, and each answer says which (`ephemerisOf`, `stateOf(...).source`). JPL's DE440 is baked
+for 1957 to 2035 (`pnpm ephemeris`: tools/ephemeris-bake.mjs reads JPL's de440s.bsp and refits each body as Chebyshev
+segments, measured against the kernel at points it did not fit; public/ephemeris/de440.bin, 0.9 MB; `world/jpl.ts`
+reads it). It is fetched only when something asks (`loadEphemeris`: a flight that leaves the Earth), and a test hands it
+in (`useEphemeris`). Then `stateOf(body, jdTT, centre)` gives a position and velocity in the ICRF, geometric, from the
+Earth's centre or any body's or the solar system's barycentre; `toDate` turns one into the frame of date, and
+`sunPosition`, `moonPosition` and `planetPosition` (what the sky and everything else asks) answer from it, apparent to
+first order. Fitted accuracy against DE440: the Moon 6 m and 0.08 mm/s, the Earth-Moon barycentre 35 m, the Sun 0.4 km,
+the planets 0.3 to 5 km. Against Horizons (DE441) the Moon's state at Apollo 8's and 11's translunar injection and lunar
+orbit insertion is within 3.2 m and 0.012 mm/s, and the Sun and the Moon from five places within 0.2 arcseconds (5 at
+J2000, which is UT1 - UTC) and 130 m of range (tests/ephemeris.test.mjs). Otherwise, before 1957, after 2035 or before
+the file arrives, Meeus's series answer, labelled `Meeus` and `estimated`: the Sun to 0.01 degrees, the Moon 0.017 and
+40 km, the planets 0.01 to 0.13 (mean elements), measured over the whole span; do not quote better.
+
+The sky does not step when DE440 arrives. Over 1957 to 2035 the two agree to 0.0096 degrees for the Sun and 0.0162 for
+the Moon (the test holds them to 0.01 and 0.017): a fifth and a third of the 0.05 degrees the light must move before the
+shadows are drawn again, a third of a pixel at a 50 degree field on 1080 lines, and a change of light on any face of
+under 2e-4, a twentieth of a level of 255. And nothing is redrawn for it: `Setting.at` asks the sky again only when the
+clock moves, and the next answer is the new ephemeris's.
 
 The stars are the whole Bright Star Catalogue (9,096, to magnitude 6.5 and a little past: `pnpm stars`
 bakes `public/sky/stars.bin` and the 518 brightest into `stars.ts`, which are in the bundle for the

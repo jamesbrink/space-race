@@ -329,7 +329,7 @@ const HORIZONS = [
 ];
 
 for (const [name, place, iso, sunAz, sunEl, sunAu, moonAz, moonEl, moonAu, lit, waxing] of HORIZONS) {
-  test(`the Sun and the Moon from ${name}, against JPL Horizons`, () => {
+  test(`the Sun and the Moon from ${name}, against JPL Horizons, by Meeus (the fallback: tests/ephemeris.test.mjs has DE440)`, () => {
     const sky = skyFrom({ bearingX: 0, ...place }, julianDate(iso));
     near(apart(sky.sun, sunAz, sunEl), 0, 0.01, 'the Sun’s direction, degrees (the brief: 0.02)');
     near(sky.sun.distance / AU, sunAu, 6e-5, 'the Sun’s distance, au');

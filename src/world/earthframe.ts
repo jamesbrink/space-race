@@ -17,7 +17,20 @@
  * means ECEF (frames.ts), and a velocity in ECEF is the one an observer on the ground measures.
  */
 import { EARTH_ROTATION_RATE } from './bodies.ts';
-import { add, cross, ecefToGeodetic, ecefToInertial, enuAxes, type Geodetic, inertialToEcef, sub, type Vec3 } from './frames.ts';
+import {
+  add,
+  cross,
+  ecefToGeodetic,
+  ecefToInertial,
+  enuAxes,
+  type Geodetic,
+  icrfToDate,
+  inertialToEcef,
+  type Mat3,
+  rotate,
+  sub,
+  type Vec3,
+} from './frames.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from './time.ts';
 
 export interface EarthFrame {
@@ -49,6 +62,12 @@ export interface EarthFrame {
   fromDate(v: Vec3): Vec3;
   /** The reverse: a direction or position in this frame, in the inertial frame of date. */
   toDate(v: Vec3): Vec3;
+  /**
+   * A direction, position or velocity in the ICRF (ephemeris.ts `stateOf`, DE440's), in this frame: by the frame of date
+   * at liftoff, which this frame is (or is turned from) and which does not turn. (The frame of date itself turns by an
+   * arcsecond a week against the ICRF; what is of date at each instant, `fromDate`, carries that turn.)
+   */
+  fromIcrf(v: Vec3): Vec3;
   /** The instant `t` seconds from liftoff as a Julian date, UT and TT. */
   jdUT(t: number): number;
   jdTT(t: number): number;
@@ -70,6 +89,8 @@ export function earthFrame(jd0: number, ofDate = true): EarthFrame {
   const spin: Vec3 = [0, 0, EARTH_ROTATION_RATE];
   const angle = (t: number): number => gast0 + EARTH_ROTATION_RATE * t;
   const upOver = (place: { latitude: number; longitude: number }, t: number): Vec3 => ecefToInertial(enuAxes(place).up, angle(t));
+  const fromDate = (v: Vec3): Vec3 => (ofDate ? v : inertialToEcef(v, sure(behind)));
+  let icrf: Mat3 | null = null;
   return {
     ofDate,
     jd0,
@@ -84,8 +105,9 @@ export function earthFrame(jd0: number, ofDate = true): EarthFrame {
     place: (r, t) => ecefToGeodetic(inertialToEcef(r, angle(t))),
     upOver,
     up: (r, t) => upOver(ecefToGeodetic(inertialToEcef(r, angle(t))), t),
-    fromDate: (v) => (ofDate ? v : inertialToEcef(v, sure(behind))),
+    fromDate,
     toDate: (v) => (ofDate ? v : ecefToInertial(v, sure(behind))),
+    fromIcrf: (v) => fromDate(rotate((icrf ??= icrfToDate(terrestrialTime(sure(jd0)))), v)),
     jdUT: (t) => jd0 + t / 86_400,
     jdTT: (t) => terrestrialTime(jd0 + t / 86_400),
   };

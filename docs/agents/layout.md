@@ -68,7 +68,8 @@ public/front/                         the front page's picture (committed): the 
                                       (earth.surface.png, earth.colour.jpg from public/globe/; earth.day.jpg, the hour's cloud, sea ice and
                                       snow from ERA5; earth.json: tools/front-earth.mjs), and the Moon (moon.colour.jpg, moon.whole.jpg,
                                       moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.json: tools/front-moon.mjs)
-public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; tools/ephemeris-bake.mjs; world/jpl.ts reads it)
+public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; tools/ephemeris-bake.mjs): fetched only when
+                                      something asks for it (world/ephemeris.ts `loadEphemeris`)
 docs/sources.md                       every source used or wanted, and what each is good for
 src/
   types.ts                            the barrel: every type a flight's data has, gathered from types/ (and Confidence, Measure)
@@ -180,7 +181,7 @@ src/
   world/bodies.ts                     the Sun, Earth, Moon and planets as data: GM, radii, rotation, mean orbits; standard gravity (G0), surfaceGravity
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/earthframe.ts                 the frame a flight is flown in (of date, or fixed at liftoff), made once from its liftoff: the Earth's angle in it and every turn between it and the Earth
-  world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are from a site; the 518 brightest stars
+  world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are (`stateOf`, the sky from a site): DE440 when loaded, Meeus else; the 518 brightest stars
   world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF
   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow

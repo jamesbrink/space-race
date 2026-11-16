@@ -18,6 +18,7 @@ import {
   geodeticToEcef,
   inertialToEcef,
   inertialToEcefVelocity,
+  j2000ToInertial,
   length,
   sub,
 } from '../src/world/frames.ts';
@@ -100,6 +101,12 @@ test('the frame fixed at liftoff is the frame of date turned back about the pole
   const pad = { latitude: freedom7.site.latitude.value, longitude: freedom7.site.longitude.value };
   near(dot(ecefToInertial(FIXED.upOver(pad, 0), g), DATED.upOver(pad, 0)), 1, 1e-15, 'up on the pad');
   near(DEG, Math.PI / 180, 0, '(degrees)');
+  // what is in the ICRF (DE440's states) comes in by the frame of date at liftoff, whichever the frame, and stays put in it
+  const star = [0.6, -0.48, 0.64];
+  const atLiftoff = j2000ToInertial(star, terrestrialTime(JD));
+  near(apart(DATED.fromIcrf(star), atLiftoff), 0, 1e-15, 'the ICRF in the frame of date at liftoff');
+  near(apart(FIXED.fromIcrf(star), inertialToEcef(atLiftoff, g)), 0, 1e-15, 'and in the frame fixed at liftoff');
+  assert.throws(() => LIFTOFF.fromIcrf(star), /no date/, 'a frame with no date has no ICRF either');
 });
 
 test('a flight is flown in its frame of date, made once from its liftoff', () => {

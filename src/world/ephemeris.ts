@@ -2,14 +2,41 @@
  * Where the Sun, the Moon and the planets are at an instant: from the Earth's centre in the
  * inertial frame of date (frames.ts), and as seen from a place on the ground.
  *
+ * Two ephemerides answer, and every function here says which it used (`ephemerisOf`):
+ *
+ * DE440    JPL's (jpl.ts), baked for 1957 to 2035 (public/ephemeris/de440.bin, 0.9 MB) and fetched
+ *          only when something asks for it (`loadEphemeris`). Positions and velocities in the ICRF
+ *          (`stateOf`: geometric, from the Earth's centre or another body's), within 6 m and
+ *          0.08 mm/s of DE440 for the Moon and 5 km for the planets; turned into the frame of
+ *          date by the IAU 2006 precession and 2000B nutation (frames.ts `icrfToDate`, a
+ *          milliarcsecond). Seen from the Earth they are apparent to first order in v/c: each is
+ *          where it was a light-time ago, as the observer moving with the Earth sees it
+ *          (`apparent`), which is the Sun's 20.5 arcseconds of aberration and the Moon's 0.7; the
+ *          light's bending by the Sun (under 0.01 arcseconds away from it) and the observer's own
+ *          turn with the Earth (0.3) are left out. Distances stay geometric. Against JPL Horizons
+ *          from five places at five instants the Sun and the Moon are within 0.2 arcseconds and
+ *          130 m (5 arcseconds at J2000, which is UT1 - UTC: time.ts), the planets 0.4; the Moon's
+ *          state at Apollo 8's and 11's injection and arrival within 3.2 m and 0.012 mm/s
+ *          (tests/ephemeris.test.mjs).
+ * Meeus    Kept for when DE440 is not loaded or the date is outside it, and labelled so: as
+ *          below. Positions only; `stateOf` differences them for a velocity.
+ *
+ * The sky does not step when DE440 arrives. The two agree to 0.0096 degrees for the Sun and
+ * 0.0162 for the Moon over every date baked (tests/ephemeris.test.mjs): a fifth and a third of the
+ * 0.05 degrees the light must move before the shadows are drawn again (world.md), a third of a
+ * pixel at a 50 degree field on a 1080-line screen, and a change of light on a face of under 2e-4,
+ * a twentieth of a level of 255. A setting is not redrawn for it either: `Setting.at` asks the
+ * sky again only when the clock moves.
+ *
  * Sun      Meeus, Astronomical Algorithms (2nd ed.), chapter 25, the low-accuracy method: the
  *          Sun's mean longitude and anomaly and the equation of centre, corrected for aberration,
- *          with nutation from time.ts. Meeus claims 0.01 degree; measured here against JPL
- *          Horizons at five dates from 1961 to 2024 (tests/world.test.mjs) it is within 0.006 degrees.
+ *          with nutation from time.ts. Meeus claims 0.01 degree; measured against JPL Horizons at
+ *          five dates from 1961 to 2024 (tests/world.test.mjs) it is within 0.006 degrees, and
+ *          against DE440 every 3.7 days from 1957 to 2035 within 0.0096.
  * Moon     Meeus chapter 47 (the ELP-2000/82 series as he abridges it), cut further to the 32
  *          largest terms in longitude and distance and the 30 largest in latitude, plus his
  *          additive terms. Measured against Horizons the same way: within 0.008 degrees in
- *          direction and 40 km in distance. The Moon is near enough that where you stand matters by up to a degree, so
+ *          direction and 40 km in distance; against DE440 from 1957 to 2035, 0.0162 and 38 km. The Moon is near enough that where you stand matters by up to a degree, so
  *          `skyFrom` works from the place, not the Earth's centre.
  * Planets  Two-body orbits on Standish's mean elements (bodies.ts), with the light's travel time
  *          allowed for. Measured against Horizons for 5 May 1961: within 0.01 degrees for
@@ -22,8 +49,10 @@
  *
  * `jdTT` arguments are Julian dates in Terrestrial Time and `jdUT` in UT (time.ts).
  */
+import type { Confidence } from '../measure.ts';
 import { AU, type Body, C, DAY, EARTH, MOON, PLANETS, SUN } from './bodies.ts';
 import {
+  add,
   angleBetween,
   cross,
   DEG,
@@ -33,16 +62,20 @@ import {
   enuToSite,
   geodeticToEcef,
   horizontal,
+  icrfToDate,
   inertialToEcef,
+  inertialToJ2000,
   j2000ToInertial,
   length,
+  rotate,
   type Site,
   scale,
   sub,
   unit,
   type Vec3,
 } from './frames.ts';
-import { centuries, greenwichSiderealTime, nutation, terrestrialTime } from './time.ts';
+import { type Ephemeris, readEphemeris, type State } from './jpl.ts';
+import { barycentricTime, centuries, greenwichSiderealTime, nutation, terrestrialTime } from './time.ts';
 
 const sind = (degrees: number): number => Math.sin(degrees * DEG);
 const cosd = (degrees: number): number => Math.cos(degrees * DEG);
@@ -55,8 +88,8 @@ function fromEcliptic(longitude: number, latitude: number, distance: number, obl
   return [x * distance, (y * ce - z * se) * distance, (y * se + z * ce) * distance];
 }
 
-/** The Sun from the Earth's centre: metres, inertial frame of date. */
-export function sunPosition(jdTT: number): Vec3 {
+/** Meeus's Sun from the Earth's centre: metres, inertial frame of date; apparent (with its aberration) unless asked for where it is. */
+export function meeusSun(jdTT: number, apparent = true): Vec3 {
   const T = centuries(jdTT);
   const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T ** 2;
   const M = 357.52911 + 35999.05029 * T - 0.0001537 * T ** 2;
@@ -65,7 +98,7 @@ export function sunPosition(jdTT: number): Vec3 {
   const R = (1.000001018 * (1 - e * e)) / (1 + e * cosd(M + centre)); // au
   const n = nutation(jdTT);
   // aberration: the Sun is seen 20.5 arcseconds behind where it is, over R
-  const longitude = (L0 + centre - 0.005_691_6 / R) * DEG + n.longitude;
+  const longitude = (L0 + centre - (apparent ? 0.005_691_6 / R : 0)) * DEG + n.longitude;
   return fromEcliptic(longitude, 0, R * AU, n.trueObliquity);
 }
 
@@ -154,8 +187,8 @@ export function lunarArguments(T: number): { L: number; D: number; M: number; Mp
   };
 }
 
-/** The Moon's centre from the Earth's centre: metres, inertial frame of date. */
-export function moonPosition(jdTT: number): Vec3 {
+/** Meeus's Moon, its centre from the Earth's: metres, inertial frame of date. */
+export function meeusMoon(jdTT: number): Vec3 {
   const T = centuries(jdTT);
   const { L, D, M, Mp, F } = lunarArguments(T);
   const A1 = 119.75 + 131.849 * T; // Venus
@@ -202,17 +235,175 @@ function heliocentric(body: Body, jdTT: number): Vec3 {
   ];
 }
 
+/** Standish's ecliptic of J2000 as the ICRF's equator: within a few hundredths of an arcsecond, inside what mean elements are good for. */
+const ecliptic = (v: Vec3): Vec3 => {
+  const [se, ce] = [Math.sin(OBLIQUITY_J2000), Math.cos(OBLIQUITY_J2000)];
+  return [v[0], v[1] * ce - v[2] * se, v[1] * se + v[2] * ce];
+};
+
 /**
- * A planet from the Earth's centre: metres, inertial frame of date, where it was when the light
- * now arriving left it. The Earth is taken to be at the Earth-Moon barycentre (it is up to
- * 4,700 km from it: 6 arcseconds at Venus's nearest).
+ * A planet from the Earth's centre on Standish's mean elements: metres, inertial frame of date,
+ * where it was when the light now arriving left it. The Earth is taken to be at the Earth-Moon
+ * barycentre (it is up to 4,700 km from it: 6 arcseconds at Venus's nearest).
  */
-export function planetPosition(body: Body, jdTT: number): Vec3 {
+export function meeusPlanet(body: Body, jdTT: number): Vec3 {
   const earth = heliocentric(EARTH, jdTT);
   let seen = sub(heliocentric(body, jdTT), earth);
   for (let k = 0; k < 2; k++) seen = sub(heliocentric(body, jdTT - length(seen) / C / DAY), earth);
-  const [se, ce] = [Math.sin(OBLIQUITY_J2000), Math.cos(OBLIQUITY_J2000)];
-  return j2000ToInertial([seen[0], seen[1] * ce - seen[2] * se, seen[1] * se + seen[2] * ce], jdTT);
+  return j2000ToInertial(ecliptic(seen), jdTT);
+}
+
+/** DE440 as baked, once it is here (`useEphemeris`). */
+let baked: Ephemeris | null = null;
+let loading: Promise<boolean> | null = null;
+
+/** Use the baked file's bytes (public/ephemeris/de440.bin) from now on; null goes back to Meeus. A test hands it in; a page fetches it (`loadEphemeris`). */
+export function useEphemeris(bytes: ArrayBuffer | null): void {
+  baked = bytes ? readEphemeris(bytes) : null;
+}
+
+/**
+ * Fetch the baked DE440 (0.9 MB) if it is not here yet, once: true when it is in use. Called by whatever needs it (a
+ * flight that leaves the Earth); nothing fetches it otherwise. Where there is no page to fetch it for (a test) it is
+ * false, and the test hands the file in with `useEphemeris`.
+ */
+export function loadEphemeris(): Promise<boolean> {
+  if (baked) return Promise.resolve(true);
+  const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL;
+  loading ??=
+    base === undefined
+      ? Promise.resolve(false)
+      : fetch(`${base}ephemeris/de440.bin`)
+          .then((res) => (res.ok ? res.arrayBuffer() : null))
+          .then((bytes) => {
+            if (bytes) useEphemeris(bytes);
+            return bytes !== null;
+          })
+          .catch(() => false);
+  return loading;
+}
+
+/** The ephemeris that answers at an instant (TT): DE440 if it is loaded and covers the date, else Meeus. */
+export function ephemerisOf(jdTT: number): 'DE440' | 'Meeus' {
+  if (!baked) return 'Meeus';
+  const tdb = barycentricTime(jdTT);
+  return tdb >= baked.from && tdb <= baked.to ? 'DE440' : 'Meeus';
+}
+
+/** What `stateOf` knows: a body by its id (bodies.ts), the Earth-Moon barycentre, or the solar system's barycentre. */
+export type Place =
+  | 'sun'
+  | 'mercury'
+  | 'venus'
+  | 'earth'
+  | 'moon'
+  | 'mars'
+  | 'jupiter'
+  | 'saturn'
+  | 'uranus'
+  | 'neptune'
+  | 'pluto'
+  | 'emb'
+  | 'ssb';
+
+/** A body's state: metres and metres a second, geometric (where it is, not where it is seen), in the ICRF. */
+export interface BodyState {
+  r: Vec3;
+  v: Vec3;
+  /** Always the ICRF (frames.ts's J2000): `toDate` turns a state into the inertial frame of date. */
+  frame: 'icrf';
+  source: 'DE440' | 'Meeus';
+  /** DE440 refitted to its stated accuracy is derived; Meeus's series, good for the sky and not for a flight, estimated. */
+  confidence: Confidence;
+}
+
+/** From the solar system's barycentre, DE440 at a TDB Julian date. */
+function barycentric(of: Exclude<Place, 'ssb'>, tdb: number, e: Ephemeris): State {
+  const moon = e.state('moon', tdb)!;
+  const earth = (): State => {
+    const emb = e.state('emb', tdb)!;
+    const k = 1 / (1 + e.emrat);
+    return { r: sub(emb.r, scale(moon.r, k)), v: sub(emb.v, scale(moon.v, k)) };
+  };
+  if (of === 'earth') return earth();
+  if (of === 'moon') {
+    const at = earth();
+    return { r: add(at.r, moon.r), v: add(at.v, moon.v) };
+  }
+  return e.state(of, tdb)!;
+}
+
+/** Meeus's places from the Earth's centre, in the ICRF, geometric as far as his series are. */
+function meeusFromEarth(of: Exclude<Place, 'ssb'>, jdTT: number): Vec3 {
+  const back = (v: Vec3): Vec3 => inertialToJ2000(v, jdTT);
+  if (of === 'earth') return [0, 0, 0];
+  if (of === 'moon') return back(meeusMoon(jdTT));
+  if (of === 'sun') return back(meeusSun(jdTT, false));
+  const earth = heliocentric(EARTH, jdTT);
+  // (the barycentre of the Earth and Moon is the Earth here, as Standish's elements have it)
+  if (of === 'emb') return [0, 0, 0];
+  const body = PLANETS.find((b) => b.id === of);
+  if (!body) throw new Error(`no mean elements for ${of}`);
+  return ecliptic(sub(heliocentric(body, jdTT), earth));
+}
+
+/**
+ * Where a body is and how it moves at an instant (`jdTT`, a Julian date in TT), from another's centre (the Earth's unless
+ * given): geometric, in the ICRF. DE440 when it is loaded and covers the date; otherwise Meeus's series, with a velocity
+ * from his positions a minute either side, labelled estimated (and from the solar system's barycentre there is none).
+ */
+export function stateOf(body: Place, jdTT: number, centre: Place = 'earth'): BodyState {
+  if (ephemerisOf(jdTT) === 'DE440' && baked) {
+    const tdb = barycentricTime(jdTT);
+    const at = (p: Place): State => (p === 'ssb' ? { r: [0, 0, 0], v: [0, 0, 0] } : barycentric(p, tdb, baked!));
+    // (the Moon from the Earth is its own series, not the difference of two large numbers)
+    const direct = body === 'moon' && centre === 'earth' ? baked.state('moon', tdb)! : null;
+    const flip = body === 'earth' && centre === 'moon' ? baked.state('moon', tdb)! : null;
+    const [a, b] = [at(body), at(centre)];
+    const s = direct ?? (flip ? { r: scale(flip.r, -1), v: scale(flip.v, -1) } : { r: sub(a.r, b.r), v: sub(a.v, b.v) });
+    return { r: s.r, v: s.v, frame: 'icrf', source: 'DE440', confidence: 'derived' };
+  }
+  if (body === 'ssb' || centre === 'ssb') throw new Error('Meeus has no barycentre of the solar system: load DE440 (loadEphemeris)');
+  const where = (t: number): Vec3 => sub(meeusFromEarth(body, t), meeusFromEarth(centre, t));
+  const h = 60 / DAY;
+  return {
+    r: where(jdTT),
+    v: scale(sub(where(jdTT + h), where(jdTT - h)), 1 / 120),
+    frame: 'icrf',
+    source: 'Meeus',
+    confidence: 'estimated',
+  };
+}
+
+/** A state in the ICRF as one in the inertial frame of date at its instant (the frame's own slow turn, a millimetre a second at the Moon, left out). */
+export function toDate(state: BodyState, jdTT: number): { r: Vec3; v: Vec3 } {
+  const m = icrfToDate(jdTT);
+  return { r: rotate(m, state.r), v: rotate(m, state.v) };
+}
+
+/**
+ * Which way a thing at `r` moving at `v` relative to the observer is seen: where it was a light-time ago, to first order
+ * in v/c (light-time and aberration together), at its geometric distance (the distance is where it is now: what its
+ * size is seen by).
+ */
+const apparent = (s: { r: Vec3; v: Vec3 }): Vec3 => {
+  const d = length(s.r);
+  return scale(unit(sub(s.r, scale(s.v, d / C))), d);
+};
+
+/** The Sun from the Earth's centre as seen there (with its aberration): metres, inertial frame of date. DE440 when it is loaded, else Meeus. */
+export function sunPosition(jdTT: number): Vec3 {
+  return ephemerisOf(jdTT) === 'DE440' ? apparent(toDate(stateOf('sun', jdTT), jdTT)) : meeusSun(jdTT);
+}
+
+/** The Moon's centre from the Earth's centre, as seen there: metres, inertial frame of date. DE440 when it is loaded, else Meeus. */
+export function moonPosition(jdTT: number): Vec3 {
+  return ephemerisOf(jdTT) === 'DE440' ? apparent(toDate(stateOf('moon', jdTT), jdTT)) : meeusMoon(jdTT);
+}
+
+/** A planet from the Earth's centre as seen there: metres, inertial frame of date. DE440 (its system's barycentre) when it is loaded, else mean elements. */
+export function planetPosition(body: Body, jdTT: number): Vec3 {
+  return ephemerisOf(jdTT) === 'DE440' ? apparent(toDate(stateOf(body.id as Place, jdTT), jdTT)) : meeusPlanet(body, jdTT);
 }
 
 /**
