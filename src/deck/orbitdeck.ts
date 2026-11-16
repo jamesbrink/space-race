@@ -2,7 +2,7 @@ import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
 import { automatic, coastEvents, coastOf, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
-import { clockAt, type FlightPlan, flownByHand } from '../sim/plan.ts';
+import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import { apart, Sheds } from '../sim/shed.ts';
@@ -170,7 +170,7 @@ export class OrbitDeck extends Deck {
   }
 
   private static spec(flight: SitedFlight): DeckSpec {
-    const code = String(flight.plan?.record?.manual?.code.value ?? '');
+    const code = String(flight.plan?.record?.manual?.code?.value ?? '');
     return {
       figures: RISING,
       readings: [
@@ -200,6 +200,18 @@ export class OrbitDeck extends Deck {
         : '',
       enter: ENTER,
     };
+  }
+
+  /** What the pilot's hands could reach once alone: behind a lock, or (no lock) in hand from the start. */
+  private get reach(): string {
+    return this.flight.plan!.record?.manual?.code
+      ? 'behind the lock only orientation and the braking burn'
+      : `once alone the attitude and the ${this.burnName.toLowerCase()} in hand`;
+  }
+
+  /** The coast's burn as the plan names it ('Braking engine', 'Retrorockets'): what the deck calls it. */
+  private get burnName(): string {
+    return coastEvents(this.flight.plan!).burn?.label ?? 'Braking engine';
   }
 
   get able(): boolean {
@@ -404,7 +416,7 @@ export class OrbitDeck extends Deck {
     } else if (what.startsWith('descent:')) this.give(what.slice(8));
     else if (what === 'retro' && this.can('retro')) this.fire(this.clock.t);
     else if (what === 'retro')
-      this.host.say?.('Braking engine', !this.free ? 'Locked: the hand controls are not free' : (this.retroWhy() ?? 'Fired already'));
+      this.host.say?.(this.burnName, !this.free ? 'Locked: the hand controls are not free' : (this.retroWhy() ?? 'Fired already'));
   }
 
   enter(): void {
@@ -449,7 +461,7 @@ export class OrbitDeck extends Deck {
   private systems(): void {
     const plan = this.flight.plan!;
     const el = this.cells.get('systems')!;
-    const code = String(plan.record?.manual?.code.value ?? '');
+    const code = String(plan.record?.manual?.code?.value ?? '');
     el.innerHTML = `
       <div class="tank engine" title="What is burning, and what kind of engines they are"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
       ${stagesOf(plan)
@@ -457,7 +469,9 @@ export class OrbitDeck extends Deck {
           tank(
             `stage-${i}`,
             short(s.body.label),
-            `${s.body.label}: propellant left of what it carries${s.count > 1 ? `, the ${s.count} together` : ''}`,
+            s.shares.length > 1
+              ? `${s.body.label}: propellant left in the tank it draws on with ${s.shares.length - 1 === 1 ? 'another stage' : 'other stages'}`
+              : `${s.body.label}: propellant left of what it carries${s.count > 1 ? `, the ${s.count} together` : ''}`,
           ),
         )
         .join('')}
@@ -526,8 +540,16 @@ export class OrbitDeck extends Deck {
       this.told = performance.now();
       this.host.say?.('No hand controls going up', `As on ${this.day}: G or B takes the flight over, and it is yours`);
     } else if (!this.free && this.byPlan === null && t > this.parting && this.fired === null) {
+      // (a spacecraft whose hand controls had no lock: the hand on them has them, as its pilot's did)
+      if (!this.flight.plan!.record?.manual?.code && this.flight.plan!.record?.manual) {
+        if (this.mine === null && this.clock.t >= coastOf(this.flight.plan!).on) return;
+        this.freeHands(
+          `Taken in hand: not the flight of ${this.day}. Turn with W S A D Q E; the ${this.burnName.toLowerCase()} is yours, Space`,
+        );
+        return;
+      }
       this.told = performance.now();
-      const code = String(this.flight.plan!.record?.manual?.code.value ?? '');
+      const code = String(this.flight.plan!.record?.manual?.code?.value ?? '');
       this.host.say?.(
         'Hand controls locked',
         `${code ? `The code ${[...code].join('-')} frees them, as the envelope did; or ` : ''}G takes them`,
@@ -543,7 +565,9 @@ export class OrbitDeck extends Deck {
       // (B, alone: the descent's automatic sequence off or on again; before the timer's burn that gives the burn up too)
       if (which === 'sequence' && !this.burnPending(t)) return void this.switchDescent();
       if (!this.free && this.fired === null) {
-        this.freeHands(`Taken over: not the flight of ${this.day}. Turn with W S A D Q E, fire the braking engine with Space`);
+        this.freeHands(
+          `Taken over: not the flight of ${this.day}. Turn with W S A D Q E, fire the ${this.burnName.toLowerCase()} with Space`,
+        );
         if (which === 'sequence') this.switchDescent();
       }
       return;
@@ -726,10 +750,7 @@ export class OrbitDeck extends Deck {
 
   /** The note that the flight is now the user's, with what the record's pilot could do. */
   private say(): void {
-    this.host.say?.(
-      'Your flight',
-      `Not the flight of ${this.day}: its pilot had no controls going up, and behind the lock only orientation and the braking burn`,
-    );
+    this.host.say?.('Your flight', `Not the flight of ${this.day}: its pilot had no controls going up, and ${this.reach}`);
   }
 
   /** The instant each of `flies.drops` leaves on this flight, and its body put in the scene as it leaves. */
@@ -782,7 +803,7 @@ export class OrbitDeck extends Deck {
 
   /** A digit on the lock: the code in order frees the hand controls, once the spacecraft is alone in orbit. */
   private digit(d: string): void {
-    const code = String(this.flight.plan!.record?.manual?.code.value ?? '');
+    const code = String(this.flight.plan!.record?.manual?.code?.value ?? '');
     if (!code || this.free) return;
     const alone = this.clock.t > this.parting;
     this.typed = (this.typed + d).slice(-code.length);
@@ -796,7 +817,9 @@ export class OrbitDeck extends Deck {
       this.host.say?.('Hand controls', 'The braking burn has been made: the descent is the automatic system’s');
       return;
     }
-    this.freeHands(`Manual descent: not the flight of ${this.day}. Turn with W S A D Q E, fire the braking engine with Space`);
+    this.freeHands(
+      `Manual descent: not the flight of ${this.day}. Turn with W S A D Q E, fire the ${this.burnName.toLowerCase()} with Space`,
+    );
   }
 
   /** The hand controls free: the timer's burn given up, the attitude the hand's from this instant (and the flight flown again without that burn). */
@@ -863,7 +886,7 @@ export class OrbitDeck extends Deck {
       at: tally.at,
       summary: tally.summary,
       solved: orbitalFlown(this.flight).ascent.solved,
-      stops: stagesOf(this.flight.plan!).map((_, i) => Math.min(s.stages[i]!.to, v.dry(i, s.stages[i]!.from), s.stages[i]!.gone)),
+      stops: stagesOf(this.flight.plan!).map((_, i) => Math.min(s.stages[i]!.to, v.dry(i, s.stages[i]!.from, s), s.stages[i]!.gone)),
       left: v.left(s),
       separation: s.parted!,
       plane: v.plane,
@@ -899,7 +922,7 @@ export class OrbitDeck extends Deck {
     this.planned = plan;
     this.fired = t;
     this.refly();
-    this.host.say?.('Braking engine', `Fired by hand: ${burn.toFixed(0)} s to ${deltaV.value} m/s`);
+    this.host.say?.(this.burnName, `Fired by hand: ${burn.toFixed(0)} s to ${deltaV.value} m/s`);
   }
 
   /** Why the braking engine cannot be fired now by a hand that is free, or null: it went with the instrument module, or he has left. */
@@ -1001,7 +1024,10 @@ export class OrbitDeck extends Deck {
       { id: parting.id, at: parting.at?.value ?? clockAt(plan, parting) },
       { id: d.ejection, at: down?.ejected ?? Number.POSITIVE_INFINITY },
       ...d.bodies.flatMap((b) => b.chutes.map((c) => ({ id: c.event, at: down?.opened[b.id]?.[c.name] ?? Number.POSITIVE_INFINITY }))),
-    ].sort((p, q) => p.at - q.at);
+    ]
+      // (the event that sets what comes down loose can be a parachute's own: a Mercury capsule's drogue)
+      .filter((e, i, all) => all.findIndex((x) => x.id === e.id) === i)
+      .sort((p, q) => p.at - q.at);
     return this.order;
   }
 
@@ -1014,6 +1040,8 @@ export class OrbitDeck extends Deck {
   /** What an event of the descent is called on the deck. */
   private descentLabel(id: string): string {
     const plan = this.flight.plan!;
+    const asked = eventOf(plan, id)?.asked;
+    if (asked) return asked;
     if (id === coastOf(plan).parting) return 'Part the modules';
     if (id === coastOf(plan).loose) return 'Eject';
     const { body, chute: c } = this.chuteOf(id);
@@ -1059,7 +1087,7 @@ export class OrbitDeck extends Deck {
     if (t >= landed(first) && (parting || id === d.ejection || b?.id === first)) return 'Down';
     if (parting) return this.parts <= t ? 'Parted already' : null;
     if (this.burnPending(t)) return 'The braking burn is still to come: the descent follows it';
-    if (id === d.ejection) return (down?.ejected ?? Number.NaN) <= t ? 'He has left the ship already' : null;
+    if (id === d.ejection && !chute) return (down?.ejected ?? Number.NaN) <= t ? 'He has left the ship already' : null;
     if (!b || !chute) return 'No such parachute';
     const i = b.chutes.indexOf(chute);
     const body = b.id;
@@ -1131,7 +1159,7 @@ export class OrbitDeck extends Deck {
     const where = `${(Math.max(0, s.altitude) / KM).toFixed(1)} km up at ${s.groundSpeed.toFixed(0)} m/s through the air`;
     const coast = coastOf(this.flight.plan!);
     if (id === coast.parting) return `Parted ${where}.`;
-    if (id === coast.loose) return `Hatch No. 1 off and the seat out ${where}, ${(s.q / 1000).toFixed(1)} kPa.`;
+    if (id === coast.loose && !this.chuteOf(id).chute) return `Hatch No. 1 off and the seat out ${where}, ${(s.q / 1000).toFixed(1)} kPa.`;
     const { body, chute } = this.chuteOf(id);
     const tore = body && chute ? down?.torn[body.id]?.[chute.name] : undefined;
     if (tore && Math.abs(tore.t - t) < 1e-6) return `Out, and torn at once: ${(tore.q / 1000).toFixed(1)} kPa on its cloth.`;
@@ -1412,17 +1440,24 @@ export class OrbitDeck extends Deck {
       const left = v.left(s);
       return stages.map((st, i) => ({
         left: left[i]!,
-        full: st.count * st.load,
+        full: st.shares.length > 1 ? st.holder.count * st.load : st.count * st.load,
         aboard: !Number.isFinite(s.stages[i]!.gone) && !s.parted,
         burning: v.burning(s, i) && !s.parted,
       }));
     }
     const stops = orbitalFlown(this.flight).ascent.stops;
     const staged = recordStages(plan);
+    /** What one of them has burned by `t`, all its units. */
+    const burnedBy = (j: number) => {
+      const from = staged[j]!.from;
+      return stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.throttle, from, Math.max(from, Math.min(t, stops[j]!)));
+    };
     return stages.map((s, i) => {
-      const full = s.count * s.load;
+      // (a tank several stages draw on, an Atlas's: what is left in it, drawn by all of them)
+      const shared = s.shares.length > 1;
+      const full = shared ? s.holder.count * s.load : s.count * s.load;
       const from = staged[i]!.from;
-      const burned = s.count * flowOf(s.engine) * integral(s.throttle, from, Math.max(from, Math.min(t, stops[i]!)));
+      const burned = shared ? s.shares.reduce((sum, j) => sum + burnedBy(j), 0) : burnedBy(i);
       const sep = staged[i]!.sep;
       return { left: Math.max(0, full - burned), full, aboard: t < sep, burning: t > 0 && t >= from && t < stops[i]! };
     });
@@ -1493,7 +1528,7 @@ export class OrbitDeck extends Deck {
             : null;
     const braking = retro !== null && t >= retro.on && t < retro.off;
     const thrust = s.burning.reduce((sum, m) => sum + m.thrust, 0);
-    set('engine', burning.length ? burning.join(' + ') : braking ? 'Braking engine' : t <= 0 ? 'Not lit' : 'None burning');
+    set('engine', burning.length ? burning.join(' + ') : braking ? this.burnName : t <= 0 ? 'Not lit' : 'None burning');
     set('engine-kind', this.mine === null ? 'fixed thrust, cut by the record' : 'fixed thrust: Space cuts it');
     // (the timer's command for the burn, where the plan has one, or its lighting)
     const burnEvents = coastEvents(plan);
@@ -1575,7 +1610,7 @@ export class OrbitDeck extends Deck {
           : step
             ? step.label
             : fire
-              ? 'Braking engine'
+              ? this.burnName
               : descent
                 ? descent.label
                 : alone
@@ -1586,7 +1621,7 @@ export class OrbitDeck extends Deck {
     this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!.disabled = true;
     this.root.classList.toggle('waiting', waiting);
     this.root.classList.toggle('thrusting', burning.length > 0 && t > 0);
-    const code = String(record.manual?.code.value ?? '');
+    const code = String(record.manual?.code?.value ?? '');
     const due =
       (!this.sequence && this.mine !== null && step && !alone && t >= this.dueAt(step.step)) ||
       (descending && !auto && descent !== null && this.descentDue(descent.id, t));
@@ -1604,7 +1639,7 @@ export class OrbitDeck extends Deck {
           ? this.mine === null
             ? hot
               ? `Next, ${step!.label.toLowerCase()}: ${hot}`
-              : `Its pilot had no controls going up; behind the lock, orientation and the braking burn. G, B or Space takes it over`
+              : `Its pilot had no controls going up; ${this.flight.plan!.record?.manual?.code ? 'behind the lock, orientation and the braking burn' : this.reach}. G, B or Space takes it over`
             : due && step
               ? `${step.label} is due: Space${hot ? `. ${hot}` : ''}`
               : hot
@@ -1623,7 +1658,7 @@ export class OrbitDeck extends Deck {
             : this.free
               ? this.fired === null
                 ? this.mine !== null && !(orbit && el.a * (1 - el.e) > ball + 100_000)
-                  ? 'Short of an orbit: it comes down, unless the braking engine pushes it on'
+                  ? `Short of an orbit: it comes down, unless the ${this.burnName.toLowerCase()} pushes it on`
                   : 'Turn the long axis against the motion, then fire'
                 : this.outcome(t)
               : this.byPlan !== null
