@@ -39,6 +39,14 @@ export const along = (az: number, lift: number, by = 1): [number, number, number
  * hinge's angle. `side` is 1 for the pilot's hatch (the crew's right) and -1 for the command pilot's. A hatch opens by
  * turning about it by a positive angle on the right and a negative one on the left.
  */
+/** The adapter's half-angle (documented: it tapers at 10° from 120.00 in to 88.30 in across). */
+export const ADAPTER_HALF_ANGLE = 10;
+/**
+ * A slide out of the adapter's skin, square to it, `az` round from the top: how a handrail stowed flush on it stands
+ * out (vehicles/gemini_spacecraft.py build_handrail). `by` metres, in the viewer's axes.
+ */
+export const outOfAdapter = (az: number, by: number): [number, number, number] =>
+  along(az, Math.tan(ADAPTER_HALF_ANGLE * DEG), by * Math.cos(ADAPTER_HALF_ANGLE * DEG));
 export const hingeAxis = (side: 1 | -1): [number, number, number] => {
   const t = Math.tan(CABIN_HALF_ANGLE * DEG);
   const az = side * HATCH_HINGE_AZ * DEG;
@@ -54,6 +62,9 @@ export const TITANS = 'On the Shoulders of Titans (NASA SP-4203)';
 export const GIV = 'Gemini Program Mission Report, Gemini IV (MSC-G-R-65-3)';
 export const GV = 'Gemini Program Mission Report, Gemini V (MSC-G-R-65-4)';
 export const GVII = 'Gemini Program Mission Report, Gemini VII (MSC-G-R-66-1)';
+export const GVIII = 'Gemini Program Mission Report, Gemini VIII (MSC-G-R-66-4)';
+export const GIX = 'Gemini Program Mission Report, Gemini IX-A (MSC-G-R-66-6)';
+export const SP149 = 'Summary of Gemini Extravehicular Activity (NASA SP-149)';
 /** NASA's press kit for Gemini 7 and Gemini 6 together. */
 export const KIT_7_6 = 'NASA release 65-362, the Gemini 7/6 press kit (29 November 1965)';
 export const LAUNCH_SYSTEMS = 'Gemini Program Launch Systems Final Report (Aerospace, January 1967)';

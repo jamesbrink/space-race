@@ -125,6 +125,27 @@ shutdown on the stand on 12 December 1965 a breakwire was added to GLV-6's pad d
 plugs "to prevent premature dropout", and GLV-7, already flown, never had it; and GLV-7 carried
 four flashing lights (the table above). GLV-7 flew first, on 4 December; GLV-6 on 15 December.
 
+**GLV-8 and GLV-9** are built as GLV-6: nothing their reports list shows on the outside at the
+model's scale. GLV-8 against GLV-6 (Gemini VIII mission report, MSC-G-R-66-4, 3.2 and Table
+3.2-I): two cutouts for telemetry antennas where there had been four, two of them under cover
+plates; a new injector in the second stage's engine, with cooled baffles, from the Gemini
+Stability Improvement Program; the first gain change at 105 s instead of 110 s; stiffeners on
+the telemetry antenna. GLV-9 against GLV-8 (Gemini IX-A mission report, MSC-G-R-66-6, Table
+3.2-I): "The skin cutout for compartment 3 air conditioning was deleted"; high-strength bolts
+in place of AN-4 bolts; the redundant propellant-level sensors at the outage position deleted
+from both stages; the first stage's thrust chamber pressure switches no longer used for the
+launch bolts' release and the staging signals, which came from the malfunction detection
+system's own switches. The model has never had the telemetry antenna cutouts or the
+air-conditioning cutout, so neither change is built.
+
+| | GLV-8 | GLV-9 | Confidence |
+| --- | --- | --- | --- |
+| Weight at liftoff, with the spacecraft | 341,671 lb | 340,732 lb | documented (each flight's report, section 3.3) |
+| First stage cutoff | 154.61 s | 152.49 s | documented (each report's Table 4.2-I, read on the page) |
+| Stage separation begins | 155.29 s | 153.23 s | documented |
+| Second stage cutoff | 337.54 s | 339.79 s | documented |
+| Launch azimuth | 99.9° | 87.4° | documented |
+
 | | GLV-3 | GLV-4 | GLV-5 | Confidence |
 | --- | --- | --- | --- | --- |
 | Weight at liftoff, with the spacecraft | "about 340,000 pounds" (the plan) | 336,000 lb | 341,163 lb | documented (press kit, p. 39; GIV and GV, section 3.3, from the Aerospace Corporation) |

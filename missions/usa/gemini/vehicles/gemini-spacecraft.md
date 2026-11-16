@@ -287,9 +287,22 @@ level). What each rests on is in the flight's own `spacecraft.md`.
 | `hydrogen_insulated` | the fuel cells' hydrogen tank in its wrap of aluminised mylar | spacecraft 7 | the wrap's thickness a guess |
 | `range_indicator` | the radar's range and range-rate indicator on the command pilot's panel; off, a blank | off on spacecraft 7 only | the blank is its report's Figure 3.1-12 |
 | `get_clock` | a digital clock of elapsed time on the centre panel, where the flight plan roller was | spacecraft 7 | its place is the roller's; its form estimated |
+| `index_bar` | the docking system's index bar in its casing across the forward section, at the top of the ship, as the node `RR_IndexBar` for a flight to run out; and the main parachute's container as the manual for these ships gives it | spacecraft 8 | its 13.82 in of travel is the Technical Summary's (p. 241) and the container's 22.25 by 21.32 in SEDR 300 vol. 2's (p. 12-17): documented; the bar's station (Z223.4) is scaled from the Gemini VIII report's Figure 3.1-9 and its thickness from SEDR 300 vol. 2's Figure 13-8: estimated |
+| `docking_light` | the rendezvous and docking light, a lamp at the top of the adapter's forward end, looking forward | spacecraft 8 (the earlier ships had one that is not modelled) | "centered above and just aft of the heads of the flight crew", 4,000 candlepower (Technical Summary, p. 327): documented; its station and form guesses |
+| `eva_light` | a smaller lamp behind it, looking aft along the handrails | spacecraft 8 | that it was at the adapter's forward end and pointed aft is documented (Gemini VIII report, 3.1.2.12.1 and Figure 3.1-9); its form a guess |
+| `handrails` | two rails along the adapter behind the right hatch, flush with the skin, as the nodes `Retro_Handrail` and `Equipment_Handrail` for a flight to stand out | spacecraft 8 | 0.55 by 1.25 in, 21 in and 46 in long with 9 in between, 1.5 in off the skin when out (NASA SP-149, p. 5-6): documented; where round the ship (12° right of the top) scaled from the Gemini VIII report's Figure 3.1-9: estimated |
+| `fuel_cell_row` | the fuel cell module with a section, the oxygen tank, the other section and the hydrogen tank in a row, and the two tanks those of a short mission | spacecraft 8 and 9 | the order is SEDR 300 vol. 2's Figure 5-7 and the loads (5.80 lb, 46.0 lb) its p. 5-33: documented; the tanks' sizes derived from the loads (18.8 in and 15.4 in across, with a guess at the insulation); places estimated |
+| `module_water_tank` | water tank A, a 42 lb ball on the fuel cell module (with `retro_water_tank` for tank B) | spacecraft 8 | two tanks of 42 lb, one in each section (Gemini VIII report, 3.1.2.3.5 and Figure 3.1-2): documented; its place on the module read off SEDR 300 vol. 2's Figure 6-10 sheet 6: estimated |
+| `backpack` | `"esp"` or `"amu"`: the gold cover gathered to an oblong opening instead of a hoop; a thermal cover over the opening and the backpack behind it, as the node `ExtravehicularSupportPackage` or `ManeuveringUnit`; the torque box it hangs from; two hand bars, a foot rail (with stirrups, for `"amu"`), two floodlights and an umbilical guide, folded as at launch | spacecraft 8 (the ESP), spacecraft 9 (the AMU) | the packs' sizes (26 by 21 by 17 in; 32 by 22 by 19 in) are the press kits'; the torque box's stations (Z66.74 to Z56.27) and the pack's turn of 22.5° are the Gemini IX-A report's Figure 8.1-18; the hand bars' 1.38 in is SP-149's: documented. The opening (40 by 27 in) is scaled from NASA S-67-802 and the bars' and rail's places from the reports' sketches: estimated. The ESP is assumed to hang as the AMU did |
+| `gold_inside` | the adapter's inner surface gold where the earlier ships' is aluminium foil | spacecraft 9 | "The inner adapter surfaces of spacecraft 9 through 12 are gold plated" (SEDR 300 vol. 2, p. 2-17): documented |
+| `window_covers` | a framed pane over each hatch window | spacecraft 9 | that each was an earlier ship's outer window, hinged on and sprung off, is documented (Gemini IX-A report, 3.1.1); its form estimated |
+| `retro_experiments` | by name, a package on the outside of the retrograde section behind the right hatch: `"s-9"` (8.5 by 6 by 3 in, in a well) or `"s-12"` (11 by 5.5 by 1.25 in) | spacecraft 8; spacecraft 9 | sizes are the press kits': documented; the place (36° right of the top, Z93.5) estimated |
 
 Every ship's equipment section is laid out the same way ("Equipment section", above), and a
-`Fit` only says what hangs on each module. Spacecraft 3, 4 and 5 ask for none of the last ten.
+`Fit` only says what hangs on each module. Spacecraft 3, 4 and 5 ask for none of the ten before
+these, and spacecraft 3 to 7 for none of these ten, which were added for spacecraft 8 and 9 (when
+they were, the five earlier ships were rebuilt at every level of detail and came out the same byte
+for byte).
 (When those ten were added the three ships' GLBs came out the same byte for byte. The equipment
 section was laid out again from McDonnell's drawing after that, in November 2026, and all five
 ships were rebuilt.)
@@ -405,6 +418,27 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
   changes, the nose fairing's release. Their paint is spacecraft 3's until a photograph of each is
   read.
 - **No landing attitude gear**: the two-point bridle and its cover along the top are left out.
+- **The docking ships' fittings are placed from sketches** (spacecraft 8 on). The index bar's
+  travel is documented and it runs out, but its station, its thickness and its casing are scaled
+  from two undimensioned drawings; the latch receptacles' covers, the umbilical connector and its
+  two pads on the forward face, the tether ring and the Velcro patches are not built; the docking
+  light's and the outside light's forms are guesses.
+- **The main parachute's container has two sizes.** A ship with the index bar has the container
+  SEDR 300 vol. 2 gives (22.25 in across, 21.32 in long); spacecraft 3 to 7 still have the first
+  model's guess at the pack, which is bigger. Rebuilding those is owed.
+- **The place a man was to put a backpack on** (spacecraft 8 and 9) is drawn folded, as at launch:
+  the hand bars, the foot rail and the umbilical guide do not spring out and the thermal cover is
+  not thrown off. The bars' lengths and places are scaled from sketches; the mirrors on them and
+  the spring clip for the umbilical are not built; the floodlights are tokens. The gold cover's
+  opening is one photograph's, of spacecraft 9, and is taken for spacecraft 8.
+- **The backpacks are outsides only.** The Extravehicular Support Package is drawn from one small
+  sketch and the Astronaut Maneuvering Unit from sketches and dark photographs; neither has its
+  tanks, valves or harness, and the unit's thrusters are tokens at its corners.
+- **The handrails slide straight out.** The real ones swung out on two links and moved along the
+  ship a little as they did; their retaining hooks and release pin are tokens.
+- **What else spacecraft 8 and 9 carried in the adapter is not built**: the auxiliary tape memory
+  unit, the boom antenna, transmitter and camera of experiments D-14 and D-15, the power tool of
+  D-16, the mount for a 16 mm camera behind the right hatch.
 - **Lettering** is Arial Bold on spacecraft 3's model as committed and Liberation Sans Bold, the
   repo's own font, cut to the same widths, on the later ships' and on any model built since; the
   flag is the fifty-star flag as Mercury's ships wore it.
@@ -412,4 +446,5 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
 
 ## Sources
 
-[docs/sources.md](../../../../docs/sources.md), "Gemini-Titan 3".
+[docs/sources.md](../../../../docs/sources.md), "Gemini-Titan 3"; for what spacecraft 8 and 9 added,
+"Gemini-Titan 8 and Gemini-Titan 9A".

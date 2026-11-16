@@ -242,6 +242,89 @@ BATTERY_PRESSURANT = (3.2, (24.0, -22.0, 53.0))
 # S65-64040), where the lowest shows as a notch: estimated
 LATCHES = ((deg(180), deg(60), deg(-60)), (3.2, 1.5, 1.1))
 
+# What spacecraft 8 and 9 carried that spacecraft 6 and 7 did not (flights/gt-8/spacecraft.md, flights/gt-9a/spacecraft.md).
+# "GVIII" is the Gemini VIII mission report, MSC-G-R-66-4; "GIX" the Gemini IX-A mission report, MSC-G-R-66-6; "SEDR2" SEDR
+# 300 volume 2. The things are documented; a size or a place is as its comment says.
+# the docking system's index bar (SEDR2, pp. 13-5 and 13-20, Figures 13-2 and 13-8; Technical Summary, p. 241): a bar in a
+# casing in the rendezvous and recovery section, at the top of the ship, run out by a cartridge once in orbit. "The
+# extension cycle moves the indexing bar 13.82 in. from the retracted position to the fully extended position" (Technical
+# Summary): documented. Its station is scaled from the plan view of the ship in GVIII's Figure 3.1-9, where the "docking
+# bar" is on the top centreline 10.5 in aft of the section's forward end; the bar's radius, how much of it stays in the
+# casing and the casing's radius are scaled from Figure 13-8: estimated
+INDEX_BAR = (223.4, 13.82, 0.6, 3.2, 1.15)  # station, travel, the bar's radius, what stays in the casing, the casing's radius
+# the rendezvous and docking light: "a 4000 candlepower rendezvous-docking light which is mounted externally on the
+# retrograde section (centered above and just aft of the heads of the flight crew)" (Technical Summary, p. 327; its Figure
+# 61 and SEDR2's Figure 13-1 draw it at the top of the adapter's forward end, looking forward): documented. Round from the
+# top, its station, and its housing: long, wide, high. And the light added behind it for a man outside at night, "to the
+# forward end of the adapter assembly and ... pointed aft to illuminate the adapter surface and handrail" (GVIII,
+# 3.1.2.12.1), which Figure 3.1-9 draws on the top centreline there. Their stations and every size are guesses
+DOCKING_LIGHT = (0.0, 100.0, (5.2, 3.4, 2.6))
+EVA_LIGHT = (0.0, 94.0, (3.0, 2.2, 1.7))
+# the two extendable handrails "behind the right hatch", "stowed flush on the surface of the adapter during launch" (GVIII,
+# 3.1.2.12.1; SEDR2, p. 16-23 and Figure 16-9). "The painted metal handrails were 0.55 by 1.25 inches in cross section. The
+# forward handrail was 21 inches long and was mounted on the retrograde section of the adapter. The aft handrail was 46
+# inches long and was mounted on the adapter equipment section. There was a 9-inch gap between the two sections. Both
+# handrails were flush with the spacecraft surface at launch, but were 1.5 inches above the spacecraft surface when
+# deployed" (Summary of Gemini Extravehicular Activity, NASA SP-149, p. 5-6): documented. A rail: wide, deep, how far out
+# it stands when extended. Where they are round the ship is scaled from the plan view in GVIII's Figure 3.1-9, which has
+# them 6 in and 15 in to the right of the top centreline: they are put in one line, 12 degrees round, with the gap
+# astride the joint between the two sections. Estimated
+HANDRAIL = (1.25, 0.55, 1.5)
+HANDRAILS = (deg(12), (21.0, 46.0), 9.0)  # round from the top; the forward and the aft rail's lengths; the gap between them
+# the fuel cell module as spacecraft 8 and 9 had it (SEDR2, Figure 5-7, "RSS/Fuel Cell Module (S/C 8 & 9)"): a section,
+# the oxygen tank, the other section, the hydrogen tank, in a row, where spacecraft 5 and 7 had the two sections together
+# at one end. The order is the figure's: documented. Its tanks were the short missions': "22.25 lbs for long mission
+# configurations and 5.80 lbs for short mission configurations" of hydrogen, and of oxygen "46.0 lbs on spacecraft 8 and
+# 9" (SEDR2, p. 5-33): documented. Across their outsides, derived as RSS_TANKS is: 5.80 lb and 46.0 lb at 4.42 and 71.2
+# lb/cu ft make balls 16.3 and 12.9 in across inside, and the 1.25 in of shell and insulation round each is a guess
+RSS_TANKS_SHORT = (18.8, 15.4)
+# where the four lie, each (from the ship's axis, along the beam, station): which end is which is read off the figure's
+# inset as spacecraft 5's was, and the places are what the four and the wall leave each other. Estimated
+FUEL_CELLS_ROW = ((24.0, 24.5, 52.5), (24.0, -4.5, 52.5))
+RSS_ROW = ((30.0, -22.0, 50.0), (37.0, 10.0, 51.0))  # the hydrogen, at the row's end, and the oxygen, between the two sections
+# a ship's two 42 lb water tanks from spacecraft 8 on (GVIII, 3.1.2.3.5 and Figure 3.1-2; SEDR2, Figure 6-10 sheet 6): tank
+# B in the retrograde section on the tray spacecraft 7's third tank had (WATER_C), and tank A on the fuel cell module,
+# between its two sections and inboard of the oxygen tank, as near as the SEDR's sketch can be read: estimated
+WATER_A = (22.0, 10.0, 48.0)
+# what rode on the outside of the retrograde section "behind the right hatch": spacecraft 8's nuclear emulsion package,
+# experiment S-9, "8 1/2 x 6 x 3" in, "mounted in a cold well in the retro adapter behind the right hatch" (NASA release
+# 66-52, p. 29), and spacecraft 9's micrometeorite collector, S-12, "11 inches long by 5.5 inches wide by 1.25 inches
+# deep" (NASA release 66-97, p. 21), "mounted outside the spacecraft on the retrograde section of the adapter" (GIX,
+# 8.7.2): documented. Each: long, wide, deep. Where on the section: round from the top, and the station of its middle.
+# "Behind the right hatch" is all that is said: estimated, and taken to be one place for both
+RETRO_PACKAGES = {"s-9": (8.5, 6.0, 3.0), "s-12": (11.0, 5.5, 1.25)}
+RETRO_PACKAGE_AT = (deg(36), 93.5)
+# the main parachute's container, on a ship of the rendezvous pattern: "22.25 inches in diameter and 21.32 inches long",
+# "closed on the forward end" (SEDR2, p. 12-17): documented. The station of its aft end is a guess. (The earlier ships'
+# pack is still the first model's guess at it, which is bigger: gemini-spacecraft.md)
+CHUTE_CONTAINER = (22.25, 21.32, 195.0)
+# what a man outside was to put on at the back of the adapter: spacecraft 8's Extravehicular Support Package, "26 inches
+# high, 21 inches wide, and 17 inches deep" (NASA release 66-52, the Gemini 8 press kit, p. 42), and spacecraft 9's
+# Astronaut Maneuvering Unit, 32 in high by 22 in wide by 19 in deep (NASA release 66-97, the Gemini 9 press kit, p. 22):
+# documented. Each: high (along the wearer), wide, deep (along the ship)
+BACKPACKS = {"esp": (26.0, 21.0, 17.0), "amu": (32.0, 22.0, 19.0)}
+# where it hung. GIX's Figure 8.1-18, "AMU stowage in adapter assembly", has the pack on the ship's axis against a torque
+# box that runs from the blast shield's door, Z66.74, aft to Z56.27, and turned "22.5 deg (REF)" from the ship's
+# right-to-left line: documented, and it is the turn of the section's beams (MODULES_TURN, which was scaled off a sketch
+# as 23). So the wearer lies along the band between the beams. SEDR2's Figure 16-2 puts the foot rest on the crew's left,
+# which is the end of the band the primary oxygen is at (T_ECS). The same mount is assumed for spacecraft 8's pack
+BACKPACK_HEAD = 56.27
+TORQUE_BOX = (11.0, 15.0)  # the torque box: along the wearer, and across him. Scaled from the same figure: estimated
+# the opening in the gold cover that the pack was reached through, and the thermal cover that closed it until the man
+# was ready: the gold cover was "redesigned to accommodate the ESP, the handholds, and the foot supports" (GVIII,
+# 3.1.2.12.1). NASA S-67-802 (SP-149, Figure 5.2-2) shows spacecraft 9's from behind with the cover gone: the cloth
+# gathered to an oblong with round ends, the pack filling most of it. Half its length along the wearer, half its width,
+# and its station: scaled from that photograph against the pack's size, and taken to be the same on spacecraft 8. Estimated
+BACKPACK_OPENING = (20.0, 13.6, 33.5)
+# the two hand bars and the foot rail in the adapter, folded against the gold cover as they were until the thermal cover
+# was thrown off (GVIII, Figure 3.1-10; GIX, Figures 3.1-6 and 8.1-19; SEDR2, Figure 16-2 sheet 2). "The handbars were
+# 1.38 in. in diameter" (SP-149, p. 5-6): documented. A hand bar's two arms' feet at the rim, either side of the line
+# across the wearer (half the angle between them); where its bar lies, from the axis; half the bar's length. The foot
+# rail the same, about the line toward his feet. Scaled from the sketches: estimated
+HANDBAR_R = 0.69
+HANDBAR = (deg(21), 19.0, 9.0)
+FOOT_RAIL = (deg(13), 26.0, 8.5)
+
 
 @dataclass
 class Fit:
@@ -273,6 +356,18 @@ class Fit:
     mooring_latches: bool = False  # the three latch receptacles round the forward face's rim, for docking (spacecraft 6)
     range_indicator: bool = True  # the radar's range and range-rate indicator on the command pilot's panel (spacecraft 7 had none)
     get_clock: bool = False  # a digital clock of elapsed time on the centre panel, where the flight plan roller was (spacecraft 7)
+    # what spacecraft 8 and 9 had
+    index_bar: bool = False  # the docking system's index bar, stowed in its casing at the top of the forward section: the node RR_IndexBar
+    docking_light: bool = False  # the rendezvous and docking light at the forward end of the retrograde section
+    handrails: bool = False  # two extendable handrails behind the right hatch, stowed flush: the nodes Retro_Handrail, Equipment_Handrail
+    eva_light: bool = False  # a light at the adapter's forward end, looking aft along the handrails
+    fuel_cell_row: bool = False  # the fuel cell module's sections and tanks alternating in its row (spacecraft 8 and 9)
+    module_water_tank: bool = False  # a 42 lb water tank, tank A, on the fuel cell module
+    # what waits at the back of the adapter behind a thermal cover, with its hand bars and foot rail: "esp" (spacecraft 8) or "amu" (spacecraft 9)
+    backpack: str = ""
+    gold_inside: bool = False  # the adapter's inner surfaces gold where the earlier ships' were aluminium foil (from spacecraft 9)
+    window_covers: bool = False  # a transparent cover over each hatch window for the climb, thrown off in orbit (spacecraft 9)
+    retro_experiments: tuple[str, ...] = ()  # what rode on the outside of the retrograde section, behind the right hatch, of: "s-9", "s-12"
 
 
 # Meshes that enclose something: the viewer's cutaway slices these and leaves the rest whole.
@@ -317,6 +412,7 @@ SHELLS = (
 SHELLS_OF = {
     "right_hatch_opens": ("HatchRight_Skin", "HatchRight_Fasteners", "HatchRight_Structure"),
     "pod": ("Pod_Cover",),
+    "backpack": ("Backpack_ThermalCover",),
 }
 
 
@@ -532,10 +628,27 @@ def build_rendezvous_recovery(M, fit: Fit) -> None:
             "thrown off and covers slide over the holes they leave. That a ship of this pattern had three, equally spaced, "
             "is McDonnell's manual; their size here is estimated.",
         )
+    if fit.index_bar:
+        build_index_bar(M, g)
     if not interior():
         return
     chute = MeshBuilder()
-    chute.lathe(prof([(0.0, z0 + 3.0), (13.5, z0 + 3.0), (13.5, zt + 14.0), (11.0, z1 - 6.0), (0.0, z1 - 6.0)]), 40)
+    if fit.index_bar:  # (the container as McDonnell's manual for these ships gives it, which leaves the bar's casing room forward of it)
+        across, long, foot = CHUTE_CONTAINER
+        chute.lathe(
+            prof(
+                [
+                    (0.0, zz(foot)),
+                    (across / 2, zz(foot)),
+                    (across / 2, zz(foot) + long - 0.8),
+                    (across / 2 - 0.8, zz(foot) + long),
+                    (0.0, zz(foot) + long),
+                ]
+            ),
+            40,
+        )
+    else:
+        chute.lathe(prof([(0.0, z0 + 3.0), (13.5, z0 + 3.0), (13.5, zt + 14.0), (11.0, z1 - 6.0), (0.0, z1 - 6.0)]), 40)
     say(
         chute.build("RR_MainParachute", M["cushion"], g, sharp_angle=30),
         "Main parachute",
@@ -579,6 +692,56 @@ def build_radar(M, g, face: float) -> None:
         "stands on the face are scaled from McDonnell's sketch.",
     )
     lids.build("RR_RadarAntennaFaces", M["fairing"], g, sharp_angle=35)
+
+
+def build_index_bar(M, g) -> None:
+    """The docking system's index bar (SEDR 300 volume 2, pp. 13-5 and 13-20, Figures 13-2 and 13-8; Technical Summary,
+    p. 241): a bar in a casing across the forward section, at the top of the ship. A cartridge runs it out 13.82 in once
+    the ship is in orbit, and it is what a docking is steered by: it goes into the V-shaped notch in the target's cone and
+    turns the ship as it enters. It is built as it left the pad, drawn in, its end at the skin, and is a node of its own
+    (RR_IndexBar, its origin on the skin where it comes out) for a flight to run out."""
+    station, travel, r, held, casing = INDEX_BAR
+    z = zz(station)
+    skin_r = NOSE.r(z)
+    tip = skin_r + 0.45  # its end stands a little proud of the skin, in a collar
+    foot = tip - travel - held
+    up = Vector((1.0, 0.0, 0.0))  # (the ship's top)
+    at = lambda x: (up * x + Vector((0.0, 0.0, z))) * IN  # noqa: E731
+    bar = MeshBuilder()
+    bar.tube(at(foot), at(tip), r * IN, 16)
+    bar.lathe(prof([(r, tip - 0.5), (r + 0.12, tip - 0.4), (r + 0.12, tip - 0.1), (r, tip)]), 16, matrix=frame((0.0, 0.0, z * IN), up))
+    obj = say(
+        bar.build("RR_IndexBarRod", M["steel"], None, sharp_angle=35),
+        "Index bar",
+        "A steel bar that stands out of the top of the ship's nose once it is in orbit: a cartridge drives it 13.82 in up "
+        "out of its casing, and it locks there. Coming in to dock, the pilot lines it up with a V-shaped notch in the "
+        "rim of the target's cone; the notch takes it, and turns the ship the last few degrees so that the three latches "
+        "meet their hooks. Before the ship comes home another cartridge throws it away. It is drawn here as it left "
+        "the pad, drawn in. How far it runs out is documented; how thick it is and its exact place are scaled from "
+        "McDonnell's drawings.",
+    )
+    pivot("RR_IndexBar", g, at(skin_r), [obj])
+    fit_ = MeshBuilder()
+    fit_.lathe(hoop(r + 0.2, r + 0.75, skin_r - 0.3, skin_r + 0.3), 16, matrix=frame((0.0, 0.0, z * IN), up))  # the collar it comes out through
+    if interior():
+        # its casing, the manifold at the casing's head with the two breeches the cartridges are in, and a bracket to the frame
+        fit_.lathe(
+            prof([(0.0, foot - 1.4), (casing, foot - 1.4), (casing, skin_r - 2.6), (r + 0.3, skin_r - 2.6)]), 16, matrix=frame((0.0, 0.0, z * IN), up)
+        )
+        head = skin_r - 3.6
+        for side in (-1, 1):
+            chamfered(fit_, (1.8, 2.6, 1.6), Matrix.Translation((up * head + Vector((0.0, side * (casing + 1.2), z))) * IN), 0.2)
+            fit_.tube(
+                at(head) + Vector((0.0, side * (casing + 2.5), 0.0)) * IN, at(head) + Vector((0.0, side * (casing + 3.9), 0.0)) * IN, 0.55 * IN, 10
+            )
+        chamfered(fit_, (1.2, 5.0, 2.6), Matrix.Translation((up * (foot + 5.0) + Vector((0.0, 0.0, z - casing - 1.0))) * IN), 0.15)
+    say(
+        fit_.build("RR_IndexBarCasing", M["aluminium"], g, sharp_angle=35),
+        "Index bar casing",
+        "The cylinder the index bar is driven out of, lying across the section with a manifold at its head: one breech for "
+        "the cartridge that runs the bar out, one for the two that throw it away. Its form is McDonnell's drawing of the "
+        "assembly; its sizes are scaled from it.",
+    )
 
 
 def build_transponder(M, g, face: float) -> None:
@@ -774,6 +937,16 @@ def build_hatches(M, fit: Fit) -> list[dict]:
         fan(pane, -0.3, 0.1, True)
         panes[side].append(pane.build(f"Hatch{name}_WindowOuter", M["glass" if whole else "void"], g, sharp_angle=None))
         windows.append({"side": side, "centre": win.at(-1.5, WINDOW_L / 2, -2.4) * IN, "normal": win.np.copy()})
+        if fit.window_covers:
+            # (spacecraft 9: the outer window of an earlier ship, in its frame, hooked on over this one for the climb: GIX, 3.1.1)
+            hi = proud + 0.75
+            edges = [(win.outline(n, 0.72), proud + 0.14), (win.outline(n, 0.72), hi), (win.outline(n, -0.2), hi), (win.outline(n, -0.2), hi - 0.3)]
+            rows = [[win.at(u, w, lift) * IN for u, w in edge_] for edge_, lift in edges]
+            frames.grid(lambda i, j, rows=rows: rows[j][i], range(m), range(4), closed_u=True, flip=side < 0)
+            if whole:
+                cover = MeshBuilder()
+                fan(cover, hi - 0.22, -0.1, True)
+                panes[side].append(cover.build(f"Hatch{name}_WindowCover", M["glass"], g, sharp_angle=None))
         # three hinges along the outboard edge, and the socket a handle goes into from outside
         th = side * HATCH_OUT
         for z in (z0 + 6.0, (z0 + z1) / 2, z1 - 6.0):
@@ -1101,9 +1274,15 @@ def build_crew_station(M, fit: Fit, font=None) -> None:
 # ------------------------------------------------------------------ the adapter
 
 
-def adapter_skin(M, g, prefix: str, s0: float, s1: float) -> tuple:
-    """A length of the adapter's skin from station s0 up to s1: magnesium, white outside, aluminium foil inside, with the
-    stringers that carry the coolant on its inner face."""
+def gold_foil():
+    """The gold the adapter's inner surfaces were plated with from spacecraft 9 on (SEDR 300 volume 2, p. 2-17): made
+    when a ship asks for it, so that a ship that does not carries no such material."""
+    return bpy.data.materials.get("foil-gold") or material("foil-gold", (0.62, 0.45, 0.16), 1.0, 0.36)
+
+
+def adapter_skin(M, g, prefix: str, s0: float, s1: float, gold: bool = False) -> tuple:
+    """A length of the adapter's skin from station s0 up to s1: magnesium, white outside, aluminium foil inside (gold,
+    with `gold`), with the stringers that carry the coolant on its inner face."""
     skin_, foil, rings, stringers = (MeshBuilder() for _ in range(4))
     z0, z1 = zz(s0), zz(s1)
     n = max(6, round((z1 - z0) / 2.6))
@@ -1112,7 +1291,7 @@ def adapter_skin(M, g, prefix: str, s0: float, s1: float) -> tuple:
     fs = [z0 + 1.6 + (z1 - z0 - 3.2) * i / n for i in range(n + 1)]  # (between the rings at its ends)
     foil.lathe(prof([(ADAPTER.r(z) - 0.5, z) for z in fs]), 144, flip=True)
     skin_obj = skin_.build(f"{prefix}_Skin", M["white"], g, sharp_angle=None)
-    foil_obj = foil.build(f"{prefix}_Foil", M["foil"], g, sharp_angle=None)
+    foil_obj = foil.build(f"{prefix}_Foil", gold_foil() if gold else M["foil"], g, sharp_angle=None)
     for z, wide in ((z0, 1.6), (z1, 1.6)):
         lo, hi = (z, z + wide) if z == z0 else (z - wide, z)
         rings.lathe(
@@ -1162,7 +1341,7 @@ def build_retro_section(M, fit: Fit) -> None:
     """The adapter's upper part: the four retrograde rockets, and six of the OAMS's thrust chambers. It stays on until
     the rockets have fired."""
     g = group("RetroSection")
-    skin_obj, _ = adapter_skin(M, g, "Retro", Z_DIVISION, Z0)
+    skin_obj, _ = adapter_skin(M, g, "Retro", Z_DIVISION, Z0, fit.gold_inside)
     band = MeshBuilder()  # where the adapter is cut round before retrofire: the two sections' rings meet in a band
     band.lathe(
         prof(
@@ -1213,6 +1392,14 @@ def build_retro_section(M, fit: Fit) -> None:
             "thrusters. The next ship had real ones. What stood in the ports of this one is not recorded; here they are the "
             "chambers' shapes in plain steel.",
         )
+    if fit.docking_light:
+        build_docking_light(M, g)
+    if fit.eva_light:
+        build_eva_light(M, g)
+    if fit.handrails:
+        build_handrail(M, g, "Retro", 0)
+    for name in fit.retro_experiments:
+        build_retro_package(M, g, name)
     if not interior():
         return
     r, at, mid = RETRO
@@ -1263,6 +1450,150 @@ def build_retro_section(M, fit: Fit) -> None:
     )
     if fit.retro_water_tank:
         build_retro_water_tank(M, g)
+
+
+def laid(theta: float, station: float, off: float = 0.0) -> Matrix:
+    """A frame on the adapter's skin, `theta` round from the top at that station and `off` inches out of it: its x along
+    the skin toward the nose, its y round the ship (toward the top from the crew's right), its z out of the skin."""
+    n = ADAPTER.n(theta)
+    t = Vector((-math.sin(theta), math.cos(theta), 0.0))
+    m = Matrix((n.cross(t), -t, n)).transposed().to_4x4()
+    m.translation = ADAPTER.p(theta, zz(station), off)
+    return m
+
+
+def lamp(body: MeshBuilder, lens: MeshBuilder, m: Matrix, size: tuple[float, float, float], looks: int) -> None:
+    """A lamp in a housing on the skin: `m` is its frame there (laid), `size` its housing's length, width and height,
+    and it looks toward the nose (`looks` 1) or aft (-1). The housing is sunk a little into the skin and tapers away
+    behind the lens."""
+    long, wide, high = size
+    chamfered(body, (long * 0.55, wide, high + 0.3), m @ Matrix.Translation(Vector((looks * long * 0.22, 0.0, high / 2 - 0.15)) * IN), 0.3)
+    chamfered(
+        body, (long * 0.5, wide * 0.72, high * 0.7 + 0.3), m @ Matrix.Translation(Vector((-looks * long * 0.25, 0.0, high * 0.35 - 0.15)) * IN), 0.3
+    )
+    r = min(wide, high) / 2 - 0.25
+    face = m @ Matrix.Translation(Vector((looks * long * 0.495, 0.0, high / 2)) * IN) @ Matrix.Rotation(looks * math.pi / 2, 4, "Y")
+    body.lathe(hoop(r, r + 0.22, -0.1, 0.3), 20, matrix=face)  # the bezel
+    lens.lathe(prof([(r, 0.02), (r * 0.8, 0.26), (0.0, 0.34)]), 20, matrix=face)
+
+
+def build_docking_light(M, g) -> None:
+    """The rendezvous and docking light (Gemini VIII mission report, Figure 3.1-1, "Retrograde section"; SEDR 300 volume
+    2, Figure 13-1): a lamp at the forward end of the adapter, looking forward along the ship."""
+    theta, station, size = DOCKING_LIGHT
+    body, lens = MeshBuilder(), MeshBuilder()
+    lamp(body, lens, laid(theta, station), size, 1)
+    body.build("Retro_DockingLightHousing", M["aluminium"], g, sharp_angle=35)
+    say(
+        lens.build("Retro_DockingLight", M["beacon"], g, sharp_angle=35),
+        "Rendezvous and docking light",
+        "A lamp of 4,000 candlepower at the forward end of the adapter, over and just behind the crew's heads, looking "
+        "forward past the cabin: the ship's headlight. In the dark half of an orbit it lit the target for the last few "
+        "hundred feet of an approach, and the docking cone the ship was being steered into. Its strength and that it "
+        "stood centred here are McDonnell's summary of the programme; its station and its form are estimated.",
+    )
+
+
+def build_eva_light(M, g) -> None:
+    """The light added for a man outside at night (Gemini VIII mission report, 3.1.2.12.1 and Figure 3.1-9): at the
+    forward end of the adapter, looking aft along the handrails."""
+    theta, station, size = EVA_LIGHT
+    body, lens = MeshBuilder(), MeshBuilder()
+    lamp(body, lens, laid(theta, station), size, -1)
+    body.build("Retro_EvaLightHousing", M["aluminium"], g, sharp_angle=35)
+    say(
+        lens.build("Retro_EvaLight", M["beacon"], g, sharp_angle=35),
+        "Extravehicular light",
+        "A small lamp at the forward end of the adapter that looks aft, where every other light on the ship looks "
+        "forward: it was put there to light the adapter's skin and the handrail along it for a man making his way to "
+        "the back of the ship in the dark. The report's plan of the ship draws it on the top centreline; its form is "
+        "estimated.",
+    )
+
+
+def build_handrail(M, g, prefix: str, which: int) -> None:
+    """One of the two extendable handrails along the adapter behind the right hatch (Gemini VIII mission report,
+    3.1.2.12.1 and Figure 3.1-9; SEDR 300 volume 2, p. 16-23 and Figure 16-9; NASA SP-149, p. 5-6): `which` is 0 for the
+    forward one, on the retrograde section, and 1 for the aft one, on the equipment section. It is built as it left the
+    pad, flush with the skin, and is a node of its own (Retro_Handrail, Equipment_Handrail, its origin on the skin at its
+    middle) for a flight to stand out: its two legs are sunk in the skin and come out with it."""
+    theta, lengths, gap = HANDRAILS
+    wide, deep, out = HANDRAIL
+    long = lengths[which]
+    ca = math.cos(ADAPTER.a)
+    ends = (
+        (Z_DIVISION + gap / 2 * ca, Z_DIVISION + (gap / 2 + long) * ca)
+        if which == 0
+        else (Z_DIVISION - (gap / 2 + long) * ca, Z_DIVISION - gap / 2 * ca)
+    )
+    mid = (ends[0] + ends[1]) / 2
+    here = laid(theta, mid)
+    rail = MeshBuilder()
+    chamfered(rail, (long, wide, deep), here @ Matrix.Translation(Vector((0.0, 0.0, deep / 2 + 0.06)) * IN), 0.12)
+    for e in (-1, 1):  # the two legs it stands on when it is out
+        chamfered(
+            rail, (1.5, wide - 0.35, out + 0.9), here @ Matrix.Translation(Vector((e * (long / 2 - 3.2), 0.0, -(out + 0.9) / 2 + 0.2)) * IN), 0.1
+        )
+    obj = say(
+        rail.build(f"{prefix}_HandrailBar", M["cover"], None, sharp_angle=35),
+        "Handrail",
+        "One of two painted metal rails along the adapter behind the right hatch, 0.55 by 1.25 in in section, "
+        + ("21 in long, on the retrograde section" if which == 0 else "46 in long, on the equipment section")
+        + ", with nine inches between the two. At launch they lie flush with the skin. In orbit each springs out to stand "
+        "an inch and a half off it: the aft one by itself as the ship leaves the Titan, which had been holding its "
+        "release pin, the forward one when the man going outside presses a button at its end. They were his road from "
+        "the hatch to the back of the ship. Their sizes are NASA's summary of the programme's work outside; where they "
+        "are round the ship is scaled from the mission report's plan of it.",
+    )
+    pivot(f"{prefix}_Handrail", g, ADAPTER.p(theta, zz(mid)), [obj])
+    fit_ = MeshBuilder()
+    for e in (-1, 1):  # the retaining hooks that hold it down
+        chamfered(fit_, (1.3, wide + 1.0, 0.5), here @ Matrix.Translation(Vector((e * (long / 2 - 1.2), 0.0, -0.05)) * IN), 0.08)
+    if which == 0:  # the forward one's release button, at its forward end
+        fit_.lathe(prof([(0.55, 0.0), (0.55, 0.5), (0.0, 0.5)]), 12, matrix=here @ Matrix.Translation(Vector((long / 2 + 1.4, 0.0, -0.1)) * IN))
+    fit_.build(f"{prefix}_HandrailFittings", M["aluminium"], g, sharp_angle=35)
+
+
+def build_retro_package(M, g, name: str) -> None:
+    """An experiment's package on the outside of the retrograde section behind the right hatch, where a man standing in
+    the hatch could reach it: spacecraft 8's nuclear emulsion (S-9) or spacecraft 9's micrometeorite collector (S-12)."""
+    long, wide, deep = RETRO_PACKAGES[name]
+    theta, station = RETRO_PACKAGE_AT
+    here = laid(theta, station)
+    box, lid = MeshBuilder(), MeshBuilder()
+    sunk = deep - 0.9 if name == "s-9" else 0.25  # (S-9 sat in a well in the skin; S-12 on it)
+    chamfered(box, (long + 1.2, wide + 1.2, 0.5), here @ Matrix.Translation(Vector((0.0, 0.0, 0.1)) * IN), 0.1)  # the plate it is mounted by
+    chamfered(box, (long, wide, deep), here @ Matrix.Translation(Vector((0.0, 0.0, deep / 2 - sunk)) * IN), 0.15)
+    top = deep - sunk
+    chamfered(lid, (long - 0.5, wide - 0.5, 0.3), here @ Matrix.Translation(Vector((0.0, 0.0, top + 0.1)) * IN), 0.08)  # its cover door
+    for e in (-1, 1):  # the door's hinge along one long side, and a handle
+        lid.tube(
+            here @ (Vector((e * (long / 2 - 1.6), wide / 2 - 0.15, top + 0.05)) * IN),
+            here @ (Vector((e * (long / 2 - 3.2), wide / 2 - 0.15, top + 0.05)) * IN),
+            0.22 * IN,
+            8,
+        )
+    lid.tube(here @ (Vector((-1.2, 0.0, top + 0.45)) * IN), here @ (Vector((1.2, 0.0, top + 0.45)) * IN), 0.2 * IN, 8)
+    label, about = {
+        "s-9": (
+            "Nuclear emulsion package",
+            "Experiment S-9: a block of photographic emulsion 8 1/2 by 6 by 3 in, in a well in the adapter's skin behind the "
+            "right hatch, to record the tracks of cosmic rays that never reach a balloon. A motor inside moved one stack "
+            "of plates past another so that each track could be dated. It had to be kept cold and to come home, so the "
+            "man going outside was to bring it in. Its size and that it was behind the right hatch are the press kit's; "
+            "exactly where is estimated.",
+        ),
+        "s-12": (
+            "Micrometeorite collector",
+            "Experiment S-12: an aluminium box 11 by 5.5 by 1.25 in on the outside of the retrograde section, with a door the "
+            "crew could open and shut from inside. Behind the door were films a few hundred atoms thick, to be holed by "
+            "dust too fine to see, and with them sealed samples of bacteria, moulds and a virus, to find out what a day "
+            "of space does to them. Its size is the press kit's and that it was on this section the report's; exactly "
+            "where is estimated.",
+        ),
+    }[name]
+    box.build(f"Retro_Experiment{name.replace('-', '').upper()}Mount", M["aluminium"], g, sharp_angle=35)
+    say(lid.build(f"Retro_Experiment{name.replace('-', '').upper()}", M["cover"], g, sharp_angle=35), label, about)
 
 
 def build_retro_water_tank(M, g) -> None:
@@ -1347,11 +1678,31 @@ def ball(mb: MeshBuilder, m: Matrix, r: float, segs: int = 32, ring: float = 0.0
         mb.lathe(hoop(r - 0.1, r + ring, -0.35, 0.35), segs, matrix=m)
 
 
-def cover_station(r: float) -> float:
+def cover_station(r: float, gathered: float | None = None) -> float:
     """The station of the temperature control cover, that far from the ship's axis: flat inside its hoop, a cone from
-    the hoop out to the rim."""
+    the hoop out to the rim. `gathered`: what the cloth is gathered to on that line from the axis, where it is not the
+    hoop (a ship with a backpack's opening in its cover)."""
     (r1, s1), (r0, s0) = COVER_RIM, COVER_HOOP
+    if gathered is not None:
+        r0 = gathered
     return s0 if r <= r0 else s0 + (s1 - s0) * (r - r0) / (r1 - r0)
+
+
+def backpack_outline(delta: float, grow: float = 0.0) -> float:
+    """The opening in the gold cover that a backpack is reached through: how far its edge is from the ship's axis,
+    `delta` round from the way the wearer's feet point. An oblong with round ends; `grow` moves the edge outward."""
+    a, b, _ = BACKPACK_OPENING
+    b += grow
+    c = a - BACKPACK_OPENING[1]  # the middle of an end's arc, from the axis
+    cs, sn = abs(math.cos(delta)), abs(math.sin(delta))
+    if sn > 1e-9 and b / sn * cs <= c:
+        return b / sn
+    return c * cs + math.sqrt(max(0.0, b * b - (c * sn) ** 2))
+
+
+def gather_of(fit: Fit) -> Callable[[float], float] | None:
+    """What a ship's gold cover is gathered to, as a function of the angle round from the top: None for the hoop."""
+    return (lambda theta: backpack_outline(theta - T_ECS)) if fit.backpack else None
 
 
 def pod_outline(delta: float) -> float:
@@ -1374,15 +1725,18 @@ def port_outline(delta: float) -> float:
     return ((abs(math.cos(delta)) / half_along) ** 4 + (abs(math.sin(delta)) / half_out) ** 4) ** -0.25
 
 
-def well(mb: MeshBuilder, theta: float, rho: float, radius: float, floor: float) -> None:
+def well(mb: MeshBuilder, theta: float, rho: float, radius: float, floor: float, gather: Callable[[float], float] | None = None) -> None:
     """Where something stands through the cover (a thrust chamber, a light): a collar lying on the cover round the
-    hole, and the cuff inside it, up to a floor at that station."""
+    hole, and the cuff inside it, up to a floor at that station. `gather`: what the cloth is gathered to (gather_of)."""
     c = radial(theta) * rho
     n = srlib._segs(24)
     spokes = [Vector((math.cos(TAU * i / n), math.sin(TAU * i / n), 0.0)) for i in range(n)]
 
+    def station(q: Vector) -> float:
+        return cover_station(q.length, gather(math.atan2(q.y, q.x)) if gather else None)
+
     def ring(r_: float, lift: float) -> list[Vector]:
-        return [Vector(((c + e * r_).x, (c + e * r_).y, zz(cover_station((c + e * r_).length) - lift))) * IN for e in spokes]
+        return [Vector(((c + e * r_).x, (c + e * r_).y, zz(station(c + e * r_) - lift))) * IN for e in spokes]
 
     cuff = [(c + e * (radius + 0.12) + Vector((0.0, 0.0, zz(floor)))) * IN for e in spokes]
     rings = [ring(radius + 0.9, 0.5), ring(radius + 0.12, 0.5), cuff]
@@ -1400,27 +1754,33 @@ def build_cover(M, g, fit: Fit, wells: list[tuple[float, float, float, float]]) 
     cols, rows = 2 * gores, (8 if fine else 3)
     pleat = PLEAT if fine else 0.0
     looks_aft = "proton-electron-spectrometer" in fit.experiments
-    # (a ship with the pod has the pod's own cover in the middle, and the gold cut back round it: build_pod)
-    hole = (lambda d: pod_outline(d) + 0.3) if fit.pod else port_outline if looks_aft else None
+    # (a ship with the pod has the pod's own cover in the middle, and the gold cut back round it: build_pod; one with a
+    # backpack has the cloth gathered to the backpack's opening, and no hoop or disc: build_backpack)
+    pack = bool(fit.backpack)
+    gather = gather_of(fit)
+    hole = backpack_outline if pack else (lambda d: pod_outline(d) + 0.3) if fit.pod else port_outline if looks_aft else None
     angles = [T_ELECTRONIC + TAU * i / cols for i in range(cols)]
-    inner = [hole(a - T_ELECTRONIC) if hole else 0.0 for a in angles]
+    inner = [hole(a - (T_ECS if pack else T_ELECTRONIC)) if hole else 0.0 for a in angles]
 
     def point(i: int, r: float, lift: float = 0.0) -> tuple:
-        return tuple((radial(angles[i]) * r + Vector((0.0, 0.0, zz(cover_station(r)) + lift))) * IN)
+        return tuple((radial(angles[i]) * r + Vector((0.0, 0.0, zz(cover_station(r, inner[i] if pack else None)) + lift))) * IN)
 
     verts: list[tuple] = []
     faces: list[tuple[int, ...]] = []
     for i in range(cols):  # the cone: a ridge and a valley to each gore, deepest toward the hoop it is gathered to
-        start = max(r0, inner[i])
+        start = inner[i] if pack else max(r0, inner[i])
+        gathered = start if pack else r0
         for j in range(rows + 1):
             r = start + (r1 - start) * j / rows
-            t = (r1 - r) / (r1 - r0)
+            t = (r1 - r) / (r1 - gathered)
             verts.append(point(i, r, pleat * (0.4 + 0.6 * t) * min(1.0, (1.0 - t) / 0.12) * (1 if i % 2 == 0 else -1)))
     for i in range(cols):
         k = (i + 1) % cols
         faces.extend((i * (rows + 1) + j, k * (rows + 1) + j, k * (rows + 1) + j + 1, i * (rows + 1) + j + 1) for j in range(rows))
     base = len(verts)
-    if hole:  # the disc inside the hoop, out from the opening in it
+    if pack:
+        pass
+    elif hole:  # the disc inside the hoop, out from the opening in it
         for i in range(cols):
             verts += [point(i, min(inner[i], r0)), point(i, r0)]
         for i in range(cols):
@@ -1436,10 +1796,17 @@ def build_cover(M, g, fit: Fit, wells: list[tuple[float, float, float, float]]) 
     # the hoop the cloth is gathered to, and the seam inside it; where the pod's cover crosses the hoop it is cut
     cut = next((a for a in (TAU * i / 720 for i in range(360)) if pod_outline(a) + 0.3 < r0), 0.0) if fit.pod else 0.0
     arc = (T_ELECTRONIC + cut, T_ELECTRONIC + TAU - cut)
-    for r, k in ((r0, 0.32), *(() if fit.pod else ((r0 - 2.4, 0.18),))):
+    for r, k in () if pack else ((r0, 0.32), *(() if fit.pod else ((r0 - 2.4, 0.18),))):
         hoops.lathe(
             prof([(r + k * math.cos(a), zz(s0) - 0.1 + k * math.sin(a)) for a in (-math.pi / 2 + TAU * i / 8 for i in range(9))]), cols, arc=arc
         )
+    if pack:  # the cord the cloth is gathered to, round the opening
+
+        def cord(i: int, j: int) -> tuple:
+            a = -math.pi / 2 + TAU * j / 8
+            return tuple((radial(angles[i]) * (inner[i] + 0.32 * math.cos(a)) + Vector((0.0, 0.0, zz(s0) - 0.1 + 0.32 * math.sin(a)))) * IN)
+
+        hoops.grid(cord, range(cols), range(9), closed_u=True)
     hoops.build("Equipment_CoverHoop", M["gold"], g, sharp_angle=None)
     say(
         cover.build("Equipment_Cover", M["gold"], g, sharp_angle=6),  # (each gather a crease, as the cloth's are)
@@ -1455,8 +1822,9 @@ def build_cover(M, g, fit: Fit, wells: list[tuple[float, float, float, float]]) 
     cuffs = MeshBuilder()
     for theta, rho, radius, floor in wells:
         if holes():
-            pierce("Equipment_Cover", radial(theta) * rho + Vector((0.0, 0.0, zz(cover_station(rho)))), Vector((0.0, 0.0, -1.0)), radius)
-            well(cuffs, theta, rho, radius, floor)
+            at = cover_station(rho, gather(theta) if gather else None)
+            pierce("Equipment_Cover", radial(theta) * rho + Vector((0.0, 0.0, zz(at))), Vector((0.0, 0.0, -1.0)), radius)
+            well(cuffs, theta, rho, radius, floor, gather)
     if cuffs.verts:
         trim("Equipment_Cover", [(radial(theta) * rho * IN, (radius + 3.0) * IN) for theta, rho, radius, _ in wells])
         cuffs.build("Equipment_CoverWells", M["gold"], g, sharp_angle=35)
@@ -1484,7 +1852,7 @@ def trim(name: str, spots: list[tuple[Vector, float]]) -> None:
 def build_equipment_section(M, fit: Fit) -> None:
     """The adapter's lower part: what is needed only in orbit. It is cut away just before retrofire."""
     g = group("EquipmentSection")
-    skin_obj, _ = adapter_skin(M, g, "Equipment", Z_MATING_TOP, Z_DIVISION)
+    skin_obj, _ = adapter_skin(M, g, "Equipment", Z_MATING_TOP, Z_DIVISION, fit.gold_inside)
     ring = MeshBuilder()  # the machined ring at its foot, bolted to the launch vehicle with twenty bolts
     ring.lathe(hoop(BASE_R - 2.4, BASE_R + 0.45, zz(Z_BASE), zz(Z_MATING_TOP)), 144)
     for i in range(20):
@@ -1531,13 +1899,21 @@ def build_equipment_section(M, fit: Fit) -> None:
     )
     if fit.acquisition_lights:
         wells += build_acquisition_lights(M, g)
+    if fit.handrails:
+        build_handrail(M, g, "Equipment", 1)
     build_cover(M, g, fit, wells)
+    if fit.backpack:
+        build_donning_station(M, g, fit)
     if not interior():
         return
+    if fit.backpack:
+        build_torque_box(M, g)
     build_blast_shield(M, g, fit)
     build_oams_module(M, g, fit)
     if fit.fuel_cells:
-        build_fuel_cells(M, g, fit.hydrogen_insulated)
+        build_fuel_cells(M, g, fit.hydrogen_insulated, fit.fuel_cell_row)
+    if fit.module_water_tank:
+        build_module_water_tank(M, g)
     if fit.adapter_batteries:
         build_battery_module(M, g, fit)
     build_ecs_module(M, g)
@@ -1870,15 +2246,18 @@ def build_battery_module(M, g, fit: Fit) -> None:
         )
 
 
-def build_fuel_cells(M, g, insulated: bool = False) -> None:
+def build_fuel_cells(M, g, insulated: bool = False, row: bool = False) -> None:
     """The reactant supply system and fuel cell module (Gemini V mission report, 3.1.2.6 and Figure 3.1-5; SEDR 300
     volume 2, Figure 5-6; volume 1, Figure 5-5): two fuel cell sections, each a sealed can of three stacks of 32 cells,
     and the two tanks of supercritical hydrogen and oxygen that feed them, in a row beyond the beam on the side of the
-    section away from the OAMS module: the sections at one end, then the hydrogen, then the oxygen."""
+    section away from the OAMS module: the sections at one end, then the hydrogen, then the oxygen. With `row`, the
+    module as spacecraft 8 and 9 had it (SEDR 300 volume 2, Figure 5-7): a section, the oxygen, the other section, the
+    hydrogen, and the two tanks the smaller ones of a short mission."""
     cells, frames_ = MeshBuilder(), MeshBuilder()
     r, long = FUEL_CELL
     hang = BEAM_FOOT  # the under side of the beam
-    for out, along, station in FUEL_CELLS_AT:
+    cells_at, tanks_at, tanks = (FUEL_CELLS_ROW, RSS_ROW, RSS_TANKS_SHORT) if row else (FUEL_CELLS_AT, RSS_AT, RSS_TANKS)
+    for out, along, station in cells_at:
         m = Lm(T_POWER, out, along, station)
         can(cells, m, r, long, 2.2, 28)
         for s in (-1, 1):  # the band at each end that its dome is clamped on by
@@ -1901,8 +2280,8 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
     )
     for (out, along, station), across, name, label, about in (
         (
-            RSS_AT[0],
-            RSS_TANKS[0],
+            tanks_at[0],
+            tanks[0],
             "Hydrogen",
             "Fuel cell hydrogen tank",
             "Hydrogen for the fuel cells, 23 lb of it at launch, kept so cold and so squeezed that it is neither liquid nor "
@@ -1911,8 +2290,8 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
             "the middle one of the module's row; the tank's size is worked from the weight, with a guess at the insulation.",
         ),
         (
-            RSS_AT[1],
-            RSS_TANKS[1],
+            tanks_at[1],
+            tanks[1],
             "Oxygen",
             "Fuel cell oxygen tank",
             "Oxygen for the fuel cells: 178 lb at launch, at 815 lb to the square inch. A heater inside is meant to keep the "
@@ -1948,8 +2327,8 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
                 0.5 * IN,
                 8,
             )
-    # the reactants' shutoff valves, on the beam between the two tanks
-    mid = (RSS_AT[0][1] + RSS_AT[1][1]) / 2
+    # the reactants' shutoff valves, on the beam between the two tanks (in a row of four, between the hydrogen and the section beside it)
+    mid = (tanks_at[0][1] + cells_at[1][1]) / 2 - 1.2 if row else (RSS_AT[0][1] + RSS_AT[1][1]) / 2
     chamfered(frames_, (2.2, 6.0, 2.2), Lm(T_POWER, BEAM_AT + 2.6, mid, hang - 1.4), 0.2)
     for e in (-1, 1):
         frames_.tube(L(T_POWER, BEAM_AT + 2.6, mid + e * 1.5, hang - 2.4), L(T_POWER, BEAM_AT + 2.6, mid + e * 1.5, hang - 4.0), 0.6 * IN, 10)
@@ -1961,6 +2340,32 @@ def build_fuel_cells(M, g, insulated: bool = False) -> None:
         "tank carrying its heater, its sensors and its pressure switch, and between the tanks the two valves that shut the "
         "hydrogen and the oxygen off. McDonnell's drawing of the module shows all of it; nothing in it is dimensioned.",
     )
+
+
+def build_module_water_tank(M, g) -> None:
+    """Water tank A of a ship from spacecraft 8 on (Gemini VIII mission report, 3.1.2.3.5 and Figure 3.1-2; SEDR 300
+    volume 2, Figure 6-10 sheet 6): a ball of the same pattern as the one in the retrograde section, hung on the fuel
+    cell module. It takes the water the fuel cells make."""
+    out, along, station = WATER_A
+    r = WATER_C[0] / 2
+    here = Lm(T_POWER, out, along, station)
+    tank, straps = MeshBuilder(), MeshBuilder()
+    ball(tank, here, r, 32, ring=0.6)
+    say(
+        tank.build("Equipment_WaterTankA", M["tank"], g, sharp_angle=None),
+        "Water tank A",
+        "One of the ship's two water tanks, each able to hold 42 lb: two aluminium half-shells with a titanium ring "
+        "between them and a diaphragm at each joint. This one went up holding only nitrogen. The water the fuel cells "
+        "make is acid, which is why the ring is titanium; it is piped in between the diaphragms of both tanks, and in "
+        "the other tank, in the section forward of this one, it pushes the drinking water out to the crew. That there "
+        "were two, what each held and that this one was in this section are documented; its size is worked from the "
+        "42 lb, and its place on the fuel cell module is read off McDonnell's sketch.",
+    )
+    for e in (-1, 1):  # two struts from its ring up to the beam
+        straps.tube(
+            L(T_POWER, out - r * 0.8, along + e * r * 0.55, station + 0.3), L(T_POWER, BEAM_AT + 0.6, along + e * 2.5, BEAM_FOOT + 0.15), 0.4 * IN, 8
+        )
+    straps.build("Equipment_WaterTankASupport", M["aluminium"], g, sharp_angle=35)
 
 
 def build_ecs_module(M, g) -> None:
@@ -2093,6 +2498,267 @@ def build_adapter_experiments(M, g, fit: Fit) -> None:
             "boom and that it pointed aft are documented; a photograph of Gemini 7 from behind shows it run out from the "
             "middle of the cover, beside the spectrometer, which is where it is stowed here; its form is estimated.",
         )
+
+
+def build_donning_station(M, g, fit: Fit) -> None:
+    """What a man was to hold and stand on at the back of the adapter while he put the backpack on (Gemini VIII mission
+    report, 3.1.2.12.1 and Figure 3.1-10; Gemini IX-A mission report, Figures 3.1-6 and 8.1-19; SEDR 300 volume 2,
+    p. 16-25 and Figure 16-2 sheet 2; NASA SP-149, pp. 5-6 and 5-7 and Figure 5.2-2): two hand bars, one to either hand,
+    and a foot rail, each sprung and held folded against the gold cover by a cable until the thermal cover was thrown
+    off; a floodlight at the foot of each hand bar; and a guide at the rim for the umbilical to run over. Built folded,
+    as the ship left the pad."""
+    rim = COVER_RIM[0] - 2.2
+    gather = gather_of(fit)
+    bars, feet, lens, guide = (MeshBuilder() for _ in range(4))
+
+    def on(theta: float, r: float, lift: float = 1.5) -> Vector:
+        """A point `lift` inches aft of the cloth, `r` from the axis on the line `theta` round from the top."""
+        return (radial(theta) * r + Vector((0.0, 0.0, zz(cover_station(r, gather(theta))) - lift))) * IN
+
+    def folded(about: float, spec: tuple[float, float, float], into: MeshBuilder) -> list[tuple[float, float]]:
+        """A bar across the line `about`, on two arms from the rim. Returns where its arms' feet are: (angle, radius)."""
+        half, out, reach = spec
+        ends = []
+        for e in (-1, 1):
+            bar = radial(about) * out + radial(about + math.pi / 2) * (e * reach)
+            ta, ra = math.atan2(bar.y, bar.x), bar.length
+            ends.append(on(ta, ra))
+            into.tube(on(about + e * half, rim), on(ta, ra), HANDBAR_R * IN, 12)
+            sphere(into, on(ta, ra), (HANDBAR_R + 0.12) * IN, 12)  # (the elbow)
+        into.tube(ends[0], ends[1], HANDBAR_R * IN, 12)
+        return [(about + e * half, rim) for e in (-1, 1)]
+
+    hinges = []
+    for about in (T_OAMS, T_POWER):
+        hinges += folded(about, HANDBAR, bars)
+    hinges += folded(T_ECS, FOOT_RAIL, bars if fit.backpack != "amu" else feet)
+    if fit.backpack == "amu":
+        # (spacecraft 9: "two aluminum stirrups were installed on the footbar": Gemini IX-A mission report, 3.1.2.12.1)
+        half, out, reach = FOOT_RAIL
+        for e in (-1, 1):
+            at = radial(T_ECS) * out + radial(T_ECS + math.pi / 2) * (e * reach * 0.45)
+            ta, ra = math.atan2(at.y, at.x), at.length
+            n = 10
+            loop = [
+                on(ta, ra - 3.4 * math.sin(math.pi * k / n), 1.5 + 2.6 * math.sin(math.pi * k / n))
+                + radial(T_ECS + math.pi / 2) * (2.2 * math.cos(math.pi * k / n) * IN)
+                for k in range(n + 1)
+            ]
+            for p0, p1 in zip(loop, loop[1:]):
+                feet.tube(p0, p1, 0.3 * IN, 8, caps=False)
+    for theta, r in hinges:  # the fitting each arm is hinged on, at the rim
+        chamfered(feet, (2.6, 2.2, 2.0), frame(on(theta, r + 0.4, 1.3), (0.0, 0.0, -1.0)) @ Matrix.Rotation(theta, 4, "Z"), 0.2)
+    for about in (T_OAMS, T_POWER):  # a floodlight at one foot of each hand bar, looking in at the middle
+        theta = about - HANDBAR[0]
+        at = on(theta, rim - 3.6, 2.4)
+        aim = (Vector((0.0, 0.0, at.z - 3.0 * IN)) - at).normalized()
+        feet.lathe(prof([(0.0, -1.6), (1.1, -1.6), (1.1, 0.0), (1.35, 0.3)]), 14, matrix=frame(at, aim))
+        lens.lathe(prof([(1.3, 0.3), (0.9, 0.62), (0.0, 0.7)]), 14, matrix=frame(at, aim))
+    # the umbilical guide, at the rim where the aft handrail ends: a horn for the hose to bend over
+    theta = HANDRAILS[0]
+    n = 8
+    horn = [
+        on(theta, COVER_RIM[0] + 0.6 - 2.4 * (1 - math.cos(math.pi / 2 * k / n)), 0.5 + 2.4 * math.sin(math.pi / 2 * k / n)) for k in range(n + 1)
+    ]
+    for e in (-1, 1):
+        side = radial(theta + math.pi / 2) * (e * 1.6 * IN)
+        for p0, p1 in zip(horn, horn[1:]):
+            guide.tube(p0 + side, p1 + side, 0.32 * IN, 8, caps=False)
+    guide.tube(horn[-1] - radial(theta + math.pi / 2) * (1.6 * IN), horn[-1] + radial(theta + math.pi / 2) * (1.6 * IN), 0.32 * IN, 8)
+    say(
+        bars.build("Equipment_HandBars", M["cover"], g, sharp_angle=None),
+        "Hand bars and foot rail" if fit.backpack != "amu" else "Hand bars",
+        "Two bars of tube 1.38 in across, one for either hand, on arms hinged at the adapter's rim. They are built folded "
+        "flat against the gold cover, which is how they went up: they had to clear the dome of the Titan's tank, which "
+        "stands up into the adapter until the ship leaves it. A cable holds them down. When the switch in the cabin is "
+        "thrown a guillotine cuts the cable, springs swing them out and they latch, and a man at the back of the ship "
+        "has something to hold while he backs into the pack. The tube's size is documented; the bars' lengths and "
+        "where they lie are scaled from the reports' sketches.",
+    )
+    if feet.verts:
+        say(
+            feet.build("Equipment_FootRail" if fit.backpack == "amu" else "Equipment_BarFittings", M["aluminium"], g, sharp_angle=35),
+            "Foot rail and stirrups" if fit.backpack == "amu" else "Bar hinges and floodlights",
+            "A rail for the feet, folded against the cover like the hand bars and sprung out with them, toward the crew's "
+            "left. On this ship two aluminium stirrups were added to it, to hold a man's boots while he used both hands "
+            "on the pack. That they were added is documented; their form, the rail's length and where it lies are "
+            "scaled from sketches. The fittings at the rim are the bars' hinges, and the two lamp housings the "
+            "floodlights for working here at night."
+            if fit.backpack == "amu"
+            else "The fittings at the rim that the hand bars and the foot rail are hinged on, and the housings of the two "
+            "floodlights for working here at night. Their forms are estimated.",
+        )
+    lens.build("Equipment_Floodlights", M["beacon"], g, sharp_angle=35)
+    say(
+        guide.build("Equipment_UmbilicalGuide", M["aluminium"], g, sharp_angle=35),
+        "Umbilical guide",
+        "A horn at the rim of the adapter, at the end of the handrail, for the umbilical to bend over: the adapter's "
+        "edge is where the Titan was cut away, and it is sharp. It comes out with the hand bars. That there was one "
+        "at the rear of the handrail is documented; its form is estimated.",
+    )
+
+
+def build_torque_box(M, g) -> None:
+    """What a backpack hung from (Gemini IX-A mission report, 8.1.5 and Figure 8.1-18): a sheet metal torque box on the
+    blast shield's access door, reaching aft to Z56.27, to which the pack's four-legged claw was pulled down by one
+    bolt. A guillotine cut the bolt when the pack had been put on."""
+    under = Z_BLAST - SHIELD_THICK
+    long, wide = TORQUE_BOX
+    mb = MeshBuilder()
+    mid = (under - 0.15 + BACKPACK_HEAD) / 2
+    chamfered(mb, (long, wide, under - 0.15 - BACKPACK_HEAD), Lm(T_ECS, 0.0, 0.0, mid), 0.35)
+    for o in (-1, 1):
+        for a in (-1, 1):  # the flange it is bolted to the door by, and its lightening holes' rims
+            chamfered(mb, (2.4, 2.4, 0.5), Lm(T_ECS, o * (long / 2 + 0.6), a * (wide / 2 - 1.6), under - 0.42), 0.1)
+        mb.lathe(hoop(1.5, 1.9, -0.1, 0.25), 16, matrix=Lm(T_ECS, o * long / 2, 0.0, mid) @ Matrix.Rotation(o * math.pi / 2, 4, "Y"))
+    mb.tube(L(T_ECS, 0.0, 0.0, BACKPACK_HEAD + 0.2), L(T_ECS, 0.0, 0.0, BACKPACK_HEAD - 1.4), 0.9 * IN, 12)  # the guillotine round the bolt
+    say(
+        mb.build("Equipment_TorqueBox", M["aluminium"], g, sharp_angle=35),
+        "Backpack torque box",
+        "A sheet metal box on the blast shield's access door, in the middle of the section, reaching aft to station "
+        "Z56.27: what the pack hangs from. Four legs on the pack's back seat on it and one bolt through the middle pulls "
+        "them down. Round the bolt is a guillotine, fired from the cabin when the man has the pack on, and that is the "
+        "last thing that holds him to the ship but his tether. That it was there, its stations and that the bolt was cut "
+        "are documented; how wide it was is scaled from the report's drawing.",
+    )
+
+
+def build_backpack(M, kind: str) -> None:
+    """The backpack at the back of the adapter, and the thermal cover over its opening: spacecraft 8's Extravehicular
+    Support Package (Gemini VIII mission report, 3.1.2.12.4 and Figure 3.1-11; NASA release 66-52, pp. 40 to 43) or
+    spacecraft 9's Astronaut Maneuvering Unit (Gemini IX-A mission report, 8.1 and Figures 8.1-2, 8.1-18 and 8.1-19;
+    NASA release 66-97, pp. 22 and 23). A node of its own: it was to leave with the man. Its frame: x toward the
+    wearer's feet, y to his left as he stands in it facing aft, z toward the ship's nose."""
+    g = group({"esp": "ExtravehicularSupportPackage", "amu": "ManeuveringUnit"}[kind])
+    high, wide, deep = BACKPACKS[kind]
+    half, _, s0 = BACKPACK_OPENING
+    # the thermal cover over the opening, which rested on the pack and was held by one line through its middle
+    cover, straps = MeshBuilder(), MeshBuilder()
+    n = 64
+    edge = [
+        (backpack_outline(TAU * i / n, 1.0) * math.cos(TAU * i / n), backpack_outline(TAU * i / n, 1.0) * math.sin(TAU * i / n)) for i in range(n)
+    ]
+    slab(cover, edge, s0 - 1.15, s0 - 0.7, T_ECS, 0.15)
+    for k in (-1, 1):  # two stiffeners across it, and the fitting in its middle the line comes to
+        chamfered(straps, (1.1, 2 * BACKPACK_OPENING[1] - 1.0, 0.4), Lm(T_ECS, k * half * 0.45, 0.0, s0 - 1.27), 0.1)
+    straps.lathe(prof([(0.0, -0.75), (1.3, -0.75), (1.3, 0.0)]), 16, matrix=Lm(T_ECS, 0.0, 0.0, s0 - 1.15))
+    say(
+        cover.build("Backpack_ThermalCover", M["gold"], g, sharp_angle=35),
+        "Thermal cover",
+        "The gold cloth across the back of the adapter is gathered, on this ship, to an oblong opening in the middle, and "
+        "this cover closes the opening until it is wanted. It rests against the pack behind it and is held by one line "
+        "through the pack's middle. The switch that springs the hand bars out cuts the line and lets it go. That it was "
+        "so held and so released is documented; its outline is scaled from a photograph of the adapter with the cover "
+        "off, and its thickness is a guess.",
+    )
+    straps.build("Backpack_ThermalCoverFittings", M["aluminium"], g, sharp_angle=35)
+    if not interior():
+        return  # (it is behind its cover: from far off there is only the cover)
+    mid = BACKPACK_HEAD - deep / 2
+    here = Lm(T_ECS, 0.0, 0.0, mid)
+    at = lambda x, y, z: here @ (Vector((x, y, z)) * IN)  # noqa: E731
+    box = lambda mb, size, x, y, z, bevel=0.2: chamfered(mb, size, here @ Matrix.Translation(Vector((x, y, z)) * IN), bevel)  # noqa: E731
+    shell, trim_, gold, lamps = (MeshBuilder() for _ in range(4))
+    aft = -deep / 2  # the face the man backs up to
+    # its four legs to the torque box, on its back
+    for o in (-1, 1):
+        for a in (-1, 1):
+            trim_.tube(
+                at(o * TORQUE_BOX[0] * 0.42, a * TORQUE_BOX[1] * 0.42, deep / 2 - 0.2),
+                at(o * TORQUE_BOX[0] * 0.3, a * TORQUE_BOX[1] * 0.3, deep / 2 + 1.2),
+                0.45 * IN,
+                8,
+            )
+    if kind == "amu":
+        box(shell, (high, wide, deep - 2.4), 0.0, 0.0, 1.2, 0.8)
+        # the cradle a man sits back into: a pad for his back between two cheeks, and a seat at its foot
+        box(shell, (high * 0.62, wide * 0.5, 1.6), -high * 0.1, 0.0, aft + 1.9, 0.5)
+        for e in (-1, 1):
+            box(shell, (high * 0.62, 2.6, 3.4), -high * 0.1, e * (wide * 0.25 + 1.6), aft + 1.7, 0.6)
+        box(shell, (3.2, wide * 0.62, 4.6), high * 0.27, 0.0, aft + 2.3, 0.6)
+        # the two sidearm controllers, folded up along its sides, a controller's head at the end of each
+        for e in (-1, 1):
+            box(shell, (15.0, 1.5, 2.2), -high * 0.08, e * (wide / 2 + 0.9), aft + 4.2, 0.3)
+            box(trim_, (3.4, 2.2, 3.0), -high * 0.08 - 9.0, e * (wide / 2 + 1.0), aft + 4.4, 0.35)
+            trim_.tube(
+                at(-high * 0.08 - 10.4, e * (wide / 2 + 1.0), aft + 4.4), at(-high * 0.08 - 12.2, e * (wide / 2 + 1.0), aft + 3.6), 0.4 * IN, 8
+            )
+        # twelve thrust chambers in its corners: four that fire forward and four aft, two up and two down
+        for o in (-1, 1):
+            for e in (-1, 1):
+                for way, z in ((-1, aft + 2.6), (1, deep / 2 - 1.4)):
+                    m = (
+                        here
+                        @ Matrix.Translation(Vector((o * (high / 2 - 1.5), e * (wide / 2 - 1.5), z)) * IN)
+                        @ Matrix.Rotation(0.0 if way > 0 else math.pi, 4, "X")
+                    )
+                    trim_.lathe(prof([(0.0, 0.0), (0.45, 0.0), (0.45, 0.9), (0.8, 1.9)]), 12, matrix=m)
+            for e in (-1, 1):  # (up and down)
+                m = (
+                    here
+                    @ Matrix.Translation(Vector((o * (high / 2 - 0.2), e * (wide / 2 - 4.5), 1.5)) * IN)
+                    @ Matrix.Rotation(o * math.pi / 2, 4, "Y")
+                )
+                trim_.lathe(prof([(0.0, 0.0), (0.45, 0.0), (0.45, 0.9), (0.8, 1.7)]), 12, matrix=m)
+        # the extensions that carry the upper forward chambers' exhaust clear of his helmet and shoulders, folded on its top
+        for e in (-1, 1):
+            gold.tube(at(-high / 2 - 1.0, e * (wide / 2 - 2.2), aft + 3.0), at(-high / 2 - 1.0, e * (wide / 2 - 2.2), aft + 10.5), 0.7 * IN, 12)
+        # its antenna, a wedge on its top, and four green running lights
+        box(trim_, (2.2, 5.0, 6.0), -high / 2 - 1.0, 0.0, 2.5, 0.5)
+        for x, y in ((-high / 2 + 2.0, wide / 2 - 2.6), (-high / 2 + 2.0, -(wide / 2 - 2.6)), (high / 2 - 2.0, 0.0), (-high / 2 + 1.0, 0.0)):
+            lamps.lathe(prof([(0.6, 0.0), (0.6, 0.35), (0.0, 0.6)]), 12, matrix=here @ Matrix.Translation(Vector((x, y, deep / 2 - 1.2)) * IN))
+        label = "Astronaut Maneuvering Unit"
+        about = (
+            "The Air Force's backpack: an aluminium box 32 in high, 22 wide and 19 deep, 166 lb loaded, with a cradle a "
+            "man sits back into. Twelve small thrusters in its corners, each of about 2.3 lb, burn hydrogen peroxide: "
+            "four fire forward, four aft, two up and two down, worked from two controllers on arms that fold out to "
+            "either hand. It carries its own oxygen, its own batteries and its own radio. It hangs here by four legs on "
+            "a torque box, held by one bolt. Its size, weight and thrusters are documented; its outside is drawn from "
+            "the reports' figures, which are sketches and dark photographs, and is estimated."
+        )
+    else:
+        box(shell, (high, wide, deep - 2.0), 0.0, 0.0, 1.0, 1.2)
+        box(shell, (high * 0.8, wide * 0.72, 2.4), 0.0, 0.0, aft + 1.9, 0.7)  # the pad his back comes against
+        # the bag the 75 ft tether is folded in, on its top
+        box(shell, (4.2, wide * 0.7, deep * 0.55), -high / 2 - 2.0, 0.0, 0.5, 1.0)
+        # the hand-held manoeuvring unit, stowed on its side: a handle, and its two arms folded back along it
+        y = -(wide / 2 + 1.5)  # (on the side away from the manoeuvring system's tanks, where there is room)
+        box(trim_, (9.0, 1.6, 2.0), -1.0, y, 0.0, 0.3)
+        trim_.tube(at(3.6, y, 0.0), at(5.6, y, 0.0), 0.55 * IN, 10)
+        for k in (-1, 1):
+            trim_.tube(at(-5.0, y, k * 1.2), at(6.4, y - 0.6, k * 1.2), 0.22 * IN, 8)
+        # the hose from the pack to the unit, and the two bottles' necks on its foot: oxygen to breathe, Freon to fly on
+        n = 12
+        loop = [
+            at(-high * 0.3 + 5.0 * math.cos(math.pi * k / n), y - 0.9 - 1.4 * math.sin(math.pi * k / n), 3.4 + 2.0 * math.sin(math.pi * k / n))
+            for k in range(n + 1)
+        ]
+        for p0, p1 in zip(loop, loop[1:]):
+            gold.tube(p0, p1, 0.35 * IN, 8, caps=False)
+        for e in (-1, 1):
+            trim_.lathe(
+                prof([(0.0, 0.0), (1.5, 0.0), (1.5, 1.0), (0.7, 1.6), (0.7, 2.4)]),
+                14,
+                matrix=here @ Matrix.Translation(Vector((high / 2, e * wide * 0.22, 1.0)) * IN) @ Matrix.Rotation(math.pi / 2, 4, "Y"),
+            )
+        trim_.tube(
+            at(-high / 2 + 1.0, wide / 2 - 1.5, deep / 2 - 2.0), at(-high / 2 - 8.0, wide / 2 - 1.5, deep / 2 - 2.0), 0.18 * IN, 6
+        )  # its radio's antenna
+        label = "Extravehicular Support Package"
+        about = (
+            "A backpack 26 in high, 21 wide and 17 deep, 92 lb: two bottles at 5,000 lb to the square inch, one of 7 lb "
+            "of oxygen for the man to breathe and one of 18 lb of Freon for the gun in his hand to blow out, with a "
+            "battery, a radio and 75 ft of tether in a bag. With it on and the ship's own hose let go, the man would "
+            "have been joined to the ship by that tether alone, for eighty minutes at most. It hangs here by four "
+            "legs on a torque box, held by one bolt. Its size, weight and what it held are documented; that it hung "
+            "as the next ship's pack did is assumed; its outside is drawn from the report's sketch and is estimated."
+        )
+    say(shell.build("Backpack_Shell", M["cover"], g, sharp_angle=35), label, about)
+    say(trim_.build("Backpack_Fittings", M["aluminium"], g, sharp_angle=35), label, about)
+    if gold.verts:
+        say(gold.build("Backpack_Hoses", M["gold"], g, sharp_angle=None), label, about)
+    if lamps.verts:
+        lamps.build("Backpack_RunningLights", M["beacon"], g, sharp_angle=35)
 
 
 def build_pod_mount(M, g) -> None:
@@ -2337,4 +3003,6 @@ def build(font, flag, fit: Fit | None = None) -> str:
         build_eva_equipment(M)
     if fit.pod:
         build_pod(M)
+    if fit.backpack:
+        build_backpack(M, fit.backpack)
     return f"spacecraft {LENGTH * IN:.3f} m long, {2 * BASE_R * IN:.3f} m across its base"
