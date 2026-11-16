@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { hasLeft } from '../sim/craft.ts';
 import { ballisticOf, flownOnce, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import { spacecraft } from '../sim/fliers.ts';
@@ -986,14 +987,17 @@ export class Cabin {
       if (news.holds) this.holding = news.holds;
     }
     if (!state) return;
+    // (what has left, on the machine: the plan's tower, booster and pack by what each is)
+    if (this.flight.plan?.kind !== 'ballistic') return;
+    const roles = ballisticOf(this.flight.plan);
     const mark = (key: Signal, at: number | null | false): void => {
       if (at === null || at === false) delete this.times[key];
       else if (this.times[key] === undefined || at < this.times[key]) this.times[key] = at;
     };
-    mark('tower', state.shed.tower && state.t);
-    mark('separated', state.shed.booster && state.t);
+    mark('tower', hasLeft(state.craft, roles.tower) && state.t);
+    mark('separated', hasLeft(state.craft, roles.booster.id) && state.t);
     mark('retro', state.retroAt);
-    mark('retropack', state.shed.retropack && state.t);
+    mark('retropack', hasLeft(state.craft, roles.pack) && state.t);
     mark('entry', state.enteredAt);
     mark('drogue', state.drogueAt);
     mark('main', state.mainAt);

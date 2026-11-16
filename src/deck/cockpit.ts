@@ -1,5 +1,6 @@
 import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
+import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, type Results } from '../sim/fly.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
@@ -90,6 +91,10 @@ const FT = 0.3048;
 export type { CockpitHost } from './deck.ts';
 
 export class Cockpit extends Deck {
+  /** The flight's ballistic hardware by what each is (sim/fly.ts `ballisticOf`): what the machine is asked about. */
+  private get roles(): Ballistic {
+    return rolesOf(this.flight)!;
+  }
   /** The greatest dynamic pressure flown through on the booster so far, Pa: for calling it. */
   private maxQ = 0;
   private readonly vehicle: Vehicle | null;
@@ -297,7 +302,7 @@ export class Cockpit extends Deck {
       // On the booster with guidance on, the stick leans the programme the platform holds (TRIM a second) and the
       // platform does the steering: the vanes at full throw would turn the stack end over end in four seconds.
       // Otherwise (guidance off, or the spacecraft alone on its gentle jets) the stick is the control itself.
-      const trimmed = this.guidance && !s.shed.booster;
+      const trimmed = this.guidance && !hasLeft(s.craft, this.roles.booster.id);
       if (trimmed) {
         const lean = (now: number, by: number) => Math.max(-TRIM_MOST, Math.min(TRIM_MOST, now + by * TRIM * TICK));
         this.trim = { pitch: lean(this.trim.pitch, pitch), yaw: lean(this.trim.yaw, yaw) };
@@ -306,7 +311,7 @@ export class Cockpit extends Deck {
       // an engine with a lever runs where the lever stands, from the moment it is lit; the sequencer's cutoff at the record's time is not undone by it
       const cut = this.sequence && s.abortAt === null && s.t >= rolesOf(this.flight)!.cutoff - 1e-9;
       // rate command, on the spacecraft alone: the stick is a rate asked for on every axis, held through the manual jets
-      const rated = this.rate && s.shed.booster ? rolesOf(this.flight)!.craft.rigid!.capsule.rcs?.rate : undefined;
+      const rated = this.rate && hasLeft(s.craft, this.roles.booster.id) ? rolesOf(this.flight)!.craft.rigid!.capsule.rcs?.rate : undefined;
       if (rated) return blend(auto(s), { ...this.hand, ...rateCommand(s, { pitch, yaw, roll }, rated), automatic: this.sequence });
       return blend(auto(s), {
         ...this.hand,
@@ -370,12 +375,12 @@ export class Cockpit extends Deck {
     const v = this.vehicle!;
     const state = v.tick(before, pilot);
     // (let go under thrust: said once, as it happens, and once more when it parts)
-    if (state.loose !== null && before.loose === null && !state.shed.booster)
+    if (state.loose !== null && before.loose === null && !hasLeft(state.craft, this.roles.booster.id))
       this.host.say?.(
         'Let go, still pushing',
         'The spacecraft is let go, but the booster still pushes it: it rides on its adapter until the engine stops',
       );
-    else if (state.loose !== null && state.shed.booster && !before.shed.booster)
+    else if (state.loose !== null && hasLeft(state.craft, this.roles.booster.id) && !hasLeft(before.craft, this.roles.booster.id))
       this.host.say?.('Parted', 'The spacecraft parted at last, the booster’s push gone');
     if (state.ticks === before.ticks) return state;
     const s = v.sample(state);
@@ -390,17 +395,17 @@ export class Cockpit extends Deck {
     const last = run.samples[this.kept - 1]!;
     const event =
       state.cutoff !== before.cutoff ||
-      (Object.keys(state.shed) as (keyof typeof state.shed)[]).some((k) => state.shed[k] !== before.shed[k]) ||
+      Object.keys(state.craft.bodies).some((k) => state.craft.bodies[k] !== before.craft.bodies[k]) ||
       s.phase !== last.phase ||
       Boolean(state.landing);
     run.samples.length = this.kept;
     run.samples.push(s);
     if (event || s.t - last.t >= KEEP - TICK / 2) this.kept = run.samples.length;
-    if (!state.shed.booster) this.maxQ = Math.max(this.maxQ, s.q);
+    if (!hasLeft(state.craft, this.roles.booster.id)) this.maxQ = Math.max(this.maxQ, s.q);
     // (an engine shut down that was never lit, in an abort off the pad, did not burn up to now: it never burned)
     if (state.cutoff && !before.cutoff) run.cutoff = state.ignited ? state.t : Number.NEGATIVE_INFINITY;
-    if (state.shed.tower && !before.shed.tower) this.towerAt = state.t;
-    if (state.shed.retropack && !before.shed.retropack) this.retropackAt = state.t;
+    if (hasLeft(state.craft, this.roles.tower) && !hasLeft(before.craft, this.roles.tower)) this.towerAt = state.t;
+    if (hasLeft(state.craft, this.roles.pack) && !hasLeft(before.craft, this.roles.pack)) this.retropackAt = state.t;
     run.out = { drogue: state.drogueAt ?? Infinity, main: state.mainAt ?? Infinity };
     run.torn = { drogue: state.tore.drogue?.t ?? Infinity, main: state.tore.main?.t ?? Infinity };
     const when = {
@@ -454,11 +459,11 @@ export class Cockpit extends Deck {
     if (!s) return null;
     if (!s.ignited && s.abortAt === null) return 'ignite';
     if (!s.cutoff) return 'cutoff';
-    if (roles.towerJoint?.at && !s.shed.tower) return 'tower';
-    if (!s.shed.booster) return 'separate';
+    if (roles.towerJoint?.at && !hasLeft(s.craft, this.roles.tower)) return 'tower';
+    if (!hasLeft(s.craft, this.roles.booster.id)) return 'separate';
     // (after an abort the retrorockets are not part of what is left to do: the parachutes are next)
     if (s.abortAt === null && s.retroAt === null) return 'retro';
-    if (s.abortAt === null && !s.shed.retropack) return 'retropack';
+    if (s.abortAt === null && !hasLeft(s.craft, this.roles.pack)) return 'retropack';
     if (s.drogueAt === null) return 'drogue';
     if (s.mainAt === null) return 'main';
     return null;
@@ -560,17 +565,22 @@ export class Cockpit extends Deck {
     // (the hatch, with the spacecraft alone: in flight, and afloat after it is down)
     if (what === 'hatch')
       return (
-        Boolean(this.flight.flies?.hatch) && this.on && !!s && s.shed.booster && this.hatchAt === Infinity && this.clock.t >= s.t - TICK
+        Boolean(this.flight.flies?.hatch) &&
+        this.on &&
+        !!s &&
+        hasLeft(s.craft, this.roles.booster.id) &&
+        this.hatchAt === Infinity &&
+        this.clock.t >= s.t - TICK
       );
     if (!this.on || !s || s.landing || s.held || this.clock.t < s.t - TICK) return false;
-    const alone = s.shed.booster;
+    const alone = hasLeft(s.craft, this.roles.booster.id);
     if (what === 'cutoff') return s.ignited && !s.cutoff;
-    if (what === 'tower') return Boolean(rolesOf(this.flight)?.towerJoint?.at) && !s.shed.tower;
+    if (what === 'tower') return Boolean(rolesOf(this.flight)?.towerJoint?.at) && !hasLeft(s.craft, this.roles.tower);
     if (what === 'separate') return !alone;
-    if (what === 'retro') return alone && s.retroAt === null && !s.shed.retropack;
-    if (what === 'retropack') return alone && !s.shed.retropack;
-    if (what === 'drogue') return alone && s.shed.tower && s.drogueAt === null && s.mainAt === null;
-    return alone && s.shed.tower && s.mainAt === null;
+    if (what === 'retro') return alone && s.retroAt === null && !hasLeft(s.craft, this.roles.pack);
+    if (what === 'retropack') return alone && !hasLeft(s.craft, this.roles.pack);
+    if (what === 'drogue') return alone && hasLeft(s.craft, this.roles.tower) && s.drogueAt === null && s.mainAt === null;
+    return alone && hasLeft(s.craft, this.roles.tower) && s.mainAt === null;
   }
 
   protected command(what: string): void {
@@ -590,7 +600,7 @@ export class Cockpit extends Deck {
       // guarded: the first press arms it and says so, the second within two seconds fires the rocket
       const s = this.state;
       const now = performance.now() / 1000;
-      if (!s || s.landing || s.shed.tower || s.abortAt !== null || !rolesOf(this.flight)?.escape) return;
+      if (!s || s.landing || hasLeft(s.craft, this.roles.tower) || s.abortAt !== null || !rolesOf(this.flight)?.escape) return;
       if (this.clock.t < s.t - TICK) return; // (looking back at what was flown)
       if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
       else {
@@ -685,12 +695,14 @@ export class Cockpit extends Deck {
     const replay = this.clock.t < state.t - TICK;
     const leant = (v: number, plus: string, minus: string) =>
       Math.abs(v) < 0.05 * DEG ? '' : ` ${(Math.abs(v) / DEG).toFixed(1)}° ${v > 0 ? plus : minus}`;
-    const leans = state.shed.booster ? '' : leant(this.trim.pitch, 'downrange', 'back') + leant(this.trim.yaw, 'left', 'right');
+    const leans = hasLeft(state.craft, this.roles.booster.id)
+      ? ''
+      : leant(this.trim.pitch, 'downrange', 'back') + leant(this.trim.yaw, 'left', 'right');
     const step = this.next();
     set('next', replay ? 'Run on' : step ? STEPS[step] : 'Nothing left to do');
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !replay && !step;
     // (the two switches say how it is being flown; this line is for what is out of the ordinary)
-    const rated = this.rate && state.shed.booster;
+    const rated = this.rate && hasLeft(state.craft, this.roles.booster.id);
     set(
       'mode',
       replay
@@ -797,7 +809,7 @@ export class Cockpit extends Deck {
 
     // the abort: there while the tower is, and armed between its two presses
     const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
-    const can = Boolean(body.escape) && !state.shed.tower && state.abortAt === null && !state.landing && !replay;
+    const can = Boolean(body.escape) && !hasLeft(state.craft, this.roles.tower) && state.abortAt === null && !state.landing && !replay;
     abort.disabled = !can;
     const armed = can && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;
     abort.classList.toggle('armed', armed);
@@ -806,10 +818,10 @@ export class Cockpit extends Deck {
     // what the sequence depends on, and what is due and not done when it is the pilot's to do
     const cues: string[] = [];
     const due: string[] = [];
-    const coming = s.groundClimb < 0 && state.shed.booster;
+    const coming = s.groundClimb < 0 && hasLeft(state.craft, this.roles.booster.id);
     if (state.enteredAt !== null && s.t >= state.enteredAt && state.drogueAt === null) cues.push('0.05 g');
     const feet = (m: number) => `${Math.round(m / FT / 100) * 100} ft`.replace(/(\d)(\d{3}) /, '$1,$2 ');
-    if (coming && state.shed.tower && state.mainAt === null) {
+    if (coming && hasLeft(state.craft, this.roles.tower) && state.mainAt === null) {
       const which = state.drogueAt === null ? ('drogue' as const) : ('main' as const);
       const at = which === 'drogue' ? roles.drogueHeight : roles.mainHeight;
       cues.push(`${which === 'drogue' ? 'Drogue' : 'Main'}: ${feet(at)} (${(at / 1000).toFixed(1)} km)`);
@@ -819,13 +831,19 @@ export class Cockpit extends Deck {
       const late = (at: number) => s.t >= at;
       const towerAt = roles.towerJoint?.at?.value;
       if (!state.cutoff && late(roles.cutoff)) due.push('Cutoff is due');
-      else if (state.cutoff && towerAt !== undefined && !state.shed.tower && late(towerAt)) due.push('Tower jettison is due');
-      else if (state.shed.tower && !state.shed.booster && late(roles.separation.at?.value ?? Infinity)) due.push('Separation is due');
-      else if (state.shed.booster && state.retroAt === null && late(roles.retroAt)) due.push('Retrofire is due');
-      else if (state.retroAt !== null && !state.shed.retropack && late(roles.packJoint?.at?.value ?? Infinity))
+      else if (state.cutoff && towerAt !== undefined && !hasLeft(state.craft, this.roles.tower) && late(towerAt))
+        due.push('Tower jettison is due');
+      else if (
+        hasLeft(state.craft, this.roles.tower) &&
+        !hasLeft(state.craft, this.roles.booster.id) &&
+        late(roles.separation.at?.value ?? Infinity)
+      )
+        due.push('Separation is due');
+      else if (hasLeft(state.craft, this.roles.booster.id) && state.retroAt === null && late(roles.retroAt)) due.push('Retrofire is due');
+      else if (state.retroAt !== null && !hasLeft(state.craft, this.roles.pack) && late(roles.packJoint?.at?.value ?? Infinity))
         due.push('Retropack jettison is due');
     }
-    if (state.abortAt !== null && !state.shed.tower && !this.sequence && coming)
+    if (state.abortAt !== null && !hasLeft(state.craft, this.roles.tower) && !this.sequence && coming)
       due.push('Tower jettison is due: no parachute comes out past it');
     // waiting on the pilot to begin: said, and the button asks (cockpit.css `waiting`)
     const waiting = before && !replay;

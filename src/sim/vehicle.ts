@@ -99,7 +99,7 @@ import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, blowOf } from './air.ts';
 import { atmosphere } from './atmosphere.ts';
 import { rk4Body } from './core/rk4.ts';
-import { aboard, act, burnOut, type CraftState, chainedAt, fire, part as partJoint, startCraft } from './craft.ts';
+import { aboard, act, burnOut, type CraftState, chainedAt, fire, hasLeft, part as partJoint, startCraft } from './craft.ts';
 import { along, axisOf, ballisticOf, chuteArea, MEAN_RADIUS, type Phase, type Sample } from './fly.ts';
 import { airForces, floorAt, part, pieceOf, type Release } from './forces.ts';
 import { ENTRY_G, loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loads.ts';
@@ -492,18 +492,18 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const packMoment = pack ? pack.mass!.value * (capsule.centre.value - pack.centre!.value) : 0;
   /** How full each of the booster's tanks is, with `mass` aboard. */
   const filling = (s: VehicleState, mass: number): number | ((p: MassPart) => number) => {
-    const { fixed: dry, fluid } = s.shed.tower ? towerless : whole;
+    const { fixed: dry, fluid } = hasLeft(s.craft, roles.tower) ? towerless : whole;
     if (!tanks) return fluid > 0 ? (mass - dry) / fluid : 0;
     const left = tanksLeft(dry + fluid - mass);
     return (p) => (p.propellant === 'oxidizer' ? left.oxidizer / tanks.oxidizer : p.propellant === 'fuel' ? left.fuel / tanks.fuel : 1);
   };
   /** What the spacecraft itself weighs once it has left the booster, tower or no tower: the record's weights, less what the jets have burned. */
-  const capsuleMass = (s: VehicleState): number => (s.shed.retropack ? packless : alone) - rcsUsed(s);
+  const capsuleMass = (s: VehicleState): number => (hasLeft(s.craft, roles.pack) ? packless : alone) - rcsUsed(s);
   const massNow = (s: VehicleState, mass: number): MassProperties => {
-    if (s.shed.booster) {
-      if (s.shed.tower || !towerAlone) {
+    if (hasLeft(s.craft, roles.booster.id)) {
+      if (hasLeft(s.craft, roles.tower) || !towerAlone) {
         // (with the retropack gone from under it, what is left has its centre of mass that much nearer the small end)
-        const centre = s.shed.retropack ? packMoment / mass : 0;
+        const centre = hasLeft(s.craft, roles.pack) ? packMoment / mass : 0;
         return { mass, centre, roll: mass * capsule.gyration.roll.value ** 2, across: mass * capsule.gyration.across.value ** 2 };
       }
       // pulled off by the escape rocket, the tower still on: the two as one body, its centre measured up the axis from the spacecraft's own.
@@ -511,7 +511,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       const alone = Math.min(mass, capsuleMass(s));
       const tower = mass - alone;
       const share = tower / towerAlone.mass;
-      const own = s.shed.retropack ? packMoment / alone : 0;
+      const own = hasLeft(s.craft, roles.pack) ? packMoment / alone : 0;
       const reach = towerAlone.centre - capsule.centre.value;
       const centre = (alone * own + tower * reach) / mass;
       return {
@@ -522,7 +522,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
           alone * (capsule.gyration.across.value ** 2 + (own - centre) ** 2) + towerAlone.across * share + tower * (reach - centre) ** 2,
       };
     }
-    return massOf(body.parts, radius, filling(s, mass), s.shed.tower ? TOWER : NONE);
+    return massOf(body.parts, radius, filling(s, mass), hasLeft(s.craft, roles.tower) ? TOWER : NONE);
   };
   /** The booster's engine on the machine: lit and not out (its starts, its lever and its cut are the machine's), at the fraction of its rated thrust it runs at. */
   const engineOf = (s: VehicleState) => s.craft.engines[engine.id]!;
@@ -594,8 +594,8 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const forces = (d: Dyn, at: number, s: VehicleState, as = at) => {
     const props = massNow(s, d.mass);
     const { altitude, air, wind, airspeed, mach, q, ground } = windAt(d.r, d.v, at, seaLevel);
-    const riding = !s.shed.booster;
-    const escaping = s.abortAt !== null && !s.shed.tower;
+    const riding = !hasLeft(s.craft, roles.booster.id);
+    const escaping = s.abortAt !== null && !hasLeft(s.craft, roles.tower);
     let force: Vec3 = [0, 0, 0];
     let torque: Vec3 = [0, 0, 0];
     /** A force given in the body's axes, at a place along the axis from the centre of mass. */
@@ -682,7 +682,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       mass:
         (burning(s) ? -flow * throttleOf(s) : 0) -
         rcsFlow(s) -
-        (escapeBurn > 0 && s.abortAt !== null && !s.shed.tower ? escapeBurn * escapeThrust(at - s.abortAt) : 0),
+        (escapeBurn > 0 && s.abortAt !== null && !hasLeft(s.craft, roles.tower) ? escapeBurn * escapeThrust(at - s.abortAt) : 0),
     };
   };
   /** A step from `at` (core/rk4.ts), with what burns and what is attached as it is from the step's start. */
@@ -737,7 +737,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
 
   /** The point whose height says whether it has come down: the stack's base, the spacecraft's centre. */
   const foot = (s: VehicleState, d: Dyn): Vec3 =>
-    sub(d.r, scale(turn(d.q, X), s.shed.booster ? (capsule.base?.value ?? 0) : massNow(s, d.mass).centre));
+    sub(d.r, scale(turn(d.q, X), hasLeft(s.craft, roles.booster.id) ? (capsule.base?.value ?? 0) : massNow(s, d.mass).centre));
   const heightOf = (r: Vec3, at: number): { height: number; ground: number; latitude: number; longitude: number } => {
     const here = ecefToGeodetic(fixed(r, at));
     return {
@@ -755,7 +755,9 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     // a solid, lit, burns on whatever the lever says
     const lever = solid && burning(s) ? 1 : allowed(c.throttle);
     // (what has gone through the engine, not what the stack weighs: a tower let go early is not propellant burned)
-    const spent = !s.shed.booster && (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass >= stack.mass.value - dryOut - 1e-6;
+    const spent =
+      !hasLeft(s.craft, roles.booster.id) &&
+      (hasLeft(s.craft, roles.tower) ? towerless : whole).fixed + whole.fluid - s.mass >= stack.mass.value - dryOut - 1e-6;
     // lit on the machine, which holds it to its starts and to the booster it is on
     if (!burning(s) && lever > 0 && !spent && s.abortAt === null) s.craft = act(plan, s.craft, { ignite: engine.id }, s.t, s.held).state;
     if (burning(s) && (lever === 0 || spent))
@@ -763,18 +765,25 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     if (burning(s) && engineOf(s).throttle !== lever) s.craft = act(plan, s.craft, { throttle: engine.id, to: lever }, s.t, s.held).state;
     if (s.landing) return s;
     const ask = asks(c);
-    if (ask.event(abortEvent?.id) && rocket && s.abortAt === null && !s.shed.tower && !s.shed.booster) {
+    if (
+      ask.event(abortEvent?.id) &&
+      rocket &&
+      s.abortAt === null &&
+      !hasLeft(s.craft, roles.tower) &&
+      !hasLeft(s.craft, roles.booster.id)
+    ) {
       s = pullOff(s);
     }
     if (s.held) return s;
     // (the escape rocket takes the tower with it only once it is out: until then the tower is what is pulling)
-    if (ask.separate(towerJoint) && !s.shed.tower && (s.abortAt === null || s.t >= s.abortAt + escapeOver)) s = dropTower(s);
+    if (ask.separate(towerJoint) && !hasLeft(s.craft, roles.tower) && (s.abortAt === null || s.t >= s.abortAt + escapeOver))
+      s = dropTower(s);
     // let go while the booster still pushes, the spacecraft stays pressed on its adapter and rides it until the push ends
-    if (ask.separate(separation) && !s.shed.booster && s.loose === null) {
+    if (ask.separate(separation) && !hasLeft(s.craft, roles.booster.id) && s.loose === null) {
       s.loose = s.t;
       s.craft = act(plan, s.craft, { separate: separation }, s.t, s.held).state;
     }
-    if (s.loose !== null && !s.shed.booster) {
+    if (s.loose !== null && !hasLeft(s.craft, roles.booster.id)) {
       const capsule = capsuleMass(s);
       const booster = {
         thrust: burning(s) ? (engine.thrust.seaLevel ?? engine.thrust.vacuum).value * throttleOf(s) : 0,
@@ -782,15 +791,15 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       };
       if (!pressed(booster, { thrust: 0, mass: capsule })) s = leave(s, roles.separation.push?.value ?? 0);
     }
-    if (s.shed.booster) {
+    if (hasLeft(s.craft, roles.booster.id)) {
       // the motors' sequence begun: the first lit now, the rest by their timer (`byTimer`)
-      if (retroEvent && ask.event(retroEvent) && s.craft.fired[retroEvent] === undefined && !s.shed.retropack)
+      if (retroEvent && ask.event(retroEvent) && s.craft.fired[retroEvent] === undefined && !hasLeft(s.craft, roles.pack))
         s.craft = fire(plan, s.craft, retroEvent, s.t, s.held).state;
       byTimer(s, s.t);
-      if (ask.separate(packJoint) && !s.shed.retropack) dropPack(s);
+      if (ask.separate(packJoint) && !hasLeft(s.craft, roles.pack)) dropPack(s);
       // (no parachute comes out past a tower)
-      if (ask.deploy(drogueChute) && s.shed.tower && s.drogueAt === null && s.mainAt === null) s = drogue(s);
-      if (ask.deploy(mainChute) && s.shed.tower && s.mainAt === null) s = main(s);
+      if (ask.deploy(drogueChute) && hasLeft(s.craft, roles.tower) && s.drogueAt === null && s.mainAt === null) s = drogue(s);
+      if (ask.deploy(mainChute) && hasLeft(s.craft, roles.tower) && s.mainAt === null) s = main(s);
     }
     const firing = valves(s, c);
     if (firing !== s.rcs.firing) s.rcs = { left: s.rcs.left, firing };
@@ -829,7 +838,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   };
   /** Which chambers are open for this tick, and how hard each pushes, N: the commands through each system's own logic, and no more than its supply can feed. */
   const valves = (s: VehicleState, c: Controls): readonly number[] => {
-    if (!rcs || !s.shed.booster || s.mainAt !== null || s.landing) return QUIET;
+    if (!rcs || !hasLeft(s.craft, roles.booster.id) || s.mainAt !== null || s.landing) return QUIET;
     const firing = jets.map(() => 0);
     let any = false;
     for (const axis of ['pitch', 'yaw', 'roll'] as const) {
@@ -891,8 +900,8 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     parts(s, towerJoint!);
     if (!towerAlone) return s;
     // (off the booster the centres are measured from the spacecraft's own, and the tower is what is aboard beyond the spacecraft: its rocket may have burned)
-    const datum = state.shed.booster ? capsule.centre.value : 0;
-    const gone = state.shed.booster ? Math.max(0, state.mass - capsuleMass(state)) : towerMass;
+    const datum = hasLeft(state.craft, roles.booster.id) ? capsule.centre.value : 0;
+    const gone = hasLeft(state.craft, roles.booster.id) ? Math.max(0, state.mass - capsuleMass(state)) : towerMass;
     const share = gone / towerMass;
     const def = sheds.find((d) => d.on === towerJoint);
     letGo(
@@ -924,7 +933,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   };
   /** The spacecraft parts from the booster, the two pushed apart along the axis at `speed`, shared by their masses. A tower still on goes first. */
   const leave = (state: VehicleState, speed: number): VehicleState => {
-    const s = state.shed.tower ? { ...state } : dropTower(state);
+    const s = hasLeft(state.craft, roles.tower) ? { ...state } : dropTower(state);
     const axis = turn(s.q, X);
     const { gone, inertia } = boosterOf(s, alone, capsule.centre.value);
     s.separation = { t: s.t, r: s.r, v: s.v, axis, booster: { r: s.r, v: s.v } };
@@ -1062,7 +1071,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     // and no more. (The engine cut by a hand or the sequencer, and the events, are at the ticks they are asked on.)
     let dries = Number.POSITIVE_INFINITY;
     if (burning(s) && throttleOf(s) > 0) {
-      const burned = (s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass;
+      const burned = (hasLeft(s.craft, roles.tower) ? towerless : whole).fixed + whole.fluid - s.mass;
       const at = s.t + (stack.mass.value - dryOut - burned) / (flow * throttleOf(s));
       if (at > s.t + ON_TICK && at < t - ON_TICK) dries = at;
     }
@@ -1117,7 +1126,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       };
     }
     s = { ...s, ...after, t, ticks };
-    if (bend && !s.shed.booster) {
+    if (bend && !hasLeft(s.craft, roles.booster.id)) {
       const loads = bending(after, t);
       const next = strain(s.strain, (loads.q * loads.alpha) / bend.value.value, h);
       s.strain = next.strain;
@@ -1125,7 +1134,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
         // It breaks at its joint: the booster goes its own way, engine out. A spacecraft with its escape rocket still aboard is
         // pulled clear by it, taken as fired by the break itself (what the abort system watched is not in anything read).
         s.broke = { t, load: next.strain.load, q: loads.q, alpha: loads.alpha / DEG, joint: bend.at ?? separation };
-        s = rocket && !s.shed.tower && s.abortAt === null ? pullOff(s) : leave(s, 0);
+        s = rocket && !hasLeft(s.craft, roles.tower) && s.abortAt === null ? pullOff(s) : leave(s, 0);
       }
     }
     s = worn(s);
@@ -1138,15 +1147,15 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     }
     // an abort's own sequence: the rocket out and the climb over, the tower goes
     const automatic = s.controls.automatic !== false;
-    if (automatic && s.abortAt !== null && !s.shed.tower && falling && t >= s.abortAt + escapeOver) s = dropTower(s);
+    if (automatic && s.abortAt !== null && !hasLeft(s.craft, roles.tower) && falling && t >= s.abortAt + escapeOver) s = dropTower(s);
     // ...and, begun low enough, its parachutes by the clock: the drogue so long after the tower, the main so long after that, once under its height
     const timed = afterAbort !== null && s.abortHeight !== null && s.abortHeight < afterAbort.ceiling.value;
-    if (automatic && timed && s.shed.tower && s.towerAt !== null) {
+    if (automatic && timed && hasLeft(s.craft, roles.tower) && s.towerAt !== null) {
       if (s.drogueAt === null && s.mainAt === null && t >= s.towerAt + afterAbort.drogue.value - 1e-9) s = drogue(s);
       if (s.drogueAt !== null && s.mainAt === null && t >= s.drogueAt + afterAbort.main.value - 1e-9 && now.height <= roles.mainHeight)
         s = main(s);
     }
-    if (s.shed.booster && s.shed.tower && falling) {
+    if (hasLeft(s.craft, roles.booster.id) && hasLeft(s.craft, roles.tower) && falling) {
       // what happens at a height, coming down (fly.ts), where the spacecraft's own sequence is left to do it
       if (automatic && !timed && s.drogueAt === null && s.mainAt === null && now.height <= roles.drogueHeight) s = drogue(s);
       if (automatic && !timed && s.drogueAt !== null && s.mainAt === null && now.height <= roles.mainHeight) s = main(s);
@@ -1160,8 +1169,8 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
 
   const phaseOf = (s: VehicleState): Phase => {
     if (s.landing) return 'landed';
-    if (!s.shed.booster) return burning(s) ? 'powered' : 'coast';
-    if (!s.shed.tower) return 'escape';
+    if (!hasLeft(s.craft, roles.booster.id)) return burning(s) ? 'powered' : 'coast';
+    if (!hasLeft(s.craft, roles.tower)) return 'escape';
     if (s.mainAt !== null) return 'main';
     if (s.drogueAt !== null) return 'drogue';
     return s.enteredAt !== null ? 'entry' : 'capsule';
@@ -1172,7 +1181,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     const f = forces(d, s.t, s);
     const axis = turn(s.q, X);
     // the spacecraft's own centre of mass, which with its tower on is not the centre of the two
-    const centre = s.shed.booster ? sub(s.r, scale(axis, f.props.centre)) : s.r;
+    const centre = hasLeft(s.craft, roles.booster.id) ? sub(s.r, scale(axis, f.props.centre)) : s.r;
     // the point fly.ts flies: the stack's base, and after separation that point as the spacecraft carried it off
     const point = s.separation ? sub(centre, scale(s.separation.axis, capsule.centre.value)) : sub(s.r, scale(axis, f.props.centre));
     const here = ecefToGeodetic(fixed(s.separation ? s.r : point, s.t));
@@ -1201,7 +1210,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       alpha: f.airspeed > 1e-6 ? angleBetween(axis, f.wind) / DEG : 0,
       centre,
       chute: s.chute,
-      strain: s.shed.booster ? 0 : s.strain.load,
+      strain: hasLeft(s.craft, roles.booster.id) ? 0 : s.strain.load,
       lateral: s.held ? 0 : loadsOf(unturn(s.q, f.force), s.mass, f.q, 0).lateral,
       burning: [
         ...(burning(s)
@@ -1212,7 +1221,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
               },
             ]
           : []),
-        ...(s.abortAt !== null && !s.shed.tower && escapeThrust(s.t - s.abortAt) > 0
+        ...(s.abortAt !== null && !hasLeft(s.craft, roles.tower) && escapeThrust(s.t - s.abortAt) > 0
           ? [{ engine: escapeMotor!, thrust: escapeThrust(s.t - s.abortAt) }]
           : []),
         ...motors.flatMap((m) => {
@@ -1223,7 +1232,10 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
         }),
       ],
       rcs: s.rcs,
-      tanks: tanks && !s.shed.booster ? tanksLeft((s.shed.tower ? towerless : whole).fixed + whole.fluid - s.mass) : null,
+      tanks:
+        tanks && !hasLeft(s.craft, roles.booster.id)
+          ? tanksLeft((hasLeft(s.craft, roles.tower) ? towerless : whole).fixed + whole.fluid - s.mass)
+          : null,
     };
   };
 
@@ -1261,12 +1273,12 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       return { force, torque: cross(jet.at, force) };
     },
     margin(s) {
-      const surfaces = s.shed.booster ? capsule.surfaces : body.surfaces;
+      const surfaces = hasLeft(s.craft, roles.booster.id) ? capsule.surfaces : body.surfaces;
       const slope = surfaces.reduce((sum, a) => sum + a.slope, 0);
       const pressure = surfaces.reduce((sum, a) => sum + a.slope * a.station, 0) / slope;
       const centre = massNow(s, s.mass).centre;
       // the stack flies nose first, and so does the spacecraft with its tower on: stable is the pressure behind (below) the mass; the spacecraft alone flies blunt end first
-      return s.shed.booster && s.shed.tower ? pressure - centre : centre - pressure;
+      return hasLeft(s.craft, roles.booster.id) && hasLeft(s.craft, roles.tower) ? pressure - centre : centre - pressure;
     },
   };
 }

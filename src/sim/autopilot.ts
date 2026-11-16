@@ -9,7 +9,7 @@
  * error is closing, in; a command between -1 and 1 out.
  */
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { due } from './craft.ts';
+import { due, hasLeft } from './craft.ts';
 import { ballisticOf, type Flown, type Results } from './fly.ts';
 import type { EventDef } from './plan.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
@@ -142,7 +142,7 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
     let error: Vec3 = [0, 0, 0];
     let rate: Vec3 = s.w;
     let gains = boosterGains;
-    if (!s.shed.booster) {
+    if (!hasLeft(s.craft, roles.booster.id)) {
       if (!s.ignited || s.cutoff) return c; // nothing to steer with
       // the platform: the programme's axis, the rate it is turning at, and the plane it tilts in
       const trim = options.trim?.();
@@ -160,16 +160,16 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       gains = capsuleGains;
       // Pulled off on its escape rocket, nothing steers it until the tower has gone: it is the tower's going that switches the
       // rate damping on, and that lasts until the main parachute is out. On any other descent it hangs from the drogue on.
-      if (s.abortAt !== null && !s.shed.tower) return c;
+      if (s.abortAt !== null && !hasLeft(s.craft, roles.tower)) return c;
       if (s.mainAt !== null || (s.drogueAt !== null && s.abortAt === null)) return c;
       const up = vehicle.frame.up(s.r, s.t);
       const wind = sub(s.v, cross(earth, s.r));
-      if (s.enteredAt === null && s.shed.tower && length(wind) > 1) {
+      if (s.enteredAt === null && hasLeft(s.craft, roles.tower) && length(wind) > 1) {
         // blunt end first: for retrofire, pitched as the record has it; after the pack has gone, straight into the air
         const level = sub(wind, scale(up, dot(wind, up)));
         const pitch = roles.retroPitch.value * DEG;
         const wanted =
-          s.shed.retropack || length(level) < 1
+          hasLeft(s.craft, roles.pack) || length(level) < 1
             ? scale(unit(wind), -1)
             : sub(scale(unit(level), -Math.cos(pitch)), scale(up, Math.sin(pitch)));
         error = turnTo(unturn(s.q, wanted));

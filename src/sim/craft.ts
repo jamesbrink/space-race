@@ -97,6 +97,9 @@ export const aboard = (s: CraftState, body: string, t = Infinity): boolean => {
   return !Number.isFinite(gone) || gone > t;
 };
 
+/** Whether a body has left (one a plan does not have, `undefined`, never has). */
+export const hasLeft = (s: CraftState, body: string | undefined): boolean => body !== undefined && !aboard(s, body);
+
 /** Whether an engine is lit and not out at `t` (its tank running dry is the simulator's to say). */
 export const lit = (s: CraftState, engine: string, t: number): boolean => {
   const e = s.engines[engine];

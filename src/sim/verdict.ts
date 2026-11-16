@@ -3,7 +3,8 @@
  * whether the pilot aboard could have lived through the loads and the landing by the limits the
  * flight's plan gives (its `LimitDef`s: the landing speed and the load, each with its confidence). No score: what happened.
  */
-import type { Results } from './fly.ts';
+import { hasLeft } from './craft.ts';
+import { ballisticOf, type Results } from './fly.ts';
 import { downOf } from './descent.ts';
 import { shipOf } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
@@ -22,11 +23,12 @@ export interface Verdict {
 }
 
 export function verdict(state: VehicleState, results: Results, plan: FlightPlan, peakG: number): Verdict {
+  const roles = ballisticOf(plan);
   const landing = state.landing!;
   const speed = Math.hypot(landing.vertical, landing.horizontal);
   const why: string[] = [];
   let how: string;
-  if (!state.shed.booster) {
+  if (!hasLeft(state.craft, roles.booster.id)) {
     how = `Hit the ${landing.t < 30 ? 'ground' : 'surface'} with the booster at ${speed.toFixed(0)} m/s`;
     why.push(state.abortAt === null ? 'The spacecraft was never parted from it, and no abort was called.' : '');
   } else if (state.mainAt !== null) {
@@ -34,20 +36,25 @@ export function verdict(state: VehicleState, results: Results, plan: FlightPlan,
       ? `Hit the sea at ${landing.vertical.toFixed(0)} m/s under what was left of the main parachute`
       : `Down under the main parachute at ${landing.vertical.toFixed(1)} m/s`;
     if (state.torn.main) why.push('The main parachute had torn.');
-    if (!state.shed.retropack) why.push('The retropack was still on: it came down heavier, and faster, than the record’s landing.');
+    if (!hasLeft(state.craft, roles.pack))
+      why.push('The retropack was still on: it came down heavier, and faster, than the record’s landing.');
     if (state.drogueAt === null && state.abortAt === null) why.push('The drogue was never out: the main opened without it.');
   } else if (state.drogueAt !== null) {
     how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s under ${state.torn.drogue ? 'what was left of the drogue' : 'the drogue alone'}`;
     why.push('The main parachute was never deployed.');
   } else {
     how = `Hit the sea at ${landing.vertical.toFixed(0)} m/s`;
-    why.push(state.shed.tower ? 'No parachute was deployed.' : 'The escape tower was still on: no parachute can come out past it.');
+    why.push(
+      hasLeft(state.craft, roles.tower)
+        ? 'No parachute was deployed.'
+        : 'The escape tower was still on: no parachute can come out past it.',
+    );
   }
   // (an abort off the pad with the engine never lit came after no ignition)
   if (state.abortAt !== null) {
     // where the rocket's line, set off the centre of mass, carried it: said for an abort from low down, where clear of the booster is the point
     const low = (state.abortHeight ?? 0) < 1000;
-    if (low && state.shed.booster && Number.isFinite(results.range))
+    if (low && hasLeft(state.craft, roles.booster.id) && Number.isFinite(results.range))
       why.unshift(`It came down ${results.range.toFixed(0)} m from the pad, ${results.apogee.toFixed(0)} m at its highest.`);
     why.unshift(
       state.ignited
