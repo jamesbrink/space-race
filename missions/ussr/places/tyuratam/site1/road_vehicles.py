@@ -624,7 +624,8 @@ def build(parts: Parts) -> None:
     # The same bus brought each pilot: on 6 August 1961 the film of that morning has the same LAZ-695B stopped about where
     # April's did (where, to ten metres: not measured off it, so April's place is taken). The car and the truck are April's
     # alone: a dark car stood beyond the crowd in August, where is not known, and the August truck's place is not known.
-    bus_days = ("1961-04-12", "1961-08-06")
+    # In June 1963 Kamanin has the bus at the rocket for both pilots; where it stood is April's place again, taken.
+    bus_days = ("1961-04-12", "1961-08-06", "1963-06-14", "1963-06-16")
     if stood(
         "On the apron: the cosmonauts' bus",
         since=bus_days[0],
@@ -632,7 +633,10 @@ def build(parts: Parts) -> None:
         confidence="documented",
         source="the film of 12 April («Первый рейс к звёздам», ЦСДФ 1961, 43:08 and 43:26); Golovanov, «Королёв: факты и мифы», p. 645; "
         "the launch roster of 10 April 1961 («Первый пилотируемый полёт», 2011, doc 104); the film of 6 August («Снова к звёздам», "
-        "Моснаучфильм 1961, 21:04 to 21:45: the same LAZ-695B, stopped about where April's did; its place then estimated)",
+        "Моснаучфильм 1961, 21:04 to 21:45: the same LAZ-695B, stopped about where April's did; its place then estimated); Kamanin's "
+        "diary, 14 June 1963 («За 2 часа 15 минут до старта автобус с космонавтами прибыл к ракете»: 09:45 Moscow time, Vostok 5) and "
+        "16 June 1963 («Ровно в 12 часов 15 минут автобус доставил Терешкову на старт», by the range's clock: 10:15 Moscow time, "
+        "Vostok 6); its place on both days April's, taken",
     ) and (sitelib.AS_OF is None or sitelib.AS_OF in bus_days):
         bus(parts)
     if stood(
