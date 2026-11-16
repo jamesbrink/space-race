@@ -1,3 +1,5 @@
+import type { PadGround } from './ground.ts';
+
 /**
  * Launch Complex 19's own ground, for when it is the pad a flight left from: the clearing round the stand, where
  * nothing grows, and its roads, in the pad's own frame in feet as its Blender scripts have it (x along the stand toward
@@ -36,7 +38,7 @@ type Way = [x0: number, y0: number, x1: number, y1: number, half: number, kind: 
 const along = (line: [number, number][], half: number): Way[] =>
   line.slice(1).map(([x, y], i): Way => [line[i]![0], line[i]![1], x, y, half, 1]);
 
-export const LC19_GROUND = {
+export const LC19_GROUND: PadGround = {
   /** The radius round the vehicle kept as mown clearing and levelled, metres: out past the loop road and the blockhouse. */
   clear: 270,
   /** Discs where nothing grows: [x, y, radius], feet. The blockhouse's mound, the two holding areas, the decontamination building, the basin. */

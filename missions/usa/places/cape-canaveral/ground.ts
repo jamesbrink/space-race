@@ -1,16 +1,18 @@
 import * as THREE from 'three';
+import type { SiteDef } from '../../../../src/types.ts';
 import { smoothstep } from '../../../../src/util/math.ts';
 import { breeze, type Day } from '../../../../src/viewer/day.ts';
 import { fbm2 } from '../../../../src/viewer/field.ts';
-import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { FloraSpec } from '../../../../src/viewer/flora.ts';
+import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { LandSpec, Palette } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
 import type { GroundSpec } from '../../../../src/viewer/scenery/ground.ts';
-import type { SiteDef } from '../../../../src/types.ts';
+import { LC5 } from './lc-5.ts';
 import { LC14_GROUND } from './lc-14.ground.ts';
 import { LC14 } from './lc-14.ts';
-import { LC5 } from './lc-5.ts';
+import { LC19_GROUND } from './lc-19.ground.ts';
+import { LC19 } from './lc-19.ts';
 import { buildScenery, clearingsAt, pavedAt, shoreAt, shoresAt } from './scenery.ts';
 
 /**
@@ -86,7 +88,10 @@ export interface PadGround {
 }
 
 /** Each pad's own ground, by its SiteDef. */
-const OWN = new Map<SiteDef, PadGround>([[LC14, LC14_GROUND]]);
+const OWN = new Map<SiteDef, PadGround>([
+  [LC14, LC14_GROUND],
+  [LC19, LC19_GROUND],
+]);
 
 /** The origin pad's own ground laid on `compass` (metres, x east and z south of it), or null where it has none. */
 function ownGround(compass: Compass) {
