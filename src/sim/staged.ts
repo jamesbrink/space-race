@@ -372,7 +372,9 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
     if (m === 'vertical') return up0;
     if (m === 'turn') {
-      // along the motion through the air, in the plane; leaned past it by the pitch-over while that lasts
+      // along the motion over the ground, in the plane (the turn the programme was made for: in calm air the motion through
+      // it; the gyros hold the attitude it gives whatever the wind, which then sets the angle of attack); leaned past it by
+      // the pitch-over while that lasts
       const w = sub(wind, scale(n, dot(n, wind)));
       const along = length(w) > 1e-9 ? tiltOf(w) : 0;
       const lean = t < tKicked ? x.kick * Math.sin((Math.PI * (t - tVertical)) / g.kick.value) ** 2 : 0;
@@ -486,7 +488,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
       if (as >= plan[i]!.from && as < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
     });
     const dragArea = stack.dragArea(as, air.mach);
-    const axis = axisAt(s, t, m, air.wind);
+    const axis = axisAt(s, t, m, air.ground);
     let f: Vec3 = scale(axis, thrust);
     f = add(f, airDrag(air.wind, air.airspeed, air.air.density, dragArea));
     return { accel: scale(f, 1 / mass), mass, thrust, axis, air };

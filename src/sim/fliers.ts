@@ -600,7 +600,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   const axisAt = (r: Vec3, u: Vec3, at: number): Vec3 => {
     const s = { r, v: u };
     const mode: Mode = law.modeAt(since);
-    let axis = law.axisAt(s, at, mode === 'tangent' && thetaTurn === null ? 'turn' : mode, airOf(s, at).wind, thetaTurn ?? 0);
+    let axis = law.axisAt(s, at, mode === 'tangent' && thetaTurn === null ? 'turn' : mode, airOf(s, at).ground, thetaTurn ?? 0);
     if (trim.pitch) axis = turn(aboutAxis(law.n, trim.pitch), axis);
     if (trim.yaw) axis = turn(aboutAxis(unit(s.r), trim.yaw), axis);
     return axis;
@@ -653,7 +653,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       if (thetaTurn === null && law.modeAt(t) === 'tangent') {
         const s = { r, v: u };
         const { u: up } = law.localAt(s.r);
-        thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, t, 'turn', airOf(s, t).wind, 0), up))));
+        thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, t, 'turn', airOf(s, t).ground, 0), up))));
       }
       for (const p of plan) {
         if (p.at > t + 1e-9 || doneIn(p.step, cur)) continue;

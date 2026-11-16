@@ -783,21 +783,27 @@ export function stagedPilot(
       const mode = law.modeAt(s.t);
       if (mode === 'tangent' && memo.thetaTurn === null) {
         const { u } = law.localAt(s.r);
-        memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', air(s, s.t).wind, 0), u))));
+        memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', air(s, s.t).ground, 0), u))));
       }
       const theta = memo.thetaTurn ?? 0;
-      return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).wind, theta) };
+      return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).ground, theta) };
     }
     // the law's axis now, leaned by the hands' trim
     const here = air(s, s.t);
     if (law.modeAt(s.t) === 'tangent' && memo.thetaTurn === null) {
       const { u } = law.localAt(s.r);
-      memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', here.wind, 0), u))));
+      memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', here.ground, 0), u))));
     }
     const trim = options.trim ?? { pitch: 0, yaw: 0 };
     const aim = (st: State, at: number): Vec3 => {
       const mode: Mode = law.modeAt(at);
-      let target = law.axisAt(st, at, mode === 'tangent' && memo.thetaTurn === null ? 'turn' : mode, air(st, at).wind, memo.thetaTurn ?? 0);
+      let target = law.axisAt(
+        st,
+        at,
+        mode === 'tangent' && memo.thetaTurn === null ? 'turn' : mode,
+        air(st, at).ground,
+        memo.thetaTurn ?? 0,
+      );
       if (trim.pitch) target = turn(aboutAxis(law.n, trim.pitch), target);
       if (trim.yaw) target = turn(aboutAxis(unit(st.r), trim.yaw), target);
       return target;
