@@ -1,0 +1,137 @@
+"""SA-205 exterior, in inches. NASA Apollo 7 press kit pp. 31–33 and Figure 25a.
+
+Published rounded envelopes constrain the stack. Internal partitions, engine bells, fins,
+paint boundaries and attachments are estimated from the figures, not engineering stations.
+S-IVB length includes the interstage in this first study; its partition is estimated.
+"""
+
+import math
+
+from mathutils import Matrix
+
+from apollo_csm import bell, radial, tube
+from srlib import IN, TAU, MeshBuilder, group, lathe_obj, load_font, material, prof, text_mesh
+
+SIB_TOP = 80.2 * 12
+SIVB_TOP = SIB_TOP + 58.4 * 12
+IU_TOP = SIVB_TOP + 36
+SLA_TOP = IU_TOP + 28 * 12
+CSM_OFFSET = SLA_TOP - 110  # SM barrel starts 110 in above the SPS exit (apollo_csm.py)
+HEIGHT = 224 * 12  # Figure 25a; height to escape-system Q-ball
+RADIUS = 130  # p. 33, 260 in instrument unit and S-IVB interface
+INTERSTAGE_TOP = SIB_TOP + 220  # estimated partition within the 58.4 ft S-IVB envelope
+
+
+def cylinder(name, radius, lo, hi, mat, parent):
+    return lathe_obj(name, prof([(radius, lo), (radius, hi)]), mat, parent, segs=128)
+
+
+def painted_barrel(name, lo, hi, parent, white, black, bands=()):
+    """Paint is on the skin, not a second near-coplanar skin above it."""
+    mesh = [MeshBuilder(), MeshBuilder()]
+    levels = sorted({lo, hi, *[z for start, end in bands for z in (start, end) if lo < z < hi]})
+    for i in range(16):
+        for z0, z1 in zip(levels, levels[1:]):
+            dark = any(start <= (z0 + z1) / 2 <= end for start, end in bands) and i % 4 in (0, 1)
+            mesh[int(dark)].lathe(prof([(RADIUS, z0), (RADIUS, z1)]), segs=8, arc=(TAU * i / 16, TAU * (i + 1) / 16))
+    for i, m in enumerate(mesh):
+        if m.faces:
+            m.build(f"{name}_{i}", black if i else white, parent)
+
+
+def lettering(body, angle, z, radius, size, mat, parent, vertical=False):
+    verts, faces = text_mesh(body, size * IN, load_font(), cuts=3)
+    mesh = MeshBuilder()
+    if vertical:
+        # Each letter has its own baseline, facing radially outward.
+        for j, letter in enumerate(body):
+            vs, fs = text_mesh(letter, size * IN, load_font(), cuts=2)
+            transformed = []
+            for x, y, _zz in vs:
+                a = angle + (x - size * IN * 0.35) / (radius * IN)
+                transformed.append(radial(radius, a, z - j * size * 1.25 + y / IN))
+            mesh.add(transformed, fs)
+    else:
+        width = max((v[0] for v in verts), default=0)
+        mesh.add([radial(radius, angle + (x - width / 2) / (radius * IN), z + y / IN) for x, y, _ in verts], faces)
+    mesh.build(f"Letters_{body}_{round(angle, 2)}", mat, parent, smooth=False)
+
+
+def build():
+    white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
+    black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
+    steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
+    red = material("saturn-lettering-red", (0.55, 0.035, 0.02), roughness=0.7)
+    groups = {
+        n: group(n)
+        for n in (
+            "SaturnFirstStage",
+            "FirstStageEngines",
+            "SaturnInterstage",
+            "SaturnSecondStage",
+            "SecondStageEngine",
+            "InstrumentUnit",
+            "SpacecraftAdapter",
+        )
+    }
+    sib = groups["SaturnFirstStage"]
+    # Eight 70-inch tanks surrounding one 105-inch tank, per p. 32.
+    # Tank end stations and cluster pitch radius are estimated; source envelopes are rounded.
+    cylinder("SIB_CentreTank", 52.5, 130, SIB_TOP - 40, white, sib)
+    for i in range(8):
+        a = TAU * i / 8
+        tank = lathe_obj(
+            f"SIB_OuterTank_{i}",
+            prof([(0, 115), (25, 119), (35, 143), (35, SIB_TOP - 60), (26, SIB_TOP - 38), (0, SIB_TOP - 32)]),
+            white,
+            sib,
+            segs=64,
+        )
+        tank.location.x, tank.location.y = radial(93, a, 0)[:2]
+    cylinder("SIB_ThrustSkirt", 127, 32, 138, white, sib)
+    cylinder("SIB_ForwardRing", 130, SIB_TOP - 38, SIB_TOP, white, sib)
+    # Eight substantial swept fins, each a closed wedge, not a flat card.
+    for i in range(8):
+        a = TAU * (i + 0.5) / 8
+        verts = []
+        shape = [(124, 170), (202, 65), (202, 35), (124, 70)]
+        for side in (-1, 1):
+            for radius, z in shape:
+                x, y, zz = radial(radius, a, z)
+                verts.append((x - math.sin(a) * side * 1.6 * IN, y + math.cos(a) * side * 1.6 * IN, zz))
+        mesh = MeshBuilder()
+        mesh.add(verts, [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
+        mesh.build(f"SIB_Fin_{i}", black if i % 2 else white, sib, smooth=False)
+    for i in range(8):
+        a = TAU * (i % 4) / 4 + (math.pi / 4 if i >= 4 else 0)
+        r = 43 if i < 4 else 91
+        bell(f"H1_Bell_{i}", radial(r, a, 0), (0, 0, 1), 70, 18, steel, groups["FirstStageEngines"])
+        tube(f"H1_Chamber_{i}", radial(r, a, 64), radial(r, a, 108), 8, steel, groups["FirstStageEngines"])
+    # S-IVB aft interstage surrounds its single J-2.
+    painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
+    bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, 39, steel, groups["SecondStageEngine"])
+    sivb = groups["SaturnSecondStage"]
+    painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, INTERSTAGE_TOP + 55)])
+    for i in range(2):
+        a = TAU * i / 2 + math.pi / 2
+        mesh = MeshBuilder()
+        mesh.box((24 * IN, 22 * IN, 58 * IN), Matrix.Translation(radial(136, a, INTERSTAGE_TOP + 26)))
+        mesh.build(f"SIVB_AuxiliaryPropulsion_{i}", white, sivb)
+    # Real raised longitudinal stiffeners, sunk into the skin, with a common angular grid.
+    for i in range(64):
+        a = TAU * i / 64
+        for j, (lo, hi) in enumerate(((INTERSTAGE_TOP + 4, INTERSTAGE_TOP + 49), (SIVB_TOP - 60, SIVB_TOP - 5))):
+            tube(f"SIVB_Rib_{i}_{j}", radial(130, a, lo), radial(130, a, hi), 0.8, black if j == 0 and (i // 4) % 4 in (0, 1) else white, sivb)
+    for i in range(4):
+        a = TAU * i / 4
+        tube(f"SIVB_Conduit_{i}", radial(130, a, INTERSTAGE_TOP + 65), radial(130, a, SIVB_TOP - 75), 2.5, white, sivb)
+        lettering("UNITEDSTATES", a, SIB_TOP - 130, 128.8, 31, red, sib, vertical=True)
+        lettering("USA", a, SIVB_TOP - 175, 130.8, 25, red, sivb, vertical=True)
+    cylinder("IU_Skin", RADIUS, SIVB_TOP, IU_TOP, black, groups["InstrumentUnit"])
+    sla = groups["SpacecraftAdapter"]
+    lathe_obj("SLA_Shell", prof([(130, IU_TOP), (77, SLA_TOP)]), white, sla, segs=128)
+    # Four panel seams terminate at the SM interface; no LM is inside this adapter.
+    for i in range(4):
+        a = TAU * (i + 0.5) / 4
+        tube(f"SLA_Seam_{i}", radial(130, a, IU_TOP + 2), radial(77, a, SLA_TOP - 2), 0.6, black, sla)
+    return groups
