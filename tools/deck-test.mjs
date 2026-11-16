@@ -447,7 +447,11 @@ for (const [w, h, touch] of SIZES) {
     await page.waitForTimeout(800);
   };
   const dialogs = [];
-  const trap = (page) => page.on('dialog', (d) => (dialogs.push(d.type()), d.dismiss()));
+  const trap = (page) =>
+    page.on('dialog', (d) => {
+      dialogs.push(d.type());
+      void d.dismiss();
+    });
   for (const id of HAND) {
     const w = 1280;
     const h = 800;

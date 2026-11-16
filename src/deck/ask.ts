@@ -71,7 +71,10 @@ export function ask(o: Asking): void {
     if (e.metaKey || e.ctrlKey || e.altKey) return; // (the browser's own)
     e.stopImmediatePropagation();
     const key = keyOf(e);
-    if (e.repeat) return e.preventDefault();
+    if (e.repeat) {
+      e.preventDefault();
+      return;
+    }
     if (is(key, 'ask.stay')) {
       e.preventDefault();
       answer(false);

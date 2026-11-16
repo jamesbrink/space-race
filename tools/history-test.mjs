@@ -205,7 +205,10 @@ await scenario('lineup', async (page) => {
  */
 await scenario('flown', async (page) => {
   const dialogs = [];
-  page.on('dialog', (d) => (dialogs.push(d.type()), d.dismiss()));
+  page.on('dialog', (d) => {
+    dialogs.push(d.type());
+    void d.dismiss();
+  });
   await page.goto(url);
   await arrive(page, 'front');
   await page.locator(`#title [data-flight="${MR3}"]`).click();

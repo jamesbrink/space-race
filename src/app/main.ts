@@ -57,7 +57,10 @@ onMoved(() => {
   const steps = moved();
   const follow = (): void => {
     landed();
-    if (aboutNoFlight(where())) return goHome(where(), true); // (the front page's or the Lineup's: no flight's)
+    if (aboutNoFlight(where())) {
+      goHome(where(), true);
+      return;
+    }
     opening = opening.then(() => {
       const to = parseAddress(where());
       // another flight is another session on the same stages; within this one, its session follows the address

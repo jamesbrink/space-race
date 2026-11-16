@@ -523,7 +523,10 @@ export abstract class Deck {
   /** What a command asks for, with a kept flight waiting to be resumed: only that, starting over, or leaving it again. */
   private act(what: string): void {
     if (this.pending) {
-      if (what === 'resume') return this.settle(true);
+      if (what === 'resume') {
+        this.settle(true);
+        return;
+      }
       if (what === 'again') this.settle(false);
       else if (what !== 'leave') return;
     } else if (what === 'resume') return;
