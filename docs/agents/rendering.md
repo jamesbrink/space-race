@@ -174,15 +174,24 @@ rules are the screen's, the same for every path, never tuned to a flight:
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
   curve, its place and three times its velocity's over the time ahead), so a coast is not worked again and a burn is.
 - `tools/path-test.mjs` (`pnpm test:path`) holds it in the page, at 1280, 820 and 390 wide: from the vehicle, no chord
-  over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames,
-  chips off the panels and pointing at their places, the apsides where the path's radial speed changes sign; and each
-  flight taken over at seeded instants and flown by scripted hands, then run on to its end against where the path said.
-  It is deterministic: each instant is reached exactly (the clock put forward a deck's five seconds at a time; the deck
-  flies in whole ticks, so the flight there is the same however it got there), and nothing is measured until the
-  prediction on show is the one for that instant, its ease over and the line sampled for the camera as it stands. The
-  line flown is measured drawn in the line ahead's colour and strength (`FlightPath.flownAsAhead`): the same geometry
-  and rules, told from a bright scene by the same threshold, which its own pale, half-strength drawing over white cloud
-  is not.
+  over 1 px off (the line ahead and the line flown), no dots or fragments, no sheet, nothing jumping between frames, a
+  line flown behind every flight that has flown a minute (an orbital deck's from its run's own samples,
+  `PathSource.track`), chips off the panels and pointing at their places, the apsides where the path's radial speed
+  changes sign; and each flight taken over at seeded instants and flown by scripted hands, then run on to its end
+  against where the path said (one that breaks up is held to where the path had it as it broke up, and must then show
+  no path; one that stays up, to where the path has it as far ahead as it goes). It is deterministic, and is never
+  made looser to pass: each instant is reached exactly (the clock put forward a deck's five seconds at a time, or a
+  frame's worth of the rate asked for, never by the wall's clock; the deck flies in whole ticks, so the flight there
+  is the same however it got there); every view is taken up from the far one, so what was looked at before does not
+  carry into it (a rig takes up a view near it as it stands); what is drawn is measured with the stage frozen
+  (`Stage.frozen`: the vehicle drawn where the flight is, nothing kept of an earlier frame) once the prediction on
+  show is the one for that instant, its ease over and the line sampled for the camera as it stands; and the line's
+  motion as the clock runs is measured on a page clock that gives every frame a sixtieth of a second
+  (`performance.now` and the frames' times, switched on round the measure), so a loaded machine sees the frames a fast
+  one does. Its pages run four at once (`--jobs`). The line flown is measured drawn in the line ahead's colour and
+  strength (`FlightPath.flownAsAhead`): the same geometry and rules, told from a bright scene by the same threshold,
+  which its own pale, half-strength drawing over white cloud is not; the markers' glyphs are hidden with the page
+  while the line's own pixels are counted, since over the line they cut it into pieces.
 
 ## Drawing only what changed
 

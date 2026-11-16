@@ -51,7 +51,7 @@ pnpm test:history     # needs `pnpm dev` running: Back and Forward between the f
 pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat in from the gallery, by the control and by C, at 1280 and 390
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
 pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
-pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through both flights, seen from each rig and from far out, its line and chips checked
+pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig and from far out, its line, the line flown and chips checked (four pages at once)
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, working a machine by hand and on the clock, read off sr.sound.voices
