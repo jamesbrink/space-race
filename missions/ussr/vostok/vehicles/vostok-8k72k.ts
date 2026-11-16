@@ -391,7 +391,7 @@ function sheds(left: Left): ShedBody[] {
     // estimated. B stands down range, V on the stack's left, G up range, D on its right (vehicle.py, as the launch ring
     // turned it: each strap-on's box on the pad, the stack's frame at liftoff).
     ...BOOSTERS.map(([letter, block, az]) => ({
-      on: `boosters/${letter}`,
+      on: `stage:0/${letter}`,
       name: `Strap-on Block ${block} (${letter})`,
       from: doc(0, 'the main nozzles’ exits (vostok-8k72k.md)'),
       to: doc(19.8, `${ZAK}; Brügge: 19.8 m with the nozzles`),
@@ -458,7 +458,7 @@ function sheds(left: Left): ShedBody[] {
       },
     },
     {
-      on: 'core',
+      on: 'stage:1',
       name: 'Block A, the core',
       from: doc(0, 'the main nozzles’ exits'),
       to: doc(28.75, `${MINAKOV}: the core with its lattice`),
@@ -475,7 +475,7 @@ function sheds(left: Left): ShedBody[] {
       },
     },
     {
-      on: 'separation',
+      on: 'stage:2',
       name: 'Block E, the third stage',
       from: doc(28.75, `${MINAKOV}: on the lattice’s top`),
       to: derived(31.73, 'its adapter’s rim, 2.98 m higher (Minakov)'),
@@ -553,7 +553,7 @@ export const LAUNCHER_JETS: JetDef[] = [
         240_000,
         'Pa: NOT FOUND. A plain nozzle lets its gas out at about half the pressure behind it; the 3 kN the simulator gives a vent through the 80 mm bore is some 4.6 bar in the tank at a thrust coefficient of 1.3, so 2.4 bar at the mouth',
       ),
-      when: { shed: `boosters/${letter}`, motor: 'oxidizer tank vent' },
+      when: { shed: `stage:0/${letter}`, motor: 'oxidizer tank vent' },
     }),
   ),
 ];

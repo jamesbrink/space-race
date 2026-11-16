@@ -117,7 +117,7 @@ export const orbital: VostokRecord = {
       also: '08:59:57 (RKK Energia, 2011; Zak): three seconds earlier, naming no document',
     },
     {
-      id: 'boosters',
+      id: 'strap-ons-off',
       label: 'The four strap-ons separate',
       at: estimated(119.5, TYPE('strap-ons’ separation')),
       also: 'Titov felt it as the greatest load, then a jerk forward in the straps',
@@ -128,7 +128,11 @@ export const orbital: VostokRecord = {
       at: estimated(154.6, TYPE('fairing’s jettison')),
       also: `Titov: «Отделение конуса происходит очень заметно ... После отделения конуса в иллюминаторе «Взора» видна Земля была» (${REPORT}, p. 184)`,
     },
-    { id: 'core', label: 'Core’s main chambers off: its steering chambers alone', at: estimated(290, TYPE('core’s preliminary command')) },
+    {
+      id: 'core-main-off',
+      label: 'Core’s main chambers off: its steering chambers alone',
+      at: estimated(290, TYPE('core’s preliminary command')),
+    },
     {
       id: 'third',
       label: 'Third stage alight; the core cut loose',
@@ -136,13 +140,13 @@ export const orbital: VostokRecord = {
       also: 'Titov: about ten seconds after the second stage left; «Хлопка никакого я не слышал»',
     },
     {
-      id: 'orbit',
+      id: 'third-stage-off',
       label: 'Third stage cut off: in orbit',
       at: estimated(677.08, TYPE('third stage’s cutoff')),
       also: 'Titov: the rocket some 50° from the horizontal at the end of the third stage’s burn, the Earth in the Vzor’s ring',
     },
     {
-      id: 'separation',
+      id: 'spacecraft-separates',
       label: 'Spacecraft separates from the third stage',
       at: estimated(687.08, 'about ten seconds after the cutoff (Titov), on the type’s cutoff'),
       also: '06:11 UTC (McDowell, to the minute). «При этом чувствовался толчок. После этого стало тихо и объект начал вращаться»',
@@ -184,7 +188,7 @@ export const orbital: VostokRecord = {
     { id: 'sleep', label: 'Over Moscow: going to sleep', at: doc(MSK(18, 15), `${TASS}; ${CHERTOK}, p. 192`) },
     { id: 'wake', label: 'He wakes, on the thirteenth orbit', at: doc(MSK(26, 35), `${REPORT}, p. 192: 02:35`), also: '02:37 (TASS)' },
     {
-      id: 'orientation',
+      id: 'sun-orientation',
       label: 'Solar orientation on, in the Earth’s shadow',
       at: estimated(
         TDU - 35 * 60,
@@ -220,7 +224,7 @@ export const orbital: VostokRecord = {
       also: 'The modules had been released mechanically ten seconds after the burn and stayed tied by the bundle (Chertok); Siddiqi, from Golovanov: "several straps"',
     },
     {
-      id: 'ejection',
+      id: 'seat-ejected',
       label: 'Hatch No. 1 off and the seat out',
       at: derived(
         MSK(34, 10),
@@ -253,7 +257,7 @@ export const orbital: VostokRecord = {
       kick: KICK,
       turn: estimated(119.5, 'the law changes at the strap-ons’ separation, the type’s 119.5 s'),
       target: {
-        at: 'orbit',
+        at: 'third-stage-off',
         altitude: doc(
           180_000,
           `${MEMO}, p. 153: «Выбор траектории полета корабля с высотой перигея 180 км»: the planned perigee, taken as the height the design put the last cutoff at`,

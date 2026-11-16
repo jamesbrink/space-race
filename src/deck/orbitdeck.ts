@@ -737,12 +737,11 @@ export class OrbitDeck extends Deck {
     const stages = stagesOf(plan);
     this.flight.flies!.drops.forEach((d, i) => {
       if (Number.isFinite(run.dropped[i]!)) return;
-      // (several bodies may leave on one event: 'boosters/B' is the strap-on B, let go at the 'boosters' event; a drop of
-      // the plan's own by its body, or the stage let go at the record's instant it names)
+      // (each by the plan's joint that lets it go, a drop's or a stage's; several bodies may leave by one joint, each after a
+      // slash: the strap-ons' joint and each one's letter)
       const on = d.on?.split('/')[0];
-      const drop = seq.drops.find((x) => x.body.id === on);
-      const event = seq.instants.find((e) => e.id === on);
-      const stage = event ? seq.stages.findIndex((k) => Number.isFinite(k.sep) && Math.abs(k.sep - event.at) < 1e-6) : -1;
+      const drop = seq.drops.find((x) => x.joint === on);
+      const stage = on ? seq.stages.findIndex((k) => k.joint === on) : -1;
       // (the record's, for what left before the flight was taken over)
       const at = drop ? (s.drops[drop.joint] ?? Infinity) : stage >= 0 ? s.stages[stage]!.gone : Infinity;
       const was = record.dropped[i]!;

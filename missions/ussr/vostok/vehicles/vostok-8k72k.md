@@ -251,7 +251,7 @@ the braking engine's `RetroEngine_Nozzle` has it.
   failure (latches that held and broke) are not modelled; nor whether Block E would start in free fall.
 - **The structure's limits are estimated** (`ascent.limits`): bending 3.34 kPa rad and 6 g along the axis, none read for
   the R-7; the fairing's 1 kPa likewise. Past the fairing's, what its halves struck is not modelled.
-- **The strap-ons' separation is flown in kind, its figures estimated** (orbital.ts, `boosters/B` to `/D`): the
+- **The strap-ons' separation is flown in kind, its figures estimated** (vostok-8k72k.ts `sheds`, `stage:0/B` to `/D`): the
   tail-off that swings each tail out, the swing before the ball leaves its socket, the vent's thrust and time. The swing
   itself (about a second) is not drawn: each leaves as it stood, with the rate and speed the swing gave it. The vent is
   taken as steady; it falls as the tank empties. The vent nozzle, the ball and the socket are nodes ("Parts in the

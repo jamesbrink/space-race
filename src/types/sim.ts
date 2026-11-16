@@ -292,7 +292,7 @@ export interface Broadside {
  * they had. Its long axis is the vehicle's, +X toward the nose.
  */
 export interface ShedBody {
-  /** The event that lets it go, as `Flight.flies.drops[].on` names it: 'tower', 'separation', 'retropack'. */
+  /** The plan's joint that lets it go, as `Flight.flies.drops[].on` names it (a body among several after a slash). */
   on: string;
   name: string;
   /** The stretch of the stack it is, m from the base, and its radius, m: its ends, for what touches the ground first. */

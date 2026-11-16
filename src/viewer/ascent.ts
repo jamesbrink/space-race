@@ -949,9 +949,10 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const samples = recordSamples(plan, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
-  // (what is let go at the pilot's ejection leaves at the run's own)
-  const ejection = downOf(plan)?.ejection;
-  const dropped = flight.flies!.drops.map((d) => (d.on && d.on === ejection && Number.isFinite(ejected) ? ejected : d.at));
+  // (what the pilot's ejection lets go, by the joints it parts, leaves at the run's own instant of it)
+  const ejection = eventOf(plan, downOf(plan)?.ejection ?? '');
+  const ejecting = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
+  const dropped = flight.flies!.drops.map((d) => (d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : d.at));
   const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
   const mass = plan.record!.orbit!.mass.value;
   for (const def of plan.craft[0]!.sheds ?? []) {

@@ -298,7 +298,7 @@ bottles: in dispute), the sensor's field and the law's gains.
   with its engines as a list: thrust, specific impulse, start, cutoff or depletion, station, steering; and its own shed
   event), `vehicle.ts` sums thrust over the engines burning, and the Mercury flight is the one-stage case of it with
   `tests/vehicle.test.mjs` unchanged as the proof.
-- The strap-ons leave as four `ShedBody`s at once (`boosters/B` to `/D`), each from where it stood, swung out on
+- The strap-ons leave as four `ShedBody`s at once (`stage:0/B` to `/D`), each from where it stood, swung out on
   its tip and vented away (sim/shed.ts `apart`; orbital.ts gives each its figures): the tail-off thrust, how far the
   tail swings before the ball leaves its socket, and the vent's thrust and time have no figure found and are estimated
   (100 kN, 3 degrees, 3 kN for 6 s). Flown, they spread evenly as a cross (each 17 m from the four's middle five

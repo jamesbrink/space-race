@@ -103,7 +103,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     - `coastOf`: the burn the coast flies, the parting of the body it is on (each at its `clockAt`, chained or not), and
       the height what comes down is let loose at.
     - Its stack and coast are flown from the plan: staged.ts `stagesOf` (each stage an engine that draws on a tank, its body and tank, one unit's figures) and `guidanceOf` (the attitude held by a stated law); orbital.ts `shipOf` (the published orbit, the coast's burn, the body that comes down); descent.ts `downOf` (the bodies with their own air, what sets each loose, their parachutes and the events that put them out, the event that sets the pilot loose). The batch (`ascend`, `steer`, `flyWhole`, `flyOn`, `flyOrbit`, `decay`, `recordSamples`, `held`) takes the plan; its drops are the bodies with no engine and no air of their own, each let go by a joint of its own (`sequenceOf(plan).drops`). The live staged vehicle (`stagedVehicle(plan, …)`) and its fliers (`guided`, `stack`, `apparentBy`) take it too: each stage's engine, body and joint by the ids the plan gives them, its hot staging from the joint below's `hot`, the structure's limits from `Craft.limits`, the steering from the thruster set with an `authority`; a stage with no cut of its own is shut down as it is let go. The ballistic side takes the plan too: `fly`, `flownOnce`, `axisOf`, `dragArea`, `thrustIn`, the live vehicle (`vehicle(plan, …)`), its autopilot and `verdict`, the `ballistic` flier and `predict`, and what is shed (`Sheds`, `shedder`, `recordRelease`: the stack's drag area, the winds and `Craft.sheds`). Each finds its hardware by what it is, once per plan (fly.ts `ballisticOf`): the booster is the first body and its engine the lever's; the separation the joint that lets the booster go; the abort the event a hand's command sets off and the escape rocket the motor it lights; the retrorockets every other solid with a burn, begun by the event that lights the first and chained by their `after` triggers; the tower and pack the bodies of those motors and the joints that let them go; the main parachute the one with `instead`, each parachute's height its deploying event's; masses at the partings their joints' `after`. A live sample's `burning` names each engine by its plan id. Only vostok-plan.ts and the consumers outside src/sim read an orbital record.
-  - No new simulator code names a part, a stage or an event id: tests/names.test.mjs will hold that.
+  - No code that flies, shows or sounds a flight names a part, a stage or an event id of its data: tests/names.test.mjs
+    holds every id of every flight's plan and scene (bodies, joints, engines, tanks, thrusters, parachutes, attitudes,
+    events, the record's instants, what drops and fires go by) to never being a literal in src/sim, src/deck, src/sound or
+    viewer/{ascent,path,effects,cabin}.ts. A data id is the hardware's or the event's own name (`adapter-clamp`,
+    `main-chute`, `retrofire`, `tdu-1`), never a word the code uses for its own ends; the code finds each by what it is.
 - **One body of a descent is one object** (`sim/descent.ts` `Descent`). It holds a body's mass, drag, parachutes and
   their tearing, and holds no position: `push`, `events`, `wear`, `heights`, `snapshot`/`restore`.
   - `flyDown` flies one per body. `DescentFlown.states` keeps each body's snapshot at every change.
@@ -291,10 +295,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   spent the other: `unless: 'abort'`, `Release.aborted`), to the sea, on the vehicle's tick (five ticks at a time
   above the air). The cockpit steps them beside the vehicle
   (`Sheds.follow`); the record's are flown from fly.ts's run, lazily, as far as the clock asks. A
-  new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`: generic
-  code names no part. Every drag area in them today is `estimated`, and says so. Several bodies let go at one event
-  each have their own `on`, the event's and a name after a slash (`boosters/B`: the strap-on B at the `boosters`
-  event). A body that stood beside the stack and not on its axis says how it left (`ShedBody.apart`, shed.ts `apart`):
+  new thing to shed is a `ShedBody` in the flight's data and an `on` in `flies.drops`, the plan's id of the joint that
+  lets it go (or of the parachute that pulls it off as it comes out): generic code names no part. Every drag area in
+  them today is `estimated`, and says so. Several bodies let go by one joint each have their own `on`, the joint's and a
+  name after a slash (`stage:0/B`: the strap-on B, let go by the strap-ons' joint). A body that stood beside the stack and not on its axis says how it left (`ShedBody.apart`, shed.ts `apart`):
   a strap-on starts on its own axis, its +Z away from the stack, with the turn and the speed its swing about the ball
   at its tip gave it (the stage's tail-off, or what it burned at if it was let go burning, through a few degrees); a
   motor with a `station` turns it (the strap-on's oxidizer vent, back and out at 45 degrees from under its cone). So the
@@ -535,7 +539,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   height) and, sequencer off, what is due in amber. On a touch screen a stick (pitch, yaw: as far
   as it is pushed) and two roll buttons stand above the instruments. The parachutes are drawn
   (`flies.chutes`, `viewer/chute.ts`, by way of `Ascent.chute` and `Run.out`), a drop can leave
-  `under` one (`drops[].on: 'main'`), and the jets are seen (`viewer/jets.ts`, `Ascent.jets`,
+  `under` one (`drops[].on` and `under` the plan's parachutes), and the jets are seen (`viewer/jets.ts`, `Ascent.jets`,
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `Craft.rigid` and
   `flies` can be flown without being told how.

@@ -144,7 +144,7 @@ export const orbital: VostokRecord = {
   events: [
     { id: 'liftoff', label: 'Liftoff', at: doc(0, `${SIDDIQI}, launch log: 09:06:59.7 Moscow time. ${OKB1}: 0906:59`) },
     {
-      id: 'boosters',
+      id: 'strap-ons-off',
       label: 'The four strap-ons separate',
       at: doc(119.5, `${PPP}: the integrator’s command at 119.50 s, done 0.03 s later; Keldysh’s table: 09:08:59.2`),
       also: '119 s (Siddiqi, p. 277; Zak)',
@@ -156,7 +156,7 @@ export const orbital: VostokRecord = {
       also: '150 s (Gagarin: “At second 150 the fairing separated”, from memory the next day); 154 s (Zak); 156 s (the figure in Siddiqi). The radio guidance’s power failed at 156 s (Zak; Baturin)',
     },
     {
-      id: 'core',
+      id: 'core-main-off',
       label: 'Core’s main chambers off: its steering chambers alone',
       at: derived(
         306.25,
@@ -170,7 +170,7 @@ export const orbital: VostokRecord = {
       at: doc(321.42, `NIIP-5’s report: «команда “Зажигание”» at T+321.42 s (${NK}, p. 4). The cyclogram had it started at 311.74 s`),
     },
     {
-      id: 'orbit',
+      id: 'third-stage-off',
       label: 'Third stage cut off: in orbit',
       at: doc(
         677.08,
@@ -179,13 +179,13 @@ export const orbital: VostokRecord = {
       also: 'It burned 2.4 s longer than calculated (Baturin); the whole over-speed was 25.43 m/s, and the apogee 327 km for 230',
     },
     {
-      id: 'separation',
+      id: 'spacecraft-separates',
       label: 'Spacecraft separates from the third stage; the Granit-5V timer starts',
       at: doc(MSK(9, 18, 28), `${OKB1}: 0918:28. Gagarin: “about 10 seconds” after the cutoff, and the clock and cycle 1 started with it`),
       also: '09:18:26.8, T+687.1 s (PPP, telemetry); 09:18:07 (Zak, citing Novosti Kosmonavtiki)',
     },
     {
-      id: 'orientation',
+      id: 'sun-orientation',
       label: 'Solar orientation switched on, in the Earth’s shadow',
       at: measure(MSK(9, 50), 'documented', `${ZAK}: planned for 09:50, and “around 09:50” Gagarin confirmed it. To the minute at best`),
     },
@@ -221,7 +221,7 @@ export const orbital: VostokRecord = {
       also: '10:35 (Gagarin). Lissov (in Zak) doubts the thermal sensors could have fired so high; unresolved',
     },
     {
-      id: 'ejection',
+      id: 'seat-ejected',
       label: 'Hatch No. 1 off and the seat out, at about 7 km',
       at: doc(MSK(10, 42), `${ZAK}: 10:42, to the minute. The height is Gagarin’s`),
       also: 'planned for 10:44:12 (Zak’s table of the plan)',
@@ -252,7 +252,7 @@ export const orbital: VostokRecord = {
         `the law changes at the strap-ons’ separation (${PPP}: 119.50 s), above all but a tenth of a per cent of the air; the instant is documented, the choice to change the law there is ours`,
       ),
       target: {
-        at: 'orbit',
+        at: 'third-stage-off',
         altitude: doc(
           180_000,
           `the planned perigee, over the record’s reference ball: Zak’s table of the plan, 180 by 230 km: secondary. Taken as the height the design put the last cutoff at`,
@@ -298,7 +298,7 @@ export const orbital: VostokRecord = {
         source: `${GAGARIN}: “approximately five G” before the strap-ons left; ${BOBKOV}: “5 units for 100 seconds”. By feel. Soyuz’s manual has at most 4.3 g there (a heavier upper stage)`,
       },
       {
-        id: 'core.speed',
+        id: 'core-main-off.speed',
         label: 'Speed as the core cut off',
         value: 5_500,
         unit: 'm/s',

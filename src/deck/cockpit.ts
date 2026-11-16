@@ -909,7 +909,8 @@ export class Cockpit extends Deck {
         : `<p class="cockpit-verdict${end.survivable ? '' : ' lost'}">${end.survivable ? 'Survivable.' : 'Not survivable.'} ${end.against}</p>`;
     // what the structure and the parachutes did not take (sim/loads.ts), and where what was let go came down (sim/shed.ts)
     const { broke, tore } = this.state!;
-    const names = { drogue: 'drogue', main: 'main parachute' } as const;
+    // (each by the plan's own name for it)
+    const names = { drogue: this.roles.drogue.label.toLowerCase(), main: this.roles.main.label.toLowerCase() };
     const tears = (['drogue', 'main'] as const).flatMap((which) => {
       const tear = tore[which];
       if (!tear) return [];

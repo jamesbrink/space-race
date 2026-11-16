@@ -25,7 +25,7 @@ const OVER = 'he had no say over the launch vehicle: this takes the flight over'
 /** The commands on each part of the vehicle by its node (orbitdeck.ts `can`, `ask`; main.ts `stage.onSpot`). */
 export function vostokCommands(day: DescentWords): Record<string, Command[]> {
   const part: Command = { label: `Part the modules (he could not: ${day.parted})`, ask: 'descent:modules' };
-  const eject: Command = { label: 'Blow the hatch and eject (he could not: the barometric switch, 7 km)', ask: 'descent:ejection' };
+  const eject: Command = { label: 'Blow the hatch and eject (he could not: the barometric switch, 7 km)', ask: 'descent:seat-ejection' };
   const chutes: Command[] = [
     { label: 'Module’s pilot parachute: the cover off (automatic: with the hatch, 7 km)', ask: 'descent:module/pilot parachute' },
     { label: 'Module’s braking parachute (automatic: its barometric switch, 4 km)', ask: 'descent:module/braking parachute' },
@@ -161,7 +161,7 @@ export const CHUTES: ChuteDef[] = [
  */
 export function vostokFlies(orbital: VostokRecord, crew = 'crew'): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
-  const EJECTION = at('ejection');
+  const EJECTION = at('seat-ejected');
   return {
     model: 'vehicle',
     datum: BASE,
@@ -175,24 +175,25 @@ export function vostokFlies(orbital: VostokRecord, crew = 'crew'): NonNullable<F
       ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0', burns: 'kerosene-lox' as const })),
       { node: 'RD108_Bells', on: 'stage:1', burns: 'kerosene-lox' },
       { node: 'BlockE_Engine', radius: 0.3665, on: 'stage:2', burns: 'kerosene-lox' },
-      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'braking', burns: 'amine-nitric' },
+      { node: 'RetroEngine_Nozzle', radius: 0.14, on: 'tdu-1', burns: 'amine-nitric' },
     ],
     drops: [
-      // each strap-on a body of its own (orbital.ts `ascent.sheds`: 'boosters/' and its letter), leaving at the stage's separation
-      ...BOOSTERS.map(([letter]) => ({ at: orbital.stages[0]!.separation!.value, nodes: [`Booster_${letter}`], on: `boosters/${letter}` })),
+      // each by the plan's joint that lets it go (vostok-plan.ts: a stage's is `stage:<i>`); each strap-on a body of its own
+      // (vostok-8k72k.ts `sheds`: the strap-ons' joint and its letter), leaving at the stage's separation
+      ...BOOSTERS.map(([letter]) => ({ at: orbital.stages[0]!.separation!.value, nodes: [`Booster_${letter}`], on: `stage:0/${letter}` })),
       { at: orbital.ascent!.drops.find((d) => d.id === 'fairing')!.at.value, nodes: ['Fairing'], on: 'fairing' },
-      { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'core' },
-      { at: at('separation'), nodes: ['BlockE'], on: 'separation' },
+      { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'stage:1' },
+      { at: at('spacecraft-separates'), nodes: ['BlockE'], on: 'stage:2' },
       {
         at: orbital.entry.separation.value,
         nodes: ['InstrumentModule', 'RetroEngine', 'Antennas', 'GasBottles', 'RetainingStraps', 'CableMast'],
         on: 'modules',
       },
       // what leaves at the ejection height comes down on the descent's own bodies (orbital.ts `descent`, flown by flyDown)
-      { at: EJECTION, nodes: ['EntryHatch'], on: 'ejection', rides: [{ body: 'hatch' }] },
-      { at: EJECTION, nodes: ['ParachuteHatch'], on: 'ejection', rides: [{ body: 'cover' }] },
+      { at: EJECTION, nodes: ['EntryHatch'], on: 'hatch-1', rides: [{ body: 'hatch-1' }] },
+      { at: EJECTION, nodes: ['ParachuteHatch'], on: 'cover', rides: [{ body: 'cover' }] },
       // the seat with him in it to 4 km, then the seat alone under its stabilising parachute: he has left it
-      { at: EJECTION, nodes: ['EjectionSeat'], on: 'ejection', rides: [{ body: 'pilot' }, { body: 'seat', hide: ['Pilot'] }] },
+      { at: EJECTION, nodes: ['EjectionSeat'], on: 'pilot', rides: [{ body: 'pilot' }, { body: 'seat', hide: ['Pilot'] }] },
     ],
     // and from 4 km the pilot himself, the figure in his suit, hanging in his harness under his own canopy
     hangs: [{ model: crew, body: 'pilot', from: 'main canopy' }],

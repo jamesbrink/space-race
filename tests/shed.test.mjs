@@ -229,14 +229,14 @@ const ORBITERS = (
       async (f) => (await import(pathToFileURL(join(import.meta.dirname, '..', f)).href)).flight,
     ),
   )
-).filter((f) => f.plan?.kind === 'orbital' && f.plan.craft[0].sheds?.some((d) => d.on.startsWith('boosters/')));
+).filter((f) => f.plan?.kind === 'orbital' && f.plan.craft[0].sheds?.some((d) => d.on.startsWith('stage:0/')));
 assert.ok(ORBITERS.length >= 2, 'Vostok 1 and 2 at least');
 for (const o of ORBITERS) {
   test(`${o.designation}: the four strap-ons leave as a cross: each a body of its own, swung out and vented away, tumbling, down some 400 km along the track`, async () => {
     const { orbitalRecord } = await import('../src/viewer/ascent.ts');
     const { length, sub, dot, unit } = await import('../src/world/frames.ts');
     const run = orbitalRecord(o);
-    const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`boosters/${l}`));
+    const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`stage:0/${l}`));
     assert.ok(four.every(Boolean), 'each strap-on is flown');
     const t0 = four[0].from;
     assert.equal(t0, 119.5, 'at the stage’s separation');

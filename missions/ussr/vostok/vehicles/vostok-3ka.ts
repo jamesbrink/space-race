@@ -188,7 +188,7 @@ export const reserveCanopy = (altitude: Measure): DescentChute => ({
 /** The two hatches blown at the ejection height: No. 1, which the seat leaves through, and No. 2, the parachute container's cover. */
 export const HATCHES: DescentBody[] = [
   {
-    id: 'hatch',
+    id: 'hatch-1',
     label: 'Hatch No. 1',
     mass: estimated(30, 'not found: a cover 1 m across in the clear, its heat shield and its lock, by judgement'),
     dragArea: estimated(0.8, 'a plate a little over 1 m across, tumbling: chosen'),
@@ -205,7 +205,7 @@ export const HATCHES: DescentBody[] = [
     dragArea: estimated(0.8, 'as hatch No. 1: chosen'),
     thrown: estimated(10, `not found: shot off with the hatch at about 7 km, drawing out the module’s small parachute (${BOBKOV}); chosen`),
     // (one command shot both hatches; by hand, the module's parachute is let out by shooting this one off)
-    with: ['ejection', 'module/pilot parachute'],
+    with: ['seat-ejection', 'module/pilot parachute'],
     chutes: [],
   },
 ];

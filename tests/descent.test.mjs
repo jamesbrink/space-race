@@ -105,7 +105,7 @@ test('a parachute let out too fast tears: the module’s main at 7 km', () => {
 
 test('ejected above the air: he meets the entry on his own, and its blast is past any man', () => {
   const at = shown.coast.results.interfaceAt;
-  const w = fly(record, { given: { ejection: at }, switched: [] });
+  const w = fly(record, { given: { [down.ejection]: at }, switched: [] });
   assert.ok(Math.abs(w.down.ejected - at) < 1e-6);
   assert.ok(w.down.peak.pilot.speed > record.craft[0].crew.fastest.value, 'out in the air at the speed of the entry');
   assert.equal(say('ejected at 100 km', w).survivable, false);
@@ -115,7 +115,7 @@ test('ejected low: the canopy has no time to fill', () => {
   // the sequencer off above 7 km, he goes at 1 km and his main canopy with him
   let w = fly(record, off(timed.off + 60));
   const at = through(w, 1000);
-  w = fly(record, { given: { ejection: at, 'pilot/main canopy': at }, switched: [{ t: timed.off + 60, on: false }] });
+  w = fly(record, { given: { [down.ejection]: at, 'pilot/main canopy': at }, switched: [{ t: timed.off + 60, on: false }] });
   assert.ok(w.down.landed.pilot.speed > record.craft[0].crew.landing.alone.value);
   assert.equal(say('ejected at 1 km', w).survivable, false);
 });

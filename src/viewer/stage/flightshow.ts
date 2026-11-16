@@ -981,7 +981,7 @@ export class FlightShow {
     for (const f of flight.flies.fires ?? []) {
       const node = s.full.getObjectByName(f.node);
       // (its engine by the id it burns by; the braking burn's is the plan's braking engine)
-      const exit = exitOf(engines.find((e) => e.id === (f.on === 'retro' ? 'braking' : f.on)));
+      const exit = exitOf(engines.find((e) => e.id === f.on));
       if (node && f.radius) hang(node, level, f.radius, exit, lowest(node), null, f.burns);
       else if (node) {
         // every vertex under it, in the vehicle's frame as it stands

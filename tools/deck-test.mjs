@@ -169,7 +169,9 @@ for (const [w, h, touch] of SIZES) {
     const { page, errors, context: ctx } = await fly('ussr/vostok/vostok-1', w, h, touch);
     const can = () =>
       page.evaluate(() =>
-        Object.fromEntries(['descent:modules', 'descent:ejection', 'descent:pilot/main canopy'].map((a) => [a, window.sr.cockpit.can(a)])),
+        Object.fromEntries(
+          ['descent:modules', 'descent:seat-ejection', 'descent:pilot/main canopy'].map((a) => [a, window.sr.cockpit.can(a)]),
+        ),
       );
     const seek = async (t) => {
       await page.evaluate((x) => window.sr.clock.seek(x), t);
@@ -181,10 +183,10 @@ for (const [w, h, touch] of SIZES) {
     if (Object.values(c).some(Boolean)) fail(where, `offered on the launch vehicle: ${JSON.stringify(c)}`);
     await seek(4600); // (alone, the timer's burn still to come)
     c = await can();
-    if (!c['descent:modules'] || c['descent:ejection']) fail(where, `before the burn: ${JSON.stringify(c)}`);
+    if (!c['descent:modules'] || c['descent:seat-ejection']) fail(where, `before the burn: ${JSON.stringify(c)}`);
     await seek(4800); // (the burn made)
     c = await can();
-    if (!c['descent:ejection'] || c['descent:pilot/main canopy']) fail(where, `after the burn: ${JSON.stringify(c)}`);
+    if (!c['descent:seat-ejection'] || c['descent:pilot/main canopy']) fail(where, `after the burn: ${JSON.stringify(c)}`);
     await page.keyboard.press('KeyB');
     await page.waitForTimeout(400);
     const off = await page.evaluate(() => ({
@@ -201,7 +203,7 @@ for (const [w, h, touch] of SIZES) {
     await page.keyboard.press('Space');
     await page.waitForTimeout(600);
     c = await can();
-    if (c['descent:ejection'] || !c['descent:pilot/main canopy']) fail(where, `after the ejection: ${JSON.stringify(c)}`);
+    if (c['descent:seat-ejection'] || !c['descent:pilot/main canopy']) fail(where, `after the ejection: ${JSON.stringify(c)}`);
     const next = await page.evaluate(() => {
       const r = document.querySelector('[data-do=next]').getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height };

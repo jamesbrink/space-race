@@ -110,7 +110,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     starts: s.start ?? { count: 1, ground: false, confidence: 'estimated' },
   }));
   engines.push({
-    id: 'braking',
+    id: 'tdu-1',
     label: 'Braking engine',
     body: 'instrument',
     count: 1,
@@ -148,7 +148,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     });
   if (o.manual)
     thrusters.push({
-      id: 'orientation',
+      id: 'orientation-system',
       label: 'Orientation by hand',
       body: 'instrument',
       does: ['rotation'],
@@ -181,7 +181,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       { of: 'fastest', value: d.crew.fastest },
     );
   const craft: Craft = {
-    id: 'stack',
+    id: 'vostok-8k72k',
     label: 'The stack',
     mass: o.liftoffMass,
     bodies,
@@ -199,15 +199,15 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
   const attitude: AttitudeDef[] = [];
   if (a)
     attitude.push({
-      id: 'ascent',
+      id: 'steering-law',
       label: 'Steering law',
       hold: { law: a.guidance },
       source: 'sim/staged.ts: a stated law, solved for its targets',
     });
   attitude.push(
-    { id: 'free', label: 'Left to itself', hold: { free: true }, source: 'in orbit, its attitude is not flown' },
+    { id: 'left-to-itself', label: 'Left to itself', hold: { free: true }, source: 'in orbit, its attitude is not flown' },
     {
-      id: 'braking',
+      id: 'braking-aim',
       label: 'Braking attitude',
       hold: {
         aim: o.retro.aim.along,
@@ -231,11 +231,11 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     },
   ];
   // turned to its braking attitude at the record's orientation, where it has one, or as the engine lights
-  const oriented = o.events.find((e) => e.id === 'orientation')?.at ?? o.retro.on;
+  const oriented = o.events.find((e) => e.id === 'sun-orientation')?.at ?? o.retro.on;
   // the braking burn's command (the timer's, where the record has it), the timer that shut the engine down, the ejection
   const command = o.events.find((e) => e.id === 'retro-command');
   const timer = o.events.find((e) => e.id === 'retro-timer');
-  const ejected = o.events.find((e) => e.id === 'ejection');
+  const ejected = o.events.find((e) => e.id === 'seat-ejected');
   const record = (at: Measure) => {
     const e = o.events.find((x) => Math.abs(x.at.value - at.value) < 1e-6);
     return e ? { record: { id: e.id, label: e.label } } : {};
@@ -321,7 +321,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     id: 'retro-on',
     label: 'Braking engine on',
     when: after(commanded, o.retro.on),
-    do: [{ ignite: 'braking' }],
+    do: [{ ignite: 'tdu-1' }],
     automatic: true,
     at: o.retro.on,
     source: o.retro.on.source,
@@ -330,7 +330,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     id: 'retro-off',
     label: 'Braking engine off',
     when: after(on, o.retro.off),
-    do: [{ cut: 'braking' }],
+    do: [{ cut: 'tdu-1' }],
     automatic: true,
     at: o.retro.off,
     source: o.retro.off.source,
@@ -340,7 +340,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       id: 'braking-attitude',
       label: 'Oriented for the braking burn',
       when: atTime(oriented),
-      do: [{ attitude: 'braking' }],
+      do: [{ attitude: 'braking-aim' }],
       automatic: true,
       at: oriented,
       source: oriented.source,
@@ -354,7 +354,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
             id: 'braking-timer',
             label: 'Braking engine shut down by its timer',
             when: atTime(timer.at),
-            do: [{ cut: 'braking' }],
+            do: [{ cut: 'tdu-1' }],
             automatic: true,
             at: timer.at,
             source: timer.at.source,
@@ -372,10 +372,10 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       source: o.entry.separation.source,
     },
     {
-      id: 'ejection',
+      id: 'seat-ejection',
       label: 'Ejection',
       when: [{ after: 'modules' }, { height: o.ejection.altitude.value, going: 'down' }],
-      do: dbodies.slice(1).flatMap((b) => ((b.with ?? ['ejection']).includes('ejection') ? [{ separate: b.id }] : [])),
+      do: dbodies.slice(1).flatMap((b) => ((b.with ?? ['seat-ejection']).includes('seat-ejection') ? [{ separate: b.id }] : [])),
       automatic: true,
       ...(ejected ? { record: { id: ejected.id, label: ejected.label } } : {}),
       source: o.ejection.altitude.source,
@@ -389,9 +389,9 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
         id,
         label: `${b.label}: ${c.name}`,
         when: [
-          ...(b === module ? [{ after: 'modules' }] : [{ after: 'ejection' }]),
+          ...(b === module ? [{ after: 'modules' }] : [{ after: 'seat-ejection' }]),
           ...(c.altitude ? [{ height: c.altitude.value, going: 'down' as const }] : []),
-          ...(c.after ? [{ after: 'ejection', wait: c.after.value }] : []),
+          ...(c.after ? [{ after: 'seat-ejection', wait: c.after.value }] : []),
         ],
         do: [{ deploy: id }, ...leaving.map((x) => ({ separate: x.id }))],
         automatic: true,

@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ballisticOf } from '../src/sim/fly.ts';
+import { downOf } from '../src/sim/descent.ts';
 import { coastEvents } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { byHand, givenUp } from '../src/sim/staged.ts';
@@ -139,9 +140,9 @@ for (const f of orbital) {
     for (const e of plan.events)
       if (e.at && e.when.some((w) => 'time' in w || 'after' in w))
         assert.equal(clockAt(plan, e), e.at.value, `${e.id} at its record instant`);
-    assert.equal(byId(c.engines, 'braking').flown, o.retro.deltaV);
+    assert.equal(c.engines.find((e) => e.flown).flown, o.retro.deltaV);
     assert.equal(byId(c.joints, 'modules').after, o.entry.mass);
-    assert.equal(eventOf(plan, 'ejection').when.find((w) => 'height' in w).height, o.ejection.altitude.value);
+    assert.equal(eventOf(plan, downOf(plan).ejection).when.find((w) => 'height' in w).height, o.ejection.altitude.value);
     for (const b of o.descent?.bodies ?? []) {
       assert.equal(byId(c.bodies, b.id).mass, b.mass);
       for (const ch of b.chutes) assert.equal(byId(c.chutes, `${b.id}/${ch.name}`).dragArea, ch.dragArea);
@@ -162,7 +163,7 @@ for (const f of orbital) {
       'the timer waits for the command to start it',
     );
     // the pilot set loose and the landings carry the record's names for them
-    assert.equal(eventOf(plan, 'ejection').record?.id, 'ejection');
+    assert.equal(eventOf(plan, downOf(plan).ejection).record?.id, 'seat-ejected');
     assert.deepEqual(
       plan.record.marks.filter((m) => m.lands).map((m) => [m.id, m.lands]),
       (o.descent?.bodies ?? []).filter((b) => has(`${b.id}-down`)).map((b) => [`${b.id}-down`, b.id]),
