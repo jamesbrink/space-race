@@ -52,16 +52,118 @@ const SITE1 = {
   fillersGone: 0.15,
 };
 
+// --- Launch Complex 19: routes ---
+/**
+ * Launch Complex 19's ways, in the viewer's frame: x along the stand to the south, z to the west, y up from the launch
+ * deck, metres. `F` takes a place in the pad's own feet as its scripts have it (x south, y east, z up: lc19/site.py and
+ * erector.py), so each leg reads as the model does. The erector stands for all of them (slider 0: the crew going up).
+ */
+const F = (x, y) => [x * 0.3048, -y * 0.3048];
+const FT = (z) => z * 0.3048;
+const LC19_FOOT = 3; // the floor at the erector's foot
+const LC19_ROOM = [91 + 2 / 12, 102 + 2 / 12, 109 + 2 / 12, 118 + 2 / 12]; // the white room's four floors
+/** One level of the erector's stairs, from the south landing at `from` up the inner lane, across the landing between, and back up the outer lane to `to`. */
+const lc19Flight = (from, to) => [
+  { to: F(3.4, -14.3), y: FT(from), note: `the foot of the flight at ${Math.round(from)} ft` },
+  { to: F(-3.6, -14.3), y: FT((from + to) / 2), tol: 0.4, note: 'up the inner lane to the landing between' },
+  { to: F(-4.2, -17.9), y: FT((from + to) / 2), tol: 0.4 },
+  { to: F(4.4, -17.9), y: FT(to), tol: 0.4, note: `up the outer lane to ${Math.round(to)} ft` },
+  { to: F(4.6, -14.3), y: FT(to) },
+];
+const LC19 = [
+  {
+    name: 'the crew’s way: up the red ramp to the erector’s foot, the express elevator to the white room, the stairs to the spacecraft’s level',
+    slider: 0,
+    from: [...F(34, 8.1).slice(0, 1), 0, F(34, 8.1)[1]],
+    legs: [
+      { to: F(26.5, 8.1), y: 0, note: 'to the foot of the ramp' },
+      { to: F(14.2, 8.1), y: FT(LC19_FOOT), tol: 0.2, note: 'up the ramp to its landing' },
+      { to: F(9.4, 8.6), y: FT(LC19_FOOT), note: 'on to the floor at the erector’s foot' },
+      { to: F(9.6, 15.4), y: FT(LC19_FOOT), note: 'east into the elevator’s car' },
+      {
+        lift: { model: 'pad', part: 'Erector', action: 'express-elevator', stop: 1 },
+        y: FT(LC19_ROOM[0]),
+        note: 'the express elevator, to the white room’s 91 ft level',
+      },
+      { to: F(9.8, 10.2), y: FT(LC19_ROOM[0]), note: 'out of the car through the east doorway' },
+      { to: F(10.4, -9.4), y: FT(LC19_ROOM[0]), note: 'along the south wall, past the adapter' },
+      { to: F(4.6, -10.2), y: FT(LC19_ROOM[0]) },
+      { to: F(4.6, -14.3), y: FT(LC19_ROOM[0]), note: 'out through the west doorway to the stairs' },
+      ...lc19Flight(LC19_ROOM[0], LC19_ROOM[1]),
+      { to: F(4.6, -10.2), y: FT(LC19_ROOM[1]), note: 'in at the spacecraft’s level' },
+      { to: F(10.2, -8.0), y: FT(LC19_ROOM[1]) },
+      { to: F(9.6, 0), y: FT(LC19_ROOM[1]), note: 'to the hatches' },
+    ],
+  },
+  {
+    name: 'the service elevator to the fifth work platform, the stairs to the top of the white room, the ladder to the bridge crane',
+    slider: 0,
+    from: [...F(22, -8).slice(0, 1), 0, F(22, -8)[1]],
+    legs: [
+      { to: F(18.9, -8), y: 0, note: 'to the foot of the steps' },
+      { to: F(13.6, -8), y: FT(LC19_FOOT), tol: 0.2, note: 'up the steps' },
+      { to: F(9.4, -8.6), y: FT(LC19_FOOT) },
+      { to: F(9.6, -15.4), y: FT(LC19_FOOT), note: 'west into the service elevator’s car' },
+      {
+        lift: { model: 'pad', part: 'Erector', action: 'service-elevator', stop: 5 },
+        y: FT(80),
+        note: 'the service elevator, to the 80 ft level',
+      },
+      { to: F(9.4, -9.6), y: FT(80), note: 'out of the car on to the platform' },
+      { to: F(4.6, -9.6), y: FT(80) },
+      { to: F(4.6, -14.3), y: FT(80), note: 'out through the west face to the stairs' },
+      ...lc19Flight(80, LC19_ROOM[0]),
+      ...lc19Flight(LC19_ROOM[0], LC19_ROOM[1]),
+      ...lc19Flight(LC19_ROOM[1], LC19_ROOM[2]),
+      ...lc19Flight(LC19_ROOM[2], LC19_ROOM[3]),
+      { to: F(4.6, -10.2), y: FT(LC19_ROOM[3]), note: 'in at the white room’s top level' },
+      { to: F(9.6, -8.6), y: FT(LC19_ROOM[3]), note: 'to the foot of the ladder' },
+      { climb: FT(132.1), to: F(12.4, -8.6), note: 'up the ladder to the bridge crane’s rail' },
+    ],
+  },
+  {
+    name: 'round the deck: the thrust mount, the second-stage position, the hoisting crane, the umbilical tower’s foot',
+    slider: 0,
+    from: [...F(40, 20).slice(0, 1), 0, F(40, 20)[1]],
+    legs: [
+      { to: F(18, 21.5), y: 0 },
+      { to: F(4, 22), y: 0, note: 'past the erector’s east side, on the steel deck' },
+      { to: F(-24, 22), y: 0, note: 'between the two firing positions' },
+      { to: F(-37, 8), y: 0, note: 'along the deck’s north edge, over the flame buckets' },
+      { to: F(-37, -3), y: 0, note: 'to the hoisting crane' },
+      { to: F(-29.5, -4.5), y: 0, note: 'round the crane’s east side' },
+      { to: F(-29, -16.5), y: 0, note: 'to the umbilical tower’s foot' },
+    ],
+  },
+  {
+    name: 'from the land to the deck by the stand’s west stair, and down the ramp',
+    slider: 0,
+    from: [...F(112, -34).slice(0, 1), FT(-28), F(112, -34)[1]],
+    legs: [
+      { to: F(107.5, -22.5), y: FT(-28), tol: 0.4, note: 'to the stair’s foot, on the land' },
+      { to: F(89.2, -22.5), y: FT(-18.67), tol: 0.4, note: 'up the first flight' },
+      { to: F(73.6, -22.5), y: FT(-9.33), tol: 0.4, note: 'the second' },
+      { to: F(58.2, -22.5), y: 0, tol: 0.3, note: 'the third, to the head landing' },
+      { to: F(57.8, -17), y: 0, tol: 0.6, note: 'through the gap in the rail on to the deck' },
+      { to: F(150, 10), run: true, y: 0, note: 'south along the deck' },
+      { to: F(262, 12), run: true, y: 0, tol: 0.4, note: 'to the head of the ramp' },
+      { to: F(380, 12), run: true, y: FT((-28 * (380 - 258)) / 220), tol: 0.6, note: 'down the ramp' },
+      { to: F(476, 12), run: true, y: FT(-28), tol: 0.7, note: 'to its foot, on the land' },
+    ],
+  },
+];
+// --- Launch Complex 19: end ---
+
 /**
  * Readings of Complex 14's pad slider (places/cape-canaveral/lc-14.parts.ts `PadStops`, as a flight's pad.ts lays its morning out):
  * the service structure round the vehicle with its lift at the ground, and the structure parked 300 ft east.
  */
 const LC14 = { serviced: 0, away: 0.78 };
-const FT = 0.3048;
+const FOOT = 0.3048;
 /** A place in Complex 14's own frame (feet: x along 105 degrees, y along 015; lc14/site.py) as the viewer's [x, z], metres. */
-const at14 = (x, y) => [Number((x * FT).toFixed(3)), Number((-y * FT).toFixed(3))];
+const at14 = (x, y) => [Number((x * FOOT).toFixed(3)), Number((-y * FOOT).toFixed(3))];
 /** A height in feet above Complex 14's deck, metres. */
-const up14 = (z) => Number((z * FT).toFixed(3));
+const up14 = (z) => Number((z * FOOT).toFixed(3));
 /**
  * The legs of a switchback stair in that frame: from each of `floors` (feet over the deck) up to the next by two half
  * flights along y, the first at x = `xa` from `ya` to `yb`, the second at `xb` back from `yb` to `ya`; `on` is how far
@@ -203,6 +305,7 @@ const LC14_ROUTES = [
  */
 const ROUTES = {
   'Cape Canaveral, Launch Complex 14': LC14_ROUTES,
+  'Cape Kennedy, Launch Complex 19': LC19,
   'Tyuratam (Baikonur), Site 1': [
     {
       name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',

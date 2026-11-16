@@ -56,6 +56,16 @@ const SITES = [
     fn: 'Bascule',
     hold: 4,
   },
+  {
+    name: 'Complex 19: the first work platform’s leaves, from the erector’s south walk at 36 ft',
+    flight: 'usa/gemini/gt-3',
+    at: -8040, // the crew going up: the erector standing, its platforms down round the vehicle
+    from: [3.2, 36 * 0.3048, 1.2],
+    look: [1.95, 36 * 0.3048 - 0.02, 0.9], // down at the leaf at his feet, south of the vehicle
+    part: 'Launch vehicle erector',
+    fn: 'Work platform 1 (36 ft)',
+    hold: 4,
+  },
 ];
 const WIDTHS = [
   { w: 1280, h: 800, input: 'keys' },
