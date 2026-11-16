@@ -858,7 +858,10 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   point of cloud surface the march finds into the next frame by the world and the wind (97 % at least where the next
   frame's march has it, 0.5 % at most drawn unchanged at the pixel it was at), looks at each sheet from 300 m and 2 km
   off (the same), and crosses each layer looking level and down (a change from one frame to the next must shrink as
-  the climb between them is halved: a step does not).
+  the climb between them is halved: a step does not). It also looks straight down from 300 m to 25 km over each layer
+  and moves the eye two ways by a hundredth of its height: under 1 % of the frame's edges may stay where they were (the
+  cel look's veil from above was cut from its opacity aslant, so a flat tone ended in a circle round the view straight
+  down; it is cut from the veil's own opacity now, and only thickened aslant).
 - **A glow hides nothing.** What writes no depth and stands in front of cloud (fire, smoke, glass, the glow of entry:
   clouds.ts `veils`) is drawn again on its own, writing how much of what is behind it it hides and, apart, the light it
   adds (`CloudPass.split`). Cloud behind it is laid over the frame through what it hides, and its light is given back

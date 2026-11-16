@@ -1137,7 +1137,7 @@ ${
     // (and only as much of its depth as the ray goes through: from inside it, so much less the nearer the eye is to
     // leaving it that way. A drawing is cut from the whole layer's opacity and laid on by the share passed through:
     // cut from that share, each flat tone was swept over the view at once as the eye went through it)
-    float whole = (1.0 - pow(1.0 - a, along)) * fade;
+    float own = a * fade, whole = (1.0 - pow(1.0 - a, along)) * fade;
     a = (1.0 - pow(1.0 - a, along * through)) * fade;
     // (a drawing's cloudlets and their mean, apart: below)
     float body = kind == 0 ? (1.0 - pow(1.0 - gDeckBody, along)) * fade : 0.0;
@@ -1194,10 +1194,14 @@ ${
       // thinner sheet between them), thinning out in sheaves where the record's cover gives way (weather.ts
       // heldDistance), so no line is drawn round it.
       if (!under) {
-        float sheaves = step(0.34, whole), between = step(0.1, whole) * (1.0 - sheaves);
+        // (cut from the sheet's own opacity, which is the place's, and thicker aslant by as much as the real look has it,
+        // evenly: cut from the opacity aslant, an even veil was a flat tone out to a circle round the view straight
+        // down and another past it, the circle going wherever the eye went)
+        float sheaves = step(0.34, own), between = step(0.1, own) * (1.0 - sheaves);
         if (sheaves + between <= 0.0) return vec4(0.0);
         vec3 lit = sunWhite * 0.95 + skyLight;
-        return vec4(mix(lit, uHaze, hz), 1.0) * ((0.78 * sheaves + 0.32 * between) * shown * through);
+        float aslant = whole / max(own, 1e-3);
+        return vec4(mix(lit, uHaze, hz), 1.0) * (min((0.78 * sheaves + 0.32 * between) * aslant, 0.95) * shown * through);
       }
       float washed = smoothstep(0.5, 0.9, high);
       if (washed <= 0.0) return vec4(0.0);
