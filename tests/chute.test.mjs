@@ -255,7 +255,8 @@ for (const v of FLIGHTS.filter((f) => f.plan?.kind === 'orbital' && downOf(f.pla
     assert.equal(seat[0].t, drawn.opened.pilot['main canopy']);
     assert.ok(whole.down.landed.seat.at < whole.down.landed.pilot.at);
     // each of the module's parachutes is let go as the next comes out
-    assert.equal(drawn.gone.module['pilot parachute'], drawn.opened.module['braking parachute']);
-    assert.equal(drawn.gone.module['braking parachute'], drawn.opened.module['main parachute']);
+    const own = downOf(v.plan).bodies[0].chutes;
+    for (const c of own.filter((c) => c.instead))
+      for (const i of c.instead) assert.equal(drawn.gone.module[i], drawn.opened.module[c.name], `${i} goes as ${c.name} comes out`);
   });
 }

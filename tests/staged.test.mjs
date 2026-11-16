@@ -261,6 +261,44 @@ const UNDOCUMENTED = {
     'stages.2.propellant',
     'stages.2.start',
   ],
+  // Voskhod 1's on the 11A57: the blocks the Vostok-K's (assumed), Kosmos 47's instants, Block I's mass less its aft section and
+  // its fairing and aft section; no aiming azimuth (the plane is solved)
+  'ussr/voskhod/voskhod-1': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drops.0.at',
+    'ascent.drops.0.mass',
+    'ascent.drops.0.q',
+    'ascent.drops.1.at',
+    'ascent.drops.1.mass',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.turn',
+    'ascent.guidance.vertical',
+    'ascent.limits.axial',
+    'ascent.limits.qAlpha',
+    'ascent.steering.authority',
+    'stages.0.cutoff',
+    'stages.0.dry',
+    'stages.0.ignition',
+    'stages.0.mass',
+    'stages.0.propellant',
+    'stages.0.throttle',
+    'stages.1.cutoff',
+    'stages.1.dry',
+    'stages.1.ignition',
+    'stages.1.mass',
+    'stages.1.propellant',
+    'stages.1.throttle',
+    'stages.2.dry',
+    'stages.2.hot',
+    'stages.2.ignition',
+    'stages.2.mass',
+    'stages.2.start',
+  ],
 };
 
 /** An ascent check's figure: an event's field ('core.speed'), or the summary's. */
@@ -522,7 +560,9 @@ for (const f of part(flown)) {
     weigh('the strap-ons’ intermediate stage at 80 per cent, not 60', (c) =>
       c.stages[0].throttle.points.forEach((p) => p[0] > 113.1 && (p[1] = 0.8)),
     );
-    weigh('the apparent velocity read 2,263.52 (the other reading)', (c) => (c.stages[2].velocity.speed.value = 2263.52));
+    // (a third stage cut on its integrator: the Vostoks'; the Voskhods' is cut at its instant)
+    if (o.stages[2].velocity)
+      weigh('the apparent velocity read 2,263.52 (the other reading)', (c) => (c.stages[2].velocity.speed.value = 2263.52));
     weigh('the core 1 % less thrust and flow', (c) => {
       c.stages[1].thrust.vacuum.value *= 0.99;
       c.stages[1].thrust.seaLevel.value *= 0.99;

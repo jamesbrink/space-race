@@ -17,6 +17,7 @@ const FLIGHTS = {
   'ussr/vostok/vostok-5': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-6': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-4': ['Ignition', 'Drop the strap-ons'],
+  'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
 };
 const SIZES = [
   [1280, 800, false],

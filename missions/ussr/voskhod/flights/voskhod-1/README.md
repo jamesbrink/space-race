@@ -16,14 +16,30 @@ Georgiy Katys, Aleksey Sorokin and Vasiliy Lazarev.
 | Spacecraft (3KV No. 3) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The Voskhod's model ([voskhod.md](../../vehicles/voskhod.md)), which is the Vostok's with what a 3KV had instead of the ejection seat and on top of the sphere: three couches a quarter turn from the seat's line, the reserve braking engine on the forward pole. No dimension of either was found: both are scaled off OKB-1's general drawing and photographs |
 | Launch vehicle (11A57 No. R15000-04) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md). The Vostok launcher's core and boosters under the larger third stage, Block I, with its aft section, adapter and a fairing with a conical nose |
 | Crew in the couches | **built**: three figures in what the crew flew in, a grey wool suit and the headset's white cap ([flight-suit.md](../../crew/flight-suit.md)). One build for all three: none of their heights was found |
-| Launch site (Site 1 as it stood in October 1964) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)); what had changed in three and a half years has not been looked for |
-| Crew to be walked as | not built |
-| The day's weather as data (`weather.ts`) | not written: it is the launch site's sky, and the site is not built for this flight. What was read is under "The weather", below |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 on 12 October 1964) | **built**: [pad.ts](pad.ts), [model/pad.py](model/pad.py), the site's modules at that date, with the morning's bus. The pad is built as it stood for the Vostoks: what was raised or added for a vehicle 5.8 m taller is not found, so the lift stops short of the ship's hatch ([site-1.md](../../../places/tyuratam/site-1.md), "What stood when"). The surroundings are the site's of August 1961 |
+| Crew to be walked as | not built: the figures in the couches have no standing form yet |
+| The day's weather as data | **written**: [weather.ts](weather.ts), the range's own figures as Kamanin gives them and NOAA ISD at Kazalinsk and Aralsk; the air over the pad from ERA5 ([aloft.ts](aloft.ts)) |
+| Trajectory, the orbit as data, the flight as flown | **written**: [orbital.ts](orbital.ts), flown as [mission.md](mission.md) says; below |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit. Its Launch site and Fly say they are
-not built yet.
+So the flight has all three places: the Gallery, with the whole vehicle to be turned, cut open and
+taken apart; the Launch site on the morning of 12 October 1964; and Fly, from the pad to the
+ground.
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A57's figures as read (the Vostok-K's
+blocks with the later engines, Block I at its maker's thrust on Brügge's load) and Kosmos 47's
+instants, cut at the record's 523 s; like every Vostok's here it falls short of an orbit, at
+7,583 m/s where the orbit reached needs some 8,000. So what is shown from the separation is the
+published orbit begun where the ascent left the ship: a handover, not a result. Its period holds
+(90.1 min, not independent) and so does its apogee (409.1 km). The burn at 10:18:58, aimed from the
+Sun for the Vostok's 45 s and 136 m/s (neither found for this flight), brings the ball down
+**1,066 km short and 106 km across**, in the steppe north-west of the Aral Sea, at 10:43:17, four
+minutes early. The burn a minute later would land it 475 km short; Chertok's programmed 10:08:56
+4,367 km short: the record cannot hold the landing to a hundred kilometres. Under two main canopies
+taken as the Vostok's the ball falls 7.4 m/s, inside Kamanin's 7 to 8, and the soft-landing rocket
+worked from those figures leaves it 2.1 m/s at the ground, not the design's 0.2. Every miss is
+recorded in src/sim/misses.ts, nothing adjusted. The crew land in the ball: nobody ejects.
 
 ## What happened
 
@@ -131,7 +147,7 @@ Moscow time. An hour given for an orbit's number is reckoned from the period and
 | | Value | Source |
 | --- | --- | --- |
 | Liftoff | 12 October 1964, 07:30:01 UTC (10:30:01 Moscow time) | Siddiqi p. 423: "exactly 1030 hours, 1 second Moscow Time", and his launch log; McDowell's log |
-| Orbit as announced | 178 × 409 km, "about 65°", 90.1 min, "by preliminary data" | TASS, 12 October 1964; the registration at the United Nations (A/AC.105/INF.83) |
+| Orbit as announced | 178 × 409 km, "about 65°", 90.1 min, "by preliminary data" | TASS, 12 October 1964 (*Заря Востока* No. 241). The registration at the United Nations (A/AC.105/INF.83) has 178 × 409 km and 65°, and no period |
 | Orbit as reached | 177.5 × 408 km, 64.9° | Siddiqi p. 423; the Soviet encyclopedia (177.5 × 408) |
 | Orbits | 16; braking on the 16th, landing at the start of the 17th | Siddiqi, Table IB; Chertok; Kamanin |
 | Duration | 1 d 0 h 17 min 3 s | Siddiqi p. 425 and Table IB |
@@ -141,22 +157,29 @@ Moscow time. An hour given for an orbit's number is reckoned from the period and
 
 ## The weather
 
-For the launch, Kamanin's diary of 12 October: «Тихое морозное утро, температура — минус 8
+Now data ([weather.ts](weather.ts)). For the launch, Kamanin's diary of 12 October: «Тихое морозное утро, температура — минус 8
 градусов ... Метеоусловия для старта идеальные: ветер — 3–4 метра в секунду, видимость — более
 20 километров, высокие перистые облака.» A still, frosty morning, −8 °C at six by the range's
 clock; wind 3 to 4 m/s, visibility over 20 km, high cirrus. Chertok has the night clear and still
 and down to −10 °C; TASS's correspondent has the pad "flooded with a sparing autumn sun". No wind
-direction and no cloud height were found, and no station's report was looked for. For the landing
+direction and no cloud height were found at the range. NOAA ISD has two stations that morning:
+Kazalinsk, 97 km west, with two oktas of cirrus in filaments at 09:00 UTC and nothing lower, the
+wind 020° at 3.1 m/s and 7.2 °C; and Aralsk, with one okta of dense cirrus at 06:00 and the wind 050°
+at 3.1 m/s. Dzhusaly has no report for 1964. For the landing
 there is only the forecast of the 11th for both places, "clear, wind 5 m/s". Six days earlier, for
 Kosmos 47: seven tenths of cloud, wind 8 to 10 m/s gusting to 15, 9 to 12 °C.
 
 ## Where the sources disagree
 
 - **The orbit.** 178 by 409 km and 90.1 min (TASS) against 177.5 by 408 (Siddiqi; the Soviet
-  encyclopedia). A period of 90.1 min belongs to an orbit some 20 km lower at apogee than either.
-  Later catalogues give 336 to 377 km for the apogee (McDowell 371; Orbital Focus 377; Wikipedia
-  and Encyclopedia Astronautica 178 × 336 at 64.7°): later epochs, or other fits. The inclination
-  is 64.9° in Siddiqi's text and 64.77° in his Table IB, which is also Kosmos 47's figure.
+  encyclopedia). Read as a period node to node, 90.1 min agrees with the heights only over a ball
+  of 6,363 km, as the Vostoks' published orbits do (the heights are not said to be over the mean
+  Earth: TASS has «минимальное удаление от поверхности Земли»), and that is how it is flown.
+  Later catalogues give 336 to 377 km for the apogee (McDowell's launch log 371, his catalogue
+  177 × 336 at 64.72° for an epoch of 12 October; Orbital Focus 377; Encyclopedia Astronautica
+  178 × 336 at 64.70° and 89.60 min): other fits, on another model of the Earth (Siddiqi, p. 878).
+  The inclination is 64.9° in Siddiqi's text; his Table IB gives none for this flight (its 64.77
+  is Kosmos 47's and Kosmos 57's).
 - **When the braking engine fired.** 10:18:58 (RussianSpaceWeb) or 10:08:56 (Chertok, as the time
   in the sequencer's programme). The beacon heard at 10:22:30 and the landing at 10:47 fit the
   first.

@@ -167,7 +167,8 @@ for (const f of vostoks) {
       'the timer waits for the command to start it',
     );
     // the pilot set loose and the landings carry the record's names for them
-    assert.equal(eventOf(plan, downOf(plan).ejection).record?.id, 'seat-ejected');
+    // (a crew that stays in the ball has the record's own event at that height: the parachute container's cover)
+    assert.equal(eventOf(plan, downOf(plan).ejection).record?.id, o.ejection.event?.id ?? 'seat-ejected');
     assert.deepEqual(
       plan.record.marks.filter((m) => m.lands).map((m) => [m.id, m.lands]),
       (o.descent?.bodies ?? []).filter((b) => has(`${b.id}-down`)).map((b) => [`${b.id}-down`, b.id]),

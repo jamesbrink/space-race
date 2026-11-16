@@ -1,9 +1,16 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { vostokPlan } from '../../../vostok/vehicles/vostok-plan.ts';
+import { commanded, voskhodChutes, voskhodCommands, voskhodFlies } from '../../vehicles/voskhod-flies.ts';
+import { AREAS, MSK, orbital } from './orbital.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 import {
   SPEC,
   type PartWords,
   couch,
+  BASE,
   BOOSTERS,
   voskhodStack,
   voskhodParts,
@@ -12,9 +19,6 @@ import {
   voskhodMotors,
 } from '../../vehicles/voskhod-11a57.ts';
 import { voskhodCabin, voskhodSeat } from '../../vehicles/cabin.ts';
-
-/** Moscow time on a day of October 1964, as seconds from liftoff at 10:30:01 on the 12th. */
-const MSK = (day: number, h: number, m: number, s = 0) => ((day - 12) * 24 + h - 10) * 3600 + (m - 30) * 60 + (s - 1);
 
 const parts: PartWords[] = [
   {
@@ -438,35 +442,53 @@ const COUCHES = ['CouchLeft', 'CouchCentre', 'CouchRight'];
 // own head, and the headset's cap, earphones, strap and microphones on it, are not drawn (crew/flight_suit.py: every
 // `Helmet_` mesh). The commander's is first: the one an on-board view takes. They went aboard between the bus reaching
 // the pad at 08:15 Moscow time and "all three aboard" at 08:35, Yegorov first and Komarov last (README.md, Kamanin's
-// times to the minute: derived); there is no launch site to board them at yet.
+// times to the minute: derived): the launch site's couches can be boarded on foot between the two.
 const HEAD = ['Head', 'Cap', 'Earphones', 'ChinStrap', 'MicrophoneBooms', 'Microphones', 'Eyes', 'Brows', 'Lips'];
 const BOARDING: [number, number] = [-8101, -6901];
-const vehicle = voskhodStack({
-  flight: 'voskhod-1',
-  parts: voskhodParts('voskhod-1', [...launcherParts, ...parts]),
-  views: [
-    VIEW.stack,
-    VIEW.base,
-    VIEW.booster,
-    VIEW.tips,
-    VIEW.third,
-    VIEW.fairing,
-    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
-    { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
-    VIEW.descent,
-    VIEW.reserve,
-    VIEW.hatch,
-    VIEW.crew(COUCHES),
-    VIEW.instrument,
-    VIEW.engine,
-  ],
-  seats: [
-    voskhodSeat('Right', 'Komarov’s couch, by the hatch', HEAD, BOARDING),
-    voskhodSeat('Centre', 'Feoktistov’s couch, in the middle', HEAD, BOARDING),
-    voskhodSeat('Left', 'Yegorov’s couch, by the Vzor', HEAD, BOARDING),
-  ],
-  cabin: voskhodCabin(COUCHES),
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day, since the crew could do none of them.
+const DESCENT = orbital.descent!.bodies[0]!.chutes;
+const COMMANDS = voskhodCommands({
+  parted: 'on the day the sequence parted them after the burn; Moscow heard the ball’s beacon at 10:22:30',
+  crew: 'the crew',
+  cover: { id: 'cover-off', at: `its barometric switch, ${(orbital.ejection.altitude.value / 1000).toFixed(1)} km` },
+  chutes: DESCENT.map((c) => ({
+    name: c.name,
+    at: c.altitude ? `its barometric switch, ${(c.altitude.value / 1000).toFixed(1)} km` : 'with the cover',
+  })),
 });
+/** The module's parachutes as drawn, at their areas as the record has them (vehicles/voskhod-flies.ts). */
+const CHUTES = voskhodChutes(AREAS);
+
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
+const vehicle = site1Vehicle(
+  voskhodStack({
+    flight: 'voskhod-1',
+    parts: commanded(voskhodParts('voskhod-1', [...launcherParts, ...parts]), COMMANDS),
+    views: [
+      VIEW.stack,
+      VIEW.base,
+      VIEW.booster,
+      VIEW.tips,
+      VIEW.third,
+      VIEW.fairing,
+      // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
+      { id: 'spacecraft', label: 'Spacecraft', nodes: SPACECRAFT },
+      VIEW.descent,
+      VIEW.reserve,
+      VIEW.hatch,
+      VIEW.crew(COUCHES),
+      VIEW.instrument,
+      VIEW.engine,
+    ],
+    seats: [
+      voskhodSeat('Right', 'Komarov’s couch, by the hatch', HEAD, BOARDING),
+      voskhodSeat('Centre', 'Feoktistov’s couch, in the middle', HEAD, BOARDING),
+      voskhodSeat('Left', 'Yegorov’s couch, by the Vzor', HEAD, BOARDING),
+    ],
+    cabin: voskhodCabin(COUCHES),
+  }),
+  BASE,
+);
 
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-1',
@@ -482,6 +504,10 @@ export const flight: Flight = {
   launch: '1964-10-12T07:30:01Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens as the bus has stopped by the pad, 08:15 (Kamanin): this morning's people are not built, so the bus
+  // is what there is to see. Opened at liftoff, the deck is empty
+  opens: { at: MSK(12, 8, 15), model: 'pad', view: 'bus' },
+  weather: WEATHER,
   crew: ['Vladimir M. Komarov', 'Konstantin P. Feoktistov', 'Boris B. Yegorov'],
   summary:
     'The first crew of more than one: a pilot, an engineer and a doctor in a Vostok’s ball with its ejection seat ' +
@@ -601,7 +627,7 @@ export const flight: Flight = {
       value: 408,
       unit: 'km',
       confidence: 'documented',
-      note: '408 km (Siddiqi; the encyclopedia); 409 km (TASS; the UN registration). The announced period of 90.1 min belongs to an orbit some 20 km lower at apogee; later catalogues print 336 to 377 km for later epochs. The August plan had 240 km',
+      note: '408 km (Siddiqi; the encyclopedia); 409 km (TASS; the UN registration). Read node to node, the announced 90.1 min agrees with the heights only over a ball of 6,363 km, as the Vostoks’ do; later catalogues print 336 to 377 km for later epochs. The August plan had 240 km',
     },
     {
       group: 'Spacecraft',
@@ -609,7 +635,7 @@ export const flight: Flight = {
       value: 64.9,
       unit: 'deg',
       confidence: 'documented',
-      note: '64.9° (Siddiqi p. 423); “about 65 degrees” (TASS). His Table IB prints 64.77, which is also Kosmos 47’s',
+      note: '64.9° (Siddiqi p. 423); “about 65 degrees” (TASS). His Table IB gives none for this flight: its 64.77 is Kosmos 47’s and Kosmos 57’s',
     },
     {
       group: 'Spacecraft',
@@ -655,6 +681,7 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 64.9° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    ...SITE1_SPECS,
   ],
   motors: voskhodMotors({
     strapOns: {
@@ -687,5 +714,17 @@ export const flight: Flight = {
       note: 'Nothing read says the 3KV’s differed. Komarov turned the ship by hand on the sixth orbit (TASS, 13 October 1964)',
     },
   }),
-  models: [vehicle],
+  // the flight as an orbit, written from its record: stages, events, the orbit, the braking burn and the descent, each with
+  // its source (orbital.ts; mission.md), flown through the day's air over the pad
+  plan: { ...vostokPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on Kosmos 47’s instants but for the third stage’s cutoff at 523 s, the one this flight’s record gives, and like the Vostoks’ it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here, in the view and on the flight deck, is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'Sixteen revolutions are flown round to the braking burn at 10:18:58 on 13 October, and the crew comes down in the ball (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the descent's bodies, from the record (vehicles/voskhod-flies.ts)
+  flies: voskhodFlies(orbital, CHUTES),
+  models: [vehicle, pad],
+  // the place round the pad: as modelled for August 1961, nothing modelled being known to have changed by October 1964 (what
+  // was raised for the taller 11A57 is not found: places/tyuratam/site-1.md, "What stood when")
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };

@@ -239,7 +239,7 @@ for (const o of ORBITERS) {
     const four = ['B', 'V', 'G', 'D'].map((l) => run.sheds.get(`stage:0/${l}`));
     assert.ok(four.every(Boolean), 'each strap-on is flown');
     const t0 = four[0].from;
-    assert.equal(t0, 119.5, 'at the stage’s separation');
+    assert.equal(t0, o.plan.craft[0].joints.find((j) => j.id === 'stage:0').at.value, 'at the stage’s separation');
     const at = (t) => four.map((b) => b.at(t));
     const middle = (s) => s.map((x) => x.r).reduce((m, r) => m.map((v, i) => v + r[i] / 4), [0, 0, 0]);
     // as they leave: each from its own place round the stack, 2.78 m out

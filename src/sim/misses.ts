@@ -109,6 +109,16 @@ const COAST_V6 =
   'Three days are flown round (48 revolutions) in the days’ own thermosphere (Jacchia 1971) on the ship’s free-molecular drag, to a burn at 10:50:40 derived from the cycle’s command at 09:39:40 and “approximately” its 71st minute (Kogutenko). ' +
   'The orbit falls as TASS’s did: at 15:00 on 18 June it is 176.5 by 220.3 km and 88.15 min where TASS has 174 by 218 km and 88.1 (all within tolerance). In the 1976 mean air on the ball’s continuum drag it came down 3,757 km short. ' +
   'What each thing not known is worth, as diagnoses and not inputs: the published period is to a tenth of a minute, and 0.05 min less brings it 1,211 km nearer, 0.05 min more 923 km further; the burn a minute later 401 km nearer, five minutes later 2,381 km (it would then land 20 to 25 minutes after the burn, where Vostok 1’s pilot took 28). Not established which. Not adjusted';
+/** Voskhod 1's ascent: the 11A57's blocks on Kosmos 47's instants, cut at the record's 523 s, fall short as the Vostoks' do. */
+const SHORT_VK1 =
+  'Voskhod 1’s ascent is flown on the 11A57’s figures as this record reads them (the Vostok-K’s blocks with the later engines’ thrusts, Block I at its maker’s thrust and impulse on Brügge’s load) and Kosmos 47’s instants, cut at the record’s 523 s: ' +
+  'at the last cutoff it is level at the planned 177.5 km with 7,583 m/s, where 177.5 by 408 km needs some 8,000, so 177.5 km is the top of the orbit it has and its perigee is under the ground. ' +
+  'Block I has 1.2 t left at its cutoff, so the shortfall is not its load. What owns it is not established: the first two stages’ throttling and final stage, which give the Vostoks the same shortfall (SHORT, Vostok 1’s), the 11A57’s own blocks and staging times, none of which is this flight’s, and Block I’s mass, which is no 1964 figure. Not adjusted';
+/** Voskhod 1's day round: a burn whose start one account gives, whose length and impulse none does. */
+const COAST_VK1 =
+  'Sixteen revolutions are flown in the day’s thermosphere to a burn at 10:18:58 (one secondary account’s seconds: Zak, from Baturin) aimed from the Sun as a Vostok’s, for the TDU-1’s 45 s and the Vostok’s 136 m/s (neither found for this flight). ' +
+  'As diagnoses, not inputs: the burn a minute later lands it 475 km short, five minutes later 4,146 km long, and at Chertok’s programmed 10:08:56 4,367 km short; the published period 0.05 min shorter 712 km short, longer 1,393; aimed straight against the motion 1,419 km short; 100 m/s 1,084 km long, 155 m/s 1,725 km short. ' +
+  'The record cannot hold a landing to a hundred kilometres: its burn’s length and impulse are not known. What owns the miss is not established. Not adjusted';
 /** Vostok 4's ascent is the type's throughout. */
 const SHORT_V4 =
   'Vostok 4’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-22’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
@@ -548,6 +558,40 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         by: 1_761_360,
         slack: 5_000,
         why: 'Flown from the two records, Vostok 4 comes no nearer Vostok 3 than 1,768 km in its first two revolutions, where TASS has 6.5 km and the pilots about 5. The records cannot hold a check of kilometres: Vostok 3’s place a day on is its period carried round sixteen times (a hundredth of a minute is 75 km), now the one its heights give, 88.54 min, with no traceable published period (on the untraced 88.33 min it was 234 km), and Vostok 4’s place at its cutoff is the type’s reckoning (`injection.arc`, 144 km a degree). That the second launch was timed to put it beside the first is the record; where each ship was, to that precision, is in nothing read. Not adjusted',
+      },
+    },
+  }),
+  'ussr/voskhod/voskhod-1': inUnits({
+    coast: {
+      crossTrack: { by: -106_456, slack: 5_000, why: `It comes down 106 km across the track. ${COAST_VK1}` },
+      alongTrack: {
+        by: -1_066_320,
+        slack: 20_000,
+        why: `It comes down 1,066 km short along the track, in the steppe north-west of the Aral Sea. ${COAST_VK1}`,
+      },
+    },
+    ascent: {
+      perigee: { by: -698_086, slack: 2_000, why: SHORT_VK1 },
+      apogee: {
+        by: -230_500,
+        slack: 300,
+        why: `The cutoff is level at the 177.5 km planned and too slow, so 177.5 km is the orbit’s top: ${SHORT_VK1}`,
+      },
+      period: { by: -557.6, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_VK1}` },
+    },
+    shown: {
+      alongTrack: { by: -1_198_430, slack: 20_000, why: `${PUBLISHED}. ${COAST_VK1}` },
+    },
+    descent: {
+      'module.at': {
+        by: -226.7,
+        slack: 10,
+        why: 'Down at 10:43:17, 3 min 47 s before the record’s 10:47:04: where the ship comes down is the burn’s, whose length and impulse are not known (COAST_VK1), and from 5 km it takes the ball 8 min on the parachutes as taken (the Vostok’s, the main two of them). Not adjusted',
+      },
+      'module.speed': {
+        by: 1.917,
+        slack: 0.05,
+        why: 'It touches down at 2.1 m/s, not the design’s 0.2: the rocket is worked from Kamanin’s 7 to 8 m/s under the main parachutes (7.5 taken), and on the two main canopies as taken (two of the Vostok’s 574 m²) the ball comes down at 7.4, so the rocket stops it short of the ground, it rises and falls again. Its thrust and burn are not found and the parachutes’ areas are not: the miss is between the two estimates. Not adjusted',
       },
     },
   }),

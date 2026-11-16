@@ -189,6 +189,20 @@ function atlasInputs(f, o, run) {
   console.log(`  #   rarefied.area +20 %: ${moved(withInput(o, ['rarefied', 'area'], o.rarefied.area.value * 1.2))}`);
 }
 
+// Voskhod 1's: no ejection (the parachute container's cover at the design's 5 km: documented), the burn's end, impulse and the
+// parting not found, the landing point spacefacts' (estimated)
+INPUTS['ussr/voskhod/voskhod-1'] = [
+  ['orbit', 'radius'],
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'separation'],
+  ['entry', 'area'],
+  ['landing', 'latitude'],
+  ['landing', 'longitude'],
+];
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });
