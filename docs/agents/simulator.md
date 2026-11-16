@@ -13,7 +13,8 @@ not felt in it: every integrator here, batch, live and predicting, keeps that ru
 end inside it is flown in two there) in an Earth-centred frame that does not turn (the flight's,
 `world/earthframe.ts` `frameOf`: the inertial frame of date, the Sun's and the published elements', which every simulator,
 predictor, deck and view of a run shares; world.md),
-under J2 gravity, the 1976 standard atmosphere and drag through air that turns with the Earth, and
+under J2 gravity, the day's air (the column over the pad where its flight carries one, the 1976 standard
+atmosphere elsewhere: air.ts `skyOf`) and drag through air that turns with the Earth and blows as the day's wind, and
 returns samples and `Results`. Attitude is prescribed, not flown: the gyros' tilt going up, heat
 shield first coming down. `from` starts it at separation from a given state, so the capsule's half
 can be flown from what the report says separation was, whatever the booster did.
@@ -138,7 +139,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     tests/frame.test.mjs holds the two within a millimetre.
   - Level is the ellipsoid's (`up`), never the line to the centre.
 - **One body of flight physics.** One function each, which every flier calls:
-  - the air at a point: air.ts `airAt` (place, height, the 1976 air, the motion through it with the day's wind);
+  - the air at a point: air.ts `airAt` (place, height, the plan's air, the motion through it with the day's wind) in the plan's
+    `Sky` (`skyOf`): the day's column over the pad (`FlightPlan.aloft`, the flight's `DayWeather.aloft`) within it, the 1976
+    standard scaled to meet it below its ground and above its top (eased to the standard's own by `COLUMN_EASED`, 70 km), the
+    record's sounding where it has one, else the column's wind; the standard and the sounding (or calm) for a plan with no
+    column, and for everything with `DAY_AIR.on` false. A ballistic flight flies it to its splash; a flight into orbit only
+    in its ascent (its coast and descent come down hours later, far from the pad, in the standard air and calm). An ascent's
+    steering law turns along the motion over the ground, the programme made for calm air, so the wind sets its angle of attack;
   - drag: air.ts `airDrag`, -1/2 rho |w| w CdA;
   - thrust in air: thrust.ts `nozzleThrust`, n (throttle Fvac - Ae p). A sea-level figure's vacuum one is `vacuumOf`,
     labelled derived;

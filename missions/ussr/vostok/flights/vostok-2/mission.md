@@ -74,10 +74,10 @@ scene shows), then the descent. Tolerances were set before anything was flown.
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Greatest load, first stage | about 4.5 g (≤ 5, by feel) ± 1 | 4.72 g | yes | |
-| Perigee at the last cutoff | 183 km ± 5 | −184 km | **miss** | the type's ascent falls short, as Vostok 1's (SHORT) |
+| Perigee at the last cutoff | 183 km ± 5 | −202 km | **miss** | the type's ascent falls short, as Vostok 1's (SHORT) |
 | Apogee at the last cutoff | 244 km ± 10 | 180 km | **miss** | the same |
-| Inclination | 64°56′ ± 0.05° | 64.99° | **miss** (0.06) | Vostok 1's aiming azimuth, estimated |
-| Period at the last cutoff | 88.46 min ± 15 s | 84.15 min | **miss** | the same as the perigee |
+| Inclination | 64°56′ ± 0.05° | 64.98° | yes (0.05) | Vostok 1's aiming azimuth, estimated: 64.99°, a miss, in still standard air; the day's wind turns it 0.01° |
+| Period at the last cutoff | 88.46 min ± 15 s | 83.97 min | **miss** | the same as the perigee |
 | Period, node to node, of the orbit begun | 88.46 min ± 2 s | 88.46 | yes | not independent: the published orbit is read as mean elements with this nodal period (issue #8) |
 | Apogee as flown round | 244 km ± 5 | 245 km | yes | (read as osculating, as until November 2026: 265 km, a miss) |
 | Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 60 km | **miss** | not found: the burn's aim the first suspect (as osculating: 79 km, within) |

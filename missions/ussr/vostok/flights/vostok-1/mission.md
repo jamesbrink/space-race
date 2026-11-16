@@ -452,7 +452,7 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 | **What kind of elements the published orbit is** | not stated | **Read as mean elements, the period nodal** (world/meanelements.ts, Kozai's first order, tested against Jason-3's and Sentinel-3A's published mean orbits; the period's kind is estimated: issue #8). Flown so, the apogee flown round is 326 km against 327 (read as osculating at cutoff, as until November 2026: 345, 18 km high) |
 | **Where on the orbit at cutoff** (`injection.arc`) | not found | **Estimated** today: 27.5° by hand, ±3°. Replaced by the flown ascent (step 7), when it becomes *derived*. Not to be solved from the landing point |
 | **Argument of perigee** (`injection.anomaly`) | not found | **Estimated**: perigee at cutoff. The ascent gives it. G's "apogee at Cape Horn" is a loose check, not an input |
-| **Pitch programme** | not found for the 8K72K (searched: Chertok vols 2 and 3, Siddiqi, Zak, K, B21, the 1957 reports of Sputnik's launch). Soyuz's from Baikonur is published (Starsem's manual, Fig. 2-4), a different vehicle | **A stated law**, `ascent.guidance` (src/sim/staged.ts): vertical for 15 s (estimated, from Soyuz's), a pitch-over over 10 s (estimated) to an angle that is solved, no angle of attack through the air to the strap-ons' separation, then the linear-tangent law to the last cutoff; the launch plane, the pitch-over's angle and the tangent's rate solved so that at 676 s it is level at the planned 180 km in a plane of 64.95°. So perigee and inclination are targets, not checks; **apogee, period, speeds and loads are results**. It is not the stored programme, which had radio corrections until 156 s |
+| **Pitch programme** | not found for the 8K72K (searched: Chertok vols 2 and 3, Siddiqi, Zak, K, B21, the 1957 reports of Sputnik's launch). Soyuz's from Baikonur is published (Starsem's manual, Fig. 2-4), a different vehicle | **A stated law**, `ascent.guidance` (src/sim/staged.ts): vertical for 15 s (estimated, from Soyuz's), a pitch-over over 10 s (estimated) to an angle that is solved, along the motion over the ground to the strap-ons' separation (no angle of attack in still air: the day's wind sets it), then the linear-tangent law to the last cutoff; the launch plane, the pitch-over's angle and the tangent's rate solved so that at 676 s it is level at the planned 180 km in a plane of 64.95°. So perigee and inclination are targets, not checks; **apogee, period, speeds and loads are results**. It is not the stored programme, which had radio corrections until 156 s |
 | **Throttle** | found in kind, not in level: the strap-ons' intermediate stage before separation, the core's final stage on its steering chambers for 10 s (the 8D75's, lpre.de; Gagarin's 10 to 15 s of weightlessness), the RKS and SOB regulators | **Flown in kind at estimated levels** (section 6, "read again"): 60 % for the strap-ons' last 6.4 s, 10.4 % for the core's last 10 s. Worth more than the whole miss either way |
 | **Cutoff logic** | found: the strap-ons by the integrator at 119.50 s (PPP); the core by the autonomous system 0.46 s late, the radio command having failed; Block E 2.4 s long; 25.43 m/s over (B21) | Fly the record's times (119.5, 300, 676 s) and let the orbit be a result. 0.6 s is worth 100 km of apogee (L), so **expect apogee in `MISSES`**, blamed on thrust and mass figures good to 1 to 4 %; do not tune |
 | **Nozzle exit areas** | the chambers' exits found (lpre.de, from Gakhun et al.): 720 mm main, 310 mm steering | **Derived** from the two thrusts, 1.794 and 1.985 m², which the geometry confirms to 1 and 3 % |
@@ -629,13 +629,13 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
 | | Burned to the times (first reading) | Cut on the planned orbit's speed (second) | Read again (now) | Record | |
 | --- | --- | --- | --- | --- | --- |
 | Block E cut off | 676 s | 659.3 s | **676.4 s, 46 kg left** | 676 s | **holds**: the integrator's setting and Block E's figures agree with the recorded instant |
-| Inclination | 64.95° (target) | 64.95° (target) | **64.99°** | 64.95° | **holds**, and is now a check |
+| Inclination | 64.95° (target) | 64.95° (target) | **64.97°** | 64.95° | **holds**, and is now a check |
 | Core cut off | 5,810 m/s | 5,812 | 5,558 m/s, **4.5 t left** | about 5.5 km/s | holds |
-| At the last cutoff | 7,986 m/s | 7,841 | **7,681 m/s, 162 short** | 7,844 needed | **misses: does not reach orbit** (perigee -205 km) |
+| At the last cutoff | 7,986 m/s | 7,841 | **7,691 m/s, 153 short** | 7,844 needed | **misses: does not reach orbit** (perigee -176 km) |
 | Most load, first stage | 5.25 g | 5.25 | 4.72 g | about 5 | holds |
 
 **The finding now.** With the third stage cut where its integrator was set and arriving at the recorded instant, the
-miss is the first two stages': 162 m/s short. Their throttling, documented in kind, is worth more than the whole miss either
+miss is the first two stages': 153 m/s short (162 in the standard atmosphere). Their throttling, documented in kind, is worth more than the whole miss either
 way (no core final stage: +444 m/s; 5 s of it, not 10: +222; no strap-on intermediate stage: +143), and the core carries 4.5 t
 to its cutoff, which a vehicle with tank-emptying regulators would not. So the core's load (100.4 less 6.8 t) and its final
 stage as the sources give them do not agree with one another; which is wrong is not known.
@@ -708,7 +708,7 @@ and recorded in each input's source:
   sheets, is in the same file and was not published), they stay as they were.
 
 The ascent's checks are therefore as above but for the third stage's cutoff (676.35 s against 677.08 ± 3 s: holds), and the
-miss is still 162 m/s short.
+miss is still 153 m/s short.
 
 **The law's level put right (November 2026).** The turn's tilt had been measured between the plumb line in the launch
 plane and a level square to the line to the Earth's centre, 0.16° apart at Tyuratam, so the law's axis came out up to
@@ -717,4 +717,14 @@ tests/staged.test.mjs), the law's solved pitch-over is 9.62° (was 9.23°) and i
 0.3318); at the last cutoff 7,681 m/s (was 7,686), 162 m/s short (was 157), perigee −205 km (was −189), period 84.10 min
 (was 84.26); Block E's cutoff, 676.35 s with 46 kg left, does not move. The miss grew because the old axis was giving the
 stack thrust it did not have: nothing was changed to bring it back.
+
+**The day's air (November 2026, issue #31).** The ascent is flown through ERA5's column over the pad at the hour nearest
+liftoff (`FlightPlan.aloft`, weather.ts, `derived`; sim/air.ts `skyOf`), within 2 per cent of the 1976 standard to 48 km,
+and its wind, some 20 m/s from the west at 10 km. The law's turn follows the motion over the ground, so the wind sets the
+angle of attack (staged.ts `lawOf`); its solved pitch-over is 9.33° (9.62° in still standard air). At the last cutoff
+7,691 m/s (was 7,681), 153 m/s short, perigee −176 km (was −205), period 84.38 min (was 84.10), inclination 64.97°; the
+greatest dynamic pressure 47.2 kPa at 61.5 s (was 48.9). The coast and the descent, hours on and far from the pad, fly the
+standard air and calm as before. The live vehicle steered by its guidance now meets the batch run's last cutoff to
+0.03 m/s and 81 m, where in still air it was 3.2 m/s fast and 1.8 km low (the loop's lag through the turn): the wind's
+part in that has not been told apart from the loop's, and the live miss is gone from the table only because it is inside.
 

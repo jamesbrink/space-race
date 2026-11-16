@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { atmosphere } from '../src/sim/atmosphere.ts';
+import { skyOf } from '../src/sim/air.ts';
 import { ballisticOf, fly } from '../src/sim/fly.ts';
 import {
   advance,
@@ -130,7 +131,7 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
   const heating = flight.plan.craft[0].heating;
   const run = fly(flight.plan, siteFrame(flight.site), flight.site.seaLevel.value);
   const started = performance.now();
-  const { states, results } = heatRun(heating, run.samples);
+  const { states, results } = heatRun(heating, run.samples, skyOf(flight.plan).air);
   const took = performance.now() - started;
   // (about 8 ms on a quiet machine: the bound is for a busy one, and catches only a change of order)
   assert.ok(took < 1000, `cheap enough to work out as the page opens: ${took.toFixed(1)} ms for ${run.samples.length} samples`);
@@ -142,10 +143,12 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
         .map((s, i) => `  ${s.name}: ${results.peaks[i].temperature.toFixed(1)} K at ${results.peaks[i].at.toFixed(1)} s`)
         .join('\n'),
   );
-  // (the whole flight's run, which ends its powered flight 4 % fast: tests/sim.test.mjs. Flux goes as the cube of speed)
-  near(results.entryFlux / 1000, 78.8, 1.5, 'peak stagnation flux coming down, kW/m2');
+  // (the whole flight's run, which ends its powered flight 4 % fast: tests/sim.test.mjs. Flux goes as the cube of speed.
+  // 78.8 in the standard atmosphere; 77.0 through the day's air, whose column is 4 to 9 per cent denser than the standard
+  // between 10 and 20 km and 7 per cent at its top, 48 km: sim/air.ts `skyOf`)
+  near(results.entryFlux / 1000, 77.0, 1.5, 'peak stagnation flux coming down, kW/m2');
   near(results.entryFluxAt, 510, 2, 'when');
-  near(results.exitFlux / 1000, 17.0, 0.5, 'peak stagnation flux going up, kW/m2');
+  near(results.exitFlux / 1000, 17.8, 0.5, 'peak stagnation flux going up, kW/m2'); // (17.0 in the standard atmosphere)
   near(results.load / 1e6, 2.62, 0.08, 'heat load at the stagnation point, MJ/m2');
   near(shield.temperature, 313.3, 1, 'the heat shield at its hottest, K');
   near(afterbody.temperature, 394, 4, 'the afterbody shingles at their hottest, K');
@@ -166,7 +169,7 @@ test('Mercury-Redstone 3: the heating its record’s run gives', () => {
   const maxQ = run.samples.reduce((a, b) => (b.t < 140 && b.q > a.q ? b : a));
   const there = states[run.samples.indexOf(maxQ)];
   assert.ok(there.flux < 6000, `at the greatest dynamic pressure going up, ${there.flux.toFixed(0)} W/m2`);
-  assert.ok(atmosphere(maxQ.altitude).density > 0.2);
+  assert.ok(skyOf(flight.plan).air(maxQ.altitude).density > 0.2);
 });
 
 // Every ballistic flight with heating: the arithmetic held on its own run.
@@ -176,8 +179,8 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
   const run = fly(each.plan, siteFrame(each.site), each.site.seaLevel.value);
 
   test(`${name}: the same heating whether worked all at once or kept up sample by sample, as a flight being flown is`, () => {
-    const whole = heatRun(heating, run.samples);
-    const log = new HeatLog(heating);
+    const whole = heatRun(heating, run.samples, skyOf(each.plan).air);
+    const log = new HeatLog(heating, skyOf(each.plan).air);
     const growing = [];
     for (const s of run.samples.slice(0, 1200)) {
       // (the head is replaced until it is kept: cockpit.ts)
@@ -190,7 +193,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
     const states = log.upTo(growing);
     assert.equal(states.length, 1200);
     // and what it came to is the same, though the head was replaced at every step (it is not summed again from the start each time)
-    assert.deepEqual(log.results, heatRun(heating, run.samples.slice(0, 1200)).results);
+    assert.deepEqual(log.results, heatRun(heating, run.samples.slice(0, 1200), skyOf(each.plan).air).results);
     for (const i of [0, 300, 700, 1100, 1199]) {
       assert.deepEqual(states[i], whole.states[i], `state ${i}`);
     }
@@ -203,7 +206,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
 
   test(`${name}: the heating the simulator flies`, () => {
     const started = performance.now();
-    const { states, results } = heatRun(heating, run.samples);
+    const { states, results } = heatRun(heating, run.samples, skyOf(each.plan).air);
     const took = performance.now() - started;
     // (about 8 ms on a quiet machine: the bound is for a busy one, and catches only a change of order)
     assert.ok(took < 1000, `cheap enough to work out as the page opens: ${took.toFixed(1)} ms for ${run.samples.length} samples`);
@@ -231,7 +234,7 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
     const maxQ = run.samples.reduce((a, b) => (b.t < 140 && b.q > a.q ? b : a));
     const there = states[run.samples.indexOf(maxQ)];
     assert.ok(there.flux < 6000, `at the greatest dynamic pressure going up, ${there.flux.toFixed(0)} W/m2`);
-    assert.ok(atmosphere(maxQ.altitude).density > 0.2);
+    assert.ok(skyOf(flight.plan).air(maxQ.altitude).density > 0.2);
   });
   test(`${name}: every heating input says how sure it is`, () => {
     const measures = [heating.noseRadius, heating.starts];
@@ -241,11 +244,11 @@ for (const each of BALLISTIC.filter((f) => f.plan.craft[0].heating)) {
       assert.ok(m.source.length > 20, `a source for ${m.value}`);
     }
     // the judgements, and how far a tenth more of each moves the shield's and the afterbody's peak
-    const base = heatRun(heating, run.samples).results.peaks;
+    const base = heatRun(heating, run.samples, skyOf(each.plan).air).results.peaks;
     const weigh = (label, change) => {
       const model = structuredClone(heating);
       change(model);
-      const peaks = heatRun(model, run.samples).results.peaks;
+      const peaks = heatRun(model, run.samples, skyOf(each.plan).air).results.peaks;
       console.log(
         `  ${label} +10 %: shield ${(peaks[0].temperature - base[0].temperature).toFixed(2)} K, afterbody ${(peaks[1].temperature - base[1].temperature).toFixed(2)} K`,
       );

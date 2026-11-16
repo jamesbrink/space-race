@@ -121,20 +121,28 @@ axis; in still air 10 % at 75.5 s) and the parachutes open in 4.2 and 2.8 kPa.
 
 | | Report | Flown whole | Capsule flown from the report's separation |
 | --- | --- | --- | --- |
-| Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,344.6 m/s, +4.1 % | (the report's, as the start) |
-| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,046.2 m/s, +4.7 % | (the report's) |
-| Apogee | 187.4 km | 202.1 km, +7.8 % | 187.0 km |
-| Range | 487.3 km | 538.0 km, +10.4 % | 492.1 km |
-| Greatest dynamic pressure going up | 28.1 kPa (586 lb/sq ft) | 26.6 kPa, -5.0 % | |
+| Speed at separation, space-fixed | 2,251.9 m/s (7,388 ft/s) | 2,337.2 m/s, +3.8 % | (the report's, as the start) |
+| Speed at separation, Earth-fixed | 1,955.0 m/s (6,414 ft/s) | 2,038.5 m/s, +4.3 % | (the report's) |
+| Apogee | 187.4 km | 200.3 km, +6.9 % | 187.0 km |
+| Range | 487.3 km | 534.2 km, +9.6 % | 492.1 km |
+| Greatest dynamic pressure going up | 28.1 kPa (586 lb/sq ft) | 27.7 kPa, -1.3 % | |
 | Load going up, entry load | 6.3 g, 11.0 g | 6.29 g, 11.7 g | 10.8 g |
-| Landing | 15:22.0, 27°13.7′N 75°53′W | 15:38.0, 58.4 km from it | 15:22.1 |
+| Landing | 15:22.0, 27°13.7′N 75°53′W | 15:35.9, 54.6 km from it | 15:22.1 |
 
 The powered flight ends 4 % fast, and everything after follows from that: leaving the pad at
 1.19 g, one per cent in thrust or weight is three to four in speed, and the engine is two figures
 from a summary table, held steady with no build-up or tail-off. Flown from the separation the
-report gives, the capsule's half agrees to a per cent, except the entry's greatest dynamic pressure
-(5.3 % low). Every miss is recorded with its likely cause in the test, which fails if one appears,
+report gives, the capsule's half agrees to a per cent, and the entry's greatest dynamic pressure
+within its 5 % (4.8 % low; 5.4 % in the standard atmosphere). Every miss is recorded with its likely cause in the test, which fails if one appears,
 grows or goes away.
+
+**The day's air.** Everything is flown through the air over the Cape that morning: ERA5's column over the pad at
+the hour nearest liftoff (`FlightPlan.aloft`, the flight's weather.ts, `derived`; sim/air.ts `skyOf`), 37 levels to
+48 km, 2 per cent thinner than the 1976 standard at the ground, 4 to 9 per cent denser from 10 to 20 km. Through its
+greatest dynamic pressure, at 11 to 12 km, that is what the record's figure needed: in the standard atmosphere the run
+was 5.05 per cent low, a recorded miss, and through the day's air it is 1.27 per cent low, inside. The rest of the
+flight moves with it a little, toward the record (apogee +6.86 % against +7.85 %, the speed at separation +3.79 %
+against +4.12 %).
 
 **The day's wind.** Everything is flown through the winds over the Cape that morning
 (`FlightPlan.winds`): the Postlaunch Report's Figure 10.3-1, "Cape wind profile approximately 5
@@ -148,25 +156,25 @@ sounding bears out (280 at 58 knots at 45,900 ft against the figure's 282 at 57.
 nothing is recorded and the wind is taken to die away by 30 km (`calmAbove`, estimated: moving it
 changes nothing to a hundredth of a per cent). The westerly is mostly behind the flight:
 
-| Flown whole | Still air | The day's wind |
+| Flown whole, through the day's air | Still air | The day's wind |
 | --- | --- | --- |
-| Apogee | +7.72 % | +7.85 % |
-| Range | +10.01 % | +10.42 % |
-| Greatest dynamic pressure going up | -3.27 % | -5.05 % (a miss, recorded) |
-| Speed at separation | +3.99 % | +4.12 % |
-| Entry load | +6.17 % | +6.49 % |
-| Landing | 15:37.9, 56.3 km from the record's point | 15:38.0, 58.4 km from it |
+| Apogee | +6.73 % | +6.86 % |
+| Range | +9.19 % | +9.63 % |
+| Greatest dynamic pressure going up | +0.67 % | -1.27 % |
+| Speed at separation | +3.65 % | +3.79 % |
+| Entry load | +5.66 % | +5.98 % |
+| Landing | 15:35.6, 52.3 km from the record's point | 15:35.9, 54.6 km from it |
 
 So the wind takes each figure a little further from the record, and is kept: it is the day's, and
 nothing is fitted. It earns its place where the record shows it: the report's angle of attack going
 up (Figure 4.2-8, the gyros' pitch less the Earth-fixed flight-path angle) peaks at about 1.5° at
 about 01:32, and so does the live run's in the day's wind (1.60° at 91 s), where in still air it is
 0.96° at 54 s. Under the main parachute the capsule drifts 655 m west-south-west in five minutes and
-meets the sea moving at the surface wind. The greatest dynamic pressure is now 5.05 % low: the record's
-is "derived from AZUSA and FPS-16 radar data" and does not say whether a wind went into it
-(`src/sim/misses.ts`). Simplified: one sounding at one place stands for the whole flight (the landing
-area's own 12 knots has no direction in the report), with no gusts or turbulence, straight lines
-between the heights read, and the air's density a standard year's, not the day's.
+meets the sea moving at the surface wind. The tail wind through the greatest dynamic pressure takes 1.9 per cent
+off it; the record's is "derived from AZUSA and FPS-16 radar data" and does not say whether a wind went into it.
+Simplified: one sounding and one column at one place stand for the whole flight (the landing area's own 12 knots has no
+direction in the report), with no gusts or turbulence, straight lines between the heights read, and above the column's
+top, 48 km, the standard atmosphere scaled to meet it and eased to the standard's own by 70 km.
 
 **Flown live.** `src/sim/vehicle.ts` flies the same inputs as a rigid body that is steered, by a
 hand or by an autopilot holding the tilt programme, and for that it needs figures the reports

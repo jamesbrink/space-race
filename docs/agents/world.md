@@ -219,14 +219,16 @@ layers hold to the hypsometric equation within 2 per cent (tests/aloft.test.mjs)
 with the clock (viewer/day.ts `windsOf`: the record's at liftoff, turned and scaled as the hours' is; rendering.md,
 "The wind follows the clock"), a function of the instant like the light, so it never steps either.
 
-What the simulator is to read (src/sim, not here; the note for whoever does it): the air at a height above the sea is
-`aloftAt(flight.weather.aloft, height)` where that answers, and the 1976 standard's (`atmosphere`) where it does not
-(below the column's ground, above its top, a flight with no weather), the run saying which (a figure that leans on the
-column is `derived`, on the standard `estimated`). So that nothing steps at the top, the standard above it is scaled by
-the column's density over the standard's at the top, the ratio easing to 1 by 70 km. The wind aloft is the record's own
-sounding where it has one (`FlightPlan.winds`, sim/air.ts `blowOf`: `documented`), else the column's (`aloftAt(...).wind`),
-else calm; at the pad, the hour's surface wind (`hourAt(flight.weather.hours, liftoff)`). Nothing is fitted to it: a
-flight that misses more under ERA5's air than under the standard's says so in its MISSES.
+What the simulator reads (sim/air.ts `skyOf`; simulator.md, "The core"): each flight's plan carries its day's column
+(`FlightPlan.aloft`, from `DayWeather.aloft`), and the air at a height above the sea is `aloftAt(aloft, height)` where
+that answers; below the column's ground and above its top the 1976 standard's (`atmosphere`) scaled by the column's
+density over the standard's at that end, held below the ground and eased to 1 by 70 km above the top, so nothing steps
+(`Sky.column` says whether a figure leans on the column: `derived`, or on the standard alone: `estimated`). The wind aloft
+is the record's own sounding where it has one (`FlightPlan.winds`, sim/air.ts `blowOf`: `documented`), else the column's
+(`aloftAt(...).wind`), held below its lowest level and falling evenly to nothing at 70 km, else calm. The column is the
+pad's at liftoff: a flight into orbit flies it only in its ascent. Not yet read: the hour's surface wind at the pad
+(`hourAt(flight.weather.hours, liftoff)`), which the column's lowest level stands for. Nothing is fitted to it: a flight
+that misses more under ERA5's air than under the standard's says so in its MISSES.
 
 What src/sim is still to do with the air, the ephemeris and the fast clock is tracked as GitHub issue #31.
 

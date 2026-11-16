@@ -186,25 +186,27 @@ separation (height, climb, heading).
 
 | Check (*Results*, Table 2-I and p. 6) | Record | Flown whole | From the record's speed at separation |
 | --- | --- | --- | --- |
-| Greatest height | 102.8 nmi | +11.7 % | +5.8 % |
+| Greatest height | 102.8 nmi | +10.6 % | +5.8 % |
 | Its time | 05:16 | 05:21.6, holds | 05:16.0, holds |
-| Range | 262.5 nmi | +16.0 % | +7.9 % |
-| Space-fixed speed at separation | 7,580 ft/s | +4.3 % | (input) |
-| Earth-fixed speed at separation | 6,618 ft/s | +4.5 % | (input) |
-| Greatest pressure going up | 605.5 lb/sq ft | −6.7 % | |
+| Range | 262.5 nmi | +15.0 % | +7.9 % |
+| Space-fixed speed at separation | 7,580 ft/s | +3.9 % | (input) |
+| Earth-fixed speed at separation | 6,618 ft/s | +4.0 % | (input) |
+| Greatest pressure going up | 605.5 lb/sq ft | −1.1 %, holds | |
 | Greatest load going up | 6.3 g | 6.39 g, holds | |
-| Greatest load coming down | 11.1 g | +11.5 % | +5.1 % |
-| Drogue | 09:41 | +23 s | +8 s, holds |
+| Greatest load coming down | 11.1 g | +9.1 % | +3.4 %, holds |
+| Drogue | 09:41 | +24 s | +11 s |
 | Main | 10:14 | +19 s | +5 s, holds |
-| Landing | 15:37 | +74 s | +59 s |
+| Landing | 15:37 | +69 s | +59 s |
 
 The powered flight ends 4 % too fast, as Freedom 7's does and for the same reason: off the pad at
 1.20 g, one per cent in thrust or weight is three or four in speed, and the engine is two figures
 from a summary table held steady from liftoff to cutoff. Everything after follows from it. The load
 going up holds here, where on Freedom 7 it cannot be a check (the A-7's nozzle is derived from
-MR-3's 6.3 g). The greatest pressure going up is low by 6.7 %: the run gives the two flights nearly
-the same, the record has MR-4's 3 % above MR-3's, and why is not in anything read (the tilt
-programme's curve is the likeliest input). The landing is a minute late for a reason of its own:
+MR-3's 6.3 g). The greatest pressure going up holds, 1.1 % low, flown through the day's air (ERA5's column over
+the pad at the hour nearest liftoff, `FlightPlan.aloft`: a July morning's, 4 to 15 per cent denser than the 1976 standard
+from 10 to 15 km, through which the greatest pressure is met). In the standard atmosphere it was 6.7 % low, the two
+flights' runs nearly the same where the record has MR-4's 3 % above MR-3's (issue #12): the day's air is what was
+missing: through each day's own air the run has MR-4's 3.5 % above MR-3's, the record 3.3 %. The landing is a minute late for a reason of its own:
 the history has the main out at 12,300 ft, and from there the record's 5 min 23 s to the sea is
 11.6 m/s on the average, where the canopy (derived on Freedom 7) gives 8.8 and Grissom read 30 to 32
 ft/s. Flown from the record's speed at separation the capsule comes to its top on the record's

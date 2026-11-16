@@ -54,7 +54,7 @@ export function blowOf(winds: Winds | undefined | null): Blow | null {
  * aloft") where a plan has one. Off, every plan flies the 1976 standard atmosphere and its record's sounding (or calm),
  * as it did before the day's air was read: for weighing what the day's air does (tools/figures.mjs, tests/air.test.mjs).
  */
-export const DAY_AIR = { on: false };
+export const DAY_AIR = { on: true };
 
 /** Above this height, m, the standard's air is the standard's own: between the column's top and here it is scaled by the column's density and temperature over the standard's at the top, eased to 1. */
 export const COLUMN_EASED = 70_000;

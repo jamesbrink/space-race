@@ -65,14 +65,6 @@ const SHORT =
   'all the core’s final stage (none: +443 m/s; 5 s of it, not 10: +221), with 4.5 t left in the core at its cutoff, which a vehicle with tank-emptying regulators would not carry. So the core’s figures and its final ' +
   'stage as the sources give them do not agree: its load (100.4 t fuelled less 6.8 t dry, Astronautix) or the length or level of its final stage is wrong. Not adjusted. ' +
   'The first reading (rated thrust to the recorded instants, Soyuz-ST’s loads) was 142 m/s fast: the documented throttling is worth more than the whole miss either way';
-/** (tests/stagedlive.test.mjs) The live staged vehicle steered by its pilot against the batch ascent's last cutoff. */
-const STEERED =
-  'the attitude is steered, not placed: through the pitch-over and the turn the guidance loop (stagedlive.ts OMEGA, chosen) is a little off the law, ' +
-  'and the gravity turn that follows the motion carries that on to the cutoff: 3.2 m/s fast and 1.8 km low. It is the loop’s: with the attitude ' +
-  'prescribed the same vehicle gives the batch run back to 0.02 m/s and 52 m (the test before), so the forces are one, and the steered miss goes as ' +
-  'the loop’s stiffness goes (half as stiff, 7.4 m/s and 4.1 km; twice, 2.5 m/s and 1.4 km), which is chosen, so it is not tuned to come in. ' +
-  '(Until November 2026 the law’s axis was not a unit vector, and the batch run’s thrust was up to 0.14 per cent high where the steered vehicle’s, ' +
-  'along its own axis, was not: the miss read 5.6 m/s slow and 0.5 km high, the two effects against each other)';
 const PUBLISHED =
   'The coast is flown from the published orbit, begun where the ascent left the spacecraft (staged.ts `published`), since the ascent as flown does not reach it';
 const SHORT_TYPE =
@@ -100,16 +92,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       separationAltitude: { by: 0.078, slack: 0.015, why: BOOSTER, short: BURNOUT },
       apogee: { by: 0.077, slack: 0.015, why: `follows from the speed at separation: ${BOOSTER}`, short: BURNOUT },
       range: { by: 0.1, slack: 0.02, why: 'follows from the speed at separation', short: `${BURNOUT}, so it flies farther` },
-      exitQ: {
-        by: -0.05,
-        slack: 0.01,
-        why:
-          'just outside 5 per cent, low. In still air the run is 3.3 per cent under the record; the day’s winds aloft (Figure 10.3-1) are behind it ' +
-          'through the greatest pressure, 20 to 25 knots from the west-north-west at 30,000 to 40,000 ft, and take 1.8 per cent more off the air it meets. ' +
-          'The report’s 586 lb/sq ft is "derived from AZUSA and FPS-16 radar data" (section 4.2), and it does not say whether a wind went into it: ' +
-          'worked from the speed over the ground alone it would be the still-air figure that compares, and that is inside',
-        short: 'the day’s tail wind takes 2 per cent off; the record may leave the wind out',
-      },
       entryG: { by: 0.062, slack: 0.02, why: 'follows from the apogee: it falls from higher', short: 'it falls from the higher apogee' },
       entryAt: {
         by: 17,
@@ -121,14 +103,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       drogueAt: { by: 15, slack: 4, absolute: true, why: 'follows from the apogee', short: 'follows from the higher apogee' },
       mainAt: { by: 16, slack: 4, absolute: true, why: 'follows from the apogee', short: 'follows from the higher apogee' },
       duration: { by: 16, slack: 4, absolute: true, why: 'follows from the apogee', short: 'it is up longer, from the higher apogee' },
-    },
-    capsule: {
-      entryQ: {
-        by: -0.054,
-        slack: 0.01,
-        why: 'just outside 5 per cent: the capsule’s drag coefficient is read off a figure to 0.03, and the air is a standard year’s, not that day’s',
-        short: 'the drag coefficient is read off a figure to 0.03',
-      },
     },
     'abort:off the pad, upright': {
       apogee: {
@@ -169,16 +143,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         short: BURNOUT,
       },
       range: { by: 0.16, slack: 0.03, why: 'follows from the speed at separation', short: `${BURNOUT}, so it flies farther` },
-      exitQ: {
-        by: -0.067,
-        slack: 0.015,
-        why:
-          'low by 6.7 per cent. The run’s greatest pressure going up is within 1.5 per cent of its own for Freedom 7, the two vehicles being nearly the same; ' +
-          'the record has MR-4’s 3.3 per cent above MR-3’s (605.5 against 586 lb/sq ft), and why is not in anything read. The day’s winds are not it (in still air the run is ' +
-          '0.04 per cent higher). The likeliest input is the tilt programme’s curve, Figure 4-9 stretched to begin at 15.0 s (estimated): a programme that tipped over faster ' +
-          'early would carry the vehicle through the dense air flatter and faster; then the engine’s steady thrust, with no build-up after liftoff',
-        short: 'the tilt programme’s curve is estimated; why MR-4’s was higher is not recorded',
-      },
       entryG: { by: 0.115, slack: 0.025, why: 'follows from the apogee: it falls from higher', short: 'it falls from the higher apogee' },
       drogueAt: {
         by: 23,
@@ -212,7 +176,15 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: 'follows from the run’s own height and climb at separation, as the apogee does',
         short: 'from the run’s own height and climb at separation',
       },
-      entryG: { by: 0.051, slack: 0.02, why: 'follows from the apogee: it falls from higher', short: 'it falls from the higher apogee' },
+      drogueAt: {
+        by: 11.1,
+        slack: 4,
+        absolute: true,
+        why:
+          'follows from the apogee, from the run’s own height and climb at separation, as the whole flight’s does; just past the 10 s since the day’s air was flown (sim/air.ts `skyOf`), ' +
+          'whose column, denser than the standard’s from 10 to 48 km, holds the falling capsule back a second more',
+        short: 'follows from the higher apogee',
+      },
       duration: { by: 59, slack: 8, absolute: true, why: MAIN_HEIGHT, short: 'the main out at 12,300 ft' },
     },
   },
@@ -257,9 +229,9 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'A minute up the run reads 2.20 g; Zak has Gagarin feeling 3 to 4. Thrust and mass alone give 2.4 g there (4.6 MN on 191 t), less 0.2 for the drag, and Soyuz’s manual shows 2.6 g ' +
           'at 60 s on the same first stages: the record’s figure is a man’s feeling, not an accelerometer’s',
       },
-      perigee: { by: -386_039, slack: 2_000, why: SHORT },
+      perigee: { by: -357_281, slack: 2_000, why: SHORT },
       apogee: { by: -147_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT}` },
-      period: { by: -320.47, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
+      period: { by: -303.35, slack: 2, why: `It follows from the speed at cutoff: ${SHORT}` },
     },
     shown: {
       separationAltitude: {
@@ -295,18 +267,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'Four kilometres under a canopy at the record’s own 5 m/s (which the run holds) is 13 minutes by itself: the record’s clocks and its descent figures do not agree with one another',
       },
     },
-    live: {
-      speed: {
-        by: 3.2,
-        slack: 1,
-        why: STEERED,
-      },
-      altitude: {
-        by: -1_786,
-        slack: 300,
-        why: STEERED,
-      },
-    },
   }),
   'ussr/vostok/vostok-2': inUnits({
     coast: {
@@ -327,14 +287,9 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
     },
     ascent: {
-      perigee: { by: -366_957, slack: 2_000, why: SHORT_TYPE },
+      perigee: { by: -385_138, slack: 2_000, why: SHORT_TYPE },
       apogee: { by: -64_000, slack: 300, why: `The cutoff is level at 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_TYPE}` },
-      inclination: {
-        by: 0.06,
-        slack: 0.01,
-        why: 'The aiming azimuth flown is Vostok 1’s (estimated: E103-17’s flight task is not published), and gives 64.99°, as it does on Vostok 1, against this flight’s determined 64°56′. The azimuth is owner',
-      },
-      period: { by: -258.65, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
+      period: { by: -269.47, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_TYPE}` },
     },
     shown: {
       separationAltitude: {
