@@ -1,15 +1,17 @@
 /**
  * What flies a vehicle (vehicle.ts) when a hand does not: the gyro platform's job going up (the
  * Redstone's LEV-3 held the tilt programme), the spacecraft's attitude control after it, and the
- * sequencer that sets off each event at the time the record gives. It is not part of the physics:
- * it reads the state and returns the same `Controls` a pilot's hands do, so any axis of it can be
- * switched off or overridden (`blend`).
+ * sequencer that sets off each of the plan's events at the time the record gives (craft.ts `due`). It
+ * is not part of the physics: it reads the state and returns the same `Controls` a pilot's hands do, so
+ * any axis of it can be switched off or overridden, and a hand's events added to its own (`blend`).
  *
  * The law is `steer`, and it is the only one: how far the attitude is out, and how fast the
  * error is closing, in; a command between -1 and 1 out.
  */
 import { angleBetween, cross, DEG, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { due } from './craft.ts';
 import type { Flown, Results } from './fly.ts';
+import type { EventDef } from './plan.ts';
 import { aboutAxis, turn, unturn } from './rigid.ts';
 import { type Controls, HANDS_OFF, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
@@ -45,7 +47,7 @@ export interface AutopilotOptions {
   roll?: boolean;
   /** Start the engine on the pad. Off, it waits for someone else to. */
   launch?: boolean;
-  /** Set off the events at the record's times: cutoff, tower, separation, retrofire, retropack. */
+  /** Set off the plan's events at the record's times (the tower, separation, retrofire, retropack), and cut the engine at its. */
   sequence?: boolean;
   booster?: Gains;
   capsule?: Gains;
@@ -113,17 +115,27 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
   const capsuleGains = options.capsule ?? CAPSULE_GAINS;
   const earth = vehicle.frame.spin;
   const late = (at: number, t: number): boolean => t >= at - 1e-9;
+  const plan = vehicle.plan;
+  // The engine is the lever's: lit at the launch, and brought to nothing at the time the record's event cuts it. The
+  // sequencer's are the rest of the record's events that its clock sets off.
+  const lever = vehicle.engine;
+  const works = (ev: EventDef) => ev.do.some((a) => ('ignite' in a && a.ignite === lever) || ('cut' in a && a.cut === lever));
+  const cutAt = Math.min(
+    ...plan.events.flatMap((ev) =>
+      ev.automatic && ev.do.some((a) => 'cut' in a && a.cut === lever) ? ev.when.flatMap((w) => ('time' in w ? [w.time] : [])) : [],
+    ),
+  );
+  const timed = (ev: EventDef) => ev.automatic && ev.when.length > 0 && ev.when.every((w) => 'time' in w) && !works(ev);
 
   return (s: VehicleState): Controls => {
     const c: Controls = { ...HANDS_OFF, throttle: s.ignited && !s.cutoff ? 1 : 0 };
     if (want.launch && !s.ignited) c.throttle = 1;
     // (after an abort the record's times are for a flight that is no longer being flown: the spacecraft's own sequence has it)
     if (want.sequence && s.abortAt === null) {
-      if (late(tr.engine.cutoff.value, s.t)) c.throttle = 0;
-      c.tower = body.tower ? late(body.tower.at.value, s.t) : false;
-      c.separate = late(tr.separation.at.value, s.t);
-      c.retro = late(tr.retro.fires[0]!.value, s.t);
-      c.retropack = late(tr.retropack.at.value, s.t);
+      if (late(cutAt, s.t)) c.throttle = 0;
+      // every one due and not yet done, asked again each tick until it is
+      const now = due(plan, s.craft, { t: s.t, height: 0, falling: false, speed: 0, apparent: () => 0, g: 0, held: s.held }, timed);
+      if (now.length) c.events = now.map((e) => e.id);
     }
     if (s.held || s.landing) return c;
 
@@ -208,10 +220,12 @@ export function rateCommand(
   };
 }
 
-/** The autopilot's controls with a hand's laid over them: whatever the hand gives wins, axis by axis and event by event. */
+/** The autopilot's controls with a hand's laid over them: whatever the hand gives wins, axis by axis; its actions and events are done as well as the autopilot's. */
 export function blend(auto: Controls, hand: Partial<Controls>): Controls {
   const out: Controls = { ...auto };
   for (const [k, v] of Object.entries(hand)) if (v !== undefined) (out as unknown as Record<string, unknown>)[k] = v;
+  if (auto.do && hand.do) out.do = [...auto.do, ...hand.do];
+  if (auto.events && hand.events) out.events = [...auto.events, ...hand.events];
   return out;
 }
 

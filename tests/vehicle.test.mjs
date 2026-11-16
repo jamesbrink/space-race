@@ -937,7 +937,10 @@ test('what goes wrong when it is done wrong comes of the physics', (t) => {
   assert.ok(!towered.state.shed.tower && towered.state.mainAt === null, 'tower on: no parachutes');
   assert.ok(towered.state.landing.vertical > 60, `and it comes down at ${towered.state.landing.vertical.toFixed(0)} m/s`);
   // the retropack kept through the entry: 276 lb heavier all the way down, so it falls faster under the same parachute
-  const packed = flyLive(whole, (s) => ({ ...record(s), retropack: false }));
+  const packed = flyLive(whole, (s) => {
+    const c = record(s);
+    return { ...c, events: c.events?.filter((e) => e !== 'retropack') };
+  });
   near(
     packed.state.landing.vertical / live.state.landing.vertical,
     Math.sqrt(TR.separation.mass.value / TR.retropack.mass.value),

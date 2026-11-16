@@ -356,10 +356,15 @@ export function vehicle(trajectory: Trajectory, site: Geodetic, seaLevel = 0, op
     s.craft = partJoint(plan, act(plan, s.craft, { separate: joint }, s.t, s.held).state, joint, s.t);
     s.shed = shedOf(s.craft);
   };
-  /** What a hand asks at this tick, the plan's commands and the switches alike: a joint let go, a parachute out, an event set off. */
+  const eventById = new Map(plan.events.map((e) => [e.id, e]));
+  /**
+   * What a hand asks at this tick, the plan's commands and the switches alike: a joint let go, a parachute out, an event
+   * set off. An event is its actions, but for the abort and the motors' sequence, which the vehicle does whole.
+   */
   const asks = (c: Controls) => {
     const actions: Action[] = [
       ...(c.do ?? []),
+      ...(c.events ?? []).flatMap((id) => (id === abortEvent?.id || id === retroEvent ? [] : (eventById.get(id)?.do ?? []))),
       ...(c.tower ? [{ separate: 'tower' }] : []),
       ...(c.separate ? [{ separate: 'separation' }] : []),
       ...(c.retropack ? [{ separate: 'retropack' }] : []),

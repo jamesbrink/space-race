@@ -245,7 +245,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   `tests/vehicle.test.mjs` lists them. The body's +X is the nose; on the pad +Z points against
   the azimuth, so positive pitch tips it downrange. `sim/autopilot.ts` is not physics: it returns
   the same `Controls` a hand does (the tilt programme held by `steer`, the one control law; the
-  record's event times) and any axis of it can be switched off or overridden (`blend`), or its
+  plan's events that the record's clock sets off, each as it comes due on the machine, craft.ts `due`;
+  the engine by its lever, lit at the launch and brought to nothing at the record's cutoff) and any
+  axis of it can be switched off or overridden, a hand's events added to its own (`blend`), or its
   programme leaned by a pilot's `trim`. It is held
   to fly.ts, not fitted to it: with the air's sideways push off the two agree to 0.05 per cent, and
   with it on the live flight is 0.5 per cent higher at apogee by its lift, which the test states.

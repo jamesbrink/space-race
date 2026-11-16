@@ -148,7 +148,7 @@ test('Freedom 7: a coast predicted after cutoff is the coast then flown', () => 
   const sequenced = autopilot(V);
   const pilot = (s) => {
     const c = sequenced(s);
-    return { ...c, tower: false, separate: false, retro: false, retropack: false };
+    return { ...c, events: [] };
   };
   const run = flyLive(V, pilot, 0.5);
   assert.ok(run.state.landing, 'it came down');

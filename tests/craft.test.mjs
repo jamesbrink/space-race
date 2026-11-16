@@ -190,23 +190,15 @@ test('events come due on their triggers, once; an armed one waits for its arming
   assert.ok(holds({ command: 'arm' }, armed, sense({ commands: new Set(['arm']) })));
 });
 
-test('the live ballistic vehicle takes a hand’s commands as the plan’s: the old switches and the plan’s actions fly the same flight', () => {
+test('the live ballistic vehicle takes a hand’s commands as the plan’s: its events, and the same events as their actions, fly the same flight', () => {
   const v = vehicle(mr3.trajectory, siteFrame(mr3.site), mr3.site.seaLevel.value);
   const plain = flyLive(v, autopilot(v));
-  const on = (x, a) => (x ? [a] : []);
+  const byId = new Map(v.plan.events.map((e) => [e.id, e]));
+  // each event the sequencer gives, given instead as what it does: the joints let go; one that lights a motor stays an event, done whole
   const asPlan = (c) => {
-    const { tower, separate, retro, retropack, drogue, main, abort, ...rest } = c;
-    return {
-      ...rest,
-      do: [
-        ...on(tower, { separate: 'tower' }),
-        ...on(separate, { separate: 'separation' }),
-        ...on(retropack, { separate: 'retropack' }),
-        ...on(drogue, { deploy: 'drogue' }),
-        ...on(main, { deploy: 'main' }),
-      ],
-      events: [...on(retro, 'retro'), ...on(abort, 'abort')],
-    };
+    const events = c.events ?? [];
+    const whole = events.filter((id) => byId.get(id).do.some((a) => 'ignite' in a));
+    return { ...c, do: events.filter((id) => !whole.includes(id)).flatMap((id) => byId.get(id).do), events: whole };
   };
   const pilot = autopilot(v);
   const planned = flyLive(v, (s) => asPlan(pilot(s)));
