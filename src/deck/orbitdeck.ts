@@ -48,7 +48,7 @@ import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/fr
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { is } from '../util/keys.ts';
-import { type CockpitHost, Deck, type DeckSpec, type Figure, tank } from './deck.ts';
+import { type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -84,13 +84,6 @@ const KEYS: Record<string, [axis: Vec3, sense: number]> = {
 /** The states of the deck a control in the cabin can stand by (CabinDef.controls[].holds): the hand controls freed, or not. */
 const FREE: ReadonlySet<string> = new Set(['free']);
 const NONE: ReadonlySet<string> = new Set();
-/** How often a live sample is kept for the scene, s; the most flight one frame steps, s; Space's guard between two presses, s. */
-const KEEP = 0.1;
-const MOST = 5;
-const GUARD = 1.5;
-/** How fast a held key leans the law guidance flies, radians a second, and the most it may lean (as the ballistic deck's). */
-const TRIM = 3 * DEG;
-const TRIM_MOST = 30 * DEG;
 /** The figures going up, as a ballistic flight's; and once the spacecraft is alone, its orbit's. */
 const RISING: Figure[] = [
   { id: 'altitude', label: 'Height', unit: 'km', about: 'Height above the sea' },

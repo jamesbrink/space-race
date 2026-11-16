@@ -7,6 +7,7 @@ import type { Clock } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { capOf, capsOf, is, isTyping, kbd, type KeyName, keyOf, KEYS, keysOf, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
+import { DEG } from '../world/frames.ts';
 
 /**
  * The flight deck: one for every flight that can be flown, whatever its kind. This is the deck itself (its three panels,
@@ -60,6 +61,14 @@ export interface DeckSpec {
 
 /** The keys that steer: W S pitch, A D yaw, Q E roll (keys.ts `deck.steer`). Held, each is a hand on its axis. */
 export const STEER = [...keysOf('deck.steer')];
+/** What every kind of deck keeps alike: how often a live sample is kept for the scene to replay, s; the longest stretch of flight one frame may step, s. */
+export const KEEP = 0.1;
+export const MOST = 5;
+/** Seconds after one event before Space will set off the next: a second press of the same finger. */
+export const GUARD = 1.5;
+/** How fast a held key leans what guidance flies (a tilt programme, a steering law), radians a second, and the most it may lean. */
+export const TRIM = 3 * DEG;
+export const TRIM_MOST = 30 * DEG;
 
 /** The deck's keys that are commands, and the command each gives (`command`). */
 const COMMANDS: [KeyName, string][] = [

@@ -1,4 +1,4 @@
-import { type CockpitHost, Deck, type DeckSpec, tank } from './deck.ts';
+import { type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
@@ -77,21 +77,13 @@ const doingWords = (s: Doing, chutes: readonly { id: string; label: string }[]):
           : s.entered
             ? 'Re-entry'
             : 'Spacecraft alone';
-/** How often a sample is kept for the scene to replay, s, and the longest stretch of flight one frame may step, s. */
 /** A ballistic flight's hardware by role (sim/fly.ts), or null for one of another kind. */
 const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan?.kind === 'ballistic' ? ballisticOf(f.plan) : null);
 
-const KEEP = 0.1;
-const MOST = 5;
 /** The clock runs on this long after the landing, at life's pace, for what is still moving to come to rest (the parachute lying down: viewer/chute.ts), and then stops. */
 const AFTER = 12;
 /** Seconds the clock runs on after the spacecraft has gone under, where its hatch was blown afloat. */
 const SUNK = 20;
-/** Seconds after one event before Space will set off the next: a second press of the same finger. */
-const GUARD = 1.5;
-/** How fast a held key leans the programme guidance flies, radians a second, and the most it may lean. */
-const TRIM = 3 * DEG;
-const TRIM_MOST = 30 * DEG;
 /** How a command that works a mechanism by hand begins (types.ts `Command`): the mechanism's id follows. */
 const WORK = 'work:';
 /** An abort is asked for twice: the second press within this many seconds of the first. */

@@ -2,14 +2,13 @@ import { Box3, type Object3D, Vector3 } from 'three';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
 import { formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
 import { Callout } from '../ui/callout.ts';
-import { Cockpit } from '../deck/cockpit.ts';
+import { deckOf } from '../deck/decks.ts';
 import { follow } from './curtain.ts';
 import { installDebug } from './debug.ts';
 import { Demo } from './demo.ts';
 import { Flown } from '../deck/flown.ts';
 import { crumbs, Gallery, type GalleryKept, markPlace, placesNav } from '../ui/gallery.ts';
 import { goHome } from './home.ts';
-import { OrbitDeck } from '../deck/orbitdeck.ts';
 import '../ui/navball.css';
 import { Navball } from '../deck/navball.ts';
 import { prefs } from './prefs.ts';
@@ -147,8 +146,8 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   // What of the flown vehicle runs to a programme and can be taken by a hand (its periscope): in a flight flown by hand
   // it stands where the programme, the hands and the sequencer have it (cockpit.travel), not where the record's clock does.
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
-  // (a flight into orbit has its own deck, orbitdeck.ts: what its pilot could do, which is not a ballistic flight's)
-  const Deck = flight.plan?.kind === 'orbital' ? OrbitDeck : Cockpit;
+  // (each kind of flight has its own deck behind the one: what its pilot could do, src/deck/decks.ts)
+  const Deck = deckOf(flight);
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),

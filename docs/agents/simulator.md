@@ -501,7 +501,7 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
 
 - **Every flight is flown on the one deck** (`src/deck/deck.ts`: its three panels, keys and buttons, stick and roll, tucking,
   notes and card), with a flight kind's code behind it: `cockpit.ts` for a ballistic plan, `orbitdeck.ts` for
-  one into orbit (an orbital plan; chosen in main.ts; `lacks` in address.ts lights Fly for it). What
+  one into orbit (an orbital plan; chosen by its plan's kind, src/deck/decks.ts `DECKS`; `lacks` in address.ts lights Fly for it). What
   differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
   flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
