@@ -81,7 +81,7 @@ for (const flight of flights) {
             if (!o.isMesh || o.isInstancedMesh) return;
             const m = Array.isArray(o.material) ? o.material[0] : (o.userData.real ?? o.material);
             if (material && !m?.name?.startsWith(material)) return;
-            meshes.push({ mesh: o, box: new THREE.Box3().setFromObject(o) });
+            meshes.push({ mesh: o, box: new THREE.Box3().setFromObject(o), world: o.matrixWorld.clone() });
           });
         }
       }
@@ -96,7 +96,13 @@ for (const flight of flights) {
     /** The first surface straight down from (x, y, z) among `meshes`; null where there is none. */
     const below = (meshes, x, y, z) => {
       let best = null;
-      for (const { mesh, box } of meshes) {
+      for (const entry of meshes) {
+        const { mesh, box } = entry;
+        // (what is run on may itself have been moved since it was found: Complex 14's transfer table carries its rails)
+        if (!mesh.matrixWorld.equals(entry.world)) {
+          entry.world.copy(mesh.matrixWorld);
+          box.setFromObject(mesh);
+        }
         if (x < box.min.x || x > box.max.x || z < box.min.z || z > box.max.z || box.min.y > y) continue;
         ray.origin.set(x, y, z);
         ray.direction.copy(DOWN);

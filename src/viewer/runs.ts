@@ -29,7 +29,7 @@ export class Surfaces {
   private roots: THREE.Object3D[] = [];
   private readonly ground: (x: number, z: number) => number | null;
   /** The meshes each list of names comes to (`Runs.on`), with their boxes and inverses, found once a set of roots. */
-  private readonly found = new Map<string, { mesh: THREE.Mesh; box: THREE.Box3; inverse: THREE.Matrix4 }[]>();
+  private readonly found = new Map<string, { mesh: THREE.Mesh; box: THREE.Box3; inverse: THREE.Matrix4; world: THREE.Matrix4 }[]>();
   private readonly trees = new WeakMap<THREE.BufferGeometry, MeshBVH>();
   private readonly ray = new THREE.Ray();
   private readonly point = new THREE.Vector3();
@@ -53,7 +53,7 @@ export class Surfaces {
     this.version++;
   }
 
-  private meshes(on: readonly string[]): { mesh: THREE.Mesh; box: THREE.Box3; inverse: THREE.Matrix4 }[] {
+  private meshes(on: readonly string[]): { mesh: THREE.Mesh; box: THREE.Box3; inverse: THREE.Matrix4; world: THREE.Matrix4 }[] {
     const key = on.join('\n');
     let list = this.found.get(key);
     if (!list) {
@@ -67,7 +67,12 @@ export class Surfaces {
             const m = (mesh.userData.real ?? mesh.material) as THREE.Material | THREE.Material[];
             if (material && !(Array.isArray(m) ? m[0] : m)?.name.startsWith(material)) return;
             mesh.updateWorldMatrix(true, false);
-            list!.push({ mesh, box: new THREE.Box3().setFromObject(mesh), inverse: mesh.matrixWorld.clone().invert() });
+            list!.push({
+              mesh,
+              box: new THREE.Box3().setFromObject(mesh),
+              inverse: mesh.matrixWorld.clone().invert(),
+              world: mesh.matrixWorld.clone(),
+            });
           });
       }
       this.found.set(key, list);
@@ -75,9 +80,33 @@ export class Surfaces {
     return list;
   }
 
+  /**
+   * The meshes `on` names, where they stand now. What is run on may itself have been moved since it was found (the
+   * rails on Complex 14's transfer table, which is carried off with the structure that rolled on to them): its box and
+   * its inverse are taken again, and what was answered while it stood elsewhere is forgotten.
+   */
+  private standing(on: readonly string[]): { mesh: THREE.Mesh; box: THREE.Box3; inverse: THREE.Matrix4 }[] {
+    const list = this.meshes(on);
+    let moved = false;
+    for (const entry of list) {
+      entry.mesh.updateWorldMatrix(true, false);
+      if (entry.mesh.matrixWorld.equals(entry.world)) continue;
+      entry.world.copy(entry.mesh.matrixWorld);
+      entry.box.setFromObject(entry.mesh);
+      entry.inverse.copy(entry.mesh.matrixWorld).invert();
+      moved = true;
+    }
+    if (moved) {
+      this.answers.clear();
+      this.materials.clear();
+    }
+    return list;
+  }
+
   /** The height of the first surface straight down from (x, y, z) among the meshes `on` names; null where there is none. */
   top(on: readonly string[] | undefined, x: number, y: number, z: number): number | null {
     if (!on?.length) return null;
+    const standing = this.standing(on);
     // (every level of detail asks at the same points: the first answers for all)
     const key = `${on.join(',')}|${Math.round(x * 1e4)}|${Math.round(y * 1e2)}|${Math.round(z * 1e4)}`;
     const known = this.answers.get(key);
@@ -88,7 +117,7 @@ export class Surfaces {
     }
     let best: number | null = null;
     let material: string | null = null;
-    for (const { mesh, box, inverse } of this.meshes(on)) {
+    for (const { mesh, box, inverse } of standing) {
       if (x < box.min.x || x > box.max.x || z < box.min.z || z > box.max.z || box.min.y > y || (best !== null && box.max.y <= best))
         continue;
       let tree = this.trees.get(mesh.geometry);
