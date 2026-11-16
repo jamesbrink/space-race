@@ -18,12 +18,10 @@
 import { Quaternion, Vector3 } from 'three';
 import { type Driving, type Footfall, machinery, type Sounds, type Underfoot } from './audio.ts';
 import { prefs } from '../app/prefs.ts';
-import { ballisticOf } from '../sim/fly.ts';
 import { G0 } from '../world/bodies.ts';
-import { liftoffEngine } from '../sim/staged.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { SitedFlight, TreadKind } from '../types.ts';
-import { recordOf, type Run } from '../sim/run.ts';
+import { brakingOf, liftoffOf, recordOf, type Run } from '../sim/run.ts';
 import { Ascent } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { Engine } from './engine.ts';
@@ -92,9 +90,8 @@ export class Sound {
   private analyser: AnalyserNode | null = null;
   private enabled = !prefs.get('soundOff');
   private level = prefs.level('soundVolume', VOLUME);
-  /** The run being flown by hand, and when its first retrorocket lit. */
+  /** The run being flown by hand. */
   private live: Run | null = null;
-  private retroAt: number | null = null;
   /** How far the ears are riding, eased, and the flight instant last heard. */
   private riding = 0;
   private heard = Number.NaN;
@@ -113,14 +110,9 @@ export class Sound {
     this.clock = clock;
     this.host = host;
     this.ascent = Ascent.of(flight);
-    const b = flight.plan?.kind === 'ballistic' ? ballisticOf(flight.plan).engine : null;
-    // (an orbital flight's engines lit on the ground, heard as one: sim/staged.ts)
-    const lit = flight.plan?.kind === 'orbital' ? liftoffEngine(flight.plan) : null;
-    this.craft = b
-      ? craft((b.thrust.seaLevel ?? b.thrust.vacuum).value, (b.isp!.seaLevel ?? b.isp!.vacuum).value, b.exitArea?.value ?? 0)
-      : lit
-        ? craft(lit.thrust, lit.exhaustSpeed / G0, lit.exitArea)
-        : null;
+    // (the engines lit on the ground, heard as one: sim/run.ts `liftoffOf`)
+    const lit = liftoffOf(flight.plan);
+    this.craft = lit ? craft(lit.thrust, lit.exhaustSpeed / G0, lit.exitArea) : null;
     const def = flight.models.find((m) => m.id === flight.flies?.model);
     this.padTurn.setFromAxisAngle(new Vector3(0, 1, 0), def?.rotationY ?? 0);
     this.home = def?.position ?? [0, 0, 0];
@@ -238,15 +230,12 @@ export class Sound {
   /** A flight being flown by hand is on show (sim/run.ts `Run`), or the record's again (null). */
   fly(run: Run | null): void {
     this.live = run;
-    this.retroAt = null;
     this.ascent?.use(run);
     this.heard = Number.NaN; // another flight: nothing of the last one is owed
   }
 
-  /** The live flight's state, each time the cockpit shows a sample: what the run itself does not say. */
-  follow(_sample: LiveSample, state: VehicleState | null): void {
-    if (state) this.retroAt = state.retroAt; // (looking back at what was flown, it is as it was left)
-  }
+  /** The live flight's state, each time the cockpit shows a sample: nothing the run itself does not say (sim/run.ts `Run.events`). */
+  follow(_sample: LiveSample, _state: VehicleState | null): void {}
 
   /** What is coming out now: level and peak of full scale, and the spectrum's centroid, Hz. For measuring what cannot be heard. */
   meter(): { rms: number; peak: number; centroid: number; state: string } {
@@ -487,42 +476,16 @@ export class Sound {
   private cues(h: Hearing): Cue[] {
     const plan = this.flight.plan;
     if (!this.ascent || !plan) return [];
-    // An orbital flight's drops, and its braking engine when the run on show burns it (`Run.fires`: the record's timer, a
-    // hand's, or none): heard as the retrorockets' cue is, one burn of its length at its thrust (the TDU-1's 1,614 kgf where the
-    // record gives it, else the impulse over the burn); its own timbre, a pressure-fed liquid engine's, is not synthesised apart
-    if (plan.kind === 'orbital') {
-      // (the coast's burn: the engine the record's impulse is flown on)
-      const braking = plan.craft[0]!.engines.find((e) => e.flown);
-      const mass = plan.record?.orbit?.mass.value ?? 0;
-      const k = braking ? (this.flight.flies?.fires ?? []).findIndex((f) => f.on === braking.id) : -1;
-      const burn = k >= 0 ? this.live?.fires?.[k] : undefined;
-      const lit = burn && Number.isFinite(burn.from) && burn.to > burn.from ? burn : null;
-      return score({
-        drops: this.ascent.drops.map((d, i) => ({
-          at: this.live?.dropped[i] ?? d.at,
-          cue: dropCue(this.flight.plan!, this.flight.flies!.drops[i]?.on),
-        })),
-        retro:
-          lit && braking
-            ? {
-                fires: [lit.from],
-                burn: lit.to - lit.from,
-                thrust: braking.thrust.vacuum.value || (mass * braking.flown!.value) / (lit.to - lit.from),
-              }
-            : null,
-        out: h.out,
-        duration: h.duration,
-      });
-    }
-    const b = ballisticOf(plan);
-    const lit = this.live ? this.retroAt : b.retroAt;
-    const drops = this.ascent.drops.map((d, i) => ({ at: d.at, cue: dropCue(this.flight.plan!, this.flight.flies!.drops[i]?.on) }));
+    // What leaves, each when the run on show has it go, and the spacecraft's braking burn where the run lights one
+    // (sim/run.ts `brakingOf`: a ballistic flight's retrorockets, the first at its lighting and the rest on their timer; a
+    // flight into orbit's braking engine while the run burns it, the record's timer's or a hand's, as one burn of its length at
+    // its thrust: the TDU-1's 1,614 kgf where the record gives it, else the impulse over the burn, its own timbre, a
+    // pressure-fed liquid engine's, not synthesised apart)
+    const run = this.live ?? recordOf(this.flight);
+    const braking = run ? brakingOf(this.flight, run) : null;
     return score({
-      drops,
-      retro:
-        lit === null || lit === undefined
-          ? null
-          : { fires: b.retroWaits.map((w) => lit + w), burn: b.motors[0]!.burn!.value, thrust: b.motors[0]!.thrust.vacuum.value },
+      drops: this.ascent.drops.map((d, i) => ({ at: d.at, cue: dropCue(plan, this.flight.flies!.drops[i]?.on) })),
+      retro: braking ? { fires: braking.fires, burn: braking.burn, thrust: braking.thrust } : null,
       out: h.out,
       duration: h.duration,
     });

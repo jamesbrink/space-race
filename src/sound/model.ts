@@ -35,7 +35,7 @@
  *   timbre is `estimated`: impressions of the kind of machine, in proportion to one another, nothing measured.
  */
 import { atmosphere } from '../sim/atmosphere.ts';
-import { ballisticOf } from '../sim/fly.ts';
+import { partingOf } from '../sim/run.ts';
 import type { FlightPlan } from '../sim/plan.ts';
 import type { Engine, MachineKind, Tread, TreadKind } from '../types.ts';
 import { clamp, lerp, smoothstep } from '../util/math.ts';
@@ -1127,13 +1127,9 @@ export class Works {
 
 /**
  * The one-shot a drop makes as it leaves (`Cue`), by the joint that lets it go (`flies.drops[].on`, found by what it is:
- * fly.ts `ballisticOf`): the tower jettisoned, the booster parting, the retropack let go; none for anything else.
+ * sim/run.ts `partingOf`): the tower jettisoned, the booster parting, the retropack let go; none for anything else.
  */
 export function dropCue(plan: FlightPlan, on: string | undefined): 'tower' | 'separation' | 'release' | undefined {
-  if (!on || plan.kind !== 'ballistic') return undefined;
-  const b = ballisticOf(plan);
-  if (on === b.towerJoint?.id) return 'tower';
-  if (on === b.separation.id) return 'separation';
-  if (on === b.packJoint?.id) return 'release';
-  return undefined;
+  const parts = partingOf(plan, on);
+  return parts === 'tower' ? 'tower' : parts === 'vehicle' ? 'separation' : parts === 'pack' ? 'release' : undefined;
 }

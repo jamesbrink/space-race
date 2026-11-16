@@ -10,8 +10,20 @@ import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { coastEvents, coastOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import { apart, Sheds } from './shed.ts';
-import { type DrawnDescent, descentOf, type FlownWhole, flyWhole, type Held, held, recordSamples, sequenceOf, stagesOf } from './staged.ts';
+import {
+  type DrawnDescent,
+  descentOf,
+  type FlownWhole,
+  flyWhole,
+  type Held,
+  held,
+  liftoffEngine,
+  recordSamples,
+  sequenceOf,
+  stagesOf,
+} from './staged.ts';
 import type { SitedFlight } from '../types.ts';
+import { G0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
@@ -406,3 +418,69 @@ export function recordOf(flight: SitedFlight): Run | null {
   ballisticRuns.set(plan, run);
   return run;
 }
+
+/**
+ * The engines lit on the ground, heard and felt as one (sound/, viewer/effects.ts): their thrust at sea level, N, the
+ * exhaust's speed, m/s, and their exit area, m^2. A ballistic plan's is its booster's engine (its sea-level figures, its
+ * vacuum ones where it gives none); an orbital one's every stage lit on the pad together (staged.ts `liftoffEngine`).
+ * Null for no plan.
+ */
+export function liftoffOf(plan: FlightPlan | undefined): { thrust: number; exhaustSpeed: number; exitArea: number } | null {
+  if (!plan) return null;
+  if (plan.kind === 'orbital') return liftoffEngine(plan);
+  const e = ballisticOf(plan).engine;
+  return {
+    thrust: (e.thrust.seaLevel ?? e.thrust.vacuum).value,
+    exhaustSpeed: (e.isp!.seaLevel ?? e.isp!.vacuum).value * G0,
+    exitArea: e.exitArea?.value ?? 0,
+  };
+}
+
+/**
+ * The spacecraft's own braking burn on a run, where it has one lit: when each of its motors lit, how long each burns, s,
+ * each one's thrust, N, and the mass it brakes, kg (what is left once it has burned and gone). A ballistic flight's
+ * retrorockets, the first at its lighting on the run (`Run.events`) and the rest on their own timer; an orbital flight's
+ * engine that flies the record's impulse (`EngineDef.flown`), from when the run has it burn (`Run.fires`) at its thrust
+ * (the impulse over the burn where the record gives no thrust).
+ */
+export function brakingOf(flight: SitedFlight, run: Run): { fires: number[]; burn: number; thrust: number; mass: number } | null {
+  const plan = flight.plan;
+  if (!plan) return null;
+  if (plan.kind === 'ballistic') {
+    const b = ballisticOf(plan);
+    const lit = b.retro ? run.events.find((e) => e.event === b.retro!.id)?.t : undefined;
+    const motor = b.motors[0];
+    if (lit === undefined || !Number.isFinite(lit) || !motor?.burn) return null;
+    return {
+      fires: b.retroWaits.map((w) => lit + w),
+      burn: motor.burn.value,
+      thrust: motor.thrust.vacuum.value,
+      mass: b.packJoint?.after?.value ?? 0,
+    };
+  }
+  const braking = plan.craft[0]!.engines.find((e) => e.flown);
+  const k = braking ? (flight.flies?.fires ?? []).findIndex((f) => f.on === braking.id) : -1;
+  const burn = k >= 0 ? run.fires?.[k] : undefined;
+  if (!braking || !burn || !Number.isFinite(burn.from) || !(burn.to > burn.from)) return null;
+  const mass = plan.record?.orbit?.mass.value ?? 0;
+  return {
+    fires: [burn.from],
+    burn: burn.to - burn.from,
+    thrust: braking.thrust.vacuum.value || (mass * braking.flown!.value) / (burn.to - burn.from),
+    mass,
+  };
+}
+
+/**
+ * What a joint's parting lets go, as the sound of a drop knows it: the escape tower, the launch vehicle the spacecraft
+ * rides, the retropack; nothing for any other (fly.ts `ballisticOf`: a flight into orbit's drops make no sound of their own).
+ */
+export function partingOf(plan: FlightPlan, joint: string | undefined): 'tower' | 'vehicle' | 'pack' | undefined {
+  if (!joint || plan.kind !== 'ballistic') return undefined;
+  const b = ballisticOf(plan);
+  if (joint === b.towerJoint?.id) return 'tower';
+  if (joint === b.separation.id) return 'vehicle';
+  if (joint === b.packJoint?.id) return 'pack';
+  return undefined;
+}
+
