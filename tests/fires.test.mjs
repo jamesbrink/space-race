@@ -2,7 +2,10 @@
 // stage that gives thrust at an instant must have its fires burning then, on the record's run and on one flown by hand;
 // none may burn while its stage gives none; and Freedom 7's one fire is what it always was.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { sequenceOf, steer } from '../src/sim/staged.ts';
@@ -14,6 +17,7 @@ import { plumeShape } from '../src/viewer/plume.ts';
 import { P0 } from '../src/world/bodies.ts';
 
 const A7 = A7_NOZZLE.exit.value / P0;
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 
@@ -289,4 +293,128 @@ test('at Site 1 the exhaust goes down into the flame pit and its cloud rises out
   assert.ok(early.puff <= 0.21 * blast(0.5).puff, 'little on the deck');
   assert.ok(later.ringRadius > blast(4).ringRadius, 'a greater cloud than LC-5’s');
   assert.equal(blast(90, [0, 0], pit).amount, 0, 'gone in a minute and a half');
+});
+
+test('a jet that blows while its engine runs goes as the engine works, on all its chambers or its steering chambers alone', async () => {
+  const { engineWork } = await import('../src/viewer/fires.ts');
+  const share = 0.1;
+  assert.equal(engineWork({ main: 0, steering: 0 }, share), 0, 'out');
+  assert.ok(Math.abs(engineWork(fireLevel(10, 0, 100, 0.8, share), share) - 0.8) < 1e-12, 'throttled with every chamber: as throttled');
+  assert.ok(
+    Math.abs(engineWork(fireLevel(10, 0, 100, 0.05, share), share) - 0.05) < 1e-12,
+    'on its steering chambers alone: their share of what is asked',
+  );
+  assert.equal(engineWork(fireLevel(10, 0, 100, 1, share), share), 1, 'rated');
+});
+
+test('a shed body’s vent blows from the instant it left, as long as the simulator flies its motor, and dies away', async () => {
+  const { shedLevel } = await import('../src/viewer/fires.ts');
+  assert.equal(shedLevel(119, 119.5, 6), 0, 'not before it has left');
+  assert.ok(shedLevel(119.55, 119.5, 6) > 0 && shedLevel(119.55, 119.5, 6) < 1, 'coming up');
+  assert.equal(shedLevel(122, 119.5, 6), 1, 'steady for its burn');
+  assert.ok(shedLevel(125.75, 119.5, 6) > 0 && shedLevel(125.75, 119.5, 6) < 1, 'dying over half a second');
+  assert.equal(shedLevel(126.1, 119.5, 6), 0, 'out');
+  assert.ok(Math.abs(shedLevel(126.5, 119.5, 6, 2) - 0.5) < 1e-12, 'with a tail, falling evenly over it, as sim/shed.ts has the thrust');
+});
+
+test('a gas jet opens as a fire does: a column in the air at the sea from a mouth at its pressure, a fan into none', async () => {
+  const { gasEdge, gasLength } = await import('../src/viewer/fires.ts');
+  assert.equal(gasEdge(0, 40, 0), 1, 'as wide as its mouth at the mouth');
+  const sea = plumeShape(0, 1);
+  assert.equal(sea.width, 1, 'a pipe at the sea’s pressure does not swell');
+  assert.ok(gasEdge(40, sea.width, sea.air) < 1 + 0.16 * 40 + 1e-9, 'it spreads only as it mixes');
+  const thin = plumeShape(0.99, 2.4);
+  assert.ok(thin.width > 20, 'a vent at 2.4 atmospheres into the thin air of separation swells to a fan');
+  assert.ok(gasEdge(200, thin.width, thin.air) > thin.width, 'as wide as it swells, and spreading');
+  for (let x = 1; x < 300; x += 7) assert.ok(gasEdge(x, thin.width, thin.air) > gasEdge(x - 1, thin.width, thin.air), 'never narrowing');
+  assert.ok(Math.abs(gasLength(3000, 0.04, 0.12) - (0.12 * Math.sqrt(3000)) / 0.04) < 1e-9, 'its length goes as the root of its thrust');
+  assert.equal(gasLength(0, 0.04, 0.12), 12, 'and is never nothing');
+});
+
+/** The nodes of a GLB by name, with each one's place and its -Y (the way a nozzle's gas leaves) in the model's frame. */
+function nodesOf(file) {
+  const glb = readFileSync(file);
+  const g = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
+  const parent = new Map();
+  g.nodes.forEach((n, i) => {
+    for (const c of n.children ?? []) parent.set(c, i);
+  });
+  const local = (n) => {
+    const [x, y, z, w] = n.rotation ?? [0, 0, 0, 1];
+    const [tx, ty, tz] = n.translation ?? [0, 0, 0];
+    return { q: [x, y, z, w], t: [tx, ty, tz] };
+  };
+  const turn = ([x, y, z, w], v) => {
+    const u = [y * v[2] - z * v[1], z * v[0] - x * v[2], x * v[1] - y * v[0]];
+    const uu = [y * u[2] - z * u[1], z * u[0] - x * u[2], x * u[1] - y * u[0]];
+    return v.map((c, i) => c + 2 * (w * u[i] + uu[i]));
+  };
+  const out = new Map();
+  g.nodes.forEach((n, i) => {
+    let at = [0, 0, 0];
+    let down = [0, -1, 0];
+    for (let k = i; k !== undefined; k = parent.get(k)) {
+      const { q, t } = local(g.nodes[k]);
+      at = turn(q, at).map((c, j) => c + t[j]);
+      down = turn(q, down);
+    }
+    out.set(n.name, { at, down });
+  });
+  return out;
+}
+
+test('each flight’s jets hang on nodes its model has, and blow by what its plan has, where it has one: an engine it has, a shed body’s motor it flies', async () => {
+  const { flights } = await import('../missions/index.ts');
+  let jets = 0;
+  for (const f of flights)
+    for (const m of f.models) {
+      if (!m.jets?.length) continue;
+      const nodes = nodesOf(join(root, 'public', m.url));
+      for (const j of m.jets) {
+        jets++;
+        assert.ok(nodes.has(j.node), `${f.id}: no node ${j.node} in ${m.url}`);
+        for (const x of [j.radius, j.thrust, j.flow, j.speed, j.exit].filter(Boolean))
+          assert.ok(x.confidence && x.source, `${f.id} ${j.node}: every figure has its confidence and source`);
+        // (a flight that has no plan yet flies nothing: its jets are hung and never blow)
+        const c = f.plan?.craft[0];
+        if (!c) continue;
+        if ('with' in j.when)
+          assert.ok(
+            c?.engines.some((e) => e.id === j.when.with),
+            `${f.id} ${j.node}: no engine ${j.when.with} in the plan`,
+          );
+        if ('shed' in j.when) {
+          const body = c?.sheds?.find((b) => b.on === j.when.shed);
+          assert.ok(
+            body?.motors?.some((x) => x.name === j.when.motor),
+            `${f.id} ${j.node}: the plan flies no ${j.when.motor} on ${j.when.shed}`,
+          );
+          assert.ok(
+            f.flies?.drops.some((d) => d.on === j.when.shed),
+            `${f.id} ${j.node}: nothing drops as ${j.when.shed}`,
+          );
+        }
+      }
+    }
+  assert.ok(jets >= 2 * 10 + 2, 'at the least Vostok 1’s and 2’s turbine exhausts and vents, and the Voskhods’ reserve engines');
+});
+
+test('the vents blow forward and in toward the core, the turbines’ exhausts down, the Voskhod’s reserve engine forward off its nose', () => {
+  const vostok = nodesOf(join(root, 'public/models/ussr/vostok/vostok-1/vehicle.glb'));
+  const deg = (a, b) => (Math.acos(Math.min(1, Math.abs(a.reduce((s, x, i) => s + x * b[i], 0)))) * 180) / Math.PI;
+  for (const letter of ['B', 'V', 'G', 'D']) {
+    const { at, down } = vostok.get(`Booster_${letter}_Vent`);
+    assert.ok(down[1] > 0.6, `${letter}'s vent's gas goes forward`);
+    assert.ok(down[0] * at[0] + down[2] * at[2] < 0, `${letter}'s vent's gas goes in toward the core`);
+    assert.ok(Math.abs(deg(down, [0, 1, 0]) - 45) < 5, `${letter}'s vent at about 45° to the axis (the booster leaning in a little)`);
+    assert.ok(vostok.get(`RD107_${letter}_TurbineExhaust`).down[1] < -0.99, `${letter}'s turbine exhaust goes down`);
+  }
+  assert.ok(vostok.get('RD108_TurbineExhaust').down[1] < -0.999, 'the core’s turbine exhaust goes down');
+  for (const id of ['voskhod-1', 'voskhod-2']) {
+    const reserve = nodesOf(join(root, `public/models/ussr/voskhod/${id}/vehicle.glb`)).get('ReserveEngine_Nozzle');
+    assert.ok(
+      deg(reserve.down, [0, 1, 0]) < 1 && reserve.down[1] > 0,
+      `${id}'s reserve engine's gas goes forward along the axis, within a degree`,
+    );
+  }
 });
