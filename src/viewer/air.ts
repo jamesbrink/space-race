@@ -19,7 +19,7 @@ import { EARTH_SPHERE } from '../world/bodies.ts';
  * A visibility V gives a base density of 3.912 / V (Koschmieder). The chunks are the stock fog
  * chunks with that in place of the stock formula: `FogExp2` stays the type, its colour and density
  * stay the setting's, and a material that replaces `fog_fragment` with its own still can.
- * Installed once, before anything is drawn.
+ * A place's setting holds its air (`PlaceAir`) and installs it as the place is laid, before anything of it is drawn.
  */
 export interface Air {
   /** Metres over which the haze's density falls by e. */
@@ -55,7 +55,8 @@ export interface Clouds {
 /**
  * The clouds' drift so far (x, z: metres) and the layer's base (y: world height) and top (w), for
  * every shader. A plain object, shared by reference by every material that copies it (as `uOrigin`
- * is: origin.ts), so moving it moves the clouds everywhere.
+ * is: origin.ts), so moving it moves the clouds everywhere. It is a slot, not a state: the air on the stage
+ * (`PlaceAir`) writes its own drift into it.
  */
 const DRIFT = { x: 0, y: 1e5, z: 0, w: 1e5 };
 export const cloudUniform: THREE.IUniform<typeof DRIFT> = { value: DRIFT };
@@ -109,21 +110,54 @@ export const setVeilLight = (left: number, height: number, glow: readonly [numbe
 };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uVeilLight = veilLightUniform;
 
-let installed: Air | null = null;
 /** Where the air's part of lights_fragment_end begins and ends (`installAir`): one day's, put in place of the last's. */
 const AIR_OPEN = '\n    // the air: the shadows of its clouds and its veil';
 const AIR_CLOSE = '\n    // the air ends';
 const AIR_SHADE = /\n {4}\/\/ the air: the shadows of its clouds and its veil[\s\S]*?\n {4}\/\/ the air ends/;
-let wind: [number, number] = [0, 0];
 
-/** How far the billows of a cumulus have risen through it, metres: they churn upward as the cloud drifts (clouds.ts). */
+/**
+ * How far the billows of a cumulus have risen through it, metres: they churn upward as the cloud drifts (clouds.ts). A
+ * uniform shared by reference, as `cloudUniform` is, which the air on the stage writes.
+ */
 export const cloudRise = { value: 0 };
 
-/** Move the clouds on by `dt` seconds of wind. */
-export function driftClouds(dt: number): void {
-  DRIFT.x += wind[0] * dt;
-  DRIFT.z += wind[1] * dt;
-  cloudRise.value = (cloudRise.value + 0.4 * dt) % 1024; // (the billows' noise repeats every 1,024 m: clouds.ts)
+/**
+ * A place's air on its day, as its setting holds it (backdrops.ts `Setting.air`): its figures, and how far its clouds
+ * have drifted and churned since the place was laid. What the shaders read of it are slots shared by reference
+ * (`cloudUniform`, `cloudRise`, three's chunks): `install` writes the day into them as the place is laid, and `tick`,
+ * which only the setting on the stage is given, its clouds' motion. So another place's air never moves this one's
+ * clouds, and coming back to a place lays it again from nothing, as a page opened on it would.
+ */
+export class PlaceAir {
+  readonly air: Air;
+  private x = 0;
+  private z = 0;
+  private rise = 0;
+
+  constructor(air: Air) {
+    this.air = air;
+  }
+
+  /** Write the day into three's chunks (the text is the day's: programs.ts) and its clouds where they stand into the slots. */
+  install(): void {
+    installAir(this.air);
+    this.put();
+  }
+
+  /** Move the clouds on by `dt` seconds of wind. */
+  tick(dt: number): void {
+    const wind = this.air.clouds?.wind ?? [0, 0];
+    this.x += wind[0] * dt;
+    this.z += wind[1] * dt;
+    this.rise = (this.rise + 0.4 * dt) % 1024; // (the billows' noise repeats every 1,024 m: clouds.ts)
+    this.put();
+  }
+
+  private put(): void {
+    DRIFT.x = this.x;
+    DRIFT.z = this.z;
+    cloudRise.value = this.rise;
+  }
 }
 
 /**
@@ -240,29 +274,14 @@ const cloudField = (c: Clouds | undefined, deckHeight: number) =>
   }`
     : '';
 
-/** The air installed, for a material that works its haze out in its own way (globe.ts: over the curved sea). */
-export const installedAir = (): Air | null => installed;
-
-export function installAir(air: Air): void {
-  if (
-    installed &&
-    installed.scale === air.scale &&
-    installed.base === air.base &&
-    installed.clouds === air.clouds &&
-    installed.day === air.day
-  )
-    return;
-  installed = air;
+/** Write a day's air into three's chunks (`PlaceAir.install`). */
+function installAir(air: Air): void {
   newPlace(); // (the chunks' text is another day's: programs.ts)
-  // (and its clouds stand where a page opened on it has them: drifted and churned from nothing, not on from the last day's)
-  DRIFT.x = DRIFT.z = 0;
-  cloudRise.value = 0;
   const c = air.clouds;
   const deck = air.day?.deck ?? { cover: 0, height: 0 };
   // (the record has high cloud over the site: its light is dimmed for what is under it)
   const veiled = air.day != null && air.day.high.cover !== null && air.day.high.cover > 0 && air.day.high.depth > 0;
   if (c) {
-    wind = c.wind;
     DRIFT.y = air.base + c.height;
     DRIFT.w = air.base + c.height + c.depth;
   }

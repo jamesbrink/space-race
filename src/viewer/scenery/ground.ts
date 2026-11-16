@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Dated, SiteDef } from '../../types.ts';
-import { type Air, driftClouds, installAir } from '../air.ts';
+import { PlaceAir } from '../air.ts';
 import type { Day } from '../day.ts';
 import { Flora, type FloraSpec } from '../flora.ts';
 import { Land, type LandSpec } from '../land.ts';
@@ -60,6 +60,8 @@ export interface Place {
   attend: (eye: THREE.Vector3) => boolean;
   /** Something that stands there and casts a shadow has arrived since this was last asked: true once. */
   arrived: () => boolean;
+  /** Its air on its day: the haze, the clouds and their drift (air.ts). */
+  air: PlaceAir;
   /** The camera as it is about to draw: the ground out of its sight is not drawn. */
   view: (camera: THREE.Camera) => void;
   /** The ground's height at a point in the world (the pad's frame): flat at the grade wherever anything is built. */
@@ -88,8 +90,8 @@ export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, ori
   const groundY = origin.grade.value;
   const landSpec = spec.land(day, compass);
   // the haze lies in the lowest air, from the sea where there is one, under the cumulus, and thins upward (air.ts)
-  const air: Air = { scale: day.haze, base: groundY + (landSpec.sea ?? 0), ...(day.cumulus ? { clouds: day.cumulus } : {}), day };
-  installAir(air); // (the cumulus are drawn by the stage's cloud pass: clouds.ts)
+  const air = new PlaceAir({ scale: day.haze, base: groundY + (landSpec.sea ?? 0), ...(day.cumulus ? { clouds: day.cumulus } : {}), day });
+  air.install(); // (the cumulus are drawn by the stage's cloud pass: clouds.ts)
   const land = new Land(renderer, landSpec, groundY, compass.turn);
   const flora = new Flora(spec.flora(day), land);
   flora.group.position.y = groundY;
@@ -117,8 +119,9 @@ export function groundPlace(renderer: THREE.WebGLRenderer, spec: GroundSpec, ori
     grade: groundY,
     ...(spec.tone ? { tone: spec.tone(day) } : {}),
     ...(spec.drawn ? { drawn: spec.drawn(day) } : {}),
+    air,
     tick: (dt) => {
-      driftClouds(dt);
+      air.tick(dt);
       land.tick(dt);
       flora.tick(dt);
     },

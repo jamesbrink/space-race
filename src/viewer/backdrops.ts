@@ -6,7 +6,7 @@ import { skyFrom } from '../world/ephemeris.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor, installedAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
+import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
 import { dayOf, VEIL_DOWN, veilShade } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
@@ -23,7 +23,7 @@ import { studio } from './studio.ts';
 import { checkUnits } from './units.ts';
 import { uLast } from './overlay.ts';
 import { newPlace } from './programs.ts';
-import { placeWeather, weatherUniforms } from './weathermap.ts';
+import { WeatherMap, weatherUniforms } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {
@@ -91,6 +91,10 @@ export interface Setting {
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
   globe?: Globe;
+  /** A place's air on its day (air.ts): the haze, its clouds and their drift, which the stage's cloud pass, fires and smoke read. */
+  air?: PlaceAir;
+  /** And its weather's map (weathermap.ts): let go with the setting. */
+  weather?: WeatherMap;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
   simplify?: (on: boolean) => void;
   /** How soft the edge of the direct light's shadow is, in texels of its map (default 1: the Sun's, which is sharp). */
@@ -491,6 +495,9 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(49, 48, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), below), patch);
   let here = places.get(key);
   if (!here) places.set(key, (here = groundPlace(renderer, spec, when.site, today)));
+  // the weather the clouds and their shadows are laid out by (weather.ts): the record's at the site, the day's map beyond
+  const weather = new WeatherMap(site.bearingX, today);
+  const dayAir = here.air.air; // (the place's air on its day: air.ts)
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
   const land = here.floor.userData.land as Land;
   here.floor.updateMatrixWorld();
@@ -499,16 +506,15 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     site,
     when.site.seaLevel.value,
     [{ frame: here.floor.matrixWorld.clone().invert(), half: land.extent - 150, ground: here.grade }],
-    installedAir(),
+    dayAir,
+    weather,
     when.site.place.region?.name ?? null,
     here.tone,
     here.drawn,
   );
   // (a development build says which lit materials have left too few texture units for lights: units.ts)
   if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));
-  // the weather the clouds and their shadows are laid out by (weather.ts): the record's at the site, the day's map beyond
   const cumulus = today.cumulus;
-  placeWeather(site.bearingX, today);
   // (by the edge of its cover maps, past which their last texels are smeared outward: Complex 34, the furthest built, is inside 9.5 km)
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
@@ -518,7 +524,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   // white is the Sun's) and as strong as makes its light on the ground, through the air, as bright as the scene's own
   // at the hour that was tuned for (daysky.ts: a Sun 50 degrees up): so sunlit ground, cloud and sky stand in the
   // scene as they do in the world. Derived, and the same at every hour.
-  const haze = hazeFor(fog.density, installedAir()?.scale ?? 1400);
+  const haze = hazeFor(fog.density, dayAir.scale);
   makeAtmosphere(renderer, haze);
   {
     const noon = dayLight(50, null).light;
@@ -579,6 +585,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     tick: here.tick,
     simplify: here.simplify,
     globe,
+    air: here.air,
+    weather,
     attend: (eye) => {
       // the sky's up is the plumb line at the eye
       const was = uniforms.uUp.value.clone();
@@ -597,6 +605,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
   setting.release = () => {
+    weather.dispose();
     reflections.dispose();
     gen.dispose();
     disposeTree(envScene);
@@ -664,7 +673,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     colour(uniforms.uCloudLight.value, light.cloud);
     // (the high cloud is no longer painted on the sky: it is a sheet at its own height, drawn with the clouds: clouds.ts)
     // (and a clear sky is clear: a place with no clouds in its air has none painted either)
-    uniforms.uWisps.value = cumulus || !installedAir()?.clouds ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
+    uniforms.uWisps.value = cumulus || !dayAir.clouds ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
     // the Sun's disc: from the ground as the day has it; from above the air, as it is there (white, and still up
     // when it has set on the ground below)
     const above = sunFrom(height, h.sunElevation);
@@ -700,7 +709,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       const dip = Math.acos(EARTH_SPHERE / (EARTH_SPHERE + veil.height));
       const muHigh = Math.max(Math.sin(h.sunElevation * DEG + dip), 0);
       const taken = VEIL_DOWN * (1 - veilShade(veil.depth, veil.cover, muHigh)) * muHigh;
-      setVeilLight(left, (installedAir()?.base ?? 0) + veil.height, [0, 1, 2].map((c) => taken * high[c]! * noonSun[c]!) as unknown as RGB);
+      setVeilLight(left, dayAir.base + veil.height, [0, 1, 2].map((c) => taken * high[c]! * noonSun[c]!) as unknown as RGB);
       const sun = [0, 1, 2].map((c) => (high[c]! * noonSun[c]!) / Math.PI);
       const white = 0.2126 * sun[0]! + 0.7152 * sun[1]! + 0.0722 * sun[2]!;
       colour(uniforms.uVeilSun.value, sun.map((v) => 0.75 * (v + (white - v) * 0.33)) as unknown as RGB);

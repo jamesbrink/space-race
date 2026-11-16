@@ -848,6 +848,7 @@ export class FlightShow {
       way
         ? { toward: [Math.cos(bearing), Math.sin(bearing)], depth: way.depth.value, out: way.out.value, width: way.width.value }
         : undefined,
+      () => this.h.setting().air?.air.clouds?.wind ?? [0, 0],
     );
     this.h.scene.add(this.trail.mesh);
     this.h.veils.push(...this.plumes.map((h) => h.plume.mesh), this.trail.mesh); // (cloud behind them shows through them: clouds.ts)

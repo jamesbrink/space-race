@@ -8,8 +8,8 @@ import {
   cloudNoiseGlsl,
   cloudRise,
   cloudUniform,
+  type Air,
   hazeAboveUniform,
-  installedAir,
   veilGlow,
   veilLightUniform,
 } from './air.ts';
@@ -19,7 +19,7 @@ import { fieldAs } from './field.ts';
 import { uOrigin } from './origin.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
-import { onWeather, weatherUniforms } from './weathermap.ts';
+import { type WeatherMap, weatherUniforms } from './weathermap.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
@@ -1471,9 +1471,29 @@ export class CloudPass extends Pass {
   ) {
     super();
     this.needsSwap = false;
-    onWeather(() => {
-      this.stale = true;
-    });
+  }
+
+  /** The air of the place on the stage (its setting's: air.ts), or none; and its weather's map, the field baked again as it comes in. */
+  private air: Air | null = null;
+  private weather: WeatherMap | null = null;
+  private unweather: (() => void) | null = null;
+
+  /** The stage has another setting (Stage.applySetting): the clouds are its air's, and baked again by its weather's map. */
+  setAir(air: Air | null, weather: WeatherMap | null): void {
+    if (air === this.air && weather === this.weather) return;
+    this.air = air;
+    this.weather = weather;
+    this.unweather?.();
+    this.unweather =
+      weather?.onArrive(() => {
+        this.stale = true;
+      }) ?? null;
+    this.stale = true;
+  }
+
+  /** The air the clouds are drawn in, for what else on the stage takes it (the fires' smoke: exhaust.ts). */
+  get airShown(): Air | null {
+    return this.air;
   }
 
   /**
@@ -1506,7 +1526,7 @@ export class CloudPass extends Pass {
 
   /**
    * Give whoever lays the clouds over the frame its shader, for the day the air is the air of (air.ts: `Air.day`):
-   * once, the first time there are clouds or sheets to lay (a flight is a page, so a page has one day). The output's
+   * once a day, the first time there are clouds or sheets to lay (a place's day is its setting's: backdrops.ts). The output's
    * shader is compiled again with them in it; that is under the curtain, where the scene is being warmed.
    */
   private dress(day: Day | null | undefined): void {
@@ -1564,7 +1584,7 @@ export class CloudPass extends Pass {
     const into = { billows: u.tBillows, detail: u.tDetail };
     if (TILES.every((t) => into[t.name].value)) return;
     // (the output's shader, with the day's clouds in it, is to be compiled under the curtain too)
-    const air = installedAir();
+    const air = this.air;
     if (air?.clouds || (air?.day && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0))) this.dress(air.day);
     // (a day with no cumulus marches nothing, and its sheets read neither tile)
     if (!air?.clouds) return;
@@ -1615,7 +1635,7 @@ export class CloudPass extends Pass {
   }
 
   render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
-    const air = installedAir();
+    const air = this.air;
     const clouds = air?.clouds;
     // (a day with a deck or high cloud and no cumulus: the sheets are laid over the frame, and nothing is marched)
     const sheets = air?.day != null && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0);
@@ -1897,7 +1917,7 @@ export class CloudPass extends Pass {
       cz = Math.round(z / SNAP) * SNAP;
     if (!b || b.clouds !== clouds) {
       this.bakeMaterial?.dispose();
-      this.bakeMaterial = raw(bakeShader(clouds, installedAir()?.day), {
+      this.bakeMaterial = raw(bakeShader(clouds, this.air?.day), {
         uCorner: { value: new THREE.Vector2() },
         uBakeDrift: { value: new THREE.Vector2() },
         ...weatherUniforms,

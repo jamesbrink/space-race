@@ -247,7 +247,7 @@ export const coverNear = (site: number, map: number, distance: number): number =
  * depth, whether it is a veil, and between which distances from the site the record gives way to the map (day.ts:
  * reportReach). Null on a day whose record has none there: the map's own cirrus stands, and nothing of this is compiled.
  *
- * **A day's figures are written into the shaders, not handed to them** (a flight is a page: day.ts), and what a day
+ * **A day's figures are written into the shaders, not handed to them** (once for each place's day: day.ts), and what a day
  * does not have is left out of the text altogether. So on a day with no high cloud in its record the shaders are, to
  * the letter, what they were before any flight gave its day, and Freedom 7's picture with them (tests/weather.test.mjs
  * pins their text). Handed over as uniforms, with every new term nothing on such a day, the same picture came out

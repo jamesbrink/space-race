@@ -4,8 +4,9 @@
  * here is a figure of the record's: those are in the flight's `weather`, each with its confidence and source. What is
  * here is how a layer of the record becomes a layer drawn, and each such rule is stated where it is.
  *
- * A flight is a page (main.ts: another flight is another page's worth of state), so a page has one day, and what is
- * compiled into a shader from it is compiled once.
+ * A day is a place's setting's (backdrops.ts: one setting for each pad and day, its air and its weather's map held by
+ * it), so what is compiled into a shader from a day is compiled once for that setting, and another day on the same
+ * stage is built again under its own text (programs.ts).
  *
  * No three.js here: tools/globe-weather.mjs and the tests run it.
  */

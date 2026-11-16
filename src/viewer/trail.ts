@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { installedAir } from './air.ts';
 import { NODES, type Smoke, shadeBy, tend, veilMesh } from './exhaust.ts';
 import { smoothstep } from '../util/math.ts';
 
@@ -239,9 +238,13 @@ export class Trail implements Smoke {
   /** Where the site sends the exhaust, if into a flame pit (`Pit`); else the deck's cloud. */
   private readonly pit: Pit | undefined;
 
-  constructor(breadth = 2.5, pit?: Pit) {
+  /** The wind at the clouds' height of the place on the stage, toward (x, z), m/s (air.ts `Clouds.wind`): the cloud over the pad drifts on a share of it. */
+  private readonly wind: () => readonly [number, number];
+
+  constructor(breadth = 2.5, pit?: Pit, wind: () => readonly [number, number] = () => [0, 0]) {
     this.breadth = breadth;
     this.pit = pit;
+    this.wind = wind;
     this.mesh = veilMesh();
     this.mesh.visible = false;
     tend(this);
@@ -295,7 +298,7 @@ export class Trail implements Smoke {
 
   /** The cloud over the pad at the instant shown, in the day's wind. */
   blast(): Blast {
-    const wind = installedAir()?.clouds?.wind ?? [0, 0];
+    const wind = this.wind();
     return blast(this.now ?? 0, [SURFACE_WIND * wind[0], SURFACE_WIND * wind[1]], this.pit);
   }
 

@@ -7,7 +7,7 @@ import type * as THREE from 'three';
  * the key of a built-in material does not hold the chunks' text, nor does a patched one's hold what the patch wrote;
  * with one stage showing flight after flight (app/session.ts) a second place would be drawn with the first one's
  * programs. So every material the stage draws (Looks.add) has the place's number in its key, and a new place
- * (Settings.drop, installAir) is a new number: what is built after it is built again, under its own text.
+ * (Settings.drop, PlaceAir.install) is a new number: what is built after it is built again, under its own text.
  */
 let epoch = 0;
 

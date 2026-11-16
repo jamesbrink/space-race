@@ -617,9 +617,13 @@ JavaScript heap and 125 MB of decoded pictures.
 - **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not
   loaded again: the site's stage is loaded again (`Stage.load`), and lets go of every model the next flight has not
   got and the place round its pad if the next is at another place or on another day (`Settings.drop`: the place's
-  trees, its own uniforms' maps and bakes, its reflections; viewer/dispose.ts). What every place reads alike (the
-  atmosphere's tables, the weather's map, the clouds' march) stays with whoever made it. The air a place installs in
-  three's chunks (air.ts) is that day's, put in place of the last's. `pnpm test:flights` holds each place, after the
+  trees, its own uniforms' maps and bakes, its reflections, its weather's map and whoever listened for it;
+  viewer/dispose.ts). What every place reads alike (the atmosphere's tables, the clouds' march) stays with whoever
+  made it. A place's air and weather are its setting's (`Setting.air`: air.ts `PlaceAir`, its clouds' drift and
+  churn; `Setting.weather`: weathermap.ts `WeatherMap`, whose listeners stop with the function `onArrive` returns or
+  all at once when it goes); what the shaders read of them are slots shared by reference (`uCloudDrift` and its
+  fellows in three's uniform library, `weatherUniforms`), which the place on the stage writes. The air a place
+  installs in three's chunks is that day's, put in place of the last's. `pnpm test:flights` holds each place, after the
   first round, to what it held the round before.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for
   good and puts up a word with "Reload with lighter graphics" (which chooses the lighter tier and remembers it) and
@@ -652,7 +656,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   `beyond` for what a report says of a stretch of country. `viewer/day.ts` turns it once into what is drawn
   (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not a place's `ground.ts`, not `weather.ts`. A
   flight with none stands under its place's (`PlaceDef.weather`), and then under a clear sky: both estimates.
-  - **A day is written into the shaders, not handed to them.** A flight is a page, so a page has one day: its
+  - **A day is written into the shaders, not handed to them.** A setting has one day (one for each pad and day): its
     figures are text in the shaders that draw it (`sheetsGlsl`, `weatherGlsl`, `overGlsl`, the shared chunk in
     air.ts, the globe's shade), and what a day does not have is not in the text at all (weather.ts: `highOf`).
     So on a day whose record has no high cloud every shader is, comments aside, what it was before a flight

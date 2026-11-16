@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
-import { installedAir } from './air.ts';
+import type { Air } from './air.ts';
 import { hash2 } from './field.ts';
 import { type Cluster, jetEdge, mergeOf } from './fires.ts';
 import { uOrigin } from './origin.ts';
@@ -1159,6 +1159,8 @@ function cover(rect: THREE.Vector4, c: THREE.Vector3, r: number, px: number, py:
 interface Marked {
   readonly mark: { texture: THREE.DepthTexture | null };
   readonly cel: boolean;
+  /** The air of the place on the stage, or none (clouds.ts `setAir`). */
+  readonly airShown: Air | null;
 }
 
 /**
@@ -1328,7 +1330,7 @@ export class ExhaustPass extends Pass {
       u.uGroundLight.value.copy(this.sky.groundColor).multiplyScalar(this.sky.intensity);
     }
     const fog = this.scene.fog as THREE.FogExp2 | null;
-    const air = installedAir();
+    const air = this.clouds.airShown;
     if (fog && air) {
       u.uHaze.value.copy(fog.color);
       u.uAir.value.set(fog.density, air.scale, eye.y - air.base);

@@ -26,7 +26,7 @@ import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
-import { onWeather, wantWeather, weatherUniforms } from './weathermap.ts';
+import { type WeatherMap, weatherUniforms } from './weathermap.ts';
 
 /**
  * GLSL: the end of `globeShade`: what the day's two sheets leave of the Sun's light at a point of the globe, taken
@@ -556,6 +556,7 @@ export class Globe {
   private readonly sheets: boolean;
   /** The day the site's air is the air of (air.ts: `Air.day`): its sheets' heights and its high cloud are written into the shade. */
   private readonly day: Day | null;
+  private readonly weather: WeatherMap | null;
 
   /**
    * `seaLevel`: the sea's height above the ellipsoid at the site (SiteDef.seaLevel); `holes`: the squares a place's own
@@ -568,6 +569,8 @@ export class Globe {
     seaLevel: number,
     holes: Hole[],
     haze: { scale: number; clouds?: unknown; day?: Day } | null,
+    /** The site's weather on the day (weathermap.ts): the globe is drawn again as its map comes in, and asks for it from height. */
+    weather: WeatherMap | null,
     region: string | null = null,
     /** The tone of the site's own ground seen whole, kept round it until the eye is well up: the Cape's canopy's green unless said. */
     tone: THREE.Color = LAND,
@@ -585,7 +588,8 @@ export class Globe {
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
     this.day = haze?.day ?? null;
     this.sheets = !this.clouds && this.day !== null && (this.day.deck.cover > 0 || (this.day.high.cover ?? 0) > 0);
-    onWeather(() => {
+    this.weather = weather;
+    weather?.onArrive(() => {
       this.arrived = true;
     });
     this.origin = geodeticToEcef(site);
@@ -987,7 +991,7 @@ export class Globe {
     // the site's own tones)
     if (shown && height > 1500) {
       this.want();
-      wantWeather();
+      this.weather?.want();
     }
     if (this.surfacedAt) {
       const k = Math.min(1, (performance.now() - this.surfacedAt) / SURFACING);

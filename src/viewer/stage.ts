@@ -1059,6 +1059,7 @@ export class Stage {
       this.looks.add(s.globe.mesh);
     }
     this.scene.fog = s.fog;
+    this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null);
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
   }
