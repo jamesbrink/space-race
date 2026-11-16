@@ -8,6 +8,7 @@ import { COMPLEXES, neighboursOn, ownFrame } from '../missions/usa/places/cape-c
 import { flights } from '../missions/index.ts';
 import { standsInSite1, TYURATAM_GROUND } from '../missions/ussr/places/tyuratam/ground.ts';
 import { SITE1 } from '../missions/ussr/places/tyuratam/site-1.ts';
+import { SEASONS, seasonOf, steppeCelGround, steppeFlora, steppeGround } from '../missions/ussr/places/tyuratam/steppe.ts';
 import { compassAt } from '../src/viewer/scenery/compass.ts';
 
 const PADS = [LC5, LC14, LC19, SITE1];
@@ -212,4 +213,37 @@ test('the Cape: Complex 5 seen from Complex 14 stands in its own frame, at its o
   assert.ok(Math.abs(((bearing + 360) % 360) - LC5.bearingX.value) < 0.05, `its +X bears ${bearing}`);
   // 6.2 km off on 205 degrees: Complex 5 lies south-south-west of Complex 14
   assert.ok(Math.abs(Math.hypot(at.x, at.z) - 6230) < 100, `${Math.hypot(at.x, at.z)}`);
+});
+
+test('the steppe: every flight from Tyuratam stands in its own season, and only the thaw has snow', () => {
+  const want = {
+    'ussr/vostok/vostok-1': 'spring',
+    'ussr/vostok/vostok-2': 'summer',
+    'ussr/vostok/vostok-3': 'summer',
+    'ussr/vostok/vostok-4': 'summer',
+    'ussr/vostok/vostok-5': 'summer',
+    'ussr/vostok/vostok-6': 'summer',
+    'ussr/voskhod/voskhod-1': 'autumn',
+    'ussr/voskhod/voskhod-2': 'thaw',
+  };
+  for (const [id, name] of Object.entries(want)) {
+    const f = flights.find((f) => f.id === id);
+    assert.equal(f?.site?.place.name, 'tyuratam', id);
+    assert.equal(seasonOf(f.launch.slice(0, 10)).name, name, id);
+  }
+  for (const s of SEASONS) {
+    assert.ok(['documented', 'derived', 'estimated'].includes(s.confidence) && s.source.length > 60, s.name);
+    // a season without snow or mud writes none into the ground's shaders: the spring's and the summer's are what they were
+    const glsl = steppeGround(s) + steppeCelGround(s);
+    assert.equal(glsl.includes('snowField'), Boolean(s.snow), s.name);
+    assert.equal(glsl.includes('soaked'), Boolean(s.wet), s.name);
+  }
+  const thaw = SEASONS.find((s) => s.name === 'thaw');
+  assert.ok(thaw.snow.cover > 0 && thaw.snow.cover < 0.5, 'old snow in patches over well under half the ground');
+  // nothing of the spring is up in March; in October nothing of it is left
+  const up = (date) => steppeFlora({ date, wind: { from: { value: 0 }, speed: { value: 0 } } }).species.map((s) => s.name);
+  for (const date of ['1965-03-18', '1964-10-12'])
+    for (const gone of ['tulip', 'rhubarb']) assert.ok(!up(date).includes(gone), `${gone} on ${date}`);
+  assert.ok(!up('1965-03-18').includes('meadow-grass'));
+  assert.ok(up('1961-04-12').includes('tulip'));
 });

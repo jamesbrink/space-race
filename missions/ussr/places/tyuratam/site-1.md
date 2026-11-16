@@ -558,6 +558,29 @@ Cape's do (flora.ts) and the ground carries their tones to the horizon. Sources:
 | Wild rhubarb (*Rheum tataricum*) | two to four broad leaves flat on the clay, 0.35 to 0.6 m across, few | documented (in the spring aspect of the same desert); estimated (here) | Dimeeva 2025 |
 | Not drawn | camel thorn, tamarisk, saxaul and the river's tugai and reeds: recorded on the left bank and the floodplain, 30 km south, not on the pad's terrace; *Tulipa buhseana* (its colour here not confirmed) | | Danilevsky, plantarium.ru |
 
+#### The seasons
+
+The ground and its plants are the flight's day's (steppe.ts `SEASONS`, chosen by `seasonOf` from the date; each says
+what it rests on). The ground itself does not change: the sward, the plants that stand and their colours do, and at the
+end of the winter snow and mud lie on it (`snow`: how much of the ground, in patches; `wet`: how dark the mud). A season
+without snow or mud writes nothing of them into the shaders, so the spring's and the summer's ground are what they
+were before there were four (their GLSL compared as text, November 2026).
+
+| Season | From | Its flights | As drawn | Confidence | Source |
+| --- | --- | --- | --- | --- | --- |
+| The thaw | 1 March | Voskhod 2 (18 March 1965) | old snow, dirtied, in patches over 0.3 of the open ground, longest against the shrubs and gone from the worked ground and the ruts; the rest of the crust wet, a third darker and smoother; last year's sward grey and flat; the wormwood, biyurgun, teresken and saltworts dormant grey and grey-brown; none of the spring's plants up | the weather documented (patches of "dirty snow living out its last days" in early March, low cloud and drizzle on the 18th; snow on the ground on 12 and 17 March and under half of it on the 19th at the nearest stations); the share at Site 1 (0.3), its colour, the mud's tone and the plants' colours estimated; the season's start estimated (the median last day with snow at Kazalinsk today is about 1 March) | Chertok vol. III pp. 262-263; Kamanin, «Скрытый космос», 12 and 16 March 1965; NOAA ISD 35849099999 (Kazalinsk), 35756099999 (Kara-Kum); GHCN-Daily KZ000035849, KZ000035953 |
+| The spring | 1 April | Vostok 1 (12 April 1961) | the ephemerals' flush, the tulips out | documented (the flush and the tulips that April); the colours estimated | as above |
+| The summer | 1 June | Vostoks 2 to 6 (August 1961 to June 1963) | the sward dried to straw, the steppe reddish grey; the tulips and rhubarb below ground | documented in words (Chertok); the colours estimated | Chertok vol. II p. 357, vol. III p. 387; Mikheev; the film of 6 August 1961 |
+| The autumn | 15 September | Voskhod 1 (12 October 1964) | the summer's straw greyer and paler; the wormwood past flowering, grey-green to grey with straw-coloured stems; the biyurgun reddish brown with its dried fruits; the saltworts rusty pink-brown; the teresken's hairs rufous; no snow, the ground dry | the day documented (a still, frosty, clear morning, minus 8, no snow; the stations dry after rain on 4 to 7 October); what each plant is in autumn documented in kind; the colours and the season's start estimated | Kamanin, 12 October 1964; Chertok vol. III pp. 238-239; NOAA ISD and GHCN-Daily at Kazalinsk, Kara-Kum and Aralsk; Flora of the USSR, vols. VI and XXVI |
+
+What is not drawn of them: the deep winter (December to February) has no flight and takes the autumn's ground; the hoar
+frost of 12 October's dawn (gone by liftoff at about +7 °C: estimated); a fresh dusting from the snow showers of 17 and
+18 March (possible, not drawn); snow on the shrubs, the roads, the apron and the platform (the land's alone carries
+it); the globe beyond the land, which keeps its April colours (`RegionSurface.month`) whatever the season, so that seen
+from height the steppe round Site 1 in March is the land's snow and mud inside its square and April's brown beyond. No
+photograph or film of either Voskhod morning that shows the steppe has been found (the crew on the apron in October;
+greatcoats under an overcast in March).
+
 ### The worked ground
 
 By April 1961 the range had been building round the pad for four years, and the two Corona frames that bracket the

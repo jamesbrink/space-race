@@ -11,7 +11,8 @@ import type { Palette } from '../../../../src/viewer/land.ts';
  * next pad on the same steppe (Site 31, the later Soviet flights), each giving its own lie of the land and its own made
  * ground. Sources and confidence are set out in missions/ussr/places/tyuratam/site-1.md, "The ground and what grows", and
  * docs/sources.md, "The steppe at Tyuratam". Its season is the flight's day's (`SEASONS`, `seasonOf`): the April flush
- * below, or the summer's reddish-grey once the ephemerals have gone. In short:
+ * below, the summer's reddish-grey once the ephemerals have gone, the autumn's grey after the plants' season, or the
+ * thaw's old snow and mud at the end of the winter (site-1.md, "The seasons"). In short, of April:
  *
  * - **The ground** is grey-brown desert loam under a thick clay crust (Chertok's "steppe asphalt", which the builders'
  *   trucks of 1955 to 1957 ground to dust in ruts kilometres wide), with takyrs (bare cracked clay floors) and
@@ -40,6 +41,39 @@ import type { Palette } from '../../../../src/viewer/land.ts';
  */
 const SUMMER =
   'Chertok, vol. 2, p. 357 ("a uniform reddish-gray color", June 1957) and vol. 3, p. 387; Mikheev («коричнево-серый»); the film of 6 August 1961. The colours estimated';
+
+/**
+ * What the autumn rests on (Voskhod 1, 12 October 1964): the day dry and frosty, no snow. «Тихое морозное утро,
+ * температура — минус 8 градусов ... ветер — 3–4 метра в секунду, видимость — более 20 километров, высокие перистые
+ * облака» (Kamanin, «Скрытый космос», 12 October 1964); "During the clear, still night, the temperature fell to minus
+ * 10°C" (Chertok, Rockets and People, vol. 3, pp. 238 and 239). Kazalinsk, 96 km west, had rain on 4, 6 and 7 October
+ * and none from the 8th to the 14th, the ground "moist" at 03 UTC on the 12th, 7.2 °C at 09 UTC; Kara-Kum and Aralsk
+ * "dry" (NOAA ISD 35849099999, 35756099999; GHCN-Daily KZ000035849). The plants are past their season: the wormwood
+ * flowers in August and goes grey-green to grey, its spent stems straw; the biyurgun's red fruits and the saltworts'
+ * winged fruits (purple, rose or yellowish, turning brown) are of July to September, the teresken's hairs "finally
+ * rufescent" (Flora of the USSR, vols. VI and XXVI); the spring's ephemerals long gone. No photograph or film of that
+ * morning showing the steppe has been found: each colour is estimated from those descriptions.
+ */
+const AUTUMN =
+  'Kamanin, «Скрытый космос», 12 October 1964 (frost, minus 8, still, clear); Chertok, vol. 3, pp. 238-239; NOAA ISD and GHCN-Daily at ' +
+  'Kazalinsk, Kara-Kum and Aralsk (dry, no snow); Flora of the USSR, vols. VI and XXVI (what each plant is in autumn). The colours estimated';
+
+/**
+ * What the end of the winter rests on (Voskhod 2, 18 March 1965). «Март на космодроме начался сырой пасмурной погодой
+ * ... Степь была покрыта доживающими последние дни пятнами грязного снега» ("The steppe was covered with patches of
+ * dirty snow living out its last days": Chertok, vol. 3, p. 262, of early March); on the 18th "low cloud cover and
+ * intermittent drizzling rain" (p. 263). A storm of snow, then rain and snow, from the 10th to the 13th (18 mm at
+ * Kazalinsk; the ground "covered completely" on the 12th), a freeze to minus 10 from the 14th to the 16th, snow showers on
+ * the 17th and snow grains early on the 18th, then 2.8 °C at 09 UTC under eight eighths of stratocumulus; at Kara-Kum
+ * the ground covered on the 17th and under half covered on the 19th (NOAA ISD 35849099999, 35756099999: the ground's state;
+ * the snow's depth was not reported). So: old dirty snow in patches over well under half the ground, the rest bare,
+ * wet and muddy over frozen ground, the plants dormant and grey; no growth before the April flush is in any source
+ * read. Siddiqi (Challenge to Apollo, p. 454) has "a cold and snowy day", citing Kamanin, whose entry for the 18th says
+ * nothing of the weather: Chertok, who was there, is followed. How much snow lay at Site 1 is estimated.
+ */
+const THAW =
+  'Chertok, vol. 3, pp. 262-263 (patches of dirty snow in early March; low cloud and drizzle on the 18th); Kamanin, 12 and 16 March 1965; ' +
+  'NOAA ISD at Kazalinsk and Kara-Kum (the ground snow-covered on 12 and 17 March, under half on the 19th). The snow’s share, its colour and the plants’ estimated';
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
 const srgb = (hex: number) => new THREE.Color(hex);
@@ -76,7 +110,7 @@ export const STEPPE = {
  * does, and which plants stand. Each season says what it rests on (site-1.md, "The ground and what grows": the seasons).
  */
 export interface SteppeSeason {
-  name: 'spring' | 'summer';
+  name: 'thaw' | 'spring' | 'summer' | 'autumn';
   /** From this day of the year (month and day, 'MM-DD') until the next season's. */
   from: string;
   /** The sward's two tones, where it is thick and where it is thin (`STEPPE.herbGreen`, `herbDry` in the spring). */
@@ -84,14 +118,48 @@ export interface SteppeSeason {
   herbDry: THREE.Color;
   /** By species' name (`steppeFlora`): its colours, and its share times this (0: not standing, or not seen, then). */
   species: Record<string, { colours?: [number, number]; share?: number }>;
+  /**
+   * Snow lying, where the season has it: the share of the ground it covers (0 to 1), in patches metres to tens of metres
+   * across that lie longest against the shrubs and go first off the worked ground and the ruts, and its colour (old
+   * snow, dirtied). Left out, none: then the ground's shaders are what they were without it, to the letter.
+   */
+  snow?: { cover: number; colour: THREE.Color };
+  /** How wet the bare ground is, 0 to 1: the crust darkened and smoothed by water standing in it (the thaw's mud). Left out, dry. */
+  wet?: number;
   confidence: 'documented' | 'derived' | 'estimated';
   source: string;
 }
 
 export const SEASONS: SteppeSeason[] = [
   {
+    // the end of the winter: old snow going in patches, mud, the plants dormant (THAW). From the snow's usual last days
+    // (the median last day with snow at Kazalinsk is about 1 March, 1993 to 2025: GHCN-Daily), estimated
+    name: 'thaw',
+    from: '03-01',
+    // last year's sward, flattened and grey under the snow
+    herbGreen: srgb(0x9a8f7e),
+    herbDry: srgb(0x948a80),
+    species: {
+      // nothing of the spring is up: the ephemerals and the tulips are below ground, the dead tufts lie flat
+      'meadow-grass': { share: 0 },
+      tulip: { share: 0 },
+      rhubarb: { share: 0 },
+      sedge: { colours: [0x9d927e, 0xaea38e] },
+      // the shrubs dormant: the wormwood's felt grey, the biyurgun and the saltworts dry grey-brown
+      wormwood: { colours: [0x8e9083, 0xa8a99b] },
+      biyurgun: { colours: [0x6c6858, 0x817b68] },
+      teresken: { colours: [0x9a978a, 0xb2ae9f] },
+      saltwort: { colours: [0x857a68, 0x9a8f7b] },
+    },
+    snow: { cover: 0.3, colour: srgb(0xd6d3cb) },
+    wet: 0.6,
+    confidence: 'estimated',
+    source: THAW,
+  },
+  {
     name: 'spring',
-    from: '03-15',
+    // (from the snow's going: the flush of the second week of April, Vostok 1's, is the only spring day drawn)
+    from: '04-01',
     herbGreen: STEPPE.herbGreen,
     herbDry: STEPPE.herbDry,
     species: {},
@@ -118,12 +186,36 @@ export const SEASONS: SteppeSeason[] = [
     confidence: 'estimated',
     source: SUMMER,
   },
+  {
+    // the autumn: dry and frosty, past every plant's season (AUTUMN). From mid-September, when the saltworts' fruits
+    // have turned (Flora of the USSR: July to September), estimated
+    name: 'autumn',
+    from: '09-15',
+    // the summer's straw, greyer and paler after the first rains and frosts
+    herbGreen: srgb(0xa99c87),
+    herbDry: srgb(0xa1968a),
+    species: {
+      'meadow-grass': { colours: [0xae9f86, 0xbfb197] },
+      sedge: { colours: [0xa99a80, 0xbaab91] },
+      tulip: { share: 0 },
+      rhubarb: { share: 0 },
+      // the wormwood past flowering, grey-green to grey with straw-coloured spent stems
+      wormwood: { colours: [0x91937f, 0xacad99] },
+      // the biyurgun reddish brown with its dried fruits; the saltworts rusty pink-brown; the teresken's hairs rufous
+      biyurgun: { colours: [0x7a6553, 0x92775f] },
+      saltwort: { colours: [0x9a6f60, 0xb08a77] },
+      teresken: { colours: [0xa8957d, 0xbda88f] },
+    },
+    confidence: 'estimated',
+    source: AUTUMN,
+  },
 ];
 
 /**
  * The season on a date ('1961-08-06'): the last whose `from` has come that year (before the first, the last of the year
- * before). Only these two are drawn: the autumn (Voskhod 1, October) and the end of the winter (Voskhod 2, March) are not
- * yet their own, and take the summer's and the spring's ground.
+ * before). Four are drawn: the thaw (Voskhod 2, March), the spring (Vostok 1, April), the summer (Vostok 2 to 6, June and
+ * August) and the autumn (Voskhod 1, October). The deep winter has no flight yet and is not its own: from December to
+ * February a day takes the autumn's ground, which is wrong for it.
  */
 export function seasonOf(date: string): SteppeSeason {
   const day = date.slice(5, 10);
@@ -144,9 +236,37 @@ export const steppePalette = (season: SteppeSeason): Palette => ({
 });
 
 /** The steppe seen whole, as the globe keeps it round the site from height (globe.ts `tone`): crust, sward and wormwood together. */
-export const steppeTone = (season: SteppeSeason) => STEPPE.loam.clone().lerp(season.herbGreen, 0.3).lerp(STEPPE.litter, 0.15);
+export const steppeTone = (season: SteppeSeason) => {
+  const tone = STEPPE.loam.clone().lerp(season.herbGreen, 0.3).lerp(STEPPE.litter, 0.15);
+  if (season.wet) tone.multiplyScalar(1 - 0.28 * season.wet);
+  return season.snow ? tone.lerp(season.snow.colour, season.snow.cover) : tone;
+};
 /** And in the cel look (globe.ts `celLand`): the ground's flat tone. */
-export const steppeCel = (season: SteppeSeason) => STEPPE.loam.clone().multiplyScalar(1.02).lerp(season.herbGreen, 0.2);
+export const steppeCel = (season: SteppeSeason) => {
+  const tone = STEPPE.loam.clone().multiplyScalar(1.02).lerp(season.herbGreen, 0.2);
+  if (season.wet) tone.multiplyScalar(1 - 0.2 * season.wet);
+  return season.snow ? tone.lerp(season.snow.colour, season.snow.cover) : tone;
+};
+
+/**
+ * Where snow lies (`SteppeSeason.snow`): GLSL `float snowField(vec2 p, float shrub, float bared)`, a field of drifts
+ * metres to tens of metres across, higher against the shrubs that hold it and lower where the ground was worked bare (bared,
+ * 0 to 1: the worked ground and the ruts); and the cut over which it lies so that about `cover` of open ground is under it.
+ * The field's three noises (each about uniform on 0 to 1) are taken as summing to a spread of 0.13 about 0.5: the cut is
+ * its quantile at 1 - cover by a logistic's, good to a few hundredths of cover (estimated, as the cover is).
+ */
+const snowGlsl = (season: SteppeSeason): { field: string; cut: number } | null => {
+  if (!season.snow) return null;
+  const c = Math.min(0.99, Math.max(0.01, season.snow.cover));
+  return {
+    field: /* glsl */ `
+  float snowField(vec2 p, float shrub, float bared) {
+    float drift = noise(vec3(p * 0.045, 60.0)) * 0.55 + noise(vec3(p * 0.21, 61.0)) * 0.3 + noise(vec3(p * 1.1, 62.0)) * 0.15;
+    return drift + 0.12 * smoothstep(0.2, 0.6, shrub) - 0.3 * bared;
+  }`,
+    cut: 0.5 + 0.13 * 0.5513 * Math.log((1 - c) / c),
+  };
+};
 
 /**
  * GLSL for the cover's bake: `void steppe(vec2 p, float low, out ...)`, the steppe's own cover at p (metres) where the
@@ -203,7 +323,7 @@ export const STEPPE_COVER = /* glsl */ `
  * takyr). The site's `shared` defines `float rutsAt(vec2 p, out vec2 along)`: how much the ground at p lies in ruts
  * worn by wheels, 0 to 1, and the way they run.
  */
-export const steppeGround = (season: SteppeSeason) => /* glsl */ `
+export const steppeGround = (season: SteppeSeason) => /* glsl */ `${snowGlsl(season)?.field ?? ''}
   // the nearest crack of a floor cracked into polygons size metres across, metres; and the polygon's own shade, 0 to 1
   float steppeCracks(vec2 p, float size, out float tone) {
     vec2 c = p / size, i = floor(c), f = c - i;
@@ -305,9 +425,25 @@ export const steppeGround = (season: SteppeSeason) => /* glsl */ `
     g.bump += 0.008 * sward * (clump - 0.5) * seen(0.2);
     // round the shrubs' feet: the loose darker soil the wind heaps there (its edge goes to its mean under two pixels)
     float under = smoothstep(0.25, 0.65, shrub + 0.25 * (noise(vec3(p * 0.8, 14.0)) - 0.5) * seen(2.5));
-    g.albedo = mix(g.albedo, ${vec3(STEPPE.litter)} * (0.85 + 0.3 * noise(vec3(p * 3.0, 15.0))), 0.15 * under * (1.0 - dusty));
+    g.albedo = mix(g.albedo, ${vec3(STEPPE.litter)} * (0.85 + 0.3 * noise(vec3(p * 3.0, 15.0))), 0.15 * under * (1.0 - dusty));${season.wet ? wetGlsl(season.wet) : ''}${season.snow ? lyingGlsl(season) : ''}
     return g;
   }`;
+
+/** The thaw's mud (`SteppeSeason.wet`): the bare crust darker and smoother where water stands in it, the sward less so. */
+const wetGlsl = (wet: number) => /* glsl */ `
+    // the bare ground wet: darker, smoother, a sheen where it is wettest (the thaw's mud over frozen ground)
+    float soaked = ${wet.toFixed(3)} * (1.0 - 0.6 * sward) * (0.75 + 0.5 * noise(vec3(p * 0.06, 64.0)));
+    g.albedo *= 1.0 - 0.35 * soaked;
+    g.rough = mix(g.rough, 0.55, soaked);`;
+
+/** Snow lying in patches (`SteppeSeason.snow`), dirtied, a little uneven in tone near the eye. */
+const lyingGlsl = (season: SteppeSeason) => /* glsl */ `
+    // old snow lying in patches, dirtied; its edge soft, as a thin layer's is
+    float lying = smoothstep(${(snowGlsl(season)!.cut - 0.02).toFixed(4)}, ${(snowGlsl(season)!.cut + 0.02).toFixed(4)}, snowField(p, shrub, max(dusty, tyres)));
+    vec3 snow = ${vec3(season.snow!.colour)} * (0.95 + 0.08 * noise(vec3(p * 0.9, 65.0)) * seen(0.2));
+    g.albedo = mix(g.albedo, snow, lying);
+    g.rough = mix(g.rough, 0.6, lying);
+    g.bump = mix(g.bump, 0.003 * (noise(vec3(p * 4.0, 66.0)) - 0.5) * seen(0.2), lying);`;
 
 /**
  * GLSL: the steppe in the cel look (land.ts `LandSpec.cel`): each ground one flat tone chosen by its map with an edge
@@ -343,6 +479,19 @@ export const steppeCelGround = (season: SteppeSeason) => /* glsl */ `
       float dot_ = (1.0 - smoothstep(0.025, 0.05, length(tq))) * step(0.82, th);
       mark = max(mark, mix(dot_, stroke, grassed) * (1.0 - pan));
       mark *= seen(0.06);
+    }${
+      season.wet
+        ? `
+    c *= 1.0 - ${(0.2 * season.wet).toFixed(3)};   // the thaw's mud: the ground a shade darker`
+        : ''
+    }${
+      season.snow
+        ? `
+    // the snow: one flat tone, its edge where the field crosses the cut, no pen inside it (snowField: the ground's, before this)
+    float lying = step(${snowGlsl(season)!.cut.toFixed(4)}, snowField(p, A.r, max(B.r, 0.8 * rutted)));
+    c = mix(c, ${vec3(season.snow.colour)} * 1.04, lying);
+    mark *= 1.0 - lying;`
+        : ''
     }
     return mix(c, c * 0.68, mark);
   }`;

@@ -880,8 +880,8 @@ const NEIGHBOURS: SiteAround[] = [
  * How what is built in Site 1's frame is stood on the land round the origin pad: where that frame lies on the compass
  * (`x`, `z`: its zero is put there, at the compass's height zero), and how far to raise a thing whose middle is (x, z)
  * in Site 1's frame and which reaches `half` metres from it over where its model has it: onto the highest of the land
- * drawn under it, less the site's relief at its middle, which its model stands on (site1/relief.py), and less the
- * difference of the two pads' grades (each model is built at Site 1's). Its walls go down 0.48 m into the land. Round
+ * drawn under it, less the site's relief at its middle, which its model stands on (site1/relief.py), and plus the origin
+ * pad's grade less Site 1's (each model is built at Site 1's). Its walls go down 0.48 m into the land. Round
  * Site 1 the frame is the land's and the lift is the land's height less the relief, to the last bit.
  */
 export function standsInSite1(compass: Compass, land: { heightAt(x: number, z: number): number }) {
@@ -906,7 +906,7 @@ export function standsInSite1(compass: Compass, land: { heightAt(x: number, z: n
  * stands round (`standsInSite1`). What that pad's own ground is (its lie, its tracks, its pit) is its own to give.
  */
 export const TYURATAM_GROUND: GroundSpec = {
-  // the land in its season on the flight's day: the spring's flush, or the summer's straw (steppe.ts `seasonOf`)
+  // the land in its season on the flight's day: the thaw's snow and mud, the spring's flush, the summer's straw, the autumn's grey (steppe.ts `seasonOf`)
   land: (day, compass) => landSpec(seasonOf(day.date), compass),
   flora: steppeFlora,
   reach: 1500,

@@ -45,7 +45,7 @@ missions/                             the record: one folder per nation, program
     scenery.ts                        the Cape's shore and its other launch complexes, each dated (`stood`: from, until, how sure) from May 1961 to
                                       1965, in latitude and longitude: the near ones a model of their own (complexes/, `pnpm model:cape`), the far
                                       ones stand-ins, Complex 5's own place seen from the other pads, the lighthouse
-    steppe.ts  relief.ts  works.ts    Tyuratam's: the steppe in April as a kind of country (its ground, cel ground, palette, plants); how high the ground
+    steppe.ts  relief.ts  works.ts    Tyuratam's: the steppe as a kind of country in its seasons (ground, cel ground, palette, plants, snow); how high the ground
                                       is round Site 1 in JavaScript and GLSL (as site1/relief.py; tests/tyuratam.test.mjs); SRTM's lie and the Corona
                                       frames' railways, roads and tracks past Site 1's own ground
     tracks.ts                         Tyuratam's: the tracks onto Site 1's platform as lines, their bends curved where the rails are modelled, and a
