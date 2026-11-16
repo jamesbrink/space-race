@@ -223,7 +223,10 @@ export function windsOf(when: { site: SiteDef; launch: string; weather?: DayWeat
   const first = Math.min(...times);
   const last = Math.max(...times);
   // (the instant as the clock has it: its epoch is the launch as a Julian date, so at T-0 this is the same number twice)
-  const msOf = (jd: number): number => Math.min(last, Math.max(first, (jd - UNIX_EPOCH) * DAY_MS));
+  // (to the whole millisecond: a Julian date of these years carries an instant to some 40 microseconds, so an hour's own
+  // instant comes back a hair either side of it, and is the hour)
+  const msAt = (jd: number): number => Math.round((jd - UNIX_EPOCH) * DAY_MS);
+  const msOf = (jd: number): number => Math.min(last, Math.max(first, msAt(jd)));
   const zero = hours.length ? hourAt(hours, msOf(julianDate(when.launch)))?.wind : null;
   const record = { wind: day.wind, cloud: day.cumulus?.wind ?? null };
   if (!zero) return () => ({ ...record, held: null });
@@ -241,7 +244,7 @@ export function windsOf(when: { site: SiteDef; launch: string; weather?: DayWeat
   const drawn = (now: readonly [number, number], k: [number, number] | null, own: readonly [number, number]): [number, number] =>
     k ? [k[0] * now[0] - k[1] * now[1], k[0] * now[1] + k[1] * now[0]] : [own[0] + now[0] - zero[0], own[1] + now[1] - zero[1]];
   return (jdUT) => {
-    const ms = (jdUT - UNIX_EPOCH) * DAY_MS;
+    const ms = msAt(jdUT);
     const held = ms < first ? 'before' : ms > last ? 'after' : null;
     const now = hourAt(hours, msOf(jdUT))?.wind ?? zero;
     if (now[0] === zero[0] && now[1] === zero[1]) return { ...record, held };
