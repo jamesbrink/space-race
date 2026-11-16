@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { vec3 } from '../../../../src/viewer/glsl.ts';
 import { TYURATAM_HEIGHTS } from './tyuratam-heights.ts';
 import { FANS, TYURATAM_WORKS } from './tyuratam-works.ts';
 import { STEPPE } from './steppe.ts';
@@ -11,7 +12,6 @@ import { STEPPE } from './steppe.ts';
  */
 
 const glsl = (v: number) => v.toFixed(3);
-const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 // ---------------------------------------------------------------------------------------------------------------
 // The lie of the land: SRTM's heights, every `step` metres, as a cubic B-spline (smooth to its second derivative, so

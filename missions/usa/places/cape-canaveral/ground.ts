@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { smoothstep } from '../../../../src/util/math.ts';
 import { breeze, type Day } from '../../../../src/viewer/day.ts';
 import { fbm2 } from '../../../../src/viewer/field.ts';
+import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { FloraSpec } from '../../../../src/viewer/flora.ts';
 import type { LandSpec, Palette } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
@@ -73,7 +74,6 @@ const PALETTE: Palette = {
   leafLit: srgb(0x648a45),
   leafOther: srgb(0x577a3a),
 };
-const glsl3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /*
  * The sky is not the Cape's but a day's: the haze, the cumulus, the decks over them and the wind are the flight's own
@@ -138,7 +138,7 @@ const PAINT = /* glsl */ `
     // the beach: dry sand paler and finer above the reach of the waves, a line of wrack where the last high water left it
     float beach = 1.0 - smoothstep(36.0, 50.0, shore);
     // (a tint on the ground's own sand, so its grain carries on down the beach)
-    vec3 dry = vec3(0.62, 0.56, 0.45) / ${glsl3(PALETTE.sand)};
+    vec3 dry = vec3(0.62, 0.56, 0.45) / ${vec3(PALETTE.sand)};
     g.albedo = mix(g.albedo, g.albedo * mix(vec3(1.0), dry, 0.75), beach);
     // (a scatter of weed and shell along a line, thin and broken: bits of a few centimetres)
     float wrack = (1.0 - smoothstep(0.1, 0.7, abs(shore - 17.0 - 3.0 * noise(vec3(p.y * 0.05, 0.0, 25.0))))) * smoothstep(0.55, 0.7, noise(vec3(p * 9.0, 26.0))) * smoothstep(0.35, 0.6, noise(vec3(p * 0.4, 28.0)));

@@ -3,6 +3,7 @@ import type { SiteAround } from '../../../../src/types.ts';
 import { smoothstep } from '../../../../src/util/math.ts';
 import { buildAround } from '../../../../src/viewer/around.ts';
 import { fbm2 } from '../../../../src/viewer/field.ts';
+import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { LandSpec } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
 import { type GroundSpec, stood } from '../../../../src/viewer/scenery/ground.ts';
@@ -206,7 +207,6 @@ const STRIP = 1.2;
 const FAR = 8000;
 
 const glsl = (v: number) => v.toFixed(3);
-const colour = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /** The outer fence's sides, metres from the rocket's axis (site-1.md, "The place round the pad": derived from HTA/JR-4/58 and today's imagery). */
 const FENCE = { south: 191, east: 435, west: -484, north: 303 };
@@ -759,7 +759,7 @@ const PAINT = /* glsl */ `
       slab *= 1.0 - stain * seen(0.5);
       slab *= 0.94 + 0.12 * mix(0.5, noise(vec3(p * 1.3, 91.0)) * 0.6 + noise(vec3(p * 0.35, 96.0)) * 0.4, seen(0.4));
       // the steppe's dust blown into the margins
-      slab = mix(slab, ${colour(STEPPE.dust)}, 0.25 * (1.0 - smoothstep(0.0, 0.2, e)) * seen(0.2));
+      slab = mix(slab, ${vec3(STEPPE.dust)}, 0.25 * (1.0 - smoothstep(0.0, 0.2, e)) * seen(0.2));
       // along each track: the pale band with the rails in it
       float band = 1.0 - smoothstep(1.15, 1.25, d);
       slab = mix(slab, vec3(0.6, 0.585, 0.55) * (0.95 + 0.06 * noise(vec3(p * 0.7, 93.0))), band);

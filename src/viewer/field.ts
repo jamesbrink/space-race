@@ -1,7 +1,7 @@
 /**
  * Noise that gives the same answer in JavaScript and on the GPU. The ground's height is needed in
  * both places: the terrain's vertex shader lifts the land by it, and the walker and the plants
- * stand on it. Floating-point hashes (`fract(sin(...))`, the `NOISE` of space.ts) differ between
+ * stand on it. Floating-point hashes (`fract(sin(...))`, the `NOISE` of glsl.ts) differ between
  * the two in their last bits, which is every bit they have; this one hashes integers, which
  * multiply and wrap identically in both, so only the smooth interpolation between lattice points
  * can differ, by a few parts in ten million.

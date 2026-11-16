@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Day } from '../../../../src/viewer/day.ts';
 import { breeze } from '../../../../src/viewer/day.ts';
 import type { FloraSpec, Species } from '../../../../src/viewer/flora.ts';
+import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { Palette } from '../../../../src/viewer/land.ts';
 
 /**
@@ -77,7 +78,6 @@ const THAW =
 
 /** A colour as an sRGB hex (three converts it to its linear working space). */
 const srgb = (hex: number) => new THREE.Color(hex);
-const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /**
  * The ground's colours: estimated, from colour photographs of the cosmodrome's steppe in April, then cleaned as the look

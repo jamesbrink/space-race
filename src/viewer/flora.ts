@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { hash2, noise2, sequence } from './field.ts';
+import { NOISE } from './glsl.ts';
 import { due, type Kind, type Lists, type Placed, pack, sort, type Tile } from './plantsort.ts';
-import { NOISE } from './space.ts';
 
 /**
  * Plants as a community: what grows where the site's cover map says it does, species by species,

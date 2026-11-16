@@ -38,6 +38,7 @@
  * same arithmetic in TypeScript, for the tests and for the Sun's own colour seen from a height.
  */
 import * as THREE from 'three';
+import { vec3 } from './glsl.ts';
 
 /** The top of the air, metres above the sea: above it there is nothing to scatter. */
 export const TOP = 100_000;
@@ -126,13 +127,12 @@ export function transmittanceFromUv(u: number, v: number): [number, number] {
 }
 
 const f = (v: number): string => v.toExponential(6);
-const v3 = (v: readonly number[]): string => `vec3(${v.map(f).join(', ')})`;
 
 /** GLSL: the air's make-up and the table's parametrisation, for the tables' own shaders and for whoever reads them. `uAtmHaze`: the haze's extinction at the sea and its height. */
 const MEDIUM = /* glsl */ `
   uniform vec2 uAtmHaze;
   const float ATM_TOP = ${f(TOP)}, ATM_GROUND = ${f(GROUND)};
-  const vec3 ATM_RAYLEIGH = ${v3(RAYLEIGH)}, ATM_OZONE = ${v3(OZONE)};
+  const vec3 ATM_RAYLEIGH = ${vec3(RAYLEIGH, f)}, ATM_OZONE = ${vec3(OZONE, f)};
   // gas, haze and ozone at a height, as fractions of each one's most
   vec3 atmDensities(float h) {
     h = max(h, 0.0);

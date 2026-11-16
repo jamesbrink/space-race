@@ -19,6 +19,7 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
+import { vec3 } from './glsl.ts';
 import type { Beyond } from './land.ts';
 import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
@@ -114,7 +115,6 @@ const SEA_ROUGH = Math.sqrt(Math.sqrt(SEA_SLOPES));
 const LAND = new THREE.Color(0x4f7a42); // (the Cape's canopy seen whole, so the site's ground and the land beyond it are one green: missions/usa/places/cape-canaveral/ground.ts PALETTE)
 const ICE = new THREE.Color(0xe4eaee);
 
-const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /**
  * Heights of the eye, metres, between which the site's own ground goes over to the globe's surface (land.ts takes

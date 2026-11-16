@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ATMOSPHERE_GLSL, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
+import { vec3 } from '../../viewer/glsl.ts';
 import { WGS84_A, WGS84_B } from '../../world/bodies.ts';
 import type { Mat3, Vec3 } from '../../world/frames.ts';
 import { RELIEF_GLSL } from '../../world/relief.ts';
@@ -46,11 +47,6 @@ const ICE = new THREE.Color(0xe4eaee);
 const SPREAD = 8;
 /** The top of the air over the sea, metres (atmosphere.ts: TOP). */
 const TOP = 100_000;
-
-const vec3 = (c: readonly number[] | THREE.Color): string => {
-  const [r, g, b] = c instanceof THREE.Color ? [c.r, c.g, c.b] : c;
-  return `vec3(${r!.toFixed(4)}, ${g!.toFixed(4)}, ${b!.toFixed(4)})`;
-};
 
 const VERTEX = /* glsl */ `
   varying vec3 vObj;

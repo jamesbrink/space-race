@@ -150,6 +150,7 @@ src/
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
+  viewer/glsl.ts                      GLSL said once: a colour or triple written into shader text (`vec3`, each caller's digits kept), the general noise
   viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground,
                                       the Sun's light under a veil of high cloud
   viewer/day.ts                       a day's weather as it is drawn: a flight's record (DayWeather) turned into the air, the clouds, the map and the light

@@ -19,6 +19,7 @@
  */
 
 import type { Burns } from '../types.ts';
+import { vec3 } from './glsl.ts';
 
 export type { Burns };
 
@@ -153,9 +154,8 @@ export function kindOf(burns: Burns | undefined): number {
   return Math.max(0, KINDS.indexOf(burns ?? 'alcohol-lox'));
 }
 
-const vec3 = (c: Rgb): string => `vec3(${c.map((x) => x.toFixed(3)).join(', ')})`;
 const table = (name: string, pick: (f: FlameLook) => Rgb): string =>
-  `const vec3 ${name}[${KINDS.length}] = vec3[${KINDS.length}](${KINDS.map((k) => vec3(pick(FLAMES[k]))).join(', ')});`;
+  `const vec3 ${name}[${KINDS.length}] = vec3[${KINDS.length}](${KINDS.map((k) => vec3(pick(FLAMES[k]), 3)).join(', ')});`;
 
 /** The shader's tables: each flame's colours, by `kindOf`. */
 export const FLAME_TABLES = [

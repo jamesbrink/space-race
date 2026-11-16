@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FIELD } from './field.ts';
 import { onlyAsItself } from './flora.ts';
-import { NOISE } from './space.ts';
+import { NOISE, vec3 } from './glsl.ts';
 
 /**
  * The ground of a place, from its parameters: one mesh from under the walker's feet to the
@@ -165,8 +165,6 @@ function sunKept(): string {
     .replaceAll('RE_Direct( directLight,', 'if ( UNROLLED_LOOP_INDEX == 0 ) landSun = directLight.color;\n\t\tRE_Direct( directLight,');
   return chunk.slice(0, from) + loop + chunk.slice(to);
 }
-
-const vec3 = (c: THREE.Color) => `vec3(${c.r.toFixed(4)}, ${c.g.toFixed(4)}, ${c.b.toFixed(4)})`;
 
 /** GLSL to read the two maps at a point, the detailed one blended into the coarse one at its edge. */
 const MAPS_FOUR = /* glsl */ `
