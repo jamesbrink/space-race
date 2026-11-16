@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { Lamps } from '../src/viewer/lamps.ts';
+import { DUTY, Lamps, lampsLit } from '../src/viewer/lamps.ts';
 
 /** A site with more rooms than there are room lights, in a row 20 m apart, on something that can be moved. */
 function site(rooms = 8) {
@@ -93,4 +93,25 @@ test('the eye moving, or a room, is seen at once', () => {
   settle(lamps, far);
   // and `place` (hardware moved by hand) always hands them round again
   assert.ok(sorted(() => lamps.place()) > 0);
+});
+
+test('the floods come on as the Sun goes down past the place’s switching, warming up over minutes, and go out in the morning', () => {
+  const rate = -15 / 3600; // (the Sun going down at a quarter of a degree a minute)
+  assert.equal(lampsLit(DUTY, 2, rate), 0, 'before sunset: out');
+  assert.equal(lampsLit(DUTY, DUTY.on.value, rate), 0, 'switched on: from nothing');
+  const half = DUTY.on.value + (DUTY.warm.value / 2) * rate;
+  assert.ok(Math.abs(lampsLit(DUTY, half, rate) - 0.5) < 1e-9, 'half way through warming up');
+  assert.equal(lampsLit(DUTY, -20, rate), 1, 'full by night');
+  assert.equal(lampsLit(DUTY, -20, 0), 1, 'at the bottom of the night (the Sun neither rising nor setting)');
+  assert.equal(lampsLit(DUTY, -20, -rate), 1, 'and as it comes up');
+  assert.equal(lampsLit(DUTY, DUTY.off.value - 0.01, -rate), 1, 'on into the morning');
+  assert.equal(lampsLit(DUTY, DUTY.off.value + 0.01, -rate), 0, 'out once the Sun is well up');
+  // through the evening, second by second: never a step
+  let last = 0;
+  for (let t = 0; t < 3600; t++) {
+    const lit = lampsLit(DUTY, 3 + rate * t, rate);
+    assert.ok(Math.abs(lit - last) < 0.01, `no step at ${t} s`);
+    last = lit;
+  }
+  for (const k of ['on', 'off', 'warm']) assert.ok(DUTY[k].confidence && DUTY[k].source, `${k} says how sure it is`);
 });

@@ -45,6 +45,18 @@ export interface SiteDef {
    * the width of the slot it is held in, metres.
    */
   exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
+  /** When its floods were lit, and how they came up (viewer/lamps.ts `lampsLit`). Left out: `DUTY` there, every figure estimated. */
+  lamps?: LampDuty;
+}
+
+/**
+ * When a pad's floods are lit: switched on as the Sun goes down past `on` (its apparent elevation, degrees) and off as it
+ * comes up past `off`, coming up to their light over `warm` seconds once switched on.
+ */
+export interface LampDuty {
+  on: Measure;
+  off: Measure;
+  warm: Measure;
 }
 
 /**

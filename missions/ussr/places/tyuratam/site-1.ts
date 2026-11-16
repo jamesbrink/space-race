@@ -76,4 +76,15 @@ export const SITE1: SiteDef = {
   // The range and every report of the flight kept Moscow time, three hours ahead of UTC in 1961 (liftoff 09:06:59.7 is 06:06:59.7 UTC).
   // Clocks in the Kyzylorda region round it stood later; the flight's record does not use them.
   zone: { name: 'MSK', utcOffset: 3 },
+  // When the pad's floods were lit (viewer/lamps.ts `lampsLit`): the mast's lamps and the vehicles'. Nothing read says.
+  lamps: {
+    on: { value: 0, confidence: 'estimated', source: 'switched on at sunset: when is not recorded' },
+    off: { value: 8, confidence: 'estimated', source: 'left on into the morning until the Sun is well up: when is not recorded' },
+    warm: {
+      value: 300,
+      confidence: 'estimated',
+      source:
+        'what lamps they were is not recorded; taken as mercury-vapour floods, which take minutes to come to their light (as Complex 5’s: lc-5.ts)',
+    },
+  },
 };

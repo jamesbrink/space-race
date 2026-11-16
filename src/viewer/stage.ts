@@ -1029,8 +1029,8 @@ export class Stage {
     this.shadows.sun.intensity = s.sunIntensity;
     this.fill.intensity = s.fill[2] * (this.looks.current === 'cel' ? CEL_FILL : 1);
     this.expose();
-    // the floodlights come on as the direct light fails (the Sun low, or only the Moon)
-    this.lamps.set(1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), this.renderer.toneMappingExposure);
+    // the floodlights as the place has them (SiteDef.lamps); where it has none, they come on as the direct light fails
+    this.lamps.set(s.lamps ?? 1 - THREE.MathUtils.smoothstep(s.sunIntensity, 0.25, 1.6), this.renderer.toneMappingExposure);
     if (shadows) {
       if (this.walk.active) this.shadows.fitWalkShadows(true);
       else {

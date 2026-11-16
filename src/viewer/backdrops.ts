@@ -12,6 +12,7 @@ import { type Blowing, dayOf, VEIL_DOWN, veilShade, windsOf } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { chapman, Globe } from './globe.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
+import { DUTY, lampsLit } from './lamps.ts';
 import type { Land } from './land.ts';
 import { later } from './later.ts';
 import type { Levelled } from './lod.ts';
@@ -89,6 +90,11 @@ export interface Setting {
    * a frame drawn again is the same frame: a bake owed is made now and put in at once, and a fade under way is finished.
    */
   at?: (jdUT: number, height?: number, atOnce?: boolean) => { shadows: boolean } | null;
+  /**
+   * How far up the pad's floods are at the instant `at` was last given (0 out to 1 at full light: lamps.ts `lampsLit`, by
+   * the site's `lamps`). Left out (the studio, orbit): as the Sun's light fails.
+   */
+  lamps?: number;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
@@ -664,7 +670,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     shownRung = rung;
     if (jdUT !== shownAt) {
       shownAt = jdUT;
-      h.at(skyFrom(site, jdUT));
+      const sky = skyFrom(site, jdUT);
+      h.at(sky);
+      // the pad's floods: by the Sun's height and which way it is going (a minute on, from the ephemeris), so a function of the instant
+      const rate = (skyFrom(site, jdUT + 60 / 86_400).sun.elevation - sky.sun.elevation) / DEG / 60;
+      setting.lamps = lampsLit(when.site.lamps ?? DUTY, h.sunElevation, rate);
     }
     const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
     // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), and are

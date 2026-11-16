@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { LampDuty } from '../types/site.ts';
+import { smoothstep } from '../util/math.ts';
 
 /**
  * Lamps that light things. A model draws a floodlight as a lens of the material `lamp`; here
@@ -86,6 +88,39 @@ function fittings(mesh: THREE.Mesh): Fitting[] {
     fitting.lenses++;
   }
   return found.filter((f) => f.facing.lengthSq() > 1e-6);
+}
+
+/** What a pad's floods do where nothing is recorded (SiteDef.lamps): every figure estimated. */
+export const DUTY: LampDuty = {
+  on: { value: 0, confidence: 'estimated', source: 'switched on at sunset: when is not recorded' },
+  off: {
+    value: 8,
+    confidence: 'estimated',
+    source: 'left on into the morning until the Sun is well up (8 degrees), when they add little to the day: when is not recorded',
+  },
+  warm: {
+    value: 300,
+    confidence: 'estimated',
+    source:
+      'what lamps lit the pad is not recorded; taken as mercury-vapour floods, which take minutes to come to their light: the ' +
+      'GE lamp catalogue of 1960 gives 7 minutes for its H25-DE, Westinghouse 5 for its H33-1-GL/W of 1969 (as lamptech.co.uk quotes them)',
+  },
+};
+
+/**
+ * How far up the floods are (0 out, 1 at full light), with the Sun at `elevation` (apparent, degrees) and going up or
+ * down at `rate` (degrees a second): a function of the instant, so it never steps as the clock runs and a jump of the
+ * clock is shown at once. Going down past `on` they are switched on and warm up over `warm` seconds (how long ago they
+ * were switched on is how far under `on` the Sun is, over its rate: near the horizon it sets steadily); going up past
+ * `off` they go out, as an arc lamp does, at once.
+ */
+export function lampsLit(duty: LampDuty, elevation: number, rate: number): number {
+  if (rate <= 0) {
+    if (elevation > duty.on.value) return 0;
+    const since = rate < 0 ? (duty.on.value - elevation) / -rate : Number.POSITIVE_INFINITY;
+    return smoothstep(0, duty.warm.value, since);
+  }
+  return elevation < duty.off.value ? 1 : 0;
 }
 
 export class Lamps {

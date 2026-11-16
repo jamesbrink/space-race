@@ -51,4 +51,22 @@ export const LC5: SiteDef = {
       'breadth under the concrete: 12 cm is chosen, more than the 5 to 6 cm at which parallel faces seen from across the site ' +
       'flicker (docs/agents/rendering.md). lc5/site.py GROUND is the same in feet, and the neighbouring complexes are built on it: change them together',
   },
+  // When the pad's floods were lit (viewer/lamps.ts `lampsLit`).
+  lamps: {
+    on: { value: 0, confidence: 'estimated', source: 'switched on at sunset: when is not recorded' },
+    off: {
+      value: 14,
+      confidence: 'estimated',
+      source:
+        'MR-4’s count had the pad-area searchlights “secured” at T−30 (TM X-53107 8.3.2; This New Ocean, note 63 to MR-4), half an hour ' +
+        'before a liftoff with the Sun 20.6 degrees up, so about 14 degrees; taken for every morning here',
+    },
+    warm: {
+      value: 300,
+      confidence: 'estimated',
+      source:
+        'what lamps they were is not recorded; taken as mercury-vapour floods, which take minutes to come to their light: the GE lamp ' +
+        'catalogue of 1960 gives 7 minutes for its H25-DE, Westinghouse 5 for its H33-1-GL/W (as lamptech.co.uk quotes them)',
+    },
+  },
 };
