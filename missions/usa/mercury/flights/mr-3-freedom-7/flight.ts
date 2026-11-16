@@ -18,13 +18,23 @@ import {
   Z,
 } from '../../../places/cape-canaveral/lc-5.parts.ts';
 import { LC5 } from '../../../places/cape-canaveral/lc-5.ts';
+import {
+  SPEC,
+  mercuryRedstoneStack,
+  mercuryRedstoneParts,
+  ENGINE_VIEW,
+  IN,
+  mercuryRedstoneMotors,
+  lb,
+  CAPSULE_THRUST,
+  type PartWords as StackWords,
+} from '../../vehicles/mercury-redstone-stack.ts';
+import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import { MERCURY_STICK, mercuryControls, mercuryInstruments, NOT_SIMULATED, sequenceLamp } from '../../vehicles/cabin.ts';
 import { CAPSULE_PLANE, CHUTES, cutoffMass, MR3, trajectory as mercuryRedstone, PLR } from '../../vehicles/mercury-redstone.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { WEATHER } from './weather.ts';
 import { derived, doc, estimated } from '../../../../../src/measure.ts';
-
-const IN = 0.0254;
 
 /**
  * Freedom 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -45,13 +55,11 @@ const PERISCOPE_EVENTS: [number, boolean][] = [
   [578.1, true],
 ];
 const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
-const LBF = 4.4482216;
 const LB = 0.45359237;
 
-const vehicleParts: Part[] = [
+const vehicleParts: StackWords[] = [
   {
     node: 'EscapeTower',
-    group: 'Spacecraft',
     name: 'Launch escape tower',
     commands: [{ label: 'Jettison the escape tower', ask: 'tower' }],
     summary: 'Pulls the capsule off a failing booster.',
@@ -66,12 +74,9 @@ const vehicleParts: Part[] = [
       ['Pylon', 'about 10 ft of 4130 steel tube'],
       ['Jettisoned', 'T+2:22'],
     ],
-    explode: [0, 12.6, 0],
-    order: 0,
   },
   {
     node: 'AntennaCanister',
-    group: 'Spacecraft',
     name: 'Antenna canister',
     commands: [{ label: 'Deploy the drogue parachute', ask: 'drogue' }],
     summary: 'Bicone antenna, horizon scanners, drogue parachute.',
@@ -85,12 +90,9 @@ const vehicleParts: Part[] = [
       ['Scanners', '2 infrared, pitch and roll'],
       ['Jettisoned', 'at main parachute deploy'],
     ],
-    explode: [0, 11.6, 0],
-    order: 1,
   },
   {
     node: 'RecoveryCompartment',
-    group: 'Spacecraft',
     name: 'Recovery compartment',
     commands: [{ label: 'Deploy the main parachute', ask: 'main' }],
     summary: 'Main and reserve parachutes; pitch and yaw thrusters.',
@@ -105,12 +107,9 @@ const vehicleParts: Part[] = [
       ['Main parachute', '63 ft ring-sail, plus reserve'],
       ['Thrusters', 'pitch and yaw: 24 lbf and 1 lbf'],
     ],
-    explode: [0, 10.8, 0],
-    order: 2,
   },
   {
     node: 'Hatch',
-    group: 'Spacecraft',
     name: 'Side hatch',
     summary: 'Held by latches, with a handle inside and out.',
     detail:
@@ -125,12 +124,9 @@ const vehicleParts: Part[] = [
       ['Release', 'handle inside; socket outside'],
       ['Explosive hatch', '23 lb, from MR-4'],
     ],
-    explode: [1.15, 9.9, 0],
-    order: 3,
   },
   {
     node: 'Afterbody',
-    group: 'Spacecraft',
     name: 'Conical afterbody',
     summary: 'René 41 shingles over the pressure vessel.',
     detail:
@@ -152,13 +148,9 @@ const vehicleParts: Part[] = [
     clocked: PERISCOPE,
     // flying it yourself, a right click on the afterbody offers the periscope by hand (vehicles/periscope.ts)
     commands: [{ label: 'Extend the periscope', back: 'Retract the periscope', ask: 'work:periscope' }],
-    explode: [0, 9.9, 0],
-    order: 3,
   },
   {
     node: 'CrewCabin',
-    group: 'Spacecraft',
-    inside: true,
     name: 'Crew cabin',
     summary: 'Where the pilot lies: couch, panel, periscope, and no window ahead.',
     detail:
@@ -178,13 +170,9 @@ const vehicleParts: Part[] = [
       ['Periscope', '8 in screen; 172° field at low power'],
       ['Windows', 'two 10 in portholes'],
     ],
-    explode: [0, 8.9, 0],
-    order: 4,
   },
   {
     node: 'HeatShield',
-    inside: true,
-    group: 'Spacecraft',
     name: 'Heat shield',
     summary: 'Beryllium heat sink, 74.5 inches across.',
     detail:
@@ -196,13 +184,9 @@ const vehicleParts: Part[] = [
       ['Material', 'beryllium heat sink, about 1 in'],
       ['Orbital flights', 'ablative fibreglass and resin'],
     ],
-    explode: [0, 8.3, 0],
-    order: 5,
   },
   {
     node: 'Retropack',
-    inside: true,
-    group: 'Spacecraft',
     name: 'Retropack',
     commands: [
       { label: 'Fire the retrorockets', ask: 'retro' },
@@ -219,12 +203,9 @@ const vehicleParts: Part[] = [
       ['Posigrade motors', '3 × 400 lbf, 1 s'],
       ['Jettisoned', 'T+6:14'],
     ],
-    explode: [0, 7.6, 0],
-    order: 6,
   },
   {
     node: 'RedstoneAdapter',
-    group: 'Launch vehicle',
     name: 'Spacecraft adapter',
     commands: [{ label: 'Separate the spacecraft', ask: 'separate' }],
     summary: 'Joins a 74.5-inch capsule to a 70-inch booster.',
@@ -237,12 +218,9 @@ const vehicleParts: Part[] = [
       ['Clamp', 'Marman ring, explosive bolts'],
       ['Separation', 'T+2:32, 74 km up'],
     ],
-    explode: [0, 6.8, 0],
-    order: 7,
   },
   {
     node: 'RedstoneAftUnit',
-    group: 'Launch vehicle',
     name: 'Aft unit',
     summary: 'Top of the booster: autopilot, abort sensing, ballast.',
     detail:
@@ -257,12 +235,9 @@ const vehicleParts: Part[] = [
       ['Autopilot', 'LEV-3'],
       ['Skin', '0.090 in aluminium'],
     ],
-    explode: [0, 5.8, 0],
-    order: 8,
   },
   {
     node: 'RedstoneCenterUnit',
-    group: 'Launch vehicle',
     name: 'Centre unit',
     summary: 'Alcohol above, liquid oxygen below.',
     detail:
@@ -278,12 +253,9 @@ const vehicleParts: Part[] = [
       ['Skin', '0.063 in and 0.080 in aluminium'],
       ['Fuel', 'ethyl alcohol, cut with water'],
     ],
-    explode: [0, 4.6, 0],
-    order: 9,
   },
   {
     node: 'RedstoneTailUnit',
-    group: 'Launch vehicle',
     name: 'Tail unit',
     commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: 'Four fins, four air rudders, the engine bay.',
@@ -297,13 +269,9 @@ const vehicleParts: Part[] = [
       ['Skin', '0.125 in aluminium'],
       ['Attached by', '12 fasteners in tension'],
     ],
-    explode: [0, 3.4, 0],
-    order: 10,
   },
   {
     node: 'RedstoneEngine',
-    group: 'Launch vehicle',
-    inside: true,
     name: 'A-7 engine',
     commands: [{ label: 'Shut the engine down', ask: 'cutoff' }],
     summary: '78,000 lbf, steered by vanes in its own exhaust.',
@@ -318,17 +286,12 @@ const vehicleParts: Part[] = [
       ['Steering', '4 carbon jet vanes, ±27.5°'],
       ['Turbopump', 'hydrogen-peroxide steam'],
     ],
-    explode: [0, 0, 0],
-    order: 11,
   },
 ];
 
 /** Height of the pedestal's ring, where the fins rest: 6 ft. */
 /** Where liftoff falls on the pad's slider (see T, with the pad's parts). */
 const LIFTOFF = 0.8;
-const PEDESTAL = 5.5 * 0.3048; // the launcher's support level (lc5/site.py: LAUNCHER_TOP)
-/** The vehicle's origin is the capsule's plane of maximum diameter, 716.0 in above the fins. */
-const VEHICLE_Y = PEDESTAL + 716.0 * IN;
 
 /**
  * The flight's azimuth, degrees true (`trajectory.azimuth` has its sources), and how the vehicle therefore stood on
@@ -358,20 +321,11 @@ const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
 /** The spacecraft without its tower. */
 const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Afterbody', 'CrewCabin', 'HeatShield', 'Retropack'];
 
-const vehicle: ModelDef = {
-  id: 'vehicle',
-  name: 'Vehicle',
-  url: 'models/usa/mercury/mr-3-freedom-7/vehicle.glb',
-  // the periscope on its programme, and in the pilot's hands in a flight flown by hand (vehicles/periscope.ts)
+const vehicle = mercuryRedstoneStack({
+  flight: 'mr-3-freedom-7',
+  parts: mercuryRedstoneParts('mr-3-freedom-7', vehicleParts),
   mechanisms: [periscopeMechanism(PERISCOPE_EVENTS)],
-  scale: '25.41 m tall · spacecraft 7.91 m · to scale',
-  backdrop: 'ground',
   slider: ['Assembled', 'Exploded'],
-  cutaway: true,
-  specGroups: ['Spacecraft', 'Launch vehicle'],
-  parts: vehicleParts,
-  position: [0, VEHICLE_Y, 0],
-  // turned with the launcher's table to the flight's azimuth: the model's own frame has the hatch on +X (model/vehicle.py)
   rotationY: PAD_TURN,
   // The two cabin floodlights: "on full white light" in flight (Postlaunch Report, section 7.3, p. 65). Two, fluorescent,
   // four watts each, is the capsule's (SEDR 104 of December 1959, 10-44 and 10-47, capsules 2 to 8); where they hung is
@@ -385,17 +339,14 @@ const vehicle: ModelDef = {
     { position: [0.182, 0.55, 0.26], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
     { position: [0.254, 0.55, 0.192], colour: 0xfffaf2, intensity: 0.7, reach: 3 },
   ],
-  home: 'stack',
   views: [
     { id: 'stack', label: 'Full stack' },
     // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
     { id: 'spacecraft', label: 'Spacecraft', nodes: [...CAPSULE, 'EscapeTower'] },
     { id: 'capsule', label: 'Capsule', nodes: CAPSULE },
-    { id: 'engine', label: 'Engine', nodes: ['RedstoneTailUnit', 'RedstoneEngine'] },
+    ENGINE_VIEW,
   ],
-  // the pad as it was at liftoff: structure at its launch position, masts down, the cab lowered
-  with: [{ model: 'pad', at: 0 }],
-};
+});
 
 /**
  * The pad's slider is the morning of 5 May 1961, from the pilot going aboard to the pad standing
@@ -1285,7 +1236,7 @@ export const flight: Flight = {
   specs: [
     { group: 'Spacecraft', label: 'Heat shield diameter', value: 74.5 * IN, unit: 'm', confidence: 'documented', note: '74.5 in' },
     { group: 'Spacecraft', label: 'Heat shield radius of curvature', value: 80 * IN, unit: 'm', confidence: 'documented', note: '80 in' },
-    { group: 'Spacecraft', label: 'Afterbody half-angle', value: 20, unit: 'deg', confidence: 'documented', note: 'NASA CR-649' },
+    CAPSULE_SPEC.afterbodyHalfAngle,
     {
       group: 'Spacecraft',
       label: 'Recovery compartment diameter',
@@ -1358,15 +1309,8 @@ export const flight: Flight = {
       confidence: 'documented',
       note: '83.38 ft, fins to spike (TM X-53107, 4.1); model: 25.414 m',
     },
-    { group: 'Launch vehicle', label: 'Booster diameter', value: 70 * IN, unit: 'm', confidence: 'documented', note: '70 in' },
-    {
-      group: 'Launch vehicle',
-      label: 'Booster length',
-      value: 59 * 0.3048,
-      unit: 'm',
-      confidence: 'documented',
-      note: '59.00 ft (TM X-53107, Figure 4-1)',
-    },
+    SPEC.boosterDiameter,
+    SPEC.boosterLength,
     {
       group: 'Launch vehicle',
       label: 'Booster top to the capsule’s widest plane',
@@ -1478,77 +1422,46 @@ export const flight: Flight = {
     ...LC5_SPECS,
     launcherSpec(AZIMUTH),
   ],
-  motors: [
-    {
-      name: 'Rocketdyne A-7 (booster)',
-      count: 1,
+  motors: mercuryRedstoneMotors({
+    booster: {
       thrustN: THRUST,
       burnS: MR3.cutoff,
-      propellant: 'ethyl alcohol / liquid oxygen',
       confidence: 'documented',
       note: `sea level, as measured on MR-3: 78,860 lbf, Isp 214.8 s, cutoff at 141.8 s (${TMX_8_1}); 78,000 lbf and 143.5 s nominal`,
     },
-    {
-      name: 'Escape motor (Grand Central)',
-      count: 1,
-      thrustN: 52000 * LBF,
+    escape: {
       burnS: 0.78,
-      propellant: 'solid',
       confidence: 'documented',
-      note: '52,000 lbf for 0.78 s, then decaying; three nozzles canted 19° (SEDR 104)',
+      note: `${lb(CAPSULE_THRUST.escape)} lbf for 0.78 s, then decaying; three nozzles canted 19° (SEDR 104)`,
     },
-    {
-      name: 'Tower jettison motor',
-      count: 1,
-      thrustN: 800 * LBF,
+    jettison: {
       burnS: 1.5,
-      propellant: 'solid',
       confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 785 lbf. Three nozzles canted 30°',
     },
-    {
-      name: 'Posigrade motor',
-      count: 3,
-      thrustN: 400 * LBF,
+    posigrade: {
       burnS: 1,
-      propellant: 'solid',
       confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 370 lbf',
     },
-    {
-      name: 'Retrograde motor (Thiokol)',
-      count: 3,
-      thrustN: 1000 * LBF,
+    retrograde: {
       burnS: 10,
-      propellant: 'solid',
       confidence: 'assumed',
       note: 'SP-45 nominal; McDonnell gives 992 lbf over 13.2 s. Fired 5 s apart',
     },
-    {
-      name: 'Pitch and yaw thruster, high',
-      count: 4,
-      thrustN: 24 * LBF,
-      propellant: '90% hydrogen peroxide',
+    pitchYaw: {
       confidence: 'documented',
       note: 'automatic system',
     },
-    {
-      name: 'Roll thruster, high',
-      count: 2,
-      thrustN: 6 * LBF,
-      propellant: '90% hydrogen peroxide',
+    roll: {
       confidence: 'documented',
       note: 'automatic system',
     },
-    {
-      name: 'Attitude thruster, low',
-      count: 6,
-      thrustN: 1 * LBF,
-      propellant: '90% hydrogen peroxide',
+    low: {
       confidence: 'documented',
       note: 'automatic system, all axes',
     },
-  ],
+  }),
   trajectory,
   checks,
   flownNote:

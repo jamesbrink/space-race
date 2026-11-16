@@ -18,6 +18,8 @@ missions/                             the record: one folder per nation, program
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`;
+                                      mercury-redstone-stack.ts, the capsule on its Redstone on the pad: `mercuryRedstoneStack`,
+                                      `mercuryRedstoneParts`, `SPEC`, `mercuryRedstoneMotors` (the A-7's thrust each flight's own, as measured);
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
                                       sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,

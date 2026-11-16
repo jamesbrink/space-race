@@ -12,6 +12,8 @@ safe to sit on, and an abort system that could fire the escape tower on its own.
 
 ## Dimensions
 
+The suborbital flights quote the Redstone's figures from [mercury-redstone-stack.ts](mercury-redstone-stack.ts) (`SPEC`; how each part leaves, `HARDWARE`); what it does in flight is mercury-redstone.ts.
+
 From NASA TM X-53107 unless noted. Stations in the model are inches above the fin trailing edges.
 
 | Item | Value | Confidence | Basis |
