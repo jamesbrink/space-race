@@ -1,5 +1,5 @@
-import { doc } from '../../../../src/measure.ts';
-import type { CabinDef, Measure, ModelDef, Motor, Move, Part, Spec, ViewDef } from '../../../../src/types.ts';
+import { doc, estimated } from '../../../../src/measure.ts';
+import type { CabinDef, JetDef, Measure, ModelDef, Motor, Move, Part, Spec, ViewDef } from '../../../../src/types.ts';
 import { TDU_THRUST } from '../../vostok/vehicles/vostok-3ka.ts';
 import {
   ATTITUDE_JET,
@@ -184,6 +184,8 @@ export const voskhodStack = (ship: {
   views: ship.views,
   seats: ship.seats,
   cabin: ship.cabin,
+  // the reserve braking engine's burst, forward off the nose (viewer/jets.ts)
+  jets: [RESERVE_JET],
 });
 
 const BRUGGE = 'Brügge’s table for the 11A57';
@@ -197,6 +199,26 @@ export const THRUST = {
     '“a single powerful burst of 12,000 kilograms thrust, lasting approximately two seconds” (Siddiqi, Challenge to Apollo, p. 411)',
   ),
 } satisfies Record<string, Measure>;
+
+/**
+ * The reserve braking engine's burst (`ModelDef.jets`, viewer/jets.ts), from the nozzle node on its face
+ * (`ReserveEngine_Nozzle`: voskhod.md, "Parts in the model"), its gas going forward, off the nose, as the node has it
+ * (derived from OKB-1's drawing: the ship braked nose first). An engine of its own: it was never fired, and with no plan
+ * for the Voskhods nothing flies it, so it is drawn only in the gallery while its part is chosen, as it would have
+ * burned in orbit. What it burned and its nozzle are in nothing read: the era's composite is taken for its look.
+ */
+const RESERVE_JET: JetDef = {
+  node: 'ReserveEngine_Nozzle',
+  gas: 'solid',
+  burns: 'solid-perchlorate',
+  radius: estimated(0.07, 'm: the boss on the engine’s face, 140 mm across at its face (voskhod.py): no nozzle of it was read'),
+  thrust: THRUST.reserve,
+  exit: estimated(
+    30_000,
+    'Pa: NOT FOUND: a third of an atmosphere, as a solid’s nozzle of the time; fired in orbit, any exit above none opens its jet as wide as it goes',
+  ),
+  when: { engine: 'reserve' },
+};
 
 /** The type's figures as specs, each with its source: a flight lists those it shows, and adds its own words where it says more. */
 export const SPEC = {

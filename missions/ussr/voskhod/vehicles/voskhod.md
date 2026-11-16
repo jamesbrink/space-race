@@ -204,6 +204,12 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
   nose, and no text read explains them; none of the photographs shows them. They are not built, and
   the face carries the six stubs the test article's photograph shows. The engine's nozzle is a node
   on the axis at the face (`ReserveEngine_Nozzle`), where two such nozzles would act together.
+- **The reserve engine's burst is drawn only in the gallery** (`RESERVE_JET`, voskhod-11a57.ts; viewer/jets.ts): it was
+  never fired, and with no plan for the Voskhods nothing flies it, so it burns while its part is chosen, as it would
+  have in orbit, forward off the nose along its node. Its thrust and time are the record's (12,000 kgf for about two
+  seconds: S p. 411); its mouth is the boss's face, 140 mm across, its exit pressure a third of an atmosphere, and what
+  it burned the era's polysulphide and perchlorate for its look: all **estimated**. It is drawn burning steadily, not for
+  its two seconds, and it lights nothing.
 - **The cabin is fitted, not drawn** ("The fit", above, which lists what contradicts it: the middle couch's
   displacement, the container's depth, the couches' height).
 - **The couches are designed to the photographs, not surveyed**: no dimension of an Elbrus couch was found. The
