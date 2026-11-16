@@ -130,12 +130,13 @@ export class Shelf {
   /**
    * A level, for one vehicle: `url` its file; `byPart` joined part by part (the finest) or as few pieces as can be;
    * `craft` how its spacecraft is told apart on a level, and `key` what that is told from (the vehicle's headings: two
-   * vehicles on one file with different headings are joined apart). Every `take` is matched by a `give`.
+   * vehicles on one file with different headings are joined apart), and `beside` the nodes of what its spacecraft flew
+   * to meet, joined apart from both. Every `take` is matched by a `give`.
    */
   async take(
     url: string,
     byPart: boolean,
-    craft: { key: string; of: (root: THREE.Object3D) => string[] | null },
+    craft: { key: string; of: (root: THREE.Object3D) => string[] | null; beside?: readonly string[] },
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<Taken> {
     const madeKey = (file: string): string => `${file}|${byPart ? 'parts' : 'whole'}|${craft.key}`;
@@ -150,7 +151,7 @@ export class Shelf {
         const made = this.parse(bytes, url).then((level): Made => {
           const nodes = craft.of(level);
           const raw = rawBytes(level);
-          const joined = join(level, nodes, byPart);
+          const joined = join(level, nodes, byPart, craft.beside);
           // (what was joined was never sent to the GPU: its geometry and materials go, but for what its own pieces keep)
           const kept = keptOf(joined);
           const keptGeometry = new Set(joined.pieces.filter((p) => p.object).map((p) => p.geometry));

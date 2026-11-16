@@ -269,8 +269,13 @@ function joinOwn(sources: readonly Source[]): Piece[] {
  * part, as the vehicle's parts list names it) joined by itself, so that it is still a thing of its own, by its name (the
  * finest level); otherwise the spacecraft and the rest each in as few pieces as there can be (the coarser levels, drawn
  * small). What is not a plain mesh (a line, points, a skinned or instanced mesh, one with morph targets) is kept as it is.
+ * `beside`: the top-level nodes of what the spacecraft flew to meet (address.ts `targetNodes`), neither the spacecraft
+ * nor the rest: joined apart from both (its pieces named `beside`), so the row can stand it by itself.
  */
-export function join(root: THREE.Object3D, craft: readonly string[] | null, byPart = false): Joined {
+/** What a joined level's pieces of the spacecraft's target are named, where they are not joined part by part. */
+export const BESIDE = 'beside';
+
+export function join(root: THREE.Object3D, craft: readonly string[] | null, byPart = false, beside: readonly string[] = []): Joined {
   root.updateMatrixWorld(true);
   const inverse = root.matrixWorld.clone().invert();
   /** Paint sources by what they are joined into (a part's name, or the spacecraft or the rest), and own sources by that and their material. */
@@ -279,7 +284,7 @@ export function join(root: THREE.Object3D, craft: readonly string[] | null, byPa
   const kept: Piece[] = [];
   for (const child of root.children) {
     const isCraft = Boolean(craft?.includes(child.name));
-    const into = byPart ? child.name : isCraft ? 'craft' : 'rest';
+    const into = byPart ? child.name : isCraft ? 'craft' : beside.includes(child.name) ? BESIDE : 'rest';
     child.traverse((o) => {
       if (!o.visible) return;
       const mesh = o as THREE.Mesh;

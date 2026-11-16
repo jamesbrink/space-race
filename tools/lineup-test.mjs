@@ -11,7 +11,8 @@
 //   widths       at 1280, 820 and 390 wide: nothing of the page off its edge, the controls all there, both looks drawn
 //   cost         the whole row at 1280, and the spacecraft alone: draw calls against CALLS (each vehicle's coarser levels
 //                joined by paint: lineup/merge.ts), triangles, programs; nothing drawn of what is out of the picture
-//   alone        the spacecraft alone is what rides on the launch vehicle (an airlock under a heading of its own too)
+//   alone        the spacecraft alone is what rides on the launch vehicle (an airlock under a heading of its own too), with what
+//                it flew to meet on the floor beside it
 //   tab          the gallery's open tab is kept: History, into the Lineup by its link, and Back finds History open
 //   along        at 390 and 820 wide the whole row is framed by its height and gone along under the thumb, on the one nearest
 //   show         left alone on a phone, the show frames each vehicle above its card, however long the card's words
@@ -437,6 +438,23 @@ await scenario('alone', async () => {
     f.headings.filter((h) => /launch-vehicle|stage|booster|core/.test(h.id) && h.nodes.some((n) => f.craft?.includes(n))),
   );
   check(lv.length === 0, 'and no part of a launch vehicle does');
+  // what a spacecraft flew to meet (ModelDef.target) is a third kind: kept, on the floor beside the spacecraft, which is
+  // lowered to the floor without it; and how tall the stand says it stands is the spacecraft's own height
+  const met = await page.evaluate(() =>
+    window.sr.stage
+      .report()
+      .filter((r) => r.beside.nodes.length)
+      .map((r) => ({ id: r.id, low: r.beside.low, craftLow: r.beside.craftLow, width: r.width, height: r.height, craft: r.craft })),
+  );
+  check(
+    met.length > 0 &&
+      met.every((m) => m.low !== null && m.craftLow !== null && Math.abs(m.low) < 0.02 && Math.abs(m.craftLow) < 0.02 && m.width > 4),
+    `a target stands on the floor beside its spacecraft, both on it (${met.map((m) => `${m.id}: ${m.low?.toFixed(3)} and ${m.craftLow?.toFixed(3)} m, ${m.width.toFixed(1)} m across`).join('; ') || 'none in the row'})`,
+  );
+  check(
+    met.every((m) => m.height > 4 && m.height < 6.5),
+    `and the stand's height is its spacecraft's (${met.map((m) => m.height.toFixed(2)).join(', ')} m)`,
+  );
   check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
   await close();
 });

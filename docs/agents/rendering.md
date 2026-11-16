@@ -648,7 +648,8 @@ JavaScript heap and 125 MB of decoded pictures.
   at: `allot`). A level that is let go is released whole, its pictures closed, once no vehicle has it. A vehicle's pictures
   are sent no larger than 1024 a side there, on every device (a cabin's panel is read from its couch, not from across a
   hall: with them whole, six Mercury vehicles in full were 890 MiB). `pnpm test:lineup` holds it to 180 with the row up,
-  190 with one framed and 200 at any moment while the row is stepped through (measured: 149, 169, 169), and the row's
+  190 with one framed and 200 at any moment while the row is stepped through (measured: 149, 169, 169; with twenty-one
+  vehicles, two of them with a docking target beside them, 152, 173, 173, the row in 210 draw calls of the 220 it is held to), and the row's
   share to 1.8 a vehicle: at 1.55 the 240 it was held to would hold some seventy-eight vehicles (twenty-six before), and
   the launch site's 350 some hundred and forty-nine.
 - **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not

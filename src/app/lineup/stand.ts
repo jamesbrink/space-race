@@ -3,6 +3,7 @@ import type { LineupRow } from '../address.ts';
 import { Crossfade, LOD_ABOVE, thresholdsOf } from '../../viewer/lod.ts';
 import { outline } from '../../viewer/studio.ts';
 import { tier } from '../../viewer/tier.ts';
+import { BESIDE } from './merge.ts';
 import type { Entry } from './row.ts';
 import { picturesOf, rawBytes } from './shelf.ts';
 
@@ -18,7 +19,9 @@ import { picturesOf, rawBytes } from './shelf.ts';
  *   level, measured to the vertex, puts its lowest point at y = 0 and its middle on the row. Every level is put by that
  *   one measurement, so a change of level moves nothing.
  * - **Its spacecraft alone** is the same model with every other top-level node not drawn (and so never sent to the
- *   GPU): what is left stands on the floor in its turn.
+ *   GPU): what is left stands on the floor in its turn. What the spacecraft flew to meet (`Entry.beside`: a docking
+ *   target, built into the model on the floor beside the launch vehicle) is neither: it stays, on the floor beside the
+ *   spacecraft, raised in the model by as much as the spacecraft is lowered.
  * - **Its shadow is its own and is drawn once.** The key light does not move, and neither does the vehicle, so its
  *   silhouette from the light is drawn into a small picture when it arrives (and again when what is on show changes)
  *   and laid on the floor where that light would throw it, softer the further it falls from what casts it. No shadow
@@ -148,10 +151,10 @@ function bytesOf(root: THREE.Object3D): number {
 }
 
 /** The box round what is drawn under `root`, measured to the vertex, in `root`'s own frame (it stands at its parent's origin, unturned). */
-function boxOf(root: THREE.Object3D): THREE.Box3 {
+function boxOf(root: THREE.Object3D, of: (child: THREE.Object3D) => boolean = (child) => child.visible): THREE.Box3 {
   root.updateWorldMatrix(true, true);
   const box = new THREE.Box3();
-  for (const child of root.children) if (child.visible) box.expandByObject(child, true);
+  for (const child of root.children) if (of(child)) box.expandByObject(child, true);
   return box.isEmpty() ? box : box.translate(root.getWorldPosition(new THREE.Vector3()).negate());
 }
 
@@ -186,6 +189,10 @@ export class Stand {
   standing = true;
   /** The top-level nodes of its spacecraft alone (null: it is not parted), as found when its coarsest level arrived. */
   craft: string[] | null;
+  /** How far what stands beside is raised in the model while the spacecraft stands alone, metres: the spacecraft's own lowest point over its, on the coarsest level. */
+  private raise = 0;
+  /** How tall what stands there itself is, without what it flew to meet, metres. */
+  private tall = 0;
   /** What its coarsest level took before it was joined, over what it takes joined. */
   private builtRatio = 3;
 
@@ -261,7 +268,7 @@ export class Stand {
 
   /** How tall what stands there is, metres. */
   get height(): number {
-    return this.size.y;
+    return this.tall;
   }
 
   /** Whether one level is giving way to another. */
@@ -278,7 +285,42 @@ export class Stand {
   private part(root: THREE.Object3D): void {
     const craft = this.row === 'spacecraft' ? this.craft : null;
     const joined = Boolean(root.userData.joined);
-    for (const child of root.children) child.visible = !craft || (joined ? Boolean(child.userData.craft) : craft.includes(child.name));
+    const isCraft = (child: THREE.Object3D): boolean =>
+      joined ? Boolean(child.userData.craft) : Boolean(this.craft?.includes(child.name));
+    for (const child of root.children) if (this.isBeside(child)) child.position.y = this.rest(child);
+    // (measured once, on the level the row is formed from: every level is put by it, so a change of level moves nothing)
+    if (root === this.levels[this.coarsest]) {
+      const own = boxOf(root, isCraft);
+      const beside = boxOf(root, (child) => this.isBeside(child));
+      this.raise = own.isEmpty() || beside.isEmpty() ? 0 : own.min.y - beside.min.y;
+    }
+    for (const child of root.children) {
+      const beside = this.isBeside(child);
+      child.visible = !craft || beside || isCraft(child);
+      if (beside && craft) child.position.y = this.rest(child) + this.raise;
+    }
+    root.updateMatrixWorld(true);
+  }
+
+  /** Whether a piece of a level is of what the spacecraft flew to meet (a part of it, or its pieces joined: merge.ts `BESIDE`). */
+  private isBeside(child: THREE.Object3D): boolean {
+    return this.entry.beside.length > 0 && (child.name === BESIDE || this.entry.beside.includes(child.name));
+  }
+
+  /** How high a piece is in its level as the level was made (it is raised while the spacecraft stands alone). */
+  private rest(child: THREE.Object3D): number {
+    child.userData.restY ??= child.position.y;
+    return child.userData.restY as number;
+  }
+
+  /** For tests: how low the spacecraft (or, in the row of vehicles, all but the target) and what stands beside it reach above the floor as drawn, metres. */
+  lows(): { low: number | null; craftLow: number | null } {
+    const root = this.shown >= 0 ? this.levels[this.shown] : undefined;
+    if (!root) return { low: null, craftLow: null };
+    const floor = this.group.getWorldPosition(new THREE.Vector3()).y - root.getWorldPosition(new THREE.Vector3()).y;
+    const beside = boxOf(root, (child) => child.visible && this.isBeside(child));
+    const own = boxOf(root, (child) => child.visible && !this.isBeside(child));
+    return { low: beside.isEmpty() ? null : beside.min.y - floor, craftLow: own.isEmpty() ? null : own.min.y - floor };
   }
 
   /** What a level not yet here is guessed to take, bytes. */
@@ -368,6 +410,9 @@ export class Stand {
     const centre = local.getCenter(new THREE.Vector3());
     this.holder.position.set(-centre.x, -local.min.y, -centre.z);
     local.getSize(this.size);
+    // (how tall it stands is its own height: what it flew to meet, beside it, may be taller than a spacecraft alone)
+    const own = boxOf(this.levels[this.coarsest]!, (child) => child.visible && !this.isBeside(child));
+    this.tall = own.isEmpty() ? this.size.y : own.max.y - local.min.y;
     const reach = Math.hypot(this.size.x, this.size.z) / 2;
     this.plate.scale.setScalar(reach + Math.max(0.5, 0.12 * reach) + 0.6);
     // the person stands in front of it and to one side, clear of it, on its plate

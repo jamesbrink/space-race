@@ -324,7 +324,8 @@ export class LineupScene {
     // (the spacecraft alone is found on the model: what rides on the launch vehicle, row.ts `craftNodes`)
     const headings = stand.entry.headings;
     const of = (root: THREE.Object3D): string[] | null => craftNodes(headings, (node) => lowestOf(root, node));
-    const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify(headings), of }, onProgress);
+    const beside = stand.entry.beside;
+    const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify([headings, beside]), of, beside }, onProgress);
     if (slot === stand.coarsest) stand.craft = taken.craft;
     this.looks.add(taken.root);
     return taken;
@@ -1046,6 +1047,7 @@ export class LineupScene {
     granted: number;
     wanted: number;
     craft: string[] | null;
+    beside: { nodes: string[]; low: number | null; craftLow: number | null };
   }[] {
     const scale = new THREE.Vector3();
     return this.stands.map((s) => ({
@@ -1061,6 +1063,7 @@ export class LineupScene {
       granted: s.granted,
       wanted: s.wanted,
       craft: s.craft,
+      beside: { nodes: s.entry.beside, ...s.lows() },
     }));
   }
 

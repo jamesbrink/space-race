@@ -122,7 +122,10 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
   compared; each whole on its launch vehicle, or the spacecraft alone: what rides on the launch vehicle, which is the
   parts under the vehicle's `Spacecraft` heading and those of any other heading that stands wholly on it, no lower than
   the spacecraft's own lowest point (Voskhod 2's airlock, listed under a heading of its own; address.ts `craftNodes`, measured on
-  the model: no new field; a flight's gallery stands its spacecraft by the same rule). Forming the row again is a dip of the picture, never things sliding through each other.
+  the model: no new field; a flight's gallery stands its spacecraft by the same rule). What the spacecraft flew to meet
+  (`ModelDef.target`: a docking target) is neither: it is kept, on the floor beside the spacecraft and not lowered with it
+  (joined apart from both, merge.ts `BESIDE`; raised in the model by as much as the spacecraft is lowered, stand.ts), and
+  how tall the stand stands is the spacecraft's own height. Forming the row again is a dip of the picture, never things sliding through each other.
 - **One thing is chosen**, by a click on it, its name, its mark on the timeline, or N and B: the camera goes to it and its
   card comes up (its story, why it has its name, its crew, each of whom opens to their own, the way into its gallery,
   its figures). With nothing chosen a click on nothing does nothing; Escape and 0 go back a step (out of a comparison,
@@ -203,6 +206,13 @@ Nothing new is asked of a flight. Everything comes from what a vehicle already d
   that stands wholly on it are with it (Voskhod 2's airlock; `Stage.lowest` measures them). `Stage.only` takes the rest out of the
   model and stands what is left on the floor; its slider is then the stretch of the vehicle's
   slider over which those parts move.
+  A heading may also be what the spacecraft flew to meet, a vehicle of its own: a Gemini's docking
+  target, built into the vehicle's model standing on the floor 20 ft from its axis because the gallery
+  shows one model of a flight. The model says so (`ModelDef.target`, the heading; address.ts
+  `targetNodes`): it is a third kind, neither the spacecraft nor what carried it. It can stand alone,
+  framed where it stands and not about the vehicle's axis (`Framing.view`); it keeps its own floor
+  whatever the vehicle beside it does (`Stage.ground`: the rest lowered or lifted, and it not); and
+  where the spacecraft stands alone it stands on the floor beside it, here and in the Lineup alike.
 - **Views**: the vehicle's own named views whose parts are all there, as `nodes` only (a `centreY`
   measured on the pad means nothing here).
 - **Taken apart**, each part is named as it comes clear of its neighbours (`viewer/labels.ts`:

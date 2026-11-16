@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
+import { BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
 import { keyOf } from '../src/app/lineup/shelf.ts';
 
 const paint = (hex, options = {}) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, metalness: 0.2, ...options });
@@ -100,6 +100,36 @@ test('a level joined: paint in one piece for the spacecraft and one for the rest
     assert.ok(p.geometry.getAttribute('normal').array instanceof Int8Array, 'normals in bytes');
     assert.ok(p.geometry.index.array instanceof Uint16Array, 'triangles listed in two bytes');
   }
+});
+
+test('what the spacecraft flew to meet is joined apart from the spacecraft and from the rest, by its name', () => {
+  const { root, white } = level();
+  const target = new THREE.Group();
+  target.name = 'Target';
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 8, 16), white);
+  can.position.set(-6, 4, 0);
+  target.add(can);
+  root.add(target);
+  root.updateMatrixWorld(true);
+  const before = triangles(root).length;
+  const joined = join(root, ['Cabin'], false, ['Target']);
+  const painted = joined.pieces.filter((p) => p.paints);
+  assert.deepEqual(
+    painted.map((p) => p.part).sort(),
+    [BESIDE, 'craft', 'rest'],
+    'three paint pieces: the spacecraft, its target, the rest',
+  );
+  assert.equal(painted.find((p) => p.part === BESIDE).craft, false, 'the target is no part of the spacecraft');
+  const made = drawn(joined);
+  assert.ok(made.children.some((c) => c.name === BESIDE && !c.userData.craft));
+  assert.equal(triangles(made).length, before, 'every triangle kept');
+  // with none stated, as before: two
+  assert.equal(join(level().root, ['Cabin']).pieces.filter((p) => p.paints).length, 2);
+  // part by part, it is its own parts, by their names
+  assert.ok(
+    drawn(join(root, ['Cabin'], true, ['Target'])).children.some((c) => c.name === 'Target'),
+    'the finest level keeps its name',
+  );
 });
 
 test('every triangle is kept, where it was to a millimetre in ten metres, facing the way it faced (a mirrored mesh too)', () => {
