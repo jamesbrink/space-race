@@ -15,8 +15,11 @@
  * turns the motion by more than `TURN`, so the cubic between two steps (`between`, what the line and its markers are
  * drawn from) keeps to the integrator's own path. A step ends on every instant the flier has scheduled, so what happens
  * there happens at its instant, and nothing the flier does changes within a step: its configuration is a function of
- * its state between those instants. A height it acts at, and the ground, are found where the step's cubic crosses them
- * and the step is flown again to that instant. Every stage's height is the ellipsoid's own (frames.ts `ecefToGeodetic`:
+ * its state between those instants. Each step is a rung of a ladder of quarter octaves (`rung`), so that two starts a hair
+ * apart take the same steps. A height it acts at, and the ground, are found by flying the step again from its start to
+ * the last bit of the instant it crosses them (`back`); the air's 0.05 g is placed between the steps either side of it
+ * and its greatest load at the vertex through the steps round it. Nothing a prediction gives moves by more than its start
+ * does (tests/perturbed.test.mjs: issue #30). Every stage's height is the ellipsoid's own (frames.ts `ecefToGeodetic`:
  * the sea's radius changes by hundreds of metres along a long step, and the air with it).
  *
  * Besides the path it names what happens on it (`events`): what the flier says at each instant and height, and two
@@ -194,6 +197,28 @@ const TOL_V = 1e-5;
 const TURN = 1 * DEG;
 /** The shortest step, s: past it a step is taken whatever its error (a corner in the forces). */
 const SHORTEST_STEP = 2 ** -10;
+/**
+ * Every step is a rung of a ladder of quarter octaves (2^(k/4) s), the longest the error and the turn allow (or what
+ * ends it on an instant the flier scheduled). A step chosen as the error's own continuous function of the state follows
+ * that state's last bits, and so does every step after it: two starts a hair apart took different steps, and the path
+ * differed by the integrator's tolerance, not by what the starts did. On the ladder they take the same steps, and differ
+ * as their starts do (tests/predict.test.mjs, "a hair's difference in the start").
+ */
+const RUNGS = 4;
+const rung = (h: number): number => 2 ** (Math.floor(Math.log2(h) * RUNGS + 1e-9) / RUNGS);
+/**
+ * Halve a bracket, `past` false at its low end and true at its high, until it can be halved no more (its two ends
+ * adjacent doubles): what an instant on the path is found to. The end where `past` holds.
+ */
+const bisect = (lo: number, hi: number, past: (t: number) => boolean): number => {
+  for (let k = 0; k < 200; k++) {
+    const m = 0.5 * (lo + hi);
+    if (!(m > lo && m < hi)) break;
+    if (past(m)) hi = m;
+    else lo = m;
+  }
+  return hi;
+};
 
 /**
  * The step of the returned path at a place where it goes at `speed` and turns at `turning` rad/s: the
@@ -224,7 +249,7 @@ export function between(t0: number, r0: Vec3, v0: Vec3, t1: number, r1: Vec3, v1
 /**
  * The apsides of any path, found from the path itself and nothing else: where its radial speed (the rate its distance
  * from the Earth's centre changes) changes sign, an apoapsis where it goes from rising to falling, a periapsis the other
- * way, each placed to a millisecond on the cubic between the two points either side (`between`). Whatever the path is
+ * way, each placed on the cubic between the two points either side (`between`), to the last bit of its instant. Whatever the path is
  * (a lob, an ascent, an orbit once round, a fall), what it shows is what it does: a lob has its one apoapsis, an orbit
  * its two, a fall none. Only those after `after`.
  */
@@ -240,15 +265,10 @@ export function apsides(
     const ra = dot(a.r, a.v);
     const rb = dot(b.r, b.v);
     if (!((ra > 0 && rb <= 0) || (ra < 0 && rb >= 0))) continue;
-    let lo = a.t;
-    let hi = b.t;
-    for (let k = 0; k < 40 && hi - lo > 1e-3; k++) {
-      const m = 0.5 * (lo + hi);
+    const t = bisect(a.t, b.t, (m) => {
       const s = between(a.t, a.r, a.v, b.t, b.r, b.v, m);
-      if (Math.sign(dot(s.r, s.v)) === Math.sign(ra)) lo = m;
-      else hi = m;
-    }
-    const t = 0.5 * (lo + hi);
+      return Math.sign(dot(s.r, s.v)) !== Math.sign(ra);
+    });
     if (t <= after) continue;
     const s = between(a.t, a.r, a.v, b.t, b.r, b.v, t);
     out.push({ kind: ra > 0 ? 'apo' : 'peri', t, r: s.r, v: s.v });
@@ -489,7 +509,10 @@ export function propagate(
     return a.end === true;
   };
   let entry = false;
-  let peak: (PathPoint & { load: number }) | null = null;
+  /** The load felt at each step's start from the entry on, before a parachute: the greatest is placed among them at the end. */
+  const loads: (PathPoint & { load: number })[] = [];
+  /** The last step's start and the load felt there: where the entry's 0.05 g is placed between. */
+  let felt: (PathPoint & { load: number }) | null = null;
   let swept = 0;
   let steps = 0;
   let cost = 0;
@@ -566,20 +589,16 @@ export function propagate(
 
   /** Back along the step just taken (from `before`, `h0` long, ending at the state now) to where its cubic is at height `at`, flown again to there. */
   const back = (before: PathPoint, h0: number, at: number): void => {
-    const d0 = length(before.r) - before.altitude;
-    const height = (s: number): number => length(between(before.t, before.r, before.v, before.t + h0, r, v, s).r) - d0;
-    let lo = before.t;
-    let hi = before.t + h0;
-    if (before.altitude <= at) hi = lo;
-    for (let k = 0; k < 50 && hi - lo > 1e-4; k++) {
-      const m = 0.5 * (lo + hi);
-      if (height(m) > at) lo = m;
-      else hi = m;
-    }
-    const to = 0.5 * (lo + hi) - before.t;
     [t, r, v, altitude] = [before.t, before.r, before.v, before.altitude];
+    // (the step flown again from its start to each instant tried, and its height there the ellipsoid's, as every height
+    // here is: the instant found to the last bit, on the side at or below the height, so what acts there finds itself
+    // there. Found to a tenth of a millisecond on the step's cubic, it was a step in the place it gave, which a hair's
+    // difference in the start moved from one side of a halving to the other.)
+    const a0 = accel(t, r, v, altitude);
+    const heightAt = (to: number): number => place(pair(to, a0).r, before.t + to).height - seaLevel;
+    const to = before.altitude <= at ? 0 : bisect(0, h0, (x) => heightAt(x) <= at);
     if (to > 1e-9) {
-      const s = pair(to, accel(t, r, v, altitude));
+      const s = pair(to, a0);
       t = before.t + to;
       r = s.r;
       v = s.v;
@@ -597,7 +616,7 @@ export function propagate(
     const turnRate = speed > 0 ? length(cross(v, a0)) / (speed * speed) : 0;
     const longest = Math.max(TURN / Math.max(turnRate, 1e-12), SHORTEST / Math.max(speed, 1e-3));
     const mark = flier.next(t);
-    let step = Math.min(h, longest);
+    let step = rung(Math.min(h, longest));
     let reaches = false;
     if (mark - t <= step * (1 + 1e-9)) {
       step = mark - t;
@@ -607,13 +626,13 @@ export function propagate(
     let err = Math.max(next.er / TOL_R, next.ev / TOL_V);
     // (too much error: shorter, until it is within, or as short as a step goes)
     while (err > 1 && step > SHORTEST_STEP) {
-      step = Math.max(SHORTEST_STEP, step * Math.max(0.2, 0.9 * err ** -0.2));
+      step = Math.max(SHORTEST_STEP, rung(step * Math.max(0.2, 0.9 * err ** -0.2)));
       reaches = false;
       next = pair(step, a0);
       err = Math.max(next.er / TOL_R, next.ev / TOL_V);
     }
     // the next step: as long as this one's error allows (one cut short to end on an instant does not shorten the next)
-    const grown = Math.max(SHORTEST_STEP, step * (err > 0 ? Math.min(4, 0.9 * err ** -0.2) : 4));
+    const grown = Math.max(SHORTEST_STEP, rung(step * (err > 0 ? Math.min(4, 0.9 * err ** -0.2) : 4)));
     h = reaches && step < h ? Math.max(h, grown) : grown;
     const before: PathPoint = { t, r, v, altitude };
     const turned = angleBetween(r, next.r);
@@ -627,13 +646,21 @@ export function propagate(
     points.push({ t, r, v, altitude });
 
     // the air's load coming down, once nothing burns and no burn is to come, and before a parachute is out: the first 0.05 g, and the most
-    if (falling && !flier.chute && before.t >= flier.quiet && !flier.burning()) {
+    const coming = falling && !flier.chute && before.t >= flier.quiet && !flier.burning();
+    if (coming) {
       if (!entry && load >= ENTRY_G) {
         entry = true;
-        note('entry', load, before);
+        // (placed where the load reaches it between the last step's start and this one's, along the step's cubic)
+        if (felt && felt.load < ENTRY_G && before.t > felt.t) {
+          const k = (ENTRY_G - felt.load) / (load - felt.load);
+          const at = felt.t + k * (before.t - felt.t);
+          const s = between(felt.t, felt.r, felt.v, before.t, before.r, before.v, at);
+          note('entry', ENTRY_G, { t: at, r: s.r, v: s.v, altitude: felt.altitude + k * (before.altitude - felt.altitude) });
+        } else note('entry', load, before);
       }
-      if (entry && (!peak || load > peak.load)) peak = { ...before, load };
+      if (entry) loads.push({ ...before, load });
     }
+    felt = coming ? { ...before, load } : null;
     flier.settle?.(t, r, v, altitude, falling);
 
     // what it does at a height coming down through it, and the ground, each where the step's cubic crosses it (and the
@@ -732,9 +759,33 @@ export function propagate(
     };
     const best = (list: PathPlace[], sign: number): PathPlace | null =>
       list.reduce<PathPlace | null>((b, p) => (!b || sign * (p.altitude - b.altitude) > 0 ? p : b), null);
-    if (peak) {
-      const { load, ...at } = peak;
-      note('peak', load, at);
+    // the greatest load: the vertex of the parabola through the step that felt the most and those either side of it,
+    // placed on their cubic (at a step's start, it went from one step to the next on a hair)
+    let i = -1;
+    for (let k = 0; k < loads.length; k++) if (i < 0 || loads[k]!.load > loads[i]!.load) i = k;
+    if (i >= 0) {
+      const b = loads[i]!;
+      const a = loads[i - 1];
+      const c = loads[i + 1];
+      if (a && c && a.t < b.t && b.t < c.t) {
+        const [x1, x2] = [a.t - b.t, c.t - b.t];
+        const [y1, y2] = [a.load - b.load, c.load - b.load];
+        const bend = (y1 * x2 - y2 * x1) / (x1 * x2 * (x1 - x2));
+        const slope = (y2 * x1 * x1 - y1 * x2 * x2) / (x1 * x2 * (x1 - x2));
+        const x = bend < 0 ? Math.max(x1, Math.min(x2, -slope / (2 * bend))) : 0;
+        const [p, q] = x < 0 ? [a, b] : [b, c];
+        const at = b.t + x;
+        const s = between(p.t, p.r, p.v, q.t, q.r, q.v, at);
+        note('peak', b.load + slope * x + bend * x * x, {
+          t: at,
+          r: s.r,
+          v: s.v,
+          altitude: p.altitude + ((q.altitude - p.altitude) * (at - p.t)) / (q.t - p.t),
+        });
+      } else {
+        const { load, ...at } = b;
+        note('peak', load, at);
+      }
     }
     events.sort((a, b) => a.t - b.t);
     const el = elements(start.r, start.v, flier.radius);

@@ -668,9 +668,13 @@ Where the two kinds still differ for no physical reason: the ballistic deck offe
   end), adds gravity with J2, and steps them all alike: Dormand and Prince's 5(4) pair, each step's error held to a
   millimetre and a hundredth of a millimetre a second, no step turning the motion by more than a degree (so the cubic
   between two steps, which is what is drawn, keeps to the integrator's path within a centimetre), every step ending on
-  the flier's next instant (nothing a flier is changes within a step), each height and the ground found on the step's
-  cubic and the step flown again to there. The air's two marks are its own and every vehicle's: the first 0.05 g felt
-  coming down once nothing burns and no burn is to come, and the greatest load from there before a parachute. The
+  the flier's next instant (nothing a flier is changes within a step), each step a rung of a ladder of quarter octaves
+  so that two starts a hair apart take the same steps, each height and the ground found by flying the step again to the
+  last bit of the instant it crosses them. A prediction moves with its start as the physics does and no more: nothing it
+  counts changes, and a figure moves by under a part in 1e9 or smoothly (tests/perturbed.test.mjs, each captured
+  prediction from a start six micrometres out either way and in a frame turned a nanoradian; issue #30). The air's two marks are its own and every vehicle's: the first 0.05 g felt
+  coming down once nothing burns and no burn is to come (placed between the steps either side of it), and the greatest
+  load from there before a parachute (at the vertex through the steps round the most). The
   vehicles: `ballistic` (a ballistic plan's: Freedom 7), `spacecraft` (an orbital spacecraft alone: flyOrbit's
   `shipPush` and `aimOf`), `stack` (a staged launch vehicle with its engines stopped). The differences between them are
   the vehicles': drag curves and areas, what is scheduled, the retrorockets' line (against the motion over the ground)
