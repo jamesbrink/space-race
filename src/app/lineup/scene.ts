@@ -1005,6 +1005,34 @@ export class LineupScene {
     return out;
   }
 
+  /**
+   * For tests: what the row holds whatever is looked at, MiB: every vehicle's coarsest level (each geometry and picture
+   * once, however many vehicles draw it: shelf.ts) and every shadow's picture; and how many vehicles there are.
+   */
+  rowMiB(): { coarsest: number; shadows: number; vehicles: number } {
+    const seen = new Set<unknown>();
+    let coarsest = 0;
+    for (const stand of this.stands)
+      stand.levels[stand.coarsest]?.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.geometry || seen.has(mesh.geometry)) return;
+        seen.add(mesh.geometry);
+        for (const a of Object.values(mesh.geometry.attributes)) coarsest += (a as THREE.BufferAttribute).array.byteLength;
+        coarsest += mesh.geometry.index?.array.byteLength ?? 0;
+        for (const m of [mesh.material].flat())
+          for (const v of Object.values(m)) {
+            const image = (v as THREE.Texture | null)?.isTexture
+              ? ((v as THREE.Texture).image as { width?: number; height?: number })
+              : null;
+            if (!image?.width || !image.height || seen.has(image)) continue;
+            seen.add(image);
+            coarsest += (image.width * image.height * 16) / 3;
+          }
+      });
+    const shadows = this.stands.reduce((sum, s) => sum + s.shadowBytes, 0);
+    return { coarsest: coarsest / MIB, shadows: shadows / MIB, vehicles: this.stands.filter((s) => s.here).length };
+  }
+
   /** For tests: where each vehicle stands and at what level. */
   report(): {
     id: string;
@@ -1017,6 +1045,7 @@ export class LineupScene {
     shown: number;
     granted: number;
     wanted: number;
+    craft: string[] | null;
   }[] {
     const scale = new THREE.Vector3();
     return this.stands.map((s) => ({
@@ -1031,6 +1060,7 @@ export class LineupScene {
       shown: s.shown,
       granted: s.granted,
       wanted: s.wanted,
+      craft: s.craft,
     }));
   }
 

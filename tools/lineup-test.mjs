@@ -9,8 +9,15 @@
 //   detail       the one framed is drawn at the finest level and what is out of the picture at the coarsest; a level
 //                let go is gone from the GPU; a still row is not drawn again
 //   widths       at 1280, 820 and 390 wide: nothing of the page off its edge, the controls all there, both looks drawn
+//   cost         the whole row at 1280, and the spacecraft alone: draw calls against CALLS (each vehicle's coarser levels
+//                joined by paint: lineup/merge.ts), triangles, programs; nothing drawn of what is out of the picture
+//   alone        the spacecraft alone is what rides on the launch vehicle (an airlock under a heading of its own too)
+//   tab          the gallery's open tab is kept: History, into the Lineup by its link, and Back finds History open
+//   along        at 390 and 820 wide the whole row is framed by its height and gone along under the thumb, on the one nearest
+//   show         left alone on a phone, the show frames each vehicle above its card, however long the card's words
 //   phone        as a phone (390x844@3, touch, `?mem`): what the page holds on the GPU with the row up, with one framed,
-//                and at the most while every vehicle is stepped through in turn, against BUDGET
+//                and at the most while every vehicle is stepped through in turn, against BUDGET; and what the row holds
+//                a vehicle whatever is looked at, against PER_VEHICLE, and how many vehicles the budget would hold
 // `--shots <dir>` also writes a picture of each width and look, and of the phone.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,14 +30,25 @@ const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
 /**
- * Accounted GPU memory the Lineup may hold as a phone, MiB (src/app/mem.ts): with the row up at its coarsest, with one
- * vehicle framed (in full), and at the most seen at any moment while the row is stepped through. The launch site's own
- * budget is 350 ready and 500 at its peak (tools/mem-test.mjs; docs/agents/rendering.md, "Memory"): the Lineup is held
- * well inside it. Measured when set (Chrome on ANGLE Vulkan, the lighter tier, fifteen vehicles): 202, 197 and 202, of
- * which 106 is the row at its coarsest (7 MiB a vehicle: it grows with the row) and the rest the allowance for finer
- * levels (scene.ts ALLOWANCE), which does not.
+ * Accounted GPU memory the Lineup may hold as a phone, MiB (src/app/mem.ts): with the row up, with one vehicle framed
+ * (in full), and at the most seen at any moment while the row is stepped through. The launch site's own budget is 350
+ * ready and 500 at its peak (tools/mem-test.mjs; docs/agents/rendering.md, "Memory"): the Lineup is held well inside it.
+ * Measured when set (Chrome on ANGLE Vulkan, the lighter tier, nineteen vehicles): 149, 169 and 169; before the
+ * levels were joined (merge.ts), 212 with the row up.
  */
-export const BUDGET = { ready: 240, framed: 240, peak: 280 };
+export const BUDGET = { ready: 180, framed: 190, peak: 200 };
+/**
+ * What the row holds a vehicle whatever is looked at, MiB: its coarsest level joined by paint (each geometry once, however
+ * many vehicles stand on it: shelf.ts) and its shadow's picture. Measured when set: 1.55 (3.60 before the levels were
+ * joined; at 1280, 1.66 and 4.18). It is what grows with
+ * every flight added; the rest (the frame, the hall's room, the allowance for finer levels) does not.
+ */
+export const PER_VEHICLE = 1.8;
+/**
+ * Draw calls the whole row may take at 1280 x 800, of vehicles and spacecraft alone (the second all at the finest level,
+ * part by part). Measured when set: 188 and 937, where they were 2,368 and 3,240 before the levels were joined.
+ */
+export const CALLS = { whole: 220, spacecraft: 1000 };
 
 const browser = await launch();
 const { check, failures } = checks();
@@ -351,6 +369,219 @@ await scenario('widths', async () => {
   }
 });
 
+await scenario('cost', async () => {
+  const { page, errors, close } = await open(browser, `${url}#lineup`, { wait: up, timeout: 180000 });
+  await settle(page);
+  // a frame drawn now, counted: every pass of it
+  const drawnNow = () =>
+    page.evaluate(() => {
+      const s = window.sr.stage;
+      s.stats();
+      s.mean();
+      const st = s.stats();
+      return { calls: st.calls, triangles: st.triangles, programs: s.renderer.info.programs?.length ?? 0, levels: st.levels.join('') };
+    });
+  const whole = await drawnNow();
+  console.log(
+    `  the whole row at 1280: ${whole.calls} calls, ${(whole.triangles / 1e6).toFixed(2)} M triangles, ${whole.programs} programs (levels ${whole.levels})`,
+  );
+  check(whole.calls <= CALLS.whole, `the whole row in ${whole.calls} draw calls, of ${CALLS.whole}`);
+  await page.keyboard.press('p');
+  await settle(page);
+  const craft = await drawnNow();
+  console.log(`  the spacecraft alone: ${craft.calls} calls, ${(craft.triangles / 1e6).toFixed(2)} M triangles (levels ${craft.levels})`);
+  check(craft.calls <= CALLS.spacecraft, `the spacecraft alone in ${craft.calls} draw calls, of ${CALLS.spacecraft}`);
+  await page.keyboard.press('p');
+  await settle(page);
+  // one framed: what is out of the picture is not drawn at all
+  const row = await report(page);
+  await page.evaluate((id) => window.sr.lineup.choose(id), row[Math.floor(row.length / 2)].id);
+  await settle(page);
+  const framed = await drawnNow();
+  const inView = await page.evaluate(() => {
+    const s = window.sr.stage;
+    const frustum = new s.frustum.constructor().setFromProjectionMatrix(
+      s.camera.projectionMatrix.clone().multiply(s.camera.matrixWorldInverse),
+    );
+    return s.stands.filter((x) => x.standing && frustum.intersectsBox(x.box)).length;
+  });
+  console.log(
+    `  one framed: ${framed.calls} calls, ${(framed.triangles / 1e6).toFixed(2)} M triangles, ${inView} vehicles in the picture (levels ${framed.levels})`,
+  );
+  check(inView < row.length && framed.calls < whole.calls + 60 * inView, 'one framed: what is out of the picture is not drawn');
+  check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+  await close();
+});
+
+await scenario('alone', async () => {
+  const { page, errors, close } = await open(browser, `${url}#lineup/spacecraft`, { wait: up, timeout: 180000 });
+  const found = await page.evaluate(() =>
+    window.sr.lineup.entries.map((e) => ({
+      id: e.flight.id,
+      headings: e.headings,
+      craft: window.sr.stage.report().find((r) => r.id === e.flight.id)?.craft ?? null,
+    })),
+  );
+  const own = found.every((f) => f.headings.find((h) => h.id === 'spacecraft').nodes.every((n) => f.craft?.includes(n)));
+  check(own, 'each spacecraft alone has every part under its Spacecraft heading');
+  const riders = found.flatMap((f) =>
+    f.headings.filter((h) => h.id !== 'spacecraft' && h.nodes.every((n) => f.craft?.includes(n))).map((h) => `${f.id}: ${h.id}`),
+  );
+  console.log(`  riding with the spacecraft: ${riders.join(', ') || 'nothing else'}`);
+  const airlocks = found.filter((f) => f.headings.some((h) => h.id === 'airlock'));
+  check(
+    airlocks.every((f) => riders.includes(`${f.id}: airlock`)),
+    `an airlock under a heading of its own stands with its spacecraft (${airlocks.map((f) => f.id).join(', ') || 'none in the row'})`,
+  );
+  const lv = found.flatMap((f) =>
+    f.headings.filter((h) => /launch-vehicle|stage|booster|core/.test(h.id) && h.nodes.some((n) => f.craft?.includes(n))),
+  );
+  check(lv.length === 0, 'and no part of a launch vehicle does');
+  check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+  await close();
+});
+
+await scenario('tab', async () => {
+  const told = await (async () => {
+    const { page, close } = await open(browser, `${url}#lineup`, { wait: up, timeout: 180000 });
+    const id = await page.evaluate(() => window.sr.lineup.entries.find((e) => e.story)?.flight.id ?? null);
+    await close();
+    return id;
+  })();
+  const { page, errors, close } = await open(browser, `${url}#${told}/gallery`, { wait: 'gallery', timeout: 180000 });
+  await page.locator('#gallery [data-tab=History]').click();
+  await page.waitForTimeout(400);
+  await page.locator('#gallery [data-pane=History] [data-lineup]').click();
+  await page.waitForFunction(up, null, { timeout: 180000 });
+  const there = await page.evaluate(() => decodeURIComponent(location.hash));
+  check(there === `#lineup/${told}`, `See it in the Lineup goes to ${there}`);
+  await page.goBack();
+  await page.waitForFunction(() => window.sr?.gallery?.ready, null, { timeout: 180000 });
+  await page.waitForTimeout(800);
+  const open_ = await page.evaluate(() => document.querySelector('#gallery [data-tab][aria-selected=true]')?.dataset.tab ?? null);
+  check(open_ === 'History', `Back to the gallery finds the History tab open (${open_})`);
+  check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+  await close();
+});
+
+await scenario('along', async () => {
+  for (const [width, height, dpr] of [
+    [390, 844, 2],
+    [820, 1180, 1],
+  ]) {
+    const { page, errors, close } = await open(browser, `${url}#lineup`, {
+      context: { viewport: { width, height }, deviceScaleFactor: dpr, hasTouch: true, isMobile: width < 600 },
+      wait: up,
+      timeout: 180000,
+    });
+    await settle(page);
+    const first = await page.evaluate(() => {
+      const s = window.sr.stage;
+      const bar = document.querySelector('#ui .lu-pan');
+      const r = bar.getBoundingClientRect();
+      const tallest = s.standing.reduce((a, b) => (b.height > a.height ? b : a));
+      const [top, foot] = [s.topOf(tallest.entry.flight.id), s.footOf(tallest.entry.flight.id)];
+      return {
+        panning: s.panning,
+        bar: bar.hidden ? null : { left: r.left, right: r.right, y: r.top + r.height / 2 },
+        tall: top && foot ? foot.y - top.y : 0,
+        names: document.querySelectorAll('.lu-label.on').length,
+      };
+    });
+    check(
+      Boolean(first.panning && first.bar),
+      `${width} wide: the row is framed by its height, ${first.panning?.width.toFixed(0)} m of ${(first.panning?.to - first.panning?.from).toFixed(0)}, with the row in miniature under it`,
+    );
+    check(
+      first.tall > 0.3 * height,
+      `${width} wide: the tallest drawn ${first.tall.toFixed(0)} px tall, its names written (${first.names})`,
+    );
+    if (!first.bar) {
+      await close();
+      continue;
+    }
+    // the thumb along the bar, from its start to three quarters of the way, and let go
+    const [y, from, to] = [first.bar.y, first.bar.left + 8, first.bar.left + 0.75 * (first.bar.right - first.bar.left)];
+    const touch = (type, x) =>
+      page.evaluate(
+        ([t, x, y]) => {
+          const bar = document.querySelector('#ui .lu-pan');
+          bar.dispatchEvent(
+            new PointerEvent(t, { clientX: x, clientY: y, pointerId: 7, pointerType: 'touch', bubbles: true, isPrimary: true }),
+          );
+        },
+        [type, x, y],
+      );
+    await touch('pointerdown', from);
+    for (let i = 1; i <= 10; i++) {
+      await touch('pointermove', from + ((to - from) * i) / 10);
+      await page.waitForTimeout(30);
+    }
+    await touch('pointerup', to);
+    await settle(page);
+    const after = await page.evaluate(() => {
+      const s = window.sr.stage;
+      const xs = s.standing.map((x) => x.group.position.x);
+      const p = s.panning;
+      return {
+        at: p?.at ?? null,
+        near: xs.reduce((a, b) => (Math.abs(b - p.at) < Math.abs(a - p.at) ? b : a)),
+        from: p?.from,
+        to: p?.to,
+        width: p?.width,
+      };
+    });
+    const wanted = after.from + 0.75 * (after.to - after.from);
+    const ends = [after.from + after.width / 2, after.to - after.width / 2];
+    check(
+      after.at !== null &&
+        Math.abs(after.at - wanted) < 0.25 * (after.to - after.from) &&
+        (Math.abs(after.at - after.near) < 0.01 || ends.some((e) => Math.abs(after.at - e) < 0.01)),
+      `${width} wide: under the thumb it goes along the row, and lets go with the one nearest framed (${after.at?.toFixed(1)} m)`,
+    );
+    if (shots) await page.screenshot({ path: join(shots, `lineup-${width}-along.png`) });
+    check(errors.length === 0, `${width} wide: no errors${errors.length ? `: ${errors[0]}` : ''}`);
+    await close();
+  }
+});
+
+await scenario('show', async () => {
+  const { page, errors, close } = await open(browser, `${url}#lineup`, {
+    context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true },
+    wait: up,
+    timeout: 180000,
+  });
+  await settle(page);
+  // the longest card there is: each vehicle in turn, its words in, the camera there
+  let worst = Number.POSITIVE_INFINITY;
+  let seen = 0;
+  let longest = '';
+  const n = await page.evaluate(() => window.sr.lineup.entries.length);
+  for (let i = 0; i < Math.min(n, 7); i++) {
+    // (the show's own pace is the time it takes to read each card: a script asks for the next at once)
+    await page.evaluate(() => window.sr.lineup.tour());
+    await page.waitForTimeout(2600);
+    const at = await page.evaluate(() => {
+      const card = document.querySelector('.callout.showing .callout-card');
+      const title = card?.querySelector('h2')?.textContent;
+      const id = window.sr.lineup.entries.find((e) => e.flight.callsign === title)?.flight.id;
+      if (!card || !id) return null;
+      return { cardTop: card.getBoundingClientRect().top, foot: window.sr.stage.footOf(id)?.y ?? null, words: card.textContent.length, id };
+    });
+    if (!at || at.foot === null) continue;
+    seen++;
+    if (at.cardTop - at.foot < worst) worst = at.cardTop - at.foot;
+    if (at.words > longest.length) longest = `${at.id} (${at.words} characters)`;
+  }
+  check(
+    seen > 2 && worst > 0,
+    `on a phone the show frames each vehicle above its card (the closest: its foot ${worst.toFixed(0)} px above; the longest card ${longest})`,
+  );
+  if (shots) await page.screenshot({ path: join(shots, 'lineup-phone-show.png') });
+  check(errors.length === 0, `no errors${errors.length ? `: ${errors[0]}` : ''}`);
+  await close();
+});
+
 await scenario('phone', async () => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, hasTouch: true, isMobile: true });
   const page = await context.newPage();
@@ -378,7 +609,18 @@ await scenario('phone', async () => {
     return `textures ${r.textures.toFixed(0)}, renderbuffers ${r.renderbuffers.toFixed(0)}, buffers ${r.buffers.toFixed(0)}, canvases ${r.canvases.toFixed(0)}`;
   });
   console.log(`  the ${tier} tier; with the row up ${ready.toFixed(0)} MiB (${account})`);
-  check(ready <= BUDGET.ready, `the row up, every vehicle at its coarsest: ${ready.toFixed(0)} MiB of ${BUDGET.ready}`);
+  check(ready <= BUDGET.ready, `the row up: ${ready.toFixed(0)} MiB of ${BUDGET.ready}`);
+  const row = await page.evaluate(() => window.sr.stage.rowMiB());
+  const per = (row.coarsest + row.shadows) / row.vehicles;
+  // (what does not grow with the row: all that is held now but the row's own share)
+  const fixed = ready - row.coarsest - row.shadows;
+  // (how many vehicles the row could hold before it alone filled the launch site's budget as a phone, 350 MiB ready:
+  // tools/mem-test.mjs; and the Lineup's own of 240 before this was tightened)
+  const holds = (budget) => Math.floor((budget - fixed) / per);
+  console.log(
+    `  the row's own share: ${row.coarsest.toFixed(1)} MiB of coarsest levels and ${row.shadows.toFixed(1)} of shadows for ${row.vehicles} vehicles; the rest ${fixed.toFixed(0)}: 350 MiB would hold ${holds(350)} vehicles, 240 ${holds(240)}`,
+  );
+  check(per <= PER_VEHICLE, `a vehicle costs the row ${per.toFixed(2)} MiB whatever is looked at, of ${PER_VEHICLE}`);
   if (shots) await page.screenshot({ path: join(shots, 'lineup-phone.png') });
   const n = await page.evaluate(() => window.sr.lineup.entries.length);
   let framed = 0;

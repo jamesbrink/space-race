@@ -526,6 +526,11 @@ export class Stand {
     this.shadow = { mesh, target };
   }
 
+  /** What its shadow's picture takes, bytes (one byte a texel, and its smaller copies). */
+  get shadowBytes(): number {
+    return this.shadow ? (this.shadow.target.width * this.shadow.target.height * 4) / 3 : 0;
+  }
+
   /** Let the shadow go (it is drawn again when next asked for). */
   uncast(): void {
     if (!this.shadow) return;
