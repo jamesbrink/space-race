@@ -31,6 +31,7 @@ for (const flight of BALLISTIC) {
       cutoff: B.cutoff,
       dropped: flight.flies.drops.map((d) => d.at),
       live: true,
+      kept: true,
       out: { drogue: flown.results.drogueAt, main: flown.results.mainAt },
     };
   };
@@ -111,7 +112,7 @@ for (const flight of BALLISTIC) {
     );
   });
 
-  test(named('after it lands, a live flight stays where it came down; the record’s goes back to its pad'), () => {
+  test(named('after it lands, a live flight stays where it came down; the record’s is gone from the scene'), () => {
     const run = live();
     const flown = Ascent.of(flight);
     flown.use(run);
@@ -119,6 +120,7 @@ for (const flight of BALLISTIC) {
     assert.ok(at(flown, run.duration + 60).p.distanceTo(at(flown, run.duration).p) < 1e-6);
     const record = Ascent.of(flight);
     assert.equal(record.flying(run.duration + 60), false);
+    assert.ok(record.gone(record.duration + 60));
   });
 
   test(named('the live model does not jump as the reference changes at separation'), () => {
@@ -286,6 +288,7 @@ for (const flight of BALLISTIC) {
         cutoff: Number.NEGATIVE_INFINITY,
         dropped: flight.flies.drops.map((d) => when[d.on] ?? Infinity),
         live: true,
+        kept: true,
         out: { drogue: Infinity, main: Infinity },
         sheds,
       };
@@ -337,5 +340,34 @@ for (const flight of BALLISTIC) {
       `the lines are ${((worst * 180) / Math.PI).toFixed(1)} degrees off the spacecraft’s own axis at most`,
     );
     assert.ok(drift > (10 * Math.PI) / 180, `over the ground it drifts ${((drift * 180) / Math.PI).toFixed(0)} degrees off the vertical`);
+  });
+}
+
+// Where the flown vehicle is in the scene, for every flight that flies: standing on its pad before liftoff, flown during
+// the run, and after the record's run has ended not anywhere (the booster in the sea, the spacecraft recovered): not
+// back on its pad hours later. A flight flown by hand (`Run.kept`) stays where it came down.
+const { globSync } = await import('node:fs');
+const { join } = await import('node:path');
+const { pathToFileURL } = await import('node:url');
+const root = join(import.meta.dirname, '..');
+const flying = (
+  await Promise.all(
+    globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).map(async (f) => (await import(pathToFileURL(join(root, f)).href)).flight),
+  )
+).filter((f) => f.plan && f.site && f.flies);
+test('there are flights of both kinds to put in the scene', () => assert.ok(flying.length >= 4, `${flying.length} flights`));
+for (const flight of flying) {
+  test(`${flight.id}: on its pad before liftoff, flown during, and gone once the record's run has ended`, () => {
+    const ascent = Ascent.of(flight);
+    const pad = new THREE.Quaternion();
+    const at = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    assert.ok(!ascent.flying(-10) && !ascent.gone(-10), 'before liftoff it stands on its pad');
+    assert.ok(ascent.flying(100) && !ascent.gone(100) && ascent.place(100, pad, at, turn), 'a hundred seconds up it flies');
+    for (const after of [60, 9.8 * 3600, 30 * 3600]) {
+      const t = ascent.duration + after;
+      assert.ok(ascent.gone(t), `${after} s after its end it is gone`);
+      assert.ok(!ascent.flying(t) && !ascent.place(t, pad, at, turn), `${after} s after its end it is placed nowhere`);
+    }
   });
 }

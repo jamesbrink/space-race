@@ -26,8 +26,14 @@ export interface Run {
   cutoff: number;
   /** When each of `Flight.flies.drops` left, in their order: Infinity for one still aboard. */
   dropped: number[];
-  /** Flown by hand: placed by its samples' own attitude, and kept on show after it lands. */
+  /** Placed by its samples' own attitude (a flight flown by hand, and an orbital record, whose samples carry it). */
   live: boolean;
+  /**
+   * Kept on show where it came down after its end (a flight flown by hand: the deck's card beside it). Left out, a run is
+   * the record's: after its end the vehicle is not at the site or anywhere in the scene (the booster in the sea, the
+   * spacecraft recovered), and `Ascent.gone` says so.
+   */
+  kept?: boolean;
   /** When each parachute came out: Infinity for one that has not. */
   out: { drogue: number; main: number };
   /**

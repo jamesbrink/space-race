@@ -112,6 +112,7 @@ export class Cockpit extends Deck {
     cutoff: Infinity,
     dropped: [],
     live: true,
+    kept: true,
     out: { drogue: Infinity, main: Infinity },
   };
   private tally = new Tally();
@@ -273,6 +274,7 @@ export class Cockpit extends Deck {
       cutoff: Infinity,
       dropped: this.flight.flies!.drops.map(() => Infinity),
       live: true,
+      kept: true,
       out: { drogue: Infinity, main: Infinity },
       sheds: new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
         frame: frameOf(this.flight),

@@ -43,6 +43,8 @@ export interface DemoHost {
   words?(shot: Shot, model: ModelDef): Said | null;
   /** It is dark: the Sun is down and what is seen is what the lamps light. */
   dark(): boolean;
+  /** Whether a model is not in the scene now (the flown vehicle once the record's run has ended): its shots are passed over. */
+  absent?(model: string): boolean;
   /** Nothing must start the show now: someone is on foot, a page is in front, the scene is not ready. */
   busy(): boolean;
   /** Start now, without waiting to be left alone (the gallery behind the front page, where nobody is in front of it). */
@@ -292,6 +294,7 @@ export class Demo {
 
   /** Go to a shot. False if it cannot be taken (a section with no window): the next one is taken at once. */
   private take(shot: Shot): boolean {
+    if (this.host.absent?.(shot.model)) return false;
     const model = this.flight.models.find((m) => m.id === shot.model)!;
     // The camera keeps going round the same way, a steady step each time, rising and sinking
     // slowly over several shots: one continuous walk round the subject, not a series of cuts.

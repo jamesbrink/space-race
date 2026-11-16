@@ -704,6 +704,7 @@ export class OrbitDeck extends Deck {
       dropped: this.flight.flies!.drops.map(() => Infinity),
       sheds,
       live: true,
+      kept: true,
       descent: null,
     };
     this.kept = this.run.samples.length;

@@ -203,6 +203,8 @@ export class FlightShow {
   readonly lifted = {
     t: Number.NaN,
     flying: false,
+    /** Gone from the scene: after the record's run has ended (ascent.ts `gone`). */
+    gone: false,
     shed: '',
     shrank: false,
     /** Whether its shadow could fall inside the shadow map when last put somewhere. */
@@ -444,7 +446,8 @@ export class FlightShow {
 
   /**
    * Put the flown vehicle where the simulator has it at the clock's instant (ascent.ts): from
-   * liftoff to landing it flies, without what it has shed; before and after it stands on its pad.
+   * liftoff to landing it flies, without what it has shed; before it stands on its pad, and after the record's run has
+   * ended it is not in the scene (a flight flown by hand stays where it came down).
    */
   lift(): void {
     this.lifted.by.set(0, 0, 0);
@@ -461,7 +464,16 @@ export class FlightShow {
     const before = g.position.clone();
     const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
     const flying = ascent.place(t, pad, g.position, g.quaternion);
-    if (!flying && !this.lifted.flying) return; // standing on its pad, as it was
+    // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
+    const gone = ascent.gone(t);
+    if (gone !== this.lifted.gone) {
+      this.lifted.gone = gone;
+      g.visible = !gone;
+      this.h.renderer.shadowMap.needsUpdate = true;
+      this.h.oweShadows();
+      this.h.redraw();
+    }
+    if (!flying && !this.lifted.flying) return; // standing on its pad (or gone), as it was
     if (!flying) {
       g.position.set(...(def.position ?? [0, 0, 0]));
       g.quaternion.copy(pad);

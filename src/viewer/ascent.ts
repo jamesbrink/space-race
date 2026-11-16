@@ -134,7 +134,18 @@ export class Ascent {
   flying(t: number): boolean {
     if (!this.flight.plan || t <= 0) return false;
     const run = this.flown();
+    if (!run.kept && t >= run.duration) return false;
     return run.live ? run.samples.length > 1 : t < run.duration;
+  }
+
+  /**
+   * Whether the vehicle has left the scene at `t`: after the end of the record's run (sim/run.ts `Run.kept`), nothing of
+   * it is anywhere to be seen, not at its pad nor where it came down. Before liftoff it stands on its pad.
+   */
+  gone(t: number): boolean {
+    if (!this.flight.plan || t <= 0) return false;
+    const run = this.flown();
+    return !run.kept && t >= run.duration;
   }
 
   /**
@@ -193,6 +204,11 @@ export class Ascent {
   }
 
   /** When the engine stops, seconds from liftoff: Infinity for one still burning. */
+  /** When the run on show ends, seconds from liftoff: its landing (Infinity while a flight flown by hand is still up). */
+  get duration(): number {
+    return this.flown().duration;
+  }
+
   get cutoff(): number {
     return this.flown().cutoff;
   }

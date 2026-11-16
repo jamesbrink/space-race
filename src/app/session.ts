@@ -846,6 +846,8 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   let pane: Vector3 | null = null;
   const demo = new Demo(flight, {
     clock,
+    // (the vehicle is not at the site once the record's run has ended: ascent.ts `gone`)
+    absent: (id) => Boolean(stage.show.ascent?.model === id && stage.show.ascent.gone(clock.t)),
     show: (id) => {
       if (id !== current.id) show(id);
     },

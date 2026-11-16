@@ -209,6 +209,30 @@ async function at(flight, place, round) {
         `${name}: its ${what} is drawn with the program a fresh page builds (${text}, ${t.programs[what]})`,
       );
   }
+  if (place === 'site' && round === 0) {
+    // the flown vehicle on its pad before liftoff, in the air a hundred seconds up, and hours after the record's run has
+    // ended not in the scene at all (not back on its pad: ascent.ts `gone`); then the clock back at liftoff
+    const where = await page.evaluate(async () => {
+      const { clock, stage } = window.sr;
+      const show = stage.show;
+      const seen = async (t) => {
+        clock.seek(t);
+        for (let i = 0; i < 100 && show.lifted.t !== clock.t; i++) await new Promise((r) => requestAnimationFrame(r));
+        const g = show.flier?.group;
+        return { visible: Boolean(g?.visible), flying: show.lifted.flying, gone: show.lifted.gone };
+      };
+      const end = show.ascent?.duration ?? Number.NaN;
+      const out = { before: await seen(-60), during: await seen(100), after: await seen(end + 9.8 * 3600), end };
+      clock.seek(0);
+      return out;
+    });
+    check(where.before.visible && !where.before.flying, `${name}: before liftoff the vehicle stands on its pad`);
+    check(where.during.visible && where.during.flying, `${name}: a hundred seconds up it is flying`);
+    check(
+      !where.after.visible && where.after.gone && !where.after.flying,
+      `${name}: 9.8 hours after the run's end (${where.end.toFixed(0)} s) it is not in the scene`,
+    );
+  }
   if (place === 'fly')
     check(got.setting && got.setting.key === t.key && got.setting.fog === t.fog, `${name}: its place, day and haze are a fresh page's`);
   if (place === 'fly') check(got.fly, `${name}: the flight deck is up`);

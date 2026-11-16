@@ -180,8 +180,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   flown (`sim/shed.ts`, `Ascent.shed`, `FlightShow.fall` in stage/flightshow.ts): each thing in `Craft.sheds` is a
   rigid body of its own from the instant it leaves, and the full level's own node is carried by it,
   turned about its own centre of mass, until the clock goes back. It is drawn while within 40 km
-  of the eye or the vehicle and flown on to the sea regardless. Before liftoff and after
-  the landing it stands on its pad, whole: the inventory, which the idle show tours. While an engine burns its fire stands
+  of the eye or the vehicle and flown on to the sea regardless. Before liftoff it stands on
+  its pad, whole: the inventory, which the idle show tours; once the record's run has ended it is not in the scene at all
+  (ascent.ts `gone`: the booster in the sea, the spacecraft recovered; not back on its pad hours later), and the idle
+  show passes over its shots (demo.ts `absent`). A flight flown by hand stays where it came down (`Run.kept`). While an engine burns its fire stands
   under its nozzles (a ballistic flight's one engine under the node `flies.engine` names; every other in `flies.fires`, each by
   the plan's engine it is, `on`, and burning while the run has that engine burn; a cluster's main and steering chambers found in its bells' geometry, viewer/fires.ts), carried by the part that holds
   it, so a strap-on's dying fire swings away with it; the fires and their smoke are the one thing here meant to look
