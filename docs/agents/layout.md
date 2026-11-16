@@ -30,6 +30,8 @@ missions/                             the record: one folder per nation, program
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts)
+    crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
+                                      Blender run, nothing exported (sk_1_wearers.py: run it after touching sk_1.py; its header has the command)
   <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
     place.ts                          the place (`PlaceDef`): its region (the globe's finer maps), its usual sky, its quiet
     <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source

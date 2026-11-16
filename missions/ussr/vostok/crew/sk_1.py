@@ -102,6 +102,10 @@ LETTERS = "СССР"
 VALVE_R = 4.0  # the breathing valve's disc on the suits of June 1963: about 8 cm across, off the photographs
 VALVE_AT = (-34.0, 4.6)  # where it hangs: degrees round the collar toward the pilot's right, centimetres under the ring
 ELBOW_AT = -86.0  # the elbow fitting at the right of the ring
+ELBOW = (1.3, 1.7)  # its pipe's radius, and the radius its middle line turns down on: more than the pipe's own, or the bend's inside folds
+FACING = 1.1  # the palm's leather facing: radians round the hand to each side of the middle of the palm
+FACING_SHORT = 0.15  # how far short of that it stops on the thumb's side below full detail (build_gloves)
+HOSE_STUB = ((0, 0, -3.2), (0.3, -0.5, -6.0), (1.7, 0.3, -8.6))  # the hose's stub under the elbow, from the turn of the elbow, cm
 LETTER_HEIGHT = 3.8  # estimated from the photographs of 12 April and of the suits kept since
 
 
@@ -318,9 +322,18 @@ def build_helmet(M: dict) -> None:
         root = Vector((0, HELMET_AT.y, HELMET_RIM - 0.2)) + side * (COLLAR_R + 0.4)
         knee = root + side * 3.4 + Vector((0, 0, -0.6))
         fit.lathe([(2.0, -0.4), (2.0, 0.9), (1.5, 1.2)], 20, matrix=frame(root, side))
-        Tube([root, root + side * 2.2, knee, knee + Vector((0, 0, -2.6))], [(1.3, 1.3)] * 4, resample=4).add(fit, 14)
+        # The pipe: out from the ring, a quarter turn, down to the hose. Its sections are laid round the turn's own
+        # centre, which lies outside the pipe, so that no two of them cross on the inside of the bend at any number of
+        # sides (a path bent tighter than the pipe is thick folds its skin through itself there: sk-1.md, "The wearers").
+        r, bend = ELBOW
+        turns = 6  # (at every level: a bend of fewer is a kink, and it is the sides that a coarser level thins)
+        centre = root + side * (3.4 - bend) + Vector((0, 0, -bend))
+        arc = [centre + side * (bend * math.sin(a)) + Vector((0, 0, bend * math.cos(a))) for a in (TAU / 4 * i / turns for i in range(turns + 1))]
+        Tube([root, *arc, knee + Vector((0, 0, -2.6))], [(r, r)] * (turns + 3), resample=1).add(fit, 14)
         fit.lathe([(1.75, 0.0), (1.75, 0.9), (1.3, 1.1)], 16, matrix=frame(knee + Vector((0, 0, -2.2)), (0, 0, -1)))
-        keys = [tuple(knee + Vector(v)) for v in ((0, 0, -3.2), (0.3, -0.5, -6.0), (1.2, -1.2, -9.0))]
+        # (the stub's end is out of sight in the shoulder: it goes in square to the cloth and on toward the root of the
+        # neck, well under it whatever the wearer's shoulders, and never along under it)
+        keys = [tuple(knee + Vector(v)) for v in HOSE_STUB]
         pts = fl.polyline(keys, 0.5)
         Tube(pts, [(1.2, 1.2)] * len(pts), resample=1, fold=lambda dd, _th: 0.07 * math.sin(TAU * dd / 1.2)).add(hose, 12)
 
@@ -512,7 +525,14 @@ def build_gloves(M: dict, arms: dict[int, Tube]) -> None:
         # the palm is faced with leather
         first = len(leather.verts)
         th = palm.toward(-hand.B, 13.0)
-        palm.patch(leather, 10.0, palm.length - 1.8, th - 1.1, th + 1.1, 0.4, nd=8, nt=10, sink=0.3)
+        ends = [th - FACING, th + FACING]
+        if srlib.DETAIL < 1.0:
+            # Below full detail the web between thumb and first finger has eight sides, and one of its flats lies along
+            # the facing's edge on that side, a millimetre off on a man's hand and nearer on a smaller one: the facing
+            # stops short of it.
+            thumb = min((0, 1), key=lambda i: palm.at(13.0, ends[i]).dot(hand.W))
+            ends[thumb] += (FACING_SHORT, -FACING_SHORT)[thumb]
+        palm.patch(leather, 10.0, palm.length - 1.8, ends[0], ends[1], 0.4, nd=8, nt=10, sink=0.3)
         fl.fitted(leather, first, hand)
         # the metal ring each glove locks to the sleeve by
         first = len(rings.verts)

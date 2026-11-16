@@ -104,6 +104,48 @@ lever, the visor's handles, the changed sanitary fitting, the grey harness over 
 film still of Bykovskiy), the cream tube at the right shoulder, the round bright thing on a dark
 band on her left forearm, and the white cloth covers Tereshkova wore over her boots to the pad.
 
+## The wearers
+
+`sk_1.py` names three wearers (`Wearer`), and every Vostok figure is one of them:
+
+| Wearer | Who | Where he or she is built |
+| --- | --- | --- |
+| `GAGARIN`, the default | Gagarin; and Titov, Nikolayev and Popovich, of whom nothing of their own was found (above) | the crew models of Vostok 1 and 2, standing; the pilot in the seat of Vostok 1 to 4 |
+| `BYKOVSKY` | Bykovskiy, in the last SK-1 made | the pilot in the seat of Vostok 5; the crew model its launch site needs |
+| `TERESHKOVA` | Tereshkova, in the SK-2 | the pilot in the seat of Vostok 6; the crew model its launch site needs |
+
+What differs between them is the table above and nothing else: each field of `Wearer`, with its
+confidence and what it was read from. The helmet, its ring and the places of its fittings are the
+same on all three; it is the body under them, and the gloves and boots on it, that change.
+
+**They are all built together** by [sk_1_wearers.py](sk_1_wearers.py): each wearer standing at
+every level of detail `pnpm model` builds, and seated at full detail, each under the build's
+clearance check, in one run of Blender that exports nothing and fails if any of them does:
+
+```sh
+blender -b --factory-startup --python-exit-code 1 -P missions/ussr/vostok/crew/sk_1_wearers.py [-- --preview <dir>]
+```
+
+Run it after any change to `sk_1.py`. A flight's `crew.py` builds one wearer, so what is wrong on
+one of them at one level is otherwise not seen until that flight's site is built. That is how
+three things stood in the module unseen, all of them only below full detail and none on the
+`GAGARIN` figure:
+
+- **The elbow at the collar** (both suits of June 1963) was a pipe 2.6 cm thick on a path that
+  turned down within 1.2 cm, tighter than the pipe's own radius, so its skin folded through itself
+  on the inside of the bend at every level; with the eight sides of the coarser levels two of the
+  folded faces lay 0.01 mm apart. It is now a quarter turn on a radius of 1.7 cm, its sections laid
+  round the turn's centre: nothing crosses at any number of sides. Its ends and its corner are
+  where they were. All of it estimated, as before.
+- **The stub of hose under it** ran on inside the shoulder toward the front of the chest, and on
+  the SK-2's narrower shoulders lay 0.5 mm under the cloth at the coarsest level. Its hidden end
+  now goes in toward the root of the neck and stays more than a centimetre under.
+- **The palm's facing** lay 1.004 mm from a flat of the web between thumb and first finger at
+  the middle level on a man's hand, and 0.94 mm on the SK-2's glove, which is the same glove at
+  0.94. Below full detail the facing now stops 0.15 rad (some 6 mm) short on the thumb's side, on
+  every wearer; the SK-2's glove is still the smaller one. This is the one change to the
+  `GAGARIN` figure, and only to its two coarser levels: its full detail is what it was, to the byte.
+
 ## Nodes
 
 | Node | What it is |
@@ -241,6 +283,10 @@ in front of the seat frame's origin, so that his back lies on the parachute pack
   black leather gloves with tan gauntlets, and the two figures of 1963 are given black
   (`gloves="black"`). The first four are left as they were built, so that their models do not
   change under a flight that is not theirs; whoever next rebuilds Vostok 1's crew should look.
+- **Below full detail the palm's facing is 0.15 rad narrower on the thumb's side** than at full
+  detail, to keep it off the web of the thumb there ([The wearers](#the-wearers)).
+- **The elbow at the collar** of the suits of June 1963 is a plain pipe turned down a quarter turn,
+  and the hose under it a stub that ends inside the shoulder: where the hose went is not modelled.
 - **The gloves' leather is a facing on the palm only**; the insides of the fingers are the
   cover's orange (or, on the figures of 1963, black). No strings from the sleeves (the gloves hung from them until he put them on in
   the cabin: on the walk to the pad his hands were bare, and the model's are gloved).
