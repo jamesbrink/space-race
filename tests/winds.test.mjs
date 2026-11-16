@@ -110,7 +110,7 @@ test('the low cloud drifts on its own wind turned and scaled alike', () => {
 });
 
 test('a flight with no hours is drawn in the day’s wind all day', async () => {
-  const f = await load('usa/mercury/flights/ma-6-friendship-7/flight.ts');
+  const f = await load('usa/mercury/flights/ma-7-aurora-7/flight.ts');
   const day = dayOf(f);
   const winds = windsOf(f, day);
   for (const s of [-30_000, 0, 30_000]) {

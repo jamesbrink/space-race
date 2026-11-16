@@ -138,12 +138,22 @@ All five planets that the eye can see stood within thirty degrees of the Sun tha
 same part of the sky. None could be seen by day. Uranus was below the horizon and Neptune low in the
 west.
 
-**The weather.** No figures have been read. The history has a "cloudy February morning", overcast
-until about 5:58, "when the sky began to clear", and Glenn at the periscope after 7:10: "Looks like
-the weather is breaking up" (*This New Ocean*, pp. 422 and 423). The photographs of the liftoff
-show a blue sky. In the landing area: three-foot waves, a tenth of cloud, ten miles' visibility
-(the transcript, 04:42:27); the air 76 °F (*Results*, p. 34). The hourly observations of the Cape's
-weather station have not been looked up, as they were for Liberty Bell 7.
+**The weather, as recorded** (`weather.ts`; the Cape's station at the Skid Strip, 2 km from the pad: NOAA
+Integrated Surface Database, station 74794012868, by the hour). A front went through in the night. The sky was
+overcast at 720 m at 07:00 EST with patches of shallow fog, broken at 810 m at 08:00, and from 09:00 "scattered"
+with no ceiling; the wind went round from west to north and freshened, and the dew point fell nine degrees in three
+hours. At 10:00, twelve minutes after liftoff, the one layer reported is two oktas of altocumulus at 4,800 m, the
+wind from 360° at 9.3 m/s (18 knots; 6.7 m/s at 09:00), the visibility at the station's limit of 16 km (12.8 km at
+09:00), the air 21.1 °C. That is what is drawn: no low cloud over the pad, a thin middle deck, a fresh north wind.
+The history agrees as far as it goes: a "cloudy February morning", overcast until about 5:58, "when the sky began
+to clear", and Glenn at the periscope after 7:10: "Looks like the weather is breaking up" (*This New Ocean*,
+pp. 422 and 423); none of the morning's holds was for weather (*Results*, p. 70). The cloud that had lain over the
+Cape was a band across southern Florida by 16:10 UTC (Tiros IV, *Results*, Figure 12-11). Estimated: how far one
+could see past the station's limit (40 km taken) and how deep the haze lay. The air aloft is ERA5's (`aloft.ts`);
+the Cape's own balloon of 12:00 and 18:00 UTC that day (IGRA, USM00074794: at 12:00, 10 m/s from 250° at 850 hPa,
+17 m/s from 270° at 700, 33 m/s from 270° at 300, 44 m/s from 260° at 200) has not been put in its place. No wind
+profile of the flight's own has been found. In the landing area: three-foot waves, a tenth of cloud, ten miles'
+visibility (the transcript, 04:42:27); the air 76 °F (*Results*, p. 34).
 
 ## The launch site
 

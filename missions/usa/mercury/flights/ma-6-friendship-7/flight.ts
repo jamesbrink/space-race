@@ -18,6 +18,7 @@ import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/p
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS, STAND_TURN } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const RESULTS = 'Results of the First United States Manned Orbital Space Flight (NASA MSC, 1962)';
 
@@ -409,6 +410,7 @@ export const flight: Flight = {
   launch: '1962-02-20T14:47:39Z',
   launchSite: LC14.name,
   site: LC14,
+  weather: WEATHER,
   crew: ['John H. Glenn, Jr.'],
   summary:
     'The first American in orbit. Three times round the Earth in 4 hours 55 minutes, most of it flown by hand ' +
