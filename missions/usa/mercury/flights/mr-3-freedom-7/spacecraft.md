@@ -354,7 +354,7 @@ The same GLB also holds the launch vehicle's five nodes: see
   umbilical plug, placed at the skin, stops short of it by that much.
 - **Cabin light is two lights hung in the middle of the cabin**, not at the fittings, falling off with distance and not
   its square, so that the wall beside a fitting does not burn; they cast no shadows. The shadow is worked once by the
-  build (`mercury_cabin.shade`): at every vertex, how much of the two fittings is seen past everything else in the
+  build (`mercury_cabin.shade`): at every vertex, how much of each of the two fittings is seen past everything else in the
   cabin and how open the point is to the room, kept as a colour the viewer multiplies the surface by; and a second
   figure beside it for the lamps out (how open the point is, and how much of the two ports and the periscope's
   screen it sees), which the viewer goes over to as the CABIN LITES switch is thrown (a click on it from the couch, or

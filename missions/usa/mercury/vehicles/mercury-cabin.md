@@ -83,9 +83,11 @@ for what is seen only from the seat), not a second script.
   outside are all turned about it.
 - **`chamfered`** is the block every case, clip, dog and fitting is made of: a box with a chamfer along every edge.
   Nothing in a cabin is `MeshBuilder.box`.
-- **`shade`** bakes the cabin's shadow at its vertices twice over, into the one colour attribute `Shade`: red, green
-  and blue with the lamps on, alpha with them off (how open a point is, and how much of the ports and the periscope's
-  screen it sees). The viewer mixes the two by the lights' switch. Broad surfaces (`BROAD`) are asked from every part of
+- **`shade`** bakes the cabin's shadow at its vertices into the one colour attribute `Shade`
+  (tools/blender/cabin_shade.py): a figure for each floodlight alone, in its red and green in the order of the flight's
+  `lights` (`order`, by the fittings' names), and alpha with them off (how open a point is, and how much of the ports
+  and the periscope's screen it sees). The viewer reads each lamp's figure by its share of what is lit and mixes that
+  with the alpha by the lights' switch, so L.H. ONLY is shaded as the left hand lamp alone. Broad surfaces (`BROAD`) are asked from every part of
   a lamp, from 1.5 in off the surface, and evened between neighbours; what is transparent is not shaded.
 - **`floodlight`** is a four-watt fluorescent fitting; `thrown` a toggle the viewer throws. A capsule says where its
   lamps hang, which is the left hand one, and what its switch's positions are.
@@ -111,7 +113,7 @@ wrong or leaves out"; what holds for every cabin built from this module:
   worked; the other switches and handles are set one way.
 - **The lamps are two lights hung in the middle of the cabin**, falling off with distance and not its square, casting
   no shadows. The shade is baked at the vertices (`shade`): nothing that moves casts one, a large flat plate is shaded
-  only at its corners, and one lamps-on figure stands for every lamp together.
+  only at its corners.
 - **The ports and the periscope's screen light the cabin without direction**, each as one colour looked at a couple of
   times a second, its strength chosen by eye; the sky's light indoors is cut to a tenth by rule, not traced.
 - **The portholes have two panes**, how many No. 7's had not being in anything read; no shutters or filters.

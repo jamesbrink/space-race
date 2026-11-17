@@ -2167,115 +2167,45 @@ def inside_of(name: str) -> tuple:
     return tuple(o for o in bpy.data.objects if o.type == "MESH" and o.parent == node and not o.name.endswith(outside))
 
 
-def _spread(count: int) -> list[Vector]:
-    """Directions over a hemisphere about +Z, evenly, more of them toward the pole (a cosine's share)."""
-    out = []
-    for i in range(count):
-        r = math.sqrt((i + 0.5) / count)
-        a = i * 2.39996323  # the golden angle
-        out.append(Vector((r * math.cos(a), r * math.sin(a), math.sqrt(max(0.0, 1.0 - r * r)))))
-    return out
-
-
 # What is broad and plain enough for a shadow's edge to be read on it: these are shaded from every part of a lamp and
 # their shade is evened between neighbouring vertices; a hose or a bolt is asked once.
 BROAD = ("CrewCabin_Lining", "CrewCabin_Frames", "Hatch_Lining", "CrewCabin_Couch", "CrewCabin_CouchLiner", "CrewCabin_PanelStructure")
 
 
-def shade(parent, lamps, also=(), openings=()) -> None:
-    """The cabin's own shadow, kept at its vertices in a colour attribute named Shade, which the viewer multiplies the
-    surface by: in its red, green and blue with the cabin's lights on, in its alpha with them off (viewer/cabin.ts
-    mixes the two as the lights' switch has them; a viewer that knows no cabin reads the first). Lights on: how much of
-    the floodlights each point sees past everything else in the cabin, and how open it is to the room round it. Lights
+def shade(parent, lamps, also=(), openings=(), order=("Lamp_Right", "Lamp_Left")) -> None:
+    """The cabin's own shadow, kept at its vertices in a colour attribute named Shade (tools/blender/cabin_shade.py: a
+    figure for each floodlight alone, in its red and green, and one with them out, in its alpha). Lights on: how much
+    of each floodlight a point sees past everything else in the cabin, and how open it is to the room round it. Lights
     off: how open it is, and how much of what lets light in it sees (`openings`: each a place and a radius, metres: a
-    port's inner pane, the periscope's screen).
-
-    The viewer's lamps cast no shadows (every shadow map is a texture every lit surface in the scene must carry, and
-    the ground has none to spare), so this is where the dark behind the panel, under the consoles and in the corners
-    comes from. It is worked once, here, by casting rays against everything in the cabin as it stands: what moves
-    afterwards (a needle, the hand controller) leaves no shadow.
+    port's inner pane, the periscope's screen). `lamps` are the floodlights' places; each is named by its fitting
+    (`Lamp_<side>`), the nearest to it, and they are taken in `order`, by those names: the order of the flight's
+    `ModelDef.lights` and its `CabinDef.lighting.fittings` (the right hand one first, as vehicles/cabin.ts has them for
+    every capsule but Freedom 7's).
 
     A lamp is a fitting some inches long, not a point: each is asked from several places along it, so a shadow's edge
     is a gradient and falls between vertices as one. On the broad surfaces (`BROAD`) a ray starts 1.5 in off the
-    surface, clear of what is fastened to it (a clip, a harness, a case on its feet): a vertex of the wall that happened
-    to lie under a clip was a dark blot two inches across, with its neighbours lit. What is fastened to the wall is
-    darkened where it meets it by how open it is, which is asked from close to."""
-    from mathutils.bvhtree import BVHTree
+    surface, clear of what is fastened to it. What moves afterwards (a needle, the hand controller) is left out of it:
+    it neither casts nor takes a shadow."""
+    import cabin_shade
 
     if not interior():
         return
     still = [o for o in bpy.data.objects if o.type == "MESH" and (o.parent == parent or o in also) and o.matrix_local == Matrix.Identity(4)]
-    verts, tris = [], []
-    for o in still:
-        o.data.calc_loop_triangles()
-        base = len(verts)
-        verts.extend(v.co.copy() for v in o.data.vertices)
-        tris.extend(tuple(base + i for i in t.vertices) for t in o.data.loop_triangles)
-    tree = BVHTree.FromPolygons(verts, tris)
-    ways, few = _spread(24), _spread(9)
-    reach = 9.0 * IN
-    lamps = [Vector(p) for p in lamps]
+    to_world = parent.matrix_world
+    lamps = [to_world @ Vector(p) for p in lamps]
     # (a fitting's length lies round the wall: about the long axis from where it hangs)
     along = [Vector((-p.y, p.x, 0.0)).normalized() * (2.4 * IN) for p in lamps]
-    parts = [[p + a * k for k in (-1.0, -0.5, 0.0, 0.5, 1.0)] for p, a in zip(lamps, along)]
+    sources = [(cabin_shade.nearest("Lamp_", p), p, [p + a * k for k in (-1.0, -0.5, 0.0, 0.5, 1.0)]) for p, a in zip(lamps, along)]
+    sources.sort(key=lambda lamp: order.index(lamp[0]))
     panes = []
     for at, radius in openings:
-        at = Vector(at)
+        at = to_world @ Vector(at)
         to_axis = Vector((-at.x, -at.y, 0.0)).normalized()
         side = to_axis.cross(Vector((0, 0, 1))).normalized() * (0.6 * radius)
         panes.append([at, at + side, at - side, at + Vector((0, 0, 0.6 * radius)), at - Vector((0, 0, 0.6 * radius))])
-
-    def sees(at: Vector, n: Vector, places) -> float:
-        """How much of `places` (points of one source of light) a point sees, 0 to 1; and by how much it faces them."""
-        got, facing = 0, 0.0
-        for p in places:
-            to = p - at
-            length = to.length
-            facing += to.dot(n) / max(length, 1e-9)
-            if to.dot(n) > 0 and tree.ray_cast(at, to / length, length - 0.4 * IN)[0] is None:
-                got += 1
-        return got / len(places), facing / len(places)
-
-    for o in still:
-        if o.name.startswith(("CrewCabin_Pilot", "CrewCabin_PressureVessel", "CrewCabin_BulkheadStiffeners")):
-            continue
-        mat = o.active_material
-        if mat is not None and (mat.name.startswith(("glass", "crystal")) or mat.surface_render_method == "BLENDED"):
-            continue  # (a pane is not painted: and its alpha is its own)
-        broad = o.name in BROAD
-        skin = (1.5 if broad else 0.12) * IN
-        mesh = o.data
-        on, off = [0.0] * len(mesh.vertices), [0.0] * len(mesh.vertices)
-        for i, v in enumerate(mesh.vertices):
-            n = v.normal
-            near = v.co + n * (0.12 * IN)
-            at = v.co + n * skin
-            seen = 0.0
-            for places in parts if broad else [[p] for p in lamps]:
-                got, facing = sees(at, n, places)
-                # turned away, or shaded: lit by what the rest of the cabin gives back
-                lit = max(0.0, min(1.0, (facing + 0.15) / 0.3))
-                seen += 0.3 * (1 - lit) + lit * (0.12 + 0.88 * got)
-            seen /= len(lamps)
-            t1 = (Vector((0, 0, 1)) if abs(n.z) < 0.9 else Vector((1, 0, 0))).cross(n).normalized()
-            t2 = n.cross(t1)
-            rays = ways if broad else few
-            clear = sum(tree.ray_cast(near, t1 * w.x + t2 * w.y + n * w.z, reach)[0] is None for w in rays) / len(rays)
-            windows = max((sees(at, n, places)[0] for places in panes), default=0.0)
-            on[i] = 0.1 + 0.9 * (0.6 * seen + 0.4 * clear) ** 1.5
-            off[i] = 0.08 + 0.92 * (0.5 * clear + 0.5 * windows) ** 1.5
-        if broad:  # evened between neighbours, twice: what is left of a shadow's edge is a slope, not a step from vertex to vertex
-            ring = [[] for _ in mesh.vertices]
-            for e in mesh.edges:
-                a, b = e.vertices
-                ring[a].append(b)
-                ring[b].append(a)
-            for _ in range(2):
-                on = [(k + sum(on[j] for j in ring[i])) / (1 + len(ring[i])) for i, k in enumerate(on)]
-                off = [(k + sum(off[j] for j in ring[i])) / (1 + len(ring[i])) for i, k in enumerate(off)]
-        layer = mesh.color_attributes.new("Shade", "FLOAT_COLOR", "POINT")
-        for i in range(len(mesh.vertices)):
-            layer.data[i].color = (on[i], on[i], on[i], off[i])
+    skip = ("CrewCabin_Pilot", "CrewCabin_PressureVessel", "CrewCabin_BulkheadStiffeners")
+    receivers = [o for o in still if not o.name.startswith(skip)]
+    cabin_shade.bake(receivers, still, sources, panes, BROAD, skin=(1.5 * IN, 0.12 * IN), reach=9.0 * IN, short=0.4 * IN)
 
 
 def restraints(c: Cabin, suit: dict, pilot: dict, seat, chest_strap: bool = True) -> None:

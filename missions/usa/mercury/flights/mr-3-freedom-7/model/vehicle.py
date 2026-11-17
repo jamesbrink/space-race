@@ -362,7 +362,8 @@ def build_crew_cabin(M) -> None:
     # the cabin's own shadows, worked once everything in it stands where it will
     # (what lets light in with the lamps out: the two ports' inner panes and the periscope's screen)
     openings = [(port["at"], PORT_GLASS * IN) for port in where["ports"]] + [(where["periscope"]["screen"], where["periscope"]["radius"])]
-    mercury_cabin.shade(g, where["lamps"], mercury_cabin.inside_of("Hatch"), openings)
+    # (its lamps in the order of its flight's lights: the left hand one first)
+    mercury_cabin.shade(g, where["lamps"], mercury_cabin.inside_of("Hatch"), openings, order=("Lamp_Left", "Lamp_Right"))
     mercury_capsule.keep_inside()
     return where
 
