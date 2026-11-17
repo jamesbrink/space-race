@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from g3c_suit import Garment, Wearer, build  # noqa: E402
 
-__all__ = ["G4C", "G4C_OUTSIDE", "MCDIVITT", "WHITE", "build"]
+__all__ = ["CONRAD", "COOPER", "G4C", "G4C_OUTSIDE", "MCDIVITT", "WHITE", "build"]
 
 # Bare aluminium at the neck, where the G3C's ring was anodised blue: NASA S65-29643 (McDivitt) and S65-29645 (White),
 # both in the suiting trailer on 3 June 1965. The flag on the left upper arm: S65-29643. Estimated in size and place.
@@ -34,3 +34,10 @@ G4C_OUTSIDE = Garment(name="G4C, with the cover for going outside", ring="bright
 # command pilot's single cover layer "for anti-snag protection" (GIV, 3.1.2.9.2) is one layer of cloth and is not let out.
 MCDIVITT = Wearer("J.A.McDIVITT", 180.3, 0.99, 1.0, garment=G4C)
 WHITE = Wearer("E.H.WHITE II", 182.9, 1.0, 1.0, garment=G4C_OUTSIDE)
+
+# Gemini 5: "the same configuration as those used on the Gemini IV mission except that the overvisor and special cover layer
+# used for extravehicular activity were not included" (the Gemini V mission report, MSC-G-R-65-4, 3.1.2.9.2). Statures:
+# the Gemini 5 press kit's crew biographies (NASA release 65-262, pp. 79 and 81), documented: Cooper "5 ft., 8 in.",
+# Conrad "5 ft., 6 in.". Tags as NASA S65-28740 reads them, the two leaving the suiting trailer on 21 August 1965.
+COOPER = Wearer("L.G.COOPER", 172.7, 0.99, 1.0, garment=G4C)
+CONRAD = Wearer("C.CONRAD JR", 167.6, 0.98, 1.0, garment=G4C, stand=0.32)

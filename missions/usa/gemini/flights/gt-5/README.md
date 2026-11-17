@@ -6,7 +6,7 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 | | |
 | --- | --- |
 | Liftoff | 21 August 1965, 13:59:59.518 UTC (8:59:59.518 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that morning |
 | Crew | L. Gordon Cooper, Jr., command pilot; Charles Conrad Jr., pilot |
 | Spacecraft | Gemini No. 5, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 5, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -17,10 +17,12 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 | Landing | 29°47′ N 69°45′ W, 89 nautical miles short of the planned point |
 | Recovery | USS *Lake Champlain* |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 5 on GLV-5 as they left the pad can
-be turned, taken apart as they staged, and cut open: the radar on its nose, the fuel cells and
-their tanks in the adapter, the pod hung in its middle. Its launch site, its crew and the flight itself
-are not built: see "What is not built" below.
+**In this repo: the vehicle in the gallery, and its launch site.** Spacecraft No. 5 on GLV-5 as
+they left the pad can be turned, taken apart as they staged, and cut open: the radar on its nose,
+the fuel cells and their tanks in the adapter, the pod hung in its middle. At Complex 19 it stands
+on the thrust mount on the morning of the flight: the erector raised while the crew go up and laid
+down at T−35, Cooper and Conrad at the foot of the ramp in their G4C suits, each a figure to walk
+the site as, under that morning's sky. The flight itself is not built: see "What is not built" below.
 
 ## The name
 
@@ -107,19 +109,58 @@ phase from its Table 4.2-I, read on the page, the rest from that table and secti
 | 190:51:16 | pilot parachute, then the main, at 10,600 ft |
 | 190:55:14 | landing |
 
-## The sky and the weather
+## The morning at the pad
 
-Not worked out. The flight has no `weather.ts`: it stands in the gallery only, under the studio's
-lights. The Sun and the Moon over Complex 19 at 13:59:59 UTC on 21 August 1965 will be computed
-when the site is built (`src/world`), and the weather read from the station records Gemini-Titan
-3's was (docs/sources.md).
+By the clocks at the Cape. No time of the morning at the pad is in what was read: the mission report
+has the crew in "at the proper time" (7.1.1.1) and a count "completely nominal" with no hold
+(6.1.1.4), so each time below is the press kit's plan (release 65-262: the crew's morning on p. 13,
+the count on pp. 22 and 23) put on the clock, which the day kept: `derived`. The pad's slider
+plays it ([pad.ts](pad.ts)).
+
+| EST | Event | Confidence |
+| --- | --- | --- |
+| about 7:11 | T-1 h 49 min: the crew leave the ready room at Complex 16 | derived |
+| about 7:16 | T-1 h 44 min: at the 100 ft level of the erector | derived |
+| about 7:20 | T-100: in the spacecraft | derived |
+| about 8:20 | T-40: the white room empty, the erector cleared to lower | derived |
+| about 8:25 | T-35: the erector starts down (NASA S65-49568 has it part way) | derived |
+| 8:59:59.518 | liftoff, 0.482 s early | documented |
+
+The crew felt "a vibration ... introduced into the vehicle" during the erector's lowering
+preparations, which was never explained (5.2.10.3). It was the second try. On 19 August, after a hold
+at T-10 at 12:08 EST, the erector was raised again and the count cancelled at 12:41 with a
+thunderstorm over the pad (5.2.10.1; *On the Shoulders of Titans*, p. 256).
+
+**What stood there.** The complex as Gemini 3 and 4 left it: nothing read has any of it changed
+([lc-19.md](../../../places/cape-canaveral/lc-19.md), "What stood when"). "Pad damage was minimal"
+(5.2.10.3). NASA S65-28737 and S65-28739 have the two men on the crew's ramp at pad 19 with the
+transfer van parked on the deck behind them (not built).
+
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
+launch instant, 13:59:59.518 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
+are held to these figures by `tests/world.test.mjs`.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 98.0° | 39.5° | In the east, three hours up |
+| Moon | 261.8° | 67.5° | High in the west; 35% lit, waning |
+| Venus | 93.4° | 5.6° | Low in the east, magnitude -3.4 |
+| Mercury | 104.9° | 48.5° | |
+| Jupiter | 248.1° | 76.7° | |
+
+Mars, Saturn and Neptune were below the horizon.
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
-  an estimated bearing. Nothing stands on it yet.
-- **The crew.** Cooper and Conrad wore the G4C suit, without the outer cover Gemini IV's pilot had.
-  It is not modelled, and the seats are empty.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
+  overshoes. The morning's times are the plan's, and how long each motion took is estimated.
+- **The crew in their seats.** Cooper and Conrad stand at the foot of the ramp in the G4C suit,
+  without the outer cover Gemini IV's pilot had ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are
+  empty. The red-lettered label under Cooper's name tag (S65-28740) and the flight's emblem, whose
+  place on the suits nothing read gives, are not built.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. The pod does not fly; it sits where it was carried.
 - **The flight azimuth** is not given as a figure here: it is not in the parts of the report that
@@ -139,6 +180,9 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## Not found
 
+- **Any time of the morning at the pad**, as it went: when the crew reached pad 19, went aboard,
+  when the hatches were shut, the erector started down and lay down. Not in the mission report, *On
+  the Shoulders of Titans* or the *Chronology*; *Spaceport News* of 26 August 1965 was not reached.
 - **The pod's size and weight**, and a drawing of where it sat: its form is scaled from one sketch.
 - **The fuel cell sections' and the two tanks' sizes** as figures: SEDR 300's second volume gives
   the tanks' loads and not their dimensions.

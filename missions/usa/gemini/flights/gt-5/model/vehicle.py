@@ -42,7 +42,8 @@ FIT = Fit(
     pod=True,  # the rendezvous evaluation pod, in the equipment section under a silvered cover (GV, 3.1.2.4.2 and Figure 3.1-4)
     experiments=(),  # (none of its experiments is modelled: ../spacecraft.md)
     names=("Cooper", "Conrad"),
-    # no crew: both men wore the G4C suit (GV, 3.1.2.9.2), which is not modelled
+    # no crew: both men wore the G4C suit (GV, 3.1.2.9.2), which is built standing, at the pad (../../../crew/g4c_suit.py),
+    # and not seated
     crew=None,
     white_disc=False,  # not known of this ship: it is spacecraft 3's, and not identified
     gmt_clock=True,  # as spacecraft 4: "The time reference system was the same" (GV, 3.1.2.5; GIV, Table 3-I)
@@ -188,7 +189,7 @@ SAYS = {
         "way out is this, an ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows "
         "both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so "
         "that the two do not meet. Nobody ever had to. Its form is the two seats the Smithsonian holds, 22 in wide and 54 "
-        "in tall. The seat is empty: the G4C suit both men wore is not modelled.",
+        "in tall. The seat is empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
@@ -196,7 +197,7 @@ SAYS = {
         "way out is this, an ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows "
         "both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so "
         "that the two do not meet. Its form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is "
-        "empty: the G4C suit both men wore is not modelled.",
+        "empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
     ),
     # the launch vehicle
     "Interstage_ExhaustPorts": (

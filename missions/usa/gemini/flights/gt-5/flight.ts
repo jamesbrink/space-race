@@ -1,6 +1,9 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   FT,
   GV,
@@ -21,6 +24,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -172,7 +176,7 @@ const parts: PartWords[] = [
       'drift. The panels are drawn from McDonnell’s drawing of spacecraft 3’s, with the clock spacecraft 4 added; ' +
       'what this ship changed is not drawn: a monitor for the fuel cells, a panel of warning lamps, a second ' +
       'manoeuvre controller on the right-hand wall, the switch that threw out the pod. The seats are empty: both ' +
-      'men wore the G4C suit, which is not modelled. No drawing read gives the pressure vessel’s dimensions: its ' +
+      'men wore the G4C suit, which is modelled standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its ' +
       'sizes are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -180,7 +184,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with spacecraft 4’s G.m.t. clock'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', 'two fuel cell sections in the adapter; 4 batteries of 45 Ah here for the way home'],
-      ['Suits', 'G4C, without the outer cover: not modelled, the seats are empty'],
+      ['Suits', 'G4C, without the outer cover: the two men stand at the pad, the seats are empty'],
     ],
   },
   {
@@ -400,24 +404,57 @@ const parts: PartWords[] = [
   },
 ];
 
-const vehicle = geminiTitanStack({
-  flight: 'gt-5',
-  parts,
-  // when this crew went aboard is not in what was read: taken as the flight before's count, T-100 minutes (On the
-  // Shoulders of Titans, p. 245, of Gemini-Titan 4), the hatches shut twenty minutes after. Estimated
-  seats: seats([-100 * 60, -80 * 60]),
-  views: [
-    { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
-    { id: 'pod', label: 'Pod', nodes: ['RadarEvaluationPod'], from: along(LEFT_AZ + 30, -0.7) },
-  ],
-  cabin: cabin({
-    radar:
-      'The range and closing speed of what the rendezvous radar has found. This was the first ship to carry the radar: it read the pod out to 7,721 ft.',
-    fairing:
-      'Pressed during the climb on this ship, 207 s after liftoff, to throw off the nose fairing over the radar and the scanner fairing.',
-    power:
-      'The pilot’s ammeter as spacecraft 3 had it. On this ship a monitor for the six fuel cell stacks stood here instead, which is not drawn.',
+/** The vehicle as built, in its own frame; at Complex 19 it stands on the thrust mount (`lc19Vehicle`); the gallery stands it on its engines. */
+const vehicle = lc19Vehicle(
+  geminiTitanStack({
+    flight: 'gt-5',
+    parts,
+    // the crew went aboard at the planned T-100 minutes (the press kit, p. 13: the mission report has them in "at the proper
+    // time", 7.1.1.1, and the count ran without a hold); when the hatches were shut is not in what was read: twenty
+    // minutes after, estimated
+    seats: seats([-100 * 60, -80 * 60]),
+    views: [
+      { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
+      { id: 'pod', label: 'Pod', nodes: ['RadarEvaluationPod'], from: along(LEFT_AZ + 30, -0.7) },
+    ],
+    cabin: cabin({
+      radar:
+        'The range and closing speed of what the rendezvous radar has found. This was the first ship to carry the radar: it read the pod out to 7,721 ft.',
+      fairing:
+        'Pressed during the climb on this ship, 207 s after liftoff, to throw off the nose fairing over the radar and the scanner fairing.',
+      power:
+        'The pilot’s ammeter as spacecraft 3 had it. On this ship a monitor for the six fuel cell stacks stood here instead, which is not drawn.',
+    }),
   }),
+  BASE,
+);
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g4c_suit.py). Where each stood is ours. The portable ventilator each carried and his
+ * yellow overshoes are not built (crew/g4c-suit.md). The pad stands round them as when they reached the 100 ft level,
+ * T-104 minutes.
+ */
+const ARRIVED = -104 * 60;
+const crew = standing({
+  flight: 'gt-5',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'L. Gordon Cooper Jr. · 1.73 m, 1.79 m suited · to scale',
+  parts: g4cParts('Cooper'),
+  height: 1.785,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-5',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'Charles Conrad Jr. · 1.68 m, 1.74 m suited · to scale',
+  parts: g4cParts('Conrad'),
+  height: 1.74,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
 });
 
 export const flight: Flight = {
@@ -492,6 +529,23 @@ export const flight: Flight = {
     { t: get(190, 55, 14), event: 'Landing, 29°47′ N 69°45′ W, 89 nautical miles short of the planned point' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Cooper, in helmet and boots',
+      value: 1.785,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g4c_suit.py), on a man of 1.727 m: "5 ft., 8 in." in the press kit’s crew biographies (NASA release 65-262, p. 79), documented. The suit’s own thickness is estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Conrad, in helmet and boots',
+      value: 1.74,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.676 m: "5 ft., 6 In." (the same, p. 81), documented. The suit’s thickness is estimated',
+    },
     ...dimensions(
       'assumed',
       'SEDR 300 vol. 1, Figures 2-3 and 2-4, which is spacecraft 3’s, 4’s and 7’s manual, taken for spacecraft 5; the adapter’s 90.00 in, the cabin’s 70.53 in and the 219.03 in of the orbit configuration are printed again in vol. 2, which covers this ship',
@@ -676,5 +730,7 @@ export const flight: Flight = {
     ),
     ...thrusters('spacecraft 5, whose propulsion system "was the same as the spacecraft 4 system" (the Gemini V mission report, 3.1.2.7)'),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that August: as in March (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

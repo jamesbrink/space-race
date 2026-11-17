@@ -91,6 +91,7 @@ class Wearer:
     right: tuple[float, ...] = REST
     seated: dict = field(default_factory=dict)  # what of SEATED is his own
     garment: Garment = G3C
+    stand: float = 0.12  # centimetres let out standing (`build`): a smaller man's boots want a little more at the coarsest level
 
 
 # 170.2 cm is 5 ft 7 in, as commonly given for Grissom (no primary record of it was found; the Mercury module uses the
@@ -786,7 +787,7 @@ def build(who: Wearer | None = None) -> float:
     fl.start()
     # Standing, three things lie within a millimetre of what is under them, which seated they do not (the hair on the
     # skull, the arm pockets on the sleeves, the boots' tops on the trousers): each is let out by a millimetre or so.
-    _STAND = 0.12
+    _STAND = WEARER.stand
     try:
         build_figure()
     finally:
