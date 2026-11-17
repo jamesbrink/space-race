@@ -192,7 +192,7 @@ const parts: Part[] = [
     explode: [0, 0, 0],
     summary: 'Nine clustered tanks and eight swept fins.',
     detail:
-      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Eight solid wedge-shaped fins surround the thrust skirt. Tank end stations, cluster pitch radius, fin outlines, fittings and lettering positions are estimated.',
+      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. Eight solid wedge-shaped fins surround the thrust skirt. Tank end stations, cluster pitch radius, fin outlines, fittings and lettering positions are estimated.',
   },
   {
     node: 'FirstStageEngines',

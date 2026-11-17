@@ -83,7 +83,10 @@ def build():
         tank = lathe_obj(
             f"SIB_OuterTank_{i}",
             prof([(0, 115), (25, 119), (35, 143), (35, SIB_TOP - 60), (26, SIB_TOP - 38), (0, SIB_TOP - 32)]),
-            white,
+            # Fuel tanks alternate with the outer LOX tanks. MSFC's Saturn IB
+            # Flight Manual (30 September 1972), p.4-4, explicitly dates the
+            # switch from black fuel tanks to white to SA-206 and subsequent.
+            black if i % 2 else white,
             sib,
             segs=64,
         )

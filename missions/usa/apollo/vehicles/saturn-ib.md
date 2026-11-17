@@ -28,7 +28,7 @@ of the rounded source dimensions. The fins reach beyond the body.
 S-IB top is Z962.4 in, S-IVB top Z1663.2, IU top Z1699.2 and adapter top Z2035.2.
 These are arithmetic sums of rounded envelopes, not independently documented interface stations.
 The SM barrel stands at the adapter’s top; its engine projects inside it. The command-module
-base is Z2189.2 in and its forward deck Z2333.2. The escape motor ends at Z2688 (224 ft).
+base is Z2197.2 in and its nominal forward heat-shield top Z2309.45. The escape motor ends at Z2688 (224 ft).
 Its remaining height is allocated within that envelope by estimate. **Closing the overall
 length does not validate the individual hardware stations.**
 
@@ -55,3 +55,19 @@ tunnels await their documented layout. The exploded exhibit now separates along 
 axis, with higher parts moving first and farther, so the cover and adjacent modules clear
 one another rather than crossing skins on diagonal paths. These offsets are an exhibit
 layout, not historical dimensions or separation trajectories.
+
+
+## Mission-specific fuel-tank paint
+
+SA-205 retains black fuel tanks alternating with white oxygen tanks. The
+*Skylab Saturn IB Flight Manual*, MSFC-MAN-206 (30 September 1972), printed
+p. 4-4 (PDF p. 60), explicitly says the fuel tanks changed from black to white
+on **SA-206 and subsequent** vehicles for thermal reasons. The same page identifies
+the alternating outer fuel/oxygen tank arrangement. NASA S68-48788 independently
+shows Apollo 7's alternating dark and light tank barrels. The model previously
+used the later all-white tank treatment; that is corrected at all detail levels.
+
+This verifies the tank colour assignment, not colourimetry, an exact paint-edge
+survey, tank end stations, or absolute clocking relative to the spacecraft.
+Those geometric and marking limitations above remain. No Skylab engine thrust
+rating or late-vehicle configuration is silently applied to SA-205.
