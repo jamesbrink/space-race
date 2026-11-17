@@ -35,7 +35,7 @@ import { Descent, type DescentContext, type DownBody, downOf } from './descent.t
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, heightsBall, type DescentFlown, type DescentHands, shipOf, shipPush, solarAt } from './orbital.ts';
+import { aimFor, aimOf, type DescentFlown, type DescentHands, heightsBall, movingAt, shipOf, shipPush, solarAt } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
@@ -248,7 +248,9 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
  * lights (`aimOf`), and the modules' parting; and it stops where its pilot leaves, at the ejection height, burn or no burn,
  * as flyOrbit does. Begun within the burn, the burn in progress goes on as it is: along the line it was fixed on as it
  * lit, from where the ship was then (`lit`, the run's own state at the burn's start: the line is a function of that
- * state and the Sun then, `aimOf`); without it, the line it would have lit along from the state at the start.
+ * state and the Sun then, `aimOf`); without it, the line it would have lit along from the state at the start. The
+ * coast's manoeuvres (orbital.ts `movesOf`) are flown as flyOrbit flies them, each along the line it lights on (one in
+ * progress at the start, along the line from the state then), and the entry body's lift while a bank is held.
  */
 export function spacecraft(
   plan: FlightPlan,
@@ -262,7 +264,10 @@ export function spacecraft(
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
   const ship = shipOf(plan);
   const [on, off, parted] = [ship.on, ship.off, ship.parted];
-  const marks = [on, off, parted].filter((x) => !never(x) && x >= start.t).sort((a, b) => a - b);
+  const moves = ship.moves;
+  const marks = [on, off, parted, ...moves.flatMap((m) => [m.on, m.off]), ...ship.banks.map((b) => b.at)]
+    .filter((x) => !never(x) && x >= start.t)
+    .sort((a, b) => a - b);
   const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
     aimOf(
       plan,
@@ -273,6 +278,20 @@ export function spacecraft(
     );
   let burning = !never(on) && start.t > on && start.t < off && start.t < parted;
   let aim: Vec3 | null = burning ? (options.lit ? aimAt(on, options.lit.r, options.lit.v) : aimAt(start.t, start.r, start.v)) : null;
+  // (each manoeuvre's line, fixed as it lit: one in progress at the start along the line from the state then)
+  const lineOf = (m: (typeof moves)[number], t: number, r: Vec3, v: Vec3): Vec3 =>
+    aimFor(
+      m.aim,
+      r,
+      v,
+      () => frame.fromDate(sunPosition(frame.jdTT(t))),
+      () => frame.upOver(frame.place(r, t), t),
+    );
+  const lines: (Vec3 | undefined)[] = moves.map((m) =>
+    start.t > m.on && start.t < m.off ? lineOf(m, start.t, start.r, start.v) : undefined,
+  );
+  const lifts = Boolean(ship.entry.aero.lift && ship.banks.length);
+  const moving = () => moves.some((m, i) => lines[i] && since >= m.on && since < m.off);
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
   // there and not at a step's own instants, the last of which is the parting itself)
   let since = start.t;
@@ -282,17 +301,25 @@ export function spacecraft(
   return {
     kind: 'coast',
     cutoff: null,
-    quiet: never(on) ? Number.NEGATIVE_INFINITY : off,
+    quiet: Math.max(never(on) ? Number.NEGATIVE_INFINITY : off, ...moves.map((m) => m.off)),
     get chute() {
       return down?.chute ?? false;
     },
     radius: heightsBall(plan, site),
     ground: (here) => (down ? down.ground(here) : ground(here)),
-    burning: () => !down && burning,
+    burning: () => !down && (burning || moving()),
     push: (at, p, u, altitude) =>
       down
         ? down.push(at, p, u, altitude)
-        : shipPush(plan, since, sub(u, cross(SPIN, p)), altitude, burning ? aim : null, solarAt(frame, p, at, altitude)),
+        : shipPush(
+            plan,
+            since,
+            sub(u, cross(SPIN, p)),
+            altitude,
+            burning ? aim : null,
+            solarAt(frame, p, at, altitude),
+            moves.length || lifts ? { push: movingAt(moves, lines, since), up: () => frame.upOver(frame.place(p, at), at) } : undefined,
+          ),
     next: (t) => (down ? down.next(t) : after(marks, t)),
     below: () => (down ? down.below() : ship.floor),
     settle(t, r, v, altitude, falling) {
@@ -307,6 +334,9 @@ export function spacecraft(
       }
       since = t;
       const events: EventKind[] = [];
+      moves.forEach((m, i) => {
+        if (t === m.on) lines[i] = lineOf(m, t, r, v);
+      });
       if (t === on && t < parted) {
         aim = aimAt(t, r, v);
         burning = true;

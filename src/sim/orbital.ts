@@ -616,9 +616,19 @@ export function orbitDrag(ship: Ship, joined: boolean, height: number, mach: num
  * sim/fliers.ts): the air on what flies (`orbitDrag`: the joined ship's figure and mass until the modules part, the entry body's after), at an
  * instant, its motion through the air `wind` (m/s, in any frame: the push comes back in the same one) and its height above
  * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
- * `sun`: the factor the day's Sun puts on the standard's density there (`solarAt`).
+ * `sun`: the factor the day's Sun puts on the standard's density there (`solarAt`). `more`: a manoeuvre's push, m/s^2, in
+ * the same frame (`movingAt`), and the plumb line there, which the entry body's lift is turned from (`liftOf`): it lifts
+ * only alone, with a lift of its own, while a bank is held.
  */
-export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: number, aim: Vec3 | null, sun = 1): Vec3 {
+export function shipPush(
+  plan: FlightPlan,
+  at: number,
+  wind: Vec3,
+  altitude: number,
+  aim: Vec3 | null,
+  sun = 1,
+  more?: { push?: Vec3 | null; up?: () => Vec3 },
+): Vec3 {
   const ship = shipOf(plan);
   const air = atmosphere(altitude);
   const airspeed = length(wind);
@@ -627,9 +637,53 @@ export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: num
   const area = ORBIT_DRAG.coast
     ? orbitDrag(ship, at < ship.parted, altitude, mach)
     : ship.entry.aero.area.value * along(ship.entry.aero.drag, mach);
-  const drag = scale(airDrag(wind, airspeed, air.density * sun, area), 1 / mass);
+  let drag = scale(airDrag(wind, airspeed, air.density * sun, area), 1 / mass);
+  // (the entry body alone, trimmed and banked: its lift square to its motion through the air, turned from the plumb line)
+  const lift = ship.entry.aero.lift;
+  const bank = lift && more?.up && at >= ship.parted ? bankAt(ship, at) : null;
+  if (lift && bank !== null) drag = add(drag, liftOf(drag, wind, more!.up!(), along(lift, mach), bank));
+  if (more?.push) drag = add(drag, more.push);
   // (the braking engine is on the instrument module: parted, it pushes no more)
   return aim ? add(drag, scale(aim, ship.flown / (ship.off - ship.on))) : drag;
+}
+
+/**
+ * A lifting body's lift, m/s^2: `ratio` (lift over drag) times the drag `drag` (m/s^2), square to the motion through the
+ * air `wind`, in the plane of the motion and the plumb line `up` and turned about the motion by `bank` degrees, lift up at
+ * 0 and to the right of the motion at 90. Nothing where the motion is along the plumb line.
+ */
+export function liftOf(drag: Vec3, wind: Vec3, up: Vec3, ratio: number, bank: number): Vec3 {
+  const w = unit(wind);
+  const level = sub(up, scale(w, dot(up, w)));
+  const size = length(level);
+  if (!(size > 1e-9) || !ratio) return [0, 0, 0];
+  const n = scale(level, 1 / size);
+  const right = cross(w, n);
+  const b = bank * DEG;
+  return scale(add(scale(n, Math.cos(b)), scale(right, Math.sin(b))), ratio * length(drag));
+}
+
+/** The bank held at `at`, degrees: the last a plan's event set at or before it; null while none is held. */
+export function bankAt(ship: Pick<Ship, 'banks'>, at: number): number | null {
+  let held: number | null = null;
+  for (const b of ship.banks) if (b.at <= at) held = b.bank;
+  return held;
+}
+
+/**
+ * The line a burn pushes along as it lights, for the attitude it is held in (`hold`), from the spacecraft's place and
+ * velocity then (and the Sun's place, asked for only when the aim is at the Sun, and the plumb line, for a pitch below the
+ * level), all in the flight's frame (world/earthframe.ts).
+ */
+export function aimFor(a: Extract<Hold, { aim: unknown }>, r: Vec3, v: Vec3, sun: () => Vec3, up: () => Vec3 = () => unit(r)): Vec3 {
+  const line = a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : a.aim === 'normal' ? cross(r, v) : v;
+  const along = scale(unit(line), a.sense);
+  if (!a.below || a.aim !== 'velocity') return along;
+  // (along or against the motion, laid level and then pitched down below the level by `below`: the plumb line where it is)
+  const u = up();
+  const level = unit(sub(along, scale(u, dot(along, u))));
+  const b = a.below.value * DEG;
+  return add(scale(level, Math.cos(b)), scale(u, -Math.sin(b)));
 }
 
 /**
@@ -638,14 +692,74 @@ export function shipPush(plan: FlightPlan, at: number, wind: Vec3, altitude: num
  * the predicted path's.
  */
 export function aimOf(plan: FlightPlan, r: Vec3, v: Vec3, sun: () => Vec3, up: () => Vec3 = () => unit(r)): Vec3 {
-  const a = shipOf(plan).aim;
-  const along = scale(unit(a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : v), a.sense);
-  if (!a.below || a.aim !== 'velocity') return along;
-  // (along or against the motion, laid level and then pitched down below the level by `below`: the plumb line where it is)
-  const u = up();
-  const level = unit(sub(along, scale(u, dot(along, u))));
-  const b = a.below.value * DEG;
-  return add(scale(level, Math.cos(b)), scale(u, -Math.sin(b)));
+  return aimFor(shipOf(plan).aim, r, v, sun, up);
+}
+
+/**
+ * A burn of the coast other than its braking burn: a manoeuvre (Gemini's thrusters changing the orbit, by hand). `on` and
+ * `off` are when the clock lights and cuts it; it pushes `accel` m/s^2 along the line its attitude (`aim`, the one the
+ * attitude event last set off at or before it lit) gives as it lights, fixed from there.
+ */
+export interface Move {
+  engine: string;
+  label: string;
+  /** The events that light and cut it, by id. */
+  lit: string;
+  cut: string;
+  on: number;
+  off: number;
+  accel: number;
+  aim: Extract<Hold, { aim: unknown }>;
+}
+
+/**
+ * The coast's manoeuvres, in the order lit: each automatic lighting on the clock of an engine of the first craft that is
+ * neither a stage (it draws on no tank) nor the coast's burn (`EngineDef.flown`), up to that engine's next cut on the
+ * clock. It pushes the lighting's own impulse (`Action.flown`) evenly over that time, or else its engine's chambers at
+ * their vacuum thrust over the ship's mass in orbit (what they burn is not taken off), along the attitude held as it lit (against it for one that pushes `astern`),
+ * which must be an aim. None for a plan with no such engine: every flight flown before Gemini's.
+ */
+export function movesOf(plan: FlightPlan): Move[] {
+  const c = plan.craft[0]!;
+  const engines = c.engines.filter((e) => !e.tanks.length && !e.flown);
+  if (!engines.length) return [];
+  const timed = plan.events
+    .filter((e) => e.automatic)
+    .map((e) => ({ e, at: clockAt(plan, e) }))
+    .filter((x) => x.at < Number.MAX_SAFE_INTEGER)
+    .sort((p, q) => p.at - q.at);
+  const holdAt = (t: number): AttitudeDef | undefined => {
+    let held: AttitudeDef | undefined = plan.attitude[0];
+    for (const x of timed)
+      if (x.at <= t) for (const a of x.e.do) if ('attitude' in a) held = plan.attitude.find((d) => d.id === a.attitude) ?? held;
+    return held;
+  };
+  const mass = plan.record?.orbit?.mass.value ?? c.mass.value;
+  const out: Move[] = [];
+  for (const engine of engines)
+    for (const x of timed)
+      for (const a of x.e.do) {
+        if (!('ignite' in a) || a.ignite !== engine.id) continue;
+        const cut = timed.find((y) => y.at > x.at && y.e.do.some((b) => 'cut' in b && b.cut === engine.id));
+        if (!cut) continue;
+        const hold = holdAt(x.at);
+        if (!hold || !('aim' in hold.hold)) throw new Error(`${x.e.id} lights ${engine.id} in an attitude that is not an aim`);
+        const size = a.flown ? a.flown.value / (cut.at - x.at) : (engine.count * engine.thrust.vacuum.value) / mass;
+        // (a forward-firing pair pushes toward the tail: against the line its attitude points the nose along)
+        const accel = engine.astern ? -size : size;
+        out.push({ engine: engine.id, label: x.e.label, lit: x.e.id, cut: cut.e.id, on: x.at, off: cut.at, accel, aim: hold.hold });
+      }
+  return out.sort((p, q) => p.on - q.on);
+}
+
+/** The manoeuvres' push from the instant `as` the ship is from, m/s^2, each along its line (`lines`, by its index, fixed as it lit); null with none burning. */
+export function movingAt(moves: readonly Move[], lines: readonly (Vec3 | undefined)[], as: number): Vec3 | null {
+  let push: Vec3 | null = null;
+  moves.forEach((m, i) => {
+    const line = lines[i];
+    if (line && as >= m.on && as < m.off) push = add(push ?? [0, 0, 0], scale(line, m.accel));
+  });
+  return push;
 }
 
 /**
@@ -663,8 +777,25 @@ export function shipOf(plan: FlightPlan): Ship {
   const burn = c.engines.find((e) => e.flown)!;
   const joint = c.joints.find((j) => j.gone.includes(burn.body))!;
   const entry = c.bodies.find((b) => b.aero)!;
+  // (the aim the burn lights in: the one an event turns it to at or before its lighting, else the plan's last aim)
   let aim: AttitudeDef | undefined;
   for (const a of plan.attitude) if ('aim' in a.hold) aim = a;
+  let turnedAt = Number.NEGATIVE_INFINITY;
+  const banks: { at: number; bank: number }[] = [];
+  for (const e of plan.events) {
+    if (!e.automatic) continue;
+    const at = clockAt(plan, e);
+    for (const a of e.do) {
+      const def = 'attitude' in a ? plan.attitude.find((d) => d.id === a.attitude) : undefined;
+      if (!def) continue;
+      if ('aim' in def.hold && at <= coast.on && at >= turnedAt) {
+        aim = def;
+        turnedAt = at;
+      }
+      if ('bank' in def.hold && at < Number.MAX_SAFE_INTEGER) banks.push({ at, bank: def.hold.bank.value });
+    }
+  }
+  banks.sort((p, q) => p.at - q.at);
   ship = {
     orbit,
     mass: orbit.mass.value,
@@ -675,6 +806,8 @@ export function shipOf(plan: FlightPlan): Ship {
     entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
     ...(c.rarefied ? { rarefied: c.rarefied } : {}),
     landing: plan.record!.landing!,
+    moves: movesOf(plan),
+    banks,
   };
   ships.set(plan, ship);
   return ship;
@@ -700,6 +833,10 @@ export interface Ship {
   /** The joined ship in the free-molecule flow of its orbit (`Craft.rarefied`), where the plan gives it. */
   rarefied?: NonNullable<Craft['rarefied']>;
   landing: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
+  /** The coast's manoeuvres, in the order lit (`movesOf`). */
+  moves: Move[];
+  /** The banks the plan's events hold the entry body at, from their instants, degrees, in order (`Hold.bank`). */
+  banks: { at: number; bank: number }[];
 }
 const ships = new WeakMap<FlightPlan, Ship>();
 
@@ -781,7 +918,8 @@ export interface Coast {
  * Forces: gravity with J2 (world/orbit.ts); the air of atmosphere.ts turning with the Earth, on
  * what flies (`orbitDrag`: in the free-molecule flow of the orbit the joined ship's figure until the modules part and
  * the entry body's after, in the continuum below the entry body's curve, bridged between by the Knudsen number); the braking burn as an even acceleration, which the modules' parting ends (the
- * engine is on the instrument module). No lift, no wind.
+ * engine is on the instrument module); each manoeuvre's push (`movesOf`), along the line it lit on; the entry body's lift
+ * where it has one, while a bank is held (`liftOf`). No wind.
  * Fixed steps of fourth-order Runge-Kutta: 10 s above 150 km, 1 s to 100 km and through the
  * burn, 0.05 s below, each cut to end on the next event, so one input gives one flight.
  */
@@ -796,8 +934,11 @@ export function flyOrbit(
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
-  const { on, off, parted, floor } = ship;
+  const { on, off, parted, floor, moves } = ship;
   const radius = heightsBall(plan, site);
+  /** Each manoeuvre's line, fixed as it lit (`movesOf`). */
+  const lines: (Vec3 | undefined)[] = moves.map(() => undefined);
+  const lifts = Boolean(ship.entry.aero.lift && ship.banks.length);
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
@@ -825,6 +966,7 @@ export function flyOrbit(
    */
   const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airOf(s, at);
+    const more = moves.length || lifts ? { push: movingAt(moves, lines, as), up: () => frame.upOver(frame.place(s.r, at), at) } : undefined;
     return shipPush(
       plan,
       as,
@@ -832,6 +974,7 @@ export function flyOrbit(
       air.altitude,
       as >= on && as < off && as < parted ? aim : null,
       solarAt(frame, s.r, at, air.altitude),
+      more,
     );
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
@@ -907,6 +1050,16 @@ export function flyOrbit(
 
   /** What happens at the instant now reached. */
   const arrive = (): void => {
+    moves.forEach((m, i) => {
+      if (t === m.on)
+        lines[i] = aimFor(
+          m.aim,
+          state.r,
+          state.v,
+          () => sunAt(t),
+          () => frame.upOver(frame.place(state.r, t), t),
+        );
+    });
     if (t === on) {
       aim = aimAt(state, t);
       const here = frame.place(state.r, t);
@@ -925,7 +1078,9 @@ export function flyOrbit(
 
   // (the coast hands over to the descent at the ejection height, or at the first event of the descent a hand gave: flyDown)
   const handover = Math.min(...Object.values(hands?.given ?? {}).filter((g) => g > t));
-  const marks = [on, off, parted, handover].filter(Number.isFinite).sort((p, q) => p - q);
+  const marks = [on, off, parted, handover, ...moves.flatMap((m) => [m.on, m.off]), ...ship.banks.map((b) => b.at)]
+    .filter(Number.isFinite)
+    .sort((p, q) => p - q);
   const samples: OrbitSample[] = [sample()];
   let kept = t;
   let before = samples[0]!;
@@ -937,7 +1092,7 @@ export function flyOrbit(
 
   while (t < LIMIT) {
     const mark = marks.find((m) => m > t + 1e-9);
-    const burning = t >= on && t < off;
+    const burning = (t >= on && t < off) || moves.some((m) => t >= m.on && t < m.off);
     const most = before.altitude > THIN ? (burning ? 1 : 10) : before.altitude > THICK ? 1 : 0.05;
     const h = Math.min(most, mark === undefined ? most : mark - t);
     const last = state;

@@ -98,9 +98,12 @@ export interface BodyDef {
 export interface AeroDef {
   area: Measure;
   drag: Curve;
-  /** Lift over drag against Mach number, at `trim`: a capsule flown with its centre of mass off its axis (a lifting entry). */
+  /**
+   * Lift over drag against Mach number, at `trim`: a capsule flown with its centre of mass off its axis (a lifting entry).
+   * Flown on the body alone, in the coast's entry, while a bank is held (`Hold.bank`); left out, it makes none.
+   */
   lift?: Curve;
-  /** The angle of attack it trims at, degrees. */
+  /** The angle of attack it trims at, degrees: how it is drawn, its long axis that far off its motion toward its lift. */
   trim?: Measure;
   /** Its drag coefficient times area, m^2, where a single figure is all the record gives (a pilot on his seat). */
   dragArea?: Measure;
@@ -181,6 +184,11 @@ export interface EngineDef {
   flown?: Measure;
   /** How long it can burn before a propellant runs out, s, where that is all the record gives of its tanks. */
   depletion?: Measure;
+  /**
+   * It pushes toward the tail (-X), not the nose: a forward-firing thruster. The attitude held says where the nose points
+   * (a manoeuvre's aim, orbital.ts `movesOf`), and its push is the other way along that line.
+   */
+  astern?: true;
 }
 
 /**
@@ -307,7 +315,13 @@ export type Trigger =
 
 /** What an event does. */
 export type Action =
-  | { ignite: string }
+  /**
+   * `flown`: the impulse the record says this lighting gave, m/s, where an engine is lit more than once in the coast and the
+   * record gives each burn its own (a manoeuvre's, read off the spacecraft's velocity indicator): the record's run flies it
+   * evenly between this lighting and the engine's next cut, along the attitude then held (orbital.ts `movesOf`). Without
+   * it a manoeuvre is flown at its engine's thrust over the ship's mass.
+   */
+  | { ignite: string; flown?: Measure }
   | { cut: string }
   | { throttle: string; to: number }
   | { separate: string }
@@ -330,16 +344,20 @@ export type Hold =
   /** A stated steering law, solved for its targets (sim/staged.ts `steer`). */
   | { law: Guidance }
   /**
-   * Along or against the line to the Sun, the motion, or a fixed line in the flight's frame. Along the motion, `below`
-   * pitches it down from the level (the plumb line's) by so many degrees, in the plane of the motion: a Mercury capsule's
-   * retrofire attitude, its blunt end up 34 degrees, so the push is back along the motion and down.
+   * Along or against the line to the Sun, the motion, the orbit's normal (r x v: toward the orbit's pole, so a push along it
+   * turns the plane), or a fixed line in the flight's frame. Along the motion, `below` pitches it down from the level (the
+   * plumb line's) by so many degrees, in the plane of the motion: a Mercury capsule's retrofire attitude, its blunt end up
+   * 34 degrees, so the push is back along the motion and down.
    */
-  | { aim: 'sun' | 'velocity' | 'fixed'; sense: 1 | -1; vector?: Vec3; below?: Measure; confidence: Confidence }
+  | { aim: 'sun' | 'velocity' | 'normal' | 'fixed'; sense: 1 | -1; vector?: Vec3; below?: Measure; confidence: Confidence }
   /** Against the motion over the ground, pitched below the horizontal, degrees (retrorockets). */
   | { retro: Measure }
   /** Blunt end first, its roll kept so a side faces the Earth (degrees about the long axis from the body's +Z). */
   | { blunt: true; earthward?: Measure }
-  /** A lifting body's lift turned about the motion by a bank angle, degrees: lift up at 0. */
+  /**
+   * A lifting body's lift turned about its motion through the air by a bank angle, degrees: lift up at 0, to the right of the
+   * motion at 90 (orbital.ts `liftOf`). Its lift is flown only while a bank is held: trimmed and its roll kept.
+   */
   | { bank: Measure }
   /** Left to itself. */
   | { free: true };

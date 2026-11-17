@@ -1,7 +1,7 @@
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
-import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, heightsBall, shipOf } from '../sim/orbital.ts';
+import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, heightsBall, type Move, shipOf } from '../sim/orbital.ts';
 import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
@@ -18,6 +18,7 @@ import {
   guidanceOf,
   held,
   integral,
+  movedTo,
   partingAt,
   published,
   recordSamples,
@@ -128,6 +129,8 @@ export class OrbitDeck extends Deck {
   private byPlan: number | null = null;
   private planBase: readonly LiveSample[] | null = null;
   private fired: number | null = null;
+  /** When each of the record's manoeuvres (orbital.ts `movesOf`) was fired by hand, in the record's order. */
+  private moved: number[] = [];
   /** The plan as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
   private planned: FlightPlan | null = null;
   /** How it is flown: the two switches, and how far the hands have leaned the law. */
@@ -365,6 +368,7 @@ export class OrbitDeck extends Deck {
     if (!this.on) return false;
     if (what.startsWith('descent:')) return this.descentWhy(what.slice(8)) === null;
     if (what === 'retro') return this.free && this.fired === null && this.hand !== null && this.retroWhy() === null;
+    if (what === 'move') return this.nextMove() !== null;
     const step = stepOf(what);
     if (!step || this.ascended || this.clock.t > this.parting) return false;
     return this.undone(step);
@@ -416,6 +420,7 @@ export class OrbitDeck extends Deck {
       this.asked.push(step);
       if (!this.clock.running) this.clock.play(true);
     } else if (what.startsWith('descent:')) this.give(what.slice(8));
+    else if (what === 'move' && this.can('move')) this.move(this.clock.t);
     else if (what === 'retro' && this.can('retro')) this.fire(this.clock.t);
     else if (what === 'retro')
       this.host.say?.(this.burnName, !this.free ? 'Locked: the hand controls are not free' : (this.retroWhy() ?? 'Fired already'));
@@ -658,6 +663,11 @@ export class OrbitDeck extends Deck {
       if (this.mine === null) this.takeOver();
       this.asked.push(step.step);
       if (!this.clock.running) this.clock.play(true);
+      return;
+    }
+    if (this.can('move')) {
+      this.eventAt = now;
+      this.move(t);
       return;
     }
     if (this.can('retro')) {
@@ -985,12 +995,49 @@ export class OrbitDeck extends Deck {
     this.turnTo(t);
     // the long axis, in the flight's frame
     const aim: Vec3 = turn(this.hand!.q, [1, 0, 0]);
-    const plan = byHand(this.flight.plan!, t, aim);
+    const plan = byHand(this.planned ?? this.flight.plan!, t, aim);
     const burn = shipOf(plan).off - t;
     this.planned = plan;
     this.fired = t;
     this.refly();
     this.host.say?.(this.burnName, `Fired by hand: ${burn.toFixed(0)} s to ${deltaV.value} m/s`);
+  }
+
+  /**
+   * The record's next manoeuvre a hand that is free can fire now, or null: the hands free, nothing burning from the last,
+   * the coast's burn not yet fired, and the thrusters still aboard (their body not let go by the clock on the flight as it
+   * stands).
+   */
+  private nextMove(): Move | null {
+    if (!this.free || this.hand === null || this.fired !== null) return null;
+    const plan = this.flight.plan!;
+    const m = shipOf(plan).moves[this.moved.length];
+    if (!m) return null;
+    const t = this.clock.t;
+    const last = this.moved.at(-1);
+    if (last !== undefined && t < last + (shipOf(plan).moves[this.moved.length - 1]!.off - shipOf(plan).moves[this.moved.length - 1]!.on))
+      return null;
+    const base = this.planned ?? this.givenUp();
+    const body = plan.craft[0]!.engines.find((e) => e.id === m.engine)!.body;
+    const joint = plan.craft[0]!.joints.find((j) => j.gone.includes(body));
+    const parting = joint && base.events.find((e) => e.do.some((a) => 'separate' in a && a.separate === joint.id));
+    if (parting && clockAt(base, parting) <= t) return null;
+    return m;
+  }
+
+  /** The record's next manoeuvre fired by hand now, along the long axis as the hand holds it, its impulse and length the record's. */
+  private move(t: number): void {
+    const m = this.nextMove();
+    if (!m) return;
+    this.turnTo(t);
+    const axis: Vec3 = turn(this.hand!.q, [1, 0, 0]);
+    this.planned = movedTo(this.flight.plan!, this.planned ?? this.givenUp(), this.moved.length, t, axis);
+    this.moved.push(t);
+    this.refly();
+    this.host.say?.(
+      m.label,
+      `Fired by hand: ${(m.off - m.on).toFixed(0)} s, ${(m.accel * (m.off - m.on)).toFixed(1)} m/s ${m.accel < 0 ? 'toward the tail' : 'toward the nose'}`,
+    );
   }
 
   /** Why the braking engine cannot be fired now by a hand that is free, or null: it went with the instrument module, or he has left. */
@@ -1263,7 +1310,12 @@ export class OrbitDeck extends Deck {
    * or the user's vehicle's), the coast's burn between `retro`'s instants (none until a hand fires it, once the hands are free).
    */
   private fires(retro: { on: number; off: number } = { on: Infinity, off: Infinity }): { from: number; to: number }[] {
-    const record = firesOf(this.flight, orbitalFlown(this.flight), retro);
+    const record = firesOf(
+      this.flight,
+      orbitalFlown(this.flight),
+      retro,
+      this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.flight.plan!),
+    );
     const s = this.mine !== null ? this.state : null;
     const v = s ? this.vehicleOf() : null;
     const stages = stagesOf(this.flight.plan!);
@@ -1676,8 +1728,9 @@ export class OrbitDeck extends Deck {
     const waiting = t <= 0 && !this.clock.running;
     const replay = live !== null && this.clock.t < live.t - TICK;
     const step = !waiting && !alone && !this.ascended ? this.nextStep() : null;
-    const fire = this.can('retro');
-    const descent = alone && !fire ? this.nextDescent() : null;
+    const move = this.nextMove();
+    const fire = !move && this.can('retro');
+    const descent = alone && !fire && !move ? this.nextDescent() : null;
     set(
       'next',
       replay
@@ -1686,15 +1739,17 @@ export class OrbitDeck extends Deck {
           ? 'Ignition'
           : step
             ? step.label
-            : fire
-              ? this.burnName
-              : descent
-                ? descent.label
-                : alone
-                  ? 'Nothing to do: it flies itself'
-                  : 'Nothing left to do',
+            : move
+              ? move.label
+              : fire
+                ? this.burnName
+                : descent
+                  ? descent.label
+                  : alone
+                    ? 'Nothing to do: it flies itself'
+                    : 'Nothing left to do',
     );
-    this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !(replay || waiting || step || fire || descent);
+    this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !(replay || waiting || step || move || fire || descent);
     const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
     abort.disabled = this.abortWhy() !== null;
     const armed = !abort.disabled && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;

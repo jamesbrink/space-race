@@ -58,6 +58,7 @@ import {
   flyDown,
   flyOrbit,
   type Guidance,
+  movesOf,
   type OrbitFlown,
   publishedOf,
   shipOf,
@@ -67,7 +68,7 @@ import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
 import { integrate, sensed } from './apparent.ts';
-import type { Action, BodyDef, EngineDef, EventDef, FlightPlan, TankDef } from './plan.ts';
+import { type Action, type BodyDef, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -1062,16 +1063,49 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   if (!waits(k.on, 0)) setOff(k.on, t);
   if (!waits(k.off, burn)) setOff(k.off, t + burn);
   k.burn.flown = { ...k.burn.flown!, value: deltaV.value };
-  for (const a of out.attitude) if ('aim' in a.hold) a.hold = { ...a.hold, aim: 'fixed', sense: 1, vector: aim };
+  const held = shipOf(plan).aimId;
+  for (const a of out.attitude) if (a.id === held && 'aim' in a.hold) a.hold = { ...a.hold, aim: 'fixed', sense: 1, vector: aim };
   if (!waits(k.parting, parting.value)) setOff(k.parting, t + burn + parting.value);
   return out;
 }
 
-/** The plan with its coast's burn given up: nothing commanded, lit, cut or parted by the clock (each at the largest safe integer), until a hand does. */
+/**
+ * The plan with its coast's burn given up: nothing commanded, lit, cut or parted by the clock (each at the largest safe
+ * integer), until a hand does; and so its manoeuvres (orbital.ts `movesOf`), each lit and cut only as a hand does
+ * (`movedTo`).
+ */
 export function givenUp(plan: FlightPlan): FlightPlan {
   const out = structuredClone(plan);
   const k = coastEvents(out);
   for (const e of [k.command, k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
+  for (const m of movesOf(plan)) for (const id of [m.lit, m.cut]) setOff(eventOf(out, id), Number.MAX_SAFE_INTEGER);
+  return out;
+}
+
+/**
+ * `plan` (the flight as it stands, its manoeuvres given up or some already moved) with the record's `k`th manoeuvre
+ * (`movesOf(record)`, in order) made by hand: lit at `t` and cut as long after as on the record, its impulse kept, its
+ * thrusters pushing along `axis` (the long axis, a unit vector in the flight's frame: the nose's way for a pair that
+ * pushes toward it, the other for one that pushes `astern`). Each event keeps the record's instant (`at`).
+ */
+export function movedTo(record: FlightPlan, plan: FlightPlan, k: number, t: number, axis: Vec3): FlightPlan {
+  const m = movesOf(record)[k];
+  if (!m) throw new Error(`the record has no manoeuvre ${k}`);
+  const out = structuredClone(plan);
+  const lit = eventOf(out, m.lit)!;
+  const held = `${m.lit}:by-hand`;
+  out.attitude = [
+    ...out.attitude.filter((a) => a.id !== held),
+    {
+      id: held,
+      label: `${m.label}, by hand`,
+      hold: { aim: 'fixed', sense: 1, vector: axis, confidence: 'documented' },
+      source: 'the long axis as the hand held it',
+    },
+  ];
+  setOff(lit, t);
+  lit.do = [{ attitude: held }, ...lit.do.filter((a) => !('attitude' in a && a.attitude === held))];
+  setOff(eventOf(out, m.cut), t + (m.off - m.on));
   return out;
 }
 

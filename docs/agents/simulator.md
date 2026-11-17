@@ -78,6 +78,20 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     long after retrofire (the coast's parting), and what comes down is let loose at its drogue's height (`Down.ejection`
     is then a parachute's own event). tests/plan.test.mjs holds it to the record.
   - `EngineDef.flown` is the impulse the record's coast flies.
+  - A Gemini-Titan's: missions/usa/gemini/vehicles/gemini-titan-plan.ts `geminiTitanPlan`, from its record (the flight's
+    orbital.ts: a `GeminiTitanRecord`). The Titan is two stages on their own loads, the first's two chambers one engine (a
+    plan's engine count is its body's units); the second is lit at the first's cutoff with the stages joined (`JointDef.hot`)
+    and the first let go a moment after. In orbit the crew's burns are **manoeuvres** (orbital.ts `movesOf`): each automatic
+    lighting on the clock of an engine that is neither a stage (no tank) nor the coast's burn (no `flown`), to its next cut,
+    pushing its lighting's own impulse (`Action.flown`, the velocity indicator's) evenly over that time, or its chambers'
+    thrust over the ship's mass, along the aim held as it lit (`Hold.aim`, `velocity` or the orbit's `normal`, fixed as it
+    lights), against it for a pair that pushes toward the tail (`EngineDef.astern`). flyOrbit and the predicted path
+    (fliers.ts `spacecraft`) fly them alike, and a check of the orbit at an instant reads what each left. The entry body
+    lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
+    it): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
+    the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
+    (staged.ts `givenUp`, the hands free) the manoeuvres are too; a hand fires the record's next one along the long axis
+    (`movedTo`, its impulse and length the record's; on the deck, Space before the coast's burn).
   - A stage's body, engine, tank and joint are `stage:<i>` in a Vostok's plan; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
   - Several stages can draw on one tank (staged.ts `Stage.shares`, the tank on its own body, `holder`): it runs dry for all of

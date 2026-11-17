@@ -7,7 +7,7 @@
 import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
 import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
-import { coastEvents, coastOf } from './orbital.ts';
+import { coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import { apart, Sheds } from './shed.ts';
 import {
@@ -227,11 +227,25 @@ const orbitalRuns = new WeakMap<object, Run>();
  * to where the run stopped it; the coast's burn (the engine the record's impulse is flown on) between the plan's instants
  * of it, or `retro`'s.
  */
-export function firesOf(flight: SitedFlight, whole: FlownWhole, retro?: { on: number; off: number }): { from: number; to: number }[] {
-  const plan = flight.plan!;
+export function firesOf(
+  flight: SitedFlight,
+  whole: FlownWhole,
+  retro?: { on: number; off: number },
+  plan: FlightPlan = flight.plan!,
+): { from: number; to: number }[] {
   const stages = stagesOf(plan);
   const lit = sequenceOf(plan).stages;
+  // (a manoeuvre's engine lit several times: each of its fires is its next lighting, in order, orbital.ts `movesOf`)
+  const moves = shipOf(plan).moves;
+  const seen = new Map<string, number>();
   return (flight.flies?.fires ?? []).map((f) => {
+    const mine = moves.filter((m) => m.engine === f.on);
+    if (mine.length) {
+      const k = seen.get(f.on) ?? 0;
+      seen.set(f.on, k + 1);
+      const m = mine[k];
+      return m ? { from: m.on, to: m.off } : { from: Infinity, to: Infinity };
+    }
     if (plan.craft[0]!.engines.find((e) => e.id === f.on)?.flown) {
       const coast = coastOf(plan);
       return retro ? { from: retro.on, to: retro.off } : { from: coast.on, to: coast.off };
