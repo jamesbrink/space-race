@@ -47,8 +47,8 @@ strength that is lit (they sum to one) and `uCabinLit` the share of the whole th
 moves (`CabinDef.lighting`); and the indirect light (the sky's tenth left indoors, what metal mirrors) is taken toward
 the lit lamps' colour by `uCabinTint` (white for lamps lit as built). The figure is the lamps' reach (and, with them
 out, the openings'), so it scales the lamps' light and the indirect light, diffuse and mirrored, after the light is
-summed (the indirect by less of it while the model is cut open, as the indoors shading is: how open a point is was
-cast with the hull standing, `uCabinKept`), and never the Sun's direct light, which has its own shadow maps:
+summed (the indirect by none of it while the model is cut open: how open a point is was cast with the hull whole, and
+with the hull cut away it is the wrong figure for the room's light, `uCabinKept`), and never the Sun's direct light, which has its own shadow maps:
 `shadows.ts` keeps the Sun's turn of the light loop apart for a material that defines `CABIN_SHADE`. Darkening the
 colour itself, as it once did, darkened the Sun's light with it: a console in full sun in the Gallery's cutaway was
 near black, and the Sun's shadow there measured twice as grainy (`pnpm test:seat`), the darker frame's own rounding.
@@ -57,7 +57,7 @@ only while it is cut open, the room's light: the indirect, and the room's own li
 and the lamp over the viewer's shoulder), which have no shadow map, so that nothing but this rule stops them at the
 hull. That holds for every material a `Cabin` dresses as indoors, baked or not (`shade.ts` `insideBy`; the light
 loop keeps those lights apart for a material that defines `CABIN_INSIDE`): closed, the room's lights give it nothing;
-cut open, the kept share of its shade (`uCabinOpen`, `uCabinKept`), or all of their light where it has no shade. A
+cut open, all of their light, as the indirect keeps none of the shade then (`uCabinOpen`, `uCabinKept`). A
 closed cabin in the Gallery was otherwise lit grey through its hull by the rim and the kicker. tests/cabin.test.mjs
 holds the shader text to all of this. So switching the lamps, to red, to one of them, or to a dim duty
 light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is

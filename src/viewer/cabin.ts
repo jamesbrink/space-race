@@ -817,8 +817,8 @@ export class Cabin {
   /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
   opened(on: boolean): void {
     for (const m of this.inside) m.aoMapIntensity = shaded(m, on, this.lit.value);
-    // (and the baked shade's hold on the light that comes in, as far as the indoors shading is kept: shade.ts `kept`)
-    this.shading.kept.value = on ? OPENED : 1;
+    // (and the room's light that comes in at the cut keeps none of the baked shade, cast with the hull whole: shade.ts `kept`)
+    this.shading.kept.value = on ? 0 : 1;
     this.shading.open.value = on ? 1 : 0;
     this.open = on;
     this.host.redraw();
