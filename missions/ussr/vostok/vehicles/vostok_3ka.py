@@ -324,13 +324,22 @@ def materials(lining: str = "yellow") -> dict:
 # ------------------------------------------------------------------ descent module
 
 
-def porthole(fit: MeshBuilder, glass: MeshBuilder, bolts: MeshBuilder, void: MeshBuilder, where: tuple[float, float], hood: float = 16.0) -> None:
-    """A porthole: a bezel standing `hood` mm proud, the pane, and a sleeve through the wall."""
+def porthole(
+    fit: MeshBuilder,
+    glass: MeshBuilder,
+    bolts: MeshBuilder,
+    void: MeshBuilder,
+    where: tuple[float, float],
+    hood: float = 16.0,
+    sleeve: MeshBuilder | None = None,
+) -> None:
+    """A porthole: a bezel standing `hood` mm proud, the pane, and a sleeve through the wall (into `sleeve`, a mesh of
+    its own that is seen from inside and carries the cabin's shade: `sleeve_of`)."""
     f = OUTER.frame(*where)
     rg = PORT_R
     fit.lathe(pm([(rg + 48, -10), (rg + 48, hood), (rg, hood), (rg - 3, 6)]), 48, matrix=f)
     if interior():
-        fit.lathe(pm([(rg - 3, 6), (rg - 3, -(WALL + 26)), (rg + 34, -(WALL + 26)), (rg + 34, -(WALL + 6))]), 48, matrix=f)
+        (sleeve or fit).lathe(pm([(rg - 3, 6), (rg - 3, -(WALL + 26)), (rg + 34, -(WALL + 26)), (rg + 34, -(WALL + 6))]), 48, matrix=f)
     else:  # nothing is built inside: a dark disc stands in for the cabin
         void.lathe(pm([(rg - 3, 4), (0, 4)]), 32, matrix=f)
     glass.lathe(pm([(rg - 2, 10), (0, 10)]), 48, matrix=f)
@@ -386,13 +395,15 @@ def build_hatch(M, node, prefix: str, where: tuple[float, float], window: float 
     skin.build(f"{prefix}_Skin", M["foil"], node, sharp_angle=40)
     shell.build(f"{prefix}_Shell", M["shell"], node, sharp_angle=None)
     if window:
-        glass, void = MeshBuilder(), MeshBuilder()
-        porthole(rim, glass, bolts, void, where, window)
+        glass, void, sleeve = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        porthole(rim, glass, bolts, void, where, window, sleeve)
         bpy.context.view_layer.update()
         ball_bore({f"{prefix}_Skin": R, **({f"{prefix}_Shell": R_IN} if interior() else {})}, where, PORT_R + 6, 0.3)
         glass.build(f"{prefix}_Glass", M["glass"], node)
         if void.verts:
             void.build(f"{prefix}_WindowWell", M["void"], node)
+        if sleeve.verts:
+            sleeve_of(sleeve.build(f"{prefix}_Sleeve", M["frame"], node, sharp_angle=30))
     rim.build(f"{prefix}_Rim", M["frame"], node, sharp_angle=30)
     bolts.build(f"{prefix}_Bolts", M["bolt"], node)
 
@@ -407,20 +418,21 @@ def build_descent_module(M, pole: bool = True, technological: bool = True, hatch
     skin.lathe(pm([(R * math.cos(deg(-90 + 180 * i / 72)), Z_C + R * math.sin(deg(-90 + 180 * i / 72))) for i in range(73)]), 144)
     skin.build("DM_Insulation", M["foil"], g, sharp_angle=None)
 
-    fit, rings, glass, void, bolts = (MeshBuilder() for _ in range(5))
+    fit, rings, glass, void, bolts, sleeves = (MeshBuilder() for _ in range(6))
     # each hatch's seat: a coaming round the opening and the jamb through the wall
     for where in hatches:
         ax = OUTER.axis(*where)
         r = HATCH_R
         rings.lathe(pm([(r + 52, OUTER.z(r + 52) - 8), *OUTER.cap(r + 52, r + 2, 12, 3), (r + 2, OUTER.z(r + 2) - 8)]), 96, matrix=ax)
         # (the jamb stands just inside the opening cut for it, and its lip inside the cabin covers the lining's edge)
-        rings.lathe(pm([(r - 3, OUTER.z(r) + 10), (r - 3, INNER.z(r) - 60), (r + 56, INNER.z(r) - 60)]), 96, matrix=ax)
+        # (a mesh of its own where an inside is built, to carry the cabin's shade: `sleeve_of`)
+        (sleeves if interior() else rings).lathe(pm([(r - 3, OUTER.z(r) + 10), (r - 3, INNER.z(r) - 60), (r + 56, INNER.z(r) - 60)]), 96, matrix=ax)
         if not interior():  # nothing is built inside: a dark disc stands in for the cabin
             void.lathe(pm([(r, INNER.z(r) - 30), (0, INNER.z(r) - 30)]), 48, matrix=ax)
     # No. 3, the technological hatch, stays on; the Vzor looks out through the porthole in it, under a deep hood
     if technological:
         build_hatch(M, g, "DM_TechHatch", hatches[2], window=70.0)
-    porthole(fit, glass, bolts, void, RIGHT_PORT)
+    porthole(fit, glass, bolts, void, RIGHT_PORT, sleeve=sleeves)
 
     # the plate the cable mast plugs into: the instrument module's power and commands come through its sockets
     f = OUTER.frame(MAST_AZ, MAST_LAT)
@@ -438,6 +450,8 @@ def build_descent_module(M, pole: bool = True, technological: bool = True, hatch
         fit.lathe(pm([(232, Z_C + OUTER.z(232) - 6), (225, top + 20), (150, top + CAP_H - 40), (128, top + CAP_H), (0, top + CAP_H)]), 48)
     fit.build("DM_Fittings", M["frame"], g, sharp_angle=35)
     rings.build("DM_HatchRings", M["frame"], g, sharp_angle=30)
+    if sleeves.verts:
+        sleeve_of(sleeves.build("DM_Sleeves", M["frame"], g, sharp_angle=30))
     glass.build("DM_Glass", M["glass"], g)
     bolts.build("DM_Bolts", M["bolt"], g)
     sockets.build("DM_MastSockets", M["void"], g)
@@ -638,13 +652,22 @@ BROAD = (
 HATCH_SHELLS = ("EntryHatch_Shell", "ParachuteHatch_Shell", "DM_TechHatch_Shell")
 
 
+def sleeve_of(obj: bpy.types.Object) -> bpy.types.Object:
+    """A sleeve through the wall, seen from inside: a hatch's jamb and its lip, a porthole's sleeve. It is cut with the
+    hull (a shell, as the fittings it was once built with are) and carries the cabin's shade (`shade_cabin`): left out
+    of it, it was lit as outdoors, a bright ring round each porthole and hatch in the dark cabin."""
+    obj["shell"] = 1
+    return obj
+
+
 def shade_cabin(lamps, openings, also=()) -> None:
     """The cabin's own shadow, kept at its vertices (tools/blender/cabin_shade.py): a figure for each of `lamps` alone and
     one with them out. `lamps`: each (name, its middle, the places it is asked from), scene metres, in the order of the
     flight's `ModelDef.lights`; `openings`: what lets light in with them out, each as the places it is asked from.
-    What is shaded is the cabin's own (its lining, its fit) and the inner face of each hatch, and `also` (a Voskhod's
-    couches); what is in the way is everything that comes within the hull. The pilot, the seat and what the viewer moves
-    cast it and take none: a seat that leaves the ball carries no indoor shade out with it."""
+    What is shaded is the cabin's own (its lining, its fit), the inner face of each hatch, the sleeves through the wall
+    (`sleeve_of`), and `also` (a Voskhod's couches); what is in the way is everything that comes within the hull. The
+    pilot, the seat and what the viewer moves cast it and take none: a seat that leaves the ball carries no indoor shade
+    out with it."""
     import cabin_shade
 
     if not interior():
@@ -662,7 +685,8 @@ def shade_cabin(lamps, openings, also=()) -> None:
     casters = [o for o in bpy.data.objects if o.type == "MESH" and not cabin_shade.is_seen_through(o) and within(o)]
     own = [o for o in cabin_shade.meshes_under(bpy.data.objects["Cabin"]) if o.name != "Cabin_PressureShell" and not o.name.startswith(DRIVEN)]
     hatches = [bpy.data.objects[n] for n in HATCH_SHELLS if n in bpy.data.objects]
-    cabin_shade.bake([*own, *hatches, *also], casters, lamps, openings, BROAD, HATCH_SHELLS)
+    sleeves = [o for o in bpy.data.objects if o.type == "MESH" and (o.name == "DM_Sleeves" or o.name.endswith("_Sleeve"))]
+    cabin_shade.bake([*own, *hatches, *sleeves, *also], casters, lamps, openings, BROAD, HATCH_SHELLS)
 
 
 def porthole_pane(where: tuple[float, float]) -> list:
