@@ -48,7 +48,10 @@ short. At the cutoff 161 by 280 km (the record 161 by 261), 32.33° (32.54); the
 The coast is flown from the published orbit, read as mean elements with its period node to node (world/meanelements.ts):
 from the estimated injection (`orbital.test.mjs`), or from where the ascent left the capsule, at the published orbit's
 speed (`staged.ts` `published`: what the scene shows). The heights are taken over the equatorial radius: the report does
-not say, and on it the published heights and period agree as a nodal period to a second.
+not say. **The period is flown node to node** (`orbit.kind`, derived from its own figures, tests/periods.test.mjs): on that
+ball the heights' mean orbit has a nodal period 0.9 s shorter than the 88 min 29 s, an anomalistic one 9.4 s longer and a
+Kepler one 14.0 s longer, so the nodal is the nearest for every period within the printed second. No document read says
+which it is.
 
 In orbit the capsule is a craft in free-molecule flow: 2.2 (a satellite's, as Vostok's) on 3.72 m², its shield's disc and
 its side as the motion meets them held in orbit attitude, blunt end forward and pitched 34° (derived from the documented

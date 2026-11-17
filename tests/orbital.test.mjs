@@ -536,6 +536,7 @@ test('a record can say what kind its period is: the mean orbit flown has the pub
   const f = all.find((x) => x.id === 'usa/mercury/ma-6-friendship-7');
   const o = structuredClone(recordFrom(f));
   const T = o.orbit.period.value;
+  delete o.orbit.kind;
   const nodal = meanOrbitOf(publishedOf(mercuryAtlasPlan(o), siteFrame(f.site)));
   assert.equal(nodal.kind, 'nodal', 'none said: the convention');
   assert.ok(Math.abs(nodal.periods.nodal - T) < 1e-6);

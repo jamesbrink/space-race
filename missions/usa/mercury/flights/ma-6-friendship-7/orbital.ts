@@ -369,6 +369,13 @@ export const orbital: MercuryAtlasRecord = {
     apogee: doc(140.92 * NMI, `${TABLE_6_I}: 140.92 nautical miles; the capcom at 00:07:36, "your apogee altitude is 138" (${R6}, p. 151)`),
     inclination: doc(32.54, TABLE_6_I),
     period: doc(88 * 60 + 29, `${TABLE_6_I}: 88 min 29 s`),
+    kind: {
+      is: 'nodal',
+      confidence: 'derived',
+      source:
+        'node to node: on the equatorial radius the published heights’ mean orbit has a nodal period 0.9 s short of the 88 min 29 s, an anomalistic one 9.4 s long and a Kepler one 14.0 s long, ' +
+        'so the nodal is the nearest for every period within its rounding (tests/periods.test.mjs). No document read says which period it is',
+    },
   },
   injection: {
     at: doc(SECO, `${TABLE_6_II}: sustainer cutoff, 00:05:01.4. The posigrades' push 2.2 s later is left out`),

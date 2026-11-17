@@ -144,8 +144,8 @@ const PERIOD_48 =
 
 /** Faith 7's coast, from the published orbit and from where the ascent left it. */
 const MA9_COAST =
-  'Twenty-two revolutions, a day and a half, from the published orbit begun at Aurora 7’s arc (no place for MA-9’s cutoff read), its 88:45 read as its heights’ Kepler period ' +
-  '(`orbit.kind`, estimated: read as nodal, the convention, it comes down 2,234 km short; on its heights alone 8 km short). Two seconds of period, the printed figure’s own precision, are ' +
+  'Twenty-two revolutions, a day and a half, from the published orbit begun at Aurora 7’s arc (no place for MA-9’s cutoff read), its 88:45 flown as a Kepler period ' +
+  '(`orbit.kind`, assumed from Sigma 7’s, whose own figures decide it: tests/periods.test.mjs; as a diagnosis, read as nodal it comes down 2,234 km short, on its heights alone 8 km short). Two seconds of period, the printed figure’s own precision, are ' +
   '330 km here. The retrofire by hand at 33:59:30 at 34°, no yaw recorded, on the motors’ specified impulse over Sigma 7’s weight at retrofire (127.4 m/s); the drag in orbit a capsule ' +
   'turning every way. Which input owns it is not established; not adjusted';
 const MA9_SHOWN =
@@ -156,7 +156,7 @@ const MA9_SHOWN =
 const MA8_COAST =
   'The retrofire is the record’s: at 08:52:00 by the automatic sequence, at −34° with no yaw (held within half a degree, the pilot), the impulse the report’s own integration used, 38,975 lb s, ' +
   'over its 2,994 lb at retrofire, 127.6 m/s; that integration came down within a mile of the retrieval point (TN D-4807, p. 108). Six revolutions from the published orbit begun at the ' +
-  'cutoff’s place, its 88:55 read as its heights’ Kepler period (orbital.ts `orbit.kind`, estimated: read as nodal, the convention, it comes down 236 km short), in orbit attitude’s drag ' +
+  'cutoff’s place, its 88:55 flown as a Kepler period (orbital.ts `orbit.kind`, derived: its own heights and period decide it, tests/periods.test.mjs; as a diagnosis, read as nodal it comes down 236 km short), in orbit attitude’s drag ' +
   'throughout where Schirra drifted for hours. Friendship 7’s and Aurora 7’s coasts come down some 105 km long on the same model. Which input owns it is not established; not adjusted';
 const MA8_SHOWN =
   'Begun from where the ascent flown left the capsule, which reached its cutoff speed 17.5 s early and is so much further on round the orbit at the separation, in the ascent’s ' +

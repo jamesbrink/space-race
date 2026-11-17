@@ -221,11 +221,10 @@ export const orbital: MercuryAtlasRecord = {
     period: doc(88 * 60 + 45, `${SP4201}, Appendix: "22.5/88:45" for MA-9's revolutions and period`),
     kind: {
       is: 'kepler',
-      confidence: 'estimated',
+      confidence: 'assumed',
       source:
-        'the published period is read as the two-body period of the published heights over the equatorial radius: on that ball the 88 min 45 s (This New Ocean, p. 496) is their Kepler period to two seconds ' +
-        '(5,327.0 s), where as a nodal period, the convention (world/meanelements.ts), the heights would give 5,312.1 s, 13 to 15 s short. Friendship 7’s and Aurora 7’s periods agree with their heights as nodal periods to a second; ' +
-        'no document read says which period any of them is. Read as nodal, the coast comes back round so much later each revolution',
+        'Sigma 7’s, the flight before, whose own heights and period decide it (tests/periods.test.mjs). Faith 7’s own cannot: on the equatorial radius its heights’ mean orbit has a Kepler period 2.0 s long of the 88 min 45 s (This New Ocean, p. 496), ' +
+        'an anomalistic one 2.6 s short and a nodal one 12.9 s short, the Kepler the nearer but not for every period within the printed second. No document read says which period it is',
     },
   },
   injection: {

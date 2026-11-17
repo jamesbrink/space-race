@@ -44,7 +44,10 @@ pressure 52.0 kPa (967 lb/ft², 46.3 kPa, on the Cape's air of the day); 7.9 g a
 
 The coast is flown from the published orbit as Friendship 7's is, from the cutoff's place: its 30.50° N 72.41° W (Table
 XVII) is 8.45° round from the pad in the frame that does not turn (derived), and its path 0.0004° below level puts it a
-twentieth of a degree short of perigee. In orbit the capsule is held to Friendship 7's free-molecule figure; Carpenter's
+twentieth of a degree short of perigee. **The period is flown node to node** (`orbit.kind`, derived from its own
+figures, tests/periods.test.mjs): on the equatorial radius the heights' mean orbit has a nodal period 0.6 s longer than the
+88 min 32 s, an anomalistic one 10.9 s longer and a Kepler one 15.5 s longer, so the nodal is the nearest for every period
+within the printed second. In orbit the capsule is held to Friendship 7's free-molecule figure; Carpenter's
 drifting, his turns by hand and his fuel are not flown.
 
 Thirty-four seconds before retrofire (the retrosequence begun at 04:32:36.5) it is turned to its retrofire attitude, and

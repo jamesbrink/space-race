@@ -35,14 +35,14 @@ events planned and flown, no weights, no loads, no cutoff conditions.
 
 ## The period
 
-The orbit is flown from its heights and its period, as every flight's is. Friendship 7's and Aurora 7's published periods
-agree with their published heights over the equatorial radius as nodal periods to a second, which is how the
-simulator reads a period unless told (world/meanelements.ts `CONVENTION`). Sigma 7's and Faith 7's do not: on the same
-ball their heights give 88 min 32.1 s node to node, where the 88 min 45 s is their Kepler period, the two-body period
-of that orbit, to two seconds (5,327.0 s). So this record says its period is a Kepler period (`orbit.kind`, estimated),
-as Sigma 7's does. Read as nodal it comes back round 13 s late each revolution: first flown so, the drogue came out
-2,234 km short of the pick-up point after twenty-two of them. The heights alone, with no period, put it 8 km short; read
-as a Kepler period, 371 km long. Two seconds of a period printed to the second are 330 km at the end of a day and a half,
+The orbit is flown from its heights and its period, as every flight's is. **The period is flown as a Kepler period,
+assumed from Sigma 7's** (`orbit.kind`), whose own heights and period decide it (tests/periods.test.mjs). Faith 7's own
+cannot: on the equatorial radius its heights' mean orbit has a Kepler period 2.0 s longer than the 88 min 45 s, an
+anomalistic one 2.6 s shorter and a nodal one 12.9 s shorter; the Kepler period is the nearer, but not for every period
+within the printed second. Friendship 7's and Aurora 7's are nodal on the same ball. No document read says which period
+any of them is. As a diagnosis only: read as nodal it comes back round 13 s late each revolution and the drogue came out
+2,234 km short of the pick-up point after twenty-two of them; the heights alone, with no period, put it 8 km short; as
+a Kepler period, 371 km long. Two seconds of a period printed to the second are 330 km at the end of a day and a half,
 so this flight's landing says little of anything else.
 
 ## The ascent, the orbit and the decay

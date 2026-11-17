@@ -216,11 +216,10 @@ export const orbital: MercuryAtlasRecord = {
     period: doc(88 * 60 + 55, `${TABLE_XXIII}: 88 min 55 s (planned 88:45: the "slight overspeed")`),
     kind: {
       is: 'kepler',
-      confidence: 'estimated',
+      confidence: 'derived',
       source:
-        'the published period is read as the two-body period of the published heights over the equatorial radius: on that ball the 88 min 55 s (TN D-4807 Table XXIII and SP-12 Table 2-I) is their Kepler period to two seconds ' +
-        '(5,336.3 s), where as a nodal period, the convention (world/meanelements.ts), the heights would give 5,321.5 s, 13 to 15 s short. Friendship 7’s and Aurora 7’s periods agree with their heights as nodal periods to a second; ' +
-        'no document read says which period any of them is. Read as nodal, the coast comes back round so much later each revolution',
+        'the Kepler period of the mean orbit: on the equatorial radius the published heights’ mean orbit has a Kepler period 1.3 s long of the 88 min 55 s (TN D-4807 Table XXIII and SP-12 Table 2-I), an anomalistic one 3.2 s short and a nodal one 13.5 s short, ' +
+        'so the Kepler is the nearest for every period within its rounding (tests/periods.test.mjs). Friendship 7’s and Aurora 7’s are nodal on the same ball; no document read says which period any of them is',
     },
   },
   injection: {

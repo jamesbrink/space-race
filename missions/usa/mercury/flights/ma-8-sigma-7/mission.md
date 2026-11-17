@@ -46,11 +46,11 @@ kPa); 7.9 g at the sustainer's cutoff (8.1).
 
 The coast is flown from the published orbit as Friendship 7's is, from the cutoff's place: its 30.5447° N 72.2157° W
 (Table XXIII) is 8.64° round from the pad in the frame that does not turn (derived), and its path 0.0062° below level
-puts it two thirds of a degree short of perigee. **Its period is read as a Kepler period** (`orbit.kind`, estimated):
-Friendship 7's and Aurora 7's published periods agree with their heights over the equatorial radius as nodal periods to
-a second, which is how the simulator reads a period unless told; Sigma 7's 88 min 55 s does not (its heights give 88 min
-41.5 s node to node), and is their Kepler period, the two-body period of that orbit, to a second (5,336.3 s), as Faith
-7's is. Read as nodal, the convention, it comes back round 13.5 s late each revolution: first flown so, the drogue came
+puts it two thirds of a degree short of perigee. **Its period is flown as a Kepler period** (`orbit.kind`, derived from
+its own figures, tests/periods.test.mjs): on the equatorial radius its published heights' mean orbit has a Kepler period
+1.3 s longer than the 88 min 55 s, an anomalistic one 3.2 s shorter and a nodal one 13.5 s shorter, so the Kepler period
+is the nearest for every period within the printed second. Friendship 7's and Aurora 7's, on the same ball, are nodal
+(0.9 and 0.6 s). No document read says which period any of them is. As a diagnosis only: read as nodal, the drogue came
 out 236 km short of the pick-up point. Six revolutions, nine hours: in orbit the capsule is held to Friendship
 7's free-molecule figure; Schirra's hours of drifting with the jets off, and his fuel, are not flown.
 
