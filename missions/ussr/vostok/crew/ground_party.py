@@ -4,8 +4,9 @@ A crew figure (sk_1.py) is one man at a hundred thousand triangles, skinned so t
 pad on the morning of a flight has forty or fifty people on it, standing. So these are another kind of figure on the
 same body: the measures and joints are figurelib's (`figurelib.man`, scaled to a stature and a build), the face is
 figurelib's face read at a few dozen points, and the clothes are a handful of plain forms over them, at some 1,700
-triangles a man (700 at the far levels of detail). They are posed once, standing, and are not walked: a figure is
-meshes in its group's node, one mesh a material, so a group of eight is a dozen draws.
+triangles a man (700 at the far levels of detail). They are posed once, standing: a figure is meshes in its group's
+node, one mesh a material, so a group of eight is a dozen draws (`Party`). A group the viewer walks off is the same,
+but each man jointed to the crew's joints on a skeleton of the group's, under a node of his own (`Walkers`).
 
 What a figure is made from:
   a man        stature and build (`Person`), and how he stands: each arm's pose, how far his feet are apart and which is
@@ -15,7 +16,8 @@ What a figure is made from:
 The dresses below are the ones the film and the photographs of 12 April 1961 show at Site 1 (the sources are in
 ground-party.md): a marshal and generals in service tunics, officers in tunics and peaked caps with no greatcoats, the
 chief designer in a dark overcoat and a velour hat, civilians in dark coats and hats, workers in navy hooded anoraks
-with red armbands, medics in white coats, a cameraman.
+with red armbands, medics in white coats, a cameraman. And the summer's, which the film of 6 August 1961 shows: shirts
+in white and pale tones, short-sleeved and tucked in at a belt, officers in khaki summer shirts and ties, a white jacket.
 
 Dimensions are centimetres, as figurelib's are: the origin is the ground between the feet, +Z up, and the figure faces
 -Y, so its left is +X. `stand()` sets it down on a site in metres.
@@ -27,6 +29,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
+import bpy
 from mathutils import Matrix, Vector
 
 import figurelib
@@ -53,6 +56,15 @@ CLOTH = {
     "blue": ("suit-cloth-blue", (0.1, 0.22, 0.5), 0.0, 0.85),
     "gold": ("braid-gold", (0.62, 0.47, 0.16), 0.7, 0.45),
     "leather": ("leather-black", (0.02, 0.02, 0.022), 0.1, 0.45),
+    # summer dress (6 August 1961: the film «Снова к звёздам»): white and pale shirts, the officers' khaki summer shirts;
+    # a checked shirt is drawn as its mid tone (the check is not drawn); a straw hat; dark lenses
+    "shirt-white": ("suit-cotton-shirt-white", (0.86, 0.86, 0.83), 0.0, 0.85),
+    "shirt-cream": ("suit-cotton-shirt-cream", (0.8, 0.76, 0.64), 0.0, 0.85),
+    "shirt-blue": ("suit-cotton-shirt-blue", (0.6, 0.67, 0.74), 0.0, 0.85),
+    "shirt-check": ("suit-cotton-shirt-check", (0.42, 0.44, 0.5), 0.0, 0.9),
+    "khaki-summer": ("suit-cotton-khaki", (0.46, 0.42, 0.28), 0.0, 0.88),
+    "straw": ("hat-straw", (0.74, 0.67, 0.48), 0.0, 0.8),
+    "lens": ("sunglasses-dark", (0.015, 0.016, 0.02), 0.0, 0.15),
 }
 
 
@@ -85,6 +97,10 @@ class Dress:
     boots: bool = False  # high boots, the trousers tucked in
     buttons: str | None = None  # a row down the front
     shirt: str | None = None  # an open collar: what shows in the V
+    tie: str | None = "leather"  # down the V, where there is one
+    sleeves: str = "long"  # or "short": to above the elbow, the forearm bare
+    tucked: bool = False  # a shirt into the trousers at a belt, not a coat over them
+    glasses: bool = False  # dark glasses
 
 
 @dataclass
@@ -147,6 +163,72 @@ def raincoat() -> Dress:
     return Dress("tan", hem=0.5, bulk=3.0, collar="turned", trousers="black", hat="flat", hat_colour="grey")
 
 
+# Summer dress: what the film of 6 August 1961 («Снова к звёздам», 21:45 to 22:20) shows nearly everyone in at Site 1.
+
+
+def summer_shirt(colour: str = "shirt-white", trousers: str = "black", hat: str | None = None, hair: str = "hair", glasses: bool = False) -> Dress:
+    """A civilian in a short-sleeved shirt tucked into dark trousers at a belt, open at the neck: white or pale for
+    nearly all of them (the film); `shirt-check` for the one checked shirt, in its mid tone."""
+    return Dress(
+        colour,
+        bulk=0.7,
+        collar="shirt",
+        trousers=trousers,
+        hat=hat,
+        hat_colour="straw" if hat == "fedora" else "grey",
+        band="leather",
+        hair=hair,
+        shirt="skin",
+        tie=None,
+        sleeves="short",
+        tucked=True,
+        glasses=glasses,
+    )
+
+
+def summer_officer(band: str = "blue", glasses: bool = False) -> Dress:
+    """An officer in the khaki summer shirt, short-sleeved, with a tie, and a peaked cap (the film: air force badges,
+    so the aviation's blue band); navy trousers as April's officers wore. Shoulder boards on the shirt are not made out
+    in the film and are not drawn."""
+    return Dress(
+        "khaki-summer",
+        bulk=0.8,
+        collar="shirt",
+        trousers="navy",
+        hat="cap",
+        hat_colour="olive",
+        band=band,
+        shirt="khaki-summer",
+        tie="leather",
+        sleeves="short",
+        tucked=True,
+        glasses=glasses,
+    )
+
+
+def summer_tunic(band: str = "blue") -> Dress:
+    """One of the few officers in a tunic with shoulder boards (the film): April's closed tunic and peaked cap."""
+    return officer(band)
+
+
+def white_jacket(armband: str | None = None, hat: str | None = None) -> Dress:
+    """A white summer jacket over an open shirt, dark trousers: Smirnov's (a photograph), with a pale straw hat and an
+    armband on the left arm, whose colour the black-and-white photograph does not give."""
+    return Dress(
+        "shirt-white",
+        hem=-0.04,
+        bulk=2.0,
+        collar="turned",
+        trousers="black",
+        hat=hat,
+        hat_colour="straw",
+        band="leather",
+        armband=armband,
+        shirt="skin",
+        tie=None,
+    )
+
+
 # Each arm's pose, for the left arm (the right is its mirror): which way the upper arm points from the shoulder, where
 # the wrist is carried to from the elbow, and which way the palm faces. All unit-less directions in the figure's frame
 # (+X his left, -Y ahead, +Z up).
@@ -175,13 +257,37 @@ def _n(sides: int) -> int:
 
 
 class _Figure:
-    """One figure's meshes, by material key, in centimetres."""
+    """One figure's meshes, by material key, in centimetres. Each vertex also remembers which piece of him it was made
+    for (`mark`): the legs, the trunk, an arm, a hand, a foot, the neck, the head. That is what a jointed figure's
+    vertices are weighted by (`_weigh`); a figure that is not jointed carries the marks and does nothing with them."""
 
     def __init__(self) -> None:
         self.mb: dict[str, MeshBuilder] = {}
+        self.tags: dict[str, list[str]] = {}
+        self.piece = "trunk"
+        # each arm's shoulder, elbow and wrist as built, by side ("L", "R"), and the joints a jointed figure is hung on
+        self.arms: dict[str, tuple[Vector, Vector, Vector]] = {}
+        self.joints: dict[str, Vector] = {}
+        self.weights: dict[str, list[dict[str, float]]] = {}
 
     def __call__(self, key: str) -> MeshBuilder:
         return self.mb.setdefault(key, MeshBuilder())
+
+    def mark(self, piece: str | None) -> None:
+        """Every vertex made so far is the piece being made's; those made from here on are `piece`'s (None: no change)."""
+        for key, mb in self.mb.items():
+            tags = self.tags.setdefault(key, [])
+            tags.extend([self.piece] * (len(mb.verts) - len(tags)))
+        if piece:
+            self.piece = piece
+
+    def take(self, other: _Figure) -> None:
+        """Add another's meshes, marks and all, to these."""
+        other.mark(None)
+        self.mark(None)
+        for key, mb in other.mb.items():
+            self(key).add(mb.verts, mb.faces, mb.uvs)
+            self.tags.setdefault(key, []).extend(other.tags.get(key, []))
 
     def tube(
         self,
@@ -218,8 +324,10 @@ def _unit(v) -> Vector:
     return Vector(v).normalized()
 
 
-def figure(p: Person) -> _Figure:
-    """A person, standing, in centimetres."""
+def figure(p: Person, jointed: bool = False) -> _Figure:
+    """A person, standing, in centimetres. `jointed`: also where each of the crew's joints is in him as built
+    (`_Figure.joints`, srlib.FIGURE's and the two halves at the hips) and how much each vertex follows each of them
+    (`_Figure.weights`), for a figure the viewer walks."""
     d = p.dress
     body = figurelib.man().scaled(p.stature, 2.5, 0.97 + 0.03 * p.build, p.build)
     figurelib.use(body)
@@ -231,6 +339,7 @@ def figure(p: Person) -> _Figure:
     # ---- the legs: trousers from inside the coat to the shoe, or to a high boot's top
     spread, step = p.feet
     for sx in (1, -1):
+        f.mark("legs")
         fwd = -step / 2 * sx  # the left foot forward of the right by `step`: -Y is ahead
         rows = [body.leg[i] for i in (1, 3, 5, 7, 8)]  # the hip, the thigh, the knee, the calf, the ankle
         z_top = rows[0][2]
@@ -266,6 +375,7 @@ def figure(p: Person) -> _Figure:
                     fine=1,
                 )
         # the shoe: heel to toe, turned out a little
+        f.mark("foot.L" if sx > 0 else "foot.R")
         out = math.radians(9.0 * sx)
         toe = Vector((math.sin(out), -math.cos(out), 0.0))
         shoe = [(-9.0, 3.3, 3.2, 3.1), (-3.5, 4.4, 3.7, 3.7), (6.0, 4.9, 3.2, 3.2), (15.0, 4.5, 2.3, 2.3), (19.5, 2.8, 1.5, 1.6)]
@@ -273,13 +383,29 @@ def figure(p: Person) -> _Figure:
             "leather", [(ax + toe.x * s, ay + toe.y * s, zc_) for s, _, _, zc_ in shoe], [(a, b) for _, a, b, _ in shoe], 10, ref=(0, 0, 1), fine=1
         )
 
-    # ---- the seat of the trousers, under the coat's hem
-    f.tube(
-        d.trousers,
-        [(0, 0, zc - 6.0), (0, 0, zc + 2.0), (0, 0, zc + 14.0)],
-        [(13.0 * p.build, 10.0 * p.build), (16.0 * p.build, 11.5 * p.build), (16.5 * p.build, 11.5 * p.build)],
-        12,
-    )
+    # ---- the seat of the trousers, under the coat's hem; or, under a shirt tucked in, up to the belt at the waist
+    f.mark("legs")
+    seat = [(0, 0, zc - 6.0), (0, 0, zc + 2.0), (0, 0, zc + 14.0)]
+    seat_r = [(13.0 * p.build, 10.0 * p.build), (16.0 * p.build, 11.5 * p.build), (16.5 * p.build, 11.5 * p.build)]
+    if d.tucked:
+        # Under a coat the seat is a coat's, and lies inside the legs' tops. Seen, it is the trousers' own: from inside the
+        # legs at the crotch, round the legs' tops at the hips (each leg's top ring wholly inside it), then the body's own
+        # sections a little let out up to the belt.
+        belt_z = body.waist_z + 1.0
+        lx, _, lz, la, lb = body.leg[1]
+        hips = (lx + la + 0.6 + 1.8, (lb + 0.6) * 1.3)
+        torso = [(z, a, b) for z, a, b in body.torso]
+        seat = [(0, 0, zc - 5.0), (0, 0, lz - 1.0), (0, 0, belt_z - 9.0), (0, 0, belt_z)]
+        seat_r = [(lx, lb * 0.95), hips, *[(a + 0.5, b + 0.5) for a, b in (_at(torso, z) for z in (belt_z - 9.0, belt_z))]]
+    # (drawn straight between its rows when tucked: a curve through them bellies out over the legs' tops, a millimetre from them)
+    f.tube(d.trousers, seat, seat_r, 12, fine=1 if d.tucked else 2)
+    if d.tucked:
+        # the belt: a band round the trousers' top, the shirt over its upper edge (the trousers there narrow upward: the
+        # band is a few millimetres off the widest of them)
+        (a0, b0), (a1, b1) = seat_r[-2:]
+        k = 3.5 / 9.0
+        belt_a, belt_b = max(a1, a1 + (a0 - a1) * k) + 0.4, max(b1, b1 + (b0 - b1) * k) + 0.4
+        f.tube("leather", [(0, 0, belt_z - 3.5), (0, 0, belt_z - 0.3)], [(belt_a, belt_b)] * 2, 12, fine=1)
 
     # ---- the coat: the trunk's own sections from the waist up, and below the waist a skirt down to the hem
     # (the body's own table runs on up into a suit's neck ring: a coat stops at the shoulders' slope, and the neck is its own)
@@ -293,6 +419,11 @@ def figure(p: Person) -> _Figure:
     if hem < zc - 12.0:
         skirt.append(((hem + zc) / 2, hip_a + 2.4 + 3.0 * flare, hip_b + 1.6 + 3.0 * flare))
     skirt.append((zc + 6.0, hip_a + 1.6, hip_b + 0.9))
+    if d.tucked:
+        # a shirt tucked in: from over the belt's upper edge (the cloth a little bloused over it) to the shoulders. (The
+        # coat's line is half a centimetre behind the trousers': its front is let out by as much again.)
+        skirt = [(belt_z - 1.5, belt_a + 1.0, belt_b + 1.6)]
+        trunk = [row for row in trunk if row[0] > belt_z + 2.0]
     rows = [*skirt, *trunk]
     coat = _Figure()
     coat.tube(d.coat, [(0, 0.6, z) for z, _, _ in rows], [(a, b) for _, a, b in rows], 16, fine=1)
@@ -308,6 +439,14 @@ def figure(p: Person) -> _Figure:
         coat.lathe(
             d.coat,
             [(neck_r - 1.0, z_neck + 2.6), (neck_r + 4.6, z_neck - 2.4), (neck_r + 4.3, z_neck - 3.2), (neck_r - 1.0, z_neck - 2.6)],
+            12,
+            Matrix.Translation((0, 0.8, 0)),
+        )
+    elif d.collar == "shirt":
+        # a shirt's collar, open and lying flat round the neck: a turned collar's, smaller
+        coat.lathe(
+            d.coat,
+            [(neck_r - 1.0, z_neck + 1.8), (neck_r + 1.8, z_neck - 0.8), (neck_r + 1.6, z_neck - 1.4), (neck_r - 1.0, z_neck - 1.2)],
             12,
             Matrix.Translation((0, 0.8, 0)),
         )
@@ -333,9 +472,12 @@ def figure(p: Person) -> _Figure:
             return (x, 0.6 - b * math.sqrt(max(0.0, 1 - (x / a) ** 2)) - off, z)
 
         # (a strip a level, and a level at each of the coat's own rows, so that it lies off the cloth all the way down)
-        za, zb = z_neck - 2.0, z_neck - 14.0
+        # (on a shirt, from under its collar)
+        za, zb = (z_neck - 3.0, z_neck - 11.0) if d.collar == "shirt" else (z_neck - 2.0, z_neck - 14.0)
         heights = sorted({za, zb, *[z for z, _, _ in rows if zb < z < za]}, reverse=True)
-        for key, half, off in ((d.shirt, 4.6, 1.0), ("leather", 1.3, 1.7)):
+        # (on a shirt it lies closer: the cloth under it is thin)
+        lie, half_v = (0.45, 3.4) if d.tucked else (1.0, 4.6)
+        for key, half, off in ((d.shirt, half_v, lie), *(((d.tie, 1.3, lie + 0.7),) if d.tie else ())):
             levels = [(z, half * (z - zb) / (za - zb)) for z in heights]
             verts = [front(s * w, z, off) for z, w in levels for s in (-1, 1)]
             coat(key).add(verts, [(2 * i, 2 * i + 2, 2 * i + 3, 2 * i + 1) for i in range(len(levels) - 1)])
@@ -362,6 +504,9 @@ def figure(p: Person) -> _Figure:
         s = Vector((sx * row[1][0], row[1][1], row[1][2]))
         e = s + u * upper
         wrist = e + w * fore
+        S = "L" if sx > 0 else "R"
+        coat.arms[S] = (s.copy(), e.copy(), wrist.copy())
+        coat.mark(f"arm.{S}")
         # (a coat's shoulder is not a pressure suit's: it starts lower and further in. Nothing is put through the points
         # but straight lines: a sharp bend drawn as a curve folds over. An easy elbow is rounded over two rings, one each
         # side of it; a sharp one, an arm folded back on itself, is one ring across the fold)
@@ -387,14 +532,42 @@ def figure(p: Person) -> _Figure:
                     [row[0][3:], head_r, mid_r, elbow_r, elbow_r, fore_r, cuff_r],
                 )
             ]
-        for pts, rad in runs:
-            coat.tube(d.coat, pts, [(a + out_, b + out_) for a, b in rad], 12, ref=(0, 1, 0.01), fine=1)
+        folded = len(runs) > 1
+        if d.sleeves == "short":
+            # a short sleeve to above the elbow, open at its end, and the arm bare from inside it to the wrist (the body's
+            # own sections are a suit's, some two centimetres over the skin: the bare arm is that much slighter)
+            end = 0.55
+            coat.tube(
+                d.coat,
+                [first, s, s + u * (upper * end)],
+                [(a + out_, b + out_) for a, b in (row[0][3:], head_r, (mid_r[0] + 0.5, mid_r[1] + 0.5))],
+                12,
+                ref=(0, 1, 0.01),
+                fine=1,
+            )
+            # (and the wrist ends inside the hand, slighter than it, so that the two are not one surface drawn twice)
+            k = body.hand
+            bare = [(pts, [(a - 1.4, b - 1.4) for a, b in rad]) for pts, rad in runs]
+            pts, rad = bare[-1]
+            bare[-1] = (pts, [*rad[:-1], (2.0 * k, 1.7 * k)])
+            # (from a little inside the sleeve's end: both ways of building the arm have its third point half way down it)
+            pts, rad = bare[0]
+            bare[0] = ([s + u * (upper * (end - 0.12)), *pts[2:]], [rad[2], *rad[2:]])
+            for i, (pts, rad) in enumerate(bare):
+                coat.mark(f"{'upper' if i == 0 else 'fore'}.{S}" if folded else f"arm.{S}")
+                coat.tube("skin", pts, rad, 10, ref=(0, 1, 0.01), fine=1)
+        else:
+            for i, (pts, rad) in enumerate(runs):
+                coat.mark(f"{'upper' if i == 0 else 'fore'}.{S}" if folded else f"arm.{S}")
+                coat.tube(d.coat, pts, [(a + out_, b + out_) for a, b in rad], 12, ref=(0, 1, 0.01), fine=1)
+        coat.mark(f"arm.{S}")
         if d.armband and sx > 0:
             a, b = row[3][3:]
             coat.tube(
                 d.armband, [s + u * (upper * 0.42), s + u * (upper * 0.66)], [(a + out_ + 0.5, b + out_ + 0.5)] * 2, 14, ref=(0, 1, 0.01), fine=1
             )
         if d.boards:
+            coat.mark("trunk")
             # a shoulder board, lying on the coat's slope from the collar out to the sleeve's head
             (z1, a1, _), (z2, a2, _) = rows[-2], rows[-1]
             at_r = (a1 + a2) / 2 + 1.5
@@ -405,6 +578,7 @@ def figure(p: Person) -> _Figure:
         if p.arms[side] == "pocket":
             continue  # the hand is in the pocket
         # the hand: a mitt along the forearm's line, and a thumb
+        coat.mark(f"hand.{S}")
         k = body.hand
         across = palm.cross(w)
         across = across.normalized() if across.length > 1e-3 else Vector((1, 0, 0)).cross(w).normalized()
@@ -421,26 +595,31 @@ def figure(p: Person) -> _Figure:
             ref=tuple(flat),
             fine=1,
         )
+        coat.mark("trunk")
     coat.turned(lean)
-    for key, mb in coat.mb.items():
-        f(key).add(mb.verts, mb.faces, mb.uvs)
+    f.take(coat)
+    f.arms = {S: tuple(lean @ v for v in sew) for S, sew in coat.arms.items()}
 
     # ---- the neck, the head and what is on it: turned together
     top = _Figure()
     head = body.head
+    top.mark("neck")
     top.tube("skin", [(0, 0.5, z_neck - 3.0), (0, -0.2, head.z - 6.0)], [(5.6 * p.build**0.5, 6.0 * p.build**0.5), (5.2, 5.6)], 9, fine=1)
+    top.mark("head")
     _head(top, body, d)
     if d.hat:
         _hat(top, body, d)
+    if d.glasses:
+        _glasses(top)
     nod = (
         Matrix.Translation((0, head.y + 3.0, head.z - 9.0))
         @ Matrix.Rotation(math.radians(p.turn), 4, "Z")
         @ Matrix.Rotation(math.radians(-p.nod), 4, "X")
     )
     top.turned(lean @ nod @ Matrix.Translation((0, -head.y - 3.0, 9.0 - head.z)))
-    for key, mb in top.mb.items():
-        f(key).add(mb.verts, mb.faces, mb.uvs)
+    f.take(top)
 
+    f.mark("head")
     if p.carries == "camera":
         # a hand-held cine camera at the eye (the film: a cameraman walks backward before the party with one): a body, a
         # lens, a magazine on its top. Estimated: a Konvas of the kind the newsreel men carried.
@@ -457,7 +636,73 @@ def figure(p: Person) -> _Figure:
             _n(12),
             matrix=m @ Matrix.Translation((0, 2.0, 10.5)) @ Matrix.Rotation(math.radians(90), 4, "Y"),
         )
+    f.mark(None)
+    if jointed:
+        _weigh(f, body)
     return f
+
+
+def _glasses(top: _Figure) -> None:
+    """Dark glasses: two lenses before the eyes, clear of the brow and the cheek, and a bridge. (Their arms are not drawn.)"""
+    # (how far forward the face comes round each eye: the lens stands half a centimetre before the most of it)
+    front = min(figurelib.head_point(x, z).y for x in (1.2, 3.2, 5.2) for z in (-1.0, 0.6, 2.2)) - 0.5
+    lens = [(0.0, -0.15), (2.15, -0.15), (2.15, 0.15), (0.0, 0.15)]
+    for sx in (1, -1):
+        at = figurelib.head_point(sx * 3.2, 0.6)
+        m = Matrix.Translation((at.x, front, at.z)) @ Matrix.Rotation(math.radians(90), 4, "X") @ Matrix.Diagonal((1.12, 0.82, 1.0, 1.0))
+        top.lathe("lens", lens, 12, m)
+    top("leather").box((1.6, 0.35, 0.4), Matrix.Translation((0.0, front, figurelib.head_point(3.2, 0.6).z + 0.7)))
+
+
+def _seg(p: Vector, a: Vector, b: Vector) -> float:
+    """How far a point is from the segment a to b."""
+    ab = b - a
+    t = max(0.0, min(1.0, (p - a).dot(ab) / ab.length_squared))
+    return (p - (a + ab * t)).length
+
+
+def _weights_at(v: Vector, piece: str, arms: dict[str, tuple[Vector, Vector, Vector]], neck_z: float) -> dict[str, float]:
+    """The joints a vertex of `piece` follows, and how much of each (at most four; they add up to one)."""
+    side = piece[-1]
+    if piece == "head":
+        return {"Head": 1.0}
+    if piece == "neck":
+        h = figurelib.smooth(v.z, neck_z - 4.0, neck_z + 2.0)
+        return {"Spine": 1 - h, "Head": h}
+    if piece.startswith("foot."):
+        return {f"Foot.{side}": 1.0}
+    if piece.startswith("hand."):
+        return {f"Hand.{side}": 1.0}
+    if piece.startswith("upper."):
+        return {f"UpperArm.{side}": 1.0}
+    if piece.startswith("fore."):
+        return {f"LowerArm.{side}": 1.0}
+    if piece.startswith("arm."):
+        # by which bone's line it is nearer, eased over a few centimetres across the elbow; inside the shoulder, the
+        # trunk's; past the wrist, the hand's
+        s, e, w = arms[side]
+        lower = figurelib.smooth(_seg(v, s, e) - _seg(v, e, w), -2.0, 2.0)
+        fore = w - e
+        hand = lower * figurelib.smooth((v - e).dot(fore) / fore.length - fore.length, -2.5, 2.5)
+        up = e - s
+        trunk = (1 - lower) * (1 - figurelib.smooth((v - s).dot(up) / up.length, -6.0, 1.0))
+        return {"Spine": trunk, f"UpperArm.{side}": 1 - lower - trunk, f"LowerArm.{side}": lower - hand, f"Hand.{side}": hand}
+    # the legs and the trunk: one cloth from the waist down, as the crew figures' (figurelib.lower_weights)
+    return dict(sorted(figurelib.lower_weights(v).items(), key=lambda kv: -kv[1])[:4])
+
+
+def _weigh(f: _Figure, body) -> None:
+    """Where each joint of a figure the viewer walks is in him as built, and the joints each of his vertices follows.
+    The joints are the crew's (srlib.FIGURE, at figurelib's landmarks for his body) but the arms', which are where his
+    arms were built: so standing as built every joint is unturned, and he is as he was made."""
+    joints = figurelib.joints()
+    for side, (s, e, w) in f.arms.items():
+        joints[f"UpperArm.{side}"], joints[f"LowerArm.{side}"], joints[f"Hand.{side}"] = s.copy(), e.copy(), w.copy()
+    for side, sx in (("L", 1), ("R", -1)):
+        joints[f"HipHalf.{side}"] = body.hip_point(sx)
+    f.joints = joints
+    for key, mb in f.mb.items():
+        f.weights[key] = [_weights_at(Vector(v), piece, f.arms, body.neck_z) for v, piece in zip(mb.verts, f.tags[key])]
 
 
 def _at(rows, z: float) -> tuple[float, float]:
@@ -592,6 +837,88 @@ class Party:
             mb.build(f"{node.name}_{key.replace('-', ' ').title().replace(' ', '')}", mats[key], node, smooth=True, sharp_angle=62.0)
 
 
+class Walkers:
+    """A group of people the viewer walks off (or on), each on his own feet: still a mesh a material for the group, so
+    forty men are a dozen draws, but every man jointed to the crew's joints (srlib.FIGURE) on a skeleton of the group's
+    own, under a node of his own (`<group>_Person_<n>`, a child of `<group>_People`, its origin on the ground between
+    his feet and turned only to the way he faces). His joints are named as a crew figure's with his number after them
+    (`Hips_3`, `UpperArm.L_3`): the viewer finds them within his own node (viewer/onfoot/gait.ts). Stand each where he
+    stood (`stand`), then `build`.
+
+    A man to be walked is built standing square (his feet together as the crew's stand, no lean): the gait sets his
+    legs and trunk going from there. His arms are as built (`Person.arms`), and swing from there."""
+
+    def __init__(self, group: str) -> None:
+        self.group = group
+        self.mb: dict[str, MeshBuilder] = {}
+        self.weights: dict[str, list[dict[str, float]]] = {}
+        self.persons: list[tuple[str, Vector, float, dict[str, Vector]]] = []
+        self.triangles = 0
+
+    @property
+    def people(self) -> int:
+        return len(self.persons)
+
+    def __call__(self, key: str) -> MeshBuilder:
+        return self.mb.setdefault(key, MeshBuilder())
+
+    def stand(self, p: Person, at: Sequence[float], heading: float) -> str:
+        """One of them, his feet at `at` (metres, the site's frame), facing `heading` degrees anticlockwise from +X.
+        Returns his node's name."""
+        n = len(self.persons) + 1
+        f = figure(replace(p, feet=(1.0, 0.0), lean=0.0), jointed=True)
+        turn = Matrix.Rotation(math.radians(heading + 90.0), 4, "Z")
+        place = Matrix.Translation(Vector(at)) @ turn @ Matrix.Scale(CM, 4)
+        for key, mb in f.mb.items():
+            self(key).add(mb.verts, mb.faces, [(u * CM, v * CM) for u, v in mb.uvs], matrix=place)
+            self.weights.setdefault(key, []).extend({f"{joint}_{n}": w for joint, w in follows.items()} for follows in f.weights[key])
+            self.triangles += sum(len(face) - 2 for face in mb.faces)
+        name = f"{self.group}_Person_{n}"
+        self.persons.append((name, Vector(at), heading, {joint: place @ at_ for joint, at_ in f.joints.items()}))
+        return name
+
+    def build(self, name: str, parent, origin: Sequence[float], mats: dict, parent_at: Sequence[float] = (0.0, 0.0, 0.0)):
+        """The group's skeleton, `name` (the `<group>_People` node: an armature at `origin`, metres, under `parent`, whose
+        own origin is at `parent_at`), a bone a man and his joints under it, and the meshes hung on them. Returns the
+        skeleton."""
+        o = Vector(origin)
+        data = bpy.data.armatures.new(name)
+        rig = bpy.data.objects.new(name, data)
+        bpy.context.scene.collection.objects.link(rig)
+        rig.parent = parent
+        rig.location = o - Vector(parent_at)
+        bpy.context.view_layer.update()
+        bpy.context.view_layer.objects.active = rig
+        bpy.ops.object.mode_set(mode="EDIT")
+        for person, at, heading, joints in self.persons:
+            n = person.rsplit("_", 1)[1]
+            # each a stub standing straight up, rolled so that its own X is the man's left: in the GLB his node has no
+            # rotation but his heading, and his joints none at all (srlib.skeleton, turned with him)
+            ahead = Matrix.Rotation(math.radians(heading + 90.0), 3, "Z") @ Vector((0.0, -1.0, 0.0))
+
+            def bone(bone_name: str, head: Vector, parent_bone=None):
+                b = data.edit_bones.new(bone_name)
+                b.head = head - o
+                b.tail = b.head + Vector((0.0, 0.0, 0.05))
+                b.align_roll(ahead)
+                if parent_bone is not None:
+                    b.parent = parent_bone
+                return b
+
+            root = bone(person, at)
+            made = {}
+            for joint, up in srlib.FIGURE.items():
+                made[joint] = bone(f"{joint}_{n}", joints[joint], made[up] if up else root)
+            for side in ("L", "R"):
+                bone(f"HipHalf.{side}_{n}", joints[f"HipHalf.{side}"], made["Hips"])
+        bpy.ops.object.mode_set(mode="OBJECT")
+        for key, mb in self.mb.items():
+            mb.verts = [tuple(Vector(v) - o) for v in mb.verts]
+            obj = mb.build(f"{name}_{key.replace('-', ' ').title().replace(' ', '')}", mats[key], rig, smooth=True, sharp_angle=62.0)
+            srlib.bind(obj, rig, self.weights[key])
+        return rig
+
+
 def vary(p: Person, **changes) -> Person:
     """The same man with something changed: his arms, his stature, which way he looks."""
     return replace(p, **changes)
@@ -612,6 +939,11 @@ __all__ = [
     "overcoat",
     "raincoat",
     "stand",
+    "summer_officer",
+    "summer_shirt",
+    "summer_tunic",
     "vary",
+    "Walkers",
+    "white_jacket",
     "worker",
 ]
