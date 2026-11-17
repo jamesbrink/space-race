@@ -1,8 +1,7 @@
 # Shared Block II structural references
 
 `apollo-cm-apertures.json` records four **CM-107**, not CM-101, aperture outlines.
-They are used as **assumed shared hardware**, with the user's explicit approval for
-verified shared Block II structure. Apollo 7's press kit Figure 25d and the 1967
+They are used as **assumed shared hardware**: shared Block II structure. Apollo 7's press kit Figure 25d and the 1967
 *Apollo Spacecraft and Systems Familiarization* exterior drawing identify the same
 two side observation and two triangular rendezvous windows. This does not verify
 Apollo 11's equipment, paint, heat damage, recovery configuration or individual

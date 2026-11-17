@@ -1,10 +1,9 @@
 """Apollo 7 unitized couches: documented configuration, estimated reconstruction.
 
 NASA TN D-7440 Figs 1/4/5/7 and pp.9–10 establish the flight hardware.
-NAA CS-2025C explicitly identifies SC101 and its 96-degree flight position.
-Complete machining/installation drawings were not located. Photographic
-reconstruction is the last-resort basis for all sizes and installation coordinates here
-are ESTIMATED for CM-101, including earlier SC012 dimensions used as scale priors.
+The 96-degree flight position is from NAA plate CS-2025C for SC101, not located: estimated.
+Complete machining/installation drawings were not located either, so all sizes and installation
+coordinates here are ESTIMATED for CM-101 from photographs, with earlier SC012 dimensions as scale priors.
 This geometry supplies no mass, strength, landing dynamics or crew-eye datum.
 Source units remain inches; conversion to metres occurs in the build helpers.
 """

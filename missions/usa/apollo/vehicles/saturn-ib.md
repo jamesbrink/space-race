@@ -275,8 +275,8 @@ radius about its offset centre, rather than a circle about the whole cluster.
 
 No dimensioned SA-205 stencil drawing was located. A secondary forum attachment
 named *Saturn IB S-IVB USA Marking.pdf* could not be retrieved (HTTP 403), so its
-contents and dimensions are not adopted. These changes use the user's authorized
-**last-resort photographic estimates**, not newly documented measurements.
+contents and dimensions are not adopted. The sizes below are therefore
+**photographic estimates**, not documented measurements.
 
 | Parameter | Reconstruction inches | Confidence |
 |---|---:|---|
