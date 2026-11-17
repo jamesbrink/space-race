@@ -164,3 +164,15 @@ not establish individual panel joints or change the documented three-panel desig
 No manufactured thickness, controls, labels, side wings, photographic textures or
 couches are copied. The same nominal aft-sphere registration, including the published −1.30-inch
 outer-apex station, is applied without scaling. Full method and limits are in [main-console.md](../main-console.md).
+
+## DSKY front-web interface
+
+`apollo-dsky-front-web.json.gz` combines a nominal drawing-reference front web
+with a rigid pose from the shared CM-107 metal cover plane. Apollo 7 and Apollo 11
+DSKY parts lists both identify front cover 2004739-001; their later/earlier display
+cover differences are excluded. No survey equipment mesh or texture is shipped.
+The web is a dimensioned subset, not the complete machined cover or instrument.
+Its projected volume masks the blank main-console reference, preserving its
+outer contours and notch. The mask is a visualization interface, not a measured
+console cutout. Source hashes, registration evidence, rebuild command and all
+limitations are in [dsky-front.md](../dsky-front.md).

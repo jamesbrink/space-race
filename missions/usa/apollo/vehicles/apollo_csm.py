@@ -12,6 +12,7 @@ import math
 from mathutils import Vector
 
 import command_module
+import dsky_front
 import main_console
 import pressure_vessel
 import service_tanks
@@ -104,6 +105,7 @@ def build(offset=0):
             "SideHatch",
             "CabinStructure",
             "MainConsole",
+            "DSKYFrontWeb",
             "HeatShield",
             "ForwardShield",
             "ServiceModule",
@@ -190,6 +192,7 @@ def build(offset=0):
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
+    dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

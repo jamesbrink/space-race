@@ -12,7 +12,7 @@ The five window openings have opaque dark recesses until the cabin and glazing a
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
 A structural cutaway exposes the pressure-vessel sidewall and both nominal bulkheads
-inside the thermal shell, with a blank main-console structural reference;
+inside the thermal shell, with a main-console structural reference and a nominal DSKY front-web subset;
 the full tunnel and furnishings are unbuilt.
 No seat control is offered yet.
 
@@ -94,3 +94,13 @@ produce native Blender stills. It is not installed in the flight model: the
 available parent-assembly drawing predates the required -041 configuration, and
 the exact cabin mounting pose is unresolved. Keys, indicators and labels are not
 guessed or copied from later DSKY revisions.
+
+A separate [shared front-web reference](../../vehicles/dsky-front.md) is now
+installed on the main console. Both flight DSKY parts lists identify cover
+2004739-001. Its nominal front sheet is built from the drawing transcription,
+with a .050-inch web derived from the stock drawing's .04–.06-inch section.
+The shared CM-107 metal plane supplies a rigid, unscaled reference pose; the
+blank console is masked beneath it. Rear ribs, mounting pockets, keys, display
+covers, glazing, labels and electronics remain unbuilt. This is not the complete
+machined cover or an equipped DSKY, and does not install the unresolved bare
+housing described above.

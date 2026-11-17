@@ -151,3 +151,19 @@ The forward roof joins a measured tunnel-entry interface with a derived reveal.
 These are bare reference surfaces with no invented thickness. The `CabinStructure` node
 moves with `CommandModule`; it is visible only at full detail. Selecting it opens
 the normal cutaway. A structural cutaway is not yet a furnished, seated cabin.
+
+## DSKY front-web subset
+
+A nominal front-web reference for the shared 2004739-001 cover is now installed
+on the main-console reference. Its 6.900 × 8.000-inch envelope and nominal
+.050-inch sheet are source-based references; .050 is the midpoint of the stock
+drawing's .04–.06-inch web section, not the complete machined cover's depth.
+The nineteen keyboard clearances, two display openings and central clearance
+remain open. The common CM-107 metal front supplies a rigid reference pose
+without scaling; its projected volume masks the blank console to avoid overlap.
+This is not the real panel's machined aperture or an as-built CM-101 installation.
+The web remains whole in cutaway and moves with the CM in the exploded exhibit.
+[The hardware record](../../vehicles/dsky-front.md) distinguishes the primary
+drawings, secondary CAD, nominal fillet simplifications and all omissions.
+Keys, display covers, glazing, labels, electronics and the complete cover/housing
+are not built.

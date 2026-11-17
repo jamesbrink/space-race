@@ -49,6 +49,12 @@ not resolved by this union, and the number of resulting connected polygons is
 not a count of the real console's three manufactured panels. No manufactured
 thickness is inferred.
 
+The [DSKY front-web reference](dsky-front.md) now masks its projected nominal
+volume in this blank surface. The remaining concave polygons are constrained-
+triangulated, preserving their outer boundaries and the notch. This is a derived
+visualization interface, not a measured machined console aperture. The web and
+mask are tied to this source JSON by a hash and rebuilt together.
+
 Registration uses the common aft-sphere fit and 90° rotation, without scaling to
 fit the cabin. The fitted **outer apex** is placed at **Xc −1.30 in**, as explicitly
 dimensioned in NASA TN D-3888, Figure 2, printed p. 27. It is not Xc zero: NAA's
@@ -82,9 +88,11 @@ remain limitations; source uncertainty must not be confused with this small marg
 ## What is wrong or missing
 
 - Blank planar reference surfaces, not complete manufactured panels: instrument
-  cutouts are filled, and individual joints and fine perimeter details are unresolved.
+  cutouts are filled except for the derived DSKY display mask, and individual
+  joints and fine perimeter details are unresolved.
 - Manufactured thickness, rear enclosure, supports, fasteners, side consoles,
-  instruments, switches, labels, lighting and wiring are not built.
+  instruments, switches, labels, lighting and wiring are not built. The separate
+  DSKY front-web reference is a first interface subset, not an equipped instrument.
 - The derivative's processing and registration limit measurement claims. No
   as-built CM-101 panel inspection or machining drawing has been read.
 - Colour is a display material; no flight paint specification is claimed.

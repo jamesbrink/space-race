@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pressure_vessel
 from cm_reference import survey_cm
+from dsky_front import reference as dsky_reference
 from srlib import CM, IN, MeshBuilder, interior, material
 
 
@@ -19,6 +20,7 @@ def build(parent, base):
     if not interior():
         return
     source = json.loads((Path(__file__).parent / "reference" / "apollo-main-console.json").read_text())
+    masked = {p["id"]: p for p in dsky_reference()["console_surfaces"]}
     panel = material("apollo-console-reference", (0.14, 0.16, 0.17), roughness=0.75, double_sided=True)
     for surface in source["surfaces"]:
         mesh = MeshBuilder()
@@ -31,8 +33,11 @@ def build(parent, base):
                 raise ValueError("Main-console reference leaves the nominal upper pressure wall")
             if math.hypot(x, y) > pressure_vessel.radius(z / 2.54) * 2.54:
                 raise ValueError("Main-console reference intersects the nominal pressure wall; check the shared datum")
+        # The DSKY front web passes through the blank reference plane. Its
+        # projected volume masks the plane, without an invented stand-off or
+        # a claim to have reconstructed the console's manufactured aperture.
+        surface_mesh = masked[surface["id"]]
+        points_cm = [survey_cm(p, source["registration"]) for p in surface_mesh["vertices_cm"]]
         points = [(x * CM, y * CM, z * CM + base * IN) for x, y, z in points_cm]
-        # Blender tessellates the concave n-gon. A convex hull would wrongly
-        # fill the central notch; a thickness would invent an unseen back face.
-        mesh.add(points, [tuple(range(len(points)))])
+        mesh.add(points, surface_mesh["triangles"])
         mesh.build(f"CM_MainConsole_{surface['id']}", panel, parent, smooth=False)
