@@ -273,17 +273,21 @@ def build(parts: Parts) -> dict:
     for k in range(3):  # its dials
         inner.disc(P(*T(14.84, 1.0 + k * 0.45, 5.85)), (-1, 0, 0), 0.16 * FT, 0.03 * FT, 12)
     ttube(seat, (15.2, 1.45, 4.6), (14.15, 1.45, 6.45), 0.11, 10)  # steering column
-    parts.node("CherryPicker_SteeringWheel", g, T(14.12, 1.45, 6.5))
+    # The steering wheel turns about its column, and the viewer turns it about its node's own Z (three.js Y): the
+    # contract's (tools/blender/vehicles.py). A site's nodes carry their meshes untilted, so the wheel is built flat
+    # about the vertical at its hub and the node is tipped to the column, up and back toward the driver.
+    column = Vector((-0.85, 0, 0.52)).normalized()
+    wheel_at = parts.node("CherryPicker_SteeringWheel", g, T(14.12, 1.45, 6.5), steering=1)
+    wheel_at.rotation_euler = (0.0, math.atan2(column.x, column.z), 0.0)
     seat = parts("CherryPicker_SteeringWheel", "chassis", True)
     seat.lathe(
         ftp([(0.72, -0.05), (0.85, -0.05), (0.85, 0.05), (0.72, 0.05), (0.72, -0.05)]),
         28,
-        matrix=axes(T(14.12, 1.45, 6.5), (0, 1, 0), (-0.85, 0, 0.52)),
+        matrix=axes(T(14.12, 1.45, 6.5), (0, 1, 0), (0, 0, 1)),
     )
     for a in (0.0, 2.1, 4.2):  # its spokes
         c, s_ = math.cos(a), math.sin(a)
-        w = Vector((-0.85, 0, 0.52)).normalized()
-        e1, e2 = Vector((0, 1, 0)), w.cross(Vector((0, 1, 0)))
+        e1, e2 = Vector((0, 1, 0)), Vector((-1, 0, 0))
         hub = Vector(T(14.12, 1.45, 6.5))
         beam(seat, tuple(hub), tuple(hub + (e1 * c + e2 * s_) * 0.75), 0.06)
     seat = parts(g, "chassis/seat", True)
