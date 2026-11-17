@@ -55,7 +55,8 @@ The film of Vostok 2's morning («Снова к звёздам», Моснауч
 | `summer_shirt("shirt-check")` | the same in a checked shirt, drawn as the check's mid tone: the check is not drawn | documented (one checked shirt) | the film, 21:11 |
 | `summer_officer()` | the khaki summer shirt, short-sleeved, a dark tie, a peaked cap with the aviation's blue band, navy trousers; `glasses=True` for the one in dark glasses | documented (khaki summer shirts, ties, air force caps, one in dark glasses); estimated (the trousers' colour, the band's blue); shoulder boards on the shirt not made out, and not drawn | the film, 21:47 to 21:56 |
 | `summer_tunic()` | April's closed tunic and peaked cap: one of the few officers in a tunic with shoulder boards | documented | the film, 21:53 |
-| `white_jacket()` | a white summer jacket over an open shirt, dark trousers; a pale straw hat and an armband for Smirnov | documented | a photograph (RussianSpaceWeb, `smirnov_2.jpg`) |
+| `white_jacket()` | a white summer jacket over an open shirt, dark trousers; a pale straw hat and an armband for Smirnov, its colour not known (drawn in the print's pale grey); `coat="shirt-cream"` the pale one Korolev wore on 5 August | documented (Smirnov's, a photograph; Korolev's on the 5th, a photograph); the armband's tone estimated | RussianSpaceWeb, `smirnov_2.jpg`, `korolev_pad_meeting_2.jpg` |
+| `suited()` | the SK-1 drawn as these figures are drawn: the orange cover in one piece, black boots, tan gloves, the white helmet open before the face with its visor raised (its lettering not drawn) | documented (that Nikolayev got down suited: Titov, 1973); the colours crew/sk_1.py's; the helmet's form estimated | Titov (1973); sk-1.md |
 
 A short sleeve ends a little above the elbow; the bare arm runs from inside it to the wrist, which ends inside the hand.
 A shirt tucked in is the trousers' own seat up to a belt at the waist, wide enough at the hips to hold the legs' tops,

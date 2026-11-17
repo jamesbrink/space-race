@@ -43,9 +43,12 @@ summarised in [site-1.md](../../../places/tyuratam/site-1.md), "What stood when"
   104 are built in summer dress where the film has them (places/tyuratam/site-1.md, "The people of
   6 August 1961"): 52 in rows south of the bus and back along it, 18 in a line across the apron's far end, 34 round the
   door who walk with him to the stair at about 06:55 and stand at its foot; from 07:05 they walk
-  off west (when, and which way, is not recorded: estimated). **Not built**: Smirnov, now the State
-  Commission's chairman, in a white jacket and a straw hat; Korolev and Barmin; Nikolayev suited
-  at the bus, the two knocking helmets together. Kamanin and Gagarin were abroad. April's people,
+  off west (when, and which way, is not recorded: estimated). Smirnov, now the State Commission's
+  chairman, in a white jacket and a straw hat with an armband (its colour not known), stands by the
+  stair with Korolev (in the day before's pale jacket: his dress on the 6th not read) and Barmin
+  (his dress not known); Nikolayev, suited, gets down from the bus at 06:50 and goes back into it
+  at about 06:53. Kamanin and Gagarin were abroad, and are not there. **Not built**: the cine
+  cameras on their tripods, the dark car beyond the crowd, anyone inside the bus. April's people,
   car and truck are not shown.
 - **The land is the summer's**: the steppe "dried out ... a uniform reddish-gray" by June (Chertok,
   vol. 2, p. 357), the tulips and the spring's green gone (missions/ussr/places/tyuratam/steppe.ts, `SEASONS`).
