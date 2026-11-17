@@ -84,6 +84,33 @@ LIGHTING_THROW = (24.0, 0.0, -24.0)
 PLAIN_LIGHTING_AT = (134.0, 100.0)
 # What the Globus's correction window read on the pad: the orbit's period as a three-figure code (spacecraft.md, "Globus").
 GLOBUS_CORRECTION = "710"
+
+# What a ship that flew the set differs in from Vostok 1's (`build(fit=...)`): "1961" is Vostok 1's, "1961-08" Vostok 2's
+# (../flights/vostok-2/spacecraft.md, "Cabin", says what each rests on). `lamps`: each cabin lamp's place, and the place
+# its lens faces, in the order of the flight's `lights` ("board": `BOARD_LAMP`); `throw`: the lighting tumbler's
+# positions; `correction`: the Globus's correction window; `vizir`: the optical tube Vostok 2 carried.
+FITS = {
+    "1961": dict(lamps=tuple((at, (0.0, 0.0, 250.0)) for at in LAMPS_AT), throw=LIGHTING_THROW, correction=GLOBUS_CORRECTION, vizir=False),
+    "1961-08": dict(
+        # the working light behind him, the first duty light Vostok 1's left hand fitting, the second duty light at the
+        # board's side, lighting its face (Titov: «Рабочее освещение хорошо расположено, оно сзади»; «когда включаешь
+        # 2-ое дежурное, подсвечиваются все приборы и весь свет падает на приборную доску»: that there were these three is
+        # documented, every place estimated)
+        lamps=(((-600.0, 600.0, 450.0), (0.0, -300.0, 400.0)), (LAMPS_AT[0], (0.0, 0.0, 250.0)), ("board", None)),
+        # working, duty, the second duty, off: the fourth position is ours
+        throw=(24.0, 8.0, -8.0, -24.0),
+        # the first correction he set, at 11:00 on the first orbit (doc. 192, p. 187: «число 426»); what the window read
+        # before launch is in nothing read
+        correction="426",
+        vizir=True,
+    ),
+}
+# Where Vostok 2's second duty light hangs, in the board's own frame (mm from its middle: across, up, out), and the way
+# its lens faces in that frame: at the board's edge on the reader's left, turned onto its face. Estimated.
+BOARD_LAMP = ((-238.0, 40.0, 70.0), (0.85, -0.1, -0.5))
+# The Vizir: a tube of this diameter and length, mm, with an eyepiece of this diameter, lying by the receiver. Estimated:
+# no picture or dimension of it is in anything read.
+VIZIR = (52.0, 280.0, 36.0)
 RADIO_AT = (-455.0, -455.0, 470.0)
 
 # ---------------------------------------------------------------------- what the gauges show
@@ -179,8 +206,9 @@ def board_in_seat() -> Vector:
 class Fit:
     """What is being built: meshes by name, each in one material, and the nodes the viewer moves or lights."""
 
-    def __init__(self, parent: bpy.types.Object, M: dict) -> None:
+    def __init__(self, parent: bpy.types.Object, M: dict, fit: str = "1961") -> None:
         self.g, self.M = parent, M
+        self.ship = FITS[fit]
         self.mb: dict[str, tuple[MeshBuilder, str]] = {}
         self.font = load_font()
         self.letters: dict[str, tuple] = {}
@@ -449,7 +477,7 @@ def globus(c: Fit, F: Matrix) -> None:
     cu, cv = on_board(232.0, 44.0)
     c.block(c.into("Cabin_Bezels", "bezel"), F, cu, cv, 34.0, 15.0, 3.0, 6.0)
     c.block(c.into("Cabin_Windows", "dial"), F, cu, cv, 29.0, 10.0, 6.0, 7.4)
-    c.text(c.into("Cabin_DialMarks", "marks"), F, GLOBUS_CORRECTION, cu, cv, 6.2, 8.9)
+    c.text(c.into("Cabin_DialMarks", "marks"), F, c.ship["correction"], cu, cv, 6.2, 8.9)
     # the switch under it: С, П, Л round a black knob
     su, sv = on_board(238.0, 92.0)
     c.turned(c.into("Cabin_Knobs", "knob"), F, su, sv, [(13.0, 3.0), (13.0, 9.0), (8.0, 12.0), (8.0, 26.0), (0.0, 26.0)], 16)
@@ -635,7 +663,7 @@ def control_panel(c: Fit) -> dict:
     title("ОСВЕЩЕНИЕ", 112.0, 8.0, 3.0)
     title("ДЕЖУРН.   РАБОЧЕЕ", 112.0, -3.0, 2.2)
     # (built at "working", as he flew: three positions, working, duty, off)
-    tumbler(c, F, 112.0, -20.0, name="Ctl_Lighting", throw=LIGHTING_THROW)
+    tumbler(c, F, 112.0, -20.0, name="Ctl_Lighting", throw=c.ship["throw"])
     title("ВЫКЛ", -92.0, -38.0, 2.4)
     title("ВЫКЛ", 112.0, -38.0, 2.4)
     rule(-48.0)
@@ -799,13 +827,26 @@ def television(c: Fit) -> None:
     c.disc(c.into("Cabin_Lenses", "lens"), F, 0.0, 0.0, 30.0, 8.0, 16)
 
 
-def cabin_lamps(c: Fit) -> list[Vector]:
-    """The cabin's lamps, worked by one switch of three positions (off, duty, working). How many there were and where
-    they hung is in nothing read: two are put high on either side, over the pilot's knees. Returns where each is."""
+def lamp_places(fit: str = "1961") -> list[tuple[Vector, Vector]]:
+    """Each cabin lamp of a fit (`FITS`): where its lens is and the way it faces, millimetres in the scene."""
     out = []
-    for i, at in enumerate(LAMPS_AT):
-        p = place(*at)
-        F = face(p, place(0, 0, 250.0) - p, way(0, 1, 0))
+    for at, aim in FITS[fit]["lamps"]:
+        if at == "board":
+            F = board_frame()
+            out.append((F @ Vector(BOARD_LAMP[0]), (F.to_3x3() @ Vector(BOARD_LAMP[1])).normalized()))
+        else:
+            p = place(*at)
+            out.append((p, (place(*aim) - p).normalized()))
+    return out
+
+
+def cabin_lamps(c: Fit, fit: str = "1961") -> list[Vector]:
+    """The cabin's lamps, worked by one switch (off, duty, working; and a second duty light on Vostok 2). Where Vostok 1's
+    hung is in nothing read: two are put high on either side, over the pilot's knees; Vostok 2's are put where Titov's
+    words have them (`FITS`). Returns where each is."""
+    out = []
+    for i, (p, aim) in enumerate(lamp_places(fit)):
+        F = face(p, aim, way(0, 1, 0) if abs(aim.dot(way(0, 1, 0))) < 0.9 else way(0, 0, 1))
         c.turned(c.into("Cabin_LampCases", "enamel"), F, 0.0, 0.0, [(0.0, -34.0), (26.0, -34.0), (34.0, 0.0), (34.0, 5.0), (29.0, 5.0)], 24)
 
         def lens(mb: MeshBuilder) -> None:
@@ -816,15 +857,14 @@ def cabin_lamps(c: Fit) -> list[Vector]:
     return out
 
 
-def lamp_sources() -> list:
-    """The cabin's two lamps as its shade asks them (vostok_3ka.shade_cabin): each lens's middle and four points across
-    it, a little in front of it, scene metres; the left hand one first (`Lamp_1`), as a flight's `lights` are."""
+def lamp_sources(fit: str = "1961") -> list:
+    """The cabin's lamps as its shade asks them (vostok_3ka.shade_cabin): each lens's middle and four points across
+    it, a little in front of it, scene metres; in the order of the flight's `lights` (`Lamp_1` first)."""
     import cabin_shade
 
     out = []
-    for i, at in enumerate(LAMPS_AT):
-        p = place(*at)
-        points = cabin_shade.disc(p * MM, place(0, 0, 250.0) - p, 29.0 * MM, 12.0 * MM)
+    for i, (p, aim) in enumerate(lamp_places(fit)):
+        points = cabin_shade.disc(p * MM, aim, 29.0 * MM, 12.0 * MM)
         out.append((f"Lamp_{i + 1}", points[0], points))
     return out
 
@@ -838,7 +878,35 @@ def vzor_pane() -> list:
         return []
     bpy.context.view_layer.update()
     middle = o.matrix_world @ (sum((Vector(c) for c in o.bound_box), Vector()) / 8)
-    return [cabin_shade.disc(middle, o.matrix_world.to_3x3() @ Vector((0, 0, 1)), float(o["screen_radius"]))]
+    return [cabin_shade.disc(middle, o.matrix_world.to_3x3() @ Vector((0, 0, 1)), 0.8 * float(o["screen_radius"]))]
+
+
+def vizir(c: Fit) -> None:
+    """The Vizir: Vostok 2's optical tube of 3 and 5 powers (doc. 175), lying at the pilot's right on the receiver, by
+    its clock, where Titov said it lay («авиационными часами пользоваться очень неудобно, потому что там лежит визир»,
+    doc. 193): a node of its own, `Ctl_Vizir`, to be named from the seat. A tube with its eyepiece toward him; its form
+    and size are estimated."""
+    d, length, eye = VIZIR
+    at = place(*RADIO_AT)
+    eyes = ka.seat_frame() @ Vector((0.0, 690.0, 150.0))
+    F = face(at, eyes - at, way(0, 0, 1)) @ Matrix.Translation((-20.0, 60.0 + d / 2, 10.0)) @ Matrix.Rotation(math.pi / 2, 4, "Y")
+
+    def tube(mb: MeshBuilder) -> None:
+        r = d / 2
+        mb.lathe(
+            [
+                (0.0, -length / 2),
+                (r - 2.0, -length / 2),
+                (r, -length / 2 + 3.0),
+                (r, length / 2 - 40.0),
+                (eye / 2, length / 2 - 30.0),
+                (eye / 2, length / 2),
+                (0.0, length / 2),
+            ],
+            24,
+        )
+
+    c.node("Ctl_Vizir", "enamel", F, tube)
 
 
 def receiver(c: Fit) -> None:
@@ -895,17 +963,19 @@ def lighting(parent: bpy.types.Object, M: dict, panel: Matrix) -> None:
     tell_lamps(lamps)
 
 
-def build(parent: bpy.types.Object, M: dict) -> None:
-    """Fit the cabin. `parent` is the spacecraft's `Cabin` node; `M` its materials. Prints, in the file's axes and
-    metres, what a flight's data needs to be told: the lamps' places and the windows'."""
-    c = Fit(parent, materials(M))
+def build(parent: bpy.types.Object, M: dict, fit: str = "1961") -> None:
+    """Fit the cabin as `fit`'s ship had it (`FITS`). `parent` is the spacecraft's `Cabin` node; `M` its materials.
+    Prints, in the file's axes and metres, what a flight's data needs to be told: the lamps' places and the windows'."""
+    c = Fit(parent, materials(M), fit)
     board(c)
     control_panel(c)
     hand_controller(c)
     vzor(c)
     television(c)
-    lamps = cabin_lamps(c)
+    lamps = cabin_lamps(c, fit)
     receiver(c)
+    if c.ship["vizir"]:
+        vizir(c)
     c.finish()
     tell_lamps(lamps)
     for name, where in (("entry hatch's porthole", ka.ENTRY), ("right porthole", ka.RIGHT_PORT)):

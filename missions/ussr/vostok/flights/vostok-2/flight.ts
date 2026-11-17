@@ -1,9 +1,10 @@
-import type { Flight } from '../../../../../src/types.ts';
+import type { Flight, ModelDef } from '../../../../../src/types.ts';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { SPEC, type PartWords, BOOSTERS, vostokStack, vostokParts, BASE, vostokMotors } from '../../vehicles/vostok-stack.ts';
-import { vostokCabin, vostokSeat } from '../../vehicles/cabin.ts';
+import { DUTY, vostokSeat } from '../../vehicles/cabin.ts';
+import { NOT_SIMULATED, sis1Cabin, WHICH } from '../../vehicles/sis1.ts';
 import { commanded, vostokCommands, vostokFlies } from '../../vehicles/vostok-flies.ts';
 import { MSK, orbital } from './orbital.ts';
 import { vostokPlan } from '../../vehicles/vostok-plan.ts';
@@ -76,8 +77,11 @@ const parts: PartWords[] = [
       'and five powers, a log book with its pencil on a string. Titov worked the hand controller twice, on the first ' +
       'orbit and the seventh, after keying the lock. He found the Globus hard to reach from his straps and reset it ' +
       'almost every orbit until his hand was marked. Both cooling fans had been switched on at launch by mistake, and ' +
-      'the cabin went down to 10 °C before he turned his suit’s fan off. What is modelled is the type’s cabin: which of ' +
-      'its two cameras was the new one, and what the new drier looked like, were not found.',
+      'the cabin went down to 10 °C before he turned his suit’s fan off. What is modelled is Vostok 1’s fit with what ' +
+      'this ship is documented to have had otherwise: a working lamp behind him and a second duty lamp that lit the ' +
+      'board, as he described them (where each hung is ours), the optical tube lying by the receiver’s clock, where it ' +
+      'got in the way of the hand controller, and the Globus’s window at the first figure he set, 426. Which of its two ' +
+      'cameras was the new one, what the new drier and the new hand control unit looked like, were not found.',
     facts: [
       ['Atmosphere', 'air at one atmosphere; oxygen 25 to 27%'],
       ['Cabin temperature', '10 to 22 °C; 18 °C when he said good night'],
@@ -355,17 +359,146 @@ const COMMANDS = vostokCommands({
   pilot: { they: 'he', theirs: 'his' },
 });
 
+/**
+ * The cabin as somewhere to sit and fly from (types.ts: CabinDef; viewer/cabin.ts): Vostok 1's set (vehicles/sis1.ts),
+ * which No. 4 flew again with the lock (Tyapchenko: the code lock was on Gagarin's and Titov's ships and not after),
+ * with what OKB-1 changed on it for this flight and what Titov said of it (spacecraft.md, "Cabin"). The model is
+ * vehicles/vostok_cabin.py's fit "1961-08". Its needles stand at what Titov read off them where his report gives it,
+ * and say so; its lamps are where his words put them.
+ */
+const TITOV = 'Titov’s report and his answers to the State Commission («Первый пилотируемый полёт», 2011, book 2, docs 192 and 193)';
+const PRESS = 'Yazdovsky at the press conference of 11 August (JPL Translation No. 24)';
+/**
+ * The cabin's three lamps (`ModelDef.lights`), as vehicles/vostok_cabin.py `FITS["1961-08"]` hangs their fittings: the
+ * working light behind him, the first duty light at Vostok 1's left hand fitting, the second at the board's side. Each
+ * light is put 220 mm toward the middle of the cabin from its fitting (the build prints these). Colour and strength
+ * chosen by eye, as Vostok 1's.
+ */
+const LIGHTS: NonNullable<ModelDef['lights']> = [
+  { position: [-0.634, 3.43, 0.0], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+  { position: [0.182, 3.68, -0.04], colour: 0xffe4c0, intensity: 0.14, reach: 2.4 },
+  { position: [0.324, 3.582, 0.097], colour: 0xffe4c0, intensity: 0.08, reach: 1.6 },
+];
+/** The second duty light, at this share of its strength: enough to read the board by, which the first was not. Estimated. */
+const DUTY_II = 0.6;
+const cabin = sis1Cabin({
+  instruments: [
+    {
+      node: 'Gauge_ClockHour',
+      name: 'Clock',
+      about:
+        'The board’s clock, on Moscow time, twelve hours round. Titov found it badly placed and timed his orbits by the PKRS’s instead (doc. 193). Its ring of flight time, its small dial of days and its index for the descent programme are drawn and do not run.',
+      reads: 'timeOfDay',
+    },
+    { node: 'Gauge_ClockMinute', name: 'Clock', about: 'Minutes.', reads: 'timeOfDay' },
+    { node: 'Gauge_ClockSecond', name: 'Clock', about: 'Seconds.', reads: 'timeOfDay' },
+    {
+      node: 'Gauge_CabinPressure',
+      name: 'Cabin pressure',
+      about: `Atmospheres, 0 to 1.5. No reading of it by Titov was read: it stands at one atmosphere. ${NOT_SIMULATED}`,
+      value: 1.0,
+    },
+    {
+      node: 'Gauge_Humidity',
+      name: 'Cabin humidity',
+      about: `Per cent. It stands at the 70 he gave over Moscow at 18:15 (TASS); ${PRESS} gave 55 to 75 over the day. ${NOT_SIMULATED}`,
+      value: 70,
+    },
+    {
+      node: 'Gauge_Temperature',
+      name: 'Cabin temperature',
+      about: `Degrees Celsius, 0 to 40. It stands at the 18 he gave over Moscow at 18:15 (TASS). The cabin went down to 10 in the night, with both fans on by mistake (Kamanin); ${PRESS} gave 10 to 22. ${NOT_SIMULATED}`,
+      value: 18,
+    },
+    {
+      node: 'Gauge_CarbonDioxide',
+      name: 'Carbon dioxide',
+      about: `Per cent of the cabin’s air, 0 to 4. No reading of it is in what was read: it stands at nothing. ${NOT_SIMULATED}`,
+      value: 0,
+    },
+    {
+      node: 'Gauge_Oxygen',
+      name: 'Oxygen',
+      about: `Per cent of the cabin’s air. ${PRESS} gave 25 to 27: it stands at 26, the middle of that. ${NOT_SIMULATED}`,
+      value: 26,
+    },
+    {
+      node: 'Gauge_ModulePressure',
+      name: 'Instrument module pressure',
+      about: `Atmospheres, 0 to 2: the sealed compartment behind the ball. No reading of it by Titov was read: it stands at Gagarin’s 1.2. ${NOT_SIMULATED}`,
+      value: 1.2,
+    },
+    {
+      node: 'Gauge_ManualGas',
+      name: 'Gas for turning the ship by hand',
+      about: `Atmospheres of nitrogen in the manual system, 0 to 200, with the third bottle this ship was given for it (doc. 175). As he read it: 160 as he took the controls on the first orbit, down to 120 by the time he let them go; 110 at the second time, on the seventh orbit, and 102 when he let them go at 17:55 (${TITOV}; mission.md). Straight from his first reading to his last of each time, and held between. Not simulated: the record’s.`,
+      history: [
+        { at: 0, from: 'manual-1', value: 160 },
+        { at: 0, from: 'manual-1-off', value: 120 },
+        { at: 0, from: 'manual-2', value: 110 },
+        { at: 0, from: 'manual-2-off', value: 102 },
+      ],
+    },
+    {
+      node: 'Gauge_RetroPressure',
+      name: 'Braking engine’s bottle',
+      about: `Atmospheres in the bottle that pressurises the TDU. No reading of it by Titov was read: it stands at Gagarin’s 320. ${NOT_SIMULATED}`,
+      value: 320,
+    },
+    {
+      node: 'Gauge_AutomaticGas',
+      name: 'Gas for the automatic orientation',
+      about: `Atmospheres, 0 to 200. No reading of it by Titov was read: it stands at Gagarin’s 155. ${NOT_SIMULATED}`,
+      value: 155,
+    },
+  ],
+  lit: {
+    Tele_TS2_1: {
+      name: '«Ориентация по Солнцу»: orientation on the Sun',
+      about: `Amber. “The «solar orientation» legend lit” as the descent began on the seventeenth orbit (doc. 192, p. 195); out at the braking command, as on Vostok 1, since when it went out is not recorded. ${WHICH}`,
+      shows: 'event:sun-orientation',
+      until: 'retro-command',
+      colour: 0xffb340,
+    },
+  },
+  globus:
+    'The ship’s place over the Earth, under a fixed cross, the globe turning with the ship’s motion; set with the orbit’s period as a three-figure number in its correction window, which Titov set from the ground’s figures: 426 at 11:00 on the first orbit, 466 on the thirteenth (doc. 192, pp. 187 and 189). He found it hard to work: “you unlock yourself fully, pull the straps out to their end, and only just reach the knobs with your hand”, his right arm bruised by the straps; and hard to read the coordinates off, though well placed (doc. 193). Here it is turned by where the ship is in the run, the instrument working perfectly, and its window reads his first figure, 426: what it read before launch is not in what was read. Its two modes are the instrument’s, on the panel’s ГЛОБУС tumbler, as on Vostok 1 (Tyapchenko, fig. 16): thrown to МЕСТО ПОСАДКИ the globe turns to where a burn fired now would bring the ship down, worked out by the simulator, and its «Посадка» signaller lights; as an exhibit in the Gallery the board is not powered and it stays dark. Its map is the globe’s own, in two tones.',
+  code: 'Six keys: three of them, pressed in order, let the pilot take the ship into his hands. Titov switched on the lock about 10:00 on the first orbit, then manual orientation by its button (doc. 192, p. 185); this ship’s code is not in what was read. On the flight deck a key pressed here is the same as its digit typed: the code frees the hand controls once the ship is alone in orbit.',
+  lighting: {
+    control: 'Ctl_Lighting',
+    name: 'Cabin lighting',
+    about:
+      'The lamps by the tumbler on the control panel: working, duty, the second duty, off. Titov wrote his log by the working light, “well placed, behind”, and found the duty one useless for writing in the Earth’s shadow; “the second duty is especially good: when you switch it on all the instruments are lit and all the light falls on the board” (docs 192 and 193). So the working lamp is behind him, the first duty lamp the left hand one at a quarter of its strength, the second duty lamp at the board’s side. That there were these three is his; where each hung, how bright each was, that working lights all three, and that one tumbler of four positions threw them are ours: the panel’s lettering is Vostok 1’s, three positions.',
+    ways: [
+      { says: 'Working', lit: [0, 1, 2] },
+      { says: 'Duty', lit: [{ light: 1, level: DUTY }] },
+      { says: 'Second duty', lit: [{ light: 2, level: DUTY_II }] },
+      { says: 'Off', lit: [] },
+    ],
+    fittings: ['Lamp_1', 'Lamp_2', 'Lamp_3'],
+  },
+  more: [
+    {
+      node: 'Ctl_Vizir',
+      name: 'Vizir',
+      about:
+        'The optical tube this ship was given, of three and five powers and fields of 24 and 15 degrees (OKB-1’s list of No. 4’s changes, doc. 175: «Установлена оптическая система «Визир» с 3-х и 5-ти кратным увеличением и углами зрения 24° и 15°»), to look at the Earth by. It lay on the receiver by the clock, “ready to hand” at his right, where it got in the way of the hand controller; let go, it floated up and was pulled back by its cord (docs 192 and 193). Its form and size are ours: no picture or dimension of it was read. Not simulated: nothing is seen through it.',
+    },
+  ],
+});
+
 /** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports, its tail below the deck (`site1Vehicle`); the gallery stands it on its nozzles. */
 const vehicle = site1Vehicle(
   vostokStack({
     flight: 'vostok-2',
     parts: commanded(vostokParts('vostok-2', [...launcherParts, ...parts]), COMMANDS),
-    // The ejection seat as somewhere to sit, and its cabin (../../vehicles/cabin.ts: from the model's own nodes). Boarded on foot
+    // The ejection seat as somewhere to sit (../../vehicles/cabin.ts), and its own cabin (above). Boarded on foot
     // through hatch No. 1 from 07:00, when the plan has him in the seat, until 07:40, when it has the hatch closing («График
     // подготовки космонавтов ... в день старта», 4 August 1961: «Первый пилотируемый полёт», 2011, book 2, doc 190, pp. 179-181).
     // Planned, not recorded: Titov's report says the day went to it.
     seats: [vostokSeat([MSK(7, 0), MSK(7, 40)])],
-    cabin: vostokCabin(),
+    cabin,
+    lights: LIGHTS,
   }),
   BASE,
 );

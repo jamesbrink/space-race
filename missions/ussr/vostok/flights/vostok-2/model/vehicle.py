@@ -6,8 +6,9 @@ Run headless:
 
 The whole stack. The spacecraft type is ../../../vehicles/vostok_3ka.py and the launch vehicle
 ../../../vehicles/vostok_8k72k/; this file chooses what this flight's carried, which the record
-(../spacecraft.md) puts at one thing that can be drawn: the film camera in the cabin. Everything
-else is the type's, and is said there to be assumed where it is. Stations are the spacecraft's
+(../spacecraft.md) puts at what can be drawn: the film camera, and the cabin fitted as Vostok 1's
+with what No. 4 had otherwise (its lamps, the Vizir, the Globus's window). Everything else is the
+type's, and is said there to be assumed where it is. Stations are the spacecraft's
 (0 at its braking engine's nozzle, millimetres), so the launch vehicle's base is at -30,530.
 
 Top-level nodes (the viewer's part list keys on these names):
@@ -42,7 +43,8 @@ def pilot(parent, place) -> dict:
 
 def build() -> str:
     # under the fairing the instrument module's antennas were folded: they are built stowed, and the flight's data lets them out
-    vostok_3ka.build(pilot=pilot, stowed=True, film_camera=True, lighting=True)
+    # the cabin is fitted as this ship flew: Vostok 1's set with what differed on No. 4 (vehicles/vostok_cabin.py `FITS`)
+    vostok_3ka.build(pilot=pilot, stowed=True, film_camera=True, fit="1961-08")
     az, lat = vostok_3ka.ENTRY
     # the fairing's opening is over hatch No. 1, where the line from the sphere's middle through the hatch meets the fairing
     summary = vostok_8k72k.build(hatch_az=az, hatch_z=vostok_3ka.Z_C + vostok_8k72k.common.FAIRING_R * math.tan(lat))

@@ -596,10 +596,10 @@ def build_cabin(
         if mb.verts:
             obj = placed(mb, S).build(name, M[mat], g, sharp_angle=35)
             inside_cabin(obj)
-    if fit == "1961":
+    if fit in FITTED:
         import vostok_cabin  # (here, not above: it builds on this module)
 
-        vostok_cabin.build(g, M)
+        vostok_cabin.build(g, M, fit)
     elif lighting:
         import vostok_cabin  # (here, not above: it builds on this module)
 
@@ -614,6 +614,8 @@ def build_cabin(
         rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
 
 
+# The fits of the cabin built as a ship had them (vostok_cabin.FITS): Vostok 1's, and Vostok 2's
+FITTED = ("1961", "1961-08")
 # What the viewer moves, lights or paints in the cabin (vostok_cabin.py's nodes): left out of the cabin's shade, which is
 # worked for things as they stand. They still cast it, as built.
 DRIVEN = ("Gauge_", "Tele_", "Ctl_", "Lamp_", "Vzor_Screen", "Vzor_Ring", "Globus_Globe")
@@ -752,7 +754,7 @@ def seat_view(seat: bpy.types.Object, eyes: Vector, fit: str | None = None) -> M
     allows, which is what a seat's node promises (types.ts: `ModelDef.seats`). Returns its frame in the scene."""
     S = Matrix.Scale(MM, 4) @ seat_frame()
     board = Vector(BOARD_AT)
-    if fit == "1961":
+    if fit in FITTED:
         import vostok_cabin
 
         board = vostok_cabin.board_in_seat()
@@ -1284,5 +1286,5 @@ def build(
 
         # the cabin's own shadow, worked once everything in it stands where it will: by its two lamps, and with them out
         # by the two portholes and the Vzor's screen
-        shade_cabin(vostok_cabin.lamp_sources(), [porthole_pane(ENTRY), porthole_pane(RIGHT_PORT), *vostok_cabin.vzor_pane()])
+        shade_cabin(vostok_cabin.lamp_sources(fit or "1961"), [porthole_pane(ENTRY), porthole_pane(RIGHT_PORT), *vostok_cabin.vzor_pane()])
     return f"{LENGTH * MM:.3f} m nozzle to the top of the sphere's housing, {2 * MODULE_R * MM:.3f} m across"

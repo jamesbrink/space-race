@@ -1,10 +1,10 @@
 import type { CabinDef, ModelDef } from '../../../../src/types.ts';
 
 /**
- * The ejection seat and the cabin of a Vostok after the first (Vostoks 2 to 6) as somewhere to sit (types.ts:
- * ModelDef.seats, CabinDef; viewer/cabin.ts), from the nodes their models already have. Vostok 1 has its own, fuller,
- * in its flight.ts: its cabin is the fit of 1961 (vehicles/vostok_cabin.py), with every needle, lamp and control named
- * and the Vzor. These cabins are the simpler fit vehicles/vostok_3ka.py builds (panels, instruments and the Globus as
+ * The ejection seat of every Vostok, and the cabin of Vostoks 3 to 6, as somewhere to sit (types.ts: ModelDef.seats,
+ * CabinDef; viewer/cabin.ts), from the nodes their models already have. Vostoks 1 and 2 have their own, fuller
+ * (sis1.ts, from their flight.ts): their cabins are the fit of 1961 (vehicles/vostok_cabin.py), with every needle, lamp
+ * and control named and the Vzor. These cabins are the simpler fit vehicles/vostok_3ka.py builds (panels, instruments and the Globus as
  * shapes), so what they give is the seat's eye point (`Seat_Pilot`, at the seated figure's eyes), the pilot's own
  * helmet and head not drawn from inside them, the cabin lit as indoors by its two lamps, their tumbler on the control
  * panel to throw, and the two portholes of the hull. The lamps and the tumbler are Vostok 1's, built by the same code
