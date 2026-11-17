@@ -26,7 +26,7 @@ Vostok 6". Times are Moscow time (UTC+3), and seconds from liftoff at 14:58:58 o
 | Every ascent instant, the integrator's 2,283.52 m/s, the aiming azimuth | Vostok 1's | assumed | Vostok 1's record, documented for that vehicle, taken for this one: the type's procedure, as Vostok 2's are (estimated there) |
 | The last cutoff's target height | 181 km | estimated | TASS's first figures at liftoff, 181 by 235 km, read as the orbit asked for |
 | Liftoff mass | 287 t | assumed | the type's |
-| The orbit | 174.7 × 222.1 km, 64.96°, 88.27 min | documented | read as mean elements with a nodal period (world/meanelements.ts); the ball they are over (6,369 km, derived by Kepler's law) is not used once the period is |
+| The orbit | 174.7 × 222.1 km, 64.96°, 88.27 min | documented | read as mean elements with a nodal period (world/meanelements.ts), the heights over the ball they and the period imply, 6,366.7 km (derived: sim/orbital.ts `heightsBall`), the ellipsoid under an apsis at 47°, where the run's perigee is at the injection's 63° N: an open inconsistency (below) |
 | The injection's place | 27.5° round, perigee at the cutoff | estimated | Vostok 1's reckoning; flying the ascent replaces it |
 | The braking command | 13:38:06 | derived | the pilot's landing at 14:06 less Vostok 1's 27.9 min from command to pilot on the ground (below) |
 | The burn | 3.7 s to thrust, then 39 s | derived; documented | Vostok 1's 3.7 s; his 39 s |
@@ -58,20 +58,27 @@ added as a check after the physics agent's probe of that instant had been seen, 
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 174.7 km ± 5 | −238.0 km | **miss** (−413 km) | the type's ascent falls short of an orbit, as Vostok 1's and 2's (`SHORT_V5`) |
+| Perigee at the last cutoff | 174.7 km ± 5 | −232.1 km | **miss** (−407 km) | the type's ascent falls short of an orbit, as Vostok 1's and 2's (`SHORT_V5`) |
 | Apogee at the last cutoff | 222.1 km ± 10 | 181.0 km | **miss** (−41 km) | the same: level at the 181 km asked for, and slow |
 | Inclination | 64.96° ± 0.05 | 64.975° | yes | |
-| Period at the last cutoff | 88.27 min ± 15 s | 83.74 min | **miss** (−272 s) | the same |
+| Period at the last cutoff | 88.27 min ± 15 s | 83.76 min | **miss** (−271 s) | the same |
 | Period, node to node, of the orbit begun | 88.27 min ± 2 s | 88.27 | yes | not independent |
-| Apogee as flown round, from the injection | 222.1 km ± 5 | 220.8 km | yes | |
-| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 213.2 km | **miss** (−8.9 km) | begun 4 km lower, where the type's ascent left the ship |
-| TASS, 15:00 on 18 June: perigee (coast; shown) | 159 km ± 5 | 163.3; 170.6 km | yes; **miss** (+11.6 km) | the shown run begun lower drags less at perigee |
-| TASS, 15:00 on 18 June: apogee (coast; shown) | 193 km ± 5 | 197.4; 194.8 km | yes; yes | |
-| TASS, 15:00 on 18 June: period (coast; shown) | 87.8 min ± 6 s | 87.91; 87.95 min | **miss** (+6.4 s); **miss** (+9.2 s) | below |
-| Landing across the track (coast; shown) | 0 ± 25 km | −253; −263 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −3,314; −3,853 km | **miss** | below |
-| Bykovskiy down | 14:06 ± 3 min | 14:03:52 | yes | not independent: the burn is timed from it |
-| Descent module down | 13:58 ± 5 min (derived) | 13:57:51 | yes | |
+| Apogee as flown round, from the injection | 222.1 km ± 5 | 223.0 km | yes | |
+| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 217.7 km | yes | |
+| TASS, 15:00 on 18 June: perigee (coast; shown) | 159 km ± 5 | 163.3; 168.5 km | yes; **miss** (+9.5 km) | the shown run, begun lower, drags less at perigee. TASS's own three of that instant imply a ball 0.9 km smaller than the flight's: over the flight's its heights would read 0.9 km lower |
+| TASS, 15:00 on 18 June: apogee (coast; shown) | 193 km ± 5 | 197.4; 195.8 km | yes; yes | |
+| TASS, 15:00 on 18 June: period (coast; shown) | 87.8 min ± 6 s | 87.91; 87.94 min | **miss** (+6.4 s); **miss** (+8.6 s) | below |
+| Landing across the track (coast; shown) | 0 ± 25 km | −253; −242 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −3,314; −3,717 km | **miss** | below |
+| Bykovskiy down | 14:06 ± 3 min | 14:03:42 | yes | not independent: the burn is timed from it |
+| Descent module down | 13:58 ± 5 min (derived) | 13:57:41 | yes | |
+
+**An open inconsistency.** The heights are read over the ball this flight's own published heights and period imply, 6,366.7 km (`heightsBall`, derived, no free figure), so its figures are not contradicted. That ball is the WGS 84 ellipsoid's radius under an apsis at 47° from the equator; the run puts the perigee where its injection is, 63° N, under 6,361.1 km. The sister flights' sets fit an apsis at the injection (tests/apsis.test.mjs); this one does not, and nothing read says where its perigee was or what its heights were reduced to. It is recorded here, not resolved.
+
+**Over the ball the record's heights and period imply** (November 2026, against the record's old 6,369 km by Kepler's law):
+the coast from the injection is flown to the bit as before (the period fixes the axis), and so are its figures here (the
+orbit at an instant was read over the implied ball already). The ascent cut at 181 km over a ball 2.3 km smaller is 3 m/s
+faster: from its handover the landing is 3,717 km short and 242 km across, where it was 3,853 and 263.
 
 The descent comes down at 22° N 40° E, in Arabia: what the descent itself gives (its times, 0.25 km between the ball and
 the pilot) is the type's, flown from wherever the coast left it.

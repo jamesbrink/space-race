@@ -434,7 +434,7 @@ Every one is in [orbital.ts](orbital.ts) with its source; the launch vehicle's i
 | Spacecraft | 4,725 kg | documented | RKK Energia; FAI |
 | Event times | 119, 150, 300, 676, 688.3 s | documented | S; G; R |
 | Orbit | 181 by 327 km, 64°57′, 89.44 min | documented | R |
-| Orbit's reference ball | 6,371 km | derived | heights against period |
+| Orbit's reference ball | 6,369.1 km | derived | the ball OKB-1's heights and period imply, the period read as nodal (sim/orbital.ts `heightsBall`; tests/apsis.test.mjs): the ellipsoid under an apsis at 41°, not the injection's 63° N. Until November 2026, 6,371 km (Kepler's law against the period) |
 | TDU command, thrust on, thrust off | 4,684.5; 4,688.2; 4,726.7 s | documented; derived; derived | R |
 | Braking impulse | 132 m/s | documented, secondary | Z, after L |
 | Aim of the burn | nozzle to the Sun | documented | G; R |
@@ -498,7 +498,7 @@ set in orbital.ts before the simulator was written.
 | | Coast | Record | Tolerance | |
 | --- | --- | --- | --- | --- |
 | Period, node to node, of the orbit begun | 89.44 min | 89.44 min (R) | 2 s | holds: the published orbit is read as mean elements with this nodal period (issue #8), so this holds the reading, not the flying |
-| Apogee, flown round | 326.1 km | 327 km (R) | 5 km | holds (read as osculating at cutoff, as until November 2026: 345.0 km, a miss of +18) |
+| Apogee, flown round | 328.0 km | 327 km (R) | 5 km | holds, over the ball this flight's own heights and period imply (6,369.1 km: below, "An open inconsistency"); over the mean Earth, until November 2026, 326.1 km (read as osculating at cutoff: 345.0 km, a miss) |
 | Into the Earth's shadow | 09:35:12 | "before" the orientation of about 09:50 (G, Z) | | not held: no time in the record |
 | Out of it | 10:09:32 | before the burn; orientation complete after it (G) | | not held |
 | Burn begins over | 11.3° S, 9.6° E (off Angola) | "over Africa" (G) | | not held; agrees |
@@ -519,9 +519,11 @@ What the misses say, in order of what is learned:
    beyond, which the uncertain injection point makes no proof of anything). The plane derived from the
    inclination and the pad is therefore good to about 10 km at the landing, and the record's "TDU
    directed to the Sun" is not the whole of the geometry.
-2. **The apogee was how the orbit is read.** The published heights are not osculating at cutoff: read as mean
-   elements with a nodal period (world/meanelements.ts, issue #8) the apogee flown round is the record's to a
-   kilometre, and the heights' sum no longer sets the axis (the period does).
+2. **The apogee is how the orbit is read.** The published heights are not osculating at cutoff: read as mean
+   elements with a nodal period (world/meanelements.ts, issue #8) the heights' sum no longer sets the axis (the period
+   does), and read over the ball the heights and period imply the apogee flown round is the record's to a kilometre.
+
+   **An open inconsistency.** The heights are read over the ball this flight's own published heights and period imply, 6,369.1 km (`heightsBall`, derived, no free figure), so its figures are not contradicted. That ball is the WGS 84 ellipsoid's radius under an apsis at 41° from the equator; the run puts the perigee where its injection is, 63° N, under 6,361.1 km. The sister flights' sets fit an apsis at the injection (tests/apsis.test.mjs); this one does not, and nothing read says where its perigee was or what its heights were reduced to. It is recorded here, not resolved.
 3. **Along the track has two owners**, each worth hundreds of kilometres: the injection point
    (128 km a degree, estimated to 3°) and the aim. It is not to be tuned; the ascent flown replaces the first.
    (Read as mean, the landing is 30 km further out than it was read as osculating: nothing is fitted.)
@@ -632,7 +634,7 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
 | Block E cut off | 676 s | 659.3 s | **676.4 s, 46 kg left** | 676 s | **holds**: the integrator's setting and Block E's figures agree with the recorded instant |
 | Inclination | 64.95° (target) | 64.95° (target) | **64.97°** | 64.95° | **holds**, and is now a check |
 | Core cut off | 5,810 m/s | 5,812 | 5,558 m/s, **4.5 t left** | about 5.5 km/s | holds |
-| At the last cutoff | 7,986 m/s | 7,841 | **7,691 m/s, 153 short** | 7,844 needed | **misses: does not reach orbit** (perigee -176 km) |
+| At the last cutoff | 7,986 m/s | 7,841 | **7,693 m/s, 152 short** | 7,845 needed | **misses: does not reach orbit** (perigee -171 km; the planned 180 km over the ball the record's heights and period imply since November 2026: over the mean Earth 7,691 m/s, 153 short, perigee -176 km) |
 | Most load, first stage | 5.25 g | 5.25 | 4.72 g | about 5 | holds |
 
 **The finding now.** With the third stage cut where its integrator was set and arriving at the recorded instant, the
@@ -644,9 +646,12 @@ stage as the sources give them do not agree with one another; which is wrong is 
 **What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
 spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
 instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
-ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8): period 89.44 min (holds), apogee
-flown round 326 km (holds), 134 km at 10:36, 10:45:33 at 7 km, landing 498 km long and 9 km across (holds), module
-10:50:14, pilot 10:58:56 (on the ball's continuum drag in orbit, until November 2026: 10:45:34, 503 km, 10:50:16, 10:58:58). (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
+ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8) with its heights over the
+ball its own heights and period imply (6,369.1 km): period 89.44 min (holds), apogee flown round 329.9 km (holds), 132 km at
+10:36, 10:45:23 at 7 km, landing 425 km long and 10 km across (the across holds), module 10:50:05, pilot 10:58:47. Over the
+mean Earth, until November 2026: apogee 326 km, 134 km, 10:45:33, 498 km long and 9 km across, module 10:50:14, pilot
+10:58:56: the ascent cut at the planned 180 km over a ball 1.9 km smaller is 3 m/s faster and leaves the spacecraft
+elsewhere on the orbit (on the ball's continuum drag in orbit, before that: 10:45:34, 503 km, 10:50:16, 10:58:58). (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long
 and 14 km across, module 10:50:21, pilot 10:59:03: the apogee came in and the landing went 51 km further out.) (Until November 2026 the braking
 burn's last step was flown with the engine already off, half a metre a second short: 10:45:40, 465 km, 10:50:22 and
 10:59:04. orbital.ts `flyOrbit`, `pushAs`.)

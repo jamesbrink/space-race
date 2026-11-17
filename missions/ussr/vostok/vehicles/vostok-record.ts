@@ -156,13 +156,13 @@ export interface VostokRecord {
   /** What flying the ascent needs beyond `stages` (sim/staged.ts). Left out: only the coast is flown, from the published orbit. */
   ascent?: AscentRecord;
   /**
-   * The orbit as published: heights of perigee and apogee in metres above a ball of `radius`
-   * (the convention is the publisher's and is recorded with it), inclination in degrees, period
-   * in seconds, read as mean elements (orbital.ts `publishedOf`). Left out where no period is traceable: the axis is then
-   * the heights' mean over `radius`, and the period the coast reports is the derived nodal one of that mean orbit.
+   * The orbit as published: heights of perigee and apogee in metres, inclination in degrees, period in seconds, read as
+   * mean elements (orbital.ts `publishedOf`), so a Vostok's record names no ball (orbital.ts `heightsBall`): with a period,
+   * the ball the heights and period imply; with heights alone, the WGS 84 ellipsoid under the injection's apsis
+   * (world/meanelements.ts `CONVENTION.radius`, assumed: what the sister flights' own heights and periods require). The period is left out where none is traceable: the axis is then the heights'
+   * mean over that ball, and the period the coast reports is the derived nodal one of that mean orbit.
    */
   orbit: {
-    radius: Measure;
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;

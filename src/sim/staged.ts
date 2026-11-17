@@ -50,6 +50,8 @@ import { G0, P0 } from '../world/bodies.ts';
 import { downOf } from './descent.ts';
 import {
   aimOf,
+  heightsBallAt,
+  heightsBall,
   chuteEvent,
   coastEvents,
   type DescentHands,
@@ -118,7 +120,7 @@ export function atCutoff(
   AscentSummary,
   'cutoffAt' | 'perigee' | 'apogee' | 'inclination' | 'period' | 'cutoffAltitude' | 'cutoffSpeed' | 'cutoffClimb' | 'arc' | 'anomaly'
 > {
-  const radius = plan.record!.orbit!.radius.value;
+  const radius = heightsBallAt(plan, pad);
   const el = elementsOf(s.r, s.v);
   return {
     cutoffAt: t,
@@ -686,7 +688,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
  */
 export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
   const g = guidanceOf(plan);
-  const radius = plan.record!.orbit!.radius.value;
+  const radius = heightsBall(plan, site);
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
   if (g.azimuth) return steer2(plan, site, frame, seaLevel, want);
   const miss = (x: Solved): number[] => {
@@ -720,7 +722,7 @@ export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLe
 
 /** The law with its plane given by the aiming azimuth: two unknowns, the pitch-over and the tangent's rate, for height and climb. */
 function steer2(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, want: number[]): Solved {
-  const radius = plan.record!.orbit!.radius.value;
+  const radius = heightsBall(plan, site);
   const miss = (v: number[]): number[] => {
     const s = ascend(plan, site, frame, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
     return [(s.cutoffAltitude + radius - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
@@ -771,7 +773,7 @@ export function flyWhole(
     frame,
     seaLevel,
     every,
-    handover === 'published' ? published(plan, ascent.separation) : ascent.separation,
+    handover === 'published' ? published(plan, site, ascent.separation) : ascent.separation,
   );
   const end = coast.samples[coast.samples.length - 1]!;
   const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
@@ -805,9 +807,9 @@ export function flyOn(
  * the place and instant the ascent gives instead of the estimated `injection`. What the scene and the deck show
  * (sim/run.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
  */
-export function published(plan: FlightPlan, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
+export function published(plan: FlightPlan, site: Geodetic, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
   // (the speed that puts it on the published orbit read as mean elements, its period nodal: world/meanelements.ts)
-  const s = alongPublished(publishedOf(plan.record!.orbit!), at.r, at.v).state;
+  const s = alongPublished(publishedOf(plan, site), at.r, at.v).state;
   return { t: at.t, r: at.r, v: s.v };
 }
 

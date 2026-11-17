@@ -162,10 +162,29 @@ from its ascent: 88.66 min against the published 88.46). The theory is Kozai's f
 
 The conventions, each a choice (`CONVENTION`): the period is nodal, **estimated** (no source states it; TASS's equator
 crossings for Vostok 2 are four of its periods apart, and NII-4's ballistics group found the period from tracked passes);
-the heights are over a ball of 6,371 km where no period is given, **estimated**; the state that results is **derived**,
-its `method` saying how. Nothing is fitted to a landing. A flight record may leave the period out where none is traceable
-(`VostokRecord.orbit.period` is optional; src/sim/orbital.ts `publishedOf` then passes none): the axis is the heights' mean
-over the record's `radius`, and the period the coast reports is that mean orbit's nodal one, **derived**.
+the state that results is **derived**, its `method` saying how. Nothing is fitted to a landing. A flight record may leave
+the period out where none is traceable (`VostokRecord.orbit.period` is optional; src/sim/orbital.ts `publishedOf` then
+passes none): the axis is the heights' mean over the ball, and the period the coast reports is that mean orbit's nodal
+one, **derived**.
+
+**What a published height is over** (sim/orbital.ts `heightsBall`): a ball that can never contradict the flight's own
+figures. A record that states one keeps it (Friendship 7's equatorial radius, on which its heights and period agree). A
+record with heights and a period of the one orbit is flown on the ball those three imply (**derived**: the mean axis
+whose nodal period is the published one, less the mean height; no free figure), which is the WGS 84 ellipsoid's radius
+under an apsis at the latitude they imply. A record with heights alone (Vostok 3) is flown over the ellipsoid under the
+apsis where its injection puts the perigee (`CONVENTION.radius`, `apsisRadius`, **assumed**): the geocentric radius at
+the apsis's geocentric latitude asin(sin i sin w), the apogee's the opposite at the same radius; 63.05° N and 6,361.1 km
+for every Vostok. Every height of a record is turned into a radius over its ball, and every height read off its run (the
+apogee flown round, an orbit at an instant, the ascent's at its last cutoff and its target) is over it; a later orbit
+held as a check is read on the flight's ball, and its own text says what ball its own triple implies. The convention
+rests on a test with no free figure (tests/apsis.test.mjs): each orbit published with its own period gives the ball its
+heights stand on, and ten of fifteen (Vostok 2's two, Vostok 3's two, Vostok 4's, Vostok 5's as asked for, Vostok 6's
+three, and Voskhod 1's, 6,362.1 km against the ellipsoid's 6,363.1 under its injection at 57° N) lie within their rounding
+of the ellipsoid under the injection. Vostok 1's two (6,369.1 and 6,367.7 km) and
+Vostok 5's three after liftoff (6,365.6 to 6,366.6) do not: their apsis would be at 41° and 47°, where the run's perigee is
+at the injection's 63° N, an open inconsistency each flight's mission.md records. The mean Earth's 6,371 km, the reading
+until November 2026, fits none of them. A Soviet orbit catalogue of 1964 gives its heights over a biaxial ellipsoid
+(Cosmos 49; Dolginov, Nalivayko et al., IZMIRAN 1967, NASA CR-99055, p. 5): support, not this unit's statement.
 
 What holds it (tests/meanelements.test.mjs): eq. 12 is the average of eq. 10 to 1e-10 of each term; on a circle the
 radius and the argument of latitude are Kozai's eq. 13 (his second derivation) to 19 and 10 m, J2 squared; Jason-3's
@@ -185,7 +204,7 @@ gives (the flight's frame has the pole for +Z, which is all it needs); `kind: 'o
 bit. The coast's `period` result is the nodal period of the orbit it begins on, by `meanOf` and `periodsOf`. Flown so,
 Vostok 2's coast from the ascent flown crosses at 11:48:45 and 17:42:34 and, with the burn at 09:51:00, comes down 501
 km short where it was 1,493; Vostok 1's apogee flown round is 326.1 km (record 327, was 346.2), its landing 503 km
-beyond where it was 452 (src/sim/misses.ts, the flights' mission.md). The record's `orbit.radius` then only labels heights.
+beyond where it was 452 (src/sim/misses.ts, the flights' mission.md). The ball (`heightsBall`) then sets the axis only where no period is published, and is what every height read off a run is over.
 
 Light must never step, at any clock rate (the idle show runs the night at 1200 times life).
 Everything cheap (the light's strength and colour, exposure, the sky, the fog, the lamps) is set

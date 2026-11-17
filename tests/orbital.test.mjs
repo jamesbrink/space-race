@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
-import { coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
+import { heightsBall, coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
@@ -59,7 +59,6 @@ const INPUTS = {
     ['entry', 'area'],
   ],
   'ussr/vostok/vostok-1': [
-    ['orbit', 'radius'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
     ['retro', 'on'],
@@ -68,7 +67,6 @@ const INPUTS = {
     ['entry', 'area'],
   ],
   'ussr/vostok/vostok-2': [
-    ['orbit', 'radius'],
     ['injection', 'at'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
@@ -81,7 +79,6 @@ const INPUTS = {
   ],
   // Vostok 3's injection is documented (Kamanin's 687 s) and its modules' parting is not (the type's ten seconds)
   'ussr/vostok/vostok-3': [
-    ['orbit', 'radius'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
     ['retro', 'on'],
@@ -96,7 +93,6 @@ const INPUTS = {
   ],
   // Vostok 5's: Vostok 2's, and the modules' parting (the type's ten seconds after the burn)
   'ussr/vostok/vostok-5': [
-    ['orbit', 'radius'],
     ['injection', 'at'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
@@ -110,7 +106,6 @@ const INPUTS = {
   ],
   // Vostok 6's: Vostok 5's, but the ejection's height, which is its own report's (the design's)
   'ussr/vostok/vostok-6': [
-    ['orbit', 'radius'],
     ['injection', 'at'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
@@ -123,7 +118,6 @@ const INPUTS = {
   ],
   // Vostok 4's are Vostok 2's, with its modules' parting the type's
   'ussr/vostok/vostok-4': [
-    ['orbit', 'radius'],
     ['injection', 'at'],
     ['injection', 'arc'],
     ['injection', 'anomaly'],
@@ -192,7 +186,6 @@ function atlasInputs(f, o, run) {
 // Voskhod 1's: no ejection (the parachute container's cover at the design's 5 km: documented), the burn's end, impulse and the
 // parting not found, the landing point spacefacts' (estimated)
 INPUTS['ussr/voskhod/voskhod-1'] = [
-  ['orbit', 'radius'],
   ['injection', 'arc'],
   ['injection', 'anomaly'],
   ['retro', 'off'],
@@ -212,6 +205,8 @@ for (const f of orbiters) {
   // figures are what is held (their sources, their order) or weighed (the Vostok module's, vostokPlan flying each change)
   const orbit = f.plan.record.orbit;
   const coast = coastOf(f.plan);
+  // the ball its heights are over: the record's own (Friendship 7's), or the ellipsoid under the apsis (orbital.ts `heightsBall`)
+  const ball = heightsBall(f.plan, siteFrame(f.site));
   let run;
 
   test(`${f.designation}: every figure in the orbital record has a confidence and a source, and its times are in order`, () => {
@@ -257,7 +252,7 @@ for (const f of orbiters) {
     if (orbit.period) assert.ok(Math.abs(periodsOf(m.a, m.e, m.i, m.argp).nodal - orbit.period.value) < 1e-3, 'the period, node to node');
     else
       assert.ok(
-        Math.abs(m.a - orbit.radius.value - (orbit.perigee.value + orbit.apogee.value) / 2) < 1,
+        Math.abs(m.a - ball - (orbit.perigee.value + orbit.apogee.value) / 2) < 1,
         'no period: the axis is the heights’ mean over the ball',
       );
     assert.ok(Math.abs(2 * m.a * m.e - (orbit.apogee.value - orbit.perigee.value)) < 1, 'the heights apart');
@@ -280,7 +275,7 @@ for (const f of orbiters) {
     };
     console.log(`  # ${f.designation}: the coast (times UTC)`);
     console.log(
-      `  #   period by Kepler ${(r.period / 60).toFixed(2)} min; nodal ${(nodalPeriod(orbit.radius.value + (orbit.perigee.value + orbit.apogee.value) / 2, (orbit.apogee.value - orbit.perigee.value) / (2 * (orbit.radius.value + (orbit.perigee.value + orbit.apogee.value) / 2)), orbit.inclination.value * DEG) / 60).toFixed(2)} min; apogee as flown ${(r.apogee / 1000).toFixed(1)} km`,
+      `  #   period by Kepler ${(r.period / 60).toFixed(2)} min; nodal ${(nodalPeriod(ball + (orbit.perigee.value + orbit.apogee.value) / 2, (orbit.apogee.value - orbit.perigee.value) / (2 * (ball + (orbit.perigee.value + orbit.apogee.value) / 2)), orbit.inclination.value * DEG) / 60).toFixed(2)} min; apogee as flown ${(r.apogee / 1000).toFixed(1)} km`,
     );
     console.log(
       `  #   into shadow ${clock(r.shadowIn)} (T+${r.shadowIn.toFixed(0)} s), out ${clock(r.shadowOut)} (T+${r.shadowOut.toFixed(0)} s)`,
@@ -318,7 +313,6 @@ for (const f of orbiters) {
     if ('atlas' in o) return atlasInputs(f, o, run);
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
-      ['orbit', 'radius'],
       ['orbit', 'perigee'],
       ['orbit', 'apogee'],
       ['orbit', 'inclination'],
@@ -348,9 +342,10 @@ for (const f of orbiters) {
     console.log('  #   what a change in an input moves:');
     console.log(`  #   injection.arc +1 deg: ${moved(withInput(o, ['injection', 'arc'], o.injection.arc.value + 1))}`);
     console.log(`  #   injection.anomaly +30 deg: ${moved(withInput(o, ['injection', 'anomaly'], o.injection.anomaly.value + 30))}`);
-    console.log(
-      `  #   orbit.radius +7 km (the equatorial radius): ${moved(withInput(o, ['orbit', 'radius'], o.orbit.radius.value + 7_137))}`,
-    );
+    // the reading until November 2026: the heights over the mean Earth, not the ellipsoid under the apsis
+    const mean = structuredClone(o);
+    mean.orbit.radius = { value: 6_371_000, confidence: 'estimated', source: 'a test: the mean Earth' };
+    console.log(`  #   the heights over the mean Earth, 6,371 km (the ball ${(ball / 1000).toFixed(1)} km): ${moved(mean)}`);
     console.log(`  #   retro.deltaV +4 m/s (as programmed): ${moved(withInput(o, ['retro', 'deltaV'], o.retro.deltaV.value + 4))}`);
     console.log(`  #   retro.deltaV +5 %: ${moved(withInput(o, ['retro', 'deltaV'], o.retro.deltaV.value * 1.05))}`);
     console.log(`  #   entry.area +5 % (or the drag coefficient): ${moved(withInput(o, ['entry', 'area'], o.entry.area.value * 1.05))}`);
@@ -401,10 +396,14 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
   );
   const plain = fly(f, structuredClone(o));
   const read = fly(f, asked);
-  // ten seconds on, the mean orbit is the published one: its heights over its ball, its nodal period
+  // ten seconds on, the mean orbit is the published one: its axis the period's, its heights over the ball (where the
+  // heights' sum and the period disagree, as Vostok 1's do, the period stands), its nodal period
   const r = read.results;
-  assert.ok(Math.abs(r['begun.perigee'] - o.orbit.perigee.value) < 50, `perigee ${r['begun.perigee']}`);
-  assert.ok(Math.abs(r['begun.apogee'] - o.orbit.apogee.value) < 50, `apogee ${r['begun.apogee']}`);
+  const ball = heightsBall(f.plan, siteFrame(f.site));
+  const begun = meanOrbitOf(publishedOf(f.plan, siteFrame(f.site)));
+  const span = (o.orbit.apogee.value - o.orbit.perigee.value) / 2;
+  assert.ok(Math.abs(r['begun.perigee'] - (begun.a - span - ball)) < 50, `perigee ${r['begun.perigee']}`);
+  assert.ok(Math.abs(r['begun.apogee'] - (begun.a + span - ball)) < 50, `apogee ${r['begun.apogee']}`);
   assert.ok(Math.abs(r['begun.period'] - o.orbit.period.value) < 0.05, `period ${r['begun.period']}`);
   // between two of the coast's steps: read off a state stepped there from the step's start, as the samples either side are
   const [before, after] = [read.samples.findLast((s) => s.t <= start + 1234.5), read.samples.find((s) => s.t > start + 1234.5)];
@@ -412,7 +411,6 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
     const m = meanOf({ r: frameOf(f).toDate(s.r), v: frameOf(f).toDate(s.v) });
     return m.a * (1 - m.e);
   };
-  const ball = meanOrbitOf(publishedOf(f.plan.record.orbit)).radius;
   for (const s of [before, after]) assert.ok(Math.abs(perigeeOf(s) - ball - r['later.perigee']) < 5, `at ${s.t} s`);
   // after the coast has ended there is nothing to read
   assert.equal(r['down.apogee'], undefined);
@@ -426,18 +424,18 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
   );
 });
 
-test('a record with no period flies the mean orbit of its heights over its ball, and its period is that orbit’s, derived', () => {
+test('a record with no period flies the mean orbit of its heights over the ellipsoid under the apsis, and its period is that orbit’s, derived', () => {
   const f = orbiters.find((x) => x.id === 'ussr/vostok/vostok-1');
   const o = structuredClone(recordFrom(f));
   delete o.orbit.period;
   o.checks = o.checks.filter((c) => c.id !== 'period');
   const plan = vostokPlan(o);
   assert.equal(plan.record.orbit.period, undefined);
-  assert.equal('period' in publishedOf(plan.record.orbit), false);
+  assert.equal('period' in publishedOf(plan, siteFrame(f.site)), false);
   const run = fly(f, o);
-  // the period the coast reports is the nodal one of the mean orbit the heights give over the record's ball
-  const mean = meanOrbitOf(publishedOf(plan.record.orbit));
-  assert.equal(mean.a, o.orbit.radius.value + (o.orbit.perigee.value + o.orbit.apogee.value) / 2);
+  // the period the coast reports is the nodal one of the mean orbit the heights give over the ball (the ellipsoid under the apsis)
+  const mean = meanOrbitOf(publishedOf(plan, siteFrame(f.site)));
+  assert.equal(mean.a, heightsBall(plan, siteFrame(f.site)) + (o.orbit.perigee.value + o.orbit.apogee.value) / 2);
   assert.ok(Math.abs(run.results.period - mean.periods.nodal) < 0.05, `${run.results.period} against ${mean.periods.nodal}`);
   // and it goes round and comes down
   assert.ok(Number.isFinite(run.results.ejectionAt));

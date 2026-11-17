@@ -80,7 +80,7 @@ export function predictions(flight) {
   const where = (turn) => ({ site, seaLevel: sea, frame: turned(frame, turn) });
   // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
   // before it (as tests/staged.test.mjs)
-  const sep = published(plan, a.separation);
+  const sep = published(plan, site, a.separation);
   const on = coastOf(plan).on;
   const late = on - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= on - 2400) : null;
   const from = late ?? sep;

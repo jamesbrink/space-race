@@ -20,7 +20,7 @@ const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
-const from = published(flight.plan, shown.ascent.separation);
+const from = published(flight.plan, site, shown.ascent.separation);
 const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, hands);
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {

@@ -11,7 +11,9 @@ import { frameOf } from '../src/world/earthframe.ts';
 import { add, cross, DEG, dot, geodeticToEcef, length, scale, unit } from '../src/world/frames.ts';
 import {
   alongPublished,
+  apsisRadius,
   CONVENTION,
+  ellipsoidRadius,
   fromPublished,
   kozaiAxis,
   meanOf,
@@ -234,7 +236,19 @@ test('the published orbit as each kind of period, and as the old osculating read
     near(meanOrbitOf({ ...o, kind }).periods[kind], o.period, 1e-6, `${kind} period, s`);
   // no period: the axis is the radius plus the mean height
   near(meanOrbitOf({ ...o, period: undefined }).a, o.radius + 213_500, 1e-9, 'axis without a period, over the radius given, m');
-  near(meanOrbitOf({ ...o, period: undefined, radius: undefined }).a, CONVENTION.radius.value + 213_500, 1e-9, 'and over the default, m');
+  // and with none given, over the convention's: the ellipsoid's radius under the apsis, the perigee at asin(sin i sin w)
+  near(
+    meanOrbitOf({ ...o, period: undefined, radius: undefined }, 1.4).a,
+    CONVENTION.radius.value(o.inclination, 1.4) + 213_500,
+    1e-9,
+    'and over the default, m',
+  );
+  assert.throws(() => meanOrbitOf({ ...o, period: undefined, radius: undefined }), /needs the ball/, 'which needs where the perigee is');
+  // the ellipsoid's radius: the equatorial at the equator, the polar at the pole, 6,361.1 km under Vostok’s perigee (63.05 degrees geocentric)
+  near(ellipsoidRadius(0), 6_378_137, 1e-6, 'equatorial, m');
+  near(ellipsoidRadius(Math.PI / 2), 6_356_752.314245, 1e-6, 'polar, m');
+  near(apsisRadius(o.inclination, Math.PI / 2), ellipsoidRadius(o.inclination), 1e-6, 'a perigee at the orbit’s northernmost, m');
+  near(apsisRadius(o.inclination, 0), 6_378_137, 1e-6, 'a perigee on the equator, m');
   // the osculating reading is what src/sim/orbital.ts `injectionState` and src/sim/staged.ts `published` give, to the bit
   const at = { node: 1.1, latitude: 1.2, anomaly: 0.3 };
   const a = o.radius + (o.perigee + o.apogee) / 2;

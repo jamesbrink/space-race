@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { hasLeft } from '../sim/craft.ts';
 import { ballisticOf, type Sample, sampleAt } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
+import { heightsBall } from '../sim/orbital.ts';
 import { spacecraft } from '../sim/fliers.ts';
 import { elements, propagate } from '../sim/predict.ts';
 import { byHand, givenUp } from '../sim/staged.ts';
@@ -174,8 +175,9 @@ export function burnNow(flight: Flight): LandingFinder | null {
   const shown = frameOf(flight);
   const where = siteFrame(site);
   const never = givenUp(flight.plan!);
+  const ball = heightsBall(flight.plan!, where);
   return (start) => {
-    const el = elements(start.r, start.v, orbit.radius.value);
+    const el = elements(start.r, start.v, ball);
     const down = !(el.periapsisHeight > LANDING_AIR);
     let plan = never;
     if (!down) {

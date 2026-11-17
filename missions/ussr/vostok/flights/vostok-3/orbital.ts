@@ -312,10 +312,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: estimated(
-      6_371_000,
-      'the ball the published heights are taken to be over, which sets the orbit’s axis now that no period is flown: the mean Earth to the kilometre (world/meanelements.ts CONVENTION.radius). No source states how a Soviet orbit of 1962 was reduced. Over it the heights give a nodal period of 88.54 min (derived: mission.md, "The orbit")',
-    ),
     perigee: doc(
       180_700,
       `${TABLE} and p. 356: 180.7 km, "nominal"; ${BSE}: «высота перигея 180,7 км». Announced on 21 August: 183 km; TASS of 12 August (12:12): 176.7 km`,
@@ -323,7 +319,8 @@ export const orbital: VostokRecord = {
     apogee: doc(234_600, `${TABLE} and p. 356: 234.6 km; ${BSE}: «234,6 км». Announced: 251 km; TASS of 12 August: 227.6 km`),
     inclination: doc(64.98, `${TABLE}: 64.98°. Announced: 65°; TASS: 64°59′`),
     // (no period: none published with these heights has a traceable source. The orbit's axis is the heights' mean over
-    // `radius`, and its period the mean orbit's, derived: mission.md, "The orbit", has every value found)
+    // the ellipsoid under the apsis (orbital.ts `heightsBall`), and its period the mean orbit's, derived: mission.md, "The
+    // orbit", has every value found)
   },
   injection: {
     at: doc(687, `${KAMANIN}, 14 August; ${SIDDIQI}, p. 356: the orbit is taken to begin at the third stage’s cutoff`),
@@ -452,7 +449,7 @@ export const orbital: VostokRecord = {
       unit: 'm',
       tolerance: 5_000,
       confidence: 'documented',
-      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 176.7 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it`,
+      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 176.7 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it. Read on the flight's ball (the ellipsoid under the injection's apsis, 6,361.1 km): TASS's own heights and period imply 6,359.5 km, 1.6 km under it (tests/apsis.test.mjs), so over the flight's ball TASS's heights would read 1.6 km lower; the ball is not changed for it`,
       at: MSK(12, 12, 12),
     },
     {
@@ -462,7 +459,7 @@ export const orbital: VostokRecord = {
       unit: 'm',
       tolerance: 5_000,
       confidence: 'documented',
-      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 227.6 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it`,
+      source: `TASS, as of 12:12 Moscow time on 12 August 1962, in Flight International, 23 August 1962, pp. 288 to 289 (as read for docs/sources.md): 227.6 km. The orbit a day on, lower and faster by its decay: held at that instant, not flown from. TASS gives it to 0.1 km and 0.1 min, which would support 0.05 km and 3 s; the tolerance is wider for what the figures do not say, the ball its heights are over (Vostok 2's determined heights were over one 8 km smaller than the mean Earth) and how well a day's tracking fixed it. Read on the flight's ball (the ellipsoid under the injection's apsis, 6,361.1 km): TASS's own heights and period imply 6,359.5 km, 1.6 km under it (tests/apsis.test.mjs), so over the flight's ball TASS's heights would read 1.6 km lower; the ball is not changed for it`,
       at: MSK(12, 12, 12),
     },
     {

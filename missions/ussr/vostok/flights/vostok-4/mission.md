@@ -41,8 +41,11 @@ Siddiqi's heights and inclination (Table IB, p. 357; the Great Soviet Encycloped
 88.3 min**, chosen before the flight was flown; Siddiqi gives no period. Under the source rule Vostok 3's record now keeps
 (its mission.md, "The orbit"), this one stays: the same communique that is a day on for Vostok 3 is seventy minutes after
 this ship's launch, its first determination, so it is the initial orbit's period and an input, not a check. Read as mean
-elements with a nodal period; `orbit.radius` is not used. As on Vostok 3 before, the period and the heights are not one
-determination (the apogee as flown round comes out under the published one).
+elements with a nodal period, the heights over the ball the record's heights and period imply (sim/orbital.ts
+`heightsBall`): Siddiqi's heights with TASS's 88.3 min give 6,358.4 km, which is the ellipsoid within the period's
+rounding (a tenth of a minute is 2.5 km), and TASS's own 177.9 by 234.8 km with 88.3 give 6,360.3 (tests/apsis.test.mjs).
+On it the apogee flown round is the published one within 1 km. Over the mean Earth, as until November 2026, it came out
+11.7 km under.
 
 **The landing place** rests on Russian Wikipedia, 48°09′ N 71°51′ E, a published figure of unknown origin (spacefacts.de,
 also unsourced, 48°10′ N 71°53′30″ E). Its one traceable source, the Great Soviet Encyclopedia, gives only "the region of
@@ -72,19 +75,25 @@ ascent, the published orbit from where it left the ship, then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 179.8 km ± 5 | −246 km | **miss** | the type's ascent falls short, as Vostoks 1 to 3's (149 m/s slow) |
+| Perigee at the last cutoff | 179.8 km ± 5 | −215 km | **miss** | the type's ascent falls short, as Vostoks 1 to 3's (139 m/s slow) |
 | Apogee at the last cutoff | 236.7 km ± 10 | 180 km | **miss** | the same |
 | Inclination | 64.95° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
-| Period at the last cutoff | 88.3 min ± 15 s | 83.69 min | **miss** | the same as the perigee |
+| Period at the last cutoff | 88.3 min ± 15 s | 83.75 min | **miss** | the same as the perigee |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
-| Apogee as flown round | 236.7 km ± 5 | 213.2 km | **miss** (−23.5 km) | 88.3 min and the heights are not one determination (11.7 km of it, as on the coast), and where the type's ascent leaves the ship |
-| Landing across the track | 0 ± 60 km (the region of Atasu) | +36 km | yes | |
-| Landing along the track | 0 ± 100 km | +2,398 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`, `PERIOD_48`) |
-| Descent module down | 09:46:33 ± 90 s | 09:53:16 | **miss** (+403 s) | down 5.8 minutes before him where the record has twelve, as Vostok 3's |
-| Popovich down | 09:59:00 ± 2 min | 09:59:04 | yes | not independent: the burn is derived from it |
+| Apogee as flown round | 236.7 km ± 5 | 238.4 km | yes | over the mean Earth, until November 2026: 213.2 km, a miss (−23.5 km) |
+| Landing across the track | 0 ± 60 km (the region of Atasu) | +55 km | yes | |
+| Landing along the track | 0 ± 100 km | +2,407 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`, `PERIOD_48`) |
+| Descent module down | 09:46:33 ± 90 s | 09:52:13 | **miss** (+340 s) | down 5.8 minutes before him where the record has twelve, as Vostok 3's |
+| Popovich down | 09:59:00 ± 2 min | 09:58:01 | yes | not independent: the burn is derived from it |
 
-The coast from the estimated injection (tests/orbital.test.mjs): apogee 225 km (miss, −11.7 km), down 2,344 km long and
-8 km across (across holds; along misses).
+The coast from the estimated injection (tests/orbital.test.mjs): apogee 237.6 km (holds; over the mean Earth 225 km, a
+miss), down 2,344 km long and 8 km across (across holds; along misses), the same as over the mean Earth: with a period
+published, the ball moves only what a height is read as.
+
+**Over the ball the record's heights and period imply** (November 2026, against over the mean Earth): the ascent is cut
+at the planned 180 km over a ball 12.6 km smaller, 17 m/s faster (perigee −215 km, was −246); from where it leaves the ship
+the landing is 2,407 km long (was 2,398) and 55 km across (was 36); the module 62 s earlier and Popovich 59 s early (he was
+4 s late); the nearest approach to Vostok 3 203 km (was 1,768: below).
 
 **Before and after** (verify-s12's drag and air in orbit, and the day's air on the ascent): the landing along the track
 went from 1,070 km long to 2,398 km long (the coast's from 633 to 2,344), worse, by the drag in orbit now flown; across
@@ -95,9 +104,10 @@ slower in the day's air (perigee −246 km, was −205); the module 35 s later; 
 
 The record has the two ships about 6.5 km apart (TASS) or about 5 km (both pilots) early in Vostok 4's flight; the check
 (`NEAREST_VOSTOK_3`, set with this record) is 6.5 km ± 1.5, flown in tests/group.test.mjs from both records' coasts put in
-one frame by the clock. Flown, the nearest in Vostok 4's first two revolutions is **1,768 km**, as its orbit begins: a recorded
-miss (src/sim/misses.ts, Vostok 4's `group`). On Vostok 3's untraced 88.33 min it was 234 km, 47 minutes in. The records
-cannot hold kilometres: Vostok 3's place a day on is its period carried round sixteen times, now the one its heights give
-(88.54 min), and a hundredth of a minute of it is 75 km; Vostok 4's place at its cutoff is
+one frame by the clock. Flown, the nearest in Vostok 4's first two revolutions is **203 km**: a recorded miss (src/sim/misses.ts,
+Vostok 4's `group`). Over the mean Earth (Vostok 3 on 88.54 min, until November 2026) it was 1,768 km, as its orbit began; on
+Vostok 3's untraced 88.33 min, 234 km, 47 minutes in. The records cannot hold kilometres: Vostok 3's place a day on is its
+period carried round sixteen times, now the one its heights give over the ellipsoid under the apsis (88.34 min), and a
+hundredth of a minute of it is 75 km; Vostok 4's place at its cutoff is
 the type's reckoning, 144 km a degree. That the second launch was timed to put it beside the first is the record; where each
 ship was to that precision is in nothing read. Nothing is changed to bring it in.

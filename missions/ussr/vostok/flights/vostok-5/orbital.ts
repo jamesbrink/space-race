@@ -260,10 +260,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: derived(
-      6_369_000,
-      'not stated. The published heights and period agree by Kepler’s law over a ball of 6,369 km (174.7 by 222.1 km with 88.27 min; μ 398,600 km³/s²). With the period read as nodal (world/meanelements.ts) the period fixes the axis and this is not used',
-    ),
     perigee: doc(
       174_700,
       `${SIDDIQI}, p. 368 and Table IB, "initial orbital parameters": 174.7 km. TASS at 22:12 on 14 June: 175 km (at liftoff, the orbit asked for: 181 km)`,
@@ -448,7 +444,7 @@ export const orbital: VostokRecord = {
       unit: field === 'period' ? 's' : 'm',
       tolerance: field === 'period' ? 6 : 5_000,
       confidence: 'documented' as const,
-      source: `${TASS}: «Заря Востока», 19 June 1963, the orbit at 15:00 Moscow time on 18 June: 159 by 193 km, 87.8 min. Its ball not stated: taken as the published orbit’s`,
+      source: `${TASS}: «Заря Востока», 19 June 1963, the orbit at 15:00 Moscow time on 18 June: 159 by 193 km, 87.8 min. Its ball not stated: read on the flight's own (orbital.ts, heightsBall: 6,366.7 km, what the published heights and period imply). These three imply 6,365.8 km (tests/apsis.test.mjs), 0.9 km under it, so over the flight's ball TASS's heights would read 0.9 km lower; the ball is not changed for it`,
       at: MSK(18, 15, 0),
     })),
   ],

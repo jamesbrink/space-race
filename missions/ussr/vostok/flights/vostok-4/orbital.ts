@@ -253,10 +253,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: estimated(
-      6_371_000,
-      'not stated, and not used: with a period given, the period fixes the axis and the ball the heights are over is what is left (world/meanelements.ts). The mean Earth is written here',
-    ),
     perigee: doc(179_800, `${TABLE} and p. 357: 179.8 km; ${BSE}: «высота перигея 179,8 км». TASS of 12 August (12:12): 177.9 km`),
     apogee: doc(236_700, `${TABLE} and p. 357: 236.7 km; ${BSE}: «236,7 км». TASS of 12 August: 234.8 km`),
     inclination: doc(64.95, `${TABLE}: 64.95°; TASS: 64°57′`),

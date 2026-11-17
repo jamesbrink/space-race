@@ -17,7 +17,16 @@ import { G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { fromPublished, meanOf, meanOrbitOf, type PeriodKind, periodsOf, type PublishedOrbit } from '../world/meanelements.ts';
+import {
+  CONVENTION,
+  fromPublished,
+  meanOf,
+  meanOrbitOf,
+  type OnOrbit,
+  type PeriodKind,
+  periodsOf,
+  type PublishedOrbit,
+} from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { ratioOf } from '../world/thermosphere.ts';
@@ -410,7 +419,7 @@ export interface OrbitResults {
    * The orbit at an instant a check states (`CheckWhen` `reading: 'orbit'`), by the check's id: only those a plan's checks
    * ask for are here. The coast's state at the instant read as mean elements (world/meanelements.ts `meanOf`), as the
    * published orbit is read (`fromPublished`): perigee and apogee a(1 - e) and a(1 + e) less the ball the published
-   * orbit's heights are over (`meanOrbitOf`'s `radius`), m, and the nodal period with the perigee where it stands, s.
+   * orbit's heights are over (`heightsBall`: the ellipsoid under the apsis), m, and the nodal period with the perigee where it stands, s.
    */
   [reading: `${string}.${OrbitReading}`]: number;
 }
@@ -463,6 +472,24 @@ const THICK = 100_000;
 const INTERFACE = 100_000;
 
 /**
+ * Where the record puts the injection on its orbit, in a frame whose +Z is the pole and in which `pad` is the launch
+ * site's place at liftoff: the node of the plane of the published inclination through the pad, the argument of latitude
+ * `injection.arc` round from the pad, and the true anomaly there.
+ */
+function injectionOn(o: NonNullable<NonNullable<FlightPlan['record']>['orbit']>, pad: Vec3): OnOrbit {
+  const i = o.inclination.value * DEG;
+  const n = planeThrough(pad, i, o.injection.heading === 'north');
+  if (!n) throw new Error(`no orbit inclined ${o.inclination.value} degrees passes over the pad`);
+  const arc = o.injection.arc.value * DEG;
+  const from = unit(pad);
+  const at = add(scale(from, Math.cos(arc)), scale(cross(n, from), Math.sin(arc)));
+  const node = Math.atan2(n[0], -n[1]);
+  const toNode: Vec3 = [Math.cos(node), Math.sin(node), 0];
+  const latitude = Math.atan2(dot(at, cross(n, toNode)), dot(at, toNode));
+  return { node, latitude, anomaly: o.injection.anomaly.value * DEG };
+}
+
+/**
  * The orbit the record gives, as a position and velocity at `injection.at`, in the flight's frame (world/earthframe.ts):
  * the elements are of date and are worked in the frame of date, then turned into it. The plane is the one of the
  * published inclination through the launch site's place at liftoff; the place on it and the perigee are `injection`'s.
@@ -470,38 +497,61 @@ const INTERFACE = 100_000;
 export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFrame): State {
   const o = shipOf(plan).orbit;
   const pad = frame.toDate(frame.toInertial(geodeticToEcef(site), 0));
-  const i = o.inclination.value * DEG;
-  const n = planeThrough(pad, i, o.injection.heading === 'north');
-  if (!n) throw new Error(`no orbit inclined ${o.inclination.value} degrees passes over latitude ${site.latitude}`);
-  const arc = o.injection.arc.value * DEG;
-  const from = unit(pad);
-  const at = add(scale(from, Math.cos(arc)), scale(cross(n, from), Math.sin(arc)));
-  const node = Math.atan2(n[0], -n[1]);
-  const toNode: Vec3 = [Math.cos(node), Math.sin(node), 0];
-  const latitudeArgument = Math.atan2(dot(at, cross(n, toNode)), dot(at, toNode));
-  const nu = o.injection.anomaly.value * DEG;
   // (the published orbit read as mean elements, its period nodal: world/meanelements.ts; the place on it is the mean orbit's)
-  const s = fromPublished(publishedOf(o), { node, latitude: latitudeArgument, anomaly: nu }).state;
+  const s = fromPublished(publishedOf(plan, site), injectionOn(o, pad)).state;
   return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
 }
 
 /**
- * A record's published orbit as world/meanelements.ts reads it: its heights, inclination and period, the period of the
- * kind its `CONVENTION` takes (nodal, estimated; a record with none gives none, and the heights' mean over its ball is then
- * the axis), the ball the heights are over only where that is wanted. `kind`
- * 'osculating' reads it as every run here read it before: the heights over the record's ball as the osculating orbit.
+ * The ball the record's heights are over, m, so that it never contradicts the record's own figures:
+ * - the one it states (Friendship 7's equatorial radius);
+ * - with heights and a period published for the one orbit, the ball those three imply (derived: the mean orbit's axis
+ *   whose nodal period is the published one, less the mean height, `meanOrbitOf`'s `radius`; no free figure), which is
+ *   the ellipsoid's radius under an apsis at the latitude they imply, not always the injection's (Vostok 1's 41 degrees,
+ *   Vostok 5's 47: tests/apsis.test.mjs, each flight's mission.md);
+ * - with heights alone (Vostok 3), the convention (world/meanelements.ts `CONVENTION.radius`, assumed on the sister
+ *   flights' sets that fit it): the WGS 84 ellipsoid's radius under the apsis where the record's injection puts the
+ *   perigee (its argument of latitude less its anomaly; the apogee opposite, at the same radius).
+ * Every height of the record becomes a radius over it, and every height read off a run of the record (the apogee flown
+ * round, the orbit at a stated instant, the ascent's at its last cutoff and its target) is over it.
  */
-export function publishedOf(o: NonNullable<NonNullable<FlightPlan['record']>['orbit']>, kind?: PeriodKind): PublishedOrbit {
+export const heightsBall = (plan: FlightPlan, site: Geodetic): number => heightsBallAt(plan, geodeticToEcef(site));
+
+/** `heightsBall` with the pad's place at liftoff given in any frame whose +Z is the pole: an argument of latitude does not turn with the Earth. */
+export function heightsBallAt(plan: FlightPlan, pad: Vec3): number {
+  const o = plan.record!.orbit!;
+  if (o.radius) return o.radius.value;
+  const argp = perigeeAt(plan, pad);
+  const i = o.inclination.value * DEG;
+  // (heights and a period of the one orbit: the ball the three imply, read as the coast reads them; heights alone: the ellipsoid)
+  if (o.period)
+    return meanOrbitOf({ perigee: o.perigee.value, apogee: o.apogee.value, inclination: i, period: o.period.value }, argp).radius;
+  return CONVENTION.radius.value(i, argp);
+}
+
+/** The published orbit's argument of perigee where the record's injection puts it (its argument of latitude less its anomaly), rad; `pad` as `heightsBallAt`'s. */
+export function perigeeAt(plan: FlightPlan, pad: Vec3): number {
+  const at = injectionOn(plan.record!.orbit!, pad);
+  return at.latitude - at.anomaly;
+}
+
+/**
+ * A record's published orbit as world/meanelements.ts reads it: its heights, inclination and period, the period of the
+ * kind its `CONVENTION` takes (nodal, estimated; a record with none gives none, and the heights' mean over its ball is
+ * then the axis), over the ball its heights are over (`heightsBall`). `kind` 'osculating' reads it as every run here read it
+ * before: the heights over the ball as the osculating orbit.
+ */
+export function publishedOf(plan: FlightPlan, site: Geodetic, kind?: PeriodKind): PublishedOrbit {
+  const o = plan.record!.orbit!;
   return {
     perigee: o.perigee.value,
     apogee: o.apogee.value,
     inclination: o.inclination.value * DEG,
     ...(o.period ? { period: o.period.value } : {}),
-    radius: o.radius.value,
+    radius: heightsBall(plan, site),
     ...(kind ? { kind } : {}),
   };
 }
-
 /**
  * The drag of a body in orbit, switched by where it is flown: the coast's (flyOrbit, the predicted path, the descent's
  * entry body above the ejection height) and the orbit's life (`decay`). Off, each flies what it did until November 2026,
@@ -747,7 +797,7 @@ export function flyOrbit(
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
   const { on, off, parted, floor } = ship;
-  const radius = ship.orbit.radius.value;
+  const radius = heightsBall(plan, site);
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
@@ -842,12 +892,11 @@ export function flyOrbit(
   // (the orbit at the instants the checks ask for: read off a state stepped there from the step's start, so the run is flown
   // as it would be without them)
   const readings = readingsOf(plan).filter((x) => x.at >= t);
-  const ball = readings.length ? meanOrbitOf(publishedOf(ship.orbit)).radius : 0;
   const read = (s: State, ids: string[]): void => {
     const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
     const got: Record<OrbitReading, number> = {
-      perigee: m.a * (1 - m.e) - ball,
-      apogee: m.a * (1 + m.e) - ball,
+      perigee: m.a * (1 - m.e) - radius,
+      apogee: m.a * (1 + m.e) - radius,
       period: periodsOf(m.a, m.e, m.i, m.argp).nodal,
     };
     for (const id of ids) {
@@ -927,36 +976,34 @@ export function flyOrbit(
       }
       results.entryQ = Math.max(results.entryQ, now.q);
     }
-    {
-      // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
-      if (t === handover) {
-        phase = 'down';
-        samples.push({ ...now, phase });
-        break;
+    // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
+    if (t === handover) {
+      phase = 'down';
+      samples.push({ ...now, phase });
+      break;
+    }
+    if (now.altitude <= floor && now.altitude < before.altitude) {
+      // back along the last step to the instant it came through the height
+      const part = (before.altitude - floor) / (before.altitude - now.altitude);
+      state = { r: add(last.r, scale(sub(state.r, last.r), part)), v: add(last.v, scale(sub(state.v, last.v), part)) };
+      t = before.t + part * (now.t - before.t);
+      phase = 'down';
+      const end = sample();
+      results.ejectionAt = t;
+      results.ejectionLatitude = end.latitude;
+      results.ejectionLongitude = end.longitude;
+      results.ejectionSpeed = -dot(airOf(state, t).wind, upAt(end));
+      const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
+      if (gate) {
+        const axes = enuAxes({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value });
+        const level = (d: Vec3): Vec3 => sub(d, scale(axes.up, dot(d, axes.up)));
+        const track = unit(level(sub(under, gate)));
+        const miss = level(sub(under, target));
+        results.alongTrack = dot(miss, track);
+        results.crossTrack = dot(miss, cross(track, axes.up));
       }
-      if (now.altitude <= floor && now.altitude < before.altitude) {
-        // back along the last step to the instant it came through the height
-        const part = (before.altitude - floor) / (before.altitude - now.altitude);
-        state = { r: add(last.r, scale(sub(state.r, last.r), part)), v: add(last.v, scale(sub(state.v, last.v), part)) };
-        t = before.t + part * (now.t - before.t);
-        phase = 'down';
-        const end = sample();
-        results.ejectionAt = t;
-        results.ejectionLatitude = end.latitude;
-        results.ejectionLongitude = end.longitude;
-        results.ejectionSpeed = -dot(airOf(state, t).wind, upAt(end));
-        const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
-        if (gate) {
-          const axes = enuAxes({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value });
-          const level = (d: Vec3): Vec3 => sub(d, scale(axes.up, dot(d, axes.up)));
-          const track = unit(level(sub(under, gate)));
-          const miss = level(sub(under, target));
-          results.alongTrack = dot(miss, track);
-          results.crossTrack = dot(miss, cross(track, axes.up));
-        }
-        samples.push(end);
-        break;
-      }
+      samples.push(end);
+      break;
     }
     if (t - kept >= every - 1e-9 || marks.includes(t)) {
       samples.push(now);

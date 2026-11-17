@@ -12,7 +12,7 @@ import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
-import { coastOf } from '../src/sim/orbital.ts';
+import { heightsBall, coastOf } from '../src/sim/orbital.ts';
 import { between, propagate } from '../src/sim/predict.ts';
 import {
   ascend,
@@ -573,8 +573,8 @@ for (const f of part(flown)) {
     // the speed the record's orbit needs at the planned perigee, and when the run reaches it: how long Block E burns past it
     const need = Math.sqrt(
       3.986004418e14 *
-        (2 / (record.orbit.radius.value + 180_000) -
-          1 / (record.orbit.radius.value + (record.orbit.perigee.value + record.orbit.apogee.value) / 2)),
+        (2 / (heightsBall(plan, site) + 180_000) -
+          1 / (heightsBall(plan, site) + (record.orbit.perigee.value + record.orbit.apogee.value) / 2)),
     );
     console.log(
       `  #   at the last cutoff ${base.cutoffSpeed.toFixed(1)} m/s, ${(base.cutoffSpeed - need).toFixed(1)} m/s against what the record's orbit needs there (${need.toFixed(1)})`,
@@ -587,7 +587,7 @@ for (const f of part(flown)) {
     const [site, dated, sea] = where(f);
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
-    const sep = published(f.plan, whole.ascent.separation);
+    const sep = published(f.plan, site, whole.ascent.separation);
     const late = coastOf(plan).on - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
     const job = propagate(spacecraft(f.plan, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });

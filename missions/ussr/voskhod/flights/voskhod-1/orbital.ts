@@ -260,10 +260,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: derived(
-      6_363_000,
-      'not stated («минимальное удаление от поверхности Земли», TASS). The published heights and period agree as a nodal period (world/meanelements.ts) only over a ball of 6,363 km (177.5 by 408 km with 90.1 min), as the Vostoks’ do; over 6,371 km they give 90.27 min. With the period read as nodal the period fixes the axis and this is not used',
-    ),
     perigee: doc(177_500, `${SIDDIQI}, p. 423 and Table IB (p. 876); the Soviet encyclopedia («высота перигея 177,5 км»). ${TASS}: 178 km`),
     apogee: doc(408_000, `${SIDDIQI}, p. 423 and Table IB; the Soviet encyclopedia («высота апогея 408 км»). ${TASS}: 409 km`),
     inclination: doc(64.9, `${SIDDIQI}, p. 423: 64.9° (his Table IB gives none). TASS and the UN registration: «около 65 градусов», 65`),

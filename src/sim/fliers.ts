@@ -35,7 +35,7 @@ import { Descent, type DescentContext, type DownBody, downOf } from './descent.t
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimOf, type DescentFlown, type DescentHands, shipOf, shipPush, solarAt } from './orbital.ts';
+import { aimOf, heightsBall, type DescentFlown, type DescentHands, shipOf, shipPush, solarAt } from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
@@ -286,7 +286,7 @@ export function spacecraft(
     get chute() {
       return down?.chute ?? false;
     },
-    radius: ship.orbit.radius.value,
+    radius: heightsBall(plan, site),
     ground: (here) => (down ? down.ground(here) : ground(here)),
     burning: () => !down && burning,
     push: (at, p, u, altitude) =>
@@ -388,7 +388,6 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
     get chute() {
       return flying.filling !== null || flying.kept.size > 0;
     },
-    radius: shipOf(plan).orbit.radius.value,
     ground: () => d.ground,
     burning: () => flying.thrustAt(flying.as) > 0,
     push: (t, r, v) => flying.push(s(r, v), t),
@@ -451,7 +450,7 @@ export function stack(plan: FlightPlan, site: Geodetic, seaLevel: number, mass: 
     cutoff: null,
     quiet: Number.NEGATIVE_INFINITY,
     chute: false,
-    radius: plan.record!.orbit!.radius.value,
+    radius: heightsBall(plan, site),
     ground: floorOf(site, seaLevel),
     burning: () => false,
     push(at, p, u, altitude) {
@@ -642,7 +641,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       return alone ? alone.quiet : Number.POSITIVE_INFINITY;
     },
     chute: false,
-    radius: fp.record!.orbit!.radius.value,
+    radius: heightsBall(fp, site),
     ground: floorOf(site, seaLevel),
     burning: () => (alone ? alone.burning() : lit()),
     push(at, p, u, altitude) {

@@ -54,13 +54,15 @@ What the record gives of the morning, and so what the launch site shows (the sit
 [mission.md](mission.md) has every input's argument and each check against the run. In short: the
 type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
 where the bunker waited for 687. The orbit is begun from the heights Siddiqi and the Great Soviet
-Encyclopedia give, on the period they give over the mean Earth (88.54 min, derived: the 88.33 printed
-beside them has no traceable source). It goes round four days with the entry's load (9.0 g) in, its
-apogee as published, and comes down **4,501 km short** of the record's landing and 626 km across it,
-Nikolayev 4.8 minutes late: over 64 revolutions a second of period is 470 km, and no period is known to
-better than a hundredth of a minute. TASS's orbit a day on is held as a check at 12:12 on the 12th:
-its perigee holds, its apogee and period do not (8 km and 18 s), which says the orbit flown decays too
-little or began too high. The misses are in src/sim/misses.ts.
+Encyclopedia give, on the period they give over the WGS 84 ellipsoid under the apsis (88.34 min, derived:
+the reading heights published without a period take, which the sister flights' own heights and periods require; the
+88.33 printed beside them has no traceable source, and is what this reading gives). It goes round four days
+with the entry's load (8.6 g) in, its apogee as published, and comes down **1,059 km short** of the
+record's landing and 90 km across it, Nikolayev 2.4 minutes early: over 64 revolutions a second of period
+is 470 km, and no period is known to better than a hundredth of a minute. Over the mean Earth, as until
+November 2026, it came down 4,501 km short. TASS's orbit a day on is held as a check at 12:12 on the 12th:
+its perigee and period hold (the period 5 s long), its apogee does not (6 km), which says the orbit flown
+decays a little too little or began a little high. The misses are in src/sim/misses.ts.
 
 ## What is simplified
 
@@ -171,12 +173,13 @@ them, a figure of unknown origin that is not flown (mission.md, "The orbit", has
 on 21 August as the initial orbit, and what the film *Звёздные братья* draws on its globe (Апогей
 251 км, Перигей 183 км). **No OKB-1 report of this flight has been read.** `flight.ts` and
 `orbital.ts` take 180.7, 234.6 and 64.98°, and no published period: the period flown is the one those
-heights give over the mean Earth, 88.54 min (derived), beside the announced 88.5 and the American
-tracking's 88.5. TASS's figures of the 12th are held as a check of the orbit at 12:12 that day.
+heights give over the ellipsoid under the apsis, 88.34 min (derived; 88.54 over the mean Earth), beside the
+announced 88.5 and the American tracking's 88.5. TASS's figures of the 12th are held as a check of the orbit at 12:12 that day.
 
 ## Where the sources disagree
 
-- **The orbit.** Three sets, above. 88.33 min does not go with 180.7 by 234.6 km: over a sphere of
+- **The orbit.** Three sets, above. 88.33 min goes with 180.7 by 234.6 km only over the ellipsoid
+  under the apsis (88.34 min, nodal), the ball the sister flights' heights stand on; over a sphere of
   6,371 km those heights give 88.5 min by Kepler's third law, which is the announced figure.
   *Flight* plotted TASS's five sets of elements and found a step in Vostok 3's between 10:00 and
   21:00 on the 12th, and wondered whether the ship had manoeuvred. It could not: the step is in the

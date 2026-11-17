@@ -354,10 +354,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: derived(
-      6_371_000,
-      'not stated in the report. Its two heights and its period agree by Kepler’s law only if the heights are over a ball of 6,371 km (mean height 254 km on 6,371 gives 89.44 min; on the equatorial 6,378 it gives 89.58). TASS’s figures of the day fit the same ball, and the untraced 169 by 315 km, 89.34 min fit 6,378: tests/orbit.test.mjs',
-    ),
     perigee: doc(
       181_000,
       `${OKB1}: perigee 181 km. TASS on the day: 175 km. Also in print, untraced (NASA’s NSSDC catalogue is where it is thought to be from; its page answered with an error twice): 169 km (over 6,378 km). US radar, of Block E: 190.6 km (Zak, after Lissov)`,

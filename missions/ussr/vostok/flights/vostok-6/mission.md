@@ -72,20 +72,20 @@ two days on was added as a check after the physics agent's probe of that instant
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Greatest load, first stage | under five, 4.5 ± 1 | 4.71 g | yes | |
-| Perigee at the last cutoff | 180.9 km ± 5 | −216.8 km | **miss** (−398 km) | the type's ascent falls short of an orbit (`SHORT_V6`, as Vostok 1's) |
+| Perigee at the last cutoff | 180.9 km ± 5 | −210.7 km | **miss** (−392 km) | the type's ascent falls short of an orbit (`SHORT_V6`, as Vostok 1's) |
 | Apogee at the last cutoff | 231.1 km ± 10 | 183.0 km | **miss** (−48 km) | the same |
 | Inclination | 64.95° ± 0.05 | 64.98° | yes | |
 | Period at the last cutoff | 88.3 min ± 15 s | 83.85 min | **miss** (−267 s) | the same |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
-| Apogee as flown round (coast; shown) | 231.1 km ± 5 | 229.7; 226.2 km | yes | |
-| TASS, 15:00 on 18 June: perigee (coast; shown) | 174 km ± 5 | 176.5; 179.8 km | yes; **miss** (+5.8 km) | the shown run begun lower drags less at perigee |
-| TASS, 15:00 on 18 June: apogee (coast; shown) | 218 km ± 5 | 220.3; 217.9 km | yes | |
-| TASS, 15:00 on 18 June: period (coast; shown) | 88.1 min ± 6 s | 88.15; 88.16 min | yes | |
+| Apogee as flown round (coast; shown) | 231.1 km ± 5 | 232.0; 230.9 km | yes | |
+| TASS, 15:00 on 18 June: perigee (coast; shown) | 174 km ± 5 | 176.5; 177.5 km | yes; yes | with the ascent cut over the record's old 6,363 km, until November 2026, the shown run's was 179.8, a miss |
+| TASS, 15:00 on 18 June: apogee (coast; shown) | 218 km ± 5 | 220.3; 219.7 km | yes | |
+| TASS, 15:00 on 18 June: period (coast; shown) | 88.1 min ± 6 s | 88.15; 88.15 min | yes | |
 | Greatest load in the entry | no more than 8, 8 ± 2 | 8.70 g | yes | |
-| Landing across the track (coast; shown) | 0 ± 25 km | −176; −117 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −2,726; −2,704 km | **miss** | below |
-| Tereshkova down | 11:20 ± 2 min | 11:16:46 | **miss** (−194 s) | the burn's derived minute: she takes 26.1 min from it to the ground |
-| Descent module down | 11:13 ± 5 min (derived) | 11:10:31 | yes | |
+| Landing across the track (coast; shown) | 0 ± 25 km | −176; −113 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −2,726; −2,679 km | **miss** | below |
+| Tereshkova down | 11:20 ± 2 min | 11:16:37 | **miss** (−203 s) | the burn’s derived minute: she takes 26.0 min from it to the ground |
+| Descent module down | 11:13 ± 5 min (derived) | 11:10:22 | yes | |
 | The two landings apart | 400 m ± 3 km | 251 m | yes | no wind is flown |
 
 ## Three days in the air

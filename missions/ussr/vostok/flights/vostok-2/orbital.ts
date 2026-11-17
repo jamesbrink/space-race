@@ -329,10 +329,6 @@ export const orbital: VostokRecord = {
     ],
   }),
   orbit: {
-    radius: derived(
-      6_363_000,
-      'not stated. The determined heights and period agree by Kepler’s law only over a ball of 6,363 km (183 by 244 km with 88.46 min; μ 398,600 km³/s²): the heights are over the ground under the perigee, near 63° N, not over a mean sphere. TASS’s 178 by 257 km and 88.6 min fit 6,371 km (the record research of November 2026)',
-    ),
     perigee: doc(
       183_000,
       `${FAI}, the Coordination-Computing Centre’s orbit, p. 224: «Минимальная высота ... 183 000 метров». TASS on the day: 178 km. US tracking (McDowell): 172 km`,
@@ -490,7 +486,7 @@ export const orbital: VostokRecord = {
       unit: 's',
       tolerance: 2,
       confidence: 'documented',
-      source: `${FAI}, p. 224: 88.46 min. NOT independent: the reference ball is derived from it (orbit.radius)`,
+      source: `${FAI}, p. 224: 88.46 min. NOT independent: the published orbit is read as mean elements with this nodal period, which fixes its axis`,
     },
     {
       id: 'apogee',

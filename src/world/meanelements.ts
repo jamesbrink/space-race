@@ -31,7 +31,7 @@
  * A mean e under 1e-9 is taken as 1e-9 (a circle to 7 mm). Small i is not provided for: the node is then undefined.
  */
 import type { Confidence } from '../measure.ts';
-import { EARTH, EARTH_J2, WGS84_A } from './bodies.ts';
+import { EARTH, EARTH_J2, WGS84_A, WGS84_B } from './bodies.ts';
 import { length, scale, unit, type Vec3 } from './frames.ts';
 import { axisOfPeriod, elementsOf, meanAnomaly, type State, stateOf, trueAnomaly } from './orbit.ts';
 
@@ -260,11 +260,29 @@ export interface Convention<T> {
   source: string;
 }
 
+/** The WGS 84 ellipsoid's geocentric radius toward a geocentric latitude (rad), m: 1/R^2 = cos^2/a^2 + sin^2/b^2. */
+export function ellipsoidRadius(latitude: number): number {
+  const c = Math.cos(latitude) / WGS84_A;
+  const s = Math.sin(latitude) / WGS84_B;
+  return 1 / Math.sqrt(c * c + s * s);
+}
+
+/**
+ * The ball a published orbit's heights are over, by the convention (`CONVENTION.radius`): the WGS 84 ellipsoid's
+ * geocentric radius under its apsides, m. The perigee stands at geocentric latitude asin(sin i sin w), w the argument of
+ * perigee (rad), and the apogee at its opposite, so one radius serves both and the heights' difference is the radii's.
+ * A height so measured is along the radius, not the normal: at 200 km and 63 degrees the two differ by under 2 m.
+ */
+export function apsisRadius(inclination: number, argp: number): number {
+  return ellipsoidRadius(Math.asin(Math.sin(inclination) * Math.sin(argp)));
+}
+
 /**
  * The defaults, each a choice and labelled as one. No source read states how a Soviet orbit of 1961 was reduced
- * (GitHub issue #8, the research of 14 November 2026); the period as nodal is what the evidence points to.
+ * (GitHub issue #8, the research of 14 November 2026); the period as nodal is what the evidence points to, and the
+ * heights as over the ellipsoid under the apsis is what the sister flights' own heights and periods require.
  */
-export const CONVENTION: { kind: Convention<PeriodKind>; radius: Convention<number> } = {
+export const CONVENTION: { kind: Convention<PeriodKind>; radius: Convention<(inclination: number, argp: number) => number> } = {
   kind: {
     value: 'nodal',
     confidence: 'estimated',
@@ -274,11 +292,18 @@ export const CONVENTION: { kind: Convention<PeriodKind>; radius: Convention<numb
       'tracked passes and the height from the period (Brykov’s memoir of Sputnik 1, RGANTD f. 227, op. 1, d. 6). Issue #8',
   },
   radius: {
-    value: 6_371_000,
-    confidence: 'estimated',
+    value: apsisRadius,
+    confidence: 'assumed',
     source:
-      'the Earth’s mean radius to the kilometre (IUGG R1, 6,371,008.8 m: Moritz, GRS 80), the ball published heights are most often over. ' +
-      'Used only where no period is published: with a period the period fixes the axis, and the radius the heights are then over is reported, not chosen',
+      'for a record with heights and no period (Vostok 3): a height over the WGS 84 ellipsoid under its apsis, the perigee where the injection puts it (`apsisRadius`): ' +
+      'what the sister flights’ documented heights and periods require. A record with heights and a period is flown on the ball those three imply (src/sim/orbital.ts `heightsBall`), never this. Each orbit published with its own period, the period read as nodal, gives the ball its heights stand on with no free ' +
+      'figure (tests/apsis.test.mjs): Vostok 2’s FAI orbit 6,361.1 km and TASS’s 6,364.0; Vostok 3’s as announced and TASS’s of 12 August ' +
+      '6,359.5 each; Vostok 4’s TASS orbit 6,360.3; Vostok 5’s as asked for 6,363.6; Vostok 6’s three 6,358.6 to 6,360.7; Voskhod 1’s TASS orbit 6,362.1 against 6,363.1 under its own injection at 57 degrees N; each within its ' +
+      'rounding of the ellipsoid’s 6,361.1 km under the perigee every Vostok’s record injects at (63.05 degrees N, geocentric). Vostok 1’s two ' +
+      '(6,369.1 and 6,367.7) and Vostok 5’s three after liftoff (6,365.6 to 6,366.6) do not fit, and the test says so. A Soviet orbit ' +
+      'catalogue of 1964 gives its heights over a biaxial ellipsoid (Cosmos 49: Dolginov, Nalivayko et al., IZMIRAN 1967, translated as ' +
+      'NASA CR-99055, p. 5), which supports the reading and is not this unit’s. The Earth’s mean radius, 6,371 km, was the reading until ' +
+      'November 2026',
   },
 };
 
@@ -290,7 +315,10 @@ export interface PublishedOrbit {
   period?: number;
   /** What the period is (CONVENTION.kind if not given). */
   kind?: PeriodKind;
-  /** The ball the heights are over, m (CONVENTION.radius if not given): used for the axis only where no period is given, or `osculating`. */
+  /**
+   * The ball the heights are over, m: used for the axis only where no period is given, or `osculating`. Not given, the
+   * convention's (`CONVENTION.radius`, the ellipsoid under the apsis), which needs the perigee's `argp` (`meanOrbitOf`).
+   */
   radius?: number;
 }
 
@@ -320,11 +348,12 @@ export interface MeanOrbit {
  */
 export function meanOrbitOf(o: PublishedOrbit, argp?: number): MeanOrbit {
   const kind = o.kind ?? CONVENTION.kind.value;
-  const R = o.radius ?? CONVENTION.radius.value;
   const i = o.inclination;
+  const R = o.radius ?? (argp === undefined ? Number.NaN : CONVENTION.radius.value(i, argp));
   const height = (o.perigee + o.apogee) / 2;
   const span = (o.apogee - o.perigee) / 2;
   if (kind === 'osculating' || o.period === undefined) {
+    if (Number.isNaN(R)) throw new Error('a published orbit with no period needs the ball its heights are over, or where its perigee is');
     const a = R + height;
     const e = (o.apogee - o.perigee) / (2 * a); // as src/sim has always worked it, to the last bit
     return {
@@ -338,7 +367,7 @@ export function meanOrbitOf(o: PublishedOrbit, argp?: number): MeanOrbit {
       method:
         kind === 'osculating'
           ? 'the published heights over the ball of radius given and the inclination, as the osculating orbit at the instant given: the period not used'
-          : 'no period published: the semi-major axis is the ball’s radius plus the mean height, taken as the mean (Brouwer’s) axis; e from the heights’ difference',
+          : 'no period published: the semi-major axis is the ball’s radius (the ellipsoid’s under the apsis unless given) plus the mean height, taken as the mean (Brouwer’s) axis; e from the heights’ difference',
     };
   }
   const T = o.period;

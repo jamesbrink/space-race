@@ -1,7 +1,7 @@
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
-import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, shipOf } from '../sim/orbital.ts';
+import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, heightsBall, shipOf } from '../sim/orbital.ts';
 import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
@@ -842,7 +842,7 @@ export class OrbitDeck extends Deck {
     // (the record's ascent as the scene has it, then the published orbit from where it left the spacecraft: staged.ts flyWhole's 'published')
     if (this.mine === null || !this.ascended) {
       const record = orbitalFlown(this.flight);
-      return flyOn(plan, site, this.frame, sea, record.ascent, published(plan, record.ascent.separation), hands);
+      return flyOn(plan, site, this.frame, sea, record.ascent, published(plan, site, record.ascent.separation), hands);
     }
     return flyOn(plan, site, this.frame, sea, this.ascended, this.ascended.separation, hands);
   }
@@ -901,7 +901,7 @@ export class OrbitDeck extends Deck {
     this.times = orbitalEvents(this.flight, this.flown);
     this.freeHands(null);
     const el = elementsOf(s.parted!.r, s.parted!.v);
-    const perigee = (el.a * (1 - el.e) - this.flight.plan!.record!.orbit!.radius.value) / KM;
+    const perigee = (el.a * (1 - el.e) - heightsBall(this.flight.plan!, siteFrame(this.flight.site))) / KM;
     this.host.say?.(
       'Spacecraft parted',
       perigee > 100
@@ -1491,7 +1491,7 @@ export class OrbitDeck extends Deck {
     for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const el = elementsOf(s.r, s.v);
-    const ball = record.orbit!.radius.value;
+    const ball = heightsBall(plan, siteFrame(this.flight.site));
     // down: what it rode is on the ground (the run's end), standing still on it, in no orbit; the figures say so, as
     // the ballistic deck's do, and not the space-fixed speed and orbit of a point on the turning Earth
     const down = t >= this.run.duration && !broken;

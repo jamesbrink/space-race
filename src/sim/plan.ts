@@ -381,12 +381,14 @@ export type CheckWhen =
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
   /**
-   * The orbit as published: heights above a ball of `radius`, inclination, period; the injection on it. Without a period
-   * (none traceable), the mean orbit's axis is the heights' mean over `radius` (world/meanelements.ts `meanOrbitOf`), and
-   * its period is the derived nodal one the coast reports (`OrbitResults.period`).
+   * The orbit as published: heights, inclination, period; the injection on it. The heights are over `radius` where the
+   * record states the ball they are over (Friendship 7's), over the ball the heights and period imply where it gives a
+   * period, and otherwise over the WGS 84 ellipsoid under the apsis (orbital.ts `heightsBall`, `CONVENTION.radius`). Without a period (none traceable), the mean orbit's
+   * axis is the heights' mean over that ball (`meanOrbitOf`), and its period is the derived nodal one the coast reports
+   * (`OrbitResults.period`).
    */
   orbit?: {
-    radius: Measure;
+    radius?: Measure;
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;

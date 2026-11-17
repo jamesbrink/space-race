@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ascend, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
+import { heightsBall } from '../src/sim/orbital.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -66,7 +67,7 @@ function fly({ guidance = true, sequence = true, steps, hands, prescribed = fals
 /** The orbit and the cutoff's height, speed and climb as staged.ts's summary has them, from a state. */
 function cutoff(s) {
   const el = elementsOf(s.r, s.v);
-  const radius = plan.record.orbit.radius.value;
+  const radius = heightsBall(plan, site);
   return {
     at: s.t,
     altitude: length(s.r) - radius,

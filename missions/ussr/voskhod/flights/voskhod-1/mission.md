@@ -46,7 +46,7 @@ Moscow time (UTC+3), and seconds from liftoff at 10:30:01 on 12 October 1964.
 | The strap-ons off, the fairing, Block I lit | 120, 150, 290 s | assumed | Kosmos 47's (Kamanin) |
 | The cutoff, the separation | 523 s, 525 s | documented | Kamanin; Siddiqi; Chertok |
 | The launch plane | solved for 64.9° | | no azimuth was found |
-| The orbit | 177.5 × 408 km, 64.9°, 90.1 min | documented | read as mean elements with a nodal period: the heights and the period agree only over a ball of 6,363 km, as the Vostoks' do |
+| The orbit | 177.5 × 408 km, 64.9°, 90.1 min | documented | read as mean elements with a nodal period, over the ball the heights and the period imply, 6,362.9 km (derived: sim/orbital.ts `heightsBall`): the WGS 84 ellipsoid under an apsis at 57.6°, where the run puts its perigee at the injection, 57.0° N. TASS's own 178 by 409 km with 90.1 min give 6,362.1 km, within their rounding of the ellipsoid there (tests/apsis.test.mjs) |
 | The burn | from 10:18:58, 45 s, 136 m/s, aimed from the Sun | documented; estimated; assumed; assumed | the start is one account's; the TDU-1's longest burn; the Vostok's integrator; the Vostok's solar orientation (the 3KV's ion sensors may have aimed it instead) |
 | The modules' parting | 10 s after the burn | estimated | the type's |
 | The cover off | 5,000 m | documented | the design (the prospectus); Voskhod 2's record has the landing system on at 5,000 m |

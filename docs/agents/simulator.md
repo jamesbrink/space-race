@@ -436,7 +436,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   below and prints what each undocumented input is worth. The flight's `mission.md` is the plan. A check can read the orbit at a
   stated instant (vostok-record.ts `OrbitCheck.at`, the plan's `when: { at, reading: 'orbit' }`; ids `<name>.perigee`, `.apogee`,
   `.period`), as a later published orbit gives it: the coast's state then read as mean elements (`meanOf`), the heights over
-  the ball the published orbit's are over and the nodal period, off a state stepped to the instant from its step's start, so
+  the ball the published orbit's are over (orbital.ts `heightsBall`: the WGS 84 ellipsoid under the apsis for a Soviet record, world.md) and the nodal period, off a state stepped to the instant from its step's start, so
   the run is flown as it is without it.
 - **The ascent to orbit is flown from the pad** (`sim/staged.ts`), from the plan's stages and steering law: stages
   burning together and in turn (each `count` alike; its throttle of its vacuum thrust less exit area times the air's pressure, the exit area
