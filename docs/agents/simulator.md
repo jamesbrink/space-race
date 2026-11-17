@@ -464,6 +464,12 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   outward normal by its impulse over its mass, flown as a point under gravity and the day's air to the sea, and lying
   there fixed to the Earth (`Run.loose`, by drop). Blown afloat it leaves from where the hatch is on the capsule as it
   floats (`afterwards`); blown in flight from the live sample, square to the long axis (`blownAloft`).
+- **What came to it is flown on the record's clock** (`Flight.recovery`, types `RecoveryCraft`; viewer/recovery.ts):
+  the helicopter's track about where the record's run came down (each point an instant, metres east and north, a height
+  and a heading; the record's order of events, its places between them estimated), its rotors at their rates, and its
+  line from its hook to the capsule's top, straight while the run's line pulls (`Ascent.pull`), holding the helicopter its
+  length over the capsule, and sagging while slack. Only on the record's run: a run flown by hand comes down where
+  nobody was waiting. It is drawn, not simulated: the hoist's pull is `afloat.hoist`'s.
 - **Held to the record**: tests/afloat.test.mjs holds the pieces to their arithmetic (Archimedes, a terminal speed, an
   opening filling to the sea's level, the sea's four sigma, a throw) and Liberty Bell 7's run afloat to `afloat.checks`
   under `MISSES[...].afloat`, and to what the record says in words: the helicopter's 4,000 lbf never had it out, and let

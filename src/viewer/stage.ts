@@ -18,6 +18,8 @@ import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
 import { Eye } from './eye.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
+import { Recovery } from './recovery.ts';
+import { siteFrame } from '../world/frames.ts';
 import { type Look, Looks } from './look.ts';
 import { refused, sayRefused } from './lost.ts';
 import { compileLast, drawLast, undrawLast } from './overlay.ts';
@@ -328,6 +330,8 @@ export class Stage {
   }
   /** Every model of the flight, in the flight's order, each with its levels of detail. */
   private staged: Staged[] = [];
+  /** What came to the spacecraft where it came down (recovery.ts): flown about the point by the flight on show, not one of its models. */
+  private recovered: Recovery[] = [];
   /** What a thing that slides or drives runs on (Move `runs`: viewer/runs.ts): the flight's models, the place and the land. */
   private readonly surfaces = new Surfaces((x, z) => this.groundAt(x, z));
   private defs: ModelDef[] = [];
@@ -510,6 +514,7 @@ export class Stage {
         this.shadowsOwed = true;
       },
       onFollow: (name) => this.onFollow(name),
+      recovery: () => this.recovered,
     });
     const { sun, far } = this.shadows;
     this.scene.add(sun, sun.target, this.fill);
@@ -730,6 +735,9 @@ export class Stage {
     const token = ++this.loads;
     // The bar is weighted by bytes once every model's size is known (the fetch's Content-Length); until then it is their average.
     const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
+    // (only where there is a site for them to fly at: the gallery has none)
+    const recovery = flight.site ? (flight.recovery ?? []) : [];
+    const crafts = Promise.all(recovery.map((r) => this.fetch(r.url)));
     const scenes = await Promise.all(
       flight.models.map((m, i) =>
         this.fetch(m.url, (f, loaded = 0, total = 0) => {
@@ -741,6 +749,7 @@ export class Stage {
         }),
       ),
     );
+    const craftScenes = await crafts;
     if (token !== this.loads) return;
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
@@ -777,6 +786,23 @@ export class Stage {
     this.root = new THREE.Group();
     this.root.add(...this.staged.map((s) => s.group));
     this.scene.add(this.root);
+    // (what came to it where it came down stands in the scene, not under the root: it is no part of what is framed)
+    this.recovered = recovery.map((def, i) => {
+      rest(craftScenes[i]!);
+      const r = new Recovery(def, new Staged(craftScenes[i]!, []), siteFrame(flight.site!), flight.site!.seaLevel.value);
+      this.scene.add(r.group);
+      this.looks.add(r.group);
+      for (let level = 1; level <= (this.fullDetail ? 0 : LOD_ABOVE.length); level++)
+        void this.fetch(lodUrl(def.url, level)).then((object) => {
+          if (!this.recovered.includes(r)) return;
+          rest(object);
+          r.staged.add(level, object, this.onShow);
+          this.looks.add(object);
+          r.findRotors();
+          this.dirty = true;
+        });
+      return r;
+    });
     this.root.updateMatrixWorld(true);
     for (const s of this.staged) s.measure();
     this.shadows.far.refit();
@@ -1098,6 +1124,7 @@ export class Stage {
     if (s.globe) {
       this.scene.add(s.globe.group);
       this.looks.add(s.globe.mesh);
+      if (s.globe.swellMesh) this.looks.add(s.globe.swellMesh);
     }
     this.scene.fog = s.fog;
     this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null);
@@ -1122,7 +1149,6 @@ export class Stage {
     this.cabin?.setMechanism(id, travel);
   }
 
-      if (s.globe.swellMesh) this.looks.add(s.globe.swellMesh);
   /** Put a rig in charge of the camera (camera/rig.ts: RigId). The view itself does not jump on changing. */
   setCamera(mode: RigId): void {
     this.cam.set(mode);
@@ -1385,6 +1411,13 @@ export class Stage {
     if (this.cam.rig !== 'orbit') this.cam.set('orbit', true);
     this.cabin?.dispose();
     this.cabin = null;
+    for (const r of this.recovered.splice(0)) {
+      this.scene.remove(r.group);
+      this.looks.remove(r.group);
+      r.dispose();
+      disposeTree(r.group);
+      for (const url of [r.def.url, ...LOD_ABOVE.map((_, i) => lodUrl(r.def.url, i + 1))]) this.loaded.delete(url);
+    }
     const kept = new Set(next?.models.map((m) => m.url) ?? []);
     const levels = (url: string) => [url, ...LOD_ABOVE.map((_, i) => lodUrl(url, i + 1))];
     this.defs.forEach((def, i) => {
@@ -2012,6 +2045,7 @@ export class Stage {
     this.staged.forEach((s, i) => {
       changed = s.choose(eye, scale, this.fullDetail || (i === this.current && this.cut), fade) || changed;
     });
+    for (const r of this.recovered) if (r.group.visible && r.staged.choose(eye, scale, this.fullDetail, fade)) changed = true;
     for (const s of this.sceneries) if (s.choose(eye, scale, fade)) changed = true;
     if (!changed) return;
     this.dirty = true;

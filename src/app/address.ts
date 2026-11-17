@@ -383,13 +383,13 @@ export const WHOLE_VIEW = 'gallery-whole';
 /**
  * The flight as the gallery's stage is given it: the vehicle alone, at the origin of a studio, as
  * built (its slider at rest, nothing asked of anything else), with no site, no clock to follow,
- * no plan and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
+ * no plan, nothing that came to it where it came down, and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
  * nobody standing outside them (`figure`): there is no one else in the gallery.
  */
 export function galleryFlight(flight: Flight): Flight {
   const vehicle = exhibit(flight);
   if (!vehicle) throw new Error(`${flight.id} has no vehicle to exhibit`);
-  const { site: _site, plan: _plan, checks: _checks, flies: _flies, surroundings: _surroundings, ...rest } = flight;
+  const { site: _site, plan: _plan, checks: _checks, flies: _flies, surroundings: _surroundings, recovery: _recovery, ...rest } = flight;
   const {
     sequence: _sequence,
     walker: _walker,

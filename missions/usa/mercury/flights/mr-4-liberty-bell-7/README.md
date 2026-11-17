@@ -248,9 +248,14 @@ takes a side: on the deck it blows when it is told to.
 
 **What the ending lacks**: the capsule goes only up and down (it does not heel, roll with the swell, drift or turn;
 the hatch faces south-west, ours); the landing bag is drawn as the flat ring it is stowed as, so the shield is drawn
-four feet higher than it hangs; the sea drawn is the globe's level surface, which the capsule rises and falls against
-rather than with, and nothing is drawn under it (it goes through the surface out of sight); the hatch lies tilted on
-the water rather than skipping; no helicopter and no Grissom in the water yet (issue #13).
+four feet higher than it hangs; nothing is drawn under the sea (the camera stays on the surface and watches it go);
+the hatch lies on the swell rather than skipping; no water is drawn in the cabin. The sea round it is the day's
+(ERA5's swell and wind sea, weather.ts), the same sea the simulator floats it on, with short waves for the light
+only. Hunt Club 1 (recovery.ts) is flown on the record's order of events: 2 miles south-west as the capsule came
+down, circling it by 18:23, in over it as the hatch went, its wheels in the water as it hooked the sinking capsule,
+held over it by its line while it pulled, and away when it let go; its track between those, its heights, the way it
+faced and its line's length are ours, and it makes no sound yet. The second helicopter, which picked Grissom up, and
+Grissom in the water are not drawn (issue #13).
 
 ## Where sources disagree
 

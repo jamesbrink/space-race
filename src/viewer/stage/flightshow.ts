@@ -7,6 +7,7 @@ import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import type { Run } from '../../sim/run.ts';
 import { Ascent } from '../ascent.ts';
+import type { LineState, Recovery } from '../recovery.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
 import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
@@ -142,6 +143,8 @@ export interface FlightShowHost {
   oweShadows(): void;
   /** The view has been sent to follow something the vehicle let go (its name), or is back with the vehicle (null). */
   onFollow(name: string | null): void;
+  /** What came to the spacecraft where it came down (recovery.ts), loaded with the flight. */
+  recovery(): readonly Recovery[];
 }
 
 /**
@@ -471,6 +474,7 @@ export class FlightShow {
       if (globe.swell(down?.centre ?? null, down?.t0)) this.h.redraw();
       if (globe.swellAt(t)) this.h.redraw();
     }
+    this.recover(ascent, t, g);
     // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
     const gone = ascent.gone(t);
     if (gone !== this.lifted.gone) {
@@ -531,6 +535,33 @@ export class FlightShow {
     if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.h.oweShadows();
     this.lifted.shrank = false;
     this.lifted.shadowed = within;
+  }
+
+  /**
+   * Fly what came to the spacecraft where it came down (recovery.ts) on the record's run, about where that run came down:
+   * its line to the top of the flown model's node it was made fast to, pulling as the run afloat has it.
+   */
+  private recover(ascent: Ascent, t: number, g: THREE.Object3D): void {
+    const crafts = this.h.recovery();
+    if (!crafts.length) return;
+    const down = ascent.recorded ? (ascent.down()?.centre ?? null) : null;
+    const taut = this.flightData?.flies?.afloat?.record.taut.value ?? Number.POSITIVE_INFINITY;
+    for (const r of crafts) {
+      const to = r.def.line ? g.getObjectByName(r.def.line.to) : undefined;
+      let line: LineState | null = null;
+      if (to && down) {
+        g.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(to);
+        const up = ascent.down() ? this.h.setting().globe?.up(box.getCenter(new THREE.Vector3()), new THREE.Vector3()) : null;
+        const top = box.getCenter(new THREE.Vector3());
+        if (up) {
+          const size = box.getSize(new THREE.Vector3());
+          top.addScaledVector(up, 0.5 * (Math.abs(up.x) * size.x + Math.abs(up.y) * size.y + Math.abs(up.z) * size.z));
+        }
+        line = { top, tension: ascent.pull(t), taut };
+      }
+      if (r.set(t, down, line)) this.h.oweShadows();
+    }
   }
 
   /**

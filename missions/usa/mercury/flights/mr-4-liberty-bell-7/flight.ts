@@ -53,6 +53,7 @@ import {
 } from '../../vehicles/mercury-redstone-stack.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { AFLOAT, HATCH_LOOSE } from './afloat.ts';
+import { HUNT_CLUB_1 } from './recovery.ts';
 import { WEATHER } from './weather.ts';
 
 /**
@@ -1563,6 +1564,7 @@ export const flight: Flight = {
     chutes: CHUTES,
   },
   models: [vehicle, pad, crew],
+  recovery: [HUNT_CLUB_1],
   surroundings: 'models/usa/places/cape-canaveral/lc5/1961-07.glb',
 };
 

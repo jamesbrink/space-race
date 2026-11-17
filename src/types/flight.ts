@@ -206,9 +206,39 @@ export interface Flight {
     };
   };
   models: ModelDef[];
+  /** What came to it where it came down, on the record's clock (viewer/recovery.ts): the helicopter that hooked Liberty Bell 7. */
+  recovery?: RecoveryCraft[];
   /** The place round the pad, built like a model (the site's own: places/<place>/<package>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;
 }
 
 /** A flight that says where it flew from: what the site, its sky, the clock's face and the simulator are given. */
 export type SitedFlight = Flight & { site: SiteDef };
+
+/**
+ * A craft that came to the spacecraft where it came down, flown on the record's clock (viewer/recovery.ts): in from where
+ * it waited, round it, down over it, its line on it, and away. Drawn on the record's run (a run flown by hand comes down
+ * where nobody was waiting) about where that run came down. Its model is a GLB of its own with its levels beside it, not
+ * one of the flight's models: it is not a section of the gallery, and it stands nowhere on the site.
+ */
+export interface RecoveryCraft {
+  name: string;
+  /** Its model, relative to the base (lod.ts `lodUrl` finds its levels): +X forward, +Y up, its origin on the ground under its rotor. */
+  url: string;
+  /**
+   * Where it was: each point an instant from launch, s, its origin's metres east and north of where the spacecraft came
+   * down and height over the still sea, and the way it faced, degrees from north. Between two points it flies a smooth
+   * line; before the first and after the last it is not in the scene. What the record gives of each is in `source`.
+   */
+  track: { at: number; east: number; north: number; height: number; heading: number }[];
+  confidence: Confidence;
+  source: string;
+  /** What turns as it flies: each node about its own axis (in its parent's frame) at its rate, rev/min. */
+  rotors: { node: string; axis: [number, number, number]; rpm: Measure }[];
+  /**
+   * Its line to the spacecraft: from its node `from` (the line's origin) to the top of the flown model's node `to`, on from
+   * `on` to `off` (s from launch), `length` long. While the simulator's line pulls (sim/afloat.ts: the run's `tension`) it is
+   * straight and holds the craft up over the spacecraft by its length; slack, it sags. Let go, it hangs from the craft.
+   */
+  line?: { from: string; to: string; on: Measure; off: Measure; length: Measure; radius: number };
+}

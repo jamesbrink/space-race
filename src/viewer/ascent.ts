@@ -662,6 +662,47 @@ export class Ascent {
     return true;
   }
 
+  /** What the line from above pulls the body afloat with at `t`, N (sim/afloat.ts), on the record's run: 0 if nothing does. */
+  pull(t: number): number {
+    if (!this.flight.plan) return 0;
+    const run = this.flown();
+    return run.afloat && !run.live && t > run.afloat.from ? afloatAt(run.afloat, t).tension : 0;
+  }
+
+  /** Whether the run on show is the record's (what was waiting where it came down was waiting for that one). */
+  get recorded(): boolean {
+    return !this.flight.plan || !this.flown().live;
+  }
+
+  /** The day's sea where it comes down (sim/sea.ts), as the globe draws it (swell.ts). */
+  private readonly waves: readonly Wave[];
+
+  /** Where the run on show comes down, and when, worked out once for it (`down`). */
+  private downed: { of: Run; at: { centre: Vec3; t0: number } | null } | null = null;
+
+  /**
+   * Where the run on show comes down, a point on the sea (ECEF) under its last sample, and the instant the day's waves
+   * there are counted from: its landing, from which it floats (sim/afloat.ts `floatOn`'s `from`). Null while it has not.
+   */
+  down(): { centre: Vec3; t0: number } | null {
+    if (!this.flight.plan) return null;
+    const run = this.flown();
+    if (this.downed?.of === run) return this.downed.at;
+    const last = run.samples[run.samples.length - 1];
+    const ends = Number.isFinite(run.duration) && last !== undefined && (!run.live || run.afloat !== undefined);
+    let at: { centre: Vec3; t0: number } | null = null;
+    if (ends) {
+      const { latitude, longitude } = this.frame.place(last.r, last.t);
+      at = {
+        centre: geodeticToEcef({ latitude, longitude, height: this.flight.site.seaLevel.value }),
+        t0: run.afloat?.from ?? run.duration,
+      };
+    }
+    // (a run flown by hand is kept while it is flown: what it comes down at is known once it has)
+    if (!run.live || at) this.downed = { of: run, at };
+    return at;
+  }
+
   /** Each drop's pose and velocity as it left, worked out once. */
   private readonly released: ({ at: number; p: THREE.Vector3; q: THREE.Quaternion; v: THREE.Vector3 } | undefined)[] = [];
 
