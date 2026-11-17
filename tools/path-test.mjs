@@ -13,7 +13,9 @@
 //   - a chord that strays from the curve it stands for by more than CHORD_PX as seen from the eye, the line ahead's or the
 //     line flown's,
 //   - either line breaking into dots or fragments, or spreading into a sheet (its own pixels: the frame drawn with it
-//     and without it, the stage frozen, the difference),
+//     and without it, the stage frozen, the difference; a piece within the soft start round the vehicle, or on a faded
+//     end where the line is drawn at under half its strength, is the line going to nothing, which over cloud and sea of
+//     different brightness crosses the measure's threshold at more than one place, and is not counted),
 //   - the line flown drawn from near the vehicle (where it is read as the path); and from far out, none behind a vehicle
 //     that has flown a minute, whatever deck flies it (GitHub issue #6),
 //   - a point of the line jumping between frames as the clock runs at life's rate (at instants from seconds to half an
@@ -32,7 +34,10 @@
 // ticks, so the flight there is the same however it got there); every view is taken up from the far one, so what was
 // looked at before does not carry into it; what is drawn is measured with the stage frozen (the vehicle drawn where the
 // flight is, nothing kept of an earlier frame) once the prediction on show is the one for that instant, its ease over
-// and the line sampled for the camera as it stands; and the line's motion as the clock runs is measured on a clock of
+// and the line sampled for the camera as it stands, and the chips settled where the layout puts them against the panels
+// as they stand (path.ts `chipsSettled`: the layout keeps a chip's way round from one frame to the next, so where a chip
+// is while it eases depends on what was looked at before, and only where it settles is held to the rules); and the
+// line's motion as the clock runs is measured on a clock of
 // the page's own that gives every frame a sixtieth of a second (`VIRTUAL`), so a slow or busy machine sees the same
 // frames as a fast one. The views are measured on --jobs pages at once (default 4), each flight
 // and size, and each pair of hands, a page of its own, its lines printed together when it is done.
@@ -61,7 +66,10 @@ const DOT = 20;
 const BIT = 80;
 /** Pixels: as the clock runs at life's rate, a frame that moves a point of the line further than this, and three times as far as the frames round it, is a leap. */
 const JUMP_PX = 3;
-/** Degrees a chip's pointer may be off the bearing to its place; pixels a marker may be off its place. */
+/**
+ * Degrees a chip's pointer may be off the bearing to its place, or (for a place a few pixels from the pointer, where a
+ * bearing means nothing) the ray from the pointer passing within a marker's pixels of it; pixels a marker may be off its place.
+ */
 const AIM = 15;
 const OFF = 3;
 /** Pixels from the page's edge within which a place counts as at the edge, where a chip may stand for it (pathmarks.ts keeps a margin). */
@@ -377,6 +385,15 @@ const SETTLE = `(async () => {
     }
     if (p.shown && p.shown.key === want.key && performance.now() - p.shown.began > 400) break;
   }
+  // and the markers' words where the layout puts them, against the panels as they stand: no chip fading out at one place
+  // to come in at another, none half way from its label (path.ts chipsSettled); a chip that never settles is said so
+  const still = performance.now();
+  let settled = !p.chipsSettled;
+  while (!settled && performance.now() - still < 5000) {
+    await frame();
+    settled = p.chipsSettled();
+  }
+  window.__chipsUnsettled = !settled;
   for (let i = 0; i < 3; i++) await frame();
 })()`;
 
@@ -528,6 +545,36 @@ const measure = (page) =>
             out.flownWorst = Math.max(out.flownWorst, (mid.distanceTo(mv) / Math.max(mid.length(), near)) * pxPerRad);
           }
         if (out.flownWorst > CHORD_PX) out.issues.push(`a chord of the line flown strays ${out.flownWorst.toFixed(2)} px from its curve`);
+        // each line's faded ends on the page, where it is drawn at under half its strength (its far end going out, `uEnds.zw`;
+        // the line flown's old end coming in from nothing, `uEnds.xy`): the stretch where a line fading to nothing crosses the
+        // measure's threshold, which over cloud and sea of different brightness it does at more than one place
+        const tail = (T, P, ends, zero, ahead) => {
+          const out = [];
+          let run = [];
+          for (let i = 0; i < T.length; i++) {
+            const t = T[i] - zero;
+            const faint = ahead ? ends.w > 0 && t > ends.z - ends.w / 2 : ends.y > 0 && t < ends.x + ends.y / 2;
+            const v = toView(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+            if (faint && v.z < -near) {
+              // (every two pixels along it, so a piece between two of its points is found beside it)
+              const q = toPage(v);
+              const was = run.at(-1);
+              const n = was ? Math.min(512, Math.ceil(Math.hypot(q.x - was.x, q.y - was.y) / 2)) : 1;
+              for (let k = 1; k < n; k++) run.push({ x: was.x + ((q.x - was.x) * k) / n, y: was.y + ((q.y - was.y) * k) / n });
+              run.push(q);
+            } else if (run.length) {
+              out.push(run);
+              run = [];
+            }
+          }
+          if (run.length) out.push(run);
+          return out;
+        };
+        const zero = p.shown?.result.from ?? 0;
+        out.tails = {
+          ahead: tail(L.t, L.p, p.mesh.material.uniforms.uEnds?.value ?? { x: 0, y: 0, z: 0, w: 0 }, zero, true),
+          flown: tail(FT, L.flown ?? [], p.flownMesh?.material.uniforms.uEnds?.value ?? { x: 0, y: 0, z: 0, w: 0 }, 0, false),
+        };
         // the markers against the propagation they were found in: an apoapsis where the radial speed goes from rising to
         // falling, a periapsis the other way, the end where the path ends
         const r = p.prediction;
@@ -562,6 +609,9 @@ const measure = (page) =>
       }
     }
     // the markers and the chips, and the panels
+    out.unsettled = window.__chipsUnsettled === true;
+    // (still settled as measured: a passing note under the clock that goes between the wait and now has the chips laid again)
+    out.settled = !p.chipsSettled || p.chipsSettled();
     out.panels = sr.ui.panels().map((r) => ({ x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }));
     const now = p.drawn?.now ?? p.now ?? 0;
     for (const m of p.marks ?? []) {
@@ -582,7 +632,8 @@ const measure = (page) =>
           x1: box.right,
           y1: box.bottom,
           place,
-          laid: laid ? { px: laid.px, py: laid.py, angle: laid.angle } : null,
+          op,
+          laid: laid ? { px: laid.px, py: laid.py, angle: laid.angle, box: laid.box } : null,
         });
       }
     }
@@ -733,7 +784,7 @@ class Run {
   }
 
   /** The line's own pixels: the frame with it and without it, the stage frozen and the camera still, the page hidden. */
-  async pixels(name, fade = null, which = 'ahead') {
+  async pixels(name, fade = null, which = 'ahead', tails = []) {
     const page = this.page;
     // (all of the page: the markers are on the page, not the canvas, and their glyphs over the line cut it into pieces)
     const style = await page.addStyleTag({ content: '#ui, #gallery, #title { visibility: hidden !important }' });
@@ -778,7 +829,7 @@ class Run {
     await style.evaluate((el) => el.remove());
     if (shots && name) writeFileSync(join(shots, `${name}.png`), Buffer.from(a, 'base64'));
     const got = await page.evaluate(
-      async ([a, b, c, INK, DOT, BIT, fade, keep]) => {
+      async ([a, b, c, INK, DOT, BIT, fade, tails, keep]) => {
         const load = async (s) => {
           const img = new Image();
           img.src = `data:image/png;base64,${s}`;
@@ -872,6 +923,8 @@ class Run {
           }
           // (and one within the vehicle's gap and fade as seen, where the line comes in from nothing, may be its faint tail)
           if (fade && Math.hypot(Math.max(fade.x - x1, 0, x0 - fade.x), Math.max(fade.y - y1, 0, y0 - fade.y)) < fade.r) open = true;
+          // (and one on the line's faded end, drawn at under half its strength, is that end going out: measure's `tails`)
+          if (!open && tails.some((run) => run.some((q) => q.x > x0 - 3 && q.x < x1 + 3 && q.y > y0 - 3 && q.y < y1 + 3))) open = true;
           pieces.push({ n, x0, y0, x1, y1, open });
         }
         const dots = pieces.filter((p) => p.n < DOT && !p.open);
@@ -900,7 +953,7 @@ class Run {
           picture,
         };
       },
-      [a, b, c, INK, DOT, BIT, fade, Boolean(shots && name)],
+      [a, b, c, INK, DOT, BIT, fade, tails, Boolean(shots && name)],
     );
     if (got.picture) writeFileSync(join(shots, `${name}-mask.png`), Buffer.from(got.picture, 'base64'));
     return got;
@@ -1069,10 +1122,15 @@ class Run {
 
   /** Everything checked of what is drawn now, from view `v`: the line ahead, the line flown, the markers and the chips. */
   async inspect(where, v, look, W, H, t = null) {
-    const m = await measure(this.page);
+    let m = await measure(this.page);
+    // (something on the page changed as it was measured, a note under the clock going: waited for again, and measured again)
+    for (let k = 0; k < 3 && !m.settled && !m.unsettled; k++) {
+      await this.page.evaluate(SETTLE);
+      m = await measure(this.page);
+    }
     if (!m.probe) this.fail(where, 'the page gives no line to measure (sr.path.line, sr.path.where, sr.path.drawn)');
     for (const issue of m.issues) this.fail(where, issue);
-    const px = await this.pixels(shots ? where.replaceAll(/[ +]/g, '-') : null, m.fade);
+    const px = await this.pixels(shots ? where.replaceAll(/[ +]/g, '-') : null, m.fade, 'ahead', m.tails?.ahead);
     // (the line's pixels run about eight wide, its core, casing and glow over the threshold, closed by a pixel each side)
     // (from the seat the cabin's walls hide it but for the windows: not counted there)
     if (v !== 'onboard' && m.expect > 150 && px.area / 8 < 0.25 * m.expect)
@@ -1091,7 +1149,7 @@ class Run {
     // the line flown, drawn alone where it is drawn: the same rules (drawn as the line ahead for the measure: `flownAsAhead`)
     const fl =
       far && m.flownChords > 1 && m.flownOpacity > 0
-        ? await this.pixels(shots ? `${where.replaceAll(/[ +]/g, '-')}-flown` : null, m.fade, 'flown')
+        ? await this.pixels(shots ? `${where.replaceAll(/[ +]/g, '-')}-flown` : null, m.fade, 'flown', m.tails?.flown)
         : null;
     if (fl) {
       if (fl.frac > 0.2) this.fail(where, `the line flown covers ${(fl.frac * 100).toFixed(0)} % of the view: a sheet`);
@@ -1099,6 +1157,7 @@ class Run {
       if (fl.bits.length > 1) this.fail(where, `fragments of the line flown: ${fl.bits.join(', ')}`);
     }
     // the markers on their places, the chips for those not in view, pointing at them, clear of the panels and each other
+    if (m.unsettled) this.fail(where, 'the chips do not settle: after five seconds one is still fading or going to another place');
     for (const mk of m.marks) {
       if (mk.glyph && mk.place?.front && Math.hypot(mk.ex - mk.place.x, mk.ey - mk.place.y) > OFF)
         this.fail(where, `${mk.id} drawn ${Math.hypot(mk.ex - mk.place.x, mk.ey - mk.place.y).toFixed(0)} px from its place`);
@@ -1112,18 +1171,29 @@ class Run {
         pl.y > EDGE &&
         pl.y < H - EDGE &&
         !m.panels.some((b) => pl.x > b.x0 - 8 && pl.x < b.x1 + 8 && pl.y > b.y0 - 8 && pl.y < b.y1 + 8);
-      if (inView) this.fail(where, `a chip for ${c.id}, whose place (${pl.x.toFixed(0)}, ${pl.y.toFixed(0)}) is in view`);
+      // (where it is drawn, how strongly, and where the layout last laid it, in the view's frame: said with a failure)
+      const box = (b) => (b ? `${b.x0.toFixed(0)},${b.y0.toFixed(0)}-${b.x1.toFixed(0)},${b.y1.toFixed(0)}` : 'none');
+      const at = `drawn ${box(c)} at ${c.op.toFixed(2)}, laid ${box(c.laid?.box)}`;
+      if (inView) this.fail(where, `a chip for ${c.id}, whose place (${pl.x.toFixed(0)}, ${pl.y.toFixed(0)}) is in view (${at})`);
       if (c.x0 < -1 || c.y0 < -1 || c.x1 > W + 1 || c.y1 > H + 1) this.fail(where, `the chip for ${c.id} is off the page`);
-      for (const b of m.panels) if (overlap(c, b, 1)) this.fail(where, `the chip for ${c.id} overlaps a panel`);
+      for (const b of m.panels) if (overlap(c, b, 1)) this.fail(where, `the chip for ${c.id} overlaps a panel ${box(b)} (${at})`);
       for (const o of m.chips)
         if (o !== c && o.id < c.id && overlap(c, o, 1)) this.fail(where, `the chips for ${c.id} and ${o.id} overlap`);
       if (pl?.front && c.laid) {
         const want = (Math.atan2(pl.y - c.laid.py, pl.x - c.laid.px) * 180) / Math.PI;
         const got = (c.laid.angle * 180) / Math.PI;
         const off = Math.abs(((want - got + 540) % 360) - 180);
-        if (off > AIM) this.fail(where, `the chip for ${c.id} points ${off.toFixed(0)} degrees off its place`);
+        // (the page and this measure each project the place: to a pixel or so apart, which three pixels off is many degrees)
+        const near = (Math.atan2(OFF, Math.hypot(pl.y - c.laid.py, pl.x - c.laid.px)) * 180) / Math.PI;
+        if (off > Math.max(AIM, near))
+          this.fail(
+            where,
+            `the chip for ${c.id} points ${off.toFixed(0)} degrees off its place (${pl.x.toFixed(0)}, ${pl.y.toFixed(0)}) from (${c.laid.px.toFixed(0)}, ${c.laid.py.toFixed(0)}); ${at}`,
+          );
       }
     }
+    // (with --shots, the page as it stands, panels and chips with it, wherever there are chips)
+    if (shots && m.chips.length) await this.page.screenshot({ path: join(shots, `${where.replaceAll(/[ +]/g, '-')}-ui.png`) });
     let jump = null;
     if (v.startsWith('chase') && look === 'real') {
       const j = await this.jumps();
