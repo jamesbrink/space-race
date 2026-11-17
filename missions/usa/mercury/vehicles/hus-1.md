@@ -16,7 +16,8 @@ three of its landing gear" were in the water, and could not lift it: "The floode
 pounds, a thousand pounds beyond the helicopter's lifting capacity" (*This New Ocean*, pp. 373 and 375). A chip light
 came on, and it let the capsule go. A second HUS-1, ET-30, with George Cox as copilot, picked Grissom up in the horse
 collar. [mr-4-liberty-bell-7/model/helicopter.py](../flights/mr-4-liberty-bell-7/model/helicopter.py) builds Hunt
-Club 1.
+Club 1, and [hunt-club-3.py](../flights/mr-4-liberty-bell-7/model/hunt-club-3.py) the second (Hunt Club 3: 30, ET, RESCUE
+stencilled twice aft of the door as NASA 61-MR4-82 shows it, `Markings.rescue`; no bureau number, none being legible).
 
 ## The model's frame and nodes
 
@@ -144,6 +145,9 @@ All the photographs of these recoveries read are black and white.
   show and no further: their forms and sizes are estimated. The horse collar, the hoist's cable and the capsule's
   line are the scene's, not the model's. The squib-actuated antenna cutter on its pole is not modelled.
 - **The door rides on two rails** outside the skin; how the real door hung and latched was not read.
+- **RESCUE** (Hunt Club 3's, `Markings.rescue`): its size, places and slant are read off 61-MR4-82, which shows the
+  door's side with the nose to the left: which side of the aircraft that photograph is of is not settled against this
+  model's door on the starboard, and the stencils are put on the door's side aft of it, under the insignia.
 - **Markings**: the insignia's proportions are the 1947 standard's as remembered, not measured; the smaller stencils
   (no step, the fuel, the rescue arrows) are left off.
 - **No mass properties** are in the model.

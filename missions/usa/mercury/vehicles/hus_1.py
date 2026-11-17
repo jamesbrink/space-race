@@ -89,6 +89,7 @@ class Markings:
     code: str  # the squadron's tail code on the pylon ("ET")
     bureau: str | None  # the Navy's bureau number, on the tail cone; None if no photograph gives it
     service: str = "MARINES"
+    rescue: bool = False  # RESCUE stencilled twice aft of the door, where a photograph of this aircraft shows it
 
 
 def P(u: float, y: float, z: float) -> Vector:
@@ -675,6 +676,14 @@ def build_markings(mats: dict, parent, mk: Markings, font) -> None:
                 pts, faces, length = flat_text(mk.bureau, font, 0.36)
                 u0 = 29.6 if side == 1 else 29.6 + length
                 on_side(white, pts, faces, side, (u0, 3.05), off)
+    if mk.rescue and srlib.DETAIL >= 0.5:
+        # RESCUE, twice, on the door's side aft of where the open door comes to, slanting down the way it reads: Hunt Club 3
+        # in NASA 61-MR4-82 (Grissom on its hoist). Size, places and slant are read off that photograph: estimated
+        for u0, z0 in ((17.4, 4.45), (20.2, 4.35)):  # (under the insignia's disc, whose foot is at 4.73 ft)
+            pts, faces, length = flat_text("RESCUE", font, 0.3)
+            slant = math.radians(-24)
+            pts = [(a * math.cos(slant) - b * math.sin(slant), a * math.sin(slant) + b * math.cos(slant)) for a, b in pts]
+            on_side(white, pts, faces, -1, (u0 + length * math.cos(slant), z0), off)
     if white.verts:
         white.build("Fuselage_Markings", mats["white"], parent, sharp_angle=60.0)
     blue.build("Fuselage_InsigniaBlue", mats["blue"], parent, sharp_angle=60.0)
