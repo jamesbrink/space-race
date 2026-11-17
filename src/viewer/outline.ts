@@ -116,6 +116,12 @@ export class Outline extends OutlinePass {
   override setSize(width: number, height: number): void {
     super.setSize(width, height);
     this.screened.setSize(width, height);
+    // The mask samples this texture even when no screens are drawn. After a
+    // resize it can therefore be uploaded before this target is next used;
+    // keep its image size current so it cannot allocate the old-sized depth.
+    const image = this.screened.depthTexture!.image;
+    image.width = width;
+    image.height = height;
   }
 
   override render(
