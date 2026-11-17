@@ -230,6 +230,31 @@ test('a place may say how near overhead the eye goes: a swipe down the picture t
   assert.ok(near(swiped(studio), 58, 0.5), `the studio holds it at 58 degrees, got ${swiped(studio)}`);
 });
 
+test('opening an exhibit lets the eye look up at an interior while the actual floor still limits it', () => {
+  let opened = false;
+  const place = {
+    ...world(),
+    minPolar: () => (opened ? 0.02 : (32 * Math.PI) / 180),
+    maxPolar: () => (opened ? Math.PI - 0.02 : Math.PI / 2 - 0.012),
+  };
+  const rig = new OrbitRig(place, 35);
+  const centre = V(0, 10, 0);
+  const from = V(0.3, -1, 0).normalize();
+  rig.goTo(centre, centre.clone().add(from), true);
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.y > centre.y, 'closed-exhibit presentation remains above the subject');
+  const before = posed(rig).position.clone();
+  opened = true;
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.distanceTo(before) < 1e-9, 'relaxing the limits does not move the view');
+  rig.goTo(centre, centre.clone().add(from), true);
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.clone().sub(centre).normalize().dot(from) > 0.999999, 'an explicit frontal view can look upward');
+  rig.goTo(V(0, 0.5, 0), V(0.3, -0.5, 0), true);
+  rig.update(0, NONE, false);
+  assert.ok(posed(rig).position.y >= 0.35 - 1e-9, 'the eye still stays above the real floor');
+});
+
 test('a subject is framed in the clear part of the frame by tipping the camera, not by moving the pivot', () => {
   assert.ok(near(fitDistance(25, 35, 0.5), 25 / 2 / Math.tan((17.5 * Math.PI) / 180) / 0.5, 1e-9));
   assert.equal(aimBelow(0, 35), 0);

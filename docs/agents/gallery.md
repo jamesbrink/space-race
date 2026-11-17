@@ -329,6 +329,16 @@ a soft dark where the thing stands, a pool of light), a key with a shadow, a rim
 a room of softboxes baked for the metal to reflect. Dark or light by choice; in the cel look it
 is paper whichever was chosen. Brightnesses are a design fitted by eye.
 
+The closed exhibit keeps its presentation limits, from just above level to 58 degrees
+above it. In cutaway the camera may look up beneath downward-facing interior panels
+or down from overhead; the orbit rig still holds the eye above the actual studio floor.
+Opening the cutaway relaxes those limits without moving the camera by itself.
+A named view devoted entirely to `inside` parts opens the cutaway too, with the
+same temporary opening as selecting an interior part; a manual opening is kept.
+The inspection lamp follows the camera's full gaze, including elevation, and lights
+the open interior in both looks. It does not aim at the whole exhibit's centre when
+the subject is a small panel elsewhere in the spacecraft.
+
 ## To look at it
 
 `/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1`, `/#ussr/vostok/vostok-2`, `/#usa/mercury/ma-6-friendship-7`, `/#usa/mercury/ma-7-aurora-7`, `/#usa/mercury/ma-8-sigma-7`, `/#usa/mercury/ma-9-faith-7`, `/#usa/gemini/gt-3`, `/#usa/gemini/gt-4`, `/#usa/gemini/gt-5`, `/#usa/gemini/gt-7`, `/#usa/gemini/gt-6a`, `/#usa/gemini/gt-8` or `/#usa/gemini/gt-9a`

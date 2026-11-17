@@ -115,6 +115,10 @@ const CASCADED = /* glsl */ `
 				directLight.color *= lit;
 			}
 			RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
+			#elif UNROLLED_LOOP_INDEX >= NUM_DIR_LIGHT_SHADOWS
+			// Lamps without shadow maps still light the scene. Only the two
+			// zero-strength shadow auxiliaries are omitted by this branch.
+			RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
 			#endif
 		#else
 		${found}

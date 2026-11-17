@@ -466,7 +466,7 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     rim.intensity = cel ? 0 : setting.tone === 'light' ? 1.3 : 2.2;
     kicker.intensity = cel ? 0 : setting.tone === 'light' ? 0.6 : 1.1;
     fill.intensity = cel ? 0 : 0.45;
-    lamp.intensity = open && !cel ? 1.5 : 0;
+    lamp.intensity = open ? 1.5 : 0;
     sweep.uniforms.uSpot.value = cel ? 0 : setting.tone === 'light' ? 0.35 : 1;
     mirror.visible = fine && !cel;
     sheen.value = setting.tone === 'light' ? 0.05 : 0.11;
@@ -529,6 +529,11 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
     },
     inside(on) {
       open = on;
+      // Interior panels may face down into a cabin. The closed exhibit's
+      // presentation limits must not hide them once it is opened. OrbitRig
+      // still holds the eye above the actual studio floor.
+      setting.maxPolar = on ? Math.PI - 0.02 : Math.PI / 2 - 0.012;
+      setting.minPolar = on ? 0.02 : THREE.MathUtils.degToRad(32);
       apply();
     },
     measure(on) {
@@ -573,7 +578,17 @@ export function studio(renderer: THREE.WebGLRenderer): Studio {
       };
       round(rim, THREE.MathUtils.degToRad(125), 0.45);
       round(kicker, THREE.MathUtils.degToRad(-130), 0.3);
-      round(lamp, THREE.MathUtils.degToRad(-14), 0.35);
+      // The interior lamp follows the actual gaze, including elevation. The
+      // whole-exhibit centre is not the subject when looking up at a console.
+      const behind = camera.getWorldDirection(new THREE.Vector3()).negate();
+      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      const above = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      behind
+        .addScaledVector(side, -Math.tan(THREE.MathUtils.degToRad(14)))
+        .addScaledVector(above, 0.35)
+        .normalize();
+      lamp.target.position.copy(camera.position);
+      lamp.position.copy(camera.position).addScaledVector(behind, 60);
       // the outline is a card: it turns about its feet to face whoever is looking
       if (!figure.visible || own) return;
       const at = person.getWorldPosition(new THREE.Vector3());
