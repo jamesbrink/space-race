@@ -128,12 +128,22 @@ launch instant, 12:45:16 UTC. All `derived`. Elevations are geometric.
 The Moon was up in daylight, in the south-west, where the Atlas did not go. Uranus and Neptune
 were below the horizon.
 
-**The weather** (NASA TN D-3814, p. 17): at launch, cloud broken at 700 ft, wind 8 knots from
-240°, visibility 1 mile in ground fog and smoke, 77 °F, dewpoint 73 °F, humidity 88 per cent.
-"Clear blue sky," Carpenter said at 32 seconds, from above it. In the planned landing area at noon
-(USS *John R. Pierce*): cloud scattered at 1,000 ft, wind 11 knots from 096°, visibility 10 miles,
-waves 3 ft, the air 84 °F. No `weather.ts` is written for this flight yet: its site stands under
-its place's default sky, which is an estimate. These are the figures one would be written from.
+**The weather, as recorded** (`weather.ts`; the flight's report, NASA TN D-3814, p. 17, and the Cape's station at the
+Skid Strip, 2 km from the pad: NOAA Integrated Surface Database, station 74794012868, by the hour). Ground fog and
+smoke lay on the Cape from before dawn: the station saw 1.2 km at 07:00 EST in patches of shallow fog, and the
+count was held at T-11 for 45 minutes because the cameras that would have to watch an abort could not see. "By
+7:30 a.m. e.s.t., conditions had improved considerably." At launch the report has the sky broken at 700 ft, the
+wind 8 knots from 240°, the visibility 1 mile, 77 °F with a dew point of 73; the station's observation at 08:00,
+fifteen minutes after liftoff, is the same to the figure but for the wind's 250°: a ceiling at 210 m, 1.6 km in
+patches of shallow fog, 4.1 m/s, 25.0 °C and 22.8. That is what is drawn: a broken deck at 210 m (as the viewer's low
+heaps, shallow and ragged: it has no form for stratus, and the record codes no genus), a mile's visibility, a light
+west-south-west wind. Above it the station coded six oktas of cirrus at 07:00 and five at 10:00, and none at 08:00
+under the deck; from 9,000 ft, 32 seconds up, Carpenter called it a "Clear blue sky" (NASA SP-6, p. 77). A thin
+sheet of cirrus over less than half the sky is drawn (estimated). By 09:00 the station saw 4.8 km and no ceiling.
+Patrick Air Force Base, 29 km south, had fog at dawn too (2 km at 06:00 EST) but no ceiling, and 8 km by 08:00. Estimated: the
+deck's depth and the haze's (250 m). The air aloft is ERA5's (`aloft.ts`); the report's own plot of the launch
+area's wind to 60,000 ft (Figure 8) has not been read off. In the planned landing area at noon (USS *John R.
+Pierce*): cloud scattered at 1,000 ft, wind 11 knots from 096°, visibility 10 miles, waves 3 ft, the air 84 °F.
 
 ## The launch site
 

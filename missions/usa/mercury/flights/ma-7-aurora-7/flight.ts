@@ -18,6 +18,7 @@ import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/p
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const REPORT = 'NASA TN D-3814';
 
@@ -426,6 +427,7 @@ export const flight: Flight = {
   launch: '1962-05-24T12:45:16Z',
   launchSite: LC14.name,
   site: LC14,
+  weather: WEATHER,
   crew: ['M. Scott Carpenter'],
   summary:
     'The second American in orbit, and the first sent up to do science: a balloon on a string, a ball of green ' +
