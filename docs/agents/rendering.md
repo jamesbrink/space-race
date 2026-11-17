@@ -52,7 +52,14 @@ cast with the hull standing, `uCabinKept`), and never the Sun's direct light, wh
 `shadows.ts` keeps the Sun's turn of the light loop apart for a material that defines `CABIN_SHADE`. Darkening the
 colour itself, as it once did, darkened the Sun's light with it: a console in full sun in the Gallery's cutaway was
 near black, and the Sun's shadow there measured twice as grainy (`pnpm test:seat`), the darker frame's own rounding.
-tests/cabin.test.mjs holds the shader text to this. So switching the lamps, to red, to one of them, or to a dim duty
+So three things light a cabin's inside: its own lamps, shaded by the bake; the Sun, shaded by its own maps; and,
+only while it is cut open, the room's light: the indirect, and the room's own lights (the studio's rim, kickers, fill
+and the lamp over the viewer's shoulder), which have no shadow map, so that nothing but this rule stops them at the
+hull. That holds for every material a `Cabin` dresses as indoors, baked or not (`shade.ts` `insideBy`; the light
+loop keeps those lights apart for a material that defines `CABIN_INSIDE`): closed, the room's lights give it nothing;
+cut open, the kept share of its shade (`uCabinOpen`, `uCabinKept`), or all of their light where it has no shade. A
+closed cabin in the Gallery was otherwise lit grey through its hull by the rim and the kicker. tests/cabin.test.mjs
+holds the shader text to all of this. So switching the lamps, to red, to one of them, or to a dim duty
 light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
 added or taken away, and no shader is built. The channel costs nothing: the colour had four parts already. Another
 bulb in the same fitting (Gemini's red) is shaded as its fitting is; a cabin of more than three lamps would need a

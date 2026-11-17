@@ -777,6 +777,7 @@ export class Stage {
         this.cabin?.dispose();
         this.cabin = new Cabin(this.cabinHost(), flight, def, staged.group, staged.full, lamps);
         this.cabin.exposed(this.renderer.toneMappingExposure);
+        if (this.cut) this.cabin.opened(true); // (made with the cutaway already open)
       }
       return staged;
     });
