@@ -278,6 +278,35 @@ export function apsisRadius(inclination: number, argp: number): number {
 }
 
 /**
+ * How far a mean orbit's apsides, a(1 - e) and a(1 + e), stand above the radii the satellite is flown through there, m:
+ * J2's short-periodic terms (eq. 10) at the mean perigee and apogee, the two averaged (they differ by tens of metres).
+ * At 30 degrees and 160 km some 6 km: the mean orbit's average radius is Kozai's a-bar, under its `a` (`kozaiAxis`).
+ */
+export function apsisLift(a: number, e: number, i: number, argp: number): number {
+  const at = (mean: number): number => {
+    const o = osculatingOf({ a, e, i, node: 0, argp, mean });
+    return (o.a * (1 - o.e * o.e)) / (1 + o.e * Math.cos(o.nu));
+  };
+  return (a * (1 - e) - at(0) + a * (1 + e) - at(Math.PI)) / 2;
+}
+
+/**
+ * The ball a mean orbit's heights stand on, m, when the published heights are of the apsides flown (the least and the
+ * greatest radius, as tracking integrated to them) over the ellipsoid under them: the ellipsoid's radius under the apsis
+ * (`apsisRadius`) and the apsides' lift (`apsisLift`) of the mean orbit those heights give over it. Every height read off
+ * a mean orbit as a(1 -/+ e) less this ball is then, to first order, a flown apsis over the ellipsoid.
+ */
+export function flownApsisBall(perigee: number, apogee: number, inclination: number, argp: number): number {
+  const under = apsisRadius(inclination, argp);
+  let ball = under;
+  for (let k = 0; k < 4; k++) {
+    const a = ball + (perigee + apogee) / 2;
+    ball = under + apsisLift(a, (apogee - perigee) / (2 * a), inclination, argp);
+  }
+  return ball;
+}
+
+/**
  * The defaults, each a choice and labelled as one. No source read states how a Soviet orbit of 1961 was reduced
  * (GitHub issue #8, the research of 14 November 2026); the period as nodal is what the evidence points to, and the
  * heights as over the ellipsoid under the apsis is what the sister flights' own heights and periods require.

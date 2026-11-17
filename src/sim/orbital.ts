@@ -19,6 +19,7 @@ import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import {
   CONVENTION,
+  flownApsisBall,
   fromPublished,
   meanOf,
   meanOrbitOf,
@@ -547,6 +548,10 @@ export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFra
 /**
  * The ball the record's heights are over, m, so that it never contradicts the record's own figures:
  * - the one it states (Friendship 7's equatorial radius);
+ * - the oblate earth where it says its heights are the apsides flown over it (`over`, Gemini 3's, from the Gemini IV and V
+ *   reports): the ellipsoid under the apsis and the lift of the mean orbit's apsides over the radii flown there
+ *   (world/meanelements.ts `flownApsisBall`, some 6 km at 30 degrees), so that every height read off the run as a mean
+ *   orbit's is a flown apsis over the ellipsoid;
  * - with heights and a period published for the one orbit, the ball those three imply (derived: the mean orbit's axis
  *   whose nodal period is the published one, less the mean height, `meanOrbitOf`'s `radius`; no free figure), which is
  *   the ellipsoid's radius under an apsis at the latitude they imply, not always the injection's (Vostok 1's 41 degrees,
@@ -565,6 +570,8 @@ export function heightsBallAt(plan: FlightPlan, pad: Vec3): number {
   if (o.radius) return o.radius.value;
   const argp = perigeeAt(plan, pad);
   const i = o.inclination.value * DEG;
+  // (the oblate earth, its heights the apsides flown: the ellipsoid under the apsis and the mean orbit's lift there)
+  if (o.over?.is === 'oblate') return flownApsisBall(o.perigee.value, o.apogee.value, i, argp);
   // (heights and a period of the one orbit: the ball the three imply, read as the coast reads them; heights alone: the ellipsoid)
   if (o.period)
     return meanOrbitOf(

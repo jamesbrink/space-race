@@ -119,8 +119,19 @@ export interface GeminiTitanRecord {
     sheds: ShedBody[];
     checks: RecordCheck[];
   };
-  /** The orbit as published; `radius`, the ball its heights are over, only where a source says (else the ball its heights and period imply: orbital.ts `heightsBall`). */
-  orbit: { radius?: Measure; perigee: Measure; apogee: Measure; inclination: Measure; period: Measure };
+  /**
+   * The orbit as published; what its heights are over where a source says (`radius` a ball, `over` the oblate earth as
+   * flown apsides; else the ball its heights and period imply: orbital.ts `heightsBall`), and what kind its period is.
+   */
+  orbit: {
+    radius?: Measure;
+    over?: NonNullable<NonNullable<FlightPlan['record']>['orbit']>['over'];
+    perigee: Measure;
+    apogee: Measure;
+    inclination: Measure;
+    period: Measure;
+    kind?: NonNullable<NonNullable<FlightPlan['record']>['orbit']>['kind'];
+  };
   injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };
   /** The spacecraft in orbit, kg. */
   mass: Measure;

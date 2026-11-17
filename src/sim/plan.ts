@@ -421,13 +421,20 @@ export function abortAt(plan: FlightPlan, t: number): AbortMode | null {
 export interface PlanRecord {
   /**
    * The orbit as published: heights, inclination, period; the injection on it. The heights are over `radius` where the
-   * record states the ball they are over (Friendship 7's), over the ball the heights and period imply where it gives a
+   * record states the ball they are over (Friendship 7's), over the oblate earth as flown apsides where it says so
+   * (`over`: Gemini 3's), over the ball the heights and period imply where it gives a
    * period, and otherwise over the WGS 84 ellipsoid under the apsis (orbital.ts `heightsBall`, `CONVENTION.radius`). Without a period (none traceable), the mean orbit's
    * axis is the heights' mean over that ball (`meanOrbitOf`), and its period is the derived nodal one the coast reports
    * (`OrbitResults.period`).
    */
   orbit?: {
     radius?: Measure;
+    /**
+     * Where a source names the figure its heights are over and not a number: `oblate`, the heights of the apsides flown
+     * over the ellipsoid under them (Gemini's final elements), so the ball the mean orbit's heights stand on is
+     * world/meanelements.ts `flownApsisBall` (orbital.ts `heightsBall`), and how sure.
+     */
+    over?: { is: 'oblate'; confidence: Confidence; source: string };
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;
