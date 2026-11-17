@@ -13,6 +13,7 @@ import {
   lacks,
   PLACE_NAME,
   PLACES,
+  programmeName,
   type Place,
   type Plinth,
   plinths,
@@ -211,7 +212,7 @@ export function markPlace(nav: Element | null, here: Place): void {
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
 export const crumbs = (flight: Flight, here: Place): string =>
-  `<button data-home title="Front page">Space Race</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).nation)}" title="Every flight of the ${esc(flight.nation)}">${esc(flight.nation)}</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).programme)}" title="Every ${esc(flight.program)} flight">${esc(flight.program)}</button> <b>/</b> ${
+  `<button data-home title="Front page">Space Race</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).nation)}" title="Every flight of the ${esc(flight.nation)}">${esc(flight.nation)}</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).programme)}" title="Every ${esc(flight.program)} flight">${esc(programmeName(browseOf(flight.id).programme))}</button> <b>/</b> ${
     here === 'gallery'
       ? esc(flight.callsign)
       : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`

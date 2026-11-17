@@ -39,6 +39,8 @@ body.gallery-settled #stage { visibility: hidden; }
 .crumbs span { color: var(--amber); }
 /* (three steps on one line of the card: set a little closer than two were) */
 .crumbs:has(span) { font-size: 10px; letter-spacing: 0.08em; }
+/* (five steps now, which may take two lines: kept clear of the card's chevron in its corner) */
+.title > .crumbs { padding-right: 26px; }
 
 /* on the flight deck the title card makes way, and the switch stays: alone, in the corner the card had */
 #ui.piloting > .title:has(.places) { display: block; left: auto; right: var(--edge); width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
