@@ -68,3 +68,52 @@ for (const flight of BALLISTIC) {
     assert.equal(verdict(flown.state, flown.results, plan, 11).survivable, null);
   });
 }
+
+// what it came down in and on, from each flight's own data (plan.ts `Lands`), never a word of the verdict's own: the record
+// flown of each flight that comes down at sea, and one on land, said in its own ship's name and nobody else's
+{
+  const { globSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { pathToFileURL } = await import('node:url');
+  const { downVerdict, landsOf } = await import('../src/sim/verdict.ts');
+  const { orbitalFlown } = await import('../src/sim/run.ts');
+  const root = join(import.meta.dirname, '..');
+  const flights = (
+    await Promise.all(
+      globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).map(
+        async (f) => (await import(pathToFileURL(join(root, f)).href)).flight,
+      ),
+    )
+  ).filter((f) => f.plan);
+
+  test('every flight that is flown says what its crew came down in, and on what', () => {
+    for (const f of flights) {
+      const lands = f.plan.craft[0].lands;
+      assert.ok(lands, `${f.callsign}: no Craft.lands`);
+      assert.ok(lands.on === 'land' || lands.on === 'sea', `${f.callsign}: ${lands.on}`);
+      assert.match(lands.ship, /^the [a-z]/, `${f.callsign}: "${lands.ship}" as a sentence goes on`);
+    }
+  });
+
+  const ships = new Set(flights.map((f) => f.plan.craft[0].lands?.ship).filter(Boolean));
+  for (const id of ['usa/mercury/ma-6-friendship-7', 'usa/gemini/gt-3', 'ussr/vostok/vostok-1']) {
+    const f = flights.find((x) => x.id === id);
+    if (!f) continue;
+    test(`${f.callsign}: the record flown is said to come down in its own ship's name and nobody else's`, () => {
+      const whole = orbitalFlown(f);
+      const v = downVerdict(
+        f.plan,
+        whole,
+        (t) => `T+${t.toFixed(0)}`,
+        () => 0,
+      );
+      const { ship } = landsOf(f.plan);
+      const said = [v.how, ...v.why, v.against].join(' ').toLowerCase();
+      assert.doesNotMatch(v.how, /Still in orbit/, 'it came down');
+      assert.ok(said.includes(ship), `"${said}" names ${ship}`);
+      for (const other of ships)
+        if (!ship.includes(other) && !other.includes(ship)) assert.ok(!said.includes(other), `"${said}" names ${other}`);
+      assert.doesNotMatch(said, /on the ground at|from the field|the ball\b/, 'no word of one flight’s own');
+    });
+  }
+}

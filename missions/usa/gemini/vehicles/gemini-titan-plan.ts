@@ -27,6 +27,7 @@ import type {
   EventDef,
   FlightPlan,
   JointDef,
+  Lands,
   Nozzle,
   PlanCheck,
   TankDef,
@@ -184,6 +185,8 @@ export interface GeminiTitanRecord {
   };
   /** The crew, who come down in the ship: what they are held to (sim/verdict.ts) and the words for them. */
   crew: DescentCrew;
+  /** What the crew came down in and what on, as the decks' cards and the verdict say it (sim/plan.ts `Lands`). */
+  lands: Lands;
   landing: { latitude: Measure; longitude: Measure; at: Measure; near: string };
   /** The record's instants: the ones the plan's events are set off at are theirs; the rest are marks. */
   events: Instant[];
@@ -476,6 +479,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     heating: o.heating,
     rarefied: o.rarefied,
     crew: o.crew,
+    lands: o.lands,
     sheds: o.ascent.sheds,
   };
   const ascentWhen = (id: string): Pick<PlanCheck, 'when'> =>

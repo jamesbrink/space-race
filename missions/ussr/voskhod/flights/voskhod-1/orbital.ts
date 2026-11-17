@@ -380,6 +380,7 @@ export const orbital: VostokRecord = {
       'The crew had no say in the descent: the orientation, the burn, the parting, the parachutes and the rocket at the ground were the automatic system’s',
     torn: TORN,
     crew: CREW,
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'module.at',

@@ -367,6 +367,7 @@ export const orbital: VostokRecord = {
       'Bykovskiy had no say in the descent: the burn by the automatic programme on the ground’s command, the modules’ parting, the hatches, the seat and every parachute were the automatic system’s',
     torn: TORN,
     crew: CREW,
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'pilot.at',

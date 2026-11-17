@@ -1079,6 +1079,8 @@ export const DAY: Day = {
   drogue: doc(21_000 * FT, 'Results of the First U.S. Manned Suborbital Space Flight, p. 7; Hammack p. 9: deployed at 21,000 ft'),
   main: doc(10_000 * FT, 'Results, p. 7; Hammack p. 9: main parachute at 10,000 ft'),
   starts: estimated(300, 'a May morning at the Cape, about 27 C: what the shield and skin stood at on the pad is not in anything read'),
+  // (it came down in the Atlantic, the pilot in the capsule: README)
+  lands: { on: 'sea', ship: 'the capsule' },
   stack: {
     booster: 'MR-3',
     boosterDry: 8093,

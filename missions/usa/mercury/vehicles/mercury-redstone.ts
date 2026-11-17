@@ -20,6 +20,7 @@ import type {
   EventDef,
   FlightPlan,
   JointDef,
+  Lands,
   LimitDef,
   ChuteDef as PlanChute,
   TankDef,
@@ -782,6 +783,8 @@ export interface Day {
   /** What the shield and skin stood at on the pad, K. */
   starts: Measure;
   stack: Stack;
+  /** What the pilot came down in and what on, as the deck's card says it (sim/plan.ts `Lands`). */
+  lands: Lands;
 }
 
 /**
@@ -1118,6 +1121,7 @@ export function plan(day: Day, checks: readonly FlightCheck[], body: Body = stac
     drag: [{ until: sep.at, area: hw.area, curve: hw.ascentDrag }],
     rigid: body,
     heating: heated(day.starts),
+    lands: day.lands,
     ...(body.sheds ? { sheds: body.sheds } : {}),
   };
   const attitude: AttitudeDef[] = [

@@ -405,6 +405,7 @@ export const orbital: VostokRecord = {
     torn: TORN,
     // (in her words: the verdict and the deck speak of whoever rode it as the flight's data does)
     crew: { ...CREW, words: { who: 'She', they: 'she', their: 'her', many: false } },
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'pilot.at',

@@ -52,7 +52,7 @@ import {
   stagedVehicle,
 } from '../sim/stagedlive.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
-import { downVerdict, ejectedVerdict } from '../sim/verdict.ts';
+import { downVerdict, ejectedVerdict, landsOf } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
 import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
@@ -362,11 +362,11 @@ export class OrbitDeck extends Deck {
     if (this.free && this.fired === null)
       return {
         short: 'hands off',
-        long: 'The hands are free and nothing is planned: the coast with no burn, down to where the descent module lands or once round',
+        long: `The hands are free and nothing is planned: the coast with no burn, down to where ${landsOf(this.flight.plan!).ship} lands or once round`,
       };
     return {
       short: this.fired !== null ? 'as fired' : 'as planned',
-      long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to where the descent module lands`,
+      long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to where ${landsOf(this.flight.plan!).ship} lands`,
     };
   }
   /** The shape the stack flies at `t` on the flight on show (StagedVehicle.shape): the latest record separation among the stages let go by then. */
@@ -1984,7 +1984,7 @@ export class OrbitDeck extends Deck {
       return;
     }
     if (crashed) {
-      el.innerHTML = `<h3>Back on the ground, on the launch vehicle</h3><p class="cockpit-why">${
+      el.innerHTML = `<h3>Down, on the launch vehicle</h3><p class="cockpit-why">${
         unwaited
           ? `${unwaited} It never came down through ${(waited!.value / KM).toFixed(0)} km falling, where the seat was to fire: it came down`
           : 'Your flight never parted the spacecraft from its launch vehicle: it came down with it'
@@ -2020,12 +2020,14 @@ export class OrbitDeck extends Deck {
     // the record's own landings: each body's time (its check) and the place the record gives
     const when = (id: string) => plan.checks.find((c) => c.of === 'descent' && c.id === `${id}.at`);
     const landing = record.landing!;
+    const { on } = landsOf(plan);
     const landings = [
       ...(downOf(plan)?.bodies.slice(0, 2) ?? []).flatMap((b) => {
         const c = when(b.id);
         return c ? [`${c.label} at ${this.wall(c.value)}`] : [];
       }),
-      `the landing${landing.near ? ` near ${landing.near}` : ''}, ${landing.latitude.value.toFixed(2)}° N ${landing.longitude.value.toFixed(2)}° E, ${record.ground?.value.toFixed(0) ?? 0} m above the sea`,
+      // (the place in the record's words, in the sea or near a place on land as the flight's data says: verdict.ts `landsOf`)
+      `the landing${landing.near ? ` ${on === 'sea' ? 'in' : on === 'land' ? 'near' : 'at'} ${landing.near}` : ''}, ${degrees(landing.latitude.value, 'N', 'S')} ${degrees(landing.longitude.value, 'E', 'W')}${on === 'sea' || !record.ground ? '' : `, ${record.ground.value.toFixed(0)} m above the sea`}`,
     ].join('; ');
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
@@ -2108,6 +2110,9 @@ export class OrbitDeck extends Deck {
       ${buttons}`;
   }
 }
+
+/** A latitude or longitude as a place is written: degrees and the side of the equator or the meridian it is on. */
+const degrees = (x: number, plus: string, minus: string): string => `${Math.abs(x).toFixed(2)}° ${x < 0 ? minus : plus}`;
 
 /** An attitude part of the way from one to another: the straight blend made a rotation again, the short way round. */
 function towards(from: Quat, to: Quat, k: number): Quat {

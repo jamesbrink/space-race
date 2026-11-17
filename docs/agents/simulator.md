@@ -495,7 +495,12 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
   the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
   a flight that stays up to `decay` (the orbit's life in the standard air on the coast's own drag, `orbitDrag`, against
-  `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
+  `supplies.days`). What the crew came down in and on is the flight's data (`Craft.lands`: `on`, the land or the sea of the
+  record's landing, and `ship`, 'the descent module', 'the capsule', 'the spacecraft'; verdict.ts `landsOf`), as their words
+  are (`DescentCrew.words`), and neither the verdict nor a deck's card has a word of its own for either: a run's landing is
+  said as a landing, the record's place in its own phrase (`record.landing.near`) in the sea or near a place on land, and a
+  flight that holds its crew to no limits is said down in its ship's name with no verdict on them (tests/verdict.test.mjs).
+  Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
   (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
   vehicle), Space gives the next in the record's order once no burn is to come (before it, the burn itself where a hand
   could fire it: the lock opened, or a spacecraft whose hand controls had no lock, `PlanRecord.manual` without a `code`,

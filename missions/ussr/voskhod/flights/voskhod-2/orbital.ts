@@ -399,6 +399,7 @@ export const orbital: VostokRecord = {
       'The descent after the burn was the automatic system’s: the parting on the thermal sensors, the parachutes and the rocket at the ground. The orientation and the burn were the crew’s, by hand',
     torn: TORN,
     crew: CREW,
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'module.at',

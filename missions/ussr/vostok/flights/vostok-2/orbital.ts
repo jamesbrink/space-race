@@ -451,6 +451,7 @@ export const orbital: VostokRecord = {
       'Titov had no say in the descent: the burn by the ground’s commands, the modules’ parting (the bundle burnt through at 10:07), the hatches and the seat and every parachute were the automatic system’s; the reserve canopy came out unasked',
     torn: TORN,
     crew: CREW,
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'pilot.at',

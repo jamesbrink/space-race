@@ -212,6 +212,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     ...(o.heating ? { heating: o.heating } : {}),
     rarefied: o.rarefied ?? SHIP_RAREFIED,
     ...(d?.crew ? { crew: d.crew } : {}),
+    ...(d ? { lands: d.lands } : {}),
     ...(a?.sheds ? { sheds: a.sheds } : {}),
   };
   const attitude: AttitudeDef[] = [];

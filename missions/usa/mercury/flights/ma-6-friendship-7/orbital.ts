@@ -489,6 +489,7 @@ export const orbital: MercuryAtlasRecord = {
       },
     ],
   },
+  lands: { on: 'sea', ship: 'the capsule' },
   landing: {
     latitude: doc(
       21 + 25.6 / 60,

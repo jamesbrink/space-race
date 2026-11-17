@@ -660,6 +660,7 @@ export const orbital: GeminiTitanRecord = {
     aboard:
       'Grissom and Young landed in the ship, as Gemini was built to: the ejection seats were for the pad, the climb and below 15,000 ft, and were not used',
   },
+  lands: { on: 'sea', ship: 'the spacecraft' },
   landing: {
     latitude: doc(22 + 26 / 60, `${SP4002}: 22°26′ N 70°51′ W, 60 nautical miles short of the planned point`),
     longitude: doc(-(70 + 51 / 60), SP4002),

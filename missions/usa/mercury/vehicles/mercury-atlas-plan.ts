@@ -24,6 +24,7 @@ import type {
   EventDef,
   FlightPlan,
   JointDef,
+  Lands,
   Nozzle,
   PlanCheck,
   TankDef,
@@ -136,6 +137,8 @@ export interface MercuryAtlasRecord {
     main: { altitude: Measure; dragArea: Measure; fills: Measure };
     checks: RecordCheck[];
   };
+  /** What the crew came down in and what on, as the decks' cards and the verdict say it (sim/plan.ts `Lands`). */
+  lands: Lands;
   landing: { latitude: Measure; longitude: Measure; at: Measure; near: string };
   /** The record's instants: the ones the plan's events are set off at are theirs; the rest are marks. */
   events: Instant[];
@@ -357,6 +360,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     drag: o.ascent.drag,
     heating: o.heating,
     rarefied: o.rarefied,
+    lands: o.lands,
     sheds: o.ascent.sheds,
     // (the pilot lands in the capsule, on its couch: the Redstone flights' figure for what he walks away from)
     crew: {

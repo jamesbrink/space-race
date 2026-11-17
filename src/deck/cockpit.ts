@@ -9,7 +9,7 @@ import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
 import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
-import { verdict } from '../sim/verdict.ts';
+import { landsOf, verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
 import { grown, type Run, runOf } from '../sim/run.ts';
 import type { Clock } from '../world/clock.ts';
@@ -987,7 +987,7 @@ export class Cockpit extends Deck {
         ${row('Time of flight', results.duration, 'duration', 1, 's', 0)}
         ${row('Greatest load going up', results.exitG, 'exitG', 1, 'g')}
         ${row('Greatest load coming down', results.entryG, 'entryG', 1, 'g')}
-        ${row('Speed at the sea', results.landingSpeed, 'landingSpeed', 1, 'm/s')}
+        ${row(`Speed at ${landsOf(this.flight.plan!).surface}`, results.landingSpeed, 'landingSpeed', 1, 'm/s')}
       </table>
       <p><button data-do="again"><kbd>N</kbd> Fly it again</button><button data-do="leave"><kbd>Esc</kbd> Leave</button></p>`;
   }

@@ -344,6 +344,7 @@ export const orbital: VostokRecord = {
       'Popovich had no say in the descent but his reserve canopy, which he locked once the main had opened, as Nikolayev had: the burn, the modules’ parting, the hatches, the seat and the main canopy were the automatic system’s',
     torn: TORN,
     crew: CREW,
+    lands: { on: 'land', ship: 'the descent module' },
     checks: [
       {
         id: 'pilot.at',

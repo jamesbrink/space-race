@@ -74,8 +74,21 @@ export interface Craft {
   rarefied?: { drag: Measure; area: Measure; length: Measure };
   /** The crew in it: where they ride and what they are held to. */
   crew?: DescentCrew;
+  /**
+   * What the crew came down in and what on, as the decks' cards and the verdict say it (sim/verdict.ts `landsOf`). Left
+   * out, they say neither: 'the spacecraft', and the surface.
+   */
+  lands?: Lands;
   /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. */
   sheds?: ShedBody[];
+}
+
+/** What a flight's crew came down in, and on what, in the words of the flight's own data (`Craft.lands`). */
+export interface Lands {
+  /** What the record's landing was on: the land, or the sea. */
+  on: 'land' | 'sea';
+  /** What came down with the crew in it, as a sentence names it: 'the descent module', 'the capsule', 'the spacecraft'. */
+  ship: string;
 }
 
 /** One piece of a craft that can part from the rest: a stage, a tower, a fairing, a retropack, a descent module, a seat. */
@@ -445,7 +458,10 @@ export interface PlanRecord {
     /** The spacecraft in orbit, kg. */
     mass: Measure;
   };
-  /** Where and when it came down. */
+  /**
+   * Where and when it came down; `near`, the place in the record's own words: on land the place it was near ('Smelovka'),
+   * at sea the water and where in it ('the Atlantic, east of Grand Turk'), as `Craft.lands.on` says which.
+   */
   landing?: { latitude: Measure; longitude: Measure; at: Measure; near?: string };
   /** How long it could stay up, days. */
   supplies?: Measure;

@@ -7,7 +7,7 @@
 import type { Confidence, Curve, Heating, Measure, ShedBody } from '../../../../src/types.ts';
 import type { Vec3 } from '../../../../src/world/frames.ts';
 import type { DescentCrew, Guidance, OrbitResults } from '../../../../src/sim/orbital.ts';
-import type { AbortMode, Craft, Nozzle } from '../../../../src/sim/plan.ts';
+import type { AbortMode, Craft, Lands, Nozzle } from '../../../../src/sim/plan.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -268,6 +268,8 @@ export interface DescentRecord {
   torn?: Measure;
   /** The pilot: where he rides, and what he is held to (the flight deck's verdict, orbitdeck.ts). Left out: no verdict. */
   crew?: DescentCrew;
+  /** What the crew came down in and what on, as the decks' cards and the verdict say it (sim/plan.ts `Lands`). */
+  lands: Lands;
   /** What did each event of the descent on the day, and what the pilot could do about it: said where a hand is offered one. */
   automatic?: string;
   /** Figures for the descent: `<body id>.at` (landing, s from liftoff), `<body id>.speed` (falling, m/s), `apart` (m between the first two bodies' landings). */
