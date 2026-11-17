@@ -65,7 +65,9 @@ and radiator pattern is not promoted to that documented layout.
 - The side hatch has a separate outer cover, without its complete pressure door,
   sill, hinge, handles or opening motion. Later SC106+ inner-door machining is excluded.
 - No CM attitude-control ports, umbilical fittings, antennas, recovery system or detailed thermal tape.
-- No SM tanks, fuel cells, plumbing, gimbal or engine injector.
+- Two nominal SPS sump-tank reference surfaces are built. Storage tanks, helium
+  tanks, fuel cells, plumbing, gimbal and engine injector remain unbuilt. The
+  references are not complete manufactured tank/wall/insulation models.
 - Radiator panel layout and intermediate SPS contour remain estimated. Barrel ends,
   engine attachment station and extension bounds now use the structural references above.
 - No lunar docking probe, lunar module or deployed lunar high-gain antenna is added.
@@ -101,14 +103,29 @@ canards, pitch-control and jettison nozzles, detailed tower attachment fittings 
 The SM now has an inward-facing wall and annular edges at the published one-inch shell
 thickness (Apollo 7 press kit, p. 26; also Apollo Operations Handbook, Block II, volume 1,
 p. 1-49). This replaces the single surface which disappeared from behind in the first
-exploded preview. Tankage and internal structure are still pending.
+exploded preview. Two nominal sump-tank surfaces now establish part of the
+tankage; the remaining tanks and internal structure are still pending.
 
 The service-module shell also participates in the normal gallery cutaway. Both
-wall faces, annular rims, seam tubes, aft closure and CM/SM fairing carry the
-same shell flag. The RCS quads and engine are separate nodes and are not clipped.
-This exposes the current empty compartment space; it does not imply tankage or
-internal structure has been reconstructed. Switching cutaway off restores every
-surface, with the existing inner wall retained for views from behind.
+wall faces, annular rims, seam tubes and CM/SM fairing carry the same shell flag.
+The RCS quads, engine and sump-tank references are separate nodes and are not
+clipped. Switching cutaway off restores every shell surface, with the existing
+inner wall retained for views from behind. The provisional solid aft disc is
+removed because it intersected the tank domes; the real penetrated aft structure
+and supports remain pending.
+
+## SPS sump-tank reference surfaces
+
+The two references use the CSM-101 preflight sump dimensions in MIT R-547,
+volume III, Table 1.4, printed p. 1-19: radius 25.5 in, XA832–985.8, fuel
+YA−48.3/ZA−6.6 and oxidizer YA+48.3/ZA+6.6. The nominal 153.8-in height and
+51-in diameter agree with later Block II references, and NASA TN D-7375 p. 6
+explicitly retains hemispherical heads. These nominal surfaces and preflight
+installation coordinates are assumed for Apollo 7, not an as-built inspection.
+See [service-tanks.md](../../vehicles/service-tanks.md) for the source comparison,
+coordinate mapping, unresolved manufactured wall datum and the storage-tank
+height conflict. The tanks move with the SM during explosion; their mountings
+and internal equipment are not invented.
 
 Window construction and the unresolved mounting references are recorded in
 [windows.md](../../vehicles/windows.md). Published pane thicknesses do not, by

@@ -14,6 +14,7 @@ from mathutils import Vector
 import command_module
 import main_console
 import pressure_vessel
+import service_tanks
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
 
 RADIUS = command_module.RADIUS
@@ -97,6 +98,7 @@ def build(offset=0):
             "HeatShield",
             "ForwardShield",
             "ServiceModule",
+            "ServiceSumpTanks",
             "ServiceEngine",
             "ReactionControl",
         )
@@ -135,7 +137,9 @@ def build(offset=0):
     for i in range(6):
         a = TAU * i / 6
         tube(f"SM_Seam_{i}", radial(77.2, a, z0 + 1), radial(77.2, a, SM_TOP - 1), 0.18, seam, sm)
-    lathe_obj("SM_AftBulkhead", prof([(0, z0 + 1), (76, z0 + 1)]), dark, sm)
+    # The old solid disc crossed the documented sump domes (XA832..985.8).
+    # The real aft structure has penetrations and tank supports. Leave it
+    # absent until their profiles are sourced rather than cap the tankage.
     # The published fairing bridges the barrel and nominal aft shield. The
     # annular closure is derived from those envelopes; seals and beams await
     # reconstruction. A two-sided surface does not invent laminate thickness.
@@ -147,10 +151,11 @@ def build(offset=0):
         fairing,
     )
     # These meshes enclose the service-module compartments. Clip both wall
-    # faces, the rims, seams, aft closure and fairing together; leaving an
+    # faces, the rims, seams and fairing together; leaving an
     # unmarked inner wall would make the apparent opening solid again.
     # The quads and engine are separate nodes and remain whole in cutaway.
     mark_shells([obj.name for obj in sm.children if obj.type == "MESH"])
+    service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA)
     bell("SPS_Bell", (0, 0, 0), (0, 0, 1), SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, dark, groups["ServiceEngine"])
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):
