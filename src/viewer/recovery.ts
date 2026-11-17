@@ -43,6 +43,17 @@ export function trackAt(track: RecoveryCraft['track'], t: number): { east: numbe
   return { east: at('east'), north: at('north'), height: at('height'), heading: a.heading + turn * THREE.MathUtils.smoothstep(k, 0, 1) };
 }
 
+/**
+ * Where the craft's origin is at `t` (s from launch) about `down` (where the run on show came down, ECEF on the sea), in
+ * the site's frame, as its track has it (before its line holds it): null outside its track. What the sound hears it from.
+ */
+export function craftAt(def: RecoveryCraft, t: number, down: Vec3, site: Site, seaLevel: number): Vec3 | null {
+  const at = trackAt(def.track, t);
+  if (!at) return null;
+  const over = ecefToGeodetic(enuToEcef(ecefToGeodetic(down), [at.east, at.north, 0]));
+  return ecefToSite(site, geodeticToEcef({ ...over, height: seaLevel + at.height }));
+}
+
 /** Where the craft's line is, given each frame by the flight on show. */
 export interface LineState {
   /** The top of the spacecraft's `line.to` node, in the scene. */

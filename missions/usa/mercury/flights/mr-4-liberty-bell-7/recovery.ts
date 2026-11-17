@@ -1,16 +1,22 @@
 /**
  * Hunt Club 1, the Marine HUS-1 that hooked Liberty Bell 7 (model/helicopter.py; vehicles/hus-1.md), flown on the record's
  * clock about where the capsule came down (viewer/recovery.ts). Only its order of events is the record's; where it was
- * between them, how high and how fast, are ours, and say so. The second helicopter (Hunt Club 3, ET-30), which picked
+ * between them, how high and how fast, are ours, and say so. It is heard at its rotors' and engine's rates (sound/model.ts
+ * `rotorcraftTimbres`). The second helicopter (Hunt Club 3, ET-30), which picked
  * Grissom up, is not flown: it would be the same model in its own markings, and its bureau number is not legible in any
  * photograph read (helicopter.py). Grissom in the water is not drawn either: no swimming figure has been built.
  */
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { derived, doc, estimated } from '../../../../../src/measure.ts';
 import type { RecoveryCraft } from '../../../../../src/types.ts';
 import { AFLOAT } from './afloat.ts';
 
 const RESULTS = 'Results of the Second U.S. Manned Suborbital Space Flight (NASA, 1961)';
 const TNO = 'This New Ocean (NASA SP-4201)';
+
+/** The main rotor's rate, rev/min, the engine's (the main rotor's gearing, 11.3 to 1: hus-1.md), and the engine's gearing to the tail rotor. */
+const MAIN_RPM = 258;
+const ENGINE_RPM = MAIN_RPM * 11.3;
+const TAIL_RATIO = 1.884;
 
 /** Two statute miles, m: where Hunt Club 1 called from as the capsule came down. */
 const TWO_MILES = 3219;
@@ -84,17 +90,28 @@ export const HUNT_CLUB_1: RecoveryCraft = {
     {
       node: 'MainRotor',
       axis: [0, 1, 0],
-      rpm: doc(258, 'vehicles/hus-1.md: 258 rpm at most, from 2,914 engine rpm (This Day in Aviation); taken at hover power'),
+      rpm: doc(
+        MAIN_RPM,
+        'vehicles/hus-1.md: 258 rpm at most (This Day in Aviation; the S-58’s type certificate, EASA.IM.R.109, "Maximum Nr: 258 rpm (104 %)"); taken at hover power',
+      ),
+      blades: doc(4, 'EASA.IM.R.109, the S-58’s type certificate data sheet, p. 4: "four MR blades (fully articulated)"'),
+      main: true,
     },
     {
       node: 'TailRotor',
       axis: [0, 0, 1],
-      rpm: estimated(
-        1200,
-        'its gearing is not read (vehicles/hus-1.md); a tail rotor of 9.5 ft turning at about the main rotor’s tip speed, ours',
+      rpm: derived(
+        ENGINE_RPM / TAIL_RATIO,
+        `the engine’s ${ENGINE_RPM.toFixed(0)} rpm over its gearing to the tail rotor, 1.884 to 1 (Heli Archive, "Sikorsky S-58", uncited: secondary)`,
       ),
+      blades: doc(4, 'EASA.IM.R.109, p. 4: "four TR blades (fully articulated)"'),
+      main: false,
     },
   ],
+  engine: {
+    cylinders: doc(9, 'vehicles/hus-1.md: a Wright R-1820-84, a nine-cylinder radial (Jane’s 1958-59, p. 372)'),
+    rpm: derived(ENGINE_RPM, 'the main rotor’s 258 rpm times its gearing, 11.3 to 1 (vehicles/hus-1.md, the Descriptive Arrangement)'),
+  },
   line: {
     from: 'CargoHook',
     to: 'RecoveryCompartment',

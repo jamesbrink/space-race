@@ -235,8 +235,13 @@ export interface RecoveryCraft {
   track: { at: number; east: number; north: number; height: number; heading: number }[];
   confidence: Confidence;
   source: string;
-  /** What turns as it flies: each node about its own axis (in its parent's frame) at its rate, rev/min. */
-  rotors: { node: string; axis: [number, number, number]; rpm: Measure }[];
+  /**
+   * What turns as it flies: each node about its own axis (in its parent's frame) at its rate, rev/min; its blades, which
+   * are heard as they pass (sound/model.ts `rotorcraftTimbres`), and whether it is the main rotor.
+   */
+  rotors: { node: string; axis: [number, number, number]; rpm: Measure; blades: Measure; main: boolean }[];
+  /** Its engine as it is heard: a piston engine's cylinders and its rate, rev/min. */
+  engine?: { cylinders: Measure; rpm: Measure };
   /**
    * Its line to the spacecraft: from its node `from` (the line's origin) to the top of the flown model's node `to`, on from
    * `on` to `off` (s from launch), `length` long. While the simulator's line pulls (sim/afloat.ts: the run's `tension`) it is

@@ -960,14 +960,103 @@ export interface Source {
 /** What a voice of the works is playing, for the diagnostics: which source, which part of it, how loud and how far. */
 export interface Playing {
   key: unknown;
-  kind: MachineKind;
-  part: 'machine' | 'engine' | 'tyres';
+  kind: MachineKind | 'rotorcraft';
+  part: 'machine' | 'engine' | 'tyres' | 'rotor' | 'tail';
   gain: number;
   metres: number;
   /** An engine's revolutions a minute; a tyre's surface. */
   rpm?: number;
   tread?: TreadKind;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// What flies over: a helicopter (Flight.recovery). Its rotors' and engine's rates and counts are its data; how loud each
+// part is at a metre, and its timbre, are estimated: no measurement of the type's noise has been read.
+
+/** A rotor as it is heard: its blades and its rate, rev/min, and whether it is the main rotor (else a tail rotor). */
+export interface RotorSound {
+  blades: number;
+  rpm: number;
+  main: boolean;
+}
+
+/** A piston engine as it is heard: its cylinders and its rate, rev/min (four-stroke: a cylinder fires every other turn). */
+export interface PistonSound {
+  cylinders: number;
+  rpm: number;
+}
+
+/** An aircraft in the scene this hearing: where it is, its rotors and engine, what it loses on the way in (dB), and how much of it is let through (0 to 1). */
+export interface Aircraft {
+  key: unknown;
+  name: string;
+  where: Vec;
+  rotors: readonly RotorSound[];
+  engine?: PistonSound;
+  loss: number;
+  gain: number;
+}
+
+/**
+ * Levels at a metre, dB: a main rotor's blades, a tail rotor's, and a radial engine's firing and exhaust. Estimated:
+ * chosen to put a piston helicopter of the late 1950s hovering at 30 m at about 95 dB under it and 75 dB at 300 m, the
+ * order such machines are described at; nothing measured of the HUS-1 or the H-34 was found (docs/sources.md).
+ */
+const ROTOR_LEVEL = 125;
+const TAIL_LEVEL = 114;
+const PISTON_LEVEL = 117;
+
+/**
+ * A helicopter's voices at a metre: the main rotor as its blades pass (their count times its rate: a pulse train, the
+ * buzz, low-passed to its slap), the tail rotor's as a hum at its own blade rate, and the engine's firing (its cylinders
+ * over two times its rate) with its exhaust's hiss. The rates are the aircraft's; every level and timbre is estimated.
+ */
+export function rotorcraftTimbres(rotors: readonly RotorSound[], engine?: PistonSound): ['rotor' | 'tail' | 'engine', Timbre][] {
+  const out: ['rotor' | 'tail' | 'engine', Timbre][] = [];
+  for (const r of rotors) {
+    const passing = (r.blades * r.rpm) / 60;
+    if (r.main)
+      out.push([
+        'rotor',
+        {
+          level: ROTOR_LEVEL,
+          buzz: { hertz: passing, gain: 1, cut: passing * 14 },
+          tone: { hertz: passing * 2, gain: 0.25 },
+          hiss: { hertz: 500, q: 0.6, gain: 0.18 },
+          grit: { hertz: 1800, q: 0.7, gain: 0.04 },
+        },
+      ]);
+    else
+      out.push([
+        'tail',
+        {
+          level: TAIL_LEVEL,
+          buzz: { hertz: passing, gain: 0.6, cut: passing * 6 },
+          tone: { hertz: passing, gain: 0.5 },
+          hiss: { hertz: passing * 8, q: 1, gain: 0.1 },
+          grit: { hertz: 2500, q: 0.8, gain: 0 },
+        },
+      ]);
+  }
+  if (engine) {
+    const firing = (engine.rpm / 60) * (engine.cylinders / 2);
+    out.push([
+      'engine',
+      {
+        level: PISTON_LEVEL,
+        buzz: { hertz: firing, gain: 1, cut: firing * 8 },
+        tone: { hertz: firing / 2, gain: 0.3 },
+        hiss: { hertz: 1400, q: 0.8, gain: 0.3 },
+        grit: { hertz: 3000, q: 0.8, gain: 0.08 },
+      },
+    ]);
+  }
+  return out;
+}
+
+/** What the wall of a closed cabin takes from the air outside, dB (as `CABIN`), and what is lost through an open hatch in it. Estimated. */
+export const WALLED = CABIN;
+export const OPENED = 8;
 
 /** A source's state from one hearing to the next. */
 interface Run {
@@ -1011,7 +1100,13 @@ export class Works {
   playing: (Playing | null)[] = new Array(WORK_VOICES).fill(null);
 
   /** One hearing, `dt` s after the last, from `ears`, on a place whose land is `land`: the voices to play now, in their slots, and the one-shots due. */
-  hear(sources: readonly Source[], ears: Vec, dt: number, land: TreadKind): { voices: (Voice | null)[]; shots: Shot[] } {
+  hear(
+    sources: readonly Source[],
+    ears: Vec,
+    dt: number,
+    land: TreadKind,
+    aircraft: readonly Aircraft[] = [],
+  ): { voices: (Voice | null)[]; shots: Shot[] } {
     const shots: Shot[] = [];
     const shoot = (b: Burst | undefined, metres: number): void => {
       const shot = b && burstShot(b, metres);
@@ -1098,6 +1193,21 @@ export class Works {
         const playing: Playing = { key, kind: run.kind, part, gain: voice.gain, metres, ...(rpm ? { rpm } : {}) };
         if (tread) playing.tread = tread;
         wanted.push({ name: `${run.n}/${part}${tread ? `/${tread}` : ''}`, voice, playing });
+      }
+    }
+    // what flies over (a recovery helicopter): heard while it is in the scene on the clock, each part a voice
+    for (const a of aircraft) {
+      const metres = distance(ears, a.where);
+      for (const [part, timbre] of rotorcraftTimbres(a.rotors, a.engine)) {
+        const voice = voiceOf({ ...timbre, level: timbre.level - a.loss }, metres);
+        voice.gain *= a.gain;
+        if (!(voice.gain > 1e-4)) continue;
+        const rpm = part === 'engine' ? a.engine?.rpm : a.rotors.find((r) => (part === 'rotor') === r.main)?.rpm;
+        wanted.push({
+          name: `${a.name}/${part}`,
+          voice,
+          playing: { key: a.key, kind: 'rotorcraft', part, gain: voice.gain, metres, ...(rpm ? { rpm } : {}) },
+        });
       }
     }
     // the loudest, each kept in the slot it has

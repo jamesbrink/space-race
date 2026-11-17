@@ -268,7 +268,7 @@ it. The sea round it is the day's
 only. Hunt Club 1 (recovery.ts) is flown on the record's order of events: 2 miles south-west as the capsule came
 down, circling it by 18:23, in over it as the hatch went, its wheels in the water as it hooked the sinking capsule,
 held over it by its line while it pulled, and away when it let go; its track between those, its heights, the way it
-faced and its line's length are ours, and it makes no sound yet. The second helicopter, which picked Grissom up, and
+faced and its line's length are ours. It is heard (sound/model.ts `rotorcraftTimbres`): its blades passing at 17.2 a second, its tail rotor's hum, its nine cylinders firing, from the chase view, and through the cabin's wall from the seat until the hatch goes; their levels and timbres are estimated. The second helicopter, which picked Grissom up, and
 Grissom in the water are not drawn (issue #13).
 
 ## Where sources disagree
