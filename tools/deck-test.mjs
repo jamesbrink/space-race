@@ -266,6 +266,18 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     await seek(4800); // (the burn made)
     c = await can();
     if (!c['descent:seat-ejection'] || c['descent:pilot/main canopy']) fail(where, `after the burn: ${JSON.stringify(c)}`);
+    // the Skin switch says whether the skin is on, whoever took it off: the key here, then the switch itself
+    const skin = () =>
+      page.evaluate(() => [document.querySelector('[data-skin]').getAttribute('aria-pressed'), String(!window.sr.stage.cutaway)]);
+    const before = await skin();
+    await page.keyboard.press('KeyY');
+    await page.waitForTimeout(300);
+    const taken = await skin();
+    await page.evaluate(() => document.querySelector('[data-skin]').click());
+    await page.waitForTimeout(300);
+    const back = await skin();
+    if (before.join() !== 'true,true' || taken.join() !== 'false,false' || back.join() !== 'true,true')
+      fail(where, `the Skin switch does not show the skin (lamp, skin on): ${before} at first, ${taken} after Y, ${back} after the switch`);
     await page.keyboard.press('KeyB');
     await page.waitForTimeout(400);
     const off = await page.evaluate(() => ({

@@ -700,6 +700,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     if (ui.wheel.isOpen && document.pointerLockElement) ui.wheel.confirm();
   });
   stage.onHome = () => (selected ? select(null) : show(current.id));
+  stage.onCutaway = (on) => cockpit.skin(!on);
   scope.on(window, 'keydown', (e) => {
     if (is(e, 'page.back') && selected) select(null);
     // V goes out on foot as the crew, from anywhere, and comes back: the same key will board and leave a crew member when there is a flight to fly
