@@ -274,7 +274,8 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     ...record(at),
     source: at.source,
   });
-  const fire: EventDef = timed('retrofire', 'Retrofire', r.on, [{ ignite: 'retrorockets' }]);
+  // (what Space offers for it once alone, before the pack: the pilot's retro button, the next thing he could do in the record's order)
+  const fire: EventDef = { ...timed('retrofire', 'Retrofire', r.on, [{ ignite: 'retrorockets' }]), asked: 'Fire the retrorockets' };
   const pack: EventDef = {
     id: 'retropack-off',
     label: 'The retropack goes',

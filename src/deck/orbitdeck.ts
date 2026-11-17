@@ -214,6 +214,25 @@ export class OrbitDeck extends Deck {
       : `once alone the attitude and the ${this.burnName.toLowerCase()} in hand`;
   }
 
+  /**
+   * Whether the coast's burn is the next thing a hand could do, which Space then does: once alone, with the hands free (a
+   * lock opened), or, for a spacecraft whose hand controls had no lock (`PlanRecord.manual` without a `code`), before the
+   * record's own burn is made: its pilot's next act in the record's order, before the parting that follows it.
+   */
+  private get burnNext(): boolean {
+    if (this.can('retro')) return true;
+    const manual = this.flight.plan!.record?.manual;
+    const t = this.clock.t;
+    if (!this.on || !manual || manual.code || this.free || this.fired !== null || !(t > this.parting)) return false;
+    if (this.mine === null && t >= coastOf(this.flight.plan!).on) return false;
+    return this.retroWhy() === null;
+  }
+
+  /** What Space says for the coast's burn: the lighting event's `asked` where the plan gives one ('Fire the retrorockets'), else the burn's name. */
+  private get burnAsked(): string {
+    return coastEvents(this.flight.plan!).on?.asked ?? this.burnName;
+  }
+
   /** The coast's burn as the plan names it ('Braking engine', 'Retrorockets'): what the deck calls it. */
   private get burnName(): string {
     return coastEvents(this.flight.plan!).burn?.label ?? 'Braking engine';
@@ -670,8 +689,10 @@ export class OrbitDeck extends Deck {
       this.move(t);
       return;
     }
-    if (this.can('retro')) {
+    if (this.burnNext) {
       this.eventAt = now;
+      // (no lock: the hand on the button has the controls, as its pilot's did)
+      if (!this.free) this.freeHands(null);
       this.fire(t);
       return;
     }
@@ -1735,7 +1756,7 @@ export class OrbitDeck extends Deck {
     const replay = live !== null && this.clock.t < live.t - TICK;
     const step = !waiting && !alone && !this.ascended ? this.nextStep() : null;
     const move = this.nextMove();
-    const fire = !move && this.can('retro');
+    const fire = !move && this.burnNext;
     const descent = alone && !fire && !move ? this.nextDescent() : null;
     set(
       'next',
@@ -1748,7 +1769,7 @@ export class OrbitDeck extends Deck {
             : move
               ? move.label
               : fire
-                ? this.burnName
+                ? this.burnAsked
                 : descent
                   ? descent.label
                   : alone
@@ -1807,7 +1828,9 @@ export class OrbitDeck extends Deck {
                 ? `By hand, as flown: W S A D Q E turn the ship until ${this.wall(record.manual!.periods![this.byPlan]!.to.value)}`
                 : code && t < coast.on
                   ? `The hand controls are locked: the code ${[...code].join('-')} frees them`
-                  : 'The descent is automatic';
+                  : fire
+                    ? `Next, the ${this.burnName.toLowerCase()}: Space, now and by hand, along the long axis; left alone, at ${this.wall(coast.on)}`
+                    : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
     prompt.hidden = !text;
     prompt.classList.toggle('due', Boolean(due));

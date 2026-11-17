@@ -496,7 +496,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   a flight that stays up to `decay` (the orbit's life in the standard air on the coast's own drag, `orbitDrag`, against
   `supplies.days`). Nothing given, it is the record's run to the last bit (tests/descent.test.mjs). On the deck
   (orbitdeck.ts) each event is `descent:<id>` (`can`, `ask`, `Part.commands`, offered on what is let go as well as on the
-  vehicle), Space gives the next in the record's order once no burn is to come, and B with the spacecraft alone and no
+  vehicle), Space gives the next in the record's order once no burn is to come (before it, the burn itself where a hand
+  could fire it: the lock opened, or a spacecraft whose hand controls had no lock, `PlanRecord.manual` without a `code`,
+  so a Mercury capsule's Space in orbit is "Fire the retrorockets", the retrofire event's `asked`, and only after it the
+  pack's jettison: orbitdeck.ts `burnNext`), and B with the spacecraft alone and no
   burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
   what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes the plan's `Craft.heating` (a `round` body is blunt at any attitude): the flux on the
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km

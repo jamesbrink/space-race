@@ -206,6 +206,39 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       console.log(`  ${where}: in orbit at T+1800 with an apogee of ${up.apogee} km, down at the end, "${down.mode}"`);
       await ctx.close();
     }
+  // a spacecraft whose hand controls had no lock (a Mercury capsule's): in orbit Space is the retrofire by hand before the pack,
+  // the next thing its pilot could do in the record's order; after the record's retrofire, the pack's jettison
+  if (w === 1280)
+    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('usa/mercury/ma-'))) {
+      const where = `${id}'s Space in orbit at ${w}`;
+      const { page, errors, context: ctx } = await fly(id, w, h, touch);
+      const seek = async (t) => {
+        await page.evaluate((x) => window.sr.clock.seek(x), t);
+        await page.waitForTimeout(400);
+      };
+      const read = () =>
+        page.evaluate(() => ({
+          next: document.querySelector('[data-cell=next]').textContent,
+          mode: document.querySelector('[data-cell=mode]').textContent,
+          prompt: document.querySelector('[data-cell=prompt]').textContent,
+        }));
+      const fired = await page.evaluate(() => window.sr.flight.plan.events.find((e) => e.id === 'retrofire')?.at?.value ?? 0);
+      await seek(3000);
+      const before = await read();
+      if (before.next !== 'Fire the retrorockets') fail(where, `before the retrofire Space is "${before.next}"`);
+      await seek(fired + 30);
+      const after = await read();
+      if (after.next !== 'Jettison the retropack') fail(where, `after the record's retrofire Space is "${after.next}"`);
+      await seek(3000);
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(1500);
+      const hand = await read();
+      if (!/Manual descent/.test(hand.mode) || hand.next !== 'Jettison the retropack')
+        fail(where, `Space fired nothing by hand: ${JSON.stringify(hand)}`);
+      if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+      console.log(`  ${where}: "${before.next}" before the retrofire, "${after.next}" after; Space fired them by hand ("${hand.mode}")`);
+      await ctx.close();
+    }
   // the descent by hand (orbitdeck.ts `descent:` commands): offered when the simulator would hear it, B its sequencer, Space its steps
   {
     const where = `vostok-1's descent at ${w}`;
