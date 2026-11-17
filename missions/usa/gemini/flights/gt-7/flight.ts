@@ -29,6 +29,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const KIT = KIT_7_6;
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
@@ -480,6 +481,7 @@ export const flight: Flight = {
   launch: '1965-12-04T19:30:03.702Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['Frank Borman', 'James A. Lovell Jr.'],
   summary:
     'Fourteen days: longer than any flight to the Moon would take, and nearly twice as long as anyone had flown. ' +

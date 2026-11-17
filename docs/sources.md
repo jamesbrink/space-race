@@ -1209,6 +1209,7 @@ garbles, on the page. **The Gemini VI-A mission report of January 1966 was not f
 | *Gemini Program Mission Report, Gemini VII* (entry above), read again for the launch site | as above | Liftoff 3.7 s late, the range sequencer out of step (4.1); the count with no hold, no erector vibrations, the damage "minimal", GLV-6 erected by 16:00 G.m.t. on 5 December (5.2.10); "the crew countdown went very well" (7.1.2.1); **the G5C** (3.1.2.9.2) and the hoods on through the launch (7.1.2.3.3); **the launch weather** (12.2, p. 12-9): "5/10 altocumulus at 16 000 ft", 340° at 10 knots, 8 miles | Read on the page for 12.2 |
 | NASA SP-4002, the entries for 29 October, 11 November and 4 December 1965, read for the launch site | as above | GLV-7 erected on 29 October; no wet mock simulated launch from GLV-7 on, the spacecraft wired to the Titan by a jumper cable; GLV-6 at the complex two hours after Gemini 7's liftoff | |
 | NASA photographs of 4 December 1965: **S65-59932** (Borman and Lovell leaving the suiting trailer in the G5C, hoods on), **S65-60981** (Lovell on the ramp at pad 19: the hood, its zip, his tag and the insignia under it), **S65-61848** (Lovell at the elevator "one hour and 40 minutes before launch"), S65-61632 (the erector part way down), S65-61846 (5 December: the damage looked at) | images.nasa.gov | **The G5C as worn** (crew/g5c-suit.md); the one time of the afternoon at the pad | |
+| NOAA NCEI Integrated Surface Database, 1965: stations 74794012868 and 74795012867, 4 December | [noaa-global-hourly-pds](https://noaa-global-hourly-pds.s3.amazonaws.com/1965/74794012868.csv) (fetched 17 November 2026) | **The weather Gemini 7 left under**, beside the report's: the Skid Strip at 19:00 and 20:00 UTC, the total at its highest class with no ceiling, two oktas of altocumulus at 4,200 m and eight of cirrostratus at 18:00, 340° at 5.1 m/s, 12.8 km | |
 
 Known, not read:
 
@@ -1221,7 +1222,7 @@ Known, not read:
 | The G5C suit: David Clark's drawings, the Smithsonian's records of Borman's and Lovell's suits | The hood's form, which crew/g5c-suit.md takes from the G3C's helmet |
 | Photographs of Gemini-Titan 7 and Gemini-Titan 6A on the stand or at liftoff, read for the paint | The vehicles' lettering, roll pattern and bare skirt are assumed as GLV-3's to GLV-5's |
 | The countdown records for 4 and 15 December 1965 | When each crew went aboard and the hatches were shut (Gemini 7's are the plan's, but for the photograph at T-100) |
-| The weather at Cape Kennedy on 4 and 15 December 1965 | Each flight's `weather.ts`, when Complex 19 is built |
+| The weather at Cape Kennedy on 15 December 1965 | Gemini-Titan 6A's `weather.ts`, when its launch site is built |
 
 ### Gemini-Titan 8 and Gemini-Titan 9A
 

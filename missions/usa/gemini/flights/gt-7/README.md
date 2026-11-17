@@ -206,6 +206,30 @@ are held to these figures by `tests/world.test.mjs`.
 
 Jupiter and Uranus were below the horizon.
 
+## The weather
+
+**The mission report's** (MSC-G-R-66-1, 12.2, p. 12-9), "taken at 2:30 p.m. e.s.t.": "5/10
+altocumulus at 16 000 ft", the wind 340° at 10 knots, visibility 8 miles, 29.98 in. Hg, 70 °F with a
+dew point of 61 °F, 73 per cent humidity. Its Table 12.2-I and Figure 12.2-1 have the launch area's
+air an hour before liftoff and are not transcribed. During the count the ground wind was about 9 mph
+(5.2.1.2).
+
+**At the Cape, as recorded** (the Skid Strip, NOAA's Integrated Surface Database, station
+747940-12868), the hours either side:
+
+| UTC (EST) | Wind | Air | Dew point | Sea-level pressure | Visibility | Sky |
+| --- | --- | --- | --- | --- | --- | --- |
+| 18:00 (1 p.m.) | 360° at 4.6 m/s | 21.1 °C | 16.1 °C | 1016.6 hPa | 12.8 km | overcast class, no ceiling: 2/8 altocumulus at 4,200 m, 8/8 cirrostratus |
+| 19:00 (2 p.m.) | 340° at 5.1 m/s | 20.5 °C | 16.1 °C | 1015.9 hPa | 12.8 km | overcast class, no ceiling |
+| 20:00 (3 p.m.) | 350° at 5.7 m/s | 20.0 °C | 14.4 °C | 1015.6 hPa | 12.8 km | overcast class, no ceiling |
+
+`documented`, the sky's classes read as Gemini-Titan 3's README says. No ceiling under a total at its
+highest class is a sheet of high cloud: the cirrostratus of 18:00.
+
+`weather.ts` is written from these (half the sky of altocumulus at 4,880 m, nine tenths of
+cirrostratus over it, the wind 340° at 5.1 m/s, 12.9 km), each with its confidence; the air aloft is
+ERA5's (`aloft.ts`).
+
 ## What is not built
 
 - **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
