@@ -262,14 +262,39 @@ slosh, no jet through the sill), and water with a surface is a weight and not a 
 before the hatch it rolls a few degrees on the wind sea, where the history has it "rolling badly with the swells" (This
 New Ocean, p. 372); the landing bag is let down at 10:26 as rigid nested bands, not cloth, and never
 bellies or swings (spacecraft.md); nothing is drawn under the sea (the camera stays on the surface and watches it go);
-the hatch lies on the swell rather than skipping; the water in the cabin is a flat surface, and nothing is drawn under
+the hatch lies on the swell rather than skipping (below); the water in the cabin is a flat surface, and nothing is drawn under
 it. The sea round it is the day's
 (ERA5's swell and wind sea, weather.ts), the same sea the simulator floats it on, with short waves for the light
 only. Hunt Club 1 (recovery.ts) is flown on the record's order of events: 2 miles south-west as the capsule came
 down, circling it by 18:23, in over it as the hatch went, its wheels in the water as it hooked the sinking capsule,
 held over it by its line while it pulled, and away when it let go; its track between those, its heights, the way it
-faced and its line's length are ours. It is heard (sound/model.ts `rotorcraftTimbres`): its blades passing at 17.2 a second, its tail rotor's hum, its nine cylinders firing, from the chase view, and through the cabin's wall from the seat until the hatch goes; their levels and timbres are estimated. The second helicopter, which picked Grissom up, and
-Grissom in the water are not drawn (issue #13).
+faced and its line's length are ours. It is heard (sound/model.ts `rotorcraftTimbres`): its blades passing at 17.2 a second, its tail rotor's hum, its nine cylinders firing, from the chase view, and through the cabin's wall from the seat until the hatch goes; their levels and timbres are estimated. **The hatch does not skip.** The one account of it is Reinhard's, from Hunt Club 1 on its final approach: he "saw
+the hatch cover fly off, strike the water at a distance of about five feet from the hatch, and then go skipping over
+the waves" (*This New Ocean*, p. 373). Nothing else read describes it (*Results*, pp. 4, 7 and 53 to 55; Hammack and
+Heberlig; SEDR 104; SP-45; the 1999 recovery, which raised the capsule without it): no count of skips, no distance, no
+fate. Whether a 23 lb plate skips turns on how it lies and spins as it meets the sea; thrown off along its outward normal
+(sim/loose.ts) it meets the sea edge first, and nothing records its tumbling. A skip built here would be chosen to match
+the words, so the hatch strikes the sea five feet off, as he saw, and lies there.
+
+**Grissom in the sea** (`recovery.ts` `GRISSOM`, viewer/swimmer.ts) is the crew figure, his
+helmet left in the cabin ("I lifted the helmet from my head and dropped it"), from the instant he is out through the
+hatch to Hunt Club 3's hoist: out on the hatch's side and free of the dye marker's line, his shoulders above the water;
+back the four or five feet to the capsule as Hunt Club 1 hooked it; then away from it, caught in the rotorwash between the
+two helicopters, his armpits at the water as his suit filled; into the horse collar backwards, and drawn up the cable to
+the door, his right hand on it over his head and his left arm down, as NASA 61-MR4-82 shows him (*Results*, pp. 7 and
+55; *This New Ocean*, p. 375). He rides the day's sea that is drawn, the same function the capsule floats on. Three and a
+half minutes in the water, where the record has three to four. His places between those events, which way he faced and
+his pose in the water are ours; he wears the comm cap he had under the helmet. On a run flown by hand he is gone from
+the couch once out, and is not drawn in the sea: his places are the record's.
+
+**Hunt Club 3** (model/hunt-club-3.py: the same HUS-1 as Hunt Club 1 in its own markings, 30 on the nose and the door
+and RESCUE twice aft of it, as 61-MR4-82 shows it; ET, the squadron's code, as MSFC-6116429 and S61-02819 give it) is
+flown on the record's order of events: sent at 24:03 to look at the dye marker's line three quarters of a mile out at
+160°, back as the hatch went, low near Grissom with the collar swinging in the water from its door, over him with its
+hoist out, and away. **Its bureau number is not legible in any photograph read** (61-MR4-82 does not show its tail;
+MSFC-6116429 and S61-02819 are too coarse), so none is painted: *This Day in Aviation* gives 148754 with no source, and it
+is not used. Its track between the record's events, its heights and the way it faced are ours, and it is heard as Hunt
+Club 1 is.
 
 ## Where sources disagree
 

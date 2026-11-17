@@ -69,6 +69,9 @@ export class Recovery {
   private readonly rotors: { node: THREE.Object3D; base: THREE.Quaternion; axis: THREE.Vector3; rate: number }[] = [];
   private readonly hook = new THREE.Vector3();
   private readonly line: THREE.Mesh | null = null;
+  /** Its hoist's boom in every level, and its cable (`RecoveryCraft.hoist`). */
+  private readonly booms: { node: THREE.Object3D; base: THREE.Quaternion }[] = [];
+  private readonly cable: THREE.Mesh | null = null;
   private shown = false;
 
   readonly def: RecoveryCraft;
@@ -85,6 +88,15 @@ export class Recovery {
     this.group.add(staged.group);
     this.group.visible = false;
     this.findRotors();
+    if (def.hoist) {
+      const material = new THREE.MeshStandardMaterial({ name: 'hoist-cable', color: 0x3a3936, roughness: 0.6, metalness: 0.5 });
+      this.cable = new THREE.Mesh(new THREE.BufferGeometry(), material);
+      this.cable.name = 'hoist-cable';
+      this.cable.frustumCulled = false;
+      this.cable.visible = false;
+      this.cable.raycast = () => {};
+      this.group.add(this.cable);
+    }
     staged.group.updateMatrixWorld(true);
     const hook = def.line ? staged.full.getObjectByName(def.line.from) : undefined;
     if (hook) {
@@ -100,8 +112,16 @@ export class Recovery {
     }
   }
 
-  /** Every rotor node in every level (each level has its own copy): found again when a level arrives. */
+  /** Every rotor node in every level (each level has its own copy), and its hoist's boom: found again when a level arrives. */
   findRotors(): void {
+    this.booms.length = 0;
+    const boom = this.def.hoist?.boom;
+    if (boom)
+      this.staged.group.traverse((o) => {
+        if (o.name !== boom) return;
+        const base = (o.userData.boomBase as THREE.Quaternion | undefined) ?? (o.userData.boomBase = o.quaternion.clone());
+        this.booms.push({ node: o, base });
+      });
     this.rotors.length = 0;
     for (const r of this.def.rotors)
       this.staged.group.traverse((o) => {
@@ -148,6 +168,13 @@ export class Recovery {
     this.group.quaternion.copy(turn);
     for (const r of this.rotors)
       r.node.quaternion.copy(r.base).multiply(new THREE.Quaternion().setFromAxisAngle(r.axis, (r.rate * t) % (2 * Math.PI)));
+    // its hoist's boom swung out over three seconds from when it is let down
+    const hoist = this.def.hoist;
+    if (hoist) {
+      const k = THREE.MathUtils.smoothstep(t, hoist.on.value, hoist.on.value + 3);
+      const swing = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...hoist.axis).normalize(), hoist.out * k);
+      for (const b of this.booms) b.node.quaternion.copy(b.base).multiply(swing);
+    }
     this.group.updateMatrixWorld(true);
     this.staged.measure();
     if (this.line) {
@@ -181,10 +208,42 @@ export class Recovery {
     old.dispose();
   }
 
-  /** Its line's material and geometry; the model is the stage's to let go. */
+  /** Where its hoist's cable leaves it, in the scene, while its hoist is let down at `t`: null otherwise. */
+  sheave(t: number): THREE.Vector3 | null {
+    const hoist = this.def.hoist;
+    if (!hoist || !this.shown || t < hoist.on.value || t >= hoist.aboard.value) return null;
+    const node = this.staged.full.getObjectByName(hoist.sheave);
+    return node ? node.getWorldPosition(new THREE.Vector3()) : null;
+  }
+
+  /**
+   * Draw its hoist's cable at `t` from its sheave down to `end` (in the scene): a swimmer's collar once he has it, else
+   * the sea under it, where the collar swings in the water. Not drawn while the hoist is in.
+   */
+  drawHoist(t: number, end: THREE.Vector3): void {
+    const cable = this.cable;
+    if (!cable || !this.def.hoist) return;
+    const from = this.sheave(t);
+    cable.visible = Boolean(from);
+    if (!from) return;
+    const inverse = this.group.matrixWorld.clone().invert();
+    const old = cable.geometry;
+    cable.geometry = new THREE.TubeGeometry(
+      new THREE.LineCurve3(from.applyMatrix4(inverse), end.clone().applyMatrix4(inverse)),
+      1,
+      this.def.hoist.radius,
+      6,
+      false,
+    );
+    old.dispose();
+  }
+
+  /** Its line's and cable's materials and geometries; the model is the stage's to let go. */
   dispose(): void {
-    if (!this.line) return;
-    this.line.geometry.dispose();
-    (this.line.material as THREE.Material).dispose();
+    for (const m of [this.line, this.cable]) {
+      if (!m) continue;
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
   }
 }

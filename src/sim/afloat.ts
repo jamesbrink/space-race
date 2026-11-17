@@ -375,6 +375,8 @@ export interface Afloat {
   /** The most it heeled before its top went under, radians (its +X side down), and when. */
   heeled: number;
   heeledAt: number;
+  /** When each part that left it left, s from launch (the events' `left`). */
+  left: Record<string, number>;
 }
 
 interface Space {
@@ -704,6 +706,7 @@ export function floatOn(
     wholes: spaces.map((s) => s.solid.whole),
     heeled: most,
     heeledAt: mostAt,
+    left: { ...left },
   };
 }
 
