@@ -31,9 +31,13 @@ the first stage’s tank cluster here is 256 in across (2 × (93 + 35)), with it
 at the 260-inch interface. This approximate clustering is **estimated**, not a reconciliation
 of the rounded source dimensions. The fins reach beyond the body.
 
+The model's Z0 is both the foot of the S-IB's 80.2-ft envelope and **vehicle station 0**, and the
+stations read from MSFC and the flight evaluation (the H-1 gimbal plane at STA100, the S-IVB's separation
+plane at STA1187) are placed directly at those heights. That the stage's foot is at STA0 is the model's
+**assumption**: no source read places station 0 on the stage.
 S-IB top is Z962.4 in, S-IVB top Z1663.2, IU top Z1699.2 and adapter top Z2035.2.
 These are arithmetic sums of rounded envelopes, not independently documented interface stations.
-The S-IVB upper separation plane is now Z1187 in from the mission-specific reference below;
+The S-IVB upper separation plane is Z1187 in from the mission-specific reference below;
 the lower end of the interstage remains at Z962.4 in. Its resulting 224.6-inch span
 combines rounded references and must not be read as a tenth-inch inspection measurement.
 The SM barrel stands at the adapter’s top; its engine projects inside it. The command-module
