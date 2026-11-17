@@ -185,10 +185,13 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       const up = await page.evaluate(() => ({
         mode: document.querySelector('[data-cell=mode]').textContent,
         apogee: Number(document.querySelector('.deck-main [data-cell=apogee]')?.textContent.replace(/[^\d.-]/g, '')),
+        published: window.sr.flight.plan.record.orbit.apogee.value / 1000,
       }));
       // (as flown, in orbit it is the published orbit begun where the ascent left the ship, and says so)
       if (/Not the record/.test(up.mode)) fail(where, `in orbit the deck says "${up.mode}": taken over`);
-      if (!(up.apogee > 150 && up.apogee < 400)) fail(where, `in orbit the deck's apogee is ${up.apogee} km`);
+      // (within some tens of kilometres of the published apogee: the deck's is over the sea, the record's over its own ball)
+      if (!(Math.abs(up.apogee - up.published) < 40))
+        fail(where, `in orbit the deck's apogee is ${up.apogee} km, where the published orbit's is ${up.published} km`);
       await seek(1e7);
       const down = await page.evaluate(() => ({
         mode: document.querySelector('[data-cell=mode]').textContent,
