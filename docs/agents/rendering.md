@@ -58,7 +58,12 @@ added or taken away, and no shader is built. The channel costs nothing: the colo
 bulb in the same fitting (Gemini's red) is shaded as its fitting is; a cabin of more than three lamps would need a
 second attribute.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
-indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
+indoors wherever it hangs in the model (a hatch's inner face), and everything seen from inside carries it unless it
+is a lamp, a gauge's lit face, a pane or something named: a mesh left out of it is lit as outdoors, because its
+material is no longer the one the shaded meshes share (a colour of four parts is another variant of it), and in a
+dark cabin it is a bright line (Gemini's cone frame seen past the hatch sills). What is narrow and hangs on something
+else (a curtain a third of an inch off its wall) takes its figures from what it hangs on (`cabin_shade.bake`
+`joined`): asked from itself it came out lit along a wall in shadow. A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray
 from one starts clear of what is fastened to it, or a vertex under a clip is a blot. To look at a cabin without the
 browser, a model's stills can be taken from its seat (`srlib.render_preview`: `seat`, `look`, `lens`, `lamps`, `hide`).
