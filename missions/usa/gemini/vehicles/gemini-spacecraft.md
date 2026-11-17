@@ -344,6 +344,12 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
   them. What moves (needles, controls, the attitude balls), the lamps' lenses and telelights, the panes and the men in the
   seats neither take it nor cast it: the men cast no shadow on the walls. The hatches' inner faces take it as they stand
   shut; on a ship whose right hatch is a node of its own (from spacecraft 4) that hatch's inside is not shaded.
+  The shade is cast once, with the hull whole and the hatches shut: cut open in the Gallery, or with a hatch open, the
+  walls that are taken away still shade the lamps' light as if they stood, and the room's light that comes in at the
+  cut is shaded by less of it, not worked again (src/viewer/shade.ts `kept`). The Sun's light is not shaded by it: its
+  own shadow maps shade it. A shadow's edge on the walls is no finer than a vertex every inch and a half, evened twice
+  between neighbouring vertices, so it is soft; and a lamp's shadow is that of its lens's middle and four points across
+  it, not of the whole fitting.
 - **One switch for three floodlights, and the red light estimated.** The CENTER LIGHT switch on the overhead panel was the
   centre lamp's alone; each side lamp had its own WHITE-OFF-RED selector and a rheostat on its fixture (SEDR 300,
   p. 3-20). The fittings are plain blocks with a lens, so the one switch that is built throws all three and none can
