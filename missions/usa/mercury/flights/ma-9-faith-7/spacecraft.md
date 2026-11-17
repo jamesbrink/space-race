@@ -181,6 +181,8 @@ Built by [mercury_cabin_20.py](../../vehicles/mercury_cabin_20.py).
 | --- | --- | --- | --- |
 | The figure | the Mark IV suit as modelled (`crew/mark_iv_suit.py`), on the couch, with the tag reading L. G. COOPER | estimated | |
 | Stature | 5 ft 9 in (175.3 cm) | documented | "Cooper is 5 feet 9 inches tall, weighs 148 pounds" (*The Triumph*, p. 1) |
+| Standing, at the launch site | the same fit, `model/crew.py` (`mark_iv_suit.MA_9`, which the couch's figure wears too) | estimated | built as Glenn's standing figure is |
+| Weight that morning | 147 lb nude, at 3:55 to 4:11 | documented | NASA SP-45, Table 18-II (p. 301) |
 | Wrist rings, two microphones, a round port on the right thigh | as built for Grissom's suit of July 1961 | documented by photograph | NASA S63-01922 (Cooper suited beside the capsule during preflight testing); the microphones also SP-45, p. 56 |
 | What his suit had that the model has not | boots made one with the suit, closed by a zip up the back in place of laces; new shoulders; the life vest in a pocket on the lower left leg; a harness of webbing over the shoulders and across the chest | documented; not modelled | *The Triumph*, p. 22; S63-01922. The model's boots are the earlier laced ones |
 
@@ -234,7 +236,9 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 - **The television is a camera on a post.** Its control unit, transmitter, lenses and cable are
   not modelled, and its bracket is ours.
 - **The pilot's suit is the earlier one** in boots, shoulders and harness, on a figure of Cooper's
-  height. There is no model of him standing.
+  height, on the couch and standing at the launch site (`model/crew.py`: the same fit,
+  `mark_iv_suit.MA_9`). The life vest's pocket on the left shin, the self-sealing inlet, the ear-cup
+  thermometer and the mechanical visor seal are not modelled either (*The Triumph*, p. 21).
 - **Little of the flight's hand-held equipment**: the Hasselblad is in its kit, where Sigma 7's
   was; its film packs and filters, the 35 mm zodiacal-light camera, the 16 mm camera, the
   photometer, the dosimeters and emulsion packs and the food are not modelled.

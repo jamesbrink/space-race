@@ -7,7 +7,7 @@ power.
 | | |
 | --- | --- |
 | Liftoff | 15 May 1963, 13:04:13 UTC (08:04:13 EST) |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts), built as [lc-14.md](../../../places/cape-canaveral/lc-14.md) |
 | Pilot | L. Gordon Cooper, Jr. (backup: Alan B. Shepard, Jr.) |
 | Spacecraft | Mercury No. 20, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 130-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -17,9 +17,11 @@ power.
 | Landing | 27°22.6′ N 176°35.3′ W by the recovery ship, south-east of Midway; predicted 27°22′ N 176°29′ W |
 | Recovery | capsule and pilot together, aboard USS *Kearsarge*, about 40 minutes after landing |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 20 on Atlas 130-D as they left the
-pad can be turned, taken apart as they staged, and cut open. Its launch site and the flight itself
-are not built: see "What is not built" below.
+**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 20 on Atlas
+130-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
+launch site they stand on the stand at Complex 14 on the morning of 15 May 1963, with Cooper at the
+foot of the service structure, and the place can be walked. The flight itself is not built: see
+"What is not built" below.
 
 ## What happened
 
@@ -118,16 +120,34 @@ Atlas went. Mars, Uranus and Neptune were below the horizon.
 read. *This New Ocean* has the operations director say the night before that "the weather is
 good" (p. 494) and quotes a report that "the sun literally smiled on MA-9" (p. 503). In the landing area the ground told the
 pilot, at 34:13:58: cloud tops near 36,000 ft, half the sky covered at 1,500 ft, waves 5 to 6 ft,
-wind 15 knots (NASA SP-45, p. 441). No `weather.ts` is written for this flight: it has no site
-model for a sky to stand over, and no record to write one from.
+wind 15 knots (NASA SP-45, p. 441). No `weather.ts` is written for this flight yet: its site stands
+under its place's default sky, which is an estimate.
+
+## The launch site
+
+Complex 14 as it stood that morning, which is as it stood for the three orbital flights before: nothing read has it
+changed, and most of it is scaled off the photographs of this month
+([places/cape-canaveral/lc-14.md](../../../places/cape-canaveral/lc-14.md), "What stood when"). The morning at the
+pad is `pad.ts`, from *The Triumph of Astronaut L. Gordon Cooper* (p. 7), NASA SP-45 (pp. 102 and 264) and the
+press kit's plan: the day before, the count had stood still at T−60 for more than two hours because the diesel would
+not move the structure back, and the flight was put off. On the 15th the van parked "near the elevator at Pad 14";
+Cooper left it at 5:32, as the Sun rose, took the pad crew's good wishes and rode the lift up, and was aboard at
+5:36. The count's points are not given for the day: the structure is taken off the stand at the plan's T−50, about
+07:10 (assumed), and stowed fourteen minutes later (Aurora 7's interval, assumed); the one hold, four minutes at
+T−11½, is documented; the umbilical goes at the plan's T−35 seconds; the arms let go at liftoff. The vehicle stands
+with its pitch axis on 105° (documented) and its hatch on 240° (estimated from photographs), as every Mercury-Atlas
+stood. The bascule stood upright all morning and can be lowered by hand from the tower.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
-  which way the vehicle faced on it.
-- **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
-  be boarded. The figure on the couch is the Mercury suit as modelled, to Cooper's height and with
-  three things his photographs show ([spacecraft.md](spacecraft.md), "The pilot").
+- **Much of the launch site's detail.** Complex 14 is built and can be walked, but only its published sizes are
+  documented; [lc-14.md](../../../places/cape-canaveral/lc-14.md) ends with a long list of what is estimated or left
+  out (every room is shut; the fences, the vehicles and the people are not there: not the transfer van that stood by
+  the elevator, NASA S63-07632, nor the pad crew).
+- **The pilot's own suit.** The standing figure, like the one on the couch, is the Mercury suit as modelled, to
+  Cooper's height and with three things his photographs show; his suit's changes for this flight (the boots made one
+  with it, new shoulders, the life vest on the left shin, a mechanical visor seal) are not built
+  ([spacecraft.md](spacecraft.md), "The pilot").
 - **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
   programme, an orbit and an entry as data, and for this flight above all a capsule that can be
   flown by hand through both with nothing but a window to steer by.

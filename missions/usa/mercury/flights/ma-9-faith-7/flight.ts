@@ -17,6 +17,8 @@ import {
 } from '../../vehicles/mercury-atlas.ts';
 import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles/mercury-capsule.ts';
 import { mercuryCabin } from '../../vehicles/cabin.ts';
+import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
+import { crew, pad, PAD_SPECS } from './pad.ts';
 
 /** The side of the pilot's feet: where every earlier capsule had its periscope, and this one a door for the umbilical. */
 const FEET_AZ = 90 + STAND;
@@ -373,6 +375,8 @@ const parts: PartWords[] = [
 ];
 
 const vehicle = mercuryAtlasStack({
+  // on the stand at Complex 14, the hatch on 240 degrees true, as every Mercury-Atlas stood (lc-14.parts.ts)
+  stand: { over: LAUNCHER_TOP, rotationY: STAND_TURN },
   flight: 'ma-9-faith-7',
   parts: mercuryAtlasParts('ma-9-faith-7', parts),
   views: [
@@ -444,6 +448,7 @@ export const flight: Flight = {
     { t: 123589, event: 'Landing, 27°22.6′ N 176°35.3′ W' },
   ],
   specs: [
+    ...PAD_SPECS,
     SPEC.heatShield,
     CAPSULE_SPEC.afterbodyHalfAngle,
     {
@@ -635,5 +640,7 @@ export const flight: Flight = {
       note: `automatic system, all axes (Hammack and Heberlig). A new 1 lb chamber, proved in the Project Orbit chamber runs, was fitted for this flight (${SUMMARY}, p. 54 and Figure 3-10). All worked`,
     },
   }),
-  models: [vehicle],
+  models: [vehicle, pad, crew],
+  // the place round the pad: nothing read has it changed since Friendship 7's morning (places/cape-canaveral/lc-14.md, "What stood when")
+  surroundings: 'models/usa/places/cape-canaveral/lc14/1962-02.glb',
 };

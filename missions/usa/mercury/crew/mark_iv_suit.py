@@ -130,6 +130,12 @@ MR_4 = Fit(
     white_ventilator=True,
     neck_dam=True,
 )
+# Mercury-Atlas 9, 15 May 1963: Gordon Cooper, on the couch (flights/ma-9-faith-7/model/vehicle.py) and standing at the
+# pad (model/crew.py): his stature, 5 ft 9 in ("Cooper is 5 feet 9 inches tall": The Triumph of Astronaut L. Gordon
+# Cooper, Jr. and the Faith 7, p. 1); the gloves locked to rings at the wrists, two microphones in the helmet, the
+# biomedical connector a round port on the right thigh (NASA S63-01922). His suit's own changes are not built
+# (../flights/ma-9-faith-7/spacecraft.md, "The pilot").
+MA_9 = Fit("MA-9", "L. G. COOPER", 175.3, wrist_rings=True, microphones=2, port=True)
 SUIT_SLACK = 2.0  # what figurelib's sections have over the body all round (figurelib.man)
 
 FIT = MR_3

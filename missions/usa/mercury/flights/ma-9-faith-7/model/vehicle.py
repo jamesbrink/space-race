@@ -503,12 +503,10 @@ def build_crew_cabin(M, window: dict) -> None:
     if not interior():
         return
     # The pilot: the Mark IV suit as modelled (crew/mark_iv_suit.py), on the couch, as Cooper and his own photographs
-    # have it: his stature, 5 ft 9 in (The Triumph of Astronaut L. Gordon Cooper, Jr. and the Faith 7, p. 1: documented),
-    # the gloves locked to rings at the wrists, two microphones in the helmet, the biomedical connector a round port on
-    # the right thigh (NASA S63-01922). What his suit had that the model has not is in spacecraft.md ("The pilot").
+    # have it (`mark_iv_suit.MA_9`: his stature, his wrist rings, two microphones, the round port on the right thigh, each
+    # with its source there). What his suit had that the model has not is in spacecraft.md ("The pilot").
     P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
-    cooper = mark_iv_suit.Fit("MA-9", "L. G. COOPER", 175.3, wrist_rings=True, microphones=2, port=True)
-    pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot", cooper)
+    pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot", mark_iv_suit.MA_9)
     where = mercury_cabin_20.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, HATCH, CONE_H - 0.3, mark_iv_suit.seated_points(), window)
     mercury_cabin_20.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH)
     print(f"ma-9 cabin: {where}")

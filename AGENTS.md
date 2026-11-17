@@ -3,7 +3,7 @@
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
 in three.js. Today it ships 21 flights (`missions/index.ts`, Vostok 1 to Gemini-Titan 9A), each in its Gallery;
 Freedom 7, Liberty Bell 7, Friendship 7 (the first American flight into orbit), Vostok 1 to 6 and Voskhod 1 also have their Launch
-site and can be flown; Aurora 7 and Sigma 7 (Complex 14) and Gemini 3 (Complex 19) have their Launch site and are not flown yet. The goal is a
+site and can be flown; Aurora 7, Sigma 7 and Faith 7 (Complex 14) and Gemini 3 (Complex 19) have their Launch site and are not flown yet. The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.
 
