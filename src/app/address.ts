@@ -127,6 +127,9 @@ export const browseOf = (flightId: string): { nation: string; programme: string 
   programme: flightId.split('/').slice(0, 2).join('/'),
 });
 
+/** A programme's short name, as a crumb and the front page's switches say it: its word in the id, capitalised (`usa/mercury`: Mercury). */
+export const programmeName = (programme: string): string => (programme.split('/')[1] ?? '').replace(/^./, (c) => c.toUpperCase());
+
 /** The address a crumb goes out to: the front page narrowed to a nation (`usa`) or a programme (`usa/mercury`). */
 export const browseTo = (under: string): string =>
   formatBrowse({ nation: under.split('/')[0] || null, programme: under.includes('/') ? under : null });

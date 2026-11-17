@@ -1,5 +1,5 @@
 import './title.css';
-import { type Browse, browseOf, exhibit, listed } from '../app/address.ts';
+import { type Browse, browseOf, exhibit, listed, programmeName } from '../app/address.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
 import { esc } from '../util/dom.ts';
@@ -28,16 +28,12 @@ export class Title {
   ) {
     const built = flights.filter((f) => exhibit(f)).length;
     const all = listed(flights);
-    // the nations and their programmes, each in the order its first flight flew, named as the flights name them (one
-    // with nothing built yet is named by its word in the id)
-    const named = (key: string, name?: string) => name ?? key.replace(/^./, (c) => c.toUpperCase());
+    // the nations and their programmes, each in the order its first flight flew; a programme by its short name
     const nations = new Map<string, { name: string; programmes: Map<string, string> }>();
     for (const f of all) {
       const { nation, programme } = browseOf(f.id);
       if (!nations.has(nation)) nations.set(nation, { name: f.nation, programmes: new Map() });
-      const of = nations.get(nation)!.programmes;
-      const word = programme.split('/')[1] ?? '';
-      if (!of.has(programme) || 'program' in f) of.set(programme, named(word, 'program' in f ? f.program : of.get(programme)));
+      nations.get(nation)!.programmes.set(programme, programmeName(programme));
     }
     this.root = document.createElement('div');
     this.root.id = 'title';
