@@ -73,8 +73,11 @@ Apollo 7's own panel layout is now identified in NAA V36-976018 revision D,
 12 March 1968. A [blank structural reference](../../vehicles/main-console.md)
 uses the shared contour from the Smithsonian's processed CM-107 derivative,
 explicitly assumed for CM-101. It retains the central notch and stays with the
-CM during explosion. This is not an equipped console: individual panel joints,
-instrument openings, thickness, supports, controls and side consoles are unresolved.
+CM during explosion. Two fixed FDAI interface contours are now retained from the
+same processed survey, with their corresponding positions verified against the
+CM-101 layout. The instruments remain unbuilt. This is not an equipped console:
+individual panel joints, other instrument openings, thickness, supports, controls
+and side consoles are unresolved.
 Neither Apollo 11's later equipment nor its different couches are imported.
 
 ## Common-datum correction

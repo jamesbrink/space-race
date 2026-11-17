@@ -4,12 +4,13 @@
     "url": "https://3d-api.si.edu/content/document/3d_package:d8c63e8a-4ebc-11ea-b77f-2e728ce88125/x3d-cm-interior-panel-uvs-150k-4096-high.glb",
     "sha256": "265d4801baca265083090fbcf21cd2efbf47cd0a33403de8f5c2e0de4e9ab92c",
     "licence": "CC0",
-    "use": "Main-console structural silhouette only; assumed shared Block II structure. No CM-107 controls, labels, equipment, textures, couches or side wings."
+    "use": "Main-console structural silhouette and two fixed FDAI interfaces only; assumed shared Block II structure. No CM-107 controls, labels, equipment, textures, couches or side wings."
   },
   "verification": {
     "flight_layout": "NAA V36-976018 revision D, 12 March 1968, Design Layout \u2014 Main Display Console, Command Module 101",
     "url": "https://www.ibiblio.org/apollo/Documents/V36-976018_Design_Layout_MDC_CM-101.pdf",
-    "scope": "Three main machined panels and common outer contour/notch identified, with NASA TN D-7919 p.21 verifying the Block II three-panel design. No drawing-sheet scaling; physical coordinates are from CM-107, not CM-101."
+    "scope": "Three main machined panels and common outer contour/notch identified, with NASA TN D-7919 p.21 verifying the Block II three-panel design. No drawing-sheet scaling; physical coordinates are from CM-107, not CM-101.",
+    "apertures": "The two fixed round FDAI interfaces correspond to the devices on CM-101 panels 1 and 2 in V36-976018 Rev D. NAA Guidance and Control Systems, S/C 101, 15 September 1967, SCS-2100D p.76 independently identifies the round front arrangement. Shared structural interfaces only, assumed for CM-101; processed-survey contours are not machining drawings or as-built measurements."
   },
   "registration": {
     "rotation_degrees_about_z": 90,
@@ -19,10 +20,11 @@
   "extraction": {
     "plane_normal": [0.0028408114157597066, 0.2925605418565289, 0.956242782529162],
     "plane_centre_cm": [-17.11822530277491, -58.26152058793517, 212.875527662815],
-    "method": "Weld only exactly coincident source vertices, then find edge-connected triangle components numbered by their lexicographically first unique vertex. Retain structural components 240, 712, 1440 and 1441, project their complete triangle footprints to the recorded dominant plane, union each footprint and fill internal instrument/fastener apertures, then union their outer contours. No plane-distance filter clips the retained contours. Preserve the central concave notch. Detail joints and manufactured thickness are not inferred.",
+    "method": "Weld only exactly coincident source vertices, then find vertex-connected triangle components numbered by their lexicographically first unique vertex. Retain structural components 240, 712, 1440 and 1441, project their complete triangle footprints to the recorded dominant plane, union each footprint and fill internal instrument/fastener apertures, then union their outer contours. No plane-distance filter clips the retained contours. Preserve the central concave notch. Detail joints and manufactured thickness are not inferred.",
     "plane_method": "Area-weighted triangle-plane RANSAC, seed 0, 500 candidates, 0.1 cm centroid band, abs normal dot >0.98; least-squares plane on the winning triangle vertices.",
-    "limits": "Processed visualization derivative, not raw metrology. Projection and common-datum registration do not establish survey accuracy or manufacturing tolerance. Broad planar structural reference only; support frame, individual panel joints, instrument cutouts, equipment and controls unfinished.",
-    "structural_components": [240, 712, 1440, 1441]
+    "limits": "Processed visualization derivative, not raw metrology. Projection and common-datum registration do not establish survey accuracy or manufacturing tolerance. Shared outer contour and two fixed FDAI interfaces only; support frame, individual panel joints, other instrument cutouts, equipment and controls unfinished.",
+    "structural_components": [240, 712, 1440, 1441],
+    "aperture_method": "The largest internal loop in each complete projected structural footprint, components 240 and 712. Keep every union-boundary point on the existing reference plane, with no circle fit, simplification or scaling. No instrument, glass, ball, case or electronics geometry is retained."
   },
   "surfaces": [
     {
@@ -551,6 +553,93 @@
         [-105.12602302097241, -20.656569820621222, 201.63182322605826]
       ],
       "area_cm2": 3410.2834957379055
+    }
+  ],
+  "apertures": [
+    {
+      "id": "fdai-1",
+      "source_component": 240,
+      "boundary_cm": [
+        [-68.92583340070708, -46.70802401538508, 209.49466912755446],
+        [-69.08438401329956, -46.784020784595924, 209.51839120816447],
+        [-70.32105616971643, -47.67446167514625, 209.79449370706314],
+        [-71.29733827940447, -48.76540790270592, 210.13116683936317],
+        [-71.99847201121293, -49.970161707836446, 210.50184175709117],
+        [-72.38855661537147, -51.27219432625979, 210.90135486415693],
+        [-72.48631522415603, -52.62671576806319, 211.31605837668255],
+        [-72.35600003908021, -54.02611316557545, 211.74381403402882],
+        [-71.78627439781016, -55.592210610576835, 212.22126583010575],
+        [-70.58226497674964, -57.47797675350371, 212.7946352828207],
+        [-69.39697089141143, -59.06227562904418, 213.27582703551047],
+        [-68.90316285205807, -59.69933470083664, 213.46926696008023],
+        [-67.65864425898724, -59.89128813421405, 213.52429750129343],
+        [-64.89808865449106, -59.92627945397864, 213.52680195062288],
+        [-62.11222504042497, -59.9301535555074, 213.51971096490357],
+        [-61.10318021155917, -59.895085238870564, 213.50598420845014],
+        [-60.85731925710237, -59.75069844644366, 213.4610789567505],
+        [-60.36949239212237, -59.09913913599545, 213.26028646706965],
+        [-59.246418214518314, -57.546976413993455, 212.78206899207507],
+        [-58.056709076347836, -55.66243351790781, 212.20196251674602],
+        [-57.48742184848753, -54.0800214064511, 211.71613549570947],
+        [-57.469578820858786, -53.92762535431218, 211.6694572241631],
+        [-57.339302118266005, -52.68399536226693, 211.28858412107687],
+        [-57.48590186664568, -51.33382565762104, 210.87593795489397],
+        [-57.87676759111212, -50.02813819322404, 210.47762670671932],
+        [-58.511947057434874, -48.82071076234149, 210.11010372534537],
+        [-59.37854449688635, -47.756116055606775, 209.78696762433995],
+        [-60.56465722249715, -46.83890010216102, 209.50987097209915],
+        [-61.933979860978766, -46.14778286565607, 209.3024930452399],
+        [-63.366596714118785, -45.738151437388105, 209.18142316589555],
+        [-64.8169425103716, -45.60711686973819, 209.1456421008314],
+        [-66.26569746308738, -45.73574194827033, 209.18929865232934],
+        [-67.69879780662345, -46.12509399083213, 209.31267758340854]
+      ],
+      "area_cm2": 181.70005055651157,
+      "probe_cm": [-64.91433963445877, -53.299568760676976, 211.49942151899046]
+    },
+    {
+      "id": "fdai-2",
+      "source_component": 712,
+      "boundary_cm": [
+        [-37.53556812851458, -66.03060498324139, 215.31311924895346],
+        [-38.53610717794274, -66.67740354301894, 215.5139783648425],
+        [-38.85331420908926, -66.88452706705331, 215.57828974778994],
+        [-39.91195002947044, -67.92339147439759, 215.89927320958398],
+        [-40.71082143124815, -69.11316250768623, 216.2656545382413],
+        [-40.75746988421408, -69.23554944362793, 216.30323715680805],
+        [-41.41039387982761, -71.76955454910357, 217.08045059490564],
+        [-41.32894458504511, -73.16889738063759, 217.5083347289621],
+        [-40.66170874732235, -74.76441264500717, 217.99449716343292],
+        [-39.04877164580933, -76.72278917421056, 218.588866772068],
+        [-36.55260379122008, -78.98572327587696, 219.27379124605974],
+        [-36.54202987208852, -78.99359675366145, 219.2761687075771],
+        [-36.136430473213906, -79.11672836835882, 219.31263561864833],
+        [-35.774976994123946, -79.2240895066196, 219.3444087333524],
+        [-34.97810459624171, -79.24575884941046, 219.3486710718905],
+        [-34.13155434175398, -79.25667761704912, 219.34949671048798],
+        [-31.346408585376743, -79.269325156783, 219.34509207302716],
+        [-30.790508478942115, -79.2680003020229, 219.34303526524693],
+        [-29.906462342974834, -79.25888025322853, 219.33761867558292],
+        [-29.147631910132098, -79.02497238849054, 219.26380070058937],
+        [-29.123443235064784, -79.00778810921345, 219.25847134531045],
+        [-27.093921980064664, -76.7831711529397, 218.5718249817544],
+        [-25.59547991117506, -74.74506812932005, 217.94381991101656],
+        [-24.91143280012427, -73.24789415872385, 217.48373039717004],
+        [-24.422816401022324, -71.81467689356464, 217.04378889442222],
+        [-24.82852586143987, -69.23712841092653, 216.2563984425079],
+        [-24.83084231624284, -69.23061558542182, 216.2544127384774],
+        [-25.466754111167102, -68.22890170663612, 215.94982957717397],
+        [-25.504214980124015, -68.18234288377138, 215.93569628861144],
+        [-26.6867634216882, -67.12715033860374, 215.61637538889482],
+        [-29.484371318825644, -65.42741928012624, 215.1046572646196],
+        [-29.50525396291542, -65.41822093438802, 215.10190508765393],
+        [-31.100582069983858, -65.02456496775694, 214.98620625193402],
+        [-32.77900349959471, -64.88300808235346, 214.947883473442],
+        [-34.45577632649909, -65.01144365157423, 214.99215944172823],
+        [-36.052713770869325, -65.4024367911828, 215.11652719130092]
+      ],
+      "area_cm2": 198.4310029953026,
+      "probe_cm": [-33.01237733745579, -72.49167369238508, 217.2764326091013]
     }
   ]
 }

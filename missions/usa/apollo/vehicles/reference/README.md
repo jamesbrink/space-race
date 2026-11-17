@@ -167,6 +167,15 @@ outer-apex station, is applied without scaling. Full method and limits are in [m
 
 ## DSKY front-web interface
 
+The console dataset also retains the two fixed FDAI interface contours from the
+complete structural footprints of components 240 and 712. They are projected
+processed-survey contours, assumed shared for CM-101, not machining dimensions.
+The CM-101 layout identifies the corresponding two positions. No FDAI instrument
+mesh is transferred. The hash-checked `rebuild_console_apertures.py` extractor,
+rebuild order and independent mask checks are documented in
+[main-console.md](../main-console.md); instrument limitations are in
+[fdai.md](../fdai.md).
+
 `apollo-dsky-front-web.json.gz` combines a nominal drawing-reference front web
 with a rigid pose from the shared CM-107 metal cover plane. Apollo 7 and Apollo 11
 DSKY parts lists both identify front cover 2004739-001; their later/earlier display

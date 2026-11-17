@@ -84,7 +84,8 @@ it is not an as-built CM-101 installation or an attachment-point survey.
 
 The blank console reference would otherwise pass through this web. Its display
 mask is the convex footprint of the **complete nominal web volume**, projected
-onto the console's existing plane. That footprint is subtracted and the remaining
+onto the console's existing plane. That footprint and the two separately measured
+fixed FDAI interface contours are subtracted together, and the remaining
 concave surface constrained-triangulated. Original outer contours and the centre
 notch are retained. This derived interface is **not a claim about the real
 console's manufactured aperture or installation clearance**. No standoff is added
@@ -97,6 +98,10 @@ is closed, remains whole in cutaway, and moves with the console and CM in the
 exploded exhibit. It is omitted from lower exterior levels of detail.
 
 ## Rebuilding
+
+If the console's fixed interfaces need rebuilding, first run the extractor and
+format the console JSON as described in [main-console.md](main-console.md).
+Its exact formatted bytes are hashed by this generator.
 
 The script checks both source hashes and imports the original survey with
 Blender 5.x, headless with factory startup. With the downloaded inputs:

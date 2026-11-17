@@ -5,7 +5,7 @@ inside the cabin; it does not represent an equipped or operable flight console.
 
 North American Aviation **V36-976018 revision D, 12 March 1968**, *Design Layout —
 Main Display Console, Command Module 101*, sheet 1 of 2, identifies Apollo 7's
-main-panel arrangement, central notch and equipment layout. The digitized foldout
+main-panel arrangement, central notch, two FDAI locations and equipment layout. The digitized foldout
 is [available through Virtual AGC](https://www.ibiblio.org/apollo/Documents/V36-976018_Design_Layout_MDC_CM-101.pdf).
 Its sheet dimensions and printed scale are **not** used to measure spacecraft
 hardware. NASA TN D-7919, printed p. 21, identifies the three large machined main
@@ -33,7 +33,7 @@ plane; a least-squares plane is fitted to that inlier set's triangle vertices.
 The plane is recorded in the reference JSON.
 
 Only exactly coincident source vertices are welded; no proximity tolerance
-moves a vertex or joins adjacent hardware. Edge-connected triangle components
+moves a vertex or joins adjacent hardware. Vertex-connected triangle components
 are numbered by their lexicographically first unique vertex. Structural components
 **240, 712, 1440 and 1441** identify the broad left, centre and right panel contours;
 1441 provides the right-hand tip. Detached instruments and side-wing components
@@ -49,11 +49,49 @@ not resolved by this union, and the number of resulting connected polygons is
 not a count of the real console's three manufactured panels. No manufactured
 thickness is inferred.
 
-The [DSKY front-web reference](dsky-front.md) now masks its projected nominal
-volume in this blank surface. The remaining concave polygons are constrained-
+The two fixed FDAI interfaces described below and the
+[DSKY front-web reference](dsky-front.md) mask this blank surface. The remaining concave polygons are constrained-
 triangulated, preserving their outer boundaries and the notch. This is a derived
 visualization interface, not a measured machined console aperture. The web and
 mask are tied to this source JSON by a hash and rebuilt together.
+
+## Fixed FDAI panel interfaces
+
+The largest internal loop of each complete projected structural footprint,
+components **240 and 712**, identifies the two round FDAI interfaces. The extraction
+retains all **33 and 36** union-boundary vertices, respectively, without a circle
+fit, scaling or an invented mounting offset. Their projected areas are
+**181.700050557 and 198.431002995 cm²**. These describe the processed source
+contours, not dimensioned machined apertures or CM-101 metrology.
+
+V36-976018 identifies the two positions on CM-101 panels 1 and 2. NAA's
+*Guidance and Control Systems—Block II, S/C 101*, 15 September 1967, SCS-2100D,
+printed p. 76, independently identifies their round front arrangement. Only the
+common fixed structural interfaces are retained as **assumed shared geometry**.
+Neither reference establishes identical detail machining between spacecraft.
+No CM-107 FDAI equipment mesh is imported; the openings remain empty. See
+[the instrument source record](fdai.md) for the unresolved instrument geometry.
+
+Both source contours and the separate DSKY visualization footprint are subtracted
+before constrained triangulation. An independent earcut/intersection regression
+checks that no output triangle covers either interface, that the outer contours
+and notch survive, and that the removed area equals the three disjoint masks.
+The Blender build also casts through both openings against the actual constructed
+console triangles after registration. No panel thickness is invented.
+
+To reproduce the fixed interfaces from the original, hash-checked survey:
+
+```sh
+uv run --with numpy --with scipy --with shapely \
+  missions/usa/apollo/vehicles/reference/rebuild_console_apertures.py \
+  /path/to/x3d-cm-interior-panel-uvs-150k-4096-high.glb
+pnpm format
+```
+
+This script uses the existing recorded plane and outer contours; it does not
+reconstruct or refit them. Next regenerate the DSKY dataset using the command in
+[dsky-front.md](dsky-front.md), then run `pnpm model apollo-7`. Formatting the
+console JSON first is necessary because the DSKY dataset records its exact byte hash.
 
 Registration uses the common aft-sphere fit and 90° rotation, without scaling to
 fit the cabin. The fitted **outer apex** is placed at **Xc −1.30 in**, as explicitly
@@ -87,8 +125,8 @@ remain limitations; source uncertainty must not be confused with this small marg
 
 ## What is wrong or missing
 
-- Blank planar reference surfaces, not complete manufactured panels: instrument
-  cutouts are filled except for the derived DSKY display mask, and individual
+- Planar reference surfaces, not complete manufactured panels: instrument
+  cutouts are filled except for the two source FDAI interfaces and derived DSKY mask, and individual
   joints and fine perimeter details are unresolved.
 - Manufactured thickness, rear enclosure, supports, fasteners, side consoles,
   instruments, switches, labels, lighting and wiring are not built. The separate

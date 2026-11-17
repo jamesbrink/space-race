@@ -235,18 +235,25 @@ def survey_pose(survey, console):
 
 
 def console_mask(vertices_cm, console, axes):
-    """Remove the reference surface through the web, without inventing a standoff."""
+    """Retain measured console interfaces and clear the nominal web's volume."""
     import numpy as np
     from shapely import constrained_delaunay_triangles
     from shapely.geometry import MultiPoint, Polygon
+    from shapely.ops import unary_union
 
     centre, horizontal, down = axes
     footprint = MultiPoint(np.stack([(vertices_cm - centre) @ a for a in (horizontal, down)], axis=1)).convex_hull
+    apertures = [
+        Polygon(np.stack([(np.array(p["boundary_cm"]) - centre) @ a for a in (horizontal, down)], axis=1)) for p in console.get("apertures", [])
+    ]
+    mask = unary_union([footprint, *apertures])
+    if not math.isclose(mask.area, footprint.area + sum(p.area for p in apertures), abs_tol=1e-8):
+        raise ValueError("Measured console interfaces and nominal DSKY footprint overlap")
     result = []
     for surface in console["surfaces"]:
         boundary = np.array(surface["boundary_cm"])
         polygon = Polygon(np.stack([(boundary - centre) @ a for a in (horizontal, down)], axis=1))
-        cut = polygon.difference(footprint)
+        cut = polygon.difference(mask)
         triangles = constrained_delaunay_triangles(cut)
         if not math.isclose(sum(p.area for p in triangles.geoms), cut.area, rel_tol=1e-10, abs_tol=1e-8):
             raise ValueError("Console mask triangulation changed the reference area")
@@ -263,9 +270,11 @@ def console_mask(vertices_cm, console, axes):
     return result, {
         "method": (
             "Convex footprint of the complete nominal front-web volume, projected onto the existing blank console plane. "
-            "Subtract and constrained-triangulate; no offset or invented aperture machining."
+            "Subtract with the separate measured FDAI panel interfaces and constrained-triangulate. "
+            "No offset or invented aperture machining."
         ),
         "area_cm2": footprint.area,
+        "fixed_aperture_area_cm2": sum(p.area for p in apertures),
         "status": "Visualization interface only, not a measured manufactured console cutout",
     }
 

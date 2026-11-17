@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
+import { ShapeUtils, Vector2 } from 'three';
 
 const folder = new URL('../missions/usa/apollo/vehicles/reference/', import.meta.url);
 const consoleBytes = readFileSync(new URL('apollo-main-console.json', folder));
@@ -117,7 +118,25 @@ test('Apollo DSKY reference pose has no scaling and its console mask removes eve
   });
   const mask = hull(projected);
   assert.ok(Math.abs(area(mask) / Math.abs(normal[2]) - ref.console_mask.area_cm2) < 1e-7);
+  assert.deepEqual(
+    consoleRef.apertures.map((p) => p.id),
+    ['fdai-1', 'fdai-2'],
+  );
+  const fixed = consoleRef.apertures.flatMap((p) => {
+    const points = p.boundary_cm.map((p) => p.slice(0, 2));
+    assert.ok(Math.abs(area(points) / Math.abs(normal[2]) - p.area_cm2) < 1e-7);
+    // Independent earcut triangulation of each concave source interface, versus
+    // the generator's Shapely subtraction and constrained Delaunay triangulation.
+    return ShapeUtils.triangulateShape(
+      points.map((p) => new Vector2(...p)),
+      [],
+    ).map((indices) => {
+      const triangle = indices.map((i) => points[i]);
+      return turn(...triangle) > 0 ? triangle : triangle.toReversed();
+    });
+  });
   let overlap = 0;
+  let fixedOverlap = 0;
   for (const panel of ref.console_surfaces) {
     for (const face of panel.triangles) {
       const points = face.map((i) => panel.vertices_cm[i]);
@@ -128,6 +147,13 @@ test('Apollo DSKY reference pose has no scaling and its console mask removes eve
           mask,
         ),
       );
+      for (const triangle of fixed)
+        fixedOverlap += area(
+          clipped(
+            points.map((p) => p.slice(0, 2)),
+            triangle,
+          ),
+        );
     }
     const original = consoleRef.surfaces.find((p) => p.id === panel.id);
     for (const p of original.boundary_cm) {
@@ -138,7 +164,10 @@ test('Apollo DSKY reference pose has no scaling and its console mask removes eve
     }
   }
   assert.ok(overlap < 1e-7, `reference panel overlaps the projected web by ${overlap} cm²`);
+  assert.ok(fixedOverlap < 1e-7, `reference panel caps fixed FDAI interfaces by ${fixedOverlap} cm²`);
   const before = consoleRef.surfaces.reduce((s, p) => s + p.area_cm2, 0);
   const after = ref.console_surfaces.reduce((s, p) => s + p.area_cm2, 0);
-  assert.ok(Math.abs(before - after - ref.console_mask.area_cm2) < 1e-7);
+  const fixedArea = consoleRef.apertures.reduce((s, p) => s + p.area_cm2, 0);
+  assert.ok(Math.abs(fixedArea - ref.console_mask.fixed_aperture_area_cm2) < 1e-7);
+  assert.ok(Math.abs(before - after - ref.console_mask.area_cm2 - fixedArea) < 1e-7);
 });
