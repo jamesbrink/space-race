@@ -3,8 +3,8 @@
 A crew figure (sk_1.py) is one man at a hundred thousand triangles, skinned so that the viewer can walk him. A launch
 pad on the morning of a flight has forty or fifty people on it, standing. So these are another kind of figure on the
 same body: the measures and joints are figurelib's (`figurelib.man`, scaled to a stature and a build), the face is
-figurelib's face read at a few dozen points, and the clothes are a handful of plain forms over them, at some 1,700
-triangles a man (700 at the far levels of detail). They are posed once, standing: a figure is meshes in its group's
+figurelib's face read on rows set at its features, with ears and a cut of hair, and the clothes are a handful of plain
+forms over them, at some 2,900 triangles a man (1,600 at the far level of detail). They are posed once, standing: a figure is meshes in its group's
 node, one mesh a material, so a group of eight is a dozen draws (`Party`). A group the viewer walks off is the same,
 but each man jointed to the crew's joints on a skeleton of the group's, under a node of his own (`Walkers`).
 
@@ -728,31 +728,95 @@ def _at(rows, z: float) -> tuple[float, float]:
     return rows[-1][1:] if z > rows[-1][0] else rows[0][1:]
 
 
+# The hair's lower edge round the head (degrees round from the face toward his left, the same to his right; cm over the
+# head's middle, which is at the eyes, for figurelib's skull of 11 cm half-height): high over the brow and higher at the
+# temples, down in front of the ear as a short sideburn, up over the ear, and down behind it to the nape. A short back
+# and sides, combed back: estimated, as the film's men have it.
+HAIRLINE = (
+    (0, 6.4),
+    (25, 6.7),
+    (42, 5.8),
+    (58, 3.8),
+    (70, 1.0),
+    (79, -1.4),
+    (84, -1.4),
+    (90, 3.4),
+    (110, 3.0),
+    (128, -3.0),
+    (150, -5.4),
+    (180, -6.0),
+)
+# The columns the hair is drawn on, the same to either side: closer where its edge climbs or falls steeply (before and
+# behind the ear), so that no stretch of its edge is a chord long enough to cut in toward the skin
+HAIR_COLUMNS = (0, 20, 40, 58, 70, 79, 84, 86, 88, 90, 104, 116, 126, 136, 150, 165, 180)
+HAIR_COLUMNS_FAR = (0, 22, 42, 60, 72, 80, 85, 88, 92, 110, 120, 130, 145, 160, 180)
+
+
+def _hairline(deg: float) -> float:
+    """The hair's lower edge at so many degrees round from the face (either way), cm over the head's middle."""
+    deg = abs((deg + 180.0) % 360.0 - 180.0)
+    for (d0, z0), (d1, z1) in zip(HAIRLINE, HAIRLINE[1:]):
+        if d0 <= deg <= d1:
+            return z0 + (z1 - z0) * (deg - d0) / (d1 - d0)
+    return HAIRLINE[-1][1]
+
+
 def _head(top: _Figure, body, d: Dress) -> None:
-    """The head: figurelib's face (`head_point`) read at a few dozen points, the skull behind it, eyes, and hair
-    where no hat covers it."""
+    """The head: a skull rounded over its crown, figurelib's face (`head_point`) read on rows set at its features (the
+    chin, the mouth, under the nose, the nose's tip, the eyes, the brow), so that the nose is a nose and the brow a brow
+    and not a plane between whatever rows fell nearest; the ears; dark eyes and brows; and the hair as a cap over the
+    scalp with a hairline that runs round the face and the ears and is fuller over the crown (where no hat covers it).
+    Designed, as the look asks: clean forms that read as a head at any distance, not a likeness."""
     a, b, c = body.skull
+    k = c / 11.0  # (the figures in centimetres are for figurelib's skull: scaled with this man's)
     head = body.head
-    nz, nf, nb = (7, 7, 4) if coarse() else (11, 11, 6)
-    zs = [-c * 0.97 + 2 * c * 0.97 * i / (nz - 1) for i in range(nz)]
-    phis = [math.radians(-96 + 192 * k / nf) for k in range(nf)] + [math.radians(96 + 168 * k / nb) for k in range(nb)]
+    far = coarse()
+    # the rows (shares of the half-height) and the columns (degrees round from the face: closer across the face)
+    rows = (
+        (-0.95, -0.72, -0.5, -0.34, -0.12, 0.19, 0.48, 0.74, 0.92)
+        if far
+        else (-0.97, -0.8, -0.62, -0.5, -0.34, -0.22, -0.06, 0.19, 0.36, 0.56, 0.76, 0.92)
+    )
+    nf, nb = (8, 5) if far else (10, 6)
+    front = [96.0 * math.copysign(abs(u) ** 1.35, u) for u in (-1 + 2 * j / nf for j in range(nf))]
+    phis = [math.radians(v) for v in front] + [math.radians(96.0 + 168.0 * j / nb) for j in range(nb)]
 
     def point(z: float, phi: float, out: float = 0.0) -> Vector:
         ring = math.sqrt(max(0.0, 1 - (z / c) ** 2))
-        narrow = 1 - 0.2 * figurelib.smooth(-z, 3.5, 10.5)
+        narrow = 1 - 0.2 * figurelib.smooth(-z, 3.5 * k, 10.5 * k)
         x = a * narrow * ring * math.sin(phi)
         q = figurelib.head_point(x, z) if math.cos(phi) > 0 else head + Vector((x, -b * ring * math.cos(phi), z))
         return q + (q - head).normalized() * out if out else q
 
     n = len(phis)
+    zs = [c * r for r in rows]
     verts = [tuple(point(z, phi)) for z in zs for phi in phis]
+    crown = len(verts)
+    verts.append(tuple(head + Vector((0.0, 0.0, c))))
     # (the columns run anticlockwise seen from above and the rows upward, so a face taken in that order looks outward)
-    faces = [(r * n + j, r * n + (j + 1) % n, (r + 1) * n + (j + 1) % n, (r + 1) * n + j) for r in range(nz - 1) for j in range(n)]
-    faces.append(tuple(reversed(range(n))))
-    faces.append(tuple(range((nz - 1) * n, nz * n)))
+    faces = [(r * n + j, r * n + (j + 1) % n, (r + 1) * n + (j + 1) % n, (r + 1) * n + j) for r in range(len(zs) - 1) for j in range(n)]
+    faces.append(tuple(reversed(range(n))))  # (under the chin, inside the neck)
+    top_row = (len(zs) - 1) * n
+    faces += [(top_row + j, top_row + (j + 1) % n, crown) for j in range(n)]  # the crown, rounded to a point over it
     top("skin").add(verts, faces)
-    if not coarse():
-        for sx in (1, -1):  # the eyes: a dark bead in each socket
+
+    # the ears: a rounded leaf on each side, behind the middle (clear of the sideburn) and tipped back, standing a centimetre
+    # off the head
+    ear = [(0.0, -0.6), (1.4, -0.5), (1.5, 0.3), (1.0, 0.9), (0.0, 0.8)]
+    for sx in (1, -1):
+        ez, ey = -1.2 * k, 1.4 * k
+        side = a * math.sqrt(max(0.0, 1 - (ey / b) ** 2 - (ez / c) ** 2))
+        basis = Matrix(((0.0, 0.0, sx, 0.0), (sx, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)))
+        place = (
+            Matrix.Translation(head + Vector((sx * (side + 0.15), ey, ez)))
+            @ Matrix.Rotation(math.radians(-12.0), 4, "X")
+            @ basis
+            @ Matrix.Diagonal((k, 2.0 * k, 1.0, 1.0))
+        )
+        top.lathe("skin", ear, 6 if far else 8, place)
+
+    if not far:
+        for sx in (1, -1):  # the eyes: a dark bead in each socket, and a brow over it
             at = figurelib.head_point(sx * 3.15, 0.55)
             top("hair").lathe(
                 [(0.0, -0.5), (0.9, -0.3), (0.9, 0.1), (0.0, 0.45)],
@@ -761,27 +825,53 @@ def _head(top: _Figure, body, d: Dress) -> None:
                 @ Matrix.Rotation(math.radians(90), 4, "X")
                 @ Matrix.Diagonal((1.25, 1.0, 0.8, 1.0)),
             )
-    # the hair: a shell over the scalp, from the hairline back and down to the nape; under a hat only what shows below it
-    line = 4.2 if d.hat else 6.3
-    hv, hf = [], []
-    for r in range(nz - 1):
-        for j in range(n):
-            cell = [
-                (zs[r], phis[j]),
-                (zs[r], phis[(j + 1) % n] + (math.tau if j == n - 1 else 0.0)),
-                (zs[r + 1], phis[(j + 1) % n] + (math.tau if j == n - 1 else 0.0)),
-                (zs[r + 1], phis[j]),
-            ]
-            zm = (zs[r] + zs[r + 1]) / 2
-            pm = (cell[0][1] + cell[1][1]) / 2
-            front = math.cos(pm) > 0.25
-            if (front and zm < line) or (not front and zm < -4.5) or (d.hat and zm > 5.0):
+            brow = [figurelib.head_point(sx * x, 2.35 + 0.35 * math.sin((x - 1.3) / 3.6 * math.pi), -0.42) for x in (1.3, 2.5, 3.7, 4.6)]
+            # (lying on the skin, its inside a couple of millimetres off it: a face along the skin within a millimetre flickers)
+            top.tube(d.hair, brow, [(0.32, 0.22), (0.36, 0.24), (0.32, 0.22), (0.22, 0.18)], 4, ref=(0, -1, 0), fine=1)
+
+    # the hair: a cap over the scalp from its edge to the crown, close at the edge and fuller over the top and the front;
+    # under a hat only what shows below its band; under a helmet none
+    if d.hat == "helmet":
+        return
+    under = 5.0 * k if d.hat else None
+    ring_n = 4 if far else 5
+    cols = HAIR_COLUMNS_FAR if far else HAIR_COLUMNS
+    degs = [float(v) for v in cols] + [-float(v) for v in reversed(cols[1:-1])]  # round from the face to his left, back, his right
+    hv: list[tuple[float, float, float]] = []
+    hf: list[tuple[int, ...]] = []
+    m = len(degs)
+
+    def thick(z: float, deg: float, edge: bool) -> float:
+        # (under a hat, close cropped and up inside its band: as thick as the band leaves room for, clear of its outside)
+        if edge or under is not None:
+            return 0.45
+        fore = max(0.0, math.cos(math.radians(deg)))
+        return 0.55 + 0.25 * fore + 0.7 * figurelib.smooth(z, 4.0 * k, 10.0 * k)
+
+    # (the rings are spaced by the angle up the skull from the edge to the crown, not by height: spaced by height, the
+    # last ring before the crown was low at the back, and the faces from it to the crown cut in through the skull)
+    for r in range(ring_n):
+        for deg in degs:
+            z0 = _hairline(deg) * k
+            z1 = under if under is not None else c
+            share = r / (ring_n - 1) if under is not None else r / ring_n
+            lo = math.asin(max(-1.0, min(1.0, z0 / c)))
+            hi = math.asin(max(-1.0, min(1.0, max(z0, z1) / c)))
+            z = c * math.sin(lo + (hi - lo) * share)
+            hv.append(tuple(point(z, math.radians(deg), thick(z, deg, r == 0))))
+    for r in range(ring_n - 1):
+        for j in range(m):
+            q = (r * m + j, r * m + (j + 1) % m, (r + 1) * m + (j + 1) % m, (r + 1) * m + j)
+            # (under a hat: none where the edge is above the band, the brow's)
+            if under is not None and all(_hairline(degs[i % m]) * k >= under - 0.05 for i in (j, j + 1)):
                 continue
-            base = len(hv)
-            hv += [tuple(point(z, phi, 0.45)) for z, phi in cell]
-            hf.append((base, base + 1, base + 2, base + 3))
-    if hv:
-        top(d.hair).add(hv, hf)
+            hf.append(q)
+    if under is None:
+        pole = len(hv)
+        hv.append(tuple(head + Vector((0.0, 0.0, c + thick(c, 0.0, False) * 0.9))))
+        last = (ring_n - 1) * m
+        hf += [(last + j, last + (j + 1) % m, pole) for j in range(m)]
+    top(d.hair).add(hv, hf)
 
 
 def _hat(top: _Figure, body, d: Dress) -> None:

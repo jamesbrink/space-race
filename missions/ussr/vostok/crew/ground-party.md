@@ -17,11 +17,11 @@ Cape's pads have none: `lc-5.md`, "There are no people"), so this is the standar
 | Part | How it is made | Confidence |
 | --- | --- | --- |
 | The body | `figurelib.man()` scaled to a stature and a build: the same landmarks, joints and girths the crew figures stand on (Drillis and Contini's proportions) | derived (the proportions); estimated (each man's stature and build: none is recorded) |
-| The face | `figurelib.head_point`: the crew figures' face (brow, sockets, nose, cheekbones, mouth, chin), read at 11 by 11 points; a dark bead in each socket | estimated: a textbook adult's, not a portrait. Nobody here is a likeness |
+| The head | a skull rounded over the crown; on it `figurelib.head_point`, the crew figures' face (brow, sockets, nose, cheekbones, mouth, chin), read on rows set at its features (chin, mouth, under the nose, the nose's tip, the eyes, the brow: 12 rows by 16 columns, 9 by 13 at the far level) so that the nose and brow are drawn and not lost between rows; an ear each side; a dark bead in each socket and a dark brow over it (not at the far level) | estimated: a textbook adult's, not a portrait. Nobody here is a likeness |
 | Trunk and skirt | one skin over the body's own sections from the waist up, let out by the garment's bulk, and below the waist a skirt to the hem | estimated |
 | Arms | a sleeve through the shoulder, the elbow and the wrist, in one of ten stances (`ARMS`); a hand as a mitt with a thumb, a little curled; a hand in a pocket is not drawn | estimated |
 | Legs | trousers from under the coat to the shoe, or to a high boot's top | estimated |
-| On the head | a peaked cap (band, crown tipped up at the front, peak, badge), a felt hat, a flat cap, a beret, or hair | forms estimated |
+| On the head | a peaked cap (band, crown tipped up at the front, peak, badge), a felt hat, a flat cap, a beret, or hair: a cap over the scalp, fuller over the crown and the front, its edge (`HAIRLINE`) high over the brow and the temples, a short sideburn, round the ear and down to the nape; under a hat, close cropped up inside its band | forms estimated (a short back and sides, combed back, as the film's men have it) |
 
 A figure faces -Y in centimetres, as figurelib's do, and is set down on a site in metres (`stand`). A group that stands
 and leaves together is a `Party`: one mesh a material, so eight men are a dozen draws. Cloth is named `suit-…` so that
@@ -86,7 +86,9 @@ its triangles and where its middle is, and what the people add to the GPU at tha
 - **April's do not move.** A figure built by `Party` is posed once: a group of 12 April is on the pad until the time
   the record has it leave, and then is not. August's (`Walkers`) walk off on the clock, but nobody gets into the bus or
   climbs a stair, and a man walking is the gait's on flat ground (site-1.md, "What the model gets wrong or leaves out").
-- Nobody is a likeness. The faces are one textbook face at a coarse sampling; statures and builds are guesses.
+- Nobody is a likeness. The faces are one textbook face, read on a dozen rows; everyone's hair is one cut in one of three
+  tones; statures and builds are guesses. (Until November 2026 the face was read on evenly spaced rows that missed the
+  nose, the top of the skull was flat with no hair over it, and the hair was a bowl with a straight fringe.)
 - Hands are mitts with a thumb; fingers are not modelled. A hand in a pocket is left out.
 - No medals, ribbons, buttons on cuffs, belts, collar tabs, cap cockades beyond a bead, or insignia of rank on the
   shoulder boards: a marshal's and a lieutenant's boards are the same plain gold.
