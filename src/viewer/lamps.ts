@@ -297,7 +297,8 @@ export class Lamps {
    * Give the room lights to the rooms nearest `eye`. A light handed to another room goes out over
    * a moment and comes on there, and a room keeps its light until another is clearly nearer, so
    * nothing is seen to switch (`atOnce`: no moment is taken, for a stage that is frozen: the lights are where they
-   * will be, fully on, in this frame, whatever the wall's clock says). True if that changed what is lit.
+   * will be, fully on, in this frame, whatever the wall's clock says, and with the nearest rooms, whichever had them
+   * before). True if that changed what is lit.
    */
   near(eye: THREE.Vector3, moved = false, atOnce = false): boolean {
     const now = performance.now();
@@ -324,8 +325,11 @@ export class Lamps {
     const order = far.map((_, i) => i).sort((a, b) => far[a]! - far[b]!);
     const nearest = order.slice(0, this.roomPool.length);
     const edge = far[nearest[nearest.length - 1]!]! * KEEP;
-    // the rooms to light: those already lit that are still near enough, then the nearest others
-    const keep = this.given.map((g) => (g.want >= 0 && far[g.want]! <= edge ? g.want : -1));
+    // the rooms to light: those already lit that are still near enough, then the nearest others (frozen, none is kept:
+    // the rooms lit are the nearest, whichever were lit before. Kept, which of four rooms were lit went by where the eye
+    // had been, and a frame drawn from a pose after a step of the eye was not the frame drawn there before: test:frozen,
+    // "step", at Complex 19 when its erector had a fourth)
+    const keep = this.given.map((g) => (!atOnce && g.want >= 0 && far[g.want]! <= edge ? g.want : -1));
     // ...but the room nearest the eye always has one. Three rooms of one building, all "still near enough" from a
     // building forty metres off, kept all three lights, and the room walked into stayed dark.
     const here = nearest[0]!;

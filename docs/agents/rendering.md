@@ -517,7 +517,9 @@ build) narrow it; the header of the file lists the rest.
   frame draws with itself; and the reflections' bake, faded in over up to six seconds of the wall's clock
   (backdrops.ts `Reflections`): coming down from orbit to the pad one ran on under the frozen frames that followed
   (`Setting.at`'s `atOnce`: a bake owed is made at once, a fade under way is finished). Anything
-  new that eases over time takes its time from `dt` and is cut by `frozen`.
+  new that eases over time takes its time from `dt` and is cut by `frozen`. Nor may a choice made with a margin each
+  way keep what the eye came with: a level of detail and which rooms' lamps are lit are chosen frozen from where the eye
+  is alone (lod.ts `chooseLevel`, lamps.ts `near`), or a frame after a step of the eye and back is another frame.
   Nor may where something stands depend on how it got there: the box the chase camera and the Sun's map go by is
   taken in the vehicle's own frame through its nodes' own placings (taken in the scene's frame it was a different
   box for every attitude), and

@@ -95,6 +95,21 @@ test('the eye moving, or a room, is seen at once', () => {
   assert.ok(sorted(() => lamps.place()) > 0);
 });
 
+test('frozen, the rooms lit are the nearest from where the eye is, wherever it has been', () => {
+  // seen from across the site the rooms are all much the same distance off: live, a lit room is kept while it is
+  // "near enough", so which are lit goes by where the eye came from; frozen, it may not
+  const lit = (path) => {
+    const { lamps, lights } = site(6);
+    for (const at of path) lamps.near(at, false, true);
+    return lights.map((l) => `${l.position.toArray()} ${l.intensity}`).join(' | ');
+  };
+  const there = new THREE.Vector3(50, 1.7, 160);
+  const straight = lit([there]);
+  assert.equal(lit([new THREE.Vector3(120, 1.7, 150), there]), straight, 'come from the right');
+  assert.equal(lit([new THREE.Vector3(-20, 1.7, 150), there]), straight, 'come from the left');
+  assert.equal(lit([new THREE.Vector3(0, 1.7, 3), new THREE.Vector3(100, 1.7, 3), there]), straight, 'come along the row');
+});
+
 test('the floods come on as the Sun goes down past the place’s switching, warming up over minutes, and go out in the morning', () => {
   const rate = -15 / 3600; // (the Sun going down at a quarter of a degree a minute)
   assert.equal(lampsLit(DUTY, 2, rate), 0, 'before sunset: out');
