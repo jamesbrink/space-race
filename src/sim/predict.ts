@@ -55,6 +55,7 @@ import { type Doing, MEAN_RADIUS } from './fly.ts';
 import type { FlightPlan } from './plan.ts';
 import { G0 } from '../world/bodies.ts';
 import { aboutAxis, turn } from './rigid.ts';
+import { dp45 } from './core/dp45.ts';
 import { acceleration } from './core/rk4.ts';
 import { ENTRY_G } from './loads.ts';
 import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
@@ -381,19 +382,6 @@ export function programmeAxis(
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
 const now = (): number => performance.now();
 
-/** Dormand and Prince's pair: the stages' instants, their weights, the fifth-order solution's, and its difference from the fourth's. */
-const C = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1];
-const A: number[][] = [
-  [],
-  [1 / 5],
-  [3 / 40, 9 / 40],
-  [44 / 45, -56 / 15, 32 / 9],
-  [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
-  [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
-  [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84],
-];
-const E = [71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40];
-
 /** Where the path is measured from: the pad, and the sea's height above the ellipsoid there. */
 export interface Ground {
   site: Geodetic;
@@ -438,59 +426,9 @@ export function propagate(
     pushed = length(f);
     return acceleration(field(p, at), f);
   };
-  /** One step of the pair from the state now: the state `h` on, and its error in place and speed. */
-  const pair = (h: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => {
-    kr[0] = v;
-    kv[0] = first;
-    let r1: Vec3 = r;
-    let v1: Vec3 = v;
-    for (let i = 1; i < 7; i++) {
-      let pr0 = r[0];
-      let pr1 = r[1];
-      let pr2 = r[2];
-      let pv0 = v[0];
-      let pv1 = v[1];
-      let pv2 = v[2];
-      const a = A[i]!;
-      for (let j = 0; j < i; j++) {
-        const w = a[j]! * h;
-        if (w === 0) continue;
-        const x = kr[j]!;
-        const y = kv[j]!;
-        pr0 += w * x[0];
-        pr1 += w * x[1];
-        pr2 += w * x[2];
-        pv0 += w * y[0];
-        pv1 += w * y[1];
-        pv2 += w * y[2];
-      }
-      const p: Vec3 = [pr0, pr1, pr2];
-      const u: Vec3 = [pv0, pv1, pv2];
-      if (i === 6) {
-        r1 = p;
-        v1 = u;
-      }
-      kr[i] = u;
-      kv[i] = accel(t + C[i]! * h, p, u, place(p, t + C[i]! * h).height - seaLevel);
-    }
-    let er0 = 0;
-    let er1 = 0;
-    let er2 = 0;
-    let ev0 = 0;
-    let ev1 = 0;
-    let ev2 = 0;
-    for (let j = 0; j < 7; j++) {
-      const w = E[j]! * h;
-      if (w === 0) continue;
-      er0 += w * kr[j]![0];
-      er1 += w * kr[j]![1];
-      er2 += w * kr[j]![2];
-      ev0 += w * kv[j]![0];
-      ev1 += w * kv[j]![1];
-      ev2 += w * kv[j]![2];
-    }
-    return { r: r1, v: v1, er: Math.hypot(er0, er1, er2), ev: Math.hypot(ev0, ev1, ev2) };
-  };
+  /** One step of the pair from the state now (core/dp45.ts): the state `h` on, and its error in place and speed. */
+  const at = (when: number, p: Vec3, u: Vec3): Vec3 => accel(when, p, u, place(p, when).height - seaLevel);
+  const pair = (h: number, first: Vec3): { r: Vec3; v: Vec3; er: number; ev: number } => dp45(t, r, v, h, first, at, kr, kv);
 
   const first = place(r, t);
   let altitude = first.height - seaLevel;

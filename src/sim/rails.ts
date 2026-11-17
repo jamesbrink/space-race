@@ -2,34 +2,20 @@
  * A coast flown on rails, for a clock that runs faster than an hour a second (world/clock.ts `COAST_RATES`;
  * docs/agents/world.md, "Faster than an hour a second"). At 10,000 times a frame is three minutes of the flight and at
  * 100,000 half an hour, so nothing may be flown frame by frame: what is flown between two events is flown here, by an
- * adaptive Dormand-Prince 5(4) pair that steps by its own error and ends exactly on the instant asked for (`coast`), and
+ * adaptive Dormand-Prince 5(4) pair (core/dp45.ts, the predictor's step) that steps by its own error and ends exactly on the instant asked for (`coast`), and
  * the clock is held at the next instant that must be lived (`due`, for `clock.hold`), and let go past an hour a second
  * only while there is nothing to do but fall round (`onRails`).
  */
+import { dp45 } from './core/dp45.ts';
 import { acceleration } from './core/rk4.ts';
 import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
-import { add, length, scale, sub, type Vec3 } from '../world/frames.ts';
+import { length, sub, type Vec3 } from '../world/frames.ts';
 
 /** Below this height above the sea, m, a coast is not on rails: the air takes enough of its speed in a revolution (a few m/s at 120 km) that it is flown as the live simulator flies it. Chosen. */
 export const RAILS_FLOOR = 120_000;
 
 /** The pair's tolerance on a step's error, m in place: a coast of a day ends within a few metres of the fixed-step run (tests/rails.test.mjs). */
 const TOLERANCE = 1e-3;
-
-// Dormand and Prince's coefficients (J. R. Dormand and P. J. Prince, "A family of embedded Runge-Kutta formulae", Journal
-// of Computational and Applied Mathematics 6, 19-26, 1980, Table 2): the stages' nodes and weights, the fifth-order
-// solution and its fourth-order companion's difference.
-const C = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1];
-const A: readonly (readonly number[])[] = [
-  [],
-  [1 / 5],
-  [3 / 40, 9 / 40],
-  [44 / 45, -56 / 15, 32 / 9],
-  [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729],
-  [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656],
-  [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84],
-];
-const E = [71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40];
 
 /**
  * A coast from `state` at `t0` to exactly `t1` (seconds from liftoff, either way), in the flight's frame, under `gravity`
@@ -50,36 +36,16 @@ export function coast(
   const way = Math.sign(t1 - t0);
   let h = way * Math.min(Math.abs(t1 - t0), 10);
   let steps = 0;
+  // (the stages' work space: core/dp45.ts)
+  const kr: Vec3[] = new Array(7);
+  const kv: Vec3[] = new Array(7);
   while (way !== 0 && (t1 - t) * way > 0) {
     if ((t + h - t1) * way > 0) h = t1 - t;
-    const kr: Vec3[] = [];
-    const kv: Vec3[] = [];
-    for (let i = 0; i < 7; i++) {
-      let ri = r;
-      let vi = v;
-      for (let j = 0; j < i; j++) {
-        const a = A[i]![j]!;
-        if (a === 0) continue;
-        ri = add(ri, scale(kr[j]!, h * a));
-        vi = add(vi, scale(kv[j]!, h * a));
-      }
-      kr.push(vi);
-      kv.push(accel(t + C[i]! * h, ri, vi));
-    }
-    // (the fifth-order solution is the last stage's point, by the first-same-as-last property)
-    let r5 = r;
-    let v5 = v;
-    let er: Vec3 = [0, 0, 0];
-    for (let j = 0; j < 6; j++) {
-      const a = A[6]![j]!;
-      r5 = add(r5, scale(kr[j]!, h * a));
-      v5 = add(v5, scale(kv[j]!, h * a));
-    }
-    for (let j = 0; j < 7; j++) er = add(er, scale(kr[j]!, h * E[j]!));
-    const err = length(er);
+    const step = dp45(t, r, v, h, accel(t, r, v), accel, kr, kv);
+    const err = step.er;
     steps++;
     if (err <= TOLERANCE || Math.abs(h) < 1e-6) {
-      [t, r, v] = [Math.abs(t1 - (t + h)) < 1e-9 * Math.max(1, Math.abs(t1)) ? t1 : t + h, r5, v5];
+      [t, r, v] = [Math.abs(t1 - (t + h)) < 1e-9 * Math.max(1, Math.abs(t1)) ? t1 : t + h, step.r, step.v];
     }
     // (the step's next size from its error, as the pair's order has it, kept within a factor of five either way)
     const k = err > 0 ? 0.9 * (TOLERANCE / err) ** 0.2 : 5;

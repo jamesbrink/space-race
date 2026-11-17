@@ -184,7 +184,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - thrust in air: thrust.ts `nozzleThrust`, n (throttle Fvac - Ae p). A sea-level figure's vacuum one is `vacuumOf`,
     labelled derived;
   - the fixed step: core/rk4.ts `rk4` (a point) and `rk4Body` (a rigid body), and `acceleration`, gravity plus the push.
-    The predictor's DP45 takes the same;
+    The error-controlled step, Dormand and Prince's 5(4) pair, is core/dp45.ts `dp45`, the predictor's and a coast on
+    rails', each keeping its own rule for a step's error and size; it takes the same `acceleration`;
   - gravity as terms: core/gravity.ts. The Earth with J2 is the default; a third body is a point mass; the central body
     can be switched; the Moon and Sun are DE440's (derived) when it is loaded before the terms are made
     (world/ephemeris.ts `loadEphemeris`), Meeus's (estimated) otherwise (no flight's plan names a third body yet, so
