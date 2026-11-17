@@ -140,7 +140,9 @@ def frame(parts: Parts) -> None:
     corners = [(XS - COL / 2, -W + COL / 2), (XS - COL / 2, W - COL / 2), (XN + COL / 2, W - COL / 2), (XN + COL / 2, -W + COL / 2)]
     for k, (x, y) in enumerate(corners):  # the south pair stand on the hinge, the north pair come down to their locks on the deck
         box(red, (x - COL / 2, y - COL / 2, HINGE[1] - 0.75 if k < 2 else 0.4), (x + COL / 2, y + COL / 2, WHITE_ROOM[0]))
-    girts = [14.0, 25.0, *WORK_LEVELS, WHITE_ROOM[0] - 0.6]
+    # (the top girt just under the white room: 7 ft clear over the fifth platform, so that a tall man steps out of the
+    # service elevator on to it. Where the girts are is read off photographs)
+    girts = [14.0, 25.0, *WORK_LEVELS, WHITE_ROOM[0] + 0.3]
     for z in girts:
         beam(red, (XS - 0.5, -W + COL, z - 0.9), (XS - 0.5, W - COL, z - 0.9), 0.9)  # south
         for s in (-1, 1):
@@ -173,7 +175,7 @@ def curtains(parts: Parts) -> None:
     not built."""
     g = "Erector"
     cloth = parts(g, "curtain")
-    rows = [25.0, *WORK_LEVELS, WHITE_ROOM[0] - 0.6]
+    rows = [25.0, *WORK_LEVELS, WHITE_ROOM[0] + 0.3]
     for za, zb in zip(rows, rows[1:]):
         lo, hi = za + 0.3, zb - 1.9
         for ya, yb in ((-W + COL + 0.2, -0.15), (0.15, W - COL - 0.2)):
