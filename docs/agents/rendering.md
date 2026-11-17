@@ -658,7 +658,10 @@ JavaScript heap and 125 MB of decoded pictures.
   `?lighter` / `?lighter=0` do it for one visit.
 - **On every device:** the cabin's pictures (its panels) are not sent as the page
   opens but by the cabin, a picture a frame, as the eye comes within 60 m of the vehicle (cabin.ts, `send`); three
-  sends a picture whole, so the largest is one long frame, once.
+  sends a picture whole, so the largest is one long frame, once. A picture two of a flight's models wear (the NASA
+  insignia, the pilot's name: on the suit, the spacecraft and its cabin, each file with its own copy) is held once
+  (`Stage.sharePictures`, by its name, size and how it is read): Liberty Bell 7's site held three of each, and was 402
+  MiB on foot, over the 400; 398 with one.
 - **What the lighter tier changes, and what of it can be seen:**
   - *Nothing made that is not on show (no loss).* Only the levels of detail in view are sent to the GPU as the page
     opens (every level's shaders are still built: `warm`); another level is sent when first drawn. The whole Earth's

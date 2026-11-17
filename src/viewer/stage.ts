@@ -158,6 +158,29 @@ function rest(object: THREE.Object3D): void {
 }
 
 /**
+ * What a picture is, as text: its name (the image's file, as the model was built: lettering is set in the repo's own
+ * font from the same words), its size, and how it is read. Two with the same are the same picture; null for one with no
+ * name, which is never taken for another.
+ */
+function pictureKey(t: THREE.Texture): string | null {
+  const image = t.image as { width?: number; height?: number } | null;
+  if (!t.name || !image?.width) return null;
+  return [
+    t.name,
+    image.width,
+    image.height,
+    t.colorSpace,
+    t.flipY,
+    t.wrapS,
+    t.wrapT,
+    t.channel,
+    t.offset.toArray(),
+    t.repeat.toArray(),
+    t.rotation,
+  ].join('|');
+}
+
+/**
  * The 3D half of the app: one scene holding all of a flight's models, in its setting. One of
  * them is the section being studied: its parts can be picked, cut open and taken apart. Moving
  * between sections is a flight of the camera, never a change of scene.
@@ -960,6 +983,7 @@ export class Stage {
         })
         .then(async (gltf) => {
           await fitPictures(gltf.scene); // (the tier's sizes, before anything is sent to the GPU: pictures.ts)
+          this.sharePictures(gltf.scene);
           fitIndices(gltf.scene);
           this.dress(gltf.scene, url);
           return gltf.scene;
@@ -972,6 +996,39 @@ export class Stage {
   }
 
   /** What Blender's export cannot carry: shadows, anisotropy, and the wear on every surface. */
+  /** Each picture the models of the flight on show wear, by what it is (`pictureKey`): one copy for all of them. */
+  private pictures = new Map<string, THREE.Texture>();
+
+  /**
+   * Have every material of `object` wear the copy of a picture another model already wears, where it is the same picture:
+   * the crew's suit, the spacecraft and its cabin each carry the NASA insignia and the pilot's name, and each file its own
+   * copy (Liberty Bell 7's site held three of each on foot, 4 MiB of a phone's budget). Its own copy is let go.
+   */
+  private sharePictures(object: THREE.Object3D): void {
+    const seen = new Set<THREE.Material>();
+    object.traverse((o) => {
+      const worn = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      for (const m of worn ? (Array.isArray(worn) ? worn : [worn]) : []) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        const slots = m as unknown as Record<string, unknown>;
+        for (const [slot, value] of Object.entries(slots)) {
+          const t = value as THREE.Texture | null;
+          if (!t?.isTexture) continue;
+          const key = pictureKey(t);
+          if (!key) continue;
+          const kept = this.pictures.get(key);
+          if (!kept) this.pictures.set(key, t);
+          else if (kept !== t) {
+            slots[slot] = kept;
+            if (t.image !== kept.image) (t.image as { close?: () => void } | null)?.close?.();
+            t.dispose();
+          }
+        }
+      }
+    });
+  }
+
   private dress(object: THREE.Object3D, url: string): void {
     const anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const seen = new Set<THREE.Material>();
@@ -1411,6 +1468,7 @@ export class Stage {
     if (this.cam.rig !== 'orbit') this.cam.set('orbit', true);
     this.cabin?.dispose();
     this.cabin = null;
+    this.pictures.clear(); // (the next flight's models share among themselves)
     for (const r of this.recovered.splice(0)) {
       this.scene.remove(r.group);
       this.looks.remove(r.group);
