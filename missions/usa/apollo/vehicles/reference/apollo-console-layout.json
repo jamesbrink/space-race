@@ -1,0 +1,337 @@
+{
+  "confidence": "estimated",
+  "source": {
+    "title": "NAA V36-976018 revision D, 12 March 1968, Main Display Console, Command Module 101, sheet 1 of 2",
+    "url": "https://www.ibiblio.org/apollo/Documents/V36-976018_Design_Layout_MDC_CM-101.pdf",
+    "sha256": "449e2920813c8831f0740dbfaf776c6a61cced6211b9c035afd6e99da2014401",
+    "page": 1,
+    "crop_pdf_points": [2225, 10, 4095, 796],
+    "pixels_per_point": 1,
+    "image_size_px": [1870, 786]
+  },
+  "registration": {
+    "anchors": [
+      {
+        "interface": "fdai-1",
+        "image_px": [372, 451]
+      },
+      {
+        "interface": "fdai-2",
+        "image_px": [648, 274]
+      }
+    ],
+    "method": "Two-point similarity onto the existing physical shared console plane. Drawing-sheet scale is not treated as a manufacturing dimension. All new dimensions and installation are estimated for CM-101.",
+    "holdout": {
+      "feature": "DSKY front centre",
+      "image_px": [644, 451],
+      "residual_cm": 1.004886231053305
+    },
+    "layout_uncertainty": "Approximately 1 cm centre registration residual at independent DSKY check; not a manufacturing tolerance or a bound on every control. Instrument outlines and projections may differ by 10-15 percent."
+  },
+  "round_gauges": [
+    {
+      "id": "chute",
+      "at": [497, 149],
+      "radius_px": 30,
+      "label": "MAIN CHUTE / APEX COVER"
+    },
+    {
+      "id": "accelerometer",
+      "at": [267, 408],
+      "radius_px": 23,
+      "label": "ACCEL"
+    },
+    {
+      "id": "sps-gimbal",
+      "at": [320, 573],
+      "radius_px": 24,
+      "label": "SPS GIMBAL"
+    },
+    {
+      "id": "fuel-cell-1",
+      "at": [1043, 390],
+      "radius_px": 20,
+      "label": "FUEL CELL 1"
+    },
+    {
+      "id": "fuel-cell-2",
+      "at": [1102, 390],
+      "radius_px": 20,
+      "label": "FUEL CELL 2"
+    },
+    {
+      "id": "fuel-cell-3",
+      "at": [1162, 390],
+      "radius_px": 20,
+      "label": "FUEL CELL 3"
+    },
+    {
+      "id": "oxygen",
+      "at": [1102, 456],
+      "radius_px": 20,
+      "label": "O2"
+    },
+    {
+      "id": "hydrogen",
+      "at": [1162, 456],
+      "radius_px": 20,
+      "label": "H2"
+    },
+    {
+      "id": "ac-volts",
+      "at": [1654, 431],
+      "radius_px": 21,
+      "label": "AC VOLTS"
+    },
+    {
+      "id": "dc-volts",
+      "at": [1662, 486],
+      "radius_px": 21,
+      "label": "DC VOLTS"
+    },
+    {
+      "id": "dc-amps",
+      "at": [1775, 649],
+      "radius_px": 20,
+      "label": "DC AMPS"
+    },
+    {
+      "id": "cabin-temp",
+      "at": [1254, 564],
+      "radius_px": 16,
+      "label": "CABIN TEMP"
+    }
+  ],
+  "tape_banks": [
+    {
+      "id": "gimbal",
+      "xs": [365, 383, 402, 420],
+      "y": 578,
+      "width_px": 12,
+      "height_px": 56,
+      "label": "GIMBAL POSITION"
+    },
+    {
+      "id": "sm-rcs",
+      "xs": [759, 805],
+      "y": 293,
+      "width_px": 26,
+      "height_px": 64,
+      "label": "SM RCS"
+    },
+    {
+      "id": "cryo",
+      "xs": [1153, 1197, 1241, 1283],
+      "y": 257,
+      "width_px": 30,
+      "height_px": 69,
+      "label": "CRYOGENIC TANKS"
+    },
+    {
+      "id": "environment",
+      "xs": [1206, 1242, 1279],
+      "y": 403,
+      "width_px": 24,
+      "height_px": 60,
+      "label": "CABIN / SUIT"
+    },
+    {
+      "id": "fuel-cell-temp",
+      "xs": [1370, 1404, 1439, 1473, 1506],
+      "y": 257,
+      "width_px": 22,
+      "height_px": 66,
+      "label": "FUEL CELL / TEMP"
+    }
+  ],
+  "toggle_rows": [
+    {
+      "id": "manual-attitude",
+      "xs": [145, 171, 193, 215, 237, 260, 283],
+      "y": 515,
+      "label": "MANUAL ATTITUDE"
+    },
+    {
+      "id": "rate",
+      "xs": [185, 208, 257, 280],
+      "y": 463,
+      "label": "RATE / SCALE"
+    },
+    {
+      "id": "scs-electronics-a",
+      "xs": [96, 119, 143, 165],
+      "y": 567,
+      "label": "SCS ELECTRONICS"
+    },
+    {
+      "id": "scs-electronics-b",
+      "xs": [94, 120, 144, 166],
+      "y": 615,
+      "label": ""
+    },
+    {
+      "id": "scs-logic",
+      "xs": [244, 266, 291, 314, 337, 360, 407, 449, 474],
+      "y": 690,
+      "label": "SCS LOGIC"
+    },
+    {
+      "id": "attitude-reference",
+      "xs": [190, 212, 235, 257, 279, 302, 326, 349, 396, 418, 442, 465, 488, 514],
+      "y": 736,
+      "label": "ATTITUDE REFERENCE"
+    },
+    {
+      "id": "rcs-command",
+      "xs": [574, 601, 648, 671],
+      "y": 617,
+      "label": "RCS CMD"
+    },
+    {
+      "id": "guidance",
+      "xs": [573, 599, 623],
+      "y": 680,
+      "label": "GUIDANCE"
+    },
+    {
+      "id": "sm-rcs-source",
+      "xs": [748, 771, 794, 817, 840, 863, 886],
+      "y": 214,
+      "label": "SM RCS"
+    },
+    {
+      "id": "sm-rcs-select",
+      "xs": [849, 871, 893, 915],
+      "y": 294,
+      "label": ""
+    },
+    {
+      "id": "cm-rcs-heaters",
+      "xs": [759, 782, 804, 827, 850, 873, 896, 919],
+      "y": 376,
+      "label": "CM RCS / HEATERS"
+    },
+    {
+      "id": "cm-rcs",
+      "xs": [759, 782, 804, 827, 850, 873, 896, 919],
+      "y": 446,
+      "label": "CM RCS"
+    },
+    {
+      "id": "sps-injectors",
+      "xs": [759, 782, 804, 827, 850, 873, 896, 919],
+      "y": 513,
+      "label": "SPS INJECTOR VALVES"
+    },
+    {
+      "id": "sps-helium",
+      "xs": [950, 974, 998, 1022, 1045, 1069, 1093, 1117, 1141, 1165, 1189, 1213, 1237, 1261],
+      "y": 513,
+      "label": "SPS / HELIUM"
+    },
+    {
+      "id": "cryo-heaters",
+      "xs": [994, 1017, 1040, 1064, 1088, 1112, 1136, 1160, 1184, 1208, 1232, 1256, 1280, 1304],
+      "y": 324,
+      "label": "CRYO HEATERS"
+    },
+    {
+      "id": "fuel-cell-controls",
+      "xs": [963, 988, 1013, 1038, 1063],
+      "y": 455,
+      "label": "FUEL CELLS"
+    },
+    {
+      "id": "cryo-temp",
+      "xs": [1018, 1043, 1067, 1092, 1116],
+      "y": 276,
+      "label": ""
+    },
+    {
+      "id": "main-bus",
+      "xs": [1366, 1389, 1413, 1437, 1461, 1485, 1509, 1533, 1557, 1581, 1605, 1629],
+      "y": 494,
+      "label": "MAIN BUS"
+    },
+    {
+      "id": "ac-bus",
+      "xs": [1364, 1388, 1412, 1436, 1460, 1484, 1508, 1532, 1556, 1580, 1604, 1628],
+      "y": 556,
+      "label": "AC BUS"
+    },
+    {
+      "id": "battery",
+      "xs": [1365, 1389, 1413, 1437, 1461, 1485, 1509, 1533, 1557, 1581, 1605, 1629, 1653, 1677, 1701, 1725],
+      "y": 617,
+      "label": "BATTERY / CHARGER"
+    },
+    {
+      "id": "battery-controls",
+      "xs": [1365, 1389, 1413, 1437, 1461, 1485, 1509, 1533, 1557, 1581, 1605, 1629, 1653, 1677, 1701, 1725],
+      "y": 671,
+      "label": "BATTERY"
+    },
+    {
+      "id": "fans",
+      "xs": [1364, 1388, 1412, 1436, 1460, 1484, 1508, 1532, 1556, 1580, 1604, 1628],
+      "y": 727,
+      "label": "FANS / INVERTERS"
+    },
+    {
+      "id": "suit-controls",
+      "xs": [1475, 1499, 1523],
+      "y": 432,
+      "label": "SUIT COMPRESSORS"
+    },
+    {
+      "id": "suit-flow",
+      "xs": [1475, 1499, 1523],
+      "y": 384,
+      "label": ""
+    }
+  ],
+  "rotary_rows": [
+    {
+      "id": "sps",
+      "xs": [1365, 1389, 1413, 1437],
+      "y": 342,
+      "label": "SPS"
+    },
+    {
+      "id": "timer",
+      "xs": [1071, 1094, 1117],
+      "y": 225,
+      "label": "MISSION TIMER"
+    }
+  ],
+  "caution_warning": {
+    "x0": 828,
+    "y0": 119,
+    "dx": 28.6,
+    "dy": 8.6,
+    "gap": 132,
+    "cell_px": [27.5, 7.6],
+    "left": [
+      ["BMAG 1\nTEMP", "BMAG 2\nTEMP", "", "CO2 PP HI"],
+      ["PITCH\nGMBL 1", "YAW\nGMBL 1", "", ""],
+      ["PITCH\nGMBL 2", "YAW\nGMBL 2", "CRYO\nPRESS", "GLYCOL\nTEMP LOW"],
+      ["CM RCS\n1", "CM RCS\n2", "", ""],
+      ["SM RCS\nA", "SM RCS\nB", "SM RCS\nC", "SM RCS\nD"],
+      ["", "", "", ""]
+    ],
+    "right": [
+      ["SPS FLANGE\nTEMP HI", "FC 1", "FC 2", "FC 3"],
+      ["", "INV 1\nTEMP HI", "INV 2\nTEMP HI", "INV 3\nTEMP HI"],
+      ["SPS PRESS", "SPS ROUGH\nECO", "AC BUS 1", "AC BUS 2"],
+      ["", "FC BUS\nDISCONNECT", "AC BUS 1\nOVERLOAD", "AC BUS 2\nOVERLOAD"],
+      ["CMC", "CREW\nALERT", "MN BUS A\nUNDERVOLT", "MN BUS B\nUNDERVOLT"],
+      ["ISS", "C/W", "O2\nFLOW HI", "SUIT\nCOMPRESSOR"]
+    ]
+  },
+  "limitations": [
+    "All reconstructed positions, sizes, projections, depths and colours are estimated; this is not an as-built drawing.",
+    "Individual switch legends are omitted where not transcribed; group legends identify the arrangement.",
+    "Controls and needles are static, unpowered exhibit reference poses, not recorded launch states or simulated readings.",
+    "Side consoles and complete DSKY equipment are outside this main-panel layout reconstruction."
+  ]
+}

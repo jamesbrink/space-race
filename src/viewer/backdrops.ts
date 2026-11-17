@@ -117,6 +117,8 @@ export interface Setting {
   blowing?: Blowing;
   /** Draw the place simplified, for the cel look: flat land, plants as single shapes. */
   simplify?: (on: boolean) => void;
+  /** The thing shown is cut open, or closed again (Stage.setCutaway): a room lights what is inside (studio.ts). */
+  inside?: (open: boolean) => void;
   /** How soft the edge of the direct light's shadow is, in texels of its map (default 1: the Sun's, which is sharp). */
   shadowRadius?: number;
 }

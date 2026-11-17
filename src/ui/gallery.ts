@@ -822,6 +822,11 @@ export class Gallery {
       if (!b || !this.ready) return;
       const on = b.getAttribute('aria-pressed') !== 'true';
       if (b.dataset.view) {
+        const view = this.model.views.find((v) => v.id === b.dataset.view);
+        const inside = (node: string) => this.vehicle.parts.some((p) => p.node === node && p.inside);
+        // A view devoted to interior parts needs the same opening as selecting
+        // one. Keep it open while an interior part is still selected as well.
+        this.revealInterior(Boolean((view?.nodes?.length && view.nodes.every(inside)) || (this.selected && inside(this.selected))));
         this.made!.stage.framing.view(b.dataset.view);
         this.turn();
       } else if (b.hasAttribute('data-views')) {
@@ -1096,15 +1101,7 @@ export class Gallery {
     this.selected = node;
     stage.highlight(null, node);
     const part = this.vehicle.parts.find((p) => p.node === node);
-    // something inside something else is only worth going to if it can be seen; and once the
-    // selection moves on, an opening nobody asked for closes again
-    if (part?.inside && !this.cut) {
-      this.setCutaway(true);
-      this.autoCut = true;
-    } else if (!part?.inside && this.autoCut) {
-      this.setCutaway(false);
-      this.autoCut = false;
-    }
+    this.revealInterior(Boolean(part?.inside));
     if (node) {
       if (!narrow()) this.tab('Parts');
       this.untuck();
@@ -1199,11 +1196,21 @@ export class Gallery {
     this.tip(fromView && part && node !== this.selected ? [part.name, part.summary] : null);
   }
 
+  /** An interior subject opens the exhibit; a manual opening is kept when the subject moves on. */
+  private revealInterior(inside: boolean): void {
+    if (inside && !this.cut) {
+      this.setCutaway(true);
+      this.autoCut = true;
+    } else if (!inside && this.autoCut) {
+      this.setCutaway(false);
+      this.autoCut = false;
+    }
+  }
+
   private setCutaway(on: boolean, byHand = false): void {
     if (byHand) this.autoCut = false; // asked for by hand: it stays until asked otherwise
     this.cut = on;
     this.root.querySelector('[data-cut]')?.setAttribute('aria-pressed', String(on));
-    this.made?.studio.inside(on); // (opened, what is inside is lit)
     this.made?.stage.setCutaway(on);
   }
 

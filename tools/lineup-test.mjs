@@ -24,6 +24,7 @@
 // `--shots <dir>` also writes a picture of each width and look, and of the phone.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { STATURE } from '../src/viewer/studio.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -214,9 +215,11 @@ await scenario('formed', async () => {
   const alone = await report(page);
   const s = await state(page);
   check(s.hash === '#lineup/spacecraft' && alone.every((x) => x.standing), `P: the spacecraft alone, every one of them (${s.hash})`);
+  // (each stands on the floor, which the line above holds, is shorter than its own vehicle and at least a person tall: no
+  // height of its own, which would be true only of the spacecraft there were when it was written)
   check(
-    alone.every((x, i) => x.height < whole[i].height && x.height > 1 && x.height < 15),
-    `each shorter than its vehicle, on the floor (${Math.min(...alone.map((x) => x.height)).toFixed(2)} to ${Math.max(...alone.map((x) => x.height)).toFixed(2)} m)`,
+    alone.every((x, i) => x.height < whole[i].height && x.height >= STATURE),
+    `each shorter than its vehicle and at least a person tall, on the floor (${Math.min(...alone.map((x) => x.height)).toFixed(2)} to ${Math.max(...alone.map((x) => x.height)).toFixed(2)} m)`,
   );
   await page.keyboard.press('p');
   await page.waitForTimeout(900);

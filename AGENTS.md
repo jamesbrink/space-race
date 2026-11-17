@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
-in three.js. Today it ships 21 flights (`missions/index.ts`, Vostok 1 to Gemini-Titan 9A), each in its Gallery;
+in three.js. Today it ships 22 flights (`missions/index.ts`, Vostok 1 to Apollo 7), each in its Gallery;
 Freedom 7, Liberty Bell 7, Friendship 7 (the first American flight into orbit), Aurora 7, Sigma 7, Faith 7, Vostok 1 to 6, Voskhod 1 and 2, and Gemini 3 (three burns
 of its own and a lifting entry) also have their Launch site and can be flown; Gemini 4 to 9A have their Launch site. The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the
@@ -44,6 +44,7 @@ pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real bro
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
 pnpm figures          # the simulators' figures to the last digit against tests/fixtures/figures.json (run on hal9000; --write blesses)
 pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
+pnpm test:studio      # needs `pnpm dev` running: each gallery view of a cabin's inside (read from the flights) opens the cutaway, and what it is of is on the screen and lit, both looks, 1280, 820 and 390
 pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks: the first flight, then a flight at each other complex
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:fires       # needs `pnpm dev` running: every engine burning on the record's flight has its fire, hung where it should be

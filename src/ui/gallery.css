@@ -196,11 +196,11 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   #gallery .slot .scale { display: block; margin: 4px 0 0; text-align: left; }
 
   /* with the sheet up, the vehicle keeps the space above it */
-  body:has(#gallery .panel.open) #gallery-stage { height: calc(100dvh - min(62dvh, 560px)); }
-  body:has(#gallery .panel.open.on-view:not(.full)) #gallery-stage { height: calc(100dvh - min(var(--sheet-view, 58dvh), 58dvh)); }
+  body:has(#gallery:not(.bare) .panel.open) #gallery-stage { height: calc(100dvh - min(62dvh, 560px)); }
+  body:has(#gallery:not(.bare) .panel.open.on-view:not(.full)) #gallery-stage { height: calc(100dvh - min(var(--sheet-view, 58dvh), 58dvh)); }
 }
 @media (max-height: 520px) {
-  body:has(#gallery .panel.open) #gallery-stage, body:has(#gallery .panel.open.on-view:not(.full)) #gallery-stage { width: 56vw; height: 100dvh; }
+  body:has(#gallery:not(.bare) .panel.open) #gallery-stage, body:has(#gallery:not(.bare) .panel.open.on-view:not(.full)) #gallery-stage { width: 56vw; height: 100dvh; }
 }
 @media (min-width: 961px) and (min-height: 521px) {
   #gallery .steps [data-apart] { display: none; }

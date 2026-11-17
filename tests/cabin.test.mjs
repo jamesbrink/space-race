@@ -323,7 +323,14 @@ test('the room’s own lights give a cabin’s inside nothing while it is closed
   // the loop: any turn it gives the lights after the three with maps (the studio's) adds them up apart for the inside
   const loop = THREE.ShaderChunk.lights_fragment_begin;
   const rest = loop.indexOf('UNROLLED_LOOP_INDEX >= NUM_DIR_LIGHT_SHADOWS');
-  if (rest >= 0) assert.match(loop.slice(rest, rest + 900), /RE_Direct[\s\S]*cabinRoomDiffuse \+= reflectedLight\.directDiffuse/);
+  if (rest >= 0) {
+    const turn = loop.slice(rest, loop.indexOf('#endif\n\t\t#else', rest));
+    assert.match(turn, /RE_Direct[\s\S]*cabinRoomDiffuse \+= reflectedLight\.directDiffuse/);
+    // and that turn comes once for every such lamp in one unrolled scope: what it declares is in a block of its own, or a
+    // second lamp declares it again and no material inside a cabin compiles
+    const declared = turn.indexOf('vec3 cabinBefore');
+    if (declared >= 0) assert.ok(turn.lastIndexOf('{', declared) > 0, 'its declarations are in a block of their own');
+  }
 });
 
 test('a gauge read off the record: straight between readings, each at its instant or after its event, held beyond; an event not come is never', () => {

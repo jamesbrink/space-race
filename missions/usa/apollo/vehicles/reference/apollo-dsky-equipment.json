@@ -1,0 +1,122 @@
+{
+  "confidence": "estimated",
+  "source": "Smithsonian NASM A19770217000, photographs NASM-B7DAA74DB0552_01/_02/_03/_06; NAA GNC-33A printed p.13; 2003994J assembly",
+  "source_units": "inches",
+  "photo_url": "https://ids.si.edu/ids/deliveryService?id=NASM-B7DAA74DB0552_01&max_w=1600",
+  "photo_sha256": "83b93c9ce5b8f04cfa8ea4ac1f145e13b3f6fb5bc0e279c1719d59324350d933",
+  "limits": "Photo records one preserved Apollo 7 instrument, not proof of its original main-panel location or unchanged postflight finish. Handling plate, bars, cage and protective caps excluded. Positions use the existing nominal web; all new case/cover/key sizes, colour and installation are estimated, not later spacecraft measurements.",
+  "rear_case_in": {
+    "width": 6.65,
+    "height": 7.8,
+    "back": -5.5,
+    "front": -0.25
+  },
+  "keys": [
+    {
+      "legend": "0",
+      "centre_in": [1.51, 0.54]
+    },
+    {
+      "legend": "1",
+      "centre_in": [2.48, 0.54]
+    },
+    {
+      "legend": "2",
+      "centre_in": [3.45, 0.54]
+    },
+    {
+      "legend": "3",
+      "centre_in": [4.42, 0.54]
+    },
+    {
+      "legend": "KEY REL",
+      "centre_in": [5.39, 0.54]
+    },
+    {
+      "legend": "\u2212",
+      "centre_in": [1.51, 1.51]
+    },
+    {
+      "legend": "4",
+      "centre_in": [2.48, 1.51]
+    },
+    {
+      "legend": "5",
+      "centre_in": [3.45, 1.51]
+    },
+    {
+      "legend": "6",
+      "centre_in": [4.42, 1.51]
+    },
+    {
+      "legend": "PRO",
+      "centre_in": [5.39, 1.51]
+    },
+    {
+      "legend": "+",
+      "centre_in": [1.51, 2.48]
+    },
+    {
+      "legend": "7",
+      "centre_in": [2.48, 2.48]
+    },
+    {
+      "legend": "8",
+      "centre_in": [3.45, 2.48]
+    },
+    {
+      "legend": "9",
+      "centre_in": [4.42, 2.48]
+    },
+    {
+      "legend": "CLR",
+      "centre_in": [5.39, 2.48]
+    },
+    {
+      "legend": "NOUN",
+      "centre_in": [0.54, 1.025]
+    },
+    {
+      "legend": "VERB",
+      "centre_in": [0.54, 1.9949999999999999]
+    },
+    {
+      "legend": "RSET",
+      "centre_in": [6.36, 1.025]
+    },
+    {
+      "legend": "ENTR",
+      "centre_in": [6.36, 1.9949999999999999]
+    }
+  ],
+  "key_section_in": {
+    "width": 0.82,
+    "corner_radius": 0.07,
+    "base": -0.15,
+    "shoulder": 0.18,
+    "top": 0.29,
+    "top_width": 0.74,
+    "top_radius": 0.04
+  },
+  "il": {
+    "pane_part": "2004743-001",
+    "pane_lower_left_in": [0.5025, 4.485, 0.26],
+    "cover_bounds_in": [0.365, 3.19, 3.18, 7.8],
+    "clear_size_in": [2.35, 2.94],
+    "clear_centre_in": [1.7725, 6.0525]
+  },
+  "el": {
+    "pane_part": "2004743-002",
+    "pane_lower_left_in": [3.86, 3.262, 0.26],
+    "cover_bounds_in": [3.8, 3.16, 6.46, 7.725],
+    "clear_size_in": [2.35, 4.16],
+    "clear_centre_in": [5.13, 5.441]
+  },
+  "cover_section_in": {
+    "back": -0.2,
+    "front": 0.47,
+    "outer_corner": 0.12,
+    "inner_corner": 0.1
+  },
+  "annunciators": [["UPLINK\nACTY", "TEMP"], ["NO ATT", "GIMBAL\nLOCK"], ["STBY", "PROG"], ["KEY REL", "RESTART"], ["OPR ERR", "TRACKER"]]
+}

@@ -37,6 +37,15 @@ missions/                             the record: one folder per nation, program
                                       voskhod-flies.ts, what a Voskhod flight's parts do in flight; a Voskhod's record is a `VostokRecord`;
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
+    vehicles/reference/               source-derived data a vehicle module reads at build time (Apollo's: survey outlines as JSON,
+                                      the DSKY's front web and panes as .json.gz), each with its source's hash, and the
+                                      rebuild_*.py that wrote it from the source. Not needed to build the viewer or its tests (the GLBs
+                                      are committed) and not needed to build a model again: only to remake the data. The rebuild
+                                      scripts run outside the devshell, with Python packages it does not have, as each docstring
+                                      says: `uv run --with cadquery-ocp==8.0.1.1.0 --with numpy --with scipy --with shapely
+                                      rebuild_dsky_front.py <step> <survey.glb>` (it runs Blender itself for the survey);
+                                      rebuild_console_apertures.py needs numpy, scipy and shapely; rebuild_dsky_panels.py the standard
+                                      library alone. vehicles/reference/README.md says what each file is and where it came from
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19; g5c-suit.parts.ts)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
@@ -316,6 +325,7 @@ tools/
   flicker-test.mjs                    browser check for z-fighting
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
+  studio-test.mjs                     browser check of each gallery view of a cabin's inside, read from the flights (`pnpm test:studio`): it opens the cutaway, and what it is of is on the screen and lit, both looks at 1280, 820 and 390
   camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks; a gallery's History tab and its way to the Lineup
@@ -359,7 +369,8 @@ tools/
   logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/cabin_shade.py              a cabin's own shadow baked at its vertices: a figure for each lamp alone, one with them out (`bake`)
-  blender/fonts/LiberationSans-Bold.ttf  the one typeface models' lettering and panel legends are built in, on any machine (srlib.load_font)
+  blender/fonts/LiberationSans-Bold.ttf  the default face for models' lettering and panel legends, on any machine (srlib.load_font)
+  blender/fonts/LiberationSans-Regular.ttf  SA-205's lighter painted lettering, sized from actual capital bounds; a photographic font substitute
   blender/fonts/LICENSE               its licence: the SIL Open Font License 1.1, as Liberation Fonts 2.1.5 ships it
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
   blender/figurelib.py                what any crew figure is built from: a body's measures and joints, the trunk and trousers as skins, hands, a head,

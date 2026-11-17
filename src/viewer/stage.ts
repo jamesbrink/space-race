@@ -1113,6 +1113,8 @@ export class Stage {
   setCutaway(on: boolean): void {
     this.cut = on;
     this.cabin?.opened(on);
+    // (whoever opens it: a room's lamp on what is inside comes with the opening, never apart from it)
+    this.setting.inside?.(on);
     this.dirty = true;
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
