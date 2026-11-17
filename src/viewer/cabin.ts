@@ -1026,11 +1026,35 @@ export class Cabin {
     return this.recorded;
   }
 
+  /** The exposure the frame is drawn at, which the lights are held against (`exposed`). */
+  private exposure = DAY_EXPOSURE;
+
+  /**
+   * The frame is drawn at `exposure` (Stage.expose, whenever it changes): the cabin's own lamps are held against it at
+   * once. Read in `step` as the frame began, it was the frame before's, and the eye adapts to what is in view: a frame
+   * drawn from a pose after a step of the eye had the lamps of the step's exposure (test:frozen, "step", by night, the
+   * white room round the capsule a level out).
+   */
+  exposed(exposure: number): void {
+    if (exposure === this.exposure) return;
+    this.exposure = exposure;
+    const held = this.held();
+    for (const l of this.lights) l.light.intensity = l.base * held * l.lit;
+  }
+
+  /**
+   * The cabin's own lamps read the same whatever the exposure outside has gone to: turned down as the eye opens at
+   * dusk, and up when it has closed against sunlit cloud or the Earth from space.
+   */
+  private held(): number {
+    return THREE.MathUtils.clamp(DAY_EXPOSURE / Math.max(this.exposure, 1e-3), 0.15, 8);
+  }
+
   /**
    * Once a frame: read the flight at the clock's instant (`t` seconds from liftoff, `jdUT` the day), move what moves
-   * toward it over `dt` seconds of the page's time, and hold the lights against `exposure`.
+   * toward it over `dt` seconds of the page's time, and hold the lights against the exposure (`exposed`).
    */
-  step(dt: number, t: number, jdUT: number, exposure: number): void {
+  step(dt: number, t: number, jdUT: number): void {
     const record = this.live ? null : this.record();
     const sample = this.live ? this.sample : record ? sampleAt(record.samples, t) : null;
     const lifted = sample ? sample.t > 0 && (this.live || t > 0) : false;
@@ -1161,9 +1185,7 @@ export class Cabin {
       if (w.t >= 1) this.worked.splice(i, 1);
       moved = true;
     }
-    // the cabin's own lamps read the same whatever the exposure outside has gone to: turned down as the eye opens at
-    // dusk, and up when it has closed against sunlit cloud or the Earth from space
-    const held = THREE.MathUtils.clamp(DAY_EXPOSURE / Math.max(exposure, 1e-3), 0.15, 8);
+    const held = this.held();
     // (a tube strikes and dies in a few hundredths of a second: quick, and still no step)
     const strike = dt > 0 ? 1 - Math.exp(-dt / LAMP_TAU) : 1;
     // (how much of the lamps' strength is lit, and in what colour, as the shaded surfaces read it: `shadeBy`)

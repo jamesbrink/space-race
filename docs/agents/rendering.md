@@ -446,7 +446,10 @@ exposure by what it has come to (`VIEW_KEEP`); a frozen stage, a jump of the clo
 foot settle it at once, and `warm`, which lights the floods to build their shaders, is not seen by it (left to adapt
 from that, a day's first minutes were drawn a per cent dark). It measures the camera as the frame draws it. What is set in the scene's light for the day's exposure follows the exposure as it goes
 (Pipeline.night): the glow's threshold under any day's exposure, the ink over twilight's (and never lighter than what
-it is drawn on), and the Moon's disc and the stars by the eye's factor (Setting.eye). By night the output draws what
+it is drawn on), and the Moon's disc and the stars by the eye's factor (Setting.eye); and what is held against the
+exposure is told it as it is set (`Stage.expose`: the lamps' lenses, `Lamps.exposed`; a cabin's lamps, `Cabin.exposed`),
+never read as the frame begins, which is the frame before's (a cabin read it so, and by night a frame drawn from a pose
+after a step of the eye had the white room round the capsule lit for the step's exposure: test:frozen, "step"). By night the output draws what
 nothing lights but the night toward what the rods see (scotopic luminance and Hunt's blue, by the mesopic range): what
 it draws is judged on each pixel's brightest channel against a white surface's light under the night's own sky and Moon
 (none of the rods' over two and a half times that), so whatever a lamp lights keeps its colour whatever its paint (judged on

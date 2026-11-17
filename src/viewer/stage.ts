@@ -761,6 +761,7 @@ export class Stage {
         if (def.cabin.head) this.cam.onboard.limits = { ...def.cabin.head };
         this.cabin?.dispose();
         this.cabin = new Cabin(this.cabinHost(), flight, def, staged.group, staged.full, lamps);
+        this.cabin.exposed(this.renderer.toneMappingExposure);
       }
       return staged;
     });
@@ -1919,6 +1920,7 @@ export class Stage {
     const exposure = outside + (INDOORS_EXPOSURE - outside) * this.indoors;
     this.renderer.toneMappingExposure = exposure;
     this.lamps.exposed(exposure);
+    this.cabin?.exposed(exposure);
     s.eye?.(factor);
     const ground = s.sunIntensity * Math.max(s.sunDir.y, 0) + SKY_ON_GROUND * s.fill[2];
     this.pipe.night(exposure, this.rods() * (1 - this.indoors), ground / Math.PI, 1 - this.indoors);
@@ -2115,8 +2117,8 @@ export class Stage {
     this.clock?.advance(dt);
     this.follow(dt);
     this.show.lift();
-    if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT, this.renderer.toneMappingExposure);
-    else if (this.exhibit) this.cabin?.step(dt, 0, Number.NaN, this.renderer.toneMappingExposure); // (no clock: it stands as built)
+    if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT);
+    else if (this.exhibit) this.cabin?.step(dt, 0, Number.NaN); // (no clock: it stands as built)
     this.settle(dt);
     this.onFoot.runWorks(dt);
     this.onFoot.runDriven();

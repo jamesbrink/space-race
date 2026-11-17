@@ -41,7 +41,7 @@ test('a needle is put on its first reading, with the clock stopped and nothing t
       { node: 'AtRest', name: 'At rest', about: '', value: 5 },
     ],
   );
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.ok(Math.abs(turned(dial) - 0.5) < 1e-6, `the dial is turned ${turned(dial)} rad, and its reading is at 0.5`);
   assert.ok(Math.abs(slider.position.x - 0.05) < 1e-9, `the slider is at ${slider.position.x} m, and its reading is at 0.05`);
   assert.ok(Math.abs(turned(wheel) - 0.6 * Math.PI) < 1e-6, `the wheel is turned ${turned(wheel)} rad, and its 3 is at 0.6 pi`);
@@ -49,7 +49,7 @@ test('a needle is put on its first reading, with the clock stopped and nothing t
   assert.ok(c.redrawn() > 0, 'and the frame is drawn again');
   // nothing has changed since: nothing more is asked for
   const before = c.redrawn();
-  c.cabin.step(1 / 60, 0, 2437424.5, 1);
+  c.cabin.step(1 / 60, 0, 2437424.5);
   assert.equal(c.redrawn(), before);
 });
 
@@ -86,7 +86,7 @@ test('the cabin lights go by their switch: thrown, the lamps it names are lit, t
     ],
     [0, -1.19],
   );
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(
     c.lamps.map((l) => l.intensity),
     [0.7, 0.5],
@@ -95,7 +95,7 @@ test('the cabin lights go by their switch: thrown, the lamps it names are lit, t
   assert.deepEqual(c.cabin.lighting, { way: 0, says: 'On', name: 'Cabin lights', built: true });
   assert.equal(c.cabin.light(), 'Off');
   // (with no time passing, as under a frozen stage, it is there at once: nothing eases from the wall's clock)
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(
     c.lamps.map((l) => l.intensity),
     [0, 0],
@@ -104,12 +104,44 @@ test('the cabin lights go by their switch: thrown, the lamps it names are lit, t
   for (const tube of c.tubes) assert.equal(tube.material.emissiveIntensity, 0, 'a tube that is out does not glow');
   // and over a few frames it comes on, not in one
   assert.equal(c.cabin.light(), 'On');
-  c.cabin.step(1 / 60, 0, 2437424.5, 1);
+  c.cabin.step(1 / 60, 0, 2437424.5);
   assert.ok(c.lamps[0].intensity > 0 && c.lamps[0].intensity < 0.7, `one frame on: ${c.lamps[0].intensity}`);
-  for (let i = 0; i < 60; i++) c.cabin.step(1 / 60, 0, 2437424.5, 1);
+  for (let i = 0; i < 60; i++) c.cabin.step(1 / 60, 0, 2437424.5);
   assert.equal(c.lamps[0].intensity, 0.7);
   assert.equal(c.tubes[0].material.emissiveIntensity, 0.6);
   assert.ok(turned(c.lever) < 1e-9);
+});
+
+test('the lamps are held against the exposure the frame is drawn at, as soon as it is set', () => {
+  const c = lit(
+    [
+      { says: 'On', lit: [0, 1] },
+      { says: 'Off', lit: [] },
+    ],
+    [0, -1.19],
+  );
+  c.cabin.step(0, 0, 2437424.5);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.7, 0.5],
+  );
+  // the eye opens by night (four times the day's exposure): turned down by as much, before the next step, so the frame
+  // drawn at that exposure has them (read at the step, they were the frame before's)
+  c.cabin.exposed(4);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.175, 0.125],
+  );
+  c.cabin.step(0, 0, 2437424.5);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.175, 0.125],
+  );
+  c.cabin.exposed(1);
+  assert.deepEqual(
+    c.lamps.map((l) => l.intensity),
+    [0.7, 0.5],
+  );
 });
 
 test('a switch of three positions lights one lamp in the middle one, and comes round to the first', () => {
@@ -122,7 +154,7 @@ test('a switch of three positions lights one lamp in the middle one, and comes r
     [0, -0.6, -1.2],
   );
   assert.equal(c.cabin.light(), 'L.H. only');
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(
     c.lamps.map((l) => l.intensity),
     [0.7, 0],
@@ -156,7 +188,7 @@ test('what the build shaded reads its shade by the lights: lamps on in red, lamp
   assert.doesNotMatch(shader.fragmentShader, /#include <color_fragment>/);
   assert.equal(shader.uniforms.uCabinLit.value, 1);
   c.cabin.light();
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.equal(shader.uniforms.uCabinLit.value, 0, 'the one figure every shaded surface reads');
   // (indoors, and darker still for metal with the lamps out: it mirrors a sky the cabin cannot see)
   assert.ok(c.wall.material.aoMap, 'what is shaded as indoors is indoors');
@@ -303,10 +335,10 @@ test('a way of the lights can light a lamp in another colour and dimmer: its tub
   };
   c.wall.material.onBeforeCompile(shader, null);
   assert.match(shader.fragmentShader, /indirectDiffuse \*= uCabinTint/);
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(shader.uniforms.uCabinTint.value.toArray(), [1, 1, 1], 'lit as built, nothing is tinted');
   assert.equal(c.cabin.light(), 'Red');
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(
     c.lamps.map((l) => l.intensity),
     [0.35, 0.25],
@@ -324,7 +356,7 @@ test('a way of the lights can light a lamp in another colour and dimmer: its tub
   const tint = shader.uniforms.uCabinTint.value;
   assert.ok(tint.r === 1 && tint.g > 0.4 && tint.g < 0.6 && tint.b === tint.g, `the fill taken halfway to red: ${tint.toArray()}`);
   assert.equal(c.cabin.light(), 'Duty');
-  c.cabin.step(0, 0, 2437424.5, 1);
+  c.cabin.step(0, 0, 2437424.5);
   assert.deepEqual(
     c.lamps.map((l) => l.intensity),
     [0.7 * 0.25, 0],
