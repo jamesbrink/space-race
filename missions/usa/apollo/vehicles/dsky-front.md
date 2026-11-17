@@ -2,8 +2,8 @@
 
 The nominal web is the structural reference for an equipped display and keyboard. The preserved Apollo 7 instrument supplies the nineteen black keys, PRO legend and unlit display arrangement. Case depth (5.5 in behind the web), case width (6.65 in), height (7.80 in), key sections, cover envelopes, finish and installation offsets are estimated. The two glass solids retain their drawing dimensions. The instrument omits the museum handling fixture. [Smithsonian Apollo 7 DSKY](https://airandspace.si.edu/collection-objects/keyboard-display-dsky-apollo-7/nasm_A19770217000)
 
-The standalone [bare housing](dsky-housing.md) remains uninstalled: its applicability
-to front assembly 2003949-041 has not been resolved.
+The [bare housing](dsky-housing.md) is not in the model: its applicability to
+front assembly 2003949-041 has not been resolved.
 
 ## Hardware identity
 
@@ -58,42 +58,28 @@ also excluded. Envelope, nineteen clearance bounds and closed-solid validity are
 checked; this is not a complete independent audit of every front-contour feature.
 The CAD filename's -000 is not asserted to be the flight cover's configuration.
 
-## Display-interface conflict — not yet installed
+## Display-interface conflict: not installed
 
-The hash-checked extractor `reference/rebuild_dsky_interfaces.py` now retains the
-**two closed metal-cover display interfaces** from the verified shared
-2004739-001 cover in the processed CM-107 source. All 16 I/L and 18 E/L boundary
-vertices retain their source indices and physical centimetre coordinates. They
-are projected into the **existing, unchanged rigid reference plane**, with no
-scaling, fitted rectangles, smoothing or assumed symmetry. These are processed
-visualization contours, assumed shared for CM-101, not machining dimensions.
-Neither display equipment nor the later cover assemblies are transferred.
+The processed CM-107 source also holds the **two closed metal-cover display
+interfaces** of the shared 2004739-001 cover: 16 I/L and 18 E/L boundary
+vertices, in physical centimetres. Projected into the rigid reference plane
+below, with no scaling, fitting, smoothing or assumed symmetry, they do not agree
+with the nominal CAD: the older CAD's E/L hole is narrower, and the measured E/L
+loop crosses the nominal outer contour at its upper-right corner, by about
+0.000067 square inch against the installed mesh (about 0.000084 against the
+unsimplified CAD curve, so rendering simplification is not the cause). That is
+evidence of incompatible references, not a physical hole or a manufacturing
+defect, and it must not be hidden by trimming the loop, scaling the scan or
+inventing an installation shift.
 
-The comparison is retained separately in
-`reference/apollo-dsky-display-interfaces.json.gz`; it **does not modify the
-installed web**. The older CAD E/L hole is narrower. Substituting the measured
-loop also crosses the nominal outer contour at its upper-right corner: the
-outside area is approximately **0.00006748 square inch**, calculated against the
-committed nominal mesh. The original unsimplified CAD outer curve conflicts too
-(approximately 0.00008428 square inch), so removing rendering simplification does
-not resolve it. This is evidence of incompatible references, not a physical hole
-or a measured manufacturing defect. It must not be hidden by trimming the source
-loop, scaling the scan, or inventing an installation shift.
-
-The current installed web therefore retains **nominal older CAD display
-outlines**, not verified flight -001 display apertures. Resolve the finished
-cover's outer contour and registration before installing the measured interfaces,
-frames or panes. The selected source plane is patchy around the keyboard and is
-not a replacement for the complete manufactured web. Independent triangle-clipping
-tests recompute the conflict from the committed web, separate from the extractor's
-Shapely operations.
-
-Rebuild the comparison in the same environment as the front-web generator:
-
-```sh
-python missions/usa/apollo/vehicles/reference/rebuild_dsky_interfaces.py \
-  /path/to/x3d-cm-interior-panel-uvs-150k-4096-high.glb
-```
+So the installed web keeps the **nominal older CAD display outlines**, not
+verified flight -001 apertures, and the measured loops are not kept in the repo.
+To compare again: export the survey derivative named under "Rigid installation
+reference" with `export_survey` in `reference/rebuild_dsky_front.py`, take the
+two closed loops that bound the display openings in the metal cover's plane, and
+project them as that script projects the front web. Resolve the finished cover's
+outer contour and registration before installing measured interfaces, frames or
+panes.
 
 ## Rigid installation reference
 

@@ -1482,12 +1482,11 @@ Known, not read:
 | NASA, *Apollo 7 press kit*, 68-168K, pp. 25d and 26a | [Mission-specific PDF](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf) | p. 26a: four RCS packages on ±Y/±Z; six internal sectors in 50°/70°/60° pairs. p. 25d supplies the CM axis/hatch relation | Quad angular alignment corrected. Sector angles do not determine all beam attachment coordinates, exterior panel seams or radiator dimensions; those remain unresolved |
 | North American Aviation, A-512S, 13 January 1969, ST-20(1) p. 65 and ST-3057 p. 67 | [Training scan](https://www.apollojournals.org/afj/pdf/structures-mechanical-subsystems-training-course-A512S-19690113.pdf) | Common Block II sector arrangement and structure breakdown: four sector panels, four RCS panels, six beams, split bulkheads and fairing assemblies | Read from cached scan. No angular positions measured from drawing pixels; not an authority for the current estimated exterior seam/radiator pattern |
 
-The shared DSKY cover extraction also retains the two CM-107 metal display
-interface loops separately for comparison (16 I/L and 18 E/L source vertices).
-The E/L loop crosses the older nominal CAD outer contour; neither source is
-shifted, scaled or trimmed to conceal the conflict. These processed-source
-contours are not installed or asserted to be machining dimensions; see
-[the comparison and limitations](../missions/usa/apollo/vehicles/dsky-front.md#display-interface-conflict--not-yet-installed).
+The CM-107 survey's two metal display interface loops of the shared DSKY cover
+(16 I/L and 18 E/L source vertices) were compared with the nominal CAD: the E/L
+loop crosses the older nominal outer contour, so neither is installed and the
+loops are not kept; see
+[the comparison and limitations](../missions/usa/apollo/vehicles/dsky-front.md#display-interface-conflict-not-installed).
 
 
 | NASA photographs S68-50712 (September 1968) and S68-29781 (22 April 1968), SA-205 at Complex 34 | [S68-50712](https://images.nasa.gov/details/S68-50712), [S68-29781](https://images.nasa.gov/details/s68-29781) | Actual flight vehicle: first-stage white lettering fields on black fuel tanks; word gap, glyph proportions and upper USA arrangement | Reconstructed cap heights, widths, pitch, field limits and stations are explicitly estimated from photographs, with perspective/glare uncertainty. No dimensioned stencil drawing acquired; no estimated value enters flight physics |

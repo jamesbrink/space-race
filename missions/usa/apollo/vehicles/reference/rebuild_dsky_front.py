@@ -26,6 +26,72 @@ HEIGHT_IN = 8.000
 WEB_IN = (0.04 + 0.06) / 2
 # 2004929D side view: overall 1.567–1.572 in; CAD's planar front datum.
 FRONT_IN = (1.567 + 1.572) / 2
+MM_PER_IN = 25.4
+
+
+def faces(shape):
+    from OCP.TopAbs import TopAbs_FACE
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopoDS import TopoDS
+
+    explorer = TopExp_Explorer(shape, TopAbs_FACE)
+    while explorer.More():
+        yield TopoDS.Face(explorer.Current())
+        explorer.Next()
+
+
+def read_shape(path):
+    """One valid solid with one closed shell, or nothing."""
+    from OCP.BRepCheck import BRepCheck_Analyzer
+    from OCP.IFSelect import IFSelect_RetDone
+    from OCP.STEPControl import STEPControl_Reader
+    from OCP.TopAbs import TopAbs_SHELL, TopAbs_SOLID
+    from OCP.TopExp import TopExp_Explorer
+
+    reader = STEPControl_Reader()
+    if reader.ReadFile(str(path)) != IFSelect_RetDone:
+        raise ValueError("Cannot read the STEP")
+    reader.TransferRoots()
+    shape = reader.OneShape()
+    if not BRepCheck_Analyzer(shape).IsValid():
+        raise ValueError("Invalid B-rep")
+    for kind in (TopAbs_SOLID, TopAbs_SHELL):
+        explorer = TopExp_Explorer(shape, kind)
+        count = 0
+        while explorer.More():
+            if kind == TopAbs_SHELL and not explorer.Current().Closed():
+                raise ValueError("Open shell")
+            count += 1
+            explorer.Next()
+        if count != 1:
+            raise ValueError("Expected one solid with one closed shell")
+    return shape
+
+
+def tessellate(shape, deflection_in, angle_deg):
+    """Triangles in drawing inches, rigidly turned 180 degrees about X: front faces -Y, top is +Z."""
+    from OCP.BRep import BRep_Tool
+    from OCP.BRepMesh import BRepMesh_IncrementalMesh
+    from OCP.TopAbs import TopAbs_REVERSED
+    from OCP.TopLoc import TopLoc_Location
+
+    BRepMesh_IncrementalMesh(shape, deflection_in * MM_PER_IN, False, math.radians(angle_deg), False).Perform()
+    vertices, triangles = [], []
+    for face in faces(shape):
+        location = TopLoc_Location()
+        mesh = BRep_Tool.Triangulation_s(face, location)
+        if mesh is None:
+            raise ValueError("Untessellated face")
+        offset = len(vertices)
+        for i in range(1, mesh.NbNodes() + 1):
+            p = mesh.Node(i).Transformed(location.Transformation())
+            vertices.append([round(c / MM_PER_IN, 9) for c in (p.X(), -p.Y(), -p.Z())])
+        for i in range(1, mesh.NbTriangles() + 1):
+            a, b, c = mesh.Triangle(i).Get()
+            if face.Orientation() == TopAbs_REVERSED:
+                b, c = c, b
+            triangles.append([offset + a - 1, offset + b - 1, offset + c - 1])
+    return {"deflection_in": deflection_in, "angle_deg": angle_deg, "vertices_in": vertices, "triangles": triangles}
 
 
 def export_survey(source, output):
@@ -49,7 +115,6 @@ def export_survey(source, output):
 def cad_web(step):
     """Retain the planar front contour; replace no rear feature with a guess."""
     import numpy as np
-    import rebuild_dsky_housing as housing
     from OCP.Bnd import Bnd_Box
     from OCP.BRepAdaptor import BRepAdaptor_Surface
     from OCP.BRepBndLib import BRepBndLib
@@ -61,7 +126,7 @@ def cad_web(step):
     from OCP.TopExp import TopExp_Explorer
 
     selected = []
-    for face in housing.faces(housing.read_shape(step)):
+    for face in faces(read_shape(step)):
         surface = BRepAdaptor_Surface(face)
         if surface.GetType() != GeomAbs_Plane:
             continue
@@ -91,8 +156,8 @@ def cad_web(step):
     solid = BRepPrimAPI_MakePrism(face, gp_Vec(0, 0, -WEB_IN * 25.4), False, True).Shape()
     if not BRepCheck_Analyzer(solid).IsValid():
         raise ValueError("Invalid nominal front-web extrusion")
-    mesh = housing.tessellate(solid, 0.0001, 10)
-    # Undo the housing helper's rotation, then put the front plane at local Z0.
+    mesh = tessellate(solid, 0.0001, 10)
+    # Undo tessellate's rotation, then put the front plane at local Z0.
     vertices = np.array([(x, -y, -z - FRONT_IN) for x, y, z in mesh["vertices_in"]])
     return *mesh_web(vertices, mesh["triangles"]), bounds
 

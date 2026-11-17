@@ -1,8 +1,10 @@
-# DSKY front housing — drawing-reference component
+# DSKY front housing: found, not installed
 
-This is a **standalone component under development**, not installed or equipped
-Apollo 7 hardware. The spacecraft's GLBs are unchanged by this component.
-No mounting pose is inferred from a photograph or chosen to make it fit.
+What is known of the bare front housing of Apollo 7's DSKYs, and of a CAD transcription of its drawing. **It is not
+in the model and its data are not kept in the repo**: which housing the flight's -041 front assembly held is
+unresolved (below), and nothing is installed on a guess. This file keeps the identification, the drawing's figures,
+and the CAD's source and hash, so the housing can be regenerated when that is settled. The DSKY that is in the model
+is [dsky-front.md](dsky-front.md)'s front web with its estimated enclosure and [nominal panes](dsky-panels.md).
 
 ## Flight identification
 
@@ -66,7 +68,7 @@ a claim about the exact flight coating or its measured reflectance.
 
 ## CAD provenance and reproducibility
 
-The geometry is a tessellation of **ManoDaSilva's CC0 SolidWorks transcription**
+The CAD found is **ManoDaSilva's CC0 SolidWorks transcription**
 of the drawing, distributed by [Virtual AGC](https://github.com/virtualagc/virtualagc/tree/mechanical/3D-models).
 It is secondary CAD, **not a NASA manufacturing file or a spacecraft survey**.
 The [component notes](https://github.com/virtualagc/virtualagc/blob/mechanical/3D-models/2004968E.md)
@@ -77,41 +79,29 @@ invented to improve appearance.
 Input: [2004968E.stp](https://github.com/virtualagc/virtualagc/blob/mechanical/3D-models/2004968E.stp).
 Git blob: `b2052a787ff775928ff3ee5cd3c9ee01de9e838f`.
 SHA-256: `848a59c7dd01ac29e1078f3a0df45277afb5a338ee87dd8badc72d7a029506d1`.
-The file's hash is checked before any extraction. The reconstruction script
-also checks a valid closed B-rep, the full envelope, and all nineteen exact
-switch-bore radii, axes and locations against the primary drawing. These are
-specific cross-checks, **not a complete independent audit of every CAD feature**.
+Read in November 2026, it was a valid closed B-rep whose full envelope and all
+nineteen switch-bore radii, axes and locations agree exactly with the primary
+drawing. Those are specific cross-checks, **not a complete independent audit of
+every CAD feature**.
 
-With the downloaded STEP file:
-
-```sh
-uv run --with cadquery-ocp==8.0.1.1.0 \
-  missions/usa/apollo/vehicles/reference/rebuild_dsky_housing.py /path/to/2004968E.stp
-```
-
-`apollo-dsky-housing.json.gz` retains source identifiers and three deterministic
-mesh levels. CAD millimetres are returned to drawing inches, rotated rigidly
-180 degrees about X (top +Z, front -Y), and rounded to 1e-9 inch for serialization.
-The Blender module converts inches to metres once. No scaling or fitted pose is
-applied. Tessellation settings (.002/.004/.008-inch deflection and 10/15/25-degree
-angular deflection) describe rendering approximation, not source accuracy or
-manufacturing tolerances. Each level is rebuilt from a fresh B-rep.
-
-Standalone Blender command is in `dsky_housing.py`. Its export uses the same
-clearance and merge-fingerprint checks as other models. The mesh is not marked
-as a cutaway shell; when eventually equipped, it must remain whole inside the
-opened spacecraft. Its present coordinate origin is a drawing reference, not
-an attachment or explosion axis.
+**To regenerate it**, outside the Nix devshell (`OCP`, OpenCascade's Python binding, is not in it): with the
+STEP above, check its SHA-256, read it with `OCP.STEPControl_Reader`, require one valid solid with one closed shell,
+check the envelope (8.124 by 8.000 in, rail-to-front .9005 + .120 in) and the nineteen bores (radius .5655/2 in, axes
+normal to the front, at the BASIC offsets in the table) against the drawing, and tessellate with
+`BRepMesh_IncrementalMesh`. The same reading and tessellation are in `reference/rebuild_dsky_front.py`
+(`read_shape`, `tessellate`), run as its docstring says (`uv run --with cadquery-ocp==8.0.1.1.0 ...`). Keep the
+drawing's inches, turn the part rigidly 180 degrees about X (top +Z, front -Y), and convert to metres once in the
+Blender module, as `dsky_front.py` does for the front web. Nothing is scaled or fitted. Installed, it must be marked as
+staying whole inside the opened spacecraft, as the rest of the DSKY is.
 
 ## What remains wrong or omitted
 
 - CM-101 front-assembly -041 bare-housing applicability and installation pose
-  are unresolved. This component is **not** in the flight inventory yet.
+  are unresolved, so the housing is not in the model.
 - All secondary CAD features still need a complete primary-drawing audit;
   incompatible internal fillets were omitted by the transcription's author.
 - Threads are simplified to smooth bores; exact finishes, coatings and part
   identification are omitted.
-- The installed instrument uses an estimated enclosure and the two [nominal panes](dsky-panels.md). The bare-housing reference remains separate.
 - Other available CAD includes photographically guessed cover ribs or a widened
   display window without a drawing. Those parts are deliberately excluded.
 - The 2004739A-000 cover transcription has not been validated as the flight's

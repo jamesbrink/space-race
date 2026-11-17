@@ -37,6 +37,15 @@ missions/                             the record: one folder per nation, program
                                       voskhod-flies.ts, what a Voskhod flight's parts do in flight; a Voskhod's record is a `VostokRecord`;
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
+    vehicles/reference/               source-derived data a vehicle module reads at build time (Apollo's: survey outlines as JSON,
+                                      the DSKY's front web and panes as .json.gz), each with its source's hash, and the
+                                      rebuild_*.py that wrote it from the source. Not needed to build the viewer or its tests (the GLBs
+                                      are committed) and not needed to build a model again: only to remake the data. The rebuild
+                                      scripts run outside the devshell, with Python packages it does not have, as each docstring
+                                      says: `uv run --with cadquery-ocp==8.0.1.1.0 --with numpy --with scipy --with shapely
+                                      rebuild_dsky_front.py <step> <survey.glb>` (it runs Blender itself for the survey);
+                                      rebuild_console_apertures.py needs numpy, scipy and shapely; rebuild_dsky_panels.py the standard
+                                      library alone. vehicles/reference/README.md says what each file is and where it came from
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19; g5c-suit.parts.ts)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
