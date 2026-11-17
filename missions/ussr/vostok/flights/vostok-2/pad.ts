@@ -14,8 +14,8 @@ import { MSK } from './orbital.ts';
  * The people: the film has some hundred on the concrete as the bus stopped and forty walking with him to the stair, in
  * summer dress (white short-sleeved shirts; officers in khaki summer shirts and peaked caps). They are built in summer dress
  * and walk on the clock (`people`, below; places/tyuratam/site1/august.py, site-1.md "The people of 6 August 1961"). Not
- * built: Smirnov, now the State Commission's chairman, in a white jacket and straw hat; Nikolayev suited beside him at the
- * bus. Kamanin and Gagarin were abroad.
+ * built: the cameras on their tripods and the dark car. Smirnov, now the State Commission's chairman, Korolev and Barmin
+ * stand by the stair; Nikolayev, suited, gets down from the bus and goes back into it. Kamanin and Gagarin were abroad.
  */
 
 const PLAN =
@@ -163,7 +163,82 @@ const ROAD_WEST: [number, number][] = [
 /** The middle of the group round the bus's door as august.py builds it, and where the film has it stand at the stair's foot: 2 to 12 m west and south-west of it (22:13 to 22:24), metres east and north. */
 const ESCORT_AT: [number, number] = [-39.47, -15.93];
 const AT_STAIR: [number, number] = [-22.5, -8.0];
+/** Into the bus by its door (places/tyuratam/site1/road_vehicles.py: the door ahead of the front axle), and a step inside it, out of sight. */
+const INTO_BUS: [number, number][] = [
+  [-46.4, 16.6],
+  [-47.2, 15.6],
+];
 const people: Part[] = [
+  {
+    node: 'Commission',
+    group: 'The morning of 6 August',
+    name: 'Smirnov, Korolev and Barmin',
+    summary: 'The State Commission’s chairman shook his hand on the concrete; Korolev and Barmin saw him off.',
+    detail:
+      'Leonid Smirnov, deputy chairman of the Council of Ministers and now the State Commission’s chairman (Rudnev had been ' +
+      'April’s), stood on the concrete in a white jacket, dark trousers and a pale straw hat, an armband on his left arm, and ' +
+      'shook Titov’s hand, a filler on the south track behind them (a photograph). Its colour cannot be told from the black and ' +
+      'white print: it is drawn in the print’s pale grey. Korolev and Barmin, the pad’s chief designer, saw him off (Chertok, from ' +
+      'a photograph’s caption). Korolev’s dress that morning is not read: here it is the day before’s, a pale summer jacket, ' +
+      'bare-headed. Barmin’s is not known. Where each stood in the stretch the photograph allows, short of the stair and north of ' +
+      'the filler, is estimated, and so is when they left. What Titov said to the chairman is not recorded. Kamanin, who had ' +
+      'commanded the cosmonauts in April, and Gagarin were abroad.',
+    facts: [
+      ['Smirnov', 'a white jacket, a straw hat, an armband on the left arm, its colour not known (a photograph)'],
+      ['Korolev', 'present (Chertok); dressed as on 5 August (a photograph of that day: estimated for the 6th)'],
+      ['Barmin', 'present (Chertok); his dress not known (estimated)'],
+      ['Not there', 'Kamanin and Gagarin, abroad until 7 August (Kamanin’s diary)'],
+      ['Left', 'about 07:06 (not recorded: estimated)'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    going: [
+      {
+        kind: 'leaves',
+        at: { value: MSK(7, 6, 20), ...LEFT },
+        stagger: 1.2,
+        way: [[-26, 9], [-75, 10.5], [-92, 18], ...ROAD_WEST.slice(1)],
+        ...LEFT,
+      },
+    ],
+  },
+  {
+    node: 'Backup',
+    group: 'The morning of 6 August',
+    name: 'Nikolayev',
+    summary: 'The back-up got down from the bus with him, suited, and they touched helmets.',
+    detail:
+      '“Andriyan Nikolayev and I, in our flying suits, got clumsily down from its door … We embraced and ‘clinked’ helmets” ' +
+      '(Titov, 1973). Nikolayev, the back-up, then went back into the bus and stayed in it, suited, until thirty minutes’ ' +
+      'readiness, when he took the suit off and went to a viewing point (RussianSpaceWeb). He is drawn here as the ground party’s ' +
+      'figures are, in the SK-1’s colours, not as the crew figure is. No second orange suit is made out in the film’s views from ' +
+      'above; the minutes are estimated.',
+    facts: [
+      ['Out of the bus', 'with Titov, suited (Titov, 1973); about 06:50 to 06:53 (estimated)'],
+      ['Then', 'in the bus until 08:30, thirty minutes’ readiness (RussianSpaceWeb)'],
+      ['Drawn', 'at the ground party’s detail, not the crew figure’s'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    going: [
+      {
+        kind: 'comes',
+        at: { value: MSK(6, 50, 20), confidence: 'estimated', source: 'as the bus stopped (the plan’s quarter hour): the minute ours' },
+        stagger: 0,
+        way: INTO_BUS,
+        confidence: 'documented',
+        source: 'Titov (1973): «мы с Андрияном Николаевым в летных костюмах неуклюже вышли из его дверей»',
+      },
+      {
+        kind: 'leaves',
+        at: { value: MSK(6, 53), confidence: 'estimated', source: 'after the farewell: the minute ours' },
+        stagger: 0,
+        way: INTO_BUS,
+        confidence: 'documented',
+        source: 'RussianSpaceWeb: he stayed in the bus until thirty minutes’ readiness',
+      },
+    ],
+  },
   {
     node: 'Escort',
     group: 'The morning of 6 August',

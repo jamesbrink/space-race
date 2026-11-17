@@ -17,9 +17,19 @@ Every count is read off the 960 px frames and is estimated; so is where each man
 among the kinds the film shows, his stature and his stance. Where each group stood is the film's, to some five metres
 (its views are from the erector, with the bus, the tracks and the low building for a scale).
 
-Nodes: Crowd (in files south of the bus), CrowdWest (a line across the apron's far, western end) and
-Escort (round the bus's door, who walk with him to the stair and stand at its foot): each with its skeleton
-`<name>_People`, a node `<name>_Person_<n>` a man.
+The named (../site-1.md, "The people of 6 August 1961"): Smirnov, chairman of the State Commission, in a white jacket,
+dark trousers, a pale straw hat and an armband on his left arm, whose colour the black-and-white photograph does not
+give (RussianSpaceWeb, `smirnov_2.jpg`); he shook Titov's hand on the concrete with a filler on the south track behind
+them, so north of that track and short of the stair. Korolev and Barmin "see off" Titov (Chertok III, p. 191, a
+photograph's caption); Korolev's dress on the 6th is not read, so the 5th's is taken (a pale summer jacket, bare-headed:
+RussianSpaceWeb, `korolev_pad_meeting_2.jpg`), and Barmin's is not known. Nikolayev, the back-up, in his suit, got down
+from the bus with Titov and they touched helmets (Titov, 1973), then stayed in the bus (RussianSpaceWeb). Kamanin and
+Gagarin were abroad, and are not here.
+
+Nodes: Crowd (in files south of the bus), CrowdWest (a line across the apron's far, western end), Escort (round the
+bus's door, who walk with him to the stair and stand at its foot), Commission (Smirnov, Korolev and Barmin, by the
+stair) and Backup (Nikolayev, at the bus's door): each with its skeleton `<name>_People`, a node `<name>_Person_<n>` a
+man.
 """
 
 from __future__ import annotations
@@ -143,10 +153,27 @@ def _spread(spot, n: int, rng: random.Random, apart: float = APART) -> list[tupl
     return out
 
 
+def commission() -> list:
+    """Smirnov, Korolev and Barmin, short of the stair and north of the south track's filler, facing the way the pilot
+    comes along the tracks from the bus (where in that stretch each stood is estimated)."""
+    return [
+        (Person(gp.white_jacket(armband="grey", hat="fedora"), 172, 1.22, who="Smirnov"), -13.6, -8.9, 175.0),
+        (Person(gp.white_jacket(coat="shirt-cream"), 170, 1.15, who="Korolev"), -12.3, -7.9, 190.0),
+        (Person(gp.jacket("grey", hat=None), 174, 1.05, who="Barmin"), -12.4, -10.0, 165.0),
+    ]
+
+
+def backup() -> list:
+    """Nikolayev, suited, a step out from the bus's door, facing along the bus to where Titov got down."""
+    return [(Person(gp.suited(), 168, 1.0, who="Nikolayev"), BUS_DOOR[0] + 0.6, BUS_DOOR[1] - 1.1, 160.0)]
+
+
 GROUPS = {
     "Crowd": (crowd, "in files south of the bus"),
     "CrowdWest": (crowd_west, "across the apron's far end"),
     "Escort": (escort, "round the bus's door, then at the stair's foot"),
+    "Commission": (commission, "Smirnov, Korolev and Barmin by the stair"),
+    "Backup": (backup, "Nikolayev at the bus's door"),
 }
 ABOUT = {
     "Crowd": (
@@ -162,6 +189,17 @@ ABOUT = {
         "With him to the stair",
         "The officers who said goodbye at the bus, in khaki summer shirts and air force caps, and those who walked with Titov "
         "between the tracks to the erector's stair and stood at its foot, faces up, as he spoke from its head: some forty in the film.",
+    ),
+    "Commission": (
+        "Smirnov, Korolev, Barmin",
+        "Leonid Smirnov, the State Commission's chairman, in a white jacket and a straw hat with an armband on his left arm, shook "
+        "Titov's hand on the concrete (a photograph); Korolev and Barmin saw him off (Chertok). Korolev's dress is the day "
+        "before's; Barmin's, and where each stood, are estimated.",
+    ),
+    "Backup": (
+        "Nikolayev",
+        "The back-up, Andriyan Nikolayev, suited, got down from the bus with Titov and they touched helmets; he went back into the bus "
+        "and stayed in it, suited, until thirty minutes' readiness. Drawn as these figures are, not as the crew figure is.",
     ),
 }
 

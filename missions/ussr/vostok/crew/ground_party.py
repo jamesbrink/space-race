@@ -65,6 +65,10 @@ CLOTH = {
     "khaki-summer": ("suit-cotton-khaki", (0.46, 0.42, 0.28), 0.0, 0.88),
     "straw": ("hat-straw", (0.74, 0.67, 0.48), 0.0, 0.8),
     "lens": ("sunglasses-dark", (0.015, 0.016, 0.02), 0.0, 0.15),
+    # the SK-1 suit drawn as these figures are drawn (crew/sk_1.py's colours: its cover, its helmet, its gloves' palms)
+    "orange": ("suit-orange-cover", (0.83, 0.16, 0.015), 0.0, 0.8),
+    "helmet": ("helmet-white", (0.86, 0.86, 0.83), 0.0, 0.3),
+    "glove-tan": ("glove-leather-tan", (0.5, 0.33, 0.17), 0.0, 0.6),
 }
 
 
@@ -101,6 +105,7 @@ class Dress:
     sleeves: str = "long"  # or "short": to above the elbow, the forearm bare
     tucked: bool = False  # a shirt into the trousers at a belt, not a coat over them
     glasses: bool = False  # dark glasses
+    gloves: str | None = None  # the hands' material, where they are gloved
 
 
 @dataclass
@@ -211,11 +216,12 @@ def summer_tunic(band: str = "blue") -> Dress:
     return officer(band)
 
 
-def white_jacket(armband: str | None = None, hat: str | None = None) -> Dress:
+def white_jacket(armband: str | None = None, hat: str | None = None, coat: str = "shirt-white") -> Dress:
     """A white summer jacket over an open shirt, dark trousers: Smirnov's (a photograph), with a pale straw hat and an
-    armband on the left arm, whose colour the black-and-white photograph does not give."""
+    armband on the left arm, whose colour the black-and-white photograph does not give. `coat="shirt-cream"`: a pale one,
+    as Korolev wore the day before."""
     return Dress(
-        "shirt-white",
+        coat,
         hem=-0.04,
         bulk=2.0,
         collar="turned",
@@ -227,6 +233,13 @@ def white_jacket(armband: str | None = None, hat: str | None = None) -> Dress:
         shirt="skin",
         tie=None,
     )
+
+
+def suited() -> Dress:
+    """A cosmonaut in the SK-1 suit drawn as these figures are drawn, not as the crew figure is (crew/sk_1.py): the orange
+    cover in one piece, laced boots, gloves, the white helmet with its visor up. Nikolayev, the back-up, on 6 August 1961:
+    he got down from the bus in his suit and touched helmets with Titov (Titov, 1973)."""
+    return Dress("orange", hem=-0.02, bulk=4.5, collar=None, trousers="orange", boots=True, hat="helmet", hat_colour="helmet", gloves="glove-tan")
 
 
 # Each arm's pose, for the left arm (the right is its mirror): which way the upper arm points from the shoulder, where
@@ -388,15 +401,15 @@ def figure(p: Person, jointed: bool = False) -> _Figure:
     seat = [(0, 0, zc - 6.0), (0, 0, zc + 2.0), (0, 0, zc + 14.0)]
     seat_r = [(13.0 * p.build, 10.0 * p.build), (16.0 * p.build, 11.5 * p.build), (16.5 * p.build, 11.5 * p.build)]
     if d.tucked:
-        # Under a coat the seat is a coat's, and lies inside the legs' tops. Seen, it is the trousers' own: from inside the
-        # legs at the crotch, round the legs' tops at the hips (each leg's top ring wholly inside it), then the body's own
-        # sections a little let out up to the belt.
+        # Under a coat the seat is a coat's, and lies inside the legs' tops. Seen, it is the trousers' own: closed a
+        # centimetre under the legs' tops and round them at the hips (each leg's top ring wholly inside it: between the legs
+        # its floor is the crotch), then the body's own sections a little let out up to the belt.
         belt_z = body.waist_z + 1.0
         lx, _, lz, la, lb = body.leg[1]
         hips = (lx + la + 0.6 + 1.8, (lb + 0.6) * 1.3)
         torso = [(z, a, b) for z, a, b in body.torso]
-        seat = [(0, 0, zc - 5.0), (0, 0, lz - 1.0), (0, 0, belt_z - 9.0), (0, 0, belt_z)]
-        seat_r = [(lx, lb * 0.95), hips, *[(a + 0.5, b + 0.5) for a, b in (_at(torso, z) for z in (belt_z - 9.0, belt_z))]]
+        seat = [(0, 0, lz - 1.0), (0, 0, belt_z - 9.0), (0, 0, belt_z)]
+        seat_r = [hips, *[(a + 0.5, b + 0.5) for a, b in (_at(torso, z) for z in (belt_z - 9.0, belt_z))]]
     # (drawn straight between its rows when tucked: a curve through them bellies out over the legs' tops, a millimetre from them)
     f.tube(d.trousers, seat, seat_r, 12, fine=1 if d.tucked else 2)
     if d.tucked:
@@ -585,10 +598,11 @@ def figure(p: Person, jointed: bool = False) -> _Figure:
         flat = across.cross(w).normalized()  # square to the hand's back
         # (the fingers hang a little curled, toward the palm)
         hand = [wrist - w * 1.0, wrist + w * (4.5 * k), wrist + w * (9.5 * k) - flat * (0.8 * k), wrist + w * (14.5 * k) - flat * (3.0 * k)]
-        coat.tube("skin", hand, [(2.9 * k, 2.4 * k), (4.5 * k, 2.2 * k), (4.3 * k, 2.0 * k), (2.9 * k, 1.5 * k)], 8, ref=tuple(flat), fine=1)
+        glove = d.gloves or "skin"
+        coat.tube(glove, hand, [(2.9 * k, 2.4 * k), (4.5 * k, 2.2 * k), (4.3 * k, 2.0 * k), (2.9 * k, 1.5 * k)], 8, ref=tuple(flat), fine=1)
         thumb = wrist + w * (4.5 * k) + across * (3.6 * k * sx)
         coat.tube(
-            "skin",
+            glove,
             [thumb, thumb + (w + across * (0.7 * sx)).normalized() * (5.5 * k)],
             [(1.25 * k, 1.25 * k), (0.9 * k, 0.9 * k)],
             6,
@@ -799,6 +813,23 @@ def _hat(top: _Figure, body, d: Dress) -> None:
         top.lathe(
             d.hat_colour, [(r - 0.3, 0.6), (r + 4.4, -0.8), (r + 4.4, -1.2), (r - 0.3, 0.1)], 10, m, arc=(math.radians(-150), math.radians(-30))
         )
+    elif d.hat == "helmet":
+        # (each profile runs up its outside, as the cap's do, so that it faces out)
+        # the SK-1's helmet: a shell round the head from under the chin to over the crown, open before the face, its visor
+        # raised over the opening (estimated in its form; its colour crew/sk_1.py's)
+        m = Matrix.Translation(head + Vector((0, 0.6, -1.0))) @ oval
+        R = r + 2.8
+        top.lathe(d.hat_colour, [(R - 1.6, -3.0), (R, -3.0), (R, 2.0), (R * 0.93, R * 0.55 + 2.0), (R * 0.62, R * 0.88 + 2.4), (0.0, R + 3.2)], 16, m)
+        # below the brow the shell is open before the face: the sides and back down to the neck ring
+        top.lathe(
+            d.hat_colour,
+            [(R - 1.6, -3.0), (R - 1.6, -7.5), (R - 2.2, -9.6), (R - 1.0, -9.6), (R, -7.5), (R, -3.0)],
+            16,
+            m,
+            arc=(math.radians(-90.0 + 55.0), math.radians(270.0 - 55.0)),
+        )
+        # the visor, raised: a dark band over the brow
+        top.lathe("lens", [(R + 0.2, 1.2), (R + 0.6, 1.2), (R + 0.6, 4.8), (R + 0.2, 4.8)], 16, m, arc=(math.radians(-150.0), math.radians(-30.0)))
     elif d.hat == "beret":
         m = Matrix.Translation(head + Vector((0.8, 0.6, 5.0))) @ Matrix.Rotation(math.radians(-7), 4, "Y") @ oval
         top.lathe(d.hat_colour, [(r - 1.0, 0.0), (r + 0.3, 0.0), (r + 3.0, 2.4), (r + 2.4, 4.8), (r * 0.5, 7.2), (0.0, 7.4)], 14, m)
@@ -941,6 +972,7 @@ __all__ = [
     "stand",
     "summer_officer",
     "summer_shirt",
+    "suited",
     "summer_tunic",
     "vary",
     "Walkers",
