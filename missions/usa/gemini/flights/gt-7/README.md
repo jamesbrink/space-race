@@ -13,7 +13,7 @@ that Gemini VI-A flew up to: the first time two crewed ships met.
 | Launch azimuth | 83.6° |
 | Orbit at insertion | 87.2 by 177.1 nautical miles (161 by 328 km); 28.89°; period 89.39 min |
 | Orbit from the fifth day | 160.5 by 162.8 nautical miles (297 by 302 km) |
-| Gemini VI-A alongside | 263 h 58 min, for about three and a half revolutions |
+| Gemini VI-A alongside | 263 h 58 min by the report, braking; still beside this ship from about 264 h 03 min, for about three and a half revolutions |
 | Retrofire | 329 h 58 min 4 s |
 | Duration | 330 h 35 min 1 s; 206 revolutions |
 | Landing | 25°25.1′ N 70°06.7′ W, 6.4 nautical miles short of the planned point |
@@ -102,7 +102,10 @@ to the end. The hydrogen tank, with its new insulation, never vented.
 liftoff but followed the climb. They put their suits on at about 259 hours and had one job: to
 keep the ship's nose, and the transponder in it, toward the ship coming up. They first saw it as
 a point of light about two miles off, and from half a mile could see its thrusters firing. The
-rendezvous was complete at 263:58. The two flew together for about three and a half revolutions,
+report has the rendezvous "accomplished at 263:58", which is 19:28 G.m.t. and 5:50:37 of Gemini
+VI-A's flight: the minute its crew began braking, about 3,000 ft off (SP-4002, 15 December). They
+stopped 120 ft below at about 264:03, 2:33 p.m. EST (*Titans*, p. 287; SP-4002's 5:56:00), which
+is the instant Schirra and NASA's histories call the rendezvous. The two flew together for about three and a half revolutions,
 at one time a foot apart (*Titans*, p. 288), each crew telling the other of the cords trailing
 from the back of its adapter. Borman and Lovell each flew station on the other ship for about
 five minutes. At about 269:30 Gemini VI-A moved off, and next day it went home.
@@ -148,7 +151,8 @@ report's "approximately".
 | about 201 h | the telemetry tape recorder fails |
 | 258:07:22.77 | Gemini VI-A lifts off |
 | about 259 h | both suits on |
-| 263:58 | rendezvous complete |
+| 263:58 | "rendezvous ... accomplished": Gemini VI-A begins braking, about 3,000 ft off |
+| about 264:03 | Gemini VI-A stopped 120 ft below: station keeping begins |
 | about 269:30 | Gemini VI-A separates |
 | about 282 h | both suits off |
 | 283:28 | thrusters 3 and 4 found degraded |
@@ -245,7 +249,7 @@ ERA5's (`aloft.ts`).
 
 | | One source | Another | Followed |
 | --- | --- | --- | --- |
-| When the rendezvous was complete | 263:58 g.e.t., which is 19:28 G.m.t. (mission report, 1.0) | 2:33 p.m. EST, which is 264:03 (*Titans*, p. 287) | the report, here; the history's milestone is *Titans*' |
+| When the rendezvous was complete | 263:58 g.e.t., which is 19:28 G.m.t. (mission report, 1.0) | 2:33 p.m. EST, which is 264:03 (*Titans*, p. 287); 5:56:00 of Gemini VI-A, the same (SP-4002, Table B) | both, as two instants: 263:58 is 5:50:37 of Gemini VI-A, when its braking began at about 3,000 ft (SP-4002); 264:03 is when it had stopped, 120 ft below, which Schirra called the rendezvous (*Titans*, p. 288) and the history's milestone uses. The report does not say which instant it means |
 | The landing point | 25°25.1′ N 70°06.7′ W, by Grand Turk's radar (Table 4.3-I, final, and 4.1) | recovered at 25°21.9′ N 70°08.8′ W (1.0 and 6.3.2), "approximately 2 miles from where it had landed"; the *Wasp* reckoned 25°22.8′ N 70°07′ W | the table, as the landing |
 | The thrust back to the second stage | "for 5 seconds" (4.1) | "a 4-second thrust" (7.1.2.3.1) | neither is quoted |
 | The phase adjustment | 69:43:21 (Table 4.2-I, actual) | 69:43:19 (Table 4.3-II, actual; 4.1; 7.1.2.3.2) | the sequence of events |

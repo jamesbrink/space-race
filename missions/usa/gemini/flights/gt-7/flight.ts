@@ -497,7 +497,7 @@ export const flight: Flight = {
     { label: 'Orbit at insertion', value: '161 km by 328 km, 28.89°' },
     { label: 'Period', value: '89.39 min' },
     { label: 'Orbit from the fifth day', value: '297 km by 302 km, for Gemini VI-A to come to' },
-    { label: 'Gemini VI-A alongside', value: '263 h 58 min, for about three and a half revolutions' },
+    { label: 'Gemini VI-A alongside', value: 'from about 264 h 03 min, for about three and a half revolutions' },
     { label: 'Landing', value: '25°25.1′ N 70°06.7′ W, 6.4 nautical miles short' },
     { label: 'Recovery', value: 'USS Wasp' },
   ],
@@ -540,9 +540,16 @@ export const flight: Flight = {
     { t: get(201, 0), event: 'About now the tape recorder for telemetry fails: nothing more is recorded out of sight of a station' },
     { t: get(258, 7, 22.77), event: 'Gemini VI-A lifts off from the pad this ship left eleven days before' },
     { t: get(259, 0), event: 'About now both men put their suits on for the rendezvous' },
+    // (the report's "rendezvous ... accomplished at 263:58 g.e.t." is 5:50:37 of Gemini VI-A, when it began braking:
+    // README.md, "Where sources disagree")
     {
       t: get(263, 58),
-      event: 'Gemini VI-A is alongside: the first rendezvous. The two fly together for about three and a half revolutions',
+      event: 'Gemini VI-A, about 3,000 ft off, begins braking: the instant this flight’s report gives for the rendezvous',
+    },
+    {
+      // 5:56:00 of Gemini VI-A (SP-4002, Appendix 1, Table B), which lifted off at 258:07:22.77
+      t: get(264, 3, 22.77),
+      event: 'Gemini VI-A stops 120 ft below: the first rendezvous. The two fly together for about three and a half revolutions',
     },
     { t: get(269, 30), event: 'About now Gemini VI-A moves away for the night' },
     { t: get(283, 28), event: 'The two thrusters that yaw the ship to the right are found to have all but failed' },
