@@ -43,13 +43,16 @@ plays until the page has been touched, and a hidden page is suspended.
   `machinery` how far along it is, and the sound hears the change: the slider, a hand and the clock alike. Still is
   silent; starting, running and stopping are a kind's own (`MACHINES`). At the wheel the walker makes no footfalls and
   no breath and reports `driving`; the engine is the vehicle's own (`PlaceDef.engines`, by the name its model or its
-  move gives: which engine, its idle and its rated speed, each with its confidence, from the makers' manuals or reference works where found), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
+  move gives: which engine, its idle and its rated speed, each with its confidence, from the makers' manuals or reference works where found; where its gearbox's ratios are published
+  (`Engine.gears`: the GAZ-21's and the GAZ-63's, documented) a driven vehicle changes up and its revolutions fall at each change, `gearOf`, the shift
+  points estimated, and the rest are heard turning with their speed alone), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
   the land is painted as there, a road, an apron, a track's bed, by the name its ground gives it, `GroundSpec.painted`,
   worked from the lines its shader draws, each with its confidence; else the land), a voice for each surface its
   wheels are on, as that surface's share of them. A driven vehicle's wheels are asked of the solids under each hub;
   one the slider or the clock moves is stood on what it runs on by `viewer/runs.ts`, which says what each wheel bears
   on (`Rider.under`). What rolls on jointed rails knocks over each joint, a wagon and Complex 5's structure alike, at
-  the spacing its rails say (`Runs.joints`, with its confidence: 39 ft at the Cape, 25 m at Site 1, both estimated). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Distance,
+  the spacing its rails say (`Runs.joints`, with its confidence: 39 ft at the Cape, 25 m at Site 1, both estimated). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Not done, and not faults: no cab insulation (the engine is heard
+  as it is in the open), no Doppler on a passing vehicle and no echo of the ground, which are additions, each wanting a model of its own that no figure here could be put to. Distance,
   absorption and delay are the launch's path; every level and timbre is estimated.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works

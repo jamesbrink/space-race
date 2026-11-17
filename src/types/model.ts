@@ -190,6 +190,13 @@ export interface Engine {
   /** Revolutions a minute at idle, and the most it was run to (its rated speed, where that is published), each with its own confidence. */
   idle: Measure;
   most: Measure;
+  /**
+   * Its gearbox's forward ratios, first gear first, the last being the direct drive (1.00); left out, it is heard
+   * turning with its speed alone, as an automatic or a locomotive does. With them a driven vehicle changes up as it gathers speed
+   * and its revolutions fall at each change (sound/model.ts `gearOf`); which of a type's gearboxes a vehicle had is how sure the
+   * ratios are, and whose.
+   */
+  gears?: { ratios: number[]; confidence: Confidence; source: string };
   /** Which engine it was, its fuel and its cylinders: how sure, and whose. */
   confidence: Confidence;
   source: string;
