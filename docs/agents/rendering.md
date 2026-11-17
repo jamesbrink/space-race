@@ -34,18 +34,22 @@ is held to it. An instrument's cover is the blended material `crystal`, not `gla
 and is offered to be looked through. What is under a `within` node is lit as indoors (simulator.md). The viewer's
 lights inside a model cast no shadows, and cannot: every shadow map is one more texture for every lit surface in the
 scene, and the ground and the globe are at the GPU's sixteen already (a shadow-casting cabin lamp stopped both from
-compiling). A cabin's shadow is therefore the build's: `mercury_cabin.shade` casts rays in Blender and keeps the
-result at the vertices in a colour attribute named `Shade`, the only one `srlib.export_glb` exports, which three
-multiplies the surface by. It is two figures in one colour: red, green and blue with the cabin's own lamps on, alpha
-with them off (how open the point is, and how much of what lets light in it sees). A viewer that knows no cabin
-multiplies by the first, which is right for anything not seen through; `Cabin.shadeBy` patches the materials of the
-meshes that carry four parts to mix the two by `uCabinLit` (the share of the lamps' strength that is lit), which the
-lights' switch moves (`CabinDef.lighting`), and to take the indirect light (the sky's tenth left indoors, what metal
-mirrors) toward the lit lamps' colour by `uCabinTint` (white for lamps lit as built), so switching the lamps, to red or
-to a dim duty light, is uniforms and the lamps' strength and colour: no light is added or taken away, and no shader is
-built. The shade has one lamps-on figure for all the lamps together: a way that lights some of them, or another bulb
-in the same fitting, is shaded as if all were lit and dimmed by their share (a shade per lamp, and the bake
-the other cabins lack, is #18).
+compiling). A cabin's shadow is therefore the build's: `tools/blender/cabin_shade.py` casts rays in Blender (each
+cabin says what is shaded, by which lamps and through which openings: `mercury_cabin.shade`, `vostok_3ka.shade_cabin`,
+`voskhod.shade`) and keeps the result at the vertices in a colour attribute named `Shade`, the only one
+`srlib.export_glb` exports. It is a figure for each lamp alone and one with them all out, in one colour: red, green and
+blue a lamp each in the order of `ModelDef.lights` (one lamp: its figure in all three; two: their mean in the blue),
+alpha with them all out (how open the point is, and how much of what lets light in it sees); each shaded mesh names its
+lamps in its extras (`shade_lamps`), and tests/flights.test.mjs holds them to the lights' fittings in order. Read as a
+colour it would tint, so it is read so wherever such a model is drawn (`viewer/shade.ts` `shadeBy`: the cabin, and the
+Lineup as built): `mix(shade.a, dot(shade.rgb, uCabinLamps), uCabinLit)`, with `uCabinLamps` each lamp's share of the
+strength that is lit (they sum to one) and `uCabinLit` the share of the whole that is lit, which the lights' switch
+moves (`CabinDef.lighting`); and the indirect light (the sky's tenth left indoors, what metal mirrors) is taken toward
+the lit lamps' colour by `uCabinTint` (white for lamps lit as built). So switching the lamps, to red, to one of them,
+or to a dim duty light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
+added or taken away, and no shader is built. The channel costs nothing: the colour had four parts already. Another
+bulb in the same fitting (Gemini's red) is shaded as its fitting is; a cabin of more than three lamps would need a
+second attribute.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
 indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray

@@ -168,7 +168,7 @@ test('a switch of three positions lights one lamp in the middle one, and comes r
   assert.equal(c.cabin.light(2), 'Off', 'or to a position asked for');
 });
 
-test('what the build shaded reads its shade by the lights: lamps on in red, lamps off in alpha; nothing else is touched', () => {
+test('what the build shaded reads its shade by the lights: each lamp in its channel, lamps off in alpha; nothing else is touched', () => {
   const c = lit(
     [
       { says: 'On', lit: [0, 1] },
@@ -184,7 +184,7 @@ test('what the build shaded reads its shade by the lights: lamps on in red, lamp
     fragmentShader: '#include <common>\nvoid main() {\n#include <color_fragment>\n}',
   };
   c.wall.material.onBeforeCompile(shader, null);
-  assert.match(shader.fragmentShader, /mix\( vColor\.a, vColor\.r, uCabinLit \)/);
+  assert.match(shader.fragmentShader, /mix\( vColor\.a, dot\( vColor\.rgb, uCabinLamps \), uCabinLit \)/);
   assert.doesNotMatch(shader.fragmentShader, /#include <color_fragment>/);
   assert.equal(shader.uniforms.uCabinLit.value, 1);
   c.cabin.light();
@@ -192,6 +192,35 @@ test('what the build shaded reads its shade by the lights: lamps on in red, lamp
   assert.equal(shader.uniforms.uCabinLit.value, 0, 'the one figure every shaded surface reads');
   // (indoors, and darker still for metal with the lamps out: it mirrors a sky the cabin cannot see)
   assert.ok(c.wall.material.aoMap, 'what is shaded as indoors is indoors');
+});
+
+test('one lamp lit, or one lamp dimmed, is shaded as that lamp alone: its share of what is lit is all of it', () => {
+  const c = lit(
+    [
+      { says: 'Both', lit: [0, 1] },
+      { says: 'Duty', lit: [{ light: 1, level: 0.25 }] },
+      { says: 'Off', lit: [] },
+    ],
+    [0, -0.5, -1],
+  );
+  const shader = { uniforms: {}, vertexShader: '', fragmentShader: '#include <common>\nvoid main() {\n#include <color_fragment>\n}' };
+  c.wall.material.onBeforeCompile(shader, null);
+  c.cabin.step(0, 0, 2437424.5);
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  const lamps = () => shader.uniforms.uCabinLamps.value.toArray();
+  // both lit: each by its strength (0.7 and 0.5), the third channel nobody's
+  assert.ok(near(lamps()[0], 0.7 / 1.2) && near(lamps()[1], 0.5 / 1.2) && lamps()[2] === 0, `both: ${lamps()}`);
+  assert.equal(shader.uniforms.uCabinLit.value, 1);
+  c.cabin.light();
+  c.cabin.step(1, 0, 2437424.5);
+  assert.deepEqual(lamps(), [0, 1, 0], 'the second lamp alone is all that is lit');
+  assert.ok(near(shader.uniforms.uCabinLit.value, (0.25 * 0.5) / 1.2), `at a quarter of its strength: ${shader.uniforms.uCabinLit.value}`);
+  // a cabin made again for the same model takes over the shading of its materials, with no shader built
+  const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
+  const full = c.wall.parent;
+  const again = new Cabin(host, { launch: '1961-05-05T14:34:13Z' }, { cabin: { instruments: [], within: [] } }, full.parent, full, []);
+  again.step(0, 0, 2437424.5);
+  assert.equal(shader.uniforms.uCabinLit.value, 1, 'read by the cabin made last');
 });
 
 test('a gauge read off the record: straight between readings, each at its instant or after its event, held beyond; an event not come is never', () => {

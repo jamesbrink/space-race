@@ -8,6 +8,7 @@ import { Cameras, type RigId } from '../../viewer/camera/index.ts';
 import { approach } from '../../viewer/camera/maths.ts';
 import { chooseLevel, distanceTo, lodUrl } from '../../viewer/lod.ts';
 import { InkPass, type Look, Looks } from '../../viewer/look.ts';
+import { asBuilt, shadeAll } from '../../viewer/shade.ts';
 import { refused, sayRefused, watchContext } from '../../viewer/lost.ts';
 import { fitIndices, fitPictures } from '../../viewer/pictures.ts';
 import type { Tone } from '../../viewer/studio.ts';
@@ -327,6 +328,8 @@ export class LineupScene {
     const beside = stand.entry.beside;
     const taken = await this.shelf.take(url, slot === 0, { key: JSON.stringify([headings, beside]), of, beside }, onProgress);
     if (slot === stand.coarsest) stand.craft = taken.craft;
+    // (a cabin's baked shade is a figure for each of its lamps: read as built, every lamp lit, before the looks twin it: shade.ts)
+    shadeAll(taken.root, asBuilt(stand.entry.vehicle.lights));
     this.looks.add(taken.root);
     return taken;
   }

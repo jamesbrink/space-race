@@ -12,6 +12,7 @@ import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { bearingOf, recordOf, recordTimes, signalsOf } from '../sim/run.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
+import { type Shading, shadeAll, sharesOf } from './shade.ts';
 import { tier } from './tier.ts';
 
 /**
@@ -282,6 +283,7 @@ const v = new THREE.Vector3();
 const m4 = new THREE.Matrix4();
 const TINT = new THREE.Color();
 const TINT_TO = new THREE.Color();
+const SHARES = new THREE.Vector3();
 
 export class Cabin {
   private readonly def: CabinDef;
@@ -305,11 +307,14 @@ export class Cabin {
   private lightsSwitch: Switch | null = null;
   private globeSwitch: Switch | null = null;
   /**
-   * How much of the cabin's own light there is, 0 to 1, as every surface the build shaded reads it: the shade baked at
-   * its vertices is one figure with the lamps on and another with them off (`shadeBy`); and the colour of what is lit.
+   * How much of the cabin's own light there is, 0 to 1, and each lamp's share of what is lit, as every surface the build
+   * shaded reads them (shade.ts: the shade baked at its vertices is a figure for each lamp alone and one with them all
+   * out); and the colour of what is lit.
    */
-  private readonly lit = { value: 1 };
-  private readonly tint = { value: new THREE.Color(1, 1, 1) };
+  private readonly shading: Shading;
+  private get lit(): { value: number } {
+    return this.shading.lit;
+  }
   private stick: { node: THREE.Object3D; home: THREE.Quaternion; now: THREE.Vector3 } | null = null;
   /**
    * The globe (CabinDef.globe): its node as built, the turn it was last given, its modes, and (in its landing-place mode)
@@ -373,6 +378,7 @@ export class Cabin {
     this.flight = flight;
     this.def = model.cabin!;
     this.group = group;
+    this.shading = { lit: { value: 1 }, lamps: { value: sharesOf(model.lights) }, tint: { value: new THREE.Color(1, 1, 1) } };
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
     this.lights = lights.map((light) => ({
@@ -513,16 +519,9 @@ export class Cabin {
         if (mesh.isMesh && material?.isMeshStandardMaterial && !material.name.startsWith('glass')) inside.add(material);
       });
     // What the build shaded as indoors is indoors, wherever in the model it hangs (a hatch's inner face is the hatch's
-    // node, not the cabin's): its shade is a colour of four parts, lamps on and lamps off (`shadeBy`).
-    full.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || mesh.geometry.getAttribute('color')?.itemSize !== 4) return;
-      for (const material of new Set([mesh.userData.real, mesh.material] as (THREE.MeshStandardMaterial | undefined)[])) {
-        if (!material?.vertexColors || material.name.startsWith('glass')) continue;
-        if (material.isMeshStandardMaterial) inside.add(material);
-        this.shadeBy(material);
-      }
-    });
+    // node, not the cabin's): its shade is a colour of four parts, each lamp alone and the lamps out (shade.ts).
+    for (const material of shadeAll(full, this.shading))
+      if ((material as THREE.MeshStandardMaterial).isMeshStandardMaterial) inside.add(material as THREE.MeshStandardMaterial);
     // (an occlusion map of one shade: it takes the sky's light and its reflection off, and leaves every lamp and the Sun alone)
     const shade = new THREE.DataTexture(new Uint8Array([255 * INDOORS, 255 * INDOORS, 255 * INDOORS, 255]), 1, 1);
     shade.needsUpdate = true;
@@ -669,11 +668,6 @@ export class Cabin {
   }
 
   /**
-   * A material whose meshes carry the build's shade reads it by the cabin's lights: red (the same as green and blue)
-   * with them on, alpha with them off, mixed by how far they are lit. Without this three multiplies the colour by all
-   * four, which for a surface that is not seen through is the lamps-on figure: what a model with no cabin shows.
-   */
-  /**
    * The cabin's globe is painted from the globe's map (`LAND` on its own colour), on its real material and its cel twin
    * alike: each its own copy, so nothing else that shares its material is painted.
    */
@@ -712,37 +706,6 @@ export class Cabin {
     const twin = mesh.material !== real ? patch(mesh.material as THREE.Material) : null;
     mesh.userData.real = painted;
     mesh.material = twin ?? painted;
-  }
-
-  private readonly shaded = new Set<THREE.Material>();
-  private shadeBy(material: THREE.Material): void {
-    if (this.shaded.has(material)) return;
-    this.shaded.add(material);
-    const prior = material.onBeforeCompile;
-    const key = material.customProgramCacheKey();
-    material.onBeforeCompile = (shader, renderer) => {
-      prior.call(material, shader, renderer);
-      shader.uniforms.uCabinLit = this.lit;
-      shader.uniforms.uCabinTint = this.tint;
-      shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform float uCabinLit;\nuniform vec3 uCabinTint;')
-        .replace(
-          '#include <color_fragment>',
-          /* glsl */ `#if defined( USE_COLOR_ALPHA )
-          diffuseColor.rgb *= mix( vColor.a, vColor.r, uCabinLit );
-        #elif defined( USE_COLOR )
-          diffuseColor.rgb *= vColor;
-        #endif`,
-        )
-        // (the fill: the little of the sky's light left indoors, and what metal mirrors in place of a cabin it cannot see,
-        // takes the colour of the cabin's own lamps as far as they are lit: `tint`)
-        .replace(
-          '#include <aomap_fragment>',
-          '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= uCabinTint;\nreflectedLight.indirectSpecular *= uCabinTint;',
-        );
-    };
-    material.customProgramCacheKey = () => `${key}|cabin-shade`;
-    material.needsUpdate = true;
   }
 
   /**
@@ -1190,7 +1153,7 @@ export class Cabin {
     const held = this.held();
     // (a tube strikes and dies in a few hundredths of a second: quick, and still no step)
     const strike = dt > 0 ? 1 - Math.exp(-dt / LAMP_TAU) : 1;
-    // (how much of the lamps' strength is lit, and in what colour, as the shaded surfaces read it: `shadeBy`)
+    // (how much of the lamps' strength is lit, each lamp's share of it, and in what colour, as the shaded surfaces read them: shade.ts)
     let all = 0;
     let power = 0;
     v.set(0, 0, 0);
@@ -1209,13 +1172,21 @@ export class Cabin {
       v.z += (l.base * l.lit * l.tint.b) / Math.max(l.colour.b, 1e-3);
     }
     const lit = power > 0 ? all / power : 1;
+    // each lamp's share of the strength lit, by its channel of the shade (with none lit, of the whole: it is not read then)
+    const shares = SHARES.set(0, 0, 0);
+    this.lights.slice(0, 3).forEach((l, i) => shares.setComponent(i, l.base * (all > 0 ? l.lit : 1)));
+    const sum = shares.x + shares.y + shares.z;
+    if (sum > 0) shares.divideScalar(sum);
+    else shares.set(1 / 3, 1 / 3, 1 / 3);
     // the lit lamps' colour, brightest channel at one, taken as far toward it as they are lit; white with none lit
     const brightest = Math.max(v.x, v.y, v.z, 1e-9);
     const tint = TINT.setRGB(1, 1, 1);
     if (all > 0) tint.lerp(TINT_TO.setRGB(v.x / brightest, v.y / brightest, v.z / brightest), lit);
-    if (lit !== this.lit.value || !tint.equals(this.tint.value)) {
-      this.lit.value = lit;
-      this.tint.value.copy(tint);
+    const sh = this.shading;
+    if (lit !== sh.lit.value || !tint.equals(sh.tint.value) || !shares.equals(sh.lamps.value)) {
+      sh.lit.value = lit;
+      sh.tint.value.copy(tint);
+      sh.lamps.value.copy(shares);
       for (const m of this.inside) m.aoMapIntensity = shaded(m, this.open, lit);
       for (const f of this.fittings) f.material.emissiveIntensity = f.glow * (this.lights[f.of]?.lit ?? lit);
     }

@@ -327,6 +327,35 @@ for (const file of files) {
         );
       }
       const groups = new Set(flight.specs.map((s) => s.group));
+      // a cabin's baked shade has a channel for each of its lamps, in the order of `lights` (viewer/shade.ts): each shaded
+      // mesh names the lamps it was worked from, which are the lights' fittings, in their order
+      if (model.cabin) {
+        const fittings = model.cabin.lighting?.fittings ?? [];
+        for (const [name, extras] of extrasOf(glb))
+          if (extras.shade_lamps !== undefined) {
+            const lamps = extras.shade_lamps.split(',');
+            assert.equal(
+              lamps.length,
+              (model.lights ?? []).length,
+              `${model.url}: ${name} is shaded by ${lamps.length} lamps, and has ${(model.lights ?? []).length} lights`,
+            );
+            if (fittings.length)
+              assert.deepEqual(lamps, fittings, `${model.url}: ${name} is shaded by its lamps in another order than its lights' fittings`);
+          }
+        // and the fittings are in the lights' order: each light is nearer its own fitting than any other
+        if (fittings.length === (model.lights ?? []).length && fittings.length > 1) {
+          const frames = framesOf(glb);
+          const middle = (n) => {
+            const { lo, hi } = frames.box(n);
+            return lo.map((v, k) => (v + hi[k]) / 2);
+          };
+          const far = (a, b) => Math.hypot(...a.map((v, k) => v - b[k]));
+          model.lights.forEach((l, i) => {
+            const nearest = fittings.reduce((best, f) => (far(l.position, middle(f)) < far(l.position, middle(best)) ? f : best));
+            assert.equal(nearest, fittings[i], `${model.url}: light ${i} is nearest ${nearest}, and its fitting is ${fittings[i]}`);
+          });
+        }
+      }
       for (const g of model.specGroups ?? []) assert.ok(groups.has(g), `specGroups: no specs in group ${g}`);
     });
 }
