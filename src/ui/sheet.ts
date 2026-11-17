@@ -35,13 +35,19 @@ export interface Sheet {
 export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => {}): Sheet {
   const phone = () => matchMedia(PHONE).matches;
   const stopNow = (): Stop => (!panel.classList.contains('open') ? 0 : panel.classList.contains('full') ? 2 : 1);
-  /** How tall it is at each stop, measured and not assumed (the stylesheet says, in units that follow the browser's bars). */
+  /**
+   * How tall it is at each stop, measured and not assumed (the stylesheet says, in units that follow the browser's bars).
+   * Measured as it is while a finger moves it (`moving`), so that what it holds stays on the page throughout: tucked, the
+   * panes are taken off it, and a pane taken off and put back under a finger is built again. Safari on an iPhone gives a
+   * finger to the scroller it lands on, so a row built again under it had no finger and could not be moved.
+   */
   const heights = (): [number, number, number] => {
     const was = [panel.className, panel.style.height, panel.style.transition] as const;
     panel.style.transition = 'none';
     panel.style.height = '';
     const at = (cls: string) => {
       panel.classList.remove('open', 'full');
+      panel.classList.add('moving');
       if (cls) panel.classList.add(...cls.split(' '));
       return panel.getBoundingClientRect().height;
     };
@@ -63,7 +69,8 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
   let touch: {
     y: number;
     from: number;
-    stops: [number, number, number];
+    /** (measured once the sheet has the finger: a touch that is a row's or the list's leaves the panel as it is) */
+    stops: [number, number, number] | null;
     x: number;
     pane: HTMLElement | null;
     dragging: boolean | null;
@@ -84,7 +91,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
         y,
         x: e.touches[0]!.clientX,
         from: panel.getBoundingClientRect().height,
-        stops: heights(),
+        stops: null,
         pane: target.closest<HTMLElement>('[data-pane]'),
         dragging: null,
         last: { y, t: e.timeStamp },
@@ -109,6 +116,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
         // in the list a finger scrolls the list, unless it is pulling down a list that is already at its top
         touch.dragging = !touch.pane || (dy > 0 && touch.pane.scrollTop <= 0);
         if (!touch.dragging) return void (touch = null);
+        touch.stops = heights();
         panel.style.transition = 'none';
         panel.classList.add('moving'); // (what it holds is on show while it is pulled: sheet.css)
       }
@@ -116,7 +124,7 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
       const dt = Math.max(1, e.timeStamp - touch.last.t);
       touch.speed = 0.6 * touch.speed + 0.4 * (((y - touch.last.y) / dt) * 1000);
       touch.last = { y, t: e.timeStamp };
-      const [low, , high] = touch.stops;
+      const [low, , high] = touch.stops!;
       panel.style.height = `${Math.min(high, Math.max(low, touch.from - dy))}px`;
     },
     { passive: false },
@@ -124,15 +132,16 @@ export function sheet(panel: HTMLElement, settled: (stop: Stop) => void = () => 
   const release = (): void => {
     const t = touch;
     touch = null;
-    if (!t?.dragging) return;
+    if (!t?.dragging || !t.stops) return;
+    const stops = t.stops;
     panel.classList.remove('moving');
     const now = panel.getBoundingClientRect().height;
     // the stop it is nearest; thrown, the next one that way from where it started
-    let to = t.stops.reduce((best, h, i) => (Math.abs(h - now) < Math.abs(t.stops[best]! - now) ? i : best), 0);
+    let to = stops.reduce((best, h, i) => (Math.abs(h - now) < Math.abs(stops[best]! - now) ? i : best), 0);
     if (Math.abs(t.speed) > THROW) {
       // (the next one that way from where it has got to: a long pull from full goes past half to tucked)
       const up = t.speed < 0;
-      const beyond = t.stops.map((h, i) => ({ h, i })).filter(({ h }) => (up ? h > now + 1 : h < now - 1));
+      const beyond = stops.map((h, i) => ({ h, i })).filter(({ h }) => (up ? h > now + 1 : h < now - 1));
       to = beyond.length ? (up ? beyond[0]!.i : beyond.at(-1)!.i) : up ? 2 : 0;
     }
     // from where the finger left it to the stop: the height is the stylesheet's again, and the change is eased
