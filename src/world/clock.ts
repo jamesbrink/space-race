@@ -11,16 +11,26 @@
  */
 import { julianDate } from './time.ts';
 
-/** How many seconds of the world pass in one of ours, from real time up to an hour a second: the steps `faster` and `slower` take, and the time bar's. */
-export const RATES: readonly number[] = [1, 10, 60, 600, 3600];
+/** Each rate twice the one before it, from `from` up, and `most` itself to end on. */
+function doubling(from: number, most: number): readonly number[] {
+  const rates: number[] = [];
+  for (let r = from; r < most; r *= 2) rates.push(r);
+  return [...rates, most];
+}
 
 /**
- * And beyond, for a coast of days between the Earth and the Moon (a day in nine seconds, then in under one): reached only
- * once something has let the clock go that fast (`allow`), and that something flies the coast on rails, not frame by frame
- * (docs/agents/world.md, "Faster than an hour a second"). On the ground they are not offered: at 100,000 times the Sun
- * crosses the sky in a third of a second.
+ * How many seconds of the world pass in one of ours, from real time up to an hour a second, each twice the last (1, 2,
+ * 4 ... 2048, and the hour itself): the steps `faster` and `slower` take, and the time bar's.
  */
-export const COAST_RATES: readonly number[] = [10_000, 100_000];
+export const RATES: readonly number[] = doubling(1, 3600);
+
+/**
+ * And beyond, doubling on from the hour a second (2, 4, 8 and 16 hours a second, then 100,000 times, a day in under a
+ * second), for a coast of days between the Earth and the Moon: reached only once something has let the clock go that fast
+ * (`allow`), and that something flies the coast on rails, not frame by frame (docs/agents/world.md, "Faster than an hour
+ * a second"). On the ground they are not offered: at 100,000 times the Sun crosses the sky in a third of a second.
+ */
+export const COAST_RATES: readonly number[] = doubling(7200, 100_000);
 
 export class Clock {
   /** The Julian date (UT) of t = 0. */

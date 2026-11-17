@@ -23,6 +23,7 @@
 .time-rates button:hover:not(:disabled) { color: var(--ink); border-color: var(--faint); }
 .time-rates button[aria-pressed='true'] { color: var(--amber); border-color: var(--amber); }
 .time-rates .time-home { flex: none; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.14em; }
+.time-rates .time-rate { flex: 1.2; color: var(--ink); font-variant-numeric: tabular-nums; }
 .time-rates button:disabled { color: var(--faint); opacity: 0.6; cursor: default; }
 /* a flight with one section has no switcher above it */
 #ui:has(.models button:only-child) .timebar { top: var(--edge); }

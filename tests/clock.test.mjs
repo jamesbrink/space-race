@@ -44,9 +44,9 @@ test('rate steps walk the published list and stop at its ends', () => {
   assert.deepEqual(seen, [...RATES, RATES.at(-1), RATES.at(-1)]);
   clock.step(-1);
   assert.equal(clock.rate, RATES.at(-2));
-  clock.setRate(-600);
+  clock.setRate(-512);
   clock.step(1);
-  assert.equal(clock.rate, -3600, 'backwards keeps its direction');
+  assert.equal(clock.rate, -1024, 'backwards keeps its direction');
 });
 
 test('listeners hear seeks, play, pause, rate and each advance, and can leave', () => {
@@ -86,6 +86,20 @@ test('local time at the Cape: liftoff was at 09:34:13 EST', () => {
   assert.equal(localTime(julianDate('1961-04-12T06:07:00Z'), 3).text, '09:07:00', 'Moscow time at Vostok 1');
 });
 
+test('each rate is twice the one before it, up to the limit it ends on', async () => {
+  const { COAST_RATES } = await import('../src/world/clock.ts');
+  const all = [...RATES, ...COAST_RATES];
+  assert.equal(all[0], 1, 'from real time');
+  assert.equal(RATES.at(-1), 3600, 'to an hour a second on the ground');
+  assert.equal(COAST_RATES.at(-1), 100_000, 'and a day in under a second on a coast');
+  for (let i = 1; i < all.length; i++) {
+    const limit = all[i] === RATES.at(-1) || all[i] === COAST_RATES.at(-1);
+    // (a limit is where the doubling stops short: never more than twice the rate before it)
+    if (limit) assert.ok(all[i] > all[i - 1] && all[i] <= 2 * all[i - 1], `${all[i - 1]} to ${all[i]}`);
+    else assert.equal(all[i], 2 * all[i - 1], `${all[i - 1]} to ${all[i]}`);
+  }
+});
+
 test('faster than an hour a second only when let, for a coast flown on rails, and never past what is due', async () => {
   const { COAST_RATES } = await import('../src/world/clock.ts');
   const clock = new Clock('1969-07-16T13:32:00Z');
@@ -95,8 +109,8 @@ test('faster than an hour a second only when let, for a coast flown on rails, an
   assert.equal(clock.rate, 3600, 'and the steps stop there');
   clock.allow(COAST_RATES.at(-1));
   clock.step(1);
-  assert.equal(clock.rate, 10_000);
-  clock.step(1);
+  assert.equal(clock.rate, 7200, 'two hours a second');
+  for (let i = 0; i < COAST_RATES.length - 1; i++) clock.step(1);
   assert.equal(clock.rate, 100_000, 'a day in under a second');
   clock.step(1);
   assert.equal(clock.rate, 100_000, 'and no further');

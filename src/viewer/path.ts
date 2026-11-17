@@ -602,7 +602,12 @@ export class FlightPath {
   private readonly pole: THREE.Vector3;
   private readonly poleAt: number[];
 
-  private on = !prefs.get('pathOff');
+  /**
+   * Shown or not. Off until it is asked for (J, or its switch), and then as it was left: a new visitor sees the vehicle and
+   * the sky first, not a line across them. (`pathOff` is how the choice was kept when it began shown: someone who put it
+   * back on by hand then still has it.)
+   */
+  private on = prefs.chosen('pathOn') ? prefs.get('pathOn') : prefs.chosen('pathOff') && !prefs.get('pathOff');
   private guided = prefs.get('pathGuided');
   private frame: 'surface' | 'orbit' = 'surface';
   /** The sample on show and the live state's part in it. */
@@ -850,7 +855,7 @@ export class FlightPath {
 
   show(on: boolean, remember = true): void {
     this.on = on;
-    if (remember) prefs.set('pathOff', !on);
+    if (remember) prefs.set('pathOn', on);
     this.button?.setAttribute('aria-pressed', String(on));
     this.readout.querySelector('[data-path=show]')!.setAttribute('aria-pressed', String(on));
     this.readout.classList.toggle('off', !on);

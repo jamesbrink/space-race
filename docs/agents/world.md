@@ -110,9 +110,10 @@ clock costs nothing and a running one redraws only as fast as the sky visibly mo
 that depends on the hour takes its instant from the clock and reports change the same way; it does
 not read `flight.launch` or keep its own time.
 
-Faster than an hour a second. `RATES` (1 to 3600, the time bar's) is what the clock steps through unless something lets
-it go further: `clock.allow(100_000)` opens `COAST_RATES` (10,000 and 100,000: Apollo 11's 73 hours from injection to
-the Moon in 2.6 s), and `clock.allow(3600)` or a reset closes them; `setRate` is held to `fastest`. At those rates a frame
+Faster than an hour a second. `RATES` (1 to 3600, each twice the last and the hour to end on: Slower and Faster on the
+time bar, `[` and `]`) is what the clock steps through unless something lets it go further: `clock.allow(100_000)` opens
+`COAST_RATES` (doubling on from the hour, 7,200 to 57,600, then 100,000: Apollo 11's 73 hours from injection to the Moon
+in 2.6 s), and `clock.allow(3600)` or a reset closes them; `setRate` is held to `fastest`. At those rates a frame
 is 170 s to half an hour of the world, so nothing may integrate the frame's span as one step: what is flown is flown on
 rails, and the clock is told the next instant that must not be skipped (`clock.hold(t)`: a frame that would cross it
 stops on it, and the rate goes back to 1, still running). On the ground they are not for offering: at 100,000x the day

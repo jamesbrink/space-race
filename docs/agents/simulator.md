@@ -795,7 +795,8 @@ read gives enough of to fly (issue #10).
   back to the clock when the deck is left; the cabin's periscope shows the outside only as far as its objective is out
   (`CabinDef.periscope.mechanism`). Nothing of it reaches the physics: no drag or heating figure for a periscope left
   out has been read.
-- **The flight deck has a navball and a predicted path.** Both read what the cockpit shows
+- **The flight deck has a navball and a predicted path.** The path is off until it is asked for (J, or its switch) and is then as it was
+  left (`prefs` `pathOn`): a new visitor sees the vehicle and the sky first. Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
   clock has been put back) and nothing else of it. The navball (`src/deck/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is
   the sphere of directions fixed to north, east and down at the place under the vehicle, seen
