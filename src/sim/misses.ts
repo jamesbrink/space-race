@@ -126,7 +126,7 @@ const COAST_VK1 =
   'The record cannot hold a landing to a hundred kilometres: its burn’s length and impulse are not known. What owns the miss is not established. Not adjusted';
 /** Voskhod 2's ascent: as Voskhod 1's, to the planned 180 km, where the record's orbit went higher than planned. */
 const SHORT_VK2 =
-  'Voskhod 2’s ascent is flown as Voskhod 1’s (SHORT_VK1) on the crew’s instants: at the last cutoff it is level at the planned 180 km with 7,363 m/s in the day’s air, where the orbit reached, 173.5 by 497.7 km, needs some 8,060. ' +
+  'Voskhod 2’s ascent is flown as Voskhod 1’s (SHORT_VK1) on the crew’s instants: at the last cutoff it is level at the planned 180 km with 7,368 m/s in the day’s air, where the orbit reached, 173.5 by 497.7 km, needs some 8,060. ' +
   'The record’s orbit was higher than the planned 180 by 470 km, and no source read says why. What owns the shortfall is not established. Not adjusted';
 /** Voskhod 2's day round, and the burn by hand. */
 const COAST_VK2 =
@@ -800,30 +800,25 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       alongTrack: { by: -583_280, slack: 20_000, why: `It comes down 583 km short along the track, in Mari El. ${COAST_VK2}` },
     },
     ascent: {
-      perigee: { by: -1_289_900, slack: 2_000, why: SHORT_VK2 },
+      perigee: { by: -1_281_000, slack: 2_000, why: SHORT_VK2 },
       apogee: {
         by: -317_700,
         slack: 300,
         why: `The cutoff is level at the planned 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_VK2}`,
       },
-      period: { by: -952.0, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_VK2}` },
+      period: { by: -949.1, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_VK2}` },
     },
     shown: {
-      apogee: {
-        by: -7_654,
-        slack: 500,
-        why: `${PUBLISHED}. Begun where the ascent left it, low at 180 km, its apogee flown round is 490 km where the record has 497.7`,
-      },
       'rev9.perigee': {
-        by: 7_183,
+        by: 5_295,
         slack: 300,
         why: `${PUBLISHED}, its perigee at the ascent’s 180 km where the record has 173.5: so on the ninth orbit too`,
       },
-      'rev9.apogee': { by: -6_652, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
-      'rev18.perigee': { by: 7_289, slack: 300, why: `${PUBLISHED}: the same, on the eighteenth orbit` },
-      'rev18.apogee': { by: -6_373, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
-      crossTrack: { by: -46_883, slack: 5_000, why: `${PUBLISHED}. ${COAST_VK2}` },
-      alongTrack: { by: -390_200, slack: 20_000, why: `${PUBLISHED}. ${COAST_VK2}` },
+      'rev9.apogee': { by: -4_848, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
+      'rev18.perigee': { by: 5_398, slack: 300, why: `${PUBLISHED}: the same, on the eighteenth orbit` },
+      'rev18.apogee': { by: -4_653, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
+      crossTrack: { by: -48_013, slack: 5_000, why: `${PUBLISHED}. ${COAST_VK2}` },
+      alongTrack: { by: -450_508, slack: 20_000, why: `${PUBLISHED}. ${COAST_VK2}` },
     },
     descent: {
       'module.speed': {

@@ -16,6 +16,7 @@ import { flight as vostok4 } from '../missions/ussr/vostok/flights/vostok-4/flig
 import { flight as vostok5 } from '../missions/ussr/vostok/flights/vostok-5/flight.ts';
 import { flight as vostok6 } from '../missions/ussr/vostok/flights/vostok-6/flight.ts';
 import { flight as voskhod1 } from '../missions/ussr/voskhod/flights/voskhod-1/flight.ts';
+import { flight as voskhod2 } from '../missions/ussr/voskhod/flights/voskhod-2/flight.ts';
 import { heightsBall, perigeeAt } from '../src/sim/orbital.ts';
 import { DEG, geodeticToEcef, siteFrame } from '../src/world/frames.ts';
 import { ellipsoidRadius, meanOrbitOf } from '../src/world/meanelements.ts';
@@ -92,6 +93,34 @@ const SETS = [
   { flight: vostok6, name: 'TASS, 22:00 on 16 June 1963', heights: [181, 231], period: 88.3, inclination: 65 },
   { flight: vostok6, name: 'TASS, 15:00 on 18 June 1963', heights: [174, 218], period: 88.1, inclination: 65 },
   { flight: voskhod1, name: 'TASS, 12 October 1964, preliminary', heights: [178, 409], period: 90.1, inclination: 65 },
+  { flight: voskhod2, name: 'TASS at liftoff', heights: [173, 495], period: 90.9, inclination: 65 },
+  {
+    flight: voskhod2,
+    name: 'the record’s file, the first orbit',
+    heights: [173.5, 497.7],
+    period: 90.944,
+    inclination: 65,
+    except:
+      'over 6,361.5 ± 0.1 km, the ellipsoid’s radius 62 degrees from the equator, where the run’s injection puts the perigee at 57 degrees N ' +
+      '(6,363.0). Its period is to a thousandth of a minute, so it is not the rounding: a perigee 5 degrees further on, or heights reduced ' +
+      'to another ball, would explain it. Neither is read, and the file’s two later orbits say the same',
+  },
+  {
+    flight: voskhod2,
+    name: 'the record’s file, the ninth orbit',
+    heights: [173.3, 496.2],
+    period: 90.928,
+    inclination: 65,
+    except: 'over 6,361.6 ± 0.1 km, 62 degrees: with the first orbit',
+  },
+  {
+    flight: voskhod2,
+    name: 'the record’s file, the eighteenth orbit',
+    heights: [173.1, 494.6],
+    period: 90.91,
+    inclination: 65,
+    except: 'over 6,361.6 ± 0.3 km, 61 degrees: with the first orbit',
+  },
 ];
 
 /** Half the last digit a figure is printed to. */
@@ -119,7 +148,7 @@ const latitudeOf = (r) => {
 };
 
 test('the ball each flight is flown on cannot contradict its own published orbit: heights and a period, the ball those three imply; heights alone, the ellipsoid under the injection’s apsis', () => {
-  for (const f of [vostok1, vostok2, vostok3, vostok4, vostok5, vostok6, voskhod1]) {
+  for (const f of [vostok1, vostok2, vostok3, vostok4, vostok5, vostok6, voskhod1, voskhod2]) {
     const o = f.plan.record.orbit;
     assert.equal(o.radius, undefined, `${f.designation}: the record names no ball of its own`);
     const flown = heightsBall(f.plan, siteFrame(f.site));
@@ -162,7 +191,7 @@ test('each orbit published with its period stands on the ellipsoid under its aps
       fits.push(s);
     }
   }
-  // Vostok 1's two sets and Vostok 5's three determined after liftoff are the exceptions; every other set fits
-  assert.deepEqual([...new Set(out.map((s) => s.flight.designation))], [vostok1.designation, vostok5.designation]);
-  assert.equal(fits.length, 10);
+  // Vostok 1's two sets, Vostok 5's three determined after liftoff and Voskhod 2's file's three are the exceptions; every other set fits
+  assert.deepEqual([...new Set(out.map((s) => s.flight.designation))], [vostok1.designation, vostok5.designation, voskhod2.designation]);
+  assert.equal(fits.length, 11);
 });

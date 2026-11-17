@@ -38,7 +38,7 @@ Moscow time (UTC+3), and seconds from liftoff at 10:00:00 on 18 March 1965.
 | The ascent's instants | 118, 153, 292, 523 s; separation 528.1 s | documented | the crew's report; OKB-1. The first four may be the plan's |
 | The launch plane | solved for 65° | | no azimuth was found |
 | The cutoff's height | 180 km | documented | the planned perigee (OKB-1, Table 1) |
-| The orbit | 173.5 × 497.7 km, 65°, 90.944 min | documented | the record's file, the first orbit; read as mean elements, the heights and period agree only over a ball of 6,363.4 km, on all three of the file's orbits |
+| The orbit | 173.5 × 497.7 km, 65°, 90.944 min | documented | the record's file, the first orbit; read as mean elements with a nodal period, over the ball the heights and the period imply, 6,361.5 km (derived: sim/orbital.ts `heightsBall`), and the file's ninth and eighteenth orbits imply the same within 0.1 km. That is the WGS 84 ellipsoid under an apsis at 61.8°, where the run puts its perigee at the injection at 57.2° N (6,363.0 km): an open inconsistency, 1.5 km, as Vostok 5's (tests/apsis.test.mjs). TASS's 173 by 495 km with 90.9 min give 6,361.0, within their rounding of the ellipsoid there |
 | The airlock | 250 kg, shot off at about 12:20 | documented; estimated | Siddiqi, p. 450; OKB-1's plot |
 | The burn | 11:36:29.5 to 11:37:09, against the motion, 112 m/s | documented; estimated; derived | OKB-1's commands; Belyayev's aim by eye; the measured 1,575 kgf over 39.5 s on the ship without its airlock |
 | The parting | 11:50:56.5 | documented | OKB-1: fourteen minutes after the burn, about 87 km up as flown here |
@@ -49,17 +49,17 @@ Moscow time (UTC+3), and seconds from liftoff at 10:00:00 on 18 March 1965.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 173.5 km ± 5 | −1,116.4 km | **miss** | the ascent falls short of an orbit (`SHORT_VK2`) |
+| Perigee at the last cutoff | 173.5 km ± 5 | −1,107.5 km | **miss** | the ascent falls short of an orbit (`SHORT_VK2`) |
 | Apogee at the last cutoff | 497.7 km ± 15 | 180.0 km | **miss** | the same |
 | Inclination | 65° ± 0.2 | 65.00° | yes | not independent |
-| Period at the last cutoff | 90.944 min ± 15 s | 75.08 min | **miss** | the same |
+| Period at the last cutoff | 90.944 min ± 15 s | 75.13 min | **miss** | the same |
 | Period, node to node, of the orbit begun | 90.944 min ± 2 s | 90.944 | yes | not independent |
-| Apogee as flown round (coast; shown) | 497.7 km ± 5 | 497.1; 490.0 km | yes; **miss** | the shown run begins where the ascent left it, low |
+| Apogee as flown round (coast; shown) | 497.7 km ± 5 | 499.0; 493.8 km | yes | |
 | The ninth orbit (coast) | 173.3 × 496.2 km, 90.928 min | within 2 km and 2 s | yes | |
 | The eighteenth orbit (coast) | 173.1 × 494.6 km, 90.910 min | within 2 km and 2 s | yes | |
-| The ninth and eighteenth orbits (shown) | as above | 7 km high at perigee, 7 low at apogee | **miss** | begun low, as above |
-| Landing across the track (coast; shown) | 0 ± 25 km | −85; −47 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −583; −390 km | **miss** | below |
+| The ninth and eighteenth orbits (shown) | as above | 5 km high at perigee, 5 low at apogee | **miss** | the shown run begins where the ascent left it, low at 180 km |
+| Landing across the track (coast; shown) | 0 ± 25 km | −85; −48 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −583; −451 km | **miss** | below |
 | Touchdown | 12:02:17 ± 2 min | 12:02:00 | yes | |
 | Touchdown speed | 0.2 m/s ± 1 | 2.1 m/s | **miss** | as Voskhod 1's: the rocket and the parachutes are each an estimate |
 
