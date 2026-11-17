@@ -149,9 +149,11 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   Globus in the middle of the board over a row of four dials, with a block of lamps beside it and a
   column of switches at the left; the plain board has the Globus to one side and five dials, hangs
   lower than the real one and has its panel and grip at the pilot's hips, where the flown cabin of
-  Vostok 1 has them on the far wall. Vostok 1 is fitted as it flew (`fit="1961"`); Vostok 2, which
-  flew the same set, and Vostok 3 to 6, which had a new board (Kamanin, 9 August 1962: «приборную
-  доску, разработанную Даревским»), keep the plain one until each is researched.
+  Vostok 1 has them on the far wall. Vostok 1 is fitted as it flew (`fit="1961"`), and Vostok 2,
+  which flew the same set with the lock, as Vostok 1's with what No. 4 is documented to have had
+  otherwise (`fit="1961-08"`: its own lamps, the Vizir, the Globus's figure; its spacecraft.md,
+  "What differed"). Vostok 3 to 6, which had a new board (Kamanin, 9 August 1962: «приборную
+  доску, разработанную Даревским»), keep the plain one.
 - **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand
   controller, the Vzor, the cameras and the parachute container are in the places the sources
   give or imply. The food locker, radio, regeneration unit and sanitary system are not told apart.
@@ -167,7 +169,7 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   and stay with the instrument module is documented; how far they sprang is not.
 - **Lightening holes in the support ring are square.**
 - **No lettering or markings.** None has been found for the flown article.
-- **Sat in from the gallery, Vostoks 2 to 6 have only the seat, the portholes, the lamps and their tumbler**
+- **Sat in from the gallery, Vostoks 3 to 6 have only the seat, the portholes, the lamps and their tumbler**
   (`../vehicles/cabin.ts`). The cabin these build is still the plain stand-in: the instrument board, the Globus, the
   control panel, the hand controller and the Vzor are shapes, no needle, telelight or control of theirs is a node of its
   own (`Gauge_*`, `Tele_*`, `Ctl_*`), and there is no Vzor screen or ring (`Vzor_Screen`, `Vzor_Ring`), so none can be
@@ -175,7 +177,11 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   its own fit for its own cabin (SIS-2-3KA: its board had a new Globus, its panel was changed and lost the lock after
   Vostok 2), which is its own research and is not done. What they do have of that fit is the lighting, below.
 
-### Cabin lighting (Vostoks 2 to 6)
+### Cabin lighting (Vostoks 3 to 6)
+
+Vostok 2 has its own lamps now, where Titov's words put them (its spacecraft.md); what follows is
+Vostoks 3 to 6, which keep Vostok 1's.
+
 
 `vostok_3ka.build(lighting=True)` gives the plain cabin Vostok 1's two lamp fittings (`Lamp_1`, `Lamp_2`, with
 `Cabin_LampCases`) and its lighting tumbler (`Ctl_Lighting`, a lever on its pivot with three positions in its `throw`

@@ -227,7 +227,14 @@ export const vostokViews = (parts: Part[]): ViewDef[] => {
  * adds to them), its seat and its cabin: the GLB is the flight's folder's. It stands in the gallery on its nozzles; a
  * flight whose launch site is built hangs it in the launch system's supports there (`site1Vehicle`).
  */
-export const vostokStack = (ship: { flight: string; parts: Part[]; seats: NonNullable<ModelDef['seats']>; cabin: CabinDef }): ModelDef => ({
+export const vostokStack = (ship: {
+  flight: string;
+  parts: Part[];
+  seats: NonNullable<ModelDef['seats']>;
+  cabin: CabinDef;
+  /** The cabin's lamps, where the ship's own are not the type's two (cabin.ts `vostokLights`). */
+  lights?: NonNullable<ModelDef['lights']>;
+}): ModelDef => ({
   id: 'vehicle',
   name: 'Vehicle',
   url: `models/ussr/vostok/${ship.flight}/vehicle.glb`,
@@ -237,8 +244,8 @@ export const vostokStack = (ship: { flight: string; parts: Part[]; seats: NonNul
   cutaway: true,
   specGroups: ['Launch vehicle', 'Spacecraft'],
   parts: ship.parts,
-  // the cabin's two lamps (cabin.ts)
-  lights: vostokLights(),
+  // the cabin's lamps: the type's two (cabin.ts), or the ship's own
+  lights: ship.lights ?? vostokLights(),
   home: 'stack',
   views: vostokViews(ship.parts),
   seats: ship.seats,
