@@ -133,6 +133,17 @@ const PERIOD_48 =
   'Over 48 revolutions the period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min, the one traceable period of this ship, is given to a tenth of a minute (2,100 km). ' +
   'On it, with the joined ship’s free-molecule drag in the air of the day’s Sun, the ship comes down 2,344 km long (633 km long on the ball’s continuum drag, until November 2026), the only long flight that lands beyond (TASS’s one period of it, its first hour’s, the coast holds to 0.1 s, and no later orbit of it was read): no period published is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
 
+/** Aurora 7's coast, from the published orbit and from where the ascent left it. */
+const MA7_RETRO =
+  'The retrofire is flown as the tracking gave it (TN D-3814, p. 101): lit by hand at 04:33:10.3, held 36.5° below the level and 27° off in yaw, its push turned to the left of the ' +
+  'motion, the three motors 3 per cent under their group’s 38,943 lb s, 124.5 m/s over the capsule in orbit (no weight at retrofire is printed). So flown it comes down 537 km beyond ' +
+  'the planned point, where the report has some 250 nautical miles (463 km); flown at 34° with no yaw, 3 s sooner and at the group’s impulse, it comes down 33 km from it ' +
+  '(tests/orbital.test.mjs prints each). The yaw is worth 374 km here and 175 statute miles (282 km) in This New Ocean (p. 454), the low impulse 156 km against 60 miles: the simulator ' +
+  'gives the retrofire’s errors more than the record does. Which input owns the rest is not established; not adjusted';
+const MA7_SHOWN =
+  'Begun from where the ascent flown left the capsule, which reached its cutoff speed 12.0 s early and is so much further on round the orbit at the separation, in the ascent’s ' +
+  'own plane, 0.23 degrees under the published inclination (flown on MA-5’s aiming azimuth with no steering out of the plane)';
+
 /** Friendship 7's coast, from the published orbit and from where the ascent left it. */
 const MA6_RETRO =
   'Nothing in the retrofire is MA-6’s own measure: the three motors’ impulse is their specified total, 38,880 lb s (the MA-4 and MA-5 trajectory report), over the capsule at retrofire, ' +
@@ -295,6 +306,43 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'Down 51 s late. The drogue is out 19 s late, with the coast (within its tolerance); the rest is the main: the record has 5 min 12 s from the main at 10,800 ft to the sea (04:50:11 to ' +
           '04:55:23; Results, p. 135), 10.6 m/s on the average, where the canopy as derived on Freedom 7 (mercury-redstone.ts, main.dragArea) brings the 2,493 lb capsule down at 8.7 m/s. ' +
           'Either the height is not the barostat’s or it came down faster than the canopy’s figure: nothing read says which, and nothing is changed',
+      },
+    },
+  }),
+  'usa/mercury/ma-7-aurora-7': inUnits({
+    ascent: {
+      cutoffAt: {
+        by: -11.98,
+        slack: 0.5,
+        why:
+          'The sustainer reaches the ground guidance’s 25,717 ft/s at T+297.9 s, 12.0 s before the record’s 309.9. Atlas 107-D is flown on Friendship 7’s figures, the Atlas D’s (SP-45’s rated ' +
+          'thrusts at sea level, a secondary source’s weights and impulses), none of them 107-D’s; the record’s own cutoff came 8.5 s later than MA-6’s for 13 ft/s less. Which figure is off is not ' +
+          'established; not adjusted',
+        short: 'the Atlas D’s figures, not 107-D’s',
+      },
+    },
+    coast: {
+      alongTrack: {
+        by: 107_114,
+        slack: 3_000,
+        why: `The drogue comes out 107 km beyond where the capsule was picked up, along the track. ${MA7_RETRO}`,
+      },
+      crossTrack: { by: 22_340, slack: 2_000, why: `And 22 km to the right of it. ${MA7_RETRO}` },
+    },
+    shown: {
+      alongTrack: { by: 377_263, slack: 8_000, why: `377 km beyond the pick-up point along the track. ${MA7_SHOWN}. ${MA7_RETRO}` },
+      crossTrack: { by: 40_574, slack: 2_000, why: `41 km to the right of it. ${MA7_SHOWN}` },
+      ejectionAt: { by: 36.86, slack: 2, why: `The drogue out 37 s late, so much further along. ${MA7_SHOWN}` },
+    },
+    descent: {
+      'mercury-capsule.at': {
+        by: 65.4,
+        slack: 3,
+        why:
+          'Down 65 s late. The drogue is out 37 s late, with the coast begun from the ascent; the rest is the main: the record has 4 min 9 s from the main let out by hand at 8,950 ft ' +
+          'to the sea (04:51:48.2 to 04:55:57; TN D-3814, p. 67 and Table XVI), 11.0 m/s on the average, where the canopy as derived on Freedom 7 (mercury-redstone.ts, main.dragArea) brings the ' +
+          '2,557.7 lb capsule down at 8.8 m/s; Carpenter’s “right on 30 feet per second” is 9.1. Either the height or the instant is not the canopy’s, or it came down faster than its figure: ' +
+          'nothing read says which, and nothing is changed',
       },
     },
   }),

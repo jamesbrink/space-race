@@ -18,11 +18,13 @@ nautical miles beyond the ships waiting for it.
 | Landing | 17:41:13 UTC, 19°27′ N 63°59′ W by the tracking; picked up at 19°30′ N 64°15′ W |
 | Recovery | the pilot by an HSS-2 helicopter to USS *Intrepid*, about 3 hours after landing; the capsule by the destroyer USS *John R. Pierce*, about 6 |
 
-**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 18 on Atlas
+**In this repo: the vehicle, its launch site and the flight.** Spacecraft No. 18 on Atlas
 107-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
 launch site they stand on the stand at Complex 14 on the morning of 24 May 1962, with Carpenter at
-the foot of the service structure, and the place can be walked. The flight itself is not built: see
-"What is not built" below.
+the foot of the service structure, and the place can be walked. The flight is flown (Fly) from its
+record: the Atlas a stage and a half on one tank, three revolutions, the retrofire by hand and off
+its line, the pack, the drogue and the main both let out by hand. What it gives against the record
+is "The flight as flown" below; how the record becomes data is [mission.md](mission.md).
 
 ## What happened
 
@@ -166,16 +168,30 @@ morning and can be lowered by hand from the tower.
 - **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with Carpenter's name, his
   wrist rings, his chest mirror, the helmet's lead and the neck dam; the pockets and the life vest are not modelled
   ([spacecraft.md](spacecraft.md), "The pilot"). The figure on the couch is Shepard's with Carpenter's name.
-- **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
-  programme, which have not been read; an orbit and an entry as data; a horizon scanner that is
-  20° wrong and a pilot who finds out; two fuel tanks that can be emptied; a retrofire by hand.
-  The numbers a simulator would start from are here: weights and moments of inertia for five
-  phases of the flight are in NASA TN D-3814, p. 7.
+- **The flight as Carpenter flew it in orbit.** The flight is flown from its record, but in orbit
+  its attitude is not: the horizon scanner 20° wrong, the double authority, the two fuel tanks run
+  down and the capsule's swinging in the entry are not simulated. The retrofire is flown at the
+  attitude and impulse the tracking gave it ([mission.md](mission.md)).
 - **The balloon is not seen to go, nor the liquid to climb.** The balloon is in its can under the
   flap, as at liftoff; the zero-gravity experiment's liquid lies where 1 g puts it.
 - **The periscope is not seen to move.** Its door, objective and the link between them carry their
   motion, and `flight.ts` has when each went on this flight; with no clock in the gallery nothing
   plays them.
+
+## The flight as flown
+
+Flown from the pad (`plan`, tests/staged.test.mjs) the Atlas reaches the ground guidance's 25,717 ft/s at T+297.9 s,
+12.0 s before the record's cutoff, on Friendship 7's figures for the Atlas D, not 107-D's. At the cutoff it is in an
+orbit of 161 by 266 km at 32.32° (the record 161 by 268, 32.55°); the air pushed hardest at 52.0 kPa (967 lb/ft², 46.3
+kPa); 7.9 g at the sustainer's cutoff (7.8).
+
+On the published orbit the retrorockets fire by hand over the Pacific at 04:33:10.3, 36.5° below the level and 27° off
+in yaw, 3 per cent short: 7.6 g in the entry (7.5), 0.05 g at 04:44:41 (04:44:44), the drogue out at 25,450 ft at
+04:51:01 (04:50:54), 537 km beyond the planned point and 107 km beyond where it was picked up, 22 km to the right. The
+report has 250 nautical miles (463 km) long, from the yaw, the three seconds and the low impulse; the simulator gives
+the same three causes more (each weighed in [mission.md](mission.md)). From where the ascent left it the drogue is out
+377 km beyond the pick-up point and down at 04:57:02 (04:55:57), falling 8.8 m/s on the main. Each miss is recorded with
+its cause in `src/sim/misses.ts`.
 
 ## Where sources disagree
 

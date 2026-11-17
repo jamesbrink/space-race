@@ -60,6 +60,19 @@ const INPUTS = {
     ['entry', 'mass'],
     ['entry', 'area'],
   ],
+  // Aurora 7's: as Friendship 7's, but for the arc (worked from the cutoff's place), the retrofire as the tracking gave it
+  // (its pitch, its yaw and its impulse); its mass in orbit, the pack's going and the capsule's weight then are its own
+  'usa/mercury/ma-7-aurora-7': [
+    ['orbit', 'radius'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['rarefied', 'drag'],
+    ['rarefied', 'area'],
+    ['retro', 'deltaV'],
+    ['retro', 'below'],
+    ['retro', 'yaw'],
+    ['entry', 'area'],
+  ],
   'ussr/vostok/vostok-1': [
     ['injection', 'arc'],
     ['injection', 'anomaly'],

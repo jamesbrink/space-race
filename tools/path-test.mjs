@@ -84,6 +84,14 @@ const FLIGHTS = {
     orbit: [3000, 8000],
     coast: 3000,
   },
+  // (Aurora 7: the ascent, the first orbit, the retrosequence and the burn by hand, the pack going, the entry, the drogue and
+  // the main both by hand)
+  ma7: {
+    id: 'usa/mercury/ma-7-aurora-7',
+    instants: [5, 60, 130, 140, 200, 311, 600, 3000, 8000, 16_300, 16_400, 17_000, 17_200, 17_470, 17_560, 17_740],
+    orbit: [3000, 8000],
+    coast: 3000,
+  },
   v1: {
     id: 'ussr/vostok/vostok-1',
     instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500],
