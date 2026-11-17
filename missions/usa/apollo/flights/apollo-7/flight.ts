@@ -122,7 +122,8 @@ const parts: Part[] = [
     explode: [0, 52, 0],
     summary: 'A truss and solid rocket to pull the cabin clear in an abort.',
     detail:
-      'Four legs carry the escape motor over the command module. The truss arrangement follows press-kit Figures 25b–25c; member lengths, diameters, nozzle cant and motor stations are estimated within the published 224-foot stack. Canards and abort motion are not built.',
+      'Four legs carry the escape motor over the command module. The four fixed nozzles use the published 35° cant from the motor axis (NAA Apollo News Reference, p. 140, P-189), explicitly assumed common escape-motor geometry for Apollo 7. Two nozzles lie in the pitch plane and two in yaw (p. 142), between the diagonal tower legs. The 2.75° resultant thrust offset comes from unequal throat areas and is not the nozzle cant. The truss arrangement follows press-kit Figures 25b–25c; member lengths, diameters, nozzle shapes and motor stations remain estimated within the published 224-foot stack. Canards and abort motion are not built.',
+    facts: [['Nozzle cant', '35° from motor axis · common hardware reference']],
   },
   {
     node: 'BoostCover',
@@ -297,6 +298,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'assumed',
       note: 'Nominal station reconstruction: SPS extension flange XA818 (Xs180 relative to XA838/Xs200) minus 112 in gives exit XA706; CM datum XA1000 plus common heat-shield station 112.25 gives top XA1112.25. Difference 406.25 in; not an as-built CM-101 inspection',
+    },
+    {
+      group: 'Launch escape system',
+      label: 'Escape-motor nozzle cant',
+      value: 35,
+      unit: 'deg',
+      confidence: 'assumed',
+      note: 'Common escape-motor hardware: NAA Apollo News Reference, p. 140, P-189; four fixed nozzles, 35° from the motor axis. Corroborated by SC012 AOH, 12 November 1966, p. 2.9-32. Not the 2.75° resultant thrust offset; nozzle profiles and mounting coordinates remain provisional',
     },
     {
       group: 'Spacecraft',

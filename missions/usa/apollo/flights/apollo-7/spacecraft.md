@@ -71,7 +71,10 @@ follows the corrected nominal body, retaining the original estimated 1.4-inch ra
 stand-off to prevent interference. This is not a sourced construction thickness or mould line.
 The escape tower has four legs, three braced bays, four simplified motor nozzles and a
 motor ending at the 224-foot full-stack envelope. Its structure and motor stations remain estimates
-from Figures 25a–25c. The legacy tower envelope is retained independently of the
+from Figures 25a–25c. The nozzle axes now use the published 35° cant from the motor
+axis (NAA News Reference, p. 140, P-189), explicitly assumed common hardware for Apollo 7;
+their contours and coordinates remain provisional. See [launch-escape.md](../../vehicles/launch-escape.md).
+The legacy tower envelope is retained independently of the
 corrected CM top until its dimensioned structural reconstruction is complete. The tower and cover lift as one assembly in the exploded exhibit,
 as the cover did with the tower during jettison. The RCS quads stay attached to the SM:
 sliding them axially along its skin made their mounts pass through the wall.

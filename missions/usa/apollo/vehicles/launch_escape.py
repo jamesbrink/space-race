@@ -9,6 +9,11 @@ from command_module import CONE_Z, FORWARD_LIMIT, JOIN_Z, radius
 from saturn_ib import CSM_OFFSET, HEIGHT
 from srlib import group, lathe_obj, mark_shells, material, prof
 
+# NAA Apollo News Reference, p.140, P-189: four fixed nozzles, each
+# 35 degrees from the motor axis. This is not the 2.75-degree resultant
+# thrust-vector offset, which comes from unequal nozzle throat areas.
+NOZZLE_CANT_DEGREES = 35.0
+
 
 def build():
     white = material("apollo-escape-white", (0.88, 0.87, 0.82), roughness=0.63)
@@ -42,7 +47,12 @@ def build():
     motor_base = cm_top + 115
     lathe_obj("LES_Motor", prof([(0, motor_base), (13, motor_base), (13, HEIGHT - 35), (9, HEIGHT - 12), (0, HEIGHT)]), white, tower)
     for i in range(4):
-        a = math.pi / 4 + math.pi * i / 2
-        bell(f"LES_Nozzle_{i}", radial(19, a, motor_base - 10), (-0.32 * math.cos(a), -0.32 * math.sin(a), 1), 17, 5.5, steel, tower)
+        # News Reference p.142: two nozzles in the pitch plane, two in yaw.
+        # Apollo Z maps to model -X and Apollo Y to +Y, so these are the
+        # cardinal planes, between the four diagonal tower legs.
+        a = math.pi * i / 2
+        cant = math.radians(NOZZLE_CANT_DEGREES)
+        direction = (-math.sin(cant) * math.cos(a), -math.sin(cant) * math.sin(a), math.cos(cant))
+        bell(f"LES_Nozzle_{i}", radial(19, a, motor_base - 10), direction, 17, 5.5, steel, tower)
     # Motor-case joint bands are gaps in the colour only, left for the detailed revision.
     return tower, cover
