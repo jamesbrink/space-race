@@ -1781,13 +1781,16 @@ export class OrbitDeck extends Deck {
     ].join('; ');
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
+    // (a figure is held together, a figure and its unit, a day and its month: a time that carries its date may break before
+    // its "on" only, so the two columns fit the card at any width: cockpit.css)
+    const cell = (x: string) => x.replace(/ /g, '\u00a0').replace('\u00a0on\u00a0', ' on\u00a0');
     // (the coast's and the descent's: what a pilot's hand can change; the ascent's too, on a flight that was the user's going up)
     const rows = held(this.flight.plan!, whole)
       .slice(this.mine !== null ? 0 : this.ascentChecks)
       .filter((c) => Number.isFinite(c.got) && c.id !== 'period' && !(stays && c.got === 0))
       .map(
         (c) =>
-          `<tr${Math.abs(c.got - c.value) > c.tolerance ? ' class="out"' : ''}><th>${c.label}</th><td>${show(c.unit, c.got)}</td><td>${show(c.unit, c.value)}</td></tr>`,
+          `<tr${Math.abs(c.got - c.value) > c.tolerance ? ' class="out"' : ''}><th>${c.label}</th><td>${cell(show(c.unit, c.got))}</td><td>${cell(show(c.unit, c.value))}</td></tr>`,
       )
       .join('');
     const mine = this.mine !== null || this.fired !== null || this.downMine !== null || this.free;
@@ -1799,7 +1802,7 @@ export class OrbitDeck extends Deck {
       <p class="cockpit-why">${this.flight.callsign} as recorded: ${landings}.</p>
       ${
         rows
-          ? `<table>
+          ? `<table class="dated">
         <thead><tr><td></td><td>You</td><td>${this.flight.callsign}</td></tr></thead>
         ${rows}
       </table>
