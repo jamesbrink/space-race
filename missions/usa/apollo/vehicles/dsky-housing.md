@@ -112,7 +112,8 @@ an attachment or explosion axis.
 - Threads are simplified to smooth bores; exact finishes, coatings and part
   identification are omitted.
 - No keys, switch mechanisms, alarm indicators, electroluminescent panel,
-  labels, glass, seals, electronics, main case or rear connector are built.
+  labels, seals, electronics, main case or rear connector are built. The two
+  [nominal glass components](dsky-panels.md) remain uninstalled.
 - Other available CAD includes photographically guessed cover ribs or a widened
   display window without a drawing. Those parts are deliberately excluded.
 - The 2004739A-000 cover transcription has not been validated as the flight's

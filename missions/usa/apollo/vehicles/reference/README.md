@@ -185,3 +185,13 @@ Its projected volume masks the blank main-console reference, preserving its
 outer contours and notch. The mask is a visualization interface, not a measured
 console cutout. Source hashes, registration evidence, rebuild command and all
 limitations are in [dsky-front.md](../dsky-front.md).
+
+## Flight-specific DSKY safety-glass components
+
+`apollo-dsky-panels.json.gz` records nominal 2004743-001 and -002 pane geometry
+directly from drawing 2004743A and its applicability through 2003897C/2003994J.
+The standard-library `rebuild_dsky_panels.py` generator retains source inches,
+rounded corners, the remaining edge and derived 45° bevel at three detail levels.
+No third-party CAD or scanned equipment is used. They are complete nominal outer
+panes, not installed or optically reconstructed glass. Rebuild commands,
+verification and the frame/installation gate are in [dsky-panels.md](../dsky-panels.md).

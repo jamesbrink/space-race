@@ -125,6 +125,10 @@ fixed for reproducibility. Blender model builds need only the committed dataset.
 
 ## What is still wrong or omitted
 
+The two flight-specific safety-glass panes now have separate nominal component
+models ([dsky-panels.md](dsky-panels.md)). Their installation remains unresolved;
+neither pane is placed on this front-web reference yet.
+
 - Nominal front-web subset, without a complete independent contour audit or
   the complete -001 machining. Front radii are nominal bounded simplifications.
 - No complete rear cover structure, ribs, mounting pockets, fasteners, housing,
