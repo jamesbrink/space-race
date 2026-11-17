@@ -39,6 +39,7 @@
     "test:flights": "node tools/flights-test.mjs",
     "test:deck": "node tools/deck-test.mjs",
     "test:path": "node tools/path-test.mjs",
+    "test:sheet": "node tools/sheet-test.mjs",
     "bench": "node tools/bench.mjs",
     "figures": "node tools/figures.mjs",
     "globe": "node tools/globe.mjs",
