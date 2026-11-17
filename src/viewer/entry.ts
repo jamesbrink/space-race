@@ -20,9 +20,10 @@ import { FADE_DITHER } from './glsl.ts';
  * of light: a thin cap standing off the face (0.14 of the body's radius, which is about where the
  * shock stands off a blunt body at high Mach number), a sheet shed from the shoulder that closes
  * to a neck a little behind the body's end, and a core streaming back from there. Rays are marched
- * through it from the eye and stop at the body: the march cannot see the model, so it has the
+ * through it from the eye and are absorbed by the body: the march cannot see the model, so it has the
  * body's profile, read once from the model's own skin (`profileOf`: a sphere is a sphere, and an
- * aerial is not body). The light fades to nothing inside the box it is marched in, and the box is
+ * aerial is not body), and a ray is dimmed through a thin shell under it rather than stopped dead at
+ * it, so where the profile stands off the hull the edge of what it hides is soft (`inside`). The light fades to nothing inside the box it is marched in, and the box is
  * drawn over the whole screen when the eye is in it or near it, so that neither the box's walls
  * nor the near plane is ever seen as an edge (GitHub issue #33). Its colour is a black body's at the gas's temperature (sim/heating.ts
  * `shockTemperature`); its brightness is the stagnation-point heat flux over 250 kW/m2, in the
@@ -342,6 +343,11 @@ const VOLUME_VERT = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 
+/** How deep the body's shell is, radii, over which a ray is absorbed rather than stopped dead (`inside`): chosen, a few pixels at the chase view's nearest. */
+const SHELL = 0.06;
+/** How much a step's march under the shell takes of the light behind it: each step of 0.04 radii fully inside keeps exp(-OPAQUE * 0.04). Chosen: gone within a few steps. */
+const OPAQUE = 60;
+
 const VOLUME_FRAG = /* glsl */ `
   uniform vec3 uHalf, uMid, uGas, uFront;
   uniform float uR, uGlow, uTime, uCap, uTop, uLong;
@@ -363,10 +369,16 @@ const VOLUME_FRAG = /* glsl */ `
   // Is a point (radii, the volume's frame) inside the body? The body lies along its own axis, which the stream need not
   // (uToBody turns the one into the other), and its frame's origin is the middle of its face, which the volume's is only
   // when it comes down face first (uBodyAt: the volume's origin in the body's frame).
-  bool inside(vec3 p) {
+  // How far into the body a point is: 0 outside its skin, rising through a shell SHELL radii deep to 1 under it. The
+  // stand-in is the body's profile, not its mesh, and stands a little off it here and there (where a band or a strap is
+  // counted as skin): a ray stopped dead at it cut off all the light behind the body in a hard line a few pixels outside
+  // the hull (Vostok 2's sphere over its instrument module, from beside: test:glow). Absorbed through the shell, a ray
+  // that grazes it loses only what its chord through the shell takes, so the edge of what the body hides is soft; the
+  // hull itself, drawn in front, still hides what is behind it.
+  float inside(vec3 p) {
     vec3 b = uToBody * p + uBodyAt;
     float s = skin(b.y);
-    return s > 0.0 && dot(b.xz, b.xz) < s * s;
+    return s > 0.0 ? 1.0 - smoothstep(s - ${SHELL.toFixed(3)}, s, length(b.xz)) : 0.0;
   }
   vec3 light(float y, float r) {
     // the cap: brightest just behind the shock, which stands 0.14 off the face and opens more slowly than it
@@ -409,10 +421,16 @@ const VOLUME_FRAG = /* glsl */ `
     float t = t0 + ${FADE_DITHER} * 0.04 * uR;
     vec3 sum = vec3(0.0);
     float first = -1.0;
+    float through = 1.0;                       // how much of the light from here on reaches the eye past the body
     for (int i = 0; i < STEPS; i++) {
       if (t >= t1) break;
       vec3 p = (vEye + dir * t) / uR;
-      if (inside(p)) break;                    // the body is in the way of everything behind it
+      float body = inside(p);
+      if (body > 0.0) {
+        // (the body is in the way of everything behind it: absorbed through its shell, gone once well inside)
+        through *= exp(-${OPAQUE.toFixed(1)} * body * 0.04);
+        if (through < 0.004) break;
+      }
       float r = length(p.xz);
       // how far the point is from the body (its axis, from the face to its end)
       float off = length(vec2(r, max(max(-p.y, p.y - uTop), 0.0)));
@@ -420,7 +438,7 @@ const VOLUME_FRAG = /* glsl */ `
       float stride = uR * clamp(0.04 + 0.1 * (off - 1.3), 0.04, 0.12 + 0.02 * max(p.y, 0.0));
       vec3 e = light(p.y, r) * within(p);
       if (first < 0.0 && max(e.r, max(e.g, e.b)) > 0.05) first = t;
-      sum += e * (min(stride, t1 - t) / uR);
+      sum += through * e * (min(stride, t1 - t) / uR);
       t += stride;
     }
     sum *= uGlow;
