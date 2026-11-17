@@ -2446,6 +2446,19 @@ export class Stage {
     return box.isEmpty() ? null : box.min.y - stoodAt;
   }
 
+  /** Temporarily expose an assembly at its installed height in the full-detail Gallery. */
+  inspect(nodes: readonly string[]): () => void {
+    const hidden = [...this.parts].filter(([name, part]) => part.visible && !nodes.includes(name)).map(([, part]) => part);
+    for (const part of hidden) part.visible = false;
+    this.dirty = true;
+    this.shadows.fitShadows();
+    return () => {
+      for (const part of hidden) part.visible = true;
+      this.dirty = true;
+      this.shadows.fitShadows();
+    };
+  }
+
   only(nodes: readonly string[] | null): number {
     const own = this.staged[this.current];
     const def = this.def;
@@ -2580,7 +2593,7 @@ export class Stage {
    */
   frameOf(node: string): { x: number; y: number; r: number } | null {
     const object = this.parts.get(node);
-    if (!object?.parent) return null;
+    if (!object?.parent || !object.visible) return null;
     const box = new THREE.Box3().setFromObject(object);
     if (box.isEmpty()) return null;
     const size = box.getSize(new THREE.Vector3());

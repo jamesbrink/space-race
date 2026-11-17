@@ -414,7 +414,7 @@ export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY'>, plinth
   return [
     { id: WHOLE_VIEW, label: 'Whole' },
     ...model.views.flatMap((v): ViewDef[] => {
-      if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, ...from(v) }];
+      if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, span: v.span, isolate: v.isolate, ...from(v) }];
       if (measured(v)) return [{ id: v.id, label: v.label, centreY: v.centreY! + lift, span: v.span!, ...from(v) }];
       return [];
     }),
