@@ -77,12 +77,13 @@ const parts: Part[] = [
     inside: true,
     summary: 'The perforated front sheet around the guidance computer’s controls.',
     detail:
-      'Apollo 7’s DSKY 2003994-031 and Apollo 11’s -121 both call for front cover 2004739-001. This models only its nominal front web: the 6.900 × 8.000-inch contour and nineteen keyboard clearances, two display openings and central clearance from the drawing transcription. The 0.050-inch web is the midpoint of the 0.04–0.06-inch stock-web section in drawing 2004929D, not the full machined cover’s stepped depth. CAD front radii use nominal simplifications within the drawing’s maximum; they are not an as-built survey. Its reference pose comes from the measured shared metal front in CM-107, with no scaling, and is assumed for CM-101. The blank console is masked under this web to avoid overlapping faces; the mask is a display interface, not a reconstructed machined panel opening. Rear ribs, mounting pockets, fasteners, keys, display covers, glazing, labels and electronics are unbuilt. Apollo 11’s later display covers are excluded. The reference remains whole in cutaway and stays with the CM when taken apart.',
+      'Apollo 7’s DSKY 2003994-031 and Apollo 11’s -121 both call for front cover 2004739-001. This models only its nominal front web: the 6.900 × 8.000-inch contour and nineteen keyboard clearances, two display openings and central clearance from the drawing transcription. These older nominal display outlines are not verified flight -001 apertures: the shared measured E/L contour conflicts with the nominal outer contour, so it has not been substituted. The 0.050-inch web is the midpoint of the 0.04–0.06-inch stock-web section in drawing 2004929D, not the full machined cover’s stepped depth. CAD front radii use nominal simplifications within the drawing’s maximum; they are not an as-built survey. Its reference pose comes from the measured shared metal front in CM-107, with no scaling, and is assumed for CM-101. The blank console is masked under this web to avoid overlapping faces; the mask is a display interface, not a reconstructed machined panel opening. Rear ribs, mounting pockets, fasteners, keys, display covers, glazing, labels and electronics are unbuilt. Apollo 11’s later display covers are excluded. The reference remains whole in cutaway and stays with the CM when taken apart.',
     facts: [
       ['Shared cover', '2004739-001 · Apollo 7 and Apollo 11 parts lists'],
       ['Nominal front', '6.900 × 8.000 in · drawing reference'],
       ['Nominal web', '0.050 in · derived tolerance midpoint'],
       ['Installation reference', 'CM-107 metal front · rigid, unscaled'],
+      ['Display openings', 'Older nominal CAD · measured-contour conflict unresolved'],
       ['Equipment', 'Keys, displays and rear housing unfinished'],
     ],
   },

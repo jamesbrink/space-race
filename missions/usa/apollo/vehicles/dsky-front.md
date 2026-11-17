@@ -41,7 +41,7 @@ complete finished cover. Dimensions are read from annotations, never sheet pixel
 | Unspecified radii, note 5 | .09 maximum | CAD nominal front radii are simplifications within a limit, not measured actual radii |
 
 Only the transcription's single planar front face is retained. Its outer loop,
-nineteen keyboard clearances, two display openings and central circular clearance
+nineteen keyboard clearances, two **older CAD display openings** and central circular clearance
 are extruded inward by the nominal .050-inch web. This is a reconstruction of a
 **nominal front-web subset**. It does not establish all stock-to-finished machining,
 the complete stepped section, mounting-counterbore pockets or rear geometry.
@@ -57,6 +57,43 @@ The -021 transcription's additionally widened E/L window without a drawing is
 also excluded. Envelope, nineteen clearance bounds and closed-solid validity are
 checked; this is not a complete independent audit of every front-contour feature.
 The CAD filename's -000 is not asserted to be the flight cover's configuration.
+
+## Display-interface conflict — not yet installed
+
+The hash-checked extractor `reference/rebuild_dsky_interfaces.py` now retains the
+**two closed metal-cover display interfaces** from the verified shared
+2004739-001 cover in the processed CM-107 source. All 16 I/L and 18 E/L boundary
+vertices retain their source indices and physical centimetre coordinates. They
+are projected into the **existing, unchanged rigid reference plane**, with no
+scaling, fitted rectangles, smoothing or assumed symmetry. These are processed
+visualization contours, assumed shared for CM-101, not machining dimensions.
+Neither display equipment nor the later cover assemblies are transferred.
+
+The comparison is retained separately in
+`reference/apollo-dsky-display-interfaces.json.gz`; it **does not modify the
+installed web**. The older CAD E/L hole is narrower. Substituting the measured
+loop also crosses the nominal outer contour at its upper-right corner: the
+outside area is approximately **0.00006748 square inch**, calculated against the
+committed nominal mesh. The original unsimplified CAD outer curve conflicts too
+(approximately 0.00008428 square inch), so removing rendering simplification does
+not resolve it. This is evidence of incompatible references, not a physical hole
+or a measured manufacturing defect. It must not be hidden by trimming the source
+loop, scaling the scan, or inventing an installation shift.
+
+The current installed web therefore retains **nominal older CAD display
+outlines**, not verified flight -001 display apertures. Resolve the finished
+cover's outer contour and registration before installing the measured interfaces,
+frames or panes. The selected source plane is patchy around the keyboard and is
+not a replacement for the complete manufactured web. Independent triangle-clipping
+tests recompute the conflict from the committed web, separate from the extractor's
+Shapely operations.
+
+Rebuild the comparison in the same environment as the front-web generator:
+
+```sh
+python missions/usa/apollo/vehicles/reference/rebuild_dsky_interfaces.py \
+  /path/to/x3d-cm-interior-panel-uvs-150k-4096-high.glb
+```
 
 ## Rigid installation reference
 
@@ -129,6 +166,7 @@ The two flight-specific safety-glass panes now have separate nominal component
 models ([dsky-panels.md](dsky-panels.md)). Their installation remains unresolved;
 neither pane is placed on this front-web reference yet.
 
+- Older CAD display outlines pending resolution of the measured E/L/outer-contour conflict.
 - Nominal front-web subset, without a complete independent contour audit or
   the complete -001 machining. Front radii are nominal bounded simplifications.
 - No complete rear cover structure, ribs, mounting pockets, fasteners, housing,

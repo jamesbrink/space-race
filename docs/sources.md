@@ -1480,3 +1480,10 @@ Known, not read:
 
 | NASA, *Apollo 7 press kit*, 68-168K, pp. 25d and 26a | [Mission-specific PDF](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf) | p. 26a: four RCS packages on ±Y/±Z; six internal sectors in 50°/70°/60° pairs. p. 25d supplies the CM axis/hatch relation | Quad angular alignment corrected. Sector angles do not determine all beam attachment coordinates, exterior panel seams or radiator dimensions; those remain unresolved |
 | North American Aviation, A-512S, 13 January 1969, ST-20(1) p. 65 and ST-3057 p. 67 | [Training scan](https://www.apollojournals.org/afj/pdf/structures-mechanical-subsystems-training-course-A512S-19690113.pdf) | Common Block II sector arrangement and structure breakdown: four sector panels, four RCS panels, six beams, split bulkheads and fairing assemblies | Read from cached scan. No angular positions measured from drawing pixels; not an authority for the current estimated exterior seam/radiator pattern |
+
+The shared DSKY cover extraction also retains the two CM-107 metal display
+interface loops separately for comparison (16 I/L and 18 E/L source vertices).
+The E/L loop crosses the older nominal CAD outer contour; neither source is
+shifted, scaled or trimmed to conceal the conflict. These processed-source
+contours are not installed or asserted to be machining dimensions; see
+[the comparison and limitations](../missions/usa/apollo/vehicles/dsky-front.md#display-interface-conflict--not-yet-installed).

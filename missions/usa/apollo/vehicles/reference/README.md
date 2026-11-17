@@ -186,6 +186,14 @@ outer contours and notch. The mask is a visualization interface, not a measured
 console cutout. Source hashes, registration evidence, rebuild command and all
 limitations are in [dsky-front.md](../dsky-front.md).
 
+`apollo-dsky-display-interfaces.json.gz` retains the two fixed shared-cover
+metal display loops separately, with physical source vertices and a rigid
+projection into the existing reference plane. **Uninstalled:** the E/L loop
+crosses the older nominal CAD outer contour. `rebuild_dsky_interfaces.py` checks
+the source hash and registration and records the comparison without trimming,
+scaling or modifying the installed web. The installed display outlines remain
+older nominal CAD, pending resolution; see [the conflict](../dsky-front.md#display-interface-conflict--not-yet-installed).
+
 ## Flight-specific DSKY safety-glass components
 
 `apollo-dsky-panels.json.gz` records nominal 2004743-001 and -002 pane geometry

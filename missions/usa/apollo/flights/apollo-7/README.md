@@ -103,7 +103,9 @@ guessed or copied from later DSKY revisions.
 A separate [shared front-web reference](../../vehicles/dsky-front.md) is now
 installed on the main console. Both flight DSKY parts lists identify cover
 2004739-001. Its nominal front sheet is built from the drawing transcription,
-with a .050-inch web derived from the stock drawing's .04–.06-inch section.
+with older nominal CAD display openings; the separately extracted shared E/L
+contour conflicts with the nominal outer contour and remains uninstalled.
+The .050-inch web is derived from the stock drawing's .04–.06-inch section.
 The shared CM-107 metal plane supplies a rigid, unscaled reference pose; the
 blank console is masked beneath it. Rear ribs, mounting pockets, keys, display
 covers, glazing, labels and electronics remain unbuilt. This is not the complete
