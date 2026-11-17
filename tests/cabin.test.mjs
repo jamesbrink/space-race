@@ -1,5 +1,6 @@
 // A cabin's instruments as nodes of a model (src/viewer/cabin.ts): what a needle is put to the first time it is read.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { coastOf } from '../src/sim/orbital.ts';
@@ -563,4 +564,61 @@ test('the simulator’s answer for a burn now: a Vostok fired against its way co
   const begun = find({ t: late.t, r: late.r, v: late.v });
   assert.ok(begun?.begun, 'coming down: the descent under way, nothing added');
   assert.equal(burnNow({ ...flight, plan: undefined }), null, 'no orbit, no answer');
+});
+
+test('Vostok 1: its «Посадка» signaller over the Globus lights with the Globus tumbler at the landing place, and only there', async () => {
+  const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const model = flight.models.find((m) => m.cabin?.globe);
+  const def = model.cabin;
+  // the tumbler's positions are the model's own (its extras in the GLB, as the viewer reads them)
+  const glb = readFileSync(new URL(`../public/${model.url}`, import.meta.url));
+  const nodes = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes;
+  const extras = (name) => nodes.find((n) => n.name === name)?.extras;
+  assert.ok(extras('Tele_Landing'), 'the signaller is a node of the model');
+  assert.ok(Array.isArray(extras(def.globe.control)?.throw), 'the tumbler is a thrown control of the model');
+  assert.equal(
+    def.globe.modes.find((m) => m.shows === 'landing')?.lamp,
+    'Tele_Landing',
+    'the landing place names the signaller as its lamp',
+  );
+  assert.ok(
+    def.lamps.some((l) => l.node === 'Tele_Landing'),
+    'and it is one of the cabin’s lamps',
+  );
+  const group = new THREE.Group();
+  const full = new THREE.Group();
+  group.add(full);
+  const tumbler = node(def.globe.control, extras(def.globe.control));
+  const globe = Object.assign(new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshStandardMaterial()), { name: def.globe.node });
+  const lamp = Object.assign(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ emissive: 0x000000 })), {
+    name: 'Tele_Landing',
+  });
+  globe.position.set(1, 0, 0);
+  lamp.position.set(0, 1, 0);
+  full.add(tumbler, globe, lamp);
+  const host = {
+    camera: new THREE.PerspectiveCamera(),
+    upAt: (_p, out) => out.set(0, 1, 0),
+    redraw: () => {},
+    reshade: () => {},
+    landing: (s) => ({ t: s.t + 1500, r: s.r, v: s.v }),
+  };
+  const cabin = new Cabin(host, flight, model, group, full, []);
+  cabin.piloted(true);
+  const fly = (t) => {
+    cabin.fly({ t, r: [6.7e6, 0, 0], v: [0, 7700, 0] }, null, {});
+    cabin.step(1, t, 2437401.8, 1);
+  };
+  const lit = () => lamp.material.emissiveIntensity;
+  fly(1000);
+  assert.equal(lit(), 0, 'at the present place, as Gagarin flew it: dark');
+  const thing = cabin.thingAt(tumbler.getWorldPosition(new THREE.Vector3()));
+  assert.equal(thing?.object, tumbler, 'the tumbler is there to be clicked');
+  assert.equal(cabin.throwSwitch(thing.thrown).says, def.globe.modes[1].says);
+  fly(1001);
+  assert.ok(lit() > 0, 'thrown to the landing place: lit');
+  assert.notEqual(lamp.material.emissive.getHex(), 0, 'in its colour');
+  cabin.throwSwitch(thing.thrown);
+  fly(1002);
+  assert.equal(lit(), 0, 'and back: dark');
 });

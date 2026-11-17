@@ -413,7 +413,7 @@ const SIGNALS: [block: string, lamps: number, says: string][] = [
 // The Globus (IMP): what it showed and how, and how far the simulator's is the instrument (spacecraft.md, "Globus")
 const GLOBUS =
   'The ship’s place over the Earth: “it turns all the time, following the ship’s motion over the Earth, and the fixed cross in its ring shows over which point of the globe the ship is now” (Ponomareva). Set before launch with the orbit’s period as a three-figure number in its correction window and turned by its two knobs in the planes of the equator and of the orbit, it started at the separation (“the Globus stopped about the middle of the Mediterranean”, Gagarin) and was good to some 300 km (his report). ' +
-  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its two modes are the instrument’s (Tyapchenko, fig. 16; Ponomareva: «“переброс” “Глобуса”, и перекрестие указывает, куда ты сядешь, если включишь сейчас двигатель»): with the tumbler on the control panel at МЕСТО ПОСАДКИ the globe turns to where a burn fired now would bring the ship down. The real instrument did that by advancing the globe a fixed arc, set on the ground; here the arc is worked out, by the simulator flying that descent from the instant (a burn against the way the ship goes, a second from now; once the ship is coming down, the descent under way), and carried round with the ship between one working and the next. Its «Посадка» lamp is not in the model and does not light. Its map is the globe’s own, in two tones.';
+  'Here it is turned by where the ship is in the run, the point under it under the cross and its way over the ground up the board: the instrument working perfectly, without the drift its setting had. Its window reads 710, as the archive’s record of the transcript has it in both its prints; a newspaper’s print has 510. Its two modes are the instrument’s (Tyapchenko, fig. 16; Ponomareva: «“переброс” “Глобуса”, и перекрестие указывает, куда ты сядешь, если включишь сейчас двигатель»): with the tumbler on the control panel at МЕСТО ПОСАДКИ the globe turns to where a burn fired now would bring the ship down. The real instrument did that by advancing the globe a fixed arc, set on the ground; here the arc is worked out, by the simulator flying that descent from the instant (a burn against the way the ship goes, a second from now; once the ship is coming down, the descent under way), and carried round with the ship between one working and the next. Its «Посадка» signaller over the globe lights while the tumbler stands there (Tyapchenko, fig. 16’s caption), so that the place under the cross is not taken for where the ship is; as an exhibit in the Gallery the board is not powered and it stays dark. Its map is the globe’s own, in two tones.';
 // The Vzor's view (CabinDef.periscope). Its axis is the model's: square out of hatch No. 3's porthole, whose latitude on the
 // ball is estimated (15 degrees toward the nose: vostok-3ka.md), so the axis on the Earth's centre leaves the long axis 15
 // degrees off level; the ring's angles and the screen's field are estimated (spacecraft.md, "The Vzor")
@@ -603,7 +603,8 @@ const cabin: CabinDef = {
     {
       node: 'Ctl_Descent3',
       name: 'Descent III',
-      about: 'Under the clear cover: the descent cycle begun by the pilot. It throws and stays thrown; what it set going is not simulated.',
+      about:
+        'Under the clear cover: the manual descent’s cycle. The crew’s table for it has the pilot, given the times from the ground (or working from his table and the Globus without them), throw the Globus to the landing place, open the lock, switch on manual orientation five minutes before and orient coarsely, then switch on «Спуск III» at its time, refine the orientation by the Vzor, and at the burn’s own later time press the braking engine’s red button (doc. 90 of March 1961, table «Спуск III»; the ground’s order was to read “switch on «Спуск III» at 21:11, switch on the TDU at 21:22”, doc. 95). So it did not fire the engine: the red button does that here, as it did. What the cycle itself set going inside the ship’s timer is in nothing read, so here it throws, stays thrown, and drives nothing.',
       says: ['Off', 'On'],
     },
     {
@@ -616,7 +617,7 @@ const cabin: CabinDef = {
       node: 'Ctl_Oxygen',
       name: 'Oxygen',
       about:
-        'Under the clear cover. What it switched is not in anything read: it throws and stays thrown, and nothing follows. Not simulated.',
+        'Under the clear cover. Most likely the emergency oxygen supply: the instruction of January 1961 has the pilot, if the cabin lost its pressure, put on his gloves and “switch on the emergency oxygen supply’s tumbler”, the suit then keeping him five hours; Titov was asked after his flight whether he had thrown “the oxygen tumbler” and had not. That this tumbler is that one is our reading: no document read names the panel’s switch. The cabin’s air and the suit are not simulated, so it throws, stays thrown, and drives nothing.',
       says: ['Off', 'On'],
     },
     { node: 'Ctl_Alarm', name: 'Emergency signal', about: 'Under the clear cover: sends the alarm to the ground. Not simulated.' },
