@@ -1,19 +1,20 @@
 // Drives a vehicle and works the site's machines in the running page, and reads what the sound is playing as it does
 // (`sr.sound.voices`: the works' voices, slot by slot), since nothing headless can be heard (docs/agents/sound.md).
-//   node tools/sound-test.mjs [url] [--flight <id>]      (default url: http://localhost:5180/; flight: Vostok 1, at Site 1)
+//   node tools/sound-test.mjs [url] [--flight <id>]      (default url: http://localhost:5180/; flight: Vostok 1, at Site 1; another
+//   flight at Site 1 is run at its own morning's times, and its car is driven only if its morning had one)
 // It checks: at the wheel the footfalls stop and an engine and tyres are heard, the engine turning faster as it gathers
 // speed, the tyres on what is under them; out again the footfalls come back and the vehicle runs down to silence; a
 // machine worked by hand is heard while it moves and is silent once it has stopped; a vehicle on the clock is heard
 // while the clock drives it and is silent with the clock stopped; the clock put back, the hardware's replay of the stretch
 // before it (at four times life) is not heard. Then Liberty Bell 7's helicopter: heard from the chase view by its rotor, tail
 // rotor and engine, through the cabin's wall from the seat, louder there once the hatch is gone, and silent with the clock stopped.
-import { launch, open, opt, url as urlOf, checks } from './browser.mjs';
+import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const flight = opt(args, '--flight', 'ussr/vostok/vostok-1');
 const url = urlOf(args);
-/** Vostok 1's liftoff, 09:06:59.7 Moscow time: seconds from it of a Moscow time that morning. */
-const MSK = (h, m, s = 0) => (h - 9) * 3600 + (m - 6) * 60 + (s - 59.7);
+/** Seconds from the flight's liftoff of a Moscow time that morning (Moscow's is three hours on UTC): set once the page is open. */
+let MSK = (_h, _m, _s = 0) => Number.NaN;
 
 const browser = await launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const { page, errors, close } = await open(browser, `${url}#${flight}/site/pad`, { console: [], timeout: 120000 });
@@ -31,6 +32,11 @@ const say = (label, list) =>
 
 try {
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
+  {
+    const liftoff = Date.parse(await page.evaluate(() => window.sr.flight.launch));
+    const day = new Date(liftoff);
+    MSK = (h, m, s = 0) => (Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), h - 3, m, s) - liftoff) / 1000;
+  }
   // (left alone, the page would start its idle show and run the clock: not here)
   await page.evaluate(() => {
     window.sr.demo.stop(true);
@@ -84,78 +90,82 @@ try {
     },
     { at: MSK(7, 50) },
   );
-  if (start.error) throw new Error(start.error);
-  // walk a few steps first: footfalls
-  await page.keyboard.down('a');
-  await wait(1500);
-  await page.keyboard.up('a');
-  const walked = await page.evaluate(() => window.heardWalk.footfalls);
-  check(walked > 0, `on foot: ${walked} footfalls in 1.5 s`);
-  // in at the driver's door (as a look at it and E would: the aim is the car)
-  const boarded = await page.evaluate(() => {
-    const { stage } = window.sr;
-    stage.onFoot.aim = { vehicle: window.theCar };
-    return stage.onFoot.walkDrive();
-  });
-  check(boarded, 'got in at the wheel');
-  await wait(2500);
-  const idle = await voices();
-  say('at the wheel, standing', idle);
-  check(
-    idle.some((v) => v.part === 'engine' && v.kind === 'road'),
-    'its engine is heard idling',
-  );
-  const steps0 = await page.evaluate(() => window.heardWalk);
-  const speed = () => page.evaluate(() => window.sr.stage.onFoot.wheel?.motion.speed ?? Number.NaN);
-  const place = () => page.evaluate(() => ({ ...window.sr.stage.onFoot.wheel?.motion }));
-  // forward, off to the right as it went at 08:05: it stands by a building's corner with the bus beside it, and clears
-  // the corner (#29: measured with its door open as it was got into, it was a metre wider on that side and would not)
-  const from = await place();
-  await page.keyboard.down('w');
-  await page.keyboard.down('d');
-  const going = [];
-  /** How far it has got along the way its nose first pointed (held on the right lock it goes round, and comes back). */
-  let ahead = 0;
-  for (let i = 0; i < 8; i++) {
-    await wait(700);
-    going.push({ list: await voices(), speed: await speed() });
-    const to = await place();
-    ahead = Math.max(ahead, (to.x - from.x) * Math.cos(from.heading) - (to.z - from.z) * Math.sin(from.heading));
+  // (a car is driven only where the flight's morning had one: Vostok 1's saloon; Vostok 2's pad has none, so there the
+  // drive is not tried and the rest is)
+  if (start.error) console.log(`  --   ${start.error} on this flight's morning: the drive is not tried`);
+  else {
+    // walk a few steps first: footfalls
+    await page.keyboard.down('a');
+    await wait(1500);
+    await page.keyboard.up('a');
+    const walked = await page.evaluate(() => window.heardWalk.footfalls);
+    check(walked > 0, `on foot: ${walked} footfalls in 1.5 s`);
+    // in at the driver's door (as a look at it and E would: the aim is the car)
+    const boarded = await page.evaluate(() => {
+      const { stage } = window.sr;
+      stage.onFoot.aim = { vehicle: window.theCar };
+      return stage.onFoot.walkDrive();
+    });
+    check(boarded, 'got in at the wheel');
+    await wait(2500);
+    const idle = await voices();
+    say('at the wheel, standing', idle);
+    check(
+      idle.some((v) => v.part === 'engine' && v.kind === 'road'),
+      'its engine is heard idling',
+    );
+    const steps0 = await page.evaluate(() => window.heardWalk);
+    const speed = () => page.evaluate(() => window.sr.stage.onFoot.wheel?.motion.speed ?? Number.NaN);
+    const place = () => page.evaluate(() => ({ ...window.sr.stage.onFoot.wheel?.motion }));
+    // forward, off to the right as it went at 08:05: it stands by a building's corner with the bus beside it, and clears
+    // the corner (#29: measured with its door open as it was got into, it was a metre wider on that side and would not)
+    const from = await place();
+    await page.keyboard.down('w');
+    await page.keyboard.down('d');
+    const going = [];
+    /** How far it has got along the way its nose first pointed (held on the right lock it goes round, and comes back). */
+    let ahead = 0;
+    for (let i = 0; i < 8; i++) {
+      await wait(700);
+      going.push({ list: await voices(), speed: await speed() });
+      const to = await place();
+      ahead = Math.max(ahead, (to.x - from.x) * Math.cos(from.heading) - (to.z - from.z) * Math.sin(from.heading));
+    }
+    await page.keyboard.up('w');
+    await page.keyboard.up('d');
+    check(ahead > 3, `it drives forward from where it stood: ${ahead.toFixed(1)} m along its nose`);
+    for (const { list, speed: v } of going) say(`driving at ${v.toFixed(1)} m/s`, list);
+    const rpm = going.map(({ list }) => list.find((v) => v.part === 'engine')?.rpm ?? 0);
+    const fastest = going.reduce((a, b) => (Math.abs(b.speed) > Math.abs(a.speed) ? b : a));
+    check(fastest.speed > 2, `it goes: up to ${fastest.speed.toFixed(1)} m/s`);
+    check(
+      rpm.at(-1) > (idle.find((v) => v.part === 'engine')?.rpm ?? Infinity),
+      `the engine turns faster as it goes: ${rpm.map(Math.round).join(', ')} rpm`,
+    );
+    const tyres = fastest.list.find((v) => v.part === 'tyres');
+    check(Boolean(tyres?.tread), `its tyres are heard, on ${tyres?.tread}`);
+    const steps1 = await page.evaluate(() => window.heardWalk);
+    check(
+      steps1.footfalls === steps0.footfalls && steps1.breaths === steps0.breaths,
+      `no footfall or breath at the wheel (${steps1.footfalls - steps0.footfalls}, ${steps1.breaths - steps0.breaths})`,
+    );
+    // out again, and on foot
+    await wait(1500);
+    await page.evaluate(() => window.sr.stage.onFoot.walkAlight());
+    await wait(2500);
+    await page.keyboard.down('a');
+    await wait(1500);
+    await page.keyboard.up('a');
+    const steps2 = await page.evaluate(() => window.heardWalk);
+    check(steps2.footfalls > steps1.footfalls, `out of it, the footfalls come back: ${steps2.footfalls - steps1.footfalls}`);
+    await wait(1500);
+    const after = await voices();
+    say('out of it, after', after);
+    check(!after.some((v) => v.kind === 'road'), 'the car has run down to silence');
   }
-  await page.keyboard.up('w');
-  await page.keyboard.up('d');
-  check(ahead > 3, `it drives forward from where it stood: ${ahead.toFixed(1)} m along its nose`);
-  for (const { list, speed: v } of going) say(`driving at ${v.toFixed(1)} m/s`, list);
-  const rpm = going.map(({ list }) => list.find((v) => v.part === 'engine')?.rpm ?? 0);
-  const fastest = going.reduce((a, b) => (Math.abs(b.speed) > Math.abs(a.speed) ? b : a));
-  check(fastest.speed > 2, `it goes: up to ${fastest.speed.toFixed(1)} m/s`);
-  check(
-    rpm.at(-1) > (idle.find((v) => v.part === 'engine')?.rpm ?? Infinity),
-    `the engine turns faster as it goes: ${rpm.map(Math.round).join(', ')} rpm`,
-  );
-  const tyres = fastest.list.find((v) => v.part === 'tyres');
-  check(Boolean(tyres?.tread), `its tyres are heard, on ${tyres?.tread}`);
-  const steps1 = await page.evaluate(() => window.heardWalk);
-  check(
-    steps1.footfalls === steps0.footfalls && steps1.breaths === steps0.breaths,
-    `no footfall or breath at the wheel (${steps1.footfalls - steps0.footfalls}, ${steps1.breaths - steps0.breaths})`,
-  );
-  // out again, and on foot
-  await wait(1500);
-  await page.evaluate(() => window.sr.stage.onFoot.walkAlight());
-  await wait(2500);
-  await page.keyboard.down('a');
-  await wait(1500);
-  await page.keyboard.up('a');
-  const steps2 = await page.evaluate(() => window.heardWalk);
-  check(steps2.footfalls > steps1.footfalls, `out of it, the footfalls come back: ${steps2.footfalls - steps1.footfalls}`);
-  await wait(1500);
-  const after = await voices();
-  say('out of it, after', after);
-  check(!after.some((v) => v.kind === 'road'), 'the car has run down to silence');
 
   // ---- #4: a machine worked by hand: the erector's boom ----
-  await page.evaluate(() => window.sr.stage.onFoot.exitWalk());
+  await page.evaluate(() => window.sr.stage.walk.active && window.sr.stage.onFoot.exitWalk());
   await wait(500);
   const refused = await page.evaluate(() => window.sr.stage.hands.push('pad', 'Erector', 'Erector_Boom', 1));
   check(refused === null, `the boom is worked by hand${refused ? `: refused, ${refused}` : ''}`);
