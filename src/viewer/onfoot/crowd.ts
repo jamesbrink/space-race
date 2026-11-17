@@ -92,6 +92,8 @@ const CLEAR = 0.6;
 const BEYOND = 3;
 /** The step those walks are looked at in, s. */
 const STEP = 0.1;
+/** How long a man who has walked to another place is looked at standing there, as those after him come in, s. */
+const HOLD = 20;
 
 /**
  * One going laid out for a group (`starts`: where each sets off from and the way he faces there): for each, in the same
@@ -106,13 +108,14 @@ export function plan(
   starts: readonly { at: readonly [number, number]; facing: number }[],
 ): { going: Going; delay: number; ends: number }[] {
   const [wx, wz] = going.way[0] ?? [0, 0];
-  const order = starts
-    .map((_, i) => i)
-    .sort((a, b) => {
-      const [ax, az] = starts[a]!.at;
-      const [bx, bz] = starts[b]!.at;
-      return Math.hypot(ax - wx, az - wz) - Math.hypot(bx - wx, bz - wz);
-    });
+  // the nearest the way first; going to another place, the one going furthest into it from the way's end first, so that
+  // those who come after stop short of those already there and do not walk in among them
+  const [lx, lz] = going.way[going.way.length - 1] ?? [wx, wz];
+  const key = (i: number): number => {
+    const [x, z] = starts[i]!.at;
+    return going.to ? -Math.hypot(x + going.to[0] - lx, z + going.to[1] - lz) : Math.hypot(x - wx, z - wz);
+  };
+  const order = starts.map((_, i) => i).sort((a, b) => key(a) - key(b));
   const pace = going.pace?.value ?? PACE;
   const gap = Math.max(going.stagger, LEAST_GAP);
   // each three that come onto the way one after another take its three lanes in the order they come at it from across
@@ -133,16 +136,20 @@ export function plan(
   // (and none sets off before the one before him: one with further to go, off first, walked past him as he stood)
   let set = 0;
   // each one's walk to the way and a little along it, from the moment he sets off (x, z by STEP), and when he set off
-  const walks: { delay: number; track: number[] }[] = [];
-  /** Whether a walk set off `delay` after the going's `at` comes nearer than CLEAR to any walk already laid out. */
-  const clash = (track: readonly number[], delay: number): boolean => {
+  // (one that walks to another place and stands there is in his place for good: `stays`)
+  const walks: { delay: number; track: number[]; stays: boolean }[] = [];
+  /** How near a walk set off `delay` after the going's `at` comes to any walk already laid out (the first nearer than CLEAR found). */
+  const nearest = (track: readonly number[], delay: number): number => {
+    let least = Number.POSITIVE_INFINITY;
     for (const other of walks)
       for (let k = 0; k < track.length; k += 2) {
         const j = 2 * Math.round((delay + (k / 2) * STEP - other.delay) / STEP);
-        if (j < 0 || j >= other.track.length) continue;
-        if (Math.hypot(track[k]! - other.track[j]!, track[k + 1]! - other.track[j + 1]!) < CLEAR) return true;
+        if (j < 0 || (j >= other.track.length && !other.stays)) continue;
+        const at = Math.min(j, other.track.length - 2);
+        least = Math.min(least, Math.hypot(track[k]! - other.track[at]!, track[k + 1]! - other.track[at + 1]!));
+        if (least < CLEAR) return least;
       }
-    return false;
+    return least;
   };
   order.forEach((i, k) => {
     const { at: from, facing } = starts[i]!;
@@ -160,16 +167,24 @@ export function plan(
       const reach = Math.hypot(fx - from[0], fz - from[1]) / pace + QUICKEN / 2;
       // his walk to the way and a little along it; and if that brings him into another's road, a moment later
       const length = lengthOf(route);
-      const until = Math.min(length, Math.hypot(fx - from[0], fz - from[1]) + BEYOND);
+      // (going to another place: the whole of it, and standing there a while after, as later ones come in round him)
+      const until = laid.to ? length : Math.min(length, Math.hypot(fx - from[0], fz - from[1]) + BEYOND);
       const track: number[] = [];
       for (let tau = 0; tau < 600; tau += STEP) {
         const { s } = distanceAt(tau, pace, length);
         track.push(...pointAlong(route, s));
         if (s >= until) break;
       }
-      delay = Math.max(set, arrives + gap - reach);
-      for (let tries = 0; tries < 150 && clash(track, delay); tries++) delay += STEP;
-      walks.push({ delay, track });
+      if (laid.to) for (let k = 0; k < HOLD / STEP; k++) track.push(track[track.length - 2]!, track[track.length - 1]!);
+      // (where no wait clears him, the wait that keeps him furthest off)
+      const first = Math.max(set, arrives + gap - reach);
+      let [best, room] = [first, nearest(track, first)];
+      for (let tries = 1; tries <= 150 && room < CLEAR; tries++) {
+        const here = nearest(track, first + tries * STEP);
+        if (here > room) [best, room] = [first + tries * STEP, here];
+      }
+      delay = best;
+      walks.push({ delay, track, stays: Boolean(laid.to) });
       set = delay;
       arrives = delay + reach;
     }
