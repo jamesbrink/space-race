@@ -21,6 +21,9 @@ Estimated: the wire (seven strands of barbed wire, as the range's fences of thos
 height, the poles' height and lamps, the towers' form, and that the gates stood open: where the road and the centre
 track cross the two fences a gap is left between taller posts, and no leaf is modelled.
 
+By August 1961 the double fence had been carried 1,300 ft north (PIC/JR-8/61, p. 12): built from that date (`EXTENDED`),
+full width, the old north side gone, with no lights or towers along the new sides (none is reported either way).
+
 Nodes: OuterFenceNorth/East/South/West, InnerFenceNorth/East/South/West, LightPolesNorth/East/South/West,
 GuardTowers (with a child for each tower). A side is a piece of its own so that the viewer draws the far ones coarse.
 """
@@ -43,11 +46,31 @@ TOWER_WEST = -95.0  # the two towers on the long sides: m east of the rocket (sc
 # A fence post's height (estimated) and spacing (off the photograph of the day, to half a metre), m, and the strands of wire (estimated)
 POST, POST_APART, STRANDS = 2.3, 3.5, 7
 CHUNK = 460.0  # a mesh of fence is no longer than this, m: the exporter's quantisation is by the mesh (under 2 mm at this)
+# By August 1961 the double fence "has been extended 1,300 feet north" (PIC/JR-8/61, p. 12): documented. That its sides
+# run on straight north, the full width, is derived (the 87 acres it added over 1,300 ft is the old breadth, and the
+# report's Figure 3 draws it so); that the old north side was taken down is estimated (the figure draws no fence there).
+EXTENDED = NORTH + 1300.0 * FT
+# Where the spur and the road to Site 51 cross the extension's west side (tyuratam-works.ts rail-site51, road-site51: the
+# lines the land paints), metres east and north, each a gap in the fence as the gate at a way through is
+SITE51_WAYS = [[(-542.1, 406.7), (-413.1, 404.5)], [(-596.8, 431.9), (-367.1, 428.0)]]
 
 
-def _rect(inset: float) -> list[tuple[str, tuple[float, float], tuple[float, float]]]:
-    w, e, s, n = WEST + inset, EAST - inset, SOUTH + inset, NORTH - inset
+def _rect(inset: float, north: float = NORTH) -> list[tuple[str, tuple[float, float], tuple[float, float]]]:
+    w, e, s, n = WEST + inset, EAST - inset, SOUTH + inset, north - inset
     return [("North", (e, n), (w, n)), ("West", (w, n), (w, s)), ("South", (w, s), (e, s)), ("East", (e, s), (e, n))]
+
+
+def _clear(x: float, y: float, margin: float) -> bool:
+    """Whether a fence post may stand here: off every way the place knows, and off the ways to Site 51."""
+    if not clear_of_ways(x, y, margin):
+        return False
+    for line in SITE51_WAYS:
+        (ax, ay), (bx, by) = line
+        dx, dy = bx - ax, by - ay
+        t = max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)))
+        if math.hypot(x - ax - t * dx, y - ay - t * dy) < 3.0 + margin:
+            return False
+    return True
 
 
 def _in_building(x: float, y: float) -> bool:
@@ -55,9 +78,9 @@ def _in_building(x: float, y: float) -> bool:
     return x0 - 1.5 < x < x1 + 1.5 and y0 - 1.5 < y < y1 + 1.5
 
 
-def fence(parts: Parts, name: str, inset: float) -> None:
+def fence(parts: Parts, name: str, inset: float, north: float = NORTH) -> None:
     pitch = POST_APART if fine() else 2 * POST_APART
-    for side, a, b in _rect(inset):
+    for side, a, b in _rect(inset, north):
         g = f"{name}Fence{side}"
         parts.node(g)
         length = math.hypot(b[0] - a[0], b[1] - a[1])
@@ -65,7 +88,7 @@ def fence(parts: Parts, name: str, inset: float) -> None:
         n = round(length / pitch)
         # every post's place, the ground there, and whether it may stand (not in a road or on a track)
         at = [(a[0] + ux * length * k / n, a[1] + uy * length * k / n) for k in range(n + 1)]
-        ok = [clear_of_ways(x, y, 1.0) for x, y in at]
+        ok = [_clear(x, y, 1.0) for x, y in at]
         zs = [rim.ground(x, y) for x, y in at]
         for k, (x, y) in enumerate(at[:-1]):  # (the far corner's post is the next side's first)
             if not ok[k]:
@@ -180,11 +203,21 @@ def towers(parts: Parts) -> None:
 
 def build(parts: Parts) -> None:
     since = dict(since="1957", confidence="documented")
+    north = NORTH
+    if stood(
+        "The double fence extended 1,300 ft north, round Site 51",
+        since="1961-08",
+        confidence="documented",
+        source="PIC/JR-8/61, p. 12 (August 1961): «The double fence ... has been extended 1,300 feet north»; full width and the old "
+        "north side gone, derived and estimated off its Figure 3; 160 ft between the two, assumed (1957's); whether it stood in April 1961 "
+        "is not known (the photographs' date is redacted)",
+    ):
+        north = EXTENDED
     if stood(
         "Double security fence", **since, source="HTA/JR-4/58: two fences 160 ft apart; on Figure 5 of PIC/JR-2/60; its line is on today's imagery"
     ):
-        fence(parts, "Outer", 0.0)
-        fence(parts, "Inner", BETWEEN)
+        fence(parts, "Outer", 0.0, north)
+        fence(parts, "Inner", BETWEEN, north)
     if stood("Light poles inside the outer fence", **since, source="HTA/JR-4/58: 120 ft apart; on Figure 5 of PIC/JR-2/60"):
         poles(parts)
     if stood(

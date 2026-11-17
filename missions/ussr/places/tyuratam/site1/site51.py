@@ -12,6 +12,12 @@ mast or erector served it, and everything else on the pad are not described in a
 The bank is drawn only under the pad (its height is not given: a metre is taken), and the road and the rest of
 the spur are the land's to paint. The building's height, walls and doors are estimated.
 
+On 3 August 1961 an R-9 fell back on the pad at its launch and it burnt out: "the last launch from Site No. 51"
+(Chertok, vol. 3, pp. 131 and 187). How it looked afterwards, and when it was rebuilt, is not in anything read, so from
+August 1961 nothing at all is built here (`until`): no pad, no ruin, no building, though the road and the spur, which
+the land paints, still run to it. The double fence carried north round it by August (perimeter.py) does not mean that
+anything stood inside it.
+
 Node: Site51 (the place). Its place on the land is the land's height at its middle (place.settle).
 """
 
@@ -40,7 +46,8 @@ def build(parts: Parts) -> None:
         until="1961-08-02",
         confidence="documented",
         source="PIC/JR-8/61 (August 1961), pp. 13-14: new on the photographs of 1961; the first R-9 was launched from it on 9 April 1961 "
-        "(ru.wikipedia, Р-9А; Zak, RussianSpaceWeb). When it was finished is not known: it stood by 9 April",
+        "(ru.wikipedia, Р-9А; Zak, RussianSpaceWeb). When it was finished is not known: it stood by 9 April. Burnt out on 3 August 1961 "
+        "(Chertok, vol. 3, pp. 131 and 187): how it looked after is not recorded, so nothing is built there from then",
     ):
         return
     g = "Site51"

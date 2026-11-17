@@ -410,6 +410,11 @@ windows dark. Positions are metres east and north of the rocket's axis.
 | Component check-out shop | a centre section 50 ft long, a south section 35 ft, both ends lower | documented (measured) | PIC/JR-2/60; OpenStreetMap way 172571590 (11.6 by 32.4 m) for its place and width |
 | Its heights | centre 7.6 m, ends 4.4 m | estimated | redacted |
 | Security building | 75 by 35 ft, "along the fence line near the main rail and road entrances" | documented (measured) | HTA/JR-4/58; OpenStreetMap way 172571623 for its place |
+| Two buildings new by August 1961 (`NewShopLong`, `NewShopShort`) | 150 by 50 ft and 75 by 50 ft, their long sides east and west, "in its vicinity" (the "Hi-Hat" building's, which is the CIA's name for the component check-out shop, read so from pp. 29-30), served by the road from the rail embankment | documented (their sizes: Figure 3's labels; the text gives none) | PIC/JR-8/61, p. 14 and Figure 3 |
+| Where they stand | the larger's middle at (-162.0, 186.0), the smaller's at (-225.2, 190.0): each on a building of today's map (OpenStreetMap ways 172571635, 48.1 by 15.9 m, and 172571423, 30.0 by 10.4 m), 63 m apart as Figure 3 draws them (63.5 m) | derived (Figure 3 registered on nine points of the repo's own, an affine fit, 17 m root mean square: each within its error of the map's building); the smaller's identification estimated (the map's is not the CIA's size) | PIC/JR-8/61 Figure 3; OpenStreetMap |
+| Their heights, walls, doors, windows | one storey, 4.4 m to the eaves, plastered, a door at each end | estimated | not recorded |
+| The double fence carried north | "The double fence, which originally enclosed an area 2,925 by 1,620 feet, has been extended 1,300 feet north to include an additional area of about 87 acres": its north side 699.6 m north of the axis (303.4 m plus 396.2 m), the inner 160 ft inside; the sides carried straight north at full width; the old north side taken down; gaps where the spur and the road to Site 51 come through the west side | documented (the 1,300 ft, and that it is double); derived (the full width: 87 acres over 1,300 ft is the old breadth, and Figure 3 draws it so); assumed (160 ft between the two, 1957's); estimated (that the old north side went: Figure 3 draws none there) | PIC/JR-8/61, p. 12 and Figure 3 (which draws the extension some 1,394 ft at its scale bar: a drawing, good to some 20 m) |
+| Its lights and towers | none drawn along the extension; the old north side's light poles and its two corner towers left standing | not recorded either way: the poles and towers on the old line assumed to have stayed | |
 | Observation positions | nine round the pit, facing the structure, "generally heavily earth-covered": six small (a to f), three observation bunkers (g, h, i) | documented | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
 | Where each stands | scaled off Figure 5; those on the north rim set 8 m outside the mapped rim; i set east of the road round the pit's tip | derived | on the south side the drawing's rim lies 10 to 30 m outside the map's, and the positions keep the drawing's places |
 | g | on the rim "300 feet south of the launching structure", with "a covered personnel passageway from the road" | documented | HTA/JR-4/58 |
@@ -865,7 +870,7 @@ opens: what was behind each is not recorded.
 | Old cable tray | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; PIC/JR-2/60 |
 | Floodlight tower 400 ft west | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; Figure 5; PIC/JR-2/61 |
 | Double fence, light poles, guard towers | 1957 | not known (gone today; the line remains) | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; Figure 5 |
-| The double fence taken 1,300 ft north round Site 51; two new buildings by the check-out shop | by August 1961 (whether by April turns on which KEYHOLE mission PIC/JR-8/61 used: redacted) | not known | documented for August 1961 | PIC/JR-8/61 pp. 13-14 and its Figure 3. **Not built**: the new fence's line and the buildings' sizes are unmeasured, so 1961-08 keeps April's fence |
+| The double fence taken 1,300 ft north round Site 51; two new buildings by the check-out shop | by August 1961 (`since="1961-08"`: whether by April turns on which KEYHOLE mission PIC/JR-8/61 used, and its date is redacted: nothing in the report says) | not known | documented for August 1961 | PIC/JR-8/61 pp. 12-14 and its Figure 3 ("The place round the pad"). Built for August 1961 and after; April 1961 keeps the old fence. Inside it Site 51 is not built: it had burnt out three days before |
 | Roads | 1957 | today | documented | HTA/JR-4/58; Figure 5; OpenStreetMap |
 
 "Assumed for 1961" is the honest state of it: the photographs the CIA's three reports rest on are
@@ -883,8 +888,10 @@ rocket can leave the erector out by its date.
   film shows; when they left and by which way are not recorded (from 07:05, west along the road: ours). Nobody stands
   inside the bus (the officer, the doctor). Nikolayev is drawn as the ground party's figures are, not as the crew figure is,
   and walks in and out of the bus through its shut door. Smirnov's armband is the print's grey. The cine camera on its tripod at the stair's foot, the cameraman on the erector and the dark car beyond the
-  crowd are not built. The fence's extension north round Site 51 and the two new buildings by the check-out shop
-  (PIC/JR-8/61) are not built, being unmeasured; Site 51's burnt pad is left out, its look not recorded. The bus stands
+  crowd are not built. The fence's extension north and the two new buildings by the check-out shop (PIC/JR-8/61) are
+  built from a drawing good to twenty metres and today's map ("The place round the pad"); the ground worn inside the fence
+  is still painted inside the old line, and the extension has no lights or towers. Site 51's burnt pad is left out, its
+  look not recorded: the fence round it encloses nothing there. The bus stands
   in April's place (the film agrees to some ten metres, "The people of 6 August 1961"); the fillers' and the erector's
   times are Vostok 1's intervals before liftoff.
 - **The people of 6 August walk as the gait has a man walk on flat ground**: they turn to their way over their first
@@ -1088,9 +1095,10 @@ rocket can leave the erector out by its date.
   passage or cable line from the bunker south to the embankment (seen; its form unknown), the open pit 15 ft
   square "90 feet southwest of the new support building", and the six camera stations within 450 ft of the
   platform beyond those the rim's positions stand for.
-- Not built, because they are new on photographs of 1961 whose date is redacted and so are not dated to April:
-  two buildings near the check-out shop, the double fence's extension 1,300 ft north to take in Site 51, and
-  the building 75 ft square with six small ones 1.43 km to the north-west (PIC/JR-8/61).
+- Not built for April, because they are new on photographs of 1961 whose date is redacted: the two buildings
+  near the check-out shop and the double fence's extension 1,300 ft north (built from August 1961). The building
+  75 ft square with six small ones 1.43 km to the north-west is not Site 1's: PIC/JR-8/61 has it in the launch
+  support area.
 - Site 51 is its pad, a square building and forty metres of rail: what stood on the pad (a launch table, a
   mast, an erector) is not described and is not built, the bank is drawn only under the pad, and its road and
   the rest of its spur are not drawn. The building's distance from the pad is ours.
