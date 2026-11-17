@@ -45,13 +45,32 @@ colour it would tint, so it is read so wherever such a model is drawn (`viewer/s
 Lineup as built): `mix(shade.a, dot(shade.rgb, uCabinLamps), uCabinLit)`, with `uCabinLamps` each lamp's share of the
 strength that is lit (they sum to one) and `uCabinLit` the share of the whole that is lit, which the lights' switch
 moves (`CabinDef.lighting`); and the indirect light (the sky's tenth left indoors, what metal mirrors) is taken toward
-the lit lamps' colour by `uCabinTint` (white for lamps lit as built). So switching the lamps, to red, to one of them,
-or to a dim duty light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
+the lit lamps' colour by `uCabinTint` (white for lamps lit as built). The figure is the lamps' reach (and, with them
+out, the openings'), so it scales the lamps' light and the indirect light, diffuse and mirrored, after the light is
+summed (the indirect by less of it while the model is cut open, as the indoors shading is: how open a point is was
+cast with the hull standing, `uCabinKept`), and never the Sun's direct light, which has its own shadow maps:
+`shadows.ts` keeps the Sun's turn of the light loop apart for a material that defines `CABIN_SHADE`. Darkening the
+colour itself, as it once did, darkened the Sun's light with it: a console in full sun in the Gallery's cutaway was
+near black, and the Sun's shadow there measured twice as grainy (`pnpm test:seat`), the darker frame's own rounding.
+So three things light a cabin's inside: its own lamps, shaded by the bake; the Sun, shaded by its own maps; and,
+only while it is cut open, the room's light: the indirect, and the room's own lights (the studio's rim, kickers, fill
+and the lamp over the viewer's shoulder), which have no shadow map, so that nothing but this rule stops them at the
+hull. That holds for every material a `Cabin` dresses as indoors, baked or not (`shade.ts` `insideBy`; the light
+loop keeps those lights apart for a material that defines `CABIN_INSIDE`): closed, the room's lights give it nothing;
+cut open, the kept share of its shade (`uCabinOpen`, `uCabinKept`), or all of their light where it has no shade. A
+closed cabin in the Gallery was otherwise lit grey through its hull by the rim and the kicker. tests/cabin.test.mjs
+holds the shader text to all of this. So switching the lamps, to red, to one of them, or to a dim duty
+light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
 added or taken away, and no shader is built. The channel costs nothing: the colour had four parts already. Another
 bulb in the same fitting (Gemini's red) is shaded as its fitting is; a cabin of more than three lamps would need a
 second attribute.
 A mesh that is seen through (`glass...`, `crystal`) is not shaded: its alpha is its own. What carries the shade is
-indoors wherever it hangs in the model (a hatch's inner face). A shadow's edge is as fine as the vertices are: broad
+indoors wherever it hangs in the model (a hatch's inner face), and everything seen from inside carries it unless it
+is a lamp, a gauge's lit face, a pane or something named: a mesh left out of it is lit as outdoors, because its
+material is no longer the one the shaded meshes share (a colour of four parts is another variant of it), and in a
+dark cabin it is a bright line (Gemini's cone frame seen past the hatch sills). What is narrow and hangs on something
+else (a curtain a third of an inch off its wall) takes its figures from what it hangs on (`cabin_shade.bake`
+`joined`): asked from itself it came out lit along a wall in shadow. A shadow's edge is as fine as the vertices are: broad
 surfaces are cut every inch and a half, shaded from every part of a lamp and evened between neighbours, and a ray
 from one starts clear of what is fastened to it, or a vertex under a clip is a blot. To look at a cabin without the
 browser, a model's stills can be taken from its seat (`srlib.render_preview`: `seat`, `look`, `lens`, `lamps`, `hide`).
@@ -809,12 +828,16 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   a square of the sea 4 km across (`viewer/swell.ts`, laid by `Globe.swell` from `Ascent.down`) is drawn by the globe's
   own shading with the day's waves on it (`DayWeather.sea`, sim/sea.ts: the same function of the instant and the place
   that floats the capsule), written into its shader as text. Its points are raised by every train the mesh is fine
-  enough to carry (a sixth of its length), each pixel lit by the slope of every train larger than it, and a few short
-  waves on the shortest train (`RIPPLES`, estimated) are drawn in the light only, for the grain of a real sea, which
-  nothing rides. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
+  enough to carry (a sixth of its length), each pixel lit by the slope of every train larger than it, and short waves
+  drawn in the light only, which nothing rides: in the real look the chop (`chopOf`), 40 sines spread in length from
+  most of the shortest train's down to a few centimetres and in heading round it, so that no pattern repeats, each faded out before it nears a pixel (a few
+  sines crossing the trains made a checkerboard of the glitter; `tests/swell.test.mjs` holds the slopes to no lattice),
+  their slope together what Cox and Munk give for the hour's wind less what the trains carry (`uSwellChop`, estimated);
+  in the cel look a few (`RIPPLES`, estimated), which its flat tones draw as bands. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
   globe leaves the square to it (its last `Hole`, a metre or two inside, so the two overlap and never part). A body
-  afloat is drawn at its height over still water, so it rides the swell that is drawn and its waterline is the sea's;
-  the camera stays over the drawn waves (`Globe.swellHeight` in the stage's `clearance`), and the chase view's pivot
+  afloat is drawn at its height over still water, heeled as the run has it, so it rides the swell that is drawn and its
+  waterline is the sea's; the sea in its cabin is a level surface where the run has it (viewer/flooding.ts), translucent
+  in both looks, drawn after what is opaque; the camera stays over the drawn waves (`Globe.swellHeight` in the stage's `clearance`), and the chase view's pivot
   stays on the surface when what it follows goes under, so a sinking capsule is watched going from above. A day
   without a sea (Vostok's steppe) has no square.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by

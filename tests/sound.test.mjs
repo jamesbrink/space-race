@@ -39,8 +39,12 @@ import {
   treadOf,
   tyreVoice,
   WORK_VOICES,
+  OPENED,
+  rotorcraftTimbres,
+  WALLED,
   Works,
 } from '../src/sound/model.ts';
+import { HUNT_CLUB_1 } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/recovery.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { BALLISTIC } from './ballistic.mjs';
 
@@ -901,4 +905,36 @@ test('every engine at a site says which it was and at what speeds, each with its
       if (e.most.confidence === 'documented') documented++;
     }
   assert.ok(documented >= 6, `${documented} rated speeds documented`);
+});
+
+test('a helicopter is heard at its blades’ and its engine’s own rates, quieter far off and through a cabin’s wall, open once the hatch is gone', () => {
+  const rotors = HUNT_CLUB_1.rotors.map((r) => ({ blades: r.blades.value, rpm: r.rpm.value, main: r.main }));
+  const engine = { cylinders: HUNT_CLUB_1.engine.cylinders.value, rpm: HUNT_CLUB_1.engine.rpm.value };
+  const parts = Object.fromEntries(rotorcraftTimbres(rotors, engine));
+  // (four blades at 258 rev/min pass 17.2 times a second; the tail's four at the engine's 2,915 over 1.884; nine cylinders fire 4.5 times a turn)
+  assert.ok(Math.abs(parts.rotor.buzz.hertz - (4 * 258) / 60) < 1e-9, `the main rotor at ${parts.rotor.buzz.hertz} Hz`);
+  assert.ok(Math.abs(parts.tail.tone.hertz - (4 * (258 * 11.3)) / 1.884 / 60) < 1e-9, `the tail rotor at ${parts.tail.tone.hertz} Hz`);
+  assert.ok(Math.abs(parts.engine.buzz.hertz - (4.5 * 258 * 11.3) / 60) < 1e-9, `the engine fires at ${parts.engine.buzz.hertz} Hz`);
+  const hear = (metres, loss) => {
+    const works = new Works();
+    const { voices } = works.hear([], [0, 0, 0], 0.05, 'concrete', [
+      { key: 'h', name: 'h', where: [metres, 0, 0], rotors, engine, loss, gain: 1 },
+    ]);
+    return { voices: voices.filter(Boolean), playing: works.playing.filter(Boolean) };
+  };
+  const near = hear(30, 0);
+  assert.deepEqual(
+    new Set(near.playing.map((p) => p.part)),
+    new Set(['rotor', 'tail', 'engine']),
+    'its rotor, its tail rotor and its engine',
+  );
+  assert.ok(near.playing.every((p) => p.kind === 'rotorcraft' && Math.abs(p.metres - 30) < 1e-9));
+  const gain = (h) => h.playing.find((p) => p.part === 'rotor')?.gain ?? 0;
+  assert.ok(gain(hear(300, 0)) < gain(near), 'quieter from further off');
+  assert.ok(
+    gain(hear(30, WALLED)) < gain(hear(30, OPENED)) && gain(hear(30, OPENED)) < gain(near),
+    'the wall takes more than the open hatch',
+  );
+  // (its sound leaves it as late as it is far)
+  assert.ok(Math.abs(near.voices[0].delay - 30 / atmosphere(0).soundSpeed) < 1e-9);
 });

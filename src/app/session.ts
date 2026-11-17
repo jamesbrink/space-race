@@ -135,6 +135,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   const sound = new Sound(document.querySelector<HTMLElement>('#ui .timebar')!, flight, clock, {
     ears: () => uOrigin.value, // the eye the scene was last drawn from (viewer/origin.ts)
     riding: () => stage.cameraMode === 'chase',
+    inside: () => stage.cameraMode === 'onboard', // in the seat: what comes from outside comes through the cabin's wall
     painted: (x, z) => stage.paintedAt(x, z), // what the land is painted as under a tyre (a road, an apron)
     catchingUp: () => stage.catchingUp, // the hardware replaying the stretch before a jump, which is not heard
   });

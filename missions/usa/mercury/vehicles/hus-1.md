@@ -16,7 +16,8 @@ three of its landing gear" were in the water, and could not lift it: "The floode
 pounds, a thousand pounds beyond the helicopter's lifting capacity" (*This New Ocean*, pp. 373 and 375). A chip light
 came on, and it let the capsule go. A second HUS-1, ET-30, with George Cox as copilot, picked Grissom up in the horse
 collar. [mr-4-liberty-bell-7/model/helicopter.py](../flights/mr-4-liberty-bell-7/model/helicopter.py) builds Hunt
-Club 1.
+Club 1, and [hunt-club-3.py](../flights/mr-4-liberty-bell-7/model/hunt-club-3.py) the second (Hunt Club 3: 30, ET, RESCUE
+stencilled twice aft of the door as NASA 61-MR4-82 shows it, `Markings.rescue`; no bureau number, none being legible).
 
 ## The model's frame and nodes
 
@@ -92,7 +93,10 @@ Each build prints the model's overall box. At level 1.0 (the coarser levels are 
 | | | Confidence | Basis |
 | --- | --- | --- | --- |
 | Engine | Wright R-1820-84, nine-cylinder radial: 1,525 hp for take-off, 1,275 hp METO for five minutes | documented | Jane's p. 372. *This Day in Aviation* adds 1,425 hp for 30 minutes at 2,700 rpm, and that it was installed at 35 degrees (secondary) |
-| Main rotor speed | 258 rpm at most | documented, secondary | *This Day in Aviation* (2,914 engine rpm) |
+| Main rotor speed | 258 rpm at most | documented | *This Day in Aviation* (2,914 engine rpm, secondary); EASA's type certificate data sheet for the S-58, EASA.IM.R.109, issue 2, p. 5: "Maximum Nr: 258 rpm (104 %)", 170 at least |
+| Blades | four main, four tail, fully articulated | documented | EASA.IM.R.109, p. 4 |
+| Engine speed; tail rotor gearing | 2,915 rpm with the main rotor at 258 (the arrangement's 11.3 : 1); the tail rotor 1.884 : 1 from the engine, 1,547 rpm | derived; the tail's ratio secondary | Heli Archive, "Sikorsky S-58" (uncited), gives 11.293 : 1 and 1.884 : 1. EASA.IM.R.109 gives the civil engine's 2,800 rpm for take-off and 2,500 continuous |
+| What it sounds like | its blades pass 17.2 times a second (four at 258 rpm), the tail's 103, and its nine cylinders fire 219 times | derived | from the rows above. No measurement of the H-34's noise was found: USAAVLABS TR 66-4 and DTIC AD0648503 (both with H-34 recordings) could not be read; ISVR Memo 311 (NASA CR-66868) gives a hovering Wessex's spectra only in a figure |
 | Weight empty | S-58 7,560 lb; H-34A 7,646 lb; UH-34D 7,900 lb | documented | Jane's (S-58, H-34A); the Sikorsky Archives (UH-34D). The HUS-1's own of 1961 was not read |
 | Weight loaded | S-58 13,000 lb (12,700 in the 1957-58 edition); H-34A 11,867 lb, overload 13,300 lb; UH-34D 14,000 lb maximum | documented | as above |
 | Fuel | 198 to 307 US gal, by model | documented | Jane's |
@@ -141,6 +145,13 @@ All the photographs of these recoveries read are black and white.
   show and no further: their forms and sizes are estimated. The horse collar, the hoist's cable and the capsule's
   line are the scene's, not the model's. The squib-actuated antenna cutter on its pole is not modelled.
 - **The door rides on two rails** outside the skin; how the real door hung and latched was not read.
+- **RESCUE** (Hunt Club 3's, `Markings.rescue`): its size, places and slant are read off 61-MR4-82, which shows the
+  door's side with the nose to the left: which side of the aircraft that photograph is of is not settled against this
+  model's door on the starboard, and the stencils are put on the door's side aft of it, under the insignia.
 - **Markings**: the insignia's proportions are the 1947 standard's as remembered, not measured; the smaller stencils
   (no step, the fuel, the rescue arrows) are left off.
 - **No mass properties** are in the model.
+- **Its sound** (sound/model.ts `rotorcraftTimbres`) is three synthesised voices at its rates: the main rotor's blade
+  passing as a low-passed pulse train, the tail rotor's as a hum, the engine's firing with an exhaust's hiss. Every level
+  at a metre (125, 114 and 117 dB) and every timbre is estimated; no Doppler as it passes, no blade slap that changes with
+  the load, no change of rate with power; heard from where its track has it, not where its line holds it.

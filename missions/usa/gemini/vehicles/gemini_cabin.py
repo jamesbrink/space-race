@@ -27,7 +27,7 @@ from mathutils import Matrix, Vector
 from mathutils.geometry import tessellate_polygon
 
 import mercury_cabin as mc
-from gemini_shell import CABIN, HATCH_OUT, IN, WALL, WINDOWS, Z0, Z_ACCESS, Z_HATCH_AFT, Z_HATCH_FWD, depth, hatch_in, zz
+from gemini_shell import CABIN, HATCH_OUT, IN, WALL, WINDOW_HALF, WINDOW_L, WINDOWS, Z0, Z_ACCESS, Z_HATCH_AFT, Z_HATCH_FWD, depth, hatch_in, zz
 from mercury_cabin import Sheet, plane, pointer, rigid, round_dial, soft, telelight, toggle
 from mercury_capsule import chamfered
 from srlib import TAU, MeshBuilder, deg, frame, interior, prof
@@ -165,9 +165,13 @@ ROUND = [0, 0, 0]  # the vessel's faces that follow the cone, first and one past
 def vessel(c: Station) -> None:
     v = c.into("CrewStation_PressureVessel")
     stations = [Z_BULKHEAD, 108.5, 112.0, 118.0, 124.0, 131.0, 138.0, 143.0, 147.0, 150.8, 155.0, Z_ACCESS]
+    halves = [section(s) for s in stations]
+    if interior():
+        # where an inside is built the walls carry its shade (`shade`), which is kept at their vertices: a vertex every
+        # inch and a half or so, along the ship and round its outline, the sheets' planes as they were
+        stations, halves = finer(stations, SHADE_STEP)
     rings = []
-    for s in stations:
-        half = section(s)
+    for s, half in zip(stations, halves, strict=True):
         ring = [V(x, y, s) * IN for x, y in half] + [V(x, -y, s) * IN for x, y in half[-2::-1]]
         rings.append(ring)
     n = len(rings[0])
@@ -209,6 +213,29 @@ def vessel(c: Station) -> None:
         chamfered(ribs, (50.0, 1.2, 0.7), Matrix.Translation(V(3.0, y, Z_BULKHEAD + 0.35) * IN), 0.1)
     for x in (-20.0, -6.0, 8.0, 22.0):
         chamfered(ribs, (1.2, 2 * breadth(Z_BULKHEAD, x) - 2.4, 0.5), Matrix.Translation(V(x, 0.0, Z_BULKHEAD + 0.25) * IN), 0.1)
+
+
+SHADE_STEP = 1.5  # inches: the most between two of the walls' vertices where the cabin's shade is baked
+
+
+def finer(stations: list[float], step: float) -> tuple[list[float], list]:
+    """The vessel's stations and outlines with more vertices on them, each no more than `step` inches from the next:
+    stations put in between (their outlines worked as `section` works them), and each segment of every outline cut into
+    as many pieces as its longest needs, the same at every station so that the rings still match."""
+    more = [stations[0]]
+    for a, b in zip(stations, stations[1:], strict=False):
+        n = max(1, math.ceil((b - a) / step))
+        more += [a + (b - a) * k / n for k in range(1, n + 1)]
+    outlines = [section(s) for s in more]
+    pieces = [max(1, math.ceil(max(math.dist(h[i], h[i + 1]) for h in outlines) / step)) for i in range(len(outlines[0]) - 1)]
+    cut = []
+    for h in outlines:
+        out = [h[0]]
+        for i, n in enumerate(pieces):
+            (x0, y0), (x1, y1) = h[i], h[i + 1]
+            out += [(x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n) for k in range(1, n + 1)]
+        cut.append(out)
+    return more, cut
 
 
 def round_off() -> None:
@@ -1037,7 +1064,8 @@ def fittings(c: Station, say) -> None:
             return Vector((r * math.cos(side * a), r * math.sin(side * a), z)) * IN
 
         # (one sheet, its corners shared from one length to the next, so that it is shaded as the cloth it is and not as twelve flats)
-        cur.grid(hang, (HATCH_OUT - deg(1), HATCH_OUT - deg(8)), zs, flip=True)
+        # (facing into the cabin on both sides: the mirrored side's grid runs the other way round)
+        cur.grid(hang, (HATCH_OUT - deg(1), HATCH_OUT - deg(8)), zs, flip=side < 0)
         for k in range(5):
             z = zz(113.0 + k * 8.0)
             a = side * (HATCH_OUT - deg(2.5))
@@ -1125,6 +1153,84 @@ def build(
         ("CrewStation_PressureVessel", "Pressure vessel", VESSEL_ABOUT),
     ):
         say(bpy.data.objects[name], label, about)
+    shade(c)
+
+
+# What is broad and plain enough for a shadow's edge to be read on it: these are shaded from every part of a lamp and their
+# shade is evened between neighbouring vertices (cabin_shade.bake); the rest is asked once from each lamp's middle.
+BROAD = (
+    "CrewStation_PressureVessel",
+    "CrewStation_Stiffeners",
+    "CrewCabin_InstrumentPanel",
+    "CrewCabin_PanelStructure",
+    "CrewCabin_HatchCurtains",
+    "CrewCabin_Stowage",
+    "SeatCommandPilot_Frame",
+    "SeatPilot_Frame",
+    "SeatCommandPilot_Cushions",
+    "SeatPilot_Cushions",
+    "SeatCommandPilot_Shroud",
+    "SeatPilot_Shroud",
+    "Hatches_Structure",
+)
+# The order of the floodlights in the shade's channels: gemini-titan.ts `LIGHTS` and the cabin's `lighting.fittings`
+LAMPS = ("Lamp_Left", "Lamp_Right", "Lamp_Centre")
+# What moves, glows or is a man: it neither takes the shade nor casts it (a needle, a control, a lamp's lens, the
+# telelights, the attitude balls, the seats' eye nodes and the men in them)
+DRIVEN = ("Gauge_", "Tele_", "Ctl_", "Lamp_", "Seat_", "Ball_", "Crew_")
+
+
+def shade(c: Station) -> None:
+    """The crew station's own shadow, kept at its vertices in a colour attribute named Shade (tools/blender/cabin_shade.py):
+    a figure for each of the three floodlights alone (`LAMPS`, in the lights' order) and one with them all out, by the
+    light the two windows let in. A lamp's fitting is asked from its lens's middle and four points across it, a little in
+    front of it, into the cabin: the side lamps toward the middle, the centre one down from the roof. Each window is asked
+    from inside its inner pane. The hatches' inner faces are shaded with the cabin they close, and the cone's frame where
+    it is seen past their sills; the hatches' outer skins, the panes and anything that moves are left out of it."""
+    import cabin_shade
+
+    if not interior():
+        return
+    bpy.context.view_layer.update()
+    station = bpy.data.objects["CrewStation"]
+    to_world = station.matrix_world
+    lamps = []
+    for name in LAMPS:
+        o = bpy.data.objects[name]
+        mid = o.matrix_world @ (sum((Vector(k) for k in o.bound_box), Vector()) / 8)
+        local = to_world.inverted() @ mid
+        # (the centre lamp down from the roof, toward the floor; a side lamp square to the ship's middle plane)
+        toward = to_world.to_3x3() @ (Vector((-1.0, 0.0, 0.0)) if name == "Lamp_Centre" else Vector((0.0, -local.y, 0.0)))
+        points = cabin_shade.disc(mid, toward, 0.5 * IN, 0.4 * IN)
+        lamps.append((name, points[0], points))
+    panes = []
+    for win in WINDOWS.values():
+        at = to_world @ (win.at(0.0, WINDOW_L / 2, -2.4) * IN)
+        panes.append(cabin_shade.disc(at, -(to_world.to_3x3() @ win.np), 0.8 * WINDOW_HALF * IN))
+    # every hatch's node (from spacecraft 4 the pilot's is a node of its own under the other's, to swing): its inner
+    # faces, as it stands shut. What is outside it is left out: its skin, its fasteners and hinges, the outer pane and
+    # the frame round it; the 35 bolts that hold the inner panes' frame are inside, and are shaded
+    hatches = [o for o in (bpy.data.objects.get("Hatches"), bpy.data.objects.get("HatchRight")) if o is not None]
+    outside = ("_Skin", "_Fasteners", "_Hinges", "_WindowOuter", "_WindowFrames")
+    # the cone's frame under the shingles (built only where an inside is), a sliver of which is seen past the hatches'
+    # sills: left out, it was lit as outdoors there, a bright line along the sill in the dark
+    frame = bpy.data.objects.get("Cabin_Structure")
+    still = [
+        o
+        for o in bpy.data.objects
+        if o.type == "MESH"
+        and (o.parent == station or (o.parent in hatches and not o.name.endswith(outside)) or o == frame)
+        and o.matrix_local == Matrix.Identity(4)
+        and not o.name.startswith(DRIVEN)
+        and o.data.polygons
+    ]
+    casters = [o for o in still if not cabin_shade.is_seen_through(o)]
+    cabin_shade.bake(casters, casters, lamps, panes, BROAD, skin=(1.5 * IN, 0.12 * IN), reach=9.0 * IN, short=0.4 * IN, joined=JOINED)
+
+
+# What is narrow and hangs on something else takes its shade from what it hangs on (cabin_shade.bake `joined`): a curtain
+# a third of an inch off the wall, asked from itself, came out lit along a wall in shadow
+JOINED = {"CrewCabin_HatchCurtains": ("CrewStation_PressureVessel",)}
 
 
 PANELS_ABOUT = (

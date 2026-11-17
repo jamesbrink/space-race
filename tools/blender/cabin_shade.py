@@ -20,7 +20,7 @@ fitting's node, `Lamp_...`, where the lamp has one), which tests/ holds to the f
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import bpy
 from mathutils import Vector
@@ -62,6 +62,7 @@ def bake(
     skin: tuple[float, float] = (0.038, 0.003),
     reach: float = 0.23,
     short: float = 0.010,
+    joined: Mapping[str, Sequence[str]] | None = None,
 ) -> None:
     """Shade `receivers` (meshes) against `casters` (meshes; the receivers among them) by `lamps`, in the order of the
     flight's `ModelDef.lights`: each (name, its middle, the places along or across it it is asked from), in the scene's
@@ -73,7 +74,12 @@ def bake(
     neighbours lit), and the result is evened between neighbouring vertices twice, so a shadow's edge is a slope and
     not a step; elsewhere (a hose, a bolt) a lamp is asked once from its middle, `skin[1]` off. How open a point is is
     asked from close to, over `reach`; a ray to a light stops `short` of it. A mesh named in `flip` is seen from the side
-    its faces turn away from (a hull's piece built facing out, and seen from inside): it is shaded for that side."""
+    its faces turn away from (a hull's piece built facing out, and seen from inside): it is shaded for that side.
+
+    A mesh named in `joined` is narrow and hangs on others (a curtain a third of an inch off the wall it is snapped to):
+    asked from itself, a ray from its skin starts out in the open where the wall's do not, and it came out lit where the
+    wall it lies on is dark, a bright line along the wall. It takes its figures from the meshes it is joined to instead,
+    each vertex the mean of their four nearest vertices, the nearer counting the more."""
     from mathutils.bvhtree import BVHTree
 
     assert 1 <= len(lamps) <= 3, f"a shade has three channels for lamps: {len(lamps)} lamps"
@@ -99,8 +105,13 @@ def bake(
                 got += 1
         return got / len(places), facing / len(places)
 
-    for o in receivers:
+    joined = joined or {}
+    figures: dict[str, tuple[list[Vector], list[tuple[float, float, float, float]]]] = {}
+    for o in [r for r in receivers if r.name not in joined] + [r for r in receivers if r.name in joined]:
         if is_seen_through(o):
+            continue
+        if o.name in joined:
+            _join(o, [figures[name] for name in joined[o.name]], names)
             continue
         wide = o.name in broad
         off = skin[0] if wide else skin[1]
@@ -143,6 +154,29 @@ def bake(
         for i in range(count):
             layer.data[i].color = (channels[0][i], channels[1][i], channels[2][i], dark[i])
         o["shade_lamps"] = names
+        if any(o.name in targets for targets in joined.values()):
+            figures[o.name] = ([m @ v.co for v in mesh.vertices], [tuple(c.color) for c in layer.data])
+
+
+def _join(o: bpy.types.Object, onto: list[tuple[list[Vector], list[tuple[float, float, float, float]]]], names: str) -> None:
+    """Shade `o` with the figures of the meshes it hangs on (`onto`: each one's vertices in the scene's frame and their
+    figures): each vertex the mean of the four nearest of theirs, weighted by the inverse of the distance."""
+    from mathutils.kdtree import KDTree
+
+    at = [p for points, _ in onto for p in points]
+    values = [v for _, figs in onto for v in figs]
+    tree = KDTree(len(at))
+    for i, p in enumerate(at):
+        tree.insert(p, i)
+    tree.balance()
+    m = o.matrix_world
+    layer = o.data.color_attributes.new("Shade", "FLOAT_COLOR", "POINT")
+    for i, v in enumerate(o.data.vertices):
+        near = tree.find_n(m @ v.co, 4)
+        weights = [1.0 / max(d, 1e-4) for _, _, d in near]
+        total = sum(weights)
+        layer.data[i].color = tuple(sum(w * values[k][c] for w, (_, k, _) in zip(weights, near, strict=True)) / total for c in range(4))
+    o["shade_lamps"] = names
 
 
 def _even(xs: list[float], ring: list[list[int]]) -> list[float]:

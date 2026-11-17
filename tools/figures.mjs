@@ -24,7 +24,7 @@ import { Sheds } from '../src/sim/shed.ts';
 import { flyWhole, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
-import { orbitalRecord } from '../src/sim/run.ts';
+import { orbitalRecord, recordOf } from '../src/sim/run.ts';
 import { DEG, dot, enuToEcefDirection, fromHorizontal, geodeticToEcef, length, scale, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -123,6 +123,23 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
       landingSpeed: state.landing?.vertical,
       peakG: tally.abort?.peakG,
       towerAt: state.towerAt,
+    });
+  }
+  // the record's run on into the sea, where its flight floats it (sim/afloat.ts), and its hatch thrown off (sim/loose.ts)
+  const run = flight.flies?.afloat ? recordOf(flight) : undefined;
+  const afloat = run?.afloat;
+  if (run && afloat) {
+    const i = (flight.flies.drops ?? []).findIndex((d) => d.nodes.includes(flight.flies.hatch?.node));
+    const hatch = i >= 0 ? run.loose?.[i] : undefined;
+    put(flight, 'afloat', {
+      under: afloat.under,
+      end: afloat.end,
+      flooded: afloat.flooded,
+      held: afloat.held,
+      rose: afloat.rose,
+      heeled: afloat.heeled,
+      heeledAt: afloat.heeledAt,
+      hatchDown: hatch?.down.t,
     });
   }
 }

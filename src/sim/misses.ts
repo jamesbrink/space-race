@@ -244,6 +244,15 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'saving and the pilot. Nothing is changed to bring it in',
         short: 'the history gives a bound, "over 5000 pounds"',
       },
+      heeled: {
+        by: -0.37,
+        slack: 0.05,
+        why:
+          'the photograph (S61-02921) has it 30 to 40 degrees over with its top out, as read off it; the run has it 22 degrees over as its cabin filled, toward its hatch with the pilot going ' +
+          'out over the sill, and nearly upright again as its top went under, the cabin full and its water with no surface left to run. What it leans to rests on estimates: its centre of mass ' +
+          'with the 309 lb shield let down (no weight for the shield is read), the cabin’s free volume, the water standing level at once (no slosh), the heel in the hatch’s plane only. Nothing is changed to bring it in',
+        short: 'read off a photograph; the run leans less',
+      },
     },
     // (the records are the type's, the Beach Abort's and the maker's, flown on this flight's own spacecraft and pad)
     'abort:off the pad, upright': {

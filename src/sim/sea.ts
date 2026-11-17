@@ -60,3 +60,21 @@ export function slopeAt(waves: readonly Wave[], t: number, east = 0, north = 0):
   }
   return [e, n];
 }
+
+/**
+ * The surface's slope there along a bearing (degrees true: rise over run toward it), and how fast it changes, 1/s: what
+ * tips a body that heels in the vertical plane of that bearing (sim/afloat.ts).
+ */
+export function tiltAt(waves: readonly Wave[], t: number, bearing: number, east = 0, north = 0): { slope: number; rate: number } {
+  const b = (bearing * Math.PI) / 180;
+  const [se, sn] = [Math.sin(b), Math.cos(b)];
+  let slope = 0;
+  let rate = 0;
+  for (const w of waves) {
+    const theta = w.omega * t - w.k[0] * east - w.k[1] * north + w.phase;
+    const along = w.k[0] * se + w.k[1] * sn;
+    slope += along * w.a * Math.sin(theta);
+    rate += along * w.a * w.omega * Math.cos(theta);
+  }
+  return { slope, rate };
+}

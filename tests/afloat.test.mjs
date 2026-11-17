@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as lb7 } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/flight.ts';
 import { estimated } from '../src/measure.ts';
-import { floatOn, SEA_WATER, Solid } from '../src/sim/afloat.ts';
+import { floatOn, Heeled, SEA_WATER, Solid } from '../src/sim/afloat.ts';
 import { flyLoose } from '../src/sim/loose.ts';
 import { afterwards, recordOf } from '../src/sim/run.ts';
 import { surfaceAt, wavesOf } from '../src/sim/sea.ts';
@@ -96,6 +96,50 @@ test('an opening lets the sea in until the water inside stands as high as the se
   assert.ok(open.samples.find((s) => s.t > 10.05)?.water[0] > 0, 'open, it comes in');
 });
 
+test('heeled: a solid’s volume under a tipped plane is the cut cylinder’s, and its centre goes to the low side', () => {
+  const cylinder = new Heeled(
+    new Solid([
+      [0, 1],
+      [3, 1],
+    ]),
+  );
+  // (a plane across a cylinder's walls only: the volume under it is the area times the height on the axis, and its centre
+  // is out on the low side by r^2 tan(phi) / 4 h; the slices and the rows are read straight, so to a part in a thousand)
+  for (const deg of [5, 17.5, 30]) {
+    const phi = (deg * Math.PI) / 180;
+    const level = 1.5 * Math.cos(phi);
+    const u = cylinder.under(phi, level);
+    const h = level / Math.cos(phi);
+    assert.ok(Math.abs(u.volume - Math.PI * h) / (Math.PI * h) < 1e-3, `${deg} deg: ${u.volume} m^3, not ${Math.PI * h}`);
+    const out = Math.tan(phi) / (4 * h);
+    assert.ok(Math.abs(u.out / u.volume - out) < 2e-3, `${deg} deg: its centre ${u.out / u.volume} m out, not ${out}`);
+    assert.ok(Math.abs(cylinder.level(phi, u.volume) - level) < 1e-3, `${deg} deg: the level found again`);
+    assert.ok(Math.abs(cylinder.under(-phi, level).out + u.out) < 1e-12, 'heeled the other way, the other side');
+  }
+});
+
+test('heeled: a drum with a weight off its axis lies over to where the sea’s push balances it (wall-sided)', () => {
+  const [mass, part, out, hG] = [2000, 100, 0.6, 0.5];
+  const body = {
+    ...drum(mass + part),
+    leaves: [{ id: 'weight', label: 'a weight', mass: m(part), at: { out: m(out), up: m(hG) } }],
+    heel: { centre: { up: m(hG), out: m(0) }, gyration: m(0.8), damping: m(0.3) },
+  };
+  const run = floatOn(body, [], 0, 300);
+  const last = run.samples[run.samples.length - 1];
+  // (Delta sin(phi) (KB + BM - KG + BM tan^2(phi) / 2) = m x cos(phi), about the drum's own centre, on its axis at hG)
+  const d = (mass + part) / (SEA_WATER * Math.PI);
+  const [kb, bm] = [d / 2, 1 / (4 * d)];
+  const balance = (phi) => (mass + part) * Math.sin(phi) * (kb + bm - hG + (bm * Math.tan(phi) ** 2) / 2) - part * out * Math.cos(phi);
+  let [lo, hi] = [0, 0.5];
+  for (let k = 0; k < 60; k++) {
+    const mid = (lo + hi) / 2;
+    if (balance(mid) < 0) lo = mid;
+    else hi = mid;
+  }
+  assert.ok(Math.abs(last.heel - lo) < 0.002, `it lies ${(last.heel * 180) / Math.PI} degrees over, not ${(lo * 180) / Math.PI}`);
+});
+
 test('the sea: each train a sine whose crest-to-trough height is four standard deviations, travelling the way it goes', () => {
   const trains = [{ label: 'a swell', height: m(0.8), period: m(6.4), from: m(90) }];
   const waves = wavesOf(trains);
@@ -129,7 +173,7 @@ test('Liberty Bell 7 after it came down: the record’s figures, the helicopter 
   assert.ok(a, 'the record’s run goes on into the sea');
   const record = lb7.flies.afloat.record;
   const lb = 0.45359237;
-  const figures = { flooded: a.flooded / lb, under: a.under - record.hatch.value };
+  const figures = { flooded: a.flooded / lb, under: a.under - record.hatch.value, heeled: (Math.abs(a.heeled) * 180) / Math.PI };
   holdChecks(lb7.flies.afloat.checks, (id) => figures[id], missesOf(ID, 'afloat'), { name: 'afloat' });
   // the helicopter pulled with all it had and never had it out of the sea
   assert.ok(Math.abs(a.held - lb7.flies.afloat.hoist.capacity.value) < 1, `the line held ${a.held} N`);
@@ -148,8 +192,17 @@ test('Liberty Bell 7 after it came down: the record’s figures, the helicopter 
   assert.equal(run.dropped[i], record.hatch.value);
   const out = length(sub(hatch.down.fixed, run.frame.toFixed(hatch.samples[0].r, hatch.from)));
   assert.ok(out > 1.2 && out < 1.9, `the hatch struck the water ${out} m from where it left`);
+  // the sea came in over the sill as it dipped, and the cabin filled before the top went under ("water start to spill over the doorsill", Results, p. 55)
+  const cabin = lb7.flies.afloat.body.spaces.findIndex((s) => s.id === 'cabin');
+  const wet = a.samples.find((s) => s.t > record.hatch.value && s.water[cabin] > 0.01);
+  assert.ok(wet && wet.t - record.hatch.value < 5, `the sea first in over the sill ${wet && wet.t - record.hatch.value} s after the hatch`);
+  const full = a.samples.find((s) => s.t <= a.under && s.water[cabin] > 0.9 * a.wholes[cabin]);
+  assert.ok(full, 'the cabin was nine tenths full before its top went under');
+  // it heeled toward the side its water ran to, the hatch's, as the pilot went out over the sill
+  assert.ok(a.heeled > 0, `it heeled ${(a.heeled * 180) / Math.PI} degrees, its hatch side ${a.heeled > 0 ? 'down' : 'up'}`);
   console.log(
-    `  #   afloat: under ${(a.under - record.hatch.value).toFixed(1)} s after the hatch, flooded ${(a.flooded / lb).toFixed(0)} lb, held ${(a.held / 4.4482216).toFixed(0)} lbf, ` +
+    `  #   afloat: under ${(a.under - record.hatch.value).toFixed(1)} s after the hatch, heeled ${((a.heeled * 180) / Math.PI).toFixed(1)} deg toward the hatch, ` +
+      `flooded ${(a.flooded / lb).toFixed(0)} lb, held ${(a.held / 4.4482216).toFixed(0)} lbf, ` +
       `its foot ${(-a.rose).toFixed(2)} m under at best, out of sight ${(a.end - record.cast.value).toFixed(0)} s after it was let go; the hatch down ${out.toFixed(2)} m out`,
   );
 });

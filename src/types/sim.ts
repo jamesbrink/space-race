@@ -440,6 +440,12 @@ export interface OpeningDef {
   width: readonly [number, number];
   cd: Measure;
   shut?: boolean;
+  /**
+   * Where round the body it is: an arc of the hull this many degrees wide centred on the body's +X (the side that goes
+   * down as it heels that way: a hatch's), 360 for one all round (a skirt's pores). Left out, it is on the long axis (a
+   * mouth at the top).
+   */
+  arc?: number;
 }
 
 /**
@@ -469,15 +475,42 @@ export interface AfloatDef {
   datum: Measure;
   /** What it weighs afloat, with everything aboard, kg. */
   mass: Measure;
-  /** What leaves it afloat (the crew, a hatch), kg, each at an instant the caller gives for it by its `id`. */
-  leaves: { id: string; label: string; mass: Measure }[];
+  /**
+   * What leaves it afloat (the crew, a hatch), kg, each at an instant the caller gives for it by its `id`; and where it is
+   * on the body while aboard (`at`: m out from the long axis toward +X and up from the hull's lowest point), which a body
+   * that heels feels (left out: at the body's centre of mass, where it turns nothing).
+   */
+  leaves: {
+    id: string;
+    label: string;
+    mass: Measure;
+    at?: { out: Measure; up: Measure };
+    /** The way it goes out (a pilot through the hatch): the place, as `at`, it goes to straight from `at` over the `over` seconds before it leaves. */
+    through?: { out: Measure; up: Measure; over: Measure };
+  }[];
   spaces: SpaceDef[];
   /** The damping of its rise and fall on the sea, as a share of the critical damping. */
   heave: Measure;
+  /**
+   * How it heels (sim/afloat.ts), where it is free to: about a level axis square to its +X, so the +X side goes down or up.
+   * Left out, it is held upright.
+   */
+  heel?: HeelDef;
   /** Its drag going down through the water, Cd times area, m^2. */
   drag: Measure;
   /** Seconds it takes to come upright from how it lay when it struck the sea: drawn only. */
   rights: Measure;
+}
+
+/**
+ * What a body afloat needs to heel: the centre of mass of what stays aboard (the body less all that `leaves`), m up from
+ * the hull's lowest point and out from the long axis toward +X; its radius of gyration about a level axis through that
+ * centre square to +X, m; and the damping of its rolling, a share of critical.
+ */
+export interface HeelDef {
+  centre: { up: Measure; out: Measure };
+  gyration: Measure;
+  damping: Measure;
 }
 
 /**

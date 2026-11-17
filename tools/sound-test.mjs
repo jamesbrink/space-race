@@ -5,7 +5,8 @@
 // speed, the tyres on what is under them; out again the footfalls come back and the vehicle runs down to silence; a
 // machine worked by hand is heard while it moves and is silent once it has stopped; a vehicle on the clock is heard
 // while the clock drives it and is silent with the clock stopped; the clock put back, the hardware's replay of the stretch
-// before it (at four times life) is not heard.
+// before it (at four times life) is not heard. Then Liberty Bell 7's helicopter: heard from the chase view by its rotor, tail
+// rotor and engine, through the cabin's wall from the seat, louder there once the hatch is gone, and silent with the clock stopped.
 import { launch, open, opt, url as urlOf, checks } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -225,6 +226,66 @@ try {
   check(false, String(e));
 } finally {
   await close();
+}
+
+// ---- #13: Liberty Bell 7's helicopter, heard on the clock from the chase view and from the seat ----
+const lb7 = await open(browser, `${url}#usa/mercury/mr-4-liberty-bell-7/site/vehicle`, { console: [], timeout: 180000 });
+try {
+  const p = lb7.page;
+  await p.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
+  await p.evaluate(() => {
+    window.sr.demo.stop(true);
+    window.sr.demo.start = () => {};
+  });
+  await p.mouse.click(640, 120);
+  await p.waitForFunction(() => window.sr.sound.meter().state === 'running', null, { timeout: 15000 });
+  const heli = () =>
+    p.evaluate(() =>
+      window.sr.sound.voices.filter((v) => v && v.kind === 'rotorcraft').map((v) => ({ ...v, gain: Number(v.gain.toPrecision(3)) })),
+    );
+  /** Put the clock at `t` and run it at life's pace from `rig`, and read the helicopter's voices once it has settled. */
+  const at = async (t, rig) => {
+    await p.evaluate(
+      ([t, rig]) => {
+        const { clock, stage } = window.sr;
+        clock.pause();
+        clock.seek(t);
+        stage.setCamera(rig);
+        clock.setRate(1);
+        clock.play();
+      },
+      [t, rig],
+    );
+    await p.waitForTimeout(3500);
+    const list = await heli();
+    say(`${rig} at ${t} s`, list);
+    return list;
+  };
+  const rotor = (list) => list.find((v) => v.what === 'Hunt Club 1' && v.part === 'rotor');
+  // hovering over the capsule before the hatch went: its rotor, tail rotor and engine from the chase view, and through the wall from the seat
+  const chase = await at(1570, 'chase');
+  check(
+    ['rotor', 'tail', 'engine'].every((part) => chase.some((v) => v.what === 'Hunt Club 1' && v.part === part)),
+    'Hunt Club 1’s rotor, tail rotor and engine heard from the chase view',
+  );
+  check((rotor(chase)?.metres ?? Infinity) < 400, `from ${rotor(chase)?.metres.toFixed(0)} m`);
+  const seat = await at(1570, 'onboard');
+  check(
+    (rotor(seat)?.gain ?? 0) < 0.5 * (rotor(chase)?.gain ?? 0),
+    `through the cabin’s wall, quieter: ${rotor(seat)?.gain} against ${rotor(chase)?.gain}`,
+  );
+  const open = await at(1595, 'onboard');
+  check((rotor(open)?.gain ?? 0) > (rotor(seat)?.gain ?? 0), `the hatch gone and it overhead, louder in the seat: ${rotor(open)?.gain}`);
+  await p.evaluate(() => window.sr.clock.pause());
+  await p.waitForTimeout(1500);
+  const still = await heli();
+  say('the clock stopped', still);
+  check(still.length === 0, 'silent with the clock stopped');
+  check(lb7.errors.length === 0, `no errors on Liberty Bell 7’s page${lb7.errors.length ? `: ${lb7.errors.slice(0, 3).join(' | ')}` : ''}`);
+} catch (e) {
+  check(false, String(e));
+} finally {
+  await lb7.close();
   await browser.close();
 }
 console.log(failures.length ? `${failures.length} failed` : 'all held');

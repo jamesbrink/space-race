@@ -85,17 +85,77 @@ function vessel(): Profile {
 export interface CapsuleAfloat {
   /** What it weighed afloat, lb. */
   flotation: Measure;
-  /** The pilot, lb, as he went out. */
+  /**
+   * Its balance at that weight, its shield in place: the centre of mass's station, in (over the plane of greatest
+   * diameter, station 0), and its distance off the long axis toward the hatch, in; its moment of inertia about a level
+   * axis through that centre, slug ft^2.
+   */
+  balance: { station: Measure; out: Measure; inertia: Measure };
+  /** What drops on the landing bag and hangs four feet under: the heat shield, lb. */
+  shield: Measure;
+  /** The pilot, lb, as he went out, and his centre of mass in the couch: its station, in, on the long axis. */
   pilot: Measure;
+  seat: Measure;
   /** The hatch's opening: the stations of its sill and head, in, and the arc of the cone it spans, degrees. And the hatch's own weight, lb. */
   hatch: { from: number; to: number; arc: number; weight: Measure; source: string };
+  /** The damping of its rolling, a share of critical. */
+  rolling: Measure;
+  /** The seconds before he is out that the pilot is on his way out over the sill, his weight going to the hatch's side. */
+  egress: Measure;
   /** The ids its hatch's opening and the parts that leave it go by. */
   ids: { opening: string; pilot: string; hatch: string };
 }
 
+/** Pounds to kilograms; slug ft^2 to kg m^2. */
+const LB = 0.45359237;
+const SLUG_FT2 = 14.5939029 * 0.3048 ** 2;
+
+/**
+ * How a capsule heels afloat, from its balance with its shield in place: the shield let down `BAG_DROP` on the bag
+ * (the two bodies, the shield's dish and the rest, drawn apart along the axis: the centre falls by the shield's share of
+ * the drop, and the moment of inertia grows by m_s m_r / M of the difference of the squares of their distances apart),
+ * then the pilot and the hatch taken out of it as masses at their places (`leaves`), leaving what stays aboard.
+ */
+function heelOf(c: CapsuleAfloat, hatchOut: number, hatchUp: number): NonNullable<AfloatDef['heel']> {
+  const M = c.flotation.value * LB;
+  const ms = c.shield.value * LB;
+  const mr = M - ms;
+  // (heights from the hull's lowest point, m: its centre with the shield in place, the dish's centre, mid-depth of its zone)
+  const g0 = up(c.balance.station.value);
+  const dish = (SHIELD_CAP / 2 + SHIELD_EDGE) * IN;
+  const rest = (M * g0 - ms * (dish + BAG_DROP * IN)) / mr;
+  const apart = rest - (dish + BAG_DROP * IN);
+  const g1 = g0 - (ms / M) * BAG_DROP * IN;
+  const i1 = c.balance.inertia.value * SLUG_FT2 + ((ms * mr) / M) * ((apart + BAG_DROP * IN) ** 2 - apart ** 2);
+  const x1 = c.balance.out.value * IN;
+  // (the pilot on the axis in his couch, the hatch at its middle: taken out as points)
+  const parts = [
+    { m: c.pilot.value * LB, x: 0, h: up(c.seat.value) },
+    { m: c.hatch.weight.value * LB, x: hatchOut, h: hatchUp },
+  ];
+  const mc = M - parts.reduce((s, p) => s + p.m, 0);
+  const xc = (M * x1 - parts.reduce((s, p) => s + p.m * p.x, 0)) / mc;
+  const hc = (M * g1 - parts.reduce((s, p) => s + p.m * p.h, 0)) / mc;
+  const ic = i1 - mc * ((xc - x1) ** 2 + (hc - g1) ** 2) - parts.reduce((s, p) => s + p.m * ((p.x - x1) ** 2 + (p.h - g1) ** 2), 0);
+  const how =
+    `from its balance with the shield in place (${c.balance.station.source}), the ${c.shield.value.toFixed(0)} lb shield let down ${BAG_DROP} in on the bag ` +
+    `(its dish's centre at mid-depth), and the pilot (${c.pilot.value} lb at station ${c.seat.value} in, on the axis) and the hatch (${c.hatch.weight.value} lb at its middle) taken out as points`;
+  return {
+    centre: {
+      up: estimated(
+        hc,
+        `${(hc / IN - LOWEST).toFixed(1)} in up the axis from station 0: ${how}. Estimated, as the shield’s weight and the pilot’s place are`,
+      ),
+      out: estimated(xc, `${(xc / IN).toFixed(2)} in toward the hatch: ${how}`),
+    },
+    gyration: estimated(Math.sqrt(ic / mc), `${(ic / SLUG_FT2).toFixed(0)} slug ft^2 about a level axis through it: ${how}`),
+    damping: c.rolling,
+  };
+}
+
 /** A capsule afloat, from its own figures. */
 export function capsuleAfloat(c: CapsuleAfloat): AfloatDef {
-  const lb = (m: Measure): Measure => ({ ...m, value: m.value * 0.45359237 });
+  const lb = (m: Measure): Measure => ({ ...m, value: m.value * LB });
   const arc = (station: number) => ((c.hatch.arc * Math.PI) / 180) * cone(station) * IN;
   const hatch: OpeningDef = {
     id: c.ids.opening,
@@ -105,7 +165,11 @@ export function capsuleAfloat(c: CapsuleAfloat): AfloatDef {
     width: [arc(c.hatch.from), arc(c.hatch.to)],
     cd: estimated(0.6, 'a sharp-edged opening’s discharge coefficient, as any hydraulics text gives it: none is read for a capsule’s sill'),
     shut: true,
+    arc: c.hatch.arc,
   };
+  // (the hatch's middle: up the axis and out to the cone there)
+  const middle = (c.hatch.from + c.hatch.to) / 2;
+  const hatchAt = { out: cone(middle) * IN, up: up(middle) };
   const spaces: SpaceDef[] = [
     {
       id: 'landing-bag',
@@ -121,6 +185,7 @@ export function capsuleAfloat(c: CapsuleAfloat): AfloatDef {
           // (1 per cent of the skirt open, spread up its height: a porous bag that breathed as it dropped, This New Ocean, p. 311; "its four-foot impact skirt", p. 356)
           width: [0.01 * 2 * Math.PI * SHIELD_R * IN, 0.01 * 2 * Math.PI * SHIELD_R * IN],
           cd: estimated(0.6, 'as the hatch’s'),
+          arc: 360,
         },
       ],
       drains: true,
@@ -138,6 +203,7 @@ export function capsuleAfloat(c: CapsuleAfloat): AfloatDef {
           to: up(CONE_H),
           width: [0.2 * IN, 0.2 * IN],
           cd: estimated(0.6, 'as the hatch’s; the joints’ width open to the sea is ours'),
+          arc: 360,
         },
       ],
     },
@@ -181,9 +247,26 @@ export function capsuleAfloat(c: CapsuleAfloat): AfloatDef {
     ),
     mass: lb(c.flotation),
     leaves: [
-      { id: c.ids.pilot, label: 'the pilot', mass: lb(c.pilot) },
-      { id: c.ids.hatch, label: 'the hatch', mass: lb(c.hatch.weight) },
+      {
+        id: c.ids.pilot,
+        label: 'the pilot',
+        mass: lb(c.pilot),
+        at: { out: doc(0, 'on the axis'), up: estimated(up(c.seat.value), c.seat.source) },
+        // (out through the hatch: he goes to its sill, where he pulls himself out, over the seconds before he is out)
+        through: {
+          out: derived(cone(c.hatch.from) * IN, 'the cone’s radius at the hatch’s sill'),
+          up: derived(up(c.hatch.from) + 0.25, 'a quarter of a metre over the sill, his body going out over it: ours'),
+          over: c.egress,
+        },
+      },
+      {
+        id: c.ids.hatch,
+        label: 'the hatch',
+        mass: lb(c.hatch.weight),
+        at: { out: derived(hatchAt.out, 'the cone’s radius at the hatch’s middle'), up: derived(hatchAt.up, 'the hatch’s middle station') },
+      },
     ],
+    heel: heelOf(c, hatchAt.out, hatchAt.up),
     spaces,
     heave: estimated(0.2, 'a fifth of critical: the waves a body of its size makes as it rises and falls are not worked out'),
     drag: estimated(0.9 * Math.PI * (SHIELD_R * IN) ** 2, 'a blunt disc’s 0.9 on the shield’s 74.5 in, going down shield first: ours'),

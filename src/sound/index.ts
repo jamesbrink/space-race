@@ -26,6 +26,7 @@ import { Ascent } from '../viewer/ascent.ts';
 import type { Clock } from '../world/clock.ts';
 import { Engine } from './engine.ts';
 import {
+  type Aircraft,
   breath,
   type Craft,
   type Cue,
@@ -38,14 +39,18 @@ import {
   type Mix,
   type Moment,
   mix,
+  OPENED,
   score,
   dropCue,
   type Source,
   stepShots,
   treadOf,
   type Vec,
+  WALLED,
   Works,
 } from './model.ts';
+import { craftAt } from '../viewer/recovery.ts';
+import { type Site, siteFrame } from '../world/frames.ts';
 import { is, isTyping, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 
@@ -61,6 +66,8 @@ export interface SoundHost {
   catchingUp?(): boolean;
   /** What the land is painted as at (x, z) in the scene's frame (a road, an apron: Setting.paintedAt), or null where it is the land's own. */
   painted?(x: number, z: number): string | null;
+  /** Whether the ears are in the flown vehicle's seat, inside its cabin. */
+  inside?(): boolean;
 }
 
 /** Seconds between settings of the engine, and how long a start or a stop fades over. */
@@ -80,6 +87,8 @@ export class Sound {
   private readonly padTurn = new Quaternion();
   private readonly home: Vec;
   private readonly padHeight: number;
+  /** The site's frame, the scene's: where a craft that came to the spacecraft is heard from. */
+  private readonly site: Site;
   private readonly button: HTMLButtonElement;
   private readonly slider: HTMLInputElement;
 
@@ -117,6 +126,7 @@ export class Sound {
     this.padTurn.setFromAxisAngle(new Vector3(0, 1, 0), def?.rotationY ?? 0);
     this.home = def?.position ?? [0, 0, 0];
     this.padHeight = flight.site.height.value - flight.site.seaLevel.value;
+    this.site = siteFrame(flight.site);
 
     this.walk = {
       footfall: (e: Footfall) => {
@@ -395,19 +405,65 @@ export class Sound {
         treads: d.under.map(tread),
       });
     }
-    const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind);
+    const { voices, shots } = this.works.hear(sources, ears, dt, place.tread.land.kind, this.aircraft(dt));
     // a catch-up after a jump is the hardware hurrying to where the clock was put: what it does then is not heard at that
     // pace. The machines fade out over a moment as it starts and come back in over half a second once it is done (by then
     // whatever it moved is running down at its own rate), so neither end is a step; their one-shots are not played
-    // meanwhile. The vehicle being driven is the driver's, not the clock's, and is heard throughout.
+    // meanwhile. The vehicle being driven is the driver's, not the clock's, and is heard throughout; so is what flies over
+    // (a helicopter), which is not replayed but put where the clock has it.
     this.held = this.host.catchingUp?.() ? Math.max(0, this.held - dt / HUSH) : Math.min(1, this.held + dt / UNHUSH);
     for (let i = 0; i < voices.length; i++) {
       const v = voices[i];
-      if (v && this.works.playing[i]?.key !== DRIVEN) voices[i] = { ...v, gain: v.gain * this.held };
+      if (v && !this.unheld(this.works.playing[i])) voices[i] = { ...v, gain: v.gain * this.held };
     }
     this.engine!.works(voices, now);
     if (this.held >= 1) for (const shot of shots) this.engine!.shot(shot, now);
   }
+  /** Whether a voice of the works is heard through a catch-up: the vehicle being driven, and what flies over. */
+  private unheld(p: { key: unknown; kind: string } | null | undefined): boolean {
+    return p?.key === DRIVEN || p?.kind === 'rotorcraft';
+  }
+
+  /** How much of each craft that came to the spacecraft is let through, eased (0 to 1). */
+  private readonly flying = new Map<string, number>();
+
+  /**
+   * What came to the spacecraft where it came down (`Flight.recovery`: a helicopter), on the record's run about where it
+   * came down, heard on the clock: while the clock runs at life's pace or near it (stopped or hurried, it is the flight's,
+   * and silent), from where its track has it, through the cabin's wall from the seat (open once the hatch is gone).
+   */
+  private aircraft(dt: number): Aircraft[] {
+    const crafts = this.flight.recovery ?? [];
+    const ascent = this.ascent;
+    if (!crafts.length || !ascent) return [];
+    const t = this.clock.t;
+    const down = ascent.recorded ? ascent.down() : null;
+    const heard = this.clock.running && this.clock.rate > 0 && this.clock.rate <= FASTEST;
+    const hatch = this.flight.flies?.hatch?.node;
+    const open = hatch !== undefined && ascent.dropped(t).includes(hatch);
+    const loss = this.host.inside?.() ? (open ? OPENED : WALLED) : 0;
+    const out: Aircraft[] = [];
+    for (const def of crafts) {
+      const where = down ? craftAt(def, t, down.centre, this.site, this.flight.site.seaLevel.value) : null;
+      const goal = where && heard ? 1 : 0;
+      const was = this.flying.get(def.name) ?? 0;
+      const gain = was + Math.max(-dt / 0.3, Math.min(dt / 0.3, goal - was));
+      this.flying.set(def.name, gain);
+      if (!where || gain <= 0) continue;
+      this.labels.set(def.name, def.name);
+      out.push({
+        key: def.name,
+        name: def.name,
+        where: [where[0], where[1], where[2]],
+        rotors: def.rotors.map((r) => ({ blades: r.blades.value, rpm: r.rpm.value, main: r.main })),
+        ...(def.engine ? { engine: { cylinders: def.engine.cylinders.value, rpm: def.engine.rpm.value } } : {}),
+        loss,
+        gain,
+      });
+    }
+    return out;
+  }
+
   /** How much of the site's machines is let through, 0 to 1: nought through a catch-up (`hearWorks`). */
   private held = 1;
 
@@ -424,7 +480,7 @@ export class Sound {
             what: this.labels.get(p.key) ?? '?',
             kind: p.kind,
             part: p.part,
-            gain: p.key === DRIVEN ? p.gain : p.gain * this.held,
+            gain: this.unheld(p) ? p.gain : p.gain * this.held,
             metres: p.metres,
             rpm: p.rpm,
             tread: p.tread,

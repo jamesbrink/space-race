@@ -7,7 +7,10 @@ import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import type { Run } from '../../sim/run.ts';
 import { Ascent } from '../ascent.ts';
+import { Flooding } from '../flooding.ts';
 import type { LineState, Recovery } from '../recovery.ts';
+import { siteFrame, type Vec3 } from '../../world/frames.ts';
+import { Swimmer } from '../swimmer.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
 import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
@@ -475,6 +478,8 @@ export class FlightShow {
       if (globe.swellAt(t)) this.h.redraw();
     }
     this.recover(ascent, t, g);
+    this.flood(ascent, s, t);
+    this.unseat(ascent, g, t);
     // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
     const gone = ascent.gone(t);
     if (gone !== this.lifted.gone) {
@@ -537,6 +542,45 @@ export class FlightShow {
     this.lifted.shadowed = within;
   }
 
+  /** Who is in the sea (swimmer.ts), made the first time he is wanted; and the nodes of him in the cabin, not drawn once he is out. */
+  private swimmer: Swimmer | null = null;
+  private unseated: THREE.Object3D[] = [];
+
+  /** Once the crew is out of the spacecraft afloat (`Ascent.outAt`), the figure in its cabin (`swimmer.seat`, a name's prefix) is not drawn. */
+  private unseat(ascent: Ascent, g: THREE.Object3D, t: number): void {
+    const seat = this.flightData?.swimmer?.seat;
+    if (!seat) return;
+    const out = t >= ascent.outAt;
+    if (out === this.unseated.length > 0) return;
+    for (const o of this.unseated) o.visible = true;
+    this.unseated = [];
+    if (out)
+      g.traverse((o) => {
+        if (o.name.startsWith(seat) && o.visible) {
+          o.visible = false;
+          this.unseated.push(o);
+        }
+      });
+    this.h.oweShadows();
+    this.h.redraw();
+  }
+
+  /** The sea inside the spacecraft afloat (flooding.ts), in the flown model's frame: made the first time it is down. */
+  private flooding: Flooding | null = null;
+
+  /** Draw the water in each space of the spacecraft afloat that can be seen into, as the run on show has it at `t`. */
+  private flood(ascent: Ascent, s: Staged, t: number): void {
+    const afloat = this.flightData?.flies?.afloat;
+    const now = ascent.floating(t);
+    if (!afloat?.seen?.length || (!now && !this.flooding)) return;
+    if (!this.flooding) {
+      this.flooding = new Flooding(afloat.body, afloat.seen);
+      s.group.add(this.flooding.group);
+      this.h.looks.add(this.flooding.group);
+    }
+    if (this.flooding.set(now)) this.h.redraw();
+  }
+
   /**
    * Fly what came to the spacecraft where it came down (recovery.ts) on the record's run, about where that run came down:
    * its line to the top of the flown model's node it was made fast to, pulling as the run afloat has it.
@@ -561,6 +605,36 @@ export class FlightShow {
         line = { top, tension: ascent.pull(t), taut };
       }
       if (r.set(t, down, line)) this.h.oweShadows();
+    }
+    this.swim(ascent, t, down);
+  }
+
+  /** Who is in the sea where the record's run came down (`Flight.swimmer`), on the record's clock, and the hoist's cable that lifts him. */
+  private swim(ascent: Ascent, t: number, down: Vec3 | null): void {
+    const def = this.flightData?.swimmer;
+    const flight = this.flightData;
+    if (!def || !flight?.site) return;
+    const by = this.h.recovery().find((r) => r.def.name === def.by);
+    if (!this.swimmer) {
+      const figure = this.h.staged()[this.h.defs().findIndex((m) => m.id === def.model)];
+      if (!figure || !down) return;
+      this.swimmer = new Swimmer(def, figure.full, by?.def, siteFrame(flight.site), flight.site.seaLevel.value);
+      this.h.scene.add(this.swimmer.group);
+      this.h.looks.add(this.swimmer.group);
+    }
+    const t0 = ascent.down()?.t0 ?? 0;
+    const sheave = by?.sheave(t) ?? null;
+    if (this.swimmer.set(t, down, ascent.waves, t0, sheave)) this.h.oweShadows();
+    if (by && sheave) {
+      const hoist = by.def.hoist!;
+      const up = this.h.setting().globe?.up(sheave, new THREE.Vector3()) ?? new THREE.Vector3(0, 1, 0);
+      let end = this.swimmer.collar;
+      if (t < hoist.grab.value) {
+        // (the collar swinging in the water under the sheave, at the sea's level where he is)
+        const rise = sheave.clone().sub(this.swimmer.collar).dot(up);
+        end = sheave.clone().addScaledVector(up, -rise - 0.2);
+      }
+      by.drawHoist(t, end);
     }
   }
 
@@ -763,6 +837,18 @@ export class FlightShow {
     this.jets?.group.removeFromParent();
     this.jets?.dispose();
     this.jets = null;
+    if (this.swimmer) {
+      this.swimmer.group.removeFromParent();
+      this.h.looks.remove(this.swimmer.group);
+    }
+    this.swimmer = null;
+    this.unseated = [];
+    if (this.flooding) {
+      this.flooding.group.removeFromParent();
+      this.h.looks.remove(this.flooding.group);
+      this.flooding.dispose();
+    }
+    this.flooding = null;
   }
 
   /**

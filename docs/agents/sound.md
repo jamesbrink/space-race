@@ -54,8 +54,15 @@ plays until the page has been touched, and a hidden page is suspended.
   the spacing its rails say (`Runs.joints`, with its confidence: 39 ft at the Cape, 25 m at Site 1, both estimated). A move with no machine is silent, and `tests/sound.test.mjs` names any at a site. Not done, and not faults: no cab insulation (the engine is heard
   as it is in the open), no Doppler on a passing vehicle and no echo of the ground, which are additions, each wanting a model of its own that no figure here could be put to. Distance,
   absorption and delay are the launch's path; every level and timbre is estimated.
+- **What came to the spacecraft is heard** (`Flight.recovery`: Liberty Bell 7's helicopter): from where its track has it at
+  the clock's instant (viewer/recovery.ts `craftAt`), on the record's run, while the clock runs at life's pace or near it
+  (it is the flight's: stopped or hurried it is silent), a voice of the works for each part (`rotorcraftTimbres`): the main
+  rotor's blades passing (their count times its rate, the craft's data), the tail rotor's, and a piston engine's firing
+  (cylinders over two times its rate). From the seat (`SoundHost.inside`) it comes through the cabin's wall (`WALLED`, the
+  cabin's loss), or through the hatch once it is gone (`OPENED`). It is not replayed after a jump, only put where the
+  clock has it, so the hardware's catch-up does not hush it. Levels at a metre and timbres are estimated; no Doppler.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works
-  play, slot by slot (`pnpm test:sound` reads it while driving and while machines run). After changing a
+  play, slot by slot (`pnpm test:sound` reads it while driving, while machines run, and under Liberty Bell 7's helicopter). After changing a
   level, measure at the pad, liftoff, max q, apogee, entry and under the main, from the pad view
   and the chase camera.
