@@ -218,7 +218,8 @@ def summer_tunic(band: str = "blue") -> Dress:
 
 def white_jacket(armband: str | None = None, hat: str | None = None, coat: str = "shirt-white") -> Dress:
     """A white summer jacket over an open shirt, dark trousers: Smirnov's (a photograph), with a pale straw hat and an
-    armband on the left arm, whose colour the black-and-white photograph does not give. `coat="shirt-cream"`: a pale one,
+    armband on the left arm, whose colour the black-and-white photograph does not give. The open shirt in its V is white
+    (what was under it is not made out: a white shirt, estimated; drawn as skin it was a bare chest). `coat="shirt-cream"`: a pale one,
     as Korolev wore the day before."""
     return Dress(
         coat,
@@ -230,7 +231,7 @@ def white_jacket(armband: str | None = None, hat: str | None = None, coat: str =
         hat_colour="straw",
         band="leather",
         armband=armband,
-        shirt="skin",
+        shirt="shirt-white",
         tie=None,
     )
 
