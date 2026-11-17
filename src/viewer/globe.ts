@@ -1120,6 +1120,12 @@ export class Globe {
           vGlobeNormal = normal;`,
         );
       shader.fragmentShader = shader.fragmentShader
+        // (the Earth is lit by the Sun and the sky, never by a lamp: the lamps near it are a spacecraft's, inside its hull,
+        // which no point light's falloff knows, and they lit the sea round a capsule afloat)
+        .replace(
+          '#include <lights_fragment_begin>',
+          THREE.ShaderChunk.lights_fragment_begin.replace('#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )', '#if 0'),
+        )
         .replace(
           '#include <common>',
           /* glsl */ `#include <common>
