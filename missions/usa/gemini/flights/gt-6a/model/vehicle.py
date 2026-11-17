@@ -200,6 +200,17 @@ SAYS = {
         "number, rating and weight are McDonnell's manual's, and so is their row under the module's beam; their size here "
         "is estimated.",
     ),
+    # "Spacecraft 6 has only one pump in each loop" (SEDR2, Section VII, the coolant system, read from the text layer): the
+    # pump packages are drawn as the other ships' are, which is estimated on every ship
+    "Equipment_CoolantModule": (
+        "Coolant pump module",
+        "The pumps that keep the ship's coolant moving: out through the cabin, the suits and the electronics to take up their "
+        "heat, and back through the hollow stringers of this adapter's skin to lose it to space. Two circuits and a reservoir "
+        "the coolant comes back to. The other ships had two pumps in each circuit; this one, flying for a day, had one: "
+        "\"Spacecraft 6 does not have the number 2 pump in either circuit\", McDonnell's manual says. The module's frame and "
+        "the stations it lies between are McDonnell's drawing; what is in it is drawn as on the other ships, and its forms "
+        "and places are estimated.",
+    ),
     "RR_MooringLatches": (
         "Mooring latch receptacle",
         "One of three fittings round the rim of the forward face, a third of a turn apart, for the hooks of an Agena's "
