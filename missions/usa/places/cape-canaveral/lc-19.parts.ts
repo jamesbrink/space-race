@@ -79,8 +79,13 @@ export interface Lc19Stops {
   platforms: [number, number];
   /** The white room's north door is rolled up, "just prior to lowering the erector". */
   door: [number, number];
-  /** The erector is laid down. */
+  /** The erector is laid down: the last of its motions, which takes it the rest of the way to the deck. */
   erector: [number, number];
+  /**
+   * Where it went first, on a morning it did not go down in one: each a turn toward the deck in degrees (back up, a
+   * negative one) between two places on the slider, before `erector`.
+   */
+  tries?: [degrees: number, from: number, to: number][];
   /** The umbilicals are released and fall, at liftoff. */
   lines: [number, number];
 }
@@ -345,8 +350,17 @@ export function lc19Parts(day: Lc19Day): Part[] {
       moves: [
         ...leaves,
         ...doors,
-        // laid down to the south about its hinge at the deck: its head toward the ramp
-        swing('Erector', [0, 0, -1], 90, s.erector[0], s.erector[1], BY.erector),
+        // laid down to the south about its hinge at the deck: its head toward the ramp; on a morning it stopped on the
+        // way, where it went first, and then the rest of the way down
+        ...(s.tries ?? []).map(([degrees, from, to]) => swing('Erector', [0, 0, -1], degrees, from, to, BY.erector)),
+        swing(
+          'Erector',
+          [0, 0, -1],
+          90 - (s.tries ?? []).reduce((sum, [degrees]) => sum + degrees, 0),
+          s.erector[0],
+          s.erector[1],
+          BY.erector,
+        ),
       ],
     },
     {
