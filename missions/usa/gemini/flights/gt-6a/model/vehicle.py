@@ -56,7 +56,8 @@ FIT = Fit(
     pod=False,  # the rendezvous evaluation pod was "on spacecraft 5 only" (SEDR2, p. 2-19)
     experiments=(),  # (none of its three experiments is modelled: ../spacecraft.md)
     names=("Schirra", "Stafford"),
-    # no crew: both men wore the G4C suit (SP-121, p. 64), which is not modelled
+    # no crew: both men wore the G4C suit (SP-121, p. 64), which is built standing, at the pad (../../../crew/g4c_suit.py),
+    # and not seated
     crew=None,
     white_disc=False,  # not known of this ship: it is spacecraft 3's, and not identified
     gmt_clock=True,  # as spacecraft 4 and 5: assumed, nothing read says it of this ship
@@ -240,7 +241,7 @@ SAYS = {
         "forward so that the two do not meet. On 12 December 1965 the rules called for it: the engines had lit and stopped "
         "and the clock on the panel was running as if the vehicle had left the ground. Schirra had felt no lift, and left "
         "the ring alone. Its form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: "
-        "the G4C suit both men wore is not modelled.",
+        "the G4C suit both men wore is built standing, at the pad, and not seated.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
@@ -249,7 +250,7 @@ SAYS = {
         "blows both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° "
         "forward so that the two do not meet. Stafford reckoned that leaving the pad on one meant more than 20 g and, at "
         "best, months with a sore back. Its form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The "
-        "seat is empty: the G4C suit both men wore is not modelled.",
+        "seat is empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
     ),
     # the launch vehicle
     "Interstage_ExhaustPorts": (

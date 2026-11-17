@@ -21,6 +21,8 @@ documented ones; *estimated* was read off photographs, or chosen to look right.
   crew biographies (pp. 83 to 86).
 - **GV**, **K5**: the Gemini V mission report, MSC-G-R-65-4, 3.1.2.9.2; NASA release 65-262, the
   Gemini 5 press kit, "Gemini 5 Suit" (pp. 33 to 35) and the crew biographies (pp. 79 and 81).
+- **K7**: NASA release 65-362, the Gemini 7/6 press kit: "Gemini 6 Suit" (p. 48), "identical to that worn
+  by the Gemini 5 crew", and the crew biographies (pp. 71 and 72).
 - **P**: NASA's photographs of 3 June 1965: S65-29643 (McDivitt in the suiting trailer, helmet on),
   S65-29645 (White being suited); S65-27487 (the two on the ramp at pad 19, undated in its caption:
   neither man has a flag on his sleeve, so it is taken for a rehearsal and used only for the tags).
@@ -44,6 +46,8 @@ documented ones; *estimated* was read off photographs, or chosen to look right.
 | Edward H. White II, pilot, Gemini 4 | 182.9 cm, "6 ft."; 171 lb | documented | K4, p. 84 | 1.874 m |
 | L. Gordon Cooper Jr., command pilot, Gemini 5 | 172.7 cm, "5 ft., 8 in."; 155 lb | documented | K5, p. 79 | 1.785 m |
 | Charles Conrad Jr., pilot, Gemini 5 | 167.6 cm, "5 ft., 6 In."; 142 lb | documented | K5, p. 81 | 1.740 m |
+| Walter M. Schirra Jr., command pilot, Gemini 6A | 177.8 cm, "5 feet, 10 inches"; 170 lb | documented | K7, p. 71 | 1.829 m |
+| Thomas P. Stafford, pilot, Gemini 6A | 182.9 cm, "6 feet"; 175 lb | documented | K7, p. 72 | 1.874 m |
 
 Their tags are lettered as the photographs read them: "J.A.McDIVITT" (S65-27487), "E.H.WHITE II"
 (S65-29645), "L.G.COOPER" and "C.CONRAD JR" (S65-28740). Gemini 5's suits were "of the same configuration as
@@ -66,6 +70,8 @@ Everything [g3c-suit.md](g3c-suit.md) lists of the G3C's garment, and:
 - **What each man carried to the pad is not built**: the portable ventilator in one hand, its two
   hoses to the suit, and the yellow overshoes (GIV, 7.2.1.7: they went on portable ventilators "from
   the pilot-ready room to the launch complex").
+- **The flights' emblems** from Gemini 6A on (under the NASA insignia, in NASA S65-61916)
+  are not built.
 - **Gemini 5's emblem** was approved (*On the Shoulders of Titans*, p. 256), but where it was worn on the
   suits is not in what was read, and S65-28740 does not show it: not built. Nor is the small white label
   lettered in red under Cooper's name tag in the same photograph.

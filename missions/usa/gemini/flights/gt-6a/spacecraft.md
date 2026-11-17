@@ -37,7 +37,7 @@ Titans*; **S65-64040**, NASA's photograph of this ship taken from Gemini 7 at ab
 | Electrical instruments | a voltmeter and an ammeter with selector switches on the right-hand panel, and the two-needle ammeter spacecraft 5 had; no fuel cell monitor | a fuel cell monitor | the same as 5 | documented | SEDR2, p. 5-6 | no: the panels are spacecraft 3's with the two clocks |
 | HF antenna switch | three positions, sprung to centre, "effective with spacecraft 6" | two | three | documented | GVII, 3.1.2.9.1 | no |
 | Water dispenser | one that metered what each man drank | plain | metering | documented | SP-121, p. 67 | no |
-| Suits | G4C | G4C | G5C | documented | SP-121, p. 64 | no: the seats are empty |
+| Suits | G4C | G4C | G5C | documented | SP-121, p. 64 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
 | Experiments | three announced: synoptic weather and terrain photography, and radiation in the spacecraft, with seven sensors about the cabin | | | documented as announced | kit, p. 35 | none |
 
 ## The battery module, the water tank and the docking fittings
@@ -93,7 +93,8 @@ out". Of what was No. 6's own:
 
 - **No list of this ship's changes has been read.** What is built is what the manual and the neighbouring reports
   happen to say of it; something its own report lists may be missing here without our knowing.
-- **No crew.** The G4C suit is not modelled; the seats are empty, with the harness lying on them.
+- **No crew aboard.** The G4C suit is modelled standing, Schirra and Stafford at the foot of the erector, and not
+  seated: the seats are empty, with the harness lying on them.
 - **The mooring latch receptacles are assumed to have flown.** The ship was built with them and stored between the
   counts; no source read says they were on it, or off it, on 15 December. They are three blocks sized from one
   perspective figure and one photograph. The index bar, which was stowed, the umbilical receptacle and pads and

@@ -1,6 +1,9 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   FT,
   GV,
@@ -22,6 +25,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -184,7 +188,7 @@ const parts: PartWords[] = [
       'which this ship was the first to have; its place there is the next ship’s, assumed for this one. What ' +
       'else this ship changed is not drawn: a voltmeter and ammeter for its batteries, the panel that was to ' +
       'have commanded the Agena. The seats are empty: both men ' +
-      'wore the G4C suit, which is not modelled. No drawing read gives the pressure vessel’s dimensions: its sizes ' +
+      'wore the G4C suit, which is modelled standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its sizes ' +
       'are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -193,7 +197,7 @@ const parts: PartWords[] = [
       ['Elapsed-time clock', 'the first on a Gemini; drawn where spacecraft 7’s was: assumed'],
       ['Atmosphere', 'pure oxygen, about 5 psi'],
       ['Power', '3 batteries of 400 Ah in the adapter; 4 of 45 Ah here for the way home'],
-      ['Suits', 'G4C: not modelled, the seats are empty'],
+      ['Suits', 'G4C: the two men stand at the pad, the seats are empty'],
     ],
   },
   {
@@ -381,24 +385,55 @@ const parts: PartWords[] = [
   },
 ];
 
-const vehicle = geminiTitanStack({
-  flight: 'gt-6a',
-  parts,
-  // the count as announced: the crew into the ship at T-90 minutes, the hatches shut at T-75 (the press kit, release
-  // 65-362, p. 29). What was done on the morning is not in what was read. Assumed
-  seats: seats([-90 * 60, -75 * 60]),
-  views: [
-    { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
-    { id: 'batteries', label: 'Batteries', nodes: ['EquipmentSection'], from: along(180 - 25, -0.45) },
-  ],
-  cabin: cabin({
-    radar:
-      'The range and closing speed of what the rendezvous radar has found. On this flight it was Gemini 7, from 232 nautical miles in: the crew flew the last of the chase on this needle and the platform’s angles.',
-    fairing:
-      'Pressed to throw off the nose fairing over the radar and the scanner fairing. When it was pressed on this flight is not in what was read.',
-    power:
-      'The pilot’s ammeter as spacecraft 3 had it. This ship, on three batteries in the adapter, had a voltmeter and an ammeter with a selector here (SEDR 300 vol. 2, p. 5-6), which are not drawn as such.',
+/** The vehicle as built, in its own frame; at Complex 19 it stands on the thrust mount (`lc19Vehicle`); the gallery stands it on its engines. */
+const vehicle = lc19Vehicle(
+  geminiTitanStack({
+    flight: 'gt-6a',
+    parts,
+    // the count as announced: the crew into the ship at T-90 minutes, the hatches shut at T-75 (the press kit, release
+    // 65-362, p. 29), put on the clock with its 25-minute hold at T-3 taken whole (pad.ts). Estimated
+    seats: seats([-115 * 60, -100 * 60]),
+    views: [
+      { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
+      { id: 'batteries', label: 'Batteries', nodes: ['EquipmentSection'], from: along(180 - 25, -0.45) },
+    ],
+    cabin: cabin({
+      radar:
+        'The range and closing speed of what the rendezvous radar has found. On this flight it was Gemini 7, from 232 nautical miles in: the crew flew the last of the chase on this needle and the platform’s angles.',
+      fairing:
+        'Pressed to throw off the nose fairing over the radar and the scanner fairing. When it was pressed on this flight is not in what was read.',
+      power:
+        'The pilot’s ammeter as spacecraft 3 had it. This ship, on three batteries in the adapter, had a voltmeter and an ammeter with a selector here (SEDR 300 vol. 2, p. 5-6), which are not drawn as such.',
+    }),
   }),
+  BASE,
+);
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g4c_suit.py). Where each stood is ours. The portable ventilator each carried and his
+ * yellow overshoes are not built (crew/g4c-suit.md). The pad stands round them as at about 06:37, before they went up.
+ */
+const ARRIVED = -120 * 60;
+const crew = standing({
+  flight: 'gt-6a',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'Walter M. Schirra Jr. · 1.78 m, 1.83 m suited · to scale',
+  parts: g4cParts('Schirra'),
+  height: 1.829,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-6a',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'Thomas P. Stafford · 1.83 m, 1.87 m suited · to scale',
+  parts: g4cParts('Stafford'),
+  height: 1.874,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
 });
 
 export const flight: Flight = {
@@ -470,6 +505,23 @@ export const flight: Flight = {
     { t: get(25, 51, 24), event: 'Landing, 23°35′ N 67°50′ W, 7 nautical miles from the planned point: the first steered entry' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Schirra, in helmet and boots',
+      value: 1.829,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g4c_suit.py), on a man of 1.778 m: "5 feet, 10 inches" in the press kit’s crew biographies (NASA release 65-362, p. 71), documented. The suit’s own thickness is estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Stafford, in helmet and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.829 m: "6 feet" (the same, p. 72), documented. The suit’s thickness is estimated',
+    },
     ...dimensions(
       'assumed',
       'SEDR 300 vol. 1, Figures 2-3 and 2-4, which is spacecraft 3’s, 4’s and 7’s manual, taken for spacecraft 6; the adapter’s 90.00 in, the cabin’s 70.53 in and the 219.03 in of the orbit configuration are printed again in vol. 2, which covers this ship',
@@ -653,5 +705,7 @@ export const flight: Flight = {
       'spacecraft 6, whose manoeuvring system had two tanks of each propellant where spacecraft 5’s had one (SEDR 300 vol. 2, Section VIII, Figure 8-96); no account of its thrusters has been read',
     ),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that December: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

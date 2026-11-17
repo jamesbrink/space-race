@@ -7,7 +7,7 @@ that ended 120 ft from Gemini 7.
 | | |
 | --- | --- |
 | Liftoff | 15 December 1965, 13:37:26.471 UTC (8:37:26.471 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that morning |
 | Crew | Walter M. Schirra, Jr., command pilot; Thomas P. Stafford, pilot |
 | Spacecraft | Gemini No. 6, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 6, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -22,8 +22,10 @@ that ended 120 ft from Gemini 7.
 **In this repo: the vehicle, in the gallery.** Spacecraft No. 6 on GLV-6 as they left the pad can
 be turned, taken apart as they staged, and cut open: the radar and the three latch receptacles
 on its nose, the three batteries, the one water tank and the doubled propellant tanks in the
-adapter. Its launch site, its crew and the flight itself are not built: see "What is not built"
-below.
+adapter. At Complex 19 it stands on the thrust mount on the morning of 15 December: the erector
+raised while the crew go up and laid down at T−35, Schirra and Stafford at the foot of the ramp in
+their G4C suits, each a figure to walk the site as, under that morning's sky. The flight itself is
+not built: see "What is not built" below.
 
 **The flight's own mission report has not been found.** *Gemini Program Mission Report, Gemini
 VI-A*, MSC-G-R-66-2 (January 1966), was looked for on NTRS by title and through its API, on
@@ -153,19 +155,64 @@ and its Appendix 1, Table A, read on the page.
 | 25:15:58 | retrofire | documented | SP-4002, Table A; Supplemental Report 4, Table 8 (14:53:24 G.m.t., 16 December) |
 | 25:51:24 | landing | documented | SP-4002, Table A |
 
-## The sky and the weather
+## The morning at the pad
 
-Not worked out. The flight has no `weather.ts`: it stands in the gallery only, under the studio's
-lights. The Sun and the Moon over Complex 19 at 13:37:26 UTC on 15 December 1965 will be computed
-when the site is built (`src/world`), and the weather read from the station records Gemini-Titan
-3's was (docs/sources.md).
+By the clocks at the Cape. With the mission report not found, no time of the morning at the pad is
+in what was read but the liftoff's. The press kit's count for Gemini 6 (release 65-362, p. 29) had
+a "25-minute hold" built in at T-3, so that the Titan could be let go on the second Gemini 7 came
+over; the launch systems final report has no hold on the day (Table I-1), which is taken to mean the
+built-in one was taken whole and nothing more. Put on the clock so, the plan has the crew going up
+in the dark, which NASA S65-59974 (the two leaving the suiting trailer) bears out. Every time below
+is `estimated`; the pad's slider plays them ([pad.ts](pad.ts)).
+
+| EST | Event | Confidence |
+| --- | --- | --- |
+| about 6:12 | T-120: the crew to Complex 19 | estimated |
+| about 6:42 | T-90: in the spacecraft | estimated |
+| about 6:57 | T-75: the hatches shut | estimated |
+| about 7:22 | T-50: the white room empty | estimated |
+| about 7:37 | T-35: the erector starts down | estimated |
+| about 8:09 to 8:34 | T-3: the built-in hold | estimated |
+| 8:37:26.471 | liftoff | documented (TRW, p. 2-6) |
+
+**Three days before.** On Sunday 12 December the crew went aboard for the second time, the count ran
+clean, and at 9:54 the engines lit: an electrical plug in the Titan's tail dropped out too soon, the
+airborne programmer started, and the malfunction detection system stopped the engines 1.2 s later,
+the vehicle still bolted to the thrust mount. Schirra did not pull the ejection ring. The erector was
+not raised round them again until 11:28, emergency procedures first, and they were out at 11:33
+(*On the Shoulders of Titans*, pp. 283 and 284; NASA SP-4002, 12 December). The next morning a dust
+cap was found left in a gas generator's oxidizer inlet, which would have shut the engine down
+anyway; the plugs were given safety wire. The launch was made in three days instead of four.
+
+**What stood there.** The complex as Gemini 7 left it eleven days before: GLV-6 stood on the same
+thrust mount by 11:00 the morning after that liftoff, the damage "minimal", and the workmen "wasted
+little time on normal painting or cleaning" (*Titans*, p. 282; the Gemini VII mission report,
+5.2.10). Nothing read has any structure changed ([lc-19.md](../../../places/cape-canaveral/lc-19.md),
+"What stood when"); the scorch of Gemini 7 is not drawn.
+
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
+launch instant, 13:37:26.471 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
+are held to these figures by `tests/world.test.mjs`.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 128.5° | 15.9° | Low in the south-east, an hour and a half up |
+| Moon | 237.8° | 53.4° | High in the south-west; half lit, waning, at last quarter |
+| Mercury | 140.6° | 32.9° | |
+
+Venus, Mars, Jupiter and Saturn were below the horizon.
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
-  an estimated bearing. Nothing stands on it yet.
-- **The crew.** Schirra and Stafford wore the G4C suit (*Midprogram Conference*, p. 64). It is not
-  modelled, and the seats are empty.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
+  overshoes. Every time of the morning is estimated, from the plan. The shutdown of 12 December is
+  told, not played.
+- **The crew in their seats.** Schirra and Stafford stand at the foot of the ramp in the G4C suit
+  (*Midprogram Conference*, p. 64; [g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty. The
+  flight's hexagonal emblem (NASA S65-55983), on the suits by NASA S65-61916, is not built.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. Nothing here chases Gemini 7.
 - **The other two counts.** The model is the vehicle of 15 December. The Atlas-Agena of 25 October
@@ -189,7 +236,8 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## Not found
 
-- **The mission report itself** (MSC-G-R-66-2), and with it: what spacecraft 6 changed from
+- **The mission report itself** (MSC-G-R-66-2), and with it: the launch area's weather and when
+  each thing was done at the pad on 12 and 15 December; what spacecraft 6 changed from
   spacecraft 5, as its section 3.1 would list it; GLV-6's changes from GLV-5; the weights of the
   vehicle at liftoff and of the ship at retrofire and landing; the ascent's sequence of events
   (engine start, staging, the fairings, separation) from the vehicle's own telemetry; what was
