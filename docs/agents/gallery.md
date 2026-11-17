@@ -22,8 +22,12 @@ Every flight has the same three places, in the same order, and opens in the firs
   **shown, dimmed, and says why** when pointed at or pressed (`lacks` in `address.ts`: "Launch
   site: not built yet", "Fly: no trajectory yet"). It is never hidden: the visitor is told what
   is coming, and the control is the same for every flight.
-- **The way back is always the same**: front page > flight > place, and the title card's crumbs
-  say it (`crumbs`): "Space Race" is the front page, the flight's name its gallery.
+- **The way back is always the same**: front page > nation > programme > flight > place, and the title card's crumbs
+  say it (`crumbs`): "Space Race" is the front page, the nation and the programme the front page with its list narrowed
+  to them (`#flights/<nation>[/<programme>]`, address.ts `parseBrowse`: still the front page's address, and no
+  flight's), the flight's name its gallery. On the front page the same narrowing is two rows of switches over the
+  list (a nation, then its programmes, named as the flights name them); choosing one rewrites the entry and is no step
+  in the history, so Back out of a flight comes to the list as it was left.
 - **The flight's name is one line, whole.** A name too long for the title card at its usual size (a
   callsign with its Cyrillic: "Berkut (Беркут)") is set smaller until it fits (`fitName` in
   `fold.ts`, for the gallery's card and the site's); on a phone the top line's own rule holds.

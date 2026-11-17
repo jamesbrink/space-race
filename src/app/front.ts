@@ -1,6 +1,18 @@
 import './front/front.css';
 import { flights } from '../../missions/index.ts';
-import { formatAddress, formatLineup, moved, namesNothing, onMoved, undo, where, write } from './address.ts';
+import {
+  formatAddress,
+  formatBrowse,
+  formatLineup,
+  moved,
+  namesFront,
+  onMoved,
+  parseBrowse,
+  settle,
+  undo,
+  where,
+  write,
+} from './address.ts';
 import { guarded } from './stake.ts';
 import { whenLifted } from './curtain.ts';
 import { installDebug, keepFront } from './debug.ts';
@@ -45,6 +57,9 @@ const title = new Title(
   flights,
   (id) => void enter(id),
   () => void go(formatLineup(), () => import('./lineup.ts')),
+  // the list narrowed to a nation or a programme: the address says so (the entry rewritten, not a step), so a link or
+  // Back out of a flight comes to the list as it was left
+  { at: parseBrowse(where()) ?? { nation: null, programme: null }, to: (b) => settle(formatBrowse(b)) },
 );
 title.show();
 
@@ -108,7 +123,7 @@ async function go(address: string, page: () => Promise<unknown>): Promise<void> 
 // an address typed or gone back or forward to that names a flight is that flight's page; and Back while a flight is
 // on its way in is this page again, as it was before the flight was chosen
 onMoved(() => {
-  if (entering !== namesNothing(where())) return;
+  if (entering !== namesFront(where())) return;
   // (Back out of a flight flown by hand asks first, and puts the address back if the answer is to keep flying: stake.ts)
   const steps = moved();
   if (

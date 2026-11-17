@@ -14,9 +14,11 @@ import { flownByHand } from '../sim/plan.ts';
  * - **fly**: the flight deck, at the site: the vehicle under your hands, and the recorded flight.
  *
  * A place a flight does not have yet is still named, and says why it cannot be gone to (`lacks`).
- * The way back is always the same: front page, flight, place.
+ * The way back is always the same: front page, nation, programme, flight, place.
  *
  *   #                                    the front page: no flight's (front.ts)
+ *   #flights/<nation>[/<programme>]      the front page with its list narrowed to a nation or one of its programmes
+ *                                        (`parseBrowse`): where a flight's nation and programme crumbs go out to
  *   #lineup[/spacecraft][/<nation>/<programme>][/<flight id>[/vs/<flight id>...]]
  *                                        the Lineup: every vehicle side by side (lineup.ts); no flight's either. With
  *                                        `spacecraft`, the spacecraft alone; a programme named, its section of the
@@ -93,6 +95,45 @@ export function listed<F extends Dated>(flights: readonly F[], coming: readonly 
 /** Whether an address names nothing at all, neither a flight nor a place: the front page's (front.ts), which is no flight's. */
 export const namesNothing = (hash: string): boolean => hash.replace(/^#/, '').split('/').filter(Boolean).length === 0;
 
+/** The word an address begins with when it is the front page's with its list narrowed to a nation or a programme. */
+export const BROWSE = 'flights';
+
+/** What the front page's list is narrowed to: a nation (the first word of its flights' ids), a programme (the first two), or neither. */
+export interface Browse {
+  nation: string | null;
+  programme: string | null;
+}
+
+/**
+ * Read the front page's address when its list is narrowed, or null for any other address:
+ *
+ *   #flights/<nation>[/<programme>]
+ *
+ * (`#flights` alone is the whole list, as the address that names nothing is.)
+ */
+export function parseBrowse(hash: string): Browse | null {
+  const parts = hash.replace(/^#/, '').split('/').filter(Boolean).map(decodeURIComponent);
+  if (parts[0] !== BROWSE || parts.length > 3) return null;
+  const [, nation = null, programme] = parts;
+  return { nation, programme: nation && programme ? `${nation}/${programme}` : null };
+}
+
+/** Write one: the fragment with its `#`, or '' for the whole list (the address that names nothing). */
+export const formatBrowse = (to: Browse): string => (to.nation ? `#${BROWSE}/${to.programme ?? to.nation}` : '');
+
+/** The nation and the programme a flight is under, as the front page narrows to them (`Browse`). */
+export const browseOf = (flightId: string): { nation: string; programme: string } => ({
+  nation: flightId.split('/')[0] ?? '',
+  programme: flightId.split('/').slice(0, 2).join('/'),
+});
+
+/** The address a crumb goes out to: the front page narrowed to a nation (`usa`) or a programme (`usa/mercury`). */
+export const browseTo = (under: string): string =>
+  formatBrowse({ nation: under.split('/')[0] || null, programme: under.includes('/') ? under : null });
+
+/** Whether an address is the front page's: one that names nothing, or its list narrowed (`parseBrowse`). */
+export const namesFront = (hash: string): boolean => namesNothing(hash) || parseBrowse(hash) !== null;
+
 /** The word an address begins with when it is the Lineup's. */
 export const LINEUP = 'lineup';
 
@@ -160,7 +201,7 @@ export const programmeOf = (flightId: string): string => flightId.split('/').sli
 export const namesLineup = (hash: string): boolean => parseLineup(hash) !== null;
 
 /** Whether an address is about no one flight: the front page's or the Lineup's. A flight's page that finds itself at one lets itself go (home.ts). */
-export const aboutNoFlight = (hash: string): boolean => namesNothing(hash) || namesLineup(hash);
+export const aboutNoFlight = (hash: string): boolean => namesFront(hash) || namesLineup(hash);
 
 /** The flights a Lineup address names that there are, in the order named. */
 export function lineupFlights<F extends Dated>(flights: readonly F[], to: LineupAddress): F[] {

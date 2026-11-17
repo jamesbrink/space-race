@@ -5,6 +5,8 @@ import {
   exhibit,
   formatLineup,
   galleryAt,
+  browseOf,
+  browseTo,
   galleryFlight,
   keep,
   kept,
@@ -209,7 +211,7 @@ export function markPlace(nav: Element | null, here: Place): void {
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
 export const crumbs = (flight: Flight, here: Place): string =>
-  `<button data-home title="Front page">Space Race</button> <b>/</b> ${
+  `<button data-home title="Front page">Space Race</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).nation)}" title="Every flight of the ${esc(flight.nation)}">${esc(flight.nation)}</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).programme)}" title="Every ${esc(flight.program)} flight">${esc(flight.program)}</button> <b>/</b> ${
     here === 'gallery'
       ? esc(flight.callsign)
       : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`
@@ -771,7 +773,10 @@ export class Gallery {
     facts?.addEventListener('click', () => showFacts(!title.classList.contains('facts-open')));
     // the way out to the front page: the first crumb, and on a narrow page (which has no room for crumbs) the heading
     title.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('[data-home]')) this.host.home();
+      const browse = (e.target as HTMLElement).closest<HTMLElement>('[data-browse]')?.dataset.browse;
+      // (a nation's or a programme's crumb: out to the front page with its list narrowed to it)
+      if (browse) this.host.home(browseTo(browse));
+      else if ((e.target as HTMLElement).closest('[data-home]')) this.host.home();
     });
     root.classList.toggle('bare', prefs.get('bare'));
     const keys = this.q('.legend-keys');

@@ -1,5 +1,5 @@
 import { flights } from '../../missions/index.ts';
-import { namesLineup, namesNothing, where } from './address.ts';
+import { namesFront, namesLineup, where } from './address.ts';
 
 /**
  * The way in. The front page (front.ts) is what an address that names nothing shows, and the Lineup (lineup.ts) what
@@ -20,7 +20,7 @@ if (new URLSearchParams(location.search).has('mem')) (await import('./mem.ts')).
 
 // An address that names nothing is the front page's, which is no flight's: the Earth from out by the Moon, and the
 // list of flights over it (front.ts). It brings a flight's page up itself when one is chosen.
-if (namesNothing(where())) void import('./front.ts');
+if (namesFront(where())) void import('./front.ts');
 // the Lineup is no flight's either: every vehicle side by side, on a stage of its own (lineup.ts)
 else if (namesLineup(where())) void import('./lineup.ts');
 else void import('./main.ts');

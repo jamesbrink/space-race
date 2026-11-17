@@ -20,8 +20,13 @@ import {
   lacks,
   lineupFlights,
   listed,
+  browseOf,
+  browseTo,
+  formatBrowse,
+  namesFront,
   namesLineup,
   namesNothing,
+  parseBrowse,
   openingFor,
   opensIn,
   PLACES,
@@ -559,4 +564,27 @@ test('at a launch site the docking target is not drawn, nor listed; the gallery 
   // a flight with no target is the same flight
   const gt3 = flights.find((f) => f.id === 'usa/gemini/gt-3');
   assert.equal(atSite(gt3), gt3);
+});
+
+test("the front page narrowed to a nation or a programme has an address, which is still the front page's and no flight's", () => {
+  assert.deepEqual(parseBrowse('#flights/usa'), { nation: 'usa', programme: null });
+  assert.deepEqual(parseBrowse('#flights/usa/mercury'), { nation: 'usa', programme: 'usa/mercury' });
+  assert.deepEqual(parseBrowse('#flights'), { nation: null, programme: null }, 'the whole list');
+  for (const other of ['', '#', `#${MR3}`, `#${MR3}/gallery`, '#pad', '#lineup', '#flights/usa/mercury/mr-3-freedom-7'])
+    assert.equal(parseBrowse(other), null, `"${other}" is not the list narrowed`);
+  // written and read back; the whole list is the address that names nothing
+  for (const to of [
+    { nation: 'usa', programme: null },
+    { nation: 'ussr', programme: 'ussr/vostok' },
+  ])
+    assert.deepEqual(parseBrowse(formatBrowse(to)), to);
+  assert.equal(formatBrowse({ nation: null, programme: null }), '');
+  // a flight's crumbs go out to them
+  assert.deepEqual(browseOf(MR3), { nation: 'usa', programme: 'usa/mercury' });
+  assert.equal(browseTo('usa'), '#flights/usa');
+  assert.equal(browseTo('usa/mercury'), '#flights/usa/mercury');
+  // it is the front page's, and about no flight: a flight's page that finds itself there lets itself go
+  assert.ok(namesFront('') && namesFront('#flights/ussr') && namesFront('#flights/usa/gemini'));
+  assert.ok(!namesFront(`#${MR3}/gallery`) && !namesFront('#lineup') && !namesFront('#pad'));
+  assert.ok(aboutNoFlight('#flights/usa') && !namesNothing('#flights/usa'));
 });
