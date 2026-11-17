@@ -583,6 +583,9 @@ export class ChaseRig extends OrbitRig {
       if (s.t >= 1) this.settling = null;
     }
     const to = v.copy(this.rel).applyQuaternion(this.own).add(this.middle);
+    // (what goes under the sea is watched going from the surface: the pivot stays on it, and the eye over it, `limit`)
+    const under = -this.world.clearance(to);
+    if (this.flying && under > 0 && Number.isFinite(under)) to.addScaledVector(this.world.upAt(to, w), under);
     const moved = to.clone().sub(this.pivot);
     this.pivot.copy(to);
     this.carried.copy(to);

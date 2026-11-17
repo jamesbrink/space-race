@@ -3,6 +3,7 @@ import { type Afloat, afloatAt } from '../sim/afloat.ts';
 import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { type LooseFlown, looseAt } from '../sim/loose.ts';
+import { surfaceAt, type Wave, wavesOf } from '../sim/sea.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
@@ -14,6 +15,7 @@ import {
   cross,
   ecefToGeodetic,
   ecefToSite,
+  ecefToEnu,
   ecefToSiteDirection,
   geodeticToEcef,
   length,
@@ -107,6 +109,7 @@ export class Ascent {
     this.model = flight.flies!.model;
     this.site = siteFrame(flight.site);
     this.frame = frameOf(flight);
+    this.waves = wavesOf(flight.weather?.sea?.trains);
     const def = flight.models.find((m) => m.id === this.model);
     this.home.set(...(def?.position ?? [0, 0, 0]));
     const datum = flight.flies!.datum ?? this.home.y;
@@ -650,6 +653,12 @@ export class Ascent {
     const lie = new THREE.Quaternion().setFromUnitVectors(out, up).multiply(from.q);
     quaternion.copy(from.q).slerp(lie, THREE.MathUtils.smoothstep(t - loose.down.t, 0, LIES));
     position.copy(now).sub(middle.applyQuaternion(quaternion));
+    // (on the sea it rides the day's swell where it lies, as the sea is drawn: swell.ts)
+    const down = this.down();
+    if (down && t >= loose.down.t) {
+      const [e, n] = eastNorthOf(down.centre, loose.down.fixed);
+      position.addScaledVector(up, surfaceAt(this.waves, t - down.t0, e, n).height);
+    }
     return true;
   }
 
@@ -681,8 +690,8 @@ export class Ascent {
   /**
    * Down in the sea (sim/afloat.ts): from the pose it struck the sea in it comes upright over the record's time for that
    * (`AfloatDef.rights`), its hatch (the model's +X) toward the bearing it lay at (`hatch.at.heading`), and rises and falls
-   * with the sea and goes under as the run afloat has it: its lowest point drawn where the run has it against the surface
-   * there. The globe's sea is drawn level, so it is drawn against that, not over still water.
+   * with the sea and goes under as the run afloat has it: its lowest point drawn where the run has it over still water,
+   * on the sea that is drawn moving round it (swell.ts), which is the same sea.
    */
   private placeAfloat(
     run: Run,
@@ -718,7 +727,8 @@ export class Ascent {
     }
     const now = afloatAt(afloat, t);
     const k = THREE.MathUtils.smoothstep(t - afloat.from, 0, def.body.rights.value);
-    const floating = f.base.clone().addScaledVector(f.up, now.z - now.surface + def.body.datum.value);
+    // (the sea is drawn as it moves, round where it came down (swell.ts): its lowest point is drawn where the run has it over still water)
+    const floating = f.base.clone().addScaledVector(f.up, now.z + def.body.datum.value);
     position.copy(f.p).lerp(floating, k);
     quaternion.copy(f.q).slerp(f.upright, k);
     return true;
@@ -938,3 +948,9 @@ const LOST = 8;
 /** Seconds of flight over which the height of the launcher's support under the stack is eased out of where the model is drawn (`Ascent.stand`). */
 const SETTLES = 5;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);
+
+/** How far a point (ECEF) is east and north of `centre` (ECEF), metres, along the sea there: for the day's waves (sim/sea.ts). */
+function eastNorthOf(centre: Vec3, p: Vec3): [number, number] {
+  const [e, n] = ecefToEnu(ecefToGeodetic(centre), p);
+  return [e, n];
+}

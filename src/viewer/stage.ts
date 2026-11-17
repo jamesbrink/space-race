@@ -811,7 +811,8 @@ export class Stage {
     // atmosphere) is the next one's, and nothing of the last stays on the GPU.
     const another = this.settings.keyOf(kind, when) !== this.settingKey;
     if (another) {
-      for (const o of [this.setting.floor, ...this.setting.scenery, this.setting.globe?.mesh]) if (o) this.looks.remove(o);
+      for (const o of [this.setting.floor, ...this.setting.scenery, this.setting.globe?.mesh, this.setting.globe?.swellMesh])
+        if (o) this.looks.remove(o);
       this.settings.drop(this.setting);
     }
     this.setting = this.settings.get(kind, when);
@@ -1121,6 +1122,7 @@ export class Stage {
     this.cabin?.setMechanism(id, travel);
   }
 
+      if (s.globe.swellMesh) this.looks.add(s.globe.swellMesh);
   /** Put a rig in charge of the camera (camera/rig.ts: RigId). The view itself does not jump on changing. */
   setCamera(mode: RigId): void {
     this.cam.set(mode);
@@ -1164,7 +1166,9 @@ export class Stage {
       // sea (the site's level is not the sea's 100 km off); with neither, nothing.
       if (!this.setting.floor) return Infinity;
       if (Math.hypot(p.x, p.z) <= (this.setting.horizon ?? this.setting.reach ?? Infinity)) return p.y - UNDER(p.x, p.z);
-      return this.setting.globe?.altitude(p) ?? Infinity;
+      const globe = this.setting.globe;
+      // (and over the sea where a flight came down, its waves as drawn: swell.ts)
+      return globe ? globe.altitude(p) - globe.swellHeight(p) : Infinity;
     };
     return {
       // Up is the plumb line where the subject is: the site's +Y on the site, leaning with the Earth's curve beyond it

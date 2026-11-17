@@ -464,6 +464,13 @@ export class FlightShow {
     const before = g.position.clone();
     const pad = new THREE.Quaternion().setFromAxisAngle(UP, def.rotationY ?? 0);
     const flying = ascent.place(t, pad, g.position, g.quaternion);
+    // (the day's sea where the run on show comes down, drawn moving round it: swell.ts)
+    const globe = this.h.setting().globe;
+    if (globe) {
+      const down = ascent.down();
+      if (globe.swell(down?.centre ?? null, down?.t0)) this.h.redraw();
+      if (globe.swellAt(t)) this.h.redraw();
+    }
     // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
     const gone = ascent.gone(t);
     if (gone !== this.lifted.gone) {

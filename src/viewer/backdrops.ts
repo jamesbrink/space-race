@@ -10,6 +10,7 @@ import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } f
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
 import { type Blowing, dayOf, VEIL_DOWN, veilShade, windsOf } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
+import { wavesOf } from '../sim/sea.ts';
 import { chapman, Globe } from './globe.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
 import { DUTY, lampsLit } from './lamps.ts';
@@ -532,6 +533,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     when.site.place.region?.name ?? null,
     here.tone,
     here.drawn,
+    // (the day's sea where a flight comes down: drawn round the point once a run is down there, Globe.swell)
+    wavesOf(when.weather?.sea?.trains),
   );
   // (a development build says which lit materials have left too few texture units for lights: units.ts)
   if (import.meta.env.DEV) later(() => setTimeout(() => checkUnits(renderer), 4000));

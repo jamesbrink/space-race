@@ -805,6 +805,18 @@ air and flight effects real, the ground near the eye designed). What keeps it so
     give no cloud: the cover, the decks and the high cloud stay the record's all day, and the map's streets lie along the
     liftoff hour's wind. `pnpm test:winds` reads the plants', the cloud's and the sea's uniforms at the first hour,
     liftoff and the last for every flight with hours, against day.ts worked outside the page.
+- **The sea where a flight comes down moves, and is the simulator's.** Round the point the run on show came down at,
+  a square of the sea 4 km across (`viewer/swell.ts`, laid by `Globe.swell` from `Ascent.down`) is drawn by the globe's
+  own shading with the day's waves on it (`DayWeather.sea`, sim/sea.ts: the same function of the instant and the place
+  that floats the capsule), written into its shader as text. Its points are raised by every train the mesh is fine
+  enough to carry (a sixth of its length), each pixel lit by the slope of every train larger than it, and a few short
+  waves on the shortest train (`RIPPLES`, estimated) are drawn in the light only, for the grain of a real sea, which
+  nothing rides. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
+  globe leaves the square to it (its last `Hole`, a metre or two inside, so the two overlap and never part). A body
+  afloat is drawn at its height over still water, so it rides the swell that is drawn and its waterline is the sea's;
+  the camera stays over the drawn waves (`Globe.swellHeight` in the stage's `clearance`), and the chase view's pivot
+  stays on the surface when what it follows goes under, so a sinking capsule is watched going from above. A day
+  without a sea (Vostok's steppe) has no square.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
   the march's bake, the far cover (`farCumulus`) and the globe's shadows (`globeShade`): change one, change
   all. The far cover is slices of the same heap the volume marches, then the field averaged along a pixel's

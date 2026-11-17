@@ -20,6 +20,18 @@ import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
 import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
+import type { Wave } from '../sim/sea.ts';
+import {
+  fillSwell,
+  MESH_FADE,
+  swellHeight,
+  PIXEL_FADE,
+  SWELL_HALF,
+  type SwellFrame,
+  swellGeometry,
+  swellGlsl,
+  swellHoleFrame,
+} from './swell.ts';
 import { vec3 } from './glsl.ts';
 import type { Beyond } from './land.ts';
 import { later } from './later.ts';
@@ -547,8 +559,13 @@ export class Globe {
     under: [0, 0, 0] as Vec3,
   };
   private arrived = false;
-  /** The squares a place's own ground covers: the site's first (`hole`). */
+  /** The squares a place's own ground covers: the site's first (`hole`), and the sea where a flight comes down last (`swell`). */
   private readonly holes: Hole[];
+  /** The day's sea where a flight comes down (sim/sea.ts), the square of it drawn round the point (swell.ts), and where it is laid. */
+  private readonly waves: readonly Wave[];
+  /** The square of the sea where a flight comes down (swell.ts), if its day has a sea. */
+  readonly swellMesh: THREE.Mesh | null = null;
+  private swellFrame: (SwellFrame & { t0: number }) | null = null;
   /** The site's own ground's square, round the pad: what the globe hands over from and the light blends from. */
   private readonly hole: Hole | null;
   /** Whether the site's air has cumulus (air.ts), whose shadows fall on the globe too. */
@@ -577,6 +594,8 @@ export class Globe {
     tone: THREE.Color = LAND,
     /** The land's tone in the cel look, from height (`colourGlsl`): the Cape's green unless said. */
     celLand: THREE.Color = LAND,
+    /** The day's sea where a flight comes down (sim/sea.ts `wavesOf`): drawn round the point it comes down at (`swell`). */
+    sea: readonly Wave[] = [],
   ) {
     this.colour = colourGlsl(celLand);
     this.glint = glintGlsl();
@@ -584,7 +603,9 @@ export class Globe {
     this.site = site;
     this.renderer = renderer;
     this.seaLevel = seaLevel;
-    this.holes = holes;
+    // (the sea where a flight comes down is a square of its own, which the globe leaves to it: the last hole, none until it is laid)
+    this.waves = sea;
+    this.holes = sea.length ? [...holes, { frame: new THREE.Matrix4(), half: -1, ground: 0 }] : holes;
     this.hole = holes[0] ?? null;
     const hole = this.hole;
     this.clouds = (haze?.clouds as Clouds | undefined) ?? null;
@@ -625,8 +646,10 @@ export class Globe {
       uGlobeAxes: { value: new THREE.Matrix3().set(m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]) },
       uGlobeSeaLevel: { value: seaLevel },
       // (one at the least, with no side: the shader's arrays are never empty)
-      uGlobeHoles: { value: holes.length ? holes.map((h) => h.frame) : [new THREE.Matrix4()] },
-      uGlobeHoleSize: { value: holes.length ? holes.map((h) => new THREE.Vector2(h.half, h.ground)) : [new THREE.Vector2(-1, 0)] },
+      uGlobeHoles: { value: this.holes.length ? this.holes.map((h) => h.frame) : [new THREE.Matrix4()] },
+      uGlobeHoleSize: {
+        value: this.holes.length ? this.holes.map((h) => new THREE.Vector2(h.half, h.ground)) : [new THREE.Vector2(-1, 0)],
+      },
       uGlobeHalf: { value: hole ? hole.half : -1 },
       uGlobeHaze: { value: haze?.scale ?? 1400 },
       uGlobeAbove: { value: 0 },
@@ -645,6 +668,9 @@ export class Globe {
       uGlobeSurfPlane: { value: new THREE.Matrix3() },
       uGlobeSurfBox: { value: new THREE.Vector4(0, 0, 1, 1) },
       uGlobeSurfFade: { value: 0 },
+      uSwellT: { value: 0 },
+      uSwellEast: { value: new THREE.Vector3(1, 0, 0) },
+      uSwellNorth: { value: new THREE.Vector3(0, 0, -1) },
       uGlobeBanks: { value: Array.from({ length: BANKS }, () => new THREE.Vector4(0, 0, 1, 2)) },
     };
     // (the sea's waves are the day's wind's, and follow its hours: seaWind)
@@ -667,6 +693,17 @@ export class Globe {
         (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2))) / Math.max(renderer.getDrawingBufferSize(drawn).y, 1);
     };
     this.group.add(this.mesh);
+    if (sea.length) {
+      const swell = new THREE.MeshStandardMaterial({ name: 'globe-swell', roughness: 1, metalness: 0 });
+      this.shade(swell, true);
+      this.swellMesh = new THREE.Mesh(swellGeometry(), swell);
+      this.swellMesh.name = 'swell';
+      this.swellMesh.raycast = () => {};
+      this.swellMesh.visible = false;
+      this.swellMesh.renderOrder = 2;
+      this.swellMesh.onBeforeRender = this.mesh.onBeforeRender;
+      this.group.add(this.swellMesh);
+    }
 
     this.airUniforms = {
       uCentre: { value: new THREE.Vector3() },
@@ -891,6 +928,69 @@ export class Globe {
    * clock runs (day.ts `windsOf`). Each figure is rounded as it was when it was written into the shader's text (five
    * places, and three for the roughness), so the day's own wind draws what it drew then.
    */
+  /**
+   * Lay the day's sea round where a flight comes down (swell.ts): `centre` a point on the sea (ECEF), its trains counted
+   * from `t0` (s from launch, as the simulator floats a body there from: sim/afloat.ts `floatOn`); null takes it away.
+   * Nothing, for a day with no sea. True if what is drawn changed.
+   */
+  swell(centre: Vec3 | null, t0 = 0): boolean {
+    const mesh = this.swellMesh;
+    const hole = this.holes[this.holes.length - 1];
+    if (!mesh || !hole) return false;
+    const was = this.swellFrame;
+    if (!centre) {
+      if (!was) return false;
+      this.swellFrame = null;
+      hole.half = -1;
+      (this.uniforms.uGlobeHoleSize!.value as THREE.Vector2[])[this.holes.length - 1]!.set(-1, 0);
+      mesh.visible = false;
+      return true;
+    }
+    if (was && was.t0 === t0 && length(sub(this.toEcef(new THREE.Vector3(...was.anchor)), centre)) < 0.01) return false;
+    const frame = fillSwell(
+      mesh.geometry,
+      centre,
+      this.seaLevel,
+      (q) => this.toSite(q),
+      (d) => this.toSiteDirection(d),
+    );
+    this.swellFrame = { ...frame, t0 };
+    mesh.position.set(...frame.anchor);
+    mesh.updateMatrixWorld();
+    swellHoleFrame(frame, hole.frame);
+    // (the globe is left out a little inside the square's edge, where the square is the level sea: they overlap, and never leave a crack between them)
+    hole.half = SWELL_HALF - 2;
+    hole.ground = frame.anchor[1];
+    (this.uniforms.uGlobeHoleSize!.value as THREE.Vector2[])[this.holes.length - 1]!.set(hole.half, hole.ground);
+    (this.uniforms.uSwellEast!.value as THREE.Vector3).set(...frame.east);
+    (this.uniforms.uSwellNorth!.value as THREE.Vector3).set(...frame.north);
+    mesh.visible = this.mesh.visible;
+    return true;
+  }
+
+  /** The sea where a flight came down as it is at `t` (s from launch): true if what is drawn changed. */
+  swellAt(t: number): boolean {
+    const f = this.swellFrame;
+    if (!f) return false;
+    const u = this.uniforms.uSwellT!;
+    const now = t - f.t0;
+    if (u.value === now) return false;
+    u.value = now;
+    return Boolean(this.swellMesh?.visible);
+  }
+
+  /** The drawn sea's height over still water under `p` (the scene's frame), m: the day's waves where a flight came down (swell.ts); 0 elsewhere. */
+  swellHeight(p: THREE.Vector3): number {
+    const f = this.swellFrame;
+    if (!f || !this.swellMesh?.visible) return 0;
+    return swellHeight(f, this.waves, this.uniforms.uSwellT!.value as number, [p.x, p.y, p.z]);
+  }
+
+  /** Where the sea where a flight came down is laid (swell.ts), with the instant its trains are counted from; null if it is not. */
+  get swelling(): (SwellFrame & { t0: number }) | null {
+    return this.swellFrame;
+  }
+
   seaWind(speed: number): void {
     const slopes = seaSlopes(speed);
     const round = (v: number, places: number) => Number(v.toFixed(places));
@@ -997,6 +1097,7 @@ export class Globe {
     const shown = !this.hole || Math.hypot(eye.x, eye.z) + horizonDistance(height, this.radius) > 0.9 * this.hole.half;
     if (shown !== this.mesh.visible) {
       this.mesh.visible = shown;
+      if (this.swellMesh) this.swellMesh.visible = shown && this.swellFrame !== null;
       changed = true;
     }
     // (its maps, where they were not made as the page opened: the region's when it is first seen, the whole Earth's from
@@ -1074,6 +1175,10 @@ export class Globe {
     return [dot(this.axes[0], d), dot(this.axes[1], d), dot(this.axes[2], d)];
   }
 
+  private toSiteDirection(d: Vec3): Vec3 {
+    return [dot(this.axes[0], d), dot(this.axes[1], d), dot(this.axes[2], d)];
+  }
+
   /** Make the mesh round the point of the sea `under` the eye, which is `height` above it. */
   private make(under: Vec3, height: number): void {
     this.madeAt = under;
@@ -1096,8 +1201,10 @@ export class Globe {
     this.mesh.updateMatrixWorld();
   }
 
-  private shade(material: THREE.MeshStandardMaterial): void {
+  /** Make `material` draw the globe's surface; `swell`, the sea where a flight comes down (swell.ts), its points raised by the day's waves and lit by their slope. */
+  private shade(material: THREE.MeshStandardMaterial, swell = false): void {
     const uniforms = this.uniforms;
+    const waves = this.waves;
     const c = this.clouds;
     const sheets = this.sheets;
     const day = this.day;
@@ -1117,8 +1224,29 @@ export class Globe {
           /* glsl */ `#include <fog_vertex>
           vEarth = aEarth;
           vGlobeSite = (modelMatrix * vec4(transformed, 1.0)).xyz + uOrigin;
-          vGlobeNormal = normal;`,
+          vGlobeNormal = normal;${swell ? '\n          vSwell = aSwell.xy;' : ''}`,
         );
+      if (swell)
+        shader.vertexShader = shader.vertexShader
+          .replace(
+            '#include <common>',
+            /* glsl */ `#include <common>
+          attribute vec3 aSwell;   // east and north of the middle, metres, and the mesh's spacing there
+          varying vec2 vSwell;
+          ${swellGlsl(waves, MESH_FADE)}`,
+          )
+          .replace(
+            '#include <beginnormal_vertex>',
+            /* glsl */ `#include <beginnormal_vertex>
+          // (the waves the mesh is fine enough to carry: its points raised by them, and their normals tipped)
+          vec3 swellHere = swellAt(aSwell.xy, aSwell.z);
+          objectNormal = normalize(objectNormal - swellHere.y * uSwellEast - swellHere.z * uSwellNorth);`,
+          )
+          .replace(
+            '#include <begin_vertex>',
+            /* glsl */ `#include <begin_vertex>
+          transformed += normal * swellHere.x;`,
+          );
       shader.fragmentShader = shader.fragmentShader
         // (the Earth is lit by the Sun and the sky, never by a lamp: the lamps near it are a spacecraft's, inside its hull,
         // which no point light's falloff knows, and they lit the sea round a capsule afloat)
@@ -1138,7 +1266,7 @@ export class Globe {
           uniform vec2 uGlobeHoleSize[${Math.max(1, this.holes.length)}];   // each square's half side, and its ground's height
           uniform float uGlobeHalf, uGlobeSeaLevel, uGlobeHaze;
           uniform float uGlobePixel;   // radians a pixel of the frame
-          ${ATMOSPHERE_GLSL}
+          ${swell ? `varying vec2 vSwell;\n${swellGlsl(waves, PIXEL_FADE, true)}\n          ` : ''}${ATMOSPHERE_GLSL}
           float globeRough;
           ${this.colour}
           ${this.glint}
@@ -1203,13 +1331,17 @@ export class Globe {
         .replace(
           '#include <map_fragment>',
           /* glsl */ `
-          // a place's own ground is drawn there (but not on the far side of the Earth, whose x and z are the same)
+          ${
+            swell
+              ? ''
+              : /* glsl */ `// a place's own ground is drawn there (but not on the far side of the Earth, whose x and z are the same)
           for (int i = 0; i < ${Math.max(1, this.holes.length)}; i++) {
             vec2 size = uGlobeHoleSize[i];
             if (size.x > 0.0 && vGlobeSite.y > size.y - 3000.0) {
               vec2 q = (uGlobeHoles[i] * vec4(vGlobeSite, 1.0)).xz;
               if (max(abs(q.x), abs(q.y)) < size.x) discard;
             }
+          }`
           }
           diffuseColor.rgb = globeAlbedo(normalize(vEarth), globeRough);`,
         )
@@ -1304,7 +1436,18 @@ export class Globe {
           }
           #endif`,
         );
+      if (swell)
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <normal_fragment_maps>',
+          /* glsl */ `#include <normal_fragment_maps>
+          {
+            // every wave larger than the pixel, lit by its slope here: the sea's normal tipped by it (in the scene's frame, then the view's)
+            vec3 s = swellAt(vSwell, length(fwidth(vSwell)));
+            vec3 n = normalize(normalize(vGlobeNormal) - s.y * uSwellEast - s.z * uSwellNorth);
+            normal = normalize((viewMatrix * vec4(n, 0.0)).xyz);
+          }`,
+        );
     };
-    material.customProgramCacheKey = () => `globe${this.drawnKey}:${this.holes.length}`;
+    material.customProgramCacheKey = () => `globe${this.drawnKey}:${this.holes.length}${swell ? ':swell' : ''}`;
   }
 }

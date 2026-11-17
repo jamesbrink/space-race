@@ -175,6 +175,7 @@ src/
   viewer/flora.ts                     any site's plants: species built from forms (shrub, fan, palm, flower, rosette), placed by the cover map, near and far forms, wind
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
+  viewer/swell.ts                     the day's sea where a flight comes down, drawn moving: a square of it laid round the point, by the globe's shading (`Globe.swell`)
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/glsl.ts                      GLSL said once: a colour or triple written into shader text (`vec3`, each caller's digits kept), the general noise
   viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground,
