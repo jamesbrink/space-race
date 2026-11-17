@@ -70,7 +70,8 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   level of detail, played by the exploder on the clock): each man is a node `<group>_Person_<n>` with the crew's joints
   carrying his number (`Hips_3`: gait.ts finds them within his node), built by `crew/ground_party.py` `Walkers` on one
   skeleton a group, a mesh a colour; his limbs are `pose` for the cycles his walk has gone (`cyclesAt`), so the same
-  instant is the same pose however it was come to (`tests/crowd.test.mjs`). They are not solid to the walker
+  instant is the same pose however it was come to (`tests/crowd.test.mjs`). Leaving, each sets off when he will come onto the way `stagger` after the one before him, three abreast in the
+  order they come at it from across it (`plan`), so none walks through another however far back in the body he stood. They are not solid to the walker
   (`userData.walks`). Site 1's people of 6 August are built so; those of 12 April are merged by colour, and a group of
   them that leaves is still taken out of sight on the clock: nothing unjointed is slid along the ground.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
