@@ -841,7 +841,12 @@ read gives enough of to fly (issue #10).
   mirrored through the middle, and it agrees with the one in front where the two meet). A chip keeps off the panels
   (brought in along a corner panel's inner edges), the vehicle, the markers on the line and the other chips; it is
   drawn where it is laid, fades in as the marker on the line fades out and the other way about, and where its place
-  leaps it fades out and in again rather than glide across the page. From the seat there are only the chips, with the
+  leaps it fades out and in again rather than glide across the page. A place in view is one on the window and on no panel,
+  wherever that is: one seen between two of the deck's panels, below the clear part, has no chip. A chip is laid against
+  the panels as they stand (path.ts reads them again the moment one changes size: a row of the path's own shown, the deck's
+  words wrapping, a note), and its pointer stands on its edge toward its place and is aimed at it from there. The layout
+  keeps a chip's way round from one frame to the next, so where a chip is depends on where it was; what holds whatever came
+  before is the rules, and the path test measures a chip only once it has settled (`chipsSettled`). From the seat there are only the chips, with the
   deck on show. In the real look the line has a thin dark casing under its core, which is what reads against a bright
   sky, cloud and sea, and from inside the vehicle nothing of it within the vehicle's radius is drawn. It is given to
   the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.

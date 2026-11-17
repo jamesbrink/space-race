@@ -631,11 +631,22 @@ export class FlightPath {
   private drawnAt = -1;
   /** The camera the stage last drew through (the line is sampled for it), and the size of what it drew into. */
   private camera: THREE.PerspectiveCamera | null = null;
-  /** Where the page's panels are, in the window: a label is not drawn over one. Given by the page, which knows its panels. */
-  obstacles: () => DOMRect[] = () => [];
+  /** The page's panels on show: a label is not drawn over one. Given by the page, which knows its panels. */
+  obstacles: () => readonly Element[] = () => [];
   private panels: Box[] = [];
   private rect = new DOMRect(0, 0, 1, 1);
   private panelsRead = 0;
+  /** The frame the markers and chips were last laid out in, and whether the panels they were laid against are as they stand. */
+  private laidAt = -1;
+  private laidCurrent = false;
+  /**
+   * A panel that changes size (a row of its own shown, the deck's words wrapping, a note come under the clock) has the
+   * panels read again at once and the markers laid out again in the next frame drawn, so nothing is laid against a panel
+   * as it stood a moment ago.
+   */
+  private readonly panelWatch = this.scope.observer(() => {
+    this.panelsRead = 0;
+  });
   private charWidth = 0;
   /** What the last prediction cost, for whoever asks (`sr.path.cost`): milliseconds in all, the longest slice, and how many frames it was spread over. */
   cost = { ms: 0, slice: 0, frames: 0, steps: 0 };
@@ -1358,8 +1369,17 @@ export class FlightPath {
     if (changed) this.host.overlay(this.mesh);
     if (performance.now() - this.panelsRead > 200) {
       // (where the panels and the canvas are is asked a few times a second, here and not in the draw, which must not ask the page's layout)
-      this.panels = this.obstacles().map((p) => ({ x0: p.left, y0: p.top, x1: p.right, y1: p.bottom }));
-      this.rect = this.host.viewRect();
+      const panels = this.obstacles();
+      const boxes = boxesOf(panels);
+      const rect = this.host.viewRect();
+      // (laid out again in the next frame drawn only if something has moved: the layout is then of the panels as they stand)
+      if (!sameBoxes(boxes, this.panels) || !sameRect(rect, this.rect)) {
+        this.panels = boxes;
+        this.rect = rect;
+        this.laidCurrent = false;
+        if (this.shown) this.host.overlay(this.mesh);
+      }
+      for (const el of panels) this.panelWatch.observe(el); // (one watched already is watched once)
       this.panelsRead = performance.now();
       if (!this.charWidth) {
         const probe = document.createElement('span');
@@ -1833,6 +1853,8 @@ export class FlightPath {
     };
     // the markers on the line, then the chips for those not on it, off what is on it: a marker is laid once
     const out = layWords(ins, chips, field, span, rect.width / 2, rect.height / 2, { marks: this.laid, chips: this.chipsLaid });
+    this.laidAt = this.drawnAt;
+    this.laidCurrent = this.panelsRead > 0;
     this.laid = new Map(out.marks.map((o) => [o.id, o]));
     this.chipsLaid = new Map(out.chips.map((c) => [c.id, c]));
     for (const m of this.marks) {
@@ -1858,6 +1880,33 @@ export class FlightPath {
       chip.angle = c.angle;
     }
   }
+  /**
+   * Whether the markers' words stand where the layout last put them, laid out against the panels as they stand: every
+   * fade between the label and the chip over, every chip drawn at its place (none fading out to come in elsewhere). For
+   * the path test, which measures what is drawn only then: the layout keeps a chip's way round and its slide from one
+   * frame to the next (pathmarks.ts `layChips`), so where a chip stands while it eases depends on where it came from,
+   * and only the place it settles at is held to the rules.
+   */
+  chipsSettled(): boolean {
+    if (!this.shown || this.marksEl.hidden) return true;
+    if (!this.laidCurrent || this.laidAt < 0) return false;
+    // (the panels laid against are the panels there are now: asked of the page here, which only the test calls)
+    if (!sameBoxes(boxesOf(this.obstacles()), this.panels) || !sameRect(this.host.viewRect(), this.rect)) {
+      this.panelsRead = 0;
+      this.laidCurrent = false;
+      return false;
+    }
+    for (const m of this.marks) {
+      const w = m.words;
+      const ahead = m.t > this.now;
+      const label = ahead && m.label !== null;
+      const chip = ahead && !label && m.chip.want !== null;
+      if (w.label.op !== (label ? 1 : 0) || w.chip.op !== (chip ? 1 : 0)) return false;
+      if (chip && (w.leap || w.chip.x !== m.chip.want!.x || w.chip.y !== m.chip.want!.y)) return false;
+    }
+    return true;
+  }
+
   /**
    * Each frame (in `tick`, drawn or not): each marker's words where the layout last put them, on the line or as a chip,
    * faded from one to the other in place (pathmarks.ts: `crossFade`), never at two places at once. A chip whose place
@@ -2000,3 +2049,14 @@ export class FlightPath {
     }
   }
 }
+
+/** Where the panels on show are, in the window. */
+function boxesOf(panels: readonly Element[]): Box[] {
+  return panels
+    .map((el) => el.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0)
+    .map((p) => ({ x0: p.left, y0: p.top, x1: p.right, y1: p.bottom }));
+}
+const sameBoxes = (a: readonly Box[], b: readonly Box[]): boolean =>
+  a.length === b.length && a.every((x, i) => x.x0 === b[i]!.x0 && x.y0 === b[i]!.y0 && x.x1 === b[i]!.x1 && x.y1 === b[i]!.y1);
+const sameRect = (a: DOMRect, b: DOMRect): boolean => a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height;

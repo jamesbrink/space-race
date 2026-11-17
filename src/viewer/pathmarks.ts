@@ -165,13 +165,15 @@ export function layMarks(marks: readonly MarkIn[], field: Field, span: number, b
  * - The bearing is from the middle of the view (where the camera looks) to the marker's place on the page, or, for one
  *   behind the eye, the way its place is from the line of sight: up is up, left is left, never mirrored through the
  *   middle. The two agree where a marker passes from in front of the eye to behind it, so a chip does not leap there.
+ *   Its pointer stands on the chip's edge toward the marker and is aimed at it from there.
  * - The chip lies inside the clear part at the point where the ray from the middle meets its edge, slid along the
  *   edge, nearest first, until it is off the vehicle, the markers on the line and the chips laid before it (most
  *   important first). One that fits nowhere is not shown. A chip keeps the way round it slid while that is not much
  *   further, and its slide while that is clear, so it does not swap sides as an edge comes and goes; where its place
  *   does leap, it says so (`leap`), and path.ts fades it out and in again rather than glide it across the page.
- * - A marker whose place is within the clear part and on no panel has no chip: it is on the line, or hidden there by
- *   what is in front of it (the vehicle, the Earth) or by markers that matter more.
+ * - A marker whose place is in view, on the window and on no panel (in the clear part, or between two panels outside it),
+ *   has no chip: it is on the line, or hidden there by what is in front of it (the vehicle, the Earth) or by markers
+ *   that matter more.
  */
 
 export interface ChipIn {
@@ -284,7 +286,9 @@ export function layChips(
     const at = c.at;
     if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
       const point: Box = { x0: at.x - GLYPH, y0: at.y - GLYPH, x1: at.x + GLYPH, y1: at.y + GLYPH };
-      const within = at.x >= area.x0 && at.x <= area.x1 && at.y >= area.y0 && at.y <= area.y1;
+      // (in view: on the window and on no panel, wherever that is; one seen between two panels at the foot of the view, below
+      // the clear part, is in view as much as one in the middle of it)
+      const within = at.x >= 0 && at.x <= field.width && at.y >= 0 && at.y <= field.height;
       if (within && !onPanel(point, 0)) {
         out.set(c.id, none(c.id));
         continue;
@@ -349,13 +353,18 @@ export function layChips(
     }
     const box = boxAt(slide)!;
     used.push(box);
-    // the pointer: where the ray from the chip's middle toward the marker leaves the chip
+    // the pointer: where the ray from the chip's middle toward the marker leaves the chip, aimed from there (a place near
+    // the chip is a different way from its edge than from its middle)
     const mx = (box.x0 + box.x1) / 2;
     const my = (box.y0 + box.y1) / 2;
-    const tx = at && Number.isFinite(at.x) ? at.x - mx : dx;
-    const ty = at && Number.isFinite(at.y) ? at.y - my : dy;
-    const angle = Math.atan2(ty, tx);
-    const edge = exit(box, mx, my, Math.cos(angle), Math.sin(angle));
+    const placed = Boolean(at && Number.isFinite(at.x) && Number.isFinite(at.y));
+    let angle = Math.atan2(placed ? at!.y - my : dy, placed ? at!.x - mx : dx);
+    let edge = exit(box, mx, my, Math.cos(angle), Math.sin(angle));
+    for (let i = 0; i < 3 && placed; i++) {
+      const aim = Math.atan2(at!.y - edge.y, at!.x - edge.x);
+      edge = exit(box, mx, my, Math.cos(aim), Math.sin(aim));
+      angle = Math.atan2(at!.y - edge.y, at!.x - edge.x);
+    }
     const turned = was?.box ? Math.abs(Math.atan2(Math.sin(angle - was.angle), Math.cos(angle - was.angle))) : 0;
     const leap = Boolean(was?.box) && (Math.abs(slide - was!.slide) > LEAP || turned > 1);
     out.set(c.id, { id: c.id, box, px: edge.x, py: edge.y, angle, slide, leap });

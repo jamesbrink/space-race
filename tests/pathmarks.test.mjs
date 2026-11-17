@@ -208,6 +208,35 @@ test('a marker under a panel has a chip at the edge above the panel, pointing do
   assert.ok(Math.sin(o.angle) > 0.9, 'pointing down');
 });
 
+test('a marker seen between two panels, below the clear part, is in view and has no chip', () => {
+  // (the deck at 820 wide: its two side panels in a row, with the vehicle on the pad seen in the gap between them)
+  const panels = [
+    { x0: 10, y0: 514, x1: 332, y1: 748 },
+    { x0: 480, y0: 557, x1: 810, y1: 748 },
+    { x0: 10, y0: 757, x1: 810, y1: 1170 },
+  ];
+  const f = { width: 820, height: 1180, panels, clear: none };
+  assert.ok(clearArea(f).y1 <= 514, 'the gap is below the clear part');
+  const [o] = layChips([chip('apogee', { x: 410, y: 590 })], f, 410, 590, []);
+  assert.equal(o.box, null);
+  // one under a panel still has its chip
+  const [under] = layChips([chip('apogee', { x: 200, y: 600 })], f, 410, 590, []);
+  assert.ok(under.box);
+});
+
+test('a chip’s pointer is aimed at its place from where it stands on the chip, however near the place is', () => {
+  for (const at of [
+    { x: 760, y: 700 },
+    { x: 560, y: 690 },
+    { x: 980, y: 700 },
+  ]) {
+    const [o] = lay([chip('down', at, 0, 0, 95)]);
+    assert.ok(o.box, `shown for ${JSON.stringify(at)}`);
+    const want = Math.atan2(at.y - o.py, at.x - o.px);
+    assert.ok(Math.abs(Math.atan2(Math.sin(want - o.angle), Math.cos(want - o.angle))) < 1e-6, `aimed at ${JSON.stringify(at)}`);
+  }
+});
+
 test('a marker behind the eye is at the edge on its own side, never mirrored through the middle', () => {
   // behind and to the right and above: on the right, up
   const [o] = lay([chip('apogee', null, 500, -200)]);

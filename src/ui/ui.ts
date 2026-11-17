@@ -707,12 +707,20 @@ export class Ui {
     for (const panel of el.children) this.measure.observe(panel);
   }
 
-  /** Where every panel on show is, in the window: for what is drawn on the view and must not show through one (the path's labels). */
+  /** Every panel there is, shown or not: for what is drawn on the view and must not show through one (the path's labels). */
+  panelElements(): HTMLElement[] {
+    return [
+      ...this.root.querySelectorAll<HTMLElement>(
+        ':scope > :is(.title, .models, .panel, .controls, .timebar, .legend-keys, .walkbar, .walk-card), .notes > *, .cockpit > *, .cockpit-card',
+      ),
+    ];
+  }
+
+  /** Where every panel on show is, in the window. */
   panels(): DOMRect[] {
-    const all = this.root.querySelectorAll<HTMLElement>(
-      ':scope > :is(.title, .models, .panel, .controls, .timebar, .legend-keys, .walkbar, .walk-card), .notes > *, .cockpit > *, .cockpit-card',
-    );
-    return [...all].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+    return this.panelElements()
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0);
   }
 
   /** Beside the pointer, on whichever side has room. */
