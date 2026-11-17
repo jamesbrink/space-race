@@ -1,5 +1,6 @@
 import type { Flight } from '../src/types.ts';
 import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
+import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
 import { flight as gt3 } from './usa/gemini/flights/gt-3/flight.ts';
 import { flight as gt4 } from './usa/gemini/flights/gt-4/flight.ts';
 import { flight as gt5 } from './usa/gemini/flights/gt-5/flight.ts';
@@ -49,4 +50,5 @@ export const flights: Flight[] = [
   gt8,
   gt9a,
   apollo7,
+  apollo8,
 ];

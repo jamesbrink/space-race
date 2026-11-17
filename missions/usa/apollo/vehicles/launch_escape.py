@@ -16,12 +16,12 @@ from srlib import group, lathe_obj, mark_shells, material, prof
 NOZZLE_CANT_DEGREES = 35.0
 
 
-def build():
+def build(offset=CSM_OFFSET, height=HEIGHT):
     white = material("apollo-escape-white", (0.88, 0.87, 0.82), roughness=0.63)
     steel = material("apollo-escape-steel", (0.19, 0.21, 0.22), metallic=0.65, roughness=0.5)
     tower = group("LaunchEscape")
     cover = group("BoostCover")
-    cm_base = CSM_OFFSET + CM_BASE
+    cm_base = offset + CM_BASE
     boost_cover.build(cover, cm_base, white)
     # Four-foot square at the base, three-foot square at the head of a
     # ten-foot truss (News Reference p. 140). Register the feet where the
@@ -39,7 +39,7 @@ def build():
         for j, (z, r) in enumerate(levels):
             tube(f"LES_Crossbar_{i}_{j}", radial(r, a, z), radial(r, b, z), 1.2, white, tower)
     motor_base = foot + 120
-    lathe_obj("LES_Motor", prof([(0, motor_base), (13, motor_base), (13, HEIGHT - 45), (6.65, HEIGHT - 13.37), (0, HEIGHT)]), white, tower)
+    lathe_obj("LES_Motor", prof([(0, motor_base), (13, motor_base), (13, height - 45), (6.65, height - 13.37), (0, height)]), white, tower)
     mark_shells(["LES_Motor"])
     for i in range(4):
         # News Reference p.142: two nozzles in the pitch plane, two in yaw.

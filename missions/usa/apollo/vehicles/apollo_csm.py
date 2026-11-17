@@ -1,4 +1,4 @@
-"""Apollo 7's CSM-101 exterior. Drawing units: inches; +Z noseward, hatch on +X.
+"""Block II CSM exterior. The default configuration is Apollo 7's CSM-101. Drawing units: inches; +Z noseward, hatch on +X.
 
 NASA Apollo 7 press kit (68-168K), pp. 25–27 and Figures 25b/25d.
 SM stations use the CSM-101 preflight reference; fittings remain provisional.
@@ -11,6 +11,7 @@ import math
 
 from mathutils import Vector
 
+import apollo8_equipment
 import cabin_bays
 import command_module
 import console_equipment
@@ -97,8 +98,11 @@ def bell(name, origin, direction, length, radius, mat, parent):
     return obj
 
 
-def build(offset=0):
+def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
+    if spacecraft not in (101, 103):
+        raise ValueError(f"Unmodelled CSM-{spacecraft}")
+    lunar = spacecraft == 103
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -165,16 +169,20 @@ def build(offset=0):
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     hatch_interior.build(groups["SideHatch"], CM_BASE)
-    forward_compartment.build(groups["ForwardCompartment"], CM_BASE)
+    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
     dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
     dsky_equipment.build(groups["DSKYFrontWeb"], CM_BASE)
-    console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE)
-    console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE)
+    console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE, spacecraft=spacecraft)
+    console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE, spacecraft=spacecraft)
     cabin_bays.build(groups["CabinEquipmentBays"], CM_BASE)
-    unitized_couch.build(groups["CrewCouches"], CM_BASE)
+    unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=lunar)
+    if lunar:
+        groups["HighGainAntenna"] = group("HighGainAntenna")
+        apollo8_equipment.antenna(groups["HighGainAntenna"], SM_BOTTOM)
+        apollo8_equipment.navigation(groups["CabinEquipmentBays"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

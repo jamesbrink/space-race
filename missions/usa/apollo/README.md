@@ -8,3 +8,5 @@ not copies of this Earth-orbit test vehicle.
 Shared hardware lives in `vehicles/`; a flight’s model script selects its configuration.
 Apollo 7 is in the gallery: the whole stack, cut open to its stages, its service module and its cabin, which can be
 sat in. Its launch site and the flight itself are not built.
+
+[Apollo 8](flights/apollo-8/README.md) adds CSM-103 on Saturn V SA-503, with the four-dish lunar antenna and the instrumented test article inside the adapter. Its Gallery includes all three crew seats.
