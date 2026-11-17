@@ -12,7 +12,7 @@ import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { bearingOf, recordOf, recordTimes, signalsOf } from '../sim/run.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
-import { type Shading, shadeAll, sharesOf } from './shade.ts';
+import { insideBy, type Shading, shadeAll, sharesOf } from './shade.ts';
 import { tier } from './tier.ts';
 
 /**
@@ -383,6 +383,7 @@ export class Cabin {
       lamps: { value: sharesOf(model.lights) },
       tint: { value: new THREE.Color(1, 1, 1) },
       kept: { value: 1 },
+      open: { value: 0 },
     };
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
@@ -531,6 +532,8 @@ export class Cabin {
     const shade = new THREE.DataTexture(new Uint8Array([255 * INDOORS, 255 * INDOORS, 255 * INDOORS, 255]), 1, 1);
     shade.needsUpdate = true;
     for (const m of inside) {
+      // (and the room's own lights, which have no shadow map, kept out of it while it is closed: shade.ts `insideBy`)
+      insideBy(m, this.shading);
       m.aoMap = shade;
       m.aoMapIntensity = shaded(m, false, 1);
       m.needsUpdate = true;
@@ -816,6 +819,7 @@ export class Cabin {
     for (const m of this.inside) m.aoMapIntensity = shaded(m, on, this.lit.value);
     // (and the baked shade's hold on the light that comes in, as far as the indoors shading is kept: shade.ts `kept`)
     this.shading.kept.value = on ? OPENED : 1;
+    this.shading.open.value = on ? 1 : 0;
     this.open = on;
     this.host.redraw();
   }

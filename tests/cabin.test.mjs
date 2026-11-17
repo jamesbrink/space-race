@@ -71,13 +71,19 @@ function lit(ways, throws) {
   shade.setAttribute('color', new THREE.BufferAttribute(new Float32Array(12), 4));
   const wall = new THREE.Mesh(shade, new THREE.MeshStandardMaterial({ name: 'paint', vertexColors: true }));
   const plain = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ name: 'plain' }));
-  full.add(lever, ...tubes, wall, plain);
+  // (and something inside the cabin that the build did not shade: a panel under the cabin's `within` node)
+  const room = Object.assign(new THREE.Group(), { name: 'Inside' });
+  const inner = Object.assign(new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ name: 'panel' })), {
+    name: 'Panel',
+  });
+  room.add(inner);
+  full.add(lever, ...tubes, wall, plain, room);
   const lamps = [new THREE.PointLight(0xffffff, 0.7), new THREE.PointLight(0xffffff, 0.5)];
   const host = { camera: new THREE.PerspectiveCamera(), upAt: (_p, out) => out.set(0, 1, 0), redraw: () => {}, reshade: () => {} };
   const flight = { launch: '1961-05-05T14:34:13Z', site: { zone: { utcOffset: -5 }, bearingX: { value: 0 } } };
   const lighting = { control: 'Ctl_Lights', name: 'Cabin lights', about: 'A switch.', ways, fittings: ['Lamp_A', 'Lamp_B'] };
-  const cabin = new Cabin(host, flight, { cabin: { instruments: [], within: [], lighting } }, group, full, lamps);
-  return { cabin, lever, tubes, wall, plain, lamps };
+  const cabin = new Cabin(host, flight, { cabin: { instruments: [], within: ['Inside'], lighting } }, group, full, lamps);
+  return { cabin, lever, tubes, wall, plain, inner, lamps };
 }
 
 test('the cabin lights go by their switch: thrown, the lamps it names are lit, their tubes glow and the lever goes over', () => {
@@ -244,8 +250,8 @@ test('the shade scales the lamps’ light and the indirect (less of it cut open)
     'read before the light is summed',
   );
   for (const line of [
-    'reflectedLight.directDiffuse = cabinSunDiffuse + ( reflectedLight.directDiffuse - cabinSunDiffuse ) * cabinShade;',
-    'reflectedLight.directSpecular = cabinSunSpecular + ( reflectedLight.directSpecular - cabinSunSpecular ) * cabinShade;',
+    'reflectedLight.directDiffuse = cabinSunDiffuse + cabinRoomDiffuse * cabinRoom + ( reflectedLight.directDiffuse - cabinSunDiffuse - cabinRoomDiffuse ) * cabinShade;',
+    'reflectedLight.directSpecular = cabinSunSpecular + cabinRoomSpecular * cabinRoom + ( reflectedLight.directSpecular - cabinSunSpecular - cabinRoomSpecular ) * cabinShade;',
     'reflectedLight.indirectDiffuse *= mix( 1.0, cabinShade, uCabinKept );',
     'reflectedLight.indirectSpecular *= mix( 1.0, cabinShade, uCabinKept );',
   ])
@@ -265,6 +271,59 @@ test('the shade scales the lamps’ light and the indirect (less of it cut open)
     /#ifdef CABIN_SHADE[\s\S]*cabinBeforeDiffuse = reflectedLight\.directDiffuse;[\s\S]*RE_Direct\([^;]+;\s*#ifdef CABIN_SHADE\s*cabinSunDiffuse \+= reflectedLight\.directDiffuse - cabinBeforeDiffuse;\s*cabinSunSpecular \+= reflectedLight\.directSpecular - cabinBeforeSpecular;/,
   );
   assert.equal(loop.split('cabinSunDiffuse +=').length, 2, 'only the Sun’s turn is kept apart');
+});
+
+test('the room’s own lights give a cabin’s inside nothing while it is closed and, cut open, the kept share of its shade, or all of it unshaded', () => {
+  const c = lit([{ says: 'On', lit: [0, 1] }], [0]);
+  const compile = (material) => {
+    const shader = {
+      uniforms: {},
+      vertexShader: '',
+      fragmentShader:
+        '#include <common>\nvoid main() {\n#include <color_fragment>\n#include <lights_fragment_begin>\n#include <aomap_fragment>\n}',
+    };
+    material.onBeforeCompile(shader, null);
+    return shader;
+  };
+  const baked = compile(c.wall.material);
+  const plain = compile(c.inner.material);
+  // both are a cabin's inside, so the light loop adds up the room's lights apart for them; only the baked one reads a shade
+  for (const f of [baked.fragmentShader, plain.fragmentShader]) {
+    assert.match(f, /#define CABIN_INSIDE/);
+    assert.ok(
+      f.indexOf('vec3 cabinRoomDiffuse = vec3( 0.0 );') < f.indexOf('#include <lights_fragment_begin>'),
+      'declared before the light is summed',
+    );
+  }
+  assert.match(c.inner.material.customProgramCacheKey(), /cabin-inside/);
+  assert.doesNotMatch(plain.fragmentShader, /CABIN_SHADE/);
+  assert.doesNotMatch(c.plain.material.customProgramCacheKey(), /cabin-inside/, 'what is not inside is not touched');
+  assert.match(baked.fragmentShader, /float cabinRoom = uCabinOpen \* mix\( 1\.0, cabinShade, uCabinKept \);/);
+  const after = plain.fragmentShader.slice(plain.fragmentShader.indexOf('#include <aomap_fragment>'));
+  assert.match(after, /reflectedLight\.directDiffuse \+= cabinRoomDiffuse \* \( uCabinOpen - 1\.0 \);/);
+  assert.match(after, /reflectedLight\.directSpecular \+= cabinRoomSpecular \* \( uCabinOpen - 1\.0 \);/);
+  // what the room's light is multiplied by, as the two shaders work it, at a point whose shade is 0.4
+  const shade = 0.4;
+  const room = () => ({
+    baked: baked.uniforms.uCabinOpen.value * (1 + (shade - 1) * baked.uniforms.uCabinKept.value),
+    plain: 1 + (plain.uniforms.uCabinOpen.value - 1),
+  });
+  assert.deepEqual(room(), { baked: 0, plain: 0 }, 'closed: nothing from the room’s lights');
+  c.cabin.opened(true);
+  const open = room();
+  const kept = baked.uniforms.uCabinKept.value;
+  assert.ok(kept > 0 && kept < 1);
+  assert.ok(
+    Math.abs(open.baked - (1 + (shade - 1) * kept)) < 1e-12 && open.baked > shade && open.baked < 1,
+    `cut open, baked: ${open.baked}`,
+  );
+  assert.equal(open.plain, 1, 'cut open, unshaded: all of it');
+  c.cabin.opened(false);
+  assert.deepEqual(room(), { baked: 0, plain: 0 });
+  // the loop: any turn it gives the lights after the three with maps (the studio's) adds them up apart for the inside
+  const loop = THREE.ShaderChunk.lights_fragment_begin;
+  const rest = loop.indexOf('UNROLLED_LOOP_INDEX >= NUM_DIR_LIGHT_SHADOWS');
+  if (rest >= 0) assert.match(loop.slice(rest, rest + 900), /RE_Direct[\s\S]*cabinRoomDiffuse \+= reflectedLight\.directDiffuse/);
 });
 
 test('a gauge read off the record: straight between readings, each at its instant or after its event, held beyond; an event not come is never', () => {
