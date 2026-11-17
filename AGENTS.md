@@ -285,5 +285,8 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   the UI's measurement): the camera tips where it stands so the pivot is in the middle of what is
   clear (`aimBelow`), and a view nobody has taken is framed again when the canvas changes shape.
 - Small text uses `--faint` at the least, which is 4.5:1 on the glass. Do not go dimmer.
-- `main` is protected by a ruleset: push directly, but no force-pushes and no deletion.
+- `main` is protected by a ruleset: no force-pushes and no deletion. Work lands as a pull request: CI runs the check on
+  it (lint, the tests, every flight, the build) in about five minutes, so nothing waits on a local run of it; rebase-merge
+  when it is green. The browser suites are not in CI: run the ones the change touches, and say in the pull request which
+  have and have not run. A change to the documents alone may be pushed directly.
 - Conventional Commits. No AI attribution in commits.
