@@ -84,3 +84,13 @@ profile, fixed openings, side hatch, inner interfaces and console. It removes
 the console's former overlap with the nominal pressure wall without trimming
 or independently moving the console. Absolute survey accuracy and as-built
 installation clearance are not established; this remains an assumed common datum.
+
+## DSKY component work
+
+A [standalone front-housing reference](../../vehicles/dsky-housing.md) now builds
+from the dimensioned 2004968E drawing transcription, with all nineteen switch-bore
+positions checked against the drawing. It has three rebuilt mesh levels and can
+produce native Blender stills. It is not installed in the flight model: the
+available parent-assembly drawing predates the required -041 configuration, and
+the exact cabin mounting pose is unresolved. Keys, indicators and labels are not
+guessed or copied from later DSKY revisions.
