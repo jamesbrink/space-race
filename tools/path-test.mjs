@@ -100,6 +100,14 @@ const FLIGHTS = {
     orbit: [3000, 16_000],
     coast: 3000,
   },
+  // (Faith 7: the ascent, the first orbit, a day in it, the retrofire by hand at 33:59:30, the pack, the entry, the drogue
+  // by hand and the main)
+  ma9: {
+    id: 'usa/mercury/ma-9-faith-7',
+    instants: [5, 60, 134, 140, 200, 304, 600, 3000, 60_000, 122_300, 122_380, 122_800, 123_000, 123_260, 123_400, 123_560],
+    orbit: [3000, 60_000],
+    coast: 3000,
+  },
   v1: {
     id: 'ussr/vostok/vostok-1',
     instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500],

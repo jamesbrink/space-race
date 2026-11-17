@@ -83,6 +83,21 @@ const INPUTS = {
     ['retro', 'deltaV'],
     ['entry', 'area'],
   ],
+  // Faith 7's: the orbit's ball and inclination, the arc (Aurora 7's), the anomaly, the drag in orbit (turning every way),
+  // the retrofire's impulse, the capsule in orbit and once the pack has gone (Sigma 7's), the pack's going (the transcript's)
+  'usa/mercury/ma-9-faith-7': [
+    ['orbit', 'radius'],
+    ['orbit', 'inclination'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['mass'],
+    ['rarefied', 'drag'],
+    ['rarefied', 'area'],
+    ['retro', 'deltaV'],
+    ['retro', 'gone'],
+    ['entry', 'mass'],
+    ['entry', 'area'],
+  ],
   'ussr/vostok/vostok-1': [
     ['injection', 'arc'],
     ['injection', 'anomaly'],

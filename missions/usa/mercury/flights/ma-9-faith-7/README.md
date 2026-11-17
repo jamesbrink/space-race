@@ -17,11 +17,14 @@ power.
 | Landing | 27°22.6′ N 176°35.3′ W by the recovery ship, south-east of Midway; predicted 27°22′ N 176°29′ W |
 | Recovery | capsule and pilot together, aboard USS *Kearsarge*, about 40 minutes after landing |
 
-**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 20 on Atlas
+**In this repo: the vehicle, its launch site and the flight.** Spacecraft No. 20 on Atlas
 130-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
 launch site they stand on the stand at Complex 14 on the morning of 15 May 1963, with Cooper at the
-foot of the service structure, and the place can be walked. The flight itself is not built: see
-"What is not built" below.
+foot of the service structure, and the place can be walked. The flight is flown (Fly) from its
+record: the Atlas a stage and a half on one tank, twenty-two revolutions coasted on rails, the
+retrofire by hand, the pack, the drogue and the main. What it gives against the record is "The
+flight as flown" below; how the record becomes data, and how thin its record is, is
+[mission.md](mission.md).
 
 ## What happened
 
@@ -152,13 +155,25 @@ stood. The bascule stood upright all morning and can be lowered by hand from the
   Cooper's height and with three things his photographs show; his suit's changes for this flight (the boots made one
   with it, new shoulders, the life vest on the left shin, a mechanical visor seal) are not built
   ([spacecraft.md](spacecraft.md), "The pilot").
-- **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
-  programme, an orbit and an entry as data, and for this flight above all a capsule that can be
-  flown by hand through both with nothing but a window to steer by.
+- **The flight as Cooper flew it in orbit.** The flight is flown from its record, but in orbit its
+  attitude is not: the drifting, the dead inverters and the hand on the stick are not simulated; its
+  drag in orbit is a capsule turning every way, and its weights are Sigma 7's ([mission.md](mission.md)).
 - **Nothing is seen to leave.** The flashing beacon is in its canister, the balloon in its can and
   the aerial's two tapes on their reels, as at liftoff. The umbilical's door is shut.
 - **No periscope**, because there was none: this is the one Mercury flight here with no periscope
   to play on a clock.
+
+## The flight as flown
+
+Flown from the pad (`plan`, tests/staged.test.mjs) the Atlas reaches 25,736 ft/s at T+281.7 s, 21.4 s before the
+record's cutoff, on Friendship 7's figures for the Atlas D, not 130-D's, in an orbit of 161 by 285 km (the record 161 by
+267). Twenty-two revolutions on the published orbit (its period read as its heights' Kepler period, as Sigma 7's) take
+12.5 km off its apogee in the free-molecule air; left up, the simulator has it down in 5.9 days, where SP-45 has "about
+4.7". Cooper's retrofire by hand at 33:59:30, at 34°: 0.05 g at 34:08:44 (the ground's prediction 34:09:19), the drogue
+out at 42,000 ft at 34:14:04 (34:14:08 by the transcript), 371 km beyond where the *Kearsarge* picked it up. Two seconds
+in the period are 330 km after a day and a half, and the record's period is printed to the second; read as a nodal
+period it came down 2,234 km short (mission.md, "The period"). Each miss is recorded with its cause in
+`src/sim/misses.ts`.
 
 ## Where sources disagree
 

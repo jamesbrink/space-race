@@ -133,6 +133,16 @@ const PERIOD_48 =
   'Over 48 revolutions the period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min, the one traceable period of this ship, is given to a tenth of a minute (2,100 km). ' +
   'On it, with the joined ship’s free-molecule drag in the air of the day’s Sun, the ship comes down 2,344 km long (633 km long on the ball’s continuum drag, until November 2026), the only long flight that lands beyond (TASS’s one period of it, its first hour’s, the coast holds to 0.1 s, and no later orbit of it was read): no period published is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
 
+/** Faith 7's coast, from the published orbit and from where the ascent left it. */
+const MA9_COAST =
+  'Twenty-two revolutions, a day and a half, from the published orbit begun at Aurora 7’s arc (no place for MA-9’s cutoff read), its 88:45 read as its heights’ Kepler period ' +
+  '(`orbit.kind`, estimated: read as nodal, the convention, it comes down 2,234 km short; on its heights alone 8 km short). Two seconds of period, the printed figure’s own precision, are ' +
+  '330 km here. The retrofire by hand at 33:59:30 at 34°, no yaw recorded, on the motors’ specified impulse over Sigma 7’s weight at retrofire (127.4 m/s); the drag in orbit a capsule ' +
+  'turning every way. Which input owns it is not established; not adjusted';
+const MA9_SHOWN =
+  'Begun from where the ascent flown left the capsule, which reached its cutoff speed 21.4 s early and is so much further on round the orbit at the separation, in the ascent’s ' +
+  'own plane, 0.22 degrees under the inclination taken';
+
 /** Sigma 7's coast, from the published orbit and from where the ascent left it. */
 const MA8_COAST =
   'The retrofire is the record’s: at 08:52:00 by the automatic sequence, at −34° with no yaw (held within half a degree, the pilot), the impulse the report’s own integration used, 38,975 lb s, ' +
@@ -387,6 +397,41 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'Down 50 s late. The drogue is out 25 s late, with the coast begun from the ascent (within its tolerance); the rest is the main: the record has 4 min 59 s from the main at 10,600 ft ' +
           'to the water (09:08:12 to 09:13:11, TN D-4807 Table XXII), 10.8 m/s on the average, where the canopy as derived on Freedom 7 (mercury-redstone.ts, main.dragArea) brings the ' +
           '2,602.3 lb capsule down at 8.9 m/s. Nothing read says which is wrong, and nothing is changed',
+      },
+    },
+  }),
+  'usa/mercury/ma-9-faith-7': inUnits({
+    ascent: {
+      cutoffAt: {
+        by: -21.37,
+        slack: 0.5,
+        why:
+          'The sustainer reaches 25,736 ft/s (This New Ocean’s 17,547 mph over Bermuda) at T+281.7 s, 21.4 s before the record’s 303.03. Atlas 130-D is flown on Friendship 7’s figures, the ' +
+          'Atlas D’s, none of them 130-D’s (whose “effective specific impulse ... was within, but on the high side, of the tolerance band”, SP-45, p. 103), and Sigma 7’s weights; the speed may ' +
+          'include the posigrades’. Which figure is off is not established; not adjusted',
+        short: 'the Atlas D’s figures, not 130-D’s',
+      },
+    },
+    coast: {
+      alongTrack: {
+        by: 370_964,
+        slack: 10_000,
+        why: `The drogue comes out 371 km beyond where the capsule was picked up, along the track. ${MA9_COAST}`,
+      },
+    },
+    shown: {
+      alongTrack: { by: 590_231, slack: 15_000, why: `590 km beyond the pick-up point along the track. ${MA9_SHOWN}. ${MA9_COAST}` },
+      crossTrack: { by: 36_244, slack: 2_000, why: `36 km to the right of it. ${MA9_SHOWN}` },
+      ejectionAt: { by: 33.86, slack: 2, why: `The drogue out 34 s late. ${MA9_SHOWN}. ${MA9_COAST}` },
+    },
+    descent: {
+      'mercury-capsule.at': {
+        by: 103.92,
+        slack: 4,
+        why:
+          'Down 104 s late. The drogue is out 34 s late, with the coast begun from the ascent; the rest is the main, at the barostat’s height assumed from Sigma 7 (10,600 ft), on the canopy as ' +
+          'derived on Freedom 7, bringing the capsule (Sigma 7’s weight) down at 8.9 m/s where Cooper read “about 34 feet per second”, 10.4. The main’s height and the capsule’s weight are not ' +
+          'MA-9’s own: nothing is changed',
       },
     },
   }),

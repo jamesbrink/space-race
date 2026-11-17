@@ -133,6 +133,39 @@ const UNDOCUMENTED = {
     'separation.push',
     'tower.mass',
   ],
+  // Faith 7's: Friendship 7's Atlas D figures, Sigma 7's weights, the cutoff's height and path worked from the plan,
+  // the inclination Sigma 7's and Aurora 7's, the tower's release the plan's, the separation the transcript's
+  'usa/mercury/ma-9-faith-7': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.guidance.azimuth',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.altitude',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.target.inclination',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.engine.thrust.seaLevel',
+    'atlas.booster.engine.thrust.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.engine.thrust.seaLevel',
+    'atlas.tank.engine.thrust.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'record.liftoffMass',
+    'separation.at',
+    'separation.mass',
+    'separation.push',
+    'tower.mass',
+    'tower.separation',
+  ],
   'ussr/vostok/vostok-1': [
     'ascent.drag.0.area',
     'ascent.drag.0.curve',
@@ -772,7 +805,10 @@ for (const f of part(flown)) {
     assert.ok(off < 1, `round the orbit to the burn, ${off.toFixed(3)} m from the run`);
     // (with a manoeuvre still to come before the burn, which apsides lie ahead is the manoeuvre's: not held)
     const moving = shipOf(plan).moves.some((m) => m.on > start.t && m.on < coastOf(plan).on);
-    assert.ok(moving || (p.apogee && !p.perigee), 'with its apogee marked (a perigee under the ground is not)');
+    // (with its apogee marked where the run passes one before the burn: begun forty minutes before it, Faith 7's does not)
+    const climbing = shown.coast.samples.filter((x) => x.t >= start.t && x.t <= coastOf(plan).on).map((x) => dot(x.r, x.v) > 0);
+    const overApogee = climbing.some((up, k) => k > 0 && climbing[k - 1] && !up);
+    assert.ok(moving || (!p.perigee && (Boolean(p.apogee) || !overApogee)), 'with its apogee marked (a perigee under the ground is not)');
     assert.ok(
       p.events.some((e) => e.kind === 'retro'),
       'and the burn on the way',
@@ -802,7 +838,7 @@ for (const f of part(flown)) {
       `  #   predicted from T+${mid.t.toFixed(0)}, within the burn: ${(kmOff(held) * 1000).toFixed(1)} m from the run with the burn's line as it lit, ${(kmOff(fresh) * 1000).toFixed(1)} m with the line it would light on from there (aimed from the Sun, the line hardly turns in a burn: aimed along the motion it would)`,
     );
     console.log(
-      `  #   predicted from ${late ? 'forty minutes before the burn' : 'separation'}: apogee ${p.apogee ? (p.apogee.altitude / 1000).toFixed(0) : 'none marked'} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
+      `  #   predicted from ${late ? 'forty minutes before the burn' : 'separation'}: apogee ${p.apogee ? `${(p.apogee.altitude / 1000).toFixed(0)} km above the sea` : 'none before the burn'}, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
     );
   });
 
