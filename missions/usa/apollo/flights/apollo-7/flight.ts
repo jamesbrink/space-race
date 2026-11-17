@@ -1,5 +1,7 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
 
+import { cabin, lights } from './cabin.ts';
+
 const KIT = 'NASA Apollo 7 press kit, 68-168K (6 October 1968)';
 const IN = 0.0254;
 const parts: Part[] = [
@@ -11,7 +13,7 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. The common reference places the outer aft apex at Xc −1.30 in, rather than at station zero (NASA TN D-3888, Figure 2, p. 27). Its use for CM-101 and the shared survey is assumed. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. The pressure wall and both nominal bulkheads are visible in cutaway; the full tunnel, remaining furnishings and hatch mechanisms are unfinished; separate three-pane window studies are installed. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. The common reference places the outer aft apex at Xc −1.30 in, rather than at station zero (NASA TN D-3888, Figure 2, p. 27). Its use for CM-101 and the shared survey is assumed. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. The pressure wall and both nominal bulkheads are visible in cutaway; the tunnel and hatch carry estimated fittings; separate three-pane window studies are installed. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
@@ -20,17 +22,17 @@ const parts: Part[] = [
   },
   {
     node: 'SideHatch',
-    name: 'Side-hatch outer cover',
+    name: 'Unified side hatch',
     group: 'Spacecraft',
     order: 2,
     explode: [0, 42, 0],
-    summary: 'The curved thermal cover around the fifth window.',
+    summary: 'The outward-opening crew hatch carries its own round pressure window.',
     detail:
-      'The exterior hatch interface retains the curved CM-107 survey boundary. Its window outline is sectioned from Smithsonian’s measured detached Apollo 11 hatch, then projected onto the nominal CM wall. Shared external Block II hardware is assumed for CM-101. A modern Project Egress reconstruction provides only a rigid pose bridge and outline cross-check; its replica dimensions are not used as flown measurements. Registration residuals are recorded in the source data. This is the outer reference surface, with glazing modelled separately from the cover and with the pressure door, mechanisms and seals unfinished. The later SC106+ lightweight inner-door machining is excluded (NASA TN D-7780, p. 12). The cover stays attached to the CM in the exploded exhibit.',
+      'The exterior hatch interface retains the curved CM-107 survey boundary. Its window outline is sectioned from Smithsonian’s measured detached Apollo 11 hatch, then projected onto the nominal CM wall. Shared external Block II hardware is assumed for CM-101. A modern Project Egress reconstruction provides only a rigid pose bridge and outline cross-check; its replica dimensions are not used as flown measurements. Registration residuals are recorded in the source data. This is the outer reference surface, with separate glazing, an estimated pressure door, latch housings, drive rods and pump handle. Seals and detailed mechanisms are omitted. The later SC106+ lightweight inner-door machining is excluded (NASA TN D-7780, p. 12). The cover stays attached to the CM in the exploded exhibit.',
     facts: [
       ['Window outline', 'Measured CM-107 scan · assumed shared exterior'],
-      ['Inner pressure door', 'Not built; later machining excluded'],
-      ['Glazing', 'Temporary dark closure, not glass'],
+      ['Inner pressure door', 'Estimated CM-101 door and latch linkage'],
+      ['Glazing', 'One thermal pane and two circular pressure panes'],
     ],
   },
   {
@@ -42,7 +44,7 @@ const parts: Part[] = [
     inside: true,
     summary: 'The aluminium pressure boundary inside the heat shield.',
     detail:
-      'The inner wall is a separate structure. Two tapered sections are calculated from published penetration coordinates (NAA A-512S, ST-310A, p. 27), with five other coordinates checking the result. A shallow spherical aft bulkhead uses the 173-inch nominal radius in NASA TN D-6979, Figure 8, p. 9. That report used Block I impact specimens; its three inner-wall reference points independently match the Block II wall, supporting this explicitly assumed common primary geometry for CM-101. It is a reference surface, without invented thickness or fittings. Four window interfaces and the curved outer hatch-frame interface use measured CM-107 structural outlines; the connections to the nominal wall are derived. The flat forward bulkhead uses the published Xc 80.75-inch station and a measured CM-107 tunnel-entry interface; the connecting reveal is derived between those references. The full tunnel, complete hatch frame and remaining equipment are unfinished; separate estimated main-panel instruments and controls are installed. A separate estimated reconstruction supplies Apollo 7’s unitized crew couches. The structure stays with the command module in the exploded exhibit.',
+      'The inner wall is a separate structure. Two tapered sections are calculated from published penetration coordinates (NAA A-512S, ST-310A, p. 27), with five other coordinates checking the result. A shallow spherical aft bulkhead uses the 173-inch nominal radius in NASA TN D-6979, Figure 8, p. 9. That report used Block I impact specimens; its three inner-wall reference points independently match the Block II wall, supporting this explicitly assumed common primary geometry for CM-101. It is a reference surface, without invented thickness or fittings. Four window interfaces and the curved outer hatch-frame interface use measured CM-107 structural outlines; the connections to the nominal wall are derived. The flat forward bulkhead uses the published Xc 80.75-inch station and a measured CM-107 tunnel-entry interface; the connecting reveal is derived between those references. The forward tunnel and separate recovery packs are visible above the cabin; separate estimated main-panel instruments and controls are installed. A separate estimated reconstruction supplies Apollo 7’s unitized crew couches. The structure stays with the command module in the exploded exhibit.',
     facts: [
       ['Wall limits', 'Xc 14.07–80.75 in · common Block II reference'],
       ['Mid-ring', 'Xc 42.665 in · radius 59.6 in'],
@@ -58,7 +60,7 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'Five real openings, each closed by a thermal pane and two pressure panes.',
     detail:
-      'NASA TN D-6721 describes three-pane windows on the first three crewed Apollo flights. Fifteen finite clear panes replace the former opaque closures at full detail. The shared CM-107 structural openings remain unscaled; their edges are not glass measurements. NASA TN D-7439 pp. 4 and 6 gives nominal pressure-pane thicknesses of 0.25 in for side windows, 0.20 in for rendezvous windows and 0.23 in for the hatch, with 0.70-in thermal panes. Applying these common type figures to CM-101 is assumed. The 0.10-in pressure-pair gap follows the NAA News Reference p. 48. Flat pane positions, hidden edge overlap and tint are estimated. The hatch pressure pair uses an estimated plane 1.65 in behind its outer frame and the approximately nine-inch circular opening in the News Reference p. 45; its actual pressure-door contour and mount remain unfinished. Both glass and structural reveals open with the full-vehicle cutaway and stay with the cabin in explosion. Exact seals, retainers, coatings, shades, optical refraction and flight contamination are not reconstructed.',
+      'NASA TN D-6721 describes three-pane windows on the first three crewed Apollo flights. Fifteen finite clear panes replace the former opaque closures at full detail. The shared CM-107 structural openings remain unscaled; their edges are not glass measurements. NASA TN D-7439 pp. 4 and 6 gives nominal pressure-pane thicknesses of 0.25 in for side windows, 0.20 in for rendezvous windows and 0.23 in for the hatch, with 0.70-in thermal panes. Applying these common type figures to CM-101 is assumed. The 0.10-in pressure-pair gap follows the NAA News Reference p. 48. Flat pane positions, hidden edge overlap and tint are estimated. The hatch pressure pair uses an estimated plane 1.65 in behind its outer frame and the approximately nine-inch circular opening in the News Reference p. 45; the pressure-door face and mounts are estimated. Both glass and structural reveals open with the full-vehicle cutaway and stay with the cabin in explosion. Exact seals, retainers, coatings, shades, optical refraction and flight contamination are not reconstructed.',
     facts: [
       ['Arrangement', 'Five assemblies · three panes each · 15 finite panes'],
       ['Thermal pane', '0.70 in · assumed common nominal'],
@@ -148,7 +150,7 @@ const parts: Part[] = [
     inside: true,
     summary: 'Three crew positions on Apollo 7’s common back-support platform.',
     detail:
-      'Apollo 7 flew the unitized couch, before the foldable design used on Apollo 8 and later. NASA TN D-7440, Figures 1, 4, 5 and 7 and pp. 9–10, documents the common box-beam platform, separate headrests and seat/leg assemblies, six-point harnesses, passive heel restraints and honeycomb attenuators in all axes. The SC101-specific CS-2025C plate documents the 96° seat/back flight position. Complete CM-101 machining and installation dimensions were not located: this is a photographic reconstruction, with all sizes, mounting coordinates, back pitch, unoccupied harness pose, sections and colours estimated. The 32 × 22-inch back-pan and 56-inch beam dimensions belong to earlier SC012; their use here is an estimated scale prior, not verified shared hardware. No Apollo 11 couch geometry is imported. The fixed assembly fits the nominal cabin and clears the console, stays whole in cutaway and moves with the CM when taken apart. Hardware internals, adjustment mechanisms, exact pan contours and crew eye positions are unfinished.',
+      'Apollo 7 flew the unitized couch, before the foldable design used on Apollo 8 and later. NASA TN D-7440, Figures 1, 4, 5 and 7 and pp. 9–10, documents the common box-beam platform, separate headrests and seat/leg assemblies, six-point harnesses, passive heel restraints and honeycomb attenuators in all axes. The SC101-specific CS-2025C plate documents the 96° seat/back flight position. Complete CM-101 machining and installation dimensions were not located: this is a photographic reconstruction, with all sizes, mounting coordinates, back pitch, unoccupied harness pose, sections and colours estimated. The 32 × 22-inch back-pan and 56-inch beam dimensions belong to earlier SC012; their use here is an estimated scale prior, not verified shared hardware. No Apollo 11 couch geometry is imported. The fixed assembly fits the nominal cabin and clears the console, stays whole in cutaway and moves with the CM when taken apart. Hardware internals, adjustment mechanisms, exact pan contours and measured crew eye positions remain unknown. Each gallery seat uses the centre of its headrest with an estimated seven-inch eye offset. The press kit places ingress at T−2 h 25 min; the 20-minute boarding interval is estimated.',
     facts: [
       ['Configuration', 'Unitized · documented Apollo 7 flight design'],
       ['Flight position', '96° seat/back · SC101 plate CS-2025C'],
@@ -160,6 +162,28 @@ const parts: Part[] = [
     ],
   },
   {
+    node: 'CabinEquipmentBays',
+    name: 'Equipment bays and navigation optics',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [0, 42, 0],
+    inside: true,
+    summary: 'Cabinets flank the couches, with the navigation station at the crew’s feet.',
+    detail:
+      'The Apollo 7 press kit describes the scanning telescope and sextant used for sightings. The cabinet arrangement follows North American’s News Reference pp. 48–49 and its equipment-bay illustrations. Door divisions, latch fittings, optical housings, cabin installation and finishes are schematic estimates. Individual stowed items, optics drives and bay electronics are omitted.',
+  },
+  {
+    node: 'ForwardCompartment',
+    name: 'Forward tunnel and recovery equipment',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [0, 42, 0],
+    inside: true,
+    summary: 'Three packed main parachutes surround the forward access hatch.',
+    detail:
+      'Two drogues slowed the capsule before three pilot chutes drew out its main parachutes (press kit, Earth Landing System). Each main pack follows the tapered compartment around the access tunnel, as in North American P-131. Two drogue canisters share the fourth quadrant. The tunnel meets the shared measured cabin opening; the approximately 30-inch hatch and six-point latch arrangement follow the News Reference p. 47. Pack shapes, webbing, stations, hatch fittings and colours are estimated. Deployment, recovery electronics and uprighting bags are omitted.',
+  },
+  {
     node: 'ForwardShield',
     name: 'Forward heat shield',
     group: 'Spacecraft',
@@ -167,11 +191,11 @@ const parts: Part[] = [
     explode: [0, 44, 0],
     summary: 'The removable cap over the parachutes and docking tunnel.',
     detail:
-      'The Block II structural drawing places this shield between stations Xc 81.13 and 112.25 inches (NAA A-512S, ST-428A, p. 31). Those common stations are assumed for CM-101. This reconstruction continues the nominal conical wall to the top station; its upper edge fillet is omitted. The nominal 30-inch access opening is shown, but the forward hatch, parachutes and tunnel structure are not yet built. Apollo 7 carried no docking probe.',
+      'The Block II structural drawing places this shield between stations Xc 81.13 and 112.25 inches (NAA A-512S, ST-428A, p. 31). Those common stations are assumed for CM-101. This reconstruction continues the nominal conical wall to the top station; its upper edge fillet is omitted. The shield separates from the access tunnel, hatch and packed parachutes beneath it. Apollo 7 carried no docking probe.',
     facts: [
       ['Forward joint', 'Xc 81.13 in · common Block II reference'],
       ['Top station', 'Xc 112.25 in · excludes docking hardware'],
-      ['Forward hatch', 'Not built; aperture shown'],
+      ['Forward hatch', 'Separate tunnel and hatch'],
     ],
   },
   {
@@ -182,7 +206,7 @@ const parts: Part[] = [
     explode: [0, 39, 0],
     summary: 'The broad face that brought the crew back through the atmosphere.',
     detail:
-      'The command module alone returned to Earth. This surface uses the published 184.8-inch nominal aft spherical radius, assumed common to CM-101. It is visible from both sides, but does not reconstruct the varying ablator thickness or internal structure. The aft joint is at Xc 23.23 inches in the common Block II structural drawing (NAA A-512S, ST-428A, p. 31). Ablator cells and recovery equipment are not built.',
+      'The command module alone returned to Earth. This surface uses the published 184.8-inch nominal aft spherical radius, assumed common to CM-101. It is visible from both sides, but does not reconstruct the varying ablator thickness or internal structure. The aft joint is at Xc 23.23 inches in the common Block II structural drawing (NAA A-512S, ST-428A, p. 31). Individual ablator cells are omitted.',
   },
   {
     node: 'ReactionControl',
@@ -209,7 +233,7 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Power, oxygen and propulsion behind the cabin.',
     detail:
-      'The barrel runs between Apollo stations XA 838 and 993, a 155-inch structure, in the CSM-101 reference drawing. The CM datum is XA 1000. An inner wall and annular rims close its documented one-inch honeycomb skin. Both wall faces, rims, seams and fairing open together in cutaway; the RCS quads, engine and sump-tank reference surfaces remain whole. The provisional solid aft disc has been removed because it crossed the documented tank domes; the real penetrated bulkhead and supports remain unbuilt. The 26-inch-high, 13-foot-diameter CM/SM fairing follows the common Block II handbook envelope; its connection to the nominal curved shield is derived. Radiator pattern, fittings and nozzle profiles remain provisional. Storage tanks, fuel cells and plumbing are not built.',
+      'The 154-inch barrel runs from XA 838 to 993. Six radial beams divide it into pairs of 50°, 60° and 70° sectors around a 44-inch central engine compartment. The two lower cooling panels each cover 130° of the skin and both open with their sectors. Eight fuel-cell radiators alternate with plain panels on the 26-inch CM/SM fairing. NASA photograph S68-42513 shows UNITED STATES in two black lines above a flag on the seam between sectors II and III. Scaled against the barrel, the capitals are about 6.5 inches high and the flag about 7.4 inches high. Marking sizes and placement are photographic estimates. The bulkheads and beam sections are simplified. The propellant tanks, gas bottles and powerplants stay in place when the shell opens.',
     facts: [
       ['Barrel diameter', '154 in · documented'],
       ['Barrel length', '155 in · XA 838–993 reference'],
@@ -218,14 +242,14 @@ const parts: Part[] = [
   },
   {
     node: 'ServiceSumpTanks',
-    name: 'SPS propellant sump-tank references',
+    name: 'SPS propellant tanks',
     group: 'Spacecraft',
     order: 5,
     explode: [0, 34, 0],
     inside: true,
-    summary: 'The two downstream tanks that feed fuel and oxidizer to the main engine.',
+    summary: 'Two storage tanks supply the two sumps that feed the main engine.',
     detail:
-      'MIT R-547, volume III, Table 1.4 (October 1966), gives CSM-101’s preflight sump envelopes: 25.5-inch radius, XA 832–985.8, with fuel at YA −48.3 / ZA −6.6 and oxidizer at YA +48.3 / ZA +6.6 inches. The nominal 153.8-inch height and 51-inch diameter agree with the later Block II handbook p. 2.4-42 and News Reference pp. 56–57. NASA TN D-7375, p. 6, explicitly retains hemispherical heads in Block II. These common nominal surfaces and preflight installation coordinates are assumed for Apollo 7, not an as-built inspection. No manufactured wall or insulation face, retention reservoir, skirts, supports, bosses or plumbing is inferred. The tanks stay with the SM when taken apart. The two upstream storage tanks remain pending: their earlier tabulated height conflicts with the later handbook.',
+      'MIT R-547, volume III, Table 1.4 (October 1966), gives CSM-101’s preflight sump envelopes: 25.5-inch radius, XA 832–985.8, with fuel at YA −48.3 / ZA −6.6 and oxidizer at YA +48.3 / ZA +6.6 inches. The nominal 153.8-inch height and 51-inch diameter agree with the later Block II handbook p. 2.4-42 and News Reference pp. 56–57. NASA TN D-7375, p. 6, explicitly retains hemispherical heads in Block II. These common nominal surfaces and preflight installation coordinates are assumed for Apollo 7, not an as-built inspection. The two upstream tanks retain Table 1.4’s preflight 45-inch diameter and XA832–988.65 envelope, 156.65 inches high. The later handbook gives 154.47 inches. Bosses and transfer lines are schematic.',
     facts: [
       ['Nominal diameter / height', '51 / 153.8 in · shared Block II reference'],
       ['Apollo axial limits', 'XA 832–985.8 in · CSM-101 preflight reference'],
@@ -234,14 +258,37 @@ const parts: Part[] = [
     ],
   },
   {
+    node: 'ServicePower',
+    name: 'Fuel cells and cryogenic storage',
+    group: 'Spacecraft',
+    order: 5,
+    explode: [0, 34, 0],
+    inside: true,
+    summary: 'Three fuel cells drew hydrogen and oxygen from the insulated tanks beneath them.',
+    detail:
+      'Apollo 7’s press kit p. 26a gives the sector arrangement. Three nominal 22 × 44-inch fuel cells, two oxygen dewars and two hydrogen dewars use Block II dimensions from the North American News Reference pp. 100–101, assumed for this ship. The flight report identifies fuel cell 2 inboard. Installation stations, accessories, pipe runs and surfaces are estimates.',
+  },
+  {
+    node: 'ServiceHelium',
+    name: 'SPS helium pressurization',
+    group: 'Spacecraft',
+    order: 5,
+    explode: [0, 34, 0],
+    inside: true,
+    summary: 'Two spheres above the engine held helium for the main propulsion system.',
+    detail:
+      'The central section holds two nominal 40-inch helium tanks, following the North American News Reference, SPS p. 162. Their mounting positions and exterior finish are estimated.',
+  },
+  {
     node: 'ServiceEngine',
     name: 'Service propulsion engine',
     group: 'Spacecraft',
     order: 6,
     explode: [0, 32, 0],
+    inside: true,
     summary: 'The large engine Apollo 7 fired eight times in Earth orbit.',
     detail:
-      'The common Block II extension is 112 inches long with a 94.5-inch exit diameter (NAA News Reference, SPS detailed description, p. 161). The training drawing places its attachment at service-module station Xs 180, 20 inches aft of the barrel bulkhead. The model now uses those nominal dimensions and stations; the intermediate bell contour remains provisional. Injector, chamber, gimbal and feed system are not built. No flight physics is assigned to this geometry.',
+      'The common Block II extension is 112 inches long with a 94.5-inch exit diameter (NAA News Reference, SPS detailed description, p. 162). The training drawing places its attachment at service-module station Xs 180, 20 inches aft of the barrel bulkhead. The model now uses those nominal dimensions and stations; the intermediate bell contour remains provisional. The chamber, injector, gimbal ring, two actuators and feed elbows are visible inside the module. Their outlines and installation are estimated. No flight physics is assigned to this geometry.',
   },
   {
     node: 'LaunchEscape',
@@ -251,7 +298,7 @@ const parts: Part[] = [
     explode: [0, 52, 0],
     summary: 'A truss and solid rocket to pull the cabin clear in an abort.',
     detail:
-      'Four legs carry the escape motor over the command module. The four fixed nozzles use the published 35° cant from the motor axis (NAA Apollo News Reference, p. 140, P-189), explicitly assumed common escape-motor geometry for Apollo 7. Two nozzles lie in the pitch plane and two in yaw (p. 142), between the diagonal tower legs. The 2.75° resultant thrust offset comes from unequal throat areas and is not the nozzle cant. The truss arrangement follows press-kit Figures 25b–25c; member lengths, diameters, nozzle shapes and motor stations remain estimated within the published 224-foot stack. Canards and abort motion are not built.',
+      'Four legs carry the escape motor over the command module. The four fixed nozzles use the published 35° cant from the motor axis (NAA Apollo News Reference, p. 140, P-189), explicitly assumed common escape-motor geometry for Apollo 7. Two nozzles lie in the pitch plane and two in yaw (p. 142), between the diagonal tower legs. The 2.75° resultant thrust offset comes from unequal throat areas and is not the nozzle cant. The truss arrangement follows press-kit Figures 25b–25c; the nominal 10-foot truss uses the published 4-foot and 3-foot square end dimensions. Bay spacing, nozzle shapes and motor stations remain estimated within the published 224-foot stack. Canards and abort motion are not built.',
     facts: [['Nozzle cant', '35° from motor axis · common hardware reference']],
   },
   {
@@ -262,7 +309,7 @@ const parts: Part[] = [
     explode: [0, 52, 0],
     summary: 'The white cover over the command module during ascent.',
     detail:
-      'The cover protects the cabin from the escape-system exhaust and leaves with the escape tower. They move together in the exploded exhibit, exposing the command module without pulling the truss through the cover. Its thickness and exact profile are estimated. Cover windows, access hatch and penetrations are not built.',
+      'The cover protects the cabin from the escape-system exhaust and leaves with the escape tower. They move together in the exploded exhibit, exposing the command module without pulling the truss through the cover. Its thickness and exact profile are estimated. A circular eight-inch viewing port aligns with the commander’s rendezvous window. Cover height and diameter use the common 11-foot and 13-foot envelopes (News Reference pp. 140–142); its shape, glazing and alignment are estimated. Access and blow-out panel details are omitted.',
   },
   {
     node: 'SpacecraftAdapter',
@@ -270,9 +317,18 @@ const parts: Part[] = [
     group: 'Launch vehicle',
     order: 7,
     explode: [0, 21, 0],
+    moves: [
+      // A sequenced part owns its translation as well as its hinges. Match
+      // the other stage lifts: order 7 of 13 starts at 7/26 and takes half the slider.
+      { kind: 'slide', by: [0, 21, 0], from: 7 / 26, to: 20 / 26 },
+      { kind: 'swing', node: 'SLA_Door_0', axis: [0, 0, -1], angle: Math.PI / 4, from: 0.58, to: 0.89 },
+      { kind: 'swing', node: 'SLA_Door_1', axis: [-1, 0, 0], angle: Math.PI / 4, from: 0.58, to: 0.89 },
+      { kind: 'swing', node: 'SLA_Door_2', axis: [0, 0, 1], angle: Math.PI / 4, from: 0.58, to: 0.89 },
+      { kind: 'swing', node: 'SLA_Door_3', axis: [1, 0, 0], angle: Math.PI / 4, from: 0.58, to: 0.89 },
+    ],
     summary: 'The tapered adapter, empty of a lunar module on Apollo 7.',
     detail:
-      'A 28-foot adapter tapers from 260 to 154 inches (press kit p. 26). Its four panels are closed here. The panel division into fixed aft skirt and hinged forward sections, the docking target, internal structure and opening mechanisms are not built; seam stations are estimated.',
+      'A 28-foot adapter tapers from 260 to 154 inches (press kit p. 26). The 1.75-inch honeycomb panels divide into a nominal seven-foot aft section and four 21-foot hinged doors. Apollo 7 retained all four doors. Three appeared open about 45° and the +Y door about 25° in revolution 2; all four appeared near 45° by revolution 19 (Mission Report §11.7, Adapter Panel Deployment). The slider shows this final spread after the spacecraft clears the top. Hinge line, motion timing and seams are estimated. The optical docking target and cable mechanisms are omitted.',
   },
   {
     node: 'InstrumentUnit',
@@ -282,7 +338,18 @@ const parts: Part[] = [
     explode: [0, 19, 0],
     summary: 'The launch vehicle’s guidance ring, above the S-IVB.',
     detail:
-      'The press kit gives a 36-inch height and 260-inch diameter (p. 33). This first exterior has no internal electronics, access doors or antennas. Paint and stations are estimated from the launch photograph.',
+      'The press kit gives a 36-inch height and 260-inch diameter (p. 33). Its cutaway exposes instrument cases and guidance equipment in three rack sectors. Paint and stations are estimated from the launch photograph.',
+  },
+  {
+    node: 'InstrumentUnitEquipment',
+    name: 'Guidance and instrument racks',
+    group: 'Launch vehicle',
+    order: 8,
+    explode: [0, 19, 0],
+    inside: true,
+    summary: 'The instrument ring carries the launch vehicle computer, its data adapter and inertial platform.',
+    detail:
+      'The equipment positions follow the SA-205 layout in the Saturn IB checklist, Figure 11. Computer and adapter cases, batteries and the ST-124 enclosure follow the rack groupings. Their envelopes, depths and finishes are estimated.',
   },
   {
     node: 'SaturnSecondStage',
@@ -292,7 +359,7 @@ const parts: Part[] = [
     explode: [0, 15, 0],
     summary: 'The hydrogen–oxygen upper stage that Apollo 7 later rendezvoused with.',
     detail:
-      'The press kit gives a 58.4-foot stage envelope, including the aft interstage. Its separation plane now follows rounded vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. The USA capitals are reconstructed at about 40 inches high, estimated from NASA S68-50712; their height, width, pitch and placement are photographic estimates, with a substitute sans typeface. Other barrel subdivisions, raised stiffeners and auxiliary-propulsion housings remain provisional. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
+      'The press kit gives a 58.4-foot stage envelope, including the aft interstage. Its separation plane now follows rounded vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. The USA capitals are reconstructed at about 40 inches high, estimated from NASA S68-50712; their height, width, pitch and placement are photographic estimates, with a substitute sans typeface. Other barrel subdivisions, raised stiffeners and auxiliary-propulsion housings remain provisional. The first study’s four unsourced conduits have been removed; the Douglas drawing locates the tunnel, whose exterior fairing remains omitted. The cutaway exposes the tank domes, common bulkhead and helium bottles. Detailed vents and ullage rockets remain omitted.',
   },
   {
     node: 'SecondStageEngine',
@@ -300,10 +367,22 @@ const parts: Part[] = [
     group: 'Launch vehicle',
     order: 10,
     explode: [0, 11, 0],
+    inside: true,
     summary: 'One hydrogen-burning engine inside the aft interstage.',
     detail:
-      'The single J-2 has a hollow bell with the nominal 77-inch inside exit diameter in the Saturn IB News Reference, J-2 Engine Fact Sheet (changed December 1967). Its 133-inch overall engine length is not used as a nozzle length. Bell contour, axial extent, mounting station and inherited display rim remain provisional. No thrust, mixture or burn duration is assigned to the model.',
+      'The single J-2 has a hollow bell with the nominal 77-inch inside exit diameter in the Saturn IB News Reference, J-2 Engine Fact Sheet (changed December 1967). Its 133-inch overall engine length is not used as a nozzle length. The S-IVB-205 drawing, Douglas SM-46978A Figure AP 2-1, puts the nozzle exit at local DS −16 and gimbal at DS 100. Intermediate contours and fittings are estimated. No thrust, mixture or burn duration is assigned to the model.',
     facts: [['Nozzle exit', '77 in inside diameter · period hardware reference']],
+  },
+  {
+    node: 'SecondStageTankStructure',
+    name: 'S-IVB tanks and thrust structure',
+    group: 'Launch vehicle',
+    order: 9,
+    explode: [0, 15, 0],
+    inside: true,
+    summary: 'A common bulkhead separates the oxygen tank from the much larger hydrogen tank.',
+    detail:
+      'Douglas SM-46978A, Fig. AP 2-1, gives the S-IVB-205 tank and engine stations. The cutaway reveals both domes, the common bulkhead, four oxygen slosh rings, eight helium bottles and the thrust cone above the J-2. Baffle spacing, support sections and surface finishes are estimated.',
   },
   {
     node: 'SaturnInterstage',
@@ -324,7 +403,18 @@ const parts: Part[] = [
     explode: [0, 0, 0],
     summary: 'Nine clustered tanks and eight swept fins.',
     detail:
-      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. UNITED STATES is on white fields on those black fuel tanks, as photographed on SA-205 in NASA S68-29781. Its approximately 36-inch capital height, field boundaries, spacing and placement are photographic estimates; the lighter sans typeface is a substitute. Eight fins surround the thrust skirt. Their lines now coincide with the inboard and outboard engine planes, as in the August 1968 Saturn IB checklist, Figure 25. Tank end stations, cluster pitch radius, fin profiles, fittings, paint boundaries and absolute clocking relative to the spacecraft remain provisional.',
+      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. UNITED STATES is on white fields on those black fuel tanks, as photographed on SA-205 in NASA S68-29781. Its approximately 36-inch capital height, field boundaries, spacing and placement are photographic estimates; the lighter sans typeface is a substitute. The fins span 40.7 ft across a 22.8-ft tail unit (MSFC M10-1076, p. 4-2). Their 100/40-inch root/tip chords and maximum thicknesses follow the Saturn IB type drawing (NASA TP-3615, Figure 39), assumed for SA-205. The light fin faces and dark shroud are estimated from NASA S68-29781; the fin feet and markings are omitted. Their lines now coincide with the inboard and outboard engine planes, as in the August 1968 Saturn IB checklist, Figure 25. Tank end stations, cluster pitch radius, fin section details, fittings, paint boundaries and absolute clocking relative to the spacecraft remain provisional.',
+  },
+  {
+    node: 'FirstStageTankStructure',
+    name: 'S-IB tank structure and feed lines',
+    group: 'Launch vehicle',
+    order: 12,
+    explode: [0, 0, 0],
+    inside: true,
+    summary: 'Nine tanks feed eight engines through the thrust structure.',
+    detail:
+      'The 1968 Saturn IB mission checklist, Figures 5 and 6, shows the clustered tank domes, baffles, suction lines and spider beam. Tank diameters are published. Weld stations, small tubing sections, fittings and colours are estimated from the period cutaways.',
   },
   {
     node: 'FirstStageEngines',
@@ -334,7 +424,7 @@ const parts: Part[] = [
     explode: [0, -4, 0],
     summary: 'Four inboard and four outboard engines under the tank cluster.',
     detail:
-      'Eight H-1 engines burn kerosene and liquid oxygen. The August 1968 Saturn IB checklist, p. 4-8, places the four inboard gimbals on a 32-inch radius with 3° outward cant, and the four outboard gimbals on a 95-inch radius with 6° outward cant. Figure 1 puts the gimbals at vehicle station 100 inches; Figure 25 fixes their relative clocking. The radii apply at the gimbals, not at the nozzle exits. Their hollow bells retain the nominal 46-inch inside exit diameter from the period News Reference. Bell contours, exit and chamber stations, display rims and absolute clocking relative to the spacecraft remain provisional; the 102-inch overall engine length is not a nozzle length. Gimbal hardware, turbopumps, plumbing and exhaust ducts are not built.',
+      'Eight H-1 engines burn kerosene and liquid oxygen. The August 1968 Saturn IB checklist, p. 4-8, places the four inboard gimbals on a 32-inch radius with 3° outward cant, and the four outboard gimbals on a 95-inch radius with 6° outward cant. Figure 1 puts the gimbals at vehicle station 100 inches; Figure 25 fixes their relative clocking. The radii apply at the gimbals, not at the nozzle exits. Their hollow bells retain the nominal 46-inch inside exit diameter from the period News Reference. Bell contours, exit and chamber stations, display rims and absolute clocking relative to the spacecraft remain provisional; the 102-inch overall engine length is not a nozzle length. The pump cases and manifolds are estimated exterior reconstructions.',
     facts: [
       ['Inboard mounting', '32 in radius · 3° outward cant'],
       ['Outboard mounting', '95 in radius · 6° outward cant'],
@@ -357,10 +447,10 @@ export const flight: Flight = {
   launchSite: 'Launch Complex 34, Cape Kennedy',
   crew: ['Walter M. Schirra, Jr.', 'Donn F. Eisele', 'R. Walter Cunningham'],
   summary:
-    'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Work in progress: an exterior and cabin study; the launch site, complete cabin and flight simulation are not built yet.',
+    'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Explore the stage interiors, spacecraft and three crew positions in the gallery.',
   facts: [
     { label: 'Spacecraft', value: 'CSM-101 · no lunar module' },
-    { label: 'Model status', value: 'Exterior and cabin study · equipment estimated' },
+    { label: 'Model status', value: 'Gallery and seated cabin · detailed cutaway' },
   ],
   timeline: [],
   specs: [
@@ -371,6 +461,22 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'documented',
       note: `${KIT}, p. 32: 80.2 ft; rounded envelope, tank and skirt stations estimated`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB span across fins',
+      value: 40.7 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'MSFC Flight Mission Directive, Apollo-Saturn 205 Mission, M10-1076, p. 4-2: 40.7 ft across opposed fins, rounded preflight envelope',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB tail unit diameter',
+      value: 22.8 * 12 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'MSFC M10-1076, p. 4-2: 22.8 ft at the tail unit assembly, rounded preflight envelope',
     },
     {
       group: 'Launch vehicle',
@@ -578,7 +684,7 @@ export const flight: Flight = {
       value: 112 * IN,
       unit: 'm',
       confidence: 'assumed',
-      note: 'NAA Apollo News Reference, Service Propulsion, p. 161: 112 in, common Block II hardware assumed for CM-101; contour remains provisional',
+      note: 'NAA Apollo News Reference, Service Propulsion, p. 162: 112 in, common Block II hardware assumed for CM-101; contour remains provisional',
     },
     {
       group: 'Spacecraft',
@@ -586,7 +692,7 @@ export const flight: Flight = {
       value: 94.5 * IN,
       unit: 'm',
       confidence: 'assumed',
-      note: 'NAA Apollo News Reference, Service Propulsion, p. 161: 94.5 in, common Block II hardware assumed for CM-101',
+      note: 'NAA Apollo News Reference, Service Propulsion, p. 162: 94.5 in, common Block II hardware assumed for CM-101',
     },
     {
       group: 'Spacecraft',
@@ -885,13 +991,30 @@ export const flight: Flight = {
       url: 'models/usa/apollo/apollo-7/vehicle.glb',
       backdrop: 'studio',
       cutaway: true,
+      cabin,
+      lights,
+      seats: [
+        { node: 'Seat_Commander', label: 'Schirra’s left couch', from: 'SideHatch', open: [-8700, -7500] },
+        { node: 'Seat_CommandModulePilot', label: 'Eisele’s centre couch', from: 'SideHatch', open: [-8700, -7500] },
+        { node: 'Seat_LunarModulePilot', label: 'Cunningham’s right couch', from: 'SideHatch', open: [-8700, -7500] },
+      ],
       scale: '224 ft / 68.2752 m stack · published rounded envelope · surface detail estimated',
       slider: ['Assembled', 'Taken apart'],
       views: [
         {
           id: 'launcher',
           label: 'Saturn IB',
-          nodes: ['SaturnFirstStage', 'SaturnSecondStage', 'SaturnInterstage', 'FirstStageEngines', 'SecondStageEngine'],
+          nodes: [
+            'SaturnFirstStage',
+            'SaturnSecondStage',
+            'SaturnInterstage',
+            'FirstStageEngines',
+            'SecondStageEngine',
+            'FirstStageTankStructure',
+            'SecondStageTankStructure',
+            'InstrumentUnit',
+            'InstrumentUnitEquipment',
+          ],
         },
         { id: 'escape', label: 'Escape system', nodes: ['LaunchEscape', 'BoostCover'] },
         {
@@ -907,10 +1030,14 @@ export const flight: Flight = {
             'ConsoleEquipment',
             'DSKYFrontWeb',
             'CrewCouches',
+            'CabinEquipmentBays',
             'HeatShield',
             'ForwardShield',
+            'ForwardCompartment',
             'ServiceModule',
             'ServiceSumpTanks',
+            'ServicePower',
+            'ServiceHelium',
             'ReactionControl',
             'ServiceEngine',
           ],
@@ -928,8 +1055,10 @@ export const flight: Flight = {
             'ConsoleEquipment',
             'DSKYFrontWeb',
             'CrewCouches',
+            'CabinEquipmentBays',
             'HeatShield',
             'ForwardShield',
+            'ForwardCompartment',
           ],
           from: [1, 0.3, 0.3],
         },
@@ -941,7 +1070,7 @@ export const flight: Flight = {
         },
         { id: 'dsky', label: 'DSKY', nodes: ['DSKYFrontWeb'], from: [0.3, -1, 0] },
         { id: 'couches', label: 'Crew couches', nodes: ['CrewCouches'], from: [-1, 0.8, 0.6] },
-        { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
+        { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [-1, -0.35, 1] },
       ],
       parts,
     },

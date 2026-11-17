@@ -45,12 +45,7 @@ do not create false wrinkles in the metal.
 - The aft shield is its nominal outer spherical surface, visible from either side;
   its varying ablator thickness and internal structure are not reconstructed.
 - The window reveals are derived interpolations; the [glazing](windows.md) has estimated installation depths. Detailed retainers and seals remain unbuilt.
-- The side hatch, forward hatch, recovery equipment and furnished cabin remain
-  incomplete: only the side hatch's nominal outer cover and window reference
-  are built. The separate [pressure-vessel sidewall](pressure-vessel.md) now appears
-  in structural cutaway with both nominal bulkheads; the full tunnel is pending.
-  A [blank main-console reference](main-console.md) now establishes the common
-  structural silhouette, without equipment or inferred panel thickness.
+- The registered hatch cover encloses a separate estimated pressure door and latch mechanism. The tunnel, recovery packs and seated cabin have separate geometry. Detailed hinges, thermal tape, fasteners and pressure seals are omitted. [Cabin and recovery hardware](../flights/apollo-7/spacecraft.md).
 - No Apollo 11 photographs, surface damage, labels or equipment are copied.
 
 ## Top-station source conflict

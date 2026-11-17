@@ -105,13 +105,11 @@ cutaway. Neither a pressure-wall thickness nor the full tunnel contour is inferr
 - The nominal aft bulkhead is assumed from the earlier primary-structure
   reference above; its detailed construction and transitions remain unbuilt.
   The forward bulkhead is a flat reference skin with a derived entry transition;
-  its thickness and penetrations are unbuilt. The full pressure tunnel remains
-  unbuilt. The incomplete shell must not be used as a collision enclosure.
+  its thickness and penetrations are unbuilt. The forward compartment extends the tunnel to an estimated hatch station. The incomplete shell must not be used as a collision enclosure.
 - Window connections are derived between two references, not surveyed frame
   solids. A tilted rendezvous frame intersects the nominal cone: its connector
   is split at that intersection to avoid a folded, overlapping face.
-- The complete hatch frame, door, glazing, couches, controls and equipment are
-  not yet built. The cutaway is structural, not a finished inhabitable cabin.
+- The pressure-boundary mesh carries no fittings. Separate cabin parts supply the door, glazing, couches, controls and equipment.
 - No Apollo 11 equipment, couch pose, photographic texture or post-entry damage
   is copied into Apollo 7.
 

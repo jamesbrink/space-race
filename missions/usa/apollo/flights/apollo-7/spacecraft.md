@@ -1,4 +1,4 @@
-# CSM-101 — Apollo 7 exterior study
+# CSM-101 — Apollo 7 gallery model
 
 Source: NASA *Apollo 7 press kit*, 68-168K, pp. 25–27, Figures 25b and 25d.
 The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and multiplies by
@@ -21,7 +21,7 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 | CM/SM fairing height / diameter | 26 / 156 in | assumed common Block II, AOH volume 1, p. 1-49 |
 | SPS extension attachment, Xs | 180 in | assumed common hardware, NAA 1967 ST-304C / 1969 ST-304A |
 | SM aft bulkhead, Xs | 200 in | same plates; the flange is 20 in aft of the bulkhead |
-| SPS extension length / exit diameter | 112 / 94.5 in | assumed common Block II, NAA News Reference, SPS p. 161 |
+| SPS extension length / exit diameter | 112 / 94.5 in | assumed common Block II, NAA News Reference, SPS p. 162 |
 
 Station XA is the integrated Apollo coordinate, Xs the service-module coordinate,
 and Xc the command-module coordinate. Dimensions remain in their published inches.
@@ -36,7 +36,7 @@ The aft CM uses the nominal spherical surface, rounded shoulder and 33° conical
 wall. See [the reconstruction](../../vehicles/command-module.md). Its aft and forward
 shields split at the Block II stations above. The nominal cone continues to the
 forward top station; its edge fillet remains omitted. The 30-inch forward opening
-is shown without an invented pressure hatch or tunnel.
+surrounds the combined forward hatch.
 
 Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 **assumed shared Block II hardware**, with provenance and limitations in
@@ -44,7 +44,7 @@ Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 projections between the survey and nominal skin. The separately delineated curved
 hatch cover now has an outer window reference sectioned from Smithsonian's measured
 detached CM-107 hatch. Its pose and connection to the nominal cone are derived,
-with residuals recorded; the pressure door and glazing are not yet built.
+with residuals recorded. The separate door and glazing follow the construction described below.
 The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
 The detailed RCS reference follows CSM-101's preflight Table 1.3 in R-547 volume
 III. The hatch is on the −Z side in the press kit's p. 25d axis diagram. In the
@@ -59,137 +59,22 @@ not establish manufactured housing or individual mouth positions: those,
 brackets, bell contours, panel colouring and seams remain provisional.
 The six internal sectors are **not** six equal exterior panels:
 p. 26a specifies 50°/70°/60° pairs, and NAA A-512S ST-3057 p. 67 separately
-identifies four sector panels and four RCS panels. The provisional shell's seam
-and radiator pattern is not promoted to that documented layout.
+identifies four sector panels and four RCS panels. The radiator areas and remaining uncertainty are recorded in the service-module notes.
 
-## Simplifications and things still wrong
+## Cabin and recovery compartment
 
-- The cabin pressure-vessel sidewall and both nominal bulkheads are built, with an estimated
-  reconstruction of Apollo 7's unitized couches. The full tunnel, glazing, instruments,
-  astronaut figures and remaining internal equipment are unbuilt.
-- All five outer openings have temporary dark closures, not glass. ST-503A
-  (NAA A-512S, p. 41) shows a rounded-square outer hatch pane and a circular inner
-  pressure window. The outer reference is built; the inner window and both glazing
-  assemblies remain unbuilt.
-- The side hatch has a separate outer cover, without its complete pressure door,
-  sill, hinge, handles or opening motion. Later SC106+ inner-door machining is excluded.
-- No CM attitude-control ports, umbilical fittings, antennas, recovery system or detailed thermal tape.
-- Two nominal SPS sump-tank reference surfaces are built. Storage tanks, helium
-  tanks, fuel cells, plumbing, gimbal and engine injector remain unbuilt. The
-  references are not complete manufactured tank/wall/insulation models.
-- Radiator panel layout and intermediate SPS contour remain estimated. Barrel ends,
-  engine attachment station and extension bounds now use the structural references above.
-- No lunar docking probe, lunar module or deployed lunar high-gain antenna is added.
-- No mass, thrust or aerodynamic data has been assigned for simulation.
+NAR’s *Apollo News Reference*, pp. 45–49, shows the outward-opening side hatch, round pressure window, combined forward hatch and the positions of the equipment bays relative to the couches. The reconstructed pressure door follows the registered fixed aperture at its perimeter. The door face, fifteen latch housings, exposed linkage and pump handle follow the earlier unified-hatch arrangement in JPL TM 33-425, figure 2. Their mountings and sections are estimated. The representation omits the later lightweight inner-door pockets, door seals, counterbalance details and hatch operation.
 
-## Launch assembly
+The three stacked glass panes in each window use type-specific thicknesses. [Window sources and estimated installation geometry](../../vehicles/windows.md). The lower equipment bay contains simplified optical eyepieces. Left and right cabinet faces, catches, compartments and colours follow the arrangement in the News Reference equipment-bay illustrations, pp. 51–55. Cabinet sizes and door divisions are estimated. The panel, [unpowered DSKY](../../vehicles/dsky-front.md), [flight-director instruments](../../vehicles/fdai.md) and [unitized couches](../../vehicles/unitized-couch.md) have separate hardware records.
 
-The full stack is recorded in `../../vehicles/saturn-ib.md`. The CSM origin in the assembled
-model is raised by 1903.2 in so that its barrel meets the adapter at Z2035.2 in.
-The boost protective cover remains a provisional fit envelope. Its lower contour now
-follows the corrected nominal body, retaining the original estimated 1.4-inch radial
-stand-off to prevent interference. This is not a sourced construction thickness or mould line.
-The escape tower has four legs, three braced bays, four simplified motor nozzles and a
-motor ending at the 224-foot full-stack envelope. Its structure and motor stations remain estimates
-from Figures 25a–25c. The nozzle axes now use the published 35° cant from the motor
-axis (NAA News Reference, p. 140, P-189), explicitly assumed common hardware for Apollo 7;
-their contours and coordinates remain provisional. See [launch-escape.md](../../vehicles/launch-escape.md).
-The legacy tower envelope is retained independently of the
-corrected CM top until its dimensioned structural reconstruction is complete. The tower and cover lift as one assembly in the exploded exhibit,
-as the cover did with the tower during jettison. The RCS quads stay attached to the SM:
-sliding them axially along its skin made their mounts pass through the wall.
+The forward tunnel joins the common measured entry to the nominal 30-inch forward hatch. Its 108-inch top station, wall section and six-latch detail are estimates. The Apollo 7 press kit describes the two 16.5-ft drogues, three pilots and three 83.3-ft main parachutes. The three stowed main packs occupy separate sectors around the tunnel, with deployment webbing and five canisters. Their outlines and positions follow North American’s Earth Landing illustration P-131, printed p. 93; individual CM-101 pack dimensions were unavailable. No docking probe is installed.
 
-The exhibit offsets are chosen presentation distances in metres, not spacecraft dimensions
-or a simulation of historical separation trajectories. The tower's provisional lower bay
-intersects the provisional CM skin at assembly; this remains a geometry defect to resolve
-against dimensioned drawings, not an accurate attachment reconstruction.
+## Service and launch vehicles
 
-Additional omissions: cover windows and access hatch, penetrations, thermal seals,
-canards, pitch-control and jettison nozzles, detailed tower attachment fittings and abort motion.
+The [service module](../../vehicles/service-tanks.md) carries its four SPS tanks, central helium bottles, cryogenic tanks, fuel cells, penetrated bulkheads, gimbal hardware and engine. [Saturn hardware](../../vehicles/saturn-ib.md) records the tank stations, baffles, thrust structures, engines and instrument bay. The [escape-system record](../../vehicles/launch-escape.md) describes the tower proportions and commander’s viewing port.
 
-## Shell correction
+The 1.75-inch honeycomb adapter comes from the Apollo 7 press kit, p. 26. The North American News Reference, p. 66, describes four roughly seven-foot aft panels and four 21-foot upper panels. The mission report’s “Adapter panel deployment” discussion records the four attached panels reaching about 45° by revolution 19. The gallery uses this angle after spacecraft clearance. Hinge placement and slider timing are estimates.
 
-The SM now has an inward-facing wall and annular edges at the published one-inch shell
-thickness (Apollo 7 press kit, p. 26; also Apollo Operations Handbook, Block II, volume 1,
-p. 1-49). This replaces the single surface which disappeared from behind in the first
-exploded preview. Two nominal sump-tank surfaces now establish part of the
-tankage; the remaining tanks and internal structure are still pending.
+## Simplifications
 
-The service-module shell also participates in the normal gallery cutaway. Both
-wall faces, annular rims, seam tubes and CM/SM fairing carry the same shell flag.
-The RCS quads, engine and sump-tank references are separate nodes and are not
-clipped. Switching cutaway off restores every shell surface, with the existing
-inner wall retained for views from behind. The provisional solid aft disc is
-removed because it intersected the tank domes; the real penetrated aft structure
-and supports remain pending.
-
-## SPS sump-tank reference surfaces
-
-The two references use the CSM-101 preflight sump dimensions in MIT R-547,
-volume III, Table 1.4, printed p. 1-19: radius 25.5 in, XA832–985.8, fuel
-YA−48.3/ZA−6.6 and oxidizer YA+48.3/ZA+6.6. The nominal 153.8-in height and
-51-in diameter agree with later Block II references, and NASA TN D-7375 p. 6
-explicitly retains hemispherical heads. These nominal surfaces and preflight
-installation coordinates are assumed for Apollo 7, not an as-built inspection.
-See [service-tanks.md](../../vehicles/service-tanks.md) for the source comparison,
-coordinate mapping, unresolved manufactured wall datum and the storage-tank
-height conflict. The tanks move with the SM during explosion; their mountings
-and internal equipment are not invented.
-
-Window construction and the unresolved mounting references are recorded in
-[windows.md](../../vehicles/windows.md). Published pane thicknesses do not, by
-themselves, establish where to put those panes in the ship.
-
-## Pressure vessel and structural cutaway
-
-The separate inner wall uses the published Block II penetration coordinates and
-wall limits, with fixed frame interfaces from Smithsonian's measured CM-107 hull.
-See [pressure-vessel.md](../../vehicles/pressure-vessel.md) for each source figure,
-the two generator calculations, independent coordinate checks, nominal 173-inch
-aft-bulkhead radius and flat forward-bulkhead reconstruction. The earlier floor
-reference is explicitly assumed common structure, supported by matching wall points.
-The forward roof joins a measured tunnel-entry interface with a derived reveal.
-These are bare reference surfaces with no invented thickness. The `CabinStructure` node
-moves with `CommandModule`; it is visible only at full detail. Selecting it opens
-the normal cutaway. A structural cutaway is not yet a furnished, seated cabin.
-
-## DSKY front-web subset
-
-A nominal front-web reference for the shared 2004739-001 cover is now installed
-on the main-console reference. Its 6.900 × 8.000-inch envelope and nominal
-.050-inch sheet are source-based references; .050 is the midpoint of the stock
-drawing's .04–.06-inch web section, not the complete machined cover's depth.
-The nineteen keyboard clearances, two display openings and central clearance
-remain open. The common CM-107 metal front supplies a rigid reference pose
-without scaling; its projected volume masks the blank console to avoid overlap.
-This is not the real panel's machined aperture or an as-built CM-101 installation.
-The web remains whole in cutaway and moves with the CM in the exploded exhibit.
-[The hardware record](../../vehicles/dsky-front.md) distinguishes the primary
-drawings, secondary CAD, nominal fillet simplifications and all omissions.
-Keys, display covers, glazing, labels, electronics and the complete cover/housing
-are not built.
-
-## Unitized crew couches
-
-`CrewCouches` adds Apollo 7's common three-person box-beam platform, separate
-headrests and rigid seat/leg assemblies, six-point restraints and passive heel
-hardware. Configuration and the 96° SC101 flight position are documented;
-**all CM-101 sizes and installation coordinates are estimated**. The 32 × 22-inch
-back-pan and 56-inch beam values are earlier SC012 dimensions used only as
-estimated scale priors. See [unitized-couch.md](../../vehicles/unitized-couch.md)
-for the photographic basis, source-inch table and omissions. Geometry is checked
-against the nominal pressure wall, spherical floor and console. The assembly
-remains whole in cutaway and shares the CM's exploded displacement. No later
-foldable couch, crew-eye position or load-attenuation physics is inferred.
-
-## Main-panel equipment
-
-[The equipment study](../../vehicles/console-equipment.md) registers CM-101's own
-design layout to the existing shared structural plane. It supplies separate FDAI
-fronts, meter fronts, control rows, warning lenses, an EMS facade and timer window.
-**All new equipment dimensions, installation and colours are estimated.** The
-unchanged fixed FDAI interfaces are the structural reference, not proof of later
-instrument interchangeability. The later 4.5-inch ball diameter is only an
-estimated CM-101 prior. Controls and scales are static exhibit references, not
-calibrated instruments or simulated readings. Complete DSKY, side consoles and
-remaining cabin equipment still need reconstruction.
+The model omits individual stowage items, suits, wiring harnesses, fine thermal tape, large portions of the aft equipment bay, detailed CM reaction-control ports, umbilicals and parachute deployment. Switches, instrument settings, bay fittings and some nozzle contours are schematic. Eye positions and lighting are exhibit estimates. No masses, motor dynamics or simulation inputs derive from the visual estimates.

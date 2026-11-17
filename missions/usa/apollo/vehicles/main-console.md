@@ -131,9 +131,7 @@ remain limitations; source uncertainty must not be confused with this small marg
 - Planar reference surfaces, not complete manufactured panels: instrument
   cutouts are filled except for the two source FDAI interfaces and derived DSKY mask, and individual
   joints and fine perimeter details are unresolved.
-- Manufactured thickness, rear enclosure, supports, fasteners, side consoles,
-  instruments, switches, labels, lighting and wiring are not built. The separate
-  DSKY front-web reference is a first interface subset, not an equipped instrument.
+- Manufactured thickness, rear enclosure, supports, fasteners, individual legends and wiring remain incomplete. The separate instrument, control and DSKY parts are described in the equipment notes.
 - The derivative's processing and registration limit measurement claims. No
   as-built CM-101 panel inspection or machining drawing has been read.
 - Colour is a display material; no flight paint specification is claimed.

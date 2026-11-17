@@ -11,10 +11,13 @@ import math
 
 from mathutils import Vector
 
+import cabin_bays
 import command_module
 import console_equipment
 import dsky_equipment
 import dsky_front
+import forward_compartment
+import hatch_interior
 import main_console
 import pressure_vessel
 import service_tanks
@@ -100,7 +103,6 @@ def build(offset=0):
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
     dark = material("apollo-nozzle", (0.13, 0.14, 0.15), metallic=0.55, roughness=0.65)
-    seam = material("apollo-joints", (0.12, 0.14, 0.15), roughness=0.6)
     void = material("window-void-apollo", (0.012, 0.025, 0.035), roughness=0.25)
     groups = {
         name: group(name)
@@ -114,68 +116,32 @@ def build(offset=0):
             "ConsoleEquipment",
             "DSKYFrontWeb",
             "CrewCouches",
+            "CabinEquipmentBays",
             "HeatShield",
             "ForwardShield",
+            "ForwardCompartment",
             "ServiceModule",
             "ServiceSumpTanks",
+            "ServicePower",
+            "ServiceHelium",
             "ServiceEngine",
             "ReactionControl",
         )
     }
     sm = groups["ServiceModule"]
 
-    def panel_lathe(name, profile, paint):
-        """Retain mating panel edges at every level of detail.
-
-        The barrel keeps 24 four-segment sectors. Independently decimating its
-        annuli and the fairing would overlap at their shared R77 boundary.
-        """
-        mesh = MeshBuilder()
-        for sector in range(24):
-            mesh.lathe(prof(profile), segs=4, arc=(TAU * sector / 24, TAU * (sector + 1) / 24))
-        return mesh.build(name, paint, sm)
-
-    # Engine begins at Z0, shell starts above it: no false 22-foot cylindrical barrel.
-    z0 = SM_BOTTOM
-    rings = (z0, z0 + 15, z0 + 58, SM_TOP - 16, SM_TOP)
-    heights = sorted({z0, SM_TOP, *[z + d for z in rings for d in (-0.3, 0.3) if z0 < z + d < SM_TOP]})
-    for i in range(24):
-        a0, a1 = TAU * i / 24, TAU * (i + 1) / 24
-        for lo, hi in zip(heights, heights[1:]):
-            mid = (lo + hi) / 2
-            radiator = mid < z0 + 58 and i % 6 in (1, 2, 3, 4) or mid > SM_TOP - 16
-            paint = seam if any(abs(mid - z) < 0.31 for z in rings) else white if radiator else silver
-            mesh = MeshBuilder()
-            mesh.lathe(prof([(RADIUS, lo), (RADIUS, hi)]), segs=4, arc=(a0, a1))
-            mesh.build(f"SM_Panel_{i}_{lo}", paint, sm)
-    # Apollo 7 press kit, p. 26: 1-inch aluminium honeycomb shell.
-    # A real inner wall and annular edges, not a two-sided paint sheet.
-    panel_lathe("SM_InnerWall", [(RADIUS - 1, SM_TOP), (RADIUS - 1, z0)], white)
-    panel_lathe("SM_LowerRim", [(RADIUS - 1, z0), (RADIUS, z0)], silver)
-    panel_lathe("SM_UpperRim", [(RADIUS, SM_TOP), (RADIUS - 1, SM_TOP)], silver)
-    for i in range(6):
-        a = TAU * i / 6
-        tube(f"SM_Seam_{i}", radial(77.2, a, z0 + 1), radial(77.2, a, SM_TOP - 1), 0.18, seam, sm)
-    # The old solid disc crossed the documented sump domes (XA832..985.8).
-    # The real aft structure has penetrations and tank supports. Leave it
-    # absent until their profiles are sourced rather than cap the tankage.
-    # The published fairing bridges the barrel and nominal aft shield. The
-    # annular closure is derived from those envelopes; seals and beams await
-    # reconstruction. A two-sided surface does not invent laminate thickness.
-    fairing = material("apollo-cm-sm-fairing", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33, double_sided=True)
     fairing_top = SM_TOP + FAIRING_HEIGHT
-    panel_lathe(
-        "SM_CM_Fairing",
-        [(RADIUS, SM_TOP), (FAIRING_RADIUS, SM_TOP), (FAIRING_RADIUS, fairing_top), (command_module.radius(fairing_top - CM_BASE), fairing_top)],
-        fairing,
-    )
+    service_tanks.panels(sm, RADIUS, SM_BOTTOM, SM_TOP, FAIRING_RADIUS, fairing_top, command_module.radius(fairing_top - CM_BASE), white, silver)
     # These meshes enclose the service-module compartments. Clip both wall
     # faces, the rims, seams and fairing together; leaving an
     # unmarked inner wall would make the apparent opening solid again.
     # The quads and engine are separate nodes and remain whole in cutaway.
     mark_shells([obj.name for obj in sm.children if obj.type == "MESH"])
     service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA)
-    bell("SPS_Bell", (0, 0, 0), (0, 0, 1), SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, dark, groups["ServiceEngine"])
+    service_tanks.pressurant(groups["ServiceHelium"], SPS_EXIT_XA)
+    service_tanks.power(groups["ServicePower"], SPS_EXIT_XA)
+    service_tanks.structure(sm, SPS_EXIT_XA)
+    service_tanks.engine(groups["ServiceEngine"], SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS)
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):
         # The press kit's axis description is schematic. R-547 Table1.3
@@ -198,6 +164,8 @@ def build(offset=0):
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
+    hatch_interior.build(groups["SideHatch"], CM_BASE)
+    forward_compartment.build(groups["ForwardCompartment"], CM_BASE)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
@@ -205,8 +173,10 @@ def build(offset=0):
     dsky_equipment.build(groups["DSKYFrontWeb"], CM_BASE)
     console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE)
     console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE)
+    cabin_bays.build(groups["CabinEquipmentBays"], CM_BASE)
     unitized_couch.build(groups["CrewCouches"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN
+    cabin_bays.shade(groups, CM_BASE + offset)
     return groups

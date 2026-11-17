@@ -1,4 +1,4 @@
-# Saturn IB SA-205 — exterior study
+# Saturn IB SA-205
 
 This build is **SA-205 on Apollo 7**, not an early Saturn I or a later Skylab launcher.
 Source: NASA *Apollo 7 press kit*, 68-168K, pp. 31–33 and Figure 25a (printed p. 25a),
@@ -56,31 +56,97 @@ opens with the existing boost cover and spacecraft shells; its truss and nozzles
 remain whole. A close-up view frames hardware without removing the rest of the
 vehicle.
 
-The viewer draws both faces of the open launcher skins, with **no modelled
-wall thickness or invented internal equipment**. The cut exposes their current
-empty interior where detailed tanks, bulkheads or structure are still missing;
-it does not imply those spaces were empty on SA-205. The single global cut
-passes through the clustered first-stage tank skins, including the centre tank.
+The quadrant also cuts the pressure-vessel walls, domes, baffles and thrust
+cone at full detail. The helium spheres, engine packages, engine feeds and upper
+spider beam stay intact. The instrument cases and their plates
+open with the IU so the near-side backs clear the far-side electronics. These interiors travel with their
+own stage on the exhibit slider. Distant levels omit enclosed equipment, as on
+the Titan. Selecting an interior part opens the cut and brings up the full model.
 
-## Simplifications and things still wrong
+## S-IB tanks and engine bay
 
-- Fin profiles, nozzle contours, tank domes, tank pitch radii and structural stations other than
-  the cited separation and H-1 gimbal planes are estimated. The H-1 mounting radii and cants
-  are documented nominal references; that does not validate the engine contours or axial extents.
-- No tank interior, common bulkhead, detailed feed pipes, turbopumps, H-1 exhaust ducts,
-  ullage rockets, vents, detailed APS engines, hold-downs or separation mechanisms.
-- Stiffener count and size are estimated. Paint boundaries and lettering locations are estimated
-  from S68-48788; the fin paint and small markings still need closer photographic reconstruction.
-- IU has no internal electronics, antennas or access fittings.
-- Adapter is one shell, opened by the gallery cutaway; no hinged forward panels, internal structure or rendezvous target yet.
-- No LC-34 pedestal, umbilical tower, service structure or site scenery.
-- No mass, thrust, aerodynamic or flight sequence data; the stack cannot be flown yet.
+Each of the nine exposed cylinders includes straight skirts extending beyond its
+pressure bulkheads. The cut shows the curved tank ends, their reinforcing rings
+and folded slosh plates. The four outer oxygen tanks and four fuel tanks each fed
+two engines through their aft sumps. Eight radial beams and their perimeter
+crossbeams collected the tank loads at the top of the stage. Two of the fuel
+tank forward skirts carried helium spheres. The type reference gives their
+capacity as 19.28 cubic feet apiece. The display radius is the radius of a sphere
+of that internal volume. [Saturn IB News Reference, pp. 3-4 to 3-7 and CC-73/74](https://digitalprojects.uah.edu/files/original/20/10552/SatuIBnewsrefe.pdf.pdf)
+
+The SA-203-onward section drawing shows the differing heights of the fuel and
+oxygen forward heads, the submerged chevron baffles and the engine suction lines.
+For the 70-inch vessels, the model reads the aft weld at approximately vehicle
+STA260 and the oxygen/fuel forward welds at approximately STA868/826. For the
+centre vessel it reads STA267/873. Skirt ends are rounded to STA192 and 938.
+These are **drawing estimates**. Head contours use the period reference's
+hemispherical description. The 31-inch nominal baffle repeat, number and width
+of strips, liner inset and support details approximate the plates visible in
+Figure 5 and CC-06(E). The sixteen suction lines show which vessels supplied
+which engines. Their bends, section sizes, attachment stations and clocking remain
+estimates. A central barrel, eight radial outriggers and engine mounting beams show the
+load path through the tail unit. Their web sections and mounting depths are
+estimated from CC-03(C) and CC-04(D). The first-stage engine models include the combined pump housing,
+duct and heat-exchanger outlines visible in Rocketdyne drawing R-D-1.
+[MSFC checklist, revision 18, Fig. 5, p. 6-7](https://www.ibiblio.org/apollo/Documents/Saturn_IB_Mission_Plan_and_Technical_Information_Checklist_Rev18.pdf)
+
+## S-IVB-205 tank and engine stations
+
+Douglas issued a dimensioned station diagram for the particular upper stage
+flown on Apollo 7. The table uses Douglas stations in inches. Its interstage
+forward interface, DS200.6, matches vehicle STA1186.804 in the MSFC checklist,
+Figure 6. The display conversion adds 986.204 inches to the printed Douglas
+stations. Precision is limited by the one-decimal-place Douglas data. The
+assembled stage's outer ring still uses the rounded 1187-inch mission datum.
+[Douglas SM-46978A, revision September 1968, Fig. AP 2-1, p. AP2-15](https://ntrs.nasa.gov/api/citations/19700027461/downloads/19700027461.pdf)
+
+| S-IVB-205 feature | Douglas station, inches | Confidence |
+|---|---:|---|
+| J-2 nozzle exit / gimbal | −16.0 / 100.0 | documented |
+| Thrust cone aft edge / aft-dome attachment | 121.4 / 186.9 | documented |
+| Aft bulkhead aft / forward end | 156.3 / 287.8 | documented assembly limits |
+| Common bulkhead aft / forward end | 244.4 / 335.2 | documented assembly limits |
+| Cold helium bank aft sphere centre | 454.0 | documented |
+| Cold helium sphere axial pitch | 26.9 | documented, four per bank, eight total |
+| Forward bulkhead aft / forward end | 553.0 / 684.6 | documented assembly limits |
+
+The **130-inch spherical radius** of the common bulkhead and its four oxygen
+slosh rings come from the period News Reference. The common dome is a spherical
+cap ending on the aft dome, which continues forward to the cylindrical hydrogen
+tank wall. The aft oxygen volume is lens-shaped. The separate hydrogen container
+has the entire barrel and the upper dome. The production domes end at fittings:
+the basic aft and forward spherical surfaces here stop about 1½ inches short of
+the printed assembly-tip stations. The schematic common-bulkhead edge and seat,
+baffle-ring widths and elevations, thrust cone stringers, colours, inner lining
+and helium bottle diameters are **estimated**. The two banks follow the views in
+Fig. AP 2-1 and the single ambient bottle is outside the tank. No Saturn V restart
+equipment has been transferred. [Saturn IB News Reference, pp. 5-1, 5-2, 5-5](https://digitalprojects.uah.edu/files/original/20/10552/SatuIBnewsrefe.pdf.pdf)
+[Douglas SM-46978A, Fig. 4-1, p. 4-4 and Fig. AP 2-1](https://ntrs.nasa.gov/api/citations/19700027461/downloads/19700027461.pdf)
+
+The J-2 gimbal and bell opening are 116 inches apart. Its independently driven
+pumps sit at opposite sides of the thrust chamber and its start sphere is between
+them. The shaped bell, manifolds, branches and major component envelopes follow
+Rocketdyne R-3-125K in the 1968 News Reference. The intermediate radii, engine
+equipment depths, installation clocking, stiffener profiles and material finishes
+are **estimated**. [Saturn IB News Reference, J-2 fact sheet, PDF p. 69](https://digitalprojects.uah.edu/files/original/20/10552/SatuIBnewsrefe.pdf.pdf)
+
+## Instrument ring
+
+MSFC's unfolded SA-205 layout identifies the components on sectors 601, 603 and
+602. The end letters of the three sectors and vehicle positions I to IV determine
+their circumferential order. The gallery models the major rectangular instrument
+cases on their mounting panels, including the computer, data adapter, switch
+selector, command and telemetry racks, and three batteries. Two round envelopes
+represent the ST-124 platform and its air supply. The access-door sector stays
+clear. Locations and face proportions are **estimated from the drawing**, using
+the documented 260-inch diameter and 36-inch height. Case depths, mount details,
+colours and curvature are approximate. The SA-206 thermal experiment and
+SA-207-onward redundant cooling pump are excluded. [MSFC checklist, revision 18, Fig. 11, p. 6-13](https://www.ibiblio.org/apollo/Documents/Saturn_IB_Mission_Plan_and_Technical_Information_Checklist_Rev18.pdf)
 
 ## Corrections after the first preview
 
 The initial four S-IVB conduits were unsourced and lay directly over the USA lettering.
-They have been removed, not moved to another guessed azimuth. The actual main and auxiliary
-tunnels await their documented layout. The exploded exhibit now separates along the vehicle
+They have been removed, not moved to another guessed azimuth. Douglas Fig. AP 2-1 now locates the main and auxiliary tunnels. Their fairing sections remain unfinished. The exploded exhibit now separates along the vehicle
 axis, with higher parts moving first and farther, so the cover and adjacent modules clear
 one another rather than crossing skins on diagonal paths. These offsets are an exhibit
 layout, not historical dimensions or separation trajectories.
@@ -128,7 +194,7 @@ The inherited bell contour's tilted lower rim now extends below the vehicle
 station-zero plane. The published rounded 224-foot stack height is a reference,
 not proof that this unfinished contour reproduces the actual engine envelope.
 
-## Fin reconstruction source gate
+## Tail and fin span
 
 NASA TP-3615, *Review of Our National Heritage of Launch Vehicles Using Aerodynamic
 Surfaces and Current Use of These by Other Nations* (C. Barret, April 1996), Figure 39,
@@ -137,22 +203,33 @@ printed p. 45, reproduces MSFC *Saturn IB Air Load Manual* sheet 1.9201, revisio
 root leading/trailing stations 211.369/111.369, tip leading/trailing stations
 approximately 101.37/61.369, and maximum root/tip thicknesses 17.496/6.446 inches. The
 tip leading-station label appears to read 101.367, whereas the annotated 40-inch chord
-and STA61.369 give 101.369; neither interpretation is adopted here. Its main
+and STA61.369 give 101.369; the model preserves the annotated 40-inch chord. Its main
 trapezoid area is independently 53.472222 square feet, agreeing with the annotated
 53.472; the shaded root foot is excluded. The sketch shows a blunt trailing edge
 without dimensioning its residual thickness. Its Section C / Table 1, p. 44,
 uses rounded redesign characteristics that do not supersede those dimensions.
 
-**Not yet adopted as SA-205 fin geometry.** The actual radial mounting datum and
-complete airfoil/heat-shield section still need verification. The period checklist's
-Figure 5, p. 6-7 (PDF p. 171), explicitly covers SA-203 and subsequent, but its
-STA100 leader identifies the **engine gimbal**, not an independent measurement of
-the fin tip. The STA58 hold-down facility datum and STA54 reference likewise must
-not be relabelled as fin vertices by their appearance in that schematic. No numerical
-fin-source conflict is established by those leaders. Do not scale either drawing,
-silently combine unrelated station labels, or invent the trailing-edge thickness.
-The current fin **profile remains provisional**, although its relative clocking was
-corrected above.
+The [MSFC *Flight Mission Directive, Apollo-Saturn 205 Mission*](https://ntrs.nasa.gov/citations/20100040634),
+M10-1076, 3 January 1966, printed p. 4-2, gives the planned S-IB a **40.7-foot span
+across fins** and **22.8-foot diameter at the tail unit**. These rounded preflight
+envelopes set the model's tip radius to 244.2 inches and maximum shroud radius to
+136.8 inches. Figure 39 supplies the **assumed common Saturn IB** 110-inch radial
+planform, 100/40-inch chords, aft stations and maximum thicknesses. Registering
+its tip to the mission envelope puts its root at R134.2 inches, 2.6 inches inside
+the nominal shroud radius. Its roughly 53.5-square-foot area, swept leading edge
+and blunt tapered-wedge section match the Saturn IB description on printed p. 44.
+Individual SA-205 fin dimensions were not recovered. The wedge ridge and residual
+trailing-edge width are estimated. The root foot and separate trailing-edge
+heat shield are omitted. The shroud's axial ends and cylindrical shape are simplified.
+
+[NASA S68-29781](https://images.nasa.gov/details/s68-29781) shows a dark lower
+shroud beneath the tank cluster and a light fin face beside the launch platform.
+The model extends these tones around the stage. The floodlit vehicle in [NASA S68-50712](https://images.nasa.gov/details/s68-50712)
+shows light fin faces with a dark lower region. The pad obscures the opposite surfaces. The complete
+circumferential paint pattern, contrasting trailing faces, fin letters and
+markings remain unresolved. Checklist Figure 25 establishes the relative
+engine/fin clocking, while Figure 5's STA100 labels the engine gimbal.
+The hold-down and facility datums are not fin stations.
 
 ## Mission separation plane and engine exits
 
@@ -175,8 +252,7 @@ H-1 opening was only 35.4 inches across and was substantially undersized.
 `apollo_csm.BELL_RIM` retains the initial estimated 0.3-inch display rim. The
 outer reference radius is derived by adding this inherited rim to the documented
 inside radius; no manufactured wall thickness is claimed. Bell contours, nozzle
-lengths, throat sizes, chamber shapes, mounting coordinates and engine cant
-remain provisional. The published **overall engine** lengths, 102 inches for
+throat sizes and chamber shapes remain provisional. The H-1 mount radii and cants and the J-2 nozzle/gimbal stations have separate source dimensions above. The published **overall engine** lengths, 102 inches for
 H-1 and 133 inches for J-2, are not substituted for nozzle lengths. Source
 thrust ratings are not assigned to a simulator.
 
@@ -246,3 +322,12 @@ Sources: [NASA S68-50712](https://images.nasa.gov/details/S68-50712),
 Original-photo SHA-256 values: S68-50712
 `610d24aa0cb604987930a0774aa0b0753b8724e9da2aeda2bfdf0eece2e23527`;
 S68-29781 `5cdf66573dc36ecd18e8a23cad2a49ed69ce949a78b48af99e259a1aeaa468db`.
+
+
+## Simplifications and remaining omissions
+
+- S-IB baffle sections, tank weld stations, fin wedge sections, engine contours, piping and spider-beam sections are approximate. The tail frame omits individual brackets, access openings and firewall panels. Flame shields, exhaust aspirators, sump manifolds and hold-downs remain incomplete.
+- S-IVB domes and rings omit the honeycomb sandwich detail, internal pockets, structural welds, A-frame joints, bosses and most feed and vent plumbing. The APS housings and skirt paint remain exterior studies. Ullage and retro motors, separation fittings and tunnel fairings remain unfinished.
+- IU electronics have simplified cases and platform envelope. Connectors, individual fasteners, access fittings, cable bundles, antennas and internal circuit boards remain unmodelled.
+- The four attached upper adapter panels hinge outward above the fixed aft skirt. Detailed hinge fittings, the rendezvous target and internal cabling are omitted.
+- LC-34 and a Saturn flight simulation remain outside this gallery model.

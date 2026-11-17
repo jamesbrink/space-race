@@ -27,18 +27,12 @@ The News Reference, p. 142, and NASA TN D-7083, p. 5, explain that unequal
 nozzle throat areas produce a resultant offset. It must not replace the
 individual nozzle cant. No abort force model is assigned to this geometry.
 
-## Simplifications and things still wrong
+## Tower and viewing port
 
-- Tower stations, member lengths, tube diameters, bracing and attachment fittings
-  remain estimated. The lower bay intersects the provisional CM/cover envelope.
-- Motor stations and upper profile still close the rounded 224-foot full-stack
-  envelope by estimate. No unverified conversion of a development-test assembly
-  into flown hardware is made.
-- Nozzle shapes, dimensions, mouth stations and unequal throats
-  remain provisional. Correcting their axes does not validate those features.
-- The boost protective cover retains a provisional 1.4-inch radial stand-off;
-  this is not a sourced construction thickness. Its windows, access hatch,
-  ports, laminate and attachment details remain unbuilt.
-- Canards, pitch-control motor, tower-jettison nozzles, wiring and abort motion
-  remain unbuilt. The gallery lifts the cover and tower together as an exhibit,
-  not as a simulated jettison trajectory.
+The *Apollo News Reference* pp. 140–142 gives the ten-foot truss, roughly four-foot square at its feet and three-foot square at its head. Its main and secondary tubes use the nominal 3.5- and 2.5-inch sizes. The diagonal feet intersect the forward cover at the radius implied by the square. Bay spacing, member assignment, attachments and nozzle contours are estimated. The Q-ball envelope is 13.37 inches long and 13.3 inches across its base.
+
+The boost cover uses the nominal 11-foot height, 13-foot diameter and eight-inch commander’s viewing port. The port is a physical hole in the mesh directed at the left rendezvous opening with inset clear glazing. Its exact mounting plane and upper cover taper are estimated.
+
+## Simplifications
+
+The cover omits the access door, blow-out panels, detailed laminate and attachment hardware. Internal escape-system components, canards, wiring and abort dynamics are omitted. The tower and cover move together in the gallery.

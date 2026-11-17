@@ -103,5 +103,5 @@ their dimensions do not imply a reconstructed pressure-wall fitting. The normal
 - Heel-restraint shapes are approximate; no preflight D-ring instep system is used.
 - Attenuator internals, passive lockout details, certified travel and dynamics
   are omitted. Later cyclic X/Z attenuators and crew-operated lockouts are excluded.
-- No couch-adjustment animation or crew-eye station is supplied.
+- The seats remain fixed. Eye positions use the headrest centre, 32 inches up the estimated back axis from the hip, and an estimated 7-inch normal offset.
 - Later foldable couch geometry, knee pivots and pip-pin mechanisms are excluded.

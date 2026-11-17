@@ -14,6 +14,13 @@ const CONFIDENCE = ['documented', 'assumed', 'derived', 'estimated'];
 // A nozzle-exit radius substituted for a gimbal radius, or a reversed cant, can
 // look plausible while putting the thrust axis on the wrong side of the vehicle.
 for (const suffix of ['', '.lod1', '.lod2']) {
+  test(`Apollo 7 fin span matches the SA-205 directive${suffix}`, () => {
+    const file = join(root, `public/models/usa/apollo/apollo-7/vehicle${suffix}.glb`);
+    const { lo, hi } = framesOf(file).box('SaturnFirstStage');
+    // Two opposite pairs lie on the X/Z axes. The paint and tank cluster are inside both pairs.
+    for (const axis of [0, 2]) assert.ok(Math.abs(hi[axis] - lo[axis] - 40.7 * 0.3048) < 0.001, 'opposed fin tips across the stage');
+  });
+
   test(`Apollo 7 H-1 gimbals and thrust axes match the August 1968 checklist${suffix}`, () => {
     const file = join(root, `public/models/usa/apollo/apollo-7/vehicle${suffix}.glb`);
     const frames = framesOf(file);

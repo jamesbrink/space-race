@@ -187,6 +187,10 @@ def build(parent, base):
 
     for index, y in enumerate(CENTRES_Y):
         owner = group(f"UnitizedPosition_{index + 1}", parent)
+        # Headrest centre and an estimated 7-inch eye stand-off give each
+        # unoccupied seat a camera. +Z in glTF looks ahead, +Y is headward.
+        eye = group(("Seat_Commander", "Seat_CommandModulePilot", "Seat_LunarModulePilot")[index], owner)
+        eye.matrix_local = Matrix.Translation(world(point(32, y, 7))) @ Matrix(((-normal).cross(back), -normal, back)).transposed().to_4x4()
         hip = origin + across * y
         knee = hip + seat * SEAT_LENGTH
         ankle = knee + leg * LEG_LENGTH

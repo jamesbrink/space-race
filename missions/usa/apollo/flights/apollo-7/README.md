@@ -6,29 +6,13 @@ the redesigned Block II command and service modules in Earth orbit. It carried n
 
 ## Model status
 
-An exterior and cabin study of CSM-101 on SA-205 is available in the Gallery. The launch site,
-walkable structures, complete cabin, suits, weather and flight physics are not built yet.
-Each of the five windows has one thermal pane and two pressure panes at full detail. [Window geometry and installation assumptions](../../vehicles/windows.md).
-Published rounded envelopes, nominal Block II stations and remaining estimates are
-distinguished in `spacecraft.md`.
-The cutaway runs through the entire assembled vehicle, using the same quadrant
-cut as Redstone and Titan: stage skins, their lettering and fittings, the adapter,
-escape motor case and spacecraft shells open together. Engines and internal
-equipment remain whole. The empty launcher interiors are unfinished, not a claim
-that SA-205 contained no tanks or structure. Inside the command module it exposes
-the nominal pressure boundary, main-console structural reference with estimated
-instruments and controls, equipped DSKY and estimated unitized
-three-place crew couch.
-The full tunnel and remaining furnishings are unbuilt.
-No seat control is offered yet.
+The Gallery presents CSM-101 on Saturn IB SA-205. Open Cutaway on the whole stack to see the H-1 engines and tank cluster, the J-2, S-IVB common bulkhead, instrument racks, service-module power and propulsion equipment, the three crew couches and the packed parachutes under the apex shield. The adapter carried no lunar module. Its four hinged panels open during the exploded exhibit and remain attached to the stage.
 
-The launcher now uses the AS-205 flight evaluation's rounded S-IVB separation
-station and the period Saturn IB News Reference's H-1 and J-2 **inside** nozzle
-exit diameters. The August 1968 Saturn IB checklist now supplies the H-1 gimbal
-plane, mounting radii, outward cants and relative engine/fin clocking. Bell profiles,
-exit and chamber stations, and absolute clocking relative to the CSM remain provisional;
-[the hardware notes](../../vehicles/saturn-ib.md) distinguish each published
-dimension from the inherited display geometry.
+Use **Sit in the cabin** or **C** to visit Schirra’s, Eisele’s and Cunningham’s positions. The five windows, console and unpowered DSKY can be inspected at full detail. The three eye positions and lighting are estimates. The model is a gallery exhibit. The launch site, crew figures, weather reconstruction and flight simulation remain future work.
+
+- [Saturn IB and instrument unit](../../vehicles/saturn-ib.md)
+- [Service-module tanks, fuel cells, radiators and engine](../../vehicles/service-tanks.md)
+- [CSM stations, exterior and cabin](spacecraft.md)
 
 ## Sources read
 
@@ -47,9 +31,9 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All twenty-three parts can be selected and taken apart.
+cover and launch escape system. The gallery groups selectable hardware by spacecraft, launch escape system and launch vehicle.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
-The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
+The three couches can be occupied in the gallery. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
 
 ## Structural-station milestone
@@ -58,7 +42,7 @@ The aft and forward heat shields now split at the Block II stations in NAA
 A-512S ST-428A. The CSM barrel, datum chain, RCS axial station and nominal SPS
 extension bounds replace initial estimates; the CM/SM fairing closes the external
 connection. See `spacecraft.md` for source units, assumptions and remaining defects.
-This is still an exterior reconstruction, with no claim of a completed cabin.
+The internal structures and equipment use the same station datum.
 
 ## Pressure-vessel milestone
 
@@ -68,7 +52,7 @@ without guessing a door from it. The structural cutaway uses the Gallery's exist
 shell system. [Pressure-vessel notes](../../vehicles/pressure-vessel.md) describe the
 calculations, checks and limits. The nominal aft bulkhead is now a separate spherical
 reference surface. The flat forward bulkhead now joins a measured tunnel-entry
-interface with an explicitly derived transition. The full tunnel and remaining furnishings are pending.
+interface with an explicitly derived transition. The fitted cabin and forward-compartment estimates are described in the spacecraft notes.
 Its 173-inch radius is explicitly assumed common primary geometry from NASA
 TN D-6979, Figure 8, whose inner-wall points independently match the Block II wall.
 
@@ -122,8 +106,7 @@ UNITED STATES follows the individual black fuel tanks, on white painted fields;
 USA has a taller, narrower layout. The estimates and uncertainty from actual
 SA-205 NASA photographs are explicit in the gallery and
 [hardware notes](../../vehicles/saturn-ib.md#photographic-marking-reconstruction).
-The user authorized photo-based estimates as a last resort after source searches;
-this does not promote them to documented dimensions or permit estimated flight inputs.
+These photo-derived dimensions carry estimated confidence and are used only for the exhibit.
 
 ## Unitized couch reconstruction
 
@@ -138,7 +121,7 @@ shared CM-101 measurements**. No later foldable couch is used.
 [The hardware record](../../vehicles/unitized-couch.md) lists the estimates,
 sources and omissions. The assembly remains whole in cutaway, moves with the
 CM in the exploded exhibit, and is omitted at distant levels of detail.
-The cabin remains incomplete and supplies no seated eye datum yet.
+The three gallery seats use estimated eye offsets from the headrests.
 
 ## Main-panel equipment study
 
@@ -147,5 +130,4 @@ facade, meter fronts, control rows, warning lenses and the timer window, followi
 CM-101's own V36-976018 revision D. [The equipment record](../../vehicles/console-equipment.md)
 distinguishes the estimated layout registration from the unchanged shared structure.
 All controls and displays are static exhibit references. Exact scales, individual
-control details, complete DSKY equipment, side consoles and the seated cabin remain
-unfinished. The fronts remain whole in cutaway and move rigidly with the CM.
+control mechanisms and fine panel legends remain simplified. The fronts remain whole in cutaway and move rigidly with the CM.

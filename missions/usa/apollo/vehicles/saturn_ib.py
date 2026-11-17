@@ -9,8 +9,9 @@ import math
 from pathlib import Path
 
 import bpy
-from mathutils import Matrix
+from mathutils import Matrix, Vector
 
+import saturn_structure as structure
 import srlib
 from apollo_csm import BELL_RIM, SM_BOTTOM, bell, radial, tube
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof, text_mesh
@@ -21,6 +22,9 @@ IU_TOP = SIVB_TOP + 36
 SLA_TOP = IU_TOP + 28 * 12
 CSM_OFFSET = SLA_TOP - SM_BOTTOM  # align the SM aft bulkhead at XA838 to the adapter
 HEIGHT = 224 * 12  # Figure 25a; height to escape-system Q-ball
+# MSFC M10-1076, p. 4-2: rounded SA-205 stage envelopes.
+SIB_TAIL_RADIUS = 22.8 * 12 / 2
+SIB_FIN_TIP = 40.7 * 12 / 2
 RADIUS = 130  # p. 33, 260 in instrument unit and S-IVB interface
 # MPR-SAT-FE-68-4, Figure A-1, p.206: vehicle station in inches, rounded.
 # The model uses that station directly, not 1187 inches added to the S-IB top.
@@ -99,7 +103,7 @@ def lettering(body, angle, top, radius, height, width, pitch, mat, parent, font,
 def outer_tank(index, angle, white, black, parent):
     """One tank skin, with its fuel-tank white marking field painted into it."""
     fuel = index % 2 == 1
-    profile = [(0, 115), (25, 119), (35, 143), (35, SIB_FIELD_LO), (35, SIB_FIELD_HI), (35, SIB_TOP - 60), (26, SIB_TOP - 38), (0, SIB_TOP - 32)]
+    profile = [(35, structure.SIB_SKIRT_BOTTOM), (35, SIB_FIELD_LO), (35, SIB_FIELD_HI), (35, structure.SIB_SKIRT_TOP)]
     half = SIB_FIELD_ARC / (2 * 35)
     angles = sorted({TAU * i / 64 for i in range(64)} | {half, TAU - half})
     mesh = MeshBuilder()
@@ -120,6 +124,7 @@ def build():
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
+    alloy = material("saturn-machined-alloy", (0.64, 0.67, 0.66), metallic=0.65, roughness=0.4)
     red = material("saturn-lettering-red", (0.55, 0.035, 0.02), roughness=0.7)
     # OFL Liberation Sans Regular 2.1.5: a reproducible light sans substitute,
     # not a claim that the original contractor stencils used this typeface.
@@ -129,37 +134,46 @@ def build():
         for n in (
             "SaturnFirstStage",
             "FirstStageEngines",
+            "FirstStageTankStructure",
             "SaturnInterstage",
             "SaturnSecondStage",
             "SecondStageEngine",
+            "SecondStageTankStructure",
             "InstrumentUnit",
+            "InstrumentUnitEquipment",
             "SpacecraftAdapter",
         )
     }
     sib = groups["SaturnFirstStage"]
     # Eight 70-inch tanks surrounding one 105-inch tank, per p. 32.
     # Tank end stations and cluster pitch radius are estimated; source envelopes are rounded.
-    cylinder("SIB_CentreTank", 52.5, 130, SIB_TOP - 40, white, sib)
+    cylinder("SIB_CentreTank", 52.5, structure.SIB_SKIRT_BOTTOM, structure.SIB_SKIRT_TOP, white, sib)
     for i in range(8):
         a = TAU * i / 8
         # MSFC-MAN-206 p.4-4 dates white fuel tanks to SA-206 onward. The
         # actual SA-205 photograph S68-29781 shows red letters on white
         # fields on the BLACK fuel tanks, not on the white oxygen tanks.
         outer_tank(i, a, white, black, sib)
-    cylinder("SIB_ThrustSkirt", 127, 32, 138, white, sib)
-    cylinder("SIB_ForwardRing", 130, SIB_TOP - 38, SIB_TOP, white, sib)
-    # Eight substantial swept fins, each a closed wedge, not a flat card.
+    cylinder("SIB_ThrustSkirt", SIB_TAIL_RADIUS, 32, structure.SIB_SKIRT_BOTTOM, black, sib)
+    cylinder("SIB_ForwardRing", 130, structure.SIB_SKIRT_TOP, SIB_TOP, white, sib)
+    # MSFC Air Load Manual 1.9201, reproduced in TP-3615 Fig. 39. The type's
+    # 110-in exposed planform starts slightly inside the rounded tail envelope.
     for i in range(8):
         a = TAU * i / 8
         verts = []
-        shape = [(124, 170), (202, 65), (202, 35), (124, 70)]
-        for side in (-1, 1):
-            for radius, z in shape:
-                x, y, zz = radial(radius, a, z)
-                verts.append((x - math.sin(a) * side * 1.6 * IN, y + math.cos(a) * side * 1.6 * IN, zz))
+        for radius, aft, chord, thickness in [(SIB_FIN_TIP - 110, 111.369, 100, 17.496), (SIB_FIN_TIP, 61.369, 40, 6.446)]:
+            # Blunt tapered wedge. Ridge position and aft face width are estimates.
+            for offset, station in [(0, aft + chord), (0.5, aft + 0.30 * chord), (0.2, aft), (-0.2, aft), (-0.5, aft + 0.30 * chord)]:
+                x, y, z = radial(radius, a, station)
+                half_width = offset * thickness * IN
+                verts.append((x - math.sin(a) * half_width, y + math.cos(a) * half_width, z))
+        faces = [(0, 1, 2, 3, 4), (9, 8, 7, 6, 5)]
+        for k in range(5):
+            nxt = (k + 1) % 5
+            faces.append((k, k + 5, nxt + 5, nxt))
         mesh = MeshBuilder()
-        mesh.add(verts, [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)])
-        mesh.build(f"SIB_Fin_{i}", black if i % 2 else white, sib, smooth=False)
+        mesh.add(verts, faces)
+        mesh.build(f"SIB_Fin_{i}", white, sib, smooth=False)
     for i in range(8):
         a = TAU * (i % 4) / 4 + (math.pi / 4 if i >= 4 else 0)
         r, cant = (H1_INBOARD_RADIUS, H1_INBOARD_CANT) if i < 4 else (H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT)
@@ -171,9 +185,11 @@ def build():
         # This corrects the mounting, not the unknown exit/chamber stations.
         bell(f"H1_Bell_{i}", (0, 0, -100 * IN), (0, 0, 1), 70, H1_EXIT_INNER_RADIUS + BELL_RIM, steel, mount)
         tube(f"H1_Chamber_{i}", (0, 0, -36 * IN), (0, 0, 8 * IN), 8, steel, mount)
+        if srlib.interior():
+            structure.h1_equipment(mount, i, alloy)
     # S-IVB aft interstage surrounds its single J-2.
     painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
-    bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, J2_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["SecondStageEngine"])
+    structure.j2_engine(groups["SecondStageEngine"], steel, alloy, J2_EXIT_INNER_RADIUS, BELL_RIM)
     sivb = groups["SaturnSecondStage"]
     painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, SIVB_WHITE_FIELD_LO)])
     for i in range(2):
@@ -208,11 +224,33 @@ def build():
         lettering("USA", a, SIVB_TEXT_TOP, RADIUS, SIVB_CAP, SIVB_U_WIDTH, SIVB_PITCH, red, sivb, font)
     cylinder("IU_Skin", RADIUS, SIVB_TOP, IU_TOP, black, groups["InstrumentUnit"])
     sla = groups["SpacecraftAdapter"]
-    lathe_obj("SLA_Shell", prof([(130, IU_TOP), (77, SLA_TOP)]), white, sla, segs=128)
-    # Four panel seams terminate at the SM interface; no LM is inside this adapter.
+    # Four seven-foot aft panels and four twenty-one-foot doors (NAR
+    # News Reference p. 66). Apollo 7 retained the doors on their hinges.
+    hinge_height = IU_TOP + 7 * 12
+    slope = (130 - 77) / (SLA_TOP - IU_TOP)
+    gauge = 1.75 * math.hypot(1, slope)
     for i in range(4):
-        a = TAU * (i + 0.5) / 4
-        tube(f"SLA_Seam_{i}", radial(130, a, IU_TOP + 2), radial(77, a, SLA_TOP - 2), 0.6, black, sla)
+        mid = TAU * i / 4
+        for moving, bottom, top in ((False, IU_TOP, hinge_height - 0.08), (True, hinge_height + 0.08, SLA_TOP)):
+            r0, r1 = 130 - slope * (bottom - IU_TOP), 130 - slope * (top - IU_TOP)
+            parent = group(f"SLA_Door_{i}", sla) if moving else sla
+            # Place the hinge along the tangent at the middle of each petal.
+            pivot = Vector(radial(r0, mid, hinge_height)) if moving else Vector()
+            if moving:
+                parent.location = pivot
+            section = [(r0, bottom), (r1, top), (r1 - gauge, top), (r0 - gauge, bottom)]
+            vertices = []
+            faces = []
+            for j in range(33):
+                az = mid + (math.pi / 4 - 0.001) * (2 * j / 32 - 1)
+                vertices.extend(Vector(radial(r, az, h)) - pivot for r, h in section)
+                if j:
+                    for k in range(4):
+                        faces.append(((j - 1) * 4 + k, j * 4 + k, j * 4 + (k + 1) % 4, (j - 1) * 4 + (k + 1) % 4))
+            faces.extend(((0, 1, 2, 3), (131, 130, 129, 128)))
+            skin = MeshBuilder()
+            skin.add(vertices, faces)
+            skin.build(f"SLA_{'Petal' if moving else 'Aft'}Skin_{i}", white, parent, smooth=False)
     # Match the Redstone/Titan convention: the entire vehicle's enclosing skins,
     # fins and skin-mounted paint/fittings open in the same quadrant. Engines
     # and the separate APS equipment remain whole; no interior is invented.
@@ -224,4 +262,5 @@ def build():
             if obj.type == "MESH" and not obj.name.startswith("SIVB_AuxiliaryPropulsion_")
         ]
     )
+    structure.build(groups)
     return groups
