@@ -1,10 +1,12 @@
+import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
-import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
 import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, heightsBall, type Move, shipOf } from '../sim/orbital.ts';
 import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
+import { due, onRails } from '../sim/rails.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
+import { descentRecords, firesOf, grown, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
 import { apart, Sheds } from '../sim/shed.ts';
 import {
   type Ascended,
@@ -39,17 +41,15 @@ import {
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import { downVerdict } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
-import { descentRecords, firesOf, grown, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
+import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
-import { due, onRails } from '../sim/rails.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
+import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
-import { is } from '../util/keys.ts';
-import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
+import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -473,6 +473,13 @@ export class OrbitDeck extends Deck {
   /** The record's pilot by his surname, as the deck says it ('Gagarin'): the last word of the flight's first crew member. */
   private get flier(): string {
     return this.flight.crew[0]?.split(' ').pop() ?? 'Its pilot';
+  }
+  /** Whether the record's own braking burn was fired by hand: its command within one of the record's periods of orientation by hand. */
+  private get burnByHand(): boolean {
+    const plan = this.flight.plan!;
+    const events = coastEvents(plan);
+    const command = clockAt(plan, events.command ?? events.on);
+    return (plan.record?.manual?.periods ?? []).some((p) => command >= p.from.value && command <= p.to.value + 1e-6);
   }
   /** The day of the record's flight, as the deck says it ('12 April'). */
   private get day(): string {
@@ -1689,6 +1696,7 @@ export class OrbitDeck extends Deck {
     // (the timer's command for the burn, where the plan has one, or its lighting)
     const burnEvents = coastEvents(plan);
     const command = clockAt(plan, burnEvents.command ?? burnEvents.on);
+    const onDay = this.burnByHand;
     set(
       'retro',
       this.fired !== null
@@ -1696,7 +1704,7 @@ export class OrbitDeck extends Deck {
         : this.free
           ? 'Yours: Space'
           : this.mine === null
-            ? `Timer, ${this.wall(command)}`
+            ? `${onDay ? 'By hand on the day' : 'Timer'}, ${this.wall(command)}`
             : 'Yours, once parted',
     );
     set('lock', this.free ? 'Free' : this.byPlan !== null ? 'Open, by plan' : 'Locked');
@@ -1745,7 +1753,9 @@ export class OrbitDeck extends Deck {
             ? `Manual descent: not the flight of ${this.day}`
             : alone
               ? 'On the published orbit: the simulated ascent fell short (Flown)'
-              : 'As flown: automatic',
+              : onDay && t >= command
+                ? 'As flown: the braking burn by hand'
+                : 'As flown: automatic',
     );
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance && !this.free));
     // (alone, with no burn to come, the sequencer is the descent's automatic sequence)
@@ -1950,7 +1960,7 @@ export class OrbitDeck extends Deck {
       .join('');
     const mine = this.mine !== null || this.fired !== null || this.downMine !== null || this.free;
     el.innerHTML = `
-      <h3>${stays ? 'Still in orbit' : this.mine !== null ? 'Down, on your own flight' : this.downMine !== null ? 'Down, on your own descent' : this.fired !== null ? 'Down, by your own braking burn' : 'Down, as the automatic system flew it'}</h3>
+      <h3>${stays ? 'Still in orbit' : this.mine !== null ? 'Down, on your own flight' : this.downMine !== null ? 'Down, on your own descent' : this.fired !== null ? 'Down, by your own braking burn' : this.burnByHand ? 'Down, as flown on the day: the braking burn by hand' : 'Down, as the automatic system flew it'}</h3>
       <p class="cockpit-why"><b>${v.how}.</b>${lives}${mine ? ` Not the flight of ${this.day}.` : ''}</p>
       <p class="cockpit-why">${v.why.join(' ')}</p>
       ${v.against ? `<p class="cockpit-why">${v.against}</p>` : ''}
