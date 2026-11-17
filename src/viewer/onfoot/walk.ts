@@ -299,8 +299,11 @@ export class Solids {
   readonly wanted = new Set<THREE.BufferGeometry>();
   /** The ladders among them (`userData.climb`): not walls and not floors, but something to climb. */
   private rungs: Near[] = [];
-  /** Something that is not solid for now: whatever is under this object is left out (the vehicle being driven: it cannot be in its own way). */
-  without: THREE.Object3D | null = null;
+  /**
+   * Something that is not solid for now: whatever is under this object (or any of these) is left out (the vehicle being driven:
+   * it cannot be in its own way, in whichever level of detail of its model is shown: onfoot.ts `takeWheel`).
+   */
+  without: THREE.Object3D | readonly THREE.Object3D[] | null = null;
   /** How many hierarchies have been built, for the diagnostics. */
   built = 0;
 
@@ -383,7 +386,11 @@ export class Solids {
       for (const record of this.meshes(root)) {
         const mesh = record.mesh;
         if (!mesh.visible) continue;
-        if (this.without && under(mesh, this.without)) continue;
+        if (
+          this.without &&
+          (Array.isArray(this.without) ? this.without.some((w) => under(mesh, w)) : under(mesh, this.without as THREE.Object3D))
+        )
+          continue;
         // (its bounds and what follows from its world matrix are worked out again only if it has moved)
         if (record.world.fit(mesh)) record.stale = true;
         if (!record.box.intersectsBox(this.region)) continue;

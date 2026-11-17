@@ -471,6 +471,20 @@ export class OnFoot {
     return this.h.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
   }
 
+  /**
+   * The same vehicle's node in each of its model's other levels of detail (and anywhere else one of its name hangs under a
+   * parent of the same name, as the levels do): found from the top of the tree it hangs in, once, as it is got into.
+   */
+  private twinsOf(root: THREE.Object3D): THREE.Object3D[] {
+    let top = root;
+    while (top.parent) top = top.parent;
+    const twins: THREE.Object3D[] = [];
+    top.traverse((o) => {
+      if (o !== root && o.name === root.name && o.parent?.name === root.parent?.name) twins.push(o);
+    });
+    return twins;
+  }
+
   /** Put a vehicle's pieces in its model's other levels of detail where they are in the one being driven. */
   private mirror(root: THREE.Object3D): void {
     let pairs = this.twins.get(root);
@@ -543,7 +557,8 @@ export class OnFoot {
       this.headEye = head.worldToLocal(head.getWorldPosition(new THREE.Vector3()).setY(feet.y + walk.eye));
       this.headEye.z += 0.09; // (in front of the neck's pivot)
     } else this.headEye = null;
-    walk.solids.without = root;
+    // (and its twins in the model's other levels: the level shown changes as the eye moves, and the one it changes to is as much its own)
+    walk.solids.without = [root, ...this.twinsOf(root)];
     // (a gather of its own round it each frame: not whatever the walker's camera or the near plane last gathered)
     const road = roadOn(walk.solids, (x, z) => this.h.groundAt(x, z));
     const driven = vehicle;
