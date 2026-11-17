@@ -52,12 +52,14 @@ import {
   aimOf,
   heightsBallAt,
   heightsBall,
+  bankAt,
   chuteEvent,
   coastEvents,
   type DescentHands,
   flyDown,
   flyOrbit,
   type Guidance,
+  liftOf,
   movesOf,
   type OrbitFlown,
   publishedOf,
@@ -933,6 +935,16 @@ export function recordSamples(
     // (come through the entry, as the descent's bodies have)
     ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: true, drawn: s.drawn })),
   ];
+  // (heat shield first along the motion through the air; a lifting body banked is drawn at its trim, its long axis tipped
+  // from there toward its lift: orbital.ts `liftOf`)
+  const trim = ship.entry.aero.trim ? ship.entry.aero.trim.value * DEG : 0;
+  const trimmed = (s: { t: number; r: Vec3 }, wind: Vec3): Vec3 => {
+    const back = scale(unit(wind), -1);
+    const bank = trim ? bankAt(ship, s.t) : null;
+    if (bank === null) return back;
+    const lift = liftOf(back, wind, unit(s.r), 1, bank);
+    return length(lift) > 0 ? add(scale(back, Math.cos(trim)), scale(unit(lift), Math.sin(trim))) : back;
+  };
   // the record's own periods by hand (`manual.periods`): turned over a minute to the orbital orientation the Vzor gives
   // (the long axis back along the motion, the braking engine's push against it), held so as the ship goes round, and left
   // there when the period ends; the slow turning that followed is not drawn
@@ -951,7 +963,7 @@ export function recordSamples(
     else if (s.t < oriented) q = rest;
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
-    else q = toward(aimed, length(wind) > 1 ? lie(scale(unit(wind), -1)) : aimed, Math.min(1, (s.t - parts) / 30));
+    else q = toward(aimed, length(wind) > 1 ? lie(trimmed(s, wind)) : aimed, Math.min(1, (s.t - parts) / 30));
     const axis = turnQ(q, [1, 0, 0]);
     const here = frame.place(s.r, s.t);
     const at = add(s.drawn, offset);
@@ -978,7 +990,10 @@ export function recordSamples(
       axis,
       attitude: q,
       alpha: 0,
-      burning: s.t >= ship.on && s.t < ship.off && braking ? [{ engine: braking, thrust: 0 }] : [],
+      burning: [
+        ...(s.t >= ship.on && s.t < ship.off && braking ? [{ engine: braking, thrust: 0 }] : []),
+        ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: 0 })),
+      ],
       centre: at,
     });
   }
