@@ -11,8 +11,9 @@ walkable structures, furnished cabin, suits, weather and flight physics are not 
 The five window openings have opaque dark recesses until the cabin and glazing are modelled.
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
-A structural cutaway exposes the pressure-vessel sidewall inside the thermal shell;
-bulkheads and furnishings are unbuilt. No seat control is offered yet.
+A structural cutaway exposes the pressure-vessel sidewall and nominal aft bulkhead
+inside the thermal shell; the forward bulkhead and furnishings are unbuilt.
+No seat control is offered yet.
 
 ## Sources read
 
@@ -50,4 +51,7 @@ The bare cabin sidewall now has two source-derived tapers and four measured fixe
 window interfaces. Its outer hatch-frame contour is retained as curved data,
 without guessing a door from it. The structural cutaway uses the Gallery's existing
 shell system. [Pressure-vessel notes](../../vehicles/pressure-vessel.md) describe the
-calculations, checks and limits. Bulkheads, glazing and furnishings remain pending.
+calculations, checks and limits. The nominal aft bulkhead is now a separate spherical
+reference surface; the forward bulkhead, glazing and furnishings remain pending.
+Its 173-inch radius is explicitly assumed common primary geometry from NASA
+TN D-6979, Figure 8, whose inner-wall points independently match the Block II wall.

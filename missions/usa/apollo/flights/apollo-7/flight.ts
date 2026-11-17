@@ -11,11 +11,11 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. A separate pressure-vessel sidewall is visible in cutaway; bulkheads, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. A separate pressure-vessel wall and nominal aft bulkhead are visible in cutaway; the forward bulkhead, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
-      ['Interior', 'Pressure-vessel sidewall only'],
+      ['Interior', 'Bare pressure wall and nominal aft bulkhead'],
     ],
   },
   {
@@ -35,17 +35,18 @@ const parts: Part[] = [
   },
   {
     node: 'CabinStructure',
-    name: 'Cabin pressure-vessel wall',
+    name: 'Cabin pressure-vessel structure',
     group: 'Spacecraft',
     order: 2,
     explode: [0, 42, 0],
     inside: true,
     summary: 'The aluminium pressure boundary inside the heat shield.',
     detail:
-      'The inner wall is a separate structure. Two tapered sections are calculated from published penetration coordinates (NAA A-512S, ST-310A, p. 27), with five other coordinates checking the result. The middle ring agrees with the published Xc 42.665-inch, 59.6-inch-radius reference. Common Block II structure is assumed for CM-101. Four window interfaces and the curved outer hatch-frame interface use measured CM-107 structural outlines; the connections to the nominal wall are derived. This is the bare sidewall, without invented thickness: bulkheads, tunnel, the complete hatch frame, couches, instruments and equipment are not yet built. It stays with the command module in the exploded exhibit.',
+      'The inner wall is a separate structure. Two tapered sections are calculated from published penetration coordinates (NAA A-512S, ST-310A, p. 27), with five other coordinates checking the result. A shallow spherical aft bulkhead uses the 173-inch nominal radius in NASA TN D-6979, Figure 8, p. 9. That report used Block I impact specimens; its three inner-wall reference points independently match the Block II wall, supporting this explicitly assumed common primary geometry for CM-101. It is a reference surface, without invented thickness or fittings. Four window interfaces and the curved outer hatch-frame interface use measured CM-107 structural outlines; the connections to the nominal wall are derived. The forward bulkhead, tunnel, complete hatch frame, couches, instruments and equipment are not yet built. The structure stays with the command module in the exploded exhibit.',
     facts: [
       ['Wall limits', 'Xc 14.07–80.75 in · common Block II reference'],
       ['Mid-ring', 'Xc 42.665 in · radius 59.6 in'],
+      ['Aft bulkhead', '173 in spherical radius · assumed common reference'],
       ['Furnishings', 'Not built; structural cutaway only'],
     ],
   },
@@ -432,6 +433,14 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'assumed',
       note: 'NAA A-512S, ST-278A, p. 26: Xc 80.75 in, common Block II structure assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Aft pressure bulkhead, spherical radius',
+      value: 173 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NASA TN D-6979, Figure 8, p. 9: 173 in. Earlier primary-structure reference assumed for CM-101; its inner-wall points D/E/F independently match the Block II wall. Impact specimens were Block I, not CM-101',
     },
   ],
   motors: [],

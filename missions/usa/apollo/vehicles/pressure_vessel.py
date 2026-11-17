@@ -2,8 +2,10 @@
 
 North American A-512S (13 January 1969), ST-310A, printed p.27, supplies
 (Xc,Yc,Zc) in inches. ST-278A, p.26, identifies the Block II wall limits.
-Only the verified sidewall profile is reconstructed here: bulkheads, tunnel,
-hatch, stringers and equipment are separate unfinished work.
+NASA TN D-6979, Figure 8, p.9, supplies the nominal aft bulkhead R173 in.
+Its primary-structure points D/E/F independently match this wall. That common
+reference is assumed for CM-101; the report's impact specimens were Block I.
+The forward bulkhead, tunnel, hatch, stringers and equipment remain unfinished.
 """
 
 import math
@@ -23,6 +25,7 @@ POINTS = {
 }
 AFT = 14.07
 FORWARD = 80.75
+AFT_BULKHEAD_RADIUS = 173.0
 
 
 def _line(first, second):
@@ -44,6 +47,15 @@ def radius(x):
     return intercept + slope * x
 
 
+# The sphere meets the existing nominal aft ring exactly; station 14.07 on the
+# Block II plate is rounded relative to TN D-6979's 14.072-inch point D.
+AFT_SPHERE_CENTRE = AFT + math.sqrt(AFT_BULKHEAD_RADIUS**2 - radius(AFT) ** 2)
+
+
+def bulkhead_x(r):
+    return AFT_SPHERE_CENTRE - math.sqrt(AFT_BULKHEAD_RADIUS**2 - r**2)
+
+
 def verify():
     """Cross-check the reconstruction against points not used to define it."""
     for label in ("B", "C", "G", "R", "O"):
@@ -53,20 +65,25 @@ def verify():
     # PR29-12 (1968), Figure 4: kick frame Xc42.665, radius59.6.
     if abs(MID - 42.665) > 0.001 or abs(radius(MID) - 59.6) > 0.001:
         raise ValueError("Pressure-vessel profile misses the published kick frame")
+    # Independent TN D-6979 primary-structure coordinates. Their agreement
+    # supports using its nominal floor, not its different forward tunnel.
+    for x, r in ((14.072, 57.200), (42.665, 59.600), (80.750, 35.316)):
+        if abs(radius(x) - r) > 0.001:
+            raise ValueError("Pressure-vessel profile misses TN D-6979 Figure 8")
 
 
 verify()
 
 
 def build(parent, base):
-    """Build the sourced wall and frame interfaces, without invented bulkheads."""
+    """Build nominal wall/floor reference surfaces and surveyed frame interfaces."""
     import json
     from pathlib import Path
 
     from mathutils import Vector
 
     import perforated_wall
-    from srlib import CM, IN, MeshBuilder, interior, mark_shells, material
+    from srlib import CM, IN, MeshBuilder, _segs, interior, lathe_obj, mark_shells, material, prof
 
     if not interior():
         return
@@ -128,6 +145,9 @@ def build(parent, base):
 
     aluminium = material("apollo-pressure-wall", (0.66, 0.68, 0.66), metallic=0.45, roughness=0.65, double_sided=True)
     wall = perforated_wall.build("CM_PressureWall", parent, aluminium, base, AFT, FORWARD, radius, normal, holes, joins=(MID,))
+    aft = [(radius(AFT) * i / _segs(64), base + bulkhead_x(radius(AFT) * i / _segs(64))) for i in range(_segs(64) + 1)]
+    lathe_obj("CM_AftPressureBulkhead", prof(aft), aluminium, parent, segs=128)
+    mark_shells(["CM_AftPressureBulkhead"])
     perforated_wall.check_openings(wall, [(name, frame, direction) for name, frame, _, direction in windows], base)
     for name, frame, rim, _ in windows:
         # A derived connection from the published wall to the surveyed frame
