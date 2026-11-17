@@ -7,9 +7,16 @@ import { MSK } from './orbital.ts';
  * The hardware is the site's (places/tyuratam/site-1.parts.ts); this is the morning. What the record gives of it is the plan of
  * 4 August (doc 190 of «Первый пилотируемый полёт», 2011, book 2: «График подготовки космонавтов ... в день старта»,
  * in local time, Moscow's plus two: derived), which Titov's report says the day kept to, the film of the morning («Снова
- * к звёздам», Моснаучфильм 1961) and RussianSpaceWeb's photographs. No transcript of the exchanges before liftoff and no
- * roster of the pad have been found for this flight: **the erector, the trusses, the cable mast and the fillers have no
- * times of their own**, and each is given Vostok 1's interval before its liftoff (09:06:59.7): estimated, and said so.
+ * к звёздам», Моснаучфильм 1961) and RussianSpaceWeb's photographs. Chertok has them driven to the pad «по двухчасовой
+ * готовности» (book 3, «Восток-2»), about 07:00, which the plan's quarter hour allows. Titov's book of 1977 («Голубая моя
+ * планета», «На старте») prints what it calls a documentary record of his exchanges with the ground before liftoff: the
+ * hatch shut, then one hour's readiness, then the service trusses' platforms lowered and the trusses drawn back, all before
+ * ten minutes' readiness. Its clock times do not fit a liftoff at 09:00:00 (ten minutes' readiness at «8 часов 42 минуты
+ * 50 секунд»; the hatch at 7:46 by the ship's clock), so it gives the order and no time; it says nothing of the erector, the
+ * cable mast or the fillers. No roster of the pad and no range record was found (Lissov's article named for them is not in
+ * *Novosti Kosmonavtiki*: docs/sources.md): **the erector, the trusses, the cable mast and the fillers have no times of
+ * their own**, and each is given Vostok 1's interval before its liftoff (09:06:59.7): estimated, and said so. That order
+ * agrees with Titov's (the trusses away before ten minutes' readiness).
  *
  * The people: the film has some hundred on the concrete as the bus stopped and forty walking with him to the stair, in
  * summer dress (white short-sleeved shirts; officers in khaki summer shirts and peaked caps). They are built in summer dress
@@ -61,7 +68,7 @@ const MORNING: Keyframe[] = [
     slider: T.bus,
     event: 'The bus stops on the apron; Titov and Nikolayev, both suited, step down',
     confidence: 'estimated',
-    source: `${FILM}, 21:45: the bus stopped about where April’s did. The minute is ours, inside the plan’s quarter hour; Titov (1973): «мы с Андрияном Николаевым в летных костюмах неуклюже вышли из его дверей»`,
+    source: `${FILM}, 21:45: the bus stopped about where April’s did. The minute is ours, inside the plan’s quarter hour (Chertok, book 3: at two hours’ readiness, about 07:00); Titov (1973): «мы с Андрияном Николаевым в летных костюмах неуклюже вышли из его дверей»`,
   },
   {
     at: MSK(7, 0),
