@@ -1487,3 +1487,7 @@ The E/L loop crosses the older nominal CAD outer contour; neither source is
 shifted, scaled or trimmed to conceal the conflict. These processed-source
 contours are not installed or asserted to be machining dimensions; see
 [the comparison and limitations](../missions/usa/apollo/vehicles/dsky-front.md#display-interface-conflict--not-yet-installed).
+
+
+| NASA photographs S68-50712 (September 1968) and S68-29781 (22 April 1968), SA-205 at Complex 34 | [S68-50712](https://images.nasa.gov/details/S68-50712), [S68-29781](https://images.nasa.gov/details/s68-29781) | Actual flight vehicle: first-stage white lettering fields on black fuel tanks; word gap, glyph proportions and upper USA arrangement | Reconstructed cap heights, widths, pitch, field limits and stations are explicitly estimated from photographs, with perspective/glare uncertainty. No dimensioned stencil drawing acquired; no estimated value enters flight physics |
+| Liberation Fonts, Liberation Sans Regular 2.1.5 | [Official release and font archive](https://github.com/liberationfonts/liberation-fonts/releases/tag/2.1.5) | Reproducible lighter sans substitute for SA-205 paint, under SIL OFL 1.1 | Not the original contractor stencil or evidence of exact glyph outlines. Other flight lettering and cabin legends retain the default bold face |

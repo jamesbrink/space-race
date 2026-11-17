@@ -165,3 +165,66 @@ thrust ratings are not assigned to a simulator.
 The H-1 fact sheet explicitly dates the engine uprating to SA-206 and later,
 so its pre-uprating hardware reference is appropriate to SA-205. These are
 nominal period design figures, not measurements of the individual engines flown.
+
+
+## Photographic marking reconstruction
+
+The first lettering used font em sizes as physical capital heights. Its actual
+painted capitals were only about two-thirds of those values, and the vertical
+layout lacked the gap between UNITED and STATES. It also put the first-stage
+words on the white oxygen tanks. NASA **S68-29781** (22 April 1968), showing
+**SA-205 itself**, clearly shows the words on **white fields on the black fuel
+tanks**. **S68-50712** (September 1968) shows the full layout and narrow upper
+USA marking. The paint field is now a material region of each tank's one skin,
+without a second white surface. The letters follow that tank's own 35-inch
+radius about its offset centre, rather than a circle about the whole cluster.
+
+No dimensioned SA-205 stencil drawing was located. A secondary forum attachment
+named *Saturn IB S-IVB USA Marking.pdf* could not be retrieved (HTTP 403), so its
+contents and dimensions are not adopted. These changes use the user's authorized
+**last-resort photographic estimates**, not newly documented measurements.
+
+| Parameter | Reconstruction inches | Confidence |
+|---|---:|---|
+| S-IB capital height / U width | 36 / 30 | estimated |
+| S-IB letter pitch / extra word gap | 48 / 24 | estimated |
+| S-IB top of U, vehicle station | 865 | estimated |
+| Fuel-tank white field, axial limits | 240–900 | estimated |
+| White field circumferential arc width | 40 | estimated |
+| S-IVB capital height / U width | 40 / 28 | estimated |
+| S-IVB letter pitch | 80 | estimated |
+| Top of S-IVB U | 80 below the model's S-IVB top | estimated offset, not a surveyed station |
+| S-IVB white barrel field | upper 320 of modelled stage | estimated paint boundary |
+
+The original NASA image is 5797 × 7198 pixels. Approximate upper-glyph heights
+are 60–75 pixels against a 460–500-pixel apparent barrel diameter. The documented
+260-inch diameter gives a raw 31–42-inch range before perspective correction;
+40 inches is a rounded visual estimate with roughly ±20% uncertainty. The
+marked first-stage tank gives about 60–85 pixels per capital against an apparent
+150–180-pixel tank width. Its documented 70-inch diameter gives a raw 23–40-inch
+range, with additional axial foreshortening; 36 inches is a reconstruction choice
+with roughly ±25% uncertainty. These ranges describe the estimate, not inspection
+tolerances. Field ends, pitch, word gap and placement are matched to the visible
+proportions; perspective, glare and the still-provisional tank stations limit them.
+The erection photograph independently checks the word gap, paint field and glyph
+proportions. No restored museum paint or later white-fuel-tank vehicle is a donor.
+
+Each letter is normalized by its **actual glyph bounds**, independently of the
+font em. Other letter widths retain their proportions relative to U; an I stays
+narrow. The pinned **Liberation Sans Regular 2.1.5** is a lighter sans substitute,
+not the original contractor's stencil. Its rounded details, spacing and stroke
+shape are approximate. Other flights and cabin legends retain the existing bold
+font. The regular font is distributed under the existing SIL OFL 1.1 licence.
+Its SHA-256 is `76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8`.
+The .3-inch normal lift is the renderer's shared decal separation, **not a
+physical paint thickness**. It prevents flicker; letter sizing refers to the
+unwrapped painted outline. These estimates are display geometry only and never
+feed flight physics. Fine stencil bridges, serials, flags and fin markings remain
+unfinished.
+
+Sources: [NASA S68-50712](https://images.nasa.gov/details/S68-50712),
+[NASA S68-29781](https://images.nasa.gov/details/s68-29781), and
+[the font's official release](https://github.com/liberationfonts/liberation-fonts/releases/tag/2.1.5).
+Original-photo SHA-256 values: S68-50712
+`610d24aa0cb604987930a0774aa0b0753b8724e9da2aeda2bfdf0eece2e23527`;
+S68-29781 `5cdf66573dc36ecd18e8a23cad2a49ed69ce949a78b48af99e259a1aeaa468db`.

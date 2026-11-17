@@ -358,7 +358,8 @@ tools/
   logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
   blender/srlib.py                    shared geometry helpers, clearance check, run()
   blender/cabin_shade.py              a cabin's own shadow baked at its vertices: a figure for each lamp alone, one with them out (`bake`)
-  blender/fonts/LiberationSans-Bold.ttf  the one typeface models' lettering and panel legends are built in, on any machine (srlib.load_font)
+  blender/fonts/LiberationSans-Bold.ttf  the default face for models' lettering and panel legends, on any machine (srlib.load_font)
+  blender/fonts/LiberationSans-Regular.ttf  SA-205's lighter painted lettering, sized from actual capital bounds; a photographic font substitute
   blender/fonts/LICENSE               its licence: the SIL Open Font License 1.1, as Liberation Fonts 2.1.5 ships it
   blender/sitelib.py                  what any site is built from: walls with openings, stairs, ladders, doors, poles
   blender/figurelib.py                what any crew figure is built from: a body's measures and joints, the trunk and trousers as skins, hands, a head,

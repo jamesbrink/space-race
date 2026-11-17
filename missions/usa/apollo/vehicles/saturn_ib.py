@@ -6,11 +6,14 @@ Engine contours, fins, paint boundaries and attachments remain provisional.
 """
 
 import math
+from pathlib import Path
 
+import bpy
 from mathutils import Matrix
 
+import srlib
 from apollo_csm import BELL_RIM, SM_BOTTOM, bell, radial, tube
-from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, load_font, material, prof, text_mesh
+from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, material, prof, text_mesh
 
 SIB_TOP = 80.2 * 12
 SIVB_TOP = SIB_TOP + 58.4 * 12
@@ -34,6 +37,15 @@ J2_EXIT_INNER_RADIUS = (6 * 12 + 5) / 2
 H1_GIMBAL_STATION = 100
 H1_INBOARD_RADIUS, H1_INBOARD_CANT = 32, 3
 H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT = 95, 6
+# Photographic estimates, NOT drawing dimensions: NASA S68-50712 and S68-29781.
+# See saturn-ib.md for calibration, uncertainties and font limitations. Heights
+# are actual painted capitals, not a font's em size. These never feed physics.
+SIB_CAP, SIB_U_WIDTH, SIB_PITCH, SIB_WORD_GAP, SIB_TEXT_TOP = 36, 30, 48, 24, 865
+SIB_FIELD_LO, SIB_FIELD_HI, SIB_FIELD_ARC = 240, 900, 40
+SIVB_CAP, SIVB_U_WIDTH, SIVB_PITCH = 40, 28, 80
+SIVB_TEXT_TOP = SIVB_TOP - 80
+SIVB_WHITE_FIELD_LO = SIVB_TOP - 320
+PAINT_LIFT = 0.3  # Rendering separation, as srlib.decal; not paint thickness.
 
 
 def cylinder(name, radius, lo, hi, mat, parent):
@@ -53,22 +65,55 @@ def painted_barrel(name, lo, hi, parent, white, black, bands=()):
             m.build(f"{name}_{i}", black if i else white, parent)
 
 
-def lettering(body, angle, z, radius, size, mat, parent, vertical=False):
-    verts, faces = text_mesh(body, size * IN, load_font(), cuts=3)
+def lettering(body, angle, top, radius, height, width, pitch, mat, parent, font, *, centre=(0, 0), word_gap=0):
+    """Fit physical capital height and U width, preserving other glyph proportions."""
+    reference, _ = text_mesh("U", 1, font)
+    u_width = max(p[0] for p in reference) - min(p[0] for p in reference)
+    u_height = max(p[1] for p in reference) - min(p[1] for p in reference)
     mesh = MeshBuilder()
-    if vertical:
-        # Each letter has its own baseline, facing radially outward.
-        for j, letter in enumerate(body):
-            vs, fs = text_mesh(letter, size * IN, load_font(), cuts=2)
-            transformed = []
-            for x, y, _zz in vs:
-                a = angle + (x - size * IN * 0.35) / (radius * IN)
-                transformed.append(radial(radius, a, z - j * size * 1.25 + y / IN))
-            mesh.add(transformed, fs)
-    else:
-        width = max((v[0] for v in verts), default=0)
-        mesh.add([radial(radius, angle + (x - width / 2) / (radius * IN), z + y / IN) for x, y, _ in verts], faces)
-    mesh.build(f"Letters_{body}_{round(angle, 2)}", mat, parent, smooth=False)
+    for letter in body:
+        if letter == " ":
+            top -= word_gap
+            continue
+        verts, faces = text_mesh(letter, 1, font, cuts=3)
+        xs, ys = [p[0] for p in verts], [p[1] for p in verts]
+        cx, y0 = (min(xs) + max(xs)) / 2, min(ys)
+        # Use measured glyph bounds. A narrow I remains narrow; overshoots in
+        # rounded glyphs do not change the requested physical capital height.
+        sy = height / (max(ys) - y0)
+        sx = width / u_width
+        transformed = []
+        for x, y, _ in verts:
+            a = angle + (x - cx) * sx / radius
+            px, py, pz = radial(radius + PAINT_LIFT, a, top - height + (y - y0) * sy)
+            transformed.append((px + centre[0], py + centre[1], pz))
+        mesh.add(transformed, faces)
+        top -= pitch
+    obj = mesh.build(f"Letters_{body.replace(' ', '')}_{round(angle, 2)}", mat, parent, smooth=False)
+    obj["paint_confidence"] = "estimated"
+    obj["paint_cap_height_in"] = height
+    obj["paint_u_width_in"] = width
+    obj["paint_reference_cap_ratio"] = u_width / u_height
+
+
+def outer_tank(index, angle, white, black, parent):
+    """One tank skin, with its fuel-tank white marking field painted into it."""
+    fuel = index % 2 == 1
+    profile = [(0, 115), (25, 119), (35, 143), (35, SIB_FIELD_LO), (35, SIB_FIELD_HI), (35, SIB_TOP - 60), (26, SIB_TOP - 38), (0, SIB_TOP - 32)]
+    half = SIB_FIELD_ARC / (2 * 35)
+    angles = sorted({TAU * i / 64 for i in range(64)} | {half, TAU - half})
+    mesh = MeshBuilder()
+    mesh.grid(lambda a, j: radial(profile[j][0], a, profile[j][1]), angles, list(range(len(profile))), closed_u=True)
+    tank = mesh.build(f"SIB_OuterTank_{index}", black if fuel else white, parent)
+    if fuel:
+        tank.data.materials.append(white)
+        for polygon in tank.data.polygons:
+            centre = sum((tank.data.vertices[i].co for i in polygon.vertices), tank.location.copy()) / len(polygon.vertices)
+            if SIB_FIELD_LO < centre.z / IN < SIB_FIELD_HI and abs(math.atan2(centre.y, centre.x)) < half:
+                polygon.material_index = 1
+    tank.rotation_euler.z = angle
+    tank.location.x, tank.location.y = radial(93, angle, 0)[:2]
+    return tank
 
 
 def build():
@@ -76,6 +121,9 @@ def build():
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
     red = material("saturn-lettering-red", (0.55, 0.035, 0.02), roughness=0.7)
+    # OFL Liberation Sans Regular 2.1.5: a reproducible light sans substitute,
+    # not a claim that the original contractor stencils used this typeface.
+    font = bpy.data.fonts.load(str(Path(srlib.__file__).parent / "fonts" / "LiberationSans-Regular.ttf"))
     groups = {
         n: group(n)
         for n in (
@@ -94,17 +142,10 @@ def build():
     cylinder("SIB_CentreTank", 52.5, 130, SIB_TOP - 40, white, sib)
     for i in range(8):
         a = TAU * i / 8
-        tank = lathe_obj(
-            f"SIB_OuterTank_{i}",
-            prof([(0, 115), (25, 119), (35, 143), (35, SIB_TOP - 60), (26, SIB_TOP - 38), (0, SIB_TOP - 32)]),
-            # Fuel tanks alternate with the outer LOX tanks. MSFC's Saturn IB
-            # Flight Manual (30 September 1972), p.4-4, explicitly dates the
-            # switch from black fuel tanks to white to SA-206 and subsequent.
-            black if i % 2 else white,
-            sib,
-            segs=64,
-        )
-        tank.location.x, tank.location.y = radial(93, a, 0)[:2]
+        # MSFC-MAN-206 p.4-4 dates white fuel tanks to SA-206 onward. The
+        # actual SA-205 photograph S68-29781 shows red letters on white
+        # fields on the BLACK fuel tanks, not on the white oxygen tanks.
+        outer_tank(i, a, white, black, sib)
     cylinder("SIB_ThrustSkirt", 127, 32, 138, white, sib)
     cylinder("SIB_ForwardRing", 130, SIB_TOP - 38, SIB_TOP, white, sib)
     # Eight substantial swept fins, each a closed wedge, not a flat card.
@@ -134,7 +175,7 @@ def build():
     painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
     bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, J2_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["SecondStageEngine"])
     sivb = groups["SaturnSecondStage"]
-    painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, INTERSTAGE_TOP + 55)])
+    painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, SIVB_WHITE_FIELD_LO)])
     for i in range(2):
         a = TAU * i / 2 + math.pi / 2
         mesh = MeshBuilder()
@@ -148,8 +189,23 @@ def build():
     # No guessed cable tunnels: the initial four were unsourced and covered the USA paint.
     for i in range(4):
         a = TAU * i / 4
-        lettering("UNITEDSTATES", a, SIB_TOP - 130, 128.8, 31, red, sib, vertical=True)
-        lettering("USA", a, SIVB_TOP - 175, 130.8, 25, red, sivb, vertical=True)
+        fuel_angle = a + math.pi / 4
+        centre = radial(93, fuel_angle, 0)[:2]
+        lettering(
+            "UNITED STATES",
+            fuel_angle,
+            SIB_TEXT_TOP,
+            35,
+            SIB_CAP,
+            SIB_U_WIDTH,
+            SIB_PITCH,
+            red,
+            sib,
+            font,
+            centre=centre,
+            word_gap=SIB_WORD_GAP,
+        )
+        lettering("USA", a, SIVB_TEXT_TOP, RADIUS, SIVB_CAP, SIVB_U_WIDTH, SIVB_PITCH, red, sivb, font)
     cylinder("IU_Skin", RADIUS, SIVB_TOP, IU_TOP, black, groups["InstrumentUnit"])
     sla = groups["SpacecraftAdapter"]
     lathe_obj("SLA_Shell", prof([(130, IU_TOP), (77, SLA_TOP)]), white, sla, segs=128)

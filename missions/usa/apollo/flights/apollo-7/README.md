@@ -111,3 +111,14 @@ blank console is masked beneath it. Rear ribs, mounting pockets, keys, display
 covers, glazing, labels and electronics remain unbuilt. This is not the complete
 machined cover or an equipped DSKY, and does not install the unresolved bare
 housing described above.
+
+
+## Lettering correction
+
+SA-205's markings now use painted capital bounds, rather than a font's em size.
+UNITED STATES follows the individual black fuel tanks, on white painted fields;
+USA has a taller, narrower layout. The estimates and uncertainty from actual
+SA-205 NASA photographs are explicit in the gallery and
+[hardware notes](../../vehicles/saturn-ib.md#photographic-marking-reconstruction).
+The user authorized photo-based estimates as a last resort after source searches;
+this does not promote them to documented dimensions or permit estimated flight inputs.

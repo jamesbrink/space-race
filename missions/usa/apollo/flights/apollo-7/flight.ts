@@ -220,7 +220,7 @@ const parts: Part[] = [
     explode: [0, 15, 0],
     summary: 'The hydrogen–oxygen upper stage that Apollo 7 later rendezvoused with.',
     detail:
-      'The press kit gives a 58.4-foot stage envelope, including the aft interstage. Its separation plane now follows rounded vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. Other barrel subdivisions, raised stiffeners and auxiliary-propulsion housings remain provisional. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
+      'The press kit gives a 58.4-foot stage envelope, including the aft interstage. Its separation plane now follows rounded vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. The USA capitals are reconstructed at about 40 inches high, estimated from NASA S68-50712; their height, width, pitch and placement are photographic estimates, with a substitute sans typeface. Other barrel subdivisions, raised stiffeners and auxiliary-propulsion housings remain provisional. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
   },
   {
     node: 'SecondStageEngine',
@@ -252,7 +252,7 @@ const parts: Part[] = [
     explode: [0, 0, 0],
     summary: 'Nine clustered tanks and eight swept fins.',
     detail:
-      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. Eight fins surround the thrust skirt. Their lines now coincide with the inboard and outboard engine planes, as in the August 1968 Saturn IB checklist, Figure 25. Tank end stations, cluster pitch radius, fin profiles, fittings, paint boundaries and absolute clocking relative to the spacecraft remain provisional.',
+      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. UNITED STATES is on white fields on those black fuel tanks, as photographed on SA-205 in NASA S68-29781. Its approximately 36-inch capital height, field boundaries, spacing and placement are photographic estimates; the lighter sans typeface is a substitute. Eight fins surround the thrust skirt. Their lines now coincide with the inboard and outboard engine planes, as in the August 1968 Saturn IB checklist, Figure 25. Tank end stations, cluster pitch radius, fin profiles, fittings, paint boundaries and absolute clocking relative to the spacecraft remain provisional.',
   },
   {
     node: 'FirstStageEngines',
@@ -619,6 +619,22 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'assumed',
       note: 'Derived intersection of two generators from NAA A-512S ST-310A penetration coordinates. Independently agrees with PR29-12 Figure 4, Xc 42.665 in; common reference assumed for CM-101',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IB painted capital height',
+      value: 36 * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Rounded photographic reconstruction from NASA S68-50712 and S68-29781, calibrated against the 70-inch tank diameter; about ±25% uncertainty, not a manufacturing dimension',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IVB painted capital height',
+      value: 40 * IN,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'Rounded photographic reconstruction from NASA S68-50712, calibrated against the 260-inch barrel diameter; about ±20% uncertainty, not a manufacturing dimension',
     },
     {
       group: 'Spacecraft',
