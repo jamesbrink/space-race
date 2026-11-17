@@ -124,6 +124,27 @@ weights, centre of gravity, event times to the tenth, the hatch investigation); 
 flight operations manual for capsule 11 (SEDR 109-11), which would give the panel dimensioned and the fuse panel;
 the Cosmosphere's restoration record and photographs of the cabin as found.
 
+### The recovery helicopter: the Marines' HUS-1
+
+What the Sikorsky HUS-1 (S-58) that recovered the Redstone flights rests on (`missions/usa/mercury/vehicles/hus-1.md`,
+`hus_1.py`). Read November 2026.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Bridgman (ed.), *Jane's All the World's Aircraft 1958-59*, Sikorsky S-58, pp. 371 and 372; the same entry in the 1957-58 edition, pp. 361 and 362 | [archive.org, janesallworldsai0000na](https://archive.org/details/janesallworldsai0000na) and [janesallworldsai0000leon](https://archive.org/details/janesallworldsai0000leon) | **The type's published figures**: rotor 56 ft 0 in, disc 2,460 sq ft, fuselage 47 ft 2 in, height 14 ft 4 in, track 12 ft, wheelbase 28 ft 3 in, tyres 11.00-12 and 6.00-6, the R-1820-84's 1,525 hp and 1,275 hp METO, weights and hovering ceilings for the S-58 and the H-34A, the transmission's drive for "the cargo hoist" | Type figures, given for the S-58 and the H-34A, not the HUS-1. Read as OCR text. The 1960-61 edition is on archive.org for lending only and was not read |
+| Sikorsky Aircraft, *Descriptive Arrangement* of the S-58: a three-view with its dimensions | reproduced in Bryan Swopes, *This Day in Aviation*, "8 March 1954" ([thisdayinaviation.com](https://www.thisdayinaviation.com/8-march-1954/)), credited "(Sikorsky)" | **The model's shape**: rotor 56.0 ft, tail rotor 9.5 ft and its lowest tip 77 in up, track 12.0, fuselage 46.6, height 14.3, 65.7 ft with the rotors turning, 56.3 and 37.0 stowed, blade area 35 sq ft, NACA 0012, 11.3 : 1; and, read off the views, the body's outline, the gear, the pylon, the stabiliser, the door (dashed) and the windows | A 530-pixel reproduction of a drawing whose date and edition are not given: positions read off it are good to about 2 in. Its fuselage length is not Jane's |
+| *This Day in Aviation* (above), its text | as above | The R-1820-84's ratings at their rpm, its 35-degree installation, the gear ratios, a main rotor speed of 258 rpm at most | Secondary, and its weights are the HSS-1's |
+| Sikorsky Archives, *Sikorsky S-58* | [sikorskyarchives.com](https://sikorskyarchives.com/home/sikorsky-product-history/helicopter-innovation-era/sikorsky-s-58/) | The UH-34D's weights (7,900 lb empty, 14,000 lb maximum), height overall 15 ft 11 in, fuselage 46 ft 9 in | The UH-34D of after 1962; which length and height these are is not said |
+| Rawlins, *Marines and Helicopters 1946-1962*, History and Museums Division, HQ USMC, 1976, pp. 57 and 80 | [archive.org, MarinesAndHelicopters1946-1962](https://archive.org/details/MarinesAndHelicopters1946-1962) | The HUS-1 is the HSS-1 "except for the cabin's interior arrangement"; its 1,525 hp Wright; the first HUS-1s to HMR(L)-261 and -363 in February 1957 | No characteristics table |
+| *This New Ocean* (above), pp. 372 to 375; *Results of the Second U.S. Manned Suborbital Space Flight* (above), pp. 45 ("Hunt Club" is the helicopters' call sign), 55 and Figure 7-7 | as above | **The recovery**: Lewis and Reinhard, the antenna cut "with a squib-actuated cutter at the end of a pole", the shepherd's hook through the recovery loop, "the chopper's three wheels were in the water", the chip light, the capsule "over 5000 pounds, a thousand pounds beyond the helicopter's lifting capacity"; Cox and the horse collar | A history (TNO) and the pilot's account; nothing dimensioned about the helicopter |
+| NASA photographs of the MR-4 recovery: S61-02826 (Hunt Club 1 with the capsule on its line), MSFC-6116424 and 61-MR4-100 (the same, towing), MSFC-6116429 and S61-02819 (ET-30 lifting Grissom, a Navy HUS beyond), GPN-2002-000047; of the MR-3 recovery, KSC-71P-260 (ET-44, starboard side, Shepard on the hoist, the capsule on the belly hook's bridle) | Wikimedia Commons | **Which aircraft and its paint**: Hunt Club 1 is ET-32, bureau number 148755 (S61-02826 at full resolution); MARINES, the insignia, the numbers, ET, the DANGER plate; the tail rotor on the port side; the louvres on the spine; the hoist's boom above the door's forward edge; the line from under the belly | All black and white. Places and sizes read off them are estimated. 148755 is read on one photograph only |
+| Photograph of a HUS-1 of HMR(L)-163 landing on USS *Bennington*, about 1960 (Commons, *Sikorsky HUS-1 of HMR(L)-163 landing aboard the aircraft carrier USS Bennington (CVS-20), circa in 1960*) | Wikimedia Commons | The only colour read: a dark olive green with white markings | Another squadron, a year earlier, and a faded scan |
+
+Known and not read: the Navy's *Standard Aircraft Characteristics* chart for the HUS-1 (the HyperWar depository lists
+it "not yet scanned"); the HSS-1 and HUS-1 flight manual and the *NATOPS Flight Manual, Navy Models UH-34D, G and J*
+(1966), which would give the rescue hoist's and the cargo hook's rated loads, the hovering ceilings at the HUS-1's
+own weights, and the door and hoist dimensioned; HMR(L)-262's command chronology for July 1961.
+
 ### Mercury-Atlas 6, *Friendship 7*
 
 What spacecraft No. 13 and Atlas 109-D rest on (`flights/ma-6-friendship-7/`, `vehicles/atlas-lv3b.md`,
