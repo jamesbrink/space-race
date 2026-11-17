@@ -100,9 +100,10 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Four quads, each with four small engines, turn and translate the ship.',
     detail:
-      'The four external quads are shown with open nozzle bells. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their axial station is 41.10 inches aft of the CM datum in the CSM-101 preflight reference (MIT R-547, Figure 1.4, p. 1-16). Quad azimuths, bracket shapes and chamber profiles remain estimated. Propellant plumbing and thermal details are not built.',
+      'The four external quads are shown with open nozzle bells. Apollo 7’s press kit p. 26a places them on the +Y, −Y, +Z and −Z axes. In the model’s hatch-facing coordinate frame these are the four cardinal directions; the former 45° offset is removed. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their axial station is 41.10 inches aft of the CM datum in the CSM-101 preflight reference (MIT R-547, Figure 1.4, p. 1-16). Radial mounting distance, bracket shapes and chamber profiles remain estimated. Propellant plumbing and thermal details are not built.',
     facts: [
       ['Arrangement', '4 quads × 4 chambers · press kit p. 27'],
+      ['Mounting planes', '±Y and ±Z · press kit p. 26a'],
       ['Axial station', 'Xc −41.10 in · CSM-101 preflight reference'],
     ],
   },

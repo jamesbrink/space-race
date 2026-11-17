@@ -149,7 +149,10 @@ def build(offset=0):
     bell("SPS_Bell", (0, 0, 0), (0, 0, 1), SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, dark, groups["ServiceEngine"])
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):
-        a = TAU * (i + 0.5) / 4
+        # Apollo 7 press kit p.26a: packages on ±Y and ±Z. The model's
+        # hatch-facing basis is (-Zc, Yc, Xc), so those are cardinal here too.
+        # A 45-degree offset would put every package between the real axes.
+        a = TAU * i / 4
         out = Vector((math.cos(a), math.sin(a), 0))
         tangent = Vector((-math.sin(a), math.cos(a), 0))
         centre = Vector(radial(82, a, RCS_STATION))

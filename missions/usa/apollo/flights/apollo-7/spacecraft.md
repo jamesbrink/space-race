@@ -15,6 +15,7 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 | SM barrel length | 155 in | derived XA 993 − 838, same preflight reference |
 | CM datum, XA | 1000 in | assumed CSM-101 preflight reference, same figure |
 | RCS quad axial station, Xc | −41.10 in | assumed CSM-101 preflight reference, same figure |
+| RCS quad mounting planes | ±Y, ±Z | documented, Apollo 7 press kit p. 26a; model basis (-Zc, Yc, Xc) |
 | CM/SM fairing height / diameter | 26 / 156 in | assumed common Block II, AOH volume 1, p. 1-49 |
 | SPS extension attachment, Xs | 180 in | assumed common hardware, NAA 1967 ST-304C / 1969 ST-304A |
 | SM aft bulkhead, Xs | 200 in | same plates; the flange is 20 in aft of the bulkhead |
@@ -43,8 +44,15 @@ hatch cover now has an outer window reference sectioned from Smithsonian's measu
 detached CM-107 hatch. Its pose and connection to the nominal cone are derived,
 with residuals recorded; the pressure door and glazing are not yet built.
 The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
-The RCS axial station now follows the CSM-101 preflight reference. Panel colouring,
-seams, nozzle contours, quad azimuths and brackets remain estimated.
+The RCS axial station now follows the CSM-101 preflight reference. Its four mounting
+planes now follow Apollo 7 press-kit p. 26a: ±Y and ±Z. The hatch is on the −Z side
+in the p. 25d axis diagram; the Blender basis (-Zc, Yc, Xc) puts these quads on
+cardinal azimuths 0°, 90°, 180° and 270°. This removes the former 45° rotation.
+Panel colouring, seams, nozzle contours, radial mounting distance and brackets
+remain estimated. The six internal sectors are **not** six equal exterior panels:
+p. 26a specifies 50°/70°/60° pairs, and NAA A-512S ST-3057 p. 67 separately
+identifies four sector panels and four RCS panels. The provisional shell's seam
+and radiator pattern is not promoted to that documented layout.
 
 ## Simplifications and things still wrong
 

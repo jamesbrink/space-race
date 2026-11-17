@@ -29,8 +29,13 @@ The CM G&N *Hardware Difference Summary*, sheet 3 of 7 (PDF page 5 in
 distinguishes aluminum-cap/fire-protection, pushbutton-spring, safety-glass and
 indicator-legend changes by DSKY dash number. It does not establish all bare-housing
 dimensions or authorize copying Apollo 11's -121 equipment into Apollo 7's -031.
-Indicator covers in the tabulated assembly have conditional notes; the model
-does not treat both listed covers as simultaneously installed parts.
+Reading the primary 2003994J parts table resolves the finding aid's ambiguous
+cover titles: find 30, **2003897-021**, is the **I/L cover assembly**, and find 31,
+**2003897-031**, is the **E/L cover assembly**. Both have quantity one in the
+DSKY -031 column: they protect different displays, rather than being alternative
+alarm covers. Notes 16 and 17 give their separate assembly instructions. Note 13
+permits alarm indicator 1006387-002 or -003. The finding aid labels both covers
+as indicator-alarm covers; that title is not used to override the drawing.
 
 ## Geometry and confidence
 
@@ -110,3 +115,6 @@ an attachment or explosion axis.
   labels, glass, seals, electronics, main case or rear connector are built.
 - Other available CAD includes photographically guessed cover ribs or a widened
   display window without a drawing. Those parts are deliberately excluded.
+- The 2004739A-000 cover transcription has not been validated as the flight's
+  2004739-001 cover. Slicing its front sheet does not establish the complete
+  stepped profile or the -001 machining. It is not substituted into the cabin.
