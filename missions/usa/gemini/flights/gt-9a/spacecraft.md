@@ -34,7 +34,7 @@ missing from the copy read); **SEDR2**, SEDR 300 vol. 2 (McDonnell, 1 July 1966)
 | OAMS control power | one four-pole switch takes power from all sixteen thrusters; the electronics' exposed connections varnished against a short | several switches | documented | GIX, 3.1.2.4 | no |
 | Horizon sensor | the secondary one with a narrower band, 13 to 22 microns | 8 microns | documented | GIX, 3.1.2.4 | no |
 | Panels | six ammeters for the fuel cell stacks; an MMU DEPLOY switch and a hydrogen peroxide warning lamp; a hood over the elapsed-time clock | | documented | GIX, 3.1.2.9.1 | no: the panels are spacecraft 3's with the two clocks |
-| Suits | G4C; the pilot's with legs covered against the unit's exhaust, a polycarbonate visor with a low-emittance coat and a single sun visor | G4C | documented | GIX, 3.1.2.12.2 | no: the seats are empty |
+| Suits | G4C; the pilot's with legs covered against the unit's exhaust, a polycarbonate visor with a low-emittance coat and a single sun visor | G4C | documented | GIX, 3.1.2.12.2 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
 | Experiments | S-12, a micrometeorite collector 11 by 5.5 by 1.25 in behind the right hatch; D-12, the unit; D-14, a boom antenna on the adapter; S-1, S-11, M-5 in the cabin; S-10 on the target | S-9 | documented | GIX, 8.0; kit | S-12 only: `retro_experiments=("s-12",)`, its place estimated |
 
 ## Paint

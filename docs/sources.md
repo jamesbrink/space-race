@@ -1259,6 +1259,9 @@ the page.
 | NASA release 66-52, the Gemini 8 press kit (entry above), read again: the count (pp. 9 and 10) | as above | "Close spacecraft hatches" at T-100, "White Room evacuation" at T-70, "Begin erector lowering" at T-55; the suit (pp. 38 and 39); no stature for Scott in his biography | |
 | NASA photographs of 16 March 1966: **S66-24478** (Armstrong and Scott on the ramp at pad 19), S66-24465 (the liftoff), KSC-66C-1851 (the two at the trailer's door) | images.nasa.gov | **The G4C as worn on Gemini 8** (crew/g4c-suit.md) | |
 | NOAA NCEI Integrated Surface Database, 1966: station 74794012868, 16 March | [noaa-global-hourly-pds](https://noaa-global-hourly-pds.s3.amazonaws.com/1966/74794012868.csv) (fetched 17 November 2026) | The hours either side of the liftoff, beside the report's own: a broken class with no ceiling, one okta of cumulus at 600 m and five of cirrus at 15:00 UTC, 360° at 9.3 and 10.3 m/s | |
+| *Gemini Program Mission Report, Gemini IX-A* (entry above), read again for the launch site | as above | "the crew ingressed at T-115 minutes" (7.1.2.1); the count's zero, "the nominal 13:39:30 G.m.t.", the lanyards' new lengths working (5.2.10.3); the update not received at T-3 and the backup plan (4.1); the scrubs of 17 May and 1 June; **the suits**, the pilot's legs covered against the unit's exhaust (3.1.2.12.2); **the launch weather** on 1 and 3 June (12.2, p. 12-13) | The length of the hold at T-3 is not given |
+| NASA release 66-97, the Gemini 9 press kit (entry above), read again | as above | The count (pp. 6 and 7), the same as Gemini 8's with a built-in hold at T-3; **"Gemini 9 Suits"** (pp. 24 to 26): the pilot's leg cover "beginning at the groin line"; no stature for Cernan in his biography | |
+| NASA photographs of 1966: **S66-32149** (Stafford and Cernan on the ramp at pad 19, 3 June, Cernan's legs grey), S66-31019 (May: the Gemini 9 suit for going outside, its legs of Chromel-R), S66-34065 (the hatches about to be closed), S66-34098 (the liftoff) | images.nasa.gov | **The G4C as worn on Gemini 9A** (crew/g4c-suit.md) | |
 
 Known, not read:
 
@@ -1272,7 +1275,7 @@ Known, not read:
 | McDonnell's drawings of the Extravehicular Support Package and Ling-Temco-Vought's of the Astronaut Maneuvering Unit; the Air Force's report on experiment D-12 | Both packs' outsides, drawn here from small figures |
 | The other frames each crew took of its target (NASA S66-257xx, S66-379xx), at full size | The Agena's far side; which half of the ATDA's shroud kept the nose, which side its black band was on, where the wires ran |
 | Photographs of Gemini-Titan 8 and Gemini-Titan 9A on the stand, read for the paint | Both vehicles' lettering and roll pattern, assumed as GLV-3's to GLV-7's |
-| The countdown records for 16 March and 3 June 1966 | When Gemini 8's hatches were shut and its erector went down, and Gemini 9A's whole morning: the plans are used |
+| The countdown records for 16 March and 3 June 1966 | When the hatches were shut and the erector went down on each morning, and how long Gemini 9A's hold at T-3 lasted: the plans are used |
 | NASA release 66-52's companion on the experiments (NTRS 19660022876; downloaded, not read) | Where experiments D-14, D-15 and D-16 were on spacecraft 8 |
 
 ### The Gemini adapter's equipment section

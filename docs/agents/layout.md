@@ -76,7 +76,7 @@ missions/                             the record: one folder per nation, program
                                       24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965;
                                       gt-4: on 3 June 1965; gt-5: on 21 August 1965; gt-7: on
                                       4 December 1965; gt-6a: on 15 December 1965;
-                                      gt-8: on 16 March 1966)
+                                      gt-8: on 16 March 1966; gt-9a: on 3 June 1966)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
       model/<name>.lod.json           its own level-of-detail thresholds, measured (tools/lod-thresholds.mjs); a site's dated models have theirs too
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)

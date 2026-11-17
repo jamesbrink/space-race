@@ -142,7 +142,7 @@ const opened = await open(browser, null, { console: ['error'] });
 page = opened.page;
 const errors = opened.errors;
 await page.addInitScript(counting);
-await page.goto(`${url}?mem#${FLIGHTS[0]}/gallery`);
+await page.goto(`${url}?mem&fixture#${FLIGHTS[0]}/gallery`); // (`?fixture`: the flight that is only a vehicle, below)
 const loaded = await page.waitForFunction(() => window.srLoaded, null, { timeout: 60_000 }).then((h) => h.jsonValue());
 
 const settle = () => page.waitForTimeout(1500);
@@ -314,7 +314,7 @@ for (const [step, id, place, what] of [
 }
 // A flight that is only its vehicle (only.ts: no site, so the site's stage is let go whole: Stage.unload), and back
 // to a flight with a site, which is built again as a fresh page builds it
-const ONLY = opt(args, '--only', 'usa/gemini/gt-9a'); // (the orbital Mercury flights and Gemini 3 to 8 have their site now)
+const ONLY = opt(args, '--only', 'test/fixture/vehicle-only'); // (every flight has its site now: the fixture is the one that has none)
 await go(`#${ONLY}/gallery`);
 await arrive(ONLY);
 await galleryReady().catch(() => {});

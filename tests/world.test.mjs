@@ -697,4 +697,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(march1966.moon.elevation / DEG, 20.1, 0.05, 'Moon elevation over Complex 19, 16 March 1966');
   near(march1966.moon.illuminated, 0.257, 0.005, 'Moon lit over Complex 19, 16 March 1966');
   assert.equal(march1966.moon.waxing, false, 'a waning crescent, going down in the south-west');
+  // Gemini-Titan 9A
+  const gt9a = flights.find((f) => f.id === 'usa/gemini/gt-9a');
+  const june1966 = skyFrom(siteFrame(gt9a.site), julianDate(gt9a.launch));
+  near(june1966.sun.azimuth / DEG, 83.9, 0.05, 'Sun azimuth over Complex 19, 3 June 1966');
+  near(june1966.sun.elevation / DEG, 40.2, 0.05, 'Sun elevation over Complex 19, 3 June 1966');
+  near(june1966.moon.azimuth / DEG, 260.1, 0.05, 'Moon azimuth over Complex 19, 3 June 1966');
+  near(june1966.moon.elevation / DEG, -39.0, 0.05, 'Moon elevation over Complex 19, 3 June 1966');
+  near(june1966.moon.illuminated, 0.999, 0.005, 'Moon lit over Complex 19, 3 June 1966');
+  assert.equal(june1966.moon.waxing, false, 'a Moon a day past full, below the horizon');
 });

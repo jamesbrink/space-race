@@ -10,7 +10,7 @@ built.
 | | |
 | --- | --- |
 | Liftoff | 3 June 1966, 13:39:33.335 UTC (8:39:33 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that morning |
 | Crew | Thomas P. Stafford, command pilot; Eugene A. Cernan, pilot |
 | Spacecraft | Gemini No. 9, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 9, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -29,8 +29,12 @@ hatch windows, the docking fittings it never used, the handrails, the gold insid
 and the Astronaut Maneuvering Unit at the back of it; the right hatch opens at the end of the
 slider. The target stands on the floor beside the launch vehicle, to scale, as the crew found it:
 the two halves of its shroud open about thirty degrees and held by a band and two wires. It can be
-stood alone (`#usa/gemini/gt-9a/gallery/docking-target`), taken apart and cut open. The launch
-sites, the crew and the flight itself are not built.
+stood alone (`#usa/gemini/gt-9a/gallery/docking-target`), taken apart and cut open. At Complex 19 the
+vehicle stands on the thrust mount on the morning of the flight, without the target, which went up
+from Complex 14 two days before: the erector raised while the crew go up and laid down from T−55,
+Stafford and Cernan at the foot of the ramp, Cernan in the cover for going outside with its legs of
+Chromel-R, each a figure to walk the site as, under that morning's sky. Complex 14 and the flight
+itself are not built.
 
 ## The name
 
@@ -133,17 +137,59 @@ Seconds or hours:minutes:seconds from liftoff. "MR" is the mission report, MSC-G
 | 72:17:11 | main parachute | documented | MR, Table 4.2-I |
 | 72:20:50 | landing | documented | MR, Table 4.2-I |
 
-## The sky and the weather
+## The morning at the pad
 
-Not worked out, and the flight has no `weather.ts`: it stands in the gallery only, under the
-studio's lights. For when the site is built, the report's section 12 has the Cape at 8:40 a.m. EST
-on 3 June: scattered cloud at 3,500 ft, two tenths of stratocumulus, the wind 080° at 16 knots,
-visibility 10 miles, 77 °F.
+By the clocks at the Cape. "The crew ingressed at T-115 minutes, and the subsequent tasks and
+checkout progressed smoothly to the scheduled hold at T-3 minutes" (the mission report, 7.1.2.1);
+the count's zero was "the nominal 13:39:30 G.m.t." (5.2.10.3). How long the hold at T-3 lasted is
+not in what was read, and without it no minute of the count can be put on the clock: Gemini 8's
+scheduled six minutes are taken. So every time below is `estimated`; the minutes of the count are
+the record's for the crew and the press kit's plan (release 66-97, pp. 6 and 7) for the rest. The
+pad's slider plays it ([pad.ts](pad.ts)).
+
+| EST | Event | Confidence |
+| --- | --- | --- |
+| about 6:38 | T-115: in the spacecraft | estimated |
+| about 6:53 | T-100: the hatches shut (NASA S66-34065 has the technicians about to close them) | estimated |
+| about 7:23 | T-70: the white room empty | estimated |
+| about 7:38 | T-55: the erector starts down | estimated |
+| about 8:30 to 8:36 | the built-in hold at T-3; the computer's update did not come, and a backup plan let the count go on | estimated |
+| 8:39:33.335 | liftoff, at the second for the rendezvous | documented |
+
+It was the third time up the erector: on 17 May the count stopped at T-85 when the Atlas carrying the
+Agena failed, and on 1 June, the target in orbit, at T-3, the ground unable to give the ship's
+computer its update; each time the crew came down in the elevator.
+
+**What stood there.** The complex as the flights before left it ([lc-19.md](../../../places/cape-canaveral/lc-19.md),
+"What stood when"): after Gemini 8 the umbilical tower's drop-weight lanyards were given new lengths,
+and this time the spacecraft's upper umbilical dropped as it should (5.2.10.3). That is not modelled.
+
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
+launch instant, 13:39:33.335 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
+are held to these figures by `tests/world.test.mjs`.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 83.9° | 40.2° | In the east, two and a half hours up |
+| Moon | 260.1° | -39.0° | Below the horizon: full the night before |
+| Venus | 137.1° | 66.7° | Magnitude -3.5, high in daylight |
+| Mars | 89.3° | 47.8° | |
+| Mercury | 77.5° | 32.8° | |
+| Jupiter | 73.1° | 18.7° | |
+| Saturn | 209.5° | 55.3° | |
 
 ## What is not built
 
-- **Launch Complex 19 and Complex 14**, and the Atlas that carried the target.
-- **The crew.** Both wore the G4C suit, which is not modelled; the seats are empty.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
+  overshoes. Every time of the morning is estimated.
+- **Complex 14** and the Atlas that carried the target (issue #34): at the site the target is not drawn.
+- **The crew in their seats.** Stafford and Cernan stand at the foot of the ramp in the G4C
+  ([g4c-suit.md](../../crew/g4c-suit.md)), Cernan's let out over its cover for going outside and its legs
+  of Chromel-R; his overvisor is not built, and whether it was on his helmet at the pad is not
+  settled. Cernan's stature is not in any NASA source read: 6 ft is taken. The seats are empty.
 - **The flight.** No trajectory, no orbit as data, no simulator run.
 - **Cernan's two hours.** The unit, the bars and the rail are as they were at launch.
 

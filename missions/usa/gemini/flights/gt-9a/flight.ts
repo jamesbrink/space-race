@@ -1,6 +1,9 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   GIX,
   IN,
@@ -24,6 +27,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 import {
   ATDA,
   ATDA_TARGET,
@@ -215,8 +219,8 @@ const parts: PartWords[] = [
       'What this ship added is not drawn: the switch for the Air Force’s backpack and the lamp that warned of ' +
       'its peroxide, a meter for each of the fuel cells’ six stacks, and the one lever, new after Gemini VIII, ' +
       'that cuts the power to every manoeuvring thruster. The chest pack for the man going outside was stowed ' +
-      'between the seats and is not modelled. The seats are empty: both men wore the G4C suit, which is not ' +
-      'modelled. No drawing read gives the pressure vessel’s dimensions: its sizes are those fitted round the ' +
+      'between the seats and is not modelled. The seats are empty: both men wore the G4C suit, which is modelled ' +
+      'standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its sizes are those fitted round the ' +
       'crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -224,7 +228,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with the G.m.t. and elapsed-time clocks'],
       ['Atmosphere', 'pure oxygen, about 5 psi'],
       ['Power', 'two fuel cell sections in the adapter; 4 batteries of 45 Ah here for the way home'],
-      ['Suits', 'G4C: not modelled, the seats are empty'],
+      ['Suits', 'G4C: the two men stand at the pad, the seats are empty'],
     ],
   },
   {
@@ -560,34 +564,66 @@ const target: TargetWords[] = [
 ];
 
 // the vehicle and the target it went up to meet stand in the gallery: the vehicle on its engines, the target on the
-// floor beside it (vehicles/gemini-targets.ts `withTarget`). Their launch sites (Complex 19, Complex 14) are not built yet
-const vehicle = withTarget(
-  geminiTitanStack({
-    flight: 'gt-9a',
-    parts: [...parts, ...atdaParts(target)],
-    // the count as announced: the crew into the ship at T-115 minutes, the hatches shut at T-100, five minutes before the
-    // target's liftoff (the press kit, release 66-97, pp. 7 and 8). What was done on the morning is not in what was read. Assumed
-    seats: seats([-115 * 60, -100 * 60]),
-    views: [
-      { id: 'nose', label: 'Docking nose', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
-      { id: 'eva', label: 'Pilot’s hatch', nodes: ['Hatches'], from: along(55, 0.5) },
-      { id: 'backpack', label: 'Backpack', nodes: ['ManeuveringUnit'], from: along(LEFT_AZ + 30, -0.7) },
-      { id: 'target', label: 'ATDA', nodes: ATDA, from: along(LEFT_AZ + 20, 0.12) },
-      { id: 'shroud', label: 'Shroud', nodes: ['AtdaShroud', 'AtdaShroudBand'], from: along(LEFT_AZ + 30, 0.5) },
-      { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'MooringLatches', 'StatusDisplay'], from: along(LEFT_AZ + 30, 0.9) },
-    ],
-    cabin: cabin({
-      radar:
-        'The range and closing speed of what the rendezvous radar has found. On this flight it was the ATDA’s transponder, from 130 nautical miles on the first rendezvous.',
-      fairing:
-        'Pressed to throw off the nose fairing over the radar and the scanner fairing. On this flight that was in orbit, after the ship had left the Titan.',
-      power:
-        'The pilot’s ammeter as spacecraft 3 had it. On this ship the fuel cells’ monitor stood here, each of its six ammeters showing one stack’s current: not drawn.',
+// floor beside it (vehicles/gemini-targets.ts `withTarget`). At Complex 19 the vehicle stands on the thrust mount
+// (`lc19Vehicle`) and the target is not drawn (address.ts `atSite`): it went up from Complex 14, which is another issue's
+const vehicle = lc19Vehicle(
+  withTarget(
+    geminiTitanStack({
+      flight: 'gt-9a',
+      parts: [...parts, ...atdaParts(target)],
+      // the crew in at T-115 minutes (the mission report, 7.1.2.1) and the hatches shut at the plan's T-100 (the press kit,
+      // release 66-97, pp. 6 and 7), on a clock with a six-minute hold at T-3, assumed: estimated (pad.ts)
+      seats: seats([-115 * 60 - 363, -100 * 60 - 363]),
+      views: [
+        { id: 'nose', label: 'Docking nose', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
+        { id: 'eva', label: 'Pilot’s hatch', nodes: ['Hatches'], from: along(55, 0.5) },
+        { id: 'backpack', label: 'Backpack', nodes: ['ManeuveringUnit'], from: along(LEFT_AZ + 30, -0.7) },
+        { id: 'target', label: 'ATDA', nodes: ATDA, from: along(LEFT_AZ + 20, 0.12) },
+        { id: 'shroud', label: 'Shroud', nodes: ['AtdaShroud', 'AtdaShroudBand'], from: along(LEFT_AZ + 30, 0.5) },
+        { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'MooringLatches', 'StatusDisplay'], from: along(LEFT_AZ + 30, 0.9) },
+      ],
+      cabin: cabin({
+        radar:
+          'The range and closing speed of what the rendezvous radar has found. On this flight it was the ATDA’s transponder, from 130 nautical miles on the first rendezvous.',
+        fairing:
+          'Pressed to throw off the nose fairing over the radar and the scanner fairing. On this flight that was in orbit, after the ship had left the Titan.',
+        power:
+          'The pilot’s ammeter as spacecraft 3 had it. On this ship the fuel cells’ monitor stood here, each of its six ammeters showing one stack’s current: not drawn.',
+      }),
     }),
-  }),
-  'ATDA 3.73 m and its shroud',
-  ATDA_TARGET,
+    'ATDA 3.73 m and its shroud',
+    ATDA_TARGET,
+  ),
+  BASE,
 );
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g4c_suit.py), Cernan in the cover he was to go outside in, its legs of Chromel-R.
+ * Where each stood is ours. The portable ventilator each carried and his yellow overshoes are not built
+ * (crew/g4c-suit.md). The pad stands round them as at about 06:34, before they went up.
+ */
+const ARRIVED = -119 * 60 - 363;
+const crew = standing({
+  flight: 'gt-9a',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'Thomas P. Stafford · 1.83 m, 1.87 m suited · to scale',
+  parts: g4cParts('Stafford'),
+  height: 1.874,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-9a',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'Eugene A. Cernan · 1.83 m, 1.87 m suited · to scale',
+  parts: g4cParts('Cernan'),
+  height: 1.874,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
+});
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-9a',
@@ -662,6 +698,23 @@ export const flight: Flight = {
     { t: get(72, 20, 50), event: 'Landing in the western Atlantic, 3.5 nautical miles from USS Wasp' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Stafford, in helmet and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g4c_suit.py), on a man of 1.829 m: "6 feet" in the Gemini 7/6 press kit’s crew biographies (NASA release 65-362, p. 72), documented. The suit’s own thickness is estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Cernan, in helmet and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.829 m: 6 ft, as commonly given, his stature not being in any NASA source read: estimated. The suit’s thickness and its covers’ are estimated',
+    },
     ...dimensions(
       'documented',
       'SEDR 300 vol. 2, Figures 2-3 and 2-4, the manual that covers this ship',
@@ -894,5 +947,7 @@ export const flight: Flight = {
     ...thrusters('spacecraft 9, whose propulsion its report records as the same as spacecraft 8’s'),
     ...atdaMotors(),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that June: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };
