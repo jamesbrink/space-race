@@ -28,13 +28,17 @@ their G4C suits, each a figure to walk the site as, under that morning's sky. Th
 not built: see "What is not built" below.
 
 **The flight's own mission report has not been found.** *Gemini Program Mission Report, Gemini
-VI-A*, MSC-G-R-66-2 (January 1966), was looked for on NTRS by title and through its API, on
-archive.org, on ibiblio's Virtual AGC shelves and at the address nasa.gov's history pages would
-give it; the one copy met is behind Scribd's wall (document 43455242) and was not read.
-What is said here rests on two of its supplements, on the report of the October attempt, on the
-Gemini VII report, on the conference papers its crew and planners gave two months later, and on
-NASA's chronology and history, which cite the missing report page by page. Where a figure is a
-secondary source's, it says so.
+VI-A*, MSC-G-R-66-2 (January 1966), was looked for twice: on NTRS by title, by report number and
+through its API; on archive.org by title, by number and through its full-text search; on ibiblio's
+Virtual AGC shelves; and in the Wayback Machine's captures of the JSC History Portal and the Apollo
+Lunar Surface Journal ([docs/sources.md](../../../../../docs/sources.md), "Not found"). The one copy
+met is behind Scribd's wall (document 43455242) and was not read; Apogee Books' *Gemini 6: The NASA
+Mission Reports* (2000) is on archive.org's lending shelf only. What is said here rests on three of
+its supplements (Martin's evaluation of the launch vehicle, which has the ascent's events and the
+weights at liftoff; TRW's of the guidance; IBM's of the computer), on the report of the October
+attempt, on the Gemini VII report, on the conference papers its crew and planners gave two months
+later, and on NASA's chronology and history, which cite the missing report page by page. Where a
+figure is a secondary source's, it says so.
 
 ## The name
 
@@ -66,16 +70,21 @@ at the pad two hours later and standing within a day, the spacecraft came back o
 computer was changed on the 7th and 8th, and the simulated flight was done by the 9th (SP-4002,
 4 December 1965).
 
-**12 December.** At 9:54 a.m. EST the first stage engine lit. About a second later an electrical
-plug in the vehicle's tail fell out before the vehicle had risen. That started the vehicle's
-programmer and the clock in the cabin as if it had lifted off; the ground equipment that runs the
-count (the Master Operations Control Set) shut the engines down. The rule for a clock running over
+**12 December.** At 14:54:03.20 G.m.t., 9:54 a.m. EST, the ground's sequencer gave the first stage
+engine its start. About a second later an electrical plug in the vehicle's tail (3D1M) fell out
+before the vehicle had risen. That started the vehicle's programmer and the clock in the cabin as
+if it had lifted off; the ground equipment that runs the count (the Master Operations Control Set)
+saw the programmer running and, by its holdfire C-4, shut the engines down at 14:54:04.40, 1.16 s
+after the start signal (Martin's evaluation of GLV-6, Supplemental Report 2 to this report:
+Summary, section III.A and its account of the MOCS). The rule for a clock running over
 dead engines was to eject. Neither man had felt the vehicle move, and Schirra, whose ring it was to
 pull, did not pull it (*Titans*, p. 283; SP-4002, 12 December 1965). The erector was not back up
 until 11:28 and the crew were out at 11:33. The engine's records then showed the thrust of one
 chamber falling away before the shutdown was commanded: a plastic dust cap had been left in the
 oxidiser inlet of that chamber's gas generator when it was cleaned at Martin's plant months before,
-and would have stopped the engine about a second later in any case. It was found the next morning.
+and would have stopped the engine about a second later in any case: subassembly 2's chamber
+pressure never closed its switch, and without it the count would have shut down at 2.2 s (the same
+report, III.A). It was found the next morning.
 The cap was removed, the tail plugs were given a breakwire "to prevent premature dropout" (Gemini
 VII mission report, 3.2.2.5), and a recycle that should have taken four days was done in three
 (*Titans*, pp. 284 and 285).
@@ -135,10 +144,13 @@ and its Appendix 1, Table A, read on the page.
 | 0 | liftoff, 13:37:26.471 G.m.t. | documented | Supplemental Report 4 (TRW), p. 2-6; Gemini VII mission report, 4.1 (13:37:26.47) |
 | 17.753 s to 20.587 s | roll programme | documented | IBM, Table 5 |
 | 23.133 s | pitch programme begins | documented | IBM, Table 5 |
-| 2 min 36 s | first stage cutoff and staging | assumed: the plan | press kit, p. 29 |
+| −3.279 s | first stage engine start signal (87FS1); the sequencer's T-0 at −3.34 s | documented | GLV-6, Table II-4 |
+| 157.162 s | first stage cutoff (87FS2, BECO), its oxidiser spent; the staging signal (2 min 36 s was planned: press kit, p. 29) | documented | GLV-6, Table II-4 and Summary |
+| 157.829 s | second stage chamber pressure rising, 0.667 s after the signal | documented | GLV-6, Table II-4 and II.C |
+| 157.844 s | the stages part | documented | GLV-6, Table II-4 |
 | 168.192 s | the ship's computer begins to follow the second stage's guidance | documented | IBM, Table 5 |
 | 338.728 s | second stage cutoff (338.737 s by radio guidance, preliminary) | documented | IBM, Table 5 and the text before it |
-| about 359 s | spacecraft separation; the aft thrusters add about 10 ft/s | derived | IBM, ascent report: the velocity still to gain falls from 21 to 12 ft/s between 359 and 373 s |
+| 360.9 s | spacecraft separation; the aft thrusters add about 10 ft/s | documented | GLV-6, Table II-4 ("361 seconds": Summary); the thrust: IBM, ascent report, the velocity still to gain falling from 21 to 12 ft/s between 359 and 373 s |
 | about 1:34 | height adjustment, 14 ft/s | the time secondary, the figure documented | *Titans*, p. 286; SP-121, p. 280 |
 | about 2:18 | phase adjustment, 61 ft/s | the same | *Titans*, p. 286; SP-121, p. 280 |
 | within half an hour | plane change, 34 ft/s; then 0.8 ft/s at the second perigee | the same | *Titans*, p. 286; SP-121, p. 281 |
@@ -148,8 +160,8 @@ and its Appendix 1, Table A, read on the page.
 | 5:04 | Gemini 7 seen in sunlight | secondary | *Titans*, p. 287 |
 | 5:18:59 | terminal phase initiation | documented | IBM, rendezvous report (19,139 s) |
 | about 5:32 and 5:44 | midcourse corrections | secondary | *Titans*, p. 287 |
-| about 5:50 | braking begins at 3,000 ft | documented | SP-121, p. 291; SP-4002 |
-| about 5:56 | station keeping begins, 120 ft below Gemini 7 | documented | SP-121, p. 291; SP-4002; *Titans*, p. 287 (2:33 p.m. EST) |
+| about 5:50 | braking begins at 3,000 ft: 263:58 of Gemini VII, the instant its report gives for "the rendezvous" | documented | SP-121, p. 291; SP-4002; Gemini VII mission report, 1.0 ("accomplished at 263:58 g.e.t."); IBM, rendezvous report (the terminal phase from 20,900 s) |
+| about 5:56 | station keeping begins, 120 ft below Gemini 7: the rendezvous as the crew and NASA's histories count it | documented | SP-121, p. 291; SP-4002 (and Appendix 1, Table B, 5:56:00); *Titans*, p. 287 (2:33 p.m. EST) |
 | about 11:22 | separation manoeuvre | derived | Gemini VII mission report, 4.1: about 269:30 of that flight, which had run 258:07:22.77 at this one's liftoff |
 | 20:55 | delayed-time telemetry tape recorder fails | secondary | SP-4002 |
 | 25:15:58 | retrofire | documented | SP-4002, Table A; Supplemental Report 4, Table 8 (14:53:24 G.m.t., 16 December) |
@@ -172,12 +184,12 @@ is `estimated`; the pad's slider plays them ([pad.ts](pad.ts)).
 | about 6:57 | T-75: the hatches shut | estimated |
 | about 7:22 | T-50: the white room empty | estimated |
 | about 7:37 | T-35: the erector starts down | estimated |
-| about 8:09 to 8:34 | T-3: the built-in hold | estimated |
+| about 8:09 to 8:34 | T-3: the built-in hold, taken: the sequencer "proceeded on schedule to the programmed 25-minute hold at T-3 minutes" (GLV-6, MOCS) | the hold documented; its clock times derived from the liftoff |
 | 8:37:26.471 | liftoff | documented (TRW, p. 2-6) |
 
 **Three days before.** On Sunday 12 December the crew went aboard for the second time, the count ran
 clean, and at 9:54 the engines lit: an electrical plug in the Titan's tail dropped out too soon, the
-airborne programmer started, and the malfunction detection system stopped the engines 1.2 s later,
+airborne programmer started, and the ground's sequencer stopped the engines 1.2 s after it had started them,
 the vehicle still bolted to the thrust mount. Schirra did not pull the ejection ring. The erector was
 not raised round them again until 11:28, emergency procedures first, and they were out at 11:33
 (*On the Shoulders of Titans*, pp. 283 and 284; NASA SP-4002, 12 December). The next morning a dust
@@ -243,7 +255,8 @@ the air aloft is ERA5's (`aloft.ts`).
 | | One source | Another | Followed |
 | --- | --- | --- | --- |
 | When the Agena left, 25 October | "9:00:04 a.m. e.s.t." (MSC-G-R-65-5, section 1.0, read on the page) | 15:00:04.490 G.m.t. (the same report, further in); 10:00:04.490 a.m. e.s.t. (SP-4002, Appendix 1, Table B); "At 10 o'clock" (*Titans*, p. 268) | 15:00:04.490 G.m.t., which is 10 a.m. EST: the summary's hour is Houston's |
-| How long the engines ran on 12 December | "a second after engine ignition" (SP-4002) | the plug dropped "At 1.2 seconds" (*Titans*, p. 283) | "about a second" |
+| How long the engines ran on 12 December | "a second after engine ignition" (SP-4002) | the plug dropped "At 1.2 seconds" (*Titans*, p. 283) | Martin's: shut down at 87FS1 + 1.158 s, the holdfire 1.20 s after the sequencer's T-0 (GLV-6, III.A and III.B) |
+| When the rendezvous was | 263:58 of Gemini VII, which is 19:28 G.m.t. and 5:50:37 of this flight (Gemini VII mission report, 1.0) | 2:33 p.m. EST, 19:33 G.m.t. (*Titans*, p. 287); 5:56:00 (SP-4002, Table B) | both, as two instants: the Gemini VII report's is the start of braking at about 3,000 ft (SP-4002 puts it at 5:50), the others' the end of it, 120 ft below and still, which Schirra called the rendezvous (*Titans*, p. 288). The history's date is 19:33 |
 | Radar lock | "Solid lock-on ... at 232 nautical miles" (SP-121, p. 34) | 434 km, which is 234 nautical miles (*Titans*, p. 287); "246 miles" (SP-4002) | 232 nautical miles |
 | Terminal phase initiation | 19,139 s, 5:18:59 (IBM) | 5 h 16 min (*Titans*, p. 287); planned 5 h 15 min (press kit, p. 33) | IBM's |
 | The braking | 3,000 ft to 1,500 ft, to 7 ft/s (SP-121, p. 291, the crew's paper) | from about 41 ft/s to 6 ft/s at 1,000 ft in 80 s (IBM, from the telemetered radar) | the crew's; both are in the notes |
@@ -259,9 +272,9 @@ the air aloft is ERA5's (`aloft.ts`).
 - **The mission report itself** (MSC-G-R-66-2), and with it: the launch area's weather and when
   each thing was done at the pad on 12 and 15 December; what spacecraft 6 changed from
   spacecraft 5, as its section 3.1 would list it; GLV-6's changes from GLV-5; the weights of the
-  vehicle at liftoff and of the ship at retrofire and landing; the ascent's sequence of events
-  (engine start, staging, the fairings, separation) from the vehicle's own telemetry; what was
-  loaded into the OAMS and what was used; the time of each manoeuvre to the second.
+  ship after insertion, at retrofire and at landing; when the fairings went; what was loaded into
+  the OAMS and what was used; the time of each manoeuvre to the second. (The launch vehicle's
+  events and weights are in its Supplemental Report 2, which was found.)
 - **Whether the docking fittings flew.** The ship was built with an index bar and three latch
   receptacles for its Agena. Nothing read says they were taken off for a flight with nothing to
   dock to, and it sat in bonded storage between the two; they are taken to have flown.

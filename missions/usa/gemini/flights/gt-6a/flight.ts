@@ -37,6 +37,8 @@ const KIT = KIT_7_6;
 const SUPP4 =
   'Gemini 6 Inertial Guidance System Evaluation and Trajectory Reconstruction, Supplemental Report 4 to the Gemini VI-A mission report (TRW, June 1966)';
 const SUPP5 = 'Gemini GT-6A Post Flight Analysis Report, Supplemental Report 5 to the Gemini VI-A mission report (IBM, March 1966)';
+const GLV6 =
+  'Launch Vehicle No. 6 Flight Evaluation, Supplemental Report 2 to the Gemini VI and VI-A mission reports (Martin, ER 13227-6, February 1966)';
 
 const parts: PartWords[] = [
   {
@@ -308,12 +310,14 @@ const parts: PartWords[] = [
       'engine cannot roll the stage, so the gas that has driven its pumps is let out through a small swivelling ' +
       'nozzle, and that is the roll control. On this flight the ship’s own computer, which stood ready to take ' +
       'over the steering, timed the cutoff at 338.728 seconds; the radio guidance on the ground had it nine ' +
-      'thousandths later. When it was started is in the report that has not been found. The engine’s place is ' +
+      'thousandths later. Martin’s evaluation of the vehicle has the staging signal at 157.16 seconds and the ' +
+      'chamber’s pressure rising 0.67 seconds after it: 181.6 seconds of burning. The engine’s place is ' +
       'documented, and so are the two expansion ratios, 13 and 49.2, that put the joint in its bell where it is; ' +
       'the bell’s size is computed from them, and the rest of its form is representative.',
     facts: [
       ['Thrust', 'about 100,000 lbf at altitude (445 kN)'],
       ['Engine', 'Aerojet YLR91-AJ-7'],
+      ['Started', 'by the staging signal at 157.16 s; burned 181.6 s'],
       ['Cut off', '338.728 s by the ship’s computer; 338.737 s by radio guidance'],
       ['Roll control', 'the turbine’s exhaust, through a swivelling nozzle'],
     ],
@@ -326,15 +330,16 @@ const parts: PartWords[] = [
       'The stages part at its upper edge. A Titan does not coast between stages: the second stage’s engine is ' +
       'started while the vehicle is still in one piece, firing down into the top of the first stage, and only then ' +
       'are the bolts blown. For that moment the exhaust has to go somewhere, and it goes out through the ring of ' +
-      'ports at the foot. The plan for this flight put it 2 minutes 36 seconds after liftoff; the time it ' +
-      'happened is in the report that has not been found. The black and white panels are the roll pattern: the ' +
+      'ports at the foot. The plan for this flight put it 2 minutes 36 seconds after liftoff; it came at 157.16 ' +
+      'seconds, when the first stage ran out of oxidiser, and the stages were apart 0.68 seconds later. The black and white panels are the roll pattern: the ' +
       'cameras that followed the vehicle could see from them whether it was turning. The pattern is drawn as ' +
       'GLV-3’s: no photograph of this vehicle has been read closely enough to check it.',
     facts: [
       ['Stages part at', 'station 500, its upper edge'],
       ['Staging', '"fire in the hole": engine start before separation'],
       ['Paint', 'eight panels, black on the diagonals: as GLV-3, assumed'],
-      ['Planned', '2 min 36 s after liftoff'],
+      ['Staging signal', '157.16 s after liftoff; 2 min 36 s was planned'],
+      ['Stages apart', '157.84 s'],
     ],
   },
   {
@@ -356,7 +361,7 @@ const parts: PartWords[] = [
       ['Diameter', '10 ft (3.05 m)'],
       ['Lettering', 'UNITED STATES, upright letters, one side: as GLV-3, assumed'],
       ['On the pad', '25 October; again within a day of Gemini 7 leaving it on 4 December'],
-      ['Weight at liftoff, with the spacecraft', 'about 340,000 lb: the figure announced, not this vehicle’s own'],
+      ['Weight at liftoff, with the spacecraft', '342,472 lb (155,342 kg)'],
     ],
   },
   {
@@ -380,7 +385,8 @@ const parts: PartWords[] = [
       ['Thrust', 'about 430,000 lbf at liftoff (1,913 kN)'],
       ['Engine', 'Aerojet YLR87-AJ-7, two chambers'],
       ['Length', '123.04 in (3.13 m)'],
-      ['12 December 1965', 'lit at 9:54 a.m. EST and shut down about a second later'],
+      ['12 December 1965', 'lit at 9:54 a.m. EST and shut down 1.16 s later'],
+      ['15 December 1965', '160.4 s of burning, to the oxidiser’s last'],
       ['Causes', 'a tail plug that fell out early; a dust cap left in a gas generator'],
     ],
   },
@@ -475,15 +481,17 @@ export const flight: Flight = {
   // found, so the times are from its supplements (the ascent, to the thousandth of a second, by the ship's computer), the
   // programme's chronology (SP-4002) and its history (SP-4203, to the minute).
   timeline: [
+    { t: -3.28, event: 'First stage engine start signal' },
     { t: 0, event: 'Liftoff, 08:37:26.471 EST, at the third count' },
     { t: 17.75, event: 'Roll programme begins; complete at 20.59 s' },
     { t: 23.13, event: 'Pitch programme begins' },
-    { t: 156, event: 'First stage cutoff and staging, as planned: the time flown is not in what was read' },
+    { t: 157.16, event: 'First stage cutoff, its oxidiser spent, and second stage ignition signal' },
+    { t: 157.84, event: 'The stages part' },
     { t: 338.73, event: 'Second stage cutoff' },
     {
-      t: 359,
+      t: 360.9,
       event:
-        'About now the spacecraft cuts itself free and the aft thrusters add about 10 ft/s. In orbit: 86.9 by 140.0 nautical miles, some 1,200 miles behind Gemini 7',
+        'The spacecraft cuts itself free and the aft thrusters add about 10 ft/s. In orbit: 86.9 by 140.0 nautical miles, some 1,200 miles behind Gemini 7',
     },
     { t: get(1, 34), event: 'Height adjustment at the first perigee: 14 ft/s, to make up what the Titan left short' },
     {
@@ -535,7 +543,7 @@ export const flight: Flight = {
       value: 7817 * LB,
       unit: 'kg',
       confidence: 'documented',
-      note: `7,817 lb (${CHRONOLOGY}, read on the page). ${TITANS}, p. 272, has 3,553 kg, which is 7,833 lb. The weights at retrofire and landing are in the mission report that has not been found`,
+      note: `7,817 lb (${CHRONOLOGY}, read on the page). ${TITANS}, p. 272, has 3,553 kg, which is 7,833 lb; Martin's evaluation of the launch vehicle flew its guidance on "the actual spacecraft weight (7821 pounds)" (${GLV6}, Table II-10). The weights at retrofire and landing are in the mission report that has not been found`,
     },
     {
       group: 'Spacecraft',
@@ -689,18 +697,28 @@ export const flight: Flight = {
       confidence: 'documented',
       note: `81.4° (${CHRONOLOGY}); the vehicle was steered in yaw during the second stage to finish in Gemini 7’s plane (${MIDPROGRAM}, p. 279)`,
     },
+    {
+      group: 'Launch vehicle',
+      label: 'Weight at liftoff, with the spacecraft',
+      value: 342472 * LB,
+      unit: 'kg',
+      confidence: 'documented',
+      note: `342,472 lb, the "trajectory LO weight": 269,308 lb of first stage, 65,343 lb of second and 7,821 lb of spacecraft, after 3,617 lb of start and grain losses from a loaded 346,089 lb (${GLV6}, Table II-10, "GT-6 Weight Summary"); 84,928 lb at the first stage's cutoff, 14,052 lb twenty seconds after the second's`,
+    },
   ],
   motors: [
     ...titanEngines(
       {
-        burnS: 156,
-        // neither figure is this vehicle's own: the thrust is the type's nominal and the burn is the plan
+        burnS: 157.16,
+        // the burn is this flight's own; the thrust is the type's nominal, taken for this vehicle
         confidence: 'assumed',
-        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two is the Gemini Launch Vehicle's nominal (${KIT}, p. 64), taken for GLV-6. The burn is the plan, cutoff 2 min 36 s after liftoff (the same, p. 29): the flown time is in the mission report that has not been found`,
+        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two is the Gemini Launch Vehicle's nominal (${KIT}, p. 64), taken for GLV-6: "Stages I and II engines operated satisfactorily" (${GLV6}, Summary). The burn is liftoff to the shutdown signal (87FS2, BECO), 157.162 s, with the start signal (87FS1) 3.279 s before liftoff: "Stage I burning time was 160.4 seconds, with shutdown initiated by oxidizer exhaustion" (the same, Summary and Table II-4, "GT-6A Flight Events Summary")`,
       },
       {
+        burnS: 181.6,
+        // the thrust is the type's nominal and the burn is the report's own figure: the entry takes the weaker
         confidence: 'assumed',
-        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude is the type's nominal (${KIT}, p. 64), taken for GLV-6. No burn time is given: the cutoff was 338.728 s after liftoff by the ship's computer (${SUPP5}, the ascent report, Table 5, read on the page) and 338.737 s by radio guidance, a preliminary figure quoted there, but when the engine started is not in what was read`,
+        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude is the type's nominal (${KIT}, p. 64), taken for GLV-6. "Stage II engine operation was terminated by a guidance command after 181.6 seconds of operation" (${GLV6}, Summary): the staging signal at 157.162 s to the shutdown signal (91FS2) at 338.737 s (Table II-4). The ship's computer had the cutoff at 338.728 s (${SUPP5}, the ascent report, Table 5, read on the page)`,
       },
     ),
     ...thrusters(

@@ -427,15 +427,15 @@ export const MILESTONES: readonly Milestone[] = [
     confidence: 'derived',
   },
   {
-    date: '1965-12-12T14:54Z',
+    date: '1965-12-12T14:54:03Z',
     flight: 'usa/gemini/gt-6a',
     nation: 'USA',
     title: 'Gemini 6 shuts down on the pad',
     text:
       'The Titan’s engines lit and stopped 1.2 seconds later with the rocket still on the stand. The rules said eject; Schirra ' +
       'felt no motion and did not, which saved the flight. A dust cover left in a gas generator was found to be the cause.',
-    source: `${TITANS}, pp. 283 to 285 (9:54 a.m. EST, taken to UTC)`,
-    confidence: 'derived',
+    source: `Martin, Launch Vehicle No. 6 Flight Evaluation, Supplemental Report 2 to the Gemini VI and VI-A mission reports (ER 13227-6, February 1966), section III.B: the sequencer's T-0 at 14:54:03.20 G.m.t. and its holdfire at 14:54:04.40; ${TITANS}, pp. 283 to 285`,
+    confidence: 'documented',
   },
   {
     date: '1965-12-15T19:33Z',
@@ -445,7 +445,11 @@ export const MILESTONES: readonly Milestone[] = [
     text:
       'Schirra and Stafford flew Gemini 6A up to Gemini 7 and held station 40 metres from it, with no motion between them. ' +
       'Two ships had met in orbit by steering, the thing a landing on the Moon would depend on.',
-    source: `${TITANS}, pp. 286 to 289 (2:33 p.m. EST, taken to UTC)`,
+    // The instant the two ships were still, 120 ft apart, and station keeping began: the rendezvous as Schirra counted it
+    // (Titans, p. 288) and NASA's chronology times it (SP-4002, Appendix 1, Table B: 5:56:00 after Gemini 6A's liftoff at
+    // 13:37:26 G.m.t.). The Gemini VII mission report's "accomplished at 263:58 g.e.t." (section 1.0) is 19:28 G.m.t., 5:50:37
+    // of Gemini 6A's flight: the start of braking at about 3,000 ft (SP-4002, 15 December 1965), not the end of it
+    source: `${TITANS}, pp. 286 to 289 (2:33 p.m. EST, taken to UTC: station keeping begun, 120 ft below Gemini 7)`,
     confidence: 'derived',
   },
   {
