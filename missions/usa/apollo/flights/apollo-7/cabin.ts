@@ -23,6 +23,9 @@ export const cabin: NonNullable<ModelDef['cabin']> = {
     'DSKYFrontWeb',
     'CrewCouches',
     'CabinEquipmentBays',
+    // the hatch as the crew see it: its pressure door and latch drive (under SideHatch, whose outer cover is outside)
+    'CM_SideHatchPressureDoor',
+    'CM_HatchDriveAndHandle',
   ],
   overhead: [1, 0, 0],
   instruments: [],
