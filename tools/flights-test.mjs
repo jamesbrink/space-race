@@ -314,7 +314,7 @@ for (const [step, id, place, what] of [
 }
 // A flight that is only its vehicle (only.ts: no site, so the site's stage is let go whole: Stage.unload), and back
 // to a flight with a site, which is built again as a fresh page builds it
-const ONLY = opt(args, '--only', 'usa/gemini/gt-8'); // (the orbital Mercury flights and Gemini 3 to 7 have their site now)
+const ONLY = opt(args, '--only', 'usa/gemini/gt-9a'); // (the orbital Mercury flights and Gemini 3 to 8 have their site now)
 await go(`#${ONLY}/gallery`);
 await arrive(ONLY);
 await galleryReady().catch(() => {});

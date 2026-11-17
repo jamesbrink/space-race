@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from g3c_suit import Garment, Wearer, build  # noqa: E402
 
-__all__ = ["CONRAD", "COOPER", "G4C", "G4C_OUTSIDE", "MCDIVITT", "SCHIRRA", "STAFFORD", "WHITE", "build"]
+__all__ = ["ARMSTRONG", "CONRAD", "COOPER", "G4C", "G4C_OUTSIDE", "MCDIVITT", "SCHIRRA", "SCOTT", "STAFFORD", "WHITE", "build"]
 
 # Bare aluminium at the neck, where the G3C's ring was anodised blue: NASA S65-29643 (McDivitt) and S65-29645 (White),
 # both in the suiting trailer on 3 June 1965. The flag on the left upper arm: S65-29643. Estimated in size and place.
@@ -48,3 +48,12 @@ CONRAD = Wearer("C.CONRAD JR", 167.6, 0.98, 1.0, garment=G4C, stand=0.32)
 # taken to be lettered as the others' are.
 SCHIRRA = Wearer("W.M.SCHIRRA", 177.8, 1.0, 1.02, garment=G4C)
 STAFFORD = Wearer("T.P.STAFFORD", 182.9, 1.01, 1.02, garment=G4C)
+
+# Gemini 8: "The intravehicular suit worn by the command pilot utilized the basic G4C pressure-garment assembly with a
+# single-layer, lightweight cover layer. The extravehicular suit worn by the pilot" had a cover for going outside (the
+# Gemini VIII mission report, MSC-G-R-66-4, 3.1.2.12.2): G4C and G4C_OUTSIDE. Armstrong's stature is the Gemini 5 press
+# kit's, in his biography as a backup pilot (NASA release 65-262, p. 83): "5 ft., 10 1/2 in.", documented. Scott's has
+# not been found in any NASA source read: 6 ft, as commonly given, estimated. Tags: "N.A.ARMSTRONG" and "D.R.SCOTT", as
+# the others' are lettered (NASA KSC-66C-1851 shows the two at the trailer's door, the tags not legible).
+ARMSTRONG = Wearer("N.A.ARMSTRONG", 179.1, 1.0, 1.0, garment=G4C)
+SCOTT = Wearer("D.R.SCOTT", 182.9, 1.0, 1.0, garment=G4C_OUTSIDE)

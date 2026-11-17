@@ -1,6 +1,9 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   FT,
   GVIII,
@@ -23,6 +26,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 import {
   AGENA,
   AGENA_TARGET,
@@ -202,7 +206,7 @@ const parts: PartWords[] = [
       'What this ship added is not drawn: the panel that commanded the Agena, two switches for the docking cone, ' +
       'a panel for the tape unit that reloaded the computer, the fuel cells’ monitor. The chest pack for the man ' +
       'going outside was stowed between the seats and is not modelled. The seats are empty: both men wore the G4C ' +
-      'suit, which is not modelled. No drawing read gives the pressure vessel’s dimensions: its sizes are those ' +
+      'suit, which is modelled standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its sizes are those ' +
       'fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -210,7 +214,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with the G.m.t. and elapsed-time clocks'],
       ['Atmosphere', 'pure oxygen, about 5 psi'],
       ['Power', 'two fuel cell sections in the adapter; 4 batteries of 45 Ah here for the way home'],
-      ['Suits', 'G4C: not modelled, the seats are empty'],
+      ['Suits', 'G4C: the two men stand at the pad, the seats are empty'],
     ],
   },
   {
@@ -569,33 +573,65 @@ const target: TargetWords[] = [
 ];
 
 // the vehicle and the target it went up to meet stand in the gallery: the vehicle on its engines, the target on the
-// floor beside it (vehicles/gemini-targets.ts `withTarget`). Their launch sites (Complex 19, Complex 14) are not built yet
-const vehicle = withTarget(
-  geminiTitanStack({
-    flight: 'gt-8',
-    parts: [...parts, ...agenaParts(target)],
-    // the count as announced: the crew into the ship at T-115 minutes, the hatches shut at T-100, five minutes before the
-    // target's liftoff (the press kit, release 66-52, p. 10). What was done on the morning is not in what was read. Assumed
-    seats: seats([-115 * 60, -100 * 60]),
-    views: [
-      { id: 'nose', label: 'Docking nose', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
-      { id: 'backpack', label: 'Backpack', nodes: ['ExtravehicularSupportPackage'], from: along(LEFT_AZ + 30, -0.7) },
-      { id: 'target', label: 'Agena', nodes: AGENA, from: along(LEFT_AZ + 20, 0.12) },
-      { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'MooringLatches', 'StatusDisplay'], from: along(LEFT_AZ + 30, 0.9) },
-      { id: 'sps', label: 'Agena’s engines', nodes: ['AgenaEngine', 'AgenaSecondaryPropulsion'], from: along(LEFT_AZ + 30, -0.3) },
-    ],
-    cabin: cabin({
-      radar:
-        'The range and closing speed of what the rendezvous radar has found. On this flight it was the Agena’s transponder, solidly from 181 nautical miles in.',
-      fairing:
-        'Pressed to throw off the nose fairing over the radar and the scanner fairing. This crew pressed it later than usual: 7 min 30 s after liftoff.',
-      power:
-        'The pilot’s ammeter as spacecraft 3 had it. On this ship the fuel cells’ monitor stood here, two of its six ammeters showing the main buses’ currents: not drawn.',
+// floor beside it (vehicles/gemini-targets.ts `withTarget`). At Complex 19 the vehicle stands on the thrust mount
+// (`lc19Vehicle`) and the target is not drawn (address.ts `atSite`): it went up from Complex 14, which is another issue's
+const vehicle = lc19Vehicle(
+  withTarget(
+    geminiTitanStack({
+      flight: 'gt-8',
+      parts: [...parts, ...agenaParts(target)],
+      // the crew into the ship at 9:38 (the mission report, Table 7.2-V); the hatches shut about ten minutes after the
+      // plan's T-100, glue having been found in a harness fitting (5.1.10.1.3), about 10:05: estimated (pad.ts)
+      seats: seats([-7382, -5754]),
+      views: [
+        { id: 'nose', label: 'Docking nose', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
+        { id: 'backpack', label: 'Backpack', nodes: ['ExtravehicularSupportPackage'], from: along(LEFT_AZ + 30, -0.7) },
+        { id: 'target', label: 'Agena', nodes: AGENA, from: along(LEFT_AZ + 20, 0.12) },
+        { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'MooringLatches', 'StatusDisplay'], from: along(LEFT_AZ + 30, 0.9) },
+        { id: 'sps', label: 'Agena’s engines', nodes: ['AgenaEngine', 'AgenaSecondaryPropulsion'], from: along(LEFT_AZ + 30, -0.3) },
+      ],
+      cabin: cabin({
+        radar:
+          'The range and closing speed of what the rendezvous radar has found. On this flight it was the Agena’s transponder, solidly from 181 nautical miles in.',
+        fairing:
+          'Pressed to throw off the nose fairing over the radar and the scanner fairing. This crew pressed it later than usual: 7 min 30 s after liftoff.',
+        power:
+          'The pilot’s ammeter as spacecraft 3 had it. On this ship the fuel cells’ monitor stood here, two of its six ammeters showing the main buses’ currents: not drawn.',
+      }),
     }),
-  }),
-  'Agena 7.95 m',
-  AGENA_TARGET,
+    'Agena 7.95 m',
+    AGENA_TARGET,
+  ),
+  BASE,
 );
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g4c_suit.py), Scott in the cover he was to go outside in. Where each stood is ours.
+ * The portable ventilator each carried and his yellow overshoes are not built (crew/g4c-suit.md). The pad stands round
+ * them as at about 09:34, before they went up.
+ */
+const ARRIVED = -7382 - 240;
+const crew = standing({
+  flight: 'gt-8',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'Neil A. Armstrong · 1.79 m, 1.84 m suited · to scale',
+  parts: g4cParts('Armstrong'),
+  height: 1.841,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-8',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'David R. Scott · 1.83 m, 1.87 m suited · to scale',
+  parts: g4cParts('Scott'),
+  height: 1.874,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
+});
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-8',
@@ -665,6 +701,23 @@ export const flight: Flight = {
     { t: get(13, 47), event: 'The crew aboard USS Leonard F. Mason, 06:28 G.m.t. on 17 March' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Armstrong, in helmet and boots',
+      value: 1.841,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g4c_suit.py), on a man of 1.791 m: "5 ft., 10 1/2 in." in the Gemini 5 press kit’s biography of him as a backup pilot (NASA release 65-262, p. 83), documented. The suit’s own thickness is estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Scott, in helmet and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.829 m: 6 ft, as commonly given, his stature not being in any NASA source read: estimated. The suit’s thickness and its cover layer’s are estimated',
+    },
     ...dimensions(
       'documented',
       'SEDR 300 vol. 2, Figures 2-3 and 2-4, the manual that covers this ship',
@@ -939,5 +992,7 @@ export const flight: Flight = {
     ),
     ...agenaMotors(),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that March: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

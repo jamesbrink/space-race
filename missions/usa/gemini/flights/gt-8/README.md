@@ -8,7 +8,7 @@ days.
 | | |
 | --- | --- |
 | Liftoff | 16 March 1966, 16:41:02.389 UTC (11:41:02 a.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that morning |
 | Crew | Neil A. Armstrong, command pilot; David R. Scott, pilot |
 | Spacecraft | Gemini No. 8, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 8, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -28,8 +28,11 @@ receptacles and the index bar on its nose (the bar runs out at the end of the sl
 light, the handrails along the adapter, the fuel cells and the doubled propellant tanks inside it,
 and at its back the pack Scott was to have put on. The Agena it docked with stands on the floor
 beside the launch vehicle, to scale, and can be stood alone (`#usa/gemini/gt-8/gallery/docking-target`),
-taken apart and cut open. See "How the target is shown" below. The launch sites, the crew and the
-flight itself are not built.
+taken apart and cut open. See "How the target is shown" below. At Complex 19 the vehicle stands on
+the thrust mount on the morning of the flight, without the Agena, which went up from Complex 14: the
+erector raised while the crew go up and laid down from T−55, Armstrong and Scott at the foot of the
+ramp in their G4C suits, Scott's in its cover for going outside, each a figure to walk the site as,
+under that morning's sky. Complex 14 and the flight itself are not built.
 
 ## The name
 
@@ -141,18 +144,65 @@ Seconds or hours:minutes:seconds from liftoff. "MR" is the mission report, MSC-G
 | 10:41:26 | landing | documented | MR, Table 4.2-I |
 | 13:47 | crew aboard the *Leonard F. Mason*, 06:28 G.m.t. | documented | MR, p. 6-34 |
 
-## The sky and the weather
+## The morning at the pad
 
-Not worked out. The flight has no `weather.ts`: it stands in the gallery only, under the studio's
-lights. The Sun and the Moon over Complex 19 at 16:41:02 UTC on 16 March 1966 will be computed when
-the site is built (`src/world`), and the weather read from the mission report's section 12.
+By the clocks at the Cape. The crew's morning is the mission report's to the minute (Table 7.2-V);
+the count's clock is its own too (5.2.10: begun at 7:35 a.m. at T-240 minutes, run without an
+unscheduled hold to the scheduled hold at T-3, which "lasted 5 minutes and 54 seconds"); the white
+room's and the erector's minutes on it are the press kit's plan (release 66-52, pp. 9 and 10). The
+pad's slider plays it ([pad.ts](pad.ts)).
+
+| EST | Event | Confidence |
+| --- | --- | --- |
+| 6:30 | the crew woken | documented |
+| 9:29 | from the suiting area | documented |
+| 9:38 | in the spacecraft | documented |
+| 10:00 | the Atlas-Agena leaves Complex 14 (not built) | documented |
+| about 10:05 | the hatches shut, ten minutes after the plan's T-100: glue in a fitting of Scott's harness, dug out by the backup crew (5.1.10.1.3; 7.1.2.1) | estimated |
+| about 10:25 | T-70: the white room empty | derived |
+| about 10:40 | T-55: the erector starts down; the crew see the vehicle sway on their rate needles (7.1.2.1) | derived |
+| about 11:32 to 11:38 | the scheduled hold at T-3, 5 min 54 s | derived |
+| 11:41:02.389 | liftoff | documented |
+
+*On the Shoulders of Titans* (p. 309) and NASA SP-4002 have the liftoff at 10:41, an hour early; the
+mission report and NASA's captions (S66-24465, "11:41 a.m. (EST)") are followed.
+
+**What stood there.** The complex as the flights before left it: nothing read has any of it changed
+([lc-19.md](../../../places/cape-canaveral/lc-19.md), "What stood when"). GLV-8 had stood in the erector
+since 13 January. At liftoff the spacecraft's upper umbilical was not pulled by its drop weight, and
+its lanyard to the tower pulled it free; "Pad damage was minimal and comparable to that of previous
+launches", and GLV-9 stood on the same mount eight days later (5.2.10).
+
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
+launch instant, 16:41:02.389 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
+are held to these figures by `tests/world.test.mjs`.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 156.3° | 57.5° | In the south-south-east, an hour before noon |
+| Moon | 223.3° | 20.1° | In the south-west, going down; 26% lit, waning |
+| Venus | 219.2° | 38.2° | Magnitude -4.2, in daylight |
+| Mars | 138.4° | 56.0° | |
+| Saturn | 164.8° | 55.1° | |
+| Mercury | 139.0° | 60.4° | |
+| Jupiter | 65.8° | 3.9° | Just risen |
 
 ## What is not built
 
-- **Launch Complex 19 and Complex 14.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts):
-  the place on the Earth, with an estimated bearing. Nothing stands on it yet.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
+  overshoes. The white room's and the erector's times are the plan's, and how long each motion took
+  is estimated.
+- **Complex 14**, which the Agena left from that morning (issue #34): at the site the Agena is not
+  drawn, and Complex 14 stands as the Cape's stand-in for it.
 - **The Atlas** that carried the Agena, the adapter between them and the shroud.
-- **The crew.** Both wore the G4C suit, which is not modelled, and the seats are empty.
+- **The crew in their seats.** Armstrong and Scott stand at the foot of the ramp in the G4C
+  ([g4c-suit.md](../../crew/g4c-suit.md)), Scott's let out over its cover for going outside; his overvisor
+  is not built, and whether it was on his helmet at the pad is not settled (the mission report has it
+  "added", the press kit "carried"). Scott's stature is not in any NASA source read: 6 ft is taken.
+  The seats are empty.
 - **The flight.** No trajectory, no orbit as data, no simulator run: nothing here docks, rolls or
   comes home.
 

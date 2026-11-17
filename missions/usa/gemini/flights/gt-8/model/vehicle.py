@@ -65,7 +65,8 @@ FIT = Fit(
     pod=False,
     experiments=(),
     names=("Armstrong", "Scott"),
-    # no crew: both men wore the G4C suit (GVIII, 3.1.2.12.2), which is not modelled
+    # no crew: both men wore the G4C suit (GVIII, 3.1.2.12.2), which is built standing, at the pad (../../../crew/g4c_suit.py),
+    # and not seated
     crew=None,
     white_disc=False,  # it is spacecraft 3's, and not identified
     gmt_clock=True,  # as spacecraft 4 to 6: assumed, nothing read says it of this ship
@@ -293,7 +294,7 @@ SAYS = {
         "forward so that the two do not meet. On this ship the kit under the seat was made lower. From this seat, six "
         "and a half hours up, Armstrong docked two vehicles for the first time, and half an hour after that flew a ship "
         "that was turning once a second back to rest. Its form is the two seats the Smithsonian holds, 22 in wide and "
-        "54 in tall. The seat is empty: the G4C suit both men wore is not modelled.",
+        "54 in tall. The seat is empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
@@ -302,8 +303,8 @@ SAYS = {
         "blows both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° "
         "forward so that the two do not meet. Scott was to have left this seat on the second day for more than two "
         "hours outside, with a pack on his back and a gas gun in his hand; he never did. Its form is the two seats "
-        "the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: the G4C suit both men wore is not "
-        "modelled.",
+        "the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: the G4C suit both men wore is "
+        "built standing, at the pad, and not seated.",
     ),
     # the launch vehicle
     "Interstage_ExhaustPorts": (

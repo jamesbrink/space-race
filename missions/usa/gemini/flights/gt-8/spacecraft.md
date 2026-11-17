@@ -42,7 +42,7 @@ next ship shared.
 | Auxiliary tape memory unit | in the adapter: 26 lb, 700 cu in | none | none | documented | GVIII, 3.1.2.4.1; kit, p. 36 | no: where in the adapter is not found |
 | Cabin heat exchanger and fan; egress oxygen | removed | fitted | fitted | documented | GVIII, 3.1.2.3 | no difference built |
 | Panels | an ATMU panel; the Agena control panel, also feeding the outside lights and pyrotechnics; two switches for the docking cone; the fuel cells' monitor in place of the main bus ammeter; a light and dimmer for the elapsed-time clock | | | documented | GVIII, 3.1.2.9.1 (pages 3-29 and 3-30, with Figure 3.1-7, are missing from the copy read) | no: the panels are spacecraft 3's with the two clocks (`gmt_clock`, `get_clock`) |
-| Suits | G4C: the command pilot's with a light cover layer, the pilot's with a cover layer for outside, gloves with thermal protection and a double visor | G4C | G5C | documented | GVIII, 3.1.2.12.2 | no: the seats are empty |
+| Suits | G4C: the command pilot's with a light cover layer, the pilot's with a cover layer for outside, gloves with thermal protection and a double visor | G4C | G5C | documented | GVIII, 3.1.2.12.2 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
 | Experiments | S-9, nuclear emulsion, 8.5 by 6 by 3 in in a well behind the right hatch; S-3 on each hatch; D-14, D-15 and D-16 in and on the adapter; S-10 on the Agena | | | documented | GVIII, 8.0; kit, pp. 26 to 33 | S-9 only: `retro_experiments=("s-9",)`, its place estimated |
 
 ## Paint

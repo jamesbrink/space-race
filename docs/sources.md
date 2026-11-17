@@ -1255,6 +1255,9 @@ the page.
 | *Gemini Program Mission Report, Gemini X* (NASA MSC, August 1966; NASA TM X-72528), sections 3.4 and 3.6 only | [NTRS 19750067644](https://ntrs.nasa.gov/citations/19750067644) | **What GATV-5005 changed from GATV-5003** (3.4: one battery out, lead ballast, aluminium tape on the forward skins, experiment S-26 in the adapter, the telemetry antenna turned), its weights (3.6) and launch (4.1): for agena-target-vehicle.md, "One vehicle from the next" | Read for the Agena only; Gemini-Titan 10 itself is not researched |
 | *Gemini Program Mission Report, Gemini XII* (NASA MSC, January 1967), sections 3.4 to 3.6, 5.4.2 and 8.8 only | [ibiblio.org, the Virtual AGC project](https://www.ibiblio.org/apollo/Documents/Gemini12MissionReport.pdf) | **What GATV-5001 and its adapter 7A had** (3.4: "of the same configuration as GATV 5006" but for the adapter: the work station, handholds, pip-pin receptacles, tether rings, the tether's large loop, the discharge fingers removed, the funnel hole in the cone); S-10 opened at 43 h 11 min (8.8); its weights and launch | Read for the Agena only. It disagrees with itself on how far the chamber pressure fell in the ascent burn (1 per cent and 10) |
 | NASA, "Gemini IX experiments interim report" | [NTRS 19670006692](https://ntrs.nasa.gov/citations/19670006692) | Downloaded; looked at only for experiment S-12's size | |
+| *Gemini Program Mission Report, Gemini VIII* (entry above), read again for the launch site | as above | **The crew's morning to the minute** (Table 7.2-V, p. 7-47): woken 6:30, from the suiting area 9:29, "Ingress into spacecraft" 9:38; the hatch held about ten minutes by glue in a harness fitting (5.1.10.1.3; 7.1.2.1); **the count's clock** (5.2.10): begun at 7:35 a.m. at T-240, the scheduled hold at T-3 of 5 min 54 s, liftoff 11:41:02, the upper umbilical pulled by its lanyard, the damage "minimal"; the vehicle swaying on the rate needles as the erector went down (7.1.2.1); **the suits** (3.1.2.12.2); **the launch weather** (12.2, p. 12-15) | Read on the page for 12.2 |
+| NASA release 66-52, the Gemini 8 press kit (entry above), read again: the count (pp. 9 and 10) | as above | "Close spacecraft hatches" at T-100, "White Room evacuation" at T-70, "Begin erector lowering" at T-55; the suit (pp. 38 and 39); no stature for Scott in his biography | |
+| NASA photographs of 16 March 1966: **S66-24478** (Armstrong and Scott on the ramp at pad 19), S66-24465 (the liftoff), KSC-66C-1851 (the two at the trailer's door) | images.nasa.gov | **The G4C as worn on Gemini 8** (crew/g4c-suit.md) | |
 
 Known, not read:
 
@@ -1268,7 +1271,7 @@ Known, not read:
 | McDonnell's drawings of the Extravehicular Support Package and Ling-Temco-Vought's of the Astronaut Maneuvering Unit; the Air Force's report on experiment D-12 | Both packs' outsides, drawn here from small figures |
 | The other frames each crew took of its target (NASA S66-257xx, S66-379xx), at full size | The Agena's far side; which half of the ATDA's shroud kept the nose, which side its black band was on, where the wires ran |
 | Photographs of Gemini-Titan 8 and Gemini-Titan 9A on the stand, read for the paint | Both vehicles' lettering and roll pattern, assumed as GLV-3's to GLV-7's |
-| The countdown records for 16 March and 3 June 1966 | When each crew went aboard; the counts as announced are used |
+| The countdown records for 16 March and 3 June 1966 | When Gemini 8's hatches were shut and its erector went down, and Gemini 9A's whole morning: the plans are used |
 | NASA release 66-52's companion on the experiments (NTRS 19660022876; downloaded, not read) | Where experiments D-14, D-15 and D-16 were on spacecraft 8 |
 
 ### The Gemini adapter's equipment section

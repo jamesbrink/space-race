@@ -688,4 +688,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(december15.moon.elevation / DEG, 53.4, 0.05, 'Moon elevation over Complex 19, 15 December 1965');
   near(december15.moon.illuminated, 0.486, 0.005, 'Moon lit over Complex 19, 15 December 1965');
   assert.equal(december15.moon.waxing, false, 'a last quarter Moon, high in the south-west');
+  // Gemini-Titan 8
+  const gt8 = flights.find((f) => f.id === 'usa/gemini/gt-8');
+  const march1966 = skyFrom(siteFrame(gt8.site), julianDate(gt8.launch));
+  near(march1966.sun.azimuth / DEG, 156.3, 0.05, 'Sun azimuth over Complex 19, 16 March 1966');
+  near(march1966.sun.elevation / DEG, 57.5, 0.05, 'Sun elevation over Complex 19, 16 March 1966');
+  near(march1966.moon.azimuth / DEG, 223.3, 0.05, 'Moon azimuth over Complex 19, 16 March 1966');
+  near(march1966.moon.elevation / DEG, 20.1, 0.05, 'Moon elevation over Complex 19, 16 March 1966');
+  near(march1966.moon.illuminated, 0.257, 0.005, 'Moon lit over Complex 19, 16 March 1966');
+  assert.equal(march1966.moon.waxing, false, 'a waning crescent, going down in the south-west');
 });
