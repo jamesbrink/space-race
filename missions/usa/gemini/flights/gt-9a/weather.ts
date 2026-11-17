@@ -1,8 +1,34 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 747940-12868 (Cape Kennedy AFS: the Skid Strip, 2.7 km south of the pad)';
 const GIX = 'the Gemini IX-A mission report (MSC-G-R-66-6), 12.2, p. 12-13';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 14:00 UTC on 6 June 1966, between the four cells round 27.87 N, 75.05 W (the landing point, 27°52′ N 75°02.8′ W, the Gemini IX-A mission report, Figure 6.3-7, as flight.ts gives it; landed 72 h 20 min 50 s after liftoff (flight.ts), 14:00:23 UTC), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 13:00 differs by under 0.05 m and 0.15 s, the wind’s waves by 7°';
+
+/**
+ * The sea where it came down, on the hour: ERA5's waves there, a low swell from the east and a sea of 0.6 m raised by the
+ * wind from the east too. Nothing the flight's files quote speaks of the sea.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 27.87 N, 75.05 W', at: '1966-06-06T14:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(0.813, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(5.797, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(88.9, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.589, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(3.288, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(99.5, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Gemini 9A left under: the morning of 3 June 1966 at Cape Kennedy, at liftoff (08:39:33 EST). The mission
@@ -64,4 +90,5 @@ export const WEATHER: DayWeather = {
   // the air over the pad and the surface's hours round liftoff: ERA5's (aloft.ts, tools/era5-aloft.mjs)
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

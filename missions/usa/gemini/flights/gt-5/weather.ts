@@ -1,9 +1,36 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 747940-12868 (Cape Kennedy AFS: the Skid Strip, 2.7 km south of the pad)';
 const HOUR = '09:00 EST (14:00 UTC), 21 August 1965';
 const GV = 'the Gemini V mission report (MSC-G-R-65-4), 12.2, p. 12-8';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 13:00 UTC on 29 August 1965, between the four cells round 29.78 N, 69.75 W (the landing point, 29°47′ N 69°45′ W, the Gemini V mission report, Table 4.3-I, as the README and flight.ts give it; landed 190 h 55 min 14 s after liftoff (flight.ts), 12:55:14 UTC), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 12:00 differs by under 0.1 m, 0.35 s and 5°';
+
+/**
+ * The sea where it came down, five minutes before the hour: ERA5's waves there, a low swell from the south-east and hardly
+ * any sea raised by the wind, from the south-west. The retrofire was brought a revolution earlier for the weather in the
+ * planned landing area (the README); nothing the flight's files quote speaks of the sea where it came down.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 29.78 N, 69.75 W', at: '1965-08-29T13:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(0.77, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(5.342, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(136.7, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.131, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(1.836, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(216.2, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Gemini 5 left under: the morning of 21 August 1965 at Cape Kennedy, at liftoff (08:59:59.518 EST), which
@@ -75,4 +102,5 @@ export const WEATHER: DayWeather = {
   // report's Table 12.2-I and Figure 12.2-1 have the launch area's air at 14:00 G.m.t. and are given in the README
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

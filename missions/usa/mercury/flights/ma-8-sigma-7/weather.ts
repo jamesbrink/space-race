@@ -1,9 +1,36 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const REPORT = 'NASA TN D-4807, pp. 26 and 27';
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 2.1 km south-west of the pad)';
 const HOUR = '07:00 EST (12:00 UTC), 3 October 1962';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 21:00 UTC on 3 October 1962, between the four cells round 32.10 N, 174.47 W (the landing point by integrating the trajectory, 32°06′ N 174°28′ W, NASA TN D-4807, Table XXIII, as the README and flight.ts give it; landed at 21:28:22 UTC, the README’s), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 22:00 differs by under 0.04 m, 0.2 s and 3°';
+
+/**
+ * The sea where it came down, twenty-eight minutes after the hour: ERA5's waves there, a swell of 1.1 m from the east and a
+ * small sea raised by the wind from the south-east. The README has, from USS Kearsarge at the recovery, "waves 3 ft from
+ * 090°" and the wind 11 knots from 110°: ERA5's swell comes from 82°.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 32.10 N, 174.47 W', at: '1962-10-03T21:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(1.146, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(7.341, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(82.3, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.3, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(2.528, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(128.9, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Sigma 7 left under: the morning of 3 October 1962 at Cape Canaveral, as the flight's report has it from the
@@ -118,4 +145,5 @@ export const WEATHER: DayWeather = {
   // launch-site winds to 60,000 ft (TN D-4807, Figure 9) are a plot that has not been read off
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

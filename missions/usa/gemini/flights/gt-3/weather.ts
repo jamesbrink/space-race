@@ -1,8 +1,35 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 747940-12868 (Cape Kennedy AFS: the Skid Strip, 2.7 km south of the pad)';
 const TITANS = 'On the Shoulders of Titans (NASA SP-4203), pp. 232 to 237';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 19:00 UTC on 23 March 1965, between the four cells round 22.43 N, 70.85 W (the landing point, 22°26′ N 70°51′ W, NASA SP-4002, Appendix 1, Table A, as orbital.ts has it; landed at 19:16:31 UTC, the README’s), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 20:00 differs by under 0.01 m, 0.03 s and 1.5°';
+
+/**
+ * The sea where it came down, seventeen minutes after the hour: ERA5's waves there, a swell of 1.6 m from the north-east and
+ * a sea of 1.2 m raised by the wind from the east. At 3 h 08 min the ground passed up the weather for area 4-1, "Wind is 20
+ * knots, at 5 foot seas" (the transcript, p. 77, as the README quotes it); ERA5's two together come to about 2 m.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 22.43 N, 70.85 W', at: '1965-03-23T19:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(1.597, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(7.728, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(53.4, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(1.212, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(4.739, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(89.1, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Gemini 3 left under: the morning of 23 March 1965 at Cape Kennedy, at liftoff (09:24 EST, 14:24 UTC). The
@@ -93,4 +120,5 @@ export const WEATHER: DayWeather = {
   // sounding, when it is found, goes here in their place
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

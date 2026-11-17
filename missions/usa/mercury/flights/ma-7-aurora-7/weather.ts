@@ -1,9 +1,36 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 2.1 km south-west of the pad)';
 const HOUR = '08:00 EST (13:00 UTC), 24 May 1962';
 const REPORT = 'NASA TN D-3814, p. 17';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 18:00 UTC on 24 May 1962, between the four cells round 19.45 N, 63.98 W (the landing point by the tracking, 19°27′ N 63°59′ W, NASA TN D-3814, Table XVII, as the README and flight.ts give it; landed at 17:41:13 UTC, the README’s), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 17:00 differs by under 0.08 m, 0.2 s and 4°';
+
+/**
+ * The sea where it came down, nineteen minutes before the hour: ERA5's waves there, a swell of about a metre from the east
+ * and a sea of 0.7 m raised by the wind from the east-south-east. The README has waves of 3 ft in the planned landing area
+ * at noon (USS John R. Pierce), some 250 nautical miles short of where Aurora 7 came down: not this sea.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 19.45 N, 63.98 W', at: '1962-05-24T18:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(0.955, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(6.311, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(94.9, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.714, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(3.617, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(110.9, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Aurora 7 stood under: the morning of 24 May 1962 at Cape Canaveral, at the Cape's observation fifteen
@@ -105,4 +132,5 @@ export const WEATHER: DayWeather = {
   // launch-area winds to 60,000 ft (TN D-3814, Figure 8) are a plot that has not been read off
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

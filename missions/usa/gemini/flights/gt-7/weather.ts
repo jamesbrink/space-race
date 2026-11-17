@@ -1,8 +1,35 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 747940-12868 (Cape Kennedy AFS: the Skid Strip, 2.7 km south of the pad)';
 const GVII = 'the Gemini VII mission report (MSC-G-R-66-1), 12.2, p. 12-9';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 14:00 UTC on 18 December 1965, between the four cells round 25.42 N, 70.11 W (the landing point by Grand Turk’s radar, 25°25.1′ N 70°06.7′ W, the Gemini VII mission report, Table 4.3-I, as the README and flight.ts give it; landed 330 h 35 min 1 s after liftoff (flight.ts), 14:05:05 UTC), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 15:00 differs by under 0.05 m and 0.07 s, the swell by 2° and the wind’s waves by 8°';
+
+/**
+ * The sea where it came down, five minutes after the hour: ERA5's waves there, a long swell of 1.4 m from the
+ * north-north-east and a sea of 0.5 m raised by the wind from the west-north-west. Nothing the flight's files quote speaks
+ * of the sea.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 25.42 N, 70.11 W', at: '1965-12-18T14:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(1.433, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(9.338, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(19.9, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.538, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(3.163, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(295.4, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Gemini 7 left under: the afternoon of 4 December 1965 at Cape Kennedy, at liftoff (14:30:03.702 EST). The
@@ -73,4 +100,5 @@ export const WEATHER: DayWeather = {
   // report's Table 12.2-I and Figure 12.2-1 have the launch area's air an hour before liftoff and are named in the README
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

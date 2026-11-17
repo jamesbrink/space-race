@@ -1,9 +1,36 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 2.1 km south-west of the pad)';
 const HOUR = '10:00 EST (15:00 UTC), 20 February 1962';
 const RESULTS = 'Results of the First United States Manned Orbital Space Flight (NASA MSC, 1962)';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 20:00 UTC on 20 February 1962, between the four cells round 21.43 N, 68.61 W (where the capsule was picked up, 21°25.6′ N 68°36.5′ W, NASA SP-45, Table 8-III, as orbital.ts has it: the landing itself was not fixed more closely; landed at 19:43:02 UTC, the README’s), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 19:00 differs by under 0.06 m, 0.2 s and 3°';
+
+/**
+ * The sea where it came down, seventeen minutes before the hour: ERA5's waves there, a swell of a metre and a half from the
+ * east-north-east and a smaller sea raised by the wind from the east-south-east. The README has three-foot waves in the
+ * landing area (the transcript, 04:42:27); ERA5's sea, the two together, is higher, about 1.6 m.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 21.43 N, 68.61 W', at: '1962-02-20T20:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(1.499, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(7.497, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(66.5, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.579, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(3.297, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(123.4, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Friendship 7 stood under: the morning of 20 February 1962 at Cape Canaveral, at the Cape's observation
@@ -95,4 +122,5 @@ export const WEATHER: DayWeather = {
   // only, and has not been put in its place: the README gives it beside ERA5's
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

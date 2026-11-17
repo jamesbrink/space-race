@@ -1,7 +1,34 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 5 km north of the pad)';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 15:00 UTC on 5 May 1961, between the four cells round 27.23 N, 75.88 W (the landing point as the README and flight.ts give it, 27°13.7′N 75°53′W, its source not named there; landed 15 min 22.0 s after liftoff (Postlaunch Report, 4.1), 14:49:35 UTC), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 14:00 differs by under 0.07 m and 0.2 s';
+
+/**
+ * The sea where it came down, ten minutes before the hour: ERA5's waves there, a swell of about a metre from the east and a
+ * smaller sea raised by the wind from the east too. The Postlaunch Report has the landing area's waves at 2 ft and the wind
+ * at 12 knots (10.3, as docs/sources.md gives it); ERA5's two together come to about 1.1 m.
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 27.23 N, 75.88 W', at: '1961-05-05T15:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(0.962, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(6.553, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(85.2, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.553, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(3.191, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(85.7, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Freedom 7 stood under: the morning of 5 May 1961 at Cape Canaveral, at liftoff (09:34 EST). The
@@ -83,4 +110,5 @@ export const WEATHER: DayWeather = {
   // record's, when one is read, goes here in their place
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };
