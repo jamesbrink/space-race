@@ -74,7 +74,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     booster engines on the booster section and by the sustainer (its verniers flown as part of it), the booster section let
     go by a joint of its own after its engines are cut. Its coast's burn is the retropack's three solids as one engine of
     three, spent and not cut (`coastOf`: a solid nothing cuts burns for its `burn`, here the first's lighting to the third's
-    burning out), pushing against the motion pitched down by the record's attitude (`Hold.aim.below`); the pack goes so
+    burning out), pushing against the motion pitched down by the record's attitude (`Hold.aim.below`) and, where the record
+    has it flown off its line, turned in the level by its yaw first (`Hold.aim.yaw`, to the left of the motion: Aurora 7's
+    27°, orbital.ts `aimOf`; tests/orbital.test.mjs); the pack goes so
     long after retrofire (the coast's parting), and what comes down is let loose at its drogue's height (`Down.ejection`
     is then a parachute's own event). tests/plan.test.mjs holds it to the record.
   - `EngineDef.flown` is the impulse the record's coast flies.

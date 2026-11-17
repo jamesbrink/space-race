@@ -102,6 +102,8 @@ export interface MercuryAtlasRecord {
     /** The retrosequence: when the capsule was turned to retrofire attitude, and that attitude's pitch below the level, degrees. */
     sequence: Measure;
     below: Measure;
+    /** Where the retrofire was flown off its line: the push turned in the level toward the left of the motion, degrees (negative, the right). */
+    yaw?: Measure;
     /** The first motor lit, the spacing between them, how many, each one's thrust and burning time, and the impulse the three gave, m/s. */
     on: Measure;
     spacing: Measure;
@@ -254,8 +256,8 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     {
       id: 'retrofire-attitude',
       label: 'Retrofire attitude',
-      hold: { aim: 'velocity', sense: -1, below: r.below, confidence: r.below.confidence },
-      source: r.below.source,
+      hold: { aim: 'velocity', sense: -1, below: r.below, ...(r.yaw ? { yaw: r.yaw } : {}), confidence: r.below.confidence },
+      source: r.yaw ? `${r.below.source}; ${r.yaw.source}` : r.below.source,
     },
   ];
   const record = (at: Measure) => {

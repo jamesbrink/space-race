@@ -347,9 +347,11 @@ export type Hold =
    * Along or against the line to the Sun, the motion, the orbit's normal (r x v: toward the orbit's pole, so a push along it
    * turns the plane), or a fixed line in the flight's frame. Along the motion, `below` pitches it down from the level (the
    * plumb line's) by so many degrees, in the plane of the motion: a Mercury capsule's retrofire attitude, its blunt end up
-   * 34 degrees, so the push is back along the motion and down.
+   * 34 degrees, so the push is back along the motion and down. `yaw` turns the line in
+   * the level about the plumb line before it is pitched, by so many degrees toward the left of the motion (negative, the
+   * right): a retrofire flown off its attitude (Aurora 7's).
    */
-  | { aim: 'sun' | 'velocity' | 'normal' | 'fixed'; sense: 1 | -1; vector?: Vec3; below?: Measure; confidence: Confidence }
+  | { aim: 'sun' | 'velocity' | 'normal' | 'fixed'; sense: 1 | -1; vector?: Vec3; below?: Measure; yaw?: Measure; confidence: Confidence }
   /** Against the motion over the ground, pitched below the horizontal, degrees (retrorockets). */
   | { retro: Measure }
   /** Blunt end first, its roll kept so a side faces the Earth (degrees about the long axis from the body's +Z). */

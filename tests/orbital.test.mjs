@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
-import { coastOf, flyOrbit, heightsBall, injectionState, liftOf, movesOf, publishedOf, shipOf } from '../src/sim/orbital.ts';
+import { aimOf, coastOf, flyOrbit, heightsBall, injectionState, liftOf, movesOf, publishedOf, shipOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -157,6 +157,7 @@ function atlasInputs(f, o, run) {
     ['retro', 'burn'],
     ['retro', 'deltaV'],
     ['retro', 'below'],
+    ...(o.retro.yaw ? [['retro', 'yaw']] : []),
     ['retro', 'gone'],
     ['entry', 'mass'],
     ['entry', 'area'],
@@ -177,10 +178,11 @@ function atlasInputs(f, o, run) {
   console.log(`  #   orbit.radius the mean 6,371 km: ${moved(withInput(o, ['orbit', 'radius'], 6_371_000))}`);
   console.log(`  #   retro.deltaV +5 %: ${moved(withInput(o, ['retro', 'deltaV'], o.retro.deltaV.value * 1.05))}`);
   console.log(
-    `  #   retro.deltaV as the motors' 3 x 1,000 lbf x 10 s: ${moved(withInput(o, ['retro', 'deltaV'], (30_000 * 4.4482216) / (2_970 * 0.45359237)))}`,
+    `  #   retro.deltaV as the motors' 3 x 1,000 lbf x 10 s: ${moved(withInput(o, ['retro', 'deltaV'], (30_000 * 4.4482216) / o.mass.value))}`,
   );
   console.log(`  #   retro.below 3 deg more: ${moved(withInput(o, ['retro', 'below'], o.retro.below.value + 3))}`);
-  console.log(`  #   retro.gone at the planned jettison: ${moved(withInput(o, ['retro', 'gone'], 16_438))}`);
+  if (o.retro.yaw) console.log(`  #   retro.yaw none: ${moved(withInput(o, ['retro', 'yaw'], 0))}`);
+  console.log(`  #   retro.gone at the planned jettison: ${moved(withInput(o, ['retro', 'gone'], o.retro.planned.value))}`);
   console.log(`  #   entry.mass +5 %: ${moved(withInput(o, ['entry', 'mass'], o.entry.mass.value * 1.05))}`);
   console.log(`  #   rarefied.area +20 %: ${moved(withInput(o, ['rarefied', 'area'], o.rarefied.area.value * 1.2))}`);
 }
@@ -448,6 +450,35 @@ for (const f of orbiters) {
     console.log(`  #   the planned orbit (180 by 230 km) and burn (136 m/s) on the same clock: ${moved(planned)}`);
   });
 }
+
+test('a retrofire flown off its line: the push turned in the level toward the left of the motion by its yaw, then pitched below the level', () => {
+  const f = all.find((x) => x.plan?.record?.orbit && 'atlas' in recordFrom(x));
+  const o = structuredClone(recordFrom(f));
+  const r = [6_538_000, 0, 0];
+  const v = [0, 7_800, 0];
+  const aim = (yaw) => {
+    if (yaw === undefined) delete o.retro.yaw;
+    else o.retro.yaw = { value: yaw, confidence: 'derived', source: 'a test' };
+    return aimOf(mercuryAtlasPlan(o), r, v, () => [0, 0, 0]);
+  };
+  const b = o.retro.below.value * DEG;
+  // (up is +x and the motion +y, so the left of the motion is +z; the push is against the motion)
+  const none = aim(undefined);
+  assert.ok(
+    Math.abs(none[0] + Math.sin(b)) < 1e-12 && Math.abs(none[1] + Math.cos(b)) < 1e-12 && Math.abs(none[2]) < 1e-12,
+    'no yaw: back and down',
+  );
+  assert.deepEqual(aim(0), none, 'a yaw of nought is none');
+  const y = 27 * DEG;
+  const left = aim(27);
+  assert.ok(Math.abs(left[0] + Math.sin(b)) < 1e-12, 'pitched as before');
+  assert.ok(
+    Math.abs(left[1] + Math.cos(b) * Math.cos(y)) < 1e-12 && Math.abs(left[2] - Math.cos(b) * Math.sin(y)) < 1e-12,
+    'turned to the left',
+  );
+  const right = aim(-27);
+  assert.ok(Math.abs(right[2] + left[2]) < 1e-12, 'a negative yaw to the right');
+});
 
 test('a check of the orbit at an instant reads the coast there as mean elements, and costs a flight that states none nothing', () => {
   const f = orbiters.find((x) => x.id === 'ussr/vostok/vostok-1');

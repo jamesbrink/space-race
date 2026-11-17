@@ -678,11 +678,15 @@ export function bankAt(ship: Pick<Ship, 'banks'>, at: number): number | null {
 export function aimFor(a: Extract<Hold, { aim: unknown }>, r: Vec3, v: Vec3, sun: () => Vec3, up: () => Vec3 = () => unit(r)): Vec3 {
   const line = a.aim === 'fixed' && a.vector ? a.vector : a.aim === 'sun' ? sub(sun(), r) : a.aim === 'normal' ? cross(r, v) : v;
   const along = scale(unit(line), a.sense);
-  if (!a.below || a.aim !== 'velocity') return along;
-  // (along or against the motion, laid level and then pitched down below the level by `below`: the plumb line where it is)
+  if ((!a.below && !a.yaw) || a.aim !== 'velocity') return along;
+  // (along or against the motion, laid level, turned about the plumb line by `yaw` toward the left of the motion, then
+  // pitched down below the level by `below`: the plumb line where it is)
   const u = up();
-  const level = unit(sub(along, scale(u, dot(along, u))));
-  const b = a.below.value * DEG;
+  const flat = unit(sub(along, scale(u, dot(along, u))));
+  const y = (a.yaw?.value ?? 0) * DEG;
+  const left = unit(cross(u, scale(flat, a.sense)));
+  const level = y === 0 ? flat : add(scale(flat, Math.cos(y)), scale(left, Math.sin(y)));
+  const b = (a.below?.value ?? 0) * DEG;
   return add(scale(level, Math.cos(b)), scale(u, -Math.sin(b)));
 }
 
