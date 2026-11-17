@@ -287,6 +287,24 @@ export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[]
   return heading ? model.parts.filter((p) => p.group === heading).map((p) => p.node) : [];
 }
 
+/**
+ * A flight as its launch site has it: a vehicle's docking target (`ModelDef.target`) is the gallery's arrangement, and
+ * it went up from another pad on another vehicle, so at the site its parts are not listed and its nodes not drawn
+ * (`ModelDef.absent`). The gallery is given the flight whole.
+ */
+export function atSite<F extends Flight>(flight: F): F {
+  if (!flight.models.some((m) => m.target)) return flight;
+  return {
+    ...flight,
+    models: flight.models.map((m) => {
+      if (!m.target) return m;
+      const away = targetNodes(m);
+      const { target: _target, ...rest } = m;
+      return { ...rest, parts: m.parts.filter((p) => !away.includes(p.node)), absent: [...(m.absent ?? []), ...away] };
+    }),
+  };
+}
+
 /** The heading a vehicle's parts list puts its spacecraft under, as a choice of what stands in the gallery (`plinths`). */
 const SPACECRAFT = 'spacecraft';
 

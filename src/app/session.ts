@@ -1,6 +1,6 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
-import { formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
+import { atSite, formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
 import { Callout } from '../ui/callout.ts';
 import { deckOf } from '../deck/decks.ts';
 import { follow } from './curtain.ts';
@@ -43,7 +43,9 @@ export interface Session {
  * page keeps (`stage`, loaded again for this flight) and to the gallery's (`kept`, the last flight's gallery's). Every
  * listener, timer and frame it hangs on the page is let go with it (`dispose`), and every panel with its own.
  */
-export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKept): Session {
+export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept): Session {
+  /** The flight as the site has it: what the gallery stands beside a vehicle and the site does not (address.ts `atSite`). */
+  const flight = atSite(whole);
   /** What this page hangs on the window, the document and the frame (util/scope.ts). */
   const scope = new Scope();
   /** It has been let go: nothing it still hears writes the address or starts anything. */
@@ -739,7 +741,7 @@ export function siteSession(flight: SitedFlight, stage: Stage, kept?: GalleryKep
   const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
   const gallery = new Gallery(
     document.body,
-    flight,
+    whole,
     {
       go: (place) => go(place),
       home: goHome, // (out to the front page, which is no flight's: home.ts)

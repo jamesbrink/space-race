@@ -653,6 +653,11 @@ export interface ModelDef {
    */
   target?: { heading: string; name: string; length: Measure };
   /**
+   * Top-level nodes of its GLB that are not drawn where it stands: at a launch site, the docking target the gallery
+   * stands beside the launch vehicle (address.ts `atSite`), which went up from another pad.
+   */
+  absent?: string[];
+  /**
    * Lamps the model carries: cabin floodlights, so an interior seen through a window is not a
    * black hole. Positions in the model's own coordinates, metres; `reach` is where it fades out.
    */

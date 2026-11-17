@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   aboutNoFlight,
+  atSite,
   byDate,
   craftNodes,
   entrances,
@@ -532,4 +533,30 @@ test('a flight gallery’s own Spacecraft is the Lineup’s: what rides on the l
     plinths(vehicle).map((p) => p.id),
     plinths(vehicle, lowest).map((p) => p.id),
   );
+});
+
+test('at a launch site the docking target is not drawn, nor listed; the gallery keeps it', () => {
+  for (const id of ['usa/gemini/gt-8', 'usa/gemini/gt-9a']) {
+    const whole = flights.find((f) => f.id === id);
+    const vehicle = whole.models.find((m) => m.target);
+    const away = targetNodes(vehicle);
+    assert.ok(away.length > 0, `${id}: its target has nodes`);
+    const site = atSite(whole).models.find((m) => m.id === vehicle.id);
+    assert.equal(site.target, undefined);
+    assert.deepEqual(site.absent, away);
+    assert.ok(
+      site.parts.every((p) => !away.includes(p.node)),
+      `${id}: no part of the target is listed at the site`,
+    );
+    assert.equal(site.parts.length, vehicle.parts.length - away.length);
+    // the flight itself, which the gallery is given, is untouched
+    assert.ok(vehicle.target);
+    assert.equal(
+      whole.models.find((m) => m.id === vehicle.id),
+      vehicle,
+    );
+  }
+  // a flight with no target is the same flight
+  const gt3 = flights.find((f) => f.id === 'usa/gemini/gt-3');
+  assert.equal(atSite(gt3), gt3);
 });

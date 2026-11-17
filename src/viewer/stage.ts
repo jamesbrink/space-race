@@ -160,6 +160,11 @@ function rest(object: THREE.Object3D): void {
  * them is the section being studied: its parts can be picked, cut open and taken apart. Moving
  * between sections is a flight of the camera, never a change of scene.
  */
+/** Take out of a model's scene the nodes its def says are not drawn where it stands (`ModelDef.absent`). */
+function absent(scene: THREE.Object3D, def: ModelDef): void {
+  for (const name of def.absent ?? []) scene.getObjectByName(name)?.removeFromParent();
+}
+
 export class Stage {
   /** The instant everything is shown at: the setting's sky and light follow it. Stopped, it costs nothing. */
   clock: Clock | null = null;
@@ -747,6 +752,7 @@ export class Stage {
     this.surfaces.set([]);
     this.staged = flight.models.map((def, i) => {
       rest(scenes[i]!);
+      absent(scenes[i]!, def);
       const staged = new Staged(scenes[i]!, def.parts, this.surfaces);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
@@ -788,6 +794,7 @@ export class Stage {
           this.fetch(lodUrl(def.url, level)).then((object) => {
             if (staged !== this.staged) return;
             rest(object);
+            absent(object, def);
             staged[i]!.add(level, object, this.onShow);
             this.lamps.glow(object);
             this.renderer.shadowMap.needsUpdate = true; // (if it is the level now drawn, its shadow is another shape)
