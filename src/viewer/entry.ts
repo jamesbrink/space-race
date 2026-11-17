@@ -514,11 +514,6 @@ export class ShockGlow {
   private readonly face = new THREE.Vector3();
   private readonly at = new THREE.Vector3();
 
-  /** The middle of the blunt face, as `fit` was given it. */
-  get faceAt(): THREE.Vector3 {
-    return this.face.clone();
-  }
-
   /** Stop the march at a body of this profile, and shed the wake from its shoulder and close it behind its end. */
   private profile(p: Profile): void {
     const u = this.uniforms;
