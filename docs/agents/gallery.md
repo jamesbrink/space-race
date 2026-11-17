@@ -2,6 +2,8 @@
 
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
+A named Gallery view may set `isolate` when its subject is enclosed on every side, as with Apollo 8’s instrument panel. The controls remain at their installed height. Moving the camera lets the visitor examine their faces and cases. Choosing another view, plinth, part or seat restores the assembly.
+
 ## The navigation, the same for every flight
 
 Every flight has the same three places, in the same order, and opens in the first:

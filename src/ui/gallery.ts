@@ -271,6 +271,12 @@ export class Gallery {
   private hovered: string | null = null;
   /** True while the cutaway is open only because an inside part was chosen. */
   private autoCut = false;
+  private restoreInspection: (() => void) | null = null;
+
+  private endInspection(): void {
+    this.restoreInspection?.();
+    this.restoreInspection = null;
+  }
   private cut = false;
   /** Where the slider is, 0 to 1 of what stands there coming apart. */
   private apart = 0;
@@ -323,6 +329,7 @@ export class Gallery {
    */
   dispose(): GalleryKept {
     if (this.touring) this.demo.stop();
+    this.endInspection();
     this.open = false;
     this.scope.dispose();
     this.frame = 0;
@@ -829,6 +836,8 @@ export class Gallery {
       const on = b.getAttribute('aria-pressed') !== 'true';
       if (b.dataset.view) {
         const view = this.model.views.find((v) => v.id === b.dataset.view);
+        this.endInspection();
+        if (view?.isolate && view.nodes) this.restoreInspection = this.made!.stage.inspect(view.nodes);
         const inside = (node: string) => this.vehicle.parts.some((p) => p.node === node && p.inside);
         // A view devoted to interior parts needs the same opening as selecting
         // one. Keep it open while an interior part is still selected as well.
@@ -920,7 +929,8 @@ export class Gallery {
           // (from the seat: back from a lean first, then up out of the seat)
           if (this.made!.stage.seats.leaning !== null) this.leanTo(null);
           else this.sitIn(null);
-        } else if (is(e, 'gallery.back')) this.select(null);
+        } else if (is(e, 'gallery.back') && this.restoreInspection && !this.selected) this.whole();
+        else if (is(e, 'gallery.back')) this.select(null);
         else if (is(e, 'gallery.sit')) this.camera();
         else if (seated && lean >= 0) this.leanTo(lean);
         else if (next >= 0) this.step(next ? -1 : 1);
@@ -1052,6 +1062,7 @@ export class Gallery {
   /** Put something else on the floor: all of the vehicle, or the parts under one of its headings. */
   private stand(plinth: Plinth, snap = false): void {
     const { stage, studio } = this.made!;
+    this.endInspection();
     this.plinth = plinth;
     this.selected = this.hovered = null;
     this.autoCut = false;
@@ -1090,6 +1101,8 @@ export class Gallery {
   }
 
   private whole(): void {
+    this.endInspection();
+    this.revealInterior(false);
     this.made?.stage.framing.view(WHOLE_VIEW);
     this.turn();
   }
@@ -1103,6 +1116,7 @@ export class Gallery {
 
   private select(node: string | null, snap = false): void {
     if (!this.ready || (!node && !this.selected)) return;
+    this.endInspection();
     const stage = this.made!.stage;
     this.selected = node;
     stage.highlight(null, node);
@@ -1470,7 +1484,7 @@ export class Gallery {
     const eyebrow = `${f.callsign} · Gallery`;
     return new Demo(this.staged, {
       pacing: PACING,
-      show: () => {},
+      show: () => this.endInspection(),
       whole: (turn, rise) => {
         this.setCutaway(false);
         stage().framing.view(WHOLE_VIEW);
@@ -1575,6 +1589,7 @@ export class Gallery {
     if (!stage || !this.ready) return;
     if (n === null) return void stage.seats.sit(null);
     if (this.seat === null) {
+      this.endInspection();
       if (this.touring) this.demo.stop();
       // what is sat in stands there, together and closed: from inside the cabin is the cabin, not the room through a cut
       const node = stage.seats.seatName(n);

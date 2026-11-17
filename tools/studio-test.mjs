@@ -52,6 +52,24 @@ try {
         if (!(await button.isVisible())) await page.locator('#gallery [data-views]').click();
         await button.click();
       };
+      for (const isolated of views.filter((v) => v.isolate)) {
+        const visible = () =>
+          page.evaluate(() => {
+            const stage = window.sr.gallery.stage;
+            return stage.defs[stage.current].parts
+              .filter((p) => stage.staged[stage.current].full.getObjectByName(p.node)?.visible)
+              .map((p) => p.node)
+              .sort();
+          });
+        const assembled = await visible();
+        await view(isolated.id);
+        check(
+          JSON.stringify(await visible()) === JSON.stringify([...isolated.nodes].sort()),
+          `${isolated.label}: its instruments stand exposed`,
+        );
+        await view(WHOLE_VIEW);
+        check(JSON.stringify(await visible()) === JSON.stringify(assembled), 'Whole: the surrounding assembly returns');
+      }
       const first = views[0].id;
       await view(first);
       check(await cutOpen(), `${views[0].label}: going to it opens the cutaway, with nothing chosen`);

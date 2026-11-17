@@ -390,6 +390,8 @@ export interface ViewDef {
    * them as the model is taken apart, and `centreY` and `span` are not needed.
    */
   nodes?: string[];
+  /** In the Gallery, show these nodes in place with the surrounding assembly temporarily hidden. */
+  isolate?: boolean;
   /** Where the camera stands, as a direction from the subject (default: front right, slightly above). */
   from?: [number, number, number];
 }
