@@ -23,6 +23,9 @@ missions/                             the record: one folder per nation, program
                                       `mercuryRedstoneParts`, `SPEC`, `mercuryRedstoneMotors` (the A-7's thrust each flight's own, as measured);
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
                                       sizes (`SIZE`), engines and thrusters (`THRUST`), each flight giving its words and differences;
+                                      gemini-titan-plan.ts, a Gemini-Titan's record (`GeminiTitanRecord`, its flight's orbital.ts) and the
+                                      plan written from it (`geminiTitanPlan`: the Titan's two stages hot-staged, the burns in orbit, the
+                                      lifting entry); gemini-flies.ts, what its parts do in flight (`geminiFlies`, `geminiCommands`, the chutes);
                                       gemini-targets.ts, what a Gemini went up to meet: the Agena's and the ATDA's nodes, figures and motors,
                                       and the heading a target stands under beside its flight's vehicle (`TARGET_GROUP`, `lifted`);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
