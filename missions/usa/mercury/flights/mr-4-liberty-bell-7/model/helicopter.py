@@ -7,8 +7,8 @@ pp. 372 to 375; Results of the Second U.S. Manned Suborbital Space Flight, pp. 4
 Which aircraft: NASA photograph S61-02826 shows the helicopter with the capsule on its line, the capsule awash under
 it: side number 32, the squadron's code ET on the pylon, and on the tail cone the bureau number 148755, read at full
 resolution. MSFC-6116424 and 61-MR4-100 show the same aircraft (32, ET) towing it. The helicopter that picked Grissom
-up is ET-30 in MSFC-6116429 and S61-02819; it is the same type and would be this model in its own markings
-(`ET_30`, not built: its bureau number is not legible in either photograph).
+up is ET-30 in MSFC-6116429 and S61-02819: hunt-club-3.py beside this file, in its own markings with no bureau number
+(none is legible in any photograph read).
 """
 
 import os
@@ -23,7 +23,6 @@ import hus_1  # noqa: E402
 from srlib import load_font, run  # noqa: E402
 
 HUNT_CLUB_1 = hus_1.Markings(side="32", code="ET", bureau="148755")
-ET_30 = hus_1.Markings(side="30", code="ET", bureau=None)
 
 
 def build() -> str:
