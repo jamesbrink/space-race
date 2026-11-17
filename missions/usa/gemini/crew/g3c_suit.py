@@ -76,6 +76,7 @@ class Garment:
     hood: bool = False
     insignia: tuple[float, float] = (13.2, 23.0)  # the NASA insignia's middle: under the ring's middle, and round toward his left, degrees
     visor: tuple[float, float, float] | None = None  # its own visor's opening, as VISOR: the helmet's when None
+    legs: str = "suit"  # what the trousers are made of, a key of `materials`: a cover over the legs (g4c_suit.py)
 
 
 G3C = Garment()
@@ -221,6 +222,8 @@ def materials() -> dict:
         # the fifty-star flag, the one the capsules wear, embroidered (g4c_suit.py)
         "flag": m("patch-flag", (1, 1, 1), 0.0, 0.85, image=mc.flag_image) if WEARER.garment.flag else None,
         "zip": m("zipper-tape-black", (0.015, 0.015, 0.017), 0.0, 0.8),
+        # cloth woven of stainless steel, grey and dull (NASA S66-31019, S66-32149)
+        "chromel": m("suit-chromel-r", (0.42, 0.43, 0.44), 0.55, 0.55) if WEARER.garment.legs == "chromel" else None,
     }
 
 
@@ -721,9 +724,10 @@ def build_legs(M: dict, torso: Tube) -> None:
         t.patch(flaps, d0 - 0.8, d0 + 4.2, th - 0.84, th + 0.84, 0.8, nd=5, nt=10)
         zip_ = t.trace(d0 + 5.0, d0 + 16.0, th - sx * 0.55, th - sx * 0.55, 16)
         band(zips, [(p + nm * 0.45, nm) for p, nm in zip_], 0.7, 0.16, sink=0.1, bevel=0.1)
-    emit(legs, "Legs_Trousers", M["suit"], g, sharp_angle=None)
-    emit(pockets, "Legs_ShinPockets", M["suit"], g)
-    emit(flaps, "Legs_ShinPocketFlaps", M["suit"], g)
+    cover = M[WEARER.garment.legs]
+    emit(legs, "Legs_Trousers", cover, g, sharp_angle=None)
+    emit(pockets, "Legs_ShinPockets", cover, g)
+    emit(flaps, "Legs_ShinPocketFlaps", cover, g)
     emit(zips, "Legs_ShinPocketZips", M["teeth"], g, smooth=False)
 
 

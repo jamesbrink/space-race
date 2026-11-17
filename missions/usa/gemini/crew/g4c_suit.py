@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from g3c_suit import Garment, Wearer, build  # noqa: E402
 
-__all__ = ["ARMSTRONG", "CONRAD", "COOPER", "G4C", "G4C_OUTSIDE", "MCDIVITT", "SCHIRRA", "SCOTT", "STAFFORD", "WHITE", "build"]
+__all__ = ["ARMSTRONG", "CERNAN", "CONRAD", "COOPER", "G4C", "G4C_AMU", "G4C_OUTSIDE", "MCDIVITT", "SCHIRRA", "SCOTT", "STAFFORD", "WHITE", "build"]
 
 # Bare aluminium at the neck, where the G3C's ring was anodised blue: NASA S65-29643 (McDivitt) and S65-29645 (White),
 # both in the suiting trailer on 3 June 1965. The flag on the left upper arm: S65-29643. Estimated in size and place.
@@ -57,3 +57,20 @@ STAFFORD = Wearer("T.P.STAFFORD", 182.9, 1.01, 1.02, garment=G4C)
 # the others' are lettered (NASA KSC-66C-1851 shows the two at the trailer's door, the tags not legible).
 ARMSTRONG = Wearer("N.A.ARMSTRONG", 179.1, 1.0, 1.0, garment=G4C)
 SCOTT = Wearer("D.R.SCOTT", 182.9, 1.0, 1.0, garment=G4C_OUTSIDE)
+
+# Gemini 9A: the command pilot's "basically the same as that used on the Gemini VIII mission - a G4C suit with a light
+# coverlayer"; the pilot's "included an extravehicular coverlayer ... modified to provide protection to the legs from the
+# high-temperature, high-velocity plume impingement" of the manoeuvring unit's thrusters (the Gemini IX-A mission report,
+# MSC-G-R-66-6, 3.1.2.12.2): "the second for the leg section beginning at the groin line" (NASA release 66-97, the
+# Gemini 9 press kit, pp. 24 to 26), of Chromel-R, a cloth of stainless steel (NASA S66-31019), and on him at the pad
+# (S66-32149). Stafford is Gemini 6A's man (above). Cernan's stature has not been found in any NASA source read: 6 ft,
+# as commonly given, estimated.
+G4C_AMU = Garment(
+    name="G4C-32, with the cover for going outside and its legs of Chromel-R",
+    ring="bright",
+    flag=True,
+    cover=(0.5, 0.4, 0.5),
+    visor_arm=(0.32, 0.3),
+    legs="chromel",
+)
+CERNAN = Wearer("E.A.CERNAN", 182.9, 1.0, 1.0, garment=G4C_AMU)
