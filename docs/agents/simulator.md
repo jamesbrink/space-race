@@ -542,7 +542,8 @@ Before is what it did ahead of `sim/staging.ts`.
 | Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
 | Ask a step twice | any time | heard once | heard once | heard once |
 | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
-| An abort | not offered ("not simulated") | | the seat to 40 s, then the spacecraft's separation (Molodtsov) | said on the breakup's card, not flown |
+| An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (orbitdeck.ts `abort`), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 94 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
+| An abort, to 150 s | not offered | | the pilot ejected on his seat, on the ground's command to 40 s, as the falling stack passed 7 km to 150 s (Molodtsov) | said, not flown: the pilot flown from the stack's state is still to come (issue #10) |
 
 | Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
 | --- | --- | --- | --- | --- |
@@ -557,8 +558,8 @@ Before is what it did ahead of `sim/staging.ts`.
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
 | Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it goes and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea it fills at once and goes under (`Run.sinks`), and the card says so |
 
-Where the two kinds still differ for no physical reason: the orbital deck has no abort; it is left as it was and said
-here.
+Where the two kinds still differ for no physical reason: the orbital deck's abort in the first 150 s (the seat), which is said
+and not flown.
 
 ## The deck
 

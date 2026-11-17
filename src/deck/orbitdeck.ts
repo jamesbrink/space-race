@@ -48,7 +48,7 @@ import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/fr
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { is } from '../util/keys.ts';
-import { type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
+import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -158,6 +158,10 @@ export class OrbitDeck extends Deck {
   private given: Record<string, number> = {};
   private switched: { t: number; on: boolean }[] = [];
   private partedBy: number | null = null;
+  /** The abort asked for going up: the record's mode for the instant (`PlanRecord.aborts`, by its index) and when. */
+  private aborted: { mode: number; t: number } | null = null;
+  /** When X was first pressed: a second within ABORT_ARMED fires it. */
+  private abortArmed = Number.NEGATIVE_INFINITY;
   private downMine: number | null = null;
   private lasts: { of: FlownWhole; s: number } | null = null;
   /** The plan the flight on show was last flown on (`refly`), and how many times it has been: the card is made again when it is. */
@@ -504,6 +508,8 @@ export class OrbitDeck extends Deck {
     this.given = {};
     this.switched = [];
     this.partedBy = null;
+    this.aborted = null;
+    this.abortArmed = Number.NEGATIVE_INFINITY;
     this.downMine = null;
     this.lasts = null;
     this.flownPlan = null;
@@ -519,8 +525,63 @@ export class OrbitDeck extends Deck {
     if (what === 'again') this.fresh();
     else if (what === 'next') this.next();
     else if (what === 'guidance' || what === 'sequence') this.toggle(what);
-    else if (what === 'abort') this.host.say?.('Abort', 'Not simulated for this flight');
+    else if (what === 'abort') this.abortAsked();
     this.show();
+  }
+
+  /**
+   * The spacecraft's escape the record has for the clock's instant on the launch vehicle (`PlanRecord.aborts`: Molodtsov
+   * 2001, each mode `until` its second), or why there is none; null when there is one to fly.
+   */
+  private abortWhy(): string | null {
+    const t = this.clock.t;
+    if (t <= 0 && !this.clock.running && !this.state) return 'On the pad: the escape began with the flight';
+    if (this.ascended || t > this.parting) return 'The spacecraft has left its launch vehicle: there is nothing to escape from';
+    if (this.state?.broke && t >= this.state.broke.t - 1e-9) return 'Broken up';
+    if (this.aborted) return 'Aborted already';
+    const modes = this.flight.plan!.record?.aborts ?? [];
+    const k = modes.findIndex((x) => t < x.until.value);
+    if (k < 0) return 'Past the last of the escape’s modes';
+    // (the first two, the pilot ejected from the stack, want him flown from its state: not yet, issue #10)
+    if (k < 2) return `By the record ${modes[k]!.does}: not flown here yet`;
+    return null;
+  }
+
+  /** X: the first press arms the abort and says what it would do; a second within two seconds does it. */
+  private abortAsked(): void {
+    const why = this.abortWhy();
+    if (why) return void this.host.say?.('Abort', why);
+    const now = performance.now() / 1000;
+    const modes = this.flight.plan!.record!.aborts!;
+    const k = modes.findIndex((x) => this.clock.t < x.until.value);
+    if (now - this.abortArmed > ABORT_ARMED) {
+      this.abortArmed = now;
+      return void this.host.say?.('Abort armed', `Again to abort: ${modes[k]!.does}`);
+    }
+    this.abortArmed = Number.NEGATIVE_INFINITY;
+    this.abort(k);
+  }
+
+  /**
+   * The escape's mode `k` at the clock's instant, as the hardware did it (Molodtsov 2001): from 150 s to 700 s every engine
+   * shut down and the spacecraft separated, its descent module separating at once to come down as from orbit; from 700 s
+   * to 730 s the third stage shut down and the whole spacecraft separated. Asked of the live vehicle as steps (every stage
+   * burning cut, the last stage let go), so what parts and when is its physics: held in while the fairing covers it,
+   * pressed on until the push falls (sim/staging.ts). The modules part once the spacecraft has (`parted`).
+   */
+  private abort(k: number): void {
+    const plan = this.flight.plan!;
+    const mode = plan.record!.aborts![k]!;
+    if (this.mine === null) this.takeOver();
+    const v = this.vehicleOf();
+    const s = this.state!;
+    const stages = stagesOf(plan);
+    const steps: Step[] = stages.flatMap((_, i) => (v.burning(s, i) ? [{ kind: 'cut' as const, stage: i }] : []));
+    this.asked.push(...steps, { kind: 'separate', stage: stages.length - 1 });
+    this.aborted = { mode: k, t: this.clock.t };
+    this.eventAt = performance.now() / 1000;
+    this.host.say?.('Abort', `${mode.does[0]!.toUpperCase()}${mode.does.slice(1)} (Molodtsov). Not the flight of ${this.day}`);
+    if (!this.clock.running) this.clock.play(true);
   }
 
   /** The lock's digits are keys of this kind's. */
@@ -909,6 +970,12 @@ export class OrbitDeck extends Deck {
         : `Short of an orbit: perigee ${perigee.toFixed(0)} km. It comes down`,
     );
     this.host.fly(this.run);
+    // an abort from 150 to 700 s (the record's third mode): the descent module separates as the spacecraft leaves, to come down as from orbit
+    if (this.aborted?.mode === 2) {
+      this.partedBy = s.parted!.t;
+      this.refly();
+      this.host.say?.('Abort', 'The descent module separated: it comes down as from orbit, the pilot ejected by its own sequence');
+    }
   }
 
   /** Fire the braking engine by hand along the long axis as it points: the rest of the flight flown again from it. */
@@ -1628,7 +1695,11 @@ export class OrbitDeck extends Deck {
                   : 'Nothing left to do',
     );
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !(replay || waiting || step || fire || descent);
-    this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!.disabled = true;
+    const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
+    abort.disabled = this.abortWhy() !== null;
+    const armed = !abort.disabled && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;
+    abort.classList.toggle('armed', armed);
+    set('abort', armed ? 'Press again to abort' : 'Abort');
     this.root.classList.toggle('waiting', waiting);
     this.root.classList.toggle('thrusting', burning.length > 0 && t > 0);
     const code = String(record.manual?.code?.value ?? '');

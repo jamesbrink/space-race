@@ -8,8 +8,9 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ascend, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
-import { heightsBall } from '../src/sim/orbital.ts';
+import { ascend, givenUp, partingAt, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
+import { downOf } from '../src/sim/descent.ts';
+import { coastOf, flyDown, flyOrbit, heightsBall } from '../src/sim/orbital.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -347,6 +348,48 @@ test('the spacecraft cannot leave while the fairing is over it, nor the core whi
   assert.ok(said(s, 'Let go, still pushing'));
   assert.ok(Math.abs(s.stages[1].to - 60) < 0.02, `${s.stages[1].to}`);
   assert.ok(Math.abs(s.stages[1].gone - seq.stages[0].sep) < 0.02, `${s.stages[1].gone}`);
+});
+
+test('an abort as the deck asks it (Molodtsov’s modes from 150 s): every stage burning cut and the spacecraft let go, it parts once nothing presses it; from 150 to 700 s its descent module comes down as from orbit', () => {
+  // (orbitdeck.ts `abort`: the steps the deck asks, as the record's mode for the instant says; the hardware does the rest)
+  const stepsAt = (t) => {
+    const v = stagedVehicle(flight.plan, site, dated, sea, x);
+    const s = asked({ asks: [], look: [t], until: t + 0.5 }).at[t];
+    return [...stages.flatMap((_, i) => (v.burning(s, i) ? [{ kind: 'cut', stage: i }] : [])), { kind: 'separate', stage: last }];
+  };
+  for (const t of [200, 650]) {
+    const steps = stepsAt(t);
+    const { s } = asked({ asks: [{ at: t, steps }], until: t + 60 });
+    assert.ok(s.parted, `parted after an abort at ${t} s`);
+    assert.ok(
+      s.stages.every((g) => !Number.isFinite(g.from) || g.to <= s.parted.t + 1e-9),
+      'every engine lit is out',
+    );
+    assert.ok(s.parted.t - t < 5, `parted ${(s.parted.t - t).toFixed(2)} s after`);
+    const up = (length(s.parted.r) - heightsBall(plan, site)) / 1000;
+    console.log(
+      `# abort at ${t} s (${steps.map((k) => `${k.kind} ${k.stage}`).join(', ')}): parted at ${s.parted.t.toFixed(2)} s, ${up.toFixed(1)} km up`,
+    );
+    if (t > 150 && t < 700) {
+      // the descent module separates at once and comes down as from orbit, the pilot ejected at 7 km by its own switch
+      const down = partingAt(givenUp(plan), s.parted.t);
+      const coast = flyOrbit(down, site, dated, sea, 10, s.parted);
+      const end = coast.samples.at(-1);
+      assert.equal(end.phase, 'down');
+      assert.ok(Math.abs(end.altitude - coastOf(down).floor) < 1, `handed over at ${end.altitude} m`);
+      const bodies = flyDown(down, dated, sea, end);
+      const pilot = downOf(down).bodies.find((b) => b.id !== downOf(down).bodies[0].id && b.chutes.length && !b.leaves)?.id;
+      console.log(
+        `#   down: ${Object.entries(bodies.landed)
+          .map(([id, l]) => `${id} ${l.speed.toFixed(1)} m/s`)
+          .join(', ')}`,
+      );
+      assert.ok(bodies.landed[pilot] && bodies.landed[pilot].speed < 10, 'the pilot comes down under his canopy');
+      console.log(
+        `#   the module from ${up.toFixed(0)} km: ${Math.max(...coast.samples.map((p) => p.g)).toFixed(1)} g at most, the pilot down at T+${bodies.landed[pilot].at.toFixed(0)} s, ${bodies.landed[pilot].speed.toFixed(1)} m/s`,
+      );
+    }
+  }
 });
 
 test('the structure: turned across the wind at its greatest dynamic pressure it breaks up by its bending load; an engine lit only on the pad is not lit again', () => {

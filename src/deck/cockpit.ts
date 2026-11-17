@@ -1,4 +1,4 @@
-import { type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
+import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
@@ -88,7 +88,6 @@ const SUNK = 20;
 /** How a command that works a mechanism by hand begins (types.ts `Command`): the mechanism's id follows. */
 const WORK = 'work:';
 /** An abort is asked for twice: the second press within this many seconds of the first. */
-const ABORT_ARMED = 2;
 /** A supply under this much of what it held is shown amber. */
 const LOW = 0.2;
 const FT = 0.3048;

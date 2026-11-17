@@ -77,6 +77,8 @@ export const KEEP = 0.1;
 export const MOST = 5;
 /** Seconds after one event before Space will set off the next: a second press of the same finger. */
 export const GUARD = 1.5;
+/** An abort is X twice: the second press within this long of the first, s. */
+export const ABORT_ARMED = 2;
 /** How fast a held key leans what guidance flies (a tilt programme, a steering law), radians a second, and the most it may lean. */
 export const TRIM = 3 * DEG;
 export const TRIM_MOST = 30 * DEG;
@@ -179,7 +181,7 @@ export abstract class Deck {
         <div class="deck-act">
           <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (${capsOf('deck.next').join(' ')})">${kbd('deck.next')}<span data-cell="next"></span></button>
           <p class="cockpit-prompt" data-cell="prompt" role="status" hidden></p>
-          <button data-do="abort" class="cockpit-abort" title="Abort on the escape rocket, while the tower is aboard: press twice (${capsOf('deck.abort').join(' ')}, ${capsOf('deck.abort').join(' ')})">${kbd('deck.abort')}${kbd('deck.abort')}<span data-cell="abort">Abort</span></button>
+          <button data-do="abort" class="cockpit-abort" title="Abort: the escape the spacecraft had at this instant, while it is on its launch vehicle: press twice (${capsOf('deck.abort').join(' ')}, ${capsOf('deck.abort').join(' ')})">${kbd('deck.abort')}${kbd('deck.abort')}<span data-cell="abort">Abort</span></button>
         </div>
         <p class="deck-foot">
           <span class="deck-steer for-keys">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
