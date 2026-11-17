@@ -1,133 +1,64 @@
-# Apollo 7 — CSM-101 / SA-205
+# Apollo 7 (AS-205)
 
-Walter M. Schirra Jr., Donn F. Eisele and Walter Cunningham launched from Cape Kennedy’s
-Launch Complex 34 at 15:02:45 UTC on 11 October 1968. The first crewed Apollo flight tested
-the redesigned Block II command and service modules in Earth orbit. It carried no lunar module.
+The first Apollo flight with a crew, twenty months after the fire that killed the crew of Apollo 1 on the pad. Walter
+M. Schirra Jr., Donn F. Eisele and R. Walter Cunningham spent eleven days in Earth orbit proving the redesigned Block II
+command and service modules: the new hatch, the cabin, the guidance computer, the fuel cells, and the big engine on the
+back, fired eight times. There was no lunar module; the crew rendezvoused instead with their own spent S-IVB.
 
-## Model status
+| | |
+| --- | --- |
+| Liftoff | 11 October 1968, 15:02:45 UTC |
+| Site | Cape Kennedy, Launch Complex 34 (not built) |
+| Crew | Walter M. Schirra Jr., commander; Donn F. Eisele, command module pilot; R. Walter Cunningham, lunar module pilot |
+| Spacecraft | command and service module CSM-101, Block II, North American Aviation: [spacecraft.md](spacecraft.md) |
+| Launch vehicle | Saturn IB SA-205: [saturn-ib.md](../../vehicles/saturn-ib.md) |
 
-The Gallery presents CSM-101 on Saturn IB SA-205. Open Cutaway on the whole stack to see the H-1 engines and tank cluster, the J-2, S-IVB common bulkhead, instrument racks, service-module power and propulsion equipment, the three crew couches and the packed parachutes under the apex shield. The adapter carried no lunar module. Its four hinged panels open during the exploded exhibit and remain attached to the stage.
+**In this repo: the vehicle, in the gallery.** CSM-101 on SA-205, under its boost cover and escape tower, can be turned,
+taken apart and cut open from the escape motor to the H-1 engines: the S-IB's cluster of tanks, the J-2 under the
+S-IVB's common bulkhead, the instrument unit's racks, the service module's tanks, fuel cells, helium and engine, the
+parachutes packed round the forward tunnel, and the cabin with its main console, DSKY, attitude balls and the three
+unitized couches. **Sit in the cabin** (or C) puts the eye in Schirra's, Eisele's or Cunningham's couch, with the
+cabin's lights. The adapter's four panels open as the spacecraft leaves it, and stay on the stage.
 
-Use **Sit in the cabin** or **C** to visit Schirra’s, Eisele’s and Cunningham’s positions. The five windows, console and unpowered DSKY can be inspected at full detail. The three eye positions and lighting are estimates. The model is a gallery exhibit. The launch site, crew figures, weather reconstruction and flight simulation remain future work.
+Not built: the launch site, the crew figures, the day's weather and the flight. The flight has no `site`, so there is
+no computed Sun or Moon to state.
 
-- [Saturn IB and instrument unit](../../vehicles/saturn-ib.md)
-- [Service-module tanks, fuel cells, radiators and engine](../../vehicles/service-tanks.md)
-- [CSM stations, exterior and cabin](spacecraft.md)
+## The model and its sources
 
-## Sources read
+Every dimension is in its source's inches and carries its confidence in `flight.ts`; the hardware's notes say where
+each came from and what is estimated:
 
-- NASA, *Apollo 7 press kit*, release 68-168K, 6 October 1968, pp. 25–33 and
-  illustrations 25a–25d: spacecraft and Saturn IB dimensions and exterior configuration.
-  https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf
-- NASA’s *Apollo by the Numbers*, Apollo 7 chapter, already cited by `missions/history.ts`,
-  provides the existing mission story; that file’s history is reused by the Gallery.
-  The launch timestamp and hardware identity are checked against NASA’s Apollo 7 summary
-  in *Apollo by the Numbers* (NASA SP-4029).
+- [spacecraft.md](spacecraft.md): CSM-101's stations, exterior and cabin, and how the parts below are put together.
+- [command-module.md](../../vehicles/command-module.md), [pressure-vessel.md](../../vehicles/pressure-vessel.md),
+  [windows.md](../../vehicles/windows.md): the outer shape, the pressure vessel inside it, the three-pane windows.
+- [main-console.md](../../vehicles/main-console.md), [console-equipment.md](../../vehicles/console-equipment.md),
+  [fdai.md](../../vehicles/fdai.md), [dsky-front.md](../../vehicles/dsky-front.md),
+  [dsky-panels.md](../../vehicles/dsky-panels.md): the main display console and what is on it.
+- [unitized-couch.md](../../vehicles/unitized-couch.md): the three couches on one frame.
+- [reaction-control.md](../../vehicles/reaction-control.md), [service-tanks.md](../../vehicles/service-tanks.md): the
+  service module.
+- [launch-escape.md](../../vehicles/launch-escape.md), [saturn-ib.md](../../vehicles/saturn-ib.md): the escape system,
+  the adapter and the launch vehicle.
+- [reference/README.md](../../vehicles/reference/README.md): the survey outlines and drawing data the scripts read,
+  with their hashes.
 
-The press kit is a preflight document. Its planned orbital events are not substituted for
-the flown record. No flight timeline or simulator plan has been created from it.
+What is documented and what is not, in short. The outer shapes and stations are published figures: the press kit's
+envelopes, North American's Block II structural plates, the MIT preflight tables for this very ship, the Saturn IB
+checklist and the Douglas S-IVB-205 drawing; where they are the type's and not this ship's they are `assumed`. The
+window and console outlines are measured from the Smithsonian's survey of Apollo 11's command module, the same
+structure, and `assumed`. The panel layout is this ship's own drawing. The couches, the instruments and controls, the
+cabin fittings, the engines' bell shapes and the painted markings are `estimated`, from photographs and illustrations.
+[docs/sources.md](../../../../../docs/sources.md) lists what was read, under Apollo 7.
 
-## Assembly milestone
+The press kit is a preflight document: its planned events are not taken for the flown record, and no timeline or
+simulator plan is made from it. The mission's story is told in `missions/history.ts`, from NASA's *Apollo by the
+Numbers* (SP-4029).
 
-The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
-S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. The gallery groups selectable hardware by spacecraft, launch escape system and launch vehicle.
-The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
-The three couches can be occupied in the gallery. The source model can also produce
-standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
+## What is not built or is simplified
 
-## Structural-station milestone
-
-The aft and forward heat shields now split at the Block II stations in NAA
-A-512S ST-428A. The CSM barrel, datum chain, RCS axial station and nominal SPS
-extension bounds replace initial estimates; the CM/SM fairing closes the external
-connection. See `spacecraft.md` for source units, assumptions and remaining defects.
-The internal structures and equipment use the same station datum.
-
-## Pressure-vessel milestone
-
-The bare cabin sidewall now has two source-derived tapers and four measured fixed
-window interfaces. Its outer hatch-frame contour is retained as curved data,
-without guessing a door from it. The structural cutaway uses the Gallery's existing
-shell system. [Pressure-vessel notes](../../vehicles/pressure-vessel.md) describe the
-calculations, checks and limits. The nominal aft bulkhead is now a separate spherical
-reference surface. The flat forward bulkhead now joins a measured tunnel-entry
-interface with an explicitly derived transition. The fitted cabin and forward-compartment estimates are described in the spacecraft notes.
-Its 173-inch radius is explicitly assumed common primary geometry from NASA
-TN D-6979, Figure 8, whose inner-wall points independently match the Block II wall.
-
-## Main-console reference milestone
-
-Apollo 7's own panel layout is now identified in NAA V36-976018 revision D,
-12 March 1968. A [blank structural reference](../../vehicles/main-console.md)
-uses the shared contour from the Smithsonian's processed CM-107 derivative,
-explicitly assumed for CM-101. It retains the central notch and stays with the
-CM during explosion. Two fixed FDAI interface contours are now retained from the
-same processed survey, with their corresponding positions verified against the
-CM-101 layout. Separate estimated instrument fronts now occupy those interfaces. It is not an operable console:
-individual panel joints, other instrument openings, thickness, supports, controls
-and side consoles are unresolved.
-Neither Apollo 11's later equipment nor its different couches are imported.
-
-## Common-datum correction
-
-The nominal outer aft apex is now registered at Xc **−1.30 in**, from NASA
-TN D-3888, Figure 2, p. 27, rather than being conflated with the heat-shield
-structural datum. The same source-backed offset applies to the nominal outer
-profile, fixed openings, side hatch, inner interfaces and console. It removes
-the console's former overlap with the nominal pressure wall without trimming
-or independently moving the console. Absolute survey accuracy and as-built
-installation clearance are not established; this remains an assumed common datum.
-
-## DSKY component work
-
-A [standalone front-housing reference](../../vehicles/dsky-housing.md) now builds
-from the dimensioned 2004968E drawing transcription, with all nineteen switch-bore
-positions checked against the drawing. It has three rebuilt mesh levels and can
-produce native Blender stills. It is not installed in the flight model: the
-available parent-assembly drawing predates the required -041 configuration, and
-the exact cabin mounting pose is unresolved. Keys, indicators and labels are not
-guessed or copied from later DSKY revisions.
-
-A separate [shared front-web reference](../../vehicles/dsky-front.md) is now
-installed on the main console. Both flight DSKY parts lists identify cover
-2004739-001. Its nominal front sheet is built from the drawing transcription,
-with older nominal CAD display openings; the separately extracted shared E/L
-contour conflicts with the nominal outer contour and remains uninstalled.
-The .050-inch web is derived from the stock drawing's .04–.06-inch section.
-The shared CM-107 metal plane supplies a rigid, unscaled reference pose; the
-blank console is masked beneath it. Nineteen keys, two display windows, unpowered legends and an estimated enclosure follow the preserved Apollo 7 instrument. Rear ribs, mounting pockets and electronics remain unresolved.
-
-
-## Lettering correction
-
-SA-205's markings now use painted capital bounds, rather than a font's em size.
-UNITED STATES follows the individual black fuel tanks, on white painted fields;
-USA has a taller, narrower layout. The estimates and uncertainty from actual
-SA-205 NASA photographs are explicit in the gallery and
-[hardware notes](../../vehicles/saturn-ib.md#photographic-marking-reconstruction).
-These photo-derived dimensions carry estimated confidence and are used only for the exhibit.
-
-## Unitized couch reconstruction
-
-The cabin now contains the common three-person platform, headrests, fixed
-seat/leg assemblies, six-point harnesses, passive heel restraints and eight
-attenuator exteriors. NASA TN D-7440 documents the Apollo 7 configuration;
-the 96° flight angle, from a North American plate for SC101 not yet located, is estimated. Complete manufactured
-sizes and mounting drawings were not located, so these dimensions and positions
-are **estimated** from the flight-design photograph and illustrated installation.
-Earlier SC012 back-pan and beam dimensions are scale priors, **not verified
-shared CM-101 measurements**. No later foldable couch is used.
-[The hardware record](../../vehicles/unitized-couch.md) lists the estimates,
-sources and omissions. The assembly remains whole in cutaway, moves with the
-CM in the exploded exhibit, and is omitted at distant levels of detail.
-The three gallery seats use estimated eye offsets from the headrests.
-
-## Main-panel equipment study
-
-The main console now has two estimated FDAI front reconstructions, a partial EMS
-facade, meter fronts, control rows, warning lenses and the timer window, following
-CM-101's own V36-976018 revision D. [The equipment record](../../vehicles/console-equipment.md)
-distinguishes the estimated layout registration from the unchanged shared structure.
-All controls and displays are static exhibit references. Exact scales, individual
-control mechanisms and fine panel legends remain simplified. The fronts remain whole in cutaway and move rigidly with the CM.
+- The launch site, the crew, the weather and the flight: the gallery is all there is.
+- The cabin's stowage, suits, wiring, side consoles and most of the aft equipment bay; switches are one generic switch,
+  meters and the DSKY are unlit and unpowered, and no reading is invented.
+- The DSKY's bare housing behind its front plate ([dsky-housing.md](../../vehicles/dsky-housing.md): found, not
+  installed).
+- Each hardware note ends with its own list of what is wrong or left out.
