@@ -1,7 +1,7 @@
 import { doc, estimated } from '../../../../src/measure.ts';
 import type { ChuteDef, Command, Flight } from '../../../../src/types.ts';
 import type { GeminiTitanRecord } from './gemini-titan-plan.ts';
-import { BASE, FT } from './gemini-titan.ts';
+import { BASE, FT, IN } from './gemini-titan.ts';
 
 /**
  * A Gemini on its Titan as the scene shows it flown (types.ts `Flight.flies`), and what a hand can ask of each part of it in
@@ -96,14 +96,16 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
   return {
     model: 'vehicle',
     datum: BASE,
-    // Every engine's fire from its own nozzles: the first stage's two chambers, the second stage's one from its ablative skirt
-    // (the nodes the vehicle as built has: its model was built before the scripts named the bells apart), the four retrograde
-    // rockets (burning as the plan flies them, evenly from the first's lighting), and each pair of thrusters, a fire to each
-    // of its lightings in order (sim/run.ts `firesOf`). All but the rockets burn Aerozine or monomethylhydrazine and
-    // nitrogen tetroxide, which burn clear
+    // Every engine's fire from its own nozzles: each of the first stage's two chambers from its own bell (subassembly 1 toward
+    // the target, 2 away: a node each, its exit found in the model), the second stage's one from the exit of its ablative
+    // skirt, a round exit of the model's radius (titan_ii_glv.py EXIT_R2, worked from the expansion ratio: titan-ii-glv.md),
+    // the four retrograde rockets (burning as the plan flies them, evenly from the first's lighting), and each pair of
+    // thrusters, a fire to each of its lightings in order (sim/run.ts `firesOf`). All but the rockets burn Aerozine or
+    // monomethylhydrazine and nitrogen tetroxide, which burn clear
     fires: [
-      { node: 'Stage1Engine_Chambers', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
-      { node: 'Stage2Engine_AblativeSkirt', on: 'second-stage-engine', burns: 'hydrazine-n2o4' },
+      { node: 'Stage1Engine_Chamber_1', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
+      { node: 'Stage1Engine_Chamber_2', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
+      { node: 'Stage2Engine_AblativeSkirt', radius: 32.4 * IN, on: 'second-stage-engine', burns: 'hydrazine-n2o4' },
       { node: 'Retro_RocketNozzles', on: 'retrorockets', burns: 'solid-perchlorate' },
       ...o.moves.map((m) => ({
         node: m.thrusters === 'aft' ? 'Equipment_AftThrusters' : 'Retro_ForwardThrusters',

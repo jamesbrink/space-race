@@ -173,10 +173,10 @@ From LSFR, pp. II.C-1 and II.C-8, and the press kit. Few of these show on the ou
 | Node | What it is |
 | --- | --- |
 | `TitanStage2` | the forward skirt with its lugs and the two scupper ports, the wall and its splices, the conduit in two lengths, three doors; inside, the four domes, the equipment trusses and the thrust cone |
-| `TitanStage2Engine` | the chamber, the tube bell and the ablative skirt, the pump, the roll nozzle |
+| `TitanStage2Engine` | the chamber, the tube bell and the ablative skirt (`Stage2Engine_AblativeSkirt`, whose exit the fire hangs at), the pump, the roll nozzle |
 | `TitanInterstage` | the black ring and the eight panels, the ring of exhaust ports |
 | `TitanStage1` | the forward skirt with its holes, the wall, the paint and the lettering, the two conduits, the four longerons; inside, the domes, the fuel tank's conical floor and the oxidiser feed line through it |
-| `TitanStage1Engine` | the two chambers and bells, their pumps and exhaust stacks, the frame, the feed lines with their standpipes and accumulators, the two air scoops |
+| `TitanStage1Engine` | the two chambers and bells, each chamber with its bell and its turbine's exhaust stack a node of its own for its fire (`Stage1Engine_Chamber_1`, subassembly 1, toward the target; `Stage1Engine_Chamber_2`), their pumps and exhaust stacks, the frame, the feed lines with their standpipes and accumulators, the two air scoops |
 
 In the gallery the vehicle comes apart as it staged.
 

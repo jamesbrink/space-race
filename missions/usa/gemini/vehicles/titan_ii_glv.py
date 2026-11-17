@@ -563,14 +563,18 @@ def build(
     # Two chambers on one frame, each with its own pumps: 430,000 lbf between them at liftoff. They hang below the fuel
     # tank's skirt in the open; nothing is faired.
     g = group("TitanStage1Engine")
-    eng, noz, pump, stack, fr, pogo, scoop = (MeshBuilder() for _ in range(7))
+    pump, fr, pogo, scoop = (MeshBuilder() for _ in range(4))
     gz, ez = z(S_GIMBAL1), z(S_EXIT)
     span = gz - ez
     top = z(S_SKIRT1)
+    # Subassembly 1 toward the target (+X) and 2 away from it, each a node of its own: its chamber, its bell and its
+    # turbine's exhaust stack, which are of one finish. Each chamber's fire hangs at its own bell's exit (the flight's
+    # `flies.fires`), and the two lips are closer seen from below than the fire tells two exits apart by
     chambers = [Vector((sx * CHAMBERS_AT, 0.0, 0.0)) for sx in (1, -1)]
-    for c in chambers:
+    assemblies = [MeshBuilder() for _ in chambers]
+    for c, noz in zip(chambers, assemblies, strict=True):
         m = Matrix.Translation(c * IN)
-        eng.lathe(
+        noz.lathe(
             prof([(0.0, gz - 2.0), (9.0, gz - 2.6), (11.5, gz - 0.09 * span), (11.5, gz - 0.27 * span), (7.9, gz - 0.38 * span)][::-1]), 32, matrix=m
         )
         flare = [(7.9, gz - 0.38 * span), (12.6, gz - 0.52 * span), (17.2, gz - 0.69 * span), (20.6, gz - 0.86 * span), (EXIT_R1, ez)]
@@ -589,7 +593,7 @@ def build(
             if sy > 0:
                 pump.tube((p + up * (gz + 20.0)) * IN, (p + up * (gz - 8.0)) * IN, 6.6 * IN, 20)
                 pump.tube((p + up * (gz + 6.0)) * IN, (c + Vector((0, 9.0, gz - 6.0))) * IN, 2.3 * IN, 12)
-                stack.loft(
+                noz.loft(
                     [(p + up * (gz - 6.0)) * IN, (p + Vector((0, 3.0, gz - 30.0))) * IN, (p + Vector((0, 2.0, ez + 6.0))) * IN],
                     [(3.0 * IN, 3.0 * IN)] * 3,
                     16,
@@ -620,10 +624,9 @@ def build(
             ref=tuple(radial(a)),
             caps=(True, False),
         )
-    eng.build("Stage1Engine_Chambers", M["engine"], g, sharp_angle=35)
-    noz.build("Stage1Engine_Nozzles", M["engine"], g, sharp_angle=35)
+    for n, noz in enumerate(assemblies, start=1):
+        noz.build(f"Stage1Engine_Chamber_{n}", M["engine"], g, sharp_angle=35)
     pump.build("Stage1Engine_Turbopumps", M["alu"], g, sharp_angle=40)
-    stack.build("Stage1Engine_ExhaustStacks", M["engine"], g, sharp_angle=40)
     fr.build("Stage1Engine_Frame", M["steel"], g, sharp_angle=35)
     scoop.build("Stage1Engine_AirScoops", M["frame"], g, sharp_angle=35)
     say(
