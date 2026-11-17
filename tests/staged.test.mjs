@@ -8,11 +8,12 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
-import { heightsBall, coastOf } from '../src/sim/orbital.ts';
+import { coastOf, heightsBall, shipOf } from '../src/sim/orbital.ts';
 import { between, propagate } from '../src/sim/predict.ts';
 import {
   ascend,
@@ -263,6 +264,41 @@ const UNDOCUMENTED = {
   ],
   // Voskhod 1's on the 11A57: the blocks the Vostok-K's (assumed), Kosmos 47's instants, Block I's mass less its aft section and
   // its fairing and aft section; no aiming azimuth (the plane is solved)
+  // Gemini-Titan 3's: GLV-4's weights and GLV-1's and GLV-4's engines (GLV-3's are in the mission report, not found), the
+  // staging GLV-8's interval after a cutoff worked from the guidance reconstruction, the interstage's open sides, the law
+  'usa/gemini/gt-3': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drag.1.until',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.altitude',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'record.liftoffMass',
+    'separation.mass',
+    'separation.push',
+    'titan.first.cutoff',
+    'titan.first.dry',
+    'titan.first.engine.isp.seaLevel',
+    'titan.first.engine.isp.vacuum',
+    'titan.first.engine.thrust.seaLevel',
+    'titan.first.engine.thrust.vacuum',
+    'titan.first.mass',
+    'titan.first.propellant',
+    'titan.hot.endures',
+    'titan.hot.open',
+    'titan.hot.turn',
+    'titan.second.dry',
+    'titan.second.engine.isp.vacuum',
+    'titan.second.engine.thrust.vacuum',
+    'titan.second.ignition',
+    'titan.second.mass',
+    'titan.second.propellant',
+    'titan.staging',
+  ],
   'ussr/voskhod/voskhod-1': [
     'ascent.drag.0.area',
     'ascent.drag.0.curve',
@@ -371,6 +407,66 @@ function atlasInputs(f, o, whole) {
     c.liftoffMass.value += c.atlas.booster.mass.value / 21;
   });
   weigh('the staging 2 s later (assumed)', (c) => (c.atlas.booster.separation.value += 2));
+}
+
+/**
+ * A Gemini-Titan's ascent inputs that are not documented (gemini-titan-plan.ts's record: the Titan's two stages, their
+ * engines and staging, the separation, the ascent's law, drag and steering), listed, and what each is worth, the law
+ * solved afresh each time on the plan `geminiTitanPlan` writes from a changed copy.
+ */
+function titanInputs(f, o, whole) {
+  const read = [];
+  const walk = (x, at) => {
+    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
+    if ('confidence' in x && ('value' in x || 'points' in x)) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
+  };
+  walk(o.titan, 'titan');
+  walk(o.separation, 'separation');
+  walk(o.ascent, 'ascent');
+  walk({ liftoffMass: o.liftoffMass }, 'record');
+  assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
+  const [site, dated, sea] = where(f);
+  const base = whole.ascent.summary;
+  const weigh = (label, change) => {
+    const copy = structuredClone(o);
+    change(copy);
+    const plan = geminiTitanPlan(copy);
+    const s = ascend(plan, site, dated, sea, steer(plan, site, dated, sea)).summary;
+    console.log(
+      `  #   ${label.padEnd(58)} ${(s.cutoffSpeed - base.cutoffSpeed).toFixed(1).padStart(7)} m/s at cutoff, ${(s.perigee / 1000).toFixed(0).padStart(5)} by ${(s.apogee / 1000).toFixed(0).padStart(5)} km`,
+    );
+  };
+  const thrust = (e, k) => {
+    if (e.thrust.seaLevel) e.thrust.seaLevel.value *= k;
+    e.thrust.vacuum.value *= k;
+  };
+  console.log('  #   what a change in an input moves (the law solved afresh each time):');
+  weigh('the drag curves x 1.3 (estimated)', (c) => c.ascent.drag.forEach((d) => d.curve.points.forEach((p) => (p[1] *= 1.3))));
+  weigh('the pitch-over 5 s longer (estimated)', (c) => (c.ascent.guidance.kick.value += 5));
+  weigh('the first stage 5 % less thrust and flow (assumed)', (c) => thrust(c.titan.first.engine, 0.95));
+  weigh('the second stage 5 % less thrust and flow (assumed)', (c) => thrust(c.titan.second.engine, 0.95));
+  weigh('the first stage’s vacuum impulse 5 % less (assumed)', (c) => (c.titan.first.engine.isp.vacuum.value *= 0.95));
+  weigh('the second stage’s impulse 5 % less (assumed)', (c) => (c.titan.second.engine.isp.vacuum.value *= 0.95));
+  weigh('the first stage at the press kit’s 430,000 lb (documented, round)', (c) => thrust(c.titan.first.engine, 430_000 / 418_530));
+  weigh('the second stage’s propellant 5 % more (derived)', (c) => {
+    c.titan.second.propellant.value *= 1.05;
+    c.titan.second.mass.value += c.titan.second.propellant.value / 21;
+    c.liftoffMass.value += c.titan.second.propellant.value / 21;
+  });
+  weigh('the first stage 5 % heavier empty (assumed)', (c) => {
+    c.titan.first.dry.value *= 1.05;
+    c.titan.first.mass.value += c.titan.first.dry.value / 21;
+    c.liftoffMass.value += c.titan.first.dry.value / 21;
+  });
+  weigh('the second stage 5 % heavier empty (assumed)', (c) => {
+    c.titan.second.dry.value *= 1.05;
+    c.titan.second.mass.value += c.titan.second.dry.value / 21;
+    c.liftoffMass.value += c.titan.second.dry.value / 21;
+  });
 }
 
 test('there is an orbital flight whose ascent can be flown', () => {
@@ -501,6 +597,7 @@ for (const f of part(flown)) {
     // vostokPlan writes the plan from): a new one must be added here
     const o = recordFrom(f);
     if ('atlas' in o) return atlasInputs(f, o, whole);
+    if ('titan' in o) return titanInputs(f, o, whole);
     const read = [];
     const walk = (x, at) => {
       // (the checks are not inputs; `sheds` and `centre` are the scene's alone: staged.ts does not read them)
@@ -617,7 +714,9 @@ for (const f of part(flown)) {
     const there = between(a.t, a.r, a.v, b.t, b.r, b.v, before.t).r;
     const off = Math.hypot(...before.r.map((x, k) => x - there[k]));
     assert.ok(off < 1, `round the orbit to the burn, ${off.toFixed(3)} m from the run`);
-    assert.ok(p.apogee && !p.perigee, 'with its apogee marked (a perigee under the ground is not)');
+    // (with a manoeuvre still to come before the burn, which apsides lie ahead is the manoeuvre's: not held)
+    const moving = shipOf(plan).moves.some((m) => m.on > start.t && m.on < coastOf(plan).on);
+    assert.ok(moving || (p.apogee && !p.perigee), 'with its apogee marked (a perigee under the ground is not)');
     assert.ok(
       p.events.some((e) => e.kind === 'retro'),
       'and the burn on the way',
@@ -647,7 +746,7 @@ for (const f of part(flown)) {
       `  #   predicted from T+${mid.t.toFixed(0)}, within the burn: ${(kmOff(held) * 1000).toFixed(1)} m from the run with the burn's line as it lit, ${(kmOff(fresh) * 1000).toFixed(1)} m with the line it would light on from there (aimed from the Sun, the line hardly turns in a burn: aimed along the motion it would)`,
     );
     console.log(
-      `  #   predicted from ${late ? 'forty minutes before the burn' : 'separation'}: apogee ${(p.apogee.altitude / 1000).toFixed(0)} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
+      `  #   predicted from ${late ? 'forty minutes before the burn' : 'separation'}: apogee ${p.apogee ? (p.apogee.altitude / 1000).toFixed(0) : 'none marked'} km above the sea, down to 7 km at T+${p.impact.t.toFixed(0)} s (${(p.impact.t - at.ejectionAt).toFixed(4)} s, ${(apart * 1000).toFixed(1)} m from the run), ${off.toFixed(3)} m from the run before the burn; ${p.points.length} points in ${p.cost.toFixed(1)} ms`,
     );
   });
 

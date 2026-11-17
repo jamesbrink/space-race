@@ -22,7 +22,8 @@ spacecraft changed the orbit they were in.
 left the pad can be turned, taken apart as they staged, and cut open. At Complex 19 it stands on the
 thrust mount on the morning of the flight: the erector raised while the crew go up and laid down at
 T−35, Grissom and Young at the foot of the ramp, each a figure to walk the site as, under that
-morning's sky. The flight itself is not built: see "What is not built" below.
+morning's sky. And it can be flown: Fly takes the flight deck, as flown from the record or taken over (see "The flight
+as flown" below, and [mission.md](mission.md)).
 
 ## The flight's id, and the name
 
@@ -103,7 +104,7 @@ to the second. A time "as called" is when the words were said, a moment after th
 | --- | --- | --- | --- |
 | 0:00:00 | Liftoff, 9:24:00.064 a.m. EST | SP-4203, Appendix B, p. 524; to the second in SP-4002 | documented |
 | 0:00:12 | "There's the roll program"; complete at 0:22; "There goes the pitch" at 0:25 | Transcript, p. 2 | documented, as called |
-| about 0:02:34 | Staging: 154.3 s, the planned 2:36 less 1.70 s | press kit, p. 11; LSFR, Table II.D-14 (p. II.D-55); "there was staging" at 2:35 (Transcript, p. 3) | derived |
+| 0:02:32.8 | First stage cutoff and staging: 152.80 s | IGS, the input card (p. 75), 156.250 s from going inertial less the 3.452 s to liftoff (section 3.1); "there was staging" at 2:35 (Transcript, p. 3) | derived |
 | 0:05:34 | Second stage cutoff: 334 s, 4.68 s early | IGS, section 3.2; LSFR, Table II.D-14; "SECO" at 5:34 (Transcript, p. 4) | documented |
 | 0:05:53.8 | Insertion as the tables reckon it, 20 s after cutoff: 25,682 ft/s, flight path +0.01° (planned: 358.4 s, 25,697 ft/s) | SP-121, Table 4-IV, p. 33 | documented |
 | 0:05:59 | Spacecraft separation: 359 s; Grissom thrusts on with the aft thrusters | IGS, section 3.2; "We are separated" at 6:10 (Transcript, p. 4) | documented |
@@ -121,12 +122,11 @@ to the second. A time "as called" is when the words were said, a moment after th
 
 The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
-**Staging is derived, and assumes one thing**: that the press kit's 2 min 36 s (156 s) is the
-nominal time the launch systems report's table of dispersions measures from. The table has this
-vehicle's first stage cutting off 1.70 s early and its second 4.68 s early. For the second stage
-the assumption can be checked and holds: the press kit's 5 min 38 s is 338 s, SP-121's planned
-insertion less its 20 s is 338.4 s, and 338.4 less 4.68 is 333.7, the 334 s of the guidance
-reconstruction. Grissom's call at 2:35 is a second after 154.3.
+**Staging is derived** from the guidance reconstruction's input card, which has "BOOSTER ENGINE CUTOFF=156.250" and
+"SUSTAINER ENGINE CUTOFF=337.450" counted from going inertial, liftoff 3.452 s after it: 152.80 s and 333.998 s, the second
+the 334 s of the same report's section 3.2. This was 154.3 s, the press kit's planned 2:36 less the 1.70 s by which the
+launch systems report's Table II.D-14 has the first stage early, until the card was read; the table's nominal is then
+about 154.5 s, not the press kit's 156.
 
 **The ascent was not the press kit's.** Its plan (release 65-81, p. 11) was staging at 2:36,
 fairing jettison at 3:15, second stage cutoff at 5:38 and separation at 5:58. The fairings did not
@@ -227,11 +227,27 @@ launch, which agree. The mission report's own table has not been found.
   nothing reads them yet, the cabin has no lights of its own, and its shadows are not baked. The
   pressure vessel it stands in is fitted round the crew, not drawn
   ([gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "Crew station").
-- **The flight.** Nothing here can be flown. It wants the Titan's weights and thrust, the pitch
-  programme, an orbit and three burns as data, and a lifting entry whose lift is what was flown and
-  not what was predicted.
+- **Of the flight** ([mission.md](mission.md), section 7): GLV-3's and spacecraft 3's own weights and engines (the
+  next vehicles' are flown), the pitch programme (a stated law), the bank angles the crew flew (one held angle), the
+  two-point suspension, the translation keys of the hand controller.
 - **The nose fairing is not seen to go**, nor the adapter to be cut away in its two parts: the
   gallery takes the vehicle apart in that order and no clock plays it.
+
+## The flight as flown
+
+[mission.md](mission.md) has it all, with its sources; the misses are in `src/sim/misses.ts`, each with its cause.
+
+- **The ascent** on GLV-4's weights and GLV-1's and GLV-4's engines falls 106 m/s short at the cutoff, 7,722 against
+  7,828 m/s, and so short of the orbit (its perigee under the ground): the record's run hands over to the published
+  orbit at the separation. The published heights and period together imply a ball of 6,388 km, 10 km above the
+  equator: no ball is stated (nothing read says what the heights are over), and the disagreement is recorded.
+- **The first burn** (the indicator's 49 ft/s against the motion) leaves 160.8 by 173.0 km, where the ground called 85.6
+  by 92.6 nautical miles (158.5 by 171.5 km). **The second** turns the plane by the fiftieth of a degree. **The third**
+  (97 ft/s) leaves a perigee of 71 km, where SP-138 has 83: 12 km low, cause not established.
+- **The entry** on the lift the programme flew (0.19, estimated for this ship), not the 0.29 the prediction had (derived
+  from SP-138's 35 per cent), banked 60 degrees (estimated): the drogue out at 4:46:42 (4:46:48), 220 km short of where it
+  landed and 82 km to the right; from the ascent's handover, 230 km short and 60 to the right, down at 4:53:37 (4:52:31).
+  The bank angles flown are not read, and on them alone the landing moves by hundreds of kilometres.
 
 ## Where sources disagree
 

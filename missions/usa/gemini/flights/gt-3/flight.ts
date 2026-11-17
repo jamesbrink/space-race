@@ -20,6 +20,9 @@ import {
   lamp,
   titanEngines,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -494,7 +497,7 @@ const BOARDING: [number, number] = [-(2 * 3600 + 14 * 60), -(3600 + 54 * 60)];
 const vehicle = lc19Vehicle(
   geminiTitanStack({
     flight: 'gt-3',
-    parts,
+    parts: commanded(parts, geminiCommands()),
     // Each seat's node is at the eyes of the man sitting in it (vehicles/gemini_cabin.py: his own eyes when he is aboard;
     // `EYE`, where a seated Grissom's come, for an empty seat): 15 in behind the middle of his window and within 2° of
     // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
@@ -644,19 +647,19 @@ export const flight: Flight = {
   // report, section 3.2 and PDF p. 79); insertion is the Midprogram Conference's (NASA SP-121, Table 4-IV, p. 33); the
   // last burn's start and the landing are the programme's table (NASA SP-4002, Appendix 1, Table A). The rest are the
   // times against the calls in the composite voice transcript (GT-3 Communications Transcript, NASA MSC, April 1965),
-  // to the second and a moment after the event. Staging alone is derived: the press kit's planned 2 min 36 s (release
-  // 65-81, p. 11) less the 1.70 s by which the first stage cut off early (Gemini Program Launch Systems Final Report,
-  // Table II.D-14, p. II.D-55), which takes the press kit's time to be the nominal one that table measures from. For
-  // the second stage's cutoff it is: the press kit's 5 min 38 s is 338 s, and SP-121's nominal insertion less its 20 s is
-  // 338.4 s. The mission report itself (MSC-G-R-65-2), which has every event to the tenth, has not been found.
+  // to the second and a moment after the event. Staging is derived: the guidance reconstruction's input card has the
+  // first stage's cutoff at 156.250 s from going inertial, and liftoff 3.452 s after going inertial (p. 75 and section 3.1),
+  // so 152.80 s; its second stage cutoff, 337.450, is the 334.0 s of its section 3.2. (This was 154.3 s, the press kit's
+  // planned 2 min 36 s less the 1.70 s of the launch systems report's Table II.D-14, until the card was read.) The
+  // mission report itself (MSC-G-R-65-2), which has every event to the tenth, has not been found.
   timeline: [
     { t: 0, event: 'Liftoff, 09:24:00.064 EST' },
     { t: 12, event: 'The roll programme, as Grissom calls it; complete at 0:22, and the pitch programme begins at 0:25' },
     {
-      t: 154,
+      t: 152.8,
       event:
-        'Staging: the second stage’s engine starts and the first stage is cut loose (about: the planned 2 min 36 s less ' +
-        'the 1.70 s by which the first stage cut off early; Grissom called it at 2:35)',
+        'Staging: the first stage cuts off, the second stage’s engine starts with the stages still joined, and the first ' +
+        'stage is cut loose (the guidance reconstruction’s 156.250 s from going inertial; Grissom called it at 2:35)',
     },
     { t: 334, event: 'Second stage cutoff, 4.68 s earlier than planned' },
     { t: 353.8, event: 'Insertion as the tables reckon it, 20 s after cutoff: 25,682 ft/s, 15 ft/s short of the plan' },
@@ -969,18 +972,18 @@ export const flight: Flight = {
   motors: [
     ...titanEngines(
       {
-        burnS: 154,
+        burnS: 152.8,
         // One confidence to an entry, and it is the weaker figure's. The Redstone's and the Atlas's entries are documented
         // because both their figures are published ones (a nominal burn, a recorded cutoff). Here the thrust is documented
         // and this flight's burn is a difference of documented times, which is what derived means: so, derived.
         confidence: 'derived',
-        note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the press kit’s planned staging at 2 min 36 s (p. 11) less the 1.70 s by which this vehicle’s first stage cut off early (${LAUNCH_SYSTEMS}, Table II.D-14, p. II.D-55), 154.3 s. It takes the press kit’s time to be the nominal one the table measures from; Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
+        note: `"about 430,000 pounds of thrust at lift-off" for the two, documented (${KIT}, p. 40; ${LAUNCH_SYSTEMS}, Figure II.C-2). The burn is liftoff to cutoff, and derived: the guidance reconstruction's input card has the cutoff at 156.250 s from going inertial, liftoff 3.452 s after it (supplemental report 4 to the mission report, p. 75 and section 3.1): 152.80 s. Grissom called "there was staging" at 2:35. The engines were started about 4 s before liftoff, by the plan`,
       },
       {
-        burnS: 180,
+        burnS: 181.2,
         // the thrust and the cutoff are documented; the burn starts at a derived time, and the entry takes the weaker
         confidence: 'derived',
-        note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at about 154 s, as above. The plan was 182 s',
+        note: '"about 100,000 pounds of thrust at altitude", documented (the same pages). The burn is staging to cutoff, and derived: cutoff at 334 s from liftoff (the guidance reconstruction, supplemental report 4 to the mission report, section 3.2; 4.68 s early by Table II.D-14; Grissom called "SECO" at 5:34) less staging at 152.8 s, as above. The plan was 182 s',
       },
     ),
     {
@@ -1026,6 +1029,15 @@ export const flight: Flight = {
       note: `sixteen thrust chamber assemblies of 25 lb in two rings, burning monomethylhydrazine and nitrogen tetroxide (SEDR 300, Section VIII, pp. 8-281 to 8-284; ${GIV}, Figure 3-12)`,
     },
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the three burns, the retrofire and
+  // the lifting entry, each figure with its source (orbital.ts; mission.md), flown through the day's air over the pad
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-4’s weights and GLV-1’s and GLV-4’s engines, this vehicle’s own being in a mission report not found, on a stated steering law. ' +
+    'From the spacecraft’s separation the run shown is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The three burns are flown at the instants and impulses the crew’s transcript gives, and the entry on the lift the programme flew, not the lift the wind tunnels promised (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that March (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

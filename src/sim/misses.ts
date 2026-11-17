@@ -144,6 +144,21 @@ const MA6_SHOWN =
   'Begun from where the ascent flown left the capsule, which reached its cutoff speed 7.7 s early and is so much further on round the orbit at the separation, in the ascent’s ' +
   'own plane, 0.2 degrees under the published inclination: flown on MA-5’s aiming azimuth with no steering out of the plane, which in three revolutions carries it across the track';
 
+const GT3_ENTRY =
+  'Of the entry nothing is spacecraft 3’s own measure but where it came down: its lift over drag is the programme’s average as flown, 0.19 (SP-138, p. 159), on the Mercury capsule’s ' +
+  'drag curve; the bank is held at 60 degrees from the retrograde section’s going, the footprint’s contour the target lay on (SP-138, p. 163), where the crew flew a backup bank and then the ' +
+  'computer’s commands, angles not read; the retrofire pitch is the next flight’s 30 degrees, its sign taken as Mercury’s; and where on the orbit it began is reckoned (`injection.arc`: a degree ' +
+  'is some 110 km along the track at retrofire). Flown lift up throughout it lands 274 km further on, flown level 354 km shorter (the last test): the record cannot hold the landing to a ' +
+  'hundred kilometres. The record itself landed 60 nautical miles short of its target because the lift was 35 per cent below the prediction; that is flown, not this';
+
+const GT3_SHOWN =
+  'Begun from where the ascent flown left the spacecraft, which is short of the orbit and so of the published orbit’s place and height at the separation (the ascent’s misses)';
+
+const GT3_ASCENT =
+  'The Titan is flown on GLV-4’s weights (its mission report, section 3.3), GLV-1’s first stage chambers as measured at 5 s and 155 s and GLV-4’s second stage as flown: GLV-3’s own are in its ' +
+  'mission report, not found, and the launch systems report says only that its thrust and impulse were higher than predicted. The steering law, the drag and the stage’s residuals are estimates. ' +
+  'Which figure is off for GLV-3 is not established; nothing is adjusted';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -540,6 +555,62 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         by: 196_477,
         slack: 5_000,
         why: 'Flown from the two records, Vostok 4 comes no nearer Vostok 3 than 203 km in its first two revolutions, where TASS has 6.5 km and the pilots about 5. The records cannot hold a check of kilometres: Vostok 3’s place a day on is its period carried round sixteen times (a hundredth of a minute is 75 km), now the one its heights give over the ellipsoid under the apsis, 88.34 min, with no traceable published period (over the mean Earth, 88.54 min, it was 1,768 km; on the untraced 88.33 min, 234 km), and Vostok 4’s place at its cutoff is the type’s reckoning (`injection.arc`, 144 km a degree). That the second launch was timed to put it beside the first is the record; where each ship was, to that precision, is in nothing read. Not adjusted',
+      },
+    },
+  }),
+  'usa/gemini/gt-3': inUnits({
+    ascent: {
+      cutoffSpeed: {
+        by: -105.94,
+        slack: 3,
+        why: `106 m/s short at the second stage’s cutoff: 7,722 against 25,682 ft/s (7,828), aimed at 87.0 nautical miles over the ball the published heights and period imply, 6,388 km. ${GT3_ASCENT}`,
+        short: 'GLV-4’s and GLV-1’s figures, not GLV-3’s',
+      },
+      perigee: {
+        by: -260_184,
+        slack: 4_000,
+        why: `Its perigee under the ground where the record has 161 km: the speed short at cutoff. ${GT3_ASCENT}`,
+      },
+      apogee: {
+        by: -62_963,
+        slack: 3_000,
+        why: `Its apogee 161 km where the record has 224: the cutoff, inserted on the law’s target height, becomes the apogee. ${GT3_ASCENT}`,
+      },
+    },
+    coast: {
+      'after-15900.perigee': {
+        by: -11_863,
+        slack: 1_000,
+        why:
+          'The third burn leaves a perigee of 71.5 km where SP-138 has a vacuum perigee of 45 nautical miles, 83.3 km. The burn is flown at the 97 ft/s the indicator read, straight against the motion as it ' +
+          'lit; the first leaves the orbit within 2 km of the ground’s call. What the indicator’s 97 ft/s measured (the axis, with the thrusters canted) and what ball SP-138’s perigee is over are not ' +
+          'read: cause not established, nothing adjusted',
+      },
+      alongTrack: {
+        by: -219_637,
+        slack: 8_000,
+        why: `The drogue comes out 220 km short of where the ship landed, along the track. ${GT3_ENTRY}`,
+      },
+      crossTrack: {
+        by: 81_519,
+        slack: 4_000,
+        why: `And 82 km to the right of it: the bank held to the right, the way the target lay. ${GT3_ENTRY}`,
+      },
+    },
+    shown: {
+      'after-15900.perigee': {
+        by: -18_302,
+        slack: 1_500,
+        why: `65.0 km where SP-138 has 83.3. ${GT3_SHOWN}; and as the coast’s, cause not established`,
+      },
+      alongTrack: { by: -229_609, slack: 10_000, why: `230 km short of where it landed, along the track. ${GT3_SHOWN}. ${GT3_ENTRY}` },
+      crossTrack: { by: 60_443, slack: 4_000, why: `60 km to the right of it. ${GT3_SHOWN}. ${GT3_ENTRY}` },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 65.83,
+        slack: 4,
+        why: `Down at 4:53:37, 66 s late, from the ascent’s handover: the drogue out within 2 s of the record, so the rest is the parachutes, the drogue an estimate and the main the type’s height and its canopy the Technical Summary’s mean rate, with the module at spacecraft 4’s weight. ${GT3_SHOWN}`,
       },
     },
   }),

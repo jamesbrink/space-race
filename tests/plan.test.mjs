@@ -9,9 +9,9 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ballisticOf } from '../src/sim/fly.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { coastEvents, coastOf } from '../src/sim/orbital.ts';
+import { coastEvents, coastOf, movesOf, shipOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
-import { byHand, drawnFrom, givenUp, schedule, stagesOf } from '../src/sim/staged.ts';
+import { byHand, drawnFrom, givenUp, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -262,6 +262,63 @@ for (const f of atlases) {
     assert.equal(hand.off, t + coast.off - coast.on, 'a solid burns as long by hand');
     assert.equal(hand.parted, t + plan.record.manual.parting.value);
     assert.equal(coastOf(givenUp(plan)).on, Number.MAX_SAFE_INTEGER);
+  });
+}
+
+const titans = orbital.filter((f) => 'titan' in recordFrom(f));
+for (const f of titans) {
+  const o = recordFrom(f);
+  const plan = f.plan;
+  const c = craftOf(plan);
+  test(`${f.id}: the Gemini-Titan plan carries the record's figures: two stages, hot staging, the burns, the lifting entry`, () => {
+    assert.equal(c.mass, o.liftoffMass);
+    const [first, second] = stagesOf(plan);
+    assert.equal(first.engine.thrust.seaLevel, o.titan.first.engine.thrust.seaLevel);
+    assert.equal(second.engine.thrust.vacuum, o.titan.second.engine.thrust.vacuum);
+    assert.equal(first.tank.load, o.titan.first.propellant);
+    assert.equal(second.tank.load, o.titan.second.propellant);
+    assert.equal(stagesOf(plan).length, 2, 'the thrusters and the rockets are not stages: they draw on no tank');
+    // fire in the hole: the second stage lit at the first's cutoff, the stages let go after, through the joint's open side
+    const staging = c.joints.find((j) => j.gone.length === 1 && j.gone[0] === first.body.id);
+    assert.equal(staging.hot.engine, second.engine.id);
+    assert.equal(staging.at, o.titan.staging);
+    assert.equal(sequenceOf(plan).stages[1].from, o.titan.second.ignition.value);
+    // each burn in orbit at the record's instants, its impulse the indicator's where it gave one, the forward pair astern
+    const moves = movesOf(plan);
+    assert.equal(moves.length, o.moves.length);
+    moves.forEach((m, i) => {
+      const r = o.moves[i];
+      assert.equal(m.on, r.on.value);
+      assert.equal(m.off, r.off.value);
+      if (r.deltaV) assert.ok(Math.abs(Math.abs(m.accel) * (m.off - m.on) - r.deltaV.value) < 1e-12, `${r.id}: its impulse`);
+      assert.equal(m.accel < 0, r.thrusters === 'forward', `${r.id}: which way it pushes`);
+    });
+    // the coast's burn the four rockets as one, spent and not cut; the section goes so long after
+    const coast = coastOf(plan);
+    assert.equal(coast.on, o.retro.on.value);
+    assert.equal(coast.off, o.retro.on.value + o.retro.spacing.value * 3 + o.retro.burn.value);
+    assert.equal(coast.parted, o.retro.gone.value);
+    // the lift is the module's own, flown at the bank the record holds from its instant
+    const entry = c.bodies.find((b) => b.aero);
+    assert.equal(entry.aero.lift, o.entry.lift);
+    assert.deepEqual(shipOf(plan).banks, [{ at: o.entry.banked.value, bank: o.entry.bank.value }]);
+    assert.equal(c.crew.words.many, true, 'two men');
+  });
+
+  test(`${f.id}: given up, no burn happens on the clock; moved by hand, each is the record's, lit when the hand lights it`, () => {
+    const gone = givenUp(plan);
+    assert.deepEqual(movesOf(gone), []);
+    const axis = [1, 0, 0];
+    const t = o.moves[0].on.value + 600;
+    const moved = movedTo(plan, gone, 0, t, axis);
+    const [m] = movesOf(moved);
+    const r = movesOf(plan)[0];
+    assert.equal(m.on, t);
+    assert.equal(m.off, t + (r.off - r.on));
+    assert.equal(m.accel, r.accel);
+    assert.deepEqual(m.aim.vector, axis);
+    assert.deepEqual(eventOf(moved, r.lit).at, o.moves[0].on, 'the record’s instant kept');
+    assert.deepEqual(problems(moved), []);
   });
 }
 

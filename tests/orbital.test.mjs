@@ -7,12 +7,13 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
-import { heightsBall, coastOf, flyOrbit, injectionState, publishedOf } from '../src/sim/orbital.ts';
+import { coastOf, flyOrbit, heightsBall, injectionState, liftOf, movesOf, publishedOf, shipOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
-import { cross, DEG, dot, siteFrame, unit } from '../src/world/frames.ts';
+import { cross, DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
 import { meanOf, meanOrbitOf, periodsOf } from '../src/world/meanelements.ts';
 import { nodalPeriod } from '../src/world/orbit.ts';
 import { julianDate, terrestrialTime } from '../src/world/time.ts';
@@ -27,7 +28,8 @@ const all = await Promise.all(
 );
 const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
 /** The plan a record is written into: a Vostok's (vostok-record.ts, `stages`) or a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`). */
-const planOf = (orbital) => ('atlas' in orbital ? mercuryAtlasPlan(orbital) : vostokPlan(orbital));
+const planOf = (orbital) =>
+  'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);
 /** The coast of a flight's plan, or of the plan of its record with an input changed. */
 const fly = (f, orbital) => flyOrbit(orbital ? planOf(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
@@ -183,6 +185,81 @@ function atlasInputs(f, o, run) {
   console.log(`  #   rarefied.area +20 %: ${moved(withInput(o, ['rarefied', 'area'], o.rarefied.area.value * 1.2))}`);
 }
 
+// Gemini-Titan 3's (no ball stated: its heights and period imply it): where on the orbit it began, its mass and free-molecule figure, the
+// thrusters (the type's), when the crew turned for each burn and the second burn's length, the adapter's sections (spacecraft
+// 4's weights), the retrofire's attitude, thrust and impulse, the re-entry module's mass, drag area, lift and bank
+INPUTS['usa/gemini/gt-3'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['mass'],
+  ['rarefied', 'drag'],
+  ['rarefied', 'area'],
+  ['oams', 'aft', 'thrust'],
+  ['oams', 'aft', 'isp'],
+  ['oams', 'forward', 'thrust'],
+  ['oams', 'forward', 'isp'],
+  ['moves', '0', 'turned'],
+  ['moves', '1', 'turned'],
+  ['moves', '1', 'off'],
+  ['moves', '2', 'turned'],
+  ['moves', '2', 'on'],
+  ['moves', '3', 'turned'],
+  ['adapter', 'equipment', 'mass'],
+  ['adapter', 'equipment', 'gone'],
+  ['adapter', 'retro', 'mass'],
+  ['retro', 'sequence'],
+  ['retro', 'below'],
+  ['retro', 'thrust'],
+  ['retro', 'deltaV'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+  ['entry', 'predicted'],
+  ['entry', 'bank'],
+  ['entry', 'banked'],
+  ['entry', 'lift'],
+  ['entry', 'drag'],
+];
+
+/**
+ * A Gemini-Titan's coast inputs that are not documented (its record, gemini-titan-plan.ts): listed, and what each is worth,
+ * flown on the plan `geminiTitanPlan` writes from a changed copy.
+ */
+function titanInputs(f, o, run) {
+  const read = [];
+  const walk = (x, at) => {
+    if (!x || typeof x !== 'object') return;
+    if ('confidence' in x && ('value' in x || 'points' in x)) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    for (const [key, value] of Object.entries(x)) walk(value, [...at, key]);
+  };
+  for (const k of ['orbit', 'injection', 'mass', 'rarefied', 'oams', 'moves', 'adapter', 'retro', 'entry', 'landing']) walk(o[k], [k]);
+  assert.deepEqual(read.map((p) => p.join('.')).sort(), INPUTS[f.id].map((p) => p.join('.')).sort(), 'the inputs that are not documented');
+  const base = run.results;
+  const moved = (change) => {
+    const copy = structuredClone(o);
+    change(copy);
+    const r = fly(f, copy).results;
+    return `along ${((r.alongTrack - base.alongTrack) / 1000).toFixed(0)} km, across ${((r.crossTrack - base.crossTrack) / 1000).toFixed(1)} km, load ${(r.entryG - base.entryG).toFixed(2)} g, drogue ${(r.ejectionAt - base.ejectionAt).toFixed(0)} s`;
+  };
+  console.log('  #   what a change in an input moves:');
+  console.log(`  #   injection.arc +1 deg: ${moved((c) => (c.injection.arc.value += 1))}`);
+  console.log(
+    `  #   orbit.radius stated, the equatorial 6,378.165 km: ${moved((c) => (c.orbit.radius = { value: 6_378_165, confidence: 'estimated', source: 'a test' }))}`,
+  );
+  console.log(`  #   retro.deltaV +5 %: ${moved((c) => (c.retro.deltaV.value *= 1.05))}`);
+  console.log(`  #   retro.deltaV SP-138's 320 ft/s: ${moved((c) => (c.retro.deltaV.value = 320 * 0.3048))}`);
+  console.log(`  #   retro.below 0, the push straight back: ${moved((c) => (c.retro.below.value = 0))}`);
+  console.log(`  #   entry.bank 0, the lift held up: ${moved((c) => (c.entry.bank.value = 0))}`);
+  console.log(`  #   entry.bank 90, the lift held level: ${moved((c) => (c.entry.bank.value = 90))}`);
+  console.log(`  #   entry.lift the predicted 0.29: ${moved((c) => (c.entry.lift.points = [[0, o.entry.predicted.value]]))}`);
+  console.log(`  #   entry.lift none: ${moved((c) => (c.entry.lift.points = [[0, 0]]))}`);
+  console.log(`  #   entry.mass +5 %: ${moved((c) => (c.entry.mass.value *= 1.05))}`);
+  console.log(`  #   the third burn 5 % more: ${moved((c) => (c.moves[3].deltaV.value *= 1.05))}`);
+  console.log(`  #   the burns at the thrusters' thrust, not the indicator's: ${moved((c) => c.moves.forEach((m) => delete m.deltaV))}`);
+}
+
 // Voskhod 1's: no ejection (the parachute container's cover at the design's 5 km: documented), the burn's end, impulse and the
 // parting not found, the landing point spacefacts' (estimated)
 INPUTS['ussr/voskhod/voskhod-1'] = [
@@ -231,7 +308,7 @@ for (const f of orbiters) {
       'events in order',
     );
     assert.equal(new Set(o.events.map((e) => e.id)).size, o.events.length, 'event ids are unique');
-    if ('atlas' in o) assert.ok(o.injection.at.value < o.retro.sequence.value && o.retro.on.value < o.retro.gone.value);
+    if ('atlas' in o || 'titan' in o) assert.ok(o.injection.at.value < o.retro.sequence.value && o.retro.on.value < o.retro.gone.value);
     else
       assert.ok(
         o.injection.at.value < o.retro.on.value && o.retro.on.value < o.retro.off.value && o.retro.off.value < o.entry.separation.value,
@@ -239,7 +316,7 @@ for (const f of orbiters) {
     for (const check of o.checks) assert.ok(check.tolerance > 0, `${check.id}: a tolerance`);
     // the stages' nodes are parts of the model the flight shows
     const nodes = new Set(f.models.flatMap((m) => m.parts.map((p) => p.node)));
-    const stages = 'atlas' in o ? [o.atlas.booster, o.atlas.tank] : o.stages;
+    const stages = 'atlas' in o ? [o.atlas.booster, o.atlas.tank] : 'titan' in o ? [o.titan.first, o.titan.second] : o.stages;
     for (const stage of stages) for (const node of stage.nodes) assert.ok(nodes.has(node), `${stage.name}: node ${node} is a part`);
   });
 
@@ -311,6 +388,7 @@ for (const f of orbiters) {
     // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
     const o = recordFrom(f);
     if ('atlas' in o) return atlasInputs(f, o, run);
+    if ('titan' in o) return titanInputs(f, o, run);
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];
     const read = [
       ['orbit', 'perigee'],
@@ -440,4 +518,108 @@ test('a record with no period flies the mean orbit of its heights over the ellip
   // and it goes round and comes down
   assert.ok(Number.isFinite(run.results.ejectionAt));
   assert.ok(Math.abs(run.results.apogee - o.orbit.apogee.value) < 15_000, `apogee ${run.results.apogee}`);
+});
+
+test('a lifting body’s lift is square to its motion, its ratio of the drag, and turned by its bank about the motion', () => {
+  const wind = [7000, 0, -300];
+  const up = [0, 0, 1];
+  const drag = [-20, 0, 0.9];
+  const w = unit(wind);
+  const level = unit(up.map((x, i) => x - w[i] * dot(up, w)));
+  for (const bank of [0, 30, 90, 180, -45]) {
+    const l = liftOf(drag, wind, up, 0.2, bank);
+    assert.ok(Math.abs(dot(l, w)) < 1e-12, `square to the motion at bank ${bank}`);
+    assert.ok(Math.abs(length(l) - 0.2 * length(drag)) < 1e-12, `the ratio of the drag at bank ${bank}`);
+    // (lift up at 0, to the right of the motion at 90: right is the motion crossed with the level's up)
+    assert.ok(Math.abs(dot(unit(l), level) - Math.cos(bank * DEG)) < 1e-12, `its bank from the plumb line at ${bank}`);
+    assert.ok(Math.abs(dot(unit(l), cross(w, level)) - Math.sin(bank * DEG)) < 1e-12, `and to the right at ${bank}`);
+  }
+  assert.deepEqual(liftOf(drag, wind, up, 0, 0), [0, 0, 0], 'no ratio, no lift');
+  assert.deepEqual(liftOf(drag, [0, 0, -100], up, 0.2, 0), [0, 0, 0], 'straight down: nowhere to turn it');
+});
+
+/**
+ * Friendship 7's coast with a manoeuvre and a lifting entry laid on it: a shape for what the plan says of a Gemini, not a
+ * flight. A thruster pair on the capsule (no tank: not a stage, not the coast's burn) fired along the orbit's normal, with
+ * an impulse of its own or at its thrust, and the capsule given lift at a bank once its pack has gone.
+ */
+function laidOn(f, { deltaV = 10, ratio = 0, bank = 0, thrust } = {}) {
+  const plan = structuredClone(f.plan);
+  const c = plan.craft[0];
+  const t = (value) => ({ value, confidence: 'estimated', source: 'a test of the shape' });
+  const at = f.plan.record.orbit.injection.at.value + 2000;
+  c.engines.push({
+    id: 'thrusters',
+    label: 'Thrusters',
+    body: c.bodies.at(-1).id,
+    count: 2,
+    tanks: [],
+    thrust: { vacuum: t(thrust ?? 400) },
+    kind: 'liquid',
+    starts: { count: 10, ground: false, confidence: 'estimated', source: 'a test of the shape' },
+  });
+  plan.attitude.push({ id: 'across', label: 'Across', hold: { aim: 'normal', sense: 1, confidence: 'estimated' }, source: 'a test' });
+  const lit = thrust ? { ignite: 'thrusters' } : { ignite: 'thrusters', flown: t(deltaV) };
+  plan.events.push(
+    { id: 'yaw', label: 'Yaw', when: [{ time: at - 60 }], do: [{ attitude: 'across' }], automatic: true, source: 'a test' },
+    { id: 'push', label: 'Push', when: [{ time: at }], do: [lit], automatic: true, source: 'a test' },
+    { id: 'stop', label: 'Stop', when: [{ time: at + 20 }], do: [{ cut: 'thrusters' }], automatic: true, source: 'a test' },
+  );
+  if (ratio) {
+    c.bodies.find((b) => b.aero).aero.lift = { points: [[0, ratio]], confidence: 'estimated', source: 'a test of the shape' };
+    plan.attitude.push({ id: 'banked', label: 'Banked', hold: { bank: t(bank) }, source: 'a test' });
+    const gone = coastOf(f.plan).parted;
+    plan.events.push({
+      id: 'bank',
+      label: 'Bank',
+      when: [{ time: gone + 1 }],
+      do: [{ attitude: 'banked' }],
+      automatic: true,
+      source: 'a test',
+    });
+  }
+  return { plan, at };
+}
+
+test('a manoeuvre in the coast pushes its impulse along the line it lit on, and turns the orbit’s plane by it', () => {
+  const f = orbiters.find((x) => x.id === 'usa/mercury/ma-6-friendship-7');
+  const where = [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
+  const { plan, at } = laidOn(f);
+  const [move] = movesOf(plan);
+  assert.equal(move.on, at);
+  assert.equal(move.off, at + 20);
+  assert.equal(move.accel, 10 / 20, 'its impulse over its time');
+  assert.deepEqual(movesOf(f.plan), [], 'none on the flight as it is');
+  const plain = flyOrbit(f.plan, ...where);
+  const moved = flyOrbit(plan, ...where);
+  const normal = (run) => {
+    const s = run.samples.find((x) => x.t >= at + 600);
+    return unit(cross(s.r, s.v));
+  };
+  const turned = Math.acos(Math.min(1, dot(normal(plain), normal(moved))));
+  const speed = plain.samples.find((x) => x.t >= at).speed;
+  assert.ok(
+    Math.abs(turned / (10 / speed) - 1) < 0.01,
+    `the plane turned ${(turned / DEG).toFixed(4)} deg for 10 m/s at ${speed.toFixed(0)}`,
+  );
+  // without an impulse of its own it pushes its chambers' thrust over the ship's mass
+  const [byThrust] = movesOf(laidOn(f, { thrust: 400 }).plan);
+  assert.equal(byThrust.accel, (2 * 400) / f.plan.record.orbit.mass.value);
+});
+
+test('a lifting entry flies its lift while a bank is held: lift up goes further, lift down falls short, and none is no lift', () => {
+  const f = orbiters.find((x) => x.id === 'usa/mercury/ma-6-friendship-7');
+  const where = [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
+  const flown = (o) => flyOrbit(laidOn(f, o).plan, ...where).results;
+  const none = flown({});
+  const up = flown({ ratio: 0.2, bank: 0 });
+  const down = flown({ ratio: 0.2, bank: 180 });
+  const tiny = flown({ ratio: 1e-300, bank: 0 });
+  assert.ok(up.alongTrack - none.alongTrack > 100_000, `lift up: ${((up.alongTrack - none.alongTrack) / 1000).toFixed(0)} km further`);
+  assert.ok(none.alongTrack - down.alongTrack > 50_000, `lift down: ${((none.alongTrack - down.alongTrack) / 1000).toFixed(0)} km short`);
+  assert.ok(Math.abs(tiny.alongTrack - none.alongTrack) < 1, 'a lift too small to count is no lift');
+  assert.equal(shipOf(laidOn(f, { ratio: 0.2 }).plan).banks.length, 1);
+  console.log(
+    `  #   L/D 0.2 on Friendship 7's capsule: lift up ${((up.alongTrack - none.alongTrack) / 1000).toFixed(0)} km further, lift down ${((none.alongTrack - down.alongTrack) / 1000).toFixed(0)} km short; ${up.entryG.toFixed(2)} g against ${none.entryG.toFixed(2)}`,
+  );
 });

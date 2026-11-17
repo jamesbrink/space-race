@@ -96,13 +96,14 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
   return {
     model: 'vehicle',
     datum: BASE,
-    // Every engine's fire from its own nozzles: the first stage's two chambers, the second stage's one, the four retrograde
+    // Every engine's fire from its own nozzles: the first stage's two chambers, the second stage's one from its ablative skirt
+    // (the nodes the vehicle as built has: its model was built before the scripts named the bells apart), the four retrograde
     // rockets (burning as the plan flies them, evenly from the first's lighting), and each pair of thrusters, a fire to each
     // of its lightings in order (sim/run.ts `firesOf`). All but the rockets burn Aerozine or monomethylhydrazine and
     // nitrogen tetroxide, which burn clear
     fires: [
-      { node: 'Stage1Engine_Nozzles', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
-      { node: 'Stage2Engine_Nozzle', on: 'second-stage-engine', burns: 'hydrazine-n2o4' },
+      { node: 'Stage1Engine_Chambers', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
+      { node: 'Stage2Engine_AblativeSkirt', on: 'second-stage-engine', burns: 'hydrazine-n2o4' },
       { node: 'Retro_RocketNozzles', on: 'retrorockets', burns: 'solid-perchlorate' },
       ...o.moves.map((m) => ({
         node: m.thrusters === 'aft' ? 'Equipment_AftThrusters' : 'Retro_ForwardThrusters',
@@ -118,6 +119,9 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
       { at: at('fairings'), nodes: ['NoseFairing', 'ScannerFairing'] },
       { at: o.adapter.equipment.gone.value, nodes: ['EquipmentSection'], on: 'equipment-section-release' },
       { at: o.retro.gone.value, nodes: ['RetroSection'], on: 'retro-section-release' },
+      // (the rendezvous and recovery section, pulled off by the pilot parachute with the main in it: at the record's
+      // "Going to landing attitude", less half a minute for the main to fill, estimated: drawn going, not flown)
+      { at: at('landing-attitude') - 30, nodes: ['RendezvousRecovery'] },
     ],
     chutes: GEMINI_CHUTES,
     air: { shield: 'HeatShield' },

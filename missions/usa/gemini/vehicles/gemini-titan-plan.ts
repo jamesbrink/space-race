@@ -119,7 +119,8 @@ export interface GeminiTitanRecord {
     sheds: ShedBody[];
     checks: RecordCheck[];
   };
-  orbit: { radius: Measure; perigee: Measure; apogee: Measure; inclination: Measure; period: Measure };
+  /** The orbit as published; `radius`, the ball its heights are over, only where a source says (else the ball its heights and period imply: orbital.ts `heightsBall`). */
+  orbit: { radius?: Measure; perigee: Measure; apogee: Measure; inclination: Measure; period: Measure };
   injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };
   /** The spacecraft in orbit, kg. */
   mass: Measure;

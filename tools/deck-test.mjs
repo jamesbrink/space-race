@@ -18,6 +18,7 @@ const FLIGHTS = {
   'ussr/vostok/vostok-6': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-4': ['Ignition', 'Drop the strap-ons'],
   'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
+  'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
 };
 const SIZES = [
   [1280, 800, false],
@@ -174,7 +175,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
   // each flight into orbit as flown, untouched: in orbit with its apogee on the deck once the ship is alone, and down at the
   // run's end with the deck and the navball at nought
   if (w === 1280)
-    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/'))) {
+    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/') || f === 'usa/gemini/gt-3')) {
       const where = `${id} as flown at ${w}`;
       const { page, errors, context: ctx } = await fly(id, w, h, touch);
       const seek = async (t) => {

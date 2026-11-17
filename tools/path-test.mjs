@@ -128,6 +128,13 @@ const FLIGHTS = {
     orbit: [3000, 60_000],
     coast: 3000,
   },
+  // (three revolutions: staging, insertion, the first burn by day, the night, the third burn, retrofire, the entry banked, the drogue, the main)
+  gt3: {
+    id: 'usa/gemini/gt-3',
+    instants: [5, 60, 150, 200, 340, 600, 3000, 5600, 8000, 15_700, 16_380, 16_410, 16_900, 17_250, 17_400, 17_560],
+    orbit: [3000, 8000],
+    coast: 3000,
+  },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
 /** The window sizes: a laptop's, a tablet's upright and a phone's. */
