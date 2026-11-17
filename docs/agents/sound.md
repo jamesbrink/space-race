@@ -59,7 +59,8 @@ plays until the page has been touched, and a hidden page is suspended.
   (it is the flight's: stopped or hurried it is silent), a voice of the works for each part (`rotorcraftTimbres`): the main
   rotor's blades passing (their count times its rate, the craft's data), the tail rotor's, and a piston engine's firing
   (cylinders over two times its rate). From the seat (`SoundHost.inside`) it comes through the cabin's wall (`WALLED`, the
-  cabin's loss), or through the hatch once it is gone (`OPENED`). Levels at a metre and timbres are estimated; no Doppler.
+  cabin's loss), or through the hatch once it is gone (`OPENED`). It is not replayed after a jump, only put where the
+  clock has it, so the hardware's catch-up does not hush it. Levels at a metre and timbres are estimated; no Doppler.
 - **Measured, since an agent cannot hear.** `sr.sound.meter()` gives the output's level, peak and
   spectral centroid; the last stage is a soft clip that cannot pass full scale. `sr.sound.voices` is what the works
   play, slot by slot (`pnpm test:sound` reads it while driving, while machines run, and under Liberty Bell 7's helicopter). After changing a
