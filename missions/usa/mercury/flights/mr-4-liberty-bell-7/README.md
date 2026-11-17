@@ -247,8 +247,8 @@ the sea at once. Which of the plunger, a stray lanyard or static fired the hatch
 takes a side: on the deck it blows when it is told to.
 
 **What the ending lacks**: the capsule goes only up and down (it does not heel, roll with the swell, drift or turn;
-the hatch faces south-west, ours); the landing bag is drawn as the flat ring it is stowed as, so the shield is drawn
-four feet higher than it hangs; nothing is drawn under the sea (the camera stays on the surface and watches it go);
+the hatch faces south-west, ours); the landing bag is let down at 10:26 as rigid nested bands, not cloth, and never
+bellies or swings (spacecraft.md); nothing is drawn under the sea (the camera stays on the surface and watches it go);
 the hatch lies on the swell rather than skipping; no water is drawn in the cabin. The sea round it is the day's
 (ERA5's swell and wind sea, weather.ts), the same sea the simulator floats it on, with short waves for the light
 only. Hunt Club 1 (recovery.ts) is flown on the record's order of events: 2 miles south-west as the capsule came
