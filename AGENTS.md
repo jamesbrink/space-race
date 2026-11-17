@@ -72,8 +72,9 @@ CI (`.github/workflows/pages.yml`) runs `pnpm check` (so a part whose node is mi
 fails the build; its tests are split over nine runners, the flights of `tests/staged.test.mjs` dealt out by `SR_PART`) and builds every push and pull request, and
 deploys `main` to GitHub Pages at https://jamesbrink.online/space-race/. Pages serves from a sub-path, so
 asset URLs are relative and go through `import.meta.env.BASE_URL`; never write a leading-slash URL
-in `flight.ts`. A push that touches only documents (Markdown, `docs/`) runs
-`tests/layout.test.mjs` and nothing else: no test run, no build, no deploy. The GLBs are committed, so CI needs no Blender.
+in `flight.ts`. A push that touches only documents (Markdown, `docs/`) since the commit last deployed (a pull
+request: since its base) runs `tests/layout.test.mjs` and nothing else: no test run, no build, no deploy; one that
+follows a code push whose run it cancelled builds and deploys that code. The GLBs are committed, so CI needs no Blender.
 
 Models need Blender 5.x: `$BLENDER`, then `/Applications/Blender.app`, then `blender` on PATH.
 It runs headless (`blender -b -P`); no Blender MCP or GUI is involved. Useful flags on
