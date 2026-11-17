@@ -37,23 +37,28 @@ is shown without an invented pressure hatch or tunnel.
 Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 **assumed shared Block II hardware**, with provenance and limitations in
 [the survey record](../../vehicles/reference/README.md). Their reveals are derived
-projections between the survey and nominal skin. The hatch's rectangular aperture
-is still the original estimate and is explicitly excluded from that survey claim.
+projections between the survey and nominal skin. The separately delineated curved
+hatch cover now has an outer window reference sectioned from Smithsonian's measured
+detached CM-107 hatch. Its pose and connection to the nominal cone are derived,
+with residuals recorded; the pressure door and glazing are not yet built.
 The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
 The RCS axial station now follows the CSM-101 preflight reference. Panel colouring,
 seams, nozzle contours, quad azimuths and brackets remain estimated.
 
 ## Simplifications and things still wrong
 
-- The cabin pressure-vessel sidewall is built; bulkheads, tunnel, glazing, couches,
+- The cabin pressure-vessel sidewall and both nominal bulkheads are built. The full tunnel, glazing, couches,
   instruments, astronaut figures and internal equipment remain unbuilt.
-- Four measured openings have temporary dark closures, not glass. The hatch window
-  still has the initial rectangular opening. ST-503A (NAA A-512S, p. 41) shows a
-  rounded-square outer pane and a circular inner pressure window; both layers need reconstruction.
-- The side hatch is not yet delineated, without its real sill, hinge or handle; no opening motion.
+- All five outer openings have temporary dark closures, not glass. ST-503A
+  (NAA A-512S, p. 41) shows a rounded-square outer hatch pane and a circular inner
+  pressure window. The outer reference is built; the inner window and both glazing
+  assemblies remain unbuilt.
+- The side hatch has a separate outer cover, without its complete pressure door,
+  sill, hinge, handles or opening motion. Later SC106+ inner-door machining is excluded.
 - No CM attitude-control ports, umbilical fittings, antennas, recovery system or detailed thermal tape.
 - No SM tanks, fuel cells, plumbing, gimbal or engine injector.
-- Radiator panel layout and barrel/engine split are estimated and need dimensioned drawings.
+- Radiator panel layout and intermediate SPS contour remain estimated. Barrel ends,
+  engine attachment station and extension bounds now use the structural references above.
 - No lunar docking probe, lunar module or deployed lunar high-gain antenna is added.
 - No mass, thrust or aerodynamic data has been assigned for simulation.
 
@@ -91,7 +96,10 @@ exploded preview. Tankage and internal structure are still pending.
 The separate inner wall uses the published Block II penetration coordinates and
 wall limits, with fixed frame interfaces from Smithsonian's measured CM-107 hull.
 See [pressure-vessel.md](../../vehicles/pressure-vessel.md) for each source figure,
-the two generator calculations and five independent coordinate checks. This is a
-bare sidewall with no invented thickness. Its top-level `CabinStructure` node
+the two generator calculations, independent coordinate checks, nominal 173-inch
+aft-bulkhead radius and flat forward-bulkhead reconstruction. The earlier floor
+reference is explicitly assumed common structure, supported by matching wall points.
+The forward roof joins a measured tunnel-entry interface with a derived reveal.
+These are bare reference surfaces with no invented thickness. The `CabinStructure` node
 moves with `CommandModule`; it is visible only at full detail. Selecting it opens
 the normal cutaway. A structural cutaway is not yet a furnished, seated cabin.
