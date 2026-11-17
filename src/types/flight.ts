@@ -172,6 +172,8 @@ export interface Flight {
       record: { hatch: Measure; out: Measure; taut: Measure; cast: Measure };
       hoist: HoistDef;
       sight: Measure;
+      /** The spaces of `body` whose water is drawn (viewer/flooding.ts): those that can be seen into, by their ids. */
+      seen?: string[];
       checks: { id: string; label: string; value: number; unit: string; tolerance: number; source: string }[];
     };
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */

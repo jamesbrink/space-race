@@ -146,6 +146,7 @@ export const AFLOAT: NonNullable<Flight['flies']>['afloat'] = {
     takes: estimated(0.5, 'how far the line and the helicopter gave under its full pull: ours'),
   },
   sight: estimated(30, 'how far down a capsule is seen in clear ocean water from above: ours'),
+  seen: ['cabin'],
   checks: [
     {
       id: 'flooded',

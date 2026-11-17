@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type Afloat, afloatAt } from '../sim/afloat.ts';
+import { type Afloat, type AfloatSample, afloatAt } from '../sim/afloat.ts';
 import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { type LooseFlown, looseAt } from '../sim/loose.ts';
@@ -153,6 +153,12 @@ export class Ascent {
   afloat(t: number): boolean {
     const a = this.flight.plan ? this.flown().afloat : undefined;
     return Boolean(a && t > a.from);
+  }
+
+  /** The body afloat at `t` on the run on show (sim/afloat.ts: its heel, the water in its spaces and where it stands), or null before it is down. */
+  floating(t: number): AfloatSample | null {
+    const a = this.flight.plan ? this.flown().afloat : undefined;
+    return a && t > a.from ? afloatAt(a, t) : null;
   }
 
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
@@ -730,9 +736,10 @@ export class Ascent {
 
   /**
    * Down in the sea (sim/afloat.ts): from the pose it struck the sea in it comes upright over the record's time for that
-   * (`AfloatDef.rights`), its hatch (the model's +X) toward the bearing it lay at (`hatch.at.heading`), and rises and falls
-   * with the sea and goes under as the run afloat has it: its lowest point drawn where the run has it over still water,
-   * on the sea that is drawn moving round it (swell.ts), which is the same sea.
+   * (`AfloatDef.rights`), its hatch (the model's +X) toward the bearing it lay at (`hatch.at.heading`), and rises, falls,
+   * heels and goes under as the run afloat has it: its lowest point drawn where the run has it over still water, on the
+   * sea that is drawn moving round it (swell.ts), which is the same sea, heeled about its centre (`AfloatDef.heel`), which
+   * goes neither across the sea nor round, its +X side down as the heel is.
    */
   private placeAfloat(
     run: Run,
@@ -768,10 +775,16 @@ export class Ascent {
     }
     const now = afloatAt(afloat, t);
     const k = THREE.MathUtils.smoothstep(t - afloat.from, 0, def.body.rights.value);
+    // (heeled about its centre, its +X side down: a turn about its own Z; its lowest point moves across as its centre stays)
+    const heeled = f.upright.clone().multiply(new THREE.Quaternion().setFromAxisAngle(Z, -now.heel));
+    const axis = Y.clone().applyQuaternion(heeled);
+    const level = X.clone().applyQuaternion(f.upright);
+    const centre = def.body.heel?.centre ?? { up: { value: 0 }, out: { value: 0 } };
+    const across = centre.out.value * (1 - Math.cos(now.heel)) - centre.up.value * Math.sin(now.heel);
     // (the sea is drawn as it moves, round where it came down (swell.ts): its lowest point is drawn where the run has it over still water)
-    const floating = f.base.clone().addScaledVector(f.up, now.z + def.body.datum.value);
+    const floating = f.base.clone().addScaledVector(f.up, now.z).addScaledVector(level, across).addScaledVector(axis, def.body.datum.value);
     position.copy(f.p).lerp(floating, k);
-    quaternion.copy(f.q).slerp(f.upright, k);
+    quaternion.copy(f.q).slerp(heeled, k);
     return true;
   }
 
@@ -964,7 +977,9 @@ function nlerp(a: Quat, b: Quat, k: number): Quat {
   return normalize([0, 1, 2, 3].map((i) => a[i]! + (sign * b[i]! - a[i]!) * k) as unknown as Quat);
 }
 
+const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 const BODY: readonly Vec3[] = [
   [1, 0, 0],
   [0, 1, 0],

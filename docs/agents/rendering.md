@@ -813,8 +813,9 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   waves on the shortest train (`RIPPLES`, estimated) are drawn in the light only, for the grain of a real sea, which
   nothing rides. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
   globe leaves the square to it (its last `Hole`, a metre or two inside, so the two overlap and never part). A body
-  afloat is drawn at its height over still water, so it rides the swell that is drawn and its waterline is the sea's;
-  the camera stays over the drawn waves (`Globe.swellHeight` in the stage's `clearance`), and the chase view's pivot
+  afloat is drawn at its height over still water, heeled as the run has it, so it rides the swell that is drawn and its
+  waterline is the sea's; the sea in its cabin is a level surface where the run has it (viewer/flooding.ts), translucent
+  in both looks, drawn after what is opaque; the camera stays over the drawn waves (`Globe.swellHeight` in the stage's `clearance`), and the chase view's pivot
   stays on the surface when what it follows goes under, so a sinking capsule is watched going from above. A day
   without a sea (Vostok's steppe) has no square.
 - **One field, three readers.** The cumulus's noise, cut where the weather says (`cumulusBias`), is read by
