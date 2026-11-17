@@ -27,6 +27,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 import {
   AGENA,
   AGENA_TARGET,
@@ -647,6 +648,7 @@ export const flight: Flight = {
   launch: '1966-03-16T16:41:02.389Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['Neil A. Armstrong', 'David R. Scott'],
   summary:
     'The first docking of two vehicles in orbit, six and a half hours after liftoff, with an Agena sent up 101 ' +
