@@ -1214,6 +1214,7 @@ garbles, on the page. **The Gemini VI-A mission report of January 1966 was not f
 | *On the Shoulders of Titans* (above), pp. 282 to 286, and NASA SP-4002, the entries for 4, 12 and 15 December 1965, read for Gemini 6A's pad | as above | The turnaround: GLV-6 erected the day after Gemini 7 left, the pad not repainted; **the shutdown of 12 December**: the engines lit at 9:54 and stopped, the erector raised again at 11:28, the crew out at 11:33; the dust cap; the safety-wired plugs | Round times |
 | *Gemini Program Launch Systems Final Report* (entry under Gemini-Titan 3), read again: Table I-1, II.C ("Pad Egress"), II.E ("Dust Cap"), II.F | [NTRS 19670076796](https://ntrs.nasa.gov/citations/19670076796) | Gemini VI-A: "CD Holds: None"; the securing of the crew after the shutdown; the turnaround from Gemini 7; no wet mock from GLV-7 on | Its foldout tables are cut in the scan |
 | NASA photographs: **S65-59974** (Schirra and Stafford leaving the suiting trailer in the dark, 15 December), S65-61916 (12 December: the two on the ramp at pad 19, Schirra's tag, the flight's emblem on the suits), S65-59967 (12 December: the shutdown), S65-55983 (the emblem) | images.nasa.gov | **The G4C as worn on Gemini 6A**, and the dark that bears out the plan's times | |
+| NOAA NCEI Integrated Surface Database, 1965: stations 74794012868 and 74795012867, 15 December | [noaa-global-hourly-pds](https://noaa-global-hourly-pds.s3.amazonaws.com/1965/74794012868.csv) (fetched 17 November 2026) | **The weather Gemini 6A left under**, the report's being lost: the Skid Strip at 14:00 UTC, 23 minutes after liftoff: broken class with no ceiling, 200° at 3.1 m/s, 11.2 km, 20.5 °C with a dew point of 19.4 °C; patches of shallow fog at 12:00 with two oktas of altocumulus at 2,100 m and eight of cirrostratus; five of cirrus at 15:00 | |
 
 Known, not read:
 
@@ -1226,7 +1227,6 @@ Known, not read:
 | The G5C suit: David Clark's drawings, the Smithsonian's records of Borman's and Lovell's suits | The hood's form, which crew/g5c-suit.md takes from the G3C's helmet |
 | Photographs of Gemini-Titan 7 and Gemini-Titan 6A on the stand or at liftoff, read for the paint | The vehicles' lettering, roll pattern and bare skirt are assumed as GLV-3's to GLV-5's |
 | The countdown records for 4 and 15 December 1965 | When each crew went aboard and the hatches were shut (Gemini 7's are the plan's, but for the photograph at T-100) |
-| The weather at Cape Kennedy on 15 December 1965 | Gemini-Titan 6A's `weather.ts`, when its launch site is built |
 
 ### Gemini-Titan 8 and Gemini-Titan 9A
 

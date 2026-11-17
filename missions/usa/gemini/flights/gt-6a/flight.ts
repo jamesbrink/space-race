@@ -26,6 +26,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -450,6 +451,7 @@ export const flight: Flight = {
   launch: '1965-12-15T13:37:26.471Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['Walter M. Schirra, Jr.', 'Thomas P. Stafford'],
   summary:
     'The first time two crewed spacecraft met in orbit. It was the third count for this ship: its Agena target was ' +

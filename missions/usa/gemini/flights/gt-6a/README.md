@@ -204,6 +204,26 @@ are held to these figures by `tests/world.test.mjs`.
 
 Venus, Mars, Jupiter and Saturn were below the horizon.
 
+## The weather
+
+The mission report's own launch weather is not found. **At the Cape, as recorded** (the Skid Strip,
+NOAA's Integrated Surface Database, station 747940-12868):
+
+| UTC (EST) | Wind | Air | Dew point | Sea-level pressure | Visibility | Sky |
+| --- | --- | --- | --- | --- | --- | --- |
+| 12:00 (7 a.m.) | 240° at 1.0 m/s | 17.8 °C | 17.2 °C | 1013.9 hPa | 4.8 km, patches of shallow fog | overcast class, no ceiling: 2/8 altocumulus at 2,100 m, 8/8 cirrostratus |
+| 13:00 (8 a.m.) | 210° at 1.0 m/s | 18.3 °C | 17.8 °C | 1014.6 hPa | 11.2 km | overcast class, no ceiling |
+| 14:00 (9 a.m.) | 200° at 3.1 m/s | 20.5 °C | 19.4 °C | 1014.2 hPa | 11.2 km | broken class, no ceiling |
+| 15:00 (10 a.m.) | 210° at 4.1 m/s | 23.3 °C | 19.4 °C | 1014.6 hPa | 16 km | broken class, no ceiling: 5/8 cirrus |
+
+`documented`, the classes read as Gemini-Titan 3's README says. The 14:00 report is taken, 23 minutes
+after liftoff. From orbit, Borman and Lovell, coming over near the Cape, "saw nothing except clouds"
+(*Titans*, p. 286).
+
+`weather.ts` is written from these (a quarter of altocumulus at 2,100 m, seven tenths of a breaking
+sheet of cirrostratus, the wind 200° at 3.1 m/s, 11.2 km in a damp air), each with its confidence;
+the air aloft is ERA5's (`aloft.ts`).
+
 ## What is not built
 
 - **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
