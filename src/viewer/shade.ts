@@ -32,16 +32,16 @@ export interface Shading {
   /** The colour the little light left indoors takes, as far as the lamps lit are not white (cabin.ts); white otherwise. */
   tint: { value: THREE.Color };
   /**
-   * How much of the shade the indirect light keeps: 1 with the cabin closed; less while it is cut open (cabin.ts
+   * How much of the shade the indirect light keeps: 1 with the cabin closed; none while it is cut open (cabin.ts
    * `opened`), when the room's light comes in where the hull was and how open a point is, as the bake cast it with the
-   * hull standing, no longer holds. The lamps' light keeps it all: what stands between a lamp and a point still does.
+   * hull whole, is the wrong figure for it. The lamps' light keeps it all: what stands between a lamp and a point still does.
    */
   kept: { value: number };
   /**
    * Whether the cabin is cut open, 1, or closed, 0 (cabin.ts `opened`). The room's own lights (a studio's rim, kickers,
    * fill and the lamp over the viewer's shoulder: directional, with no shadow map to stop them at the hull) give the
    * inside nothing while it is closed, and while it is open they light it as the room's light that comes in at the
-   * cut does: by the kept share of the shade where there is one (`ROOM_LIGHT`).
+   * cut does: by the kept share of the shade where there is one, which cut open is none (`SHADE_APPLY`, `ROOM_ONLY`).
    */
   open: { value: number };
 }

@@ -257,10 +257,10 @@ test('the shade scales the lamps’ light and the indirect (less of it cut open)
   ])
     assert.ok(at(line) > at('#include <aomap_fragment>'), `after the light is summed: ${line}`);
   assert.ok(at('reflectedLight.indirectDiffuse *= uCabinTint;') > at('reflectedLight.indirectDiffuse *= mix( 1.0, cabinShade'));
-  // the indirect keeps all of it closed; cut open, the room's light comes in where the hull was, and it keeps less
+  // the indirect keeps all of it closed; cut open, the room's light comes in where the hull was, and it keeps none
   assert.equal(shader.uniforms.uCabinKept.value, 1);
   c.cabin.opened(true);
-  assert.ok(shader.uniforms.uCabinKept.value > 0 && shader.uniforms.uCabinKept.value < 1, `cut open: ${shader.uniforms.uCabinKept.value}`);
+  assert.equal(shader.uniforms.uCabinKept.value, 0, 'cut open');
   c.cabin.opened(false);
   assert.equal(shader.uniforms.uCabinKept.value, 1);
   // the loop (shadows.ts, loaded with the cabin) adds up what the Sun alone gives, in its cascaded turn and nowhere else
@@ -273,7 +273,7 @@ test('the shade scales the lamps’ light and the indirect (less of it cut open)
   assert.equal(loop.split('cabinSunDiffuse +=').length, 2, 'only the Sun’s turn is kept apart');
 });
 
-test('the room’s own lights give a cabin’s inside nothing while it is closed and, cut open, the kept share of its shade, or all of it unshaded', () => {
+test('the room’s own lights give a cabin’s inside nothing while it is closed and, cut open, all their light, baked or not', () => {
   const c = lit([{ says: 'On', lit: [0, 1] }], [0]);
   const compile = (material) => {
     const shader = {
@@ -310,14 +310,8 @@ test('the room’s own lights give a cabin’s inside nothing while it is closed
   });
   assert.deepEqual(room(), { baked: 0, plain: 0 }, 'closed: nothing from the room’s lights');
   c.cabin.opened(true);
-  const open = room();
-  const kept = baked.uniforms.uCabinKept.value;
-  assert.ok(kept > 0 && kept < 1);
-  assert.ok(
-    Math.abs(open.baked - (1 + (shade - 1) * kept)) < 1e-12 && open.baked > shade && open.baked < 1,
-    `cut open, baked: ${open.baked}`,
-  );
-  assert.equal(open.plain, 1, 'cut open, unshaded: all of it');
+  // (cut open the shade's figure, cast with the hull whole, is the wrong one for the room's light: it keeps none of it)
+  assert.deepEqual(room(), { baked: 1, plain: 1 }, 'cut open: all of the room’s lights, baked or not');
   c.cabin.opened(false);
   assert.deepEqual(room(), { baked: 0, plain: 0 });
   // the loop: any turn it gives the lights after the three with maps (the studio's) adds them up apart for the inside
