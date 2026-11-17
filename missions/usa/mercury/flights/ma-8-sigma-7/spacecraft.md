@@ -144,7 +144,11 @@ Built by [mercury_orbital.py](../../vehicles/mercury_orbital.py) (`retropack_str
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | The figure | the Mark IV suit as modelled for Shepard (5 ft 11 in), on the couch, with the tag reading W. M. SCHIRRA | estimated | `crew/mark_iv_suit.py`, unchanged but for the name. Schirra's height has not been found in anything read |
-| What his suit had that the model has not | a smaller, single microphone in the helmet; lights on the fingertips of the gloves (he speaks of using them); a cuff for the blood-pressure system with a right-angle adapter | documented; not modelled | TN D-4807, pp. 11 and 61; SP-12, pp. 5, 66 and 104 |
+| Standing, at the launch site | the same suit on his stature, `model/crew.py` (`SCHIRRA`) | estimated | built as Glenn's and Carpenter's standing figures are |
+| His stature | 5 ft 10 in (177.8 cm) | estimated | as commonly given; no primary record of it read |
+| Wrist rings | the gloves locked to rings at the wrists | assumed | Glenn's, Carpenter's and Cooper's suits had them; NASA S62-06002 (at the hatch that morning) does not show his wrists clearly |
+| Weight that morning | 176¾ lb nude at 2:46 | documented | NASA SP-12, Table 3-IV (p. 25); TN D-4807's table of medical findings |
+| What his suit had that the model has not | a smaller, single microphone in the helmet; lights on the fingertips of the gloves (he speaks of using them); a cuff for the blood-pressure system with a right-angle adapter; a webbing strap with a buckle across the chest | documented; not modelled | TN D-4807, pp. 11 and 61; SP-12, pp. 5, 66 and 104; the strap by photograph, NASA S62-06002. Nothing read says whether he wore a chest mirror or a neck dam, and the figure has neither |
 
 ## Parts in the model
 
@@ -204,8 +208,10 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
   opening with the vehicle taken apart.
 - **The panel is No. 11's drawing with three blanks.** None of this capsule's new switches and
   gauges is on it, nor the yaw reticle at the window.
-- **The pilot is Shepard's figure with Schirra's name.** His height has not been found. There is
-  no model of him standing.
+- **The pilot is Shepard's figure with Schirra's name.** His height has not been found. The
+  standing figure at the launch site (`model/crew.py`) takes 5 ft 10 in as commonly given, with
+  wrist rings assumed; its boots are the suborbital flights' laced ones, its proportions the
+  reference man's on his stature, and his fingertip lights, microphones and chest strap are not on it.
 - **The heat shield is the heat sink's shape in another material.** Its centre plug and the bolts
   that held it for this flight are not modelled.
 - **The periscope's works are No. 11's.** When it moved on this flight is in `flight.ts`

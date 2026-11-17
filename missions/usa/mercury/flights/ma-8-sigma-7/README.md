@@ -7,7 +7,7 @@ a landing in the Pacific within sight of the carrier sent to fetch it.
 | | |
 | --- | --- |
 | Liftoff | 3 October 1962, 12:15:11 UTC (07:15:11 EST) |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts), built as [lc-14.md](../../../places/cape-canaveral/lc-14.md) |
 | Pilot | Walter M. Schirra, Jr. (backup: L. Gordon Cooper, Jr.) |
 | Spacecraft | Mercury No. 16, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 113-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -18,9 +18,11 @@ a landing in the Pacific within sight of the carrier sent to fetch it.
 | Landing | 21:28:22 UTC, 32°06′ N 174°28′ W, north-east of Midway: about 4 nautical miles from the carrier |
 | Recovery | capsule and pilot together, lifted aboard USS *Kearsarge* 40 minutes after landing |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 16 on Atlas 113-D as they left the
-pad can be turned, taken apart as they staged, and cut open. Its launch site and the flight itself
-are not built: see "What is not built" below.
+**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 16 on Atlas
+113-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
+launch site they stand on the stand at Complex 14 on the morning of 3 October 1962, with Schirra at
+the foot of the service structure, and the place can be walked. The flight itself is not built: see
+"What is not built" below.
 
 ## What happened
 
@@ -96,10 +98,12 @@ The same events, in seconds, are `timeline` in [flight.ts](flight.ts). Everythin
 is some 70 seconds later than planned because the orbit was higher than planned, and so slower.
 
 The morning, by the clocks at the Cape (*This New Ocean*, pp. 471 and 472; NASA TN D-4807,
-pp. 25 and 26): woken 1:40; out of Hangar S a little past 4; into the spacecraft at 4:41, T-140
-minutes; the hatch going on from T-108 and secure at T-96; its shingles on by T-88; the service
-tower away from T-64; held at T-45 for 15 minutes for the Canary Islands radar; liquid oxygen from
-T-38. Two cameras at the pad show the umbilical thrown off, the periscope drawing in and its door
+pp. 25 and 26 and Table X): woken 1:40; out of Hangar S a little past 4; to the pad at 4:07; up
+the gantry at 4:37, Cooper with him to the elevator; into the spacecraft at 4:41, T-140 minutes;
+the hatch going on from T-108 and secure at T-96; its shingles on by T-88; the service tower away
+from T-64; held at T-45 for 15 minutes for the Canary Islands radar; liquid oxygen from T-38. The
+one hold being at T-45, the tower started away at about 05:56 by the clock, before sunrise
+(derived: `pad.ts`). Two cameras at the pad show the umbilical thrown off, the periscope drawing in and its door
 shutting, in that order (p. 28); the report does not say when in the count.
 
 ## The sky at liftoff
@@ -127,16 +131,31 @@ per cent. The report's Figure 9 plots the wind to 60,000 ft. In the landing area
 wind 11 knots from 110°, waves 3 ft from 090°, visibility 10 miles, the air 78 °F and the water
 80 °F, 30.15 in Hg. Tropical storm Daisy lay 400 miles north-north-east of Puerto Rico, between
 two of the Atlantic landing areas, one of which had been moved 213 nautical miles for it. No
-`weather.ts` is written for this flight yet: it has no site model for a sky to stand over. These
-are the figures one would be written from.
+`weather.ts` is written for this flight yet: its site stands under its place's default sky, which
+is an estimate. These are the figures one would be written from.
+
+## The launch site
+
+Complex 14 as it stood that morning, which is as it stood for Friendship 7 and Aurora 7: nothing read has it changed
+([places/cape-canaveral/lc-14.md](../../../places/cape-canaveral/lc-14.md), "What stood when", has every dimension
+with its source). The morning at the pad is `pad.ts`: Schirra at the foot of the service structure at 4:37, in full
+night, the structure floodlit; the white room opened a few minutes before the structure moved (the standard count's
+interval, taken); the structure off the stand at T−64, about 05:56, in the dawn, and stowed 300 ft east some fourteen
+minutes later (Aurora 7's interval, taken: not recorded); 15 minutes held at T−45 for the Canary Islands radar; the
+umbilical's boom clear at T−35 seconds (Friendship 7's second, taken); the launcher's arms letting go at liftoff,
+with no hold-down delay on this vehicle. The vehicle stands with its pitch axis on 105° (documented) and its hatch on
+240° (estimated from photographs), as every Mercury-Atlas stood. The bascule stood upright all morning and can be
+lowered by hand from the tower.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
-  which way the vehicle faced on it.
-- **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
-  be boarded. The figure on the couch is the suit as modelled for Shepard with Schirra's name on
-  it ([spacecraft.md](spacecraft.md), "The pilot").
+- **Much of the launch site's detail.** Complex 14 is built and can be walked, but only its published sizes are
+  documented; [lc-14.md](../../../places/cape-canaveral/lc-14.md) ends with a long list of what is estimated or left
+  out (every room is shut; the fences, the vehicles and the people are not there: not the Convair crew who met
+  Schirra at the van, nor Cooper, who went up with him).
+- **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with Schirra's name and
+  wrist rings (assumed); his fingertip lights, his smaller microphones and the webbing over his chest are not modelled
+  ([spacecraft.md](spacecraft.md), "The pilot"). The figure on the couch is Shepard's with Schirra's name.
 - **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
   programme, which have not been read; an orbit and an entry as data; drifting flight; a fuel
   budget worth keeping to. The numbers a simulator would start from are here: weights and moments
