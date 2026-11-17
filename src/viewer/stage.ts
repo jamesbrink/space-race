@@ -236,6 +236,8 @@ export class Stage {
   ) => void = () => {};
   /** The reset key (0): back to where the section starts. */
   onHome: () => void = () => {};
+  /** The skin has been opened or put back, whoever asked (a key, a switch, a part chosen inside): what shows it is told. */
+  onCutaway: (on: boolean) => void = () => {};
   /** The view has been sent to follow something the vehicle let go (its name), or is back with the vehicle (null). */
   onFollow: (name: string | null) => void = () => {};
   /**
@@ -1116,6 +1118,7 @@ export class Stage {
     // (whoever opens it: a room's lamp on what is inside comes with the opening, never apart from it)
     this.setting.inside?.(on);
     this.dirty = true;
+    this.onCutaway(on);
     const at = this.main?.position ?? new THREE.Vector3();
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
     const whole = on && this.lifted.flying && this.def?.id === this.ascent?.model;

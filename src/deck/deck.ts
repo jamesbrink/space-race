@@ -193,7 +193,7 @@ export abstract class Deck {
           <div><h4>Show</h4><p>
             <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (${capsOf('path.show').join(' ')})">${kbd('path.show')}Path</button>
             <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (${capsOf('navball.show').join(' ')})">${kbd('navball.show')}Navball</button>
-            <button data-press="${KEYS['cut.toggle'].slots[0]}" title="The vehicle's skin off, to see what is inside it and how little room there is, and out of it all round; again puts it back (${capsOf('cut.toggle').join(' ')})">${kbd('cut.toggle')}Skin off · on</button>
+            <button data-press="${KEYS['cut.toggle'].slots[0]}" data-skin class="switch" aria-pressed="true" title="The vehicle's skin: off, to see what is inside it and how little room there is, and out of it all round; on, as it flew (${capsOf('cut.toggle').join(' ')})">${kbd('cut.toggle')}Skin</button>
             <button data-press="${KEYS['navball.frame'].slots[0]}" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (${capsOf('navball.frame').join(' ')})">${kbd('navball.frame')}Surface · orbit</button>
             ${spec.choose ? `<button data-press="${KEYS['path.choose'].slots[0]}" title="While the engine burns under guidance: the path if guidance flies on to the record's cutoff, or if the engine were cut now (${capsOf('path.choose').join(' ')})">${kbd('path.choose')}Path · to cutoff · cut now</button>` : ''}
           </p></div>
@@ -380,6 +380,11 @@ export abstract class Deck {
   /** The flight's own vehicle of sim/vehicle.ts, where it has one (the path flies its programme ahead), and how it is flown. */
   abstract get craft(): import('../sim/vehicle.ts').Vehicle | null;
   abstract get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } };
+  /** The vehicle's skin is on, or off: the Skin switch's lamp says which (the page tells it, whoever took the skin off). */
+  skin(on: boolean): void {
+    this.root.querySelector('[data-skin]')?.setAttribute('aria-pressed', String(on));
+  }
+
   /** A control in the cabin, or a part's menu, asking for something (types.ts `Command`, CabinDef `does`). */
   abstract ask(what: string): void;
   abstract can(what: Command['ask']): boolean;
