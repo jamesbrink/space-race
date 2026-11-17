@@ -12,6 +12,7 @@ from pathlib import Path
 from mathutils import Vector
 
 import perforated_wall
+import side_hatch
 from srlib import CM, IN, MeshBuilder, _segs, lathe_obj, material, prof
 
 RADIUS = 77.0
@@ -58,7 +59,7 @@ def _on_cone(point, normal):
     return p + n * t
 
 
-def build(cm, heatshield, forward, base, foil, void):
+def build(cm, heatshield, forward, hatch_node, base, foil, void):
     """Keep named flight nodes; the forward assembly is explicitly unfinished."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
     datum = survey["registration"]["scan_sphere_apex_cm"]
@@ -70,9 +71,7 @@ def build(cm, heatshield, forward, base, foil, void):
         rim = [_on_cone(p, normal) for p in measured]
         polygon = perforated_wall.domain(rim)
         apertures.append((port["id"], measured, rim, polygon))
-    # Preserve the old hatch aperture until its curved frame is registered from
-    # the separate measured hatch. It is NOT one of the surveyed window loops.
-    hatch = [Vector((math.radians(a), z * IN)) for a, z in [(-7.5, 47), (7.5, 47), (7.5, 61), (-7.5, 61)]]
+    hatch = side_hatch.opening()
     holes = [p[3] for p in apertures] + [hatch]
 
     def normal(z):
@@ -112,9 +111,7 @@ def build(cm, heatshield, forward, base, foil, void):
         forward,
         segs=128,
     )
-    mesh = MeshBuilder()
-    mesh.lathe(prof([(radius(47) - 1, base + 47), (radius(61) - 1, base + 61)]), segs=12, arc=(math.radians(-7.5), math.radians(7.5)))
-    mesh.build("CM_ProvisionalHatchWindow", void, cm)
+    side_hatch.build(hatch_node, base, radius, normal, _on_cone, void)
     # ST-428A places the aft-shield joint at Xc23.23. Retain the nominal
     # spherical and toroidal curvature through that station, including R77 at
     # the shoulder's widest point. Skin thickness is not invented.

@@ -33,7 +33,8 @@ pressure tunnel are not yet built. No undocumented edge fillet is invented.
 
 Four window outlines come from Smithsonian's CM-107 survey, treated as assumed
 shared Block II structural hardware. See [the survey record](reference/README.md).
-The hatch's window remains provisional. Surface normals on the triangulated wall
+The separate hatch cover uses a fifth measured outline from the detached CM-107
+hatch, with explicitly derived registration and projection. Surface normals on the triangulated wall
 are calculated from its analytical profile so narrow triangles round the openings
 do not create false wrinkles in the metal.
 
@@ -46,6 +47,17 @@ do not create false wrinkles in the metal.
 - The window reveals are derived interpolations; glazing, frames and seals remain
   unbuilt. The dark closures are temporary, not glass.
 - The side hatch, forward hatch, recovery equipment and furnished cabin remain
-  unbuilt. The separate [pressure-vessel sidewall](pressure-vessel.md) now appears
+  incomplete: only the side hatch's nominal outer cover and window reference
+  are built. The separate [pressure-vessel sidewall](pressure-vessel.md) now appears
   in structural cutaway; bulkheads and tunnel are pending.
 - No Apollo 11 photographs, surface damage, labels or equipment are copied.
+
+## Top-station source conflict
+
+NASA TN D-7780 (1974), Figure 17, labels the forward heat-shield top Xc 104.5 in.
+The model retains Xc 112.25 in from the explicitly Block II ST-428A plate (1969),
+also shown in NASA's *A History of the Apollo Thermal Protection System*,
+NTRS 20070025192 (2007), Figure 1, p. 3, credited to Erb et al. (1970).
+The latter corroborates the selected thermal reference, but does not explain the
+104.5-inch label. That discrepancy remains unresolved; no claim is made that
+these are proven equivalent structural and thermal datums.

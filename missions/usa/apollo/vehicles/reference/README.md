@@ -24,10 +24,13 @@ best-fit planes, then their convex hulls are retained. Maximum plane residuals
 are recorded: about 1.4 mm for a side opening and 0.12 mm for a rendezvous opening.
 These residuals do not establish the absolute accuracy of the source survey.
 
-The large side hatch boundary was rejected: it is curved, with a plane residual
-of nearly 40 mm. It must not be used as a flattened door or as a fifth measured
-window. Its rounded-square outer window and circular inner pressure window (NAA A-512S
-ST-503A, p. 41), glazing layers, seals and mechanism remain pending.
+The large side hatch boundary was rejected from the **planar** window extraction:
+it is curved, with a plane residual of nearly 40 mm. It must not be used as a
+flattened door or as a fifth measured window. It is now retained as the curved
+thermal-shell interface, ordered in azimuth/station and projected radially onto
+the nominal CM wall. The separate hatch-window reference is described below.
+The circular inner pressure window (NAA A-512S ST-503A, p. 41), glazing layers,
+seals and mechanism remain pending.
 
 `command_module.py` projects each outline along its measured plane normal onto
 the nominal conical wall, builds a constrained opening and joins the two boundaries
@@ -69,3 +72,46 @@ assumption about the common coordinate frame, not an independent Apollo station
 survey. No scaling is applied to make the two sources fit. See
 [the pressure-vessel reconstruction](../pressure-vessel.md) for how the outlines
 are used and what remains unbuilt.
+
+## Side-hatch outer window
+
+`apollo-side-hatch.json` retains a sectioned window outline from Smithsonian's
+**measured crew-hatch scan**, package `e7514eea-3f12-490d-a2d0-999f2a1a70f7`.
+The original three-dimensional scan coordinates are retained in physical metres;
+the exact derivative URL, SHA-256 and transforms are in the JSON. Its
+[rights metadata](https://ids.si.edu/ids/media_view?id=3d_package%3Ae7514eea-3f12-490d-a2d0-999f2a1a70f7&format=text)
+releases it under CC0. This is not the modern Project Egress replica package
+`936d1822-b237-4431-bb3f-a1f9d39a2e90`.
+
+The unified hatch is shared Block II hardware (NASA TN D-7780, printed p. 12).
+That report explicitly dates lightweight inner-slab machining to SC106 onward.
+Only the **external** cover aperture is applied as assumed shared hardware here;
+the later inner pockets, recovery condition and equipment are not copied.
+
+The detached survey is registered rigidly, **without scaling**, to the complete
+Project Egress reconstruction, using 85-percent-trimmed nearest-point ICP. That
+reconstruction's pressure-door perimeter was separately registered rigidly to the
+CM exterior survey's curved hatch opening. The replica provides a pose bridge
+and outline cross-check, not the window's dimensions. Median nearest-point scan
+residual is 6.86 mm; median perimeter residual is 4.95 mm, maximum 8.08 mm.
+These compare different interfaces and a simplified replica: they do not establish
+manufacturing tolerance, absolute survey accuracy or an exact installed pose.
+The two individual transformations and their composition are retained for audit.
+
+Extraction in the replica frame selects front-facing mesh triangles around the
+window (|X| < 0.21 m, |Z| < 0.20 m, Y > 0.04 m, normal Y > 0.97). Area-weighted
+plane RANSAC uses a 0.5 mm inlier band and fixed random seed 0, then least-squares
+fits the inliers. Its maximum residual is 0.623271 mm. A parallel section is taken
+that residual inward, so scan noise on the mounting face does not open the loop
+to the outside. Triangle/plane intersections are joined with 1-micrometre seam
+quantisation; the loop enclosing the window centre is reduced to its convex hull.
+The resulting outline differs from the replica's by a 7.47 mm Hausdorff distance.
+The JSON converts its 68 retained boundary points back to the original survey
+frame. This is an aperture-reference reconstruction, **not a glass surface survey**.
+
+`side_hatch.py` maps that outline along the fitted mounting-face normal onto the
+nominal cone. The resulting reveal joins the measured reference and nominal skin;
+it is not a survey of the ablator's recessed wall. The cover is a separate shell
+surface, clipped with other skins in cutaway and kept with the CM during explosion.
+Its dark window closure is temporary. Full pressure door, glazing, hinges,
+gearbox, latches, valves, handles, seals and flight-specific labels are not built.

@@ -26,23 +26,40 @@ def domain(boundary):
     return [Vector((math.atan2(p.y, p.x), p.z)) for p in boundary]
 
 
-def build(name, parent, paint, base, lower, upper, radius, normal, holes, joins=()):
+def build(name, parent, paint, base, lower, upper, radius, normal, holes, joins=(), boundary=None):
     """Source inches at the profile, metres at the aperture boundaries."""
     axial, around = _segs(64), _segs(128)
     zs = sorted({lower, upper, *joins, *[lower + (upper - lower) * i / axial for i in range(axial + 1)]})
     points, edges = [], []
+    boundaries = [*holes, *([boundary] if boundary is not None else [])]
+
+    def near_edge(point):
+        # Interior samples too close to a constrained edge create razor-thin
+        # triangles after float32 export. Keep the measured edge unchanged;
+        # omit only optional tessellation samples beside it.
+        for polygon in boundaries:
+            for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+                edge = b - a
+                k = min(1, max(0, (point - a).dot(edge) / edge.length_squared)) if edge.length_squared else 0
+                if (point - a.lerp(b, k)).length < 0.001:
+                    return True
+        return False
+
+    def excluded(point):
+        return (boundary is not None and not within(point, boundary)) or any(within(point, h) for h in holes)
+
     for z in zs:
         for i in range(around + 1):
             p = Vector((-math.pi + 2 * math.pi * i / around, z * IN))
-            if not any(within(p, h) for h in holes):
+            if not excluded(p) and not near_edge(p):
                 points.append(p)
-    for polygon in holes:
+    for polygon in boundaries:
         start = len(points)
         points.extend(polygon)
         edges.extend((start + i, start + (i + 1) % len(polygon)) for i in range(len(polygon)))
     coords, _, faces, *_ = delaunay_2d_cdt(points, edges, [], 0, 1e-8, False)
     verts = [(radius(p.y / IN) * math.cos(p.x) * IN, radius(p.y / IN) * math.sin(p.x) * IN, base * IN + p.y) for p in coords]
-    kept = [face for face in faces if not any(within(sum((coords[i] for i in face), Vector((0, 0))) / len(face), h) for h in holes)]
+    kept = [face for face in faces if not excluded(sum((coords[i] for i in face), Vector((0, 0))) / len(face))]
     mesh = MeshBuilder()
     mesh.add(verts, kept)
     obj = mesh.build(name, paint, parent)

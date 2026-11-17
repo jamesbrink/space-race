@@ -85,7 +85,16 @@ def build(offset=0):
     void = material("window-void-apollo", (0.012, 0.025, 0.035), roughness=0.25)
     groups = {
         name: group(name)
-        for name in ("CommandModule", "CabinStructure", "HeatShield", "ForwardShield", "ServiceModule", "ServiceEngine", "ReactionControl")
+        for name in (
+            "CommandModule",
+            "SideHatch",
+            "CabinStructure",
+            "HeatShield",
+            "ForwardShield",
+            "ServiceModule",
+            "ServiceEngine",
+            "ReactionControl",
+        )
     }
     sm = groups["ServiceModule"]
 
@@ -145,7 +154,7 @@ def build(offset=0):
         for j, axis in enumerate((Vector((0, 0, 1)), Vector((0, 0, -1)), tangent, -tangent)):
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
-    command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], CM_BASE, foil, void)
+    command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():

@@ -11,11 +11,26 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields now separate at published Block II stations. The hatch window remains provisional. A separate pressure-vessel sidewall is now visible in cutaway; bulkheads, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. A separate pressure-vessel sidewall is visible in cutaway; bulkheads, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
       ['Interior', 'Pressure-vessel sidewall only'],
+    ],
+  },
+  {
+    node: 'SideHatch',
+    name: 'Side-hatch outer cover',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [0, 42, 0],
+    summary: 'The curved thermal cover around the fifth window.',
+    detail:
+      'The exterior hatch interface retains the curved CM-107 survey boundary. Its window outline is sectioned from Smithsonian’s measured detached Apollo 11 hatch, then projected onto the nominal CM wall. Shared external Block II hardware is assumed for CM-101. A modern Project Egress reconstruction provides only a rigid pose bridge and outline cross-check; its replica dimensions are not used as flown measurements. Registration residuals are recorded in the source data. This is the outer reference surface, without a pressure door, mechanisms, seals or glazing. The later SC106+ lightweight inner-door machining is excluded (NASA TN D-7780, p. 12). The cover stays attached to the CM in the exploded exhibit.',
+    facts: [
+      ['Window outline', 'Measured CM-107 scan · assumed shared exterior'],
+      ['Inner pressure door', 'Not built; later machining excluded'],
+      ['Glazing', 'Temporary dark closure, not glass'],
     ],
   },
   {
@@ -439,12 +454,21 @@ export const flight: Flight = {
         {
           id: 'spacecraft',
           label: 'Spacecraft',
-          nodes: ['CommandModule', 'CabinStructure', 'HeatShield', 'ForwardShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
+          nodes: [
+            'CommandModule',
+            'SideHatch',
+            'CabinStructure',
+            'HeatShield',
+            'ForwardShield',
+            'ServiceModule',
+            'ReactionControl',
+            'ServiceEngine',
+          ],
         },
         {
           id: 'cabin',
           label: 'Command module',
-          nodes: ['CommandModule', 'CabinStructure', 'HeatShield', 'ForwardShield'],
+          nodes: ['CommandModule', 'SideHatch', 'CabinStructure', 'HeatShield', 'ForwardShield'],
           from: [1, 0.3, 0.3],
         },
         { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
