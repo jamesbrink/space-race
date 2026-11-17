@@ -32,7 +32,7 @@ pressure vessel, every station and motor. This file is what was No. 11's own.
 | Clamp-ring bolt covers | rectangular | streamlined, their upper parts hinged to flip off at separation | documented (that, and the shape); estimated (size) | MR-4 Results, p. 4 and Figure 2-2 |
 | Couch | | more foam at the head, against vibration | documented; not modelled | *This New Ocean*, p. 368 |
 | Heat shield | beryllium heat sink | the same | documented | Hammack and Heberlig, p. 6: "the approximately 1-inch-thick beryllium heat shield ... for these ballistic flights" |
-| Landing bag | carried | carried: fitted at the Cape; the pilot heard and felt it drop | documented | MR-4 Results, pp. 5 and 39 |
+| Landing bag | carried | carried: fitted at the Cape; the pilot heard and felt it drop; let down on this model ("The landing bag", below) | documented | MR-4 Results, pp. 5 and 39 |
 | Periscope | carried | carried: extended after separation; Grissom used the window | documented | MR-4 Results, pp. 6 and 52 |
 | Antenna canister, escape tower, retropack | | no difference found in anything read | | Hammack and Heberlig's Figures 2 and 17 (October 1961) are the dimensions both models use |
 | Paint | FREEDOM 7; UNITED STATES; flags | LIBERTY BELL 7 under the window; a crack; UNITED STATES; a flag | documented by photographs; every place estimated | see "Paint" |
@@ -204,6 +204,21 @@ Built by [vehicles/mercury_cabin_11.py](../../vehicles/mercury_cabin_11.py), whi
 | Hand controller and abort handle | under his palms, which puts them 8.4 mm from where No. 7's stand under Shepard's | estimated | both; mark-iv-suit.md, "On the couch" |
 | Survival kit | on the left wall | documented | *This New Ocean*, p. 369: "on a shelf ... near the astronaut's left arm" |
 
+## The landing bag
+
+The shield is let down on its bag as it was, at the launch site and in flight on the clock; in the gallery the model
+stands as at liftoff, the shield up and the bag folded behind it. What the bag is and how it is built:
+[mercury-capsule.md](../../vehicles/mercury-capsule.md), "The landing bag".
+
+| Item | Value | Confidence | Basis |
+| --- | --- | --- | --- |
+| The drop | the shield 48 in under where it was built (`BAG_DROP`), the skirt between | documented, as "about four feet" | *This New Ocean*, p. 311 and "its four-foot impact skirt", p. 356; MA-6 Results, p. 29: "about 4 feet long". The same figure the sea floats it on (`mercury-afloat.ts`, `BAG_DROP`) |
+| When | T+10:26 (626 s): the main at 10:14 and the bag twelve seconds after it | assumed (the twelve seconds are the type's, from SEDR 104 of December 1959 and of 1962, 9-2; not given for No. 11); the main documented | *Results*, p. 6: "main parachute, at T+10 minutes 14 seconds". The pilot's call that began at 10:14 and ran 25 s ended "and the landing bag is out green" (p. 44): the bag was down by 10:39, which 10:26 is inside. No time for it is in the report's sequence of events |
+| How long it takes | 1 s, eased in and out | estimated | four feet from rest is half a second under gravity; the bag had to fill with air. "A slight jar as the thing dropped down" (p. 39) |
+| What moves | `HeatShield_Drop` (the dish, its fasteners and the bag's bottom band) down 48 in; `LandingBag_Band01` to `_Band23` down 2 to 46 in; `LandingBag_Band00` (the top band and its hem) stays | the model's (`mercury_capsule.landing_bag`) | |
+| The shield | the beryllium dish an inch thick, hollow behind; before November 2026 it was built solid under a flat top, as Freedom 7's still is | documented (thickness) | Hammack and Heberlig, p. 6 |
+| The retropack | not carried down: it was let go at 6:07 | documented | *Results*, p. 6 |
+
 ## Which way round it stood on the pad
 
 The model's own frame has the hatch on +X. On the pad the vehicle stood turned to its 100 degree azimuth, the
@@ -219,11 +234,12 @@ Top-level nodes in the GLB. These names are the `node` fields in `flight.ts`.
 
 | Node | Contains |
 | --- | --- |
-| `Retropack`, `HeatShield`, `RecoveryCompartment`, `AntennaCanister`, `EscapeTower` | as Freedom 7's |
+| `Retropack`, `RecoveryCompartment`, `AntennaCanister`, `EscapeTower` | as Freedom 7's |
+| `HeatShield` | the shield as a dish, on its own node `HeatShield_Drop` with its fasteners and the bag's bottom band; the landing bag's other bands, `LandingBag_Band00` (fixed, with its hem) and `LandingBag_Band01` to `_Band23` (each a node of its own), each band's cloth (`_Cloth`) and straps (`_Straps`) |
 | `Afterbody` | shingles and fasteners, the plain plates (round the window, the hatch and the periscope's door, and the band at the foot), structure, attach ring, the periscope with its door and well, the umbilical receptacle, roll thrusters, lettering, the crack, the flag |
 | `Window` | the outer pane and its rim; at full detail the foil well, the inner panes and their frame |
 | `Hatch` | its shingles and fasteners, the lanyard cover, its two skins; at full detail its painted inner face, 69 bolts, the initiator with plunger and pin, the knife |
-| `CrewCabin` | the pressure vessel with the hatch's and the window's openings; at full detail the lining, couch, pilot, panel, consoles, the window's shroud, stowage, lights, oxygen bottles, landing bag |
+| `CrewCabin` | the pressure vessel with the hatch's and the window's openings; at full detail the lining, couch, pilot, panel, consoles, the window's shroud, stowage, lights, oxygen bottles (the landing bag is the shield's) |
 
 The same GLB holds the launch vehicle's five nodes: [redstone-mrlv.md](../../vehicles/redstone-mrlv.md).
 
@@ -315,8 +331,12 @@ capsule's stays 41.5 from its own photographs).
   lies between the skins ours; the sea's density the Bahamas' surface water's. Every share and opening is `estimated`.
 - **The hatch thrown off** (sim/loose.ts) is a point with a tumbling plate's drag; drawn, it keeps the turn it had as it
   left and lies down flat on the sea over a second, where the history has it "skipping over the waves".
+- **The landing bag** is let down on the record's clock, not on the simulator's main parachute: flown by hand, it drops
+  at 10:26 whenever the main came out, and with no retropack let go it would leave the pack behind on its straps. Its
+  telelight stays dark. What the bag itself leaves out (its folds, its cables, its shape full of the sea) is in
+  [mercury-capsule.md](../../vehicles/mercury-capsule.md), "What the model gets wrong or leaves out".
 - Everything listed in Freedom 7's spacecraft.md for the parts the two share: the retropack's
-  straps, the tower's bracing and single jettison nozzle, the landing bag as a flat ring.
+  straps, the tower's bracing and single jettison nozzle.
 
 ## Sources
 

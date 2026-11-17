@@ -19,6 +19,8 @@ See ../spacecraft.md for what each number rests on.
 Top-level nodes (the viewer's part list keys on these names):
     HeatShield  Retropack  Afterbody  Window  Hatch  CrewCabin  RecoveryCompartment
     AntennaCanister  EscapeTower
+In HeatShield, what flight.ts lets down on its clock: HeatShield_Drop (the shield) and LandingBag_Band01 to _Band23 (the bag:
+mercury_capsule.landing_bag).
 and, from ../../../vehicles/redstone_mrlv.py, the launch vehicle:
     RedstoneAdapter  RedstoneAftUnit  RedstoneCenterUnit  RedstoneTailUnit  RedstoneEngine
 """
@@ -491,7 +493,7 @@ def build_crew_cabin(M, window: dict) -> None:
     mercury_cabin_11.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH)
     mercury_cabin_11.name_things(g)
     print(f"mr-4 cabin: {where}")
-    mercury_capsule.oxygen_and_bag(M, g)
+    mercury_capsule.oxygen_and_bag(M, g, bag_ring=False)  # (the bag is built under the shield, folded: build, below)
     # (what lets light in with the lamps out: the window's inner panes and the periscope's screen)
     openings = [(window["centre"], 0.5 * window["pane"][1] * IN), (where["periscope"]["screen"], where["periscope"]["radius"])]
     mercury_cabin.shade(g, where["lamps"], mercury_cabin.inside_of("Hatch"), openings)
@@ -506,7 +508,10 @@ def build() -> str:
     M = mercury_capsule.make_materials()
     # crinkled aluminium foil over the insulation round the window's well, as the photographs show it
     M["foil"] = material("insulation-foil", (0.74, 0.73, 0.69), 1.0, 0.36, double_sided=True)
-    mercury_capsule.build_heat_shield(M)
+    # the shield hung on its landing bag, both as they stood at liftoff: the shield up against the capsule and the bag folded in
+    # the cavity between them; flight.ts lets them down on the clock, twelve seconds after the main parachute opened
+    shield = mercury_capsule.build_heat_shield(M, hung=True)
+    mercury_capsule.landing_bag(M, shield)
     mercury_capsule.build_retropack(M)
     build_afterbody(M, font)
     window = build_window(M)

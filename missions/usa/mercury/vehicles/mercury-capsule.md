@@ -15,7 +15,7 @@ on capsule No. 7 (Freedom 7, MR-3) and capsule No. 11 (Liberty Bell 7, MR-4). A 
 | The periscope's objective (`periscope`), its door, well and the umbilical receptacle under it (`periscope_door`: built shut and drawn in, as at liftoff), as one linkage (`ScopeWorks`: the cartridge's travel, the door's hinge, the link between them), each moving piece a node of its own whose motion the build writes into its extras (`periscope_run`) and a flight plays on its clock (`vehicles/periscope.ts`); the lower housing's way through the pressure vessel (`periscope_mouth`); `chamfered`, the block every fitting here and in the cabins is made of; the roll jets in the top row (`roll_fittings`, No. 7) or at the base (`roll_thrusters`, No. 11, as built before No. 7's were read), the attach ring | |
 | Screws round a plain plate (`fasten_round`) | |
 | Standing the capsule on its booster (`stand`) | |
-| The pressure vessel round a hatch opening, the bulkhead stiffeners, oxygen bottles, landing bag | |
+| The pressure vessel round a hatch opening, the bulkhead stiffeners, oxygen bottles, landing bag (a flat ring folded behind a solid shield; or, asked for, the shield hung as the dish it was, `build_heat_shield(hung=True)`, and the bag built to be let down under it, `landing_bag`: "The landing bag", below) | Whether its bag is let down (Liberty Bell 7's is; the others' are the flat ring, to the byte as before) |
 
 Every dimension, its confidence and its source are in the flights' records:
 [Freedom 7's spacecraft.md](../flights/mr-3-freedom-7/spacecraft.md) for all that is shared, and
@@ -85,6 +85,35 @@ capsule's skin, the recovery compartment, the antenna canister and the tower, so
 not made here. The window's stations were measured on photographs with 58.38 as the cone's upper end; with 57.21
 they come out 0.6 to 1.1 in lower, inside the 1.5 in they are good to.
 
+## The landing bag
+
+Every Mercury capsule from No. 5 on carried one ("Capsules 2, 3 and 4 do not contain a landing impact bag": SEDR 104 of
+December 1959, 2-22). What the sources give:
+
+| What | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| What it is | "the rubber-cloth impact skirt, attached to the capsule heat shield attach ring and the heat shield"; "plasticized fabric, accordion-like" | documented | SEDR 104 of 1962, 2-2, a page of 1 November 1961 (of December 1959, 2-4: "rubber-cloth impact bag"); *This New Ocean*, p. 311 |
+| Stowed | "folded and contained between the heat shield and spacecraft", the shield "held directly to the spacecraft by a mechanical latch" | documented | *Results of the First United States Manned Orbital Space Flight* (MA-6), p. 29 |
+| Let down | "about 4 feet long"; "the heatshield and porous bag were to drop down about four feet"; the shield, released, "extends the full length of the impact skirt" | documented (about) | the same; *This New Ocean*, p. 311; SEDR 104, 2-2 |
+| When | "Twelve seconds after main chute deployment the landing impact bag starts to inflate"; the 1962 printing's relays the same, firing "the Landing Bag Valve squibs releasing the heat shield and extending the impact landing bag" | documented for the type | SEDR 104 of December 1959, 9-2; of 1962, 9-2 |
+| How it works | at the sea the air in it "is forced out through a series of holes located in the impact skirt wall"; from about 45 g to about 15 g; afloat, "a sort of sea anchor" | documented | SEDR 104, 2-2; MA-6 Results, p. 29; *This New Ocean*, p. 311 |
+| Straps and cables | 24 straps of stainless steel "about the periphery", against tearing in a landing going sideways; 24 stainless cables inside it, between the straps, to hold the shield if a strap failed | documented | SEDR 104 of 1962, 2-2 |
+| A torus at its foot | "the torus bag at base of impact bag will be inflated to 10 psi" | documented for the 1959 design; not in the 1962 printing; not modelled | SEDR 104 of December 1959, 9-3 |
+
+Not in anything read: the bag's diameter (taken as the shield's, inside its rim), its folds, its colour, the holes'
+number, size and place, the straps' width, the cables' run. **How it is built** (`landing_bag`, for a shield built
+`hung`): the skirt is 25 bands of cloth 2 in high, nested one inside the next (each 0.07 in in from the one above),
+stowed all at one height in the cavity between the dish and the large pressure bulkhead, so that nothing of it is seen
+until it is let down; each band carries its share of the 24 straps. The top band stays with the capsule, its hem under
+the capsule's rim; the bottom one is built on the shield's node (`HeatShield_Drop`); each between is a node of its own
+(`LandingBag_Band01` to `_Band23`). A flight lets the shield down 48 in and band n down 2n in, all over the same second
+(Liberty Bell 7's `flight.ts`, `BAG_MOVES`), so the skirt is whole at every instant and at the end the bands meet edge to
+edge. Four rows of 24 holes, 1.1 by 1.0 in, between the straps, come to 1.0 per cent of the skirt, the share
+`mercury-afloat.ts` takes for its pores; both are ours. A shield built `hung` is the beryllium dish it was, an inch
+thick ("the approximately 1-inch-thick beryllium heat shield": Hammack and Heberlig, p. 6), its rim's inside 36.0 in round at the top and 36.15 at the dish, leaning out 4° to keep off the Redstone adapter's inner skin just outside it;
+a shield not so built is the solid dish under a flat top every other capsule has, with the bag a flat ring in the cabin
+(`oxygen_and_bag`), and its GLB is as it was.
+
 ## Two ways of building shingles
 
 - `shingle_row`: a ring of shingles with their beads along the meridian. Only the recovery
@@ -117,7 +146,12 @@ Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights
   periscope's door, the umbilical, Liberty Bell 7's lettering) was laid out against where the window stood before and
   not read again ("Where the window stands").
 - **The shingles are a regular layout** fitted to photographs; real ones vary and are cut round fittings.
-- **The landing bag** is a flat ring standing in for the folded bag; it does not deploy.
+- **The landing bag** is a flat ring standing in for the folded bag on every capsule but Liberty Bell 7, and does not deploy.
+  Built to be let down (`landing_bag`): a skirt of 25 rigid bands that telescope, where the cloth folded; it narrows by
+  1.7 in from top to bottom, one 0.07 in step a band; it hangs straight and still, never bellying, swinging or
+  crumpling, and stays the same shape full of air or of the sea; its 24 cables inside, the shield's latch and release,
+  and the 1959 design's torus at its foot are left out; its holes are square, and their number, size and place, its
+  diameter, its colour and the straps' width are ours; it falls over a second, eased in and out, not under gravity.
 - **The retropack's straps** run from its sides instead of meeting under its centre at one explosive bolt, and its
   motors are not canted toward the centre of mass.
 - **The escape tower:** the jettison motor has one nozzle, where it had three; the bracing is one diagonal a bay.

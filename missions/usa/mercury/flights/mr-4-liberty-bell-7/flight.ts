@@ -51,6 +51,7 @@ import {
   type PartWords as StackWords,
   WINDOW_AZ,
 } from '../../vehicles/mercury-redstone-stack.ts';
+import { BAG_DROP } from '../../vehicles/mercury-afloat.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { AFLOAT, HATCH_LOOSE } from './afloat.ts';
 import { HUNT_CLUB_1 } from './recovery.ts';
@@ -73,6 +74,48 @@ const PERISCOPE_EVENTS: [number, boolean][] = [
   [581, true],
 ];
 const PERISCOPE = periscopeMoves(PERISCOPE_EVENTS);
+
+/**
+ * The landing bag let down (vehicles/mercury_capsule.py `landing_bag`): the shield's node (`HeatShield_Drop`) goes down the
+ * bag's whole drop and each of the bag's 23 moving bands (`LandingBag_Band01` to `_Band23`, `BAG_BANDS` less the two at its
+ * ends) a band's height (`BAG_BAND`, 2 in) more than the one above it, all over the same second, so that they meet edge to edge
+ * as the shield comes to the end of its fall. When: the main parachute at 10:14 (Results, p. 6) and the bag "twelve seconds after
+ * main chute deployment" (SEDR 104 of December 1959, 9-2, and of 1962, 9-2: the type's relays, assumed for No. 11), which falls
+ * inside the pilot's call that began at 10:14 and ended "and the landing bag is out green" (p. 44). How long the fall took is ours:
+ * four feet from rest is half a second under gravity, and the bag had to fill with air.
+ */
+const BAG_OUT = 614 + 12;
+const BAG_FALL = 1;
+const BAG_BANDS = 25;
+const BAG_MOVES: Move[] = [
+  {
+    kind: 'slide',
+    node: 'HeatShield_Drop',
+    from: BAG_OUT,
+    to: BAG_OUT + BAG_FALL,
+    by: [0, -BAG_DROP * IN, 0],
+    machine: {
+      kind: 'release',
+      confidence: 'documented',
+      source: 'the Landing Bag Valve squibs fired, "releasing the heat shield" (SEDR 104 of 1962, 9-2): it falls under its own weight',
+    },
+  },
+  ...Array.from(
+    { length: BAG_BANDS - 2 },
+    (_, k): Move => ({
+      kind: 'slide',
+      node: `LandingBag_Band${String(k + 1).padStart(2, '0')}`,
+      from: BAG_OUT,
+      to: BAG_OUT + BAG_FALL,
+      by: [0, (-BAG_DROP * IN * (k + 1)) / (BAG_BANDS - 1), 0],
+      machine: {
+        kind: 'none',
+        confidence: 'documented',
+        source: 'the bag drawn out by the shield as it fell (SEDR 104, 2-2): heard as the shield',
+      },
+    }),
+  ),
+];
 
 const RESULTS = 'Results of the Second U.S. Manned Suborbital Space Flight (NASA MSC, 1961)';
 
@@ -221,18 +264,27 @@ const parts: StackWords[] = [
   },
   {
     node: 'HeatShield',
-    name: 'Heat shield',
-    summary: 'Beryllium heat sink, 74.5 inches across.',
+    name: 'Heat shield and landing bag',
+    summary: 'Beryllium heat sink, 74.5 inches across, and folded behind it four feet of rubberised cloth to land on.',
     detail:
-      'As Freedom 7’s: a suborbital entry is short enough for a solid beryllium shield that soaks up the heat, where ' +
-      'the orbital flights needed one that chars away. Behind it the landing bag dropped before the sea, ' +
-      'with a clunk the pilot heard.',
+      'As Freedom 7’s: a suborbital entry is short enough for a beryllium dish an inch thick that soaks up the heat, where ' +
+      'the orbital flights needed one that chars away. Between it and the capsule lay the landing bag, a skirt of ' +
+      'rubberised cloth folded up like an accordion, with 24 steel straps round it. Twelve seconds after the main ' +
+      'parachute opened, the shield was let go and fell four feet, drawing the bag out after it: "a slight jar as the ' +
+      'thing dropped down", Grissom said. At the sea the shield struck first and the air in the bag went out through ' +
+      'the holes in its wall, taking the blow; afloat, the bag full of water hung under the capsule like a sea anchor. ' +
+      'At the launch site and in flight the bag drops on the clock, at 10:26. That the shield fell four feet, the cloth, ' +
+      'the straps, the holes and the twelve seconds are documented; the bag’s colour, its holes’ number and size, its ' +
+      'folds, and the second the fall takes are estimated.',
     facts: [
       ['Diameter', '74.5 in (1.89 m)'],
       ['Radius of curvature', '80 in'],
       ['Material', 'beryllium heat sink, about 1 in'],
       ['Peak load coming in', '11.1 g'],
+      ['Landing bag', 'rubberised cloth, about 4 ft, 24 steel straps'],
+      ['Bag let out', 'T+10:26, 12 s after the main (assumed)'],
     ],
+    clocked: BAG_MOVES,
   },
   {
     node: 'Retropack',

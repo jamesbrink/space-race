@@ -522,11 +522,24 @@ def fasten_round(skin: Skin, bolts: MeshBuilder, rect, inset: float = 0.5, pitch
 # --------------------------------------------------------------------------- parts
 
 
-def build_heat_shield(M) -> None:
-    g = group("HeatShield")
+def build_heat_shield(M, hung: bool = False) -> bpy.types.Object:
+    """The heat-sink shield. Built as every capsule has had it, a solid dish under a flat top, unless `hung`: then it is
+    the beryllium dish it was, an inch thick (`BERYLLIUM`), with the forebody's cavity in it where the landing bag lay
+    folded, and it hangs from a node of its own (`HeatShield_Drop`) that a flight lets down on its clock (`landing_bag`).
+    Returns the HeatShield node."""
+    top = group("HeatShield")
     phi_max = math.asin(SHIELD_R / SHIELD_SPHERE_R)
     cap = [(SHIELD_SPHERE_R * math.sin(phi_max * i / 40), Z_SPHERE_C - SHIELD_SPHERE_R * math.cos(phi_max * i / 40)) for i in range(41)]
-    profile = cap + [(SHIELD_R, -0.25), (SHIELD_R - 0.25, 0.0), (SHIELD_R - 2.5, 0.0), (SHIELD_R - 3.0, -0.8), (0.0, -0.8)]
+    if hung:
+        # the dish's inside, an inch in from its face, up to the rim the bag is made fast to (BAG_WELL)
+        inner = SHIELD_SPHERE_R - BERYLLIUM
+        rim, foot = BAG_WELL
+        well = [(foot * (1 - i / 24), Z_SPHERE_C - math.sqrt(inner**2 - (foot * (1 - i / 24)) ** 2)) for i in range(25)]
+        profile = cap + [(SHIELD_R, -0.25), (SHIELD_R - 0.25, 0.0), (rim, 0.0), *well]
+        g = group("HeatShield_Drop", top)
+    else:
+        profile = cap + [(SHIELD_R, -0.25), (SHIELD_R - 0.25, 0.0), (SHIELD_R - 2.5, 0.0), (SHIELD_R - 3.0, -0.8), (0.0, -0.8)]
+        g = top
     lathe_obj("HeatShield_HeatSink", prof(profile), M["beryllium"], g, segs=160, sharp_angle=30)
     # attachment ring fasteners around the edge
     mb = MeshBuilder()
@@ -534,6 +547,180 @@ def build_heat_shield(M) -> None:
         t = TAU * i / 72
         mb.disc(Vector((SHIELD_R * math.cos(t), SHIELD_R * math.sin(t), -1.3)) * IN, (math.cos(t), math.sin(t), 0), 0.28 * IN, 0.08 * IN)
     mb.build("HeatShield_Fasteners", M["bolt"], g)
+    return top
+
+
+# The landing bag, as the sources give it:
+# - "The rubber-cloth impact skirt, attached to the capsule heat shield attach ring and the heat shield, is designed to absorb high
+#   energy shock loads ... During the capsule landing phase, the heat shield is released, and extends the full length of the impact
+#   skirt. Upon heat shield contact with land or water the impact skirt is forced out through a series of holes located in the impact
+#   skirt wall" (SEDR 104 of 1962, 2-2, a page of 1 November 1961; the edition of 15 December 1959, 2-4, says the same of
+#   the "rubber-cloth impact bag").
+# - "Fabricated of stainless steel and located about the periphery of the impact landing skirt, are 24 straps which prevent tearing
+#   of the impact landing skirt during high horizontal velocity water landings. Located inside the impact landing bag and alternately
+#   located in relation to the steel straps, are 24 stainless steel cables. The cables retain the heat shield to the capsule in the
+#   event strap failure should occur" (SEDR 104 of 1962, 2-2). Stowed, "the landing bag is folded and contained between the heat
+#   shield and spacecraft"; it is "a rubberized-cloth assembly about 4 feet long" (Results of the First U.S. Manned Orbital Space
+#   Flight, p. 29); "this plasticized fabric, accordion-like device ... the heatshield and porous bag were to drop down about four
+#   feet" (This New Ocean, p. 311).
+# - When: "Twelve seconds after main chute deployment the landing impact bag starts to inflate" (SEDR 104 of 1959, 9-2; the 1962
+#   printing's 9-2 has the same twelve-second relays firing "the Landing Bag Valve squibs releasing the heat shield"). A flight says
+#   when on its clock; the model is built as it stood at liftoff, the shield up and the bag folded.
+# How it is built: the skirt is BAG_BANDS bands of cloth one inside the next, stowed all at the same height in the cavity between the
+# hung dish and the large pressure bulkhead, and let out one below the next: the top one stays with the capsule, the bottom one goes
+# with the shield, and each between goes down by a band more than the one above it, so that at the end they meet edge to edge and
+# hang the full drop. Nothing of it is seen until it is let down (the dish and the capsule's skin close round it), and at no instant of
+# the drop is there a gap in it. Each band is BAG_STEP inside the one above, so the skirt narrows by 1.7 in over its height; its
+# straps are a band's own, stepping in with it. Every figure below that is not one of the documented ones above is ours.
+BERYLLIUM = 1.0  # the dish's thickness: "the approximately 1-inch-thick beryllium heat shield" (Hammack and Heberlig, p. 6)
+BAG_DROP = 48.0  # how far the shield drops on the bag: "about four feet" (This New Ocean, p. 311; Results of MA-6, p. 29)
+BAG_BANDS = 25  # bands of cloth, the top one fixed: the drop is 24 of BAG_BAND (estimated: as few as the cavity's depth allows)
+BAG_BAND = BAG_DROP / (BAG_BANDS - 1)  # 2.0 in: each band's height, and how much further down each lies than the one above it
+BAG_TOP = 0.4  # every band's top as built, 0.1 in under the large pressure bulkhead (station 0.5)
+BAG_R = 35.9  # the outermost band's straps (estimated: just inside the dish's rim, BAG_WELL)
+BAG_STEP = 0.07  # how far in each band stands from the one above it (estimated: what keeps their faces apart, srlib.MIN_GAP)
+BAG_CLOTH = 0.06  # a band's thickness, its straps' face to its inner face (estimated: rubberised cloth about 1.5 mm)
+BAG_PROUD = 0.025  # how far its straps stand off its cloth (estimated)
+BAG_STRAPS = 24  # documented, above
+BAG_STRAP_W = 1.0  # a strap's width (estimated)
+# The inside of the dish's rim, where the bag is made fast, at its top and where it meets the dish (estimated). It leans out 4
+# degrees going down, so as not to lie within 14 degrees of the Redstone adapter's inner skin, which leans 13 degrees the other way
+# just outside it (redstone_mrlv: 36.1 in round at the dish's foot, and under 36.0 between the facets of its coarsest level).
+BAG_WELL = (36.0, 36.15)
+BAG_COLLAR = (36.9, 0.1)  # the top band's hem under the capsule's rim, out to this radius and down to this station (estimated)
+# The holes: four rows of 24, one between each pair of straps, each 1.1 in round the skirt and 1.0 in down it (all estimated: the
+# sources say "a series of holes"). They come to 1.0 per cent of the skirt, the share sim/afloat.ts takes for the bag's pores.
+BAG_HOLE_BANDS = (3, 9, 15, 21)
+BAG_HOLE = (1.1, 1.0)
+
+
+def landing_bag(M, shield: bpy.types.Object) -> list[str]:
+    """The landing bag under a shield built `hung` (build_heat_shield): its bands, each a node of its own that a flight lets down
+    on its clock by `BAG_BAND` times its number (`LandingBag_Band01` to `_Band23`); the top band (0) is the capsule's and does
+    not move, and the bottom one (24) is built on `HeatShield_Drop` and goes with the shield. Returns the moving bands' names."""
+    drop = bpy.data.objects["HeatShield_Drop"]
+    bag = material("landing-bag-cloth", (0.54, 0.51, 0.44), 0.0, 0.85)  # (its colour is ours: no photograph of it read in colour)
+    straps_mat = material("landing-bag-strap", (0.62, 0.61, 0.58), 1.0, 0.35)  # stainless steel; single-sided, unlike the retropack's
+    says = (
+        "Landing bag",
+        "Rubberised cloth, about four feet of it, folded between the heat shield and the capsule. Twelve seconds after the main "
+        "parachute opened the shield was let go, fell, and drew it out; at the sea the air in it went out through its holes and "
+        "took the blow. Its 24 steel straps held it.",
+    )
+    strap_says = (
+        "Landing bag straps",
+        "Stainless steel, 24 round the bag, to keep it from tearing in a landing with the capsule going sideways.",
+    )
+    # where everything stands round the skirt, the same for every band so that their faces are parallel: each strap, and between
+    # each pair of straps the cloth (with a hole in the middle of it, on the bands that have holes)
+    half_strap = BAG_STRAP_W / 2 / BAG_R
+    half_hole = BAG_HOLE[0] / 2 / BAG_R
+    holes = srlib.DETAIL >= 0.5
+    pieces = max(2, round(4 * srlib.DETAIL))  # facets either side of a hole
+    straps: list[tuple[float, float]] = []
+    cloth: list[list[float]] = []  # between straps, its breaks round the skirt
+    hole_cells: list[tuple[float, float]] = []
+    for k in range(BAG_STRAPS):
+        t = TAU * k / BAG_STRAPS
+        straps.append((t - half_strap, t + half_strap))
+        a, b = t + half_strap, t + TAU / BAG_STRAPS - half_strap
+        m = (a + b) / 2
+        left = [a + (m - half_hole - a) * i / pieces for i in range(pieces + 1)]
+        right = [m + half_hole + (b - m - half_hole) * i / pieces for i in range(pieces + 1)]
+        cloth.append(left + right)
+        hole_cells.append((m - half_hole, m + half_hole))
+    ring: list[float] = []
+    for t in sorted(t % TAU for t in [*(t for s in straps for t in s), *(t for c in cloth for t in c)]):
+        if not ring or t - ring[-1] > 1e-9:
+            ring.append(t)
+    if TAU - ring[-1] + ring[0] < 1e-9:
+        ring.pop()
+
+    def p(r: float, t: float, z: float) -> tuple[float, float, float]:
+        return (r * IN * math.cos(t), r * IN * math.sin(t), z * IN)
+
+    def wall(mb: MeshBuilder, r: float, ts: list[float], zs: list[float], closed: bool, outward: bool, skip=lambda t0, z0: False) -> None:
+        cols = len(ts) if closed else len(ts) - 1
+        verts = [p(r, t, z) for z in zs for t in ts]
+        faces = []
+        n = len(ts)
+        for j in range(len(zs) - 1):
+            for i in range(cols):
+                if skip(ts[i], zs[j]):
+                    continue
+                a, b, c, d = j * n + i, j * n + (i + 1) % n, (j + 1) * n + (i + 1) % n, (j + 1) * n + i
+                faces.append((a, b, c, d) if outward else (a, d, c, b))
+        mb.add(verts, faces)
+
+    def flat(mb: MeshBuilder, r0: float, r1: float, ts: list[float], z: float, up: bool, closed: bool) -> None:
+        n = len(ts)
+        verts = [p(r, t, z) for t in ts for r in (r0, r1)]
+        cols = n if closed else n - 1
+        faces = []
+        for i in range(cols):
+            a, b, c, d = 2 * i, 2 * i + 1, 2 * ((i + 1) % n) + 1, 2 * ((i + 1) % n)
+            faces.append((a, b, c, d) if up else (a, d, c, b))
+        mb.add(verts, faces)
+
+    def side(mb: MeshBuilder, r0: float, r1: float, t: float, z0: float, z1: float, back: bool) -> None:
+        """A face square to the skirt at angle t: facing round the skirt the way of decreasing angle, or the other with `back`."""
+        q = [p(r0, t, z0), p(r1, t, z0), p(r1, t, z1), p(r0, t, z1)]
+        mb.add(q, [(0, 3, 2, 1) if back else (0, 1, 2, 3)])
+
+    moving = []
+    z0, z1 = BAG_TOP - BAG_BAND, BAG_TOP
+    for i in range(BAG_BANDS):
+        r_out = BAG_R - i * BAG_STEP
+        r_cloth, r_in = r_out - BAG_PROUD, r_out - BAG_CLOTH
+        holed = holes and i in BAG_HOLE_BANDS
+        hz0, hz1 = (z0 + z1 - BAG_HOLE[1]) / 2, (z0 + z1 + BAG_HOLE[1]) / 2
+        zs = [z0, hz0, hz1, z1] if holed else [z0, z1]
+
+        def in_hole(t: float, z: float, holed=holed, hz0=hz0) -> bool:
+            return holed and z == hz0 and any(abs(t - h0) < 1e-9 for h0, _ in hole_cells)
+
+        fabric, steel = MeshBuilder(), MeshBuilder()
+        wall(fabric, r_in, ring, zs, closed=True, outward=False, skip=in_hole)
+        for c in cloth:
+            wall(fabric, r_cloth, c, zs, closed=False, outward=True, skip=in_hole)
+        flat(fabric, r_in, r_cloth, ring, z1, up=True, closed=True)
+        flat(fabric, r_in, r_cloth, ring, z0, up=False, closed=True)
+        if holed:
+            for h0, h1 in hole_cells:
+                side(fabric, r_in, r_cloth, h0, hz0, hz1, back=True)
+                side(fabric, r_in, r_cloth, h1, hz0, hz1, back=False)
+                flat(fabric, r_in, r_cloth, [h0, h1], hz0, up=True, closed=False)
+                flat(fabric, r_in, r_cloth, [h0, h1], hz1, up=False, closed=False)
+        if i == 0:
+            # the top band's hem, made fast under the capsule's rim: it closes the foot of the wall between the shingles and
+            # the pressure vessel once the shield has gone from under it
+            # (on the band's own breaks round the skirt, so that its inner face stands square over the band's at every level)
+            r_hem, z_hem = BAG_COLLAR
+            flat(fabric, r_out, r_hem, ring, z_hem, up=False, closed=True)
+            wall(fabric, r_hem, ring, [z_hem, z1], closed=True, outward=True)
+            flat(fabric, r_out, r_hem, ring, z1, up=True, closed=True)
+            wall(fabric, r_out, ring, [z_hem, z1], closed=True, outward=False)
+        for s0, s1 in straps:
+            wall(steel, r_out, [s0, s1], [z0, z1], closed=False, outward=True)
+            side(steel, r_cloth, r_out, s0, z0, z1, back=False)
+            side(steel, r_cloth, r_out, s1, z0, z1, back=True)
+            flat(steel, r_cloth, r_out, [s0, s1], z1, up=True, closed=False)
+            flat(steel, r_cloth, r_out, [s0, s1], z0, up=False, closed=False)
+        name = f"LandingBag_Band{i:02d}"
+        if i == 0:
+            parent = shield
+        elif i == BAG_BANDS - 1:
+            parent = drop
+        else:
+            parent = group(name, shield)
+            moving.append(name)
+        thing(fabric, f"{name}_Cloth", bag, parent, *says, shell=False, sharp_angle=40)
+        thing(steel, f"{name}_Straps", straps_mat, parent, *strap_says, shell=False, smooth=False)
+    print(
+        f"landing bag: {BAG_BANDS} bands of {BAG_BAND:.2f} in, the shield let down {BAG_DROP:.1f} in; "
+        f"the skirt from {BAG_R:.2f} in round its straps at the top to {BAG_R - (BAG_BANDS - 1) * BAG_STEP:.2f} at the bottom"
+    )
+    return moving
 
 
 def build_retropack(M) -> None:
@@ -1173,16 +1360,18 @@ def bulkhead_stiffeners(M, g) -> None:
     ribs.build("CrewCabin_BulkheadStiffeners", M["titanium"], g, smooth=False)
 
 
-def oxygen_and_bag(M, g) -> None:
-    """Under the couch and behind the bulkhead: the two oxygen bottles, and the landing bag folded flat."""
+def oxygen_and_bag(M, g, bag_ring: bool = True) -> None:
+    """Under the couch and behind the bulkhead: the two oxygen bottles, and the landing bag folded flat (a flat ring standing
+    in for it, unless `bag_ring` is False: a capsule whose bag is built to be let down, `landing_bag`, has none)."""
     P = lambda x, y, z: Vector((x, y, z)) * IN  # noqa: E731
     bottles, bag = MeshBuilder(), MeshBuilder()
     for x, y in ((-10.5, 21.0), (10.5, 21.0)):  # oxygen: two spherical bottles, primary and reserve
         bottles.lathe(prof(arc_profile(0, 0, 3.7, -90, 90, 12)), 24, matrix=Matrix.Translation(P(x, y, 6.2)))
-    # the landing bag, folded flat between the heat shield and the bulkhead
-    bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
     bottles.build("CrewCabin_OxygenBottles", M["bottle"], g)
-    bag.build("CrewCabin_LandingBag", M["fabric"], g)
+    if bag_ring:
+        # the landing bag, folded flat between the heat shield and the bulkhead
+        bag.lathe(prof([(21.5, -0.55), (22.0, -0.7), (33.0, -0.7), (33.5, -0.55), (33.0, -0.42), (22.0, -0.42), (21.5, -0.55)]), 96)
+        bag.build("CrewCabin_LandingBag", M["fabric"], g)
 
 
 def keep_inside() -> None:
