@@ -23,6 +23,7 @@ export type Pref =
   | 'navballTucked'
   | 'orbitFrame'
   | 'pathOff'
+  | 'pathOn'
   | 'pathGuided'
   | 'deckAboard'
   | 'soundOff'
@@ -53,6 +54,8 @@ function read(): Partial<Record<Pref, boolean>> {
 
 export const prefs = {
   get: (name: Pref): boolean => read()[name] === true,
+  /** Whether a choice has been kept at all: what tells a visitor who chose from one who has never been asked. */
+  chosen: (name: Pref): boolean => typeof read()[name] === 'boolean',
   set(name: Pref, on: boolean): void {
     try {
       localStorage.setItem(KEY, JSON.stringify({ ...read(), [name]: on }));

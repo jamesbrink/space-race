@@ -1,8 +1,8 @@
 import './time.css';
 import { prefs } from '../app/prefs.ts';
 import type { Flight, SitedFlight } from '../types.ts';
-import { type Clock, localTime, missionTime, RATES } from '../world/clock.ts';
-import { is, isTyping, modified, which } from '../util/keys.ts';
+import { type Clock, localTime, missionTime } from '../world/clock.ts';
+import { capsOf, is, isTyping, modified, which } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 
 /**
@@ -26,7 +26,10 @@ export class TimeBar {
   private readonly scrub: HTMLInputElement;
   /** A finer scrub over the flight itself, where the flight has a trajectory to fly. */
   private readonly flightScrub: HTMLInputElement | null;
-  private readonly rates: HTMLButtonElement[];
+  /** Slower and Faster: a step down or up the clock's rates, each twice the last. */
+  private readonly steps: HTMLButtonElement[];
+  /** The rate it runs at; pressed, it goes back to real time. */
+  private readonly rate: HTMLButtonElement;
   private readonly home: HTMLButtonElement;
 
   /** What it hangs on the window (util/scope.ts): let go of with the page it is on. */
@@ -49,7 +52,9 @@ export class TimeBar {
         <label class="time-scrub"><span>00:00</span><input type="range" min="0" max="86400" step="30" aria-label="Time of day at the site" /><span>24:00</span></label>
         ${flightSpan(flight) !== null ? `<label class="time-scrub time-flight"><span>T−1:00</span><input type="range" min="-60" max="${flightSpan(flight)}" step="0.5" aria-label="The flight, from a minute before liftoff to landing" /><span>Landing</span></label>` : ''}
         <div class="time-rates" role="group" aria-label="How fast time runs">
-          ${RATES.map((r) => `<button data-rate="${r}" aria-pressed="false" title="${rateTitle(r)}">${r}×</button>`).join('')}
+          <button data-step="-1" title="Half as fast (${capsOf('clock.rate')[0]})">Slower</button>
+          <button class="time-rate" title="Real time">1×</button>
+          <button data-step="1" title="Twice as fast (${capsOf('clock.rate')[1]})">Faster</button>
           <button class="time-home" title="Back to liftoff, stopped">Liftoff</button>
         </div>
       </div>`;
@@ -64,7 +69,8 @@ export class TimeBar {
       clock.pause();
       clock.seek(Number(this.flightScrub!.value));
     });
-    this.rates = [...root.querySelectorAll<HTMLButtonElement>('[data-rate]')];
+    this.steps = [...root.querySelectorAll<HTMLButtonElement>('[data-step]')];
+    this.rate = q('.time-rate');
     this.home = q('.time-home');
 
     const toggle = q('.time-toggle');
@@ -76,7 +82,9 @@ export class TimeBar {
     open(prefs.get('timeOpen'));
     toggle.addEventListener('click', () => open(root.classList.contains('folded')));
     this.play.addEventListener('click', () => clock.play(!clock.running));
-    for (const b of this.rates) b.addEventListener('click', () => clock.setRate(Number(b.dataset.rate)));
+    for (const b of this.steps) b.addEventListener('click', () => clock.step(b.dataset.step === '1' ? 1 : -1));
+    // (the rate itself goes back to real time, keeping the way it was running)
+    this.rate.addEventListener('click', () => clock.setRate(clock.rate < 0 ? -1 : 1));
     this.home.addEventListener('click', () => clock.reset());
     // taking hold of the scrub stops the clock: the hand is where the finger is, not running on from it
     this.scrub.addEventListener('input', () => {
@@ -109,7 +117,11 @@ export class TimeBar {
     // the rate is on the button, so it is seen with the bar folded
     set(this.play, `${clock.running ? 'Stop' : 'Run'}${Math.abs(clock.rate) === 1 ? '' : ` · ${clock.rate}×`}`);
     this.play.setAttribute('aria-pressed', String(clock.running));
-    for (const b of this.rates) b.setAttribute('aria-pressed', String(Number(b.dataset.rate) === clock.rate));
+    const size = Math.abs(clock.rate);
+    set(this.rate, `${clock.rate}×`);
+    this.rate.title = size === 1 ? 'Real time' : `${rateTitle(size)}: press for real time`;
+    this.rate.setAttribute('aria-pressed', String(size !== 1));
+    for (const b of this.steps) b.disabled = b.dataset.step === '1' ? size >= clock.fastest : size <= 1;
     this.home.disabled = clock.t === 0 && !clock.running;
     // off the launch day the hand waits at the end it left by
     const hand = String(Math.max(0, Math.min(86_400, Math.round(clock.t + this.launchAt))));
@@ -138,9 +150,11 @@ function set(el: HTMLElement, text: string): void {
   if (el.textContent !== text) el.textContent = text;
 }
 
+/** A rate in words: seconds, minutes or hours of the world to one of ours, to a decimal place where it is not whole. */
 function rateTitle(rate: number): string {
   if (rate === 1) return 'Real time';
-  if (rate < 60) return `${rate} seconds a second`;
-  if (rate < 3600) return `${rate / 60} minute${rate === 60 ? '' : 's'} a second`;
-  return `${rate / 3600} hour${rate === 3600 ? '' : 's'} a second`;
+  const say = (n: number, unit: string) => `${Number(n.toFixed(1))} ${unit}${Number(n.toFixed(1)) === 1 ? '' : 's'} a second`;
+  if (rate < 60) return say(rate, 'second');
+  if (rate < 3600) return say(rate / 60, 'minute');
+  return say(rate / 3600, 'hour');
 }
