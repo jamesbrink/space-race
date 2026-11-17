@@ -40,7 +40,11 @@ for (const suffix of ['', '.lod1', '.lod2']) {
       const [x, , z] = frames.point(`F1_Mount_${engine}`);
       close(Math.hypot(x, z), 182 * inch, 'outboard F-1 on its 364 in circle');
     }
-    close(frames.box('FirstStageEngines').hi[1], (115 + 749 - 517 + 120 - 233.7) * inch, 'the engines reach the foot of the thrust structure');
+    close(
+      frames.box('FirstStageEngines').hi[1],
+      (115 + 749 - 517 + 120 - 233.7) * inch,
+      'the engines reach the foot of the thrust structure',
+    );
     assert.ok(frames.box('FirstStageEngines').hi[1] > (100 + 115) * inch, 'the heat shield is forward of the gimbal plane');
     const grille = frames.box('LTAB_EndGrid');
     assert.ok(
