@@ -175,6 +175,15 @@ export interface StagedVehicle {
   sample(state: StagedState, centre: number): LiveSample;
   /** The configuration's record instant: the latest record separation among what has been let go (for the drag's piece). */
   shape(state: StagedState): number;
+  /** The ground under a place, m above the sea, as the vehicle comes down on it (forces.ts `floorAt`). */
+  ground(latitude: number, longitude: number): number;
+  /** The point `centre` metres up its long axis (the spacecraft's centre of mass), moving as the stack turns and goes, at `state`. */
+  aboard(state: StagedState, centre: number): { t: number; r: Vec3; v: Vec3 };
+  /**
+   * Stepped from `was` to `state`, where the point `centre` up its axis came down through `height` m above the sea: that
+   * point's state then, each figure the straight line between the two at the instant the height is crossed, or null.
+   */
+  fell(was: StagedState, state: StagedState, centre: number, height: number): { t: number; r: Vec3; v: Vec3 } | null;
 }
 
 const X: Vec3 = [1, 0, 0];
@@ -673,6 +682,11 @@ export function stagedVehicle(
     return step ? [{ step, at: e.at!.value, label: e.label, event: e.id }] : [];
   });
 
+  const aboard = (s: StagedState, centre: number): { t: number; r: Vec3; v: Vec3 } => {
+    const arm = scale(turn(s.q, X), centre);
+    return { t: s.t, r: add(s.r, arm), v: add(s.v, cross(turn(s.q, s.w), arm)) };
+  };
+
   const sample = (s: StagedState, centre: number): LiveSample => {
     const here = air(s, s.t);
     const up = frame.upOver(here.here, s.t);
@@ -754,6 +768,16 @@ export function stagedVehicle(
     sequence,
     sample,
     shape,
+    ground: floor,
+    aboard,
+    fell(was, s, centre, height) {
+      const a = aboard(was, centre);
+      const b = aboard(s, centre);
+      const [ha, hb] = [frame.place(a.r, a.t).height - seaLevel, frame.place(b.r, b.t).height - seaLevel];
+      if (!(ha > height && hb <= height)) return null;
+      const k = (ha - height) / (ha - hb);
+      return { t: a.t + (b.t - a.t) * k, r: add(a.r, scale(sub(b.r, a.r), k)), v: add(a.v, scale(sub(b.v, a.v), k)) };
+    },
   };
 }
 

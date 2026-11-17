@@ -217,7 +217,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
       1.8,
       'the spacecraft’s centre of mass above its station 0 (the braking nozzle): the Vostok’s 1.6 m, raised for the ball’s half tonne more and the reserve engine on its pole (vostok-3ka.md; voskhod.md)',
     ),
-    // no escape: what the record says of a failure of the launch vehicle, by when (said on the deck's card, not flown)
+    // no escape tower and no seats: what the record says of a failure of the launch vehicle, by when, and what of it the deck flies (`escape`)
     aborts: [
       {
         until: doc(
@@ -229,6 +229,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
       {
         until: doc(44, 'Kamanin, 14 September 1964: «с 27-й по 44-ю секунду — трудно, но возможно» (README); Siddiqi, p. 411'),
         does: 'the ship cut loose to come down on its own parachutes: "difficult but possible"',
+        // (not flown: how the ship was cut loose from a stack still under thrust and inside its fairing has not been read)
       },
       {
         until: doc(
@@ -236,6 +237,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
           'Siddiqi, p. 411: after that the ship would be separated and come down by its own parachutes (voskhod-11a57.md, "No escape system")',
         ),
         does: 'the engines shut down and the ship separated, to come down by its own parachutes',
+        escape: { cut: true, separate: { entry: true } },
       },
     ],
     sheds: [

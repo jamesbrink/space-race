@@ -406,6 +406,56 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     if (!/still pushing/.test(r.notes)) fail(where, `the core let go early under the strap-ons said nothing: "${r.notes}"`);
     await shot('core-early');
     console.log(`  ${where}: the fairing at 60 s and the core at 61 s said so`);
+    // the escape's modes (PlanRecord.aborts, X twice): to 40 s the pilot ejected at once and comes down on his own while the
+    // stack flies on; from 40 s every engine cut and the seat waits for 7 km, the stack breaking up first; from 150 s the
+    // descent module parts and comes down as from orbit
+    const abort = async () => {
+      await page.keyboard.press('KeyX');
+      await page.waitForTimeout(100);
+      await page.keyboard.press('KeyX');
+      await page.waitForTimeout(300);
+    };
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(20);
+    await abort();
+    r = await read();
+    if (!/Ejected/.test(r.notes)) fail(where, `aborted at 20 s, no ejection said: "${r.notes}"`);
+    await shot('abort-seat');
+    await run(720);
+    r = await read();
+    if (!/Ejected from the launch vehicle/.test(r.card) || !/by the limits taken/.test(r.card))
+      fail(where, `aborted at 20 s, no card of the ejection: "${r.card.slice(0, 160)}"`);
+    else console.log(`  ${where}: aborted at 20 s: "${r.card.slice(0, 160)}…"`);
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(60);
+    await abort();
+    await run(130);
+    r = await read();
+    if (!/Broke up on the launch vehicle/.test(r.card) || !/where the seat was to take the pilot out/.test(r.card))
+      fail(where, `aborted at 60 s, no card of the breakup before 7 km: "${r.card.slice(0, 160)}"`);
+    else console.log(`  ${where}: aborted at 60 s: "${r.card.slice(0, 160)}…"`);
+    await page.keyboard.press('KeyN');
+    await page.waitForTimeout(500);
+    await page.keyboard.press('Space');
+    await run(200);
+    await abort();
+    await run(206);
+    r = await read();
+    if (!/descent module separated/.test(r.notes)) fail(where, `aborted at 200 s, the modules not parted: "${r.notes}"`);
+    else console.log(`  ${where}: aborted at 200 s, the descent module separated`);
+    // Gemini 3's record gives no mode of escape: the abort is not offered, and X says why (its seats are not in its data)
+    await goTo('usa/gemini/gt-3');
+    await page.keyboard.press('Space');
+    await run(30);
+    const offered = await page.evaluate(() => !document.querySelector('[data-do=abort]')?.disabled);
+    await abort();
+    r = await read();
+    if (offered || !/no mode of escape/.test(r.notes)) fail(where, `Gemini 3 at 30 s: the abort offered ${offered}, notes "${r.notes}"`);
+    else console.log(`  ${where}: Gemini 3 at 30 s: no abort offered, and said so`);
     // Freedom 7: the capsule let go under thrust rides the booster to its cutoff
     await goTo('usa/mercury/mr-3-freedom-7');
     await page.keyboard.press('Space');

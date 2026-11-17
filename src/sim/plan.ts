@@ -399,6 +399,24 @@ export type CheckWhen =
   | { most: 'g'; aboard: string[]; gone?: string[] }
   | { most: 'g'; burning: string };
 
+/**
+ * One mode of a spacecraft's escape from its launch vehicle (`PlanRecord.aborts`): what it did, by the record, if the vehicle
+ * failed before `until`. `escape` is what of it the deck flies, as the record says it, in order: every engine burning shut
+ * down (`cut`); the crew ejected on their seats (`eject`: at once, or as the falling stack comes down through `falling`, m
+ * above the sea), which is the descent's own ejection flown from the stack (orbital.ts `flyEjected`); the spacecraft let go
+ * of its last stage (`separate`), and with `entry` its descent module (the entry body) parted from it at once, to come down as from orbit.
+ */
+export interface AbortMode {
+  until: Measure;
+  does: string;
+  escape?: { cut?: true; eject?: { falling?: Measure }; separate?: { entry?: true } };
+}
+
+/** The record's mode of escape for an instant on the launch vehicle, s from liftoff (the first whose `until` is past it), or null. */
+export function abortAt(plan: FlightPlan, t: number): AbortMode | null {
+  return plan.record?.aborts?.find((x) => t < x.until.value) ?? null;
+}
+
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
   /**
@@ -432,8 +450,11 @@ export interface PlanRecord {
   automatic?: string;
   /** What a pilot could do by hand: the code that frees the controls (none: they had no lock), how long after a burn by hand the modules part (s), the record's periods of orientation by hand. */
   manual?: { code?: Measure; parting?: Measure; periods?: { from: Measure; to: Measure; what: string }[] };
-  /** What the spacecraft's escape did if the launch vehicle failed, by the time it failed: said, not flown. */
-  aborts?: { until: Measure; does: string }[];
+  /**
+   * What the spacecraft's escape did if the launch vehicle failed, by the time it failed: each mode until `until` seconds
+   * from liftoff, in a few words, and what of it can be flown (`escape`). A mode without `escape` is said, not flown.
+   */
+  aborts?: AbortMode[];
   /** The spacecraft's centre of mass above the flown model's origin, m. */
   centre?: Measure;
   /** What the spacecraft's own sequence does after an abort, and what pad aborts flown did (types/sim.ts `Body.escape`). */

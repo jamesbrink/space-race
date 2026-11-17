@@ -247,8 +247,11 @@ the braking engine's `RetroEngine_Nozzle` has it.
   degrees below the level, so 27 per cent of its thrust pushes the stack, the turn taken as losing no speed (an upper
   bound: a text on launcher design has the jet turned across the flight, which would push nothing). How long the core's
   top stands the jet (5 s) is chosen; past it the stack breaks up and the flight ends there: what came through it, and
-  the spacecraft's escape, are not flown. The jet's force on the joint, the lattice's locks and Soyuz 18a's kind of
-  failure (latches that held and broke) are not modelled; nor whether Block E would start in free fall.
+  the spacecraft's escape from a stack breaking up, are not flown (an escape asked for is: simulator.md, "What a hand can
+  do"). An abort from 40 to 150 s cuts every engine and waits for the stack to fall through 7 km; with no moment of the air
+  on it (none read) it turns across the wind and breaks up by bending first, so the seat never fires. The jet's force on
+  the joint, the lattice's locks and Soyuz 18a's kind of failure (latches that held and broke) are not modelled; nor
+  whether Block E would start in free fall.
 - **The structure's limits are estimated** (`ascent.limits`): bending 3.34 kPa rad and 6 g along the axis, none read for
   the R-7; the fairing's 1 kPa likewise. Past the fairing's, what its halves struck is not modelled.
 - **The strap-ons' separation is flown in kind, its figures estimated** (vostok-8k72k.ts `sheds`, `stage:0/B` to `/D`): the

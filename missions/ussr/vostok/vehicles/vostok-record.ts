@@ -7,7 +7,7 @@
 import type { Confidence, Curve, Heating, Measure, ShedBody } from '../../../../src/types.ts';
 import type { Vec3 } from '../../../../src/world/frames.ts';
 import type { DescentCrew, Guidance, OrbitResults } from '../../../../src/sim/orbital.ts';
-import type { Craft, Nozzle } from '../../../../src/sim/plan.ts';
+import type { AbortMode, Craft, Nozzle } from '../../../../src/sim/plan.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -79,9 +79,9 @@ export interface AscentRecord {
   limits?: { qAlpha: Measure; axial: Measure };
   /**
    * What the spacecraft's escape did if the launch vehicle failed, by the time it failed: each mode until `until` seconds
-   * from liftoff (its source there), in a few words. Said on the deck's card when the launch vehicle breaks up; not flown.
+   * from liftoff (its source there), in a few words, and what of it the deck flies (plan.ts `AbortMode`).
    */
-  aborts?: { until: Measure; does: string }[];
+  aborts?: AbortMode[];
   /**
    * What the live vehicle needs to be turned (sim/stagedlive.ts): the angular acceleration the stack's steering gives at
    * full throw while its engines burn, deg/s^2, about each axis alike. Without it the vehicle can be ridden but not steered.

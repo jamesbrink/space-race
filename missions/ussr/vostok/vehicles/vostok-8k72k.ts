@@ -336,7 +336,7 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
       1.6,
       'the spacecraft’s centre of mass above its station 0 (the braking nozzle): about the instrument module’s top and the ball’s bottom, from the stations of vostok-3ka.md',
     ),
-    // What the spacecraft's escape did if the launch vehicle failed, by when: said on the deck's card, not flown
+    // What the spacecraft's escape did if the launch vehicle failed, by when, and what of it the deck flies (`escape`)
     aborts: [
       {
         until: doc(
@@ -344,6 +344,8 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
           `${MOLODTSOV}: «до 40-й секунды по команде, подаваемой по командной радиолинии, производится аварийное катапультирование космонавта»; ${SIDDIQI}, p. 252`,
         ),
         does: 'the pilot ejected from the spacecraft on a radio command from the ground (the first 15 to 20 seconds had no satisfactory answer, Molodtsov writes)',
+        // (nothing said of the engines: the ejection alone)
+        escape: { eject: {} },
       },
       {
         until: doc(
@@ -351,6 +353,15 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
           `${MOLODTSOV}: «с 40-й по 150-ю секунду происходит аварийное выключение двигателей ракеты-носителя и при снижении падающей ракеты до 7 км производится аварийное катапультирование»`,
         ),
         does: 'the launch vehicle’s engines were shut down and the pilot ejected as it fell through 7 km',
+        escape: {
+          cut: true,
+          eject: {
+            falling: doc(
+              7_000,
+              `${MOLODTSOV}: «при снижении падающей ракеты до 7 км производится аварийное катапультирование»: a height the barometric switch read, taken above the sea`,
+            ),
+          },
+        },
       },
       {
         until: doc(
@@ -358,10 +369,12 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
           `${MOLODTSOV}: «со 150-й по 700-ю секунду от концевых контактов гироприборов происходит аварийное выключение двигателей», and the descent module separates`,
         ),
         does: 'the gyroscopes’ limit contacts shut the engines down and the descent module separated, to come down as from orbit',
+        escape: { cut: true, separate: { entry: true } },
       },
       {
         until: doc(730, `${MOLODTSOV}: «с 700-й по 730-ю секунду» the third stage shut down and the whole spacecraft separated`),
         does: 'the third stage was shut down and the whole spacecraft separated',
+        escape: { cut: true, separate: {} },
       },
     ],
     // What the structure stands (src/sim/stagedlive.ts, by sim/loads.ts's rule). No figure for the R-7 has been read.

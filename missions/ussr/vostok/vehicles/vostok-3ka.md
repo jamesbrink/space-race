@@ -135,6 +135,12 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   hips of the stand-in that used to ride here; a man's back is 140 mm behind his hip joints, so
   he lies 87 mm further forward than the seat frame's origin, on the pack. Moving the seat back
   instead takes its guide shoes outside the hatch's opening. Which is right is not known.
+- **An abort's seat leaves the stack as it leaves the falling ball.** Ejected from the launch vehicle (the escape to
+  150 s: `PlanRecord.aborts`, Molodtsov), the pilot, hatch No. 1 and hatch No. 2 are flown from the spacecraft's point on
+  the stack, each thrown against its motion through the air as the descent throws them, not out along the rails through the
+  fairing's round opening (vostok-8k72k.md): the hatch's bearing round the stack is the model's own (135°, above), so drawn,
+  the seat passes back through the stack's shell. Hatch No. 2 is let go by the same command though the fairing has no opening
+  over it. The stack is flown on with their 243 kg still aboard (a tenth of a per cent of it at 40 s).
 - **The seat is a few slabs and tubes.** Its real structure, its two solid rockets, the stabilising
   parachute and the survival pack are stood in for by boxes in about the right places.
 - **The lining is one flat colour**, yellow or white, on a plain ball: the real one is quilted or

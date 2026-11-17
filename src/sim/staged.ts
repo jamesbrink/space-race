@@ -55,6 +55,7 @@ import {
   bankAt,
   chuteEvent,
   coastEvents,
+  type DescentFlown,
   type DescentHands,
   flyDown,
   flyOrbit,
@@ -1038,18 +1039,25 @@ export interface DrawnDescent {
 export function descentOf(whole: FlownWhole, centre: number, ground = 0): DrawnDescent | null {
   if (!whole.down) return null;
   const last = whole.ascent.samples[whole.ascent.samples.length - 1]!;
-  const offset = scale(last.axis, centre);
+  return drawnOf(whole.down, scale(last.axis, centre), ground);
+}
+
+/**
+ * A descent flown (orbital.ts `DescentFlown`) as the scene draws it: each body's track carried by `offset` (where the run's
+ * own point is from the point flown, m) and its last kilometre lowered by `ground` to rest on the drawn surface (`settled`).
+ */
+export function drawnOf(down: DescentFlown, offset: Vec3, ground = 0): DrawnDescent {
   const tracks: DrawnDescent['tracks'] = {};
-  for (const [id, track] of Object.entries(whole.down.tracks))
+  for (const [id, track] of Object.entries(down.tracks))
     tracks[id] = settled(
       track.map((p) => ({ t: p.t, r: add(p.r, offset), v: p.v })),
       // (by the ground's height, less what the offset already lowers it by at the landing: it rests on the drawn surface)
       ground && track.length ? ground + dot(offset, unit(track[track.length - 1]!.r)) : 0,
     );
   const torn = Object.fromEntries(
-    Object.entries(whole.down.torn ?? {}).map(([id, of]) => [id, Object.fromEntries(Object.entries(of).map(([name, x]) => [name, x.t]))]),
+    Object.entries(down.torn ?? {}).map(([id, of]) => [id, Object.fromEntries(Object.entries(of).map(([name, x]) => [name, x.t]))]),
   );
-  return { tracks, opened: whole.down.opened, gone: whole.down.gone, torn };
+  return { tracks, opened: down.opened, gone: down.gone, torn };
 }
 
 /**

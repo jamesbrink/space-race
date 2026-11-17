@@ -1,8 +1,20 @@
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
 import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
-import { automatic, coastEvents, coastOf, crewWords, type DescentHands, decay, heightsBall, type Move, shipOf } from '../sim/orbital.ts';
-import { clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
+import {
+  automatic,
+  coastEvents,
+  coastOf,
+  crewWords,
+  type DescentFlown,
+  type DescentHands,
+  decay,
+  flyEjected,
+  heightsBall,
+  type Move,
+  shipOf,
+} from '../sim/orbital.ts';
+import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { due, onRails } from '../sim/rails.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
@@ -13,6 +25,7 @@ import {
   byHand,
   type DrawnDescent,
   descentOf,
+  drawnOf,
   type FlownWhole,
   flowOf,
   flyOn,
@@ -39,7 +52,7 @@ import {
   stagedVehicle,
 } from '../sim/stagedlive.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
-import { downVerdict } from '../sim/verdict.ts';
+import { downVerdict, ejectedVerdict } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
 import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
@@ -161,8 +174,10 @@ export class OrbitDeck extends Deck {
   private given: Record<string, number> = {};
   private switched: { t: number; on: boolean }[] = [];
   private partedBy: number | null = null;
-  /** The abort asked for going up: the record's mode for the instant (`PlanRecord.aborts`, by its index) and when. */
-  private aborted: { mode: number; t: number } | null = null;
+  /** The abort asked for going up: the record's mode for the instant (`PlanRecord.aborts`) and when. */
+  private aborted: { mode: AbortMode; t: number } | null = null;
+  /** The crew's descent from the launch vehicle after an abort's ejection (`AbortMode.escape.eject`), and when they left. */
+  private ejected: { down: DescentFlown; at: number } | null = null;
   /** When X was first pressed: a second within ABORT_ARMED fires it. */
   private abortArmed = Number.NEGATIVE_INFINITY;
   private downMine: number | null = null;
@@ -540,6 +555,7 @@ export class OrbitDeck extends Deck {
     this.switched = [];
     this.partedBy = null;
     this.aborted = null;
+    this.ejected = null;
     this.abortArmed = Number.NEGATIVE_INFINITY;
     this.downMine = null;
     this.lasts = null;
@@ -561,8 +577,9 @@ export class OrbitDeck extends Deck {
   }
 
   /**
-   * The spacecraft's escape the record has for the clock's instant on the launch vehicle (`PlanRecord.aborts`: Molodtsov
-   * 2001, each mode `until` its second), or why there is none; null when there is one to fly.
+   * The spacecraft's escape the record has for the clock's instant on the launch vehicle (`PlanRecord.aborts`, each mode
+   * `until` its second: plan.ts `abortAt`), or why there is none to fly; null when there is one. A mode the record says no
+   * more of than words (`AbortMode.escape` left out) is said and not flown, and so is a seat a crew did not have.
    */
   private abortWhy(): string | null {
     const t = this.clock.t;
@@ -570,11 +587,13 @@ export class OrbitDeck extends Deck {
     if (this.ascended || t > this.parting) return 'The spacecraft has left its launch vehicle: there is nothing to escape from';
     if (this.state?.broke && t >= this.state.broke.t - 1e-9) return 'Broken up';
     if (this.aborted) return 'Aborted already';
-    const modes = this.flight.plan!.record?.aborts ?? [];
-    const k = modes.findIndex((x) => t < x.until.value);
-    if (k < 0) return 'Past the last of the escape’s modes';
-    // (the first two, the pilot ejected from the stack, want him flown from its state: not yet, issue #10)
-    if (k < 2) return `By the record ${modes[k]!.does}: not flown here yet`;
+    const plan = this.flight.plan!;
+    if (!plan.record?.aborts?.length) return 'This flight’s record gives no mode of escape from its launch vehicle: none is flown here';
+    const mode = abortAt(plan, t);
+    if (!mode) return 'Past the last of the escape’s modes';
+    if (!mode.escape) return `By the record, ${mode.does}. Not flown here`;
+    if (mode.escape.eject && plan.craft[0]!.crew?.alone === undefined)
+      return `By the record, ${mode.does}; but this ship’s crew had no seats to leave it on. Not flown here`;
     return null;
   }
 
@@ -583,36 +602,62 @@ export class OrbitDeck extends Deck {
     const why = this.abortWhy();
     if (why) return void this.host.say?.('Abort', why);
     const now = performance.now() / 1000;
-    const modes = this.flight.plan!.record!.aborts!;
-    const k = modes.findIndex((x) => this.clock.t < x.until.value);
+    const mode = abortAt(this.flight.plan!, this.clock.t)!;
     if (now - this.abortArmed > ABORT_ARMED) {
       this.abortArmed = now;
-      return void this.host.say?.('Abort armed', `Again to abort: ${modes[k]!.does}`);
+      return void this.host.say?.('Abort armed', `Again to abort: ${mode.does}`);
     }
     this.abortArmed = Number.NEGATIVE_INFINITY;
-    this.abort(k);
+    this.abort(mode);
   }
 
   /**
-   * The escape's mode `k` at the clock's instant, as the hardware did it (Molodtsov 2001): from 150 s to 700 s every engine
-   * shut down and the spacecraft separated, its descent module separating at once to come down as from orbit; from 700 s
-   * to 730 s the third stage shut down and the whole spacecraft separated. Asked of the live vehicle as steps (every stage
-   * burning cut, the last stage let go), so what parts and when is its physics: held in while the fairing covers it,
-   * pressed on until the push falls (sim/staging.ts). The modules part once the spacecraft has (`parted`).
+   * The escape's `mode` at the clock's instant, as the record has the hardware do it (`AbortMode.escape`): every stage
+   * burning cut, the crew ejected at once from the stack's state (or, `falling`, as the falling stack comes down through
+   * its height: `fly`), the last stage let go. The cuts and the letting go are asked of the live vehicle as steps, so
+   * what parts and when is its physics: held in while the fairing covers it, pressed on until the push falls
+   * (sim/staging.ts). With `separate.entry` the modules part once the spacecraft has (`parted`).
    */
-  private abort(k: number): void {
+  private abort(mode: AbortMode): void {
     const plan = this.flight.plan!;
-    const mode = plan.record!.aborts![k]!;
+    const e = mode.escape!;
     if (this.mine === null) this.takeOver();
     const v = this.vehicleOf();
     const s = this.state!;
     const stages = stagesOf(plan);
-    const steps: Step[] = stages.flatMap((_, i) => (v.burning(s, i) ? [{ kind: 'cut' as const, stage: i }] : []));
-    this.asked.push(...steps, { kind: 'separate', stage: stages.length - 1 });
-    this.aborted = { mode: k, t: this.clock.t };
+    const steps: Step[] = e.cut ? stages.flatMap((_, i) => (v.burning(s, i) ? [{ kind: 'cut' as const, stage: i }] : [])) : [];
+    if (e.separate) steps.push({ kind: 'separate', stage: stages.length - 1 });
+    this.asked.push(...steps);
+    this.aborted = { mode, t: this.clock.t };
     this.eventAt = performance.now() / 1000;
-    this.host.say?.('Abort', `${mode.does[0]!.toUpperCase()}${mode.does.slice(1)} (Molodtsov). Not the flight of ${this.day}`);
+    this.host.say?.('Abort', `By the record, ${mode.does}. Not the flight of ${this.day}`);
+    if (e.eject && !e.eject.falling) this.eject(v.aboard(s, this.centre));
     if (!this.clock.running) this.clock.play(true);
+  }
+
+  /**
+   * The crew ejected from the launch vehicle at `at` (the spacecraft's state on the stack): their descent flown at once from
+   * there (orbital.ts `flyEjected`) and put in the run on show, each piece that comes down on it (the seat, the hatches)
+   * leaving the model as it leaves. The stack flies on as the live vehicle has it, the ship on it empty.
+   */
+  private eject(at: { t: number; r: Vec3; v: Vec3 }): void {
+    const plan = this.flight.plan!;
+    const v = this.vehicleOf();
+    const down = flyEjected(plan, this.frame, this.flight.site.seaLevel.value, at, { ground: v.ground });
+    if (!down) return;
+    this.ejected = { down, at: at.t };
+    const run = this.run!;
+    run.descent = drawnOf(down, [0, 0, 0]);
+    this.flight.flies!.drops.forEach((d, i) => {
+      if (d.rides?.length) run.dropped[i] = down.tracks[d.rides[0]!.body]?.[0]?.t ?? Number.POSITIVE_INFINITY;
+    });
+    const x = v.sample(this.state!, this.centre);
+    const { who, their } = crewWords(plan.craft[0]!.crew);
+    this.host.say?.(
+      'Ejected',
+      `${who} left the ship on ${their} seat at ${(x.altitude / KM).toFixed(1)} km, ${x.groundSpeed.toFixed(0)} m/s through the air. The launch vehicle flies on, the ship on it empty`,
+    );
+    this.host.fly(run);
   }
 
   /** The lock's digits are keys of this kind's. */
@@ -1009,7 +1054,7 @@ export class OrbitDeck extends Deck {
     );
     this.host.fly(this.run);
     // an abort from 150 to 700 s (the record's third mode): the descent module separates as the spacecraft leaves, to come down as from orbit
-    if (this.aborted?.mode === 2) {
+    if (this.aborted?.mode.escape?.separate?.entry) {
       this.partedBy = s.parted!.t;
       this.refly();
       this.host.say?.('Abort', 'The descent module separated: it comes down as from orbit, the pilot ejected by its own sequence');
@@ -1488,6 +1533,14 @@ export class OrbitDeck extends Deck {
     const run = this.run! as Run & { samples: LiveSample[] };
     const ahead = t - s.t;
     const begun = !s.held || v.burning(s, 0) || v.burning(s, 1) || this.asked.length > 0;
+    // (the crew out and the stack done with: the clock runs on until they are down)
+    if (this.ejected && (s.landed || s.broke || s.parted)) {
+      if (t > this.over() + 12) {
+        this.clock.pause();
+        this.clock.seek(this.over() + 12);
+      }
+      return;
+    }
     if (ahead <= 0 || !begun || s.landed) {
       if (s.landed && t > s.landed.t + 12) {
         this.clock.pause();
@@ -1497,9 +1550,18 @@ export class OrbitDeck extends Deck {
     }
     const centre = this.centre;
     const upTo = s.t + Math.min(ahead, MOST);
+    // (an abort whose seat waits for the falling stack to come down through a height: Molodtsov's from 40 s)
+    const falling = this.ejected ? undefined : this.aborted?.mode.escape?.eject?.falling?.value;
     while (s.t < upTo - TICK / 2 && !s.landed && !s.parted && !s.broke) {
       const was = s;
       s = v.tick(s, this.pilot!);
+      if (falling !== undefined && !this.ejected) {
+        const at = v.fell(was, s, centre, falling);
+        if (at) {
+          this.state = s;
+          this.eject(at);
+        }
+      }
       if (s.parted) break;
       if (s.broke) {
         run.samples.length = this.kept;
@@ -1533,18 +1595,26 @@ export class OrbitDeck extends Deck {
       const st = s.stages[engine]!;
       run.cutoff = Number.isFinite(st.from) && !v.burning(s, engine) ? Math.min(st.to, v.dry(engine, st.from), st.gone) : Infinity;
     }
+    if (s.parted && this.ejected) {
+      // (the ship let go empty: the stack's flight ends there, and the crew's goes on)
+      run.duration = s.parted.t;
+      return void this.host.say?.('Spacecraft parted', 'The empty ship separated from its launch vehicle: not followed further');
+    }
     if (s.parted) return void this.parted(s);
     if (s.broke) {
       run.duration = s.broke.t;
       this.clock.setRate(1);
-      this.clock.seek(s.broke.t);
+      if (!this.ejected) this.clock.seek(s.broke.t);
       this.host.say?.('Broke up', s.broke.text);
     }
     if (s.landed) {
       run.duration = s.landed.t;
       this.clock.setRate(1);
-      this.clock.seek(s.landed.t);
-      this.host.say?.('Down', `The launch vehicle came back to the ground at ${s.landed.speed.toFixed(0)} m/s, the spacecraft still on it`);
+      if (!this.ejected) this.clock.seek(s.landed.t);
+      this.host.say?.(
+        'Down',
+        `The launch vehicle came back to the ground at ${s.landed.speed.toFixed(0)} m/s, the spacecraft still on it${this.ejected ? ', empty' : ''}`,
+      );
     }
   }
 
@@ -1565,12 +1635,15 @@ export class OrbitDeck extends Deck {
     const run = this.run;
     if (!run) return Infinity;
     const whole = this.flown ?? (this.mine === null && this.fired === null ? orbitalFlown(this.flight) : null);
-    const landings = Object.values(whole?.down?.landed ?? {}).map((l) => l.at);
+    // (or the crew ejected from the launch vehicle, and the stack: the later of their ends)
+    const landings = Object.values((this.ejected ?? whole)?.down?.landed ?? {}).map((l) => l.at);
     return Math.max(run.duration, ...landings);
   }
 
-  private apart(at: { latitude: number; longitude: number }): number {
-    const landing = this.flight.plan!.record!.landing!;
+  private apart(
+    at: { latitude: number; longitude: number },
+    landing: { latitude: { value: number }; longitude: { value: number } } = this.flight.plan!.record!.landing!,
+  ): number {
     const [la, lo] = [landing.latitude.value * DEG, landing.longitude.value * DEG];
     const [pa, po] = [at.latitude * DEG, at.longitude * DEG];
     return (EARTH_SPHERE / KM) * Math.acos(Math.min(1, Math.sin(la) * Math.sin(pa) + Math.cos(la) * Math.cos(pa) * Math.cos(po - lo)));
@@ -1877,6 +1950,7 @@ export class OrbitDeck extends Deck {
    */
   private card(t: number): void {
     const el = this.root.querySelector<HTMLElement>('.cockpit-card')!;
+    if (this.ejected) return void this.ejectedCard(el, t);
     const whole = this.flown ?? orbitalFlown(this.flight);
     const down = this.landed(whole);
     // (the run on show follows the descent module down; the pilot lands under his canopy some minutes after it)
@@ -1894,18 +1968,27 @@ export class OrbitDeck extends Deck {
     const record = this.flight.plan!.record!;
     const buttons =
       '<p><button data-do="again"><kbd>N</kbd> Fly it again</button><button data-do="leave"><kbd>Esc</kbd> Leave</button></p>';
+    // (an abort whose seat was to wait for the falling stack to come down through its height, and the stack ended first)
+    const waited = this.aborted?.mode.escape?.eject?.falling;
+    const unwaited = this.aborted && waited ? `Aborted at T+${this.aborted.t.toFixed(0)} s: by the record, ${this.aborted.mode.does}.` : '';
     if (broke) {
       // what the record says its escape would have done at that instant (`ascent.aborts`): said, not flown
       const abort = record.aborts?.find((x) => broke.t < x.until.value);
       el.innerHTML = `<h3>Broke up on the launch vehicle</h3><p class="cockpit-why"><b>${broke.text}.</b></p>${
-        abort
-          ? `<p class="cockpit-why">What the spacecraft’s escape did at that time, by the record: ${abort.does}. Not flown here: the flight ends at the breakup.</p>`
-          : ''
+        unwaited
+          ? `<p class="cockpit-why">${unwaited} It broke up before it came down through ${(waited!.value / KM).toFixed(0)} km, where the seat was to take the pilot out: what comes through a breakup is not modelled, and the flight ends there.</p>`
+          : abort
+            ? `<p class="cockpit-why">What the spacecraft’s escape did at that time, by the record: ${abort.does}. Not flown here: the flight ends at the breakup.</p>`
+            : ''
       }<p class="cockpit-why">Not the flight of ${this.day}.</p>${buttons}`;
       return;
     }
     if (crashed) {
-      el.innerHTML = `<h3>Back on the ground, on the launch vehicle</h3><p class="cockpit-why">Your flight never parted the spacecraft from its launch vehicle: it came down with it at ${this.state!.landed!.speed.toFixed(0)} m/s, ${(this.sampleAt(t).range / KM).toFixed(0)} km from the pad. Not survivable.</p>${buttons}`;
+      el.innerHTML = `<h3>Back on the ground, on the launch vehicle</h3><p class="cockpit-why">${
+        unwaited
+          ? `${unwaited} It never came down through ${(waited!.value / KM).toFixed(0)} km falling, where the seat was to fire: it came down`
+          : 'Your flight never parted the spacecraft from its launch vehicle: it came down with it'
+      } at ${this.state!.landed!.speed.toFixed(0)} m/s, ${(this.sampleAt(t).range / KM).toFixed(0)} km from the pad. Not survivable.</p>${buttons}`;
       return;
     }
     // how it ended for him, in the record's terms (sim/verdict.ts downVerdict), and how long an orbit that stays up lasts
@@ -1974,6 +2057,54 @@ export class OrbitDeck extends Deck {
       <p class="cockpit-why">Amber rows are outside the tolerance the record sets. The flight as recorded misses several of them itself (the Flown panel, and the flight’s mission.md, say why).</p>`
           : ''
       }
+      ${buttons}`;
+  }
+
+  /**
+   * The card after an abort's ejection from the launch vehicle, once the crew and the stack are both done: how it ended for
+   * them by the limits taken (sim/verdict.ts `ejectedVerdict`), the escape the record has for that instant, and what became
+   * of the stack.
+   */
+  private ejectedCard(el: HTMLElement, t: number): void {
+    const out = this.ejected!;
+    const s = this.state!;
+    const over = t >= this.over();
+    const key = `ejected|${out.at}|${s.landed?.t}|${s.broke?.t}|${s.parted?.t}`;
+    if (el.hidden === !over && el.dataset.at === key) return;
+    el.hidden = !over;
+    el.dataset.at = key;
+    if (!over) return;
+    const plan = this.flight.plan!;
+    const pad = this.flight.site;
+    const v = ejectedVerdict(
+      plan,
+      out.down,
+      (at) => this.wall(at),
+      (at) => this.apart(at, { latitude: { value: pad.latitude.value }, longitude: { value: pad.longitude.value } }),
+    )!;
+    const { who, many } = crewWords(plan.craft[0]!.crew);
+    const lives =
+      v.survivable === null
+        ? ''
+        : ` ${who} ${v.survivable ? (many ? 'live' : 'lives') : many ? 'do not live' : 'does not live'}, by the limits taken.`;
+    const at = (x: number) => `T+${x.toFixed(0)} s`;
+    const stack = s.broke
+      ? `The launch vehicle broke up at ${at(s.broke.t)}: ${s.broke.text}.`
+      : s.landed
+        ? `The launch vehicle came back to the ground at ${at(s.landed.t)}, ${s.landed.speed.toFixed(0)} m/s, the empty ship on it.`
+        : s.parted
+          ? `The launch vehicle flew on and let the empty ship go at ${at(s.parted.t)}: not followed further.`
+          : '';
+    const buttons =
+      '<p><button data-do="again"><kbd>N</kbd> Fly it again</button><button data-do="leave"><kbd>Esc</kbd> Leave</button></p>';
+    el.innerHTML = `
+      <h3>Ejected from the launch vehicle</h3>
+      <p class="cockpit-why"><b>${v.how}.</b>${lives} Not the flight of ${this.day}.</p>
+      <p class="cockpit-why">Aborted at ${at(this.aborted!.t)}: by the record, ${this.aborted!.mode.does}. Out on the seat at ${at(out.at)}.</p>
+      <p class="cockpit-why">${v.why.join(' ')}</p>
+      ${stack ? `<p class="cockpit-why">${stack}</p>` : ''}
+      <p class="cockpit-why">Not modelled: the seat’s way out through the fairing’s opening (thrown here against its motion through the air, as from the falling ball), and what the stack did to anyone near it.</p>
+      <p class="cockpit-why">${v.against}</p>
       ${buttons}`;
   }
 }

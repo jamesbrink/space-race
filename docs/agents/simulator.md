@@ -534,7 +534,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   as `body.limits` on a ballistic flight): bending (q alpha) and the load along the axis, both
   estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
   every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the
-  record says the spacecraft's escape did at that instant (`ascent.aborts`, Molodtsov 2001), which is not flown.
+  record says the spacecraft's escape did at that instant (`ascent.aborts`, Molodtsov 2001), which is flown only when it is
+asked for (X twice: "What a hand can do").
   *Starts* (`StageRecord.start`): how many and whether only on the pad (the R-7's 32 chambers each lit by a pyrotechnic
   igniter on a wooden stand from the pad); a start asked for that the hardware could not make is refused and said. A
   drop let go in more than its `q` is said, and what its pieces struck is not modelled. What the vehicle made of each
@@ -561,8 +562,10 @@ Before is what it did ahead of `sim/staging.ts`.
 | Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
 | Ask a step twice | any time | heard once | heard once | heard once |
 | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
-| An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (orbitdeck.ts `abort`), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 94 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
-| An abort, to 150 s | not offered | | the pilot ejected on his seat, on the ground's command to 40 s, as the falling stack passed 7 km to 150 s (Molodtsov) | said, not flown: the pilot flown from the stack's state is still to come (issue #10) |
+| An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (orbitdeck.ts `abort`, as the mode's `AbortMode.escape` says), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 87 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
+| An abort, to 40 s (X twice) | on the launch vehicle | not offered | Molodtsov: the pilot ejected on a radio command from the ground; the first 15 to 20 s had no satisfactory answer | he is ejected at once from the stack's state (the spacecraft's point up the stack, `StagedVehicle.aboard`) and flown down as the descent flies him from the ball (orbital.ts `flyEjected`: the seat thrown 20 m/s against its motion through the air, its parachute, the main canopy at 4 km falling, the reserve), to the ground under him (`floorAt`); the stack flies on, empty: aborted at 5 s (0.2 km) he is down at 4.5 m/s at T+25 s, at 35 s (3.3 km) at T+742 s. The card holds him to the descent's limits (`ejectedVerdict`). His seat's way out through the fairing's opening (the hatch's bearing round the stack is the model's own), and what the stack did near him: not read |
+| An abort, 40 to 150 s (X twice) | on the launch vehicle | not offered | Molodtsov: every engine shut down, the pilot ejected as the falling stack came down through 7 km | every stage burning is cut, and the seat waits for the spacecraft's point to come down through 7 km falling (`StagedVehicle.fell`). Falling as it was left, with no moment of the air on it (none read), the stack turns across the wind and breaks up by bending first: cut at 41 s it breaks at 69.8 s, 7.4 km up; at 60 s at 102.7 s, 16.3 km; at 120 s at 284.4 s, 44.3 km. The seat never fires, and the flight ends at the breakup, which is not modelled; the card says so. With no structure to break (a test's), cut at 60 s it comes down through 7 km at T+140 s at 498 m/s through the air, and he is ejected into 74 kPa |
+| An abort with no seats (the Voskhods) | on the launch vehicle | | Kamanin: to 27 s nothing could save the crew; 27 to 44 s the ship cut loose, "difficult but possible"; to 523 s the engines shut down and the ship separated | the first two said and not flown (their modes have no `escape`: the first had no seat, no tower and no suits to fly, the second has no record of how the ship was cut loose); from 44 s as Vostok's from 150 s. A mode that ejects a crew with no `DescentCrew.alone` is refused and said |
 
 | Freedom 7 (vehicle.ts) | Allowed | Before | The hardware | Now, and from what |
 | --- | --- | --- | --- | --- |
@@ -577,8 +580,8 @@ Before is what it did ahead of `sim/staging.ts`.
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
 | Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it goes and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea it fills at once and goes under (`Run.sinks`), and the card says so |
 
-Where the two kinds still differ for no physical reason: the orbital deck's abort in the first 150 s (the seat), which is said
-and not flown.
+The two kinds no longer differ in what a hand may do for no physical reason: what is said and not flown is what no source
+read gives enough of to fly (issue #10).
 
 ## The deck
 

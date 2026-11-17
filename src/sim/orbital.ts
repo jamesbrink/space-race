@@ -188,7 +188,8 @@ export interface DescentFlown {
  * coast's drag (`entry.area` on `entry.drag`). Every other body leaves it at the first of its `with` events, thrown clear.
  * Each event is the automatic sequence's (a parachute at its height or time after the ejection, the ejection at its
  * height) while that is on, and a hand's whenever one gave it (`hands`). Returns each body's landing, by id, and `apart`,
- * the distance between the first two, m.
+ * the distance between the first two, m. With `out` (`flyEjected`) the ejection is set off at `from`, which is the stack's,
+ * the entry body is left on it, and each body comes down to `out.ground` under it.
  */
 export function flyDown(
   plan: FlightPlan,
@@ -196,11 +197,19 @@ export function flyDown(
   seaLevel: number,
   from: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
+  out?: Ejected,
 ): DescentFlown {
   const d = downOf(plan);
   if (!d) throw new Error('this orbital plan has no descent');
   const spin = frame.spin;
   const ground = d.ground;
+  /** The ground under a body at a state, m above the sea: the descent's, or the place's where it comes down by its launch vehicle. */
+  const floor = out
+    ? (q: State, at: number) => {
+        const p = frame.place(q.r, at);
+        return out.ground(p.latitude, p.longitude);
+      }
+    : () => ground;
   const parted = d.parted;
   const given = hands?.given ?? {};
   const landed: Record<string, Landed> = {};
@@ -220,7 +229,7 @@ export function flyDown(
   if (!first) throw new Error('a descent needs its entry body');
   const loose = new Set<string>();
   /** The bodies an event sets loose from the first, each from its state then, thrown clear against its motion through the air. */
-  const queue: { body: DownBody; t: number; s: State }[] = [{ body: first, t: from.t, s: { r: from.r, v: from.v } }];
+  const queue: { body: DownBody; t: number; s: State }[] = out ? [] : [{ body: first, t: from.t, s: { r: from.r, v: from.v } }];
   const letLoose = (event: string, t: number, s: State) => {
     for (const body of rest) {
       if (loose.has(body.id) || !body.with.includes(event)) continue;
@@ -242,10 +251,15 @@ export function flyDown(
     loose: letLoose,
     leaves: (body, t, s) => queue.push({ body, t, s }),
   };
+  // (ejected from the launch vehicle: the entry body stays on it, and what the ejection sets loose leaves from the stack's state)
+  if (out) {
+    box.at = from.t;
+    letLoose(d.ejection, from.t, { r: from.r, v: from.v });
+  }
   for (let n = 0; n < queue.length; n++) {
     const { body, t: t0, s: s0 } = queue[n]!;
     // (the entry body carries the pilot until he leaves, and the instrument module until the modules part)
-    const desc = new Descent(ctx, body, n === 0, t0);
+    const desc = new Descent(ctx, body, body === first, t0);
     const track: { t: number; r: Vec3; v: Vec3 }[] = (tracks[body.id] = [{ t: t0, r: s0.r, v: s0.v }]);
     opened[body.id] = desc.times;
     gone[body.id] = desc.gone;
@@ -268,10 +282,11 @@ export function flyDown(
       if (desc.key() !== was || !states.length) states.push({ t, state: desc.snapshot() });
     };
     let h = heightOf(s, t);
+    let under = floor(s, t);
     after(() => desc.events(s, h, dot(airOf(s), s.r) < 0, true, t));
     const limit = t0 + 6 * 3600;
     let keptAt = t;
-    while (h > ground && t < limit) {
+    while (h > under && t < limit) {
       const was = { s, t, h };
       const most_step = h > 150_000 ? 10 : h > 100_000 ? 1 : 0.05;
       const cut = [...cuts, ...desc.ends(t)].filter((c) => c > t + 1e-9).sort((p, q) => p - q)[0];
@@ -286,8 +301,9 @@ export function flyDown(
       t = cut !== undefined && Math.abs(t + dt - cut) < 1e-9 ? cut : t + dt;
       desc.as = t;
       h = heightOf(s, t);
-      if (h <= ground) {
-        const part = (was.h - ground) / (was.h - h);
+      under = floor(s, t);
+      if (h <= under) {
+        const part = (was.h - under) / (was.h - h);
         s = { r: add(was.s.r, scale(sub(s.r, was.s.r), part)), v: add(was.s.v, scale(sub(s.v, was.s.v), part)) };
         t = was.t + dt * part;
         const here = frame.place(s.r, t);
@@ -324,7 +340,7 @@ export function flyDown(
           ),
         )
       : Number.NaN;
-  const down = landed[first.id]?.at ?? Number.POSITIVE_INFINITY;
+  const down = out ? Number.NEGATIVE_INFINITY : (landed[first.id]?.at ?? Number.POSITIVE_INFINITY);
   return {
     landed,
     apart,
@@ -340,6 +356,32 @@ export function flyDown(
     up,
     states: snapshots,
   };
+}
+
+/**
+ * The crew ejected from their launch vehicle (an abort's seat, `AbortMode.escape.eject`): `ground` is the ground under a place,
+ * m above the sea (the launch vehicle's own: forces.ts `floorAt`).
+ */
+export interface Ejected {
+  ground: (latitude: number, longitude: number) => number;
+}
+
+/**
+ * The crew ejected from the launch vehicle at `from` (the spacecraft's state on the stack, at that instant): the descent's
+ * ejection (`Down.ejection`) set off there, and what it sets loose (the pilot on his seat, the hatches it blows) flown down
+ * as `flyDown` flies them from the falling ball, each thrown clear against its motion through the air, on their own
+ * parachutes as the descent has them, to the ground under the place each comes down on. The entry body is not flown: it
+ * stays on the stack. Null where the descent has no crew that leaves the ship (`DescentCrew.alone`): nobody to eject.
+ */
+export function flyEjected(
+  plan: FlightPlan,
+  frame: EarthFrame,
+  seaLevel: number,
+  from: { t: number; r: Vec3; v: Vec3 },
+  out: Ejected,
+): DescentFlown | null {
+  if (!downOf(plan) || plan.craft[0]!.crew?.alone === undefined) return null;
+  return flyDown(plan, frame, seaLevel, from, undefined, out);
 }
 
 /**

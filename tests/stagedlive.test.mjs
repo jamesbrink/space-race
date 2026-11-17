@@ -10,10 +10,12 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ascend, givenUp, partingAt, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { coastOf, flyDown, flyOrbit, heightsBall } from '../src/sim/orbital.ts';
+import { coastOf, flyDown, flyEjected, flyOrbit, heightsBall } from '../src/sim/orbital.ts';
+import { abortAt } from '../src/sim/plan.ts';
+import { ejectedVerdict } from '../src/sim/verdict.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
-import { DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
+import { cross, DEG, dot, length, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
@@ -389,6 +391,117 @@ test('an abort as the deck asks it (Molodtsov’s modes from 150 s): every stage
         `#   the module from ${up.toFixed(0)} km: ${Math.max(...coast.samples.map((p) => p.g)).toFixed(1)} g at most, the pilot down at T+${bodies.landed[pilot].at.toFixed(0)} s, ${bodies.landed[pilot].speed.toFixed(1)} m/s`,
       );
     }
+  }
+});
+
+test('an abort before 150 s as the deck asks it (Molodtsov’s first two modes): the pilot ejected from the stack, at once to 40 s, as the stack falls through 7 km after every engine is cut to 150 s; the stack flies on', () => {
+  // (orbitdeck.ts `abort`, `eject` and `fly`: the mode's own data says what to do, plan.ts `AbortMode.escape`)
+  const centre = flight.flies.datum + plan.record.centre.value;
+  const pilot = plan.craft[0].crew.alone;
+  const ejected = (v, at) => {
+    const down = flyEjected(plan, dated, sea, at, { ground: v.ground });
+    const verdict = ejectedVerdict(
+      plan,
+      down,
+      (x) => `T+${x.toFixed(0)}`,
+      () => 0,
+    );
+    return { down, verdict };
+  };
+  for (const t of [5, 20, 35]) {
+    const mode = abortAt(plan, t);
+    assert.ok(mode.escape.eject && !mode.escape.eject.falling && !mode.escape.cut, `${t} s: the seat at once, nothing else`);
+    const { v, at } = asked({ look: [t], until: t + 0.5 });
+    const s = at[t];
+    const from = v.aboard(s, centre);
+    assert.ok(Math.abs(length(sub(from.r, s.r)) - centre) < 1e-6, 'from the spacecraft, up the stack');
+    const { down, verdict } = ejected(v, from);
+    assert.equal(down.ejected, from.t);
+    assert.ok(down.landed[pilot], 'the pilot comes down');
+    assert.equal(down.landed[downOf(plan).bodies[0].id], undefined, 'the descent module stays on the stack');
+    const h = dated.place(from.r, from.t).height - sea;
+    console.log(
+      `# abort at ${t} s (the seat at once, ${(h / 1000).toFixed(2)} km up): ${Object.entries(down.landed)
+        .map(([id, l]) => `${id} ${l.speed.toFixed(1)} m/s at T+${l.at.toFixed(0)}`)
+        .join(', ')}; ${verdict.how}; survivable ${verdict.survivable}`,
+    );
+  }
+  /** Every engine burning cut at `t` on the live vehicle of `of`, flown on until it is down or broken up: where the seat would fire, if it came. */
+  const cutAt = (of, t, fall) => {
+    const v = stagedVehicle(of, site, dated, sea, x);
+    let now = 0;
+    let cuts = [];
+    const pilotOf = stagedPilot(v, x, site, dated, sea, {
+      guidance: true,
+      sequence: true,
+      steps: () => (Math.abs(now - t) < 0.005 ? cuts : []),
+    });
+    let s = v.tick(v.start(), {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+      steps: [
+        { kind: 'ignite', stage: 0 },
+        { kind: 'ignite', stage: 1 },
+      ],
+    });
+    let out = null;
+    while (!s.landed && !s.broke && s.t < 2000) {
+      now = s.t;
+      if (Math.abs(now - t) < 0.005) cuts = stages.flatMap((_, i) => (v.burning(s, i) ? [{ kind: 'cut', stage: i }] : []));
+      const was = s;
+      s = v.tick(s, pilotOf);
+      out ??= v.fell(was, s, centre, fall);
+    }
+    assert.ok(
+      s.stages.every((g) => !Number.isFinite(g.from) || g.to <= t + 0.02),
+      'every engine lit is out',
+    );
+    const end = s.broke
+      ? `broke up at T+${s.broke.t.toFixed(1)}, ${((dated.place(s.r, s.t).height - sea) / 1000).toFixed(1)} km up (${s.broke.by})`
+      : `down at T+${s.landed.t.toFixed(1)}, ${s.landed.speed.toFixed(0)} m/s`;
+    return { v, s, out, end };
+  };
+  for (const t of [41, 60, 120]) {
+    const mode = abortAt(plan, t);
+    assert.ok(mode.escape.cut && mode.escape.eject?.falling, `${t} s: every engine cut, the seat as it falls through a height`);
+    const fall = mode.escape.eject.falling.value;
+    const { v, s, out, end } = cutAt(plan, t, fall);
+    // (falling as it was left, with no moment of the air on it: no figure read, simulator.md), it turns across the wind
+    // and breaks up by its bending load before it is down to 7 km: the seat never fires, and the flight ends there
+    if (out) {
+      assert.ok(!s.broke || s.broke.t > out.t, 'the seat fires only from a stack that has not broken up');
+      const { down } = ejected(v, out);
+      assert.ok(down.landed[pilot], 'the pilot comes down');
+    } else assert.ok(s.broke || s.landed, 'it ends broken up or down, the pilot aboard');
+    console.log(
+      `# abort at ${t} s (every engine cut): the stack ${end}${out ? `; through ${fall / 1000} km falling at T+${out.t.toFixed(1)}` : `, before it fell through ${fall / 1000} km: the seat never fired`}`,
+    );
+  }
+  // the seat's trigger alone, on a stack with no structure to break up (a test's: no record flies it): down through 7 km falling, he leaves
+  const unbroken = structuredClone(plan);
+  unbroken.craft[0].limits = unbroken.craft[0].limits.filter((l) => l.of !== 'qAlpha' && l.of !== 'axial');
+  const fall = abortAt(plan, 60).escape.eject.falling.value;
+  const { v, out, end } = cutAt(unbroken, 60, fall);
+  assert.ok(out, 'it falls through 7 km');
+  assert.ok(Math.abs(dated.place(out.r, out.t).height - sea - fall) < 1e-6, 'at 7 km');
+  assert.ok(dot(out.v, out.r) < 0, 'falling');
+  const { down, verdict } = ejected(v, out);
+  assert.equal(down.ejected, out.t);
+  assert.ok(down.landed[pilot], 'the pilot comes down');
+  console.log(
+    `# unbreakable, cut at 60 s: through ${fall / 1000} km falling at T+${out.t.toFixed(1)}, ${length(sub(out.v, cross(dated.spin, out.r))).toFixed(0)} m/s through the air, ${(down.peak[pilot].q / 1000).toFixed(0)} kPa at most on him; the stack ${end}; ${verdict.how}; survivable ${verdict.survivable}`,
+  );
+});
+
+test('a crew with no seats (the Voskhods) is not ejected: their records’ modes say so, and nothing flies a seat they did not have', () => {
+  for (const f of all.filter((g) => g.plan?.record?.aborts && g.plan.craft[0].crew && g.plan.craft[0].crew.alone === undefined)) {
+    for (const mode of f.plan.record.aborts) assert.ok(!mode.escape?.eject, `${f.id}: ${mode.does}`);
+    assert.equal(
+      flyEjected(f.plan, frameOf(f), f.site.seaLevel.value, { t: 10, r: [6.4e6, 0, 0], v: [0, 0, 0] }, { ground: () => 0 }),
+      null,
+    );
+    console.log(`# ${f.id}: ${f.plan.record.aborts.map((m) => `to ${m.until.value} s ${m.escape ? 'flown' : 'said'}`).join('; ')}`);
   }
 });
 
