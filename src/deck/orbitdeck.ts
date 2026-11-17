@@ -1644,9 +1644,15 @@ export class OrbitDeck extends Deck {
       row.style.setProperty('--left', `${st.aboard ? (100 * part).toFixed(0) : 0}%`);
       row.classList.toggle('low', st.aboard && part < 0.2);
     });
-    const burning = stagesOf(plan)
-      .filter((_, i) => stages[i]!.burning)
-      .map((st) => short(st.body.label));
+    const burning = [
+      ...stagesOf(plan)
+        .filter((_, i) => stages[i]!.burning)
+        .map((st) => short(st.body.label)),
+      // (a manoeuvre burning on the flight as it stands, by its thrusters' name: orbital.ts `movesOf`)
+      ...shipOf(this.planned ?? (this.free || this.mine !== null ? this.givenUp() : plan))
+        .moves.filter((m) => t >= m.on && t < m.off)
+        .map((m) => plan.craft[0]!.engines.find((e) => e.id === m.engine)!.label),
+    ];
     const retro =
       this.fired !== null
         ? { on: this.fired, off: shipOf(this.planned!).off }
