@@ -39,6 +39,8 @@ CM_TOP = CM_BASE + CM_HEIGHT
 FAIRING_HEIGHT = 26.0
 FAIRING_RADIUS = 13 * 12 / 2
 RCS_STATION = CM_BASE - 41.10  # CSM-101 reference Figure 1.4, p.1-16
+# Inherited display rim, still estimated; not a measured nozzle wall thickness.
+BELL_RIM = 0.3
 
 
 def radial(radius, angle, z):
@@ -64,7 +66,7 @@ def bell(name, origin, direction, length, radius, mat, parent):
                 (radius * 0.16, length),
                 (radius * 0.29, length * 0.72),
                 (radius * 0.70, length * 0.28),
-                (radius - 0.3, 0),
+                (radius - BELL_RIM, 0),
                 (radius, 0),
             ]
         ),

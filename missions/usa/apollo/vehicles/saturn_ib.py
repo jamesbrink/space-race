@@ -1,15 +1,15 @@
 """SA-205 exterior, in inches. NASA Apollo 7 press kit pp. 31–33 and Figure 25a.
 
-Published rounded envelopes constrain the stack. Internal partitions, engine bells, fins,
-paint boundaries and attachments are estimated from the figures, not engineering stations.
-S-IVB length includes the interstage in this first study; its partition is estimated.
+Published rounded envelopes constrain the stack. The S-IVB separation plane uses the
+AS-205 flight evaluation's rounded station; nozzle exit IDs use the period fact sheets.
+Engine contours, fins, paint boundaries and attachments remain provisional.
 """
 
 import math
 
 from mathutils import Matrix
 
-from apollo_csm import SM_BOTTOM, bell, radial, tube
+from apollo_csm import BELL_RIM, SM_BOTTOM, bell, radial, tube
 from srlib import IN, TAU, MeshBuilder, group, lathe_obj, load_font, material, prof, text_mesh
 
 SIB_TOP = 80.2 * 12
@@ -19,7 +19,13 @@ SLA_TOP = IU_TOP + 28 * 12
 CSM_OFFSET = SLA_TOP - SM_BOTTOM  # align the SM aft bulkhead at XA838 to the adapter
 HEIGHT = 224 * 12  # Figure 25a; height to escape-system Q-ball
 RADIUS = 130  # p. 33, 260 in instrument unit and S-IVB interface
-INTERSTAGE_TOP = SIB_TOP + 220  # estimated partition within the 58.4 ft S-IVB envelope
+# MPR-SAT-FE-68-4, Figure A-1, p.206: vehicle station in inches, rounded.
+# The model uses that station directly, not 1187 inches added to the S-IB top.
+INTERSTAGE_TOP = 1187.0
+# Saturn IB News Reference, changed September 1968, H-1 and J-2 fact sheets
+# (PDF pp.45/69): these dimensions are explicitly INSIDE exit diameters.
+H1_EXIT_INNER_RADIUS = (3 * 12 + 10) / 2
+J2_EXIT_INNER_RADIUS = (6 * 12 + 5) / 2
 
 
 def cylinder(name, radius, lo, hi, mat, parent):
@@ -108,11 +114,11 @@ def build():
     for i in range(8):
         a = TAU * (i % 4) / 4 + (math.pi / 4 if i >= 4 else 0)
         r = 43 if i < 4 else 91
-        bell(f"H1_Bell_{i}", radial(r, a, 0), (0, 0, 1), 70, 18, steel, groups["FirstStageEngines"])
+        bell(f"H1_Bell_{i}", radial(r, a, 0), (0, 0, 1), 70, H1_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["FirstStageEngines"])
         tube(f"H1_Chamber_{i}", radial(r, a, 64), radial(r, a, 108), 8, steel, groups["FirstStageEngines"])
     # S-IVB aft interstage surrounds its single J-2.
     painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
-    bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, 39, steel, groups["SecondStageEngine"])
+    bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, J2_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["SecondStageEngine"])
     sivb = groups["SaturnSecondStage"]
     painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, INTERSTAGE_TOP + 55)])
     for i in range(2):

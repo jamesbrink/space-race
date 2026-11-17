@@ -15,7 +15,10 @@ is converted once with `IN`. `flight.ts` quotes the same dimensions with confide
 | Centre oxygen tank | 105 in diameter | documented, p. 32 |
 | Tank cluster pitch radius | 93 in | estimated, not a documented tank station |
 | S-IVB stage envelope | 58.4 ft | documented, p. 32, rounded |
-| Interstage share of that envelope | 220 in | estimated from Figure 25a |
+| S-IVB separation plane, vehicle station | 1187 in | documented, AS-205 flight evaluation Figure A-1, p. 206; rounded |
+| Interstage span in this reconstruction | 224.6 in | derived: rounded STA1187 minus rounded S-IB top962.4; not an as-built measurement |
+| H-1 nozzle exit inside diameter | 46 in | documented nominal, 1968 Saturn IB News Reference, H-1 fact sheet (PDF p. 45) |
+| J-2 nozzle exit inside diameter | 77 in | documented nominal, same reference, J-2 fact sheet (PDF p. 69) |
 | IU height / diameter | 36 / 260 in | documented, p. 33 |
 | Spacecraft adapter length | 28 ft | documented, p. 26 |
 | Adapter aft / forward diameter | 260 / 154 in | documented, p. 26 |
@@ -27,6 +30,9 @@ of the rounded source dimensions. The fins reach beyond the body.
 
 S-IB top is Z962.4 in, S-IVB top Z1663.2, IU top Z1699.2 and adapter top Z2035.2.
 These are arithmetic sums of rounded envelopes, not independently documented interface stations.
+The S-IVB upper separation plane is now Z1187 in from the mission-specific reference below;
+the lower end of the interstage remains at Z962.4 in. Its resulting 224.6-inch span
+combines rounded references and must not be read as a tenth-inch inspection measurement.
 The SM barrel stands at the adapter’s top; its engine projects inside it. The command-module
 base is Z2197.2 in and its nominal forward heat-shield top Z2309.45. The escape motor ends at Z2688 (224 ft).
 Its remaining height is allocated within that envelope by estimate. **Closing the overall
@@ -37,7 +43,8 @@ of the hardware’s departure. No simulator or launch site is provided.
 
 ## Simplifications and things still wrong
 
-- Fin profiles, nozzle contours, tank domes, pitch radii and structural stations are estimated.
+- Fin profiles, nozzle contours, tank domes, pitch radii and structural stations other than
+  the cited separation plane are estimated.
 - No tank interior, common bulkhead, detailed feed pipes, turbopumps, H-1 exhaust ducts,
   ullage rockets, vents, detailed APS engines, hold-downs or separation mechanisms.
 - Stiffener count and size are estimated. Paint boundaries and lettering locations are estimated
@@ -71,3 +78,33 @@ This verifies the tank colour assignment, not colourimetry, an exact paint-edge
 survey, tank end stations, or absolute clocking relative to the spacecraft.
 Those geometric and marking limitations above remain. No Skylab engine thrust
 rating or late-vehicle configuration is silently applied to SA-205.
+
+## Mission separation plane and engine exits
+
+The MSFC *Results of the Fifth Saturn IB Launch Vehicle Test Flight AS-205
+(Apollo 7 Mission)*, MPR-SAT-FE-68-4, 25 January 1969, Figure A-1, printed
+p. 206 (PDF p. 226), explicitly locates the S-IVB separation plane at **vehicle
+station 1187 inches**. The drawing prints whole-inch stations. This replaces
+the initial unsourced 220-inch interstage partition; it is a station from the
+vehicle datum, not 1187 inches above the first stage. The *Saturn IB News
+Reference*, changed September 1968, p. 5-1, confirms that the aft interstage
+remained attached to the first stage after separation. The gallery's slider
+shows individual parts as an exhibit, not a flight sequence.
+
+The same period News Reference has separate engine fact sheets, both marked
+changed December 1967. The H-1 sheet (PDF p. 45) gives a **3 ft 10 in ID**
+nozzle exit; the J-2 sheet (PDF p. 69) gives **6 ft 5 in ID**. These are inside
+diameters, now built as 46 and 77 inches at all detail levels. The original
+H-1 opening was only 35.4 inches across and was substantially undersized.
+
+`apollo_csm.BELL_RIM` retains the initial estimated 0.3-inch display rim. The
+outer reference radius is derived by adding this inherited rim to the documented
+inside radius; no manufactured wall thickness is claimed. Bell contours, nozzle
+lengths, throat sizes, chamber shapes, mounting coordinates and engine cant
+remain provisional. The published **overall engine** lengths, 102 inches for
+H-1 and 133 inches for J-2, are not substituted for nozzle lengths. Source
+thrust ratings are not assigned to a simulator.
+
+The H-1 fact sheet explicitly dates the engine uprating to SA-206 and later,
+so its pre-uprating hardware reference is appropriate to SA-205. These are
+nominal period design figures, not measurements of the individual engines flown.

@@ -163,7 +163,7 @@ const parts: Part[] = [
     explode: [0, 15, 0],
     summary: 'The hydrogen–oxygen upper stage that Apollo 7 later rendezvoused with.',
     detail:
-      'The 58.4-foot published stage envelope is partitioned here between barrel and aft interstage by estimate. The shell has raised stiffeners and simplified auxiliary-propulsion housings. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
+      'The press kit gives a 58.4-foot stage envelope, including the aft interstage. Its separation plane now follows rounded vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. Other barrel subdivisions, raised stiffeners and auxiliary-propulsion housings remain provisional. The first study’s four unsourced conduits have been removed; their correct layout needs verification. Tank domes, internal common bulkhead, ullage rockets, vents and detailed fittings are not built.',
   },
   {
     node: 'SecondStageEngine',
@@ -173,7 +173,8 @@ const parts: Part[] = [
     explode: [0, 11, 0],
     summary: 'One hydrogen-burning engine inside the aft interstage.',
     detail:
-      'The single J-2 has a hollow bell here; its profile, length, exit diameter and station are estimated. No thrust, mixture or burn duration is assigned to the model.',
+      'The single J-2 has a hollow bell with the nominal 77-inch inside exit diameter in the Saturn IB News Reference, J-2 Engine Fact Sheet (changed December 1967). Its 133-inch overall engine length is not used as a nozzle length. Bell contour, axial extent, mounting station and inherited display rim remain provisional. No thrust, mixture or burn duration is assigned to the model.',
+    facts: [['Nozzle exit', '77 in inside diameter · period hardware reference']],
   },
   {
     node: 'SaturnInterstage',
@@ -183,7 +184,8 @@ const parts: Part[] = [
     explode: [0, 3, 0],
     summary: 'The cylindrical skirt enclosing the upper stage’s engine.',
     detail:
-      'Its 220-inch length is estimated within the press kit’s 58.4-foot stage envelope. Exterior roll markings are estimated from NASA photograph S68-48788. Interior structure and separation fittings are not built.',
+      'The upper separation plane is vehicle station 1187 inches in the AS-205 flight evaluation, Figure A-1, p. 206. That reference is rounded to whole inches. Its lower interface remains at 962.4 inches from the press kit’s rounded 80.2-foot S-IB envelope, giving a derived 224.6-inch span rather than the original guessed 220 inches. This combination of rounded references is not an as-built inspection. The interstage remained with the first stage in flight; this gallery slider is an exhibit arrangement. Exterior roll markings are estimated from NASA photograph S68-48788. Interior structure and separation fittings are not built.',
+    facts: [['Upper separation plane', 'Vehicle STA 1187 in · rounded mission reference']],
   },
   {
     node: 'SaturnFirstStage',
@@ -203,7 +205,8 @@ const parts: Part[] = [
     explode: [0, -4, 0],
     summary: 'Four inboard and four outboard engines under the tank cluster.',
     detail:
-      'Eight H-1 engines burn kerosene and liquid oxygen. Each has a hollow bell and simplified chamber; their profiles, positions and chamber dimensions are estimated from the press-kit vehicle drawing. Gimbal gear, turbopumps, plumbing and exhaust ducts are not built.',
+      'Eight H-1 engines burn kerosene and liquid oxygen. Their hollow bells now have the nominal 46-inch inside exit diameter in the Saturn IB News Reference, H-1 Engine Fact Sheet (changed December 1967), which explicitly distinguishes the later SA-206 uprating. The 102-inch published overall engine length is not a nozzle length. Bell contours, positions, chamber dimensions and inherited display rims remain provisional. Gimbal gear, turbopumps, plumbing and exhaust ducts are not built.',
+    facts: [['Nozzle exit', '46 in inside diameter · pre-SA-206 reference']],
   },
 ];
 
@@ -257,7 +260,7 @@ export const flight: Flight = {
       value: 58.4 * 12 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: `${KIT}, p. 32: 58.4 ft; interstage/barrel partition estimated`,
+      note: `${KIT}, p. 32: 58.4 ft, including the aft interstage; upper separation plane uses AS-205 flight evaluation Figure A-1, p. 206, rounded vehicle station 1187 in`,
     },
     {
       group: 'Launch vehicle',
@@ -266,6 +269,30 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'documented',
       note: `${KIT}, p. 33: 3 ft`,
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'S-IVB separation station',
+      value: 1187 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'AS-205 flight evaluation, MPR-SAT-FE-68-4, Figure A-1, p. 206: vehicle STA 1187 in, rounded to whole inches; a station from the vehicle datum, not a stage length',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 nozzle inside exit diameter',
+      value: 46 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'Saturn IB News Reference, changed September 1968, H-1 Engine Fact Sheet (changed December 1967; PDF p. 45): 3 ft 10 in ID, nominal period hardware; source explicitly dates engine uprating to SA-206 onward. Bell contour and display rim remain provisional',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'J-2 nozzle inside exit diameter',
+      value: 77 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'Saturn IB News Reference, changed September 1968, J-2 Engine Fact Sheet (changed December 1967; PDF p. 69): 6 ft 5 in ID, nominal period hardware. Bell contour and display rim remain provisional; no thrust rating is assigned to the model',
     },
     {
       group: 'Launch vehicle',

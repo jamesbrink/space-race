@@ -15,6 +15,12 @@ A structural cutaway exposes the pressure-vessel sidewall and both nominal bulkh
 inside the thermal shell; the full tunnel and furnishings are unbuilt.
 No seat control is offered yet.
 
+The launcher now uses the AS-205 flight evaluation's rounded S-IVB separation
+station and the period Saturn IB News Reference's H-1 and J-2 **inside** nozzle
+exit diameters. Bell profiles and mounting coordinates remain provisional;
+[the hardware notes](../../vehicles/saturn-ib.md) distinguish each published
+dimension from the inherited display geometry.
+
 ## Sources read
 
 - NASA, *Apollo 7 press kit*, release 68-168K, 6 October 1968, pp. 25–33 and
