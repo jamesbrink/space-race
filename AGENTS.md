@@ -44,7 +44,7 @@ pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real bro
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
 pnpm figures          # the simulators' figures to the last digit against tests/fixtures/figures.json (run on hal9000; --write blesses)
 pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
-pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks
+pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks: the first flight, then a flight at each other complex
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
 pnpm test:fires       # needs `pnpm dev` running: every engine burning on the record's flight has its fire, hung where it should be
 pnpm test:chute       # needs `pnpm dev` running: a parachute's lines drawn over the land, the sea and the cloud behind them, both looks, 1280 and 390
