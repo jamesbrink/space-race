@@ -59,7 +59,10 @@ const facts: Record<string, Part['facts']> = {
     ['Body diameter', '33 ft · press kit p. 38'],
     ['Span over fins', '63 ft · SA-503 flight manual fig. 1-3'],
   ],
-  FirstStageEngines: [['Arrangement', 'One fixed centre engine, four gimballed outer engines · press kit p. 39']],
+  FirstStageEngines: [
+    ['Arrangement', 'One fixed centre engine, four gimballed outer engines · press kit p. 39'],
+    ['Mounting', 'Outboard engines on the thrust posts, below a thrust structure 233.7 in long · SA-503 flight manual fig. 4-1'],
+  ],
   SaturnSecondStage: [['Envelope', '81.5 ft long, 33 ft across · press kit p. 39']],
   SaturnThirdStage: [['Envelope', '58 ft 5 in long, 21 ft 8 in across · press kit p. 40']],
   SaturnInterstage: [['Length', '19 ft · SA-503 flight manual fig. 6-1']],
@@ -398,9 +401,8 @@ const parts: Part[] = [
     'Five F-1 engines',
     12,
     -5,
-    'Five bells fill the base of the vehicle.',
-    'A fixed centre engine sat between four outboard engines. The fairings around the outboard bells give the first stage its flared silhouette.',
-    true,
+    'Five engines hang in the open below the first stage.',
+    'A fixed centre engine sat between four outboard engines, each hung from a thrust post at the rim of the thrust structure. A half-cone fairing covers the head of each outboard engine and carries a fin. Together they give the first stage its flared foot.',
   ),
 ];
 
@@ -557,7 +559,7 @@ export const flight: Flight = {
       value: 89.19 * 60,
       unit: 's',
       confidence: 'documented',
-      note: `${record}, Earth Orbit, 89.19 minutes`,
+      note: `${record}, Earth Orbit, 89.19 minutes as printed. An orbit of the apsides it gives takes 88.2 minutes.`,
     },
     {
       group: 'Mission',
@@ -669,7 +671,7 @@ export const flight: Flight = {
         { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [-1, -0.35, 1] },
         { id: 'antenna', label: 'Lunar antenna', nodes: ['HighGainAntenna'], from: [-0.75, -0.5, 0.6] },
         { id: 'lta', label: 'Lunar test article', nodes: ['LunarTestArticle'] },
-        { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.5, 0.78] },
+        { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
       parts,
     },

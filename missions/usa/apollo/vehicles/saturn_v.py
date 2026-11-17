@@ -23,6 +23,22 @@ LOWER_RADIUS = 198
 UPPER_RADIUS = 130
 F1_EXIT_RADIUS = (11 * 12 + 7) / 2  # NASA Saturn V News Reference, F-1 fact sheet R-1
 FIN_TIP_RADIUS = 63 * 12 / 2  # MSFC-MAN-503 Figure 1-3
+# The four outboard engines stand on the thrust posts at the stage's rim (News Reference p. 2-2,
+# MSFC-MAN-503 Fig. 4-1). The 364-inch circle is the figure commonly quoted; no primary copy was read.
+F1_PITCH_RADIUS = 364 / 2
+# The S-IC's tanks, by station (Boeing D5-15782 Fig. 1-1; MSFC-MAN-503 Fig. 4-1). See saturn-v.md.
+LOX_RIM = station(909)
+FUEL_RIM = LOX_RIM - 262.4  # the intertank spans the two rims
+FUEL_TOP = station(749)  # scaled from Fig. 1-1 at the centreline
+FUEL_BOTTOM = FUEL_TOP - 517  # full tank, Fig. 4-1
+FUEL_AFT = FUEL_BOTTOM + 120  # the aft rim: the dome's depth is estimated
+# The thrust structure hangs 233.7 in below the fuel tank's aft rim (Fig. 4-1) and the skin ends with
+# it, just forward of the gimbal plane at STA 100 (p. 4-1). The engines hang clear below.
+THRUST_BASE = FUEL_AFT - 233.7
+# Each fairing is a half cone from the top of the thrust structure down over the head of its engine.
+# Its lower edge is estimated from the first stage fact sheet's drawing, a third of the way down the engine.
+FAIRING_TOP = FUEL_AFT
+FAIRING_BOTTOM = station(48.5)
 FIRST_TOP = station(1564)
 COLLAR_TOP = station(1760)
 SECOND_TOP = station(2519)
@@ -62,40 +78,56 @@ def corrugations(parent, name, r0, r1, lo, hi, count, white, black, mask=0):
             mark_shells([mesh.build(name + paint.name, paint, parent).name])
 
 
-def fairings(parent, white, black, alloy):
-    """Four swept engine fairings carrying fins. Half-round shells blend back into the skirt."""
+def fairings(parent, white, dark, shield):
+    """Four half-cone engine fairings carrying fins, and the heat shield that closes the base."""
+    height = FAIRING_TOP - FAIRING_BOTTOM
+    # (a row at the skin's lower edge: above it the fairing is part of the skin, below it hangs alone)
+    rows = sorted({0, (THRUST_BASE - FAIRING_BOTTOM) / height, 0.5, 0.75, 1})
+    n = srlib._segs(16)
     for i in range(4):
         a = TAU * i / 4
 
+        def half_width(z):
+            return 0.40 * (1 - 0.91 * z)  # 158 in across its foot, off the fact sheet's drawing
+
         # The dark field contains its fairing as part of the very same skin.
         # This keeps a vanishingly shallow pair of surfaces out of the taper tip.
-        def point(t, z, angle=a):
-            half_width = 0.32 * (1 - 0.91 * z)
-            offset = t * math.pi / 8
-            bulge = 60 * (1 - z) * math.cos(min(1, abs(offset) / half_width) * math.pi / 2)
-            return radial(LOWER_RADIUS + bulge, angle + offset, 72 + 220 * z)
+        def cone(t, z, angle=a):
+            bulge = 60 * (1 - z) * math.cos(t * math.pi / 2)
+            return radial(LOWER_RADIUS + bulge, angle + t * half_width(z), FAIRING_BOTTOM + height * z)
 
         shell = MeshBuilder()
-        n = srlib._segs(16)
-        shell.grid(point, [2 * j / n - 1 for j in range(n + 1)], [0, 0.35, 0.7, 1])
-        mark_shells([shell.build(f"SIC_EngineFairing_{i}", black, parent).name])
+        shell.grid(cone, [2 * j / n - 1 for j in range(n + 1)], rows)
+        for side in (-1, 1):
+            # the skin from the cone's edge to the edge of the dark field, down to the skin's lower edge only
+            def field(u, z, angle=a, side=side):
+                edge = half_width(z)
+                return radial(LOWER_RADIUS, angle + side * (edge + u * (math.pi / 8 - edge)), FAIRING_BOTTOM + height * z)
+
+            shell.grid(field, [j / 4 for j in range(5)], rows[1:], flip=side < 0)
+        mark_shells([shell.build(f"SIC_EngineFairing_{i}", dark, parent).name])
         skin = MeshBuilder()
-        skin.lathe(prof([(LOWER_RADIUS, 72), (LOWER_RADIUS, 292)]), segs=16, arc=(a + math.pi / 8, a + 3 * math.pi / 8))
+        skin.lathe(prof([(LOWER_RADIUS, THRUST_BASE), (LOWER_RADIUS, FAIRING_TOP)]), segs=16, arc=(a + math.pi / 8, a + 3 * math.pi / 8))
         mark_shells([skin.build(f"SIC_FairingWhiteField_{i}", white, parent).name])
         blade = MeshBuilder()
         verts = []
-        for r, bottom, top, width in [(243, 72, 159, 5), (FIN_TIP_RADIUS, 52, 82, 1.4)]:
+        low = FAIRING_BOTTOM
+        for r, bottom, top, width in [(236, low, low + 87, 5), (FIN_TIP_RADIUS, low, low + 30, 1.4)]:
             for side, z in ((-1, bottom), (1, bottom), (0, top)):
                 p = Vector(radial(r, a, z)) + Vector(radial(width * side, a + math.pi / 2, 0))
                 verts.append(p)
         blade.add(verts, [(0, 2, 1), (3, 4, 5), (0, 1, 4, 3), (1, 2, 5, 4), (2, 0, 3, 5)])
-        mark_shells([blade.build(f"SIC_Fin_{i}", alloy, parent, smooth=False).name])
+        mark_shells([blade.build(f"SIC_Fin_{i}", shield, parent, smooth=False).name])
+    # The base heat shield: steel honeycomb across the foot of the stage, forward of the gimbal plane.
+    base = MeshBuilder()
+    base.lathe(prof([(0, THRUST_BASE), (LOWER_RADIUS, THRUST_BASE)]), segs=48)
+    base.build("SIC_BaseHeatShield", shield, parent)
 
 
 def first_engines(parent, steel, alloy):
     for i in range(5):
         a = TAU * i / 4
-        x, y, _ = radial(0 if i == 4 else 146, a, 0)
+        x, y, _ = radial(0 if i == 4 else F1_PITCH_RADIUS, a, 0)
         mount = group(f"F1_Mount_{i + 1}", parent)
         mount.location = (x, y, 0)
         # One continuous surface around the extension, its cooling bands and the
@@ -112,10 +144,14 @@ def first_engines(parent, steel, alloy):
                 (59.4, 47),
                 (56.8, 50),
                 (49, 51),
-                (25, 104),
+                (40, 75),
+                (31, 100),
+                (22, 125),
                 (16, 145),
                 (11, 145),
-                (20, 104),
+                (17, 125),
+                (26, 100),
+                (35, 75),
                 (48, 41),
                 (F1_EXIT_RADIUS - BELL_RIM, 0),
                 (F1_EXIT_RADIUS, 0),
@@ -126,14 +162,22 @@ def first_engines(parent, steel, alloy):
         for q in range(4):
             shell.lathe(prof(profile), segs=24, arc=(q * TAU / 4, (q + 1) * TAU / 4))
         shell.build(f"F1_Bell_{i + 1}", steel, mount)
+        # The chamber and its dome reach the gimbal at STA 100, at every level of detail: the engines
+        # hang in the open below the stage. The pump and its duct are for the finest only.
+        body = MeshBuilder()
+        structure.turn(
+            body,
+            [(16, 145), (20, 153), (20, 165), (15, 174), (11, 176), (9, 197), (7, 204), (8, 212), (4, station(100)), (0, station(100))],
+            sides=srlib._segs(48),
+        )
         if interior():
-            body = MeshBuilder()
-            structure.turn(
-                body, [(16, 145), (20, 153), (20, 165), (15, 174), (11, 176), (9, 197), (7, 204), (8, 212), (4, station(100)), (0, station(100))]
-            )
             structure.pipe(body, [(58, 0, 44), (57, 0, 61), (46, 0, 110), (30, 0, 146)], 6)
             structure.ball(body, (29, 0, 139), 14)
-            body.build(f"F1_UpperEquipment_{i + 1}", steel, mount)
+        body.build(f"F1_UpperEquipment_{i + 1}", steel, mount)
+        # Each engine is carried to the structure above the heat shield.
+        post = MeshBuilder()
+        post.tube((0, 0, station(100) * IN), (0, 0, THRUST_BASE * IN), 6 * IN, segs=8, caps=False)
+        post.build(f"F1_ThrustPost_{i + 1}", alloy, mount)
 
 
 def dome(mesh, radius, centre, depth, side):
@@ -301,6 +345,9 @@ def build():
     warm = material("saturn-tank-bulkhead", (0.60, 0.53, 0.38), 0.38, 0.55, double_sided=True)
     metal = material("saturn-interior-alloy", (0.63, 0.67, 0.68), 0.55, 0.47, double_sided=True)
     red = material("saturn-lettering-red", (0.55, 0.035, 0.02), roughness=0.7)
+    # (seen from both sides: the fins' and the heat shield's undersides, and the shield from within the cutaway)
+    shield = material("saturn-base-titanium", (0.5, 0.52, 0.52), 0.6, 0.5, double_sided=True)
+    fairing_black = material("saturn-fairing-black", (0.025, 0.03, 0.035), roughness=0.7, double_sided=True)
     first = group("SaturnFirstStage")
     second = group("SaturnSecondStage")
     collar = group("LowerInterstage")
@@ -309,7 +356,7 @@ def build():
     iu = group("InstrumentUnit")
     r, u = LOWER_RADIUS, UPPER_RADIUS
     # Dark fields align across the S-IC forward skirt and S-II interstage.
-    barrel("SIC_", first, [(292, 685, r, r, 0x55), (685, 1560, r, r, 0), (1560, FIRST_TOP, r, r, 0x55)], white, black)
+    barrel("SIC_", first, [(FAIRING_TOP, 685, r, r, 0x55), (685, 1560, r, r, 0), (1560, FIRST_TOP, r, r, 0x55)], white, black)
     barrel("SII_Interstage_", collar, [(FIRST_TOP, COLLAR_TOP, r, r, 0x55)], white, black)
     barrel("SII_", second, [(COLLAR_TOP, 1970, r, r, 0x55), (1970, 2015, r, r, 255), (2015, SECOND_TOP, r, r, 0)], white, black)
     # Two stacked roll-pattern rows on the conical interstage. Their quarters differ.
@@ -317,7 +364,7 @@ def build():
     barrel("SIVB_Interstage_", taper, [(SECOND_TOP, mid, r, (r + u) / 2, 0b11000011), (mid, TAPER_TOP, (r + u) / 2, u, 0b00001111)], white, black)
     barrel("SIVB_", third, [(TAPER_TOP, THIRD_TOP, u, u, 0)], white, black)
     barrel("IU_", iu, [(THIRD_TOP, IU_TOP, u, u, 255)], white, black)
-    fairings(first, white, black, alloy)
+    fairings(first, white, fairing_black, shield)
     markings(first, second, red)
     if srlib.DETAIL >= 0.5:
         corrugations(first, "SIC_IntertankStringers", r, r, 756, 940, 144, white, black)
@@ -348,11 +395,7 @@ def build():
     if interior():
         # Boeing D5-15782 Fig. 1-1 locates the LOX aft crown, its rim and the
         # distinct RP-1 crown below. The 262.4-inch intertank spans the rims.
-        lox_rim = station(909)
-        fuel_rim = lox_rim - 262.4
-        fuel_top = station(749)  # scaled from Fig. 1-1 at the centreline
-        fuel_bottom = fuel_top - 517  # full tank in MSFC-MAN-503 Fig. 4-1
-        fuel_aft = fuel_bottom + 120
+        lox_rim, fuel_rim, fuel_top, fuel_aft = LOX_RIM, FUEL_RIM, FUEL_TOP, FUEL_AFT
         tanks(
             group("SIC_FuelTank", first_tanks),
             "SIC_RP1",
