@@ -6,48 +6,10 @@ import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { faults } from '../src/world/sequence.ts';
+import { framesOf, materialsUnder } from './glb.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIDENCE = ['documented', 'assumed', 'derived', 'estimated'];
-
-// Period nominal mounting references, independently checked in every exported LOD.
-// A nozzle-exit radius substituted for a gimbal radius, or a reversed cant, can
-// look plausible while putting the thrust axis on the wrong side of the vehicle.
-for (const suffix of ['', '.lod1', '.lod2']) {
-  test(`Apollo 7 fin span matches the SA-205 directive${suffix}`, () => {
-    const file = join(root, `public/models/usa/apollo/apollo-7/vehicle${suffix}.glb`);
-    const { lo, hi } = framesOf(file).box('SaturnFirstStage');
-    // Two opposite pairs lie on the X/Z axes. The paint and tank cluster are inside both pairs.
-    for (const axis of [0, 2]) assert.ok(Math.abs(hi[axis] - lo[axis] - 40.7 * 0.3048) < 0.001, 'opposed fin tips across the stage');
-  });
-
-  test(`Apollo 7 H-1 gimbals and thrust axes match the August 1968 checklist${suffix}`, () => {
-    const file = join(root, `public/models/usa/apollo/apollo-7/vehicle${suffix}.glb`);
-    const frames = framesOf(file);
-    const inch = 0.0254;
-    const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} differs from ${b}`);
-    for (let i = 0; i < 8; i++) {
-      const radius = (i < 4 ? 32 : 95) * inch;
-      const angle = (((i % 4) * 90 + (i < 4 ? 0 : 45)) * Math.PI) / 180;
-      const cant = ((i < 4 ? 3 : 6) * Math.PI) / 180;
-      const mount = `H1_Mount_${i}`;
-      const gimbal = frames.point(mount);
-      assert.ok(gimbal, `missing ${mount}`);
-      close(gimbal[0], radius * Math.cos(angle));
-      close(gimbal[1], 100 * inch);
-      close(gimbal[2], -radius * Math.sin(angle));
-      const up = frames.point(mount, [0, 1, 0]).map((v, k) => v - gimbal[k]);
-      close(up[0], -Math.sin(cant) * Math.cos(angle));
-      close(up[1], Math.cos(cant));
-      close(up[2], Math.sin(cant) * Math.sin(angle));
-      // Check the actual bell inherits the mount, rather than testing only an empty.
-      const bellUp = frames.point(`H1_Bell_${i}`, [0, 1, 0]).map((v, k) => v - frames.point(`H1_Bell_${i}`)[k]);
-      up.forEach((v, k) => close(bellUp[k], v));
-      const exit = frames.point(`H1_Bell_${i}`);
-      assert.ok(Math.hypot(exit[0], exit[2]) > radius, 'exhaust points outboard of the gimbal');
-    }
-  });
-}
 
 /** The names of a GLB's top-level nodes, read from its JSON chunk (no geometry is decoded). */
 function topLevelNodes(file) {
@@ -66,84 +28,10 @@ function allNodes(file) {
   return new Set(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => n.name));
 }
 
-/** The names of the materials of the meshes under a node of a GLB (the first of that name), or null if it has none such. */
-function materialsUnder(file, name) {
-  const glb = readFileSync(file);
-  const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
-  const start = gltf.nodes.findIndex((n) => n.name === name);
-  if (start < 0) return null;
-  const out = [];
-  const visit = (i) => {
-    const n = gltf.nodes[i];
-    for (const prim of n.mesh === undefined ? [] : gltf.meshes[n.mesh].primitives) out.push(gltf.materials?.[prim.material]?.name ?? '');
-    for (const c of n.children ?? []) visit(c);
-  };
-  visit(start);
-  return out;
-}
-
 /** Every node of a GLB by name, with its extras. */
 function extrasOf(file) {
   const glb = readFileSync(file);
   return new Map(JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8')).nodes.map((n) => [n.name, n.extras ?? {}]));
-}
-
-/**
- * Where things are in a GLB, read from its JSON (no geometry is decoded): each node's frame in the model's, and the box
- * round a node's meshes and its children's (from each accessor's own bounds, carried through the frames).
- */
-function framesOf(file) {
-  const glb = readFileSync(file);
-  const gltf = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
-  const times = (a, b) => {
-    const o = new Array(16).fill(0);
-    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
-    return o;
-  };
-  const own = (n) => {
-    if (n.matrix) return n.matrix;
-    const [x, y, z, w] = n.rotation ?? [0, 0, 0, 1];
-    const [sx, sy, sz] = n.scale ?? [1, 1, 1];
-    const [tx, ty, tz] = n.translation ?? [0, 0, 0];
-    return [
-      ...[(1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + z * w) * sx, 2 * (x * z - y * w) * sx, 0],
-      ...[2 * (x * y - z * w) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + x * w) * sy, 0],
-      ...[2 * (x * z + y * w) * sz, 2 * (y * z - x * w) * sz, (1 - 2 * (x * x + y * y)) * sz, 0],
-      ...[tx, ty, tz, 1],
-    ];
-  };
-  const frames = new Map();
-  const down = (i, parent) => {
-    const m = times(parent, own(gltf.nodes[i]));
-    frames.set(i, m);
-    for (const c of gltf.nodes[i].children ?? []) down(c, m);
-  };
-  for (const i of gltf.scenes[gltf.scene ?? 0].nodes) down(i, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-  const at = (m, [x, y, z]) => [0, 1, 2].map((k) => m[k] * x + m[4 + k] * y + m[8 + k] * z + m[12 + k]);
-  const index = (name) => gltf.nodes.findIndex((n) => n.name === name);
-  return {
-    point: (name, p = [0, 0, 0]) => (index(name) < 0 ? null : at(frames.get(index(name)), p)),
-    box(name) {
-      const lo = [Infinity, Infinity, Infinity];
-      const hi = [-Infinity, -Infinity, -Infinity];
-      const visit = (i) => {
-        const n = gltf.nodes[i];
-        for (const prim of n.mesh === undefined ? [] : gltf.meshes[n.mesh].primitives) {
-          const { min, max } = gltf.accessors[prim.attributes.POSITION];
-          for (const c of [0, 1, 2, 3, 4, 5, 6, 7]) {
-            const q = at(frames.get(i), [c & 1 ? max[0] : min[0], c & 2 ? max[1] : min[1], c & 4 ? max[2] : min[2]]);
-            q.forEach((v, k) => {
-              lo[k] = Math.min(lo[k], v);
-              hi[k] = Math.max(hi[k], v);
-            });
-          }
-        }
-        for (const c of n.children ?? []) visit(c);
-      };
-      if (index(name) >= 0) visit(index(name));
-      return { lo, hi };
-    },
-  };
 }
 
 const files = globSync('missions/*/*/flights/*/flight.ts', { cwd: root });
@@ -176,28 +64,19 @@ for (const file of files) {
     );
   });
 
-  if (flight.id === 'usa/apollo/apollo-7')
-    test('Apollo 7 couches remain a rigid interior part and are omitted from distant geometry', () => {
-      const model = flight.models[0];
-      const couch = model.parts.find((part) => part.node === 'CrewCouches');
-      const cm = model.parts.find((part) => part.node === 'CommandModule');
-      assert.equal(couch.inside, true, 'selection must open the normal cutaway');
-      assert.deepEqual(couch.explode, cm.explode, 'crew supports must not move through their cabin during explosion');
-      assert.equal(couch.order, cm.order, 'crew supports and cabin must begin moving together');
-      for (const node of ['FlightDirectorIndicators', 'ConsoleEquipment']) {
-        const equipment = model.parts.find((part) => part.node === node);
-        assert.equal(equipment.inside, true);
-        assert.equal(equipment.order, cm.order);
-        assert.deepEqual(equipment.explode, cm.explode);
-      }
-      const glb = join(root, 'public', model.url);
-      const materials = materialsUnder(glb, 'CrewCouches');
-      assert.ok(materials.includes('apollo-couch-harness'), 'full detail contains actual restraints');
-      assert.ok(materials.includes('apollo-couch-heel-pad'), 'full detail contains actual heel supports');
-      for (const suffix of ['.lod1.glb', '.lod2.glb'])
-        for (const node of ['CrewCouches', 'FlightDirectorIndicators', 'ConsoleEquipment'])
-          assert.deepEqual(materialsUnder(glb.replace(/\.glb$/, suffix), node), [], 'distant levels retain only the part node');
-    });
+  // What a cabin holds (`cabin.within`: the crew's seats and couches, their panels and fittings) is one module's inside:
+  // taken apart it moves as one, starting together, so no seat or panel passes through the walls round it; and each of
+  // it is `inside`, so choosing it opens the cutaway.
+  for (const model of flight.models)
+    if (model.cabin)
+      test(`${flight.id}/${model.id}: what the cabin holds moves as one`, () => {
+        const held = model.parts.filter((p) => model.cabin.within.includes(p.node));
+        for (const p of held) {
+          assert.equal(p.inside, true, `${p.node}: held in the cabin, so inside`);
+          assert.equal(p.order, held[0].order, `${p.node} starts to move with ${held[0].node}`);
+          assert.deepEqual(p.explode, held[0].explode, `${p.node} moves as far as ${held[0].node}`);
+        }
+      });
 
   if (flight.surroundings)
     test(`${flight.id}: surroundings`, () => {
