@@ -49,7 +49,8 @@ FIT = Fit(
     # sensor "on an extendible antenna boom" (GVII, 8.12.2 and 8.13.2). Where in the section is not said: spacecraft 4's places
     experiments=("proton-electron-spectrometer", "magnetometer"),
     names=("Borman", "Lovell"),
-    # no crew: both men wore the G5C suit (GVII, 3.1.2.9.2), which is not modelled
+    # no crew: both men wore the G5C suit (GVII, 3.1.2.9.2), which is built standing, at the pad (../../../crew/g5c_suit.py),
+    # and not seated
     crew=None,
     white_disc=False,  # not known of this ship: it is spacecraft 3's, and not identified
     gmt_clock=True,  # "The time reference system was like the spacecraft 5 system", with a digital clock besides (GVII, 3.1.2.5)
@@ -293,7 +294,7 @@ SAYS = {
         "that the two do not meet. Nobody ever had to. For most of this flight the seat had another use: the suit its man "
         "was not wearing was folded double and wedged behind it, visor and boots between the seat and the hatch. Its form "
         "is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: the G5C suit both men wore "
-        "is not modelled.",
+        "is built standing, at the pad, and not seated.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
@@ -303,7 +304,7 @@ SAYS = {
         "that the two do not meet. Lovell sat in it without a pressure suit from the 45th hour; he said "
         "afterwards that a man without legs would have suited the ship perfectly, there being nothing for them to do. Its "
         "form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: the G5C suit both men "
-        "wore is not modelled.",
+        "wore is built standing, at the pad, and not seated.",
     ),
     # the launch vehicle
     "Stage2_Beacons": (

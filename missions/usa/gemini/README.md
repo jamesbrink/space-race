@@ -96,9 +96,10 @@ stands alone; and so in the Lineup. That is an exhibit's arrangement, since each
 
 | | In this repo |
 | --- | --- |
-| Launch Complex 19, built once and dated: each flight that has its Launch site stands on its own morning (Gemini 3 to 5) | [lc-19.md](../places/cape-canaveral/lc-19.md) |
+| Launch Complex 19, built once and dated: each flight that has its Launch site stands on its own morning (Gemini 3 to 5, and 7) | [lc-19.md](../places/cape-canaveral/lc-19.md) |
 | The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated and standing | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch, and stand at the foot of the erector |
-| The G4C suit, as the G3C's garment with what differs: the figure, standing | [g4c_suit.py](crew/g4c_suit.py), [g4c-suit.md](crew/g4c-suit.md). McDivitt and White, and Cooper and Conrad, stand at the foot of the erector on the mornings of Gemini 4 and 5; not built seated, so the seats of the flights after Gemini 3 are empty. The G5C of Gemini VII is not built |
+| The G4C suit, as the G3C's garment with what differs: the figure, standing | [g4c_suit.py](crew/g4c_suit.py), [g4c-suit.md](crew/g4c-suit.md). McDivitt and White, and Cooper and Conrad, stand at the foot of the erector on the mornings of Gemini 4 and 5; not built seated, so the seats of the flights after Gemini 3 are empty |
+| The G5C suit of Gemini VII, the G3C's garment with a soft hood: the figure, standing | [g5c_suit.py](crew/g5c_suit.py), [g5c-suit.md](crew/g5c-suit.md). Borman and Lovell stand at the foot of the erector, hoods zipped on |
 
 ## Sources
 

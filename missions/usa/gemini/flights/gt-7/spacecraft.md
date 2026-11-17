@@ -32,7 +32,7 @@ ships); ***Titans***, *On the Shoulders of Titans*; the **press kit**, NASA rele
 | Elapsed-time clock | a digital clock on the centre panel in place of the flight plan roller, reading to 999:59:59, with provision to start, stop and reset it; "to spacecraft 6 and subsequent spacecraft" | the roller | documented | GVII, 3.1.2.5 and 3.1.2.9.1; Gemini Midprogram Conference (NASA SP-121), p. 63 | yes: `get_clock=True`. Its place is the roller's; its form and its two switches estimated |
 | Range and range-rate indicator | "was deleted" | fitted | documented | GVII, 3.1.2.9.1 | yes: `range_indicator=False` |
 | Other panel changes | the HF antenna switch three-position (from spacecraft 6); the RADAR switch works the transponder; no manual computer sequencing switch; a pull-ring for the cabin vent valve's stopper; on the Agena control panel, O2 CROSS FEED for ENCDR, SPT-MAG for the docking release, BOOM EXT-RET for the pod's eject, OAMS RESV SQUIB for ENGINE ARM | | documented | GVII, 3.1.2.9.1 and Figure 3.1-12 | no: the panels are spacecraft 3's with the two clocks and without the range indicator |
-| Suits | G5C: G4C materials without the restraint layer and inner liner; a soft helmet with its own visor and no neck ring, unzipped and folded back when not wanted; a crash helmet under it; 16 lb. Two-piece nylon orbital flight suits besides | G4C | documented | GVII, 3.1.2.9.2; press kit, p. 49; *Titans*, p. 278 | no: the seats are empty |
+| Suits | G5C: G4C materials without the restraint layer and inner liner; a soft helmet with its own visor and no neck ring, unzipped and folded back when not wanted; a crash helmet under it; 16 lb. Two-piece nylon orbital flight suits besides | G4C | documented | GVII, 3.1.2.9.2; press kit, p. 49; *Titans*, p. 278 | standing, at the pad, the hood zipped on ([g5c-suit.md](../../crew/g5c-suit.md)); the seats are empty |
 | Stowage | aft and centre containers "slightly different in size and shape"; a food pouch on the left side of the right footwell; a dry-waste place behind the pilot's seat | | documented | GVII, 3.1.2.9.4, Figure 3.1-14 and Table 3.1-II | no: the cabin's boxes are spacecraft 3's |
 | Water dispenser, urine system | a pistol-shaped dispenser that counted half-ounce shots; a sampling system, filter and flowmeter | | documented | GVII, 3.1.2.9.3 | no |
 | Environmental control | a larger, insulated lithium hydroxide cartridge; bypass hoses on the egress kits; a stopper on the cabin vent valve; lower-power supplies for the B coolant pumps | | documented | GVII, 3.1.2.3 | no |
@@ -109,8 +109,9 @@ made out in them.
 The type's list is [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "What the model gets wrong or leaves
 out". Of what was No. 7's own:
 
-- **No crew.** The G5C suit is not modelled; the seats are empty, with the harness lying on them. Nor are the suits
-  shown as they were for most of the flight, folded behind the seats.
+- **No crew aboard.** The G5C suit is modelled standing, Borman and Lovell at the foot of the erector, and not
+  seated: the seats are empty, with the harness lying on them. Nor are the suits shown as they were for most of the
+  flight, folded behind the seats.
 - **The panels are spacecraft 3's**, with spacecraft 4's clock, this ship's clock of elapsed time on the centre
   panel and a blank where the range indicator was. The elapsed-time clock's form and its two switches are
   estimated, and their legends are not drawn. The fuel cell monitor and the switches this ship renamed are not drawn.

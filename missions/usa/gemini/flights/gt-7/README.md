@@ -6,7 +6,7 @@ that Gemini VI-A flew up to: the first time two crewed ships met.
 | | |
 | --- | --- |
 | Liftoff | 4 December 1965, 19:30:03.702 UTC (2:30:03.702 p.m. EST) |
-| Site | Cape Kennedy, Launch Complex 19: [lc-19.ts](../../../places/cape-canaveral/lc-19.ts) (its place is not built) |
+| Site | Cape Kennedy, Launch Complex 19: [lc-19.md](../../../places/cape-canaveral/lc-19.md), built as it stood that afternoon |
 | Crew | Frank Borman, command pilot; James A. Lovell Jr., pilot |
 | Spacecraft | Gemini No. 7, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 7, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
@@ -22,8 +22,11 @@ that Gemini VI-A flew up to: the first time two crewed ships met.
 **In this repo: the vehicle, in the gallery.** Spacecraft No. 7 on GLV-7 as they left the pad can
 be turned, taken apart as they staged, and cut open: the transponder's antenna on its nose where
 the last ship had a radar, the fuel cells and their tanks in the adapter, the third water tank,
-the reserve fuel tank, the two lights at its foot, the four on its Titan. Its launch site, its
-crew and the flight itself are not built: see "What is not built" below.
+the reserve fuel tank, the two lights at its foot, the four on its Titan. At Complex 19 it stands
+on the thrust mount on the afternoon of the flight: the erector raised while the crew go up and
+laid down at T−35, Borman and Lovell at the foot of the ramp in their G5C suits with the soft hoods
+zipped on, each a figure to walk the site as, under that afternoon's sky. The flight itself is not
+built: see "What is not built" below.
 
 ## The name
 
@@ -161,19 +164,56 @@ report's "approximately".
 | 331:07 | the crew on the carrier's deck |
 | 331:38 | the spacecraft aboard |
 
-## The sky and the weather
+## The afternoon at the pad
 
-Not worked out. The flight has no `weather.ts`: it stands in the gallery only, under the studio's
-lights. The Sun and the Moon over Complex 19 at 19:30:04 UTC on 4 December 1965 will be computed
-when the site is built (`src/world`), and the weather read from the station records Gemini-Titan
-3's was (docs/sources.md). The report has the ground wind at about 9 mph during the count
-(5.2.1.2).
+By the clocks at the Cape. One time of the afternoon at the pad is recorded: Lovell walking to the
+erector's elevator "one hour and 40 minutes before launch" (NASA S65-61848), the count's T-100.
+The rest is the press kit's plan (release 65-362, p. 4) put on the clock, which the day kept: the
+mission report has no hold (5.2.10) and "the crew countdown went very well" (7.1.2.1). `derived`.
+The pad's slider plays it ([pad.ts](pad.ts)).
+
+| EST | Event | Confidence |
+| --- | --- | --- |
+| about 12:30 | T-120: the crew to Complex 19 (the plan) | derived |
+| 12:50 | T-100: Lovell and Borman at the elevator, and up to the white room | documented (the photograph) |
+| about 13:15 | T-75: the hatches shut (the plan) | derived |
+| about 13:40 | T-50: the white room empty (the plan) | derived |
+| about 13:55 | T-35: the erector starts down (the plan; NASA S65-61632 has it part way) | derived |
+| 14:30:03.702 | liftoff, 3.7 s after the count's zero: the range sequencer was out of step with the range clock (4.1) | documented |
+
+**What stood there.** The complex as Gemini 3 to 5 left it: nothing read has any of it changed
+([lc-19.md](../../../places/cape-canaveral/lc-19.md), "What stood when"). What had changed was the work
+on it: from GLV-7 on there was no wet mock simulated launch, so the erector stood from 29 October,
+when it stood GLV-7 up, to the afternoon of the flight, the spacecraft wired to the Titan by a
+jumper cable while it hung six feet over the second stage (NASA SP-4002, 29 October and 11 November
+1965). The damage of the liftoff was "minimal", and GLV-6 stood on the same thrust mount by 11:00
+the next morning (5.2.10; SP-4002, 4 December).
+
+## The sky at liftoff
+
+Computed, not placed: `src/world/ephemeris.ts` from the pad's position (`places/cape-canaveral/lc-19.ts`) and the
+launch instant, 19:30:03.702 UTC. All `derived`. Elevations are geometric. The Sun and the Moon
+are held to these figures by `tests/world.test.mjs`.
+
+| Body | Azimuth (true) | Elevation | Note |
+| --- | --- | --- | --- |
+| Sun | 216.8° | 29.3° | In the south-west, two hours after noon in December |
+| Moon | 81.4° | -4.6° | Just below the eastern horizon, rising; 83% lit, waxing |
+| Venus | 162.4° | 36.2° | Magnitude -4.3, in daylight |
+| Mars | 177.9° | 37.7° | |
+| Mercury | 221.7° | 29.0° | |
+| Saturn | 115.2° | 22.6° | |
+
+Jupiter and Uranus were below the horizon.
 
 ## What is not built
 
-- **Launch Complex 19.** `site` is [lc-19.ts](../../../places/cape-canaveral/lc-19.ts): the place on the Earth, with
-  an estimated bearing. Nothing stands on it yet.
-- **The crew.** Borman and Lovell wore the G5C suit. It is not modelled, and the seats are empty.
+- **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
+  the afternoon but the two who flew; the crew's van; the ventilator each man carried and his yellow
+  overshoes. The afternoon's times are the plan's but one, and how long each motion took is
+  estimated.
+- **The crew in their seats.** Borman and Lovell stand at the foot of the ramp in the G5C, the soft
+  hood zipped on ([g5c-suit.md](../../crew/g5c-suit.md)); the seats are empty.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. Gemini VI-A does not come.
 
@@ -197,8 +237,8 @@ when the site is built (`src/world`), and the weather read from the station reco
 
 ## Not found
 
-- **When the crew went aboard** and when the hatches were shut. The model's seats use Gemini-Titan
-  4's count.
+- **When the crew went aboard** and when the hatches were shut, as they went: the photograph has
+  the crew at the elevator at T-100, and the hatches are put at the plan's T-75.
 - **When the nose fairing and the scanners' cover went**: no time in the sequence of events.
 - **When the equipment section was cut away and when the second, third and fourth retrograde
   rockets fired**: not recorded, the tape recorder having failed and no station being in reach

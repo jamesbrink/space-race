@@ -1,6 +1,10 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { standing } from '../../crew/g4c-suit.parts.ts';
+import { g5cParts } from '../../crew/g5c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   FT,
   GV,
@@ -24,6 +28,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 
 const KIT = KIT_7_6;
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
@@ -191,12 +196,12 @@ const parts: PartWords[] = [
       'McDonnell’s drawing of spacecraft 3’s, with the clock spacecraft 4 added, without the radar’s range ' +
       'indicator, which this ship did not have, and with a clock on the centre panel that counted the flight’s ' +
       'hours in figures where the flight plan had wound past on a roller; what else it changed is not drawn, and ' +
-      'the seats are empty: the G5C is not modelled. No drawing read gives the pressure vessel’s dimensions: its ' +
+      'the seats are empty: the G5C is modelled standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its ' +
       'sizes are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
       ['Seats', 'ejection seats, 22 in wide, canted 12° outboard and 8° forward'],
-      ['Suits', 'G5C, 16 lb, soft hood: not modelled, the seats are empty'],
+      ['Suits', 'G5C, 16 lb, soft hood: the two men stand at the pad, the seats are empty'],
       ['Suits off', 'Lovell from 45 h; both from about 191 h, but for the rendezvous and the entry'],
       ['Panels', 'spacecraft 3’s, with the G.m.t. clock and without the range indicator'],
       ['Elapsed-time clock', 'digital, on the centre panel, reading to 999:59:59; its form estimated'],
@@ -408,25 +413,57 @@ const parts: PartWords[] = [
   },
 ];
 
-const vehicle = geminiTitanStack({
-  flight: 'gt-7',
-  parts,
-  // when this crew went aboard is not in what was read: taken as Gemini-Titan 4's count, T-100 minutes (On the
-  // Shoulders of Titans, p. 245), the hatches shut twenty minutes after. Estimated
-  seats: seats([-100 * 60, -80 * 60]),
-  views: [
-    { id: 'transponder', label: 'Transponder', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
-    { id: 'foot', label: 'Lights', nodes: ['EquipmentSection'], from: along(LEFT_AZ + 20, -0.75) },
-  ],
-  cabin: cabin({
-    // no range and range-rate indicator: this ship had no radar, only the transponder that answered Gemini VI-A's, and
-    // "The radar range and range-rate indicator was deleted" (the mission report, 3.1.2.9.1)
-    radar: null,
-    fairing:
-      'Pressed after staging on this ship, by McDonnell’s manual, to throw off the nose fairing over the transponder’s antenna and the scanner fairing. The mission report gives no time for it.',
-    power:
-      'The pilot’s ammeter as spacecraft 3 had it. On this ship a monitor for the six fuel cell stacks stood here instead, which is not drawn.',
+/** The vehicle as built, in its own frame; at Complex 19 it stands on the thrust mount (`lc19Vehicle`); the gallery stands it on its engines. */
+const vehicle = lc19Vehicle(
+  geminiTitanStack({
+    flight: 'gt-7',
+    parts,
+    // the crew went up at T-100 minutes (NASA S65-61848: "one hour and 40 minutes before launch") and the hatches were to
+    // shut at T-75 (the press kit, p. 4); the count ran without a hold
+    seats: seats([-100 * 60, -75 * 60]),
+    views: [
+      { id: 'transponder', label: 'Transponder', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
+      { id: 'foot', label: 'Lights', nodes: ['EquipmentSection'], from: along(LEFT_AZ + 20, -0.75) },
+    ],
+    cabin: cabin({
+      // no range and range-rate indicator: this ship had no radar, only the transponder that answered Gemini VI-A's, and
+      // "The radar range and range-rate indicator was deleted" (the mission report, 3.1.2.9.1)
+      radar: null,
+      fairing:
+        'Pressed after staging on this ship, by McDonnell’s manual, to throw off the nose fairing over the transponder’s antenna and the scanner fairing. The mission report gives no time for it.',
+      power:
+        'The pilot’s ammeter as spacecraft 3 had it. On this ship a monitor for the six fuel cell stacks stood here instead, which is not drawn.',
+    }),
   }),
+  BASE,
+);
+
+/**
+ * The two men as they stood on the deck that afternoon, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g5c_suit.py), his hood zipped on. Where each stood is ours. The portable ventilator
+ * each carried and his yellow overshoes are not built (crew/g5c-suit.md). The pad stands round them as at T-100, when
+ * they went up.
+ */
+const ARRIVED = -100 * 60 - 3.702;
+const crew = standing({
+  flight: 'gt-7',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'Frank Borman · 1.78 m, 1.83 m suited · to scale',
+  parts: g5cParts('Borman'),
+  height: 1.829,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-7',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'James A. Lovell Jr. · 1.83 m, 1.87 m suited · to scale',
+  parts: g5cParts('Lovell'),
+  height: 1.874,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
 });
 
 export const flight: Flight = {
@@ -515,6 +552,23 @@ export const flight: Flight = {
     { t: get(330, 35, 1), event: 'Landing, 25°25.1′ N 70°06.7′ W, 6.4 nautical miles short of the planned point' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'Borman, in hood and boots',
+      value: 1.829,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g5c_suit.py), on a man of 1.778 m: "5 feet, 10 inches" in the press kit’s crew biographies (NASA release 65-362, p. 66), documented. The hood’s and the suit’s size are estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'Lovell, in hood and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.829 m: "6 feet" (the same, p. 67), documented. The hood’s and the suit’s size are estimated',
+    },
     ...dimensions(
       'documented',
       `${SEDR}, Figures 2-3 and 2-4, a manual that covers spacecraft 3, 4 and 7`,
@@ -749,5 +803,7 @@ export const flight: Flight = {
       'spacecraft 7, whose manoeuvring system differed from spacecraft 5’s by a reserve fuel tank (the Gemini VII mission report, 3.1.2.7)',
     ),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that December: as in March (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

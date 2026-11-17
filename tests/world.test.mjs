@@ -670,4 +670,13 @@ test('every flight that has a site gives it sourced numbers, and its sky is the 
   near(august1965.moon.elevation / DEG, 67.5, 0.05, 'Moon elevation over Complex 19, 21 August 1965');
   near(august1965.moon.illuminated, 0.349, 0.005, 'Moon lit over Complex 19, 21 August 1965');
   assert.equal(august1965.moon.waxing, false, 'a waning Moon, high in the west');
+  // Gemini-Titan 7
+  const gt7 = flights.find((f) => f.id === 'usa/gemini/gt-7');
+  const december1965 = skyFrom(siteFrame(gt7.site), julianDate(gt7.launch));
+  near(december1965.sun.azimuth / DEG, 216.8, 0.05, 'Sun azimuth over Complex 19, 4 December 1965');
+  near(december1965.sun.elevation / DEG, 29.3, 0.05, 'Sun elevation over Complex 19, 4 December 1965');
+  near(december1965.moon.azimuth / DEG, 81.4, 0.05, 'Moon azimuth over Complex 19, 4 December 1965');
+  near(december1965.moon.elevation / DEG, -4.6, 0.05, 'Moon elevation over Complex 19, 4 December 1965');
+  near(december1965.moon.illuminated, 0.83, 0.005, 'Moon lit over Complex 19, 4 December 1965');
+  assert.equal(december1965.moon.waxing, true, 'a waxing gibbous Moon, about to rise');
 });
