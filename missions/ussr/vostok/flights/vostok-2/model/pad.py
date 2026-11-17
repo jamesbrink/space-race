@@ -3,7 +3,7 @@
 The place itself is ../../../../places/tyuratam/site_1.py, Vostok 1's sixteen weeks before: this script only names the day, and
 each thing the site's modules build says whether it stood then (sitelib.stood). What that changes is in
 ../../../../places/tyuratam/site-1.md, "What stood when": the same bus and the fillers, not April's car and truck, nor April's
-people (this morning's, a hundred in summer dress, are not built: the figures have no summer clothes yet). The vehicle and the
+people (this morning's, a hundred in summer dress, are site1/august.py's, each jointed to be walked). The vehicle and the
 pilot are vehicle.py and crew.py beside this file; the viewer hangs the vehicle in the supports.
 
 `SITE1_WITH_VEHICLE=1` in the environment builds the vehicle in its place as well, so that the clearance
@@ -125,5 +125,11 @@ if __name__ == "__main__":
         ("day-filler.png", (-3, 12, 2.5), 27, dict(azimuth=-132, elevation=11, res=(1460, 990), lens=45.0)),
         ("day-wagon.png", (-16, 0, 2.2), 15, dict(azimuth=-70, elevation=22, res=(1500, 1000))),
         ("day-deck.png", (0, 0, 0), 75, dict(azimuth=-120, elevation=52, res=(1500, 1100))),
+        # the people as they stood when the bus stopped: from the erector's head, as the film's camera had them (21:45); at
+        # a man's eye height among them by the door; from across the pad to the south-west
+        ("people-erector.png", (-47, -19, 0), 54, dict(azimuth=20, elevation=31, res=(1600, 1100), lens=35.0)),
+        ("people-eye.png", (-44.5, -17.5, 1.6), 8, dict(azimuth=-25, elevation=1, res=(1600, 1000), lens=28.0)),
+        ("people-rows.png", (-52, -21, 1.6), 9, dict(azimuth=-100, elevation=3, res=(1600, 1000), lens=28.0)),
+        ("people-across.png", (-45, -18, 1), 90, dict(azimuth=-130, elevation=5, res=(1600, 900), lens=60.0)),
     ]
     run("vostok-2 pad", build, [still for still in stills if still[0].startswith(only)])

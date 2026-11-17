@@ -14,7 +14,9 @@ The pieces are in ./site1/, one module each; each is one or more top-level nodes
   TankCars             tank_cars.py       the oxygen and kerosene fillers on the north and south tracks, with their wheels
   Bus, Saloon, Truck   road_vehicles.py   the cosmonauts' bus, a saloon car and a box-bodied truck on the apron
   StateCommission, SendOff, StairParty,
-  PadCrew, TrussCrew, HatchCrew            morning.py: the people, in the groups they stood and left in (Erector_Crew is under Erector)
+  PadCrew, TrussCrew, HatchCrew            morning.py: the people of 12 April 1961, in the groups they stood and left in
+                                          (Erector_Crew is under Erector)
+  Crowd, CrowdWest, Escort                 august.py: the people of 6 August 1961, each jointed and walked off on the clock
 
 The land they stand on is ./site1/relief.py: the pad on the brow of a scarp, the steppe north of the tracks 8 m under
 the deck's level. The pit's rim is built at the land's height, and the place is set down on it (place.settle).
@@ -48,10 +50,11 @@ def build(date: str | None = None) -> str:
     # the morning itself: the bus, the car and the truck on the apron, and the people (each group is there until it left).
     # (Brought in here and not at the head: they want the programme's crew/ on the path, which a pad's script has and
     # the place's has no use for.)
-    from site1 import morning, road_vehicles
+    from site1 import august, morning, road_vehicles
 
     road_vehicles.build(parts)
     morning.build(parts)
+    august.build(parts)
     parts.build()
     print(sitelib.standing())
     served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}, {tank_cars.summary()}, {road_vehicles.summary()}"
