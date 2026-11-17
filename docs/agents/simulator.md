@@ -447,16 +447,25 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 
 - **A spacecraft down in the sea is a body afloat** (`sim/afloat.ts` `floatOn`, from `Flight.flies.afloat`: types.ts
   `AfloatDef`), floated from its run's landing by `run.ts` `afterwards` (the record's run in `recordOf`, a deck's at its
-  landing and again when its hatch is blown) into `Run.afloat`. Upright, up and down only: its outside a solid of
-  revolution (`Profile`), held up by the sea it puts aside and pulled down by its weight and every drop of water in its
-  spaces (`SpaceDef`: each a solid of revolution's share, with its openings, `OpeningDef`, each shut until an instant the
-  caller gives by its id or open from the first). Water goes through an opening as through a sharp orifice, band by band,
-  on the difference of the sea's pressure and the space's; a space's air goes out through any opening not wholly under both
-  the sea and its water, or reaching its top, and is trapped and squeezed otherwise (the water then stands where the air
-  presses as the sea does). Its rise and fall is damped by a share of critical (`heave`, estimated) and its motion through
-  the water by its drag. A line from above (`HoistDef`: the record's helicopter) pulls at its top once taut, up at its
-  rate toward lifting it clear, never more than its capacity, until it is let go. What leaves it (the crew, the hatch) is
-  a mass at an instant. It ends `sight` m under, out of sight. RK4 at 0.05 s, every step ending on the instants given.
+  landing and again when its hatch is blown) into `Run.afloat`. Its outside a solid of revolution (`Profile`), held up by
+  the sea it puts aside and pulled down by its weight and every drop of water in its spaces (`SpaceDef`: each a solid of
+  revolution's share, with its openings, `OpeningDef`, each shut until an instant the caller gives by its id or open from
+  the first, each on the axis or an arc of the hull, `arc`). It rises and falls, and where it says how (`AfloatDef.heel`,
+  `HeelDef`: the centre of what stays aboard, its gyration, its rolling's damping) it heels in the vertical plane of its
+  +X (the hatch's; `facing`, its bearing), turning about that centre: the sea it puts aside pushes up through that
+  volume's centre, what is aboard (`leaves[].at`, a pilot going to the sill over his last seconds, `through`) and the
+  water in it press down at theirs, each worked for the heel by slicing the solid across its axis into discs cut by the
+  level plane (`Heeled`: a row a degree, worked as first needed). Water with a surface stands level at once and runs to the
+  low side, so a part-flooded body loses its stiffness and lies over; a full space's water turns with it. The sea's slope
+  in that plane tips the level all its water stands to (`slant`, sim/sea.ts `tiltAt`). Water goes through an opening as
+  through a sharp orifice, band by band and column by column across its arc, on the difference of the sea's pressure and
+  the space's; a space's air goes out through any opening not wholly under both the sea and its water, or reaching its top,
+  and is trapped and squeezed otherwise (the water then stands where the air presses as the sea does). Its rise and fall and
+  its rolling are damped by a share of critical (`heave`, `heel.damping`, estimated) and its motion through the water by
+  its drag. A line from above (`HoistDef`: the record's helicopter) pulls at its top once taut, up at its rate toward
+  lifting it clear, never more than its capacity, until it is let go. What leaves it (the crew, the hatch) is a mass at an
+  instant. It ends `sight` m under, out of sight. RK4 at 0.05 s, every step ending on the instants given. The water in a
+  space that can be seen into (`afloat.seen`: the cabin) is drawn where the run has it (viewer/flooding.ts).
 - **The sea it floats on is the day's** (`sim/sea.ts`, from `DayWeather.sea`: each train of waves a sine of its
   significant height over 2 root 2, its period and the bearing it comes from, on deep water), one function of the instant
   and the place for the physics and the drawing.
@@ -471,7 +480,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   length over the capsule, and sagging while slack. Only on the record's run: a run flown by hand comes down where
   nobody was waiting. It is drawn, not simulated: the hoist's pull is `afloat.hoist`'s.
 - **Held to the record**: tests/afloat.test.mjs holds the pieces to their arithmetic (Archimedes, a terminal speed, an
-  opening filling to the sea's level, the sea's four sigma, a throw) and Liberty Bell 7's run afloat to `afloat.checks`
+  opening filling to the sea's level, a cylinder cut by a tipped plane, a drum lying over to where a weight off its axis is
+  balanced, the sea's four sigma, a throw) and Liberty Bell 7's run afloat to `afloat.checks`
   under `MISSES[...].afloat`, and to what the record says in words: the helicopter's 4,000 lbf never had it out, and let
   go it went out of sight within a minute and a half.
 

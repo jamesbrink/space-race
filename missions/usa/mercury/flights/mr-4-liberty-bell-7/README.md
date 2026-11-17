@@ -216,26 +216,36 @@ second; it is still high, because the height and climb it starts from are the ru
 
 Down in the sea the spacecraft is a body afloat (`src/sim/afloat.ts`; its hull and spaces every Mercury
 capsule's, [vehicles/mercury-afloat.ts](../../vehicles/mercury-afloat.ts); what is this one's, [afloat.ts](afloat.ts)).
-It stands upright on the day's sea (ERA5's at the landing, `weather.ts` `sea`: a swell of 0.80 m from 106° at
-6.4 s and a wind sea of 0.30 m from 146° at 2.5 s; "the mild swells we were having", *Results*, p. 55), rises and
-falls on it with the four-foot landing bag hanging under it full of the sea, and floats with the sea at station
-14.5 in on the average, four inches under the hatch's sill: every wave over a few inches comes up to it. The record's
-run goes on past the landing to the end:
+It floats on the day's sea (ERA5's at the landing, `weather.ts` `sea`: a swell of 0.80 m from 106° at
+6.4 s and a wind sea of 0.30 m from 146° at 2.5 s; "the mild swells we were having", *Results*, p. 55), rising and
+falling on it with the four-foot landing bag hanging under it full of the sea, and heeling in the plane of its hatch:
+the sea's slope there tips it, and what is aboard and the water in it turn it about its centre of mass. That centre and
+its inertia are No. 7's flotation figures (MR-3 Postlaunch Report, 3.1: 2,316.03 lb at Z 119.77 in, 15.27 in over the
+greatest diameter; 332 and 347 slug ft² in pitch and yaw), less No. 11's 46 lb hatch saving at the hatch, with the
+beryllium shield (140 kg, estimated) let down four feet on the bag; Grissom (at station 18 in, estimated) and the hatch
+are masses at their places. Upright it is stiff: the bag's water turns with it, and it rolls a few degrees on the
+wind sea. The record's run goes on past the landing to the end:
 
 | T+ | | Confidence |
 | --- | --- | --- |
 | 15:37 | down; it comes upright over 58 s ("slowly coming vertical" at 16:35) | documented |
 | 26:09 | the last words, "Ah, roger" | documented |
-| 26:20 | the hatch blows, flies off (23 lb, thrown at 3.7 m/s: what lands it "about five feet from the hatch") and lies on the sea | the instant estimated; the throw derived |
-| 26:25 | Grissom goes out through it | estimated |
-| 26:43 | the sea over the sill fills the cabin, and the capsule's top goes under, 23 s after the hatch | flown |
-| 26:50 | the helicopter's line comes taut; it pulls its 4,000 lbf and cannot get the capsule out: the cabin drains to the sill and the bag slowly, and the shield stays 1.3 m under at best | taut and cast estimated; the capacity derived |
-| 30:05 | it lets go; the capsule floods again and is out of sight 46 s later | flown |
+| 26:20 | the hatch blows, flies off (23 lb, thrown at 3.7 m/s: what lands it "about five feet from the hatch") and lies on the sea; the sea spills over the sill at the next wave | the instant estimated; the throw derived |
+| 26:21 to 26:25 | Grissom goes out over the sill: his weight at the hatch heels it toward the hatch, and the sea pours in | estimated |
+| 26:28 | 22° over toward the hatch, the cabin half full: its water, standing level, has run to the low side, and with no surface stiffening it the capsule lies over | flown |
+| 26:30 | the cabin full, it comes nearly upright and goes down; its top under 16 s after the hatch | flown |
+| 26:50 | the helicopter's line comes taut on a capsule 9 m down; it pulls its 4,000 lbf and cannot get it out: the cabin drains to the sill and the bag slowly, and the shield stays 1.3 m under at best | taut and cast estimated; the capacity derived |
+| 30:05 | it lets go; the capsule floods again and is out of sight 44 s later | flown |
 
-Against the record (tests/afloat.test.mjs, `misses` under `afloat`): under 23 s after the hatch, where the history
-has it "sinking fast" and gone from sight as the line came taut, within a minute; flooded it weighs 6,190 lb, "over
-5000 pounds" as the history says and 12.5 per cent past the 5,000 to 6,000 it was read as before the run (a recorded
-miss: the cabin's free volume is ours).
+Against the record (tests/afloat.test.mjs, `misses` under `afloat`): under 16 s after the hatch, where the history
+has it "sinking fast" and gone from sight as the line came taut, within a minute; the sea first over the sill within
+two seconds of the hatch ("water start to spill over the doorsill", *Results*, p. 55); flooded it weighs 6,200 lb,
+"over 5000 pounds" as the history says and 12.7 per cent past the 5,000 to 6,000 it was read as before the run (a
+recorded miss: the cabin's free volume is ours); and 22° over at the most before its top went under, where NASA's
+photograph S61-02921 ("the top of the capsule before it sinks") shows it 30 to 40° off the plumb line (a recorded miss:
+the photograph is read by eye, and what it leans to rests on the estimates above). The sea in the cabin is drawn where
+the run has it (`viewer/flooding.ts`), level as the capsule heels round it: from the seat it comes up over the right
+console and the sill.
 
 On the deck it is the same physics: **Blow the hatch** (Space once it is down, a right click on the hatch, or the
 plunger by the pilot's right arm from the couch; `flies.hatch` in [flight.ts](flight.ts)), and the hatch flies off as a
@@ -246,10 +256,14 @@ with a hole in the side does is not in anything read, and the card says so), and
 the sea at once. Which of the plunger, a stray lanyard or static fired the hatch on the day is disputed and nothing here
 takes a side: on the deck it blows when it is told to.
 
-**What the ending lacks**: the capsule goes only up and down (it does not heel, roll with the swell, drift or turn;
-the hatch faces south-west, ours); the landing bag is let down at 10:26 as rigid nested bands, not cloth, and never
+**What the ending lacks**: the capsule heels only in the plane of its hatch (it does not drift or turn, and the sea's
+slope across that plane does not tip it; the hatch faces south-west, ours); the water in it stands level at once (no
+slosh, no jet through the sill), and water with a surface is a weight and not a mass that turns; no added mass of the sea;
+before the hatch it rolls a few degrees on the wind sea, where the history has it "rolling badly with the swells" (This
+New Ocean, p. 372); the landing bag is let down at 10:26 as rigid nested bands, not cloth, and never
 bellies or swings (spacecraft.md); nothing is drawn under the sea (the camera stays on the surface and watches it go);
-the hatch lies on the swell rather than skipping; no water is drawn in the cabin. The sea round it is the day's
+the hatch lies on the swell rather than skipping; the water in the cabin is a flat surface, and nothing is drawn under
+it. The sea round it is the day's
 (ERA5's swell and wind sea, weather.ts), the same sea the simulator floats it on, with short waves for the light
 only. Hunt Club 1 (recovery.ts) is flown on the record's order of events: 2 miles south-west as the capsule came
 down, circling it by 18:23, in over it as the hatch went, its wheels in the water as it hooked the sinking capsule,

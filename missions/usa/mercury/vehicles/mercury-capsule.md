@@ -152,6 +152,12 @@ Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights
   crumpling, and stays the same shape full of air or of the sea; its 24 cables inside, the shield's latch and release,
   and the 1959 design's torus at its foot are left out; its holes are square, and their number, size and place, its
   diameter, its colour and the straps' width are ours; it falls over a second, eased in and out, not under gravity.
+- **Afloat** (`mercury-afloat.ts`): the capsule heels about the centre of what stays aboard, worked from the flight's
+  own balance with the shield in place (the dish and the rest drawn apart along the axis by the bag's four feet: the
+  centre falls by the shield's share of the drop and the inertia grows by the reduced mass times the difference of the
+  squares of their distances); the shield's weight is an estimate (beryllium an inch thick over the dish, 140 kg: no
+  weight for the shield or the bag is in anything read), the bag's cloth, straps and cables are left out, and the dish's
+  centre is taken at its zone's mid-depth. The pilot is a point that goes to the sill before he leaves.
 - **The retropack's straps** run from its sides instead of meeting under its centre at one explosive bolt, and its
   motors are not canted toward the centre of mass.
 - **The escape tower:** the jettison motor has one nozzle, where it had three; the bracing is one diagonal a bay.

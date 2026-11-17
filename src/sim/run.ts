@@ -573,7 +573,9 @@ export function afterwards(flight: SitedFlight, run: Run, hand?: { hatch: number
   const left: Record<string, number> = blown ? { [a.crew]: out, ...(hatch ? { [hatch.leaves]: opens } : {}) } : {};
   const hoist = hand ? undefined : { def: a.hoist, taut: a.record.taut.value, cast: a.record.cast.value };
   const until = hand ? (blown ? opens : landing) + AFLOAT_FOR : a.record.cast.value + AFLOAT_FOR;
-  run.afloat = floatOn(a.body, waves, landing, until, { opened, left, ...(hoist ? { hoist } : {}) }, a.sight.value);
+  // (it heels in the plane of its hatch, which faces the bearing it lay at)
+  const facing = hatch?.at.heading.value ?? 0;
+  run.afloat = floatOn(a.body, waves, landing, until, { opened, left, facing, ...(hoist ? { hoist } : {}) }, a.sight.value);
   // the hatch blown afloat: thrown off from where it is on the capsule as it floats then (blown in flight, the deck flies it from the flight)
   const i = hatch ? (flight.flies?.drops ?? []).findIndex((d) => d.nodes.includes(hatch.node)) : -1;
   if (!hatch || i < 0 || !blown) return;
