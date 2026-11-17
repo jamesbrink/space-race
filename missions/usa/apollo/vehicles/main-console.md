@@ -1,7 +1,9 @@
 # Apollo 7 main display console — structural reference
 
-The console is unfinished. This step establishes its broad structural silhouette
-inside the cabin; it does not represent an equipped or operable flight console.
+The structural reference retains the shared broad silhouette inside the cabin.
+Separate [estimated equipment](console-equipment.md) and [FDAI fronts](fdai.md)
+now occupy it; it is not an operable or as-built flight console. The neutral-grey
+coating is estimated, independently of the survey geometry.
 
 North American Aviation **V36-976018 revision D, 12 March 1968**, *Design Layout —
 Main Display Console, Command Module 101*, sheet 1 of 2, identifies Apollo 7's
@@ -69,7 +71,8 @@ V36-976018 identifies the two positions on CM-101 panels 1 and 2. NAA's
 printed p. 76, independently identifies their round front arrangement. Only the
 common fixed structural interfaces are retained as **assumed shared geometry**.
 Neither reference establishes identical detail machining between spacecraft.
-No CM-107 FDAI equipment mesh is imported; the openings remain empty. See
+No CM-107 FDAI equipment mesh is imported; separate estimated instruments now
+occupy the retained structural interfaces. See
 [the instrument source record](fdai.md) for the unresolved instrument geometry.
 
 Both source contours and the separate DSKY visualization footprint are subtracted

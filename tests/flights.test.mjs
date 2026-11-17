@@ -177,12 +177,19 @@ for (const file of files) {
       assert.equal(couch.inside, true, 'selection must open the normal cutaway');
       assert.deepEqual(couch.explode, cm.explode, 'crew supports must not move through their cabin during explosion');
       assert.equal(couch.order, cm.order, 'crew supports and cabin must begin moving together');
+      for (const node of ['FlightDirectorIndicators', 'ConsoleEquipment']) {
+        const equipment = model.parts.find((part) => part.node === node);
+        assert.equal(equipment.inside, true);
+        assert.equal(equipment.order, cm.order);
+        assert.deepEqual(equipment.explode, cm.explode);
+      }
       const glb = join(root, 'public', model.url);
       const materials = materialsUnder(glb, 'CrewCouches');
       assert.ok(materials.includes('apollo-couch-harness'), 'full detail contains actual restraints');
       assert.ok(materials.includes('apollo-couch-heel-pad'), 'full detail contains actual heel supports');
       for (const suffix of ['.lod1.glb', '.lod2.glb'])
-        assert.deepEqual(materialsUnder(glb.replace(/\.glb$/, suffix), 'CrewCouches'), [], 'distant levels retain only the part node');
+        for (const node of ['CrewCouches', 'FlightDirectorIndicators', 'ConsoleEquipment'])
+          assert.deepEqual(materialsUnder(glb.replace(/\.glb$/, suffix), node), [], 'distant levels retain only the part node');
     });
 
   if (flight.surroundings)

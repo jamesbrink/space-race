@@ -44,6 +44,24 @@ length does not validate the individual hardware stations.**
 The studio’s exploded view is an illustration. Nothing here claims the timing or trajectories
 of the hardware’s departure. No simulator or launch site is provided.
 
+## Whole-vehicle cutaway
+
+The gallery uses the same quadrant cut as the Redstone and Titan models, through
+the entire assembled stack. S-IB tank skins, skirts and fins, both interstage
+paint regions, S-IVB skins and stiffeners, the IU skin and adapter shell and
+seams all carry the standard `shell` flag. Lettering is cut with the skin that
+carries it. Engines and separate APS equipment remain whole, as do the command
+module's couches, console and other internal equipment. The escape motor casing
+opens with the existing boost cover and spacecraft shells; its truss and nozzles
+remain whole. A close-up view frames hardware without removing the rest of the
+vehicle.
+
+The viewer draws both faces of the open launcher skins, with **no modelled
+wall thickness or invented internal equipment**. The cut exposes their current
+empty interior where detailed tanks, bulkheads or structure are still missing;
+it does not imply those spaces were empty on SA-205. The single global cut
+passes through the clustered first-stage tank skins, including the centre tank.
+
 ## Simplifications and things still wrong
 
 - Fin profiles, nozzle contours, tank domes, tank pitch radii and structural stations other than
@@ -54,7 +72,7 @@ of the hardware’s departure. No simulator or launch site is provided.
 - Stiffener count and size are estimated. Paint boundaries and lettering locations are estimated
   from S68-48788; the fin paint and small markings still need closer photographic reconstruction.
 - IU has no internal electronics, antennas or access fittings.
-- Adapter is one closed shell; no hinged forward panels, internal structure or rendezvous target yet.
+- Adapter is one shell, opened by the gallery cutaway; no hinged forward panels, internal structure or rendezvous target yet.
 - No LC-34 pedestal, umbilical tower, service structure or site scenery.
 - No mass, thrust, aerodynamic or flight sequence data; the stack cannot be flown yet.
 

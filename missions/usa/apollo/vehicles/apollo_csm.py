@@ -12,6 +12,7 @@ import math
 from mathutils import Vector
 
 import command_module
+import console_equipment
 import dsky_front
 import main_console
 import pressure_vessel
@@ -106,6 +107,8 @@ def build(offset=0):
             "SideHatch",
             "CabinStructure",
             "MainConsole",
+            "FlightDirectorIndicators",
+            "ConsoleEquipment",
             "DSKYFrontWeb",
             "CrewCouches",
             "HeatShield",
@@ -195,6 +198,8 @@ def build(offset=0):
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
     dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
+    console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE)
+    console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE)
     unitized_couch.build(groups["CrewCouches"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():

@@ -13,7 +13,7 @@ from mathutils import Matrix
 
 import srlib
 from apollo_csm import BELL_RIM, SM_BOTTOM, bell, radial, tube
-from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, material, prof, text_mesh
+from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof, text_mesh
 
 SIB_TOP = 80.2 * 12
 SIVB_TOP = SIB_TOP + 58.4 * 12
@@ -213,4 +213,15 @@ def build():
     for i in range(4):
         a = TAU * (i + 0.5) / 4
         tube(f"SLA_Seam_{i}", radial(130, a, IU_TOP + 2), radial(77, a, SLA_TOP - 2), 0.6, black, sla)
+    # Match the Redstone/Titan convention: the entire vehicle's enclosing skins,
+    # fins and skin-mounted paint/fittings open in the same quadrant. Engines
+    # and the separate APS equipment remain whole; no interior is invented.
+    mark_shells(
+        [
+            obj.name
+            for name in ("SaturnFirstStage", "SaturnInterstage", "SaturnSecondStage", "InstrumentUnit", "SpacecraftAdapter")
+            for obj in groups[name].children_recursive
+            if obj.type == "MESH" and not obj.name.startswith("SIVB_AuxiliaryPropulsion_")
+        ]
+    )
     return groups

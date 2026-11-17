@@ -1491,3 +1491,14 @@ contours are not installed or asserted to be machining dimensions; see
 
 | NASA photographs S68-50712 (September 1968) and S68-29781 (22 April 1968), SA-205 at Complex 34 | [S68-50712](https://images.nasa.gov/details/S68-50712), [S68-29781](https://images.nasa.gov/details/s68-29781) | Actual flight vehicle: first-stage white lettering fields on black fuel tanks; word gap, glyph proportions and upper USA arrangement | Reconstructed cap heights, widths, pitch, field limits and stations are explicitly estimated from photographs, with perspective/glare uncertainty. No dimensioned stencil drawing acquired; no estimated value enters flight physics |
 | Liberation Fonts, Liberation Sans Regular 2.1.5 | [Official release and font archive](https://github.com/liberationfonts/liberation-fonts/releases/tag/2.1.5) | Reproducible lighter sans substitute for SA-205 paint, under SIL OFL 1.1 | Not the original contractor stencil or evidence of exact glyph outlines. Other flight lettering and cabin legends retain the default bold face |
+
+
+Apollo 7 main-panel equipment reconstruction uses V36-976018 revision D as an
+**estimated layout registration**, not a manufacturing ruler. Its PDF SHA-256 is
+`449e2920813c8831f0740dbfaf776c6a61cced6211b9c035afd6e99da2014401`.
+Two shared structural FDAI centres set a uniform image-to-plane similarity; the
+independent DSKY centre has a 1.0049-cm residual. All new equipment positions and
+sizes remain estimated. SC101 SCS-2100D p. 76 supplies the FDAI front arrangement;
+the SC103+ Honeywell 4.5-inch ball is an explicitly estimated CM-101 prior, not
+verified shared equipment. See `missions/usa/apollo/vehicles/console-equipment.md`
+and `fdai.md` for the complete attribution and unfinished details.

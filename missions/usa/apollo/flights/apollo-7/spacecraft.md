@@ -181,3 +181,15 @@ for the photographic basis, source-inch table and omissions. Geometry is checked
 against the nominal pressure wall, spherical floor and console. The assembly
 remains whole in cutaway and shares the CM's exploded displacement. No later
 foldable couch, crew-eye position or load-attenuation physics is inferred.
+
+## Main-panel equipment
+
+[The equipment study](../../vehicles/console-equipment.md) registers CM-101's own
+design layout to the existing shared structural plane. It supplies separate FDAI
+fronts, meter fronts, control rows, warning lenses, an EMS facade and timer window.
+**All new equipment dimensions, installation and colours are estimated.** The
+unchanged fixed FDAI interfaces are the structural reference, not proof of later
+instrument interchangeability. The later 4.5-inch ball diameter is only an
+estimated CM-101 prior. Controls and scales are static exhibit references, not
+calibrated instruments or simulated readings. Complete DSKY, side consoles and
+remaining cabin equipment still need reconstruction.

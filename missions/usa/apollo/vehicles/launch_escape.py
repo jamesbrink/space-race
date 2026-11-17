@@ -46,6 +46,7 @@ def build():
             tube(f"LES_Crossbar_{i}_{j}", radial(r, a, z), radial(r, b, z), 1.2, white, tower)
     motor_base = cm_top + 115
     lathe_obj("LES_Motor", prof([(0, motor_base), (13, motor_base), (13, HEIGHT - 35), (9, HEIGHT - 12), (0, HEIGHT)]), white, tower)
+    mark_shells(["LES_Motor"])
     for i in range(4):
         # News Reference p.142: two nozzles in the pitch plane, two in yaw.
         # Apollo Z maps to model -X and Apollo Y to +Y, so these are the

@@ -6,14 +6,19 @@ the redesigned Block II command and service modules in Earth orbit. It carried n
 
 ## Model status
 
-An exterior study of CSM-101 on SA-205 is available in the Gallery. The launch site,
-walkable structures, furnished cabin, suits, weather and flight physics are not built yet.
+An exterior and cabin study of CSM-101 on SA-205 is available in the Gallery. The launch site,
+walkable structures, complete cabin, suits, weather and flight physics are not built yet.
 The five window openings have opaque dark recesses until the cabin and glazing are modelled.
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
-A structural cutaway exposes the pressure-vessel sidewall and both nominal bulkheads
-inside the thermal shell, with a main-console structural reference, a nominal DSKY front-web subset
-and an estimated reconstruction of Apollo 7's unitized three-place crew couch.
+The cutaway runs through the entire assembled vehicle, using the same quadrant
+cut as Redstone and Titan: stage skins, their lettering and fittings, the adapter,
+escape motor case and spacecraft shells open together. Engines and internal
+equipment remain whole. The empty launcher interiors are unfinished, not a claim
+that SA-205 contained no tanks or structure. Inside the command module it exposes
+the nominal pressure boundary, main-console structural reference with estimated
+instruments and controls, nominal DSKY front-web subset and estimated unitized
+three-place crew couch.
 The full tunnel and remaining furnishings are unbuilt.
 No seat control is offered yet.
 
@@ -42,7 +47,7 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All twenty-one parts can be selected and taken apart.
+cover and launch escape system. All twenty-three parts can be selected and taken apart.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
 The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
@@ -76,7 +81,7 @@ uses the shared contour from the Smithsonian's processed CM-107 derivative,
 explicitly assumed for CM-101. It retains the central notch and stays with the
 CM during explosion. Two fixed FDAI interface contours are now retained from the
 same processed survey, with their corresponding positions verified against the
-CM-101 layout. The instruments remain unbuilt. This is not an equipped console:
+CM-101 layout. Separate estimated instrument fronts now occupy those interfaces. It is not an operable console:
 individual panel joints, other instrument openings, thickness, supports, controls
 and side consoles are unresolved.
 Neither Apollo 11's later equipment nor its different couches are imported.
@@ -138,3 +143,13 @@ shared CM-101 measurements**. No later foldable couch is used.
 sources and omissions. The assembly remains whole in cutaway, moves with the
 CM in the exploded exhibit, and is omitted at distant levels of detail.
 The cabin remains incomplete and supplies no seated eye datum yet.
+
+## Main-panel equipment study
+
+The main console now has two estimated FDAI front reconstructions, a partial EMS
+facade, meter fronts, control rows, warning lenses and the timer window, following
+CM-101's own V36-976018 revision D. [The equipment record](../../vehicles/console-equipment.md)
+distinguishes the estimated layout registration from the unchanged shared structure.
+All controls and displays are static exhibit references. Exact scales, individual
+control details, complete DSKY equipment, side consoles and the seated cabin remain
+unfinished. The fronts remain whole in cutaway and move rigidly with the CM.

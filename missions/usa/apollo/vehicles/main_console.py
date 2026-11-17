@@ -24,7 +24,8 @@ def build(parent, base):
         return
     source = json.loads((Path(__file__).parent / "reference" / "apollo-main-console.json").read_text())
     masked = {p["id"]: p for p in dsky_reference()["console_surfaces"]}
-    panel = material("apollo-console-reference", (0.14, 0.16, 0.17), roughness=0.75, double_sided=True)
+    # Estimated neutral-grey coating; the shared survey supplies geometry only.
+    panel = material("apollo-console-reference", (0.38, 0.40, 0.38), roughness=0.75, double_sided=True)
     all_points, all_faces = [], []
     for surface in source["surfaces"]:
         mesh = MeshBuilder()
