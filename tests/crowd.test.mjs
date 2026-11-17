@@ -215,3 +215,50 @@ test('a body of people leaving by one way: none walks through another, the back 
   }
   assert.ok(least >= 0.6, `${least.toFixed(2)} m apart: ${when}`);
 });
+
+test('a skeleton taken out of the scene draws where it did: its people are in no scene node, and their meshes stand where they walk', () => {
+  /** A model of one walker, turned and moved, with a mesh bound to his node or without one. */
+  const make = (withMesh) => {
+    const { root, group } = model(1);
+    root.rotation.y = 0.7;
+    root.position.set(30, 2, -12);
+    root.updateMatrixWorld(true);
+    let mesh = null;
+    if (withMesh) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([1, 1, 0, 1.2, 1, 0, 1, 1.2, 0], 3));
+      geometry.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4));
+      geometry.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+      mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshBasicMaterial());
+      group.getObjectByName('G_People').add(mesh);
+      root.updateMatrixWorld(true);
+      mesh.bind(new THREE.Skeleton([root.getObjectByName('G_Person_1')]));
+    }
+    return { root, group, mesh };
+  };
+  const a = make(true);
+  const b = make(false);
+  const where = (m) =>
+    m.localToWorld(m.applyBoneTransform(0, new THREE.Vector3().fromBufferAttribute(m.geometry.getAttribute('position'), 0)));
+  const built = where(a.mesh);
+  const crowd = new Crowd(a.root, a.group, [OFF], null);
+  const other = new Crowd(b.root, b.group, [OFF], null);
+  let found = false;
+  a.root.traverse((o) => {
+    if (/_Person_/.test(o.name)) found = true;
+  });
+  assert.ok(!found, 'no person left in the scene');
+  a.root.updateMatrixWorld(true);
+  assert.ok(where(a.mesh).distanceTo(built) < 1e-9, 'standing, where he was built');
+  for (const t of [104, 110, 120]) {
+    crowd.set(t);
+    other.set(t);
+    a.root.updateMatrixWorld(true);
+    b.root.updateMatrixWorld(true);
+    // the same point of him in the model he was not taken out of: his node's matrix there, times the point as bound to it
+    const person = b.root.getObjectByName('G_Person_1');
+    const bound = new THREE.Vector3(1, 1, 0).applyMatrix4(a.mesh.bindMatrix).applyMatrix4(a.mesh.skeleton.boneInverses[0]);
+    const want = bound.applyMatrix4(person.matrixWorld);
+    assert.ok(where(a.mesh).distanceTo(want) < 1e-6, `at ${t}: ${where(a.mesh).toArray()} for ${want.toArray()}`);
+  }
+});

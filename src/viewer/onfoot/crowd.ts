@@ -23,6 +23,9 @@ import { distanceAt, goneAt, lengthOf, PACE, along as pointAlong, QUICKEN, route
  *   him (a rail he steps over) is not asked.
  * - **Out of sight** he is shrunk to nothing where he is, and a group's meshes are not drawn at all once every one of
  *   them is: so a pad its people have left costs nothing to draw.
+ * - **Not in the scene.** Each skeleton's people hang from a holder outside the scene and the meshes read them in three's
+ *   detached bind mode (`detach`), so their six thousand joints cost a frame nothing: their matrices are made when a man
+ *   moves, and never for one standing.
  * - **Bounds.** A skinned mesh's bounds are three's from its bones as they stood when first asked, and a group that has
  *   walked a hundred metres would be culled where it had been: after each move they are taken again from where its
  *   people are, wide enough for a man (`REACH`).
@@ -219,6 +222,7 @@ interface Walker {
 }
 
 const at = new THREE.Vector3();
+const _m = new THREE.Matrix4();
 const world = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -226,6 +230,8 @@ const UP = new THREE.Vector3(0, 1, 0);
 export class Crowd {
   private readonly walkers: Walker[] = [];
   private readonly meshes: THREE.SkinnedMesh[] = [];
+  /** Each skeleton taken out of the scene (`detach`): what holds its people, the skeleton's node and one of its meshes. */
+  private readonly held: { holder: THREE.Object3D; rig: THREE.Object3D; mesh: THREE.SkinnedMesh; was: THREE.Matrix4 }[] = [];
   private readonly gait = new Gait();
   private readonly root: THREE.Object3D;
   private readonly surfaces: Surfaces | null;
@@ -268,6 +274,7 @@ export class Crowd {
         out: false,
       });
     }
+    this.detach();
     // each going in turn, for all of them: where each sets off from is where the going before left him
     const starts = placed.map(({ from, facing }) => ({ at: from, facing }));
     for (const g of ordered) {
@@ -286,9 +293,69 @@ export class Crowd {
 
   /** Where each is at `t`, s from launch. Returns whether any of them moved. */
   set(t: number): boolean {
-    let moved = false;
-    for (const w of this.walkers) moved = this.put(w, t) || moved;
+    let moved = this.rehold();
+    for (const w of this.walkers)
+      if (this.put(w, t)) {
+        // (his joints' matrices, made here and only when he has moved: they are not in the scene for it to make them)
+        w.node.updateMatrixWorld(true);
+        moved = true;
+      }
     if (moved) this.bound();
+    return moved;
+  }
+
+  /**
+   * Take each skeleton's people out of the scene. A man's twenty joints, a hundred men and three levels of detail, are some
+   * six thousand nodes, and three works out every node's matrix every frame (the scene is moved by the eye for each draw:
+   * origin.ts), whether anybody has moved or not: with them in the scene the page drew a frame a third slower on foot. So
+   * each skeleton's people hang from a holder outside the scene, their matrices made by `set` when one of them moves and
+   * never for a man standing, and the group's meshes read them unattached (three's detached bind mode). The holder is put
+   * where the meshes' bind takes the joints to be: a mesh draws a vertex at its own matrix, after the bind's inverse, times
+   * the joints' (bindMode 'detached'), which is where it is in the scene whatever the eye's offset, for as long as the mesh
+   * stands where it stood when the holder was put (`rehold` puts it again if not).
+   */
+  private detach(): void {
+    const rigs = new Map<THREE.Object3D, THREE.SkinnedMesh[]>();
+    for (const mesh of this.meshes) if (mesh.parent) rigs.set(mesh.parent, [...(rigs.get(mesh.parent) ?? []), mesh]);
+    for (const [rig, meshes] of rigs) {
+      const mesh = meshes[0]!;
+      // (only where every mesh of it is bound alike and stands alike: one holder serves them all)
+      if (!meshes.every((m) => m.bindMatrix.equals(mesh.bindMatrix) && m.matrixWorld.equals(mesh.matrixWorld))) continue;
+      const persons = rig.children.filter((o) => PERSON.test(o.name));
+      if (!persons.length) continue;
+      const holder = new THREE.Object3D();
+      holder.name = `${rig.name} (held)`;
+      holder.matrixAutoUpdate = false;
+      holder.matrixWorldAutoUpdate = false;
+      for (const person of persons) holder.add(person);
+      for (const m of meshes) {
+        m.bindMode = THREE.DetachedBindMode;
+        m.bindMatrixInverse.copy(m.bindMatrix).invert();
+      }
+      const held = { holder, rig, mesh, was: new THREE.Matrix4() };
+      this.held.push(held);
+      this.hold(held);
+    }
+  }
+
+  /** Put a holder where its meshes' bind takes the joints to be (the bind, after the mesh's own matrix undone, times the skeleton node's), and its people under it. */
+  private hold(h: Crowd['held'][number]): void {
+    h.rig.updateWorldMatrix(true, false);
+    h.mesh.updateWorldMatrix(true, false);
+    h.was.copy(h.mesh.matrixWorld);
+    h.holder.matrixWorld.copy(h.mesh.bindMatrix).multiply(_m.copy(h.mesh.matrixWorld).invert()).multiply(h.rig.matrixWorld);
+    for (const person of h.holder.children) person.updateMatrixWorld(true);
+  }
+
+  /** Whether a model whose people are held has moved since they were put (then they are put again). */
+  private rehold(): boolean {
+    let moved = false;
+    for (const h of this.held) {
+      h.mesh.updateWorldMatrix(true, false);
+      if (h.mesh.matrixWorld.equals(h.was)) continue;
+      this.hold(h);
+      moved = true;
+    }
     return moved;
   }
 
@@ -370,11 +437,12 @@ export class Crowd {
       mesh.visible = shown.length > 0;
       if (!shown.length) continue;
       mesh.updateWorldMatrix(true, false);
-      const toMesh = mesh.matrixWorld.clone().invert();
+      // (a held man's matrix is the bind's frame, which the bind's inverse takes into the mesh's; one in the scene, the scene's)
+      const toMesh = (mesh.bindMode === THREE.DetachedBindMode ? _m.copy(mesh.bindMatrix) : _m.copy(mesh.matrixWorld)).invert();
       const box = (mesh.boundingBox ??= new THREE.Box3()).makeEmpty();
       for (const w of shown) {
-        w.node.updateWorldMatrix(true, false);
-        const p = at.setFromMatrixPosition(w.node.matrixWorld).addScaledVector(UP, 1).applyMatrix4(toMesh);
+        if (mesh.bindMode !== THREE.DetachedBindMode) w.node.updateWorldMatrix(true, false);
+        const p = at.set(0, 1, 0).applyMatrix4(w.node.matrixWorld).applyMatrix4(toMesh);
         box.expandByPoint(p);
       }
       box.expandByScalar(REACH);
