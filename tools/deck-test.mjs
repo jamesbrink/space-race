@@ -12,6 +12,7 @@ const FLIGHTS = {
   'usa/mercury/mr-4-liberty-bell-7': ['Ignition', 'Engine cutoff'],
   'usa/mercury/ma-6-friendship-7': ['Ignition', 'Booster engine cutoff'],
   'usa/mercury/ma-7-aurora-7': ['Ignition', 'Booster engine cutoff'],
+  'usa/mercury/ma-8-sigma-7': ['Ignition', 'Booster engine cutoff'],
   'ussr/vostok/vostok-1': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-2': ['Ignition', 'Drop the strap-ons'],
   'ussr/vostok/vostok-3': ['Ignition', 'Drop the strap-ons'],

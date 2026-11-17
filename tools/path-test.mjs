@@ -92,6 +92,14 @@ const FLIGHTS = {
     orbit: [3000, 8000],
     coast: 3000,
   },
+  // (Sigma 7: the ascent, the first orbit, the drifting hours, the retrosequence and the burn, the pack going, the entry,
+  // the drogue by hand and the main)
+  ma8: {
+    id: 'usa/mercury/ma-8-sigma-7',
+    instants: [5, 60, 130, 140, 200, 317, 600, 3000, 16_000, 31_800, 31_930, 32_400, 32_600, 32_830, 32_900, 33_150],
+    orbit: [3000, 16_000],
+    coast: 3000,
+  },
   v1: {
     id: 'ussr/vostok/vostok-1',
     instants: [5, 60, 118, 125, 200, 330, 600, 700, 1500, 3000, 4600, 4750, 5200, 5900, 6100, 6500],

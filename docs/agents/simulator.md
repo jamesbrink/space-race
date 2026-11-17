@@ -446,7 +446,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 
 - **An orbital flight has its own record and its own coast.** The flight's orbital.ts (a Vostok's `VostokRecord`,
   missions/ussr/vostok/vehicles/vostok-record.ts) is what its plan is written from: stages and events as the record has them, the orbit as published, the braking burn, the entry body,
-  and `checks` with tolerances set first. `flyOrbit` flies from the published orbit (read as mean elements with a nodal period, or with the kind of period the record says, `orbit.kind`: world/meanelements.ts, orbital.ts `publishedOf`) round to the burn (aimed as the record
+  and `checks` with tolerances set first. `flyOrbit` flies from the published orbit (read as mean elements with a nodal period, or with the kind of period the record says, `orbit.kind`: Sigma 7's and Faith 7's are their heights' Kepler periods: world/meanelements.ts, orbital.ts `publishedOf`) round to the burn (aimed as the record
   says: for Vostok, from the Sun, computed) and a sphere with no lift down to the height the pilot left at, in the flight's
   frame (of date, as every run's) on `world/orbit.ts`'s gravity. `tests/orbital.test.mjs` keeps its misses (src/sim/misses.ts) by the same rule as
   below and prints what each undocumented input is worth. The flight's `mission.md` is the plan. A check can read the orbit at a

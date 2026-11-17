@@ -18,11 +18,13 @@ a landing in the Pacific within sight of the carrier sent to fetch it.
 | Landing | 21:28:22 UTC, 32°06′ N 174°28′ W, north-east of Midway: about 4 nautical miles from the carrier |
 | Recovery | capsule and pilot together, lifted aboard USS *Kearsarge* 40 minutes after landing |
 
-**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 16 on Atlas
+**In this repo: the vehicle, its launch site and the flight.** Spacecraft No. 16 on Atlas
 113-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
 launch site they stand on the stand at Complex 14 on the morning of 3 October 1962, with Schirra at
-the foot of the service structure, and the place can be walked. The flight itself is not built: see
-"What is not built" below.
+the foot of the service structure, and the place can be walked. The flight is flown (Fly) from its
+record: the Atlas a stage and a half on one tank, six revolutions, the retrofire by the clock, the
+pack, the drogue by hand and the main. What it gives against the record is "The flight as flown"
+below; how the record becomes data is [mission.md](mission.md).
 
 ## What happened
 
@@ -164,14 +166,26 @@ lowered by hand from the tower.
 - **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with Schirra's name and
   wrist rings (assumed); his fingertip lights, his smaller microphones and the webbing over his chest are not modelled
   ([spacecraft.md](spacecraft.md), "The pilot"). The figure on the couch is Shepard's with Schirra's name.
-- **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
-  programme, which have not been read; an orbit and an entry as data; drifting flight; a fuel
-  budget worth keeping to. The numbers a simulator would start from are here: weights and moments
-  of inertia for five phases of the flight are in NASA TN D-4807, Table I (p. 14).
+- **The flight as Schirra flew it in orbit.** The flight is flown from its record, but in orbit its
+  attitude is not: the hours of drifting with the jets off, the yaw exercises and the fuel kept are
+  not simulated, and its drag in orbit is the orbit attitude's throughout ([mission.md](mission.md)).
 - **The dipole antenna is not seen to go out.** Its two tapes are on their reels, as at liftoff.
 - **The periscope is not seen to move.** Its door, objective and the link between them carry their
   motion, and `flight.ts` has when each went on this flight; with no clock in the gallery nothing
   plays them.
+
+## The flight as flown
+
+Flown from the pad (`plan`, tests/staged.test.mjs) the Atlas reaches the ground guidance's 25,730 ft/s at T+298.2 s,
+17.5 s before the record's cutoff, on Friendship 7's figures for the Atlas D, not 113-D's (whose own climb was lofted
+and its cutoff 10 s late). At the cutoff it is in an orbit of 161 by 280 km at 32.33° (the record 161 by 283, 32.55°);
+the air pushed hardest at 53.0 kPa (964 lb/ft², 46.2 kPa); 7.9 g at the sustainer's cutoff (8.1).
+
+On the published orbit (its period read as its heights' Kepler period: [mission.md](mission.md)) the retrorockets fire
+by the clock at 08:52:00 at −34°: 7.8 g in the entry (7.6), 0.05 g at 09:01:12 (09:01:40), the drogue out at 39,400 ft at
+09:06:34 (09:06:50), 48 km beyond where the *Kearsarge* picked it up and 8 km to the right. From where the ascent left it,
+420 km beyond and down at 09:14:01 (09:13:11), falling 8.9 m/s on the main. Each miss is recorded with its cause in
+`src/sim/misses.ts`; the report's own integration of the same retrofire came down within a mile of the pick-up point.
 
 ## Where sources disagree
 

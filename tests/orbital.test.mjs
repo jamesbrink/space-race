@@ -73,6 +73,16 @@ const INPUTS = {
     ['retro', 'yaw'],
     ['entry', 'area'],
   ],
+  // Sigma 7's: as Friendship 7's, but for the arc (worked from the cutoff's place) and the impulse (the report's own integration's)
+  'usa/mercury/ma-8-sigma-7': [
+    ['orbit', 'radius'],
+    ['injection', 'arc'],
+    ['injection', 'anomaly'],
+    ['rarefied', 'drag'],
+    ['rarefied', 'area'],
+    ['retro', 'deltaV'],
+    ['entry', 'area'],
+  ],
   'ussr/vostok/vostok-1': [
     ['injection', 'arc'],
     ['injection', 'anomaly'],
