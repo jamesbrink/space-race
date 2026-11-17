@@ -31,6 +31,42 @@ test('a camera resting on a boundary does not flutter between two levels', () =>
   }
 });
 
+test('with nothing kept (a cut, a frozen stage) the level is the size on screen alone, however the eye came', () => {
+  for (const [i, at] of LOD_ABOVE.entries()) {
+    // inside the margin the level on show is kept, so it depends on where the eye was...
+    assert.equal(chooseLevel(at * 1.05, i + 1), i + 1);
+    assert.equal(chooseLevel(at * 0.95, i), i);
+    // ...and a cut keeps none: the threshold itself decides
+    assert.equal(chooseLevel(at * 1.05, null), i);
+    assert.equal(chooseLevel(at * 0.95, null), i + 1);
+  }
+  // a model and a piece of the place, drawn with a cut from inside the margin after coming from either side
+  const scale = 1000;
+  const eye = (ppm) => new THREE.Vector3(1 + scale / ppm, 0, 0); // the box is 1 m either side of the origin
+  for (const from of [LOD_ABOVE[0] * 0.5, LOD_ABOVE[0] * 2]) {
+    const l = [level('Thing'), level('Thing'), level('Thing')];
+    const s = new Staged(l[0].root, []);
+    s.group.updateMatrixWorld(true);
+    s.measure();
+    s.add(1, l[1].root);
+    s.add(2, l[2].root);
+    s.choose(eye(from), scale, false);
+    s.choose(eye(LOD_ABOVE[0] * 0.95), scale, false);
+    assert.equal(s.shownLevel, 1, `a model come from ${from} px/m`);
+    const root = new THREE.Group();
+    const piece = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial());
+    piece.name = 'Piece';
+    root.add(piece);
+    const scenery = new Scenery(root);
+    scenery.choose(eye(from), scale);
+    scenery.choose(eye(LOD_ABOVE[0] * 0.95), scale);
+    assert.equal(scenery.shown[0].level, 0, 'only the full level is there'); // (what is wanted is what arrives next)
+    const coarse = root.clone();
+    scenery.add(1, coarse);
+    assert.equal(scenery.shown[0].level, 1, `a piece come from ${from} px/m`);
+  }
+});
+
 test('any number of levels: thresholds are data', () => {
   const above = [50, 20, 8, 3, 1];
   let level = 0;

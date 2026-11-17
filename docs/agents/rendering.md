@@ -351,7 +351,10 @@ the level coming in is drawn where the fade has passed it and the level going ou
 not, in the view and in the shadow map alike, so a shadow is handed over as its caster is. A
 fading mesh wears its material's twin (`Fading.twin`: the material itself, by prototype, with
 `LOD_FADE` defined and its own id), so nothing else carries the test and nothing has to be told
-about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut.
+about it; `Stage.warm` builds those shaders with the rest. A test (`stage.frozen`) gets the cut,
+and the level its size calls for with no margin kept (`chooseLevel` with nothing on show): with the margin, a thing
+standing inside it was at whichever level the eye had come with, and a pose drawn after a step of the eye and back was
+not the pose drawn before (Complex 14's fuel storage, 6.6 px/m against its threshold of 7: `pnpm test:frozen`, "step").
 A level that arrives after the scene is shown, for a thing already wanted that coarse, comes in the
 same way (`add(level, object, true)`); under the curtain, asleep, frozen or forced it is a cut. A
 change of look in the middle of a fade leaves it going, in the look's materials (`relook`).

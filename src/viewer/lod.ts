@@ -52,11 +52,17 @@ export const lodUrl = (url: string, level: number) => (level ? url.replace(/\.gl
 /**
  * Which level to show at `ppm` pixels per metre, given the one on show: a change needs a clear margin, so a camera
  * resting on a boundary does not flutter between two (going finer at 12 % over the threshold, coarser at 10 % under).
+ * `current` null: nothing on show is to be kept (a cut: a frozen stage), so the level is the size's alone, changing at
+ * the thresholds themselves. With the margin, a size inside it keeps whichever level the eye came with, and a frozen
+ * frame drawn from a pose after a step of the eye 8 % further out was not the frame drawn there before (test:frozen,
+ * "step": Complex 14's fuel storage, at 6.6 px/m from across the pad, a little under its own 7, was at level 1 for the
+ * eye having come from nearer; from 6.2 px/m, past the 10 %, it went to 2, and back at 6.6 it stayed there).
  */
-export function chooseLevel(ppm: number, current: number, above: readonly number[] = LOD_ABOVE): number {
-  let level = Math.min(current, above.length);
-  while (level > 0 && ppm > above[level - 1]! * 1.12) level--;
-  while (level < above.length && ppm < above[level]! * 0.9) level++;
+export function chooseLevel(ppm: number, current: number | null, above: readonly number[] = LOD_ABOVE): number {
+  const [finer, coarser] = current === null ? [1, 1] : [1.12, 0.9];
+  let level = Math.min(current ?? 0, above.length);
+  while (level > 0 && ppm > above[level - 1]! * finer) level--;
+  while (level < above.length && ppm < above[level]! * coarser) level++;
   return level;
 }
 
@@ -382,14 +388,15 @@ export class Scenery implements Levelled {
 
   /**
    * Pick each piece's level for an eye at `eye`, `scale` pixels per radian, `dt` seconds after the last time (a
-   * change of level is a fade of that long; `dt` infinite, a cut). True if what is drawn changed, or is changing.
+   * change of level is a fade of that long; `dt` infinite, a cut, and with no margin kept: `chooseLevel`). True if
+   * what is drawn changed, or is changing.
    */
   choose(eye: Vector3, scale: number, dt = Number.POSITIVE_INFINITY): boolean {
     let changed = false;
     for (const piece of this.pieces) {
       if (piece.fade.step(dt)) changed = true;
       const forced = this.held(piece);
-      const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), piece.wanted, piece.above);
+      const wanted = forced ?? chooseLevel(scale / distanceTo(piece.box, eye), Number.isFinite(dt) ? piece.wanted : null, piece.above);
       if (wanted === piece.wanted) continue;
       piece.wanted = wanted;
       changed = this.show(piece, Number.isFinite(dt) && forced === undefined) || changed;
@@ -593,11 +600,12 @@ export class Staged {
   /**
    * Pick the level for an eye at `eye`, `scale` pixels per radian (or the full one), `dt` seconds after the last
    * time: a change of level is a fade of that long (`dt` infinite, or `full`, a cut: a model being cut open has
-   * its inside at once). True if what is drawn changed, or is changing.
+   * its inside at once; `dt` infinite keeps no margin either: `chooseLevel`). True if what is drawn changed, or is changing.
    */
   choose(eye: Vector3, scale: number, full: boolean, dt = Number.POSITIVE_INFINITY): boolean {
     const fading = this.fade.step(dt);
-    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), this.wanted, this.above));
+    const kept = Number.isFinite(dt) ? this.wanted : null;
+    this.wanted = this.forced ?? (full ? 0 : chooseLevel(scale / distanceTo(this.box, eye), kept, this.above));
     return this.show(this.wanted, Number.isFinite(dt) && !full && this.forced === null) || fading;
   }
 
