@@ -4,7 +4,7 @@
  * not lift it. The capsule's hull and spaces are every Mercury capsule's (vehicles/mercury-afloat.ts); what is this
  * one's is here. The sea it floated on is weather.ts `sea`.
  */
-import { derived, doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
 import { capsuleAfloat, LOWEST } from '../../vehicles/mercury-afloat.ts';
 
@@ -33,12 +33,71 @@ const OUT = 37.25 - MIDDLE * Math.tan((20 * Math.PI) / 180);
  */
 const THROWN = 3.675;
 
+/**
+ * No. 7's balance afloat (Postlaunch Report for MR-3, 3.1, p. 4, "Flotation"): 2,316.03 lb, its centre at Z 119.77 in,
+ * "maximum diameter of the capsule is at Z = 104.50", so 15.27 in over station 0; X −0.10 and Y 0.02 in off the axis;
+ * moments of inertia 248 (roll), 332 (pitch) and 347 (yaw) slug ft^2. Its shield is taken to be in place in these: from
+ * the re-entry weights' 124.61 in, the 263 lb that leave at the top with the parachutes and the canister account for
+ * the fall to 119.77 by themselves.
+ */
+const NO7 = { lb: 2316.03, station: 119.77 - 104.5, pitch: 332, yaw: 347 };
+const MR3 = 'Postlaunch Report for MR-3, 3.1 (p. 4)';
+/** What No. 11's explosive hatch saved on No. 7's latched one, lb, taken off at the hatch's middle. */
+const SAVED = 69 - HATCH_LB;
+/** No. 11's balance: No. 7's with the hatch's saving taken off at its middle (a point mass), on No. 7's inertia across, the mean of its pitch and yaw. */
+function balance() {
+  const M = NO7.lb;
+  const m = SAVED;
+  const hatch = { station: MIDDLE, out: OUT };
+  const station = (M * NO7.station - m * hatch.station) / (M - m);
+  // (a capsule was balanced: No. 7's centre was a tenth of an inch off its axis, and No. 11's is taken to be as near, on it)
+  const out = 0;
+  const across = (NO7.pitch + NO7.yaw) / 2;
+  // (slug ft^2 from lb in^2: over 32.174 lb a slug and 144 in^2 a ft^2)
+  const lbin2 = 32.174 * 144;
+  const inertia =
+    across -
+    (m * ((hatch.station - NO7.station) ** 2 + hatch.out ** 2)) / lbin2 -
+    ((M - m) * ((station - NO7.station) ** 2 + out ** 2)) / lbin2;
+  const why = `No. 7’s (${MR3}: 2,316.03 lb at station 15.27 in, Z 119.77 over the greatest diameter’s 104.50) less the ${SAVED} lb its explosive hatch saved (Results, p. 4) at the hatch’s middle`;
+  return {
+    station: derived(station, why),
+    out: assumed(
+      out,
+      `on the axis, as No. 7’s was within a tenth of an inch (X −0.10, Y 0.02 in: ${MR3}): a capsule was balanced, and No. 11’s own figures (its Postlaunch Memorandum Report) are not found`,
+    ),
+    inertia: derived(
+      inertia,
+      `${why}, on the mean of No. 7’s 332 (pitch) and 347 (yaw) slug ft^2: which of the two is square to the hatch is not worked out`,
+    ),
+  };
+}
+
 export const AFLOAT: NonNullable<Flight['flies']>['afloat'] = {
   body: capsuleAfloat({
     flotation: estimated(
       2316.03 - (69 - HATCH_LB),
       'No. 11’s flotation weight is in its Postlaunch Memorandum Report, not found: No. 7’s 2,316.03 lb (Postlaunch Report for MR-3, 3.1), with the pilot, ' +
         'less the 46 lb its explosive hatch saved (Results, p. 4), as this flight’s other weights are taken. The preflight summary (TM X-51305, read through its OCR only) has 2,311.5',
+    ),
+    balance: balance(),
+    shield: estimated(
+      // (1,848 kg/m^3 of beryllium an inch thick over the dish's zone, 2 pi 80 in by its 9.2 in depth)
+      (1848 * IN * (2 * Math.PI * 80 * 9.2 * IN * IN)) / LB,
+      'the beryllium heat sink: "approximately 1-inch-thick" (Hammack and Heberlig, p. 6) over its 2.98 m^2 dish at 1,848 kg/m^3, 140 kg, as vehicles/mercury-redstone.ts takes it for the entry’s heating. ' +
+        'No weight for the shield or the bag is in anything read (SP-45, This New Ocean, the MR-3 Postlaunch Report, Results, SEDR 104, Hammack and Heberlig); the bag’s cloth, straps and cables are left out',
+    ),
+    seat: estimated(
+      18,
+      'Grissom’s centre of mass in his couch, lying on his back over the large pressure bulkhead: station 18 in on the axis, ours. No document read places it',
+    ),
+    rolling: estimated(
+      0.2,
+      'a fifth of critical, as its rise and fall: the bag hung under it full of the sea was "a sort of sea anchor" (This New Ocean, p. 311), and what it and the hull shed into the sea as it rolls is not worked out',
+    ),
+    egress: estimated(
+      4,
+      `"I lifted the helmet from my head and dropped it, reached for the right side of the instrument panel, and pulled myself through the hatch" (${RESULTS}, p. 55): the last four of the five seconds he is taken to go out in, ours`,
     ),
     pilot: estimated(
       150.5 + 20,
@@ -95,6 +154,16 @@ export const AFLOAT: NonNullable<Flight['flies']>['afloat'] = {
       unit: 'lb',
       tolerance: 500,
       source: `"weighed over 5000 pounds" (${TNO}, p. 375): read as between 5,000 and 6,000 lb, the cabin full; the bag’s water, which drains as it is lifted, left out. Set before it was run`,
+    },
+    {
+      id: 'heeled',
+      label: 'Heel as it went under',
+      value: 35,
+      unit: 'deg',
+      tolerance: 5,
+      source:
+        'NASA S61-02921, "the top of the capsule before it sinks beneath the waves": the recovery compartment and the top of the cone out of the sea, the axis 30 to 40 degrees ' +
+        'off the plumb line, read off the photograph with the camera’s own tilt taken out by the horizon (an estimate: which way it leant from the hatch cannot be told). Set before the run was read',
     },
     {
       id: 'under',

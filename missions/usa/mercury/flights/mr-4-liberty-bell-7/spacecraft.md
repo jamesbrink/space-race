@@ -302,14 +302,13 @@ capsule's stays 41.5 from its own photographs).
   capsule's RETRACT SCOPE telelight ("if the periscope does not retract 40 seconds after retro-package separation,
   the RETRACT SCOPE telelight will go on": SEDR 104, 12-7) and its AUTO, MAN switch are on the console and do nothing:
   the RETRACT SCOPE light has no event in the simulator to show. The ratchet handle (`Ctl_PeriscopeHandle`) works the periscope, as No. 7's does.
-- **The hatch blown on the flight deck** (`flies.hatch`) is not flown as a body: it vanishes (the history has it strike
-  the water five feet off and skip over the waves), the opening is the model's sill with nothing in it, and no water is
-  drawn coming in; afloat the spacecraft is drawn going under in an estimated 45 s, no further.
 - **The clamp ring's bolt covers** are half an egg each; the hinge is not modelled.
 - **No mass properties of its own.** No. 11's weights, centre of mass and inertia are its Postlaunch Memorandum Report's,
-  which has not been found: it is flown at No. 7's weights less the hatch's 46 lb, and on No. 7's estimated centre of
-  mass and gyration (vehicles/mercury-redstone.ts), all `estimated`. The window, the rate command system and the new
-  panel are not counted.
+  which has not been found: it is flown at No. 7's weights less the hatch's 46 lb, and in flight on No. 7's estimated
+  centre of mass and gyration (vehicles/mercury-redstone.ts), all `estimated`. Afloat it heels on No. 7's documented
+  flotation balance (MR-3 Postlaunch Report, 3.1: the centre 15.27 in over station 0, 332 and 347 slug ft² across), the
+  hatch's saving taken off at the hatch and its centre taken on the axis as No. 7's was within a tenth of an inch
+  (`assumed`). The window, the rate command system and the new panel are not counted.
 - **The rate command system** is the deck's Rate command switch (`rcs.rate`, sim/autopilot.ts `rateCommand`): on the
   spacecraft alone the stick asks for a rate, and the manual chambers fire full on an axis while its rate is more than the
   deadband (±3 deg/s: *Results*, pp. 3 and 52) from it, none within. The rate at full throw (10 deg/s) is ours; how the
@@ -325,8 +324,12 @@ capsule's stays 41.5 from its own photographs).
   this model or for its pad (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full; at
   the launch site it and the pad change level at the viewer's own thresholds, which are what
   Freedom 7's pad measured at.
-- **In the sea** (sim/afloat.ts, vehicles/mercury-afloat.ts): upright, up and down only, never heeling or turning; the
-  bag a cylinder of the shield's width; the cabin's free volume three quarters of the pressure vessel, its large bulkhead's
+- **In the sea** (sim/afloat.ts, vehicles/mercury-afloat.ts): up and down, and heeling in the plane of its hatch only
+  (never across it, never turning or drifting), about the centre of what stays aboard as if that centre held still
+  across the sea; the shield's 140 kg let down on the bag is an estimate (its weight is in nothing read), the pilot a
+  point at station 18 in on the axis, going to the sill over the last 4 s before he is out (ours); water with a surface
+  stands level at once and is a weight, not a mass that turns; a full space's water turns with it as a point at its
+  centre; no added mass of the sea; its rolling damped by a fifth of critical (ours); the bag a cylinder of the shield's width; the cabin's free volume three quarters of the pressure vessel, its large bulkhead's
   dish left out, and its valves and snorkels shut; the bag's pores 1 per cent of its skirt; the shingles' joints and what
   lies between the skins ours; the sea's density the Bahamas' surface water's. Every share and opening is `estimated`.
 - **The hatch thrown off** (sim/loose.ts) is a point with a tumbling plate's drag; drawn, it keeps the turn it had as it
