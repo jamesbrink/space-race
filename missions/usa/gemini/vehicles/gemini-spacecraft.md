@@ -342,8 +342,10 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
   windows let in, which the viewer mixes by the lights' switch (src/viewer/shade.ts). Each lamp is asked from its lens and
   four points across it; the vessel's walls are cut to a vertex every inch and a half so that a shadow's edge reads on
   them. What moves (needles, controls, the attitude balls), the lamps' lenses and telelights, the panes and the men in the
-  seats neither take it nor cast it: the men cast no shadow on the walls. The hatches' inner faces take it as they stand
-  shut; on a ship whose right hatch is a node of its own (from spacecraft 4) that hatch's inside is not shaded.
+  seats neither take it nor cast it: the men cast no shadow on the walls. Both hatches' inner faces take it as they
+  stand shut (the pilot's too where it is a node of its own, from spacecraft 4), with the 35 bolts of each inner panes'
+  frame, and so does the cone's frame where it shows past the sills. The hatch curtains take the figures of the wall
+  they hang on, not their own.
   The shade is cast once, with the hull whole and the hatches shut: cut open in the Gallery, or with a hatch open, the
   walls that are taken away still shade the lamps' light as if they stood, and the room's light that comes in at the
   cut is shaded by less of it, not worked again (src/viewer/shade.ts `kept`). The Sun's light is not shaded by it: its

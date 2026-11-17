@@ -1064,7 +1064,8 @@ def fittings(c: Station, say) -> None:
             return Vector((r * math.cos(side * a), r * math.sin(side * a), z)) * IN
 
         # (one sheet, its corners shared from one length to the next, so that it is shaded as the cloth it is and not as twelve flats)
-        cur.grid(hang, (HATCH_OUT - deg(1), HATCH_OUT - deg(8)), zs, flip=True)
+        # (facing into the cabin on both sides: the mirrored side's grid runs the other way round)
+        cur.grid(hang, (HATCH_OUT - deg(1), HATCH_OUT - deg(8)), zs, flip=side < 0)
         for k in range(5):
             z = zz(113.0 + k * 8.0)
             a = side * (HATCH_OUT - deg(2.5))
@@ -1184,8 +1185,8 @@ def shade(c: Station) -> None:
     a figure for each of the three floodlights alone (`LAMPS`, in the lights' order) and one with them all out, by the
     light the two windows let in. A lamp's fitting is asked from its lens's middle and four points across it, a little in
     front of it, into the cabin: the side lamps toward the middle, the centre one down from the roof. Each window is asked
-    from inside its inner pane. The hatches' inner faces are shaded with the cabin they close; the hatches' outer skins,
-    the panes and anything that moves are left out of it."""
+    from inside its inner pane. The hatches' inner faces are shaded with the cabin they close, and the cone's frame where
+    it is seen past their sills; the hatches' outer skins, the panes and anything that moves are left out of it."""
     import cabin_shade
 
     if not interior():
@@ -1206,19 +1207,30 @@ def shade(c: Station) -> None:
     for win in WINDOWS.values():
         at = to_world @ (win.at(0.0, WINDOW_L / 2, -2.4) * IN)
         panes.append(cabin_shade.disc(at, -(to_world.to_3x3() @ win.np), 0.8 * WINDOW_HALF * IN))
-    hatches = bpy.data.objects.get("Hatches")
-    outside = ("_Skin", "_Fasteners", "_Hinges", "_WindowBolts", "_WindowOuter")
+    # every hatch's node (from spacecraft 4 the pilot's is a node of its own under the other's, to swing): its inner
+    # faces, as it stands shut. What is outside it is left out: its skin, its fasteners and hinges, the outer pane and
+    # the frame round it; the 35 bolts that hold the inner panes' frame are inside, and are shaded
+    hatches = [o for o in (bpy.data.objects.get("Hatches"), bpy.data.objects.get("HatchRight")) if o is not None]
+    outside = ("_Skin", "_Fasteners", "_Hinges", "_WindowOuter", "_WindowFrames")
+    # the cone's frame under the shingles (built only where an inside is), a sliver of which is seen past the hatches'
+    # sills: left out, it was lit as outdoors there, a bright line along the sill in the dark
+    frame = bpy.data.objects.get("Cabin_Structure")
     still = [
         o
         for o in bpy.data.objects
         if o.type == "MESH"
-        and (o.parent == station or (hatches is not None and o.parent == hatches and not o.name.endswith(outside)))
+        and (o.parent == station or (o.parent in hatches and not o.name.endswith(outside)) or o == frame)
         and o.matrix_local == Matrix.Identity(4)
         and not o.name.startswith(DRIVEN)
         and o.data.polygons
     ]
     casters = [o for o in still if not cabin_shade.is_seen_through(o)]
-    cabin_shade.bake(casters, casters, lamps, panes, BROAD, skin=(1.5 * IN, 0.12 * IN), reach=9.0 * IN, short=0.4 * IN)
+    cabin_shade.bake(casters, casters, lamps, panes, BROAD, skin=(1.5 * IN, 0.12 * IN), reach=9.0 * IN, short=0.4 * IN, joined=JOINED)
+
+
+# What is narrow and hangs on something else takes its shade from what it hangs on (cabin_shade.bake `joined`): a curtain
+# a third of an inch off the wall, asked from itself, came out lit along a wall in shadow
+JOINED = {"CrewCabin_HatchCurtains": ("CrewStation_PressureVessel",)}
 
 
 PANELS_ABOUT = (
