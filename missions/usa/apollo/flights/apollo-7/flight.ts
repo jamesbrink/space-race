@@ -11,7 +11,7 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. The pressure wall and both nominal bulkheads are visible in cutaway; the full tunnel, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body uses the nominal curved Apollo afterbody and 33° conical wall. Four fixed openings and the separate hatch-cover opening use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. The common reference places the outer aft apex at Xc −1.30 in, rather than at station zero (NASA TN D-3888, Figure 2, p. 27). Its use for CM-101 and the shared survey is assumed. Their reveals are derived projections, not surveyed ablator walls. The heat shields separate at published Block II stations. The pressure wall and both nominal bulkheads are visible in cutaway; the full tunnel, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
@@ -59,10 +59,11 @@ const parts: Part[] = [
     inside: true,
     summary: 'The broad console surface above the three crew positions.',
     detail:
-      'Apollo 7’s own North American drawing V36-976018, revision D (12 March 1968), identifies the three main panels and central notch. NASA TN D-7919, p. 21, describes the three large machined panels as a Block II change. The shared structural silhouette uses the Smithsonian’s processed CM-107 survey derivative, in physical centimetres, assumed for CM-101. It is projected onto the dominant panel plane, retaining the notch. The source is a processed visualization mesh, not raw metrology or an Apollo 7 measurement. This is a blank structural reference: instrument openings are filled, individual panel joints are unresolved, and no thickness, instruments, labels, supports or side consoles are inferred. Apollo 11’s equipment and couches are excluded. It stays with the command module when taken apart.',
+      'Apollo 7’s own North American drawing V36-976018, revision D (12 March 1968), identifies the three main panels and central notch. NASA TN D-7919, p. 21, describes the three large machined panels as a Block II change. The shared structural silhouette uses the Smithsonian’s processed CM-107 survey derivative, in physical centimetres, assumed for CM-101. It is projected onto the dominant panel plane, retaining the notch, and registered using the common nominal outer-apex station Xc −1.30 in. The reference surface fits inside the current nominal pressure wall; this does not establish as-built installation clearance. The source is a processed visualization mesh, not raw metrology or an Apollo 7 measurement. This is a blank structural reference: instrument openings are filled, individual panel joints are unresolved, and no thickness, instruments, labels, supports or side consoles are inferred. Apollo 11’s equipment and couches are excluded. It stays with the command module when taken apart.',
     facts: [
       ['Layout authority', 'CM-101 drawing V36-976018 · revision D'],
       ['Structural outline', 'CM-107 derivative · assumed shared Block II'],
+      ['Apollo datum', 'Outer aft apex Xc −1.30 in · nominal common reference'],
       ['Equipment', 'Not built; blank reference surface'],
     ],
   },

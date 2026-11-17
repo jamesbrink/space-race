@@ -16,8 +16,9 @@ releases the content under CC0. No photographic textures are used.
 
 The survey's physical centimetres are retained. Blender's glTF import changes the
 coordinate basis to Z-up. The module turns that basis 90 degrees about Z so the
-side hatch faces +X, subtracts the registered aft apex, and converts centimetres to
-metres once. Registration uses the median centre of the aft spherical surface,
+side hatch faces +X, subtracts the registered aft apex, applies its published
+nominal **Xc −1.30-inch** station through `cm_reference.py`, and converts centimetres
+to metres once. The fitted outer surface is not the structural Xc-zero datum. Registration uses the median centre of the aft spherical surface,
 with the published 184.8-inch nominal radius; it is **not** an independently
 surveyed Apollo station datum. The measured outlines are projected onto their
 best-fit planes, then their convex hulls are retained. Maximum plane residuals
@@ -67,8 +68,9 @@ coordinates. It is not flattened or identified as the clear crew opening. Its
 wall cut is a radial mapping onto the published nominal pressure-vessel profile;
 no full hatch frame or door is inferred from that projection.
 
-Registration uses the exterior survey's nominal-sphere apex. It remains an
-assumption about the common coordinate frame, not an independent Apollo station
+Registration uses the exterior survey's nominal-sphere apex, placed at the
+nominal **Xc −1.30-inch** station in NASA TN D-3888, Figure 2, p. 27. It remains
+an assumption about the common coordinate frame, not an independent Apollo station
 survey. No scaling is applied to make the two sources fit. See
 [the pressure-vessel reconstruction](../pressure-vessel.md) for how the outlines
 are used and what remains unbuilt.
@@ -108,6 +110,9 @@ residual is 6.86 mm; median perimeter residual is 4.95 mm, maximum 8.08 mm.
 These compare different interfaces and a simplified replica: they do not establish
 manufacturing tolerance, absolute survey accuracy or an exact installed pose.
 The two individual transformations and their composition are retained for audit.
+They end in the original fitted-apex-centred frame; `side_hatch.py` applies
+`cm_reference.AFT_APEX_XC` once to reach the same nominal Apollo frame as the
+thermal opening. The JSON explicitly records this stored-frame convention.
 
 Extraction in the replica frame selects front-facing mesh triangles around the
 window (|X| < 0.21 m, |Z| < 0.20 m, Y > 0.04 m, normal Y > 0.97). Area-weighted
@@ -148,5 +153,5 @@ outer contours. Internal instrument apertures are filled as blank structural
 reference surfaces, and the outer contours are united. The resulting polygons do
 not establish individual panel joints or change the documented three-panel design.
 No manufactured thickness, controls, labels, side wings, photographic textures or
-couches are copied. The same nominal aft-sphere registration is applied without
-scaling. Full method and limits are in [main-console.md](../main-console.md).
+couches are copied. The same nominal aft-sphere registration, including the published −1.30-inch
+outer-apex station, is applied without scaling. Full method and limits are in [main-console.md](../main-console.md).

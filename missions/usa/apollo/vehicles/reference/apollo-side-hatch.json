@@ -118,7 +118,8 @@
       "sha256": "51c434b7a36405626c8864ac88dad14808dcef78e8af94276f84f20d53ed82ad",
       "licence": "CC0",
       "use": "Assumed shared external Block II hatch-cover opening only; no later lightweight inner slab or equipment copied."
-    }
+    },
+    "stored_frame": "Stored transforms end in the original fitted-aft-apex-centred frame. side_hatch.py applies cm_reference.AFT_APEX_XC once to reach the nominal Apollo datum, consistently with the thermal-opening survey conversion. No rigid-fit source coordinates or residuals have changed."
   },
   "thermal_opening": {
     "source": "Same CM-107 exterior shell and aft-apex registration as apollo-cm-apertures.json",

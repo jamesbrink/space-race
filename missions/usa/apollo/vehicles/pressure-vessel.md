@@ -114,3 +114,13 @@ cutaway. Neither a pressure-wall thickness nor the full tunnel contour is inferr
   not yet built. The cutaway is structural, not a finished inhabitable cabin.
 - No Apollo 11 equipment, couch pose, photographic texture or post-entry damage
   is copied into Apollo 7.
+
+## Common survey datum
+
+The nominal pressure-wall and bulkhead stations are unchanged. Common survey
+interfaces now use `cm_reference.py`: their fitted outer aft apex is mapped to
+**Xc −1.30 in**, the nominal station in NASA TN D-3888, Figure 2, p. 27, rather
+than incorrectly treating that outer surface as Xc zero. The same conversion is
+used by the thermal shell, hatch and console. The reveals between survey interfaces
+and the published-coordinate wall are rebuilt from those references. This remains
+an assumed common datum; it is not an as-built pressure-wall or ablator inspection.

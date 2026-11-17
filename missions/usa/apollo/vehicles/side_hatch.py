@@ -11,6 +11,7 @@ from pathlib import Path
 from mathutils import Matrix, Vector
 
 import perforated_wall
+from cm_reference import AFT_APEX_XC, survey_cm
 from srlib import CM, IN, MeshBuilder, mark_shells, material
 
 REFERENCE = json.loads((Path(__file__).parent / "reference" / "apollo-side-hatch.json").read_text())
@@ -19,8 +20,7 @@ REFERENCE = json.loads((Path(__file__).parent / "reference" / "apollo-side-hatch
 def opening():
     """Thermal-shell interface, not the crew's clear passage or a flat door."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
-    datum = survey["registration"]["scan_sphere_apex_cm"]
-    points = [Vector((-p[1], p[0], p[2] - datum)) * CM for p in REFERENCE["thermal_opening"]["boundary_cm"]]
+    points = [Vector(survey_cm(p, survey["registration"])) * CM for p in REFERENCE["thermal_opening"]["boundary_cm"]]
     return perforated_wall.convex_boundary(perforated_wall.domain(points))
 
 
@@ -31,6 +31,9 @@ def build(parent, base, radius, normal, project, void):
     registration = REFERENCE["registration"]
     rotation = Matrix(registration["rotation"])
     translation = Vector(registration["translation_m"])
+    # The stored rigid registration ends in the original fitted-apex frame.
+    # Apply the same nominal Apollo datum used by the curved thermal opening.
+    translation.z += AFT_APEX_XC * IN
     # The measured mounting face is an aperture reference, not a glass-plane
     # survey. The closure remains explicitly temporary until glazing is built.
     measured = [rotation @ Vector(p) + translation for p in data["boundary_m"]]

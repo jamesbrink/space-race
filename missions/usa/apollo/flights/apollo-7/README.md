@@ -74,3 +74,13 @@ explicitly assumed for CM-101. It retains the central notch and stays with the
 CM during explosion. This is not an equipped console: individual panel joints,
 instrument openings, thickness, supports, controls and side consoles are unresolved.
 Neither Apollo 11's later equipment nor its different couches are imported.
+
+## Common-datum correction
+
+The nominal outer aft apex is now registered at Xc **−1.30 in**, from NASA
+TN D-3888, Figure 2, p. 27, rather than being conflated with the heat-shield
+structural datum. The same source-backed offset applies to the nominal outer
+profile, fixed openings, side hatch, inner interfaces and console. It removes
+the console's former overlap with the nominal pressure wall without trimming
+or independently moving the console. Absolute survey accuracy and as-built
+installation clearance are not established; this remains an assumed common datum.

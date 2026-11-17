@@ -9,7 +9,7 @@
   "registration": {
     "rotation_degrees_about_z": 90,
     "scan_sphere_apex_cm": 43.42112310538903,
-    "datum_method": "median(z + sqrt((184.8 in)^2 - r^2)) - 184.8 in, using the scanned aft spherical surface in centimetres. Coordinates retained in survey centimetres; rotate 90 degrees about Z and subtract the registered apex before conversion to metres."
+    "datum_method": "The fitted outer spherical apex is not Apollo Xc0. cm_reference.py maps it to the published nominal Xc -1.30 in (NASA TN D-3888, Figure 2, p.27), with no scaling. Same physical survey centimetres and 90-degree basis rotation. Assumed common geometric datum, not an independently surveyed Apollo station or a measurement of post-entry ablator thickness."
   },
   "apertures": [
     {

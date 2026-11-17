@@ -8,6 +8,7 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 |---|---:|---|
 | Command module base diameter | 154 in | documented, p. 25, 12 ft 10 in |
 | Aft / forward heat-shield joints, Xc | 23.23 / 81.13 in | assumed common Block II, NAA A-512S ST-428A, p. 31 |
+| Outer aft apex, Xc | −1.30 in | assumed common nominal datum, NASA TN D-3888, Figure 2, p. 27; not a unit-specific ablator inspection |
 | Forward heat-shield top, Xc | 112.25 in | assumed common Block II, same plate; excludes docking hardware |
 | SM barrel diameter | 154 in | documented, press kit p. 25 |
 | SM aft / forward bulkheads, XA | 838 / 993 in | assumed CSM-101 preflight reference, MIT R-547 Fig. 1.4, p. 1-16 |

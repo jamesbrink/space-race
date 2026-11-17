@@ -14,7 +14,7 @@
   "registration": {
     "rotation_degrees_about_z": 90,
     "scan_sphere_apex_cm": 43.42112310538903,
-    "datum_method": "Same nominal aft-sphere registration as the exterior and inner hull; not an independently measured Apollo datum."
+    "datum_method": "The fitted outer spherical apex is not Apollo Xc0. cm_reference.py maps it to the published nominal Xc -1.30 in (NASA TN D-3888, Figure 2, p.27), with no scaling. Same physical survey centimetres and 90-degree basis rotation. Assumed common geometric datum, not an independently surveyed Apollo station or a measurement of post-entry ablator thickness."
   },
   "extraction": {
     "plane_normal": [0.0028408114157597066, 0.2925605418565289, 0.956242782529162],

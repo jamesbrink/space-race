@@ -63,3 +63,20 @@ NTRS 20070025192 (2007), Figure 1, p. 3, credited to Erb et al. (1970).
 The latter corroborates the selected thermal reference, but does not explain the
 104.5-inch label. That discrepancy remains unresolved; no claim is made that
 these are proven equivalent structural and thermal datums.
+
+## Apollo datum and outer apex
+
+NASA TN D-3888, Figure 2, printed p. 27, dimensions the outer aft apex **1.30 in
+below Xc zero**. NAA's 1966 structures training, p. 1-13, defines zero at the
+heat-shield outer facesheet, excluding ablator. The former apex-at-zero model
+mixed those two references. `cm_reference.AFT_APEX_XC = −1.30` now locates both
+the nominal spherical/shoulder/conical profile and every common survey outline
+in the Apollo frame. Published heat-shield joint and forward stations stay in
+that frame. The CM/SM fairing's connection is recalculated from the corrected
+profile; it is still a derived closure.
+
+The nominal station is **assumed common for CM-101**, not a measurement of either
+flight's manufactured ablator or of CM-107's remaining post-entry material.
+TN D-3888's earlier upper-apex arrangement, parachutes, equipment and loading are
+not adopted. The correction does not resolve the separate forward-top-station
+conflict or establish absolute survey accuracy.

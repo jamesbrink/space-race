@@ -13,6 +13,7 @@ from mathutils import Vector
 
 import perforated_wall
 import side_hatch
+from cm_reference import AFT_APEX_XC, survey_cm
 from srlib import CM, IN, MeshBuilder, _segs, lathe_obj, material, prof
 
 RADIUS = 77.0
@@ -27,10 +28,10 @@ FORWARD_LIMIT = 81.13
 COVER_TOP = 112.25
 TUNNEL_RADIUS = 15.0  # NAA News Reference p.47: nominal 30-inch forward hatch
 _cr = RADIUS - SHOULDER_RADIUS
-_cz = AFT_RADIUS - math.sqrt((AFT_RADIUS - SHOULDER_RADIUS) ** 2 - _cr**2)
-_aft_angle = math.atan2(_cr, AFT_RADIUS - _cz)
+_cz = AFT_APEX_XC + AFT_RADIUS - math.sqrt((AFT_RADIUS - SHOULDER_RADIUS) ** 2 - _cr**2)
+_aft_angle = math.atan2(_cr, AFT_APEX_XC + AFT_RADIUS - _cz)
 JOIN_R = AFT_RADIUS * math.sin(_aft_angle)
-JOIN_Z = AFT_RADIUS * (1 - math.cos(_aft_angle))
+JOIN_Z = AFT_APEX_XC + AFT_RADIUS * (1 - math.cos(_aft_angle))
 CONE_R = _cr + SHOULDER_RADIUS * math.cos(CONE_ANGLE)
 CONE_Z = _cz + SHOULDER_RADIUS * math.sin(CONE_ANGLE)
 APEX = CONE_Z + CONE_R / math.tan(CONE_ANGLE)
@@ -38,7 +39,7 @@ APEX = CONE_Z + CONE_R / math.tan(CONE_ANGLE)
 
 def radius(z):
     if z <= JOIN_Z:
-        return math.sqrt(max(0, AFT_RADIUS**2 - (z - AFT_RADIUS) ** 2))
+        return math.sqrt(max(0, AFT_RADIUS**2 - (z - AFT_APEX_XC - AFT_RADIUS) ** 2))
     if z < CONE_Z:
         return _cr + math.sqrt(max(0, SHOULDER_RADIUS**2 - (z - _cz) ** 2))
     return (APEX - z) * math.tan(CONE_ANGLE)
@@ -62,10 +63,9 @@ def _on_cone(point, normal):
 def build(cm, heatshield, forward, hatch_node, base, foil, void):
     """Keep named flight nodes; the forward assembly is explicitly unfinished."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
-    datum = survey["registration"]["scan_sphere_apex_cm"]
     apertures = []
     for port in survey["apertures"]:
-        measured = [Vector((-p[1], p[0], p[2] - datum)) * CM for p in port["boundary_cm"]]
+        measured = [Vector(survey_cm(p, survey["registration"])) * CM for p in port["boundary_cm"]]
         n = port["normal"]
         normal = Vector((-n[1], n[0], n[2]))
         rim = [_on_cone(p, normal) for p in measured]
@@ -76,7 +76,7 @@ def build(cm, heatshield, forward, hatch_node, base, foil, void):
 
     def normal(z):
         if z <= JOIN_Z:
-            return radius(z) / AFT_RADIUS, (z - AFT_RADIUS) / AFT_RADIUS
+            return radius(z) / AFT_RADIUS, (z - AFT_APEX_XC - AFT_RADIUS) / AFT_RADIUS
         if z < CONE_Z:
             return (radius(z) - _cr) / SHOULDER_RADIUS, (z - _cz) / SHOULDER_RADIUS
         return math.cos(CONE_ANGLE), math.sin(CONE_ANGLE)
@@ -117,7 +117,7 @@ def build(cm, heatshield, forward, hatch_node, base, foil, void):
     # the shoulder's widest point. Skin thickness is not invented.
     thin_shield = material("apollo-aft-shield-surface", (0.29, 0.24, 0.20), roughness=0.85, double_sided=True)
     sphere = [
-        (AFT_RADIUS * math.sin(_aft_angle * i / _segs(32)), base + AFT_RADIUS * (1 - math.cos(_aft_angle * i / _segs(32))))
+        (AFT_RADIUS * math.sin(_aft_angle * i / _segs(32)), base + AFT_APEX_XC + AFT_RADIUS * (1 - math.cos(_aft_angle * i / _segs(32))))
         for i in range(_segs(32) + 1)
     ]
     start = math.atan2(JOIN_Z - _cz, JOIN_R - _cr)

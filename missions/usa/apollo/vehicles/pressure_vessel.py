@@ -84,15 +84,15 @@ def build(parent, base):
     from mathutils import Vector
 
     import perforated_wall
+    from cm_reference import survey_cm
     from srlib import CM, IN, MeshBuilder, _segs, interior, lathe_obj, mark_shells, material, prof
 
     if not interior():
         return
     source = json.loads((Path(__file__).parent / "reference" / "apollo-cm-inner-apertures.json").read_text())
-    datum = source["registration"]["scan_sphere_apex_cm"]
 
     def measured(points):
-        return [Vector((-p[1], p[0], p[2] - datum)) * CM for p in points]
+        return [Vector(survey_cm(p, source["registration"])) * CM for p in points]
 
     def project(point, direction):
         # Intersect the measured frame normal with the nominal upper wall.
