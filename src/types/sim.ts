@@ -420,3 +420,84 @@ export interface ChuteDef {
    */
   stretch?: Measure;
 }
+
+/**
+ * A solid of revolution about a body's long axis, upright: [height, radius] pairs, m, from the body's lowest point up,
+ * the heights rising, the radius going straight between them. Each figure's confidence is the profile's (`AfloatDef.hull`).
+ */
+export type Profile = readonly (readonly [height: number, radius: number])[];
+
+/**
+ * A way the sea gets into a space (sim/afloat.ts): a band of the hull between two heights, m from its lowest point, as
+ * wide as given at each (straight between), and its discharge coefficient. `shut` until an instant the caller gives
+ * for it by its `id` (a hatch blown), else open from the first.
+ */
+export interface OpeningDef {
+  id: string;
+  label: string;
+  from: number;
+  to: number;
+  width: readonly [number, number];
+  cd: Measure;
+  shut?: boolean;
+}
+
+/**
+ * A space inside a hull the sea can fill: its shape (a solid of revolution, `Profile`, from the hull's lowest point), the
+ * share of that volume water can take (what is not structure, equipment or crew), and its ways in. Air in it goes out
+ * through any opening that is not wholly under both the sea outside and the water in it, and is trapped otherwise.
+ * `drains`: lifted out, its water runs out of it as fast as it is lifted (a porous skirt), so it is not counted in what
+ * the body weighs flooded.
+ */
+export interface SpaceDef {
+  id: string;
+  label: string;
+  shape: Profile;
+  free: Measure;
+  openings: OpeningDef[];
+  drains?: boolean;
+}
+
+/**
+ * A body afloat (sim/afloat.ts): upright in the sea, rising and falling on it, taking in water through its openings,
+ * hoisted by a line from above and sinking once it weighs more than the sea it puts aside.
+ */
+export interface AfloatDef {
+  /** Its outside, the profile's confidence and source, and its height, m, from its lowest point to its top. */
+  hull: { profile: Profile; confidence: Confidence; source: string };
+  /** The flown model's origin, m above the hull's lowest point (the model is drawn so). */
+  datum: Measure;
+  /** What it weighs afloat, with everything aboard, kg. */
+  mass: Measure;
+  /** What leaves it afloat (the crew, a hatch), kg, each at an instant the caller gives for it by its `id`. */
+  leaves: { id: string; label: string; mass: Measure }[];
+  spaces: SpaceDef[];
+  /** The damping of its rise and fall on the sea, as a share of the critical damping. */
+  heave: Measure;
+  /** Its drag going down through the water, Cd times area, m^2. */
+  drag: Measure;
+  /** Seconds it takes to come upright from how it lay when it struck the sea: drawn only. */
+  rights: Measure;
+}
+
+/**
+ * A line from above made fast to a body afloat's top (a helicopter's): pulled up at `climb`, m/s, from where it was
+ * when it came taut toward holding the body's lowest point `clear` m out of the sea, with no more than `capacity`, N.
+ * `takes` is how far the line and what pulls it give under that pull, m.
+ */
+export interface HoistDef {
+  capacity: Measure;
+  climb: Measure;
+  clear: Measure;
+  takes: Measure;
+}
+
+/**
+ * A part let go as a body of its own with no plan of its own (a hatch blown off): its mass, kg, the impulse that throws it
+ * off along its outward normal, N s, and its drag, Cd times area, m^2. sim/loose.ts flies it to the sea.
+ */
+export interface LooseDef {
+  mass: Measure;
+  impulse: Measure;
+  drag: Measure;
+}

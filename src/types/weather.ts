@@ -77,6 +77,8 @@ export interface DayWeather {
   aloft?: Aloft;
   /** The weather at the surface hour by hour round liftoff, earliest first: what changed through the count. */
   hours?: WeatherHour[];
+  /** The sea where it came down (sim/sea.ts): what a body afloat there rises and falls on. Left out, a calm sea. */
+  sea?: SeaState;
 }
 
 /** The air at one height over a site: a level of a sounding, or of a reanalysis. */
@@ -103,4 +105,18 @@ export interface WeatherHour {
   wind?: Wind;
   temperature?: Measure;
   pressure?: Measure;
+}
+
+/** One train of waves: its significant height, m (crest to trough of the highest third), its period, s, and the bearing it comes from, degrees true. */
+export interface WaveTrain {
+  label: string;
+  height: Measure;
+  period: Measure;
+  from: Measure;
+}
+
+/** The sea where a flight came down, at the hour nearest its landing: the swell and the waves the wind raised there. */
+export interface SeaState {
+  observed: { where: string; at: string; source: string };
+  trains: WaveTrain[];
 }

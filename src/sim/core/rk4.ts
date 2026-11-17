@@ -75,3 +75,16 @@ export function rk4Body<D extends BodyState>(d: D, t: number, h: number, rate: (
   const next = nudge(d, step, h);
   return { ...next, q: normalize(next.q) };
 }
+
+/**
+ * One step of `h` seconds of a state that is a list of numbers (a body afloat: its height, its rate and the water and
+ * air in each of its spaces, sim/afloat.ts), whose rates at a state and an instant are `rate`.
+ */
+export function rk4n(s: readonly number[], t: number, h: number, rate: (q: readonly number[], at: number) => number[]): number[] {
+  const nudge = (q: readonly number[], d: readonly number[], by: number): number[] => q.map((x, i) => x + d[i]! * by);
+  const k1 = rate(s, t);
+  const k2 = rate(nudge(s, k1, h / 2), t + h / 2);
+  const k3 = rate(nudge(s, k2, h / 2), t + h / 2);
+  const k4 = rate(nudge(s, k3, h), t + h);
+  return s.map((x, i) => x + ((k1[i]! + 2 * k2[i]! + 2 * k3[i]! + k4[i]!) * h) / 6);
+}
