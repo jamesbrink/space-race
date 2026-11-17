@@ -65,9 +65,14 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
 - **People leave on foot, as data** (types.ts `Going`, `viewer/onfoot/going.ts`): a group's figures walk off along a way
   a person could take (the record's, or the nearest road out of sight, estimated) or come on along it, each from its
   own spot, setting off and stopping as a body does and walking a bend round; where each is follows the clock, and the
-  distance it gives is the gait's phase (`tests/going.test.mjs`). Not walked yet: the people at Site 1 are built merged by
-  colour, not as jointed figures, so until they are (#24) a group that leaves is taken out of sight on the clock, and
-  nothing unjointed is slid along the ground.
+  distance it gives is the gait's phase (`tests/going.test.mjs`). A group can also walk to another place and stand there
+  (`to`, `faces`), and go on from there. A part's `going` is walked by `viewer/onfoot/crowd.ts` (`Crowd`, one a group and a
+  level of detail, played by the exploder on the clock): each man is a node `<group>_Person_<n>` with the crew's joints
+  carrying his number (`Hips_3`: gait.ts finds them within his node), built by `crew/ground_party.py` `Walkers` on one
+  skeleton a group, a mesh a colour; his limbs are `pose` for the cycles his walk has gone (`cyclesAt`), so the same
+  instant is the same pose however it was come to (`tests/crowd.test.mjs`). They are not solid to the walker
+  (`userData.walks`). Site 1's people of 6 August are built so; those of 12 April are merged by colour, and a group of
+  them that leaves is still taken out of sight on the clock: nothing unjointed is slid along the ground.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/60 s with the remainder carried and are drawn between their last two ticks, so a fall is the
   same fall at any frame rate (`tests/ticks.test.mjs`). Anything new that integrates does the same.

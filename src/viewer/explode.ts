@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Drive, Move, Part } from '../types.ts';
+import { Crowd } from './onfoot/crowd.ts';
 import { Rider, type Surfaces } from './runs.ts';
 import { machinery } from '../sound/audio.ts';
 import { smoothstep } from '../util/math.ts';
@@ -455,6 +456,8 @@ export class Exploder {
   private readonly entries: { object: THREE.Object3D; home: THREE.Vector3; part: Part; sequence?: Sequence }[] = [];
   /** The parts' motions on the clock (Part.clocked), each a sequence in seconds from launch. */
   private readonly clocked: Sequence[] = [];
+  /** The parts' people walking off or on on the clock (Part.going): each group's own (onfoot/crowd.ts). */
+  private readonly crowds: Crowd[] = [];
   private readonly orders: number;
   /** Nodes being worked by hand: each is played to the slider reading held for it, whatever the slider says. */
   private readonly held = new Map<string, number>();
@@ -476,12 +479,13 @@ export class Exploder {
       // (each on a node of its own, never the part's: the part's own place is the slider's)
       const clocked = part.clocked?.filter((m) => m.node);
       if (clocked?.length) this.clocked.push(new Sequence(object, home, clocked, surfaces));
+      if (part.going?.length) this.crowds.push(new Crowd(root, object, part.going, surfaces));
     }
   }
 
   /** Has it anything that moves on the clock? */
   get onTheClock(): boolean {
-    return this.clocked.length > 0;
+    return this.clocked.length > 0 || this.crowds.length > 0;
   }
 
   /**
@@ -490,6 +494,7 @@ export class Exploder {
    */
   clock(t: number): void {
     for (const sequence of this.clocked) sequence.set(t, this.worked);
+    for (const crowd of this.crowds) crowd.set(t);
   }
 
   /**
