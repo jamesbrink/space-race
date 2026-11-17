@@ -152,6 +152,32 @@ are held to these figures by `tests/world.test.mjs`.
 
 Mars, Saturn and Neptune were below the horizon.
 
+## The weather
+
+**At the Cape, as recorded.** Cape Kennedy's weather station (the Skid Strip, about 3 km south of the
+pad; NOAA's Integrated Surface Database, station 747940-12868) reported on the hour; the 14:00
+report is the liftoff's own.
+
+| UTC (EST) | Wind | Air | Dew point | Sea-level pressure | Visibility | Sky |
+| --- | --- | --- | --- | --- | --- | --- |
+| 12:00 (7 a.m.) | 90° at 1.0 m/s | 22.8 °C | 22.2 °C | 1018.0 hPa | 16 km | scattered: 1/8 altocumulus at 2,400 m, 1/8 cirrus |
+| 13:00 (8 a.m.) | calm | 27.2 °C | 23.9 °C | 1018.3 hPa | 16 km | scattered |
+| 14:00 (9 a.m.) | calm | 30.5 °C | 23.3 °C | 1019.3 hPa | 16 km | scattered |
+| 15:00 (10 a.m.) | calm | 30.5 °C | 22.8 °C | 1020.0 hPa | 16 km | scattered: 2/8 cumulus at 660 m, 2/8 cirrus |
+
+The figures are `documented`; the sky's classes are read as Gemini-Titan 3's README says. Patrick Air
+Force Base, 30 km south (747950-12867), had the wind 70° at 3.6 m/s at 14:00, scattered.
+
+**The mission report's** (MSC-G-R-65-4, 12.2, p. 12-8), "taken at 09:00 e.s.t.": "2/10 covered,
+scattered at 8000 feet", the wind calm, visibility 10 miles, 30.09 in. Hg, 87 °F with a dew point of
+74 °F, 66 per cent humidity: the station's 09:00 observation, to the degree. Its Table 12.2-I has
+the air at 14:00 G.m.t. (86 °F at the ground, 62 °F at 5,000 ft, 46 °F at 10,000 ft), and Figure
+12.2-1 the winds aloft, not transcribed.
+
+`weather.ts` is written from these (two tenths of altocumulus at 2,440 m, a sixth or less of thin
+cirrus, the air all but still: calm is under a knot, and 0.3 m/s is taken from the east), each with its confidence; the air aloft is ERA5's (`aloft.ts`). No low cloud is
+drawn: the report has none at liftoff, and the station's cumulus at 660 m is of the hour after.
+
 ## What is not built
 
 - **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of

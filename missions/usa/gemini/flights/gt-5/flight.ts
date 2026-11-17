@@ -25,6 +25,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -471,6 +472,7 @@ export const flight: Flight = {
   launch: '1965-08-21T13:59:59.518Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['L. Gordon Cooper, Jr.', 'Charles Conrad Jr.'],
   summary:
     'Eight days: as long as a flight to the Moon and back would take, and longer than anyone had yet flown. The first ' +
