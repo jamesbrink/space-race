@@ -12,7 +12,8 @@ The five window openings have opaque dark recesses until the cabin and glazing a
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
 A structural cutaway exposes the pressure-vessel sidewall and both nominal bulkheads
-inside the thermal shell; the full tunnel and furnishings are unbuilt.
+inside the thermal shell, with a blank main-console structural reference;
+the full tunnel and furnishings are unbuilt.
 No seat control is offered yet.
 
 The launcher now uses the AS-205 flight evaluation's rounded S-IVB separation
@@ -38,7 +39,7 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All seventeen parts can be selected and taken apart.
+cover and launch escape system. All eighteen parts can be selected and taken apart.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
 The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
@@ -63,3 +64,13 @@ interface with an explicitly derived transition. The full tunnel, glazing and
 furnishings remain pending.
 Its 173-inch radius is explicitly assumed common primary geometry from NASA
 TN D-6979, Figure 8, whose inner-wall points independently match the Block II wall.
+
+## Main-console reference milestone
+
+Apollo 7's own panel layout is now identified in NAA V36-976018 revision D,
+12 March 1968. A [blank structural reference](../../vehicles/main-console.md)
+uses the shared contour from the Smithsonian's processed CM-107 derivative,
+explicitly assumed for CM-101. It retains the central notch and stays with the
+CM during explosion. This is not an equipped console: individual panel joints,
+instrument openings, thickness, supports, controls and side consoles are unresolved.
+Neither Apollo 11's later equipment nor its different couches are imported.

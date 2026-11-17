@@ -12,6 +12,7 @@ import math
 from mathutils import Vector
 
 import command_module
+import main_console
 import pressure_vessel
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
 
@@ -92,6 +93,7 @@ def build(offset=0):
             "CommandModule",
             "SideHatch",
             "CabinStructure",
+            "MainConsole",
             "HeatShield",
             "ForwardShield",
             "ServiceModule",
@@ -159,6 +161,7 @@ def build(offset=0):
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
+    main_console.build(groups["MainConsole"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

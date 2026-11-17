@@ -1,4 +1,4 @@
-# Shared Block II aperture measurements
+# Shared Block II structural references
 
 `apollo-cm-apertures.json` records four **CM-107**, not CM-101, aperture outlines.
 They are used as **assumed shared hardware**, with the user's explicit approval for
@@ -126,3 +126,27 @@ it is not a survey of the ablator's recessed wall. The cover is a separate shell
 surface, clipped with other skins in cutaway and kept with the CM during explosion.
 Its dark window closure is temporary. Full pressure door, glazing, hinges,
 gearbox, latches, valves, handles, seals and flight-specific labels are not built.
+
+## Main-console structural silhouette
+
+`apollo-main-console.json` records only the common main-console contour from the
+CM-107 **panel** derivative in the same interior package. Exact URL, SHA-256,
+physical centimetres and extraction settings are retained in the JSON. The
+interior package's CC0 rights apply. It is a processed visualization derivative,
+not raw metrology; no absolute source accuracy is claimed.
+
+NAA V36-976018 revision D, 12 March 1968, *Design Layout — Main Display Console,
+Command Module 101*, identifies the same broad contour and central notch. NASA
+TN D-7919, p. 21, identifies the Block II three-machined-panel design. This supports
+using the common silhouette as **assumed shared structure**, not transferring
+CM-107's detail machining or equipment. No spacecraft dimensions are measured from
+the scanned drawing sheet.
+
+The complete projected footprints of four identified connected structural
+components retain the central concave notch. No plane-distance filter clips their
+outer contours. Internal instrument apertures are filled as blank structural
+reference surfaces, and the outer contours are united. The resulting polygons do
+not establish individual panel joints or change the documented three-panel design.
+No manufactured thickness, controls, labels, side wings, photographic textures or
+couches are copied. The same nominal aft-sphere registration is applied without
+scaling. Full method and limits are in [main-console.md](../main-console.md).

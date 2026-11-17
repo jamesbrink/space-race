@@ -15,7 +15,7 @@ const parts: Part[] = [
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
-      ['Interior', 'Bare pressure wall and nominal aft bulkhead'],
+      ['Interior', 'Pressure structure and main-console reference'],
     ],
   },
   {
@@ -48,6 +48,22 @@ const parts: Part[] = [
       ['Mid-ring', 'Xc 42.665 in · radius 59.6 in'],
       ['Aft bulkhead', '173 in spherical radius · assumed common reference'],
       ['Furnishings', 'Not built; structural cutaway only'],
+    ],
+  },
+  {
+    node: 'MainConsole',
+    name: 'Main-console structural reference',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [0, 42, 0],
+    inside: true,
+    summary: 'The broad console surface above the three crew positions.',
+    detail:
+      'Apollo 7’s own North American drawing V36-976018, revision D (12 March 1968), identifies the three main panels and central notch. NASA TN D-7919, p. 21, describes the three large machined panels as a Block II change. The shared structural silhouette uses the Smithsonian’s processed CM-107 survey derivative, in physical centimetres, assumed for CM-101. It is projected onto the dominant panel plane, retaining the notch. The source is a processed visualization mesh, not raw metrology or an Apollo 7 measurement. This is a blank structural reference: instrument openings are filled, individual panel joints are unresolved, and no thickness, instruments, labels, supports or side consoles are inferred. Apollo 11’s equipment and couches are excluded. It stays with the command module when taken apart.',
+    facts: [
+      ['Layout authority', 'CM-101 drawing V36-976018 · revision D'],
+      ['Structural outline', 'CM-107 derivative · assumed shared Block II'],
+      ['Equipment', 'Not built; blank reference surface'],
     ],
   },
   {
@@ -503,6 +519,7 @@ export const flight: Flight = {
             'CommandModule',
             'SideHatch',
             'CabinStructure',
+            'MainConsole',
             'HeatShield',
             'ForwardShield',
             'ServiceModule',
@@ -513,7 +530,7 @@ export const flight: Flight = {
         {
           id: 'cabin',
           label: 'Command module',
-          nodes: ['CommandModule', 'SideHatch', 'CabinStructure', 'HeatShield', 'ForwardShield'],
+          nodes: ['CommandModule', 'SideHatch', 'CabinStructure', 'MainConsole', 'HeatShield', 'ForwardShield'],
           from: [1, 0.3, 0.3],
         },
         { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
