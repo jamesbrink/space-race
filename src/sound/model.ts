@@ -656,9 +656,30 @@ export function voiceOf(t: Timbre, metres: number): Voice {
   return { gain: loudness(path.level), buzz: t.buzz, tone: t.tone, hiss: t.hiss, grit: t.grit, cutoff: path.cutoff, delay: path.delay };
 }
 
+/** How far through its range the engine is turning in top gear at the vehicle's top speed, and how far it is let go before it is changed up: estimated. */
+const CRUISE = 0.8;
+const CHANGE_UP = 0.9;
+
+/**
+ * Which gear a vehicle is in at `v` (its speed as a fraction of its top, 0 to 1) and how far through its range the engine
+ * is turning for it, 0 to 1: the lowest gear that does not take it past `CHANGE_UP`, the engine's share in a gear going as that gear's
+ * ratio (the last gear, the direct drive, being `CRUISE` at the top speed). The ratios are the gearbox's; the two shares are estimated.
+ * No gears: the share is the speed's own.
+ */
+export function gearOf(ratios: readonly number[] | undefined, v: number): { gear: number; share: number } {
+  if (!ratios?.length) return { gear: 0, share: v };
+  const last = ratios[ratios.length - 1]!;
+  for (let g = 0; g < ratios.length; g++) {
+    const share = (CRUISE * v * ratios[g]!) / last;
+    if (share <= CHANGE_UP || g === ratios.length - 1) return { gear: g + 1, share: Math.min(1, share) };
+  }
+  return { gear: ratios.length, share: v };
+}
+
 /**
  * An engine, four-stroke, at `speed` (m/s, of its `top`) with its throttle down `throttle` (0 to 1): it turns between its
- * idle and its most with the speed and the pedal (65 and 35 per cent, as a gearbox would keep it in its range), fires
+ * idle and its most with the speed and the pedal (65 and 35 per cent; the speed's share is the gear's, where its gearbox is
+ * known: `gearOf`, so it falls at each change up, and in none it is as a gearbox would keep it in its range), fires
  * cylinders/2 times a turn, and is louder under load (14 dB from idle to full). A diesel is 6 dB louder than a petrol
  * engine at a metre and knocks more (its buzz brighter). The buzz is the firing; the tone half of it, a four-stroke's
  * uneven beat; the hiss the intake and the exhaust. Estimated, every figure.
@@ -666,7 +687,7 @@ export function voiceOf(t: Timbre, metres: number): Voice {
 export function engineVoice(engine: Engine, speed: number, top: number, throttle: number): Timbre & { rpm: number; firing: number } {
   const v = clamp(Math.abs(speed) / Math.max(1, top), 0, 1);
   const pedal = clamp(throttle, 0, 1);
-  const turn = clamp(0.65 * v + 0.35 * pedal, 0, 1);
+  const turn = clamp(0.65 * gearOf(engine.gears?.ratios, v).share + 0.35 * pedal, 0, 1);
   const rpm = engine.idle.value + (engine.most.value - engine.idle.value) * turn;
   const firing = (rpm / 60) * (Math.max(1, engine.cylinders) / 2);
   const load = clamp(0.25 * v + 0.75 * pedal, 0, 1);

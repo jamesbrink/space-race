@@ -23,6 +23,7 @@ import {
   cueShots,
   cutoffAfter,
   engineVoice,
+  gearOf,
   gate,
   heardAt,
   loudness,
@@ -491,6 +492,31 @@ test('seated at the wheel, the walker makes no footfalls and no breath and says 
   for (let i = 0; i < 120; i++) walker.update(1 / 60);
   assert.equal(heard.ended, 1, 'getting out is said once');
   assert.ok(heard.footfalls > before.footfalls + 2, 'the footfalls come back');
+});
+
+test('a vehicle whose gearbox is known changes up as it gathers speed: its revolutions fall at each change and never pass its most', () => {
+  const GEARS = { ratios: [3.12, 1.77, 1], confidence: 'documented', source: 'the GAZ-21’s box' };
+  const geared = { ...ENGINE, gears: GEARS };
+  assert.deepEqual(gearOf(undefined, 0.5), { gear: 0, share: 0.5 }, 'no gearbox: the speed’s own share');
+  assert.equal(gearOf(GEARS.ratios, 0.05).gear, 1);
+  assert.equal(gearOf(GEARS.ratios, 1).gear, 3);
+  let gear = 1;
+  let changes = 0;
+  let was = engineVoice(geared, 0, 11, 0.5).rpm;
+  for (let i = 1; i <= 1100; i++) {
+    const v = i / 100;
+    const at = gearOf(GEARS.ratios, v / 11).gear;
+    const rpm = engineVoice(geared, v, 11, 0.5).rpm;
+    assert.ok(at >= gear, 'it only changes up as the speed rises');
+    if (at > gear) {
+      changes++;
+      assert.ok(rpm < was - 100, `the revolutions fall at the change into ${at}: ${was.toFixed(0)} to ${rpm.toFixed(0)}`);
+    } else assert.ok(rpm >= was - 1e-9, 'and rise with the speed in a gear');
+    assert.ok(rpm <= ENGINE.most.value + 1e-9, 'never past its most');
+    gear = at;
+    was = rpm;
+  }
+  assert.equal(changes, 2, 'two changes up through three gears');
 });
 
 test('a driven vehicle: its engine idles standing and turns faster and louder with its speed and its throttle', () => {

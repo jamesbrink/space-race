@@ -69,9 +69,16 @@ export const TYURATAM: PlaceDef = {
       cylinders: 4,
       idle: idling(550),
       most: rpm(4000, 'documented', 'the ZMZ-21A’s 70 to 75 hp at 4,000 rpm (ru.wikipedia, «ГАЗ-21», Силовой агрегат)'),
+      gears: {
+        ratios: [3.12, 1.77, 1],
+        confidence: 'documented',
+        source: 'the three-speed manual box: 3.12, 1.77 and 1.00, reverse 3.74 (ru.wikipedia, «ГАЗ-21», infobox, Трансмиссия)',
+      },
       confidence: 'documented',
       source: 'the ZMZ-21A, a 2,445 cc straight four (ru.wikipedia, «ГАЗ-21», Силовой агрегат and infobox)',
     },
+    // (no gear ratios for the LAZ-695B: the box the reference gives is the 695E's ZIL-130 five-speed, and the early 695Bs had a
+    // direct fourth with an overdrive fifth; which this bus had is not recorded)
     'LAZ-695B': {
       fuel: 'petrol',
       cylinders: 6,
@@ -87,6 +94,11 @@ export const TYURATAM: PlaceDef = {
       cylinders: 6,
       idle: idling(450),
       most: rpm(2800, 'documented', 'the GAZ-51’s 70 hp at 2,800 rpm (ru.wikipedia, «ГАЗ-63», infobox)'),
+      gears: {
+        ratios: [6.4, 3.09, 1.69, 1],
+        confidence: 'documented',
+        source: 'the four-speed manual box: 6.4, 3.09, 1.69 and 1.00, reverse 7.82 (ru.wikipedia, «ГАЗ-63», infobox, Трансмиссия)',
+      },
       confidence: 'documented',
       source: 'the GAZ-51, a 3,485 cc straight six (ru.wikipedia, «ГАЗ-63» and «ГАЗ-51»)',
     },
