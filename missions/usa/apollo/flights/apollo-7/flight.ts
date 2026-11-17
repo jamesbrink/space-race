@@ -100,12 +100,13 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Four quads, each with four small engines, turn and translate the ship.',
     detail:
-      'The detailed CSM-101 preflight table, MIT R-547 volume III, Table 1.3 p. 1-18, places the four quad references 90° apart, clocked 7°15′ off the Y/Z axes, at XA958.905 and radius 83.56 inches. The later Block II handbook p. 2.5-1 corroborates the angular offset. The press kit’s broad axis description does not establish exact cardinal positions; the former exact-axis reconstruction was incorrect. The table’s thrust vectors include a 10° cant but explicitly assume unclocked quad centres. The model rotates that basis with each quad and points the exhaust outward, opposite thrust. These nominal reference positions and directions are assumed common for Apollo 7. Housing dimensions, individual mouth locations and bell profiles remain provisional; the model is not a complete manufactured quad. The quads stay attached to the SM when taken apart. Plumbing and thermal details remain unbuilt.',
+      'The detailed CSM-101 preflight table, MIT R-547 volume III, Table 1.3 p. 1-18, places the four quad references 90° apart, clocked 7°15′ off the Y/Z axes, at XA958.905 and radius 83.56 inches. The later Block II handbook p. 2.5-1 corroborates the angular offset. The press kit’s broad axis description does not establish exact cardinal positions; the former exact-axis reconstruction was incorrect. The table’s thrust vectors include a 10° cant but explicitly assume unclocked quad centres. The model rotates that basis with each quad and points the exhaust outward, opposite thrust. All sixteen nozzle exits use the nominal 5.6-inch diameter in the Apollo News Reference, p. 150. These reference positions, directions and common engine dimensions are assumed for Apollo 7. The published 13.4-inch overall engine length is not a nozzle length. Housing dimensions, individual mouth locations, intermediate bell profiles and display rims remain provisional; the model is not a complete manufactured quad. The quads stay attached to the SM when taken apart. Plumbing and thermal details remain unbuilt.',
     facts: [
       ['Arrangement', '4 quads × 4 chambers · press kit p. 27'],
       ['Quad clocking', '7°15′ off Y/Z axes · common Block II reference'],
       ['Reference position', 'XA958.905 / radius83.56 in · CSM-101 preflight'],
       ['Nozzle cant', '10° outward · preflight thrust-vector table'],
+      ['Nozzle exit', '5.6 in · assumed common R-4D dimension'],
     ],
   },
   {
@@ -497,6 +498,14 @@ export const flight: Flight = {
       unit: '°',
       confidence: 'assumed',
       note: 'MIT R-547 volume III, Table 1.3 p. 1-18: thrust vectors use sin/cos10° in an unclocked basis. Rotate with the quad; exhaust is opposite thrust. Corroborated approximately by Block II AOH p. 2.5-1',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'RCS nozzle nominal exit diameter',
+      value: 5.6 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA Apollo News Reference, Reaction Control, p. 150: 5.6 in for the Marquardt R-4D, assumed common for Apollo 7. Intermediate contour, inner/outer lip datum and display rim remain unresolved',
     },
     {
       group: 'Spacecraft',

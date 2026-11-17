@@ -46,14 +46,38 @@ receives minus the plume direction. The later handbook describes the same
 outward nozzle cant as approximately 10°, to reduce exhaust impingement on the
 service-module skin.
 
+## Engine exit diameter
+
+North American Rockwell's *Apollo News Reference*, Reaction Control, printed
+p. 150, identifies the sixteen Marquardt engines and gives each a **5.6-inch
+nozzle exit diameter** and **13.400-inch overall engine length**. The exit
+diameter replaces the inherited unsourced 6.8-inch display dimension in all
+sixteen nozzles. It is an **assumed common R-4D dimension for Apollo 7**, not an
+inspection of its individual engines. The overall engine length includes the
+valve/injector assembly; it is not substituted for the nozzle length.
+
+The published diameter alone does not resolve the nozzle's intermediate
+profile or inner/outer lip datum. The inherited finite display rim and inner
+contour are still provisional. This correction establishes the nominal exit
+envelope, not a complete manufactured R-4D nozzle or its wall thickness.
+
+Marquardt report A-1080, volume III, *Apollo SM-LM RCS Engine Development
+Program Summary Report* (NASA CR-101931), printed p. 11-38, independently
+describes the final two-piece chamber: a molybdenum combustor, L-605 exit bell,
+Waspaloy attachment nut and strengthened ribbed bell. Its statement that
+early and final chambers retain internal dimensions does not establish the
+unchanged external profile of an early prototype. The prototype's overall
+dimensions are not copied as flight nozzle dimensions.
+
 ## Simplifications and things still wrong
 
 - These are nominal quad reference positions and directions. The box-shaped
   housings are still provisional; their centres are not independently surveyed
   manufactured housing datums.
 - Individual chamber/mouth locations, roll-engine offsets, nozzle lengths,
-  exit/throat dimensions, bell profiles and bracket contours remain estimated.
-  Correct axes do not validate their inherited geometric dimensions.
+  throat dimensions, bell profiles, display rims and bracket contours remain
+  estimated. Correct axes and exit diameter do not validate those inherited
+  geometric dimensions.
 - Propellant tanks, plumbing, insulation, cork, wiring and servicing fittings
   remain unbuilt. No thruster force or flight simulation is assigned.
 - Quads remain attached to the service module throughout the exploded exhibit;

@@ -47,6 +47,9 @@ RCS_QUAD_RADIUS = 83.56
 RCS_CLOCKWISE_DEGREES = 7.25
 RCS_NOZZLE_CANT_DEGREES = 10.0
 RCS_STATION = RCS_QUAD_XA - SPS_EXIT_XA
+# NAA Apollo News Reference, Reaction Control, p.150: nominal R-4D exit.
+# This does not establish the intermediate contour or wall/rim thickness.
+RCS_EXIT_DIAMETER = 5.6
 # Inherited display rim, still estimated; not a measured nozzle wall thickness.
 BELL_RIM = 0.3
 
@@ -183,7 +186,7 @@ def build(offset=0):
             cant = math.radians(RCS_NOZZLE_CANT_DEGREES)
             axis = along * math.cos(cant) + out * math.sin(cant)
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
-            bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
+            bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
