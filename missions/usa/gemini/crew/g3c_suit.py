@@ -532,6 +532,7 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
         mk.strap(pocket, keys, 7.2, 0.3, dive=(0.0, 0.0), sink=0.3)
     pocket.share = [_cloth.share_at(v) for v in pocket.verts]
     flag = MeshBuilder()
+    flag.share = []  # (empty unless the garment has one: each piece's share of the shoulders' bend, as the others')
     if WEARER.garment.flag:
         # the flag on the left upper arm, above the pocket, its canton forward and up: a patch laid round the arm
         a, (w, h) = arms[1], FLAG
