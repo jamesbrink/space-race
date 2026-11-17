@@ -1,7 +1,8 @@
 // The clouds stand in the air, not round the eye (rendering.md, "The weather is a day's": a cloud moves with the day's
 // wind and with nothing else). Checked in the running page, on the day of each flight with cloud:
 //   pnpm dev, then: node tools/clouds-test.mjs [url] [--shots <dir>] [--only <flight id>] [--part climb|sheets|above|glow]
-// For each flight (Freedom 7's cumulus and deck, Liberty Bell 7's cumulus, deck and veil, Vostok 1's cirrus), in both looks:
+// For each flight (Freedom 7's cumulus and deck, Liberty Bell 7's cumulus, deck and veil, Vostok 1's cirrus, Friendship 7's
+// deck over Complex 14), in both looks:
 //  - the climb: the camera is flown straight up at a vehicle's speed (250 m/s, a frame every 0.1 s) through the cumulus
 //    layer, at a place a cloud stands, looking level, up and down. Each frame the march's own result (its opacity,
 //    light, and where along each ray its cloud begins) is read, and every point of cloud surface it found is carried to
@@ -33,9 +34,12 @@ const doing = (name) => !part || part === name;
 const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
-const FLIGHTS = ['usa/mercury/mr-3-freedom-7', 'usa/mercury/mr-4-liberty-bell-7', 'ussr/vostok/vostok-1'].filter(
-  (f) => !only || f === only,
-);
+const FLIGHTS = [
+  'usa/mercury/mr-3-freedom-7',
+  'usa/mercury/mr-4-liberty-bell-7',
+  'ussr/vostok/vostok-1',
+  'usa/mercury/ma-6-friendship-7',
+].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
 const SPEED = 250;
