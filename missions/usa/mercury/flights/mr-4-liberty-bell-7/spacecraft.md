@@ -333,7 +333,11 @@ capsule's stays 41.5 from its own photographs).
   dish left out, and its valves and snorkels shut; the bag's pores 1 per cent of its skirt; the shingles' joints and what
   lies between the skins ours; the sea's density the Bahamas' surface water's. Every share and opening is `estimated`.
 - **The hatch thrown off** (sim/loose.ts) is a point with a tumbling plate's drag; drawn, it keeps the turn it had as it
-  left and lies down flat on the sea over a second, where the history has it "skipping over the waves".
+  left and lies down flat on the sea over a second, where the history has it "skipping over the waves": the one account
+  gives no count, distance or fate, and a skip would be chosen to match it (README, "The hatch does not skip").
+- **Grissom in the sea** is the crew figure posed by its joints (README): treading water by judgement, on the hoist as
+  61-MR4-82 shows him; no swimming stroke, no water about him, no dye marker, and his suit's filling is only how low he
+  floats. The couch's figure is hidden once he is out.
 - **The landing bag** is let down on the record's clock, not on the simulator's main parachute: flown by hand, it drops
   at 10:26 whenever the main came out, and with no retropack let go it would leave the pack behind on its straps. Its
   telelight stays dark. What the bag itself leaves out (its folds, its cables, its shape full of the sea) is in

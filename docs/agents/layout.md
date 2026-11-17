@@ -72,7 +72,7 @@ missions/                             the record: one folder per nation, program
       weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
       afloat.ts                       (Liberty Bell 7) the capsule in the sea after the landing: its weight afloat, the record's instants to its going down, the helicopter (`flies.afloat`), the hatch thrown off (`flies.hatch`)
-      recovery.ts                     (Liberty Bell 7) Hunt Club 1 flown on the record's clock: in, round, over the capsule, its line on it, away (`Flight.recovery`)
+      recovery.ts                     (Liberty Bell 7) Hunt Club 1 flown on the record's clock: in, round, over the capsule, its line on it, away (`Flight.recovery`); Hunt Club 3 and its hoist, and Grissom in the sea (`Flight.swimmer`)
       pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962;
                                       ma-6-friendship-7: Complex 14 on 20 February 1962, with its pilot at the structure's foot; ma-7-aurora-7: on
                                       24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965;
@@ -177,7 +177,8 @@ src/
   viewer/plantsort.ts                 which plants are drawn in which form: tiles packed once, each layer sorted again on its own margin
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/swell.ts                     the day's sea where a flight comes down, drawn moving: a square of it laid round the point, by the globe's shading (`Globe.swell`)
-  viewer/recovery.ts                  what came to a spacecraft where it came down, flown on the record's clock: a helicopter, its rotors and its line (`Flight.recovery`)
+  viewer/recovery.ts                  what came to a spacecraft where it came down, flown on the record's clock: a helicopter, its rotors, its line and its hoist (`Flight.recovery`)
+  viewer/swimmer.ts                   someone in the sea where it came down, on the record's clock: a figure of the flight's posed in the water, riding the drawn sea, drawn up a hoist (`Flight.swimmer`)
   viewer/flooding.ts                  the sea inside a spacecraft afloat: the water's surface in each space that can be seen into, level as it heels (`afloat.seen`)
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/glsl.ts                      GLSL said once: a colour or triple written into shader text (`vec3`, each caller's digits kept), the general noise

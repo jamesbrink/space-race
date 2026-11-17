@@ -210,6 +210,8 @@ export interface Flight {
   models: ModelDef[];
   /** What came to it where it came down, on the record's clock (viewer/recovery.ts): the helicopter that hooked Liberty Bell 7. */
   recovery?: RecoveryCraft[];
+  /** Who was in the sea where it came down, until a recovery craft had him (viewer/swimmer.ts). */
+  swimmer?: SwimmerDef;
   /** The place round the pad, built like a model (the site's own: places/<place>/<package>/model/<date>.py) but scenery: it cannot be picked or taken apart. A relative URL. */
   surroundings?: string;
 }
@@ -248,4 +250,44 @@ export interface RecoveryCraft {
    * straight and holds the craft up over the spacecraft by its length; slack, it sags. Let go, it hangs from the craft.
    */
   line?: { from: string; to: string; on: Measure; off: Measure; length: Measure; radius: number };
+  /**
+   * Its rescue hoist, for a swimmer (`Flight.swimmer`, whose `by` names this craft): its boom node swung out about its
+   * own `axis` by `out` radians from `on`, and the empty `sheave` the cable leaves it at, down to the swimmer's collar; from
+   * `lift` he is drawn up it, aboard at `aboard` (s from launch). Before `grab` the cable hangs to the sea under the
+   * sheave (the collar swinging in the water); from it, to his collar. The cable is drawn straight.
+   */
+  hoist?: {
+    boom: string;
+    axis: [number, number, number];
+    out: number;
+    sheave: string;
+    on: Measure;
+    grab: Measure;
+    lift: Measure;
+    aboard: Measure;
+    radius: number;
+  };
+}
+
+/**
+ * Someone in the sea where the spacecraft came down (viewer/swimmer.ts): a figure of the flight's (`model`), from when he
+ * went out until a craft's hoist (`by`, its `RecoveryCraft.hoist`) has him aboard. Where he was is a track like a
+ * craft's: each point an instant, his metres east and north of where the spacecraft came down, how high his shoulders
+ * stood over the sea's surface there (m; under it, negative), and the way he faced. He rides the day's sea that is drawn.
+ * His pose in the water and on the hoist is each joint's turn from standing (degrees about its own X, then about the
+ * way he faces: as `flies.hangs`' figures), and what of the figure he did not have there is not drawn. `seat`: the nodes of him in the flown model's cabin (a name's prefix), not
+ * drawn once he is out. What the record gives of each is in `source`.
+ */
+export interface SwimmerDef {
+  name: string;
+  model: string;
+  by: string;
+  track: { at: number; east: number; north: number; shoulders: number; heading: number }[];
+  swimming: Record<string, [number, number]>;
+  hoisted: Record<string, [number, number]>;
+  /** Nodes of the figure he did not have in the sea (a helmet he left in the cabin, a ventilator), not drawn. */
+  without: string[];
+  seat?: string;
+  confidence: Confidence;
+  source: string;
 }

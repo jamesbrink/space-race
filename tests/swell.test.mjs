@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { HUNT_CLUB_1 } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/recovery.ts';
+import { GRISSOM, HUNT_CLUB_1, HUNT_CLUB_3 } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/recovery.ts';
+import { AFLOAT } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/afloat.ts';
 import { WEATHER } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/weather.ts';
 import { surfaceAt, wavesOf } from '../src/sim/sea.ts';
 import { trackAt } from '../src/viewer/recovery.ts';
@@ -51,13 +52,42 @@ test('the swell’s mesh lies on the sea, facing up', () => {
   assert.ok(n.dot(new THREE.Vector3(...frame.up)) > 0.99, 'its triangles wind counter-clockwise seen from above');
 });
 
-test('the helicopter is flown only along its track', () => {
-  const track = HUNT_CLUB_1.track;
-  assert.equal(trackAt(track, track[0].at - 1), null);
-  assert.equal(trackAt(track, track.at(-1).at + 1), null);
-  for (const p of track) {
-    const at = trackAt(track, p.at);
-    assert.ok(Math.abs(at.east - p.east) < 1e-6 && Math.abs(at.north - p.north) < 1e-6 && Math.abs(at.height - p.height) < 1e-6);
+test('the helicopters are flown only along their tracks', () => {
+  for (const { track } of [HUNT_CLUB_1, HUNT_CLUB_3]) {
+    assert.equal(trackAt(track, track[0].at - 1), null);
+    assert.equal(trackAt(track, track.at(-1).at + 1), null);
+    for (const p of track) {
+      const at = trackAt(track, p.at);
+      assert.ok(Math.abs(at.east - p.east) < 1e-6 && Math.abs(at.north - p.north) < 1e-6 && Math.abs(at.height - p.height) < 1e-6);
+    }
+    for (let i = 1; i < track.length; i++) assert.ok(track[i].at > track[i - 1].at, 'its instants in order');
   }
-  for (let i = 1; i < track.length; i++) assert.ok(track[i].at > track[i - 1].at, 'its instants in order');
+});
+
+test('Grissom is in the sea from the hatch to Hunt Club 3’s hoist, three to four minutes, and its hoist is over him as it lifts him', () => {
+  const { track } = GRISSOM;
+  const hoist = HUNT_CLUB_3.hoist;
+  assert.equal(GRISSOM.by, HUNT_CLUB_3.name);
+  assert.equal(track[0].at, AFLOAT.record.out.value, 'in the water as he went out');
+  const minutes = (hoist.lift.value - track[0].at) / 60;
+  assert.ok(minutes >= 3 && minutes <= 4, `in the water ${minutes.toFixed(1)} minutes ("about 3 to 4 minutes", Results, p. 7)`);
+  assert.ok(
+    hoist.on.value < hoist.grab.value && hoist.grab.value < hoist.lift.value && hoist.lift.value < hoist.aboard.value,
+    'let down, taken, lifted, aboard',
+  );
+  assert.ok(hoist.aboard.value <= AFLOAT.record.cast.value + 30, 'aboard about when the capsule was let go');
+  for (let i = 1; i < track.length; i++) assert.ok(track[i].at > track[i - 1].at, 'his instants in order');
+  assert.ok(
+    track.every((p) => p.shoulders >= -0.1 && p.shoulders <= 0.3),
+    'his shoulders at the surface, give or take',
+  );
+  // (the sheave 0.61 m forward and 1.89 m to starboard of the craft's origin, the boom swung out: hus-1.md)
+  const at = trackAt(HUNT_CLUB_3.track, hoist.lift.value);
+  const h = (at.heading * Math.PI) / 180;
+  const sheave = [at.east + 0.61 * Math.sin(h) + 1.89 * Math.cos(h), at.north + 0.61 * Math.cos(h) - 1.89 * Math.sin(h)];
+  const him = track.at(-1);
+  assert.ok(
+    Math.hypot(sheave[0] - him.east, sheave[1] - him.north) < 0.05,
+    `the sheave ${Math.hypot(sheave[0] - him.east, sheave[1] - him.north).toFixed(2)} m from over him`,
+  );
 });

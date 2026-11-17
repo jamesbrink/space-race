@@ -675,13 +675,20 @@ export class Ascent {
     return run.afloat && !run.live && t > run.afloat.from ? afloatAt(run.afloat, t).tension : 0;
   }
 
+  /** When the crew went out of the spacecraft afloat on the run on show (its body's `leaves` by `afloat.crew`), s from launch: Infinity if he did not. */
+  get outAt(): number {
+    const a = this.flight.plan ? this.flown().afloat : undefined;
+    const crew = this.flight.flies?.afloat?.crew;
+    return (crew ? a?.left[crew] : undefined) ?? Number.POSITIVE_INFINITY;
+  }
+
   /** Whether the run on show is the record's (what was waiting where it came down was waiting for that one). */
   get recorded(): boolean {
     return !this.flight.plan || !this.flown().live;
   }
 
   /** The day's sea where it comes down (sim/sea.ts), as the globe draws it (swell.ts). */
-  private readonly waves: readonly Wave[];
+  readonly waves: readonly Wave[];
 
   /** Where the run on show comes down, and when, worked out once for it (`down`). */
   private downed: { of: Run; at: { centre: Vec3; t0: number } | null } | null = null;

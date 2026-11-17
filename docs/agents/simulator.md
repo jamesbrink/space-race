@@ -478,7 +478,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   and a heading; the record's order of events, its places between them estimated), its rotors at their rates, and its
   line from its hook to the capsule's top, straight while the run's line pulls (`Ascent.pull`), holding the helicopter its
   length over the capsule, and sagging while slack. Only on the record's run: a run flown by hand comes down where
-  nobody was waiting. It is drawn, not simulated: the hoist's pull is `afloat.hoist`'s.
+  nobody was waiting. It is drawn, not simulated: the hoist's pull is `afloat.hoist`'s. So is whoever was in the sea
+  (`Flight.swimmer`, viewer/swimmer.ts: a figure of the flight's on a track of the record's events, his shoulders over the
+  day's drawn surface, posed in the water and on the hoist by his joints) and a craft's rescue hoist that lifts him
+  (`RecoveryCraft.hoist`: its boom swung out, its cable to the sea and then to his collar). The figure in the cabin is
+  not drawn once the crew is out (`swimmer.seat`, from the run afloat's own instant).
 - **Held to the record**: tests/afloat.test.mjs holds the pieces to their arithmetic (Archimedes, a terminal speed, an
   opening filling to the sea's level, a cylinder cut by a tipped plane, a drum lying over to where a weight off its axis is
   balanced, the sea's four sigma, a throw) and Liberty Bell 7's run afloat to `afloat.checks`
