@@ -178,7 +178,7 @@ export class FlightShow {
    * (`owner`, a top-level node of the model, which may leave as a body of its own), at `offset` in that part's frame;
    * `level`: its place in what `Ascent.fireLevels` gives; `share`: its steering chambers' share of its thrust.
    */
-  plumes: { plume: Plume; owner: THREE.Object3D; offset: THREE.Matrix4; level: number; share: number }[] = [];
+  plumes: { plume: Plume; owner: THREE.Object3D; node: THREE.Object3D; offset: THREE.Matrix4; level: number; share: number }[] = [];
 
   /** Their one light (plume.ts `lightFires`), in the flown model's frame. */
   private fireLight: THREE.PointLight | null = null;
@@ -889,11 +889,14 @@ export class FlightShow {
   /**
    * For tests (tools/fires-test.mjs): each fire hung, as it stands: which of the flight's it is (`level`: `flies.engine`
    * first if there is one, then each of `flies.fires` in order), the part that carries it, how hard it burns, whether it
-   * is drawn, its exit's middle and the part's bounds in the world, and how many chambers of each kind it has.
+   * is drawn, its exit's middle and the part's bounds in the world, the node it was hung at (`flies.fires`' `node`, or
+   * `flies.engine`) and that node's bounds, and how many chambers of each kind it has.
    */
   fireReport(): {
     level: number;
     owner: string;
+    node: string;
+    nodeBox: number[][];
     on: number;
     steering: number;
     drawn: boolean;
@@ -904,11 +907,14 @@ export class FlightShow {
     return this.plumes.map((h) => {
       h.plume.mesh.updateWorldMatrix(true, false);
       const box = new THREE.Box3().setFromObject(h.owner);
+      const own = new THREE.Box3().setFromObject(h.node);
       let shown = h.plume.mesh.visible;
       for (let o = h.plume.mesh.parent; o; o = o.parent) shown &&= o.visible;
       return {
         level: h.level,
         owner: h.owner.name,
+        node: h.node.name,
+        nodeBox: [own.min.toArray(), own.max.toArray()],
         on: h.plume.on,
         steering: h.plume.steering,
         drawn: shown,
@@ -977,7 +983,7 @@ export class FlightShow {
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
       root.add(plume.mesh);
-      this.plumes.push({ plume, owner, offset, level, share: cluster?.steeringShare ?? 0 });
+      this.plumes.push({ plume, owner, node, offset, level, share: cluster?.steeringShare ?? 0 });
     };
     let level = 0;
     if (flight.flies.engine) {

@@ -3,7 +3,7 @@
 //                             [--gallery ussr/voskhod/voskhod-1,...]   (default url: http://localhost:5180/, flight: Vostok 1)
 // At each instant (T+2, 60, 118, 121, 125, 200 and 400 s) it counts the fires drawn (FlightShow.fireReport, sr.stage.show) against the engines the
 // record has burning then (the flight's own figures: `burning`), and checks that each hangs at the part that carries it: on the vehicle, or on a strap-on as
-// it swings away. Then the jets (`ModelDef.jets`, FlightShow.jetReport) against what the flight's own data has blowing then (`blowing`): each drawn
+// it swings away; and within the node the flight's data hangs it at (`flies.fires`' `node`), so that each chamber named is drawn at its own bell. Then the jets (`ModelDef.jets`, FlightShow.jetReport) against what the flight's own data has blowing then (`blowing`): each drawn
 // when its condition holds and only then, at its node, along its node's -Y within a degree. Last, in the gallery of each flight `--gallery` names
 // (the Voskhods by default), a jet that is an engine of its own is drawn while its part is chosen, along its node's way out and forward, and not
 // once another part is. --shots also writes a picture of each instant from each camera (the pad's, the chase's, and from 5 km)
@@ -119,6 +119,15 @@ for (const look of looks) {
         const [lo, hi] = f.box;
         const out = Math.hypot(...f.exit.map((x, i) => Math.max(lo[i] - x, 0, x - hi[i])));
         check(out < 0.5, `T+${t}: ${f.owner}'s fire hangs at it (${out.toFixed(2)} m outside its bounds)`);
+        // and at the node the flight's data names for it, the exit's middle within that node's own bounds: a chamber's fire at its own bell
+        if (f.nodeBox) {
+          const [nlo, nhi] = f.nodeBox;
+          const off = Math.hypot(...f.exit.map((x, i) => Math.max(nlo[i] - x, 0, x - nhi[i])));
+          check(
+            off < 0.05,
+            `T+${t}: the fire at ${f.node} hangs within it (${off.toFixed(3)} m outside its bounds) [${f.chambers.join('+')}]`,
+          );
+        }
       }
       // the jets: each drawn when the flight's data has it blowing and only then, at its node, along its node's way out
       const jets = await page.evaluate(() => (window.sr.stage.show ?? window.sr.stage).jetReport?.() ?? null);
