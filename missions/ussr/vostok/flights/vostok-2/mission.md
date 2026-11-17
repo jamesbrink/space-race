@@ -14,6 +14,18 @@ working notes of November 2026; the documents are «Первый пилотир�
   Kosmonavtiki* 2011 No. 8, written from the same documents, has none either), so **no ascent instant of this flight**,
   nor its third stage's integrator setting; the braking burn's instant (see below); the ejection's time and height; the
   descent module's landing; the lock's code.
+- **Searched for in November 2026 (issue #16) and still not found**: Lissov's article on this flight in *Novosti
+  Kosmonavtiki*, named as the source for the range's times: there is none in 2011 Nos. 8, 9 or 10 nor in 2001 Nos. 8 or 9
+  (Marinin's in 2011 No. 8 is the anniversary piece, read); No. 12 of 2011 would not open. RGANTD publishes Titov's
+  «Полетное задание» (flight task) as new, but its images are in neither the page nor its captures: it is the best lead
+  left for both the lock's code and the burn. **How the code reached him**: the plan of 4 August puts «шифр» among what
+  went into his suit's pockets with the pistol and the knife (doc. 190, p. 177, item 5 o: planned, and «шифр» could be a
+  radio table); Nosov, who designed the lock's circuits, recalls the code handed to the cosmonaut in an envelope once he
+  was in the seat, the lock fitted only on Gagarin's and Titov's ships with a coding unit that could be changed (Tyapchenko,
+  «Системы отображения информации космических кораблей «Восток» и «Восход»», 2006: a memoir). No number for this ship.
+  **The burn**: nothing beyond Titov's 09:57 and 40 s (below); his 1977 book prints the morning of the 7th's exchanges
+  («Коррекция 466 ... Время включения 3 часа 11 минут 19 секунд»; «8 часов 44 минуты, включился «Спуск-1»»), by his own
+  clock and not resolved against it.
 
 ## The ascent: the type's, not this flight's
 
