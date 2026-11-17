@@ -186,6 +186,29 @@ at the injection's 63° N, an open inconsistency each flight's mission.md record
 until November 2026, fits none of them. A Soviet orbit catalogue of 1964 gives its heights over a biaxial ellipsoid
 (Cosmos 49; Dolginov, Nalivayko et al., IZMIRAN 1967, NASA CR-99055, p. 5): support, not this unit's statement.
 
+**NASA's published orbits** (tests/periods.test.mjs, no free figure): on the ball each record states, the mean orbit of
+its heights has three periods (nodal, anomalistic, Kepler of the mean axis); a set supports the one nearest its printed
+period and decides for it if it is the nearest for every period within the rounding (half the last digit of the period,
+and what half the heights' moves it by). A record states its kind (`orbit.kind`): **derived** where its own set decides,
+**assumed** from a sister set that does, named. Friendship 7 and Aurora 7 are nodal (0.9 and 0.6 s off; the next reading
+9 s), Sigma 7 Kepler (1.3 s; anomalistic 3.2 s short), Faith 7 Kepler from Sigma 7 (its own 2.0 s against 2.6 does not
+decide). Gemini's heights are the apsides flown over the oblate earth: "final elements are measured over an oblate earth"
+on the Fischer ellipsoid, "the actual apogees and perigees were obtained by integrating the best ... vectors ... to the
+apogee and perigee that followed" (MSC-G-R-65-3 and MSC-G-R-65-4, sections 4.3 and 4.3.1.2), and SP-4002's insertion rows
+are those reports' final elements. A height read off a mean orbit as a(1 -/+ e) is not a flown apsis: J2's short-periodic
+terms put the radius flown at the apsides some 6 km under the mean orbit's at 30 degrees (`apsisLift`). So a record that
+says `over: 'oblate'` (Gemini 3's, assumed from the Gemini IV and V reports) is flown on the ellipsoid under the apsis plus
+that lift (`flownApsisBall`, 6,378.7 km for Gemini 3), and every height read off its run is a flown apsis over the
+ellipsoid to first order. The lift is nearly the ellipsoid's fall from the equator at 30 degrees, which is why the
+equatorial radius served Mercury: for the three Gemini sets the two balls lie within a kilometre. Read as mean heights
+over the ellipsoid (a trial, reverted) every Gemini set misses by 4 to 5 s beyond its rounding. On the oblate earth Gemini
+IV's final insertion set decides anomalistic (1.1 s short; Kepler 3.5 long, nodal 11 short), Gemini V's is nearest it but
+does not decide (2.1 s against 2.5), Gemini 3's own (88.3 min) cannot: Gemini 3 flies anomalistic, assumed from them. The
+Kepler period of the osculating orbit at insertion, a state's and not a mean orbit's, comes nearer for all three Gemini
+sets (+0.6, +0.7, -0.2 s) and for Faith 7 (-0.7 s): it is not a kind the simulator flies, and which the reports printed
+is not settled. No source found says how any Mercury or Gemini period was computed (the Gemini IV and V reports' section
+4.3.1.2 and their tables' notes, SP-4002's Table A; Gemini 3's own report, MSC-G-R-65-2, not found).
+
 What holds it (tests/meanelements.test.mjs): eq. 12 is the average of eq. 10 to 1e-10 of each term; on a circle the
 radius and the argument of latitude are Kozai's eq. 13 (his second derivation) to 19 and 10 m, J2 squared; Jason-3's
 handbook mean orbit (issue 1.5, 2018, Tables 5 and 6) gives its published nodal period, 6,745.7605 s, to 2 ms, and its

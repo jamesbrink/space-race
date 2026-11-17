@@ -237,16 +237,21 @@ launch, which agree. The mission report's own table has not been found.
 
 [mission.md](mission.md) has it all, with its sources; the misses are in `src/sim/misses.ts`, each with its cause.
 
-- **The ascent** on GLV-4's weights and GLV-1's and GLV-4's engines falls 106 m/s short at the cutoff, 7,722 against
-  7,828 m/s, and so short of the orbit (its perigee under the ground): the record's run hands over to the published
-  orbit at the separation. The published heights and period together imply a ball of 6,388 km, 10 km above the
-  equator: no ball is stated (nothing read says what the heights are over), and the disagreement is recorded.
-- **The first burn** (the indicator's 49 ft/s against the motion) leaves 160.8 by 173.0 km, where the ground called 85.6
+- **The ascent** on GLV-4's weights and GLV-1's and GLV-4's engines falls 61 m/s short at the cutoff, 7,767 against
+  7,828 m/s, and so short of the orbit (its perigee 28 km): the record's run hands over to the published orbit at the
+  separation.
+- **The orbit's heights are over the oblate earth**, the apsides flown, as the Gemini IV and V reports say of their final
+  elements (assumed for this flight, whose report is not found): in the simulator's mean elements a ball of 6,378.7 km,
+  the ellipsoid's 6,372.7 under the perigee and J2's 6.0 km lift of the mean apsides over the flown ones. **Its period is
+  flown perigee to perigee**, as Gemini IV's final insertion set decides and Gemini V's comes nearest; this flight's own,
+  printed to a tenth of a minute, cannot choose (tests/periods.test.mjs; mission.md, section 3). Until November 2026 the
+  ball was the 6,388 km its heights and period implied as a nodal period, 10 km above the equator.
+- **The first burn** (the indicator's 49 ft/s against the motion) leaves 161.8 by 173.7 km, where the ground called 85.6
   by 92.6 nautical miles (158.5 by 171.5 km). **The second** turns the plane by the fiftieth of a degree. **The third**
-  (97 ft/s) leaves a perigee of 71 km, where SP-138 has 83: 12 km low, cause not established.
+  (97 ft/s) leaves a perigee of 72 km, where SP-138 has 83: 11 km low, cause not established.
 - **The entry** on the lift the programme flew (0.19, estimated for this ship), not the 0.29 the prediction had (derived
-  from SP-138's 35 per cent), banked 60 degrees (estimated): the drogue out at 4:46:42 (4:46:48), 220 km short of where it
-  landed and 82 km to the right; from the ascent's handover, 230 km short and 60 to the right, down at 4:53:37 (4:52:31).
+  from SP-138's 35 per cent), banked 60 degrees (estimated): the drogue out at 4:45:58 (4:46:48), 289 km short of where it
+  landed and 77 km to the right; from the ascent's handover, 253 km short and 54 to the right, down at 4:52:58 (4:52:31).
   The bank angles flown are not read, and on them alone the landing moves by hundreds of kilometres.
 
 ## Where sources disagree

@@ -285,8 +285,15 @@ function titanInputs(f, o, run) {
   };
   console.log('  #   what a change in an input moves:');
   console.log(`  #   injection.arc +1 deg: ${moved((c) => (c.injection.arc.value += 1))}`);
+  // (the period's other readings, and the reading until November 2026: a diagnosis, not a reason to choose one)
+  const kind = (is) => (c) => (c.orbit.kind = { is, confidence: 'estimated', source: 'a test' });
+  console.log(`  #   orbit.kind nodal: ${moved(kind('nodal'))}`);
+  console.log(`  #   orbit.kind kepler: ${moved(kind('kepler'))}`);
   console.log(
-    `  #   orbit.radius stated, the equatorial 6,378.165 km: ${moved((c) => (c.orbit.radius = { value: 6_378_165, confidence: 'estimated', source: 'a test' }))}`,
+    `  #   orbit.over and orbit.kind none, the ball the heights and period imply as nodal (until November 2026): ${moved((c) => {
+      delete c.orbit.over;
+      delete c.orbit.kind;
+    })}`,
   );
   console.log(`  #   retro.deltaV +5 %: ${moved((c) => (c.retro.deltaV.value *= 1.05))}`);
   console.log(`  #   retro.deltaV SP-138's 320 ft/s: ${moved((c) => (c.retro.deltaV.value = 320 * 0.3048))}`);

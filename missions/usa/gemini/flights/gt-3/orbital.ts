@@ -28,6 +28,8 @@ const SP121 = 'Gemini Midprogram Conference (NASA SP-121, 1966)';
 const SP138 = 'Gemini Summary Conference (NASA SP-138, 1967)';
 const SP4002 = 'Project Gemini: Technology and Operations, a Chronology (NASA SP-4002), Appendix 1, Table A, p. 264';
 const GIV = 'Gemini Program Mission Report, Gemini IV (MSC-G-R-65-3, June 1965)';
+const GV = 'Gemini Program Mission Report, Gemini V (MSC-G-R-65-4)';
+const SP4002_A = 'SP-4002, Appendix 1, Table A';
 const GI = 'Gemini Program Mission Report GT-1 (NTRS 19670095753)';
 const GVIII = 'Gemini Program Mission Report, Gemini VIII (MSC-G-R-66-4), Table 4.2-I';
 const CR1106 = 'Project Gemini: A Technical Summary (Malik and Souris, NASA CR-1106, 1968)';
@@ -369,9 +371,16 @@ export const orbital: GeminiTitanRecord = {
       },
     ],
   },
-  // (no ball stated: nothing read says what the heights are over, and the mission report is not found; the heights and the
-  // period of the one orbit imply it, src/sim/orbital.ts `heightsBall`)
   orbit: {
+    over: {
+      is: 'oblate',
+      confidence: 'assumed',
+      source:
+        `the next two flights' final elements, taken for this flight's (its own report, MSC-G-R-65-2, not found after three searches): "Preliminary actual orbital elements were measured over a spherical earth, whereas the final actual and planned elements were measured over an oblate earth" (${GIV}, section 4.3.1.2), ` +
+        `"The earth model for all trajectories contained geodetic and gravitational constants representing the Fischer Ellipsoid" (section 4.3); "The actual apogees and perigees were obtained by integrating the best Gemini tracking network vectors throughout the mission to the apogee and perigee that followed ... final elements are measured over an oblate earth" (${GV}, section 4.3.1.2). ` +
+        `${SP4002_A}'s insertion rows are those reports' final elements (Gemini IV's 152.2 by 87.6, 88.90 min; Gemini V's 188.9 by 87.4, 89.59), so its Gemini 3 row is read as the same reduction: the heights of the apsides flown over the ellipsoid under them. ` +
+        'The ellipsoid is WGS 84’s, not Fischer’s (6,378,166 m, 1/298.3): some 30 m lower at 30 degrees',
+    },
     perigee: doc(87.0 * NMI, `${SP121}, Table 4-III, p. 33: 87.0 nautical miles; ${SP4002}`),
     apogee: doc(
       121.0 * NMI,
@@ -379,6 +388,14 @@ export const orbital: GeminiTitanRecord = {
     ),
     inclination: doc(32.6, SP4002),
     period: doc(88.3 * 60, `${SP4002}: 88.3 min`),
+    kind: {
+      is: 'anomalistic',
+      confidence: 'assumed',
+      source:
+        `perigee to perigee, as the next two flights' final insertion sets read on the same ball (tests/periods.test.mjs): Gemini IV's 88.90 min (${GIV}, Table 4-III) is its heights' anomalistic period to 1.1 s, against 3.5 s as Kepler and 11 s as nodal, ` +
+        `and the nearest of the three for every period within its rounding; Gemini V's 89.59 (${GV}, Table 4.3-II) is nearest it too, 2.1 s against 2.5 as Kepler, too close to decide. Gemini 3's own 88.3 min, printed to a tenth, cannot decide: 1.2 s as anomalistic, 3.4 s as Kepler. ` +
+        'No source read says what the period is (the reports’ section 4.3.1.2 and their tables’ notes). The Kepler period of the osculating orbit at insertion, which is not a mean orbit’s and is not flown, comes nearer for all three (+0.6, +0.7 and −0.2 s): not settled',
+    },
   },
   injection: {
     at: doc(

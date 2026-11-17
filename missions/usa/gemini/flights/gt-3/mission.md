@@ -33,12 +33,14 @@ through the interstage's ports (`hot`: half its side open, 30 degrees, five seco
 stage cut, and 0.68 s later (GLV-8's interval) the first stage let go. The second stage is cut at 334.0 s; the spacecraft
 parts at 359 s, pushed by the planned 10 ft/s of its aft thrusters. A stated steering law on the 72 degree azimuth: up the
 plumb line to 25 s, as Grissom called the pitch, a pitch-over of 15 s (estimated), the linear tangent from staging, aimed at
-87.0 nautical miles over the orbit's ball (below) and +0.01 degrees at the cutoff.
+87.0 nautical miles over the orbit's ball (section 3: 6,378.7 km, where it was 6,388.2 until November 2026) and +0.01
+degrees at the cutoff. The cutoff is aimed at that height as a radius, where the flown perigee's radius stands the
+apsides' lift, 6.0 km, lower: simplified (section 7).
 
 | | Record | Flown | |
 | --- | --- | --- | --- |
-| Speed at cutoff, space-fixed | 25,682 ft/s (7,828 m/s) at insertion | 7,722 m/s | miss: 106 m/s short |
-| Perigee | 87.0 nmi (161.1 km) | -99.1 km | miss |
+| Speed at cutoff, space-fixed | 25,682 ft/s (7,828 m/s) at insertion | 7,767 m/s | miss: 61 m/s short |
+| Perigee | 87.0 nmi (161.1 km) | 28.3 km | miss |
 | Apogee | 121.0 nmi (224.1 km) | 161.1 km | miss |
 | Inclination | 32.6° | 32.53° | within 0.25° |
 
@@ -49,13 +51,44 @@ it (staged.ts `published`): a handover, not a result.
 
 ## 3. The orbit and the three burns
 
-The published orbit, 87.0 by 121.0 nautical miles, 32.6°, 88.3 min node to node (SP-4002), begun at insertion, 353.8 s.
-**No ball is stated**: nothing read says what the heights are over (the mission report would), so the record leaves it out
-and the ball is the one the heights and the period of the one orbit imply (sim/orbital.ts `heightsBall`): **6,388.2 km**,
-10 km above the equatorial radius. A ball over the Earth's equator is not a surface the heights could be measured from: the
-88.3 min and the 87.0 by 121.0 do not agree as one orbit by more than the period's rounding (a twentieth of a minute is
-some 2.5 km of axis). Which of them is off is not established; on the equatorial radius (Friendship 7's reading) the
-landing moves as the last test prints. The spacecraft in orbit weighs its
+The published orbit, 87.0 by 121.0 nautical miles, 32.6°, 88.3 min (SP-4002), begun at insertion, 353.8 s.
+
+**What the heights are over: the oblate earth, as the apsides flown** (`orbit.over`, assumed). This flight's report is
+not found; the next two say what their final elements are: "measured over an oblate earth", the Fischer ellipsoid (Gemini
+IV, MSC-G-R-65-3, sections 4.3 and 4.3.1.2), the apogees and perigees "obtained by integrating the best Gemini tracking
+network vectors throughout the mission to the apogee and perigee that followed" (Gemini V, MSC-G-R-65-4, 4.3.1.2), and
+SP-4002's insertion rows, this flight's among them, are those reports' final elements. A height flown is the least or
+greatest radius less the ellipsoid's there. The simulator reads a height off a mean orbit, a(1 - e) or a(1 + e) less a
+ball, and at 32.6° J2's short-periodic terms put the radius flown at the apsides 6.0 km under the mean orbit's
+(world/meanelements.ts `apsisLift`). So the ball is the ellipsoid's radius under the apsis, 6,372.7 km at the perigee's
+30.4° (WGS 84's; Fischer's is some 30 m higher), and that lift: **6,378.7 km** (`flownApsisBall`, derived on the
+reports' reading). Until November 2026 it was the ball the heights and period imply as a nodal period, 6,388.2 km, 10 km
+above the equator, which no height could be measured from.
+
+A trial read the heights as mean heights over the ellipsoid, 6,372.7 km, the axis that ball plus the mean height and the
+period a check. It was reverted, and is the wrong reduction: the reports' apsides are flown ones, and as mean heights the
+orbit is 6.0 km low. Flown so, the coast's nodal period was 5,279.2 s against 5,298 (18.8 s short), the perigee after the
+third burn 13.4 km low (was 11.9), the drogue out 90 s early, 367.6 km short of the landing and 73.4 km to the right (was
+219.6 and 81.5). Every Gemini set misses by 4 to 5 s beyond its rounding so read (tests/periods.test.mjs).
+
+**The period is flown perigee to perigee** (`orbit.kind` anomalistic, assumed from the Gemini IV and V reports). On the
+oblate earth the heights' mean orbit has an anomalistic period 1.2 s shorter than the 88.3 min, a Kepler one 3.4 s longer
+and a nodal one 11.5 s shorter: printed to a tenth of a minute (3 s), this flight's own figures cannot choose between the
+first two. Gemini IV's final insertion set (152.2 by 87.6 nautical miles, 88.90 min, its perigee at 29.0° by the
+separation's 30.97° N and 0.07° path) can: anomalistic 1.1 s short, Kepler 3.5 long, nodal 11.3 short, the anomalistic
+nearest for every period within its rounding. Gemini V's (188.9 by 87.4, 89.59 min) is nearest it too, 2.1 s short against
+2.5 long, too close to decide. Neither comes within its rounding (0.4 s): the reports do not say what their period is,
+and the Kepler period of the osculating orbit at insertion, which is not a mean orbit's and is not flown, comes nearer for
+all three (+0.6, +0.7 and −0.2 s). Which the reports printed is not settled; between the two the axis differs by some
+1.5 km. That it is not node to node is settled: nodal misses every Gemini set by 11 to 13 s.
+
+What the readings move (tests/orbital.test.mjs, "what a change in an input moves"; a diagnosis only, not a reason for
+either): with the period node to node the drogue comes out 70 km further on, 4.5 km more to the right and 44 s later,
+exactly as on the reading until November 2026 (no ball stated, nodal), since a ball moves only the heights read off the
+run, not the orbit a period fixes; as a Kepler period, 39 km shorter. The coast's nodal period is now 5,287.7 s (88.13
+min), where read as nodal it was the published 5,298.
+
+The spacecraft in orbit weighs its
 launch weight, 7,111 lb. In the free-molecule flow of the orbit it drags 2.2 (King-Hele's, assumed) on the adapter's 120 in
 foot, nose or tail first along the motion (7.30 m², derived).
 
@@ -74,10 +107,10 @@ At the type's thrust the first burn would have been 54 ft/s, not the indicator's
 
 | After | Record | Flown (from the published orbit) | Shown (from the ascent) |
 | --- | --- | --- | --- |
-| the first burn, read at 1:40:00 | 85.6 by 92.6 nmi (158.5 by 171.5 km), the ground's call | 160.8 by 173.0 km | 162.7 by 171.4 km |
-| the third burn, read at 4:25:00 | vacuum perigee 45 nmi (83.3 km), SP-138 | 71.5 km: miss | 65.0 km: miss |
+| the first burn, read at 1:40:00 | 85.6 by 92.6 nmi (158.5 by 171.5 km), the ground's call | 161.8 by 173.7 km | 165.5 by 170.2 km: perigee a miss |
+| the third burn, read at 4:25:00 | vacuum perigee 45 nmi (83.3 km), SP-138 | 72.0 km: miss | 67.4 km: miss |
 
-The third burn's miss, 12 km low, is recorded with its cause not established: what the indicator's 97 ft/s measured along
+The third burn's miss, 11 km low, is recorded with its cause not established: what the indicator's 97 ft/s measured along
 (with canted chambers) and what ball SP-138's perigee is over are not read.
 
 ## 4. Retrofire
@@ -100,7 +133,7 @@ Both figures rest on the 0.19, which is an estimate for this ship.
 
 The crew were to fly the backup bank angle and then the computer's commands (SP-138, p. 163); the angles flown are not
 read. The bank is held at 60 degrees to the right from the retrograde section's going (estimated): the target lay on the
-footprint's 60 degree contour and south of its centreline. Held lift up it comes down 274 km further on; held level, 354 km
+footprint's 60 degree contour and south of its centreline. Held lift up it comes down 390 km further on; held level, 246 km
 shorter (tests/orbital.test.mjs, "what a change in an input moves").
 
 ## 6. The descent
@@ -113,10 +146,10 @@ main's coming out and are not flown.
 
 | | Record | Flown | Shown |
 | --- | --- | --- | --- |
-| Drogue | 4:46:48 | 4:46:42 | 4:46:46 |
-| Drogue, along the track from where it landed | | 220 km short: miss | 230 km short: miss |
-| Drogue, across the track | | 82 km right: miss | 60 km right: miss |
-| Landing | 4:52:31 | | 4:53:37: miss, 66 s late |
+| Drogue | 4:46:48 | 4:45:58 | 4:46:07 |
+| Drogue, along the track from where it landed | | 289 km short: miss | 253 km short: miss |
+| Drogue, across the track | | 77 km right: miss | 54 km right: miss |
+| Landing | 4:52:31 | | 4:52:58, 27 s late: within 60 s |
 
 **Where it lands.** The record is 60 nautical miles (111 km) short of the planned point, SP-138's Table 13-I, SP-4002 and
 SP-4203's own appendix; the "about 84 kilometers short" of SP-4203's narrative (p. 236) is 45 nautical miles, SP-138's
@@ -127,6 +160,10 @@ attitude's sign is ours, and where on the orbit it began is reckoned (a degree i
 
 ## 7. What is simplified
 
+- The heights' ball is WGS 84's ellipsoid under the apsis, not the reports' Fischer ellipsoid (some 30 m higher at 30°),
+  and the apsides' lift over it is Kozai's first-order J2 at the mean apsides, one figure for both (they differ by tens of
+  metres). The ascent's cutoff is aimed at 87.0 nautical miles over that ball as a radius, 6.0 km above the radius a flown
+  perigee there has.
 - The ascent's drag curves, the pitch-over, the interstage's hot staging and the steering authority are estimates.
 - The spacecraft's mass in orbit is its launch weight: what it left on the second stage, the fairings and the propellant
   each burn burned (some 130 lb) are not taken off; each burn's impulse is the indicator's, so the mass moves only drag.

@@ -188,7 +188,7 @@ const GT3_ENTRY =
   'Of the entry nothing is spacecraft 3’s own measure but where it came down: its lift over drag is the programme’s average as flown, 0.19 (SP-138, p. 159), on the Mercury capsule’s ' +
   'drag curve; the bank is held at 60 degrees from the retrograde section’s going, the footprint’s contour the target lay on (SP-138, p. 163), where the crew flew a backup bank and then the ' +
   'computer’s commands, angles not read; the retrofire pitch is the next flight’s 30 degrees, its sign taken as Mercury’s; and where on the orbit it began is reckoned (`injection.arc`: a degree ' +
-  'is some 110 km along the track at retrofire). Flown lift up throughout it lands 274 km further on, flown level 354 km shorter (the last test): the record cannot hold the landing to a ' +
+  'is some 110 km along the track at retrofire). Flown lift up throughout it lands 390 km further on, flown level 246 km shorter (the last test): the record cannot hold the landing to a ' +
   'hundred kilometres. The record itself landed 60 nautical miles short of its target because the lift was 35 per cent below the prediction; that is flown, not this';
 
 const GT3_SHOWN =
@@ -707,15 +707,15 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/gemini/gt-3': inUnits({
     ascent: {
       cutoffSpeed: {
-        by: -105.94,
+        by: -61.0,
         slack: 3,
-        why: `106 m/s short at the second stage’s cutoff: 7,722 against 25,682 ft/s (7,828), aimed at 87.0 nautical miles over the ball the published heights and period imply, 6,388 km. ${GT3_ASCENT}`,
+        why: `61 m/s short at the second stage’s cutoff: 7,767 against 25,682 ft/s (7,828), aimed at 87.0 nautical miles over the ball its heights stand on, the oblate earth as flown apsides, 6,378.7 km (106 m/s on the 6,388 km its heights and period implied as a nodal period, until November 2026). ${GT3_ASCENT}`,
         short: 'GLV-4’s and GLV-1’s figures, not GLV-3’s',
       },
       perigee: {
-        by: -260_184,
+        by: -132_865,
         slack: 4_000,
-        why: `Its perigee under the ground where the record has 161 km: the speed short at cutoff. ${GT3_ASCENT}`,
+        why: `Its perigee 28 km where the record has 161: the speed short at cutoff. ${GT3_ASCENT}`,
       },
       apogee: {
         by: -62_963,
@@ -725,39 +725,37 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
     coast: {
       'after-15900.perigee': {
-        by: -11_863,
+        by: -11_374,
         slack: 1_000,
         why:
-          'The third burn leaves a perigee of 71.5 km where SP-138 has a vacuum perigee of 45 nautical miles, 83.3 km. The burn is flown at the 97 ft/s the indicator read, straight against the motion as it ' +
+          'The third burn leaves a perigee of 72.0 km where SP-138 has a vacuum perigee of 45 nautical miles, 83.3 km. The burn is flown at the 97 ft/s the indicator read, straight against the motion as it ' +
           'lit; the first leaves the orbit within 2 km of the ground’s call. What the indicator’s 97 ft/s measured (the axis, with the thrusters canted) and what ball SP-138’s perigee is over are not ' +
           'read: cause not established, nothing adjusted',
       },
       alongTrack: {
-        by: -219_637,
+        by: -289_150,
         slack: 8_000,
-        why: `The drogue comes out 220 km short of where the ship landed, along the track. ${GT3_ENTRY}`,
+        why: `The drogue comes out 289 km short of where the ship landed, along the track. ${GT3_ENTRY}`,
       },
       crossTrack: {
-        by: 81_519,
+        by: 77_024,
         slack: 4_000,
-        why: `And 82 km to the right of it: the bank held to the right, the way the target lay. ${GT3_ENTRY}`,
+        why: `And 77 km to the right of it: the bank held to the right, the way the target lay. ${GT3_ENTRY}`,
       },
     },
     shown: {
-      'after-15900.perigee': {
-        by: -18_302,
+      'after-6000.perigee': {
+        by: 7_015,
         slack: 1_500,
-        why: `65.0 km where SP-138 has 83.3. ${GT3_SHOWN}; and as the coast’s, cause not established`,
+        why: `165.5 km after the first burn where the ground called 85.6 nautical miles (158.5 km); from the published orbit it is 161.8 and holds. ${GT3_SHOWN}`,
       },
-      alongTrack: { by: -229_609, slack: 10_000, why: `230 km short of where it landed, along the track. ${GT3_SHOWN}. ${GT3_ENTRY}` },
-      crossTrack: { by: 60_443, slack: 4_000, why: `60 km to the right of it. ${GT3_SHOWN}. ${GT3_ENTRY}` },
-    },
-    descent: {
-      'reentry-module.at': {
-        by: 65.83,
-        slack: 4,
-        why: `Down at 4:53:37, 66 s late, from the ascent’s handover: the drogue out within 2 s of the record, so the rest is the parachutes, the drogue an estimate and the main the type’s height and its canopy the Technical Summary’s mean rate, with the module at spacecraft 4’s weight. ${GT3_SHOWN}`,
+      'after-15900.perigee': {
+        by: -15_907,
+        slack: 1_500,
+        why: `67.4 km where SP-138 has 83.3. ${GT3_SHOWN}; and as the coast’s, cause not established`,
       },
+      alongTrack: { by: -252_899, slack: 10_000, why: `253 km short of where it landed, along the track. ${GT3_SHOWN}. ${GT3_ENTRY}` },
+      crossTrack: { by: 54_368, slack: 4_000, why: `54 km to the right of it. ${GT3_SHOWN}. ${GT3_ENTRY}` },
     },
   }),
   'ussr/voskhod/voskhod-1': inUnits({
