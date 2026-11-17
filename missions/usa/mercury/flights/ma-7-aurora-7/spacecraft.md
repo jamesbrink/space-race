@@ -131,7 +131,14 @@ Built by [mercury_cabin_18.py](../../vehicles/mercury_cabin_18.py).
 | Item | Value | Confidence | Basis |
 | --- | --- | --- | --- |
 | The figure | the Mark IV suit as modelled for Shepard (5 ft 11 in), on the couch, with the tag reading M. S. CARPENTER | estimated | `crew/mark_iv_suit.py`, unchanged but for the name. Carpenter's height has not been found in anything read |
-| What his suit had that the model has not | pockets on the upper sleeves and lower legs; a life vest on the chest under the mirror | documented; not modelled | *This New Ocean*, p. 445 |
+| Standing, at the launch site | the same suit on his stature, `model/crew.py` (`CARPENTER`) | estimated | built as Glenn's standing figure is |
+| His stature | 5 ft 10 in (177.8 cm) | estimated | as commonly given; no primary record of it read |
+| Wrist rings | the gloves locked to rings at the wrists | documented by photograph | NASA S62-03907 (at the hatch that morning) |
+| Chest mirror | yes | documented | *This New Ocean*, pp. 445 and 447 |
+| Helmet lead | hanging on the chest with its plug | documented by photograph | NASA S62-03907 |
+| Neck dam | rolled and stowed at the neck ring | documented | TN D-3814, p. 77 ("His neck dam was still stowed") and the pilot's report, p. 96 |
+| Weight that morning | 154 lb nude at 2:05 | documented | NASA SP-6, Table 5-III (p. 46) |
+| What his suit had that the model has not | pockets on the upper sleeves and lower legs; a life vest on the chest under the mirror | documented; not modelled | *This New Ocean*, p. 445. Their size and form are not in anything read |
 
 ## Parts in the model
 
@@ -176,7 +183,9 @@ The same GLB holds the launch vehicle's seven nodes: [atlas-lv3b.md](../../vehic
 - **The panel is No. 11's drawing with three blanks.** The "maneuver" switch, the dual steam-vent
   indicator, the voice switch's record position, the missing oxygen-quantity light are not on it.
 - **The pilot is Shepard's figure with Carpenter's name.** His pockets and life vest are not
-  modelled; his height has not been found. There is no model of him standing.
+  modelled; his height has not been found. The standing figure at the launch site (`model/crew.py`)
+  takes 5 ft 10 in as commonly given, and has his wrist rings, mirror, helmet lead and neck dam; its
+  boots are the suborbital flights' laced ones, its proportions the reference man's on his stature.
 - **Nothing of the flight's hand-held equipment**: the camera and its filters, the photometers,
   the binoculars, the airglow filter (TN D-3814, pp. 88 to 89).
 - **The heat shield is the heat sink's shape in another material.** Its centre plug, which this

@@ -16,6 +16,8 @@ import {
 import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles/mercury-capsule.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
+import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
+import { crew, pad, PAD_SPECS } from './pad.ts';
 
 const REPORT = 'NASA TN D-3814';
 
@@ -381,6 +383,8 @@ const parts: PartWords[] = [
 ];
 
 const vehicle = mercuryAtlasStack({
+  // on the stand at Complex 14, the hatch on 240 degrees true, as every Mercury-Atlas stood (lc-14.parts.ts)
+  stand: { over: LAUNCHER_TOP, rotationY: STAND_TURN },
   flight: 'ma-7-aurora-7',
   parts: mercuryAtlasParts('ma-7-aurora-7', parts),
   // the periscope as it went on this flight (vehicles/periscope.ts)
@@ -461,6 +465,7 @@ export const flight: Flight = {
     { t: 17757, event: 'Landing, 19°27′ N 63°59′ W' },
   ],
   specs: [
+    ...PAD_SPECS,
     SPEC.heatShield,
     CAPSULE_SPEC.afterbodyHalfAngle,
     SPEC.capsuleLength,
@@ -641,5 +646,7 @@ export const flight: Flight = {
       note: 'automatic system, all axes (Hammack and Heberlig). Changed after two of Friendship 7’s stopped: platinum screens, a fuel distribution plate, the metering orifice moved to the solenoid’s inlet (NASA SP-6, p. 5). All worked',
     },
   }),
-  models: [vehicle],
+  models: [vehicle, pad, crew],
+  // the place round the pad: nothing read has it changed since Friendship 7's morning (places/cape-canaveral/lc-14.md, "What stood when")
+  surroundings: 'models/usa/places/cape-canaveral/lc14/1962-02.glb',
 };

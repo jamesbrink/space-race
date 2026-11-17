@@ -7,7 +7,7 @@ nautical miles beyond the ships waiting for it.
 | | |
 | --- | --- |
 | Liftoff | 24 May 1962, 12:45:16.57 UTC (07:45:16.57 EST); the report counts from 07:45:16.00 |
-| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts) (its place is not built) |
+| Site | Cape Canaveral, Launch Complex 14: [lc-14.ts](../../../places/cape-canaveral/lc-14.ts), built as [lc-14.md](../../../places/cape-canaveral/lc-14.md) |
 | Pilot | M. Scott Carpenter (backup: Walter M. Schirra, Jr.) |
 | Spacecraft | Mercury No. 18, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Mercury-Atlas, Atlas 107-D: [atlas-lv3b.md](../../vehicles/atlas-lv3b.md) |
@@ -18,9 +18,11 @@ nautical miles beyond the ships waiting for it.
 | Landing | 17:41:13 UTC, 19°27′ N 63°59′ W by the tracking; picked up at 19°30′ N 64°15′ W |
 | Recovery | the pilot by an HSS-2 helicopter to USS *Intrepid*, about 3 hours after landing; the capsule by the destroyer USS *John R. Pierce*, about 6 |
 
-**In this repo: the vehicle, in the gallery.** Spacecraft No. 18 on Atlas 107-D as they left the
-pad can be turned, taken apart as they staged, and cut open. Its launch site and the flight itself
-are not built: see "What is not built" below.
+**In this repo: the vehicle, in the gallery, and its launch site.** Spacecraft No. 18 on Atlas
+107-D as they left the pad can be turned, taken apart as they staged, cut open and sat in. At the
+launch site they stand on the stand at Complex 14 on the morning of 24 May 1962, with Carpenter at
+the foot of the service structure, and the place can be walked. The flight itself is not built: see
+"What is not built" below.
 
 ## What happened
 
@@ -97,10 +99,13 @@ air-ground transcript in NASA SP-6 (pp. 77 to 107).
 The same events, in seconds, are `timeline` in [flight.ts](flight.ts).
 
 The morning, by the clocks at the Cape (*This New Ocean*, pp. 446 and 447; NASA TN D-3814,
-pp. 16 and 17): woken 1:15; suited by 3:25; into the van 3:45; up the gantry at 4:35; into the
-spacecraft at T-135 minutes; the hatch going on from T-94 and bolted at T-74; its shingles on by
-T-64; the service tower away between T-47 and T-33; liquid oxygen from T-32; held at T-11 for 15,
-15, 10 and 5 minutes for the weather and the range's refraction measurements. The pad's cameras
+pp. 16 and 17 and Table XI, p. 111): woken 1:15; suited by 3:25; into the van 3:45 (3:40 by the
+table); at the pad 4:03; up the gantry at 4:36 (the history has 4:35, and has him stop at the
+elevator to thank the crew); into the spacecraft at 4:43, T-135 minutes; the hatch going on from
+T-94 and bolted at T-74; its shingles on by T-64; the service tower away between T-47 and T-33;
+liquid oxygen from T-32; held at T-11 for 15, 15, 10 and 5 minutes for the weather and the range's
+refraction measurements. Every hold was at T-11, so by the clock the tower moved at about 06:13
+and was stowed at about 06:27 (derived: `pad.ts`). The pad's cameras
 show the umbilical thrown off, the periscope drawing in and its door shutting, in that order
 (p. 18); the report does not say when in the count. The engines burned for 2.95 seconds before the
 vehicle was let go (p. 98).
@@ -127,16 +132,30 @@ were below the horizon.
 240°, visibility 1 mile in ground fog and smoke, 77 °F, dewpoint 73 °F, humidity 88 per cent.
 "Clear blue sky," Carpenter said at 32 seconds, from above it. In the planned landing area at noon
 (USS *John R. Pierce*): cloud scattered at 1,000 ft, wind 11 knots from 096°, visibility 10 miles,
-waves 3 ft, the air 84 °F. No `weather.ts` is written for this flight yet: it has no site model for a
-sky to stand over. These are the figures one would be written from.
+waves 3 ft, the air 84 °F. No `weather.ts` is written for this flight yet: its site stands under
+its place's default sky, which is an estimate. These are the figures one would be written from.
+
+## The launch site
+
+Complex 14 as it stood that morning, which is as it stood for Friendship 7 thirteen weeks before: nothing read has it
+changed between the two ([places/cape-canaveral/lc-14.md](../../../places/cape-canaveral/lc-14.md), "What stood when",
+has every dimension with its source). The morning at the pad is `pad.ts`: Carpenter at the foot of the service
+structure at 4:36, before dawn, the Moon high in the south and ground fog round the pad; the white room opened about
+T−55 (the standard count's); the structure off the stand at T−47, about 06:13, and stowed 300 ft east at T−33, about
+06:27; 45 minutes held at T−11 while the fog thinned; the umbilical's boom clear at T−35 seconds (Friendship 7's
+second, taken); the launcher's arms letting go at liftoff. The vehicle stands with its pitch axis on 105° (documented)
+and its hatch on 240° (estimated from photographs), as every Mercury-Atlas stood. The bascule stood upright all
+morning and can be lowered by hand from the tower.
 
 ## What is not built
 
-- **The launch site.** Complex 14 is [a site as numbers](../../../places/cape-canaveral/lc-14.ts): where it was, and
-  which way the vehicle faced on it.
-- **The pilot, standing**, and **a cabin to sit in**: the capsule's inside is modelled and cannot
-  be boarded. The figure on the couch is the suit as modelled for Shepard with Carpenter's name on
-  it ([spacecraft.md](spacecraft.md), "The pilot").
+- **Much of the launch site's detail.** Complex 14 is built and can be walked, but only its published sizes are
+  documented; [lc-14.md](../../../places/cape-canaveral/lc-14.md) ends with a long list of what is estimated or left
+  out (every room is shut; the fences, the vehicles and the people are not there, the pad crew Carpenter stopped to
+  thank among them).
+- **The pilot's own suit.** The standing figure is the Mark IV suit as modelled for Shepard with Carpenter's name, his
+  wrist rings, his chest mirror, the helmet's lead and the neck dam; the pockets and the life vest are not modelled
+  ([spacecraft.md](spacecraft.md), "The pilot"). The figure on the couch is Shepard's with Carpenter's name.
 - **The flight.** Nothing here can be flown. It wants the Atlas's weights, thrust and pitch
   programme, which have not been read; an orbit and an entry as data; a horizon scanner that is
   20° wrong and a pilot who finds out; two fuel tanks that can be emptied; a retrofire by hand.
