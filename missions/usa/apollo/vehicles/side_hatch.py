@@ -16,28 +16,12 @@ from srlib import CM, IN, MeshBuilder, mark_shells, material
 REFERENCE = json.loads((Path(__file__).parent / "reference" / "apollo-side-hatch.json").read_text())
 
 
-def _hull(points):
-    """Order the measured curved interface in the wall's cylindrical domain."""
-    points = sorted(points, key=lambda p: (p.x, p.y))
-
-    def cross(a, b, c):
-        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
-
-    lower, upper = [], []
-    for sequence, into in ((points, lower), (points[::-1], upper)):
-        for point in sequence:
-            while len(into) >= 2 and cross(into[-2], into[-1], point) <= 0:
-                into.pop()
-            into.append(point)
-    return lower[:-1] + upper[:-1]
-
-
 def opening():
     """Thermal-shell interface, not the crew's clear passage or a flat door."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
     datum = survey["registration"]["scan_sphere_apex_cm"]
     points = [Vector((-p[1], p[0], p[2] - datum)) * CM for p in REFERENCE["thermal_opening"]["boundary_cm"]]
-    return _hull(perforated_wall.domain(points))
+    return perforated_wall.convex_boundary(perforated_wall.domain(points))
 
 
 def build(parent, base, radius, normal, project, void):

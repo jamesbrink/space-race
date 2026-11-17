@@ -26,6 +26,45 @@ def domain(boundary):
     return [Vector((math.atan2(p.y, p.x), p.z)) for p in boundary]
 
 
+def convex_boundary(points):
+    """Order a projected outline in XY, retaining each point's other coordinates."""
+    points = sorted(points, key=lambda p: (p.x, p.y))
+
+    def cross(a, b, c):
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+    lower, upper = [], []
+    for sequence, into in ((points, lower), (points[::-1], upper)):
+        for point in sequence:
+            while len(into) >= 2 and cross(into[-2], into[-1], point) <= 0:
+                into.pop()
+            into.append(point)
+    return lower[:-1] + upper[:-1]
+
+
+def disc(name, parent, paint, base, height, radius, holes):
+    """Flat nominal bulkhead: profile inches, measured hole outlines in metres."""
+    around = _segs(128)
+    outer = [
+        Vector((radius * IN * math.cos(-math.pi + 2 * math.pi * i / around), radius * IN * math.sin(-math.pi + 2 * math.pi * i / around)))
+        for i in range(around)
+    ]
+    points, edges = [], []
+    for boundary in [outer, *holes]:
+        start = len(points)
+        points.extend(Vector((p.x, p.y)) for p in boundary)
+        edges.extend((start + i, start + (i + 1) % len(boundary)) for i in range(len(boundary)))
+    coords, _, faces, *_ = delaunay_2d_cdt(points, edges, [], 0, 1e-8, False)
+    kept = []
+    for face in faces:
+        centre = sum((coords[i] for i in face), Vector((0, 0))) / len(face)
+        if within(centre, outer) and not any(within(centre, h) for h in holes):
+            kept.append(face)
+    mesh = MeshBuilder()
+    mesh.add([(p.x, p.y, (base + height) * IN) for p in coords], kept)
+    return mesh.build(name, paint, parent, smooth=False)
+
+
 def build(name, parent, paint, base, lower, upper, radius, normal, holes, joins=(), boundary=None):
     """Source inches at the profile, metres at the aperture boundaries."""
     axial, around = _segs(64), _segs(128)

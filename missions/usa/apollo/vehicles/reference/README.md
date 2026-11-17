@@ -40,8 +40,8 @@ cabin and glazing are built. There is no claim here that an accurate cabin exist
 
 ## Inner frame interfaces
 
-`apollo-cm-inner-apertures.json` retains four fixed window openings and the curved
-outer hatch-frame interface from the **CM-107 interior hull** derivative. It uses
+`apollo-cm-inner-apertures.json` retains four fixed window openings, the curved
+outer hatch-frame interface and the tunnel-entry interface from the **CM-107 interior hull** derivative. It uses
 Smithsonian package `d8c63e8a-4ebc-11ea-b77f-2e728ce88125`, which differs from the
 exterior package. The exact public asset URL and SHA-256 are in the JSON; the
 [interior scene rights](https://ids.si.edu/ids/media_view?id=3d_package%3Ad8c63e8a-4ebc-11ea-b77f-2e728ce88125&format=text)
@@ -72,6 +72,17 @@ assumption about the common coordinate frame, not an independent Apollo station
 survey. No scaling is applied to make the two sources fit. See
 [the pressure-vessel reconstruction](../pressure-vessel.md) for how the outlines
 are used and what remains unbuilt.
+
+The tunnel entry is boundary component 19: 37 points retained in their original
+three-dimensional survey coordinates. Its irregular boundary spans about 5 mm
+axially. It is used only as a shared structural interface, not a measured pane,
+clear opening, or full tunnel profile. The model orders its XY convex hull, then
+projects that outline to the nominal Xc 80.75-inch forward bulkhead. The reveal
+between the two references is derived and does not establish the intervening
+honeycomb shape or thickness. The separately extracted exact planar circle
+(component 89) is excluded, rather than treating its regular tessellation as a
+second independent measurement. No full tunnel, hatch equipment or later docking
+hardware is imported.
 
 ## Side-hatch outer window
 

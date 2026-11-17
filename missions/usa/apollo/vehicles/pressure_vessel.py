@@ -5,7 +5,8 @@ North American A-512S (13 January 1969), ST-310A, printed p.27, supplies
 NASA TN D-6979, Figure 8, p.9, supplies the nominal aft bulkhead R173 in.
 Its primary-structure points D/E/F independently match this wall. That common
 reference is assumed for CM-101; the report's impact specimens were Block I.
-The forward bulkhead, tunnel, hatch, stringers and equipment remain unfinished.
+The flat forward bulkhead has a surveyed tunnel-entry interface. The full
+tunnel, hatch, stringers and equipment remain unfinished.
 """
 
 import math
@@ -145,6 +146,21 @@ def build(parent, base):
 
     aluminium = material("apollo-pressure-wall", (0.66, 0.68, 0.66), metallic=0.45, roughness=0.65, double_sided=True)
     wall = perforated_wall.build("CM_PressureWall", parent, aluminium, base, AFT, FORWARD, radius, normal, holes, joins=(MID,))
+    # The nominal flat roof and the surveyed entry are separate references.
+    # Preserve the scan's curved boundary; do not silently call it a pane plane,
+    # a manufactured clear opening, or a measured pressure-wall thickness.
+    entry = perforated_wall.convex_boundary(measured(source["tunnel_entry_interface"]["boundary_cm"]))
+    roof = perforated_wall.disc("CM_ForwardPressureBulkhead", parent, aluminium, base, FORWARD, radius(FORWARD), [entry])
+    perforated_wall.check_openings(roof, [("tunnel-entry", entry, Vector((0, 0, 1)))], base)
+    projected = [Vector((p.x, p.y, FORWARD * IN)) for p in entry]
+    mesh = MeshBuilder()
+    n = len(entry)
+    mesh.add(
+        [(p.x, p.y, p.z + base * IN) for p in entry + projected],
+        [(i, i + n, (i + 1) % n + n, (i + 1) % n) for i in range(n)],
+    )
+    mesh.build("CM_TunnelEntryReveal", aluminium, parent)
+    mark_shells(["CM_ForwardPressureBulkhead", "CM_TunnelEntryReveal"])
     aft = [(radius(AFT) * i / _segs(64), base + bulkhead_x(radius(AFT) * i / _segs(64))) for i in range(_segs(64) + 1)]
     lathe_obj("CM_AftPressureBulkhead", prof(aft), aluminium, parent, segs=128)
     mark_shells(["CM_AftPressureBulkhead"])

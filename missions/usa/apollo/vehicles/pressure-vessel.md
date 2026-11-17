@@ -2,8 +2,8 @@
 
 `pressure_vessel.py` reconstructs the wall inside the thermal structure. It is
 not a miniature copy of the outer heat shield and is not a cylinder. The current
-model is a bare structural wall and nominal aft bulkhead: the forward bulkhead,
-tunnel, hatch, stringers and cabin furnishings remain separate unfinished work.
+model is a bare structural wall and two nominal bulkheads: the full tunnel,
+hatch, stringers and cabin furnishings remain separate unfinished work.
 
 The source is North American Aviation, *Apollo Training: Structures and Mechanical
 Subsystems*, A-512S, 13 January 1969. ST-278A, printed p. 26 (PDF p. 26), explicitly
@@ -79,14 +79,34 @@ seam from the 14.072-inch point D. Its centre is derived, not placed to fit the
 cabin volume. It is a two-sided reference skin, with no invented honeycomb
 thickness, penetrations, attachment fittings, insulation or equipment.
 
+## Forward bulkhead and tunnel entry
+
+ST-278A identifies the forward bulkhead at Xc 80.75 in. NASA TN D-7780,
+Figure 18, shows the flat Block II bulkhead around the access cylinder. The
+model's outer edge is the radius calculated from the nominal upper wall at that
+station. Its inner outline comes from component 19 of the measured CM-107
+interior hull: 37 original centimetre-coordinate points around the tunnel entry.
+The structural access-cylinder arrangement is shared Block II hardware, applied
+as **assumed for CM-101**. The source record and restrictions are in
+[the aperture notes](reference/README.md).
+
+The convex hull is ordered in the XY projection while retaining each point's
+original height. That outline is projected axially to the nominal flat bulkhead;
+the two edges are joined with a reveal, as with the window interfaces. This is a
+**derived transition between references**, not a surveyed honeycomb wall or
+manufactured clear-opening diameter. A ray check asserts the bulkhead leaves the
+entry open. Roof and reveal are shell surfaces, opened by the normal quadrant
+cutaway. Neither a pressure-wall thickness nor the full tunnel contour is inferred.
+
 ## Simplifications and things still wrong
 
 - The wall is a two-sided reference surface. Varying honeycomb thickness, face
   sheets, longerons, stringers, seals and penetrations are not reconstructed.
 - The nominal aft bulkhead is assumed from the earlier primary-structure
   reference above; its detailed construction and transitions remain unbuilt.
-  The forward bulkhead and pressure tunnel remain unbuilt. The incomplete shell
-  must not be used as a collision enclosure.
+  The forward bulkhead is a flat reference skin with a derived entry transition;
+  its thickness and penetrations are unbuilt. The full pressure tunnel remains
+  unbuilt. The incomplete shell must not be used as a collision enclosure.
 - Window connections are derived between two references, not surveyed frame
   solids. A tilted rendezvous frame intersects the nominal cone: its connector
   is split at that intersection to avoid a folded, overlapping face.
