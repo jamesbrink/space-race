@@ -1,30 +1,28 @@
 // src/viewer/day.ts `windsOf`: the wind drawn through the day. The record's at liftoff, exactly; changed as the surface's
 // hours change (DayWeather.hours, world/aloft.ts hourAt), smoothly with the clock; outside the hours the nearest held
 // and said so. Only a flight whose weather has hours is moved by it.
+//
+// "It never steps" means this: between two of the hours the wind drawn goes in a straight line, so in any minute it
+// moves by no more than a sixtieth of the most it changes from one hour to the next. That holds of every flight with
+// hours, whatever its hours are; a flight for which it does not has a step in it.
 import assert from 'node:assert/strict';
+import { globSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { breeze, dayOf, windsOf } from '../src/viewer/day.ts';
 import { hourAt } from '../src/world/aloft.ts';
 import { julianDate } from '../src/world/time.ts';
 
 const flightsDir = new URL('../missions/', import.meta.url);
 const load = async (path) => (await import(new URL(path, flightsDir).href)).flight;
-const WITH_HOURS = await Promise.all(
-  [
-    'usa/mercury/flights/mr-3-freedom-7/flight.ts',
-    'usa/mercury/flights/mr-4-liberty-bell-7/flight.ts',
-    'ussr/vostok/flights/vostok-1/flight.ts',
-    'ussr/vostok/flights/vostok-2/flight.ts',
-    'ussr/vostok/flights/vostok-3/flight.ts',
-    'ussr/vostok/flights/vostok-5/flight.ts',
-    'ussr/vostok/flights/vostok-6/flight.ts',
-    'ussr/vostok/flights/vostok-4/flight.ts',
-    'ussr/voskhod/flights/voskhod-1/flight.ts',
-    'usa/gemini/flights/gt-3/flight.ts',
-    'usa/gemini/flights/gt-4/flight.ts',
-    'ussr/voskhod/flights/voskhod-2/flight.ts',
-  ].map(load),
-);
+// (every flight whose weather has hours, found as tests/flights.test.mjs finds the flights: none is left out)
+const WITH_HOURS = (
+  await Promise.all(
+    globSync('*/*/flights/*/flight.ts', { cwd: fileURLToPath(flightsDir) })
+      .sort()
+      .map(load),
+  )
+).filter((f) => f.weather?.hours?.length);
 const name = (f) => f.name ?? f.id;
 /** A Julian date `s` seconds from the flight's liftoff, as the clock makes it (Clock.jdUT). */
 const at = (f, s) => julianDate(f.launch) + s / 86_400;
@@ -77,9 +75,9 @@ test('it never steps: a minute of the clock moves it by a minute’s share of an
       most = Math.max(most, Math.hypot(now[0] - last[0], now[1] - last[1]));
       last = now;
     }
-    // the most the wind drawn changes from one hour to the next, a sixtieth of it a minute: the hours change by under
-    // 3 m/s an hour, and the record's wind is theirs turned and scaled to it, which on a light day the reanalysis has
-    // lighter than the station (Gemini 4's: 2.6 m/s against ERA5's 1.3) scales up
+    // the most the wind drawn changes from one hour to the next, and a sixtieth of it a minute (the header). The record's
+    // wind is the hours' turned and scaled to it, so on a day the reanalysis has lighter than the station (Gemini 4's:
+    // 2.6 m/s against ERA5's 1.3) the hours' change is scaled up with it
     const drawn = hours.map((h) => parts(winds(at(f, (h - Date.parse(f.launch)) / 1000)).wind));
     const hourly = Math.max(...drawn.slice(1).map((w, i) => Math.hypot(w[0] - drawn[i][0], w[1] - drawn[i][1])));
     assert.ok(hourly < 6, `${name(f)}: ${hourly.toFixed(2)} m/s in an hour`);
@@ -119,7 +117,9 @@ test('the low cloud drifts on its own wind turned and scaled alike', () => {
 });
 
 test('a flight with no hours is drawn in the day’s wind all day', async () => {
-  const f = await load('usa/gemini/flights/gt-5/flight.ts'); // (no weather.ts yet: its place's day, and no hours)
+  // (every flight has its hours now: Gemini 3's day with them taken off)
+  const gt3 = await load('usa/gemini/flights/gt-3/flight.ts');
+  const f = { ...gt3, weather: { ...gt3.weather, hours: undefined } };
   const day = dayOf(f);
   const winds = windsOf(f, day);
   for (const s of [-30_000, 0, 30_000]) {
