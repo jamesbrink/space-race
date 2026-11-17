@@ -44,8 +44,7 @@ do not create false wrinkles in the metal.
   as-built CM-101 inspection. The upper edge fillet and joint seals are omitted.
 - The aft shield is its nominal outer spherical surface, visible from either side;
   its varying ablator thickness and internal structure are not reconstructed.
-- The window reveals are derived interpolations; glazing, frames and seals remain
-  unbuilt. The dark closures are temporary, not glass.
+- The window reveals are derived interpolations; the [glazing](windows.md) has estimated installation depths. Detailed retainers and seals remain unbuilt.
 - The side hatch, forward hatch, recovery equipment and furnished cabin remain
   incomplete: only the side hatch's nominal outer cover and window reference
   are built. The separate [pressure-vessel sidewall](pressure-vessel.md) now appears

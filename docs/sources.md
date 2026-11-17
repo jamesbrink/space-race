@@ -1502,3 +1502,6 @@ sizes remain estimated. SC101 SCS-2100D p. 76 supplies the FDAI front arrangemen
 the SC103+ Honeywell 4.5-inch ball is an explicitly estimated CM-101 prior, not
 verified shared equipment. See `missions/usa/apollo/vehicles/console-equipment.md`
 and `fdai.md` for the complete attribution and unfinished details.
+
+- [Smithsonian, Apollo 7 display and keyboard A19770217000](https://airandspace.si.edu/collection-objects/keyboard-display-dsky-apollo-7/nasm_A19770217000), photographs NASM-B7DAA74DB0552, key legends and unpowered appearance.
+- [NASA TN D-6721, Window Contamination](https://ntrs.nasa.gov/citations/19720012257), summary and pp. 1–3, three-pane assemblies on the first three crewed flights.

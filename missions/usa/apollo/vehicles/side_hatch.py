@@ -12,7 +12,7 @@ from mathutils import Matrix, Vector
 
 import perforated_wall
 from cm_reference import AFT_APEX_XC, survey_cm
-from srlib import CM, IN, MeshBuilder, mark_shells, material
+from srlib import CM, IN, MeshBuilder, interior, mark_shells, material
 
 REFERENCE = json.loads((Path(__file__).parent / "reference" / "apollo-side-hatch.json").read_text())
 
@@ -35,7 +35,7 @@ def build(parent, base, radius, normal, project, void):
     # Apply the same nominal Apollo datum used by the curved thermal opening.
     translation.z += AFT_APEX_XC * IN
     # The measured mounting face is an aperture reference, not a glass-plane
-    # survey. The closure remains explicitly temporary until glazing is built.
+    # survey. Separate estimated glazing uses it without moving this frame.
     measured = [rotation @ Vector(p) + translation for p in data["boundary_m"]]
     direction = rotation @ Vector(data["normal"])
     rim = [project(p, direction) for p in measured]
@@ -53,7 +53,8 @@ def build(parent, base, radius, normal, project, void):
         [(i, i + n, (i + 1) % n + n, (i + 1) % n) for i in range(n)],
     )
     mesh.build("CM_HatchWindowReveal", foil, parent)
-    mesh = MeshBuilder()
-    mesh.add([(p.x, p.y, p.z + base * IN) for p in measured], [tuple(range(n))])
-    mesh.build("CM_HatchWindowPendingGlazing", void, parent)
-    mark_shells(["CM_SideHatchCover"])
+    if not interior():
+        mesh = MeshBuilder()
+        mesh.add([(p.x, p.y, p.z + base * IN) for p in measured], [tuple(range(n))])
+        mesh.build("CM_HatchWindowDistantVoid", void, parent)
+    mark_shells(["CM_SideHatchCover", "CM_HatchWindowReveal"])

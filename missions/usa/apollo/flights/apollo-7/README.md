@@ -8,7 +8,7 @@ the redesigned Block II command and service modules in Earth orbit. It carried n
 
 An exterior and cabin study of CSM-101 on SA-205 is available in the Gallery. The launch site,
 walkable structures, complete cabin, suits, weather and flight physics are not built yet.
-The five window openings have opaque dark recesses until the cabin and glazing are modelled.
+Each of the five windows has one thermal pane and two pressure panes at full detail. [Window geometry and installation assumptions](../../vehicles/windows.md).
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
 The cutaway runs through the entire assembled vehicle, using the same quadrant
@@ -17,7 +17,7 @@ escape motor case and spacecraft shells open together. Engines and internal
 equipment remain whole. The empty launcher interiors are unfinished, not a claim
 that SA-205 contained no tanks or structure. Inside the command module it exposes
 the nominal pressure boundary, main-console structural reference with estimated
-instruments and controls, nominal DSKY front-web subset and estimated unitized
+instruments and controls, equipped DSKY and estimated unitized
 three-place crew couch.
 The full tunnel and remaining furnishings are unbuilt.
 No seat control is offered yet.
@@ -68,8 +68,7 @@ without guessing a door from it. The structural cutaway uses the Gallery's exist
 shell system. [Pressure-vessel notes](../../vehicles/pressure-vessel.md) describe the
 calculations, checks and limits. The nominal aft bulkhead is now a separate spherical
 reference surface. The flat forward bulkhead now joins a measured tunnel-entry
-interface with an explicitly derived transition. The full tunnel, glazing and
-furnishings remain pending.
+interface with an explicitly derived transition. The full tunnel and remaining furnishings are pending.
 Its 173-inch radius is explicitly assumed common primary geometry from NASA
 TN D-6979, Figure 8, whose inner-wall points independently match the Block II wall.
 
@@ -113,10 +112,7 @@ with older nominal CAD display openings; the separately extracted shared E/L
 contour conflicts with the nominal outer contour and remains uninstalled.
 The .050-inch web is derived from the stock drawing's .04–.06-inch section.
 The shared CM-107 metal plane supplies a rigid, unscaled reference pose; the
-blank console is masked beneath it. Rear ribs, mounting pockets, keys, display
-covers, glazing, labels and electronics remain unbuilt. This is not the complete
-machined cover or an equipped DSKY, and does not install the unresolved bare
-housing described above.
+blank console is masked beneath it. Nineteen keys, two display windows, unpowered legends and an estimated enclosure follow the preserved Apollo 7 instrument. Rear ribs, mounting pockets and electronics remain unresolved.
 
 
 ## Lettering correction

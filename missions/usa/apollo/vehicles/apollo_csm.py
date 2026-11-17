@@ -13,11 +13,13 @@ from mathutils import Vector
 
 import command_module
 import console_equipment
+import dsky_equipment
 import dsky_front
 import main_console
 import pressure_vessel
 import service_tanks
 import unitized_couch
+import window_glazing
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
 
 RADIUS = command_module.RADIUS
@@ -106,6 +108,7 @@ def build(offset=0):
             "CommandModule",
             "SideHatch",
             "CabinStructure",
+            "CabinWindows",
             "MainConsole",
             "FlightDirectorIndicators",
             "ConsoleEquipment",
@@ -196,8 +199,10 @@ def build(offset=0):
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
+    window_glazing.build(groups["CabinWindows"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
     dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
+    dsky_equipment.build(groups["DSKYFrontWeb"], CM_BASE)
     console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE)
     console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE)
     unitized_couch.build(groups["CrewCouches"], CM_BASE)

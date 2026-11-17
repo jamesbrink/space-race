@@ -12,27 +12,25 @@ import json
 import math
 from pathlib import Path
 
-import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Vector
 
 from cm_reference import survey_cm
-from srlib import IN, TAU, MeshBuilder, interior, load_font, material, prof, text_mesh
+from panel_equipment import PRINT, InchPanel
+from srlib import IN, TAU, MeshBuilder, interior, material
 
 FOLDER = Path(__file__).parent / "reference"
 BALL_RADIUS = 2.25  # SC103+ Honeywell 4.5-in diameter: ESTIMATED applicability to CM101.
 FDAI_RADIUS = 3.5  # Estimated face envelope from CM101 layout, not the fixed hole radius.
 CASE_BACK = -4.5  # Estimated schematic enclosure; not a manufacturing depth.
 FACE = 0.15
-PRINT = 0.06  # Rendering separation (1.524 mm), not paint/letter thickness.
 
 
-class Console:
+class Console(InchPanel):
     """Inch construction in the registered panel frame, batched by material."""
 
     def __init__(self, parent, base, source, layout):
-        self.parent, self.base = parent, base
         self.origin = Vector(survey_cm(source["apertures"][0]["probe_cm"], source["registration"])) / 2.54
         back = Vector(source["extraction"]["plane_normal"])
         raw_u = (Vector((1, 0, 0)) - back * back.x).normalized()
@@ -44,8 +42,6 @@ class Console:
         self.anchor = anchors[0]["image_px"]
         image_delta = complex(anchors[1]["image_px"][0] - self.anchor[0], self.anchor[1] - anchors[1]["image_px"][1])
         self.scale = complex((b - a).dot(raw_u), (b - a).dot(raw_v)) / image_delta
-        self.font = load_font()
-        self.meshes = {}
         self.m = {
             "panel": material("apollo-instrument-grey", (0.38, 0.40, 0.38), roughness=0.7),
             "metal": material("apollo-instrument-metal", (0.48, 0.51, 0.52), metallic=0.6, roughness=0.4),
@@ -56,71 +52,14 @@ class Console:
             "glass": material("crystal", (0.87, 0.92, 0.94), roughness=0.12, alpha=0.08),
         }
 
+        super().__init__(parent, base, self.origin, self.u, self.v, self.n, self.m)
+
     def xy(self, x, y):
         p = self.scale * complex(x - self.anchor[0], self.anchor[1] - y) / 2.54
         return p.real, p.imag
 
     def size(self, pixels):
         return pixels * abs(self.scale) / 2.54
-
-    def frame(self, u, v, w=0):
-        f = Matrix((self.u, self.v, self.n)).transposed().to_4x4()
-        f.translation = (self.origin + self.u * u + self.v * v + self.n * w + Vector((0, 0, self.base))) * IN
-        return f
-
-    def mesh(self, role, paint):
-        key = role, paint
-        if key not in self.meshes:
-            self.meshes[key] = MeshBuilder()
-        return self.meshes[key]
-
-    def box(self, role, paint, u, v, width, height, lo, hi):
-        self.mesh(role, paint).box((width * IN, height * IN, (hi - lo) * IN), self.frame(u, v, (lo + hi) / 2))
-
-    def lathe(self, role, paint, u, v, points, segs=48):
-        self.mesh(role, paint).lathe(prof(points), segs=segs, matrix=self.frame(u, v))
-
-    def line(self, role, paint, a, b, width, w):
-        a, b = Vector((*a, w)), Vector((*b, w))
-        delta = b - a
-        tangent = delta.normalized()
-        side = Vector((-tangent.y, tangent.x, 0)) * width / 2
-        vertices = [a - side, a + side, b + side, b - side]
-        self.mesh(role, paint).add([tuple(p * IN) for p in vertices], [(0, 3, 2, 1)], matrix=self.frame(0, 0))
-
-    def text(self, body, u, v, cap=0.09, w=PRINT, paint="ink", role="Legends"):
-        for row, line in enumerate(body.split("\n")):
-            # Flat legends need no cylinder-wrapping subdivisions. Tiny
-            # subdivided triangles lose precision at the stack's world height.
-            points, faces = text_mesh(line, 1, self.font, cuts=0)
-            if not points:
-                continue
-            xs, ys = [p[0] for p in points], [p[1] for p in points]
-            k = cap / (max(ys) - min(ys))
-            cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
-            # Sub-0.05-mm print slivers are below the drawing's resolution.
-            # Collapse them locally before the stack's 57-m float translation.
-            bm = bmesh.new()
-            vertices = [bm.verts.new(((x - cx) * k * IN, (y - cy) * k * IN, 0)) for x, y, _ in points]
-            for face in faces:
-                bm.faces.new([vertices[i] for i in face])
-            bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=0.00005)
-            bmesh.ops.dissolve_degenerate(bm, edges=list(bm.edges), dist=0.00005)
-            bmesh.ops.triangulate(bm, faces=list(bm.faces))
-            bm.verts.ensure_lookup_table()
-            bm.verts.index_update()
-            points = [tuple(p.co) for p in bm.verts]
-            faces = [tuple(p.index for p in face.verts) for face in bm.faces]
-            bm.free()
-            vertices = [(u * IN + x, (v - row * cap * 1.4) * IN + y, w * IN) for x, y, _ in points]
-            self.mesh(role, paint).add(vertices, faces, matrix=self.frame(0, 0))
-
-    def flush(self):
-        objects = []
-        for (role, paint), mesh in self.meshes.items():
-            objects.append(mesh.build(f"CM_Console_{role}_{paint}", self.m[paint], self.parent, smooth=False))
-        self.meshes.clear()
-        return objects
 
 
 def _validate(parent, base, *, console_clearance=False):

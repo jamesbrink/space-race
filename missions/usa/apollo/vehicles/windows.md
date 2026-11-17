@@ -1,4 +1,4 @@
-# Command-module windows — construction reference, not installed glazing
+# Command-module windows — three-pane installation
 
 The five windows have separate pressure-vessel and heat-shield assemblies. NASA
 TN D-7439, *Apollo Experience Report—Spacecraft Structural Windows*, September
@@ -25,34 +25,12 @@ without loading the glass (p. 6). It is not the axial space between panes. The
 report describes removal of the earlier additional micrometeoroid windows
 (p. 5), but does not establish a CM-101 installation revision here.
 
-## Source conflict and unresolved installation geometry
+## Installed geometry and limits
 
-The 1969 *Apollo Operations Handbook*, Block II, volume 1, section 1.3.2.6.3,
-printed p. 1-40 (PDF p. 53), describes the inner windows collectively as two
-0.25-in panes separated by 0.1 in. Its uniform thickness differs from the
-type-specific values in TN D-7439. The latter values are retained above as the
-more specific construction account, **not promoted to verified CM-101
-measurements**. The handbook's 0.1-in spacing must still be checked against the
-applicable individual assemblies before it is used for all three window types.
+NASA TN D-6721, *Window Contamination*, summary and pp. 1–3, describes the three-pane windows on the first three crewed Apollo missions. The full-detail model contains five thermal and ten pressure panes. Each glass solid opens with its enclosing shell. At the two distant levels a dark closure represents each assembly.
 
-Figures 2–4 in TN D-7439 show the relative layer arrangement without dimensioning
-their installation offsets. They are not scale drawings from which to measure
-those missing offsets. In particular, the circular pressure window in the hatch
-is a different interface from its rounded-square outer thermal window.
+The generic 0.25-in pressure thickness in the Block II Operations Handbook §1.3.2.6.3 differs from the type-specific values above. The latter are assumed for CM-101. The 0.10-in nitrogen space uses the common handbook dimension. The fixed structural openings retain their original coordinates. A flat plane fitted to each opening sets its pane orientation. The 0.08-in concealed glass edge, side-window wall-seat allowance of 0.35 in, mounting depths and transparent material are estimates. The circular pressure window in the hatch uses the approximately nine-inch diameter in the North American News Reference, printed p. 45, with its outer pressure pane set an estimated 1.65 in behind the thermal interface.
 
-The [CM-107 survey outlines](reference/README.md) currently retained by this
-project describe structural frame/aperture interfaces. Neither their planar fit
-nor their registration establishes which glass surface they would locate.
-Extruding the published pane thickness from one of those interfaces would
-silently invent a mounting datum and a glass perimeter. The Smithsonian exterior
-scene's separate visualization filler is not evidence of measured glass.
+## Simplifications
 
-## Simplifications and things still wrong
-
-- No panes, pane stack, glazing retainer, insulation or seal is built yet. The
-  five dark outer closures remain temporary and are not named or presented as
-  glass.
-- Applicable CM-101 window assembly revisions, pane perimeters, mounting planes
-  and pressure-to-thermal assembly offsets remain unresolved.
-- The source conflict above and micrometeoroid-pane applicability remain open;
-  no guessed geometry is substituted for either.
+The installation omits retainers, edge insulation, seals, shades, optical coatings and the contamination reported in flight. The measured CM-107 references describe shared structural frames. Individual CM-101 glass perimeters and surface offsets remain unknown.

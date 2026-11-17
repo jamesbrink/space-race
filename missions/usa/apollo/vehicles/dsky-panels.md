@@ -1,8 +1,7 @@
 # Apollo 7 DSKY safety-glass panes
 
 These two components now have complete **nominal outer geometry**, including the
-rounded corners, solid thickness and front bevel. They are not installed in the
-spacecraft yet. No pose is selected to make them fit the front-web reference.
+rounded corners, solid thickness and front bevel. The flight model installs them at estimated positions behind the display covers.
 
 ## Flight identity
 
@@ -84,15 +83,10 @@ It also rules out silently replacing the measured asymmetry with a symmetric
 extension of the short frame. These figures are recorded as an unverified lead,
 not adopted dimensions.
 
-The actual mating faces, cover section and installed axial coordinates still need
-to be established before either pane is installed. A nominal pane is not placed
-by centring it in an opening or choosing a standoff. The existing ship's front-web
-and console geometry are unchanged by these standalone components.
-
 ## What is missing
 
 - Verified installed transforms, supporting frames, attachment details and seals.
 - Laminate ply/interlayer thicknesses, which are not dimensioned on this drawing.
 - Optical transmission, refractive index, tint, surface finish and physical coatings.
 - As-built dimensional/tolerance reconstruction; these are nominal parts.
-- Display hardware, legends, electrical light output and computer signals behind the panes.
+- Powered indications and computer signals. The gallery shows the instrument unpowered.

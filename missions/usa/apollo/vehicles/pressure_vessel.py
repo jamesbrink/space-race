@@ -134,7 +134,12 @@ def build(parent, base):
                         hi = k
                 split.append(first.lerp(last, (lo + hi) / 2))
         frame = split
-        rim = [project(p, direction) for p in frame]
+        # The surveyed clear opening is the lip. The structural cutout behind
+        # it also clears the concealed glass edge. The 0.35-inch allowance
+        # is an estimated mounting rebate, measured in the frame plane.
+        centre = sum(frame, Vector()) / len(frame)
+        rebate = 0.35 * IN if port["id"].startswith("side-") else 0.0
+        rim = [project(p + (p - centre).normalized() * rebate, direction) for p in frame]
         windows.append((port["id"], frame, rim, direction))
     hatch = measured(source["hatch_frame_interface"]["boundary_cm"])
     holes = [perforated_wall.domain(rim) for _, _, rim, _ in windows] + [perforated_wall.domain(hatch)]
@@ -181,4 +186,5 @@ def build(parent, base):
                 faces.append((i, j, j + n, i + n))
         mesh.add([(p.x, p.y, p.z + base * IN) for p in frame + rim], faces)
         mesh.build(f"CM_PressureFrame_{name}", aluminium, parent, smooth=False)
+        mark_shells([f"CM_PressureFrame_{name}"])
     mark_shells(["CM_PressureWall"])

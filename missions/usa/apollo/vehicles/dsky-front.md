@@ -1,7 +1,7 @@
 # DSKY front web — installed nominal reference
 
-This is the **front web only**, not a complete machined front cover, housing or
-equipped DSKY. Its closed nominal sheet is installed on the main-console reference.
+The nominal web is the structural reference for an equipped display and keyboard. The preserved Apollo 7 instrument supplies the nineteen black keys, PRO legend and unlit display arrangement. Case depth (5.5 in behind the web), case width (6.65 in), height (7.80 in), key sections, cover envelopes, finish and installation offsets are estimated. The two glass solids retain their drawing dimensions. The instrument omits the museum handling fixture. [Smithsonian Apollo 7 DSKY](https://airandspace.si.edu/collection-objects/keyboard-display-dsky-apollo-7/nasm_A19770217000)
+
 The standalone [bare housing](dsky-housing.md) remains uninstalled: its applicability
 to front assembly 2003949-041 has not been resolved.
 
@@ -163,16 +163,14 @@ fixed for reproducibility. Blender model builds need only the committed dataset.
 ## What is still wrong or omitted
 
 The two flight-specific safety-glass panes now have separate nominal component
-models ([dsky-panels.md](dsky-panels.md)). Their installation remains unresolved;
-neither pane is placed on this front-web reference yet.
+models ([dsky-panels.md](dsky-panels.md)). Both use estimated installation offsets.
 
 - Older CAD display outlines pending resolution of the measured E/L/outer-contour conflict.
 - Nominal front-web subset, without a complete independent contour audit or
   the complete -001 machining. Front radii are nominal bounded simplifications.
-- No complete rear cover structure, ribs, mounting pockets, fasteners, housing,
-  keys, switch mechanisms, displays, display covers, glazing, labels or electronics.
+- No complete rear cover structure, ribs, mounting pockets, fasteners, switch mechanisms or electronics.
 - Neutral reference shading, not measured flight coating or colourimetry.
 - Reference pose and display mask are derived from another spacecraft's processed
   survey. Neither establishes as-built Apollo 7 geometry, tolerances or clearance.
-- The two display openings remain empty; they are not opaque imitation displays.
+- The display equipment is shown unpowered.
   No guidance-computer simulation or operational controls are assigned.

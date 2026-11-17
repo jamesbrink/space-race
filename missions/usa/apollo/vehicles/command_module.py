@@ -14,7 +14,7 @@ from mathutils import Vector
 import perforated_wall
 import side_hatch
 from cm_reference import AFT_APEX_XC, survey_cm
-from srlib import CM, IN, MeshBuilder, _segs, lathe_obj, material, prof
+from srlib import CM, IN, MeshBuilder, _segs, interior, lathe_obj, mark_shells, material, prof
 
 RADIUS = 77.0
 AFT_RADIUS = 184.8
@@ -95,12 +95,13 @@ def build(cm, heatshield, forward, hatch_node, base, foil, void):
         n = len(measured)
         mesh.add(verts, [(i, i + n, (i + 1) % n + n, (i + 1) % n) for i in range(n)])
         mesh.build(f"CM_WindowReveal_{name}", foil, cm)
-        mesh = MeshBuilder()
-        mesh.add(verts[:n], [tuple(range(n))])
-        obj = mesh.build(f"CM_WindowPendingGlazing_{name}", void, cm)
-        # Both sides of the temporary aperture closure can be seen. It is not
-        # glass or a cabin: flight text explicitly identifies the missing work.
-        obj.data.materials[0].use_backface_culling = False
+        mark_shells([f"CM_WindowReveal_{name}"])
+        if not interior():
+            # Distance-only stand-in: the full model has real clear panes.
+            mesh = MeshBuilder()
+            mesh.add(verts[:n], [tuple(range(n))])
+            obj = mesh.build(f"CM_WindowDistantVoid_{name}", void, cm)
+            obj.data.materials[0].use_backface_culling = False
     # Truncate the nominal conical wall at the documented cover station. The
     # upper edge fillet is omitted: the idealized wind-tunnel nose radius is not
     # established as the flight heat shield's edge radius.

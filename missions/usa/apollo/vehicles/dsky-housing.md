@@ -111,9 +111,7 @@ an attachment or explosion axis.
   incompatible internal fillets were omitted by the transcription's author.
 - Threads are simplified to smooth bores; exact finishes, coatings and part
   identification are omitted.
-- No keys, switch mechanisms, alarm indicators, electroluminescent panel,
-  labels, seals, electronics, main case or rear connector are built. The two
-  [nominal glass components](dsky-panels.md) remain uninstalled.
+- The installed instrument uses an estimated enclosure and the two [nominal panes](dsky-panels.md). The bare-housing reference remains separate.
 - Other available CAD includes photographically guessed cover ribs or a widened
   display window without a drawing. Those parts are deliberately excluded.
 - The 2004739A-000 cover transcription has not been validated as the flight's
