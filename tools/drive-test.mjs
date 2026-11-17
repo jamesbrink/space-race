@@ -8,13 +8,19 @@
 // the way it first faced. If it does not, it passes only where the drive says what real thing held it (not itself, in another level of detail) (`Vehicle.blockedBy`: the mesh
 // and the nodes it hangs from; or the interlock of the function that drives it), and fails where it is held by nothing it can
 // name. Its width, as the drive has measured it, must be about its track and no more (an open door is not part of it).
-import { launch, open, opt, url as urlOf, checks } from './browser.mjs';
+// A try is timed by the page's own seconds as the stage counts them (each frame's, as it is held to a tenth of a second),
+// not the machine's: a busy machine drives as far as an idle one. A vehicle standing just where it was tried at an earlier
+// hour of the same day is not tried again (the same car in the same place). The flights are driven on --jobs pages at once
+// (default 4), each flight's lines printed together when it is done.
+//   node tools/drive-test.mjs [url] [--flight <id>] [--jobs n]
+import { launch, open, opt, url as urlOf } from './browser.mjs';
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const args = process.argv.slice(2);
 const only = opt(args, '--flight', null);
+const jobs = Math.max(1, Number(opt(args, '--jobs', '4')) || 4);
 const url = urlOf(args);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ids = [];
@@ -26,11 +32,20 @@ ids.sort();
 /** Seconds from liftoff at which the day is looked at: the vehicles of the morning, the hours before and the hour after. */
 const SAMPLES = [-3 * 3600, -4500, -3000, -900, 600];
 
-const browser = await launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
-const { check, failures } = checks();
+/** Seconds of driving a try is given, as the page counts them. */
+const TRY = 6;
 
-for (const id of ids) {
-  console.log(id);
+const browser = await launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+const failures = [];
+
+/** Drive every vehicle of one flight's day; its lines into `lines`. */
+async function driveFlight(id, lines) {
+  const check = (ok, what) => {
+    lines.push(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
+    if (!ok) failures.push(what);
+    return ok;
+  };
+  const say = (line) => lines.push(line);
   const { page, errors, close } = await open(browser, `${url}#${id}/site/pad`, {
     viewport: [800, 500],
     console: [],
@@ -48,6 +63,8 @@ for (const id of ids) {
     });
     await page.mouse.click(400, 100);
     const tried = new Set();
+    /** Where each vehicle has been tried from today: its name, then its place to a centimetre and its heading to a tenth of a degree. */
+    const triedAt = new Set();
     for (const at of SAMPLES) {
       await page.evaluate((t) => window.sr.clock.seek(t), at);
       for (let i = 0; i < 300 && (await page.evaluate(() => window.sr.stage.catchingUp)); i++) await wait(100);
@@ -74,18 +91,29 @@ for (const id of ids) {
           });
           if (!car) return { error: 'gone' };
           const p = car.getWorldPosition(car.position.clone());
+          const turn = car.getWorldQuaternion(car.quaternion.clone());
+          const ahead = car.getWorldDirection(p.clone());
+          const pose = `${name} ${[p.x, p.y, p.z].map((x) => x.toFixed(2)).join(',')} ${((Math.atan2(ahead.x, ahead.z) * 180) / Math.PI).toFixed(1)} ${turn.w.toFixed(3)}`;
+          if (window.theTried?.has(pose)) return { error: 'tried', pose };
+          (window.theTried ??= new Set()).add(pose);
           sr.stage.onFoot.exitWalk();
           sr.stage.enterWalk(sr.flight.models.find((m) => m.walker).id, { x: p.x, y: p.y, z: p.z + 3.5 });
           window.theCar = car;
           sr.stage.onFoot.aim = { vehicle: car };
           return { boarded: sr.stage.onFoot.walkDrive() };
         }, name);
-        if (start.error) continue;
-        if (!start.boarded) {
-          console.log(`  ${name}: has nowhere to sit (not driven)`);
+        if (start.error === 'tried') {
+          triedAt.add(start.pose);
           continue;
         }
+        if (start.error) continue;
+        if (!start.boarded) {
+          say(`  ${name}: has nowhere to sit (not driven)`);
+          continue;
+        }
+        // (seated: as long as getting in takes, and on a busy machine with four pages at once that is more than it was alone)
         await wait(2500);
+        for (let i = 0; i < 100 && !(await page.evaluate(() => Boolean(window.sr.stage.onFoot.wheel))); i++) await wait(200);
         const body = await page.evaluate(() => {
           const w = window.sr.stage.onFoot.wheel;
           if (!w) return null;
@@ -113,10 +141,23 @@ for (const id of ids) {
             if (window.theBegin) Object.assign(w.motion, window.theBegin, { speed: 0, steer: 0, halted: 0 });
             else window.theBegin = { x: w.motion.x, z: w.motion.z, heading: w.motion.heading };
           });
+          // (the page's own seconds while it is driven: each frame's, held to a tenth as the stage holds it)
+          await page.evaluate(() => {
+            window.theDriven = 0;
+            window.theDriving = true;
+            let last = performance.now();
+            const tick = (now) => {
+              window.theDriven += Math.min((now - last) / 1000, 0.1);
+              last = now;
+              if (window.theDriving) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          });
           if (lock) await page.keyboard.down(lock);
           await page.keyboard.down('w');
           let ahead = 0;
-          for (let i = 0; i < 30 && ahead < body.length + 0.5; i++) {
+          // (and never more than two minutes of the machine's)
+          for (let i = 0; i < 600 && ahead < body.length + 0.5 && (await page.evaluate(() => window.theDriven)) < TRY; i++) {
             await wait(200);
             ahead = Math.max(
               ahead,
@@ -128,6 +169,9 @@ for (const id of ids) {
             );
           }
           held = (await page.evaluate(() => window.sr.stage.onFoot.wheel?.blockedBy)) ?? held;
+          await page.evaluate(() => {
+            window.theDriving = false;
+          });
           await page.keyboard.up('w');
           if (lock) await page.keyboard.up(lock);
           best = Math.max(best, ahead);
@@ -151,7 +195,7 @@ for (const id of ids) {
           best >= body.length || Boolean(named),
           `${where}: ${best.toFixed(1)} of ${body.length.toFixed(1)} m forward${named ? `, held by ${named}` : own ? `, held by ITSELF (${held})` : ''}`,
         );
-        if (best < body.length && named) console.log(`    (held, by ${named})`);
+        if (best < body.length && named) say(`    (held, by ${named})`);
         if (body.track)
           check(
             body.half <= body.track / 2 + 0.5,
@@ -159,7 +203,8 @@ for (const id of ids) {
           );
       }
     }
-    if (!tried.size) console.log('  (no vehicle in view at any of the hours)');
+    if (!tried.size) say('  (no vehicle in view at any of the hours)');
+    if (triedAt.size) say(`  (${triedAt.size} not tried again: standing where it was tried at an earlier hour)`);
     check(errors.length === 0, `${id}: no errors on the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   } catch (e) {
     check(false, `${id}: ${e}`);
@@ -167,6 +212,26 @@ for (const id of ids) {
     await close();
   }
 }
+
+// --jobs pages at once; each flight's lines printed together when it is done
+const began = Date.now();
+const queue = [...ids];
+await Promise.all(
+  Array.from({ length: Math.min(jobs, queue.length) }, async () => {
+    for (let id = queue.shift(); id; id = queue.shift()) {
+      const lines = [];
+      const t0 = Date.now();
+      try {
+        await driveFlight(id, lines);
+      } catch (e) {
+        lines.push(`  FAIL ${id}: the run stopped: ${e?.stack ?? e}`);
+        failures.push(id);
+      }
+      console.log(`${id} (${((Date.now() - t0) / 1000).toFixed(0)} s)\n${lines.join('\n')}`);
+    }
+  }),
+);
 await browser.close();
+console.log(`(${((Date.now() - began) / 60000).toFixed(1)} min on ${jobs} pages)`);
 console.log(failures.length ? `${failures.length} failed` : 'all held');
 process.exit(failures.length ? 1 : 0);
