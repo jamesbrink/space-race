@@ -27,7 +27,7 @@ export interface Verdict {
  * sentence goes on, and as one begins), what the record's landing was on, and the surface by its name ('the sea', 'the
  * ground'). A flight that does not say is spoken of as 'the spacecraft' coming down on 'the surface'.
  */
-export function landsOf(plan: FlightPlan): { ship: string; Ship: string; on: Lands['on'] | null; surface: string } {
+export function landsOf(plan: FlightPlan): { ship: string; Ship: string; on: Lands['on'] | null; surface: string; sank: string | null } {
   const lands = plan.craft[0]?.lands;
   const ship = lands?.ship ?? 'the spacecraft';
   return {
@@ -35,6 +35,7 @@ export function landsOf(plan: FlightPlan): { ship: string; Ship: string; on: Lan
     Ship: `${ship[0]!.toUpperCase()}${ship.slice(1)}`,
     on: lands?.on ?? null,
     surface: lands?.on === 'sea' ? 'the sea' : lands?.on === 'land' ? 'the ground' : 'the surface',
+    sank: lands?.sank ?? null,
   };
 }
 

@@ -527,7 +527,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       Math.abs(sank.from - down) > 1e-6 ||
       !Number.isFinite(sank.under) ||
       !sank.hatch ||
-      !/lost with its hatch blown/.test(r.card)
+      !/filled and sank, its hatch gone/.test(r.card) // (Liberty Bell 7's own words: its lands `sank`)
     )
       fail(where, `Liberty Bell 7's hatch blown in flight: down ${down}, afloat ${JSON.stringify(sank)}, card "${r.card.slice(0, 80)}"`);
     else

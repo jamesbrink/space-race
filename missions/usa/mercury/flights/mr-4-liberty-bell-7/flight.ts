@@ -1230,7 +1230,8 @@ export const DAY: Day = {
     'a July morning at the Cape, 25.5 C at the Skid Strip at 07:00 (weather.ts): what the shield and skin stood at on the pad is not in anything read',
   ),
   // (it came down in the Atlantic, the pilot in the capsule: README)
-  lands: { on: 'sea', ship: 'the capsule' },
+  // (and with its hatch gone the sea came in and it went down, as Liberty Bell 7 did: README, "The end of the flight")
+  lands: { on: 'sea', ship: 'the capsule', sank: 'then it filled and sank, its hatch gone' },
   stack: {
     booster: 'MR-8',
     boosterDry: 8195,

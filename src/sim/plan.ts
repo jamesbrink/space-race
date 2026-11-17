@@ -89,6 +89,12 @@ export interface Lands {
   on: 'land' | 'sea';
   /** What came down with the crew in it, as a sentence names it: 'the descent module', 'the capsule', 'the spacecraft'. */
   ship: string;
+  /**
+   * What the card's heading goes on to say when it went down after it was afloat (sim/afloat.ts: the run afloat's top
+   * went under), in the flight's own words, after a semicolon: Liberty Bell 7's 'it sank, its hatch blown'. Left out, it
+   * says nothing more.
+   */
+  sank?: string;
 }
 
 /** One piece of a craft that can part from the rest: a stage, a tower, a fairing, a retropack, a descent module, a seat. */

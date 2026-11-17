@@ -974,10 +974,12 @@ export class Cockpit extends Deck {
     const hatch = this.flight.flies?.hatch;
     const aloft = hatch && this.hatchAt < (this.state?.landing?.t ?? Infinity) ? [hatch.aloft] : [];
     const sank = Number.isFinite(this.run.afloat?.under ?? Infinity);
+    // (what the flight's own words say of its going down, after it was afloat: Craft.lands `sank`)
+    const sunk = landsOf(this.flight.plan!).sank;
     const blown = !hatch || this.hatchAt === Infinity ? [] : sank ? [...aloft, hatch.afloat, hatch.record] : aloft;
     const kept = hatch && this.hatchAt === Infinity ? [`The hatch stayed on. ${hatch.record}`] : [];
     el.innerHTML = `
-      <h3>${end.how}${sank ? '; lost with its hatch blown' : ''}</h3>
+      <h3>${end.how}${sank && sunk ? `; ${sunk}` : ''}</h3>
       ${[...lost, ...end.why, ...blown].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
       ${kept.map((w) => `<p class="cockpit-fell">${w}</p>`).join('')}
       ${fell.length ? `<p class="cockpit-fell">${fell.join(' ')}</p>` : ''}
