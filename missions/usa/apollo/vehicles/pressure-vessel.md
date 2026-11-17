@@ -98,6 +98,16 @@ manufactured clear-opening diameter. A ray check asserts the bulkhead leaves the
 entry open. Roof and reveal are shell surfaces, opened by the normal quadrant
 cutaway. Neither a pressure-wall thickness nor the full tunnel contour is inferred.
 
+## Common survey datum
+
+The nominal pressure-wall and bulkhead stations are the published ones. Common
+survey interfaces use `cm_reference.py`: their fitted outer aft apex is mapped to
+**Xc −1.30 in**, the nominal station in NASA TN D-3888, Figure 2, p. 27, and not to
+Xc zero, which is the heat-shield facesheet. The same conversion is used by the
+thermal shell, hatch and console, and the reveals between survey interfaces and the
+published-coordinate wall are built from those references. This remains
+an assumed common datum; it is not an as-built pressure-wall or ablator inspection.
+
 ## Simplifications and things still wrong
 
 - The wall is a two-sided reference surface. Varying honeycomb thickness, face
@@ -112,13 +122,3 @@ cutaway. Neither a pressure-wall thickness nor the full tunnel contour is inferr
 - The pressure-boundary mesh carries no fittings. Separate cabin parts supply the door, glazing, couches, controls and equipment.
 - No Apollo 11 equipment, couch pose, photographic texture or post-entry damage
   is copied into Apollo 7.
-
-## Common survey datum
-
-The nominal pressure-wall and bulkhead stations are unchanged. Common survey
-interfaces now use `cm_reference.py`: their fitted outer aft apex is mapped to
-**Xc −1.30 in**, the nominal station in NASA TN D-3888, Figure 2, p. 27, rather
-than incorrectly treating that outer surface as Xc zero. The same conversion is
-used by the thermal shell, hatch and console. The reveals between survey interfaces
-and the published-coordinate wall are rebuilt from those references. This remains
-an assumed common datum; it is not an as-built pressure-wall or ablator inspection.

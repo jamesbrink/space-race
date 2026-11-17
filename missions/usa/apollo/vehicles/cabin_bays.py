@@ -3,6 +3,7 @@
 The Apollo 7 press kit identifies the flown optical instruments. The bay
 layout follows the illustrated cabinet faces. Individual CM-101 panel and
 bracket dimensions, viewing positions, and finishes are estimated.
+See cabin-fittings.md.
 """
 
 from mathutils import Matrix, Vector

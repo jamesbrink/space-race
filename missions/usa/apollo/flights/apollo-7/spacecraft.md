@@ -42,16 +42,16 @@ Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 **assumed shared Block II hardware**, with provenance and limitations in
 [the survey record](../../vehicles/reference/README.md). Their reveals are derived
 projections between the survey and nominal skin. The separately delineated curved
-hatch cover now has an outer window reference sectioned from Smithsonian's measured
+hatch cover has an outer window reference sectioned from Smithsonian's measured
 detached CM-107 hatch. Its pose and connection to the nominal cone are derived,
 with residuals recorded. The separate door and glazing follow the construction described below.
-The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
+The SM has four external RCS quads of four chambers, with hollow nozzle bells.
 The detailed RCS reference follows CSM-101's preflight Table 1.3 in R-547 volume
 III. The hatch is on the −Z side in the press kit's p. 25d axis diagram. In the
 Blender basis (-Zc, Yc, Xc), the quad references are at azimuths −7.25°, 82.75°,
-172.75° and 262.75°, radius 83.56 in and XA958.905. The press kit's broad ±Y/±Z
-description was incorrectly read as exact cardinal placement in an earlier
-revision. The later Block II handbook independently specifies the 7°15′ offset.
+172.75° and 262.75°, radius 83.56 in and XA 958.905. The press kit's broad ±Y/±Z
+description does not place them exactly; the later Block II handbook independently
+specifies the 7°15′ offset.
 Nozzle axes include the table's 10° outward cant; its unclocked vector basis is
 rotated with each quad. See [reaction-control.md](../../vehicles/reaction-control.md)
 for the sign convention and remaining limitations. The nominal reference does
@@ -63,11 +63,11 @@ identifies four sector panels and four RCS panels. The radiator areas and remain
 
 ## Cabin and recovery compartment
 
-NAR’s *Apollo News Reference*, pp. 45–49, shows the outward-opening side hatch, round pressure window, combined forward hatch and the positions of the equipment bays relative to the couches. The reconstructed pressure door follows the registered fixed aperture at its perimeter. The door face, fifteen latch housings, exposed linkage and pump handle follow the earlier unified-hatch arrangement in JPL TM 33-425, figure 2. Their mountings and sections are estimated. The representation omits the later lightweight inner-door pockets, door seals, counterbalance details and hatch operation.
-
-The three stacked glass panes in each window use type-specific thicknesses. [Window sources and estimated installation geometry](../../vehicles/windows.md). The lower equipment bay contains simplified optical eyepieces. Left and right cabinet faces, catches, compartments and colours follow the arrangement in the News Reference equipment-bay illustrations, pp. 51–55. Cabinet sizes and door divisions are estimated. The panel, [unpowered DSKY](../../vehicles/dsky-front.md), [flight-director instruments](../../vehicles/fdai.md) and [unitized couches](../../vehicles/unitized-couch.md) have separate hardware records.
-
-The forward tunnel joins the common measured entry to the nominal 30-inch forward hatch. Its 108-inch top station, wall section and six-latch detail are estimates. The Apollo 7 press kit describes the two 16.5-ft drogues, three pilots and three 83.3-ft main parachutes. The three stowed main packs occupy separate sectors around the tunnel, with deployment webbing and five canisters. Their outlines and positions follow North American’s Earth Landing illustration P-131, printed p. 93; individual CM-101 pack dimensions were unavailable. No docking probe is installed.
+The CSM is put together by [apollo_csm.py](../../vehicles/apollo-csm.md). The hatch, the equipment bays and the forward
+compartment with its parachutes are [cabin fittings](../../vehicles/cabin-fittings.md); the three-pane
+[windows](../../vehicles/windows.md), the main console, the [unpowered DSKY](../../vehicles/dsky-front.md), the
+[flight-director instruments](../../vehicles/fdai.md) and the [unitized couches](../../vehicles/unitized-couch.md) each
+have their own record.
 
 ## Service and launch vehicles
 
@@ -77,4 +77,9 @@ The 1.75-inch honeycomb adapter comes from the Apollo 7 press kit, p. 26. The No
 
 ## Simplifications
 
-The model omits individual stowage items, suits, wiring harnesses, fine thermal tape, large portions of the aft equipment bay, detailed CM reaction-control ports, umbilicals and parachute deployment. Switches, instrument settings, bay fittings and some nozzle contours are schematic. Eye positions and lighting are exhibit estimates. No masses, motor dynamics or simulation inputs derive from the visual estimates.
+- Left out: individual stowage, suits, wiring harnesses, fine thermal tape, most of the aft equipment bay, the command
+  module's reaction-control ports, umbilicals and parachute deployment.
+- Switches, instrument settings, bay fittings and the H-1, R-4D and escape-motor nozzle contours are schematic
+  ([apollo-csm.md](../../vehicles/apollo-csm.md)).
+- The gallery's eye positions and cabin lighting are estimates.
+- No mass, motor or simulation input is taken from any of the visual estimates.

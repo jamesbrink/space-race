@@ -2,7 +2,7 @@
 
 JPL TM 33-425, 'The Apollo Command Module Side Access Hatch', fig. 2, shows
 the latch drive, pump handle, pressure valve and rods. Model only their visible
-exteriors. No later lightweight pocket pattern is used.
+exteriors. No later lightweight pocket pattern is used. See cabin-fittings.md.
 """
 
 import json

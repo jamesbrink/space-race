@@ -1,4 +1,4 @@
-"""CM forward compartment. Installed equipment envelopes estimated from NAR P-131."""
+"""CM forward compartment. Installed equipment envelopes estimated from NAR P-131. See cabin-fittings.md."""
 
 import json
 import math

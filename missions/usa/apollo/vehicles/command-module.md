@@ -38,6 +38,23 @@ hatch, with explicitly derived registration and projection. Surface normals on t
 are calculated from its analytical profile so narrow triangles round the openings
 do not create false wrinkles in the metal.
 
+## Apollo datum and outer apex
+
+NASA TN D-3888, Figure 2, printed p. 27, dimensions the outer aft apex **1.30 in
+below Xc zero**. NAA's 1966 structures training, p. 1-13, defines zero at the
+heat-shield outer facesheet, excluding ablator; the two are different references.
+`cm_reference.AFT_APEX_XC = −1.30` locates both
+the nominal spherical/shoulder/conical profile and every common survey outline
+in the Apollo frame. Published heat-shield joint and forward stations stay in
+that frame. The CM/SM fairing's connection is calculated from that profile; it is a
+derived closure.
+
+The nominal station is **assumed common for CM-101**, not a measurement of either
+flight's manufactured ablator or of CM-107's remaining post-entry material.
+TN D-3888's earlier upper-apex arrangement, parachutes, equipment and loading are
+not adopted. It does not resolve the forward-top-station conflict below or establish absolute
+survey accuracy.
+
 ## Simplifications and things still wrong
 
 - Heat-shield joint and top stations use a common Block II reference, not an
@@ -47,30 +64,9 @@ do not create false wrinkles in the metal.
 - The window reveals are derived interpolations; the [glazing](windows.md) has estimated installation depths. Detailed retainers and seals remain unbuilt.
 - The registered hatch cover encloses a separate estimated pressure door and latch mechanism. The tunnel, recovery packs and seated cabin have separate geometry. Detailed hinges, thermal tape, fasteners and pressure seals are omitted. [Cabin and recovery hardware](../flights/apollo-7/spacecraft.md).
 - No Apollo 11 photographs, surface damage, labels or equipment are copied.
-
-## Top-station source conflict
-
-NASA TN D-7780 (1974), Figure 17, labels the forward heat-shield top Xc 104.5 in.
-The model retains Xc 112.25 in from the explicitly Block II ST-428A plate (1969),
-also shown in NASA's *A History of the Apollo Thermal Protection System*,
-NTRS 20070025192 (2007), Figure 1, p. 3, credited to Erb et al. (1970).
-The latter corroborates the selected thermal reference, but does not explain the
-104.5-inch label. That discrepancy remains unresolved; no claim is made that
-these are proven equivalent structural and thermal datums.
-
-## Apollo datum and outer apex
-
-NASA TN D-3888, Figure 2, printed p. 27, dimensions the outer aft apex **1.30 in
-below Xc zero**. NAA's 1966 structures training, p. 1-13, defines zero at the
-heat-shield outer facesheet, excluding ablator. The former apex-at-zero model
-mixed those two references. `cm_reference.AFT_APEX_XC = −1.30` now locates both
-the nominal spherical/shoulder/conical profile and every common survey outline
-in the Apollo frame. Published heat-shield joint and forward stations stay in
-that frame. The CM/SM fairing's connection is recalculated from the corrected
-profile; it is still a derived closure.
-
-The nominal station is **assumed common for CM-101**, not a measurement of either
-flight's manufactured ablator or of CM-107's remaining post-entry material.
-TN D-3888's earlier upper-apex arrangement, parachutes, equipment and loading are
-not adopted. The correction does not resolve the separate forward-top-station
-conflict or establish absolute survey accuracy.
+- **The forward heat shield's top station is in conflict between sources, and unresolved.** NASA TN D-7780
+  (1974), Figure 17, labels it Xc 104.5 in; the model keeps Xc 112.25 in from the explicitly Block II
+  ST-428A plate (1969), also shown in NASA's *A History of the Apollo Thermal Protection System*, NTRS
+  20070025192 (2007), Figure 1, p. 3, credited to Erb et al. (1970). That corroborates the thermal reference
+  chosen but does not explain the 104.5-inch label; no claim is made that the two are equivalent structural
+  and thermal datums.

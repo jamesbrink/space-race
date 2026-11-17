@@ -4,7 +4,7 @@ NASA Apollo 7 press kit (68-168K), pp. 25–27 and Figures 25b/25d.
 SM stations use the CSM-101 preflight reference; fittings remain provisional.
 command_module.py supplies the nominal lower CM profile and shared measured apertures.
 Cabin structure is separate from its unfinished equipment; no docking probe or
-lunar high-gain antenna is invented.
+lunar high-gain antenna is invented. See apollo-csm.md.
 """
 
 import math

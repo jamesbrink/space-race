@@ -2,7 +2,7 @@
 
 Source units: centimetres for the exterior survey, metres for the detached
 Block II hatch scan. No Apollo 11 lightweight pressure-door pockets
-are used for the earlier CM-101 hatch (NASA TN D-7780, p.12).
+are used for the earlier CM-101 hatch (NASA TN D-7780, p.12). See cabin-fittings.md.
 """
 
 import json

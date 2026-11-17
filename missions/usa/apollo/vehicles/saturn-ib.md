@@ -330,6 +330,10 @@ S68-29781 `5cdf66573dc36ecd18e8a23cad2a49ed69ce949a78b48af99e259a1aeaa468db`.
 
 ## Simplifications and remaining omissions
 
+- The S-IB outer tanks' pitch radius, 93 in, is estimated (`SIB_TANK_PITCH_RADIUS`): no drawing read gives it, so the
+  cluster's spacing, the paint fields on the fuel tanks and the helium spheres placed on that circle are estimated with it.
+- The H-1 bells' shape between the mount and the published exit is the generic one every small nozzle shares
+  ([apollo-csm.md](apollo-csm.md)); the J-2's contour is its own.
 - S-IB baffle sections, tank weld stations, fin wedge sections, engine contours, piping and spider-beam sections are approximate. The tail frame omits individual brackets, access openings and firewall panels. Flame shields, exhaust aspirators, sump manifolds and hold-downs remain incomplete.
 - S-IVB domes and rings omit the honeycomb sandwich detail, internal pockets, structural welds, A-frame joints, bosses and most feed and vent plumbing. The APS housings and skirt paint remain exterior studies. Ullage and retro motors, separation fittings and tunnel fairings remain unfinished.
 - IU electronics have simplified cases and platform envelope. Connectors, individual fasteners, access fittings, cable bundles, antennas and internal circuit boards remain unmodelled.
