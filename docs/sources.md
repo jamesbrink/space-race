@@ -1262,6 +1262,7 @@ the page.
 | *Gemini Program Mission Report, Gemini IX-A* (entry above), read again for the launch site | as above | "the crew ingressed at T-115 minutes" (7.1.2.1); the count's zero, "the nominal 13:39:30 G.m.t.", the lanyards' new lengths working (5.2.10.3); the update not received at T-3 and the backup plan (4.1); the scrubs of 17 May and 1 June; **the suits**, the pilot's legs covered against the unit's exhaust (3.1.2.12.2); **the launch weather** on 1 and 3 June (12.2, p. 12-13) | The length of the hold at T-3 is not given |
 | NASA release 66-97, the Gemini 9 press kit (entry above), read again | as above | The count (pp. 6 and 7), the same as Gemini 8's with a built-in hold at T-3; **"Gemini 9 Suits"** (pp. 24 to 26): the pilot's leg cover "beginning at the groin line"; no stature for Cernan in his biography | |
 | NASA photographs of 1966: **S66-32149** (Stafford and Cernan on the ramp at pad 19, 3 June, Cernan's legs grey), S66-31019 (May: the Gemini 9 suit for going outside, its legs of Chromel-R), S66-34065 (the hatches about to be closed), S66-34098 (the liftoff) | images.nasa.gov | **The G4C as worn on Gemini 9A** (crew/g4c-suit.md) | |
+| NOAA NCEI Integrated Surface Database, 1966: station 74794012868, 3 June | [noaa-global-hourly-pds](https://noaa-global-hourly-pds.s3.amazonaws.com/1966/74794012868.csv) (fetched 17 November 2026) | The hours either side of the liftoff, beside the report's own: scattered, one okta of cumulus at 1,050 m at 12:00 UTC, 80° at 8.2 m/s at 14:00 | |
 
 Known, not read:
 

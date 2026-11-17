@@ -180,6 +180,26 @@ are held to these figures by `tests/world.test.mjs`.
 | Jupiter | 73.1° | 18.7° | |
 | Saturn | 209.5° | 55.3° | |
 
+## The weather
+
+**The mission report's** (MSC-G-R-66-6, 12.2, p. 12-13), "at 8:40 a.m. e.s.t.": "Scattered clouds,
+3500 feet; stratocumulus, 2/10 covered; haze aloft", the wind 080° at 16 knots, visibility 10 miles,
+30.23 in. Hg, 77 °F with a dew point of 58 °F, 52 per cent humidity. On 1 June it had been cloudier,
+four layers up to an overcast at 20,000 ft and 7 miles.
+
+**At the Cape, as recorded** (the Skid Strip, NOAA's Integrated Surface Database, station
+747940-12868):
+
+| UTC (EST) | Wind | Air | Dew point | Sea-level pressure | Visibility | Sky |
+| --- | --- | --- | --- | --- | --- | --- |
+| 12:00 (7 a.m.) | 90° at 5.1 m/s | 23.9 °C | 15.5 °C | 1023.0 hPa | 16 km | scattered: 1/8 cumulus at 1,050 m |
+| 13:00 (8 a.m.) | 90° at 7.2 m/s | 23.9 °C | 15.5 °C | 1023.7 hPa | 16 km | scattered |
+| 14:00 (9 a.m.) | 80° at 8.2 m/s | 25.0 °C | 14.4 °C | 1024.4 hPa | 16 km | scattered |
+
+`documented`, the classes read as Gemini-Titan 3's README says. `weather.ts` is written from the
+report's (two tenths of low heaps at 1,070 m, the wind 80° at 8.2 m/s, haze reaching above them),
+each with its confidence; the air aloft is ERA5's (`aloft.ts`).
+
 ## What is not built
 
 - **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of

@@ -28,6 +28,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 import {
   ATDA,
   ATDA_TARGET,
@@ -639,6 +640,7 @@ export const flight: Flight = {
   launch: '1966-06-03T13:39:33.335Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['Thomas P. Stafford', 'Eugene A. Cernan'],
   summary:
     'Flown by the backup crew after Elliot See and Charles Bassett were killed, to a stand-in target after the ' +
