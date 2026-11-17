@@ -19,6 +19,9 @@ is converted once with `IN`. `flight.ts` quotes the same dimensions with confide
 | Interstage span in this reconstruction | 224.6 in | derived: rounded STA1187 minus rounded S-IB top962.4; not an as-built measurement |
 | H-1 nozzle exit inside diameter | 46 in | documented nominal, 1968 Saturn IB News Reference, H-1 fact sheet (PDF p. 45) |
 | J-2 nozzle exit inside diameter | 77 in | documented nominal, same reference, J-2 fact sheet (PDF p. 69) |
+| H-1 gimbal plane | vehicle STA100 in | documented nominal, MSFC *Saturn IB Mission Plan and Technical Information Checklist*, revision 18 (1 August 1968), Figure 1, p. 6-3 |
+| Inboard H-1 mounting radius / outward cant | 32 in / 3° | documented nominal, same checklist, p. 4-8 |
+| Outboard H-1 mounting radius / outward cant | 95 in / 6° | documented nominal, same checklist, p. 4-8 |
 | IU height / diameter | 36 / 260 in | documented, p. 33 |
 | Spacecraft adapter length | 28 ft | documented, p. 26 |
 | Adapter aft / forward diameter | 260 / 154 in | documented, p. 26 |
@@ -43,8 +46,9 @@ of the hardware’s departure. No simulator or launch site is provided.
 
 ## Simplifications and things still wrong
 
-- Fin profiles, nozzle contours, tank domes, pitch radii and structural stations other than
-  the cited separation plane are estimated.
+- Fin profiles, nozzle contours, tank domes, tank pitch radii and structural stations other than
+  the cited separation and H-1 gimbal planes are estimated. The H-1 mounting radii and cants
+  are documented nominal references; that does not validate the engine contours or axial extents.
 - No tank interior, common bulkhead, detailed feed pipes, turbopumps, H-1 exhaust ducts,
   ullage rockets, vents, detailed APS engines, hold-downs or separation mechanisms.
 - Stiffener count and size are estimated. Paint boundaries and lettering locations are estimated
@@ -78,6 +82,59 @@ This verifies the tank colour assignment, not colourimetry, an exact paint-edge
 survey, tank end stations, or absolute clocking relative to the spacecraft.
 Those geometric and marking limitations above remain. No Skylab engine thrust
 rating or late-vehicle configuration is silently applied to SA-205.
+
+## Period H-1 mounting correction
+
+The MSFC *Saturn IB Mission Plan and Technical Information Checklist*, revision 18,
+**1 August 1968**, p. 4-8 (PDF p. 33), specifies four inboard engines on a **32-inch
+radius**, canted **3° outward**, and four outboard engines on a **95-inch radius**,
+canted **6° outward**. Figure 1, printed p. 6-3 (PDF p. 167), labels the engine gimbal
+plane **vehicle STA100**. These radii belong at the **gimbals**, not at the nozzle exits.
+The upward engine axes point inward; exhaust points outward. Figure 25, p. 6-28
+(PDF p. 192), places the inboards on vehicle positions I–IV / odd fin lines, and
+the outboards on even fin lines, with 45° between adjacent fin lines. The model
+now follows that relative arrangement. Its absolute clocking relative to the CSM
+and pad remains unverified. No later Skylab engine rating is used.
+
+Each engine has its own gimbal frame, and both the existing bell and chamber
+inherit that frame. This replaces the initial vertical engines placed at guessed
+43/91-inch radii. The previous contour is retained **as a provisional study**:
+its local axial coordinates are rebased by subtracting 100 inches from the old
+Z0..108 coordinates. The resulting exit-to-gimbal distance is **not** a new
+documented measurement. Do not use these engine shapes for physics or infer a
+nozzle length from the published overall engine length. No unknown mounting
+hardware is filled in. The production GLBs at all three levels are checked for
+the gimbal positions, inherited bell axes, cant directions and relative clocking.
+
+The inherited bell contour's tilted lower rim now extends below the vehicle
+station-zero plane. The published rounded 224-foot stack height is a reference,
+not proof that this unfinished contour reproduces the actual engine envelope.
+
+## Fin reconstruction source gate
+
+NASA TP-3615, *Review of Our National Heritage of Launch Vehicles Using Aerodynamic
+Surfaces and Current Use of These by Other Nations* (C. Barret, April 1996), Figure 39,
+printed p. 45, reproduces MSFC *Saturn IB Air Load Manual* sheet 1.9201, revision 0,
+**3 February 1964**. It dimensions a 110-inch fin span, 100/40-inch root/tip chords,
+root leading/trailing stations 211.369/111.369, tip leading/trailing stations
+approximately 101.37/61.369, and maximum root/tip thicknesses 17.496/6.446 inches. The
+tip leading-station label appears to read 101.367, whereas the annotated 40-inch chord
+and STA61.369 give 101.369; neither interpretation is adopted here. Its main
+trapezoid area is independently 53.472222 square feet, agreeing with the annotated
+53.472; the shaded root foot is excluded. The sketch shows a blunt trailing edge
+without dimensioning its residual thickness. Its Section C / Table 1, p. 44,
+uses rounded redesign characteristics that do not supersede those dimensions.
+
+**Not yet adopted as SA-205 fin geometry.** The actual radial mounting datum and
+complete airfoil/heat-shield section still need verification. The period checklist's
+Figure 5, p. 6-7 (PDF p. 171), explicitly covers SA-203 and subsequent, but its
+STA100 leader identifies the **engine gimbal**, not an independent measurement of
+the fin tip. The STA58 hold-down facility datum and STA54 reference likewise must
+not be relabelled as fin vertices by their appearance in that schematic. No numerical
+fin-source conflict is established by those leaders. Do not scale either drawing,
+silently combine unrelated station labels, or invent the trailing-edge thickness.
+The current fin **profile remains provisional**, although its relative clocking was
+corrected above.
 
 ## Mission separation plane and engine exits
 

@@ -10,6 +10,38 @@ import { faults } from '../src/world/sequence.ts';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIDENCE = ['documented', 'assumed', 'derived', 'estimated'];
 
+// Period nominal mounting references, independently checked in every exported LOD.
+// A nozzle-exit radius substituted for a gimbal radius, or a reversed cant, can
+// look plausible while putting the thrust axis on the wrong side of the vehicle.
+for (const suffix of ['', '.lod1', '.lod2']) {
+  test(`Apollo 7 H-1 gimbals and thrust axes match the August 1968 checklist${suffix}`, () => {
+    const file = join(root, `public/models/usa/apollo/apollo-7/vehicle${suffix}.glb`);
+    const frames = framesOf(file);
+    const inch = 0.0254;
+    const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} differs from ${b}`);
+    for (let i = 0; i < 8; i++) {
+      const radius = (i < 4 ? 32 : 95) * inch;
+      const angle = (((i % 4) * 90 + (i < 4 ? 0 : 45)) * Math.PI) / 180;
+      const cant = ((i < 4 ? 3 : 6) * Math.PI) / 180;
+      const mount = `H1_Mount_${i}`;
+      const gimbal = frames.point(mount);
+      assert.ok(gimbal, `missing ${mount}`);
+      close(gimbal[0], radius * Math.cos(angle));
+      close(gimbal[1], 100 * inch);
+      close(gimbal[2], -radius * Math.sin(angle));
+      const up = frames.point(mount, [0, 1, 0]).map((v, k) => v - gimbal[k]);
+      close(up[0], -Math.sin(cant) * Math.cos(angle));
+      close(up[1], Math.cos(cant));
+      close(up[2], Math.sin(cant) * Math.sin(angle));
+      // Check the actual bell inherits the mount, rather than testing only an empty.
+      const bellUp = frames.point(`H1_Bell_${i}`, [0, 1, 0]).map((v, k) => v - frames.point(`H1_Bell_${i}`)[k]);
+      up.forEach((v, k) => close(bellUp[k], v));
+      const exit = frames.point(`H1_Bell_${i}`);
+      assert.ok(Math.hypot(exit[0], exit[2]) > radius, 'exhaust points outboard of the gimbal');
+    }
+  });
+}
+
 /** The names of a GLB's top-level nodes, read from its JSON chunk (no geometry is decoded). */
 function topLevelNodes(file) {
   const glb = readFileSync(file);

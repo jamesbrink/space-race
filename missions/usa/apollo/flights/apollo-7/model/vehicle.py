@@ -18,7 +18,10 @@ def build():
     saturn_ib.build()
     apollo_csm.build(saturn_ib.CSM_OFFSET)
     launch_escape.build()
-    return f"SA-205: {saturn_ib.HEIGHT * IN:.4f} m high (224 ft), {2 * saturn_ib.RADIUS * IN:.4f} m upper-stage diameter"
+    return (
+        f"SA-205: nominal Q-ball STA{saturn_ib.HEIGHT} in (224 ft), "
+        f"{2 * saturn_ib.RADIUS * IN:.4f} m upper-stage diameter; engine contours provisional"
+    )
 
 
 run(

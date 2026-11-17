@@ -10,7 +10,7 @@ import math
 from mathutils import Matrix
 
 from apollo_csm import BELL_RIM, SM_BOTTOM, bell, radial, tube
-from srlib import IN, TAU, MeshBuilder, group, lathe_obj, load_font, material, prof, text_mesh
+from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, load_font, material, prof, text_mesh
 
 SIB_TOP = 80.2 * 12
 SIVB_TOP = SIB_TOP + 58.4 * 12
@@ -26,6 +26,14 @@ INTERSTAGE_TOP = 1187.0
 # (PDF pp.45/69): these dimensions are explicitly INSIDE exit diameters.
 H1_EXIT_INNER_RADIUS = (3 * 12 + 10) / 2
 J2_EXIT_INNER_RADIUS = (6 * 12 + 5) / 2
+# MSFC Saturn IB Mission Plan and Technical Information Checklist, revision 18
+# (1 August 1968), p.4-8 and Figure 1, p.6-3. These are gimbal-centre radii,
+# NOT nozzle-exit radii. The +Z engine axis points inward toward the nose;
+# its exhaust points outward. Figure 25 places odd fin lines on the vehicle
+# positions and even lines on the outboard engines. Absolute CSM clocking is pending.
+H1_GIMBAL_STATION = 100
+H1_INBOARD_RADIUS, H1_INBOARD_CANT = 32, 3
+H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT = 95, 6
 
 
 def cylinder(name, radius, lo, hi, mat, parent):
@@ -101,7 +109,7 @@ def build():
     cylinder("SIB_ForwardRing", 130, SIB_TOP - 38, SIB_TOP, white, sib)
     # Eight substantial swept fins, each a closed wedge, not a flat card.
     for i in range(8):
-        a = TAU * (i + 0.5) / 8
+        a = TAU * i / 8
         verts = []
         shape = [(124, 170), (202, 65), (202, 35), (124, 70)]
         for side in (-1, 1):
@@ -113,9 +121,15 @@ def build():
         mesh.build(f"SIB_Fin_{i}", black if i % 2 else white, sib, smooth=False)
     for i in range(8):
         a = TAU * (i % 4) / 4 + (math.pi / 4 if i >= 4 else 0)
-        r = 43 if i < 4 else 91
-        bell(f"H1_Bell_{i}", radial(r, a, 0), (0, 0, 1), 70, H1_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["FirstStageEngines"])
-        tube(f"H1_Chamber_{i}", radial(r, a, 64), radial(r, a, 108), 8, steel, groups["FirstStageEngines"])
+        r, cant = (H1_INBOARD_RADIUS, H1_INBOARD_CANT) if i < 4 else (H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT)
+        s, c = math.sin(math.radians(cant)), math.cos(math.radians(cant))
+        mount = group(f"H1_Mount_{i}", groups["FirstStageEngines"])
+        mount.matrix_local = frame(radial(r, a, H1_GIMBAL_STATION), (-s * math.cos(a), -s * math.sin(a), c))
+        # Retain the provisional contour in the engine's own frame. Its old
+        # Z0..108 study becomes -100..8 relative to the documented gimbal.
+        # This corrects the mounting, not the unknown exit/chamber stations.
+        bell(f"H1_Bell_{i}", (0, 0, -100 * IN), (0, 0, 1), 70, H1_EXIT_INNER_RADIUS + BELL_RIM, steel, mount)
+        tube(f"H1_Chamber_{i}", (0, 0, -36 * IN), (0, 0, 8 * IN), 8, steel, mount)
     # S-IVB aft interstage surrounds its single J-2.
     painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
     bell("J2_Bell", radial(0, 0, SIB_TOP + 38), (0, 0, 1), 130, J2_EXIT_INNER_RADIUS + BELL_RIM, steel, groups["SecondStageEngine"])

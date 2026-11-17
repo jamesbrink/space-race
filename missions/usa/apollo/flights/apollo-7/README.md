@@ -18,7 +18,9 @@ No seat control is offered yet.
 
 The launcher now uses the AS-205 flight evaluation's rounded S-IVB separation
 station and the period Saturn IB News Reference's H-1 and J-2 **inside** nozzle
-exit diameters. Bell profiles and mounting coordinates remain provisional;
+exit diameters. The August 1968 Saturn IB checklist now supplies the H-1 gimbal
+plane, mounting radii, outward cants and relative engine/fin clocking. Bell profiles,
+exit and chamber stations, and absolute clocking relative to the CSM remain provisional;
 [the hardware notes](../../vehicles/saturn-ib.md) distinguish each published
 dimension from the inherited display geometry.
 
@@ -39,7 +41,7 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All eighteen parts can be selected and taken apart.
+cover and launch escape system. All twenty parts can be selected and taken apart.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
 The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.

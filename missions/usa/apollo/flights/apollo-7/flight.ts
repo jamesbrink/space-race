@@ -250,7 +250,7 @@ const parts: Part[] = [
     explode: [0, 0, 0],
     summary: 'Nine clustered tanks and eight swept fins.',
     detail:
-      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. Eight solid wedge-shaped fins surround the thrust skirt. Tank end stations, cluster pitch radius, fin outlines, fittings and lettering positions are estimated.',
+      'Eight 70-inch tanks surround a 105-inch central tank; four outer tanks carry fuel, the other four and the centre tank oxygen (press kit p. 32). The stage is 80.2 ft long. Its four fuel tanks are black, alternating with white oxygen tanks. MSFC-MAN-206, p. 4-4, explicitly dates the change to white fuel tanks to SA-206 onward; SA-205 retains the earlier paint. Eight fins surround the thrust skirt. Their lines now coincide with the inboard and outboard engine planes, as in the August 1968 Saturn IB checklist, Figure 25. Tank end stations, cluster pitch radius, fin profiles, fittings, paint boundaries and absolute clocking relative to the spacecraft remain provisional.',
   },
   {
     node: 'FirstStageEngines',
@@ -260,8 +260,13 @@ const parts: Part[] = [
     explode: [0, -4, 0],
     summary: 'Four inboard and four outboard engines under the tank cluster.',
     detail:
-      'Eight H-1 engines burn kerosene and liquid oxygen. Their hollow bells now have the nominal 46-inch inside exit diameter in the Saturn IB News Reference, H-1 Engine Fact Sheet (changed December 1967), which explicitly distinguishes the later SA-206 uprating. The 102-inch published overall engine length is not a nozzle length. Bell contours, positions, chamber dimensions and inherited display rims remain provisional. Gimbal gear, turbopumps, plumbing and exhaust ducts are not built.',
-    facts: [['Nozzle exit', '46 in inside diameter · pre-SA-206 reference']],
+      'Eight H-1 engines burn kerosene and liquid oxygen. The August 1968 Saturn IB checklist, p. 4-8, places the four inboard gimbals on a 32-inch radius with 3° outward cant, and the four outboard gimbals on a 95-inch radius with 6° outward cant. Figure 1 puts the gimbals at vehicle station 100 inches; Figure 25 fixes their relative clocking. The radii apply at the gimbals, not at the nozzle exits. Their hollow bells retain the nominal 46-inch inside exit diameter from the period News Reference. Bell contours, exit and chamber stations, display rims and absolute clocking relative to the spacecraft remain provisional; the 102-inch overall engine length is not a nozzle length. Gimbal hardware, turbopumps, plumbing and exhaust ducts are not built.',
+    facts: [
+      ['Inboard mounting', '32 in radius · 3° outward cant'],
+      ['Outboard mounting', '95 in radius · 6° outward cant'],
+      ['Gimbal plane', 'Vehicle STA 100 in · nominal period reference'],
+      ['Nozzle exit', '46 in inside diameter · pre-SA-206 reference'],
+    ],
   },
 ];
 
@@ -332,6 +337,46 @@ export const flight: Flight = {
       unit: 'm',
       confidence: 'documented',
       note: 'AS-205 flight evaluation, MPR-SAT-FE-68-4, Figure A-1, p. 206: vehicle STA 1187 in, rounded to whole inches; a station from the vehicle datum, not a stage length',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 gimbal station',
+      value: 100 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'MSFC Saturn IB Mission Plan and Technical Information Checklist, revision 18, 1 August 1968, Figure 1, p. 6-3: vehicle STA 100 in. Nominal gimbal datum; individual nozzle and chamber axial stations remain provisional',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 inboard mounting radius',
+      value: 32 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'Same checklist, p. 4-8: four inboard engines, 32 in radius at the gimbals; not nozzle-exit radius',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 outboard mounting radius',
+      value: 95 * IN,
+      unit: 'm',
+      confidence: 'documented',
+      note: 'Same checklist, p. 4-8: four outboard engines, 95 in radius at the gimbals; not nozzle-exit radius',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 inboard outward cant',
+      value: 3,
+      unit: 'deg',
+      confidence: 'documented',
+      note: 'Same checklist, p. 4-8: 3 degrees; the upward engine axis points inward, exhaust outward',
+    },
+    {
+      group: 'Launch vehicle',
+      label: 'H-1 outboard outward cant',
+      value: 6,
+      unit: 'deg',
+      confidence: 'documented',
+      note: 'Same checklist, p. 4-8: 6 degrees. Figure 25, p. 6-28: outboards on even fin lines, inboards on the vehicle positions and odd fin lines; absolute spacecraft clocking unresolved',
     },
     {
       group: 'Launch vehicle',
