@@ -378,7 +378,12 @@ export class Cabin {
     this.flight = flight;
     this.def = model.cabin!;
     this.group = group;
-    this.shading = { lit: { value: 1 }, lamps: { value: sharesOf(model.lights) }, tint: { value: new THREE.Color(1, 1, 1) } };
+    this.shading = {
+      lit: { value: 1 },
+      lamps: { value: sharesOf(model.lights) },
+      tint: { value: new THREE.Color(1, 1, 1) },
+      kept: { value: 1 },
+    };
     // (a floodlight's reflector spreads its light: it falls off with distance, not its square, or what is near it burns)
     for (const light of lights) light.decay = 1;
     this.lights = lights.map((light) => ({
@@ -809,6 +814,8 @@ export class Cabin {
   /** The model has been cut open, or closed again: daylight comes in at the cut, so the inside is shaded less. */
   opened(on: boolean): void {
     for (const m of this.inside) m.aoMapIntensity = shaded(m, on, this.lit.value);
+    // (and the baked shade's hold on the light that comes in, as far as the indoors shading is kept: shade.ts `kept`)
+    this.shading.kept.value = on ? OPENED : 1;
     this.open = on;
     this.host.redraw();
   }

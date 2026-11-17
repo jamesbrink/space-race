@@ -114,7 +114,18 @@ const CASCADED = /* glsl */ `
 				}
 				directLight.color *= lit;
 			}
+			#ifdef CABIN_SHADE
+			// (what the Sun alone gives, kept apart in what shade.ts declares: the baked shade of a cabin is the reach of
+			// its lamps, and leaves the light of the Sun to these maps. Only this loop keeps it apart: with any other count
+			// of maps the shade scales the light of the Sun too)
+			vec3 cabinBeforeDiffuse = reflectedLight.directDiffuse;
+			vec3 cabinBeforeSpecular = reflectedLight.directSpecular;
+			#endif
 			RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );
+			#ifdef CABIN_SHADE
+			cabinSunDiffuse += reflectedLight.directDiffuse - cabinBeforeDiffuse;
+			cabinSunSpecular += reflectedLight.directSpecular - cabinBeforeSpecular;
+			#endif
 			#endif
 		#else
 		${found}
