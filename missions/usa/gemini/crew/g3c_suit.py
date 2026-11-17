@@ -33,8 +33,10 @@ import bpy
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "mercury", "crew"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "mercury", "vehicles"))
 import figurelib as fl  # noqa: E402
 import mark_iv_suit as mk  # noqa: E402  (its Art, its insignia and its strap-laying: tools, not the garment)
+import mercury_capsule as mc  # noqa: E402  (the fifty-star flag the capsules wear: a later suit's patch)
 import srlib  # noqa: E402
 from figurelib import Folds, Rig, Trousers, Tube, band, build_head, build_shell, emit, gauss, grain, group, ring, sides, skin, smooth, squareness  # noqa: E402
 from srlib import CM, TAU, MeshBuilder, arc_profile, frame, material  # noqa: E402
@@ -59,6 +61,24 @@ REST = (10.0, 11.0, 70.0, 26.0, 52.0, 0.15)  # a hand lying on its own thigh
 
 
 @dataclass(frozen=True)
+class Garment:
+    """Which suit it is, where the suits that followed the G3C differ from it in what a model shows (g4c_suit.py): the
+    neck ring's finish (a key of `materials`), whether a flag is sewn on the left upper arm, and how far an outer cover
+    lets the cloth out over the G3C's (centimetres: trunk, arms, legs)."""
+
+    name: str = "G3C"
+    ring: str = "blue"
+    flag: bool = False
+    cover: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    visor_arm: tuple[float, float] = (0.42, 0.5)  # the visor's arm from its pivot to the band: its middle off the shell, its thickness (cm)
+
+
+G3C = Garment()
+FLAG = (8.9, 5.1)  # the flag on the arm: long, tall (g4c_suit.py)
+FLAG_ALONG = 10.6  # its middle, down the arm from the shoulder: above the pocket
+
+
+@dataclass(frozen=True)
 class Wearer:
     """Who is in the suit: his name as lettered on its tag, his stature, his build beside figurelib's man, and where
     each arm is in the seat (`left`, `right`: see REST)."""
@@ -70,6 +90,7 @@ class Wearer:
     left: tuple[float, ...] = REST
     right: tuple[float, ...] = REST
     seated: dict = field(default_factory=dict)  # what of SEATED is his own
+    garment: Garment = G3C
 
 
 # 170.2 cm is 5 ft 7 in, as commonly given for Grissom (no primary record of it was found; the Mercury module uses the
@@ -112,7 +133,8 @@ def up(z: float) -> float:
 def body(who: Wearer) -> fl.Body:
     """The man in his suit: figurelib's man carried to his stature, let out a little by the suit's loose outer layer."""
     size = who.stature / REF.stature
-    b = REF.scaled(stature=who.stature, heel=2.8 * size, breadth=who.breadth, girth=who.girth, bulk=(0.5, 0.4, 0.3))
+    c = who.garment.cover
+    b = REF.scaled(stature=who.stature, heel=2.8 * size, breadth=who.breadth, girth=who.girth, bulk=(0.5 + c[0], 0.4 + c[1], 0.3 + c[2]))
     plain = REF.scaled(stature=who.stature, heel=2.8 * size, breadth=who.breadth, girth=who.girth)
     # where the cloth goes into something it is not let out: the neck into the ring, the cuffs into the gloves
     b.torso[-4:] = plain.torso[-4:]
@@ -144,7 +166,7 @@ def name_tag_image() -> bpy.types.Image:
     """Black cloth with the name embroidered in white. Units are half the tag's length."""
     w, h = NAME_TAG
     name = WEARER.name
-    art = mk.Art(f"g3c-name-tag-{name.split()[-1].lower()}", 512, round(512 * h / w), 1.0, (0.012, 0.012, 0.014))
+    art = mk.Art(f"g3c-name-tag-{name_key()}", 512, round(512 * h / w), 1.0, (0.012, 0.012, 0.014))
     art.text(name, 1.72, (0.0, 0.0), (0.86, 0.86, 0.84), srlib.load_font())
     return art.image()
 
@@ -190,8 +212,15 @@ def materials() -> dict:
         "lace": m("lace-cord-white", (0.72, 0.71, 0.66), 0.0, 0.85),
         "strap": m("webbing-red", (0.20, 0.025, 0.03), 0.0, 0.8),
         "insignia": m("patch-nasa-insignia", (1, 1, 1), 0.0, 0.85, image=mk.insignia_image),
-        "nametag": m(f"name-tag-{WEARER.name.split()[-1].lower()}", (1, 1, 1), 0.0, 0.85, image=name_tag_image),
+        "nametag": m(f"name-tag-{name_key()}", (1, 1, 1), 0.0, 0.85, image=name_tag_image),
+        # the fifty-star flag, the one the capsules wear, embroidered (g4c_suit.py)
+        "flag": m("patch-flag", (1, 1, 1), 0.0, 0.85, image=mc.flag_image) if WEARER.garment.flag else None,
     }
+
+
+def name_key() -> str:
+    """The wearer's surname as it names his tag's picture and material: "J.W. YOUNG" young, "E.H.WHITE II" white."""
+    return [w for w in WEARER.name.replace(".", " ").split() if len(w) > 2][-1].lower()
 
 
 # -------------------------------------------------------------------------- helmet
@@ -279,9 +308,10 @@ def build_helmet(M: dict) -> None:
         at, nm = shell(phi, mid + 1.2), (shell(phi, mid + 1.2, 1.0) - shell(phi, mid + 1.2)).normalized()
         fit.lathe([(2.5, -0.3), (2.5, 0.55), (2.25, 0.8), (1.2, 0.8), (1.2, 1.65), (0.0, 1.65)], 24, matrix=frame(at, nm))
         # the arm from the pivot forward to the band's end
-        a, b = shell(phi, mid + 1.2, 0.42), shell(*edge(math.radians(8 if sx > 0 else 172), 1.14), 0.42)
+        lift, thick = WEARER.garment.visor_arm
+        a, b = shell(phi, mid + 1.2, lift), shell(*edge(math.radians(8 if sx > 0 else 172), 1.14), lift)
         a = a + (b - a).normalized() * 2.75
-        fit.box((0.5, (b - a).length + 1.0, 1.5), mk.axes((a + b) / 2, nm, (b - a).normalized(), nm.cross((b - a).normalized())))
+        fit.box((thick, (b - a).length + 1.0, 1.5), mk.axes((a + b) / 2, nm, (b - a).normalized(), nm.cross((b - a).normalized())))
         # an earphone's pad inside the shell at each ear, and a microphone on its boom before the mouth
         ear = Vector((sx * (B.skull[0] + 1.3), B.head.y + 0.5, B.head.z - 0.5))
         pad.lathe([(3.4, -1.2), (3.4, 0.6), (2.6, 1.1), (0.0, 1.1)], 20, matrix=frame(ear, (-sx, 0, 0)))
@@ -326,7 +356,7 @@ def build_helmet(M: dict) -> None:
     emit(visor, "Helmet_Visor", M["glass"], g)
     emit(bright, "Helmet_VisorBand", M["bright"], g)
     emit(fit, "Helmet_Pivots", M["aluminium"], g, sharp_angle=30)
-    emit(blue, "Helmet_NeckRing", M["blue"], g, sharp_angle=30)
+    emit(blue, "Helmet_NeckRing", M[WEARER.garment.ring], g, sharp_angle=30)
     emit(alu, "Helmet_NeckRingJoint", M["bright"], g, sharp_angle=30)
 
 
@@ -498,10 +528,23 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
         mk._cloth = _cloth
         mk.strap(pocket, keys, 7.2, 0.3, dive=(0.0, 0.0), sink=0.3)
     pocket.share = [_cloth.share_at(v) for v in pocket.verts]
-    for mb in (cloth, pocket):
+    flag = MeshBuilder()
+    if WEARER.garment.flag:
+        # the flag on the left upper arm, above the pocket, its canton forward and up: a patch laid round the arm
+        a, (w, h) = arms[1], FLAG
+        mid = a.toward((1, -0.25, 0), FLAG_ALONG)
+        span = w / (a.at(FLAG_ALONG, mid + 0.05) - a.at(FLAG_ALONG, mid - 0.05)).length * 0.1  # radians round the arm
+        keys = [
+            a.at(FLAG_ALONG, mid + span * (0.5 - k / 4), 0.8 + 2.5 * _STAND) for k in range(5)
+        ]  # (from the back: the picture's canton forward and up)
+        mk.strap(flag, keys, h, 0.3, dive=(0.0, 0.0), sink=0.3, bevel=0.05, picture=True)
+        flag.share = [_cloth.share_at(v) for v in flag.verts]
+    for mb in (cloth, pocket, flag):
         shoulders(mb, mb.share)
     emit(cloth, "Torso_Shell", M["suit"], g, sharp_angle=None)
     emit(pocket, "Torso_ArmPockets", M["suit"], g)
+    if flag.verts:
+        emit(flag, "Torso_Flag", M["flag"], g, sharp_angle=None)
     emit(patch, "Torso_Insignia", M["insignia"], g, sharp_angle=None)
     emit(tag, "Torso_NameTag", M["nametag"], g, sharp_angle=None)
     emit(tape, "Torso_Straps", M["tape"], g, smooth=False)
