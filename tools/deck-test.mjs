@@ -287,9 +287,18 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     });
     const goTo = async (id) => {
       await page.goto(`${url}#${id}/fly`);
-      await page.waitForFunction(() => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active, null, {
-        timeout: 120000,
-      });
+      // (a flight flown by hand is asked about before it is left, and stays until it is: answer Leave, as someone going on
+      // to another flight would; until November 2026 this went unanswered and the next flight's cases were asked of the last)
+      const asked = await page
+        .waitForSelector('.deck-ask [role=alertdialog]', { timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+      if (asked) await page.click('.deck-ask [data-ask=leave]');
+      await page.waitForFunction(
+        (id) => window.sr && window.sr.flight?.id === id && document.querySelector('.loading.done') && window.sr.cockpit.active,
+        id,
+        { timeout: 120000 },
+      );
       await page.waitForTimeout(500);
     };
     // the clock run on to `t` a few seconds a frame, as the deck flies it (it steps no more than five seconds a frame)
