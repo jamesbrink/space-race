@@ -215,10 +215,12 @@ async function at(flight, place, round) {
   }
   if (place === 'site' && round === 0) {
     // the flown vehicle on its pad before liftoff, in the air a hundred seconds up, and hours after the record's run has
-    // ended not in the scene at all (not back on its pad: ascent.ts `gone`); then the clock back at liftoff
+    // ended not in the scene at all (not back on its pad: ascent.ts `gone`); then the clock back at liftoff. A flight with
+    // a site and no flight yet (no plan: Aurora 7's) has no run to be on: it is left out of this
     const where = await page.evaluate(async () => {
       const { clock, stage } = window.sr;
       const show = stage.show;
+      if (!show.ascent) return null;
       const seen = async (t) => {
         clock.seek(t);
         for (let i = 0; i < 100 && show.lifted.t !== clock.t; i++) await new Promise((r) => requestAnimationFrame(r));
@@ -230,12 +232,14 @@ async function at(flight, place, round) {
       clock.seek(0);
       return out;
     });
-    check(where.before.visible && !where.before.flying, `${name}: before liftoff the vehicle stands on its pad`);
-    check(where.during.visible && where.during.flying, `${name}: a hundred seconds up it is flying`);
-    check(
-      !where.after.visible && where.after.gone && !where.after.flying,
-      `${name}: 9.8 hours after the run's end (${where.end.toFixed(0)} s) it is not in the scene`,
-    );
+    if (where) {
+      check(where.before.visible && !where.before.flying, `${name}: before liftoff the vehicle stands on its pad`);
+      check(where.during.visible && where.during.flying, `${name}: a hundred seconds up it is flying`);
+      check(
+        !where.after.visible && where.after.gone && !where.after.flying,
+        `${name}: 9.8 hours after the run's end (${where.end.toFixed(0)} s) it is not in the scene`,
+      );
+    } else console.log(`  ${name}: no flight to fly yet, so no run to be on`);
   }
   if (place === 'fly')
     check(got.setting && got.setting.key === t.key && got.setting.fog === t.fog, `${name}: its place, day and haze are a fresh page's`);
@@ -255,14 +259,24 @@ async function at(flight, place, round) {
 // each flight's title and parts, as the data has them
 const meta = await page.evaluate(async (ids) => {
   const { flights } = await import('/missions/index.ts');
+  const { entrances } = await import('/src/app/address.ts');
   return ids.map((id) => {
     const f = flights.find((x) => x.id === id);
-    return { title: f.callsign, parts: f.models.flatMap((m) => m.parts.map((p) => p.node)), urls: f.models.map((m) => m.url) };
+    return {
+      title: f.callsign,
+      parts: f.models.flatMap((m) => m.parts.map((p) => p.node)),
+      urls: f.models.map((m) => m.url),
+      fly: entrances(f).fly,
+    };
   });
 }, FLIGHTS);
 const flightTitle = Object.fromEntries(FLIGHTS.map((f, i) => [f, meta[i].title]));
 const flightParts = Object.fromEntries(FLIGHTS.map((f, i) => [f, new Set(meta[i].parts)]));
 const flightUrls = Object.fromEntries(FLIGHTS.map((f, i) => [f, new Set(meta[i].urls)]));
+/** Whether a flight can be flown yet: one with a site and no flight (Aurora 7's) is left at its site, where its round ends. */
+const flies = Object.fromEntries(FLIGHTS.map((f, i) => [f, meta[i].fly]));
+/** Where a flight's round leaves it. */
+const last = (f) => (flies[f] ? '/fly' : '/site');
 
 await galleryReady();
 for (let round = 0; round < rounds; round++) {
@@ -275,6 +289,7 @@ for (let round = 0; round < rounds; round++) {
     await go(`#${flight}/site/pad`);
     await siteReady();
     await at(flight, 'site', round);
+    if (!flies[flight]) continue;
     await go(`#${flight}/fly`);
     await page.waitForFunction(() => window.sr.cockpit?.active, null, { timeout: 60_000 }).catch(() => {});
     await at(flight, 'fly', round);
@@ -282,13 +297,13 @@ for (let round = 0; round < rounds; round++) {
 }
 
 // Back and Forward: within the last flight (its deck, its site, its gallery), then across to the flight before (where it
-// was left: its deck), and Forward into the last one's gallery again
+// was left: its deck, or its site if it cannot be flown yet), and Forward into the last one's gallery again
 const flightNow = () => page.evaluate(() => [window.sr.flight.id, location.hash]);
 const arrive = (id) => page.waitForFunction((f) => window.sr?.flight?.id === f, id, { timeout: 120_000 }).catch(() => {});
 for (const [step, id, place, what] of [
-  ['back', B, '/site', `Back from ${B}'s deck: its launch site`],
+  ...(flies[B] ? [['back', B, '/site', `Back from ${B}'s deck: its launch site`]] : []),
   ['back', B, '/gallery', 'Back again: its gallery'],
-  ['back', A, '/fly', `Back again: across to ${A}, where it was left`],
+  ['back', A, last(A), `Back again: across to ${A}, where it was left`],
   ['forward', B, '/gallery', `Forward: ${B}'s gallery again`],
 ]) {
   await (step === 'back' ? page.goBack() : page.goForward());
