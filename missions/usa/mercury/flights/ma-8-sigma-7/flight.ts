@@ -21,6 +21,7 @@ import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/p
 import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const REPORT = 'NASA TN D-4807';
 
@@ -461,6 +462,7 @@ export const flight: Flight = {
   launch: '1962-10-03T12:15:11Z',
   launchSite: LC14.name,
   site: LC14,
+  weather: WEATHER,
   crew: ['Walter M. Schirra, Jr.'],
   summary:
     'The third American in orbit, and the one who made it look easy: six times round in 9 hours 13 minutes, ' +

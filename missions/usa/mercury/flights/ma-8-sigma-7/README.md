@@ -130,9 +130,17 @@ per cent. The report's Figure 9 plots the wind to 60,000 ft. In the landing area
 *Kearsarge* at the recovery: cloud over six tenths (cumulus from 3,000 ft, altocumulus at 14,000),
 wind 11 knots from 110°, waves 3 ft from 090°, visibility 10 miles, the air 78 °F and the water
 80 °F, 30.15 in Hg. Tropical storm Daisy lay 400 miles north-north-east of Puerto Rico, between
-two of the Atlantic landing areas, one of which had been moved 213 nautical miles for it. No
-`weather.ts` is written for this flight yet: its site stands under its place's default sky, which
-is an estimate. These are the figures one would be written from.
+two of the Atlantic landing areas, one of which had been moved 213 nautical miles for it.
+
+What is drawn (`weather.ts`) is the report's sky at launch, with the Cape's station at the Skid Strip, 2 km from the
+pad, a quarter of an hour before (NOAA Integrated Surface Database, station 74794012868), which agrees with it: one
+okta of cumulus at 660 m (the report's base of 2,200 ft), four of cirrostratus above, the wind from 140° at 2.1 m/s,
+the station's 16 km limit. A few fair-weather heaps at 670 m; cirrus at 30,000 ft over a third of the sky (the report's
+five tenths less the low cloud: derived); the wind from 150° at 1 m/s; the stratocumulus on the eastern horizon as a
+stretch of sea 40 to 150 km east, half covered (estimated). Estimated: how far one could see past ten miles (30 km
+taken), the heaps' depth and size, the haze. NASA S62-07872, the liftoff from the ramp, has a blue sky streaked with
+cirrus and cumulus low on the horizon. The air aloft is ERA5's (`aloft.ts`); the report's own plot of the winds to
+60,000 ft (Figure 9) has not been read off.
 
 ## The launch site
 
