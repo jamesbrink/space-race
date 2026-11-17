@@ -122,17 +122,20 @@ def hand_lettering(
     tall: float = 1.0,
     fatten: float = 0.0,
     lift: float = mercury_capsule.PAINT_LIFT,
+    cuts: int = 0,
 ) -> None:
     """Lettering painted on the shingles in its font's own proportions (Skin.lettering stretches capitals to a box):
     `size` inches long (or high, if `upright`), its middle at (theta0, z0), its line climbing `rise` radians to the
     right. `tall` makes the letters that much taller for their width (a narrow hand); `fatten` moves every outline out
-    by that many inches (a brush's weight, or the edge round a letter: the letter fattened, under it)."""
-    plain, faces = text_mesh(body, 1.0, font, cuts=0)
+    by that many inches (a brush's weight, or the edge round a letter: the letter fattened, under it). `cuts`: each
+    edge of the letters' triangles cut that many times, for lettering painted over other paint, which must lie on the
+    curve as that does and not across it in chords."""
+    plain, faces = text_mesh(body, 1.0, font, cuts=cuts)
     xs, ys = [v[0] for v in plain], [v[1] for v in plain]
     k = size / (tall * (max(ys) - min(ys)) if upright else max(xs) - min(xs))
     cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
     if fatten:
-        plain, faces = text_mesh(body, 1.0, font, cuts=0, offset=fatten / k)
+        plain, faces = text_mesh(body, 1.0, font, cuts=cuts, offset=fatten / k)
     c, s = math.cos(rise), math.sin(rise)
     flat = [((x - cx) * k, (y - cy) * k * tall) for x, y, _ in plain]
     skin.paint(mb, [(x * c - y * s, x * s + y * c) for x, y in flat], faces, theta0, z0, lift=lift)

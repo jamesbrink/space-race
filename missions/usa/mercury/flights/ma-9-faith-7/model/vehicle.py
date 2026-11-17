@@ -174,6 +174,7 @@ PATCH_LIFT = mercury_capsule.PAINT_LIFT + 0.03  # how far they stand off the ski
 # lower points at 7.2. A regular star of that height has points 7.6 in from its middle and one of that width 8.6: 7.8.
 STAR = (deg(270), 12.8, 7.8)  # its middle (angle, station) and the radius of its points
 STAR_WAIST = math.sin(math.radians(18)) / math.sin(math.radians(54))  # a regular star's inner corners, as a part of that radius
+STAR_CUTS = 6  # each of its ten triangles cut six times along its sides: pieces about an inch across
 FAITH = (0.2, 8.6, 1.75)  # the word: its middle above the star's (as a part of its radius), its length and its letters' height
 SEVEN = (-0.3, 3.9)  # the 7: its middle below the star's, and its height
 LAYER = 0.07  # from the star's paint to the lettering's, inches: over a millimetre apart
@@ -321,14 +322,39 @@ def build_umbilical_door(M, g, skin: Skin) -> None:
     bpy.data.objects["Umbilical_Well"]["label"], bpy.data.objects["Umbilical_Well"]["about"] = says
 
 
-def star(radius: float) -> tuple[list, list]:
-    """A five-pointed star about its own middle, one point up: its ten corners and its middle, and ten triangles."""
-    verts = [(0.0, 0.0)]
+def star(radius: float, cuts: int = STAR_CUTS) -> tuple[list, list]:
+    """A five-pointed star about its own middle, one point up: ten triangles from its middle to its ten corners, each
+    cut into `cuts` squared smaller ones, so that the paint lies on the cone's curve and not across it in chords (the
+    name painted over it is a few hundredths of an inch off it: a chord a few inches long sinks that far)."""
+    corners = []
     for k in range(10):
         r = radius * (1.0 if k % 2 == 0 else STAR_WAIST)
         a = math.pi / 2 + TAU * k / 10
-        verts.append((r * math.cos(a), r * math.sin(a)))
-    return verts, [(0, 1 + k, 1 + (k + 1) % 10) for k in range(10)]
+        corners.append((r * math.cos(a), r * math.sin(a)))
+    verts, faces, index = [], [], {}
+
+    def at(k: int, i: int, j: int) -> int:
+        """The point i/cuts of the way out along the triangle's first edge and j/cuts along its second: shared on edges."""
+        if i == 0:
+            key = (0, 0, 0)
+        elif j == i:  # (the edge it shares with the next triangle, which has it as j = 0)
+            key = ((k + 1) % 10, i, 0)
+        else:
+            key = (k, i, j)
+        if key not in index:
+            a, b = corners[key[0]], corners[(key[0] + 1) % 10]
+            ii, jj = key[1], key[2]
+            index[key] = len(verts)
+            verts.append(((a[0] * (ii - jj) + b[0] * jj) / cuts, (a[1] * (ii - jj) + b[1] * jj) / cuts))
+        return index[key]
+
+    for k in range(10):
+        for i in range(cuts):
+            for j in range(i + 1):
+                faces.append((at(k, i, j), at(k, i + 1, j), at(k, i + 1, j + 1)))
+                if j < i:
+                    faces.append((at(k, i, j), at(k, i + 1, j + 1), at(k, i, j + 1)))
+    return verts, faces
 
 
 def build_paint(M, g, skin: Skin, font) -> None:
@@ -382,9 +408,9 @@ def build_paint(M, g, skin: Skin, font) -> None:
     plain = text_mesh("FAITH", 1.0, font, cuts=0)[0]
     aspect = (max(v[0] for v in plain) - min(v[0] for v in plain)) / (max(v[1] for v in plain) - min(v[1] for v in plain))
     z_word = sz + up * sr * math.cos(CONE.a)
-    mercury_orbital.hand_lettering(skin, name, "FAITH", length, st, z_word, font, tall=tall * aspect / length, lift=lift + LAYER)
+    mercury_orbital.hand_lettering(skin, name, "FAITH", length, st, z_word, font, tall=tall * aspect / length, lift=lift + LAYER, cuts=2)
     down, high = SEVEN
-    mercury_orbital.hand_lettering(skin, name, "7", high, st, sz + down * sr * math.cos(CONE.a), font, upright=True, lift=lift + LAYER)
+    mercury_orbital.hand_lettering(skin, name, "7", high, st, sz + down * sr * math.cos(CONE.a), font, upright=True, lift=lift + LAYER, cuts=2)
     thing(field, "Afterbody_Star", M["paint_white"], g, *says, smooth=False)
     thing(name, "Afterbody_Name", M["paint_black"], g, *says, smooth=False)
 
