@@ -10,6 +10,8 @@ import type { Going } from '../../types.ts';
  *           way to its end, which the data puts out of sight; there it is gone.
  *   comes   the same walk backward in place: out of sight until `at`, then in from the way's far end, along it and to
  *           its own spot, where it stops and stands as it was built.
+ *   leaves `to` another place: the same as leaves, but from the way's end on to its own spot there (`from` moved by
+ *           `to`), where it stands.
  *
  * It sets off and stops as a body does (`QUICKEN`: walking pace in a quarter of a second, as the walker's body), so the
  * distance gone has no corner in it; its heading is the way's over a stride either side, so a bend is walked round and
@@ -36,9 +38,14 @@ export interface Gone {
   out: boolean;
 }
 
-/** The route one figure walks: from its own spot (`from`) and along the way, metres (x, z) in the model's frame. */
-export function routeOf(going: Pick<Going, 'way'>, from: readonly [number, number]): [number, number][] {
-  return [[from[0], from[1]], ...going.way.map(([x, z]): [number, number] => [x, z])];
+/**
+ * The route one figure walks: from its own spot (`from`) and along the way, metres (x, z) in the model's frame; going
+ * `to` another place, on from the way to its own spot there.
+ */
+export function routeOf(going: Pick<Going, 'way' | 'to'>, from: readonly [number, number]): [number, number][] {
+  const route: [number, number][] = [[from[0], from[1]], ...going.way.map(([x, z]): [number, number] => [x, z])];
+  if (going.to) route.push([from[0] + going.to[0], from[1] + going.to[1]]);
+  return route;
 }
 
 /** A route's length, metres. */
@@ -97,7 +104,8 @@ export function goneAt(going: Going, from: readonly [number, number], t: number,
   // (leaving it is `walked` along the route from its spot; coming it is as far from the way's far end)
   const s = going.kind === 'leaves' ? walked : length - walked;
   const [x, z] = along(route, s);
-  const out = going.kind === 'leaves' ? walked >= length : t <= going.at.value + delay;
+  // (going to another place it is never out of sight: it stands there)
+  const out = going.kind === 'leaves' ? walked >= length && !going.to : t <= going.at.value + delay;
   // (not yet off, or there: standing, as built, or out of sight)
   if (walked <= 0 || walked >= length) return { x, z, heading: null, walked, pace: 0, out };
   // the heading: the way over half a stride either side, so that a corner is walked round

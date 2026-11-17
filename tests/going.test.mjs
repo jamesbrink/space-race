@@ -81,6 +81,19 @@ test('a figure that comes is out of sight until it sets off, comes in from the w
   );
 });
 
+test('a group that walks to another place is never out of sight: each ends where it stood moved by `to`, and stands there', () => {
+  const TO = { ...OFF, way: [[-10, 0]], to: [20, -5] };
+  const route = routeOf(TO, FROM);
+  assert.deepEqual(route[route.length - 1], [FROM[0] + 20, FROM[1] - 5], 'its own spot there');
+  const end = endOf(TO, FROM);
+  for (const t of [end, end + 1, end + 600]) {
+    const there = goneAt(TO, FROM, t);
+    assert.deepEqual([there.x, there.z, there.out, there.heading, there.pace], [22, -2, false, null, 0], `standing there at ${t}`);
+  }
+  const half = goneAt(TO, FROM, (100 + end) / 2);
+  assert.ok(!half.out && half.heading !== null, 'walking on the way');
+});
+
 test('a walk too short to reach its pace is walked at what it can, and still arrives at rest', () => {
   const short = distanceAt(0, PACE, 0.1);
   for (let tau = 0; tau <= short.total + 0.1; tau += 0.01) {

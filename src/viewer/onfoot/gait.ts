@@ -1049,6 +1049,12 @@ const SUPINE: readonly [number, Key][] = [
 
 /** A joint's name as any exporter or loader may have left it: `UpperArm.L`, `UpperArm_L` and `UpperArmL` are one joint. */
 export const jointKey = (name: string): string => name.replace(/[._\s]/g, '').toLowerCase();
+/**
+ * A joint's name with a number after it, as one of a group's people has his (`Hips_3`, `UpperArmL_3`: crew/ground_party.py
+ * `Walkers`, every man's joints on one skeleton), and the loader's own `_1` after that for a name it has met already: the
+ * joint it is, or null. A model's own exactly named joints are found first (`Gait.rig`).
+ */
+const numberedJoint = (name: string): string | null => (/(_\d+)+$/.test(name) ? jointKey(name.replace(/(_\d+)+$/, '')) : null);
 
 /** The joints one model has, each with how it sat when it was found. */
 interface Rig {
@@ -1820,11 +1826,16 @@ export class Gait {
     if (rig !== undefined) return rig;
     const wanted = new Map(JOINTS.map((j) => [jointKey(j), j]));
     const joints: Rig['joints'] = [];
+    const numbered: Rig['joints'] = [];
     root.traverse((o) => {
-      const joint = wanted.get(jointKey(o.name));
-      if (!joint || joints.some((j) => j.joint === joint)) return;
-      joints.push({ joint, node: o, rest: o.quaternion.clone(), x: o.position.x, y: o.position.y, z: o.position.z });
+      const exact = wanted.get(jointKey(o.name));
+      const joint = exact ?? wanted.get(numberedJoint(o.name) ?? '');
+      const into = exact ? joints : numbered;
+      if (!joint || into.some((j) => j.joint === joint)) return;
+      into.push({ joint, node: o, rest: o.quaternion.clone(), x: o.position.x, y: o.position.y, z: o.position.z });
     });
+    // (one of a group's people: his joints carry his number)
+    for (const j of numbered) if (!joints.some((k) => k.joint === j.joint)) joints.push(j);
     rig = null;
     if (joints.length) {
       const find = (j: Joint) => joints.find((x) => x.joint === j)?.node;
@@ -2067,6 +2078,37 @@ export class Gait {
     if (!this.up || this.up.t >= RISE_IN) this.lain = null;
     const u = lain ? this.up!.t / RISE_IN : 1;
     const keyed = u * u * (3 - 2 * u);
+    this.pose(rig, p, lain, keyed, toward, this.up ? 0 : this.lift);
+    halfHips(root);
+    return true;
+  }
+
+  /**
+   * Put a figure walked on the clock in a pose given from outside (onfoot/crowd.ts: `pose` of a moment worked out from
+   * where it is on its way, not from this gait's own stride), on the ground it was built on. False if it has no joints.
+   */
+  place(root: THREE.Object3D, p: Pose): boolean {
+    const rig = this.rig(root);
+    if (!rig) return false;
+    this.pose(rig, p, null, 1, 1, 0);
+    halfHips(root);
+    return true;
+  }
+
+  /** The legs' bones of the model under `root`, as built (a man's on legs of 0.9 m where it has no joints to say). */
+  limbsOf(root: THREE.Object3D): Limbs {
+    return this.rig(root)?.limbs ?? limbsOf(0.9);
+  }
+
+  /** Each joint of a rig turned as `p` has it, `toward` of the way from where it is (from `lain` by `keyed`, getting up), the hips lifted by `lift`. */
+  private pose(
+    rig: Rig,
+    p: Pose,
+    lain: { joints: THREE.Quaternion[]; hips: THREE.Vector3 | undefined } | null,
+    keyed: number,
+    toward: number,
+    lift: number,
+  ): void {
     // The pelvis's own turn and tip are taken out of what hangs from it: the thighs and the spine
     // are told as if it stood square (see Pose), so each is turned back by what the pelvis turned.
     const pelvis = (p.twist.Hips ?? 0) || (p.sideways.Hips ?? 0);
@@ -2099,13 +2141,11 @@ export class Gait {
       else node.quaternion.slerp(q, toward);
       if (joint !== 'Hips') return;
       // (and by what its own ground is over where it stands: the tread its lower foot is on, on a flight)
-      place.set(x + p.shift, y + p.rise + p.sag + p.settle + (this.up ? 0 : this.lift), z);
+      place.set(x + p.shift, y + p.rise + p.sag + p.settle + lift, z);
       if (lain?.hips) node.position.copy(lain.hips).lerp(place, keyed);
       else if (toward >= 1) node.position.copy(place);
       else node.position.lerp(place, toward);
     });
-    halfHips(root);
-    return true;
   }
 
   /**
@@ -2162,6 +2202,11 @@ export function halfHips(root: THREE.Object3D): void {
     root.traverse((o) => {
       const key = jointKey(o.name);
       if (o.name && !named.has(key)) named.set(key, o);
+    });
+    // (one of a group's people: his joints carry his number, and are his only where there are none named exactly)
+    root.traverse((o) => {
+      const key = numberedJoint(o.name);
+      if (key && !named.has(key)) named.set(key, o);
     });
     found = [];
     for (const side of ['L', 'R']) {

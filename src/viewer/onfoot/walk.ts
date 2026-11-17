@@ -327,11 +327,13 @@ export class Solids {
       root.traverse((o) => {
         const mesh = o as THREE.Mesh;
         // one instanced mesh is thousands of plants: scrub is walked through, not into
-        // (nor is a `ghost` solid: it is another mesh's second draw, panes.ts, and that mesh is here already)
+        // (nor is a `ghost` solid: it is another mesh's second draw, panes.ts, and that mesh is here already; nor people
+        // walked on the clock, `walks`, onfoot/crowd.ts: their mesh is solid only where it was built, which they leave)
         if (
           mesh.isMesh &&
           !(mesh as THREE.InstancedMesh).isInstancedMesh &&
           !mesh.userData.ghost &&
+          !mesh.userData.walks &&
           mesh.geometry.getAttribute('position')
         ) {
           const world = new WorldBox();

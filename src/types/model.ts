@@ -112,13 +112,19 @@ export type Move = { from: number; to: number; node?: string; machine?: Machine 
 /**
  * People of a group walking off a site, or onto it, each figure along a way a person could take, on the gait
  * (viewer/onfoot/going.ts `goneAt`): where the record says they went, or else away along the nearest road until out of
- * sight, and said so. Not yet a field of a part: it waits for the people to be built as figures that can walk (a
- * `<group>_Person_<n>` node each, jointed to the crew contract, srlib.FIGURE; issue #24), and until then a group that
- * leaves is taken out of sight on the clock (site-1.parts.ts `leaves`).
+ * sight, and said so. A part's `going`: its people are built as figures that can walk (a `<group>_Person_<n>` node
+ * each under `<group>_People`, jointed to the crew contract, srlib.FIGURE: crew/ground_party.py `Walkers`), and
+ * viewer/onfoot/crowd.ts walks each on the clock. A group built merged by colour is taken out of sight instead
+ * (site-1.parts.ts `leaves`).
  *
  * leaves  each figure stands where it was built until `at` (and its place in the group's `stagger`), then walks from its
  *         spot to the way's first point and on along it to its end, which is out of sight; there it is gone.
  * comes   the same backward: in from the way's far end at `at`, along it, to its own spot, where it stands as built.
+ *
+ * A group that walks from where it stood to another place and stands there (the farewell's party walking with the pilot
+ * to the stair) `leaves` with `to`: its way does not end out of sight but each figure walks on from it to where it stood
+ * moved by `to`, so the group keeps its order as a body, and stands there facing `faces`. A going after it starts from
+ * there.
  */
 export interface Going {
   kind: 'leaves' | 'comes';
@@ -130,6 +136,10 @@ export interface Going {
   way: [number, number][];
   /** Its walking pace, m/s (left out: an unhurried walk, going.ts `PACE`). */
   pace?: Measure;
+  /** `leaves` to another place and not out of sight: how far each figure ends from where it set off, metres (x, z). */
+  to?: [number, number];
+  /** And the point it faces there, metres (x, z) in the model's frame (left out: the way it came). */
+  faces?: [number, number];
   /** Where they went and why this way: the record's, or the nearest road out of sight (estimated). */
   confidence: Confidence;
   source: string;
@@ -320,6 +330,12 @@ export interface Part {
    * door opening and shutting through the flight. A node moved here is not also moved by `moves`.
    */
   clocked?: Move[];
+  /**
+   * Its people walking off or on, on the clock, in order (`Going`): a group that comes and later leaves has both. Each
+   * of its people is a node `<node>_Person_<n>` (types.ts `Going`); played wherever there is a clock, and where there is
+   * none (the gallery) they stand as built.
+   */
+  going?: Going[];
   /** Parts leave in this order as the explode slider advances; 0 goes first. */
   order: number;
 }
