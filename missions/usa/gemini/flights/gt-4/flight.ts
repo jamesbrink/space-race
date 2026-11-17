@@ -26,6 +26,7 @@ import {
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
 import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const DEG = Math.PI / 180;
 const KIT = 'NASA release 65-158, the Gemini-Titan 4 press kit (May 1965)';
@@ -484,6 +485,7 @@ export const flight: Flight = {
   launch: '1965-06-03T15:15:59.562Z',
   launchSite: LC19.name,
   site: LC19,
+  weather: WEATHER,
   crew: ['James A. McDivitt', 'Edward H. White II'],
   summary:
     'Four days in orbit, and twenty minutes outside. Edward White left the ship on a 25 ft umbilical with a gas gun ' +

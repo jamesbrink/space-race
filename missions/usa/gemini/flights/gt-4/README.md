@@ -23,7 +23,7 @@ they left the pad can be turned, taken apart as they staged, and cut open; the s
 pilot's hatch and brings out what White went outside with. At Complex 19 it stands on the thrust
 mount on the morning of the flight: the erector raised while the crew go up, stopping twice on
 its way down and laid down at last after the hold, McDivitt and White at the foot of the ramp in
-their G4C suits, each a figure to walk the site as, under that morning's sky. The flight
+their G4C suits, each a figure to walk the site as, under that morning's clear sky. The flight
 itself is not built: see "What is not built" below.
 
 ## The name
@@ -157,6 +157,34 @@ are held to these figures by `tests/world.test.mjs`.
 | Saturn | 242.9° | 28.9° | |
 
 Mars, Uranus and Neptune were below the horizon.
+
+## The weather
+
+**At the Cape, as recorded.** Cape Kennedy's weather station (the Skid Strip, about 3 km south of the
+pad; NOAA's Integrated Surface Database, station 747940-12868) reported on the hour. The 15:00
+report is the one nearest liftoff, 16 minutes before it.
+
+| UTC (EST) | Wind | Air | Dew point | Sea-level pressure | Visibility | Sky |
+| --- | --- | --- | --- | --- | --- | --- |
+| 14:00 (9 a.m.) | 30° at 1.0 m/s (2 knots) | 25.5 °C | 13.9 °C | 1018.6 hPa | 16 km | clear |
+| 15:00 (10 a.m.) | 70° at 2.6 m/s (5 knots) | 26.1 °C | 13.9 °C | 1018.6 hPa | 16 km | clear |
+| 16:00 (11 a.m.) | 90° at 2.6 m/s (5 knots) | 26.1 °C | 14.4 °C | 1018.6 hPa | 16 km | clear |
+
+All `documented`: fields of the record. The 16 km is the station's furthest mark, not how far one
+could see. The total cover is coded 00 at every hour from 13:00 UTC (8 a.m.) to 19:00; at 12:00 it
+had one okta at 1,200 m, gone by the next hour. Patrick Air Force Base, 30 km south (station
+747950-12867), was clear from 12:00 on too, with 19 km visibility and the wind 60° at 2.1 m/s at
+15:00.
+
+**The mission report's** (MSC-G-R-65-3, 12.2): "Visibility was unlimited in all directions from the
+Cape", and taken "at T-5 hours": clear skies, the wind from 060° at 7 knots, visibility 10 miles,
+30.08 in. Hg, 81 °F with a dew point of 59 °F, 47 per cent humidity. Those figures fit the station's
+late morning (1018.6 hPa is 30.08 in.; 81 °F is 27.2 °C, the station's at 17:00 UTC) better than its
+hours before dawn, when it had 18 °C: which hour they are of is not clear, and the station's are
+used.
+
+`weather.ts` is written from these (no cloud, the wind 70° at 2.6 m/s, visibility taken as 50 km),
+each with its confidence; the air aloft is ERA5's (`aloft.ts`).
 
 ## What is not built
 

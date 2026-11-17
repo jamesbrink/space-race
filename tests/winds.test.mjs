@@ -21,6 +21,7 @@ const WITH_HOURS = await Promise.all(
     'ussr/vostok/flights/vostok-4/flight.ts',
     'ussr/voskhod/flights/voskhod-1/flight.ts',
     'usa/gemini/flights/gt-3/flight.ts',
+    'usa/gemini/flights/gt-4/flight.ts',
     'ussr/voskhod/flights/voskhod-2/flight.ts',
   ].map(load),
 );
@@ -76,8 +77,13 @@ test('it never steps: a minute of the clock moves it by a minute’s share of an
       most = Math.max(most, Math.hypot(now[0] - last[0], now[1] - last[1]));
       last = now;
     }
-    // (the hours change by under 3 m/s an hour: 5 cm/s a minute)
-    assert.ok(most < 0.05, `${name(f)}: ${most.toFixed(4)} m/s in a minute`);
+    // the most the wind drawn changes from one hour to the next, a sixtieth of it a minute: the hours change by under
+    // 3 m/s an hour, and the record's wind is theirs turned and scaled to it, which on a light day the reanalysis has
+    // lighter than the station (Gemini 4's: 2.6 m/s against ERA5's 1.3) scales up
+    const drawn = hours.map((h) => parts(winds(at(f, (h - Date.parse(f.launch)) / 1000)).wind));
+    const hourly = Math.max(...drawn.slice(1).map((w, i) => Math.hypot(w[0] - drawn[i][0], w[1] - drawn[i][1])));
+    assert.ok(hourly < 6, `${name(f)}: ${hourly.toFixed(2)} m/s in an hour`);
+    assert.ok(most <= hourly / 60 + 1e-6, `${name(f)}: ${most.toFixed(4)} m/s in a minute, an hour's most ${hourly.toFixed(3)}`);
   }
 });
 
@@ -113,7 +119,7 @@ test('the low cloud drifts on its own wind turned and scaled alike', () => {
 });
 
 test('a flight with no hours is drawn in the day’s wind all day', async () => {
-  const f = await load('usa/gemini/flights/gt-4/flight.ts'); // (no weather.ts yet: its place's day, and no hours)
+  const f = await load('usa/gemini/flights/gt-5/flight.ts'); // (no weather.ts yet: its place's day, and no hours)
   const day = dayOf(f);
   const winds = windsOf(f, day);
   for (const s of [-30_000, 0, 30_000]) {
