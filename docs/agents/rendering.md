@@ -45,8 +45,15 @@ colour it would tint, so it is read so wherever such a model is drawn (`viewer/s
 Lineup as built): `mix(shade.a, dot(shade.rgb, uCabinLamps), uCabinLit)`, with `uCabinLamps` each lamp's share of the
 strength that is lit (they sum to one) and `uCabinLit` the share of the whole that is lit, which the lights' switch
 moves (`CabinDef.lighting`); and the indirect light (the sky's tenth left indoors, what metal mirrors) is taken toward
-the lit lamps' colour by `uCabinTint` (white for lamps lit as built). So switching the lamps, to red, to one of them,
-or to a dim duty light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
+the lit lamps' colour by `uCabinTint` (white for lamps lit as built). The figure is the lamps' reach (and, with them
+out, the openings'), so it scales the lamps' light and the indirect light, diffuse and mirrored, after the light is
+summed (the indirect by less of it while the model is cut open, as the indoors shading is: how open a point is was
+cast with the hull standing, `uCabinKept`), and never the Sun's direct light, which has its own shadow maps:
+`shadows.ts` keeps the Sun's turn of the light loop apart for a material that defines `CABIN_SHADE`. Darkening the
+colour itself, as it once did, darkened the Sun's light with it: a console in full sun in the Gallery's cutaway was
+near black, and the Sun's shadow there measured twice as grainy (`pnpm test:seat`), the darker frame's own rounding.
+tests/cabin.test.mjs holds the shader text to this. So switching the lamps, to red, to one of them, or to a dim duty
+light, is uniforms and the lamps' strength and colour: each lamp's shadow is its own, no light is
 added or taken away, and no shader is built. The channel costs nothing: the colour had four parts already. Another
 bulb in the same fitting (Gemini's red) is shaded as its fitting is; a cabin of more than three lamps would need a
 second attribute.

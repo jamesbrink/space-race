@@ -13,6 +13,11 @@ import type { ModelDef } from '../types.ts';
  * share of the strength that is lit (they sum to one) and `lit` the share of the whole strength that is lit. The cabin
  * (cabin.ts) moves them with its lights' switch; anywhere else the model is drawn as built, every lamp lit (`asBuilt`).
  * Moving them is uniforms: no shader is built.
+ *
+ * What it scales is what the bake worked: the light of the lamps and what is left indoors (the indirect, diffuse and
+ * mirrored), every direct light but the Sun's. The Sun's direct light has its own shadow maps (shadows.ts keeps it apart
+ * in its loop), and a sunlit face in a cabin cut open, or under a window, is lit as the Sun lights it, however far the
+ * lamps reach it: the shade once darkened the colour itself, and a console in full sun was near black in the cutaway.
  */
 export interface Shading {
   /** The share of the lamps' whole strength that is lit, 0 to 1. */
@@ -21,6 +26,12 @@ export interface Shading {
   lamps: { value: THREE.Vector3 };
   /** The colour the little light left indoors takes, as far as the lamps lit are not white (cabin.ts); white otherwise. */
   tint: { value: THREE.Color };
+  /**
+   * How much of the shade the indirect light keeps: 1 with the cabin closed; less while it is cut open (cabin.ts
+   * `opened`), when the room's light comes in where the hull was and how open a point is, as the bake cast it with the
+   * hull standing, no longer holds. The lamps' light keeps it all: what stands between a lamp and a point still does.
+   */
+  kept: { value: number };
 }
 
 /** Whether a mesh carries a baked shade: a colour of four parts. */
@@ -38,8 +49,33 @@ export function sharesOf(lights: ModelDef['lights'], lit: readonly number[] = []
 
 /** A model as built, every lamp lit at its own strength in its own colour: what is drawn of it where no cabin is worked. */
 export function asBuilt(lights: ModelDef['lights']): Shading {
-  return { lit: { value: 1 }, lamps: { value: sharesOf(lights) }, tint: { value: new THREE.Color(1, 1, 1) } };
+  return { lit: { value: 1 }, lamps: { value: sharesOf(lights) }, tint: { value: new THREE.Color(1, 1, 1) }, kept: { value: 1 } };
 }
+
+/**
+ * The shade read at a point (`color_fragment`'s place): the figure the switch asks for, and what the Sun alone gives,
+ * which shadows.ts's loop adds to (`CABIN_SHADE`). A mesh whose colour has three parts is coloured by it, as three has it.
+ */
+export const SHADE_READ = /* glsl */ `vec3 cabinSunDiffuse = vec3( 0.0 );
+vec3 cabinSunSpecular = vec3( 0.0 );
+#if defined( USE_COLOR_ALPHA )
+  float cabinShade = mix( vColor.a, dot( vColor.rgb, uCabinLamps ), uCabinLit );
+#elif defined( USE_COLOR )
+  diffuseColor.rgb *= vColor;
+#endif`;
+/**
+ * The shade applied (after the light is summed, at `aomap_fragment`): every direct light but the Sun's scaled by it, and
+ * the indirect, diffuse and mirrored, by as much of it as it keeps (`kept`); the Sun's direct light as its shadow maps
+ * left it. Then the fill tinted.
+ */
+export const SHADE_APPLY = /* glsl */ `#if defined( USE_COLOR_ALPHA )
+  reflectedLight.directDiffuse = cabinSunDiffuse + ( reflectedLight.directDiffuse - cabinSunDiffuse ) * cabinShade;
+  reflectedLight.directSpecular = cabinSunSpecular + ( reflectedLight.directSpecular - cabinSunSpecular ) * cabinShade;
+  reflectedLight.indirectDiffuse *= mix( 1.0, cabinShade, uCabinKept );
+  reflectedLight.indirectSpecular *= mix( 1.0, cabinShade, uCabinKept );
+#endif
+reflectedLight.indirectDiffuse *= uCabinTint;
+reflectedLight.indirectSpecular *= uCabinTint;`;
 
 /** What each patched material reads its shade by: the last `shadeBy` given it (a cabin made again for the same model takes it over). */
 const reading = new WeakMap<THREE.Material, { by: Shading }>();
@@ -77,22 +113,20 @@ export function shadeBy(material: THREE.Material, by: Shading): void {
         return slot.by.tint.value;
       },
     };
+    shader.uniforms.uCabinKept = {
+      get value() {
+        return slot.by.kept.value;
+      },
+    };
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uCabinLit;\nuniform vec3 uCabinLamps;\nuniform vec3 uCabinTint;')
       .replace(
-        '#include <color_fragment>',
-        /* glsl */ `#if defined( USE_COLOR_ALPHA )
-          diffuseColor.rgb *= mix( vColor.a, dot( vColor.rgb, uCabinLamps ), uCabinLit );
-        #elif defined( USE_COLOR )
-          diffuseColor.rgb *= vColor;
-        #endif`,
+        '#include <common>',
+        '#define CABIN_SHADE\n#include <common>\nuniform float uCabinLit;\nuniform vec3 uCabinLamps;\nuniform vec3 uCabinTint;\nuniform float uCabinKept;',
       )
+      .replace('#include <color_fragment>', SHADE_READ)
       // (the fill: the little of the sky's light left indoors, and what metal mirrors in place of a cabin it cannot see,
       // takes the colour of the cabin's own lamps as far as they are lit: `tint`)
-      .replace(
-        '#include <aomap_fragment>',
-        '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= uCabinTint;\nreflectedLight.indirectSpecular *= uCabinTint;',
-      );
+      .replace('#include <aomap_fragment>', `#include <aomap_fragment>\n${SHADE_APPLY}`);
   };
   material.customProgramCacheKey = () => `${key}|cabin-shade`;
   material.needsUpdate = true;

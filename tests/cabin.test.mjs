@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import * as THREE from 'three';
 import { coastOf } from '../src/sim/orbital.ts';
 import { burnNow, Cabin, historyAt } from '../src/viewer/cabin.ts';
+import '../src/viewer/shadows.ts'; // (three's light loop as the stage draws it: the Sun's turn kept apart for a cabin's shade)
 import { frameOf } from '../src/world/earthframe.ts';
 
 /** A cabin of the nodes given, with no flight to read: every instrument shows its own fixed `value`. */
@@ -222,6 +223,48 @@ test('one lamp lit, or one lamp dimmed, is shaded as that lamp alone: its share 
   const again = new Cabin(host, { launch: '1961-05-05T14:34:13Z' }, { cabin: { instruments: [], within: [] } }, full.parent, full, []);
   again.step(0, 0, 2437424.5);
   assert.equal(shader.uniforms.uCabinLit.value, 1, 'read by the cabin made last');
+});
+
+test('the shade scales the lamps’ light and the indirect (less of it cut open), and leaves the Sun’s direct light to its shadow maps', () => {
+  const c = lit([{ says: 'On', lit: [0, 1] }], [0]);
+  const shader = {
+    uniforms: {},
+    vertexShader: '',
+    fragmentShader:
+      '#include <common>\nvoid main() {\n#include <color_fragment>\n#include <lights_fragment_begin>\n#include <aomap_fragment>\n}',
+  };
+  c.wall.material.onBeforeCompile(shader, null);
+  const f = shader.fragmentShader;
+  assert.match(f, /#define CABIN_SHADE/, 'the light loop is told to keep the Sun’s light apart');
+  assert.doesNotMatch(f, /diffuseColor(\.rgb)? \*= mix/, 'the colour itself is not darkened: that would darken the Sun’s light too');
+  // after the light is summed: everything but the Sun's direct light scaled, the indirect too, then the fill tinted
+  const at = (s) => f.indexOf(s);
+  assert.ok(
+    at('float cabinShade') >= 0 && at('float cabinShade') < at('#include <lights_fragment_begin>'),
+    'read before the light is summed',
+  );
+  for (const line of [
+    'reflectedLight.directDiffuse = cabinSunDiffuse + ( reflectedLight.directDiffuse - cabinSunDiffuse ) * cabinShade;',
+    'reflectedLight.directSpecular = cabinSunSpecular + ( reflectedLight.directSpecular - cabinSunSpecular ) * cabinShade;',
+    'reflectedLight.indirectDiffuse *= mix( 1.0, cabinShade, uCabinKept );',
+    'reflectedLight.indirectSpecular *= mix( 1.0, cabinShade, uCabinKept );',
+  ])
+    assert.ok(at(line) > at('#include <aomap_fragment>'), `after the light is summed: ${line}`);
+  assert.ok(at('reflectedLight.indirectDiffuse *= uCabinTint;') > at('reflectedLight.indirectDiffuse *= mix( 1.0, cabinShade'));
+  // the indirect keeps all of it closed; cut open, the room's light comes in where the hull was, and it keeps less
+  assert.equal(shader.uniforms.uCabinKept.value, 1);
+  c.cabin.opened(true);
+  assert.ok(shader.uniforms.uCabinKept.value > 0 && shader.uniforms.uCabinKept.value < 1, `cut open: ${shader.uniforms.uCabinKept.value}`);
+  c.cabin.opened(false);
+  assert.equal(shader.uniforms.uCabinKept.value, 1);
+  // the loop (shadows.ts, loaded with the cabin) adds up what the Sun alone gives, in its cascaded turn and nowhere else
+  const loop = THREE.ShaderChunk.lights_fragment_begin;
+  const sun = loop.slice(loop.indexOf('directLight.color *= lit;'), loop.indexOf('#else', loop.indexOf('directLight.color *= lit;')));
+  assert.match(
+    sun,
+    /#ifdef CABIN_SHADE[\s\S]*cabinBeforeDiffuse = reflectedLight\.directDiffuse;[\s\S]*RE_Direct\([^;]+;\s*#ifdef CABIN_SHADE\s*cabinSunDiffuse \+= reflectedLight\.directDiffuse - cabinBeforeDiffuse;\s*cabinSunSpecular \+= reflectedLight\.directSpecular - cabinBeforeSpecular;/,
+  );
+  assert.equal(loop.split('cabinSunDiffuse +=').length, 2, 'only the Sun’s turn is kept apart');
 });
 
 test('a gauge read off the record: straight between readings, each at its instant or after its event, held beyond; an event not come is never', () => {
