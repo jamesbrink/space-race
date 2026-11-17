@@ -321,11 +321,12 @@ const people: Part[] = [
       'stand here. The count, and how far west they stood in a frame so foreshortened, are estimated, and so is when they left.',
     facts: [
       ['Seen', 'a line of some 20 (the film, 21:45)'],
-      ['Left', 'about 07:05 (not recorded: estimated)'],
+      ['Left', 'about 07:06 (not recorded: estimated)'],
     ],
     explode: [0, 0, 0],
     order: 0,
-    going: [{ kind: 'leaves', at: { value: MSK(7, 5, 30), ...LEFT }, stagger: 0.8, way: ROAD_WEST, ...LEFT }],
+    // (after the body south of the bus has gone by on the road, not into it: the two meet at its first point)
+    going: [{ kind: 'leaves', at: { value: MSK(7, 6), ...LEFT }, stagger: 0.8, way: ROAD_WEST, ...LEFT }],
   },
 ];
 

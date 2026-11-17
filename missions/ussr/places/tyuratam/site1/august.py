@@ -96,10 +96,12 @@ def crowd() -> list:
         {("down", "down"): 1},
     )
     out = []
-    rows = (-18.0, -19.3, -20.6, -21.9)
+    # (clear of the bus's way in: it comes onto the apron from the south-west and swings in beside the tracks, its right
+    # side passing within a metre of where the body's front row would stand at the film's nearest)
+    rows = (-18.8, -20.1, -21.4, -22.7)
     for i, p in enumerate(who):
         row, k = divmod(i, 13)
-        x = -60.8 + k * 1.15 + rng.uniform(-0.05, 0.05) + (0.45 if row % 2 else 0.0)
+        x = -59.3 + k * 1.15 + rng.uniform(-0.05, 0.05) + (0.45 if row % 2 else 0.0)
         y = rows[row] + rng.uniform(-0.08, 0.08)
         out.append((p, x, y, _to(x, y, -50.0, -14.0) + rng.uniform(-6.0, 6.0)))
     return out
