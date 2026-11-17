@@ -306,7 +306,7 @@ along them. Positions are metres east and north of the rocket's axis.
 | Its size | 9,190 by 2,500 by 2,980 mm, wheelbase 4,190 mm | documented (the type's published figures) | as quoted for the ЛАЗ-695 family |
 | Its colours | cream above, a blue band under the windows, a blue skirt; curtains at the side windows | documented | the film; "white and blue" (Golovanov) |
 | Its overhangs, wheels, fittings, inside | 2,700 mm behind the rear axle; 1,050 mm wheels; three roof hatches, a route board, bumpers, lamps; a few seats | estimated | the film's side view. It was fitted out for the cosmonauts with armchairs and a table (the film), which are not drawn; the curved lights in the roof's edge that the type had are not drawn |
-| Where it stood | its rear axle at (-51.4, -15.2), facing east: its right side 0.8 m south of the south track's rail, another track 4 m beyond | documented (across the tracks: the film has two tracks 3.7 to 4.1 m apart on its right, which only the south track and the short spur are); derived (along them: from the film's view, to some eight metres) | the film, 43:26 |
+| Where it stood | its rear axle at (-51.4, -15.2), facing east: its left (north) side 0.8 m south of the south track's rail, another track 4 m beyond; its door, on its right, away from the tracks | documented (across the tracks: the film has two tracks 3.7 to 4.1 m apart beside it, which only the south track and the short spur are); derived (along them: from the film's view, to some eight metres) | the film, 43:26 |
 | When | came about 06:50; here it leaves at 08:37 | documented (06:50); estimated (08:37: the roster sends "the cosmonauts and Karpov" to the measuring point at thirty minutes' readiness, and that the bus took them is ours) | Kamanin's diary; the roster |
 | The saloon car | dark, three-box, a few metres off the bus's right side, at the low building's corner: its rear axle at (-47.6, -21.3), heading south-east | documented (that it stood there); estimated (its heading) | the film, 43:26 and 43:33 |
 | Its type | taken for a GAZ-21 Volga: 4,830 by 1,800 by 1,620 mm, wheelbase 2,700 mm; black | estimated | a Pobeda is a fastback and a ZIM a metre longer; Korolev was driven in a Volga (Ivanovsky) |
@@ -327,9 +327,38 @@ along them. Positions are metres east and north of the rocket's axis.
 | When each left, and for where | the fuelling soldiers at 3 h 20 min, to barracks; most at 1 h or 30 min, to a point 20 km off; the upper-belt and truss crews at 30 min, to the bunker; the erector's crew at 30 min, to the bend of the road; the cosmonauts and their doctor at 30 min, to the measuring point; the fire chief and fire crews at 15 min, to the bunker; two water-washing trucks at 5 min, to the gate | documented | the roster: «Первый пилотируемый полёт» (2011), book 1, doc 104, pp. 402-423 |
 
 **How they leave.** A group is one node and is there until the time above; then it is put out of sight, 90 m
-under where it stood, in a tenth of a second. Nobody walks. The viewer has a gait for the figure being walked as
-and no way to play one on scenery, and a figure slid across the concrete standing is worse than one that is
-simply not there. This is the largest thing wrong with the morning.
+under where it stood, in a tenth of a second. Nobody walks: these figures are merged by colour, not jointed, and a
+figure slid across the concrete standing is worse than one that is simply not there. This is the largest thing wrong
+with the morning of 12 April. The people of 6 August (below) are built to walk, and do.
+
+### The people of 6 August 1961
+
+On the pad for Vostok 2 ([site1/august.py](site1/august.py); the figures are [../crew/ground-party.md](../crew/ground-party.md),
+in summer dress). The source is the film «Снова к звёздам» (Моснаучфильм, 1961). The copy read (YouTube DnpzmTv9Tck,
+960 by 720, an upscale of a standard-definition transfer) is mirrored (the helmet reads backward) and faded: its frames
+were flipped back to read. A black-and-white copy that is not mirrored (KfUtzQ581R4, 640 by 480) has the same scenes
+53 s earlier. No better transfer was found (net-film.ru has only a 1967 re-edit, unpublished; nothing on Rutube,
+archive.org or Gosfilmofond's pages). Counts are read off those frames and are estimates; where each group stood is the
+film's views from the erector, with the bus, the tracks and the low building for a scale, to some five metres.
+Positions are metres east and north of the rocket's axis.
+
+| Item | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| That the pad was crowded | some 110 to 130 in view as the bus stops, with Titov's «Нас окружили десятки людей»; against it TASS's «Пустынна стартовая площадка», from the observation point 1.5 km off | documented (the film, over TASS); the count estimated | the film, 21:45; Titov (1973); TASS (Romanov) |
+| Their dress | white and pale short-sleeved shirts and dark trousers for nearly all the civilians; one in five or so in a dark jacket or a uniform; officers in khaki summer shirts with ties and air force caps, one in dark glasses, one in a tunic with shoulder boards; a checked shirt (at the assembly building, 21:11); no coats | documented | the film, 21:04 to 21:11, 21:47 to 21:56, 22:00 to 22:20 |
+| The body south of the bus (`Crowd`) | some fifty to sixty, a dense band beside the bus's south side and on back past its rear; 52 here in four rows along it, 1.15 m apart, from (-60.8, -18.0) to (-46.5, -21.9), facing it | documented (that they stood there); estimated (the count, the rows, each man) | the film, 21:45 |
+| A line across the apron's far end (`CrowdWest`) | some twenty to twenty-five, across the apron and the tracks at the far, western end of the view; 18 here, between (-86, -19.5) and (-84.4, 4) (an earlier reading of the same frames had a file walking in beyond the body: this reading has a line standing) | documented (that they stood there); estimated (the count, how far west: the frame is foreshortened) | the film, 21:45 |
+| At the door and with him to the stair (`Escort`) | eight officers at the farewell, then some twenty-five walking east with him between the tracks and six or eight about them; thirty to thirty-five standing 2 to 12 m west and south-west of the stair's foot, faces up; 34 here, round the door (within 2.3 to 6.4 m east of it), walking at about 06:55 by (-36, -11) and (-27, -10.5) to the stair's foot, where they stand facing its landing | documented (the walk and where they stood: the film); estimated (the count, who each was, the minute) | the film, 21:47 to 22:24 |
+| When they left, and for where | not recorded for this flight. Here: from 07:05, after the lift has gone up, along the road west to the fence, out of sight | estimated (as Vostok 1's send-off left about eight minutes after its pilot went up) | none |
+| The bus's place | April's, taken. Set against April's frame from the same camera (43:26), the August bus has the same tilt, south of the tracks and along them, its front to the erector; across the tracks it may stand some 2 m further south (±1.5 m, the nearest rail being hard to tell from a slab joint in the copy); along them it cannot be told to better than ten metres, the low building's corner being behind the erector's bar | documented (that it stood about where April's did); its place assumed (April's) | the film, 21:45, against «Первый рейс к звёздам», 43:26 |
+| Cameras | a ciné camera on a tripod with two or three men at the stair's foot (a dark oblong in the view from above); a cameraman with a camera on a tripod head high on the erector | documented | the film, 21:56 to 22:24. **Not built** |
+| A dark car | one beyond the crowd at the west edge of the view, perhaps two | documented (that it stood there); its place and type not known | the film, 21:45. **Not built** |
+
+**How they walk.** Each man is a node of his own, `<group>_Person_<n>`, under his group's skeleton `<group>_People`,
+jointed to the crew's joints (srlib.FIGURE) with his number after each (`Hips_3`); the viewer walks him on the clock
+along his group's way (the flight's `going`: viewer/onfoot/crowd.ts), the nearest to the way setting off first, three
+abreast on it, his legs the gait's for the distance gone, and at the way's end out of sight. Standing, every joint is as
+built. A group's meshes are one a colour, so the hundred are 52 draws (each group's skeleton has some 18 joints a man).
 
 ### The place round the pad
 
@@ -800,7 +829,8 @@ opens: what was behind each is not recorded.
 | The bus on 6 August 1961 | about 06:50 (the plan's 06:45 to 07:00 for the drive and the farewell) | 08:30, thirty minutes' readiness, with Nikolayev (RussianSpaceWeb; that it drove then is estimated) | documented (the film «Снова к звёздам», 21:04 to 21:45); its place April's, taken (not measured off the film) | road_vehicles.py builds it for each launch morning (`bus_days`); the car and the truck are April's alone (a dark car stood beyond the crowd in August, where is not known) |
 | The railway fillers on 6 August 1961 | with the rocket | not recorded for this flight (Vostok 1's interval before liftoff is taken: estimated) | documented that a filler stood on the south track at the farewell | RussianSpaceWeb's photographs of Smirnov and Titov, and of Korolev; tank_cars.py `DAYS` |
 | The people: the State Commission, the send-off, the launch crews | 12 April 1961 | each at its own time ("The morning's people and vehicles") | documented | the film; the roster. Of the day itself |
-| The people of 6 August 1961: some hundred at the bus, forty with him to the stair, in summer dress; Smirnov (now chairman) in a white jacket and straw hat; Korolev, Barmin; Nikolayev suited | 6 August 1961 | not recorded | documented (the film; a photograph; Titov, 1973), the counts estimated | **not built**: the figures have no summer dress ("What the model gets wrong or leaves out") |
+| The people of 6 August 1961: some hundred at the bus, forty with him to the stair, in summer dress | 6 August 1961, from before the bus came (06:50) | not recorded: from 07:05 here, walking off west (estimated) | documented (the film; Titov, 1973), the counts estimated | august.py ("The people of 6 August 1961") |
+| Smirnov (now chairman) in a white jacket and straw hat; Korolev, Barmin; Nikolayev suited | 6 August 1961 | not recorded | documented (a photograph; Chertok; Titov, 1973) | **not built yet** |
 | The bus on 11 August 1962 (Vostok 3) | 09:30 Moscow time (11:30 by the range's clock), with Nikolayev and Bykovskiy suited | not recorded (estimated: at thirty minutes' readiness, as on 6 August 1961) | documented that it came («специальный автобус», Kamanin, 12 August 1962; the film «Звёздные братья»); assumed that it was the same LAZ-695B (Kamanin had the cosmonauts carried that summer in the «Львов», a LAZ: 3 August 1962), and its place April's | road_vehicles.py `bus_days` |
 | The bus on 12 August 1962 (Vostok 4) | not recorded (Kamanin: the morning "differed little" from the day before) | not recorded | documented that a bus brought him (the film «Звёздные братья», as read for docs/sources.md); its type and place as the 11th's, assumed | road_vehicles.py `bus_days` |
 | The railway fillers on 11 and 12 August 1962 | with each rocket, for its fuelling | not recorded for either morning | not built: no photograph or account of either morning has them, and when they left is not recorded | tank_cars.py `DAYS` (left as it was) |
@@ -844,11 +874,20 @@ rocket can leave the erector out by its date.
 
 ## What the model gets wrong or leaves out
 
-- **6 August 1961** (Vostok 2's morning, `site1/model/1961-08.py`, `flights/vostok-2/model/pad.py`): the farewell's crowd
-  in summer dress is not built, nor Nikolayev suited beside the bus, nor Smirnov in his straw hat; the ground party's
-  figures are dressed for April. The fence's extension north round Site 51 and the two new buildings by the check-out
-  shop (PIC/JR-8/61) are not built, being unmeasured; Site 51's burnt pad is left out, its look not recorded. The bus
-  stands in April's place; the fillers' and the erector's times are Vostok 1's intervals before liftoff.
+- **6 August 1961** (Vostok 2's morning, `site1/model/1961-08.py`, `flights/vostok-2/model/pad.py`): the crowd is 104
+  of the hundred or more the film has, their counts and each man's place, dress and stance estimated within what the
+  film shows; when they left and by which way are not recorded (from 07:05, west along the road: ours). Nobody stands
+  inside the bus (Nikolayev, the officer, the doctor). Nikolayev suited beside the bus and Smirnov in his straw hat are
+  not built. The cine camera on its tripod at the stair's foot, the cameraman on the erector and the dark car beyond the
+  crowd are not built. The fence's extension north round Site 51 and the two new buildings by the check-out shop
+  (PIC/JR-8/61) are not built, being unmeasured; Site 51's burnt pad is left out, its look not recorded. The bus stands
+  in April's place (the film agrees to some ten metres, "The people of 6 August 1961"); the fillers' and the erector's
+  times are Vostok 1's intervals before liftoff.
+- **The people of 6 August walk as the gait has a man walk on flat ground**: they turn to their way over their first
+  metre and from it over their last, their feet the stride's and not planted through the turn (a few centimetres of
+  slide); they are lifted or let down as the land rises or falls from where they stood, but a rail they cross is not
+  stepped over; they walk through one another where their ways cross, and the walker walks through them (a skinned
+  figure is not solid to him: it would be solid where it was built). Their arms swing from however they were built.
 
 - **11 and 12 August 1962** (Vostoks 3 and 4, `flights/vostok-3/model/pad.py`, `flights/vostok-4/model/pad.py`): the
   launching structure is built as it stood in 1961, although it burnt on 1 June 1962 and was repaired: what the repair

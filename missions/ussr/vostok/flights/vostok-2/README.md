@@ -38,12 +38,15 @@ summarised in [site-1.md](../../../places/tyuratam/site-1.md), "What stood when"
   photographs). Site 51, 415 m north, burnt out when an R-9 fell back on it on 3 August
   (Chertok, vol. 3, pp. 131, 187): how it looked afterwards is not recorded, and nothing is built
   there.
-- **Not built: the people.** The film has about a hundred on the concrete as the bus stopped and
-  forty walking with him to the stair (counted off a 960 px copy: estimated), all in summer dress;
-  Smirnov, now the State Commission's chairman, in a white jacket and a straw hat; Korolev and
-  Barmin; Nikolayev suited at the bus, the two knocking helmets together. Kamanin and Gagarin
-  were abroad. The ground party's figures are dressed for April: summer clothes are new geometry,
-  listed for a modelling agent. April's people, car and truck are not shown.
+- **The people.** The film has a hundred or more on the concrete as the bus stopped and some
+  forty walking with him to the stair (counted off a 960 px copy: estimated), all in summer dress.
+  104 are built in summer dress where the film has them (places/tyuratam/site-1.md, "The people of
+  6 August 1961"): 52 in rows south of the bus and back along it, 18 in a line across the apron's far end, 34 round the
+  door who walk with him to the stair at about 06:55 and stand at its foot; from 07:05 they walk
+  off west (when, and which way, is not recorded: estimated). **Not built**: Smirnov, now the State
+  Commission's chairman, in a white jacket and a straw hat; Korolev and Barmin; Nikolayev suited
+  at the bus, the two knocking helmets together. Kamanin and Gagarin were abroad. April's people,
+  car and truck are not shown.
 - **The land is the summer's**: the steppe "dried out ... a uniform reddish-gray" by June (Chertok,
   vol. 2, p. 357), the tulips and the spring's green gone (missions/ussr/places/tyuratam/steppe.ts, `SEASONS`).
 - **The weather**: [weather.ts](weather.ts), from the stations either side of the range.
