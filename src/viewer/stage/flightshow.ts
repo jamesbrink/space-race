@@ -7,6 +7,7 @@ import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import type { Run } from '../../sim/run.ts';
 import { Ascent } from '../ascent.ts';
+import { Flooding } from '../flooding.ts';
 import type { LineState, Recovery } from '../recovery.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cameras } from '../camera/index.ts';
@@ -475,6 +476,7 @@ export class FlightShow {
       if (globe.swellAt(t)) this.h.redraw();
     }
     this.recover(ascent, t, g);
+    this.flood(ascent, s, t);
     // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
     const gone = ascent.gone(t);
     if (gone !== this.lifted.gone) {
@@ -535,6 +537,22 @@ export class FlightShow {
     if (within || this.lifted.shadowed || changed || this.lifted.shrank) this.h.oweShadows();
     this.lifted.shrank = false;
     this.lifted.shadowed = within;
+  }
+
+  /** The sea inside the spacecraft afloat (flooding.ts), in the flown model's frame: made the first time it is down. */
+  private flooding: Flooding | null = null;
+
+  /** Draw the water in each space of the spacecraft afloat that can be seen into, as the run on show has it at `t`. */
+  private flood(ascent: Ascent, s: Staged, t: number): void {
+    const afloat = this.flightData?.flies?.afloat;
+    const now = ascent.floating(t);
+    if (!afloat?.seen?.length || (!now && !this.flooding)) return;
+    if (!this.flooding) {
+      this.flooding = new Flooding(afloat.body, afloat.seen);
+      s.group.add(this.flooding.group);
+      this.h.looks.add(this.flooding.group);
+    }
+    if (this.flooding.set(now)) this.h.redraw();
   }
 
   /**
@@ -763,6 +781,12 @@ export class FlightShow {
     this.jets?.group.removeFromParent();
     this.jets?.dispose();
     this.jets = null;
+    if (this.flooding) {
+      this.flooding.group.removeFromParent();
+      this.h.looks.remove(this.flooding.group);
+      this.flooding.dispose();
+    }
+    this.flooding = null;
   }
 
   /**

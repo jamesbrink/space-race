@@ -178,6 +178,7 @@ src/
   viewer/globemesh.ts                 the globe's mesh, written without allocating, and when it is owed again
   viewer/swell.ts                     the day's sea where a flight comes down, drawn moving: a square of it laid round the point, by the globe's shading (`Globe.swell`)
   viewer/recovery.ts                  what came to a spacecraft where it came down, flown on the record's clock: a helicopter, its rotors and its line (`Flight.recovery`)
+  viewer/flooding.ts                  the sea inside a spacecraft afloat: the water's surface in each space that can be seen into, level as it heels (`afloat.seen`)
   viewer/field.ts                     noise that gives the same answer in JavaScript and GLSL (the ground's height is needed in both)
   viewer/glsl.ts                      GLSL said once: a colour or triple written into shader text (`vec3`, each caller's digits kept), the general noise
   viewer/air.ts                       the air: haze that thins with height (in three's fog chunks), the cumulus field, its shadows on the ground,
