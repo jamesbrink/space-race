@@ -71,6 +71,11 @@ class Garment:
     flag: bool = False
     cover: tuple[float, float, float] = (0.0, 0.0, 0.0)
     visor_arm: tuple[float, float] = (0.42, 0.5)  # the visor's arm from its pivot to the band: its middle off the shell, its thickness (cm)
+    # A soft hood in place of the helmet (g5c_suit.py): the shell the suit's cloth with its visor sewn in, no pivots and no
+    # bright band, and a zip round the neck where the ring was; and with no ring, no tie-down on the chest
+    hood: bool = False
+    insignia: tuple[float, float] = (13.2, 23.0)  # the NASA insignia's middle: under the ring's middle, and round toward his left, degrees
+    visor: tuple[float, float, float] | None = None  # its own visor's opening, as VISOR: the helmet's when None
 
 
 G3C = Garment()
@@ -117,7 +122,6 @@ BOOT_LENGTH = 31.2
 # The helmet, which is the same size on any man: heights above the middle of the neck ring.
 SHELL_R0, SHELL_R, SHELL_TOP, SHELL_DEEP = 12.2, 13.8, 27.6, 1.06  # radius at the ring, at its widest, its height, fore-and-aft over across
 VISOR = (math.radians(72), 12.4, 9.3)  # the opening: half its width round the shell, its middle above the ring, half its height
-INSIGNIA_UNDER_RING, INSIGNIA_AZ = 13.2, 23.0  # the NASA insignia's middle: under the ring's middle, and round toward his left, degrees
 NAME_TAG = (9.6, 2.2)  # the name tag: long, tall
 NAME_TAG_UNDER_RING, NAME_TAG_AZ = 11.6, -21.0
 BUCKLE_UNDER_RING = 11.2  # the tie-down's buckle, on the middle of the chest
@@ -216,6 +220,7 @@ def materials() -> dict:
         "nametag": m(f"name-tag-{name_key()}", (1, 1, 1), 0.0, 0.85, image=name_tag_image),
         # the fifty-star flag, the one the capsules wear, embroidered (g4c_suit.py)
         "flag": m("patch-flag", (1, 1, 1), 0.0, 0.85, image=mc.flag_image) if WEARER.garment.flag else None,
+        "zip": m("zipper-tape-black", (0.015, 0.015, 0.017), 0.0, 0.8),
     }
 
 
@@ -253,7 +258,7 @@ def shell(phi: float, v: float, off: float = 0.0) -> Vector:
 def build_helmet(M: dict) -> None:
     g = group("Helmet")
     white, liner, visor, seal, bright, fit, blue, alu, pad, mic = (MeshBuilder() for _ in range(10))
-    half, mid, tall = VISOR
+    half, mid, tall = WEARER.garment.visor or VISOR
     n = sides(72)
     phis = [TAU * i / n for i in range(n)]
     top = H0 + (SHELL_TOP - H0) * math.pi / 2
@@ -329,8 +334,9 @@ def build_helmet(M: dict) -> None:
     blue.lathe([(r + 0.3, 0.1), (r + 0.95, 0.1), (r + 0.95, 1.5), (r + 0.6, 1.9), (r - 0.4, 1.9)], 64, matrix=oval)
     alu.lathe([(r + 0.2, -0.68), (r + 1.45, -0.68), (r + 1.45, 0.28), (r + 0.2, 0.28)], 64, matrix=oval)
     front = Vector((0.0, RING_Y - (r + 1.5) * SHELL_DEEP, RING_Z))
-    blue.box((4.4, 1.5, 2.6), Matrix.Translation(front + Vector((0, 0, -1.2))))
-    alu.box((2.4, 0.9, 1.2), Matrix.Translation(front + Vector((0, -0.6, 0.6))))
+    if not WEARER.garment.hood:  # (the ring's latch, in front)
+        blue.box((4.4, 1.5, 2.6), Matrix.Translation(front + Vector((0, 0, -1.2))))
+        alu.box((2.4, 0.9, 1.2), Matrix.Translation(front + Vector((0, -0.6, 0.6))))
     # the man inside: the shared head (nobody's likeness), bare, his hair cut short
     head, dark, eyes, hair, lips, crop = (MeshBuilder() for _ in range(6))
     hc = B.head
@@ -341,9 +347,10 @@ def build_helmet(M: dict) -> None:
     )
     crop.lathe(arc_profile(0, 0, 1.0, 8, 90, 14), 40, matrix=Matrix.Translation(hc) @ bowl)
 
-    emit(white, "Helmet_Shell", M["shell"], g)
+    hood = WEARER.garment.hood
+    emit(white, "Helmet_Shell", M["suit" if hood else "shell"], g)
     emit(liner, "Helmet_Liner", M["liner"], g)
-    emit(seal, "Helmet_VisorSeal", M["seal"], g)
+    emit(seal, "Helmet_VisorSeal", M["suit" if hood else "seal"], g)
     emit(head, "Helmet_Head", M["skin"], g)
     emit(crop, "Helmet_Hair", M["hair"], g)
     if eyes.verts:
@@ -355,6 +362,12 @@ def build_helmet(M: dict) -> None:
     emit(pad, "Helmet_Earphones", M["pad"], g)
     emit(mic, "Helmet_Microphones", M["white"], g, sharp_angle=40)
     emit(visor, "Helmet_Visor", M["glass"], g)
+    if hood:
+        # the visor sewn into the hood: no band, no pivots; round the neck the zip it was taken off by, a black tape and
+        # its brass teeth where the ring would be
+        emit(blue, "Helmet_NeckZip", M["zip"], g, sharp_angle=30)
+        emit(alu, "Helmet_NeckZipTeeth", M["teeth"], g, sharp_angle=30)
+        return
     emit(bright, "Helmet_VisorBand", M["bright"], g)
     emit(fit, "Helmet_Pivots", M["aluminium"], g, sharp_angle=30)
     emit(blue, "Helmet_NeckRing", M[WEARER.garment.ring], g, sharp_angle=30)
@@ -470,7 +483,8 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     cloth.lathe([(r - 0.6, -2.3), (r + 0.5, -2.7), (r + 0.9, -3.8), (r + 1.5, -4.9), (r - 1.5, -5.7)], 48, matrix=collar)
     cloth.share += [0.0] * (len(cloth.verts) - len(cloth.share))
     # the NASA insignia on his left chest and the name tag on his right
-    oval(patch, lay(t, RING_Z - INSIGNIA_UNDER_RING, INSIGNIA_AZ), mk.INSIGNIA_R, mk.INSIGNIA_R, 0.22, mk.INSIGNIA_ART, mk.INSIGNIA_TIPS)
+    under, round_ = WEARER.garment.insignia
+    oval(patch, lay(t, RING_Z - under, round_), mk.INSIGNIA_R, mk.INSIGNIA_R, 0.22, mk.INSIGNIA_ART, mk.INSIGNIA_TIPS)
     at, (w, h) = lay(t, RING_Z - NAME_TAG_UNDER_RING, NAME_TAG_AZ), NAME_TAG
     nx = max(4, round(10 / grain()))
     xs = [-w / 2, *(w * (i / nx - 0.5) for i in range(nx + 1)), w / 2]
@@ -479,23 +493,8 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     skin(tag, [[at(a, b, 0.22 if 0 < i < len(xs) - 1 and 0 < j < len(ys) - 1 else -0.3) for i, a in enumerate(xs)] for j, b in enumerate(ys)], None)
     tag.uvs[base:] = [((a / w + 0.5) / CM, (b / h + 0.5) / CM) for b in ys for a in xs]
     # the helmet's tie-down: a cable from each side of the ring to a buckle on the chest, and its blue strap down the front
-    zb = RING_Z - BUCKLE_UNDER_RING
-    pb, nb = t.at(d(zb), az(0)), t.normal(d(zb), az(0))
-    m = frame(pb, nb)
-    turn = m @ Matrix.Rotation(math.atan2(-(m.inverted().to_3x3() @ Vector((0, 0, 1))).x, (m.inverted().to_3x3() @ Vector((0, 0, 1))).y), 4, "Z")
-    chrome.box((3.3, 3.4, 1.5), turn @ Matrix.Translation((0, 0, 0.2)))
-    chrome.box((3.9, 0.7, 1.9), turn @ Matrix.Translation((0, -0.9, 0.4)))
-    chrome.box((1.5, 1.6, 1.1), turn @ Matrix.Translation((0, 2.3, 0.25)))
-    eye = turn @ Vector((0, 2.6, 0.45))
-    for sx in (1, -1):
-        phi = sx * math.radians(52)
-        a = Vector(((SHELL_R0 + 1.2) * math.sin(phi), RING_Y - (SHELL_R0 + 1.2) * SHELL_DEEP * math.cos(phi), RING_Z - 2.5))
-        mids = [_cloth.on(a.lerp(eye, f) + Vector((0, -3.0, 0)))[0] + Vector((0, -0.95, 0.1)) for f in (0.3, 0.62)]
-        pts = fl.polyline([tuple(a), *(tuple(q) for q in mids), tuple(eye)], 0.8)
-        Tube(pts, [(0.11, 0.11)] * len(pts), resample=1).add(cable, 5)
-    tie = t.trace(d(zb - 1.2), d(B.waist_z + 12.5), az(0), az(0), 40)
-    band(tape, tie, 2.6, 0.32, sink=0.2)
-    _cloth.under += [(q, 1.3, 0.32, "tie") for q, _ in tie[::2]]
+    if not WEARER.garment.hood:  # (a hood has no ring to hold down)
+        _tie_down(t, chrome, cable, tape, RING_Z - BUCKLE_UNDER_RING, d)
     # the electrical connector under the insignia: an oval plate on a blue patch, the connector's round insert in it
     ze, ae = up(128.0), 21.0
     oval(blue, lay(t, ze, ae), 4.3, 3.2, 0.24)
@@ -556,8 +555,29 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
     emit(red, "Torso_GasInlet", M["red"], g, sharp_angle=30)
     emit(alu, "Torso_GasOutlet", M["aluminium"], g, sharp_angle=30)
     emit(chrome, "Torso_TieDownBuckle", M["chrome"], g, sharp_angle=30)
-    emit(cable, "Torso_TieDownCable", M["steel"], g)
+    if cable.verts:
+        emit(cable, "Torso_TieDownCable", M["steel"], g)
     return arms, t
+
+
+def _tie_down(t: Tube, chrome: MeshBuilder, cable: MeshBuilder, tape: MeshBuilder, zb: float, d) -> None:
+    """The helmet's tie-down: a cable from each side of the ring to a buckle on the chest at `zb`, and its blue strap down the front."""
+    pb, nb = t.at(d(zb), az(0)), t.normal(d(zb), az(0))
+    m = frame(pb, nb)
+    turn = m @ Matrix.Rotation(math.atan2(-(m.inverted().to_3x3() @ Vector((0, 0, 1))).x, (m.inverted().to_3x3() @ Vector((0, 0, 1))).y), 4, "Z")
+    chrome.box((3.3, 3.4, 1.5), turn @ Matrix.Translation((0, 0, 0.2)))
+    chrome.box((3.9, 0.7, 1.9), turn @ Matrix.Translation((0, -0.9, 0.4)))
+    chrome.box((1.5, 1.6, 1.1), turn @ Matrix.Translation((0, 2.3, 0.25)))
+    eye = turn @ Vector((0, 2.6, 0.45))
+    for sx in (1, -1):
+        phi = sx * math.radians(52)
+        a = Vector(((SHELL_R0 + 1.2) * math.sin(phi), RING_Y - (SHELL_R0 + 1.2) * SHELL_DEEP * math.cos(phi), RING_Z - 2.5))
+        mids = [_cloth.on(a.lerp(eye, f) + Vector((0, -3.0, 0)))[0] + Vector((0, -0.95, 0.1)) for f in (0.3, 0.62)]
+        pts = fl.polyline([tuple(a), *(tuple(q) for q in mids), tuple(eye)], 0.8)
+        Tube(pts, [(0.11, 0.11)] * len(pts), resample=1).add(cable, 5)
+    tie = t.trace(d(zb - 1.2), d(B.waist_z + 12.5), az(0), az(0), 40)
+    band(tape, tie, 2.6, 0.32, sink=0.2)
+    _cloth.under += [(q, 1.3, 0.32, "tie") for q, _ in tie[::2]]
 
 
 def build_harness(M: dict, t: Tube) -> None:
