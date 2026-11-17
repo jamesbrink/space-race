@@ -6,18 +6,21 @@ from pathlib import Path
 
 from mathutils import Matrix, Vector
 
+import apollo8_equipment
 import perforated_wall
 from cm_reference import survey_cm
 from srlib import CM, IN, MeshBuilder, interior, lathe_obj, mark_shells, material, prof
 
 
-def build(parent, base):
-    if not interior():
-        return
+def build(parent, base, *, combined_hatch=False):
     structure = material("apollo-tunnel-alloy", (0.64, 0.65, 0.62), metallic=0.6, roughness=0.55, double_sided=True)
     cloth = material("apollo-landing-pack", (0.66, 0.61, 0.48), roughness=0.96)
     strap = material("apollo-landing-webbing", (0.81, 0.77, 0.67), roughness=0.87)
     dark = material("apollo-recovery-fittings", (0.26, 0.29, 0.28), metallic=0.6, roughness=0.5)
+    if combined_hatch:
+        apollo8_equipment.combined_hatch(parent, base, structure, dark)
+    if not interior():
+        return
     record = json.loads((Path(__file__).parent / "reference/apollo-cm-inner-apertures.json").read_text())
     rim = perforated_wall.convex_boundary(
         [Vector(survey_cm(p, record["registration"])) * CM / IN for p in record["tunnel_entry_interface"]["boundary_cm"]]
@@ -43,25 +46,27 @@ def build(parent, base):
     ]
     mesh.add([world(p) for ring in rings for p in ring], faces)
     mesh.build("CM_ForwardTunnel", structure, parent)
-    hatch = lathe_obj(
-        "CM_ForwardPressureHatch",
-        prof([(0, base + 106.6), (14.8, base + 106.6), (14.9, base + 107.5), (14.7, base + 108), (0, base + 108)]),
-        structure,
-        parent,
-        segs=80,
-    )
-    mark_shells(["CM_ForwardTunnel", hatch.name])
+    mark_shells(["CM_ForwardTunnel"])
+    if not combined_hatch:
+        hatch = lathe_obj(
+            "CM_ForwardPressureHatch",
+            prof([(0, base + 106.6), (14.8, base + 106.6), (14.9, base + 107.5), (14.7, base + 108), (0, base + 108)]),
+            structure,
+            parent,
+            segs=80,
+        )
+        mark_shells([hatch.name])
 
-    def tube(builder, a, b, r):
-        builder.tube(world(Vector(a)), world(Vector(b)), r * IN, segs=12)
+        def tube(builder, a, b, r):
+            builder.tube(world(Vector(a)), world(Vector(b)), r * IN, segs=12)
 
-    fittings = MeshBuilder()
-    for i in range(6):
-        a = math.tau * i / 6
-        tube(fittings, (8 * math.cos(a), 8 * math.sin(a), 106.05), (14 * math.cos(a), 14 * math.sin(a), 106.05), 0.35)
-    tube(fittings, (3, -3, 105.1), (8, -3, 105.1), 0.55)
-    tube(fittings, (3, -3, 105.1), (3, -3, 106.45), 0.6)
-    fittings.build("CM_ForwardHatchLatches", dark, parent)
+        fittings = MeshBuilder()
+        for i in range(6):
+            a = math.tau * i / 6
+            tube(fittings, (8 * math.cos(a), 8 * math.sin(a), 106.05), (14 * math.cos(a), 14 * math.sin(a), 106.05), 0.35)
+        tube(fittings, (3, -3, 105.1), (8, -3, 105.1), 0.55)
+        tube(fittings, (3, -3, 105.1), (3, -3, 106.45), 0.6)
+        fittings.build("CM_ForwardHatchLatches", dark, parent)
     # P-131 and P-136: three packs around the tunnel; fourth quadrant
     # contains recovery gear. Round the packet corners in radius and height.
     for index, middle in enumerate((math.pi, math.pi / 2, -math.pi / 2)):

@@ -29,8 +29,8 @@ PAN_THICKNESS, PAD_HEIGHT = 0.375, 1.0
 STRAP_WIDTH, STRAP_THICKNESS = 1.5, 0.10
 
 
-def build(parent, base):
-    """Build a common frame, three body supports, restraints and eight struts."""
+def build(parent, base, *, foldable=False):
+    """Select the unitized or individually framed couches in their launch attitude."""
     import bpy
     from mathutils import Matrix, Vector
     from mathutils.bvhtree import BVHTree
@@ -41,6 +41,8 @@ def build(parent, base):
 
     parent["geometry_confidence"] = "estimated"
     parent["configuration_source"] = "NASA TN D-7440, Figs 1/4/5/7, pp.9–10; NAA SC101 CS-2025C"
+    if foldable:
+        parent["configuration_source"] = "Apollo 8 Mission Report, A.1.1, Fig. A.1-2; estimated installation"
     parent["seat_back_degrees"] = SEAT_BACK_DEGREES
     if not interior():
         return
@@ -178,14 +180,21 @@ def build(parent, base):
         mesh.add(vertices, [tuple(reversed(face)) for face in faces])
         return keep(mesh.build(f"CM_CouchSeatLegPan_{index}", pan_paint, owner, smooth=False))
 
-    # One box-beam platform, not three detachable/foldable Apollo 8+ frames.
-    for v in (-FRAME_HALF_WIDTH, -11.5, 11.5, FRAME_HALF_WIDTH):
-        beam(f"CM_CouchMainBeam_{v}", point(BACK_LENGTH - BEAM_LENGTH, v, -1.5), point(BACK_LENGTH, v, -1.5), 1.5, 2.0)
-    for u in (-24.0, 0.0, 16.0, BACK_LENGTH):
-        beam(f"CM_CouchCrossBeam_{u}", point(u, -FRAME_HALF_WIDTH, -3.5), point(u, FRAME_HALF_WIDTH, -3.5), 1.5, 2.0)
+    if foldable:
+        # Independent couch frames hang from shared transverse shoulder and hip beams.
+        for sign in (-1, 1):
+            beam(f"CM_CouchFootSupport_{sign}", point(-21, sign * FRAME_HALF_WIDTH, -3), point(0, sign * FRAME_HALF_WIDTH, -3), 1.35, 1.8)
+        for u in (0, 25):
+            cylinder(f"CM_FoldingCouchYBeam_{u}", point(u, -FRAME_HALF_WIDTH, -3), point(u, FRAME_HALF_WIDTH, -3), 1)
+    else:
+        for v in (-FRAME_HALF_WIDTH, -11.5, 11.5, FRAME_HALF_WIDTH):
+            beam(f"CM_CouchMainBeam_{v}", point(BACK_LENGTH - BEAM_LENGTH, v, -1.5), point(BACK_LENGTH, v, -1.5), 1.5, 2.0)
+        for u in (-24.0, 0.0, 16.0, BACK_LENGTH):
+            beam(f"CM_CouchCrossBeam_{u}", point(u, -FRAME_HALF_WIDTH, -3.5), point(u, FRAME_HALF_WIDTH, -3.5), 1.5, 2.0)
 
     for index, y in enumerate(CENTRES_Y):
-        owner = group(f"UnitizedPosition_{index + 1}", parent)
+        position = "FoldablePosition" if foldable else "UnitizedPosition"
+        owner = group(f"{position}_{index + 1}", parent)
         # Headrest centre and an estimated 7-inch eye stand-off give each
         # unoccupied seat a camera. +Z in glTF looks ahead, +Y is headward.
         eye = group(("Seat_Commander", "Seat_CommandModulePilot", "Seat_LunarModulePilot")[index], owner)
@@ -193,11 +202,32 @@ def build(parent, base):
         hip = origin + across * y
         knee = hip + seat * SEAT_LENGTH
         ankle = knee + leg * LEG_LENGTH
-        plate(f"CM_CouchBackPan_{index}", hip, back, normal, BACK_LENGTH, BACK_WIDTH, pan_paint, owner)
-        plate(f"CM_CouchBackPad_{index}", hip + back * 1.0, back, normal, BACK_LENGTH - 2, BACK_WIDTH - 3, cloth, owner, padded=True)
-        seat_leg_pan(index, hip, knee, ankle, owner)
-        plate(f"CM_CouchSeatPad_{index}", hip + seat, seat, seat_normal, SEAT_LENGTH - 2, SEAT_WIDTH - 3, cloth, owner, padded=True)
-        plate(f"CM_CouchLegPad_{index}", ankle - leg, -leg, leg_normal, LEG_LENGTH - 2, LEG_WIDTH - 3, cloth, owner, padded=True)
+        if foldable:
+            # Tubular perimeter frames carry fabric body supports. The installed angles,
+            # tube sections and webbing spans are diagram-based estimates (TN D-7440).
+            for label, start, end, outward, width in (
+                ("Back", hip, hip + back * BACK_LENGTH, normal, BACK_WIDTH),
+                ("Seat", hip, knee, seat_normal, SEAT_WIDTH),
+                ("Leg", knee, ankle, leg_normal, LEG_WIDTH),
+            ):
+                direction = (end - start).normalized()
+                for side in (-1, 1):
+                    edge = across * side * (width / 2 - 0.6)
+                    cylinder(f"CM_{label}SideTube_{index}_{side}", start + edge, end + edge, 0.58, metal, owner)
+                for joint, at in (("hip", start), ("head", end)) if label == "Back" else (("end", end),):
+                    cylinder(
+                        f"CM_{label}EndTube_{index}_{joint}", at - across * (width / 2 + 0.5), at + across * (width / 2 + 0.5), 0.55, metal, owner
+                    )
+                plate(f"CM_{label}Web_{index}", start + direction * 0.7, direction, outward, (end - start).length - 1.4, width - 1.6, cloth, owner)
+            for side in (-1, 1):
+                at = knee + across * side * (LEG_WIDTH / 2)
+                cylinder(f"CM_CouchKneeHinge_{index}_{side}", at - across * 0.85, at + across * 0.85, 1.4, steel, owner)
+        else:
+            plate(f"CM_CouchBackPan_{index}", hip, back, normal, BACK_LENGTH, BACK_WIDTH, pan_paint, owner)
+            plate(f"CM_CouchBackPad_{index}", hip + back * 1.0, back, normal, BACK_LENGTH - 2, BACK_WIDTH - 3, cloth, owner, padded=True)
+            seat_leg_pan(index, hip, knee, ankle, owner)
+            plate(f"CM_CouchSeatPad_{index}", hip + seat, seat, seat_normal, SEAT_LENGTH - 2, SEAT_WIDTH - 3, cloth, owner, padded=True)
+            plate(f"CM_CouchLegPad_{index}", ankle - leg, -leg, leg_normal, LEG_LENGTH - 2, LEG_WIDTH - 3, cloth, owner, padded=True)
         plate(f"CM_CouchFootPan_{index}", ankle, foot, foot_normal, FOOT_LENGTH, FOOT_WIDTH, metal, owner)
         for u in (4, 25):
             for v in (-10.5, 10.5):
@@ -294,6 +324,10 @@ def build(parent, base):
         cylinder(f"CM_CouchStrutStem_{name}", a - delta.normalized() * 0.5, a + delta * 0.14, 0.5, steel)
         cylinder(f"CM_CouchStrutCase_{name}", a + delta * 0.10, a + delta * 0.70, 1.25)
         cylinder(f"CM_CouchStrutRod_{name}", a + delta * 0.65, b - delta.normalized() * 1.5, 0.55, steel)
+        if foldable and name.startswith("X"):
+            # Lockout lever folded back on the head and foot strut, Fig. A.1-2.
+            side = across * (1.5 if a.y < 0 else -1.5)
+            beam(f"CM_CouchLockout_{name}", a + delta * 0.22 + side, a + delta * 0.48 + side, 0.65, 0.85, steel)
         for i, t in enumerate((0.08, 0.14, 0.64, 0.71)):
             cylinder(f"CM_CouchStrutBand_{name}_{i}", a + delta * t, a + delta * (t + 0.025), 1.5, steel)
         # A mounting pad crosses the nominal wall reference; its finite metal
@@ -306,11 +340,19 @@ def build(parent, base):
     # exact SC101 mounting coordinates remain estimated. Head struts pass
     # outboard of the measured console, with endpoints on the nominal wall.
     for sign in (-1, 1):
-        strut(f"XFoot_{sign}", point(-20, sign * FRAME_HALF_WIDTH, -1.5), Vector((-15, sign * 22, 80.75)))
+        strut(f"XFoot_{sign}", point(-20, sign * FRAME_HALF_WIDTH, -3 if foldable else -1.5), Vector((-15, sign * 22, 80.75)))
         r = pressure_vessel.radius(65)
-        strut(f"XHead_{sign}", point(29, sign * FRAME_HALF_WIDTH, -1.5), Vector((math.sqrt(r * r - 44 * 44), sign * 44, 65)))
+        strut(
+            f"XHead_{sign}",
+            point(25 if foldable else 29, sign * FRAME_HALF_WIDTH, -3 if foldable else -1.5),
+            Vector((math.sqrt(r * r - 44 * 44), sign * 44, 65)),
+        )
         r = pressure_vessel.radius(pressure_vessel.AFT)
-        strut(f"Z_{sign}", point(27, sign * FRAME_HALF_WIDTH, -1.5), Vector((math.sqrt(r * r - 32 * 32), sign * 32, pressure_vessel.AFT)))
+        strut(
+            f"Z_{sign}",
+            point(25 if foldable else 27, sign * FRAME_HALF_WIDTH, -3 if foldable else -1.5),
+            Vector((math.sqrt(r * r - 32 * 32), sign * 32, pressure_vessel.AFT)),
+        )
         z = point(0, sign * FRAME_HALF_WIDTH, -1.5).z
         r = pressure_vessel.radius(z)
         strut(f"Y_{sign}", point(0, sign * FRAME_HALF_WIDTH, -1.5), Vector((HIP_X, sign * math.sqrt(r * r - HIP_X**2), z)))
@@ -345,6 +387,4 @@ def build(parent, base):
                 raise ValueError(f"{obj.name} leaves the nominal pressure-wall envelope: Xc={z:.3f}, r={r:.3f}")
             if z < pressure_vessel.bulkhead_x(r) - 0.01:
                 raise ValueError(f"{obj.name} passes through the nominal cabin floor")
-    print(
-        "Apollo 7 unitized couches: estimated geometry; 3 positions, 18 harness points, 6 passive heel restraints, 8 honeycomb-attenuator exteriors"
-    )
+    print(f"Apollo crew couches: {'foldable' if foldable else 'unitized'}; 3 launch positions verified against the cabin")

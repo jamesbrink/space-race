@@ -1,4 +1,4 @@
-"""Apollo 7 main-panel equipment, reconstructed from its own design layout.
+"""Apollo main-panel equipment reconstructed from dated CM-101 and CM-103 design layouts.
 
 V36-976018 revision D and SC101 SCS-2100D establish the arrangement. New
 dimensions, case sections, installation and colours are ESTIMATED. The shared
@@ -62,6 +62,11 @@ class Console(InchPanel):
         return pixels * abs(self.scale) / CM_PER_IN
 
 
+def _layout(spacecraft):
+    file = {101: "apollo-console-layout.json", 103: "apollo-console-layout-103.json"}[spacecraft]
+    return json.loads((FOLDER / file).read_text())
+
+
 def _validate(parent, base, *, console_clearance=False):
     """Check actual transformed geometry, including the separate ball nodes."""
     from mathutils.bvhtree import BVHTree
@@ -92,7 +97,7 @@ def _validate(parent, base, *, console_clearance=False):
                 delta = b - a
                 if delta.length > 1e-6 and tree.ray_cast(a, delta.normalized(), delta.length)[0] is not None:
                     raise ValueError(f"{obj.name} crosses the main-console surface outside its fixed interface")
-    print(f"Apollo 7 {parent.name}: actual {len(meshes)} equipment meshes fit the nominal pressure wall and floor")
+    print(f"Apollo {parent.name}: actual {len(meshes)} equipment meshes fit the nominal pressure wall and floor")
 
 
 def _ball(parent, c, u, v, index):
@@ -141,15 +146,15 @@ def _ball(parent, c, u, v, index):
     return mesh.build(f"CM_FDAI_Ball_{index}", paint, pivot, sharp_angle=None)
 
 
-def indicators(parent, base):
+def indicators(parent, base, *, spacecraft=101):
     """Two round FDAI front reconstructions around the unchanged fixed holes."""
     if not interior():
         return
     source = json.loads((FOLDER / "apollo-main-console.json").read_text())
-    layout = json.loads((FOLDER / "apollo-console-layout.json").read_text())
+    layout = _layout(spacecraft)
     c = Console(parent, base, source, layout)
     parent["geometry_confidence"] = "estimated"
-    parent["source"] = "NAA SC101 SCS-2100D p.76; V36-976018 Rev D; later 4.5-in ball used only as estimated CM101 prior"
+    parent["source"] = layout["source"]["title"]
     for index, anchor in enumerate(layout["registration"]["anchors"], 1):
         u, v = c.xy(*anchor["image_px"])
         # Finite rear case and front rim. The 2.7-in rear barrel clears both
@@ -203,15 +208,15 @@ def indicators(parent, base):
     return objects
 
 
-def equipment(parent, base):
+def equipment(parent, base, *, spacecraft=101):
     """The main-panel equipment layout; no borrowed later side consoles."""
     if not interior():
         return
     source = json.loads((FOLDER / "apollo-main-console.json").read_text())
-    layout = json.loads((FOLDER / "apollo-console-layout.json").read_text())
+    layout = _layout(spacecraft)
     c = Console(parent, base, source, layout)
     parent["geometry_confidence"] = "estimated"
-    parent["source"] = "NAA V36-976018 revision D, CM101; photo/layout reconstruction, static unpowered exhibit"
+    parent["source"] = layout["source"]["title"]
 
     def dial(item):
         u, v = c.xy(*item["at"])
@@ -269,6 +274,24 @@ def equipment(parent, base):
                 u, v = c.xy(sum(row["xs"]) / len(row["xs"]), row["y"] - 13)
                 c.text(row["label"], u, v, 0.09)
 
+    # Panel 3 has four indication meters (M5–M8), each with a short pointer
+    # between CLOSED and OPEN. They are separate from the crew's controls.
+    if valves := layout.get("valve_meters"):
+        for x in valves["xs"]:
+            u, v = c.xy(x, valves["y"])
+            c.lathe("ValveMeters", "metal", u, v, [(0, -0.15), (0.40, -0.15), (0.40, 0.18), (0, 0.18)])
+            c.line("ValvePointers", "black", (u - 0.23, v + 0.18), (u + 0.2, v - 0.11), 0.07, 0.18 + PRINT)
+        u, v = c.xy(sum(valves["xs"]) / len(valves["xs"]), valves["y"] - 15)
+        c.text("SPS ENGINE INJECTOR VALVES", u, v, 0.09)
+
+    # The CM-103 drawing shows broad selector knobs and the two antenna pointing
+    # controls in the lower extension of panel 2. The dial poses are illustrative.
+    for item in layout.get("selectors", []):
+        u, v = c.xy(*item["at"])
+        c.lathe("SelectorKnobs", "panel", u, v, [(0, -0.15), (0.85, -0.15), (0.85, 0.19), (0.42, 0.4), (0.42, 0.7), (0, 0.7)], segs=32)
+        c.line("SelectorIndices", "black", (u, v), (u, v + 0.35), 0.055, 0.7 + PRINT)
+        c.text(item["label"], u, v + 1.10, 0.09)
+
     # Forty-eight physical lenses, including the blank positions shown in the
     # CM101 drawing. No warning light or instrument reading is claimed active.
     warning = layout["caution_warning"]
@@ -281,36 +304,41 @@ def equipment(parent, base):
                 c.box("WarningLenses", "lens", u, v, width - 0.07, height - 0.06, FACE - 0.025, FACE + PRINT + 0.05)
                 c.text(legend, u, v + 0.04, 0.065, FACE + 2 * PRINT + 0.05, "white", "WarningLegends")
 
-    # Entry-monitor facade, from its distinct SC101 location above the left FDAI.
-    u, v = c.xy(431, 286)
+    # Both entry monitors have the same arrangement. Register the local facade
+    # to its centre above the left FDAI in each drawing crop.
+    def ems(x, y):
+        return c.xy(x - 23, y + 13) if spacecraft == 103 else c.xy(x, y)
+
+    u, v = ems(431, 286)
     width, height = c.size(196), c.size(155)
     c.box("EMSCase", "panel", u, v, width, height, -1.0, FACE)
     for x, y, w, h in ((447, 264, 88, 78), (446, 344, 85, 14)):
-        a, b = c.xy(x, y)
+        a, b = ems(x, y)
         c.box("EMSWindows", "black", a, b, c.size(w), c.size(h), FACE - 0.025, FACE + PRINT + 0.05)
     for j in range(7):
-        a, b = c.xy(410, 230 + j * 10)
-        d, e = c.xy(486, 230 + j * 10)
+        a, b = ems(410, 230 + j * 10)
+        d, e = ems(486, 230 + j * 10)
         c.line("EMSGraph", "white", (a, b), (d, e), 0.015, FACE + 2 * PRINT + 0.05)
     for j in range(7):
-        a, b = c.xy(412 + j * 12, 228)
-        d, e = c.xy(412 + j * 12, 300)
+        a, b = ems(412 + j * 12, 228)
+        d, e = ems(412 + j * 12, 300)
         c.line("EMSGraph", "white", (a, b), (d, e), 0.015, FACE + 2 * PRINT + 0.05)
     c.text("ENTRY MONITOR", u, v + height / 2 - 0.22, 0.12, FACE + PRINT)
     for x, y, label in ((367, 334, "ROLL"), (360, 238, "ENTRY")):
-        a, b = c.xy(x, y)
+        a, b = ems(x, y)
         c.lathe(
             "EMSControls", "black", a, b, [(0, FACE - 0.025), (c.size(18), FACE - 0.025), (c.size(18), FACE + PRINT + 0.1), (0, FACE + PRINT + 0.1)]
         )
         c.text(label, a, b, 0.11, FACE + 2 * PRINT + 0.1, "white", "EMSLegends")
-    for x, y, label in ((287, 339, "MASTER\nALARM"), (492, 391, "ABORT"), (1547, 415, "MASTER\nALARM")):
+    alarms = ((267, 352), (470, 404), (1529, 426)) if spacecraft == 103 else ((287, 339), (492, 391), (1547, 415))
+    for (x, y), label in zip(alarms, ("MASTER\nALARM", "ABORT", "MASTER\nALARM")):
         a, b = c.xy(x, y)
         c.box("AlarmHousings", "metal", a, b, 0.95, 0.95, -0.15, FACE)
         c.box("AlarmFaces", "white", a, b, 0.82, 0.82, FACE - 0.025, FACE + PRINT + 0.05)
         c.text(label, a, b + 0.08, 0.1, FACE + 2 * PRINT + 0.05, "ink", "AlarmLegends")
     # The eight-position (four-hour, two-minute, two-second) mission-timer
     # window is intentionally unlit. Its electronic internals are omitted.
-    u, v = c.xy(1002, 225)
+    u, v = c.xy(982, 241) if spacecraft == 103 else c.xy(1002, 225)
     c.box("MissionTimerCase", "metal", u, v, c.size(95), c.size(23), -0.35, FACE)
     c.box("MissionTimerWindow", "black", u, v, c.size(89), c.size(18), FACE - 0.025, FACE + PRINT + 0.05)
     c.text("HOURS       MIN    SEC", u, v + c.size(17), 0.08)

@@ -16,17 +16,21 @@ const n = structure.extraction.plane_normal;
 const u = normalize([1 - n[0] ** 2, -n[0] * n[1], -n[0] * n[2]]);
 const v = cross(n, u).map((x) => -x);
 const [a, b] = structure.apertures.map((p) => p.probe_cm);
-const [[ax, ay], [bx, by]] = layout.registration.anchors.map((p) => p.image_px);
-const image = [bx - ax, ay - by];
-const target = [dot(subtract(b, a), u), dot(subtract(b, a), v)];
-const denominator = dot(image, image);
-const re = dot(target, image) / denominator;
-const im = (target[1] * image[0] - target[0] * image[1]) / denominator;
-const point = ([x, y]) => {
-  const px = x - ax;
-  const py = ay - y;
-  return a.map((value, k) => value + u[k] * (re * px - im * py) + v[k] * (im * px + re * py));
-};
+function registrationOf(drawing) {
+  const [[ax, ay], [bx, by]] = drawing.registration.anchors.map((p) => p.image_px);
+  const image = [bx - ax, ay - by];
+  const target = [dot(subtract(b, a), u), dot(subtract(b, a), v)];
+  const denominator = dot(image, image);
+  const re = dot(target, image) / denominator;
+  const im = (target[1] * image[0] - target[0] * image[1]) / denominator;
+  const point = ([x, y]) => {
+    const px = x - ax;
+    const py = ay - y;
+    return a.map((value, k) => value + u[k] * (re * px - im * py) + v[k] * (im * px + re * py));
+  };
+  return { point, scale: Math.hypot(re, im) };
+}
+const { point, scale } = registrationOf(layout);
 const plane = (p) => [dot(subtract(p, a), u), dot(subtract(p, a), v)];
 const contains = (polygon, [x, y]) => {
   let inside = false;
@@ -53,7 +57,7 @@ test('Apollo 7 layout uses two structural anchors and an independent DSKY holdou
   const residual = Math.hypot(...subtract(point(layout.registration.holdout.image_px), actual));
   assert.ok(residual > 0.9 && residual < 1.1, `independent holdout changed: ${residual} cm`);
   assert.ok(Math.abs(residual - layout.registration.holdout.residual_cm) < 1e-10);
-  assert.ok(Math.abs(Math.hypot(re, im) - 0.11490663265707532) < 1e-12);
+  assert.ok(Math.abs(scale - 0.11490663265707532) < 1e-12);
 });
 
 test('Apollo 7 transcribed equipment centres stay inside the unchanged shared console outline', () => {
@@ -78,4 +82,32 @@ test('Apollo 7 transcribed equipment centres stay inside the unchanged shared co
     7,
   );
   assert.equal(['left', 'right'].flatMap((k) => layout.caution_warning[k].flat()).length, 48);
+});
+
+test('Apollo 8 uses CM-103’s panel 2, including the lunar antenna controls and indication', () => {
+  const layout = JSON.parse(readFileSync(new URL('apollo-console-layout-103.json', folder)));
+  const { point } = registrationOf(layout);
+  const actual = dsky.registration.origin_cm.map(
+    (x, i) => x + 2.54 * (3.45 * dsky.registration.basis_columns[0][i] + 4 * dsky.registration.basis_columns[1][i]),
+  );
+  const residual = Math.hypot(...subtract(point(layout.registration.holdout.image_px), actual));
+  assert.ok(Math.abs(residual - layout.registration.holdout.residual_cm) < 1e-10);
+  assert.ok(residual < 0.5);
+  assert.equal(layout.caution_warning.left[1][2], 'HI GAIN ANT\nSCAN LIMIT');
+  assert.deepEqual(
+    layout.round_gauges.filter((g) => g.id.startsWith('s-band-')).map((g) => g.id),
+    ['s-band-pitch', 's-band-strength', 's-band-yaw'],
+  );
+  assert.ok(layout.toggle_rows.some((row) => row.label === 'TRACK / BEAM' && row.xs.length === 2));
+  const polygons = structure.surfaces.map((p) => p.boundary_cm.map(plane));
+  const points = [...layout.round_gauges, ...layout.selectors].map((item) => item.at);
+  for (const row of [...layout.toggle_rows, ...layout.rotary_rows, ...layout.tape_banks, layout.valve_meters]) {
+    for (const x of row.xs) points.push([x, row.y]);
+  }
+  assert.equal(new Set(points.map((p) => p.join(','))).size, points.length);
+  for (const p of points)
+    assert.ok(
+      polygons.some((poly) => contains(poly, plane(point(p)))),
+      `unsupported CM-103 control at ${p}`,
+    );
 });

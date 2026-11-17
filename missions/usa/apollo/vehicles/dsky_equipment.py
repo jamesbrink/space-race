@@ -37,7 +37,15 @@ def solid(c, name, centre, sections, paint):
     for width, height, radius, z in sections:
         vertices.extend((x * IN, y * IN, z * IN) for x, y in rounded(width, height, radius, centre))
     n = len(vertices) // len(sections)
-    faces.extend((tuple(reversed(range(n))), tuple(range(len(vertices) - n, len(vertices)))))
+    # Fan the convex caps from their centres. Tessellating a single large
+    # n-gon creates sliver triangles on the rounded corners; at Saturn V
+    # height their projections can overlap at single-precision coordinates.
+    for start, section, reverse in ((0, sections[0], True), (len(vertices) - n, sections[-1], False)):
+        middle = len(vertices)
+        vertices.append((centre[0] * IN, centre[1] * IN, section[3] * IN))
+        for i in range(n):
+            face = (middle, start + i, start + (i + 1) % n)
+            faces.append(tuple(reversed(face)) if reverse else face)
     for level in range(len(sections) - 1):
         for i in range(n):
             j = (i + 1) % n
