@@ -59,6 +59,10 @@ ENTRY = vk.ENTRY
 PARACHUTE = (vk.PARACHUTE[0], deg(21.0))
 HATCH_3 = (vk.TECHNOLOGICAL[0], deg(21.0))
 HATCHES = (ENTRY, PARACHUTE, HATCH_3)
+# The cabin's one lamp, over the instrument board, where the flight's data puts its light (voskhod-11a57.ts `lights`,
+# which quotes this in its own axes): scene millimetres. The model has no fitting for it; where it hung, and that it
+# was one, are estimated (voskhod.md). The cabin's shade is worked from a lens 60 mm across here, facing the middle.
+LAMP_AT = (140.0, -140.0, 3600.0)
 
 # The couches. Each has its own frame, millimetres: origin midway between the man's hip joints, +X to his left, +Y to
 # his head, +Z out of his chest. They are the Vostok seat's line turned a quarter turn about the ship's long axis
@@ -744,6 +748,20 @@ def materials() -> dict:
     }
 
 
+def shade(kind: str) -> None:
+    """The cabin's own shadow (vostok_3ka.shade_cabin): by its one lamp, and with it out by the hull's two portholes. What
+    takes it is the cabin's own and the couches, not the men in them."""
+    import cabin_shade
+
+    if not interior():
+        return
+    lamp = vk.V(*LAMP_AT)
+    points = cabin_shade.disc(lamp, vk.V(0, 0, vk.Z_C) - lamp, 30.0 * MM)
+    couches = [bpy.data.objects[f"Couch{name}"] for name in (COUCH_3KV if kind == "3KV" else COUCH_3KD)]
+    beds = [o for o in cabin_shade.meshes_under(*couches) if not o.name.startswith("Crew_")]
+    vk.shade_cabin([("Lamp", points[0], points)], [vk.porthole_pane(ENTRY), vk.porthole_pane(vk.RIGHT_PORT)], beds)
+
+
 def build(
     kind: str = "3KV",
     crew: Callable[[str, bpy.types.Object, Matrix], object] | None = None,
@@ -780,4 +798,5 @@ def build(
     vk.build_gas_bottles(M)
     vk.build_retro_engine(M)
     mark_shells(SHELLS_3KV if kind == "3KV" else SHELLS_3KD)
+    shade(kind)
     return f"{LENGTH * MM:.3f} m nozzle to the top of the reserve engine, {2 * vk.MODULE_R * MM:.3f} m across"
