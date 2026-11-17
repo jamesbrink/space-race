@@ -38,7 +38,7 @@ missions/                             the record: one folder per nation, program
                                       vostok-flies.ts, what a Vostok flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
-    crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts)
+    crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
                                       Blender run, nothing exported (sk_1_wearers.py: run it after touching sk_1.py; its header has the command)
   <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
@@ -73,7 +73,8 @@ missions/                             the record: one folder per nation, program
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
       pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962;
                                       ma-6-friendship-7: Complex 14 on 20 February 1962, with its pilot at the structure's foot; ma-7-aurora-7: on
-                                      24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965)
+                                      24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965;
+                                      gt-4: on 3 June 1965)
       model/<name>.py                 one Blender script per model: vehicle, pad, crew
       model/<name>.lod.json           its own level-of-detail thresholds, measured (tools/lod-thresholds.mjs); a site's dated models have theirs too
 public/models/<nation>/<programme>/<flight>/<name>.glb      built models (committed)

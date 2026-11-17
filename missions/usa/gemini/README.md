@@ -96,8 +96,9 @@ stands alone; and so in the Lineup. That is an exhibit's arrangement, since each
 
 | | In this repo |
 | --- | --- |
-| Launch Complex 19: where it is and which way the vehicle is taken to have faced; its place is not built | [lc-19.ts](../places/cape-canaveral/lc-19.ts) |
-| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch. The G4C suit of Gemini IV, V, VI-A, VIII and IX-A and the G5C of Gemini VII are not built: those ships' seats are empty |
+| Launch Complex 19, built once and dated: each flight that has its Launch site stands on its own morning (Gemini 3, Gemini 4) | [lc-19.md](../places/cape-canaveral/lc-19.md) |
+| The G3C suit, as Grissom and Young wore it on Gemini-Titan 3: the figure, seated and standing | [g3c_suit.py](crew/g3c_suit.py), [g3c-suit.md](crew/g3c-suit.md). Both men are aboard Gemini-Titan 3, seated for the launch, and stand at the foot of the erector |
+| The G4C suit, as the G3C's garment with what differs: the figure, standing | [g4c_suit.py](crew/g4c_suit.py), [g4c-suit.md](crew/g4c-suit.md). McDivitt and White stand at the foot of the erector on the morning of Gemini 4; not built seated, so the seats of the flights after Gemini 3 are empty. The G5C of Gemini VII is not built |
 
 ## Sources
 

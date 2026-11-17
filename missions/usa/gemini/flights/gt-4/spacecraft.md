@@ -26,7 +26,7 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 | G.m.t. clock on the command pilot's panel | added | a blank on spacecraft 3 | documented; its place as drawn | GIV, 3.1.2.5, Table 3-I and Figure 3-14 | yes: `gmt_clock=True`. A 24-hour dial, as Figure 3-14 draws it; its size is taken to be the pilot's clock's |
 | Other panel changes | ACME logic switches to the overhead panel; RCS shutoff switches to the pedestal; fuel-cell purge and crossover switches on the pilot's panel, not connected | | documented | GIV, 3.1.2.9.1 | no: the panels are spacecraft 3's but for the clock, and for RE ENT ANT EXP, which was that ship's experiment and is left off |
 | Ejection seats | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | | documented | GIV, 3.1.2.9.4 | the seat is the type's |
-| Suits | G4C: redundant closures, a thicker visor; the pilot's with a cover layer, an overvisor and thermal gloves | G3C on spacecraft 3 | documented | GIV, 3.1.2.9.2 | no: the seats are empty |
+| Suits | G4C: redundant closures, a thicker visor; the pilot's with a cover layer, an overvisor and thermal gloves | G3C on spacecraft 3 | documented | GIV, 3.1.2.9.2 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
 | Drogue mortar | aluminium breech | steel on spacecraft 3 | documented | GIV, 3.1.2.8 | said on the part |
 | Nose fairing | released by a spring after a cable was cut, after second stage cutoff | a pyrotechnic piston on spacecraft 5 | documented | GV, 3.1.2.8; SEDR 300, p. 4-53 | no difference built |
 | Transponder, antennas | C-band in the adapter; a second HF whip antenna in the adapter | S-band, one whip, on spacecraft 3 | documented | GIV, 3.1.2.1 | no |
@@ -80,7 +80,9 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 The type's list is [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "What the model gets wrong or leaves
 out". Of what was No. 4's own:
 
-- **No crew.** The G4C suit is not modelled; the seats are empty, with the harness lying on them.
+- **No crew aboard.** The G4C suit is modelled standing, McDivitt and White at the foot of the erector, and not
+  seated: the seats are empty, with the harness lying on them. The vehicle's own words for the seats, built into its
+  model, still say the suit is not modelled.
 - **The panels are spacecraft 3's**, with the clock added and that ship's experiment switch left off. The switches
   this ship moved are where spacecraft 3 had them.
 - **The extravehicular equipment is not where it was stowed, and not as it was stowed.** The manoeuvring unit went

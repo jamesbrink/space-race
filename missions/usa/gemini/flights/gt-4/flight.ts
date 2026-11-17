@@ -1,6 +1,9 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
+import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
 import {
+  BASE,
   CHRONOLOGY,
   FT,
   GIV,
@@ -22,6 +25,7 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
 
 const DEG = Math.PI / 180;
 const KIT = 'NASA release 65-158, the Gemini-Titan 4 press kit (May 1965)';
@@ -188,8 +192,8 @@ const parts: PartWords[] = [
       'radio and the thrusters and each other’s elbows kept waking the sleeper. For most of an hour of it the cabin ' +
       'held no air at all, with the right-hand hatch open. The panels are drawn from McDonnell’s drawing of ' +
       'spacecraft 3’s, with the clock this ship added before the command pilot; the other changes, switches moved ' +
-      'from one panel to another, are not drawn. The seats are empty: both men wore the G4C suit, which is not ' +
-      'modelled, and the suit before it would be the wrong one. No drawing read gives the pressure vessel’s ' +
+      'from one panel to another, are not drawn. The seats are empty: both men wore the G4C suit, which is modelled ' +
+      'standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s ' +
       'dimensions: its sizes are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -197,7 +201,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with spacecraft 4’s G.m.t. clock'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', '4 main batteries of 45 Ah here; 6 of 400 Ah in the adapter'],
-      ['Suits', 'G4C: not modelled, the seats are empty'],
+      ['Suits', 'G4C: the two men stand at the pad, the seats are empty'],
     ],
   },
   {
@@ -411,22 +415,59 @@ const parts: PartWords[] = [
   },
 ];
 
-const vehicle = geminiTitanStack({
-  flight: 'gt-4',
-  parts,
-  // the crew climbed in at T-100 minutes of a count that then held 1 h 16 min for the erector (On the Shoulders of
-  // Titans, p. 245): 176 min before the liftoff. When the hatches were shut is not in what was read: twenty minutes
-  // are allowed, estimated
-  seats: seats([-176 * 60, -156 * 60]),
-  views: [
-    { id: 'eva', label: 'Pilot’s hatch', nodes: ['Hatches', 'ExtravehicularEquipment'], from: along(55, 0.5) },
-    { id: 'beacons', label: 'Flashing lights', nodes: ['TitanStage2'], from: along(45, 0.1) },
-  ],
-  cabin: cabin({
-    radar: 'For the rendezvous radar, which this ship did not carry: the Titan’s second stage was chased by eye.',
-    fairing: 'Pressed after second stage cutoff on this ship, to throw off the nose and scanner fairings.',
-    power: 'The pilot’s ammeter: on this ship, six batteries in the adapter.',
+/** The vehicle as built, in its own frame; at Complex 19 it stands on the thrust mount (`lc19Vehicle`); the gallery stands it on its engines. */
+const vehicle = lc19Vehicle(
+  geminiTitanStack({
+    flight: 'gt-4',
+    parts,
+    // the crew climbed in at T-100 minutes of a count that then held 1 h 16 min for the erector (On the Shoulders of
+    // Titans, p. 245): 176 min before the liftoff. When the hatches were shut is not in what was read: twenty minutes
+    // are allowed, estimated
+    seats: seats([-176 * 60, -156 * 60]),
+    views: [
+      { id: 'eva', label: 'Pilot’s hatch', nodes: ['Hatches', 'ExtravehicularEquipment'], from: along(55, 0.5) },
+      { id: 'beacons', label: 'Flashing lights', nodes: ['TitanStage2'], from: along(45, 0.1) },
+    ],
+    cabin: cabin({
+      radar: 'For the rendezvous radar, which this ship did not carry: the Titan’s second stage was chased by eye.',
+      fairing: 'Pressed after second stage cutoff on this ship, to throw off the nose and scanner fairings.',
+      power: 'The pilot’s ammeter: on this ship, six batteries in the adapter.',
+    }),
   }),
+  BASE,
+);
+
+/**
+ * The two men as they stood on the deck that morning, by the foot of the crew's ramp, facing the erector: each a figure
+ * the site can be walked as (crew/g4c_suit.py). Where each stood is ours. The portable ventilator each carried and his
+ * yellow overshoes are not built (crew/g4c-suit.md). The pad stands round them as at 07:07, when they reached it.
+ */
+const ARRIVED = -(3 * 3600 + 8 * 60 + 59.562);
+const crew = standing({
+  flight: 'gt-4',
+  id: 'crew',
+  name: 'Command pilot',
+  scale: 'James A. McDivitt · 1.80 m, 1.85 m suited · to scale',
+  parts: g4cParts('McDivitt'),
+  height: 1.851,
+  at: [9.6, 0, -2.5],
+  boarding: ARRIVED,
+});
+const pilot = standing({
+  flight: 'gt-4',
+  id: 'pilot',
+  name: 'Pilot',
+  scale: 'Edward H. White II · 1.83 m, 1.87 m suited · to scale',
+  parts: g4cParts('White', {
+    Torso: {
+      summary: 'The G4C with the cover layer for going outside, under the harness.',
+      detail:
+        'White’s suit had what McDivitt’s did not: "A cover layer for thermal and micrometeoroid protection" over the whole, white nylon over layers of aluminised Mylar and felt, 3 3/4 lb of it, an integral part of the suit. It made him less supple than his command pilot, and warm all four days; in orbit he took off its sleeves. How much it let the suit out is estimated. The overvisor and the thermal gloves he wore outside went up with him and are not built.',
+    },
+  }),
+  height: 1.874,
+  at: [10.6, 0, -3.5],
+  boarding: ARRIVED,
 });
 
 export const flight: Flight = {
@@ -494,6 +535,23 @@ export const flight: Flight = {
     { t: get(97, 56, 12), event: 'Landing, 27°44′ N 74°14′ W, as the recovery ship reported it' },
   ],
   specs: [
+    ...LC19_SPECS,
+    {
+      group: 'Pressure suit',
+      label: 'McDivitt, in helmet and boots',
+      value: 1.851,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built (crew/g4c_suit.py), on a man of 1.803 m: "5 ft. 11 in." in the press kit’s crew biographies (NASA release 65-158, p. 83), documented. The suit’s own thickness is estimated',
+    },
+    {
+      group: 'Pressure suit',
+      label: 'White, in helmet and boots',
+      value: 1.874,
+      unit: 'm',
+      confidence: 'estimated',
+      note: 'the standing figure as built, on a man of 1.829 m: "6 ft." (the same, p. 84), documented. The suit’s thickness and its cover layer’s are estimated',
+    },
     ...dimensions(
       'documented',
       `${SEDR}, Figures 2-3 and 2-4, a manual that covers spacecraft 3, 4 and 7`,
@@ -669,5 +727,7 @@ export const flight: Flight = {
     ),
     ...thrusters('spacecraft 4'),
   ],
-  models: [vehicle],
+  models: [vehicle, pad, crew, pilot],
+  // the place round the pad as it stood that June: as in March (places/cape-canaveral/lc19/model/1965-03.py)
+  surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };
