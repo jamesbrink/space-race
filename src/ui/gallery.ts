@@ -1211,7 +1211,6 @@ export class Gallery {
     if (byHand) this.autoCut = false; // asked for by hand: it stays until asked otherwise
     this.cut = on;
     this.root.querySelector('[data-cut]')?.setAttribute('aria-pressed', String(on));
-    this.made?.studio.inside(on); // (opened, what is inside is lit)
     this.made?.stage.setCutaway(on);
   }
 
