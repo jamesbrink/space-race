@@ -816,6 +816,31 @@ def cabin_lamps(c: Fit) -> list[Vector]:
     return out
 
 
+def lamp_sources() -> list:
+    """The cabin's two lamps as its shade asks them (vostok_3ka.shade_cabin): each lens's middle and four points across
+    it, a little in front of it, scene metres; the left hand one first (`Lamp_1`), as a flight's `lights` are."""
+    import cabin_shade
+
+    out = []
+    for i, at in enumerate(LAMPS_AT):
+        p = place(*at)
+        points = cabin_shade.disc(p * MM, place(0, 0, 250.0) - p, 29.0 * MM, 12.0 * MM)
+        out.append((f"Lamp_{i + 1}", points[0], points))
+    return out
+
+
+def vzor_pane() -> list:
+    """The Vzor's screen as what lets light in with the lamps out (it shows the outside), if the cabin has one."""
+    import cabin_shade
+
+    o = bpy.data.objects.get("Vzor_Screen")
+    if o is None:
+        return []
+    bpy.context.view_layer.update()
+    middle = o.matrix_world @ (sum((Vector(c) for c in o.bound_box), Vector()) / 8)
+    return [cabin_shade.disc(middle, o.matrix_world.to_3x3() @ Vector((0, 0, 1)), float(o["screen_radius"]))]
+
+
 def receiver(c: Fit) -> None:
     """The broadcast receiver at his right: a case with a tuning scale, two knobs and the round aircraft clock beside it.
     Its place is known only as "at the right"; its face is not copied from anything."""

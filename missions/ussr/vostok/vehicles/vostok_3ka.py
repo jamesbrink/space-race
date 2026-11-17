@@ -510,7 +510,9 @@ def build_cabin(
         return
     pad = MeshBuilder()
     rp = R_IN - 14
-    pad.lathe(pm([(rp * math.cos(a), Z_C + rp * math.sin(a)) for a in arc]), 96, flip=True)
+    # (cut every 48 mm or so: its shade is kept at its vertices, and a shadow's edge on it is as fine as they are)
+    fine = [deg(-90 + 180 * i / 72) for i in range(73)]
+    pad.lathe(pm([(rp * math.cos(a), Z_C + rp * math.sin(a)) for a in fine]), 144, flip=True)
     pad.build("Cabin_Padding", M["padding"], g, sharp_angle=None)
 
     S = seat_frame()
@@ -610,6 +612,62 @@ def build_cabin(
     if container:
         mouth = OUTER.axis(*hatches[1]) @ Matrix.Translation(V(0, 0, zin - 50))
         rehome(bpy.data.objects["Cabin_ParachuteContainer"], group("ParachuteContainer", g), mouth)
+
+
+# What the viewer moves, lights or paints in the cabin (vostok_cabin.py's nodes): left out of the cabin's shade, which is
+# worked for things as they stand. They still cast it, as built.
+DRIVEN = ("Gauge_", "Tele_", "Ctl_", "Lamp_", "Vzor_Screen", "Vzor_Ring", "Globus_Globe")
+# The inside's broad surfaces, where a shadow's edge is read (cabin_shade.bake `broad`), and the hull's pieces in the
+# hatches, built facing out and seen from inside (`flip`)
+BROAD = (
+    "Cabin_Padding",
+    "Cabin_InstrumentBoard",
+    "Cabin_ControlPanel",
+    "Cabin_Panels",
+    "Cabin_Cases",
+    "Cabin_ParachuteContainer",
+    "Cabin_Vzor",
+    "Cabin_Receiver",
+    "Cabin_StickBase",
+    "EntryHatch_Shell",
+    "ParachuteHatch_Shell",
+    "DM_TechHatch_Shell",
+)
+HATCH_SHELLS = ("EntryHatch_Shell", "ParachuteHatch_Shell", "DM_TechHatch_Shell")
+
+
+def shade_cabin(lamps, openings, also=()) -> None:
+    """The cabin's own shadow, kept at its vertices (tools/blender/cabin_shade.py): a figure for each of `lamps` alone and
+    one with them out. `lamps`: each (name, its middle, the places it is asked from), scene metres, in the order of the
+    flight's `ModelDef.lights`; `openings`: what lets light in with them out, each as the places it is asked from.
+    What is shaded is the cabin's own (its lining, its fit) and the inner face of each hatch, and `also` (a Voskhod's
+    couches); what is in the way is everything that comes within the hull. The pilot, the seat and what the viewer moves
+    cast it and take none: a seat that leaves the ball carries no indoor shade out with it."""
+    import cabin_shade
+
+    if not interior():
+        return
+    bpy.context.view_layer.update()
+    centre = V(0, 0, Z_C)
+
+    def within(o: bpy.types.Object) -> bool:
+        corners = [o.matrix_world @ Vector(c) for c in o.bound_box]
+        lo = Vector(tuple(min(c[k] for c in corners) for k in range(3)))
+        hi = Vector(tuple(max(c[k] for c in corners) for k in range(3)))
+        nearest = Vector(tuple(min(max(centre[k], lo[k]), hi[k]) for k in range(3)))
+        return (nearest - centre).length < R_IN * MM
+
+    casters = [o for o in bpy.data.objects if o.type == "MESH" and not cabin_shade.is_seen_through(o) and within(o)]
+    own = [o for o in cabin_shade.meshes_under(bpy.data.objects["Cabin"]) if o.name != "Cabin_PressureShell" and not o.name.startswith(DRIVEN)]
+    hatches = [bpy.data.objects[n] for n in HATCH_SHELLS if n in bpy.data.objects]
+    cabin_shade.bake([*own, *hatches, *also], casters, lamps, openings, BROAD, HATCH_SHELLS)
+
+
+def porthole_pane(where: tuple[float, float]) -> list:
+    """Where a porthole lets light in, as cabin_shade asks it: its glass's circle, just inside the hull's bore."""
+    import cabin_shade
+
+    return cabin_shade.disc(INNER.p(*where, -5.0), -Ball.n(*where), PORT_R * MM)
 
 
 def inside_cabin(obj: bpy.types.Object, margin: float = 16.0) -> None:
@@ -1221,4 +1279,10 @@ def build(
     reframe(bpy.data.objects["EntryHatch"], hatch_node(ENTRY))
     reframe(bpy.data.objects["ParachuteHatch"], hatch_node(PARACHUTE))
     reframe(bpy.data.objects["EjectionSeat"], seat_node(), held)
+    if fit or lighting:
+        import vostok_cabin
+
+        # the cabin's own shadow, worked once everything in it stands where it will: by its two lamps, and with them out
+        # by the two portholes and the Vzor's screen
+        shade_cabin(vostok_cabin.lamp_sources(), [porthole_pane(ENTRY), porthole_pane(RIGHT_PORT), *vostok_cabin.vzor_pane()])
     return f"{LENGTH * MM:.3f} m nozzle to the top of the sphere's housing, {2 * MODULE_R * MM:.3f} m across"
