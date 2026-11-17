@@ -1406,7 +1406,7 @@ Known, not read:
 | The FAI's record files for Vostok 1 (record 9326 and the two beside it), and its own pages on archive.fai.org (not reached) | What the FAI was told of the landing, and what it ratified |
 | Anything on who chose the Vostok and Soyuz call signs, and why | Whether a cosmonaut picked his own. Some stayed with their man (Komarov's Рубин twice, Nikolayev's Сокол twice) and some did not (Shatalov was Амур, then Гранит twice) |
 
-## Apollo 7 — exterior study (November 2026)
+## Apollo 7: CSM-101 on SA-205, the gallery exhibit (November 2026)
 
 | Source | Link | Read / used | Limits |
 |---|---|---|---|

@@ -6,4 +6,5 @@ crewed Apollo flight. The programme’s lunar spacecraft must be their own dated
 not copies of this Earth-orbit test vehicle.
 
 Shared hardware lives in `vehicles/`; a flight’s model script selects its configuration.
-At present this is an exterior modelling study, not a validated flight simulator.
+Apollo 7 is in the gallery: the whole stack, cut open to its stages, its service module and its cabin, which can be
+sat in. Its launch site and the flight itself are not built.

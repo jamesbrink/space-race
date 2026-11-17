@@ -1,4 +1,4 @@
-"""CSM-101 on SA-205, Apollo 7: exterior study. pnpm model apollo-7 --preview DIR."""
+"""CSM-101 on SA-205, Apollo 7: the gallery exhibit, cut open to the cabin and the stages. pnpm model apollo-7 --preview DIR."""
 
 import os
 import sys
