@@ -220,28 +220,52 @@ const cases = {
     if (!got.hash.endsWith('/site/pad')) fails.push(`the address is ${got.hash}, and the launch pad was the last asked for`);
     return fails;
   },
-  async 'the gallery gone back to after Fly, while the site loads, is left alone when the site arrives'() {
+  /**
+   * Fly is asked for, and the visitor goes back to the gallery while the site is on its way. What is promised is what the
+   * page does, not how long the site takes: the site's stage sleeps while the gallery is up (Stage.sleep) and its
+   * models and warming go on behind it, or, for a flight with no Fly (it opens in its gallery) or none yet asked,
+   * are not begun until the visitor first goes to it. So nothing here waits for the site while the gallery is up: the
+   * four things (no flight deck, no clock running, the gallery the place on show, the gallery's address) are read
+   * with the site held back, and again once the visitor has gone on to the Launch site and it has arrived.
+   */
+  async 'the gallery gone back to after Fly, while the site loads, is left alone, and the site is landed on when gone to'() {
     const { page, close } = await open(`${FLIGHT}/fly`, { slow: 1500 });
+    // (a flight with no Fly opens in its gallery: the site is then asked for, so that one is on its way to be left)
+    if ((await page.evaluate(() => location.hash)).endsWith('/gallery'))
+      await page.evaluate((to) => (location.hash = to), `${FLIGHT}/site/pad`);
     await page.waitForTimeout(600);
     await page.evaluate((to) => (location.hash = to), `${FLIGHT}/gallery`);
     await galleryReady(page);
-    // (the site goes on arriving behind the gallery, if it can)
-    await siteReady(page).catch(() => {});
-    await page.waitForTimeout(1200);
-    const got = await page.evaluate(() => ({
-      arrived: document.body.classList.contains('scene-ready'),
-      deck: window.sr.cockpit.active,
-      gallery: window.sr.gallery.active,
-      running: window.sr.clock.running,
-      hash: location.hash,
-    }));
-    await close();
+    const read = () =>
+      page.evaluate(() => ({
+        arrived: document.body.classList.contains('scene-ready'),
+        deck: window.sr.cockpit.active,
+        gallery: window.sr.gallery.active,
+        running: window.sr.clock.running,
+        hash: location.hash,
+      }));
     const fails = [];
-    if (got.deck) fails.push('the flight deck was entered behind the gallery');
-    if (got.running) fails.push('the clock is running behind the gallery');
-    if (!got.gallery) fails.push('the gallery is not the place on show');
-    if (!got.hash.endsWith('/gallery')) fails.push(`the address is ${got.hash}, and the gallery is on show`);
-    if (!got.arrived) fails.push('(the site had not arrived behind the gallery when this was read)');
+    const hold = (got, where, gallery) => {
+      if (got.deck) fails.push(`${where}: the flight deck was entered`);
+      if (got.running && gallery) fails.push(`${where}: the clock is running behind the gallery`);
+      if (gallery && !got.gallery) fails.push(`${where}: the gallery is not the place on show`);
+      if (!gallery && got.gallery) fails.push(`${where}: the gallery is still the place on show`);
+      if (!got.hash.endsWith(gallery ? '/gallery' : '/site/pad')) fails.push(`${where}: the address is ${got.hash}`);
+    };
+    // with the site held back (or arriving behind the gallery: whichever it is doing, it is left alone)
+    await page.waitForTimeout(1200);
+    hold(await read(), 'while the site is held back behind the gallery', true);
+    // (a site that is arriving behind the gallery is given a few seconds to; that it does is not asked, and the wait is not the site's)
+    await page.waitForFunction(() => document.body.classList.contains('scene-ready'), null, { timeout: 12000 }).catch(() => {});
+    hold(await read(), 'with the site arrived behind the gallery, if it did', true);
+    // and gone on to: it arrives, the deck is still not entered, and it is the place on show
+    await page.evaluate((to) => (location.hash = to), `${FLIGHT}/site/pad`);
+    await siteReady(page);
+    await page.waitForTimeout(1200);
+    const there = await read();
+    await close();
+    hold(there, 'gone on to the launch site', false);
+    if (!there.arrived) fails.push('gone on to the launch site, and the site did not arrive');
     return fails;
   },
 

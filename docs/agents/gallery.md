@@ -38,6 +38,12 @@ Every flight has the same three places, in the same order, and opens in the firs
   Earth's maps and the Moon's). Going into a flight fetches only what the gallery needs: the
   vehicle, in full. The site's models, scenery, globe and clouds are fetched when Launch site or
   Fly is first chosen, and kept.
+- **A site still arriving when the gallery is gone to** is left to arrive, asleep. Its models and its warming go on
+  behind the gallery (the stage draws no frame, but loading and `Stage.warm` do not need one), so it is usually
+  ready when it is next gone to; it is never entered, started or shown meanwhile: no flight deck, the clock stopped,
+  the gallery the place on show, the gallery's address. How long that takes is the site's weight and the machine's,
+  and nothing may depend on it. A flight that lacks Fly opens in its gallery when Fly is asked for, and its site
+  is not fetched at all until Launch site is first chosen (`tools/places-test.mjs` asks for the site first for such a flight).
 - **Leaving a flight flown by hand** (`deck/leaving.ts` holds the rule): watching a flight as flown loses nothing and is never
   asked about. Once the visitor has taken it over and the run has not ended (or ended under four seconds ago), a way out
   *within the flight* (the deck's Leave, Esc, the Gallery and Launch site tabs, the flight's crumb, Back and Forward between its
