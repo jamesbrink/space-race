@@ -111,6 +111,13 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
     `build(number=)` in the script; the flight's `model/vehicle.py` gives "7" or "8".
   - Until November 2026 the lettering was on the 90° and 270° sides, 25 in from letter to letter with the band
     through the word, and there were no plates.
+  - **The A of STATES is painted across the ring weld** where the oxygen tank meets the alcohol tank (16.83 ft over
+    the tail: Figure 4-1; whether the weld's bead showed on the vehicle is from no photograph, and its section is
+    estimated). Both stand where their sources put them, so the letter lies on the bead: it is lifted by the bead's
+    0.22 in over it and for 6.9 in either side, and eased back to the skin over the next 6 in (`over_weld`), since a
+    letter's triangles are too coarse to follow the bead's own section. Before, the letter lay 0.78 mm off the bead's
+    crown, inside the 1 mm the build's clearance check holds every pair of faces to, and the vehicles could not be
+    built.
 - **The external conduits' meridians are from no photograph.** None read shows a conduit on the tanks at all. They
   are on 0° and 180°, between the fins; they were on the fins' meridians at 45° and 225° until the lettering was
   put there.

@@ -27,6 +27,8 @@ BODY_R = 35.0  # 70 in diameter
 LENGTH = 716.0
 S_TAIL = 111.24  # top of the tail unit: 9.27 ft (TM X-53107, Figure 4-1)
 S_TANK = S_TAIL + 450.0  # top of the centre unit: 37.50 ft; alcohol tank 18.8 ft over LOX tank 16.83 ft
+S_WELD = S_TAIL + 16.83 * 12  # the ring weld where the two tanks meet, at the oxygen tank's height over the tail
+WELD = (0.9, 0.5, 0.22)  # its bead: half its width at its foot and at its crown, and how proud of the skin its crown stands, inches
 S_AFT = 708.0  # top of the booster, 59.00 ft (Figure 4-1). The aft section is drawn as 139.64 in,
 # which leaves 7.1 in: the 7.08 in the aft unit was stretched for Mercury (4.8.2.2).
 AFT_LOWER = 42.16  # aft unit proper: nitrogen spheres, antennas, receivers
@@ -218,6 +220,23 @@ def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: 
                 r, z = r0 + (r1 - r0) * q / count, z0 + (z1 - z0) * q / count
                 at = matrix @ Vector((r * IN, side * (half(r) - 0.01) * IN, z * IN))
                 rivets.disc(at, normal, 0.2 * IN, 0.09 * IN)  # their heads stand 2 mm proud: closer, and the face would fight them
+
+
+def over_weld(mb: MeshBuilder, first: int, z_weld: float) -> None:
+    """Paint laid across the ring weld (`WELD`, at `z_weld` inches) is on its bead, and stands off the bead as it does the
+    skin: the vertices of `mb` from `first` on that lie over the bead or within a hand's breadth of it are lifted by the
+    bead's height, and eased back to the skin over as much again beyond. A letter's triangles are inches across, too
+    coarse to follow the bead's own section: lifted only where they touch it, a triangle that spans it lay within the
+    clearance of its crown (0.78 mm, the check's finding, where the A of STATES crosses it)."""
+    hold, ease = WELD[0] + 6.0, 6.0
+    for k in range(first, len(mb.verts)):
+        x, y, z = mb.verts[k]
+        d = abs(z / IN - z_weld)
+        lift = WELD[2] * (1.0 if d <= hold else max(0.0, 1.0 - (d - hold) / ease))
+        if lift > 0.0:
+            r = math.hypot(x, y) / IN
+            k_ = (r + lift) / r
+            mb.verts[k] = (x * k_, y * k_, z)
 
 
 def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | None = None) -> None:
@@ -432,7 +451,9 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
             s = S_TANK - 15.0 - i * pitch
             # scale by height: lettering() fits width, so size narrow letters down
             width = {"I": 5.0, "T": 16.0, "E": 15.0, "S": 16.5}.get(ch, 17.5)
+            first = len(paint.verts)
             lettering(paint, body, ch, width, t, up(s), False, font)
+            over_weld(paint, first, up(S_WELD))
     assert S_TANK - 15.0 - 5 * pitch - 12.0 > band1 and S_TANK - 15.0 - 7 * pitch + 12.0 < band0  # D over the band, S under it
     # The vehicle's number, on a plate at the foot of the tanks on each fin's meridian: a white card 14 in wide and 16
     # high edged in black, MR over the number (S61-02407 shows two of MR-7's, a quarter turn apart, 42 by 50 px where
@@ -461,8 +482,9 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         # otherwise lie in each other's surface at a coarse level of detail
         for s0, s1 in ((S_TAIL + 3, s_mid - 9.0 - 1.6), (s_mid - 9.0 + 1.6, S_TANK - 3)):
             fit.box((1.1 * IN, (s1 - s0) * IN, 0.5 * IN), body.frame(deg(15 + 60 * i), up((s0 + s1) / 2), -0.12))
-    for s in (S_TAIL + 16.83 * 12,):  # the common bulkhead between the tanks shows as a ring weld
-        fit.lathe(prof([(BODY_R - 0.1, up(s - 0.9)), (BODY_R + 0.22, up(s - 0.5)), (BODY_R + 0.22, up(s + 0.5)), (BODY_R - 0.1, up(s + 0.9))]), 128)
+    for s in (S_WELD,):  # the common bulkhead between the tanks shows as a ring weld
+        w0, w1, proud = WELD
+        fit.lathe(prof([(BODY_R - 0.1, up(s - w0)), (BODY_R + proud, up(s - w1)), (BODY_R + proud, up(s + w1)), (BODY_R - 0.1, up(s + w0))]), 128)
     skin.build("CenterUnit_Tanks", M["white"], g, sharp_angle=None)
     rivets.build("CenterUnit_Fasteners", M["bolt"], g)
     fit.build("CenterUnit_Conduits", M["white"], g, smooth=True, sharp_angle=30)
