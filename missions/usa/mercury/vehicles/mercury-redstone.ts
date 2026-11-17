@@ -467,10 +467,7 @@ export function stack(o: Stack): Body {
         to: estimated(1.79, 'as the other end'),
       },
       limits: {
-        landingSpeed: estimated(
-          12,
-          'not in anything read. The design landing was 28 to 30 ft/s (8.5 to 9.1 m/s: Hammack p. 25) onto the landing bag; 12 m/s, a third more, is taken as the most a pilot on the couch walks away from. Ours',
-        ),
+        landingSpeed: LANDING_SPEED,
         load: estimated(
           20,
           'not in anything read. Freedom 7 put 11.0 g on its pilot at entry (Postlaunch Report 4.2) and an abort off the pad is some 13 g by the escape rocket’s figures; 20 g for a few seconds, chest to back on a contour couch, is the figure usually given for what the couch was built to. ' +
@@ -907,6 +904,12 @@ export interface Hardware {
   drogue: { dragArea: Measure; fills: Measure };
   main: { dragArea: Measure; fills: Measure };
 }
+
+/** The fastest a Mercury capsule's pilot walks away from on his couch, m/s: every Mercury capsule's, ballistic or in orbit. */
+export const LANDING_SPEED = estimated(
+  12,
+  'not in anything read. The design landing was 28 to 30 ft/s (8.5 to 9.1 m/s: Hammack p. 25) onto the landing bag; 12 m/s, a third more, is taken as the most a pilot on the couch walks away from. Ours',
+);
 
 export const HARDWARE: Hardware = {
   exitArea: EXIT_AREA,

@@ -30,6 +30,7 @@ import type {
   ThrusterSet,
 } from '../../../../src/sim/plan.ts';
 import type { Confidence, Curve, Heating, ShedBody } from '../../../../src/types.ts';
+import { LANDING_SPEED } from './mercury-redstone.ts';
 
 /** One engine of the Atlas as the record has it: one chamber's figures, `count` alike. */
 export interface AtlasEngine {
@@ -357,6 +358,11 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     heating: o.heating,
     rarefied: o.rarefied,
     sheds: o.ascent.sheds,
+    // (the pilot lands in the capsule, on its couch: the Redstone flights' figure for what he walks away from)
+    crew: {
+      landing: { aboard: LANDING_SPEED },
+      aboard: 'He landed in the capsule, on its couch and its landing bag, as every Mercury pilot did',
+    },
   };
   const ascentWhen = (id: string): Pick<PlanCheck, 'when'> =>
     id === 'firstG'
