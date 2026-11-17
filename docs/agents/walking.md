@@ -72,7 +72,9 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   skeleton a group, a mesh a colour; his limbs are `pose` for the cycles his walk has gone (`cyclesAt`), so the same
   instant is the same pose however it was come to (`tests/crowd.test.mjs`). Leaving, each sets off when he will come onto the way `stagger` after the one before him, three abreast in the
   order they come at it from across it (`plan`), so none walks through another however far back in the body he stood. They are not solid to the walker
-  (`userData.walks`). Site 1's people of 6 August are built so; those of 12 April are merged by colour, and a group of
+  (`userData.walks`), and their joints are not in the scene: each skeleton's people hang from a holder outside it, read by
+  the meshes in three's detached bind mode, their matrices made only when one of them moves (`detach`; with them in it,
+  some six thousand nodes, the frame on foot at Vostok 2's site was a third slower). Site 1's people of 6 August are built so; those of 12 April are merged by colour, and a group of
   them that leaves is still taken out of sight on the clock: nothing unjointed is slid along the ground.
 - **Loose things tick at a fixed rate.** The ragdoll, a dropped case and a hose step at a constant
   1/60 s with the remainder carried and are drawn between their last two ticks, so a fall is the
