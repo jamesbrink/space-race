@@ -3,7 +3,6 @@
   /* its tabs and its grip take no gesture of the browser's: a finger on them moves the sheet, never the page (no pull-to-refresh, no bounce) */
   .panel { touch-action: none; overscroll-behavior: contain; }
   /* in its list a finger scrolls the list, and the scroll ends at the list's ends: it is not handed on to the page. (pan-x
-     too: a pane holds rows that scroll sideways, and Safari takes a row's own touch-action together with its pane's, so
-     a pane that allowed only pan-y left the View pane's rows unmovable on an iPhone; the pane itself never scrolls sideways) */
+     too: a pane holds lines that scroll sideways, fold.css .sideways; the pane itself never scrolls sideways) */
   .panel [data-pane] { touch-action: pan-x pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 }

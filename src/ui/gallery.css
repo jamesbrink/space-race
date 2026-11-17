@@ -185,11 +185,11 @@ body.gallery-show .callout-card { left: clamp(16px, 5vw, 72px); bottom: clamp(84
   #gallery > .notes { top: calc(var(--top) + var(--line-h) + 8px); left: var(--left); max-width: calc(100vw - var(--left) - var(--right)); pointer-events: none; }
   #gallery:has(> .alone:not([hidden])) > .notes { top: calc(var(--top) + var(--line-h) + 52px); }
 
-  #gallery .slot .models { position: static; transform: none; display: flex; flex-wrap: nowrap; gap: 6px; width: max-content; max-width: none; padding: 0; overflow: visible;
+  /* (what stands there and the views each scroll sideways on a line of their own: fold.css .sideways) */
+  #gallery .slot .models { position: static; transform: none; max-width: none; padding: 0;
     background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
   #gallery .slot .models button { flex: none; min-height: 44px; padding: 0 14px; letter-spacing: 0.1em; border: 1px solid var(--line); border-radius: 2px; box-shadow: none; }
   #gallery .slot .models button[aria-pressed='true'] { border-color: var(--amber); }
-  #gallery .slot .views { display: flex; flex-wrap: nowrap; gap: 6px; width: max-content; }
   #gallery .slot .views [data-views] { display: none; }
   #gallery .slot.buttons:not(.row) { display: block; width: auto; }
   #gallery .slot .shows { justify-content: flex-start; gap: 6px; }

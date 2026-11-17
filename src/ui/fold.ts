@@ -57,6 +57,7 @@ export function fitName(name: HTMLElement, scope?: Scope): void {
  * where it was made. `changed` is told each time they move, and once at the start.
  */
 export function dock(pairs: [block: HTMLElement, slot: HTMLElement][], changed: (narrow: boolean) => void = () => {}, scope?: Scope): void {
+  for (const pane of new Set(pairs.map(([, slot]) => slot.closest<HTMLElement>('[data-pane]') ?? slot))) lines(pane, scope);
   const homes = pairs.map(([el]) => ({ el, parent: el.parentNode!, next: el.nextSibling }));
   const query = matchMedia(NARROW);
   const put = (): void => {
@@ -67,6 +68,42 @@ export function dock(pairs: [block: HTMLElement, slot: HTMLElement][], changed: 
   if (scope) scope.on(query, 'change', put);
   else query.addEventListener('change', put);
   put();
+}
+
+/**
+ * Each line of buttons in `root` that is one line however long (`.sideways`: what stands there, the views; fold.css
+ * scrolls it sideways under a finger) says which way there is more of it to be had, `data-more` "left", "right", both or
+ * neither, and fold.css fades it at that end and only there. Kept as it is scrolled, as it changes size and as its
+ * buttons are written again (another model, another vehicle).
+ */
+function lines(root: HTMLElement, scope?: Scope): void {
+  const mark = (line: HTMLElement): void => {
+    const over = line.scrollWidth - line.clientWidth;
+    const more = [line.scrollLeft > 1 && 'left', line.scrollLeft < over - 1 && 'right'].filter(Boolean).join(' ');
+    if (line.dataset.more !== more) line.dataset.more = more;
+  };
+  const all = (): void => {
+    for (const line of root.querySelectorAll<HTMLElement>('.sideways')) mark(line);
+  };
+  const on = (type: string, fn: (e: Event) => void, options: AddEventListenerOptions) =>
+    scope ? scope.on(root, type, fn, options) : root.addEventListener(type, fn, options);
+  // (a scroll is not handed up, but it is seen on its way down)
+  on('scroll', (e) => e.target instanceof HTMLElement && e.target.matches('.sideways') && mark(e.target), { capture: true, passive: true });
+  const sized = scope ? scope.observer(all) : new ResizeObserver(all);
+  const watch = (): void => {
+    sized.disconnect();
+    sized.observe(root);
+    for (const line of root.querySelectorAll<HTMLElement>('.sideways')) sized.observe(line);
+    all();
+  };
+  // (only what changes a line: the diagnostics' figures, written several times a second beside them, are not looked at)
+  const ours = (n: Node): boolean => n instanceof Element && Boolean(n.closest('.sideways') ?? n.querySelector('.sideways'));
+  const written = new MutationObserver((records) => {
+    if (records.some((r) => ours(r.target) || [...r.addedNodes].some(ours))) watch();
+  });
+  written.observe(root, { childList: true, subtree: true });
+  scope?.signal.addEventListener('abort', () => written.disconnect());
+  watch();
 }
 
 /**

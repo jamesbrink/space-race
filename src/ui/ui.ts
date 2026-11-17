@@ -767,7 +767,7 @@ export class Ui {
       .join('');
     const rotating = r.querySelector('[data-rotate]')?.getAttribute('aria-pressed') ?? 'true';
     $(r, '.buttons').innerHTML =
-      `<span class="set" role="group" aria-label="View"><span class="set-items">${[
+      `<span class="set" role="group" aria-label="View"><span class="set-items sideways">${[
         ...(m.wide === false ? [] : [{ id: 'all', label: 'Wide' }]),
         ...m.views,
       ]

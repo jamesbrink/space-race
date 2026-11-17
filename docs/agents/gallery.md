@@ -300,7 +300,12 @@ out).
 - **The sheet**: tucked (the handle), half, full, the same grip; upright it rises from the foot, on its side it is a
   drawer down the right, shut until asked for. Its first tab, **View**, is the control block, docked piece by piece:
   taking it apart first, what stands there and the views each on a line that scrolls sideways, then the switches
-  (cutaway, labels, scale, turntable, light, cel, lighter graphics) and the scale line. On View the half stop is as
+  (cutaway, labels, scale, turntable, light, cel, lighter graphics) and the scale line. A line (`.sideways`, the
+  launch site's views too) is one line however long, its label still at its start, and a finger swiped along it
+  moves it and never the sheet or the page; it fades at an end only while there is more of it that way (`data-more`,
+  fold.ts). Nothing in the sheet is taken off the page while a finger is on it: Safari on an iPhone gives the finger
+  to the scroller it lands on, and one built again under it does not move (the sheet measures its stops only once
+  it has the finger, and then as it is while moving). `pnpm test:sheet` holds all of this. On View the half stop is as
   tall as what it holds (at most 58 % of the height); Parts, Specs and Motors as on a wide page. Where it was left
   is remembered (`sheetOpen`), and so is the hint said once on a first visit, in the gallery's notes stack
   (`handleSeen`).

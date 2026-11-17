@@ -487,7 +487,7 @@ export class Gallery {
         }
       </header>
 
-      <nav class="models" aria-label="What stands in the gallery">
+      <nav class="models sideways" aria-label="What stands in the gallery">
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
       <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i><em class="x" aria-hidden="true"></em></button>
@@ -551,7 +551,7 @@ export class Gallery {
           <input type="range" min="0" max="1" step="0.005" value="0" aria-label="${esc(m.slider ? `${m.slider[0]} to ${m.slider[1]}` : 'Take it apart')}" />
           <span>${esc(m.slider?.[1] ?? 'Exploded')}</span></label>
         <div class="buttons">
-          <span class="set views" role="group" aria-label="View"></span>
+          <span class="set views sideways" role="group" aria-label="View"></span>
           <span class="set shows" role="group" aria-label="Show">
             ${m.seats?.length ? `<button data-sit class="switch" aria-pressed="false" title="Sit in ${esc(m.seats[0]!.label)}: look round from it, out of its windows, and work its lights (C)">Sit in the cabin</button>` : ''}
             ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}
