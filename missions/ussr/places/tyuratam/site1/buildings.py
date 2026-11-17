@@ -330,8 +330,58 @@ def security(parts: Parts) -> None:
     shell(parts, g, "guard", SECURITY, GROUND + 3.4, {1: sorted([*wins, _door(10.4)]), 0: [_win(4.2, 6.2)], 2: [_win(4.2, 6.2)]})
 
 
+# ---- two buildings new by August 1961 near the check-out shop (PIC/JR-8/61, p. 14 and Figure 3, which labels them 150' x
+# 50' and 75' x 50'). The figure is a drawing good to some twenty metres; each stands where a building of about its size
+# and line stands on today's map, 63 m apart as the figure has them: the larger on OpenStreetMap way 172571635 (48.1 by
+# 15.9 m, its long side two degrees off east-west), the smaller on way 172571423 (30.0 by 10.4 m, which is not the CIA's
+# size: that it is the same building is estimated). Their heights, walls, doors and windows are not recorded.
+NEW_LONG = (150.0 * FT, 50.0 * FT)  # east-west, north-south
+NEW_LONG_AT = (-162.0, 186.0)
+NEW_SHORT = (75.0 * FT, 50.0 * FT)
+NEW_SHORT_AT = (-225.2, 190.0)
+NEW_EAVE = 4.4  # m over the ground (estimated: one storey, as the check-out shop's lower ends)
+
+
+def _rect_at(at, size) -> tuple[float, float, float, float]:
+    (cx, cy), (w, d) = at, size
+    return (cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2)
+
+
+def added(parts: Parts) -> None:
+    """The two buildings the CIA found new near the check-out shop in August 1961."""
+    about = (
+        "The CIA's report of August 1961 has two new buildings in the check-out shop's neighbourhood, served by the road from the "
+        "rail embankment, and its figure labels them {size}. Where it stands is that drawing's, good to some twenty metres, and the "
+        "building of {map} on today's map there. Whether it stood in April 1961 is not known: the photographs' date is redacted. Its "
+        "height, walls, doors and windows are estimated, and what it was for is not recorded."
+    )
+    g = "NewShopLong"
+    _named(parts, g, "A building new by August 1961", about.format(size="150 by 50 ft", map="that size and line"))
+    wins = [_win(a, a + 2.0, 1.2, 2.8) for a in (3.0, 9.0, 15.0, 21.0, 27.0, 33.0, 39.0)]
+    shell(
+        parts,
+        g,
+        "long",
+        _rect_at(NEW_LONG_AT, NEW_LONG),
+        GROUND + NEW_EAVE,
+        {0: [_door(5.0, w=1.4)], 1: [_win(3.0, 5.0)], 2: wins, 3: [_door(5.5, w=1.4)]},
+    )
+    g = "NewShopShort"
+    _named(parts, g, "A building new by August 1961", about.format(size="75 by 50 ft", map="its line (30 by 10 m: not the CIA's size)"))
+    wins = [_win(a, a + 2.0, 1.2, 2.8) for a in (3.0, 9.4, 15.8)]
+    shell(parts, g, "short", _rect_at(NEW_SHORT_AT, NEW_SHORT), GROUND + NEW_EAVE, {0: [_door(5.0, w=1.4)], 2: wins, 3: [_win(5.0, 7.0)]})
+
+
 def build(parts: Parts) -> None:
     last = "the last photographs before the flight"
+    if stood(
+        "Two buildings new near the check-out shop (150 by 50 ft and 75 by 50 ft)",
+        since="1961-08",
+        confidence="documented",
+        source="PIC/JR-8/61, p. 14 and Figure 3 (August 1961): that they stood then, and their sizes. Their places derived (the figure, "
+        "registered on nine points, and today's map); whether they stood in April 1961 is not known (the photographs' date is redacted)",
+    ):
+        added(parts)
     if stood(
         "Propellant shed",
         since="1957",

@@ -1,8 +1,9 @@
 """Site 1 at Tyuratam as it stood in August 1961: the place of April (1961-04.py) less Site 51, which burnt out
 when an R-9 fell back on it on 3 August (Chertok, vol. 3, pp. 131 and 187; how it looked afterwards is not recorded,
 so nothing is built there). The place itself, not any flight's: Vostok 2 (6 August 1961) shows it round its pad.
-What the CIA found added by August (PIC/JR-8/61, pp. 13-14: the double fence taken 1,300 ft north round Site 51, two
-new buildings by the check-out shop) is not built: unmeasured (../../site-1.md, "What stood when").
+What the CIA found added by August (PIC/JR-8/61, pp. 12-14 and Figure 3) is built: the double fence taken 1,300 ft
+north (perimeter.py), round where Site 51 had stood, and two new buildings by the check-out shop (buildings.py), placed
+from that report's drawing and today's map (../../site-1.md, "The place round the pad", "What stood when").
 
 Run with `pnpm model site-1`. A later state of the place is another script beside this one, named for its
 date, giving that date to the same builders: each thing they build says when it stood (sitelib.stood), so what
@@ -61,6 +62,11 @@ if __name__ == "__main__":
             ("place-yard.png", (-120, -470, 2), 150, dict(azimuth=60, elevation=20, res=(1600, 1000))),
             ("place-cascade.png", (-35, -27, 2), 34, dict(azimuth=120, elevation=14, res=(1600, 1000))),
             ("place-site51.png", (-101, 390, -8), 110, dict(azimuth=-70, elevation=22, res=(1600, 1000))),
+            # what PIC/JR-8/61 found new by August 1961: the double fence carried north round Site 51 (where nothing stands
+            # after the fire), and the two buildings by the check-out shop
+            ("place-north.png", (-25, 500, -8), 700, dict(azimuth=-90, elevation=40, res=(1600, 1100))),
+            ("place-north-corner.png", (-484, 690, -8), 90, dict(azimuth=-50, elevation=18, res=(1600, 1000))),
+            ("place-new-shops.png", (-180, 195, 2), 95, dict(azimuth=-70, elevation=20, res=(1600, 1000))),
             # along the south track from the abutment, west over its bend at 60 m (an arc: tracks.py)
             ("place-bend.png", (-62, -12.37, 0), 32, dict(azimuth=0, elevation=5, res=(1600, 900))),
             # the band of concrete the centre track lies in over the apron, a flangeway beside each rail; and the south
