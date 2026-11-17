@@ -82,7 +82,13 @@ for (const flight of chosen) {
   const lift = read[1];
   const day = dayOf(flight);
   const b = breeze(day);
-  const built = [Math.sin(b.toward), 0, -Math.cos(b.toward)].map((v) => v * (0.05 * b.strength)); // (as flora.ts multiplies it)
+  // (as flora.ts multiplies it, and with the page's own sine and cosine: Node's and the browser's V8 may round Math.cos a
+  // unit in the last place apart, as they do for Voskhod 1's 220°, so the record's breeze is turned into the plants' push in
+  // the page and only the breeze, which is the record's, is compared across the two)
+  const built = await page.evaluate(
+    ({ toward, strength }) => [Math.sin(toward), 0, -Math.cos(toward)].map((v) => v * (0.05 * strength)),
+    b,
+  );
   check(
     lift.plants.every((v, i) => v === built[i]) && lift.sea === Number(seaSlopes(day.wind.speed).toFixed(5)),
     `${id}: at liftoff the plants and the sea are given the record's wind to the bit`,
