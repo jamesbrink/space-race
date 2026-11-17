@@ -233,3 +233,42 @@ test('it gathers what is round it for itself: a wall ahead stops it wherever the
   // and the camera's gather is as the camera left it: nothing near the far point
   assert.equal(solids.cast(far.clone().setY(1), nose, 50), null, 'the shared gather is not the vehicle’s');
 });
+
+test('the vehicle is left out of its own way in every level of detail of its model, not only the one it was got into in (#29)', async () => {
+  globalThis.window ??= { addEventListener() {}, setTimeout, clearTimeout };
+  globalThis.document ??= { addEventListener() {}, pointerLockElement: null, hasFocus: () => true, exitPointerLock() {} };
+  globalThis.matchMedia ??= () => ({ matches: false });
+  const { Solids } = await import('../src/viewer/onfoot/walk.ts');
+  const { roadOn } = await import('../src/viewer/onfoot/drive.ts');
+  const { site, root } = truck();
+  const scene = new THREE.Scene();
+  scene.add(site);
+  // its twin in another level, drawn now in its place (the eye has moved and the level shown has changed): a solid body
+  const twin = new THREE.Group();
+  twin.name = root.name;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(6, 1.5, 2.2));
+  twin.add(body);
+  twin.position.copy(root.getWorldPosition(new THREE.Vector3())).add(new THREE.Vector3(2, 0.75, 0));
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(200, 0.2, 200));
+  slab.position.set(twin.position.x, -0.1, twin.position.z);
+  scene.add(twin, slab);
+  root.visible = false;
+  scene.updateMatrixWorld(true);
+  const run = (without) => {
+    const solids = new Solids();
+    solids.set([scene]);
+    solids.without = without;
+    const vehicle = new Vehicle(root);
+    const start = vehicle.motion.x;
+    const road = roadOn(solids, () => null);
+    for (let i = 0; i < 240; i++) vehicle.drive(1, 0, 1 / 60, road);
+    return { went: Math.hypot(vehicle.motion.x - start), by: vehicle.blockedBy };
+  };
+  const alone = run(root);
+  assert.ok(
+    alone.went < 1 && /^\(unnamed mesh\)/.test(alone.by ?? ''),
+    `held by its own other level when only one is left out: ${alone.went}, ${alone.by}`,
+  );
+  const both = run([root, twin]);
+  assert.ok(both.went > 5 && both.by === null, `all its levels left out, it drives: ${both.went} m`);
+});
