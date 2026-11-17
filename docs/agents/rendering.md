@@ -809,9 +809,12 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   a square of the sea 4 km across (`viewer/swell.ts`, laid by `Globe.swell` from `Ascent.down`) is drawn by the globe's
   own shading with the day's waves on it (`DayWeather.sea`, sim/sea.ts: the same function of the instant and the place
   that floats the capsule), written into its shader as text. Its points are raised by every train the mesh is fine
-  enough to carry (a sixth of its length), each pixel lit by the slope of every train larger than it, and a few short
-  waves on the shortest train (`RIPPLES`, estimated) are drawn in the light only, for the grain of a real sea, which
-  nothing rides. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
+  enough to carry (a sixth of its length), each pixel lit by the slope of every train larger than it, and short waves
+  drawn in the light only, which nothing rides: in the real look the chop (`chopOf`), 40 sines spread in length from
+  most of the shortest train's down to a few centimetres and in heading round it, so that no pattern repeats, each faded out before it nears a pixel (a few
+  sines crossing the trains made a checkerboard of the glitter; `tests/swell.test.mjs` holds the slopes to no lattice),
+  their slope together what Cox and Munk give for the hour's wind less what the trains carry (`uSwellChop`, estimated);
+  in the cel look a few (`RIPPLES`, estimated), which its flat tones draw as bands. All of them die away by the square's edge, where it is the globe's level sea in the same light; the
   globe leaves the square to it (its last `Hole`, a metre or two inside, so the two overlap and never part). A body
   afloat is drawn at its height over still water, heeled as the run has it, so it rides the swell that is drawn and its
   waterline is the sea's; the sea in its cabin is a level surface where the run has it (viewer/flooding.ts), translucent

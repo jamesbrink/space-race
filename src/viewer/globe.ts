@@ -22,6 +22,7 @@ import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Wave } from '../sim/sea.ts';
 import {
+  chopSlope,
   fillSwell,
   MESH_FADE,
   swellHeight,
@@ -671,6 +672,7 @@ export class Globe {
       uSwellT: { value: 0 },
       uSwellEast: { value: new THREE.Vector3(1, 0, 0) },
       uSwellNorth: { value: new THREE.Vector3(0, 0, -1) },
+      uSwellChop: { value: 0 },
       uGlobeBanks: { value: Array.from({ length: BANKS }, () => new THREE.Vector4(0, 0, 1, 2)) },
     };
     // (the sea's waves are the day's wind's, and follow its hours: seaWind)
@@ -995,6 +997,8 @@ export class Globe {
     const slopes = seaSlopes(speed);
     const round = (v: number, places: number) => Number(v.toFixed(places));
     (this.uniforms.uGlobeSea!.value as THREE.Vector3).set(round(slopes, 5), round(Math.PI * slopes, 5), round(seaRough(slopes), 3));
+    // (and the swell's short waves, where a flight came down: what of those slopes the day's trains do not carry)
+    this.uniforms.uSwellChop!.value = round(chopSlope(slopes, this.waves), 5);
   }
 
   /** GLSL and uniforms for the site's ground to hand over to the globe across its last stretch (land.ts: Land.meet). */

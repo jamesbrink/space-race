@@ -10,12 +10,14 @@
  * away to nothing by its edge (and by the size of a pixel, for the slope): there it is the globe's level sea, in the
  * same light, so the two are one surface with no seam and no step.
  *
- * Designed, not photographic: the waves are the record's trains, each one clean long-crested sine (sim/sea.ts), with
- * no noise or foam laid on to look like a photograph of the sea; in the cel look the same slopes fall into its flat
- * tones, so the swell is drawn as bands.
+ * Designed, not photographic: the waves are the record's trains, each one clean long-crested sine (sim/sea.ts), and in
+ * the light alone the short waves on them (`chopOf`), sines too, as many as a sea's glitter needs and with the slope
+ * the hour's wind gives; no noise or foam laid on to look like a photograph of the sea. In the cel look the trains'
+ * slopes and a few short waves fall into its flat tones (`RIPPLES`), so the swell is drawn as bands.
  */
 import * as THREE from 'three';
 import { surfaceAt, type Wave } from '../sim/sea.ts';
+import { G0 } from '../world/bodies.ts';
 import { add, cross, dot, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { ellipsoidNormal, seaPoint } from '../world/surface.ts';
 
@@ -112,35 +114,42 @@ const f = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : x.toPrecision(9))
  * out between a third and an eighth of its length, and all of them toward the square's edge. The trains are sim/sea.ts's,
  * as text: the day's sea is written into the shader, not handed to it (rendering.md, "A day is written into the shaders").
  */
-export function swellGlsl(waves: readonly Wave[], size: [number, number], ripples = false): string {
-  const terms = [...waves, ...(ripples ? ripplesOf(waves) : [])]
-    .map((w) => {
-      const length = (2 * Math.PI) / Math.hypot(w.k[0], w.k[1]);
-      return /* glsl */ `
+export function swellGlsl(waves: readonly Wave[], size: [number, number], short = false): string {
+  const terms = (list: readonly Wave[], scale = '', by = size) =>
+    list
+      .map((w) => {
+        const length = (2 * Math.PI) / Math.hypot(w.k[0], w.k[1]);
+        return /* glsl */ `
     {
-      float keep = 1.0 - smoothstep(${f(length / size[0])}, ${f(length / size[1])}, size);
+      float keep = 1.0 - smoothstep(${f(length / by[0])}, ${f(length / by[1])}, size);
       float theta = ${f(w.omega)} * uSwellT - ${f(w.k[0])} * p.x - ${f(w.k[1])} * p.y + ${f(w.phase)};
-      float a = ${f(w.a)} * keep;
+      float a = ${f(w.a)} * keep${scale};
       s += vec3(a * cos(theta), a * sin(theta) * vec2(${f(w.k[0])}, ${f(w.k[1])}));
     }`;
-    })
-    .join('');
+      })
+      .join('');
+  // (the short waves, for the light only: in the drawn look the few that fall into its bands, in the real look the day's chop)
+  const shorts = short
+    ? `
+    #ifdef TOON${terms(ripplesOf(waves))}
+    #else${terms(chopOf(waves), ' * uSwellChop', CHOP_FADE)}
+    #endif`
+    : '';
   return /* glsl */ `
   uniform float uSwellT;   // seconds from the instant the trains are counted from (Globe.swellAt)
   uniform vec3 uSwellEast, uSwellNorth;   // the square's east and north, in the scene's frame
+  uniform float uSwellChop;   // the short waves' root-mean-square slope at the hour's wind (chopSlope)
   vec3 swellAt(vec2 p, float size) {
-    vec3 s = vec3(0.0);${terms}
+    vec3 s = vec3(0.0);${terms(waves)}${shorts}
     return s * (1.0 - smoothstep(${f(FADE[0] * SWELL_HALF)}, ${f(FADE[1] * SWELL_HALF)}, length(p)));
   }`;
 }
 
 /**
- * Short waves drawn on the shortest of the day's trains, which nothing rides: a real sea is a spread of waves, of which
- * the record's trains are the long ones, and one sine for each left the water near the eye as smooth as oil. Each is
- * that train's direction turned by `turn` degrees, at `period` of its period (so a deep-water wave of that period), and
- * `steep` high for its length (amplitude times wavenumber). For the light only, in the fragment: no point is raised by
- * them and the simulator does not know them. Estimated: chosen so the sea near the eye has the grain of a moderate
- * breeze's chop, not read off any record.
+ * The drawn look's short waves on the shortest of the day's trains, which nothing rides: a few, so they fall into its
+ * flat tones as bands. Each is that train's direction turned by `turn` degrees, at `period` of its period (so a
+ * deep-water wave of that period), and `steep` high for its length (amplitude times wavenumber). For the light only, in
+ * the fragment. Estimated: chosen to look right, not read off any record. (The real look draws the chop: `chopOf`.)
  */
 const RIPPLES = [
   { turn: -35, period: 0.55, steep: 0.03 },
@@ -158,6 +167,68 @@ function ripplesOf(waves: readonly Wave[]): Wave[] {
     const b = along + (r.turn * Math.PI) / 180;
     return { a: r.steep / k, omega: shortest.omega / r.period, k: [k * Math.sin(b), k * Math.cos(b)], phase: 1.3 + 2.39996 * i };
   });
+}
+
+/**
+ * The real look's short waves, which nothing rides: a real sea is a spread of waves, of which the record's trains are
+ * the long ones, and its glitter is the Sun in the facets of the short ones. A few sines laid over the trains crossed
+ * them in a lattice that showed as a checkerboard in the glitter; this is a spread of `CHOP` of them (40), so many and so
+ * scattered in length and heading that no two are in step anywhere and no pattern repeats in the square. Their lengths
+ * run evenly in the logarithm from `CHOP_LONG` of the shortest train's down to `CHOP_SHORT`, each nudged off its even
+ * place; their headings lie round that train's (the waves the wind raised), most near it and a few far out to either
+ * side (`CHOP_SPREAD`); their phases a golden angle apart. Each carries an even share of the slope (a saturated sea's
+ * slope is spread evenly over the octaves of its length), so that together their root-mean-square slope is 1, and the
+ * shader scales them by the hour's (`uSwellChop`: chopSlope). Each moves as a wave of its length on deep water, surface
+ * tension included. For the light only, in the fragment: no point is raised by them and the simulator does not know
+ * them. All of it estimated: the count, the lengths, the spread and the share per octave are chosen, and only their
+ * slope together is the record's wind's, through Cox and Munk.
+ */
+const CHOP = 40;
+/**
+ * The chop's fade by a pixel's size: a wave is whole where six pixels or more span its length and gone at three. Nearer
+ * the pixel than that (the trains' fade, four to one and a half) the shortest of them beat against the pixels in a fine
+ * woven grain, which the glitter of a real sea never shows.
+ */
+const CHOP_FADE: [number, number] = [6, 3];
+/** The longest of the chop, as a share of the shortest train's length; the shortest, metres (a few centimetres: the ripples a breath of wind raises). */
+const CHOP_LONG = 0.8;
+const CHOP_SHORT = 0.04;
+/** Degrees either side of the shortest train's heading the chop's headings reach. */
+const CHOP_SPREAD = 80;
+/** Surface tension over density of sea water, m^3/s^2: what makes a ripple of a few centimetres outrun gravity's wave. */
+const TENSION = 7.4e-5;
+
+export function chopOf(waves: readonly Wave[]): Wave[] {
+  const shortest = waves.reduce<Wave | null>((a, w) => (a && a.omega > w.omega ? a : w), null);
+  if (!shortest) return [];
+  const along = Math.atan2(shortest.k[0], shortest.k[1]);
+  const long = CHOP_LONG * ((2 * Math.PI) / Math.hypot(shortest.k[0], shortest.k[1]));
+  const golden = (Math.sqrt(5) - 1) / 2;
+  const steep = Math.sqrt(2 / CHOP);
+  return Array.from({ length: CHOP }, (_, i) => {
+    // (two sequences that never fall in step: the length's nudge on the square root of 2, the heading on the golden ratio)
+    const nudge = ((i * Math.SQRT2) % 1) - 0.5;
+    const length = long * (CHOP_SHORT / long) ** ((i + 0.5 + 0.8 * nudge) / CHOP);
+    const u = 2 * ((0.5 + i * golden) % 1) - 1;
+    const b = along + (CHOP_SPREAD * Math.sign(u) * Math.abs(u) ** 1.5 * Math.PI) / 180;
+    const k = (2 * Math.PI) / length;
+    return {
+      a: steep / k,
+      omega: Math.sqrt(G0 * k + TENSION * k * k * k),
+      k: [k * Math.sin(b), k * Math.cos(b)],
+      phase: 0.7 + 2.39996 * i,
+    };
+  });
+}
+
+/**
+ * The chop's root-mean-square slope for a sea whose waves' slopes have a mean square of `slopes` in all (globe.ts
+ * `seaSlopes`, Cox and Munk at the hour's wind): what the trains do not carry themselves (a sine's mean square slope is
+ * half its amplitude times wavenumber, squared). Estimated, as the chop is.
+ */
+export function chopSlope(slopes: number, waves: readonly Wave[]): number {
+  const trains = waves.reduce((sum, w) => sum + (w.a * Math.hypot(w.k[0], w.k[1])) ** 2 / 2, 0);
+  return Math.sqrt(Math.max(slopes - trains, 0));
 }
 
 /** The trains' fade by size, for the mesh's points (a train shows in the mesh where its spacing is under a sixth of it) and for a pixel's slope (under a quarter). */
