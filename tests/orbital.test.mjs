@@ -493,6 +493,23 @@ test('a retrofire flown off its line: the push turned in the level toward the le
   assert.ok(Math.abs(right[2] + left[2]) < 1e-12, 'a negative yaw to the right');
 });
 
+test('a record can say what kind its period is: the mean orbit flown has the published period of that kind', () => {
+  const f = all.find((x) => x.id === 'usa/mercury/ma-6-friendship-7');
+  const o = structuredClone(recordFrom(f));
+  const T = o.orbit.period.value;
+  const nodal = meanOrbitOf(publishedOf(mercuryAtlasPlan(o), siteFrame(f.site)));
+  assert.equal(nodal.kind, 'nodal', 'none said: the convention');
+  assert.ok(Math.abs(nodal.periods.nodal - T) < 1e-6);
+  o.orbit.kind = { is: 'kepler', confidence: 'estimated', source: 'a test' };
+  const plan = mercuryAtlasPlan(o);
+  assert.equal(publishedOf(plan, siteFrame(f.site)).kind, 'kepler');
+  const kepler = meanOrbitOf(publishedOf(plan, siteFrame(f.site)));
+  assert.ok(Math.abs(kepler.periods.kepler - T) < 1e-6, `${kepler.periods.kepler} against ${T}`);
+  // (a Kepler period is longer than the nodal one of the same axis, so the axis is shorter and the coast comes round sooner)
+  assert.ok(kepler.a < nodal.a && kepler.periods.nodal < T);
+  assert.ok(Math.abs(fly(f, o).results.period - kepler.periods.nodal) < 0.05);
+});
+
 test('a check of the orbit at an instant reads the coast there as mean elements, and costs a flight that states none nothing', () => {
   const f = orbiters.find((x) => x.id === 'ussr/vostok/vostok-1');
   const o = recordFrom(f);

@@ -17,6 +17,7 @@
 import type { Confidence, Measure } from '../measure.ts';
 import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
 import type { Vec3 } from '../world/frames.ts';
+import type { PeriodKind } from '../world/meanelements.ts';
 import type { DescentCrew, Guidance } from './orbital.ts';
 
 /** Which deck flies it and how the record's run is made: up and down again, or up into orbit and down from it. */
@@ -413,6 +414,8 @@ export interface PlanRecord {
     apogee: Measure;
     inclination: Measure;
     period?: Measure;
+    /** What kind of period the published one is, where the record says (world/meanelements.ts `CONVENTION.kind` otherwise), and how sure. */
+    kind?: { is: PeriodKind; confidence: Confidence; source: string };
     injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };
     /** The spacecraft in orbit, kg. */
     mass: Measure;

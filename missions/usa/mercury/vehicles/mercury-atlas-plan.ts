@@ -90,7 +90,15 @@ export interface MercuryAtlasRecord {
     sheds: ShedBody[];
     checks: RecordCheck[];
   };
-  orbit: { radius: Measure; perigee: Measure; apogee: Measure; inclination: Measure; period: Measure };
+  /** The orbit as published, its heights over the ball of `radius`, and what kind of period its period is where it is not the convention's (nodal). */
+  orbit: {
+    radius: Measure;
+    perigee: Measure;
+    apogee: Measure;
+    inclination: Measure;
+    period: Measure;
+    kind?: NonNullable<NonNullable<FlightPlan['record']>['orbit']>['kind'];
+  };
   injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };
   /** The spacecraft in orbit, kg. */
   mass: Measure;

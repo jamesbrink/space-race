@@ -525,7 +525,10 @@ export function heightsBallAt(plan: FlightPlan, pad: Vec3): number {
   const i = o.inclination.value * DEG;
   // (heights and a period of the one orbit: the ball the three imply, read as the coast reads them; heights alone: the ellipsoid)
   if (o.period)
-    return meanOrbitOf({ perigee: o.perigee.value, apogee: o.apogee.value, inclination: i, period: o.period.value }, argp).radius;
+    return meanOrbitOf(
+      { perigee: o.perigee.value, apogee: o.apogee.value, inclination: i, period: o.period.value, ...(o.kind ? { kind: o.kind.is } : {}) },
+      argp,
+    ).radius;
   return CONVENTION.radius.value(i, argp);
 }
 
@@ -549,7 +552,7 @@ export function publishedOf(plan: FlightPlan, site: Geodetic, kind?: PeriodKind)
     inclination: o.inclination.value * DEG,
     ...(o.period ? { period: o.period.value } : {}),
     radius: heightsBall(plan, site),
-    ...(kind ? { kind } : {}),
+    ...((kind ?? o.kind?.is) ? { kind: kind ?? o.kind!.is } : {}),
   };
 }
 /**
