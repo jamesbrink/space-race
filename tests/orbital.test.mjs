@@ -336,12 +336,16 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
-    // (read as mean elements with a nodal period, world/meanelements.ts: the state's mean orbit is the published one)
+    // (read as mean elements with a nodal period, or of the kind the record says: world/meanelements.ts; the state's mean orbit is the published one)
     const frame = frameOf(f);
     const s = injectionState(f.plan, siteFrame(f.site), frame);
     const m = meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) });
     assert.ok(Math.abs(m.i / DEG - orbit.inclination.value) < 1e-6, 'inclination');
-    if (orbit.period) assert.ok(Math.abs(periodsOf(m.a, m.e, m.i, m.argp).nodal - orbit.period.value) < 1e-3, 'the period, node to node');
+    if (orbit.period)
+      assert.ok(
+        Math.abs(periodsOf(m.a, m.e, m.i, m.argp)[orbit.kind?.is ?? 'nodal'] - orbit.period.value) < 1e-3,
+        'the period, of its kind',
+      );
     else
       assert.ok(
         Math.abs(m.a - ball - (orbit.perigee.value + orbit.apogee.value) / 2) < 1,
