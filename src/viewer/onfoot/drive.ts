@@ -91,6 +91,8 @@ export interface Road {
   ground(x: number, z: number, near: number): number | null;
   /** How far ahead the first solid thing is along a way over the ground, from a point, within `far` metres; null if nothing. */
   ahead(from: THREE.Vector3, way: THREE.Vector3, far: number): number | null;
+  /** What the last `ahead` that found something found, named by its mesh and the nodes it hangs from (said of a vehicle that is held, `Vehicle.blockedBy`). */
+  struck?(): string | null;
 }
 
 /**
@@ -100,12 +102,27 @@ export interface Road {
  */
 export function roadOn(solids: Solids, land: (x: number, z: number) => number | null): Road {
   const own = solids.gathering();
+  let struck: string | null = null;
   return {
     around: (centre, reach, below, above) => solids.within(own, () => solids.gather(centre, reach, below, above)),
     ground: (x, z, near) => solids.within(own, () => solids.below(x, near + 0.6, z, land(x, z))),
-    ahead: (from, way, far) => solids.within(own, () => solids.cast(from, way, far)?.distance ?? null),
+    ahead: (from, way, far) =>
+      solids.within(own, () => {
+        const hit = solids.cast(from, way, far);
+        struck = hit ? nameOf(hit.mesh) : null;
+        return hit?.distance ?? null;
+      }),
+    struck: () => struck,
   };
 }
+
+/** A mesh as it is told in words: its own name and the (up to) two named nodes it hangs from, inner to outer. */
+const nameOf = (mesh: THREE.Object3D): string => {
+  const names = [mesh.name || '(unnamed mesh)'];
+  for (let o = mesh.parent; o && names.length < 3; o = o.parent)
+    if (o.name && o.type !== 'Scene' && o.name !== names.at(-1)) names.push(o.name);
+  return names.join(' < ');
+};
 
 const find = (root: THREE.Object3D, name: string): THREE.Object3D | undefined => {
   const key = name.replace(/[._]/g, '').toLowerCase();
@@ -152,6 +169,8 @@ export class Vehicle {
   private y = 0;
   /** How far the pedal that drives it was down in the last frame, 0 to 1: the throttle forward, the brake once it is backing. */
   private throttle = 0;
+  /** What held it this frame, named (`Road.struck`): null while it is not held. */
+  blockedBy: string | null = null;
 
   /** `root` is the vehicle's node. Left out of its extras, a figure is taken: 3 m of wheelbase, 0.35 m wheels, an 12 m turning circle. */
   constructor(root: THREE.Object3D) {
@@ -333,6 +352,7 @@ export class Vehicle {
     const middle = new THREE.Vector3(was.x, this.y + this.top / 2, was.z);
     road.around?.(middle, most + this.half, this.top / 2 + 3, this.top / 2 + 1);
     const going = Math.sign(next.speed);
+    if (!going) this.blockedBy = null;
     if (going) {
       const way = new THREE.Vector3(Math.cos(was.heading) * going, 0, -Math.sin(was.heading) * going);
       const side = new THREE.Vector3(-way.z, 0, way.x);
@@ -343,7 +363,10 @@ export class Vehicle {
         for (const up of [KERB + 0.05, 0.6]) {
           const from = new THREE.Vector3(was.x, this.y + up, was.z).addScaledVector(side, off);
           const hit = road.ahead(from, way, reach + travel);
-          if (hit !== null && hit < reach + travel) next = { ...was, speed: 0, steer: next.steer };
+          if (hit !== null && hit < reach + travel) {
+            next = { ...was, speed: 0, steer: next.steer };
+            this.blockedBy = road.struck?.() ?? '(something solid)';
+          }
         }
     }
     this.motion = next;

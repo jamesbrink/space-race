@@ -34,6 +34,7 @@
     "test:walk": "node tools/walk-test.mjs",
     "test:operate": "node tools/operate-test.mjs",
     "test:sound": "node tools/sound-test.mjs",
+    "test:drive": "node tools/drive-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "test:lineup": "node tools/lineup-test.mjs",
     "test:flights": "node tools/flights-test.mjs",

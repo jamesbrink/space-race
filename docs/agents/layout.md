@@ -336,6 +336,7 @@ tools/
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   sheet-test.mjs                      browser check of a phone's sheet under a finger (the gallery, the site, the Lineup at 390 and 820): every line of buttons swiped to reach each, faded only where there is more, the sheet and the page left still
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
+  drive-test.mjs                      browser check that every vehicle at every site goes forward a car's length from where it stands, or says what holds it
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows
   shot.mjs                            one screenshot of the viewer, for looking at a change

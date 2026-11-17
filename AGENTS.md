@@ -61,6 +61,7 @@ pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone (walking.md)
 pnpm test:operate     # needs `pnpm dev` running: something worked by hand on foot at each site, in view and read out, through the eyes and over the shoulder, at 1280 and 390
 pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, working a machine by hand and on the clock, read off sr.sound.voices
+pnpm test:drive       # needs `pnpm dev` running: every vehicle at every site goes forward a car's length from where it stands, or the test names what holds it
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 pnpm test:lineup      # needs `pnpm dev` running: the Lineup: every flight in the row to scale, the card, its gallery and back, the levels of detail, what it holds as a phone
 pnpm test:flights     # needs `pnpm dev` running: flight to flight and back with no reload: the right flight each time, memory and listeners back to their level

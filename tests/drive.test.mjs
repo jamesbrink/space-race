@@ -205,6 +205,7 @@ test('it gathers what is round it for itself: a wall ahead stops it wherever the
   const start = root.getWorldPosition(new THREE.Vector3());
   const nose = new THREE.Vector3(1, 0, 0).transformDirection(root.matrixWorld);
   const wall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 8));
+  wall.name = 'Wall';
   wall.position.copy(start).addScaledVector(nose, 6).setY(1.5);
   wall.rotation.y = Math.atan2(-nose.z, nose.x);
   const slab = new THREE.Mesh(new THREE.BoxGeometry(200, 0.2, 200));
@@ -227,6 +228,7 @@ test('it gathers what is round it for itself: a wall ahead stops it wherever the
     vehicle.motion.speed === 0 && went > 0.5 && went < 6 - 4.35,
     `held by the wall after ${went.toFixed(2)} m, its nose short of it`,
   );
+  assert.match(vehicle.blockedBy ?? '', /^Wall|^\(unnamed mesh\)/, `it says what holds it: ${vehicle.blockedBy}`);
   assert.ok(Math.abs(root.getWorldPosition(new THREE.Vector3()).y) < 1e-6, 'on the slab it found under itself');
   // and the camera's gather is as the camera left it: nothing near the far point
   assert.equal(solids.cast(far.clone().setY(1), nose, 50), null, 'the shared gather is not the vehicle’s');
