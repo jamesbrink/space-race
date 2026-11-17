@@ -313,6 +313,17 @@ INPUTS['ussr/voskhod/voskhod-1'] = [
   ['landing', 'longitude'],
 ];
 
+// Voskhod 2's: the burn's instants and the parting OKB-1's (documented), its impulse derived from the measured thrust, the
+// descent module the 3KV's (assumed)
+INPUTS['ussr/voskhod/voskhod-2'] = [
+  ['orbit', 'radius'],
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['retro', 'deltaV'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+];
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });

@@ -102,7 +102,12 @@ export function voskhodChutes(areas: { name: string; area: Measure }[]): ChuteDe
  * (the record's `ascent.sheds`) or, for the parachute container's cover, carried on its descent body. The crew stays in the
  * ball: nothing hangs under a canopy of its own. Every instant is the flight's own record's.
  */
-export function voskhodFlies(orbital: VostokRecord, chutes: ChuteDef[]): NonNullable<Flight['flies']> {
+export function voskhodFlies(
+  orbital: VostokRecord,
+  chutes: ChuteDef[],
+  /** What the ship let go in orbit (the record's `ascent.drops` of that id: Voskhod 2's airlock), and the model's nodes that are it. Not flown on: it leaves the scene. */
+  jettisoned: { id: string; nodes: string[] }[] = [],
+): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
   const drop = (id: string) => orbital.ascent!.drops.find((d) => d.id === id)!.at.value;
   return {
@@ -129,6 +134,7 @@ export function voskhodFlies(orbital: VostokRecord, chutes: ChuteDef[]): NonNull
         nodes: ['InstrumentModule', 'RetroEngine', 'Antennas', 'GasBottles', 'RetainingStraps', 'CableMast'],
         on: 'modules',
       },
+      ...jettisoned.map((j) => ({ at: drop(j.id), nodes: j.nodes, on: j.id })),
       // the parachute container's cover, shot off at the height the coast hands over at, comes down on its own body
       { at: at('cover-off'), nodes: ['ParachuteHatch'], on: 'cover', rides: [{ body: 'cover' }] },
     ],

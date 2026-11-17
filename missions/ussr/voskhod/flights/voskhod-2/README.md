@@ -15,14 +15,26 @@ snow before they could be got out. Backups: Dmitriy Zaikin and Yevgeniy Khrunov.
 | Spacecraft (3KD No. 4) | **built**: [spacecraft.md](spacecraft.md), [model/vehicle.py](model/vehicle.py). The Voskhod's model ([voskhod.md](../../vehicles/voskhod.md)) as the 3KD: two couches, the reserve engine, and the Volga airlock on hatch No. 3, folded as it rode under the fairing and drawn out by the gallery's slider, with the ring it leaves on the hull, its outer hatch, the cine camera on its bracket and four air bottles |
 | Launch vehicle (11A57 No. R15000-05) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md), with the blister on the fairing over the folded airlock. The blister's form is ours |
 | Crew in the couches | **built**: Belyayev and Leonov in the Berkut suit ([berkut.md](../../crew/berkut.md)), to their documented statures, visors down; and beside Leonov the pack he wore outside, which was put on in orbit |
-| Launch site (Site 1 as it stood in March 1965) | not built for this flight. The place is Vostok 1's ([site-1.md](../../../places/tyuratam/site-1.md)) |
-| Crew to be walked as; Leonov outside on his line | not built |
-| The day's weather as data (`weather.ts`) | not written. What was read is under "The weather", below: the accounts disagree and none gives a figure |
-| Trajectory, the orbit as data, the flight as flown | not written. The record below is what was read on the way |
+| Launch site (Site 1 on 18 March 1965) | **built**: [pad.ts](pad.ts), [model/pad.py](model/pad.py), the site's modules at that date. No bus: none is in anything read for this morning. As Voskhod 1's, the pad is built as it stood for the Vostoks, its lift short of the ship's hatch ([site-1.md](../../../places/tyuratam/site-1.md)) |
+| Crew to be walked as; Leonov outside on his line | not built: the Berkut figure is built only seated |
+| The day's weather as data | **written**: [weather.ts](weather.ts), from NOAA ISD at Kazalinsk and Aralsk (eight oktas of stratocumulus at about 1,250 m, little wind); the air over the pad from ERA5 ([aloft.ts](aloft.ts)) |
+| Trajectory, the orbit as data, the flight as flown | **written**: [orbital.ts](orbital.ts), flown as [mission.md](mission.md) says; below |
 
-So the flight is in the Gallery: the whole vehicle as it stood on the pad, to be turned, cut open
-and taken apart down to the spacecraft as it was in orbit with its airlock out. Its Launch site and
-Fly say they are not built yet.
+So the flight has all three places: the Gallery; the Launch site on the morning of 18 March 1965;
+and Fly, with the airlock let out and shot off at the record's times and the burn fired by hand.
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent on the 11A57's figures and the crew's instants falls short
+of an orbit, as every Vostok's and Voskhod 1's does, so what is shown from the separation is the
+published orbit begun where the ascent left the ship. Flown from the record's own orbit, the coast
+holds the record's file on the ninth and eighteenth revolutions to 2 km. The burn is fired at
+OKB-1's commands (11:36:29.5 to about 11:37:09), straight against the motion as Belyayev aimed it
+by eye, for 112 m/s worked from the engine's measured thrust; the modules part fourteen minutes
+later, at 11:50:56.5, about 87 km up. The ball is down at 12:02:00, seventeen seconds before the
+act's 12:02:17, but **583 km short and 85 km across**, in Mari El. Fired at the time read up to
+them, 11:35:44, it would land 904 km short. The soft-landing rocket leaves it 2.1 m/s at the ground.
+Every miss is recorded in src/sim/misses.ts, nothing adjusted.
 
 ## What happened
 
@@ -145,7 +157,10 @@ conference of 26 March the landing in the forest was not owned to.
 
 ## The weather
 
-No figure for the morning of 18 March was found, and the two accounts read disagree. Chertok
+Now data ([weather.ts](weather.ts)). NOAA ISD has the two stations on the railway under eight oktas
+of stratocumulus (CL 5) with its base about 1,250 m, the wind 1 to 2 m/s at Kazalinsk and 0 to 3 °C;
+Borisenko (p. 77) has snow all night before, lying on the ship and the trusses. No figure made at
+the range was found, and the two accounts read disagree. Chertok
 (vol. 3, p. 263): "the weather was lousy. There was a low cloud cover and intermittent drizzling
 rain", and the rocket left "a perceptible hole in the blanket of clouds". Siddiqi (p. 454): "It was
 a cold and snowy day at Tyura-Tam." Two days earlier Kamanin has "a still, sunny morning ... minus

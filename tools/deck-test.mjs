@@ -22,6 +22,7 @@ const FLIGHTS = {
   'ussr/vostok/vostok-4': ['Ignition', 'Drop the strap-ons'],
   'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
   'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
+  'ussr/voskhod/voskhod-2': ['Ignition', 'Drop the strap-ons'],
 };
 const SIZES = [
   [1280, 800, false],

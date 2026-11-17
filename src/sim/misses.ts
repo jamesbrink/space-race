@@ -124,6 +124,15 @@ const COAST_VK1 =
   'Sixteen revolutions are flown in the day’s thermosphere to a burn at 10:18:58 (one secondary account’s seconds: Zak, from Baturin) aimed from the Sun as a Vostok’s, for the TDU-1’s 45 s and the Vostok’s 136 m/s (neither found for this flight). ' +
   'As diagnoses, not inputs: the burn a minute later lands it 475 km short, five minutes later 4,146 km long, and at Chertok’s programmed 10:08:56 4,367 km short; the published period 0.05 min shorter 712 km short, longer 1,393; aimed straight against the motion 1,419 km short; 100 m/s 1,084 km long, 155 m/s 1,725 km short. ' +
   'The record cannot hold a landing to a hundred kilometres: its burn’s length and impulse are not known. What owns the miss is not established. Not adjusted';
+/** Voskhod 2's ascent: as Voskhod 1's, to the planned 180 km, where the record's orbit went higher than planned. */
+const SHORT_VK2 =
+  'Voskhod 2’s ascent is flown as Voskhod 1’s (SHORT_VK1) on the crew’s instants: at the last cutoff it is level at the planned 180 km with 7,363 m/s in the day’s air, where the orbit reached, 173.5 by 497.7 km, needs some 8,060. ' +
+  'The record’s orbit was higher than the planned 180 by 470 km, and no source read says why. What owns the shortfall is not established. Not adjusted';
+/** Voskhod 2's day round, and the burn by hand. */
+const COAST_VK2 =
+  'Eighteen revolutions are flown to the burn by hand at OKB-1’s commands (main valve 11:36:29.5, shutdown about 11:37:09), straight against the motion as Belyayev aimed it by eye, for 112 m/s worked from the engine’s measured 1,575 kgf over 39.5 s; the modules part at 11:50:56.5, as they did. ' +
+  'The record’s own orbits on the ninth and eighteenth revolutions hold on the coast to 2 km. As diagnoses, not inputs: the burn a minute later lands it 138 km short, at the time read up to them (11:35:44) 904 km short; the published period 0.05 min shorter 278 km short, longer 875; 100 m/s 73 km short. ' +
+  'The burn’s impulse is derived and its aim by eye is not known. What owns the miss is not established. Not adjusted';
 /** Vostok 4's ascent is the type's throughout. */
 const SHORT_V4 =
   'Vostok 4’s ascent is the type’s, flown on Vostok 1’s instants and its third stage’s integrator setting (no document of E103-22’s ascent was found: its mission.md), so it falls short of an orbit as Vostok 1’s does and for the same reasons (SHORT, Vostok 1’s): ' +
@@ -782,6 +791,45 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         by: 1.917,
         slack: 0.05,
         why: 'It touches down at 2.1 m/s, not the design’s 0.2: the rocket is worked from Kamanin’s 7 to 8 m/s under the main parachutes (7.5 taken), and on the two main canopies as taken (two of the Vostok’s 574 m²) the ball comes down at 7.4, so the rocket stops it short of the ground, it rises and falls again. Its thrust and burn are not found and the parachutes’ areas are not: the miss is between the two estimates. Not adjusted',
+      },
+    },
+  }),
+  'ussr/voskhod/voskhod-2': inUnits({
+    coast: {
+      crossTrack: { by: -85_499, slack: 5_000, why: `It comes down 85 km across the track. ${COAST_VK2}` },
+      alongTrack: { by: -583_280, slack: 20_000, why: `It comes down 583 km short along the track, in Mari El. ${COAST_VK2}` },
+    },
+    ascent: {
+      perigee: { by: -1_289_900, slack: 2_000, why: SHORT_VK2 },
+      apogee: {
+        by: -317_700,
+        slack: 300,
+        why: `The cutoff is level at the planned 180 km and too slow, so 180 km is the orbit’s top: ${SHORT_VK2}`,
+      },
+      period: { by: -952.0, slack: 2, why: `It follows from the speed at cutoff: ${SHORT_VK2}` },
+    },
+    shown: {
+      apogee: {
+        by: -7_654,
+        slack: 500,
+        why: `${PUBLISHED}. Begun where the ascent left it, low at 180 km, its apogee flown round is 490 km where the record has 497.7`,
+      },
+      'rev9.perigee': {
+        by: 7_183,
+        slack: 300,
+        why: `${PUBLISHED}, its perigee at the ascent’s 180 km where the record has 173.5: so on the ninth orbit too`,
+      },
+      'rev9.apogee': { by: -6_652, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
+      'rev18.perigee': { by: 7_289, slack: 300, why: `${PUBLISHED}: the same, on the eighteenth orbit` },
+      'rev18.apogee': { by: -6_373, slack: 300, why: `${PUBLISHED}: the same, its apogee lower` },
+      crossTrack: { by: -46_883, slack: 5_000, why: `${PUBLISHED}. ${COAST_VK2}` },
+      alongTrack: { by: -390_200, slack: 20_000, why: `${PUBLISHED}. ${COAST_VK2}` },
+    },
+    descent: {
+      'module.speed': {
+        by: 1.883,
+        slack: 0.05,
+        why: 'It touches down at 2.1 m/s, not the design’s 0.2, as Voskhod 1’s: the rocket is worked from Kamanin’s 7 to 8 m/s, and on the two main canopies as taken the ball comes down at 7.4. Not adjusted',
       },
     },
   }),

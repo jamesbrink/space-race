@@ -1069,9 +1069,15 @@ October 1964; Pravda and Izvestia themselves.
 | NASA, *Astronautics and Aeronautics, 1965* | NASA SP-4006, as text | TASS as relayed in English: 173 × 495 km, 65°, 91 min; "about 20 min. in conditions of outer space, including 10 min. free-floating" | At second hand |
 | The two men at the pad on 18 March 1965, photographs (RGANTD) | Roscosmos, the same publication | **What the suits looked like that morning**: the white covers, the helmets lettered СССР, Belyayev's white laced boots, the gauge and mirror on the forearms, the ventilation boxes on their hoses | Black and white |
 
+| OKB-1's report (above), read again for the record, November 2026 (by OCR of the scans, each figure checked against the page) | the same | **Table 7, the descent's commands**: УС № 5 at 09:01:11.8, cancelled 10:19:04.7; the ignition command 11:36:27.2 (Table 1: 11:36:25.2), the main valve 11:36:29.5, the shutdown «~11ʰ37′09″ (в сбое)»; Table 5, the engine's mean thrust 1,575 kgf and its planned 63.3 t·s; p. 11, the parting at 11:50:56.5 on the thermal sensors; Table 2, the airlock's programme, its jettison planned 134 to 138 min after separation; Fig. 2, its jettison about 12:15 to 12:20; p. 9, the spin it gave | Its own text and Table 7 count the orbits differently (the 16th and 17th; the 17th and 18th) |
+| The flight's logbook, «Бортовой журнал космического корабля "Восход-2"» (RKK Energia) | Roscosmos, the same set (1965-03-18_bort-jourmal.pdf), by OCR | p. 7, the data read up for the descent by hand on the 18th orbit: «11.19 \| 11.24 \| 11,35′44″!»; p. 27, the ascent's instants as the plan's, the same as the crew's report gives | Handwritten; a margin note on p. 7 is not explained |
+| Borisenko, «В космосе — Леонов» (3rd ed., 1984), pp. 77, 81 to 83, 103, 124 to 128 | booksite.ru, the book's text | **The commissioners' acts in full**: liftoff at 07:00:00 GMT by stopwatch; the orbits on the 1st, 9th and 18th revolutions (173.5 × 497.7 km, 90.944 min; 173.3 × 496.2, 90.928; 173.1 × 494.6, 90.910), «над поверхностью Земли»; the landing system at 08:56:08 GMT, at 5,000 m and 220 m/s; touchdown at 09:02:17 GMT at 59°34′03″ N 55°28′00″ E, «в 180 километрах в северо-, северо-западном направлении от г. Перми»; the snow of the night before (p. 77) | The act files the launch site as 47°22′ N 65°29′ E, which is not the pad |
+| NOAA Integrated Surface Database, 18 March 1965: Kazaly (35849099999) and Aralsk (35746099999) | noaa-global-hourly-pds.s3.amazonaws.com | Eight oktas of stratocumulus (CL 5), base class 1,250 m, the wind 1 to 2 m/s at Kazalinsk, 0 to 3 °C: [weather.ts](../missions/ussr/voskhod/flights/voskhod-2/weather.ts) | Kazalinsk has no 06:00 report; Zhosaly nothing for 1965 |
+| McDowell, GCAT, satcat 1965-022A and its elements (planet4589.org/space/elements/01200/S01274) | planet4589.org | 167 × 472 km at 64.79°, which over a sphere of 6,378.137 km is his second element set; the airlock's separation "1000?" UTC and decay on 25 March | His heights are over another Earth |
+
 **Not reached, or not read**: *Two Sides of the Moon* itself; TASS and Pravda of March 1965 in the
-original; Popov's survey of the landing place (2015); the flight's logbook and the remarks of
-8 July 1965 in Roscosmos's set; *Flight* and *Aviation Week* for March 1965; the film of the walk,
+original; Popov's survey of the landing place (2015); the remarks of
+8 July 1965 in Roscosmos's set (skimmed); *Flight* and *Aviation Week* for March 1965; the film of the walk,
 of which no frame-by-frame account was found.
 
 ## Project Gemini

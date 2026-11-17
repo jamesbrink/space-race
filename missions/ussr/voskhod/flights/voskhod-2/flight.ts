@@ -1,5 +1,11 @@
 import type { Flight, Move } from '../../../../../src/types.ts';
+import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { vostokPlan } from '../../../vostok/vehicles/vostok-plan.ts';
+import { commanded, voskhodChutes, voskhodCommands, voskhodFlies } from '../../vehicles/voskhod-flies.ts';
+import { AREAS, MSK, orbital } from './orbital.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 import {
   SPEC,
   DEG,
@@ -12,6 +18,7 @@ import {
   SHIP,
   STRAPS,
   MAST_AZ,
+  BASE,
   BOOSTERS,
   SPACECRAFT,
   voskhodStack,
@@ -35,10 +42,14 @@ const LID_HINGE: [number, number, number] = [
  * as its air beams filled; nothing in it slid.
  */
 const BANDS = 9;
+/** What moved the airlock in orbit, for the sound: nothing to be heard outside, in vacuum (the soft tube stood on the air let into its beams). */
+const IN_VACUUM = {
+  kind: 'none' as const,
+  confidence: 'documented' as const,
+  source:
+    'in orbit, in vacuum: nothing outside the ship is heard. The tube stood on the air let into its beams from four bottles (Siddiqi, p. 450)',
+};
 const BAND_TRAVEL = 0.225;
-
-/** Moscow time on a day of March 1965, as seconds from liftoff at 10:00:00 on the 18th. */
-const MSK = (day: number, h: number, m: number, s = 0) => ((day - 18) * 24 + h - 10) * 3600 + m * 60 + s;
 
 const parts: PartWords[] = [
   {
@@ -201,6 +212,32 @@ const parts: PartWords[] = [
       outward('Airlock_OuterHatch', LOCK.az, -100, 0.4, 0.44),
       // and after the walk the whole of it is shot off along its own line
       { kind: 'slide', by: along(LOCK.az, LOCK.lat, 4.2), from: later(0.04), to: later(0.3) },
+    ],
+    // On the clock (the launch site and the flight): let out at 10:22:54.3 (OKB-1's report: how long it took to stand
+    // full is not recorded, a minute taken), the outer hatch opened from 11:32:31.5 to 11:32:54 and closed by 11:48:34.3
+    // (OKB-1; the commissioners' act); shot off with the rest of it by the flight's drop (orbital.ts `airlock`)
+    clocked: [
+      ...Array.from(
+        { length: BANDS },
+        (_, k): Move => ({
+          kind: 'slide',
+          node: `Airlock_Tube_${k + 1}`,
+          by: along(LOCK.az, LOCK.lat, BAND_TRAVEL * k),
+          from: MSK(18, 10, 22, 54.3),
+          to: MSK(18, 10, 23, 54.3),
+          machine: IN_VACUUM,
+        }),
+      ),
+      {
+        kind: 'slide',
+        node: 'Airlock_Head',
+        by: along(LOCK.az, LOCK.lat, BAND_TRAVEL * (BANDS - 1)),
+        from: MSK(18, 10, 22, 54.3),
+        to: MSK(18, 10, 23, 54.3),
+        machine: IN_VACUUM,
+      },
+      { ...outward('Airlock_OuterHatch', LOCK.az, -100, MSK(18, 11, 32, 31.5), MSK(18, 11, 32, 54)), machine: IN_VACUUM },
+      { ...outward('Airlock_OuterHatch', LOCK.az, 100, MSK(18, 11, 48, 28), MSK(18, 11, 48, 34.3)), machine: IN_VACUUM },
     ],
     order: SHIP + 1,
   },
@@ -505,32 +542,50 @@ const HELMET = [
   'Collar',
 ];
 const BOARDING: [number, number] = [-9900, -9000];
-const vehicle = voskhodStack({
-  flight: 'voskhod-2',
-  parts: voskhodParts('voskhod-2', [...launcherParts, ...parts]),
-  specGroups: ['Launch vehicle', 'Spacecraft', 'Airlock and the walk'],
-  views: [
-    VIEW.stack,
-    VIEW.base,
-    VIEW.booster,
-    VIEW.third,
-    { id: 'fairing', label: 'Fairing and blister', nodes: ['Fairing'], from: along(LOCK.az - 55, 10, 1) },
-    // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
-    { id: 'spacecraft', label: 'Spacecraft', nodes: WITH_AIRLOCK, from: along(LOCK.az - 70, 14, 1) },
-    { id: 'airlock', label: 'Airlock', nodes: ['Airlock', 'AirlockRing'], from: along(LOCK.az - 60, 12, 1) },
-    { id: 'head', label: 'Outer hatch', nodes: ['Airlock'], from: along(LOCK.az + 30, 34, 1) },
-    VIEW.descent,
-    VIEW.reserve,
-    VIEW.crew(COUCHES),
-    VIEW.instrument,
-    VIEW.engine,
-  ],
-  seats: [
-    voskhodSeat('Right', 'Belyayev’s couch, by the hatch', HELMET, BOARDING),
-    voskhodSeat('Left', 'Leonov’s couch, by the airlock', HELMET, BOARDING),
-  ],
-  cabin: voskhodCabin([...COUCHES, 'AirlockHatch']),
+// The descent's events, by hand (orbital.ts flyDown): each said with what did it on the day.
+const DESCENT = orbital.descent!.bodies[0]!.chutes;
+const COMMANDS = voskhodCommands({
+  parted: 'on the day the thermal sensors parted them fourteen minutes after the burn, at 11:50:56',
+  crew: 'the crew',
+  cover: { id: 'cover-off', at: `its barometric switch, ${(orbital.ejection.altitude.value / 1000).toFixed(1)} km, at 11:56:08` },
+  chutes: DESCENT.map((c) => ({
+    name: c.name,
+    at: c.altitude ? `its barometric switch, ${(c.altitude.value / 1000).toFixed(1)} km` : 'with the cover',
+  })),
 });
+/** The module's parachutes as drawn, at their areas as the record has them (vehicles/voskhod-flies.ts). */
+const CHUTES = voskhodChutes(AREAS);
+
+/** The vehicle as built, in its own frame; on the pad it hangs in the launch system's four supports (`site1Vehicle`); the gallery stands it on its nozzles. */
+const vehicle = site1Vehicle(
+  voskhodStack({
+    flight: 'voskhod-2',
+    parts: commanded(voskhodParts('voskhod-2', [...launcherParts, ...parts]), COMMANDS),
+    specGroups: ['Launch vehicle', 'Spacecraft', 'Airlock and the walk'],
+    views: [
+      VIEW.stack,
+      VIEW.base,
+      VIEW.booster,
+      VIEW.third,
+      { id: 'fairing', label: 'Fairing and blister', nodes: ['Fairing'], from: along(LOCK.az - 55, 10, 1) },
+      // each of these is of named parts, so it stays on them as the slider takes the vehicle apart
+      { id: 'spacecraft', label: 'Spacecraft', nodes: WITH_AIRLOCK, from: along(LOCK.az - 70, 14, 1) },
+      { id: 'airlock', label: 'Airlock', nodes: ['Airlock', 'AirlockRing'], from: along(LOCK.az - 60, 12, 1) },
+      { id: 'head', label: 'Outer hatch', nodes: ['Airlock'], from: along(LOCK.az + 30, 34, 1) },
+      VIEW.descent,
+      VIEW.reserve,
+      VIEW.crew(COUCHES),
+      VIEW.instrument,
+      VIEW.engine,
+    ],
+    seats: [
+      voskhodSeat('Right', 'Belyayev’s couch, by the hatch', HELMET, BOARDING),
+      voskhodSeat('Left', 'Leonov’s couch, by the airlock', HELMET, BOARDING),
+    ],
+    cabin: voskhodCabin([...COUCHES, 'AirlockHatch']),
+  }),
+  BASE,
+);
 
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-2',
@@ -546,6 +601,9 @@ export const flight: Flight = {
   launch: '1965-03-18T07:00:00Z',
   launchSite: SITE1.name,
   site: SITE1,
+  // The launch site opens as the crew are aboard, about 07:30: no bus and no people of this morning are built (pad.ts)
+  opens: { at: MSK(18, 7, 30), model: 'pad', view: 'tulip' },
+  weather: WEATHER,
   crew: ['Pavel I. Belyayev', 'Aleksey A. Leonov'],
   summary:
     'The first walk in space. Leonov went out through an airlock made of cloth and rubber, was outside for twelve ' +
@@ -785,6 +843,7 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'east of north, for an orbit inclined 65° from latitude 45.92°, before the Earth’s turning is allowed for. The azimuth as flown was not found',
     },
+    ...SITE1_SPECS,
   ],
   motors: voskhodMotors({
     strapOns: {
@@ -817,5 +876,15 @@ export const flight: Flight = {
       note: 'Nothing read says the 3KD’s differed. Worked by hand for the descent: the hand system’s bottles stood at 106 atm before it (Belyayev)',
     },
   }),
-  models: [vehicle],
+  // the flight as an orbit, written from its record (orbital.ts; mission.md), flown through the day's air over the pad
+  plan: { ...vostokPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on the crew’s instants and the 11A57’s figures, and like the Vostoks’ it falls short of the orbit reached. ' +
+    'So from the spacecraft’s separation the run shown here is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The airlock is let out and shot off at the record’s times, and the braking burn is the one fired by hand at 11:36:29 on 19 March, aimed by eye (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it (the airlock among it) and the descent's bodies (vehicles/voskhod-flies.ts)
+  flies: voskhodFlies(orbital, CHUTES, [{ id: 'airlock', nodes: ['Airlock'] }]),
+  models: [vehicle, pad],
+  // the place round the pad: as modelled for August 1961, nothing modelled being known to have changed (places/tyuratam/site-1.md)
+  surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };
