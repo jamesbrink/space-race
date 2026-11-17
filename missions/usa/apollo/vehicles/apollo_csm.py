@@ -40,7 +40,13 @@ CM_TOP = CM_BASE + CM_HEIGHT
 # AOH Block II (1969), p.1-49: 26-inch, 13-foot-diameter CM/SM fairing.
 FAIRING_HEIGHT = 26.0
 FAIRING_RADIUS = 13 * 12 / 2
-RCS_STATION = CM_BASE - 41.10  # CSM-101 reference Figure 1.4, p.1-16
+# MIT R-547 vol.III, Table1.3 p.1-18, NAA-S-22 preflight CSM-101 data.
+# Coordinates locate the quad reference, not a surveyed housing's centre.
+RCS_QUAD_XA = 958.905
+RCS_QUAD_RADIUS = 83.56
+RCS_CLOCKWISE_DEGREES = 7.25
+RCS_NOZZLE_CANT_DEGREES = 10.0
+RCS_STATION = RCS_QUAD_XA - SPS_EXIT_XA
 # Inherited display rim, still estimated; not a measured nozzle wall thickness.
 BELL_RIM = 0.3
 
@@ -159,17 +165,23 @@ def build(offset=0):
     bell("SPS_Bell", (0, 0, 0), (0, 0, 1), SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, dark, groups["ServiceEngine"])
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):
-        # Apollo 7 press kit p.26a: packages on ±Y and ±Z. The model's
-        # hatch-facing basis is (-Zc, Yc, Xc), so those are cardinal here too.
-        # A 45-degree offset would put every package between the real axes.
-        a = TAU * i / 4
+        # The press kit's axis description is schematic. R-547 Table1.3
+        # explicitly clocks the quad references 7°15' clockwise looking aft;
+        # Block II AOH p.2.5-1 independently confirms that offset.
+        a = TAU * i / 4 - math.radians(RCS_CLOCKWISE_DEGREES)
         out = Vector((math.cos(a), math.sin(a), 0))
         tangent = Vector((-math.sin(a), math.cos(a), 0))
-        centre = Vector(radial(82, a, RCS_STATION))
+        centre = Vector(radial(RCS_QUAD_RADIUS, a, RCS_STATION))
         mesh = MeshBuilder()
         mesh.box((13 * IN, 12 * IN, 15 * IN), frame(centre, out))
         mesh.build(f"RCS_Block_{i}", white, groups["ReactionControl"])
-        for j, axis in enumerate((Vector((0, 0, 1)), Vector((0, 0, -1)), tangent, -tangent)):
+        for j, along in enumerate((Vector((0, 0, 1)), Vector((0, 0, -1)), tangent, -tangent)):
+            # `axis` points down the exhaust plume, opposite the table's
+            # thrust vector. Cant every mouth outward from the panel. The
+            # table's vectors assume unclocked quads (its explicit footnote),
+            # so this local basis also applies the 7°15' placement rotation.
+            cant = math.radians(RCS_NOZZLE_CANT_DEGREES)
+            axis = along * math.cos(cant) + out * math.sin(cant)
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)

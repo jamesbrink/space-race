@@ -14,8 +14,10 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 | SM aft / forward bulkheads, XA | 838 / 993 in | assumed CSM-101 preflight reference, MIT R-547 Fig. 1.4, p. 1-16 |
 | SM barrel length | 155 in | derived XA 993 − 838, same preflight reference |
 | CM datum, XA | 1000 in | assumed CSM-101 preflight reference, same figure |
-| RCS quad axial station, Xc | −41.10 in | assumed CSM-101 preflight reference, same figure |
-| RCS quad mounting planes | ±Y, ±Z | documented, Apollo 7 press kit p. 26a; model basis (-Zc, Yc, Xc) |
+| RCS quad axial station, XA / Xc | 958.905 / −41.095 in | assumed CSM-101 preflight reference, R-547 vol. III Table 1.3 p. 1-18; Figure 1.4 rounds Xc to −41.10 |
+| RCS quad reference radius | 83.56 in | assumed CSM-101 preflight reference, Table 1.3 |
+| RCS quad clocking from Y/Z | 7°15′ clockwise looking aft | same table; independently corroborated by Block II AOH p. 2.5-1 |
+| RCS nozzle outward cant | 10° | same table's unclocked thrust vectors; rotated with the quad, exhaust opposite thrust |
 | CM/SM fairing height / diameter | 26 / 156 in | assumed common Block II, AOH volume 1, p. 1-49 |
 | SPS extension attachment, Xs | 180 in | assumed common hardware, NAA 1967 ST-304C / 1969 ST-304A |
 | SM aft bulkhead, Xs | 200 in | same plates; the flange is 20 in aft of the bulkhead |
@@ -44,12 +46,18 @@ hatch cover now has an outer window reference sectioned from Smithsonian's measu
 detached CM-107 hatch. Its pose and connection to the nominal cone are derived,
 with residuals recorded; the pressure door and glazing are not yet built.
 The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
-The RCS axial station now follows the CSM-101 preflight reference. Its four mounting
-planes now follow Apollo 7 press-kit p. 26a: ±Y and ±Z. The hatch is on the −Z side
-in the p. 25d axis diagram; the Blender basis (-Zc, Yc, Xc) puts these quads on
-cardinal azimuths 0°, 90°, 180° and 270°. This removes the former 45° rotation.
-Panel colouring, seams, nozzle contours, radial mounting distance and brackets
-remain estimated. The six internal sectors are **not** six equal exterior panels:
+The detailed RCS reference follows CSM-101's preflight Table 1.3 in R-547 volume
+III. The hatch is on the −Z side in the press kit's p. 25d axis diagram. In the
+Blender basis (-Zc, Yc, Xc), the quad references are at azimuths −7.25°, 82.75°,
+172.75° and 262.75°, radius 83.56 in and XA958.905. The press kit's broad ±Y/±Z
+description was incorrectly read as exact cardinal placement in an earlier
+revision. The later Block II handbook independently specifies the 7°15′ offset.
+Nozzle axes include the table's 10° outward cant; its unclocked vector basis is
+rotated with each quad. See [reaction-control.md](../../vehicles/reaction-control.md)
+for the sign convention and remaining limitations. The nominal reference does
+not establish manufactured housing or individual mouth positions: those,
+brackets, bell contours, panel colouring and seams remain provisional.
+The six internal sectors are **not** six equal exterior panels:
 p. 26a specifies 50°/70°/60° pairs, and NAA A-512S ST-3057 p. 67 separately
 identifies four sector panels and four RCS panels. The provisional shell's seam
 and radiator pattern is not promoted to that documented layout.

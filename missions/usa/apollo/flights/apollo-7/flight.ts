@@ -100,11 +100,12 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Four quads, each with four small engines, turn and translate the ship.',
     detail:
-      'The four external quads are shown with open nozzle bells. Apollo 7’s press kit p. 26a places them on the +Y, −Y, +Z and −Z axes. In the model’s hatch-facing coordinate frame these are the four cardinal directions; the former 45° offset is removed. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their axial station is 41.10 inches aft of the CM datum in the CSM-101 preflight reference (MIT R-547, Figure 1.4, p. 1-16). Radial mounting distance, bracket shapes and chamber profiles remain estimated. Propellant plumbing and thermal details are not built.',
+      'The detailed CSM-101 preflight table, MIT R-547 volume III, Table 1.3 p. 1-18, places the four quad references 90° apart, clocked 7°15′ off the Y/Z axes, at XA958.905 and radius 83.56 inches. The later Block II handbook p. 2.5-1 corroborates the angular offset. The press kit’s broad axis description does not establish exact cardinal positions; the former exact-axis reconstruction was incorrect. The table’s thrust vectors include a 10° cant but explicitly assume unclocked quad centres. The model rotates that basis with each quad and points the exhaust outward, opposite thrust. These nominal reference positions and directions are assumed common for Apollo 7. Housing dimensions, individual mouth locations and bell profiles remain provisional; the model is not a complete manufactured quad. The quads stay attached to the SM when taken apart. Plumbing and thermal details remain unbuilt.',
     facts: [
       ['Arrangement', '4 quads × 4 chambers · press kit p. 27'],
-      ['Mounting planes', '±Y and ±Z · press kit p. 26a'],
-      ['Axial station', 'Xc −41.10 in · CSM-101 preflight reference'],
+      ['Quad clocking', '7°15′ off Y/Z axes · common Block II reference'],
+      ['Reference position', 'XA958.905 / radius83.56 in · CSM-101 preflight'],
+      ['Nozzle cant', '10° outward · preflight thrust-vector table'],
     ],
   },
   {
@@ -468,10 +469,34 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'RCS quad axial station',
-      value: -41.1 * IN,
+      value: -41.095 * IN,
       unit: 'm',
       confidence: 'assumed',
-      note: 'MIT R-547, Figure 1.4, p. 1-16: Xc −41.10 in, CSM-101 preflight reference assumed for flown hardware',
+      note: 'MIT R-547 volume III, Table 1.3 p. 1-18: XA958.905 minus CM datum XA1000 = Xc −41.095 in. Figure 1.4 rounds it to −41.10 in. Preflight reference assumed for flown hardware',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'RCS quad nominal reference radius',
+      value: 83.56 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'MIT R-547 volume III, Table 1.3 p. 1-18: 83.56 in for the quad reference coordinates. Not a surveyed manufactured housing centre or nozzle mouth',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'RCS quad clocking',
+      value: 7.25,
+      unit: '°',
+      confidence: 'assumed',
+      note: 'MIT R-547 volume III, Table 1.3 p. 1-18 and Block II AOH p. 2.5-1: 7°15′ from Y/Z axes, clockwise looking aft. Assumed common for Apollo 7',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'RCS nozzle outward cant',
+      value: 10,
+      unit: '°',
+      confidence: 'assumed',
+      note: 'MIT R-547 volume III, Table 1.3 p. 1-18: thrust vectors use sin/cos10° in an unclocked basis. Rotate with the quad; exhaust is opposite thrust. Corroborated approximately by Block II AOH p. 2.5-1',
     },
     {
       group: 'Spacecraft',
