@@ -15,7 +15,7 @@ import type { Curve } from '../types.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { cross, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import type { State } from '../world/orbit.ts';
-import { airDrag, blowing, type Sky, STANDARD } from './air.ts';
+import { airAt, airDrag, blowing, type Sky, STANDARD } from './air.ts';
 import { along, chuteArea } from './fly.ts';
 import { tearOf } from './loads.ts';
 import { automatic, type DescentHands, type DescentTear, ORBIT_DRAG, orbitDrag, shipOf, solarAt } from './orbital.ts';
@@ -292,12 +292,9 @@ export class Descent {
       (f ? chuteArea({ full: f.area, was: 0, at: f.at, fills: f.fills }, at) : 0)
     );
   }
-  /** Everything but gravity on it at a state, over its mass, m/s^2. */
+  /** Everything but gravity on it at a state, over its mass, m/s^2. The air at its point is air.ts `airAt`'s. */
   push(q: State, at: number): Vec3 {
-    const h = this.heightOf(q, at);
-    const air = (this.ctx.sky ?? STANDARD).air(h);
-    const wind = this.airOf(q, at);
-    const speed = length(wind);
+    const { altitude: h, air, wind, airspeed: speed } = airAt(this.ctx.frame, q.r, q.v, at, this.ctx.seaLevel, this.ctx.sky ?? STANDARD);
     const drag: Vec3 =
       speed > 0
         ? scale(
