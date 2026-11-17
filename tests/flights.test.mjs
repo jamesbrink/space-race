@@ -169,6 +169,22 @@ for (const file of files) {
     );
   });
 
+  if (flight.id === 'usa/apollo/apollo-7')
+    test('Apollo 7 couches remain a rigid interior part and are omitted from distant geometry', () => {
+      const model = flight.models[0];
+      const couch = model.parts.find((part) => part.node === 'CrewCouches');
+      const cm = model.parts.find((part) => part.node === 'CommandModule');
+      assert.equal(couch.inside, true, 'selection must open the normal cutaway');
+      assert.deepEqual(couch.explode, cm.explode, 'crew supports must not move through their cabin during explosion');
+      assert.equal(couch.order, cm.order, 'crew supports and cabin must begin moving together');
+      const glb = join(root, 'public', model.url);
+      const materials = materialsUnder(glb, 'CrewCouches');
+      assert.ok(materials.includes('apollo-couch-harness'), 'full detail contains actual restraints');
+      assert.ok(materials.includes('apollo-couch-heel-pad'), 'full detail contains actual heel supports');
+      for (const suffix of ['.lod1.glb', '.lod2.glb'])
+        assert.deepEqual(materialsUnder(glb.replace(/\.glb$/, suffix), 'CrewCouches'), [], 'distant levels retain only the part node');
+    });
+
   if (flight.surroundings)
     test(`${flight.id}: surroundings`, () => {
       assert.ok(!flight.surroundings.startsWith('/'), 'url must be relative (Pages serves from a sub-path)');

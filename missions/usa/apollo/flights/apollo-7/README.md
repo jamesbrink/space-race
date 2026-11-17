@@ -12,8 +12,9 @@ The five window openings have opaque dark recesses until the cabin and glazing a
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
 A structural cutaway exposes the pressure-vessel sidewall and both nominal bulkheads
-inside the thermal shell, with a main-console structural reference and a nominal DSKY front-web subset;
-the full tunnel and furnishings are unbuilt.
+inside the thermal shell, with a main-console structural reference, a nominal DSKY front-web subset
+and an estimated reconstruction of Apollo 7's unitized three-place crew couch.
+The full tunnel and remaining furnishings are unbuilt.
 No seat control is offered yet.
 
 The launcher now uses the AS-205 flight evaluation's rounded S-IVB separation
@@ -41,7 +42,7 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All twenty parts can be selected and taken apart.
+cover and launch escape system. All twenty-one parts can be selected and taken apart.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
 The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
@@ -122,3 +123,18 @@ SA-205 NASA photographs are explicit in the gallery and
 [hardware notes](../../vehicles/saturn-ib.md#photographic-marking-reconstruction).
 The user authorized photo-based estimates as a last resort after source searches;
 this does not promote them to documented dimensions or permit estimated flight inputs.
+
+## Unitized couch reconstruction
+
+The cabin now contains the common three-person platform, headrests, fixed
+seat/leg assemblies, six-point harnesses, passive heel restraints and eight
+attenuator exteriors. NASA TN D-7440 documents the Apollo 7 configuration;
+the SC101 plate CS-2025C supplies the 96° flight angle. Complete manufactured
+sizes and mounting drawings were not located, so these dimensions and positions
+are **estimated** from the flight-design photograph and illustrated installation.
+Earlier SC012 back-pan and beam dimensions are scale priors, **not verified
+shared CM-101 measurements**. No later foldable couch is used.
+[The hardware record](../../vehicles/unitized-couch.md) lists the estimates,
+sources and omissions. The assembly remains whole in cutaway, moves with the
+CM in the exploded exhibit, and is omitted at distant levels of detail.
+The cabin remains incomplete and supplies no seated eye datum yet.

@@ -16,6 +16,7 @@ import dsky_front
 import main_console
 import pressure_vessel
 import service_tanks
+import unitized_couch
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
 
 RADIUS = command_module.RADIUS
@@ -106,6 +107,7 @@ def build(offset=0):
             "CabinStructure",
             "MainConsole",
             "DSKYFrontWeb",
+            "CrewCouches",
             "HeatShield",
             "ForwardShield",
             "ServiceModule",
@@ -193,6 +195,7 @@ def build(offset=0):
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
     dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
+    unitized_couch.build(groups["CrewCouches"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

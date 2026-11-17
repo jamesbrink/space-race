@@ -64,8 +64,9 @@ and radiator pattern is not promoted to that documented layout.
 
 ## Simplifications and things still wrong
 
-- The cabin pressure-vessel sidewall and both nominal bulkheads are built. The full tunnel, glazing, couches,
-  instruments, astronaut figures and internal equipment remain unbuilt.
+- The cabin pressure-vessel sidewall and both nominal bulkheads are built, with an estimated
+  reconstruction of Apollo 7's unitized couches. The full tunnel, glazing, instruments,
+  astronaut figures and remaining internal equipment are unbuilt.
 - All five outer openings have temporary dark closures, not glass. ST-503A
   (NAA A-512S, p. 41) shows a rounded-square outer hatch pane and a circular inner
   pressure window. The outer reference is built; the inner window and both glazing
@@ -167,3 +168,16 @@ The web remains whole in cutaway and moves with the CM in the exploded exhibit.
 drawings, secondary CAD, nominal fillet simplifications and all omissions.
 Keys, display covers, glazing, labels, electronics and the complete cover/housing
 are not built.
+
+## Unitized crew couches
+
+`CrewCouches` adds Apollo 7's common three-person box-beam platform, separate
+headrests and rigid seat/leg assemblies, six-point restraints and passive heel
+hardware. Configuration and the 96° SC101 flight position are documented;
+**all CM-101 sizes and installation coordinates are estimated**. The 32 × 22-inch
+back-pan and 56-inch beam values are earlier SC012 dimensions used only as
+estimated scale priors. See [unitized-couch.md](../../vehicles/unitized-couch.md)
+for the photographic basis, source-inch table and omissions. Geometry is checked
+against the nominal pressure wall, spherical floor and console. The assembly
+remains whole in cutaway and shares the CM's exploded displacement. No later
+foldable couch, crew-eye position or load-attenuation physics is inferred.
