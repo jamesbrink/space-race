@@ -1,6 +1,6 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
-import { atSite, formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
+import { atSite, browseTo, formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
 import { Callout } from '../ui/callout.ts';
 import { deckOf } from '../deck/decks.ts';
 import { follow } from './curtain.ts';
@@ -854,6 +854,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   scope.on(document, 'click', (e) => {
     // the crumbs: back to the flight (its gallery), or out to the front page
     if ((e.target as HTMLElement).closest?.('#ui [data-flight-home]')) return toGallery();
+    const browse = (e.target as HTMLElement).closest?.<HTMLElement>('#ui [data-browse]')?.dataset.browse;
+    if (browse) return goHome(browseTo(browse));
     if ((e.target as HTMLElement).closest?.('[data-home]')) goHome();
   });
 
