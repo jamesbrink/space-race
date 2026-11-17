@@ -1,14 +1,16 @@
 """Apollo 7's CSM-101 exterior. Drawing units: inches; +Z noseward, hatch on +X.
 
 NASA Apollo 7 press kit (68-168K), pp. 25–27 and Figures 25b/25d.
-Overall envelopes are documented (rounded); all surface stations and fittings estimated
-from those figures. No interior, docking probe or lunar high-gain antenna is invented.
+Overall envelopes are documented (rounded); SM stations and fittings remain estimated.
+command_module.py supplies the nominal lower CM profile and shared measured apertures.
+No interior, docking probe or lunar high-gain antenna is invented.
 """
 
 import math
 
 from mathutils import Vector
 
+import command_module
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, material, prof
 
 RADIUS = 77.0  # press kit p. 25, 12 ft 10 in
@@ -61,7 +63,6 @@ def build(offset=0):
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
     dark = material("apollo-nozzle", (0.13, 0.14, 0.15), metallic=0.55, roughness=0.65)
     seam = material("apollo-joints", (0.12, 0.14, 0.15), roughness=0.6)
-    shield = material("apollo-ablator", (0.29, 0.24, 0.20), roughness=0.85)
     void = material("window-void-apollo", (0.012, 0.025, 0.035), roughness=0.25)
     groups = {name: group(name) for name in ("CommandModule", "HeatShield", "ServiceModule", "ServiceEngine", "ReactionControl")}
     sm = groups["ServiceModule"]
@@ -100,43 +101,7 @@ def build(offset=0):
         for j, axis in enumerate((Vector((0, 0, 1)), Vector((0, 0, -1)), tangent, -tangent)):
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
-    cm = groups["CommandModule"]
-    # Five actual holes in a conical skin, with dark recesses until a cabin is built.
-    windows = [(0, 54, 15, 14), (85, 63, 15, 15), (-85, 63, 15, 15), (32, 96, 12, 15), (-32, 96, 12, 15)]
-
-    def radius(z):
-        return RADIUS - (RADIUS - 17) * z / CM_HEIGHT
-
-    angles = sorted({-180, 180, *range(-180, 181, 3), *[v for a, _, w, _ in windows for v in (a - w / 2, a + w / 2)]})
-    heights = sorted({4, CM_HEIGHT, *[v for _, z, _, h in windows for v in (z - h / 2, z + h / 2)]})
-    mesh = MeshBuilder()
-    hatch_mesh = MeshBuilder()
-    for a0, a1 in zip(angles, angles[1:]):
-        for lo, hi in zip(heights, heights[1:]):
-            a, z = (a0 + a1) / 2, (lo + hi) / 2
-            if any(abs(a - wa) < w / 2 and abs(z - wz) < h / 2 for wa, wz, w, h in windows):
-                continue
-            target = hatch_mesh if abs(a) < 19 and 25 < z < 85 else mesh
-            target.lathe(prof([(radius(lo), CM_BASE + lo), (radius(hi), CM_BASE + hi)]), segs=1, arc=(math.radians(a0), math.radians(a1)))
-    mesh.build("CM_Skin", foil, cm)
-    hatch_mesh.build("CM_Hatch", silver, cm)
-    for i, (a, z, w, h) in enumerate(windows):
-        lo, hi = z - h / 2, z + h / 2
-        a0, a1 = math.radians(a - w / 2), math.radians(a + w / 2)
-        recess = MeshBuilder()
-        recess.lathe(prof([(radius(lo) - 1, CM_BASE + lo), (radius(hi) - 1, CM_BASE + hi)]), segs=8, arc=(a0, a1))
-        recess.build(f"CM_WindowRecess_{i}", void, cm)
-        pts = [radial(radius(zz) + 0.35, aa, CM_BASE + zz) for aa, zz in ((a0, lo), (a1, lo), (a1, hi), (a0, hi))]
-        for j in range(4):
-            tube(f"CM_WindowFrame_{i}_{j}", pts[j], pts[(j + 1) % 4], 0.65, seam, cm)
-    lathe_obj("CM_ForwardDeck", prof([(17, CM_TOP), (0, CM_TOP)]), foil, cm)
-    lathe_obj("CM_TunnelHatch", prof([(0, CM_TOP + 0.2), (11, CM_TOP + 0.2), (11, CM_TOP + 0.7), (0, CM_TOP + 0.7)]), silver, cm)
-    lathe_obj(
-        "CM_AftShield",
-        prof([(0, CM_BASE - 3), (45, CM_BASE - 2), (73, CM_BASE), (77, CM_BASE + 1), (RADIUS - (RADIUS - 17) * 4 / CM_HEIGHT, CM_BASE + 4)]),
-        shield,
-        groups["HeatShield"],
-    )
+    command_module.build(groups["CommandModule"], groups["HeatShield"], CM_BASE, CM_TOP, foil, void)
     for obj in groups.values():
         obj.location.z = offset * IN
     return groups

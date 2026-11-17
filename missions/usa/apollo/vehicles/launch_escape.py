@@ -5,6 +5,7 @@ NASA press kit Figures 25a–25c. No abort physics or articulated canards yet.
 import math
 
 from apollo_csm import CM_BASE, CM_TOP, bell, radial, tube
+from command_module import CONE_Z, FORWARD_LIMIT, JOIN_Z, radius
 from saturn_ib import CSM_OFFSET, HEIGHT
 from srlib import group, lathe_obj, mark_shells, material, prof
 
@@ -16,7 +17,13 @@ def build():
     cover = group("BoostCover")
     cm_base = CSM_OFFSET + CM_BASE
     cm_top = CSM_OFFSET + CM_TOP
-    lathe_obj("BPC_Shell", prof([(78.4, cm_base + 3), (18.4, cm_top + 1.5), (0, cm_top + 1.5)]), white, cover, segs=128)
+    # Retain the provisional 1.4-inch stand-off, following the corrected lower
+    # contour so this unfinished cover no longer cuts through the cabin. This
+    # is still a fit envelope, not the sourced BPC laminate or as-built mould line.
+    stations = sorted({JOIN_Z, CONE_Z, FORWARD_LIMIT, *range(math.ceil(JOIN_Z), 81)})
+    cover_profile = [(radius(z) + 1.4, cm_base + z) for z in stations]
+    cover_profile += [(18.4, cm_top + 1.5), (0, cm_top + 1.5)]
+    lathe_obj("BPC_Shell", prof(cover_profile), white, cover, segs=128)
     mark_shells(["BPC_Shell"])
     # Tapered four-legged truss. Structural joints are estimates from the press-kit perspective.
     levels = [(cm_top - 38, 29), (cm_top + 12, 26), (cm_top + 65, 22), (cm_top + 115, 17)]

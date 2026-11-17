@@ -11,10 +11,10 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. This exterior study has five recessed window openings and a closed forward hatch; the cabin, glazing and hatch mechanism are not built. Surface stations and window outlines are estimated from the press kit’s Figure 25d. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The upper cover and hatch window remain provisional; cabin, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
-      ['Height', '12 ft · rounded published figure'],
+      ['Forward envelope', '12 ft overall · provisional, not a skin station'],
       ['Interior', 'Not built'],
     ],
   },
@@ -26,7 +26,7 @@ const parts: Part[] = [
     explode: [0, 39, 0],
     summary: 'The broad face that brought the crew back through the atmosphere.',
     detail:
-      'The command module alone returned to Earth. Its aft heat shield is a shallow curved surface here; the curvature, thickness and colour are estimated. This is an exterior study, without the internal structure, ablator cells or recovery equipment.',
+      'The command module alone returned to Earth. This surface uses the published 184.8-inch nominal aft spherical radius, assumed common to CM-101. It is visible from both sides, but does not reconstruct the varying ablator thickness or internal structure. The exhibit splits it at mathematical sphere/shoulder tangency, not a verified hardware joint. Ablator cells and recovery equipment are not built.',
   },
   {
     node: 'ReactionControl',
@@ -242,10 +242,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Length, command and service modules',
-      value: 408.7 * IN,
+      value: 408 * IN,
       unit: 'm',
       confidence: 'estimated',
-      note: 'Model envelope: 22 ft SM + 12 ft CM (press kit p. 25) + estimated 0.7 in forward hatch. Rounded published lengths, estimated barrel/engine partition; not an engineering overall station',
+      note: 'Provisional model envelope: 22 ft SM + 12 ft CM (press kit p. 25). Overall height and forward cover still require reconciliation with station drawings; not an engineering overall station',
     },
     {
       group: 'Spacecraft',
@@ -257,11 +257,35 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
-      label: 'Command module, height',
+      label: 'Command module, provisional envelope',
       value: 144 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: `${KIT}, p. 25: 12 ft, a rounded envelope; surface stations estimated from Figure 25d`,
+      note: `${KIT}, p. 25: rounded 12 ft retained for the unfinished forward section; the lower body now follows the nominal curved profile. This is not a verified skin-height station`,
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Nominal aft spherical radius',
+      value: 184.8 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Common nominal CM geometry applied to CM-101: NASA TN D-5686, Figure 2(g), p. 13. Not an as-built Apollo 7 survey',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Nominal shoulder radius',
+      value: 7.7 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Common nominal CM geometry applied to CM-101: NASA TN D-5686, Figure 2(g), p. 13',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Nominal cone half-angle',
+      value: 33,
+      unit: '°',
+      confidence: 'assumed',
+      note: 'To the longitudinal axis; common nominal CM geometry applied to CM-101: NASA TN D-5686, Figure 2(g), p. 13',
     },
     {
       group: 'Spacecraft',

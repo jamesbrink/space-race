@@ -14,19 +14,31 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 | CM top radius | 17 in | estimated from Figure 25d |
 | SPS exit radius | 29 in | estimated from Figure 25b |
 
-The origin is the service-engine exit plane; CM base is Z264 in and the forward deck Z408 in.
-The forward hatch adds 0.7 in above the deck: an estimated detail, not a more precise published height.
-The CM afterbody is a conical first study, with five actual openings in its skin, black recesses
-and raised frames. The SM has four external RCS quads of four chambers, with hollow nozzle bells.
-Panel colouring, window and hatch outlines, stations, seams, nozzle profiles and brackets are all
-**estimated**, not dimensioned engineering reconstructions. Overall envelope precision is limited
-by the press kit’s rounded dimensions.
+The origin remains the provisional service-engine exit plane; CM base is Z264 in
+and the provisional forward deck Z408 in. The earlier extra 0.7-inch hatch has
+been removed; its geometry was not sourced. The resulting CSM study is 408 in
+long, **estimated**, and is not an engineering overall station.
+
+The lower CM now uses a nominal aft spherical surface, rounded shoulder and
+33° conical wall. See [the shared reconstruction](../../vehicles/command-module.md)
+for its sources, calculations and limits. The upper forward cover remains the
+original provisional envelope, so the entire capsule must not be described as
+an accurate outer mould line yet.
+
+Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
+**assumed shared Block II hardware**, with provenance and limitations in
+[the survey record](../../vehicles/reference/README.md). Their reveals are derived
+projections between the survey and nominal skin. The hatch's rectangular aperture
+is still the original estimate and is explicitly excluded from that survey claim.
+The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
+Panel colouring, SM stations, seams, nozzle profiles and brackets remain estimated.
 
 ## Simplifications and things still wrong
 
 - No cabin, glazing, couches, instruments, astronaut figures or internal equipment.
-- CM window shapes are rectangular conical patches, not the finished as-built outlines.
-- The side hatch is a patch of skin, without its real sill, hinge or handle; no opening motion.
+- Four measured openings have temporary dark closures, not glass. The hatch window
+  still has the initial rectangular opening and must be reconstructed as a circular port.
+- The side hatch is not yet delineated, without its real sill, hinge or handle; no opening motion.
 - No CM attitude-control ports, umbilical fittings, antennas, recovery system or detailed thermal tape.
 - No SM tanks, fuel cells, plumbing, gimbal or engine injector.
 - Radiator panel layout and barrel/engine split are estimated and need dimensioned drawings.
@@ -37,8 +49,9 @@ by the press kit’s rounded dimensions.
 
 The full stack is recorded in `../../vehicles/saturn-ib.md`. The CSM origin in the assembled
 model is raised by 1925.2 in so that its barrel meets the adapter at Z2035.2 in.
-The boost protective cover is a separate white shell over the CM; its estimated 1.4-inch
-radial stand-off prevents coincident surfaces and is not a sourced construction thickness.
+The boost protective cover remains a provisional fit envelope. Its lower contour now
+follows the corrected nominal body, retaining the original estimated 1.4-inch radial
+stand-off to prevent interference. This is not a sourced construction thickness or mould line.
 The escape tower has four legs, three braced bays, four simplified motor nozzles and a
 motor ending at the 224-foot full-stack envelope. Its structure and motor stations are estimates
 from Figures 25a–25c. The tower and cover lift as one assembly in the exploded exhibit,
