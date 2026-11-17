@@ -45,5 +45,7 @@ do not create false wrinkles in the metal.
   its varying ablator thickness and internal structure are not reconstructed.
 - The window reveals are derived interpolations; glazing, frames and seals remain
   unbuilt. The dark closures are temporary, not glass.
-- The side hatch, forward hatch, recovery equipment and cabin remain unbuilt.
+- The side hatch, forward hatch, recovery equipment and furnished cabin remain
+  unbuilt. The separate [pressure-vessel sidewall](pressure-vessel.md) now appears
+  in structural cutaway; bulkheads and tunnel are pending.
 - No Apollo 11 photographs, surface damage, labels or equipment are copied.

@@ -10,9 +10,8 @@ import math
 from pathlib import Path
 
 from mathutils import Vector
-from mathutils.bvhtree import BVHTree
-from mathutils.geometry import delaunay_2d_cdt
 
+import perforated_wall
 from srlib import CM, IN, MeshBuilder, _segs, lathe_obj, material, prof
 
 RADIUS = 77.0
@@ -59,15 +58,6 @@ def _on_cone(point, normal):
     return p + n * t
 
 
-def _within(point, polygon):
-    x, y = point
-    inside = False
-    for a, b in zip(polygon, polygon[1:] + polygon[:1]):
-        if (a.y > y) != (b.y > y) and x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x:
-            inside = not inside
-    return inside
-
-
 def build(cm, heatshield, forward, base, foil, void):
     """Keep named flight nodes; the forward assembly is explicitly unfinished."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
@@ -78,62 +68,26 @@ def build(cm, heatshield, forward, base, foil, void):
         n = port["normal"]
         normal = Vector((-n[1], n[0], n[2]))
         rim = [_on_cone(p, normal) for p in measured]
-        polygon = [Vector((math.atan2(p.y, p.x), p.z)) for p in rim]
+        polygon = perforated_wall.domain(rim)
         apertures.append((port["id"], measured, rim, polygon))
     # Preserve the old hatch aperture until its curved frame is registered from
     # the separate measured hatch. It is NOT one of the surveyed window loops.
     hatch = [Vector((math.radians(a), z * IN)) for a, z in [(-7.5, 47), (7.5, 47), (7.5, 61), (-7.5, 61)]]
     holes = [p[3] for p in apertures] + [hatch]
-    # Constrained triangulation in the skin's (angle, axial station) domain:
-    # triangle edges follow the actual holes, so no complete face bridges one.
-    points, edges = [], []
-    axial = _segs(64)
-    around = _segs(128)
-    zs = sorted({AFT_LIMIT, CONE_Z, FORWARD_LIMIT, *[AFT_LIMIT + (FORWARD_LIMIT - AFT_LIMIT) * i / axial for i in range(axial + 1)]})
-    for z in zs:
-        for i in range(around + 1):
-            p = Vector((-math.pi + 2 * math.pi * i / around, z * IN))
-            if not any(_within(p, h) for h in holes):
-                points.append(p)
-    for polygon in holes:
-        start = len(points)
-        points.extend(polygon)
-        edges.extend((start + i, start + (i + 1) % len(polygon)) for i in range(len(polygon)))
-    coords, _, faces, *_ = delaunay_2d_cdt(points, edges, [], 0, 1e-8, False)
-    verts = [(radius(p.y / IN) * math.cos(p.x) * IN, radius(p.y / IN) * math.sin(p.x) * IN, base * IN + p.y) for p in coords]
-    kept = []
-    for face in faces:
-        centre = sum((coords[i] for i in face), Vector((0, 0))) / len(face)
-        if not any(_within(centre, h) for h in holes):
-            kept.append(face)
-    mesh = MeshBuilder()
-    mesh.add(verts, kept)
-    skin = mesh.build("CM_CrewCompartmentSkin", foil, cm)
-    # Irregular triangles beside a constrained aperture must not bend the
-    # lighting of an otherwise smooth surface of revolution.
-    normals = []
-    for p in coords:
-        z = p.y / IN
+
+    def normal(z):
         if z <= JOIN_Z:
-            nr, nz = radius(z) / AFT_RADIUS, (z - AFT_RADIUS) / AFT_RADIUS
-        elif z < CONE_Z:
-            nr, nz = (radius(z) - _cr) / SHOULDER_RADIUS, (z - _cz) / SHOULDER_RADIUS
-        else:
-            nr, nz = math.cos(CONE_ANGLE), math.sin(CONE_ANGLE)
-        normals.append((nr * math.cos(p.x), nr * math.sin(p.x), nz))
-    skin.data.normals_split_custom_set_from_vertices(normals)
-    # A constrained boundary can look correct in a still while a triangle still
-    # bridges it. Probe every measured opening from its interior toward daylight.
-    tree = BVHTree.FromPolygons([v.co for v in skin.data.vertices], kept, all_triangles=True)
+            return radius(z) / AFT_RADIUS, (z - AFT_RADIUS) / AFT_RADIUS
+        if z < CONE_Z:
+            return (radius(z) - _cr) / SHOULDER_RADIUS, (z - _cz) / SHOULDER_RADIUS
+        return math.cos(CONE_ANGLE), math.sin(CONE_ANGLE)
+
+    skin = perforated_wall.build("CM_CrewCompartmentSkin", cm, foil, base, AFT_LIMIT, FORWARD_LIMIT, radius, normal, holes, joins=(CONE_Z,))
+    probes = []
     for port, (_, measured, _, _) in zip(survey["apertures"], apertures, strict=True):
-        mean = sum(measured, Vector((0, 0, 0))) / len(measured)
         n = port["normal"]
-        direction = Vector((-n[1], n[0], n[2]))
-        for boundary in measured:
-            point = mean * 0.8 + boundary * 0.2 + Vector((0, 0, base * IN))
-            hit, *_ = tree.ray_cast(point, direction, 2)
-            if hit is not None:
-                raise ValueError(f"Skin bridges surveyed window {port['id']}")
+        probes.append((port["id"], measured, Vector((-n[1], n[0], n[2]))))
+    perforated_wall.check_openings(skin, probes, base)
     for name, measured, rim, _ in apertures:
         # The measured opening and nominal surface define the reveal. No raised
         # guessed tube is added around these apertures.

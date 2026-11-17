@@ -11,7 +11,8 @@ import math
 from mathutils import Vector
 
 import command_module
-from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, material, prof
+import pressure_vessel
+from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
 
 RADIUS = command_module.RADIUS
 # Apollo integrated stations, retained in source inches. CSM-101 reference:
@@ -82,7 +83,10 @@ def build(offset=0):
     dark = material("apollo-nozzle", (0.13, 0.14, 0.15), metallic=0.55, roughness=0.65)
     seam = material("apollo-joints", (0.12, 0.14, 0.15), roughness=0.6)
     void = material("window-void-apollo", (0.012, 0.025, 0.035), roughness=0.25)
-    groups = {name: group(name) for name in ("CommandModule", "HeatShield", "ForwardShield", "ServiceModule", "ServiceEngine", "ReactionControl")}
+    groups = {
+        name: group(name)
+        for name in ("CommandModule", "CabinStructure", "HeatShield", "ForwardShield", "ServiceModule", "ServiceEngine", "ReactionControl")
+    }
     sm = groups["ServiceModule"]
 
     def panel_lathe(name, profile, paint):
@@ -142,6 +146,8 @@ def build(offset=0):
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, 3.4, dark, groups["ReactionControl"])
     command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], CM_BASE, foil, void)
+    pressure_vessel.build(groups["CabinStructure"], CM_BASE)
+    mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN
     return groups

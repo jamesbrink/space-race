@@ -11,11 +11,27 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields now separate at published Block II stations. The hatch window remains provisional; cabin, glazing and hatch mechanisms are not built. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields now separate at published Block II stations. The hatch window remains provisional. A separate pressure-vessel sidewall is now visible in cutaway; bulkheads, furnishings, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
       ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
-      ['Interior', 'Not built'],
+      ['Interior', 'Pressure-vessel sidewall only'],
+    ],
+  },
+  {
+    node: 'CabinStructure',
+    name: 'Cabin pressure-vessel wall',
+    group: 'Spacecraft',
+    order: 2,
+    explode: [0, 42, 0],
+    inside: true,
+    summary: 'The aluminium pressure boundary inside the heat shield.',
+    detail:
+      'The inner wall is a separate structure. Two tapered sections are calculated from published penetration coordinates (NAA A-512S, ST-310A, p. 27), with five other coordinates checking the result. The middle ring agrees with the published Xc 42.665-inch, 59.6-inch-radius reference. Common Block II structure is assumed for CM-101. Four window interfaces and the curved outer hatch-frame interface use measured CM-107 structural outlines; the connections to the nominal wall are derived. This is the bare sidewall, without invented thickness: bulkheads, tunnel, the complete hatch frame, couches, instruments and equipment are not yet built. It stays with the command module in the exploded exhibit.',
+    facts: [
+      ['Wall limits', 'Xc 14.07–80.75 in · common Block II reference'],
+      ['Mid-ring', 'Xc 42.665 in · radius 59.6 in'],
+      ['Furnishings', 'Not built; structural cutaway only'],
     ],
   },
   {
@@ -187,7 +203,7 @@ export const flight: Flight = {
   launchSite: 'Launch Complex 34, Cape Kennedy',
   crew: ['Walter M. Schirra, Jr.', 'Donn F. Eisele', 'R. Walter Cunningham'],
   summary:
-    'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Work in progress: an exterior model study; the launch site, cabin and flight simulation are not built yet.',
+    'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Work in progress: an exterior model study; the launch site, furnished cabin and flight simulation are not built yet.',
   facts: [
     { label: 'Spacecraft', value: 'CSM-101 · no lunar module' },
     { label: 'Model status', value: 'Exterior study · surface detail estimated' },
@@ -370,6 +386,38 @@ export const flight: Flight = {
       confidence: 'assumed',
       note: 'MIT R-547, Figure 1.4, p. 1-16: Xc −41.10 in, CSM-101 preflight reference assumed for flown hardware',
     },
+    {
+      group: 'Spacecraft',
+      label: 'Pressure wall, aft limit',
+      value: 14.07 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA A-512S, ST-278A, p. 26: Xc 14.07 in, common Block II structure assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Pressure wall, mid-ring station',
+      value: 42.66526995160706 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Derived intersection of two generators from NAA A-512S ST-310A penetration coordinates. Independently agrees with PR29-12 Figure 4, Xc 42.665 in; common reference assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Pressure wall, maximum diameter',
+      value: 119.19998984721057 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Twice the derived mid-ring radius from NAA A-512S ST-310A. PR29-12 Figure 4 gives radius 59.6 in; common reference assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Pressure wall, forward limit',
+      value: 80.75 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA A-512S, ST-278A, p. 26: Xc 80.75 in, common Block II structure assumed for CM-101',
+    },
   ],
   motors: [],
   models: [
@@ -378,6 +426,7 @@ export const flight: Flight = {
       name: 'Apollo 7 · Saturn IB',
       url: 'models/usa/apollo/apollo-7/vehicle.glb',
       backdrop: 'studio',
+      cutaway: true,
       scale: '224 ft / 68.2752 m stack · published rounded envelope · surface detail estimated',
       slider: ['Assembled', 'Taken apart'],
       views: [
@@ -390,9 +439,14 @@ export const flight: Flight = {
         {
           id: 'spacecraft',
           label: 'Spacecraft',
-          nodes: ['CommandModule', 'HeatShield', 'ForwardShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
+          nodes: ['CommandModule', 'CabinStructure', 'HeatShield', 'ForwardShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
         },
-        { id: 'cabin', label: 'Command module', nodes: ['CommandModule', 'HeatShield', 'ForwardShield'], from: [1, 0.3, 0.3] },
+        {
+          id: 'cabin',
+          label: 'Command module',
+          nodes: ['CommandModule', 'CabinStructure', 'HeatShield', 'ForwardShield'],
+          from: [1, 0.3, 0.3],
+        },
         { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
       ],
       parts,

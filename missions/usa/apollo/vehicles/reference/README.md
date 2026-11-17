@@ -34,3 +34,38 @@ the nominal conical wall, builds a constrained opening and joins the two boundar
 with a reveal. The reveal is a reconstruction between two references, not a survey
 of the ablator's recessed wall. Apertures retain dark temporary closures until the
 cabin and glazing are built. There is no claim here that an accurate cabin exists.
+
+## Inner frame interfaces
+
+`apollo-cm-inner-apertures.json` retains four fixed window openings and the curved
+outer hatch-frame interface from the **CM-107 interior hull** derivative. It uses
+Smithsonian package `d8c63e8a-4ebc-11ea-b77f-2e728ce88125`, which differs from the
+exterior package. The exact public asset URL and SHA-256 are in the JSON; the
+[interior scene rights](https://ids.si.edu/ids/media_view?id=3d_package%3Ad8c63e8a-4ebc-11ea-b77f-2e728ce88125&format=text)
+release the content under CC0. No source mesh or texture is shipped.
+
+The same fixed Block II window and hatch-frame arrangement is identified in
+Apollo 7 press-kit Figure 25d and NAA's 1967 familiarization drawing. Only those
+structural interfaces are applied as **assumed shared hardware**. Equipment bays,
+couches, removable panels and mission-specific fittings in the interior survey
+are excluded from this use.
+
+The derivative was imported in physical centimetres, vertices welded within
+0.1 cm to join its duplicated seams, and connected boundary components recorded.
+The window loops are components 7, 54, 17 and 31 in that extraction. Their
+best-fit-plane convex hulls have maximum residuals 0.092 and 0.139 mm (side),
+0.658 mm (rendezvous). Those residuals describe plane fitting, not absolute survey
+accuracy or measured glazing positions. The data does **not** establish which
+pane surface or stepped frame face each boundary represents.
+
+The hatch interface is component 79. Its convex hull is ordered in azimuth and
+axial station, while every selected point keeps its original three-dimensional
+coordinates. It is not flattened or identified as the clear crew opening. Its
+wall cut is a radial mapping onto the published nominal pressure-vessel profile;
+no full hatch frame or door is inferred from that projection.
+
+Registration uses the exterior survey's nominal-sphere apex. It remains an
+assumption about the common coordinate frame, not an independent Apollo station
+survey. No scaling is applied to make the two sources fit. See
+[the pressure-vessel reconstruction](../pressure-vessel.md) for how the outlines
+are used and what remains unbuilt.

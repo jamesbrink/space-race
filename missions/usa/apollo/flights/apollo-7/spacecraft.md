@@ -45,7 +45,8 @@ seams, nozzle contours, quad azimuths and brackets remain estimated.
 
 ## Simplifications and things still wrong
 
-- No cabin, glazing, couches, instruments, astronaut figures or internal equipment.
+- The cabin pressure-vessel sidewall is built; bulkheads, tunnel, glazing, couches,
+  instruments, astronaut figures and internal equipment remain unbuilt.
 - Four measured openings have temporary dark closures, not glass. The hatch window
   still has the initial rectangular opening. ST-503A (NAA A-512S, p. 41) shows a
   rounded-square outer pane and a circular inner pressure window; both layers need reconstruction.
@@ -84,3 +85,13 @@ The SM now has an inward-facing wall and annular edges at the published one-inch
 thickness (Apollo 7 press kit, p. 26; also Apollo Operations Handbook, Block II, volume 1,
 p. 1-49). This replaces the single surface which disappeared from behind in the first
 exploded preview. Tankage and internal structure are still pending.
+
+## Pressure vessel and structural cutaway
+
+The separate inner wall uses the published Block II penetration coordinates and
+wall limits, with fixed frame interfaces from Smithsonian's measured CM-107 hull.
+See [pressure-vessel.md](../../vehicles/pressure-vessel.md) for each source figure,
+the two generator calculations and five independent coordinate checks. This is a
+bare sidewall with no invented thickness. Its top-level `CabinStructure` node
+moves with `CommandModule`; it is visible only at full detail. Selecting it opens
+the normal cutaway. A structural cutaway is not yet a furnished, seated cabin.

@@ -7,11 +7,12 @@ the redesigned Block II command and service modules in Earth orbit. It carried n
 ## Model status
 
 An exterior study of CSM-101 on SA-205 is available in the Gallery. The launch site,
-walkable structures, cabin, suits, weather and flight physics are not built yet.
+walkable structures, furnished cabin, suits, weather and flight physics are not built yet.
 The five window openings have opaque dark recesses until the cabin and glazing are modelled.
 Published rounded envelopes, nominal Block II stations and remaining estimates are
 distinguished in `spacecraft.md`.
-No interior/cutaway or seat control is offered for an unbuilt cabin.
+A structural cutaway exposes the pressure-vessel sidewall inside the thermal shell;
+bulkheads and furnishings are unbuilt. No seat control is offered yet.
 
 ## Sources read
 
@@ -30,9 +31,9 @@ the flown record. No flight timeline or simulator plan has been created from it.
 
 The Gallery now includes the full SA-205 stack: S-IB, eight H-1 engines, aft interstage,
 S-IVB and its J-2, instrument unit, closed spacecraft adapter, CSM-101, boost protective
-cover and launch escape system. All fifteen parts can be selected and taken apart.
+cover and launch escape system. All sixteen parts can be selected and taken apart.
 The adapter and cover come away in an **exhibit arrangement**, not a timed separation sequence.
-The launch site, cabin, suits and simulator remain unbuilt. The source model can also produce
+The launch site, furnished cabin, suits and simulator remain unbuilt. The source model can also produce
 standalone CSM and CM stills with `pnpm model apollo-7 --preview <directory>`.
 
 ## Structural-station milestone
@@ -42,3 +43,11 @@ A-512S ST-428A. The CSM barrel, datum chain, RCS axial station and nominal SPS
 extension bounds replace initial estimates; the CM/SM fairing closes the external
 connection. See `spacecraft.md` for source units, assumptions and remaining defects.
 This is still an exterior reconstruction, with no claim of a completed cabin.
+
+## Pressure-vessel milestone
+
+The bare cabin sidewall now has two source-derived tapers and four measured fixed
+window interfaces. Its outer hatch-frame contour is retained as curved data,
+without guessing a door from it. The structural cutaway uses the Gallery's existing
+shell system. [Pressure-vessel notes](../../vehicles/pressure-vessel.md) describe the
+calculations, checks and limits. Bulkheads, glazing and furnishings remain pending.
