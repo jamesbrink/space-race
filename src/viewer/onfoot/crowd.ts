@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Going } from '../../types.ts';
 import type { Surfaces } from '../runs.ts';
 import { cycleLength, Gait, pose } from './gait.ts';
-import { goneAt, lengthOf, PACE, QUICKEN, routeOf } from './going.ts';
+import { distanceAt, goneAt, lengthOf, PACE, along as pointAlong, QUICKEN, routeOf } from './going.ts';
 
 /**
  * A group's people walking off a site or onto it on the clock (Part `going`, types.ts `Going`), each on his own feet. Each
@@ -84,8 +84,14 @@ export function cyclesAt(tau: number, pace: number, length: number, leg: number)
   return up + level + (up - ramped(Math.max(0, total - tau)));
 }
 
-/** The least time between one man coming onto a group's way and the next, s: at a walk, a body's depth and a little (estimated). */
-const LEAST_GAP = 0.45;
+/** The least time between one man coming onto a group's way and the next, s: at a walk, a body's depth and more (estimated). */
+const LEAST_GAP = 0.6;
+/** How near two men's middles may come, metres: shoulder to shoulder and not into each other (estimated). */
+const CLEAR = 0.6;
+/** How far along the way past its first point a man's walk to it is looked at for anyone in his road, metres. */
+const BEYOND = 3;
+/** The step those walks are looked at in, s. */
+const STEP = 0.1;
 
 /**
  * One going laid out for a group (`starts`: where each sets off from and the way he faces there): for each, in the same
@@ -112,8 +118,8 @@ export function plan(
   // each three that come onto the way one after another take its three lanes in the order they come at it from across
   // it, so that none crosses another's line to it: across is to the way's left (+), as `aside` lays it
   const [nx, nz] = going.way[1] ?? [wx - 1, wz];
-  const along = Math.hypot(nx - wx, nz - wz) || 1;
-  const across = (i: number) => ((starts[i]!.at[0] - wx) * (nz - wz) - (starts[i]!.at[1] - wz) * (nx - wx)) / along;
+  const run = Math.hypot(nx - wx, nz - wz) || 1;
+  const across = (i: number) => ((starts[i]!.at[0] - wx) * (nz - wz) - (starts[i]!.at[1] - wz) * (nx - wx)) / run;
   const lanes = [...ABREAST].sort((a, b) => a - b);
   const lane = new Map<number, number>();
   for (let k = 0; k < order.length; k += lanes.length) {
@@ -126,6 +132,18 @@ export function plan(
   let arrives = Number.NEGATIVE_INFINITY;
   // (and none sets off before the one before him: one with further to go, off first, walked past him as he stood)
   let set = 0;
+  // each one's walk to the way and a little along it, from the moment he sets off (x, z by STEP), and when he set off
+  const walks: { delay: number; track: number[] }[] = [];
+  /** Whether a walk set off `delay` after the going's `at` comes nearer than CLEAR to any walk already laid out. */
+  const clash = (track: readonly number[], delay: number): boolean => {
+    for (const other of walks)
+      for (let k = 0; k < track.length; k += 2) {
+        const j = 2 * Math.round((delay + (k / 2) * STEP - other.delay) / STEP);
+        if (j < 0 || j >= other.track.length) continue;
+        if (Math.hypot(track[k]! - other.track[j]!, track[k + 1]! - other.track[j + 1]!) < CLEAR) return true;
+      }
+    return false;
+  };
   order.forEach((i, k) => {
     const { at: from, facing } = starts[i]!;
     const laid = { ...going, way: aside(going.way, lane.get(i)!) };
@@ -140,7 +158,18 @@ export function plan(
       // (how long he takes to reach the way from standing: its distance at his pace, and half the time he takes to come up to it)
       const [fx, fz] = laid.way[0] ?? from;
       const reach = Math.hypot(fx - from[0], fz - from[1]) / pace + QUICKEN / 2;
+      // his walk to the way and a little along it; and if that brings him into another's road, a moment later
+      const length = lengthOf(route);
+      const until = Math.min(length, Math.hypot(fx - from[0], fz - from[1]) + BEYOND);
+      const track: number[] = [];
+      for (let tau = 0; tau < 600; tau += STEP) {
+        const { s } = distanceAt(tau, pace, length);
+        track.push(...pointAlong(route, s));
+        if (s >= until) break;
+      }
       delay = Math.max(set, arrives + gap - reach);
+      for (let tries = 0; tries < 150 && clash(track, delay); tries++) delay += STEP;
+      walks.push({ delay, track });
       set = delay;
       arrives = delay + reach;
     }
