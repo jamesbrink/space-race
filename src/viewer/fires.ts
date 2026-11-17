@@ -131,16 +131,32 @@ export function clusterOf(exits: readonly Exit[]): Cluster | null {
   };
 }
 
+/** How faint a fire is drawn at the very instant it is lit, before it comes up: enough to be lit, too little to be seen to jump. */
+const GLIMMER = 0.02;
+
+/**
+ * How far a fire is lit at `t`, 0 to 1, between the record's instants `from` (lit) and `to` (cut), counted as the record
+ * and the simulator count an event at its own instant: lit at `from`, out at `to`. It comes up over `rise` seconds from
+ * a glimmer at the instant it is lit and dies over the `fall` seconds before the cut, each at most half the burn
+ * (neither the start nor the tail-off is in a record: the run holds full thrust between).
+ */
+export function litBetween(t: number, from: number, to: number, rise = 0.5, fall = 0.5): number {
+  if (!(t >= from && t < to)) return 0;
+  const half = (to - from) / 2;
+  const [up, down] = [Math.min(rise, half), Math.min(fall, half)];
+  return Math.max(smoothstep(from, from + up, t), GLIMMER) * (1 - smoothstep(to - down, to, t));
+}
+
 /**
  * How hard a fire burns at `t`: `main` its main chambers (or its one exit), `steering` its steering chambers, each 0
- * (out) to 1 (rated). It comes up over the half second from `from` and dies over the half second from `to` (neither
- * the start nor the tail-off is in a record), and between it is at its stage's `throttle` (1 with none). A stage
+ * (out) to 1 (rated). It is lit from `from` to `to` as `litBetween` has it (lit at the record's instant of its lighting,
+ * out at that of its cut), and between it is at its stage's `throttle` (1 with none). A stage
  * throttled to its steering chambers' share of the thrust or less (`steeringShare`, with a twentieth over for the
  * figures' roughness) runs on those alone, as the RD-108's final stage does: the main chambers are out and the steering
  * ones burn at what is asked of them. Above it every chamber is throttled together, as an intermediate stage is.
  */
 export function fireLevel(t: number, from: number, to: number, throttle = 1, steeringShare = 0): { main: number; steering: number } {
-  const on = smoothstep(from, from + 0.5, t) * (1 - smoothstep(to, to + 0.5, t));
+  const on = litBetween(t, from, to);
   if (on <= 0) return { main: 0, steering: 0 };
   if (steeringShare > 0 && throttle <= steeringShare * 1.05) return { main: 0, steering: on * Math.min(throttle / steeringShare, 1) };
   return { main: on * throttle, steering: steeringShare > 0 ? on * throttle : 0 };
@@ -186,16 +202,15 @@ export function engineWork(level: { main: number; steering: number }, steeringSh
 /**
  * How hard a shed body's motor pushes at `t`, 0 to 1 of its thrust, as the simulator flies it (sim/shed.ts): from `at`,
  * the instant the body left, steady for `burn` seconds, then falling evenly to nothing over `tail` (what is left of its
- * impulse). With no tail the simulator stops it at once; drawn, it comes up over a fifth of a second and dies over the
- * half second an engine's fire takes (`fireLevel`: neither is in a record).
+ * impulse). With no tail the simulator stops it at once, and it is drawn as an engine's fire is (`litBetween`: lit at
+ * `at`, out at `at + burn`), coming up over a fifth of a second.
  */
 export function shedLevel(t: number, at: number, burn: number, tail = 0): number {
+  if (tail <= 0) return litBetween(t, at, at + burn, 0.2);
   const since = t - at;
   if (since < 0) return 0;
-  const on = smoothstep(0, 0.2, since);
-  if (since < burn) return on;
-  if (tail > 0) return on * Math.max(0, 1 - (since - burn) / tail);
-  return on * (1 - smoothstep(burn, burn + 0.5, since));
+  const on = Math.max(smoothstep(0, 0.2, since), GLIMMER);
+  return since < burn ? on : on * Math.max(0, 1 - (since - burn) / tail);
 }
 
 /**

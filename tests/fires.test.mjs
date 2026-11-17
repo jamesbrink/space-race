@@ -7,20 +7,21 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
+import { firesOf, orbitalFlown } from '../src/sim/run.ts';
 import { sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
-import { firesOf, orbitalFlown } from '../src/sim/run.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
-import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf } from '../src/viewer/fires.ts';
-import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
+import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf, shedLevel } from '../src/viewer/fires.ts';
 import { plumeShape } from '../src/viewer/plume.ts';
 import { P0 } from '../src/world/bodies.ts';
 
 const A7 = A7_NOZZLE.exit.value / P0;
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-import { siteFrame } from '../src/world/frames.ts';
+
 import { frameOf } from '../src/world/earthframe.ts';
+import { siteFrame } from '../src/world/frames.ts';
 
 /** A bell lathed as the engine scripts lathe one (vostok_8k72k/engines.py): rings of `segs` points from its lip up, open below. */
 function bell(points, cx, cz, exitR, y0, height, segs) {
@@ -85,11 +86,18 @@ test("a cluster's chambers merge where their jets have widened to touch: low dow
   assert.ok(thin.start < 0.5 * sea.start && thin.end > thin.start, 'and sooner as the air thins and each swells');
 });
 
-test('a fire comes up and dies over half a second, burns at its stage’s throttle, and a stage throttled to its steering chambers runs on them alone', () => {
+test('a fire comes up over the half second after it is lit and dies over the half second before its cut, burns at its stage’s throttle, and a stage throttled to its steering chambers runs on them alone', () => {
   assert.deepEqual(fireLevel(-1, 0, 100), { main: 0, steering: 0 });
   assert.equal(fireLevel(0.25, 0, 100).main, 0.5);
   assert.equal(fireLevel(50, 0, 100).main, 1);
+  assert.equal(fireLevel(99.75, 0, 100).main, 0.5);
   assert.equal(fireLevel(100.6, 0, 100).main, 0);
+  // an event at its own instant, as the record and the simulator count it: lit at its lighting, out at its cut
+  assert.ok(fireLevel(0, 0, 100).main > 0, 'lit at the instant it is lit');
+  assert.deepEqual(fireLevel(100, 0, 100), { main: 0, steering: 0 }, 'out at the instant it is cut');
+  assert.ok(fireLevel(117.9, 0, 118).main > 0 && fireLevel(118, 0, 118).main === 0, 'Voskhod 2’s strap-ons at their cut');
+  assert.ok(shedLevel(10, 10, 3) > 0 && shedLevel(13, 10, 3) === 0, 'a shed motor: lit as its body leaves, out at its burn’s end');
+  assert.ok(fireLevel(10.1, 10, 10.3).main > 0.5, 'a short burn still comes up: its rise and fall share it');
   assert.deepEqual(fireLevel(50, 0, 100, 0.6, 0.06), { main: 0.6, steering: 0.6 }, 'an intermediate stage throttles every chamber');
   assert.deepEqual(
     fireLevel(50, 0, 100, 0.104, 0.1076),
@@ -308,13 +316,12 @@ test('a jet that blows while its engine runs goes as the engine works, on all it
   assert.equal(engineWork(fireLevel(10, 0, 100, 1, share), share), 1, 'rated');
 });
 
-test('a shed body’s vent blows from the instant it left, as long as the simulator flies its motor, and dies away', async () => {
-  const { shedLevel } = await import('../src/viewer/fires.ts');
+test('a shed body’s vent blows from the instant it left, as long as the simulator flies its motor, and dies away', () => {
   assert.equal(shedLevel(119, 119.5, 6), 0, 'not before it has left');
   assert.ok(shedLevel(119.55, 119.5, 6) > 0 && shedLevel(119.55, 119.5, 6) < 1, 'coming up');
   assert.equal(shedLevel(122, 119.5, 6), 1, 'steady for its burn');
-  assert.ok(shedLevel(125.75, 119.5, 6) > 0 && shedLevel(125.75, 119.5, 6) < 1, 'dying over half a second');
-  assert.equal(shedLevel(126.1, 119.5, 6), 0, 'out');
+  assert.ok(shedLevel(125.25, 119.5, 6) > 0 && shedLevel(125.25, 119.5, 6) < 1, 'dying over the half second before its burn ends');
+  assert.equal(shedLevel(125.5, 119.5, 6), 0, 'out as its burn ends');
   assert.ok(Math.abs(shedLevel(126.5, 119.5, 6, 2) - 0.5) < 1e-12, 'with a tail, falling evenly over it, as sim/shed.ts has the thrust');
 });
 

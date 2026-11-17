@@ -1,15 +1,15 @@
 import * as THREE from 'three';
-import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { airAt, skyOf } from '../sim/air.ts';
+import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
+import { bearingOf, between, chuteOf, either, type Run, recordOf } from '../sim/run.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
-import { bearingOf, between, chuteOf, either, recordOf, type Run } from '../sim/run.ts';
-import { fireLevel } from './fires.ts';
+import { fireLevel, litBetween } from './fires.ts';
 
 /**
  * The vehicle off the pad: where the simulator (sim/fly.ts) has it at an instant, in the scene's
@@ -150,18 +150,18 @@ export class Ascent {
   }
 
   /**
-   * How the engine burns at `t`: `on` from 0 (out) to 1, coming up over the first half second of
-   * flight and dying over half a second at cutoff (neither the start nor the tail-off is in the
-   * record: the run itself holds full thrust from liftoff to cutoff); `vacuum` from 0 in sea-level
-   * air to 1 in none, from the standard air's pressure at the height flown.
+   * How the engine burns at `t`: `on` from 0 (out) to 1, lit from liftoff to the cutoff as fires.ts
+   * `litBetween` has it (lit at the instant of lighting, out at the instant of the cut, as the record
+   * counts an event at its own instant); `vacuum` from 0 in sea-level air to 1 in none, from the
+   * standard air's pressure at the height flown.
    */
   burn(t: number): { on: number; vacuum: number; fire: number } {
     if (!this.flying(t)) return { on: 0, vacuum: 0, fire: 0 };
     const { cutoff, fires = [] } = this.flown();
     // (a later fire, where one burns now: an upper stage's, a braking engine's; 0 is the first engine's)
-    const later = fires.findIndex((f) => t >= f.from && t < f.to + 0.5);
+    const later = fires.findIndex((f) => t >= f.from && t < f.to);
     const [from, to, fire] = later >= 0 ? [fires[later]!.from, fires[later]!.to, later + 1] : [0, cutoff, 0];
-    const on = THREE.MathUtils.smoothstep(t, from, from + 0.5) * (1 - THREE.MathUtils.smoothstep(t, to, to + 0.5));
+    const on = litBetween(t, from, to);
     if (on <= 0) return { on: 0, vacuum: 1, fire };
     const { r } = between(this.flown().samples, t);
     const height = this.frame.place(r, t).height - this.flight.site.seaLevel.value;
