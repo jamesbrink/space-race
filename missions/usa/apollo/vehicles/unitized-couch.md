@@ -2,8 +2,9 @@
 
 `unitized_couch.py` reconstructs the three-place assembly from the Apollo 7
 flight-design photograph and CM-101 operating-position plate. **All dimensions
-and installation coordinates are estimated for CM-101.** The configuration and
-96° seat/back flight position are documented; that does not establish the sizes.
+and installation coordinates are estimated for CM-101.** The configuration is
+documented; the 96° seat/back flight position is estimated (below), and neither
+establishes the sizes.
 The measured CM-107 couch is **not a valid shared geometry donor for CM-101**.
 
 Drexel and Hunter, *Apollo Experience Report—Command Module Crew-Couch/Restraint
@@ -16,11 +17,14 @@ attenuators. Apollo 7 used honeycomb attenuators in all axes; later missions'
 X/Z cyclic attenuators must not be copied as shared hardware. A passive heel
 restraint replaced the earlier D-ring-operated instep strap just before Apollo 7.
 
-The North American 1967 familiarization plate CS-2025C, June 1967, PDF p. 171
-of APC-118, is explicitly labelled **SC 2TV-1 & 101**. Its launch/orbit/entry
-seat angle is **96 degrees**. It also shows the 66-degree stowage-access,
-170-degree centre-couch egress and 96-degree docking positions. These are couch
-operating angles, not a reconstruction of individual astronauts' body poses.
+A North American familiarization plate, CS-2025C (June 1967), labelled
+**SC 2TV-1 & 101**, was reported read as PDF p. 171 of a compilation called
+APC-118. It gives the launch/orbit/entry seat angle as **96 degrees**, with
+66-degree stowage-access, 170-degree centre-couch egress and 96-degree docking
+positions. No copy of the plate or of APC-118 has been located to cite
+(`docs/sources.md`, Apollo 7, "Known, not located"), so the 96 degrees is held
+as **estimated** until one is. These are couch operating angles, not a
+reconstruction of individual astronauts' body poses.
 
 ## Earlier unitized-couch dimensions
 
@@ -59,7 +63,7 @@ blocks do not simulate the honeycomb or claim a measured stroke or load.
 
 Figure 1 places heads toward −Zc (the hatch) and feet toward +Zc. In the model's
 Blender basis (−Zc, Yc, Xc), heads therefore point toward +X. The SC101 plate's
-launch pose fixes the documented 96° angle; its installation pitch and stations
+launch pose fixes the estimated 96° angle; its installation pitch and stations
 are inferred. The working estimates, retained in source inches, are:
 
 | Quantity | Estimate | Basis/limitation |

@@ -1510,3 +1510,9 @@ and `fdai.md` for the complete attribution and unfinished details.
 - [Douglas SM-46978A, S-IVB-205](https://ntrs.nasa.gov/citations/19700027461), Figs. 4-1 and AP 2-1. Flight-article tank, engine and helium-bank stations.
 - [NASA photograph S68-42513](https://images.nasa.gov/details/S68-42513), SM-101 mating, radiator extent and national markings.
 - [North American Rockwell, Apollo Spacecraft News Reference](https://www.ibiblio.org/apollo/Documents/CSM_News_Reference_H_Missions.pdf), pp. 45–55, 66, 93, 100–101, 121, 133, 140–142 and 162. Cabin equipment, hinged adapter, recovery compartment, fuel cells, ECS radiator area, viewing port and SPS exit.
+
+### Apollo 7: known, not located
+
+| Source | What it would settle |
+|---|---|
+| North American Aviation familiarization plate CS-2025C, June 1967, labelled SC 2TV-1 & 101; reported as PDF p. 171 of a compilation called APC-118. No public copy of either was found (Virtual AGC's document library and a web search, November 2026) | The unitized couch's 96° launch, orbit and entry seat/back angle, and its stowage, egress and docking positions. Until a copy is found the angle is held as `estimated` (flight.ts, "Couch seat/back flight angle"; unitized-couch.md) |

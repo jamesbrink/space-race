@@ -113,7 +113,7 @@ These photo-derived dimensions carry estimated confidence and are used only for 
 The cabin now contains the common three-person platform, headrests, fixed
 seat/leg assemblies, six-point harnesses, passive heel restraints and eight
 attenuator exteriors. NASA TN D-7440 documents the Apollo 7 configuration;
-the SC101 plate CS-2025C supplies the 96° flight angle. Complete manufactured
+the 96° flight angle, from a North American plate for SC101 not yet located, is estimated. Complete manufactured
 sizes and mounting drawings were not located, so these dimensions and positions
 are **estimated** from the flight-design photograph and illustrated installation.
 Earlier SC012 back-pan and beam dimensions are scale priors, **not verified

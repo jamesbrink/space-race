@@ -28,8 +28,8 @@ and Xc the command-module coordinate. Dimensions remain in their published inche
 The nozzle exit is derived as XA 838 + (180 − 200) − 112 = XA 706.
 The model's local origin is that exit: SM aft bulkhead Z132, forward bulkhead Z287,
 CM datum Z294, forward-shield top Z406.25 in. The resulting nominal CSM length
-is 406.25 in, **assumed**, combining shared and preflight references rather than an
-as-built overall inspection. The seven-inch gap between XA993 and XA1000 is a
+is 406.25 in, **derived** from those stations, which combine shared and preflight references
+rather than an as-built overall inspection. The seven-inch gap between XA993 and XA1000 is a
 datum difference, not an open physical gap: the fairing bridges the modules.
 
 The aft CM uses the nominal spherical surface, rounded shoulder and 33° conical
