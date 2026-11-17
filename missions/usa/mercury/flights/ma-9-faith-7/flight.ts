@@ -19,6 +19,7 @@ import { SPEC as CAPSULE_SPEC, type PartWords, lb, THRUST } from '../../vehicles
 import { mercuryCabin } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 /** The side of the pilot's feet: where every earlier capsule had its periscope, and this one a door for the umbilical. */
 const FEET_AZ = 90 + STAND;
@@ -411,6 +412,7 @@ export const flight: Flight = {
   launch: '1963-05-15T13:04:13Z',
   launchSite: LC14.name,
   site: LC14,
+  weather: WEATHER,
   crew: ['L. Gordon Cooper, Jr.'],
   summary:
     'The last Mercury, and the longest: 22 orbits in 34 hours 20 minutes, in a capsule built for four and a half ' +

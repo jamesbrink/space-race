@@ -116,12 +116,16 @@ launch instant, 13:04:13 UTC. All `derived`. Elevations are geometric.
 The Moon was up in daylight, as high as the Sun and on the other side of the sky from the way the
 Atlas went. Mars, Uranus and Neptune were below the horizon.
 
-**The weather.** No record of the weather at the pad that morning, with figures, is in anything
-read. *This New Ocean* has the operations director say the night before that "the weather is
-good" (p. 494) and quotes a report that "the sun literally smiled on MA-9" (p. 503). In the landing area the ground told the
-pilot, at 34:13:58: cloud tops near 36,000 ft, half the sky covered at 1,500 ft, waves 5 to 6 ft,
-wind 15 knots (NASA SP-45, p. 441). No `weather.ts` is written for this flight yet: its site stands
-under its place's default sky, which is an estimate.
+**The weather, as recorded** (`weather.ts`). No figure of the weather at the pad is in the flight's own record that
+has been read; *This New Ocean* has the operations director say the night before that "the weather is good" (p. 494)
+and quotes a report that "the sun literally smiled on MA-9" (p. 503). The Cape's station at the Skid Strip, 2 km
+from the pad, has it by the hour (NOAA Integrated Surface Database, station 74794012868): at 08:00 EST, four minutes
+before liftoff, the sky scattered with no ceiling and no layer coded, 12.8 km of visibility, the wind from 230° at
+3.6 m/s, 23.3 °C with a dew point of 18.3; an hour before, one okta of cirrus and 16 km; two hours after, two oktas
+of altocumulus at 3,000 m. That is what is drawn: a thin okta of cirrus, a light south-west wind, a little haze.
+NASA S63-07602, the liftoff from the west, has a pale, hazy sky. Estimated: the cirrus's height and depth, the haze.
+The air aloft is ERA5's (`aloft.ts`). In the landing area the ground told the pilot, at 34:13:58: cloud tops near
+36,000 ft, half the sky covered at 1,500 ft, waves 5 to 6 ft, wind 15 knots (NASA SP-45, p. 441).
 
 ## The launch site
 
