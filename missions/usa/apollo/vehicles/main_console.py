@@ -13,7 +13,7 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 import pressure_vessel
-from cm_reference import survey_cm
+from cm_reference import CM_PER_IN, survey_cm
 from dsky_front import reference as dsky_reference
 from srlib import CM, IN, MeshBuilder, interior, material
 
@@ -34,9 +34,9 @@ def build(parent, base):
         # vertices are inside, every triangle of the planar panel is inside.
         # This checks the two references' compatibility, not flight clearance.
         for x, y, z in points_cm:
-            if not pressure_vessel.MID < z / 2.54 < pressure_vessel.FORWARD:
+            if not pressure_vessel.MID < z / CM_PER_IN < pressure_vessel.FORWARD:
                 raise ValueError("Main-console reference leaves the nominal upper pressure wall")
-            if math.hypot(x, y) > pressure_vessel.radius(z / 2.54) * 2.54:
+            if math.hypot(x, y) > pressure_vessel.radius(z / CM_PER_IN) * CM_PER_IN:
                 raise ValueError("Main-console reference intersects the nominal pressure wall; check the shared datum")
         # The DSKY front web passes through the blank reference plane. Its
         # projected volume masks the plane, without an invented stand-off or

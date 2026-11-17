@@ -16,7 +16,7 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
-from cm_reference import survey_cm
+from cm_reference import CM_PER_IN, survey_cm
 from panel_equipment import PRINT, InchPanel
 from srlib import IN, TAU, MeshBuilder, interior, material
 
@@ -31,7 +31,7 @@ class Console(InchPanel):
     """Inch construction in the registered panel frame, batched by material."""
 
     def __init__(self, parent, base, source, layout):
-        self.origin = Vector(survey_cm(source["apertures"][0]["probe_cm"], source["registration"])) / 2.54
+        self.origin = Vector(survey_cm(source["apertures"][0]["probe_cm"], source["registration"])) / CM_PER_IN
         back = Vector(source["extraction"]["plane_normal"])
         raw_u = (Vector((1, 0, 0)) - back * back.x).normalized()
         raw_v = -back.cross(raw_u)
@@ -55,11 +55,11 @@ class Console(InchPanel):
         super().__init__(parent, base, self.origin, self.u, self.v, self.n, self.m)
 
     def xy(self, x, y):
-        p = self.scale * complex(x - self.anchor[0], self.anchor[1] - y) / 2.54
+        p = self.scale * complex(x - self.anchor[0], self.anchor[1] - y) / CM_PER_IN
         return p.real, p.imag
 
     def size(self, pixels):
-        return pixels * abs(self.scale) / 2.54
+        return pixels * abs(self.scale) / CM_PER_IN
 
 
 def _validate(parent, base, *, console_clearance=False):

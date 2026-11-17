@@ -10,7 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from cm_reference import survey_cm
+from cm_reference import CM_PER_IN, survey_cm
 from srlib import CM, IN, MeshBuilder, interior, material
 
 FOLDER = Path(__file__).parent / "reference"
@@ -40,7 +40,7 @@ def build(parent, base):
     origin, basis = registration["origin_cm"], registration["basis_columns"]
     points = []
     for p in vertices:
-        raw_cm = [origin[a] + 2.54 * sum(p[k] * basis[k][a] for k in range(3)) for a in range(3)]
+        raw_cm = [origin[a] + CM_PER_IN * sum(p[k] * basis[k][a] for k in range(3)) for a in range(3)]
         x, y, z = survey_cm(raw_cm, registration["apollo_frame"])
         points.append((x * CM, y * CM, z * CM + base * IN))
     mesh = MeshBuilder()

@@ -8,6 +8,8 @@ a measurement of CM-107's remaining post-entry ablator.
 """
 
 AFT_APEX_XC = -1.30
+# Centimetres in an inch, exactly: the surveys are in centimetres, the drawings and every script in inches.
+CM_PER_IN = 2.54
 
 
 def survey_cm(point, registration):
@@ -15,4 +17,4 @@ def survey_cm(point, registration):
     if registration["rotation_degrees_about_z"] != 90:
         raise ValueError("Apollo survey reference expects the recorded 90-degree basis rotation")
     x, y, z = point
-    return -y, x, z - registration["scan_sphere_apex_cm"] + AFT_APEX_XC * 2.54
+    return -y, x, z - registration["scan_sphere_apex_cm"] + AFT_APEX_XC * CM_PER_IN

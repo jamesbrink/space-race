@@ -13,7 +13,7 @@ from pathlib import Path
 
 from mathutils import Vector
 
-from cm_reference import survey_cm
+from cm_reference import CM_PER_IN, survey_cm
 from dsky_front import reference
 from panel_equipment import InchPanel
 from srlib import IN, MeshBuilder, interior, material
@@ -77,7 +77,7 @@ def build(parent, base):
     c = InchPanel(
         parent,
         base,
-        Vector(survey_cm(registration["origin_cm"], registration["apollo_frame"])) / 2.54,
+        Vector(survey_cm(registration["origin_cm"], registration["apollo_frame"])) / CM_PER_IN,
         *[turn(p) for p in registration["basis_columns"]],
         {
             "panel": material("apollo-dsky-cover-grey", (0.40, 0.42, 0.40), roughness=0.65),
