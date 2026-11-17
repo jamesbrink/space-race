@@ -897,8 +897,11 @@ rocket can leave the erector out by its date.
 - **The people of 6 August walk as the gait has a man walk on flat ground**: they turn to their way over their first
   metre and from it over their last, their feet the stride's and not planted through the turn (a few centimetres of
   slide); they are lifted or let down as the land rises or falls from where they stood, but a rail they cross is not
-  stepped over; they walk through one another where their ways cross, and the walker walks through them (a skinned
-  figure is not solid to him: it would be solid where it was built). Their arms swing from however they were built.
+  stepped over. Nobody walks through another: each sets off when his way is clear (viewer/onfoot/crowd.ts `plan`, at
+  least 0.58 m between any two men's middles from 06:45 to 07:13 at every level of detail, measured), but that is
+  bought by waiting, not by stepping aside, and the groups' times are set so that their streams do not meet on the road
+  (estimated, as all their times are). The walker walks through them (a skinned figure is not solid to him: it would be
+  solid where it was built). Their arms swing from however they were built.
 
 - **11 and 12 August 1962** (Vostoks 3 and 4, `flights/vostok-3/model/pad.py`, `flights/vostok-4/model/pad.py`): the
   launching structure is built as it stood in 1961, although it burnt on 1 June 1962 and was repaired: what the repair
