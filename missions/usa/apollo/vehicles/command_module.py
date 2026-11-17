@@ -2,7 +2,7 @@
 
 NASA TN D-5686, Figure 2(g): D154, aft radius184.8, shoulder radius7.7,
 33-degree conical wall. This is nominal common geometry, not a survey of CM-101.
-The forward cover and side hatch remain the earlier provisional study.
+Heat-shield stations: NAA A-512S (1969), ST-428A, p.31. The side hatch remains provisional.
 """
 
 import json
@@ -13,15 +13,19 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.geometry import delaunay_2d_cdt
 
-from srlib import CM, IN, MeshBuilder, lathe_obj, material, prof
+from srlib import CM, IN, MeshBuilder, _segs, lathe_obj, material, prof
 
 RADIUS = 77.0
 AFT_RADIUS = 184.8
 SHOULDER_RADIUS = 7.7
 CONE_ANGLE = math.radians(33)
-# The transition ring at Xc81 is identified in the Block II training manual.
-# Only the lower body's nominal surface is reconstructed here.
-FORWARD_LIMIT = 81.0
+# North American A-512S, 13 January 1969, ST-428A, printed p.31:
+# explicitly Block II heat-shield stations. Common structural reference, not
+# independently surveyed CM-101 skin coordinates or docking-probe height.
+AFT_LIMIT = 23.23
+FORWARD_LIMIT = 81.13
+COVER_TOP = 112.25
+TUNNEL_RADIUS = 15.0  # NAA News Reference p.47: nominal 30-inch forward hatch
 _cr = RADIUS - SHOULDER_RADIUS
 _cz = AFT_RADIUS - math.sqrt((AFT_RADIUS - SHOULDER_RADIUS) ** 2 - _cr**2)
 _aft_angle = math.atan2(_cr, AFT_RADIUS - _cz)
@@ -64,7 +68,7 @@ def _within(point, polygon):
     return inside
 
 
-def build(cm, heatshield, base, top, foil, void):
+def build(cm, heatshield, forward, base, foil, void):
     """Keep named flight nodes; the forward assembly is explicitly unfinished."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
     datum = survey["registration"]["scan_sphere_apex_cm"]
@@ -83,10 +87,12 @@ def build(cm, heatshield, base, top, foil, void):
     # Constrained triangulation in the skin's (angle, axial station) domain:
     # triangle edges follow the actual holes, so no complete face bridges one.
     points, edges = [], []
-    zs = sorted({JOIN_Z, CONE_Z, FORWARD_LIMIT, *range(math.ceil(JOIN_Z), 81)})
+    axial = _segs(64)
+    around = _segs(128)
+    zs = sorted({AFT_LIMIT, CONE_Z, FORWARD_LIMIT, *[AFT_LIMIT + (FORWARD_LIMIT - AFT_LIMIT) * i / axial for i in range(axial + 1)]})
     for z in zs:
-        for a in range(-180, 181, 3):
-            p = Vector((math.radians(a), z * IN))
+        for i in range(around + 1):
+            p = Vector((-math.pi + 2 * math.pi * i / around, z * IN))
             if not any(_within(p, h) for h in holes):
                 points.append(p)
     for polygon in holes:
@@ -142,14 +148,29 @@ def build(cm, heatshield, base, top, foil, void):
         # Both sides of the temporary aperture closure can be seen. It is not
         # glass or a cabin: flight text explicitly identifies the missing work.
         obj.data.materials[0].use_backface_culling = False
-    # This upper section retains the original guessed envelope. Do not disguise
-    # it as an engineering reconstruction merely because the afterbody is one.
-    lathe_obj("CM_ProvisionalForwardCover", prof([(radius(FORWARD_LIMIT), base + FORWARD_LIMIT), (17, top), (0, top)]), foil, cm)
+    # Truncate the nominal conical wall at the documented cover station. The
+    # upper edge fillet is omitted: the idealized wind-tunnel nose radius is not
+    # established as the flight heat shield's edge radius.
+    lathe_obj(
+        "CM_ForwardShield",
+        prof([(radius(FORWARD_LIMIT), base + FORWARD_LIMIT), (radius(COVER_TOP), base + COVER_TOP), (TUNNEL_RADIUS, base + COVER_TOP)]),
+        foil,
+        forward,
+        segs=128,
+    )
     mesh = MeshBuilder()
     mesh.lathe(prof([(radius(47) - 1, base + 47), (radius(61) - 1, base + 61)]), segs=12, arc=(math.radians(-7.5), math.radians(7.5)))
     mesh.build("CM_ProvisionalHatchWindow", void, cm)
-    # The split is the mathematical sphere/shoulder tangency, not a claim about
-    # the as-built joint station. Only the nominal exterior surface is drawn.
+    # ST-428A places the aft-shield joint at Xc23.23. Retain the nominal
+    # spherical and toroidal curvature through that station, including R77 at
+    # the shoulder's widest point. Skin thickness is not invented.
     thin_shield = material("apollo-aft-shield-surface", (0.29, 0.24, 0.20), roughness=0.85, double_sided=True)
-    profile = [(AFT_RADIUS * math.sin(_aft_angle * i / 32), base + AFT_RADIUS * (1 - math.cos(_aft_angle * i / 32))) for i in range(33)]
-    lathe_obj("CM_AftShield", prof(profile), thin_shield, heatshield, segs=128)
+    sphere = [
+        (AFT_RADIUS * math.sin(_aft_angle * i / _segs(32)), base + AFT_RADIUS * (1 - math.cos(_aft_angle * i / _segs(32))))
+        for i in range(_segs(32) + 1)
+    ]
+    start = math.atan2(JOIN_Z - _cz, JOIN_R - _cr)
+    end = math.asin((AFT_LIMIT - _cz) / SHOULDER_RADIUS)
+    angles = sorted({0.0, *[start + (end - start) * i / _segs(24) for i in range(_segs(24) + 1)]})
+    shoulder = [(_cr + SHOULDER_RADIUS * math.cos(a), base + _cz + SHOULDER_RADIUS * math.sin(a)) for a in angles]
+    lathe_obj("CM_AftShield", prof(sphere + shoulder[1:]), thin_shield, heatshield, segs=128)

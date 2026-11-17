@@ -7,23 +7,32 @@ The source uses feet and inches. `vehicles/apollo_csm.py` retains inches and mul
 | Figure | Source units | Confidence / source |
 |---|---:|---|
 | Command module base diameter | 154 in | documented, p. 25, 12 ft 10 in |
-| Command module height | 144 in | documented, p. 25, rounded 12 ft |
-| Service module diameter | 154 in | documented, p. 25 |
-| Service module length | 264 in | documented, p. 25, rounded 22 ft |
-| SM barrel length within that envelope | 154 in | estimated from Figure 25b |
-| CM top radius | 17 in | estimated from Figure 25d |
-| SPS exit radius | 29 in | estimated from Figure 25b |
+| Aft / forward heat-shield joints, Xc | 23.23 / 81.13 in | assumed common Block II, NAA A-512S ST-428A, p. 31 |
+| Forward heat-shield top, Xc | 112.25 in | assumed common Block II, same plate; excludes docking hardware |
+| SM barrel diameter | 154 in | documented, press kit p. 25 |
+| SM aft / forward bulkheads, XA | 838 / 993 in | assumed CSM-101 preflight reference, MIT R-547 Fig. 1.4, p. 1-16 |
+| SM barrel length | 155 in | derived XA 993 − 838, same preflight reference |
+| CM datum, XA | 1000 in | assumed CSM-101 preflight reference, same figure |
+| RCS quad axial station, Xc | −41.10 in | assumed CSM-101 preflight reference, same figure |
+| CM/SM fairing height / diameter | 26 / 156 in | assumed common Block II, AOH volume 1, p. 1-49 |
+| SPS extension attachment, Xs | 180 in | assumed common hardware, NAA 1967 ST-304C / 1969 ST-304A |
+| SM aft bulkhead, Xs | 200 in | same plates; the flange is 20 in aft of the bulkhead |
+| SPS extension length / exit diameter | 112 / 94.5 in | assumed common Block II, NAA News Reference, SPS p. 161 |
 
-The origin remains the provisional service-engine exit plane; CM base is Z264 in
-and the provisional forward deck Z408 in. The earlier extra 0.7-inch hatch has
-been removed; its geometry was not sourced. The resulting CSM study is 408 in
-long, **estimated**, and is not an engineering overall station.
+Station XA is the integrated Apollo coordinate, Xs the service-module coordinate,
+and Xc the command-module coordinate. Dimensions remain in their published inches.
+The nozzle exit is derived as XA 838 + (180 − 200) − 112 = XA 706.
+The model's local origin is that exit: SM aft bulkhead Z132, forward bulkhead Z287,
+CM datum Z294, forward-shield top Z406.25 in. The resulting nominal CSM length
+is 406.25 in, **assumed**, combining shared and preflight references rather than an
+as-built overall inspection. The seven-inch gap between XA993 and XA1000 is a
+datum difference, not an open physical gap: the fairing bridges the modules.
 
-The lower CM now uses a nominal aft spherical surface, rounded shoulder and
-33° conical wall. See [the shared reconstruction](../../vehicles/command-module.md)
-for its sources, calculations and limits. The upper forward cover remains the
-original provisional envelope, so the entire capsule must not be described as
-an accurate outer mould line yet.
+The aft CM uses the nominal spherical surface, rounded shoulder and 33° conical
+wall. See [the reconstruction](../../vehicles/command-module.md). Its aft and forward
+shields split at the Block II stations above. The nominal cone continues to the
+forward top station; its edge fillet remains omitted. The 30-inch forward opening
+is shown without an invented pressure hatch or tunnel.
 
 Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 **assumed shared Block II hardware**, with provenance and limitations in
@@ -31,13 +40,15 @@ Four side/rendezvous openings use Smithsonian's measured CM-107 outlines,
 projections between the survey and nominal skin. The hatch's rectangular aperture
 is still the original estimate and is explicitly excluded from that survey claim.
 The SM still has four external RCS quads of four chambers, with hollow nozzle bells.
-Panel colouring, SM stations, seams, nozzle profiles and brackets remain estimated.
+The RCS axial station now follows the CSM-101 preflight reference. Panel colouring,
+seams, nozzle contours, quad azimuths and brackets remain estimated.
 
 ## Simplifications and things still wrong
 
 - No cabin, glazing, couches, instruments, astronaut figures or internal equipment.
 - Four measured openings have temporary dark closures, not glass. The hatch window
-  still has the initial rectangular opening and must be reconstructed as a circular port.
+  still has the initial rectangular opening. ST-503A (NAA A-512S, p. 41) shows a
+  rounded-square outer pane and a circular inner pressure window; both layers need reconstruction.
 - The side hatch is not yet delineated, without its real sill, hinge or handle; no opening motion.
 - No CM attitude-control ports, umbilical fittings, antennas, recovery system or detailed thermal tape.
 - No SM tanks, fuel cells, plumbing, gimbal or engine injector.
@@ -48,13 +59,14 @@ Panel colouring, SM stations, seams, nozzle profiles and brackets remain estimat
 ## Launch assembly
 
 The full stack is recorded in `../../vehicles/saturn-ib.md`. The CSM origin in the assembled
-model is raised by 1925.2 in so that its barrel meets the adapter at Z2035.2 in.
+model is raised by 1903.2 in so that its barrel meets the adapter at Z2035.2 in.
 The boost protective cover remains a provisional fit envelope. Its lower contour now
 follows the corrected nominal body, retaining the original estimated 1.4-inch radial
 stand-off to prevent interference. This is not a sourced construction thickness or mould line.
 The escape tower has four legs, three braced bays, four simplified motor nozzles and a
-motor ending at the 224-foot full-stack envelope. Its structure and motor stations are estimates
-from Figures 25a–25c. The tower and cover lift as one assembly in the exploded exhibit,
+motor ending at the 224-foot full-stack envelope. Its structure and motor stations remain estimates
+from Figures 25a–25c. The legacy tower envelope is retained independently of the
+corrected CM top until its dimensioned structural reconstruction is complete. The tower and cover lift as one assembly in the exploded exhibit,
 as the cover did with the tower during jettison. The RCS quads stay attached to the SM:
 sliding them axially along its skin made their mounts pass through the wall.
 

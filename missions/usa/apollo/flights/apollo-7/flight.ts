@@ -11,11 +11,26 @@ const parts: Part[] = [
     explode: [0, 42, 0],
     summary: 'The redesigned three-person Apollo cabin, on its first crewed flight.',
     detail:
-      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The upper cover and hatch window remain provisional; cabin, glazing and hatch mechanisms are not built. No docking probe is fitted.',
+      'Schirra, Eisele and Cunningham flew the Block II command module in Earth orbit. Its quick-opening side hatch replaced the earlier two-piece hatch. The lower body now uses the nominal curved Apollo afterbody and 33° conical wall. Four openings use measured CM-107 outlines for shared Block II structure, explicitly assumed for CM-101. Their reveals are derived projections, not surveyed ablator walls. The heat shields now separate at published Block II stations. The hatch window remains provisional; cabin, glazing and hatch mechanisms are not built. No docking probe is fitted.',
     facts: [
       ['Base diameter', '154 in · documented, press kit p. 25'],
-      ['Forward envelope', '12 ft overall · provisional, not a skin station'],
+      ['Heat-shield stations', 'Xc 23.23–112.25 in · shared Block II reference'],
       ['Interior', 'Not built'],
+    ],
+  },
+  {
+    node: 'ForwardShield',
+    name: 'Forward heat shield',
+    group: 'Spacecraft',
+    order: 1,
+    explode: [0, 44, 0],
+    summary: 'The removable cap over the parachutes and docking tunnel.',
+    detail:
+      'The Block II structural drawing places this shield between stations Xc 81.13 and 112.25 inches (NAA A-512S, ST-428A, p. 31). Those common stations are assumed for CM-101. This reconstruction continues the nominal conical wall to the top station; its upper edge fillet is omitted. The nominal 30-inch access opening is shown, but the forward hatch, parachutes and tunnel structure are not yet built. Apollo 7 carried no docking probe.',
+    facts: [
+      ['Forward joint', 'Xc 81.13 in · common Block II reference'],
+      ['Top station', 'Xc 112.25 in · excludes docking hardware'],
+      ['Forward hatch', 'Not built; aperture shown'],
     ],
   },
   {
@@ -26,7 +41,7 @@ const parts: Part[] = [
     explode: [0, 39, 0],
     summary: 'The broad face that brought the crew back through the atmosphere.',
     detail:
-      'The command module alone returned to Earth. This surface uses the published 184.8-inch nominal aft spherical radius, assumed common to CM-101. It is visible from both sides, but does not reconstruct the varying ablator thickness or internal structure. The exhibit splits it at mathematical sphere/shoulder tangency, not a verified hardware joint. Ablator cells and recovery equipment are not built.',
+      'The command module alone returned to Earth. This surface uses the published 184.8-inch nominal aft spherical radius, assumed common to CM-101. It is visible from both sides, but does not reconstruct the varying ablator thickness or internal structure. The aft joint is at Xc 23.23 inches in the common Block II structural drawing (NAA A-512S, ST-428A, p. 31). Ablator cells and recovery equipment are not built.',
   },
   {
     node: 'ReactionControl',
@@ -36,8 +51,11 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Four quads, each with four small engines, turn and translate the ship.',
     detail:
-      'The four external quads are shown with open nozzle bells. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their arrangement follows the press kit’s spacecraft illustration; exact stations, bracket shapes and chamber profiles are estimated. Propellant plumbing and thermal details are not built.',
-    facts: [['Arrangement', '4 quads × 4 chambers · press kit p. 27']],
+      'The four external quads are shown with open nozzle bells. They stay attached to the service module in the exploded exhibit, so their mounts do not slide through its wall. Their axial station is 41.10 inches aft of the CM datum in the CSM-101 preflight reference (MIT R-547, Figure 1.4, p. 1-16). Quad azimuths, bracket shapes and chamber profiles remain estimated. Propellant plumbing and thermal details are not built.',
+    facts: [
+      ['Arrangement', '4 quads × 4 chambers · press kit p. 27'],
+      ['Axial station', 'Xc −41.10 in · CSM-101 preflight reference'],
+    ],
   },
   {
     node: 'ServiceModule',
@@ -47,10 +65,11 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Power, oxygen and propulsion behind the cabin.',
     detail:
-      'A cylindrical service module with white radiator areas and aluminium equipment panels. An inner wall and annular rims close its one-inch honeycomb skin (press kit p. 26). The press kit gives a 154-inch diameter and 22-foot service-module length. This study interprets that length as including the projecting engine: the barrel/engine split and the radiator layout are estimated from Figure 25b. No internal tanks or fuel cells are built. Apollo 7’s exterior is being developed separately from the lunar ships.',
+      'The barrel runs between Apollo stations XA 838 and 993, a 155-inch structure, in the CSM-101 reference drawing. The CM datum is XA 1000. An inner wall and annular rims close its documented one-inch honeycomb skin. The 26-inch-high, 13-foot-diameter CM/SM fairing follows the common Block II handbook envelope; its connection to the nominal curved shield is derived, without detailed seals or beams. Radiator pattern, fittings and nozzle profiles remain provisional. Internal tanks and fuel cells are not built.',
     facts: [
-      ['Hull diameter', '154 in · documented'],
-      ['Length including engine', '22 ft · published envelope, partition estimated'],
+      ['Barrel diameter', '154 in · documented'],
+      ['Barrel length', '155 in · XA 838–993 reference'],
+      ['CM/SM fairing', '26 in × 13 ft · common Block II envelope'],
     ],
   },
   {
@@ -61,7 +80,7 @@ const parts: Part[] = [
     explode: [0, 32, 0],
     summary: 'The large engine Apollo 7 fired eight times in Earth orbit.',
     detail:
-      'The nozzle is hollow with a finite rim. Its profile and extension below the barrel are estimated from the press kit’s Figure 25b; the injector, gimbal and feed system are not built. No flight physics is assigned to this geometry.',
+      'The common Block II extension is 112 inches long with a 94.5-inch exit diameter (NAA News Reference, SPS detailed description, p. 161). The training drawing places its attachment at service-module station Xs 180, 20 inches aft of the barrel bulkhead. The model now uses those nominal dimensions and stations; the intermediate bell contour remains provisional. Injector, chamber, gimbal and feed system are not built. No flight physics is assigned to this geometry.',
   },
   {
     node: 'LaunchEscape',
@@ -242,10 +261,10 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Length, command and service modules',
-      value: 408 * IN,
+      value: 406.25 * IN,
       unit: 'm',
-      confidence: 'estimated',
-      note: 'Provisional model envelope: 22 ft SM + 12 ft CM (press kit p. 25). Overall height and forward cover still require reconciliation with station drawings; not an engineering overall station',
+      confidence: 'assumed',
+      note: 'Nominal station reconstruction: SPS extension flange XA818 (Xs180 relative to XA838/Xs200) minus 112 in gives exit XA706; CM datum XA1000 plus common heat-shield station 112.25 gives top XA1112.25. Difference 406.25 in; not an as-built CM-101 inspection',
     },
     {
       group: 'Spacecraft',
@@ -257,11 +276,11 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
-      label: 'Command module, provisional envelope',
-      value: 144 * IN,
+      label: 'Command module, nominal shield top station',
+      value: 112.25 * IN,
       unit: 'm',
-      confidence: 'documented',
-      note: `${KIT}, p. 25: rounded 12 ft retained for the unfinished forward section; the lower body now follows the nominal curved profile. This is not a verified skin-height station`,
+      confidence: 'assumed',
+      note: 'NAA A-512S, 13 January 1969, ST-428A, p. 31: common Block II heat-shield station Xc 112.25. Docking hardware is excluded; the press kit’s rounded 12 ft envelope is not used as a skin station',
     },
     {
       group: 'Spacecraft',
@@ -289,11 +308,67 @@ export const flight: Flight = {
     },
     {
       group: 'Spacecraft',
-      label: 'Service module, length',
-      value: 264 * IN,
+      label: 'Service module, barrel length',
+      value: 155 * IN,
       unit: 'm',
-      confidence: 'documented',
-      note: `${KIT}, p. 25: 22 ft; the model’s partition between barrel and engine is estimated from Figure 25b`,
+      confidence: 'assumed',
+      note: 'CSM-101 preflight reference, assumed for flown hardware: MIT R-547, Figure 1.4, p. 1-16, XA838 to XA993. Barrel only; excludes the fairing and engine. The press kit’s rounded 22 ft statement is not used to partition the hardware',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Aft heat-shield joint station',
+      value: 23.23 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA A-512S (13 January 1969), ST-428A, p. 31: Xc 23.23 in, common Block II structure assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'Forward heat-shield joint station',
+      value: 81.13 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA A-512S (13 January 1969), ST-428A, p. 31: Xc 81.13 in, common Block II structure assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'SPS extension length',
+      value: 112 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA Apollo News Reference, Service Propulsion, p. 161: 112 in, common Block II hardware assumed for CM-101; contour remains provisional',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'SPS exit diameter',
+      value: 94.5 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'NAA Apollo News Reference, Service Propulsion, p. 161: 94.5 in, common Block II hardware assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'CM/SM fairing height',
+      value: 26 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Apollo Operations Handbook, Block II volume 1, p. 1-49: 26 in, common hardware assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'CM/SM fairing diameter',
+      value: 156 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'Apollo Operations Handbook, Block II volume 1, p. 1-49: 13 ft, common hardware assumed for CM-101',
+    },
+    {
+      group: 'Spacecraft',
+      label: 'RCS quad axial station',
+      value: -41.1 * IN,
+      unit: 'm',
+      confidence: 'assumed',
+      note: 'MIT R-547, Figure 1.4, p. 1-16: Xc −41.10 in, CSM-101 preflight reference assumed for flown hardware',
     },
   ],
   motors: [],
@@ -315,9 +390,9 @@ export const flight: Flight = {
         {
           id: 'spacecraft',
           label: 'Spacecraft',
-          nodes: ['CommandModule', 'HeatShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
+          nodes: ['CommandModule', 'HeatShield', 'ForwardShield', 'ServiceModule', 'ReactionControl', 'ServiceEngine'],
         },
-        { id: 'cabin', label: 'Command module', nodes: ['CommandModule', 'HeatShield'], from: [1, 0.3, 0.3] },
+        { id: 'cabin', label: 'Command module', nodes: ['CommandModule', 'HeatShield', 'ForwardShield'], from: [1, 0.3, 0.3] },
         { id: 'engine', label: 'Service engine', nodes: ['ServiceEngine'], from: [1, -0.5, 1] },
       ],
       parts,

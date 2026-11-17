@@ -4,7 +4,7 @@ NASA press kit Figures 25a–25c. No abort physics or articulated canards yet.
 
 import math
 
-from apollo_csm import CM_BASE, CM_TOP, bell, radial, tube
+from apollo_csm import CM_BASE, bell, radial, tube
 from command_module import CONE_Z, FORWARD_LIMIT, JOIN_Z, radius
 from saturn_ib import CSM_OFFSET, HEIGHT
 from srlib import group, lathe_obj, mark_shells, material, prof
@@ -16,7 +16,10 @@ def build():
     tower = group("LaunchEscape")
     cover = group("BoostCover")
     cm_base = CSM_OFFSET + CM_BASE
-    cm_top = CSM_OFFSET + CM_TOP
+    # Retain the original unfinished escape assembly while the capsule is
+    # reconstructed independently. This inherited envelope is NOT a sourced
+    # cover station and must not be used as the capsule's height.
+    cm_top = cm_base + 144.0
     # Retain the provisional 1.4-inch stand-off, following the corrected lower
     # contour so this unfinished cover no longer cuts through the cabin. This
     # is still a fit envelope, not the sourced BPC laminate or as-built mould line.

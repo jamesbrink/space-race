@@ -26,7 +26,8 @@ These residuals do not establish the absolute accuracy of the source survey.
 
 The large side hatch boundary was rejected: it is curved, with a plane residual
 of nearly 40 mm. It must not be used as a flattened door or as a fifth measured
-window. Its circular window, glazing layers, seals and mechanism remain pending.
+window. Its rounded-square outer window and circular inner pressure window (NAA A-512S
+ST-503A, p. 41), glazing layers, seals and mechanism remain pending.
 
 `command_module.py` projects each outline along its measured plane normal onto
 the nominal conical wall, builds a constrained opening and joins the two boundaries

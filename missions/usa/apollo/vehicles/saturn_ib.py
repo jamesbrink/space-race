@@ -9,14 +9,14 @@ import math
 
 from mathutils import Matrix
 
-from apollo_csm import bell, radial, tube
+from apollo_csm import SM_BOTTOM, bell, radial, tube
 from srlib import IN, TAU, MeshBuilder, group, lathe_obj, load_font, material, prof, text_mesh
 
 SIB_TOP = 80.2 * 12
 SIVB_TOP = SIB_TOP + 58.4 * 12
 IU_TOP = SIVB_TOP + 36
 SLA_TOP = IU_TOP + 28 * 12
-CSM_OFFSET = SLA_TOP - 110  # SM barrel starts 110 in above the SPS exit (apollo_csm.py)
+CSM_OFFSET = SLA_TOP - SM_BOTTOM  # align the SM aft bulkhead at XA838 to the adapter
 HEIGHT = 224 * 12  # Figure 25a; height to escape-system Q-ball
 RADIUS = 130  # p. 33, 260 in instrument unit and S-IVB interface
 INTERSTAGE_TOP = SIB_TOP + 220  # estimated partition within the 58.4 ft S-IVB envelope
