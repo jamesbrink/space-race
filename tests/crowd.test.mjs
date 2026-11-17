@@ -29,8 +29,8 @@ const JOINTS = {
   'Foot.R': ['LowerLeg.R', -0.02, -0.4, 0],
 };
 
-/** A model with one group of `n` people standing in a row along +X, facing -Z, named as the loader names them. */
-function model(n) {
+/** A model with one group of `n` people standing in a row along +X (or where `spot(i)` puts the i-th), facing -Z, named as the loader names them. */
+function model(n, spot = (i) => [i * 1.0, 0]) {
   const root = new THREE.Group();
   const group = new THREE.Group();
   group.name = 'G';
@@ -42,7 +42,8 @@ function model(n) {
   for (let i = 1; i <= n; i++) {
     const person = new THREE.Bone();
     person.name = `G_Person_${i}`;
-    person.position.set(i * 1.0, 0, 0);
+    const [x, z] = spot(i);
+    person.position.set(x, 0, z);
     person.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
     people.add(person);
     const made = {};
@@ -182,4 +183,35 @@ test('the stride’s cycles go with the distance walked: at a steady pace, a cyc
     assert.ok(now >= was - 1e-12, 'never backward');
     was = now;
   }
+});
+
+test('a body of people leaving by one way: none walks through another, the back rows with further to go as well', () => {
+  // six rows of eight, 1.1 m apart, the way's first point off one corner of the body and the way going off past it
+  const { root, group } = model(48, (i) => [((i - 1) % 8) * 1.1, Math.floor((i - 1) / 8) * 1.2]);
+  const off = {
+    ...OFF,
+    stagger: 0.8,
+    way: [
+      [-3, 9],
+      [-40, 9],
+      [-300, 9],
+    ],
+  };
+  const crowd = new Crowd(root, group, [off], null);
+  const people = Array.from({ length: 48 }, (_, i) => root.getObjectByName(`G_Person_${i + 1}`));
+  const p = people.map(() => new THREE.Vector3());
+  let least = Number.POSITIVE_INFINITY;
+  let when = '';
+  for (let t = 99; t < 400; t += 0.1) {
+    crowd.set(t);
+    root.updateMatrixWorld(true);
+    people.forEach((o, i) => o.getWorldPosition(p[i]));
+    for (let i = 0; i < 48; i++)
+      for (let j = i + 1; j < 48; j++) {
+        if (!people[i].scale.x || !people[j].scale.x) continue;
+        const d = Math.hypot(p[i].x - p[j].x, p[i].z - p[j].z);
+        if (d < least) [least, when] = [d, `${people[i].name} and ${people[j].name} at ${t.toFixed(1)}`];
+      }
+  }
+  assert.ok(least >= 0.6, `${least.toFixed(2)} m apart: ${when}`);
 });

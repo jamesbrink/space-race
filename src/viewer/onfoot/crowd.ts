@@ -12,8 +12,9 @@ import { goneAt, lengthOf, PACE, QUICKEN, routeOf } from './going.ts';
  * (gait.ts `pose`) for the distance he has walked, so a foot that is down stays down, and the same instant is the same
  * pose at every level of detail and every time it is drawn. Nothing here knows a flight.
  *
- * - **Not in single file.** The people of a group set off one after another (`Going.stagger`), nearest the way first,
- *   and walk it three abreast (`ABREAST`, estimated): each takes the way laid that far to its side.
+ * - **Not in single file, and not through each other.** The people of a group take the way nearest it first, three
+ *   abreast (`ABREAST`, estimated): each takes the way laid that far to its side. Leaving, each sets off when he will come
+ *   onto it `Going.stagger` after the one before him (`plan`), so two never come onto it together.
  * - **Turning.** Setting off he turns from the way he stood facing to the way he goes over his first TURN_IN metres,
  *   and coming in, back to it over his last: the feet are the stride's, so they turn with him and are not planted
  *   through the turn (a few centimetres of slide, which is not right).
@@ -83,6 +84,71 @@ export function cyclesAt(tau: number, pace: number, length: number, leg: number)
   return up + level + (up - ramped(Math.max(0, total - tau)));
 }
 
+/** The least time between one man coming onto a group's way and the next, s: at a walk, a body's depth and a little (estimated). */
+const LEAST_GAP = 0.45;
+
+/**
+ * One going laid out for a group (`starts`: where each sets off from and the way he faces there): for each, in the same
+ * order, the going with its way laid to his own side, how long after its `at` he sets off, and the way he faces at its end.
+ * They take the way nearest it first, three abreast in turn (`ABREAST`); leaving, each waits until he can come onto the way
+ * `stagger` (at least `LEAST_GAP`) after the one before him, however far he has to walk to it, so no two come onto it
+ * together and none walks through another on it. (Set off at fixed intervals, a man from the back of a body, with further
+ * to go, reached the way with one from its front and walked the road inside him.)
+ */
+export function plan(
+  going: Going,
+  starts: readonly { at: readonly [number, number]; facing: number }[],
+): { going: Going; delay: number; ends: number }[] {
+  const [wx, wz] = going.way[0] ?? [0, 0];
+  const order = starts
+    .map((_, i) => i)
+    .sort((a, b) => {
+      const [ax, az] = starts[a]!.at;
+      const [bx, bz] = starts[b]!.at;
+      return Math.hypot(ax - wx, az - wz) - Math.hypot(bx - wx, bz - wz);
+    });
+  const pace = going.pace?.value ?? PACE;
+  const gap = Math.max(going.stagger, LEAST_GAP);
+  // each three that come onto the way one after another take its three lanes in the order they come at it from across
+  // it, so that none crosses another's line to it: across is to the way's left (+), as `aside` lays it
+  const [nx, nz] = going.way[1] ?? [wx - 1, wz];
+  const along = Math.hypot(nx - wx, nz - wz) || 1;
+  const across = (i: number) => ((starts[i]!.at[0] - wx) * (nz - wz) - (starts[i]!.at[1] - wz) * (nx - wx)) / along;
+  const lanes = [...ABREAST].sort((a, b) => a - b);
+  const lane = new Map<number, number>();
+  for (let k = 0; k < order.length; k += lanes.length) {
+    const three = order.slice(k, k + lanes.length).sort((a, b) => across(a) - across(b));
+    three.forEach((i, j) =>
+      lane.set(i, lanes[three.length === lanes.length ? j : lanes.indexOf(0) + j - Math.floor((three.length - 1) / 2)]!),
+    );
+  }
+  const out: { going: Going; delay: number; ends: number }[] = new Array(starts.length);
+  let arrives = Number.NEGATIVE_INFINITY;
+  // (and none sets off before the one before him: one with further to go, off first, walked past him as he stood)
+  let set = 0;
+  order.forEach((i, k) => {
+    const { at: from, facing } = starts[i]!;
+    const laid = { ...going, way: aside(going.way, lane.get(i)!) };
+    const route = routeOf(laid, from);
+    const [ex, ez] = route[route.length - 1]!;
+    const [px, pz] = route[route.length - 2] ?? from;
+    // where he faces once there: what the going names, or on along the way he came; coming in, as he was built
+    const ends =
+      laid.kind === 'comes' ? facing : laid.faces ? Math.atan2(-(laid.faces[1] - ez), laid.faces[0] - ex) : Math.atan2(-(ez - pz), ex - px);
+    let delay = k * going.stagger;
+    if (laid.kind === 'leaves') {
+      // (how long he takes to reach the way from standing: its distance at his pace, and half the time he takes to come up to it)
+      const [fx, fz] = laid.way[0] ?? from;
+      const reach = Math.hypot(fx - from[0], fz - from[1]) / pace + QUICKEN / 2;
+      delay = Math.max(set, arrives + gap - reach);
+      set = delay;
+      arrives = delay + reach;
+    }
+    out[i] = { going: laid, delay, ends };
+  });
+  return out;
+}
+
 /** The shortest turn from one heading to another, radians. */
 const between = (from: number, to: number) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
 const smooth = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u));
@@ -96,10 +162,10 @@ interface Walker {
   from: [number, number];
   /**
    * Its own goings, in order: the group's, each with its way laid to its own side, where it sets off from (its spot as
-   * built, or where the going before took it), and the way it faces before and after (radians from +X toward -Z).
+   * built, or where the going before took it), the way it faces before and after (radians from +X toward -Z), and how
+   * long after the going's `at` it sets off (`plan`).
    */
-  legs: { going: Going; from: [number, number]; facing: number; ends: number }[];
-  delay: number;
+  legs: { going: Going; from: [number, number]; facing: number; ends: number; delay: number }[];
   /** The model's frame from its parent's, and back. */
   toModel: THREE.Matrix4;
   fromModel: THREE.Matrix4;
@@ -143,43 +209,30 @@ export class Crowd {
       const ahead = new THREE.Vector3(0, 0, 1).applyQuaternion(node.quaternion).transformDirection(toModel);
       return { node, toModel, from: [p.x, p.z] as [number, number], facing: Math.atan2(-ahead.z, ahead.x) };
     });
-    // they set off nearest the way first, so that nobody walks through the one ahead of him; each walks it to his own side
-    const first = ordered[0]?.way[0] ?? [0, 0];
-    placed.sort((a, b) => Math.hypot(a.from[0] - first[0], a.from[1] - first[1]) - Math.hypot(b.from[0] - first[0], b.from[1] - first[1]));
-    placed.forEach(({ node, toModel, from, facing }, i) => {
+    for (const { node, toModel, from } of placed) {
       // (the rig's rest is taken before anything moves it)
       this.gait.limbsOf(node);
-      const legs: Walker['legs'] = [];
-      let start: [number, number] = from;
-      let faced = facing;
-      for (const g of ordered) {
-        const going = { ...g, way: aside(g.way, ABREAST[i % ABREAST.length]!) };
-        const route = routeOf(going, start);
-        const [ex, ez] = route[route.length - 1]!;
-        const [px, pz] = route[route.length - 2] ?? start;
-        // where it faces once there: what the going names, or on along the way it came; coming in, as it was built
-        const ends =
-          going.kind === 'comes'
-            ? faced
-            : going.faces
-              ? Math.atan2(-(going.faces[1] - ez), going.faces[0] - ex)
-              : Math.atan2(-(ez - pz), ex - px);
-        legs.push({ going, from: start, facing: faced, ends });
-        if (going.to) [start, faced] = [[ex, ez], ends];
-      }
       this.walkers.push({
         node,
         home: node.position.clone(),
         turn: node.quaternion.clone(),
         from,
-        legs,
-        delay: i * (ordered[0]?.stagger ?? 0),
+        legs: [],
         toModel,
         fromModel: toModel.clone().invert(),
         was: '',
         out: false,
       });
-    });
+    }
+    // each going in turn, for all of them: where each sets off from is where the going before left him
+    const starts = placed.map(({ from, facing }) => ({ at: from, facing }));
+    for (const g of ordered) {
+      plan(g, starts).forEach(({ going, delay, ends }, i) => {
+        const start = starts[i]!;
+        this.walkers[i]!.legs.push({ going, from: start.at, facing: start.facing, ends, delay });
+        if (going.to) starts[i] = { at: [start.at[0] + going.to[0], start.at[1] + going.to[1]], facing: ends };
+      });
+    }
   }
 
   /** How many people it walks. */
@@ -198,7 +251,7 @@ export class Crowd {
   /** The leg a figure is on at `t`: the last it has set off on, or before them all the first. */
   private legOf(w: Walker, t: number): Walker['legs'][number] | null {
     let now = w.legs[0] ?? null;
-    for (const leg of w.legs) if (t >= leg.going.at.value + w.delay) now = leg;
+    for (const leg of w.legs) if (t >= leg.going.at.value + leg.delay) now = leg;
     return now;
   }
 
@@ -206,7 +259,7 @@ export class Crowd {
     const leg = this.legOf(w, t);
     if (!leg) return false;
     const { going } = leg;
-    const gone = goneAt(going, leg.from, t, w.delay);
+    const gone = goneAt(going, leg.from, t, leg.delay);
     const walking = gone.heading !== null && !gone.out;
     const there = !walking && gone.walked > 0;
     // (standing, or out of sight, is the same picture at any instant: only a walk changes from frame to frame)
@@ -250,7 +303,7 @@ export class Crowd {
       this.gait.place(node, pose({ phase: 0, speed: 0, limbs }));
       return true;
     }
-    const tau = t - going.at.value - w.delay;
+    const tau = t - going.at.value - leg.delay;
     const phase = cyclesAt(tau, going.pace?.value ?? PACE, length, limbs.thigh + limbs.shin + limbs.ankle);
     this.gait.place(node, pose({ phase, speed: gone.pace, limbs }));
     return true;

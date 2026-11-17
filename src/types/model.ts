@@ -130,7 +130,10 @@ export interface Going {
   kind: 'leaves' | 'comes';
   /** When the first sets off, seconds from launch on the flight's clock. */
   at: Measure;
-  /** How much later each next figure of the group sets off than the one before, s. */
+  /**
+   * How much later each next figure of the group comes onto the way than the one before, s: leaving, each sets off when
+   * he will, however far he has to walk to it (viewer/onfoot/crowd.ts `plan`); coming, each sets off so much later.
+   */
   stagger: number;
   /** The way, metres (x, z) in the model's frame, from near the group to out of sight (`leaves`) or the reverse order's start. */
   way: [number, number][];
