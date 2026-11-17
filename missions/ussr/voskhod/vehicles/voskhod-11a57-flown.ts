@@ -178,6 +178,8 @@ export interface Ascent11A57 {
   fairing: Measure;
   /** When Block I's aft section was let go, and what it weighed. */
   aft: { at: Measure; mass: Measure };
+  /** What the ship let go in orbit that was no part of the launch vehicle (Voskhod 2's airlock): each as a drop, by id. */
+  jettisons?: { id: string; at: Measure; mass: Measure }[];
   left: Left;
   checks: AscentCheck[];
 }
@@ -208,6 +210,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
         ),
       },
       { id: 'aft-section', at: day.aft.at, mass: day.aft.mass },
+      ...(day.jettisons ?? []),
     ],
     // what the ship's centre of mass is above its braking nozzle: the Vostok's ship's, the ball 0.5 t heavier and the reserve engine on top
     centre: estimated(
