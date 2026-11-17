@@ -409,15 +409,21 @@ export class Sound {
     // a catch-up after a jump is the hardware hurrying to where the clock was put: what it does then is not heard at that
     // pace. The machines fade out over a moment as it starts and come back in over half a second once it is done (by then
     // whatever it moved is running down at its own rate), so neither end is a step; their one-shots are not played
-    // meanwhile. The vehicle being driven is the driver's, not the clock's, and is heard throughout.
+    // meanwhile. The vehicle being driven is the driver's, not the clock's, and is heard throughout; so is what flies over
+    // (a helicopter), which is not replayed but put where the clock has it.
     this.held = this.host.catchingUp?.() ? Math.max(0, this.held - dt / HUSH) : Math.min(1, this.held + dt / UNHUSH);
     for (let i = 0; i < voices.length; i++) {
       const v = voices[i];
-      if (v && this.works.playing[i]?.key !== DRIVEN) voices[i] = { ...v, gain: v.gain * this.held };
+      if (v && !this.unheld(this.works.playing[i])) voices[i] = { ...v, gain: v.gain * this.held };
     }
     this.engine!.works(voices, now);
     if (this.held >= 1) for (const shot of shots) this.engine!.shot(shot, now);
   }
+  /** Whether a voice of the works is heard through a catch-up: the vehicle being driven, and what flies over. */
+  private unheld(p: { key: unknown; kind: string } | null | undefined): boolean {
+    return p?.key === DRIVEN || p?.kind === 'rotorcraft';
+  }
+
   /** How much of each craft that came to the spacecraft is let through, eased (0 to 1). */
   private readonly flying = new Map<string, number>();
 
@@ -474,7 +480,7 @@ export class Sound {
             what: this.labels.get(p.key) ?? '?',
             kind: p.kind,
             part: p.part,
-            gain: p.key === DRIVEN ? p.gain : p.gain * this.held,
+            gain: this.unheld(p) ? p.gain : p.gain * this.held,
             metres: p.metres,
             rpm: p.rpm,
             tread: p.tread,
