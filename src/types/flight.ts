@@ -1,8 +1,8 @@
 /** What a flight is as data (missions/<nation>/<programme>/flights/<flight>/flight.ts): its record, its figures and checks, and its models. */
 import type { Confidence, Measure } from '../measure.ts';
-import type { ModelDef } from './model.ts';
 import type { FlightPlan } from '../sim/plan.ts';
-import type { Burns, ChuteDef, Results } from './sim.ts';
+import type { ModelDef } from './model.ts';
+import type { AfloatDef, Burns, ChuteDef, HoistDef, LooseDef, Results } from './sim.ts';
 import type { SiteDef } from './site.ts';
 import type { DayWeather } from './weather.ts';
 
@@ -132,14 +132,48 @@ export interface Flight {
     /** By when the spacecraft has turned from the booster's attitude to heat shield first, seconds from liftoff: it turns evenly from separation. */
     turned?: number;
     /**
-     * A hatch the pilot can blow (No. 11's explosive hatch): its node in the flown model (hidden once it has gone), what
-     * the deck calls blowing it, and what it means. Nothing of it reaches the physics. Blown in flight (`aloft`: the
-     * cabin open to space, the entry with a hole in the side) the flight flies on, and the debrief says what that would
-     * have meant; blown afloat the spacecraft floods (`afloat`) and goes under in `under` seconds, drawn so, and the
-     * debrief tells what the record has after (`record`). Offered with the spacecraft alone and after
-     * it is down (cockpit.ts `can('hatch')`).
+     * A hatch the pilot can blow (No. 11's explosive hatch): its node in the flown model, what the deck calls blowing it,
+     * and what it means. Blown, it leaves as a body of its own (`loose`, sim/loose.ts: its mass and the impulse that threw
+     * it off, along its outward normal from where it is on the hull, `at`) and lies on the sea where it falls. Blown in
+     * flight (`aloft`: the cabin open to space, the entry with a hole in the side) the flight flies on as if the cabin were
+     * closed and the debrief says what that would have meant; down in the sea the opening it leaves (`opens`, an opening
+     * of `afloat.body`'s spaces) lets the sea in (`afloat`), and the debrief tells what the record has after (`record`).
+     * Offered with the spacecraft alone and after it is down (cockpit.ts `can('hatch')`).
      */
-    hatch?: { node: string; label: string; aloft: string; afloat: string; under: Measure; record: string };
+    hatch?: {
+      node: string;
+      label: string;
+      aloft: string;
+      afloat: string;
+      record: string;
+      opens: string;
+      /** The mass of the body afloat that goes with it (`AfloatDef.leaves[].id`). */
+      leaves: string;
+      loose: LooseDef;
+      /**
+       * Its middle: height above the hull's lowest point and distance out from the long axis, m; how far its outward normal
+       * tilts above the level (toward the top), degrees; where round the long axis it is in flight, degrees from the body's
+       * +Z toward its +Y (sim/vehicle.ts); and the bearing it faces afloat, degrees true. The flown model has it on its +X.
+       */
+      at: { height: Measure; out: Measure; tilt: Measure; round: Measure; heading: Measure };
+    };
+    /**
+     * The spacecraft in the sea once it is down (sim/afloat.ts): its hull, spaces and weight afloat, what the record has
+     * after the landing (each instant from liftoff with its confidence: the hatch, the crew out, the helicopter's line
+     * taut and cast loose), the record's helicopter (`hoist`), how far under it is lost to sight, and the record's figures
+     * the run afloat is held to (tests/afloat.test.mjs, misses under `afloat`).
+     */
+    afloat?: {
+      body: AfloatDef;
+      /** The crew, as the body's `leaves` has him: he goes out through the hatch. */
+      crew: string;
+      /** Seconds from the hatch to the crew out, where a hand blows it. */
+      goesOut: Measure;
+      record: { hatch: Measure; out: Measure; taut: Measure; cast: Measure };
+      hoist: HoistDef;
+      sight: Measure;
+      checks: { id: string; label: string; value: number; unit: string; tolerance: number; source: string }[];
+    };
     /** Where the flown model's origin is along the stack, m from the base the body's stations are measured from: what is shed is turned about its own centre of mass by it. */
     datum?: number;
     /**

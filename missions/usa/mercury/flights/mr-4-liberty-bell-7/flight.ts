@@ -1,3 +1,4 @@
+import { derived, doc, estimated } from '../../../../../src/measure.ts';
 import type { Command, Flight, FlightCheck, Keyframe, ModelDef, Move, Part, Winds } from '../../../../../src/types.ts';
 import {
   BY,
@@ -9,10 +10,10 @@ import {
   launcherTurn,
   lc5Parts,
   ON_ROAD,
-  SHOWER_RUNS,
   type PadNode,
   type PadStops,
   type PartWords,
+  SHOWER_RUNS,
   spareTrailerLeaves,
   swing,
   TOWER,
@@ -20,26 +21,6 @@ import {
   Z,
 } from '../../../places/cape-canaveral/lc-5.parts.ts';
 import { LC5 } from '../../../places/cape-canaveral/lc-5.ts';
-import {
-  SPEC,
-  DEG,
-  mercuryRedstoneStack,
-  mercuryRedstoneParts,
-  along,
-  WINDOW_AZ,
-  HATCH_AZ,
-  PERISCOPE_AZ,
-  ENGINE_VIEW,
-  NMI,
-  FT,
-  LBF,
-  IN,
-  mercuryRedstoneMotors,
-  lb,
-  CAPSULE_THRUST,
-  type PartWords as StackWords,
-} from '../../vehicles/mercury-redstone-stack.ts';
-import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import {
   MERCURY_STICK,
   mercuryCabin,
@@ -49,10 +30,30 @@ import {
   OBJECTIVE_OUT,
   sequenceLamp,
 } from '../../vehicles/cabin.ts';
+import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import { CAPSULE_PLANE, CHUTES, cutoffMass, type Day, plan as mercuryRedstonePlan, PLR } from '../../vehicles/mercury-redstone.ts';
+import {
+  along,
+  CAPSULE_THRUST,
+  DEG,
+  ENGINE_VIEW,
+  FT,
+  HATCH_AZ,
+  IN,
+  LBF,
+  lb,
+  mercuryRedstoneMotors,
+  mercuryRedstoneParts,
+  mercuryRedstoneStack,
+  NMI,
+  PERISCOPE_AZ,
+  SPEC,
+  type PartWords as StackWords,
+  WINDOW_AZ,
+} from '../../vehicles/mercury-redstone-stack.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
+import { AFLOAT, HATCH_LOOSE } from './afloat.ts';
 import { WEATHER } from './weather.ts';
-import { derived, doc, estimated } from '../../../../../src/measure.ts';
 
 /**
  * Liberty Bell 7's periscope, out and in (vehicles/periscope.ts): when. How it moves is the model's own (its door, its
@@ -1541,18 +1542,18 @@ export const flight: Flight = {
         'and what an entry with a hole in the side does to the cabin is not in anything read: the flight is flown on as if it were closed, its 23 lb still aboard. ' +
         'Down in the sea with the hatch gone, the capsule fills at once.',
       afloat:
-        'The hatch is gone, the sea comes in over the sill, and the spacecraft fills and goes down. Grissom went out through the hatch in a moment; ' +
-        'the helicopter already hooked on to it could not lift it full of water, and let it go.',
-      under: estimated(
-        45,
-        'not recorded to the second. The history has the hatch fly off, Grissom out at once, and the helicopter’s copilot clip the antenna and hook on as the capsule "sank out of sight" (This New Ocean, p. 373): under within a minute. Ours',
-      ),
+        'The hatch is gone and the sea comes in over the sill, which floats a few inches above it: the spacecraft fills and goes down, with no helicopter ' +
+        'here to hold it. Grissom went out through the hatch in a moment.',
       record:
         'On the day the hatch blew some ten minutes after the landing, after Grissom’s last words at 26:09 ("then I’ll power down and blow the hatch": Results, p. 46). ' +
         'He said he had not touched the plunger; no test made a hatch fire by itself. He was in the water three or four minutes, his suit filling through an inlet he had left open, ' +
         'while the first helicopter held the flooded capsule, over 5,000 lb, a thousand beyond what it could lift, until a warning light made its pilot let go. ' +
         'It sank where the sea is about 2,800 fathoms deep, and was raised on 20 July 1999.',
+      opens: 'hatch-opening',
+      leaves: 'hatch',
+      ...HATCH_LOOSE,
     },
+    afloat: AFLOAT,
     // in the orbit attitude, heat shield first: "I'm in orbit attitude" at 03:02 (Results, p. 42), the turnaround having begun at 02:38
     turned: 182,
     datum: CAPSULE_PLANE * IN,

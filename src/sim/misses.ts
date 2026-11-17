@@ -232,6 +232,19 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
   },
   'usa/mercury/mr-4-liberty-bell-7': {
+    // the capsule in the sea after the landing (sim/afloat.ts: tests/afloat.test.mjs)
+    afloat: {
+      flooded: {
+        by: 0.125,
+        slack: 0.03,
+        why:
+          'the history’s figure is a bound, "over 5000 pounds" (This New Ocean, p. 375), and was read before the run as 5,000 to 6,000 lb. The run’s 6,190 lb is over ' +
+          '5,000 as it says, and past the reading: the cabin’s free volume (three quarters of the pressure vessel, estimated: no document read gives it) holds 1.5 m^3 ' +
+          'of the sea at the most, 3,380 lb, and the recovery compartment and the gap under the shingles 730 lb more, on No. 7’s flotation weight less the hatch’s ' +
+          'saving and the pilot. Nothing is changed to bring it in',
+        short: 'the history gives a bound, "over 5000 pounds"',
+      },
+    },
     // (the records are the type's, the Beach Abort's and the maker's, flown on this flight's own spacecraft and pad)
     'abort:off the pad, upright': {
       apogee: {

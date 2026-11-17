@@ -501,7 +501,16 @@ export class FlightShow {
     this.layTrail(ascent, pad, t, flying);
     this.h
       .effects()
-      ?.set(t, flying, g, s.full, clock.rate, this.h.renderer.toneMappingExposure, this.h.setting().sunIntensity, this.h.veils);
+      ?.set(
+        t,
+        flying && !ascent.afloat(t),
+        g,
+        s.full,
+        clock.rate,
+        this.h.renderer.toneMappingExposure,
+        this.h.setting().sunIntensity,
+        this.h.veils,
+      );
     this.lifted.by.subVectors(g.position, before);
     g.updateMatrixWorld(true);
     s.measure(); // levels of detail are chosen by the distance to it

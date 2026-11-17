@@ -1,14 +1,29 @@
 import * as THREE from 'three';
+import { type Afloat, afloatAt } from '../sim/afloat.ts';
 import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
+import { type LooseFlown, looseAt } from '../sim/loose.ts';
 import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
-import { bearingOf, between, chuteOf, either, type Run, recordOf } from '../sim/run.ts';
+import { bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { cross, ecefToSite, ecefToSiteDirection, length, type Site, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
+import {
+  cross,
+  ecefToGeodetic,
+  ecefToSite,
+  ecefToSiteDirection,
+  geodeticToEcef,
+  length,
+  type Site,
+  scale,
+  siteFrame,
+  sub,
+  unit,
+  type Vec3,
+} from '../world/frames.ts';
 import { fireLevel, litBetween } from './fires.ts';
 
 /**
@@ -131,12 +146,18 @@ export class Ascent {
     return this.record;
   }
 
+  /** Whether the vehicle is down in the sea at `t` and floated there (sim/afloat.ts): what the air does to it is over. */
+  afloat(t: number): boolean {
+    const a = this.flight.plan ? this.flown().afloat : undefined;
+    return Boolean(a && t > a.from);
+  }
+
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
   flying(t: number): boolean {
     if (!this.flight.plan || t <= 0) return false;
     const run = this.flown();
-    if (!run.kept && t >= run.duration) return false;
-    return run.live ? run.samples.length > 1 : t < run.duration;
+    if (!run.kept && t >= endOf(run)) return false;
+    return run.live ? run.samples.length > 1 : t < endOf(run);
   }
 
   /**
@@ -146,7 +167,7 @@ export class Ascent {
   gone(t: number): boolean {
     if (!this.flight.plan || t <= 0) return false;
     const run = this.flown();
-    return !run.kept && t >= run.duration;
+    return !run.kept && t >= endOf(run);
   }
 
   /**
@@ -210,6 +231,11 @@ export class Ascent {
     return this.flown().duration;
   }
 
+  /** When the run on show leaves the scene: its end, or, afloat, when it has gone out of sight under the sea (sim/run.ts `endOf`). */
+  get end(): number {
+    return endOf(this.flown());
+  }
+
   get cutoff(): number {
     return this.flown().cutoff;
   }
@@ -241,7 +267,10 @@ export class Ascent {
     const at = run.out[on];
     if (!(t >= at)) return null;
     const end = run.samples[run.samples.length - 1]!;
-    const landed = run.live && Number.isFinite(run.duration);
+    // (down: a flight flown by hand, or one that goes on afloat, has it lie down on the sea where it came down)
+    const landed = (run.live || Boolean(run.afloat)) && Number.isFinite(run.duration);
+    // (let go at the landing, it lies on the sea a while and is gone: Mercury's main was cut loose at impact, SEDR 104, 9-1)
+    if (run.afloat && t > run.duration + LYING) return null;
     const moment: ChuteMoment = {
       since: Math.min(t, landed ? run.duration : Infinity) - at,
       fills: (on === 'drogue' ? roles.drogue : roles.main).fills.value,
@@ -487,6 +516,8 @@ export class Ascent {
       quaternion.copy(from.q);
       return true;
     }
+    const loose = this.flown().loose?.[i];
+    if (loose) return this.placeLoose(loose, from, t, position, quaternion);
     const body = this.body(i);
     const now = body?.at(t);
     if (!body || !now) return false;
@@ -587,6 +618,41 @@ export class Ascent {
     return from;
   }
 
+  /**
+   * A part flown off as a body of its own with no plan of its own (sim/loose.ts: the hatch): its middle (the hatch's, out
+   * along the model's +X and up the hull, `flies.hatch.at`) moved from where it was drawn as it left as the flown point
+   * has moved since, its turn as it left; down on the sea it lies there, turned over its first second to lie flat on it.
+   */
+  private placeLoose(
+    loose: LooseFlown,
+    from: { p: THREE.Vector3; q: THREE.Quaternion },
+    t: number,
+    position: THREE.Vector3,
+    quaternion: THREE.Quaternion,
+  ): boolean {
+    const at = this.flight.flies?.hatch?.at;
+    const datum = this.flight.flies?.afloat?.body.datum.value ?? 0;
+    const middle = at ? new THREE.Vector3(at.out.value, at.height.value - datum, 0) : new THREE.Vector3();
+    const tilt = THREE.MathUtils.degToRad(at?.tilt.value ?? 0);
+    const siteAt = (when: number) =>
+      toThree(ecefToSite(this.site, when >= loose.down.t ? loose.down.fixed : this.frame.toFixed(looseAt(loose, when), when)));
+    const now = middle
+      .clone()
+      .applyQuaternion(from.q)
+      .add(from.p)
+      .add(siteAt(t).sub(siteAt(loose.from)));
+    const g = ecefToGeodetic(loose.down.fixed);
+    const [la, lo] = [THREE.MathUtils.degToRad(g.latitude), THREE.MathUtils.degToRad(g.longitude)];
+    const up = toThree(
+      ecefToSiteDirection(this.site, [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)]),
+    ).normalize();
+    const out = new THREE.Vector3(Math.cos(tilt), Math.sin(tilt), 0).applyQuaternion(from.q).normalize();
+    const lie = new THREE.Quaternion().setFromUnitVectors(out, up).multiply(from.q);
+    quaternion.copy(from.q).slerp(lie, THREE.MathUtils.smoothstep(t - loose.down.t, 0, LIES));
+    position.copy(now).sub(middle.applyQuaternion(quaternion));
+    return true;
+  }
+
   /** Each drop's pose and velocity as it left, worked out once. */
   private readonly released: ({ at: number; p: THREE.Vector3; q: THREE.Quaternion; v: THREE.Vector3 } | undefined)[] = [];
 
@@ -597,6 +663,68 @@ export class Ascent {
   place(t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
     if (!this.flying(t)) return false;
     const run = this.flown();
+    const afloat = run.afloat;
+    if (afloat && t > afloat.from) return this.placeAfloat(run, afloat, t, padTurn, position, quaternion);
+    return this.placeFlown(run, t, padTurn, position, quaternion);
+  }
+
+  /** The pose it came down in and the one it floats in, worked out once for the run afloat it is for. */
+  private floated: {
+    of: Afloat;
+    p: THREE.Vector3;
+    q: THREE.Quaternion;
+    base: THREE.Vector3;
+    up: THREE.Vector3;
+    upright: THREE.Quaternion;
+  } | null = null;
+
+  /**
+   * Down in the sea (sim/afloat.ts): from the pose it struck the sea in it comes upright over the record's time for that
+   * (`AfloatDef.rights`), its hatch (the model's +X) toward the bearing it lay at (`hatch.at.heading`), and rises and falls
+   * with the sea and goes under as the run afloat has it: its lowest point drawn where the run has it against the surface
+   * there. The globe's sea is drawn level, so it is drawn against that, not over still water.
+   */
+  private placeAfloat(
+    run: Run,
+    afloat: Afloat,
+    t: number,
+    padTurn: THREE.Quaternion,
+    position: THREE.Vector3,
+    quaternion: THREE.Quaternion,
+  ): boolean {
+    const def = this.flight.flies?.afloat;
+    if (!def) return false;
+    let f = this.floated;
+    if (!f || f.of !== afloat) {
+      const p = new THREE.Vector3();
+      const q = new THREE.Quaternion();
+      this.placeFlown(run, afloat.from, padTurn, p, q);
+      const last = run.samples[run.samples.length - 1]!;
+      const { latitude, longitude } = this.frame.place(last.r, last.t);
+      const sea = this.flight.site.seaLevel.value;
+      const base = toThree(ecefToSite(this.site, geodeticToEcef({ latitude, longitude, height: sea })));
+      const [la, lo] = [THREE.MathUtils.degToRad(latitude), THREE.MathUtils.degToRad(longitude)];
+      const upEcef: Vec3 = [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)];
+      const b = THREE.MathUtils.degToRad(this.flight.flies?.hatch?.at.heading.value ?? 0);
+      const levelEcef: Vec3 = [
+        -Math.sin(la) * Math.cos(lo) * Math.cos(b) - Math.sin(lo) * Math.sin(b),
+        -Math.sin(la) * Math.sin(lo) * Math.cos(b) + Math.cos(lo) * Math.sin(b),
+        Math.cos(la) * Math.cos(b),
+      ];
+      const up = toThree(ecefToSiteDirection(this.site, upEcef)).normalize();
+      const level = toThree(ecefToSiteDirection(this.site, levelEcef)).normalize();
+      const upright = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(level, up, level.clone().cross(up)));
+      f = this.floated = { of: afloat, p, q, base, up, upright };
+    }
+    const now = afloatAt(afloat, t);
+    const k = THREE.MathUtils.smoothstep(t - afloat.from, 0, def.body.rights.value);
+    const floating = f.base.clone().addScaledVector(f.up, now.z - now.surface + def.body.datum.value);
+    position.copy(f.p).lerp(floating, k);
+    quaternion.copy(f.q).slerp(f.upright, k);
+    return true;
+  }
+
+  private placeFlown(run: Run, t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
     if (run.live) return this.placeLive(run.samples as readonly LiveSample[], t, padTurn, position, quaternion);
     const { samples } = run;
     const axis = this.axis!;
@@ -684,7 +812,6 @@ export class Ascent {
     quaternion: THREE.Quaternion,
   ): boolean {
     const last = samples[samples.length - 1]!;
-    const asked = t;
     // The cockpit flies whole ticks, to the one nearest the clock, so the clock is up to half a tick past the last of them.
     // The model is drawn at the clock's instant all the same, carried on from that tick by its own motion, as what it has
     // shed is flown to that instant (sim/shed.ts): held at the tick, it was drawn a few milliseconds behind the clock in
@@ -728,12 +855,6 @@ export class Ascent {
       .add(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(now, t))))
       .add(offset);
     this.underCanopy(t, middle, position, quaternion);
-    // flooded afloat, it goes down: out of sight (its own height, 3.5 m, under the sea) in `under` seconds
-    const sinks = this.live?.sinks;
-    if (sinks && asked > sinks.at) {
-      const depth = SUNK_OUT * Math.min(1, (asked - sinks.at) / sinks.under);
-      position.addScaledVector(toThree(ecefToSiteDirection(this.site, this.frame.toFixed(unit(centre), t))), -depth);
-    }
     return true;
   }
 
@@ -800,6 +921,14 @@ const BODY: readonly Vec3[] = [
 ];
 /** A sample's part of the flight: on the booster, or the spacecraft alone. */
 const riding = (s: Sample): boolean => s.riding;
+/** Seconds a part come down on the sea takes to lie flat on it: drawn, chosen. */
+const LIES = 1;
+/**
+ * Seconds a parachute let go on the sea is drawn lying there before it is gone (sunk, or drifted off): drawn, chosen as
+ * long as the deck's run lies after its landing. Drawn longer, its lines followed the capsule afloat as it rose, fell and
+ * went under, which a canopy cut loose at the landing does not.
+ */
+const LYING = 12;
 /** Something left behind under a parachute: the drift it slows to, m/s, in how many seconds, and by when it is lost to sight, s. Drawn, not flown. */
 const DRIFT = new THREE.Vector3(0, -25, 0);
 /** Seconds over which a piece come down on a descent's body (`rides`) turns from how it left to hanging against the air: drawn, chosen. */
@@ -808,6 +937,4 @@ const EASES = 1;
 const LOST = 8;
 /** Seconds of flight over which the height of the launcher's support under the stack is eased out of where the model is drawn (`Ascent.stand`). */
 const SETTLES = 5;
-/** How far under the sea a flooded spacecraft is out of sight, m: its own height, the heat shield to the canister's top. */
-const SUNK_OUT = 3.5;
 const toThree = (v: Vec3) => new THREE.Vector3(v[0], v[1], v[2]);

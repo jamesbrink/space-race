@@ -1,21 +1,21 @@
-import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, tank, TRIM, TRIM_MOST } from './deck.ts';
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
-import type { EventDef } from '../sim/plan.ts';
 import { Lever, NOTCH } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
+import type { EventDef } from '../sim/plan.ts';
+import { afterwards, blownAloft, grown, type Run, runOf } from '../sim/run.ts';
 import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { landsOf, verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
-import { grown, type Run, runOf } from '../sim/run.ts';
-import type { Clock } from '../world/clock.ts';
-import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
-import { frameOf } from '../world/earthframe.ts';
 import { is, which } from '../util/keys.ts';
+import type { Clock } from '../world/clock.ts';
+import { frameOf } from '../world/earthframe.ts';
+import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
+import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
 
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
@@ -83,7 +83,7 @@ const rolesOf = (f: SitedFlight): Ballistic | null => (f.plan ? ballisticOf(f.pl
 
 /** The clock runs on this long after the landing, at life's pace, for what is still moving to come to rest (the parachute lying down: viewer/chute.ts), and then stops. */
 const AFTER = 12;
-/** Seconds the clock runs on after the spacecraft has gone under, where its hatch was blown afloat. */
+/** Seconds the clock runs on after the spacecraft has gone out of sight under the sea (sim/afloat.ts), where its hatch was blown. */
 const SUNK = 20;
 /** How a command that works a mechanism by hand begins (types.ts `Command`): the mechanism's id follows. */
 const WORK = 'work:';
@@ -381,14 +381,14 @@ export class Cockpit extends Deck {
     // a frame's fraction of a tick is left for the next frame: the scene is shown at the flight's own instant
     this.show(this.run.samples[this.run.samples.length - 1]!);
     if (state.landing) {
-      // down with its hatch blown on the way: the sea comes in at once, as it came in over Liberty Bell 7's sill
-      const hatch = this.flight.flies?.hatch;
-      if (hatch && this.hatchAt <= state.landing.t && !this.run.sinks) {
-        this.run.sinks = { at: state.landing.t, under: hatch.under.value };
-        this.host.say?.(hatch.label, hatch.afloat);
-      }
       // down: the flight is over at this instant, and the clock goes on from it at life's pace for a few seconds more (`AFTER`)
       this.run.duration = state.landing.t;
+      // in the sea (sim/afloat.ts): with its hatch blown on the way the sea comes in over the sill at once
+      if (!this.run.afloat) {
+        afterwards(this.flight, this.run, { hatch: this.hatchAt });
+        const hatch = this.flight.flies?.hatch;
+        if (hatch && this.hatchAt <= state.landing.t && this.run.afloat) this.host.say?.(hatch.label, hatch.afloat);
+      }
       this.clock.setRate(1);
       this.clock.seek(state.landing.t);
       this.card(this.tally.results);
@@ -554,9 +554,9 @@ export class Cockpit extends Deck {
   }
 
   /**
-   * Blow the hatch (`flies.hatch`), now: in flight it goes and the flight flies on, the debrief saying what that meant; afloat
-   * the spacecraft floods, and the clock runs on at life's pace until it has gone under (`Run.sinks`). Nothing of it reaches
-   * the physics.
+   * Blow the hatch (`flies.hatch`), now: it leaves as a body of its own (sim/loose.ts). In flight the flight flies on as if
+   * the cabin were closed, the debrief saying what that meant; afloat the spacecraft floods as sim/afloat.ts has it, and the
+   * clock runs on at life's pace until it has gone under (`Run.afloat`).
    */
   private blow(): void {
     const hatch = this.flight.flies?.hatch;
@@ -567,7 +567,8 @@ export class Cockpit extends Deck {
     // (the drop that is the hatch: the one of its node)
     const i = this.flight.flies!.drops.findIndex((d) => d.nodes.includes(hatch.node));
     if (i >= 0) this.run.dropped[i] = this.hatchAt;
-    if (afloat) this.run.sinks = { at: this.hatchAt, under: hatch.under.value };
+    if (afloat) afterwards(this.flight, this.run, { hatch: this.hatchAt });
+    else blownAloft(this.flight, this.run, this.run.samples[this.run.samples.length - 1] as LiveSample);
     this.host.say?.(hatch.label, afloat ? hatch.afloat : hatch.aloft);
     if (afloat) {
       this.clock.setRate(1);
@@ -579,8 +580,8 @@ export class Cockpit extends Deck {
   /** When the flight is over: a few seconds after it is down, or after it has gone under where the hatch was blown afloat. */
   private over(state: VehicleState): number {
     const down = state.landing ? state.landing.t : Infinity;
-    const sinks = this.run.sinks;
-    return Math.max(down + AFTER, sinks ? sinks.at + sinks.under + SUNK : -Infinity);
+    const a = this.run.afloat;
+    return Math.max(down + AFTER, a && Number.isFinite(a.under) ? a.end + SUNK : -Infinity);
   }
 
   /** Where a mechanism is headed at this instant of the flight being flown: out (true) or in. Null: no such mechanism, or no flight. */
@@ -972,10 +973,11 @@ export class Cockpit extends Deck {
     // the hatch, where it was blown: what it meant, and on a spacecraft afloat what the record has after
     const hatch = this.flight.flies?.hatch;
     const aloft = hatch && this.hatchAt < (this.state?.landing?.t ?? Infinity) ? [hatch.aloft] : [];
-    const blown = !hatch || this.hatchAt === Infinity ? [] : this.run.sinks ? [...aloft, hatch.afloat, hatch.record] : aloft;
+    const sank = Number.isFinite(this.run.afloat?.under ?? Infinity);
+    const blown = !hatch || this.hatchAt === Infinity ? [] : sank ? [...aloft, hatch.afloat, hatch.record] : aloft;
     const kept = hatch && this.hatchAt === Infinity ? [`The hatch stayed on. ${hatch.record}`] : [];
     el.innerHTML = `
-      <h3>${end.how}${this.run.sinks ? '; lost with its hatch blown' : ''}</h3>
+      <h3>${end.how}${sank ? '; lost with its hatch blown' : ''}</h3>
       ${[...lost, ...end.why, ...blown].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
       ${kept.map((w) => `<p class="cockpit-fell">${w}</p>`).join('')}
       ${fell.length ? `<p class="cockpit-fell">${fell.join(' ')}</p>` : ''}

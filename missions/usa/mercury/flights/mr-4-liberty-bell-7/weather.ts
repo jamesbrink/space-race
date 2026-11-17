@@ -1,9 +1,37 @@
-import { ALOFT, HOURS } from './aloft.ts';
+import { derived } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
+import { ALOFT, HOURS } from './aloft.ts';
 
 const ISD = 'NOAA Integrated Surface Database, station 74794012868 (Cape Canaveral: the Skid Strip, 5 km north of the pad)';
 const HOUR = '07:00 EST (12:00 UTC), 21 July 1961';
 const RESULTS = 'Results of the Second U.S. Manned Suborbital Space Flight';
+
+const ERA5_WAVES =
+  'ERA5 (ECMWF), its wave model at 12:00 UTC on 21 July 1961, between the four cells round 27.53 N, 75.73 W (the landing point as commonly given, ' +
+  '27°32′N 75°44′W; Results, Figure 2-7 charts it), read from the public ARCO-ERA5 store by tools/era5.mjs `fieldAt`; 13:00 differs by under 0.02 m and 0.05 s';
+
+/**
+ * The sea where it came down, half an hour after the hour: ERA5's waves there, a low swell from the east-south-east and a
+ * small sea raised by the wind from the south-east. The pilot called them "the mild swells we were having" (Results,
+ * p. 55); This New Ocean has the capsule "rolling badly with the swells" (p. 372).
+ */
+const SEA: DayWeather['sea'] = {
+  observed: { where: 'the landing area, 27.53 N, 75.73 W', at: '1961-07-21T12:00:00Z', source: ERA5_WAVES },
+  trains: [
+    {
+      label: 'the swell',
+      height: derived(0.796, `${ERA5_WAVES}: significant height of the total swell`),
+      period: derived(6.365, `${ERA5_WAVES}: mean period of the total swell`),
+      from: derived(105.8, `${ERA5_WAVES}: mean direction of the total swell, coming from`),
+    },
+    {
+      label: 'the wind’s waves',
+      height: derived(0.304, `${ERA5_WAVES}: significant height of the wind waves`),
+      period: derived(2.506, `${ERA5_WAVES}: mean period of the wind waves`),
+      from: derived(145.7, `${ERA5_WAVES}: mean direction of the wind waves, coming from`),
+    },
+  ],
+};
 
 /**
  * The weather Liberty Bell 7 stood under: the morning of 21 July 1961 at Cape Canaveral, twenty minutes before liftoff
@@ -152,4 +180,5 @@ export const WEATHER: DayWeather = {
   // record's, when one is read, goes here in their place
   aloft: ALOFT,
   hours: HOURS,
+  sea: SEA,
 };

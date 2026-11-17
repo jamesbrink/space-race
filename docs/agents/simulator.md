@@ -427,8 +427,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
 - **What a capsule had that another did not is data, not deck code.** A rate command mode (`rcs.rate`: the deck's Rate
   command switch, autopilot.ts `rateCommand`: the stick asks for a rate and the manual chambers fire full on an axis while
   its rate is more than the deadband from it); an explosive hatch (`flies.hatch`: `Command` 'hatch', Space once down, a
-  cabin control's `does`; nothing of it reaches the physics: blown in flight the debrief says what it meant, blown afloat
-  the spacecraft is drawn going under in `under` seconds, `Run.sinks`, and the clock runs on until it has).
+  cabin control's `does`: it leaves as a body of its own, and afloat its opening lets the sea in: below, "In the sea";
+  blown in flight the flight flies on as if the cabin were closed and the debrief says what it meant).
 - **Turned round, the spacecraft is rolled periscope side down.** `Craft.rigid.capsule.earthward` names the side the
   automatic control keeps toward the Earth from the turnaround until the air is felt (degrees about the long axis from
   the body's +Z); `autopilot` rolls to it with the same law as the other axes. Freedom 7's is 180: the side that lay
@@ -442,6 +442,32 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   that names no side still turns the long axis the short way and keeps the roll it had. The scene turns the record's
   own flight round the same way (`viewer/ascent.ts` `place`, `keel`): to the attitude with that side underneath, which
   from how it rode the booster is the yaw. tests/ascent.test.mjs holds both runs to it.
+
+## In the sea
+
+- **A spacecraft down in the sea is a body afloat** (`sim/afloat.ts` `floatOn`, from `Flight.flies.afloat`: types.ts
+  `AfloatDef`), floated from its run's landing by `run.ts` `afterwards` (the record's run in `recordOf`, a deck's at its
+  landing and again when its hatch is blown) into `Run.afloat`. Upright, up and down only: its outside a solid of
+  revolution (`Profile`), held up by the sea it puts aside and pulled down by its weight and every drop of water in its
+  spaces (`SpaceDef`: each a solid of revolution's share, with its openings, `OpeningDef`, each shut until an instant the
+  caller gives by its id or open from the first). Water goes through an opening as through a sharp orifice, band by band,
+  on the difference of the sea's pressure and the space's; a space's air goes out through any opening not wholly under both
+  the sea and its water, or reaching its top, and is trapped and squeezed otherwise (the water then stands where the air
+  presses as the sea does). Its rise and fall is damped by a share of critical (`heave`, estimated) and its motion through
+  the water by its drag. A line from above (`HoistDef`: the record's helicopter) pulls at its top once taut, up at its
+  rate toward lifting it clear, never more than its capacity, until it is let go. What leaves it (the crew, the hatch) is
+  a mass at an instant. It ends `sight` m under, out of sight. RK4 at 0.05 s, every step ending on the instants given.
+- **The sea it floats on is the day's** (`sim/sea.ts`, from `DayWeather.sea`: each train of waves a sine of its
+  significant height over 2 root 2, its period and the bearing it comes from, on deep water), one function of the instant
+  and the place for the physics and the drawing.
+- **A part thrown off with no plan of its own is a loose body** (`sim/loose.ts`, `LooseDef`: the hatch): thrown along its
+  outward normal by its impulse over its mass, flown as a point under gravity and the day's air to the sea, and lying
+  there fixed to the Earth (`Run.loose`, by drop). Blown afloat it leaves from where the hatch is on the capsule as it
+  floats (`afterwards`); blown in flight from the live sample, square to the long axis (`blownAloft`).
+- **Held to the record**: tests/afloat.test.mjs holds the pieces to their arithmetic (Archimedes, a terminal speed, an
+  opening filling to the sea's level, the sea's four sigma, a throw) and Liberty Bell 7's run afloat to `afloat.checks`
+  under `MISSES[...].afloat`, and to what the record says in words: the helicopter's 4,000 lbf never had it out, and let
+  go it went out of sight within a minute and a half.
 
 ## Into orbit
 
@@ -584,7 +610,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
 | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
-| Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it goes and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea it fills at once and goes under (`Run.sinks`), and the card says so |
+| Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it flies off on its own (sim/loose.ts) and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea the open sill takes the sea at once and it goes under (sim/afloat.ts), and the card says so |
 
 The two kinds no longer differ in what a hand may do for no physical reason: what is said and not flown is what no source
 read gives enough of to fly (issue #10).

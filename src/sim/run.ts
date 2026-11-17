@@ -4,11 +4,23 @@
  * made a run its samples' own attitude places), or one being flown by hand, which the decks give as it grows. Nothing
  * here is drawn: viewer/ascent.ts places it in the scene.
  */
+
+import type { Signal, SitedFlight } from '../types.ts';
+import { G0 } from '../world/bodies.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { sunPosition } from '../world/ephemeris.ts';
+import { add, geodeticToEcef, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
+import { julianDate, terrestrialTime } from '../world/time.ts';
+import { type Afloat, afloatAt, floatOn } from './afloat.ts';
+import { skyOf } from './air.ts';
 import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
 import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
+import { flyLoose, type LooseFlown } from './loose.ts';
 import { coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
+import { type Quat, turn } from './rigid.ts';
+import { wavesOf } from './sea.ts';
 import { apart, Sheds } from './shed.ts';
 import {
   type DrawnDescent,
@@ -22,12 +34,6 @@ import {
   sequenceOf,
   stagesOf,
 } from './staged.ts';
-import type { Signal, SitedFlight } from '../types.ts';
-import { G0 } from '../world/bodies.ts';
-import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { sunPosition } from '../world/ephemeris.ts';
-import { add, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
-import { julianDate, terrestrialTime } from '../world/time.ts';
 
 /**
  * Something that happened on a run, and when (seconds from liftoff; Infinity for one that has not): one of the plan's
@@ -75,11 +81,13 @@ export interface Run {
   /** When it first felt a twentieth of a g coming down (sim/loads.ts `ENTRY_G`), where the run says: Infinity, or nothing, for one that has not. */
   entered?: number;
   /**
-   * A spacecraft flown by hand that floods afloat (its hatch blown: `Flight.flies.hatch`): from `at` it goes down evenly to
-   * out of sight in `under` seconds, and is drawn no deeper (the cameras that follow it stay above the sea; how far it
-   * went is the debrief's to tell). Drawn only: nothing of it is flown.
+   * The spacecraft in the sea once it is down, where its flight has a body afloat (`Flight.flies.afloat`, sim/afloat.ts):
+   * from its landing it rises and falls on the day's sea, takes in water once its hatch is blown, is held by the record's
+   * helicopter and goes under (`afterwards`). The record's run has the record's instants; a run flown by hand its own.
    */
-  sinks?: { at: number; under: number };
+  afloat?: Afloat;
+  /** What left as a body of its own with no plan of its own (sim/loose.ts: the hatch), by its index in `Flight.flies.drops`. */
+  loose?: (LooseFlown | undefined)[];
   /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
   torn?: { drogue: number; main: number };
   /** When each of `Flight.flies.fires` burns on this run, in their order: its instants, from and to. */
@@ -432,6 +440,7 @@ export function recordOf(flight: SitedFlight): Run | null {
       got: results[c.id],
     })),
   });
+  afterwards(flight, run);
   ballisticRuns.set(plan, run);
   return run;
 }
@@ -537,4 +546,86 @@ export function chuteOf(plan: FlightPlan | undefined, id: string | undefined): '
   if (!plan || !id || plan.kind !== 'ballistic') return undefined;
   const b = ballisticOf(plan);
   return id === b.main.id ? 'main' : id === b.drogue.id ? 'drogue' : undefined;
+}
+
+/** How long a body afloat is followed when nothing sinks it, s after the landing (the deck stops its clock long before). */
+const AFLOAT_FOR = 600;
+
+/**
+ * What happens to a run's spacecraft once it is down, where its flight has a body afloat (`Flight.flies.afloat`): it is
+ * floated from the run's landing (`Run.duration`) on the day's sea (`DayWeather.sea`) and its hatch, if it is blown, is
+ * flown off as a loose body (`Flight.flies.hatch.loose`). Left out, `hand`: the record's, its hatch, the crew going out
+ * and the helicopter's line at the record's instants. With `hand`: a run flown by hand, its hatch blown at `hand.hatch`
+ * (Infinity: never; before the landing, it lands open) and no helicopter, the crew going out `goesOut` after the hatch.
+ * Sets `run.afloat` and the hatch's place in `run.loose`; a flight with no body afloat is left as it is.
+ */
+export function afterwards(flight: SitedFlight, run: Run, hand?: { hatch: number }): void {
+  const a = flight.flies?.afloat;
+  const hatch = flight.flies?.hatch;
+  const landing = run.duration;
+  if (!a || !Number.isFinite(landing)) return;
+  const waves = wavesOf(flight.weather?.sea?.trains);
+  const at = hand ? hand.hatch : a.record.hatch.value;
+  const blown = Number.isFinite(at);
+  const opens = Math.max(at, landing);
+  const out = hand ? opens + a.goesOut.value : a.record.out.value;
+  const opened: Record<string, number> = hatch && blown ? { [hatch.opens]: opens } : {};
+  const left: Record<string, number> = blown ? { [a.crew]: out, ...(hatch ? { [hatch.leaves]: opens } : {}) } : {};
+  const hoist = hand ? undefined : { def: a.hoist, taut: a.record.taut.value, cast: a.record.cast.value };
+  const until = hand ? (blown ? opens : landing) + AFLOAT_FOR : a.record.cast.value + AFLOAT_FOR;
+  run.afloat = floatOn(a.body, waves, landing, until, { opened, left, ...(hoist ? { hoist } : {}) }, a.sight.value);
+  // the hatch blown afloat: thrown off from where it is on the capsule as it floats then (blown in flight, the deck flies it from the flight)
+  const i = hatch ? (flight.flies?.drops ?? []).findIndex((d) => d.nodes.includes(hatch.node)) : -1;
+  if (!hatch || i < 0 || !blown) return;
+  run.dropped[i] = at < landing ? at : opens;
+  if (at < landing) return;
+  const last = run.samples[run.samples.length - 1]!;
+  const { latitude, longitude } = run.frame.place(last.r, last.t);
+  const sea = flight.site.seaLevel.value;
+  const now = afloatAt(run.afloat, opens);
+  const [la, lo] = [(latitude * Math.PI) / 180, (longitude * Math.PI) / 180];
+  const up: Vec3 = [Math.cos(la) * Math.cos(lo), Math.cos(la) * Math.sin(lo), Math.sin(la)];
+  const east: Vec3 = [-Math.sin(lo), Math.cos(lo), 0];
+  const north: Vec3 = [-Math.sin(la) * Math.cos(lo), -Math.sin(la) * Math.sin(lo), Math.cos(la)];
+  const b = (hatch.at.heading.value * Math.PI) / 180;
+  const level = add(scale(north, Math.cos(b)), scale(east, Math.sin(b)));
+  const tilt = (hatch.at.tilt.value * Math.PI) / 180;
+  const p = add(
+    add(geodeticToEcef({ latitude, longitude, height: sea }), scale(up, now.z + hatch.at.height.value)),
+    scale(level, hatch.at.out.value),
+  );
+  const normal = unit(add(scale(level, Math.cos(tilt)), scale(up, Math.sin(tilt))));
+  const f = run.frame;
+  const loose = flyLoose(
+    hatch.loose,
+    f,
+    skyOf(flight.plan),
+    sea,
+    opens,
+    f.toInertial(p, opens),
+    f.velocityToInertial(p, scale(up, now.w), opens),
+    f.toInertial(normal, opens),
+  );
+  run.loose = Object.assign(run.loose ?? [], { [i]: loose });
+}
+
+/**
+ * The hatch blown in flight on a run flown by hand: thrown off the spacecraft as it was at `s` (a live sample: its place,
+ * motion and attitude, sim/vehicle.ts), square to its long axis where the hatch is round it and tilted toward its top as
+ * the cone is (`Flight.flies.hatch.at`), and flown to the sea (sim/loose.ts). Sets its place in `run.loose`.
+ */
+export function blownAloft(flight: SitedFlight, run: Run, s: { t: number; r: Vec3; v: Vec3; attitude: Quat }): void {
+  const hatch = flight.flies?.hatch;
+  const i = hatch ? (flight.flies?.drops ?? []).findIndex((d) => d.nodes.includes(hatch.node)) : -1;
+  if (!hatch || i < 0) return;
+  const round = (hatch.at.round.value * Math.PI) / 180;
+  const tilt = (hatch.at.tilt.value * Math.PI) / 180;
+  const body: Vec3 = [Math.sin(tilt), Math.cos(tilt) * Math.sin(round), Math.cos(tilt) * Math.cos(round)];
+  const loose = flyLoose(hatch.loose, run.frame, skyOf(flight.plan), flight.site.seaLevel.value, s.t, s.r, s.v, turn(s.attitude, body));
+  run.loose = Object.assign(run.loose ?? [], { [i]: loose });
+}
+
+/** When a run's vehicle leaves the scene: its end (`duration`), or, afloat, when it has gone out of sight under the sea. */
+export function endOf(run: Run): number {
+  return run.afloat ? Math.max(run.duration, run.afloat.end) : run.duration;
 }

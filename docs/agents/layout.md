@@ -15,7 +15,7 @@ missions/                             the record: one folder per nation, program
                                       <name>.md records its dimensions, confidence, simplifications
     vehicles/<stack>.ts               a launch vehicle's flight data said once, each flight giving its own day (tests/inherit.test.mjs)
                                       (mercury-redstone.ts: `plan`, `Day`, `HARDWARE`, `CHUTES`; vostok-8k72k.ts; vostok-3ka.ts, the spacecraft; vostok-plan.ts, a Vostok's plan from its record; vostok-record.ts, the record's shape;
-                                      mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`,
+                                      mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`; mercury-afloat.ts, a capsule in the sea (`capsuleAfloat`),
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`; mercury-atlas-plan.ts, a Mercury-Atlas's record
                                       (`MercuryAtlasRecord`, its flight's orbital.ts) and the plan written from it (`mercuryAtlasPlan`);
@@ -71,6 +71,7 @@ missions/                             the record: one folder per nation, program
       orbital.ts  mission.md          an orbital flight's record as data, which its plan is written from, and the mission's record and plan in words
       weather.ts                      the weather it stood under, as recorded (`Flight.weather`: types.ts DayWeather): its site's sky is drawn from it
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
+      afloat.ts                       (Liberty Bell 7) the capsule in the sea after the landing: its weight afloat, the record's instants to its going down, the helicopter (`flies.afloat`), the hatch thrown off (`flies.hatch`)
       pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962;
                                       ma-6-friendship-7: Complex 14 on 20 February 1962, with its pilot at the structure's foot; ma-7-aurora-7: on
                                       24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965;
@@ -276,6 +277,8 @@ src/
   sim/core/rk4.ts                     the one fixed-step integrator: fourth-order Runge-Kutta for a point and for a rigid body; gravity and push summed
   sim/apparent.ts                     a stage's apparent-velocity integrator: what it senses, its trapezoid, where its sum reaches its setting
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
+  sim/afloat.ts                       a body afloat: upright on the day's sea, flooding through its openings, hoisted, going down (`floatOn`, `Solid`)
+  sim/sea.ts  sim/loose.ts            the day's waves as a function of the instant and the place; a part thrown off with no plan of its own, flown to the sea
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
   sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)

@@ -309,6 +309,12 @@ capsule's stays 41.5 from its own photographs).
   this model or for its pad (`tools/lod-thresholds.mjs --measure`): the gallery draws it in full; at
   the launch site it and the pad change level at the viewer's own thresholds, which are what
   Freedom 7's pad measured at.
+- **In the sea** (sim/afloat.ts, vehicles/mercury-afloat.ts): upright, up and down only, never heeling or turning; the
+  bag a cylinder of the shield's width; the cabin's free volume three quarters of the pressure vessel, its large bulkhead's
+  dish left out, and its valves and snorkels shut; the bag's pores 1 per cent of its skirt; the shingles' joints and what
+  lies between the skins ours; the sea's density the Bahamas' surface water's. Every share and opening is `estimated`.
+- **The hatch thrown off** (sim/loose.ts) is a point with a tumbling plate's drag; drawn, it keeps the turn it had as it
+  left and lies down flat on the sea over a second, where the history has it "skipping over the waves".
 - Everything listed in Freedom 7's spacecraft.md for the parts the two share: the retropack's
   straps, the tower's bracing and single jettison nozzle, the landing bag as a flat ring.
 

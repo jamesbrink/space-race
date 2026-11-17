@@ -1,15 +1,18 @@
 // A body afloat (src/sim/afloat.ts), the sea it floats on (src/sim/sea.ts) and a part thrown off it (src/sim/loose.ts):
-// each piece of the physics against its own arithmetic.
+// each piece of the physics against its own arithmetic, then Liberty Bell 7 after it came down against the record.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as lb7 } from '../missions/usa/mercury/flights/mr-4-liberty-bell-7/flight.ts';
 import { estimated } from '../src/measure.ts';
 import { floatOn, SEA_WATER, Solid } from '../src/sim/afloat.ts';
 import { flyLoose } from '../src/sim/loose.ts';
+import { afterwards, recordOf } from '../src/sim/run.ts';
 import { surfaceAt, wavesOf } from '../src/sim/sea.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { geodeticToEcef, length, sub } from '../src/world/frames.ts';
+import { holdChecks, missesOf } from './misses.mjs';
 
+const ID = 'usa/mercury/mr-4-liberty-bell-7';
 const m = (v) => estimated(v, 'a test');
 
 test('a solid of revolution: a cylinder’s and a cone’s volumes, and the height a volume fills them to', () => {
@@ -118,4 +121,50 @@ test('a part thrown off from a metre and a half over the sea at 3 m/s comes down
   const range = length(sub(flown.down.fixed, p));
   assert.ok(Math.abs(flown.down.t - t - fall) < 0.01, `down in ${flown.down.t - t} s, not ${fall}`);
   assert.ok(Math.abs(range - Math.hypot(3 * fall, 1.5)) < 0.05, `${range} m from where it left`);
+});
+
+test('Liberty Bell 7 after it came down: the record’s figures, the helicopter that could not lift it, and its going down', () => {
+  const run = recordOf(lb7);
+  const a = run.afloat;
+  assert.ok(a, 'the record’s run goes on into the sea');
+  const record = lb7.flies.afloat.record;
+  const lb = 0.45359237;
+  const figures = { flooded: a.flooded / lb, under: a.under - record.hatch.value };
+  holdChecks(lb7.flies.afloat.checks, (id) => figures[id], missesOf(ID, 'afloat'), { name: 'afloat' });
+  // the helicopter pulled with all it had and never had it out of the sea
+  assert.ok(Math.abs(a.held - lb7.flies.afloat.hoist.capacity.value) < 1, `the line held ${a.held} N`);
+  assert.ok(a.rose < 0, `its lowest point came ${a.rose} m over the sea`);
+  // let go, it goes out of sight within a minute and a half ("allowing the spacecraft to sink swiftly": This New Ocean, p. 375)
+  assert.ok(a.end > record.cast.value && a.end - record.cast.value < 90, `out of sight ${a.end - record.cast.value} s after it was let go`);
+  // before the hatch it floated with its sill clear of the still sea, as every capsule did
+  const before = a.samples.filter((s) => s.t < record.hatch.value);
+  const sill = lb7.flies.afloat.body.spaces.find((s) => s.openings.some((o) => o.id === lb7.flies.hatch.opens)).openings[0].from;
+  const mean = before.reduce((sum, s) => sum + s.surface - s.z, 0) / before.length;
+  assert.ok(mean < sill, `on the average the sea stood ${mean} m up the hull, the sill at ${sill}`);
+  // the hatch: thrown off as a body of its own, down on the sea about five feet out (This New Ocean, p. 373)
+  const i = lb7.flies.drops.findIndex((d) => d.nodes.includes(lb7.flies.hatch.node));
+  const hatch = run.loose?.[i];
+  assert.ok(hatch, 'the hatch flies');
+  assert.equal(run.dropped[i], record.hatch.value);
+  const out = length(sub(hatch.down.fixed, run.frame.toFixed(hatch.samples[0].r, hatch.from)));
+  assert.ok(out > 1.2 && out < 1.9, `the hatch struck the water ${out} m from where it left`);
+  console.log(
+    `  #   afloat: under ${(a.under - record.hatch.value).toFixed(1)} s after the hatch, flooded ${(a.flooded / lb).toFixed(0)} lb, held ${(a.held / 4.4482216).toFixed(0)} lbf, ` +
+      `its foot ${(-a.rose).toFixed(2)} m under at best, out of sight ${(a.end - record.cast.value).toFixed(0)} s after it was let go; the hatch down ${out.toFixed(2)} m out`,
+  );
+});
+
+test('flown by hand: blown in flight it lands open and goes down; never blown it floats', () => {
+  // (sim/run.ts afterwards with a hand's hatch, from the record's landing; a copy of the record's run, its drops its own)
+  const copy = () => {
+    const record = recordOf(lb7);
+    return { ...record, dropped: [...record.dropped], loose: undefined };
+  };
+  const run = copy();
+  afterwards(lb7, run, { hatch: 200 });
+  assert.ok(Number.isFinite(run.afloat.under), 'open from the landing it goes under');
+  assert.ok(run.afloat.under - run.duration < 120, `under ${run.afloat.under - run.duration} s after the landing`);
+  const kept = copy();
+  afterwards(lb7, kept, { hatch: Number.POSITIVE_INFINITY });
+  assert.equal(kept.afloat.under, Number.POSITIVE_INFINITY, 'the hatch kept on, it floats');
 });

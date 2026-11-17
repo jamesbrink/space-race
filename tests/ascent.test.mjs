@@ -1,16 +1,17 @@
 // src/viewer/ascent.ts: where the scene puts the flown vehicle. A flight flown by hand is placed by its own samples'
 // attitude; flown by the autopilot it is the record's flight, so the two placements must agree, and neither may jump.
-import { hasLeft } from '../src/sim/craft.ts';
+
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BALLISTIC, doing, R } from './ballistic.mjs';
-import { ballisticOf } from '../src/sim/fly.ts';
 import { autopilot, flyLive } from '../src/sim/autopilot.ts';
+import { hasLeft } from '../src/sim/craft.ts';
+import { ballisticOf } from '../src/sim/fly.ts';
 import { vehicle } from '../src/sim/vehicle.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
-import { siteFrame } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
+import { siteFrame } from '../src/world/frames.ts';
+import { BALLISTIC, doing, R } from './ballistic.mjs';
 
 // every ballistic flight (tests/ballistic.mjs), each held as Freedom 7 was first
 for (const flight of BALLISTIC) {
@@ -118,9 +119,13 @@ for (const flight of BALLISTIC) {
     flown.use(run);
     assert.ok(flown.flying(run.duration + 60));
     assert.ok(at(flown, run.duration + 60).p.distanceTo(at(flown, run.duration).p) < 1e-6);
+    // (the record's run goes on afloat from its landing until the capsule is out of sight under the sea: sim/afloat.ts)
     const record = Ascent.of(flight);
-    assert.equal(record.flying(run.duration + 60), false);
-    assert.ok(record.gone(record.duration + 60));
+    if (flight.flies.afloat)
+      assert.ok(record.end > record.duration && record.flying(record.duration + 60) && !record.gone(record.duration + 60));
+    else assert.equal(record.end, record.duration);
+    assert.equal(record.flying(record.end + 60), false);
+    assert.ok(record.gone(record.end + 60));
   });
 
   test(named('the live model does not jump as the reference changes at separation'), () => {
@@ -357,7 +362,7 @@ const flying = (
 ).filter((f) => f.plan && f.site && f.flies);
 test('there are flights of both kinds to put in the scene', () => assert.ok(flying.length >= 4, `${flying.length} flights`));
 for (const flight of flying) {
-  test(`${flight.id}: on its pad before liftoff, flown during, and gone once the record's run has ended`, () => {
+  test(`${flight.id}: on its pad before liftoff, flown during, and gone once the record's run has ended (afloat, once out of sight)`, () => {
     const ascent = Ascent.of(flight);
     const pad = new THREE.Quaternion();
     const at = new THREE.Vector3();
@@ -365,7 +370,7 @@ for (const flight of flying) {
     assert.ok(!ascent.flying(-10) && !ascent.gone(-10), 'before liftoff it stands on its pad');
     assert.ok(ascent.flying(100) && !ascent.gone(100) && ascent.place(100, pad, at, turn), 'a hundred seconds up it flies');
     for (const after of [60, 9.8 * 3600, 30 * 3600]) {
-      const t = ascent.duration + after;
+      const t = ascent.end + after;
       assert.ok(ascent.gone(t), `${after} s after its end it is gone`);
       assert.ok(!ascent.flying(t) && !ascent.place(t, pad, at, turn), `${after} s after its end it is placed nowhere`);
     }

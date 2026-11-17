@@ -214,26 +214,43 @@ second; it is still high, because the height and climb it starts from are the ru
 
 ## The end of the flight
 
-The simulator's physics ends where Freedom 7's does: the spacecraft down in the sea under its main
-parachute. This flight's end is after that, and the deck offers it: **Blow the hatch** (Space once it
-is down, a right click on the hatch, or the plunger by the pilot's right arm from the couch; `flies.hatch`
-in [flight.ts](flight.ts)). Blown afloat, the hatch is gone, the clock runs on at life's pace, and the
-spacecraft goes under in 45 seconds, drawn so until it is out of sight (`estimated`: the history has it
-"sinking fast" and gone from sight as the helicopter hooked on), and the card tells the rest from the record:
-the hatch blew some ten minutes after the landing, after Grissom's last words at 26:09 ("then I'll power
-down and blow the hatch"); he said he had not touched the plunger, and no test made a hatch fire by itself;
-he was in the water three or four minutes (*Results*, p. 7; four or five in *This New Ocean*), his suit
-filling through an inlet he had left open; the flooded capsule, over 5,000 lb, was a thousand more than
-the helicopter could lift, and it let go. Left on, the card says what happened to the real one. Blown in
-flight it goes, and the flight is flown on as if the cabin were closed: what an entry with a hole in the
-side does is not in anything read, and the card says so.
+Down in the sea the spacecraft is a body afloat (`src/sim/afloat.ts`; its hull and spaces every Mercury
+capsule's, [vehicles/mercury-afloat.ts](../../vehicles/mercury-afloat.ts); what is this one's, [afloat.ts](afloat.ts)).
+It stands upright on the day's sea (ERA5's at the landing, `weather.ts` `sea`: a swell of 0.80 m from 106° at
+6.4 s and a wind sea of 0.30 m from 146° at 2.5 s; "the mild swells we were having", *Results*, p. 55), rises and
+falls on it with the four-foot landing bag hanging under it full of the sea, and floats with the sea at station
+14.5 in on the average, four inches under the hatch's sill: every wave over a few inches comes up to it. The record's
+run goes on past the landing to the end:
 
-**What the ending lacks**: the flooding is not flown (no figure for the sill's height, the inflow or the
-buoyancy has been read: the time to go under is ours), the hatch is not flown as a body when it leaves
-(it vanishes; the history has it "skipping over the waves"), there is no sea to see under (the globe's sea
-is a surface, and the spacecraft goes through it), no helicopter, no Grissom in the water, and the record's
-own run ends at the landing with the hatch on. Which of the plunger, a stray lanyard or static fired the
-hatch on the day is disputed and nothing here takes a side: on the deck it blows when it is told to.
+| T+ | | Confidence |
+| --- | --- | --- |
+| 15:37 | down; it comes upright over 58 s ("slowly coming vertical" at 16:35) | documented |
+| 26:09 | the last words, "Ah, roger" | documented |
+| 26:20 | the hatch blows, flies off (23 lb, thrown at 3.7 m/s: what lands it "about five feet from the hatch") and lies on the sea | the instant estimated; the throw derived |
+| 26:25 | Grissom goes out through it | estimated |
+| 26:43 | the sea over the sill fills the cabin, and the capsule's top goes under, 23 s after the hatch | flown |
+| 26:50 | the helicopter's line comes taut; it pulls its 4,000 lbf and cannot get the capsule out: the cabin drains to the sill and the bag slowly, and the shield stays 1.3 m under at best | taut and cast estimated; the capacity derived |
+| 30:05 | it lets go; the capsule floods again and is out of sight 46 s later | flown |
+
+Against the record (tests/afloat.test.mjs, `misses` under `afloat`): under 23 s after the hatch, where the history
+has it "sinking fast" and gone from sight as the line came taut, within a minute; flooded it weighs 6,190 lb, "over
+5000 pounds" as the history says and 12.5 per cent past the 5,000 to 6,000 it was read as before the run (a recorded
+miss: the cabin's free volume is ours).
+
+On the deck it is the same physics: **Blow the hatch** (Space once it is down, a right click on the hatch, or the
+plunger by the pilot's right arm from the couch; `flies.hatch` in [flight.ts](flight.ts)), and the hatch flies off as a
+body of its own and the sea comes in; there is no helicopter, and the clock runs on at life's pace until the capsule is
+out of sight. Left on, the capsule floats and the card says what happened to the real one. Blown in flight the hatch
+leaves at the same 3.7 m/s and comes down on its own; the flight is flown on as if the cabin were closed (what an entry
+with a hole in the side does is not in anything read, and the card says so), and down in the sea the open sill takes
+the sea at once. Which of the plunger, a stray lanyard or static fired the hatch on the day is disputed and nothing here
+takes a side: on the deck it blows when it is told to.
+
+**What the ending lacks**: the capsule goes only up and down (it does not heel, roll with the swell, drift or turn;
+the hatch faces south-west, ours); the landing bag is drawn as the flat ring it is stowed as, so the shield is drawn
+four feet higher than it hangs; the sea drawn is the globe's level surface, which the capsule rises and falls against
+rather than with, and nothing is drawn under it (it goes through the surface out of sight); the hatch lies tilted on
+the water rather than skipping; no helicopter and no Grissom in the water yet (issue #13).
 
 ## Where sources disagree
 

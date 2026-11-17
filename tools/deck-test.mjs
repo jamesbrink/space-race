@@ -515,11 +515,25 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       down = await page.evaluate(() => window.sr.cockpit.state?.landing?.t ?? null);
     }
     await run((down ?? 0) + 2);
-    const sank = await page.evaluate(() => window.sr.cockpit.run?.sinks ?? null);
+    // (afloat with its sill open from the landing it floods and goes under as sim/afloat.ts has it; the hatch flew as a body of its own)
+    const sank = await page.evaluate(() => {
+      const run = window.sr.cockpit.run;
+      return run?.afloat ? { from: run.afloat.from, under: run.afloat.under, hatch: run.loose?.some((l) => l) ?? false } : null;
+    });
     r = await read();
-    if (!down || !sank || Math.abs(sank.at - down) > 1e-6 || !/lost with its hatch blown/.test(r.card))
-      fail(where, `Liberty Bell 7's hatch blown in flight: down ${down}, sinks ${JSON.stringify(sank)}, card "${r.card.slice(0, 80)}"`);
-    else console.log(`  ${where}: Liberty Bell 7's hatch blown at 200 s: down at T+${down.toFixed(0)} s, it fills and goes under`);
+    if (
+      !down ||
+      !sank ||
+      Math.abs(sank.from - down) > 1e-6 ||
+      !Number.isFinite(sank.under) ||
+      !sank.hatch ||
+      !/lost with its hatch blown/.test(r.card)
+    )
+      fail(where, `Liberty Bell 7's hatch blown in flight: down ${down}, afloat ${JSON.stringify(sank)}, card "${r.card.slice(0, 80)}"`);
+    else
+      console.log(
+        `  ${where}: Liberty Bell 7's hatch blown at 200 s: down at T+${down.toFixed(0)} s, under ${(sank.under - down).toFixed(0)} s later`,
+      );
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
