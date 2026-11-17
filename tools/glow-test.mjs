@@ -12,6 +12,7 @@
 // through them (a Hough transform, every degree): it fails if one straight line runs through more than LINE of them (a
 // share of the frame's diagonal). It also fails if the glow is not seen where it is bright, or the page went wrong.
 // --shots writes each frame and a map of its steps (red), of what was left out (grey) and of what the glow adds.
+// Last, Liberty Bell 7's glow fitted to the model after its heat shield was let down stands where it does fitted at liftoff.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
@@ -238,6 +239,63 @@ for (const flight of FLIGHTS) {
     if (errors.length) check(false, `${where}: the page said ${errors.length} thing(s) went wrong: ${errors.slice(0, 3).join(' | ')}`);
     await close();
   }
+}
+// And the glow stands on the shield where it is in entry, whenever the model was first seen: Liberty Bell 7's shield is
+// let down four feet at T+626 on its landing bag, and a glow fitted to the model as it stood after that, with the eye near
+// enough for the finest level to be drawn, had its face four feet under the capsule's (and its body's profile read from
+// there). The glow is fitted as the page first sees the model (Effects.fit); here it is fitted again with the clock past
+// 626 s (let go, then shown there), then looked at in entry, against how it stood fitted at liftoff: where its box is, the
+// face it stands on, and how far it reaches.
+if (!only || only.includes('mr-4-liberty-bell-7')) {
+  const { page, errors, close } = await open(browser, `${url}#usa/mercury/mr-4-liberty-bell-7/site/vehicle`, { timeout: 180000 });
+  const got = await page.evaluate(async () => {
+    const sr = window.sr;
+    const st = sr.stage;
+    sr.demo.stop(true);
+    sr.demo.start = () => {};
+    sr.clock.pause();
+    const frames = async (n) => {
+      for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r));
+    };
+    const at = async (t) => {
+      sr.clock.seek(t);
+      await frames(8);
+      const shock = sr.effects.shock;
+      if (!shock?.mesh.visible) return null;
+      const u = shock.uniforms;
+      return { box: shock.mesh.position.toArray(), face: shock.face.toArray(), cap: u.uCap.value, top: u.uTop.value };
+    };
+    let entry = null;
+    for (let t = 380; t <= 640 && entry === null; t += 10) if (await at(t)) entry = t + 20;
+    if (entry === null) return null;
+    await at(300);
+    const before = await at(entry);
+    await at(700);
+    // (the eye near it, so the finest level is drawn and the hardware's clocked moves are on it)
+    st.setCamera('chase');
+    for (let i = 0; i < 300 && (st.cam.chase.journey || st.cam.blend); i++) await frames(1);
+    st.cam.chase.calm = true;
+    st.cam.chase.zoom(Math.log(8 / st.cam.chase.distance), null);
+    st.cam.chase.handSet = true;
+    await frames(30);
+    sr.effects.dispose();
+    await at(701);
+    await at(300);
+    const after = await at(entry);
+    return { entry, before, after };
+  });
+  if (!got?.before || !got.after) check(false, `Liberty Bell 7: the glow seen in entry (${JSON.stringify(got)})`);
+  else {
+    const { before: a, after: b } = got;
+    const off = Math.hypot(...b.box.map((v, i) => v - a.box[i]));
+    const face = Math.hypot(...b.face.map((v, i) => v - a.face[i]));
+    check(
+      off < 0.01 && face < 0.01 && Math.abs(b.cap - a.cap) < 0.002 && Math.abs(b.top - a.top) < 0.002,
+      `Liberty Bell 7 at T+${got.entry}: fitted after the shield was let down, the glow's box stands ${off.toFixed(3)} m and its face ${face.toFixed(3)} m from where they stand fitted at liftoff, its cap ${b.cap.toFixed(3)} of ${a.cap.toFixed(3)} radii and its reach ${b.top.toFixed(3)} of ${a.top.toFixed(3)}`,
+    );
+  }
+  if (errors.length) check(false, `Liberty Bell 7: the page said ${errors.length} thing(s) went wrong: ${errors.slice(0, 3).join(' | ')}`);
+  await close();
 }
 await browser.close();
 console.log(failures.length ? `${failures.length} failed` : 'all passed');
