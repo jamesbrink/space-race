@@ -103,6 +103,17 @@ thickness (Apollo 7 press kit, p. 26; also Apollo Operations Handbook, Block II,
 p. 1-49). This replaces the single surface which disappeared from behind in the first
 exploded preview. Tankage and internal structure are still pending.
 
+The service-module shell also participates in the normal gallery cutaway. Both
+wall faces, annular rims, seam tubes, aft closure and CM/SM fairing carry the
+same shell flag. The RCS quads and engine are separate nodes and are not clipped.
+This exposes the current empty compartment space; it does not imply tankage or
+internal structure has been reconstructed. Switching cutaway off restores every
+surface, with the existing inner wall retained for views from behind.
+
+Window construction and the unresolved mounting references are recorded in
+[windows.md](../../vehicles/windows.md). Published pane thicknesses do not, by
+themselves, establish where to put those panes in the ship.
+
 ## Pressure vessel and structural cutaway
 
 The separate inner wall uses the published Block II penetration coordinates and

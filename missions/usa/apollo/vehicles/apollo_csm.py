@@ -146,6 +146,11 @@ def build(offset=0):
         [(RADIUS, SM_TOP), (FAIRING_RADIUS, SM_TOP), (FAIRING_RADIUS, fairing_top), (command_module.radius(fairing_top - CM_BASE), fairing_top)],
         fairing,
     )
+    # These meshes enclose the service-module compartments. Clip both wall
+    # faces, the rims, seams, aft closure and fairing together; leaving an
+    # unmarked inner wall would make the apparent opening solid again.
+    # The quads and engine are separate nodes and remain whole in cutaway.
+    mark_shells([obj.name for obj in sm.children if obj.type == "MESH"])
     bell("SPS_Bell", (0, 0, 0), (0, 0, 1), SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, dark, groups["ServiceEngine"])
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):

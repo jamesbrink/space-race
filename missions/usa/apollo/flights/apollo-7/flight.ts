@@ -115,7 +115,7 @@ const parts: Part[] = [
     explode: [0, 34, 0],
     summary: 'Power, oxygen and propulsion behind the cabin.',
     detail:
-      'The barrel runs between Apollo stations XA 838 and 993, a 155-inch structure, in the CSM-101 reference drawing. The CM datum is XA 1000. An inner wall and annular rims close its documented one-inch honeycomb skin. The 26-inch-high, 13-foot-diameter CM/SM fairing follows the common Block II handbook envelope; its connection to the nominal curved shield is derived, without detailed seals or beams. Radiator pattern, fittings and nozzle profiles remain provisional. Internal tanks and fuel cells are not built.',
+      'The barrel runs between Apollo stations XA 838 and 993, a 155-inch structure, in the CSM-101 reference drawing. The CM datum is XA 1000. An inner wall and annular rims close its documented one-inch honeycomb skin. Both wall faces, rims, seams, aft closure and fairing open together in cutaway; the RCS quads and engine remain whole. The 26-inch-high, 13-foot-diameter CM/SM fairing follows the common Block II handbook envelope; its connection to the nominal curved shield is derived, without detailed seals or beams. Radiator pattern, fittings and nozzle profiles remain provisional. Internal tanks and fuel cells are not built.',
     facts: [
       ['Barrel diameter', '154 in · documented'],
       ['Barrel length', '155 in · XA 838–993 reference'],

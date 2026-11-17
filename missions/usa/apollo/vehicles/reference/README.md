@@ -132,6 +132,15 @@ surface, clipped with other skins in cutaway and kept with the CM during explosi
 Its dark window closure is temporary. Full pressure door, glazing, hinges,
 gearbox, latches, valves, handles, seals and flight-specific labels are not built.
 
+Walkover, Hart and Zosky, *The Apollo Command Module Side Access Hatch System*,
+JPL TM 33-425, printed p. 164, Figure 6 and section V.D, documents a pair of
+collapsible linkage hinges. The door first translates outboard, then rotates
+with a changing hinge point. A simple rotation about one fixed edge would not
+reconstruct that mechanism and could pull the door through its frame. Printed
+p. 167 explicitly connects the qualified unified hatch to Apollo 7 and 8.
+The section drawing establishes the mechanism's arrangement, not dimensioned
+link lengths or pivot coordinates; no hatch-opening animation is inferred yet.
+
 ## Main-console structural silhouette
 
 `apollo-main-console.json` records only the common main-console contour from the
