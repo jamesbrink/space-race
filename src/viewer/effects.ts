@@ -269,6 +269,21 @@ export class Effects {
     };
   }
 
+  /** The node `name` of `full` as it stands now, in the frame of `group` (the flown model): null if it has no mesh. */
+  private shieldOf(group: THREE.Object3D, full: THREE.Object3D, name: string): THREE.Box3 | null {
+    const into = new THREE.Matrix4().copy(group.matrixWorld).invert();
+    const to = new THREE.Matrix4();
+    const box = new THREE.Box3();
+    const piece = new THREE.Box3();
+    full.getObjectByName(name)?.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.geometry.computeBoundingBox();
+      box.union(piece.copy(mesh.geometry.boundingBox!).applyMatrix4(to.multiplyMatrices(into, mesh.matrixWorld)));
+    });
+    return box.isEmpty() ? null : box;
+  }
+
   /** Make what is drawn, and fit it to the model, the first time the vehicle is seen (and again for another model). */
   private fit(group: THREE.Object3D, full: THREE.Object3D, veils?: THREE.Object3D[]): void {
     if (this.fitted === full || !group.parent) return;
@@ -356,9 +371,14 @@ export class Effects {
       if (now && pair && group.parent) {
         const [a, b, k] = pair;
         glow = wakeOf(now.flux, now.blunt);
-        if (glow > 0 && !this.shock.mesh.visible && this.shield) {
-          // as it comes on: how long the body behind the face is now, with what it has shed gone (a stand-in for the model, which the march cannot see)
-          let top = this.shield.max.y;
+        const name = this.flight.flies?.air?.shield;
+        if (glow > 0 && !this.shock.mesh.visible && name) {
+          // as it comes on: the shield where it is now, in entry (measured as the model was first seen, a page opened after
+          // Liberty Bell 7's landing bag was let down had it four feet below the capsule, and the glow's cap with it)
+          const shield = this.shieldOf(group, full, name) ?? this.shield!;
+          this.shield = shield;
+          // and how long the body behind the face is now, with what it has shed gone (a stand-in for the model, which the march cannot see)
+          let top = shield.max.y;
           const into = new THREE.Matrix4().copy(group.matrixWorld).invert();
           const to = new THREE.Matrix4();
           const box = new THREE.Box3();
@@ -370,8 +390,13 @@ export class Effects {
             mesh.geometry.computeBoundingBox();
             top = Math.max(top, box.copy(mesh.geometry.boundingBox!).applyMatrix4(to.multiplyMatrices(into, mesh.matrixWorld)).max.y);
           });
-          const radius = (this.shield.max.x - this.shield.min.x) / 2;
-          this.shock.fit(this.shock.faceAt, radius, this.shield.max.y - this.shield.min.y, top - this.shield.min.y);
+          const radius = (shield.max.x - shield.min.x) / 2;
+          this.shock.fit(
+            new THREE.Vector3((shield.min.x + shield.max.x) / 2, shield.min.y, (shield.min.z + shield.max.z) / 2),
+            radius,
+            shield.max.y - shield.min.y,
+            top - shield.min.y,
+          );
         }
         if (glow > 0) {
           // which way the air goes past: against the motion over the turning Earth
