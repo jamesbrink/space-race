@@ -424,11 +424,11 @@ const parts: Part[] = [
     explode: [0, -4, 0],
     summary: 'Four inboard and four outboard engines under the tank cluster.',
     detail:
-      'Eight H-1 engines burn kerosene and liquid oxygen. The August 1968 Saturn IB checklist, p. 4-8, places the four inboard gimbals on a 32-inch radius with 3° outward cant, and the four outboard gimbals on a 95-inch radius with 6° outward cant. Figure 1 puts the gimbals at vehicle station 100 inches; Figure 25 fixes their relative clocking. The radii apply at the gimbals, not at the nozzle exits. Their hollow bells retain the nominal 46-inch inside exit diameter from the period News Reference. Bell contours, exit and chamber stations, display rims and absolute clocking relative to the spacecraft remain provisional; the 102-inch overall engine length is not a nozzle length. The pump cases and manifolds are estimated exterior reconstructions.',
+      'Eight H-1 engines burning kerosene and oxygen. The four inboard engines were fixed, canted 3° outward on a 32-inch radius; only the four outboard ones, canted 6° on 95 inches, swivelled to steer. Both figures are the Saturn IB checklist’s (August 1968, p. 4-8), which gives hydraulic actuators to the outboard engines only; the model takes the radii at the gimbal plane, station 100 inches. The bells are hollow with the published 46-inch exit; their shape, pumps and manifolds are estimated.',
     facts: [
-      ['Inboard mounting', '32 in radius · 3° outward cant'],
-      ['Outboard mounting', '95 in radius · 6° outward cant'],
-      ['Gimbal plane', 'Vehicle STA 100 in · nominal period reference'],
+      ['Inboard engines', 'fixed · 32 in radius · 3° outward cant'],
+      ['Outboard engines', 'gimballed · 95 in radius · 6° outward cant'],
+      ['Mounting plane', 'Vehicle STA 100 in · nominal period reference'],
       ['Nozzle exit', '46 in inside diameter · pre-SA-206 reference'],
     ],
   },
@@ -520,11 +520,11 @@ export const flight: Flight = {
     },
     {
       group: 'Launch vehicle',
-      label: 'H-1 gimbal station',
+      label: 'H-1 mounting plane station',
       value: 100 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: 'MSFC Saturn IB Mission Plan and Technical Information Checklist, revision 18, 1 August 1968, Figure 1, p. 6-3: vehicle STA 100 in. Nominal gimbal datum; individual nozzle and chamber axial stations remain provisional',
+      note: 'MSFC Saturn IB Mission Plan and Technical Information Checklist, revision 18, 1 August 1968, Figure 1, p. 6-3: vehicle STA 100 in, the engine gimbal plane. The model takes every engine’s mounting point in it, the fixed inboards’ as well as the gimballed outboards’; individual nozzle and chamber axial stations remain provisional',
     },
     {
       group: 'Launch vehicle',
@@ -532,7 +532,7 @@ export const flight: Flight = {
       value: 32 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: 'Same checklist, p. 4-8: four inboard engines, 32 in radius at the gimbals; not nozzle-exit radius',
+      note: 'Same checklist, p. 4-8: ‘Engine Mounting’, inboard (4 engines) 32 in (81 cm) radius. The inboard engines were fixed (the page gives actuators to the outboards only); the page does not say at which station the radius is taken, and the model takes it at the STA 100 mounting plane. Not a nozzle-exit radius',
     },
     {
       group: 'Launch vehicle',
@@ -540,7 +540,7 @@ export const flight: Flight = {
       value: 95 * IN,
       unit: 'm',
       confidence: 'documented',
-      note: 'Same checklist, p. 4-8: four outboard engines, 95 in radius at the gimbals; not nozzle-exit radius',
+      note: 'Same checklist, p. 4-8: ‘Engine Mounting’, outboard (4 engines) 95 in (241 cm) radius; these four gimballed, two hydraulic actuators each. Taken by the model at the STA 100 gimbal plane, which the page does not name. Not a nozzle-exit radius',
     },
     {
       group: 'Launch vehicle',
@@ -548,7 +548,7 @@ export const flight: Flight = {
       value: 3,
       unit: 'deg',
       confidence: 'documented',
-      note: 'Same checklist, p. 4-8: 3 degrees; the upward engine axis points inward, exhaust outward',
+      note: 'Same checklist, p. 4-8: 3 degree cant angle, fixed; the upward engine axis points inward, exhaust outward',
     },
     {
       group: 'Launch vehicle',

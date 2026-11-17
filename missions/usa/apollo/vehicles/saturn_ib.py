@@ -34,11 +34,13 @@ INTERSTAGE_TOP = 1187.0
 H1_EXIT_INNER_RADIUS = (3 * 12 + 10) / 2
 J2_EXIT_INNER_RADIUS = (6 * 12 + 5) / 2
 # MSFC Saturn IB Mission Plan and Technical Information Checklist, revision 18
-# (1 August 1968), p.4-8 and Figure 1, p.6-3. These are gimbal-centre radii,
-# NOT nozzle-exit radii. The +Z engine axis points inward toward the nose;
+# (1 August 1968), p.4-8 ("Engine Mounting") and Figure 1, p.6-3. The four inboard engines
+# were fixed and only the four outboards gimballed (p.4-8: actuators on the outboard engines
+# only). The page does not say where its radii are taken: they are placed here in the STA 100
+# gimbal plane, every engine's mounting point, NOT at the nozzle exits. The +Z engine axis points inward toward the nose;
 # its exhaust points outward. Figure 25 places odd fin lines on the vehicle
 # positions and even lines on the outboard engines. Absolute CSM clocking is pending.
-H1_GIMBAL_STATION = 100
+H1_MOUNT_STATION = 100
 H1_INBOARD_RADIUS, H1_INBOARD_CANT = 32, 3
 H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT = 95, 6
 # Photographic estimates, NOT drawing dimensions: NASA S68-50712 and S68-29781.
@@ -116,7 +118,7 @@ def outer_tank(index, angle, white, black, parent):
             if SIB_FIELD_LO < centre.z / IN < SIB_FIELD_HI and abs(math.atan2(centre.y, centre.x)) < half:
                 polygon.material_index = 1
     tank.rotation_euler.z = angle
-    tank.location.x, tank.location.y = radial(93, angle, 0)[:2]
+    tank.location.x, tank.location.y = radial(structure.SIB_TANK_PITCH_RADIUS, angle, 0)[:2]
     return tank
 
 
@@ -179,10 +181,9 @@ def build():
         r, cant = (H1_INBOARD_RADIUS, H1_INBOARD_CANT) if i < 4 else (H1_OUTBOARD_RADIUS, H1_OUTBOARD_CANT)
         s, c = math.sin(math.radians(cant)), math.cos(math.radians(cant))
         mount = group(f"H1_Mount_{i}", groups["FirstStageEngines"])
-        mount.matrix_local = frame(radial(r, a, H1_GIMBAL_STATION), (-s * math.cos(a), -s * math.sin(a), c))
-        # Retain the provisional contour in the engine's own frame. Its old
-        # Z0..108 study becomes -100..8 relative to the documented gimbal.
-        # This corrects the mounting, not the unknown exit/chamber stations.
+        mount.matrix_local = frame(radial(r, a, H1_MOUNT_STATION), (-s * math.cos(a), -s * math.sin(a), c))
+        # The provisional contour in the engine's own frame, from 100 in below the
+        # mounting plane to 8 in above it; the exit and chamber stations are not known.
         bell(f"H1_Bell_{i}", (0, 0, -100 * IN), (0, 0, 1), 70, H1_EXIT_INNER_RADIUS + BELL_RIM, steel, mount)
         tube(f"H1_Chamber_{i}", (0, 0, -36 * IN), (0, 0, 8 * IN), 8, steel, mount)
         if srlib.interior():
@@ -206,7 +207,7 @@ def build():
     for i in range(4):
         a = TAU * i / 4
         fuel_angle = a + math.pi / 4
-        centre = radial(93, fuel_angle, 0)[:2]
+        centre = radial(structure.SIB_TANK_PITCH_RADIUS, fuel_angle, 0)[:2]
         lettering(
             "UNITED STATES",
             fuel_angle,

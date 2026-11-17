@@ -13,15 +13,15 @@ is converted once with `IN`. `flight.ts` quotes the same dimensions with confide
 | S-IB stage length | 80.2 ft | documented, p. 32, rounded |
 | Outer tanks | 8 × 70 in diameter | documented, p. 32 |
 | Centre oxygen tank | 105 in diameter | documented, p. 32 |
-| Tank cluster pitch radius | 93 in | estimated, not a documented tank station |
+| Tank cluster pitch radius (`SIB_TANK_PITCH_RADIUS`) | 93 in | estimated: no drawing read gives it; chosen to clear the centre tank (52.5 + 35 = 87.5 in would touch) with room for the lines between |
 | S-IVB stage envelope | 58.4 ft | documented, p. 32, rounded |
 | S-IVB separation plane, vehicle station | 1187 in | documented, AS-205 flight evaluation Figure A-1, p. 206; rounded |
 | Interstage span in this reconstruction | 224.6 in | derived: rounded STA1187 minus rounded S-IB top962.4; not an as-built measurement |
 | H-1 nozzle exit inside diameter | 46 in | documented nominal, 1968 Saturn IB News Reference, H-1 fact sheet (PDF p. 45) |
 | J-2 nozzle exit inside diameter | 77 in | documented nominal, same reference, J-2 fact sheet (PDF p. 69) |
-| H-1 gimbal plane | vehicle STA100 in | documented nominal, MSFC *Saturn IB Mission Plan and Technical Information Checklist*, revision 18 (1 August 1968), Figure 1, p. 6-3 |
-| Inboard H-1 mounting radius / outward cant | 32 in / 3° | documented nominal, same checklist, p. 4-8 |
-| Outboard H-1 mounting radius / outward cant | 95 in / 6° | documented nominal, same checklist, p. 4-8 |
+| H-1 mounting (gimbal) plane | vehicle STA100 in | documented nominal, MSFC *Saturn IB Mission Plan and Technical Information Checklist*, revision 18 (1 August 1968), Figure 1, p. 6-3 |
+| Inboard H-1 mounting radius / outward cant (fixed engines) | 32 in / 3° | documented nominal, same checklist, p. 4-8; the station at which the radius is taken is the model's (STA100) |
+| Outboard H-1 mounting radius / outward cant (gimballed engines) | 95 in / 6° | documented nominal, same checklist, p. 4-8; taken at the STA100 gimbal plane |
 | IU height / diameter | 36 / 260 in | documented, p. 33 |
 | Spacecraft adapter length | 28 ft | documented, p. 26 |
 | Adapter aft / forward diameter | 260 / 154 in | documented, p. 26 |
@@ -167,28 +167,32 @@ survey, tank end stations, or absolute clocking relative to the spacecraft.
 Those geometric and marking limitations above remain. No Skylab engine thrust
 rating or late-vehicle configuration is silently applied to SA-205.
 
-## Period H-1 mounting correction
+## H-1 mounting
 
 The MSFC *Saturn IB Mission Plan and Technical Information Checklist*, revision 18,
-**1 August 1968**, p. 4-8 (PDF p. 33), specifies four inboard engines on a **32-inch
-radius**, canted **3° outward**, and four outboard engines on a **95-inch radius**,
-canted **6° outward**. Figure 1, printed p. 6-3 (PDF p. 167), labels the engine gimbal
-plane **vehicle STA100**. These radii belong at the **gimbals**, not at the nozzle exits.
-The upward engine axes point inward; exhaust points outward. Figure 25, p. 6-28
-(PDF p. 192), places the inboards on vehicle positions I–IV / odd fin lines, and
-the outboards on even fin lines, with 45° between adjacent fin lines. The model
-now follows that relative arrangement. Its absolute clocking relative to the CSM
-and pad remains unverified. No later Skylab engine rating is used.
+**1 August 1968**, p. 4-8 (PDF p. 33), "Engine Mounting": four outboard engines on a
+**95-inch (241 cm) radius** with a **6 degree** cant angle, four inboard engines on a
+**32-inch (81 cm) radius** with a **3 degree** cant angle; and "Actuators (Outboard
+Engines Only)", two hydraulic actuators per engine, ±8° in a square pattern. So the
+**inboard engines were fixed** and only the outboard four swivelled to steer. The page
+does not say at which station its radii are measured. Figure 1, printed p. 6-3 (PDF
+p. 167), labels the engine gimbal plane **vehicle STA100**, and the model places every
+engine's mounting point in that plane (`H1_MOUNT_STATION`): the outboards' gimbals and
+the fixed inboards' mounts. The radii are not nozzle-exit radii. The upward engine
+axes point inward; exhaust points outward. Figure 25, p. 6-28 (PDF p. 192), places the
+inboards on vehicle positions I–IV / odd fin lines, and the outboards on even fin
+lines, with 45° between adjacent fin lines; the model follows that relative
+arrangement. Its absolute clocking relative to the CSM and pad is unverified. No later
+Skylab engine rating is used.
 
-Each engine has its own gimbal frame, and both the existing bell and chamber
-inherit that frame. This replaces the initial vertical engines placed at guessed
-43/91-inch radii. The previous contour is retained **as a provisional study**:
-its local axial coordinates are rebased by subtracting 100 inches from the old
-Z0..108 coordinates. The resulting exit-to-gimbal distance is **not** a new
-documented measurement. Do not use these engine shapes for physics or infer a
-nozzle length from the published overall engine length. No unknown mounting
-hardware is filled in. The production GLBs at all three levels are checked for
-the gimbal positions, inherited bell axes, cant directions and relative clocking.
+Each engine has its own mounting frame (`H1_Mount_<i>`), and its bell and chamber
+inherit it. The bell's contour is a provisional study, from 100 inches below the
+mounting plane to 8 inches above it; that exit-to-mount distance is **not** a
+documented measurement. Do not use these engine shapes for physics or infer a nozzle
+length from the published overall engine length. No unknown mounting hardware is
+filled in. tests/flights.test.mjs checks the mounting positions, the bells' axes, the
+cant directions and the relative clocking in the GLBs at all three levels, against
+the figures in flight.ts.
 
 The inherited bell contour's tilted lower rim now extends below the vehicle
 station-zero plane. The published rounded 224-foot stack height is a reference,

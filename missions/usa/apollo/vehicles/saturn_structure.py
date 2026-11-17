@@ -9,7 +9,10 @@ from srlib import IN, TAU, MeshBuilder, frame, group, interior, mark_shells, mat
 # Douglas SM-46978A, fig. AP 2-1. Match its separation plane to the MSFC checklist fig. 6 vehicle datum.
 DOUGLAS_OFFSET = 1186.804 - 200.6
 DOME_RADIUS = 130
-SIB_CLUSTER_RADIUS = 93  # existing estimated transverse installation
+# The S-IB outer tanks' pitch radius, axis to axis: ESTIMATED. No drawing read gives it. 93 in clears the
+# 105-inch centre tank and the 70-inch outer tanks (52.5 + 35 = 87.5 in would have them touching) with room for the
+# lines between them, and puts the outer tanks' outside at 128 in from the axis. Listed in saturn-ib.md.
+SIB_TANK_PITCH_RADIUS = 93
 SIB_SKIRT_BOTTOM, SIB_SKIRT_TOP = 192, 938  # rounded from the SA-203 onward profile, fig. 5
 
 
@@ -74,7 +77,7 @@ def first_stage(parent, metal, warm, dark):
     for i in range(9):
         centre_tank = i == 8
         a = TAU * i / 8
-        centre = polar(0 if centre_tank else SIB_CLUSTER_RADIUS, a, 0)
+        centre = polar(0 if centre_tank else SIB_TANK_PITCH_RADIUS, a, 0)
         radius = 52.5 if centre_tank else 35
         r = radius - 0.7
         lo, hi = (267, 873) if centre_tank else (260, 868 if i % 2 == 0 else 826)
@@ -167,7 +170,7 @@ def first_stage(parent, metal, warm, dark):
     gas = MeshBuilder()
     helium_radius = 12 * (3 * 19.28 / (4 * math.pi)) ** (1 / 3)  # gas-space equivalent radius
     for a in (5 * math.pi / 4, 7 * math.pi / 4):
-        ball(gas, polar(SIB_CLUSTER_RADIUS, a, 899), helium_radius)
+        ball(gas, polar(SIB_TANK_PITCH_RADIUS, a, 899), helium_radius)
     finish(gas, "SIB_FuelPressurizationSpheres", metal, parent)
 
 
