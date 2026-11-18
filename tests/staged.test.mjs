@@ -703,10 +703,13 @@ for (const f of part(flown)) {
         after = samples[index];
       assert.deepEqual(after.attitude, before.attitude);
       assert.equal(after.passive.alignment, 0);
+      let prior = after;
       for (const sample of samples.slice(index)) {
         assert.ok(sample.t >= ship.parted);
         assert.equal(sample.burning.length, 0);
         if (!sample.passive.alignment) assert.deepEqual(sample.attitude, after.attitude);
+        if (sample.groundSpeed < 1) assert.deepEqual(sample.attitude, prior.attitude);
+        prior = sample;
       }
       assert.ok(
         samples.some((s) => s.passive?.alignment > 0),

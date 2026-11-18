@@ -992,6 +992,7 @@ export function recordSamples(
   // there when the period ends; the slow turning that followed is not drawn
   const periods = plan.record?.manual?.periods ?? [];
   let rest = held;
+  let supportedWind: Vec3 = [0, 0, 0];
   let baseAtRelease = held,
     alignment = 0;
   let left: Quat | null = null;
@@ -1005,8 +1006,11 @@ export function recordSamples(
     }
     const passive = ship.entry.aero.passiveSphere && s.t >= parts;
     if (passive) {
-      if (s.t > parts && s.entering) alignment = Math.max(alignment, Math.min(1, Math.max(0, (s.g - ENTRY_G) / (1 - ENTRY_G))));
-      q = passiveSpherePose(baseAtRelease, wind, alignment);
+      if (length(wind) >= 1) {
+        supportedWind = wind;
+        if (s.t > parts && s.entering) alignment = Math.max(alignment, Math.min(1, Math.max(0, (s.g - ENTRY_G) / (1 - ENTRY_G))));
+      }
+      q = passiveSpherePose(baseAtRelease, supportedWind, alignment);
     } else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
@@ -1039,7 +1043,7 @@ export function recordSamples(
       v: s.v,
       axis,
       attitude: q,
-      ...(passive && { passive: { wind, alignment } }),
+      ...(passive && { passive: { wind: supportedWind, alignment } }),
       ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
       alpha: 0,
       burning: [
