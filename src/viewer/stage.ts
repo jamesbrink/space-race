@@ -256,6 +256,8 @@ export class Stage {
   onWalkEyes: (through: boolean) => void = () => {};
   /** While walking: the mouse has been captured for looking round, or let go. */
   onWalkLook: (captured: boolean) => void = () => {};
+  /** While walking: Escape has let the captured mouse go, and the walk goes on (onfoot/escape.ts). */
+  onWalkFreed: () => void = () => {};
   /** First-person walking (walk.ts). While it is active the orbiting camera's rules are all suspended. */
   readonly walk: Walker;
   /** The last tap, and the figure that can be walked as that it landed on, for telling a double tap on one. */
@@ -669,6 +671,7 @@ export class Stage {
         this.onWalkView(third);
       },
       locked: (on) => this.onWalkLook(on),
+      freed: () => this.onWalkFreed(),
     });
 
     this.hands = new HandWorks({

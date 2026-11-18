@@ -25,7 +25,7 @@ import { FlightPath } from '../viewer/path.ts';
 import type { Stage, Thing, WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
 import { scripted, unattended } from '../util/env.ts';
-import { is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
+import { capsOf, is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 
 /** A flight's page, as `open` gives it: what it shows, how to follow the address within it, and how to let it go. */
@@ -517,12 +517,13 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       ui.say('From the couch', '', `${n ? `${n > 1 ? `1–${n}` : '1'} lean and look out · ` : ''}P brings the flight deck back`);
     }
   }
-  // Escape first lets go of a look out of a window or into the periscope; only then is it the flight deck's (which it leaves)
+  // Escape first lets go of a look out of a window or into the periscope; only then is it the flight deck's (which it leaves).
+  // (In a couch boarded on foot with the mouse captured, the first Escape frees the mouse and the lean stays: the walker's.)
   scope.on(
     window,
     'keydown',
     (e) => {
-      if (!is(e, 'page.back') || !stage.seats.lookingOut) return;
+      if (!is(e, 'page.back') || !stage.seats.lookingOut || stage.walk.captured) return;
       stage.seats.leanTo(null);
       e.stopImmediatePropagation();
       e.preventDefault();
@@ -550,6 +551,11 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     if (!on) show(model, false, true);
   };
   stage.onWalkLook = (captured) => ui.setWalkLook(captured);
+  // the first Escape only frees the mouse (onfoot/escape.ts): say so, and the two ways on
+  stage.onWalkFreed = () => {
+    const esc = capsOf('foot.leave')[0];
+    ui.say('The mouse is free', `Click the view to look round again · ${esc} ${working ? 'lets go of the controls' : 'leaves'}`);
+  };
   stage.onWalkEyes = (through) => ui.setThroughEyes(through);
   stage.onWalkView = (third) => {
     prefs.set('walkThird', third);

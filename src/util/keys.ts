@@ -64,7 +64,16 @@ export const KEYS = {
   'foot.jump': { slots: [' '], does: 'jump', when: 'on foot' },
   'foot.act': { slots: ['e'], does: 'act on what you face', when: 'on foot' },
   'foot.view': { slots: ['c'], does: 'eyes · over the shoulder', when: 'on foot' },
-  'foot.leave': { slots: ['escape'], does: 'back to the camera', when: 'on foot (V too: walk.go)' },
+  'foot.free': {
+    slots: ['escape'],
+    does: 'free the mouse',
+    when: 'on foot, the mouse captured for looking round: the walk goes on (viewer/onfoot/escape.ts)',
+  },
+  'foot.leave': {
+    slots: ['escape'],
+    does: 'back to the camera',
+    when: 'on foot, the mouse free: a second Esc, or the first where it was never captured (V too, at once: walk.go)',
+  },
   'foot.climb': { slots: ['w', 's'], does: 'up · down', when: 'on a ladder' },
   'work.push': {
     slots: [
