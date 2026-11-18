@@ -88,15 +88,16 @@ def stabilizers(X, M, node, az: float, side: str) -> None:
     hang(grids.build(f"Fairing_{side}_Grids", M["steel"], None, sharp_angle=30), node)
 
 
-def build_fairing(X, M, hatch_az: float, hatch_z: float) -> None:
+def build_fairing(X, M, hatch_az: float, hatch_z: float, *, shoulder=FAIRING_SHOULDER) -> None:
+    profile = [*FAIRING_PROFILE[:2], (FAIRING_R, shoulder), FAIRING_PROFILE[-1]]
     adapter = Local(X)
     adapter.lathe(
-        [(voskhod_upper.BLOCK_I_R - 4, FAIRING_FOOT - 170), (FAIRING_PROFILE[0][0] - 8, FAIRING_FOOT - 4)],
+        [(voskhod_upper.BLOCK_I_R - 4, FAIRING_FOOT - 170), (profile[0][0] - 8, FAIRING_FOOT - 4)],
         96,
     )
     adapter.build("BlockI_FairingSupport", M["lacquer"], bpy.data.objects["BlockI"], sharp_angle=30)
     g = group("Fairing")
-    inner = [(r - WALL, z) for r, z in FAIRING_PROFILE]
+    inner = [(r - WALL, z) for r, z in profile]
     gap = math.radians(0.16)
     hatch_az = math.radians(hatch_az)
     hatch_z += FAIRING_FOOT
@@ -104,19 +105,19 @@ def build_fairing(X, M, hatch_az: float, hatch_z: float) -> None:
         arc = (az - math.pi / 2 + gap, az + math.pi / 2 - gap)
         node = pivot(f"Fairing_{side}", g, X @ V(FAIRING_R * math.cos(az), FAIRING_R * math.sin(az), FAIRING_FOOT))
         skin, wall, fit = Local(X), Local(X), Local(X)
-        skin.lathe(FAIRING_PROFILE, 64, arc=arc)
+        skin.lathe(profile, 64, arc=arc)
         wall.lathe(inner, 64, arc=arc, flip=True)
-        for (r, z), flip in ((FAIRING_PROFILE[0], True), (FAIRING_PROFILE[-1], False)):
+        for (r, z), flip in ((profile[0], True), (profile[-1], False)):
             skin.lathe([(r - WALL, z), (r, z)], 64, arc=arc, flip=flip)
         for a, flip in ((arc[0], False), (arc[1], True)):
             c, s = math.cos(a), math.sin(a)
 
             def edge(u, v, c=c, s=s):
-                r, z = FAIRING_PROFILE[int(v)]
+                r, z = profile[int(v)]
                 return ((r - WALL * u) * c, (r - WALL * u) * s, z)
 
-            skin.grid(edge, [0.0, 1.0], list(range(len(FAIRING_PROFILE))), flip=flip)
-        for z in (FAIRING_FOOT + 294, FAIRING_FOOT + 2170, FAIRING_SHOULDER - 65):
+            skin.grid(edge, [0.0, 1.0], list(range(len(profile))), flip=flip)
+        for z in (FAIRING_FOOT + 294, FAIRING_FOOT + 2170, shoulder - 65):
             fit.lathe(
                 [(FAIRING_R - 3, z - 18), (FAIRING_R + 8, z - 10), (FAIRING_R + 8, z + 10), (FAIRING_R - 3, z + 18)],
                 64,
@@ -138,7 +139,7 @@ def build_fairing(X, M, hatch_az: float, hatch_z: float) -> None:
         stabilizers(X, M, node, az, side)
 
 
-def build_tower(X, M, *, exposed=False) -> None:
+def build_tower(X, M, *, exposed=False, height=LENGTH) -> None:
     """External silhouette of the original SAS, including the broad shrouded lower body."""
     node = group("EscapeTower")
     cover, metal, cap = Local(X), Local(X), Local(X)
@@ -167,16 +168,22 @@ def build_tower(X, M, *, exposed=False) -> None:
         (147, z + 1950),
         (147, z + 3580),
     ]
-    cover.lathe(exposed_profile if exposed else enclosed_profile, 64)
+
+    # Shorten the shaft above the motor bank for the later Soyuz-U stack datum.
+    def tower_height(station):
+        datum = z + 1310
+        return station if height == LENGTH or station <= datum else datum + (station - datum) * (height - datum) / (LENGTH - datum)
+
+    cover.lathe([(r, tower_height(station)) for r, station in (exposed_profile if exposed else enclosed_profile)], 64)
     cap.lathe(
         [
-            (146, z + 3584),
-            (190, z + 3620),
-            (194, z + 4050),
-            (102, z + 4180),
-            (36, z + 4280),
-            (29, LENGTH - 30),
-            (0, LENGTH),
+            (146, tower_height(z + 3584)),
+            (190, tower_height(z + 3620)),
+            (194, tower_height(z + 4050)),
+            (102, tower_height(z + 4180)),
+            (36, tower_height(z + 4280)),
+            (29, height - 30),
+            (0, height),
         ],
         64,
     )
@@ -197,7 +204,7 @@ def build_tower(X, M, *, exposed=False) -> None:
         mesh.build(f"EscapeTower_{name}", M[mat], node, sharp_angle=32)
 
 
-def build(hatch_az: float, hatch_z: float, *, exposed_tower=False) -> str:
+def build(hatch_az: float, hatch_z: float, *, exposed_tower=False, height=LENGTH, fairing_shoulder=FAIRING_SHOULDER) -> str:
     M = reuse(materials())
     core.build(BASE_Z, M, web_foot=244.0, top=CORE_TOP)
     for letter, az in BOOSTER_AZ.items():
@@ -207,7 +214,7 @@ def build(hatch_az: float, hatch_z: float, *, exposed_tower=False) -> str:
     block_frame = core_frame(BASE_Z + LATTICE_TOP - voskhod_upper.LATTICE_TOP)
     voskhod_upper.build_aft_section(block_frame, M)
     voskhod_upper.build_block_i(block_frame, M, adapter=ADAPTER, engine="RD0110")
-    build_fairing(X, M, hatch_az, hatch_z)
-    build_tower(X, M, exposed=exposed_tower)
+    build_fairing(X, M, hatch_az, hatch_z, shoulder=fairing_shoulder)
+    build_tower(X, M, exposed=exposed_tower, height=height)
     mark_shells(SHELLS)
-    return f"{LENGTH * MM:.3f} m on the pad, {SPAN * MM:.3f} m over the rudders"
+    return f"{height * MM:.3f} m on the pad, {SPAN * MM:.3f} m over the rudders"

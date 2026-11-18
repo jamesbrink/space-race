@@ -9,9 +9,26 @@ import { flight as soyuz3 } from '../missions/ussr/soyuz/flights/soyuz-3/flight.
 import { flight as soyuz4 } from '../missions/ussr/soyuz/flights/soyuz-4/flight.ts';
 import { flight as soyuz10 } from '../missions/ussr/soyuz/flights/soyuz-10/flight.ts';
 import { flight as soyuz12 } from '../missions/ussr/soyuz/flights/soyuz-12/flight.ts';
+import { flight as soyuz16 } from '../missions/ussr/soyuz/flights/soyuz-16/flight.ts';
 import { plinths } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { framesOf, hierarchy } from './glb.mjs';
+
+function boundsOf(gltf) {
+  const meshBounds = gltf.meshes.map((mesh) =>
+    mesh.primitives.map((primitive) => {
+      const { min, max } = gltf.accessors[primitive.attributes.POSITION];
+      return new Box3(new Vector3(...min), new Vector3(...max));
+    }),
+  );
+  return (node) => {
+    const box = new Box3();
+    node.traverse((child) => {
+      for (const local of meshBounds[child.userData.mesh] ?? []) box.union(local.clone().applyMatrix4(child.matrixWorld));
+    });
+    return box;
+  };
+}
 
 for (const [flight, leftOpens] of [
   [soyuz1, false],
@@ -27,19 +44,7 @@ for (const [flight, leftOpens] of [
       const gltf = JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)));
       const root = hierarchy(gltf);
       const slider = new Exploder(root, model.parts);
-      const meshBounds = gltf.meshes.map((mesh) =>
-        mesh.primitives.map((primitive) => {
-          const { min, max } = gltf.accessors[primitive.attributes.POSITION];
-          return new Box3(new Vector3(...min), new Vector3(...max));
-        }),
-      );
-      const bounds = (node) => {
-        const box = new Box3();
-        node.traverse((child) => {
-          for (const local of meshBounds[child.userData.mesh] ?? []) box.union(local.clone().applyMatrix4(child.matrixWorld));
-        });
-        return box;
-      };
+      const bounds = boundsOf(gltf);
       const relative = (part, parent) =>
         root.getObjectByName(part).getWorldPosition(new Vector3()).sub(root.getObjectByName(parent).getWorldPosition(new Vector3()));
       const pairs = [
@@ -295,5 +300,50 @@ for (const suffix of ['', '.lod1', '.lod2']) {
         assert.ok(seat.hide.length && seat.hide.every((name) => couches.getObjectByName(name)));
       }
     }
+  });
+}
+
+for (const suffix of ['', '.lod1', '.lod2']) {
+  test(`Soyuz 16${suffix}: both arrays deploy and the Apollo test ring separates from the Soyuz docking mechanism`, () => {
+    const model = soyuz16.models[0];
+    const file = new URL(`../public/${model.url.replace('.glb', `${suffix}.glb`)}`, import.meta.url);
+    const bytes = readFileSync(file);
+    const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)));
+    const root = hierarchy(gltf);
+    const slider = new Exploder(root, model.parts);
+    const bounds = boundsOf(gltf);
+    const pos = (name) => root.getObjectByName(name).getWorldPosition(new Vector3());
+    const offset = (part, parent) => pos(part).sub(pos(parent));
+    const span = () => {
+      root.updateMatrixWorld(true);
+      return bounds(root.getObjectByName('SolarRight')).max.x - bounds(root.getObjectByName('SolarLeft')).min.x;
+    };
+    for (const node of ['Igla', 'DockingProbe', 'LksaCamera']) assert.equal(root.getObjectByName(node), undefined);
+    const frames = framesOf(file);
+    const aft = frames.box('ServiceModule').lo[1];
+    assert.ok(Math.abs(frames.box('ApasCaptureRing').hi[1] - aft - 7.48) < 0.002, 'native guide tips match the adopted sister-ship datum');
+    assert.ok(Math.abs(frames.box('TestDockingRing').hi[1] - aft - 7.6) < 0.002, 'the test fixture defines the taller flown configuration');
+    assert.ok(Math.abs(frames.box('EscapeTower').hi[1] - frames.box('CoreEngine').lo[1] - 49.3) < 0.002, 'nominal Soyuz-U stack height');
+    const initialSpan = span();
+    assert.ok(initialSpan < 3, 'both wings are stowed inside the launch shroud');
+    const mounted = offset('TestDockingRing', 'ApasCollar');
+    const collar = offset('ApasCollar', 'OrbitalModule');
+    slider.set(0.48);
+    assert.ok(Math.abs(span() - 8.37) < 0.015, '8.37 m tip to tip across the deployed solar arrays');
+    assert.ok(offset('TestDockingRing', 'ApasCollar').distanceTo(mounted) < 0.001, 'test fixture still mounted after array deployment');
+    slider.set(1);
+    assert.ok(offset('TestDockingRing', 'ApasCollar').y > mounted.y + 0.5, 'the released test ring clears the spacecraft nose');
+    assert.ok(offset('ApasCollar', 'OrbitalModule').distanceTo(collar) < 0.001, 'the docking collar stays on the orbital module');
+    slider.set(0);
+    assert.ok(offset('TestDockingRing', 'ApasCollar').distanceTo(mounted) < 0.001);
+    assert.ok(Math.abs(span() - initialSpan) < 0.001);
+    if (!suffix) {
+      const couches = root.getObjectByName('Couches');
+      for (const member of ['Filipchenko', 'Rukavishnikov']) assert.ok(couches.getObjectByName(`Crew_${member}`));
+      assert.equal(model.seats.length, 2);
+      for (const seat of model.seats)
+        assert.ok(couches.getObjectByName(seat.node) && seat.hide.length && seat.hide.every((n) => couches.getObjectByName(n)));
+    }
+    for (const view of ['dock', 'test-ring']) assert.ok(model.views.find((v) => v.id === view)?.isolate);
   });
 }
