@@ -154,6 +154,7 @@ def build(
     centre=None,
     sequence=None,
     more: dict[str, str] | None = None,
+    rate_switch: bool = False,
 ) -> dict:
     """Everything inside capsule 11's pressure vessel but the pilot. As mercury_cabin.build, with `window` where the
     flight's script put the inner panes (their frame, as a matrix) and `scope_z` the station the periscope's objective
@@ -195,7 +196,7 @@ def build(
         mc.periscope(c, P, side, out, box=box, station=scope_z, run=((0.0, 9.0, 36.2), (0.0, 16.5, 39.6)))
     elif centre:
         centre(c, P, side, faces, box)
-    consoles(c, P, side, faces, sequence or SEQUENCE)
+    consoles(c, P, side, faces, sequence or SEQUENCE, rate_switch)
     mc.controls(c, seat, pilot, out)
     if suit:
         # (the convex mirror on Grissom's chest is the suit's own: crew/mark_iv_suit.py, MR_4)
@@ -285,20 +286,20 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, earth: bool = Tr
             blank(c, P, [(u + (r + 0.14) * math.cos(TAU * k / 24), v + (r + 0.14) * math.sin(TAU * k / 24)) for k in range(24)])
             continue
         round_dial(c, P, faces, name, mc.ROUND[name], u, v, r)
-        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)  # its case behind the panel
+        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 48)  # its case behind the panel
     # control fuel, which capsule 7 had on its left console
     (u, v), r = fig(170, 455), 118 * S / 2
     if "ControlFuel" in without:
         blank(c, P, [(u + (r + 0.14) * math.cos(TAU * k / 24), v + (r + 0.14) * math.sin(TAU * k / 24)) for k in range(24)])
     else:
         mc.fuel_gauge(c, P, faces, u, v, r)
-        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)
+        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 48)
     # An instrument with two needles under the oxygen flow switch, whose legend the figure does not let us read: its
     # case and a plain face, and no needles of ours.
     (u, v), r = fig(1310, 655), 122 * S / 2
     c.turned("CrewCabin_Bezels", P, u, v, [(r + 0.14, 0.0), (r + 0.14, 0.3), (r * 0.94, 0.3), (r * 0.92, 0.06)], 32)
     c.disc("CrewCabin_Bezels", P, u, v, r * 0.93, 0.06, None)
-    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)
+    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 48)
     # The pilot-observer camera's lens, looking back at him: the figure draws an empty circle here, where capsule 7's
     # panel had the lens, and the camera was aboard (This New Ocean, p. 368: the chest mirror was for it).
     u, v = fig(248, 1130)
@@ -428,7 +429,7 @@ def earth_path(c: Cabin, P: Matrix, faces: Sheet) -> None:
 # --------------------------------------------------------------------------- the consoles
 
 
-def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, sequence=SEQUENCE) -> None:
+def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, sequence=SEQUENCE, rate_switch: bool = False) -> None:
     """The left console in its two parts, each turned further toward the pilot, and the right console. The figure
     draws them flat beside the main panel; how they were canted is taken as capsule 7's (mercury_cabin: estimated).
     `sequence`: the column of sequence lights, where a capsule's was not No. 11's."""
@@ -510,6 +511,8 @@ def consoles(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, sequence=SEQUENCE)
             # under its switch, as it does RETRO HEAT's OFF), OFF at its right (Results of the Second flight, Figure
             # 2-3). Built at BOTH: "cabin lights are both" (the same, p. 45). The viewer throws it (mercury_cabin.thrown).
             mc.thrown(c, Cx, u, v, "CabinLights", "h", (-mc.TOGGLE_LEAN, 0.0, mc.TOGGLE_LEAN))
+        elif p1 == "RATE\nCOMD" and rate_switch:
+            mc.thrown(c, Cx, u, v, "RateCommand", "h", (-mc.TOGGLE_LEAN, mc.TOGGLE_LEAN))
         else:
             toggle(c, Cx, u, v, "h")
         if name:

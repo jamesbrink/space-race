@@ -30,6 +30,7 @@ import {
   OBJECTIVE_OUT,
   sequenceLamp,
 } from '../../vehicles/cabin.ts';
+import { BAG_DROP } from '../../vehicles/mercury-afloat.ts';
 import { SPEC as CAPSULE_SPEC } from '../../vehicles/mercury-capsule.ts';
 import { CAPSULE_PLANE, CHUTES, cutoffMass, type Day, plan as mercuryRedstonePlan, PLR } from '../../vehicles/mercury-redstone.ts';
 import {
@@ -51,7 +52,6 @@ import {
   type PartWords as StackWords,
   WINDOW_AZ,
 } from '../../vehicles/mercury-redstone-stack.ts';
-import { BAG_DROP } from '../../vehicles/mercury-afloat.ts';
 import { ON_THE_PAD, periscopeMechanism, periscopeMoves } from '../../vehicles/periscope.ts';
 import { AFLOAT, HATCH_LOOSE } from './afloat.ts';
 import { GRISSOM, HUNT_CLUB_1, HUNT_CLUB_3 } from './recovery.ts';
@@ -1704,6 +1704,15 @@ vehicle.cabin = {
     ...mercuryControls({
       Ctl_RetroFire: 'Guarded push button. Grissom fired them himself, on Cap Com’s count, at 05:10; here the guard is off.',
     }),
+    {
+      node: 'Ctl_RateCommand',
+      name: 'Rate command',
+      about:
+        'AUTO or RATE COMD on the ASCS mode panel (MR-4 Results, figure 2-3). In the free capsule, rate command makes the manual jets hold the turn rate asked for by the stick.',
+      does: 'rate',
+      holds: 'rate',
+      says: ['Auto', 'Rate command'],
+    },
     { node: 'Ctl_Snorkel', name: 'Snorkel', about: 'Pull ring: opens the cabin’s air inlets by hand. Not simulated.' },
     {
       node: 'Hatch_Plunger',

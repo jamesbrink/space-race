@@ -479,6 +479,22 @@ def build_crew_cabin(M, window: dict) -> None:
     v.lathe(prof([(rv(CONE_H - 0.3), CONE_H - 0.3), (0.0, CONE_H - 0.3)]), 144)  # the small bulkhead
     mercury_capsule.sill(v, HATCH)
     v.build("CrewCabin_PressureVessel", M["titanium"], g, sharp_angle=30)
+    # Two pressure seals remain on the sill when the hatch leaves. Their sections and
+    # spacing within the opening are estimated (spacecraft.md, “The hatch”).
+    t0, t1, z0, z1 = HATCH
+    seals = MeshBuilder()
+    for depth in (0.3, 0.65):
+
+        def lip(t, z):
+            return CONE.p(t, z, -0.1).lerp(VESSEL.p(t, z), depth)
+
+        half_width = 0.07  # inches
+        for end, direction in ((z0, 1), (z1, -1)):
+            path = [t0 + (t1 - t0) * j / 24 for j in range(25)]
+            seals.grid(lambda t, dz: lip(t, end + direction * 0.09 + dz), path, (-half_width, half_width))
+        for end, direction in ((t0, 1), (t1, -1)):
+            seals.grid(lambda dt, z: lip(end + (direction * 0.09 + dt) / VESSEL.r(z), z), (-half_width, half_width), (z0 + 0.17, z1 - 0.17))
+    seals.build("CrewCabin_HatchSeals", material("hatch-seal", (0.065, 0.06, 0.055), 0, 0.86, double_sided=True), g, smooth=False)
     mercury_capsule.bulkhead_stiffeners(M, g)
     if not interior():
         return
@@ -489,7 +505,9 @@ def build_crew_cabin(M, window: dict) -> None:
     # the harness's leg straps and the tie-down's run to the fork are left off: his thighs are folded up over them.
     grissom = dataclasses.replace(mark_iv_suit.MR_4, lead=False, fork=False)
     pilot = mark_iv_suit.build_seated(g, Matrix.Translation(P(0, PILOT_HIP[0], PILOT_HIP[1])), "CrewCabin_Pilot", grissom)
-    where = mercury_cabin_11.build(g, VESSEL, M, load_font(), pilot, PILOT_HIP, HATCH, CONE_H - 0.3, mark_iv_suit.seated_points(), window, SCOPE_Z)
+    where = mercury_cabin_11.build(
+        g, VESSEL, M, load_font(), pilot, PILOT_HIP, HATCH, CONE_H - 0.3, mark_iv_suit.seated_points(), window, SCOPE_Z, rate_switch=True
+    )
     mercury_cabin_11.hatch_inside(bpy.data.objects["Hatch"], VESSEL, M, HATCH)
     mercury_cabin_11.name_things(g)
     print(f"mr-4 cabin: {where}")

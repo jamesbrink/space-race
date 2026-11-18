@@ -183,6 +183,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
             // or a hatch to blow, where the flight has one: cockpit.ts `blow`)
             ['tower', 'separate', 'retro', 'retropack', 'drogue', 'main', 'abort', 'next', 'manual'].includes(c.does) ||
               (c.does === 'hatch' && Boolean(flight.flies?.hatch)) ||
+              (c.does === 'rate' && Boolean(flight.plan?.craft[0].rigid?.capsule.rcs?.rate)) ||
               /^code:\d$/.test(c.does),
             `${c.node}: ${c.does}`,
           );
@@ -190,7 +191,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
         if (c.holds) {
           const throws = nodes.get(c.node).throw;
           assert.ok(Array.isArray(throws) && throws.length >= 2 && throws[0] === 0, `${c.node}: holds ${c.holds} and has no throw`);
-          assert.ok(['free'].includes(c.holds), `${c.node}: the deck has no state ${c.holds}`);
+          assert.ok(['free', 'rate'].includes(c.holds), `${c.node}: the deck has no state ${c.holds}`);
         }
       }
       // a thrown control that names its positions has as many as its lever has turns
