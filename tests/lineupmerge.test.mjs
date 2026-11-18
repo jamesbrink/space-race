@@ -197,6 +197,23 @@ test("each corner wears its own mesh's paint", () => {
   assert.equal(reds, 2 * new THREE.BoxGeometry(0.1, 2, 1).getAttribute('position').count);
 });
 
+test('duplicated corners across a UV seam fit in one draw with 16-bit indices', () => {
+  const root = new THREE.Group();
+  const panel = new THREE.Group();
+  root.add(panel);
+  const mesh = new THREE.PlaneGeometry(1, 1, 255, 128);
+  // Two coincident sets of positions with different UVs. A plain paint does not sample the UVs.
+  const second = mesh.clone();
+  second.getAttribute('uv').array.fill(0);
+  const surface = paint(0xefefef);
+  panel.add(new THREE.Mesh(mesh, surface), new THREE.Mesh(second, surface));
+  assert.ok(2 * mesh.getAttribute('position').count > CORNERS);
+  const { pieces } = join(root, null);
+  assert.equal(pieces.length, 1);
+  assert.ok(pieces[0].geometry.index.array instanceof Uint16Array);
+  assert.equal(pieces[0].geometry.index.count, 2 * mesh.index.count);
+});
+
 test('a piece never holds more corners than two bytes can list, nor more paints than its shader carries', () => {
   const root = new THREE.Group();
   const node = new THREE.Group();

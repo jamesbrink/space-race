@@ -190,7 +190,7 @@ export class LineupUi {
         <p class="crumbs"><button data-home title="Front page">Space Race</button> <b>/</b> <span>Lineup</span></p>
         <h1 data-home title="Front page">The Lineup</h1>
         <p class="sub">${entries.length} vehicles<span> <b>·</b> ${span}</span></p>
-        <p class="lede">Every crewed spacecraft built here so far, on its launch vehicle, at one scale, in the order they flew.</p>
+        <p class="lede">Crewed spacecraft, their launch vehicles and the targets they flew to meet, at one scale in launch order.</p>
         <ul class="lu-key" aria-label="Programmes">${sections
           .map(
             (s) =>

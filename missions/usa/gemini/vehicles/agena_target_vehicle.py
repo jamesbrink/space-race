@@ -91,6 +91,8 @@ class Unit:
 
 
 # Gemini VIII's (Gemini VIII mission report, 3.4; adapter 3): the first to reach orbit and the first docked with
+GATV_5002 = Unit("5002", tda="2")
+GATV_5004 = Unit("5004", tda="5", s10=True)
 GATV_5003 = Unit("5003", tda="3", s10=True)
 GATV_5005 = Unit("5005", tda="1A", s10=True, revised_forward_rack=True, ion_wake=True)
 GATV_5006 = Unit("5006", tda="6", discharge_fingers=False, revised_forward_rack=True, ion_wake=True, tether=True)

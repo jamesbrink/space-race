@@ -106,6 +106,8 @@ documents the tether hardware and confirms the discharge-finger deletion.
 | Main engine in flight | a yaw error from the centre of gravity's offset | nothing listed | "Yaw heading error greater than expected during PPS burns" | chamber pressure fell in the ascent burn; the burns with a ship docked were cancelled | Launch Systems report, p. III.E-4; Gemini XII report, 5.4.2 | the flight's words |
 | Telemetry antenna for orbit | as Figure 3.4-2 | its receptacle "rotated 90 degrees" | assumed same as GATV-5005 | assumed same as GATV-5006 | Gemini X report, 3.4.2.4; Gemini XI and XII reports, 3.4 | rotated mounting plate with estimated dimensions |
 
+GATV-5002 carried TDA 2 on 25 October 1965. It had no S-10 collector. GATV-5004 carried TDA 5 and the S-10 on 17 May 1966. The replacement ATDA launched on 1 June carried TDA 4. McDonnell distinguishes the lost target from its replacement in NASA CR-1106, pp. 334–336 and the ATDA qualification tests. The early rack, paint and undocumented fittings on the lost targets follow GATV-5003. They are displayed with their launch shrouds removed. Their exhibits do not imply either reached orbit.
+
 No document read calls the last vehicle "5001A": they write 5001 or 5001R, and its adapter 7A.
 
 ## What the model gets wrong or leaves out

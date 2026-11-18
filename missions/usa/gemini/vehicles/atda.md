@@ -52,7 +52,7 @@ sections 3.7 and 5.8.1 (its own Figures 3.7-1 to 3.7-3 are on pages missing from
 ## Parts
 
 Each a top-level node, a part of the flight's parts list under "Docking target", with its own words;
-six of them are the docking adapter's ([target-docking-adapter.md](target-docking-adapter.md): adapter 5,
+six of them are the docking adapter's ([target-docking-adapter.md](target-docking-adapter.md): adapter 4,
 with experiment S-10's package and its cone's outside painted aluminium).
 
 | Node | What it is |

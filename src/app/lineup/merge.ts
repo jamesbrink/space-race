@@ -221,7 +221,10 @@ function joinPaint(sources: readonly Source[], craft: boolean): Piece {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, unique.size * 3), 3, true));
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals.slice(0, unique.size * 3), 3, true));
   geometry.setAttribute('paint', new THREE.BufferAttribute(paint.slice(0, unique.size), 1));
-  geometry.setIndex(new THREE.BufferAttribute(list.subarray(0, written), 1));
+  const indices = list.subarray(0, written);
+  geometry.setIndex(
+    new THREE.BufferAttribute(unique.size <= CORNERS && indices instanceof Uint32Array ? new Uint16Array(indices) : indices, 1),
+  );
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, paints, material: null, craft, part: '', renderOrder: 0, at, scale };
@@ -347,26 +350,37 @@ export function join(root: THREE.Object3D, craft: readonly string[] | null, byPa
   }
   const pieces: Piece[] = [];
   for (const { part, craft: isCraft, sources } of paint.values()) {
-    // into pieces of no more than CORNERS corners and PAINTS paints, in the order they come (one larger than that is a piece of its own)
-    let piece: Source[] = [];
-    let corners = 0;
-    const paints: Paint[] = [];
-    const flush = (): void => {
-      if (piece.length) pieces.push({ ...joinPaint(piece, isCraft), part });
-      piece = [];
-      corners = 0;
-      paints.length = 0;
-    };
-    for (const s of sources) {
-      const count = s.geometry.getAttribute('position').count;
-      const p = paintOf(s.material)!;
-      const fresh = !paints.some((q) => samePaint(p, q));
-      if (piece.length && (corners + count > CORNERS || (fresh && paints.length >= PAINTS))) flush();
-      piece.push(s);
-      corners += count;
-      if (fresh) paints.push(p);
+    // UV seams disappear in plain paint. Size a draw by its encoded corners, so a handful of duplicates
+    // in the GLB cannot force another draw. Bound temporary allocations while finding that size.
+    function emit(batch: Source[]) {
+      if (!batch.length) return;
+      const piece = joinPaint(batch, isCraft);
+      if (batch.length === 1 || piece.geometry.getAttribute('position').count <= CORNERS) {
+        pieces.push({ ...piece, part });
+        return;
+      }
+      piece.geometry.dispose();
+      const mid = Math.ceil(batch.length / 2);
+      emit(batch.slice(0, mid));
+      emit(batch.slice(mid));
     }
-    flush();
+    let batch: Source[] = [];
+    let corners = 0;
+    let paints: Paint[] = [];
+    for (const source of sources) {
+      const count = source.geometry.getAttribute('position').count;
+      const paint = paintOf(source.material)!;
+      if (batch.length && (corners + count > 2 * CORNERS || (paints.length >= PAINTS && !paints.some((p) => samePaint(p, paint))))) {
+        emit(batch);
+        batch = [];
+        corners = 0;
+        paints = [];
+      }
+      batch.push(source);
+      corners += count;
+      if (!paints.some((p) => samePaint(p, paint))) paints.push(paint);
+    }
+    emit(batch);
   }
   for (const { part, sources } of own.values()) pieces.push(...joinOwn(sources).map((p) => ({ ...p, part })));
   pieces.push(...kept);

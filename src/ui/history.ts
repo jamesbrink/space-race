@@ -55,6 +55,7 @@ export function crewMarkup(
   open: (id: string) => boolean = () => false,
   more: (person: Person) => string = () => '',
 ): string {
+  if (!crew.length) return '<h3>Crew</h3><p>Uncrewed</p>';
   return `
     <h3>${crew.length > 1 ? 'Crew' : 'Pilot'}</h3>
     <ul class="hist-crew">${crew
