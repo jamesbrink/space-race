@@ -53,7 +53,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { gravity } from '../world/orbit.ts';
+import { coast as orbitalCoast, gravity } from '../world/orbit.ts';
 import { airAt, airDrag, skyOf } from './air.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
 import { aboard, act, type CraftState, due, lit, part, type Sense, startCraft } from './craft.ts';
@@ -70,11 +70,7 @@ export const MEAN_RADIUS = 6_371_008.8;
  * Runge-Kutta the flight uses. For orbits, and for checking the integrator against Kepler.
  */
 export function coast(r: Vec3, v: Vec3, seconds: number, step = 1, j2 = EARTH_J2): { r: Vec3; v: Vec3 } {
-  const steps = Math.max(1, Math.round(seconds / step));
-  const h = seconds / steps;
-  let s = { r, v };
-  for (let i = 0; i < steps; i++) s = rk4(s, 0, h, (q) => gravity(q.r, j2));
-  return s;
+  return orbitalCoast({ r, v }, seconds, step, j2);
 }
 
 /** A curve's value at x: straight lines between its points, flat beyond its ends. */
