@@ -39,8 +39,8 @@ def upholstery():
     }
 
 
-def couches(parent, pilot: flight_suit.Wearer, port: flight_suit.Wearer | None, starboard: flight_suit.Wearer | None):
-    """Three Kazbek shells on their shared support, with the commander in the centre."""
+def couches(parent, pilot, port, starboard, *, seated_figure, omitted_couch):
+    """Kazbek shells on their shared support, with the commander in the centre."""
     mats = upholstery()
     shells, cushions, straps = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # Stations across a couch, contoured beneath the shoulders, hips, knee bend and raised heels.
@@ -66,7 +66,9 @@ def couches(parent, pilot: flight_suit.Wearer, port: flight_suit.Wearer | None, 
         mesh.grid(point, [-1, -0.85, -0.6, -0.3, 0, 0.3, 0.6, 0.85, 1], list(range(len(profile))))
 
     positions = ((0, pilot, "Commander"), (-515, port, "Port"), (515, starboard, "Starboard"))
-    for x, wearer, _ in sorted(positions):
+    for x, wearer, name in sorted(positions):
+        if name == omitted_couch:
+            continue
         scale = 0.78 if x and not wearer else 1.0
         shoulder_shift = OUTBOARD_COUCH_Y if x and wearer else 0
         loft(shells, x, shoulder_shift, scale, 18, -23)
@@ -88,7 +90,7 @@ def couches(parent, pilot: flight_suit.Wearer, port: flight_suit.Wearer | None, 
             continue
         occupant = group(f"Crew_{wearer.name}", parent)
         place = at(Vector((x, OUTBOARD_COUCH_Y if x else 0, HIP[2])) * MM)
-        keys = flight_suit.build_seated(occupant, place, wearer.name, wearer)
+        keys = seated_figure(occupant, place, wearer.name, wearer)
         eyes, look, up = (Vector(keys[key]) for key in ("eyes", "look", "crown"))
         if x:
             # The outboard cosmonauts look in toward the shared instrument board.
@@ -192,10 +194,14 @@ def build(
     hand_controls=False,
     port: flight_suit.Wearer | None = None,
     starboard: flight_suit.Wearer | None = None,
+    seated_figure=flight_suit.build_seated,
+    omitted_couch=None,
+    extra_equipment=None,
 ):
     """Build the descent cabin in the spacecraft frame, at the detailed level only."""
     cabin = group("Cabin", lineup_enclosed=True)
     seats = group("Couches", lineup_enclosed=True)
+    extras = (extra_equipment(),) if extra_equipment else ()
     if not srlib.interior():
         return
     openings = lining(cabin)
@@ -203,11 +209,11 @@ def build(
     crewed_outboard = port is not None or starboard is not None
     lamp_position = LAMP_WITH_OUTBOARD_CREW if crewed_outboard else LAMP
     fittings(cabin, lamp_position, crewed_outboard=crewed_outboard)
-    couches(seats, pilot or flight_suit.KOMAROV, port, starboard)
+    couches(seats, pilot or flight_suit.KOMAROV, port, starboard, seated_figure=seated_figure, omitted_couch=omitted_couch)
     if hand_controls:
         rendezvous_controls(cabin, crewed_outboard=crewed_outboard)
     bpy.context.view_layer.update()
-    meshes = [obj for obj in cabin_shade.meshes_under(cabin, seats) if obj.name != "Lamp_1"]
+    meshes = [obj for obj in cabin_shade.meshes_under(cabin, seats, *extras) if obj.name != "Lamp_1"]
     lens_point = (Vector(lamp_position) + 6 * LAMP_AIM) * MM
     lamp_sources = (("Lamp_1", lens_point, cabin_shade.disc(lens_point, LAMP_AIM, 0.04)),)
     cabin_shade.bake(meshes, meshes, lamp_sources, openings, broad=("Sirius_Main_body", "Kazbek_Liners", "SA_CabinLiner"))

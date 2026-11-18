@@ -1027,6 +1027,17 @@ export const MILESTONES: readonly Milestone[] = [
     source: `${ABTN}, Apollo 17, p. 263 (LM lunar liftoff ignition, 185:21:37, 22:54:37 GMT, 14 Dec 1972); ${CHARIOTS}, p. xiv (the final return from the Moon on flight 17)`,
     confidence: 'documented',
   },
+  {
+    date: '1973-09-27T12:18:16Z',
+    flight: 'ussr/soyuz/soyuz-12',
+    nation: 'USSR',
+    title: 'First crewed test of the redesigned Soyuz ferry',
+    text:
+      'More than two years after the loss of Soyuz 11, Vasily Lazarev and Oleg Makarov flew the rebuilt ferry. ' +
+      'The space for a third crew member now held life-support equipment for the two men’s Sokol-K pressure suits.',
+    source: 'Mishin, State Commission address, 27 September 1973, pp. 92–93; NASA, Mir Hardware Heritage, §1.8; Spacefacts, Soyuz 12',
+    confidence: 'documented',
+  },
 ];
 
 export const STORIES: Readonly<Record<string, FlightStory>> = {
@@ -1321,6 +1332,23 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     named: {
       why: 'Янтарь (Yantar), “amber”: the crew’s call sign.',
       source: `${SF_MISSION}, Soyuz 11`,
+      confidence: 'documented',
+    },
+  },
+  'ussr/soyuz/soyuz-12': {
+    flight: 'ussr/soyuz/soyuz-12',
+    headline: 'Two cosmonauts take the rebuilt Soyuz back to orbit',
+    story:
+      'After Soyuz 11 lost its cabin air, engineers revised the valve and made room for two men in pressure suits. ' +
+      'The station Lazarev and Makarov had trained to visit failed before they could fly to it, so they spent two days ' +
+      'testing the ship on its own. They raised their orbit and photographed Earth in several bands of light before ' +
+      'landing on the Kazakh steppe.',
+    firsts: ['First crewed test of the redesigned Soyuz ferry'],
+    source:
+      'Mishin, State Commission address, 27 September 1973, pp. 92–93; NASA, Astronautics and Aeronautics, 1973, p. 273; Anatoly Zak, Soyuz 12',
+    named: {
+      why: 'Урал (Ural): the crew’s call sign, after the Ural Mountains. Lazarev was Ural-1 and Makarov was Ural-2.',
+      source: 'NASA, Mir Hardware Heritage, §1.8.4.1; Gagarin Cosmonaut Training Center, biographies of Lazarev and Makarov',
       confidence: 'documented',
     },
   },
@@ -2209,6 +2237,36 @@ export const PEOPLE: readonly Person[] = [
       'and took the photographs of Salyut as Soyuz 11 left it. He died on the way home, eleven days after his 38th birthday, ' +
       'which he had spent in the station.',
     source: `${CREWS}; ${SIDDIQI}, pp. 777 and 781`,
+    confidence: 'documented',
+  },
+  {
+    id: 'lazarev',
+    name: 'Vasily G. Lazarev',
+    native: 'Василий Григорьевич Лазарев',
+    born: '1928-02-23',
+    died: '1990-12-31',
+    nation: 'USSR',
+    flights: ['ussr/soyuz/soyuz-12'],
+    bio:
+      'Lazarev trained as a surgeon before becoming an Air Force test pilot. He commanded the first crewed test of the ' +
+      'redesigned Soyuz with Oleg Makarov. The pair flew together again in 1975 and survived a launch abort that brought ' +
+      'them down in the Altai mountains.',
+    source: 'Gagarin Cosmonaut Training Center, biography of Vasily Lazarev; RGANTD, On the 95th Anniversary of V. G. Lazarev',
+    confidence: 'documented',
+  },
+  {
+    id: 'makarov',
+    name: 'Oleg G. Makarov',
+    native: 'Олег Григорьевич Макаров',
+    born: '1933-01-06',
+    died: '2003-05-28',
+    nation: 'USSR',
+    flights: ['ussr/soyuz/soyuz-12'],
+    bio:
+      'Makarov worked in Korolev’s design bureau before joining the cosmonaut corps. He trained for lunar and space-station ' +
+      'missions before becoming Soyuz 12’s flight engineer. After surviving a launch abort with Lazarev in 1975, he flew two ' +
+      'more missions, both to Salyut 6.',
+    source: 'Gagarin Cosmonaut Training Center, biography of Oleg Makarov; RGANTD, On the 90th Anniversary of O. G. Makarov',
     confidence: 'documented',
   },
   {

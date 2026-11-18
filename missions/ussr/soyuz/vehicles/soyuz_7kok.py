@@ -300,6 +300,7 @@ def service(paints, *, aft_torus=True):
             out = polar(0.7, az + shift, -0.71)
             fittings.lathe([(0.025, 0), (0.035, 0.036), (0.041, 0.053), (0.033, 0.054), (0.021, 0.022)], 24, matrix=frame(metres(p), out))
     fittings.build("PAO_JetOutlets", paints["alloy"], module)
+    return module
 
 
 def wing(side, sign, paints):
