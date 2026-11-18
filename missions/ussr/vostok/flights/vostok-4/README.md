@@ -32,7 +32,7 @@ the second rocket brought out through the night (Siddiqi, p. 357). So **every ti
 estimated**: the bus two hours before liftoff, as Vostok 3's, and the erector, the trusses and the
 cable mast at Vostok 1's intervals before its liftoff. That a bus brought him is the film's
 («Звёздные братья»). What stands is the day before's: the launching structure as in 1961, the bus in
-April 1961's place, no fillers. Not built: the people, Korolev's post and the room by the bunker
+April 1961's place, no fillers. The group at the bus is taken from the previous morning. Not built: Korolev's post and the room by the bunker
 (issue #21). The weather: [weather.ts](weather.ts), clear, the wind from the east-north-east at some
 6 m/s, 30 to 34 °C at the stations.
 
@@ -53,8 +53,7 @@ Vostok 3").
 
 - Every instant of the ascent, its integrator setting, the aiming azimuth, the burn's minute and its
   length are not this flight's (mission.md); so is every time of the morning at the pad.
-- The launching structure is 1961's; Korolev's post, the room by the bunker and the morning's
-  people are not built (issue #21).
+- The launching structure is 1961's; Korolev's post and the room by the bunker are unlocated (issue #21).
 - The pilot is the figure built to Gagarin's height in Gagarin's suit; the reserve canopy is not
   drawn, Popovich having locked it.
 

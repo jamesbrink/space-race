@@ -3,7 +3,8 @@
 The place itself is ../../../../places/tyuratam/site_1.py: this script only names the day, and each thing the site's modules
 build says whether it stood then (sitelib.stood). What that changes is in ../../../../places/tyuratam/site-1.md, "What
 stood when": the launching structure as in 1961 (it burnt on 1 June 1962 and was repaired; what the repair changed is not
-known), the bus, no fillers (none recorded that morning), as Vostok 3's the day before, not April's car and truck nor its people. The vehicle and the
+known), the bus, no fillers (none recorded that morning), as Vostok 3's the day before, not April's car and truck nor its people.
+This morning has its own reception. The vehicle and the
 pilot are vehicle.py and crew.py beside this file; the viewer hangs the vehicle in the supports. To see the pad with the
 vehicle in it, or what was taken away as it was left, use Vostok 2's pad.py (`SITE1_WITH_VEHICLE`, `SITE1_POSE`): the
 hardware is the same.

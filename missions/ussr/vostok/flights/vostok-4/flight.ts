@@ -458,8 +458,7 @@ export const flight: Flight = {
   launch: '1962-08-12T08:02:33Z',
   launchSite: SITE1.name,
   site: SITE1,
-  // The launch site opens as the bus has stopped on the apron (about 09:02: not recorded, two hours before liftoff as the day
-  // before): the morning's people are not built, so the bus is what there is to see. Opened at liftoff, the deck is empty
+  // The site opens as the bus stops among the people meeting the flight on 12 August.
   opens: { at: MSK(12, 9, 2, 33), model: 'pad', view: 'bus' },
   weather: WEATHER,
   crew: ['Pavel R. Popovich'],

@@ -903,9 +903,7 @@ rocket can leave the erector out by its date.
 - **11 and 12 August 1962** (Vostoks 3 and 4, `flights/vostok-3/model/pad.py`, `flights/vostok-4/model/pad.py`): the
   launching structure is built as it stood in 1961, although it burnt on 1 June 1962 and was repaired: what the repair
   changed is not in anything read. Not built: Korolev's post under its small concrete canopy 10 m from the rocket and the
-  new room beside the bunker (both documented that morning, neither placed nor measured); the people at the bus (the
-  State Commission, Gagarin and Titov, "more than a dozen" waiting to kiss him; summer dress, which the figures do not
-  have); the railway fillers (no record of either morning). The bus stands in April's place; the erector's, the trusses'
+  new room beside the bunker (both documented that morning, neither placed nor measured). The railway fillers are unrecorded on either morning. Seventeen people at the bus represent the four who greeted Nikolayev and the more than a dozen others in Kamanin’s account. Dress follows the August 1961 film, and individual positions and appearances are estimates. The following morning’s gathering is assumed from Kamanin’s comparison. The bus stands in April's place; the erector's, the trusses'
   and the cable mast's times are Vostok 1's intervals before liftoff. The place round the pad is August 1961's
   (`site1/model/1961-08.glb`): what the CIA found added by then is not built, and nothing later has been looked for.
 

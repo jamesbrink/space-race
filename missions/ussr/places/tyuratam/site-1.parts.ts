@@ -264,6 +264,46 @@ export const drives = (
 });
 export const BUS = { wheelbase: 4.19, wheel: 0.525 };
 
+/** The reception reconstructed for the two Vostok launches of August 1962 (site1/reception.py). */
+export function receptionPart(day: 11 | 12, leaves: number): Part {
+  const estimate = {
+    confidence: 'estimated' as const,
+    source:
+      'The departure and path are unrecorded. The group leaves on foot after the pilot has gone up, on the road used for the summer 1961 gathering.',
+  };
+  return {
+    node: 'Reception',
+    group: `The morning of ${day} August 1962`,
+    name: 'The send-off at the bus',
+    summary:
+      day === 11
+        ? 'Nikolayev reported to Smirnov as he stepped off the bus. More than a dozen others wanted to wish him well.'
+        : 'Kamanin said the preparations differed little from the previous morning. The group meeting Popovich is taken from that account.',
+    detail:
+      'Kamanin names Smirnov, Korolev, Keldysh and Rudenko as the four who greeted Nikolayev. Seventeen people represent the gathering. The summer shirts and uniforms are taken from the film of Titov’s departure a year earlier. The positions, clothes and individual appearances are estimates.',
+    facts: [
+      ['Source', 'Kamanin’s diary, 12 and 14 August 1962'],
+      ['Shown', day === 11 ? 'Seventeen people, estimated from the account' : 'A gathering as on 11 August, assumed'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    going: [
+      {
+        kind: 'leaves',
+        at: { value: leaves, ...estimate },
+        stagger: 0.8,
+        way: [
+          [-60, 25],
+          [-92, 24],
+          [-150, 23.5],
+          [-470, 25],
+        ],
+        ...estimate,
+      },
+    ],
+  };
+}
+
 /**
  * The cosmonauts' bus (road_vehicles.py: the same LAZ-695B brought each pilot), driven in along the road onto the apron, and
  * at the time the flight gives backed out into the road round the pit and away west. `at`: each drive's start and end,
