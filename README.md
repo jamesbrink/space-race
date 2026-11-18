@@ -176,7 +176,7 @@ pilot's in the seat. The programmes, in the order they flew:
 | Vostok | USSR | 1961 to 1963 | all 6 |
 | Mercury | USA | 1961 to 1963 | all 6 |
 | Voskhod | USSR | 1964 to 1965 | both |
-| Gemini | USA | 1965 to 1966 | 7 of 10 |
+| Gemini | USA | 1965 to 1966 | all 10 |
 | Soyuz | USSR, Russia | 1967 onward | |
 | Apollo | USA | 1968 to 1972 | 3 of 11 |
 | Salyut, Skylab, Apollo-Soyuz | USSR, USA | 1971 to 1986 | |
