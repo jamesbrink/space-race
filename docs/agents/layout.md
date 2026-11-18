@@ -267,6 +267,7 @@ src/
   viewer/effects.ts                   what the air does, seen and felt, at the clock's instant: fed by FlightShow.lift, and the camera's shake for the draw
   viewer/entry.ts                     incandescence by black-body colour, the shock layer's glow as a marched volume, the collar of cloud at Mach 1
   viewer/shake.ts                     the camera shaken: engine sound, buffet, load and jolts as levels, band-limited noise in the clock's time
+  viewer/docking.ts                   the relative spacecraft pose that mates compatible docking rings at their exported plane and clocking datum
   viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
   viewer/shade.ts                     a cabin's baked shade read lamp by lamp (`shadeBy`): by the cabin's switch, or as built where no cabin is worked (the Lineup)
   viewer/gauges.ts                    what an instrument reads and where that puts its needle: scales, counter wheels, attitude from axes (pure, tested)

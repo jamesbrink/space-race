@@ -2,6 +2,24 @@
 import type { Confidence, Measure } from '../measure.ts';
 import type { Burns } from './sim.ts';
 
+/** A hard-dock interface. The frame is at the mating plane, +Y outward, +Z along the clocking datum. Lengths are in metres. Each ring hinge closes about local +Z. Each nose hook extends along local +X. */
+export type DockingPort = {
+  system: 'apollo-probe-and-drogue';
+  /** Top-level part containing the ring and its stationary frame. */
+  part: string;
+  frame: string;
+} & (
+  | { role: 'drogue' }
+  | {
+      role: 'probe';
+      captureTravel: Measure;
+      piston: string;
+      hinges: string[];
+      latchRotation: Measure;
+      captureHooks?: { nodes: string[]; travel: Measure };
+    }
+);
+
 /**
  * How a wheeled vehicle drives. All lengths in metres, viewer space (+Y up); positions are in
  * the part node's own coordinates.
@@ -677,6 +695,8 @@ export interface ModelDef {
   wide?: boolean;
   /** Which spec groups are this model's: they are listed first. */
   specGroups?: string[];
+  /** Docking interfaces installed on spacecraft in this model. Their GLB frames move with their supporting structure. */
+  dockingPorts?: DockingPort[];
   /** Motor names carried by this exhibit when a flight has more than one spacecraft. */
   motorNames?: string[];
   /**

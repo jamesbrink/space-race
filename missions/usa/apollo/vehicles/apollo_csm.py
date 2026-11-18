@@ -3,8 +3,7 @@
 NASA Apollo 7 press kit (68-168K), pp. 25–27 and Figures 25b/25d.
 SM stations use the CSM-101 preflight reference; fittings remain provisional.
 command_module.py supplies the nominal lower CM profile and shared measured apertures.
-Cabin structure is separate from its unfinished equipment; no docking probe or
-lunar high-gain antenna is invented. See apollo-csm.md.
+The optional forward-end fittings and service antenna follow the spacecraft selected. See apollo-csm.md.
 """
 
 import math
@@ -12,6 +11,7 @@ import math
 from mathutils import Vector
 
 import apollo8_equipment
+import apollo_docking
 import cabin_bays
 import command_module
 import console_equipment
@@ -167,9 +167,18 @@ def build(offset=0, *, spacecraft=101):
             axis = along * math.cos(cant) + out * math.sin(cant)
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
-    command_module.build(groups["CommandModule"], groups["HeatShield"], groups["ForwardShield"], groups["SideHatch"], CM_BASE, foil, void)
+    command_module.build(
+        groups["CommandModule"],
+        groups["HeatShield"],
+        groups["ForwardShield"],
+        groups["SideHatch"],
+        CM_BASE,
+        foil,
+        void,
+        docking_ring=spacecraft == 104,
+    )
     hatch_interior.build(groups["SideHatch"], CM_BASE)
-    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar)
+    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if spacecraft == 104 else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
@@ -205,26 +214,7 @@ def build(offset=0, *, spacecraft=101):
         sight.lathe(prof([(0.24, -0.13), (0.24, 0.55), (0.55, 0.61), (0.55, 0.77), (0, 0.77)]), 24, matrix=target_pose)
         sight.build("CM104_RendezvousWindowTarget", red, groups["CabinWindows"])
         probe = groups["DockingProbe"] = group("DockingProbe")
-        root = CM_BASE + 113
-        ring = MeshBuilder()
-        ring.lathe(prof([(16, root), (18, root), (18, root + 1.4), (16, root + 1.4), (16, root)]), 64)
-        ring.build("CM104_DockingRing", silver, probe)
-        for i in range(12):
-            a = math.tau * i / 12
-            tube(f"CM104_DockingLatch_{i}", radial(17.2, a, root + 1.5), radial(16.4, a, root + 3.3), 0.48, silver, probe)
-        sleeve = MeshBuilder()
-        sleeve.lathe(prof([(3.1, root + 8), (3.6, root + 8), (3.6, root + 17.6), (3.1, root + 17.6), (3.1, root + 8)]), 32)
-        sleeve.build("CM104_ProbeGuide", silver, probe)
-        extension = group("CM104_ProbeExtension", probe)
-        for i in range(3):
-            a = math.tau * i / 3
-            tube(f"CM104_ProbeSupport_{i}", radial(14, a, root), radial(2.4, a, root + 9), 1.1, silver, probe)
-        lathe_obj(
-            "CM104_DockingProbe",
-            prof([(0, root + 8), (2.8, root + 8), (2.8, root + 16), (1.5, root + 18), (1.5, root + 19), (2.0, root + 20), (0, root + 22)]),
-            silver,
-            extension,
-        )
+        apollo_docking.command(probe, CM_BASE, silver, void)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN
