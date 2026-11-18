@@ -26,7 +26,7 @@ export function lateCrew(flight: keyof typeof people, boarding: number): [ModelD
     const suit = command
       ? 'The command pilot’s G4C had a light outer cover to keep the underlying pressure garment from snagging.'
       : 'The pilot’s G4C added a cover against heat and micrometeoroids for work outside the spacecraft.';
-    return standing({
+    const figure = standing({
       flight: `gt-${flight}`,
       id,
       name: command ? 'Command pilot' : 'Pilot',
@@ -53,6 +53,7 @@ export function lateCrew(flight: keyof typeof people, boarding: number): [ModelD
       at: command ? [9.6, 0, -2.5] : [10.6, 0, -3.5],
       boarding,
     });
+    return { ...figure, galleryCraft: who.name, galleryFrom: figure.views[0]?.from, motorNames: [] };
   };
   return [make('crew'), make('pilot')];
 }

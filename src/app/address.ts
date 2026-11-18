@@ -337,19 +337,24 @@ export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[]
 /**
  * A flight as its launch site has it: a vehicle's docking target (`ModelDef.target`) is the gallery's arrangement, and
  * it went up from another pad on another vehicle, so at the site its parts are not listed and its nodes not drawn
- * (`ModelDef.absent`). Secondary gallery craft are omitted from the site's models. The gallery is given the flight whole.
+ * (`ModelDef.absent`). Secondary gallery craft are omitted from the site except for its walkers, which also have exhibits.
  */
 export function atSite<F extends Flight>(flight: F): F {
   if (!flight.models.some((m) => m.target || m.galleryCraft)) return flight;
   return {
     ...flight,
     models: flight.models
-      .filter((m) => !m.galleryCraft)
+      .filter((m) => !m.galleryCraft || m.walker)
       .map((m) => {
-        if (!m.target) return m;
+        const { target: _target, galleryCraft: _galleryCraft, ...rest } = m;
+        if (!m.target) return m.galleryCraft ? rest : m;
         const away = targetNodes(m);
-        const { target: _target, ...rest } = m;
-        return { ...rest, parts: m.parts.filter((p) => !away.includes(p.node)), absent: [...(m.absent ?? []), ...away] };
+        const views = m.views.flatMap((view) => {
+          if (!view.nodes) return [view];
+          const nodes = view.nodes.filter((node) => !away.includes(node));
+          return nodes.length ? [{ ...view, nodes }] : [];
+        });
+        return { ...rest, views, parts: m.parts.filter((p) => !away.includes(p.node)), absent: [...(m.absent ?? []), ...away] };
       }),
   };
 }
@@ -404,9 +409,10 @@ export function galleryAt(
  * The views there are of what stands on the plinth, after one of the whole of it: the vehicle's
  * own views of parts that are all there, from the direction each gives. A view given as a height
  * and a span (no parts) is of the whole vehicle where its flight stands it: it is kept only with
- * the whole of it on show, moved by `lift`, how much higher the vehicle stands here than there.
+ * the whole of it on show, moved by `lift`, how much higher the vehicle stands here than there. A
+ * walker’s ramp view is part of its launch-site surroundings and has no subject in the studio.
  */
-export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY' | 'galleryFrom'>, plinth: Plinth, lift = 0): ViewDef[] {
+export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY' | 'galleryFrom' | 'walker'>, plinth: Plinth, lift = 0): ViewDef[] {
   const there = (v: ViewDef) => Boolean(v.nodes?.length) && (!plinth.nodes || v.nodes!.every((n) => plinth.nodes!.includes(n)));
   // (a view that covers exactly what stands there is the whole of it again)
   const same = (v: ViewDef) => Boolean(plinth.nodes) && v.nodes!.length === plinth.nodes!.length;
@@ -419,6 +425,7 @@ export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY' | 'galle
   return [
     { id: WHOLE_VIEW, label: 'Whole', ...(model.galleryFrom ? { from: model.galleryFrom } : {}) },
     ...model.views.flatMap((v): ViewDef[] => {
+      if (model.walker && v.id === 'walkout') return [];
       if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, span: v.span, isolate: v.isolate, ...from(v) }];
       if (measured(v)) return [{ id: v.id, label: v.label, centreY: v.centreY! + lift, span: v.span!, ...from(v) }];
       return [];
