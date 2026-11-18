@@ -44,7 +44,7 @@ export const flight: Flight = {
     { label: 'High-orbit excursion', value: 'Cancelled after the Agena’s primary propulsion anomaly' },
     { label: 'Orbit at insertion', value: '86.8 by 146.1 nautical miles, 28.87°' },
     { label: 'Duration', value: '94 h 34 min 31 s' },
-    { label: 'Landing', value: '24°37′ N 69°56′ W (recovery ship)' },
+    { label: 'Landing', value: '24°36.4′ N 69°56.2′ W (spacecraft, mission report §6.3)' },
     { label: 'Recovery', value: 'USS Wasp' },
   ],
   // Launch and orbital sequences from the mission report’s Section 4.2. Docking and EVA from Sections 4.1, 5.4 and 7.
