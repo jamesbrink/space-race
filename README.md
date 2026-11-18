@@ -63,8 +63,8 @@ The whole thing can be redrawn as an inked, cel-shaded drawing (`T`), and works 
 
 ## Flights
 
-A dot is a place that is built; a point, one that is not yet. Each flight links to its own record:
-what happened, the timeline, the sources, and the notes on its hardware.
+● marks a place that is built, · one that is not yet. Each flight links to its own record: what
+happened, the timeline, the sources, and the notes on its hardware.
 
 | Flight | Launched | Crew | Launch vehicle | Gallery | Launch site | Fly |
 | --- | --- | --- | --- | :-: | :-: | :-: |
