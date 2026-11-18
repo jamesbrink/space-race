@@ -8,6 +8,7 @@
 //   places       the front page, Freedom 7's gallery, its launch site, a section there, Fly; Back, Back, Forward,
 //                Back, Back, Back: each lands on the place before, the last on the front page
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
+//   second craft Gemini X's gallery-only Agena can be linked and switched to, and Back restores it from the site
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 //   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
 //                chosen, Back to the front page, Forward to the Lineup
@@ -140,6 +141,53 @@ await scenario('old link', async (page) => {
   await page.goBack();
   await page.waitForTimeout(500);
   check(page.url() === 'about:blank', `Back leaves it at once (${page.url()})`);
+});
+
+await scenario('second craft', async (page) => {
+  const gt10 = 'usa/gemini/gt-10';
+  const route = `#${gt10}/gallery`;
+  const dormant = `${route}/agena-8`;
+  const craft = () => page.evaluate(() => window.sr?.gallery?.vehicle?.id);
+  await page.goto(`${url}${dormant}`);
+  const linked = await arrive(page, 'gallery', gt10);
+  check(linked.hash === dormant && (await craft()) === 'agena-8', 'the dormant Agena opens from its direct link');
+  await mark(page);
+
+  await page.locator('#gallery [data-craft="vehicle"]').click();
+  const primary = await arrive(page, 'gallery', gt10);
+  check(
+    primary.hash === route && (await craft()) === 'vehicle' && primary.length === linked.length,
+    'the Titan replaces it on the same entry',
+  );
+  await page.locator('#gallery [data-craft="agena-8"]').click();
+  const selected = await arrive(page, 'gallery', gt10);
+  check(
+    selected.hash === dormant && (await craft()) === 'agena-8' && selected.length === linked.length,
+    'the gallery opens the Agena again',
+  );
+  await page.locator('#gallery [data-node="TargetDockingAdapter"]').click();
+  const part = await state(page);
+  check(part.hash === `${dormant}/TargetDockingAdapter` && part.length === linked.length, 'a part belongs to the Agena’s gallery address');
+
+  await page.locator('#gallery .places [data-place="site"]').click();
+  const site = await arrive(page, 'site', gt10);
+  check(site.hash === `#${gt10}/site/pad` && site.length === linked.length + 1, 'the launch site opens on the pad in a new entry');
+  check(
+    (await page.evaluate(() => window.sr.flight.models.map((m) => m.id))).join(',') === 'vehicle,pad,crew,pilot',
+    'the launch site has no model section for the dormant Agena',
+  );
+  await page.goBack();
+  const restored = await arrive(page, 'gallery', gt10);
+  check(
+    restored.hash === part.hash && restored.kept && (await craft()) === 'agena-8',
+    'Back restores the Agena and its part on the same page',
+  );
+  await page.goForward();
+  const revisited = await arrive(page, 'site', gt10);
+  check(
+    revisited.hash === site.hash && revisited.kept && revisited.length === site.length,
+    'Forward restores the launch site without a reload',
+  );
 });
 
 await scenario('crumb', async (page) => {

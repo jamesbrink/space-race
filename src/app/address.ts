@@ -1,6 +1,6 @@
 import { type Upcoming, upcoming } from '../../missions/upcoming.ts';
-import type { Flight, ModelDef, ViewDef } from '../types.ts';
 import { flownByHand } from '../sim/plan.ts';
+import type { Flight, ModelDef, ViewDef } from '../types.ts';
 
 /**
  * Where the page is: the address bar's fragment, and the places a flight is seen in.
@@ -337,18 +337,20 @@ export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[]
 /**
  * A flight as its launch site has it: a vehicle's docking target (`ModelDef.target`) is the gallery's arrangement, and
  * it went up from another pad on another vehicle, so at the site its parts are not listed and its nodes not drawn
- * (`ModelDef.absent`). The gallery is given the flight whole.
+ * (`ModelDef.absent`). Secondary gallery craft are omitted from the site's models. The gallery is given the flight whole.
  */
 export function atSite<F extends Flight>(flight: F): F {
-  if (!flight.models.some((m) => m.target)) return flight;
+  if (!flight.models.some((m) => m.target || m.galleryCraft)) return flight;
   return {
     ...flight,
-    models: flight.models.map((m) => {
-      if (!m.target) return m;
-      const away = targetNodes(m);
-      const { target: _target, ...rest } = m;
-      return { ...rest, parts: m.parts.filter((p) => !away.includes(p.node)), absent: [...(m.absent ?? []), ...away] };
-    }),
+    models: flight.models
+      .filter((m) => !m.galleryCraft)
+      .map((m) => {
+        if (!m.target) return m;
+        const away = targetNodes(m);
+        const { target: _target, ...rest } = m;
+        return { ...rest, parts: m.parts.filter((p) => !away.includes(p.node)), absent: [...(m.absent ?? []), ...away] };
+      }),
   };
 }
 

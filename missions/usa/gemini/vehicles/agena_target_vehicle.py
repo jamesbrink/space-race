@@ -59,7 +59,6 @@ SHELLS = (
     "AgenaForward_Fasteners",
     "AgenaForward_Bare",
     "AgenaForward_Paint",
-    "AgenaForward_Flag",
     "AgenaTank_Skin",
     "AgenaTank_Seams",
     "AgenaTank_Fairings",
@@ -83,13 +82,19 @@ class Unit:
     # experiment S-10's micrometeorite package on the docking adapter, for a man outside to open and bring home
     # (Technical Summary, pp. 318 and 334: on adapters 1A, 3, 5 and 7A)
     s10: bool = False
-    # the three static discharge fingers in the cone: on Gemini VIII's and X's, taken off for XII's (Gemini XII mission
-    # report, 3.4(g)); the Technical Summary has them off Gemini XI's too, which that flight's report would settle
+    # mission reports XI and XII, §3.4; the fingers were removed for both
     discharge_fingers: bool = True
+    revised_forward_rack: bool = False
+    ion_wake: bool = False
+    tether: bool = False
+    eva_station: bool = False
 
 
 # Gemini VIII's (Gemini VIII mission report, 3.4; adapter 3): the first to reach orbit and the first docked with
 GATV_5003 = Unit("5003", tda="3", s10=True)
+GATV_5005 = Unit("5005", tda="1A", s10=True, revised_forward_rack=True, ion_wake=True)
+GATV_5006 = Unit("5006", tda="6", discharge_fingers=False, revised_forward_rack=True, ion_wake=True, tether=True)
+GATV_5001 = Unit("5001", tda="7A", s10=True, discharge_fingers=False, revised_forward_rack=True, tether=True, eva_station=True)
 
 
 def H(station: float) -> float:
@@ -115,25 +120,40 @@ def hemisphere(mb: MeshBuilder, ax: Axis, r: float, h: float, up: int, flip: boo
     mb.lathe(prof(arc if up > 0 else arc[::-1]), 64, matrix=ax.m(), flip=flip)
 
 
-def build(ax: Axis, flag, unit: Unit = GATV_5003) -> tuple[str, tuple[str, ...]]:
+def build(ax: Axis, flag, unit: Unit = GATV_5003, *, recovered_samples: bool = False) -> tuple[str, tuple[str, ...]]:
     """The vehicle with its nozzle's exit at the axis's datum and its top (-Z) the way the axis faces. `flag`: the
     material the flag is drawn in. `unit`: which vehicle, as it flew. Returns its size, and the
-    meshes that enclose something."""
+    meshes that enclose something. `recovered_samples` shows the four outer sample panels of the closed S010 package
+    as it appeared when Gemini X returned to the earlier target."""
     M = tda.materials()
     fine = srlib.DETAIL >= 0.5
     whole = interior()
     tda.build(
-        ax.up(H(S_TDA)), M, lip=tda.LIP_EXTENDED, cone_black=True, s10=unit.s10, discharge=unit.discharge_fingers, whose="the Agena's forward rack"
+        ax.up(H(S_TDA)),
+        M,
+        lip=tda.LIP_EXTENDED,
+        cone_black=True,
+        s10=unit.s10,
+        discharge=unit.discharge_fingers,
+        whose="the Agena's forward rack",
+        ion_wake=unit.ion_wake,
+        tether=unit.tether,
+        eva_station=unit.eva_station,
+        recovered_samples=recovered_samples,
     )
-    build_forward(ax, M, flag, fine, whole)
-    build_tank(ax, M, fine, whole)
+    tank_flag = unit.eva_station  # the position visible on GATV-5001 in NASA S66-62755
+    build_forward(ax, M, flag, whole, unit.revised_forward_rack, tank_flag)
+    build_tank(ax, M, flag, fine, unit.revised_forward_rack, tank_flag)
     build_aft(ax, M, fine, whole)
     build_engine(ax, M, fine, whole)
     long = (H(S_TDA) + tda.LIP_EXTENDED) * IN
-    return f"Agena {long:.3f} m from its nozzle to its cone's lip, {2 * R * IN:.3f} m across", SHELLS
+    shells = (*SHELLS, "AgenaTank_Flag" if tank_flag else "AgenaForward_Flag")
+    if unit.revised_forward_rack:
+        shells += ("AgenaForward_ThermalTape", "AgenaForward_BallastDoor")
+    return f"Agena {long:.3f} m from its nozzle to its cone's lip, {2 * R * IN:.3f} m across", shells
 
 
-def build_forward(ax: Axis, M: dict, flag, fine: bool, whole: bool) -> None:
+def build_forward(ax: Axis, M: dict, flag, whole: bool, revised_rack: bool, tank_flag: bool) -> None:
     """The auxiliary forward rack, 17.5 in that McDonnell's adapter is bolted to, and the forward section behind it: the
     vehicle's guidance, its batteries, its radios, and the two horizon sensors that tell it which way is down."""
     g = group("AgenaForwardSection")
@@ -152,18 +172,8 @@ def build_forward(ax: Axis, M: dict, flag, fine: bool, whole: bool) -> None:
         patch(bare, ax, mid - deg(65), mid + deg(65), 267.0, S_TANK - 0.4)
         patch(dark, ax, *sorted((side * deg(34), side * deg(52))), 271.5, 283.0, 0.36)
         patch(dark, ax, *sorted((side * deg(60), side * deg(90))), S_TDA + 1.0, 266.5)
-        fw, nx, ny = 19.0, 8, 4
-        fh = fw / 1.9
-        f = MeshBuilder()
-        # (its union toward the nose and toward the vehicle's top)
-        f.grid(
-            lambda i, j, side=side: ax.p(side * (deg(41) + (0.5 - j / ny) * fh / R), R + 0.22, H(243.0 - fw / 2 + fw * i / nx)),
-            range(nx + 1),
-            range(ny + 1),
-            uv=lambda i, j: (i / nx, j / ny),
-            flip=side > 0,
-        )
-        paint.add(f.verts, f.faces, f.uvs)
+        if not tank_flag:
+            flag_patch(paint, ax, side, 41.0, 243.0, 19.0)
     say(
         skin.build("AgenaForward_Skin", M["white"], g, sharp_angle=None),
         "Forward section",
@@ -171,12 +181,33 @@ def build_forward(ax: Axis, M: dict, flag, fine: bool, whole: bool) -> None:
         "adapter is bolted to, and behind it the standard Agena's forward section, 40.5 in long. In it are what flies "
         "the vehicle: the gyros and the two infrared horizon sensors that hold it level, the batteries, the command "
         "receiver and the programmer that remembers what it has been told to do, the telemetry. Its lengths are "
-        "documented. The paint is read off the photographs Gemini VIII's crew took: white, with black and bare panels.",
+        "documented. The base paint scheme follows photographs of the Gemini VIII target: white, with black and bare panels.",
     )
     bolts.build("AgenaForward_Fasteners", M["aluminium"], g)
     bare.build("AgenaForward_Bare", M["alclad"], g, sharp_angle=None)
     dark.build("AgenaForward_Paint", M["black"], g, sharp_angle=None)
-    paint.build("AgenaForward_Flag", flag, g, sharp_angle=None)
+    if not tank_flag:
+        paint.build("AgenaForward_Flag", flag, g, sharp_angle=None)
+    if revised_rack:
+        # Gemini X §3.4.1.1 gives the coverage (about 15%) but no map. Three 30 degree sectors taking 60%
+        # of the axial length each give 0.15 of the cylindrical area. Their position and individual splits are estimated.
+        tape, door = MeshBuilder(), MeshBuilder()
+        for angle in (8.0, 128.0, 248.0):
+            for s0, s1 in ((230.4, 246.0), (248.5, 267.7)):
+                patch(tape, ax, deg(angle), deg(angle + 30), s0, s1, 0.51)
+        patch(door, ax, deg(165), deg(195), 232.5, 244.5, 0.24)
+        say(
+            tape.build("AgenaForward_ThermalTape", M["silver"], g, sharp_angle=None),
+            "Reflective aluminium tape",
+            "Applied over about fifteen percent of the forward racks' skins for thermal control. The mission report gives "
+            "the area and material. These strips' layout is estimated.",
+        )
+        say(
+            door.build("AgenaForward_BallastDoor", M["steel"], g, sharp_angle=None),
+            "Stainless ballast door",
+            "This replacement for the magnesium access door helped carry the ballast in the auxiliary rack. "
+            "The mission report gives the material and purpose. The door's station and size are estimated.",
+        )
     # the horizon sensors' two heads, either side of the Earth side, low on the section: a dark blister over each
     heads, lamps_, ants = (MeshBuilder() for _ in range(3))
     for a in (deg(150), deg(210)):
@@ -241,7 +272,18 @@ def build_forward(ax: Axis, M: dict, flag, fine: bool, whole: bool) -> None:
         (deg(240), 238.0, (10.0, 12.0, 6.0)),
         (deg(0), 238.0, (10.0, 9.0, 6.0)),
     ):
+        if revised_rack and a in (deg(60), deg(120)):
+            continue  # one primary and one running-light battery removed; the shared equipment layout is estimated
         chamfered(inside, size, ax.on(a, R - 2.6 - size[2] / 2, H(s)), 0.4)
+    if revised_rack:
+        ballast = MeshBuilder()
+        chamfered(ballast, (10.0, 12.0, 3.0), ax.on(deg(180), R - 3.2, H(238.5)), 0.2)
+        say(
+            ballast.build("AgenaForward_LeadBallast", M["equipment"], g, sharp_angle=35),
+            "Lead ballast",
+            "About 150 pounds of lead on the longerons and the new access door moved the target's centre of gravity. "
+            "The report documents the weight and supports. The shape and location are estimates.",
+        )
     say(
         inside.build("AgenaForward_Equipment", M["equipment"], g, sharp_angle=35),
         "Guidance and electronics",
@@ -253,7 +295,20 @@ def build_forward(ax: Axis, M: dict, flag, fine: bool, whole: bool) -> None:
     frame_.build("AgenaForward_Frames", M["structure"], g, sharp_angle=30)
 
 
-def build_tank(ax: Axis, M: dict, fine: bool, whole: bool) -> None:
+def flag_patch(mesh: MeshBuilder, ax: Axis, side: int, angle: float, station: float, width: float) -> None:
+    """Flag decal on the cylinder. The union lies forward and toward the target's top."""
+    nx, ny = 8, 4
+    height = width / 1.9
+    mesh.grid(
+        lambda i, j: ax.p(side * (deg(angle) + (0.5 - j / ny) * height / R), R + 0.22, H(station - width / 2 + width * i / nx)),
+        range(nx + 1),
+        range(ny + 1),
+        uv=lambda i, j: (i / nx, j / ny),
+        flip=side > 0,
+    )
+
+
+def build_tank(ax: Axis, M: dict, flag, fine: bool, rotated_mount: bool, tank_flag: bool) -> None:
     """The tank section: one cylinder of aluminium that is both tanks' wall, fuel forward and oxidiser aft, with a
     fairing along its top and one along its bottom for what cannot go through a tank."""
     g = group("AgenaTankSection")
@@ -281,11 +336,16 @@ def build_tank(ax: Axis, M: dict, fine: bool, whole: bool) -> None:
         "Tank section",
         "One cylinder of bare aluminium, five feet across, whose wall is the wall of both tanks: fuel in the forward one, "
         "oxidiser in the after one, about 13,000 lb of the two. The engine burns unsymmetrical dimethylhydrazine with "
-        "nitric acid, which light on meeting, so it could be started in orbit again and again: this vehicle's was to "
-        "have been started with a spacecraft docked to it. The section's length is documented, and the tanks' over "
+        "nitric acid, which ignite on contact. The engine could restart in orbit, including with a spacecraft "
+        "docked. The section's length is documented, and the tanks' length over "
         "their ends, 129.08 in. It was left bare: the photographs taken from Gemini VIII show polished metal in panels.",
     )
     seams.build("AgenaTank_Seams", M["alclad"], g, sharp_angle=None)
+    if tank_flag:
+        paint = MeshBuilder()
+        for side in (1, -1):
+            flag_patch(paint, ax, side, 92.0, 328.0, 28.0)
+        paint.build("AgenaTank_Flag", flag, g, sharp_angle=None)
     say(
         fair.build("AgenaTank_Fairings", M["black"], g, sharp_angle=35),
         "Tank fairing",
@@ -299,6 +359,9 @@ def build_tank(ax: Axis, M: dict, fine: bool, whole: bool) -> None:
     # the telemetry antenna for orbit, at the section's aft end (Gemini VIII report, Figure 3.4-2): a stub. Estimated
     stub = MeshBuilder()
     stub.lathe(prof([(1.3, -0.3), (1.3, 0.4), (0.35, 0.4), (0.35, 5.0), (0.0, 5.0)]), 12, matrix=ax.on(deg(125), R, H(377.0)))
+    if rotated_mount:
+        # The receptacle turned 90 degrees in its own mounting plane (Gemini X §3.4.2.4).
+        chamfered(stub, (2.3, 4.0, 0.65), ax.on(deg(125), R, H(377.0), -0.12), 0.1)
     stub.build("AgenaTank_TelemetryAntenna", M["rod"], g, sharp_angle=35)
     tanks = MeshBuilder()  # (at every level of detail: they are what closes the vehicle's two open ends)
     over = (TANK - (S_AFT - S_TANK)) / 2  # how far each end stands beyond the section: 16.29 in
@@ -521,7 +584,7 @@ def build_engine(ax: Axis, M: dict, fine: bool, whole: bool) -> None:
         "A Bell model 8247: one chamber of 16,000 lb, fed by a turbopump, burning dimethylhydrazine with nitric acid. "
         "It is the Agena's ordinary engine made to start many times: where the ordinary one lights its pump with "
         "solid charges, each good for one start, this one has small tanks that are filled again from the main ones. "
-        "Its first burn put the vehicle into orbit; the ones after were to be made at a docked crew's command. It "
+        "Its ascent burn put the vehicle into orbit. Crews or ground controllers could command a restart. It "
         "swings on a gimbal to steer. Its thrust and its make are documented; its form is scaled from Lockheed's "
         "drawings, which give no size.",
     )

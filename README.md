@@ -9,8 +9,8 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**25 flights so far, Vostok 1 (April 1961) to Apollo 10 (May 1969).** All of them are in the Gallery,
-21 stand at their launch site, and 15 can be flown.
+**28 flights so far, Vostok 1 (April 1961) to Apollo 10 (May 1969).** All of them are in the Gallery,
+24 stand at their launch site, and 15 can be flown.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 
@@ -89,6 +89,9 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Gemini VI-A](missions/usa/gemini/flights/gt-6a/README.md) | 15 Dec 1965 | Schirra, Stafford | Titan II GLV | ● | ● | · |
 | [Gemini VIII](missions/usa/gemini/flights/gt-8/README.md) | 16 Mar 1966 | Armstrong, Scott | Titan II GLV | ● | ● | · |
 | [Gemini IX-A](missions/usa/gemini/flights/gt-9a/README.md) | 3 Jun 1966 | Stafford, Cernan | Titan II GLV | ● | ● | · |
+| [Gemini X](missions/usa/gemini/flights/gt-10/README.md) | 18 Jul 1966 | Young, Collins | Titan II GLV | ● | ● | · |
+| [Gemini XI](missions/usa/gemini/flights/gt-11/README.md) | 12 Sep 1966 | Conrad, Gordon | Titan II GLV | ● | ● | · |
+| [Gemini XII](missions/usa/gemini/flights/gt-12/README.md) | 11 Nov 1966 | Lovell, Aldrin | Titan II GLV | ● | ● | · |
 | [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | · | · |
 | [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
 | [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | · | · |

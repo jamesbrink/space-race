@@ -1,8 +1,8 @@
 import type { Flight } from '../src/types.ts';
-import { flight as apollo10 } from './usa/apollo/flights/apollo-10/flight.ts';
 import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
 import { flight as apollo9 } from './usa/apollo/flights/apollo-9/flight.ts';
+import { flight as apollo10 } from './usa/apollo/flights/apollo-10/flight.ts';
 import { flight as gt3 } from './usa/gemini/flights/gt-3/flight.ts';
 import { flight as gt4 } from './usa/gemini/flights/gt-4/flight.ts';
 import { flight as gt5 } from './usa/gemini/flights/gt-5/flight.ts';
@@ -10,11 +10,14 @@ import { flight as gt6a } from './usa/gemini/flights/gt-6a/flight.ts';
 import { flight as gt7 } from './usa/gemini/flights/gt-7/flight.ts';
 import { flight as gt8 } from './usa/gemini/flights/gt-8/flight.ts';
 import { flight as gt9a } from './usa/gemini/flights/gt-9a/flight.ts';
-import { flight as mr3 } from './usa/mercury/flights/mr-3-freedom-7/flight.ts';
+import { flight as gt10 } from './usa/gemini/flights/gt-10/flight.ts';
+import { flight as gt11 } from './usa/gemini/flights/gt-11/flight.ts';
+import { flight as gt12 } from './usa/gemini/flights/gt-12/flight.ts';
 import { flight as ma6 } from './usa/mercury/flights/ma-6-friendship-7/flight.ts';
 import { flight as ma7 } from './usa/mercury/flights/ma-7-aurora-7/flight.ts';
 import { flight as ma8 } from './usa/mercury/flights/ma-8-sigma-7/flight.ts';
 import { flight as ma9 } from './usa/mercury/flights/ma-9-faith-7/flight.ts';
+import { flight as mr3 } from './usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as mr4 } from './usa/mercury/flights/mr-4-liberty-bell-7/flight.ts';
 import { flight as voskhod1 } from './ussr/voskhod/flights/voskhod-1/flight.ts';
 import { flight as voskhod2 } from './ussr/voskhod/flights/voskhod-2/flight.ts';
@@ -51,6 +54,9 @@ export const flights: Flight[] = [
   gt6a,
   gt8,
   gt9a,
+  gt10,
+  gt11,
+  gt12,
   apollo7,
   apollo8,
   apollo9,

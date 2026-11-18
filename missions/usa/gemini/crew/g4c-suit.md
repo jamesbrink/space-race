@@ -54,6 +54,12 @@ documented ones; *estimated* was read off photographs, or chosen to look right.
 | Neil A. Armstrong, command pilot, Gemini 8 | 179.1 cm, "5 ft., 10 1/2 in."; 168 lb | documented, in August 1965 | K5, p. 83 (his biography as a backup pilot) | 1.841 m |
 | David R. Scott, pilot, Gemini 8 | 182.9 cm, 6 ft | **estimated**: as commonly given; not in any NASA source read (the Gemini 8 press kit's biography has none) | | 1.874 m |
 | Eugene A. Cernan, pilot, Gemini 9A | 182.9 cm, 6 ft | **estimated**: as commonly given; not in any NASA source read (the Gemini 9 press kit's biography has none) | | 1.874 m |
+| John W. Young, command pilot, Gemini 10 | 175.3 cm (5 ft 9 in) | documented, reported later | Apollo 10 press kit, p. 69 | 1.807 m |
+| Michael Collins, pilot, Gemini 10 | 180.3 cm (5 ft 11 in) | documented, reported later | Apollo 11 press kit, p. 140 | 1.851 m |
+| Charles Conrad Jr., command pilot, Gemini 11 | 167.6 cm (5 ft 6 in) | documented, Gemini 5 | K5, p. 81 | 1.740 m |
+| Richard F. Gordon Jr., pilot, Gemini 11 | 170.2 cm (5 ft 7 in) | documented, reported later | Apollo 12 press kit, p. 77 | 1.763 m |
+| James A. Lovell Jr., command pilot, Gemini 12 | 182.9 cm (6 ft) | documented, Gemini 7 | K7, p. 67 | 1.874 m |
+| Edwin E. Aldrin Jr., pilot, Gemini 12 | 177.8 cm (5 ft 10 in) | documented, reported later | Apollo 11 press kit, p. 142 | 1.829 m |
 
 Their tags are lettered as the photographs read them: "J.A.McDIVITT" (S65-27487), "E.H.WHITE II"
 (S65-29645), "L.G.COOPER" and "C.CONRAD JR" (S65-28740). Gemini 5's suits were "of the same configuration as
@@ -62,6 +68,43 @@ activity were not included" (GV, 3.1.2.9.2): `G4C`. Conrad, the shortest man her
 2 mm more than the others (`Wearer.stand`): at the coarsest level his boots' tops lay within a millimetre of his
 trousers. Their build beside figurelib's man is estimated. The faces are the shared head,
 nobody's likeness.
+
+## Gemini X, XI and XII at the ramp
+
+Young's G4C used the same lightweight outer cover as Stafford's on IX-A. Collins's G4C used the
+extravehicular cover configuration worn by Scott on VIII. NASA's summary of Gemini EVA gives the
+XI and XII EVA suits as essentially the X suit. The model uses the same estimated thickness for
+Collins, Gordon and Aldrin. The Gemini XII press kit (p. 23) specifies an HT-1 nylon outer cover and
+thermal protection built into Aldrin's gloves. The mission report (§3.1.2.5.2) also describes
+rectangular torso quilting on his modified cover. The fit reuses the G4C glove shape and smooth
+outer cloth.
+[Gemini X mission report, §3.1.2.12.2](https://sma.nasa.gov/SignificantIncidents/assets/gemini-10-mission-report.pdf),
+[NASA TN D-6069, “Space Suits”](https://ntrs.nasa.gov/citations/19700023285),
+[Gemini XII press kit](https://ntrs.nasa.gov/citations/19660029776),
+[Gemini XII mission report](https://www.ibiblio.org/apollo/Documents/Gemini12MissionReport.pdf).
+
+Both Gemini X suits show the mission emblem on the outside of the right sleeve in NASA S66-42424.
+NASA's index to Gemini XI photographs records Gordon's shoulder patch in flight
+(entry S66-54657/S66-54594). The right-sleeve placement is carried over from X for the rest of the
+late crews. Emblem widths of 10.0, 7.6 and 8.9 cm for X, XI and XII are estimates. The three textures
+use NASA's insignia artwork with transparent backgrounds. Name tapes follow the photographs where
+legible. Gordon's tie-down cable stands a few millimetres further off the cloth to keep the cable
+and the coarser suit mesh clear.
+[NASA S66-42424](https://www.nasa.gov/image-detail/amf-s66-42424/),
+[Gemini XI photography index](https://ntrs.nasa.gov/citations/19770020528),
+[Gemini X artwork](https://www.nasa.gov/image-detail/gemini_x_2_crew_patch/),
+[Gemini XI artwork](https://www.nasa.gov/image-detail/amf-s66-44308/),
+[Gemini XII artwork](https://www.nasa.gov/image-detail/gemini_xii_2_crew_patch_s66-51710/).
+
+For the Gemini XII walkout, Lovell wore **THE** and Aldrin wore **END** on their backs. The
+photograph shows the red letters on white signs at the ramp. Their 20 by 11.6 cm sizes and positions
+on the harness are estimated. The sign artwork uses the repo font.
+[NASA KSC-66C-9220](https://www.nasa.gov/image-detail/amf-ksc-66c-9220/).
+
+Statures for Young, Collins, Gordon and Aldrin come from their later Apollo crew biographies.
+[Apollo 10 press kit](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A10_PressKit.pdf),
+[Apollo 11 press kit](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A11_PressKit.pdf),
+[Apollo 12 press kit](https://assets.science.nasa.gov/content/dam/science/psd/solar/2023/09/a/Apollo_12.pdf).
 
 ## What the model gets wrong or leaves out
 
@@ -79,7 +122,7 @@ Everything [g3c-suit.md](g3c-suit.md) lists of the G3C's garment, and:
 - **The covers of Gemini 8's and 9A's pilots** are White's, a thickness: Scott's "revised material lay-up"
   and Cernan's seven layers of superinsulation are not told apart. Cernan's legs are coloured, not thickened
   further.
-- **The flights' emblems** from Gemini 6A on (under the NASA insignia, in NASA S65-61916)
+- **The emblems from Gemini 6A through 9A** (under the NASA insignia on Schirra, in NASA S65-61916)
   are not built.
 - **Gemini 5's emblem** was approved (*On the Shoulders of Titans*, p. 256), but where it was worn on the
   suits is not in what was read, and S65-28740 does not show it: not built. Nor is the small white label

@@ -97,6 +97,9 @@ class Wearer:
     right: tuple[float, ...] = REST
     seated: dict = field(default_factory=dict)  # what of SEATED is his own
     garment: Garment = G3C
+    mission_patch: tuple[str, float] | None = None  # artwork and breadth in cm, on the right sleeve (late Gemini)
+    walkout_sign: str = ""  # the removable sign on each man's back, at the ramp on Gemini XII
+    cable_clearance: float = 0.95  # cm forward of the cloth at the two middle points of the helmet's tie-down
     stand: float = 0.12  # centimetres let out standing (`build`): a smaller man's boots want a little more at the coarsest level
 
 
@@ -183,7 +186,20 @@ def materials() -> dict:
             return None
         return bpy.data.materials.get(name) or material(name, *args, image=image() if image else None, **kw)
 
+    mission_patch = WEARER.mission_patch
+    emblem = m(f"patch-{mission_patch[0]}", (1, 1, 1), 0.0, 0.9, image=mission_patch_image) if mission_patch else None
+    if emblem and not emblem.node_tree.nodes.get("Silhouette"):
+        nodes, links = emblem.node_tree.nodes, emblem.node_tree.links
+        texture = next(node for node in nodes if node.type == "TEX_IMAGE")
+        shader = next(node for node in nodes if node.type == "BSDF_PRINCIPLED")
+        mask = nodes.new("ShaderNodeMath")
+        mask.name, mask.operation = "Silhouette", "GREATER_THAN"
+        mask.inputs[1].default_value = 0.5
+        links.new(texture.outputs["Alpha"], mask.inputs[0])
+        links.new(mask.outputs[0], shader.inputs["Alpha"])
     return {
+        "emblem": emblem,
+        "walkout": m(f"walkout-sign-{WEARER.walkout_sign.lower()}", (1, 1, 1), 0.0, 0.9, image=walkout_sign_image) if WEARER.walkout_sign else None,
         # (the viewer gives any material named suit... a weave)
         # white with a satin sheen: S65-23485, S65-23486 and S65-23488 (the suits as kept have yellowed)
         "suit": m("suit-nylon-satin-white", (0.80, 0.80, 0.78), 0.12, 0.42),
@@ -225,6 +241,19 @@ def materials() -> dict:
         # cloth woven of stainless steel, grey and dull (NASA S66-31019, S66-32149)
         "chromel": m("suit-chromel-r", (0.42, 0.43, 0.44), 0.55, 0.55) if WEARER.garment.legs == "chromel" else None,
     }
+
+
+def mission_patch_image() -> bpy.types.Image:
+    name, _width = WEARER.mission_patch
+    image = bpy.data.images.load(os.path.join(os.path.dirname(__file__), "patches", f"{name}.png"), check_existing=True)
+    image.pack()
+    return image
+
+
+def walkout_sign_image() -> bpy.types.Image:
+    art = mk.Art(f"walkout-{WEARER.walkout_sign.lower()}", 256, 148, 1.0, (0.90, 0.88, 0.81))
+    art.text(WEARER.walkout_sign, 1.58, (0.0, 0.0), (0.48, 0.065, 0.045), srlib.load_font())
+    return art.image()
 
 
 def name_key() -> str:
@@ -543,6 +572,26 @@ def build_torso(M: dict) -> tuple[dict[int, Tube], Tube]:
         ]  # (from the back: the picture's canton forward and up)
         mk.strap(flag, keys, h, 0.3, dive=(0.0, 0.0), sink=0.3, bevel=0.05, picture=True)
         flag.share = [_cloth.share_at(v) for v in flag.verts]
+    if M["emblem"] is not None:
+        # Photo S66-42424 shows the Gemini X emblems on the outside of both right sleeves, opposite the US flag.
+        # The UVs wrap around the right arm in the opposite direction to the left flag's.
+        _, w = WEARER.mission_patch
+        image = next(node.image for node in M["emblem"].node_tree.nodes if node.type == "TEX_IMAGE")
+        h = w * image.size[1] / image.size[0]
+        a = arms[-1]
+        mid = a.toward((-1, -0.12, 0), FLAG_ALONG)
+        span = w * 0.1 / (a.at(FLAG_ALONG, mid + 0.05) - a.at(FLAG_ALONG, mid - 0.05)).length
+        keys = [a.at(FLAG_ALONG, mid + span * (0.5 - k / 4), 1.0) for k in range(5)]
+        emblem = MeshBuilder()
+        mk.strap(emblem, keys, h, 0.35, dive=(0.0, 0.0), sink=0.3, bevel=0.05, picture=True)
+        shoulders(emblem, [_cloth.share_at(v) for v in emblem.verts])
+        emit(emblem, "Torso_MissionPatch", M["emblem"], g, sharp_angle=None)
+    if M["walkout"] is not None and not fl.rig().posed():
+        # KSC-66C-9220 shows the white signs lying over the back restraint, hand-lettered in red.
+        sign = MeshBuilder()
+        at = lay(t, RING_Z - 20.0, 180.0)
+        mk.strap(sign, [at(x, 0, 0.8) for x in (-10, -5, 0, 5, 10)], 11.6, 2.25, dive=(0.0, 0.0), sink=0.25, bevel=0.06, picture=True)
+        emit(sign, "Torso_WalkoutSign", M["walkout"], g, sharp_angle=None)
     for mb in (cloth, pocket, flag):
         shoulders(mb, mb.share)
     emit(cloth, "Torso_Shell", M["suit"], g, sharp_angle=None)
@@ -576,7 +625,7 @@ def _tie_down(t: Tube, chrome: MeshBuilder, cable: MeshBuilder, tape: MeshBuilde
     for sx in (1, -1):
         phi = sx * math.radians(52)
         a = Vector(((SHELL_R0 + 1.2) * math.sin(phi), RING_Y - (SHELL_R0 + 1.2) * SHELL_DEEP * math.cos(phi), RING_Z - 2.5))
-        mids = [_cloth.on(a.lerp(eye, f) + Vector((0, -3.0, 0)))[0] + Vector((0, -0.95, 0.1)) for f in (0.3, 0.62)]
+        mids = [_cloth.on(a.lerp(eye, f) + Vector((0, -3.0, 0)))[0] + Vector((0, -WEARER.cable_clearance, 0.1)) for f in (0.3, 0.62)]
         pts = fl.polyline([tuple(a), *(tuple(q) for q in mids), tuple(eye)], 0.8)
         Tube(pts, [(0.11, 0.11)] * len(pts), resample=1).add(cable, 5)
     tie = t.trace(d(zb - 1.2), d(B.waist_z + 12.5), az(0), az(0), 40)
