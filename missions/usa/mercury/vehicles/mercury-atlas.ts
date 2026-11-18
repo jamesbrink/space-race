@@ -1,4 +1,5 @@
-import { doc } from '../../../../src/measure.ts';
+import { assumed, doc, estimated } from '../../../../src/measure.ts';
+import type { Nozzle } from '../../../../src/sim/plan.ts';
 import type { CabinDef, Measure, MechanismDef, ModelDef, Motor, Spec, ViewDef } from '../../../../src/types.ts';
 import { mercurySeat } from './cabin.ts';
 import {
@@ -127,6 +128,46 @@ export const ATLAS = {
   sustainer: doc(57000 * LBF, '57,000 lbf, rated (NASA SP-45, p. 88)'),
   vernier: doc(1000 * LBF, '1,000 lbf each (NASA SP-45, p. 88)'),
 } satisfies Record<string, Measure>;
+
+const SP8120 = 'NASA SP-8120, Liquid Rocket Engine Nozzles (1976), Table I, pp. 5 and 6';
+const MCCUTCHEON =
+  'McCutcheon, "Rocket Propulsion Evolution 5: Atlas Missile" (Aircraft Engine Historical Society, 2021), its table of launch vehicle engines: secondary';
+const LR101 =
+  'Rocketdyne’s LR101 vernier data sheet as heroicrelics.org transcribes it (Jetzer, "LR-101 Vernier Engine"): secondary, of the type, which dash number MA-2 carried not read';
+
+/** The words for an exit pressure worked from a chamber's and an area ratio: how it was reached, and that it is an estimate. */
+const expanded = (psia: number, ratio: number, atm: number): string =>
+  `the chamber’s ${psia} psia expanded isentropically through ${ratio}:1 as a gas of gamma 1.2 (kerosene and oxygen’s in general, not this engine’s): ${atm} atmosphere`;
+
+/**
+ * The MA-2's nozzles, for the shape of their fires (sim/plan.ts `Nozzle`; viewer/plume.ts): nothing the simulator flies
+ * reads them. The Atlas D's engines on every Mercury-Atlas flight: the two booster chambers (LR89-NA-5), the sustainer
+ * (LR105-NA-5) and the verniers (LR101), whose fires are drawn from their own nozzles though they are flown as part of the
+ * sustainer. psia to Pa by 6,894.757.
+ */
+export const MA2_NOZZLES = {
+  booster: {
+    chamber: doc(
+      580 * 6894.757,
+      `${MCCUTCHEON}: 580 psi, the LR89-5's (its 163,211 lbf at sea level is above the MA-2's 154,000 rating: which build the table is of is not said). ${SP8120} has 578 psia at sea level for the LR89-NA-7, the MA-5's booster`,
+    ),
+    expansion: doc(8, `${MCCUTCHEON}: 8, the LR89-5's. ${SP8120}: 8 for the LR89-NA-7, its exit 45.83 in across`),
+    exit: estimated(67_460, expanded(580, 8, 0.67)),
+  },
+  sustainer: {
+    chamber: doc(696 * 6894.757, `${MCCUTCHEON}: 696 psi, the LR105-5's. Encyclopedia Astronautica has 48 bar, the same`),
+    expansion: doc(25, `${MCCUTCHEON}: 25, the LR105-5's. NASA SP-8120, p. 32: "The Atlas sustainer (expansion ratio of 25)"`),
+    exit: estimated(18_260, expanded(696, 25, 0.18)),
+  },
+  vernier: {
+    chamber: assumed(358 * 6894.757, `${LR101}: 358 psia at 1,000 lbf at sea level, fed by the sustainer's pump`),
+    expansion: assumed(
+      6,
+      `${LR101}: "an expansion ratio of 6:1". A model specification of the YLR101-NA-15 (DTIC AD0409534, not opened) is cited for 5.61`,
+    ),
+    exit: estimated(61_360, expanded(358, 6, 0.61)),
+  },
+} satisfies Record<string, Nozzle>;
 
 /** The orbital flights' figures that are the type's: the capsule on its Atlas. */
 export const SPEC = {

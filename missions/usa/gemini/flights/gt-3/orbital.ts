@@ -9,6 +9,7 @@
  * flight's own figure is missing, the next flight's report (Gemini IV, MSC-G-R-65-3) gives its vehicles', `assumed`.
  */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
+import { GLV_NOZZLES } from '../../vehicles/gemini-titan.ts';
 import type { GeminiTitanRecord } from '../../vehicles/gemini-titan-plan.ts';
 
 const IN = 0.0254;
@@ -147,6 +148,7 @@ export const orbital: GeminiTitanRecord = {
             `GLV-1's at 155 s, 281.1 s (${GI}, Table 5-II), some 60 km up: taken as the vacuum figure. GLV-4's flight average was 278.61 s (${GIV}, Table 5.2-II)`,
           ),
         },
+        nozzle: GLV_NOZZLES.first,
       },
       ignition: doc(0, 'started on the pad, about 4 s before the vehicle was let go (the press kit, p. 11): the run begins at release'),
       cutoff: derived(
@@ -179,6 +181,7 @@ export const orbital: GeminiTitanRecord = {
           ),
         },
         isp: { vacuum: assumed(313.07, `GLV-4's as flown, 313.07 s (predicted 310.53: ${GIV}, Table 5.2-III); GLV-1's 309.9 s`) },
+        nozzle: GLV_NOZZLES.second,
       },
       ignition: derived(
         BECO,

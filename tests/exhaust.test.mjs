@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { flights } from '../missions/index.ts';
 import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { STRAP_ONS } from '../missions/ussr/vostok/vehicles/vostok-8k72k.ts';
 import { Plume, plumeExit, plumeShape } from '../src/viewer/plume.ts';
@@ -17,6 +18,34 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
   assert.equal(plumeExit(undefined), 1);
   assert.deepEqual(engine, {});
   assert.equal(plumeExit({ nozzle: { exit: { value: 0.5 * P0 } } }), 0.5);
+});
+
+/**
+ * The liquid engines' fires still drawn without a nozzle record (plume.ts `plumeExit`: the neutral
+ * fallback), by flight. Solid motors' nozzles are recorded on no flight, and the Gemini's thrusters' not either.
+ * SP-8120's Table I has the H-1's, the J-2's and the service module's AJ10-137's, not yet put in Apollo 7's record.
+ */
+const FALLBACK = {
+  'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
+  'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
+};
+const SOLIDS = ['retrorockets', 'launch-escape-motor'];
+
+test('every ascent fire of the Mercury-Atlas and Gemini-Titan flights is drawn from its own nozzle record', () => {
+  let seen = 0;
+  for (const f of flights) {
+    const engines = f.plan?.craft[0]?.engines ?? [];
+    for (const fire of f.flies?.fires ?? []) {
+      const nozzle = fire.nozzle ?? engines.find((e) => e.id === fire.on)?.nozzle;
+      const neutral = SOLIDS.includes(fire.on) || (FALLBACK[f.id] ?? []).includes(fire.on);
+      if (/\/(ma-|gt-)/.test(f.id) && !neutral) {
+        assert.ok(nozzle?.chamber && nozzle.exit, `${f.id} ${fire.node} (${fire.on}) has a nozzle record with its chamber`);
+        seen++;
+      }
+      if (!nozzle) assert.ok(neutral, `${f.id} ${fire.node} (${fire.on}) is drawn neutral: list it in FALLBACK`);
+    }
+  }
+  assert.equal(seen, 4 * 3 + 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titan 3 of three');
 });
 
 test('the jet is nearly matched at sea level and opens as the air thins, without a step', () => {

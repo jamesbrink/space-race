@@ -8,6 +8,7 @@
  */
 
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
+import { MA2_NOZZLES } from '../../vehicles/mercury-atlas.ts';
 import type { MercuryAtlasRecord } from '../../vehicles/mercury-atlas-plan.ts';
 import { HARDWARE, TOWER_MOTORS } from '../../vehicles/mercury-redstone.ts';
 
@@ -105,6 +106,7 @@ export const orbital: MercuryAtlasRecord = {
             `282 s, the XLR-89-5's: ${ASTRONAUTIX}; the same in the Aircraft Engine Historical Society's page`,
           ),
         },
+        nozzle: MA2_NOZZLES.booster,
       },
       cutoff: doc(
         BECO,
@@ -150,6 +152,8 @@ export const orbital: MercuryAtlasRecord = {
             `309 s, the XLR-105-5's (${ASTRONAUTIX}); 316 s in the Aircraft Engine Historical Society's page, for a later one`,
           ),
         },
+        // (the verniers' own nozzles are drawn from MA2_NOZZLES.vernier: flight.ts `flies.fires`)
+        nozzle: MA2_NOZZLES.sustainer,
       },
       velocity: doc(
         25_730 * FT,

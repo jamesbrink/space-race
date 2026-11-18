@@ -473,7 +473,9 @@ const ascentValue = (run) => (id) => {
 function atlasInputs(f, o, whole) {
   const read = [];
   const walk = (x, at) => {
-    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
+    // (an engine's `nozzle` is its fire's shape alone, viewer/plume.ts: nothing flown reads it)
+    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre') || at.endsWith('.nozzle'))
+      return;
     if ('confidence' in x && 'value' in x) {
       if (x.confidence !== 'documented') read.push(at);
       return;
@@ -539,7 +541,9 @@ function atlasInputs(f, o, whole) {
 function titanInputs(f, o, whole) {
   const read = [];
   const walk = (x, at) => {
-    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
+    // (an engine's `nozzle` is its fire's shape alone, viewer/plume.ts: nothing flown reads it)
+    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre') || at.endsWith('.nozzle'))
+      return;
     if ('confidence' in x && ('value' in x || 'points' in x)) {
       if (x.confidence !== 'documented') read.push(at);
       return;

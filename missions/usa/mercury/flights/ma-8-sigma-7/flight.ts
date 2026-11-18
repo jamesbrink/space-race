@@ -22,7 +22,7 @@ import { mercuryCabin, OBJECTIVE_OUT } from '../../vehicles/cabin.ts';
 import { LAUNCHER_TOP, STAND_TURN } from '../../../places/cape-canaveral/lc-14.parts.ts';
 import { crew, pad, PAD_SPECS } from './pad.ts';
 import { WEATHER } from './weather.ts';
-import { BASE } from '../../vehicles/mercury-atlas.ts';
+import { BASE, MA2_NOZZLES } from '../../vehicles/mercury-atlas.ts';
 import { mercuryAtlasPlan } from '../../vehicles/mercury-atlas-plan.ts';
 import { CHUTES } from '../../vehicles/mercury-redstone.ts';
 import { orbital } from './orbital.ts';
@@ -749,7 +749,7 @@ export const flight: Flight = {
     fires: [
       { node: 'BoosterEngines_Chambers', on: 'booster-engines', burns: 'kerosene-lox' },
       { node: 'Sustainer_Chamber', radius: 24 * IN, on: 'sustainer', burns: 'kerosene-lox' },
-      { node: 'Verniers_Nozzles', on: 'sustainer', burns: 'kerosene-lox' },
+      { node: 'Verniers_Nozzles', on: 'sustainer', burns: 'kerosene-lox', nozzle: MA2_NOZZLES.vernier },
       { node: 'Retropack_RetroNozzles', on: 'retrorockets', burns: 'solid-perchlorate' },
     ],
     // each by the plan's joint that lets it go (vehicles/mercury-atlas-plan.ts), at the record's instant

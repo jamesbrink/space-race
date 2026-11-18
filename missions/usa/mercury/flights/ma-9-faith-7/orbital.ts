@@ -16,6 +16,7 @@
  */
 import { assumed, derived, doc, type Measure } from '../../../../../src/measure.ts';
 import { HARDWARE } from '../../vehicles/mercury-redstone.ts';
+import { MA2_NOZZLES } from '../../vehicles/mercury-atlas.ts';
 import type { MercuryAtlasRecord } from '../../vehicles/mercury-atlas-plan.ts';
 import { orbital as F7 } from '../ma-6-friendship-7/orbital.ts';
 
@@ -94,6 +95,7 @@ export const orbital: MercuryAtlasRecord = {
         count: 2,
         thrust: { seaLevel: as6(F7.atlas.booster.engine.thrust.seaLevel), vacuum: as6(F7.atlas.booster.engine.thrust.vacuum) },
         isp: { seaLevel: as6(F7.atlas.booster.engine.isp.seaLevel), vacuum: as6(F7.atlas.booster.engine.isp.vacuum) },
+        nozzle: MA2_NOZZLES.booster,
       },
       cutoff: doc(BECO, `${LV}: "Booster engine cut-off (BECO) was accomplished at 132.5 seconds"`),
       separation: doc(STAGING, `${LV}: "with booster section staging at 135.4 seconds"`),
@@ -109,6 +111,7 @@ export const orbital: MercuryAtlasRecord = {
         count: 1,
         thrust: { seaLevel: as6(F7.atlas.tank.engine.thrust.seaLevel), vacuum: as6(F7.atlas.tank.engine.thrust.vacuum) },
         isp: { seaLevel: as6(F7.atlas.tank.engine.isp.seaLevel), vacuum: as6(F7.atlas.tank.engine.isp.vacuum) },
+        nozzle: MA2_NOZZLES.sustainer,
       },
       velocity: doc(
         17_547 * (5280 / 3600) * FT,
