@@ -424,6 +424,22 @@ def sheet(mb: MeshBuilder, t0, t1, z0: float, z1: float, off: float, cell: float
     mb.add(verts, faces)
 
 
+def inner_drop(theta: float, z: float) -> float:
+    """Radial distance from the cone to the cabin ceiling, including the two window troughs."""
+    return max(WALL, depth(theta, z) + (0.9 if z < zz(Z_HATCH_FWD) - 0.1 else 2.3))
+
+
+def forward_roof(mb: MeshBuilder, frame: bool) -> None:
+    """The pressure vessel and frame beneath the forward troughs share a half-inch grid and radial stations."""
+
+    def drop(t, z):
+        return depth(t, z) + 1.6 if frame else inner_drop(t, z)
+
+    sheet(mb, -HATCH_OUT, HATCH_OUT, zz(Z_HATCH_FWD), zz(Z_ACCESS), 0, 0.5, drop=drop, flip=True)
+    if frame:
+        sheet(mb, -HATCH_OUT, HATCH_OUT, zz(Z_ACCESS), zz(Z_RCS), 0, 0.5, drop=drop, flip=True)
+
+
 # ------------------------------------------------------------------ a thrust chamber in its port
 
 

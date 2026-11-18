@@ -68,6 +68,7 @@ from gemini_shell import (
     band,
     chamber,
     depth,
+    forward_roof,
     hatch_in,
     hatch_margin,
     holes,
@@ -1143,7 +1144,7 @@ def build_cabin(M, fit: Fit, font, flag) -> None:
     if interior():  # the frame under the shingles: seen only with the ship cut open
         under.lathe(prof([(CABIN.r(0.0) - 1.6, 0.0), (CABIN.r(aft) - 1.6, aft)]), 96, flip=True)
         under.lathe(prof([(CABIN.r(aft) - 1.6, aft), (CABIN.r(zz(Z_RCS)) - 1.6, zz(Z_RCS))]), 96, arc=(HATCH_OUT, TAU - HATCH_OUT), flip=True)
-        sheet(under, -HATCH_OUT, HATCH_OUT, fwd, zz(Z_RCS), -1.6, 2.4, flip=True)
+        forward_roof(under, frame=True)
         sheet(under, lambda z: -hatch_in(z), hatch_in, aft, fwd, -1.6, 2.4, flip=True)
     under.lathe(hoop(SHIELD_R - 1.2, SHIELD_R + 0.25, 0.1, 1.5), 144)  # the ring the heat shield is bolted to
     under.lathe(hoop(NECK_R - 2.4, NECK_R + 0.2, zz(Z_RCS) - 0.4, zz(Z_RCS)), 96)

@@ -323,9 +323,8 @@ The three late ships use the common cabin, shingles, docking nose and adapter fr
   form is not known, and the equipment bays between it and the cone are empty but for the
   experiment's water tank.
   Its roofs and the beam between the hatches follow the cone and are shaded as curves
-  (`gemini_cabin.round_off`); its sheets are shaded flat. The roof forward of the hatches is
-  cut in cells of about an inch and a half, so the wall of a trough let down into it (2 in wide)
-  is a cell or two: a crease where the real section is not known.
+  (`gemini_cabin.round_off`); its sheets are shaded flat. The roof forward of the hatches and the titanium frame over it share a half-inch mesh.
+  The two-inch trough walls run across several cells. Their cross-section remains estimated from photographs.
 - **The seat** is the Smithsonian's two in form and size, with little of what was packed on it:
   the parachute and the raft are one pad behind the backboard, the egress kit a thin pad (thinner
   than the fit implies: "Crew station"), and there is no ballute, survival kit, drogue mortar,

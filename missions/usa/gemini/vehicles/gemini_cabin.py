@@ -27,7 +27,23 @@ from mathutils import Matrix, Vector
 from mathutils.geometry import tessellate_polygon
 
 import mercury_cabin as mc
-from gemini_shell import CABIN, HATCH_OUT, IN, WALL, WINDOW_HALF, WINDOW_L, WINDOWS, Z0, Z_ACCESS, Z_HATCH_AFT, Z_HATCH_FWD, depth, hatch_in, zz
+from gemini_shell import (
+    CABIN,
+    HATCH_OUT,
+    IN,
+    WALL,
+    WINDOW_HALF,
+    WINDOW_L,
+    WINDOWS,
+    Z0,
+    Z_ACCESS,
+    Z_HATCH_AFT,
+    Z_HATCH_FWD,
+    forward_roof,
+    hatch_in,
+    inner_drop,
+    zz,
+)
 from mercury_cabin import Sheet, plane, pointer, rigid, round_dial, soft, telelight, toggle
 from mercury_capsule import chamfered
 from srlib import TAU, MeshBuilder, deg, frame, interior, prof
@@ -82,7 +98,7 @@ def V(top: float, right: float, station: float) -> Vector:
 def inner(theta: float, z: float) -> float:
     """The cabin's roof at an angle and a height: the hatch's inner skin, let down under the trough; forward of the
     hatches, the vessel's own roof under the cabin's frame."""
-    return CABIN.r(z) - max(WALL, depth(theta, z) + (0.9 if z < zz(Z_HATCH_FWD) - 0.1 else 2.3))
+    return CABIN.r(z) - inner_drop(theta, z)
 
 
 def lerp(table, station: float) -> float:
@@ -190,15 +206,15 @@ def vessel(c: Station) -> None:
     # These three follow the cone, and are shaded as the curves they are (`ROUND`, `round_off`): the rest of the vessel
     # is a welded box of flat sheets, each shaded by its own plane.
     start = len(v.faces)
-    nt = 40
-    for za, zb, nz in ((zz(Z_HATCH_FWD) - 0.05, zz(Z_ACCESS), 6), (zz(Z_BULKHEAD), zz(Z_HATCH_AFT) + 0.05, 1)):
+    forward_roof(v, frame=False)
+    za, zb = zz(Z_BULKHEAD), zz(Z_HATCH_AFT) + 0.05
 
-        def roof(i: int, j: int, za=za, zb=zb, nz=nz) -> Vector:
-            a, z = -HATCH_OUT + 2 * HATCH_OUT * i / nt, za + (zb - za) * j / nz
-            return Vector((inner(a, z) * math.cos(a), inner(a, z) * math.sin(a), z)) * IN
+    def aft_roof(i: int, z: float) -> Vector:
+        a = -HATCH_OUT + 2 * HATCH_OUT * i / 40
+        return Vector((inner(a, z) * math.cos(a), inner(a, z) * math.sin(a), z)) * IN
 
-        v.grid(roof, range(nt + 1), range(nz + 1), flip=True)
-    za = zz(Z_HATCH_FWD) - 0.05
+    v.grid(aft_roof, range(41), [za, zb], flip=True)
+    za = zz(Z_HATCH_FWD)
     zs = [zz(Z_HATCH_AFT) + 0.05 + (za - zz(Z_HATCH_AFT) - 0.05) * j / 10 for j in range(11)]
     v.grid(
         lambda k, z: Vector(((CABIN.r(z) - WALL) * math.cos(k * hatch_in(z)), (CABIN.r(z) - WALL) * math.sin(k * hatch_in(z)), z)) * IN,
