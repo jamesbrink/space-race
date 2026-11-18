@@ -343,7 +343,7 @@ export class Stand {
     }
     for (const child of root.children) {
       const beside = this.isBeside(child);
-      child.visible = !craft || beside || isCraft(child);
+      child.visible = craft ? beside || isCraft(child) : !(this.entry.vehicle.enclosedSpacecraft && isCraft(child));
       if (beside && craft) child.position.y = this.rest(child) + this.raise;
     }
     root.updateMatrixWorld(true);

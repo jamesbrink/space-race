@@ -3,36 +3,16 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { Group, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import { flight as apollo7 } from '../missions/usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/flight.ts';
 import { Exploder } from '../src/viewer/explode.ts';
+import { hierarchy } from './glb.mjs';
 
 function asset(flight, suffix = '') {
   const file = new URL(`../public/${flight.models[0].url.replace('.glb', `${suffix}.glb`)}`, import.meta.url);
   const bytes = readFileSync(file);
   return JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)));
-}
-
-function hierarchy(gltf) {
-  function read(index) {
-    const node = gltf.nodes[index];
-    const frame = new Group();
-    frame.name = node.name;
-    if (node.matrix) {
-      frame.matrix.fromArray(node.matrix).decompose(frame.position, frame.quaternion, frame.scale);
-    } else {
-      if (node.translation) frame.position.fromArray(node.translation);
-      if (node.rotation) frame.quaternion.fromArray(node.rotation);
-      if (node.scale) frame.scale.fromArray(node.scale);
-    }
-    frame.userData.mesh = node.mesh;
-    for (const child of node.children ?? []) frame.add(read(child));
-    return frame;
-  }
-  const scene = new Group();
-  for (const index of gltf.scenes[gltf.scene ?? 0].nodes) scene.add(read(index));
-  return scene;
 }
 
 const close = (actual, expected, tolerance, label) =>

@@ -1050,3 +1050,5 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.
 
 In a Lineup exhibit, a top-level group marked `lineup_enclosed` stays completely enclosed in both the launch vehicle and spacecraft-only configurations. The Lineup omits its meshes when building its GPU geometry. The Gallery retains those parts, including the folded LM-3 in its adapter, at the normal inspection detail.
+
+A vehicle whose fairing fully encloses the spacecraft sets `enclosedSpacecraft`. The Lineup skips those spacecraft draws while the closed launch vehicle stands in the row, and restores them when the visitor chooses spacecraft alone.

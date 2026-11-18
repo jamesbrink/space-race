@@ -45,7 +45,7 @@ STEER_R = 1270.0  # the steering chambers from the axis, in line with the booste
 # half its width, and the stations of its top on the skin and on that face
 HOUSING = (1395.0, 1320.0, 200.0, 2300.0, 1750.0)
 TUNNEL_R = 160.0  # the oxygen's pipe down through the fuel tank, in its lagging
-KNEES = (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, CORE_TOP)
+KNEES = (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK)
 
 
 def slope(h: float) -> float:
@@ -117,7 +117,7 @@ def dome(mb: Local, h: float, r: float, depth: float, up: bool, segs: int = 64, 
     mb.lathe(pts if up else pts[::-1], segs)
 
 
-def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
+def build(base_z: float, M: dict, web_foot: float = 250.0, *, top: float = CORE_TOP) -> None:
     """`web_foot` is how far under the frame each bracket's two webs end. At 250 their lower edges lie in the plane of
     the under side of the bracket's foot: two faces in one place, which the clearance check passes at the 8K72K's
     stations only by rounding. It is left so, so that the Vostoks' built models do not change; a vehicle built on
@@ -128,11 +128,11 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
     lox0, lox1 = CORE_LOX
     shield_top = 1500.0  # the tail's lower part is under polished steel over asbestos
     skin.lathe([(core_r(h), h) for h in (shield_top, CORE_TAPER, lox0)], 96)
-    skin.lathe([(core_r(h), h) for h in (lox1, CORE_NECK, CORE_TOP)], 96)
+    skin.lathe([(core_r(h), h) for h in (lox1, CORE_NECK, top)], 96)
     frost_foot(skin, frost, core_r, lox0, 0.0)  # the frost's edge is uneven
     frost.lathe([(core_r(h), h) for h in (lox0 + FROST_EDGE, BOOSTER_TIP_H, lox1)], 96)
     shield.lathe([(CORE_R_TAIL, NOZZLES), (CORE_R_TAIL, shield_top)], 96)
-    wall.lathe([(core_r(h) - 20, h) for h in (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, CORE_TOP)], 96, flip=True)
+    wall.lathe([(core_r(h) - 20, h) for h in (NOZZLES, CORE_TAPER, BOOSTER_TIP_H, CORE_NECK, top)], 96, flip=True)
     # frames where the tanks' ends and the bays meet the skin, and the heavy one the boosters push on
     on_lacquer = (
         (CORE_BAY, 26, 7),
@@ -141,7 +141,7 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
         (CORE_FUEL[1], 22, 6),
         (lox0 + 40, 22, 6),
         (CORE_NECK, 22, 6),
-        (CORE_TOP - 40, 36, 10),
+        (top - 40, 36, 10),
     )
     on_frost = ((17500, 14, 6), (BOOSTER_TIP_H, 60, 16), (22000, 14, 6), (24000, 14, 6), (lox1 - 40, 22, 6))
     for h, half, proud in on_lacquer:
@@ -156,10 +156,10 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
         az = deg(15 + 60 * i)
         welds(skin, az, shield_top + 40, lox0 - 30, frames)
         welds(frost, az, lox0 + FROST_EDGE + 20, lox1 - 110, frames)
-        welds(skin, az, lox1 + 30, CORE_TOP - 120, frames)
+        welds(skin, az, lox1 + 30, top - 120, frames)
     for az in (deg(45), deg(135)):
         strip(fit, az, 1700, lox0 - 60, 170, 85)
-        strip(fit, az, lox1 + 60, CORE_TOP - 120, 170, 85)
+        strip(fit, az, lox1 + 60, top - 120, 170, 85)
         strip(fit, az, lox0 + 80, lox0 + frost_edge(az, 0.0) - 30, 170, 85)
         strip(frost, az, lox0 + frost_edge(az, 0.0) + 30, lox1 - 80, 170, 85)
     # hatches into the engine bay and the instrument bay
@@ -167,10 +167,10 @@ def build(base_z: float, M: dict, web_foot: float = 250.0) -> None:
         fit.box((560, 640, 20), on_skin(az, 2550, -2))
     for az in (deg(20), deg(170), deg(260)):
         fit.box((480, 440, 20), on_skin(az, CORE_NECK + 520, -2))
-    for h in (NOZZLES + 60, shield_top - 30, CORE_BAY, lox1 + 30, CORE_TOP - 40):
+    for h in (NOZZLES + 60, shield_top - 30, CORE_BAY, lox1 + 30, top - 40):
         for i in range(72):
             a = TAU * (i + 0.5) / 72
-            r = core_r(h) + (16 if h == CORE_TOP - 40 else 6)
+            r = core_r(h) + (16 if h == top - 40 else 6)
             bolts.disc((r * math.cos(a), r * math.sin(a), h), (math.cos(a), math.sin(a), 0), 9, 5)
     # the bracket each booster's tip ball pushes up into: a cup on an arm from the frame
     # (each cup is a node of its own, `Core_Socket_<letter>`, its origin where the ball's middle is as the block hangs)
