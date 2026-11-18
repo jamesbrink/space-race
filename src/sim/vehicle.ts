@@ -238,6 +238,8 @@ export interface Tear {
 /** A sample as fly.ts gives them, and how the body lies. */
 export interface LiveSample extends Sample {
   rotation?: CoastRotation;
+  /** Passive sphere response shared with a hand-flown release. */
+  passive?: { wind: Vec3; alignment: number };
   /** The parachute now out, as the state has it: what looks ahead (predict.ts) starts from it, filling or torn as it is. */
   chute: { full: number; was: number; at: number; fills: number };
   /** The long axis in the frame that does not turn, and the whole attitude (body to frame). */

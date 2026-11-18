@@ -339,6 +339,7 @@ tools/
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
   impact-test.mjs                     browser proof of live impact spin and structural breakup, including rewind
+  descent-attitude.mjs                browser check of Soviet sphere attitude under camera and pilot input after module release
   separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
   flicker-test.mjs                    browser check for z-fighting
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward

@@ -48,6 +48,7 @@ import {
   integral,
   movedTo,
   partingAt,
+  passiveSpherePose,
   published,
   recordSamples,
   sequenceOf,
@@ -1016,8 +1017,12 @@ export class OrbitDeck extends Deck {
 
   /** The hand controls free: the timer's burn given up, the attitude the hand's from this instant (and the flight flown again without that burn). */
   private freeHands(why: string | null): void {
-    this.free = true;
     const t = this.clock.t;
+    if (this.manualJetsGone(t)) {
+      this.host.say?.('No attitude jets', 'The instrument module carried the attitude jets away.');
+      return;
+    }
+    this.free = true;
     const [a, b, k] = either(this.run!.samples as LiveSample[], t);
     const attitude = attitudeBetween(a, b, k);
     const drift = this.encounters?.contacts.rotation?.(t);
@@ -1178,7 +1183,7 @@ export class OrbitDeck extends Deck {
   /** Fire the braking engine by hand along the long axis as it points: the rest of the flight flown again from it. */
   private fire(t: number): void {
     const deltaV = this.flight.plan!.record?.manual && coastEvents(this.flight.plan!).burn?.deltaV;
-    if (!deltaV) return;
+    if (!deltaV || this.parts <= t) return;
     this.turnTo(t);
     // the long axis, in the flight's frame
     const aim = this.handAxis(t);
@@ -1263,15 +1268,18 @@ export class OrbitDeck extends Deck {
     const t = this.fired;
     const parts = ship.parted;
     if (this.hand && (t !== null || this.free)) {
-      // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there
-      // over half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
+      // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; passive spheres follow the entry load, other craft turn
+      // over half a minute toward the airflow (staged.ts recordSamples)
       const log = this.hand.log;
       const left = log.at(-1)!.q;
       let i = 0;
       for (const sample of samples) {
         if (sample.riding || sample.t < log[0]!.t) continue;
         let q: Quat;
-        if (t === null || sample.t <= Math.min(ship.off, parts)) {
+        if (sample.passive) {
+          while (i + 1 < log.length && log[i + 1]!.t <= parts) i++;
+          q = passiveSpherePose(log[i]!.q, sample.passive.wind, sample.passive.alignment);
+        } else if (t === null || sample.t <= Math.min(ship.off, parts)) {
           while (i + 1 < log.length && log[i + 1]!.t <= sample.t) i++;
           q = log[i]!.q;
         } else if (sample.t < parts) q = left;
@@ -1584,11 +1592,20 @@ export class OrbitDeck extends Deck {
     return turn(drift ? multiply(this.hand!.q, drift.delta) : this.hand!.q, [1, 0, 0]);
   }
 
+  private manualJetsGone(t: number): boolean {
+    if (t < this.parts) return false;
+    const craft = this.flight.plan!.craft[0]!;
+    const jets = craft.thrusters.find((set) => set.mode === 'manual' && set.rate);
+    const brake = craft.engines.find((e) => e.flown);
+    return !!jets && !!brake && craft.joints.some((joint) => joint.gone.includes(brake.body) && joint.gone.includes(jets.body));
+  }
+
   /** Turn the hand's attitude on to `t` by the keys held and the finger's stick. */
   private turnTo(t: number): void {
     const h = this.hand;
     if (!h || this.fired !== null) return;
-    const dt = t - h.t;
+    const until = this.manualJetsGone(t) ? this.parts : t;
+    const dt = until - h.t;
     h.t = t;
     const push = this.push();
     if (dt <= 0 || (push.pitch === 0 && push.yaw === 0 && push.roll === 0)) return;
@@ -1599,7 +1616,7 @@ export class OrbitDeck extends Deck {
     q = normalize(multiply(q, aboutAxis(KEYS.a![0], push.yaw * rate * dt)));
     q = normalize(multiply(q, aboutAxis(KEYS.e![0], push.roll * rate * dt)));
     h.q = q;
-    h.log.push({ t, q });
+    h.log.push({ t: until, q });
   }
 
   /** Which way the hands push, each -1 to 1: the keys held, and the finger's stick and roll laid over them. */
@@ -1853,7 +1870,7 @@ export class OrbitDeck extends Deck {
     const live = this.state && this.pilot && !this.ascended ? this.state : null;
     const t = Math.max(0, live ? Math.min(this.clock.t, live.t) : this.clock.t);
     const s = this.sampleAt(t);
-    const hands = this.free || this.byPlan !== null || (this.mine !== null && !this.ascended);
+    const hands = !this.manualJetsGone(t) && (this.free || this.byPlan !== null || (this.mine !== null && !this.ascended));
     const pushed = hands && this.fired === null ? this.push() : { pitch: 0, yaw: 0, roll: 0 };
     const news: DeckNews = { times: this.times, hand: pushed, holds: hands ? FREE : NONE };
     // (down at the run's end, whatever the descent's last moment of motion: the navball reads nought as the figures do)
@@ -1914,7 +1931,7 @@ export class OrbitDeck extends Deck {
           : this.mine === null
             ? { on: coast.on, off: coast.off }
             : null;
-    const braking = retro !== null && t >= retro.on && t < retro.off;
+    const braking = retro !== null && t >= retro.on && t < Math.min(retro.off, this.parts);
     const thrust = s.burning.reduce((sum, m) => sum + m.thrust, 0);
     set('engine', burning.length ? burning.join(' + ') : braking ? this.burnName : t <= 0 ? 'Not lit' : 'None burning');
     set('engine-kind', this.mine === null ? 'fixed thrust, cut by the record' : 'fixed thrust: Space cuts it');

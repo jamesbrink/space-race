@@ -52,6 +52,7 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
     mass: derived(o.mass.value - o.entry.mass.value, 'the spacecraft in orbit less what comes down'),
   });
   const entryAero = {
+    passiveSphere: true,
     area: o.entry.area,
     drag: o.entry.drag,
     ...(module ? { dragArea: module.dragArea } : {}),

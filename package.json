@@ -23,6 +23,7 @@
     "test:studio": "node tools/studio-test.mjs",
     "test:places": "node tools/places-test.mjs",
     "test:impact": "node tools/impact-test.mjs",
+    "test:descent-attitude": "node tools/descent-attitude.mjs",
     "test:separation": "node tools/separation-test.mjs",
     "test:fires": "node tools/fires-test.mjs",
     "test:chute": "node tools/chute-test.mjs",
