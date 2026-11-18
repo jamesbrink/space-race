@@ -13,9 +13,13 @@ import { downOf } from '../src/sim/descent.ts';
 import { coastOf, flyDown, flyEjected, flyOrbit, heightsBall } from '../src/sim/orbital.ts';
 import { abortAt } from '../src/sim/plan.ts';
 import { ejectedVerdict } from '../src/sim/verdict.ts';
+import { orbitalRelease } from '../src/sim/run.ts';
+import { apart } from '../src/sim/shed.ts';
+import { aboutAxis, turn } from '../src/sim/rigid.ts';
+import { guided } from '../src/sim/fliers.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
-import { cross, DEG, dot, length, siteFrame, sub, unit } from '../src/world/frames.ts';
+import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
@@ -581,4 +585,58 @@ test('the sequencer taken and handed back: off and on again with nothing due bet
   console.log(`# the sequencer off from 115 to 125 s: the strap-ons went at ${over.stages[0].gone.toFixed(2)} s, not ${seq.stages[0].sep}`);
   assert.ok(Math.abs(over.stages[0].gone - 125) < 0.02);
   assert.ok(over.stages[0].to <= 125 + 1e-9);
+});
+
+test('a live joint at a tick between kept samples transfers equal and opposite momentum, including in its prediction', () => {
+  const v = stagedVehicle(plan, site, dated, sea, x);
+  const neutral = { pitch: 0, yaw: 0, roll: 0 };
+  // The lower stages and coverings already gone; an unpowered two-body fixture with the last stage still loaded.
+  const previous = v.tick(v.start(), {
+    ...neutral,
+    steps: [
+      ...seq.drops.map((d) => ({ kind: 'drop', id: d.joint })),
+      ...seq.stages.slice(0, -1).map((_, stage) => ({ kind: 'separate', stage })),
+    ],
+  });
+  const t = seq.stages[last].sep + 0.07;
+  const was = {
+    ...previous,
+    t,
+    ticks: Math.round(t * 100),
+    r: [6800000, 0, 0],
+    v: [1, 7600, 3],
+    held: false,
+    q: aboutAxis([0, 0, 1], 0.4),
+  };
+  const s = v.tick(was, { ...neutral, steps: [{ kind: 'separate', stage: last }] });
+  assert.equal(s.parted.t, t);
+  const kept = v.mass(s);
+  const shed = plan.craft[0].sheds.find((d) => d.on === seq.stages[last].joint);
+  assert.ok(s.parted.stageMass > shed.mass.value, 'the discarded stage still carries its unused load');
+  const out = { ...v.sample(s, 0), v: s.parted.v };
+  const release = orbitalRelease(plan, shed, [out], t, undefined, s.parted.stageMass);
+  assert.equal(release.mass, s.parted.stageMass);
+  assert.ok(length(sub(release.r, add(was.r, turn(was.q, [shed.centre.value, 0, 0])))) < 1e-9);
+  const dv = sub(s.parted.v, was.v);
+  const reaction = sub(release.v, was.v);
+  assert.ok(length(dv) > 0);
+  assert.ok(length(add(scale(dv, kept), scale(reaction, release.mass))) < 1e-6, 'the pair retains its incoming linear momentum');
+  assert.ok(Math.abs(v.mass(was) - kept - release.mass) < 1e-6);
+  const flier = guided(plan, site, sea, was, { vehicle: v, state: was, sequence: true, live: true, solved: x, plan });
+  flier.prepare();
+  const outcome = flier.arrive(t, was.r, was.v, 400000, 'time');
+  assert.ok(outcome.events.includes('separation'));
+  assert.ok(Math.abs(length(sub(outcome.v, was.v)) - length(dv)) < 1e-10, 'prediction gives the spacecraft the same share');
+});
+
+test('a side-mounted part inherits the motion at its own axis and keeps the stack spin in its new frame', () => {
+  const value = (value) => ({ value });
+  const def = {
+    apart: { bearing: 124, across: value(2), pivot: { station: value(3), across: value(1) }, tailOff: value(0), swing: value(0) },
+  };
+  const release = { r: [1, 2, 3], v: [4, 5, 6], q: aboutAxis(unit([3, 1, 2]), 0.6), w: [0.3, -0.4, 0.5], mass: 7, across: 8, centre: 2 };
+  const body = apart(def, release);
+  const spin = turn(release.q, release.w);
+  assert.ok(length(sub(turn(body.q, body.w), spin)) < 1e-12);
+  assert.ok(length(sub(sub(body.v, release.v), cross(spin, sub(body.r, release.r)))) < 1e-12);
 });

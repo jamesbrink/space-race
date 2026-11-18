@@ -315,8 +315,21 @@ export interface ShedBody {
   surfaces?: AeroSurface[];
   /** How fast it and the vehicle are pushed apart along the axis, m/s, shared between them by their masses. The 'separation' event's is `separation.speed`. */
   push?: Measure;
+  /** The axial release sends this piece toward the nose (a forward cover). */
+  forward?: true;
   /** The rockets of its own that light as it leaves, all at once: their thrusts add. */
   motors?: ShedMotor[];
+  /** A component pushed sideways away from the stack. Bearing is measured as for a strap-on, across is its
+   * centre of mass from the stack axis (m), speed its outward velocity relative to that point (m/s). */
+  sideways?: {
+    bearing: number;
+    across: Measure;
+    speed: Measure;
+    /** Angle spanned by a hollow cylindrical sector around the axis, in degrees. */
+    sectorDegrees?: number;
+    /** Radial position and contact radius while folded, up to the deployment time. */
+    stowed?: { until: Measure; across: Measure; radius: Measure };
+  };
   /**
    * A strap-on, standing beside the stack rather than on its axis, and how it leaves (sim/shed.ts `apart`): its lower ties
    * let go, what thrust its engine still gives swings its tail outward about the ball joint at its tip until the ball

@@ -5,11 +5,11 @@
  * here is drawn: viewer/ascent.ts places it in the scene.
  */
 
-import type { Signal, SitedFlight } from '../types.ts';
+import type { ShedBody, Signal, SitedFlight } from '../types.ts';
 import { G0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { add, geodeticToEcef, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
+import { add, cross, dot, length, sub, geodeticToEcef, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { type Afloat, afloatAt, floatOn } from './afloat.ts';
 import { skyOf } from './air.ts';
@@ -17,9 +17,11 @@ import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
 import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { flyLoose, type LooseFlown } from './loose.ts';
-import { coastEvents, coastOf, shipOf } from './orbital.ts';
+import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
-import { type Quat, turn } from './rigid.ts';
+import { nlerp, type Quat, turn } from './rigid.ts';
+import type { LiveSample } from './vehicle.ts';
+import type { State } from '../world/orbit.ts';
 import { wavesOf } from './sea.ts';
 import { apart, Sheds } from './shed.ts';
 import {
@@ -211,15 +213,175 @@ export function between(samples: readonly Sample[], t: number, point: (s: Sample
   return { r, v };
 }
 
-/**
- * A shed body's velocity as it leaves an orbital flight's stack: the stack's, less its share of `def.push` (the pushers
- * between it and what goes on: shared by the masses, back along the long axis `axis`). What goes on is the spacecraft of
- * `mass` kg; its own share is not added to it: its flight is the record's, or the live vehicle's as it parted.
- */
-export function pushedOff(def: { push?: { value: number }; mass?: { value: number } }, v: Vec3, axis: Vec3, mass: number): Vec3 {
-  const m = def.mass?.value ?? 0;
-  if (!def.push || m <= 0) return v;
-  return add(v, scale(unit(axis), (-def.push.value * mass) / (mass + m)));
+/** Keep the active ascent body's path on both sides of every impulse inside a physics tick.
+ * The vehicle supplies its own samples so its centre, drawing datum and attitude stay together. */
+export function keepContact<S extends State & { t: number; q: Quat; w: Vec3 }>(
+  samples: LiveSample[],
+  kept: number,
+  before: S,
+  free: S,
+  hits: readonly { t: number; dv: Vec3 }[],
+  sample: (state: S) => LiveSample,
+): number {
+  samples.length = kept;
+  if (samples.at(-1)!.t < before.t) samples.push(sample(before));
+  let dr: Vec3 = [0, 0, 0];
+  let dv: Vec3 = [0, 0, 0];
+  let previous = before.t;
+  // The contact solver sweeps linearly between tick endpoints.
+  for (const hit of [...hits].sort((a, b) => a.t - b.t)) {
+    const t = Math.min(free.t, Math.max(before.t, hit.t));
+    const k = (t - before.t) / (free.t - before.t);
+    dr = add(dr, scale(dv, t - previous));
+    const r = add(add(before.r, scale(sub(free.r, before.r), k)), dr);
+    const v = add(add(before.v, scale(sub(free.v, before.v), k)), dv);
+    const state = { ...free, t, r, v, q: nlerp(before.q, free.q, k), w: add(before.w, scale(sub(free.w, before.w), k)) };
+    const incoming = sample(state);
+    if (samples.at(-1)!.t < t) samples.push(incoming);
+    dv = add(dv, hit.dv);
+    samples.push(sample({ ...state, v: add(v, hit.dv) }));
+    previous = t;
+  }
+  return samples.length;
+}
+
+/** Release on the same trajectory the retained spacecraft follows, including at the published-orbit handover.
+ * The joint's push is relative speed. Given the retained body's outgoing velocity, the departing body's
+ * velocity differs by the full push. A strap-on has its own outward release in `apart`. */
+export function orbitalRelease(plan: FlightPlan, def: ShedBody, samples: readonly LiveSample[], t: number, thrust?: number, mass?: number) {
+  if (!def.mass || !def.centre || !def.gyration) return null;
+  const [a, b, k] = either(samples, t);
+  const q = nlerp(a.attitude, b.attitude, k);
+  const axis = turn(q, [1, 0, 0]);
+  const w = add(scale(a.rates, 1 - k), scale(b.rates, k));
+  const { r, v } = between(samples, t);
+  const station = def.centre.value;
+  const m = mass ?? def.mass.value;
+  const push = plan.craft[0]!.joints.find((j) => j.id === def.on)?.push ?? def.push;
+  return apart(
+    def,
+    {
+      on: def.on,
+      t,
+      r: add(r, scale(axis, station)),
+      v: add(add(v, turn(q, cross(w, [station, 0, 0]))), scale(axis, (def.forward ? 1 : -1) * (push?.value ?? 0))),
+      q,
+      w,
+      mass: m,
+      roll: m * def.gyration.roll.value ** 2,
+      across: m * def.gyration.across.value ** 2,
+      centre: station,
+    },
+    thrust,
+  );
+}
+
+/** Rebuild the coast's released bodies from this flight, including a re-timed coast after a hand
+ * moves a burn. Nearby axial joints are flown together until their contact elements are well clear.
+ * The retained trajectory is prescribed in the replay and free to take the impulse on a live run. */
+export function coastContacts(
+  flight: SitedFlight,
+  plan: FlightPlan,
+  samples: LiveSample[],
+  start: number,
+  dropped: number[],
+  previous: Sheds | undefined,
+  centre: number,
+) {
+  const sheds = new Sheds(plan, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) });
+  const pending: { def: ShedBody; t: number }[] = [];
+  const near = new Set<string>();
+  const flying = new Set<string>();
+  const hits: { on: string; name: string; t: number; speed: number; energy: number }[] = [];
+  for (const def of plan.craft[0]!.sheds ?? []) {
+    const index = flight.flies!.drops.findIndex((d) => d.on === def.on);
+    const at = dropped[index];
+    if (at === undefined || !Number.isFinite(at) || at > samples.at(-1)!.t) continue;
+    const old = previous?.get(def.on);
+    if (at <= start && old?.from === at) {
+      if (at < start) sheds.carry(old.fork(start));
+      else sheds.add(old.shedder.release);
+      flying.add(def.on);
+      if (at === start) near.add(def.on);
+    } else if (at >= start) pending.push({ def, t: at });
+  }
+  pending.sort((a, b) => a.t - b.t);
+  const outgoing = either(samples, start)[0];
+  const offset = scale(outgoing.axis, centre);
+  const pose = (state: State, t: number) => {
+    const [a, b, k] = either(samples, t);
+    const q = nlerp(a.attitude, b.attitude, k);
+    return { ...state, r: add(state.r, offset), t, q, station: centre, w: [0, 0, 0] as Vec3, mass: a.mass };
+  };
+  function release(t: number, state: State) {
+    while (pending.length && pending[0]!.t <= t + 1e-8) {
+      const { def, t: when } = pending.shift()!;
+      const p = pose(state, t);
+      const sample = { ...either(samples, when)[0], t: when, r: sub(p.r, turn(p.q, [centre, 0, 0])), v: p.v, attitude: p.q, rates: p.w };
+      const out = orbitalRelease(plan, def, [sample], when);
+      if (out) {
+        sheds.add(out);
+        near.add(def.on);
+        flying.add(def.on);
+      }
+    }
+  }
+  const contacts: CoastContacts = {
+    limit(t) {
+      const next = pending.find((p) => p.t > t + 1e-8);
+      return Math.min(next ? next.t - t : Infinity, near.size || (pending[0] && pending[0].t <= t + 1e-8) ? 0.1 : Infinity);
+    },
+    advance(before, from, after, to, impulse) {
+      release(from, before);
+      if (!flying.size) return after;
+      const a = pose(before, from);
+      let b = pose(after, to);
+      let changed = false;
+      for (const on of flying) {
+        const run = sheds.get(on)!;
+        const last = run.at(to)!;
+        if (last.down) {
+          flying.delete(on);
+          near.delete(on);
+          continue;
+        }
+        const first = run.at(Math.max(run.from, from))!;
+        // Sweep relative positions even on a long coast step. A body that left the local
+        // encounter returns to the fine step whenever the two trajectories approach again.
+        const x = sub(a.r, first.r),
+          y = sub(b.r, last.r);
+        const delta = sub(y, x);
+        const along = Math.max(0, Math.min(1, -dot(x, delta) / (dot(delta, delta) || 1)));
+        const size = 10 * (run.shedder.def.to.value - run.shedder.def.from.value + Math.abs(centre - run.shedder.release.centre));
+        if (length(add(x, scale(delta, along))) > size) {
+          near.delete(on);
+          continue;
+        }
+        near.add(on);
+        const met = sheds.meet(a, b, centre, on);
+        if (met.hits.length) impulse?.(met.hits[0]!.t, met.hits[0]!.dv);
+        changed ||= met.r !== b.r;
+        b = { ...b, r: met.r, v: met.v };
+        for (const h of met.hits) {
+          const prev = hits.at(-1);
+          if (!prev || prev.on !== on || h.t - prev.t > 0.5) hits.push(h);
+        }
+      }
+      hits.push(...sheds.siblings(from, to, flying));
+      return !changed ? after : { r: sub(b.r, offset), v: b.v };
+    },
+  };
+  function finish(samples: LiveSample[], times: number[]) {
+    for (const def of plan.craft[0]!.sheds ?? []) {
+      if (sheds.get(def.on)) continue;
+      const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
+      const when = times[i];
+      if (when === undefined || when < start || when > samples.at(-1)!.t) continue;
+      const r = orbitalRelease(plan, def, samples, when);
+      if (r) sheds.add(r);
+    }
+  }
+  return { sheds, contacts, hits, finish };
 }
 
 /**
@@ -294,30 +456,11 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const ejecting = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
   const dropped = flight.flies!.drops.map((d) => (d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : d.at));
   const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
-  const mass = plan.record!.orbit!.mass.value;
   for (const def of plan.craft[0]!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
-    if (i < 0 || !def.mass || !def.centre || !def.gyration) continue;
-    const at = dropped[i]!;
-    const [a, b, k] = either(samples, at);
-    const s = k < 0.5 ? a : b;
-    const { r, v } = between(samples, at);
-    const m = def.mass.value;
-    // (a strap-on from where it stood, as its swing and its vent send it: sim/shed.ts `apart`)
-    sheds.add(
-      apart(def, {
-        on: def.on,
-        t: at,
-        r: add(r, scale(s.axis, def.centre.value)),
-        v: pushedOff(def, v, s.axis, mass),
-        q: s.attitude,
-        w: [0, 0, 0],
-        mass: m,
-        roll: m * def.gyration.roll.value ** 2,
-        across: m * def.gyration.across.value ** 2,
-        centre: def.centre.value,
-      }),
-    );
+    if (i < 0) continue;
+    const release = orbitalRelease(plan, def, samples, dropped[i]!);
+    if (release) sheds.add(release);
   }
   // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn; a stage's end is the record's cut, or its letting go where it has no cut of its own)
   const stages = sequenceOf(plan).stages;

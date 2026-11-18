@@ -89,10 +89,9 @@ was picked up.
   sustainer; no build-up or tail-off; all the propellant is taken as burnable.
 - The ascent's pitch programme is a stated law; no yaw steering; the azimuth is MA-5's.
 - The structure's limits are not in the plan: the live Atlas does not break up.
-- The posigrades are the separation's push only (the scene's); the escape and jettison motors are not flown (no abort is
-  offered on a flight into orbit).
+- The posigrades are represented by their separation impulse. The released tower flies on its two motors at the Mercury hardware’s nominal figures (SEDR 109, tower separation). Their ignition is taken at release, 0.1 s before the reported firing.
 - The retrofire is one even burn of the three motors' whole impulse; the propellant they burned is not taken off.
 - Taking the attitude in hand gives up the retrosequence's clock, and Space fires the retrorockets: on Friendship 7 the
   clock and the hand were independent.
-- The retropack kept on is not drawn burning, and its drag in the entry is the capsule's alone.
+- The retained retropack is flown as one body from the reported sighting of debris. The coil spring can act when the straps burn through (McDonnell SEDR 104, §8-9). The spring speed and the instant of release are estimates. Separate fragments, their shapes, and the pack's contribution to drag while attached are unknown.
 - The capsule's ablation, the jets' fuel and the oxygen are taken off at the drogue (its landing weight), not as spent.

@@ -963,6 +963,13 @@ export interface Coast {
   loose: string | null;
 }
 
+/** Local rigid-body encounters on a hand-flown coast. The scene gets the same corrected
+ * position and velocity that the next integration step starts from. */
+export interface CoastContacts {
+  limit(t: number): number;
+  advance(before: State, from: number, after: State, to: number, impulse?: (t: number, dv: Vec3) => void): State;
+}
+
 /**
  * Fly the coast: from the published orbit round to the braking burn, and down through the air to
  * the height the pilot left at. `site` is where it was launched from and `frame` the flight's (world/earthframe.ts:
@@ -987,6 +994,7 @@ export function flyOrbit(
   every = 10,
   from?: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
+  contacts?: CoastContacts,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
@@ -1038,23 +1046,23 @@ export function flyOrbit(
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
 
   let phase: OrbitPhase = 'orbit';
-  const sample = (): OrbitSample => {
-    const air = airOf(state, t);
-    const here = frame.place(state.r, t);
+  const sample = (s = state, at = t): OrbitSample => {
+    const air = airOf(s, at);
+    const here = frame.place(s.r, at);
     return {
-      t,
+      t: at,
       phase,
       altitude: air.altitude,
       latitude: here.latitude,
       longitude: here.longitude,
-      speed: length(state.v),
+      speed: length(s.v),
       groundSpeed: air.airspeed,
-      g: length(push(state, t)) / G0,
+      g: length(push(s, at)) / G0,
       q: air.q,
       mach: air.mach,
-      sunlit: sunlit(state.r, sunAt(t)),
-      r: state.r,
-      v: state.v,
+      sunlit: sunlit(s.r, sunAt(at)),
+      r: s.r,
+      v: s.v,
     };
   };
 
@@ -1146,15 +1154,42 @@ export function flyOrbit(
   const LIMIT = Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600;
   const target = geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
+  const impulses: { at: number; dv: Vec3 }[] = [];
+  const rememberImpulse = (at: number, dv: Vec3): void => {
+    impulses.push({ at, dv });
+  };
   while (t < LIMIT) {
     const mark = marks.find((m) => m > t + 1e-9);
     const burning = (t >= on && t < off) || moves.some((m) => t >= m.on && t < m.off);
     const most = before.altitude > THIN ? (burning ? 1 : 10) : before.altitude > THICK ? 1 : 0.05;
-    const h = Math.min(most, mark === undefined ? most : mark - t);
+    const h = Math.min(most, mark === undefined ? most : mark - t, contacts?.limit(t) ?? Infinity);
     const last = state;
     const as = t;
     state = step(state, t, h, (s, at) => pushAs(s, at, as));
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    const free = state;
+    if (contacts) state = contacts.advance(last, as, free, t, rememberImpulse);
+    const touched = state !== free;
+    if (touched) {
+      // Keep both sides of the velocity jump. A cubic across it draws the cabin through the
+      // other hull even when the step ended clear. The detached body keeps the same break.
+      if (samples.at(-1)!.t < as) samples.push(before);
+      impulses.sort((a, b) => a.at - b.at);
+      let dr: Vec3 = [0, 0, 0];
+      let dv: Vec3 = [0, 0, 0];
+      let previous = as;
+      for (const hit of impulses) {
+        const at = Math.min(t, Math.max(as, hit.at));
+        const incoming = at === as ? last : at === t ? free : step(last, as, at - as, (s, when) => pushAs(s, when, as));
+        dr = add(dr, scale(dv, at - previous));
+        const r = add(incoming.r, dr);
+        if (samples.at(-1)!.t < at) samples.push(sample({ r, v: add(incoming.v, dv) }, at));
+        dv = add(dv, hit.dv);
+        samples.push(sample({ r, v: add(incoming.v, dv) }, at));
+        previous = at;
+      }
+      impulses.length = 0;
+    }
     while (readings.length && readings[0]!.at <= t) {
       const x = readings.shift()!;
       read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
@@ -1216,7 +1251,7 @@ export function flyOrbit(
       samples.push(end);
       break;
     }
-    if (t - kept >= every - 1e-9 || marks.includes(t)) {
+    if (touched || t - kept >= every - 1e-9 || marks.includes(t)) {
       samples.push(now);
       kept = t;
     }

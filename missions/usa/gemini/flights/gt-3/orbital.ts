@@ -38,10 +38,22 @@ const LSFR = 'Gemini Program Launch Systems Final Report (Aerospace Corporation,
 const KING_HELE =
   '“a value of 2.2 is recommended for perigee heights of 150-400 km”, on the cross-section square to the motion (King-Hele, The Prediction of Satellite Lifetimes, RAE TR 87030, 1987, §9.1, after Cook 1965): a satellite’s, as Vostok’s and Mercury’s (vostok-3ka.ts SHIP_RAREFIED). Nothing published for Gemini';
 
+const SECTION_DRIFT = estimated(
+  0.5,
+  'scene approximation for the two adapter sections once released; the separation speeds were not found',
+);
 /** The launch vehicle's stations above the first stage engines' exit, m: station 1348.103 is the exit (titan-ii-glv.md). */
 const STATION = (s: number) => (1348.103 - s) * IN;
 /** The spacecraft's Z stations above the same exit: Z13.44, the adapter's foot, sits on station 276.825 (gemini-titan.ts `BASE`). */
 const Z = (z: number) => (1071.278 + z - 13.44) * IN;
+const NOSE_CAP = {
+  from: derived(Z(233.97), `${SEDR}, Figure 2-3: base of the 5.31 in cap`),
+  to: derived(Z(239.28), `${SEDR}, Figure 2-3: nose tip`),
+};
+const SCANNER_COVER = {
+  from: estimated(Z(166.5), 'aft end of the cover in NASA S65-21090, as modelled in gemini_spacecraft.py'),
+  to: estimated(Z(190.5), 'forward end of the cover in the same photograph'),
+};
 
 // GLV-4's weights (Gemini IV mission report, section 3.3, p. 3-10, "obtained from Aerospace"): taken for GLV-3, whose own
 // are in the mission report not found. With spacecraft 4 (7,879.05 lb, p. 3-11).
@@ -303,8 +315,46 @@ export const orbital: GeminiTitanRecord = {
         },
       },
       {
+        on: 'fairings/nose',
+        name: 'Nose fairing',
+        ...NOSE_CAP,
+        radius: estimated(0.42, 'the forward rim in the spacecraft model, approximately 33 in across'),
+        mass: estimated(3, 'thin glass-fibre cover with its fitting; measured mass not found'),
+        centre: estimated(Z(237), 'at the face of the cap, above its shallow rim'),
+        gyration: { roll: estimated(0.3, 'thin disc 0.42 m in radius'), across: estimated(0.21, 'thin disc about a diameter') },
+        forward: true,
+        push: estimated(0.5, 'scene approximation for the ejector; its speed and the pivot motion were not measured'),
+        ahead: estimated(0.55, 'the disc face-on at unit drag coefficient'),
+        astern: estimated(0.55, 'the open cap at unit drag coefficient'),
+        side: {
+          dragArea: estimated(0.11, 'cap seen on edge'),
+          ...NOSE_CAP,
+        },
+      },
+      {
+        on: 'fairings/scanner',
+        name: 'Horizon scanner fairing',
+        ...SCANNER_COVER,
+        radius: estimated(0.11, 'half the broadest face, 4.3 in in the model'),
+        mass: estimated(1, 'light cover and fastenings; measured mass not found'),
+        centre: estimated(Z(178.5), 'halfway between the ends'),
+        gyration: { roll: estimated(0.06, 'short cross section of the cover'), across: estimated(0.18, '0.61 m rectangular cover') },
+        sideways: {
+          bearing: -84,
+          across: estimated(0.54, 'at the re-entry control section’s skin and halfway out to its cover; gemini_spacecraft.py'),
+          speed: estimated(0.5, 'outward drift for the scene; separation velocity was not found'),
+        },
+        ahead: estimated(0.02, 'cover seen end-on'),
+        astern: estimated(0.02, 'cover seen end-on'),
+        side: {
+          dragArea: estimated(0.13, 'cover seen broadside'),
+          ...SCANNER_COVER,
+        },
+      },
+      {
         on: 'equipment-section-release',
         name: 'Equipment section',
+        push: SECTION_DRIFT,
         from: derived(Z(13.44), `the adapter’s foot, Z13.44 (${SEDR}, Figure 2-4)`),
         to: derived(Z(68.44), `where the equipment and retrograde sections part, Z68.44 (${CR1106}, Figure 1, p. 5)`),
         radius: doc(60 * IN, 'its 120 in foot'),
@@ -322,6 +372,7 @@ export const orbital: GeminiTitanRecord = {
       {
         on: 'retro-section-release',
         name: 'Retrograde section',
+        push: SECTION_DRIFT,
         from: derived(Z(68.44), `Z68.44 (${CR1106}, Figure 1)`),
         to: derived(Z(103.44), `the heat shield’s rim, Z103.44 (${SEDR}, Figure 2-4)`),
         radius: derived(50 * IN, 'between the adapter’s 120 in and 88.3 in at its top'),

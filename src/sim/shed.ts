@@ -19,11 +19,11 @@
  *
  * It ends where either of its ends meets the sea (or `floor`), and says where and how fast.
  * Something let go standing on the ground stays there, and so does something let go onto what
- * stands under it (`Release.stands`): nothing else of one shed body on another is flown. A body that has come down is not
+ * stands under it (`Release.stands`). Nearby airborne parts exchange contact impulses in `Sheds`. A body that has come down is not
  * integrated again. Its mass does not change: a motor's propellant is not taken off it.
  */
 import type { ShedBody } from '../types.ts';
-import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
   add,
@@ -40,22 +40,22 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { airAt, skyOf } from './air.ts';
-import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
-import { ballisticOf, MEAN_RADIUS } from './fly.ts';
-import type { FlightPlan } from './plan.ts';
-import { G0 } from '../world/bodies.ts';
 import { gravity } from '../world/orbit.ts';
-import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
-import { TICK } from './vehicle.ts';
+import { airAt, skyOf } from './air.ts';
+import { contact, type Impact } from './contact.ts';
 import { rk4Body } from './core/rk4.ts';
+import { ballisticOf, MEAN_RADIUS } from './fly.ts';
+import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
+import type { FlightPlan } from './plan.ts';
+import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
+import { TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
 /** Under this dynamic pressure, Pa, the air is left out of a coarse step; and how many ticks such a step is. */
 export const LULL = 0.01;
 export const COARSE = 5;
 /** How often a flown body's state is kept for showing again, s. */
 export const KEEP = 0.1;
-/** A body that has not come down in this long is not followed further, s. */
+/** Time horizon for the landing report, s. Finite replay queries can continue beyond it. */
 const LIMIT = 4 * 3600;
 
 const EARTH: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -258,9 +258,12 @@ export function shedder(
     const air = windAt(s.r, s.v, s.t, seaLevel);
     // above the air, coasting, on the coarse grid: one long step
     const still = air.q < LULL && air.altitude > 100_000 && s.t - release.t >= out && s.ticks % COARSE === 0;
-    const n = still ? COARSE : 1;
-    const h = n * TICK;
-    const ticks = s.ticks + n;
+    // In a rarefied orbital coast the full air forces vary slowly. Keep rotations under
+    // half a degree per long step, on the same fixed grid however often the camera asks.
+    const orbitalCoast =
+      plan.kind === 'orbital' && air.altitude > 100_000 && air.q < 1 && s.t - release.t >= out && length(s.w) < 0.017 && s.ticks % 50 === 0;
+    const ticks = Math.floor(s.ticks + 1e-8) + (orbitalCoast ? 50 : still ? COARSE : 1);
+    const h = (ticks - s.ticks) * TICK;
     const t = release.t + ticks * TICK;
     const after = rk4(before, s.t, h, still);
     const now = windAt(after.r, after.v, t, seaLevel);
@@ -284,7 +287,6 @@ export function shedder(
         return { ...next, ...d, t: at, landing: landed(d, at) };
       }
     }
-    if (t - release.t > LIMIT) return { ...next, landing: landed(after, t) };
     return next;
   };
 
@@ -306,7 +308,7 @@ export function shedder(
 export class ShedRun {
   readonly shedder: Shedder;
   private state: ShedState;
-  private readonly kept: { t: number; r: Vec3; v: Vec3; q: Quat }[] = [];
+  private readonly kept: { t: number; r: Vec3; v: Vec3; q: Quat; w: Vec3 }[] = [];
 
   constructor(shedder: Shedder) {
     this.shedder = shedder;
@@ -315,8 +317,8 @@ export class ShedRun {
   }
 
   private keep(): void {
-    const { t, r, v, q } = this.state;
-    this.kept.push({ t, r, v, q });
+    const { t, r, v, q, w } = this.state;
+    this.kept.push({ t, r, v, q, w });
   }
 
   /** When it left, seconds from liftoff. */
@@ -331,6 +333,7 @@ export class ShedRun {
 
   /** Fly it on until `t` (or until it is down). */
   upTo(t: number): void {
+    if (t === Infinity) t = this.from + LIMIT;
     const every = Math.round(KEEP / TICK);
     while (!this.state.landing && this.state.t < t) {
       this.state = this.shedder.tick(this.state);
@@ -338,10 +341,41 @@ export class ShedRun {
     }
   }
 
+  /** Replace the outgoing state after contact. Rendering can already have asked for the next
+   * fraction of a tick; invalidate that speculative future and retain the incoming side for replay. */
+  strike(t: number, dr: Vec3, dv: Vec3, impact = t): void {
+    const at = this.at(t);
+    if (!at || at.down) return;
+    const when = Math.max(this.from, Math.min(t, impact));
+    const incoming = this.at(when)!;
+    while (this.kept.length && this.kept.at(-1)!.t >= when) this.kept.pop();
+    this.kept.push({ t: when, r: incoming.r, v: incoming.v, q: incoming.q, w: incoming.w });
+    this.kept.push({ t: when, r: incoming.r, v: add(incoming.v, dv), q: incoming.q, w: incoming.w });
+    this.state = { ...this.state, t, ticks: (t - this.from) / TICK, r: add(at.r, dr), v: add(at.v, dv), q: at.q, w: at.w, landing: null };
+    this.keep();
+  }
+
+  /** Continue a copy at a handover. Earlier corrected states are shared as immutable samples.
+   * A contact or a look ahead on the new run cannot rewrite the source run. */
+  fork(t: number): ShedRun {
+    const next = new ShedRun(this.shedder);
+    const at = this.at(t);
+    if (!at) return next;
+    next.kept.length = 0;
+    for (const sample of this.kept) {
+      if (sample.t > t) break;
+      next.kept.push(sample);
+    }
+    next.state =
+      this.state.landing && this.state.t <= t ? this.state : { ...this.state, ...at, t, ticks: (t - this.from) / TICK, landing: null };
+    next.keep();
+    return next;
+  }
+
   /** Fly it until it is down, and say where. */
-  finish(): ShedLanding {
-    this.upTo(Infinity);
-    return this.state.landing!;
+  finish(): ShedLanding | null {
+    this.upTo(this.from + LIMIT);
+    return this.state.landing;
   }
 
   /**
@@ -349,7 +383,7 @@ export class ShedRun {
    * kept states the position is a cubic through both ends' positions and velocities. Once down it stays on the turning
    * Earth where it struck. Null before it left.
    */
-  at(t: number): { r: Vec3; v: Vec3; q: Quat; down: boolean } | null {
+  at(t: number): { r: Vec3; v: Vec3; q: Quat; w: Vec3; down: boolean } | null {
     if (t < this.from) return null;
     this.upTo(t);
     const kept = this.kept;
@@ -359,9 +393,9 @@ export class ShedRun {
       // carried round with the ground
       const angle = EARTH_ROTATION_RATE * (t - now.t);
       const r = ecefToInertial(now.r, angle);
-      return { r, v: cross(EARTH, r), q: multiply(aboutAxis([0, 0, 1], angle), now.q), down: true };
+      return { r, v: cross(EARTH, r), q: multiply(aboutAxis([0, 0, 1], angle), now.q), w: [0, 0, 0], down: true };
     }
-    if (t >= now.t) return { r: now.r, v: now.v, q: now.q, down: false };
+    if (t >= now.t) return { r: now.r, v: now.v, q: now.q, w: now.w, down: false };
     let lo = 0;
     let hi = kept.length - 1;
     while (hi - lo > 1) {
@@ -379,8 +413,185 @@ export class ShedRun {
     const v = add(a.v, scale(sub(b.v, a.v), s));
     const sign = a.q[0] * b.q[0] + a.q[1] * b.q[1] + a.q[2] * b.q[2] + a.q[3] * b.q[3] < 0 ? -1 : 1;
     const q = normalize([0, 1, 2, 3].map((i) => a.q[i]! + (sign * b.q[i]! - a.q[i]!) * s) as unknown as Quat);
-    return { r, v, q, down: false };
+    return { r, v, q, w: add(a.w, scale(sub(b.w, a.w), s)), down: false };
   }
+}
+
+/** The flown reference point, where it lies along the original stack, and its motion. */
+export interface ContactPose {
+  t: number;
+  r: Vec3;
+  v: Vec3;
+  q: Quat;
+  w: Vec3;
+  station: number;
+  mass: number;
+}
+
+/** Rounded collision elements follow each component's station range. A hollow separator can
+ * overlap another component's enclosing shape while assembled; those initially nested elements
+ * only collide once clear. The mating face is tested separately while its support is aboard. */
+interface Hull {
+  from: number;
+  to: number;
+  radius: number;
+  offset: Vec3;
+  looseOffset: Vec3;
+  points: Vec3[];
+  loosePoints?: Vec3[];
+  stowed?: { until: number; hull: Hull };
+  opening?: { inner: number; through: WeakMap<Hull, number> };
+  bound: number;
+  width: number;
+}
+const AXIS_ORIGIN: Vec3 = [0, 0, 0];
+function hull(from: number, to: number, radius: number, offset: Vec3 = AXIS_ORIGIN, looseOffset: Vec3 = AXIS_ORIGIN): Hull {
+  const r = Math.min(radius, (to - from) / 2);
+  const span = Math.max(0, to - from - 2 * r);
+  const count = r > 0 ? Math.ceil(span / r) : 0;
+  const points: Vec3[] = Array.from({ length: count + 1 }, (_, i) => [from + r + (span * i) / (count || 1), 0, 0]);
+  // For a shallow drum the length limits the sphere radius. Extend rings across its disc
+  // instead of shrinking the entire contact envelope to a ball at its middle.
+  const transverse = Math.max(0, radius - r);
+  const rings = r > 0 ? Math.ceil(transverse / r) : 0;
+  for (let ring = 1; ring <= rings; ring++) {
+    const arm = (transverse * ring) / rings;
+    const n = Math.ceil((2 * Math.PI * arm) / r);
+    for (let j = 0; j < n; j++) {
+      const angle = (2 * Math.PI * j) / n;
+      points.push([(from + to) / 2, arm * Math.cos(angle), arm * Math.sin(angle)]);
+    }
+  }
+  const bound = Math.hypot(span / 2, transverse) + r;
+  return { from, to, radius: r, offset, looseOffset, points, bound, width: radius };
+}
+function hullOf(d: ShedBody): Hull {
+  const radial = d.apart ?? d.sideways;
+  const b = ((radial?.bearing ?? 0) * Math.PI) / 180;
+  const out: Vec3 = [0, Math.sin(b), -Math.cos(b)];
+  const across = radial?.across.value ?? 0;
+  if (d.sideways?.sectorDegrees) {
+    // Cover the concave sector wall with inscribed rounded meridians, leaving its interior open.
+    const radius = Math.min(d.radius.value / 8, (d.to.value - d.from.value) / 2);
+    const arm = d.radius.value - radius;
+    const half = Math.max(0, (d.sideways.sectorDegrees * Math.PI) / 360 - Math.asin(radius / arm));
+    const steps = Math.max(1, Math.ceil((2 * half * arm) / radius));
+    const shape = hull(d.from.value, d.to.value, radius, scale(out, across));
+    const meridian = shape.points;
+    shape.points = [];
+    shape.loosePoints = [];
+    for (let i = 0; i <= steps; i++) {
+      const angle = half * ((2 * i) / steps - 1);
+      const y = arm * Math.sin(angle),
+        z = arm * Math.cos(angle) - across;
+      for (const [x] of meridian) {
+        shape.loosePoints.push([x, y, z]);
+        shape.points.push([x, -y * Math.cos(b) + z * out[1], -y * Math.sin(b) + z * out[2]]);
+      }
+    }
+    shape.opening = { inner: arm * Math.cos(half) - radius - across, through: new WeakMap() };
+    shape.width = Math.hypot(arm * Math.sin(half), arm * Math.cos(half) - across) + radius;
+    shape.bound = Math.hypot((d.to.value - d.from.value) / 2, shape.width);
+    return shape;
+  }
+  const shape = hull(d.from.value, d.to.value, Math.min(d.radius.value, (d.sideways?.across.value ?? Infinity) / 2), scale(out, across));
+  const stowed = d.sideways?.stowed;
+  if (stowed)
+    shape.stowed = {
+      until: stowed.until.value,
+      hull: hull(d.from.value, d.to.value, stowed.radius.value, scale(out, stowed.across.value)),
+    };
+  return shape;
+}
+type Hit = ReturnType<typeof contact>;
+function firstHit(a: Hit, b: Hit): Hit {
+  if (!b) return a;
+  return !a || b.after < a.after || (b.after === a.after && b.impulse > a.impulse) ? b : a;
+}
+
+interface Sweep {
+  start: ContactPose;
+  end: ContactPose;
+  attached: boolean;
+}
+function point(p: ContactPose, station: number, offset: Vec3 = AXIS_ORIGIN): Vec3 {
+  return add(p.r, turn(p.q, [station - p.station, offset[1], offset[2]]));
+}
+function element(path: Sweep, station: number, radius: number, offset: Vec3 = AXIS_ORIGIN) {
+  return {
+    before: point(path.start, station, offset),
+    after: point(path.end, station, offset),
+    radius,
+    mass: path.end.mass,
+    velocity: path.end.v,
+  };
+}
+function withinSweep(a: Vec3, b: Vec3, c: Vec3, d: Vec3, radius: number): boolean {
+  const sep = sub(a, c);
+  const travel = sub(sub(b, d), sep);
+  const t = Math.min(1, Math.max(0, -dot(sep, travel) / (dot(travel, travel) || 1)));
+  const closest = add(sep, scale(travel, t));
+  return dot(closest, closest) <= radius * radius;
+}
+// A sector can wrap tightly around its payload. While the sector is continuously coming
+// out of that original fit, adjacent beads on the rounded proxies must not snag one another.
+// Reversing or clearing the payload's projection on the release normal ends that fit.
+function opening(a: Sweep, ah: Hull, b: Sweep, bh: Hull, release: number): boolean {
+  const fit = bh.opening;
+  if (!fit || ah.from >= bh.to || ah.to <= bh.from || Math.abs((fit.through.get(ah) ?? release) - a.start.t) > 1e-7) return false;
+  const outward = turn(b.start.q, [0, 0, 1]);
+  const station = Math.min(ah.to, Math.max(ah.from, b.start.station));
+  const support = element(a, station, ah.width, ah.offset);
+  const start = dot(sub(b.start.r, support.before), outward);
+  const end = dot(sub(b.end.r, support.after), outward);
+  if (start + fit.inner >= ah.width || end < start) return false;
+  fit.through.set(ah, a.end.t);
+  return true;
+}
+function hullContact(a: Sweep, ah: Hull, b: Sweep, bh: Hull): Hit {
+  if (ah.radius <= 0 || bh.radius <= 0) return null;
+  const ao = a.attached ? ah.offset : ah.looseOffset;
+  const bo = b.attached ? bh.offset : bh.looseOffset;
+  const p = element(a, (ah.from + ah.to) / 2, ah.bound, ao);
+  const q = element(b, (bh.from + bh.to) / 2, bh.bound, bo);
+  if (!withinSweep(p.before, p.after, q.before, q.after, p.radius + q.radius)) return null;
+  const spheres = (h: Hull, s: Sweep, offset: Vec3) =>
+    ((s.attached ? undefined : h.loosePoints) ?? h.points).map(([x, y, z]) => element(s, x, h.radius, [0, offset[1] + y, offset[2] + z]));
+  const first = spheres(ah, a, ao),
+    second = spheres(bh, b, bo);
+  if (ah.opening && bh.opening) {
+    // Adjacent sectors usually fly away across a separating plane even while their enclosing
+    // spheres intersect. Reject the whole pair in linear time along the centroid-to-centroid axis.
+    const axis = sub(q.before, p.before);
+    let high = -Infinity,
+      low = Infinity;
+    for (const x of first) high = Math.max(high, dot(sub(x.before, p.before), axis), dot(sub(x.after, p.after), axis));
+    for (const y of second) low = Math.min(low, dot(sub(y.before, p.before), axis), dot(sub(y.after, p.after), axis));
+    if (low - high > (ah.radius + bh.radius) * length(axis)) return null;
+  }
+  const gap = sub(ah.offset, bh.offset);
+  const sum = ah.radius + bh.radius;
+  let hit: Hit = null;
+  for (const [i, x] of first.entries())
+    for (const [j, y] of second.entries()) {
+      if (
+        Math.abs(x.before[0] - y.before[0]) > sum + Math.abs(x.after[0] - x.before[0] - (y.after[0] - y.before[0])) ||
+        Math.abs(x.before[1] - y.before[1]) > sum + Math.abs(x.after[1] - x.before[1] - (y.after[1] - y.before[1])) ||
+        Math.abs(x.before[2] - y.before[2]) > sum + Math.abs(x.after[2] - x.before[2] - (y.after[2] - y.before[2]))
+      )
+        continue;
+      // Don't expel nested rings and their contents on release. A return from outside is swept normally.
+      if (length(sub(x.before, y.before)) < sum - 1e-6 && length(add(sub(ah.points[i]!, bh.points[j]!), gap)) < sum - 1e-6) continue;
+      hit = firstHit(hit, contact(x, y, a.end.t - a.start.t));
+    }
+  return hit;
+}
+function trajectory(run: ShedRun, from: number, to: number): Sweep | null {
+  const start = run.at(Math.max(run.from, from));
+  const end = run.at(to);
+  if (!start || !end || start.down || end.down) return null;
+  const { centre: station, mass } = run.shedder.release;
+  return { start: { ...start, station, mass, t: from }, end: { ...end, station, mass, t: to }, attached: false };
 }
 
 /** Everything one flight has let go, each flown: by the event that let it go. */
@@ -391,11 +602,15 @@ export class Sheds {
   private readonly seaLevel: number;
   private readonly options: ShedOptions;
 
+  private readonly hulls = new Map<string, Hull>();
+  private crewHull: Hull | null = null;
+
   constructor(plan: FlightPlan, site: Geodetic, seaLevel = 0, options: ShedOptions = {}) {
     this.plan = plan;
     this.site = site;
     this.seaLevel = seaLevel;
     this.options = options;
+    for (const d of sourceOf(plan).sheds) this.hulls.set(d.on, hullOf(d));
   }
 
   /** Something has left: it is flown from here on. A second release by the same event is not taken. */
@@ -409,15 +624,155 @@ export class Sheds {
     return run;
   }
 
+  /** Preserve an earlier stage's entire flight, including contacts before the coast handover. */
+  carry(run: ShedRun) {
+    this.runs.set(run.shedder.release.on, run);
+  }
+
   /** Take up whatever a vehicle has let go since it was last asked, and fly them all on to its instant. */
   follow(state: { t: number; released: readonly Release[] }): void {
     if (state.released.length > this.runs.size) for (const release of state.released) this.add(release);
     for (const run of this.runs.values()) run.upTo(state.t);
   }
 
+  /** Advance the detached bodies alongside one ballistic cockpit tick, then return the active body's outgoing state. */
+  ballistic(vehicle: Vehicle, before: VehicleState, after: VehicleState) {
+    for (const release of after.released) this.add(release);
+    if (!after.released.length || before.t >= after.t || after.held || after.landing) return { state: after, hits: [], impulses: [] };
+    const centre = this.plan.craft[0]!.rigid!.capsule.centre.value;
+    const pose = (s: VehicleState): ContactPose => ({ ...s, station: vehicle.mass(s).centre + (s.separation ? centre : 0) });
+    const { r, v, hits } = this.meet(pose(before), pose(after), centre);
+    return { state: r === after.r ? after : { ...after, r, v }, impulses: hits, hits: [...hits, ...this.siblings(before.t, after.t)] };
+  }
+
+  /** The remaining cabin's collision envelope: its entry reference disc between its fittings.
+   * Without a nose fitting it is rounded to one diameter. This is collision geometry, independent of the mass datum. */
+  private cabin(centre: number): Hull {
+    if (this.crewHull) return this.crewHull;
+    const craft = this.plan.craft[0]!;
+    const area = craft.bodies.find((b) => b.aero)?.aero?.area.value ?? craft.drag[0]!.area.value;
+    const radius = Math.sqrt(area / Math.PI);
+    const axial = sourceOf(this.plan).sheds.filter((d) => !d.apart && !d.sideways);
+    const below = axial
+      .filter((d) => d.from.value < centre && (d.centre?.value ?? (d.from.value + d.to.value) / 2) < centre)
+      .sort((a, b) => b.from.value - a.from.value)[0];
+    const above = axial.filter((d) => d.from.value >= centre).sort((a, b) => a.from.value - b.from.value)[0];
+    const base = craft.rigid?.capsule.base ? centre - craft.rigid.capsule.base.value : (below?.to.value ?? centre - radius);
+    this.crewHull = hull(base, above?.from.value ?? base + 2 * radius, radius);
+    return this.crewHull;
+  }
+
+  /** Sweep the actual remaining components against each loose body. The impulse acts on the pair's
+   * translation. Spin affects the swept geometry; estimating structural torque would require an
+   * active-vehicle inertia tensor through every stage and the hand-flown coast. */
+  meet(before: ContactPose, after: ContactPose, capsuleStation: number, only?: string) {
+    let r = after.r,
+      v = after.v;
+    const hits: (Impact & { dv: Vec3 })[] = [];
+    const attached = [this.cabin(capsuleStation)];
+    for (const [id, h] of this.hulls) {
+      const run = this.runs.get(id);
+      if (!run || run.from > before.t + 1e-8) attached.push(h.stowed && before.t < h.stowed.until ? h.stowed.hull : h);
+    }
+    // A conservative sphere round the changing reference point excludes distant releases in one sweep.
+    const reach = attached.reduce(
+      (long, part) =>
+        Math.max(
+          long,
+          Math.max(
+            Math.abs(part.from - before.station),
+            Math.abs(part.to - before.station),
+            Math.abs(part.from - after.station),
+            Math.abs(part.to - after.station),
+          ) +
+            length(part.offset) +
+            part.width,
+        ),
+      0,
+    );
+    for (const [on, run] of this.runs) {
+      if ((only && on !== only) || before.t < run.from - 1e-8 || after.t <= before.t) continue;
+      const gone = trajectory(run, before.t, after.t);
+      if (!gone) continue;
+      const active: Sweep = { start: before, end: { ...after, r, v }, attached: true };
+      const h = this.hulls.get(on)!;
+      const span = Math.max(Math.abs(h.from - gone.start.station), Math.abs(h.to - gone.start.station)) + length(h.looseOffset) + h.width;
+      if (!withinSweep(before.r, r, gone.start.r, gone.end.r, reach + span)) continue;
+      let hit: Hit = null;
+      for (const part of attached) {
+        if (!opening(active, part, gone, h, run.from)) hit = firstHit(hit, hullContact(active, part, gone, h));
+      }
+      // The opposite sides of a mating face touch exactly. Preserve their axial (or radial)
+      // normal even when the surrounding rounded hulls represent an open ring too coarsely.
+      const def = run.shedder.def;
+      const radial = def.apart ?? def.sideways;
+      const centre = run.shedder.release.centre;
+      const sign = centre < capsuleStation ? 1 : -1;
+      const face = sign > 0 ? h.to : h.from;
+      const radius = Math.min(h.radius, radial ? radial.across.value / 2 : Infinity);
+      const activeStation = radial ? centre : face + sign * radius;
+      const looseStation = radial ? centre : face - sign * radius;
+      const offset = radial ? scale(h.offset, 1 - (2 * radius) / length(h.offset)) : AXIS_ORIGIN;
+      const supported = attached.some((other) => {
+        const nearest = Math.min(other.to, Math.max(other.from, activeStation));
+        return Math.hypot(nearest - activeStation, length(sub(other.offset, offset))) <= other.width;
+      });
+      if (radius > 0 && supported && !def.sideways?.sectorDegrees) {
+        const mate = contact(
+          element(active, activeStation, radius, offset),
+          element(gone, looseStation, radius, h.looseOffset),
+          after.t - before.t,
+        );
+        hit = firstHit(mate, hit);
+      }
+      if (!hit) continue;
+      r = add(r, hit.a.r);
+      v = add(v, hit.a.v);
+      run.strike(after.t, hit.b.r, hit.b.v, before.t + hit.after);
+      if (hit.impulse > 0) hits.push({ on, name: def.name, t: before.t + hit.after, speed: hit.speed, energy: hit.energy, dv: hit.a.v });
+    }
+    return { r, v, hits };
+  }
+
+  /** One response per loose pair per step, at its earliest contact. */
+  siblings(from: number, to: number, local?: ReadonlySet<string>) {
+    const runs = this.all.filter((run) => run.from <= from + 1e-8 && (!local || local.has(run.shedder.def.on)));
+    const hits: { on: string; name: string; t: number; speed: number; energy: number }[] = [];
+    const paths = runs.map((run) => trajectory(run, from, to));
+    for (let j = 1; j < runs.length; j++)
+      for (let i = 0; i < j; i++) {
+        const a = runs[i]!,
+          b = runs[j]!;
+        const p = paths[i],
+          q = paths[j];
+        if (!p || !q) continue;
+        const da = a.shedder.def,
+          db = b.shedder.def;
+        const hit = hullContact(p, this.hulls.get(da.on)!, q, this.hulls.get(db.on)!);
+        if (!hit) continue;
+        a.strike(to, hit.a.r, hit.a.v, from + hit.after);
+        b.strike(to, hit.b.r, hit.b.v, from + hit.after);
+        paths[i] = trajectory(a, from, to);
+        paths[j] = trajectory(b, from, to);
+        if (hit.impulse > 0)
+          hits.push({
+            on: `${da.on}/${db.on}`,
+            name: `${da.name} and ${db.name}`,
+            t: from + hit.after,
+            speed: hit.speed,
+            energy: hit.energy,
+          });
+      }
+    return hits;
+  }
+
   /** The body the event `on` let go, if it has. */
   get(on: string | undefined): ShedRun | undefined {
     return on === undefined ? undefined : this.runs.get(on);
+  }
+
+  get size(): number {
+    return this.runs.size;
   }
 
   get all(): readonly ShedRun[] {
@@ -459,7 +814,7 @@ export function recordRelease(plan: FlightPlan, def: ShedBody, t: number, r: Vec
 
 /**
  * How a strap-on leaves (`ShedBody.apart`): from `release` as for any shed body (its centre of mass taken on the stack's
- * axis at its station, with the stack's velocity and attitude, not turning), moved out to its own axis, turned so that
+ * axis at its station, with that station's velocity and the stack's attitude and rates), moved out to its own axis, turned so that
  * its +Z points away from the stack, and given what its swing gave it. Its lower ties let go, the thrust its engine still
  * gives (`thrust`, N: the stage's tail-off once it has been cut, or what it was burning at if it is let go while it
  * burns) turns it about the ball joint at its tip, tail outward, against the joint's reaction; when it has turned
@@ -470,14 +825,21 @@ export function recordRelease(plan: FlightPlan, def: ShedBody, t: number, r: Vec
  * The same release, whatever the flight: each strap-on on its own bearing, the four of them leaving as a cross.
  */
 export function apart(def: ShedBody, release: Release, thrust?: number): Release {
-  const a = def.apart;
-  if (!a) return release;
+  const radial = def.apart ?? def.sideways;
+  if (!radial) return release;
   const along = turn(release.q, X);
-  const b = (a.bearing * Math.PI) / 180;
-  // the way out from the stack to this one, from the way down range (the body's -Z) toward its left (+Y)
+  const b = (radial.bearing * Math.PI) / 180;
   const out = unit(turn(release.q, [0, Math.sin(b), -Math.cos(b)]));
-  const across = a.across.value;
-  const r = add(release.r, scale(out, across));
+  const across = radial.across.value;
+  const offset = scale(out, across);
+  const r = add(release.r, offset);
+  const a = def.apart;
+  if (!a) {
+    // Keep the velocity of this off-axis point and the inherited spin in the half's own frame.
+    const q = fromAxes(along, cross(out, along), out);
+    const spin = turn(release.q, release.w);
+    return { ...release, r, v: add(add(release.v, cross(spin, offset)), scale(out, def.sideways!.speed.value)), q, w: unturn(q, spin) };
+  }
   // the joint, from its centre of mass, and how hard the swing turns it about there
   const arm = add(scale(along, a.pivot.station.value - release.centre), scale(out, a.pivot.across.value - across));
   const pushed = thrust ?? a.tailOff.value;
@@ -488,5 +850,7 @@ export function apart(def: ShedBody, release: Release, thrust?: number): Release
   const side = cross(out, along);
   const q = fromAxes(along, side, out);
   const spinning = scale(side, rate);
-  return { ...release, r, v: add(release.v, cross(spinning, scale(arm, -1))), q, w: [0, rate, 0] };
+  const inherited = turn(release.q, release.w);
+  const v = add(add(release.v, cross(inherited, scale(out, across))), cross(spinning, scale(arm, -1)));
+  return { ...release, r, v, q, w: add(unturn(q, inherited), [0, rate, 0]) };
 }

@@ -1,3 +1,4 @@
+import type { Impact } from '../sim/contact.ts';
 import '../ui/cockpit.css';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { Command, SitedFlight } from '../types.ts';
@@ -192,6 +193,26 @@ export abstract class Deck {
   private readonly hidden = (): void => {
     if (document.visibilityState === 'hidden') this.save();
   };
+
+  private readonly lastImpact = new Map<string, number>();
+  private hardestImpact: Impact | null = null;
+  protected impactSummary(): string {
+    const hit = this.hardestImpact;
+    return hit
+      ? `<p class="cockpit-why">Largest collision: ${hit.name} at T+${hit.t.toFixed(1)} s, ${hit.speed.toFixed(2)} m/s closing and ${hit.energy.toFixed(1)} J absorbed. Structural damage is unknown.</p>`
+      : '';
+  }
+  protected impact(hit: Impact): void {
+    if (hit.speed < 0.005 && hit.energy < 0.05) return; // both round to zero on the deck
+    if (!this.hardestImpact || hit.energy > this.hardestImpact.energy) this.hardestImpact = hit;
+    const last = this.lastImpact.get(hit.on);
+    this.lastImpact.set(hit.on, hit.t);
+    if (last !== undefined && hit.t >= last && hit.t - last < 0.5) return;
+    this.host.say?.(
+      'Spacecraft contact',
+      `${hit.name} struck at ${hit.speed.toFixed(2)} m/s. The impact absorbed ${hit.energy.toFixed(1)} J. Structural damage is unknown.`,
+    );
+  }
 
   constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost, spec: DeckSpec) {
     this.flight = flight;
@@ -513,6 +534,8 @@ export abstract class Deck {
 
   /** A run begins on the pad (the kind's `fresh`): what is done to it is written down from here, with the switches it began with. */
   protected started(): void {
+    this.lastImpact.clear();
+    this.hardestImpact = null;
     if (this.replaying) return;
     this.forget(); // (a new run: whatever was kept for this flight is let go, by starting over or by its having ended)
     this.tape = { setup: this.switches(), entries: [] };

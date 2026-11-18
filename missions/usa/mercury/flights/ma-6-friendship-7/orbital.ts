@@ -6,9 +6,10 @@
  * Times are seconds from liftoff, 14:47:39 UTC. The checks' tolerances were written with the record, before the plan
  * was first flown, and nothing here was changed after: a miss is recorded (src/sim/misses.ts), not fitted.
  */
+
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
-import { HARDWARE } from '../../vehicles/mercury-redstone.ts';
 import type { MercuryAtlasRecord } from '../../vehicles/mercury-atlas-plan.ts';
+import { HARDWARE, TOWER_MOTORS } from '../../vehicles/mercury-redstone.ts';
 
 const IN = 0.0254;
 const FT = 0.3048;
@@ -270,6 +271,7 @@ export const orbital: MercuryAtlasRecord = {
       {
         on: 'tower-clamp',
         name: 'Escape tower',
+        motors: TOWER_MOTORS,
         from: derived(PLANE + (209.07 - 104.5) * IN, 'the canister’s top, Z209.07, above the capsule’s plane (SEDR 104, Figure 1-3)'),
         to: derived(PLANE + (389.05 - 104.5) * IN, 'the tower’s tip, Z389.05 (the same figure)'),
         radius: estimated(0.45, 'its legs’ spread at the foot'),

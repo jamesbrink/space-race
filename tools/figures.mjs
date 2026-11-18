@@ -91,10 +91,10 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
   for (const body of sheds.all) {
     const l = body.finish();
     put(flight, `shed:${body.shedder.def.on}`, {
-      t: l.t,
-      latitude: l.latitude,
-      longitude: l.longitude,
-      speed: l.speed,
+      t: l?.t,
+      latitude: l?.latitude,
+      longitude: l?.longitude,
+      speed: l?.speed,
       apogee: body.now.apogee,
       peakQ: body.now.peakQ,
     });
@@ -221,11 +221,11 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)
     for (const body of run.sheds.all) {
       const l = body.finish();
       put(flight, `record shed:${body.shedder.def.on}`, {
-        t: l.t,
-        latitude: l.latitude,
-        longitude: l.longitude,
-        speed: l.speed,
-        range: l.range,
+        t: l?.t,
+        latitude: l?.latitude,
+        longitude: l?.longitude,
+        speed: l?.speed,
+        range: l?.range,
       });
     }
   }

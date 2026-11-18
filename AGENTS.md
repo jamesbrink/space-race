@@ -47,6 +47,7 @@ pnpm test:camera      # needs `pnpm dev` running: the camera driven with real in
 pnpm test:studio      # needs `pnpm dev` running: each gallery view of a cabin's inside (read from the flights) opens the cutaway, and what it is of is on the screen and lit, both looks, 1280, 820 and 390
 pnpm test:frozen      # needs `pnpm dev` running: a frozen stage draws the same frame twice, in both looks: the first flight, then a flight at each other complex
 pnpm test:places      # needs `pnpm dev` running: going between a flight's places with slow loads and real keys
+pnpm test:separation  # needs `pnpm dev` running: released spacecraft hardware moves apart in the rendered flight
 pnpm test:fires       # needs `pnpm dev` running: every engine burning on the record's flight has its fire, hung where it should be
 pnpm test:chute       # needs `pnpm dev` running: a parachute's lines drawn over the land, the sea and the cloud behind them, both looks, 1280 and 390
 pnpm test:clouds      # needs `pnpm dev` running: the clouds stand in the air, not round the eye: a camera flown up through each flight's layers at a vehicle's speed, both looks
@@ -57,6 +58,7 @@ pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
 pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
 pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig and from far out, its line, the line flown and chips checked (four pages at once)
+pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger on the gallery, the site and the Lineup at 390 and 820: every button in its View pane reached by swiping its line, the sheet and the page left still
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone, and the first Escape freeing the mouse without ending the walk (walking.md)

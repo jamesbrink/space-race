@@ -1,6 +1,6 @@
-import type { VostokRecord } from './vostok-record.ts';
 import type { ChuteDef, Command, Flight, Measure, Part } from '../../../../src/types.ts';
-import { BOOSTERS } from './vostok-8k72k.ts';
+import { BOOSTERS, fairingDrops } from './vostok-8k72k.ts';
+import type { VostokRecord } from './vostok-record.ts';
 
 /**
  * A Vostok on its 8K72K as the scene shows it flown (types.ts `Flight.flies`), and what a hand can ask of each part of it
@@ -188,7 +188,7 @@ export function vostokFlies(orbital: VostokRecord, crew = 'crew'): NonNullable<F
       // each by the plan's joint that lets it go (vostok-plan.ts: a stage's is `stage:<i>`); each strap-on a body of its own
       // (vostok-8k72k.ts `sheds`: the strap-ons' joint and its letter), leaving at the stage's separation
       ...BOOSTERS.map(([letter]) => ({ at: orbital.stages[0]!.separation!.value, nodes: [`Booster_${letter}`], on: `stage:0/${letter}` })),
-      { at: orbital.ascent!.drops.find((d) => d.id === 'fairing')!.at.value, nodes: ['Fairing'], on: 'fairing' },
+      ...fairingDrops(orbital.ascent!.drops.find((d) => d.id === 'fairing')!.at.value),
       { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'stage:1' },
       { at: at('spacecraft-separates'), nodes: ['BlockE'], on: 'stage:2' },
       {

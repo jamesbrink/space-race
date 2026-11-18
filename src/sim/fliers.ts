@@ -507,6 +507,8 @@ export interface GuidedNow {
   state: Pick<StagedState, 'stages' | 'drops' | 'apparent'>;
   /** Whether the sequencer sets off the record's steps; with it off nothing is lit, cut or let go but what runs dry. */
   sequence: boolean;
+  /** A hand-flown ascent hands over its share of the joint's push. The batch ascent ends at its incoming velocity. */
+  live?: boolean;
   /** How far the hands have leaned the law, radians; and the law's angle as its tangent took over, where it has. */
   trim?: { pitch: number; yaw: number };
   thetaTurn?: number | null;
@@ -731,14 +733,19 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       }
       for (const p of plan) {
         if (p.at > t + 1e-9 || doneIn(p.step, cur)) continue;
+        const parting = p.step.kind === 'separate' && p.step.stage === last;
+        const before = parting && now.live ? v.mass(cur, t) : 0;
         apply(p.step, t, cur);
         if (p.step.kind === 'cut' && p.step.stage === last) events.push('cutoff');
-        if (p.step.kind === 'separate' && p.step.stage === last) {
+        if (parting) {
           events.push('separation');
           since = t;
-          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: u });
-          const then = alone.arrive(t, r, u, altitude, 'time');
-          return { events: [...events, ...(then.events ?? [])], ...(then.end ? { end: true } : {}) };
+          const kept = v.mass(cur, t);
+          const speed = now.live ? v.separationSpeed(kept, before - kept) : 0;
+          const outgoing = speed ? add(u, scale(axisAt(r, u, t), speed)) : u;
+          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: outgoing });
+          const then = alone.arrive(t, r, outgoing, altitude, 'time');
+          return { ...then, v: then.v ?? outgoing, events: [...events, ...(then.events ?? [])] };
         }
       }
       since = t;

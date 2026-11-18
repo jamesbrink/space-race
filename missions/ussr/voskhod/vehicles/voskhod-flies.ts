@@ -1,7 +1,8 @@
-import type { VostokRecord } from '../../vostok/vehicles/vostok-record.ts';
 import type { ChuteDef, Command, Flight, Measure } from '../../../../src/types.ts';
-import { BOOSTERS } from '../../vostok/vehicles/vostok-8k72k.ts';
+import { BOOSTERS, fairingDrops } from '../../vostok/vehicles/vostok-8k72k.ts';
+import type { VostokRecord } from '../../vostok/vehicles/vostok-record.ts';
 import { BASE } from './voskhod-11a57.ts';
+import { AFT_SECTORS } from './voskhod-11a57-flown.ts';
 
 export { commanded } from '../../vostok/vehicles/vostok-flies.ts';
 
@@ -105,7 +106,7 @@ export function voskhodChutes(areas: { name: string; area: Measure }[]): ChuteDe
 export function voskhodFlies(
   orbital: VostokRecord,
   chutes: ChuteDef[],
-  /** What the ship let go in orbit (the record's `ascent.drops` of that id: Voskhod 2's airlock), and the model's nodes that are it. Not flown on: it leaves the scene. */
+  /** What the ship let go in orbit (the record's `ascent.drops` of that id: Voskhod 2's airlock), and the model's nodes that are it. Its detached body is supplied with the same record. */
   jettisoned: { id: string; nodes: string[] }[] = [],
 ): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
@@ -125,9 +126,9 @@ export function voskhodFlies(
     drops: [
       // each by the plan's joint that lets it go (vostok-plan.ts: a stage's is `stage:<i>`); each strap-on a body of its own
       ...BOOSTERS.map(([letter]) => ({ at: orbital.stages[0]!.separation!.value, nodes: [`Booster_${letter}`], on: `stage:0/${letter}` })),
-      { at: drop('fairing'), nodes: ['Fairing'], on: 'fairing' },
+      ...fairingDrops(drop('fairing')),
       { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'stage:1' },
-      { at: drop('aft-section'), nodes: ['AftSection'], on: 'aft-section' },
+      ...AFT_SECTORS.map((piece) => ({ at: drop('aft-section'), nodes: [`AftSection_${piece}`], on: `aft-section/${piece}` })),
       { at: at('spacecraft-separates'), nodes: ['BlockI'], on: 'stage:2' },
       {
         at: orbital.entry.separation.value,

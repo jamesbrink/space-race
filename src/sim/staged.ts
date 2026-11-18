@@ -63,6 +63,7 @@ import {
   liftOf,
   movesOf,
   type OrbitFlown,
+  type CoastContacts,
   publishedOf,
   shipOf,
 } from './orbital.ts';
@@ -798,8 +799,9 @@ export function flyOn(
   from: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
   every = 1,
+  contacts?: CoastContacts,
 ): FlownWhole {
-  const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands, contacts);
   const end = coast.samples[coast.samples.length - 1]!;
   return { ascent, coast, down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null };
 }
@@ -836,6 +838,7 @@ export function recordSamples(
   frame: EarthFrame,
   centre: number,
   sunAt: (t: number) => Vec3,
+  releaseAttitude?: Quat,
 ): LiveSample[] {
   const spin = frame.spin;
   const n = whole.ascent.plane;
@@ -885,7 +888,7 @@ export function recordSamples(
   }
   const parted = out[out.length - 1]!;
   const offset = sub(parted.centre, parted.r); // (the coast flies the point the ascent left, drawn as the centre of mass)
-  const held = parted.attitude;
+  const held = releaseAttitude ?? parted.attitude;
   const ship = shipOf(plan);
   const lights = coastEvents(plan).on?.do.find((a) => 'ignite' in a);
   const braking = lights && 'ignite' in lights ? lights.ignite : null;
@@ -931,7 +934,8 @@ export function recordSamples(
   const descent = track.slice(1).map((s, i) => ({ ...s, drawn: drawn[i + 1]!.r }));
   const ending = [
     ...whole.coast.samples
-      .filter((s) => s.t > parted.t)
+      // Keep both sides of the handover: the published coast can start with a different velocity.
+      .filter((s) => s.t >= parted.t)
       .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry', drawn: s.r })),
     // (come through the entry, as the descent's bodies have)
     ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: true, drawn: s.drawn })),
