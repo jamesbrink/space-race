@@ -341,11 +341,11 @@ export function targetNodes(model: Pick<ModelDef, 'parts' | 'target'>): string[]
  * (`ModelDef.absent`). Secondary gallery craft are omitted from the site except for its walkers, which also have exhibits.
  */
 export function atSite<F extends Flight>(flight: F): F {
-  if (!flight.models.some((m) => m.target || m.galleryCraft)) return flight;
+  if (!flight.models.some((m) => m.target || m.galleryCraft || m.galleryOnly)) return flight;
   return {
     ...flight,
     models: flight.models
-      .filter((m) => !m.galleryCraft || m.walker)
+      .filter((m) => !m.galleryOnly && (!m.galleryCraft || m.walker))
       .map((m) => {
         const { target: _target, galleryCraft: _galleryCraft, ...rest } = m;
         if (!m.target) return m.galleryCraft ? rest : m;

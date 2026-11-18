@@ -1,6 +1,8 @@
 import type { Flight, Part } from '../../../../src/types.ts';
-import { AGENA, agenaDimensions, agenaMotors, agenaParts, ATDA, atdaDimensions, atdaMotors, TARGET_GROUP } from './gemini-targets.ts';
+import { LC14 } from '../../places/cape-canaveral/lc-14.ts';
+import { AGENA, ATDA, agenaDimensions, agenaMotors, agenaParts, atdaDimensions, atdaMotors, TARGET_GROUP } from './gemini-targets.ts';
 import { targetLaunches } from './target-launches.ts';
+import { targetSiteModels } from './target-pad.ts';
 
 /** The same hardware as the crew saw, now on the floor by itself at its own launch date. */
 export function encounterParts(encounter: Flight): Part[] {
@@ -66,6 +68,8 @@ export function targetFlight(id: keyof typeof targetLaunches, parts: Part[]): Fl
     launch: record.launch,
     launchSite: 'Cape Kennedy, Launch Complex 14',
     crew: [],
+    site: LC14,
+    surroundings: 'models/usa/places/cape-canaveral/lc14/1962-02.glb',
     summary: record.story,
     facts: [
       { label: 'Docking adapter', value: 'TDA ' + record.adapter },
@@ -76,7 +80,8 @@ export function targetFlight(id: keyof typeof targetLaunches, parts: Part[]): Fl
     motors: augmented ? atdaMotors() : agenaMotors(),
     models: [
       {
-        id: 'vehicle',
+        id: 'spacecraft',
+        galleryOnly: true,
         name: record.name,
         url: 'models/usa/gemini/' + id + '/vehicle.glb',
         backdrop: 'studio',
@@ -89,6 +94,7 @@ export function targetFlight(id: keyof typeof targetLaunches, parts: Part[]): Fl
           { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'TargetDockingAdapter'], from: [0.7, 1.1, 0.2] },
         ],
       },
+      ...targetSiteModels(id, record),
     ],
   };
 }

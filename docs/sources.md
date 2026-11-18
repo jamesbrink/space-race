@@ -1658,6 +1658,10 @@ two wings), and say so wherever they are shown.
 | [Gagarin Cosmonaut Training Center, 7K-T station transport](https://www.gctc.ru/main.php?id=300) and its [labelled cutaway](https://www.gctc.ru/media/images/education/spacecraft/tk_7k-t.jpg) | Identifies Nos. 31 and 32 as the first 7K-T ferries (11F615A8). The active probe, internal hatch, relocation of Igla equipment to the orbital module and removal of the aft toroidal compartment distinguish the ferry from the original Soyuz | Type description and undimensioned illustration |
 | [Asif Siddiqi, *Challenge to Apollo*, tables IA and IB, pp. 874 and 877](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf) | 11A511, launcher serial suffix 25, 6575 kg, 32 orbits, initial orbit 209.6 × 248.4 km at 51.6°, and the total time aloft | NASA's contemporary chronology, *Astronautics and Aeronautics, 1971*, pp. 107–108, recorded preliminary values of 200 × 224 km at 51.3° |
 
+### Gemini target launch exteriors
+
+The Gemini VIII and IX-A mission reports, each figure 3.0-2(a), give the assembled silhouettes and the different target interfaces. NASA SP-4002, figures 120 and 125, show the VIII launch and X pad tests. The Cape Canaveral Space Force Museum identifies the replacement 101-ft umbilical tower and the clean-room conversion. [Gemini VIII mission report](https://tothemoon.im-ldi.com/download_document?file_name=gemini_8_mission_report.pdf&project=GEMINI) · [Gemini IX-A mission report](https://tothemoon.ser.asu.edu/files/gemini/gemini_9A_mission_report.pdf) · [NASA SP-4002](https://www.nasa.gov/history/SP-4002/p3b.htm) · [Complex 14](https://ccspacemuseum.org/facilities/launch-complex-14/).
+
 ## Soyuz 12 gallery
 
 | Source | What it fixes | Limit |

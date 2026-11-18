@@ -599,6 +599,8 @@ export interface MechanismDef {
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
 export interface ModelDef {
+  /** A separate gallery configuration of hardware that has another model at the launch site. */
+  galleryOnly?: boolean;
   /** The complete spacecraft stands inside an opaque fairing on the assembled launch vehicle. */
   enclosedSpacecraft?: boolean;
   /**

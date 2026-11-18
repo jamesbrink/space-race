@@ -112,8 +112,7 @@ No document read calls the last vehicle "5001A": they write 5001 or 5001R, and i
 
 ## What the model gets wrong or leaves out
 
-- **The Atlas, the booster adapter and the ascent shroud are not built.** The vehicle is shown as it
-  was after it had left all three.
+- **The spacecraft exhibit is shown separately from the [assembled launch stack](atlas-slv3.md).** The Gallery exposes the docking hardware on each unit. The Launch site shows the closed shroud.
 - **It stands on its nozzle**, which is thin titanium. It never did.
 - **The aft rack is our frame.** Its stations are Lockheed's; its members, the hydraulic package
   and what else hangs in it are placed by guess, and the engine's chamber, turbopump and start
