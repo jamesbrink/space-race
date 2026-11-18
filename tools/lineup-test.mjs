@@ -24,6 +24,7 @@
 // `--shots <dir>` also writes a picture of each width and look, and of the phone.
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { framesOf } from '../tests/glb.mjs';
 import { STATURE } from '../src/viewer/studio.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
@@ -95,6 +96,7 @@ await scenario('row', async () => {
     window.sr.lineup.entries.map((e) => ({
       id: e.flight.id,
       launch: e.flight.launch,
+      standalone: e.headings.length === 1 ? { url: e.vehicle.url, nodes: e.craft } : null,
       // the flight's own figure for how tall it stood
       height: e.flight.specs.find((s) => /\b(height|length) on the pad\b/i.test(s.label))?.value ?? null,
     })),
@@ -118,17 +120,24 @@ await scenario('row', async () => {
     row.every((s) => Math.abs(s.scale - 1) < 1e-9),
     'nothing is scaled: a metre of any of them is a metre of the row',
   );
+  // A separately exhibited spacecraft has no stack height. Measure its exported geometry, including an open shroud.
+  for (const w of wanted)
+    if (w.standalone) {
+      const frames = framesOf(new URL('../public/' + w.standalone.url, import.meta.url));
+      const boxes = w.standalone.nodes.map((n) => frames.box(n));
+      w.height = Math.max(...boxes.map((b) => b.hi[1])) - Math.min(...boxes.map((b) => b.lo[1]));
+    }
   const off = row.map((s, i) => (wanted[i].height ? Math.abs(s.height - wanted[i].height) / wanted[i].height : 0));
   const worst = off.indexOf(Math.max(...off));
   check(
     wanted.every((w) => w.height) && Math.max(...off) < 0.01,
-    `each stands as tall as its flight says it stood, to a hundredth (the furthest out: ${row[worst].id}, ${row[worst].height.toFixed(2)} m for ${wanted[worst].height?.toFixed(2)})`,
+    `each matches the published stack height or standalone exhibit, to a hundredth (the furthest out: ${row[worst].id}, ${row[worst].height.toFixed(2)} m for ${wanted[worst].height?.toFixed(2)})`,
   );
   const [tall, short] = [row.reduce((a, b) => (b.height > a.height ? b : a)), row.reduce((a, b) => (b.height < a.height ? b : a))];
   const [told, tols] = [wanted.find((w) => w.id === tall.id).height, wanted.find((w) => w.id === short.id).height];
   check(
     Math.abs(tall.height / short.height - told / tols) < 0.02,
-    `and so in true proportion: the tallest ${(tall.height / short.height).toFixed(3)} times the shortest, ${(told / tols).toFixed(3)} by the flights' figures`,
+    `and so in true proportion: the tallest ${(tall.height / short.height).toFixed(3)} times the shortest, ${(told / tols).toFixed(3)} by the reference heights`,
   );
   // the names and the ruled heights are written on the picture, and none of them on a panel or off the page
   const marks = await page.evaluate(() => {
@@ -155,7 +164,14 @@ await scenario('row', async () => {
 await scenario('card', async () => {
   const { page, errors, close } = await open(browser, `${url}#lineup`, { wait: up, timeout: 180000 });
   const start = await state(page);
-  const ids = await page.evaluate(() => window.sr.lineup.entries.map((e) => ({ id: e.flight.id, callsign: e.flight.callsign })));
+  const ids = await page.evaluate(() =>
+    window.sr.lineup.entries.map((e) => ({
+      id: e.flight.id,
+      callsign: e.flight.callsign,
+      crew: e.flight.crew.length,
+      standalone: e.headings.length === 1,
+    })),
+  );
   const pick = ids[Math.floor(ids.length / 2)];
   const at = await middleOf(page, pick.id);
   await page.mouse.click(at.x, at.y);
@@ -173,11 +189,16 @@ await scenario('card', async () => {
       confidences: pane.querySelectorAll('table .conf').length,
       crew: pane.querySelectorAll('.hist-crew li').length,
       gallery: pane.querySelector('[data-gallery]')?.dataset.gallery,
-      tall: [...pane.querySelectorAll('table tr th')].some((th) => /^(Stands here|Height on the pad)/.test(th.textContent)),
+      tall: [...pane.querySelectorAll('table tr th')].some((th) =>
+        /^(Stands here|Height on the pad|Spacecraft length)/.test(th.textContent),
+      ),
     };
   });
-  check(card.figures > 3 && card.confidences >= card.figures - 1, `its key figures, each with its confidence (${card.figures} rows)`);
-  check(card.crew > 0 && card.tall, 'its crew, and how tall it stands');
+  check(
+    card.figures >= (pick.standalone ? 1 : 4) && card.confidences >= card.figures - 1,
+    `its key figures, each with its confidence (${card.figures} rows)`,
+  );
+  check(card.crew === pick.crew && card.tall, 'its crew count and displayed height or length agree with the exhibit');
   // N goes to the next, and the camera with it
   await page.keyboard.press('n');
   await page.waitForTimeout(400);
@@ -213,13 +234,18 @@ await scenario('formed', async () => {
   await page.keyboard.press('p');
   await page.waitForTimeout(900);
   const alone = await report(page);
+  const standalone = new Set(
+    await page.evaluate(() => window.sr.lineup.entries.filter((e) => e.headings.length === 1).map((e) => e.flight.id)),
+  );
   const s = await state(page);
   check(s.hash === '#lineup/spacecraft' && alone.every((x) => x.standing), `P: the spacecraft alone, every one of them (${s.hash})`);
   // (each stands on the floor, which the line above holds, is shorter than its own vehicle and at least a person tall: no
   // height of its own, which would be true only of the spacecraft there were when it was written)
   check(
-    alone.every((x, i) => x.height < whole[i].height && x.height >= STATURE),
-    `each shorter than its vehicle and at least a person tall, on the floor (${Math.min(...alone.map((x) => x.height)).toFixed(2)} to ${Math.max(...alone.map((x) => x.height)).toFixed(2)} m)`,
+    alone.every(
+      (x, i) => (standalone.has(x.id) ? Math.abs(x.height - whole[i].height) < 0.01 : x.height < whole[i].height) && x.height >= STATURE,
+    ),
+    `stacked spacecraft shorter than their vehicles, standalone craft at the same height, all at least a person tall, on the floor (${Math.min(...alone.map((x) => x.height)).toFixed(2)} to ${Math.max(...alone.map((x) => x.height)).toFixed(2)} m)`,
   );
   await page.keyboard.press('p');
   await page.waitForTimeout(900);

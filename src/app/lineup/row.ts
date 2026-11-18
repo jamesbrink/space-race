@@ -100,7 +100,7 @@ export function spacecraftNodes(model: Pick<ModelDef, 'parts' | 'target'>): stri
  */
 export function headingsOf(model: Pick<ModelDef, 'parts' | 'target'>): Heading[] {
   const headings = vehicleHeadings(model);
-  return headings.length > 1 ? headings : [];
+  return headings.length > 1 || headings[0]?.id === SPACECRAFT ? headings : [];
 }
 
 /**

@@ -74,17 +74,19 @@ Each in its own record: [No. 8](flights/gt-8/spacecraft.md), [No. 9](flights/gt-
 
 ## Targets
 
-| Vehicle | Flights | In this repo |
-| --- | --- | --- |
-| Gemini Agena Target Vehicle (Lockheed's Agena D with McDonnell's docking adapter) | Gemini VIII (GATV-5003), X, XI, XII; lost on the way up for Gemini VI and IX | [agena-target-vehicle.md](vehicles/agena-target-vehicle.md): a flight chooses its unit; GATV-5003 is built, as it was in orbit, and what 5005, 5006 and 5001 differed in is tabulated; [target-docking-adapter.md](vehicles/target-docking-adapter.md) |
-| Augmented Target Docking Adapter | Gemini IX-A | [atda.md](vehicles/atda.md), as the crew found it, its shroud still on |
+Seven uncrewed targets left Launch Complex 14. Each has its own dated Gallery and its own place in the Lineup.
 
-A target is a vehicle of its own, with its own module, record and parts. It is shown in its flight's
-gallery in the vehicle's model, standing on the floor beside the launch vehicle under its own heading
-("Docking target"), where it can be chosen and looked at alone; beside the spacecraft where that
-stands alone; and so in the Lineup. That is an exhibit's arrangement, since each went up from Complex
-14 on an Atlas, which is not built, and docking is not flown
-([gt-8's README](flights/gt-8/README.md), "How the target is shown").
+| Crew mission | Target flight | Atlas | Outcome |
+| --- | --- | --- | --- |
+| VI | [GATV-5002](flights/gatv-5002/README.md) | 5301 | Lost during ascent |
+| VIII | [GATV-5003](flights/gatv-5003/README.md) | 5302 | Orbital docking, later visited by Gemini X |
+| IX | [GATV-5004](flights/gatv-5004/README.md) | 5303 | Lost with the Atlas |
+| IX-A | [ATDA](flights/atda/README.md) | 5304 | Rendezvous with both shroud halves still attached |
+| X | [GATV-5005](flights/gatv-5005/README.md) | 5305 | Docking and a combined engine burn |
+| XI | [GATV-5006](flights/gatv-5006/README.md) | 5306 | Docking, high orbit and tether experiment |
+| XII | [GATV-5001](flights/gatv-5001/README.md) | 5307 | Docking and work outside at the adapter |
+
+The [Agena](vehicles/agena-target-vehicle.md) and [ATDA](vehicles/atda.md) share McDonnell’s [target docking adapter](vehicles/target-docking-adapter.md). The crews’ own exhibits still show the targets they encountered beside the spacecraft. The Atlas SLV-3 and its dated launch pad remain to be built.
 
 ## Launch vehicle
 

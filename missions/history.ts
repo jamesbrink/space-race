@@ -4,6 +4,7 @@
  * nothing here is a number the simulator reads. Every entry names where it is from; docs/sources.md has the books.
  */
 import type { Confidence } from '../src/measure.ts';
+import { targetLaunches } from './usa/gemini/vehicles/target-launches.ts';
 
 /** One moment of the Space Race, on the timeline. */
 export interface Milestone {
@@ -1052,6 +1053,15 @@ export const MILESTONES: readonly Milestone[] = [
 ];
 
 export const STORIES: Readonly<Record<string, FlightStory>> = {
+  ...Object.fromEntries(
+    Object.entries(targetLaunches).map(([id, record]) => {
+      const flight = 'usa/gemini/' + id;
+      return [
+        flight,
+        { flight, headline: record.headline, story: record.story, firsts: [], source: 'NASA SP-4002, Appendix I, Table B and Part III' },
+      ];
+    }),
+  ),
   'ussr/vostok/vostok-1': {
     flight: 'ussr/vostok/vostok-1',
     headline: 'The first person in space: one orbit, flown automatically',

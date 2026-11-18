@@ -100,7 +100,7 @@ export class Title {
             return `
           <button data-flight="${esc(f.id)}" data-under="${esc(programme)}">
             ${n}
-            <span class="what"><b>${esc(f.callsign)}</b><em>${esc(f.designation)} · ${esc(f.crew.join(', '))}</em></span>
+            <span class="what"><b>${esc(f.callsign)}</b><em>${esc(f.designation)} · ${esc(f.crew.join(', ') || 'Uncrewed')}</em></span>
             <span class="when">${day}${placesOf(f)}</span>
             <span class="go" aria-hidden="true">Enter</span>
           </button>`;

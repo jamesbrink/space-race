@@ -61,7 +61,7 @@ own ([gemini-targets.ts](gemini-targets.ts) says the type's once; a flight says 
 
 Which adapter a vehicle carried, and what differed from one to the next, is with the vehicles:
 [agena-target-vehicle.md](agena-target-vehicle.md), "One vehicle from the next" (adapters 3, 1A, 6
-and 7A), and [atda.md](atda.md) (adapter 5).
+and 7A), and [atda.md](atda.md) (adapter 4).
 
 ## Rendezvous and EVA fittings on the later targets
 

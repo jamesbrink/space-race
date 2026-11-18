@@ -376,7 +376,11 @@ def build_shroud(ax: Axis, M: dict) -> None:
         )
         for e in (-1, 1):
             b = a + e * (math.pi / 2 - 0.05)
-            ends[(side, e)] = m @ Vector(((rb + 0.4) * math.cos(b) * IN, (rb + 0.4) * math.sin(b) * IN, bh * IN))
+            end = m @ Vector(((rb + 0.4) * math.cos(b) * IN, (rb + 0.4) * math.sin(b) * IN, bh * IN))
+            # The estimated bundle goes around the exposed edge of the half shell to the clamp on its outside.
+            edge = a + e * (math.pi / 2 + 0.04)
+            guide = m @ (Vector(((rb + 0.9) * math.cos(edge), (rb + 0.9) * math.sin(edge), bh - 0.5)) * IN)
+            ends[(side, e)] = (guide, end)
             chamfered(
                 bands,
                 (2.0, 1.6, 1.4),
@@ -395,10 +399,11 @@ def build_shroud(ax: Axis, M: dict) -> None:
                     [(0, 1, 2, 3)],
                 )
     # the wires that held it: from the adapter's rim to the ends of the band clamp's halves, top and bottom
-    for (side, e), end in ends.items():
+    for (side, e), (guide, end) in ends.items():
         a = (deg(90) if side > 0 else deg(270)) + e * math.pi / 2
         foot = ax.p(a + side * e * -0.12, tda.RADIUS - 0.6, H(tda.SHELL) + 0.2)
-        wires.tube(foot, end, 0.28 * IN, 6)
+        wires.tube(foot, guide, 0.28 * IN, 6)
+        wires.tube(guide, end, 0.28 * IN, 6)
     say(
         outer.build("AtdaShroud_Shell", M["fibreglass"], g, sharp_angle=35),
         "Ascent shroud",

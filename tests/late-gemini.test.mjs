@@ -210,3 +210,18 @@ test('both late Gemini crew figures can be examined in the gallery and walked at
     }
   }
 });
+
+test('the two lost Agenas and the replacement ATDA have separate flight records and adapters', () => {
+  for (const [id, date, adapter, collector] of [
+    ['gatv-5002', '1965-10-25', '2', false],
+    ['gatv-5004', '1966-05-17', '5', true],
+    ['atda', '1966-06-01', '4', true],
+  ]) {
+    const f = flights.find((flight) => flight.id === 'usa/gemini/' + id);
+    assert.equal(f.launch.slice(0, 10), date);
+    assert.deepEqual(f.crew, []);
+    assert.equal(f.facts.find((fact) => fact.label === 'Docking adapter')?.value, 'TDA ' + adapter);
+    const model = exhibit(f);
+    assert.equal(materialsUnder(file(model.url), 'TDA_MicrometeoriteCollector') !== null, collector);
+  }
+});

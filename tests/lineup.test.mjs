@@ -59,7 +59,13 @@ test('the row is every flight that has a vehicle, in the order they flew', () =>
 test('every vehicle says which of its parts are the spacecraft alone, and they are parts of it', () => {
   for (const e of row) {
     assert.ok(e.craft?.length, `${e.flight.id}: a Spacecraft heading in its parts list`);
-    assert.ok(e.craft.length < e.vehicle.parts.length, `${e.flight.id}: the spacecraft is not the whole vehicle`);
+    if (e.headings.length === 1)
+      assert.deepEqual(
+        e.craft,
+        e.vehicle.parts.map((p) => p.node),
+        'the standalone spacecraft is the entire exhibit',
+      );
+    else assert.ok(e.craft.length < e.vehicle.parts.length, `${e.flight.id}: the spacecraft is part of the stack`);
     for (const node of e.craft)
       assert.ok(
         e.vehicle.parts.some((p) => p.node === node),
@@ -341,7 +347,12 @@ test('every flight’s key figures are its own: a spec or a check of that flight
     );
     if (!exhibit(f)) continue;
     const had = Object.fromEntries(figures.map((x) => [x.slot, x]));
-    // every vehicle built so far says how tall it stood and how long its spacecraft is
+    if (headingsOf(exhibit(f)).length === 1) {
+      assert.equal(had.height, undefined, 'a standalone spacecraft has no modelled stack');
+      assert.ok(had.craftLength?.value > 0, 'its spacecraft length is stated');
+      continue;
+    }
+    // The complete stacks give both their height and the length of the spacecraft.
     assert.ok(had.height && had.height.unit === 'm' && had.height.value > 10 && had.height.value < 120, `${f.id}: its height on the pad`);
     assert.ok(had.craftLength && had.craftLength.value < had.height.value, `${f.id}: its spacecraft's length`);
     // (what a flight does not give is not shown: Liberty Bell 7 gives no mass of its spacecraft yet)

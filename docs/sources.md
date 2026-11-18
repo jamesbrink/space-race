@@ -1127,6 +1127,12 @@ of which no frame-by-frame account was found.
 
 ## Project Gemini
 
+### Uncrewed target launches
+
+The seven uncrewed Gemini target exhibits use [NASA SP-4002, Appendix I, Table B](https://www.nasa.gov/wp-content/uploads/2024/09/sp-4002.pdf) for launch dates, times, launch vehicle serials and mission outcomes. [NASA CR-1106](https://ntrs.nasa.gov/citations/19680016105), pp. 334–336 and the ATDA qualification tests, identifies the docking adapters, including TDA 5 on the lost Gemini IX Agena and TDA 4 on the replacement ATDA.
+
+The [Cape Canaveral Space Force Museum history of Complex 14](https://ccspacemuseum.org/facilities/launch-complex-14/) records the removal of the Mercury egress tower and installation of a 101-foot umbilical tower, Agena fuel system and spacecraft clean room in the conversion for Gemini.
+
 ### Gemini-Titan 3
 
 What spacecraft No. 3, GLV-3 and the flight rest on (`missions/usa/gemini/`). The rows added for

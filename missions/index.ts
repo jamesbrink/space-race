@@ -3,6 +3,13 @@ import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
 import { flight as apollo9 } from './usa/apollo/flights/apollo-9/flight.ts';
 import { flight as apollo10 } from './usa/apollo/flights/apollo-10/flight.ts';
+import { flight as target5002 } from './usa/gemini/flights/gatv-5002/flight.ts';
+import { flight as target5003 } from './usa/gemini/flights/gatv-5003/flight.ts';
+import { flight as target5004 } from './usa/gemini/flights/gatv-5004/flight.ts';
+import { flight as targetatda } from './usa/gemini/flights/atda/flight.ts';
+import { flight as target5005 } from './usa/gemini/flights/gatv-5005/flight.ts';
+import { flight as target5006 } from './usa/gemini/flights/gatv-5006/flight.ts';
+import { flight as target5001 } from './usa/gemini/flights/gatv-5001/flight.ts';
 import { flight as gt3 } from './usa/gemini/flights/gt-3/flight.ts';
 import { flight as gt4 } from './usa/gemini/flights/gt-4/flight.ts';
 import { flight as gt5 } from './usa/gemini/flights/gt-5/flight.ts';
@@ -63,6 +70,13 @@ export const flights: Flight[] = [
   gt10,
   gt11,
   gt12,
+  target5002,
+  target5003,
+  target5004,
+  targetatda,
+  target5005,
+  target5006,
+  target5001,
   soyuz1,
   apollo7,
   soyuz3,
