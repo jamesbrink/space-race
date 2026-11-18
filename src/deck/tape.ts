@@ -1,5 +1,5 @@
-import type { Clock } from '../world/clock.ts';
 import type { Flight } from '../types.ts';
+import type { Clock } from '../world/clock.ts';
 
 /**
  * A run flown by hand, kept as what was done to the deck and when, so that it can be flown again exactly: the deck's own
@@ -61,6 +61,7 @@ export function unpack(s: string): unknown {
 
 /** The simulator's own stamp: a hash of its code, made by the build (vite.config.ts); 'node' where nothing built it (a test). */
 const SIM: string = import.meta.env?.SIM_STAMP ?? 'node';
+const PAD_STAMPS: Record<string, string> = import.meta.env?.PAD_STAMPS ?? {};
 
 /** A string's hash, 53 bits as base 36 (cyrb53): enough to tell one flight's data from another's, not a secret. */
 export function hash(s: string): string {
@@ -82,7 +83,18 @@ export function hash(s: string): string {
  */
 export function stampOf(flight: Flight): string {
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
-  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms, ...(flight.docking ? [flight.docking, flight.specs] : [])]))}`;
+  const pad = flight.plan?.record?.aborts?.some((mode) => mode.escape?.tower?.hull)
+    ? flight.models.find((model) => model.id === 'pad')
+    : null;
+  const padPose = pad && {
+    url: pad.url,
+    geometry: PAD_STAMPS[pad.url],
+    position: pad.position,
+    rotationY: pad.rotationY,
+    sequence: pad.sequence?.map(({ at, slider }) => [at, slider]),
+    parts: pad.parts.map(({ node, order, explode, moves }) => [node, order, explode, moves?.map(({ machine: _, ...pose }) => pose)]),
+  };
+  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms, ...(padPose ? [padPose] : []), ...(flight.docking ? [flight.docking, flight.specs] : [])]))}`;
 }
 
 /** What flies a tape again: a deck on a clock of its own (whose every change it follows, as the page's clock is followed). */

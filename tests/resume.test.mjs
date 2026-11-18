@@ -12,17 +12,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flights } from '../missions/index.ts';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
-import { leftWhen, MOST as STORE_MOST, runs, useStore } from '../src/app/runs.ts';
+import { leftWhen, runs, MOST as STORE_MOST, useStore } from '../src/app/runs.ts';
+import { hash, pack, readTape, replay, SAVE, stampOf, unpack } from '../src/deck/tape.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
 import { hasLeft } from '../src/sim/craft.ts';
 import { ballisticOf } from '../src/sim/fly.ts';
-import { aboutAxis, multiply, normalize, turn } from '../src/sim/rigid.ts';
 import { coastOf } from '../src/sim/orbital.ts';
+import { aboutAxis, multiply, normalize, turn } from '../src/sim/rigid.ts';
 import { orbitalFlown } from '../src/sim/run.ts';
 import { byHand, flyOn, givenUp, published, sequenceOf } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
-import { hash, pack, readTape, replay, SAVE, stampOf, unpack } from '../src/deck/tape.ts';
 import { Clock } from '../src/world/clock.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { DEG, scale, siteFrame, unit } from '../src/world/frames.ts';
@@ -466,6 +466,24 @@ test('the stamp: the same flight the same, a figure of its plan changed another 
   assert.notEqual(stampOf(vostok1), stampOf(f));
   assert.equal(hash('abc'), hash('abc'));
   assert.notEqual(hash('abc'), hash('abd'));
+});
+
+test('only a flight with a tower escape hull stamps how its pad is posed', () => {
+  const apollo = flights.find((flight) => flight.id === 'usa/apollo/apollo-7');
+  const editPad = (flight, edit) => ({
+    ...flight,
+    models: flight.models.map((model) => (model.id === 'pad' ? edit(model) : model)),
+  });
+  const move = (pad) => ({ ...pad, position: [0, -100, 0] });
+  assert.notEqual(stampOf(editPad(apollo, move)), stampOf(apollo));
+  assert.equal(stampOf(editPad(freedom7, move)), stampOf(freedom7));
+  const editCopy = (pad) => ({
+    ...pad,
+    name: 'Revised launch pad name',
+    parts: pad.parts.map((part) => ({ ...part, summary: 'Revised part description' })),
+    sequence: pad.sequence?.map((keyframe) => ({ ...keyframe, event: 'Revised caption' })),
+  });
+  assert.equal(stampOf(editPad(apollo, editCopy)), stampOf(apollo));
 });
 
 test('a run flown again that does not come to the same ticks is refused', () => {

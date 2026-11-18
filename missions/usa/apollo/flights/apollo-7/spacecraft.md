@@ -91,6 +91,14 @@ their aerodynamic turnaround is represented by an attitude change. The command m
 releases the forward shield and brings out its drogue and main parachutes. The simulation
 uses mean escape-motor thrust, uniform propellant consumption and one effective drag area.
 
+The escape sweeps an estimated envelope of overlapping spheres along the boost cover and escape
+tower against the modeled LC-34 fixed tower, umbilical arms, crew access arm and mobile service
+structure. Moving arms are sampled at the instant the abort is commanded, including hand-set
+positions, and held there for the collision calculation. A graze removes the closing component
+of velocity and the escape continues. A damaging normal impact uses the simulation's shared
+damage threshold, ends the abort at the contact pose and extinguishes the visible plume.
+Structural deformation, falling debris and injuries are outside this model.
+
 Mode II separates from S-IVB, translates for 20 seconds on the service-module jets, and
 releases the service module for entry. Mode III adds a retrograde SPS firing and searches the
 available burn durations for the published 3,200-nautical-mile recovery range. Where the

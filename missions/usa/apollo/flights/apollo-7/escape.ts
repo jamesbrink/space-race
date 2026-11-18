@@ -29,7 +29,7 @@ export const escapeEngine: EngineDef = {
 export const aborts: AbortMode[] = [
   {
     until: doc(166.5, 'Apollo 7 Mission Report, Table 2-I, launch-escape tower jettison'),
-    does: 'Mode I: the escape rocket pulls the command module and tower clear. The tower and boost cover leave before the main parachutes.',
+    does: 'Mode I: fire the escape rocket to pull the command module away. After a clear escape, the tower and boost cover leave before the main parachutes.',
     escape: {
       tower: {
         engine: escapeEngine.id,
@@ -39,6 +39,32 @@ export const aborts: AbortMode[] = [
         tower: 'les-jettison',
         propellant: assumed((4_700 * 2 * LB) / 3, `${LES}, p. 140, about two-thirds of 4,700 pounds`),
         dragArea: estimated(10, 'Projected command module and boost cover; single effective ballistic drag area'),
+        hull: {
+          centre: estimated(57, 'Escape pivot within the modeled command module, measured from the Saturn IB base'),
+          spheres: [
+            [-0.8, 1.95],
+            [1, 1.15],
+            [2.3, 0.85],
+            [3.7, 0.75],
+            [5, 0.65],
+            [6.2, 0.62],
+            [7.3, 0.57],
+            [8.3, 0.47],
+            [9.15, 0.41],
+            [9.9, 0.36],
+            [10.5, 0.3],
+            [11, 0.24],
+            [11.24, 0.04],
+          ].map(([station, radius]) => ({
+            station: estimated(station!, 'Rounded bounds of the modeled boost cover and launch escape tower along the vehicle axis'),
+            radius: estimated(radius!, 'Rounded bounds of the modeled boost cover and launch escape tower across the vehicle axis'),
+          })),
+          obstacles: [
+            { node: 'Umbilical_Tower', name: 'Umbilical tower or service arm' },
+            { node: 'White_Room', name: 'Crew access arm and white room' },
+            { node: 'Service_Structure', name: 'Mobile service structure' },
+          ],
+        },
         pitch: {
           until: assumed(42, `${GROUND_TEST}, fig. 107, cutoff for the pitch motor`),
           angle: estimated(30, 'Equivalent initial seaward pitch for the low abort. Pitch torque and aerodynamic moment are simplified.'),

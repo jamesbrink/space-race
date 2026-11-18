@@ -840,7 +840,11 @@ export class Ui {
       $<HTMLSpanElement>(b, 'span').textContent = cameraName(mode);
       b.title = `${CAMERA_LABEL[mode]}: the next camera (C)`;
     }
-    if (!quiet) this.say(RIGS[mode].name, `${RIGS[mode].says} · C for the next view`);
+    if (!quiet) {
+      const touchDeck = this.root.classList.contains('piloting') && matchMedia('(hover: none), (pointer: coarse)').matches;
+      const next = touchDeck ? 'More → Next view' : 'C for the next view';
+      this.say(RIGS[mode].name, `${RIGS[mode].says} · ${next}`);
+    }
   }
 
   /**

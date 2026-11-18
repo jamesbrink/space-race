@@ -2,12 +2,12 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
 import { type Driving, type Sounds, silent, type Underfoot } from '../../sound/audio.ts';
+import { is, isTyping, keyOf, keysOf, modified } from '../../util/keys.ts';
+import { G0 } from '../../world/bodies.ts';
 import type { ShoulderRig } from '../camera/foot.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { type Holder, onEscape } from './escape.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
-import { G0 } from '../../world/bodies.ts';
-import { is, isTyping, keyOf, keysOf, modified } from '../../util/keys.ts';
 
 /**
  * Walking a flight's site on foot, in first person or over the shoulder: you are one of its figures (a model with a
@@ -430,6 +430,47 @@ export class Solids {
         }
         (mesh.userData.climb || mesh.parent?.userData.climb ? this.rungs : this.near).push(record);
       }
+  }
+
+  /** Earliest contact along a sphere's swept segment, in the current gathering. */
+  sweepSphere(from: THREE.Vector3, to: THREE.Vector3, radius: number): { fraction: number; normal: THREE.Vector3 } | null {
+    let first = Infinity;
+    const normal = new THREE.Vector3();
+    for (const n of this.near) {
+      const start = this.segment.start.copy(from).applyMatrix4(n.inverse);
+      const end = to.clone().applyMatrix4(n.inverse);
+      const travel = this.point.subVectors(end, start);
+      const r = radius / n.scale;
+      const meets = (fraction: number) => {
+        this.segment.end.lerpVectors(start, end, fraction);
+        this.region.makeEmpty().expandByPoint(start).expandByPoint(this.segment.end).expandByScalar(r);
+        return n.bvh.shapecast({
+          intersectsBounds: (box) => box.intersectsBox(this.region),
+          intersectsTriangle: (triangle) => {
+            const distance = triangle.closestPointToSegment(this.segment, this.onTriangle, this.onSegment);
+            if (distance >= r) return false;
+            if (distance > 1e-8) this.away.subVectors(this.onSegment, this.onTriangle).divideScalar(distance);
+            else {
+              triangle.getNormal(this.away);
+              if (this.away.dot(travel) > 0) this.away.negate();
+            }
+            return this.away.dot(travel) < -1e-9;
+          },
+        });
+      };
+      let high = Math.min(first, 1);
+      if (!meets(high)) continue;
+      let low = 0;
+      for (let i = 0; i < 14; i++) {
+        const mid = (low + high) / 2;
+        if (meets(mid)) high = mid;
+        else low = mid;
+      }
+      first = high;
+      meets(high);
+      normal.copy(this.away).transformDirection(n.mesh.matrixWorld);
+    }
+    return Number.isFinite(first) ? { fraction: first, normal } : null;
   }
 
   /** The height of the first surface straight down from a point, or null. Either face of it counts. */

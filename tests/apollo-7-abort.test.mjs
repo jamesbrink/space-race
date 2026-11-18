@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { BoxGeometry, Mesh, Vector3 } from 'three';
 import { flight } from '../missions/usa/apollo/flights/apollo-7/flight.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { launchEscape, planAfterEscape, withEscapeTranslation, withServiceAbort } from '../src/sim/launchescape.ts';
-import { detachedStageAt, targetAt } from '../src/sim/orbital-target.ts';
 import { coastEngineState, flyDown, flyOrbit, shipOf } from '../src/sim/orbital.ts';
+import { detachedStageAt, targetAt } from '../src/sim/orbital-target.ts';
 import { abortAt } from '../src/sim/plan.ts';
 import { ascend, steer } from '../src/sim/staged.ts';
+import { Solids } from '../src/viewer/onfoot/walk.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { add, cross, geodeticToEcef, scale, siteFrame, unit } from '../src/world/frames.ts';
 
@@ -35,6 +37,49 @@ test('Apollo 7 pad abort clears the pad, jettisons the tower and puts the drogue
   assert.ok(chutes['Three main parachutes'] >= chutes['Twin drogues'] + 10);
   assert.ok(down.landed.cm.longitude > site.longitude + 0.01, 'the pitch sends the capsule seaward');
   assert.ok(down.landed.cm.at > chutes['Three main parachutes']);
+});
+
+test('Apollo 7 escape stops at a direct structure strike and slides past a glancing contact', () => {
+  const r = frame.toInertial(geodeticToEcef({ ...site, height: site.height + 57 }), 0);
+  const up = frame.up(r, 0);
+  const east = unit(cross(frame.spin, r));
+  const north = cross(up, east);
+  const start = { t: 0, r, v: cross(frame.spin, r), axis: up };
+  const tower = abortAt(plan, 0).escape.tower;
+  const time = 0.74;
+  const obstacle = tower.hull.obstacles[0];
+  const at = (normal) => (from, to) =>
+    from.t < time && to.t >= time ? { obstacle, fraction: (time - from.t) / (to.t - from.t), normal } : null;
+
+  const hard = launchEscape(plan, tower, start, frame, sea, at(scale(up, -1))).at(-1);
+  assert.equal(hard.impact.activeBroken, true);
+  assert.equal(hard.impact.on, obstacle.node);
+  assert.ok(hard.impact.speed > 10);
+  assert.ok(Math.abs(hard.t - time) < 1e-9);
+  assert.equal(hard.thrust, 0);
+  assert.deepEqual(hard.v, cross(frame.spin, hard.r));
+
+  const graze = launchEscape(plan, tower, start, frame, sea, at(unit(add(north, scale(up, -0.08)))));
+  const contact = graze.find((point) => point.impact);
+  assert.ok(contact.impact.speed > 0 && contact.impact.speed < 10);
+  assert.equal(contact.impact.activeBroken, undefined);
+  assert.ok(contact.thrust > 0);
+  assert.ok(Math.abs(graze.at(-1).t - 14) < 1e-6);
+});
+
+test('a sphere sweeping off an overlapping pad face can still strike a later face', () => {
+  const departure = new Mesh(new BoxGeometry(0.2, 4, 4));
+  departure.position.x = -0.5;
+  departure.updateMatrixWorld(true);
+  const wall = new Mesh(new BoxGeometry(0.2, 4, 4));
+  wall.position.x = 4;
+  wall.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([departure, wall]);
+  solids.gather(new Vector3(3, 0, 0), 4, 2);
+  const hit = solids.sweepSphere(new Vector3(), new Vector3(6, 0, 0), 1);
+  assert.ok(Math.abs(hit.fraction - 2.9 / 6) < 1e-4, 'the second wall supplies the approaching face');
+  assert.deepEqual(hit.normal.toArray(), [-1, 0, 0]);
 });
 
 test('Apollo 7 launches the high-altitude escape while climbing and carries the tower to the barometric release', () => {
