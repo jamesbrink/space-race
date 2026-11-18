@@ -1,6 +1,6 @@
 /** What a flight is as data (missions/<nation>/<programme>/flights/<flight>/flight.ts): its record, its figures and checks, and its models. */
 import type { Confidence, Measure } from '../measure.ts';
-import type { FlightPlan } from '../sim/plan.ts';
+import type { FlightPlan, Nozzle } from '../sim/plan.ts';
 import type { ModelDef } from './model.ts';
 import type { AfloatDef, Burns, ChuteDef, HoistDef, LooseDef, Results } from './sim.ts';
 import type { SiteDef } from './site.ts';
@@ -304,6 +304,12 @@ export interface Flight {
       mount?: true;
       on: string;
       burns?: Burns;
+      /**
+       * The nozzle it is drawn from where that is not its engine's (sim/plan.ts `Nozzle`; viewer/plume.ts): chambers flown as
+       * part of another engine but with nozzles of their own, as the Atlas's verniers are flown with its sustainer. Only the
+       * fire's shape reads it.
+       */
+      nozzle?: Nozzle;
     }[];
     /** What `engine`'s fire burns: its colours, light and how much it hides (viewer/flames.ts). Left out, alcohol and oxygen. */
     burns?: Burns;

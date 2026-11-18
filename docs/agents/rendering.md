@@ -297,10 +297,13 @@ light would be another shader variant for everything lit), as strong as one fire
 square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
 as broad as they are spread.
 
-When a flight has no nozzle record, the exhaust picture uses a neutral exit matched to sea-level air
-(`plumeExit` in `viewer/plume.ts`). The Mercury-Atlas and Gemini-Titan ascent fires currently use that
-fallback. Their opening in thin air is illustrative. The renderer reads the real or estimated values carried
-by the other plans where available. The flight dynamics do not read the fallback.
+**Each fire is drawn from its engine's own nozzle** (`EngineDef.nozzle`: the chamber's pressure, the area ratio and the
+pressure the gas leaves at, each a Measure in the data with its source; or the fire's own `flies.fires[].nozzle`, where
+its chambers are flown as part of another engine, as the Atlas's verniers are with its sustainer). The Redstone's A-7,
+the R-7's engines, the Mercury-Atlas's MA-2 (booster, sustainer, verniers) and the Gemini-Titan's LR87 and LR91 have
+one. Where none is recorded (solid motors, the Gemini's thrusters, Apollo 7's engines for now) the fire uses a neutral
+exit matched to sea-level air (`plumeExit`); `tests/exhaust.test.mjs` lists those and fails on a
+new one. The flight dynamics read none of it.
 
 **A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
 the nozzle's (the pressure the engine's gas leaves at, `EngineDef.nozzle` in its plan, read by the fire's engine id: under
