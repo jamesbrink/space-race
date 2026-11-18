@@ -1,6 +1,6 @@
 """The upper cable mast (верхняя кабель-мачта): what the third stage's and the spacecraft's lines came up.
 
-A slender mast on the launch system's ring, opposite the erector, that carried cables up to the third stage and
+A slender mast on the launch system's ring that carried cables up to the third stage and
 was swung clear in the last minute. Korolev to Gagarin at 09:06 Moscow time: "the pressurisation is going, the
 cable mast is away, all is normal"; ignition was called at 09:07.
 
@@ -14,10 +14,9 @@ the closed supports and the mast already leans some 25 degrees out of upright; i
 some 20 m over the deck and the mast leans as it did. So it went the whole way back at 09:06, a minute before
 liftoff, and did not move as the rocket left.
 
-Estimated: which side it stood on (the east, over the support there: the only place the two service trusses do not
-sweep as they are lowered; the two photographs, taken from the east, have it on the rocket's left, which is the
-south: see ../site-1.md, what the model gets wrong), its legs' line, every member, the arm at its head and where on
-the third stage its plugs went, how far it swung and how fast. See ../site-1.md.
+The April 1961 photographs, identified in ../site-1.md, look north and place the mast on the west. The reconstruction
+puts it on the east. The photographs leave its fit beside the erector and crew walkway unresolved.
+The shape of the mast and head, the connections, the swing and its timing are estimates.
 
 The two lower cable masts, under the deck at the rocket's tail, are not built: one small reproduction of a drawing
 shows that they were there and nothing read shows where.

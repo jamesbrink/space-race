@@ -808,8 +808,8 @@ export const SITE1_WORDS: Partial<Record<Site1Node, PartWords>> = {
     detail:
       'Power and commands for the third stage came up this mast from the ring and across its arm to plugs under the fairing’s ' +
       'foot; it swung clear a minute before ignition. The CIA’s interpreters found it on a U-2 photograph, 85 to 95 ft above the ' +
-      'platform; the middle of that is modelled. How far it swung is read off two photographs of 12 April 1961. Which side of ' +
-      'the ring it stood on is not recorded: it is put on the east, opposite the erector.',
+      'platform; the middle of that is modelled. Two photographs of Gagarin’s launch on 12 April 1961 show the mast west ' +
+      'of the rocket. The reconstruction places it on the east. The photographs leave its fit beside the erector and crew walkway unresolved.',
     facts: [
       ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
       ['Swings', '40° from where it stood (estimated)'],
