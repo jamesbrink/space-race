@@ -107,12 +107,12 @@ export class CabinView {
 
   /** What each of the exhibit's seats is called (`ModelDef.seats[].label`): empty where it has none, or nothing is an exhibit. */
   get seatLabels(): string[] {
-    return this.h.exhibit() ? (this.h.defs()[this.seatHolder]?.seats ?? []).map((s) => s.label) : [];
+    return (this.h.defs()[this.seatHolder]?.seats ?? []).map((s) => s.label);
   }
 
   /** The exhibit's seat being sat in (an index into `seatLabels`), or null. */
   get seat(): number | null {
-    return this.h.exhibit() && this.h.cam.rig === 'onboard' ? this.seatAt : null;
+    return !this.h.walk().active && this.h.cam.rig === 'onboard' ? this.seatAt : null;
   }
 
   /** The exhibit's seat `n`'s node (ModelDef.seats[].node): the address's word for it. */
@@ -126,7 +126,7 @@ export class CabinView {
    * nothing else puts the camera in a seat. The seat's part must be on show (`Stage.only`): false if it is not.
    */
   sit(n: number | null): boolean {
-    if (!this.h.exhibit()) return false;
+    if (!this.h.exhibit() && this.seat === null) return false;
     const at = this.seatHolder;
     const seats = this.h.defs()[at]?.seats ?? [];
     const on = this.h.cam.rig === 'onboard';
@@ -137,6 +137,7 @@ export class CabinView {
     if (!seats[n]) return false;
     if (on && n === this.seatAt) return true;
     const was = this.seatAt;
+    if (this.leaning !== null) this.leanTo(null);
     this.seatAt = n;
     if (!this.h.craft()?.seat) {
       this.seatAt = was;

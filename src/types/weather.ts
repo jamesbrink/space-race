@@ -79,6 +79,7 @@ export interface DayWeather {
   hours?: WeatherHour[];
   /** The sea where it came down (sim/sea.ts): what a body afloat there rises and falls on. Left out, a calm sea. */
   sea?: SeaState;
+  recovery?: RecoveryWeather;
 }
 
 /** The air at one height over a site: a level of a sounding, or of a reanalysis. */
@@ -91,6 +92,21 @@ export interface AloftLevel {
   temperature: Measure;
   /** The wind there; left out where the record does not give it. */
   wind?: Wind;
+}
+
+/** A low overcast observed at recovery, after the launch day's weather has moved on. */
+export interface RecoveryWeather {
+  observed: DayWeather['observed'];
+  /** UTC interval in which the renderer hands over to the recovery map, at high altitude before descent. */
+  transition: readonly [string, string];
+  latitude: Measure;
+  longitude: Measure;
+  /** Area around the observation taken to share its low cloud, metres. */
+  radius: Measure;
+  ceiling: Measure;
+  cover: Measure;
+  wind: Wind;
+  visibility: Measure;
 }
 
 /** A column of air over a site: where and when it was observed or worked out, and its levels from the lowest up. */

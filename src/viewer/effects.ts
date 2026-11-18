@@ -186,7 +186,7 @@ export class Effects {
     const braking = record ? brakingOf(this.flight, record) : null;
     if (braking?.mass)
       for (const at of braking.fires)
-        named.push({ at, strength: joltStrength((braking.thrust / braking.mass / G0) * braking.fires.length) });
+        named.push({ at, strength: joltStrength((braking.thrust / braking.mass / G0) * (braking.durations ? 1 : braking.fires.length)) });
     if (this.live && Number.isFinite(this.live.duration)) named.push({ at: this.live.duration, strength: 0.8 });
     const all = this.jolts.slice();
     for (const n of named) {

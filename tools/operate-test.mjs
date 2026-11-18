@@ -68,6 +68,16 @@ const SITES = [
     fn: 'Work platform 1 (36 ft)',
     hold: 4,
   },
+  {
+    name: 'Complex 34: the crew access arm at the 220-foot tower landing',
+    flight: 'usa/apollo/apollo-7',
+    at: -8865,
+    from: [9.37, 58.8264, 0.04],
+    look: [8.35, 60.48, 1.104], // the nearest upper side panel, inside the walker’s reach
+    part: 'White room and access arm',
+    fn: 'Crew access arm',
+    hold: 4,
+  },
 ];
 const WIDTHS = [
   { w: 1280, h: 800, input: 'keys' },

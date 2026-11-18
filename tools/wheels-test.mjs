@@ -27,7 +27,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const flights = [];
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
   const { flight } = await import(pathToFileURL(join(root, file)).href);
-  if (!flight.surroundings || (only && flight.id !== only)) continue;
+  if (!flight.site || (only && flight.id !== only)) continue;
   const moving = [];
   flight.models.forEach((model, m) => {
     for (const part of model.parts)

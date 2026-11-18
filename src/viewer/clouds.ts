@@ -17,8 +17,8 @@ import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise.ts';
 import { fieldAs } from './field.ts';
 import { uOrigin } from './origin.ts';
-import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
-import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
+import { type Day, HIGH_HEIGHT } from './day.ts';
+import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { type WeatherMap, weatherUniforms } from './weathermap.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 
@@ -301,7 +301,8 @@ const DEPTH = /* glsl */ `
   // the ray through a point of the frame, in the camera's frame
   vec3 viewRay(vec2 uv) {
     vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, 1.0, 1.0);
-    return normalize(v.xyz / v.w);
+    // Only the direction is needed. At large far/near ratios, v.w can round to zero.
+    return normalize(v.xyz);
   }
   // How far along that ray the scene's surface is, at the furthest the depth buffer can mean by what it holds; the sky
   // is endlessly far. The buffer has 24 bits, and far off one step of it is a long way (from 187 km up, with the near
@@ -634,6 +635,9 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
         float crease = mix(0.4, 1.0, smoothstep(-0.34, 0.1, lumps)) * (1.0 - 0.35 * worn);
         // the sky lights the top and, half as well, the sides: less with every metre of cloud overhead or outside
         float sky = max(exp(-max(above, 0.0) / 110.0), 0.5 * exp(-max(heap, 0.0) / 70.0));
+        // A share of the diffuse sky is scattered repeatedly inside a thick cloud. Its longer effective reach is
+        // estimated, and keeps the cloud's interior lit by the sky even where its direct contributions are extinct.
+        sky += 0.18 * (1.0 - sky) * exp(-max(above, 0.0) / 1200.0);
         // and the base is lit from below: by the horizon's sky under the layer and by what the ground sends up, which
         // is little, so a base is grey-blue, darkest under the thickest cloud
         float low = exp(-max(y, 0.0) * (uLayer.y - uLayer.x) / 70.0);
@@ -718,13 +722,12 @@ const marchShader = (clouds: Clouds, sharpen: boolean) => /* glsl */ `
  */
 export const overGlsl = (day: Day | null | undefined): string => {
   const high = highOf(day);
-  const deckAt_ = day?.deck.height ?? DECK_HEIGHT,
-    highAt_ = day?.high.height ?? HIGH_HEIGHT;
-  const deckHeight = deckAt_.toFixed(1),
+  const highAt_ = day?.high.height ?? HIGH_HEIGHT;
+  const deckHeight = deckHeightGlsl(day),
     highHeight = highAt_.toFixed(1);
   // (each sheet's layer: the deck from the record's base up, the high cloud about the height it is drawn at)
-  const deckLo = deckAt_.toFixed(1),
-    deckHi = (deckAt_ + SHEET_DEPTH.deck).toFixed(1),
+  const deckLo = deckHeight,
+    deckHi = deckHeightGlsl(day, SHEET_DEPTH.deck),
     highLo = (highAt_ - SHEET_DEPTH.high / 2).toFixed(1),
     highHi = (highAt_ + SHEET_DEPTH.high / 2).toFixed(1);
   /** The sky's light on what is under the high cloud: with what it gives back, on a day that has any. */
@@ -1548,6 +1551,7 @@ export class CloudPass extends Pass {
   private baked: { clouds: Clouds; x: number; z: number; driftX: number; driftZ: number } | null = null;
   /** The weather's map has arrived since the field was baked. */
   private stale = false;
+  private bakedRecovery = 0;
   private sun: THREE.DirectionalLight | null = null;
   private sky: THREE.HemisphereLight | null = null;
   private readonly eye = new THREE.Vector3();
@@ -1567,9 +1571,11 @@ export class CloudPass extends Pass {
   private air: Air | null = null;
   private weather: WeatherMap | null = null;
   private unweather: (() => void) | null = null;
+  private altitude: ((eye: THREE.Vector3) => number) | undefined;
 
   /** The stage has another setting (Stage.applySetting): the clouds are its air's, and baked again by its weather's map. */
-  setAir(air: Air | null, weather: WeatherMap | null): void {
+  setAir(air: Air | null, weather: WeatherMap | null, altitude?: (eye: THREE.Vector3) => number): void {
+    this.altitude = altitude;
     if (air === this.air && weather === this.weather) return;
     this.found = undefined; // (another setting: another globe and its air, looked for again: `ball`)
     this.air = air;
@@ -1676,7 +1682,7 @@ export class CloudPass extends Pass {
     if (TILES.every((t) => into[t.name].value)) return;
     // (the output's shader, with the day's clouds in it, is to be compiled under the curtain too)
     const air = this.air;
-    if (air?.clouds || (air?.day && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0))) this.dress(air.day);
+    if (air?.clouds || (air?.day && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0 || air.day.recovery))) this.dress(air.day);
     // (a day with no cumulus marches nothing, and its sheets read neither tile)
     if (!air?.clouds) return;
     const worked = await new Promise<Record<'billows' | 'detail', Uint8Array<ArrayBuffer>> | null>((done) => {
@@ -1729,7 +1735,8 @@ export class CloudPass extends Pass {
     const air = this.air;
     const clouds = air?.clouds;
     // (a day with a deck or high cloud and no cumulus: the sheets are laid over the frame, and nothing is marched)
-    const sheets = air?.day != null && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0);
+    const recovery = air?.day?.recovery && weatherUniforms.uRecovery.value;
+    const sheets = air?.day != null && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0 || Boolean(recovery));
     const fog = this.scene.fog as THREE.FogExp2 | null;
     this.uniforms.uClouds.value = 0;
     if (!air || !(clouds || sheets) || !fog || !this.mark.texture) return;
@@ -1755,8 +1762,10 @@ export class CloudPass extends Pass {
     // the Earth's centre lies under the site's origin, its radius below the sea
     const cy = eye.y - (air.base - EARTH);
     const r = Math.hypot(eye.x, cy, eye.z);
-    u.uEyeH.value = r - EARTH;
-    u.uRe.value = r;
+    // Recovery observations place ceilings above local mean sea level on the ellipsoid. Anchor the local
+    // spherical shell there rather than keep the launch site's small angular approximation 1,600 km away.
+    u.uEyeH.value = recovery && this.altitude ? THREE.MathUtils.lerp(r - EARTH, this.altitude(eye), recovery) : r - EARTH;
+    u.uRe.value = EARTH + u.uEyeH.value;
     u.uUp.value.set(eye.x / r, cy / r, eye.z / r);
     if (clouds) {
       u.uLayer.value.set(clouds.height, clouds.height + clouds.depth);
@@ -1775,8 +1784,9 @@ export class CloudPass extends Pass {
     if (clouds) {
       const shell = EARTH + clouds.height + 0.3 * clouds.depth;
       const least = Math.min(FADE[0], SMALL[0] / u.uPixel.value);
-      const cone = (shell * shell - r * r - least * least) / (2 * r * least);
-      if (r < shell) u.uFarSpan.value.set(-Math.sqrt(Math.max(r - EARTH, 0) * (r + EARTH)) / r, cone);
+      const radius = u.uRe.value;
+      const cone = (shell * shell - radius * radius - least * least) / (2 * radius * least);
+      if (radius < shell) u.uFarSpan.value.set(-Math.sqrt(Math.max(radius - EARTH, 0) * (radius + EARTH)) / radius, cone);
       else u.uFarSpan.value.set(cone, 0);
     } else u.uFarSpan.value.set(1, -1); // (no cumulus: no ray is between these, and none is worked out)
     this.finer.uGrain.value = tall / this.finer.uLow.value.y;
@@ -2075,8 +2085,10 @@ export class CloudPass extends Pass {
     const b = this.baked;
     // (and again when the weather's map arrives, or the clouds have drifted 4 km over it: the map is fixed to the Earth)
     const drift = cloudUniform.value;
+    const recovery = Math.round(12 * weatherUniforms.uRecovery.value) / 12;
     if (
       b &&
+      this.bakedRecovery === recovery &&
       b.clouds === clouds &&
       !this.stale &&
       Math.abs(x - b.x) < REBAKE &&
@@ -2085,6 +2097,7 @@ export class CloudPass extends Pass {
     )
       return;
     this.stale = false;
+    this.bakedRecovery = recovery;
     const cx = Math.round(x / SNAP) * SNAP,
       cz = Math.round(z / SNAP) * SNAP;
     if (!b || b.clouds !== clouds) {

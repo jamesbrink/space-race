@@ -424,10 +424,6 @@ export function descending(plan: FlightPlan, frame: EarthFrame, seaLevel: number
     next(t) {
       const f = flying.filling;
       const marks = [...given, ...switched, parted, ...(f ? [f.at + f.fills] : []), ...flying.ends(t)];
-      if (Number.isFinite(ctx.ejected.at))
-        flying.body.chutes.forEach((c, i) => {
-          if (!flying.out.has(i) && c.after !== undefined) marks.push(ctx.ejected.at + c.after);
-        });
       return after(
         marks.filter((x) => Number.isFinite(x)).sort((a, b) => a - b),
         t,

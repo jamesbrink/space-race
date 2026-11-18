@@ -9,7 +9,8 @@ import type { ShedBody, Signal, SitedFlight } from '../types.ts';
 import { G0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { add, cross, dot, length, sub, geodeticToEcef, scale, siteFrame, unit, type Vec3 } from '../world/frames.ts';
+import { add, cross, dot, geodeticToEcef, length, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
+import type { State } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { type Afloat, afloatAt, floatOn } from './afloat.ts';
 import { skyOf } from './air.ts';
@@ -20,8 +21,6 @@ import { flyLoose, type LooseFlown } from './loose.ts';
 import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import { type CoastRotation, conjugate, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
-import type { LiveSample } from './vehicle.ts';
-import type { State } from '../world/orbit.ts';
 import { wavesOf } from './sea.ts';
 import { apart, Sheds } from './shed.ts';
 import {
@@ -36,6 +35,7 @@ import {
   sequenceOf,
   stagesOf,
 } from './staged.ts';
+import type { LiveSample } from './vehicle.ts';
 
 /**
  * Something that happened on a run, and when (seconds from liftoff; Infinity for one that has not): one of the plan's
@@ -50,6 +50,8 @@ export interface RunEvent {
 
 /** A flight for the scene to show: the record's, or one being flown. */
 export interface Run {
+  /** The nominal mission was interrupted during launch. */
+  launchAborted?: boolean;
   /** The frame its samples are in: the flight's (world/earthframe.ts `frameOf`). */
   frame: EarthFrame;
   /** The sample on show at `t`: the last at or before it (the first, before the run's start). */
@@ -93,7 +95,7 @@ export interface Run {
   /** When each parachute tore (sim/vehicle.ts `tore`): Infinity, or nothing at all, for one that has not. */
   torn?: { drogue: number; main: number };
   /** When each of `Flight.flies.fires` burns on this run, in their order: its instants, from and to. */
-  fires?: { from: number; to: number }[];
+  fires?: { from: number; to: number; earlier?: { from: number; to: number }[] }[];
   /** What it has let go, each flown beside it (sim/shed.ts): a live run's. The record's are made here. */
   sheds?: Sheds;
   /** An orbital flight's bodies down from the ejection, each on its own track, with their parachutes (sim/staged.ts `descentOf`). */
@@ -193,7 +195,11 @@ export function either<S extends Sample>(samples: readonly S[], t: number): [S, 
 }
 
 /** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */
-export function between(samples: readonly Sample[], t: number, point: (s: Sample) => Vec3 = (s) => s.r): { r: Vec3; v: Vec3 } {
+export function between<S extends Pick<Sample, 'r' | 'v' | 't'>>(
+  samples: readonly S[],
+  t: number,
+  point: (s: S) => Vec3 = (s) => s.r,
+): { r: Vec3; v: Vec3 } {
   let lo = 0;
   let hi = samples.length - 1;
   while (hi - lo > 1) {
@@ -458,7 +464,7 @@ export function firesOf(
   whole: FlownWhole,
   retro?: { on: number; off: number },
   plan: FlightPlan = flight.plan!,
-): { from: number; to: number }[] {
+): NonNullable<Run['fires']> {
   const stages = stagesOf(plan);
   const lit = sequenceOf(plan).stages;
   // (a manoeuvre's engine lit several times: each of its fires is its next lighting, in order, orbital.ts `movesOf`)
@@ -466,15 +472,15 @@ export function firesOf(
   const seen = new Map<string, number>();
   return (flight.flies?.fires ?? []).map((f) => {
     const mine = moves.filter((m) => m.engine === f.on);
+    if (plan.craft[0]!.engines.find((e) => e.id === f.on)?.flown) {
+      const coast = retro ?? coastOf(plan);
+      return { from: coast.on, to: coast.off, ...(mine.length ? { earlier: mine.map((m) => ({ from: m.on, to: m.off })) } : {}) };
+    }
     if (mine.length) {
       const k = seen.get(f.on) ?? 0;
       seen.set(f.on, k + 1);
       const m = mine[k];
       return m ? { from: m.on, to: m.off } : { from: Infinity, to: Infinity };
-    }
-    if (plan.craft[0]!.engines.find((e) => e.id === f.on)?.flown) {
-      const coast = coastOf(plan);
-      return retro ? { from: retro.on, to: retro.off } : { from: coast.on, to: coast.off };
     }
     const i = stages.findIndex((s) => s.engine.id === f.on);
     return { from: lit[i]?.from ?? Infinity, to: whole.ascent.stops[i] ?? Infinity };
@@ -547,6 +553,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     bodies: bodiesOf(plan, events),
     results: held(plan, whole),
   });
+  if (whole.down) floatUprighting(flight, run);
   orbitalRuns.set(plan, run);
   return run;
 }
@@ -580,9 +587,17 @@ export function orbitalEvents(
     }
     put(k.parting, hand.parting);
   }
-  // (the pilot set loose when the descent had it: the barometric switch's height on the record's run, or when a hand gave it)
+  // The barometric switch or manual release starts the descent sequence. Its timers are
+  // relative to that occurrence, so use the descent's actual deployment times.
   const ejected = whole.down ? whole.down.ejected : whole.coast.results.ejectionAt;
   put(eventOf(plan, coastOf(plan).loose ?? ''), Number.isFinite(ejected) ? ejected : Infinity);
+  if (whole.down) {
+    for (const body of downOf(plan)?.bodies ?? [])
+      for (const chute of body.chutes) {
+        const opening = whole.down.opened[body.id]?.[chute.name];
+        if (opening !== undefined) put(eventOf(plan, chute.event), opening);
+      }
+  }
   for (const m of plan.record?.marks ?? []) {
     const landed = m.lands ? whole.down?.landed[m.lands] : undefined;
     if (landed) out[m.id] = landed.at;
@@ -668,7 +683,10 @@ export function liftoffOf(plan: FlightPlan | undefined): { thrust: number; exhau
  * engine that flies the record's impulse (`EngineDef.flown`), from when the run has it burn (`Run.fires`) at its thrust
  * (the impulse over the burn where the record gives no thrust).
  */
-export function brakingOf(flight: SitedFlight, run: Run): { fires: number[]; burn: number; thrust: number; mass: number } | null {
+export function brakingOf(
+  flight: SitedFlight,
+  run: Run,
+): { fires: number[]; burn: number; durations?: number[]; thrust: number; mass: number } | null {
   const plan = flight.plan;
   if (!plan) return null;
   if (plan.kind === 'ballistic') {
@@ -686,12 +704,17 @@ export function brakingOf(flight: SitedFlight, run: Run): { fires: number[]; bur
   const braking = plan.craft[0]!.engines.find((e) => e.flown);
   const k = braking ? (flight.flies?.fires ?? []).findIndex((f) => f.on === braking.id) : -1;
   const burn = k >= 0 ? run.fires?.[k] : undefined;
-  if (!braking || !burn || !Number.isFinite(burn.from) || !(burn.to > burn.from)) return null;
+  if (!braking || !burn) return null;
+  const intervals = [...(burn.earlier ?? []), burn].filter((b) => Number.isFinite(b.from) && b.to > b.from);
+  if (!intervals.length) return null;
+  const last = intervals[intervals.length - 1]!;
+  const seconds = last.to - last.from;
   const mass = plan.record?.orbit?.mass.value ?? 0;
   return {
-    fires: [burn.from],
-    burn: burn.to - burn.from,
-    thrust: braking.thrust.vacuum.value || (mass * braking.flown!.value) / (burn.to - burn.from),
+    fires: intervals.map((b) => b.from),
+    burn: seconds,
+    ...(burn.earlier ? { durations: intervals.map((b) => b.to - b.from) } : {}),
+    thrust: braking.thrust.vacuum.value || (mass * braking.flown!.value) / seconds,
     mass,
   };
 }
@@ -745,6 +768,19 @@ export function chuteOf(plan: FlightPlan | undefined, id: string | undefined): '
   if (!plan || !id || plan.kind !== 'ballistic') return undefined;
   const b = ballisticOf(plan);
   return id === b.main.id ? 'main' : id === b.drogue.id ? 'drogue' : undefined;
+}
+
+/** Float a capsule which landed inverted. A supplied instant is the pilot's inflation command. */
+export function floatUprighting(flight: SitedFlight, run: Run, command?: number): void {
+  const config = flight.flies?.uprighting;
+  if (!config || !Number.isFinite(run.duration)) return;
+  const landing = run.duration;
+  const at = command ?? landing + config.delay.value;
+  const until = Math.max(landing + config.end.value, Number.isFinite(at) ? at + config.inflation.value : landing) + 30;
+  run.afloat = floatOn(config.body, wavesOf(flight.weather?.sea?.trains), landing, until, {
+    initialHeel: (config.initialHeel.value * Math.PI) / 180,
+    inflation: { at, seconds: config.inflation.value },
+  });
 }
 
 /** How long a body afloat is followed when nothing sinks it, s after the landing (the deck stops its clock long before). */

@@ -1,30 +1,30 @@
 import * as THREE from 'three';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
 import type { EngineDef } from '../../sim/plan.ts';
+import type { Run } from '../../sim/run.ts';
 import { exitAreaOf } from '../../sim/staged.ts';
 import type { Burns, Flight as FlightData, JetDef, ModelDef, SitedFlight } from '../../types.ts';
 import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
-import type { Run } from '../../sim/run.ts';
-import { Ascent } from '../ascent.ts';
-import { BreakupFragment, fragmentPieces, type FragmentPiece, separableBranches } from '../breakup.ts';
-import { Flooding } from '../flooding.ts';
-import type { LineState, Recovery } from '../recovery.ts';
 import { siteFrame, type Vec3 } from '../../world/frames.ts';
-import { Swimmer } from '../swimmer.ts';
+import { Ascent } from '../ascent.ts';
 import type { Setting } from '../backdrops.ts';
+import { BreakupFragment, type FragmentPiece, fragmentPieces, separableBranches } from '../breakup.ts';
 import type { Cameras } from '../camera/index.ts';
 import { ABOUT_PLACE, type Craft } from '../camera/rig.ts';
 import { Chute } from '../chute.ts';
 import type { Effects } from '../effects.ts';
 import { type Cluster, clusterOf, type Exit, engineWork, exitsOf, shedLevel } from '../fires.ts';
 import { gasKindOf, kindOf } from '../flames.ts';
+import { Flooding } from '../flooding.ts';
 import { GasJet, Jets } from '../jets.ts';
 import type { Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import { jointKey } from '../onfoot/gait.ts';
 import { absolute } from '../origin.ts';
 import { lightFires, Plume } from '../plume.ts';
+import type { LineState, Recovery } from '../recovery.ts';
+import { Swimmer } from '../swimmer.ts';
 import { TRAIL_STEP, Trail } from '../trail.ts';
 
 /** No smoke is laid above this height over the ground, m: none is drawn there (trail.ts), and Freedom 7's engine was out by 60 km. */
@@ -141,6 +141,7 @@ export interface FlightShowHost {
   exhibit(): boolean;
   selected(): string | null;
   /** The node a seat is (stage/cabinview.ts). */
+  seatIndex(): number;
   seatNode(at: number, seat: NonNullable<ModelDef['seats']>[number]): THREE.Object3D | null;
   redraw(): void;
   /** Hardware has moved: its shadows are drawn again in the same frame. */
@@ -163,6 +164,7 @@ export class FlightShow {
   /** Take up another flight: its run, nothing shed, its fires hung afresh (the last flight's parachutes and jets taken away). */
   load(flight: FlightData): void {
     this.restoreFragments();
+    this.usedRotations = false;
     this.followed = null;
     this.shedCraft = null;
     this.crafted = null;
@@ -271,11 +273,16 @@ export class FlightShow {
       shed: '',
       level: null as THREE.Object3D | null,
       place: null as THREE.Object3D | null,
+      seatIndex: -1,
       size: new THREE.Vector3(),
     });
     const at = this.h.defs().findIndex((m) => m.id === this.ascent?.model);
-    const seat = this.h.defs()[at]?.seats?.[0];
-    if (c.of !== s) c.place = seat ? this.h.seatNode(at, seat) : null; // (found once: the first place its data gives to see from)
+    const index = this.h.seatIndex();
+    const seat = this.h.defs()[at]?.seats?.[index];
+    if (c.of !== s || index !== c.seatIndex) {
+      c.place = seat ? this.h.seatNode(at, seat) : null;
+      c.seatIndex = index;
+    }
     if (c.of !== s || c.shed !== this.lifted.shed || c.level !== s.shown) {
       // measured when what is left of it changes, not every frame: the box round what is still drawn of it
       c.of = s;
@@ -321,7 +328,14 @@ export class FlightShow {
   }
 
   crafted:
-    | (Craft & { of: Staged | null; shed: string; level: THREE.Object3D | null; place: THREE.Object3D | null; size: THREE.Vector3 })
+    | (Craft & {
+        of: Staged | null;
+        shed: string;
+        level: THREE.Object3D | null;
+        seatIndex: number;
+        place: THREE.Object3D | null;
+        size: THREE.Vector3;
+      })
     | null = null;
 
   /**
@@ -453,6 +467,54 @@ export class FlightShow {
     return this.h.staged()[this.h.defs().findIndex((m) => m.id === id)] ?? null;
   }
 
+  private readonly rotationHome = new WeakMap<THREE.Object3D, THREE.Quaternion>();
+  private readonly rotationNodes = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D | undefined>>();
+  private usedRotations = false;
+
+  private rotateEvents(ascent: Ascent, staged: Staged, t: number): void {
+    const moves = this.flightData?.flies?.eventRotations;
+    if (!moves?.length || (t < 0 && !this.usedRotations)) return;
+    const turns = new Map<string, THREE.Quaternion>();
+    const axis = new THREE.Vector3();
+    const turn = new THREE.Quaternion();
+    for (const move of moves) {
+      const elapsed = t < 0 ? -Infinity : t - ascent.rotationTime(move.event);
+      const by = move.angle * THREE.MathUtils.smoothstep(elapsed, move.from, move.to);
+      let angle = turns.get(move.node);
+      if (!angle) {
+        angle = new THREE.Quaternion();
+        turns.set(move.node, angle);
+      }
+      angle.premultiply(turn.setFromAxisAngle(axis.set(...move.axis), by));
+    }
+    const active = [...turns.values()].some((angle) => angle.w < 1);
+    if (!active && !this.usedRotations) return;
+    this.usedRotations = active;
+    let moved = false;
+    for (const level of [...staged.group.children, ...this.debris.map((piece) => piece.node)]) {
+      let named = this.rotationNodes.get(level);
+      if (!named) {
+        named = new Map();
+        this.rotationNodes.set(level, named);
+      }
+      for (const [name, angle] of turns) {
+        if (!named.has(name)) named.set(name, level.getObjectByName(name));
+        const hinge = named.get(name);
+        if (!hinge) continue;
+        let base = this.rotationHome.get(hinge);
+        if (!base) {
+          base = hinge.quaternion.clone();
+          this.rotationHome.set(hinge, base);
+        }
+        turn.copy(base).premultiply(angle);
+        if (Math.abs(hinge.quaternion.dot(turn)) >= 1 - 1e-12) continue;
+        hinge.quaternion.copy(turn);
+        moved = true;
+      }
+    }
+    if (moved) this.h.oweShadows();
+  }
+
   /**
    * Put the flown vehicle where the simulator has it at the clock's instant (ascent.ts): from
    * liftoff to landing it flies, without what it has shed; before it stands on its pad, and after the record's run has
@@ -482,6 +544,8 @@ export class FlightShow {
     }
     this.recover(ascent, t, g);
     this.flood(ascent, s, t);
+    this.inflateBags(ascent, s, t);
+    this.rotateEvents(ascent, s, t);
     this.unseat(ascent, g, t);
     // (after the record's run has ended the vehicle is not in the scene at all: not back on its pad)
     const gone = ascent.gone(t);
@@ -568,6 +632,32 @@ export class FlightShow {
       });
     this.h.oweShadows();
     this.h.redraw();
+  }
+
+  private bags: { group: THREE.Group; geometry: THREE.SphereGeometry; material: THREE.MeshStandardMaterial } | null = null;
+
+  private inflateBags(ascent: Ascent, s: Staged, t: number): void {
+    const body = this.flightData?.flies?.uprighting?.body;
+    if (!body?.bags) return;
+    const fraction = ascent.bagVolume(t);
+    if (!this.bags && fraction > 0) {
+      const geometry = new THREE.SphereGeometry(1, 32, 24);
+      const material = new THREE.MeshStandardMaterial({ color: 0xdd8b30, roughness: 0.94 });
+      const group = new THREE.Group();
+      for (const bag of body.bags) {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(bag.out, bag.up - body.datum.value, bag.across);
+        group.add(mesh);
+      }
+      s.group.add(group);
+      this.h.looks.add(group);
+      this.bags = { group, geometry, material };
+    }
+    if (!this.bags) return;
+    this.bags.group.visible = fraction > 0;
+    const scale = Math.cbrt(fraction);
+    this.bags.group.children.forEach((bag, i) => bag.scale.setScalar(body.bags![i]!.radius.value * scale));
+    if (fraction > 0 && fraction < 1) this.h.oweShadows();
   }
 
   /** The sea inside the spacecraft afloat (flooding.ts), in the flown model's frame: made the first time it is down. */
@@ -943,6 +1033,13 @@ export class FlightShow {
       this.flooding.dispose();
     }
     this.flooding = null;
+    if (this.bags) {
+      this.bags.group.removeFromParent();
+      this.h.looks.remove(this.bags.group);
+      this.bags.geometry.dispose();
+      this.bags.material.dispose();
+      this.bags = null;
+    }
   }
 
   /**
@@ -1003,8 +1100,8 @@ export class FlightShow {
       const area = mouths.reduce((a, m) => a + m.radius ** 2, 0);
       for (const m of mouths) {
         const jet =
-          j.gas === 'solid'
-            ? new Plume(m.radius, exit, null, this.unlit, kindOf(j.burns ?? 'solid-perchlorate'))
+          j.gas === 'solid' || j.gas === 'hypergolic'
+            ? new Plume(m.radius, exit, null, this.unlit, kindOf(j.burns ?? (j.gas === 'solid' ? 'solid-perchlorate' : 'hydrazine-n2o4')))
             : new GasJet(m.radius, gasKindOf(j.gas), (thrust * m.radius ** 2) / area, exit);
         jet.mesh.matrixAutoUpdate = false;
         root.add(jet.mesh);
@@ -1038,7 +1135,14 @@ export class FlightShow {
     const motors = this.flightData?.plan?.craft[0]?.sheds ?? [];
     const on = (w: JetDef['when']): number => {
       if (!flying) return 0;
-      if ('with' in w) return works(w.with);
+      if ('with' in w) {
+        if (flies.fires?.some((f) => f.on === w.with)) return works(w.with);
+        const thrust = ascent.engineThrust(w.with, t);
+        const installed = this.gases
+          .filter((g) => 'with' in g.def.when && g.def.when.with === w.with)
+          .reduce((sum, g) => sum + (g.def.thrust?.value ?? 0), 0);
+        return thrust === undefined ? 0 : installed > 0 && thrust > 0 ? Math.min(1, thrust / installed) : 1;
+      }
       if ('engine' in w) return works(w.engine);
       const i = flies.drops.findIndex((d) => d.on === w.shed);
       const at = ascent.drops[i]?.at ?? Infinity;
@@ -1196,6 +1300,7 @@ export class FlightShow {
       at: THREE.Vector3,
       cluster: Cluster | null,
       burns?: Burns,
+      mount?: THREE.Matrix4,
     ): void => {
       let owner = node;
       while (owner.parent && owner.parent !== s.full) owner = owner.parent;
@@ -1205,7 +1310,7 @@ export class FlightShow {
         .copy(owner.matrixWorld)
         .invert()
         .multiply(fromGroup)
-        .multiply(new THREE.Matrix4().makeTranslation(at));
+        .multiply(mount ?? new THREE.Matrix4().makeTranslation(at));
       const plume = new Plume(radius, exit, cluster, light, kindOf(burns));
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
@@ -1227,8 +1332,10 @@ export class FlightShow {
       const node = s.full.getObjectByName(f.node);
       // (its engine by the id it burns by; the braking burn's is the plan's braking engine)
       const exit = exitOf(engines.find((e) => e.id === f.on));
-      if (node && f.radius) hang(node, level, f.radius, exit, lowest(node), null, f.burns);
-      else if (node) {
+      if (node && f.radius) {
+        const mount = f.mount ? intoGroup.clone().multiply(node.matrixWorld) : undefined;
+        hang(node, level, f.radius, exit, lowest(node), null, f.burns, mount);
+      } else if (node) {
         // every vertex under it, in the vehicle's frame as it stands
         const points: number[] = [];
         const p = new THREE.Vector3();

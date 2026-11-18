@@ -42,9 +42,10 @@
  * across `EXTENT` metres, rows north to south. No three.js here: the tool and the tests run it.
  */
 import type { WeatherBeyond } from '../types.ts';
-import { type Day, DECK_HEIGHT, reportReach, VEIL_FORWARD } from './day.ts';
-import { fbm2, hash2, noise2 } from './field.ts';
 import { smoothstep } from '../util/math.ts';
+import { DEG } from '../world/frames.ts';
+import { type Day, DECK_HEIGHT, deckPatches, type RecoveryDay, reportReach, VEIL_FORWARD } from './day.ts';
+import { fbm2, hash2, noise2 } from './field.ts';
 
 /** The map's breadth, metres: from 187 km up the horizon is 1,540 km off. */
 export const EXTENT = 4_096_000;
@@ -77,19 +78,22 @@ export interface MapDay {
   high?: { cover: number; reach: readonly [number, number]; ragged?: true };
   /** What the record says of the sky over a stretch of country. */
   beyond: readonly WeatherBeyond[];
+  recovery?: RecoveryDay;
 }
 
 /** What the map is given of a day as the viewer has it (day.ts). */
-export function mapDayOf(day: Day): MapDay {
+export function mapDayOf(day: Day, recovery?: RecoveryDay): MapDay {
   // (a part of the wind's way under a millionth of a millionth is none: a wind from 090 blows toward 270, due west)
   const tidy = (v: number) => Math.round(v * 1e12) / 1e12 || 0;
+  const drift = recovery ? (recovery.weather.wind.from.value + 180) * DEG : day.drift;
   return {
-    wind: [tidy(Math.sin(day.drift)), tidy(Math.cos(day.drift))],
-    apart: day.apart,
-    ...(day.high.cover !== null
+    wind: [tidy(Math.sin(drift)), tidy(Math.cos(drift))],
+    apart: recovery ? day.apart + Math.round((Date.parse(recovery.weather.observed.at) - Date.parse(day.date)) / 86_400_000) : day.apart,
+    ...(!recovery && day.high.cover !== null
       ? { high: { cover: day.high.cover, reach: reportReach(day.high.height), ...(day.high.veil ? {} : { ragged: true as const }) } }
       : {}),
-    beyond: day.beyond,
+    beyond: recovery ? [] : day.beyond,
+    ...(recovery ? { recovery } : {}),
   };
 }
 
@@ -211,6 +215,12 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
     const held = day.high.ragged ? heldDistance(east, north) : Math.hypot(east, north);
     cirrus += (day.high.cover - cirrus) * (1 - smoothstep(day.high.reach[0], day.high.reach[1], held));
   }
+  if (day.recovery) {
+    const { weather, east: centreE, north: centreN } = day.recovery;
+    const match = 1 - smoothstep(weather.radius.value, 2 * weather.radius.value, Math.hypot(east - centreE, north - centreN));
+    cumulus *= 1 - match;
+    deck += (deckPatches(weather.cover.value) - deck) * match;
+  }
   return { cumulus, cirrus, deck };
 }
 
@@ -267,7 +277,14 @@ export const highOf = (day: Day | null | undefined): { cover: number; depth: num
 export const weatherGlsl = (day: Day | null | undefined): string => {
   const high = highOf(day);
   return /* glsl */ `
-  uniform sampler2D tWeather;
+  uniform sampler2D tWeather;${
+    day?.recovery
+      ? `
+  uniform sampler2D tRecovery;
+  uniform float uRecovery;
+  `
+      : ''
+  }
   uniform vec4 uWeather;
   uniform float uWeatherIn;   // how far the map has come in since it arrived, 0 to 1: before, the site's cover everywhere
   float gLand;   // how much of the place weatherAt last read is land, 0 to 1 (the map's fourth channel)
@@ -275,6 +292,7 @@ export const weatherGlsl = (day: Day | null | undefined): string => {
     vec2 en = vec2(xz.x * uWeather.x + xz.y * uWeather.y, xz.x * uWeather.y - xz.y * uWeather.x);
     vec2 uv = en * uWeather.z + 0.5;
     vec4 map = texture(tWeather, vec2(uv.x, 1.0 - uv.y));
+    ${day?.recovery ? 'map.rgb = mix(map.rgb, texture(tRecovery, vec2(uv.x, 1.0 - uv.y)).rgb, uRecovery);' : ''}
     gLand = map.a;
     vec3 w = mix(vec3(uWeather.w, 0.0, 0.0), map.rgb, uWeatherIn);${
       high
@@ -408,12 +426,19 @@ const DECK_CELL = 120;
 /** The deck's puffs: how far apart, in its cloudlets' spacing (a third of it), and the mean of their summed field (measured, 200,000 points), which is taken off. */
 const DECK_PUFF = 0.34;
 const DECK_PUFF_MEAN = 0.3553;
+/** The height of the deck being drawn, also used for its shadow. */
+export function deckHeightGlsl(day: Day | null | undefined, offset = 0): string {
+  const initial = ((day?.deck.height ?? DECK_HEIGHT) + offset).toFixed(1);
+  if (!day?.recovery) return initial;
+  return `mix(${initial}, ${(day.recovery.weather.ceiling.value + offset).toFixed(1)}, uRecovery)`;
+}
+
 /**
  * GLSL: the middle deck's patches, without its cloudlets: what the deck (sheetsGlsl) is drawn from, and all that its
  * shadow on the ground is drawn from (air.ts, globe.ts: \`deckShadeAt\`). Guarded, since a material can have it twice.
  * `height`: the deck's, metres above the sea, on the day (day.ts).
  */
-export const deckPatchGlsl = (prefix: string, height: number): string => /* glsl */ `
+export const deckPatchGlsl = (prefix: string, height: number | string): string => /* glsl */ `
 #ifndef DECK_PATCH
 #define DECK_PATCH
   const float DECK_CUTS[${DECK_CUTS}] = float[${DECK_CUTS}](${Array.from({ length: DECK_CUTS }, (_, i) => deckCutAt(i / (DECK_CUTS - 1)).toFixed(4)).join(', ')});
@@ -460,7 +485,7 @@ export const deckPatchGlsl = (prefix: string, height: number): string => /* glsl
   // disc blurs it by 33 m; estimated). \`cover\`: deckCoverAt there.
   float deckShadeAt(vec3 world, vec3 toLight, float seaY, float cover) {
     if (toLight.y <= 0.02 || cover <= 0.004) return 1.0;
-    vec2 pd = world.xz + toLight.xz / toLight.y * (seaY + ${height.toFixed(1)} - world.y);
+    vec2 pd = world.xz + toLight.xz / toLight.y * (seaY + ${typeof height === 'number' ? height.toFixed(1) : height} - world.y);
     float tex, cut;
     float a = deckPatch(pd, 120.0, cover, tex, cut);
     if (a <= 0.0) return 1.0;
@@ -488,7 +513,7 @@ export const sheetsGlsl = (prefix: string, day: Day | null | undefined): string 
   const high = highOf(day);
   return /* glsl */ `
   uniform vec2 uWeatherHigh;
-  ${deckPatchGlsl(prefix, deck.height)}
+  ${deckPatchGlsl(prefix, deckHeightGlsl(day))}
   // how much of the sky the middle deck's patches cover at a place: the map's, and round the site what makes the
   // record's cover of cloud that day (day.ts: deckPatches). On 5 May 1961 0.30, which is an eighth of the sky in
   // cloud (one okta of altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for that hour, taken for

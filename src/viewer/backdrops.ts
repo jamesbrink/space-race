@@ -521,6 +521,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   if (!here) places.set(key, (here = groundPlace(renderer, spec, when.site, today)));
   // the weather the clouds and their shadows are laid out by (weather.ts): the record's at the site, the day's map beyond
   const weather = new WeatherMap(site.bearingX, today);
+  const recovery = today.recovery;
+  const recoveryWindow = recovery?.weather.transition.map(julianDate);
+  const b = site.bearingX * DEG;
+  let nearRecovery = 0;
+  const density = densityFor(today.visibility);
   const dayAir = here.air.air; // (the place's air on its day: air.ts)
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
   const land = here.floor.userData.land as Land;
@@ -545,7 +550,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const covered = land.uniforms.uFarSize!.value as number;
   land.meet(globe.beyond, covered - 1500, covered);
   // the haze at sea level, thinning upward (air.ts), as the place has it
-  const fog = new THREE.FogExp2(0, densityFor(today.visibility));
+  const fog = new THREE.FogExp2(0, density);
   // The air seen from above it (atmosphere.ts), with this haze. The Sun's light above the air is white (the scene's
   // white is the Sun's) and as strong as makes its light on the ground, through the air, as bright as the scene's own
   // at the hour that was tuned for (daysky.ts: a Sun 50 degrees up): so sunlit ground, cloud and sky stand in the
@@ -617,6 +622,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       // the sky's up is the plumb line at the eye
       const was = uniforms.uUp.value.clone();
       const leans = globe.up(eye, uniforms.uUp.value).angleTo(was) > 1e-5;
+      if (recovery) {
+        const de = eye.x * Math.sin(b) + eye.z * Math.cos(b) - recovery.east;
+        const dn = eye.x * Math.cos(b) - eye.z * Math.sin(b) - recovery.north;
+        nearRecovery = 1 - THREE.MathUtils.smoothstep(Math.hypot(de, dn), recovery.weather.radius.value, 2 * recovery.weather.radius.value);
+      }
       const moved = globe.attend(eye, frozen) || leans;
       return here.attend(eye) || moved;
     },
@@ -671,6 +681,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   };
   setting.at = (jdUT, height = 0, atOnce = false) => {
     // the wind at the clock's instant: a function of it, so it follows the clock with no step and a jump is shown at once
+    if (recovery && recoveryWindow) {
+      const share = THREE.MathUtils.smoothstep(jdUT, recoveryWindow[0]!, recoveryWindow[1]!);
+      weather.recover(share);
+      fog.density = THREE.MathUtils.lerp(density, densityFor(recovery.weather.visibility.value), share * nearRecovery);
+    }
     const blowing = winds(jdUT);
     setting.blowing = blowing;
     here.blow(blowing);

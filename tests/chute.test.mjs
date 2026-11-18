@@ -236,7 +236,12 @@ for (const v of FLIGHTS.filter((f) => f.plan?.kind === 'orbital' && downOf(f.pla
       // (drawn with the area its drag is worked on, unless the canopy's own size is the record's: Mercury's 6 ft drogue and 63 ft main)
       if (c.diameter.confidence !== 'documented')
         assert.ok(
-          Math.abs(c.diameter.value ** 2 * (Math.PI / 4) - body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75) < 1,
+          Math.abs(
+            v.flies.chutes
+              .filter((sister) => sister.on === c.on && sister.body === c.body)
+              .reduce((area, sister) => area + (sister.diameter.value ** 2 * Math.PI) / 4, 0) -
+              body.chutes.find((p) => p.name === c.on).dragArea.value / 0.75,
+          ) < 1,
           `${c.on}: drawn with the area its drag is worked on`,
         );
     }

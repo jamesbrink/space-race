@@ -4,7 +4,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { cloudCutAt } from '../src/viewer/air.ts';
 import { breeze, dayOf, deckPatches, reportReach, veilShade } from '../src/viewer/day.ts';
-import { aloftAt } from '../src/world/aloft.ts';
 import {
   believed,
   coverNear,
@@ -22,6 +21,7 @@ import {
   weatherAt,
   weatherGlsl,
 } from '../src/viewer/weather.ts';
+import { aloftAt } from '../src/world/aloft.ts';
 import { ecefToSite, geodeticToEcef, siteFrame } from '../src/world/frames.ts';
 
 const sea = { shore: -40, height: -3000 };
@@ -399,4 +399,23 @@ test('fibrous high cloud gives way along a ragged line, a veil along a circle; t
   // the shaders' text has it on Vostok 1's day and not on Liberty Bell 7's
   assert.match(sheetsGlsl('over_', dayOf(vostok1)), /highHeld\(xz\)/);
   assert.doesNotMatch(sheetsGlsl('over_', dayOf(mr4)), /highHeld/);
+});
+
+test('Apollo 7 keeps its launch weather and bakes a different map from the Atlantic recovery observation', async () => {
+  const { flight } = await import('../missions/usa/apollo/flights/apollo-7/flight.ts');
+  const day = dayOf(flight);
+  const recovery = day.recovery;
+  assert.ok(recovery);
+  assert.equal(day.map, 'cape-canaveral.1968-10-11');
+  assert.equal(recovery.map, 'cape-canaveral.1968-10-22.recovery');
+  assert.equal(recovery.weather.ceiling.value, 182.88);
+  assert.ok(Date.parse(recovery.weather.transition[1]) < Date.parse(recovery.weather.observed.at));
+  const maps = [day.map, recovery.map].map((map) => readFileSync(new URL(`../public/globe/${map}.weather.png`, import.meta.url)));
+  assert.notDeepEqual(maps[0], maps[1]);
+  const landing = mapDayOf(day, recovery);
+  assert.equal(landing.apart - day.apart, 11);
+  const at = weatherAt(recovery.east, recovery.north, sea, landing);
+  assert.equal(at.cumulus, 0);
+  assert.equal(at.deck, 1);
+  assert.doesNotMatch(weatherGlsl(dayOf(mr3)), /tRecovery/);
 });

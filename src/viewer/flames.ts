@@ -89,6 +89,25 @@ export const FLAMES: Record<Burns, FlameLook> = {
     },
     look: 'launch photographs and film of R-7s from Site 1 (the launch of 12 April 1961 from across the pit, RussianSpaceWeb, Vostok 1; the 1961 newsreel "Pervyi reis k zvezdam", its launch footage not shown to be Vostok 1’s) and colour film of Soyuz launches from the same pad: the five fires white at the nozzles, yellow and opaque for their first lengths, orange further aft, the pad lit as by day; Clark, Ignition! (1972), p. 96: kerosene burns luminous with free carbon',
   },
+  'hydrogen-lox': {
+    name: 'Liquid hydrogen and liquid oxygen (the Saturn’s J-2)',
+    cool: [0.31, 0.49, 1.0],
+    warm: [0.53, 0.68, 1.0],
+    hot: [0.76, 0.86, 1.0],
+    core: [0.85, 0.94, 1.0],
+    vacuum: [0.62, 0.75, 1.0],
+    luminous: 0.5,
+    opacity: 0.13,
+    body: 0.6,
+    light: [0.7, 0.83, 1.0],
+    temperature: {
+      value: 3400,
+      confidence: 'estimated',
+      source:
+        'Rounded chamber flame temperature for fuel-rich hydrogen–oxygen combustion at the J-2 chamber pressure (NASA SP-4545, Appendix D)',
+    },
+    look: 'Estimated faint blue-white combustion and a translucent expanding plume; the hydrogen fuel produces no soot',
+  },
   'hydrazine-n2o4': {
     name: 'Aerozine 50 or UDMH and nitrogen tetroxide (the Titan II’s LR87 and LR91)',
     cool: [0.95, 0.4, 0.3],
@@ -147,7 +166,14 @@ export const FLAMES: Record<Burns, FlameLook> = {
 };
 
 /** The order the shader's tables hold them in (`kindOf`). */
-export const KINDS: readonly Burns[] = ['alcohol-lox', 'kerosene-lox', 'hydrazine-n2o4', 'amine-nitric', 'solid-perchlorate'];
+export const KINDS: readonly Burns[] = [
+  'alcohol-lox',
+  'kerosene-lox',
+  'hydrazine-n2o4',
+  'amine-nitric',
+  'solid-perchlorate',
+  'hydrogen-lox',
+];
 
 /** A fire's entry in the shader's tables: what it burns, or with nothing said the alcohol flame the fire was first drawn as. */
 export function kindOf(burns: Burns | undefined): number {
@@ -191,7 +217,7 @@ export interface GasLook {
   look: string;
 }
 
-export const GASES: Record<Exclude<Gas, 'solid'>, GasLook> = {
+export const GASES: Record<Exclude<Gas, 'solid' | 'hypergolic'>, GasLook> = {
   oxygen: {
     name: 'cold oxygen gas from a tank’s vent',
     reach: 0.15,
@@ -215,10 +241,10 @@ export const GASES: Record<Exclude<Gas, 'solid'>, GasLook> = {
 };
 
 /** The order the march's tables hold the gases in (`gasKindOf`). */
-export const GAS_KINDS: readonly Exclude<Gas, 'solid'>[] = ['oxygen', 'steam'];
+export const GAS_KINDS: readonly Exclude<Gas, 'solid' | 'hypergolic'>[] = ['oxygen', 'steam'];
 
 /** A gas jet's entry in the march's tables. */
-export function gasKindOf(gas: Exclude<Gas, 'solid'>): number {
+export function gasKindOf(gas: Exclude<Gas, 'solid' | 'hypergolic'>): number {
   return Math.max(0, GAS_KINDS.indexOf(gas));
 }
 

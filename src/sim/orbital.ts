@@ -25,29 +25,30 @@ import {
   meanOrbitOf,
   type OnOrbit,
   type PeriodKind,
-  periodsOf,
   type PublishedOrbit,
+  periodsOf,
 } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
-import { airAt, airDrag } from './air.ts';
 import { ratioOf } from '../world/thermosphere.ts';
+import { airAt, airDrag } from './air.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
+import { along } from './fly.ts';
+import { ENTRY_G } from './loads.ts';
 import {
   type Action,
   type AeroDef,
   type AttitudeDef,
-  clockAt,
   type Craft,
+  clockAt,
   type EngineDef,
   type EventDef,
   eventOf,
   type FlightPlan,
   type Hold,
+  type OrbitFix,
 } from './plan.ts';
-import { along } from './fly.ts';
 import type { CoastRotation } from './rigid.ts';
-import { ENTRY_G } from './loads.ts';
 
 /**
  * How the ascent is steered (sim/staged.ts): a stated law, not a stored programme, because the programme flown has not
@@ -62,6 +63,12 @@ import { ENTRY_G } from './loads.ts';
  * inputs, and the three targets are therefore not independent checks of the flight.
  */
 export interface Guidance {
+  /** Space-fixed nose tilt downrange from the original launch vertical, degrees against seconds. */
+  programme?: import('../types.ts').Curve;
+  /** Roll about the stack's axis, relative to the completed roll alignment, degrees against seconds. */
+  roll?: import('../types.ts').Curve;
+  /** Attitude programme for the launch vehicle still attached after orbital insertion. */
+  attached?: { align: [Measure, Measure]; pitch: import('../types.ts').Curve; freeze: Measure };
   /**
    * The aiming azimuth, degrees east of north: the launch plane is the one through the plumb line and this bearing at the pad
    * at liftoff, held by the gyros among the stars. Given, the plane is not solved for and the target's inclination is not
@@ -547,6 +554,52 @@ export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFra
   return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
 }
 
+/** Convert a tracking fix into the same inertial frame as the integrator. */
+export function trackedState(fix: OrbitFix, frame: EarthFrame): State {
+  const place = { latitude: fix.latitude.value, longitude: fix.longitude.value, height: fix.altitude.value };
+  const t = fix.at.value;
+  const r = frame.toInertial(geodeticToEcef(place), t);
+  const up = unit(r);
+  const east = unit(cross([0, 0, 1], up));
+  const north = cross(up, east);
+  const heading = fix.heading.value * DEG;
+  const climb = fix.climb.value * DEG;
+  const flat = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
+  return { r, v: scale(add(scale(flat, Math.cos(climb)), scale(up, Math.sin(climb))), fix.speed.value) };
+}
+
+/**
+ * A continuous replay joins the free integration to the next published fix. Turn and scale the
+ * free arc gradually, preserving its turns round Earth. Match the recorded velocity at the fix
+ * with a short cubic adjustment. These corrections never drive the hand-flown simulation.
+ */
+export function trackingArc(from: number, to: number, predicted: State, tracked: State): (s: State, t: number) => State {
+  const axis = unit(cross(predicted.r, tracked.r));
+  const angle = Math.atan2(length(cross(predicted.r, tracked.r)), dot(predicted.r, tracked.r));
+  const ratio = length(tracked.r) / length(predicted.r) - 1;
+  const turn = (v: Vec3, a: number) => {
+    if (!angle) return v;
+    return add(add(scale(v, Math.cos(a)), scale(cross(axis, v), Math.sin(a))), scale(axis, dot(axis, v) * (1 - Math.cos(a))));
+  };
+  const remaining = sub(tracked.v, scale(turn(predicted.v, angle), 1 + ratio));
+  const span = to - from;
+  const tail = Math.min(120, span);
+  return (s, t) => {
+    const u = (t - from) / span;
+    const blend = u * u * (3 - 2 * u);
+    const rate = (6 * u * (1 - u)) / span;
+    const rotated = turn(s.r, angle * blend);
+    const radius = 1 + ratio * blend;
+    const r = scale(rotated, radius);
+    const v = add(scale(turn(s.v, angle * blend), radius), add(scale(rotated, ratio * rate), scale(cross(axis, r), angle * rate)));
+    const k = Math.max(0, 1 - (to - t) / tail);
+    return {
+      r: add(r, scale(remaining, tail * k * k * (k - 1))),
+      v: add(v, scale(remaining, k * (3 * k - 2))),
+    };
+  };
+}
+
 /**
  * The ball the record's heights are over, m, so that it never contradicts the record's own figures:
  * - the one it states (Friendship 7's equatorial radius);
@@ -768,18 +821,31 @@ export interface Move {
   off: number;
   accel: number;
   aim: Extract<Hold, { aim: unknown }>;
+  /** Propellant carried by a restartable engine and drawn by this firing, kg. */
+  fuel?: number;
+}
+
+/** Capacity of the propulsion system carried into the coast. */
+function coastTank(plan: FlightPlan, engine: EngineDef): number {
+  const tank = plan.craft[0]!.tanks.find((t) => t.id === engine.tanks[0]);
+  return tank ? (tank.usable ?? tank.load).value : Infinity;
+}
+
+function rocketFuel(engine: EngineDef, mass: number, velocity: number): number {
+  return mass * -Math.expm1(-velocity / (G0 * engine.isp!.vacuum.value));
 }
 
 /**
  * The coast's manoeuvres, in the order lit: each automatic lighting on the clock of an engine of the first craft that is
- * neither a stage (it draws on no tank) nor the coast's burn (`EngineDef.flown`), up to that engine's next cut on the
+ * neither a stage nor the final deorbit firing, up to that engine's next cut on the
  * clock. It pushes the lighting's own impulse (`Action.flown`) evenly over that time, or else its engine's chambers at
  * their vacuum thrust over the ship's mass in orbit (what they burn is not taken off), along the attitude held as it lit (against it for one that pushes `astern`),
  * which must be an aim. None for a plan with no such engine: every flight flown before Gemini's.
  */
 export function movesOf(plan: FlightPlan): Move[] {
   const c = plan.craft[0]!;
-  const engines = c.engines.filter((e) => !e.tanks.length && !e.flown);
+  const deorbit = coastEvents(plan).on;
+  const engines = c.engines.filter((e) => !e.tanks.length || e.flown);
   if (!engines.length) return [];
   const timed = plan.events
     .filter((e) => e.automatic)
@@ -797,15 +863,33 @@ export function movesOf(plan: FlightPlan): Move[] {
   for (const engine of engines)
     for (const x of timed)
       for (const a of x.e.do) {
-        if (!('ignite' in a) || a.ignite !== engine.id) continue;
+        if (x.e === deorbit || !('ignite' in a) || a.ignite !== engine.id) continue;
         const cut = timed.find((y) => y.at > x.at && y.e.do.some((b) => 'cut' in b && b.cut === engine.id));
         if (!cut) continue;
         const hold = holdAt(x.at);
         if (!hold || !('aim' in hold.hold)) throw new Error(`${x.e.id} lights ${engine.id} in an attitude that is not an aim`);
-        const size = a.flown ? a.flown.value / (cut.at - x.at) : (engine.count * engine.thrust.vacuum.value) / mass;
+        const off = Math.max(cut.at, x.at + (a.firingTime?.value ?? 0));
+        const prior = out.filter((m) => m.engine === engine.id);
+        const used = prior.reduce((sum, m) => sum + (m.fuel ?? 0), 0);
+        if (prior.length >= engine.starts.count || used >= coastTank(plan, engine)) continue;
+        const burnMass = a.massAtIgnition?.value ?? mass - used;
+        const want = a.flown?.value ?? ((engine.count * engine.thrust.vacuum.value) / burnMass) * (off - x.at);
+        const fuel = engine.tanks.length ? Math.min(coastTank(plan, engine) - used, rocketFuel(engine, burnMass, want)) : undefined;
+        const velocity = fuel === undefined ? want : -G0 * engine.isp!.vacuum.value * Math.log1p(-fuel / burnMass);
+        const size = velocity / (off - x.at);
         // (a forward-firing pair pushes toward the tail: against the line its attitude points the nose along)
         const accel = engine.astern ? -size : size;
-        out.push({ engine: engine.id, label: x.e.label, lit: x.e.id, cut: cut.e.id, on: x.at, off: cut.at, accel, aim: hold.hold });
+        out.push({
+          engine: engine.id,
+          label: x.e.label,
+          lit: x.e.id,
+          cut: cut.e.id,
+          on: x.at,
+          off,
+          accel,
+          aim: hold.hold,
+          ...(fuel === undefined ? {} : { fuel }),
+        });
       }
   return out.sort((p, q) => p.on - q.on);
 }
@@ -833,6 +917,14 @@ export function shipOf(plan: FlightPlan): Ship {
   const orbit = plan.record!.orbit!;
   const coast = coastOf(plan);
   const burn = c.engines.find((e) => e.flown)!;
+  const manoeuvres = movesOf(plan);
+  const ignition = coastEvents(plan).on?.do.find((a) => 'ignite' in a && a.ignite === burn.id);
+  const prior = manoeuvres.filter((m) => m.engine === burn.id && m.on < coast.on);
+  const used = prior.reduce((sum, m) => sum + (m.fuel ?? 0), 0);
+  const burnMass = (ignition && 'ignite' in ignition ? ignition.massAtIgnition?.value : undefined) ?? orbit.mass.value - used;
+  const available = coastTank(plan, burn) - used;
+  const velocity = burn.flown!.value;
+  const fuel = burn.tanks.length ? Math.max(0, Math.min(available, rocketFuel(burn, burnMass, velocity))) : 0;
   const joint = c.joints.find((j) => j.gone.includes(burn.body))!;
   const entry = c.bodies.find((b) => b.aero)!;
   // (the aim the burn lights in: the one an event turns it to at or before its lighting, else the plan's last aim)
@@ -858,13 +950,14 @@ export function shipOf(plan: FlightPlan): Ship {
     orbit,
     mass: orbit.mass.value,
     ...coast,
-    flown: burn.flown!.value,
+    flown: burn.tanks.length ? -G0 * burn.isp!.vacuum.value * Math.log1p(-fuel / burnMass) : velocity,
+    fuel,
     aim: aim!.hold as Extract<Hold, { aim: unknown }>,
     aimId: aim!.id,
     entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
     ...(c.rarefied ? { rarefied: c.rarefied } : {}),
     landing: plan.record!.landing!,
-    moves: movesOf(plan),
+    moves: manoeuvres,
     banks,
   };
   ships.set(plan, ship);
@@ -883,6 +976,7 @@ export interface Ship {
   loose: string | null;
   /** The impulse the record's coast flies, m/s, evenly from `on` to `off`, along `aim`. */
   flown: number;
+  fuel: number;
   aim: Extract<Hold, { aim: unknown }>;
   /** The attitude that holds it, by id. */
   aimId: string;
@@ -898,6 +992,18 @@ export interface Ship {
 }
 const ships = new WeakMap<FlightPlan, Ship>();
 
+/** Propellant and starts left in an orbital engine at this instant. */
+export function coastEngineState(plan: FlightPlan, id: string, at: number): { starts: number; kg: number } {
+  const engine = plan.craft[0]!.engines.find((e) => e.id === id);
+  if (!engine) return { starts: 0, kg: 0 };
+  const ship = shipOf(plan);
+  const burns = ship.moves.filter((m) => m.engine === id && m.on <= at);
+  const deorbit = Boolean(engine.flown && ship.on <= at);
+  const used = burns.reduce((sum, m) => sum + (m.fuel ?? 0) * Math.min(1, (at - m.on) / (m.off - m.on)), 0);
+  const final = deorbit ? ship.fuel * Math.min(1, (at - ship.on) / (ship.off - ship.on)) : 0;
+  return { starts: engine.starts.count - burns.length - Number(deorbit), kg: Math.max(0, coastTank(plan, engine) - used - final) };
+}
+
 /**
  * The coast's instants as the plan has them (sim/plan.ts, written from the record by vostok-plan.ts, or that plan as a hand changed
  * it): the burn the record's coast flies (the engine with the record's impulse, `EngineDef.flown`) lit and cut, the
@@ -907,6 +1013,8 @@ const ships = new WeakMap<FlightPlan, Ship>();
 export function coastOf(plan: FlightPlan): Coast {
   const timeOf = (e: EventDef | undefined): number => clockAt(plan, e);
   const { burn, on, off, parting } = coastEvents(plan);
+  const ignition = on?.do.find((a) => 'ignite' in a && a.ignite === burn?.id);
+  const firingTime = ignition && 'ignite' in ignition ? (ignition.firingTime?.value ?? 0) : 0;
   // (a solid nothing cuts burns until it is spent: so long after it is lit)
   const spent = !off && burn?.kind === 'solid' && burn.burn ? timeOf(on) + burn.burn.value : Number.POSITIVE_INFINITY;
   const down =
@@ -914,7 +1022,7 @@ export function coastOf(plan: FlightPlan): Coast {
   const height = down?.when.find((w) => 'height' in w);
   return {
     on: timeOf(on),
-    off: off ? timeOf(off) : spent,
+    off: off ? Math.max(timeOf(off), timeOf(on) + firingTime) : spent,
     parted: timeOf(parting),
     floor: height && 'height' in height ? height.height : Number.NEGATIVE_INFINITY,
     parting: parting?.id ?? null,
@@ -939,9 +1047,10 @@ export function coastEvents(plan: FlightPlan): {
   const burn = c.engines.find((e) => e.flown);
   if (!burn) return { armed: [] };
   const joint = c.joints.find((j) => j.gone.includes(burn.body));
-  const on = doing((a) => 'ignite' in a && a.ignite === burn.id);
-  const off = doing((a) => 'cut' in a && a.cut === burn.id);
   const parting = joint && doing((a) => 'separate' in a && a.separate === joint.id);
+  const on = [...plan.events].reverse().find((e) => e.automatic && e.do.some((a) => 'ignite' in a && a.ignite === burn.id));
+  const off =
+    on && plan.events.slice(plan.events.indexOf(on) + 1).find((e) => e.automatic && e.do.some((a) => 'cut' in a && a.cut === burn.id));
   const follows = on?.when.find((w) => 'after' in w);
   const command = follows && 'after' in follows ? eventOf(plan, follows.after) : undefined;
   const armed = (command?.do ?? []).flatMap((a) => ('arm' in a ? [eventOf(plan, a.arm)!] : []));
@@ -998,11 +1107,14 @@ export function flyOrbit(
   from?: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
   contacts?: CoastContacts,
+  tracking = false,
+  stopAt = Infinity,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
   const { on, off, parted, floor, moves } = ship;
   const radius = heightsBall(plan, site);
+  const interfaceHeight = plan.record?.entryInterface?.value ?? INTERFACE;
   /** Each manoeuvre's line, fixed as it lit (`movesOf`). */
   const lines: (Vec3 | undefined)[] = moves.map(() => undefined);
   const lifts = Boolean(ship.entry.aero.lift && ship.banks.length);
@@ -1010,6 +1122,8 @@ export function flyOrbit(
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
   let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
+  const fixes = tracking ? (plan.record?.coastFixes ?? []).filter((fix) => fix.at.value >= t) : [];
+  if (fixes[0]?.at.value === t) state = trackedState(fixes.shift()!, frame);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
   const aimAt = (s: State, at: number): Vec3 =>
@@ -1142,21 +1256,42 @@ export function flyOrbit(
     }
     if (t === parted) results.separationAltitude = airOf(state, t).altitude;
   };
+  for (const [i, move] of moves.entries())
+    if (move.on < t && t < move.off)
+      lines[i] = aimFor(
+        move.aim,
+        state.r,
+        state.v,
+        () => sunAt(t),
+        () => frame.up(state.r, t),
+      );
+  if (on < t && t < off) aim = aimAt(state, t);
+  arrive();
   /** The plumb line at a sample's place, in the inertial frame. */
   const upAt = (s: OrbitSample): Vec3 => frame.upOver(s, s.t);
 
   // (the coast hands over to the descent at the ejection height, or at the first event of the descent a hand gave: flyDown)
   const handover = Math.min(...Object.values(hands?.given ?? {}).filter((g) => g > t));
-  const marks = [on, off, parted, handover, ...moves.flatMap((m) => [m.on, m.off]), ...ship.banks.map((b) => b.at)]
+  const marks = [
+    on,
+    off,
+    parted,
+    stopAt,
+    handover,
+    ...moves.flatMap((m) => [m.on, m.off]),
+    ...ship.banks.map((b) => b.at),
+    ...fixes.map((f) => f.at.value),
+  ]
     .filter(Number.isFinite)
     .sort((p, q) => p - q);
   const samples: OrbitSample[] = [sample()];
+  let fixed = 0;
   let kept = t;
   let before = samples[0]!;
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
   let gate: Vec3 | null = null;
   // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn)
-  const LIMIT = Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600;
+  const LIMIT = Math.min(stopAt, Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600);
   const target = geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
   const impulses: { at: number; dv: Vec3 }[] = [];
@@ -1199,6 +1334,16 @@ export function flyOrbit(
       const x = readings.shift()!;
       read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
     }
+    if (fixes[0]?.at.value === t) {
+      const want = trackedState(fixes.shift()!, frame);
+      const correct = trackingArc(samples[fixed]!.t, t, state, want);
+      for (let i = fixed + 1; i < samples.length; i++) {
+        const s = samples[i]!;
+        samples[i] = { ...sample(correct(s, s.t), s.t), phase: s.phase };
+      }
+      state = want;
+      fixed = samples.length;
+    }
     arrive();
     let now = sample();
     phase = phaseAt(t, now.g, phase);
@@ -1212,8 +1357,8 @@ export function flyOrbit(
       else if (now.sunlit >= 0.5 && Number.isNaN(results.shadowOut)) results.shadowOut = at;
     }
     if (t > off) {
-      if (Number.isNaN(results.interfaceAt) && before.altitude > INTERFACE && now.altitude <= INTERFACE) {
-        const part = (before.altitude - INTERFACE) / (before.altitude - now.altitude);
+      if (Number.isNaN(results.interfaceAt) && before.altitude > interfaceHeight && now.altitude <= interfaceHeight) {
+        const part = (before.altitude - interfaceHeight) / (before.altitude - now.altitude);
         const air = airOf(state, t);
         results.interfaceAt = before.t + part * (now.t - before.t);
         results.interfaceSpeed = air.airspeed;

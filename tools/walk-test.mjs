@@ -301,6 +301,29 @@ const LC14_ROUTES = [
   },
 ];
 
+/** The Apollo 7 boarding route, read in the LC-34 model's feet above the apron. */
+const LC34_APRON = FT(-27);
+const LC34_TOWER_LANDING = FT(220 - 27);
+const LC34_HATCH_APPROACH = FT(213 - 27);
+const LC34_ROUTES = [
+  {
+    name: 'Complex 34: from the apron to the crew elevator, then across the white room to the hatch',
+    slider: 0.44,
+    from: [FT(45), LC34_APRON, FT(8)],
+    legs: [
+      { to: F(45, -16), y: LC34_APRON, note: 'inside the elevator car', within: 0.35 },
+      {
+        lift: { model: 'pad', part: 'Umbilical_Tower', action: 'crew-elevator', stop: 7 },
+        y: LC34_TOWER_LANDING,
+        note: 'ride to the 220-foot level',
+      },
+      { to: F(45, 0), y: LC34_TOWER_LANDING, note: 'out of the elevator and across the tower', within: 0.35 },
+      { to: F(8, 0), y: LC34_HATCH_APPROACH, note: 'down the connected access arm to the command module hatch', within: 0.22 },
+      { board: { seat: 'Seat_Commander', hatch: [1.23, 57.02, -0.68], label: 'Schirra’s left couch' } },
+    ],
+  },
+];
+
 /**
  * The ways walked, by site (SiteDef.name). Site 1 is in the site's own frame: x east, z south, y up from the deck
  * (places/tyuratam/site-1.md); where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
@@ -308,6 +331,7 @@ const LC14_ROUTES = [
 const ROUTES = {
   'Cape Canaveral, Launch Complex 14': LC14_ROUTES,
   'Cape Kennedy, Launch Complex 19': LC19,
+  'Cape Kennedy, Launch Complex 34': LC34_ROUTES,
   'Tyuratam (Baikonur), Site 1': [
     {
       name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',
@@ -472,7 +496,7 @@ for (const [n, route] of routes.entries()) {
   // (the dev server's reloads are kept from the page under test)
   const { page, errors, context } = await open(browser, `${url}#${flight}/site/${route.model ?? 'pad'}`, { console: [], timeout: 90000 });
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
-  await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
+  const hidePanels = await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
   // the morning's hardware where the route wants it, then on foot there
   await page.evaluate(
     async ({ at, from }) => {
@@ -490,7 +514,33 @@ for (const [n, route] of routes.entries()) {
   console.log(`${route.name} (T${atOf(route) < 0 ? '' : '+'}${Math.round(atOf(route))} s)`);
   let ok = true;
   for (const [k, leg] of route.legs.entries()) {
-    if (leg.lift) {
+    if (leg.board) {
+      await hidePanels.evaluate((style) => style.remove());
+      await page.evaluate(([x, y, z]) => {
+        const walk = window.sr.stage.walk;
+        const feet = walk.body.position;
+        const dx = x - feet.x;
+        const dz = z - feet.z;
+        walk.yaw = Math.atan2(-dx, -dz);
+        walk.pitch = Math.atan2(y - feet.y - walk.eye, Math.hypot(dx, dz));
+      }, leg.board.hatch);
+      await page.waitForTimeout(500);
+      await page.keyboard.press('e');
+      await page.waitForTimeout(300);
+      const choices = await page.locator('.wheel [data-item]').allTextContents();
+      const choice = choices.findIndex((label) => label.includes(`Board: ${leg.board.label}`));
+      if (choice >= 0) await page.keyboard.press(String(choice + 1));
+      const seated =
+        choice >= 0 &&
+        (await page
+          .waitForFunction((seat) => window.sr.stage.onFoot.seated?.seat === seat, leg.board.seat, { timeout: 7000 })
+          .then(
+            () => true,
+            () => false,
+          ));
+      console.log(`  ${seated ? 'ok  ' : 'FAIL'} ${String(k + 1).padStart(2, '0')} board ${leg.board.label}`);
+      if (!seated) ok = false;
+    } else if (leg.lift) {
       const got = await page.evaluate(async ({ model, part, action, stop }) => {
         const sr = window.sr;
         const def = sr.flight.models

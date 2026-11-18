@@ -31,7 +31,18 @@ const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
 const planOf = (orbital) =>
   'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);
 /** The coast of a flight's plan, or of the plan of its record with an input changed. */
-const fly = (f, orbital) => flyOrbit(orbital ? planOf(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value);
+const fly = (f, orbital) =>
+  flyOrbit(
+    orbital ? planOf(orbital) : f.plan,
+    siteFrame(f.site),
+    frameOf(f),
+    f.site.seaLevel.value,
+    10,
+    undefined,
+    undefined,
+    undefined,
+    Boolean(f.plan.record.coastFixes?.length),
+  );
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);
@@ -345,15 +356,15 @@ for (const f of orbiters) {
 
   test(`${f.designation}: every figure in the orbital record has a confidence and a source, and its times are in order`, () => {
     let count = 0;
-    const walk = (x, where) => {
+    const walk = (x, where, source = x?.source) => {
       if (!x || typeof x !== 'object') return;
       if ('confidence' in x) {
         count++;
         assert.ok(['documented', 'assumed', 'derived', 'estimated'].includes(x.confidence), `${where}: confidence`);
-        assert.ok(typeof x.source === 'string' && x.source.length > 12, `${where}: a source`);
+        assert.ok(typeof source === 'string' && source.length > 12, `${where}: a source`);
         if ('value' in x) assert.ok(Number.isFinite(x.value), `${where}: a number`);
       }
-      for (const [key, value] of Object.entries(x)) walk(value, `${where}.${key}`);
+      for (const [key, value] of Object.entries(x)) walk(value, `${where}.${key}`, value?.source ?? x.source);
     };
     const o = recordFrom(f);
     walk(o, 'orbital');
@@ -365,7 +376,9 @@ for (const f of orbiters) {
       'events in order',
     );
     assert.equal(new Set(o.events.map((e) => e.id)).size, o.events.length, 'event ids are unique');
-    if ('atlas' in o || 'titan' in o) assert.ok(o.injection.at.value < o.retro.sequence.value && o.retro.on.value < o.retro.gone.value);
+    if (o === f.plan) assert.ok(orbit.injection.at.value < coast.on && coast.on < coast.off && coast.off < coast.parted);
+    else if ('atlas' in o || 'titan' in o)
+      assert.ok(o.injection.at.value < o.retro.sequence.value && o.retro.on.value < o.retro.gone.value);
     else
       assert.ok(
         o.injection.at.value < o.retro.on.value && o.retro.on.value < o.retro.off.value && o.retro.off.value < o.entry.separation.value,
@@ -373,8 +386,16 @@ for (const f of orbiters) {
     for (const check of o.checks) assert.ok(check.tolerance > 0, `${check.id}: a tolerance`);
     // the stages' nodes are parts of the model the flight shows
     const nodes = new Set(f.models.flatMap((m) => m.parts.map((p) => p.node)));
-    const stages = 'atlas' in o ? [o.atlas.booster, o.atlas.tank] : 'titan' in o ? [o.titan.first, o.titan.second] : o.stages;
-    for (const stage of stages) for (const node of stage.nodes) assert.ok(nodes.has(node), `${stage.name}: node ${node} is a part`);
+    const stages =
+      o === f.plan
+        ? o.craft[0].bodies
+        : 'atlas' in o
+          ? [o.atlas.booster, o.atlas.tank]
+          : 'titan' in o
+            ? [o.titan.first, o.titan.second]
+            : o.stages;
+    for (const stage of stages)
+      for (const node of stage.nodes ?? []) assert.ok(nodes.has(node), `${stage.name ?? stage.label}: node ${node} is a part`);
   });
 
   test(`${f.designation}: the orbit begins as published`, () => {
@@ -448,6 +469,18 @@ for (const f of orbiters) {
   test(`${f.designation}: the inputs that are not documented, and what each is worth`, () => {
     // every assumed, derived or estimated input the coast reads, by where it is in the record: a new one must be added here
     const o = recordFrom(f);
+    if (o === f.plan) {
+      const frame = frameOf(f);
+      const site = siteFrame(f.site);
+      const last = o.record.coastFixes.at(-1).at.value;
+      const from = run.samples.find((sample) => sample.t >= last);
+      const changed = structuredClone(o);
+      const entry = changed.craft[0].bodies.find((body) => body.aero);
+      entry.aero.drag.points = entry.aero.drag.points.map(([mach, drag]) => [mach, drag * 1.1]);
+      const after = flyOrbit(changed, site, frame, f.site.seaLevel.value, 10, from);
+      assert.ok(Math.abs(after.results.ejectionAt - run.results.ejectionAt) > 0.1, 'shared Block II drag affects the entry trajectory');
+      return;
+    }
     if ('atlas' in o) return atlasInputs(f, o, run);
     if ('titan' in o) return titanInputs(f, o, run);
     const inputs = INPUTS[f.id] ?? INPUTS['ussr/vostok/vostok-1'];

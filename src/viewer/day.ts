@@ -10,9 +10,9 @@
  *
  * No three.js here: tools/globe-weather.mjs and the tests run it.
  */
-import type { DayWeather, SiteDef } from '../types.ts';
+import type { DayWeather, RecoveryWeather, SiteDef } from '../types.ts';
 import { aloftAt, hourAt } from '../world/aloft.ts';
-import { DEG } from '../world/frames.ts';
+import { DEG, ecefToEnu, geodeticToEcef, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 
 /** The cumulus as air.ts takes them (its `Clouds`): bases and depth in metres, cover 0 to 1, a cloud's breadth, the wind toward (the scene's x and z), m/s. */
@@ -49,8 +49,25 @@ export interface Day {
   apart: number;
   /** The stem of the day's baked map under public/globe/ (`<region>.<date>`), or null: the site has no region, or the day is the site's own default. */
   map: string | null;
+  recovery?: RecoveryDay;
   /** The day itself, 'YYYY-MM-DD' (UTC): the land's season is read from it (missions/ussr/places/tyuratam/steppe.ts `seasonOf`). */
   date: string;
+}
+
+export interface RecoveryDay {
+  weather: RecoveryWeather;
+  map: string;
+  east: number;
+  north: number;
+}
+
+/** The recovery map shares the launch map's frame, so the two can fade without moving the terrain. */
+function recoveryOf(site: SiteDef, region: string, weather: RecoveryWeather): RecoveryDay {
+  const [east, north] = ecefToEnu(
+    siteFrame(site),
+    geodeticToEcef({ latitude: weather.latitude.value, longitude: weather.longitude.value, height: 0 }),
+  );
+  return { weather, map: `${region}.${weather.observed.at.slice(0, 10)}.recovery`, east, north };
 }
 
 /**
@@ -175,6 +192,7 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
     beyond: w.beyond ?? [],
     apart: Math.round((Date.parse(`${date}T00:00:00Z`) - FIRST) / DAY_MS),
     // (the day's own map only for a day of the flight's own: a site's default has none, and its cover stands everywhere)
+    ...(region && w.recovery ? { recovery: recoveryOf(when.site, region, w.recovery) } : {}),
     map: region && when.weather ? `${region}.${date}` : null,
     date,
   };

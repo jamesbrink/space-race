@@ -410,7 +410,7 @@ export interface Plan {
   /** What leaves the vehicle, and the one-shot its leaving makes, where it makes one (sound/index.ts `dropCue`). */
   drops: readonly { at: number; cue?: 'tower' | 'separation' | 'release' }[];
   /** Each retrorocket's firing, its burning time and thrust. */
-  retro: { fires: readonly number[]; burn: number; thrust: number } | null;
+  retro: { fires: readonly number[]; burn: number; durations?: readonly number[]; thrust: number } | null;
   out: { drogue: number; main: number };
   duration: number;
 }
@@ -419,7 +419,8 @@ export interface Plan {
 export function score(plan: Plan): Cue[] {
   const cues: Cue[] = [{ at: 0, kind: 'ignition' }];
   for (const d of plan.drops) if (d.cue) cues.push({ at: d.at, kind: d.cue });
-  for (const at of plan.retro?.fires ?? []) cues.push({ at, kind: 'retro', seconds: plan.retro!.burn, thrust: plan.retro!.thrust });
+  const retro = plan.retro;
+  retro?.fires.forEach((at, i) => cues.push({ at, kind: 'retro', seconds: retro.durations?.[i] ?? retro.burn, thrust: retro.thrust }));
   cues.push({ at: plan.out.drogue, kind: 'mortar' }, { at: plan.out.main, kind: 'canopy' }, { at: plan.duration, kind: 'splash' });
   return cues.filter((c) => Number.isFinite(c.at)).sort((a, b) => a.at - b.at);
 }

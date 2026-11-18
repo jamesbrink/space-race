@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { test } from 'node:test';
 import { Quaternion, Vector3 } from 'three';
+import { CSM_MATING_HEIGHT } from '../missions/usa/apollo/flights/apollo-7/orbital.ts';
 import { nlerp, turn } from '../src/sim/rigid.ts';
 import { between, either, orbitalRecord } from '../src/sim/run.ts';
 import { Sheds } from '../src/sim/shed.ts';
@@ -21,11 +22,15 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
       ? ['stage:1', 'modules']
       : flight.id.includes('/gemini/')
         ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
-        : ['booster-latch', 'retropack-straps'];
+        : flight.id === 'usa/apollo/apollo-7'
+          ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
+          : ['booster-latch', 'retropack-straps'];
     for (const on of ids) {
       const body = run.sheds.get(on);
       const index = flight.flies.drops.findIndex((d) => d.on === on);
-      const height = body.shedder.def.to.value - (flight.flies.datum ?? 0);
+      assert.ok(body && index >= 0, `${on} has both a physics body and a rendered drop`);
+      const { forward, from, to } = body.shedder.def;
+      const height = (forward ? from : to).value - (flight.flies.datum ?? 0);
       let previous = -Infinity;
       for (const dt of [0, 0.05, 0.25, 0.5, 1, 2]) {
         const t = body.from + dt;
@@ -35,7 +40,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
         const direction = up.clone().applyQuaternion(q);
         p.addScaledVector(direction, height);
         r.addScaledVector(up.clone().applyQuaternion(s), height);
-        const gap = p.sub(r).dot(direction);
+        const gap = p.sub(r).dot(direction) * (forward ? -1 : 1);
         assert.ok(gap >= -1e-6 && (dt >= 1 ? gap > 0 : gap > previous), `${on}, +${dt} s: ${gap} m, previously ${previous}`);
         previous = gap;
       }
@@ -145,6 +150,38 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
   test(`${flight.designation}: the last stage clears the outgoing spacecraft for the first minute`, () => {
     const run = orbitalRecord(flight);
     const at = run.samples.find((s) => !s.riding);
+    const target = flight.flies.target;
+    if (flight.id === 'usa/apollo/apollo-7') {
+      assert.ok(target, 'the released S-IVB has a rendezvous track');
+      const ascent = Ascent.of(flight);
+      const index = flight.flies.drops.findIndex((drop) => drop.on === target.drop);
+      assert.ok(index >= 0, 'rendezvous stage has a rendered drop');
+      const t = run.dropped[index];
+      assert.equal(t, at?.t, 'the spacecraft coasts independently only after separating from the upper stage');
+      const p = new Vector3(),
+        r = new Vector3(),
+        up = new Vector3(0, 1, 0);
+      const q = new Quaternion(),
+        s = new Quaternion(),
+        pad = new Quaternion();
+      const height = CSM_MATING_HEIGHT - (flight.flies.datum ?? 0);
+      const gapAt = (when) => {
+        assert.ok(ascent.place(when, pad, p, q) && ascent.shed(index, when, pad, r, s));
+        const direction = up.clone().applyQuaternion(q);
+        p.addScaledVector(direction, height);
+        r.addScaledVector(up.clone().applyQuaternion(s), height);
+        return p.sub(r).dot(direction);
+      };
+      assert.ok(Math.abs(gapAt(t)) < 1e-6, 'the adapter rim starts at the spacecraft mating plane');
+      let previous = 0;
+      for (let step = 1; step <= 240; step++) {
+        const elapsed = step / 4;
+        const clearance = gapAt(t + elapsed);
+        assert.ok(clearance > (elapsed <= 2 ? previous : 0), `+${elapsed} s: gap ${clearance} m, previously ${previous}`);
+        previous = clearance;
+      }
+      return;
+    }
     const shed = run.sheds.all.find(
       (s) => s.from === at?.t && (s.shedder.def.push || flight.plan.craft[0].joints.find((j) => j.id === s.shedder.def.on)?.push),
     );

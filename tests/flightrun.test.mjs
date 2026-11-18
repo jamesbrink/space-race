@@ -30,6 +30,18 @@ for (const f of flights) {
   test(`${f.callsign}: the record's run says what happened, when each body left and what it gave`, () => {
     const run = recordOf(f);
     const plan = f.plan;
+    const clocked = (event, seen = new Set()) =>
+      event &&
+      !seen.has(event.id) &&
+      event.when.every(
+        (trigger) =>
+          'time' in trigger ||
+          ('after' in trigger &&
+            clocked(
+              plan.events.find((e) => e.id === trigger.after),
+              new Set([...seen, event.id]),
+            )),
+      );
     assert.equal(run.frame.gast0, frameOf(f).gast0);
     // in order of time, each of the plan's events once, and each a real one
     for (let i = 1; i < run.events.length; i++) assert.ok(run.events[i].t >= run.events[i - 1].t, `${f.id}: events in order`);
@@ -43,8 +55,7 @@ for (const f of flights) {
     // what the clock sets off happens at the record's instant, unless the run decides it (the pilot let loose at a height)
     for (const e of run.events) {
       const def = e.event && plan.events.find((x) => x.id === e.event);
-      if (def?.at && def.when.every((w) => 'time' in w || 'after' in w))
-        assert.equal(e.t, clockAt(plan, def) ?? def.at.value, `${f.id}: ${e.event} at its clock's instant`);
+      if (def?.at && clocked(def)) assert.equal(e.t, clockAt(plan, def), `${f.id}: ${e.event} at its clock's instant`);
     }
     // the record's instants by the record's ids, as the orbital record's events give them
     if (plan.kind === 'orbital')
@@ -54,8 +65,9 @@ for (const f of flights) {
     assert.deepEqual(Object.keys(run.bodies).sort(), bodies.map((b) => b.id).sort(), `${f.id}: every body`);
     for (const j of plan.craft[0].joints) {
       if (!j.at) continue;
-      for (const b of j.gone)
-        assert.ok(run.bodies[b] <= j.at.value + 1e-9, `${f.id}: ${b} gone by ${j.id}'s ${j.at.value} s (${run.bodies[b]})`);
+      const release = plan.events.find((e) => e.do.some((action) => 'separate' in action && action.separate === j.id));
+      const at = release?.when.some((w) => 'height' in w) ? (run.events.find((e) => e.event === release.id)?.t ?? j.at.value) : j.at.value;
+      for (const b of j.gone) assert.ok(run.bodies[b] <= at + 1e-9, `${f.id}: ${b} gone by ${j.id}'s ${at} s (${run.bodies[b]})`);
     }
     // what it gave for each check: one row a check, each a number
     const checks = plan.kind === 'ballistic' ? f.checks : plan.checks;

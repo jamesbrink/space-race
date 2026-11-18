@@ -106,13 +106,14 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .deck-sys { grid-area: sys; justify-self: end; width: 330px; padding: 8px 0 9px; }
 .systems { display: grid; }
 .tank { display: grid; grid-template-columns: 96px 1fr 42px 62px; align-items: center; column-gap: 8px; min-height: 20px; padding: 0 14px; }
+.tank > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tank span, .reading span { font: 10px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .tank b, .reading b { font: 12px/1.4 var(--mono); font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .tank i { font: 10px/1.4 var(--mono); font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .tank .bar { height: 4px; border-radius: 1px; background: linear-gradient(var(--dim), var(--dim)) left / var(--left, 0%) 100% no-repeat, rgba(243, 239, 230, 0.16); }
 .tank.low :is(b, i) { color: var(--amber); }
 .tank.low .bar { background: linear-gradient(var(--amber), var(--amber)) left / var(--left, 0%) 100% no-repeat, rgba(243, 239, 230, 0.16); }
-.tank.engine, .tank.motors { grid-template-columns: 96px auto 1fr; }
+.tank.engine, .tank.motors { grid-template-columns: 96px minmax(0, auto) minmax(0, 1fr); }
 .tank.engine b, .tank.motors b { text-align: left; overflow: hidden; text-overflow: ellipsis; }
 .tank.engine i { overflow: hidden; text-overflow: ellipsis; }
 .tank.motors b { grid-column: 2 / -1; }
@@ -217,7 +218,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .tank span, .reading span { letter-spacing: 0.06em; }
   .cockpit:not(.keys-open) :is(.tank.engine, .tank.jets, .tank.motors, .sys-rule, .readings) { display: none; }
   .tank:is(.engine, .jets, .motors), .sys-rule, .readings { grid-column: 1 / -1; }
-  .tank.engine, .tank.motors, .tank.jets { grid-template-columns: 74px auto 1fr; }
+  .tank.engine, .tank.motors, .tank.jets { grid-template-columns: 74px minmax(0, auto) minmax(0, 1fr); }
   .tank.jets { grid-template-columns: 74px 1fr; }
   .readings { padding: 0 10px; }
   .deck-sys > em { margin: 3px 10px 0; }

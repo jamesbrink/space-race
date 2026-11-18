@@ -5,7 +5,7 @@ import type { Confidence, Measure } from '../measure.ts';
 export type { Results } from '../sim/fly.ts';
 
 /** What an engine burns, for its fire's look (viewer/flames.ts: each one's colours, light and opacity, with their sources). */
-export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
+export type Burns = 'alcohol-lox' | 'kerosene-lox' | 'hydrogen-lox' | 'hydrazine-n2o4' | 'amine-nitric' | 'solid-perchlorate';
 
 /**
  * How an engine can be worked (sim/vehicle.ts). Left out, an engine is a liquid one at fixed thrust that is started
@@ -432,6 +432,10 @@ export interface ChuteDef {
    * length, and it fills over what is left of `fills`. Drawn only: the simulator's drag grows from the moment it is out.
    */
   stretch?: Measure;
+  /** Display-only spread of one canopy in an aggregate deployment, degrees around and away from the airflow axis. */
+  cluster?: { azimuth: number; tilt: Measure };
+  /** Seconds from water contact until the crew disconnects the parachute risers. */
+  disconnect?: Measure;
 }
 
 /**
@@ -509,6 +513,8 @@ export interface AfloatDef {
    * Left out, it is held upright.
    */
   heel?: HeelDef;
+  /** Inflatable spheres attached to the body, in metres from its lowest point in the same axes as heel.centre. */
+  bags?: { up: number; out: number; across: number; radius: Measure }[];
   /** Its drag going down through the water, Cd times area, m^2. */
   drag: Measure;
   /** Seconds it takes to come upright from how it lay when it struck the sea: drawn only. */
