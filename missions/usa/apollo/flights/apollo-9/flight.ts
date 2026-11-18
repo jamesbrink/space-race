@@ -1,6 +1,6 @@
 import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
-import { assumed, estimated } from '../../../../../src/measure.ts';
-import type { DockingPort, Flight, Move, Part, Spec } from '../../../../../src/types.ts';
+import { probePort, cm, sm, lift, doors, rocket, part, escapeParts, nodes, specification } from '../../vehicles/stack-gallery.ts';
+import type { Flight, Part } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
 
@@ -11,57 +11,7 @@ const time = 'NASA SP-4029, Apollo 9 timeline';
 const orbit = 'NASA SP-4029, Apollo 9, Earth Orbit Phase table and p. 56';
 const lm = 'Lunar module · Spider';
 const ship = 'Spacecraft';
-const gumdropPort = {
-  system: 'apollo-probe-and-drogue',
-  role: 'probe',
-  part: 'DockingProbe',
-  frame: 'GumdropDockingFrame',
-  piston: 'CM104_ProbeExtension',
-  captureHooks: {
-    nodes: Array.from({ length: 3 }, (_, i) => `CM104_CaptureHook_${i}`),
-    travel: estimated(0.34 * inch, 'Radial motion reconstructed to clear the socket lip and engage its cavity, NASA TN D-6854, fig. A-13.'),
-  },
-  hinges: Array.from({ length: 12 }, (_, i) => `CM104_LatchHinge_${i}`),
-  latchRotation: estimated(
-    (24 * Math.PI) / 180,
-    'Reconstructed hook sweep from the open position to behind the ring lip, NASA TN D-6854, figs. 9 and A-13.',
-  ),
-  captureTravel: assumed(
-    10 * inch,
-    'Apollo Operations Handbook, Block II, vol. 1, §2.13.3.3.4, p. 2.13-17. The type’s 10-inch maximum travel is applied to CSM-104.',
-  ),
-} satisfies DockingPort;
-const rocket = 'Launch vehicle';
-const escapeSystem = 'Launch escape system';
-
-function part(
-  node: string,
-  name: string,
-  group: string,
-  order: number,
-  lift: number,
-  summary: string,
-  detail: string,
-  inside = false,
-  facts?: Part['facts'],
-): Part {
-  return { node, name, group, order, explode: [0, lift, 0], summary, detail, inside, facts };
-}
-const cm = (node: string, name: string, summary: string, detail: string, inside = false) =>
-  part(node, name, ship, 2, 52, summary, detail, inside);
-const sm = (node: string, name: string, summary: string, detail: string, inside = false) =>
-  part(node, name, ship, 4, 41, summary, detail, inside);
-const lift = (order: number, metres: number): Move => ({ kind: 'slide', by: [0, metres, 0], from: order / 24, to: order / 24 + 0.5 });
-const radial: [number, number][] = [
-  [1, 0],
-  [0, -1],
-  [-1, 0],
-  [0, 1],
-];
-const doors: Move[] = radial.flatMap(([x, z], i) => [
-  { kind: 'swing', node: `SLA_Door_${i}`, axis: [z, 0, -x], angle: Math.PI / 4, from: 0.4, to: 0.65 },
-  { kind: 'slide', node: `SLA_Door_${i}`, by: [8 * x, 0, 8 * z], from: 0.65, to: 1 },
-]);
+const gumdropPort = probePort(104);
 const command = [
   cm(
     'CommandModule',
@@ -367,36 +317,6 @@ const launcher = [
     'Each outboard engine hung from a thrust post under a half-cone fin fairing. Together the F-1s produced about 7.7 million pounds of thrust at liftoff.',
   ),
 ];
-const escapeParts = [
-  part(
-    'LaunchEscape',
-    'Launch escape tower',
-    escapeSystem,
-    0,
-    66,
-    'The solid escape motor could pull the crew free during early ascent.',
-    'The tower separated once the spacecraft was safely on its way.',
-  ),
-  part(
-    'BoostCover',
-    'Boost protective cover',
-    escapeSystem,
-    0,
-    66,
-    'A white cover shielded the command module during launch.',
-    'It left with the escape tower, uncovering the command module and docking hardware.',
-  ),
-];
-const nodes = (parts: Part[]) => parts.map((p) => p.node);
-const specification = (group: string, label: string, value: number, unit: string, note: string): Spec => ({
-  group,
-  label,
-  value,
-  unit,
-  confidence: 'documented',
-  note,
-});
-
 export const flight: Flight = {
   id: 'usa/apollo/apollo-9',
   nation: 'USA',

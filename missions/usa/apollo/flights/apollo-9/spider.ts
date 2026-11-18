@@ -1,37 +1,5 @@
-import type { DockingPort, ModelDef, Move, Part, ViewDef } from '../../../../../src/types.ts';
-
-const lm = 'Lunar module · Spider';
-export const spiderPort: DockingPort = {
-  system: 'apollo-probe-and-drogue',
-  role: 'drogue',
-  part: 'LMDockingPort',
-  frame: 'SpiderDockingFrame',
-};
-const lower = 'Descent stage';
-const upper = 'Ascent stage';
-const radial: [number, number][] = [
-  [1, 0],
-  [0, -1],
-  [-1, 0],
-  [0, 1],
-];
-const gear: Move[] = radial.map(([x, z], i) => ({
-  kind: 'swing',
-  node: `LM3_GearHinge_${i}`,
-  axis: [-z, 0, x],
-  angle: (49 * Math.PI) / 180,
-  from: 0.73,
-  to: 1,
-}));
-const probes: Move[] = radial.map((_, i) => ({
-  kind: 'swing',
-  node: `LM3_ProbeHinge_${i}`,
-  axis: [0, 0, 1],
-  angle: (158 * Math.PI) / 180,
-  from: 0.88,
-  to: 1,
-}));
-
+import type { Part } from '../../../../../src/types.ts';
+import { lower, upper, lunarGallery, lmPort } from '../../vehicles/lunar-gallery.ts';
 const stageParts: [string, string, string, string, string][] = [
   [
     'LMDescentPower',
@@ -118,7 +86,7 @@ const stageParts: [string, string, string, string, string][] = [
     'A third window above the commander looked up toward the docking target. Gumdrop’s probe met the conical drogue in the tunnel atop the midsection.',
   ],
   [
-    spiderPort.part,
+    lmPort.part,
     'Docking ring and drogue',
     upper,
     'Spider carried the receiving half of the docking system above its overhead hatch.',
@@ -184,157 +152,20 @@ const facts: Record<string, Part['facts']> = {
     ['Forward hatch', '32 in square · press kit p. 42'],
   ],
 };
-const internal = new Set([
-  'LMAscentLifeSupport',
-  'LMAscentPower',
-  'LMDescentPower',
-  'LMDescentConsumables',
-  'LMDescentStructure',
-  'LMControlPanels',
-  'LMStations',
-  'LMDPSTanks',
-  'LMAPSTanks',
-  'LMReactionSupply',
-  'LMAscentEngine',
-  'LMDescentEngine',
-]);
-const deployedParts: Part[] = stageParts
-  .sort((a, b) => Number(a[2] === upper) - Number(b[2] === upper))
-  .map(([node, name, group, summary, detail]) => ({
-    node,
-    name,
-    group,
-    summary,
-    detail,
-    order: group === upper ? 0 : 1,
-    explode: [0, group === upper ? 4 : 0, 0],
-    inside: internal.has(node),
-    facts: facts[node],
-  }));
-const travel: Move = { kind: 'slide', by: [0, 28, 0], from: 0.25, to: 0.75 };
-const stage: Move = { kind: 'slide', by: [0, 4, 0], from: 0.89, to: 1 };
-export const spiderStackParts: Part[] = deployedParts.map((p) => ({
-  ...p,
-  group: 'Spider in adapter',
-  order: 6,
-  inside: true,
-  explode: [0, 33, 0],
-  moves: [
-    travel,
-    { kind: 'slide', by: [0, 5, 0], from: 0.65, to: 0.88 },
-    ...(p.group === upper ? [stage] : []),
-    ...(p.node === 'LMLandingGear' ? [...gear, ...probes] : []),
-    ...(p.node === 'LMEquipment'
-      ? [
-          {
-            kind: 'swing' as const,
-            node: 'LM3_SBandHinge',
-            axis: [1, 0, 0] as [number, number, number],
-            angle: (-60 * Math.PI) / 180,
-            from: 0.72,
-            to: 0.89,
-          },
-        ]
-      : []),
-  ],
-}));
-export const spiderViews: ViewDef[] = [
-  { id: 'drogue', label: 'Spider docking drogue', nodes: [spiderPort.part], span: 1.55, isolate: true, from: [0.55, 0.95, -0.3] },
-  { id: 'power', label: 'Electrical power', nodes: ['LMDescentPower', 'LMAscentPower'], isolate: true, from: [-1, 0.3, 0.6] },
-  {
-    id: 'life-support',
-    label: 'Environmental control',
-    nodes: ['LMAscentLifeSupport', 'LMDescentConsumables'],
-    isolate: true,
-    from: [-0.8, 0.35, 0.5],
-  },
-  { id: 'landing-radar', label: 'Landing radar', nodes: ['LMLandingRadar'], isolate: true, from: [-1, -0.65, 0.5] },
-  { id: 'front', label: 'Forward hatch', nodes: ['LMAscent', 'LMPorch'], from: [1, 0.12, -0.25] },
-  { id: 'porch', label: 'EVA porch', nodes: ['LMPorch'], isolate: true, from: [1, 0.65, -0.25] },
-  { id: 'dps', label: 'Descent engine', nodes: ['LMDescentEngine'], isolate: true, from: [1, -0.25, 0.7] },
-  { id: 'aps', label: 'Ascent engine', nodes: ['LMAscentEngine'], isolate: true, from: [1, -0.25, 0.7] },
-  {
-    id: 'descent-system',
-    label: 'Descent propulsion',
-    nodes: ['LMDescentEngine', 'LMDPSTanks', 'LMDescentStructure'],
-    isolate: true,
-    from: [1, 0.5, 0.7],
-  },
-  { id: 'ascent-system', label: 'Ascent propulsion', nodes: ['LMAscentEngine', 'LMAPSTanks'], isolate: true, from: [1, 0.15, 0.7] },
-  { id: 'rcs', label: 'Radar and attitude control', nodes: ['LMEquipment', 'LMReactionSupply'], isolate: true, from: [1, 0.3, -0.4] },
-  { id: 'stations', label: 'Crew stations', nodes: ['LMStations', 'LMControlPanels'], isolate: true, from: [-0.9, 0.35, 0.25] },
-  {
-    id: 'cabin-interior',
-    label: 'Inside the pressure cabin',
-    nodes: ['LMStations', 'LMControlPanels', 'LMAscentLifeSupport'],
-    isolate: true,
-    from: [-1, 0.48, -0.2],
-  },
-  { id: 'panels', label: 'Instrument panels', nodes: ['LMControlPanels'], isolate: true, from: [-1, 0.17, 0.2] },
-  {
-    id: 'ascent-stage',
-    label: 'Independent ascent stage',
-    nodes: deployedParts.filter((p) => p.group === upper).map((p) => p.node),
-    isolate: true,
-    from: [1, 0.15, -0.25],
-  },
-];
-const point = (x: number, y: number, z: number): [number, number, number] => [x * 0.0254, z * 0.0254, -y * 0.0254];
-export const spiderModel: ModelDef = {
-  id: 'spider',
-  dockingPorts: [spiderPort],
-  cutawayQuadrant: [1, -1],
-  galleryFrom: [1, 0.18, -0.55],
-  boardingLabel: 'Take a flight station',
-  galleryAlias: 'lunar-module-spider',
-  galleryCraft: 'LM-3 Spider',
-  name: 'LM-3 Spider',
-  url: 'models/usa/apollo/apollo-9/spider.glb',
-  backdrop: 'studio',
-  cutaway: true,
-  scale: '31 ft over the deployed footpads · 23 ft 1 in from pad plane to S-band antenna',
-  slider: ['Two stages joined', 'Ascent stage separated'],
-  specGroups: [lm],
-  motorNames: ['Descent engine', 'Ascent engine', 'LM attitude thruster'],
-  parts: deployedParts,
+
+export { lmPort as spiderPort };
+export const {
+  model: spiderModel,
+  stackParts: spiderStackParts,
   views: spiderViews,
-  seats: [
+} = lunarGallery(
+  'apollo-9',
+  'Spider',
+  'LM-3 Spider',
+  [
     { node: 'LM_CommanderStation', label: 'McDivitt’s standing station', from: 'LMAscent', open: [44 * 3600, 100 * 3600] },
     { node: 'LM_PilotStation', label: 'Schweickart’s standing station', from: 'LMAscent', open: [43.3 * 3600, 101 * 3600] },
   ],
-  lights: [
-    { position: point(58, 24, 213), colour: 0xfff5e8, intensity: 0.7, reach: 2.3 },
-    { position: point(58, -24, 213), colour: 0xfff5e8, intensity: 0.7, reach: 2.3 },
-  ],
-  cabin: {
-    within: ['LMStations', 'LMControlPanels'],
-    overhead: [0, 1, 0],
-    instruments: [],
-    lighting: {
-      name: 'Cabin floodlights',
-      about:
-        'The crew-area lamps illuminate both stations. Their placement and brightness are estimated. Individual dimmers are not modelled.',
-      ways: [
-        { says: 'Flood', lit: [0, 1] },
-        {
-          says: 'Dim',
-          lit: [
-            { light: 0, level: 0.25 },
-            { light: 1, level: 0.25 },
-          ],
-        },
-        { says: 'Off', lit: [] },
-      ],
-    },
-    windows: [
-      { name: 'Commander’s forward window', at: point(74.8, 23.3, 199.3), out: [1, 0, 0], across: 0.45 },
-      { name: 'Pilot’s forward window', at: point(74.8, -23.3, 199.3), out: [1, 0, 0], across: 0.45 },
-      {
-        name: 'Overhead docking window',
-        at: point(55, 11.5, 223.9),
-        out: [0, Math.cos(Math.PI / 12), -Math.sin(Math.PI / 12)],
-        across: 0.4,
-      },
-    ],
-  },
-};
+  stageParts,
+  facts,
+);

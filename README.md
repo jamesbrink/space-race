@@ -9,7 +9,7 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**24 flights so far, Vostok 1 (April 1961) to Apollo 9 (March 1969).** All of them are in the Gallery,
+**25 flights so far, Vostok 1 (April 1961) to Apollo 10 (May 1969).** All of them are in the Gallery,
 21 stand at their launch site, and 15 can be flown.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
@@ -92,6 +92,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | · | · |
 | [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
 | [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | · | · |
+| [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | · | · |
 
 Four launch sites are built: Site 1 at Tyuratam (Vostok and Voskhod), and Complexes 5
 (Mercury-Redstone), 14 (Mercury-Atlas) and 19 (Gemini) at Cape Canaveral. A site is built once and

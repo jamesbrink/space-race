@@ -101,3 +101,80 @@ export const APOLLO9_THRUST: Motor[] = [
     note: nine + ', pp. 46–47',
   },
 ];
+
+const ten = 'NASA Apollo 10 press kit, May 1969';
+/** SA-505 stage totals on the nominal-configuration plate, spacecraft engine ratings in the system descriptions. */
+export const APOLLO10_THRUST: Motor[] = [
+  {
+    name: 'F-1',
+    count: 5,
+    thrustN: (7680982 * LBF) / 5,
+    propellant: 'RP-1 / liquid oxygen',
+    confidence: 'derived',
+    note: `${ten}, p. 49a, nominal S-IC total divided over five engines`,
+  },
+  {
+    name: 'J-2 · second stage',
+    count: 5,
+    thrustN: (1163854 * LBF) / 5,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'derived',
+    note: `${ten}, p. 49a, nominal S-II total divided over five engines`,
+  },
+  {
+    name: 'J-2 · third stage',
+    count: 1,
+    thrustN: 203615 * LBF,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'documented',
+    note: `${ten}, p. 49a, nominal S-IVB rating`,
+  },
+  {
+    name: 'Service propulsion engine',
+    count: 1,
+    thrustN: 20500 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, p. 39`,
+  },
+  {
+    name: 'SM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, p. 39`,
+  },
+  {
+    name: 'CM attitude thruster',
+    count: 12,
+    thrustN: 93 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, p. 40`,
+  },
+  {
+    name: 'Descent engine',
+    count: 1,
+    thrustN: 9870 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, p. 47, maximum rated thrust`,
+  },
+  {
+    name: 'Ascent engine',
+    count: 1,
+    thrustN: 3500 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, p. 47`,
+  },
+  {
+    name: 'LM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${ten}, pp. 46–47`,
+  },
+];

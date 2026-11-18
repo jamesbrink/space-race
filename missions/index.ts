@@ -1,4 +1,5 @@
 import type { Flight } from '../src/types.ts';
+import { flight as apollo10 } from './usa/apollo/flights/apollo-10/flight.ts';
 import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
 import { flight as apollo9 } from './usa/apollo/flights/apollo-9/flight.ts';
@@ -53,4 +54,5 @@ export const flights: Flight[] = [
   apollo7,
   apollo8,
   apollo9,
+  apollo10,
 ];
