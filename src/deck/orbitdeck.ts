@@ -1167,11 +1167,11 @@ export class OrbitDeck extends Deck {
         : `Short of an orbit: perigee ${perigee.toFixed(0)} km. It comes down`,
     );
     this.host.fly(this.run);
-    // an abort from 150 to 700 s (the record's third mode): the descent module separates as the spacecraft leaves, to come down as from orbit
+    // This escape mode calls for a separate entry. Describe the sequence given for this flight.
     if (this.aborted?.mode.escape?.separate?.entry) {
       this.partedBy = s.parted!.t;
       this.refly();
-      this.host.say?.('Abort', 'The descent module separated: it comes down as from orbit, the pilot ejected by its own sequence');
+      this.host.say?.('Abort', this.aborted.mode.does);
     }
   }
 
