@@ -62,25 +62,37 @@ export interface Instant {
   also?: string;
 }
 
+/**
+ * An Atlas as a record gives it (Mercury's LV-3B, the Gemini targets' SLV-3): the booster section with its two chambers,
+ * and the tank section with the sustainer, which draw on the one tank. Shared by every Atlas flown (`atlasPieces`).
+ */
+export interface AtlasRecord {
+  /** The booster section: what it weighs (empty: its engines draw on the tank above), its engines, and when they were cut and it was let go. */
+  booster: { name: string; nodes: string[]; mass: Measure; engine: AtlasEngine; cutoff: Measure; separation: Measure };
+  /** The tank section, fuelled and empty, the propellant it holds for all the engines, and the sustainer (with its verniers, unless they are given apart). */
+  tank: {
+    name: string;
+    nodes: string[];
+    mass: Measure;
+    dry: Measure;
+    propellant: Measure;
+    engine: AtlasEngine;
+    /** Cut by the ground's guidance at this space-fixed speed, m/s, and then `cutoff` is the record's instant, held as a check; without it, cut at `cutoff`. */
+    velocity?: Measure;
+    cutoff: Measure;
+  };
+  /**
+   * The two verniers as an engine of their own, burning on after the sustainer's cutoff until theirs (the Gemini targets'
+   * Atlas: twenty seconds alone). Left out, they are flown as part of the sustainer and cut with it (the Mercury flights').
+   */
+  verniers?: { engine: AtlasEngine; cutoff: Measure };
+}
+
 export interface MercuryAtlasRecord {
   /** Everything that left the pad, kg. */
   liftoffMass: Measure;
-  atlas: {
-    /** The booster section: what it weighs (empty: its engines draw on the tank above), its engines, and when they were cut and it was let go. */
-    booster: { name: string; nodes: string[]; mass: Measure; engine: AtlasEngine; cutoff: Measure; separation: Measure };
-    /** The tank section, fuelled and empty, the propellant it holds for all the engines, and the sustainer with its verniers. */
-    tank: {
-      name: string;
-      nodes: string[];
-      mass: Measure;
-      dry: Measure;
-      propellant: Measure;
-      engine: AtlasEngine;
-      /** Cut by the ground's guidance at this space-fixed speed, m/s; `cutoff` is the record's instant, held as a check. */
-      velocity: Measure;
-      cutoff: Measure;
-    };
-  };
+  /** The Atlas, its sustainer cut by the ground's guidance: the speed it had then is held as a check. */
+  atlas: AtlasRecord & { tank: { velocity: Measure } };
   /** The escape tower: what it weighs, and when it was let go. */
   tower: { mass: Measure; separation: Measure };
   /** The spacecraft let go of the Atlas: when, how fast the posigrades pushed the two apart, and what flew on. */
@@ -155,18 +167,128 @@ const engineOf = (e: AtlasEngine): Pick<EngineDef, 'thrust' | 'isp' | 'nozzle'> 
   ...(e.nozzle ? { nozzle: e.nozzle } : {}),
 });
 
+/**
+ * The Atlas of a plan, from its record: its two bodies (the booster section, the tank section), the latch that lets the
+ * booster section go, its engines drawing on the one tank, its steering, and the events of its own sequence (all five
+ * engines lit on the pad, the booster chambers cut and their section dropped, the sustainer cut: on the guidance's
+ * speed where the record gives one, else at its instant; the verniers cut, where they are an engine of their own). A
+ * plan puts what it carries above it and in among them; the ids are the same on every Atlas flown.
+ */
+export function atlasPieces(a: AtlasRecord, steering: Measure, record: (at: Measure) => Pick<EventDef, 'record'> = () => ({})) {
+  const b = a.booster;
+  const k = a.tank;
+  const bodies: BodyDef[] = [
+    { id: 'atlas-booster-section', label: b.name, count: 1, mass: b.mass, dry: b.mass, nodes: b.nodes },
+    { id: 'atlas', label: k.name, count: 1, mass: k.mass, dry: k.dry, nodes: k.nodes },
+  ];
+  const latch: JointDef = { id: 'booster-latch', label: 'Booster section let go', gone: ['atlas-booster-section'], at: b.separation };
+  const ground = { count: 1, ground: true, confidence: 'documented' as const, source: 'lit on the pad, as every Atlas’s were' };
+  const engines: EngineDef[] = [
+    {
+      id: 'booster-engines',
+      label: b.engine.name,
+      body: 'atlas-booster-section',
+      count: b.engine.count,
+      tanks: ['atlas-propellant'],
+      ...engineOf(b.engine),
+      kind: 'liquid',
+      starts: ground,
+    },
+    {
+      id: 'sustainer',
+      label: k.engine.name,
+      body: 'atlas',
+      count: k.engine.count,
+      tanks: ['atlas-propellant'],
+      ...engineOf(k.engine),
+      kind: 'liquid',
+      starts: ground,
+    },
+    ...(a.verniers
+      ? [
+          {
+            id: 'verniers',
+            label: a.verniers.engine.name,
+            body: 'atlas',
+            count: a.verniers.engine.count,
+            tanks: ['atlas-propellant'],
+            ...engineOf(a.verniers.engine),
+            kind: 'liquid' as const,
+            starts: ground,
+          },
+        ]
+      : []),
+  ];
+  const tanks: TankDef[] = [{ id: 'atlas-propellant', label: 'Propellant', body: 'atlas', load: k.propellant, holds: 'propellant' }];
+  const thruster: ThrusterSet = {
+    id: 'atlas-steering',
+    label: 'Steering',
+    body: 'atlas',
+    does: ['rotation'],
+    mode: 'automatic',
+    authority: steering,
+  };
+  const timed = (id: string, label: string, at: Measure, does: EventDef['do']): EventDef => ({
+    id,
+    label,
+    when: atTime(at),
+    do: does,
+    automatic: true,
+    at,
+    ...record(at),
+    source: at.source,
+  });
+  const liftoff: EventDef = {
+    id: 'liftoff',
+    label: 'Liftoff',
+    when: [{ time: 0 }],
+    do: [{ ignite: 'booster-engines' }, { ignite: 'sustainer' }, ...(a.verniers ? [{ ignite: 'verniers' }] : [])],
+    automatic: true,
+    source: 'all five engines lit on the pad',
+  };
+  const sustainerCut: EventDef = k.velocity
+    ? {
+        id: 'sustainer:cut',
+        label: 'Sustainer engine cutoff',
+        when: [{ speed: k.velocity.value }],
+        do: [{ cut: 'sustainer' }],
+        automatic: true,
+        at: k.cutoff,
+        source: k.velocity.source,
+      }
+    : timed('sustainer:cut', 'Sustainer engine cutoff', k.cutoff, [{ cut: 'sustainer' }]);
+  return {
+    bodies,
+    latch,
+    engines,
+    tanks,
+    thruster,
+    timed,
+    events: {
+      liftoff,
+      boosterCut: timed('booster-engines:cut', 'Booster engine cutoff', b.cutoff, [{ cut: 'booster-engines' }]),
+      staging: timed('booster-latch:separate', 'Drop the booster section', b.separation, [{ separate: 'booster-latch' }]),
+      sustainerCut,
+      ...(a.verniers ? { vernierCut: timed('verniers:cut', 'Vernier engine cutoff', a.verniers.cutoff, [{ cut: 'verniers' }]) } : {}),
+    },
+  };
+}
+
 /** A Mercury-Atlas flight's plan, from its record. */
 export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
-  const b = o.atlas.booster;
-  const k = o.atlas.tank;
   const r = o.retro;
+  const k = o.atlas.tank;
+  const record = (at: Measure) => {
+    const e = o.events.find((x) => Math.abs(x.at.value - at.value) < 1e-6);
+    return e ? { record: { id: e.id, label: e.label } } : {};
+  };
+  const atlas = atlasPieces(o.atlas, o.ascent.steering.authority, record);
   const packMass = derived(
     o.mass.value - o.entry.mass.value,
     'the spacecraft in orbit less the capsule once the pack has gone, including consumables spent since insertion; an upper bound for the spent pack',
   );
   const bodies: BodyDef[] = [
-    { id: 'atlas-booster-section', label: b.name, count: 1, mass: b.mass, dry: b.mass, nodes: b.nodes },
-    { id: 'atlas', label: k.name, count: 1, mass: k.mass, dry: k.dry, nodes: k.nodes },
+    ...atlas.bodies,
     { id: 'escape-tower', label: 'Escape tower', count: 1, mass: o.tower.mass },
     {
       id: 'retro-package',
@@ -190,7 +312,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     },
   ];
   const joints: JointDef[] = [
-    { id: 'booster-latch', label: 'Booster section let go', gone: ['atlas-booster-section'], at: b.separation },
+    atlas.latch,
     { id: 'tower-clamp', label: 'Escape tower released', gone: ['escape-tower'], at: o.tower.separation },
     {
       id: 'adapter-clamp',
@@ -202,28 +324,8 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     },
     { id: 'retropack-straps', label: 'The retropack goes', gone: ['retro-package'], at: r.gone, after: o.entry.mass },
   ];
-  const ground = { count: 1, ground: true, confidence: 'documented' as const, source: 'lit on the pad, as every Atlas’s were' };
   const engines: EngineDef[] = [
-    {
-      id: 'booster-engines',
-      label: b.engine.name,
-      body: 'atlas-booster-section',
-      count: b.engine.count,
-      tanks: ['atlas-propellant'],
-      ...engineOf(b.engine),
-      kind: 'liquid',
-      starts: ground,
-    },
-    {
-      id: 'sustainer',
-      label: k.engine.name,
-      body: 'atlas',
-      count: k.engine.count,
-      tanks: ['atlas-propellant'],
-      ...engineOf(k.engine),
-      kind: 'liquid',
-      starts: ground,
-    },
+    ...atlas.engines,
     {
       id: 'retrorockets',
       label: 'Retrorockets',
@@ -241,16 +343,9 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
       flown: r.deltaV,
     },
   ];
-  const tanks: TankDef[] = [{ id: 'atlas-propellant', label: 'Propellant', body: 'atlas', load: k.propellant, holds: 'propellant' }];
+  const tanks: TankDef[] = atlas.tanks;
   const thrusters: ThrusterSet[] = [
-    {
-      id: 'atlas-steering',
-      label: 'Steering',
-      body: 'atlas',
-      does: ['rotation'],
-      mode: 'automatic',
-      authority: o.ascent.steering.authority,
-    },
+    atlas.thruster,
     { id: 'reaction-control', label: 'Attitude by hand', body: 'mercury-capsule', does: ['rotation'], mode: 'manual', rate: o.hand },
   ];
   const chute = (name: string, x: { dragArea: Measure; fills: Measure }, instead?: string): ChuteDef => ({
@@ -277,20 +372,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
       source: r.yaw ? `${r.below.source}; ${r.yaw.source}` : r.below.source,
     },
   ];
-  const record = (at: Measure) => {
-    const e = o.events.find((x) => Math.abs(x.at.value - at.value) < 1e-6);
-    return e ? { record: { id: e.id, label: e.label } } : {};
-  };
-  const timed = (id: string, label: string, at: Measure, does: EventDef['do']): EventDef => ({
-    id,
-    label,
-    when: atTime(at),
-    do: does,
-    automatic: true,
-    at,
-    ...record(at),
-    source: at.source,
-  });
+  const timed = atlas.timed;
   // (what Space offers for it once alone, before the pack: the pilot's retro button, the next thing he could do in the record's order)
   const fire: EventDef = { ...timed('retrofire', 'Retrofire', r.on, [{ ignite: 'retrorockets' }]), asked: 'Fire the retrorockets' };
   const pack: EventDef = {
@@ -306,16 +388,9 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     source: r.gone.source,
   };
   const events: EventDef[] = [
-    {
-      id: 'liftoff',
-      label: 'Liftoff',
-      when: [{ time: 0 }],
-      do: [{ ignite: 'booster-engines' }, { ignite: 'sustainer' }],
-      automatic: true,
-      source: 'all five engines lit on the pad',
-    },
-    timed('booster-engines:cut', 'Booster engine cutoff', b.cutoff, [{ cut: 'booster-engines' }]),
-    timed('booster-latch:separate', 'Drop the booster section', b.separation, [{ separate: 'booster-latch' }]),
+    atlas.events.liftoff,
+    atlas.events.boosterCut,
+    atlas.events.staging,
     timed('tower-clamp:separate', 'Release the escape tower', o.tower.separation, [{ separate: 'tower-clamp' }]),
     // The sustainer is shut down by the ground guidance when the insertion it computes is the orbit wanted, not at an instant
     // and not at a speed set beforehand: the run cuts it on the state it has flown, when the orbit it will be on once the
@@ -328,7 +403,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
       do: [{ cut: 'sustainer' }],
       automatic: true,
       at: k.cutoff,
-      source: k.velocity.source,
+      source: (k.velocity ?? k.cutoff).source,
     },
     {
       ...timed('adapter-clamp:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-clamp' }]),
