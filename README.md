@@ -2,111 +2,188 @@
 
 # Space Race
 
-Every crewed spacecraft, modelled to scale and shown as it flew, in the place it flew from. The
-first one built is **Freedom 7**, the Mercury capsule that carried Alan Shepard on 5 May 1961 on
-its Redstone booster. It was the second crewed spaceflight (Yuri Gagarin had orbited the Earth in
-Vostok 1 twenty-three days earlier) and it is the standard every later flight here is built to.
+**Every crewed spacecraft, modelled to scale, in the place it flew from, on the day it flew.**
 
-**Live: https://jamesbrink.online/space-race/**
+Space Race is a simulator of crewed spaceflight that runs in the browser, built flight by flight from
+the historical record. Each spacecraft and its launch vehicle is modelled from drawings and reports,
+stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
+can be flown from liftoff to landing: as it was flown, or by your own hand.
+
+**24 flights so far, Vostok 1 (April 1961) to Apollo 9 (March 1969).** All of them are in the Gallery,
+21 stand at their launch site, and 15 can be flown.
+
+### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
+
+<p align="center">
+  <a href="https://jamesbrink.online/space-race/"><img src="docs/readme/front.jpg" alt="The front page: the list of flights over the Earth seen from the Moon" width="100%"></a>
+</p>
+
+## What is in it
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/gallery.jpg" alt="Friendship 7 on its Atlas in the Gallery, with its parts listed"></td>
+    <td width="50%"><img src="docs/readme/launch-site.jpg" alt="Launch Complex 5 at Cape Canaveral with Freedom 7 on the pad"></td>
+  </tr>
+  <tr>
+    <td><b>Gallery.</b> Friendship 7 on its Atlas, every part named.</td>
+    <td><b>Launch site.</b> Complex 5 at Cape Canaveral on the morning of 5 May 1961.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/cutaway.jpg" alt="Apollo 9's lunar module Spider cut open to its tanks and cabin"></td>
+    <td><img src="docs/readme/lineup.jpg" alt="The Lineup: all 24 vehicles side by side at one scale"></td>
+  </tr>
+  <tr>
+    <td><b>Cutaway.</b> Apollo 9's lunar module, Spider, opened to its tanks and cabin.</td>
+    <td><b>The Lineup.</b> Every vehicle at one scale, in the order they flew.</td>
+  </tr>
+</table>
+
+Every flight has the same three places, and opens in the first. One that is not built yet is shown
+and says why.
+
+- **Gallery.** The vehicle alone in a studio. Take it apart with the slider, cut it open, read what
+  each part is and why it is the way it is, put a person beside it for scale, and sit in the cabin to
+  look out of its windows.
+- **Launch site.** The pad as it stood that day, with what stood round it at its real distance and
+  bearing. The clock runs the morning of the launch: the gantry rolls back, the trucks leave, the
+  vehicle goes. Get down and walk it as the crew, climb the structure, drive the vehicles, work the
+  machines by hand, by day or by night.
+- **Fly.** The recorded flight plays from liftoff to landing on real gravity, air and thrust. Take it
+  over at any moment and fly it yourself from the flight deck, with a navball and a predicted path;
+  do something out of order and you get what the hardware would have done.
+
+And two that belong to no one flight:
+
+- **The Lineup.** Every vehicle built so far on one floor at one scale, a person beside each, with a
+  timeline of the race under the row. Stand two together to compare them, or see the spacecraft alone.
+- **The front page.** The list of flights over the Earth, seen from out by the Moon.
+
+The whole thing can be redrawn as an inked, cel-shaded drawing (`T`), and works on a phone.
+
+## Flights
+
+A dot is a place that is built; a point, one that is not yet. Each flight links to its own record:
+what happened, the timeline, the sources, and the notes on its hardware.
+
+| Flight | Launched | Crew | Launch vehicle | Gallery | Launch site | Fly |
+| --- | --- | --- | --- | :-: | :-: | :-: |
+| [Vostok 1, *Kedr*](missions/ussr/vostok/flights/vostok-1/README.md) | 12 Apr 1961 | Gagarin | Vostok 8K72K | ● | ● | ● |
+| [Mercury-Redstone 3, *Freedom 7*](missions/usa/mercury/flights/mr-3-freedom-7/README.md) | 5 May 1961 | Shepard | Mercury-Redstone | ● | ● | ● |
+| [Mercury-Redstone 4, *Liberty Bell 7*](missions/usa/mercury/flights/mr-4-liberty-bell-7/README.md) | 21 Jul 1961 | Grissom | Mercury-Redstone | ● | ● | ● |
+| [Vostok 2, *Oryol*](missions/ussr/vostok/flights/vostok-2/README.md) | 6 Aug 1961 | Titov | Vostok 8K72K | ● | ● | ● |
+| [Mercury-Atlas 6, *Friendship 7*](missions/usa/mercury/flights/ma-6-friendship-7/README.md) | 20 Feb 1962 | Glenn | Mercury-Atlas | ● | ● | ● |
+| [Mercury-Atlas 7, *Aurora 7*](missions/usa/mercury/flights/ma-7-aurora-7/README.md) | 24 May 1962 | Carpenter | Mercury-Atlas | ● | ● | ● |
+| [Vostok 3, *Sokol*](missions/ussr/vostok/flights/vostok-3/README.md) | 11 Aug 1962 | Nikolayev | Vostok 8K72K | ● | ● | ● |
+| [Vostok 4, *Berkut*](missions/ussr/vostok/flights/vostok-4/README.md) | 12 Aug 1962 | Popovich | Vostok 8K72K | ● | ● | ● |
+| [Mercury-Atlas 8, *Sigma 7*](missions/usa/mercury/flights/ma-8-sigma-7/README.md) | 3 Oct 1962 | Schirra | Mercury-Atlas | ● | ● | ● |
+| [Mercury-Atlas 9, *Faith 7*](missions/usa/mercury/flights/ma-9-faith-7/README.md) | 15 May 1963 | Cooper | Mercury-Atlas | ● | ● | ● |
+| [Vostok 5, *Yastreb*](missions/ussr/vostok/flights/vostok-5/README.md) | 14 Jun 1963 | Bykovskiy | Vostok 8K72K | ● | ● | ● |
+| [Vostok 6, *Chayka*](missions/ussr/vostok/flights/vostok-6/README.md) | 16 Jun 1963 | Tereshkova | Vostok 8K72K | ● | ● | ● |
+| [Voskhod 1, *Rubin*](missions/ussr/voskhod/flights/voskhod-1/README.md) | 12 Oct 1964 | Komarov, Feoktistov, Yegorov | Voskhod 11A57 | ● | ● | ● |
+| [Voskhod 2, *Almaz*](missions/ussr/voskhod/flights/voskhod-2/README.md) | 18 Mar 1965 | Belyayev, Leonov | Voskhod 11A57 | ● | ● | ● |
+| [Gemini 3, *Molly Brown*](missions/usa/gemini/flights/gt-3/README.md) | 23 Mar 1965 | Grissom, Young | Titan II GLV | ● | ● | ● |
+| [Gemini IV](missions/usa/gemini/flights/gt-4/README.md) | 3 Jun 1965 | McDivitt, White | Titan II GLV | ● | ● | · |
+| [Gemini V](missions/usa/gemini/flights/gt-5/README.md) | 21 Aug 1965 | Cooper, Conrad | Titan II GLV | ● | ● | · |
+| [Gemini VII](missions/usa/gemini/flights/gt-7/README.md) | 4 Dec 1965 | Borman, Lovell | Titan II GLV | ● | ● | · |
+| [Gemini VI-A](missions/usa/gemini/flights/gt-6a/README.md) | 15 Dec 1965 | Schirra, Stafford | Titan II GLV | ● | ● | · |
+| [Gemini VIII](missions/usa/gemini/flights/gt-8/README.md) | 16 Mar 1966 | Armstrong, Scott | Titan II GLV | ● | ● | · |
+| [Gemini IX-A](missions/usa/gemini/flights/gt-9a/README.md) | 3 Jun 1966 | Stafford, Cernan | Titan II GLV | ● | ● | · |
+| [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | · | · |
+| [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
+| [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | · | · |
+
+Four launch sites are built: Site 1 at Tyuratam (Vostok and Voskhod), and Complexes 5
+(Mercury-Redstone), 14 (Mercury-Atlas) and 19 (Gemini) at Cape Canaveral. A site is built once and
+dated, so a later flight from the same pad adds what had changed and keeps the rest.
+
+## The numbers are labelled
+
+The models are the inventory for a simulator, so they have to be right, and where they are not yet
+right the repository says so.
+
+- Every figure carries how sure we are of it: **documented** (a published figure, with its document
+  and page), **assumed** (the type's figure, taken for this unit), **derived** (computed from
+  documented ones) or **estimated** (read off photographs). The Specs and Motors tabs show which.
+- The simulator refuses to depend on estimates, fits nothing to make a result come out, and where
+  its run misses the record the miss is written down.
+- Each hardware note ends with what its model gets wrong or leaves out.
+- The Sun, Moon and planets are placed from JPL's DE440 ephemeris, the weather from the day's
+  observations and ERA5. Nothing in the sky is placed by hand.
+
+[docs/sources.md](docs/sources.md) is the bibliography, including what we know of and have not read.
+
+## Keys
+
+The legend at the bottom left of the page (`?`) lists every key and gesture for where you are. The
+ones worth knowing first:
+
+| Where | Keys |
+| --- | --- |
+| Anywhere | drag to orbit, scroll to zoom · `T` cel shading · `H` hide the panels |
+| Gallery | `Y` cutaway · `C` sit in the cabin · `G` a person for scale · `N` `B` the next part, the one before |
+| Launch site | `P` run or stop the clock · `[` `]` slower, faster · `C` the next camera · `V` walk as the crew · `U` sound |
+| On foot | `W` `A` `S` `D` walk · `Shift` run · `Space` jump · `E` act on what you face · `C` eyes or over the shoulder |
+| Fly | `L` fly it yourself · `Space` the next event · `W` `S` `A` `D` `Q` `E` pitch, yaw, roll · `G` guidance · `J` path · `I` navball |
+| The Lineup | `P` spacecraft alone · `X` stand another beside it · `O` open its gallery |
+
+## Run it
 
 ```sh
 pnpm install
-pnpm dev        # http://localhost:5180
+pnpm dev        # http://localhost:5180, with hot reload
 pnpm check      # typecheck, lint, format check, tests
-pnpm models     # rebuild the models (needs Blender 5)
+pnpm build      # a production bundle in dist/
 ```
 
-Each flight is one scene with three things to study: its **vehicle**, standing on its **launch
-pad**, with its **crew**. Choosing a section, or clicking a model, flies the camera there. And it
-can be flown.
-
-- **Three places.** A flight opens in its **Gallery**: the vehicle alone in a studio, taken apart
-  with every part named, cut open, a person beside it for scale. From there go on to its **Launch
-  site** and to **Fly**; a place not built yet says so.
-- **The Lineup.** From the front page: every vehicle built so far side by side on one floor at one
-  scale, in the order they flew, with a person beside each. Choose one to read its story, its crew
-  and its figures; stand two together to compare them; see the spacecraft alone, or one
-  programme's section; a timeline of the race runs under the row.
-- **Look.** Drag to orbit, scroll to zoom, or let the view drift round on its own; `C` steps through
-  the camera's views and the screen says which one it is in. Choose a part to fly to it and read
-  about it; click a window to look in.
-- **Fly it.** **Fly it** by the clock (or `L`) puts the vehicle on the pad under your hands: `Space`
-  lights the engine and then sets off each event, `W A S D` steer, `G` hands the steering to the
-  guidance or takes it back. It is a rigid body under real gravity, air and thrust, flown from the
-  flight's own recorded figures; at the end your flight is set beside the one that was flown.
-- **Watch it fly.** Run the clock (`P`) and the recorded flight goes from liftoff to splashdown,
-  with the simulator's run laid against the reports' figures in the **Flight** tab.
-- **Take it apart.** The slider explodes the vehicle; on the pad it runs the morning of the launch,
-  from the gantry round the rocket to the pad cleared. **Cutaway** opens the capsule and booster.
-- **Walk.** `V`, the **Walk** button in the Crew section, or a double-click on the pilot puts you
-  on the pad on foot; Space jumps.
-- **Cel shading** (or `T`) redraws the whole scene as an inked drawing.
-- **Check the numbers.** The **Specs** and **Motors** tabs mark each figure as documented, assumed
-  from its type, derived or estimated.
-
-The legend at the bottom left of the page lists every key and gesture.
-
-| Flight | Nation | Date | Record | Models |
-| --- | --- | --- | --- | --- |
-| Vostok 1 | USSR | 12 April 1961 | [flight](missions/ussr/vostok/flights/vostok-1/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-1/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) · [site](missions/ussr/places/tyuratam/site-1.md) | [flight's fit](missions/ussr/vostok/flights/vostok-1/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Mercury-Redstone 3, *Freedom 7* | USA | 5 May 1961 | [flight](missions/usa/mercury/flights/mr-3-freedom-7/README.md) · [spacecraft](missions/usa/mercury/flights/mr-3-freedom-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/redstone-mrlv.md) · [pad](missions/usa/places/cape-canaveral/lc-5.md) · [suit](missions/usa/mercury/crew/mark-iv-suit.md) | [capsule](missions/usa/mercury/flights/mr-3-freedom-7/model/vehicle.py) · [booster](missions/usa/mercury/vehicles/redstone_mrlv.py) · [pad](missions/usa/places/cape-canaveral/lc5/) · [suit](missions/usa/mercury/crew/mark_iv_suit.py) |
-| Mercury-Redstone 4, *Liberty Bell 7* | USA | 21 July 1961 | [flight](missions/usa/mercury/flights/mr-4-liberty-bell-7/README.md) · [spacecraft](missions/usa/mercury/flights/mr-4-liberty-bell-7/spacecraft.md) · [what it shared with Freedom 7](missions/usa/mercury/vehicles/mercury-capsule.md) · [launch vehicle](missions/usa/mercury/vehicles/redstone-mrlv.md) · [pad](missions/usa/places/cape-canaveral/lc-5.md) | [capsule No. 11](missions/usa/mercury/flights/mr-4-liberty-bell-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_11.py) · [shared](missions/usa/mercury/vehicles/mercury_capsule.py) · [booster](missions/usa/mercury/vehicles/redstone_mrlv.py) |
-| Vostok 2 | USSR | 6 August 1961 | [flight](missions/ussr/vostok/flights/vostok-2/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-2/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-2/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Mercury-Atlas 6, *Friendship 7* | USA | 20 February 1962 | [flight](missions/usa/mercury/flights/ma-6-friendship-7/README.md) · [spacecraft](missions/usa/mercury/flights/ma-6-friendship-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/atlas-lv3b.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-14.ts) | [capsule No. 13](missions/usa/mercury/flights/ma-6-friendship-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_13.py) · [the orbital capsules](missions/usa/mercury/vehicles/mercury_orbital.py) · [Atlas](missions/usa/mercury/vehicles/atlas_lv3b.py) |
-| Mercury-Atlas 7, *Aurora 7* | USA | 24 May 1962 | [flight](missions/usa/mercury/flights/ma-7-aurora-7/README.md) · [spacecraft](missions/usa/mercury/flights/ma-7-aurora-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/atlas-lv3b.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-14.ts) | [capsule No. 18](missions/usa/mercury/flights/ma-7-aurora-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_18.py) · [Atlas](missions/usa/mercury/vehicles/atlas_lv3b.py) |
-| Vostok 3 | USSR | 11 August 1962 | [flight](missions/ussr/vostok/flights/vostok-3/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-3/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-3/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Vostok 4 | USSR | 12 August 1962 | [flight](missions/ussr/vostok/flights/vostok-4/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-4/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-4/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Mercury-Atlas 8, *Sigma 7* | USA | 3 October 1962 | [flight](missions/usa/mercury/flights/ma-8-sigma-7/README.md) · [spacecraft](missions/usa/mercury/flights/ma-8-sigma-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/atlas-lv3b.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-14.ts) | [capsule No. 16](missions/usa/mercury/flights/ma-8-sigma-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_16.py) · [Atlas](missions/usa/mercury/vehicles/atlas_lv3b.py) |
-| Mercury-Atlas 9, *Faith 7* | USA | 15 May 1963 | [flight](missions/usa/mercury/flights/ma-9-faith-7/README.md) · [spacecraft](missions/usa/mercury/flights/ma-9-faith-7/spacecraft.md) · [launch vehicle](missions/usa/mercury/vehicles/atlas-lv3b.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-14.ts) | [capsule No. 20](missions/usa/mercury/flights/ma-9-faith-7/model/vehicle.py) · [its cabin](missions/usa/mercury/vehicles/mercury_cabin_20.py) · [Atlas](missions/usa/mercury/vehicles/atlas_lv3b.py) |
-| Vostok 5 | USSR | 14 June 1963 | [flight](missions/ussr/vostok/flights/vostok-5/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-5/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-5/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Vostok 6 | USSR | 16 June 1963 | [flight](missions/ussr/vostok/flights/vostok-6/README.md) · [spacecraft](missions/ussr/vostok/flights/vostok-6/spacecraft.md) · [the 3KA](missions/ussr/vostok/vehicles/vostok-3ka.md) · [launch vehicle](missions/ussr/vostok/vehicles/vostok-8k72k.md) | [flight's fit](missions/ussr/vostok/flights/vostok-6/model/vehicle.py) · [spacecraft](missions/ussr/vostok/vehicles/vostok_3ka.py) · [launch vehicle](missions/ussr/vostok/vehicles/vostok_8k72k/__init__.py) |
-| Voskhod 1 | USSR | 12 October 1964 | [flight](missions/ussr/voskhod/flights/voskhod-1/README.md) · [spacecraft](missions/ussr/voskhod/flights/voskhod-1/spacecraft.md) · [the Voskhod](missions/ussr/voskhod/vehicles/voskhod.md) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod-11a57.md) · [what the crew wore](missions/ussr/voskhod/crew/flight-suit.md) | [flight's fit](missions/ussr/voskhod/flights/voskhod-1/model/vehicle.py) · [spacecraft](missions/ussr/voskhod/vehicles/voskhod.py) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod_11a57/__init__.py) · [crew](missions/ussr/voskhod/crew/flight_suit.py) |
-| Voskhod 2 | USSR | 18 March 1965 | [flight](missions/ussr/voskhod/flights/voskhod-2/README.md) · [spacecraft](missions/ussr/voskhod/flights/voskhod-2/spacecraft.md) · [the Voskhod](missions/ussr/voskhod/vehicles/voskhod.md) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod-11a57.md) · [suit](missions/ussr/voskhod/crew/berkut.md) | [flight's fit](missions/ussr/voskhod/flights/voskhod-2/model/vehicle.py) · [spacecraft](missions/ussr/voskhod/vehicles/voskhod.py) · [launch vehicle](missions/ussr/voskhod/vehicles/voskhod_11a57/__init__.py) · [suit](missions/ussr/voskhod/crew/berkut.py) |
-| Gemini-Titan 3, "Molly Brown" | USA | 23 March 1965 | [flight](missions/usa/gemini/flights/gt-3/README.md) · [spacecraft](missions/usa/gemini/flights/gt-3/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 3 on GLV-3](missions/usa/gemini/flights/gt-3/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
-| Gemini-Titan 4 (Gemini IV) | USA | 3 June 1965 | [flight](missions/usa/gemini/flights/gt-4/README.md) · [spacecraft](missions/usa/gemini/flights/gt-4/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 4 on GLV-4](missions/usa/gemini/flights/gt-4/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
-| Gemini-Titan 5 (Gemini V) | USA | 21 August 1965 | [flight](missions/usa/gemini/flights/gt-5/README.md) · [spacecraft](missions/usa/gemini/flights/gt-5/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 5 on GLV-5](missions/usa/gemini/flights/gt-5/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
-| Gemini-Titan 7 (Gemini VII) | USA | 4 December 1965 | [flight](missions/usa/gemini/flights/gt-7/README.md) · [spacecraft](missions/usa/gemini/flights/gt-7/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 7 on GLV-7](missions/usa/gemini/flights/gt-7/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
-| Gemini-Titan 6A (Gemini VI-A) | USA | 15 December 1965 | [flight](missions/usa/gemini/flights/gt-6a/README.md) · [spacecraft](missions/usa/gemini/flights/gt-6a/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 6 on GLV-6](missions/usa/gemini/flights/gt-6a/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) |
-| Gemini-Titan 8 (Gemini VIII) | USA | 16 March 1966 | [flight](missions/usa/gemini/flights/gt-8/README.md) · [spacecraft](missions/usa/gemini/flights/gt-8/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [Agena target](missions/usa/gemini/vehicles/agena-target-vehicle.md) · [docking adapter](missions/usa/gemini/vehicles/target-docking-adapter.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 8 on GLV-8, and its target](missions/usa/gemini/flights/gt-8/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) · [Agena target](missions/usa/gemini/vehicles/agena_target_vehicle.py) · [docking adapter](missions/usa/gemini/vehicles/target_docking_adapter.py) |
-| Gemini-Titan 9A (Gemini IX-A) | USA | 3 June 1966 | [flight](missions/usa/gemini/flights/gt-9a/README.md) · [spacecraft](missions/usa/gemini/flights/gt-9a/spacecraft.md) · [launch vehicle](missions/usa/gemini/vehicles/titan-ii-glv.md) · [ATDA](missions/usa/gemini/vehicles/atda.md) · [docking adapter](missions/usa/gemini/vehicles/target-docking-adapter.md) · [where it flew from](missions/usa/places/cape-canaveral/lc-19.ts) | [spacecraft No. 9 on GLV-9, and its target](missions/usa/gemini/flights/gt-9a/model/vehicle.py) · [the Gemini spacecraft](missions/usa/gemini/vehicles/gemini_spacecraft.py) · [Titan II](missions/usa/gemini/vehicles/titan_ii_glv.py) · [ATDA](missions/usa/gemini/vehicles/atda.py) · [docking adapter](missions/usa/gemini/vehicles/target_docking_adapter.py) |
-| Apollo 7 | USA | 11 October 1968 | [flight](missions/usa/apollo/flights/apollo-7/README.md) · [CSM-101](missions/usa/apollo/flights/apollo-7/spacecraft.md) · [Saturn IB SA-205](missions/usa/apollo/vehicles/saturn-ib.md) | [launch stack and cutaway](missions/usa/apollo/flights/apollo-7/model/vehicle.py) · [command and service modules](missions/usa/apollo/vehicles/apollo_csm.py) · [Saturn IB](missions/usa/apollo/vehicles/saturn_ib.py) |
-| Apollo 8 | USA | 21 December 1968 | [flight](missions/usa/apollo/flights/apollo-8/README.md) · [CSM-103](missions/usa/apollo/flights/apollo-8/spacecraft.md) · [Saturn V SA-503](missions/usa/apollo/vehicles/saturn-v.md) | [launch stack and lunar spacecraft](missions/usa/apollo/flights/apollo-8/model/vehicle.py) |
-| Apollo 9 | USA | 3 March 1969 | [flight](missions/usa/apollo/flights/apollo-9/README.md) · [Gumdrop](missions/usa/apollo/flights/apollo-9/spacecraft.md) · [Spider](missions/usa/apollo/vehicles/lunar-module.md) | [SA-504 stack](missions/usa/apollo/flights/apollo-9/model/vehicle.py) · [deployed LM-3](missions/usa/apollo/flights/apollo-9/model/spider.py) |
-
-## Programmes
-
-What there is to build, in the order it flew. A flight's page says which of its places are built yet;
-the next flights are listed in [missions/upcoming.ts](missions/upcoming.ts).
-
-| Programme | Nation | Crewed flights | What it adds |
-| --- | --- | --- | --- |
-| Vostok | USSR | 1961 to 1963 | The first spacecraft; Baikonur |
-| Mercury | USA | 1961 to 1963 | Redstone and Atlas; Cape Canaveral |
-| Voskhod | USSR | 1964 to 1965 | Three aboard; the first spacewalk |
-| Gemini | USA | 1965 to 1966 | Two aboard, Titan II, rendezvous and docking |
-| Soyuz | USSR, Russia | 1967 onward | The longest-serving crewed spacecraft |
-| Apollo | USA | 1968 to 1972 | Saturn IB and Saturn V; lunar orbit and the Moon |
-| Salyut, Skylab, Apollo-Soyuz | USSR, USA | 1971 to 1986 | The first space stations |
-| Space Shuttle, Mir | USA, USSR and Russia | 1981 to 2011 | A reusable orbiter; a station built in orbit |
-| International Space Station | many | 1998 onward | A station crewed without a break since 2000 |
-| Shenzhou and Tiangong | China | 2003 onward | China's crewed spacecraft and its own stations |
-| Commercial crew | USA | 2020 onward | Crew Dragon and Starliner |
-| Artemis | USA and partners | 2020s | Orion and the Space Launch System; back to the Moon |
-
-The dates are the published ones; each flight's own record, with sources, is written when the
-flight is built.
+The models are committed, so Blender is needed only to change one: `pnpm model <flight>` rebuilds a
+flight's GLBs from its scripts with Blender 5, headless. `nix develop` gives a shell with everything
+the checks need.
 
 ## How it is made
 
-The models are generated by Python scripts run through Blender, so every dimension is a line of
-code with a comment, and each is built at three levels of detail. The simulator is plain TypeScript
-(`src/sim/`): every input carries how sure we are of it, nothing is fitted to make a result come
-out, and where it misses the record the miss is written down. The rules are in
-[AGENTS.md](AGENTS.md), with the detail of each part under [docs/agents/](docs/agents/). What it
-all rests on is in [docs/sources.md](docs/sources.md).
+- **Models** are Python scripts run through Blender, in the units of the drawings they came from, so
+  every dimension is a line of code with its source beside it. Each is built at three levels of detail.
+- **The viewer** is three.js and strict TypeScript with no framework. Positions are doubles drawn from
+  the eye, so a pad on a full-size Earth and a lunar module's switch panel share one scene.
+- **The world** (`src/world/`) is the Earth to scale, the Moon, the Sun and the clock, tested against
+  published values. **The simulator** (`src/sim/`) is a rigid body under gravity, air and thrust.
+- **Sound** is synthesised; there are no audio files.
 
-Where this is going: a simulator in which you run a space programme (USA, USSR, and those that
-came later) from the first flights to the present, on hardware modelled to its real specifications.
+```
+missions/<nation>/<programme>/flights/<flight>/   a flight: its data, its record, its model scripts
+missions/<nation>/<programme>/vehicles/, crew/    hardware shared between flights, each with its notes
+missions/<nation>/places/<place>/                 a launch site and what stood there, dated
+src/                                              world, sim, viewer, flight deck, app and UI
+docs/agents/                                      the rules for each part of the code
+```
+
+[AGENTS.md](AGENTS.md) holds the working rules, and [docs/agents/layout.md](docs/agents/layout.md)
+says what every file is for.
+
+## Where it is going
+
+An orbital space programme for our own solar system, flown from the first flights to the present on
+hardware modelled to its real specifications, with a person's presence on the ground as well as a
+pilot's in the seat. The programmes, in the order they flew:
+
+| Programme | Nation | Crewed flights | Built |
+| --- | --- | --- | --- |
+| Vostok | USSR | 1961 to 1963 | all 6 |
+| Mercury | USA | 1961 to 1963 | all 6 |
+| Voskhod | USSR | 1964 to 1965 | both |
+| Gemini | USA | 1965 to 1966 | 7 of 10 |
+| Soyuz | USSR, Russia | 1967 onward | |
+| Apollo | USA | 1968 to 1972 | 3 of 11 |
+| Salyut, Skylab, Apollo-Soyuz | USSR, USA | 1971 to 1986 | |
+| Space Shuttle, Mir | USA, USSR and Russia | 1981 to 2011 | |
+| International Space Station | many | 1998 onward | |
+| Shenzhou and Tiangong | China | 2003 onward | |
+| Commercial crew | USA | 2020 onward | |
+| Artemis | USA and partners | 2020s | |
+
+The next flights are listed in [missions/upcoming.ts](missions/upcoming.ts); what is open is in the
+[issues](https://github.com/jamesbrink/space-race/issues).
 
 ## Licence
 

@@ -102,6 +102,7 @@ public/front/                         the front page's picture (committed): the 
 public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; `pnpm ephemeris`, world.md "Baking again"): fetched only when
                                       something asks for it (world/ephemeris.ts `loadEphemeris`)
 docs/sources.md                       every source used or wanted, and what each is good for
+docs/readme/                          the README's pictures (tools/shot.mjs stills as JPEGs, 1400 wide): taken again when what they show changes
 src/
   types.ts                            the barrel: every type a flight's data has, gathered from types/ (and Confidence, Measure)
   types/flight.ts                     Flight, SitedFlight, Spec, Motor, TimelineEvent, FlightCheck
