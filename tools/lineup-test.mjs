@@ -173,6 +173,7 @@ await scenario('card', async () => {
     })),
   );
   const pick = ids[Math.floor(ids.length / 2)];
+  await settle(page);
   const at = await middleOf(page, pick.id);
   await page.mouse.click(at.x, at.y);
   await page.waitForTimeout(1500);
