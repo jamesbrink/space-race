@@ -21,7 +21,7 @@ spacecraft changed the orbit they were in.
 **In this repo: the vehicle in the gallery, and its launch site.** Spacecraft No. 3 on GLV-3 as they
 left the pad can be turned, taken apart as they staged, and cut open. At Complex 19 it stands on the
 thrust mount on the morning of the flight: the erector raised while the crew go up and laid down at
-T−35, Grissom and Young at the foot of the ramp, each a figure to walk the site as, under that
+T−35, Grissom and Young on the approach to the ramp, each a figure to walk the site as, under that
 morning's sky. And it can be flown: Fly takes the flight deck, as flown from the record or taken over (see "The flight
 as flown" below, and [mission.md](mission.md)).
 
@@ -327,3 +327,5 @@ shingles bare metal. The model has not been compared with the ship as it is kept
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 3".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

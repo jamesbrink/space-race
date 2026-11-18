@@ -371,13 +371,12 @@ export const lc14Pad = (m: { url: string; slider: [string, string]; sequence: Ke
 });
 
 /**
- * Where a flight's pilot is shown standing: on the paving east of the service structure's foot, a few steps from its lift,
- * his back to it so that it stands up behind him. Where each man actually stood is not the point: he came from the transfer
+ * Where a flight's pilot is shown standing: on the paving east of the service structure's foot, facing the vehicle on the approach to its lift. Where each man actually stood is not the point: he came from the transfer
  * van and went up. Estimated. A flight gives its own figure (`url`, `scale`, its words for the suit's parts) and the instant
  * he is shown at (`at`, seconds from liftoff), which is when its record has him go up the gantry.
  */
-const PILOT_FACING = Math.PI / 2; // toward +X, away from the structure
-const PILOT = { position: [62 * FT, -22 * FT, 0.6] as [number, number, number], rotationY: PILOT_FACING };
+const PILOT_FACING = Math.atan2(-32, -5); // from the approach toward the vehicle
+const PILOT = { position: [32, -22 * FT, 5] as [number, number, number], rotationY: PILOT_FACING };
 const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [
   Math.sin(PILOT_FACING + aside),
   lift,

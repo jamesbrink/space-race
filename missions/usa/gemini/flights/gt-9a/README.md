@@ -32,7 +32,7 @@ the two halves of its shroud open about thirty degrees and held by a band and tw
 stood alone (`#usa/gemini/gt-9a/gallery/docking-target`), taken apart and cut open. At Complex 19 the
 vehicle stands on the thrust mount on the morning of the flight, without the target, which went up
 from Complex 14 two days before: the erector raised while the crew go up and laid down from T−55,
-Stafford and Cernan at the foot of the ramp, Cernan in the cover for going outside with its legs of
+Stafford and Cernan on the approach to the ramp, Cernan in the cover for going outside with its legs of
 Chromel-R, each a figure to walk the site as, under that morning's sky. Complex 14 and the flight
 itself are not built.
 
@@ -206,7 +206,7 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
   the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. Every time of the morning is estimated.
 - **Complex 14** and the Atlas that carried the target (issue #34): at the site the target is not drawn.
-- **The crew in their seats.** Stafford and Cernan stand at the foot of the ramp in the G4C
+- **The crew in their seats.** Stafford and Cernan stand on the approach to the ramp in the G4C
   ([g4c-suit.md](../../crew/g4c-suit.md)), Cernan's let out over its cover for going outside and its legs
   of Chromel-R; his overvisor is not built, and whether it was on his helmet at the pad is not
   settled. Cernan's stature is not in any NASA source read: 6 ft is taken. The seats are empty.
@@ -240,3 +240,5 @@ and the flown ship has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 8 and Gemini-Titan 9A".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

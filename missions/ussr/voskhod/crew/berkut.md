@@ -4,7 +4,7 @@ What [berkut.py](berkut.py) builds, and how far to trust it. The Berkut ("golden
 by Plant No. 918 at Tomilino (Zvezda) for Voskhod 2: the first suit a man went outside in. Both men
 wore one. The figure is [figurelib](../../../../tools/blender/figurelib.py)'s man carried to each
 man's stature, in a garment module of its own; it is not the Vostok's SK-1 dressed up. It is built
-only seated, in a Voskhod couch (`build_seated`), visor down; the pack Leonov wore outside is built
+standing for the launch site and seated in a Voskhod couch (`build_seated`), visor down; the pack Leonov wore outside is built
 by itself (`build_pack`), because it was put on in orbit.
 
 **Confidence**: *documented* is a published figure or statement; *estimated* was read off

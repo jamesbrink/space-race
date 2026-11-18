@@ -88,7 +88,7 @@ export const standing = (m: {
   backdrop: 'ground',
   parts: m.parts,
   position: m.at,
-  rotationY: -Math.PI / 2,
+  rotationY: Math.atan2(-m.at[0], -m.at[2]),
   walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
   wide: false,
   specGroups: ['Pressure suit'],

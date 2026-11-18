@@ -34,6 +34,7 @@
     "test:mem": "node tools/mem-test.mjs",
     "test:wheels": "node tools/wheels-test.mjs",
     "test:seat": "node tools/seat-test.mjs",
+    "test:crew-start": "node tools/crew-start-test.mjs",
     "test:walk": "node tools/walk-test.mjs",
     "test:operate": "node tools/operate-test.mjs",
     "test:sound": "node tools/sound-test.mjs",

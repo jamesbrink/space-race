@@ -16,7 +16,7 @@ snow before they could be got out. Backups: Dmitriy Zaikin and Yevgeniy Khrunov.
 | Launch vehicle (11A57 No. R15000-05) | **built**: [voskhod-11a57.md](../../vehicles/voskhod-11a57.md), with the blister on the fairing over the folded airlock. The blister's form is ours |
 | Crew in the couches | **built**: Belyayev and Leonov in the Berkut suit ([berkut.md](../../crew/berkut.md)), to their documented statures, visors down; and beside Leonov the pack he wore outside, which was put on in orbit |
 | Launch site (Site 1 on 18 March 1965) | **built**: [pad.ts](pad.ts), [model/pad.py](model/pad.py), the site's modules at that date. No bus: none is in anything read for this morning. As Voskhod 1's, the pad is built as it stood for the Vostoks, its lift short of the ship's hatch ([site-1.md](../../../places/tyuratam/site-1.md)) |
-| Crew to be walked as; Leonov outside on his line | not built: the Berkut figure is built only seated |
+| Crew on foot | Belyayev and Leonov wear their own Berkut suits on the approach to the erector stair. Their positions (site X/Z −21/6 and −23/8 m) and headings toward the vehicle are estimated. The record places both men aboard by about 07:30 Moscow time and gives no standing marks. Leonov outside on his line is still unmodelled. |
 | The day's weather as data | **written**: [weather.ts](weather.ts), from NOAA ISD at Kazalinsk and Aralsk (eight oktas of stratocumulus at about 1,250 m, little wind); the air over the pad from ERA5 ([aloft.ts](aloft.ts)) |
 | Trajectory, the orbit as data, the flight as flown | **written**: [orbital.ts](orbital.ts), flown as [mission.md](mission.md) says; below |
 

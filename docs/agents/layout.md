@@ -346,6 +346,7 @@ tools/
   history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks; a gallery's History tab and its way to the Lineup
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
+  crew-start-test.mjs                 browser check of every walking figure’s starting clearance, sight of the vehicle and route to its foot
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   operate-test.mjs                    browser check of working something by hand on foot at each site, through the eyes and over the shoulder, at 1280 and 390: it is in view, off the figure, read out, and the view comes back
   front-test.mjs                      browser check of the front page: what a bare address shows, going into a flight and back out, what it draws when, what it holds as a phone

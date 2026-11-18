@@ -453,7 +453,7 @@ const crew = standing({
   scale: 'Frank Borman · 1.78 m, 1.83 m suited · to scale',
   parts: g5cParts('Borman'),
   height: 1.829,
-  at: [9.6, 0, -2.5],
+  at: [15, 0, -7],
   boarding: ARRIVED,
 });
 const pilot = standing({
@@ -463,7 +463,7 @@ const pilot = standing({
   scale: 'James A. Lovell Jr. · 1.83 m, 1.87 m suited · to scale',
   parts: g5cParts('Lovell'),
   height: 1.874,
-  at: [10.6, 0, -3.5],
+  at: [21, 0, -7],
   boarding: ARRIVED,
 });
 

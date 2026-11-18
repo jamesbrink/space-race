@@ -363,3 +363,5 @@ Moon* gallery in Washington, DC.
 
 [docs/sources.md](../../../../../docs/sources.md). This page rests on the *Postlaunch Report for
 Mercury-Redstone No. 3* (event table, sections 2 to 6) and TM X-53107 Table 8-1.
+
+Shepard starts on the apron at site X/Z −9.4/3.2 m facing the Redstone. The standing mark and heading are estimated.

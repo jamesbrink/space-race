@@ -21,7 +21,7 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 they left the pad can be turned, taken apart as they staged, and cut open: the radar on its nose,
 the fuel cells and their tanks in the adapter, the pod hung in its middle. At Complex 19 it stands
 on the thrust mount on the morning of the flight: the erector raised while the crew go up and laid
-down at T−35, Cooper and Conrad at the foot of the ramp in their G4C suits, each a figure to walk
+down at T−35, Cooper and Conrad on the approach to the ramp in their G4C suits, each a figure to walk
 the site as, under that morning's sky. The flight itself is not built: see "What is not built" below.
 
 ## The name
@@ -183,7 +183,7 @@ drawn: the report has none at liftoff, and the station's cumulus at 660 m is of 
 - **Of the launch site** ([lc-19.md](../../../places/cape-canaveral/lc-19.md), which lists it all): the people of
   the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. The morning's times are the plan's, and how long each motion took is estimated.
-- **The crew in their seats.** Cooper and Conrad stand at the foot of the ramp in the G4C suit,
+- **The crew in their seats.** Cooper and Conrad stand on the approach to the ramp in the G4C suit,
   without the outer cover Gemini IV's pilot had ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are
   empty. The red-lettered label under Cooper's name tag (S65-28740) and the flight's emblem, whose
   place on the suits nothing read gives, are not built.
@@ -227,3 +227,5 @@ has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 5".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

@@ -326,3 +326,5 @@ model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md).
+
+Grissom starts on the apron at site X/Z 7.92/1.83 m on the approach to the Redstone. The standing mark and heading are estimated.

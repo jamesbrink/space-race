@@ -217,7 +217,7 @@ m/s), each with its confidence; the air aloft is ERA5's (`aloft.ts`).
 - **Complex 14**, which the Agena left from that morning (issue #34): at the site the Agena is not
   drawn, and Complex 14 stands as the Cape's stand-in for it.
 - **The Atlas** that carried the Agena, the adapter between them and the shroud.
-- **The crew in their seats.** Armstrong and Scott stand at the foot of the ramp in the G4C
+- **The crew in their seats.** Armstrong and Scott stand on the approach to the ramp in the G4C
   ([g4c-suit.md](../../crew/g4c-suit.md)), Scott's let out over its cover for going outside; his overvisor
   is not built, and whether it was on his helmet at the pad is not settled (the mission report has it
   "added", the press kit "carried"). Scott's stature is not in any NASA source read: 6 ft is taken.
@@ -263,3 +263,5 @@ has been read, and the flown ship has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 8 and Gemini-Titan 9A".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

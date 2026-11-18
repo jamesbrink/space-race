@@ -210,3 +210,5 @@ hatch, and for nothing that a restorer could have changed.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Mercury-Atlas 9".
+
+The walking figure starts on the paving beside the stand, facing the Atlas. His exact standing mark (32 m from the site origin in X, 5 m in Z) and heading are estimated.

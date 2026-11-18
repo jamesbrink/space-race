@@ -328,6 +328,7 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   shifts sideways as it rises, in metres in the car's parent's frame; `stop_names` names them.
   What a flight declares for a node is not offered a second time from the node's mark. A driven node has the same name at every level of detail and
   is not also in the part's slider `moves`.
+- **Crew starting places.** `pnpm test:crew-start` enters the walk as each crew member on every flight with a site. It checks footing and clearance, takes three metres of steps, checks line of sight from the eyes to the vehicle through the walk solids, then walks to the approach recorded for that pad.
 - **A site is walked by a test.** `pnpm test:walk` (tools/walk-test.mjs; needs the dev server) goes on foot in the
   running page with the real W key held, steering for one point after another along ways a person could really have
   gone, and fails a leg that does not arrive, that falls, that never takes hold of its ladder, or that ends with the

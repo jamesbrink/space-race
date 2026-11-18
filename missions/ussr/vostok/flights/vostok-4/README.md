@@ -213,3 +213,5 @@ and Vostok 4".
 6. Semenov (ed.), *RKK Energia 1946–1996*, p. 116: the filming programme.
 7. The film *Звёздные братья* (1962): the morning at the pad, his helmet, the received pictures.
 8. Zak, RussianSpaceWeb, "Joint flight of Vostok-3 and Vostok-4".
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

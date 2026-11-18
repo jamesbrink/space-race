@@ -23,7 +23,7 @@ that ended 120 ft from Gemini 7.
 be turned, taken apart as they staged, and cut open: the radar and the three latch receptacles
 on its nose, the three batteries, the one water tank and the doubled propellant tanks in the
 adapter. At Complex 19 it stands on the thrust mount on the morning of 15 December: the erector
-raised while the crew go up and laid down at T−35, Schirra and Stafford at the foot of the ramp in
+raised while the crew go up and laid down at T−35, Schirra and Stafford on the approach to the ramp in
 their G4C suits, each a figure to walk the site as, under that morning's sky. The flight itself is
 not built: see "What is not built" below.
 
@@ -242,7 +242,7 @@ the air aloft is ERA5's (`aloft.ts`).
   the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. Every time of the morning is estimated, from the plan. The shutdown of 12 December is
   told, not played.
-- **The crew in their seats.** Schirra and Stafford stand at the foot of the ramp in the G4C suit
+- **The crew in their seats.** Schirra and Stafford stand on the approach to the ramp in the G4C suit
   (*Midprogram Conference*, p. 64; [g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty. The
   flight's hexagonal emblem (NASA S65-55983), on the suits by NASA S65-61916, is not built.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
@@ -294,3 +294,5 @@ has been read, and the flown ship has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 7 and Gemini-Titan 6A".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.
