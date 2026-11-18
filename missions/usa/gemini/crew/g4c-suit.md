@@ -6,8 +6,7 @@ flight" (the Gemini IV mission report, MSC-G-R-65-3, 3.1.2.9.2), and so it is bu
 garment ([g3c_suit.py](g3c_suit.py), [g3c-suit.md](g3c-suit.md)) given what is seen to differ
 (`Garment`): every size and place not named below is the G3C's, and as estimated as it is there.
 
-The figures stand on the deck at Complex 19, each a man the launch site is walked as; none is built
-seated, so the flights' seats are empty. A flight names its own men (`Wearer`) here and builds each
+The figures stand on the deck at Complex 19. McDivitt, White, Cooper and Conrad also sit in their own ejection seats. A flight names its own men (`Wearer`) here and builds each
 with `g3c_suit.build` from its `model/crew.py` and `model/pilot.py`; what is said of their parts in the
 viewer is [g4c-suit.parts.ts](g4c-suit.parts.ts).
 
@@ -128,5 +127,4 @@ Everything [g3c-suit.md](g3c-suit.md) lists of the G3C's garment, and:
 - **Gemini 5's emblem** was approved (*On the Shoulders of Titans*, p. 256), but where it was worn on the
   suits is not in what was read, and S65-28740 does not show it: not built. Nor is the small white label
   lettered in red under Cooper's name tag in the same photograph.
-- **Not built seated.** The seats of the flights from Gemini 4 on are empty: seating a man is
-  fitting the cabin round him (g3c-suit.md, "Seated"), not done for these men.
+- **Seated posture.** The shoulders, hips and knees of the Gemini IV and V crews are posed to clear their suits, seats and hatches. These joint angles and the seat positions are estimates. The later crews stand at the pad.

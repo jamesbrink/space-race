@@ -25,6 +25,9 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "crew"))
+import g3c_suit  # noqa: E402
+import g4c_suit  # noqa: E402
 import gemini_stack  # noqa: E402
 from gemini_spacecraft import POD_AT, POD_COVER_Z, Fit  # noqa: E402
 from gemini_stack import OPEN, TITAN, st  # noqa: E402
@@ -40,11 +43,10 @@ FIT = Fit(
     water_tanks=0,  # spacecraft 4's four small tanks gave way to
     water_spheres=2,  # "two tanks ... the same configuration as the ... OAMS propellant tank" (GV, 3.1.2.3 and Figure 3.1-3)
     pod=True,  # the rendezvous evaluation pod, in the equipment section under a silvered cover (GV, 3.1.2.4.2 and Figure 3.1-4)
-    experiments=(),  # (none of its experiments is modelled: ../spacecraft.md)
+    experiments=("electrostatic-charge",),
+    docking_light=True,  # Gemini V report, 3.1.2.9.1(g); position assumed from the Technical Summary, p.327
     names=("Cooper", "Conrad"),
-    # no crew: both men wore the G4C suit (GV, 3.1.2.9.2), which is built standing, at the pad (../../../crew/g4c_suit.py),
-    # and not seated
-    crew=None,
+    crew=g3c_suit.flight_crew(g4c_suit.COOPER, g4c_suit.CONRAD),
     white_disc=False,  # not known of this ship: it is spacecraft 3's, and not identified
     gmt_clock=True,  # as spacecraft 4: "The time reference system was the same" (GV, 3.1.2.5; GIV, Table 3-I)
 )
@@ -189,15 +191,16 @@ SAYS = {
         "way out is this, an ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows "
         "both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so "
         "that the two do not meet. Nobody ever had to. Its form is the two seats the Smithsonian holds, 22 in wide and 54 "
-        "in tall. The seat is empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
+        "in tall. The seat carries its pilot "
+        "in his G4C suit.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
         "Conrad's seat. Gemini has no escape tower: for the first fifteen thousand feet and again under a failed parachute the "
         "way out is this, an ejection seat on a rocket catapult, as in a fighter. Pulling the ring between the knees blows "
         "both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so "
-        "that the two do not meet. Its form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is "
-        "empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
+        "that the two do not meet. Its form is the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat carries its pilot "
+        "in his G4C suit.",
     ),
     # the launch vehicle
     "Interstage_ExhaustPorts": (

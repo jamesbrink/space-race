@@ -18,6 +18,7 @@ import {
   geminiTitanStack,
   instrument,
   lamp,
+  seats,
   titanEngines,
 } from '../../vehicles/gemini-titan.ts';
 import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
@@ -466,26 +467,6 @@ const cabin: CabinDef = {
   },
 };
 
-/** A seated man's helmet and what is in it (crew/g3c_suit.py: build_helmet), mesh by mesh. */
-const HELMET = [
-  'Shell',
-  'Liner',
-  'VisorSeal',
-  'Head',
-  'Hair',
-  'Eyes',
-  'Irises',
-  'Brows',
-  'Lips',
-  'Earphones',
-  'Microphones',
-  'Visor',
-  'VisorBand',
-  'Pivots',
-  'NeckRing',
-  'NeckRingJoint',
-];
-
 /**
  * When the hatches stood open with the crew going aboard, seconds from liftoff: from their coming up in the elevator,
  * "shortly after 7" (07:10 is taken: estimated), to 07:30, when "they were inside with the hatches sealed" (On the
@@ -503,24 +484,7 @@ const vehicle = lc19Vehicle(
     // level with it. The crew were aboard at 7:30 a.m., 114 min before liftoff (On the Shoulders of Titans, p. 233); when
     // the hatches were shut is not in anything read, and twenty minutes are allowed: estimated. Seen from a seat, its own
     // man's helmet and head are not drawn (`hide`): the eyes are inside them.
-    seats: [
-      {
-        node: 'Seat_CommandPilot',
-        label: 'the command pilot’s seat',
-        from: 'Hatches',
-        open: BOARDING,
-        egress: ['pad'],
-        hide: HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`),
-      },
-      {
-        node: 'Seat_Pilot',
-        label: 'the pilot’s seat',
-        from: 'Hatches',
-        open: BOARDING,
-        egress: ['pad'],
-        hide: HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`),
-      },
-    ],
+    seats: seats(BOARDING, true),
     cabin,
   }),
   BASE,

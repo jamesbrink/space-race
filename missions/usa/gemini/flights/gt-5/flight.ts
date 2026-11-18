@@ -176,8 +176,7 @@ const parts: PartWords[] = [
       'the sleeper, so they slept at the same time. For the last three days there was little they could do but ' +
       'drift. The panels are drawn from McDonnell’s drawing of spacecraft 3’s, with the clock spacecraft 4 added; ' +
       'what this ship changed is not drawn: a monitor for the fuel cells, a panel of warning lamps, a second ' +
-      'manoeuvre controller on the right-hand wall, the switch that threw out the pod. The seats are empty: both ' +
-      'men wore the G4C suit, which is modelled standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s dimensions: its ' +
+      'manoeuvre controller on the right-hand wall, the switch that threw out the pod. Cooper and Conrad sit in their G4C suits. No drawing read gives the pressure vessel’s dimensions: its ' +
       'sizes are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -185,7 +184,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with spacecraft 4’s G.m.t. clock'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', 'two fuel cell sections in the adapter; 4 batteries of 45 Ah here for the way home'],
-      ['Suits', 'G4C, without the outer cover: the two men stand at the pad, the seats are empty'],
+      ['Suits', 'G4C for both men, without the EVA cover'],
     ],
   },
   {
@@ -413,7 +412,7 @@ const vehicle = lc19Vehicle(
     // the crew went aboard at the planned T-100 minutes (the press kit, p. 13: the mission report has them in "at the proper
     // time", 7.1.1.1, and the count ran without a hold); when the hatches were shut is not in what was read: twenty
     // minutes after, estimated
-    seats: seats([-100 * 60, -80 * 60]),
+    seats: seats([-100 * 60, -80 * 60], true),
     views: [
       { id: 'radar', label: 'Radar', nodes: ['RendezvousRecovery'], from: along(-30, 0.9) },
       { id: 'pod', label: 'Pod', nodes: ['RadarEvaluationPod'], from: along(LEFT_AZ + 30, -0.7) },

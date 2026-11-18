@@ -73,6 +73,7 @@ class Garment:
     visor_arm: tuple[float, float] = (0.42, 0.5)  # the visor's arm from its pivot to the band: its middle off the shell, its thickness (cm)
     # A soft hood in place of the helmet (g5c_suit.py): the shell the suit's cloth with its visor sewn in, no pivots and no
     # bright band, and a zip round the neck where the ring was; and with no ring, no tie-down on the chest
+    lap_clearance: float = 0.9  # centimetres from the measured lap to the seat restraint over the personal harness
     hood: bool = False
     insignia: tuple[float, float] = (13.2, 23.0)  # the NASA insignia's middle: under the ring's middle, and round toward his left, degrees
     visor: tuple[float, float, float] | None = None  # its own visor's opening, as VISOR: the helmet's when None
@@ -947,7 +948,7 @@ def seated_key_points() -> dict:
         x = k * 0.158 * B.hip_x
         near = [p for p in belly if abs(p.x - x) < 1.6 and abs(p.y + LAP_BELT) < 2.2]
         if near:
-            worn["lap"].append((x, -LAP_BELT, max(p.z for p in near) + 0.9))
+            worn["lap"].append((x, -LAP_BELT, max(p.z for p in near) + WEARER.garment.lap_clearance))
     # the reel's two straps: from behind each shoulder over it and down to the harness's quick disconnect
     # (in the seat's frame his left is toward -X)
     for side, sx in (("left", 1), ("right", -1)):
@@ -979,3 +980,17 @@ def build_seated(parent: bpy.types.Object, place: Matrix, prefix: str, who: Wear
     if srlib.interior():
         fl.build_posed(parent, place, prefix, seated_rig, build_figure)
     return keys
+
+
+def flight_crew(command_pilot: Wearer, pilot: Wearer):
+    """Put this flight's two wearers against their seat cushions and return the restraint and eye positions."""
+
+    def build_for_seat(name: str, parent, sit: Matrix) -> dict:
+        who = {"CommandPilot": command_pilot, "Pilot": pilot}[name]
+        wear(who)
+        keys = seated_key_points()
+        place = sit @ Matrix.Translation(Vector((0.0, -keys["seat_y"], -keys["back_plane_z"])) * CM)
+        fl.build_posed(parent, place, f"Crew_{name}", seated_rig, build_figure)
+        return {**keys, "place": place, "aboard": True}
+
+    return build_for_seat

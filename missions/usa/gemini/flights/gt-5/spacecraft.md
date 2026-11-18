@@ -25,7 +25,7 @@ them); ***Titans***, *On the Shoulders of Titans*.
 | G.m.t. clock on the command pilot's panel | as spacecraft 4: "The time reference system was the same" | added on that ship | documented | GV, 3.1.2.5 | yes: `gmt_clock=True` |
 | Panels | a fuel cell monitor in place of the ammeter and voltmeter; a panel of warning lamps; a radiometric selector panel; a second manoeuvre controller on the right wall; a range and range-rate indicator; an Agena control panel with the pod's eject switch | | documented | GV, 3.1.2.9.1 | no: the panels are spacecraft 3's with the clock. The range and range-rate indicator is in that drawing already |
 | Telemetry | a fourth transmitter and a UHF whip antenna in the adapter, for experiments; a second tape recorder | | documented | GV, 3.1.2.1 and 3.1.2.2 | no |
-| Suits | G4C, without the overvisor and the cover layer for going outside | G4C with them for the pilot | documented | GV, 3.1.2.9.2 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
+| Suits | G4C, without the overvisor and the cover layer for going outside | G4C with them for the pilot | documented | GV, 3.1.2.9.2 | standing at the pad and seated in the cabin ([g4c-suit.md](../../crew/g4c-suit.md)) |
 | Magnetometer boom's guillotine | not fitted | fitted | documented | GV, 3.1.2.8 | (the boom is spacecraft 4's alone) |
 
 ## The fuel cell module, the radar and the pod
@@ -83,8 +83,7 @@ cable-cutter guillotines (GV, 3.1.2.8); where it was on the ship is not found.
 The type's list is [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "What the model gets wrong or leaves
 out". Of what was No. 5's own:
 
-- **No crew aboard.** The G4C suit is modelled standing, Cooper and Conrad at the foot of the erector, and not
-  seated: the seats are empty, with the harness lying on them.
+- **Crew posture.** Cooper and Conrad wear their own suits and sit in the ejection seats. Their posture and the drape of the restraints are estimated.
 - **The panels are spacecraft 3's**, with spacecraft 4's clock. The fuel cell monitor, the warning lamps, the second
   manoeuvre controller, the Agena control panel and the radiometric selector are not drawn; the pilot's ammeter
   stands where the monitor was.
@@ -104,7 +103,8 @@ out". Of what was No. 5's own:
   side the dipole points. Nothing read shows spacecraft 5's adapter from behind.
 - **The OAMS tanks** are one each of fuel, oxidiser and helium, of the early ships' sizes: SEDR 300 vol. 2's Section
   VIII (Figure 8-96 sheet 1, p. 8-346) has "one tank on S/C 5". Where the helium stands is estimated.
-- **Not built:** the docking light, the radiometry experiments' sensors, the fourth telemetry transmitter and its
+- **Docking light and charge experiment.** The Gemini V report, section 3.1.2.9.1(g), puts the light on the adapter. Its position above the crew is assumed from McDonnell’s *Technical Summary*, p. 327. The MSC-1 sensor carries the conducting screen added for this flight (NASA TM X-56861, experiment 10). Its exact clock angle and the screen weave are estimates.
+- **Not built:** the radiometry experiments' sensors, the fourth telemetry transmitter and its
   antenna, the nose fairing's piston.
 - **The paint** is spacecraft 3's.
 - **The flown ship** has not been compared.

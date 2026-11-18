@@ -26,6 +26,9 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "vehicles"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "mercury", "vehicles"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "gemini", "crew"))
+import g3c_suit  # noqa: E402
+import g4c_suit  # noqa: E402
 import gemini_stack  # noqa: E402
 from gemini_spacecraft import Fit  # noqa: E402
 from gemini_stack import PANES, SKINS, st  # noqa: E402
@@ -38,11 +41,10 @@ FIT = Fit(
     lateral_thrusters=True,  # "The lateral thrusting OAMS TCA's were operational" (GIV, Table 3-I)
     adapter_batteries=6,  # "six silver-zinc batteries" where spacecraft 3 had three (GIV, 3.1.2.6 and Figure 3-11)
     water_tanks=4,  # "four water-storage tanks ... instead of the one flown on GT-3" (GIV, 3.1.2.3 and Figure 3-6)
-    experiments=("proton-electron-spectrometer", "magnetometer"),  # MSC-2 and MSC-3, in the adapter (GIV, 8.4 and 8.5)
+    experiments=("electrostatic-charge", "proton-electron-spectrometer", "magnetometer"),  # MSC-2 and MSC-3, in the adapter (GIV, 8.4 and 8.5)
     names=("McDivitt", "White"),
-    # no crew: both men wore the G4C suit (GIV, 3.1.2.9.2), which is built standing, at the pad (../../../crew/g4c_suit.py),
-    # and not seated
-    crew=None,
+    seat_shift=(0.65, 0.49),  # the taller men need room under the hatches; the seat setting is estimated
+    crew=g3c_suit.flight_crew(g4c_suit.MCDIVITT, g4c_suit.WHITE),
     white_disc=False,  # not known of this ship: it is spacecraft 3's, and not identified
     gmt_clock=True,  # "A G.m.t. clock was added to the command pilot's instrument panel" (GIV, Table 3-I; Figure 3-14)
     right_hatch_opens=True,  # the pilot's hatch was opened in orbit: out at about 4:23, shut again by 5:06 (GIV, 4.1)
@@ -209,7 +211,7 @@ SAYS = {
         "both hatches open and fires both seats up their rails on the bulkhead, which are canted 12° apart and 8° forward so "
         "that the two do not meet. Nobody ever had to. This ship's seats had a safety pin added to the ring, and a flatter "
         "survival kit under the man to give him more room. Its form is the two seats the Smithsonian holds, 22 in wide and "
-        "54 in tall. The seat is empty: the G4C suit both men wore is built standing, at the pad, and not seated.",
+        "54 in tall. The seat carries its pilot in his G4C suit.",
     ),
     "SeatPilot_Frame": (
         "Ejection seat",
@@ -217,8 +219,7 @@ SAYS = {
         "tower: for the first fifteen thousand feet and again under a failed parachute the way out is this, an ejection "
         "seat on a rocket catapult. Pulling the ring between the knees blows both hatches open and fires both seats up "
         "their rails on the bulkhead, which are canted 12° apart and 8° forward so that the two do not meet. Its form is "
-        "the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat is empty: the G4C suit both men wore is "
-        "built standing, at the pad, and not seated.",
+        "the two seats the Smithsonian holds, 22 in wide and 54 in tall. The seat carries its pilot in his G4C suit.",
     ),
     # the launch vehicle
     "Interstage_ExhaustPorts": (

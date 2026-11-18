@@ -212,14 +212,47 @@ export const LIGHTS: NonNullable<ModelDef['lights']> = [
   { position: [0.5, 0.78, 0], colour: 0xfff6ea, intensity: 0.45, reach: 3 },
 ];
 
+const HELMET = [
+  'Shell',
+  'Liner',
+  'VisorSeal',
+  'Head',
+  'Hair',
+  'Eyes',
+  'Irises',
+  'Brows',
+  'Lips',
+  'Earphones',
+  'Microphones',
+  'Visor',
+  'VisorBand',
+  'Pivots',
+  'NeckRing',
+  'NeckRingJoint',
+];
+
 /**
- * The two seats, empty. Each seat's node is where a seated man's eyes come (vehicles/gemini_cabin.py `EYE`: 15 in
- * behind the middle of his window and within 2° of level with it). `open` is when the hatches stood open with the
+ * An occupied seat looks from its wearer's eyes with his head hidden. Empty seats use the common eye point, 15 in
+ * behind the middle of the window and within 2° of level with it. `open` is when the hatches stood open with the
  * crew aboard, seconds from liftoff: the flight says what it rests on.
  */
-export const seats = (open: [number, number]): NonNullable<ModelDef['seats']> => [
-  { node: 'Seat_CommandPilot', label: 'the command pilot’s seat', from: 'Hatches', open, egress: ['pad'] },
-  { node: 'Seat_Pilot', label: 'the pilot’s seat', from: 'Hatches', open, egress: ['pad'] },
+export const seats = (open: [number, number], occupied = false): NonNullable<ModelDef['seats']> => [
+  {
+    node: 'Seat_CommandPilot',
+    label: 'the command pilot’s seat',
+    from: 'Hatches',
+    open,
+    egress: ['pad'],
+    hide: occupied ? HELMET.map((mesh) => `Crew_CommandPilot_Helmet_${mesh}`) : undefined,
+  },
+  {
+    node: 'Seat_Pilot',
+    label: 'the pilot’s seat',
+    from: 'Hatches',
+    open,
+    egress: ['pad'],
+    hide: occupied ? HELMET.map((mesh) => `Crew_Pilot_Helmet_${mesh}`) : undefined,
+  },
 ];
 
 /** The floodlights' red bulbs (SEDR 300, p. 3-20: each fixture had one): the colour is estimated, a red that keeps the eyes dark-adapted. */

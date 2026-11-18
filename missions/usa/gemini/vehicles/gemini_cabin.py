@@ -302,7 +302,7 @@ def bucket_frame() -> Matrix:
     return Matrix.Translation((0, at, 0)) @ Matrix.Rotation(rake, 4, "X") @ Matrix.Translation((0, -at, 0))
 
 
-def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | None:
+def seat(c: Station, name: str, side: int, who: str, say, crew=None, shift=(0.0, 0.0)) -> dict | None:
     """An ejection seat, as the Smithsonian's two are (A19690023001, A19710058000): a channelled back with a faceted
     shroud over the man's head, holed rails behind it, a bucket with arm sides, a guard before the shins and two
     stirrups; on a rocket catapult, on rails on the large bulkhead.
@@ -312,7 +312,7 @@ def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | N
     figurelib's seat frame laid where his back and his seat meet the cushions. With a man aboard the seat's restraint
     is laid over him: the reel's straps over his shoulders to his harness, the lap belt across his lap; and the seat's
     node is at his own eyes. Aboard or not, the build says what room the cabin has for him."""
-    m = seat_frame(side)
+    m = Matrix.Translation((-shift[0] * IN, -side * shift[1] * IN, 0)) @ seat_frame(side)
     fits = crew(name, c.g, rigid(m) @ Matrix.Translation(Vector((0.0, SIT[0], SIT[1])) * IN) @ FIGURE) if crew and interior() else None
     man = fits if fits and fits["aboard"] else None
     R = m.to_3x3().normalized()
@@ -477,7 +477,7 @@ def seat(c: Station, name: str, side: int, who: str, say, crew=None) -> dict | N
 # ------------------------------------------------------------------ the panels
 
 
-def frames() -> dict:
+def frames(console_width: float) -> dict:
     """Each panel's own frame: u to the reader's right, v up it, w toward him."""
     t = PANEL_TILT
     ex0, ey0 = Vector((0.0, 1.0, 0.0)), Vector((math.cos(t), 0.0, math.sin(t)))
@@ -510,7 +510,7 @@ def frames() -> dict:
         corner = V(CB_AT[0], side * CB_AT[1], CB_AT[2] + 6.25 + side * 6.25)  # (forward of the seat's bucket, outboard of the knee)
         out[key] = plane(corner, ex, ey)
     # the centre console between the seats, read from above, and the water management panel on the bulkhead between them
-    out["console"] = plane(V(CONSOLE[0], -CONSOLE[1] / 2, CONSOLE[2]), ex0, Vector((0.0, 0.0, 1.0)))
+    out["console"] = plane(V(CONSOLE[0], -console_width / 2, CONSOLE[2]), ex0, Vector((0.0, 0.0, 1.0)))
     out["water"] = plane(V(WATER[1] - 5.6, 2.4, Z_BULKHEAD + 2 * WATER[2] + 1.6), Vector((0.0, -1.0, 0.0)), Vector((1.0, 0.0, 0.0)))
     return out
 
@@ -952,7 +952,7 @@ def high_rate_oxygen(c: Station, F: Matrix, rg, u: float, v: float, late: int) -
     rg.text("O₂ HI RATE", u, v - 1.13, 0.055, mc.INK)
 
 
-def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool, late: int) -> None:
+def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool, late: int, console_width: float) -> None:
     # ---- overhead: seven rows of eight circuit breakers, a switch at the head of four of them, five pull handles
     F = P["overhead"]
     Wd, Ht = 9.8, 11.4
@@ -1037,7 +1037,7 @@ def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool, late: i
         c.turned("CrewCabin_RedCaps", Q @ Matrix.Translation((-side * 0.8, 1.5, 0.6)), 0.0, 0.0, [(0.42, -0.35), (0.42, 0.35), (0.0, 0.35)], 12)
     # ---- the centre console between the seats: the attitude hand controller at its forward end, the temperature controls
     F = P["console"]
-    wd, mid = CONSOLE[1], CONSOLE[1] / 2
+    wd, mid = console_width, console_width / 2
     rg = plate(c, F, [(0, 0), (wd, 0), (wd, CONSOLE[3]), (0, CONSOLE[3])], sheet, 2.2)
     rg.text("TEMP CONTROL", mid, 6.9, 0.075, mc.INK)
     for v, legend in ((5.6, "SUIT"), (3.6, "CABIN")):
@@ -1209,6 +1209,7 @@ def build(
     names: tuple[str, str],
     say,
     crew=None,
+    seat_shift: tuple[float, float] = (0.0, 0.0),
     gmt_clock: bool = False,
     reentry_switch: bool = True,
     range_indicator: bool = True,
@@ -1230,12 +1231,13 @@ def build(
     M["titanium_ribs"] = M["liner"]
     sheet = Sheet("gemini-panels", 4096)
     faces = Sheet("gemini-faces", 2048, mc.BLACK)
-    P = frames()
+    console_width = CONSOLE[1] - 2 * seat_shift[1]  # keep the console inside the space between the two seat frames
+    P = frames(console_width)
     main_panels(c, P, sheet, faces, gmt_clock, range_indicator, get_clock, late)
-    side_panels(c, P, sheet, reentry_switch, late)
+    side_panels(c, P, sheet, reentry_switch, late, console_width)
     fittings(c, say)
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):
-        seat(c, name, side, who, say, crew)
+        seat(c, name, side, who, say, crew, seat_shift)
     c.finish(MATERIALS, smooth=SMOOTH)
     round_off()
     for sh, key in ((sheet, "panel_main"), (faces, "faces")):

@@ -193,8 +193,7 @@ const parts: PartWords[] = [
       'radio and the thrusters and each other’s elbows kept waking the sleeper. For most of an hour of it the cabin ' +
       'held no air at all, with the right-hand hatch open. The panels are drawn from McDonnell’s drawing of ' +
       'spacecraft 3’s, with the clock this ship added before the command pilot; the other changes, switches moved ' +
-      'from one panel to another, are not drawn. The seats are empty: both men wore the G4C suit, which is modelled ' +
-      'standing, at the foot of the erector, and not seated. No drawing read gives the pressure vessel’s ' +
+      'from one panel to another, are not drawn. McDivitt and White sit in their G4C suits. No drawing read gives the pressure vessel’s ' +
       'dimensions: its sizes are those fitted round the crew of spacecraft 3.',
     facts: [
       ['Crew', '2: command pilot left, pilot right'],
@@ -202,7 +201,7 @@ const parts: PartWords[] = [
       ['Panels', 'spacecraft 3’s, with spacecraft 4’s G.m.t. clock'],
       ['Atmosphere', 'pure oxygen, 5.1 psi'],
       ['Power', '4 main batteries of 45 Ah here; 6 of 400 Ah in the adapter'],
-      ['Suits', 'G4C: the two men stand at the pad, the seats are empty'],
+      ['Suits', 'G4C, with a thermal and micrometeoroid cover for White'],
     ],
   },
   {
@@ -224,7 +223,7 @@ const parts: PartWords[] = [
       'boxes between and behind the seats’ heads, the gun in two halves; here they are drawn together between the ' +
       'seats’ heads, the gun put together with its arms folded. The umbilical’s length, the jets’ thrust and ' +
       'where each was stowed are the mission report’s; the gun’s folded size is the Smithsonian’s measure of the ' +
-      'one White used; the rest is scaled from photographs. The chest pack and the cameras are not modelled.',
+      'one White used; the rest is scaled from photographs. White’s ventilation module is stowed beside his feet. Its envelope follows the Smithsonian’s measurements.',
     facts: [
       ['Umbilical', '25 ft: oxygen, wires and a tether'],
       ['Oxygen through it', '9 lb an hour'],
@@ -424,7 +423,7 @@ const vehicle = lc19Vehicle(
     // the crew climbed in at T-100 minutes of a count that then held 1 h 16 min for the erector (On the Shoulders of
     // Titans, p. 245): 176 min before the liftoff. When the hatches were shut is not in what was read: twenty minutes
     // are allowed, estimated
-    seats: seats([-176 * 60, -156 * 60]),
+    seats: seats([-176 * 60, -156 * 60], true),
     views: [
       { id: 'eva', label: 'Pilot’s hatch', nodes: ['Hatches', 'ExtravehicularEquipment'], from: along(55, 0.5) },
       { id: 'beacons', label: 'Flashing lights', nodes: ['TitanStage2'], from: along(45, 0.1) },
