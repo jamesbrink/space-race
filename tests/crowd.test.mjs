@@ -262,3 +262,43 @@ test('a skeleton taken out of the scene draws where it did: its people are in no
     assert.ok(where(a.mesh).distanceTo(want) < 1e-6, `at ${t}: ${where(a.mesh).toArray()} for ${want.toArray()}`);
   }
 });
+
+test('the April groups walk around the parked bus and car on the way to the stair and the road', async () => {
+  const { flight } = await import('../missions/ussr/vostok/flights/vostok-1/flight.ts');
+  const { framesOf } = await import('./glb.mjs');
+  const { plan } = await import('../src/viewer/onfoot/crowd.ts');
+  const { goneAt } = await import('../src/viewer/onfoot/going.ts');
+  const pad = flight.models.find((model) => model.id === 'pad');
+  const frames = framesOf(new URL(`../public/${pad.url}`, import.meta.url));
+  // Rear axle stations and body dimensions of the parked vehicles (Site 1's road_vehicles.py); 10 cm clear of the bodies.
+  const hits = (x, z) => {
+    if (x > -54.19 && x < -44.8 && z > 13.85 && z < 16.55) return 'bus';
+    const dx = x + 47.59,
+      dz = z - 21.31;
+    const along = (dx + dz) * Math.SQRT1_2,
+      across = (dz - dx) * Math.SQRT1_2;
+    if (along > -1.392 && along < 3.638 && Math.abs(across) < 1.0) return 'car';
+  };
+  let people = 0;
+  for (const part of pad.parts.filter((p) => p.going?.length)) {
+    const starts = [];
+    for (let i = 1; ; i++) {
+      const at = frames.point(`${part.node}_Person_${i}`);
+      if (!at) break;
+      starts.push({ at: [at[0], at[2]], facing: 0 });
+    }
+    people += starts.length;
+    for (const g of part.going) {
+      for (const [i, { going, delay, ends }] of plan(g, starts).entries()) {
+        const from = starts[i].at;
+        for (let t = 0; t < 90; t += 0.125) {
+          const here = goneAt(going, from, going.at.value + delay + t, delay);
+          if (here.out) continue;
+          assert.equal(hits(here.x, here.z), undefined, `${part.node} person ${i + 1} at ${t} s`);
+        }
+        if (g.to) starts[i] = { at: [from[0] + g.to[0], from[1] + g.to[1]], facing: ends };
+      }
+    }
+  }
+  assert.equal(people, 36);
+});

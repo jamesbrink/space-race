@@ -113,7 +113,7 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | PropellantShed | buildings.py | the shed over the northern spur's end, open to the north on six supports | yes (the place) |
 | CascadeFacility | buildings.py | the gas receivers: for April 1961 the low terracotta building with a flat roof and a frame of floodlights that the film has in their place (for an earlier date, two banks of nine vessels on cradles in the open) | yes (the place); doors shut |
 | Bus, Saloon, Truck | road_vehicles.py | the cosmonauts' bus (`Bus_In`, `Bus_Back`, `Bus_Away` under it, a node a drive), a saloon car (`Saloon_Car`), a box-bodied truck (`Truck_Lorry`) | yes (the pad): the bus's type documented, the others' estimated |
-| StateCommission, SendOff, StairParty, PadCrew, TrussCrew, HatchCrew (each with `<name>_People` under it); `Erector_Crew` under Erector | morning.py, with [../crew/ground_party.py](../crew/ground_party.py) | the people of the morning, 52 in seven groups, each there until it left | yes (the pad): they stand and do not walk |
+| StateCommission, Escort, SendOff, BusDoorParty, StairParty, PadCrew, TrussCrew, HatchCrew; Erector_Crew under Erector | morning.py, with [ground_party.py](../../vostok/crew/ground_party.py) | 49 people in nine groups on 12 April | the five parties on the apron walk; the crews at their posts stand until they leave |
 | PumpHouse, WorkShop, SupportBuilding, CheckoutShop, SecurityBuilding | buildings.py | the buildings the U-2's photographs show; doors shut, windows dark | yes (the place) |
 | ObservationPosts (`ObservationPost_A` to `_I`) | rim.py | the nine earth-covered positions round the pit, g with its covered way from the road | yes (the place) |
 | SpoilHeap | rim.py | the earth from the pit, north-east of it | yes (the place) |
@@ -326,10 +326,7 @@ along them. Positions are metres east and north of the rocket's axis.
 | How many were on the pad | 688: 651 and 37 inspectors, 381 of them soldiers of unit 25741 | documented | the roster |
 | When each left, and for where | the fuelling soldiers at 3 h 20 min, to barracks; most at 1 h or 30 min, to a point 20 km off; the upper-belt and truss crews at 30 min, to the bunker; the erector's crew at 30 min, to the bend of the road; the cosmonauts and their doctor at 30 min, to the measuring point; the fire chief and fire crews at 15 min, to the bunker; two water-washing trucks at 5 min, to the gate | documented | the roster: «Первый пилотируемый полёт» (2011), book 1, doc 104, pp. 402-423 |
 
-**How they leave.** A group is one node and is there until the time above; then it is put out of sight, 90 m
-under where it stood, in a tenth of a second. Nobody walks: these figures are merged by colour, not jointed, and a
-figure slid across the concrete standing is worse than one that is simply not there. This is the largest thing wrong
-with the morning of 12 April. The people of 6 August (below) are built to walk, and do.
+**How they leave.** Three members of the Commission accompany the pilot from the bus to the erector. The other three take the apron road west. Eight people approach the stair from the bus to join the escort; after the wave they and the send-off party disperse along the road. The people by the bus and truck pass north of the parked car, and the people farther south pass its other side. The paths, pace and timings are estimated. The pad, truss, hatch and erector crews still leave their posts between frames.
 
 ### The people of 6 August 1961
 
@@ -709,8 +706,8 @@ the morning's clock ("The morning at the pad"); clocked motions (`clocked`) are 
 | `Bus_Away` (wheels `Bus_Away_Wheel_n`, `Bus_Away_SteerWheel_n`) | `Bus_Back` | the same axle | a `drive`: north to the road, west along it and out through the fences, 440 m, to (-512, -25), 28 m outside the outer fence, where the model leaves it | | 08:37:50 | to 08:40 | `clocked` | estimated |
 | `Saloon_Car` (tools/blender/vehicles.py's nodes under it) | `Saloon` | the ground under its rear axle: (-47.59, -21.31, -0.12), heading 315° | a `drive`: round to its right and out by the road, to (-540, -25) | | 08:05 | to 08:07 | `clocked` on the part `Saloon` | estimated throughout (the car is seen at 06:50 only) |
 | `Truck_Lorry` (wheels `Truck_Lorry_Wheel_n`, `Truck_Lorry_SteerWheel_n`) | `Truck` | the same: (-43.75, -5.4, -0.12), heading 180° | a `drive`: west between the tracks, over them where they are painted on the land, and out by the road, to (-528, -25) | | 08:05:20 | to 08:08 | `clocked` on the part `Truck` | estimated throughout |
-| `StateCommission_People`, `SendOff_People`, `PadCrew_People`, `TrussCrew_People`, `HatchCrew_People`; `Erector_Crew` | each under its part (`StateCommission` …); `Erector_Crew` under `Erector` | the middle of the group | a `slide` straight down, 90 m: out of sight between one frame and the next | | 06:58; 07:08; 08:05; 08:37; 08:28; 08:37 | 0.1 s | `clocked` | when each left: the roster's readinesses (documented) for the crews; estimated for the Commission and the send-off. That they vanish and do not walk: ours ("The morning's people and vehicles") |
-| `StairParty_People` | `StairParty` | built 90 m under where it stands | a `slide` up 90 m, and down again | | 07:01; 07:08 | 0.1 s | `clocked` | the minutes estimated |
+| StateCommission, Escort, SendOff, BusDoorParty, StairParty | each group’s walking rig | the people where they stand | walk across the apron or along the road | | about 06:58 to 07:08 | individual, staggered starts | `going` | film sequence; paths and minutes estimated |
+| `PadCrew_People`, `TrussCrew_People`, `HatchCrew_People`, `Erector_Crew` | each under its part | the middle of the group | out of sight below the deck | | 08:05; 08:37; 08:28; 08:37 | 0.1 s | `clocked` | crew readinesses from the roster |
 
 **What the simulator can rely on.** At launch (T+0) the four supports stand closed with the rocket's weight on
 their heads, the four guides stand at its tail, the cable mast is back, the service trusses are down and the
@@ -1113,13 +1110,7 @@ rocket can leave the erector out by its date.
   They were measured by putting each level's geometry into the page by hand, since `lod-thresholds.mjs --measure`
   knows only models and the place's pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
   round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place.
-- **The morning's people stand still, and vanish.** Fifty-two figures in seven groups, each where the film or the
-  roster has people, each there until its time and then gone between one frame and the next ("The morning's
-  people and vehicles"). Nobody walks to the stair, gets down from the bus or climbs the fifteen steps: the pilot's
-  own walk is the one the viewer walks as. The three who walked him to the stair are in two groups, at the bus and
-  at the stair's foot, and for three minutes (06:58 to 07:01) in neither. Who each figure is, beyond Korolev and
-  Moskalenko, and every stance, are ours. Of the 688 on the pad these are the fifty the camera saw or the roster
-  places; the soldiers, the fire crews and the guards are not drawn.
+- The four crews at their posts leave between frames. The 12 April film establishes the escort’s walk and the wave at the stair. The paths away from the apron, individual stances and most identifications are estimates. The pilot’s path from the bus and up the steps can be walked by the visitor. Of the 688 people on the pad the model shows 49. The soldiers, fire crews and guards are omitted.
 - **After 07:10 the Commission is not drawn.** Korolev spoke to the pilot from a point on the pad until 08:40, when
   "the talking point moves to the bunker": where that point was is not recorded, and nobody stands for it.
 - Not built, because the roster names them and gives no place: the fire engines (crews of two are listed, ten

@@ -1,9 +1,8 @@
-import type { CabinDef, Flight, Keyframe, ModelDef, Part } from '../../../../../src/types.ts';
+import type { CabinDef, Flight, Going, Keyframe, ModelDef, Part } from '../../../../../src/types.ts';
 import { SK1_SPECS, sk1Crew } from '../../crew/sk-1.parts.ts';
 import {
   busPart,
   BY as SITE1_BY,
-  comes,
   drives,
   leaves,
   type PartWords,
@@ -926,6 +925,18 @@ const BUS_WORDS: PartWords = {
   ],
 };
 
+/** The apron road west, beyond the parked bus. The paths and stagger are estimated from the pad plan. */
+function apronExit(time: number, ...way: [number, number][]): Going {
+  return {
+    kind: 'leaves',
+    at: { value: time, confidence: 'estimated', source: 'the order of the morning in the film and transcript; the minute is estimated' },
+    stagger: 0.8,
+    way: [...way, [-75, 24], [-150, 23.5], [-470, 25]],
+    confidence: 'estimated',
+    source: 'the road out of sight west of the apron, beyond the parked bus; their actual route away is not recorded',
+  };
+}
+
 const padParts: Part[] = [
   ...site1Parts({
     stops: {
@@ -1059,7 +1070,46 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
-    clocked: [leaves('StateCommission_People', MSK(6, 58))],
+    going: [apronExit(MSK(6, 58), [-40, 18.5], [-53, 18.5], [-62, 22])],
+  },
+  {
+    node: 'Escort',
+    group: 'The morning of 12 April',
+    name: 'Gagarin’s escort',
+    summary: 'Korolev, Marshal Moskalenko and General Kamanin walked with Gagarin from the bus to the erector’s stair.',
+    detail:
+      'Mikheev and Chertok name the three men who took him through the crowd. Their route across the apron and their positions at the foot of the stair are estimates from the film and photographs.',
+    facts: [
+      ['Walk to the stair', 'about 06:58 (estimated)'],
+      ['At the stair', 'the pilot turned and waved from the landing'],
+    ],
+    explode: [0, 0, 0],
+    order: 0,
+    going: [
+      {
+        kind: 'leaves',
+        at: { value: MSK(6, 58), confidence: 'estimated', source: 'between the bus stopping and the pilot reaching the lift' },
+        stagger: 0.6,
+        way: [[-27, 12]],
+        to: [19, -9],
+        faces: [-11.3, 3.25],
+        confidence: 'estimated',
+        source: 'Mikheev and Chertok describe the walk to the stair; the path and final places are estimated from the film',
+      },
+      apronExit(MSK(7, 8), [-28, 12], [-39, 17.9], [-43.5, 18.8], [-53, 18.6], [-62, 22]),
+    ],
+  },
+  {
+    node: 'BusDoorParty',
+    group: 'The morning of 12 April',
+    name: 'Beside the bus',
+    summary: 'The doctor and the people at the bus door stood between the parked vehicles.',
+    detail:
+      'The film also shows a man across the tracks by the truck. These people walk out past the front of the bus and between it and the parked car. Their route is estimated.',
+    facts: [['Seen', 'the bus at rest, in the film at 43:26']],
+    explode: [0, 0, 0],
+    order: 0,
+    going: [apronExit(MSK(7, 8), [-42, 17.7], [-44, 18.2], [-53, 18.4], [-62, 22])],
   },
   {
     node: 'SendOff',
@@ -1075,7 +1125,7 @@ const padParts: Part[] = [
       'cameraman walking backward with a camera at his eye. Each stands here where that frame has someone standing, to ' +
       'two or three metres. Who each was is not recorded, and their clothes are shared out among them by us. There ' +
       'were 688 people on the pad that morning by the roster, 381 of them soldiers: these are the ones the camera saw ' +
-      'at that moment. They do not walk: the group is here until about 07:08, when the lift had gone up, and then is not.',
+      'at that moment. They leave along the apron road at about 07:08, after the lift had gone up. Their path and the minute are estimated.',
     facts: [
       ['Seen', 'about 25 on the concrete as the bus stopped (the film, 43:26)'],
       ['Dress', 'tunics and peaked caps, navy anoraks with red armbands, a white coat, dark coats and hats (the film)'],
@@ -1084,7 +1134,7 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
-    clocked: [leaves('SendOff_People', MSK(7, 8))],
+    going: [apronExit(MSK(7, 8), [-62, 27])],
   },
   {
     node: 'StairParty',
@@ -1105,7 +1155,22 @@ const padParts: Part[] = [
     ],
     explode: [0, 0, 0],
     order: 0,
-    clocked: [comes('StairParty_People', MSK(7, 1)), leaves('StairParty_People', MSK(7, 8))],
+    going: [
+      {
+        kind: 'comes',
+        at: { value: MSK(7, 0, 25), confidence: 'estimated', source: 'the minutes before the wave at the stair are not timed' },
+        stagger: 0.5,
+        way: [
+          [-26, 12],
+          [-39, 17],
+          [-43, 18.2],
+          [-47.4, 18.4],
+        ],
+        confidence: 'estimated',
+        source: 'the film shows people at the bus and then at the stair; their path from beside the parked bus is estimated',
+      },
+      apronExit(MSK(7, 8), [-29, 14]),
+    ],
   },
   {
     node: 'PadCrew',
@@ -1175,7 +1240,7 @@ const pad = site1Pad({
   parts: padParts,
   views: [
     // the morning's people and the bus, from the south-west as the film's cameraman on the ground had them
-    { id: 'send-off', label: 'The send-off', nodes: ['StateCommission', 'SendOff'], from: [-0.35, 0.16, 0.92] },
+    { id: 'send-off', label: 'The send-off', nodes: ['StateCommission', 'Escort', 'SendOff', 'BusDoorParty'], from: [-0.35, 0.16, 0.92] },
     { id: 'bus', label: 'The bus', nodes: ['Bus'], from: [0.55, 0.14, 0.82] },
   ],
 });

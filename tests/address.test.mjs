@@ -449,9 +449,10 @@ test('a launch site opens at the instant its flight says, and every other at lif
   const clocked = (node) => pad.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === node);
   assert.ok(clocked('Bus_In').length > 0);
   for (const m of clocked('Bus_In')) assert.ok(m.to <= v.at, 'the bus is parked');
-  for (const node of ['StateCommission_People', 'SendOff_People']) {
-    assert.ok(clocked(node).length > 0, node);
-    for (const m of clocked(node)) assert.ok(m.from >= v.at, `${node} is still there`);
+  for (const node of ['StateCommission', 'Escort', 'SendOff', 'BusDoorParty']) {
+    const route = pad.parts.find((p) => p.node === node).going;
+    assert.ok(route.length > 0, node);
+    for (const leg of route) assert.ok(leg.at.value >= v.at, `${node} is still there`);
   }
   // an address that names a section keeps it, at the same instant; the flight's own view is only for its own section
   assert.deepEqual(openingFor(vostok, { ...first, named: 'vehicle' }), { at: v.at, model: 'vehicle', view: null });
