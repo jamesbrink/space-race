@@ -1001,7 +1001,7 @@ export class Gallery {
       this.setNames(!prefs.get('galleryNamesOff'));
       this.q('[data-light]').setAttribute('aria-pressed', String(studio.tone === 'light'));
       // the flight's own crew, where it has one, is the person who stands beside it for scale
-      const crew = scaleFigure(this.flight);
+      const crew = this.vehicle.walker ? null : scaleFigure(this.flight);
       if (crew)
         void stage
           .model(crew.url)
@@ -1537,7 +1537,10 @@ export class Gallery {
         );
       },
       words: (shot: Shot) => {
-        if (shot.kind === 'whole') return { eyebrow, title: f.callsign, text: `${f.spacecraft}. ${this.vehicle.scale}.` };
+        if (shot.kind === 'whole') {
+          const exhibit = this.vehicle.galleryCraft;
+          return { eyebrow, title: exhibit ?? f.callsign, text: exhibit ? this.vehicle.scale : `${f.spacecraft}. ${this.vehicle.scale}.` };
+        }
         if (shot.kind === 'apart')
           return {
             eyebrow,

@@ -9,6 +9,7 @@
 //                Back, Back, Back: each lands on the place before, the last on the front page
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
 //   second craft Gemini X's gallery-only Agena can be linked and switched to, and Back restores it from the site
+//   crew gallery Gemini XII's suited crew can be linked, selected, and restored from the launch site
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 //   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
 //                chosen, Back to the front page, Forward to the Lineup
@@ -184,6 +185,49 @@ await scenario('second craft', async (page) => {
   );
   await page.goForward();
   const revisited = await arrive(page, 'site', gt10);
+  check(
+    revisited.hash === site.hash && revisited.kept && revisited.length === site.length,
+    'Forward restores the launch site without a reload',
+  );
+});
+
+await scenario('crew gallery', async (page) => {
+  const flight = 'usa/gemini/gt-12';
+  const route = `#${flight}/gallery`;
+  const craft = () => page.evaluate(() => window.sr.gallery.vehicle.id);
+  await page.goto(`${url}${route}/crew`);
+  const linked = await arrive(page, 'gallery', flight);
+  check(linked.hash === `${route}/crew` && (await craft()) === 'crew', 'the command pilot opens from his direct link');
+  const mounted = await page.evaluate(() => {
+    const staged = window.sr.gallery.stage.staged[0];
+    let node = staged.full.getObjectByName('Helmet');
+    while (node && node !== staged.group) node = node.parent;
+    return node === staged.group;
+  });
+  check(mounted, 'the command pilot stays on the studio plinth when his own model is the exhibit');
+  await mark(page);
+  await page.locator('#gallery [data-craft="pilot"]').click();
+  const pilot = await arrive(page, 'gallery', flight);
+  check(
+    pilot.hash === `${route}/pilot` && (await craft()) === 'pilot' && pilot.length === linked.length,
+    'the pilot replaces the command pilot',
+  );
+  await page.locator('#gallery [data-node="Helmet"]').click();
+  const part = await state(page);
+  check(part.hash === `${route}/pilot/Helmet` && part.length === linked.length, 'the helmet is addressed within the pilot’s exhibit');
+  await page.locator('#gallery .places [data-place="site"]').click();
+  const site = await arrive(page, 'site', flight);
+  check(site.length === linked.length + 1, 'going to the launch site is one history step');
+  const walkers = await page.evaluate(() => window.sr.flight.models.filter((model) => model.walker).map((model) => model.id));
+  check(walkers.join(',') === 'crew,pilot', 'both flight figures are still available to walk the site');
+  await page.goBack();
+  const restored = await arrive(page, 'gallery', flight);
+  check(
+    restored.hash === part.hash && restored.kept && (await craft()) === 'pilot',
+    'Back restores the pilot’s selected helmet without a reload',
+  );
+  await page.goForward();
+  const revisited = await arrive(page, 'site', flight);
   check(
     revisited.hash === site.hash && revisited.kept && revisited.length === site.length,
     'Forward restores the launch site without a reload',

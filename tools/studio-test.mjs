@@ -1,5 +1,5 @@
 // The gallery's views of a cabin's inside, in a real browser, at 1280, 820 and 390 wide.
-//   node tools/studio-test.mjs [url] [--flight <id>]     (default: http://localhost:5180/, every flight that has such a view)
+//   node tools/studio-test.mjs [url] [--flight <id>] [--views <id,id,...>] [--shots <dir>]
 // A view of a cabin's inside is one whose parts are all held in the cabin (`cabin.within`): Apollo 7's main console,
 // its DSKY and its couches, Voskhod's couches. Read from each flight's own data, so a view renamed or added is followed.
 // For each flight: going to such a view opens the cutaway by itself, going back to the whole closes that opening again,
@@ -8,13 +8,18 @@
 // and the red pixels are where it shows: an outline, or a shader that compiled, cannot say whether a surface can be
 // read. (The Apollo DSKY faces down into the cabin: the closed exhibit's limit on how far the eye goes below the level,
 // and a lamp aimed at the middle of the whole rocket, each hid it.)
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { flights } from '../missions/index.ts';
 import { exhibit, galleryFlight, WHOLE_VIEW } from '../src/app/address.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
 const only = opt(args, '--flight', null);
+const extra = new Set(opt(args, '--views', '').split(',').filter(Boolean));
+const shots = opt(args, '--shots', null);
 const base = urlOf(args).split('#')[0];
+if (shots) mkdirSync(shots, { recursive: true });
 
 /** Each flight's gallery views of its cabin's inside, as its gallery has them. */
 const subjects = flights.flatMap((f) => {
@@ -22,9 +27,10 @@ const subjects = flights.flatMap((f) => {
   return [exhibit(f), ...f.models.filter((m) => m.galleryCraft)].filter(Boolean).flatMap((vehicle) => {
     const model = galleryFlight(f, vehicle).models[0];
     const held = new Set(model.cabin?.within ?? []);
-    const views = model.views.filter((v) => v.nodes?.length && v.nodes.every((n) => held.has(n)));
+    const inside = model.views.filter((v) => v.nodes?.length && v.nodes.every((n) => held.has(n)));
+    const views = model.views.filter((v) => v.nodes?.length && (inside.includes(v) || extra.has(v.id)));
     const route = f.id + '/gallery' + (vehicle.galleryCraft ? '/' + vehicle.id : '');
-    return views.length ? [{ id: route, views, part: views[0].nodes[0] }] : [];
+    return inside.length ? [{ id: route, views, interior: inside[0] }] : [];
   });
 });
 if (!subjects.length)
@@ -33,7 +39,7 @@ if (!subjects.length)
 const { check, failures } = checks();
 const browser = await launch();
 try {
-  for (const { id, views, part } of subjects)
+  for (const { id, views, interior } of subjects)
     for (const width of [1280, 820, 390]) {
       console.log(`${id} at ${width}: ${views.map((v) => v.label).join(', ')}`);
       const { page, errors, close } = await open(browser, `${base}#${id}`, {
@@ -41,14 +47,21 @@ try {
         console: ['error', 'warning'],
         wait: 'gallery',
       });
+      await page.waitForFunction(() => document.body.classList.contains('gallery-settled'));
       const narrow = width < 960;
       if (narrow) await page.locator('#gallery .handle-open').click();
       const cut = page.locator('#gallery [data-cut]');
       const cutOpen = async () => (await cut.getAttribute('aria-pressed')) === 'true';
       const view = async (v) => {
         const button = page.locator(`#gallery [data-view="${v}"]`);
+        await button.waitFor({ state: 'attached' });
         if (!(await button.isVisible())) await page.locator('#gallery [data-views]').click();
+        await button.waitFor({ state: 'visible' });
         await button.click();
+        await page.waitForFunction(
+          (id) => document.querySelector(`#gallery [data-view="${id}"]`)?.getAttribute('aria-pressed') === 'true',
+          v,
+        );
       };
       for (const isolated of views.filter((v) => v.isolate)) {
         const visible = () =>
@@ -63,14 +76,15 @@ try {
         await view(isolated.id);
         check(
           JSON.stringify(await visible()) === JSON.stringify([...isolated.nodes].sort()),
-          `${isolated.label}: its instruments stand exposed`,
+          `${isolated.label}: only the parts in this view stand exposed`,
         );
         await view(WHOLE_VIEW);
         check(JSON.stringify(await visible()) === JSON.stringify(assembled), 'Whole: the surrounding assembly returns');
       }
-      const first = views[0].id;
+      const first = interior.id;
+      const part = interior.nodes[0];
       await view(first);
-      check(await cutOpen(), `${views[0].label}: going to it opens the cutaway, with nothing chosen`);
+      check(await cutOpen(), `${interior.label}: going to it opens the cutaway, with nothing chosen`);
       await view(WHOLE_VIEW);
       check(!(await cutOpen()), 'Whole: that opening closes again');
       await cut.click();
@@ -102,6 +116,7 @@ try {
       if (narrow) await page.locator('#gallery [data-tab="Parts"]').click();
       await page.locator(`#gallery [data-node="${part}"]`).first().click();
       check(await cutOpen(), `choosing ${part} opens it too`);
+      await page.locator(`#gallery [data-node="${part}"]`).first().click();
       if (narrow) await page.locator('#gallery [data-tab="View"]').click();
       for (const v of views) {
         await view(v.id);
@@ -111,16 +126,15 @@ try {
           window.sr.gallery.stage.highlight(null, null);
         });
         // (the panels are not drawn while the canvas is read, and nothing about the view changes for it)
-        const bare = await page.addStyleTag({ content: '#gallery > :not(.loading), #title { visibility: hidden !important }' });
         for (const look of ['real', 'cel']) {
-          const seen = await shown(page, look, v.nodes);
+          const shot = shots ? join(shots, `${id.replaceAll('/', '-')}-${v.id}-${width}-${look}.png`) : null;
+          const seen = await shown(page, look, v.nodes, shot);
           check(
             seen.visible > 100 && seen.brightness > 40,
             `${v.label}, ${look}: ${seen.visible} pixels of it on the screen, mean brightness ${seen.brightness.toFixed(1)}`,
           );
         }
         await page.evaluate(() => window.sr.gallery.stage.setLook('real'));
-        await bare.evaluate((el) => el.remove());
       }
       // (not the machine's own: three warns that ANGLE on Linux offers no KHR_parallel_shader_compile, and compiles anyway)
       const own = errors.filter((e) => !e.includes('KHR_parallel_shader_compile'));
@@ -136,9 +150,11 @@ if (failures.length) {
 }
 
 /** How many pixels of the meshes under `nodes` are on the screen in `look`, and how bright they are there (0 to 255). */
-async function shown(page, look, nodes) {
+async function shown(page, look, nodes, shot) {
   await page.evaluate((look) => window.sr.gallery.stage.setLook(look), look);
   await page.waitForTimeout(300);
+  if (shot) await page.screenshot({ path: shot });
+  const bare = await page.addStyleTag({ content: '#gallery > :not(.loading), #title { visibility: hidden !important }' });
   const canvas = page.locator('#gallery-stage');
   const drawn = await canvas.screenshot();
   await page.evaluate((nodes) => {
@@ -173,6 +189,7 @@ async function shown(page, look, nodes) {
     }
     stage.dirty = true;
   });
+  await bare.evaluate((el) => el.remove());
   return page.evaluate(
     async ([drawnPng, maskedPng]) => {
       const pixels = async (png) => {

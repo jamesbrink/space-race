@@ -3,7 +3,17 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { flights } from '../missions/index.ts';
 import { agenaMotors } from '../missions/usa/gemini/vehicles/gemini-targets.ts';
-import { atSite, entrances, exhibit, formatAddress, listed, openingFor, parseAddress, targetNodes } from '../src/app/address.ts';
+import {
+  atSite,
+  entrances,
+  exhibit,
+  formatAddress,
+  galleryFlight,
+  listed,
+  openingFor,
+  parseAddress,
+  targetNodes,
+} from '../src/app/address.ts';
 import { entries } from '../src/app/lineup/row.ts';
 import { lodUrl } from '../src/viewer/lod.ts';
 import { materialsUnder } from './glb.mjs';
@@ -125,7 +135,7 @@ for (const record of late) {
 
 test('Gemini X’s dormant Agena has a gallery address and stays off LC-19 with the primary target', () => {
   const flight = forFlight(10);
-  const oldAgena = flight.models.find((model) => model.galleryCraft);
+  const oldAgena = flight.models.find((model) => model.id === 'agena-8');
   assert.equal(oldAgena.id, 'agena-8');
   assert.equal(oldAgena.backdrop, 'studio');
   assert.notEqual(oldAgena, exhibit(flight));
@@ -155,11 +165,48 @@ test('Gemini X’s dormant Agena has a gallery address and stays off LC-19 with 
     assert.ok(site.models.every((m) => m.backdrop === 'ground' && !m.galleryCraft));
     assert.equal(siteVehicle.target, undefined);
     for (const node of targetNodes(vehicle)) {
+      assert.ok(
+        siteVehicle.views.every((view) => !view.nodes?.includes(node)),
+        `no launch-site view selects ${node}`,
+      );
       assert.ok(siteVehicle.absent.includes(node), `${node} must be hidden`);
       assert.ok(
         siteVehicle.parts.every((p) => p.node !== node),
         `${node} must be absent from the parts list`,
       );
+    }
+  }
+});
+
+test('both late Gemini crew figures can be examined in the gallery and walked at the launch site', () => {
+  for (const { n } of late) {
+    const flight = forFlight(n);
+    const site = atSite(flight);
+    assert.deepEqual(
+      flight.models.filter((model) => model.galleryCraft && model.walker).map((model) => model.id),
+      ['crew', 'pilot'],
+    );
+    for (const id of ['crew', 'pilot']) {
+      const figure = flight.models.find((model) => model.id === id);
+      assert.ok(figure.galleryCraft && figure.walker);
+      assert.deepEqual(figure.specGroups, ['Pressure suit']);
+      assert.deepEqual(figure.motorNames, []);
+      assert.equal(parseAddress(formatAddress(flight.id, 'gallery', id)).what, id);
+      const studio = galleryFlight(flight, figure);
+      assert.equal(studio.site, undefined);
+      assert.equal(studio.surroundings, undefined);
+      assert.equal(studio.models.length, 1);
+      assert.equal(studio.models[0].backdrop, 'studio');
+      assert.equal(studio.models[0].walker, undefined);
+      assert.equal(studio.models[0].with, undefined);
+      assert.deepEqual(
+        studio.models[0].views.map((view) => view.id),
+        ['gallery-whole', 'figure', 'helmet'],
+      );
+      const walker = site.models.find((model) => model.id === id);
+      assert.equal(walker.galleryCraft, undefined);
+      assert.equal(walker.with[0].model, 'pad');
+      assert.deepEqual(walker.walker, figure.walker);
     }
   }
 });

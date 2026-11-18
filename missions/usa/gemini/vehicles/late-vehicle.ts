@@ -196,7 +196,35 @@ export function lateVehicle(n: Ship, open: [number, number]): ModelDef {
       'The two bells share the first-stage engine installation. They stood over the flame opening in the deck.',
     ],
   ];
-  const parts: PartWords[] = words.map(([node, name, summary, detail]) => ({ node, name, summary, detail }));
+  // Dimensions of the common shell are McDonnell SEDR 300 vol. 2, figures 2-3 and 2-4.
+  const facts: Record<string, [string, string][]> = {
+    RendezvousRecovery: [
+      ['Section length', '42.00 in'],
+      ['Latch receptacles', 'Three, 120° apart'],
+      ['Index-bar travel', '13.82 in'],
+    ],
+    ReentryControl: [
+      ['Section length', '18.00 in'],
+      ['Steering', 'Two independent rings of eight chambers'],
+    ],
+    Hatches: [
+      ['Latches', 'Twelve on each hatch'],
+      ['Outer pane', 'About 35° to the hatch'],
+    ],
+    CrewStation: [
+      ['Command pilot', 'Left seat'],
+      ['Pilot', 'Right seat'],
+    ],
+    EquipmentSection: [
+      ['Extra main oxidizer tank', '22 in diameter'],
+      ['Cylindrical reserve oxidizer tank', n === 12 ? 'Removed with the F-package' : 'Installed'],
+    ],
+    RetroSection: [
+      ['Retrorockets', 'Four'],
+      ['Collector', n === 11 ? 'S009 nuclear emulsion' : 'S012 micrometeorites'],
+    ],
+  };
+  const parts: PartWords[] = words.map(([node, name, summary, detail]) => ({ node, name, summary, detail, facts: facts[node] }));
   for (const p of parts) {
     if (p.node === 'RendezvousRecovery') {
       p.moves = [
@@ -245,8 +273,8 @@ export function lateVehicle(n: Ship, open: [number, number]): ModelDef {
         }),
         views: [
           { id: 'cabin', label: 'Crew station', nodes: ['CrewStation'], isolate: true, from: along(-25, 0.9) },
-          { id: 'payload', label: load, nodes: [missionNode], isolate: true, from: along(-75, -1.5) },
-          { id: 'target', label: `GATV-${targets[n]}`, nodes: AGENA, from: along(-70, 0.12) },
+          { id: 'payload', label: load, nodes: [missionNode], isolate: true, from: n === 10 ? along(-75, -1.5) : along(60, -3) },
+          { id: 'target', label: `GATV-${targets[n]}`, nodes: AGENA, isolate: true, from: along(-70, 0.12) },
           { id: 'cone', label: 'Docking cone', nodes: ['DockingCone', 'TargetDockingAdapter'], from: along(-60, 0.9) },
         ],
       }),
