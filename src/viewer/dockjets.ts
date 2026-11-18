@@ -27,11 +27,12 @@ export function dockJets(bodies: Object3D[], jets: NonNullable<NonNullable<Fligh
     } else p.mesh.position.copy(direction).multiplyScalar(spec.offset ?? 0);
     p.mesh.quaternion.setFromUnitVectors(down, direction);
     nozzle.add(p.mesh);
-    return (time: number, active: number, thrust: Vec3, torque: Vec3, main: boolean) => {
-      const firing = active === spec.body;
+    return (time: number, forces: [Vec3, Vec3], torques: [Vec3, Vec3], main: boolean) => {
+      const thrust = forces[spec.body],
+        torque = torques[spec.body];
       let on = 0;
       if (spec.main) on = Number(main);
-      else if (firing && (Math.hypot(...thrust) > 0.1 || Math.hypot(...torque) > 1)) {
+      else if (Math.hypot(...thrust) > 0.1 || Math.hypot(...torque) > 1) {
         body.updateWorldMatrix(true, false);
         p.mesh.updateWorldMatrix(true, false);
         const point = body.worldToLocal(p.mesh.getWorldPosition(new Vector3()));

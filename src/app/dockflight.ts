@@ -157,7 +157,7 @@ export async function openDocking(flight: Flight) {
           coords.needsUpdate = true;
         }
       }
-      for (const show of flames) show(run.t, deck.jetBody, deck.firedForce, deck.firedTorque, deck.mainFiring);
+      for (const show of flames) show(run.t, deck.firedForce, deck.firedTorque, deck.mainFiring);
       probe?.(run.phase === 'hard' ? 'docked' : run.phase === 'capture' ? 'capture' : 'approach', run.closure);
       const earthToSun = sunPosition(terrestrialTime(epoch + run.t / 86400)),
         toSun = sub(earthToSun, run.bodies[1].r);

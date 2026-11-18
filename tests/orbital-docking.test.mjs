@@ -190,3 +190,27 @@ test('Apollo 9 departs co-aligned, turns through 180 degrees, waits at stand-off
   assert.ok(Math.abs(before.closing / 0.3048 - 0.3) < 0.01);
   assert.ok(Math.abs(before.offset / 0.0254 - 3.2) < 0.2);
 });
+
+test('simultaneous loads act on their own vehicles when joined and after the pilots separate', () => {
+  const run = pair(),
+    base = pair();
+  for (const state of [run, base]) {
+    assert.ok(state.attempt());
+    state.advance(4, 0);
+  }
+  const zero = [0, 0, 0],
+    forceA = [0, 100, 0],
+    forceB = [0, 1000, 0];
+  run.advanceBoth(0.05, [forceA, forceB], [zero, zero]);
+  base.advance(0.05, 0);
+  const delta = sub(conserved(run).v, conserved(base).v);
+  assert.ok(Math.abs(delta[1] - ((1000 - 100) * 0.05) / 2000) < 1e-8);
+  assert.ok(run.undock(0));
+  const inert = new DockPair(...structuredClone(run.bodies), run.limits, run.t);
+  run.advanceBoth(0.05, [zero, forceB], [[100, 0, 0], zero]);
+  inert.advance(0.05, 0);
+  assert.deepEqual(run.bodies[1].w, inert.bodies[1].w);
+  assert.ok(length(sub(run.bodies[0].w, inert.bodies[0].w)) > 0.001);
+  assert.ok(length(sub(run.bodies[0].v, inert.bodies[0].v)) < 1e-7);
+  assert.ok(length(sub(run.bodies[1].v, inert.bodies[1].v)) > 0.03);
+});

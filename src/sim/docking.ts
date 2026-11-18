@@ -245,23 +245,29 @@ export class DockPair {
 
   /** Force and torque are in the firing vehicle's axes, N and N m. */
   advance(dt: number, pilot: 0 | 1, force: Vec3 = zero, torque: Vec3 = zero) {
+    this.advanceBoth(dt, pilot === 0 ? [force, zero] : [zero, force], pilot === 0 ? [torque, zero] : [zero, torque]);
+  }
+
+  /** Each spacecraft retains its own body-frame loads, even when the other pilot has control. */
+  advanceBoth(dt: number, forces: readonly [Vec3, Vec3], torques: readonly [Vec3, Vec3]) {
     if (!(dt > 0) || !Number.isFinite(dt)) return;
     const steps = Math.ceil(dt / 0.25),
       h = dt / steps;
     for (let n = 0; n < steps; n++) {
-      const engine = this.bodies[pilot],
-        f = turn(engine.q, force),
-        tau = turn(engine.q, torque);
+      const [a, b] = this.bodies;
+      const fa = turn(a.q, forces[0]),
+        fb = turn(b.q, forces[1]);
+      const ta = turn(a.q, torques[0]),
+        tb = turn(b.q, torques[1]);
       if (this.phase === 'free') {
-        for (const body of this.bodies) {
-          const firing = body === engine;
-          coastBody(body, this.t, h, firing ? f : zero, firing ? tau : zero);
-        }
+        coastBody(a, this.t, h, fa, ta);
+        coastBody(b, this.t, h, fb, tb);
       } else {
-        const c = this.centre!,
-          b = this.bodies[1];
-        this.momentum = add(this.momentum, scale(add(tau, cross(sub(engine.r, c.r), f)), h));
-        this.centre = step(c, this.t, h, () => scale(f, 1 / (this.bodies[0].mass + b.mass)));
+        const c = this.centre!;
+        const torque = add(add(ta, tb), add(cross(sub(a.r, c.r), fa), cross(sub(b.r, c.r), fb)));
+        this.momentum = add(this.momentum, scale(torque, h));
+        const acceleration = scale(add(fa, fb), 1 / (a.mass + b.mass));
+        this.centre = step(c, this.t, h, () => acceleration);
         this.elapsed += h;
         const progress = Math.min(1, this.elapsed / this.limits.retract);
         this.place(rotateFor(b.q, b.w, h), progress);

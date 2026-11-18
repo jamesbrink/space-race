@@ -24,9 +24,14 @@ const timeline = (id: string, label: string, unit: string, about: string) => ({ 
 export class DockDeck extends Deck<Flight> {
   run = terminalApproach(this.flight);
   pilot: 0 | 1 = 0;
-  jetBody: 0 | 1 = 0;
-  firedForce: Vec3 = [0, 0, 0];
-  firedTorque: Vec3 = [0, 0, 0];
+  firedForce: [Vec3, Vec3] = [
+    [0, 0, 0],
+    [0, 0, 0],
+  ];
+  firedTorque: [Vec3, Vec3] = [
+    [0, 0, 0],
+    [0, 0, 0],
+  ];
   get mainFiring() {
     return !!this.powered && this.run.t < this.powered.until;
   }
@@ -171,7 +176,14 @@ export class DockDeck extends Deck<Flight> {
   protected fresh() {
     this.run = terminalApproach(this.flight, this.redock, this.transpose);
     this.pilot = this.redock ? 1 : 0;
-    this.firedForce = this.firedTorque = [0, 0, 0];
+    this.firedForce = [
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
+    this.firedTorque = [
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
     this.faultEnabled = true;
     this.extractedAt = null;
     this.burnIndex = 0;
@@ -234,7 +246,7 @@ export class DockDeck extends Deck<Flight> {
       }
     }
     if (what === 'crew-transfer' && this.run.phase === 'hard' && !this.run.mounted) this.crewInTarget = !this.crewInTarget;
-    if (what === 'change-craft') this.pilot = this.pilot ? 0 : 1;
+    if (what === 'change-craft' && this.flight.docking!.interface === 'probe') this.pilot = this.pilot ? 0 : 1;
     if (what === 'sequence') this.automatic = !this.automatic;
     if (what === 'guidance') this.guided = !this.guided;
     if (what === 'next') {
@@ -277,21 +289,28 @@ export class DockDeck extends Deck<Flight> {
       const controls = this.flight.docking!.controls;
       const axial = this.pulse[1];
       const level = axial ? 2 * (axial > 0 ? controls.ahead : controls.astern).value : controls.lateral.value;
-      let force = scale(this.pulse, this.run.t < this.ends ? level : 0);
+      const force = scale(this.pulse, this.run.t < this.ends ? level : 0);
       const authority = 2 * controls.attitude.value * b.port;
       let torque = torqueAxis.map(
         (u, i) => Math.max(-1, Math.min(1, u - (this.guided ? (b.w[i]! * b.inertia[i]!) / authority : 0))) * authority,
       ) as unknown as Vec3;
       if (this.transpose && !this.hand && this.run.phase === 'free') {
         const { force, torque } = transpositionInput(this.run, this.flight);
-        this.jetBody = 0;
-        this.firedForce = force;
-        this.firedTorque = torque;
+        this.firedForce = [force, [0, 0, 0]];
+        this.firedTorque = [torque, [0, 0, 0]];
         this.run.advance(0.05, 0, force, torque);
         this.tickCount++;
         if (this.automatic) this.run.attempt();
         continue;
       }
+      const forces: [Vec3, Vec3] = [
+        [0, 0, 0],
+        [0, 0, 0],
+      ];
+      const torques: [Vec3, Vec3] = [
+        [0, 0, 0],
+        [0, 0, 0],
+      ];
       const fault = this.flight.docking!.fault;
       if (fault && this.run.t >= fault.at) {
         if (this.automatic && this.run.phase === 'hard' && this.run.t >= fault.undock && this.faultEnabled) {
@@ -299,39 +318,29 @@ export class DockDeck extends Deck<Flight> {
           this.inhibitCapture = true;
         }
         const demand = faultInput(this.run, this.flight, this.faultEnabled);
-        force = add(force, demand.force);
-        // The sequence damps the docked rotation, as the crew tried, then uses re-entry control once firing began.
-        if (this.faultEnabled && this.run.phase === 'free' && this.run.t < fault.recovery)
+        forces[0] = demand.force;
+        torques[0] = demand.torque;
+        if (this.pilot === 0 && this.faultEnabled && this.run.phase === 'free' && this.run.t < fault.recovery)
           torque = torqueAxis.map((u) => u * authority) as unknown as Vec3;
-        torque = add(torque, demand.torque);
       }
-      this.jetBody = this.pilot;
-      this.firedForce = force;
-      this.firedTorque = torque;
-      if (this.powered && this.run.t < this.powered.until && this.run.phase === 'hard') {
-        // Last step can contain cutoff partway through it. Integrating its fractional impulse keeps the delivered Δv.
-        const fraction = Math.min(1, (this.powered.until - this.run.t) / 0.05);
-        this.run.advance(
-          0.05,
-          1,
-          add(this.pilot === 1 ? force : [0, 0, 0], [0, this.powered.thrust * fraction, 0]),
-          this.pilot === 1 ? torque : [0, 0, 0],
-        );
-      } else if (
+      forces[this.pilot] = add(forces[this.pilot], force);
+      torques[this.pilot] = add(torques[this.pilot], torque);
+      if (
         this.extractedAt !== null &&
         this.automatic &&
         this.run.phase === 'hard' &&
         this.flight.docking?.carrier?.pulses.some(
           (p) => this.run.t - this.extractedAt! >= p.after && this.run.t - this.extractedAt! < p.after + p.seconds,
         )
-      ) {
-        this.jetBody = 0;
-        this.firedForce = [0, -4 * controls.astern.value, 0];
-        this.run.advance(0.05, 0, this.firedForce);
-      } else {
-        this.powered = null;
-        this.run.advance(0.05, this.pilot, force, torque);
-      }
+      )
+        forces[0] = add(forces[0], [0, -4 * controls.astern.value, 0]);
+      this.firedForce = [...forces];
+      this.firedTorque = torques;
+      if (this.powered && this.run.t < this.powered.until && this.run.phase === 'hard') {
+        const fraction = Math.min(1, (this.powered.until - this.run.t) / 0.05);
+        forces[1] = add(forces[1], [0, this.powered.thrust * fraction, 0]);
+      } else this.powered = null;
+      this.run.advanceBoth(0.05, forces, torques);
       this.tickCount++;
       if (this.automatic && this.run.tetherLength && this.run.t >= this.flight.docking!.tether!.releaseAt) this.run.tetherLength = 0;
       if (this.inhibitCapture && portGap(...this.run.bodies).gap > this.run.limits.stroke) this.inhibitCapture = false;
