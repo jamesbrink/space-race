@@ -330,6 +330,7 @@ FOOT_RAIL = (deg(13), 26.0, 8.5)
 class Fit:
     """What one ship had that another had not: a flight's script fills this in, and its spacecraft.md says why."""
 
+    late: int = 0  # spacecraft 10–12: ECS oxygen shared with the fuel cells, extra oxidizer sphere and flight-specific EVA hardware
     radar: bool = False  # the rendezvous radar in the rendezvous and recovery section's face
     lateral_thrusters: bool = True  # whether the four OAMS chambers that translate sideways, up and down were real ones
     adapter_batteries: int = 3  # silver-zinc batteries in the adapter's module (0: a fuel cell module instead)
@@ -629,7 +630,7 @@ def build_rendezvous_recovery(M, fit: Fit) -> None:
             "is McDonnell's manual; their size here is estimated.",
         )
     if fit.index_bar:
-        build_index_bar(M, g)
+        build_index_bar(M, g, fit.late == 12)
     if not interior():
         return
     chute = MeshBuilder()
@@ -694,7 +695,7 @@ def build_radar(M, g, face: float) -> None:
     lids.build("RR_RadarAntennaFaces", M["fairing"], g, sharp_angle=35)
 
 
-def build_index_bar(M, g) -> None:
+def build_index_bar(M, g, capped: bool = False) -> None:
     """The docking system's index bar (SEDR 300 volume 2, pp. 13-5 and 13-20, Figures 13-2 and 13-8; Technical Summary,
     p. 241): a bar in a casing across the forward section, at the top of the ship. A cartridge runs it out 13.82 in once
     the ship is in orbit, and it is what a docking is steered by: it goes into the V-shaped notch in the target's cone and
@@ -720,7 +721,18 @@ def build_index_bar(M, g) -> None:
         "the pad, drawn in. How far it runs out is documented; how thick it is and its exact place are scaled from "
         "McDonnell's drawings.",
     )
-    pivot("RR_IndexBar", g, at(skin_r), [obj])
+    moving = [obj]
+    if capped:
+        cap = MeshBuilder()
+        cap.lathe(prof([(0, tip + 0.06), (1.8, tip + 0.06), (1.5, tip + 0.34), (0, tip + 0.34)]), 24, matrix=frame((0, 0, z * IN), up))
+        moving.append(
+            say(
+                cap.build("RR_IndexBarCap", M["steel"], None),
+                "Tether retaining cap",
+                "The lip kept the target tether on the bar. Its profile follows Gemini XII figure 3.1-2; its diameter is estimated.",
+            )
+        )
+    pivot("RR_IndexBar", g, at(skin_r), moving)
     fit_ = MeshBuilder()
     fit_.lathe(hoop(r + 0.2, r + 0.75, skin_r - 0.3, skin_r + 0.3), 16, matrix=frame((0.0, 0.0, z * IN), up))  # the collar it comes out through
     if interior():
@@ -1024,6 +1036,10 @@ def build_hatches(M, fit: Fit) -> list[dict]:
                 wells.build(f"{prefix}_WindowWells", M["well"], g, sharp_angle=35),
                 say(latches.build(f"{prefix}_Latches", M["steel"], g, sharp_angle=35), "Hatch latches", latches_about),
             ]
+        if whole and side > 0 and fit.late == 12:
+            import gemini_cabin
+
+            made += gemini_cabin.stowed_handrail(M, g, say)
         if sets[side] is not both and side > 0:
             # the pilot's hatch on its own node, its origin on the hinge's line, half way along it: a flight swings it
             pivot("HatchRight", g, CABIN.p(HATCH_OUT, (z0 + z1) / 2, 0.35), made + panes[1])
@@ -1268,6 +1284,7 @@ def build_crew_station(M, fit: Fit, font=None) -> None:
         reentry_switch="reentry-communications" in fit.experiments,
         range_indicator=fit.range_indicator,
         get_clock=fit.get_clock,
+        late=fit.late,
     )
 
 
@@ -1398,6 +1415,10 @@ def build_retro_section(M, fit: Fit) -> None:
         build_eva_light(M, g)
     if fit.handrails:
         build_handrail(M, g, "Retro", 0)
+    if fit.late == 10:
+        from late_equipment import experiment_ports
+
+        experiment_ports(M, g)
     for name in fit.retro_experiments:
         build_retro_package(M, g, name)
     if not interior():
@@ -1911,12 +1932,12 @@ def build_equipment_section(M, fit: Fit) -> None:
     build_blast_shield(M, g, fit)
     build_oams_module(M, g, fit)
     if fit.fuel_cells:
-        build_fuel_cells(M, g, fit.hydrogen_insulated, fit.fuel_cell_row)
+        build_fuel_cells(M, g, fit.hydrogen_insulated, fit.fuel_cell_row, fit.late != 0)
     if fit.module_water_tank:
-        build_module_water_tank(M, g)
+        build_module_water_tank(M, g, fit.late != 0)
     if fit.adapter_batteries:
         build_battery_module(M, g, fit)
-    build_ecs_module(M, g)
+    build_ecs_module(M, g, fit.late != 0)
     build_electronic_module(M, g)
     build_adapter_experiments(M, g, fit)
     if fit.pod:
@@ -2246,7 +2267,7 @@ def build_battery_module(M, g, fit: Fit) -> None:
         )
 
 
-def build_fuel_cells(M, g, insulated: bool = False, row: bool = False) -> None:
+def build_fuel_cells(M, g, insulated: bool = False, row: bool = False, shared_oxygen: bool = False) -> None:
     """The reactant supply system and fuel cell module (Gemini V mission report, 3.1.2.6 and Figure 3.1-5; SEDR 300
     volume 2, Figure 5-6; volume 1, Figure 5-5): two fuel cell sections, each a sealed can of three stacks of 32 cells,
     and the two tanks of supercritical hydrogen and oxygen that feed them, in a row beyond the beam on the side of the
@@ -2304,11 +2325,16 @@ def build_fuel_cells(M, g, insulated: bool = False, row: bool = False) -> None:
         ),
     ):
         tank = MeshBuilder()
+        if shared_oxygen and name == "Oxygen":
+            name, label = "PrimaryOxygen", "Primary oxygen for crew and fuel cells"
+            about = "One tank supplied breathing oxygen and fuel-cell reactant on spacecraft 10 through 12. "
+            about += "Its module is documented in Gemini X figure 3.1-2; the envelope is estimated."
         wrap = MYLAR if insulated and name == "Hydrogen" else 0.0  # (spacecraft 7's hydrogen tank under its fifty layers of mylar)
         rr = across / 2 + wrap
         m = Lm(T_POWER, out, along, station)
         sphere(tank, m.translation, rr * IN, 40)
-        say(tank.build(f"Equipment_Rss{name}", M["silver" if wrap else "tank"], g, sharp_angle=None), label, about)
+        mesh_name = "Equipment_PrimaryOxygen" if name == "PrimaryOxygen" else f"Equipment_Rss{name}"
+        say(tank.build(mesh_name, M["silver" if wrap else "tank"], g, sharp_angle=None), label, about)
         # the band round its middle with what is fastened to it (heater, sensors, switches), and two struts up to the beam
         frames_.lathe(hoop(rr - 0.1, rr + 0.45, -0.4, 0.4), 40, matrix=m)
         for k in (-2, -1, 1, 2):
@@ -2342,11 +2368,11 @@ def build_fuel_cells(M, g, insulated: bool = False, row: bool = False) -> None:
     )
 
 
-def build_module_water_tank(M, g) -> None:
+def build_module_water_tank(M, g, late: bool = False) -> None:
     """Water tank A of a ship from spacecraft 8 on (Gemini VIII mission report, 3.1.2.3.5 and Figure 3.1-2; SEDR 300
     volume 2, Figure 6-10 sheet 6): a ball of the same pattern as the one in the retrograde section, hung on the fuel
     cell module. It takes the water the fuel cells make."""
-    out, along, station = WATER_A
+    out, along, station = (19.5, -11.0, 36.0) if late else WATER_A
     r = WATER_C[0] / 2
     here = Lm(T_POWER, out, along, station)
     tank, straps = MeshBuilder(), MeshBuilder()
@@ -2368,18 +2394,22 @@ def build_module_water_tank(M, g) -> None:
     straps.build("Equipment_WaterTankASupport", M["aluminium"], g, sharp_angle=35)
 
 
-def build_ecs_module(M, g) -> None:
+def build_ecs_module(M, g, oxidizer: bool = False) -> None:
     """The environmental control system's two modules (Technical Summary, Figure 4): the primary oxygen under its own
     panel of the blast shield, at one end of the space between the beams, and the coolant pump module, a frame
     against the wall aft of it between Z28.61 and Z41.17."""
     oxygen, frames_, pumps = MeshBuilder(), MeshBuilder(), MeshBuilder()
     out, station, r = PRIMARY_OXYGEN
+    if oxidizer:
+        r = 11.0  # Gemini X report, §3.1.2.7.1, diameter 22 in
     here = Lm(T_ECS, out, 0.0, station)
     ball(oxygen, here, r, 32, ring=0.45)
     say(
-        oxygen.build("Equipment_PrimaryOxygen", M["tank"], g, sharp_angle=None),
-        "Primary oxygen",
-        "The oxygen the crew breathe in orbit, kept so cold and so squeezed that it is neither liquid nor gas: 15.3 lb of it "
+        oxygen.build("Equipment_ExtraOxidizer" if oxidizer else "Equipment_PrimaryOxygen", M["tank"], g, sharp_angle=None),
+        "Additional oxidizer tank" if oxidizer else "Primary oxygen",
+        "The 22-inch oxidizer sphere on the former primary oxygen mount. The cylindrical reserve tank was a separate vessel."
+        if oxidizer
+        else "The oxygen the crew breathe in orbit, kept so cold and so squeezed that it is neither liquid nor gas: 15.3 lb of it "
         "on this flight. When this section is cut away before retrofire they go on to a smaller supply in the re-entry "
         "module. McDonnell's drawing puts it under its own panel of the blast shield, at one end of the space between the "
         "two beams; its size is estimated.",
@@ -2999,6 +3029,10 @@ def build(font, flag, fit: Fit | None = None) -> str:
     build_heat_shield(M)
     build_retro_section(M, fit)
     build_equipment_section(M, fit)
+    if fit.late:
+        import late_equipment
+
+        late_equipment.build(M, fit.late)
     if fit.eva:
         build_eva_equipment(M)
     if fit.pod:

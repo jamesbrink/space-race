@@ -115,6 +115,7 @@ def materials() -> dict:
         "polished": m("aluminium-polished", (0.78, 0.79, 0.80), 1.0, 0.22),
         "silver": m("insulation-silver", (0.80, 0.80, 0.78), 1.0, 0.32, double_sided=True),
         "gold": m("insulation-gold", (0.62, 0.45, 0.16), 1.0, 0.38, double_sided=True),
+        "webbing": m("tether-webbing", (0.43, 0.40, 0.34), 0.0, 0.85, double_sided=True),
         "fibreglass": m("fibreglass-shroud", (0.86, 0.86, 0.82), 0.0, 0.6),
         "liner": m("fibreglass-shroud-inside", (0.05, 0.05, 0.055), 0.0, 0.8),
         "placard": m("paint-placard-red", (0.62, 0.10, 0.08), 0.0, 0.55),
@@ -144,12 +145,23 @@ SHELLS = ("TDA_Shell", "TDA_ShellInside", "TDA_Fasteners", "TDA_SpiralAntennas",
 
 
 def build(
-    ax: Axis, M: dict, lip: float = LIP_EXTENDED, cone_black: bool = True, s10: bool = False, discharge: bool = True, whose: str = "the Agena"
+    ax: Axis,
+    M: dict,
+    lip: float = LIP_EXTENDED,
+    cone_black: bool = True,
+    s10: bool = False,
+    discharge: bool = True,
+    whose: str = "the Agena",
+    ion_wake: bool = False,
+    tether: bool = False,
+    eva_station: bool = False,
+    recovered_samples: bool = False,
 ) -> None:
     """The adapter with its aft face at the axis's datum. `lip`: how far forward of that its cone's lip stands.
     `cone_black`: the cone's outside black, as an Agena's was, or painted aluminium, as the ATDA's. `s10`: the
     micrometeorite package (experiment S-10) on its skin. `discharge`: the three static discharge fingers in the cone,
-    which the last adapters flew without. `whose`: what it is bolted to, for its words."""
+    which the last adapters flew without. `whose`: what it is bolted to, for its words. The mission-specific packages
+    are drawn as stowed before their EVA tasks."""
     g = group("TargetDockingAdapter")
     # what a crew came to look for and to meet, each a part of its own: the cone, the latches in its throat, the
     # panel over its notch, the radar's transponder with its antennas, and the two flashing lights
@@ -177,7 +189,7 @@ def build(
         "Adapter shell",
         f"The adapter's own structure: a short cylinder of bare aluminium, five feet across, bolted to {whose}. Everything "
         "else hangs in it: the cone on its dampers, the motor that draws the cone in, the radar transponder, the lights. "
-        "Its diameter and its length are documented; that it was bare metal is the report on the next flight's.",
+        "Its diameter and length are documented. The Gemini IX-A report identifies the adapter finish as bare Alclad.",
     )
     bolts.build("TDA_Fasteners", M["aluminium"], g)
 
@@ -351,7 +363,9 @@ def build(
     if spiral.verts:
         spiral.build("TDA_DipoleElements", M["white"], g_radar, sharp_angle=None)
 
-    if s10:  # experiment S-10: a hinged package on the skin under a fairing, in line with the top acquisition light
+    if s10 and recovered_samples:
+        build_recovered_samples(ax, M, g)
+    elif s10:  # experiment S-10: a hinged package on the skin under a fairing, in line with the top acquisition light
         pack = MeshBuilder()
         at = ax.on(deg(-42), RADIUS, SHELL * 0.55)
         chamfered(pack, (8.0, 6.0, 1.6), at @ Matrix.Translation(Vector((0.0, 0.0, 0.55)) * IN), 0.2)
@@ -366,6 +380,13 @@ def build(
             "upper acquisition light, is documented; its size is a guess.",
         )
 
+    if ion_wake:
+        build_ion_wake(ax, M, g)
+    if tether:
+        build_tether(ax, M, g_cone, lip, eva_station)
+    if eva_station:
+        build_eva_station(ax, M, g, g_cone, lip)
+
     if interior():
         # behind the cone: the seven dampers, three across and four along, in three sets a third of a turn apart; the
         # motor that draws the cone in; the transponder; the two approach lights that shine through the cone
@@ -379,7 +400,7 @@ def build(
         for a, along in ((0.0, (-0.26, 0.26)), (deg(120), (0.0,)), (deg(240), (0.0,))):
             for da in along:  # a longitudinal one: from the cone's ring back to the adapter's aft ring
                 damper(ax.p(a + da, THROAT_R + 2.4, throat - 3.6), ax.p(a + da, RADIUS - 3.0, 1.6))
-            damper(ax.p(a - 0.45, THROAT_R + 2.6, throat - 2.0), ax.p(a + 0.5, RADIUS - 1.9, throat - 1.2))  # the lateral one
+            damper(ax.p(a - 0.45, THROAT_R + 2.6, throat - 1.8), ax.p(a + 0.5, RADIUS - 1.9, throat - 1.0))  # the lateral one
         chamfered(kit, (9.0, 6.0, 6.0), ax.on(deg(180), RADIUS - 7.0, 9.0), 0.4)  # the mooring drive's power unit
         kit.tube(ax.p(deg(180), RADIUS - 7.0, 9.0), ax.p(deg(180), THROAT_R + 2.0, throat - 3.2), 0.7 * IN, 10)
         chamfered(kit, (12.0, 9.0, 5.0), ax.on(deg(91), RADIUS - 3.6, SHELL * 0.48), 0.4)  # the transponder, behind its cover
@@ -403,3 +424,223 @@ def build(
             "the last few feet. What is there is documented; every form and place here is a guess.",
         )
     struct.build("TDA_Structure", M["structure"], g, sharp_angle=30)
+
+
+def shifted(at: Matrix, x: float, y: float, z: float) -> Matrix:
+    """An inch offset in a detail's mounting frame."""
+    return at @ Matrix.Translation(Vector((x, y, z)) * IN)
+
+
+def rail(mesh: MeshBuilder, at: Matrix, points: tuple, radius: float) -> None:
+    """A bent tube, in inches within the hardware's mounting frame."""
+    for p, q in zip(points, points[1:]):
+        mesh.tube(at @ (Vector(p) * IN), at @ (Vector(q) * IN), radius * IN, 8)
+
+
+def cone_mount(ax: Axis, lip: float, a: float, d: float, outside: bool = True) -> Matrix:
+    """Frame tangent to one face of the cone, with +X toward the lip."""
+    slope = math.atan2(MOUTH_R - THROAT_R, DEPTH)
+    r = MOUTH_R - d * (MOUTH_R - THROAT_R) / DEPTH
+    skin = SKIN if outside else 0.0
+    surface = ax.on(a, r + skin * math.cos(slope), lip - d - skin * math.sin(slope))
+    return surface @ Matrix.Rotation(math.pi - slope if not outside else -slope, 4, "Y")
+
+
+def build_recovered_samples(ax: Axis, M: dict, parent) -> None:
+    """Closed S010 package with its outer faces exposed, Fig. 8.11-1 and recovered article Fig. 8.11-2."""
+    at = ax.on(deg(-42), RADIUS, SHELL * 0.55)
+    carrier, panels, fasteners = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    chamfered(carrier, (14.6, 6.4, 0.6), shifted(at, 0, 0, 0.15), 0.25)
+    chamfered(carrier, (7.8, 5.7, 0.8), shifted(at, 0.15, 0, 0.75), 0.23)
+    # Two curved fairings at the ends of the fixed package. The forward fairing came away on two retaining wires.
+    for x, length, roof in ((-5.05, 4.5, 1.65), (5.66, 3.4, 1.3)):
+        carrier.grid(
+            lambda i, j, x=x, length=length, roof=roof: at @ (Vector((x + (i - 0.5) * length, 3.2 * math.cos(j), 0.3 + roof * math.sin(j))) * IN),
+            (0, 0.25, 0.5, 0.75, 1),
+            [math.pi * i / 12 for i in range(13)],
+            flip=True,
+        )
+    for x in (-1.8, 0.5):
+        for y in (-1.25, 1.25):
+            chamfered(panels, (2.12, 2.28, 0.24), shifted(at, x, y, 1.19), 0.11)
+            for dx in (-0.84, 0.84):
+                for dy in (-0.89, 0.89):
+                    fasteners.lathe(prof([(0.105, 0), (0.105, 0.09), (0, 0.09)]), 8, matrix=shifted(at, x + dx, y + dy, 1.31))
+    chamfered(fasteners, (1.35, 4.65, 0.22), shifted(at, 2.7, 0, 1.23), 0.13)
+    for y in (-2.25, 2.25):  # the fairing's two release buttons
+        fasteners.lathe(prof([(0.23, 0), (0.23, 0.2), (0, 0.2)]), 12, matrix=shifted(at, 4.5, y, 1.12))
+    say(
+        carrier.build("TDA_MicrometeoriteCollector", M["aluminium"], parent, sharp_angle=35),
+        "S010 micrometeorite collector",
+        "Collins found the experiment shut. He released the nose fairing and drew it and the package from the housing. "
+        "Four outside samples had been exposed during four months in orbit. The model shows the package before retrieval.",
+    )
+    panels.build("TDA_S010OuterSamples", M["black"], parent, sharp_angle=35)
+    fasteners.build("TDA_S010Fasteners", M["steel"], parent, sharp_angle=35)
+
+
+def build_ion_wake(ax: Axis, M: dict, parent) -> None:
+    """Three exposed analyzer heads and their programmer. Layout from Gemini X Fig. 8.14-1."""
+    frames, apertures = MeshBuilder(), MeshBuilder()
+    for a, tilt in ((deg(130), 0.0), (deg(150), deg(70)), (deg(172), 0.0)):
+        base = ax.on(a, RADIUS - 2.4, SHELL + 1.65) @ Matrix.Rotation(tilt, 4, "Y")
+        chamfered(frames, (3.6, 3.6, 1.3), base, 0.19)
+        apertures.lathe(prof([(1.18, 0.77), (1.02, 0.9), (0.72, 0.9), (0.58, 0.73), (0.0, 0.73)]), 16, matrix=base)
+    say(
+        frames.build("TDA_IonWakeSensors", M["aluminium"], parent, sharp_angle=35),
+        "S026 ion-wake analyzers",
+        "The two ion detectors sampled different directions relative to the target; a third detector measured electrons. "
+        "All three are identified in Gemini X's mission report. Their angular positions and sizes are estimates.",
+    )
+    apertures.build("TDA_IonWakeApertures", M["equipment"], parent, sharp_angle=35)
+    if interior():
+        programmer = MeshBuilder()
+        chamfered(programmer, (8, 5, 1.8), ax.on(deg(80), RADIUS - 2, SHELL * 0.55), 0.3)
+        say(
+            programmer.build("TDA_IonWakeProgrammer", M["equipment"], parent),
+            "S026 programmer",
+            "The experiment's electronics ran the three analyzers. The installation's dimensions are estimated from the report illustration.",
+        )
+
+
+def build_tether(ax: Axis, M: dict, parent, lip: float, late_clamp: bool) -> None:
+    """Concealed webbing with its visible attachment loop and the stowed retainer."""
+    canister, flap, hardware, clamp, hands, webbing = (MeshBuilder() for _ in range(6))
+    a = deg(49)
+    at = cone_mount(ax, lip, a, 9.6)
+    chamfered(canister, (10.5, 6.5, 2.7), shifted(at, 0, 0, 1.1), 0.6)
+    chamfered(flap, (8.8, 5.5, 0.35), shifted(at, 0, 0, 2.63), 0.15)
+    for y in (-3.4, 3.4):
+        chamfered(hardware, (11.3, 0.65, 0.65), shifted(at, 0, y, 0.45), 0.12)
+    # The long webbing is folded inside this canister. Only the outer fold, fabric loop and hook are exposed.
+    loop_length = 4.0 if late_clamp else 2.6
+    webbing.grid(
+        lambda i, j: at @ (Vector((8.5 + loop_length * math.cos(i), 0.65 * j, 3.0 + 0.55 * math.sin(i))) * IN),
+        [math.pi * i / 8 for i in range(9)],
+        (-1, 1),
+    )
+    rail(hardware, at, ((9.4, -0.3, 2.5), (10.5, -0.3, 2.5), (11.1, 0, 2.7), (10.7, 0.5, 2.7)), 0.19)
+    if late_clamp:
+        # The one-hand retainer is open-sided, with four retaining clips and a separate rounded grip (XII Fig. 3.4-1).
+        for x in (-3.2, 3.2):
+            chamfered(clamp, (0.48, 3.1, 0.42), shifted(at, x, 0.35, 3.2), 0.1)
+            for y in (-1.0, 0.8):
+                chamfered(clamp, (0.7, 0.55, 0.48), shifted(at, x * 0.91, y, 3.44), 0.08)
+        chamfered(clamp, (6.2, 0.55, 0.62), shifted(at, 0, 1.76, 3.09), 0.1)
+        rail(clamp, at, ((-3.1, 2.25, 3.2), (-2.68, 2.5, 3.9), (2.68, 2.5, 3.9), (3.1, 2.25, 3.2)), 0.24)
+    else:
+        # XI's knob and open jaws (Fig. 3.1-2); orientation on the stowed pack is estimated.
+        clamp.lathe(prof([(0.0, 2.84), (1.13, 2.84), (1.13, 3.52), (0.0, 3.52)]), 10, matrix=at)
+        rail(clamp, at, ((-2.65, 0.66, 3.08), (-1.9, 1.43, 3.08), (-0.7, 1.35, 3.08), (0, 0.7, 3.08), (0, -0.6, 3.08), (-1.2, -1.25, 3.08)), 0.2)
+    for angle in (a - deg(18), a + deg(18)):
+        handle = cone_mount(ax, lip, angle, 10.0)
+        rail(hands, handle, ((-3.0, 0, -0.15), (-2.67, 0, 1.72), (-1.9, 0, 2.36), (1.9, 0, 2.36), (2.67, 0, 1.72), (3.0, 0, -0.15)), 0.37)
+    for mesh, name, mat in (
+        (flap, "TDA_TetherCanisterFlap", "fibreglass"),
+        (hardware, "TDA_TetherHardware", "steel"),
+        (webbing, "TDA_TetherWebbing", "webbing"),
+    ):
+        mesh.build(name, M[mat], parent, sharp_angle=35)
+    say(
+        canister.build("TDA_TetherCanister", M["fibreglass"], parent, sharp_angle=35),
+        "Tether canister",
+        "One hundred feet of folded Dacron webbing stowed in a fibreglass container. The near end was drawn out to "
+        "the Gemini docking bar by the pilot. Canister dimensions and the stowed webbing shape are estimates.",
+    )
+    say(
+        clamp.build("TDA_TetherClamp", M["aluminium"], parent, sharp_angle=35),
+        "Docking-bar tether clamp",
+        "The retainer kept the tether near the bottom of Gemini's index bar and limited its leverage. "
+        "This is the retainer stowed on the target, with its details estimated from the mission report.",
+    )
+    say(
+        hands.build("TDA_TetherHandholds", M["rod"], parent, sharp_angle=35),
+        "Tether handholds",
+        "Two fixed handles beside the tether canister for the pilot to steady himself before attaching the retainer. "
+        "Their positions and dimensions are estimates.",
+    )
+
+
+def build_eva_station(ax: Axis, M: dict, parent, cone_parent, lip: float) -> None:
+    """XII's training panel and handrail interface on the cone (Figs. 3.4-2 and 3.1-7)."""
+    at = cone_mount(ax, lip, deg(-79), 8.5)
+    plate, tools, cables, rings, sockets, patches, handle = (MeshBuilder() for _ in range(7))
+    # Main plate and lower pin shelf. Local X runs along the cone; local Y runs around it.
+    chamfered(plate, (10.5, 9.0, 0.55), shifted(at, 1.2, 0, 0.95), 0.28)
+    chamfered(plate, (3.7, 8.4, 0.6), shifted(at, -5.5, 0, 1.04), 0.28)
+    for x in (-4.5, 4.8):
+        chamfered(plate, (1.15, 7.8, 1.15), shifted(at, x, 0, 0.3), 0.12)
+    tools.lathe(prof([(0.92, 0), (0.92, 0.26), (0.62, 0.26), (0.62, 0.65), (0, 0.65)]), 6, matrix=shifted(at, 4.5, 0, 1.25))
+    # The secured Apollo torque wrench and its drive head, across the upper panel.
+    chamfered(tools, (1.05, 5.6, 0.55), shifted(at, 0, 0.36, 1.52), 0.22)
+    tools.lathe(prof([(0.92, 0), (1.02, 0.6), (0.48, 0.65), (0.48, 0.13)]), 12, matrix=shifted(at, 0, -2.63, 1.35))
+    chamfered(tools, (2.1, 1.0, 0.44), shifted(at, 0, 3.15, 2.25), 0.22)  # retaining strap over the handle
+    for y in (-2.65, 0.0, 2.65):
+        x = -5.5 - (0.6 if y == 0.0 else 0.0)
+        tools.lathe(prof([(0.48, 0), (0.48, 0.75), (0, 0.75)]), 10, matrix=shifted(at, x, y, 1.33))
+        chamfered(tools, (0.38, 1.65, 0.42), shifted(at, x - 0.43, y, 1.92), 0.14)
+    for y, radius, length in ((-5.4, 0.54, 1.55), (5.5, 0.68, 2.05)):
+        body = shifted(at, 2.0, y, 1.5) @ Matrix.Rotation(deg(90 if y > 0 else -90), 4, "X")
+        tools.lathe(prof([(0, 0), (radius, 0), (radius, length - 0.3), (radius * 0.67, length), (0, length)]), 12, matrix=body)
+    rail(
+        cables,
+        at,
+        ((2.0, -6.1, 1.5), (0.8, -6.85, 1.44), (-0.7, -6.9, 1.4), (-2.1, -6.54, 1.38), (-3.8, -5.5, 1.35), (-6.1, -3.0, 1.42), (-7.0, 0, 1.3)),
+        0.31,
+    )
+    rail(cables, at, ((2.0, 6.6, 1.5), (1.1, 7.52, 1.65), (-0.4, 7.88, 1.62), (-2.1, 7.6, 1.5), (-3.6, 6.7, 1.47), (-4.6, 5.2, 1.5)), 0.41)
+    rail(cables, at, ((0, 3.15, 2.0), (0.58, 4, 2.4), (0.3, 4.65, 2.5), (-0.7, 5.0, 2.08), (-1.5, 4.8, 1.55)), 0.12)
+    for a in (deg(-109), deg(-51)):  # two portable handholds stowed to either side of the panel
+        here = cone_mount(ax, lip, a, 10.0)
+        for x in (-2.06, 2.06):
+            chamfered(patches, (1.75, 1.8, 0.3), shifted(here, x, 0, 0.2), 0.12)
+        rail(handle, here, ((-2.05, 0, 0.24), (-1.8, 0, 1.63), (-1.3, 0, 1.84), (1.3, 0, 1.84), (1.8, 0, 1.63), (2.05, 0, 0.24)), 0.31)
+    for a in (-58, -28, 42, 65, 122, 154, 225, 248):
+        for h in (SHELL * 0.36, SHELL * 0.68):
+            rim = ax.on(deg(a), RADIUS, h)
+            sockets.lathe(prof([(0.53, -0.14), (0.53, 0.24), (0.29, 0.24), (0.29, 0.04)]), 10, matrix=rim)
+        chamfered(patches, (2.7, 2.6, 0.18), ax.on(deg(a), RADIUS, SHELL * 0.52, 0.31), 0.1)
+    for a, h, r in (
+        (-77, lip - 1.15, MOUTH_R),
+        (-28, lip - 1.15, MOUTH_R),
+        (28, lip - 1.15, MOUTH_R),
+        (77, lip - 1.15, MOUTH_R),
+        (-71, SHELL - 0.4, RADIUS),
+        (71, SHELL - 0.4, RADIUS),
+    ):
+        arc = tuple((0, 0.95 * math.cos(t * math.pi / 8), 0.7 + 0.95 * math.sin(t * math.pi / 8)) for t in range(9))
+        rail(rings, ax.on(deg(a), r, h), arc, 0.19)
+    for a in (-88, 88):
+        rail(
+            handle, ax.on(deg(a), RADIUS, SHELL - 2.3), ((0, -2.8, 0), (0, -2.6, 1.2), (0, -2.1, 1.8), (0, 2.1, 1.8), (0, 2.6, 1.2), (0, 2.8, 0)), 0.3
+        )
+    say(
+        plate.build("TDA_EVAWorkStation", M["aluminium"], parent, sharp_angle=35),
+        "Target EVA work station",
+        "Aldrin practised using an Apollo torque wrench, a fluid quick disconnect and an electrical connector. "
+        "Three pip pins gave him places to clip a waist tether. The mission report illustrates the equipment; the panel's size is estimated.",
+    )
+    for mesh, name, mat, group_ in (
+        (tools, "TDA_EVAWorkStationTools", "rod", parent),
+        (cables, "TDA_EVAWorkStationHoseAndCable", "black", parent),
+        (rings, "TDA_EVAMooringRings", "rod", cone_parent),
+        (sockets, "TDA_EVAPipPinSockets", "aluminium", parent),
+        (patches, "TDA_EVAHookAndLoop", "webbing", parent),
+        (handle, "TDA_EVAPortableAndShroudHandholds", "rod", parent),
+    ):
+        mesh.build(name, M[mat], group_, sharp_angle=35)
+
+    # The inner mouth is an actual opening through both faces (XII Fig. 3.1-7).
+    inner = cone_mount(ax, lip, deg(-30), 5.0, outside=False)
+    inner = shifted(inner, 0, 0, -0.43)
+    srlib.bore(("TDA_Cone", "TDA_ConeOutside"), inner, 0.94 * IN, 3.1 * IN)
+    funnel = MeshBuilder()
+    funnel.lathe(
+        prof([(1.24, 0.57), (1.24, 0.98), (0.9, 0.98), (0.49, 0.28), (0.49, -1.14), (0.82, -1.14), (0.82, 0.32), (1.24, 0.57)]), 24, matrix=inner
+    )
+    say(
+        funnel.build("TDA_HandrailReceptacle", M["steel"], cone_parent, sharp_angle=35),
+        "Handrail funnel",
+        "Aldrin inserted the small end of a telescoping rail into this receptacle before translating to the target. "
+        "The hole and its place on the cone are shown in the Gemini XII report. Its diameter and profile are estimates.",
+    )

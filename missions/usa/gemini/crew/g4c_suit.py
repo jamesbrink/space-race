@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sys
+from dataclasses import replace
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from g3c_suit import Garment, Wearer, build  # noqa: E402
@@ -74,3 +75,15 @@ G4C_AMU = Garment(
     legs="chromel",
 )
 CERNAN = Wearer("E.A.CERNAN", 182.9, 1.0, 1.0, garment=G4C_AMU)
+
+
+# Late Gemini: Young wore the lightweight G4C and Collins wore the EVA cover from Gemini VIII (Gemini X mission report,
+# MSC-G-R-66-7, 3.1.2.12.2). The Gemini XI and XII EVA suits were essentially Gemini X's (NASA TN D-6069, "Space Suits").
+# Young, Collins, Gordon and Aldrin use their Apollo press kit statures (p. 69 in Apollo 10, pp. 140 and 142 in
+# Apollo 11, p. 77 in Apollo 12). Conrad uses his Gemini 5 stature and Lovell his Gemini 7 stature.
+YOUNG_10 = Wearer("J.W. YOUNG", 175.3, 0.99, 1.0, garment=G4C, mission_patch=("gt-10", 10.0))
+COLLINS = Wearer("M. COLLINS", 180.3, 1.0, 1.0, garment=G4C_OUTSIDE, mission_patch=("gt-10", 10.0))
+CONRAD_11 = replace(CONRAD, mission_patch=("gt-11", 7.6))
+GORDON = Wearer("R.F. GORDON JR", 170.2, 0.99, 1.0, garment=G4C_OUTSIDE, mission_patch=("gt-11", 7.6), cable_clearance=1.3, stand=0.32)
+LOVELL = Wearer("J.A. LOVELL JR", 182.9, 1.0, 1.0, garment=G4C, mission_patch=("gt-12", 8.9), walkout_sign="THE")
+ALDRIN = Wearer("E.E. ALDRIN JR", 177.8, 1.0, 1.0, garment=G4C_OUTSIDE, mission_patch=("gt-12", 8.9), walkout_sign="END")

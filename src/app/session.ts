@@ -1,6 +1,18 @@
 import { Box3, type Object3D, Vector3 } from 'three';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
-import { atSite, browseTo, formatAddress, openingFor, opensIn, type Place, parseAddress, settle, where, write } from './address.ts';
+import {
+  atSite,
+  browseTo,
+  exhibit,
+  formatAddress,
+  openingFor,
+  opensIn,
+  type Place,
+  parseAddress,
+  settle,
+  where,
+  write,
+} from './address.ts';
 import { Callout } from '../ui/callout.ts';
 import { deckOf } from '../deck/decks.ts';
 import { follow } from './curtain.ts';
@@ -747,17 +759,26 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   /** What going to the gallery stopped, to be started again on the way back. */
   const held = { clock: false, sheet: false, cel: false };
   const sheet = document.querySelector<HTMLElement>('#ui .panel')!;
-  const gallery = new Gallery(
-    document.body,
-    whole,
-    {
-      go: (place) => go(place),
-      home: goHome, // (out to the front page, which is no flight's: home.ts)
-      address: (what) => gallery.active && settle(formatAddress(flight.id, 'gallery', what)), // (within the place: no step of its own)
-      covered: () => false,
-    },
-    kept,
-  );
+  const primary = exhibit(whole)!;
+  let galleryModel = primary;
+  const galleryAddress = (what: string) =>
+    formatAddress(flight.id, 'gallery', [galleryModel.galleryCraft ? galleryModel.id : '', what].filter(Boolean).join('/'));
+  function makeGallery(reuse?: GalleryKept): Gallery {
+    return new Gallery(
+      document.body,
+      whole,
+      {
+        go: (place) => go(place),
+        home: goHome,
+        address: (what) => gallery.active && settle(galleryAddress(what)),
+        covered: () => false,
+        craft: (id) => toGallery(id === primary.id ? '' : id),
+      },
+      reuse,
+      galleryModel,
+    );
+  }
+  let gallery = makeGallery(kept);
   // the same switch the gallery has, in the same spot, and the same way back in the crumbs
   const places = placesNav(flight, 'site', (to) => go(to), scope);
   // (on a narrow page, which has no room for crumbs, the heading is the way out to the front page: gallery.css)
@@ -791,11 +812,22 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   }
   /** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */
   function toGallery(what?: string): void {
-    if (gallery.active) {
+    const active = gallery.active;
+    const [id, ...rest] = what?.split('/') ?? [];
+    const craft = id && whole.models.find((m) => m.galleryCraft && (m.id === id || m.galleryAlias === id));
+    const next = what === undefined ? galleryModel : craft || primary;
+    const selection = craft ? rest.join('/') : what;
+    const changed = next !== galleryModel;
+    if (changed) {
+      const reuse = gallery.dispose();
+      galleryModel = next;
+      gallery = makeGallery(reuse);
+    }
+    if (active) {
       // (already there: an address that names something goes to it)
-      if (what === undefined) void gallery.enter();
-      else gallery.go(what);
-      say(formatAddress(flight.id, 'gallery', what ?? gallery.at));
+      if (changed || selection === undefined) void gallery.enter(selection);
+      else gallery.go(selection);
+      say(galleryAddress(selection ?? gallery.at));
       return;
     }
     bound = null;
@@ -812,8 +844,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     sound.hush(true);
     stage.sleep(true);
     leaving = false;
-    say(formatAddress(flight.id, 'gallery', what ?? gallery.at)); // (a step, unless Back or Forward has come here)
-    void gallery.enter(what);
+    say(galleryAddress(selection ?? gallery.at)); // (a step, unless Back or Forward has come here)
+    void gallery.enter(selection);
   }
   /** To the launch site (on `model`'s section, if one is named), or with `fly` to its flight deck. The first time, the site is fetched. */
   function toSite(model = '', fly = false): void {
@@ -999,7 +1031,22 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   }, 500);
 
   // debug handle, as in lunar-lift: sr.show('pad'), sr.stage.pose(az, el, dist) (debug.ts)
-  installDebug({ stage, ui, flight, show, clock, demo, cockpit, navball, path, sound, effects, gallery });
+  installDebug({
+    stage,
+    ui,
+    flight,
+    show,
+    clock,
+    demo,
+    cockpit,
+    navball,
+    path,
+    sound,
+    effects,
+    get gallery() {
+      return gallery;
+    },
+  });
 
   return {
     flight,

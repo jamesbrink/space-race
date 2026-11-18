@@ -1,6 +1,6 @@
 """The Gemini crew station as spacecraft 3 flew it: the pressure vessel, the two ejection seats, the panels of
 SEDR 300's Figure 3-5 sheets 1 and 2 ("S/C 3"), the controls and the stowage. A later ship is this one with what build()
-is told of it (`gmt_clock`, `reentry_switch`, `range_indicator`, `get_clock`); the rest of what its panels changed is not
+is told of it (`gmt_clock`, `reentry_switch`, `range_indicator`, `get_clock`, `late`); the rest of what its panels changed is not
 drawn, and its record says so.
 
 gemini_spacecraft.build_crew_station calls build(). Dimensions are inches; a point is (inches toward the ship's top,
@@ -658,15 +658,18 @@ def ball(c: Station, F: Matrix, faces: Sheet, name: str, u: float, v: float) -> 
     c.disc("CrewCabin_InstrumentGlass", F, u, v, 1.7, 0.76, None, 24)
 
 
-def main_panels(
-    c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool = False, range_indicator: bool = True, get_clock: bool = False
-) -> None:
+def main_panels(c: Station, P: dict, sheet: Sheet, faces: Sheet, gmt_clock: bool, range_indicator: bool, get_clock: bool, late: int) -> None:
     # ---- the command pilot's (Figure 3-5 sheet 1, measured from its outboard lower corner at 47 px to the inch)
     F = P["left"]
     rg = plate(c, F, OUTLINE, sheet)
     ball(c, F, faces, "CommandPilot", 8.32, 5.99)
     lamp(c, F, faces, "AbortCP", "ABORT", 15.05, 11.9, (1.5, 0.7))
     round_dial(c, F, faces, "Accelerometer", ACCELEROMETER, 15.12, 10.35, 0.96, rim=True)
+    if late in (11, 12):
+        # Independent index-bar jettison, added so the tether could be released on XI (MSC-G-R-66-8, §3.1.2.3.1).
+        # Fig. 3.1-3 puts it above the guidance lamps on the inboard rise of the command pilot's panel.
+        button(c, F, 14.04, 11.08, 0.23)
+        rg.text("INDEX JETT", 14.66, 11.38, 0.055, mc.INK)
     for name, legend, u, v in (
         ("AttRate", "ATT RATE", 10.43, 9.59),
         ("Guidance", "GUIDANCE", 12.28, 9.57),
@@ -810,7 +813,9 @@ def main_panels(
         (9.1, "PUMP B"),
         (10.3, "CABIN\nFAN"),
     ]
-    switches(c, F, rg, [(u * k, H - 2.95, legend) for u, legend in row], 0.06)
+    switches(c, F, rg, [(u * k, H - 2.95, legend) for u, legend in (row[:-1] if late else row)], 0.06)
+    if late:
+        high_rate_oxygen(c, F, rg, 10.3 * k, H - 2.95, late)
     rg.text("PRIMARY", 2.85 * k, H - 1.25, 0.08, mc.INK)
     rg.text("SECONDARY", 8.55 * k, H - 1.25, 0.08, mc.INK)
     rg.text("EVAP PRESS", 5.7 * k, H - 1.25, 0.07, mc.INK)
@@ -839,7 +844,7 @@ def main_panels(
         tape(c, F, rg, faces, name, "", (3.0 + i * 2.25) * k, H - 4.85, 1.5, 2.2, 10, 5)
     tape(c, F, rg, faces, "EcsOxygen", "ECS O2", 3.0 * k, H - 8.2, 1.5, 3.2, 100, 100)
     tape(c, F, rg, faces, "Propellant", "PROP", (W / k - 1.75) * k, H - 8.2, 1.5, 3.2, 100, 100)
-    if not get_clock:
+    if not (get_clock or late):
         rg.rect(4.2 * k, H - 9.9, (W / k - 2.8) * k, H - 6.5, (0.86, 0.86, 0.8), r=0.1)  # the card in the middle: the flight plan roller
         for i in range(9):
             rg.line((4.5 * k, H - 6.9 - i * 0.32), ((W / k - 3.1) * k, H - 6.9 - i * 0.32), 0.03, (0.3, 0.3, 0.3))
@@ -847,12 +852,18 @@ def main_panels(
         # spacecraft 7's digital clock of ground elapsed time "in place of the flight plan roller" (Gemini VII mission report,
         # 3.1.2.5 and 3.1.2.9.1): hours to 999, minutes, seconds, and "provisions ... for starting and stopping, or resetting".
         # Its place is the roller's; its form, and the two switches under it, are estimated, and their legends are not drawn
-        u, v = (4.2 * k + (W / k - 2.8) * k) / 2, H - 8.0
+        u, v = (4.2 * k + (W / k - 2.8) * k) / 2, H - (7.65 if late else 8.0)
         rg.rect(4.2 * k, H - 9.9, (W / k - 2.8) * k, H - 6.5, (0.44, 0.45, 0.45), r=0.1)
         for du, digits, legend in ((-1.02, "000", "HR"), (0.17, "00", "MIN"), (1.19, "00", "SEC")):
             counter(c, F, rg, faces, u + du, v, digits, 0.34, 0.6, 0.0)
             rg.text(legend, u + du, v + 0.62, 0.07, mc.INK)
-        switches(c, F, rg, [(u - 0.8, v - 1.25, ""), (u + 0.8, v - 1.25, "")])
+        if late:
+            # The clock and the three small controls immediately below it (GX Fig. 3.1-5, GXI Fig. 3.1-3, GXII Fig. 3.1-4).
+            switches(c, F, rg, [(u - 1.25, v - 0.98, "START")], 0.055)
+            knob(c, F, u, v - 0.98, 0.28)
+            switches(c, F, rg, [(u - 1.16, H - 9.64, "H₂ VAC"), (u, H - 9.64, "RIGID"), (u + 1.16, H - 9.64, "UNDOCK")], 0.051)
+        else:
+            switches(c, F, rg, [(u - 0.8, v - 1.25, ""), (u + 0.8, v - 1.25, "")])
     switches(c, F, rg, [(2.4 * k, H - 11.0, "QTY"), (4.3 * k, H - 11.0, "AUTO"), (5.75 * k, H - 11.0, "AUTO"), (W - 1.2, H - 11.0, "EXP")], 0.065)
     rg.text("HEATERS", 5.0 * k, H - 11.75, 0.07, mc.INK)
     c.box("CrewCabin_RedCaps", F, 8.1 * k, H - 11.0, 0.5, 1.0, 0.0, 0.5)  # the squib switch under its guard
@@ -911,7 +922,21 @@ def main_panels(
     rg.text("REPRESS", W / 2, 2.75, 0.065, mc.INK)
 
 
-def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool = True) -> None:
+def high_rate_oxygen(c: Station, F: Matrix, rg, u: float, v: float, late: int) -> None:
+    """The rightmost control on the main console, from the controls-and-displays figures for X, XI and XII."""
+    if late == 10:
+        switches(c, F, rg, [(u, v, "O₂ HI RATE")], 0.055)
+        return
+    v += 0.25  # clear of the first warning light immediately below the guard
+    rg.rect(u - 0.63, v - 0.82, u + 0.63, v + 0.9, (0.18, 0.18, 0.19), r=0.1)
+    for du in (-0.49, 0.49):
+        c.box("CrewCabin_PanelFittings", F, u + du, v, 0.15, 1.28, 0.0, 0.53)
+    toggle(c, F, u, v, "v", True)
+    rg.text("CAMERA" if late == 11 else "EVA CAMERA", u, v + 1.05, 0.055, mc.INK)
+    rg.text("O₂ HI RATE", u, v - 1.13, 0.055, mc.INK)
+
+
+def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool, late: int) -> None:
     # ---- overhead: seven rows of eight circuit breakers, a switch at the head of four of them, five pull handles
     F = P["overhead"]
     Wd, Ht = 9.8, 11.4
@@ -983,6 +1008,10 @@ def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool = True) 
             rg.rect(Wd - 1.9, 2.9, Wd - 0.3, 4.6, (0.44, 0.45, 0.45), r=0.1)
             rg.text("RE ENT ANT\nEXP", Wd - 1.1, 4.25, 0.065, mc.INK)
             toggle(c, F, Wd - 1.1, 3.4, "v", False)
+        if experiment and late:
+            # Spacecraft 10 restored the engine arm/stop control after IX-A's ATDA stabilisation assignment.
+            switches(c, F, rg, [(Wd - 1.05, 1.27, "GATV\nENGINE")], 0.06)
+            rg.text("ARM / STOP", Wd - 1.05, 0.48, 0.05, mc.INK)
         # the secondary oxygen shutoff: a quadrant and a lever with a ball on it, on the side beside the seat's bucket
         # (Figure 3-1: "ECS control, secondary O2"; Figure 3-5 sheet 2 draws it by this panel)
         side = -1 if key == "left_cb" else 1
@@ -1012,6 +1041,60 @@ def side_panels(c: Station, P: dict, sheet: Sheet, reentry_switch: bool = True) 
     for u, v, legend in ((1.2, 2.5, "CNDSATE VALVE"), (3.6, 2.5, "H2O TANK VALVE"), (2.4, 0.9, "WASTE VALVE")):
         c.box("CrewCabin_Knobs", F, u, v, 0.4, 1.0, 0.0, 0.5)
         rg.text(legend, u, v + 0.75, 0.06, mc.INK)
+
+
+def stowed_handrail(M: dict, parent, say) -> list[bpy.types.Object]:
+    """Gemini XII's forward EVA handrail, collapsed on the inner face of the pilot's hatch (Fig. 3.1-7)."""
+    length = 36.49  # in, stowed; the report gives 99.39 in extended
+    # Its position on the hatch, diameters and two clips are estimated. The rail is along the hinge, clear of the
+    # window and the pilot's head. Its TDA end points forward. The capsule stowage drawing only calls out the hatch.
+    theta = HATCH_OUT - deg(3.2)
+    normal = CABIN.n(theta)
+    tangent = Vector((-math.sin(CABIN.a) * math.cos(theta), -math.sin(CABIN.a) * math.sin(theta), math.cos(CABIN.a)))
+    start = CABIN.p(theta, zz(Z_HATCH_AFT + 4.4), -WALL - 1.45)
+    axis = frame(start, tangent)
+    rail, brackets = MeshBuilder(), MeshBuilder()
+    rail.lathe(
+        prof(
+            [
+                (0.0, 0.0),
+                (0.46, 0.0),
+                (0.58, 0.3),
+                (0.58, 3.3),
+                (0.64, 3.3),
+                (0.64, 30.45),
+                (0.50, 30.45),
+                (0.50, 32.9),
+                (0.39, 32.9),
+                (0.39, length - 0.3),
+                (0.29, length),
+                (0.0, length),
+            ]
+        ),
+        24,
+        matrix=axis,
+    )
+    # A tether could be clipped to an oblong ring on the small end before moving along the deployed rail.
+    ring_start = start + (tangent * 29.3 - normal * 0.52) * IN
+    ring = [
+        ring_start + (tangent * x - normal * y) * IN
+        for x, y in ((0.0, -0.22), (-0.25, 0.54), (0.11, 1.01), (2.05, 1.01), (2.45, 0.54), (2.05, -0.22))
+    ]
+    for a, b in zip(ring, ring[1:]):
+        rail.tube(a, b, 0.12 * IN, 8, caps=False)
+    for along in (5.1, 26.8):
+        point = start + tangent * (along * IN)
+        chamfered(brackets, (1.5, 1.2, 0.48), frame(point + normal * (1.10 * IN), normal), 0.12)
+        brackets.tube(point + normal * (1.08 * IN), point + normal * (0.54 * IN), 0.31 * IN, 12)
+    body = say(
+        rail.build("HatchRight_TelescopingHandrail", M["aluminium"], parent, sharp_angle=35),
+        "Stowed EVA handrail",
+        "Aldrin took this telescoping rail out through the right hatch. The small end went into a funnel on the Agena's "
+        "docking cone and the other locked to a modified shingle bolt between the hatches. It was 36.49 inches stowed "
+        "and 99.39 inches extended. NASA's Figure 3.1-7 gives its length and fittings. Its thickness and exact stowage "
+        "position are estimated.",
+    )
+    return [body, brackets.build("HatchRight_HandrailClips", M["steel"], parent, sharp_angle=35)]
 
 
 def fittings(c: Station, say) -> None:
@@ -1114,6 +1197,7 @@ def build(
     reentry_switch: bool = True,
     range_indicator: bool = True,
     get_clock: bool = False,
+    late: int = 0,
 ) -> None:
     """Everything in the pressure vessel, and the vessel. The vessel's walls are built at every level of detail (they
     close the hatches' openings from behind); the rest only where an inside is built."""
@@ -1131,8 +1215,8 @@ def build(
     sheet = Sheet("gemini-panels", 4096)
     faces = Sheet("gemini-faces", 2048, mc.BLACK)
     P = frames()
-    main_panels(c, P, sheet, faces, gmt_clock, range_indicator, get_clock)
-    side_panels(c, P, sheet, reentry_switch)
+    main_panels(c, P, sheet, faces, gmt_clock, range_indicator, get_clock, late)
+    side_panels(c, P, sheet, reentry_switch, late)
     fittings(c, say)
     for name, side, who in (("CommandPilot", -1, names[0]), ("Pilot", 1, names[1])):
         seat(c, name, side, who, say, crew)

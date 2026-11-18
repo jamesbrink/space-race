@@ -16,9 +16,9 @@ Aircraft built in St. Louis, all on Martin's Titan II from Launch Complex 19.
 | Gemini VI-A | No. 6 | Walter Schirra, Thomas Stafford | 15 December 1965 | 25 h 51 min 24 s | [flight](flights/gt-6a/README.md): the vehicle, in the Gallery |
 | Gemini VIII | No. 8 | Neil Armstrong, David Scott | 16 March 1966 | 10 h 41 min 26 s | [flight](flights/gt-8/README.md): the vehicle, in the Gallery, with the Agena it docked with beside it |
 | Gemini IX-A | No. 9 | Thomas Stafford, Eugene Cernan | 3 June 1966 | 72 h 20 min 50 s | [flight](flights/gt-9a/README.md): the vehicle, in the Gallery, with the target it could not dock with beside it |
-| Gemini X | No. 10 | John Young, Michael Collins | 18 July 1966 | 70 h 46 min 39 s | |
-| Gemini XI | No. 11 | Charles Conrad, Richard Gordon | 12 September 1966 | 71 h 17 min 8 s | |
-| Gemini XII | No. 12 | James Lovell, Edwin Aldrin | 11 November 1966 | 94 h 34 min 31 s | |
+| Gemini X | No. 10 | John Young, Michael Collins | 18 July 1966 | 70 h 46 min 39 s | [gallery and launch site](flights/gt-10/README.md) |
+| Gemini XI | No. 11 | Charles Conrad, Richard Gordon | 12 September 1966 | 71 h 17 min 8 s | [gallery and launch site](flights/gt-11/README.md) |
+| Gemini XII | No. 12 | James Lovell, Edwin Aldrin | 11 November 1966 | 94 h 34 min 31 s | [gallery and launch site](flights/gt-12/README.md) |
 
 Crews, dates and durations are the programme's own summary table (*Project Gemini: Technology and
 Operations, a Chronology*, NASA SP-4002, Appendix 1, Table A), read for this page. Its table prints
