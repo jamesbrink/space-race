@@ -609,6 +609,49 @@ def build_legs(M: dict, torso: Tube) -> None:
 # --------------------------------------------------------------------------- boots
 
 
+def walkout_covers(M: dict) -> None:
+    """The cloth overshoes in Tereshkova's walkout photographs. They enclose the leather and laces.
+    Sections run from the sole to the loose cuff over her trousers. Shape and folds are estimated."""
+    cloth = MeshBuilder()
+    sections = (
+        # height, centre fore/aft from ankle, width and length radii, depth of wrinkles: centimetres
+        (0.12, -7.6, 5.7, 15.3, 0.10),
+        (1.9, -7.9, 6.2, 15.7, 0.20),
+        (4.6, -7.2, 6.6, 15.0, 0.34),
+        (7.0, -4.8, 6.0, 11.9, 0.43),
+        (9.8, -1.6, 5.9, 8.2, 0.50),
+        (12.2, -0.6, 6.8, 7.6, 0.48),
+        (14.0, -0.1, 6.0, 7.0, 0.36),
+        (16.8, 0.0, 7.2, 7.4, 0.62),
+        (20.5, 0.0, 7.6, 8.0, 0.48),
+        (24.0, 0.0, 8.5, 8.7, 0.38),
+        (28.2, 0.0, 9.4, 9.7, 0.28),
+        (29.4, 0.0, 9.2, 9.5, 0.18),
+    )
+    n = fl.sides(48, least=16)
+    for side in (-1, 1):
+        x0 = side * B.stance
+        rings = []
+        for z, y, rx, ry, wr in sections:
+            ring_points = []
+            for k in range(n):
+                t = TAU * k / n
+                fold = wr * (math.sin(5 * t + side * 0.1 * z) + 0.45 * math.cos(3 * t - z * 0.08))
+                ring_points.append(
+                    Vector((x0 + BOOT_SIZE * (rx + fold) * math.cos(t), B.ankle_y + BOOT_SIZE * (y + (ry + fold) * math.sin(t)), BOOT_SIZE * z))
+                )
+            rings.append(ring_points)
+        # The cuff turns back into the trousers, leaving a visible rim round the leg.
+        rings.append([Vector((x0 + 0.93 * (v.x - x0), B.ankle_y + 0.93 * (v.y - B.ankle_y), v.z - 0.35)) for v in rings[-1]])
+        faces = [tuple(reversed(range(n)))]
+        for i in range(len(rings) - 1):
+            for k in range(n):
+                j = (k + 1) % n
+                faces.append((i * n + k, i * n + j, (i + 1) * n + j, (i + 1) * n + k))
+        cloth.add([p for row in rings for p in row], faces)
+    emit(cloth, "Boots_ClothCovers", M["cover_cloth"], group("Boots"), sharp_angle=None)
+
+
 def build_boots(M: dict) -> None:
     g = group("Boots")
     uppers, soles, laces, eyelets, tongue = (MeshBuilder() for _ in range(5))
@@ -623,21 +666,25 @@ def build_boots(M: dict) -> None:
 # --------------------------------------------------------------------------- build
 
 
-def build_figure() -> None:
+def build_figure(covered_boots: bool = False) -> None:
     M = materials()
     build_helmet(M)
     arms, torso = build_torso(M)
     build_arms(M, arms)
     build_gloves(M, arms)
     build_legs(M, torso)
-    build_boots(M)
+    if covered_boots:
+        M["cover_cloth"] = material("walkout-overshoes-white-cloth", (0.81, 0.82, 0.78), 0.0, 0.9)
+        walkout_covers(M)
+    else:
+        build_boots(M)
 
 
-def build() -> float:
+def build(covered_boots: bool = False) -> float:
     """Builds the standing figure and returns its height in metres."""
     fl.use(B)
     fl.start()
-    build_figure()
+    build_figure(covered_boots=covered_boots)
     harness_anchor(fl.rig_standing())
     return max(v.co.z for o in bpy.data.objects if o.type == "MESH" for v in o.data.vertices)
 

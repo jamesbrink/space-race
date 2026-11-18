@@ -467,10 +467,15 @@ const crew = sk1Crew({
       confidence: 'documented',
       source: 'the photographs of 16 June 1963: her right forearm in plain view as she salutes at the pad, and nothing on it',
     },
+    bootCovers: {
+      value: true,
+      confidence: 'documented',
+      source:
+        'The walkout photographs of 16 June 1963 show white cloth drawn up to mid-calf. Their folds and dimensions are estimated against her suit.',
+    },
     standsIn:
       'The figure is a stand-in: the SK-2’s cut as its makers describe it (narrower at the shoulders, fuller at the hips, by amounts estimated), carried ' +
-      'on the suit module’s own man brought to her 1.64 m, which is read off a photograph. It is not a figure modelled as a woman’s, and on foot it walks with the one gait there is. ' +
-      'The white cloth covers over her boots in the photographs of the morning are not built.',
+      'on the suit module’s own man brought to her 1.64 m, which is read off a photograph. It is not a figure modelled as a woman’s, and on foot it walks with the one gait there is.',
   },
 });
 

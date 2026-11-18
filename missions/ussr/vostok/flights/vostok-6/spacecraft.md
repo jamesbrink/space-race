@@ -77,7 +77,7 @@ The figure is [sk_1.py](../../crew/sk_1.py)'s, worn by `TERESHKOVA`
 | Neck piece under the helmet's ring | pale | estimated | the same |
 | Gloves | black leather, on metal wrist rings; a little smaller than her hand's own scale | estimated (black: a colour film still of her parachute exercise in the suit, and the SK-1 at Zvezda's museum); documented (thinner) | Abramov and Skoog, p. 58: "the thickness of the thermal protection layer was decreased and mobility of the thumb improved". At the pad and on the gantry her hands are bare |
 | Mirror on the right sleeve | none | documented, by photograph | her right forearm is in plain view as she salutes at the pad. A bright disc on a dark band on her left forearm (a watch, or a strapped mirror) is not built: it could not be made out |
-| Boots | black laced, as the module's | **assumed** | what she walked to the pad in were loose white cloth covers to mid-calf, over whatever was under them; Abramov and Skoog say only that the boots were leather, with buckles |
+| Boots | white cloth overshoes on the walkout; black laced boots aboard | **documented by photograph** for the covers, **estimated** for their shape, **assumed** for the leather boots | what she walked to the pad in were loose white cloth covers to mid-calf, over whatever was under them; Abramov and Skoog say only that the boots were leather, with buckles |
 | Cover | orange, as the module's | documented, by photograph | the colour photographs of 16 June |
 | The helmet's cord | "moved down from the breast" on the SK-2 | documented | Abramov and Skoog, p. 58. **Not modelled**: the photograph at the hatch shows pale cord lying on her left chest much as the module has it, and where its lower end went cannot be seen |
 | Hair | none shows: the white cap covers it | documented, by photograph | |
@@ -107,7 +107,7 @@ colour. Besides those:
 - **The SK-2 is the SK-1's model recut**, not a survey of an SK-2: no photograph of one on display
   was found, and the photographs of 16 June show it from the front only. The lowered cord, the
   changed shoulder restraint, the lever of the valve and the visor's handles are not drawn.
-- **The boots are assumed.**
+- **The walkout overshoes** reproduce the colour and calf height seen in the pad photograph. Their cut, folds and precise dimensions are estimated. The leather boots underneath and in the cabin are assumed.
 - **Nothing shows what she could not reach.** The seat was not moved toward the board or away from
   it, since neither her place in it nor the board's distance is recorded.
 - **No photometer, filters or pencils.**

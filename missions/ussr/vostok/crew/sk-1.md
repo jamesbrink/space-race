@@ -102,7 +102,7 @@ Not built, though on record: the lowered cord (the photograph at the hatch shows
 left chest much as here; its lower end is not seen), the changed shoulder restraint, the valve's
 lever, the visor's handles, the changed sanitary fitting, the grey harness over the chest (the
 film still of Bykovskiy), the cream tube at the right shoulder, the round bright thing on a dark
-band on her left forearm, and the white cloth covers Tereshkova wore over her boots to the pad.
+band on her left forearm. Tereshkova’s standing figure wears the white cloth overshoes in the photograph of her reporting at the pad. Their calf height and colour are visible, and their shape and folds are estimated.
 
 ## The wearers
 
