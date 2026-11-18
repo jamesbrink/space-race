@@ -157,7 +157,7 @@ const stageParts: [string, string, string, string, string][] = [
     'Attitude thrusters, radar and antennas',
     upper,
     'Sixteen thrusters let Spider turn and translate independently.',
-    'Each corner quad has opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Gumdrop. The 26-inch S-band antenna provided a separate link to Earth.',
+    'Each cluster stands out on an outrigger at 45° to the axes, with opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Gumdrop. The 26-inch S-band antenna provided a separate link to Earth.',
   ],
   [
     'LMReactionSupply',
@@ -178,6 +178,7 @@ const facts: Record<string, Part['facts']> = {
     ['Mount', 'Two-axis gimbal · Mission Report A.2.11'],
   ],
   LMAscentEngine: [['Overall length / exit diameter', 'Approx. 51 / 31 in · NASA engine specifications, table I']],
+  LMEquipment: [['Thruster axes from the centreline', '66.1 in up and down · 61.5 in fore, aft and side · MIT R-567 §6.4.1.4']],
   LMAscent: [
     ['Crew compartment', '92 in diameter × 42 in deep · press kit p. 42'],
     ['Forward hatch', '32 in square · press kit p. 42'],

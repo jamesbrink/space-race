@@ -29,6 +29,28 @@ for (const suffix of ['', '.lod1', '.lod2']) {
       measure(model.box('LM3_DPS_NozzleExtension').lo[1] - plane, 18.48);
       measure(model.box('LM3_InterstageDeck').lo[1] - plane, 127.16);
       assert.ok(model.point('LM3_AscentBlastDeflector'));
+      // Each thruster where the guidance computer was told it was (MIT R-567 section 6, 6.4.1.4): the plane of the
+      // clusters is 254 in above that document's origin, which is 180.15 in above the pads. Clusters I to IV go round
+      // from the left forward corner by the rear; the viewer's +Z is the LM's right.
+      for (const [quad, fore, right] of [
+        ['I', 1, -1],
+        ['II', -1, -1],
+        ['III', -1, 1],
+        ['IV', 1, 1],
+      ]) {
+        for (const [jet, x, height, z] of [
+          ['U', 66.1, 180.15 + 4.8, 66.1],
+          ['D', 66.1, 180.15 - 5.3, 66.1],
+          ['F', 66.35, 180.15, 61.5],
+          ['S', 61.5, 180.15, 66.35],
+        ]) {
+          const at = model.point(`LM3_Thruster_${quad}_${jet}`);
+          assert.ok(at, `${quad}-${jet}`);
+          measure(at[0], x * fore);
+          measure(at[1] - plane, height);
+          measure(at[2], z * right);
+        }
+      }
     }
     for (const seat of spider.seats) assert.ok(lm.point(seat.node), seat.label);
     for (const part of spider.parts) assert.ok(stack.point(part.node), part.name);

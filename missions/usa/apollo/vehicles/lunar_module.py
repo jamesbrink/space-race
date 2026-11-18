@@ -16,6 +16,14 @@ KNEE = 109
 DECK = 58.30 + 68.86
 KNEE_Z = DECK - 12.291
 FOLD = 49  # degrees, reconstructed from TN D-6850 figs. 2 and 3
+# The reaction-control thrusters, from MIT Instrumentation Laboratory R-567 section 6 (November 1968), 6.4.1.4: each
+# one's reference position in LM vehicle coordinates, whose origin is 254 in below the plane of the clusters. The
+# docking plane is at X 312.5 in there (6.4.2: the LM's origin at CSM X 36.1378 m, the CM's plane at XA 1110.25 in).
+RCS_PLANE = 254 - 312.5 + apollo_docking.LM_PLANE  # 180.15 in above the pads
+RCS_ARM = 66.1  # the up and down thrusters' axis, out from the centreline both fore and aft and to the side
+RCS_UP, RCS_DOWN = RCS_PLANE + 4.8, RCS_PLANE - 5.3  # their reference points, X 258.8 and 248.7 in
+RCS_INBOARD = 61.5  # each horizontal thruster's axis, across its line of fire
+RCS_REACH = 66.35  # and its reference point, along it
 
 
 def at(point):
@@ -371,15 +379,30 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     framebars.build("LM3_FramesAndHatchHandle", dark, parent)
     porch.build("LM3_EVAPorch", dark, platform)
     shoes.build("LM3_GoldenSlippers", gold, platform)
-    # Four quads with two vertical and two transverse nozzles on each.
-    quads = MeshBuilder()
-    for x in (-43, 43):
-        for y in (-72, 72):
-            box(quads, (x, y, 180), (9, 12, 12))
-            for j, d in enumerate([(0, 0, 1), (0, 0, -1), (math.copysign(1, x), 0, 0), (0, math.copysign(1, y), 0)]):
-                mouth = tuple(v + t * 10 for v, t in zip((x, y, 180), d))
-                bell(gear, f"LM3_RCS_{x}_{y}_{j}", mouth, tuple(-t for t in d), 2.5, 7, dark)
+    # Four clusters on outriggers at 45 degrees to the pitch and roll axes (NASA TN D-6740, "Installation of the
+    # System"), each thruster where R-567 puts it. R-567 numbers them I to IV from the left forward corner round by
+    # the rear; +Y here is the commander's side, the LM's -Y. A reference point is taken for the throat. The
+    # nozzle, the housing and the three struts of each outrigger, with where they are rooted, are estimated.
+    quads, outriggers = MeshBuilder(), MeshBuilder()
+    for quad, sx, sy in (("I", 1, 1), ("II", -1, 1), ("III", -1, -1), ("IV", 1, -1)):
+        jets = (
+            ("U", (RCS_ARM * sx, RCS_ARM * sy, RCS_UP), (0, 0, 1)),
+            ("D", (RCS_ARM * sx, RCS_ARM * sy, RCS_DOWN), (0, 0, -1)),
+            ("F", (RCS_REACH * sx, RCS_INBOARD * sy, RCS_PLANE), (sx, 0, 0)),
+            ("S", (RCS_INBOARD * sx, RCS_REACH * sy, RCS_PLANE), (0, sy, 0)),
+        )
+        for jet, throat, d in jets:
+            mouth = tuple(v + t * 7 for v, t in zip(throat, d))
+            bell(gear, f"LM3_RCS_{quad}_{jet}", mouth, tuple(-t for t in d), 2.5, 7, dark)
+            # (the nozzles are joined into one mesh on export: the point itself is kept as a node, to be measured and fired from)
+            group(f"LM3_Thruster_{quad}_{jet}", gear).location = at(throat)
+        box(quads, (64 * sx, 64 * sy, RCS_PLANE - 0.25), (9.2, 9.2, 11))
+        # (rooted inside the tank fairing's end, and for the rear pair's third strut inside the aft bay)
+        roots = [(36, 46, 187), (36, 46, 172), (38, 57, 178)] if sx > 0 else [(-35, 52, 188), (-35, 52, 171), (-60, 38, 180)]
+        for (x, y, z), end in zip(roots, [(60, 60, 183), (60, 60, 177), (60.5, 61, 180)], strict=True):
+            tube(outriggers, (x, y * sy, z), (end[0] * sx, end[1] * sy, end[2]), 1)
     quads.build("LM3_QuadHousings", alloy, gear)
+    outriggers.build("LM3_RCS_Outriggers", alloy, gear)
     sb = group("LM3_SBandHinge", gear)
     sb.location = at((59, 42, 221))
     if not deployed:
