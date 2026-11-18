@@ -342,6 +342,7 @@ tools/
   impact-test.mjs                     browser proof of live impact spin and structural breakup, including rewind
   descent-attitude.mjs                browser check of Soviet sphere attitude under camera and pilot input after module release
   separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
+  flight-pixels.mjs                   checks the cockpit and chase canvas through adaptive resolution changes during flight
   flicker-test.mjs                    browser check for z-fighting
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks

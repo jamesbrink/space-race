@@ -2207,7 +2207,7 @@ export class Stage {
     const w = this.canvas.clientWidth,
       h = this.canvas.clientHeight;
     if (!w || !h) return;
-    this.pipe.fitPixels();
+    this.pipe.resize();
     this.pipe.quality.rest(performance.now(), 3000); // (every target is made again: slow for a moment, and not the machine's pace)
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
