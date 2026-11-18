@@ -52,6 +52,7 @@ export interface UiHandlers {
   holdPace(on: boolean): void;
   /** Get down and walk the site as the figure whose section this is, or stop. */
   walk(on: boolean): void;
+  walkReturn(): void;
   /** The on-screen stick while walking: x to the right, y forward, each -1 to 1. */
   walkStick(x: number, y: number): void;
   /** The on-screen jump button while walking. */
@@ -375,7 +376,7 @@ export class Ui {
         <p class="scale"></p>
       </footer>
       ${legendMarkup(f)}
-      <div class="walkbar" hidden><span></span>${workMarkup()}<button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-exit title="Back to the camera (V or Esc)">Exit walk</button></div>
+      <div class="walkbar" hidden><span></span><div data-walk-location></div>${workMarkup()}<button data-walk-motion title="How much the view moves with the body: full, reduced, or a steady camera"></button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-return title="Return to where this walk began">Back to start</button><button data-walk-exit title="Back to the camera (V or Esc)">Exit walk</button></div>
       <div class="visor" aria-hidden="true"></div>
       <div class="stick" aria-hidden="true"><i></i></div>
       <div class="walk-buttons"><button data-walk-push="-1" hidden></button><button data-walk-push="1" hidden></button><button data-walk-jump title="Jump">Jump</button><button data-walk-view aria-pressed="false" title="Through the eyes, or over the shoulder (C)">View</button><button data-walk-visor aria-pressed="false" title="The rim of the helmet's visor round the view, through the eyes">Visor</button><button data-walk-act hidden title="What can be done with what you are looking at">Act</button></div>
@@ -485,6 +486,7 @@ export class Ui {
       const key = (e.target as HTMLElement).closest<HTMLElement>('[data-press]')?.dataset.press;
       if (key) window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
     });
+    $(root, '[data-walk-return]').addEventListener('click', () => on.walkReturn());
     $(root, '[data-walk-exit]').addEventListener('click', () => on.walk(false));
     $(root, '.lookouts').addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-lookout]');
@@ -940,6 +942,11 @@ export class Ui {
     $(this.root, '.panel').classList.toggle('tucked', on && !narrow());
     $(this.root, '.close').setAttribute('aria-expanded', String(!on));
     if (remember && !narrow()) prefs.set('panelTucked', on);
+  }
+
+  setWalkLocation(text: string): void {
+    const label = $(this.root, '[data-walk-location]');
+    if (label.textContent !== text) label.textContent = text;
   }
 
   /** Walking on foot has begun or ended: the panels make way for the view, and one bar says how to stop. */

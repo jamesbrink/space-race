@@ -1541,6 +1541,20 @@ export class Stage {
     return this.cam.rig;
   }
 
+  /** Direction on the screen to an offscreen vehicle, as seen from either walking camera. */
+  walkVehicleDirection(): string {
+    const model = this.flier ?? this.staged[this.defs.findIndex((m) => m.id === 'vehicle')];
+    if (!model?.group.visible) return '';
+    const target = new THREE.Vector3();
+    if (!this.show.vessel(target)) model.box.getCenter(target);
+    const screen = target.clone().project(this.camera);
+    if (Math.abs(screen.x) <= 1 && Math.abs(screen.y) <= 1 && screen.z >= -1 && screen.z <= 1) return '';
+    const view = this.camera.worldToLocal(target);
+    if (view.z >= 0 && Math.abs(view.x) < view.z) return 'Vehicle behind';
+    if (Math.abs(screen.y) > Math.abs(screen.x) && view.z < 0) return view.y > 0 ? '↑ Vehicle above' : '↓ Vehicle below';
+    return view.x < 0 ? '← Vehicle left' : 'Vehicle right →';
+  }
+
   /** The flown vehicle is in the air and the camera is not with it: the page offers the way back to it. */
   get vehicleAway(): boolean {
     return this.lifted.flying && !this.walk.active && (this.cam.rig === 'orbit' || this.cam.rig === 'free');

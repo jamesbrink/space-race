@@ -126,6 +126,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     refind: () => stage.refind(),
 
     walk: (on) => (on ? void stage.enterWalk(current.id) : stage.onFoot.exitWalk()),
+    walkReturn: () => stage.onFoot.returnToStart(),
     walkStick: (x, y) => stage.walk.stick(x, y),
     walkJump: () => stage.walk.jump(),
     walkAct: () => act(),
@@ -1023,6 +1024,11 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     // a card read and walked away from is put down
     if (cardAt && ui.walkCardOpen && Math.hypot(stage.walk.body.position.x - cardAt.x, stage.walk.body.position.z - cardAt.z) > 3)
       ui.showWalkCard(null);
+    if (stage.walk.active) {
+      const landmark = stage.onFoot.landmark();
+      const near = landmark && nameOf(landmark, flight);
+      ui.setWalkLocation([flight.launchSite, near && `Near ${near}`, stage.walkVehicleDirection()].filter(Boolean).join(' · '));
+    }
     const s = stage.stats();
     const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
     ui.showFind(stage.vehicleAway);

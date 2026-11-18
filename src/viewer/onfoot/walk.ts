@@ -346,6 +346,24 @@ export class Solids {
     return list;
   }
 
+  /** Closest upright solid by its bounds, for naming a landmark beside the walker. */
+  landmark(eye: THREE.Vector3): THREE.Mesh | null {
+    let closest: THREE.Mesh | null = null;
+    let distance = Infinity;
+    for (const root of this.roots)
+      for (const record of this.meshes(root)) {
+        if (!record.mesh.visible) continue;
+        if (record.world.fit(record.mesh)) record.stale = true;
+        if (record.box.max.y < eye.y) continue; // the apron underfoot cannot give a direction
+        const d = record.box.distanceToPoint(eye);
+        if (d < distance) {
+          closest = record.mesh;
+          distance = d;
+        }
+      }
+    return closest;
+  }
+
   /** Whether a geometry has a hierarchy yet. */
   has(geometry: THREE.BufferGeometry): boolean {
     return this.trees.has(geometry);
