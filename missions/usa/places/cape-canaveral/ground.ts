@@ -13,6 +13,8 @@ import { LC14_GROUND } from './lc-14.ground.ts';
 import { LC14 } from './lc-14.ts';
 import { LC19_GROUND } from './lc-19.ground.ts';
 import { LC19 } from './lc-19.ts';
+import { LC34_GROUND } from './lc-34.ground.ts';
+import { LC34 } from './lc-34.ts';
 import { buildScenery, clearingsAt, pavedAt, shoreAt, shoresAt } from './scenery.ts';
 
 /**
@@ -91,6 +93,7 @@ export interface PadGround {
 const OWN = new Map<SiteDef, PadGround>([
   [LC14, LC14_GROUND],
   [LC19, LC19_GROUND],
+  [LC34, LC34_GROUND],
 ]);
 
 /** The origin pad's own ground laid on `compass` (metres, x east and z south of it), or null where it has none. */

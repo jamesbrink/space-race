@@ -219,6 +219,7 @@ export const CAPE_CANAVERAL: PlaceDef = {
     },
     materials: [
       { prefix: 'concrete', kind: 'concrete' },
+      { prefix: 'road-asphalt', kind: 'concrete' }, // a paved surface uses the same hard-road timbre
       { prefix: 'paint-line', kind: 'concrete' },
       { prefix: 'ballast-gravel', kind: 'gravel' },
       { prefix: 'shell-gravel', kind: 'gravel' },
@@ -249,6 +250,15 @@ export const CAPE_CANAVERAL: PlaceDef = {
   // the day had is not recorded: where a type had several, the one taken is `assumed`. Idle speeds are estimated but
   // for Chevrolet's, whose owner's manuals give them.
   engines: {
+    'Clark Cortez crew transfer van': {
+      fuel: 'petrol',
+      cylinders: 6,
+      idle: rpm(500, 'assumed', 'Chrysler H-225, HB-225 and I-225 Industrial Engines Operating Manual, p. 89, tune-up specification'),
+      most: rpm(4000, 'assumed', 'Chrysler Industrial Engine Parts Catalog for the 225 series, p. INF-2, HB-225 gross rated speed'),
+      confidence: 'assumed',
+      source:
+        'Clark Cortez owner’s manual CC-112, p. 37 lists the Chrysler HB-225-450 inline six. The NASA conversion’s engine is unverified.',
+    },
     '1956 Ford Fairlane Town Sedan': {
       fuel: 'petrol',
       cylinders: 8,

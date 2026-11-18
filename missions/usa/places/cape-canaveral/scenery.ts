@@ -7,6 +7,7 @@ import { stood } from '../../../../src/viewer/scenery/ground.ts';
 import { Kit } from '../../../../src/viewer/scenery/kit.ts';
 import { LC14 } from './lc-14.ts';
 import { LC19 } from './lc-19.ts';
+import { LC34 } from './lc-34.ts';
 import { LC5 } from './lc-5.ts';
 
 /**
@@ -851,8 +852,9 @@ export const COMPLEXES: Complex[] = [
   },
   {
     name: 'LC-34, its new umbilical tower',
-    lat: 28.521839,
-    lon: -80.561182,
+    lat: LC34.latitude.value,
+    lon: LC34.longitude.value,
+    pad: LC34,
     heading: 0,
     draw: (k) => KINDS.saturn(k, false),
     clear: 110, // (as the first's: the service structure's track and base)
