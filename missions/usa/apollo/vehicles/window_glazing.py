@@ -60,7 +60,7 @@ def pane(name, parent, outline, normal, back, front, base, glass):
     return obj
 
 
-def build(parent, base):
+def build(parent, base, *, hatch_parent=None):
     if not interior():
         return
     outer = json.loads((FOLDER / "apollo-cm-apertures.json").read_text())
@@ -88,13 +88,14 @@ def build(parent, base):
     # The hatch scan supplies only its fixed outer window interface. Until the
     # pressure-door mounts are measured, place the circular inner pair at a
     # labelled estimated offset behind the thermal assembly.
+    hatch_parent = parent if hatch_parent is None else hatch_parent
     hatch = json.loads((FOLDER / "apollo-side-hatch.json").read_text())
     registration = hatch["registration"]
     rotation, offset = Matrix(registration["rotation"]), Vector(registration["translation_m"])
     offset.z += AFT_APEX_XC * IN
     points = [rotation @ Vector(p) + offset for p in hatch["window"]["boundary_m"]]
     direction = rotation @ Vector(hatch["window"]["normal"])
-    pane("CM_Window_hatch_thermal", parent, points, direction, OUTER_FACE - OUTER_THICKNESS, OUTER_FACE, base, glass)
+    pane("CM_Window_hatch_thermal", hatch_parent, points, direction, OUTER_FACE - OUTER_THICKNESS, OUTER_FACE, base, glass)
     # NAA Command Module News Reference p.45 gives the round hatch
     # window as about nine inches across. Register its centre to the
     # thermal opening; no CM-101 glass-edge survey survives here.
@@ -105,4 +106,4 @@ def build(parent, base):
     thickness = PRESSURE_THICKNESS["hatch"]
     for index in range(2):
         front = -HATCH_OUTER_TO_PRESSURE - (1 - index) * (thickness + PRESSURE_GAP)
-        pane(f"CM_Window_hatch_pressure_{index + 1}", parent, points, direction, front - thickness, front, base, glass)
+        pane(f"CM_Window_hatch_pressure_{index + 1}", hatch_parent, points, direction, front - thickness, front, base, glass)
