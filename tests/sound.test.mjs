@@ -668,7 +668,10 @@ test('a road painted on the land sounds like the road: each place’s ground say
   // the apron west of the platform, the road in from the south-west (at 600 m west, 25 m south), a track's bed, the steppe
   assert.equal(TYURATAM_GROUND.painted(-50, 0, round1), 'apron');
   assert.equal(TYURATAM_GROUND.painted(-603.8, 25.3, round1), 'road');
-  assert.equal(TYURATAM_GROUND.painted(-603.8, 25.3 + 4, round1), null, 'off the road, the steppe');
+  assert.equal(TYURATAM_GROUND.painted(-603.8, 25.3 + 4, round1), 'packed-earth', 'the wheel-worn ground beside the road');
+  assert.equal(paintedInSite1(-1207.6, 6952.05), 'ballast', 'the railway past Site 2');
+  assert.equal(paintedInSite1(-1729.3, 837.2), 'packed-earth', 'the graded road away from the pad');
+  assert.equal(paintedInSite1(-5250, -67.5), 'packed-earth', 'the dirt track across the steppe');
   assert.equal(TYURATAM_GROUND.painted(300, -300, round1), null);
   assert.equal(paintedInSite1(-150, 0), 'ballast', 'the centre track’s bed west of the apron');
   assert.equal(paintedInSite1(-150, 3), null, 'and the steppe between the tracks');

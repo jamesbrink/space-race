@@ -38,7 +38,7 @@ export const TYURATAM: PlaceDef = {
       { prefix: 'galvanised', kind: 'steel' },
       { prefix: 'timber', kind: 'timber' },
     ],
-    // what the land is painted as round Site 1 (ground.ts `paintedInSite1`): the ways further out (works.ts) are the steppe's
+    // What the land is painted as round Site 1 and along the mapped ways (ground.ts `paintedInSite1`).
     painted: {
       apron: {
         kind: 'concrete',
@@ -51,6 +51,12 @@ export const TYURATAM: PlaceDef = {
         confidence: 'estimated',
         source:
           'the roads’ lines are the CIA’s drawing of 1959 (PIC/JR-2/60 Figure 5); that they were concrete slabs is estimated (ground.ts, `ROADS`)',
+      },
+      'packed-earth': {
+        kind: 'earth',
+        confidence: 'estimated',
+        source:
+          'The graded roads and dirt tracks traced on the Corona frames (tyuratam-works.ts), and the dust worn beside the roads (Chertok, Rockets and People, vol. II, p. 314). Their sound is estimated.',
       },
       ballast: {
         kind: 'gravel',
