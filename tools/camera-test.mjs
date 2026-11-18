@@ -14,6 +14,7 @@
 //   - with no drag in hand, nothing moved faster than a zoom, a coast and a key can move it.
 //
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
+import { ANCHOR_REACH, GROUND_REACH } from '../src/viewer/camera/maths.ts';
 import { checks, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -210,7 +211,14 @@ const sequences = {
   // The one that was reported: "zoom out and it'll just zoom back in at a totally random location". From above (a steep
   // view), with the view taken, wheel out with the pointer in a corner, then in with it somewhere else.
   async 'zoom out, then in'(h) {
-    for (const model of ['vehicle', 'pad', 'crew']) {
+    let farGround = false;
+    let nearGround = false;
+    for (const [model, y] of [
+      ['vehicle', 150],
+      ['pad', 150],
+      ['crew', 150],
+      ['crew', 350],
+    ]) {
       await h.page.evaluate((m) => window.sr.show(m, true), model);
       await h.wait(600);
       await h.page.evaluate(([d]) => window.sr.stage.pose(215, 35, d, 8), [model === 'crew' ? 8 : model === 'pad' ? 150 : 80]);
@@ -232,26 +240,45 @@ const sequences = {
         `${model}: and the view turned ${((ang(side(out), side(before)) * 180) / Math.PI).toFixed(3)} degrees (${far(before).toFixed(0)} m to ${far(out).toFixed(0)} m)`,
       );
       // what is under the pointer now: a thing draws the zoom to itself; bare ground a field away, or sky, does not
-      const under = await h.page.evaluate(() => {
-        const r = document.querySelector('#stage').getBoundingClientRect();
-        const hit = window.sr.stage.cam.scene.solidAt(((700 - r.left) / r.width) * 2 - 1, -((150 - r.top) / r.height) * 2 + 1);
-        return hit ? (hit.ground ? 'bare ground' : 'a thing') : 'the sky';
-      });
+      const x = 700;
+      const under = await h.page.evaluate(
+        ([x, y]) => {
+          const r = document.querySelector('#stage').getBoundingClientRect();
+          const hit = window.sr.stage.cam.scene.solidAt(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+          return hit ? { point: hit.point.toArray(), ground: hit.ground } : null;
+        },
+        [x, y],
+      );
       for (let i = 0; i < 16; i++) {
-        await h.wheel(700, 150, -120);
+        await h.wheel(x, y, -120);
         await h.wait(30);
       }
       await h.wait(1200);
       const back = await h.probe();
-      const moved = len(sub(back.pivot, before.pivot));
-      if (under === 'a thing')
-        check(moved > 0, `${model}: 16 notches in with the pointer on a thing: the pivot went ${moved.toFixed(1)} m toward it`);
-      else
+      const moved = len(sub(back.pivot, out.pivot));
+      const pivotToHit = under && len(sub(under.point, out.pivot));
+      const toHit = under && len(sub(under.point, out.p));
+      const reach = Math.max(1, GROUND_REACH * far(out));
+      const within = under && toHit > 1e-6 && toHit <= Math.max(3, ANCHOR_REACH * far(out)) && (!under.ground || pivotToHit <= reach);
+      const what = under
+        ? under.ground
+          ? `ground ${pivotToHit.toFixed(1)} m from the pivot (reach ${reach.toFixed(1)} m)`
+          : 'a thing'
+        : 'the sky';
+      if (within && pivotToHit > 1e-6) {
+        if (under.ground) nearGround = true;
+        const remaining = len(sub(under.point, back.pivot));
         check(
-          moved < 1e-6,
-          `${model}: 16 notches in with the pointer left over ${under} far from the subject: the pivot moved ${moved.toFixed(4)} m, back at ${far(back).toFixed(1)} m`,
+          moved > 0 && remaining < pivotToHit && Math.abs(moved + remaining - pivotToHit) < 0.001,
+          `${model}: zoom in toward ${what}: ${moved.toFixed(1)} m toward the anchor`,
         );
+      } else {
+        if (under?.ground && pivotToHit > reach) farGround = true;
+        check(moved < 1e-6, `${model}: zoom in over ${what}: pivot moved ${moved.toFixed(4)} m`);
+      }
     }
+    check(nearGround, 'the zoom-in sequence exercised bare ground beside the subject');
+    check(farGround, 'the zoom-in sequence exercised bare ground beyond the allowed reach');
   },
   // A distance set by hand is not taken back by anything that happens by itself.
   async 'nothing frames a taken view again'(h) {
