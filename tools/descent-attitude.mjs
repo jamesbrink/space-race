@@ -33,6 +33,26 @@ try {
         return { hand: cockpit.free, engine: cockpit.sampleAt(cockpit.clock.t).burning.length };
       });
       assert.deepEqual(result, { hand: false, engine: 0 });
+      if (flight === 'vostok/vostok-1') {
+        await draw(1800);
+        await page.keyboard.press('g');
+        await page.waitForFunction(() => window.sr.cockpit.free);
+        await page.evaluate(() => {
+          const { cockpit, clock, flight } = window.sr;
+          const module = flight.plan.craft[0].joints.find((x) => x.gone.includes('instrument'));
+          const parting = flight.plan.events.find((e) => e.do.some((action) => action.separate === module.id));
+          cockpit.obey('descent:' + parting.id);
+          clock.pause();
+        });
+        const at = await page.evaluate(() => window.sr.cockpit.partedBy);
+        assert.ok(at >= 1800 && at < 1820);
+        const initial = await draw(at);
+        await page.keyboard.down('w');
+        const unpowered = await draw(at + 5);
+        await page.keyboard.up('w');
+        assert.ok(difference(initial, unpowered) < 0.002, 'held stick turned the manually released sphere');
+        assert.equal(await page.evaluate(() => window.sr.cockpit.can('retro')), false);
+      }
       assert.deepEqual(errors, []);
       console.log(flight, release, difference(released, later), 'rad in first second');
     } finally {
