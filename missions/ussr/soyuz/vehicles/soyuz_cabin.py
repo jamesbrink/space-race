@@ -197,6 +197,9 @@ def build(
     seated_figure=flight_suit.build_seated,
     omitted_couch=None,
     extra_equipment=None,
+    instruments=soyuz_sirius.build,
+    instrument_casters=(),
+    instrument_body="Sirius_Main_body",
 ):
     """Build the descent cabin in the spacecraft frame, at the detailed level only."""
     cabin = group("Cabin", lineup_enclosed=True)
@@ -205,7 +208,7 @@ def build(
     if not srlib.interior():
         return
     openings = lining(cabin)
-    soyuz_sirius.build(cabin, at(PANEL) @ Matrix.Rotation(math.radians(168), 4, "X"))
+    instruments(cabin, at(PANEL) @ Matrix.Rotation(math.radians(168), 4, "X"))
     crewed_outboard = port is not None or starboard is not None
     lamp_position = LAMP_WITH_OUTBOARD_CREW if crewed_outboard else LAMP
     fittings(cabin, lamp_position, crewed_outboard=crewed_outboard)
@@ -213,7 +216,7 @@ def build(
     if hand_controls:
         rendezvous_controls(cabin, crewed_outboard=crewed_outboard)
     bpy.context.view_layer.update()
-    meshes = [obj for obj in cabin_shade.meshes_under(cabin, seats, *extras) if obj.name != "Lamp_1"]
+    meshes = [obj for obj in cabin_shade.meshes_under(cabin, seats, *extras, *instrument_casters) if obj.name != "Lamp_1"]
     lens_point = (Vector(lamp_position) + 6 * LAMP_AIM) * MM
     lamp_sources = (("Lamp_1", lens_point, cabin_shade.disc(lens_point, LAMP_AIM, 0.04)),)
-    cabin_shade.bake(meshes, meshes, lamp_sources, openings, broad=("Sirius_Main_body", "Kazbek_Liners", "SA_CabinLiner"))
+    cabin_shade.bake(meshes, meshes, lamp_sources, openings, broad=(instrument_body, "Kazbek_Liners", "SA_CabinLiner"))

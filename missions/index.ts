@@ -32,6 +32,7 @@ import { flight as soyuz4 } from './ussr/soyuz/flights/soyuz-4/flight.ts';
 import { flight as soyuz10 } from './ussr/soyuz/flights/soyuz-10/flight.ts';
 import { flight as soyuz12 } from './ussr/soyuz/flights/soyuz-12/flight.ts';
 import { flight as soyuz16 } from './ussr/soyuz/flights/soyuz-16/flight.ts';
+import { flight as soyuzT2 } from './ussr/soyuz/flights/soyuz-t-2/flight.ts';
 import { flight as voskhod1 } from './ussr/voskhod/flights/voskhod-1/flight.ts';
 import { flight as voskhod2 } from './ussr/voskhod/flights/voskhod-2/flight.ts';
 import { flight as vostok1 } from './ussr/vostok/flights/vostok-1/flight.ts';
@@ -87,4 +88,5 @@ export const flights: Flight[] = [
   soyuz10,
   soyuz12,
   soyuz16,
+  soyuzT2,
 ];

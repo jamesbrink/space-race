@@ -9,7 +9,7 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**34 flights so far, Vostok 1 (April 1961) to Soyuz 16 (December 1974).** All of them are in the Gallery,
+**35 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All of them are in the Gallery,
 24 stand at their launch site, and 15 can be flown.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
@@ -102,6 +102,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | · | · |
 | [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | · | · |
 | [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | · | · |
+| [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | · | · |
 
 Four launch sites are built: Site 1 at Tyuratam (Vostok and Voskhod), and Complexes 5
 (Mercury-Redstone), 14 (Mercury-Atlas) and 19 (Gemini) at Cape Canaveral. A site is built once and

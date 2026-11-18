@@ -1050,6 +1050,18 @@ export const MILESTONES: readonly Milestone[] = [
     source: 'TASS, Soyuz 16 flight chronicle, 18 December 1974, p. 1; NASA SP-4209, pp. 266–270; Czech Academy of Sciences, 1974-096A',
     confidence: 'documented',
   },
+  {
+    date: '1980-06-05T14:19:30Z',
+    flight: 'ussr/soyuz/soyuz-t-2',
+    nation: 'USSR',
+    title: 'First crewed Soyuz T flight',
+    text:
+      'Yuri Malyshev and Vladimir Aksyonov took the new Soyuz T to Salyut 6. When the computer-guided rendezvous broke off, ' +
+      'they took over and docked by hand.',
+    source:
+      'Novosti Kosmonavtiki, no. 4 (231), 2002, p. 71 (17:19:30 Moscow time). V. I. Vasilyev, Manned Spaceflight, no. 4 (41), 2021, pp. 118, 130–131',
+    confidence: 'documented',
+  },
 ];
 
 export const STORIES: Readonly<Record<string, FlightStory>> = {
@@ -1388,6 +1400,24 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     named: {
       why: 'Буран (Buran), “blizzard”, was the crew’s radio call sign. Filipchenko had also used it on Soyuz 7.',
       source: 'NASA, Mir Hardware Heritage, §1.9.3; Astronaut.ru, Soviet and Russian spacecraft crew call signs, Soyuz 7 and Soyuz 16',
+      confidence: 'documented',
+    },
+  },
+  'ussr/soyuz/soyuz-t-2': {
+    flight: 'ussr/soyuz/soyuz-t-2',
+    headline: 'The new Soyuz T finishes its first crewed docking by hand',
+    story:
+      'The previous winter an uncrewed Soyuz T had already docked with Salyut 6. Malyshev and Aksyonov took the new ' +
+      'ferry up to test it with people aboard, including the Argon-16 digital flight computer and the propulsion system ' +
+      'that fed the main engine and small thrusters from the same supply.\n\n' +
+      'On the final approach the rendezvous system lost its radar lock, and Malyshev brought the ship to the station’s ' +
+      'aft port by hand. The crew visited Leonid Popov and Valery Ryumin and returned in their own capsule after about 65 hours docked.',
+    firsts: ['First crewed Soyuz T flight'],
+    source:
+      'V. I. Vasilyev, Manned Spaceflight, no. 4 (41), 2021, pp. 118–120, 129–131. NASA, Mir Hardware Heritage, §§1.12.3.1–1.12.3.2 and p. 85. Spacefacts, Soyuz T-2 (docking and undocking times)',
+    named: {
+      why: 'Юпитер (Yupiter), the Russian name for Jupiter, was the crew’s radio call sign.',
+      source: 'V. I. Vasilyev, Manned Spaceflight, no. 4 (41), 2021, p. 118. NASA, Mir Hardware Heritage, §1.12.3.2',
       confidence: 'documented',
     },
   },
@@ -2306,6 +2336,38 @@ export const PEOPLE: readonly Person[] = [
       'missions before becoming Soyuz 12’s flight engineer. After surviving a launch abort with Lazarev in 1975, he flew two ' +
       'more missions, both to Salyut 6.',
     source: 'Gagarin Cosmonaut Training Center, biography of Oleg Makarov; RGANTD, On the 90th Anniversary of O. G. Makarov',
+    confidence: 'documented',
+  },
+  {
+    id: 'malyshev',
+    name: 'Yuri V. Malyshev',
+    native: 'Юрий Васильевич Малышев',
+    born: '1941-08-27',
+    died: '1999-11-08',
+    nation: 'USSR',
+    flights: ['ussr/soyuz/soyuz-t-2'],
+    bio:
+      'An Air Force pilot from the Volgograd region, Malyshev commanded the first crewed Soyuz T on his first spaceflight. ' +
+      'He flew the final approach and docking at Salyut 6 by hand. In 1984 he commanded the Soviet–Indian visit to Salyut 7 ' +
+      'with Gennadi Strekalov and Rakesh Sharma, India’s first cosmonaut.',
+    source:
+      'Gagarin Cosmonaut Training Center, biography of Yuri Malyshev. V. I. Vasilyev, Manned Spaceflight, no. 4 (41), 2021, pp. 130–131',
+    confidence: 'documented',
+  },
+  {
+    id: 'aksyonov',
+    name: 'Vladimir V. Aksyonov',
+    native: 'Владимир Викторович Аксёнов',
+    born: '1935-02-01',
+    died: '2024-04-09',
+    nation: 'USSR',
+    flights: ['ussr/soyuz/soyuz-t-2'],
+    bio:
+      'Aksyonov joined Korolev’s design bureau as an instrument engineer and led flight tests in weightlessness. ' +
+      'On Soyuz 22 he and Valery Bykovsky tested a multispectral Earth camera made with East Germany. ' +
+      'He worked with the Soyuz T designers before flying the ship’s first crewed test as Malyshev’s flight engineer.',
+    source:
+      'Gagarin Cosmonaut Training Center, biography of Vladimir Aksyonov. V. I. Vasilyev, Manned Spaceflight, no. 4 (41), 2021, p. 129',
     confidence: 'documented',
   },
   {

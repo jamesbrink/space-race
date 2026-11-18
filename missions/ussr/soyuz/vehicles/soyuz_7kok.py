@@ -243,10 +243,12 @@ def infrared_vertical(paints):
     surface(node, "PAO_InfraredVerticalOptic", optics, [(51, 219), (42, 225), (0, 226)], sensor, 36)
 
 
-def descent(paints):
+def descent(paints, *, heat_shield_base=2320):
     node = group("DescentModule")
-    skin = insulation(node, "SA_Insulation", DESCENT, paints, 15)
-    shield = surface(node, "SA_Shield", paints["dark"], [(0, 2320), (490, 2320), (817, 2360), (980, 2410), (1020, 2450), (1014, 2470)])
+    skin = insulation(node, "SA_Insulation", [(DESCENT[0][0], heat_shield_base), *DESCENT[1:]], paints, 15)
+    shield = surface(
+        node, "SA_Shield", paints["dark"], [(0, heat_shield_base), (490, heat_shield_base), (817, 2360), (980, 2410), (1020, 2450), (1014, 2470)]
+    )
     lip = surface(node, "SA_SeparationBand", paints["alloy"], [(1085, 2512), (1110, 2533), (1112, 2550), (1109, 2556)])
     crown = surface(node, "SA_TransferHatch", paints["alloy"], [(369, 4460), (386, 4470), (386, 4480), (0, 4480)])
     mark_shells([shield.name, lip.name, crown.name])

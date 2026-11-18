@@ -88,8 +88,9 @@ def stabilizers(X, M, node, az: float, side: str) -> None:
     hang(grids.build(f"Fairing_{side}_Grids", M["steel"], None, sharp_angle=30), node)
 
 
-def build_fairing(X, M, hatch_az: float, hatch_z: float, *, shoulder=FAIRING_SHOULDER) -> None:
-    profile = [*FAIRING_PROFILE[:2], (FAIRING_R, shoulder), FAIRING_PROFILE[-1]]
+def build_fairing(X, M, hatch_az: float, hatch_z: float, *, shoulder=FAIRING_SHOULDER, transport=False) -> None:
+    tip = TRANSPORT_FAIRING_TIP if transport else FAIRING_TIP
+    profile = [*FAIRING_PROFILE[:2], (FAIRING_R, shoulder), (FAIRING_LIP_R, tip)]
     adapter = Local(X)
     adapter.lathe(
         [(voskhod_upper.BLOCK_I_R - 4, FAIRING_FOOT - 170), (profile[0][0] - 8, FAIRING_FOOT - 4)],
@@ -137,6 +138,16 @@ def build_fairing(X, M, hatch_az: float, hatch_z: float, *, shoulder=FAIRING_SHO
         for part, builder, mat in (("Skin", skin, "pale"), ("Wall", wall, "wall"), ("Fittings", fit, "pale")):
             hang(builder.build(f"Fairing_{side}_{part}", M[mat], None, sharp_angle=30), node)
         stabilizers(X, M, node, az, side)
+        if transport:
+            # The Energia drawing shows the four auxiliary abort motors at the fairing shoulder.
+            motor, jets = Local(X), Local(X)
+            for off in (-0.76, 0.76):
+                c, s = math.cos(az + off), math.sin(az + off)
+                motor.tube((1010 * c, 1010 * s, shoulder + 600), (1480 * c, 1480 * s, shoulder + 164), 100, 24)
+                motor.tube((1450 * c, 1450 * s, shoulder + 187), (1536 * c, 1536 * s, shoulder + 76), 118, 24, caps=False)
+                jets.tube((1478 * c, 1478 * s, shoulder + 147), (1505 * c, 1505 * s, shoulder + 114), 92, 24)
+            hang(motor.build(f"Fairing_{side}_SASCases", M["pale"], None), node)
+            hang(jets.build(f"Fairing_{side}_SASNozzles", M["steel"], None), node)
 
 
 def build_tower(X, M, *, exposed=False, height=LENGTH) -> None:
@@ -204,17 +215,70 @@ def build_tower(X, M, *, exposed=False, height=LENGTH) -> None:
         mesh.build(f"EscapeTower_{name}", M[mat], node, sharp_angle=32)
 
 
-def build(hatch_az: float, hatch_z: float, *, exposed_tower=False, height=LENGTH, fairing_shoulder=FAIRING_SHOULDER) -> str:
+# RKK Energia 1946–1996, ch. 6, silhouette and cutaway of the 11A511U/7K-ST.
+TRANSPORT_FAIRING_TIP = 44700
+TRANSPORT_LENGTH = 51100
+TRANSPORT_SPAN = 10300
+
+
+def build_transport_tower(X, M):
+    """The two separate motors visible on the Soyuz-T escape tower."""
+    node = group("EscapeTower")
+    skin, bands, main, secondary, cap = (Local(X) for _ in range(5))
+    tip = TRANSPORT_FAIRING_TIP
+    skin.lathe(
+        [
+            (313, tip + 4),
+            (256, tip + 62),
+            (166, tip + 315),
+            (166, 47370),
+            (256, 47700),
+            (258, 48328),
+            (182, 48585),
+            (145, 48942),
+            (145, 49529),
+            (175, 49770),
+            (172, 50800),
+        ],
+        64,
+    )
+    for r, z in ((168, 45190), (168, 46826), (261, 48106), (176, 49935), (176, 50775)):
+        bands.lathe([(r - 6, z - 15), (r + 1, z - 8), (r + 1, z + 10), (r - 6, z + 19)], 64)
+    for az in (0, 60, 120, 180, 240, 300):
+        c, s = math.cos(math.radians(az)), math.sin(math.radians(az))
+        main.tube((202 * c, 202 * s, 48010), (575 * c, 575 * s, 47565), 102, 24)
+    for az in (45, 135, 225, 315):
+        c, s = math.cos(math.radians(az)), math.sin(math.radians(az))
+        secondary.tube((144 * c, 144 * s, 49895), (239 * c, 239 * s, 49755), 43, 20)
+    cap.lathe([(170, 50803), (158, 50883), (118, 50951), (26, 51037), (21, 51083), (0, TRANSPORT_LENGTH)], 48)
+    for mesh, name, finish in (
+        (skin, "Skin", "pale"),
+        (bands, "Bands", "steel"),
+        (main, "MainBank", "steel"),
+        (secondary, "SecondaryBank", "steel"),
+        (cap, "Cap", "lacquer"),
+    ):
+        mesh.build(f"EscapeTower_{name}", M[finish], node, sharp_angle=32)
+
+
+def build(hatch_az: float, hatch_z: float, *, exposed_tower=False, height=LENGTH, fairing_shoulder=FAIRING_SHOULDER, transport=False) -> str:
     M = reuse(materials())
+    span = TRANSPORT_SPAN if transport else SPAN
+    if transport:
+        height = TRANSPORT_LENGTH
+    rudder_span = RUDDER_SPAN + (span - SPAN) / (2 * math.cos(BOOSTER_TILT))
     core.build(BASE_Z, M, web_foot=244.0, top=CORE_TOP)
     for letter, az in BOOSTER_AZ.items():
-        booster.build(BASE_Z, M, letter, az, rudder_span=RUDDER_SPAN)
+        booster.build(BASE_Z, M, letter, az, rudder_span=rudder_span)
     X = core_frame(BASE_Z)
     vostok_upper.build_interstage(X, M, LATTICE_TOP, foot=CORE_TOP)
     block_frame = core_frame(BASE_Z + LATTICE_TOP - voskhod_upper.LATTICE_TOP)
     voskhod_upper.build_aft_section(block_frame, M)
     voskhod_upper.build_block_i(block_frame, M, adapter=ADAPTER, engine="RD0110")
-    build_fairing(X, M, hatch_az, hatch_z, shoulder=fairing_shoulder)
-    build_tower(X, M, exposed=exposed_tower, height=height)
+    build_fairing(X, M, hatch_az, hatch_z, shoulder=fairing_shoulder, transport=transport)
+    if transport:
+        build_transport_tower(X, M)
+    else:
+        build_tower(X, M, exposed=exposed_tower, height=height)
     mark_shells(SHELLS)
-    return f"{height * MM:.3f} m on the pad, {SPAN * MM:.3f} m over the rudders"
+    return f"{height * MM:.3f} m on the pad, {span * MM:.3f} m over the rudders"
