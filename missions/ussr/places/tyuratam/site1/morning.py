@@ -18,11 +18,9 @@ Sources (../site-1.md, "The morning's people and vehicles"):
 
 Where each group stands is measured off the film's frame against the bus (good to two or three metres); who is in a
 group, beyond the few the sources name, and every stance, is estimated. A group is one node, and a part of the pad:
-the flight's data says when it was there. They do not walk: a group is there until it left, and then is not.
+the flight's data says when it was there. The groups on the apron are jointed for walking; the crews above it remain static.
 
-Nodes: StateCommission, SendOff, StairParty (built out of sight, 90 m under where it stands: it is there for seven
-minutes), PadCrew, TrussCrew, HatchCrew, each with its people on a node of their own under it (<name>_People), which
-is what the clock moves; and Erector_Crew under Erector, on the wagon's deck.
+Each party has a <name>_People node under its part. Erector_Crew is on the wagon’s deck under Erector.
 """
 
 from __future__ import annotations
@@ -36,7 +34,7 @@ from . import erector, service_trusses, tank_cars
 from .deck import NORTH
 from .site import GROUND, Parts, stood
 
-HIDDEN = -90.0  # where a group is built when it is not there at the slider's start, m under where it stands
+ESCORT = {"Korolev", "Moskalenko", "Kamanin"}  # the three documented as walking the pilot to the stair
 BUS_DOOR = (-46.4, -16.45)  # the bus's door, parked (road_vehicles.py)
 STAIR_FOOT = (-15.9, -3.25)  # the foot of the erector's stair, on its south side (erector.py)
 LANDING = (-11.3, -3.25, erector.LANDING_Z)
@@ -148,7 +146,7 @@ def stair_party() -> list:
         _worker(stature=180, build=0.95, hair="fair"),
         Person(gp.medic(), 166, 0.95),
         _officer(stature=174),
-        Person(gp.jacket("black", hat="beret"), 176, 0.98, who="Voskresensky"),
+        Person(gp.jacket("black", hat="beret"), 176, 0.98),
         _officer("blue", stature=170),
         _worker(stature=172, hat="beret"),
         Person(gp.jacket("grey", armband="red"), 174, 1.05),
@@ -209,15 +207,20 @@ def erector_crew() -> list:
 
 
 GROUPS = {
-    "StateCommission": (commission, GROUND, "the knot ahead of the bus"),
-    "SendOff": (send_off, GROUND, "on the concrete as the bus stopped"),
-    "StairParty": (stair_party, 0.0, "at the stair's foot as the pilot waved"),
+    "StateCommission": (lambda: [row for row in commission() if row[0].who not in ESCORT], GROUND, "the knot ahead of the bus"),
+    "Escort": (lambda: [row for row in commission() if row[0].who in ESCORT], GROUND, "with Gagarin to the stair"),
+    # The parked car divides the people on the apron. Each side can leave without walking through it.
+    "SendOff": (lambda: [row for row in send_off() if row[2] <= -20], GROUND, "on the concrete as the bus stopped"),
+    "BusDoorParty": (lambda: [row for row in send_off() if row[2] > -20], GROUND, "beside the parked bus and truck"),
+    "StairParty": (lambda: [row for row in stair_party() if row[0].who not in ESCORT], 0.0, "at the stair's foot as the pilot waved"),
     "PadCrew": (pad_crew, 0.0, "at work on the deck"),
     "TrussCrew": (truss_crew, 0.0, "on the north service truss"),
     "HatchCrew": (hatch_crew, 0.0, "at the hatch"),
     "Erector_Crew": (erector_crew, 0.0, "on the wagon's deck"),
 }
 ABOUT = {
+    "BusDoorParty": ("By the parked bus", "The people by the door and on the tracks take the north side of the parked car."),
+    "Escort": ("From the bus to the stair", "Korolev, Moskalenko and Kamanin walked with Gagarin to the stair (Mikheev; Chertok)."),
     "StateCommission": (
         "The State Commission's knot",
         "Some ten metres ahead of the bus's door stood the State Commission, 'in a tight group' (Golovanov): the pilot walked to it "
@@ -276,20 +279,23 @@ def build(parts: Parts) -> None:
         if parent and parent not in parts.nodes:
             continue
         label, about = ABOUT[name]
-        down = HIDDEN if name == "StairParty" else 0.0
-        party = gp.Party()
+        walking = name in {"StateCommission", "Escort", "SendOff", "BusDoorParty", "StairParty"}
+        party = gp.Walkers(name) if walking else gp.Party()
         spots = []
         for p, a, b, heading in people():
             x, y, z = (*a,) if b is None else (a, b, ground)
-            party.stand(p, (x, y, z + down), heading)
+            party.stand(p, (x, y, z), heading)
             spots.append((x, y))
         cx, cy = sum(x for x, _ in spots) / len(spots), sum(y for _, y in spots) / len(spots)
-        origin = (cx, cy, down)
+        origin = (cx, cy, 0.0)
         node = parts.node(name, parent, origin, label=label, about=about)
-        if parent is None:
+        if walking:
+            party.build(f"{name}_People", node, origin, cloth, parent_at=origin)
+        elif parent is None:
             # (a part of the pad stays where it is: what comes and goes on the clock is a node of its own under it)
             node = parts.node(f"{name}_People", name, origin)
-        party.build(node, origin, cloth)
+        if not walking:
+            party.build(node, origin, cloth)
         total += party.triangles
         print(f"  {name}: {party.people} people, {party.triangles:,} triangles")
     print(f"  people: {total:,} triangles")
