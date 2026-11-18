@@ -231,7 +231,10 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       },
     },
   ];
+  const fairings = o.events.find((e) => e.id === 'fairings')!;
   const joints: JointDef[] = [
+    // Their combined mass is included in the recorded spacecraft mass; only their detached bodies use individual estimates.
+    { id: 'fairings', label: 'Nose and scanner fairings let go', gone: [], at: fairings.at },
     {
       id: 'staging-nuts',
       label: 'First stage let go',
@@ -420,6 +423,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     timed('staging-nuts:separate', 'Drop the first stage', o.titan.staging, [{ separate: 'staging-nuts' }]),
     timed('second-stage-engine:cut', 'Second stage engine cutoff', s2.cutoff, [{ cut: 'second-stage-engine' }]),
     timed('adapter-separation:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-separation' }]),
+    timed('fairings:separate', fairings.label, fairings.at, [{ separate: 'fairings' }]),
     ...moves,
     timed('retrosequence', 'Retrosequence: to retrofire attitude', r.sequence, [{ attitude: 'retrofire-attitude' }]),
     timed(

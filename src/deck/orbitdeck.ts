@@ -18,8 +18,19 @@ import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { due, onRails } from '../sim/rails.ts';
 import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
-import { descentRecords, firesOf, grown, orbitalEvents, orbitalFlown, orbitalRecord, pushedOff, type Run } from '../sim/run.ts';
-import { apart, Sheds } from '../sim/shed.ts';
+import {
+  coastContacts,
+  descentRecords,
+  firesOf,
+  grown,
+  keepContact,
+  orbitalEvents,
+  orbitalFlown,
+  orbitalRecord,
+  orbitalRelease,
+  type Run,
+} from '../sim/run.ts';
+import { Sheds } from '../sim/shed.ts';
 import {
   type Ascended,
   byHand,
@@ -59,7 +70,7 @@ import type { DeckNews } from '../viewer/cabin.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/frames.ts';
+import { angleBetween, DEG, scale, siteFrame, sub, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
@@ -310,7 +321,7 @@ export class OrbitDeck extends Deck {
           solved: flown.solved,
           state,
           sequence: live ? this.sequence : true,
-          ...(live ? { trim: this.trim } : {}),
+          ...(live ? { live: true, trim: this.trim } : {}),
           thetaTurn: live ? (this.options.memo?.thetaTurn ?? null) : turned ? flown.thetaTurn : null,
           plan,
         }),
@@ -575,6 +586,7 @@ export class OrbitDeck extends Deck {
     this.started();
     this.record ??= orbitalRecord(this.flight);
     this.run = this.record;
+    this.encounters = null;
     this.flown = null;
     this.typed = '';
     this.free = false;
@@ -963,30 +975,19 @@ export class OrbitDeck extends Deck {
       if (!Number.isFinite(when)) return;
       run.dropped[i] = when;
       const def = plan.craft[0]!.sheds?.find((x) => x.on === d.on);
-      if (!def?.mass || !def.centre || !def.gyration || !(when >= from)) return;
-      const x = this.sampleAt(when);
-      const m = def.mass.value;
+      if (!def) return;
+      if (when < from) {
+        const previous = record.sheds?.get(def.on);
+        if (previous) run.sheds?.add(previous.shedder.release);
+        return;
+      }
       // a strap-on let go while its stage still burns swings out on what it was burning at, not on the tail-off
       const burning = stage >= 0 && s.stages[stage]!.to > when ? stages[stage]! : null;
       const unit = burning ? burning.engine.thrust.vacuum.value * (burning.throttle ? along(burning.throttle, when) : 1) : undefined;
-      run.sheds?.add(
-        apart(
-          def,
-          {
-            on: def.on,
-            t: when,
-            r: add(x.r, scale(x.axis, def.centre.value)),
-            v: pushedOff(def, x.v, x.axis, plan.record!.orbit!.mass.value),
-            q: x.attitude,
-            w: [0, 0, 0],
-            mass: m,
-            roll: m * def.gyration.roll.value ** 2,
-            across: m * def.gyration.across.value ** 2,
-            centre: def.centre.value,
-          },
-          unit,
-        ),
-      );
+      const finalStage = s.parted && when === s.parted.t && stage === stages.length - 1;
+      const samples = finalStage ? [{ ...this.vehicleOf().sample(s, this.centre), v: s.parted!.v }] : (run.samples as LiveSample[]);
+      const release = orbitalRelease(plan, def, samples, when, unit, finalStage ? s.parted!.stageMass : undefined);
+      if (release) run.sheds?.add(release);
     });
   }
 
@@ -1024,15 +1025,52 @@ export class OrbitDeck extends Deck {
   }
 
   /** The coast and what follows on this flight with `plan`: from where the user's ascent left the spacecraft, or the record's whole flight. */
+  private encounters: ReturnType<typeof coastContacts> | null = null;
+  private nextImpact = 0;
+
   private whole(plan: FlightPlan, hands?: DescentHands): FlownWhole {
     const site = siteFrame(this.flight.site);
     const sea = this.flight.site.seaLevel.value;
-    // (the record's ascent as the scene has it, then the published orbit from where it left the spacecraft: staged.ts flyWhole's 'published')
-    if (this.mine === null || !this.ascended) {
-      const record = orbitalFlown(this.flight);
-      return flyOn(plan, site, this.frame, sea, record.ascent, published(plan, site, record.ascent.separation), hands);
-    }
-    return flyOn(plan, site, this.frame, sea, this.ascended, this.ascended.separation, hands);
+    const user = this.mine !== null ? this.ascended : null;
+    const ascent = user ?? orbitalFlown(this.flight).ascent;
+    const from = user ? ascent.separation : published(plan, site, ascent.separation);
+    const baseline = flyOn(plan, site, this.frame, sea, ascent, from, hands);
+    const samples = this.samplesOf(plan, baseline);
+    this.handSamples(samples, shipOf(plan));
+    const dropped = this.coastDrops(plan, baseline);
+    this.encounters = coastContacts(this.flight, plan, samples, from.t, dropped, this.run?.sheds, this.centre);
+    const whole = flyOn(plan, site, this.frame, sea, ascent, from, hands, 1, this.encounters.contacts);
+    this.nextImpact = 0;
+    while (this.nextImpact < this.encounters.hits.length && this.encounters.hits[this.nextImpact]!.t < this.clock.t - 1e-8)
+      this.nextImpact++;
+    return whole;
+  }
+
+  private coastDrops(plan: FlightPlan, whole: FlownWhole): number[] {
+    const parting = coastEvents(plan).parting;
+    const parts = new Set(parting?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])));
+    const ejection = eventOf(plan, downOf(plan)?.ejection ?? '');
+    const ejects = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])));
+    const first = downOf(plan)?.bodies[0]?.id ?? '';
+    const landed = whole.down?.landed[first]?.at ?? Infinity;
+    const seq = sequenceOf(plan);
+    const ascentJoints = new Set([
+      ...seq.stages.map((s) => s.joint),
+      ...seq.drops.filter((d) => d.at <= seq.stages.at(-1)!.sep).map((d) => d.joint),
+    ]);
+    return this.flight.flies!.drops.map((d, i) => {
+      if (d.on && ascentJoints.has(d.on.split('/')[0]!)) return this.run!.dropped[i]!;
+      if (d.on && ejects.has(d.on) && whole.down) return whole.down.ejected;
+      if (d.on && parts.has(d.on)) {
+        const t = shipOf(plan).parted;
+        return t < landed ? t : Infinity;
+      }
+      if (d.rides?.length) return whole.down?.tracks[d.rides[0]!.body]?.[0]?.t ?? Infinity;
+      const event = plan.events.find((e) => e.do.some((a) => 'separate' in a && a.separate === d.on?.split('/')[0]));
+      const when = clockAt(plan, event);
+      if (event) return when >= whole.ascent.separation.t && when <= landed ? when : Infinity;
+      return this.record!.dropped[i]!;
+    });
   }
 
   /** What this flight gave for each of the record's checks (sim/staged.ts `held`): the ascent's only where the ascent was the user's. */
@@ -1059,9 +1097,16 @@ export class OrbitDeck extends Deck {
   /** Samples the scene can show of a whole flight from `plan`: the user's ascent's own, then the coast's. */
   private samplesOf(plan: FlightPlan, whole: FlownWhole): LiveSample[] {
     const jd = julianDate(this.flight.launch);
-    const all = recordSamples(plan, whole, this.frame, this.centre, (at) => sunPosition(terrestrialTime(jd + at / 86_400)));
+    const all = recordSamples(
+      plan,
+      whole,
+      this.frame,
+      this.centre,
+      (at) => sunPosition(terrestrialTime(jd + at / 86_400)),
+      this.mine === null ? undefined : this.state?.q,
+    );
     if (this.mine === null) return all;
-    const mine = (this.run!.samples as LiveSample[]).filter((x) => x.t <= this.ascended!.separation.t + 1e-9);
+    const mine = (this.run!.samples as LiveSample[]).filter((x) => x.riding && x.t <= this.ascended!.separation.t);
     return [...mine, ...all.slice(1)];
   }
 
@@ -1084,7 +1129,16 @@ export class OrbitDeck extends Deck {
     const plan = this.givenUp();
     this.flown = this.whole(plan);
     const samples = this.samplesOf(plan, this.flown);
-    this.run = { ...this.run!, samples, duration: samples[samples.length - 1]!.t, descent: this.descentOf(), held: this.heldOf() };
+    this.encounters!.finish(samples, this.coastDrops(plan, this.flown));
+    this.run = {
+      ...this.run!,
+      sheds: this.encounters!.sheds,
+      dropped: this.coastDrops(plan, this.flown),
+      samples,
+      duration: samples[samples.length - 1]!.t,
+      descent: this.descentOf(),
+      held: this.heldOf(),
+    };
     this.dropsFrom(s);
     this.times = orbitalEvents(this.flight, this.flown);
     this.freeHands(null);
@@ -1189,6 +1243,27 @@ export class OrbitDeck extends Deck {
    * events), and the run on show made from it: its samples (after a burn by hand, the hand's attitude), what leaves when,
    * the events the cabin's lamps read, the checks.
    */
+  private handSamples(samples: LiveSample[], ship: ReturnType<typeof shipOf>) {
+    const t = this.fired;
+    const parts = ship.parted;
+    if (t !== null && this.hand) {
+      // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there
+      // over half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
+      const log = this.hand.log;
+      const left = log.at(-1)!.q;
+      for (const sample of samples) {
+        if (sample.t < log[0]!.t) continue;
+        let q: Quat;
+        if (sample.t <= Math.min(ship.off, parts)) q = (log.filter((k) => k.t <= sample.t).at(-1) ?? log[0]!).q;
+        else if (sample.t < parts) q = left;
+        else q = towards(left, sample.attitude, Math.min(1, (sample.t - parts) / 30));
+        sample.attitude = q;
+        sample.axis = turn(q, [1, 0, 0]);
+        if (!sample.riding) sample.r = sub(sample.centre, scale(sample.axis, this.centre));
+      }
+    }
+  }
+
   private refly(): void {
     const { plan, hands } = this.descentPlan();
     this.flown = this.whole(plan, hands);
@@ -1199,21 +1274,7 @@ export class OrbitDeck extends Deck {
     const parts = ship.parted;
     const t = this.fired;
     const burn = t === null ? null : { on: t, off: Math.min(ship.off, parts) };
-    if (t !== null && this.hand) {
-      // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there
-      // over half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
-      const log = this.hand.log;
-      const left = log.at(-1)!.q;
-      for (const sample of samples) {
-        if (sample.t < log[0]!.t) continue;
-        let q: Quat;
-        if (sample.t <= burn!.off) q = (log.filter((k) => k.t <= sample.t).at(-1) ?? log[0]!).q;
-        else if (sample.t < parts) q = left;
-        else q = towards(left, sample.attitude, Math.min(1, (sample.t - parts) / 30));
-        sample.attitude = q;
-        sample.axis = turn(q, [1, 0, 0]);
-      }
-    }
+    this.handSamples(samples, ship);
     const down = this.flown.down;
     const first = downOf(this.flight.plan!)?.bodies[0]?.id ?? '';
     const landed = down?.landed[first]?.at ?? Number.POSITIVE_INFINITY;
@@ -1222,19 +1283,14 @@ export class OrbitDeck extends Deck {
     this.times = orbitalEvents(this.flight, this.flown, { ...(burn ? { burn } : this.free ? { burn: null } : {}), parting });
     // what leaves at the modules' parting (the drop that names its record event) and with the descent's bodies leaves when
     // this flight has them, or never
-    const partingRecord = coastEvents(this.flight.plan!).parting?.record?.id;
     const run = this.run!;
-    const dropped = this.flight.flies!.drops.map((d, i) =>
-      d.on !== undefined && d.on === partingRecord
-        ? parting
-        : d.rides?.length
-          ? (down?.tracks[d.rides[0]!.body]?.[0]?.t ?? Number.POSITIVE_INFINITY)
-          : run.dropped[i]!,
-    );
+    const dropped = this.coastDrops(plan, this.flown);
+    this.encounters!.finish(samples, dropped);
     const timer = !this.free && this.mine === null ? { on: ship.on, off: Math.min(ship.off, parts) } : undefined;
     this.run = {
       ...run,
       samples,
+      sheds: this.encounters!.sheds,
       dropped,
       duration: samples[samples.length - 1]!.t,
       fires: this.fires(burn ?? timer),
@@ -1538,6 +1594,8 @@ export class OrbitDeck extends Deck {
       this.fly(t);
       return void this.show();
     }
+    while (this.encounters && this.nextImpact < this.encounters.hits.length && this.encounters.hits[this.nextImpact]!.t <= t)
+      this.impact(this.encounters.hits[this.nextImpact++]!);
     if (!this.free && this.mine === null && this.fired === null && this.downMine === null) this.planHands(t);
     if (this.free && this.fired === null && this.hand) {
       this.turnTo(t);
@@ -1606,6 +1664,26 @@ export class OrbitDeck extends Deck {
           this.eject(at);
         }
       }
+      // Separations happen at the start of a tick, which can lie between retained samples.
+      const release =
+        s.craft !== was.craft &&
+        (s.stages.some((st, i) => st.gone !== was.stages[i]!.gone) || Object.keys(s.drops).length !== Object.keys(was.drops).length);
+      if (release && run.samples[this.kept - 1]!.t < was.t) {
+        run.samples.length = this.kept;
+        run.samples.push(v.sample(was, centre));
+        this.kept = run.samples.length;
+      }
+      if (release) this.dropsFrom(s);
+      let touched = false;
+      if (!s.parted && !s.broke && !s.landed && !s.held && run.sheds?.size) {
+        const met = run.sheds.meet({ ...was, station: 0, mass: v.mass(was) }, { ...s, station: 0, mass: v.mass(s) }, centre);
+        touched = met.r !== s.r;
+        if (touched) {
+          this.kept = keepContact(run.samples, this.kept, was, s, met.hits, (state) => v.sample(state, centre));
+          s = { ...s, r: met.r, v: met.v };
+        }
+        for (const hit of [...met.hits, ...run.sheds.siblings(was.t, s.t)]) this.impact(hit);
+      }
       if (s.parted) break;
       if (s.broke) {
         run.samples.length = this.kept;
@@ -1617,7 +1695,7 @@ export class OrbitDeck extends Deck {
       this.tally!.note(was, s);
       // (a sample kept every tenth of a second and at every event; between, only the frame's last is put at the head)
       const last = run.samples[this.kept - 1]!;
-      const event = s.stages.some((st, i) => st.gone !== was.stages[i]!.gone || v.burning(s, i) !== v.burning(was, i));
+      const event = touched || release || s.stages.some((_, i) => v.burning(s, i) !== v.burning(was, i));
       const end = s.t >= upTo - TICK / 2;
       if (!event && !end && s.t - last.t < KEEP - TICK / 2) continue;
       run.samples.length = this.kept;
@@ -2092,6 +2170,7 @@ export class OrbitDeck extends Deck {
       <h3>${stays ? 'Still in orbit' : this.mine !== null ? 'Down, on your own flight' : this.downMine !== null ? 'Down, on your own descent' : this.fired !== null ? 'Down, by your own braking burn' : this.burnByHand ? 'Down, as flown on the day: the braking burn by hand' : 'Down, as the automatic system flew it'}</h3>
       <p class="cockpit-why"><b>${v.how}.</b>${lives}${mine ? ` Not the flight of ${this.day}.` : ''}</p>
       <p class="cockpit-why">${v.why.join(' ')}</p>
+      ${this.impactSummary()}
       ${v.against ? `<p class="cockpit-why">${v.against}</p>` : ''}
       <p class="cockpit-why">${this.flight.callsign} as recorded: ${landings}.</p>
       ${
@@ -2148,6 +2227,7 @@ export class OrbitDeck extends Deck {
       <p class="cockpit-why"><b>${v.how}.</b>${lives} Not the flight of ${this.day}.</p>
       <p class="cockpit-why">Aborted at ${at(this.aborted!.t)}: by the record, ${this.aborted!.mode.does}. Out on the seat at ${at(out.at)}.</p>
       <p class="cockpit-why">${v.why.join(' ')}</p>
+      ${this.impactSummary()}
       ${stack ? `<p class="cockpit-why">${stack}</p>` : ''}
       <p class="cockpit-why">Not modelled: the seat’s way out through the fairing’s opening (thrown here against its motion through the air, as from the falling ball), and what the stack did to anyone near it.</p>
       <p class="cockpit-why">${v.against}</p>

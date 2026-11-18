@@ -222,7 +222,7 @@ Top-level nodes in the GLB. These names are the `node` fields in [vostok-stack.t
 
 | Node | Contains | Leaves as |
 | --- | --- | --- |
-| `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right`, each a node with its origin at its foot | each tips outward about its foot and falls away |
+| `Fairing` | `Fairing_Left`, the half with the round opening, and `Fairing_Right`, each a node with its origin at its foot | each tips outward about its foot in the gallery. In flight the two shells separate on opposite bearings. Each is assigned half the total mass and drag and an estimated 2 m/s outward speed. Their individual inertias, hinge motion and ejection speeds are unknown. |
 | `BlockE` | the stage: tanks, adapter the spacecraft stands on, steering nozzles; and `BlockE_Engine`, the RD-0109 as a node of its own (chamber, liner, turbopump): its origin is on the axis in the plane of the nozzle's exit, which is its lowest point, so a flight hangs the third stage's fire there (`Flight.flies.engine`) | lifts off the lattice |
 | `Interstage` | the lattice and the deflector cone | stays on the core |
 | `CoreStage` | Block A's airframe and tanks, and the four cups the boosters' tips push into | |
@@ -350,3 +350,5 @@ Recorded as the model was compared, view by view, with K, V, F and N.
 - **Triangles**: 520,952 at full detail, 214,925 and 106,252 at the two coarser levels, the
   spacecraft and its cabin included. The pass against the photographs (the base, the ogive, the
   doublers, Block E's nozzles, the frost's edge) added 17 thousand at full detail.
+
+The instrument module drifts aft at an estimated 0.5 m/s after its last connection goes. Each flight supplies the instant. The model uses that speed for the detached hardware because its measured release velocity was not found.

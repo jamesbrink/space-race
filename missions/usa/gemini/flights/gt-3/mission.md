@@ -140,9 +140,7 @@ shorter (tests/orbital.test.mjs, "what a change in an input moves").
 
 The drogue at an indicated 60,000 ft, as Grissom called it at 4:46:48 (an 8.3 ft conical ribbon at 0.5, estimated, full by
 its 16 s reefing); the main at the type's 10,600 ft, its 84.2 ft ringsail at the 31.6 ft/s the Technical Summary gives for a
-module of 4,400 lb (344 m², derived), disreefed at 10 s; the module at spacecraft 4's 4,415.30 lb (assumed). The pilot
-parachute, the rendezvous and recovery section's going and the swing to two-point suspension at 4:48:47 are drawn as the
-main's coming out and are not flown.
+module of 4,400 lb (344 m², derived), disreefed at 10 s; the module at spacecraft 4's 4,415.30 lb (assumed). The model carries the rendezvous and recovery section away under the old drogue when the main comes out. The separate pilot parachute and the swing to two-point suspension at 4:48:47 are omitted.
 
 | | Record | Flown | Shown |
 | --- | --- | --- | --- |
@@ -169,12 +167,12 @@ attitude's sign is ours, and where on the orbit it began is reckoned (a degree i
   each burn burned (some 130 lb) are not taken off; each burn's impulse is the indicator's, so the mass moves only drag.
 - The separation's push is the plan's 10 ft/s, shared by the masses; how long Grissom held it on is not read. The published
   orbit is taken at insertion, before it.
-- The fairings go at 6:21 in the scene and are not flown; the equipment section is let go at the type's 30 s before
-  retrofire.
+- The fairings go at 6:21 and fly separately. Their mass, free speed and drag are estimates; the nose cap leaves the face axially and the scanner cover moves out from the neck. The equipment section is let go at the type's 30 s before
+  retrofire. The equipment and retrograde sections each drift aft at an estimated 0.5 m/s at release. Their relative velocities were not found.
 - Each burn's line is fixed as it lights: the crew held their attitude on the horizon, which turns 5 degrees in the first
   burn's 74 s.
 - The lift is constant over Mach number; the bank is one angle held from the retrograde section's going to the drogue; below
   the drogue nothing lifts.
-- The two-point suspension and the rendezvous and recovery section's going with the pilot parachute are not flown.
+- The two-point suspension is omitted. The old drogue and recovery section are drawn drifting away at deployment, with an estimated descent speed.
 - On the flight deck the burns are fired by hand with Space along the long axis as the hand holds it, each with the record's
   impulse and length; there are no translation keys for the hand controller, and the bank in the entry is the record's.

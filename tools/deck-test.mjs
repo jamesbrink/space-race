@@ -353,6 +353,9 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     };
     // the clock run on to `t` a few seconds a frame, as the deck flies it (it steps no more than five seconds a frame)
     const run = async (t) => {
+      // Drive these timed commands by simulated time. A busy renderer must not move the clock
+      // past a scheduled ignition while the harness waits for the last frame to draw.
+      await page.evaluate(() => window.sr.clock.pause());
       for (let i = 0; i < 400 && (await page.evaluate(() => window.sr.clock.t)) < t - 0.05; i++) {
         await page.evaluate((x) => window.sr.clock.seek(Math.min(x, window.sr.clock.t + 4)), t);
         await page.waitForTimeout(30);

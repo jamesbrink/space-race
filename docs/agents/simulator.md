@@ -24,6 +24,28 @@ speeds and climb angles at separation, loads, event times), each with an `id` th
 `Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
 never adjusted to bring a check in.
 
+## Separation and recontact
+
+The recorded orbital flight has two states at spacecraft separation. The incoming state finishes the
+ascent. The outgoing state starts the published coast at the same place and instant, with its own
+velocity. Interpolation on either side uses the velocity for that side. Both the spacecraft and its
+detached stage use the outgoing trajectory as their reference. On a live ascent the simulator divides
+the joint's relative speed between the two masses. A piece on a rotating vehicle also inherits its
+station's velocity and the stack's rotation.
+
+On a hand-flown flight, `sim/contact.ts` sweeps rounded collision shapes between physics samples.
+`Sheds.meet` resolves a detached part against the assembly still aboard; `Sheds.siblings` resolves
+detached parts against each other. Each impact changes both outgoing trajectories. The flight deck
+reports closing speed and the kinetic energy absorbed. The response assumes frictionless, perfectly
+inelastic normal contact. The rounded shapes approximate the hardware. Local dents, structural
+fracture, the impulse's effect on spin and crew injury are outside this model.
+
+An orbital replan carries the history up to separation and rebuilds later releases on the new coast.
+Nearby bodies use shorter steps. The broad phase also sweeps distant bodies, so a later return can
+produce another impact. `tests/contact.test.mjs` checks momentum, absorbed energy, a fast crossing,
+a near miss, and leaving and returning. `tests/separation.test.mjs` checks clearance on the historical
+runs. `pnpm test:separation` checks detached nodes in the running viewer.
+
 ## The core
 
 The rules every simulator, predictor and deck keeps. Each names the one place it lives; a second copy is a bug.
@@ -705,7 +727,7 @@ read gives enough of to fly (issue #10).
   `flies` can be flown without being told how.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, sim/run.ts
-  `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each pushed back off the stack by its share of its `push` (`pushedOff`: the spacecraft's share is not added to the spacecraft's flight). After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
+  `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each released from the outgoing trajectory at the joint's instant. The departing body's velocity is the retained body's less their relative separation speed (`orbitalRelease`), from the joint or the shed body's own push. After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
   `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest

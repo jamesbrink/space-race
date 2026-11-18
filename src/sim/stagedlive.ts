@@ -42,7 +42,7 @@ import { airDrag, skyOf } from './air.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { MEAN_RADIUS, RIDING } from './fly.ts';
-import { floorAt } from './forces.ts';
+import { floorAt, keptShare } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
 import type { Action, FlightPlan } from './plan.ts';
 import { aboutAxis, fromAxes, multiply, normalize, type Quat, turn, unturn } from './rigid.ts';
@@ -108,7 +108,7 @@ export interface StagedState {
   /** Each stage's integrator: the thrust it has sensed over the mass, summed from its ignition, m/s (staged.ts `apparentCut`). */
   apparent: readonly number[];
   /** The spacecraft parted from the last stage: when and where, for the coast. */
-  parted: null | { t: number; r: Vec3; v: Vec3 };
+  parted: null | { t: number; r: Vec3; v: Vec3; stageMass: number };
   /** Back on the ground. */
   landed: null | { t: number; speed: number };
   /** Each stage's jet fired into the stage it stands on while joined (the joint's `hot`, plan.ts): seconds at full thrust, s. */
@@ -166,6 +166,8 @@ export interface StagedVehicle {
   thrust(state: StagedState): number;
   /** When a stage lit at `from` runs dry, s: of a tank it shares with others (`Stage.shares`), as they stand in `state`, where it is given. */
   dry(i: number, from: number, state?: StagedState): number;
+  /** The spacecraft's share of its final joint's separation speed for these two masses, m/s. */
+  separationSpeed(kept: number, gone: number): number;
   /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff), each the plan's `event`. */
   readonly sequence: readonly { step: Step; at: number; label: string; event: string }[];
   /**
@@ -223,6 +225,9 @@ export function stagedVehicle(
   const full = stages.map((s) => s.load);
   // each stage's engine, body and joint by id (the machine's keys), and its index by its engine's and its joint's
   const ids = stages.map((s, i) => ({ engine: s.engine.id, body: s.body.id, joint: seq.stages[i]!.joint ?? '' }));
+  const finalJoint = ids[last]!.joint;
+  const push = def.joints.find((j) => j.id === finalJoint)?.push ?? def.sheds?.find((shed) => shed.on === finalJoint)?.push;
+  const separationSpeed = (kept: number, gone: number): number => (push ? keptShare(push.value, kept, gone) : 0);
   const byEngine = new Map(ids.map((k, i) => [k.engine, i]));
   const byJoint = new Map(ids.map((k, i) => [k.joint, i]));
   /** What a stage lit while the one it stands on is joined fires into (staging.ts `hotStage`): the joint below's `hot`. */
@@ -418,7 +423,15 @@ export function stagedVehicle(
       craft = part(plan, craft, id, s.t);
       if (loose < s.t)
         said.push({ t: s.t, title: 'Parted', text: `${cap(k === last ? 'the spacecraft' : called(k))} parted at last, its push gone` });
-      if (k === last) parted = { t: s.t, r: s.r, v: s.v };
+      if (k === last) {
+        const dv = separationSpeed(ahead.mass, behind.mass);
+        parted = {
+          t: s.t,
+          r: s.r,
+          v: add(s.v, scale(turn(s.q, X), dv)),
+          stageMass: stages[k]!.count * unitMass(view, k, s.t),
+        };
+      }
     }
     return { craft, parted };
   };
@@ -753,6 +766,7 @@ export function stagedVehicle(
       return { ...s, carry: s.landed || s.parted || s.broke ? 0 : carry };
     },
     mass: (s, at = s.t) => massAt(s, at),
+    separationSpeed,
     left: (s) =>
       stages.map((st, i) =>
         Number.isFinite(s.stages[i]!.gone)

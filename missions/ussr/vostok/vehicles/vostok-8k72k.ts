@@ -7,11 +7,11 @@
  * (vostok-8k72k.md has the dimensions; the flight's mission.md each input's argument).
  */
 
-import type { Guidance } from '../../../../src/sim/orbital.ts';
-import type { AscentCheck, AscentRecord, StageRecord } from './vostok-record.ts';
-import type { Curve, JetDef, Measure, ShedBody } from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
+import type { Guidance } from '../../../../src/sim/orbital.ts';
+import type { Curve, JetDef, Measure, ShedBody } from '../../../../src/types.ts';
 import { G0 } from '../../../../src/world/bodies.ts';
+import type { AscentCheck, AscentRecord, StageRecord } from './vostok-record.ts';
 
 /** The strap-ons, each a body of its own when it leaves: its letter, its block, its bearing round the stack (as flight.ts's BOOSTERS). */
 export const BOOSTERS: [letter: string, block: string, az: number][] = [
@@ -393,6 +393,45 @@ export function ascent8K72K(day: Ascent8K72K): AscentRecord {
   };
 }
 
+/** The flight model’s two fairing halves, round hatch No. 1 (135° in the model). Each carries
+ * half the shell’s estimated mass and drag. Their transverse speed and mass distribution were not measured. */
+export const FAIRING_HALVES = ['Left', 'Right'] as const;
+export const MODULE_DRIFT = estimated(
+  0.5,
+  'scene approximation for the free instrument module after its final connection goes; the relative speed was not found',
+);
+export function fairingDrops(at: number) {
+  return FAIRING_HALVES.map((side) => ({ at, on: `fairing/${side}`, nodes: [`Fairing_${side}`] }));
+}
+export function fairingHalves(shell: ShedBody & { mass: Measure }): ShedBody[] {
+  return shellSectors(shell, FAIRING_HALVES, 135);
+}
+
+/** Equal cylindrical sectors. Their radial centroid is r sin(π/n)/(π/n) for thin uniform walls. */
+export function shellSectors(shell: ShedBody & { mass: Measure }, pieces: readonly string[], firstBearing: number): ShedBody[] {
+  const n = pieces.length;
+  const sector = Math.PI / n;
+  const share = (m: Measure) => estimated(m.value / n, `assumed equal shares for ${n} pieces; complete assembly: ${m.source}`);
+  return pieces.map((piece, i) => ({
+    ...shell,
+    on: `${shell.on}/${piece}`,
+    name: `${shell.name}, ${piece}`,
+    mass: share(shell.mass),
+    ahead: share(shell.ahead),
+    astern: share(shell.astern),
+    side: { ...shell.side, dragArea: share(shell.side.dragArea) },
+    sideways: {
+      sectorDegrees: 360 / n,
+      bearing: firstBearing + (i * 360) / n,
+      across: estimated(
+        (shell.radius.value * Math.sin(sector)) / sector,
+        'centroid of an equal thin cylindrical sector; actual taper and fittings differ',
+      ),
+      speed: estimated(2, 'outward speed chosen for the separated pieces in the scene; measured ejection speed was not found'),
+    },
+  }));
+}
+
 /** The bodies the ascent lets go, each flown on from where it leaves (sim/shed.ts); what each still holds is the flight's run's. */
 function sheds(left: Left): ShedBody[] {
   return [
@@ -453,13 +492,13 @@ function sheds(left: Left): ShedBody[] {
         swing: estimated(3, 'degrees: NOT FOUND: how far the tail swings before the ball rolls out of its socket'),
       },
     })),
-    {
+    ...fairingHalves({
       on: 'fairing',
       name: 'The fairing',
       from: derived(31.73, 'on Block E’s adapter: 28.75 m (core with lattice) + 2.98 m (Block E with adapter), Minakov'),
       to: doc(38.36, `${MINAKOV}: the whole vehicle’s length`),
       radius: doc(1.35, `${MINAKOV}: 2.7 m across`),
-      mass: doc(800, `${ZAK}: 0.8 t; Brügge 0.64 t. Flown as one body: it was two halves`),
+      mass: doc(800, `${ZAK}: 0.8 t; Brügge 0.64 t. total for both halves`),
       centre: estimated(34.5, 'a little below the middle of a shell that narrows to its tip'),
       gyration: { roll: estimated(1.1, 'a thin shell 1.35 m in radius'), across: estimated(2, 'a 6.6 m shell') },
       ahead: estimated(2.5, 'its nose, 5.7 m², at 0.45'),
@@ -469,7 +508,7 @@ function sheds(left: Left): ShedBody[] {
         from: derived(31.73, 'the body’s own stretch, as above'),
         to: doc(38.36, 'the body’s own stretch, as above'),
       },
-    },
+    }),
     {
       on: 'stage:1',
       name: 'Block A, the core',
@@ -511,6 +550,7 @@ function sheds(left: Left): ShedBody[] {
     {
       on: 'modules',
       name: 'The instrument module and braking engine',
+      push: MODULE_DRIFT,
       from: derived(30.53, 'the spacecraft’s station 0, the braking nozzle (vostok-8k72k.md)'),
       to: estimated(32.8, 'the instrument module’s top, from RKK Energia’s drawing as vostok-3ka.md has it'),
       radius: estimated(1.25, 'its widest, 2.43 m (Siddiqi)'),

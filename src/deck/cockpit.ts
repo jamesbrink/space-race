@@ -6,7 +6,7 @@ import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
 import type { EventDef } from '../sim/plan.ts';
-import { afterwards, blownAloft, grown, type Run, runOf } from '../sim/run.ts';
+import { afterwards, blownAloft, grown, keepContact, type Run, runOf } from '../sim/run.ts';
 import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { landsOf, verdict } from '../sim/verdict.ts';
@@ -410,7 +410,6 @@ export class Cockpit extends Deck {
       if (state.ticks === before.ticks) break;
     }
     this.state = state;
-    this.run.sheds?.follow(state); // what it has let go is flown on beside it (sim/shed.ts)
     if (ahead > MOST) this.clock.seek(state.t); // (the clock was run faster than the flight can be flown: it waits)
     // a frame's fraction of a tick is left for the next frame: the scene is shown at the flight's own instant
     this.show(this.run.samples[this.run.samples.length - 1]!);
@@ -432,7 +431,11 @@ export class Cockpit extends Deck {
   /** One tick of the flight, noted: its sample kept for the scene, its events' times, what it came to. Every tick goes through here, so none is flown unseen. */
   private tick(before: VehicleState, pilot: Pilot): VehicleState {
     const v = this.vehicle!;
-    const state = v.tick(before, pilot);
+    const free = v.tick(before, pilot);
+    const { state, hits, impulses } = this.run.sheds!.ballistic(v, before, free);
+    const touched = state !== free;
+    if (touched) this.kept = keepContact(this.run.samples, this.kept, before, free, impulses, v.sample);
+    for (const hit of hits) this.impact(hit);
     // (let go under thrust: said once, as it happens, and once more when it parts)
     if (state.loose !== null && before.loose === null && !hasLeft(state.craft, this.roles.booster.id))
       this.host.say?.(
@@ -449,15 +452,16 @@ export class Cockpit extends Deck {
     if (state.ticks === before.ticks) return state;
     const s = v.sample(state);
     this.tally.note(s, state, v);
-    this.note(before, state, s);
+    this.note(before, state, s, touched);
     return state;
   }
 
   /** A tick has been flown: keep its sample for the scene, and the times of what happened in it. */
-  private note(before: VehicleState, state: VehicleState, s: LiveSample): void {
+  private note(before: VehicleState, state: VehicleState, s: LiveSample, touched: boolean): void {
     const run = this.run;
     const last = run.samples[this.kept - 1]!;
     const event =
+      touched ||
       state.cutoff !== before.cutoff ||
       Object.keys(state.craft.bodies).some((k) => state.craft.bodies[k] !== before.craft.bodies[k]) ||
       changed(s, last) ||
@@ -1002,6 +1006,7 @@ export class Cockpit extends Deck {
     ].filter(Boolean);
     const fell = (this.run.sheds?.all ?? []).map((body) => {
       const down = body.finish();
+      if (!down) return `${body.shedder.def.name}: still aloft at the end of the landing search.`;
       return `${body.shedder.def.name}: ${down.t <= body.from ? 'stayed where it stood' : `down ${(down.range / 1000).toFixed(0)} km from the pad at ${down.speed.toFixed(0)} m/s, T+${down.t.toFixed(0)} s`}.`;
     });
     // the hatch, where it was blown: what it meant, and on a spacecraft afloat what the record has after
@@ -1017,6 +1022,7 @@ export class Cockpit extends Deck {
       ${[...lost, ...end.why, ...blown].map((w) => `<p class="cockpit-why">${w}</p>`).join('')}
       ${kept.map((w) => `<p class="cockpit-fell">${w}</p>`).join('')}
       ${fell.length ? `<p class="cockpit-fell">${fell.join(' ')}</p>` : ''}
+      ${this.impactSummary()}
       ${lived}
       <table>
         <thead><tr><td></td><td>You</td><td>${this.flight.callsign}</td></tr></thead>

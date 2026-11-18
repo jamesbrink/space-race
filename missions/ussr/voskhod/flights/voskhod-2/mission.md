@@ -79,3 +79,5 @@ impulse is derived and the aim was by eye. Nothing is adjusted.
 - No bus is built at the pad: none is in anything read for this morning. The night's snow is not drawn, and the
   overcast of stratocumulus is drawn as the viewer's low heaps at full cover.
 - There is no crew to walk as: the Berkut figure is built only seated.
+
+The released Volga airlock flies free at the estimated jettison time. Its detached body uses the 250 kg system mass as an upper bound and a 0.5 m/s outward drift. The release velocity and mass of the fittings left aboard were not found.

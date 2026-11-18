@@ -685,6 +685,7 @@ export const flight: Flight = {
       },
       // (kept on through the entry, and gone in pieces as its straps burned through)
       { at: orbital.retro.gone.value, nodes: ['Retropack'], on: 'retropack-straps' },
+      { at: orbital.events.find((e) => e.id === 'main-deployment')!.at.value, nodes: ['AntennaCanister'], under: 'drogue parachute' },
     ],
     // the Redstone flights' drogue and main, the same canopies, on the capsule's own descent
     chutes: [

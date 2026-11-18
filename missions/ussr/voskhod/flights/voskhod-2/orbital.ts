@@ -14,7 +14,11 @@
  * the burn's start and end are OKB-1's commands, its aim the crew's own by eye, and its impulse is derived.
  */
 
+import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
+import { BOBKOV, G0, GCTC, KICK, VERTICAL } from '../../../vostok/vehicles/vostok-8k72k.ts';
 import type { VostokRecord } from '../../../vostok/vehicles/vostok-record.ts';
+import { BASE } from '../../vehicles/voskhod-11a57.ts';
+import { AFT_MASS, ascent11A57, BLOCK_I, CORE_11A57, SIDDIQI, STRAP_ONS_11A57, stages11A57 } from '../../vehicles/voskhod-11a57-flown.ts';
 import {
   COVER,
   COVER_OFF,
@@ -30,9 +34,6 @@ import {
   TDU_THRUST,
   TORN,
 } from '../../vehicles/voskhod-ship.ts';
-import { AFT_MASS, ascent11A57, BLOCK_I, CORE_11A57, SIDDIQI, STRAP_ONS_11A57, stages11A57 } from '../../vehicles/voskhod-11a57-flown.ts';
-import { BOBKOV, G0, GCTC, KICK, VERTICAL } from '../../../vostok/vehicles/vostok-8k72k.ts';
-import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 
 /** Seconds from liftoff, 10:00:00 Moscow time on 18 March 1965, of a Moscow time on a day of March 1965. */
 export const MSK = (day: number, h: number, min: number, s = 0): number => ((day - 18) * 24 + h - 10) * 3600 + min * 60 + s;
@@ -55,6 +56,7 @@ const ASCENT = (what: string, at: number) =>
 
 /** The ship's in orbit, kg, and the airlock it let go. */
 const SHIP = 5_682;
+const AIRLOCK_OUT = doc(MSK(18, 10, 22, 54.3), `${OKB1}, Table 2, p. 13: «Раскрытие шлюза 10ʰ22′54,3″»; ${CREW_REPORT}, p. 6`);
 const AIRLOCK = doc(
   250,
   `${SIDDIQI}, p. 450: "The complete airlock system had a mass of 250 kilograms" (and the drawing on p. 449). McDowell has 240 kg`,
@@ -143,7 +145,7 @@ export const orbital: VostokRecord = {
     {
       id: 'airlock-out',
       label: 'The airlock is let out, «с рывками и потрескиванием»',
-      at: doc(MSK(18, 10, 22, 54.3), `${OKB1}, Table 2, p. 13: «Раскрытие шлюза 10ʰ22′54,3″»; ${CREW_REPORT}, p. 6`),
+      at: AIRLOCK_OUT,
     },
     {
       id: 'outer-hatch',
@@ -249,6 +251,34 @@ export const orbital: VostokRecord = {
         id: 'airlock',
         at: estimated(MSK(18, 12, 20), 'NOT RECORDED: OKB-1’s Fig. 2, read off the plot (the record’s `airlock`)'),
         mass: AIRLOCK,
+        loose: {
+          name: 'Volga airlock',
+          from: estimated(BASE + 2.85, 'lower extent of the extended airlock on the model’s descent sphere'),
+          to: estimated(BASE + 4.7, 'upper extent, including its tilt toward the nose; OKB-1’s 3KD drawing'),
+          centre: estimated(BASE + 3.8, 'near the middle of the extended tube and its end fittings'),
+          radius: doc(0.6, `${SIDDIQI}, pp. 449–450: 1.2 m outside diameter`),
+          sideways: {
+            bearing: 315,
+            stowed: {
+              until: AIRLOCK_OUT,
+              across: estimated(1.31, '0.35 m inside the 1.66 m folded outer reach on OKB-1’s drawing; see spacecraft.md'),
+              radius: estimated(0.35, 'contact envelope inscribed inside the 0.7 m folded length (Siddiqi, p. 449)'),
+            },
+            across: estimated(2.1, 'midway along the 2.5 m tube on hatch 3 at 21°; see spacecraft.md'),
+            speed: estimated(0.5, 'outward velocity for the separated airlock in the scene; not measured'),
+          },
+          gyration: {
+            roll: estimated(0.8, 'tube about the spacecraft axis'),
+            across: estimated(0.7, 'averaged across the two transverse axes of the tilted tube'),
+          },
+          ahead: estimated(3, '2.5 m by 1.2 m broadside at unit drag coefficient'),
+          astern: estimated(3, 'same projected side of the tube'),
+          side: {
+            dragArea: estimated(2, 'mean of the end and side presented to the flow'),
+            from: estimated(BASE + 2.85, 'model lower extent'),
+            to: estimated(BASE + 4.7, 'model upper extent'),
+          },
+        },
       },
     ],
     left: {

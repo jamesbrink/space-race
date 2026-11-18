@@ -31,7 +31,8 @@ import type {
   ThrusterSet,
 } from '../../../../src/sim/plan.ts';
 import type { Confidence, Curve, Heating, ShedBody } from '../../../../src/types.ts';
-import { LANDING_SPEED } from './mercury-redstone.ts';
+import { BASE } from './mercury-atlas.ts';
+import { IN, LANDING_SPEED, retropack } from './mercury-redstone.ts';
 
 /** One engine of the Atlas as the record has it: one chamber's figures, `count` alike. */
 export interface AtlasEngine {
@@ -159,6 +160,10 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
   const b = o.atlas.booster;
   const k = o.atlas.tank;
   const r = o.retro;
+  const packMass = derived(
+    o.mass.value - o.entry.mass.value,
+    'the spacecraft in orbit less the capsule once the pack has gone, including consumables spent since insertion; an upper bound for the spent pack',
+  );
   const bodies: BodyDef[] = [
     { id: 'atlas-booster-section', label: b.name, count: 1, mass: b.mass, dry: b.mass, nodes: b.nodes },
     { id: 'atlas', label: k.name, count: 1, mass: k.mass, dry: k.dry, nodes: k.nodes },
@@ -167,7 +172,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
       id: 'retro-package',
       label: 'Retropack',
       count: 1,
-      mass: derived(o.mass.value - o.entry.mass.value, 'the spacecraft in orbit less the capsule once the pack has gone'),
+      mass: packMass,
     },
     {
       id: 'mercury-capsule',
@@ -361,7 +366,7 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     heating: o.heating,
     rarefied: o.rarefied,
     lands: o.lands,
-    sheds: o.ascent.sheds,
+    sheds: [...o.ascent.sheds, retropack(BASE / IN, packMass)],
     // (the pilot lands in the capsule, on its couch: the Redstone flights' figure for what he walks away from)
     crew: {
       landing: { aboard: LANDING_SPEED },

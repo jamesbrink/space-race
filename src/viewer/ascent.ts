@@ -3,9 +3,9 @@ import { type Afloat, type AfloatSample, afloatAt } from '../sim/afloat.ts';
 import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { type LooseFlown, looseAt } from '../sim/loose.ts';
-import { surfaceAt, type Wave, wavesOf } from '../sim/sea.ts';
-import { normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
+import { nlerp, normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
+import { surfaceAt, type Wave, wavesOf } from '../sim/sea.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
 import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
@@ -13,9 +13,9 @@ import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import {
   cross,
+  ecefToEnu,
   ecefToGeodetic,
   ecefToSite,
-  ecefToEnu,
   ecefToSiteDirection,
   geodeticToEcef,
   length,
@@ -250,10 +250,14 @@ export class Ascent {
   }
 
   /** What leaves the vehicle on the way, in order (`Flight.flies.drops`), each at the time it left on the run on show. */
-  get drops(): readonly { at: number; nodes: string[]; under?: 'drogue' | 'main' }[] {
-    const { dropped } = this.flown();
+  get drops(): readonly { at: number; nodes: string[]; under?: string }[] {
+    const { dropped, descent } = this.flown();
     // (what a drop leaves hanging under: the plan's parachute it names, by which of the run's two it is: sim/run.ts `chuteOf`)
-    return this.flight.flies!.drops.map((d, i) => ({ at: dropped[i] ?? d.at, nodes: d.nodes, under: chuteOf(this.flight.plan, d.under) }));
+    return this.flight.flies!.drops.map((d, i) => {
+      const orbital = d.under ? this.chutes.find((c) => c.body && c.on === d.under) : undefined;
+      if (orbital?.body) return { at: descent?.gone[orbital.body]?.[orbital.on] ?? Infinity, nodes: d.nodes, under: orbital.on };
+      return { at: dropped[i] ?? d.at, nodes: d.nodes, under: chuteOf(this.flight.plan, d.under) };
+    });
   }
 
   /** The parachutes this flight has to draw (`Flight.flies.chutes`). */
@@ -268,7 +272,22 @@ export class Ascent {
   chute(i: number, t: number, padTurn: THREE.Quaternion): ChuteMoment | null {
     const def = this.chutes[i];
     if (!def || !this.flying(t)) return null;
-    if (def.body) return this.descentChute(def, t);
+    if (def.body) {
+      const carried = this.drops.findIndex((d) => d.under === def.on && t >= d.at);
+      if (carried < 0) return this.descentChute(def, t);
+      const drop = this.drops[carried]!;
+      const moment = this.descentChute(def, drop.at - 1e-6);
+      const from = this.release(carried, padTurn);
+      const seen = this.seen(carried, t);
+      if (!moment || !from || seen <= 0) return null;
+      const dt = t - drop.at;
+      return {
+        ...moment,
+        seen,
+        since: moment.since + dt,
+        air: DRIFT.clone().addScaledVector(from.v.clone().sub(DRIFT), Math.exp(-dt / EASES)),
+      };
+    }
     const run = this.flown();
     const roles = ballisticOf(this.flight.plan!);
     // (which of the run's two parachutes it is: the plan's it names)
@@ -538,7 +557,7 @@ export class Ascent {
         .applyQuaternion(from.q)
         .add(from.p);
       // (a strap-on's is on its own axis, out from the stack's the way its +Z points as it leaves: sim/shed.ts `apart`)
-      const apart = body.shedder.def.apart;
+      const apart = body.shedder.def.apart ?? body.shedder.def.sideways;
       if (apart) {
         const out = this.frame.toFixed(turn(body.shedder.release.q, [0, 0, 1]), from.at);
         centre.addScaledVector(toThree(ecefToSiteDirection(this.site, out)), apart.across.value);
@@ -979,10 +998,6 @@ function onward(s: LiveSample, dt: number): LiveSample {
 }
 
 /** An attitude between two close ones: the straight blend, made a rotation again (they are a tenth of a second apart at most). */
-function nlerp(a: Quat, b: Quat, k: number): Quat {
-  const sign = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
-  return normalize([0, 1, 2, 3].map((i) => a[i]! + (sign * b[i]! - a[i]!) * k) as unknown as Quat);
-}
 
 const X = new THREE.Vector3(1, 0, 0);
 const Y = new THREE.Vector3(0, 1, 0);

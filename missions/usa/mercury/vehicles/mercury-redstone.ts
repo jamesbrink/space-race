@@ -1,16 +1,3 @@
-import type {
-  AbortRecord,
-  Body,
-  ChuteDef,
-  Curve,
-  FlightCheck,
-  Heating,
-  MassPart,
-  Measure,
-  RcsSupply,
-  Thruster,
-  Winds,
-} from '../../../../src/types.ts';
 import { derived, doc, estimated } from '../../../../src/measure.ts';
 import type {
   AttitudeDef,
@@ -27,6 +14,21 @@ import type {
   ThrusterSet,
 } from '../../../../src/sim/plan.ts';
 import { vacuumOf } from '../../../../src/sim/thrust.ts';
+import type {
+  AbortRecord,
+  Body,
+  ChuteDef,
+  Curve,
+  FlightCheck,
+  Heating,
+  MassPart,
+  Measure,
+  RcsSupply,
+  ShedBody,
+  ShedMotor,
+  Thruster,
+  Winds,
+} from '../../../../src/types.ts';
 import { G0 } from '../../../../src/world/bodies.ts';
 
 /**
@@ -307,7 +309,66 @@ export const ESCAPE = {
 };
 /** Hammack and Heberlig on how the tower left a good flight. */
 const TOWER_FIRED =
-  'Hammack and Heberlig, p. 15: "At booster cutoff, the tower clamp ring was released and both the escape and pylon jettison rockets fired to remove the tower"';
+  'McDonnell SEDR 109-7, “Tower fails to jettison” (PDF p. 54), describes both motors firing on a normal launch. Hammack and Heberlig, p. 15: "At booster cutoff, the tower clamp ring was released and both the escape and pylon jettison rockets fired to remove the tower"';
+
+export const TOWER_MOTORS: ShedMotor[] = [
+  {
+    name: 'escape rocket',
+    unless: 'abort',
+    thrust: doc(ESCAPE.thrust.value, `${TOWER_FIRED}. The rocket’s figures are \`body.escape\`’s: ${ESCAPE.thrust.source}`),
+    burn: doc(ESCAPE.burn.value, ESCAPE.burn.source),
+    impulse: doc(
+      ESCAPE.impulse.value,
+      `${ESCAPE.impulse.source}. The tower’s weight is not lightened as the rocket burns, so it is flown a little slow`,
+    ),
+  },
+  {
+    name: 'tower jettison rocket',
+    thrust: doc(
+      800 * LBF,
+      `${TOWER_FIRED}. NASA SP-45, Table 3-III (spacecraft.md, Propulsion): the tower jettison motor, 800 lbf nominal (SEDR 104 has 785 lbf, through three nozzles canted 30 degrees). ` +
+        'Taken as along the axis, through the centre of mass. After an abort it is this rocket alone that takes the tower off, the escape rocket being spent',
+    ),
+    burn: doc(1.5, 'NASA SP-45, Table 3-III (spacecraft.md, Propulsion): 1.5 s'),
+  },
+];
+
+/** The same Mercury hardware, measured in drawing inches from this stack’s capsule plane. */
+export function retropack(plane: number, mass: Measure): ShedBody {
+  return {
+    on: 'retropack-straps',
+    name: 'Retropack',
+    from: doc(
+      (plane - 27) * IN,
+      'SEDR 104, Figure 1-3: the retro nozzles’ exits, 27.0 in below the capsule’s widest plane (model/vehicle.py: Z_RETRO_BOTTOM)',
+    ),
+    to: derived(
+      (plane - 9.2) * IN,
+      'the tip of the heat shield, which it is strapped under: 9.2 in below the capsule’s widest plane, the depth of a spherical cap of 80 in radius on a 74.5 in chord (both CR-649; spacecraft.md)',
+    ),
+    radius: estimated(0.38, 'about 30 in across, off the model; no drawing of the housing has been read for it'),
+    mass,
+    centre: estimated(
+      (plane - 17) * IN,
+      'the middle of the housing and its motors, 17 in below the capsule’s widest plane, by eye from the model',
+    ),
+    gyration: {
+      roll: estimated(0.27, 'a solid disc of its radius has 0.27 m'),
+      across: estimated(0.2, 'a disc 0.45 m deep and 0.38 m in radius has 0.23 m; the motors are near the middle'),
+    },
+    ahead: estimated(0.45, 'either face on: a disc of its radius (0.45 sq m) at 1.0, by judgement'),
+    astern: estimated(0.45, 'as the other face'),
+    side: {
+      dragArea: estimated(0.35, 'edge on: 0.76 m by 0.45 m at 1.0, by judgement. Its three straps are left out'),
+      from: doc((plane - 27) * IN, 'its lower end'),
+      to: derived((plane - 9.2) * IN, 'its upper end: the tip of the heat shield, derived as `to` above'),
+    },
+    push: estimated(
+      1,
+      'McDonnell SEDR 104 (1959), §8-4: a coil spring ejects the pack when the straps release. §8-9 also describes the spring acting if the straps burn in entry. The relative speed is estimated; no measurement found.',
+    ),
+  };
+}
 
 /**
  * The stack as a body that turns (src/sim/vehicle.ts). The lengths and most of the weights are
@@ -508,27 +569,7 @@ export function stack(o: Stack): Body {
           to: doc(SPIKE_TIP * IN, 'the spike’s tip'),
         },
         // The clamp ring is let go first, so both rockets push on the tower alone: the stack feels nothing of them but their exhaust, which is not modelled.
-        motors: [
-          {
-            name: 'escape rocket',
-            unless: 'abort',
-            thrust: doc(ESCAPE.thrust.value, `${TOWER_FIRED}. The rocket’s figures are \`body.escape\`’s: ${ESCAPE.thrust.source}`),
-            burn: doc(ESCAPE.burn.value, ESCAPE.burn.source),
-            impulse: doc(
-              ESCAPE.impulse.value,
-              `${ESCAPE.impulse.source}. The tower’s weight is not lightened as the rocket burns (the 1,185 lb has its propellant in it), so it is flown a little slow`,
-            ),
-          },
-          {
-            name: 'tower jettison rocket',
-            thrust: doc(
-              800 * LBF,
-              `${TOWER_FIRED}. NASA SP-45, Table 3-III (spacecraft.md, Propulsion): the tower jettison motor, 800 lbf nominal (SEDR 104 has 785 lbf, through three nozzles canted 30 degrees). ` +
-                'Taken as along the axis, through the centre of mass. After an abort it is this rocket alone that takes the tower off, the escape rocket being spent',
-            ),
-            burn: doc(1.5, 'NASA SP-45, Table 3-III (spacecraft.md, Propulsion): 1.5 s'),
-          },
-        ],
+        motors: TOWER_MOTORS,
       },
       {
         on: 'adapter-clamp',
@@ -563,40 +604,7 @@ export function stack(o: Stack): Body {
         ],
         push: o.push,
       },
-      {
-        on: 'retropack-straps',
-        name: 'Retropack',
-        from: doc(
-          (CAPSULE_PLANE - 27) * IN,
-          'SEDR 104, Figure 1-3: the retro nozzles’ exits, 27.0 in below the capsule’s widest plane (model/vehicle.py: Z_RETRO_BOTTOM)',
-        ),
-        to: derived(
-          SHIELD_TIP * IN,
-          'the tip of the heat shield, which it is strapped under: 9.2 in below the capsule’s widest plane, the depth of a spherical cap of 80 in radius on a 74.5 in chord (both CR-649; spacecraft.md)',
-        ),
-        radius: estimated(0.38, 'about 30 in across, off the model; no drawing of the housing has been read for it'),
-        mass: o.retropackMass,
-        centre: estimated(
-          (CAPSULE_PLANE - 17) * IN,
-          'the middle of the housing and its motors, 17 in below the capsule’s widest plane, by eye from the model',
-        ),
-        gyration: {
-          roll: estimated(0.27, 'a solid disc of its radius has 0.27 m'),
-          across: estimated(0.2, 'a disc 0.45 m deep and 0.38 m in radius has 0.23 m; the motors are near the middle'),
-        },
-        ahead: estimated(0.45, 'either face on: a disc of its radius (0.45 sq m) at 1.0, by judgement'),
-        astern: estimated(0.45, 'as the other face'),
-        side: {
-          dragArea: estimated(0.35, 'edge on: 0.76 m by 0.45 m at 1.0, by judgement. Its three straps are left out'),
-          from: doc((CAPSULE_PLANE - 27) * IN, 'its lower end'),
-          to: derived(SHIELD_TIP * IN, 'its upper end: the tip of the heat shield, derived as `to` above'),
-        },
-        push: estimated(
-          1,
-          'not in anything read. Its straps cut, the pack was thrown off the heat shield by a spring, as is remembered of Mercury; a metre a second is ours, to be replaced by the figure when one is read. ' +
-            'Shared with the spacecraft by their masses (which gets a tenth of it); fly.ts gives the spacecraft none',
-        ),
-      },
+      retropack(CAPSULE_PLANE, o.retropackMass),
     ],
     limits: {
       qAlpha: estimated(

@@ -6,25 +6,29 @@
  * the fairing's stations, and no escape system. A flight gives its own day (`Staging`, `Ascent11A57`) as a Vostok's does.
  */
 
-import type { Guidance } from '../../../../src/sim/orbital.ts';
-import type { AscentCheck, AscentRecord, StageRecord } from '../../vostok/vehicles/vostok-record.ts';
-import type { Measure, ShedBody } from '../../../../src/types.ts';
 import { assumed, derived, doc, estimated } from '../../../../src/measure.ts';
+import type { Guidance } from '../../../../src/sim/orbital.ts';
+import type { Measure, ShedBody } from '../../../../src/types.ts';
 import {
   ascent8K72K,
   BLOCK_E,
   CORE,
   coreThrottle,
+  fairingHalves,
   G0,
   MINAKOV,
+  MODULE_DRIFT,
   SIDDIQI,
   STRAP_ONS,
+  shellSectors,
   strapOnThrottle,
   ZAK,
 } from '../../vostok/vehicles/vostok-8k72k.ts';
+import type { AscentCheck, AscentRecord, StageRecord } from '../../vostok/vehicles/vostok-record.ts';
 import { THRUST } from './voskhod-11a57.ts';
 
-export { SIDDIQI, ZAK, G0 };
+export { G0, SIDDIQI, ZAK };
+
 const BRUGGE = 'Brügge’s table for the 11A57 (b14643.eu): secondary, and uncited figure by figure';
 
 type Hardware = Omit<StageRecord, 'cutoff' | 'separation' | 'throttle' | 'velocity'>;
@@ -160,6 +164,7 @@ export function stages11A57(day: Staging): StageRecord[] {
 const LATTICE_TOP = 28.75;
 const ADAPTER_TOP = 37.8;
 const TIP = 44.155;
+export const AFT_SECTORS = ['1', '2', '3'] as const; // AftSection_1…3: their centres start at 60° (upper.py AFT_AZ).
 /** The spacecraft's station 0 (its braking nozzle) on the stack: voskhod-11a57.ts `BASE`. */
 const SHIP_0 = 36.6;
 
@@ -179,7 +184,7 @@ export interface Ascent11A57 {
   /** When Block I's aft section was let go, and what it weighed. */
   aft: { at: Measure; mass: Measure };
   /** What the ship let go in orbit that was no part of the launch vehicle (Voskhod 2's airlock): each as a drop, by id. */
-  jettisons?: { id: string; at: Measure; mass: Measure }[];
+  jettisons?: { id: string; at: Measure; mass: Measure; loose: Omit<ShedBody, 'on' | 'mass'> }[];
   left: Left;
   checks: AscentCheck[];
 }
@@ -210,7 +215,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
         ),
       },
       { id: 'aft-section', at: day.aft.at, mass: day.aft.mass },
-      ...(day.jettisons ?? []),
+      ...(day.jettisons ?? []).map(({ id, at, mass }) => ({ id, at, mass })),
     ],
     // what the ship's centre of mass is above its braking nozzle: the Vostok's ship's, the ball 0.5 t heavier and the reserve engine on top
     centre: estimated(
@@ -242,7 +247,8 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
     ],
     sheds: [
       ...kept,
-      {
+      ...(day.jettisons ?? []).map((j) => ({ ...j.loose, on: j.id, mass: j.mass })),
+      ...fairingHalves({
         on: 'fairing',
         name: 'The fairing',
         from: derived(
@@ -261,24 +267,28 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
           from: derived(ADAPTER_TOP, 'the body’s own stretch, as above'),
           to: derived(TIP, 'the body’s own stretch, as above'),
         },
-      },
-      {
-        on: 'aft-section',
-        name: 'Block I’s aft section',
-        from: doc(LATTICE_TOP, `${MINAKOV}: on the lattice’s top`),
-        to: estimated(LATTICE_TOP + 1.95, 'its 1.95 m in the model (voskhod-11a57.md: estimated)'),
-        radius: doc(1.33, `${ZAK}: the stage’s 2.66 m`),
-        mass: day.aft.mass,
-        centre: estimated(LATTICE_TOP + 1, 'the middle of a skirt'),
-        gyration: { roll: estimated(1.3, 'a thin skirt 1.33 m in radius'), across: estimated(1, 'a skirt 2 m long') },
-        ahead: estimated(3, 'its open top, at 1.0'),
-        astern: estimated(3, 'its open foot, at 1.0'),
-        side: {
-          dragArea: estimated(5, '1.95 m × 2.66 m at 1.0'),
-          from: doc(LATTICE_TOP, 'the body’s own stretch, as above'),
-          to: estimated(LATTICE_TOP + 1.95, 'the body’s own stretch, as above'),
+      }),
+      ...shellSectors(
+        {
+          on: 'aft-section',
+          name: 'Block I’s aft section',
+          from: doc(LATTICE_TOP, `${MINAKOV}: on the lattice’s top`),
+          to: estimated(LATTICE_TOP + 1.95, 'its 1.95 m in the model (voskhod-11a57.md: estimated)'),
+          radius: doc(1.33, `${ZAK}: the stage’s 2.66 m`),
+          mass: day.aft.mass,
+          centre: estimated(LATTICE_TOP + 1, 'the middle of a skirt'),
+          gyration: { roll: estimated(1.3, 'a thin skirt 1.33 m in radius'), across: estimated(1, 'a skirt 2 m long') },
+          ahead: estimated(3, 'its open top, at 1.0'),
+          astern: estimated(3, 'its open foot, at 1.0'),
+          side: {
+            dragArea: estimated(5, '1.95 m × 2.66 m at 1.0'),
+            from: doc(LATTICE_TOP, 'the body’s own stretch, as above'),
+            to: estimated(LATTICE_TOP + 1.95, 'the body’s own stretch, as above'),
+          },
         },
-      },
+        AFT_SECTORS,
+        60,
+      ),
       {
         on: 'stage:2',
         name: 'Block I, the third stage',
@@ -303,6 +313,7 @@ export function ascent11A57(day: Ascent11A57): AscentRecord {
       {
         on: 'modules',
         name: 'The instrument module and braking engine',
+        push: MODULE_DRIFT,
         from: derived(SHIP_0, 'the spacecraft’s station 0, the braking nozzle (voskhod-11a57.md)'),
         to: estimated(SHIP_0 + 2.27, 'the instrument module’s top, as the Vostok’s (vostok-3ka.md)'),
         radius: estimated(1.25, 'its widest, 2.43 m (Siddiqi)'),

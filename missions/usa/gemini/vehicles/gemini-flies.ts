@@ -1,7 +1,7 @@
 import { doc, estimated } from '../../../../src/measure.ts';
 import type { ChuteDef, Command, Flight } from '../../../../src/types.ts';
-import type { GeminiTitanRecord } from './gemini-titan-plan.ts';
 import { BASE, FT, IN } from './gemini-titan.ts';
+import type { GeminiTitanRecord } from './gemini-titan-plan.ts';
 
 /**
  * A Gemini on its Titan as the scene shows it flown (types.ts `Flight.flies`), and what a hand can ask of each part of it in
@@ -117,13 +117,13 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
     drops: [
       { at: o.titan.staging.value, nodes: ['TitanStage1', 'TitanStage1Engine', 'TitanInterstage'], on: 'staging-nuts' },
       { at: o.separation.at.value, nodes: ['TitanStage2', 'TitanStage2Engine'], on: 'adapter-separation' },
-      // (thrown off in orbit by the crew's switch: not flown, their few pounds left aboard)
-      { at: at('fairings'), nodes: ['NoseFairing', 'ScannerFairing'] },
+      { at: at('fairings'), nodes: ['NoseFairing'], on: 'fairings/nose' },
+      { at: at('fairings'), nodes: ['ScannerFairing'], on: 'fairings/scanner' },
       { at: o.adapter.equipment.gone.value, nodes: ['EquipmentSection'], on: 'equipment-section-release' },
       { at: o.retro.gone.value, nodes: ['RetroSection'], on: 'retro-section-release' },
       // (the rendezvous and recovery section, pulled off by the pilot parachute with the main in it: at the record's
       // "Going to landing attitude", less half a minute for the main to fill, estimated: drawn going, not flown)
-      { at: at('landing-attitude') - 30, nodes: ['RendezvousRecovery'] },
+      { at: at('landing-attitude') - 30, nodes: ['RendezvousRecovery'], under: 'drogue parachute' },
     ],
     chutes: GEMINI_CHUTES,
     air: { shield: 'HeatShield' },

@@ -139,3 +139,9 @@ export function fixedAndFluid(parts: readonly MassPart[], gone: ReadonlySet<stri
   }
   return { fixed, fluid };
 }
+
+/** Interpolate along the short arc between two nearby attitudes. */
+export function nlerp(a: Quat, b: Quat, k: number): Quat {
+  const sign = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
+  return normalize([0, 1, 2, 3].map((i) => a[i]! + (sign * b[i]! - a[i]!) * k) as unknown as Quat);
+}

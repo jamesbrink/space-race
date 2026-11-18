@@ -302,6 +302,7 @@ src/
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
   sim/afloat.ts                       a body afloat: upright on the day's sea, flooding through its openings, hoisted, going down (`floatOn`, `Solid`)
   sim/sea.ts  sim/loose.ts            the day's waves as a function of the instant and the place; a part thrown off with no plan of its own, flown to the sea
+  sim/contact.ts                     swept spacecraft contact and its inelastic impulse
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
   sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)
@@ -331,6 +332,7 @@ tools/
   lod-measure.mjs                     the measuring behind lod-thresholds.mjs, in a browser: each model and piece, at each level, against distance
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
+  separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
   flicker-test.mjs                    browser check for z-fighting
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
