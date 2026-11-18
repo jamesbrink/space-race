@@ -39,6 +39,7 @@ const FLIGHTS = [
   'usa/mercury/mr-4-liberty-bell-7',
   'ussr/vostok/vostok-1',
   'usa/mercury/ma-6-friendship-7',
+  'usa/apollo/apollo-7',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
