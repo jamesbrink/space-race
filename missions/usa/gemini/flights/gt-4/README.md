@@ -194,7 +194,7 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
   them and the hold's length are recorded.
 - **The crew in their seats.** McDivitt and White stand on the approach to the ramp in the G4C suit
   ([g4c-suit.md](../../crew/g4c-suit.md)), White's let out over its cover for going outside; his
-  overvisor and thermal gloves are not built. The seats are empty: the suit is not built seated.
+  overvisor and thermal gloves are not built. Both men also sit in the cabin in their flight suits.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. The space walk is shown only as the hatch that opened and the
   equipment that went out through it.

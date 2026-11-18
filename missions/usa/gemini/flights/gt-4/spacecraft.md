@@ -21,12 +21,12 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 | OAMS chambers | boundary-layer-cooled, "long-life" | short-life on spacecraft 3 | documented | GIV, 3.1.2.7 | no |
 | OAMS propellant | 164.5 lb of fuel, 245.9 lb of oxidiser | | documented | GIV, 5.1.8.1.1 | the tanks are the type's sizes |
 | Rendezvous radar | none | none on spacecraft 3; fitted to spacecraft 5 | documented, by spacecraft 5's report listing it as added | GV, 3.1 and Table 3.1-I | yes: `radar=False`. The forward face is drawn with spacecraft 3's ribbed cover: assumed |
-| Extravehicular equipment | a 25 ft umbilical with a tether, a ventilation control module on the chest, a hand-held manoeuvring unit | none before; none on spacecraft 5 | documented | GIV, 3.1.2.3.1 to 3.1.2.3.3 and Figures 3-7 to 3-10 | the umbilical and the manoeuvring unit: `eva=True`, the node `ExtravehicularEquipment`. The chest pack is not built |
+| Extravehicular equipment | a 25 ft umbilical with a tether, a ventilation control module on the chest, a hand-held manoeuvring unit | none before; none on spacecraft 5 | documented | GIV, 3.1.2.3.1 to 3.1.2.3.3 and Figures 3-7 to 3-10 | the umbilical and the manoeuvring unit: `eva=True`, the node `ExtravehicularEquipment`. The ventilation module is stowed in the right footwell |
 | Pilot's hatch | opened in orbit | | documented | GIV, 4.1 | yes: `right_hatch_opens=True`, the node `HatchRight` on its hinge; the flight swings it 100° (estimated) |
 | G.m.t. clock on the command pilot's panel | added | a blank on spacecraft 3 | documented; its place as drawn | GIV, 3.1.2.5, Table 3-I and Figure 3-14 | yes: `gmt_clock=True`. A 24-hour dial, as Figure 3-14 draws it; its size is taken to be the pilot's clock's |
 | Other panel changes | ACME logic switches to the overhead panel; RCS shutoff switches to the pedestal; fuel-cell purge and crossover switches on the pilot's panel, not connected | | documented | GIV, 3.1.2.9.1 | no: the panels are spacecraft 3's but for the clock, and for RE ENT ANT EXP, which was that ship's experiment and is left off |
 | Ejection seats | a new riser retractor, a safety pin on the ejection handle, a lower egress kit | | documented | GIV, 3.1.2.9.4 | the seat is the type's |
-| Suits | G4C: redundant closures, a thicker visor; the pilot's with a cover layer, an overvisor and thermal gloves | G3C on spacecraft 3 | documented | GIV, 3.1.2.9.2 | standing, at the pad ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty |
+| Suits | G4C: redundant closures, a thicker visor; the pilot's with a cover layer, an overvisor and thermal gloves | G3C on spacecraft 3 | documented | GIV, 3.1.2.9.2 | standing at the pad and seated in the cabin ([g4c-suit.md](../../crew/g4c-suit.md)) |
 | Drogue mortar | aluminium breech | steel on spacecraft 3 | documented | GIV, 3.1.2.8 | said on the part |
 | Nose fairing | released by a spring after a cable was cut, after second stage cutoff | a pyrotechnic piston on spacecraft 5 | documented | GV, 3.1.2.8; SEDR 300, p. 4-53 | no difference built |
 | Transponder, antennas | C-band in the adapter; a second HF whip antenna in the adapter | S-band, one whip, on spacecraft 3 | documented | GIV, 3.1.2.1 | no |
@@ -51,7 +51,7 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 | --- | --- | --- | --- | --- |
 | MSC-2, proton-electron spectrometer | "in the equipment adapter section on a support assembly fixed to the center of the equipment adapter section blast shield door"; the sensor's face "will look to the rear"; 12.5 lb | documented; its form estimated | GIV, 8.4.2; the press kit (release 65-158), p. 52 | yes: a case standing off the middle of the blast shield's access door on four legs, its sensor looking aft through an opening in the gold cover |
 | MSC-3, tri-axis magnetometer | an electronics unit and sensors in the equipment section, the sensors on a boom "which can be extended beyond the end of the adapter"; 3.5 lb; its lock released by a guillotine | documented; where in the section and its form estimated | GIV, 8.5.2 and 3.1.2.8; the press kit, p. 53. NASA S65-63221 shows spacecraft 7's run out from the middle of the gold cover | yes: a boom stowed under the access door beside the spectrometer, the sensor at its aft end |
-| MSC-1, electrostatic charge | a sensor "flush with the outer surface of the spacecraft" in the adapter, behind a door opened by a pyrotechnic device | documented | the press kit, p. 51; GIV, 3.1.2.8 | no: where in the skin is not found |
+| MSC-1, electrostatic charge | a sensor "flush with the outer surface of the spacecraft" in the adapter, behind a door opened by a pyrotechnic device | documented | the press kit, p. 51; GIV, 3.1.2.8 | the sensor and electronics lie between stringers aft of station 94.40, as McDonnell’s *Technical Summary*, p. 309, places them. The case and flange outline follow the scale photograph in NASA TM X-56861, figures 10-1 and 10-2. The angle around the adapter and the cover’s outline are estimates |
 | D-8, D-9, MSC-10, S-5, S-6, M-3, M-4, M-6 | in the cabin, or done by the crew with hand-held equipment | documented | GIV, section 8 | no |
 
 ## Paint
@@ -80,15 +80,13 @@ covers spacecraft 3, 4 and 7; the **Smithsonian**'s record of the manoeuvring un
 The type's list is [gemini-spacecraft.md](../../vehicles/gemini-spacecraft.md), "What the model gets wrong or leaves
 out". Of what was No. 4's own:
 
-- **No crew aboard.** The G4C suit is modelled standing, McDivitt and White at the foot of the erector, and not
-  seated: the seats are empty, with the harness lying on them. The vehicle's own words for the seats, built into its
-  model, still say the suit is not modelled.
+- **Crew posture.** McDivitt and White wear their own suits and sit in the ejection seats. Their posture and the drape of the restraints are estimated.
 - **The panels are spacecraft 3's**, with the clock added and that ship's experiment switch left off. The switches
   this ship moved are where spacecraft 3 had them.
 - **The extravehicular equipment is not where it was stowed, and not as it was stowed.** The manoeuvring unit went
   up in two pieces in a container in the centre stowage box, and the umbilical in a pouch in the food box beside it;
   here the unit is put together and both lie between the seats' heads, forward of the one stowage box the cabin
-  model has there. The unit's parts are scaled from a photograph, and its camera is left off. The chest pack, the
+  model has there. The unit's parts are scaled from a photograph, and its camera is left off. White’s ventilation module sits on the left side of his footwell, as he described in the preliminary crew debriefing, part II, p. 124. The case and fittings occupy the Smithsonian object’s 13.5 × 10.3 × 3.8 in envelope; their details and precise orientation are estimated. The
   umbilical's guide on the hatch's sill, the hatch-closing lanyard and the cameras are not built.
 - **The hatch opens 100°** by eye, about a hinge line that is a meridian of the cone; its travel and the lanyard
   that limited it are not from a drawing. The command pilot's hatch does not open.
@@ -100,7 +98,7 @@ out". Of what was No. 4's own:
   boom is shown stowed; that it ran out through the middle of the gold cover is seen on spacecraft 7, not this ship.
 - **The gold cover is another ship's**: measured on a photograph of spacecraft 7 in orbit. That this ship's had an
   opening in its middle for the spectrometer is assumed from that photograph.
-- **Not built:** the electrostatic charge sensor and its door, the second HF whip antenna, the C-band transponder,
+- **Not built:** the second HF whip antenna, the C-band transponder,
   the long-life chambers' differences, the urine dump line.
 - **The paint** is spacecraft 3's.
 - **The flown ship** has not been compared.

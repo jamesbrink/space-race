@@ -184,8 +184,7 @@ drawn: the report has none at liftoff, and the station's cumulus at 660 m is of 
   the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. The morning's times are the plan's, and how long each motion took is estimated.
 - **The crew in their seats.** Cooper and Conrad stand on the approach to the ramp in the G4C suit,
-  without the outer cover Gemini IV's pilot had ([g4c-suit.md](../../crew/g4c-suit.md)); the seats are
-  empty. The red-lettered label under Cooper's name tag (S65-28740) and the flight's emblem, whose
+  without the outer cover Gemini IV's pilot had ([g4c-suit.md](../../crew/g4c-suit.md)); both crewmen also sit in the cabin. The red-lettered label under Cooper's name tag (S65-28740) and the flight's emblem, whose
   place on the suits nothing read gives, are not built.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. The pod does not fly; it sits where it was carried.
@@ -214,8 +213,7 @@ drawn: the report has none at liftoff, and the station's cumulus at 660 m is of 
   the tanks' loads and not their dimensions.
 - **Whether this ship's OAMS tanks were larger** than the early ships': *Titans* (p. 248) says
   spacecraft 4's were half the size of later ones, without saying when they grew.
-- **Where the docking light was** on the retrograde section, and where the radiometry experiments'
-  sensors were in the adapter.
+- **The station and housing of the docking light** on this particular ship. The model assumes the programme’s centreline position. The precise positions of the radiometry sensors also remain unresolved.
 - **What was loaded into the OAMS**, which is in a table of the report that was not transcribed.
 - **When the crew went aboard**, and a photograph of the ship's sides close enough to read its paint.
 

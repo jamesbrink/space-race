@@ -16,32 +16,43 @@ import sys
 from dataclasses import replace
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from g3c_suit import Garment, Wearer, build  # noqa: E402
+from g3c_suit import YOUNG, Garment, Wearer, build  # noqa: E402
 
 __all__ = ["ARMSTRONG", "CERNAN", "CONRAD", "COOPER", "G4C", "G4C_AMU", "G4C_OUTSIDE", "MCDIVITT", "SCHIRRA", "SCOTT", "STAFFORD", "WHITE", "build"]
 
 # Bare aluminium at the neck, where the G3C's ring was anodised blue: NASA S65-29643 (McDivitt) and S65-29645 (White),
 # both in the suiting trailer on 3 June 1965. The flag on the left upper arm: S65-29643. Estimated in size and place.
 # The visor's arm is thinner than the G3C's under its pivot's boss: on a taller man's helmet the two lay within a millimetre.
-G4C = Garment(name="G4C", ring="bright", flag=True, visor_arm=(0.32, 0.3))
+G4C = Garment(name="G4C", lap_clearance=1.6, ring="bright", flag=True, visor_arm=(0.32, 0.3))
 # The pilot's, for going outside: "A cover layer for thermal and micrometeoroid protection" (GIV, 3.1.2.9.2), "a cover
 # layer of high temperature nylon and layers of aluminized mylar and felt", white, 3 3/4 lb (NASA release 65-158, the
 # Gemini 4 press kit, p. 81). How much it let the suit out is not given: half a centimetre over the trunk, a little less
 # over the limbs, estimated from his look beside the command pilot in S65-29645 and S65-29643.
-G4C_OUTSIDE = Garment(name="G4C, with the cover for going outside", ring="bright", flag=True, cover=(0.5, 0.4, 0.4), visor_arm=(0.32, 0.3))
+G4C_OUTSIDE = Garment(
+    name="G4C, with the cover for going outside", lap_clearance=1.6, ring="bright", flag=True, cover=(0.5, 0.4, 0.4), visor_arm=(0.32, 0.3)
+)
 
 # Statures: the press kit's crew biographies (release 65-158, pp. 83 and 84), documented: McDivitt "5 ft. 11 in.",
 # White "6 ft.". Names as lettered on the tags: "J.A.McDIVITT" (NASA S65-27487), "E.H.WHITE II" (S65-29645). The
 # command pilot's single cover layer "for anti-snag protection" (GIV, 3.1.2.9.2) is one layer of cloth and is not let out.
-MCDIVITT = Wearer("J.A.McDIVITT", 180.3, 0.99, 1.0, garment=G4C)
-WHITE = Wearer("E.H.WHITE II", 182.9, 1.0, 1.0, garment=G4C_OUTSIDE)
+MCDIVITT = Wearer("J.A.McDIVITT", 180.3, 0.99, 1.0, left=YOUNG.left, right=YOUNG.right, seated=YOUNG.seated, garment=G4C)
+WHITE = Wearer("E.H.WHITE II", 182.9, 1.0, 1.0, left=YOUNG.left, right=YOUNG.right, seated=YOUNG.seated, garment=G4C_OUTSIDE)
 
 # Gemini 5: "the same configuration as those used on the Gemini IV mission except that the overvisor and special cover layer
 # used for extravehicular activity were not included" (the Gemini V mission report, MSC-G-R-65-4, 3.1.2.9.2). Statures:
 # the Gemini 5 press kit's crew biographies (NASA release 65-262, pp. 79 and 81), documented: Cooper "5 ft., 8 in.",
 # Conrad "5 ft., 6 in.". Tags as NASA S65-28740 reads them, the two leaving the suiting trailer on 21 August 1965.
-COOPER = Wearer("L.G.COOPER", 172.7, 0.99, 1.0, garment=G4C)
-CONRAD = Wearer("C.CONRAD JR", 167.6, 0.98, 1.0, garment=G4C, stand=0.32)
+COOPER = Wearer(
+    "L.G.COOPER",
+    172.7,
+    0.99,
+    1.0,
+    left=(0.0, 0.5, 103.0, 38.0, 52.0, 0.15),
+    right=(0.5, 11.0, 106.0, 40.0, 52.0, 0.15),
+    seated=YOUNG.seated,
+    garment=G4C,
+)
+CONRAD = Wearer("C.CONRAD JR", 167.6, 0.98, 1.0, left=YOUNG.left, right=YOUNG.right, seated=YOUNG.seated, garment=G4C, stand=0.32)
 
 # Gemini 6A: "identical to that worn by the Gemini 5 crew. It is not suitable for extravehicular activity" (NASA release
 # 65-362, the Gemini 7/6 press kit, p. 48): the G4C. Statures: the same kit's crew biographies (pp. 71 and 72),

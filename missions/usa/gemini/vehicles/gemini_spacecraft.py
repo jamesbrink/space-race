@@ -339,6 +339,7 @@ class Fit:
     experiments: tuple[str, ...] = ()  # of: "sea-urchin", "blood", "reentry-communications"
     names: tuple[str, str] = ("", "")  # the command pilot and the pilot, for what their seats say
     crew: Callable | None = None  # builds the man in each seat (gemini_cabin.seat); without it the seats are empty
+    seat_shift: tuple[float, float] = (0.0, 0.0)  # inches lower and inboard in the cabin to fit the crew, estimated
     white_disc: bool = True  # the white disc forward of the left hatch, which is in two photographs of spacecraft 3 and not identified
     # what the ships after spacecraft 3 had: each is off unless a flight asks for it, and spacecraft 3 asks for none
     gmt_clock: bool = False  # a G.m.t. clock on the command pilot's panel, where spacecraft 3 had a blank (from spacecraft 4)
@@ -421,6 +422,8 @@ SHELLS_OF = {
 def shells(fit: Fit) -> tuple[str, ...]:
     """The meshes of this ship that enclose something: SHELLS, less what it had not, and those of what it alone carried."""
     base = tuple(name for name in SHELLS if fit.white_disc or name != "Cabin_WhiteDisc")
+    if "electrostatic-charge" in fit.experiments:
+        base += ("Retro_MSC1Door",)
     if fit.late == 11:
         base += ("Equipment_SumpCurtainFlap", "Equipment_SumpCurtainSeams")
     return base + tuple(name for key, names in SHELLS_OF.items() if getattr(fit, key) for name in names)
@@ -1283,6 +1286,7 @@ def build_crew_station(M, fit: Fit, font=None) -> None:
         fit.names,
         say,
         fit.crew,
+        seat_shift=fit.seat_shift,
         gmt_clock=fit.gmt_clock,
         reentry_switch="reentry-communications" in fit.experiments,
         range_indicator=fit.range_indicator,
@@ -1412,6 +1416,8 @@ def build_retro_section(M, fit: Fit) -> None:
             "thrusters. The next ship had real ones. What stood in the ports of this one is not recorded; here they are the "
             "chambers' shapes in plain steel.",
         )
+    if "electrostatic-charge" in fit.experiments:
+        build_charge_sensor(M, g, screened=fit.pod)
     if fit.docking_light:
         build_docking_light(M, g)
     if fit.eva_light:
@@ -1499,6 +1505,39 @@ def lamp(body: MeshBuilder, lens: MeshBuilder, m: Matrix, size: tuple[float, flo
     face = m @ Matrix.Translation(Vector((looks * long * 0.495, 0.0, high / 2)) * IN) @ Matrix.Rotation(looks * math.pi / 2, 4, "Y")
     body.lathe(hoop(r, r + 0.22, -0.1, 0.3), 20, matrix=face)  # the bezel
     lens.lathe(prof([(r, 0.02), (r * 0.8, 0.26), (0.0, 0.34)]), 20, matrix=face)
+
+
+def build_charge_sensor(M, g, screened: bool) -> None:
+    """MSC-1 on the retrograde adapter, aft of station 94.40 (McDonnell Technical Summary, p.309).
+    The sensor, its electronics and their relative scale are in NASA TM X-56861, figures 10-1 and 10-2.
+    The mounting bay's clock angle and the launch cover's shape are estimated."""
+    here = laid(deg(171), 88.2)
+    door = MeshBuilder()
+    chamfered(door, (3.6, 3.2, 0.35), here @ Matrix.Translation(Vector((0, 0, 0.08)) * IN), 0.25)
+    say(door.build("Retro_MSC1Door", M["white"], g), "MSC-1 sensor cover", "The sensor's cover stayed on through launch.")
+    if not interior():
+        return
+    sensor, flange, electronics = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    sensor.lathe(prof([(0, -3.3), (0.8, -3.3), (0.88, -3.1), (0.88, -0.46), (0.73, -0.3), (0, -0.3)]), 32, matrix=here)
+    flange.lathe(hoop(0.79, 1.22, -0.93, -0.76), 40, matrix=here)
+    if screened:
+        for i in range(-3, 4):
+            x = i * 0.19
+            y = math.sqrt(0.76**2 - x**2)
+            for a, b in (((x, -y), (x, y)), ((-y, x), (y, x))):
+                flange.tube(here @ (Vector((*a, -0.22)) * IN), here @ (Vector((*b, -0.22)) * IN), 0.016 * IN, 6, caps=False)
+    flange.build("Retro_MSC1Flange", M["aluminium"], g, sharp_angle=35)
+    say(
+        sensor.build("Retro_MSC1Sensor", M["equipment"], g, sharp_angle=35),
+        "MSC-1 charge sensor",
+        "A vibrating disk faced space after the cover left. It measured the local electric field. "
+        "The hardware sizes are estimates from the scale photograph.",
+    )
+    box = here @ Matrix.Translation(Vector((-2.8, 4.6, -2.7)) * IN)
+    chamfered(electronics, (3.2, 2.5, 3.1), box, 0.12)
+    for x in (-0.85, 0.85):
+        electronics.lathe(prof([(0.35, -2.1), (0.35, -1.5)]), 12, matrix=box @ Matrix.Translation(Vector((x, 0, 0)) * IN))
+    electronics.build("Retro_MSC1Electronics", M["equipment"], g, sharp_angle=30)
 
 
 def build_docking_light(M, g) -> None:
@@ -2957,6 +2996,26 @@ def build_eva_equipment(M) -> None:
     g = group("ExtravehicularEquipment")
     if not interior():
         return  # (it is in the cabin: from far off there is only its node)
+    # White's launch stowage: the left side of the right footwell (crew debriefing II, p.124).
+    # The Smithsonian's overall 13.5 x 10.3 x 3.8 in includes the external couplings.
+    pack, hardware = MeshBuilder(), MeshBuilder()
+    holder = Matrix.Translation(P(3.4, -28.28, 143.2)) @ Matrix.Rotation(math.pi / 2, 4, "Z")
+    chamfered(pack, (9.6, 3.1, 11.9), holder, 0.65)
+    for z in (-4.5, 4.5):
+        chamfered(hardware, (0.7, 0.45, 9.0), holder @ Matrix.Translation(Vector((0.0, -1.5, z)) * IN) @ Matrix.Rotation(math.pi / 2, 4, "Y"), 0.1)
+    for x, z in ((-3.0, 6.0), (2.7, 6.0), (3.0, -6.0)):
+        hardware.lathe(
+            prof([(0.6, -0.2), (0.65, 0.25), (0.48, 0.3), (0.48, 0.7), (0.28, 0.7)]),
+            16,
+            matrix=holder @ Matrix.Translation(Vector((x, 0, z)) * IN) @ Matrix.Rotation(math.pi if z < 0 else 0, 4, "X"),
+        )
+    hardware.build("Eva_VentilationFittings", M["aluminium"], g, sharp_angle=30)
+    say(
+        pack.build("Eva_VentilationModule", M["paint_white"], g, sharp_angle=35),
+        "Ventilation control module",
+        "White kept this pack beside his feet at launch. For the spacewalk he fastened it to his chest "
+        "to bring ventilation gas from the umbilical to his suit.",
+    )
     top, right, station = EVA_AT
     unit, gas, hose = MeshBuilder(), MeshBuilder(), MeshBuilder()
     at = lambda across, up, fwd=0.0: P(right + across, top + up, station + fwd)  # noqa: E731
