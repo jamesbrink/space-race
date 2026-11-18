@@ -963,6 +963,7 @@ export abstract class Deck {
     if (what === 'again' && verdict(this.stake, 'again') === 'ask')
       return void this.question(
         () => {
+          this.switches({}); // (on the pad as flown: the run thrown away, and how it was being flown with it)
           this.command('again');
           this.sync();
         },

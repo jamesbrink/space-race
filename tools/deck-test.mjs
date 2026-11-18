@@ -847,15 +847,16 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       trap(page);
       await handFly(page, id);
       await stop(page);
-      await page.click('#ui .places [data-place=gallery]');
-      await page.waitForTimeout(800);
+      // (out to the front page, which holds no run, before the run kept is made another simulator's: in the flight's page it
+      // would be written again, as it is, on the way out)
+      await page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click());
+      await page.waitForFunction(() => document.querySelector('#title [data-flight]'), null, { timeout: 60000 });
       await page.evaluate((id) => {
         const k = `space-race.run:${id}`;
         const run = JSON.parse(localStorage.getItem(k));
         localStorage.setItem(k, JSON.stringify({ ...run, stamp: `${run.stamp}-older` }));
       }, id);
       await page.goto(`${url}#${id}/fly`);
-      await page.reload();
       await takenUp(page);
       let r = await read(page);
       if (!/cannot be resumed/.test(r.said) || r.ready) fail(at, `a stale run offered: "${r.said}"`);
