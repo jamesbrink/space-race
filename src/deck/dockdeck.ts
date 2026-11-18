@@ -80,6 +80,7 @@ export class DockDeck extends Deck<Flight> {
       ],
       guidance: 'Hold the current attitude by damping rotation',
       sequence: 'Capture when the port enters the docking envelope',
+      labels: { steering: 'Attitude', events: 'Capture', restart: 'Restart approach' },
       choose: false,
       enter: 'Fly the terminal docking approach',
       flightKeys:

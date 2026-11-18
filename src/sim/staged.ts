@@ -954,6 +954,7 @@ export function recordSamples(
   centre: number,
   sunAt: (t: number) => Vec3,
   releaseAttitude?: Quat,
+  coastAtCentre = false,
 ): LiveSample[] {
   const spin = frame.spin;
   const n = whole.ascent.plane;
@@ -1003,7 +1004,8 @@ export function recordSamples(
     });
   }
   const parted = out[out.length - 1]!;
-  const offset = sub(parted.centre, parted.r); // (the coast flies the point the ascent left, drawn as the centre of mass)
+  // A tower abort already flies the capsule centre. Ordinary staging flies on from the ascent datum.
+  const offset: Vec3 = coastAtCentre ? [0, 0, 0] : sub(parted.centre, parted.r);
   const held = releaseAttitude ?? parted.attitude;
   const ship = shipOf(plan);
   const lights = coastEvents(plan).on?.do.find((a) => 'ignite' in a);
@@ -1125,7 +1127,10 @@ export function recordSamples(
     }
     const move = manoeuvreAttitudes.find(({ move }) => s.t >= move.on - manoeuvreTurn && s.t <= move.off);
     const passive = ship.entry.aero.passiveSphere && s.t >= parts;
-    if (passive) {
+    if (coastAtCentre) {
+      const elapsed = Math.max(0, s.t - whole.ascent.separation.t);
+      q = length(wind) > 1 ? toward(held, lie(trimmed(s, wind)), Math.min(1, elapsed / 30)) : held;
+    } else if (passive) {
       if (length(wind) >= 1) {
         supportedWind = wind;
         if (s.entering) {

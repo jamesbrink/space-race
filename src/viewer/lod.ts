@@ -1,9 +1,9 @@
 import type * as THREE from 'three';
 import { Box3, Group, MeshDepthMaterial, ShaderChunk, Sphere, Vector2, type Vector3 } from 'three';
 import type { Part } from '../types.ts';
-import { markDriven } from './onfoot/drive.ts';
 import { Exploder } from './explode.ts';
 import { FADE_DITHER } from './glsl.ts';
+import { markDriven } from './onfoot/drive.ts';
 import type { Surfaces } from './runs.ts';
 
 /**
@@ -508,6 +508,34 @@ export class Staged {
   explode(t: number): void {
     this.t = t;
     for (const e of this.exploders) e.set(t);
+  }
+
+  /** Pose the model for a synchronous physics query, then put the drawn pose back. */
+  atSlider<T>(
+    t: number,
+    recorded: readonly (readonly [string, number])[] | undefined,
+    query: (holds: readonly (readonly [string, number])[]) => T,
+  ): T {
+    const shown = this.t;
+    const apply = (remove: Iterable<string>, hold: Iterable<readonly [string, number]>) => {
+      for (const exploder of this.exploders) {
+        for (const node of remove) exploder.hold(node, null);
+        for (const [node, value] of hold) exploder.hold(node, value);
+      }
+    };
+    if (recorded) apply([...this.held.keys()], recorded);
+    try {
+      this.explode(t);
+      return query(recorded ?? [...this.held]);
+    } finally {
+      if (recorded)
+        apply(
+          recorded.map(([node]) => node),
+          this.held,
+        );
+      this.explode(shown);
+      this.group.updateWorldMatrix(true, true);
+    }
   }
 
   /** What there is to run on has changed (the place round the pad has arrived): every level is posed again on it. */

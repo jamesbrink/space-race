@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, and Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving for the leaving section alone)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay for one section)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -40,10 +40,10 @@ const fail = (where, what) => {
 };
 const browser = await launch();
 /** The deck's page of `id` at this size, flown: a page of its own, which counts only what it throws. */
-const fly = (id, w, h, touch) =>
+const fly = (id, w, h, touch, console = []) =>
   open(browser, `${url}#${id}/fly`, {
     context: { viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 },
-    console: [],
+    console,
     wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
     timeout: 120000,
   });
@@ -68,8 +68,7 @@ const layout = (page) =>
     };
   });
 
-// (SR_ONLY=leaving: only the last of it, the way out of a flight flown by hand)
-for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
+for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
   const seen = {};
   for (const [id, steps] of Object.entries(FLIGHTS)) {
     const where = `${id} at ${w}`;
@@ -142,6 +141,13 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     await page.keyboard.press('Space');
     await page.waitForTimeout(600);
     if ((await label()) !== steps[1]) fail(where, `after Space it is "${await label()}", not "${steps[1]}"`);
+    const labelFits = await page.locator('.cockpit-next [data-cell=next]').evaluate((el) => {
+      const button = el.parentElement.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].every((line) => line.left >= button.left && line.right <= button.right);
+    });
+    if (!labelFits) fail(where, `the next action's label extends beyond its button: "${await label()}"`);
     if (id.startsWith('ussr') && w === 1280) {
       // taken over in the ascent with real keys: G takes it, W held turns it, B and Space drop the strap-ons
       for (let i = 0; i < 100 && (await page.evaluate(() => window.sr.clock.t)) < 50; i++) {
@@ -592,7 +598,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
 // keep it a way out asks, as it always did; a run kept by another simulator or of changed data is said not to be
 // resumable and let go. The browser's own question is set only while a hand-flown flight would be lost, and the page uses
 // no alert, confirm or prompt of its own.
-{
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
   const HAND = ['ussr/vostok/vostok-1', 'usa/mercury/mr-3-freedom-7'];
   const read = (page) =>
     page.evaluate(() => ({
@@ -941,6 +947,288 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     }
   }
   if (dialogs.length) fail('leaving', `the browser showed a dialog: ${dialogs.join(', ')}`);
+}
+// Manual controls and return to the recorded flight are both available without a keyboard.
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'touch') {
+  for (const id of ['usa/mercury/mr-3-freedom-7', 'usa/apollo/apollo-7']) {
+    const where = `${id} by touch at 320`;
+    const { page, errors, context } = await fly(id, 320, 844, true, ['error']);
+    try {
+      const guidance = page.locator('.cockpit [data-do=guidance]');
+      const sequence = page.locator('.cockpit [data-do=sequence]');
+      const next = page.locator('.cockpit [data-do=next]');
+      const modesRead = async (pressed, label) => {
+        for (const button of [guidance, sequence]) {
+          if ((await button.getAttribute('aria-pressed')) !== pressed || !(await button.getByText(label, { exact: true }).isVisible()))
+            fail(where, `touch control does not show ${label}`);
+        }
+      };
+      await modesRead('true', 'Auto');
+      if (!(await page.locator('.deck-takeover').isVisible())) fail(where, 'the touch takeover cue is missing on the pad');
+      const pose = () =>
+        page.evaluate(async () => {
+          await new Promise((drawn) => requestAnimationFrame(() => requestAnimationFrame(drawn)));
+          const { stage, clock } = window.sr;
+          const craft = stage.show.craft();
+          return {
+            flying: craft.flying,
+            t: clock.t,
+            position: craft.matrix.elements.slice(12, 15),
+            quaternion: craft.of.group.quaternion.toArray(),
+          };
+        });
+      const pauseAt = (t) =>
+        page.evaluate((at) => {
+          window.sr.clock.pause();
+          window.sr.clock.seek(at);
+        }, t);
+      const apollo = id === 'usa/apollo/apollo-7';
+      if (apollo) {
+        await page.waitForFunction(() => getComputedStyle(document.querySelector('.loading')).opacity === '0');
+        const distance = await page.evaluate(() => window.sr.stage.camera.position.distanceTo(window.sr.stage.cam.pivot));
+        if (!(distance < 500)) fail(where, `the opening camera is ${distance.toFixed(0)} m from the rocket`);
+      }
+      const pad = apollo ? await pose() : null;
+      if (apollo && process.env.SR_SHOTS) await page.screenshot({ path: `${process.env.SR_SHOTS}/apollo-7-touch-pad.png` });
+      if (!apollo) {
+        await guidance.tap();
+        await sequence.tap();
+        await modesRead('false', 'Manual');
+      }
+      await next.tap();
+      await page.waitForFunction((t) => window.sr.clock.t > t, apollo ? 1 : 3);
+      if (pad) {
+        if (pad.t !== 0 || pad.flying) fail(where, `the vehicle is already flying on the pad at T+${pad.t}`);
+        await pauseAt(5);
+        const risen = await pose();
+        const [dx, dy, dz] = risen.position.map((x, i) => x - pad.position[i]);
+        const sideways = Math.hypot(dx, dz);
+        if (!(risen.flying && sideways < 1 && dy > 20)) fail(where, `liftoff moved ${sideways} m sideways and ${dy} m up`);
+        console.log(`  ${where}: T+5 moved ${sideways.toFixed(3)} m sideways and ${dy.toFixed(3)} m up from its pad pose`);
+        await pauseAt(62);
+      }
+      const before = apollo ? await pose() : null;
+      if (before) {
+        await guidance.tap();
+        const after = await pose();
+        const metres = Math.hypot(...before.position.map((x, i) => x - after.position[i]));
+        const dot = before.quaternion.reduce((n, x, i) => n + x * after.quaternion[i], 0);
+        const degrees = (2 * Math.acos(Math.min(1, Math.abs(dot))) * 180) / Math.PI;
+        if (!(before.t === 62 && after.t === 62 && metres <= 1 && degrees <= 0.1))
+          fail(where, `manual takeover at T+62 jumped ${metres} m and ${degrees}° (T+${before.t} to T+${after.t})`);
+        console.log(`  ${where}: manual takeover at T+62 changed the rendered pose by ${metres.toFixed(3)} m and ${degrees.toFixed(3)}°`);
+        await sequence.tap();
+      } else {
+        const stick = await page.locator('.cockpit-stick').boundingBox();
+        if (!stick) fail(where, 'there is no touch control for steering');
+        else {
+          const touch = await context.newCDPSession(page);
+          await touch.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x: stick.x + stick.width / 2, y: stick.y + stick.height * 0.3 }],
+          });
+          await page.waitForFunction(() => window.sr.cockpit.finger.pitch > 0.2 && window.sr.cockpit.state.w[1] > 0.01);
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        }
+      }
+      await modesRead('false', 'Manual');
+      const overflow = await page.evaluate(() =>
+        [...document.querySelectorAll('.deck-modes button, .gauge, .cockpit-next')].flatMap((el) => {
+          const box = el.getBoundingClientRect();
+          if (!box.width || !box.height) return [];
+          const text = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          const range = document.createRange();
+          while (text.nextNode()) {
+            range.selectNodeContents(text.currentNode);
+            for (const line of range.getClientRects())
+              if (line.width && (line.left < box.left - 0.5 || line.right > Math.min(box.right, innerWidth) + 0.5))
+                return [text.currentNode.textContent];
+          }
+          return [];
+        }),
+      );
+      if (overflow.length) fail(where, `text overflows its controls or figures: ${overflow.join(', ')}`);
+      if (apollo && process.env.SR_SHOTS) await page.screenshot({ path: `${process.env.SR_SHOTS}/apollo-7-touch-t62.png` });
+      const action = await next.locator('[data-cell=next]').textContent();
+      await next.tap();
+      await page.waitForFunction((previous) => document.querySelector('[data-cell=next]').textContent !== previous, action);
+      await page.locator('.cockpit [data-do=keys]').tap();
+      await page.getByRole('button', { name: 'Restart as flown', exact: true }).tap();
+      await page.locator('.deck-ask [data-ask=leave]').tap();
+      await page.waitForFunction(() => window.sr.clock.t <= 0 && document.querySelector('[data-cell=next]').textContent === 'Ignition');
+      await modesRead('true', 'Auto');
+      if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+      console.log(`  ${where}: tapped Ignition, took the steering and events over, tapped ${action}, and restarted as flown`);
+    } finally {
+      await context.close();
+    }
+  }
+}
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'apollo-escape') {
+  const where = 'Apollo 7 tower jettison';
+  const { page, context, errors } = await open(browser, `${url}#usa/apollo/apollo-7/fly`, { timeout: 120_000 });
+  try {
+    await page.evaluate(() => {
+      window.sr.clock.pause();
+      window.sr.clock.seek(22);
+    });
+    await page.waitForFunction(() => Math.abs(window.sr.stage.lifted.t - 22) < 0.01);
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('KeyX');
+    await page.waitForFunction(() => window.sr.stage.show.ascent.flown().launchAborted);
+    await page.evaluate(() => window.sr.clock.pause());
+    const result = await page.evaluate(() => {
+      const run = window.sr.stage.show.ascent.flown();
+      const at = run.events.find((event) => event.event === 'les-jettison').t;
+      const i = run.samples.findIndex((sample) => sample.t === at);
+      const from = run.samples[i];
+      const next = run.samples[i + 1];
+      const dot = (a, b) => a.reduce((sum, x, j) => sum + x * b[j], 0);
+      const difference = (a, b) => a.map((x, j) => x - b[j]);
+      const tower = run.sheds.get('les-jettison').shedder.release;
+      const expectedTowerCentre = from.r.map((x, j) => x + tower.centre * from.axis[j]);
+      return {
+        at,
+        station: dot(difference(from.centre, from.r), from.axis),
+        turn: (2 * Math.acos(Math.min(1, Math.abs(dot(from.attitude, next.attitude)))) * 180) / Math.PI,
+        towerError: Math.hypot(...difference(tower.r, expectedTowerCentre)),
+        gap: Math.hypot(...difference(from.centre, next.centre)),
+        travel: Math.hypot(...from.v) * (next.t - from.t),
+      };
+    });
+    if (!(result.station > 50 && result.station < 70)) fail(where, `capsule centre is ${result.station} m from the stack base`);
+    if (!(result.turn < 10)) fail(where, `the capsule turns ${result.turn}° between the release and the first descent sample`);
+    if (!(result.towerError < 0.01)) fail(where, `the released tower is ${result.towerError} m from its attached centre`);
+    if (!(Math.abs(result.gap - result.travel) < 3))
+      fail(where, `the capsule moves ${result.gap} m across the handover, expected ${result.travel}`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    console.log(`  ${where}: continuous capsule pose, and the tower leaves from its attached station`);
+    if (process.env.SR_SHOTS) {
+      for (const [label, dt] of [
+        ['attached', -0.18],
+        ['departing', 0.18],
+      ]) {
+        await page.evaluate((t) => window.sr.clock.seek(t), result.at + dt);
+        await page.waitForFunction((t) => Math.abs(window.sr.stage.lifted.t - t) < 0.01, result.at + dt);
+        await page.screenshot({ path: `${process.env.SR_SHOTS}/apollo-7-les-${label}.png` });
+      }
+    }
+  } finally {
+    await context.close();
+  }
+
+  const pad = 'Apollo 7 abort at LC-34';
+  const { page: padPage, context: padContext, errors: padErrors } = await fly('usa/apollo/apollo-7', 390, 844, true);
+  try {
+    for (const strike of [false, true]) {
+      await padPage.evaluate((blocked) => {
+        window.sr.clock.pause();
+        window.sr.cockpit.fresh();
+        if (!blocked) return;
+        // Deliberately intercept the escape with the actual LC-34 mesh. The historical configuration clears it.
+        const pad = window.sr.stage.staged.find((model) => model.full.getObjectByName('Umbilical_Tower'));
+        for (const level of pad.group.children) {
+          const tower = level.getObjectByName('Umbilical_Tower');
+          if (!tower) continue;
+          tower.userData.home.y += 45;
+          tower.userData.home.z += 12;
+          tower.position.copy(tower.userData.home);
+          tower.updateWorldMatrix(true, true);
+        }
+        window.sr.stage.dirty = true;
+      }, strike);
+      await padPage.keyboard.press('KeyX');
+      await padPage.keyboard.press('KeyX');
+      const result = await padPage.evaluate(() => {
+        window.sr.clock.pause();
+        const run = window.sr.stage.show.ascent.flown();
+        const hit = run.events.find((event) => event.event === 'escape-impact');
+        const towerOff = run.events.some((event) => event.event === 'les-jettison');
+        const final = run.samples.at(-1);
+        if (hit) window.sr.clock.seek(hit.t + 0.01);
+        return { hit, towerOff, final: final.t, speed: final.groundSpeed, burning: final.burning.length };
+      });
+      if (strike) {
+        if (!(result.hit && result.hit.t > 0.5 && result.hit.t < 2 && result.hit.t === result.final && !result.towerOff))
+          fail(pad, `intercepted escape did not stop at the modeled tower: ${JSON.stringify(result)}`);
+        if (result.speed > 0.01 || result.burning) fail(pad, `intercepted escape kept moving or burning: ${JSON.stringify(result)}`);
+        if (result.hit) {
+          await padPage.getByRole('heading', { name: 'Launch structure strike' }).waitFor();
+          for (const control of ['next', 'guidance', 'sequence']) {
+            if (await padPage.locator(`[data-do=${control}]`).isEnabled())
+              fail(pad, `${control} is still actionable after a structure strike`);
+          }
+        }
+      } else {
+        if (result.hit || !result.towerOff || result.final <= 14)
+          fail(pad, `clear escape did not reach recovery: ${JSON.stringify(result)}`);
+        await padPage.evaluate(() => window.sr.clock.seek(1.5));
+      }
+      if (process.env.SR_SHOTS)
+        await padPage.screenshot({ path: `${process.env.SR_SHOTS}/apollo-7-pad-${strike ? 'impact' : 'clear'}.png` });
+    }
+    if (padErrors.length) fail(pad, padErrors.slice(0, 2).join(' | '));
+    console.log(`  ${pad}: nominal pad clearance and positive contact with a posed tower mesh at 390 px`);
+  } finally {
+    await padContext.close();
+  }
+}
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'apollo-escape-replay') {
+  const where = 'Apollo 7 kept pad escape';
+  const id = 'usa/apollo/apollo-7';
+  const { page, context } = await fly(id, 1280, 800, false);
+  try {
+    await page.evaluate(() => {
+      const { stage } = window.sr;
+      stage.staged.find((model) => model.full.getObjectByName('White_Room_Pivot')).hold('White_Room_Pivot', 0.92);
+    });
+    await page.keyboard.press('KeyX');
+    await page.keyboard.press('KeyX');
+    const saved = await page.evaluate((id) => {
+      const { cockpit, stage, clock } = window.sr;
+      clock.pause();
+      clock.seek(0.4);
+      cockpit.save();
+      const kept = JSON.parse(localStorage.getItem(`space-race.run:${id}`));
+      const tape = JSON.parse(kept.run);
+      const abort = tape.entries.filter((entry) => entry[0] === 'c' && entry[5] === 'abort').at(-1);
+      const run = stage.show.ascent.flown();
+      return { held: abort.slice(6), events: run.events, duration: run.duration };
+    }, id);
+    if (JSON.stringify(saved.held) !== JSON.stringify(['White_Room_Pivot', 0.92]))
+      fail(where, `the command tape omitted the held pad pose: ${JSON.stringify(saved.held)}`);
+    await page.goto(`${url}#${id}/site/pad`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.loading.done') && window.sr?.cockpit.keeping, null, { timeout: 120_000 });
+    await page.evaluate(() => {
+      const { stage } = window.sr;
+      const mechanism = stage.staged.find((model) => model.full.getObjectByName('White_Room_Pivot'));
+      mechanism.hold('White_Room_Pivot', 0.6);
+      const withEscapePad = stage.withEscapePad.bind(stage);
+      stage.withEscapePad = (time, held, query) => {
+        window.escapePose = { time, held, displayed: window.sr.clock.t };
+        return withEscapePad(time, held, query);
+      };
+    });
+    await page.evaluate((id) => {
+      location.hash = `${id}/fly`;
+    }, id);
+    await page.locator('.cockpit-kept [data-do=resume]').waitFor();
+    const replayed = await page.evaluate(() => {
+      const run = window.sr.stage.show.ascent.flown();
+      return { pose: window.escapePose, events: run.events, duration: run.duration };
+    });
+    if (
+      !(replayed.pose?.time === 0 && replayed.pose.displayed === 0.4) ||
+      JSON.stringify(replayed.pose.held) !== JSON.stringify([['White_Room_Pivot', 0.92]])
+    )
+      fail(where, `replay polled the displayed pad instead of its own abort time and held arm: ${JSON.stringify(replayed.pose)}`);
+    if (replayed.duration !== saved.duration || JSON.stringify(replayed.events) !== JSON.stringify(saved.events))
+      fail(where, 'the saved escape and its replay have different events or duration');
+    console.log(`  ${where}: replay used the same held pad pose at T+0 with the displayed clock at T+0.4`);
+  } finally {
+    await context.close();
+  }
 }
 await browser.close();
 console.log(failed ? `deck: ${failed} failed` : 'deck: every promise kept');

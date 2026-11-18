@@ -1,18 +1,19 @@
 import type { Impact } from '../sim/contact.ts';
+import type { EscapeSweep } from '../sim/launchescape.ts';
+import type { TowerEscape } from '../sim/plan.ts';
 import '../ui/cockpit.css';
+import { leftWhen, runs } from '../app/runs.ts';
+import type { Run } from '../sim/run.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { Command, Flight, SitedFlight } from '../types.ts';
-import type { Run } from '../sim/run.ts';
-import type { DeckNews } from '../viewer/cabin.ts';
-import { type Clock, missionTime } from '../world/clock.ts';
-import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { capOf, capsOf, is, isTyping, kbd, type KeyName, keyOf, KEYS, keysOf, modified } from '../util/keys.ts';
+import { capOf, capsOf, is, isTyping, KEYS, type KeyName, kbd, keyOf, keysOf, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
+import type { DeckNews } from '../viewer/cabin.ts';
+import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { DEG } from '../world/frames.ts';
 import { ask } from './ask.ts';
 import { inProgress, type Stake, verdict } from './leaving.ts';
-import { DEG } from '../world/frames.ts';
-import { Clock as Own } from '../world/clock.ts';
-import { leftWhen, runs } from '../app/runs.ts';
 import { type Entry, type EntryKind, pack, readTape, replay, SAVE, stampOf, type Taped } from './tape.ts';
 
 /**
@@ -32,6 +33,13 @@ import { type Entry, type EntryKind, pack, readTape, replay, SAVE, stampOf, type
 export interface CockpitHost {
   /** The run to show in the scene (viewer/ascent.ts), or null for the record's again. */
   fly(run: Run | null): void;
+  /** Query the pad at the simulation time of an escape, with the held hardware as recorded on its tape. */
+  withEscapePad?<T>(
+    obstacles: NonNullable<TowerEscape['hull']>['obstacles'],
+    at: number,
+    held: readonly (readonly [string, number])[] | undefined,
+    query: (sweep: EscapeSweep, holds: readonly (readonly [string, number])[]) => T,
+  ): T;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
@@ -78,9 +86,11 @@ export interface DeckSpec {
   /** Words for the two switches: what guidance flies, and what the sequencer sets off. */
   guidance: string;
   sequence: string;
+  /** Labels for a deck that flies an approach instead of a launch. */
+  labels?: { steering: string; events: string; restart: string };
   /** The K control (the path to cutoff or cut now): only where the path can fly the programme ahead. */
   choose: boolean;
-  /** Buttons for the list's Flight group beyond New flight and Leave (a throttle, a mechanism, a lock's digits). */
+  /** Buttons for the list's Flight group beyond restarting and leaving (a throttle, a mechanism, a lock's digits). */
   flightKeys: string;
   /** The way in's tooltip. */
   enter: string;
@@ -140,6 +150,26 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   }
   protected get host(): CockpitHost {
     return this.replaying ? SILENT : this.pageHost;
+  }
+
+  protected escapeFromPad<T>(
+    obstacles: NonNullable<TowerEscape['hull']>['obstacles'],
+    at: number,
+    command: (string | number)[],
+    run: (sweep?: EscapeSweep) => T,
+  ): T {
+    if (!this.pageHost.withEscapePad) return run();
+    const held: [string, number][] = [];
+    for (let i = 1; i + 1 < command.length; i += 2) {
+      const node = command[i];
+      const reading = command[i + 1];
+      if (typeof node === 'string' && typeof reading === 'number' && Number.isFinite(reading)) held.push([node, reading]);
+    }
+    // The query is a simulator input even on replay, while the rest of the page host stays silent.
+    return this.pageHost.withEscapePad(obstacles, at, this.replaying ? held : undefined, (sweep, holds) => {
+      if (!this.replaying) for (const [node, reading] of holds) command.push(node, reading);
+      return run(sweep);
+    });
   }
   /** Who is told of each sample put on show (`listen`): nobody while a kept run is flown again. */
   protected get watchers(): readonly Watcher[] {
@@ -248,6 +278,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     };
     const rate = (i: number, about: string, label: string) =>
       `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd>${label}</button>`;
+    const { steering, events, restart } = spec.labels ?? { steering: 'Steering', events: 'Events', restart: 'Restart as flown' };
     // The deck is three panels: the navball's (navball.ts puts it in), this one in the middle, the systems on the right.
     root.innerHTML = `
       <section class="deck-main">
@@ -262,8 +293,9 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         </div>
         <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span>
           <span class="deck-modes">
-            <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}Guidance</button>
-            <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}Sequencer</button>
+            <span class="deck-takeover">Tap either switch to take control</span>
+            <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}<span class="for-keys">Guidance</span><span class="for-touch">${steering} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
+            <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}<span class="for-keys">Sequencer</span><span class="for-touch">${events} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
           </span></p>
         <div class="gauges"></div>
         <div class="deck-act">
@@ -301,7 +333,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
           </p></div>
           <div><h4>Flight</h4><p>
             ${spec.flightKeys}
-            <button data-do="again" title="A new flight: back to the pad (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}New flight</button>
+            <button data-do="again" title="${restart} (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}${restart}</button>
             <button data-do="leave" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
           </p></div>
         </div>
@@ -662,7 +694,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   /** The clock has moved: bring the flight up to it and show it. */
   protected abstract follow(): void;
   /** A command of the deck's: a button's `data-do`, or a key's (next, guidance, sequence, abort, again, leave). */
-  protected abstract command(what: string): void;
+  protected abstract command(what: string, input?: (string | number)[]): void;
   /** A key the flight kind has beyond the deck's own (a throttle's arrows, a lock's digits): true if it took it. */
   protected extraKey(_key: string, _e: KeyboardEvent): boolean {
     return false;
@@ -934,7 +966,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       this.finger.yaw = Number(p[2]);
       this.finger.roll = Number(p[3]);
     } else if (kind === 's') this.steered();
-    else if (kind === 'c') this.command(String(p[0]));
+    else if (kind === 'c') this.command(String(p[0]), p);
     else if (kind === 'x') this.extraKey(String(p[0]), PLAYED);
     else if (kind === 'a') this.obey(String(p[0]));
     else if (kind === 'w') this.worked(String(p[0]));
@@ -1006,7 +1038,10 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         'again',
       );
     if (what === 'leave' || what === 'again') this.command(what);
-    else this.journal('c', [what], () => this.command(what));
+    else {
+      const input: (string | number)[] = [what];
+      this.journal('c', input, () => this.command(what, input));
+    }
     this.sync();
   }
 

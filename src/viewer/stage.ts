@@ -4,43 +4,43 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Target } from '../app/actions.ts';
 import { targetNodes } from '../app/address.ts';
 import { readingFor } from '../sim/mechanism.ts';
-import { bodyOf, gravityOn } from '../world/bodies.ts';
 import type { Flight as FlightData, ModelDef } from '../types.ts';
+import { bodyOf, gravityOn } from '../world/bodies.ts';
 import type { Clock } from '../world/clock.ts';
+import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import type { Ascent } from './ascent.ts';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
+import { disposeTree } from './dispose.ts';
 import type { Effects } from './effects.ts';
+import { Eye } from './eye.ts';
 import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
-import { Eye } from './eye.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
-import { Recovery } from './recovery.ts';
-import { siteFrame } from '../world/frames.ts';
 import { type Look, Looks } from './look.ts';
 import { refused, sayRefused } from './lost.ts';
+import { HandWorks } from './onfoot/handworks.ts';
+import { OnFoot } from './onfoot/onfoot.ts';
+import { Solids, Walker } from './onfoot/walk.ts';
 import { compileLast, drawLast, undrawLast } from './overlay.ts';
 import { Panes } from './panes.ts';
 import { through } from './pick.ts';
 import { fitIndices, fitPictures } from './pictures.ts';
+import { Recovery } from './recovery.ts';
 import { Surfaces } from './runs.ts';
-import { disposeTree } from './dispose.ts';
-import { makeRenderer, Pipeline } from './stage/pipeline.ts';
+import { uShadowFade } from './shadows.ts';
+import { OrbitBackdrop, wearTexture } from './space.ts';
 import { CabinView } from './stage/cabinview.ts';
 import { FlightShow } from './stage/flightshow.ts';
 import { Framing } from './stage/framing.ts';
 import { NOTHING, type Picked, Picker, skinless, type Thing } from './stage/picker.ts';
+import { makeRenderer, Pipeline } from './stage/pipeline.ts';
 import { Shadows } from './stage/shadows.ts';
-import { uShadowFade } from './shadows.ts';
-import { OrbitBackdrop, wearTexture } from './space.ts';
 import { grain, mark } from './surface.ts';
 import { tier } from './tier.ts';
-import { HandWorks } from './onfoot/handworks.ts';
-import { OnFoot } from './onfoot/onfoot.ts';
-import { Walker } from './onfoot/walk.ts';
 
 /** Materials (by the name Blender gave them) that get the wear map. */
 const WORN =
@@ -1227,9 +1227,9 @@ export class Stage {
     this.cabin?.setMechanism(id, travel);
   }
 
-  /** Put a rig in charge of the camera (camera/rig.ts: RigId). The view itself does not jump on changing. */
-  setCamera(mode: RigId): void {
-    this.cam.set(mode);
+  /** Put a rig in charge, blending out the old view unless the camera is being set behind the curtain. */
+  setCamera(mode: RigId, snap = false): void {
+    this.cam.set(mode, snap);
   }
 
   /** The rigs there are to choose from as things stand, and the one C goes to next. */
@@ -2173,6 +2173,50 @@ export class Stage {
     }
     return kept.roots;
   }
+
+  /** Read an escape against the pad's authored pose at abort, independent of the displayed clock. */
+  withEscapePad<T>(
+    t: number,
+    held: readonly (readonly [string, number])[] | undefined,
+    query: (pad: THREE.Object3D | undefined, holds: readonly (readonly [string, number])[]) => T,
+  ): T {
+    const i = this.defs.findIndex((def) => def.id === 'pad');
+    const staged = this.staged[i];
+    if (!staged) return query(undefined, []);
+    const sequence = this.defs[i]?.sequence;
+    return staged.atSlider(sequence ? sliderAt(sequence, t) : (this.apart[i] ?? 0), held, (holds) => query(staged.full, holds));
+  }
+
+  padSweeper<T extends { node: string }>(pad: THREE.Object3D | undefined, obstacles: readonly T[]) {
+    const structures = obstacles.flatMap((obstacle) => {
+      const root = pad?.getObjectByName(obstacle.node);
+      if (!root) return [];
+      root.updateWorldMatrix(true, true);
+      return [{ root, obstacle, bounds: new THREE.Box3().setFromObject(root) }];
+    });
+    const solids = new Solids();
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const middle = new THREE.Vector3();
+    const region = new THREE.Box3();
+    return (from: Vec3, to: Vec3, radius: number) => {
+      a.fromArray(from);
+      b.fromArray(to);
+      region.makeEmpty().expandByPoint(a).expandByPoint(b).expandByScalar(radius);
+      const span = a.distanceTo(b) / 2 + radius;
+      middle.lerpVectors(a, b, 0.5);
+      let first: { fraction: number; obstacle: T; normal: Vec3 } | null = null;
+      for (const { root, obstacle, bounds } of structures) {
+        if (!bounds.intersectsBox(region)) continue;
+        solids.set([root]);
+        solids.gather(middle, span, span);
+        const hit = solids.sweepSphere(a, b, radius);
+        if (hit && (!first || hit.fraction < first.fraction)) first = { fraction: hit.fraction, obstacle, normal: hit.normal.toArray() };
+      }
+      return first;
+    };
+  }
+
   private readonly solidsKept = {
     walked: -2,
     surroundings: null as THREE.Object3D | null,

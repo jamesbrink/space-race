@@ -80,6 +80,8 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .deck-foot > button { flex: none; display: flex; align-items: center; border-color: transparent; padding: 4px 6px 4px 6px; color: var(--dim); }
 .deck-foot > button .chevron { display: block; width: 12px; margin-left: 8px; }
 .cockpit .for-touch { display: none; }
+.deck-takeover { display: none; }
+.deck-modes button[aria-pressed='true'] .deck-manual, .deck-modes button[aria-pressed='false'] .deck-auto { display: none; }
 /* the keys that steer are buttons too: held down, each is its key held; lit while it is, by the pointer or the key itself */
 .deck-steer, .deck-turn { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
 .deck-steer { flex: 1; }
@@ -97,6 +99,8 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .cockpit-keys h4 { margin: 0; font: 10px/1.4 var(--mono); font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 .cockpit-keys p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; }
 .cockpit-keys p > span { white-space: nowrap; }
+.deck-lock { display: inline-flex; align-items: center; gap: 4px; }
+.deck-lock em { margin-inline: 4px; font-style: normal; }
 .cockpit-keys p > span kbd { margin-right: 3px; }
 .cockpit-lever { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-top: 1px solid var(--line); font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
 .cockpit-lever[hidden] { display: none; }
@@ -204,7 +208,9 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .deck-main { width: 100%; }
   .gauges { grid-template-columns: repeat(5, 1fr); }
   .deck-modes button, .cockpit-keys button, .deck-foot button { padding: 9px 10px; }
-  .cockpit-next { padding: 12px 16px; }
+  .cockpit-next { flex-shrink: 1; min-width: 0; padding: 12px 16px; }
+  .cockpit-next > [data-cell='next'] { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .cockpit-next kbd { flex-shrink: 0; }
   .cockpit-abort { padding: 11px 12px; }
   #ui.piloting .timebar { top: 10px; }
 }
@@ -237,7 +243,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .gauge i { display: none; }
   .gauge b { font-size: 19px; }
   .deck-act { gap: 6px; padding: 6px; flex-wrap: wrap; }
-  .cockpit-next { flex: 1; min-width: 0; }
+  .cockpit-next { flex: 1; }
   .cockpit-prompt { order: 3; flex: none; width: 100%; padding: 0 4px; }
   .cockpit-prompt[hidden] { display: none !important; }
   .deck-foot { padding: 2px 4px 2px 10px; }
@@ -255,7 +261,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 /* a finger has no keys: the hints that are only keys go, the buttons stay */
 @media (hover: none), (pointer: coarse) {
   .cockpit kbd, .cockpit .for-keys, .cockpit .deck-turn, .cockpit .deck-steer { display: none; }
-  .deck-foot .for-touch { display: inline; }
+  .cockpit .for-touch { display: inline; }
   .cockpit-next { justify-content: center; text-align: center; }
 }
 /* a phone on its side: the navball beside the middle panel, both low; the systems wait for a taller window */
@@ -284,7 +290,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
  * The deck on a phone and a small tablet folds as the places do (fold.css): what flies it is on show, the rest is behind
  * More. On show: the navball and the path, the phase, the five figures, the one action and the abort, with More beside
  * them on the same line (its keys fold to that one line); the stick and roll above, under the thumbs. Behind More:
- * Guidance and the Sequencer, every key and control, and the systems (a warning of load or heat stays out). The clock is
+ * the keys and the systems (a warning of load or heat stays out). Touch pilots also see steering and event control. The clock is
  * the top line, the place control at its right.
  */
 @media (max-width: 960px), (max-height: 520px) {
@@ -302,7 +308,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
  * A phone held upright, in flight: the world with the vehicle in it. At a glance, one compact line of the figures (height,
  * speed, climb) over the one action, the abort and More; the stick and roll in the corners above it, where the thumbs
  * rest, clear of the middle where the vehicle is framed. Everything else (the phase, the navball and the path, Load and
- * Mach, Guidance and the Sequencer, every key, the systems) is one swipe up on the deck away, or More; a swipe down puts
+ * Mach, the keys and the systems) is one swipe up on the deck away, or More; a swipe down puts
  * it away. A warning of load or heat, or an event that is due, stays out.
  */
 @media (max-width: 620px) and (min-height: 521px), (max-height: 520px) {
@@ -332,6 +338,22 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .cockpit-stick { width: 104px; height: 104px; }
   .cockpit-stick i { inset: 31px; }
   .cockpit-roll button { width: 56px; height: 56px; }
+}
+/* Touch pilots can switch to manual steering or event control without opening More. */
+@media (hover: none), (pointer: coarse) {
+  .cockpit:not(.keys-open) .deck-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cockpit.waiting:not(.keys-open) .deck-modes:not(:has([aria-pressed='false'])) .deck-takeover { display: block; grid-column: 1 / -1; padding-left: 4px; color: var(--faint); letter-spacing: 0.02em; text-transform: none; }
+  .deck-modes button { min-height: 44px; min-width: 0; white-space: normal; }
+  .cockpit-keys .deck-lock button { min-width: 44px; min-height: 44px; }
+  @media (max-width: 620px) and (min-height: 521px), (max-height: 520px) {
+    .cockpit:not(.keys-open) .cockpit-phase { display: flex; padding: 4px 6px; }
+    .cockpit:not(.keys-open) .cockpit-phase > :not(.deck-modes) { display: none; }
+    .cockpit:not(.keys-open) .deck-modes { flex: 1; }
+  }
+}
+@media (max-width: 360px) {
+  .cockpit:not(.keys-open) .gauge { min-width: 0; gap: 3px; padding-inline: 5px; }
+  .cockpit:not(.keys-open) .gauge b { font-size: 15px; }
 }
 /* (on its side the deck, with the navball away, stands in the middle of the foot) */
 @media (max-height: 520px) {

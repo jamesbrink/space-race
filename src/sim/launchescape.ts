@@ -1,10 +1,12 @@
 /** A capsule pulled clear by a solid escape motor before handing over to its own landing system. */
 import { derived } from '../measure.ts';
-import type { EarthFrame } from '../world/earthframe.ts';
 import { G0 } from '../world/bodies.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { elementsOf, step, type State } from '../world/orbit.ts';
+import { elementsOf, type State, step } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
+import { isBreakupImpact } from './breakup.ts';
+import type { Impact } from './contact.ts';
 import { coastEvents, flyDown, flyOrbit, heightsBall, shipOf } from './orbital.ts';
 import type { FlightPlan, ServiceAbort, TowerEscape } from './plan.ts';
 import { flowOf, givenUp, partingAt } from './staged.ts';
@@ -17,7 +19,15 @@ export interface EscapeState extends State {
   q: number;
   mach: number;
   mass: number;
+  impact?: Impact;
 }
+
+/** Sweep a rounded piece of the escape assembly against posed pad geometry. */
+export type EscapeSweep = (
+  from: { t: number; r: Vec3 },
+  to: { t: number; r: Vec3 },
+  radius: number,
+) => { fraction: number; normal: Vec3; obstacle: NonNullable<TowerEscape['hull']>['obstacles'][number] } | null;
 
 /**
  * The boost cover and tower stay on through the towerMode. The capped motor curve here uses mean
@@ -30,6 +40,7 @@ export function launchEscape(
   start: { t: number; r: Vec3; v: Vec3; axis: Vec3 },
   frame: EarthFrame,
   seaLevel: number,
+  sweep?: EscapeSweep,
 ) {
   const engine = plan.craft[0]!.engines.find((item) => item.id === towerMode.engine)!;
   const tower = plan.craft[0]!.bodies.find((item) => item.id === engine.body)!;
@@ -57,16 +68,19 @@ export function launchEscape(
   const samples: EscapeState[] = [];
   let state: State = { r: start.r, v: start.v };
   let t = start.t;
-  const take = () => {
+  const take = (impact?: Impact) => {
     const { q, mach } = atmosphere(state, t);
-    const lit = t < start.t + burn - 1e-9;
-    samples.push({ ...state, t, axis, thrust: lit ? thrust : 0, mass: massAt(t), g: length(push(state, t, lit)) / G0, q, mach });
+    const lit = !impact?.activeBroken && t < start.t + burn - 1e-9;
+    samples.push({ ...state, t, axis, thrust: lit ? thrust : 0, mass: massAt(t), g: length(push(state, t, lit)) / G0, q, mach, impact });
   };
   take();
   while (t - start.t < 1_200) {
     const lit = t < start.t + burn - 1e-9;
     const h = atmosphere(state, t).altitude;
     const at = Math.min(t + 0.1, lit ? start.t + burn : Infinity, t < early - 1e-9 ? early : Infinity);
+    const previous = state;
+    const before = t;
+    const oldAxis = axis;
     state = step(state, t, at - t, (s, time) => push(s, time, lit));
     t = at;
     const air = atmosphere(state, t);
@@ -83,6 +97,42 @@ export function launchEscape(
           ? unit(add(scale(aim, 1 - 2 * progress), scale(middle, 2 * progress)))
           : unit(add(scale(middle, 2 - 2 * progress), scale(turned.axis, 2 * progress - 1)));
     } else axis = steer(t);
+    if (sweep && towerMode.hull) {
+      const hull = towerMode.hull;
+      let hit: ReturnType<EscapeSweep> = null;
+      let speed = 0;
+      for (const { station, radius } of hull.spheres) {
+        const from = { t: before, r: add(previous.r, scale(oldAxis, station.value)) };
+        const to = { t, r: add(state.r, scale(axis, station.value)) };
+        const contact = sweep(from, to, radius.value);
+        if (contact && (!hit || contact.fraction < hit.fraction)) {
+          const flight = scale(sub(to.r, from.r), 1 / (t - before));
+          const closing = -dot(frame.overGround(to.r, flight), contact.normal);
+          if (closing > 1e-3) {
+            hit = contact;
+            speed = closing;
+          }
+        }
+      }
+      if (hit) {
+        const dt = (t - before) * hit.fraction;
+        state = step(previous, before, dt, (s, time) => push(s, time, lit));
+        t = before + dt;
+        axis = unit(add(scale(oldAxis, 1 - hit.fraction), scale(axis, hit.fraction)));
+        const impact: Impact = { on: hit.obstacle.node, name: hit.obstacle.name, t, speed, energy: 0.5 * massAt(t) * speed ** 2 };
+        if (isBreakupImpact(impact)) {
+          // Leave a failed escape at the strike pose. Structural deformation and falling debris are unmodelled.
+          state.v = cross(frame.spin, state.r);
+          take({ ...impact, activeBroken: true });
+          break;
+        }
+        // Frictionless, inelastic slide against a fixed structure. Separate by a small clearance
+        // so the next sweep can distinguish new contact from the one just resolved.
+        state = { r: add(state.r, scale(hit.normal, 0.005)), v: add(state.v, scale(hit.normal, speed)) };
+        take(impact);
+        continue;
+      }
+    }
     take();
     if (t >= early - 1e-9 && falling && air.altitude <= towerMode.jettison.height.value) break;
   }

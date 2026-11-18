@@ -194,9 +194,16 @@ function fitPlaceName(nav: HTMLElement, scope: Scope): void {
     if (need > title.clientWidth) nav.classList.add('short');
   };
   // (its own size changes with the words in it, and the title's with the page)
+  let pending = false;
   const watch = scope.observer(() => {
-    fit();
     if (nav.parentElement) watch.observe(nav.parentElement);
+    if (pending) return;
+    pending = true;
+    // Measuring the full label can resize the observed header. Do that outside observer delivery.
+    scope.frame(() => {
+      pending = false;
+      fit();
+    });
   });
   watch.observe(nav);
 }

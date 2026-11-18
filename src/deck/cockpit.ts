@@ -185,7 +185,7 @@ export class Cockpit extends Deck {
         { id: 'pitch', label: 'Pitch', unit: '°', about: 'The nose above the level: 90 is straight up' },
       ],
       guidance: "Guidance: the autopilot flies the record's tilt programme, and a key held takes its axis. Off, the hands fly alone",
-      sequence: "Sequencer: events happen at the record's times. Off, each is set off by hand with Space",
+      sequence: "Sequencer: events happen at the record's times. Off, each is set off by hand with the action button",
       choose: true,
       flightKeys: `${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
             ${works}${rated}`,
@@ -932,7 +932,7 @@ export class Cockpit extends Deck {
       const which = state.drogueAt === null ? ('drogue' as const) : ('main' as const);
       const at = which === 'drogue' ? roles.drogueHeight : roles.mainHeight;
       cues.push(`${which === 'drogue' ? 'Drogue' : 'Main'}: ${feet(at)} (${(at / 1000).toFixed(1)} km)`);
-      if (!this.sequence && s.altitude <= at) due.push(`${which === 'drogue' ? 'Drogue' : 'Main'} parachute is due: Space`);
+      if (!this.sequence && s.altitude <= at) due.push(`${which === 'drogue' ? 'Drogue' : 'Main'} parachute is due`);
     }
     if (!this.sequence && !replay && !state.landing && state.ignited && state.abortAt === null) {
       const late = (at: number) => s.t >= at;

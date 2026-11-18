@@ -429,6 +429,12 @@ export interface TowerEscape {
   tower: string;
   propellant: Measure;
   dragArea: Measure;
+  /** Rounded escape hull and pad geometry it can strike. Stations are relative to the escape pivot. */
+  hull?: {
+    centre: Measure;
+    spheres: readonly { station: Measure; radius: Measure }[];
+    obstacles: readonly { node: string; name: string }[];
+  };
   pitch: { until: Measure; angle: Measure; takes: Measure };
   canards: Measure;
   turn: { mach: Measure; takes: Measure };

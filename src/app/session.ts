@@ -1,4 +1,8 @@
 import { Box3, type Object3D, Vector3 } from 'three';
+import { deckOf } from '../deck/decks.ts';
+import { Flown } from '../deck/flown.ts';
+import { Callout } from '../ui/callout.ts';
+import { crumbs, Gallery, type GalleryKept, markKept, markPlace, placesNav } from '../ui/gallery.ts';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
 import {
   atSite,
@@ -13,32 +17,30 @@ import {
   where,
   write,
 } from './address.ts';
-import { Callout } from '../ui/callout.ts';
-import { deckOf } from '../deck/decks.ts';
 import { follow } from './curtain.ts';
 import { installDebug } from './debug.ts';
 import { Demo } from './demo.ts';
-import { Flown } from '../deck/flown.ts';
-import { crumbs, Gallery, type GalleryKept, markKept, markPlace, placesNav } from '../ui/gallery.ts';
 import { goHome } from './home.ts';
 import { holds } from './stake.ts';
 import '../ui/navball.css';
 import { Navball } from '../deck/navball.ts';
-import { prefs } from './prefs.ts';
 import { programmeAxis } from '../sim/predict.ts';
 import { Sound } from '../sound/index.ts';
-import { TimeBar } from '../ui/timebar.ts';
 import type { Flight, SitedFlight } from '../types.ts';
+import { TimeBar } from '../ui/timebar.ts';
 import { Ui } from '../ui/ui.ts';
+import { scripted, unattended } from '../util/env.ts';
+import { capsOf, is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { Effects } from '../viewer/effects.ts';
 import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
 import type { Stage, Thing, WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
-import { scripted, unattended } from '../util/env.ts';
-import { capsOf, is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
-import { Scope } from '../util/scope.ts';
+import { frameOf } from '../world/earthframe.ts';
+import { ecefToSite, siteFrame, siteToEcefDirection } from '../world/frames.ts';
+import { prefs } from './prefs.ts';
 
 /** A flight's page, as `open` gives it: what it shows, how to follow the address within it, and how to let it go. */
 export interface Session {
@@ -121,7 +123,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     holdPace: (on) => {
       stage.pipe.quality.auto = on;
     },
-    camera: (mode) => stage.setCamera(mode), // back in orbit the view holds still until something is chosen
+    camera: (mode) => stage.setCamera(mode, stage.veiled),
     nextCamera: () => stage.nextCamera,
     refind: () => stage.refind(),
 
@@ -165,7 +167,23 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
   // (each kind of flight has its own deck behind the one: what its pilot could do, src/deck/decks.ts)
   const Deck = deckOf(flight);
+  const escapeFrame = frameOf(flight);
+  const escapeSite = siteFrame(flight.site);
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
+    withEscapePad: (obstacles, time, held, query) =>
+      stage.withEscapePad(time, held, (pad, holds) => {
+        const sweep = stage.padSweeper(pad, obstacles);
+        return query((from, to, radius) => {
+          const hit = sweep(
+            ecefToSite(escapeSite, escapeFrame.toFixed(from.r, from.t)),
+            ecefToSite(escapeSite, escapeFrame.toFixed(to.r, to.t)),
+            radius,
+          );
+          if (!hit) return null;
+          const at = from.t + (to.t - from.t) * hit.fraction;
+          return { ...hit, normal: escapeFrame.toInertial(siteToEcefDirection(escapeSite, hit.normal), at) };
+        }, holds);
+      }),
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),
     kept: (at, phase) => markKept(at === null ? null : missionTime(at), () => cockpit.discard(), phase),
@@ -384,17 +402,21 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       await stage.warm(undefined, (step, f) => said.step(step, f));
       if (gone) return;
       said.end();
-      ready = true;
       // whatever is going to be playing when the curtain lifts is already playing
       if (prefs.get('demo')) demo.start();
       await new Promise((done) => setTimeout(done, 500));
       if (gone) return;
+      ready = true;
+      if (prefs.get('fly')) ui.setCamera('free');
+      // A linked flight deck starts framed on the rocket before the scene is shown.
+      const to = bound;
+      bound = null;
+      to?.();
       // (a script taking pictures does not wait for a fade)
       if (scripted('demo')) document.body.classList.add('instant');
       document.body.classList.add('scene-ready');
       ui.loaded();
       stage.veiled = false;
-      if (prefs.get('fly')) ui.setCamera('free');
       if (prefs.get('demo')) {
         // it was showing itself when the page was left: it goes on doing so
         demo.start();
@@ -512,7 +534,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   stage.onView = (id) => ui.setView(id);
   // the rig in charge of the camera has changed, by the page's asking or the stage's own doing (the vehicle left the pad while it was looked at)
   stage.onRig = (id) => {
-    ui.showCamera(id, !ready || demo.active);
+    ui.showCamera(id, !ready || stage.veiled || demo.active);
     panelOnly();
     lookouts();
   };
@@ -888,11 +910,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     placed(fly ? 'fly' : 'site', false);
     if (started) return;
     prefs.set('demo', false); // (it was gone to by hand: it does not open showing itself, whatever it was doing when last left)
-    void start(model, fly).then(() => {
-      const to = bound;
-      bound = null;
-      to?.();
-    });
+    void start(model, fly);
   }
   scope.on(document, 'click', (e) => {
     // the crumbs: back to the flight (its gallery), or out to the front page
