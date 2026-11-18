@@ -45,7 +45,7 @@ lights were lit, and the exhibit leaves them unlit.
 - Dark ribbed cabin shingles and the light adapter skin are visible together in
   Fig. 8.12-1. NASA's recovery frames S66-42782 and S66-42790 show the returned
   module, with the hatch open and the flotation collar obscuring the base. The
-  cockpit's exact unflown finish, lettering dimensions and symmetry of the
+  cockpit's exact prelaunch finish, lettering dimensions and symmetry of the
   flag and UNITED STATES layout are assumed from the common Gemini drawing
   and earlier flights. [NASA Gemini X gallery](https://www.nasa.gov/gallery/gemini-x/)
 - Gold-plated inner adapter surfaces are documented for spacecraft 9 through 12
@@ -56,3 +56,5 @@ lights were lit, and the exhibit leaves them unlit.
   details beyond photographed surfaces remain estimates. The panel and EVA
   stowage details require the spacecraft-specific drawings cited in the report
   for a full component-by-component reconstruction.
+
+- The launch model shows the nitrogen bottles, outlet and valve. The portable hand gun, its full supply line and the deployed instrument booms are omitted. Experiment doors are drawn closed; their clock angles are estimated.

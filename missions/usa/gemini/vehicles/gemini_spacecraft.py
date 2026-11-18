@@ -420,6 +420,8 @@ SHELLS_OF = {
 def shells(fit: Fit) -> tuple[str, ...]:
     """The meshes of this ship that enclose something: SHELLS, less what it had not, and those of what it alone carried."""
     base = tuple(name for name in SHELLS if fit.white_disc or name != "Cabin_WhiteDisc")
+    if fit.late == 11:
+        base += ("Equipment_SumpCurtainFlap", "Equipment_SumpCurtainSeams")
     return base + tuple(name for key, names in SHELLS_OF.items() if getattr(fit, key) for name in names)
 
 

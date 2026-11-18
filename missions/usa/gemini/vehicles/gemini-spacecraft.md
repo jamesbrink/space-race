@@ -310,6 +310,10 @@ ships were rebuilt.)
 Where a part's own words tell what happened on Gemini-Titan 3, a later flight gives its own
 (`SAYS` in its script, applied by `gemini_stack.build`).
 
+### Spacecraft 10 through 12
+
+The three late ships use the common cabin, shingles, docking nose and adapter framework. Gemini X report figures 3.1-2 and 3.1-3 place the new 22-inch oxidizer sphere at the old primary oxygen mount. A single primary oxygen tank on the fuel-cell module served both crew and cells. Spacecraft 10 and 11 also had a cylindrical reserve oxidizer tank; spacecraft 12 deleted it. The main sphere remains on all three. Each ship's launch fit and evidence limits are recorded with [spacecraft 10](../flights/gt-10/spacecraft.md), [spacecraft 11](../flights/gt-11/spacecraft.md) and [spacecraft 12](../flights/gt-12/spacecraft.md).
+
 ## What the model gets wrong or leaves out
 
 - **The pressure vessel is fitted, not drawn** ("Crew station", above). Its flat sides, its

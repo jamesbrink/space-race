@@ -107,6 +107,28 @@ def sump(M, g):
     shoes(M, g, Lm(T_ECS, 0, 0, 34))
 
 
+def curtain_access(M, g):
+    """XI §3.1.2.4: fold-out access flap closed at launch, with a lamp inside."""
+    frame = Lm(T_ECS, 0, 0, 33.25)
+    cloth, hems, lamp, lens = (MeshBuilder() for _ in range(4))
+    block(cloth, frame, (0, 0, 0), (27, 24, 0.12), 0.05)
+    for x in (-13.3, 13.3):
+        pipe(hems, frame, [(x, -11.6, -0.14), (x, 11.6, -0.14)], 0.13)
+    for x in (-8, 0, 8):
+        block(hems, frame, (x, -11, -0.21), (1, 2, 0.21))
+    say(
+        cloth.build("Equipment_SumpCurtainFlap", M["gold"], g),
+        "Fold-out access flap",
+        "Gordon could fold back a panel of the thermal curtain to reach the sump cameras. The outline and fastenings are estimated.",
+    )
+    hems.build("Equipment_SumpCurtainSeams", M["webbing"], g)
+    housing = Lm(T_ECS, 12, 8, 39)
+    block(lamp, housing, (0, 0, 0), (2.8, 3.5, 2.2))
+    block(lens, housing, (-1.54, 0, 0), (0.22, 2.7, 1.6))
+    lamp.build("Equipment_SumpLampHousing", M["aluminium"], g)
+    say(lens.build("Equipment_SumpLamp", M["beacon"], g), "Work light", "A light inside the curtain illuminated the sump work area.")
+
+
 def workstation(M, g):
     """XII fig. 3.1-6 viewed looking forward from aft: strips across the top, connectors and tool pouch below."""
     f = Lm(T_ECS, 0, 0, 38)
@@ -116,8 +138,8 @@ def workstation(M, g):
         pipe(rail, f, [(x, -12, -0.6), (x, 12, -0.6)], 0.36)
     for y in (-12.5, 12.5):
         pipe(rail, f, [(-13, y, -0.6), (13, y, -0.6)], 0.36)
-    for x, width in [(-10.5, 5), (-6, 4), (-2.5, 3), (2.5, 3), (6, 4), (10.5, 5)]:
-        block(straps, f, (x, 9.2, -0.62), (width - 0.10, 4.8, 0.45))
+    for x, width in [(-10.6, 5), (-6.0, 4), (-2.4, 3), (2.4, 3), (6.0, 4), (10.6, 5)]:
+        block(straps, f, (x, 9.2, -0.62), (width, 4.8, 0.45))
     for x in (-10, 10):
         block(tool, f, (x, -8, -0.9), (3.1, 7, 1.2))
         pipe(rail, f, [(x - 1, -10, -1.6), (x - 1, -6, -2.7), (x + 1, -6, -2.7), (x + 1, -10, -1.6)], 0.28)
@@ -132,6 +154,27 @@ def workstation(M, g):
         "EVA task board",
         "Six hook-and-loop test strips above the fittings, removable handholds at the sides and the tool pouch below. "
         "Placement follows Gemini XII figure 3.1-6; overall dimensions are estimated.",
+    )
+    fixtures, rings = MeshBuilder(), MeshBuilder()
+    # Figure 3.1-6: two pip-pin sockets, a pair of waist-tether rings below the pouch,
+    # and a removable sequence-camera bracket on the left handhold (§3.1.1(e)).
+    for side in (-1, 1):
+        x = side * 11.4
+        fixtures.lathe(hoop(0.22, 0.52, -1.3, -0.45), 12, matrix=f @ Matrix.Translation(Vector((x, -4.1, 0)) * IN))
+        cx = side * 7.0
+        loop = [(cx - 0.9, -12.3, -0.6), (cx - 0.9, -12.3, -1.6), (cx, -12.3, -2.1), (cx + 0.9, -12.3, -1.6), (cx + 0.9, -12.3, -0.6)]
+        pipe(rings, f, loop, 0.19)
+    block(fixtures, f, (-10.9, -6.5, -2.8), (2.8, 1.7, 0.35))
+    fixtures.disc(point(f, -11.6, -6.5, -3.12), (0, 0, -1), 0.44 * IN, 0.35 * IN)
+    say(
+        fixtures.build("Workstation_CameraMount", M["steel"], g),
+        "Left-hand camera bracket",
+        "The mount was moved to the left handhold so Aldrin could install the camera from the fixed foot restraints.",
+    )
+    say(
+        rings.build("Workstation_WaistTetherRings", M["steel"], g),
+        "Waist-tether rings",
+        "Anchors beneath the tool pouch, as drawn in Gemini XII figure 3.1-6.",
     )
     straps.build("Workstation_Strips", M["webbing"], g)
     rail.build("Workstation_RailsAndHose", M["steel"], g)
@@ -149,6 +192,7 @@ def build(M, number):
         import bpy
 
         nitrogen(M, bpy.data.objects["EquipmentSection"])
+        curtain_access(M, bpy.data.objects["EquipmentSection"])
     elif number == 12:
         workstation(M, group("AdapterWorkstation"))
 

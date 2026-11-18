@@ -39,3 +39,5 @@ deployment and 4,292.93 lb at touchdown without the parachute.
 - The extended handrail belongs to the docked EVA configuration. The mission
   report documents its stowage and two ends and supplies both lengths, but
   finer mounting details inside the hatch remain unverified.
+
+- The board, foot restraints, handholds, camera bracket and tool pouch are visible in the gallery. The model simplifies the wrench, hose connections, lanyards and stitching. The thin pipes and wires removed with the reserve oxidizer package are omitted throughout the shared adapter model.

@@ -97,10 +97,21 @@ def build(number, names, target):
         get_clock=True,
     )
     captions = dict(CAPTIONS)
+    for mesh in ("Hatches_WindowFrames", "HatchRight_WindowFrames"):
+        captions[mesh] = (
+            "Hatch window",
+            "The outer pane sat at about 35 degrees to the hatch. Its outline and location are assumed from earlier Gemini spacecraft.",
+        )
     if number != 12:
         captions["Equipment_OamsReserveTank"] = (
             "Reserve oxidizer",
             "This long cylindrical reserve tank replaced the reserve fuel tank of spacecraft 9. It was separate from the "
             "added 22-inch spherical main oxidizer tank.",
+        )
+    else:
+        captions["Retro_ExperimentS12"] = (
+            "Micrometeorite collector",
+            "The door protected the collection surfaces at launch. "
+            "Ground command opened it in orbit; Aldrin recovered the package during his first stand-up EVA (Gemini XII report §8.10).",
         )
     return gemini_stack.build(fit, captions, target=target, skirt_insulation=False)

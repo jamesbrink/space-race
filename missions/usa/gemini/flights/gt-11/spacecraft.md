@@ -37,3 +37,5 @@ retrograde, 4,734 lb at 0.05 g reentry, 4,340 lb at main-parachute deployment an
 - The numbered consoles and the precise stowage arrangement can be traced from
   Figs. 3.1-3 and 3.1-4. Complete depths, internal wiring and fine fittings
   require spacecraft-specific drawings.
+
+- The transparent sump, mirror, eight backlights and two camera bodies are represented. Their optics and the gas inside the tank are simplified. The thermal curtain flap is shown shut and the work light is unpowered.

@@ -180,6 +180,10 @@ From LSFR, pp. II.C-1 and II.C-8, and the press kit. Few of these show on the ou
 
 In the gallery the vehicle comes apart as it staged.
 
+### The last three launch vehicles
+
+Section 3.2 of each mission report compares the Titan to the preceding flight. The reports record no significant configuration change from GLV-9 through GLV-12. The model therefore uses the same bare forward skirt and external structure. The edges of the paint pattern are assumed from the shared vehicle. The launch weights including spacecraft were 341,164 lb, 343,469 lb and 342,092 lb respectively (each report, §3.3). The Gemini X pad disconnect differed on the day: part of a vent line went up with the vehicle, an event recorded in the flight’s pad description.
+
 ## What the model gets wrong or leaves out
 
 - **It is dry.** At liftoff the tank walls were pale with frost or dew from the chilled propellants
