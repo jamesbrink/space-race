@@ -20,6 +20,7 @@ import { IDLE_TITLE } from './demo.ts';
 import { FrontScene } from './front/scene.ts';
 import { instantAt, PATH } from './front/view.ts';
 import { Title } from '../ui/title.ts';
+import { markRuns } from '../ui/runmark.ts';
 import { isoDate } from '../world/time.ts';
 import { scripted } from '../util/env.ts';
 
@@ -62,6 +63,7 @@ const title = new Title(
   { at: parseBrowse(where()) ?? { nation: null, programme: null }, to: (b) => settle(formatBrowse(b)) },
 );
 title.show();
+markRuns(document.body); // (a flight flown by hand that is kept says so on its row: ui/runmark.ts)
 
 /**
  * Where the Earth is put in the picture: clear of the mark, to its right, where the window is wide; over the mark,

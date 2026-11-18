@@ -167,7 +167,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),
-    kept: (at) => markKept(at === null ? null : missionTime(at), () => cockpit.end()),
+    kept: (at, phase) => markKept(at === null ? null : missionTime(at), () => cockpit.discard(), phase),
     fly: (run) => {
       stage.show.flyRun(run);
       flown.fly(run); // its traces over the record's, as it grows
@@ -188,10 +188,11 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       placed(on ? 'fly' : 'site');
     },
   });
-  // The way out that cannot keep a flight flown by hand (another flight, the Lineup, the front page) asks first (stake.ts); the
-  // ways within the flight keep it (deck.ts `leave`). Letting it go says nothing of where the flight is: the page is going.
+  // A way out of the flight (another flight, the Lineup, the front page) keeps a flight flown by hand in the browser's storage,
+  // and asks first only where that cannot be done (stake.ts, deck/leaving.ts); the ways within the flight keep it in the page
+  // (deck.ts `leave`). Letting it go says nothing of where the flight is: the page is going.
   holds({
-    stakes: () => cockpit.stakes,
+    stakes: () => cockpit.risks(),
     end: () => {
       const was = leaving;
       leaving = true;
@@ -1055,7 +1056,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       gone = true;
       holds(null);
       if (demo.active) demo.stop(true);
-      cockpit.end();
+      cockpit.shelve(); // (a flight flown by hand is kept for when this flight is come back to: deck.ts)
       if (stage.walk.active) stage.onFoot.exitWalk();
       scope.dispose();
       stage.unoverlay(path.mesh);

@@ -16,6 +16,7 @@ import type { Clock } from '../world/clock.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
 import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
+import { pack } from './tape.ts';
 
 /**
  * Flying the flight by hand: the live simulator (sim/vehicle.ts) stepped by the clock, steered by
@@ -262,11 +263,44 @@ export class Cockpit extends Deck {
   protected override steered(): void {
     this.touched = true;
   }
+  protected get ticks(): number {
+    return this.state?.ticks ?? 0;
+  }
+  /** The run as it stands (deck/tape.ts): the vehicle's state, how it is flown and what the hands have done, and how much of it is kept. */
+  protected print(): string {
+    return pack([
+      this.state,
+      this.guidance,
+      this.sequence,
+      this.rate,
+      this.touched,
+      this.trim,
+      this.hand,
+      this.lever && [this.lever.at, this.lever.lit],
+      this.towerAt,
+      this.retropackAt,
+      this.hatchAt,
+      [...this.hands],
+      this.unsequenced,
+      this.kept,
+      this.run.samples.length,
+      this.run.dropped,
+    ]);
+  }
+  protected switches(to?: Record<string, boolean>): Record<string, boolean> {
+    if (to) {
+      this.guidance = to.guidance ?? true;
+      this.sequence = to.sequence ?? true;
+      this.rate = to.rate ?? false;
+    }
+    return { guidance: this.guidance, sequence: this.sequence, rate: this.rate };
+  }
 
   /** A new flight: back on the pad. */
-  private fresh(): void {
+  protected fresh(): void {
     const v = this.vehicle!;
     this.clock.reset();
+    this.started();
     this.state = v.start();
     this.tally = new Tally();
     this.hand = {};
@@ -510,7 +544,7 @@ export class Cockpit extends Deck {
    * A control in the cabin worked by hand (viewer/cabin.ts): 'abort' and 'next' are the keys' own, guarded as they
    * are; any other names the one thing to set off now (a pull ring does its own thing, whatever is next in order).
    */
-  ask(what: string): void {
+  protected obey(what: string): void {
     if (what === 'abort' || what === 'next') return void this.command(what);
     if (what.startsWith(WORK)) return void this.work(what.slice(WORK.length)); // (a mechanism worked by hand: types.ts `Command`)
     if (what === 'hatch') return void this.blow();
@@ -541,7 +575,7 @@ export class Cockpit extends Deck {
    * other way from where it is headed, from this instant of the flight. Says where it is now sent, or null if there
    * is nothing to work (no such mechanism, no flight being flown, or the clock put back to look at what was flown).
    */
-  work(id: string): string | null {
+  protected worked(id: string): string | null {
     const mechanism = this.mechanisms.find((m) => m.id === id);
     const s = this.state;
     if (!mechanism || !this.on || !s || this.clock.t < s.t - TICK) return null;
@@ -657,7 +691,7 @@ export class Cockpit extends Deck {
     } else if (what === 'abort') {
       // guarded: the first press arms it and says so, the second within two seconds fires the rocket
       const s = this.state;
-      const now = performance.now() / 1000;
+      const now = this.now() / 1000;
       if (!s || s.landing || hasLeft(s.craft, this.roles.tower) || s.abortAt !== null || !rolesOf(this.flight)?.escape) return;
       if (this.clock.t < s.t - TICK) return; // (looking back at what was flown)
       if (now - this.abortArmed > ABORT_ARMED) this.abortArmed = now;
@@ -674,7 +708,7 @@ export class Cockpit extends Deck {
       }
     } else if (what === 'next') {
       const step = this.next();
-      const now = performance.now() / 1000;
+      const now = this.now() / 1000;
       // (put back to look at what was flown, Space runs the clock on again rather than setting anything off)
       if (this.state && this.clock.t < this.state.t - TICK) {
         this.clock.play(true);
@@ -873,7 +907,7 @@ export class Cockpit extends Deck {
     const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
     const can = Boolean(body.escape) && !hasLeft(state.craft, this.roles.tower) && state.abortAt === null && !state.landing && !replay;
     abort.disabled = !can;
-    const armed = can && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;
+    const armed = can && this.now() / 1000 - this.abortArmed <= ABORT_ARMED;
     abort.classList.toggle('armed', armed);
     set('abort', armed ? 'Press again to abort' : 'Abort');
 

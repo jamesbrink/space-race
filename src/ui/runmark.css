@@ -1,0 +1,3 @@
+/* a flight flown by hand kept for its row on the front page (runmark.ts): a lamp, and where it was left */
+.run-mark { display: block; margin-top: 4px; font: 11px/1.4 var(--mono); letter-spacing: 0.08em; color: var(--amber); }
+.run-mark::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px rgba(255, 196, 107, 0.7); vertical-align: 1px; }

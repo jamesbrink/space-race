@@ -142,12 +142,12 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void, 
   return nav;
 }
 
-/** The flight kept by hand (deck.ts `leave`), as the places' switches say it: its mission time, and the way to end it. Null: none is kept. */
-let keptMark: { at: string; end: () => void } | null = null;
+/** The flight kept by hand (deck.ts `leave`), as the places' switches say it: its mission time, what it was doing, and the way to end it. Null: none is kept. */
+let keptMark: { at: string; phase: string; end: () => void } | null = null;
 
 /** Say, in every switch of places there is and in those made after, that a flight is kept (or no longer): a mark beside Fly that ends it. */
-export function markKept(at: string | null, end: () => void): void {
-  keptMark = at === null ? null : { at, end };
+export function markKept(at: string | null, end: () => void, phase = 'In flight'): void {
+  keptMark = at === null ? null : { at, phase, end };
   for (const nav of document.querySelectorAll('nav.places')) paintKept(nav);
 }
 
@@ -158,8 +158,8 @@ function paintKept(nav: Element): void {
   if (!fly || !keptMark) return;
   const mark = document.createElement('button');
   mark.className = 'kept-mark';
-  mark.title = `Your flight is kept at ${keptMark.at}: Fly resumes it. This ends it`;
-  mark.setAttribute('aria-label', `End the kept flight, at ${keptMark.at}`);
+  mark.title = `Your flight is in progress (${keptMark.phase.toLowerCase()}), kept at ${keptMark.at}: Fly resumes it. This throws it away`;
+  mark.setAttribute('aria-label', `Throw away the kept flight, at ${keptMark.at}`);
   mark.innerHTML = `<span>${keptMark.at}</span><i aria-hidden="true">×</i>`;
   const { end } = keptMark;
   mark.addEventListener('click', (e) => {

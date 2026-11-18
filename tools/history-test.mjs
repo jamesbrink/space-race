@@ -13,8 +13,8 @@
 //   crumb        Freedom 7's gallery, the Space Race crumb, Vostok 1's gallery; Back to the front page, Back to Freedom 7
 //   lineup       the front page, the Lineup, one chosen there (no step), its gallery; Back to the Lineup with it still
 //                chosen, Back to the front page, Forward to the Lineup
-//   flown        Freedom 7 flown by hand: Back within its places keeps the flight and asks nothing, Back out to the front page
-//                asks (Keep flying puts the address back, no step added; Leave goes), Forward to Fly resumes it
+//   flown        Freedom 7 flown by hand: Back within its places keeps the flight and asks nothing; Back out to the front page
+//                keeps it too and asks nothing (its row marked); Forward into the flight and to Fly takes it up, to the digit
 //   story        Freedom 7's gallery, its History tab (the story, why it has its name, the pilot's own story, at 1280
 //                and at 390 wide), See it in the Lineup (a step, Freedom 7 chosen there); Back to the gallery
 // The dev server's reloads are kept from the page under test, so other people's edits do not restart it.
@@ -291,9 +291,10 @@ await scenario('lineup', async (page) => {
 });
 
 /**
- * A flight flown by hand and the history. Back and Forward within the flight keep it (no question, one entry back each time,
- * Forward to Fly resumes it); Back out of the flight (to the front page) asks: Keep flying puts the address back where it was
- * with no entry added and no loop, and Leave goes on to the front page. Asked at the first way beyond, not before.
+ * A flight flown by hand and the history. Back and Forward within the flight keep it (no question, one entry back each time);
+ * Back out of the flight (to the front page) keeps it too, in the browser's storage, and asks nothing: the front page marks
+ * the flight's row, Forward into the flight and on to Fly takes it up again (Resume or Start over) at the same instant and
+ * figures, and Back out again is the front page, no step added on the way and no question asked.
  */
 await scenario('flown', async (page) => {
   const dialogs = [];
@@ -303,6 +304,7 @@ await scenario('flown', async (page) => {
   });
   await page.goto(url);
   await arrive(page, 'front');
+  await page.evaluate(() => localStorage.clear()); // (no run of another test's)
   await page.locator(`#title [data-flight="${MR3}"]`).click();
   await arrive(page, 'gallery', MR3);
   await mark(page);
@@ -319,14 +321,16 @@ await scenario('flown', async (page) => {
   await page.waitForTimeout(300);
   const figures = () =>
     page.evaluate(() => ({
-      t: window.sr.clock.t,
+      t: window.sr.clock?.t ?? null,
       cells: [...document.querySelectorAll('#ui > .cockpit [data-cell]')]
         .filter((c) => c.dataset.cell !== 'kept-at')
         .map((c) => c.textContent)
         .join('|'),
-      keeping: window.sr.cockpit.keeping,
+      keeping: window.sr.cockpit?.keeping ?? false,
       asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
       card: Boolean(document.querySelector('.cockpit-kept:not([hidden])')),
+      ready: !document.querySelector('.cockpit-kept [data-do=resume]')?.disabled,
+      row: document.querySelector('#title [data-flight="usa/mercury/mr-3-freedom-7"] .run-mark')?.textContent ?? '',
     }));
   const before = await figures();
   await page.goBack();
@@ -340,41 +344,38 @@ await scenario('flown', async (page) => {
   const gallery = await arrive(page, 'gallery', MR3);
   f = await figures();
   check(!f.asking && f.keeping && gallery.length === fly.length, 'Back to the gallery: no question, still kept');
-  // out of the flight: asked, and Keep flying puts the address back with no step added
+  // out of the flight: no question; the front page, whose row for the flight says a flight of it is in progress
   await page.goBack();
-  await page.waitForSelector('.deck-ask [role=alertdialog]', { timeout: 10000 });
-  await page.locator('.deck-ask [data-ask=stay]').click();
-  const stayed = await arrive(page, 'gallery', MR3);
-  await page.waitForTimeout(800);
+  const out = await arrive(page, 'front');
   f = await figures();
-  check(
-    stayed.hash === `#${MR3}/gallery` && stayed.length === fly.length && stayed.kept,
-    `Back to the front page: asked; Keep flying: the gallery again, ${stayed.length} entries, the page not loaded again`,
-  );
-  check(!f.asking && f.keeping, 'and the flight is still kept');
-  // Forward goes on as before, and Fly resumes it to the digit
+  check(!f.asking && out.hash === '' && out.length === fly.length, `Back to the front page: no question, no step (${out.length} entries)`);
+  check(/In flight/.test(f.row), `its row says a flight is in progress ("${f.row}")`);
+  // Forward into the flight and on to Fly: the kept flight taken up, at the same instant and figures
+  await page.goForward();
+  await arrive(page, 'gallery', MR3);
   await page.goForward();
   await arrive(page, 'site', MR3);
   await page.goForward();
   const again = await arrive(page, 'fly', MR3);
+  await page.waitForFunction(() => !document.querySelector('.cockpit-kept [data-do=resume]')?.disabled, null, { timeout: 60000 });
   await page.waitForTimeout(600);
   f = await figures();
   check(
-    f.card && f.t === before.t && f.cells === before.cells,
-    `Forward to Fly: the kept flight, at the same instant and figures (T${f.t.toFixed(1)})`,
+    f.card && f.ready && f.t === before.t && f.cells === before.cells,
+    `Forward to Fly: the kept flight offered, at the same instant and figures (T${f.t?.toFixed(1)})`,
   );
   check(again.length === fly.length, `no step was added along the way (${again.length} entries)`);
-  // out again, this time for good: Leave
+  // out again by Back: no question, the front page
   await page.goBack();
   await arrive(page, 'site', MR3);
   await page.goBack();
   await arrive(page, 'gallery', MR3);
   await page.goBack();
-  await page.waitForSelector('.deck-ask [role=alertdialog]', { timeout: 10000 });
-  await page.keyboard.press('KeyL');
   const front = await arrive(page, 'front');
-  check(front.hash === '', `Leave: the front page (${front.hash || 'the bare address'})`);
+  f = await figures();
+  check(front.hash === '' && !f.asking, `Back again: the front page, nothing asked (${front.hash || 'the bare address'})`);
   check(dialogs.length === 0, `no browser dialog on the way (${dialogs.join(', ') || 'none'})`);
+  await page.evaluate(() => localStorage.clear());
 });
 
 /** Freedom 7's History tab: what it says, a person opened, and the way to the Lineup and Back. */
