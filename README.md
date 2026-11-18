@@ -9,7 +9,7 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**30 flights so far, Vostok 1 (April 1961) to Apollo 10 (May 1969).** All of them are in the Gallery,
+**31 flights so far, Vostok 1 (April 1961) to Apollo 10 (May 1969).** All of them are in the Gallery,
 24 stand at their launch site, and 15 can be flown.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
@@ -96,6 +96,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | · | · |
 | [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | · | · |
 | [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
+| [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | · | · |
 | [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | · | · |
 | [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | · | · |
 

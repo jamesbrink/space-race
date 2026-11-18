@@ -18,6 +18,7 @@ The record, organised the way the history is: nation, programme, flight.
 | [USA](usa/) | [Project Gemini](usa/gemini/README.md) | [Gemini-Titan 3 "Molly Brown"](usa/gemini/flights/gt-3/README.md) |
 | [USSR](ussr/) | [Vostok](ussr/vostok/README.md) | [Vostok 1](ussr/vostok/flights/vostok-1/README.md), [2](ussr/vostok/flights/vostok-2/README.md), [3](ussr/vostok/flights/vostok-3/README.md), [4](ussr/vostok/flights/vostok-4/README.md), [5](ussr/vostok/flights/vostok-5/README.md), [6](ussr/vostok/flights/vostok-6/README.md) |
 | [USSR](ussr/) | [Voskhod](ussr/voskhod/README.md) | [Voskhod 1](ussr/voskhod/flights/voskhod-1/README.md), [Voskhod 2](ussr/voskhod/flights/voskhod-2/README.md) |
+| [USSR](ussr/) | [Soyuz](ussr/soyuz/README.md) | [Soyuz 1](ussr/soyuz/flights/soyuz-1/README.md), [Soyuz 3](ussr/soyuz/flights/soyuz-3/README.md), [Soyuz 4](ussr/soyuz/flights/soyuz-4/README.md) |
 
 Which of a flight's places (Gallery, Launch site, Fly) are built, its page says.
 The flights to come, in launch order, are in [upcoming.ts](upcoming.ts), which the front page

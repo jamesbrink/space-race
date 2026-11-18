@@ -1,11 +1,12 @@
 // Gallery motion preserves the installation of the antennas, wings and cabin. The
-// flown configuration also distinguishes No. 4’s sole working wing from No. 10’s pair.
+// flown configuration distinguishes No. 4’s sole working wing from the later pairs.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { Box3, Vector3 } from 'three';
 import { flight as soyuz1 } from '../missions/ussr/soyuz/flights/soyuz-1/flight.ts';
 import { flight as soyuz3 } from '../missions/ussr/soyuz/flights/soyuz-3/flight.ts';
+import { flight as soyuz4 } from '../missions/ussr/soyuz/flights/soyuz-4/flight.ts';
 import { plinths } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { framesOf, hierarchy } from './glb.mjs';
@@ -13,6 +14,7 @@ import { framesOf, hierarchy } from './glb.mjs';
 for (const [flight, leftOpens] of [
   [soyuz1, false],
   [soyuz3, true],
+  [soyuz4, true],
 ]) {
   const model = flight.models[0];
   for (const suffix of ['', '.lod1', '.lod2']) {
@@ -45,7 +47,8 @@ for (const [flight, leftOpens] of [
         ['Cabin', 'DescentModule'],
         ['Couches', 'DescentModule'],
       ];
-      if (flight === soyuz3) pairs.push(['RendezvousLights', 'OrbitalModule'], ['InfraredVertical', 'ServiceModule']);
+      if (flight !== soyuz1) pairs.push(['RendezvousLights', 'OrbitalModule'], ['InfraredVertical', 'ServiceModule']);
+      if (flight === soyuz4) pairs.push(['EvaHandrails', 'OrbitalModule']);
       const rest = pairs.map(([a, b]) => relative(a, b));
       const box = framesOf(file);
       assert.ok(Math.abs(box.box('DockingProbe').hi[1] - box.box('ServiceModule').lo[1] - 7.6) < 0.002);
@@ -159,3 +162,28 @@ for (const [flight, leftOpens] of [
     });
   }
 }
+
+test('Soyuz 4 models Shatalov’s solo launch with the two return places vacant', () => {
+  const model = soyuz4.models[0];
+  const file = new URL(`../public/${model.url}`, import.meta.url);
+  const buffer = readFileSync(file);
+  const gltf = JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)));
+  const root = hierarchy(gltf);
+  const couches = root.getObjectByName('Couches');
+  assert.deepEqual(soyuz4.crew, ['Vladimir A. Shatalov']);
+  assert.deepEqual(
+    couches.children.filter((node) => node.name.startsWith('Crew_')).map((node) => node.name),
+    ['Crew_Shatalov'],
+  );
+  assert.deepEqual(
+    model.seats.map((seat) => seat.node),
+    ['Seat_Commander'],
+  );
+  assert.equal(model.seats[0].from, 'BO_SideHatchFace');
+  assert.ok(couches.getObjectByName('Seat_Commander'));
+  assert.ok(couches.getObjectByName('Kazbek_Liners'));
+  assert.ok(model.seats[0].hide.every((node) => couches.getObjectByName(node)));
+  const transfer = model.views.find((view) => view.id === 'transfer');
+  assert.ok(transfer.isolate && transfer.from[2] > 0, 'the transfer view shows the access side without the fairing');
+  assert.deepEqual(transfer.nodes, ['OrbitalModule', 'EvaHandrails', 'DockingProbe']);
+});

@@ -756,9 +756,9 @@ export const MILESTONES: readonly Milestone[] = [
     nation: 'USSR',
     title: 'First docking of two crewed ships',
     text:
-      'Vladimir Shatalov in Soyuz 4 and Boris Volynov in Soyuz 5 brought their ships together by hand over Africa, at a ' +
-      'quarter of a metre a second. Gemini 8 had docked first, with an uncrewed target.',
-    source: `${SIDDIQI}, pp. 670 and 674 (hard dock at 11:20 Moscow time; ${MSK})`,
+      'Shatalov and Volynov took manual control about 100 metres apart. They held at about 40 metres off the African coast, ' +
+      'then closed for docking in television range of the Soviet ground stations. Gemini 8 had docked with an uncrewed target.',
+    source: `${SIDDIQI}, pp. 670 and 674 (hard dock at 11:20 Moscow time; ${MSK}); Shatalov, postflight press conference, NASA translation HL-PR-10803, pp. 4–5`,
     confidence: 'derived',
   },
   {
@@ -768,7 +768,7 @@ export const MILESTONES: readonly Milestone[] = [
     title: 'First crew to move between ships in orbit',
     text:
       'Aleksey Yeliseyev and Yevgeniy Khrunov went out of Soyuz 5 in their suits and into Soyuz 4, carrying letters and the ' +
-      'newspapers that told of its launch. They were outside for 37 minutes.',
+      'newspapers that told of its launch. The transfer took about 37 minutes.',
     source: `${SIDDIQI}, pp. 671 to 674`,
     confidence: 'documented',
   },
@@ -1208,7 +1208,7 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     flight: 'ussr/soyuz/soyuz-4',
     headline: 'Went up with one man, came home with three',
     story:
-      'Shatalov launched alone, and the television showed two empty couches. The next day he docked with Soyuz 5 by hand, ' +
+      'Shatalov launched alone, and the television showed two empty couches. On 16 January, two days after launch, he docked with Soyuz 5 by hand, ' +
       'and two of its crew climbed across outside. The press called the pair the first experimental space station.',
     firsts: ['First docking of two crewed ships'],
     source: `${SIDDIQI}, pp. 670 to 674`,

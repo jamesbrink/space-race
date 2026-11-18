@@ -11,3 +11,5 @@ Georgiy Beregovoy flew No. 10 from Site 31 and approached the uncrewed Soyuz 2. 
 safely, and its surviving descent module is held by RKK Energia. The gallery shows both solar
 wings open and reconstructs Beregovoy's couch and the orbital workroom.
 [Spacecraft record](flights/soyuz-3/spacecraft.md)
+
+[Soyuz 4](flights/soyuz-4/README.md) launched with Vladimir Shatalov alone. On 16 January 1969 he docked with Soyuz 5. Two cosmonauts crossed between the orbital modules by spacewalk and returned with him in Soyuz 4. The exhibit shows the active docking probe and the handholds at the orbital hatch. [Spacecraft record](flights/soyuz-4/spacecraft.md)
