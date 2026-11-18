@@ -10,6 +10,7 @@ import { flight as soyuz4 } from '../missions/ussr/soyuz/flights/soyuz-4/flight.
 import { flight as soyuz10 } from '../missions/ussr/soyuz/flights/soyuz-10/flight.ts';
 import { flight as soyuz12 } from '../missions/ussr/soyuz/flights/soyuz-12/flight.ts';
 import { flight as soyuz16 } from '../missions/ussr/soyuz/flights/soyuz-16/flight.ts';
+import { flight as soyuzT2 } from '../missions/ussr/soyuz/flights/soyuz-t-2/flight.ts';
 import { plinths } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { framesOf, hierarchy } from './glb.mjs';
@@ -345,5 +346,59 @@ for (const suffix of ['', '.lod1', '.lod2']) {
         assert.ok(couches.getObjectByName(seat.node) && seat.hide.length && seat.hide.every((n) => couches.getObjectByName(n)));
     }
     for (const view of ['dock', 'test-ring']) assert.ok(model.views.find((v) => v.id === view)?.isolate);
+  });
+}
+
+for (const suffix of ['', '.lod1', '.lod2']) {
+  test(`Soyuz T-2${suffix}: the solar arrays unfold and the station docking gear stays on the orbital module`, () => {
+    const model = soyuzT2.models[0];
+    const file = new URL(`../public/${model.url.replace('.glb', `${suffix}.glb`)}`, import.meta.url);
+    const bytes = readFileSync(file);
+    const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)));
+    const root = hierarchy(gltf);
+    const slider = new Exploder(root, model.parts);
+    const bounds = boundsOf(gltf);
+    const pos = (name) => root.getObjectByName(name).getWorldPosition(new Vector3());
+    const span = () => {
+      root.updateMatrixWorld(true);
+      return bounds(root.getObjectByName('SolarRight')).max.x - bounds(root.getObjectByName('SolarLeft')).min.x;
+    };
+    const frames = framesOf(file);
+    const length = frames.box('DockingProbe').hi[1] - frames.box('CombinedPropulsion').lo[1];
+    assert.ok(Math.abs(length - 6.98) < 0.003, '6.98 m from the main nozzle to the probe tip');
+    const propulsion = pos('CombinedPropulsion').sub(pos('ServiceModule'));
+    const stackHeight = frames.box('EscapeTower').hi[1] - frames.box('CoreEngine').lo[1];
+    assert.ok(Math.abs(stackHeight - 51.1) < 0.002, 'height of the Soyuz-U stack with the Soyuz-T head assembly');
+    const rudderSpan = frames.box('Booster_B').hi[0] - frames.box('Booster_G').lo[0];
+    assert.ok(Math.abs(rudderSpan - 10.3) < 0.002, 'span across the opposite booster rudders');
+    const mounts = ['DockingCollar', 'DockingProbe', 'Igla'];
+    const home = mounts.map((name) => pos(name).sub(pos('OrbitalModule')));
+    const boom = root.getObjectByName('IglaBoom');
+    const stowed = boom.quaternion.clone();
+    const folded = span();
+    assert.ok(folded < 3, 'solar arrays fit the launch shroud');
+    for (const name of ['ApasCollar', 'TestDockingRing']) assert.equal(root.getObjectByName(name), undefined);
+    for (const fraction of [0.47, 1, 0]) {
+      slider.set(fraction);
+      assert.ok(Math.abs(span() - (fraction ? 10.6 : folded)) < 0.015, 'span across both solar array tips');
+      assert.ok(
+        Math.abs(boom.quaternion.angleTo(stowed) - (fraction ? 1.27 : 0)) < 0.001,
+        'the Igla boom deploys and stows with the arrays',
+      );
+      assert.ok(pos('CombinedPropulsion').sub(pos('ServiceModule')).distanceTo(propulsion) < 0.001);
+      mounts.forEach((name, i) => assert.ok(pos(name).sub(pos('OrbitalModule')).distanceTo(home[i]) < 0.001, name));
+    }
+    if (!suffix) {
+      const couches = root.getObjectByName('Couches');
+      assert.deepEqual(
+        couches.children
+          .filter((child) => child.name.startsWith('Crew_'))
+          .map((child) => child.name)
+          .sort(),
+        ['Crew_Aksyonov', 'Crew_Malyshev'],
+      );
+      for (const seat of model.seats) assert.ok(couches.getObjectByName(seat.node), seat.node);
+      assert.ok(model.views.find((view) => view.id === 'console')?.nodes.includes('NeptunConsole'));
+    }
   });
 }

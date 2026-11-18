@@ -9,7 +9,7 @@ import flight_suit
 from srlib import MeshBuilder, frame, material
 
 
-def build_seated(parent, place, prefix, wearer):
+def build_seated(parent, place, prefix, wearer, *, kv2=False):
     # Keep the existing posed human anatomy and preserve its eye datum.
     keys = flight_suit.build_seated(parent, place, prefix, wearer)
     white = bpy.data.materials.get("suit-sokol-k-outer") or material("suit-sokol-k-outer", (0.8, 0.79, 0.72), roughness=0.84)
@@ -76,13 +76,31 @@ def build_seated(parent, place, prefix, wearer):
     shoulders = [place @ (0.01 * Vector(p)) for p in keys["shoulders"].values()]
     shoulder = (shoulders[0] + shoulders[1]) / 2
     core = shoulder + 0.134 * look
-    chest.ribbon(
-        [core + 0.09 * up - 0.13 * right, core + 0.055 * up - 0.09 * right, core + 0.029 * up, core + 0.009 * up + 0.128 * right],
-        up,
-        0.021,
-    )
-    valve = core - 0.137 * up + 0.084 * right + 0.033 * look
-    hardware.lathe([(0.028, 0), (0.028, 0.006), (0.018, 0.014), (0, 0.015)], 32, matrix=frame(valve, look))
+    if kv2:
+        # The KV-2 has opposed front zipper tapes and a central pressure regulator.
+        for side in (-1, 1):
+            chest.ribbon(
+                [
+                    core + 0.095 * up + side * 0.128 * right,
+                    core + 0.008 * up + side * 0.104 * right,
+                    core - 0.098 * up + side * 0.077 * right,
+                    core - 0.170 * up + side * 0.072 * right,
+                ],
+                right,
+                0.014,
+            )
+        valve = core - 0.133 * up + 0.033 * look
+        regulator = MeshBuilder()
+        regulator.lathe([(0.034, 0), (0.034, 0.008), (0.026, 0.017), (0, 0.018)], 32, matrix=frame(valve, look))
+        regulator.build(f"{prefix}_Torso_KV2Regulator", blue, parent)
+    else:
+        chest.ribbon(
+            [core + 0.09 * up - 0.13 * right, core + 0.055 * up - 0.09 * right, core + 0.029 * up, core + 0.009 * up + 0.128 * right],
+            up,
+            0.021,
+        )
+        valve = core - 0.137 * up + 0.084 * right + 0.033 * look
+        hardware.lathe([(0.028, 0), (0.028, 0.006), (0.018, 0.014), (0, 0.015)], 32, matrix=frame(valve, look))
     hood.build(f"{prefix}_Helmet_SokolHood", white, parent)
     rim.build(f"{prefix}_Helmet_SokolRim", blue, parent)
     visor.build(f"{prefix}_Helmet_SokolVisor", glass, parent)
