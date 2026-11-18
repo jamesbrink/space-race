@@ -304,7 +304,9 @@ const slug = (s: string) =>
  */
 export function plinths(model: Pick<ModelDef, 'parts' | 'name' | 'target'>, lowest?: (node: string) => number | null): Plinth[] {
   const groups = [...new Set(model.parts.flatMap((p) => (p.group ? [p.group] : [])))];
-  const whole: Plinth = { id: 'whole', label: `Whole ${model.name.toLowerCase()}`, nodes: null };
+  // (a plain name follows on in small letters, "Whole vehicle"; one with a name in it keeps its capitals, "Whole LM-3 Spider")
+  const named = /^.+[A-Z0-9]/.test(model.name);
+  const whole: Plinth = { id: 'whole', label: `Whole ${named ? model.name : model.name.toLowerCase()}`, nodes: null };
   if (groups.length < 2) return [whole];
   const each = groups.map((g) => ({ id: slug(g), label: g, nodes: model.parts.filter((p) => p.group === g).map((p) => p.node) }));
   // (a target is no part of the spacecraft and rides on nothing: it is left out of what is measured, and stood beside)

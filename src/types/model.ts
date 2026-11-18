@@ -599,10 +599,16 @@ export interface MechanismDef {
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
 export interface ModelDef {
-  /** A separately inspectable spacecraft in the same mission, with its own cabin and model origin. */
+  /**
+   * A second spacecraft of the same flight, shown in the gallery as an exhibit of its own (its own cabin, cutaway,
+   * views and slider): what its button there says. Its address is `#<flight>/gallery/<id>` (gallery.md).
+   */
   galleryCraft?: string;
+  /** Another word an address may name that exhibit by; the page settles it to the model's id. */
   galleryAlias?: string;
+  /** The direction the gallery's Whole view looks from (as `ViewDef.from`), where the default would show its back. */
   galleryFrom?: [number, number, number];
+  /** What the gallery's seat switch says where nobody sat (an LM's crew stood). Default: "Sit in the cabin". */
   boardingLabel?: string;
   id: string;
   name: string;

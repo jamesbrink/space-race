@@ -65,6 +65,18 @@ test('an address names a flight, a place and what is on show there', () => {
   assert.deepEqual(parseAddress(`#${MR3}/fly`), { flightId: MR3, place: 'fly', what: '' });
 });
 
+test('a gallery address keeps everything after the place: a second spacecraft, then what is on show of it', () => {
+  const A9 = 'usa/apollo/apollo-9';
+  assert.deepEqual(parseAddress(`#${A9}/gallery/spider`), { flightId: A9, place: 'gallery', what: 'spider' });
+  assert.deepEqual(parseAddress(`#${A9}/gallery/spider/LMAscent`), { flightId: A9, place: 'gallery', what: 'spider/LMAscent' });
+  // and it is written as it is read, each word its own
+  assert.equal(formatAddress(A9, 'gallery', 'spider/LMAscent'), `#${A9}/gallery/spider/LMAscent`);
+  assert.deepEqual(parseAddress(formatAddress(A9, 'gallery', 'spider/LM_PilotStation')).what, 'spider/LM_PilotStation');
+  // the site and the flight deck take one word and none, as before
+  assert.deepEqual(parseAddress(`#${A9}/site/pad/more`), { flightId: A9, place: 'site', what: 'pad' });
+  assert.deepEqual(parseAddress(`#${A9}/fly/more`), { flightId: A9, place: 'fly', what: '' });
+});
+
 test('addresses older than the places still land where they did', () => {
   // a section of the site, with the flight named and without: what every tool and script uses (#pad)
   for (const model of ['vehicle', 'pad', 'crew']) {
@@ -186,6 +198,12 @@ test('what can stand in the gallery comes from the headings of the parts list', 
   );
   assert.equal(all[0].label, 'Whole vehicle');
   assert.equal(all[0].nodes, null);
+  // a model named for a spacecraft keeps the name as it is written (a phone's sheet shows the label as it stands)
+  const apollo9 = flights.find((f) => f.id === 'usa/apollo/apollo-9');
+  assert.deepEqual(
+    apollo9.models.map((m) => plinths(m)[0].label),
+    ['Whole Apollo 9 · Saturn V', 'Whole LM-3 Spider'],
+  );
   // every part stands in exactly one of the choices that are not the whole
   const listed = all.slice(1).flatMap((p) => p.nodes);
   assert.deepEqual([...listed].sort(), vehicle.parts.map((p) => p.node).sort());
