@@ -1,4 +1,4 @@
-"""Soyuz 1's descent cabin, in millimetres from the spacecraft engine end. See cabin.md."""
+"""An early Soyuz descent cabin, in millimetres from the spacecraft engine end. See cabin.md."""
 
 from __future__ import annotations
 
@@ -38,8 +38,8 @@ def upholstery():
     }
 
 
-def couches(parent):
-    """Three Kazbek shells on their shared support with Komarov in the centre."""
+def couches(parent, pilot: flight_suit.Wearer):
+    """Three Kazbek shells on their shared support with the flight’s pilot in the centre."""
     mats = upholstery()
     shells, cushions, straps = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # Stations across a couch, contoured beneath the shoulders, hips, knee bend and raised heels.
@@ -79,9 +79,9 @@ def couches(parent):
     hung(cushions, "Kazbek_Liners", mats["liner"], parent)
     hung(straps, "Kazbek_Webbing", mats["strap"], parent)
 
-    occupant = group("Crew_Komarov", parent)
+    occupant = group(f"Crew_{pilot.name}", parent)
     place = at(Vector(HIP) * MM)
-    keys = flight_suit.build_seated(occupant, place, "Komarov", flight_suit.KOMAROV)
+    keys = flight_suit.build_seated(occupant, place, pilot.name, pilot)
     eyes, look, up = (Vector(keys[name]) for name in ("eyes", "look", "crown"))
     seat = group("Seat_Commander", parent)
     seat.matrix_local = at(place @ (eyes * 0.01)) @ Matrix(((-look).cross(up), -look, up)).transposed().to_4x4()
@@ -117,6 +117,22 @@ def fittings(parent):
     hung(leads, "Cabin_Wiring", dark, parent)
     light_node = hung(lamp, "Lamp_1", light, parent)
     light_node.matrix_local = srlib.frame(Vector(LAMP) * MM, LAMP_AIM)
+
+
+def rendezvous_controls(parent):
+    """Beregovoy's three-axis hand controls, with mounts and grip forms reconstructed."""
+    support = material("soyuz-control-mount", (0.35, 0.38, 0.34), 0.48, 0.54)
+    grip = material("soyuz-control-grip", (0.055, 0.063, 0.050), 0.04, 0.72)
+    metal, handles = MeshBuilder(), MeshBuilder()
+    for side in (-1, 1):
+        x = side * 367
+        metal.box((113, 126, 48), at((x, -282, 2720)))
+        metal.tube((x + side * 53, -282, 2710), (side * 477, -245, 2615), 14, 14)
+        metal.tube((x, -282, 2734), (x, -263, 2828), 15, 16)
+        handles.lathe([(19, 0), (26, 12), (24, 31), (33, 70), (29, 92), (13, 97), (0, 97)], 24, matrix=at((x, -263, 2812)))
+        handles.tube((x, -267, 2895), (x, -287, 2895), 10, 12)
+    hung(metal, "SA_HandControlMounts", support, parent)
+    hung(handles, "SA_HandControls", grip, parent)
 
 
 def lining(parent):
@@ -156,7 +172,7 @@ def lining(parent):
     return openings
 
 
-def build():
+def build(pilot: flight_suit.Wearer | None = None, *, hand_controls=False):
     """Build the descent cabin in the spacecraft frame, at the detailed level only."""
     cabin = group("Cabin", lineup_enclosed=True)
     seats = group("Couches", lineup_enclosed=True)
@@ -165,7 +181,9 @@ def build():
     openings = lining(cabin)
     soyuz_sirius.build(cabin, at(PANEL) @ Matrix.Rotation(math.radians(168), 4, "X"))
     fittings(cabin)
-    couches(seats)
+    couches(seats, pilot or flight_suit.KOMAROV)
+    if hand_controls:
+        rendezvous_controls(cabin)
     bpy.context.view_layer.update()
     meshes = [obj for obj in cabin_shade.meshes_under(cabin, seats) if obj.name != "Lamp_1"]
     lamp_sources = (("Lamp_1", LENS_POINT, cabin_shade.disc(LENS_POINT, LAMP_AIM, 0.04)),)

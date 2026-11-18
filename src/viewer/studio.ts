@@ -272,17 +272,21 @@ const HALF_BODY: [number, number][] = [
 ];
 export const STATURE = 1.8;
 
-export function outline(colour: THREE.IUniform<THREE.Color>): THREE.Group {
+export function outline(colour: THREE.IUniform<THREE.Color>) {
   const shape = new THREE.Shape();
   shape.moveTo(0, 0.86); // (the crotch: the legs part below it)
   for (const [x, y] of HALF_BODY) shape.lineTo(x, y);
   for (const [x, y] of [...HALF_BODY].reverse()) shape.lineTo(-x, y);
   shape.closePath();
   const head = new THREE.Shape().absellipse(0, 1.685, 0.098, 0.115, 0, Math.PI * 2);
-  const group = new THREE.Group();
-  group.add(new THREE.Mesh(new THREE.ShapeGeometry([shape, head], 24), flat(colour, 0.9)));
-  group.name = 'ScaleFigure';
-  return group;
+  const material = flat(colour, 0.9);
+  material.vertexShader = `void main() {
+    vec3 transformed = position;
+    #include <project_vertex>
+  }`;
+  const figure = new THREE.Mesh(new THREE.ShapeGeometry([shape, head], 24), material);
+  figure.name = 'ScaleFigure';
+  return figure;
 }
 
 /** A range pole `height` metres tall, banded metre by metre in two colours, with a cap at its top: two meshes. */

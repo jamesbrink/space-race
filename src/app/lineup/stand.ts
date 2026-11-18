@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import type { LineupRow } from '../address.ts';
 import { Crossfade, LOD_ABOVE, thresholdsOf } from '../../viewer/lod.ts';
 import { outline } from '../../viewer/studio.ts';
 import { tier } from '../../viewer/tier.ts';
+import type { LineupRow } from '../address.ts';
 import { BESIDE } from './merge.ts';
 import type { Entry } from './row.ts';
 import { picturesOf, rawBytes } from './shelf.ts';
@@ -99,6 +99,40 @@ export function showPlates(
   plates.count = visible.length;
   plates.instanceMatrix.needsUpdate = true;
   tint.needsUpdate = true;
+}
+
+/** The same 1.8 m figure stands beside every vehicle. All visible outlines share one draw. */
+export function scaleFigures(count: number, colour: THREE.IUniform<THREE.Color>) {
+  const figure = outline(colour);
+  figure.geometry.computeBoundingSphere();
+  const figures = new THREE.InstancedMesh(figure.geometry, figure.material, count);
+  figures.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  figures.frustumCulled = false;
+  figures.count = 0;
+  return figures;
+}
+
+export function showFigures(
+  figures: ReturnType<typeof scaleFigures>,
+  stands: readonly Stand[],
+  camera: THREE.Camera,
+  frustum: THREE.Frustum,
+): void {
+  if (!figures.visible) return;
+  const sphere = new THREE.Sphere();
+  const visible = stands.flatMap((stand) => {
+    if (!stand.standing) return [];
+    const foot = stand.person.getWorldPosition(sphere.center);
+    stand.person.rotation.y = Math.atan2(camera.position.x - foot.x, camera.position.z - foot.z);
+    stand.person.updateMatrixWorld();
+    sphere.copy(figures.geometry.boundingSphere!).applyMatrix4(stand.person.matrixWorld);
+    if (!frustum.intersectsSphere(sphere)) return [];
+    return [{ matrix: stand.person.matrixWorld, depth: sphere.center.applyMatrix4(camera.matrixWorldInverse).z }];
+  });
+  visible.sort((a, b) => a.depth - b.depth);
+  visible.forEach(({ matrix }, i) => figures.setMatrixAt(i, matrix));
+  figures.count = visible.length;
+  figures.instanceMatrix.needsUpdate = true;
 }
 
 /** Glass, as the row sees it: a pane has almost no colour of its own (the stage's window glass, without its glazing pass). */
@@ -268,21 +302,20 @@ export class Stand {
   readonly plate = new THREE.Object3D();
   readonly plateColour = new THREE.Color();
   plateStrength = 0.1;
-  private readonly person: THREE.Group;
+  readonly person = new THREE.Object3D();
   private shadow: { mesh: THREE.Mesh; target: THREE.WebGLRenderTarget } | null = null;
   private row: LineupRow = 'vehicles';
   private chosen = false;
 
   private readonly shade: { strength: THREE.IUniform<number>; cel: THREE.IUniform<number> };
 
-  constructor(entry: Entry, figure: THREE.IUniform<THREE.Color>, shade: { strength: THREE.IUniform<number>; cel: THREE.IUniform<number> }) {
+  constructor(entry: Entry, shade: { strength: THREE.IUniform<number>; cel: THREE.IUniform<number> }) {
     this.entry = entry;
     this.craft = entry.craft;
     this.shade = shade;
     this.group.name = entry.flight.id;
     this.plate.rotation.x = -Math.PI / 2;
     this.plate.position.y = 0.0008;
-    this.person = outline(figure);
     this.group.add(this.holder, this.plate, this.person);
     this.tint();
   }
@@ -321,11 +354,6 @@ export class Stand {
   /** Whether one level is giving way to another. */
   get fading(): boolean {
     return this.fade.running;
-  }
-
-  /** Show the scale's person, or not. */
-  people(on: boolean): void {
-    this.person.visible = on;
   }
 
   /** What of a level is drawn: all of it, or the spacecraft's nodes alone (of a joined level, its spacecraft's pieces). */
@@ -482,13 +510,6 @@ export class Stand {
     this.box.max.set(x + this.size.x / 2, this.size.y, this.size.z / 2);
   }
 
-  /** The person is a card: it turns about its feet to face whoever is looking. */
-  face(camera: THREE.Camera): void {
-    if (!this.person.visible) return;
-    const at = this.person.getWorldPosition(new THREE.Vector3());
-    this.person.rotation.y = Math.atan2(camera.position.x - at.x, camera.position.z - at.z);
-  }
-
   /**
    * Draw its shadow: its silhouette as the key light sees it, into a picture of its own, laid on the floor where that
    * light throws it. Asked when it has arrived and whenever what is on show of it changes; the frame after is drawn
@@ -543,8 +564,10 @@ export class Stand {
     const stage = new THREE.Scene();
     const silhouette = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, toneMapped: false });
     stage.overrideMaterial = silhouette;
-    const [parent, hidden] = [this.group.parent, [this.person, this.shadow?.mesh].filter((o) => o?.visible)];
-    for (const o of hidden) o!.visible = false;
+    const parent = this.group.parent;
+    const shadow = this.shadow?.mesh;
+    const hadShadow = shadow?.visible;
+    if (shadow) shadow.visible = false;
     stage.add(this.group);
     const was = { target: renderer.getRenderTarget(), colour: renderer.getClearColor(new THREE.Color()), alpha: renderer.getClearAlpha() };
     renderer.setRenderTarget(target);
@@ -554,7 +577,7 @@ export class Stand {
     renderer.setRenderTarget(was.target);
     renderer.setClearColor(was.colour, was.alpha);
     parent?.add(this.group);
-    for (const o of hidden) o!.visible = true;
+    if (shadow) shadow.visible = Boolean(hadShadow);
     silhouette.dispose();
     if (this.shadow) return;
 

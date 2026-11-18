@@ -14,7 +14,7 @@ from srlib import TAU, frame, group, mark_shells
 from voskhod_11a57 import upper as voskhod_upper
 from vostok_8k72k import booster, core
 from vostok_8k72k import upper as vostok_upper
-from vostok_8k72k.common import BOOSTER_AZ, BOOSTER_BASE_R, BOOSTER_R, BOOSTER_TILT, MM, Local, V, core_frame, hang, materials, pivot, reuse
+from vostok_8k72k.common import BOOSTER_AZ, BOOSTER_BASE_R, BOOSTER_R, BOOSTER_TILT, MM, Local, V, core_frame, hang, materials, pivot, rehang, reuse
 
 LENGTH = 49913.0  # RKK Energia's dimensioned 11A511 cutaway
 SPAN = 10412.0  # same cutaway, measured across the opposite rudders
@@ -41,6 +41,7 @@ FAIRING_PROFILE = [
 
 SHELLS = (
     "BlockI_FairingSupport",
+    "Fairing_AccessPanel",
     *core.SHELLS,
     *(name for letter in BOOSTER_AZ for name in booster.shells(letter)),
     *(name for name in voskhod_upper.SHELLS if not name.startswith("Fairing")),
@@ -87,7 +88,7 @@ def stabilizers(X, M, node, az: float, side: str) -> None:
     hang(grids.build(f"Fairing_{side}_Grids", M["steel"], None, sharp_angle=30), node)
 
 
-def build_fairing(X, M) -> None:
+def build_fairing(X, M, hatch_az: float, hatch_z: float) -> None:
     adapter = Local(X)
     adapter.lathe(
         [(voskhod_upper.BLOCK_I_R - 4, FAIRING_FOOT - 170), (FAIRING_PROFILE[0][0] - 8, FAIRING_FOOT - 4)],
@@ -97,7 +98,9 @@ def build_fairing(X, M) -> None:
     g = group("Fairing")
     inner = [(r - WALL, z) for r, z in FAIRING_PROFILE]
     gap = math.radians(0.16)
-    for side, az in (("Left", 0.0), ("Right", math.pi)):
+    hatch_az = math.radians(hatch_az)
+    hatch_z += FAIRING_FOOT
+    for side, az in (("Left", hatch_az), ("Right", hatch_az + math.pi)):
         arc = (az - math.pi / 2 + gap, az + math.pi / 2 - gap)
         node = pivot(f"Fairing_{side}", g, X @ V(FAIRING_R * math.cos(az), FAIRING_R * math.sin(az), FAIRING_FOOT))
         skin, wall, fit = Local(X), Local(X), Local(X)
@@ -121,13 +124,15 @@ def build_fairing(X, M) -> None:
             )
         # Access hatch sits closed for launch. A shallow panel with rolled corners shows where it lies.
         if side == "Left":
-            hatch_z = FAIRING_FOOT + 5770
-            a0, a1 = az - 0.33, az + 0.33
-            fit.lathe(
+            cover_node = group("Fairing_AccessCover")
+            cover = Local(X)
+            cover.lathe(
                 [(FAIRING_R - 4, hatch_z - 500), (FAIRING_R + 16, hatch_z - 480), (FAIRING_R + 16, hatch_z + 480), (FAIRING_R - 4, hatch_z + 500)],
                 28,
-                arc=(a0, a1),
+                arc=(az - 0.33, az + 0.33),
             )
+            cover.build("Fairing_AccessPanel", M["pale"], cover_node, sharp_angle=30)
+            rehang(cover_node, node)
         for part, builder, mat in (("Skin", skin, "pale"), ("Wall", wall, "wall"), ("Fittings", fit, "pale")):
             hang(builder.build(f"Fairing_{side}_{part}", M[mat], None, sharp_angle=30), node)
         stabilizers(X, M, node, az, side)
@@ -174,7 +179,7 @@ def build_tower(X, M) -> None:
         mesh.build(f"EscapeTower_{name}", M[mat], node, sharp_angle=32)
 
 
-def build() -> str:
+def build(hatch_az: float, hatch_z: float) -> str:
     M = reuse(materials())
     core.build(BASE_Z, M, web_foot=244.0, top=CORE_TOP)
     for letter, az in BOOSTER_AZ.items():
@@ -184,7 +189,7 @@ def build() -> str:
     block_frame = core_frame(BASE_Z + LATTICE_TOP - voskhod_upper.LATTICE_TOP)
     voskhod_upper.build_aft_section(block_frame, M)
     voskhod_upper.build_block_i(block_frame, M, adapter=ADAPTER, engine="RD0110")
-    build_fairing(X, M)
+    build_fairing(X, M, hatch_az, hatch_z)
     build_tower(X, M)
     mark_shells(SHELLS)
     return f"{LENGTH * MM:.3f} m on the pad, {SPAN * MM:.3f} m over the rudders"

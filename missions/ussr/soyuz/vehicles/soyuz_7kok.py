@@ -1,4 +1,4 @@
-"""7K-OK(A) No. 4 in launch configuration. Stations in mm from the aft end.
+"""Early 7K-OK(A) in launch configuration. Stations in mm from the aft end.
 See the flight's spacecraft.md for the sources of the envelopes and the estimated fittings.
 """
 
@@ -11,6 +11,7 @@ import srlib
 from srlib import MeshBuilder, bore, frame, group, mark_shells, material
 
 MM = 0.001
+BOARDING_HATCH_AZIMUTH, BOARDING_HATCH_STATION = -90, 5740  # degrees in the XY plane, mm above the spacecraft aft
 DESCENT = [(500, 2320), (970, 2420), (1095, 2540), (1100, 2710), (1070, 2990), (985, 3400), (870, 3770), (695, 4080), (470, 4300), (380, 4480)]
 
 
@@ -104,7 +105,27 @@ def port(parent, skin, name, az, z, r, tilt, clear, paints, hatch=False):
     mark_shells(shells)
 
 
-def orbit(paints):
+def cine_camera(parent, paints):
+    """Dark-bodied camera seen in Soyuz 3's broadcast; dimensions and launch stowage are illustrative."""
+    body, fittings, grip = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    box(body, (-620, 42, 5812), (122, 194, 132))
+    box(body, (-626, 69, 5915), (94, 133, 73))
+    box(body, (-669, -34, 5874), (38, 70, 64))
+    lens = frame(metres((-620, -54, 5821)), (0, -1, 0))
+    body.lathe([(0.044, 0), (0.046, 0.060), (0.052, 0.068), (0.054, 0.092), (0.043, 0.092), (0.043, 0.064)], 36, matrix=lens)
+    fittings.lathe([(0.049, 0.018), (0.051, 0.020), (0.051, 0.035), (0.048, 0.040)], 32, matrix=lens)
+    fittings.lathe([(0, 0.073), (0.040, 0.073)], 32, matrix=lens)
+    for x in (-650, -594):
+        rod(grip, (x, 103, 5966), (x, 162, 5966), 8)
+    rod(grip, (-650, 162, 5966), (-594, 162, 5966), 8)
+    # Fabric restraints lay over the camera bay for the launch display.
+    grip.ribbon([metres(p) for p in ((-692, 67, 5741), (-674, 67, 5882), (-582, 67, 5882), (-550, 67, 5741))], (0, 1, 0), 0.022)
+    body.build("BO_CineCamera", paints["dark"], parent)
+    fittings.build("BO_CineCameraLens", paints["alloy"], parent)
+    grip.build("BO_CineCameraRestraints", paints["back"], parent)
+
+
+def orbit(paints, *, broadcast_room=False):
     module = group("OrbitalModule")
     # Two hemispheres on a 300 mm belt. Their ideal poles lie at 4480 and 6980.
     lower = [(1100 * math.cos(math.radians(a)), 5580 + 1100 * math.sin(math.radians(a))) for a in range(-70, 1, 5)]
@@ -112,7 +133,7 @@ def orbit(paints):
     skin = insulation(module, "BO_Gores", lower + upper, paints, 16)
     collar = surface(module, "BO_TransferNeck", paints["alloy"], [(369, 4455), (390, 4495), (384, 4552), (373, 4565)])
     mark_shells([collar.name])
-    port(module, skin, "BO_SideHatch", -90, 5740, 1098, 0, 320, paints, hatch=True)
+    port(module, skin, "BO_SideHatch", BOARDING_HATCH_AZIMUTH, BOARDING_HATCH_STATION, 1098, 0, 320, paints, hatch=True)
     for az in (20, 150):
         port(module, skin, "BO_Window" + str(az), az, 5940, 1095, 4, 110, paints)
     rails = MeshBuilder()
@@ -134,8 +155,17 @@ def orbit(paints):
                 rod(handles, (478, y - 49, z + 55), (478, y + 49, z + 55), 9)
         bench.build("BO_StowageBench", paints["tape"], module)
         lockers.build("BO_Sideboard", paints["white"], module)
-        fronts.build("BO_LockerFronts", paints["back"], module)
+        # Beregovoy remembered a sideboard finished to resemble mahogany and a separate worktable.
+        finish = material("soyuz-mahogany-finish", (0.23, 0.095, 0.047), roughness=0.61) if broadcast_room else paints["back"]
+        fronts.build("BO_LockerFronts", finish, module)
         handles.build("BO_LockerPulls", paints["alloy"], module)
+        if broadcast_room:
+            desk = MeshBuilder()
+            box(desk, (413, -390, 5390), (271, 330, 28))
+            for y in (-525, -255):
+                rod(desk, (522, y, 5240), (329, y, 5379), 13)
+            desk.build("BO_Worktable", finish, module)
+            cine_camera(module, paints)
     probe = group("DockingProbe")
     surface(probe, "SSVP_ClosedCompartment", paints["foil"], [(777, 6656), (773, 6690), (539, 6920), (548, 6952), (548, 6978), (0, 6978)])
     surface(probe, "SSVP_Face", paints["alloy"], [(537, 6968), (557, 6968), (557, 6980), (510, 6980), (510, 6970)])
@@ -173,6 +203,39 @@ def orbit(paints):
     pins = MeshBuilder()
     rod(pins, (-80, -8, 0), (80, -8, 0), 26)
     pins.build("Igla_HingePin", paints["foil"], boom)
+
+
+def rendezvous_lights(paints):
+    """The upper steady and lower flashing pairs from Kamanin's 29 October 1968 diary."""
+    node = group("RendezvousLights")
+    housing, lens, mount = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    glazing = material("soyuz-signal-lens", (0.76, 0.72, 0.61), 0.08, 0.19)
+    # Exact stations are unknown; all four need a direct line of sight from the target ahead.
+    for az in (45, 135, 225, 315):
+        axis = polar(0.28, az, 0.96)
+        on_hull = metres(polar(880, az, 6570))
+        face = frame(on_hull, axis)
+        bracket = frame(on_hull, polar(0.85, az, 0.52))
+        mount.box((0.144, 0.126, 0.066), bracket)
+        housing.lathe([(0.047, -0.017), (0.057, 0), (0.053, 0.083), (0.050, 0.092), (0.042, 0.092)], 32, matrix=face)
+        lens.lathe([(0.042, 0.088), (0.039, 0.099), (0.024, 0.103), (0, 0.105)], 28, matrix=face)
+    mark_shells(
+        [
+            housing.build("BO_SignalLampBodies", paints["dark"], node).name,
+            lens.build("BO_SignalLampLenses", glazing, node).name,
+            mount.build("BO_SignalLampBrackets", paints["alloy"], node).name,
+        ]
+    )
+
+
+def infrared_vertical(paints):
+    """GCTC's 7K-OK cutaway callout 14. The short sideways housing is reproduced by eye."""
+    node = group("InfraredVertical")
+    sensor = frame(metres((0, -1050, 1230)), (0, -1, -0.16))
+    surface(node, "PAO_InfraredVerticalMount", paints["white"], [(154, -28), (152, 6), (120, 49), (103, 54)], sensor, 36)
+    surface(node, "PAO_InfraredVerticalHousing", paints["dark"], [(105, 52), (99, 75), (75, 228), (69, 239), (52, 239), (52, 215)], sensor, 36)
+    optics = material("soyuz-infrared-optic", (0.19, 0.10, 0.072), 0.37, 0.2)
+    surface(node, "PAO_InfraredVerticalOptic", optics, [(51, 219), (42, 225), (0, 226)], sensor, 36)
 
 
 def descent(paints):
@@ -286,14 +349,17 @@ def wing(side, sign, paints):
     yoke.build("Solar" + side + "Yoke", paints["alloy"], root)
 
 
-def build():
+def build(pilot=None, *, october_1968=False):
     import soyuz_cabin
 
     paints = palette()
     service(paints)
     descent(paints)
-    orbit(paints)
+    orbit(paints, broadcast_room=october_1968)
+    if october_1968:
+        rendezvous_lights(paints)
+        infrared_vertical(paints)
     wing("Left", -1, paints)
     wing("Right", 1, paints)
-    soyuz_cabin.build()
+    soyuz_cabin.build(pilot, hand_controls=october_1968)
     return "7.600 m aft end to probe tip, 6.980 m body, 2.720 m aft skirt"

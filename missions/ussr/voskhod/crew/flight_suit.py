@@ -35,6 +35,7 @@ class Wearer:
     stature: float = 170.0
     breadth: float = 1.0  # distances from the midline, beside figurelib's man of 1.80 m carried to this stature
     girth: float = 0.97  # every section's radii, beside the same man
+    contrasting_headset: bool = False  # the grey lower cap and phones seen on Beregovoy
 
 
 KOMAROV = Wearer("Komarov")
@@ -93,6 +94,7 @@ def materials() -> dict:
         # suit kept at Kaluga and the colour frames from the cabin: estimated
         "wool": m("suit-wool-grey", (0.14, 0.15, 0.17), 0.0, 0.92),
         "cap": m("cap-cloth-white", (0.84, 0.83, 0.79), 0.0, 0.8),
+        "lower_cap": m("cap-cloth-olive", (0.17, 0.18, 0.15), 0.0, 0.76) if WEARER.contrasting_headset else None,
         "skin": m("skin", (0.62, 0.42, 0.33), 0.0, 0.65),
         "eye": m("eye-white", (0.80, 0.79, 0.75), 0.0, 0.35),
         "hair": m("hair-brown", (0.10, 0.07, 0.05), 0.0, 0.8),
@@ -142,7 +144,15 @@ def build_headset(M: dict) -> None:
             return True
         return opening(phis[i] + TAU / (2 * n), (lifts[j] + lifts[j + 1]) / 2) > 1.04
 
-    skin(cap, rows, hc, closed=True, keep=solid)
+    lower_cap = MeshBuilder()
+    if WEARER.contrasting_headset:
+        # The 1968 footage shows a white crown and olive-grey from the temples down.
+        seam = math.radians(28)
+        skin(cap, rows, hc, closed=True, keep=lambda j, i: lifts[j] >= seam and solid(j, i))
+        skin(lower_cap, rows, hc, closed=True, keep=lambda j, i: lifts[j] < seam and solid(j, i))
+    else:
+        skin(cap, rows, hc, closed=True, keep=solid)
+    binding = lower_cap if WEARER.contrasting_headset else cap
 
     def edge(psi: float, rho: float = 1.0) -> tuple[float, float]:
         f = rho * (1 + squareness(psi, 3.0))
@@ -151,7 +161,7 @@ def build_headset(M: dict) -> None:
     psis = [TAU * i / n - TAU / 4 for i in range(n)]
     # the opening's bound edge, true to the line where the grid of the cap is cut in steps, and turned in to the face
     skin(
-        cap,
+        binding,
         [
             [cap_point(*edge(psi, rho), off) for psi in psis]
             for rho, off in ((0.93, -0.9), (0.97, 0.12), (1.0, 0.3), (1.1, 0.3), (1.17, 0.05), (1.2, -0.3))
@@ -160,7 +170,7 @@ def build_headset(M: dict) -> None:
         closed=True,
     )
     # under the cap's lower edge, a band that closes it against the neck
-    skin(cap, [[cap_point(p, low, off) for p in phis] for off in (0.0, -1.6)], hc, closed=True, flip=True)
+    skin(binding, [[cap_point(p, low, off) for p in phis] for off in (0.0, -1.6)], hc, closed=True, flip=True)
     for sx in (1, -1):  # an earphone in a round cup over each ear, and the chin strap between them
         at = cap_point(sx * math.radians(96), math.radians(-12), 0.1)
         out = (at - hc).normalized()
@@ -177,7 +187,9 @@ def build_headset(M: dict) -> None:
 
     emit(head, "Helmet_Head", M["skin"], g)
     emit(cap, "Helmet_Cap", M["cap"], g)
-    emit(phones, "Helmet_Earphones", M["cap"], g, sharp_angle=30)
+    if lower_cap.verts:
+        emit(lower_cap, "Helmet_LowerCap", M["lower_cap"], g)
+    emit(phones, "Helmet_Earphones", M["lower_cap"] if WEARER.contrasting_headset else M["cap"], g, sharp_angle=30)
     emit(strap, "Helmet_ChinStrap", M["strap"], g)
     emit(dark, "Helmet_MicrophoneBooms", M["dark"], g, sharp_angle=30)
     emit(mics, "Helmet_Microphones", M["microphone"], g, sharp_angle=30)

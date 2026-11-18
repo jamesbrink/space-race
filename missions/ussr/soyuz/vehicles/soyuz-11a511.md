@@ -35,6 +35,7 @@ The type survey [«Первые Союзы», pp. 82–83](https://epizodsspace.
 | Block I body | 6,745 mm long, 2,660 mm diameter | **Documented**, E. The stage's exterior, skirt and engines use the inherited [Voskhod Block I](../../voskhod/vehicles/voskhod-11a57.md) geometry |
 | Block I adapter | 650 mm | **Estimated** from E's narrow band under the payload, including the support for its fairing |
 | Fairing | foot at 35,695 mm, cylinder 2,920 mm across, shoulder at 43,500 mm, cone ends at 45,250 mm | **Estimated** off E and adjusted to enclose the model's launch-stowed spacecraft |
+| Fairing access cover | 41,435 mm from the nozzle datum | **Estimated**, directly outside the model's orbital boarding hatch, which is at 5,740 mm above the spacecraft aft. The cover's outline is illustrative |
 | Launch escape tower | 4,663 mm from fairing lip to tip | **Derived** from the estimated fairing end and documented overall height. The broad shrouded base, central stalk and dark ring below the collar are **estimated** from Z and E |
 | Liftoff thrust | 411.1 tf | **Documented**, S. This is a historical figure for the type |
 
