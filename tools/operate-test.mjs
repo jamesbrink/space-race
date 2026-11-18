@@ -9,6 +9,8 @@
 //   - the walk bar names what is held and its travel, which changes while it runs and stops when it is let go
 //   - E (at 390, the bar's Done) lets go, and the view is back where it was before Operate was taken
 //   - with Motion off the camera goes there at once (a cut), and comes back at once
+//   - with the keys and the mouse captured, the first Escape only frees the mouse (the work goes on; the wheel shuts),
+//     and the next lets go of the controls, still on foot
 //   node tools/operate-test.mjs [url] [--only <regex of case names>] [--shots <dir>]      (default url: http://localhost:5180/)
 // --shots writes a still before Operate is taken and one mid-travel for every case, with the page's panels on.
 import { mkdirSync } from 'node:fs';
@@ -318,6 +320,52 @@ for (const site of SITES)
         await page.waitForTimeout(150);
         const gone = apart(before, await page.evaluate(pose));
         check(gone.metres < 0.06 && gone.degrees < 2, `and back at once (${gone.metres.toFixed(3)} m, ${gone.degrees.toFixed(2)} degrees)`);
+      }
+      // Escape with the mouse captured (walking.md, "Escape frees the mouse first"): worked by hand, the first Escape only
+      // frees the mouse and the work goes on, and the next lets go of the controls, still on foot; with the wheel open, the
+      // first shuts it as a menu, the mouse free. (Headless Chrome gives the page the key and lets nothing go: the walker
+      // lets it go itself, as a desktop browser would.)
+      if (input === 'keys') {
+        const state = () =>
+          page.evaluate(() => ({
+            locked: document.pointerLockElement === document.querySelector('#stage'),
+            working: document.querySelector('.walkbar .work')?.hidden === false,
+            wheel: document.querySelector('.wheel')?.hidden === false,
+            active: window.sr.stage.walk.active,
+          }));
+        const capture = () => page.evaluate(() => document.querySelector('#stage').requestPointerLock());
+        await capture();
+        await page.keyboard.press('e');
+        await page.waitForTimeout(400);
+        await page.keyboard.press(String(digit));
+        await page.waitForTimeout(600);
+        const w0 = await state();
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(400);
+        const w1 = await state();
+        check(
+          w0.locked && w0.working && w1.active && w1.working && !w1.locked,
+          `worked with the mouse captured, the first Escape frees the mouse and the work goes on (captured ${w0.locked}, then working ${w1.working}, free ${!w1.locked})`,
+        );
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(600);
+        const w2 = await state();
+        check(
+          w2.active && !w2.working,
+          `the next Escape lets go of the controls, still on foot (working ${w2.working}, on foot ${w2.active})`,
+        );
+        await capture();
+        await page.waitForTimeout(200);
+        await page.keyboard.press('e');
+        await page.waitForTimeout(400);
+        const w3 = await state();
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(400);
+        const w4 = await state();
+        check(
+          w3.wheel && w3.locked && !w4.wheel && !w4.locked && w4.active,
+          `the wheel open with the mouse captured, the first Escape shuts it and frees the mouse, still on foot (open ${w3.wheel}, captured ${w3.locked}; then open ${w4.wheel}, captured ${w4.locked}, on foot ${w4.active})`,
+        );
       }
       if (errors.length) check(false, `the page threw: ${errors[0]}`);
       await context.close();
