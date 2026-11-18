@@ -25,7 +25,7 @@ import { studio } from './studio.ts';
 import { checkUnits } from './units.ts';
 import { uLast } from './overlay.ts';
 import { newPlace } from './programs.ts';
-import { WeatherMap, weatherUniforms } from './weathermap.ts';
+import { WeatherMap } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
 export interface Backdrop {
@@ -947,7 +947,11 @@ export class Settings {
     places.delete(place);
     // (what every place reads alike stays: its makers keep it, and the next place has it made for its own day)
     const keep = new Set<THREE.Texture>();
-    for (const shared of [atmosphereUniforms, weatherUniforms, uLast])
+    if (setting.weather) {
+      keep.add(setting.weather.uniforms.tWeather.value);
+      keep.add(setting.weather.uniforms.tRecovery.value);
+    }
+    for (const shared of [atmosphereUniforms, uLast])
       for (const u of Object.values(shared)) if ((u.value as THREE.Texture | null)?.isTexture) keep.add(u.value as THREE.Texture);
     for (const o of [setting.backdrop.scene, setting.floor, ...setting.scenery, setting.globe?.group])
       if (o) disposeTree(o, { keep, renderer: this.renderer });

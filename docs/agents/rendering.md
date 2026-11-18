@@ -740,8 +740,8 @@ JavaScript heap and 125 MB of decoded pictures.
   viewer/dispose.ts). What every place reads alike (the atmosphere's tables, the clouds' march) stays with whoever
   made it. A place's air and weather are its setting's (`Setting.air`: air.ts `PlaceAir`, its clouds' drift and
   churn; `Setting.weather`: weathermap.ts `WeatherMap`, whose listeners stop with the function `onArrive` returns or
-  all at once when it goes); what the shaders read of them are slots shared by reference (`uCloudDrift` and its
-  fellows in three's uniform library, `weatherUniforms`), which the place on the stage writes. The air a place
+  all at once when it goes). The globe reads its setting’s weather uniforms directly. The cloud pass binds that same map
+  when its stage changes settings. Three’s uniform library shares `uCloudDrift` and its fellows by reference. The air a place
   installs in three's chunks is that day's, put in place of the last's. `pnpm test:flights` holds each place, after the
   first round, to what it held the round before.
 - **A lost context is not a dead page** (`viewer/lost.ts`). `webglcontextlost` on a stage's canvas stops its loop for

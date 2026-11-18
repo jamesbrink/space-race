@@ -19,7 +19,7 @@ import { fieldAs } from './field.ts';
 import { uOrigin } from './origin.ts';
 import { type Day, HIGH_HEIGHT } from './day.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
-import { type WeatherMap, weatherUniforms } from './weathermap.ts';
+import { type WeatherMap, weatherSlots } from './weathermap.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 
 /** The layer the veils are drawn again on (nothing else uses it): see `drawVeils`. */
@@ -1497,6 +1497,7 @@ export class CloudPass extends Pass {
   });
   /** The pass of their own, where the output has not adopted them: made for the day when it is known (`dress`). */
   private composite: THREE.RawShaderMaterial | null = null;
+  private mapSlots = weatherSlots();
   private readonly uniforms = {
     tDepth: { value: null as THREE.Texture | null },
     uProjInv: { value: new THREE.Matrix4() },
@@ -1540,7 +1541,7 @@ export class CloudPass extends Pass {
     uAbove: { value: 0 },
     uVeilLeft: { value: 1 },
     uVeilGlow: { value: new THREE.Color(0, 0, 0) },
-    ...weatherUniforms,
+    ...this.mapSlots,
     ...atmosphereUniforms,
   };
   /** The Sun's light on the marched cumulus: the scene's, through whatever high cloud the record has over the site (air.ts: veilLightUniform). */
@@ -1581,6 +1582,13 @@ export class CloudPass extends Pass {
     this.air = air;
     this.weather = weather;
     this.unweather?.();
+    this.mapSlots = weather?.uniforms ?? weatherSlots();
+    // The bake and output keep their uniform dictionaries when the stage changes settings.
+    // Bind the new setting's slots by reference so uploads, clock seeks and disposal reach the compiled materials.
+    Object.assign(this.uniforms, this.mapSlots);
+    for (const material of [this.bakeMaterial, this.composite, this.output?.material]) {
+      if (material) Object.assign(material.uniforms, this.mapSlots);
+    }
     this.unweather =
       weather?.onArrive(() => {
         this.stale = true;
@@ -1735,7 +1743,7 @@ export class CloudPass extends Pass {
     const air = this.air;
     const clouds = air?.clouds;
     // (a day with a deck or high cloud and no cumulus: the sheets are laid over the frame, and nothing is marched)
-    const recovery = air?.day?.recovery && weatherUniforms.uRecovery.value;
+    const recovery = air?.day?.recovery && this.mapSlots.uRecovery.value;
     const sheets = air?.day != null && (air.day.deck.cover > 0 || (air.day.high.cover ?? 0) > 0 || Boolean(recovery));
     const fog = this.scene.fog as THREE.FogExp2 | null;
     this.uniforms.uClouds.value = 0;
@@ -2085,7 +2093,7 @@ export class CloudPass extends Pass {
     const b = this.baked;
     // (and again when the weather's map arrives, or the clouds have drifted 4 km over it: the map is fixed to the Earth)
     const drift = cloudUniform.value;
-    const recovery = Math.round(12 * weatherUniforms.uRecovery.value) / 12;
+    const recovery = Math.round(12 * this.mapSlots.uRecovery.value) / 12;
     if (
       b &&
       this.bakedRecovery === recovery &&
@@ -2105,7 +2113,7 @@ export class CloudPass extends Pass {
       this.bakeMaterial = raw(bakeShader(clouds, this.air?.day), {
         uCorner: { value: new THREE.Vector2() },
         uBakeDrift: { value: new THREE.Vector2() },
-        ...weatherUniforms,
+        ...this.mapSlots,
       });
       this.reduce.uniforms.uOccupied!.value = (BELOW + reaches(SIDE_PER_SIZE * clouds.size)) / RANGE - 0.5 / 255;
     }
@@ -2169,6 +2177,7 @@ export class CloudPass extends Pass {
   }
 
   dispose(): void {
+    this.unweather?.();
     for (const t of [this.low, ...this.history, ...this.fine, this.veil, this.field, this.cells, this.row, this.clearAir]) t.dispose();
     this.uniforms.tBillows.value?.dispose();
     this.uniforms.tDetail.value?.dispose();

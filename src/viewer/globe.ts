@@ -40,7 +40,7 @@ import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
-import { type WeatherMap, weatherUniforms } from './weathermap.ts';
+import { type WeatherMap, weatherSlots } from './weathermap.ts';
 
 /**
  * GLSL: the end of `globeShade`: what the day's two sheets leave of the Sun's light at a point of the globe, taken
@@ -626,7 +626,7 @@ export class Globe {
       uGlobePixel: { value: 0.0007 },
       ...regionUniforms('Near'),
       ...regionUniforms('Wide'),
-      ...weatherUniforms,
+      ...(weather?.uniforms ?? weatherSlots()),
       ...atmosphereUniforms,
       // the relief and the land's colours (tools/globe-surface.mjs): until they arrive, the deepest sea (the relief's channel reads nothing) and the one green
       uGlobeColour: { value: empty(LAND.clone().convertLinearToSRGB(), THREE.SRGBColorSpace) },
