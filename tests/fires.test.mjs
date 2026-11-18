@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { PerspectiveCamera, Scene } from 'three';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { flight as vostok1 } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
@@ -13,8 +14,9 @@ import { firesOf, orbitalFlown } from '../src/sim/run.ts';
 import { sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
+import { ExhaustPass } from '../src/viewer/exhaust.ts';
 import { clusterOf, exitsOf, fireLevel, jetEdge, mergeOf, shedLevel } from '../src/viewer/fires.ts';
-import { plumeShape } from '../src/viewer/plume.ts';
+import { Plume, plumeShape } from '../src/viewer/plume.ts';
 import { P0 } from '../src/world/bodies.ts';
 
 const A7 = A7_NOZZLE.exit.value / P0;
@@ -50,6 +52,32 @@ function rd107(cx = 0, cz = 0) {
   }
   return points;
 }
+
+test('two simultaneous fires keep their own shape and bounds in the render pass', () => {
+  const scene = new Scene();
+  const pass = new ExhaustPass(scene, new PerspectiveCamera(), { mark: { texture: {} } });
+  const fires = [new Plume(0.5, 0.2), new Plume(0.3, 0.8)];
+  try {
+    for (const f of fires) {
+      f.mesh.position.z = 1e4; // behind the camera, so no WebGL draw is needed
+      scene.add(f.mesh);
+      f.set(1, 0.6, 30, 1);
+    }
+    scene.updateMatrixWorld();
+    pass.render();
+    const uniforms = pass.march.uniforms;
+    assert.equal(uniforms.uJets.value, 2);
+    assert.notEqual(fires[0].shape().width, fires[1].shape().width);
+    for (const [i, f] of fires.entries()) {
+      const { width, length, cell, air } = f.shape();
+      assert.deepEqual(uniforms.uJetShape.value[i].toArray(), [width, length, cell, air]);
+      assert.equal(uniforms.uJetB.value[i].y, (length + 0.2) * f.radius);
+    }
+  } finally {
+    for (const f of fires) f.dispose();
+    pass.dispose();
+  }
+});
 
 test("an engine's chambers are found in its geometry: each bell apart from the others seen from below, its exit its lowest ring", () => {
   const exits = exitsOf(rd107(2.81, 0));
