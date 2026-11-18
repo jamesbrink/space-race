@@ -29,9 +29,9 @@ function targetParts(unit: string) {
       detail: (
         {
           '5003':
-            'Collins reached this adapter on the dormant Gemini VIII target and brought its exposed micrometeorite collector back to his spacecraft.',
+            'Collins reached this adapter on the dormant Gemini VIII target and brought its micrometeorite collector back to his spacecraft. The package was closed; only its four outer panels had been exposed.',
           '5005':
-            'Young docked with this collar before firing the Agena engine. Its S-26 sensors measured the wake left by the vehicle in the ionosphere.',
+            'Young docked with this collar before firing the Agena engine. Its S-26 sensors measured the wake the Gemini spacecraft left in the ionosphere.',
           '5006':
             'Gordon retrieved a 100-foot tether and clamp from the container on this collar and attached the tether to the spacecraft’s index bar.',
           '5001':

@@ -143,7 +143,7 @@ export const pad = lc19Pad({
     adds: {
       Erector: {
         detail:
-          'The Titan and spacecraft stood free after the erector was lowered. The terminal hold at T−3 was called off after 2 min 21 sec to reach the first-orbit rendezvous window.',
+          'The Titan and spacecraft stood free after the erector was lowered. The terminal hold at T−3 was ended after 2 min 21 sec of its scheduled six, and liftoff came inside the 2-second window for a first-orbit rendezvous.',
       },
       ThrustMount: { facts: [['Liftoff', '09:42:26.546 EST (documented)']] },
     },
