@@ -159,6 +159,7 @@ const table = (name: string, pick: (f: FlameLook) => Rgb): string =>
 
 /** The shader's tables: each flame's colours, by `kindOf`. */
 export const FLAME_TABLES = [
+  table('FLAME_LOOK', (f) => [f.luminous, f.opacity, f.body]),
   table('FLAME_COOL', (f) => f.cool),
   table('FLAME_WARM', (f) => f.warm),
   table('FLAME_HOT', (f) => f.hot),

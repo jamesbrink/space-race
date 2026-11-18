@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
+import { smoothstep } from '../util/math.ts';
 import type { Air } from './air.ts';
 import { hash2 } from './field.ts';
 import { type Cluster, gasEdge, jetEdge, mergeOf } from './fires.ts';
+import { FLAME_TABLES, GAS_TABLES } from './flames.ts';
 import { uOrigin } from './origin.ts';
-import { FLAME_TABLES, FLAMES, GAS_TABLES, KINDS } from './flames.ts';
 import type { Blast } from './trail.ts';
-import { smoothstep } from '../util/math.ts';
 
 /**
  * The engine's fire and the smoke it leaves, as volumes. This one part of the picture is meant to
@@ -267,23 +267,21 @@ const u = {
   uAir: { value: new THREE.Vector3(0, 1400, 0) },
   /** The fires: the first's exit radius, whether any burns (1) or none (0), how much air there is (0 to 1), the clock's seconds. */
   uFlame: { value: new THREE.Vector4(1, 0, 1, 0) },
-  /** Their shape, which the air gives all of them alike: how wide the free jet swells and how long it is (exit radii), a shock cell's length (exit radii). */
-  uShape: { value: new THREE.Vector4(1, 30, 3, 0) },
   /** How many fires burn (at most JETS), and each one's: its exit from the eye and its radius; its way and how hard its main chambers burn. */
   uJets: { value: 0 },
   uJetP: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
   uJetA: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
   /** Its exit's own x (its chambers lie along it and along way × x), and how far its eddies have run, metres. */
   uJetX: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
-  /** Its first chamber in uChamber; its main chambers and steering chambers (main + 16 steering; 0: one round exit); how hard the steering ones burn; their exit radius over its. */
+  /** Its first chamber in uChamber; its main chambers and steering chambers (main + 16 steering + 256 fuel kind); how hard the steering ones burn; their exit radius over its. */
   uJetK: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
   /**
    * The radius about its axis it can reach and the length of the cylinder it lies in (from a fifth of its radius
    * before the exit), metres; where its main chambers have merged into it, from and to, in a main chamber's radii.
    */
   uJetB: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
-  /** What it burns (flames.ts): its light against the alcohol flame's, how much it hides, how much its body glows, and its entry in the tables. */
-  uJetF: { value: Array.from({ length: JETS }, () => new THREE.Vector4(1, 1, 1, 0)) },
+  /** Each fire's width, visible length and cell length in exit radii, and how much air it burns in. */
+  uJetShape: { value: Array.from({ length: JETS }, () => new THREE.Vector4()) },
   /** Each chamber's place across its exit, over the exit's radius: two to a vector, the main chambers of a fire first. */
   uChamber: { value: Array.from({ length: CHAMBERS / 2 }, () => new THREE.Vector4()) },
   uBright: { value: 1 },
@@ -489,11 +487,11 @@ const MARCH = /* glsl */ `
   uniform float uGrain;      // radians a pixel of it
   uniform vec3 uSun, uSunLight, uSkyLight, uGroundLight, uHaze, uAir;
   uniform vec3 uGlowAt, uGlow;
-  uniform vec4 uFlame, uShape;
+  uniform vec4 uFlame;
   uniform float uBright;
   #define JETS ${JETS}
   uniform int uJets;
-  uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS], uJetF[JETS];
+  uniform vec4 uJetP[JETS], uJetA[JETS], uJetX[JETS], uJetK[JETS], uJetB[JETS], uJetShape[JETS];
   ${FLAME_TABLES}
   uniform vec4 uChamber[${CHAMBERS / 2}];
   #define GASES ${GAS_JETS}
@@ -529,9 +527,9 @@ const MARCH = /* glsl */ `
   // ---- the fire -------------------------------------------------------------------------------------------------
   // The jet's edge x exit radii aft, in exit radii: the free jet swells to its width as the air lets it, and where there
   // is air the mixing layer spreads slowly outward.
-  float edge(float x) {
-    float w = uShape.x;
-    return 1.0 + (w - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * w))) + 0.085 * max(x, 0.0) * uFlame.z;
+  float edge(float x, vec4 shape) {
+    float w = shape.x;
+    return 1.0 + (w - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * w))) + 0.085 * max(x, 0.0) * shape.w;
   }
   // the fire's colour by how hot it is, 0 to 1 and over, from what it burns (flames.ts): orange where it is going out,
   // warm, hottest (alcohol burns pale yellow, nearly white; kerosene's soot yellow-white; the hydrazines peach)
@@ -543,16 +541,17 @@ const MARCH = /* glsl */ `
   // a jet from an exit of radius R along A, burning at on, its eddies run flow metres aft. near: a cluster's own chambers
   // there (chambers()): how far out q is against the nearest one's edge, its bright core, and how far they have merged
   // into this jet (1: wholly, as one round exit always is).
-  // F: what it burns (uJetF): its light against alcohol's, how much it hides, how much its body glows, its entry.
-  vec4 fire(vec3 q, float R, float on, vec3 A, float flow, vec3 near, vec4 F) {
-    int kind = int(F.w + 0.5);
-    float air = uFlame.z;
+  vec4 fire(vec3 q, float R, float on, vec3 A, float flow, vec3 near, int j) {
+    int kind = int(uJetK[j].y) / 256;
+    vec3 F = FLAME_LOOK[kind];
+    vec4 shape = uJetShape[j];
+    float air = shape.w;
     float x = dot(q, A) / R;
     vec3 radial = q / R - A * x;
     float r = length(radial);
-    float L = uShape.y * mix(0.35, 1.0, on);
+    float L = shape.y * mix(0.35, 1.0, on);
     if (x < -0.2 || x > L) return vec4(0.0);
-    float b = edge(x), along = x / L;
+    float b = edge(x, shape), along = x / L;
     // eddies: noise drawn out along the jet and run aft with the clock, bigger as the jet widens
     vec3 c = radial * (0.3 / sqrt(b)) + A * (x * 0.13 - flow / (7.7 * R));
     // (three octaves of smooth noise keep near their middle: spread out to the whole of 0 to 1)
@@ -564,7 +563,7 @@ const MARCH = /* glsl */ `
     float rf = max(b * taper * (1.0 + (n - 0.5) * 1.1 * rough * (0.15 + 0.85 * air)), 0.05);
     float rr = mix(near.x, r / rf, near.z);   // (a cluster's own chambers at its exit, merging aft into one jet)
     // the same gas over more area as the free jet swells: so much less light from each metre of it
-    float jet = 1.0 + (uShape.x - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * uShape.x)));
+    float jet = 1.0 + (shape.x - 1.0) * (1.0 - exp(-max(x, 0.0) / (1.5 * shape.x)));
     float gain = pow(jet, -1.5);
     float lit = smoothstep(-0.2, 0.05, x);
     // hottest on the axis at the exit, cooling aft and outward; torn into tongues toward the tail
@@ -572,7 +571,7 @@ const MARCH = /* glsl */ `
     heat *= mix(1.0, smoothstep(0.22, 0.6, fine + 0.3 * (1.0 - along)), rough * air);
     // shock diamonds: where the jet's own waves cross on the axis the gas is squeezed hot again, and between them it
     // is stretched cool; fainter each cell, and only while there is air to hold the jet in
-    float cell = x / uShape.z;
+    float cell = x / shape.z;
     float wave = clamp(0.5 + 0.5 * cos(6.28318 * (cell - 0.62)), 0.0, 1.0);   // (kept in range: it is raised to a power below)
     float held = exp(-0.4 * cell) * step(0.1, cell) * air * air;
     float loz = r / (b * (0.2 + 0.4 * (1.0 - wave)));
@@ -605,7 +604,7 @@ const MARCH = /* glsl */ `
     vec3 A = uJetA[j].xyz, X = uJetX[j].xyz, Z = cross(A, X);
     vec2 p = vec2(dot(q, X), dot(q, Z)) / uJetP[j].w;
     float k = sqrt(float(nm));   // (the jet's radius is their summed area's: over one chamber's, the root of how many)
-    float xc = x * k, bc = edge(xc);
+    float xc = x * k, bc = edge(xc, uJetShape[j]);
     float rr = 1e3, core = 0.0;
     for (int i = 0; i < 8; i++) {
       if (i >= nm) break;
@@ -614,7 +613,7 @@ const MARCH = /* glsl */ `
       core = max(core, exp(-d * d * 1.6));
     }
     float m0 = uJetB[j].z;
-    return vec3(rr, core * exp(-xc / (3.0 + 2.0 * uFlame.z)), smoothstep(m0, m0 * (3.0 / 0.7) + 1.0, xc));
+    return vec3(rr, core * exp(-xc / (3.0 + 2.0 * uJetShape[j].w)), smoothstep(m0, m0 * (3.0 / 0.7) + 1.0, xc));
   }
   // Every fire along the ray, marched together: each step is as long as the jets it lies in ask, and clear air between
   // them is crossed in strides of how far off the nearest is. One jet alone is marched as it always was.
@@ -633,7 +632,6 @@ const MARCH = /* glsl */ `
       }
     }
     if (t1 <= t) return l;
-    float L = uShape.y;
     float T = 1.0, weight = 0.0;
     vec3 col = vec3(0.0);
     int most = uJets > 1 ? 96 : 72;
@@ -647,9 +645,11 @@ const MARCH = /* glsl */ `
       for (int j = 0; j < JETS; j++) {
         if (j >= uJets) break;
         vec4 P = uJetP[j], A = uJetA[j], K = uJetK[j];
+        vec4 shape = uJetShape[j];
+        float L = shape.y;
         float R = P.w;
         vec3 q = p - P.xyz;
-        float x = dot(q, A.xyz) / R, r = length(q / R - A.xyz * x), b = edge(x);
+        float x = dot(q, A.xyz) / R, r = length(q / R - A.xyz * x), b = edge(x, shape);
         // a step: an eighth of the jet's breadth there, longer the deeper in (looking along it); outside it, most of the way to its edge
         float dj = 0.11 * max(b, 0.5) * R * grow;
         if (A.w > 0.001) {
@@ -663,12 +663,12 @@ const MARCH = /* glsl */ `
             dsOut = dj;
           }
         }
-        int ns = int((K.y + 0.5) / 16.0);
+        int ns = (int(K.y) / 16) % 16;
         if (ns > 0 && K.z > 0.001) {
           vec3 X = uJetX[j].xyz, Z = cross(A.xyz, X);
           vec2 pp = vec2(dot(q, X), dot(q, Z)) / R;
           int first = int(K.x) + int(mod(K.y + 0.5, 16.0));
-          float xs = x / K.w, bs = edge(xs), rs = K.w * R;
+          float xs = x / K.w, bs = edge(xs, shape), rs = K.w * R;
           float dsS = 0.11 * max(bs, 0.5) * rs * grow;
           for (int s = 0; s < 4; s++) {
             if (s >= ns) break;
@@ -698,12 +698,12 @@ const MARCH = /* glsl */ `
         float R = P.w;
         vec3 q = m - P.xyz;
         if (((inside >> (5 * j)) & 1) == 1) {
-          vec4 f = fire(q, R, A.w, A.xyz, uJetX[j].w, chambers(j, q, dot(q, A.xyz) / R), uJetF[j]);
+          vec4 f = fire(q, R, A.w, A.xyz, uJetX[j].w, chambers(j, q, dot(q, A.xyz) / R), j);
           lum += f.rgb;
           e += f.rgb * (ds / R);
           k += f.a / R;
         }
-        int ns = int((K.y + 0.5) / 16.0);
+        int ns = (int(K.y) / 16) % 16;
         vec3 X = uJetX[j].xyz, Z = cross(A.xyz, X);
         int first = int(K.x) + int(mod(K.y + 0.5, 16.0));
         float rs = K.w * R;
@@ -711,7 +711,7 @@ const MARCH = /* glsl */ `
           if (s >= ns) break;
           if (((inside >> (5 * j + 1 + s)) & 1) == 0) continue;
           vec2 c = chamberAt(first + s) * R;
-          vec4 f = fire(q - X * c.x - Z * c.y, rs, K.z, A.xyz, mod(uFlame.w * ${FLOW.toFixed(1)}, 7.7 * rs * 64.0), vec3(0.0, 0.0, 1.0), uJetF[j]);
+          vec4 f = fire(q - X * c.x - Z * c.y, rs, K.z, A.xyz, mod(uFlame.w * ${FLOW.toFixed(1)}, 7.7 * rs * 64.0), vec3(0.0, 0.0, 1.0), j);
           lum += f.rgb;
           e += f.rgb * (ds / rs);
           k += f.a / rs;
@@ -1194,15 +1194,16 @@ function place(camera: THREE.Camera, scene: THREE.Scene): void {
   if (first) {
     const shape = first.shape();
     u.uFlame.value.set(first.radius, 1, shape.air, first.time);
-    u.uShape.value.set(shape.width, shape.length, shape.cell, 0);
     u.uBright.value = first.bright;
     // (the fires share one light: plume.ts lightFires)
     const g = first.light.matrixWorld.elements;
     u.uGlowAt.value.set(g[12]! - camera.position.x, g[13]! - camera.position.y, g[14]! - camera.position.z);
     u.uGlow.value.copy(first.light.color).multiplyScalar(first.light.intensity / Math.PI);
-    const L = shape.length;
     let chamber = 0;
     fires.forEach((f, j) => {
+      const shape = f.shape();
+      const L = shape.length;
+      u.uJetShape.value[j]!.set(shape.width, L, shape.cell, shape.air);
       const m = f.mesh.matrixWorld.elements;
       const R = f.radius;
       u.uJetP.value[j]!.set(m[12]! - camera.position.x, m[13]! - camera.position.y, m[14]! - camera.position.z, R);
@@ -1237,13 +1238,11 @@ function place(camera: THREE.Camera, scene: THREE.Scene): void {
       }
       u.uJetK.value[j]!.set(
         chamber,
-        main.length + 16 * steering.length,
+        main.length + 16 * steering.length + 256 * f.kind,
         steering.length ? f.steering : 0,
         c && steering.length ? c.steeringRadius / R : 1,
       );
       u.uJetB.value[j]!.set(reach, (L + 0.2) * R, merge, envelope);
-      const look = FLAMES[KINDS[f.kind] ?? 'alcohol-lox'];
-      u.uJetF.value[j]!.set(look.luminous, look.opacity, look.body, f.kind);
       chamber += main.length + steering.length;
     });
   }
@@ -1382,7 +1381,7 @@ export class ExhaustPass extends Pass {
     for (let j = 0; j < u.uJets.value; j++) {
       const P = u.uJetP.value[j]!,
         A = u.uJetA.value[j]!,
-        shape = u.uShape.value;
+        shape = u.uJetShape.value[j]!;
       const R = P.w;
       const half = 0.5 * shape.y * R;
       ball(
