@@ -11,6 +11,8 @@
 //   falls   a drop of this many metres in one frame on the way is meant (a kerb, the last rung): default 0.45; and no leg
 //           may be more than 0.7 s in the air, which is a fall whatever it lands on
 // --shots writes a still from the walker's eyes at the end of every leg.
+// After the routes, one case of its own (`--only Escape` runs it alone): the first Escape frees a captured mouse and the
+// walk goes on, a second leaves (walking.md, "Escape frees the mouse first"; escapeCase says how headless Chrome is driven).
 // The ways are a site's, and walked at any flight from it: each is walked at a reading of the place's slider (`slider`, the
 // hardware where the way wants it), put on the clock by that flight's own morning (its model's `sequence`).
 import { globSync, mkdirSync } from 'node:fs';
@@ -454,7 +456,10 @@ const atOf = (route) => {
   return sequence ? timeAt(sequence, route.slider) : 0;
 };
 const routes = (ROUTES[flown.site?.name] ?? []).filter((r) => !only || new RegExp(only).test(r.name));
-if (!routes.length) {
+/** The case of its own after the routes (escapeCase below): run unless --only names something else. */
+const ESCAPE = 'Escape frees the mouse first, and a second Escape leaves';
+const escaping = Boolean(ROUTES[flown.site?.name]?.length) && (!only || new RegExp(only).test(ESCAPE));
+if (!routes.length && !escaping) {
   console.error(`walk-test: no routes for ${flight}'s site (${flown.site?.name ?? 'none'})${only ? ` matching ${only}` : ''}`);
   process.exit(2);
 }
@@ -608,6 +613,166 @@ for (const [n, route] of routes.entries()) {
   if (!ok) failed++;
   await context.close();
 }
+
+/**
+ * Escape on foot (walking.md, "Escape frees the mouse first"), with the page's panels on show, from where the site's first
+ * route starts. Headless Chrome gives a captured pointer's Escape to the page and lets nothing go itself, so the real key
+ * is heard by the walker, which lets the pointer go as a desktop browser would; a desktop browser lets it go and the page
+ * hears only that, which is driven here by `document.exitPointerLock()` with the page in focus. The window going (alt-tab)
+ * is the same with `document.hasFocus()` answering false.
+ */
+async function escapeCase() {
+  console.log(ESCAPE);
+  const first = ROUTES[flown.site.name][0];
+  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${first.model ?? 'pad'}`, { console: [], timeout: 90000 });
+  await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
+  let bad = 0;
+  const check = (ok, what) => {
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
+    if (!ok) bad++;
+  };
+  const state = () =>
+    page.evaluate(() => {
+      const walk = window.sr.stage.walk;
+      const say = document.querySelector('#ui .notes .say');
+      return {
+        active: walk.active,
+        locked: document.pointerLockElement === document.querySelector('#stage'),
+        at: walk.body.position.toArray(),
+        yaw: walk.yaw,
+        third: walk.third,
+        said: say && !say.hidden ? say.textContent : '',
+        bar: document.querySelector('#ui .walkbar span')?.textContent ?? '',
+      };
+    });
+  const apart = (a, b) => Math.hypot(a.at[0] - b.at[0], a.at[2] - b.at[2]);
+  const hush = () =>
+    page.evaluate(() => {
+      const say = document.querySelector('#ui .notes .say');
+      if (say) say.textContent = '';
+    });
+  // a point on the view that nothing of the page's lies over: a click there is a click on the view
+  const onView = await page.evaluate(() => {
+    const stage = document.querySelector('#stage');
+    for (let y = 0.3; y < 0.75; y += 0.05)
+      for (let x = 0.3; x < 0.75; x += 0.05) {
+        const p = [Math.round(innerWidth * x), Math.round(innerHeight * y)];
+        if (document.elementFromPoint(...p) === stage) return p;
+      }
+    return null;
+  });
+  const walkers = await page.evaluate(() => window.sr.flight.models.filter((m) => m.walker).map((m) => m.id));
+  /** On foot where the first route starts, the mouse captured (by a click on the view, if starting did not capture it). */
+  const onFoot = async (as = walkers[0]) => {
+    await page.evaluate(
+      async ({ as, from }) => {
+        window.sr.stage.enterWalk(as, { x: from[0], y: from[1], z: from[2] });
+        await new Promise((done) => setTimeout(done, 1500));
+      },
+      { as, from: first.from },
+    );
+    if (!(await state()).locked && onView) await page.mouse.click(...onView);
+    await page.waitForTimeout(300);
+    return state();
+  };
+  const press = async (key, ms = 400) => {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(ms);
+    return state();
+  };
+  const hold = async (key, ms) => {
+    await page.keyboard.down(key);
+    await page.waitForTimeout(ms);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(300);
+    return state();
+  };
+  await page.evaluate(async (at) => {
+    const sr = window.sr;
+    sr.stage.setAutoRotate(false);
+    sr.clock.pause();
+    sr.clock.seek(at);
+    await new Promise((done) => setTimeout(done, 4000));
+  }, atOf(first));
+
+  check(onView !== null, `a place on the view to click: ${onView}`);
+  const s0 = await onFoot();
+  check(s0.active && s0.locked, `on foot, the mouse captured (on foot ${s0.active}, captured ${s0.locked})`);
+  check(/frees the mouse/.test(s0.bar), `the walk bar says what Esc does with it captured: "${s0.bar}"`);
+  const s1 = await hold('w', 800);
+  check(apart(s0, s1) > 0.3, `W walks with the mouse captured (${apart(s0, s1).toFixed(2)} m)`);
+  // the first Escape: a real key
+  await hush();
+  const s2 = await press('Escape');
+  check(s2.active, 'the first Escape (the real key): still on foot');
+  check(!s2.locked, 'the first Escape: the mouse is free');
+  check(
+    apart(s1, s2) < 0.05 && Math.abs(s2.yaw - s1.yaw) < 1e-3 && s2.third === s1.third,
+    'the first Escape: where he stood, facing as he faced, nothing reset',
+  );
+  check(/mouse is free/i.test(s2.said) && /click the view/i.test(s2.said) && /Esc leaves/.test(s2.said), `the notes say so: "${s2.said}"`);
+  check(/Click the view/.test(s2.bar), `the walk bar says how to look round again: "${s2.bar}"`);
+  const s3 = await hold('w', 800);
+  check(s3.active && apart(s2, s3) > 0.3, `W walks with the mouse free (${apart(s2, s3).toFixed(2)} m)`);
+  const s4 = await hold('ArrowLeft', 500);
+  check(s4.active && Math.abs(s4.yaw - s3.yaw) > 0.1, `the left arrow turns with the mouse free (${(s4.yaw - s3.yaw).toFixed(2)} rad)`);
+  if (onView) await page.mouse.click(...onView);
+  await page.waitForTimeout(400);
+  const s5 = await state();
+  check(s5.active && s5.locked, `a click on the view captures it again, still on foot (captured ${s5.locked})`);
+  // the first Escape as a desktop browser has it: the pointer let go, and no key
+  await hush();
+  await page.evaluate(() => document.exitPointerLock());
+  await page.waitForTimeout(400);
+  const s6 = await state();
+  check(
+    s6.active && !s6.locked && /mouse is free/i.test(s6.said),
+    "the capture lost (a desktop browser's Escape): still on foot, free, and said",
+  );
+  const s7 = await press('Escape', 1500);
+  check(!s7.active, 'a second Escape, the mouse free, leaves');
+  // the window going is no Escape
+  const s8 = await onFoot();
+  await hush();
+  await page.evaluate(() => {
+    document.hasFocus = () => false;
+    document.exitPointerLock();
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => delete document.hasFocus);
+  const s9 = await state();
+  check(s8.locked && s9.active && !s9.locked && s9.said === '', 'the window going lets the mouse go: still on foot, and nothing said');
+  const s10 = await press('Escape', 1500);
+  check(!s10.active, 'then one Escape leaves, as from any free mouse');
+  // V leaves at once, from either; so does the Exit walk bar
+  const s11 = await onFoot(walkers.at(-1));
+  const s12 = await press('v', 1500);
+  check(s11.locked && !s12.active, 'V leaves at once with the mouse captured');
+  await onFoot(walkers.at(-1));
+  await press('Escape');
+  const s13 = await press('v', 1500);
+  check(!s13.active, 'V leaves at once with the mouse freed');
+  await onFoot();
+  await press('Escape');
+  await page.click('[data-walk-exit]');
+  await page.waitForTimeout(1500);
+  check(!(await state()).active, 'the Exit walk bar leaves with the mouse freed');
+  // never captured: one Escape leaves
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.requestPointerLock = () => Promise.reject(new Error('refused'));
+  });
+  const s14 = await onFoot();
+  const s15 = await press('Escape', 1500);
+  check(s14.active && !s14.locked && !s15.active, 'a capture refused: one Escape leaves');
+  if (errors.length) check(false, `the page threw: ${errors[0]}`);
+  await context.close();
+  return bad;
+}
+let escapeFailed = 0;
+if (escaping) escapeFailed = await escapeCase();
 await browser.close();
-console.log(`walk-test: ${failed ? `${failed} of ${routes.length} routes FAILED` : `ok, ${routes.length} routes, ${legsGone} legs`}`);
+if (escapeFailed) failed++;
+console.log(
+  `walk-test: ${failed ? `${failed} of ${routes.length + (escaping ? 1 : 0)} cases FAILED` : `ok, ${routes.length} routes, ${legsGone} legs${escaping ? ', and Escape' : ''}`}`,
+);
 process.exit(failed ? 1 : 0);

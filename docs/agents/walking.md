@@ -5,10 +5,29 @@ Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 A model with a `walker` entry in `flight.ts` (types.ts: `ModelDef.walker`) is a figure the site
 can be walked as; a flight may have several. The Walk button in that model's section, or a
 double-click on the figure from anywhere, puts the camera at its eyes and lets you walk the site
-(`viewer/onfoot/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). Escape or the Exit walk bar ends
-it and the camera flies back to that section. C (a View button on a touch screen) changes
+(`viewer/onfoot/walk.ts`; `sr.stage.enterWalk(id?)`, `sr.stage.walk`). V or the Exit walk bar ends
+it at once, and so does Escape once the mouse is free (below), and the camera flies back to that section. C (a View button on a touch screen) changes
 between the figure's eyes and over its right shoulder, and the choice is remembered.
 Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, which the stage owns) knows any one flight: keep it that way.
+
+- **Escape frees the mouse first** (`viewer/onfoot/escape.ts`, pure, held to a table by `tests/escape.test.mjs`; keys.ts
+  `foot.free`, then `foot.leave`). A click on the view captures the mouse for looking round (a mouse only: a finger drags).
+  While it is captured the first Escape only lets it go: he stays on foot where he was, through the eyes or over the
+  shoulder, in a couch or at a wheel, nothing reset; the passing notes say "The mouse is free" and the two ways on (a click
+  on the view captures it again, Escape leaves), and the walk bar's line changes with it. W A S D and the arrows still walk
+  and turn with the mouse free. A second Escape, the mouse now free, leaves as before. V and the Exit walk bar leave at once
+  from either. Where the mouse was never captured (a touch screen, a coarse pointer, a capture the browser refused) one
+  Escape leaves. The browser itself takes a captured pointer's Escape and the page may hear only the capture lost, so that
+  is how the first Escape is heard when the page has the focus; a browser that sends the key while still captured
+  (headless Chrome does, and lets nothing go) is answered by letting it go, and a key heard within `ECHO` (0.1 s) of the
+  loss is the same press. The capture lost without the focus (alt-tab, another window) is no Escape: nothing is said, and
+  the next Escape leaves, as from any free mouse, which is what the walk bar then says. A held Escape's repeats count for
+  nothing. With the wheel open the first Escape shuts it as a menu, the mouse going free with it (its own hint says Esc
+  closes it), and the next leaves; with a function worked by hand the work goes on with the mouse free (its readout's keys
+  are buttons), the next Escape lets go of the controls and the one after leaves. In a couch leant to a port, the first
+  Escape frees the mouse and the lean stays; the next comes back from the lean. Nothing else on the page captures the
+  pointer: the gallery's seat and on board in flight turn the head by dragging, and one Escape there is a step back as
+  before (camera.md). `pnpm test:walk` checks it in the page (its "Escape frees the mouse" case).
 
 - **The figure comes from the flight's data.** It starts where the model stands (`position`),
   facing `walker.forward` (the model's own frame) turned by `rotationY`; `walker.eyes` names the

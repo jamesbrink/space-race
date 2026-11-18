@@ -231,7 +231,8 @@ function legendMarkup(f: Flight): string {
         ['mouse', 'look round'],
         keyRow(null, 'foot.act'),
         keyRow(null, 'foot.view'),
-        keyRow(doesOf('foot.leave'), 'walk.go', 'foot.leave'),
+        keyRow(null, 'foot.free'),
+        keyRow(`${doesOf('foot.leave')} (${capsOf('foot.leave')[0]}: once the mouse is free)`, 'walk.go', 'foot.leave'),
         keyRow(null, 'page.bare'),
       ],
       more: [
@@ -1085,8 +1086,8 @@ export class Ui {
       : touch
         ? 'Drag to look · stick walks'
         : captured
-          ? 'Mouse looks · WASD walks · E acts · C view · V or Esc leaves'
-          : 'Click the view to look round · WASD walks · V or Esc leaves';
+          ? `Mouse looks · WASD walks · E acts · C view · ${capsOf('foot.free')[0]} frees the mouse · ${capsOf('walk.go')[0]} leaves`
+          : `Click the view to look round · WASD walks · ${capsOf('walk.go')[0]} or ${capsOf('foot.leave')[0]} leaves`;
   }
 
   /** The diagnostics line: this is an early build, and the numbers are worth having in view. */

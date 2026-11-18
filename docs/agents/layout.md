@@ -217,6 +217,7 @@ src/
   viewer/onfoot/handworks.ts          the functions of a model's parts worked by hand (a tower raised, a jib lowered), held until the script moves the hardware, and their levers
   viewer/onfoot/operate.ts            what a function worked by hand looks like from where it is run, from its moves' data (pure): where it is, will be and can go; how far along it is
   viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the view at the eyes or over the shoulder (the camera put there by camera/foot.ts)
+  viewer/onfoot/escape.ts             what Escape does on foot (pure): a captured mouse is freed first and the walk goes on, the next Escape leaves
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them
   viewer/onfoot/works.ts              things that work when worked: doors (toggles) and lifts, from a part's actions

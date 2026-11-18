@@ -3,6 +3,7 @@ import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
 import { type Driving, type Sounds, silent, type Underfoot } from '../../sound/audio.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
+import { type Holder, onEscape } from './escape.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
 import { G0 } from '../../world/bodies.ts';
 import { is, isTyping, keyOf, keysOf, modified } from '../../util/keys.ts';
@@ -1022,8 +1023,10 @@ export interface WalkHost {
   plantsOut?(at: THREE.Vector3, margin: number): number;
   /** How far from the middle of the site there is anything to walk to, metres. */
   reach(): number;
-  /** The walker wants out (Escape). */
+  /** The walker wants out (Escape with the pointer free). */
   leave(): void;
+  /** Escape has let the captured pointer go and the walk goes on (escape.ts): the page says so, and how to go on. */
+  freed(): void;
   /** The act key (E), or a finger held still on the view: do something with what is being looked at. */
   act(): void;
   /** The view was changed (C): first person, or over the shoulder. */
@@ -1214,6 +1217,8 @@ export class Walker {
   private readonly stickAt = new THREE.Vector2();
   private drag: { id: number; x: number; y: number } | null = null;
   private wasLocked = false;
+  /** When Escape last let the captured pointer go, ms on the events' clock (`Event.timeStamp`): a key heard just after is that press (escape.ts). */
+  private freedAt = Number.NEGATIVE_INFINITY;
   /** The lens the camera had before anyone walked: what it eases back to. */
   private readonly rest: number;
   private moved = true;
@@ -1224,7 +1229,7 @@ export class Walker {
   aimed: Hit | null = null;
   /**
    * Something on the page has taken the controls (a menu is open): the figure stands still, the
-   * mouse goes to `mouse` and not to the head, and Escape goes to `cancel` and does not stop the walk.
+   * mouse goes to `mouse` and not to the head, and Escape goes to `cancel` and does not stop the walk (escape.ts says which Escape).
    * `looks`: the mouse (or a finger's drag) still turns the head, and `mouse` is told first (something
    * worked by hand: the view is the user's again the moment they move it).
    */
@@ -1248,7 +1253,18 @@ export class Walker {
       const key = keyOf(e);
       const typing = isTyping(e);
       if (modified(e) || typing) return;
-      if (is(key, 'foot.leave')) return this.modal ? this.modal.cancel() : this.host.leave();
+      // Escape frees a captured mouse first, and leaves only once it is free (escape.ts)
+      const captured = document.pointerLockElement === canvas;
+      if (is(key, captured ? 'foot.free' : 'foot.leave')) {
+        const since = (e.timeStamp - this.freedAt) / 1000;
+        const answer = onEscape({ lost: false, captured, repeat: e.repeat, since, holder: this.holder });
+        if (answer === 'let-go') {
+          e.preventDefault();
+          document.exitPointerLock();
+        } else if (answer === 'close') this.modal?.cancel();
+        else if (answer === 'leave') this.host.leave();
+        return;
+      }
       if (this.modal) return; // the keys are the menu's
       if (is(key, 'foot.act') && !e.repeat) return this.down ? undefined : this.host.act();
       if (is(key, 'foot.view') && !e.repeat) return this.setThird(!this.third);
@@ -1265,14 +1281,20 @@ export class Walker {
       if (this.modal) this.modal.mouse(e.movementX, e.movementY);
       if (!this.modal || this.modal.looks) this.look(e.movementX * LOOK, -e.movementY * LOOK);
     });
-    // Escape lets a captured pointer go before any key event is sent, so letting go is how
-    // Escape is heard. Losing the window (another app) lets go too: that is not leaving.
-    document.addEventListener('pointerlockchange', () => {
+    // Escape lets a captured pointer go before any key event is sent, so letting go is how the first
+    // Escape is heard: it frees the mouse and the walk goes on (escape.ts). Losing the window (another
+    // app) lets go too: that is no Escape, and nothing is said.
+    document.addEventListener('pointerlockchange', (e) => {
       const locked = document.pointerLockElement === canvas;
       if (!this.active || locked === this.wasLocked) return;
       this.wasLocked = locked;
       this.host.locked(locked);
-      if (!locked && document.hasFocus()) this.modal ? this.modal.cancel() : this.host.leave();
+      if (locked) return;
+      const answer = onEscape({ lost: true, focused: document.hasFocus(), holder: this.holder });
+      if (answer === 'quiet') return;
+      this.freedAt = e.timeStamp;
+      if (answer === 'freed-close') this.modal?.cancel();
+      this.host.freed();
     });
     document.addEventListener('pointerlockerror', () => this.host.locked(false));
     // not captured: a drag looks round, and a click asks for the pointer again
@@ -1358,6 +1380,7 @@ export class Walker {
     this.apex = this.feltY = this.body.position.y;
     this.moved = true;
     this.wasLocked = document.pointerLockElement === this.canvas; // already captured when one figure is left for another
+    this.freedAt = Number.NEGATIVE_INFINITY;
     this.modal = null;
     this.facingTo = null;
     this.peekAt = null;
@@ -1417,6 +1440,16 @@ export class Walker {
 
   get peeking(): boolean {
     return this.peekAt !== null;
+  }
+
+  /** Walking with the pointer captured for looking round: Escape is then the walker's, and frees it (escape.ts). */
+  get captured(): boolean {
+    return this.active && document.pointerLockElement === this.canvas;
+  }
+
+  /** What has the controls besides the walker, as Escape weighs it: a menu takes the mouse, a function worked by hand leaves it to the head. */
+  private get holder(): Holder {
+    return this.modal ? (this.modal.looks ? 'work' : 'menu') : null;
   }
 
   /**
