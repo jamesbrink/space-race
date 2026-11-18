@@ -1038,6 +1038,17 @@ export const MILESTONES: readonly Milestone[] = [
     source: 'Mishin, State Commission address, 27 September 1973, pp. 92–93; NASA, Mir Hardware Heritage, §1.8; Spacefacts, Soyuz 12',
     confidence: 'documented',
   },
+  {
+    date: '1974-12-02T09:40:00Z',
+    flight: 'ussr/soyuz/soyuz-16',
+    nation: 'USSR',
+    title: 'First crewed rehearsal for Apollo–Soyuz',
+    text:
+      'Anatoliy Filipchenko and Nikolay Rukavishnikov flew the modified Soyuz after two uncrewed tests. ' +
+      'They rehearsed docking against a ring that represented Apollo and tried the cabin atmosphere they would use for crew transfers.',
+    source: 'TASS, Soyuz 16 flight chronicle, 18 December 1974, p. 1; NASA SP-4209, pp. 266–270; Czech Academy of Sciences, 1974-096A',
+    confidence: 'documented',
+  },
 ];
 
 export const STORIES: Readonly<Record<string, FlightStory>> = {
@@ -1349,6 +1360,24 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     named: {
       why: 'Урал (Ural): the crew’s call sign, after the Ural Mountains. Lazarev was Ural-1 and Makarov was Ural-2.',
       source: 'NASA, Mir Hardware Heritage, §1.8.4.1; Gagarin Cosmonaut Training Center, biographies of Lazarev and Makarov',
+      confidence: 'documented',
+    },
+  },
+  'ussr/soyuz/soyuz-16': {
+    flight: 'ussr/soyuz/soyuz-16',
+    headline: 'A dress rehearsal for Apollo–Soyuz',
+    story:
+      'Filipchenko and Rukavishnikov took the 7K-TM into orbit seven months before the joint flight. They lowered the cabin ' +
+      'pressure and raised the oxygen fraction to make it easier for crews to move between Soyuz and Apollo. NASA tracked ' +
+      'Soyuz from its own ground stations so the two teams could compare their data.\n\n' +
+      'A test ring on the nose stood in for Apollo. The crew checked capture, alignment and release. In the last test, ' +
+      'they stopped the hooks partway through opening and fired the emergency release to separate the ring. The capsule ' +
+      'landed north of Dzhezkazgan after almost six days in orbit.',
+    firsts: ['First crewed rehearsal for Apollo–Soyuz'],
+    source: 'TASS, Soyuz 16 flight chronicle, 18 December 1974, p. 1; NASA SP-4209, pp. 266–270',
+    named: {
+      why: 'Буран (Buran), “blizzard”, was the crew’s radio call sign. Filipchenko had also used it on Soyuz 7.',
+      source: 'NASA, Mir Hardware Heritage, §1.9.3; Astronaut.ru, Soviet and Russian spacecraft crew call signs, Soyuz 7 and Soyuz 16',
       confidence: 'documented',
     },
   },
@@ -2147,7 +2176,7 @@ export const PEOPLE: readonly Person[] = [
     born: '1928-02-26',
     died: '2022-08-07',
     nation: 'USSR',
-    flights: ['ussr/soyuz/soyuz-7'],
+    flights: ['ussr/soyuz/soyuz-7', 'ussr/soyuz/soyuz-16'],
     bio:
       'An Air Force pilot of the second group, 41 when he commanded Soyuz 7, the target ship of the failed triple flight. ' +
       'He commanded Soyuz 16 in 1974.',
@@ -2203,7 +2232,7 @@ export const PEOPLE: readonly Person[] = [
     born: '1932-09-18',
     died: '2002-10-19',
     nation: 'USSR',
-    flights: ['ussr/soyuz/soyuz-10'],
+    flights: ['ussr/soyuz/soyuz-10', 'ussr/soyuz/soyuz-16'],
     bio:
       'An engineer from Tomsk who had trained hard for the circumlunar flights, the only newcomer on Soyuz 10. He flew ' +
       'twice more, on Soyuz 16 in 1974 and, as its commander, Soyuz 33 in 1979.',
