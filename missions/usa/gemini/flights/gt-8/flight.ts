@@ -1,47 +1,48 @@
 import { doc as dockingReading } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
-import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
-import {
-  BASE,
-  CHRONOLOGY,
-  FT,
-  GVIII,
-  IN,
-  LB,
-  LEFT_AZ,
-  NMI,
-  SEDR2,
-  SP149,
-  TOP_AZ,
-  along,
-  cabin,
-  dimensions,
-  outOfAdapter,
-  seats,
-  thrusters,
-  type PartWords,
-  geminiTitanStack,
-  titanEngines,
-  lb,
-  THRUST,
-} from '../../vehicles/gemini-titan.ts';
-import { pad } from './pad.ts';
-import { WEATHER } from './weather.ts';
 import {
   AGENA,
   AGENA_TARGET,
   agenaDimensions,
   agenaMotors,
   agenaParts,
+  crewTransfer,
   dockingProperties,
   geminiControls,
-  targetFix,
   TARGET_GROUP,
   type TargetWords,
+  targetFix,
   withTarget,
 } from '../../vehicles/gemini-targets.ts';
+import {
+  along,
+  BASE,
+  CHRONOLOGY,
+  cabin,
+  dimensions,
+  FT,
+  GVIII,
+  geminiTitanStack,
+  IN,
+  LB,
+  LEFT_AZ,
+  lb,
+  NMI,
+  outOfAdapter,
+  type PartWords,
+  SEDR2,
+  SP149,
+  seats,
+  THRUST,
+  TOP_AZ,
+  thrusters,
+  titanEngines,
+} from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -674,6 +675,25 @@ export const flight: Flight = {
     retractTime: dockingReading(6.9, 'MSC-G-R-66-4, docking-system performance'),
     interface: 'cone',
     target: 'GATV 5003',
+    transfer: crewTransfer(
+      GVIII + ', tables 4.3-I, 4.3-III and 5.1.5-VII.',
+      targetFix(GVIII + ', spacecraft tracking after separation or insertion.', 0, 365.66, 26.7, -70.03, 525734, 25738, 0.04, 101.88),
+      [
+        [5676.4, -3.13, -0.19, 0.11, 5.5],
+        [8305.8, 50.59, -0.33, -0.21, 68],
+        [9952.8, -0.27, -0.29, -26.64, 35],
+        [11022.2, 2.27, 0.19, -0.06, 3],
+        [13689.7, 57.39, 22.33, 0.06, 82.5],
+        [18895.7, 22.32, -14.19, 6.74, 37],
+        [19646, 4.22, -14.4, -2.16, 20],
+        [20359.9, -6.81, -3.13, -5.8, 16],
+      ],
+      20588.9,
+      21300,
+      150,
+      [18895.7, 29, 26.8],
+    ),
+    spacecraft: { id: 'gt-8', mass: 'Weight at launch' },
     targetMass: 'Agena, weight in orbit',
     at: get(6, 33, 16),
   },

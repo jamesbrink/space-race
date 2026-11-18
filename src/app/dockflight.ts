@@ -1,22 +1,22 @@
 import { Box3, BufferGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial, Matrix4, Vector3 } from 'three';
+import { DockDeck } from '../deck/dockdeck.ts';
+import { portGap } from '../sim/docking.ts';
+import { turn } from '../sim/rigid.ts';
+import { tetherAnchor } from '../sim/tether.ts';
+import type { Flight } from '../types.ts';
+import { bindDockingProbe } from '../viewer/docking.ts';
+import { dockJets } from '../viewer/dockjets.ts';
 import { Stage } from '../viewer/stage.ts';
+import { SUN } from '../world/bodies.ts';
+import { Clock } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
+import { add, length, sub } from '../world/frames.ts';
 import { sunlit } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
-import { SUN } from '../world/bodies.ts';
-import type { Flight } from '../types.ts';
-import { DockDeck } from '../deck/dockdeck.ts';
-import { tetherAnchor } from '../sim/tether.ts';
-import { turn } from '../sim/rigid.ts';
-import { portGap } from '../sim/docking.ts';
-import { add, sub, length } from '../world/frames.ts';
-import { Clock } from '../world/clock.ts';
-import { dockJets } from '../viewer/dockjets.ts';
-import { bindDockingProbe } from '../viewer/docking.ts';
-import { CURTAIN, Curtain } from './curtain.ts';
 import { formatAddress, onMoved, where } from './address.ts';
-import { goHome } from './home.ts';
+import { CURTAIN, Curtain } from './curtain.ts';
 import { installDebug } from './debug.ts';
+import { goHome } from './home.ts';
 import '../ui/dockflight.css';
 
 export async function openDocking(flight: Flight) {
@@ -45,7 +45,7 @@ export async function openDocking(flight: Flight) {
   stage.clock = clock;
   try {
     const stack = flight.models[0],
-      other = apollo ? flight.models.find((m) => m.id === 'spider')! : stack;
+      other = apollo ? flight.models.find((m) => m.id === mission.spacecraft.targetModel)! : stack;
     const gltf = await stage.model(stack.url),
       target = other === stack ? gltf : await stage.model(other.url);
     const vehicles = [new Group(), new Group()];
@@ -87,7 +87,7 @@ export async function openDocking(flight: Flight) {
 
       if (i === 1 && apollo) parts.add(lower);
       for (const p of model.parts) {
-        if (i === 0 ? p.group !== 'Spacecraft' : apollo ? false : p.group !== 'Docking target') continue;
+        if (!deck.run.plan!.craft[i]!.bodies[0]!.nodes!.includes(p.node)) continue;
         if (['NoseFairing', 'ScannerFairing'].includes(p.node)) continue;
         const node = source.getObjectByName(p.node);
         if (node) (i === 1 && apollo && p.group === 'Descent stage' ? lower : parts).attach(node);
@@ -145,7 +145,10 @@ export async function openDocking(flight: Flight) {
       const run = deck.run;
       lower.visible = !deck.redock;
       const target = run.bodies[1];
-      const anchor = deck.visit && !deck.eva ? run.bodies[0].r : add(target.r, turn(target.q, [0, target.port, 0]));
+      const anchor =
+        (deck.visit && !deck.eva) || (deck.transfer && run.phase === 'free')
+          ? run.bodies[0].r
+          : add(target.r, turn(target.q, [0, target.port, 0]));
       for (const [i, b] of run.bodies.entries()) {
         const v = vehicles[i];
         v.children[0].position.y = bases[i]! + b.port;

@@ -1,9 +1,9 @@
-import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
-import { probePort, cm, sm, lift, doors, rocket, part, escapeParts, nodes, specification } from '../../vehicles/stack-gallery.ts';
 import { derived, doc } from '../../../../../src/measure.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
+import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
+import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
 
 const inch = 0.0254;
 const lb = 0.45359237;
@@ -427,6 +427,13 @@ export const flight: Flight = {
               );
         return { at, components: [delta(x), delta(y), delta(z)], duration };
       }),
+    },
+    spacecraft: {
+      id: 'csm-104',
+      mass: 'Mass in orbit at transposition (CSM)',
+      targetModel: 'spider',
+      lateMass: 'CSM mass at LM-active docking',
+      lateTargetMass: 'Ascent stage mass at docking',
     },
     targetMass: 'Lunar module mass at first docking',
     carrier: {

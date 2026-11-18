@@ -6,11 +6,12 @@ import { lateCrew } from '../../crew/late-crew.ts';
 import {
   agenaDimensions,
   agenaMotors,
+  crewTransfer,
   dockedBurn,
   dockingProperties,
   geminiControls,
-  targetFix,
   TARGET_GROUP,
+  targetFix,
 } from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
@@ -67,6 +68,20 @@ export const flight: Flight = {
     fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5844.821, 558.7, 28.5, -59.47, 983548, 25360, 0.07, 95.57)],
     interface: 'cone',
     target: 'GATV 5006',
+    transfer: crewTransfer(
+      REPORT + ', tables 4.3-I and 4.3-IV.',
+      targetFix(REPORT + ', spacecraft tracking after separation or insertion.', 0, 469, 25.01, -62.9, 526320, 25747, 0.04, 105.13),
+      [
+        [1780, 0.3, 0.1, 2.9, 4],
+        [2998.2, 141, 28.3, 4.8, 194],
+        [3821, 2, -3.4, -3.9, 26],
+        [4543, -0.9, -1.8, -0.5, 8],
+      ],
+      4661,
+      5100,
+      50,
+    ),
+    spacecraft: { id: 'gt-11', mass: 'Weight at launch' },
     targetMass: 'Agena weight at orbital insertion',
     at: get(1, 34, 16),
   },

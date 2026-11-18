@@ -114,6 +114,15 @@ export interface Flight {
     interface: 'probe' | 'cone' | 'shrouded';
     target: string;
     targetMass: string;
+    spacecraft: { id: string; mass: string; targetModel?: string; lateMass?: string; lateTargetMass?: string };
+    transfer?: {
+      radar?: { at: number; range: Measure; elevation: Measure };
+      fix: OrbitalFix;
+      burns: OrbitCorrection[];
+      brake: number;
+      station: number;
+      hold: Measure;
+    };
     rendezvous?: {
       fix: OrbitalFix;
       elevation: Measure;

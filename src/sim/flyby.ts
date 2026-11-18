@@ -1,10 +1,10 @@
 /** Gemini X revisited a second, passive spacecraft. All three vehicles retain their own inertial states. */
 import type { Flight } from '../types.ts';
-import { add, cross, length, scale, sub, unit, DEG, type Vec3 } from '../world/frames.ts';
-import { coast, step, type State } from '../world/orbit.ts';
 import { EARTH } from '../world/bodies.ts';
-import { aboutAxis, fromAxes, multiply, turn, unturn } from './rigid.ts';
+import { add, cross, DEG, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { coast, type State, step } from '../world/orbit.ts';
 import { DockPair } from './docking.ts';
+import { aboutAxis, fromAxes, multiply, turn, unturn } from './rigid.ts';
 
 type Visit = NonNullable<NonNullable<Flight['docking']>['visit']>;
 const axes = (state: State) => {
@@ -12,7 +12,7 @@ const axes = (state: State) => {
     left = unit(cross(state.r, state.v));
   return { up, left, forward: cross(left, up) };
 };
-function heading(s: State, pitch: number, yaw: number) {
+export function heading(s: State, pitch: number, yaw: number) {
   const { up, left, forward } = axes(s);
   return add(
     scale(up, Math.sin(pitch * DEG)),
@@ -21,7 +21,7 @@ function heading(s: State, pitch: number, yaw: number) {
 }
 
 /** Propagate through measured OAMS corrections, with fixed inertial pointing during each short firing. */
-function maneuver(state: State, time: number, burn: Visit['corrections'][number]) {
+export function maneuver(state: State, time: number, burn: Visit['corrections'][number]) {
   let now = coast(state, burn.at - time);
   const acceleration = scale(heading(now, burn.pitch.value, burn.yaw.value), burn.dv.value / burn.duration.value);
   for (let t = 0; t < burn.duration.value; t += 1) now = step(now, burn.at + t, Math.min(1, burn.duration.value - t), () => acceleration);
@@ -54,6 +54,17 @@ export function startVisit(run: DockPair, visit: Visit) {
   const v = scale(unit(cross(left, radial)), Math.sqrt(EARTH.gm.value / length(r)));
   const dormant = { ...own, r, v, mass: visit.mass.value, q: fromAxes(left, radial, cross(left, radial)), w: [0, 0, 0] as Vec3 };
   const pair = new DockPair(ship, dormant, { ...run.limits, blocked: true }, visit.at);
+  if (run.plan) {
+    const [first, original] = run.plan.craft;
+    const passive = {
+      ...original,
+      id: visit.model,
+      label: visit.label,
+      mass: visit.mass,
+      bodies: original.bodies.map((body) => ({ ...body, id: visit.model, label: visit.label, mass: visit.mass })),
+    };
+    pair.plan = { craft: [first, passive, original] };
+  }
   pair.released = own;
   return pair;
 }
