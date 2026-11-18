@@ -20,7 +20,7 @@ The two crew models stand by the ramp before boarding and can be used to walk th
 Agena stands beside the vehicle in the gallery. 
 The flight deck and orbital trajectory are pending.
 
-Lovell and Aldrin reached the pad around 13:43 EST and were aboard by the 13:46 commentary. Both hatches were shut around 13:58. The white room was clear by T−70 and lowering began at about T−58 min 18 sec. The terminal hold at T−3 lasted 3 min 29 sec. Secondary autopilot faults had postponed the launch twice.
+Lovell and Aldrin reached the white room around 13:44 EST and were aboard by the 13:46 commentary. Both hatches were shut around 13:58. The white room was clear by T−70 and lowering began at about T−58 min 18 sec. The terminal hold at T−3 lasted 3 min 29 sec. Secondary autopilot faults had postponed the launch twice.
 
 Countdown events use the [NASA PAO launch commentary](https://www.nasa.gov/wp-content/uploads/2026/01/gt12-pao.pdf)
 and the [Gemini XII mission report](https://www.ibiblio.org/apollo/Documents/Gemini12MissionReport.pdf). Estimates in the slider include when individual platforms

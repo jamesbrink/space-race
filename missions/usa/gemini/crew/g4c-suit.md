@@ -76,7 +76,8 @@ extravehicular cover configuration worn by Scott on VIII. NASA's summary of Gemi
 XI and XII EVA suits as essentially the X suit. The model uses the same estimated thickness for
 Collins, Gordon and Aldrin. The Gemini XII press kit (p. 23) specifies an HT-1 nylon outer cover and
 thermal protection built into Aldrin's gloves. The mission report (§3.1.2.5.2) also describes
-rectangular torso quilting on his modified cover. The fit reuses the G4C glove shape and smooth
+rectangular torso quilting on his cover, which it calls a modified version of the IX-A one: nylon in place of the
+heat-protective cloth and four layers of superinsulation removed. Where the summary and the report differ, the report is the one followed. The fit reuses the G4C glove shape and smooth
 outer cloth.
 [Gemini X mission report, §3.1.2.12.2](https://sma.nasa.gov/SignificantIncidents/assets/gemini-10-mission-report.pdf),
 [NASA TN D-6069, “Space Suits”](https://ntrs.nasa.gov/citations/19700023285),

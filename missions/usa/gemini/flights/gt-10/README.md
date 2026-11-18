@@ -1,6 +1,6 @@
 # Gemini-Titan 10 (Gemini X)
 
-Gemini X docked with its own Agena in the fourth revolution. Young flew the joined spacecraft with the Agena's engine, then used the extra energy to reach the dormant target left by Gemini VIII. Collins worked through an open hatch for the first EVA. On the second, he crossed to the older Agena and recovered its micrometeoroid package.
+Gemini X docked with its own Agena in the fourth revolution. Young flew the joined spacecraft on the Agena's engines, up to an apogee of 412 n mi and back down into phase with the dormant target left by Gemini VIII, then undocked and finished that second rendezvous on the spacecraft's own thrusters. Collins worked through an open hatch for the first EVA. On the second, he crossed to the older Agena and recovered its micrometeoroid package.
 
 | | |
 | --- | --- |
