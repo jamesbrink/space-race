@@ -8,16 +8,16 @@ import { Cameras, type RigId } from '../../viewer/camera/index.ts';
 import { approach } from '../../viewer/camera/maths.ts';
 import { chooseLevel, distanceTo, lodUrl } from '../../viewer/lod.ts';
 import { InkPass, type Look, Looks } from '../../viewer/look.ts';
-import { asBuilt, shadeAll } from '../../viewer/shade.ts';
 import { refused, sayRefused, watchContext } from '../../viewer/lost.ts';
 import { fitIndices, fitPictures } from '../../viewer/pictures.ts';
+import { asBuilt, shadeAll } from '../../viewer/shade.ts';
 import type { Tone } from '../../viewer/studio.ts';
 import { type Tier, tier } from '../../viewer/tier.ts';
 import type { LineupRow } from '../address.ts';
 import { Hall } from './hall.ts';
 import { allot, craftNodes, type Entry, layOutRow } from './row.ts';
 import { Shelf } from './shelf.ts';
-import { dress, fitTo, floorPlates, showPlates, Stand } from './stand.ts';
+import { dress, fitTo, floorPlates, Stand, scaleFigures, showFigures, showPlates } from './stand.ts';
 
 /**
  * The Lineup's scene: every vehicle the flights have built, standing in one row on one floor at one scale, in the
@@ -139,6 +139,7 @@ export class LineupScene {
   /** Every file fetched once, and shared by every vehicle on it (shelf.ts). */
   private readonly shelf = new Shelf((bytes, url) => this.parse(bytes, url));
   private readonly rowGroup = new THREE.Group();
+  private readonly figures: ReturnType<typeof scaleFigures>;
   private readonly plates: ReturnType<typeof floorPlates>;
   private readonly timer = new THREE.Timer();
   private readonly raycaster = new THREE.Raycaster();
@@ -205,9 +206,10 @@ export class LineupScene {
 
     this.hall = new Hall(renderer);
     this.plates = floorPlates(entries.length);
-    this.scene.add(this.hall.group, this.rowGroup, this.plates);
+    this.figures = scaleFigures(entries.length, this.hall.colours.figure);
+    this.scene.add(this.hall.group, this.rowGroup, this.plates, this.figures);
     this.looks.add(this.hall.group);
-    this.stands = entries.map((entry) => new Stand(entry, this.hall.colours.figure, this.hall.shadow));
+    this.stands = entries.map((entry) => new Stand(entry, this.hall.shadow));
     for (const stand of this.stands) this.rowGroup.add(stand.group);
     this.relight();
 
@@ -661,7 +663,7 @@ export class LineupScene {
   setScale(on: boolean): void {
     this.measured = this.peopled = on;
     this.hall.measure(on);
-    for (const stand of this.stands) stand.people(on);
+    this.figures.visible = on;
     this.dirty = true;
   }
 
@@ -819,7 +821,7 @@ export class LineupScene {
 
   private draw(): void {
     this.hall.view(this.camera, this.cam.pivot);
-    for (const stand of this.stands) if (stand.standing) stand.face(this.camera);
+    showFigures(this.figures, this.stands, this.camera, this.frustum);
     showPlates(this.plates, this.stands, this.camera, this.frustum);
     this.ink.range(this.camera);
     this.renderer.info.reset();

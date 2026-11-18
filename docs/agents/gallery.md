@@ -204,6 +204,8 @@ the flights, its crumb goes back out, and a flight gone into from it is another 
   known by its bytes, and shared by every vehicle on it (`shelf.ts`: Vostok 3 to 6 stand on one coarsest file). It is not a `Stage`: a stage
   holds one flight in full. It shares the stages' camera (`viewer/camera`: every promise in camera.md holds), their two
   looks, their levels' fade and the studio's light. A vehicle's shadow is a picture of its own, drawn once (`stand.ts`).
+  The identical scale figures beside the vehicles are drawn together in one call. Each turns toward the camera, and
+  the visible figures are drawn from back to front.
 - **The view is framed in what the panels leave clear**: beside the title card for a tall thing, under it for a long
   row, the pivot seen in the middle of that part (the rig tips the camera for what is covered at the foot; the scene
   turns it for what is covered at the side). Once the hands take the view only an explicit act moves it. A row too long

@@ -18,7 +18,7 @@ from srlib import run  # noqa: E402
 
 def build() -> str:
     soyuz_7kok.build()
-    return soyuz_11a511.build()
+    return soyuz_11a511.build(soyuz_7kok.BOARDING_HATCH_AZIMUTH, soyuz_7kok.BOARDING_HATCH_STATION)
 
 
 if __name__ == "__main__":

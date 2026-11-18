@@ -20,6 +20,7 @@ import { flight as ma9 } from './usa/mercury/flights/ma-9-faith-7/flight.ts';
 import { flight as mr3 } from './usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { flight as mr4 } from './usa/mercury/flights/mr-4-liberty-bell-7/flight.ts';
 import { flight as soyuz1 } from './ussr/soyuz/flights/soyuz-1/flight.ts';
+import { flight as soyuz3 } from './ussr/soyuz/flights/soyuz-3/flight.ts';
 import { flight as voskhod1 } from './ussr/voskhod/flights/voskhod-1/flight.ts';
 import { flight as voskhod2 } from './ussr/voskhod/flights/voskhod-2/flight.ts';
 import { flight as vostok1 } from './ussr/vostok/flights/vostok-1/flight.ts';
@@ -60,6 +61,7 @@ export const flights: Flight[] = [
   gt12,
   soyuz1,
   apollo7,
+  soyuz3,
   apollo8,
   apollo9,
   apollo10,
