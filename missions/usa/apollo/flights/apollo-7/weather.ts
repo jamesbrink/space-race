@@ -13,14 +13,14 @@ export const WEATHER: DayWeather = {
   observed: { where: 'Cape Kennedy, LC-34 light pole', at: '1968-10-11T15:02:45Z', source: LAUNCH },
   low: {
     kind: 'cumulus',
-    note: 'Reported as cumulonimbus. The viewer represents the low cloud field with its cumulus renderer.',
+    note: 'Reported as cumulonimbus. The viewer approximates the observed cloud field with broad cumulus volumes.',
     cover: doc(0.3, LAUNCH),
     base: derived(2100 * FT, LAUNCH + ', 2,100 ft above ground'),
     depth: estimated(
-      3200,
-      'Cloud-top heights were not given. The renderer represents the convective towers with several kilometres of vertical development.',
+      1150,
+      'Cloud tops were not reported. Estimated maximum depth for the broad heaps used to represent the launch cloud field.',
     ),
-    size: estimated(2000, 'Estimated convective cell width from NASA launch imagery, S68-48788.'),
+    size: estimated(3600, 'Estimated horizontal scale of the procedural field. NASA launch photo S68-48788 gives no scale at the clouds.'),
     wind: {
       from: estimated(90, 'Cloud motion taken from the east wind at the pad.'),
       speed: estimated(19.8 * KT, 'Pad wind used for cloud drift in the absence of an observed drift speed.'),

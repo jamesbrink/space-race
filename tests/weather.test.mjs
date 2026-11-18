@@ -407,6 +407,12 @@ test('Apollo 7 keeps its launch weather and bakes a different map from the Atlan
   const recovery = day.recovery;
   assert.ok(recovery);
   assert.equal(day.map, 'cape-canaveral.1968-10-11');
+  const launchClouds = day.cumulus;
+  assert.ok(launchClouds);
+  assert.equal(launchClouds.cover, 0.3);
+  assert.equal(launchClouds.height, 2100 * 0.3048);
+  // A layer deeper than its field spacing put narrow cones and flat-topped peaks behind Saturn IB during ascent.
+  assert.ok(launchClouds.depth * 2 < launchClouds.size, 'the modeled launch cloud heaps have a broad profile');
   assert.equal(recovery.map, 'cape-canaveral.1968-10-22.recovery');
   assert.equal(recovery.weather.ceiling.value, 182.88);
   assert.ok(Date.parse(recovery.weather.transition[1]) < Date.parse(recovery.weather.observed.at));
