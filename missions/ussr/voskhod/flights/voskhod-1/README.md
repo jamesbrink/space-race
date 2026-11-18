@@ -232,3 +232,5 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
 6. Zak, RussianSpaceWeb, the Voskhod pages (secondary): the times of the descent, the design,
    Feoktistov's later account.
 7. McDowell's launch log: the launch vehicle's number.
+
+The instrument board follows the PD-3-3KV photographed in Tyapchenko’s figure 3. Its outline, dial spacing and 400 mm width are estimated. The orbital position indicator follows the simulated spacecraft. The other readings are illustrative.

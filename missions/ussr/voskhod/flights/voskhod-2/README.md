@@ -239,3 +239,5 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
    2005; as quoted by Siddiqi.
 8. Zak, RussianSpaceWeb, the Voskhod 2 pages (secondary); OKB-1's general drawing of the 3KD.
 9. McDowell's launch log: the launch vehicle's number.
+
+The instrument board follows the PD-3-3KV photographed in Tyapchenko’s figure 3. Its outline, dial spacing and 400 mm width are estimated. The orbital position indicator follows the simulated spacecraft. The other readings are illustrative. Voskhod 2 uses Voskhod 1’s fit by assumption. No view of its own complete board has been identified.

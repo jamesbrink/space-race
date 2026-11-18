@@ -145,18 +145,8 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   parachute and the survival pack are stood in for by boxes in about the right places.
 - **The lining is one flat colour**, yellow or white, on a plain ball: the real one is quilted or
   in panels. Which flights had which is known for three of the six.
-- **Without `fit`, the instrument board is not any flown ship's.** Vostok 6's flown cabin has its
-  Globus in the middle of the board over a row of four dials, with a block of lamps beside it and a
-  column of switches at the left; the plain board has the Globus to one side and five dials, hangs
-  lower than the real one and has its panel and grip at the pilot's hips, where the flown cabin of
-  Vostok 1 has them on the far wall. Vostok 1 is fitted as it flew (`fit="1961"`), and Vostok 2,
-  which flew the same set with the lock, as Vostok 1's with what No. 4 is documented to have had
-  otherwise (`fit="1961-08"`: its own lamps, the Vizir, the Globus's figure; its spacecraft.md,
-  "What differed"). Vostok 3 to 6, which had a new board (Kamanin, 9 August 1962: «приборную
-  доску, разработанную Даревским»), keep the plain one.
-- **Cabin equipment is boxes.** The board has a globe and five dials; the left panel, the hand
-  controller, the Vzor, the cameras and the parachute container are in the places the sources
-  give or imply. The food locker, radio, regeneration unit and sanitary system are not told apart.
+- **The 1961 cabins.** Vostok 1 has the first instrument family (`fit="1961"`). Vostok 2 uses the same set with the lock, its own lamps, the Vizir and Titov’s Globus reading (`fit="1961-08"`). The later family is described below.
+- **Other cabin equipment.** The cameras and parachute container stand where the sources show or imply. The food locker, radio, regeneration unit and sanitary system are simplified.
 - **The film camera, where a flight has one, hangs in the cabin unsupported**: what held it is
   not known. It is the camera type as sold, not as altered for flight.
 - **The television cameras are two different things in the two kinds of build.** Without
@@ -169,13 +159,7 @@ flight flies `reserveCanopy` with its own height, and the pilots of Vostoks 3 an
   and stay with the instrument module is documented; how far they sprang is not.
 - **Lightening holes in the support ring are square.**
 - **No lettering or markings.** None has been found for the flown article.
-- **Sat in from the gallery, Vostoks 3 to 6 have only the seat, the portholes, the lamps and their tumbler**
-  (`../vehicles/cabin.ts`). The cabin these build is still the plain stand-in: the instrument board, the Globus, the
-  control panel, the hand controller and the Vzor are shapes, no needle, telelight or control of theirs is a node of its
-  own (`Gauge_*`, `Tele_*`, `Ctl_*`), and there is no Vzor screen or ring (`Vzor_Screen`, `Vzor_Ring`), so none can be
-  named, read, worked or looked into. Vostok 1's fit (vehicles/vostok_cabin.py) has all of them; each later ship needs
-  its own fit for its own cabin (SIS-2-3KA: its board had a new Globus, its panel was changed and lost the lock after
-  Vostok 2), which is its own research and is not done. What they do have of that fit is the lighting, below.
+- **Vostoks 3 to 6 use the PD-2-3KA board.** Tyapchenko’s figure 2 supplies its outline and the relative positions of the four dials, three signal blocks and globe. The construction scales the photograph to an estimated width of 400 mm. The globe follows the spacecraft and the clock shows Moscow time. The other dial faces are taken from the earlier fit, with no established readings or signal-block legends. The side panel and hand controller are simplified and the Vzor has no working screen.
 
 ### Cabin lighting (Vostoks 3 to 6)
 

@@ -19,7 +19,7 @@ minutes after Nikolayev. Backup: Vladimir Komarov; reserve for both ships: Boris
 | Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Popovich's height not found) |
 | The day's weather as data | **written**: [weather.ts](weather.ts), clear, from the stations either side on the railway (no forecast for the 12th was read); ERA5's air over the pad ([aloft.ts](aloft.ts)) |
 | The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md): the ascent on the type's instants (none of this flight's was found), the orbit Siddiqi gives with TASS's period, the burn (its instant derived from the landing), the descent; and how near the two ships came, flown from both records together (tests/group.test.mjs). Fly is lit: the record as flown by default, everything a hand can do on Vostok 1 |
-| The cabin | the plain stand-in board of Vostoks 2 to 6 ([vostok-3ka.md](../../vehicles/vostok-3ka.md)): no instrument reads the flight |
+| The cabin | PD-2-3KA board with a moving orbital position indicator. The board type is inferred for this flight from Tyapchenko, fig. 2, and the surviving Vostok 6 cabin. Its outline and instrument positions are estimated from the photograph. The clock and other gauges carry illustrative readings. |
 
 So the flight has all three places: the Gallery; the Launch site on the morning of 12 August 1962; and
 Fly, on the shared flight deck (src/deck/orbitdeck.ts), with nothing in its code that is this flight's.

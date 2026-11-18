@@ -97,7 +97,7 @@ Everything in [voskhod.md](../../vehicles/voskhod.md) and [berkut.md](../../crew
 - **The pack's place is ours**, and it stands unfastened.
 - **Leonov's line, the lamps, the panels and the cameras inside the airlock are not built.**
 - **The cabin's oxygen, air bottle and their gauges**, on which half the flight's story turns, are
-  not built: the cabin has the Vostok's board and nothing of the 3KD's own.
+  not built. The instrument board follows Tyapchenko’s PD-3-3KV photograph, assumed for the 3KD. The globe follows spacecraft position and the clock shows Moscow time; the other dials have no verified flight readings.
 
 ## Level of detail
 

@@ -424,23 +424,15 @@ def clock(c: Fit, F: Matrix, u: float, v: float) -> None:
         )
 
 
-def globus(c: Fit, F: Matrix) -> None:
-    """The Globus: a globe that turns under a ring with a cross, on its own plate; the window of the correction counter
-    and the switch under it; the two knobs."""
-    x0, y0, x1, y1 = GLOBUS_PLATE
-    (u0, v1), (u1, v0) = on_board(x0, y0), on_board(x1, y1)
-    plate = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
-    c.flat(c.into("Cabin_GlobusPlate", "plate"), F, plate, 3.0)
-    c.wall(c.into("Cabin_GlobusPlate", "plate"), F, plate, 0.0, 3.0)
-    gu, gv = on_board(*GLOBE_AT)
-    rw = GLOBE_WINDOW
+def globe_window(c: Fit, F: Matrix, gu: float, gv: float, rw: float, radius: float) -> None:
+    """The spherical map in its round window, with its own rotating graticule and a fixed cross."""
     c.turned(c.into("Cabin_Bezels", "bezel"), F, gu, gv, [(rw + 12.0, 3.0), (rw + 12.0, 9.0), (rw + 4.0, 13.0), (rw, 13.0), (rw, 4.0)], 56)
     # the globe sits with its middle behind the plate, so that a cap of it stands in the window
-    sink = math.sqrt((GLOBE_D / 2) ** 2 - (rw - 2.0) ** 2) - 6.0
+    sink = math.sqrt((radius) ** 2 - (rw - 2.0) ** 2) - 6.0
     centre = F @ Matrix.Translation((gu, gv, -sink))
 
     def ball(mb: MeshBuilder) -> None:
-        rg = GLOBE_D / 2
+        rg = radius
         mb.lathe([(rg * math.cos(math.radians(a)), rg * math.sin(math.radians(a))) for a in range(-90, 91, 6)], 48)
 
     # (its axis lies along the board's own up as built: how it stood at any instant is the orbit's, and is not built in)
@@ -448,7 +440,7 @@ def globus(c: Fit, F: Matrix) -> None:
     globe = c.node("Globus_Globe", "sea", centre @ tilt, ball, reach=rw * MM)
 
     def lines(mb: MeshBuilder) -> None:
-        rg = GLOBE_D / 2 + 1.5
+        rg = radius + 1.5
         for lat in range(-60, 61, 30):
             a = math.radians(lat)
             mb.lathe([(rg * math.cos(a) - 0.01, rg * math.sin(a) - 0.4), (rg * math.cos(a) + 0.01, rg * math.sin(a) + 0.4)], 48)
@@ -461,10 +453,23 @@ def globus(c: Fit, F: Matrix) -> None:
     lines_.matrix_local = Matrix.Identity(4)
     # the cross over it, on the crystal
     cross = c.into("Cabin_GlobusCross", "graticule")
-    top = GLOBE_D / 2 - sink + 3.6
+    top = radius - sink + 3.6
     for turn in (0.0, 90.0):
         c.tick(cross, F, gu, gv, turn, -rw * 0.5, rw * 0.5, 0.6, top)
     c.turned(c.into("Cabin_Crystals", "crystal"), F, gu, gv, [(rw, 5.0), (rw * 0.86, top + 0.4), (rw * 0.5, top + 2.2), (0.0, top + 2.6)], 32)
+
+
+def globus(c: Fit, F: Matrix) -> None:
+    """The Globus: a globe that turns under a ring with a cross, on its own plate; the window of the correction counter
+    and the switch under it; the two knobs."""
+    x0, y0, x1, y1 = GLOBUS_PLATE
+    (u0, v1), (u1, v0) = on_board(x0, y0), on_board(x1, y1)
+    plate = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+    c.flat(c.into("Cabin_GlobusPlate", "plate"), F, plate, 3.0)
+    c.wall(c.into("Cabin_GlobusPlate", "plate"), F, plate, 0.0, 3.0)
+    gu, gv = on_board(*GLOBE_AT)
+    rw = GLOBE_WINDOW
+    globe_window(c, F, gu, gv, rw, GLOBE_D / 2)
     marks = c.into("Cabin_BoardMarks", "marks_dark")
     # The signaller «Посадка» (landing) over the globe: a lamp of its own (`Tele_Landing`), lit while the tumbler ГЛОБУС
     # stands at МЕСТО ПОСАДКИ (Tyapchenko, fig. 16: «Сигнализатор «Посадка». Включается после переключения тумблера
@@ -553,6 +558,45 @@ def board(c: Fit) -> Matrix:
 
 
 # ----------------------------------------------------------------------- the control panel
+
+
+def later_board(parent: bpy.types.Object, M: dict, F: Matrix, voskhod: bool) -> None:
+    """PD-2-3KA and PD-3-3KV, from Tyapchenko's frontal photographs (figs. 2 and 3). F is the face in mm.
+    Positions below are (right, down) in the original photographs. The board's width is estimated."""
+    c = Fit(parent, materials(M))
+    left, top, width = (267, 119, 194) if voskhod else (265, 83, 191)
+    scale = BOARD_W / width
+
+    def uv(x, y):
+        return ((x - left - width / 2) * scale, (top - y) * scale + BOARD_H / 2)
+
+    if voskhod:
+        silhouette = [(267, 119), (461, 125), (458, 298), (411, 296), (399, 278), (342, 275), (326, 292), (268, 290)]
+        dial_centres = [(296, 259), (349, 255), (387, 259), (432, 281)]
+        globe_at, lamps = (330, 184), [(438, 146, 40, 38), (436, 197, 41, 55), (434, 245, 40, 30)]
+    else:
+        silhouette = [(265, 83), (456, 89), (448, 262), (406, 258), (391, 246), (327, 243), (309, 251), (262, 245)]
+        dial_centres = [(293, 217), (341, 211), (384, 216), (427, 240)]
+        globe_at, lamps = (327, 147), [(431, 117, 37, 43), (429, 168, 39, 46), (427, 205, 38, 21)]
+    outline = [uv(x, y) for x, y in reversed(silhouette)]
+    body = c.into("Cabin_InstrumentBoard", "board")
+    c.flat(body, F, outline, 0)
+    c.wall(body, F, outline, -BOARD_DEEP, 0)
+    c.flat(body, F, list(reversed(outline)), -BOARD_DEEP)
+    clock(c, F, *uv(*dial_centres[0]))
+    for gauge, at in zip(("air", "gas", "pressures"), dial_centres[1:], strict=True):
+        round_gauge(c, F, gauge, *uv(*at))
+    # The IMP's exposed globe fills the round window. The plate and its three windows have their own layout.
+    gu, gv = uv(*globe_at)
+    r = 29 * scale
+    globe_window(c, F, gu, gv, r, r * 1.25)
+    for x, y, w, h in lamps:
+        c.block(c.into("Cabin_SignalBlocks", "dial"), F, *uv(x, y), w * scale, h * scale, 0, 6)
+    for u, v, w, h in [(-1, 45, 54, 13), (51, 38, 15, 7), (48, -19, 16, 8)]:
+        c.block(c.into("Cabin_IMPWindows", "bezel"), F, gu + u * scale, gv + v * scale, w * scale, h * scale, 0, 5)
+    for x, y in [(-30, -35), (27, -36), (62, -37)]:
+        knob(c, F, gu + x * scale, gv + y * scale, r=8, tall=8)
+    c.finish()
 
 
 def tumbler(c: Fit, F: Matrix, u: float, v: float, up: bool = True, name: str | None = None, throw=None) -> None:

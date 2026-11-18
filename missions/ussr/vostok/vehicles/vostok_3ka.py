@@ -506,12 +506,12 @@ def build_cabin(
 ) -> None:
     """`tv_standins` are the two plain barrels that stand for the television cameras on a flight that does not build
     them (build_television does, as its own node). `fit`: the cabin as a year's ships had it ("1961": vostok_cabin.py),
-    in place of the plain board, panel, grip, sight and cameras built here. `rails` are the ejection seat's two guides,
+    in place of the later board and simplified panel, grip, sight and cameras built here. `rails` are the ejection seat's two guides,
     `stores` the cases and canisters laid out round that seat, and `controls` the panel at the pilot's left hand and the
     hand controller at his right: a Voskhod, which had couches where the seat was and its controls moved to them, builds
     none of these. `lighting` gives the plain cabin the 1961 fit's two lamps and its lighting tumbler, on the plain
-    panel (vostok_cabin.lighting): the board, the panel and the rest stay the plain shapes. `hatches` is where the
-    three openings are, as build_descent_module's. `board` is the plain instrument board's own frame, in the seat's
+    panel (vostok_cabin.lighting). `hatches` is where the
+    three openings are, as build_descent_module's. `board` is the later instrument board's own frame, in the seat's
     millimetres (its face toward +Z, its top toward +Y), for a ship whose board is put by its own record; `vzor` and
     `container` are the plain sight on hatch No. 3 and the parachute container behind hatch No. 2, which a ship that
     builds its own leaves out."""
@@ -541,13 +541,12 @@ def build_cabin(
     if fit is None:
         # the instrument board, over his knees and facing his eyes
         if board is None:
-            board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X")
-        panel.box((440, 320, 110), board)
-        globe.lathe(arc_profile(0, 0, 62, -20, 90, 10), 28, matrix=board @ Matrix.Translation(P(-70, -30, 50)))  # the Globus
-        panel.lathe([(82, 40), (82, 62), (62, 62)], 28, matrix=board @ Matrix.Translation(P(-70, -30, 0)))
-        for x, y, rr in ((-150, 100, 36), (-60, 100, 36), (30, 100, 36), (120, 100, 36), (60, -70, 30)):
-            gauges.disc(board @ P(x, y, 55), board.to_3x3() @ P(0, 0, 1), rr, 4, 20)
-        black.box((110, 190, 8), board @ Matrix.Translation(P(150, -40, 58)))  # the board of signal lamps
+            # In the seat frame +X points to the pilot's left. Turn the board about its normal
+            # so that its signal blocks are on his right and the clock is below the globe.
+            board = Matrix.Translation(P(0, -230, 765)) @ Matrix.Rotation(deg(-126), 4, "X") @ Matrix.Rotation(math.pi, 4, "Z")
+        import vostok_cabin
+
+        vostok_cabin.later_board(g, M, S @ board @ Matrix.Translation(P(0, 0, 55)), voskhod=not rails_wanted)
         # the control panel at his left hand: black, with the switches and the logic lock's keys
         left = Matrix.Translation(P(345, 60, 150)) @ Matrix.Rotation(deg(-78), 4, "Y")
         if controls:
@@ -1282,9 +1281,9 @@ def build(
     a Konvas in the cabin, as a node of its own: Vostok 2 was the first to carry one. `television` builds the two Seliger
     cameras as they were photographed, as a node of their own, in place of the cabin's two plain barrels: Vostok 3 and 4,
     whose picture was the first to be broadcast. `lining` is the colour of the cabin's wall (LININGS): white on Vostok 5 and
-    Vostok 6, whose flown cabins show it. `fit` fits the cabin as a year's ships had it, in place of the plain board, panel,
+    Vostok 6, whose flown cabins show it. `fit` fits the cabin as a year's ships had it, in place of the later board and simplified panel,
     grip and sight: "1961" is vostok_cabin.py, the board, control panel, hand controller and Vzor of Vostok 1. `lighting`
-    gives a cabin that is not fitted that fit's two lamps and its lighting tumbler and nothing else of it: Vostoks 2 to 6."""
+    gives a cabin that is not fitted that fit's two lamps and its lighting tumbler and nothing else of it: Vostoks 3 to 6."""
     M = materials(lining)
     build_descent_module(M)
     build_hatches(M)

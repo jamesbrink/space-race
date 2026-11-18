@@ -208,7 +208,7 @@ def board_frame() -> Matrix:
     n = h * math.cos(BOARD_TIP) - up * math.sin(BOARD_TIP)
     t = h * math.sin(BOARD_TIP) + up * math.cos(BOARD_TIP)
     m = Matrix((t.cross(n), t, n)).transposed().to_4x4()
-    # (the plain board is a box 110 mm deep about its frame's origin: its face is put at the place, not its middle)
+    # (build_cabin locates the board's face 55 mm forward of this frame)
     m.translation = Vector((0, 0, Z_C)) - h * BOARD_AT[0] + up * BOARD_AT[1] - n * 55.0
     return m
 

@@ -6,7 +6,7 @@ flown as Voskhod 2. A flight's `model/vehicle.py` chooses the build and puts its
 
 **A Voskhod is a Vostok 3KA altered, and so is the model.** What was the Vostok's is imported from
 [../../vostok/vehicles/vostok_3ka.py](../../vostok/vehicles/vostok_3ka.py) and built by it, unchanged:
-the sphere and its three hatches, the pressure hull and its lining, the plain instrument board and
+the sphere and its three hatches, the pressure hull and its lining, the instrument board and
 Vzor, the four straps and their lock, the cable mast, the instrument
 module with its antennas, the bottle ring, the braking engine. **Every dimension of those, with its
 confidence and what is wrong with it, is in [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md)**
@@ -252,11 +252,8 @@ Everything [vostok-3ka.md](../../vostok/vehicles/vostok-3ka.md) lists for the sh
 - **The Vzor on the 3KD is the 3KV's plain one made shorter** to stand on the lid: its real mounting was not seen (the trainer's lid is a plain disc).
 - **The pack's place** in the 3KD is ours: the crew's report has it on a fastening in the cabin, and where is not found.
 - **The antennas** are the Vostok model's ten, withdrawn into the hull when stowed.
-- **Cabin equipment**: the Vostok's board, Vzor and parachute container only.
-- **Sat in, the cabin is the plain one.** Each couch has an eye point (`Seat_Left`, `Seat_Centre`, `Seat_Right`: "The
-  couches as seats", below) and the flights declare them with a cabin (`cabin.ts`): the lining, the two portholes of the
-  hull to lean to, one lamp switched from the page. The board, the Globus and the Vzor are the Vostok's plain shapes,
-  so nothing on them reads, lights or works, and the lamp has no switch of its own.
+- **Cabin equipment.** The board is the PD-3-3KV in Tyapchenko’s figure 3, with the same family fit assumed for Voskhod 2. Its 400 mm width is estimated. The four dial positions, the orbital indicator and the three dark signal blocks follow the photograph. Only the clock and globe read the flight; the individual signal legends are unresolved.
+- Each couch has an eye point. Its occupant can lean toward the hull portholes and use the page to switch the single lamp. The lamp’s physical control and a working Vzor screen are unmodelled.
 
 ## The couches as seats
 
