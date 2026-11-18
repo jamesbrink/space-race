@@ -179,6 +179,10 @@ def orbit(paints, *, broadcast_room=False):
     for i in range(6):
         rod(braces, polar(340, i * 60, 6982), polar(85, i * 60, 7070), 12)
     braces.build("SSVP_ProbeStays", paints["foil"], probe)
+    igla_antenna(paints)
+
+
+def igla_antenna(paints):
     igla = group("Igla")
     boom = group("IglaBoom", igla)
     boom.location = metres((0, 1162, 5680))
@@ -203,6 +207,7 @@ def orbit(paints, *, broadcast_room=False):
     pins = MeshBuilder()
     rod(pins, (-80, -8, 0), (80, -8, 0), 26)
     pins.build("Igla_HingePin", paints["foil"], boom)
+    return igla
 
 
 def rendezvous_lights(paints):
@@ -259,7 +264,7 @@ def descent(paints):
     mark_shells([hood.name])
 
 
-def service(paints):
+def service(paints, *, aft_torus=True):
     module = group("ServiceModule")
     surface(
         module, "PAO_AftSkirt", paints["quilt"], [(0, 181), (1300, 181), (1360, 223), (1360, 298), (1280, 408), (1040, 630), (1020, 660), (0, 660)]
@@ -280,8 +285,9 @@ def service(paints):
         rod(struts, polar(980, az + 13, 2418), polar(1006, az + 30, 1962), 16)
     struts.build("PAO_AdapterTruss", paints["alloy"], module)
     # The early equipment torus wrapped around the central propulsion installation.
-    torus = [(835 + 184 * math.cos(a * math.tau / 32), 240 + 177 * math.sin(a * math.tau / 32)) for a in range(33)]
-    surface(module, "PAO_AftEquipmentTorus", paints["foil"], torus)
+    if aft_torus:
+        torus = [(835 + 184 * math.cos(a * math.tau / 32), 240 + 177 * math.sin(a * math.tau / 32)) for a in range(33)]
+        surface(module, "PAO_AftEquipmentTorus", paints["foil"], torus)
     # A single main outlet and the two smaller backup outlets, distinguished on the aft face.
     for i, (x, y, radius) in enumerate(((0, -180, 230), (-200, 200, 128), (200, 200, 128))):
         transform = Matrix.Translation(metres((x, y, 0)))
