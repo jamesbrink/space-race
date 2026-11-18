@@ -431,19 +431,21 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
             )
         mark_shells([hatch_cover.build("LM4_ForwardHatchCover", dark, parent).name, hatch_fittings.build("LM4_HatchFittings", gold, parent).name])
         grab.build("LM4_HatchHandholds", alloy, parent)
-        rails = MeshBuilder()
-        for y in (-14, 14):
-            for a, b in zip([(80, y, 134), (81, y, 143), (93, y, 143)], [(81, y, 143), (93, y, 143), (110, y, 134)], strict=True):
-                tube(rails, a, b, 0.65)
-        rails.build("LM4_PorchHandrails", alloy, platform)
-        # Forward face in AS10-34-5112: the circular tracking light below
-        # the rendezvous dish. Keep its static lens unlit in the Gallery.
-        socket, lens = MeshBuilder(), MeshBuilder()
-        mount = frame(at((77.6, 0, 188)), (1, 0, 0))
-        socket.lathe(prof([(4.5, -1.5), (4.5, 0.7), (3.65, 1), (3.55, -0.5)]), 28, matrix=mount)
-        lens.lathe(prof([(3.65, 0.35), (2.8, 0.7), (0, 0.85)]), 28, matrix=mount)
-        socket.build("LM4_TrackingLampBezel", alloy, parent)
-        lens.build("LM4_TrackingLampLens", dark, parent)
+    # Both flight articles: a handrail up either side of the porch (AS09-21-3212 of LM-3; the press kit's plate 43a
+    # of LM-4). Their run is estimated.
+    rails = MeshBuilder()
+    for y in (-14, 14):
+        for a, b in zip([(80, y, 134), (81, y, 143), (93, y, 143)], [(81, y, 143), (93, y, 143), (110, y, 134)], strict=True):
+            tube(rails, a, b, 0.65)
+    rails.build("LM_PorchHandrails", alloy, platform)
+    # And the round tracking light on the centreline of the forward face, below the rendezvous dish (AS09-21-3212,
+    # AS10-34-5112). Its lens is static and unlit in the Gallery; its size and station are estimated.
+    socket, lens = MeshBuilder(), MeshBuilder()
+    mount = frame(at((77.6, 0, 188)), (1, 0, 0))
+    socket.lathe(prof([(4.5, -1.5), (4.5, 0.7), (3.65, 1), (3.55, -0.5)]), 28, matrix=mount)
+    lens.lathe(prof([(3.65, 0.35), (2.8, 0.7), (0, 0.85)]), 28, matrix=mount)
+    socket.build("LM_TrackingLampBezel", alloy, parent)
+    lens.build("LM_TrackingLampLens", dark, parent)["diameter_in"] = 7.3  # (a mark of its own keeps it a node of its own)
     # Four clusters on outriggers at 45 degrees to the pitch and roll axes (NASA TN D-6740, "Installation of the
     # System"), each thruster where R-567 puts it. R-567 numbers them I to IV from the left forward corner round by
     # the rear; +Y here is the commander's side, the LM's -Y. A reference point is taken for the throat. The
@@ -476,12 +478,12 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     mast = MeshBuilder()
     tube(mast, (0, 0, 0), (4, 0, 43), 1.3)
     mast.build("LM3_SBandBoom", alloy, sb)
-    # Press kit plate 42b and AS10-34-5112 place the gimbal on the
-    # centreline forward of the docking tunnel.
-    radar = (68, 0, 240) if spacecraft == 4 else (49, 29, 225)
+    # The rendezvous radar's gimbal is on the centreline forward of the docking tunnel on both flight articles
+    # (AS09-21-3212 of LM-3; the Apollo 10 press kit's plate 42b and AS10-34-5112 of LM-4). Its station is estimated.
+    radar = (68, 0, 240)
     dish(gear, "LM3_RendezvousRadar", radar, (0.96, 0.18, 0.15), 12, white, dark)
     masts = MeshBuilder()
-    tube(masts, (66, 0, 223) if spacecraft == 4 else (46, 20, 211), radar, 1.25)
+    tube(masts, (66, 0, 226.5), radar, 1.25)  # (rooted in the roof, not inside the cabin)
     for side in (-1, 1):
         tube(masts, (-15, side * 33, 227), (-23, side * 46, 236), 0.55)
     masts.build("LM3_AntennaMasts", alloy, gear)
