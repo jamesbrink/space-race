@@ -272,3 +272,16 @@ test('LM-active terminal rendezvous flies from the radar fix through the photogr
   assert.ok(Math.abs(contact - op.contact) < 1, 'contact epoch ' + contact);
   assert.equal(run.phase, 'hard');
 });
+
+test('an off-axis radar gate measures current range and range rate along the spacecraft line of sight', async () => {
+  const { rendezvousRadar } = await import('../src/sim/rendezvous.ts');
+  const { flight } = await import('../missions/usa/apollo/flights/apollo-9/flight.ts');
+  const [a, b] = pair().bodies;
+  a.r = add(b.r, [300 * 0.3048, 400 * 0.3048, 0]);
+  a.v = add(b.v, [0, -10, 0]);
+  const seen = rendezvousRadar(a, b);
+  assert.ok(Math.abs(seen.range / 0.3048 - 500) < 1e-7);
+  assert.ok(Math.abs(seen.closing - 8) < 1e-8);
+  const gate = flight.docking.rendezvous.gates.find((g) => seen.range < g.range.value + 1e-7);
+  assert.equal(gate.speed.value, 5 * 0.3048);
+});
