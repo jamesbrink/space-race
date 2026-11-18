@@ -1605,10 +1605,20 @@ export class OrbitDeck extends Deck {
     const h = this.hand;
     if (!h || this.fired !== null) return;
     const until = this.manualJetsGone(t) ? this.parts : t;
-    const dt = until - h.t;
+    const from = h.t;
+    const dt = until - from;
     h.t = t;
     const push = this.push();
-    if (dt <= 0 || (push.pitch === 0 && push.yaw === 0 && push.roll === 0)) return;
+    const steering = dt > 0 && (push.pitch !== 0 || push.yaw !== 0 || push.roll !== 0) && until >= h.log[0]!.t;
+    if (t < from || h.log.at(-1)!.t > from) {
+      // Browsing the tape preserves every recorded turn. A new command branches where the stick was taken.
+      const at = steering ? from : until;
+      let i = h.log.length - 1;
+      while (i > 0 && h.log[i]!.t > at) i--;
+      h.q = h.log[i]!.q;
+      if (steering) h.log.length = i + 1;
+    }
+    if (!steering) return;
     // (the hand controller's rate: the thruster set worked by hand)
     const rate = this.flight.plan!.craft[0]!.thrusters.find((x) => x.mode === 'manual' && x.rate)!.rate!.value * DEG;
     let q = h.q;
@@ -1651,9 +1661,9 @@ export class OrbitDeck extends Deck {
       this.impact(this.encounters.hits[this.nextImpact++]!);
     if (!this.free && this.mine === null && this.fired === null && this.downMine === null) this.planHands(t);
     if (this.free && this.fired === null && this.hand) {
-      const logged = this.hand.log.length;
+      const logged = this.hand.log.at(-1);
       this.turnTo(t);
-      if (logged !== this.hand.log.length) this.drawHands();
+      if (logged !== this.hand.log.at(-1)) this.drawHands();
     }
     if (t > this.over() + 12) {
       this.clock.pause();

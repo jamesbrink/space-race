@@ -37,6 +37,10 @@ try {
         await draw(1800);
         await page.keyboard.press('g');
         await page.waitForFunction(() => window.sr.cockpit.free);
+        await page.keyboard.down('d');
+        await draw(1804);
+        await page.keyboard.up('d');
+        await draw(1808);
         await page.evaluate(() => {
           const { cockpit, clock, flight } = window.sr;
           const module = flight.plan.craft[0].joints.find((x) => x.gone.includes('instrument'));
@@ -52,6 +56,17 @@ try {
         await page.keyboard.up('w');
         assert.ok(difference(initial, unpowered) < 0.002, 'held stick turned the manually released sphere');
         assert.equal(await page.evaluate(() => window.sr.cockpit.can('retro')), false);
+        await draw(1802);
+        await page.keyboard.down('w');
+        await draw(1806);
+        await page.keyboard.up('w');
+        await draw(at + 5);
+        const branch = await page.evaluate(() => {
+          const { cockpit } = window.sr;
+          const log = cockpit.hand.log.map((entry) => entry.t);
+          return { sorted: log.every((t, i) => i === 0 || t >= log[i - 1]), last: log.at(-1), canFire: cockpit.can('retro') };
+        });
+        assert.ok(branch.sorted && branch.last > 1804 && branch.last <= at && !branch.canFire);
       }
       assert.deepEqual(errors, []);
       console.log(flight, release, difference(released, later), 'rad in first second');
