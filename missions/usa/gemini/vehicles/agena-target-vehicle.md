@@ -80,31 +80,31 @@ the first six are the docking adapter's ([target-docking-adapter.md](target-dock
 
 Six vehicles were built; four reached orbit and were docked with. What is known to have differed
 between those four, from each flight's mission report (section 3.4, which lists a vehicle's changes
-from the one before), the Launch Systems Final Report and McDonnell's Technical Summary. **The
-Gemini XI mission report was not found**, so GATV-5006 is the thin column. "In the model": whether
-`Unit` has a field for it yet; a field is added when the model can show the thing.
+from the one before), the Launch Systems Final Report and McDonnell's Technical Summary. The
+[Gemini XI mission report](https://tothemoon.im-ldi.com/download_document?file_name=gemini_11_mission_report.pdf&project=GEMINI)
+documents the tether hardware and confirms the discharge-finger deletion.
 
 | | GATV-5003 (Gemini VIII) | GATV-5005 (Gemini X) | GATV-5006 (Gemini XI) | GATV-5001, rebuilt (Gemini XII) | Source | In the model |
 | --- | --- | --- | --- | --- | --- | --- |
 | Docking adapter | TDA 3 | TDA 1A | TDA 6 | TDA 7A | Technical Summary, pp. 333 to 336 | `Unit.tda` |
-| Launched | 16 March 1966, 15:00:03.127 G.m.t., on Atlas 5302 | 18 July 1966, 20:39:46.131, on 5305 | 12 September 1966, 13:05:02, on 5306 | 11 November 1966, 19:07:58.688, on 5307 | each report, 4.1; Launch Systems report, Table IV.D-2 and Figure III.G-1 | the flight's data |
-| Orbit at insertion, nautical miles | 158.8 by 161.3 | 156.6 by 162.0 | not found | 156.4 by 162.7 | each report, 4.1 | the flight's data |
-| Weight at launch; in orbit | 18,097 lb; 7,116 lb | 18,074 lb; 7,184 lb | not found | 18,071 lb with the shroud; 7,114 lb | each report, 3.6 | the flight's data |
+| Launched | 16 March 1966, 15:00:03.127 G.m.t., on Atlas 5302 | 18 July 1966, 20:39:46.131, on 5305 | 12 September 1966, 13:05:01.725, on 5306 | 11 November 1966, 19:07:58.688, on 5307 | each report, 4.1; Launch Systems report, Table IV.D-2 and Figure III.G-1 | the flight's data |
+| Orbit at insertion, nautical miles | 158.8 by 161.3 | 156.6 by 162.0 | 156 by 166 | 156.4 by 162.7 | each report, 4.1 | the flight's data |
+| Weight at launch; in orbit | 18,097 lb; 7,116 lb | 18,074 lb; 7,184 lb | 18,105 lb with the shroud; 7,198 lb | 18,071 lb with the shroud; 7,114 lb | each report, 3.6 | the flight's data |
 | Experiment S-10, the micrometeorite package on the adapter | fitted; not opened, there being no walk | fitted | not fitted | fitted; opened at 43 h 11 min and "left on the GATV" | Technical Summary, pp. 318 and 334 (adapters 1A, 3, 5, 7A); Gemini XII report, 8.8 | `Unit.s10` |
-| Static discharge fingers in the cone | three | three, and a monitor of the charge | off, by the Technical Summary; on, if the Gemini XII report's list of differences from 5006 is complete | "The entire static discharge device assembly was removed from the TDA" | Gemini X report, 3.4.1.2; Technical Summary; Gemini XII report, 3.4(g) | `Unit.discharge_fingers` |
+| Static discharge fingers in the cone | three | three, and a monitor of the charge | removed, as recorded in §3.4 | removed | Gemini X report, 3.4.1.2; Gemini XI report, 3.4(f); Gemini XII report, 3.4(g) | `Unit.discharge_fingers` |
 | Mooring | two hardline umbilicals and two limit switches added; unrigidizing and unlatching made separate sequences | not found | no change found | not found | Gemini VIII report, 3.4.1.2 | no |
 | Acquisition lights | flash rate "changed from 65 to 55 flashes per minute and a reflector was added to the lower light" | not found | not found | not found | Gemini VIII report, 3.4.1.2 | no |
 | Running lights | two batteries for them; the aft green light did not light in flight | one of the batteries removed; on the timer "only the forward three running lights will illuminate" | not found | not found | Launch Systems report, pp. III.C-19 and III.E-4; Gemini X report, 3.4.2.2 | no: see below |
-| Velcro on the adapter | three patches in line with the top acquisition light | the same | the same | and more, "at different locations on the TDA cylindrical section" | Technical Summary; Gemini XII report, 3.4(c) | no |
-| Experiment S-26, the ion wake | none | sensors and a programmer in the adapter | fitted | none | Gemini X report, 3.4.1.2; Technical Summary | no (inside) |
-| Tether | none | none | 100 ft of Dacron stowed on the adapter, one end hooked to a fitting on the cone | the same, "modified to provide a large tether loop"; a clamp for the ship's docking bar on its container | Technical Summary; Gemini XII report, 3.4(a) and (f) | no: owed to Gemini XI |
-| For a man outside | Velcro only | not found | not found | a work station on the cone (a torque wrench and bolt, a fluid disconnect, an electrical connector); two portable handholds; sixteen pip-pin receptacles; four tether rings on the cone's lip and two on the shroud's ring, with two handholds | Gemini XII report, 3.4 and Figure 3.4-2 | no: owed to Gemini XII |
-| Docking cone | as built | "essentially the same" | the tether's fitting | "modified to include the funnel hole for the telescoping handrail" | Gemini X report, 3.4.1.2; Gemini XII report, 3.4(h) | no |
-| Balance | full batteries | one primary and one running-light battery out; about 150 lb of lead in the forward auxiliary rack; a stainless steel door in place of a magnesium one | not found (the Launch Systems report has the changes made "for the remaining" vehicles) | "of the same configuration as GATV 5006" | Gemini X report, 3.4.1.1; Launch Systems report, p. III.E-4 | no (inside) |
-| Finish | not stated: by photograph ("Dimensions", above) | aluminium tape over about 15 per cent of the forward auxiliary rack's and the forward section's skins; "No paint removal, additional painting, or other surface preparation was performed" | not found | not found | Gemini X report, 3.4.1.1 | no: owed to Gemini X |
+| Velcro on the adapter | three patches in line with the top acquisition light | the same | the same | and more, "at different locations on the TDA cylindrical section" | Technical Summary; Gemini XII report, 3.4(c) | late hook-and-loop patches, positions estimated |
+| Experiment S-26, the ion wake | none | sensors and a programmer in the adapter | fitted | none | Gemini X report, 3.4.1.2 and Fig. 8.14-1; Gemini XI report, 8.10 | three analyzer heads and internal programmer |
+| Tether | none | none | 100 ft of Dacron stowed on the adapter, one end hooked to a fitting on the cone | the same, "modified to provide a large tether loop"; a clamp for the ship's docking bar on its container | Gemini XI report, 3.4 and Fig. 3.1-2; Gemini XII report, 3.4(a), (f), and Fig. 3.4-1 | two stowed configurations |
+| For a man outside | Velcro only | no added restraints documented | two handholds beside the tether container and stowage for a docking-bar mirror | a work station on the cone (a torque wrench and bolt, a fluid disconnect, an electrical connector); two portable handholds; sixteen pip-pin receptacles; four tether rings on the cone's lip and two on the shroud's ring, with two handholds | Gemini XI report, 3.4(c–d); Gemini XII report, 3.4 and Figure 3.4-2 | handholds and EVA work station, with mirror stowage on XI omitted |
+| Docking cone | as built | "essentially the same" | the tether's fitting | "modified to include the funnel hole for the telescoping handrail" | Gemini X report, 3.4.1.2; Gemini XII report, 3.4(h) | funnel opening through the cone |
+| Balance | full batteries | one primary and one running-light battery out; about 150 lb of lead in the forward auxiliary rack; a stainless steel door in place of a magnesium one | assumed same as GATV-5005 from §3.4 | assumed same as GATV-5006 from §3.4 | Gemini X report, 3.4.1.1; Gemini XI and XII reports, 3.4; Launch Systems report, p. III.E-4 | replacement door, lead block and fewer battery boxes | |
+| Finish | not stated: by photograph ("Dimensions", above) | aluminium tape over about 15 per cent of the forward auxiliary rack's and the forward section's skins; "No paint removal, additional painting, or other surface preparation was performed" | assumed tape retained | reflective finish and flag on tank visible in S66-62755 | Gemini X report, 3.4.1.1; NASA S66-62755 | estimated tape pattern and late flag layout |
 | Main engine's start | the oxidiser led again, by two pressure switches, after the loss of GATV-5002 | as 5003 | as 5003 | as 5003; "Modified PPS installed" | Gemini VIII report, 3.4.2.1; Launch Systems report, Figure III.G-1 | no (inside) |
 | Main engine in flight | a yaw error from the centre of gravity's offset | nothing listed | "Yaw heading error greater than expected during PPS burns" | chamber pressure fell in the ascent burn; the burns with a ship docked were cancelled | Launch Systems report, p. III.E-4; Gemini XII report, 5.4.2 | the flight's words |
-| Telemetry antenna for orbit | as Figure 3.4-2 | its receptacle "rotated 90 degrees" | not found | not found | Gemini X report, 3.4.2.4 | no |
+| Telemetry antenna for orbit | as Figure 3.4-2 | its receptacle "rotated 90 degrees" | assumed same as GATV-5005 | assumed same as GATV-5006 | Gemini X report, 3.4.2.4; Gemini XI and XII reports, 3.4 | rotated mounting plate with estimated dimensions |
 
 No document read calls the last vehicle "5001A": they write 5001 or 5001R, and its adapter 7A.
 
@@ -118,8 +118,11 @@ No document read calls the last vehicle "5001A": they write 5001 or 5001R, and i
   tanks are representative forms.
 - **Everything inside the forward section is a guess**: which box is the guidance module, the
   batteries, the programmer, and where each hangs.
-- **The paint is one photograph's.** The far side, the under side and the top are taken to match
-  the side Gemini VIII's camera saw. No lettering is drawn: none shows in the two photographs read.
+- The shared finish starts from Gemini VIII's photo. The position and widths of the reflective tape
+  strips are estimates, with their total area derived from the 15 percent specified for GATV-5005.
+  [Gemini XII flight photograph S66-62755](https://www.nasa.gov/image-detail/amf-s66-62755/)
+  places its flag on the tank skin, estimated at 28 in wide and centred at station 328. The
+  far-side flag is assumed. The remaining far-side finish and fine markings are incomplete.
 - **The antennas are placed from a sketch.** A dimensioned antenna drawing would move most of them.
 - **GATV-5003's own changes do not show**: a spring mount altered so the shroud could not catch on
   it, the engine's start sequence, a nine-hour reset timer.
