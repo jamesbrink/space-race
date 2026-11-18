@@ -109,10 +109,10 @@ export const APOLLO10_THRUST: Motor[] = [
     name: 'F-1',
     operation: 'Staggered centre and outboard cutoff',
     count: 5,
-    thrustN: (7680982 * LBF) / 5,
+    thrustN: 1536197 * LBF,
     propellant: 'RP-1 / liquid oxygen',
-    confidence: 'derived',
-    note: `${ten}, p. 49a, nominal S-IC total divided over five engines`,
+    confidence: 'documented',
+    note: `${ten}, p. 51, each engine at liftoff (p. 49a: 7,680,982 lb for the stage)`,
   },
   {
     name: 'J-2 · second stage',
@@ -181,6 +181,6 @@ export const APOLLO10_THRUST: Motor[] = [
     thrustN: 100 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'documented',
-    note: `${ten}, pp. 46–47`,
+    note: `${ten}, p. 47`,
   },
 ];
