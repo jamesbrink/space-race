@@ -12,7 +12,7 @@ const stageParts: [string, string, string, string, string][] = [
     'LMAscentPower',
     'Ascent battery bay',
     upper,
-    'Two 310 ampere-hour silver-zinc batteries travelled with the ascent stage.',
+    'Two silver-zinc batteries, each rated at 296 ampere-hours, travelled with the ascent stage.',
     'They could share propulsion manoeuvre loads with the descent batteries before staging. The cases, terminals and cabling represent the installation.',
   ],
   [
@@ -34,7 +34,7 @@ const stageParts: [string, string, string, string, string][] = [
     'Landing radar antenna',
     lower,
     'The antenna looked down from beneath Snoopy’s descent stage.',
-    'Over the Moon this radar measured height above the terrain under Snoopy. Its lowest reading was 47,400 feet. Its antenna and electronics enclosure are reconstructed.',
+    'Over the Moon this radar measured height above the terrain under Snoopy. Its last reading, a slant range of 50,460 feet, put Snoopy 47,400 feet above the surface. Its antenna and electronics enclosure are reconstructed.',
   ],
   [
     'LMDescent',
