@@ -642,6 +642,7 @@ async function escapeCase() {
         yaw: walk.yaw,
         third: walk.third,
         said: say && !say.hidden ? say.textContent : '',
+        location: document.querySelector('[data-walk-location]')?.textContent ?? '',
         bar: document.querySelector('#ui .walkbar span')?.textContent ?? '',
       };
     });
@@ -698,6 +699,7 @@ async function escapeCase() {
   check(onView !== null, `a place on the view to click: ${onView}`);
   const s0 = await onFoot();
   check(s0.active && s0.locked, `on foot, the mouse captured (on foot ${s0.active}, captured ${s0.locked})`);
+  check(s0.location.includes(flown.launchSite) && s0.location.includes('Near '), `site and landmark named: ${s0.location}`);
   check(/frees the mouse/.test(s0.bar), `the walk bar says what Esc does with it captured: "${s0.bar}"`);
   const s1 = await hold('w', 800);
   check(apart(s0, s1) > 0.3, `W walks with the mouse captured (${apart(s0, s1).toFixed(2)} m)`);
@@ -752,8 +754,17 @@ async function escapeCase() {
   await press('Escape');
   const s13 = await press('v', 1500);
   check(!s13.active, 'V leaves at once with the mouse freed');
-  await onFoot();
+  const start = await onFoot();
+  const moved = await hold('w', 900);
   await press('Escape');
+  await page.click('[data-walk-return]');
+  await page.waitForTimeout(400);
+  const returned = await state();
+  check(
+    apart(start, moved) > 0.3 && returned.active && apart(start, returned) < 0.1,
+    'Back to start restores the starting position on foot',
+  );
+  if (returned.locked) await press('Escape');
   await page.click('[data-walk-exit]');
   await page.waitForTimeout(1500);
   check(!(await state()).active, 'the Exit walk bar leaves with the mouse freed');

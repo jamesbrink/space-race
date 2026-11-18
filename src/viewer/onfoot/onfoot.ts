@@ -174,6 +174,26 @@ export class OnFoot {
 
   private readonly vehicles = new WeakMap<THREE.Object3D, Vehicle>();
 
+  private readonly startPosition = new THREE.Vector3();
+  private startFacing = 0;
+
+  /** Leave any seat or controls behind and put this figure back where this walk began. */
+  returnToStart(): void {
+    if (!this.h.walk.active) return;
+    const at = this.walked;
+    const figure = this.h.staged()[at]!;
+    this.exitWalk();
+    this.boarding = null;
+    this.emerging = -1;
+    this.shadowOnly(figure.group, (this.unseen = false));
+    figure.group.position.copy(this.startPosition);
+    figure.group.rotation.y = this.startFacing;
+    figure.group.updateMatrixWorld(true);
+    figure.measure();
+    this.h.onWalk(true, this.h.defs()[at]!.id);
+    this.embody(at);
+  }
+
   /** Put the walker in a figure's place: its eyes, its height, the way it faces. The figure itself is put away. */
   embody(at: number): void {
     const walker = this.h.defs()[at]!.walker!;
@@ -181,6 +201,8 @@ export class OnFoot {
     this.setAim(null);
     const figure = this.h.staged()[at]!;
     this.h.scene.updateMatrixWorld(true);
+    this.startPosition.copy(figure.group.position);
+    this.startFacing = figure.group.rotation.y;
     const feet = figure.group.getWorldPosition(new THREE.Vector3());
     const height = new THREE.Box3().setFromObject(figure.full).max.y - feet.y;
     const eyes = walker.eyes ? figure.full.getObjectByName(walker.eyes) : undefined;
@@ -339,7 +361,14 @@ export class OnFoot {
     return actions.length && top.name ? { under: top.name, actions } : undefined;
   }
 
-  private targetOf(hit: Hit): { target: Target; box?: THREE.Box3 } | null {
+  landmark(): Target | null {
+    const eye = this.h.walk.body.position.clone();
+    eye.y += this.h.walk.eye;
+    const mesh = this.h.walk.solids.landmark(eye);
+    return mesh ? (this.targetOf({ mesh, point: eye })?.target ?? null) : null;
+  }
+
+  private targetOf(hit: Pick<Hit, 'mesh' | 'point'>): { target: Target; box?: THREE.Box3 } | null {
     const material = hit.mesh.material as THREE.Material | THREE.Material[];
     const pane = (Array.isArray(material) ? material[0] : material)?.name.startsWith('glass') || undefined;
     const climb = Boolean(hit.mesh.userData.climb || hit.mesh.parent?.userData.climb) || undefined;
