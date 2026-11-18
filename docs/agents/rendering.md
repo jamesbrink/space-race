@@ -297,6 +297,11 @@ light would be another shader variant for everything lit), as strong as one fire
 square root of the area (`LIGHT_BY_AREA`: estimated), and the trail leaves from the middle of the fires lit at liftoff,
 as broad as they are spread.
 
+When a flight has no nozzle record, the exhaust picture uses a neutral exit matched to sea-level air
+(`plumeExit` in `viewer/plume.ts`). The Mercury-Atlas and Gemini-Titan ascent fires currently use that
+fallback. Their opening in thin air is illustrative. The renderer reads the real or estimated values carried
+by the other plans where available. The flight dynamics do not read the fallback.
+
 **A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
 the nozzle's (the pressure the engine's gas leaves at, `EngineDef.nozzle` in its plan, read by the fire's engine id: under
 the air's a column, over it a balloon; documented where it was found, estimated in the data where not, never in
