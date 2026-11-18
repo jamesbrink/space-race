@@ -269,6 +269,12 @@ await scenario('detail', async () => {
   const mid = row[Math.floor(row.length / 2)];
   await page.evaluate((id) => window.sr.lineup.choose(id), mid.id);
   await settle(page);
+  // The row grows with each flight. At the whole height of a taller booster its measured
+  // threshold may still call for medium detail. Zoom in as a visitor would for the close inspection.
+  const centre = await middleOf(page, mid.id);
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.wheel(0, -320);
+  await settle(page);
   const framed = await report(page);
   const at = framed.find((s) => s.id === mid.id);
   check(at.shown === 0 && at.wanted === 0, `${mid.id} framed: drawn at the finest level (level ${at.shown})`);

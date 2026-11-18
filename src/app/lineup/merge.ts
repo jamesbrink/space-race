@@ -174,7 +174,9 @@ function joinPaint(sources: readonly Source[], craft: boolean): Piece {
   const normalMatrix = new THREE.Matrix3();
   const short = (x: number): number => Math.max(-32767, Math.min(32767, Math.round(x * 32767)));
   const byte = (x: number): number => Math.max(-127, Math.min(127, Math.round(x * 127)));
-  let base = 0;
+  // Source UV seams can duplicate corners. Plain paint has no UVs, so identical
+  // encoded positions, normals and paint are exactly the same GPU vertex.
+  const unique = new Map<string, number>();
   let written = 0;
   sources.forEach((s, k) => {
     const position = s.geometry.getAttribute('position');
@@ -184,31 +186,41 @@ function joinPaint(sources: readonly Source[], craft: boolean): Piece {
       normal = s.geometry.getAttribute('normal');
     }
     normalMatrix.getNormalMatrix(s.matrix);
+    const remap = new Uint32Array(position.count);
     for (let i = 0; i < position.count; i++) {
       v.fromBufferAttribute(position, i).applyMatrix4(s.matrix).sub(at).divideScalar(scale);
-      positions[(base + i) * 3] = short(v.x);
-      positions[(base + i) * 3 + 1] = short(v.y);
-      positions[(base + i) * 3 + 2] = short(v.z);
+      const x = short(v.x),
+        y = short(v.y),
+        z = short(v.z);
       n.fromBufferAttribute(normal, i).applyMatrix3(normalMatrix).normalize();
-      normals[(base + i) * 3] = byte(n.x);
-      normals[(base + i) * 3 + 1] = byte(n.y);
-      normals[(base + i) * 3 + 2] = byte(n.z);
-      paint[base + i] = paintIndex[k]!;
+      const nx = byte(n.x),
+        ny = byte(n.y),
+        nz = byte(n.z);
+      const colour = paintIndex[k]!;
+      const key = String.fromCharCode(x, y, z, nx, ny, nz, colour);
+      let index = unique.get(key);
+      if (index === undefined) {
+        index = unique.size;
+        unique.set(key, index);
+        positions.set([x, y, z], index * 3);
+        normals.set([nx, ny, nz], index * 3);
+        paint[index] = colour;
+      }
+      remap[i] = index;
     }
     // (a mirrored mesh's faces are wound the other way: put back, so that its fronts are still its fronts)
     const mirrored = s.matrix.determinant() < 0;
     const from = listOf(s.geometry);
     for (let i = 0; i + 2 < from.length; i += 3) {
-      list[written++] = base + from[i]!;
-      list[written++] = base + from[mirrored ? i + 2 : i + 1]!;
-      list[written++] = base + from[mirrored ? i + 1 : i + 2]!;
+      list[written++] = remap[from[i]!]!;
+      list[written++] = remap[from[mirrored ? i + 2 : i + 1]!]!;
+      list[written++] = remap[from[mirrored ? i + 1 : i + 2]!]!;
     }
-    base += position.count;
   });
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3, true));
-  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3, true));
-  geometry.setAttribute('paint', new THREE.BufferAttribute(paint, 1));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, unique.size * 3), 3, true));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normals.slice(0, unique.size * 3), 3, true));
+  geometry.setAttribute('paint', new THREE.BufferAttribute(paint.slice(0, unique.size), 1));
   geometry.setIndex(new THREE.BufferAttribute(list.subarray(0, written), 1));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
@@ -283,6 +295,8 @@ export function join(root: THREE.Object3D, craft: readonly string[] | null, byPa
   const own = new Map<string, { part: string; sources: Source[] }>();
   const kept: Piece[] = [];
   for (const child of root.children) {
+    // Its opaque enclosure stays closed in every Lineup pose. The Gallery loads the full source.
+    if (child.userData.lineup_enclosed) continue;
     const isCraft = Boolean(craft?.includes(child.name));
     const into = byPart ? child.name : isCraft ? 'craft' : beside.includes(child.name) ? BESIDE : 'rest';
     child.traverse((o) => {

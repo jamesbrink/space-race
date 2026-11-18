@@ -24,6 +24,8 @@ export interface Motor {
   thrustN: number;
   /** Seconds. Left out for a thruster that fires in pulses. */
   burnS?: number;
+  /** Caption when a single burn duration cannot describe this engine. Thrusters default to pulsed. */
+  operation?: string;
   propellant: string;
   /** What kind of motor it is: a solid, once lit, burns to its own end and answers no command. */
   kind?: 'liquid' | 'solid';

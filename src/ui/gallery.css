@@ -60,7 +60,7 @@ body.gallery-settled #stage { visibility: hidden; }
 @media (min-width: 961px) and (min-height: 521px) {
   #gallery .controls { left: var(--edge); bottom: calc(var(--edge) + 46px); transform: none; width: min(340px, 28vw); min-width: 0; max-width: none; justify-items: stretch; gap: 12px; padding: 14px 16px 12px; }
   /* (the column is narrow: the slider's ends are named above it, as on a phone, and its track runs the whole width) */
-  #gallery .explode { max-width: none; display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0 10px; }
+  #gallery .explode { max-width: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 5px 10px; }
   #gallery .explode input[type='range'] { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   #gallery .explode span:last-of-type { text-align: right; }
   #gallery .buttons { justify-content: flex-start; gap: 10px 6px; }

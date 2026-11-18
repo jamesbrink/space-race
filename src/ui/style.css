@@ -338,6 +338,7 @@ time { color: var(--amber); padding-top: 2px; }
 /* never wider than the gap between the title block and the data panel */
 .controls { position: absolute; left: 50%; bottom: var(--edge); transform: translateX(-50%); display: grid; justify-items: center; gap: 12px; padding: 14px 18px 12px;
   max-width: calc(100vw - 2 * (min(360px, 30vw) + var(--edge) + 14px)); min-width: min(420px, 100%); }
+.explode span { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .explode { display: flex; align-items: center; gap: 14px; color: var(--dim); white-space: nowrap; width: 100%; max-width: 520px; }
 input[type='range'] { appearance: none; -webkit-appearance: none; flex: 1; min-width: 60px; width: 0; height: 28px; background: none; cursor: ew-resize; }
 input[type='range']::-webkit-slider-runnable-track { height: 1px; background: var(--dim); }
@@ -467,7 +468,7 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 /* --- sliders under a finger (slider.ts): one style for every one of them --- */
 /* on a narrow page a slider's two ends are named above it, and its track runs the whole width */
 @media (max-width: 960px), (max-height: 520px) {
-  .explode { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 0 10px; }
+  .explode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 5px 10px; }
   .explode input[type='range'] { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .explode span:last-of-type { text-align: right; }
 }

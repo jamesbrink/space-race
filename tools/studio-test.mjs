@@ -9,7 +9,7 @@
 // read. (The Apollo DSKY faces down into the cabin: the closed exhibit's limit on how far the eye goes below the level,
 // and a lamp aimed at the middle of the whole rocket, each hid it.)
 import { flights } from '../missions/index.ts';
-import { galleryFlight, WHOLE_VIEW } from '../src/app/address.ts';
+import { exhibit, galleryFlight, WHOLE_VIEW } from '../src/app/address.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -19,15 +19,13 @@ const base = urlOf(args).split('#')[0];
 /** Each flight's gallery views of its cabin's inside, as its gallery has them. */
 const subjects = flights.flatMap((f) => {
   if (only && f.id !== only) return [];
-  let model;
-  try {
-    model = galleryFlight(f).models[0];
-  } catch {
-    return []; // (no vehicle to exhibit)
-  }
-  const held = new Set(model.cabin?.within ?? []);
-  const views = model.views.filter((v) => v.nodes?.length && v.nodes.every((n) => held.has(n)));
-  return views.length ? [{ id: f.id, views, part: views[0].nodes[0] }] : [];
+  return [exhibit(f), ...f.models.filter((m) => m.galleryCraft)].filter(Boolean).flatMap((vehicle) => {
+    const model = galleryFlight(f, vehicle).models[0];
+    const held = new Set(model.cabin?.within ?? []);
+    const views = model.views.filter((v) => v.nodes?.length && v.nodes.every((n) => held.has(n)));
+    const route = f.id + '/gallery' + (vehicle.galleryCraft ? '/' + vehicle.id : '');
+    return views.length ? [{ id: route, views, part: views[0].nodes[0] }] : [];
+  });
 });
 if (!subjects.length)
   throw new Error(only ? `${only} has no gallery view of its cabin's inside` : 'no flight has a gallery view of its cabin');
@@ -38,7 +36,7 @@ try {
   for (const { id, views, part } of subjects)
     for (const width of [1280, 820, 390]) {
       console.log(`${id} at ${width}: ${views.map((v) => v.label).join(', ')}`);
-      const { page, errors, close } = await open(browser, `${base}#${id}/gallery`, {
+      const { page, errors, close } = await open(browser, `${base}#${id}`, {
         viewport: [width, 900],
         console: ['error', 'warning'],
         wait: 'gallery',
@@ -76,6 +74,27 @@ try {
       await view(WHOLE_VIEW);
       check(!(await cutOpen()), 'Whole: that opening closes again');
       await cut.click();
+      const intact = await page.evaluate(() => {
+        const stage = window.sr.gallery.stage;
+        const opaque = [];
+        stage.staged[stage.current].full.traverse((part) => {
+          if (!part.userData.shell || part.isMesh) return;
+          for (const primitive of part.children) {
+            if (primitive.isMesh && !primitive.material.clippingPlanes?.length) opaque.push(primitive.name);
+          }
+        });
+        return opaque;
+      });
+      check(!intact.length, 'the section passes through every material of each compound shell: ' + intact.join(', '));
+      const fits = await page.locator('#gallery .explode').evaluate((slider) => {
+        const box = slider.getBoundingClientRect();
+        return [...slider.querySelectorAll('span')].every((end) => {
+          const text = document.createRange();
+          text.selectNodeContents(end);
+          return [...text.getClientRects()].every((r) => r.left >= box.left - 1 && r.right <= box.right + 1);
+        });
+      });
+      check(fits, 'both staging captions fit within the control');
       await view(first);
       await view(WHOLE_VIEW);
       check(await cutOpen(), 'an opening made by hand is kept');

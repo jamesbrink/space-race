@@ -23,9 +23,12 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const flights = [];
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
   const { flight } = await import(pathToFileURL(join(root, file)).href);
-  const vehicle = exhibit(flight);
-  if (vehicle?.seats?.length && (!only || flight.id.includes(only)))
-    flights.push({ id: flight.id, seats: vehicle.seats, cabin: vehicle.cabin });
+  for (const vehicle of [exhibit(flight), ...flight.models.filter((m) => m.galleryCraft)]) {
+    if (vehicle?.seats?.length && (!only || flight.id.includes(only))) {
+      const route = flight.id + '/gallery' + (vehicle.galleryCraft ? '/' + vehicle.id : '');
+      flights.push({ id: flight.id, route, seats: vehicle.seats, cabin: vehicle.cabin });
+    }
+  }
 }
 flights.sort((a, b) => a.id.localeCompare(b.id));
 if (!flights.length) {
@@ -130,7 +133,7 @@ function seated(s, flight, n, how) {
     if (i !== n && flight.seats[i].hide?.length && x.drawnOfHidden !== flight.seats[i].hide.length)
       fail(`${tag}: the man in seat ${i} is not all drawn (${x.drawnOfHidden} of ${flight.seats[i].hide.length})`);
   });
-  if (!s.hash.endsWith(`/gallery/${flight.seats[n].node}`)) fail(`${tag}: the address is ${s.hash}`);
+  if (!s.hash.endsWith(`${flight.route}/${flight.seats[n].node}`)) fail(`${tag}: the address is ${s.hash}`);
   if (s.sitPressed !== 'true') fail(`${tag}: the switch is not lit`);
   if (!s.bar) fail(`${tag}: the bar of what can be done from the seat is not shown`);
 }
@@ -217,7 +220,7 @@ for (const flight of flights) {
   const slug = flight.id.split('/').pop();
   // --- 1280 wide: the whole of it ---
   {
-    const { page, errors, close } = await open(`${flight.id}/gallery`, 1280, 800);
+    const { page, errors, close } = await open(flight.route, 1280, 800);
     // a view the hands have set
     await page.evaluate(() => window.sr.gallery.stage.pose(205, 12, 9, 2.5));
     await page.waitForTimeout(500);
@@ -353,7 +356,7 @@ for (const flight of flights) {
       fail(
         `${flight.id}: up out of the seat, the camera is ${far(s.eye, was.eye).toFixed(3)} m and ${turned(s.q, was.q).toFixed(4)} rad from where it was`,
       );
-    if (!s.hash.endsWith('/gallery') || s.sitPressed !== 'false' || s.bar)
+    if (!s.hash.endsWith(flight.route) || s.sitPressed !== 'false' || s.bar)
       fail(`${flight.id}: up, the address is ${s.hash} and the switch ${s.sitPressed}`);
     for (const [i, x] of s.seats.entries())
       if (flight.seats[i].hide?.length && x.drawnOfHidden !== flight.seats[i].hide.length)
@@ -370,7 +373,7 @@ for (const flight of flights) {
     // Back and Forward: an address typed that names the gallery gets up; Back sits again; Forward gets up again
     await page.click('#gallery [data-sit]');
     await page.waitForTimeout(HANDOVER);
-    await page.evaluate((id) => (location.hash = `#${id}/gallery`), flight.id);
+    await page.evaluate((route) => (location.hash = `#${route}`), flight.route);
     await page.waitForTimeout(HANDOVER);
     s = await read(page);
     if (s.rig !== 'orbit') fail(`${flight.id}: an address that names no seat left him in it`);
@@ -380,9 +383,9 @@ for (const flight of flights) {
     await page.goForward();
     await page.waitForTimeout(HANDOVER);
     s = await read(page);
-    if (s.rig !== 'orbit' || !s.hash.endsWith('/gallery')) fail(`${flight.id}: Forward did not get up (${s.rig}, ${s.hash})`);
+    if (s.rig !== 'orbit' || !s.hash.endsWith(flight.route)) fail(`${flight.id}: Forward did not get up (${s.rig}, ${s.hash})`);
     // a link straight into the last seat
-    await page.evaluate(([id, node]) => (location.hash = `#${id}/gallery/${node}`), [flight.id, flight.seats.at(-1).node]);
+    await page.evaluate(([route, node]) => (location.hash = `#${route}/${node}`), [flight.route, flight.seats.at(-1).node]);
     await page.waitForTimeout(HANDOVER);
     seated(await read(page), flight, flight.seats.length - 1, 'a link');
     if (errors.length) fail(`${flight.id}: console errors: ${errors.slice(0, 3).join(' | ')}`);
@@ -390,7 +393,7 @@ for (const flight of flights) {
   }
   // --- 390 wide, a phone held upright: the control is in the sheet, and nothing in the control block is hidden ---
   {
-    const { page, errors, close } = await open(`${flight.id}/gallery`, 390, 844);
+    const { page, errors, close } = await open(flight.route, 390, 844);
     await page.click('#gallery .handle-open');
     await page.waitForTimeout(500);
     // (the View tab, which on a phone is the control block; pressed again while open it would put the sheet away)
@@ -426,7 +429,7 @@ for (const flight of flights) {
   }
   // --- cut open, close: the Sun's shadow inside the cabin is as fine as the view (rendering.md, "Shadows reach as far as the place does") ---
   {
-    const { page, errors, close } = await open(`${flight.id}/gallery`, 1280, 800);
+    const { page, errors, close } = await open(flight.route, 1280, 800);
     // (the panels away, so the view is framed in the whole window, as on the shots compared)
     await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
     const m = await page.evaluate(grain);

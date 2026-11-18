@@ -83,6 +83,7 @@ export interface GalleryHost {
   address(what: string): void;
   /** Something lies over the gallery (the front page) and it is only a picture behind it. */
   covered(): boolean;
+  craft?(id: string): void;
 }
 
 const PLACE_SAYS: Record<Place, string> = {
@@ -298,11 +299,11 @@ export class Gallery {
    * `kept`: the canvas and the stage of the gallery before this one (another flight's), which this one takes on: a
    * stage is made once and shows flight after flight (app/session.ts), and its renderer with it.
    */
-  constructor(parent: HTMLElement, flight: Flight, host: GalleryHost, kept?: GalleryKept) {
+  constructor(parent: HTMLElement, flight: Flight, host: GalleryHost, kept?: GalleryKept, vehicle = exhibit(flight)!) {
     this.flight = flight;
     this.host = host;
-    this.vehicle = exhibit(flight)!;
-    this.staged = galleryFlight(flight);
+    this.vehicle = vehicle;
+    this.staged = galleryFlight(flight, vehicle);
     this.model = this.staged.models[0]!;
     this.choices = plinths(this.vehicle);
     this.plinth = this.choices[0]!;
@@ -476,9 +477,10 @@ export class Gallery {
     const m = this.vehicle;
     const date = new Date(f.launch).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
     const specs = m.specGroups ? f.specs.filter((s) => m.specGroups!.includes(s.group)) : f.specs;
+    const motors = m.motorNames ? f.motors.filter((motor) => m.motorNames!.includes(motor.name)) : f.motors;
     const groups = [...new Set(specs.map((s) => s.group))];
     const told = toldOf(f, HISTORY);
-    const tabs = TABS.filter((t) => (t !== 'Motors' || f.motors.length) && (t !== 'History' || told));
+    const tabs = TABS.filter((t) => (t !== 'Motors' || motors.length) && (t !== 'History' || told));
     const pane = (name: string) => `data-pane="${name}" id="gallery-pane-${name}" role="tabpanel" aria-labelledby="gallery-tab-${name}"`;
     // (what can be looked out of from a seat: the cabin's windows, then its periscope)
     const seen = m.seats?.length ? lookoutsOf(m.cabin) : [];
@@ -498,6 +500,14 @@ export class Gallery {
       </header>
 
       <nav class="models sideways" aria-label="What stands in the gallery">
+        ${
+          this.host.craft && f.models.some((model) => model.galleryCraft)
+            ? [exhibit(f)!, ...f.models.filter((model) => model.galleryCraft)]
+                .filter((model) => model.id !== m.id)
+                .map((model) => `<button data-craft="${esc(model.id)}">${esc(model.galleryCraft ?? model.name)}</button>`)
+                .join('')
+            : ''
+        }
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
       <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i><em class="x" aria-hidden="true"></em></button>
@@ -533,13 +543,13 @@ export class Gallery {
           ${legend}
         </section>
         ${
-          f.motors.length
+          motors.length
             ? `<section ${pane('Motors')} hidden>
-          <table>${f.motors
+          <table>${motors
             .map(
               (x) => `
             <tr><th>${dot(x.confidence)}${x.count} × ${esc(x.name)}<small>${esc(x.propellant)}${x.note ? ` · ${esc(x.note)}` : ''}</small></th>
-            <td>${si(x.thrustN, 'N')}${x.burnS ? `<small>${x.burnS} s burn</small>` : '<small>pulsed</small>'}</td></tr>`,
+            <td>${si(x.thrustN, 'N')}${x.burnS ? `<small>${x.burnS} s burn</small>` : `<small>${esc(x.operation ?? 'pulsed')}</small>`}</td></tr>`,
             )
             .join('')}
           </table>
@@ -563,7 +573,7 @@ export class Gallery {
         <div class="buttons">
           <span class="set views sideways" role="group" aria-label="View"></span>
           <span class="set shows" role="group" aria-label="Show">
-            ${m.seats?.length ? `<button data-sit class="switch" aria-pressed="false" title="Sit in ${esc(m.seats[0]!.label)}: look round from it, out of its windows, and work its lights (C)">Sit in the cabin</button>` : ''}
+            ${m.seats?.length ? `<button data-sit class="switch" aria-pressed="false" title="Sit in ${esc(m.seats[0]!.label)}: look round from it, out of its windows, and work its lights (C)">${esc(m.boardingLabel ?? 'Sit in the cabin')}</button>` : ''}
             ${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}
             <button data-names class="switch" aria-pressed="false" title="Name each part as it comes clear of the rest">Labels</button>
             <button data-measure class="switch" aria-pressed="false" title="A person and a range pole beside it, for scale (G)">Scale</button>
@@ -803,6 +813,8 @@ export class Gallery {
     this.q('.models').addEventListener('click', (e) => {
       const travelled = pressed ? Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) : 0;
       pressed = null;
+      const craft = (e.target as HTMLElement).closest<HTMLElement>('[data-craft]')?.dataset.craft;
+      if (craft && this.ready && travelled < 10) return this.host.craft?.(craft);
       const id = (e.target as HTMLElement).closest<HTMLElement>('[data-plinth]')?.dataset.plinth;
       const to = this.choices.find((p) => p.id === id);
       if (to && to !== this.plinth && this.ready && travelled < 10) {

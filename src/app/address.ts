@@ -67,7 +67,8 @@ export function parseAddress(hash: string): Address {
   const [place, what = ''] = parts.slice(flight.length);
   const flightId = flight.join('/');
   if (place === undefined) return { flightId, place: null, what: '' };
-  if (isPlace(place)) return { flightId, place, what: place === 'fly' ? '' : what };
+  if (isPlace(place))
+    return { flightId, place, what: place === 'gallery' ? parts.slice(flight.length + 1).join('/') : place === 'fly' ? '' : what };
   return { flightId, place: 'site', what: place }; // (an address older than the places: a section of the site)
 }
 
@@ -401,7 +402,7 @@ export function galleryAt(
  * and a span (no parts) is of the whole vehicle where its flight stands it: it is kept only with
  * the whole of it on show, moved by `lift`, how much higher the vehicle stands here than there.
  */
-export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY'>, plinth: Plinth, lift = 0): ViewDef[] {
+export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY' | 'galleryFrom'>, plinth: Plinth, lift = 0): ViewDef[] {
   const there = (v: ViewDef) => Boolean(v.nodes?.length) && (!plinth.nodes || v.nodes!.every((n) => plinth.nodes!.includes(n)));
   // (a view that covers exactly what stands there is the whole of it again)
   const same = (v: ViewDef) => Boolean(plinth.nodes) && v.nodes!.length === plinth.nodes!.length;
@@ -412,7 +413,7 @@ export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY'>, plinth
     turn ? [x * Math.cos(turn) + z * Math.sin(turn), y, -x * Math.sin(turn) + z * Math.cos(turn)] : [x, y, z];
   const from = (v: ViewDef) => (v.from ? { from: unturned(v.from) } : {});
   return [
-    { id: WHOLE_VIEW, label: 'Whole' },
+    { id: WHOLE_VIEW, label: 'Whole', ...(model.galleryFrom ? { from: model.galleryFrom } : {}) },
     ...model.views.flatMap((v): ViewDef[] => {
       if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, span: v.span, isolate: v.isolate, ...from(v) }];
       if (measured(v)) return [{ id: v.id, label: v.label, centreY: v.centreY! + lift, span: v.span!, ...from(v) }];
@@ -430,8 +431,7 @@ export const WHOLE_VIEW = 'gallery-whole';
  * no plan, nothing that came to it where it came down, and nobody to walk as. Its seats are kept, to be sat in where it stands (`CabinView.sit`), with
  * nobody standing outside them (`figure`): there is no one else in the gallery.
  */
-export function galleryFlight(flight: Flight): Flight {
-  const vehicle = exhibit(flight);
+export function galleryFlight(flight: Flight, vehicle = exhibit(flight)): Flight {
   if (!vehicle) throw new Error(`${flight.id} has no vehicle to exhibit`);
   const { site: _site, plan: _plan, checks: _checks, flies: _flies, surroundings: _surroundings, recovery: _recovery, ...rest } = flight;
   const {
