@@ -871,9 +871,8 @@ const PAD_WORDS: Partial<Record<Site1Node, PartWords>> = {
       'pit, show how far it went: in one the rocket still stands in the closed supports and the mast already leans ' +
       'some 25° out of upright; in the other the rocket has left and the mast leans as it did. So it swung the whole ' +
       'way at 09:06 and did not move again; 31° out of upright is modelled, so that the support under it falls back ' +
-      'inside its legs. Which side of the ring it stood on is not recorded: it is put on the east, opposite the ' +
-      'erector, where the service trusses do not sweep as they come down, though those photographs have it on what ' +
-      'would be the south. The lower cable masts are not built.',
+      'inside its legs. Those two photographs look north and show the mast west of the rocket. The model places it ' +
+      'on the east because the photographs leave its fit beside the erector and crew walkway unresolved. The lower cable masts are not built.',
     facts: [
       ['Height', '85 to 95 ft over the deck (90 ft, 27.4 m, modelled)'],
       ['Away', '09:06 Moscow time'],
