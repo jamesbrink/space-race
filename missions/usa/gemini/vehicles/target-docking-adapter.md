@@ -52,16 +52,30 @@ own ([gemini-targets.ts](gemini-targets.ts) says the type's once; a flight says 
 
 | Node | What it is |
 | --- | --- |
-| `DockingCone` | the cone's two skins, its lip, the notch, the three static discharge fingers (which a unit may be built without: `discharge`) |
+| `DockingCone` | the cone's two skins, its lip, the notch, the static discharge fingers where carried, the stowed tether hardware on XI and XII, and XII’s handrail receptacle |
 | `MooringLatches` | the three latch hooks in the throat |
 | `StatusDisplay` | the three panels over the notch: DOCK, RIGID, PWR, MAIN (red and green), ARMED, SEC HI, SEC LO among its nine lamps, two clocks and a dial (SEDR 300 vol. 2, pp. 13-22 and 13-23) |
 | `AcquisitionLights` | the two flashing lights and their housings |
-| `TargetDockingAdapter` | the shell, its inner face and rings, the dampers, the mooring drive and the transponder's box inside, experiment S-10's package where a unit had it (`s10`) |
+| `TargetDockingAdapter` | the shell, its inner face and rings, the dampers, the mooring drive and the transponder's box inside, experiment S-10’s package where carried, the S026 sensors on X and XI, and XII’s EVA station |
 | `TargetTransponder` | the transponder's white cover, the two spiral antennas in the skin, the dipole on its boom |
 
 Which adapter a vehicle carried, and what differed from one to the next, is with the vehicles:
 [agena-target-vehicle.md](agena-target-vehicle.md), "One vehicle from the next" (adapters 3, 1A, 6
 and 7A), and [atda.md](atda.md) (adapter 5).
+
+## Rendezvous and EVA fittings on the later targets
+
+| Adapter | Model | Source and confidence |
+| --- | --- | --- |
+| 1A, Gemini X | S026's inboard and outboard ion detectors and electron detector on the adapter rim, with programmer under the skin | Gemini X mission report §8.14 and Fig. 8.14-1. Three heads and their roles documented. Azimuth, mounting height and envelopes estimated from the oblique view |
+| 6, Gemini XI | S026 and a fibreglass tether canister on the cone, with two fixed grips and a rotary-knob clamp shown stowed. The Dacron tether was 100 ft long | Gemini XI mission report §§3.4, 5.1.10.5.4, 7.1.2, 8.10 and Fig. 3.1-2. Canister, grips, retained webbing and clamp placement within the cone are estimated |
+| 7A, Gemini XII | Longer exposed loop, open-sided retainer with one-handed grip, tools and fasteners at the EVA station, portable handles, sixteen pip-pin sockets, six waist-tether eyes, two handles at the shroud ring and the handrail opening through the cone | Gemini XII mission report §§3.1.2.5.1 and 3.4, Figs. 3.1-7 and 3.4-1–2. The arrangement and counts are documented. Model envelopes, clip geometry, individual placements and mounting points are estimated |
+
+The XII target's station carries the Apollo torque wrench and bolt, three stored pip-pins, a
+push-turn electrical connector, a hose with a push-pull fluid fitting and the wrench's lanyard.
+It is mounted left of the notch on the cone's exterior. The handrail's receptacle is on the
+mooring side and is separate from the stowed handle set. The target is shown ready for rendezvous,
+before the flight crew moves the portable grips or pays out the tether.
 
 ## What the model gets wrong or leaves out
 
@@ -76,7 +90,10 @@ and 7A), and [atda.md](atda.md) (adapter 5).
   motion of the model.
 - **Which side the transponder's cover is on** is not resolvable from the drawings read.
 - **The status display's lamps do not light** and its dials are not drawn.
-- **The umbilical plug in the cone and the three Velcro patches** added for Gemini VIII are not built.
+- The umbilical plug in the cone and the early three hook-and-loop patches are omitted. XI's
+  docking-bar mirror and X's electric charge monitor are also omitted.
+- The tether remains folded, with only its outer webbing visible. The clamp, the EVA tools and
+  hoses stay where they were stowed. The board omits concealed fastener and pin mechanisms.
 
 ## Sources
 
