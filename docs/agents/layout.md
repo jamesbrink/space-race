@@ -252,6 +252,7 @@ src/
   world/relief.ts                     how a height is kept in a byte, for the relief maps and the shaders that read them
   world/clock.ts                      the simulation clock: seconds from a flight's launch, stopped until run; its rates, the coast's when let, and an instant held
   world/sequence.ts                   a slider joined to the clock: keyframes, sliderAt, timeAt
+  viewer/earth-surface.ts             Earth's shared land, ice, ocean colour, water by depth, and sunlight reflected by waves, from a launch site to the front page
   viewer/globe.ts                     the Earth to scale under the site: coasts from Natural Earth, the land's colours (Blue Marble) and relief and the
                                       sea by its depth (ETOPO), the weather's shadows, the Sun's glint; the air seen from above, drawn on a ball
   viewer/atmosphere.ts                the air as it scatters light, ground to orbit: Rayleigh, haze, ozone, light scattered many times; two tables

@@ -1,5 +1,6 @@
+import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from '../../viewer/earth-surface.ts';
 import * as THREE from 'three';
-import { ATMOSPHERE_GLSL, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
+import { ATMOSPHERE_GLSL, TOP, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
 import { vec3 } from '../../viewer/glsl.ts';
 import { WGS84_A, WGS84_B } from '../../world/bodies.ts';
 import type { Mat3, Vec3 } from '../../world/frames.ts';
@@ -34,20 +35,11 @@ import { RELIEF_GLSL } from '../../world/relief.ts';
  *
  * Estimated, for the look: the snow's whiteness on land (trees stand through it), the cloud's
  * whiteness, the haze (a clean ocean's), and the waves' slopes, which a launch site takes from its day's
- * wind and this Earth, which has no station's day, from a fair 7 m/s. The sea's own colours are the
- * globe's figures, restated here because the globe's module is a launch site's and is not brought
- * into the front page: change them in both.
+ * wind and this Earth, which has no station's day, from a fair 7 m/s.
  */
-
-/** Deep water's own colour (globe.ts: DEEP), and what the slopes of its waves come to at 7 m/s (globe.ts `seaSlopes`: estimated). */
-const DEEP = [0.003, 0.016, 0.045] as const;
-const SEA_SLOPES = 0.003 + 0.00512 * 7;
-/** Ice and snow seen whole (globe.ts: ICE, 0xe4eaee, in linear light). */
-const ICE = new THREE.Color(0xe4eaee);
+const SEA_SLOPES = seaSlopes(7);
 /** Distances to the shore are kept to this many texels of the globe's own maps (tools/globe.mjs: SPREAD). */
 const SPREAD = 8;
-/** The top of the air over the sea, metres (atmosphere.ts: TOP). */
-const TOP = 100_000;
 
 const VERTEX = /* glsl */ `
   varying vec3 vObj;
@@ -64,22 +56,12 @@ const FRAGMENT = /* glsl */ `
   uniform float uDay;     // and the day's
   varying vec3 vObj;
   ${ATMOSPHERE_GLSL}
+  ${WATER_GLSL}
   ${RELIEF_GLSL}
   const float A = ${WGS84_A.toFixed(1)}, SQUASH = ${(WGS84_B / WGS84_A).toFixed(9)}, SHELL = ${(WGS84_A + TOP).toFixed(1)};
 
-  // The Sun's glint on the sea: Cox and Munk's law (1954), as viewer/globe.ts has it (globeGlint). l, n, v: toward
-  // the light, the sea's normal, toward the eye.
-  float glint(vec3 l, vec3 n, vec3 v) {
-    vec3 h = normalize(l + v);
-    float nh = dot(n, h), nl = dot(n, l), nv = max(dot(n, v), 1e-3), vh = clamp(dot(v, h), 1e-3, 1.0);
-    if (nl <= 0.0 || nh <= 1e-3) return 0.0;
-    float nh2 = nh * nh;
-    float spread = exp(-(1.0 - nh2) / (nh2 * ${SEA_SLOPES.toFixed(5)})) / (${(Math.PI * SEA_SLOPES).toFixed(5)} * nh2 * nh2);
-    float away = 1.0 - vh;
-    float fresnel = 0.02 + 0.98 * away * away * away * away * away;
-    float seen = min(1.0, 2.0 * nh * min(nv, nl) / vh);
-    return fresnel * spread * seen / (4.0 * nv);
-  }
+  ${GLINT_GLSL}
+  const vec2 SEA = vec2(${SEA_SLOPES.toFixed(5)}, ${(Math.PI * SEA_SLOPES).toFixed(5)});
 
   void main() {
     // the ray, in the squashed frame: from the eye through this point of the ball
@@ -116,16 +98,16 @@ const FRAGMENT = /* glsl */ `
       vec3 day = texture(tDay, place).rgb * uDay;
       // the sea by its depth (globe.ts: globeWater, away from the banks), and the ice on it
       vec3 deep = ${vec3(DEEP)};
-      vec3 water = deep + (vec3(0.05, 0.06, 0.045) - deep) * exp(-vec3(0.70, 0.14, 0.07) * 2.2 * max(h > 1.5 ? 12.0 : -h, 2.0));
+      vec3 water = globeWater(0.0, h > 1.5 ? 12.0 : -h, deep);
       water = mix(water, ${vec3(ICE)} * 0.85, day.g * (1.0 - land));
       // the land in its own colours, under the day's snow (which trees stand through: 0.6 of it, estimated)
-      vec3 soil = mix(${vec3(new THREE.Color(0x4f7a42))}, texture(tColour, place).rgb, uIn);
+      vec3 soil = mix(${vec3(LAND)}, texture(tColour, place).rgb, uIn);
       soil = mix(soil, ${vec3(ICE)}, 0.6 * day.b);
       vec3 albedo = mix(mix(water, soil, land), ${vec3(ICE)}, ice);
       float sea = (1.0 - max(land, ice)) * (1.0 - day.g);
       float lit = max(mu, 0.0);
       vec3 v = -normalize(d * vec3(1.0, 1.0, SQUASH));
-      surface = albedo * sun * lit + sea * uAtmSunLight * atmSunAt(0.0, mu) * glint(uSun, n, v);
+      surface = albedo * sun * lit + sea * uAtmSunLight * atmSunAt(0.0, mu) * globeGlint(uSun, n, v, SEA);
       // the cloud: what of the Sun's light it sends back, and what it keeps from the ground and gives back to it
       float cloud = day.r;
       surface = surface * (1.0 - cloud) * (1.0 - cloud) + vec3(0.96, 0.97, 1.0) * cloud * sun * lit;
