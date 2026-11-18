@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
-import type { EngineDef } from '../../sim/plan.ts';
 import type { Run } from '../../sim/run.ts';
 import { exitAreaOf } from '../../sim/staged.ts';
 import type { Burns, Flight as FlightData, JetDef, ModelDef, SitedFlight } from '../../types.ts';
@@ -22,7 +21,7 @@ import type { Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import { jointKey } from '../onfoot/gait.ts';
 import { absolute } from '../origin.ts';
-import { lightFires, Plume } from '../plume.ts';
+import { lightFires, Plume, plumeExit } from '../plume.ts';
 import type { LineState, Recovery } from '../recovery.ts';
 import { Swimmer } from '../swimmer.ts';
 import { TRAIL_STEP, Trail } from '../trail.ts';
@@ -1291,7 +1290,6 @@ export class FlightShow {
     // the pressure each engine's gas leaves its nozzle at, atmospheres, by the plan's engine (sim/plan.ts `Nozzle`); an engine
     // whose plan gives none is drawn matched to the air at the sea, widening only as the air thins below that
     const engines = flight.plan?.craft[0]?.engines ?? [];
-    const exitOf = (engine: EngineDef | undefined): number => (engine?.nozzle ? engine.nozzle.exit.value / P0 : 1);
     const hang = (
       node: THREE.Object3D,
       level: number,
@@ -1325,13 +1323,13 @@ export class FlightShow {
       const body = craft?.bodies.find((b) => b.nodes?.includes(flight.flies?.engine ?? '')) ?? craft?.bodies[0];
       const lit = craft?.engines.find((e) => e.body === body?.id);
       const exitArea = lit ? exitAreaOf(lit) : undefined;
-      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), exitOf(lit), lowest(engine), null, flight.flies.burns);
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), plumeExit(lit), lowest(engine), null, flight.flies.burns);
       level++;
     }
     for (const f of flight.flies.fires ?? []) {
       const node = s.full.getObjectByName(f.node);
       // (its engine by the id it burns by; the braking burn's is the plan's braking engine)
-      const exit = exitOf(engines.find((e) => e.id === f.on));
+      const exit = plumeExit(engines.find((e) => e.id === f.on));
       if (node && f.radius) {
         const mount = f.mount ? intoGroup.clone().multiply(node.matrixWorld) : undefined;
         hang(node, level, f.radius, exit, lowest(node), null, f.burns, mount);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { STRAP_ONS } from '../missions/ussr/vostok/vehicles/vostok-8k72k.ts';
-import { Plume, plumeShape } from '../src/viewer/plume.ts';
+import { Plume, plumeExit, plumeShape } from '../src/viewer/plume.ts';
 import { P0 } from '../src/world/bodies.ts';
 
 /** The A-7's exit pressure and an RD-107's, atmospheres: each engine's own (sim/plan.ts `Nozzle`). */
@@ -10,6 +10,14 @@ const A7 = A7_NOZZLE.exit.value / P0;
 const RD107 = STRAP_ONS.nozzle.exit.value / P0;
 
 // The engine's fire as data: what the air lets it be, and what it is told (the drawing is exhaust.ts's, on the GPU).
+
+test('a fire without a nozzle record uses the neutral display fallback', () => {
+  const engine = {};
+  assert.equal(plumeExit(engine), 1);
+  assert.equal(plumeExit(undefined), 1);
+  assert.deepEqual(engine, {});
+  assert.equal(plumeExit({ nozzle: { exit: { value: 0.5 * P0 } } }), 0.5);
+});
 
 test('the jet is nearly matched at sea level and opens as the air thins, without a step', () => {
   const sea = plumeShape(0, A7);

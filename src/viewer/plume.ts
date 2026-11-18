@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { EngineDef } from '../sim/plan.ts';
+import { P0 } from '../world/bodies.ts';
 import { type Flame, tend } from './exhaust.ts';
 import type { Cluster } from './fires.ts';
 import { FLAMES, type FlameLook, KINDS } from './flames.ts';
@@ -19,6 +21,14 @@ import { FLAMES, type FlameLook, KINDS } from './flames.ts';
 
 /** The fire's length at sea level, in exit radii: 14 m, a little over half the vehicle's length, as film of the A-7's launches has it (estimated), for every engine. */
 const LENGTH = 38;
+
+/**
+ * Exit pressure in atmospheres for the exhaust picture. A plan without a nozzle entry uses a
+ * sea-level-matched drawing as a neutral fallback. The flight dynamics never read this value.
+ */
+export function plumeExit(engine: Pick<EngineDef, 'nozzle'> | undefined): number {
+  return engine?.nozzle ? engine.nozzle.exit.value / P0 : 1;
+}
 
 /**
  * The jet's shape for `vacuum` (0 in sea-level air to 1 in none; ascent.ts: one minus the fourth
