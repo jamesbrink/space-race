@@ -1,8 +1,8 @@
 """The Gemini Agena Target Vehicle: Lockheed's Agena D, fitted out to be met and docked with, as it was in orbit.
 
 Shared by the flights that had one to dock with; a flight's model/vehicle.py asks gemini_stack for it. It is built
-standing on its engine beside the launch vehicle, as an exhibit stands: it never stood so. What an Atlas carried it up
-on and under (the Atlas, the adapter that stayed on the Atlas, the shroud over the docking adapter) is not built.
+standing on its engine beside the launch vehicle, as an exhibit stands: it never stood so.
+The assembled Atlas, adapter and closed shroud at the launch site are built by atlas_slv3.py.
 
 Dimensions are inches and stations are Lockheed's GATV stations, which run aft from ahead of the nose: the docking
 adapter is bolted on at station 229.50 and the engine's nozzle ends at 495.02. A height here is 495.02 less a station.

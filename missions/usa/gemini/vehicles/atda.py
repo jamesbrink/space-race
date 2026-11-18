@@ -3,7 +3,7 @@ ascent shroud still on it and half open.
 
 One was built and one flew (1 June 1966). It is here beside the other targets because it carries the same docking
 adapter (target_docking_adapter.py); a flight's model/vehicle.py asks gemini_stack for it. It is built standing on its
-tail beside the launch vehicle, as an exhibit stands: it never stood so. The Atlas that carried it is not built.
+tail beside the launch vehicle, as an exhibit stands: it never stood so. The launch-site configuration on its Atlas is built by atlas_slv3.py.
 
 Dimensions are inches and stations are the ATDA's own: 0 where the docking adapter meets the equipment section,
 positive toward the docking cone, as McDonnell's drawing of it has them (Technical Summary, Figure 66; SEDR 300 volume 2,

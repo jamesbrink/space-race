@@ -23,7 +23,7 @@ const routes = {
 const browser = await launch();
 let failures = 0;
 try {
-  for (const flight of flights.filter((f) => !lacks(f, 'site') && f.id.includes(flightFilter))) {
+  for (const flight of flights.filter((f) => f.crew.length > 0 && !lacks(f, 'site') && f.id.includes(flightFilter))) {
     if (!flight.models.some((m) => m.walker)) throw Error(`No crew to walk as on ${flight.id}`);
     const { page, context, errors } = await open(browser, `${siteUrl}#${flight.id}/site/pad`, { timeout: 120000 });
     try {

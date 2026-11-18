@@ -86,7 +86,7 @@ Seven uncrewed targets left Launch Complex 14. Each has its own dated Gallery an
 | XI | [GATV-5006](flights/gatv-5006/README.md) | 5306 | Docking, high orbit and tether experiment |
 | XII | [GATV-5001](flights/gatv-5001/README.md) | 5307 | Docking and work outside at the adapter |
 
-The [Agena](vehicles/agena-target-vehicle.md) and [ATDA](vehicles/atda.md) share McDonnell’s [target docking adapter](vehicles/target-docking-adapter.md). The crews’ own exhibits still show the targets they encountered beside the spacecraft. The Atlas SLV-3 and its dated launch pad remain to be built.
+The [Agena](vehicles/agena-target-vehicle.md) and [ATDA](vehicles/atda.md) share McDonnell’s [target docking adapter](vehicles/target-docking-adapter.md). The crews’ own exhibits still show the targets they encountered beside the spacecraft. The seven launch sites show the [Atlas SLV-3](vehicles/atlas-slv3.md) under its closed shroud and the dated Complex 14.
 
 ## Launch vehicle
 

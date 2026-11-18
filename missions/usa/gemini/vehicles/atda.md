@@ -68,7 +68,7 @@ with experiment S-10's package and its cone's outside painted aluminium).
 ## What the model gets wrong or leaves out
 
 - **It stands on its stub antenna.** Nothing could; a stand would be a thing that was not there.
-- **The Atlas and its adapter are not built**, nor the separation charge and the eight bungee cords
+- **The [launch-site model](atlas-slv3.md) shows the Atlas and its adapter.** The spacecraft exhibit omits the separation charge and the eight bungee cords
   that pulled the vehicle out.
 - **Everything inside the equipment section is a guess** beyond the two beams: which box is where,
   and each one's size. TS Figure 67, which lays them out, was not used box by box.

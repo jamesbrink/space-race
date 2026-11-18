@@ -1,0 +1,20 @@
+# Atlas SLV-3 at Complex 14
+
+Seven uncrewed Gemini targets left Complex 14 between October 1965 and November 1966. The launch-site model shows the assembled vehicle with the white nose shroud closed. The Gallery and Lineup show the spacecraft separately, including the partly opened shroud on the ATDA. The [dated pad](../../places/cape-canaveral/lc-14.md) is shared by the seven flights.
+
+| Exterior dimension | Value | Evidence |
+| --- | --- | --- |
+| Gemini VIII stack, from the nozzle exits to the nose tip | 1,244.2 in, 31.60 m | Documented. Gemini VIII mission report, figure 3.0-2(a). Assumed for the five other Agena stacks. |
+| Atlas under the Gemini VIII target, including the first mating ring | 808.5 in | Documented callout on the same figure. The two printed Atlas stations differ by 808.0 in. The model uses the callout for the overall length. |
+| Gemini VIII target and its adapter above that ring | 435.7 in | Documented on the same figure. The shroud is stowed over the docking adapter, the aft rack and nozzle enclosed below the cylindrical tank. |
+| Atlas under the ATDA | 808.0 in | Documented in the Gemini IX-A mission report, figure 3.0-2(a). |
+| ATDA stack, nozzle exits to nose | 1,145.55 in, 29.10 m | Derived from the IX-A drawing, with the nose at ATDA station 139.17 and the base of its adapter at −198.38. The figure rounds the complete stack to 1,145.55 in. |
+| Closed target shroud | 117 in long and about 65 in across | Documented in the Launch Systems Final Report, p. III.C-3. The base cylinder, taper and rounded nose follow the [ATDA model](atda.md). |
+
+The Atlas skin, unequal side pods, lower fairings and nozzle exits follow the outline of the Gemini mission drawings. The finer surface detail is **assumed** from the earlier Atlas D at this pad. The visible Agena equipment skin and tank come from the [unit's spacecraft model](agena-target-vehicle.md). The shorter ATDA stands on its own adapter. NASA S66-24482 and the June 1 ATDA launch photograph both show two staggered rows of white squares on the dark adapter. Their number around the hidden side and their application to the other Agenas are assumed. [NASA Gemini VIII launch photograph](https://www.nasa.gov/wp-content/uploads/2021/03/gemini_viii_9_agena_launch_s66-24482.jpg) · [Spaceport Magazine, June 2016, p. 50](https://www.nasa.gov/wp-content/uploads/2015/05/jun2016.pdf). NASA photographs 66-H-296 and 66-H-989 show the narrow stack, the dark band below the Agena and the umbilical arm beside it. The second photograph shows the mobile service structure clear of the Atlas. [Gemini VIII mission report, figure 3.0-2(a)](https://tothemoon.im-ldi.com/download_document?file_name=gemini_8_mission_report.pdf&project=GEMINI) · [Gemini IX-A mission report, figure 3.0-2(a)](https://tothemoon.ser.asu.edu/files/gemini/gemini_9A_mission_report.pdf) · [NASA SP-4002, figures 120 and 125](https://www.nasa.gov/history/SP-4002/p3b.htm).
+
+## What the model gets wrong or leaves out
+
+- Exact Atlas serial lettering, cable placement, minor hardware differences among the seven launchers and paint on unseen faces remain unknown. The common Atlas exterior omits the Mercury spacecraft adapter and its markings.
+- The target stays assembled at the site. The exhibit shows a prelaunch configuration. Weather defaults to the Cape estimate where the target launch lacks its own observation.
+- The shroud has an external band and the photographed silhouette. The hardware inside the adapter and the fairing’s fastening details are omitted.

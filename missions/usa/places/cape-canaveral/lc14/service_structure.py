@@ -280,7 +280,7 @@ def well(k: int = 0) -> tuple[float, float]:
     return (x - 6.0, x)
 
 
-def floors(parts: Parts) -> None:
+def floors(parts: Parts, gemini: bool = False) -> None:
     """Each level's fixed floor: each tower's from the slot's edge to its outer face, the bridge across the slot's
     north side, and their rails. The west tower's has the stair's well in it."""
     deck, rail = parts(G, "deck"), parts(G, "white/rails")
@@ -302,6 +302,10 @@ def floors(parts: Parts) -> None:
             # along the outer face, but for its middle bay on the east (the lift) and where the ground stair's bridge lands
             runs = [(-dd + 0.15, -3.0), (3.0, dd - 0.15)] if s > 0 else ([(-dd + 0.15, GANGWAY[0] - 0.3)] if k == 0 else [(-dd + 0.15, dd - 0.15)])
             for ya, yb in runs:
+                if gemini and ya == -dd + 0.15:
+                    ya += 0.24  # the south rail already has the corner post
+                if gemini and yb == dd - 0.15:
+                    yb -= 0.24  # the bridge rail crosses the back of both towers
                 handrail(rail, [(s * (x1 - 0.15), ya, H(h)), (s * (x1 - 0.15), yb, H(h))], 3.5)
         # the bridge between the towers, behind the vehicle
         box(deck, (-SLOT - 0.2, dd - 3.2, H(h - 0.3)), (SLOT + 0.2, dd, H(h)))
@@ -420,7 +424,7 @@ def tower_stair(parts: Parts) -> None:
         handrail(rail, [(-wa + 0.35, 2.4, H(h1)), (-wa + 0.35, -5.6, H(h1)), (-wb - 0.3, -5.6, H(h1)), (-wb - 0.3, 2.4, H(h1))], 3.2)
 
 
-def lift(parts: Parts) -> None:
+def lift(parts: Parts, gemini: bool = False) -> None:
     """The passenger lift: an open cage up the east leg's outer face, boarded from the paving. Its own node, built at
     the ground; its stops are the seven levels."""
     car = f"{NAME}_Lift"
@@ -445,9 +449,13 @@ def lift(parts: Parts) -> None:
         ((xi + 0.07, CAR / 2), (xi + CAR - 0.07, CAR / 2)),
         ((xi + CAR - 0.07, -CAR / 2), (xi + CAR - 0.07, CAR / 2)),
     ):
+        beam(frame, (*a, H(h0 + 3.5)), (*b, H(h0 + 3.5)), 0.1)
+        if gemini:
+            # Keep the wire mesh behind the cage’s posts at the parked site.
+            a = (xi + CAR / 2 + (a[0] - xi - CAR / 2) * 0.96, a[1] * 0.96)
+            b = (xi + CAR / 2 + (b[0] - xi - CAR / 2) * 0.96, b[1] * 0.96)
         quad = [P(*a, H(h0 + 0.1)), P(*b, H(h0 + 0.1)), P(*b, H(h0 + 7.3)), P(*a, H(h0 + 7.3))]
         panel.add([tuple(q) for q in quad], [(0, 1, 2, 3)])
-        beam(frame, (*a, H(h0 + 3.5)), (*b, H(h0 + 3.5)), 0.1)
     deck, grey = parts(G, "deck"), parts(G, "grey", True)
     # a step up to it from the paving, riding with the structure; its guides up the leg; a sill at each level
     box(deck, (XO0 + 0.3, -2.3, H(0.05)), (xi - 0.05, 2.3, H(0.3)))
@@ -631,20 +639,27 @@ def work_lights(parts: Parts) -> None:
                 parts(G, "lamp", True).lathe(lens, 12, matrix=c)
 
 
-def build(parts: Parts) -> None:
+def build(parts: Parts, gemini: bool = False) -> None:
     parts.node(NAME, None, (0.0, 0.0, 0.0))
     parts.node(G, NAME, (0.0, 0.0, 0.0))
     base(parts)
     legs(parts)
     trusses(parts)
     towers(parts)
-    floors(parts)
+    floors(parts, gemini)
     for level in range(7):
         for s in (-1, 1):
             leaf(parts, level, s)
     ground_stair(parts)
     tower_stair(parts)
-    lift(parts)
-    white_room(parts)
+    lift(parts, gemini)
+    if gemini:
+        # The clean-room exterior on the upper decks (NASA 66-H-989). Its depth and the unphotographed rear are estimated.
+        skin = parts(G, "aluminium/cleanroom")
+        for side in (-1, 1):
+            sbox(skin, side, SLOT + 0.3, xo(WHITE) - 0.7, -d(WHITE) + 0.15, -d(WHITE) + 0.5, WHITE + 0.35, ROOF - 0.5)
+            sbox(skin, side, SLOT + 0.3, xo(WHITE) - 0.7, d(WHITE) - 0.5, d(WHITE) - 0.15, WHITE + 0.35, ROOF - 0.5)
+    else:
+        white_room(parts)
     head(parts)
     work_lights(parts)

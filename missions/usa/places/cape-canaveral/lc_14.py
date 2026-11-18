@@ -26,7 +26,7 @@ transfer table's travel), +Y 015 degrees (along the stand, the way the structure
 from __future__ import annotations
 
 import sitelib
-from lc14 import blockhouse, grounds, ramp, service_structure, stand, storage, table, tower
+from lc14 import agena_tower, blockhouse, grounds, ramp, service_structure, stand, storage, table, tower
 from lc14.site import HATCH_TURN, LAUNCHER_TOP, PARKED_X, STAND_L, STAND_W, STRUCTURE_TOP, TABLE_Y, TRUE_NORTH, Parts, materials, stood
 
 __all__ = [
@@ -57,6 +57,15 @@ def hardware(parts: Parts) -> None:
         f"the two; dismantled for Atlas-Agena ({HAER}, p. 27), work that was to begin on 1 January 1964 (NASA SP-4002)",
     ):
         tower.build(parts)
+    gemini = stood(
+        "Gemini target umbilical tower",
+        since="1964-06-24",
+        confidence="documented",
+        source="NASA SP-4002, 24 June 1964, records completion of the Gemini-Agena facilities. HAER FL-8-7, pp. 27–28, "
+        "and the Cape Canaveral Space Force Museum identify the replacement 101-foot tower. Its removal date is unknown.",
+    )
+    if gemini:
+        agena_tower.build(parts)
     if stood(
         "Service structure with the white room",
         since="1960",
@@ -64,7 +73,7 @@ def hardware(parts: Parts) -> None:
         confidence="documented",
         source=f"{HAER}, pp. 22, 23 and 27: modified 1959 to 1960; razed December 1976",
     ):
-        service_structure.build(parts)
+        service_structure.build(parts, gemini=gemini)
         table.build(parts)
 
 
