@@ -1550,3 +1550,11 @@ and `fdai.md` for the complete attribution and unfinished details.
 | Boeing, [*AS-503 Structural Element Report*, D5-15782](https://www.apollojournals.org/afj/ap08fj/pdf/as503structural_element_report.pdf), figs. 1-1, 2-1 and 3-2 | S-IC tank ends, intertank and oxygen tank crown | Flight-specific station drawings |
 | North American, [*Apollo Spacecraft Operational Data Book*, SNA-8-D-027 vol. III rev. 2](https://ntrs.nasa.gov/citations/19730060772), fig. 2-3 | S-II J-2 gimbal plane | Common Saturn V installation reference |
 | NASA flight photograph [AS08-16-2582](https://eol.jsc.nasa.gov/SearchPhotos/photo.pl?frame=2582&mission=AS08&roll=16) | Structure across the open end of LTA-B after separation | Crossbeam widths and depth estimated |
+
+## Apollo 9, CSM-104, LM-3 and SA-504
+
+- [Apollo 9 Mission Report, MSC-PA-R-69-2](https://www.ibiblio.org/apollo/Documents/A09_MissionReport.pdf), table 3-I, appendix A.1–2 and table A.5-I. Flown timeline, installed hardware, reference dimensions and masses at distinct events.
+- [Apollo 9 press kit](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A09_PressKit.pdf), spacecraft description and crew provisions. [SA-504 technical summary](https://ntrs.nasa.gov/api/citations/19700009516/downloads/19700009516.pdf), stage, instrument unit and adapter configurations.
+- [CM-104 main console V36-976021](https://www.ibiblio.org/apollo/Documents/V36-976021_Design_Layout_MDC_CM-104.pdf), flight-specific front view. [NASA docking-system experience report](https://ntrs.nasa.gov/api/citations/19720018207/downloads/19720018207.pdf), probe, drogue, rings and latches.
+- [NASA spacecraft engine specifications, table I](https://ntrs.nasa.gov/api/citations/19700026405/downloads/19700026405.pdf), approximate external envelopes. [NASA LM-3 flight photograph](https://science.nasa.gov/resource/apollo-9-lunar-module-in-lunar-landing-configuration/), deployed configuration and finishes.
+- [Apollo Program Flight Summary Report, NASA TM X-70154](https://ntrs.nasa.gov/citations/19740013403), Apollo 9 summary, pp. 64–67, liftoff and orbit weights. [Apollo Program Summary Report, JSC-09423](https://ntrs.nasa.gov/citations/19750013242), section 4.7.5, docking target. [Landing gear subsystem, NASA TN D-6850](https://ntrs.nasa.gov/citations/19720018253), tread geometry and deployment.

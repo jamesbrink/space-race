@@ -100,9 +100,9 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103):
+    if spacecraft not in (101, 103, 104):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
-    lunar = spacecraft == 103
+    lunar = spacecraft in (103, 104)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -183,6 +183,48 @@ def build(offset=0, *, spacecraft=101):
         groups["HighGainAntenna"] = group("HighGainAntenna")
         apollo8_equipment.antenna(groups["HighGainAntenna"], SM_BOTTOM)
         apollo8_equipment.navigation(groups["CabinEquipmentBays"], CM_BASE)
+    if spacecraft == 104:
+        # Inside the right rendezvous window, visible to the LM crew (Apollo Program Summary Report, section 4.7.5).
+        # Register to the reconstructed pane. Target size and standoff are estimates.
+        normal = Vector((0.5163366, -0.0096678, 0.8563311))
+        centre = Vector((38.47952, 25.65527, CM_BASE + 60.92348)) * IN - normal * (1.1 * IN)
+        target = MeshBuilder()
+        target_pose = frame(centre, normal)
+        target.lathe(prof([(1.9, 0), (2.24, 0), (2.24, 0.13), (1.9, 0.13), (1.9, 0)]), 40, matrix=target_pose)
+        for x, y in ((1, 0), (0, 1)):
+            target.tube(
+                target_pose @ Vector((-2 * x * IN, -2 * y * IN, 0)), target_pose @ Vector((2 * x * IN, 2 * y * IN, 0)), 0.085 * IN, segs=8, caps=False
+            )
+        green = material("apollo-target-green", (0.06, 0.36, 0.14), emission=(0.05, 0.38, 0.12), emission_strength=0.55)
+        red = material("apollo-target-red", (0.63, 0.052, 0.033))
+        target.build("CM104_TargetBackplateMarkings", green, groups["CabinWindows"])
+        base = MeshBuilder()
+        base.lathe(prof([(0, -0.3), (2.3, -0.3), (2.3, -0.16), (0, -0.16)]), 40, matrix=target_pose)
+        base.build("CM104_TargetBase", green, groups["CabinWindows"])
+        sight = MeshBuilder()
+        sight.lathe(prof([(0.24, -0.13), (0.24, 0.55), (0.55, 0.61), (0.55, 0.77), (0, 0.77)]), 24, matrix=target_pose)
+        sight.build("CM104_RendezvousWindowTarget", red, groups["CabinWindows"])
+        probe = groups["DockingProbe"] = group("DockingProbe")
+        root = CM_BASE + 113
+        ring = MeshBuilder()
+        ring.lathe(prof([(16, root), (18, root), (18, root + 1.4), (16, root + 1.4), (16, root)]), 64)
+        ring.build("CM104_DockingRing", silver, probe)
+        for i in range(12):
+            a = math.tau * i / 12
+            tube(f"CM104_DockingLatch_{i}", radial(17.2, a, root + 1.5), radial(16.4, a, root + 3.3), 0.48, silver, probe)
+        sleeve = MeshBuilder()
+        sleeve.lathe(prof([(3.1, root + 8), (3.6, root + 8), (3.6, root + 17.6), (3.1, root + 17.6), (3.1, root + 8)]), 32)
+        sleeve.build("CM104_ProbeGuide", silver, probe)
+        extension = group("CM104_ProbeExtension", probe)
+        for i in range(3):
+            a = math.tau * i / 3
+            tube(f"CM104_ProbeSupport_{i}", radial(14, a, root), radial(2.4, a, root + 9), 1.1, silver, probe)
+        lathe_obj(
+            "CM104_DockingProbe",
+            prof([(0, root + 8), (2.8, root + 8), (2.8, root + 16), (1.5, root + 18), (1.5, root + 19), (2.0, root + 20), (0, root + 22)]),
+            silver,
+            extension,
+        )
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

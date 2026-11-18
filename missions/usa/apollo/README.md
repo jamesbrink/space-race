@@ -10,3 +10,5 @@ Apollo 7 is in the gallery: the whole stack, cut open to its stages, its service
 sat in. Its launch site and the flight itself are not built.
 
 [Apollo 8](flights/apollo-8/README.md) adds CSM-103 on Saturn V SA-503, with the four-dish lunar antenna and the instrumented test article inside the adapter. Its Gallery includes all three crew seats.
+
+[Apollo 9](flights/apollo-9/README.md) adds CSM-104 Gumdrop and the first crewed lunar module, LM-3 Spider. The Gallery shows both the launch installation on SA-504 and Spider deployed as a separate spacecraft.

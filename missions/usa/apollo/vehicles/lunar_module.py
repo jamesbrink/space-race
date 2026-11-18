@@ -1,0 +1,353 @@
+"""LM-3 Spider. Inches from the deployed footpad plane, forward hatch on +X. See lunar-module.md."""
+
+import math
+
+from mathutils import Matrix, Vector
+
+import lm_cabin
+import lm_propulsion
+import lm_systems
+from srlib import IN, MeshBuilder, frame, group, load_font, mark_shells, material, prof, text_mesh
+
+PAD_RADIUS = 37 / 2
+TREAD = 167.57  # NASA TN D-6850, p. 6, centre of each deployed pad
+KNEE = 109
+DECK = 58.30 + 68.86
+KNEE_Z = DECK - 12.291
+FOLD = 49  # degrees, reconstructed from TN D-6850 figs. 2 and 3
+
+
+def at(point):
+    return Vector(point) * IN
+
+
+def tube(mesh, a, b, radius):
+    mesh.tube(at(a), at(b), radius * IN, segs=12)
+
+
+def box(mesh, centre, size):
+    mesh.box(at(size), Matrix.Translation(at(centre)))
+
+
+def shell(mesh, rings, *, bottom=True):
+    """Faceted skin between successive cross sections, all wound the same way."""
+    n = len(rings[0])
+    faces = [(j * n + i, j * n + (i + 1) % n, (j + 1) * n + (i + 1) % n, (j + 1) * n + i) for j in range(len(rings) - 1) for i in range(n)]
+    if bottom:
+        faces.append(tuple(reversed(range(n))))
+    faces.append(tuple(range((len(rings) - 1) * n, len(rings) * n)))
+    mesh.add([at(p) for ring in rings for p in ring], faces)
+
+
+def octagon(width, corner, z):
+    return [
+        (x, y, z)
+        for x, y in [
+            (width, corner),
+            (corner, width),
+            (-corner, width),
+            (-width, corner),
+            (-width, -corner),
+            (-corner, -width),
+            (corner, -width),
+            (width, -corner),
+        ]
+    ]
+
+
+def bell(parent, name, xyz, direction, radius, length, paint):
+    mesh = MeshBuilder()
+    mesh.lathe(
+        prof(
+            [
+                (radius, 0),
+                (0.73 * radius, length * 0.35),
+                (0.31 * radius, length * 0.76),
+                (0.23 * radius, length),
+                (0.18 * radius, length),
+                (0.25 * radius, length * 0.76),
+                (0.69 * radius, length * 0.35),
+                (radius - 0.4, 0),
+                (radius, 0),
+            ]
+        ),
+        40,
+        matrix=frame(at(xyz), direction),
+    )
+    mesh.build(name, paint, parent)
+
+
+def dish(parent, name, centre, normal, radius, alloy, dark):
+    pose = frame(at(centre), normal)
+    pan = MeshBuilder()
+    pan.lathe(
+        prof([(0, -1), (0.48 * radius, 0), (radius, 0.17 * radius), (radius, 0.22 * radius), (0.48 * radius, 0.055 * radius), (0, 0)]),
+        32,
+        matrix=pose,
+    )
+    pan.build(name, alloy, parent)["diameter_in"] = 2 * radius
+    feed = MeshBuilder()
+    tip = pose @ at((0, 0, 0.55 * radius))
+    for i in range(3):
+        a = i * math.tau / 3
+        feed.tube(pose @ at((0.82 * radius * math.cos(a), 0.82 * radius * math.sin(a), 0.14 * radius)), tip, 0.34 * IN, segs=8)
+    feed.build(name + "_Feed", dark, parent)
+
+
+def descent(parent, foil, amber, dark, alloy):
+    # The octagon encloses the beam cross, four propellant bays and four corner bays.
+    wrap = MeshBuilder()
+    shell(wrap, [octagon(77, 34, 58.30), octagon(83, 34, 61), octagon(83, 34, 94), octagon(83, 34, 121), octagon(80, 34, DECK)])
+    blanket = wrap.build("LM3_DescentBlanket", foil, parent, smooth=False)
+    blanket.data.materials.append(dark)
+    blanket.data.materials.append(amber)
+    for side in blanket.data.polygons:
+        ring, facet = divmod(side.index, 8)
+        side.material_index = (
+            1 if ring == 3 or ring == 2 and facet in (0, 1, 2, 4, 6, 7) or ring == 1 and facet in (1, 3, 5) else 2 if facet in (0, 4, 6) else 0
+        )
+    mark_shells([blanket.name])
+    # Forward diagonal quadrants in AS09-21-3212: a US flag and the two-line country marking.
+    badges = MeshBuilder()
+    legend = MeshBuilder()
+    flag = MeshBuilder()
+    for sign in (-1, 1):
+        normal = Vector((1, sign, 0)).normalized()
+        u = Vector((-sign, 1, 0)).normalized()
+
+        def decal(dx, dz, depth, sgn=sign, t=u, n=normal):
+            return at((58.5, sgn * 58.5, 77)) + at(t * dx + Vector((0, 0, dz)) + n * depth)
+
+        vs = [decal(x, z, 0.45) for x, z in ((-12, -6), (12, -6), (12, 6), (-12, 6))]
+        if sign == 1:
+            badges.add(vs, [(0, 1, 2, 3)])
+            for word, z in [("UNITED", 0.6), ("STATES", -4.3)]:
+                verts, faces = text_mesh(word, 5.4 * IN, load_font(), cuts=0)
+                legend.add([decal(v[0] / IN - 9, v[1] / IN + z, 0.55) for v in verts], faces)
+        else:
+            flag.add(vs, [(0, 1, 2, 3)], [(0, 0), (1, 0), (1, 1), (0, 1)])
+    mark_shells([badges.build("LM3_CountryPlacard", alloy, parent).name])
+    mark_shells([legend.build("LM3_CountryLetters", dark, parent).name])
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mercury" / "vehicles"))
+    from mercury_capsule import flag_image
+
+    mark_shells([flag.build("LM3_Flag", material("lm3-us-flag", (1, 1, 1), image=flag_image()), parent).name])
+    seams = MeshBuilder()
+    rails = MeshBuilder()
+    for i in range(4):
+        a = math.tau * i / 4
+
+        def point(radius, side, z, angle=a):
+            return (radius * math.cos(angle) - side * math.sin(angle), radius * math.sin(angle) + side * math.cos(angle), z)
+
+        for side in [-30, 30]:
+            tube(rails, point(78, side, 123), point(KNEE, 0, KNEE_Z), 2.1)
+            tube(rails, point(82, side, 63), point(KNEE, 0, KNEE_Z), 1.8)
+            tube(seams, point(83.5, side, 63), point(83.5, side, 119), 0.7)
+        tube(seams, point(83.5, -32, 83), point(83.5, 32, 83), 0.65)
+    rails.build("LM3_Outriggers", alloy, parent)
+    mark_shells([seams.build("LM3_DescentBlanketSeams", amber, parent).name])
+
+
+def landing_gear(parent, gold, metal, dark, deployed):
+    # Each local assembly is built deployed then folded inward under its outrigger.
+    # The viewer rotates it back about that same knee after the adapter opens.
+    for i in range(4):
+        az = i * math.pi / 2
+        hinge = group(f"LM3_GearHinge_{i}", parent)
+        hinge.location = at((KNEE * math.cos(az), KNEE * math.sin(az), KNEE_Z))
+        hinge.rotation_euler = (Matrix.Rotation(az, 4, "Z") @ Matrix.Rotation(math.radians(0 if deployed else FOLD), 4, "Y")).to_euler()
+        foot = (TREAD - KNEE, 0, 2 - KNEE_Z)
+        joint = tuple(v * 0.64 for v in foot)
+        strut, piston, pad = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        tube(strut, (0, 0, 0), joint, 3.7)
+        piston.tube(at(joint), at(foot), 2.5 * IN, caps=False)
+        for side in (-1, 1):
+            tube(strut, (-10, side * 22, -28), joint, 1.65)
+            tube(piston, (-2, side * 3, -5), (-10, side * 22, -28), 1.15)
+        pad.lathe(prof([(0, -2), (10, -2), (PAD_RADIUS, 2.1), (PAD_RADIUS, 3.4), (10, 0.5), (2, 1), (0, 2)]), 40, matrix=Matrix.Translation(at(foot)))
+        pad.build(f"LM3_Footpad_{i}", metal, hinge)["diameter_in"] = 2 * PAD_RADIUS
+        probe = group(f"LM3_ProbeHinge_{i}", hinge)
+        probe.location = at((foot[0] + 11, 0, foot[2] + 1))
+        probe.rotation_euler.y = math.radians(0 if deployed else 158)
+        sensor = MeshBuilder()
+        sensor.tube(at((0, 0, 0)), at((3, 0, -14)), 0.7 * IN, caps=False)
+        sensor.tube(at((3, 0, -14)), at((3, 0, -67)), 0.55 * IN, caps=False)
+        sensor.build(f"LM3_SurfaceProbe_{i}", metal, probe)
+        strut.build(f"LM3_GoldStrut_{i}", gold, hinge)
+        piston.build(f"LM3_Piston_{i}", metal, hinge)
+        if i == 0:
+            ladder = MeshBuilder()
+            for y in (-7, 7):
+                tube(ladder, (10, y, -5), (50, y, -89), 0.8)
+            for rung in range(9):
+                t = (rung + 0.5) / 9
+                tube(ladder, (10 + 40 * t, -7, -5 - 84 * t), (10 + 40 * t, 7, -5 - 84 * t), 0.75)
+            ladder.build("LM3_ForwardLadder", dark, hinge)
+
+
+def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deployed):
+    # Front face, irregular tank fairings, midsection and equipment rack follow MSFC fig. 51.
+    nose = MeshBuilder()
+
+    def rim(x, cy, cz, ry, rz):
+        return [(x, cy + ry * math.cos(math.tau * j / 12), cz + rz * math.sin(math.tau * j / 12)) for j in range(12)]
+
+    # The circular pressure shell has open front and overhead glazing; the black
+    # thermal cheeks lie under the narrow metallic strip down the centre.
+    rear, front = rim(34, 0, 181, 46, 46), rim(76, 0, 181, 46, 46)
+    for j in range(12):
+        # Top sector on the commander's side houses the overhead docking window.
+        if j == 2:
+            continue
+        n = (j + 1) % 12
+        nose.add([at(rear[j]), at(rear[n]), at(front[n]), at(front[j])], [(0, 1, 2, 3)])
+    mark_shells([nose.build("LM3_CrewCompartment", white, parent, smooth=False).name])
+    cheeks = MeshBuilder()
+    bridge = MeshBuilder()
+    panes = MeshBuilder()
+    for sign in (-1, 1):
+
+        def patch(mesh, points, sgn=sign):
+            vs = [at((x, sgn * y, z)) for x, y, z in points]
+            mesh.add(vs, [tuple(range(len(vs))) if sgn == 1 else tuple(reversed(range(len(vs))))])
+
+        top = (76.5, 8, 211)
+        outer = (77, 40, 204)
+        bottom = (76, 22, 183)
+        patch(panes, [top, bottom, outer])
+        patch(cheeks, [(74, 7, 225), (68, 27, 222), (68, 41, 208), outer, top])
+        patch(cheeks, [outer, (68, 41, 208), (65, 47, 184), (68, 40, 159), (76, 22, 141), bottom])
+        patch(cheeks, [bottom, (76, 22, 141), (76, 17, 141), (76, 17, 174), (76, 7, 183), top])
+        patch(bridge, [(76, 0, 225), (74, 7, 225), top, (76, 7, 183), (76, 17, 174), (76, 0, 174)])
+    roof = [at(v) for v in (rear[2], rear[3], front[3], front[2])]
+    panes.add(roof, [(0, 1, 2, 3)])
+    mark_shells([panes.build("LM3_FlightAndDockingGlazing", glass, parent, smooth=False).name])
+    mark_shells(
+        [
+            cheeks.build("LM3_BlackWindowSurrounds", dark, parent, smooth=False).name,
+            bridge.build("LM3_CentreShield", alloy, parent, smooth=False).name,
+        ]
+    )
+    trim = MeshBuilder()
+    for j in range(4):
+        trim.tube(roof[j], roof[(j + 1) % 4], 0.65 * IN, segs=8)
+    trim.build("LM3_DockingWindowBezel", dark, parent)
+    mid = MeshBuilder()
+    rings = [octagon(39, 22, 129), octagon(57, 26, 154), octagon(54, 30, 214), octagon(39, 22, 236)]
+    shell(mid, [[(0.73 * x - 7, y, z) for x, y, z in ring] for ring in rings], bottom=False)
+    mark_shells([mid.build("LM3_Midsection", foil, parent, smooth=False).name])
+    bays = MeshBuilder()
+    shell(bays, [rim(-83, 0, 175, 34, 25), rim(-66, 0, 179, 45, 34), rim(-40, 0, 180, 44, 35)])
+    for side in (-1, 1):
+        shell(
+            bays,
+            [rim(-37, side * 45, 175, 30, 32), rim(-10, side * 51, 178, 33, 36), rim(26, side * 52, 175, 25, 27), rim(40, side * 49, 171, 14, 16)],
+        )
+    cladding = bays.build("LM3_AftBayAndTankFairings", white, parent, smooth=False)
+    cladding.data.materials.append(dark)
+    for polygon in cladding.data.polygons:
+        if polygon.index < 26 or polygon.index % 12 in (1, 2, 5, 6):
+            polygon.material_index = 1
+    mark_shells([cladding.name])
+    framebars, hatch, porch, shoes = (MeshBuilder() for _ in range(4))
+    for sign in (-1, 1):
+        triangle = [(76.5, sign * 8, 211), (77, sign * 40, 204), (76, sign * 22, 183)]
+        for j in range(3):
+            tube(framebars, triangle[j], triangle[(j + 1) % 3], 0.8)
+    box(hatch, (76.65, 0, 157), (1, 32, 32))
+    for y in (-16.7, 16.7):
+        tube(framebars, (77.4, y, 140), (77.4, y, 174), 0.9)
+    for z in (140, 174):
+        tube(framebars, (77.4, -16.7, z), (77.4, 16.7, z), 0.9)
+    tube(framebars, (78, -5, 163), (78, 4, 163), 1.1)
+    for y in range(-13, 14, 3):
+        tube(porch, (79, y, 133), (110, y, 133), 0.8)
+    for y in (-14, 14):
+        tube(porch, (79, y, 133), (110, y, 133), 1)
+    for y in (-7, 7):
+        for dy in (-2.2, 2.2):
+            tube(shoes, (97, y + dy, 134), (101, y + dy, 137), 0.7)
+        tube(shoes, (101, y - 2.2, 137), (101, y + 2.2, 137), 0.7)
+    mark_shells([hatch.build("LM3_ForwardHatch", foil, parent).name])
+    framebars.build("LM3_FramesAndHatchHandle", dark, parent)
+    porch.build("LM3_EVAPorch", dark, platform)
+    shoes.build("LM3_GoldenSlippers", gold, platform)
+    rim_mesh = MeshBuilder()
+    rim_mesh.lathe(prof([(0, 236.2), (20, 236.2), (20, 238.65), (16, 238.65), (2.1, 229), (0, 229)]), 48)
+    rim_mesh.build("LM3_DockingDrogue", alloy, parent)
+    # Four quads with two vertical and two transverse nozzles on each.
+    quads = MeshBuilder()
+    for x in (-43, 43):
+        for y in (-72, 72):
+            box(quads, (x, y, 180), (9, 12, 12))
+            for j, d in enumerate([(0, 0, 1), (0, 0, -1), (math.copysign(1, x), 0, 0), (0, math.copysign(1, y), 0)]):
+                mouth = tuple(v + t * 10 for v, t in zip((x, y, 180), d))
+                bell(gear, f"LM3_RCS_{x}_{y}_{j}", mouth, tuple(-t for t in d), 2.5, 7, dark)
+    quads.build("LM3_QuadHousings", alloy, gear)
+    sb = group("LM3_SBandHinge", gear)
+    sb.location = at((59, 42, 221))
+    if not deployed:
+        sb.rotation_euler.x = math.radians(60)
+    dish(sb, "LM3_SBand", (4, 0, 43), (1, 0, 0), 13, alloy, dark)
+    mast = MeshBuilder()
+    tube(mast, (0, 0, 0), (4, 0, 43), 1.3)
+    mast.build("LM3_SBandBoom", alloy, sb)
+    dish(gear, "LM3_RendezvousRadar", (49, 29, 225), (0.96, 0.18, 0.15), 12, white, dark)
+    masts = MeshBuilder()
+    tube(masts, (46, 20, 211), (49, 29, 225), 1.25)
+    for side in (-1, 1):
+        tube(masts, (-15, side * 33, 227), (-23, side * 46, 236), 0.55)
+    masts.build("LM3_AntennaMasts", alloy, gear)
+
+
+def build(iu_top=0, *, deployed=False):
+    foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
+    amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
+    white = material("lm3-ascent-shield", (0.53, 0.56, 0.55), metallic=0.48, roughness=0.50, double_sided=True)
+    silver = material("lm3-machined-silver", (0.65, 0.68, 0.68), metallic=0.69, roughness=0.41, double_sided=True)
+    dark = material("lm3-carbon-black", (0.022, 0.027, 0.029), roughness=0.66, double_sided=True)
+    glass = material("glass-lm3-window", (0.036, 0.083, 0.12), metallic=0.22, roughness=0.21, alpha=0.36, double_sided=True)
+    interior_paint = material("lm3-panel-gray", (0.24, 0.27, 0.27), roughness=0.68)
+    ivory = material("lm3-panel-ink", (0.88, 0.84, 0.69), roughness=0.72)
+    fuel = material("lm3-tank-light", (0.65, 0.64, 0.59), metallic=0.55)
+    ox = material("lm3-tank-titanium", (0.39, 0.42, 0.43), metallic=0.64)
+    parts = {
+        name: group(name)
+        for name in (
+            "LMDescent",
+            "LMAscent",
+            "LMDescentEngine",
+            "LMAscentEngine",
+            "LMDPSTanks",
+            "LMAPSTanks",
+            "LMDescentStructure",
+            "LMLandingGear",
+            "LMEquipment",
+            "LMReactionSupply",
+            "LMPorch",
+            "LMStations",
+            "LMControlPanels",
+            "LMDescentPower",
+            "LMAscentPower",
+            "LMDescentConsumables",
+            "LMAscentLifeSupport",
+            "LMLandingRadar",
+        )
+    }
+    for root in parts.values():
+        if not deployed:
+            root["lineup_enclosed"] = True
+        root.location.z = (0 if deployed else iu_top - 36) * IN
+    descent(parts["LMDescent"], foil, amber, dark, silver)
+    landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed)
+    cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed)
+    lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber)
+    lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
+    lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber)
+    lm_propulsion.rcs_tanks(parts["LMReactionSupply"], silver, fuel, ox)
+    lm_systems.build(parts, silver, interior_paint, dark, white)
+    lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass)

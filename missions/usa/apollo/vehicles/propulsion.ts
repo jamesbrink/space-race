@@ -1,3 +1,4 @@
+import type { Motor } from '../../../../src/types.ts';
 import { doc } from '../../../../src/measure.ts';
 
 const LBF = 4.4482216152605;
@@ -15,3 +16,86 @@ export const CSM103_THRUST = {
   smRcs: doc(100 * LBF, `${kit}, p. 35`),
   cmRcs: doc(94 * LBF, `${kit}, p. 35`),
 };
+
+const nine = 'NASA Apollo 9 press kit, Saturn V and spacecraft propulsion descriptions';
+/** Published nominal ratings. F-1 thrust is the quoted stage total divided over five engines. */
+export const APOLLO9_THRUST: Motor[] = [
+  {
+    name: 'F-1',
+    operation: 'Staggered centre and outboard cutoff',
+    count: 5,
+    thrustN: (7700000 * LBF) / 5,
+    propellant: 'RP-1 / liquid oxygen',
+    confidence: 'derived',
+    note: nine + ', 7.7 million lbf per stage',
+  },
+  {
+    name: 'J-2 · second stage',
+    operation: 'Single boost firing',
+    count: 5,
+    thrustN: 230000 * LBF,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'documented',
+    note: nine + ', maximum rated thrust',
+  },
+  {
+    name: 'J-2 · third stage',
+    operation: 'Restartable engine',
+    count: 1,
+    thrustN: 230000 * LBF,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'documented',
+    note: nine + ', S-IVB',
+  },
+  {
+    name: 'Service propulsion engine',
+    operation: 'Multiple orbital burns',
+    count: 1,
+    thrustN: 20500 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine,
+  },
+  {
+    name: 'SM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine,
+  },
+  {
+    name: 'CM attitude thruster',
+    count: 12,
+    thrustN: 94 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine,
+  },
+  {
+    name: 'Descent engine',
+    operation: 'Throttleable orbital burns',
+    count: 1,
+    thrustN: 9870 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine + ', maximum rated thrust',
+  },
+  {
+    name: 'Ascent engine',
+    operation: 'Fixed-thrust orbital burns',
+    count: 1,
+    thrustN: 3500 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine,
+  },
+  {
+    name: 'LM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: nine,
+  },
+];
