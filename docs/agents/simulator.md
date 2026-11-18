@@ -952,3 +952,11 @@ read gives enough of to fly (issue #10).
   deck on show. In the real look the line has a thin dark casing under its core, which is what reads against a bright
   sky, cloud and sea, and from inside the vehicle nothing of it within the vehicle's radius is drawn. It is given to
   the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.
+
+## Orbital docking
+
+The terminal approaches start around a navigation fix from the flight report. Each spacecraft has an independent inertial state, body attitude and principal moments. The capture calculation evaluates velocity at the moving port, including its rotational velocity. Capture draws the rings together and corrects their relative attitude while preserving total linear and angular momentum. At hard dock, forces and torques act about the coupled centre, with the rotated inertia tensors and parallel-axis terms of both vehicles. The throttle remains with the firing body. Opening the joint preserves both outgoing states. Translation provides separation.
+
+Gemini X and XI have chapters for the three measured docked maneuvers. Advancing to one propagates the actual orbit with J2, selects its reported pointing and replays its measured change of speed over the burn. The flight deck shows instantaneous osculating apogee above the equatorial radius. Gemini XI's rotational exercise begins with the strap extended to its documented length and the first measured spin rate. The integrator applies a unilateral impulse at the two attachment points. Slack webbing is drawn straight between the endpoints. The folded strap, its deployment snags, bending and material damping are omitted.
+
+Apollo 9's first encounter carries Spider bolted to the S-IVB. Four forward-firing service module jets back the docked pair away after extraction. The LM-active encounter uses Spider's ascent stage after staging, with the second set of measured masses and inertias. Crew transfer requires a hard dock and is a separate cockpit operation.

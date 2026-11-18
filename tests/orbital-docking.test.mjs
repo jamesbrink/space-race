@@ -106,3 +106,87 @@ test('the carrier and mated spacecraft part with continuous port pose, total mom
   assert.ok(length(sub(positions, run.bodies[0].r)) < 1e-8);
   assert.ok(Math.abs(portGap(...run.bodies).gap) < 1e-8);
 });
+
+test('each terminal approach reaches its own outcome with the sequence engaged', async () => {
+  const { terminalApproach } = await import('../src/sim/approach.ts');
+  for (const id of ['gemini/gt-8', 'gemini/gt-9a', 'gemini/gt-10', 'gemini/gt-11', 'gemini/gt-12', 'apollo/apollo-9']) {
+    const [program, name] = id.split('/');
+    const { flight } = await import('../missions/usa/' + program + '/flights/' + name + '/flight.ts');
+    for (const redock of name === 'apollo-9' ? [false, true] : [false]) {
+      const run = terminalApproach(flight, redock);
+      const start = run.t;
+      let captured;
+      for (let i = 0; i < 1700 && run.phase !== 'hard'; i++) {
+        run.advance(0.05, 0);
+        if (run.attempt()) captured = run.t;
+      }
+      if (name === 'gt-9a') {
+        assert.equal(run.phase, 'free');
+        continue;
+      }
+      assert.equal(run.phase, 'hard', id);
+      assert.ok(Math.abs(captured - (redock ? 99 * 3600 + 2 * 60 + 26 : flight.docking.at)) < 0.5, id + ' contact epoch');
+      assert.ok(run.t > start && Math.abs(portGap(...run.bodies).gap) < 1e-7, id);
+    }
+  }
+});
+
+test('the Gemini X and XI Agenas burn for the joined ships and the XI tether carries tension through a turn', async () => {
+  const { terminalApproach, startDockedBurn, startTether } = await import('../src/sim/approach.ts');
+  const { tetherAnchor } = await import('../src/sim/tether.ts');
+  const { elementsOf } = await import('../src/world/orbit.ts');
+  const { WGS84_A } = await import('../src/world/bodies.ts');
+  for (const n of [10, 11]) {
+    const { flight } = await import('../missions/usa/gemini/flights/gt-' + n + '/flight.ts');
+    const run = terminalApproach(flight);
+    while (run.phase !== 'hard') {
+      run.advance(0.05, 0);
+      run.attempt();
+    }
+    const results = [];
+    for (const burn of flight.docking.burns) {
+      const op = startDockedBurn(run, burn);
+      assert.ok(op);
+      run.advance(op.until - run.t, 1, [0, op.thrust, 0]);
+      const { a, e } = elementsOf(run.bodies[1].r, run.bodies[1].v);
+      results.push((a * (1 + e) - WGS84_A) / 1852);
+      assert.ok(Math.abs(portGap(...run.bodies).gap) < 1e-8);
+    }
+    // Historical apsides reconstructed from tracking, compared to osculating apogee at thrust cutoff.
+    if (n === 10) assert.ok(Math.abs(results[0] - 412) < 6);
+    else {
+      assert.ok(Math.abs(results[1] - 741.5) < 2);
+      assert.ok(Math.abs(results[2] - 164.2) < 4);
+      assert.ok(startTether(run, flight.docking.tether));
+      let pulled = false;
+      for (let t = 0; t < 620; t += 0.25) {
+        run.advance(0.25, 0);
+        const span = length(sub(...run.bodies.map(tetherAnchor)));
+        assert.ok(span < run.tetherLength + 0.001);
+        assert.ok(run.tension >= 0);
+        pulled ||= run.tension > 0.1;
+      }
+      assert.ok(pulled);
+    }
+  }
+});
+
+test('Apollo 9 departs co-aligned, turns through 180 degrees, waits at stand-off and closes at its measured speed', async () => {
+  const { terminalApproach, transpositionInput } = await import('../src/sim/approach.ts');
+  const { flight } = await import('../missions/usa/apollo/flights/apollo-9/flight.ts');
+  const run = terminalApproach(flight, false, true);
+  assert.ok(portGap(...run.bodies).tilt > 3.14);
+  let outside = false;
+  let before;
+  for (let n = 0; n < 27000 && run.phase === 'free'; n++) {
+    const { force, torque } = transpositionInput(run, flight);
+    run.advance(0.05, 0, force, torque);
+    before = portGap(...run.bodies);
+    outside ||= before.tilt < 0.01 && before.gap > 17.5;
+    run.attempt();
+  }
+  assert.ok(outside);
+  assert.equal(run.phase, 'capture');
+  assert.ok(Math.abs(before.closing / 0.3048 - 0.3) < 0.01);
+  assert.ok(Math.abs(before.offset / 0.0254 - 3.2) < 0.2);
+});

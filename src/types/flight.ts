@@ -53,6 +53,8 @@ export interface FlightCheck {
   source: string;
 }
 
+/** Geodetic coordinates and the local inertial velocity at an orbital tracking fix. */
+export type OrbitalFix = Record<'t' | 'latitude' | 'longitude' | 'height' | 'speed' | 'flightPath' | 'heading', Measure>;
 export interface Flight {
   /** <nation>/<program>/<flight>: also its path under missions/ and public/models/. */
   id: string;
@@ -99,6 +101,52 @@ export interface Flight {
    * from the flight's own figures (a Mercury-Redstone's by mercury-redstone.ts `plan`, a Vostok's by vostok-plan.ts).
    */
   plan?: FlightPlan;
+  /** Terminal orbital operations. The named masses and orbit are drawn from this flight's specifications. */
+  docking?: {
+    interface: 'probe' | 'cone' | 'shrouded';
+    target: string;
+    targetMass: string;
+    fixes?: readonly [OrbitalFix, OrbitalFix?];
+    transpose?: { at: number; startGap: Measure; departing: Measure; standOff: Measure; turnAfter: Measure; roll: Measure };
+    fault?: {
+      at: number;
+      firstPulse: number;
+      pause: number;
+      undock: number;
+      backAway: number;
+      isolate: number;
+      recovery: number;
+      force: Measure;
+      axialArm: Measure;
+      rollArm: Measure;
+    };
+    tether?: { length: Measure; rotation: Measure; at: number; releaseAt: number };
+    burns?: { label: string; at: number; deltaV: Measure; duration?: Measure; thrust: Measure; pitch: Measure; yaw: Measure }[];
+    carrier?: {
+      mass: Measure;
+      arm: Measure;
+      inertia: readonly [Measure, Measure, Measure];
+      extractAt: number;
+      pulses: readonly { after: number; seconds: number }[];
+      nodes: readonly string[];
+      jettisoned: readonly string[];
+    };
+    jets?: {
+      body: 0 | 1;
+      node: string;
+      radius: number;
+      direction?: [number, number, number];
+      offset?: number;
+      main?: boolean;
+      tip?: boolean;
+    }[];
+    controls: Record<'ahead' | 'astern' | 'lateral' | 'attitude', Measure>;
+    closureSpeed?: Measure;
+    retractTime?: Measure;
+    /** Axisymmetric port locations and moments about the body axes at the two recorded captures. */
+    massProperties?: readonly (readonly { arm: Measure; inertia: readonly [Measure, Measure, Measure] }[])[];
+    at: number;
+  };
   /**
    * The flight in the scene: which model the run carries off the pad (after liftoff it is
    * where the simulator has it), and the parts of it that leave it on the way, at seconds from

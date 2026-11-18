@@ -1,5 +1,5 @@
 import type { Clock } from '../world/clock.ts';
-import type { SitedFlight } from '../types.ts';
+import type { Flight } from '../types.ts';
 
 /**
  * A run flown by hand, kept as what was done to the deck and when, so that it can be flown again exactly: the deck's own
@@ -80,9 +80,9 @@ export function hash(s: string): string {
  * What a kept run was flown on: the version of what is written, the simulator's code, and the flight's data that a deck
  * flies (its plan, its site and day, what its model sheds and works). Any of them changed, the run is not flown again.
  */
-export function stampOf(flight: SitedFlight): string {
+export function stampOf(flight: Flight): string {
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
-  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms]))}`;
+  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms, ...(flight.docking ? [flight.docking, flight.specs] : [])]))}`;
 }
 
 /** What flies a tape again: a deck on a clock of its own (whose every change it follows, as the page's clock is followed). */

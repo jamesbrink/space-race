@@ -42,6 +42,12 @@ export class OrbitBackdrop {
     (this.moon.material as THREE.ShaderMaterial).uniforms.uEye!.value = eye;
   }
 
+  /** Direct sun in the celestial frame of an orbiting observer, including its apparent angular size. */
+  sunlight(direction: THREE.Vector3, radius: number): void {
+    this.sun.position.copy(direction).multiplyScalar(90).add(this.camera.position);
+    this.sun.scale.setScalar((90 * Math.sin(radius)) / 0.42);
+  }
+
   update(): void {}
 }
 

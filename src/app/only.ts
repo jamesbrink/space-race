@@ -24,7 +24,9 @@ export function onlySession(flight: Flight, kept?: GalleryKept): Session {
       document.body,
       flight,
       {
-        go: () => {},
+        go: (place) => {
+          if (place === 'fly' && flight.docking) goHome(formatAddress(flight.id, place));
+        },
         home: goHome,
         address,
         covered: () => false,

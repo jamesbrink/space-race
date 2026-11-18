@@ -2,8 +2,9 @@
  * The ring offset is from the centre of mass. Positions, velocities and angular momenta use the
  * same inertial frame throughout, including when the active pilot changes seats. */
 import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { step, type State } from '../world/orbit.ts';
-import { aboutAxis, conjugate, multiply, nlerp, rotateFor, turn, unturn, type Quat } from './rigid.ts';
+import { tetherImpulse } from './tether.ts';
+import { coast, step, type State } from '../world/orbit.ts';
+import { aboutAxis, conjugate, fromAxes, multiply, nlerp, rotateFor, turn, unturn, type Quat } from './rigid.ts';
 
 const Y: Vec3 = [0, 1, 0],
   Z: Vec3 = [0, 0, 1],
@@ -84,6 +85,8 @@ export class DockPair {
   /** The lunar module is initially bolted to a carrier. Both inherit the same rigid motion until extraction. */
   private carrierMount: { payload: Pick<DockBody, 'mass' | 'port' | 'inertia'>; mass: number; arm: number; inertia: Vec3 } | null = null;
   released: DockBody | null = null;
+  tetherLength = 0;
+  tension = 0;
   get mounted() {
     return this.carrierMount !== null;
   }
@@ -221,6 +224,25 @@ export class DockPair {
     b.w = unturn(b.q, spin);
   }
 
+  /** Skip the uneventful coast to a recorded maneuver and take up its local-horizontal attitude.
+   * The navigator supplies the commanded yaw and pitch; the actual orbital state propagates from the last run. */
+  coastToBurn(at: number, yaw: number, pitch: number): boolean {
+    if (this.phase !== 'hard' || !this.centre || at < this.t || this.mounted || this.released) return false;
+    this.centre = coast(this.centre, at - this.t);
+    const pos = this.centre.r,
+      vel = this.centre.v;
+    const up = unit(pos),
+      normal = unit(cross(pos, vel)),
+      forward = cross(normal, up);
+    const horizontal = add(scale(forward, Math.cos(yaw)), scale(normal, Math.sin(yaw)));
+    const axis = add(scale(horizontal, Math.cos(pitch)), scale(up, Math.sin(pitch)));
+    const x = unit(cross(axis, up));
+    this.momentum = zero;
+    this.t = at;
+    this.place(fromAxes(x, axis, cross(x, axis)), 1);
+    return true;
+  }
+
   /** Force and torque are in the firing vehicle's axes, N and N m. */
   advance(dt: number, pilot: 0 | 1, force: Vec3 = zero, torque: Vec3 = zero) {
     if (!(dt > 0) || !Number.isFinite(dt)) return;
@@ -245,6 +267,7 @@ export class DockPair {
         this.place(rotateFor(b.q, b.w, h), progress);
         if (progress === 1) this.phase = 'hard';
       }
+      this.tension = this.phase === 'free' && this.tetherLength > 0 ? tetherImpulse(...this.bodies, this.tetherLength, h) : 0;
       if (this.released) coastBody(this.released, this.t, h);
       this.t += h;
     }

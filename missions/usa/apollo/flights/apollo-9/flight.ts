@@ -1,5 +1,6 @@
 import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
 import { probePort, cm, sm, lift, doors, rocket, part, escapeParts, nodes, specification } from '../../vehicles/stack-gallery.ts';
+import { derived, doc } from '../../../../../src/measure.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
@@ -317,7 +318,111 @@ const launcher = [
     'Each outboard engine hung from a thrust post under a half-cone fin fairing. Together the F-1s produced about 7.7 million pounds of thrust at liftoff.',
   ),
 ];
+// Table 7-I defines latitude as geodetic, and both speed and the horizontal plane of heading as inertial.
+const tracked = (t: number, latitude: number, longitude: number, height: number, speed: number, flightPath: number, heading: number) => {
+  const obs = (v: number) => doc(v, 'MSC-PA-R-69-2, tables 7-I and 7-II. Nautical miles and feet/s converted to SI.');
+  return {
+    t: obs(t),
+    latitude: obs(latitude),
+    longitude: obs(longitude),
+    height: obs(height * 1852),
+    speed: obs(speed * 0.3048),
+    flightPath: obs(flightPath),
+    heading: obs(heading),
+  };
+};
+// Axial arms use the CSM XA1110.25 / LM X312.5 planes. For the first docking the LM row
+// gives its centre in the mated CSM frame. Products of inertia and transverse CG offsets are omitted.
+const properties = (inches: number, ixx: number, iyy: number, izz: number) => {
+  const units = 0.45359237 * 9.80665 * 0.3048; // slug ft² in kg m²
+  const moment = (n: number) =>
+    derived(n * units, 'MSC-PA-R-69-2 table A.5-I, diagonal moments about body CG. Body +Y points along the docking axis.');
+  return {
+    arm: derived(
+      inches * inch,
+      'MSC-PA-R-69-2 table A.5-I longitudinal CG station; NASA TN D-6854 and LM structures drawing, mating plane stations',
+    ),
+    inertia: [moment(iyy), moment(ixx), moment(izz)] as const,
+  };
+};
+const carrierRecord = 'AS-504 Flight Evaluation Report, table 21-14, p. 21-18. Actual at spacecraft separation.';
 export const flight: Flight = {
+  docking: {
+    interface: 'probe',
+    transpose: {
+      at: 2 * 3600 + 41 * 60 + 16,
+      startGap: derived(
+        (1110.25 - 706) * inch,
+        'CSM stations XA706–XA1110.25. The S-IVB payload arrangement puts the LM drogue just aft of the stowed service-engine bell; the bell-to-drogue clearance is neglected.',
+      ),
+      departing: doc(0.6 * 0.3048, 'MSC-PA-R-69-2 section 10.2.3. Indicated separation speed after the 3 s and 2 s firings.'),
+      standOff: doc(60 * 0.3048, 'MSC-PA-R-69-2 section 10.2.3. Crew estimate at the end of the pitch maneuver.'),
+      turnAfter: doc(15, 'MSC-PA-R-69-2 section 10.2.3. Pitch maneuver began 15 s after separation.'),
+      roll: doc(60, 'MSC-PA-R-69-2 section 10.2.3. Crew rolled left after pitching around.'),
+    },
+    jets: [
+      ...Array.from({ length: 16 }, (_, i) => ({
+        body: 0 as const,
+        node: 'RCS_Nozzle_' + Math.floor(i / 4) + '_' + (i % 4),
+        radius: 2.8 * inch,
+      })),
+      ...(['I', 'II', 'III', 'IV'] as const).flatMap((quad, i) => {
+        const sx = i === 0 || i === 3 ? 1 : -1,
+          sz = i < 2 ? -1 : 1;
+        const jets: [string, [number, number, number]][] = [
+          ['U', [0, 1, 0]],
+          ['D', [0, -1, 0]],
+          ['F', [sx, 0, 0]],
+          ['S', [0, 0, sz]],
+        ];
+        return jets.map(([label, direction]) => ({
+          body: 1 as const,
+          node: 'LM3_Thruster_' + quad + '_' + label,
+          direction,
+          offset: 7 * inch,
+          radius: 2.5 * inch,
+        }));
+      }),
+    ],
+    controls: (() => {
+      const engine = doc(100 * 4.4482216152605, 'Apollo 9 Press Kit, spacecraft reaction-control systems, 100 lbf per R-4D chamber.');
+      return { ahead: engine, astern: engine, lateral: engine, attitude: engine };
+    })(),
+    target: 'Spider',
+    targetMass: 'Lunar module mass at first docking',
+    carrier: {
+      mass: doc(88584, carrierRecord),
+      arm: derived(
+        ((73.597 - 71.727) * 103591) / (103591 - 88584),
+        carrierRecord +
+          ' Axial CG separation from the CSM-separated and spacecraft-separated masses and moments, neglecting intervening venting.',
+      ),
+      inertia: [doc(982000, carrierRecord), doc(111000, carrierRecord), doc(978000, carrierRecord)],
+      extractAt: 4 * 3600 + 8 * 60 + 6,
+      pulses: [
+        { after: 5, seconds: 3 },
+        { after: 180, seconds: 6 },
+      ], // MSC-PA-R-69-2, section 10.2.3.
+      nodes: [
+        'SaturnThirdStage',
+        'ThirdStageTankStructure',
+        'ThirdStageEngine',
+        'InstrumentUnit',
+        'InstrumentUnitEquipment',
+        'SpacecraftAdapter',
+      ],
+      jettisoned: ['SLA_Door_0', 'SLA_Door_1', 'SLA_Door_2', 'SLA_Door_3'],
+    },
+    massProperties: [
+      [properties(1110.25 - 933, 31593, 74526, 79304), properties(1235.9 - 1110.25, 19996, 25372, 25117)],
+      [properties(1110.25 - 961.3, 14938, 50438, 52162), properties(312.5 - 243.5, 5976, 3515, 5195)],
+    ],
+    fixes: [
+      tracked(3 * 3600 + 60 + 59.3, 28.83, -124.36, 108.8, 25549, -0.02, 73.9),
+      tracked(98 * 3600 + 30 * 60 + 51.2, 11.42, -168.72, 123.5, 25509.9, 0.03, 58.13),
+    ],
+    at: 3 * 3600 + 60 + 59.3,
+  },
   id: 'usa/apollo/apollo-9',
   nation: 'USA',
   agency: 'NASA',
@@ -369,6 +474,21 @@ export const flight: Flight = {
     specification(rocket, 'S-IVB diameter', 260 * inch, 'm', kit + ', third stage'),
     specification(ship, 'Mass in orbit at transposition (CSM)', 59085 * lb, 'kg', 'MSC-PA-R-69-2 table A.5-I'),
     specification(ship, 'CSM mass at ignition', 59116 * lb, 'kg', 'SP-4029, Ground Ignition Weights, Apollo 9'),
+    specification(
+      lm,
+      'Lunar module mass at first docking',
+      32130 * lb,
+      'kg',
+      'MSC-PA-R-69-2 table A.5-I, command module transposition and docking',
+    ),
+    specification(lm, 'Ascent stage mass at docking', 9932 * lb, 'kg', 'MSC-PA-R-69-2 table A.5-I, docking'),
+    specification(
+      ship,
+      'CSM mass at LM-active docking',
+      26895 * lb,
+      'kg',
+      'MSC-PA-R-69-2 table A.5-I, command and service modules at lunar module docking',
+    ),
     specification(lm, 'Lunar module launch mass', 32132 * lb, 'kg', 'MSC-PA-R-69-2 table A.5-I'),
     specification(lm, 'Ascent stage mass at staging', 10216 * lb, 'kg', 'MSC-PA-R-69-2 table A.5-I'),
     ...(

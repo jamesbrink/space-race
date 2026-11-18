@@ -305,6 +305,9 @@ src/
   sim/afloat.ts                       a body afloat: upright on the day's sea, flooding through its openings, hoisted, going down (`floatOn`, `Solid`)
   sim/sea.ts  sim/loose.ts            the day's waves as a function of the instant and the place; a part thrown off with no plan of its own, flown to the sea
   sim/breakup.ts                     game rule for an impact to release parts
+  deck/dockdeck.ts                   terminal approach instruments, capture and spacecraft controls on the flight deck
+  app/dockflight.ts  ui/dockflight.css  orbital approach viewer and flight controls
+  sim/approach.ts  sim/docking.ts      terminal rendezvous initial state and two-spacecraft docking dynamics
   sim/contact.ts                     swept spacecraft contact and its inelastic impulse
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
@@ -418,3 +421,7 @@ road), flies over and turns about it (`Framing.visit`). A figure that has been w
 where it was left.
 
 - `src/sim/docking.ts` propagates independently flying spacecraft, their keyed docking ports, the coupled pair and an optional carrier released during extraction. `tests/orbital-docking.test.mjs` checks capture limits, momentum, combined propulsion and extraction.
+
+- `src/sim/tether.ts` applies a tensile impulse at the two spacecraft attachment points.
+- `src/viewer/dockjets.ts` binds the orbital RCS mouths and the Agena engine to the shared exhaust renderer.
+- `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.

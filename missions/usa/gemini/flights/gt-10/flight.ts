@@ -1,8 +1,17 @@
+import { doc } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { lateCrew } from '../../crew/late-crew.ts';
-import { agenaDimensions, agenaMotors, TARGET_GROUP } from '../../vehicles/gemini-targets.ts';
+import {
+  agenaDimensions,
+  agenaMotors,
+  dockedBurn,
+  dockingProperties,
+  geminiControls,
+  targetFix,
+  TARGET_GROUP,
+} from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle, oldAgena } from '../../vehicles/late-vehicle.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
@@ -16,6 +25,22 @@ const [crew, pilot] = lateCrew(10, crewAboard);
 const vehicle = lateVehicle(10, [crewAboard, hatchesShut]);
 
 export const flight: Flight = {
+  docking: {
+    jets: [{ body: 1, node: 'AgenaEngine_Extension', radius: 16.5 * 0.0254, main: true, tip: true }],
+    controls: geminiControls,
+    retractTime: doc(5, REPORT + ', section 7.1.2.6.1, crew reported approximately five seconds'),
+    massProperties: dockingProperties(REPORT, 104.68, 343.7, 7184),
+    burns: [
+      dockedBurn('Phasing', get(7, 38, 34), 423.6, 0, 0, REPORT + ', table 4-VIII and section 4.3'),
+      dockedBurn('Height adjustment', get(20, 20, 12), 346.2, 0, 180, REPORT + ', table 4-VIII and section 4.3'),
+      dockedBurn('Coelliptic maneuver', get(22, 37, 6), 82.2, 0, 0, REPORT + ', table 4-VIII and section 4.3'),
+    ],
+    fixes: [targetFix(REPORT + ', table 4-IX, final insertion', -6040.517, 558.27, 28.61, -59.49, 979215, 25366, -0.03, 94.91)],
+    interface: 'cone',
+    target: 'GATV 5005',
+    targetMass: 'Agena weight at orbital insertion',
+    at: get(5, 52, 37.1),
+  },
   id: 'usa/gemini/gt-10',
   nation: 'USA',
   agency: 'NASA',

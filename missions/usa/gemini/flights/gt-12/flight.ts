@@ -2,7 +2,7 @@ import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { lateCrew } from '../../crew/late-crew.ts';
-import { agenaDimensions, agenaMotors, TARGET_GROUP } from '../../vehicles/gemini-targets.ts';
+import { agenaDimensions, agenaMotors, dockingProperties, geminiControls, targetFix, TARGET_GROUP } from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
@@ -17,6 +17,15 @@ const [crew, pilot] = lateCrew(12, crewAboard);
 const vehicle = lateVehicle(12, [crewAboard, hatchesShut]);
 
 export const flight: Flight = {
+  docking: {
+    controls: geminiControls,
+    massProperties: dockingProperties(REPORT, 104.84, 344.1, 7114),
+    fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5914.731, 556.05, 28.52, -59.63, 981195, 25365, 0.04, 95.54)],
+    interface: 'cone',
+    target: 'GATV 5001',
+    targetMass: 'Agena weight at orbital insertion',
+    at: get(4, 13, 52),
+  },
   id: 'usa/gemini/gt-12',
   nation: 'USA',
   agency: 'NASA',

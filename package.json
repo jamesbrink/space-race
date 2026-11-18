@@ -42,6 +42,7 @@
     "test:front": "node tools/front-test.mjs",
     "test:lineup": "node tools/lineup-test.mjs",
     "test:flights": "node tools/flights-test.mjs",
+    "test:docking": "node tools/docking.mjs",
     "test:deck": "node tools/deck-test.mjs",
     "test:path": "node tools/path-test.mjs",
     "test:sheet": "node tools/sheet-test.mjs",

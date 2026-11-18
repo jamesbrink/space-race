@@ -31,6 +31,7 @@ let opening: Promise<void> = Promise.resolve();
  * and lets go of the rest; with no site to follow it is let go of whole (Stage.unload).
  */
 async function open(flight: Flight): Promise<void> {
+  if (parseAddress(where()).place === 'fly' && flight.docking) return goHome(where(), true);
   if (session) {
     kept = session.dispose();
     session = null;
