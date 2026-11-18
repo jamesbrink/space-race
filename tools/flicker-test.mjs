@@ -143,6 +143,47 @@ for (const model of models) {
       }
   }
 }
+// A moving vehicle can ask for a new shadow while the frame is being stepped. Its map must be consumed by
+// that draw even if the preceding view was completely still, both at ascent speed and at orbital speed.
+if (!url.includes('#')) {
+  await page.goto(`${url}#ussr/vostok/vostok-1/fly`);
+  await page.waitForFunction(() => window.sr?.cockpit?.active && document.querySelector('.loading.done'), null, { timeout: 180000 });
+  for (const rig of ['chase', 'onboard']) {
+    for (const t of [60, 1500]) {
+      const result = await page.evaluate(
+        async ({ rig, t }) => {
+          const { stage, clock } = window.sr;
+          const frame = () => new Promise((done) => requestAnimationFrame(done));
+          clock.pause();
+          clock.seek(t);
+          stage.setCamera(rig);
+          await frame();
+          const shadow = stage.shadows.sun;
+          const previous = shadow.target.position.clone();
+          const update = shadow.shadow.updateMatrices;
+          let refreshed = false;
+          shadow.shadow.updateMatrices = function (...args) {
+            refreshed = true;
+            return update.apply(this, args);
+          };
+          try {
+            clock.seek(t + 1 / 32);
+            await frame();
+            return { moved: previous.distanceTo(shadow.target.position), refreshed, owed: stage.shadowsOwed };
+          } finally {
+            shadow.shadow.updateMatrices = update;
+          }
+        },
+        { rig, t },
+      );
+      const ok = result.moved > 1 && result.refreshed && !result.owed;
+      console.log(
+        `${ok ? 'ok' : 'FAIL'} ${rig} at T+${t}: shadow target moved ${result.moved.toFixed(1)} m, refreshed: ${result.refreshed}, update outstanding: ${result.owed}`,
+      );
+      if (!ok) failed++;
+    }
+  }
+}
 // (but not the machine's own: three warns that ANGLE on Linux offers no KHR_parallel_shader_compile, and compiles anyway)
 const own = errors.filter((e) => !e.includes('KHR_parallel_shader_compile'));
 if (own.length) {
