@@ -423,7 +423,7 @@ const measure = (page) =>
   page.evaluate((CHORD_PX) => {
     const sr = window.sr;
     const p = sr.path;
-    const cam = sr.stage.camera;
+    const cam = window.__drawCamera;
     const V = cam.position.constructor;
     const q = cam.quaternion.clone().invert();
     const W = innerWidth;
@@ -679,6 +679,14 @@ class Run {
     this.close = opened.close;
     this.errors.push(opened.errors);
     await this.page.evaluate(() => {
+      // A launch shakes the camera for the draw, then restores it. Compare screen positions with the frame the visitor actually saw.
+      const stage = window.sr.stage;
+      const drawn = (window.__drawCamera = stage.camera.clone(false));
+      const draw = stage.pipe.draw.bind(stage.pipe);
+      stage.pipe.draw = (...args) => {
+        drawn.copy(stage.camera, false);
+        return draw(...args);
+      };
       window.sr.path.show(true, false);
       window.sr.navball?.tuck?.(false, false);
     });
