@@ -1,6 +1,12 @@
-import type { ModelDef, Move, Part, ViewDef } from '../../../../../src/types.ts';
+import type { DockingPort, ModelDef, Move, Part, ViewDef } from '../../../../../src/types.ts';
 
 const lm = 'Lunar module · Spider';
+export const spiderPort: DockingPort = {
+  system: 'apollo-probe-and-drogue',
+  role: 'drogue',
+  part: 'LMDockingPort',
+  frame: 'SpiderDockingFrame',
+};
 const lower = 'Descent stage';
 const upper = 'Ascent stage';
 const radial: [number, number][] = [
@@ -112,6 +118,13 @@ const stageParts: [string, string, string, string, string][] = [
     'A third window above the commander looked up toward the docking target. Gumdrop’s probe met the conical drogue in the tunnel atop the midsection.',
   ],
   [
+    spiderPort.part,
+    'Docking ring and drogue',
+    upper,
+    'Spider carried the receiving half of the docking system above its overhead hatch.',
+    'The cone guided Gumdrop’s probe into the capture socket. Retraction drew the rings together, and the crew removed the probe and drogue to open the transfer passage.',
+  ],
+  [
     'LMStations',
     'Two standing flight stations',
     upper,
@@ -130,7 +143,7 @@ const stageParts: [string, string, string, string, string][] = [
     'Fixed ascent engine',
     upper,
     'A separate engine powered the ascent stage back to Gumdrop.',
-    'The small bell nests in the opening at the top of the descent stage. Its chamber, jacket, mount and external feed fittings leave with the cabin. It delivered a nominal 3,500 lbf.',
+    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. It delivered a nominal 3,500 lbf.',
   ],
   [
     'LMAPSTanks',
@@ -225,6 +238,7 @@ export const spiderStackParts: Part[] = deployedParts.map((p) => ({
   ],
 }));
 export const spiderViews: ViewDef[] = [
+  { id: 'drogue', label: 'Spider docking drogue', nodes: [spiderPort.part], span: 1.55, isolate: true, from: [0.55, 0.95, -0.3] },
   { id: 'power', label: 'Electrical power', nodes: ['LMDescentPower', 'LMAscentPower'], isolate: true, from: [-1, 0.3, 0.6] },
   {
     id: 'life-support',
@@ -267,6 +281,7 @@ export const spiderViews: ViewDef[] = [
 const point = (x: number, y: number, z: number): [number, number, number] => [x * 0.0254, z * 0.0254, -y * 0.0254];
 export const spiderModel: ModelDef = {
   id: 'spider',
+  dockingPorts: [spiderPort],
   cutawayQuadrant: [1, -1],
   galleryFrom: [1, 0.18, -0.55],
   boardingLabel: 'Take a flight station',

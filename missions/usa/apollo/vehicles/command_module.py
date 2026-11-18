@@ -60,7 +60,7 @@ def _on_cone(point, normal):
     return p + n * t
 
 
-def build(cm, heatshield, forward, hatch_node, base, foil, void):
+def build(cm, heatshield, forward, hatch_node, base, foil, void, *, docking_ring=False):
     """Keep named flight nodes; the forward assembly is explicitly unfinished."""
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
     apertures = []
@@ -105,9 +105,11 @@ def build(cm, heatshield, forward, hatch_node, base, foil, void):
     # Truncate the nominal conical wall at the documented cover station. The
     # upper edge fillet is omitted: the idealized wind-tunnel nose radius is not
     # established as the flight heat shield's edge radius.
+    # On CM-104 the cover finishes around the installed docking ring and its seals.
+    end, opening = (108.3, 18.67) if docking_ring else (COVER_TOP, TUNNEL_RADIUS)
     lathe_obj(
         "CM_ForwardShield",
-        prof([(radius(FORWARD_LIMIT), base + FORWARD_LIMIT), (radius(COVER_TOP), base + COVER_TOP), (TUNNEL_RADIUS, base + COVER_TOP)]),
+        prof([(radius(FORWARD_LIMIT), base + FORWARD_LIMIT), (radius(end), base + end), (opening, base + end)]),
         foil,
         forward,
         segs=128,

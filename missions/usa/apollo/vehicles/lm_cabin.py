@@ -32,9 +32,9 @@ def build(owner, boards, silver, panel, black, ivory, glass):
     box(hull, (41, 0, 140), (57, 63, 1.5))
     for side in (-1, 1):
         box(hull, (-4.5, side * 22.25, 140), (33.5, 18.5, 1.5))
-    box(hull, (-4.5, 0, 155), (33.5, 26, 1.8))
+    box(hull, (-4.5, 0, 165), (33.5, 26, 1.8))
     for side in (-1, 1):
-        box(hull, (-4.5, side * 12.5, 147.4), (33.5, 1, 14.3))
+        box(hull, (-4.5, side * 12.5, 152.4), (33.5, 1, 24.3))
     for side in (-1, 1):
         box(hull, (-8, side * 26, 161), (25, 2, 40))
         for x in (23, 53):
@@ -73,7 +73,7 @@ def build(owner, boards, silver, panel, black, ivory, glass):
 
                 webs.tube(arc(deg), arc(deg + 14), 0.5 * IN, segs=8, caps=False)
     # Aft access steps up over the ascent-engine cover into the tunnel beneath the drogue.
-    for z in (164, 177, 190):
+    for z in (170, 181, 192):
         lining.tube(p((-14, -9, z)), p((-14, 9, z)), 0.65 * IN)
     for y in (-9, 9):
         lining.tube(p((-14, y, 161)), p((-14, y, 193)), 0.72 * IN)

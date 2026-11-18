@@ -32,7 +32,7 @@ def vessel(mesh, xyz, radius, half_length):
 def engine(parent, ascent, metal, graphite, jacket, brass):
     """Separate extension, ablative chamber jacket, manifold and mounting structure."""
     # Table I, NASA 19700026405: approximately 85/51 in overall, 58/31 in exit.
-    radius, throat, length, exit_z = (15.5, 2.5, 51, 102) if ascent else (29, 4, 85, 18.48)
+    radius, throat, length, exit_z = (15.5, 2.5, 51, 112) if ascent else (29, 4, 85, 18.48)
     name = "APS" if ascent else "DPS"
     skirt, case, hardware, feed = (MeshBuilder() for _ in range(4))
     start = (0, 0, exit_z)
@@ -81,7 +81,7 @@ def engine(parent, ascent, metal, graphite, jacket, brass):
     if ascent:
         for x in (-1, 1):
             for y in (-1, 1):
-                pipe(hardware, [(x * 7, y * 5, top - 2), (x * 16, y * 17, 132)], 1.2)
+                pipe(hardware, [(x * 7, y * 5, top - 2), (x * 9.8, y * 10.3, 137), (x * 16, y * 17, 132)], 1.2)
     else:
         gimbal = exit_z + length * 0.79
         surface(hardware, (0, 0, gimbal), [(12, 0), (15, 0), (15, 2), (12, 2), (12, 0)])
@@ -123,7 +123,7 @@ def tanks(descent, ascent, structure, metal, oxidizer, fuel, brass):
                 rr = r * math.sqrt(1 - (dz / h) ** 2)
                 surface(bands, (x, y, z + dz), [(rr + 0.2, -1), (rr + 0.2, 1), (rr - 0.2, 1)])
             bottom = z - h
-            engine_z = 98 if name == "DPS" else 148
+            engine_z = 98 if name == "DPS" else 158
             pipe(
                 feed,
                 [

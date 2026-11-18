@@ -4,6 +4,7 @@ import math
 
 from mathutils import Matrix, Vector
 
+import apollo_docking
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -29,13 +30,14 @@ def box(mesh, centre, size):
     mesh.box(at(size), Matrix.Translation(at(centre)))
 
 
-def shell(mesh, rings, *, bottom=True):
+def shell(mesh, rings, *, bottom=True, cap=True):
     """Faceted skin between successive cross sections, all wound the same way."""
     n = len(rings[0])
     faces = [(j * n + i, j * n + (i + 1) % n, (j + 1) * n + (i + 1) % n, (j + 1) * n + i) for j in range(len(rings) - 1) for i in range(n)]
     if bottom:
         faces.append(tuple(reversed(range(n))))
-    faces.append(tuple(range((len(rings) - 1) * n, len(rings) * n)))
+    if cap:
+        faces.append(tuple(range((len(rings) - 1) * n, len(rings) * n)))
     mesh.add([at(p) for ring in rings for p in ring], faces)
 
 
@@ -94,10 +96,29 @@ def dish(parent, name, centre, normal, radius, alloy, dark):
     feed.build(name + "_Feed", dark, parent)
 
 
+def engine_shield(mesh, perimeter, profile, *, underside=False):
+    """Panel a polygonal deck round a concentric opening or a closed, recessed shield."""
+    edge = []
+    for a, b in zip(perimeter, perimeter[1:] + perimeter[:1], strict=True):
+        for i in range(6):
+            edge.append(tuple(u + (v - u) * i / 6 for u, v in zip(a, b, strict=True)))
+    rays = [(x / math.hypot(x, y), y / math.hypot(x, y)) for x, y, _ in edge]
+    for radius, height in profile:
+        ring = [(radius * dx, radius * dy, height) for dx, dy in rays]
+        for i in range(len(edge)):
+            j = (i + 1) % len(edge)
+            face = [edge[i], edge[j], ring[j]]
+            if radius:
+                face.append(ring[i])
+            mesh.add([at(p) for p in face], [tuple(reversed(range(len(face)))) if underside else tuple(range(len(face)))])
+        edge = ring
+
+
 def descent(parent, foil, amber, dark, alloy):
     # The octagon encloses the beam cross, four propellant bays and four corner bays.
     wrap = MeshBuilder()
-    shell(wrap, [octagon(77, 34, 58.30), octagon(83, 34, 61), octagon(83, 34, 94), octagon(83, 34, 121), octagon(80, 34, DECK)])
+    base, top = octagon(77, 34, 58.30), octagon(80, 34, DECK)
+    shell(wrap, [base, octagon(83, 34, 61), octagon(83, 34, 94), octagon(83, 34, 121), top], bottom=False, cap=False)
     blanket = wrap.build("LM3_DescentBlanket", foil, parent, smooth=False)
     blanket.data.materials.append(dark)
     blanket.data.materials.append(amber)
@@ -107,6 +128,25 @@ def descent(parent, foil, amber, dark, alloy):
             1 if ring == 3 or ring == 2 and facet in (0, 1, 2, 4, 6, 7) or ring == 1 and facet in (1, 3, 5) else 2 if facet in (0, 4, 6) else 0
         )
     mark_shells([blanket.name])
+    # The descent engine passes through its base shield. Above it a separate, closed
+    # blast deflector receives the ascent plume. Local recess dimensions are estimated.
+    base_shield, deck, deflector = (MeshBuilder() for _ in range(3))
+    engine_shield(base_shield, base, [(23.5, 58.30)], underside=True)
+    # The octagonal seam is shared by the gold blanket and the covered central recess.
+    lip = octagon(24, 10, DECK)
+    cap = MeshBuilder()
+    # A.2-4: the rectangular central panel rests on the four beam intersections.
+    # Split its edge into the same eight sectors as the blanket.
+    rim = octagon(27, 24.8, DECK + 0.18)
+    for i in range(8):
+        j = (i + 1) % 8
+        deck.add([at(v) for v in (top[i], top[j], rim[j], rim[i])], [(0, 1, 2, 3)])
+        cap.add([at(v) for v in (rim[i], rim[j], lip[j], lip[i])], [(0, 1, 2, 3)])
+    mark_shells([cap.build("LM3_DeflectorRetainer", alloy, parent, smooth=False).name])
+    engine_shield(deflector, lip, [(23, DECK - 1), (20, 108), (18, 106.5), (0, 107.5)])
+    mark_shells([base_shield.build("LM3_DescentBaseShield", alloy, parent, smooth=False).name])
+    mark_shells([deck.build("LM3_InterstageDeck", foil, parent, smooth=False).name])
+    mark_shells([deflector.build("LM3_AscentBlastDeflector", amber, parent, smooth=False).name])
     # Forward diagonal quadrants in AS09-21-3212: a US flag and the two-line country marking.
     badges = MeshBuilder()
     legend = MeshBuilder()
@@ -150,6 +190,56 @@ def descent(parent, foil, amber, dark, alloy):
         tube(seams, point(83.5, -32, 83), point(83.5, 32, 83), 0.65)
     rails.build("LM3_Outriggers", alloy, parent)
     mark_shells([seams.build("LM3_DescentBlanketSeams", amber, parent).name])
+
+
+def staging_fittings(lower, upper, alloy, dark):
+    # A.2.3: four explosive bolt/nut assemblies. Individual fitting profiles and
+    # positions are estimated at the corners of the central thrust structure.
+    sockets, feet, braces = (MeshBuilder() for _ in range(3))
+    for x in (-28, 28):
+        for y in (-28, 28):
+            pos = Matrix.Translation(at((x, y, DECK)))
+            sockets.lathe(prof([(3.8, 0.25), (3.8, 1), (2.8, 1.3), (2.8, 3.4), (1.4, 3.4), (1.4, 0.25)]), 24, matrix=pos)
+            feet.lathe(prof([(1.4, 3.46), (3.1, 3.46), (3.1, 4.5), (2.2, 6), (0, 6)]), 24, matrix=pos)
+            tube(braces, (x, y, DECK + 5.2), (x * 0.7, y * 0.9, 138), 1.65)
+    sockets.build("LM3_InterstageSockets", alloy, lower)
+    feet.build("LM3_SeparationFittings", dark, upper)
+    braces.build("LM3_InterstageBrackets", alloy, upper)
+
+
+def check_engine_interfaces(parts):
+    """Sweep the ascent nozzle out of its well and check both permanently installed engine apertures."""
+    import bpy
+    from mathutils.bvhtree import BVHTree
+
+    bpy.context.view_layer.update()
+
+    def triangles(obj):
+        return [obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons]
+
+    def tree(name):
+        return BVHTree.FromPolygons(*triangles(bpy.data.objects[name]))
+
+    deck = [tree(name) for name in ("LM3_InterstageDeck", "LM3_DescentBlanket", "LM3_AscentBlastDeflector")]
+    skirt = bpy.data.objects["LM3_APS_NozzleExtension"]
+    verts, faces = triangles(skirt)
+    # At and above one deck depth of lift the lowest point is already above the whole deck.
+    for step in range(101):
+        dz = Vector((0, 0, (DECK - 58.30) * IN * step / 100))
+        swept = BVHTree.FromPolygons([v + dz for v in verts], faces)
+        if any(swept.overlap(surface) for surface in deck):
+            raise ValueError(f"Ascent nozzle intersects descent-stage deck at {dz.z:.3f} m lift")
+    for engine, shield in (("LMAscentEngine", "LM3_AscentBaseHeatShield"), ("LMDescentEngine", "LM3_DescentBaseShield")):
+        base = tree(shield)
+        if any(base.overlap(tree(o.name)) for o in parts[engine].children if o.type == "MESH"):
+            raise ValueError(f"{engine} intersects {shield}")
+
+    floor = bpy.data.objects.get("LM3_CabinDeckAndSideLockers")
+    if floor:
+        cabin = tree(floor.name)
+        for obj in parts["LMAscentEngine"].children:
+            if obj.type == "MESH" and cabin.overlap(tree(obj.name)):
+                raise ValueError(f"{obj.name} intersects cabin floor or engine cover")
 
 
 def landing_gear(parent, gold, metal, dark, deployed):
@@ -238,8 +328,13 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     trim.build("LM3_DockingWindowBezel", dark, parent)
     mid = MeshBuilder()
     rings = [octagon(39, 22, 129), octagon(57, 26, 154), octagon(54, 30, 214), octagon(39, 22, 236)]
-    shell(mid, [[(0.73 * x - 7, y, z) for x, y, z in ring] for ring in rings], bottom=False)
+    skin_rings = [[(0.73 * x - 7, y, z) for x, y, z in ring] for ring in rings]
+    shell(mid, skin_rings, bottom=False, cap=False)
+    engine_shield(mid, skin_rings[-1], [(17.72, 236)])
     mark_shells([mid.build("LM3_Midsection", foil, parent, smooth=False).name])
+    belly = MeshBuilder()
+    engine_shield(belly, skin_rings[0], [(15.5, 129)], underside=True)
+    mark_shells([belly.build("LM3_AscentBaseHeatShield", dark, parent, smooth=False).name])
     bays = MeshBuilder()
     shell(bays, [rim(-83, 0, 175, 34, 25), rim(-66, 0, 179, 45, 34), rim(-40, 0, 180, 44, 35)])
     for side in (-1, 1):
@@ -276,9 +371,6 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     framebars.build("LM3_FramesAndHatchHandle", dark, parent)
     porch.build("LM3_EVAPorch", dark, platform)
     shoes.build("LM3_GoldenSlippers", gold, platform)
-    rim_mesh = MeshBuilder()
-    rim_mesh.lathe(prof([(0, 236.2), (20, 236.2), (20, 238.65), (16, 238.65), (2.1, 229), (0, 229)]), 48)
-    rim_mesh.build("LM3_DockingDrogue", alloy, parent)
     # Four quads with two vertical and two transverse nozzles on each.
     quads = MeshBuilder()
     for x in (-43, 43):
@@ -320,6 +412,7 @@ def build(iu_top=0, *, deployed=False):
         for name in (
             "LMDescent",
             "LMAscent",
+            "LMDockingPort",
             "LMDescentEngine",
             "LMAscentEngine",
             "LMDPSTanks",
@@ -345,9 +438,12 @@ def build(iu_top=0, *, deployed=False):
     descent(parts["LMDescent"], foil, amber, dark, silver)
     landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed)
     cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed)
+    apollo_docking.lunar(parts["LMDockingPort"], silver, dark)
     lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber)
     lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
     lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber)
     lm_propulsion.rcs_tanks(parts["LMReactionSupply"], silver, fuel, ox)
     lm_systems.build(parts, silver, interior_paint, dark, white)
+    staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
     lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass)
+    check_engine_interfaces(parts)

@@ -23,6 +23,13 @@ for (const suffix of ['', '.lod1', '.lod2']) {
     measure(pad.hi[0] - pad.lo[0], 37);
     measure(pad.hi[0] - lm.box('LM3_Footpad_2').lo[0], 372.14);
     measure(lm.box('LM3_SBand').hi[1], 277, 0.75);
+    for (const model of [stack, lm]) {
+      const plane = model.point('LMDescent')[1];
+      measure(model.box('LM3_APS_NozzleExtension').lo[1] - plane, 112);
+      measure(model.box('LM3_DPS_NozzleExtension').lo[1] - plane, 18.48);
+      measure(model.box('LM3_InterstageDeck').lo[1] - plane, 127.16);
+      assert.ok(model.point('LM3_AscentBlastDeflector'));
+    }
     for (const seat of spider.seats) assert.ok(lm.point(seat.node), seat.label);
     for (const part of spider.parts) assert.ok(stack.point(part.node), part.name);
     assert.ok(stack.point('CM104_ProbeExtension'));

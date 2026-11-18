@@ -1,5 +1,6 @@
-import { spiderModel, spiderStackParts, spiderViews } from './spider.ts';
-import type { Flight, Move, Part, Spec } from '../../../../../src/types.ts';
+import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
+import { assumed, estimated } from '../../../../../src/measure.ts';
+import type { DockingPort, Flight, Move, Part, Spec } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
 
@@ -9,6 +10,26 @@ const kit = 'NASA Apollo 9 press kit, February 1969';
 const time = 'NASA SP-4029, Apollo 9 timeline and ascent phase';
 const lm = 'Lunar module · Spider';
 const ship = 'Spacecraft';
+const gumdropPort = {
+  system: 'apollo-probe-and-drogue',
+  role: 'probe',
+  part: 'DockingProbe',
+  frame: 'GumdropDockingFrame',
+  piston: 'CM104_ProbeExtension',
+  captureHooks: {
+    nodes: Array.from({ length: 3 }, (_, i) => `CM104_CaptureHook_${i}`),
+    travel: estimated(0.34 * inch, 'Radial motion reconstructed to clear the socket lip and engage its cavity, NASA TN D-6854, fig. A-13.'),
+  },
+  hinges: Array.from({ length: 12 }, (_, i) => `CM104_LatchHinge_${i}`),
+  latchRotation: estimated(
+    (24 * Math.PI) / 180,
+    'Reconstructed hook sweep from the open position to behind the ring lip, NASA TN D-6854, figs. 9 and A-13.',
+  ),
+  captureTravel: assumed(
+    10 * inch,
+    'Apollo Operations Handbook, Block II, vol. 1, §2.13.3.3.4, p. 2.13-17. The type’s 10-inch maximum travel is applied to CSM-104.',
+  ),
+} satisfies DockingPort;
 const rocket = 'Launch vehicle';
 const escapeSystem = 'Launch escape system';
 
@@ -117,15 +138,21 @@ const command = [
   ),
   {
     ...cm(
-      'DockingProbe',
+      gumdropPort.part,
       'Active docking probe',
       'Gumdrop carried the active half of the first Apollo docking in space.',
-      'The probe tip entered Spider’s conical drogue. Retraction brought the two rings together so twelve perimeter latches could engage. The supports and reach are estimated.',
+      'The probe tip entered Spider’s conical drogue. Retraction brought the two rings together so twelve perimeter latches could engage. The model uses the Block II probe’s 10-inch retraction stroke. Its support details are estimated.',
       true,
     ),
     moves: [
       lift(2, 52),
-      { kind: 'slide' as const, node: 'CM104_ProbeExtension', by: [0, 0.2032, 0] as [number, number, number], from: 0.56, to: 0.7 },
+      {
+        kind: 'slide' as const,
+        node: gumdropPort.piston,
+        by: [0, gumdropPort.captureTravel.value, 0] as [number, number, number],
+        from: 0.56,
+        to: 0.7,
+      },
     ],
   },
   part(
@@ -407,11 +434,11 @@ export const flight: Flight = {
   specs: [
     {
       group: ship,
-      label: 'Length from engine exit to forward shield',
-      value: 406.25 * inch,
+      label: 'Length from engine exit to docking plane',
+      value: 404.25 * inch,
       unit: 'm',
       confidence: 'derived',
-      note: 'Nominal Block II stations XA706 to XA1000 plus Xc112.25 in, as on CSM-103. Excludes docking probe.',
+      note: 'Block II stations XA706 to XA1000 plus the CM docking plane at Xc110.25 in (NASA TN D-6854, fig. A-13). Excludes the projecting probe.',
     },
     specification(rocket, 'Height on the pad', 363 * 12 * inch, 'm', kit + ', Saturn V summary, 363 ft'),
     specification(rocket, 'Liftoff mass', 6397055 * lb, 'kg', 'NASA TM X-70154, Apollo 9 flight summary, 6,397,055 lb'),
@@ -455,6 +482,7 @@ export const flight: Flight = {
       url: 'models/usa/apollo/apollo-9/vehicle.glb',
       backdrop: 'studio',
       cutaway: true,
+      dockingPorts: [gumdropPort, spiderPort],
       ...blockIICabin(3871),
       seats: [
         { node: 'Seat_Commander', label: 'McDivitt’s left couch', from: 'SideHatch', open: [-9000, -6000] },
@@ -468,8 +496,8 @@ export const flight: Flight = {
         { id: 'escape', label: 'Escape tower', nodes: nodes(escapeParts) },
         { id: 'gumdrop', label: 'Gumdrop', isolate: true, from: [1, 0.23, -0.5], nodes: [...nodes(command), ...nodes(service)] },
         { id: 'spider', label: 'Spider in adapter', nodes: nodes(spiderStackParts), isolate: true, from: [1, 0.12, -0.25] },
-        ...spiderViews.filter((v) => ['porch', 'dps', 'aps'].includes(v.id)),
-        { id: 'probe', label: 'Docking probe', nodes: ['DockingProbe'], isolate: true, from: [1, 0.3, 0.4] },
+        ...spiderViews.filter((v) => ['porch', 'dps', 'aps', 'drogue'].includes(v.id)),
+        { id: 'probe', label: 'Gumdrop docking probe', nodes: [gumdropPort.part], span: 1.55, isolate: true, from: [1, 0.82, 0.4] },
         {
           id: 'console',
           label: 'Main console',

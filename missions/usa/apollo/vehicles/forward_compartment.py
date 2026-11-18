@@ -12,13 +12,13 @@ from cm_reference import survey_cm
 from srlib import CM, IN, MeshBuilder, interior, lathe_obj, mark_shells, material, prof
 
 
-def build(parent, base, *, combined_hatch=False):
+def build(parent, base, *, combined_hatch=False, hatch_setback=0):
     structure = material("apollo-tunnel-alloy", (0.64, 0.65, 0.62), metallic=0.6, roughness=0.55, double_sided=True)
     cloth = material("apollo-landing-pack", (0.66, 0.61, 0.48), roughness=0.96)
     strap = material("apollo-landing-webbing", (0.81, 0.77, 0.67), roughness=0.87)
     dark = material("apollo-recovery-fittings", (0.26, 0.29, 0.28), metallic=0.6, roughness=0.5)
     if combined_hatch:
-        apollo8_equipment.combined_hatch(parent, base, structure, dark)
+        apollo8_equipment.combined_hatch(parent, base - hatch_setback, structure, dark)
     if not interior():
         return
     record = json.loads((Path(__file__).parent / "reference/apollo-cm-inner-apertures.json").read_text())
