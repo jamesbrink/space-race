@@ -1,0 +1,22 @@
+{
+  "confidence": "estimated",
+  "source": {
+    "title": "North American Rockwell V36-976024, Design Layout — Main Display Console, Command Module 106, sheet 1",
+    "url": "https://www.ibiblio.org/apollo/Documents/V36-976024_Design_Layout_MDC_CM-106.pdf",
+    "sha256": "665a60cc0a12cb2e21319791fece12da0b76a5c0c09a307de04e0c578e018569",
+    "crop_pdf_points": [2310, 0, 4132, 796],
+    "pixels_per_point": 1,
+    "rectified_to_crop": [[0.998997425, 0.006955706, -31.8505863], [-0.007143265, 0.997064298, 9.20355]]
+  },
+  "registration": {
+    "anchors": [{ "interface": "fdai-1", "image_px": [347.35, 452.36] }, { "interface": "fdai-2", "image_px": [626.67, 281.73] }],
+    "method": "Affine overlay of CM-106 on the CM-104 crop using 1,686 matching drawing features. Coordinates below are rectified pixels. The recorded matrix maps rectified pixels back to the CM-106 crop. Two FDAIs register that drawing to the shared hull.",
+    "holdout": { "feature": "DSKY front centre", "image_px": [624.66, 454.79], "residual_cm": 0.7757050685512715 }
+  },
+  "toggle_rows": [
+    { "id": "s-band", "xs": [1323, 1344, 1367, 1398, 1420, 1442, 1467, 1494, 1519, 1548], "y": 629, "label": "S BAND / UPLINK" },
+    { "id": "vhf", "xs": [1323, 1345, 1448, 1473, 1500, 1521], "y": 683, "label": "S BAND ANTENNA / VHF AM" },
+    { "id": "telemetry", "xs": [1322, 1344, 1447, 1468, 1491, 1512, 1533, 1556], "y": 736, "label": "TAPE RECORDER / POWER" }
+  ],
+  "thumbwheels": [{ "at": [1395, 683], "label": "SQUELCH A" }, { "at": [1394, 735], "label": "SQUELCH B" }]
+}

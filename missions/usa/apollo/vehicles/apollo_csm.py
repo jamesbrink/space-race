@@ -100,9 +100,10 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104):
+    if spacecraft not in (101, 103, 104, 106):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
-    lunar = spacecraft in (103, 104)
+    lunar = spacecraft != 101
+    probe_installed = spacecraft in (104, 106)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -175,10 +176,10 @@ def build(offset=0, *, spacecraft=101):
         CM_BASE,
         foil,
         void,
-        docking_ring=spacecraft == 104,
+        docking_ring=probe_installed,
     )
-    hatch_interior.build(groups["SideHatch"], CM_BASE)
-    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if spacecraft == 104 else 0)
+    hatch_interior.build(groups["SideHatch"], CM_BASE, lightweight=spacecraft == 106)
+    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE)
     main_console.build(groups["MainConsole"], CM_BASE)
@@ -192,7 +193,7 @@ def build(offset=0, *, spacecraft=101):
         groups["HighGainAntenna"] = group("HighGainAntenna")
         apollo8_equipment.antenna(groups["HighGainAntenna"], SM_BOTTOM)
         apollo8_equipment.navigation(groups["CabinEquipmentBays"], CM_BASE)
-    if spacecraft == 104:
+    if probe_installed:
         # Inside the right rendezvous window, visible to the LM crew (Apollo Program Summary Report, section 4.7.5).
         # Register to the reconstructed pane. Target size and standoff are estimates.
         normal = Vector((0.5163366, -0.0096678, 0.8563311))

@@ -1,8 +1,8 @@
-"""CM-101 unified hatch, cabin side. Estimated enclosure and exposed mechanism.
+"""Block II unified hatch, cabin side. Estimated enclosure and exposed mechanism.
 
 JPL TM 33-425, 'The Apollo Command Module Side Access Hatch', fig. 2, shows
 the latch drive, pump handle, pressure valve and rods. Model only their visible
-exteriors. No later lightweight pocket pattern is used. See cabin-fittings.md.
+exteriors. CM-106 adds the lightweight slab recesses. See cabin-fittings.md and csm-106.md.
 """
 
 import json
@@ -18,7 +18,7 @@ from cm_reference import AFT_APEX_XC, survey_cm
 from srlib import CM, IN, MeshBuilder, interior, mark_shells, material
 
 
-def build(parent, base):
+def build(parent, base, *, lightweight=False):
     if not interior():
         return
     src = json.loads((Path(__file__).parent / "reference/apollo-cm-inner-apertures.json").read_text())
@@ -43,8 +43,21 @@ def build(parent, base):
 
     outer = [plane(p) * 0.985 for p in boundary]
     hole = [Vector((4.42 * math.cos(i * math.tau / 64), 4.42 * math.sin(i * math.tau / 64))) for i in range(64)]
+    # Sixteen observable recesses on the stripped CM-106 artifact. Rounded corner
+    # radii and installed depths are estimates (see csm-106.md).
+    pockets = []
+    if lightweight:
+        from cm106_hatch import POCKETS
+
+        for outline in POCKETS:
+            corners = [Vector(pt) for pt in outline]
+            path = []
+            for i, corner in enumerate(corners):
+                path.extend((corner.lerp(corners[i - 1], 0.12), corner.lerp(corners[(i + 1) % len(corners)], 0.12)))
+            pockets.append(path)
+
     coords, edges = [], []
-    for path in (outer, hole):
+    for path in (outer, hole, *pockets):
         start = len(coords)
         coords.extend(path)
         edges.extend((start + i, start + (i + 1) % len(path)) for i in range(len(path)))
@@ -52,7 +65,7 @@ def build(parent, base):
     keep = []
     for tri in tris:
         mid = sum((pts[i] for i in tri), Vector((0, 0))) / len(tri)
-        if perforated_wall.within(mid, outer) and not perforated_wall.within(mid, hole):
+        if perforated_wall.within(mid, outer) and not any(perforated_wall.within(mid, cut) for cut in (hole, *pockets)):
             keep.append(tuple(reversed(tri)))
     mesh = MeshBuilder()
     mesh.add([local(p.x, p.y, -4.5) for p in pts], keep)
@@ -62,6 +75,14 @@ def build(parent, base):
         mesh.add(
             [local(p.x, p.y, h) for h in (-4.5, depth) for p in path],
             [(i, (i + 1) % count, (i + 1) % count + count, i + count) for i in range(count)],
+        )
+    for path in pockets:
+        # The outer edge of the slab is at -3.9 in. Leave the documented 0.10 in
+        # floor and connect it to the inner surface with real sidewalls.
+        count = len(path)
+        mesh.add(
+            [local(p.x, p.y, depth) for depth in (-4.5, -4.0) for p in path],
+            [(i, i + count, (i + 1) % count + count, (i + 1) % count) for i in range(count)] + [tuple(reversed(range(count, 2 * count)))],
         )
     mesh.build("CM_SideHatchPressureDoor", metal, parent, smooth=False)
     mark_shells(["CM_SideHatchPressureDoor"])
