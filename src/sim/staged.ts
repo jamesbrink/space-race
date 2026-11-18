@@ -994,7 +994,9 @@ export function recordSamples(
   let rest = held;
   let supportedWind: Vec3 = [0, 0, 0];
   let baseAtRelease = held,
-    alignment = 0;
+    alignment = 0,
+    peakAlignment = 0,
+    lastPassive = parts;
   let left: Quat | null = null;
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
@@ -1008,8 +1010,14 @@ export function recordSamples(
     if (passive) {
       if (length(wind) >= 1) {
         supportedWind = wind;
-        if (s.t > parts && s.entering) alignment = Math.max(alignment, Math.min(1, Math.max(0, (s.g - ENTRY_G) / (1 - ENTRY_G))));
+        if (s.entering) {
+          peakAlignment = Math.max(peakAlignment, Math.min(1, Math.max(0, (s.g - ENTRY_G) / (1 - ENTRY_G))));
+          // A late release in appreciable air starts from the same attitude as its departing instrument section.
+          // Retain the display's thirty-second settling scale, with no alignment demand in free flight.
+          alignment += (peakAlignment - alignment) * -Math.expm1(-(s.t - lastPassive) / 30);
+        }
       }
+      lastPassive = s.t;
       q = passiveSpherePose(baseAtRelease, supportedWind, alignment);
     } else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
