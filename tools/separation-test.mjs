@@ -7,6 +7,10 @@ const args = process.argv.slice(2);
 const only = opt(args, '--flight', null);
 const base = url(args);
 const cases = [
+  ['usa/apollo/apollo-7', 'SaturnFirstStage'],
+  ['usa/apollo/apollo-7', 'LaunchEscape'],
+  ['usa/apollo/apollo-7', 'ServiceModule'],
+  ['usa/apollo/apollo-7', 'ForwardShield'],
   ['ussr/vostok/vostok-1', 'Fairing_Left', 'Fairing_Right'],
   ['ussr/voskhod/voskhod-2', 'Fairing_Left', 'Fairing_Right'],
   ['ussr/voskhod/voskhod-2', 'AftSection_1', 'AftSection_2'],

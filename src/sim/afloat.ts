@@ -144,7 +144,7 @@ export class Solid {
 
 /** Degrees between the rows a heeled solid is worked at, and the most it is followed to heel. */
 const ROW = 1;
-const MOST = 80;
+const MOST = 180;
 /** Thin slices a heeled solid is cut into across its axis, and the levels each of its rows is worked at. */
 const SLICES = 160;
 const LEVELS = 200;
@@ -215,7 +215,7 @@ export class Heeled {
       const [z, r] = [this.h[k]!, this.r[k]!];
       if (r <= 0) continue;
       const disc = Math.PI * r * r;
-      const [bottom, top] = s < 1e-12 ? [z - this.dh / 2, z + this.dh / 2] : [z * c - r * s, z * c + r * s];
+      const [bottom, top] = s < 1e-12 ? [z * c - this.dh / 2, z * c + this.dh / 2] : [z * c - r * s, z * c + r * s];
       const first = Math.max(0, Math.floor((bottom - lo) / step));
       const full = Math.min(LEVELS + 1, Math.max(0, Math.ceil((top - lo) / step)));
       whole[full] = whole[full]! + disc;
@@ -270,12 +270,16 @@ export class Heeled {
   /** What is under a level plane `level` m over its lowest point on its axis, heeled `heel` radians. */
   under(heel: number, level: number): Under {
     if (heel === 0) return { ...this.read(0, level), volume: this.solid.volume(level) };
-    const a = Math.min(MOST, (Math.abs(heel) * 180) / Math.PI) / ROW;
+    const a = Math.min(MOST, (Math.abs(Math.atan2(Math.sin(heel), Math.cos(heel))) * 180) / Math.PI) / ROW;
     const i = Math.min(Math.floor(a), MOST / ROW - 1);
     const k = a - i;
     const [p, q] = [this.read(i, level), this.read(i + 1, level)];
     const v0 = i === 0 ? this.solid.volume(level) : p.volume;
-    return { volume: v0 + (q.volume - v0) * k, out: (p.out + (q.out - p.out) * k) * Math.sign(heel), up: p.up + (q.up - p.up) * k };
+    return {
+      volume: v0 + (q.volume - v0) * k,
+      out: (p.out + (q.out - p.out) * k) * Math.sign(Math.sin(heel)),
+      up: p.up + (q.up - p.up) * k,
+    };
   }
 
   /** The level in row `i` that `volume` stands at: its volumes rise with the level, so found by halving, then read straight. */
@@ -302,7 +306,7 @@ export class Heeled {
     if (heel === 0) return this.solid.height(volume);
     if (volume <= 0) return this.span(heel)[0];
     if (volume >= this.solid.whole) return this.span(heel)[1];
-    const a = Math.min(MOST, (Math.abs(heel) * 180) / Math.PI) / ROW;
+    const a = Math.min(MOST, (Math.abs(Math.atan2(Math.sin(heel), Math.cos(heel))) * 180) / Math.PI) / ROW;
     const i = Math.min(Math.floor(a), MOST / ROW - 1);
     const k = a - i;
     const p = i === 0 ? this.solid.height(volume) : this.levelIn(i, volume);
@@ -328,6 +332,9 @@ function heeled(profile: Profile, share = 1): Heeled {
 
 /** When each thing given happens, s from liftoff: an opening opened (by its id), a part left (by its id), the line taut and let go. */
 export interface AfloatEvents {
+  /** Initial heel in radians, and the inflation command time and duration in seconds. */
+  initialHeel?: number;
+  inflation?: { at: number; seconds: number };
   opened?: Record<string, number>;
   left?: Record<string, number>;
   hoist?: { def: HoistDef; taut: number; cast: number };
@@ -359,6 +366,7 @@ export interface AfloatSample {
 /** A run afloat. */
 export interface Afloat {
   from: number;
+  inflation?: { at: number; seconds: number };
   samples: AfloatSample[];
   /** When its top first went under the surface (Infinity: never), and when it was `sight` m under it (out of sight), or the end of the run. */
   under: number;
@@ -459,8 +467,10 @@ export function floatOn(
 
   // where it floats to begin with, upright: the draft at which the sea it puts aside, less what its open spaces take in, is its weight
   const open0 = spaces.map((s) => s.def.openings.some((o) => !o.shut));
-  const lifted = (d: number) => rho * (hull.solid.volume(d) - spaces.reduce((sum, s, i) => sum + (open0[i] ? filledTo(s, d) : 0), 0));
-  let [lo, hi] = [hull.solid.bottom, top];
+  const initial = events.initialHeel ?? 0;
+  const displaced = (d: number) => (initial ? hull.under(initial, d).volume : hull.solid.volume(d));
+  const lifted = (d: number) => rho * (displaced(d) - spaces.reduce((sum, s, i) => sum + (open0[i] ? filledTo(s, d) : 0), 0));
+  let [lo, hi] = initial ? hull.span(initial) : [hull.solid.bottom, top];
   for (let k = 0; k < 80; k++) {
     const mid = (lo + hi) / 2;
     if (lifted(mid) < dryAt(from)) lo = mid;
@@ -470,7 +480,14 @@ export function floatOn(
   const s0 = sea(from);
   // the state: [its centre's height, its rate, its heel, its rate, water..., air...]; the air in each space as its volume at the air's pressure
   const water0 = spaces.map((s, i) => (open0[i] ? filledTo(s, draft) : 0));
-  let state = [s0.height - draft + hG, 0, 0, 0, ...water0, ...spaces.map((s, i) => s.solid.whole - water0[i]!)];
+  let state = [
+    s0.height - draft + hG * Math.cos(initial) - xG * Math.sin(initial),
+    0,
+    initial,
+    0,
+    ...water0,
+    ...spaces.map((s, i) => s.solid.whole - water0[i]!),
+  ];
   const W = 4; // (where the water begins in the state)
   let taut: number | null = null; // its top's height over still water as the line came taut
 
@@ -478,7 +495,7 @@ export function floatOn(
   const lowest = (q: readonly number[]) => q[0]! - (hG * Math.cos(q[2]!) - xG * Math.sin(q[2]!));
   /** Its top's height on its axis, and its top's highest point (the rim's, heeled), over still water. */
   const crown = (q: readonly number[]) => lowest(q) + top * Math.cos(q[2]!);
-  const topOf = (q: readonly number[]) => crown(q) + rim * Math.abs(Math.sin(q[2]!));
+  const topOf = (q: readonly number[]) => (initial ? lowest(q) + hull.span(q[2]!)[1] : crown(q) + rim * Math.abs(Math.sin(q[2]!)));
   const levels = (q: readonly number[], slant: number) => spaces.map((s, i) => s.heeled.level(slant, q[W + i]!));
   /** A column of a band's height over the lowest point, along the apparent level's normal. */
   const heightOf = (y: number, out: number, slant: number) => (slant === 0 ? y : y * Math.cos(slant) - out * Math.sin(slant));
@@ -598,6 +615,18 @@ export function floatOn(
     });
     const dry = dryAt(t);
     const mass = dry + rho * q.slice(W, W + n).reduce((a, b) => a + b, 0);
+    let bagLift = 0;
+    let bagMoment = 0;
+    if (events.inflation && t > events.inflation.at) {
+      const fraction = Math.min(1, (t - events.inflation.at) / events.inflation.seconds);
+      for (const bag of def.bags ?? []) {
+        const r = bag.radius.value * Math.cbrt(fraction);
+        const h = Math.max(0, Math.min(2 * r, s - heightOf(bag.up, bag.out, slant) + r));
+        const buoyancy = rho * G0 * Math.PI * h * h * (r - h / 3);
+        bagLift += buoyancy;
+        bagMoment -= buoyancy * ((bag.out - xG) * Math.cos(slant) + (bag.up - hG) * Math.sin(slant));
+      }
+    }
     const cut = s > hull.solid.bottom && s < top;
     const lift = rho * G0 * (heel ? hull.under(slant, s).volume : hull.solid.volume(Math.min(Math.max(s, hull.solid.bottom), top)));
     const spring = cut ? rho * G0 * Math.PI * hull.solid.radius(s) ** 2 : 0;
@@ -605,8 +634,8 @@ export function floatOn(
     const damping = 2 * def.heave.value * Math.sqrt(spring * mass) * relative;
     const drag = 0.5 * rho * def.drag.value * Math.abs(relative) * relative;
     const tension = tensionOf(q, t, mass);
-    const force = lift - mass * G0 - damping - drag + tension;
-    const spin = heel ? (turning(q, t, slant, s, level, tension) - roll * (omega - tip.rate)) / inertia(q, t, slant, level) : 0;
+    const force = lift + bagLift - mass * G0 - damping - drag + tension;
+    const spin = heel ? (turning(q, t, slant, s, level, tension) + bagMoment - roll * (omega - tip.rate)) / inertia(q, t, slant, level) : 0;
     return [w, force / mass, omega, spin, ...flows, ...spaces.map(() => 0)];
   };
 
@@ -648,7 +677,7 @@ export function floatOn(
   let nextKeep = from + KEEP;
   const drains = spaces.map((s) => Boolean(s.def.drains));
   const weigh = (q: readonly number[], at: number) => dryAt(at) + rho * spaces.reduce((sum, _, i) => sum + (drains[i] ? 0 : q[W + i]!), 0);
-  const stop90 = (MOST * Math.PI) / 180;
+  const stop90 = initial ? Infinity : (80 * Math.PI) / 180;
   let k = 0;
   done: while (k < instants.length) {
     const stop = instants[k]!;
@@ -657,7 +686,7 @@ export function floatOn(
       if (hoist && taut === null && t >= hoist.taut) taut = crown(state);
       state = rk4n(state, t, h, rate);
       t = h === stop - t ? stop : t + h;
-      // (not followed past lying MOST degrees over)
+      // The recovery-hoist model follows the craft to 80°. An uprighting craft can roll through the inverted attitude.
       if (Math.abs(state[2]!) > stop90) {
         state[2] = Math.sign(state[2]!) * stop90;
         state[3] = 0;
@@ -697,6 +726,7 @@ export function floatOn(
   return {
     from,
     samples,
+    ...(events.inflation ? { inflation: events.inflation } : {}),
     under,
     end,
     top,

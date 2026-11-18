@@ -332,7 +332,8 @@ const DEPTH = /* glsl */ `
   // the ray through a point of the frame, in the camera's frame
   vec3 viewRay(vec2 uv) {
     vec4 v = uProjInv * vec4(uv * 2.0 - 1.0, 1.0, 1.0);
-    return normalize(v.xyz / v.w);
+    // Only the direction is needed. At large far/near ratios, v.w can round to zero.
+    return normalize(v.xyz);
   }
   // how far along that ray the scene's surface is; the sky is endlessly far (as clouds.ts reads it)
   float sceneDistance(float depth, vec3 ray) {

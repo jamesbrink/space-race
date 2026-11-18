@@ -469,6 +469,8 @@ export interface CabinDef {
    * radio) has `history` instead: each reading at `at` seconds from liftoff, or `at` seconds after the event `from` of
    * an orbital flight's record (as the run on show has it), straight between readings and held beyond the last.
    */
+  /** Spherical attitude indicators on pivots, displaying the same local-level reference as the flight deck. */
+  attitudeBalls?: string[];
   instruments: {
     node: string;
     name: string;
@@ -754,7 +756,9 @@ export type Gas =
   /** Steam and oxygen from decomposed hydrogen peroxide, a turbine's exhaust: clear at the mouth, a thin white veil aft. */
   | 'steam'
   /** A solid motor's burst: a fire (viewer/plume.ts), of what `burns` says. */
-  | 'solid';
+  | 'solid'
+  /** A liquid hypergolic thruster's luminous exhaust. */
+  | 'hypergolic';
 
 /**
  * A jet that is not a main engine's fire: what leaves a node of the model, of what, how hard and when (viewer/jets.ts).
@@ -764,7 +768,7 @@ export type Gas =
 export interface JetDef {
   node: string;
   gas: Gas;
-  /** What a solid burns, for its fire's look (viewer/flames.ts). Left out, the era's polysulphide and perchlorate. */
+  /** What a combustion jet burns, for its fire’s look (viewer/flames.ts). */
   burns?: Burns;
   /** The mouth's radius, m. Left out, the mouths are found in the node's geometry (viewer/fires.ts `exitsOf`), each a jet. */
   radius?: Measure;
@@ -780,7 +784,7 @@ export interface JetDef {
 
 /** When a jet blows, by the flight's plan (sim/plan.ts). */
 export type JetWhen =
-  /** While the plan's engine of this id burns, as hard as it does (a turbine's exhaust while its engine runs). */
+  /** While the plan's engine of this id burns, as read from its main plume or the run's sample. */
   | { with: string }
   /** From when the plan's shed body `shed` (`ShedBody.on`) leaves, as long and as hard as the simulator flies its motor `motor` (sim/shed.ts). */
   | { shed: string; motor: string }

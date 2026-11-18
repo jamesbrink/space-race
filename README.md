@@ -93,7 +93,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Gemini XI](missions/usa/gemini/flights/gt-11/README.md) | 12 Sep 1966 | Conrad, Gordon | Titan II GLV | ● | ● | · |
 | [Gemini XII](missions/usa/gemini/flights/gt-12/README.md) | 11 Nov 1966 | Lovell, Aldrin | Titan II GLV | ● | ● | · |
 | [Soyuz 1, *Rubin*](missions/ussr/soyuz/flights/soyuz-1/README.md) | 23 Apr 1967 | Komarov | Soyuz 11A511 | ● | · | · |
-| [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | · | · |
+| [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | ● | ● |
 | [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | · | · |
 | [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
 | [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | · | · |

@@ -18,7 +18,7 @@ import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
 import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
-import { type Day, DECK_HEIGHT, HIGH_HEIGHT } from './day.ts';
+import { type Day, HIGH_HEIGHT } from './day.ts';
 import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
 import type { Wave } from '../sim/sea.ts';
@@ -39,7 +39,7 @@ import type { Beyond } from './land.ts';
 import { later } from './later.ts';
 import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';
-import { cumulusBiasGlsl, cumulusCellsGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
+import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { type WeatherMap, weatherUniforms } from './weathermap.ts';
 
 /**
@@ -51,7 +51,7 @@ import { type WeatherMap, weatherUniforms } from './weathermap.ts';
  * before a flight could give its day (weather.ts: `highOf`). Needs sheetsGlsl.
  */
 const sheetsShade = (day: Day | null | undefined): string => /* glsl */ `
-            vec2 pd = world.xz + lean * ${(day?.deck.height ?? DECK_HEIGHT).toFixed(1)};
+            vec2 pd = world.xz + lean * ${deckHeightGlsl(day)};
             // (the deck's patches, as the scene's own ground has them: deckShadeAt)
             shade *= deckShadeAt(vec3(world.x, 0.0, world.z), vec3(sun.x, max(mu, 0.08), sun.z), 0.0, deckCoverAt(weatherAt(pd), pd));
             vec2 pc = world.xz + lean * ${(day?.high.height ?? HIGH_HEIGHT).toFixed(1)};

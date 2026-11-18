@@ -69,16 +69,45 @@ compartment with its parachutes are [cabin fittings](../../vehicles/cabin-fittin
 [flight-director instruments](../../vehicles/fdai.md) and the [unitized couches](../../vehicles/unitized-couch.md) each
 have their own record.
 
+The crew boarded through a pair of hinged leaves: the boost protective cover’s own hatch
+and the unified command-module hatch. Both move during the ingress window on the launch-site
+clock. The command-module thermal and pressure panes stay on that hatch. The boost cover’s
+opening follows the command-module outline; its size, both hinge axes, the two leaves’ travel
+and the duration of the animation are estimates. The latch sequence follows JPL TM 33-425.
+[JPL TM 33-425, The Apollo Command Module Side Access Hatch System](https://www.ninfinger.org/models/vault2012/Apollo%20CM%20Hatch%20Design.pdf)
+
 ## Service and launch vehicles
 
 The [service module](../../vehicles/service-tanks.md) carries its four SPS tanks, central helium bottles, cryogenic tanks, fuel cells, penetrated bulkheads, gimbal hardware and engine. [Saturn hardware](../../vehicles/saturn-ib.md) records the tank stations, baffles, thrust structures, engines and instrument bay. The [escape-system record](../../vehicles/launch-escape.md) describes the tower proportions and commander’s viewing port.
 
 The 1.75-inch honeycomb adapter comes from the Apollo 7 press kit, p. 26. The North American News Reference, p. 66, describes four roughly seven-foot aft panels and four 21-foot upper panels. The mission report’s “Adapter panel deployment” discussion records the four attached panels reaching about 45° by revolution 19. The gallery uses this angle after spacecraft clearance. Hinge placement and slider timing are estimates.
 
+## Launch aborts
+
+Mode I separates the command module and fires the escape motor. The low-altitude branch
+pitches toward the Atlantic and sends the tower away 14 seconds after abort. A high-altitude
+abort carries the tower down to the 24,000-foot release region. Canards deploy at 11 seconds;
+their aerodynamic turnaround is represented by an attitude change. The command module then
+releases the forward shield and brings out its drogue and main parachutes. The simulation
+uses mean escape-motor thrust, uniform propellant consumption and one effective drag area.
+
+Mode II separates from S-IVB, translates for 20 seconds on the service-module jets, and
+releases the service module for entry. Mode III adds a retrograde SPS firing and searches the
+available burn durations for the published 3,200-nautical-mile recovery range. Where the
+launch state cannot reach it on that heading, the deck shows the computed range. Mode IV
+targets a 123-nautical-mile perigee with a prograde SPS firing and retains propellant for
+a braking burn. The nominal parking perigee provides the simulation’s contingency target.
+The Apollo guidance programs and geographical abort target tables are not reconstructed.
+“Abort to orbit” is a separate choice during the documented overlap and becomes the primary
+abort after the Mode III window.
+[Apollo 7 press kit, pp. 8 and 24](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf)
+[Apollo News Reference, Launch Escape Subsystem](https://www.nasa.gov/wp-content/uploads/static/history/alsj/15_Launch_Escape_Subsystem_pp137-146.pdf)
+[Apollo Spacecraft design, figures 107–108](https://ntrs.nasa.gov/api/citations/19690017921/downloads/19690017921.pdf)
+
 ## Simplifications
 
-- Left out: individual stowage, suits, wiring harnesses, fine thermal tape, most of the aft equipment bay, the command
-  module's reaction-control ports, umbilicals and parachute deployment.
+- Left out: individual stowage, suit cables, wiring harnesses, fine thermal tape, most of the aft equipment bay, the command
+  module's reaction-control ports and much of the umbilical plumbing. The descent models two drogues and three mains; pilot chutes are omitted.
 - Switches, instrument settings, bay fittings and the H-1, R-4D and escape-motor nozzle contours are schematic
   ([apollo-csm.md](../../vehicles/apollo-csm.md)).
 - The gallery's eye positions and cabin lighting are estimates.

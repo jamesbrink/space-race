@@ -6,7 +6,8 @@
 // Without a module, every flight with a weather.ts beside its flight.ts is baked.
 // <flight module> is a flights/<flight>/flight.ts exporting a Flight whose `site` is in a place with a `region`, and a
 // `weather` of its own; its map is written to public/globe/<region>.<date>.weather.png (the date its launch's, UTC;
-// red: cumulus cover; green: high cloud; blue: the middle deck; alpha: land). One map for each region and day:
+// red: cumulus cover; green: high cloud; blue: layered cloud; alpha: land). A flight with a recovery observation
+// also bakes <region>.<date>.recovery.weather.png on the launch map’s coordinates.
 // weather.ts says why. It reads the globe's own baked maps for where the land is and how high
 // (public/globe/land.*.png from tools/globe.mjs, relief.*.png from tools/globe-surface.mjs): bake those first.
 // Everything in the map is estimated but what the flight's record says (its `weather`: the high cloud over the
@@ -79,36 +80,38 @@ for (const path of flights) {
   const R = gaussianRadius(site.latitude);
   // the day as the viewer has it: the way the low wind blows, the record's high cloud over the site and what it says beyond
   const day = dayOf(flight);
-  const map = mapDayOf(day);
-  const located = map.beyond.length > 0; // (only a record that speaks of a stretch of country asks where a place is)
-  const out = new Uint8Array(SIDE * SIDE * 4);
-  for (let j = 0; j < SIDE; j++) {
-    const n = (0.5 - (j + 0.5) / SIDE) * EXTENT;
-    for (let i = 0; i < SIDE; i++) {
-      const e = ((i + 0.5) / SIDE - 0.5) * EXTENT;
-      // the point of the sea straight under (e, n) on the site's plane: its x and z in the site's frame, and down the curve
-      const r2 = e * e + n * n;
-      const y = -r2 / (R + Math.sqrt(Math.max(R * R - r2, 0)));
-      const b = site.bearingX * DEG;
-      const p = siteToEcef(site, [e * Math.sin(b) + n * Math.cos(b), y, e * Math.cos(b) - n * Math.sin(b)]);
-      const l = sample(land, p);
-      const shore = (((l.v - 128) * SPREAD) / 127) * ((2 / l.size) * EARTH * l.m * Math.sqrt(l.m)) * 1e-3;
-      const height = decodeRelief(sample(relief, p).v);
-      const place = { shore, height };
-      if (located) {
-        const g = ecefToGeodetic(p);
-        place.latitude = g.latitude;
-        place.longitude = g.longitude;
+  for (const recovery of day.recovery ? [undefined, day.recovery] : [undefined]) {
+    const map = mapDayOf(day, recovery);
+    const located = map.beyond.length > 0; // (only a record that speaks of a stretch of country asks where a place is)
+    const out = new Uint8Array(SIDE * SIDE * 4);
+    for (let j = 0; j < SIDE; j++) {
+      const n = (0.5 - (j + 0.5) / SIDE) * EXTENT;
+      for (let i = 0; i < SIDE; i++) {
+        const e = ((i + 0.5) / SIDE - 0.5) * EXTENT;
+        // the point of the sea straight under (e, n) on the site's plane: its x and z in the site's frame, and down the curve
+        const r2 = e * e + n * n;
+        const y = -r2 / (R + Math.sqrt(Math.max(R * R - r2, 0)));
+        const b = site.bearingX * DEG;
+        const p = siteToEcef(site, [e * Math.sin(b) + n * Math.cos(b), y, e * Math.cos(b) - n * Math.sin(b)]);
+        const l = sample(land, p);
+        const shore = (((l.v - 128) * SPREAD) / 127) * ((2 / l.size) * EARTH * l.m * Math.sqrt(l.m)) * 1e-3;
+        const height = decodeRelief(sample(relief, p).v);
+        const place = { shore, height };
+        if (located) {
+          const g = ecefToGeodetic(p);
+          place.latitude = g.latitude;
+          place.longitude = g.longitude;
+        }
+        const w = weatherAt(e, n, place, map);
+        const at = (j * SIDE + i) * 4;
+        out[at] = byte(w.cumulus);
+        out[at + 1] = byte(w.cirrus);
+        out[at + 2] = byte(w.deck);
+        out[at + 3] = byte(landShare(place));
       }
-      const w = weatherAt(e, n, place, map);
-      const at = (j * SIDE + i) * 4;
-      out[at] = byte(w.cumulus);
-      out[at + 1] = byte(w.cirrus);
-      out[at + 2] = byte(w.deck);
-      out[at + 3] = byte(landShare(place));
     }
+    const file = join(root, 'public/globe', `${recovery?.map ?? day.map}.weather.png`);
+    writeRgbPng(file, out, SIDE, SIDE, 4);
+    console.log(file, `${SIDE} x ${SIDE}, ${(EXTENT / SIDE / 1000).toFixed(1)} km a texel`);
   }
-  const file = join(root, 'public/globe', `${day.map}.weather.png`);
-  writeRgbPng(file, out, SIDE, SIDE, 4);
-  console.log(file, `${SIDE} x ${SIDE}, ${(EXTENT / SIDE / 1000).toFixed(1)} km a texel`);
 }

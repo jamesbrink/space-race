@@ -343,7 +343,7 @@ export type Action =
    * evenly between this lighting and the engine's next cut, along the attitude then held (orbital.ts `movesOf`). Without
    * it a manoeuvre is flown at its engine's thrust over the ship's mass.
    */
-  | { ignite: string; flown?: Measure }
+  | { ignite: string; flown?: Measure; firingTime?: Measure; massAtIgnition?: Measure }
   | { cut: string }
   | { throttle: string; to: number }
   | { separate: string }
@@ -420,6 +420,31 @@ export type CheckWhen =
   | { most: 'g'; aboard: string[]; gone?: string[] }
   | { most: 'g'; burning: string };
 
+/** A solid escape tower and the capsule it carried before jettison. */
+export interface TowerEscape {
+  engine: string;
+  cover: string;
+  service: string;
+  stages: string[];
+  tower: string;
+  propellant: Measure;
+  dragArea: Measure;
+  pitch: { until: Measure; angle: Measure; takes: Measure };
+  canards: Measure;
+  turn: { mach: Measure; takes: Measure };
+  jettison: { after: Measure; height: Measure };
+  coverAfter: { low: Measure; high: Measure };
+  mainsAfterCover: Measure;
+}
+
+/** A service engine abort targeting either a recovery range or a survivable parking orbit. */
+export interface ServiceAbort {
+  engine: string;
+  translation: { engine: string; duration: Measure };
+  mass: Measure;
+  goal: { kind: 'recovery' | 'orbit'; target: Measure };
+}
+
 /**
  * One mode of a spacecraft's escape from its launch vehicle (`PlanRecord.aborts`): what it did, by the record, if the vehicle
  * failed before `until`. `escape` is what of it the deck flies, as the record says it, in order: every engine burning shut
@@ -428,18 +453,38 @@ export type CheckWhen =
  * of its last stage (`separate`), and with `entry` its descent module (the entry body) parted from it at once, to come down as from orbit.
  */
 export interface AbortMode {
+  /** Earliest use, for an alternative available before the preceding mode ends. */
+  from?: Measure;
   until: Measure;
   does: string;
-  escape?: { cut?: true; eject?: { falling?: Measure }; separate?: { entry?: true } };
+  escape?: {
+    cut?: true;
+    tower?: TowerEscape;
+    eject?: { falling?: Measure };
+    separate?: { entry?: true; motor?: { engine: string; duration: Measure }; service?: ServiceAbort };
+  };
 }
 
 /** The record's mode of escape for an instant on the launch vehicle, s from liftoff (the first whose `until` is past it), or null. */
-export function abortAt(plan: FlightPlan, t: number): AbortMode | null {
-  return plan.record?.aborts?.find((x) => t < x.until.value) ?? null;
+export function abortAt(plan: FlightPlan, t: number, preferOrbit = false): AbortMode | null {
+  return (
+    plan.record?.aborts?.find(
+      (mode) =>
+        t >= (mode.from?.value ?? -Infinity) &&
+        t < mode.until.value &&
+        (!preferOrbit || mode.escape?.separate?.service?.goal.kind === 'orbit'),
+    ) ?? null
+  );
 }
 
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
+  /** Ground-tracking fixes for the historical replay, in time order. A hand-flown trajectory uses its own state. */
+  coastFixes?: OrbitFix[];
+  /** Lead time for the rendered slew into a coast maneuver's thrust direction, seconds. */
+  manoeuvreTurn?: Measure;
+  /** The mission's conventional entry interface, if it differs from the simulator's default, m. */
+  entryInterface?: Measure;
   /**
    * The orbit as published: heights, inclination, period; the injection on it. The heights are over `radius` where the
    * record states the ball they are over (Friendship 7's), over the oblate earth as flown apsides where it says so
@@ -495,6 +540,17 @@ export interface PlanRecord {
    * `lands` names the body whose landing an instant is: a run has its own instant for it, where it put that body down.
    */
   marks?: { id: string; label: string; at: Measure; also?: string; lands?: string }[];
+}
+
+/** Space-fixed velocity expressed at a published geodetic position. Heading and flight path use the geocentric horizon. */
+export interface OrbitFix {
+  at: Measure;
+  latitude: Measure;
+  longitude: Measure;
+  altitude: Measure;
+  speed: Measure;
+  heading: Measure;
+  climb: Measure;
 }
 
 /** Everything in a plan that can be named, by kind, for the checks below and the machine's look-ups. */

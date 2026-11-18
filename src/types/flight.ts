@@ -206,6 +206,13 @@ export interface Flight {
      * several a joint lets go after a slash, `<joint>/<name>`), for a flight flown by hand (sim/vehicle.ts), where it happens
      * when the pilot says.
      */
+    target?: {
+      drop: string;
+      name: string;
+      until: Measure;
+      tailFirst?: Measure;
+      fixes: { at: Measure; ahead: Measure; above: Measure; relative?: boolean }[];
+    };
     drops: {
       at: number;
       nodes: string[];
@@ -260,6 +267,7 @@ export interface Flight {
      * taut and cast loose), the record's helicopter (`hoist`), how far under it is lost to sight, and the record's figures
      * the run afloat is held to (tests/afloat.test.mjs, misses under `afloat`).
      */
+    uprighting?: { body: AfloatDef; initialHeel: Measure; delay: Measure; inflation: Measure; end: Measure };
     afloat?: {
       body: AfloatDef;
       /** The crew, as the body's `leaves` has him: he goes out through the hatch. */
@@ -289,9 +297,18 @@ export interface Flight {
      * steering, is found in the model's geometry and drawn from its own exit. `burns`: what it burns, which gives the
      * fire its colours, its light and how much of what is behind it it hides (viewer/flames.ts); left out, alcohol and oxygen.
      */
-    fires?: { node: string; radius?: number; on: string; burns?: Burns }[];
+    fires?: {
+      node: string;
+      radius?: number;
+      /** Use the nozzle node's local origin and −Y exhaust direction when it has a radius. */
+      mount?: true;
+      on: string;
+      burns?: Burns;
+    }[];
     /** What `engine`'s fire burns: its colours, light and how much it hides (viewer/flames.ts). Left out, alcohol and oxygen. */
     burns?: Burns;
+    /** Hinged surfaces move on a run's actual release or event. Angles and axes are in the node's parent frame. */
+    eventRotations?: { event: string; node: string; axis: [number, number, number]; angle: number; from: number; to: number }[];
     /** The parachutes, drawn (viewer/chute.ts) when the simulator lets each out. */
     chutes?: ChuteDef[];
     /** What the air does to it that is drawn (viewer/effects.ts), by the nodes and materials it happens to. */

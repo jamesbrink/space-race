@@ -3,6 +3,7 @@ import { type Afloat, type AfloatSample, afloatAt } from '../sim/afloat.ts';
 import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { type LooseFlown, looseAt } from '../sim/loose.ts';
+import { detachedStageAt } from '../sim/orbital-target.ts';
 import { nlerp, normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
 import { attitudeBetween, bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
 import { surfaceAt, type Wave, wavesOf } from '../sim/sea.ts';
@@ -27,7 +28,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { FragmentTrack, type FragmentMotion } from './breakup.ts';
+import { type FragmentMotion, FragmentTrack } from './breakup.ts';
 import { fireLevel, litBetween } from './fires.ts';
 
 /**
@@ -151,6 +152,12 @@ export class Ascent {
     return this.record;
   }
 
+  /** Effective thrust of a running engine, in newtons, when the run samples it. */
+  engineThrust(id: string, t: number): number | undefined {
+    const sample = this.flown().at(t);
+    return 'burning' in sample ? (sample as LiveSample).burning.find((engine) => engine.engine === id)?.thrust : undefined;
+  }
+
   /** Whether the vehicle is down in the sea at `t` and floated there (sim/afloat.ts): what the air does to it is over. */
   afloat(t: number): boolean {
     const a = this.flight.plan ? this.flown().afloat : undefined;
@@ -161,6 +168,12 @@ export class Ascent {
   floating(t: number): AfloatSample | null {
     const a = this.flight.plan ? this.flown().afloat : undefined;
     return a && t > a.from ? afloatAt(a, t) : null;
+  }
+
+  bagVolume(t: number): number {
+    if (!this.flight.flies?.uprighting) return 0;
+    const inflation = this.flown().afloat?.inflation;
+    return inflation ? Math.max(0, Math.min(1, (t - inflation.at) / inflation.seconds)) : 0;
   }
 
   /** Whether the vehicle is off its pad at `t`, seconds from liftoff. */
@@ -219,7 +232,8 @@ export class Ascent {
     const levels: { main: number; steering: number }[] = [];
     if (flies?.engine) levels.push(fireLevel(t, 0, cutoff));
     (flies?.fires ?? []).forEach((f, k) => {
-      const when = fires[k];
+      const sequence = fires[k];
+      const when = sequence?.earlier?.find((b) => t >= b.from && t <= b.to) ?? sequence;
       // (the fire's engine, by the name the flight gives it: its throttle as the record has it)
       const curve = this.flight.plan?.craft[0]?.engines.find((e) => e.id === f.on)?.throttle?.curve;
       const throttle = curve ? along(curve, t) : 1;
@@ -260,6 +274,15 @@ export class Ascent {
       if (orbital?.body) return { at: descent?.gone[orbital.body]?.[orbital.on] ?? Infinity, nodes: d.nodes, under: orbital.on };
       return { at: dropped[i] ?? d.at, nodes: d.nodes, under: chuteOf(this.flight.plan, d.under) };
     });
+  }
+
+  /** The instant of a named drop or event on the current run. */
+  rotationTime(event: string): number {
+    const run = this.flown();
+    const drop = this.flight.flies!.drops.findIndex((item) => item.on === event);
+    if (drop < 0) return run.events.find((e) => e.event === event)?.t ?? Infinity;
+    const at = run.dropped[drop] ?? Infinity;
+    return at === 0 && run.launchAborted ? Infinity : at;
   }
 
   /** The parachutes this flight has to draw (`Flight.flies.chutes`). */
@@ -399,6 +422,7 @@ export class Ascent {
     const on = this.descentAt(this.carrier(id, def.on, t), t);
     if (!on) return null;
     const down = t >= on.landed ? t - on.landed : -1;
+    if (def.disconnect && down >= def.disconnect.value) return null;
     return {
       since: Math.min(t, on.landed) - at,
       fills: this.descentBody(id)?.chutes.find((c) => c.name === def.on)?.fills.value ?? 1,
@@ -536,8 +560,34 @@ export class Ascent {
   shed(i: number, t: number, padTurn: THREE.Quaternion, position: THREE.Vector3, quaternion: THREE.Quaternion): boolean {
     const drop = this.drops[i];
     if (!drop || t < drop.at || !this.flying(t) || this.flight.flies!.drops[i]?.rides) return false; // (what rides a descent's body: `rideAt`)
+    const run = this.flown();
+    const parked = drop.at === 0 && run.launchAborted && run.events.some((event) => event.event === 'launch-escape' && event.t === 0);
+    if (parked) {
+      position.copy(this.home);
+      quaternion.copy(padTurn);
+      return true;
+    }
     const from = this.release(i, padTurn);
     if (!from) return false;
+    const target = this.flight.flies!.target;
+    if (target && this.flight.flies!.drops[i]?.on === target.drop) {
+      const track = this.flown();
+      const state = detachedStageAt(this.flight, track, t);
+      if (!state) return false;
+      const arm = from.p.clone().sub(this.where(between(track.samples, drop.at).r, drop.at));
+      const turn = new THREE.Quaternion();
+      if (target.tailFirst && !track.launchAborted) {
+        const nose = Y.clone().applyQuaternion(from.q);
+        const tailFirst = toThree(ecefToSiteDirection(this.site, this.frame.toFixed(state.v, t)))
+          .normalize()
+          .negate();
+        const full = new THREE.Quaternion().setFromUnitVectors(nose, tailFirst);
+        turn.slerp(full, THREE.MathUtils.smoothstep(t, drop.at, Math.max(drop.at + 1, target.tailFirst.value)));
+      }
+      quaternion.copy(turn).multiply(from.q);
+      position.copy(this.where(state.r, t)).add(arm.applyQuaternion(turn));
+      return true;
+    }
     if (drop.under) {
       // left behind in the air on its parachute: its speed eases from the vehicle's to a drift straight down, and it does not tumble
       const dt = t - drop.at;
@@ -829,7 +879,7 @@ export class Ascent {
     position: THREE.Vector3,
     quaternion: THREE.Quaternion,
   ): boolean {
-    const def = this.flight.flies?.afloat;
+    const def = this.flight.flies?.afloat ?? this.flight.flies?.uprighting;
     if (!def) return false;
     let f = this.floated;
     if (!f || f.of !== afloat) {

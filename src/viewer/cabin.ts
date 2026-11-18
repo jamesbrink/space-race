@@ -292,6 +292,9 @@ export class Cabin {
   private readonly flight: Flight;
   /** The model as it stands in the scene, and its full level of detail (the only one with an inside). */
   private readonly group: THREE.Object3D;
+  private readonly attitudeBalls: { node: THREE.Object3D; home: THREE.Quaternion }[] = [];
+  private readonly indicatorTurn = new THREE.Quaternion();
+  private readonly indicatorAngles = new THREE.Euler();
   private readonly needles: Needle[] = [];
   private readonly lamps: Lamp[] = [];
   private readonly things: { thing: CabinThing; reach: number; at: THREE.Vector3 }[] = [];
@@ -423,6 +426,10 @@ export class Cabin {
       this.things.push({ thing: { label, about, object: node, ...more }, reach: Math.max(0.012, reach), at: where(node) });
     };
 
+    for (const id of this.def.attitudeBalls ?? []) {
+      const node = find(id);
+      if (node) this.attitudeBalls.push({ node, home: node.quaternion.clone() });
+    }
     for (const i of this.def.instruments) {
       const node = find(i.node);
       if (!node) continue;
@@ -1057,6 +1064,17 @@ export class Cabin {
     const events = this.live ? this.events : (record?.events ?? {});
     const at = sample?.t ?? t;
     let moved = false;
+    if (site && this.attitudeBalls.length && r.pitch !== undefined && r.roll !== undefined && r.yaw !== undefined) {
+      const rad = Math.PI / 180;
+      this.indicatorAngles.set(-r.pitch * rad, -r.yaw * rad, -r.roll * rad, 'ZYX');
+      for (const ball of this.attitudeBalls) {
+        this.indicatorTurn.setFromEuler(this.indicatorAngles).premultiply(ball.home);
+        if (1 - Math.abs(ball.node.quaternion.dot(this.indicatorTurn)) > 1e-10) {
+          ball.node.quaternion.copy(this.indicatorTurn);
+          moved = true;
+        }
+      }
+    }
     const k = dt > 0 ? 1 - Math.exp(-dt / NEEDLE_TAU) : 1;
     for (const n of this.needles) {
       const reading = n.reads ? r[n.reads as keyof Readings] : n.history ? historyAt(n.history, events, at) : n.value;

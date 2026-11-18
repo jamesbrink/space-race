@@ -10,11 +10,11 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { downOf } from '../src/sim/descent.ts';
 import { descending, spacecraft } from '../src/sim/fliers.ts';
+import { coastOf } from '../src/sim/orbital.ts';
 import { propagate } from '../src/sim/predict.ts';
 import { flyWhole } from '../src/sim/staged.ts';
-import { downOf } from '../src/sim/descent.ts';
-import { coastOf } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { geodeticToEcef, length, siteFrame, sub } from '../src/world/frames.ts';
 
@@ -42,8 +42,8 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
   const site = siteFrame(f.site);
   const sea = f.site.seaLevel.value;
   const where = { site, seaLevel: sea, frame: dated };
-  const whole = flyWhole(f.plan, site, dated, sea, undefined, 10, 'published');
-  const down = whole.down;
+  let whole;
+  const flown = () => (whole ??= flyWhole(f.plan, site, dated, sea, undefined, 10, 'published'));
   const predicted = (flier, start) => {
     const p = propagate(flier, start, where);
     p.run();
@@ -60,6 +60,7 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     assert.ok(Math.abs(got.impact.speed - want.speed) < SPEED, `${what}: ${got.impact.speed} m/s against ${want.speed}`);
   };
   test(`${f.id}: each body's predicted descent lands where the descent flown lands it`, () => {
+    const { down } = flown();
     assert.ok(down, 'the record’s run comes down');
     const begun = down.tracks[bodies[0].id][0];
     for (const b of bodies.slice(0, 2)) {
@@ -68,6 +69,7 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     }
   });
   test(`${f.id}: begun part-way down, from the run's own state of each body`, () => {
+    const { down } = flown();
     const first = bodies[0];
     const track = down.tracks[first.id];
     // after its first parachute is out, and again under its last
@@ -81,8 +83,9 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     }
   });
   test(`${f.id}: the spacecraft's path, with the descent asked for, goes on from the ejection height to the followed body's landing`, () => {
+    const { coast, down } = flown();
     const first = bodies[0];
-    const samples = whole.coast.samples;
+    const samples = coast.samples;
     const s = samples.findLast((x) => x.t <= down.tracks[first.id][0].t - 300);
     const start = { t: s.t, r: s.r, v: s.v };
     const short = predicted(spacecraft(f.plan, dated, site, sea, start), start);

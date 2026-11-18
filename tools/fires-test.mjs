@@ -65,6 +65,15 @@ const blowing = (t, burning) =>
       const model = models.find((m) => m.id === flies?.model);
       const sheds = plan?.craft[0]?.sheds ?? [];
       const lit = new Set(burning.map((b) => (flies?.fires ?? []).find((f) => f.node === b.what)?.on).filter(Boolean));
+      // Clocked manoeuvre engines can have nozzle jets without a separate main-engine plume.
+      for (const event of plan?.events ?? []) {
+        const at = event.at?.value ?? event.when.find((w) => 'time' in w)?.time;
+        if (!event.automatic || at === undefined || at > t) continue;
+        for (const action of event.do) {
+          if (action.ignite && !flies?.fires?.some((f) => f.on === action.ignite)) lit.add(action.ignite);
+          if (action.cut && !flies?.fires?.some((f) => f.on === action.cut)) lit.delete(action.cut);
+        }
+      }
       return (model?.jets ?? [])
         .filter((j) => {
           const w = j.when;

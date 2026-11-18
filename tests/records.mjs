@@ -18,7 +18,7 @@ const records = new Map(
 
 /** The record `flight`'s plan was written from (its orbital.ts's `orbital`). */
 export function recordFrom(flight) {
-  const o = records.get(flight.id);
+  const o = records.get(flight.id) ?? (flight.plan?.record?.coastFixes ? flight.plan : undefined);
   if (!o) throw new Error(`${flight.id} has no orbital record`);
   return o;
 }

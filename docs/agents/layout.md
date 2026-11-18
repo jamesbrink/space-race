@@ -312,6 +312,8 @@ src/
   sim/contact.ts                     swept spacecraft contact and its inelastic impulse
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
+  sim/orbital-target.ts               a separated upper stage on its own orbit, with range observations for the historical rendezvous
+  sim/launchescape.ts                 tower escape and service-module abort branches from the live state at the pilot’s command
   sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance

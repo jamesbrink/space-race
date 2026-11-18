@@ -18,6 +18,8 @@ none.needsUpdate = true;
 
 export const weatherUniforms = {
   tWeather: { value: none as THREE.Texture },
+  tRecovery: { value: none as THREE.Texture },
+  uRecovery: { value: 0 },
   /** The bearing of the scene's +X as its sine and cosine, one over the map's breadth, the record's cumulus cover at the site. */
   uWeather: { value: new THREE.Vector4(0, 1, 1 / EXTENT, 0.1) },
   /** How far the map has come in since it arrived, 0 to 1. */
@@ -41,6 +43,8 @@ export class WeatherMap {
   /** Its one texel until the map has come: the record's cover everywhere. */
   private readonly blank: THREE.DataTexture;
   private map: THREE.Texture | null = null;
+  private recovery: THREE.Texture | null = null;
+  private recoveryShare = 0;
   private gone = false;
   private readonly arrived = new Set<() => void>();
 
@@ -52,6 +56,8 @@ export class WeatherMap {
     this.blank.needsUpdate = true;
     weatherUniforms.tWeather.value = this.blank;
     weatherUniforms.uWeatherIn.value = 0;
+    weatherUniforms.uRecovery.value = 0;
+    weatherUniforms.tRecovery.value = none;
     weatherUniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
     const speed = Math.hypot(wind[0], wind[1]) || 1;
     weatherUniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
@@ -63,7 +69,18 @@ export class WeatherMap {
     );
     const map = day.map;
     // (not seen from the site: within 12 km the cover is the record's, and the map's part lies along the horizon)
-    if (map) this.want = later(() => void this.load(map));
+    if (map)
+      this.want = later(() => {
+        void this.load(map);
+        if (day.recovery) void this.loadRecovery(day.recovery.map);
+      });
+  }
+
+  /** The share of the recovery map at the clock's instant. A seek before the handover draws the launch map again. */
+  recover(share: number): void {
+    this.recoveryShare = share;
+    if (share > 0) this.want();
+    weatherUniforms.uRecovery.value = this.recovery ? share : 0;
   }
 
   /** Call `then` each time more of the map has come in. Returns the way to stop. */
@@ -86,12 +103,24 @@ export class WeatherMap {
       (this.map.image as ImageBitmap | null)?.close?.();
       this.map = null;
     }
+    if (this.recovery) {
+      if (weatherUniforms.tRecovery.value === this.recovery) {
+        weatherUniforms.tRecovery.value = none;
+        weatherUniforms.uRecovery.value = 0;
+      }
+      this.recovery.dispose();
+      (this.recovery.image as ImageBitmap).close();
+      this.recovery = null;
+    }
   }
 
-  private async load(map: string): Promise<void> {
+  private async textureFor(map: string): Promise<THREE.Texture | null> {
     const blob = await (await fetch(`${import.meta.env.BASE_URL}globe/${map}.weather.png`)).blob();
     const bitmap = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: 'none' });
-    if (this.gone) return bitmap.close();
+    if (this.gone) {
+      bitmap.close();
+      return null;
+    }
     const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
     texture.colorSpace = THREE.NoColorSpace;
     texture.flipY = false;
@@ -99,6 +128,28 @@ export class WeatherMap {
     texture.minFilter = texture.magFilter = THREE.LinearFilter;
     texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.needsUpdate = true;
+    return texture;
+  }
+
+  private async loadRecovery(map: string): Promise<void> {
+    const texture = await this.textureFor(map);
+    if (!texture) return;
+    await queued(() => {
+      if (this.gone) {
+        texture.dispose();
+        (texture.image as ImageBitmap).close();
+        return;
+      }
+      this.recovery = texture;
+      weatherUniforms.tRecovery.value = texture;
+      weatherUniforms.uRecovery.value = this.recoveryShare;
+      for (const then of this.arrived) then();
+    });
+  }
+
+  private async load(map: string): Promise<void> {
+    const texture = await this.textureFor(map);
+    if (!texture) return;
     // (taken up in a frame of its own: its upload is not to land with another map's: pack.ts)
     await queued(() => {
       if (this.gone) return;
@@ -106,7 +157,10 @@ export class WeatherMap {
       weatherUniforms.tWeather.value = texture;
     });
     if (this.gone) {
-      if (this.map !== texture) bitmap.close();
+      if (this.map !== texture) {
+        texture.dispose();
+        (texture.image as ImageBitmap).close();
+      }
       return;
     }
     // It comes in over a second and a half, in a dozen steps (each has the clouds' field baked again: clouds.ts), so

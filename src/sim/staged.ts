@@ -27,6 +27,7 @@
  * flight to the last bit.
  */
 import type { Curve } from '../types.ts';
+import { G0, P0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import {
   add,
@@ -45,35 +46,38 @@ import {
 } from '../world/frames.ts';
 import { alongPublished } from '../world/meanelements.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
-import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
-import { G0, P0 } from '../world/bodies.ts';
+import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
+import { integrate, sensed } from './apparent.ts';
 import { downOf } from './descent.ts';
+import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
+import { ENTRY_G } from './loads.ts';
 import {
+  aimFor,
   aimOf,
-  heightsBallAt,
-  heightsBall,
   bankAt,
+  type CoastContacts,
   chuteEvent,
+  coastEngineState,
   coastEvents,
   type DescentFlown,
   type DescentHands,
   flyDown,
   flyOrbit,
   type Guidance,
+  heightsBall,
+  heightsBallAt,
   liftOf,
   movesOf,
   type OrbitFlown,
-  type CoastContacts,
   publishedOf,
   shipOf,
+  trackedState,
+  trackingArc,
 } from './orbital.ts';
-import { ENTRY_G } from './loads.ts';
+import { type Action, type BodyDef, clockAt, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
 import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
-import type { LiveSample } from './vehicle.ts';
-import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
-import { integrate, sensed } from './apparent.ts';
-import { type Action, type BodyDef, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
+import type { LiveSample } from './vehicle.ts';
 
 /** The integration step, s. */
 export const STEP = 0.05;
@@ -230,7 +234,7 @@ export function stagesOf(plan: FlightPlan): Stage[] {
   let out = stagesCache.get(plan);
   if (out) return out;
   const c = plan.craft[0]!;
-  const tanked = c.engines.filter((e) => e.tanks.length);
+  const tanked = c.engines.filter((e) => e.tanks.length && !e.flown);
   out = tanked.map((engine) => {
     const tank = c.tanks.find((t) => t.id === engine.tanks[0])!;
     const holder = c.bodies.find((b) => b.id === tank.body)!;
@@ -347,7 +351,7 @@ export function sequenceOf(plan: FlightPlan) {
   const doing = (test: (a: Action) => boolean) => plan.events.find((e) => e.automatic && e.do.some(test));
   const firstJoint = (body: string) => c.joints.filter((j) => j.gone.includes(body)).sort((a, b) => a.gone.length - b.gone.length)[0];
   const stages = c.engines
-    .filter((e) => e.tanks.length)
+    .filter((e) => e.tanks.length && !e.flown)
     .map((e) => {
       const cut = doing((a) => 'cut' in a && a.cut === e.id);
       const joint = firstJoint(e.body);
@@ -366,7 +370,7 @@ export function sequenceOf(plan: FlightPlan) {
   // what leaves that is no stage and no spacecraft (a fairing): a body that carries no engine and has no air of its own,
   // let go by a joint of its own
   const drops = c.bodies
-    .filter((b) => !b.aero && !c.engines.some((e) => e.body === b.id))
+    .filter((b) => !b.aero && !c.engines.some((e) => e.body === b.id && (e.tanks.length || e.flown)))
     .flatMap((body) => {
       const joint = c.joints.find((j) => j.gone.length === 1 && j.gone[0] === body.id);
       return joint ? [{ body, joint: joint.id, at: drop(joint.id) }] : [];
@@ -422,6 +426,7 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     return { u, h: unit(cross(n, u)) };
   };
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
+    if (g.programme) return tilted(along(g.programme, t) * DEG);
     if (m === 'vertical') return up0;
     if (m === 'turn') {
       // along the motion over the ground, in the plane (the turn the programme was made for: in calm air the motion through
@@ -511,7 +516,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   const droppedBy = (t: number) => {
     let m = 0;
     stages.forEach((s, i) => {
-      if (stageSep[i]! <= t && i < stages.length - 1) {
+      if (stageSep[i]! <= t && i < stages.length - 1 && stages.findIndex((x) => x.body.id === s.body.id) === i) {
         const sep = stageSep[i]!;
         m += s.body.count * (s.body.mass.value - drawnFrom(stages, s.body.id, (j) => burned(j, sep)));
       }
@@ -586,7 +591,10 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
       ...stageSep.filter(Number.isFinite),
       ...drops.map((d) => d.at),
       ...fp.craft[0]!.drag.map((d) => d.until.value),
+      ...(g.programme?.points ?? []).map(([at]) => at),
+      ...(g.attached ? [...g.attached.align.map((t) => t.value), g.attached.freeze.value] : []),
       ...seq.instants.map((x) => x.at),
+      ...(fp.record?.coastFixes ?? []).map((fix) => fix.at.value),
     ]),
   ]
     .filter((m) => m > 0 && m <= tPart)
@@ -617,12 +625,15 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   };
   // which stage's burn bounds each of the three loads read: the first stage's separation, the next stage's stop, the last's
   const firstOff = Math.min(...stageSep);
-  const coreOff = plan.length > 1 ? plan[1]!.to : firstOff;
+  const core = stages.findIndex((s) => s.body.id !== stages[0]!.body.id);
+  const coreOff = core < 0 ? firstOff : plan[core]!.to;
   let kept = 0;
 
   while (t < tPart - 1e-9) {
     const mark = marks.find((m) => m > t + 1e-9) ?? tPart;
-    const h = Math.min(STEP, mark - t);
+    const coasting = tPart - tEnd > 60 && t >= plan[plan.length - 1]!.to && t >= tEnd;
+    const interval = coasting ? Math.max(10, every) : every;
+    const h = Math.min(coasting ? 10 : STEP, mark - t);
     const gone = droppedBy(t);
     const m = mode;
     const [before, t0] = [state, t];
@@ -662,7 +673,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
       thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(f.axis, u))));
       mode = 'tangent';
     }
-    if (t - kept >= every - 1e-9 || marks.includes(t)) {
+    if (t - kept >= interval - 1e-9 || marks.includes(t)) {
       samples.push(s);
       kept = t;
     }
@@ -694,6 +705,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
  */
 export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
   const g = guidanceOf(plan);
+  if (g.programme && g.azimuth) return { plane: Number.NaN, kick: 0, rate: 0 };
   const radius = heightsBall(plan, site);
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
   if (g.azimuth) return steer2(plan, site, frame, seaLevel, want);
@@ -773,6 +785,7 @@ export function flyWhole(
 ): FlownWhole {
   const x = solved ?? steer(plan, site, frame, seaLevel);
   const ascent = ascend(plan, site, frame, seaLevel, x);
+  if (handover === 'published') followAscentFixes(plan, frame, ascent);
   const coast = flyOrbit(
     plan,
     site,
@@ -780,10 +793,72 @@ export function flyWhole(
     seaLevel,
     every,
     handover === 'published' ? published(plan, site, ascent.separation) : ascent.separation,
+    undefined,
+    undefined,
+    handover === 'published',
   );
   const end = coast.samples[coast.samples.length - 1]!;
   const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
   return { ascent, coast, down };
+}
+
+/** Continue the attached stack's orbital coast from the tracked insertion and venting fixes. */
+function followAscentFixes(plan: FlightPlan, frame: EarthFrame, ascent: Ascended): void {
+  const fixes = plan.record?.coastFixes?.filter((fix) => fix.at.value <= ascent.separation.t);
+  if (!fixes?.length) return;
+  const samples = ascent.samples;
+  let start = 0;
+  for (const fix of fixes) {
+    const end = samples.findIndex((s) => s.t === fix.at.value);
+    if (end < 1 || end <= start) continue;
+    const want = trackedState(fix, frame);
+    const arc: State[] = [];
+    let last: State = samples[start]!;
+    for (let i = start + 1; i <= end; i++) {
+      const s = samples[i]!;
+      last = start === 0 ? s : step(last, samples[i - 1]!.t, s.t - samples[i - 1]!.t);
+      arc.push(last);
+    }
+    const correct = trackingArc(samples[start]!.t, samples[end]!.t, last, want);
+    for (let i = start + 1; i <= end; i++) {
+      const s = samples[i]!;
+      const state = i === end ? want : correct(arc[i - start - 1]!, s.t);
+      const here = frame.place(state.r, s.t);
+      const air = airAt(frame, state.r, state.v, s.t, 0);
+      samples[i] = {
+        ...s,
+        ...state,
+        altitude: here.height,
+        latitude: here.latitude,
+        longitude: here.longitude,
+        speed: length(state.v),
+        groundSpeed: air.airspeed,
+        q: air.q,
+        mach: air.mach,
+      };
+    }
+    start = end;
+  }
+  const last = samples.at(-1)!;
+  if (last.t === samples[start]!.t) ascent.separation = { t: last.t, r: last.r, v: last.v };
+  const attached = guidanceOf(plan).attached;
+  if (!attached) return;
+  const [begin, end] = attached.align.map((t) => t.value) as [number, number];
+  let held: Vec3 | null = null;
+  for (const s of samples) {
+    if (s.t < begin) continue;
+    if (held) {
+      s.axis = held;
+      continue;
+    }
+    const up = frame.up(s.r, s.t);
+    const horizontal = unit(sub(s.v, scale(up, dot(s.v, up))));
+    const pitch = along(attached.pitch, s.t) * DEG;
+    const axis = add(scale(horizontal, Math.cos(pitch)), scale(up, Math.sin(pitch)));
+    const blend = Math.min(1, (s.t - begin) / (end - begin));
+    s.axis = unit(add(scale(s.axis, 1 - blend), scale(axis, blend)));
+    if (s.t >= attached.freeze.value) held = s.axis;
+  }
 }
 
 /**
@@ -870,6 +945,7 @@ export function recordSamples(
     lateral: 0,
   };
   const pad = whole.ascent.samples[0]!.r;
+  const roll = guidanceOf(plan).roll;
   // (the summary has the stack's whole thrust and not each engine's: it is the craft's)
   const stack = plan.craft[0]!.id;
   const out: LiveSample[] = [];
@@ -895,7 +971,7 @@ export function recordSamples(
       r: s.r,
       v: s.v,
       axis,
-      attitude: lie(s.axis),
+      attitude: roll ? multiply(lie(s.axis), aboutAxis([1, 0, 0], along(roll, s.t) * DEG)) : lie(s.axis),
       alpha: angleBetween(s.axis, sub(s.v, cross(spin, s.r))) / DEG,
       burning: s.thrust > 0 ? [{ engine: stack, thrust: s.thrust }] : [],
       centre: add(s.r, scale(axis, centre)),
@@ -998,6 +1074,22 @@ export function recordSamples(
     peakAlignment = 0,
     lastPassive = parts;
   let left: Quat | null = null;
+  const manoeuvreTurn = plan.record?.manoeuvreTurn?.value ?? 0;
+  const manoeuvreAttitudes = (manoeuvreTurn > 0 ? ship.moves : []).map((move) => {
+    const start = whole.coast.samples.find((s) => s.t >= move.on) ?? whole.coast.samples[0]!;
+    return {
+      move,
+      q: lie(
+        aimFor(
+          move.aim,
+          start.r,
+          start.v,
+          () => sunAt(start.t),
+          () => frame.up(start.r, start.t),
+        ),
+      ),
+    };
+  });
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
     let q: Quat;
@@ -1006,6 +1098,7 @@ export function recordSamples(
       rest = left;
       left = null;
     }
+    const move = manoeuvreAttitudes.find(({ move }) => s.t >= move.on - manoeuvreTurn && s.t <= move.off);
     const passive = ship.entry.aero.passiveSphere && s.t >= parts;
     if (passive) {
       if (length(wind) >= 1) {
@@ -1019,7 +1112,8 @@ export function recordSamples(
       }
       lastPassive = s.t;
       q = passiveSpherePose(baseAtRelease, supportedWind, alignment);
-    } else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
+    } else if (move) q = left = toward(rest, move.q, Math.min(1, (s.t - move.move.on + manoeuvreTurn) / manoeuvreTurn));
+    else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
@@ -1053,10 +1147,10 @@ export function recordSamples(
       attitude: q,
       ...(passive && { passive: { wind: supportedWind, alignment } }),
       ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
-      alpha: 0,
+      alpha: angleBetween(axis, wind) / DEG,
       burning: [
         ...(s.t >= ship.on && s.t < Math.min(ship.off, parts) && braking ? [{ engine: braking, thrust: 0 }] : []),
-        ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: 0 })),
+        ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: m.accel * ship.mass })),
       ],
       centre: at,
     });
@@ -1136,17 +1230,23 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   const k = coastEvents(out);
   const deltaV = k.burn?.deltaV;
   if (!parting || !k.burn || !deltaV) throw new Error('this plan says nothing of what a hand could do');
+  const resources = coastEngineState(plan, k.burn.id, t - 1e-9);
+  if (resources.starts <= 0 || resources.kg <= 0) return out;
+  if (out.record?.coastFixes) out.record.coastFixes = out.record.coastFixes.filter((fix) => fix.at.value <= t);
   // (a solid burns for as long as it burns; a liquid until its integrator has the impulse, at its chambers' thrust)
   const burn =
     k.burn.kind === 'solid' && k.burn.burn
       ? k.burn.burn.value
-      : (shipOf(plan).mass * deltaV.value) / (k.burn.count * k.burn.thrust.vacuum.value);
+      : k.burn.tanks.length
+        ? Math.min(shipOf(plan).fuel, resources.kg) / (k.burn.count * flowOf(k.burn))
+        : (shipOf(plan).mass * deltaV.value) / (k.burn.count * k.burn.thrust.vacuum.value);
   // (the chain kept where the plan has one, each so long after the one before: t, t + burn and t + burn + parting all the same)
   if (k.command) {
     setOff(k.command, t);
     k.command.do = k.command.do.filter((a) => !('arm' in a));
   }
   if (!waits(k.on, 0)) setOff(k.on, t);
+  if (k.on) for (const a of k.on.do) if ('ignite' in a) delete a.firingTime;
   if (!waits(k.off, burn)) setOff(k.off, t + burn);
   k.burn.flown = { ...k.burn.flown!, value: deltaV.value };
   const held = shipOf(plan).aimId;
@@ -1160,11 +1260,12 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
  * integer), until a hand does; and so its manoeuvres (orbital.ts `movesOf`), each lit and cut only as a hand does
  * (`movedTo`).
  */
-export function givenUp(plan: FlightPlan): FlightPlan {
+export function givenUp(plan: FlightPlan, before = Number.NEGATIVE_INFINITY): FlightPlan {
   const out = structuredClone(plan);
+  if (out.record?.coastFixes) out.record.coastFixes = out.record.coastFixes.filter((fix) => fix.at.value <= before);
   const k = coastEvents(out);
-  for (const e of [k.command, k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
-  for (const m of movesOf(plan)) for (const id of [m.lit, m.cut]) setOff(eventOf(out, id), Number.MAX_SAFE_INTEGER);
+  if (clockAt(out, k.on) > before) for (const e of [k.command, k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
+  for (const m of movesOf(plan)) if (m.on > before) for (const id of [m.lit, m.cut]) setOff(eventOf(out, id), Number.MAX_SAFE_INTEGER);
   return out;
 }
 

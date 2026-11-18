@@ -491,6 +491,8 @@ export class Ui {
     $(root, '.lookouts').addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-lookout]');
       if (b) this.onLookout(Number(b.dataset.lookout));
+      const seat = (e.target as HTMLElement).closest<HTMLElement>('[data-seat]');
+      if (seat) this.onSeat(Number(seat.dataset.seat));
       const sw = (e.target as HTMLElement).closest<HTMLElement>('[data-switch]');
       if (sw) this.onSwitch(Number(sw.dataset.switch));
       (document.activeElement as HTMLElement | null)?.blur?.(); // (or Space would press it again: Space is the flight's next event)
@@ -1189,8 +1191,14 @@ export class Ui {
    * From a seat (on board, or a couch boarded on foot): what can be looked out of, each a switch that leans the pilot
    * to it and back (its digit is the key), lit while he leans to it. An empty list puts it away.
    */
-  setLookouts(names: string[], leaning: number | null, switches: CabinSwitch[] = []): void {
-    lookoutsBar($<HTMLElement>(this.root, '.lookouts'), names, leaning, switches);
+  onSeat: (index: number) => void = () => {};
+  setLookouts(
+    names: string[],
+    leaning: number | null,
+    switches: CabinSwitch[] = [],
+    seats: { labels: string[]; at: number } | null = null,
+  ): void {
+    lookoutsBar($<HTMLElement>(this.root, '.lookouts'), names, leaning, switches, seats, false);
   }
   /** One of `setLookouts` was asked for. */
   onLookout: (n: number) => void = () => {};
@@ -1293,6 +1301,7 @@ export function lookoutsBar(
   leaning: number | null,
   switches: CabinSwitch[] = [],
   seats: { labels: string[]; at: number | null } | null = null,
+  exhibit = true,
 ): void {
   const key = [...names, ...switches.map((s) => `${s.index} ${s.name}`), ...(seats ? ['', ...seats.labels] : [])].join('\n');
   if (bar.dataset.names !== key) {
@@ -1304,7 +1313,7 @@ export function lookoutsBar(
         ? seats.labels
             .map(
               (label, i) =>
-                `<button class="switch" data-seat="${i}" aria-pressed="false" title="Sit in ${esc(label)} (C goes round the seats)">${esc(capital(label.replace(/^the /, '')))}</button>`,
+                `<button class="switch" data-seat="${i}" aria-pressed="false" title="Sit in ${esc(label)}">${esc(capital(label.replace(/^the /, '')))}</button>`,
             )
             .join('')
         : '') +
@@ -1321,7 +1330,9 @@ export function lookoutsBar(
             `<button class="switch" data-switch="${s.index}" aria-pressed="false" title="Throw the ${esc(s.name.toLowerCase())} switch${s.built === false ? '' : ': or click it on its console'}"><span></span></button>`,
         )
         .join('') +
-      (seats ? '<button data-unseat title="Get up out of the seat: back to the view you had (Esc)"><kbd>Esc</kbd>Get up</button>' : '');
+      (seats && exhibit
+        ? '<button data-unseat title="Get up out of the seat: back to the view you had (Esc)"><kbd>Esc</kbd>Get up</button>'
+        : '');
   }
   // (at a site, nothing until there is something to look out of: the lights alone are no reason to show it)
   bar.hidden = names.length === 0 && !seats;

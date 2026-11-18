@@ -447,6 +447,14 @@ export class Chute {
       // in the air: it streams against the motion of what it hangs from
       if (m.air.lengthSq() > 1) this.along.copy(m.air).normalize().negate();
       else this.along.copy(up);
+      if (def.cluster) {
+        const { azimuth, tilt } = def.cluster;
+        const toward = azimuth * THREE.MathUtils.DEG2RAD;
+        const angle = tilt.value * THREE.MathUtils.DEG2RAD * out;
+        const local = new THREE.Vector3(Math.cos(toward) * Math.sin(angle), Math.cos(angle), Math.sin(toward) * Math.sin(angle));
+        local.applyQuaternion(group.quaternion.setFromUnitVectors(Y, this.along));
+        this.along.copy(local);
+      }
       group.quaternion.setFromUnitVectors(Y, this.along);
       crown.quaternion.identity();
     } else {

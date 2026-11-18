@@ -541,7 +541,7 @@ export class Sound {
     const braking = run ? brakingOf(this.flight, run) : null;
     return score({
       drops: this.ascent.drops.map((d, i) => ({ at: d.at, cue: dropCue(plan, this.flight.flies!.drops[i]?.on) })),
-      retro: braking ? { fires: braking.fires, burn: braking.burn, thrust: braking.thrust } : null,
+      retro: braking,
       out: h.out,
       duration: h.duration,
     });

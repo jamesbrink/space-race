@@ -217,6 +217,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       stage.seats.lookouts().map((l) => l.name),
       stage.seats.leaning,
       stage.cabin?.switched ?? [],
+      stage.seats.seat !== null && stage.seats.seatLabels.length > 1 ? { labels: stage.seats.seatLabels, at: stage.seats.seat } : null,
     );
   // The cabin's switches (its own lights, a globe's mode, any thrown control): the switch on its console (a click from the
   // seat) and its button under the lookouts throw it (viewer/cabin.ts `throwSwitch`); one that is a command of the flight
@@ -229,6 +230,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     lookouts();
   };
   ui.onSwitch = throwSwitch;
+  ui.onSeat = (index) => stage.seats.sit(index);
   const leanTo = (n: number | null) => {
     const said = stage.seats.leanTo(n);
     if (said && n !== null) ui.say(stage.seats.lookouts()[n]?.name ?? 'Looking out', said);

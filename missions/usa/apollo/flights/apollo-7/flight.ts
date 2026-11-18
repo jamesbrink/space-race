@@ -1,9 +1,25 @@
-import type { Flight, Part } from '../../../../../src/types.ts';
+import type { Flight, Machine, Move, Part } from '../../../../../src/types.ts';
 
+import { LC34_CREW_AT, LC34_SPECS } from '../../../places/cape-canaveral/lc-34.parts.ts';
+import { LC34 } from '../../../places/cape-canaveral/lc-34.ts';
 import { cabin, lights } from './cabin.ts';
+import { crewModels, seatedHead } from './crew.ts';
+import { flies, motors, timeline, translationJets } from './flown.ts';
+import { apollo7Plan } from './orbital.ts';
+import { BOARDING, INGRESS, pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
 const KIT = 'NASA Apollo 7 press kit, 68-168K (6 October 1968)';
 const IN = 0.0254;
+
+function hatchTravel(node: string, angle: number, lead: number, machine: Machine): Move[] {
+  const open = BOARDING[0] + lead;
+  const close = BOARDING[1] - lead;
+  return [
+    { kind: 'swing', node, axis: [0, 1, 0], angle, from: open - 10, to: open, machine },
+    { kind: 'swing', node, axis: [0, 1, 0], angle: -angle, from: close, to: close + 10, machine },
+  ];
+}
 const parts: Part[] = [
   {
     node: 'CommandModule',
@@ -22,6 +38,12 @@ const parts: Part[] = [
   },
   {
     node: 'SideHatch',
+    clocked: hatchTravel('Side_Hatch_Pivot', (108 * Math.PI) / 180, -1, {
+      kind: 'door',
+      confidence: 'documented',
+      source:
+        'Walkover, Hart and Zosky, The Apollo Command Module Side Access Hatch System, JPL TM 33-425, §V. The crew or ground team operates the unified hatch by hand.',
+    }),
     name: 'Unified side hatch',
     group: 'Spacecraft',
     order: 2,
@@ -96,7 +118,7 @@ const parts: Part[] = [
     inside: true,
     summary: 'Two round attitude displays above the commander and command-module pilot.',
     detail:
-      'Two attitude balls, the commander’s and the command-module pilot’s, each showing the ship’s roll, pitch and yaw against the sky with needles for rates and errors. They sit in front of the left and centre couches because those two flew the ship. Their arrangement is from this ship’s own systems plate and panel drawing; the 4.5-inch ball is the later ships’ figure, and with the faces and cases it is estimated. The needles stand still: they show no flown attitude.',
+      'Two attitude balls, the commander’s and the command-module pilot’s, each showing the ship’s roll, pitch and yaw against the sky with needles for rates and errors. They sit in front of the left and centre couches because those two flew the ship. Their arrangement is from this ship’s own systems plate and panel drawing; the 4.5-inch ball is the later ships’ figure, and with the faces and cases it is estimated. In Fly the spheres show the simulated local-level attitude. The needles and the alignment modes of the flight instruments are simplified.',
     facts: [
       ['Arrangement', 'SC101 SCS-2100D p. 76; V36-976018 Rev D'],
       ['Ball diameter', '4.5 in · later-type prior, estimated for CM-101'],
@@ -303,6 +325,11 @@ const parts: Part[] = [
   },
   {
     node: 'BoostCover',
+    clocked: hatchTravel('Boost_Hatch_Pivot', (125 * Math.PI) / 180, -10, {
+      kind: 'door',
+      confidence: 'estimated',
+      source: 'The boost cover had a separate hinged access door. Hand operation and its sound are reconstructed.',
+    }),
     name: 'Boost protective cover',
     group: 'Launch escape system',
     order: 0,
@@ -444,7 +471,10 @@ export const flight: Flight = {
   spacecraft: 'CSM-101 · Block II',
   launchVehicle: 'Saturn IB · SA-205',
   launch: '1968-10-11T15:02:45Z',
-  launchSite: 'Launch Complex 34, Cape Kennedy',
+  launchSite: LC34.name,
+  site: LC34,
+  weather: WEATHER,
+  opens: { at: INGRESS, model: 'pad', view: 'tower' },
   crew: ['Walter M. Schirra, Jr.', 'Donn F. Eisele', 'R. Walter Cunningham'],
   summary:
     'The first crewed Apollo flight: eleven days testing the redesigned command and service modules in Earth orbit. Explore the stage interiors, spacecraft and three crew positions in the gallery.',
@@ -452,8 +482,11 @@ export const flight: Flight = {
     { label: 'Spacecraft', value: 'CSM-101 · no lunar module' },
     { label: 'Model status', value: 'Gallery and seated cabin · detailed cutaway' },
   ],
-  timeline: [],
+  timeline,
+  plan: { ...apollo7Plan, aloft: WEATHER.aloft },
+  flies,
   specs: [
+    ...LC34_SPECS,
     {
       group: 'Launch vehicle',
       label: 'S-IB stage length',
@@ -983,20 +1016,42 @@ export const flight: Flight = {
       note: 'NASA TN D-6979, Figure 8, p. 9: 173 in. Earlier primary-structure reference assumed for CM-101; its inner-wall points D/E/F independently match the Block II wall. Impact specimens were Block I, not CM-101',
     },
   ],
-  motors: [],
+  motors,
   models: [
     {
       id: 'vehicle',
       name: 'Apollo 7 · Saturn IB',
       url: 'models/usa/apollo/apollo-7/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       cabin,
       lights,
+      jets: translationJets,
       seats: [
-        { node: 'Seat_Commander', label: 'Schirra’s left couch', from: 'SideHatch', open: [-8700, -7500] },
-        { node: 'Seat_CommandModulePilot', label: 'Eisele’s centre couch', from: 'SideHatch', open: [-8700, -7500] },
-        { node: 'Seat_LunarModulePilot', label: 'Cunningham’s right couch', from: 'SideHatch', open: [-8700, -7500] },
+        {
+          node: 'Seat_Commander',
+          label: 'Schirra’s left couch',
+          from: 'SideHatch',
+          open: BOARDING,
+          figure: 'crew',
+          hide: seatedHead('Schirra'),
+        },
+        {
+          node: 'Seat_CommandModulePilot',
+          label: 'Eisele’s centre couch',
+          from: 'SideHatch',
+          open: BOARDING,
+          figure: 'pilot',
+          hide: seatedHead('Eisele'),
+        },
+        {
+          node: 'Seat_LunarModulePilot',
+          label: 'Cunningham’s right couch',
+          from: 'SideHatch',
+          open: BOARDING,
+          figure: 'lmp',
+          hide: seatedHead('Cunningham'),
+        },
       ],
       scale: '224 ft / 68.2752 m stack · published rounded envelope · surface detail estimated',
       slider: ['Assembled', 'Taken apart'],
@@ -1074,5 +1129,7 @@ export const flight: Flight = {
       ],
       parts,
     },
+    pad,
+    ...crewModels(LC34_CREW_AT, INGRESS),
   ],
 };

@@ -662,9 +662,11 @@ for (const f of part(flown)) {
     assert.deepEqual(again.summary, whole.ascent.summary);
     const s = whole.ascent.summary;
     const g = guidance.target;
-    assert.ok(Math.abs(s.cutoffAltitude - g.altitude.value) < 1, 'at the target height');
-    assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
-    if (!guidance.azimuth) assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+    if (!guidance.programme) {
+      assert.ok(Math.abs(s.cutoffAltitude - g.altitude.value) < 1, 'at the target height');
+      assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
+      if (!guidance.azimuth) assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+    }
     const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
     console.log(`  #   ${f.designation}: the ascent flown (times UTC)`);
     for (const [id, e] of Object.entries(whole.ascent.at))
@@ -742,6 +744,15 @@ for (const f of part(flown)) {
     // every input the ascent reads that is not documented, by where it is in the record (the Vostok module's own, which
     // vostokPlan writes the plan from): a new one must be added here
     const o = recordFrom(f);
+    if (o === plan) {
+      const copy = structuredClone(plan);
+      const law = guidanceOf(copy);
+      const [site, dated, sea] = where(f);
+      law.programme.points = law.programme.points.map(([t, tilt]) => [t, t > law.turn.value ? tilt + 0.5 : tilt]);
+      const changed = ascend(copy, site, dated, sea, whole.ascent.solved, Infinity).summary;
+      assert.ok(Math.abs(changed.cutoffAltitude - whole.ascent.summary.cutoffAltitude) > 1000, 'the digitized pitch drives the ascent');
+      return;
+    }
     if ('atlas' in o) return atlasInputs(f, o, whole);
     if ('titan' in o) return titanInputs(f, o, whole);
     const read = [];
@@ -826,7 +837,11 @@ for (const f of part(flown)) {
     // thrust, on Soyuz-ST's loads: 142 m/s fast, 180 by 844 km. Kept as a figure; its inputs are no longer the record's.
   });
 
-  test(`${f.designation}: the predicted path in orbit is the coast flown: from separation it comes down where the record's run does`, () => {
+  test(`${f.designation}: the predicted path in orbit is the coast flown: from separation it comes down where the record's run does`, {
+    skip: plan.record.coastFixes?.length
+      ? 'The replay uses tracking fixes which predictive paths cannot apply. See descending.test.mjs for comparison after the last fix.'
+      : false,
+  }, () => {
     const [site, dated, sea] = where(f);
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
@@ -935,7 +950,10 @@ for (const f of part(flown)) {
       const p = job.result;
       const parted = p.events.find((e) => e.kind === 'separation');
       const cut = p.events.find((e) => e.kind === 'cutoff');
-      assert.ok(parted && cut && p.kind === 'guided', `from T+${t0}: the last cutoff and the parting are on the path`);
+      assert.ok(cut && p.kind === 'guided', `from T+${t0}: the last cutoff is on the path`);
+      assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'cutoff agrees with the batch run');
+      if (guidance.attached && !parted) continue; // The predictor ends after one orbit; the stack stays attached into its second.
+      assert.ok(parted, `from T+${t0}: the parting is on the path`);
       const sep = whole.ascent.separation;
       const off = Math.hypot(...sep.r.map((q, k) => q - parted.r[k]));
       const dv = Math.hypot(...sep.v.map((q, k) => q - parted.v[k]));
@@ -944,7 +962,6 @@ for (const f of part(flown)) {
       );
       // (the batch run's mass is the record's stages' less what each burned; the live vehicle's, which this flies, is the
       // same sum kept otherwise: tests/stagedlive.test.mjs holds the two to 0.03 m/s and 50 m at the last cutoff)
-      assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'Block E cut where its integrator cuts it');
       assert.ok(off < 2000 && dv < 2, `parted where the run parts: ${off.toFixed(0)} m, ${dv.toFixed(2)} m/s`);
     }
   });

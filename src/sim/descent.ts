@@ -315,12 +315,20 @@ export class Descent {
     }
     return sum;
   }
-  /** The instants after `t` at which a motor of it burns out. */
+  /** Its scheduled motor cutoffs and timed parachute releases after `t`. */
   ends(t: number): number[] {
-    return this.body.motors.flatMap((m) => {
+    const motors = this.body.motors.flatMap((m) => {
       const lit = this.lit[m.id];
       return lit !== undefined && lit + m.burn > t + 1e-9 ? [lit + m.burn] : [];
     });
+    const ejected = this.ctx.ejected.at;
+    if (!Number.isFinite(ejected)) return motors;
+    return [
+      ...motors,
+      ...this.body.chutes.flatMap((c, i) =>
+        c.after !== undefined && !this.out.has(i) && ejected + c.after > t + 1e-9 ? [ejected + c.after] : [],
+      ),
+    ];
   }
   /** The height of the next motor that can be set off coming down (its parachutes out), or -Infinity. */
   nextMotor(): number {
@@ -429,11 +437,9 @@ export class Descent {
       const auto =
         !begun &&
         automatic(hands, t) &&
-        (c.altitude !== undefined
-          ? h <= c.altitude && falling
-          : c.after !== undefined
-            ? !Number.isNaN(ejected.at) && t - ejected.at >= c.after
-            : false);
+        (c.altitude !== undefined || c.after !== undefined) &&
+        (c.altitude === undefined || (h <= c.altitude && falling)) &&
+        (c.after === undefined || (Number.isFinite(ejected.at) && t + 1e-9 >= ejected.at + c.after));
       if (hand || auto) this.letOut(c, i, q, h, t);
     });
     // (a motor at its height, once its parachutes are out: a probe at the ground)

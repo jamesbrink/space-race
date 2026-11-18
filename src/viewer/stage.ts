@@ -533,6 +533,7 @@ export class Stage {
       exhibited: () => this.seats.exhibited(),
       exhibit: () => this.exhibit,
       selected: () => this.selected,
+      seatIndex: () => this.seats.seatAt,
       seatNode: (at, seat) => this.seats.seatNode(at, seat),
       redraw: () => {
         this.dirty = true;
@@ -1204,7 +1205,7 @@ export class Stage {
       if (s.globe.swellMesh) this.looks.add(s.globe.swellMesh);
     }
     this.scene.fog = s.fog;
-    this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null);
+    this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null, s.globe && ((eye) => s.globe!.altitude(eye)));
     this.renderer.shadowMap.needsUpdate = true;
     this.dirty = true;
   }
