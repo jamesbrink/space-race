@@ -101,6 +101,7 @@ public/front/                         the front page's picture (committed): the 
                                       moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.json: tools/front-moon.mjs)
 public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; `pnpm ephemeris`, world.md "Baking again"): fetched only when
                                       something asks for it (world/ephemeris.ts `loadEphemeris`)
+docs/ideas.md                         what the simulator lacks to play as a game: not a plan, kept so it is not forgotten
 docs/sources.md                       every source used or wanted, and what each is good for
 docs/readme/                          the README's pictures (tools/shot.mjs stills as JPEGs, 1400 wide): taken again when what they show changes
 src/
