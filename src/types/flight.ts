@@ -17,6 +17,14 @@ export interface Spec {
   note?: string;
 }
 
+export interface OrbitCorrection {
+  at: number;
+  dv: Measure;
+  pitch: Measure;
+  yaw: Measure;
+  duration: Measure;
+}
+
 export interface Motor {
   name: string;
   count: number;
@@ -106,6 +114,36 @@ export interface Flight {
     interface: 'probe' | 'cone' | 'shrouded';
     target: string;
     targetMass: string;
+    rendezvous?: {
+      fix: OrbitalFix;
+      elevation: Measure;
+      height: Measure;
+      gates: { range: Measure; speed: Measure }[];
+      brake: number;
+      station: number;
+      contact: number;
+      hold: Measure;
+      closing: Measure;
+      burns: { at: number; components: [Measure, Measure, Measure]; duration: Measure }[];
+    };
+    visit?: {
+      model: string;
+      label: string;
+      separate: number;
+      at: number;
+      brake: number;
+      hold: number;
+      eva: number;
+      mass: Measure;
+      elevation: Measure;
+      range: Measure;
+      gap: Measure;
+      attitude: Measure;
+      radius: Measure;
+      shaping: OrbitCorrection[];
+      corrections: OrbitCorrection[];
+      terminal: OrbitCorrection[];
+    };
     fixes?: readonly [OrbitalFix, OrbitalFix?];
     transpose?: { at: number; startGap: Measure; departing: Measure; standOff: Measure; turnAfter: Measure; roll: Measure };
     fault?: {

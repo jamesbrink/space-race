@@ -389,6 +389,45 @@ export const flight: Flight = {
       return { ahead: engine, astern: engine, lateral: engine, attitude: engine };
     })(),
     target: 'Spider',
+    rendezvous: {
+      fix: tracked(97 * 3600 + 57 * 60 + 59, -30.86, 65.38, 113.0, 25540.8, -0.044, 104.42),
+      elevation: doc(27.5, 'MSC-PA-R-69-2, table 5-I TPI elevation.'),
+      height: doc(10 * 1852, 'MSC-PA-R-69-2, table 5-I best-estimated differential altitude at TPI.'),
+      gates: [
+        [500, 5],
+        [1500, 10],
+        [3000, 20],
+        [6000, 30],
+      ].map(([range, speed]) => ({
+        range: doc(range * 0.3048, 'Apollo 9 MR §5.1 braking range.'),
+        speed: doc(speed * 0.3048, 'Apollo 9 MR §5.1 braking rate at that range.'),
+      })),
+      brake: 98 * 3600 + 20 * 60 + 25,
+      station: 98 * 3600 + 33 * 60 + 50,
+      contact: 99 * 3600 + 2 * 60 + 26,
+      hold: doc(
+        100 * 0.3048,
+        'MSC-PA-R-69-2, section 1, within 100 feet for photography; NASA SP-350 chapter 10 describes about 100 feet.',
+      ),
+      closing: doc(0.1 * 0.3048, 'NASA TN D-6854, table II, LM-active docking.'),
+      burns: (
+        [
+          [97 * 3600 + 57 * 60 + 59, 19.4, 0.4, -9.7, 37.6],
+          [98 * 3600 + 8 * 60, -1, -0.3, 0.9, 4],
+          [98 * 3600 + 20 * 60 + 20, 0.2, 0.9, -1.8, 5],
+        ] as const
+      ).map(([at, x, y, z, seconds], i) => {
+        const delta = (v: number) => doc(v * 0.3048, 'MSC-PA-R-69-2, table 5-I, LM onboard computed components.');
+        const duration =
+          i === 0
+            ? doc(seconds, 'MSC-PA-R-69-2, table 7-II, TPI ignition to cutoff.')
+            : derived(
+                (Math.hypot(x, y, z) * 0.3048 * 9932 * lb) / (2 * 100 * 4.4482216152605),
+                'Equivalent paired 100-lbf LM RCS impulse at the reported docking mass. Individual valve timing unavailable.',
+              );
+        return { at, components: [delta(x), delta(y), delta(z)], duration };
+      }),
+    },
     targetMass: 'Lunar module mass at first docking',
     carrier: {
       mass: doc(88584, carrierRecord),

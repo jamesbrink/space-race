@@ -45,3 +45,9 @@ The surrounding cloud cover is estimated. The hour-by-hour surface weather and v
 come from ECMWF ERA5 interpolated to the pad.
 
 The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.
+
+### Flying to the second Agena
+
+After the three main-engine maneuvers, **Visit old Agena** advances through the three smaller docked Unit II firings, undocking, and the two OAMS corrections. Gemini and its own Agena continue on separate orbits. At 47:26:44 the dormant Gemini VIII target appears at the crew’s reported 14.2 nautical miles and 31° elevation. Its initial velocity uses a circular, coplanar orbit because that observation supplies no velocity. The three optical transfer and midcourse firings use the mission report's times, durations and directions. The final twenty minutes use thrust-limited relative-motion feedback to represent the crew’s intermittent braking commands. Its propellant consumption and individual valve firings are unknown to this model.
+
+**EVA station keeping** selects the later crew observation at 4–6 feet and 120° between the axes. This restores the recorded relative formation for inspection. The azimuth around the Agena and its residual mass are uncertain. The station-keeping chapter has no astronaut transfer simulation. Source: Gemini X mission report, sections 4.3.1.2 and 7.1.2.6.5, table 4-VIII.

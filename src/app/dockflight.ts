@@ -34,7 +34,7 @@ export async function openDocking(flight: Flight) {
   stage.setAutoRotate(false);
   const epoch = julianDate(flight.launch);
   const clock = new Clock(flight.launch);
-  clock.allow(16);
+  clock.allow(128);
   const deck = new DockDeck(root, flight, clock, {
     fly: () => {},
     piloting: (on) => {
@@ -110,6 +110,19 @@ export async function openDocking(flight: Flight) {
       parts.position.y += deck.run.bodies[i].port;
     }
     if (mount) vehicles[1].add(folded);
+    const visit = mission.visit;
+    const otherTarget = new Group();
+    if (visit) {
+      const model = flight.models.find((m) => m.id === visit.model)!;
+      const target = await stage.model(model.url);
+      const coupling = target.getObjectByName('MooringLatches');
+      if (!coupling) throw Error('The passive target lacks its docking adapter');
+      const datum = new Box3().setFromObject(coupling).getCenter(new Vector3());
+      target.position.sub(datum);
+      target.position.y += deck.run.bodies[1].port;
+      otherTarget.add(target);
+      otherTarget.visible = false;
+    }
     const line = mission.tether
       ? new Line(
           new BufferGeometry().setAttribute('position', new Float32BufferAttribute(new Float32Array(6), 3)),
@@ -117,7 +130,7 @@ export async function openDocking(flight: Flight) {
         )
       : null;
     if (line) line.frustumCulled = false;
-    const draw = stage.orbitalBodies(mount ? [...vehicles, carrier] : vehicles, line ? [line] : []);
+    const draw = stage.orbitalBodies(mount ? [...vehicles, carrier] : visit ? [...vehicles, otherTarget] : vehicles, line ? [line] : []);
     installDebug({
       stage,
       flight,
@@ -132,12 +145,25 @@ export async function openDocking(flight: Flight) {
       const run = deck.run;
       lower.visible = !deck.redock;
       const target = run.bodies[1];
-      const anchor = add(target.r, turn(target.q, [0, target.port, 0]));
+      const anchor = deck.visit && !deck.eva ? run.bodies[0].r : add(target.r, turn(target.q, [0, target.port, 0]));
       for (const [i, b] of run.bodies.entries()) {
         const v = vehicles[i];
         v.children[0].position.y = bases[i]! + b.port;
         v.position.fromArray(sub(b.r, anchor));
         v.quaternion.set(b.q[1], b.q[2], b.q[3], b.q[0]);
+      }
+      if (visit) {
+        otherTarget.visible = deck.visit;
+        if (deck.visit && run.released) {
+          otherTarget.position.copy(vehicles[1].position);
+          otherTarget.quaternion.copy(vehicles[1].quaternion);
+          const own = run.released;
+          vehicles[1].position.fromArray(sub(own.r, anchor));
+          vehicles[1].quaternion.set(own.q[1], own.q[2], own.q[3], own.q[0]);
+        }
+        const heading = root.querySelector('strong')!,
+          label = flight.designation + ' · ' + (deck.visit ? visit.label : mission.target);
+        if (heading.textContent !== label) heading.textContent = label;
       }
       if (mount) {
         const payloadArm = mission.massProperties![0]![1]!.arm.value;

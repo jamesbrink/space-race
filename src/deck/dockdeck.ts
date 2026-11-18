@@ -1,9 +1,11 @@
 import type { Flight } from '../types.ts';
 import { terminalApproach, startDockedBurn, startTether, transpositionInput, faultInput } from '../sim/approach.ts';
+import { startRendezvous, rendezvousInput } from '../sim/rendezvous.ts';
+import { startVisit, stationKeep, flybyInput } from '../sim/flyby.ts';
 import { portGap } from '../sim/docking.ts';
 import { elementsOf } from '../world/orbit.ts';
 import { WGS84_A } from '../world/bodies.ts';
-import { add, scale, type Vec3 } from '../world/frames.ts';
+import { add, sub, scale, type Vec3 } from '../world/frames.ts';
 import { Clock, missionTime } from '../world/clock.ts';
 import { is, which } from '../util/keys.ts';
 import { Deck, type CockpitHost } from './deck.ts';
@@ -37,6 +39,10 @@ export class DockDeck extends Deck<Flight> {
   }
   redock = false;
   transpose = false;
+  rendezvous = false;
+  visit = false;
+  eva = false;
+  private flybyAuto = false;
   private extractedAt: number | null = null;
   private burnIndex = 0;
   private powered: ReturnType<typeof startDockedBurn> = null;
@@ -54,7 +60,7 @@ export class DockDeck extends Deck<Flight> {
   constructor(parent: HTMLElement, flight: Flight, clock: Clock, host: CockpitHost) {
     super(parent, flight, clock, host, {
       figures: [
-        timeline('gap', 'Port gap', 'm', 'Distance along the target’s docking axis'),
+        timeline('gap', 'Range', 'm', 'Axial port gap during docking, centre-to-centre distance on a passive rendezvous'),
         timeline('closing', 'Closing', 'm/s', 'Relative port velocity along the docking axis'),
         timeline('offset', 'Offset', 'm', 'Sideways miss between the mating rings'),
       ],
@@ -75,10 +81,13 @@ export class DockDeck extends Deck<Flight> {
           .join('') +
         (flight.docking?.interface === 'probe' ? '<button data-do="change-craft">Switch pilot</button>' : '') +
         (flight.docking?.fault ? '<button data-do="oams-failure">Thruster No. 8</button>' : '') +
+        (flight.docking?.visit
+          ? '<button data-do="second-target">Visit old Agena</button><button data-do="eva-target">EVA station keeping</button>'
+          : '') +
         (flight.docking?.tether ? '<button data-do="tether-exercise">Tether rotation</button>' : '') +
         (flight.docking?.burns?.length ? '<button data-do="next-burn">Coast to burn</button>' : '') +
         (flight.docking?.interface === 'probe'
-          ? '<button data-do="transpose">Separation and transposition</button><button data-do="crew-transfer">Transfer crew</button><button data-do="second">LM approach</button>'
+          ? '<button data-do="transpose">Separation and transposition</button><button data-do="crew-transfer">Transfer crew</button><button data-do="rendezvous">LM rendezvous</button><button data-do="second">LM final approach</button>'
           : ''),
     });
     this.root.classList.add('docking-deck');
@@ -123,6 +132,10 @@ export class DockDeck extends Deck<Flight> {
       this.run,
       this.pilot,
       this.redock,
+      this.rendezvous,
+      this.visit,
+      this.eva,
+      this.flybyAuto,
       this.ends,
       this.pulse,
       this.guided,
@@ -142,14 +155,16 @@ export class DockDeck extends Deck<Flight> {
       this.automatic = to.sequence ?? true;
       this.guided = to.guidance ?? true;
       this.redock = to.redock ?? false;
+      this.rendezvous = to.rendezvous ?? false;
       this.transpose = to.transpose ?? false;
     }
-    return { sequence: this.automatic, guidance: this.guided, redock: this.redock, transpose: this.transpose };
+    return { sequence: this.automatic, guidance: this.guided, redock: this.redock, rendezvous: this.rendezvous, transpose: this.transpose };
   }
   protected restore() {
     this.follow();
   }
   protected steered() {
+    this.flybyAuto = false;
     this.hand = true;
   }
   protected obey(what: string) {
@@ -174,7 +189,9 @@ export class DockDeck extends Deck<Flight> {
     else this.fresh();
   }
   protected fresh() {
-    this.run = terminalApproach(this.flight, this.redock, this.transpose);
+    this.clock.pause();
+    this.clock.setRate(1);
+    this.run = this.rendezvous ? startRendezvous(this.flight) : terminalApproach(this.flight, this.redock, this.transpose);
     this.pilot = this.redock ? 1 : 0;
     this.firedForce = [
       [0, 0, 0],
@@ -185,6 +202,7 @@ export class DockDeck extends Deck<Flight> {
       [0, 0, 0],
     ];
     this.faultEnabled = true;
+    this.visit = this.eva = this.flybyAuto = false;
     this.extractedAt = null;
     this.burnIndex = 0;
     this.inhibitCapture = false;
@@ -194,8 +212,6 @@ export class DockDeck extends Deck<Flight> {
     this.hand = false;
     this.ends = -Infinity;
     this.pulse = [0, 0, 0];
-    this.clock.pause();
-    this.clock.setRate(1);
     this.clock.seek(this.run.t);
     this.started();
     this.clock.play();
@@ -206,8 +222,9 @@ export class DockDeck extends Deck<Flight> {
       this.leave();
       return;
     }
-    if (what === 'again' || what === 'second' || what === 'transpose') {
-      this.redock = what === 'second';
+    if (what === 'again' || what === 'second' || what === 'rendezvous' || what === 'transpose') {
+      this.rendezvous = what === 'rendezvous';
+      this.redock = what === 'second' || this.rendezvous;
       this.transpose = what === 'transpose';
       this.fresh();
       return;
@@ -232,6 +249,21 @@ export class DockDeck extends Deck<Flight> {
         this.guided = false;
         this.clock.seek(this.run.t);
       }
+    }
+    const visit = this.flight.docking!.visit;
+    if (what === 'second-target' && visit && this.burnIndex === this.flight.docking!.burns?.length && !this.powered) {
+      const pair = startVisit(this.run, visit);
+      if (pair) {
+        this.run = pair;
+        this.visit = this.flybyAuto = true;
+        this.pilot = 0;
+        this.clock.seek(pair.t);
+      }
+    }
+    if (what === 'eva-target' && visit && this.visit && stationKeep(this.run, visit)) {
+      this.eva = true;
+      this.flybyAuto = false;
+      this.clock.seek(this.run.t);
     }
     if (what === 'next-burn') {
       const burn = this.flight.docking!.burns?.[this.burnIndex];
@@ -261,6 +293,7 @@ export class DockDeck extends Deck<Flight> {
       }
     }
     if (pulses[what]) {
+      this.flybyAuto = false;
       this.pulse = pulses[what]!;
       this.ends = this.run.t + 1;
     }
@@ -323,6 +356,9 @@ export class DockDeck extends Deck<Flight> {
         if (this.pilot === 0 && this.faultEnabled && this.run.phase === 'free' && this.run.t < fault.recovery)
           torque = torqueAxis.map((u) => u * authority) as unknown as Vec3;
       }
+      if (this.rendezvous && !this.hand && this.automatic && this.run.phase === 'free') forces[1] = rendezvousInput(this.run, this.flight);
+      if (this.visit && this.flybyAuto && this.automatic)
+        forces[0] = flybyInput(this.run, this.flight.docking!.visit!, 2 * controls.ahead.value);
       forces[this.pilot] = add(forces[this.pilot], force);
       torques[this.pilot] = add(torques[this.pilot], torque);
       if (
@@ -358,7 +394,11 @@ export class DockDeck extends Deck<Flight> {
           ? 'Retracting'
           : this.flight.docking!.interface === 'shrouded'
             ? 'Shroud obstructs docking'
-            : 'Free flight',
+            : this.visit
+              ? this.eva
+                ? 'EVA station keeping'
+                : 'Passive rendezvous'
+              : 'Free flight',
     );
     this.put(
       'mode',
@@ -366,7 +406,7 @@ export class DockDeck extends Deck<Flight> {
         (this.hand ? ' · By hand' : ' · Terminal approach'),
     );
     this.put('next', phase === 'hard' ? (this.run.mounted ? 'Extract' : 'Undock') : phase === 'capture' ? 'Retracting' : 'Capture');
-    this.put('gap', d.gap.toFixed(2));
+    this.put('gap', (this.visit ? Math.hypot(...sub(this.run.bodies[0].r, this.run.bodies[1].r)) : d.gap).toFixed(2));
     this.put('closing', d.closing.toFixed(2));
     this.put('offset', d.offset.toFixed(2));
     this.put('tilt', ((d.tilt * 180) / Math.PI).toFixed(1));
@@ -387,6 +427,10 @@ export class DockDeck extends Deck<Flight> {
         ? this.run.t >= this.flight.docking!.fault.isolate
         : phase !== 'hard' || this.run.t > this.flight.docking!.fault.at;
     }
+    const second = this.root.querySelector<HTMLButtonElement>('[data-do="second-target"]');
+    if (second) second.disabled = this.visit || phase !== 'hard' || !!this.powered || this.burnIndex !== this.flight.docking!.burns!.length;
+    const eva = this.root.querySelector<HTMLButtonElement>('[data-do="eva-target"]');
+    if (eva) eva.disabled = !this.visit || this.eva || this.run.t > this.flight.docking!.visit!.eva;
     const strap = this.root.querySelector<HTMLButtonElement>('[data-do="tether-exercise"]');
     if (strap) {
       strap.textContent = this.run.tetherLength ? 'Release tether · ' + this.run.tension.toFixed(1) + ' N' : 'Tether rotation';
