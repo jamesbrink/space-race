@@ -197,9 +197,10 @@ def tanks(parent, name, radius, domes, lining, metal, warm):
         mark_shells([mesh.build(name + label, mat, parent).name])
 
 
-def adapter(parent, white):
+def adapter(parent, white, carrying_lm=False):
     # SLA-11 four fixed panels and four jettisonable petals, each on its physical hinge.
-    hinge = IU_TOP + 7 * 12
+    hinge = IU_TOP + (85.9 if carrying_lm else 7 * 12)
+    designation = "13A" if carrying_lm else "11"
 
     def radius(z):
         return UPPER_RADIUS + (77 - UPPER_RADIUS) * (z - IU_TOP) / (SLA_TOP - IU_TOP)
@@ -219,7 +220,7 @@ def adapter(parent, white):
             faces = [(j * 4 + k, (j + 1) * 4 + k, (j + 1) * 4 + (k + 1) % 4, j * 4 + (k + 1) % 4) for j in range(sides) for k in range(4)]
             faces.extend([(0, 1, 2, 3), tuple(4 * sides + j for j in (3, 2, 1, 0))])
             mesh.add(verts, faces)
-            mark_shells([mesh.build(f"SLA11_{'Door' if moving else 'Base'}Panel_{i}", white, owner, smooth=False).name])
+            mark_shells([mesh.build(f"SLA{designation}_{'Door' if moving else 'Base'}Panel_{i}", white, owner, smooth=False).name])
 
 
 def payload(parent, steel, alloy):
@@ -337,7 +338,7 @@ def instrument_unit(parent, steel, metal):
         mark_shells([mesh.build("IU503_" + name, paint, parent).name])
 
 
-def build():
+def build(*, lunar_module=None):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -422,5 +423,8 @@ def build():
         third_tanks.location.z = third_engine.location.z
         structure.second_stage(third_tanks, metal, warm, steel)
         instrument_unit(equipment, steel, metal)
-    adapter(group("SpacecraftAdapter"), white)
-    payload(group("LunarTestArticle"), steel, alloy)
+    adapter(group("SpacecraftAdapter"), white, lunar_module is not None)
+    if lunar_module is None:
+        payload(group("LunarTestArticle"), steel, alloy)
+    else:
+        lunar_module(IU_TOP)

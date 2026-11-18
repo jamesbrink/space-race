@@ -63,7 +63,7 @@ class Console(InchPanel):
 
 
 def _layout(spacecraft):
-    file = {101: "apollo-console-layout.json", 103: "apollo-console-layout-103.json"}[spacecraft]
+    file = {101: "apollo-console-layout.json", 103: "apollo-console-layout-103.json", 104: "apollo-console-layout-104.json"}[spacecraft]
     return json.loads((FOLDER / file).read_text())
 
 
@@ -307,7 +307,7 @@ def equipment(parent, base, *, spacecraft=101):
     # Both entry monitors have the same arrangement. Register the local facade
     # to its centre above the left FDAI in each drawing crop.
     def ems(x, y):
-        return c.xy(x - 23, y + 13) if spacecraft == 103 else c.xy(x, y)
+        return c.xy(x - 23, y + 13) if spacecraft >= 103 else c.xy(x, y)
 
     u, v = ems(431, 286)
     width, height = c.size(196), c.size(155)
@@ -330,7 +330,7 @@ def equipment(parent, base, *, spacecraft=101):
             "EMSControls", "black", a, b, [(0, FACE - 0.025), (c.size(18), FACE - 0.025), (c.size(18), FACE + PRINT + 0.1), (0, FACE + PRINT + 0.1)]
         )
         c.text(label, a, b, 0.11, FACE + 2 * PRINT + 0.1, "white", "EMSLegends")
-    alarms = ((267, 352), (470, 404), (1529, 426)) if spacecraft == 103 else ((287, 339), (492, 391), (1547, 415))
+    alarms = ((267, 352), (470, 404), (1529, 426)) if spacecraft >= 103 else ((287, 339), (492, 391), (1547, 415))
     for (x, y), label in zip(alarms, ("MASTER\nALARM", "ABORT", "MASTER\nALARM")):
         a, b = c.xy(x, y)
         c.box("AlarmHousings", "metal", a, b, 0.95, 0.95, -0.15, FACE)
@@ -338,7 +338,7 @@ def equipment(parent, base, *, spacecraft=101):
         c.text(label, a, b + 0.08, 0.1, FACE + 2 * PRINT + 0.05, "ink", "AlarmLegends")
     # The eight-position (four-hour, two-minute, two-second) mission-timer
     # window is intentionally unlit. Its electronic internals are omitted.
-    u, v = c.xy(982, 241) if spacecraft == 103 else c.xy(1002, 225)
+    u, v = c.xy(982, 241) if spacecraft >= 103 else c.xy(1002, 225)
     c.box("MissionTimerCase", "metal", u, v, c.size(95), c.size(23), -0.35, FACE)
     c.box("MissionTimerWindow", "black", u, v, c.size(89), c.size(18), FACE - 0.025, FACE + PRINT + 0.05)
     c.text("HOURS       MIN    SEC", u, v + c.size(17), 0.08)

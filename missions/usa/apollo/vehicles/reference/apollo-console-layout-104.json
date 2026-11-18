@@ -1,0 +1,431 @@
+{
+  "confidence": "estimated",
+  "source": {
+    "title": "North American Aviation V36-976021, Design Layout \u2013 Main Display Console, Command Module 104, sheet 1",
+    "url": "https://www.ibiblio.org/apollo/Documents/V36-976021_Design_Layout_MDC_CM-104.pdf",
+    "sha256": "8f71ee11a07bd3a4df69bafa14a71fb6c4f7de22ccc51325cf026c4e8ab96997",
+    "page": 1,
+    "crop_pdf_points": [2340, 0, 4162, 797],
+    "pixels_per_point": 1,
+    "image_size_px": [1822, 797]
+  },
+  "registration": {
+    "anchors": [
+      {
+        "interface": "fdai-1",
+        "image_px": [347.5, 452.5]
+      },
+      {
+        "interface": "fdai-2",
+        "image_px": [626, 281.5]
+      }
+    ],
+    "method": "Two FDAI centres in the CM-104 design drawing mapped to the shared structural interfaces in the CM-107 survey. Drawing pixels give estimated equipment positions in this plane.",
+    "holdout": {
+      "feature": "DSKY front centre",
+      "image_px": [624, 455],
+      "residual_cm": 0.7198032287070156
+    }
+  },
+  "round_gauges": [
+    {
+      "id": "chute",
+      "at": [472, 158],
+      "radius_px": 31,
+      "label": "MAIN CHUTE / APEX COVER"
+    },
+    {
+      "id": "accelerometer",
+      "at": [242, 409],
+      "radius_px": 21,
+      "label": "ACCEL"
+    },
+    {
+      "id": "sps-gimbal",
+      "at": [294, 573],
+      "radius_px": 23,
+      "label": "LV / SPS GPI"
+    },
+    {
+      "id": "cabin-oxygen",
+      "at": [753, 138],
+      "radius_px": 23,
+      "label": "CABIN / O2 FLOW"
+    },
+    {
+      "id": "ecs-radiator",
+      "at": [1008, 400],
+      "radius_px": 23,
+      "label": "ECS RADIATOR TEMP"
+    },
+    {
+      "id": "glycol",
+      "at": [1068, 400],
+      "radius_px": 23,
+      "label": "GLY EVAP / STEAM PRESS"
+    },
+    {
+      "id": "suit-glycol",
+      "at": [1127, 400],
+      "radius_px": 23,
+      "label": "SUIT / GLYCOL"
+    },
+    {
+      "id": "suit-compressor",
+      "at": [1067, 462],
+      "radius_px": 22,
+      "label": "SUIT COMPR"
+    },
+    {
+      "id": "water",
+      "at": [1127, 463],
+      "radius_px": 22,
+      "label": "WATER QUANTITY"
+    },
+    {
+      "id": "s-band-pitch",
+      "at": [1177, 574],
+      "radius_px": 15,
+      "label": "PITCH"
+    },
+    {
+      "id": "s-band-strength",
+      "at": [1218, 574],
+      "radius_px": 15,
+      "label": "S BAND ANT"
+    },
+    {
+      "id": "s-band-yaw",
+      "at": [1257, 575],
+      "radius_px": 15,
+      "label": "YAW"
+    },
+    {
+      "id": "dc-amps",
+      "at": [1615, 444],
+      "radius_px": 21,
+      "label": "DC AMPS"
+    },
+    {
+      "id": "dc-volts",
+      "at": [1622, 498],
+      "radius_px": 21,
+      "label": "DC VOLTS"
+    },
+    {
+      "id": "ac-volts",
+      "at": [1730, 661],
+      "radius_px": 21,
+      "label": "AC VOLTS"
+    }
+  ],
+  "tape_banks": [
+    {
+      "id": "gimbal",
+      "xs": [336, 353, 370, 387, 405],
+      "y": 583,
+      "width_px": 10,
+      "height_px": 51,
+      "label": "LV TANK PRESS"
+    },
+    {
+      "id": "sm-rcs",
+      "xs": [728, 774],
+      "y": 304,
+      "width_px": 27,
+      "height_px": 64,
+      "label": "SM RCS"
+    },
+    {
+      "id": "cryo",
+      "xs": [1126, 1169, 1213, 1257],
+      "y": 272,
+      "width_px": 28,
+      "height_px": 68,
+      "label": "CRYOGENIC TANKS"
+    },
+    {
+      "id": "environment",
+      "xs": [1173, 1225, 1259],
+      "y": 411,
+      "width_px": 23,
+      "height_px": 63,
+      "label": "SUIT / CABIN"
+    },
+    {
+      "id": "fuel-cell",
+      "xs": [1331, 1373, 1418, 1463],
+      "y": 272,
+      "width_px": 25,
+      "height_px": 65,
+      "label": "SPS TANKS / FUEL CELL"
+    }
+  ],
+  "toggle_rows": [
+    {
+      "id": "manual-attitude",
+      "xs": [121, 144, 165, 188, 210, 231, 254],
+      "y": 517,
+      "label": "MANUAL ATTITUDE"
+    },
+    {
+      "id": "scale",
+      "xs": [160, 181, 231, 252],
+      "y": 468,
+      "label": "SCALE / SOURCE"
+    },
+    {
+      "id": "electronics",
+      "xs": [78, 109, 139, 171, 215, 240],
+      "y": 572,
+      "label": "ROT CONTR PWR"
+    },
+    {
+      "id": "electronics-b",
+      "xs": [86, 114, 141],
+      "y": 617,
+      "label": "BMAG MODE"
+    },
+    {
+      "id": "tvc",
+      "xs": [218, 241, 265, 287, 309, 339, 375, 421, 445],
+      "y": 689,
+      "label": "SCS TVC"
+    },
+    {
+      "id": "ems",
+      "xs": [194, 215, 237, 261, 282, 304, 377, 400, 422, 443, 465, 489],
+      "y": 734,
+      "label": "EMS / EVENT TIMER"
+    },
+    {
+      "id": "separation",
+      "xs": [566],
+      "y": 575,
+      "label": "EDS AUTO"
+    },
+    {
+      "id": "abort-system",
+      "xs": [544, 571, 600],
+      "y": 622,
+      "label": "ABORT SYSTEM"
+    },
+    {
+      "id": "launch-vehicle",
+      "xs": [543, 593],
+      "y": 682,
+      "label": "LAUNCH VEHICLE"
+    },
+    {
+      "id": "docking-lights",
+      "xs": [740, 759, 783, 815, 843, 874],
+      "y": 225,
+      "label": "DOCKING PROBE / EXTERIOR LIGHTS"
+    },
+    {
+      "id": "sm-rcs",
+      "xs": [819, 842, 862, 885],
+      "y": 303,
+      "label": "SM RCS"
+    },
+    {
+      "id": "cm-rcs",
+      "xs": [728, 753, 797, 820, 842, 864, 885],
+      "y": 383,
+      "label": "CM RCS"
+    },
+    {
+      "id": "sm-heaters",
+      "xs": [728, 751, 775, 795, 818, 839, 862, 884],
+      "y": 451,
+      "label": "SM RCS HEATERS"
+    },
+    {
+      "id": "thrust-control",
+      "xs": [731, 753, 773, 796, 818, 839, 862, 883],
+      "y": 520,
+      "label": "RCS COMMAND"
+    },
+    {
+      "id": "mission-timer",
+      "xs": [1038, 1061, 1083],
+      "y": 237,
+      "label": "MISSION TIMER"
+    },
+    {
+      "id": "warning",
+      "xs": [986, 1011, 1035, 1057, 1079],
+      "y": 289,
+      "label": "CAUTION / WARNING"
+    },
+    {
+      "id": "cryo",
+      "xs": [983, 1018, 1043, 1065, 1086, 1108, 1133, 1159, 1193, 1227, 1259],
+      "y": 336,
+      "label": "CABIN FAN / CRYO HEATERS"
+    },
+    {
+      "id": "glycol",
+      "xs": [924, 946, 975, 999, 1022],
+      "y": 467,
+      "label": "ECS RADIATORS"
+    },
+    {
+      "id": "water-control",
+      "xs": [917, 942, 965, 989, 1013, 1036, 1060, 1083, 1108, 1133, 1156, 1181],
+      "y": 521,
+      "label": "WATER / GLYCOL FLOW"
+    },
+    {
+      "id": "antenna-track",
+      "xs": [1120, 1143],
+      "y": 573,
+      "label": "TRACK / BEAM"
+    },
+    {
+      "id": "antenna-drive",
+      "xs": [1222, 1244],
+      "y": 686,
+      "label": "HIGH GAIN ANT"
+    },
+    {
+      "id": "fuel-cell-radiators",
+      "xs": [1438, 1463, 1486],
+      "y": 397,
+      "label": "FUEL CELL RADIATORS"
+    },
+    {
+      "id": "fuel-cell-heaters",
+      "xs": [1438, 1463, 1485],
+      "y": 444,
+      "label": "FUEL CELL HEATERS"
+    },
+    {
+      "id": "sps-quantity",
+      "xs": [1351, 1372, 1393],
+      "y": 498,
+      "label": "SPS QUANTITY"
+    },
+    {
+      "id": "fuel-cell-purge",
+      "xs": [1439, 1459, 1481, 1502, 1530, 1552, 1583],
+      "y": 507,
+      "label": "FUEL CELL PURGE"
+    },
+    {
+      "id": "reactants",
+      "xs": [1322, 1345, 1367, 1405, 1428, 1450, 1473, 1504, 1526, 1551, 1579],
+      "y": 579,
+      "label": "FUEL CELL REACTANTS"
+    },
+    {
+      "id": "s-band",
+      "xs": [1319, 1340, 1362, 1396, 1420, 1442, 1468, 1493, 1517, 1544],
+      "y": 632,
+      "label": "S BAND / UPLINK"
+    },
+    {
+      "id": "ac-inverter",
+      "xs": [1618, 1654, 1687],
+      "y": 632,
+      "label": "AC INVERTERS"
+    },
+    {
+      "id": "vhf",
+      "xs": [1322, 1345, 1450, 1474, 1500, 1526],
+      "y": 682,
+      "label": "S BAND ANTENNA / VHF AM"
+    },
+    {
+      "id": "ac-bus1",
+      "xs": [1617, 1641, 1663, 1686],
+      "y": 684,
+      "label": "AC BUS 1"
+    },
+    {
+      "id": "telemetry",
+      "xs": [1319, 1341, 1448, 1471, 1493, 1514, 1535, 1557, 1579],
+      "y": 735,
+      "label": "TAPE RECORDER / TELEMETRY"
+    },
+    {
+      "id": "ac-bus2",
+      "xs": [1617, 1640, 1663, 1686],
+      "y": 735,
+      "label": "AC BUS 2"
+    }
+  ],
+  "rotary_rows": [],
+  "caution_warning": {
+    "x0": 800,
+    "y0": 131,
+    "dx": 28.1,
+    "dy": 8.65,
+    "gap": 131,
+    "cell_px": [27.5, 7.6],
+    "left": [
+      ["BMAG 1\nTEMP", "BMAG 2\nTEMP", "", "CO2 PP HI"],
+      ["PITCH\nGMBL 1", "YAW\nGMBL 1", "HI GAIN ANT\nSCAN LIMIT", ""],
+      ["PITCH\nGMBL 2", "YAW\nGMBL 2", "CRYO\nPRESS", "GLYCOL\nTEMP LOW"],
+      ["CM RCS\n1", "CM RCS\n2", "", ""],
+      ["SM RCS\nA", "SM RCS\nB", "SM RCS\nC", "SM RCS\nD"],
+      ["", "", "", ""]
+    ],
+    "right": [
+      ["SPS FLANGE\nTEMP HI", "FC 1", "FC 2", "FC 3"],
+      ["SPS PU\nSNSR", "INV 1\nTEMP HI", "INV 2\nTEMP HI", "INV 3\nTEMP HI"],
+      ["SPS PRESS", "SPS ROUGH\nECO", "AC BUS 1", "AC BUS 2"],
+      ["", "FC BUS\nDISCONNECT", "AC BUS 1\nOVERLOAD", "AC BUS 2\nOVERLOAD"],
+      ["CMC", "CREW\nALERT", "MN BUS A\nUNDERVOLT", "MN BUS B\nUNDERVOLT"],
+      ["ISS", "C/W", "O2\nFLOW HI", "SUIT\nCOMPRESSOR"]
+    ]
+  },
+  "limitations": [
+    "Control centres and shared gauge layouts are estimated from V36-976021. The earlier CM-103 transcription supplies group labels, face extents and gauge diameters where the layouts coincide. Drawing sheet says DO NOT SCALE PRINT.",
+    "Apollo 9 added a general-purpose timer. The mission records do not establish its installation on this main panel; the existing main-panel mission and event timers are present in both drawings.",
+    "The upper Panel 2 docking probe control group is retained in the as-drawn position. The lower Panel 2 flight qualification recorder switch is deleted, leaving two high-gain antenna switches.",
+    "Switch shapes, projections and the registration to the later hull survey are estimates. Side panels, individual circuit legends and the internal mechanism are omitted. Instruments are static."
+  ],
+  "selectors": [
+    {
+      "at": [932, 327],
+      "label": "RCS INDICATORS"
+    },
+    {
+      "at": [934, 400],
+      "label": "ECS INDICATORS"
+    },
+    {
+      "at": [1177, 626],
+      "label": "PITCH"
+    },
+    {
+      "at": [1244, 626],
+      "label": "YAW"
+    },
+    {
+      "at": [1339, 194],
+      "label": "VHF ANTENNA"
+    },
+    {
+      "at": [1565, 426],
+      "label": "FUEL CELL"
+    },
+    {
+      "at": [1637, 567],
+      "label": "DC INDICATORS"
+    },
+    {
+      "at": [1711, 568],
+      "label": "BATTERY CHARGE"
+    },
+    {
+      "at": [1738, 727],
+      "label": "AC INDICATORS"
+    }
+  ],
+  "valve_meters": {
+    "xs": [1328, 1352, 1375, 1399],
+    "y": 355
+  }
+}
