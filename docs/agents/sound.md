@@ -44,7 +44,7 @@ plays until the page has been touched, and a hidden page is suspended.
   silent; starting, running and stopping are a kind's own (`MACHINES`). At the wheel the walker makes no footfalls and
   no breath and reports `driving`; the engine is the vehicle's own (`PlaceDef.engines`, by the name its model or its
   move gives: which engine, its idle and its rated speed, each with its confidence, from the makers' manuals or reference works where found; where its gearbox's ratios are published
-  (`Engine.gears`: the GAZ-21's and the GAZ-63's, documented) a driven vehicle changes up and its revolutions fall at each change, `gearOf`, the shift
+  (`Engine.gears`: the GAZ-21's and the GAZ-63's, documented, and the LAZ-695B's early five-speed, assumed for the pad bus) a driven vehicle changes up and its revolutions fall at each change, `gearOf`, the shift
   points estimated, and the rest are heard turning with their speed alone), its tyres on what is under each wheel (`PlaceDef.tread`: the models' material names; on the land, what
   the land is painted as there, a road, an apron, a track's bed, by the name its ground gives it, `GroundSpec.painted`,
   worked from the lines its shader draws, each with its confidence; else the land), a voice for each surface its

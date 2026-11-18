@@ -83,13 +83,17 @@ export const TYURATAM: PlaceDef = {
       confidence: 'documented',
       source: 'the ZMZ-21A, a 2,445 cc straight four (ru.wikipedia, «ГАЗ-21», Силовой агрегат and infobox)',
     },
-    // (no gear ratios for the LAZ-695B: the box the reference gives is the 695E's ZIL-130 five-speed, and the early 695Bs had a
-    // direct fourth with an overdrive fifth; which this bus had is not recorded)
     'LAZ-695B': {
       fuel: 'petrol',
       cylinders: 6,
       idle: idling(450),
       most: rpm(2800, 'documented', '109 hp at 2,800 rpm (ru.wikipedia, «ЗИЛ-158», Технические характеристики)'),
+      gears: {
+        ratios: [6.24, 3.32, 1.9, 1, 0.8],
+        confidence: 'assumed',
+        source:
+          'The early LAZ-695B five-speed, from the gearbox photograph and ratios in Za Rulyom, «Легендарные автобусы СССР». The Gagarin Museum identifies the pad bus as this model. Its individual transmission has no recorded serial here.',
+      },
       confidence: 'documented',
       source:
         'the ZIL-158’s side-valve 5.55 litre straight six (ru.wikipedia, «ЛАЗ-695»; Za Rulyom, «ЛАЗ-695Е: конструкция», 2025): called the ZIL-124 in ' +
